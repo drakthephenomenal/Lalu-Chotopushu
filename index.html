@@ -1434,6 +1434,18 @@ function fbInit() {
     fbAuth = firebase.auth();
     fbDb = firebase.firestore();
     fbDb.enablePersistence({synchronizeTabs:false}).catch(() => {});
+    // Handle redirect sign-in result (for in-app browsers that used signInWithRedirect)
+    fbAuth.getRedirectResult().then(result => {
+      if (result && result.credential && result.credential.accessToken) {
+        gdAccessToken = result.credential.accessToken;
+        localStorage.setItem('rjap_gd_token', gdAccessToken);
+        toast('Signed in with Google! ☁️ Drive backup active 🙏');
+      }
+    }).catch(e => {
+      // Ignore errors here — redirect result may simply not exist
+      console.warn('getRedirectResult:', e.message);
+    });
+
     fbAuth.onAuthStateChanged(user => {
       fbUser = user;
       if (user) {
@@ -1459,9 +1471,10 @@ function fbSignInGoogle() {
   if (!fbInit()) { toast('Firebase not ready. Check your connection.'); return; }
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.addScope('https://www.googleapis.com/auth/drive.file');
+
+  // Try popup first; if it fails (in-app browsers, storage-partitioned envs), fall back to redirect
   fbAuth.signInWithPopup(provider)
     .then(result => {
-      // Extract Drive access token from credential
       const credential = result.credential;
       if (credential && credential.accessToken) {
         gdAccessToken = credential.accessToken;
@@ -1470,8 +1483,34 @@ function fbSignInGoogle() {
       toast('Signed in with Google! ☁️ Drive backup active 🙏');
     })
     .catch(e => {
-      const el = document.getElementById('fbErr');
-      if (el) { el.textContent = e.message; setTimeout(() => el.textContent = '', 5000); }
+      // Popup blocked or storage partitioned (e.g. Facebook in-app browser)
+      if (
+        e.code === 'auth/popup-blocked' ||
+        e.code === 'auth/popup-closed-by-user' ||
+        e.code === 'auth/cancelled-popup-request' ||
+        e.message.includes('sessionStorage') ||
+        e.message.includes('initial state') ||
+        e.message.includes('storage-partitioned')
+      ) {
+        // Inform user and open in external browser instead
+        toast('Opening in your browser for sign-in…');
+        setTimeout(() => {
+          // Try redirect as fallback
+          try {
+            fbAuth.signInWithRedirect(provider);
+          } catch(err) {
+            // If even redirect fails (rare), show helpful message
+            const el = document.getElementById('fbErr');
+            if (el) {
+              el.textContent = 'Please open this app in Chrome or Safari (not inside Facebook/WhatsApp) to sign in.';
+              setTimeout(() => el.textContent = '', 8000);
+            }
+          }
+        }, 1000);
+      } else {
+        const el = document.getElementById('fbErr');
+        if (el) { el.textContent = e.message; setTimeout(() => el.textContent = '', 5000); }
+      }
     });
 }
 

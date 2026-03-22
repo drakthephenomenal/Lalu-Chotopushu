@@ -189,15 +189,20 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .cd{background:rgba(74,144,226,0.07);border:1px solid rgba(74,144,226,0.18);border-radius:14px;padding:14px;margin-top:12px;min-height:55px;}
 .cd h4{font-family:'EB Garamond',serif;font-size:15px;color:var(--a2);margin-bottom:6px;}
 .cd p{font-size:13px;color:var(--tl);}
-.occ-form{background:rgba(255,215,0,0.05);border:1px solid rgba(255,215,0,0.2);border-radius:14px;padding:12px;margin-top:12px;}
-.occ-form h4{font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;font-weight:600;}
+.occ-form{background:rgba(255,215,0,0.05);border:1px solid rgba(255,215,0,0.2);border-radius:14px;padding:0;margin-top:12px;overflow:hidden;}
+.occ-form-header{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;cursor:pointer;user-select:none;-webkit-user-select:none;}
+.occ-form-header h4{font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin:0;}
+.occ-form-chevron{font-size:14px;color:var(--gold);transition:transform 0.3s;display:inline-block;}
+.occ-form-body{max-height:0;overflow:hidden;transition:max-height 0.38s ease,padding 0.3s ease;padding:0 14px;}
+.occ-form-body.open{max-height:400px;padding:0 14px 14px;}
+.occ-list-wrap{padding:8px 14px 10px;border-top:1px solid rgba(255,215,0,0.1);}
 .occ-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
 .occ-date-in{flex:0 0 130px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.25);border-radius:9px;padding:7px 10px;color:var(--tl);font-size:13px;font-family:'Inter',sans-serif;}
 .occ-date-in::-webkit-calendar-picker-indicator{filter:invert(0.6);}
 .occ-name-in{flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.25);border-radius:9px;padding:7px 10px;color:var(--tl);font-size:13px;font-family:'Inter',sans-serif;outline:none;}
 .occ-name-in:focus{border-color:var(--gold);}
 .occ-add-btn{padding:7px 14px;border-radius:9px;border:none;background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,215,0,0.15));color:var(--gold);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;}
-.occ-list{margin-top:8px;max-height:120px;overflow-y:auto;}
+.occ-list{max-height:120px;overflow-y:auto;}
 .occ-item{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,215,0,0.1);font-size:12px;}
 .occ-item-date{color:var(--td);min-width:85px;}
 .occ-item-name{color:var(--gold);flex:1;margin:0 6px;}
@@ -259,8 +264,12 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .sbtn.p{background:rgba(74,144,226,0.2);color:var(--a2);}
 .sbtn.m{background:rgba(232,51,109,0.15);color:var(--rl);}
 .sbtn:active{transform:scale(0.88);}
-.asf{background:rgba(255,215,0,0.05);border:1px dashed rgba(255,215,0,0.25);border-radius:16px;padding:14px;margin-bottom:12px;}
-.asf h3{font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:11px;font-weight:600;}
+.asf{background:rgba(255,215,0,0.05);border:1px dashed rgba(255,215,0,0.25);border-radius:16px;padding:0;margin-bottom:12px;overflow:hidden;}
+.asf-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;user-select:none;-webkit-user-select:none;}
+.asf-header h3{font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin:0;}
+.asf-chevron{font-size:14px;color:var(--gold);transition:transform 0.3s;display:inline-block;}
+.asf-body{max-height:0;overflow:hidden;transition:max-height 0.4s ease,padding 0.3s ease;padding:0 14px;}
+.asf-body.open{max-height:600px;padding:0 14px 14px;}
 .sti{width:100%;background:rgba(0,0,0,0.35);border:1px solid rgba(74,144,226,0.25);border-radius:9px;
   padding:9px 13px;color:var(--tl);font-size:14px;font-family:'Inter',sans-serif;margin-bottom:7px;}
 .sti:focus{outline:none;border-color:var(--a2);}
@@ -527,11 +536,18 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 <div class="view" id="vst">
   <div class="vt">Stotram Tracker</div>
   <div class="asf">
-    <h3>➕ Add Your Stotram</h3>
-    <input type="text" class="sti" id="snIn" placeholder="Stotram name (required)">
-    <input type="text" class="sti" id="ssIn" placeholder="Short description (optional)">
-    <textarea class="sti" id="slIn" rows="6" placeholder="Paste or type full lyrics here (optional)&#10;Stored in your account — visible only to you" style="resize:vertical;min-height:110px;font-family:Hind Siliguri,serif;font-size:14px;line-height:1.8"></textarea>
-    <button class="asb" onclick="addSt()">Add Stotram</button>
+    <!-- Header — always visible, tap to toggle -->
+    <div class="asf-header" onclick="toggleAsfForm()">
+      <h3>➕ Add Your Stotram</h3>
+      <span class="asf-chevron" id="asfChevron">▾</span>
+    </div>
+    <!-- Form body — collapsible -->
+    <div class="asf-body" id="asfBody">
+      <input type="text" class="sti" id="snIn" placeholder="Stotram name (required)" style="margin-top:4px">
+      <input type="text" class="sti" id="ssIn" placeholder="Short description (optional)">
+      <textarea class="sti" id="slIn" rows="6" placeholder="Paste or type full lyrics here (optional)&#10;Stored in your account — visible only to you" style="resize:vertical;min-height:110px;font-family:Hind Siliguri,serif;font-size:14px;line-height:1.8"></textarea>
+      <button class="asb" onclick="addSt()">Add Stotram</button>
+    </div>
   </div>
   <div id="stList"></div>
 </div>
@@ -591,13 +607,23 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
     <p style="color:var(--td);font-size:12px">Your jap count will appear here.</p>
   </div>
   <div class="occ-form">
-    <h4>🪔 Occasion Names</h4>
-    <div class="occ-row">
-      <input type="date" class="occ-date-in" id="occDate">
-      <input type="text" class="occ-name-in" id="occName" placeholder="e.g. Janmashtami, Ekadashi…">
-      <button class="occ-add-btn" onclick="addOccasion()">Add</button>
+    <!-- Header — always visible, tap to toggle -->
+    <div class="occ-form-header" onclick="toggleOccForm()">
+      <h4>🪔 Occasion Names</h4>
+      <span class="occ-form-chevron" id="occChevron">▾</span>
     </div>
-    <div class="occ-list" id="occList"></div>
+    <!-- Add form — collapsible -->
+    <div class="occ-form-body" id="occFormBody">
+      <div class="occ-row" style="margin-top:4px">
+        <input type="date" class="occ-date-in" id="occDate">
+        <input type="text" class="occ-name-in" id="occName" placeholder="e.g. Janmashtami, Ekadashi…">
+        <button class="occ-add-btn" onclick="addOccasion()">Add</button>
+      </div>
+    </div>
+    <!-- Occasion list — always visible -->
+    <div class="occ-list-wrap">
+      <div class="occ-list" id="occList"></div>
+    </div>
   </div>
 </div>
 
@@ -1911,6 +1937,7 @@ function addSt() {
   document.getElementById('ssIn').value='';
   document.getElementById('slIn').value='';
   renderSt();
+  toggleAsfForm(false); // auto-collapse after adding
   toast('Stotram added' + (lyrics?' with lyrics':'') + '! 🙏');
 }
 
@@ -2133,6 +2160,25 @@ function buildPwaManifest(){
   if(img&&img.complete&&img.naturalWidth)attach();
   else if(img)img.addEventListener('load',attach);
   else setTimeout(buildPwaManifest,100);
+}
+
+// ── Collapsible: Occasion Names form ──
+function toggleOccForm() {
+  const body = document.getElementById('occFormBody');
+  const chevron = document.getElementById('occChevron');
+  if (!body) return;
+  const isOpen = body.classList.toggle('open');
+  if (chevron) chevron.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+// ── Collapsible: Add Stotram form ──
+function toggleAsfForm(forceOpen) {
+  const body = document.getElementById('asfBody');
+  const chevron = document.getElementById('asfChevron');
+  if (!body) return;
+  const isOpen = forceOpen !== undefined ? forceOpen : !body.classList.contains('open');
+  body.classList.toggle('open', isOpen);
+  if (chevron) chevron.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
 }
 
 // ── INIT ──

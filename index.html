@@ -224,6 +224,12 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 
 /* BRAHMACHARYA */
 #vb{background:radial-gradient(ellipse at top,#071525 0%,var(--bd) 60%);padding:22px 14px 80px;overflow-y:auto;}
+.brk-collapse-header{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;-webkit-user-select:none;padding:4px 0 2px;}
+.brk-collapse-icon{font-size:18px;line-height:1;}
+.brk-collapse-label{font-size:11px;color:var(--rl);letter-spacing:2px;text-transform:uppercase;font-weight:600;}
+.brk-collapse-chevron{font-size:12px;color:var(--rl);transition:transform 0.3s;display:inline-block;margin-left:auto;}
+.brk-collapse-body{max-height:0;overflow:hidden;transition:max-height 0.35s ease,padding 0.3s ease;padding:0;}
+.brk-collapse-body.open{max-height:200px;padding:8px 0 0;}
 .bsr{display:flex;gap:10px;margin-bottom:12px;}
 .bsb{flex:1;text-align:center;padding:14px 6px;border-radius:14px;border:1px solid;}
 .bsb.g{background:rgba(46,204,113,0.1);border-color:rgba(46,204,113,0.3);}
@@ -378,6 +384,27 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 /* Brahmacharya day edit modal */
 .bcmo{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:300;display:none;align-items:flex-end;justify-content:center;}
 .bcmo.show{display:flex;}
+
+/* Calendar day bottom sheet */
+.cdmo{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:300;display:none;align-items:flex-end;justify-content:center;}
+.cdmo.show{display:flex;}
+.cdmd{background:var(--bc);border-radius:22px 22px 0 0;padding:20px 18px 40px;width:100%;max-height:85vh;overflow-y:auto;border-top:1px solid rgba(74,144,226,0.25);}
+.cdmo-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.cdmo-title{font-family:'Cinzel Decorative',serif;font-size:14px;color:var(--a2);letter-spacing:1px;}
+.cdmo-close{background:rgba(255,255,255,0.06);border:none;border-radius:9px;padding:6px 14px;color:var(--td);font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;}
+.cdmo-stat{background:rgba(74,144,226,0.07);border:1px solid rgba(74,144,226,0.18);border-radius:14px;padding:13px 14px;margin-bottom:10px;}
+.cdmo-stat-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:13px;color:var(--tl);}
+.cdmo-stat-row:last-child{margin-bottom:0;}
+.cdmo-stat-val{font-family:'EB Garamond',serif;font-size:20px;color:var(--a2);margin-left:auto;}
+.cdmo-stat-val.gold{color:var(--gold);}
+.cdmo-occ{background:rgba(255,215,0,0.05);border:1px solid rgba(255,215,0,0.2);border-radius:14px;padding:13px 14px;margin-bottom:10px;}
+.cdmo-occ-label{font-size:10px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;font-weight:600;}
+.cdmo-occ-cur{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:13px;color:var(--gold);min-height:20px;}
+.cdmo-occ-del{background:none;border:none;color:rgba(232,51,109,0.7);font-size:16px;cursor:pointer;padding:0 4px;}
+.cdmo-occ-row{display:flex;gap:8px;align-items:center;}
+.cdmo-occ-in{flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.25);border-radius:9px;padding:8px 11px;color:var(--tl);font-size:13px;font-family:'Inter',sans-serif;outline:none;}
+.cdmo-occ-in:focus{border-color:var(--gold);}
+.cdmo-occ-add{padding:8px 14px;border-radius:9px;border:none;background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,215,0,0.15));color:var(--gold);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -477,6 +504,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   <div class="tzr">
     <div class="jcs">
       <div class="jms" id="jms">0</div>
+      <button onclick="App.undo1()" style="background:rgba(232,51,109,0.15);border:1px solid rgba(232,51,109,0.3);border-radius:10px;color:var(--rl);font-size:18px;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">↩</button>
     </div>
     <div class="tz" id="tz" ontouchstart="App.ht(event)" onmousedown="App.ht(event)">
       <div class="mf" id="mf">
@@ -485,9 +513,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
       </div>
     </div>
   </div>
-  <div class="cr">
-    <button class="cb danger" onclick="App.undo1()" style="max-width:200px;margin:0 auto">↩ Undo</button>
-  </div>
+
 </div>
 
 <!-- 28 NAMES VIEW -->
@@ -575,11 +601,6 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
     <div class="bcal" id="bcal"></div>
   </div>
   <div class="sc">
-    <h3>⚠️ Mark as Broken</h3>
-    <div class="bcr"><label>Count:</label><input type="number" class="bci" id="bci" value="1" min="1"></div>
-    <button class="blb rb2" onclick="lb('b')">❌ Broke Today</button>
-  </div>
-  <div class="sc">
     <h3>📊 Summary</h3>
     <div class="n2s">
       <div class="ns"><div class="nv" style="color:var(--green)" id="bmd">0</div><div class="nl">Maintained</div></div>
@@ -602,27 +623,33 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
     <div class="cdl">Sun</div><div class="cdl">Mon</div><div class="cdl">Tue</div>
     <div class="cdl">Wed</div><div class="cdl">Thu</div><div class="cdl">Fri</div><div class="cdl">Sat</div>
   </div>
-  <div class="cd" id="cd">
-    <h4>Tap a day to see details</h4>
-    <p style="color:var(--td);font-size:12px">Your jap count will appear here.</p>
-  </div>
-  <div class="occ-form">
-    <!-- Header — always visible, tap to toggle -->
-    <div class="occ-form-header" onclick="toggleOccForm()">
-      <h4>🪔 Occasion Names</h4>
-      <span class="occ-form-chevron" id="occChevron">▾</span>
+  <div style="padding:10px 14px 6px;font-size:11px;color:var(--td);text-align:center;letter-spacing:1px;">Tap a date to see details &amp; add occasion</div>
+</div>
+
+<!-- CALENDAR DAY BOTTOM SHEET -->
+<div class="cdmo" id="cdmo" onclick="if(event.target===this)closeDaySheet()">
+  <div class="cdmd">
+    <div class="cdmo-hdr">
+      <div class="cdmo-title" id="cdmoTitle">—</div>
+      <button class="cdmo-close" onclick="closeDaySheet()">✕ Close</button>
     </div>
-    <!-- Add form — collapsible -->
-    <div class="occ-form-body" id="occFormBody">
-      <div class="occ-row" style="margin-top:4px">
-        <input type="date" class="occ-date-in" id="occDate">
-        <input type="text" class="occ-name-in" id="occName" placeholder="e.g. Janmashtami, Ekadashi…">
-        <button class="occ-add-btn" onclick="addOccasion()">Add</button>
+    <!-- Jap + Timer stats -->
+    <div class="cdmo-stat" id="cdmoStat">
+      <div class="cdmo-stat-row">📿 Jap <span class="cdmo-stat-val" id="cdmoJap">0</span></div>
+      <div class="cdmo-stat-row">🔱 Malas <span class="cdmo-stat-val gold" id="cdmoMala">0</span></div>
+      <div class="cdmo-stat-row">⏱ Jap Time <span class="cdmo-stat-val" id="cdmoTime">—</span></div>
+      <div class="cdmo-stat-row" id="cdmoTargetRow" style="color:var(--td);font-size:11px">Target: <span id="cdmoPct" style="margin-left:auto;color:var(--td)">—</span></div>
+    </div>
+    <!-- Occasion -->
+    <div class="cdmo-occ">
+      <div class="cdmo-occ-label">🪔 Occasion</div>
+      <div class="cdmo-occ-cur" id="cdmoOccCur">
+        <span id="cdmoOccName" style="color:var(--td);font-style:italic">None</span>
       </div>
-    </div>
-    <!-- Occasion list — always visible -->
-    <div class="occ-list-wrap">
-      <div class="occ-list" id="occList"></div>
+      <div class="cdmo-occ-row">
+        <input type="text" class="cdmo-occ-in" id="cdmoOccIn" placeholder="e.g. Janmashtami, Ekadashi…">
+        <button class="cdmo-occ-add" onclick="addOccasionFromSheet()">Add</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2101,29 +2128,73 @@ function renderCal(){
     c.onclick=(()=>{const k=key,n=cnt,t=timeSec;return()=>showDay(k,n,t);})();
     g.appendChild(c);
   }
-  renderOccasionList();
 }
 function chm(d){cald.setMonth(cald.getMonth()+d);renderCal();}
-function showDay(key,cnt,timeSec){
-  const ms=App.S.ms||108,pts=key.split('-'),yr=pts[0],mo=pts[1],d=pts[2];
-  const e=document.getElementById('cd');
-  const occ=App.S.occasions&&App.S.occasions[key];
-  let html='<h4>'+MN[parseInt(mo)-1]+' '+d+', '+yr;
-  if(occ)html+=' <span style="color:var(--gold);font-size:12px">🪔 '+escHtml(occ)+'</span>';
-  html+='</h4>';
-  if(cnt>0||timeSec>0){
-    const pct=App.S.dt>0?Math.round(cnt/App.S.dt*100)+'%':'—';
-    html+='<p>Jap: <strong style="color:var(--a2)">'+cnt+'</strong> · Malas: <strong style="color:var(--gold)">'+Math.floor(cnt/ms)+'</strong></p>'+(timeSec>0?'<p style="margin-top:4px">Jap time: <strong style="color:var(--a2)">'+App.fmtTime(timeSec)+'</strong></p>':'')+'<p style="margin-top:4px;color:var(--td);font-size:12px">Target: '+pct+'</p>';
-  }else{html+='<p style="color:var(--td)">No jap recorded.</p>';}
-  e.innerHTML=html;
+// ── Calendar day bottom sheet ──
+let _sheetKey = null;
+function showDay(key, cnt, timeSec) {
+  _sheetKey = key;
+  const ms = App.S.ms || 108;
+  const pts = key.split('-'), yr = pts[0], mo = pts[1], d = pts[2];
+  const occ = App.S.occasions && App.S.occasions[key];
+
+  // Title
+  document.getElementById('cdmoTitle').textContent = MN[parseInt(mo)-1] + ' ' + parseInt(d) + ', ' + yr;
+
+  // Stats
+  document.getElementById('cdmoJap').textContent = cnt;
+  document.getElementById('cdmoMala').textContent = Math.floor(cnt / ms);
+  document.getElementById('cdmoTime').textContent = timeSec > 0 ? App.fmtTime(timeSec) : '—';
+  const pct = App.S.dt > 0 ? Math.round(cnt / App.S.dt * 100) + '%' : '—';
+  document.getElementById('cdmoPct').textContent = pct;
+
+  // Occasion
+  _renderSheetOcc(key);
+
+  // Clear input
+  document.getElementById('cdmoOccIn').value = '';
+
+  document.getElementById('cdmo').classList.add('show');
+}
+function _renderSheetOcc(key) {
+  const occ = App.S.occasions && App.S.occasions[key];
+  const nameEl = document.getElementById('cdmoOccName');
+  const curEl = document.getElementById('cdmoOccCur');
+  if (occ) {
+    curEl.innerHTML = '<span style="color:var(--gold)">🪔 ' + escHtml(occ) + '</span>' +
+      '<button class="cdmo-occ-del" onclick="_delSheetOcc(\'' + key + '\')">✕</button>';
+  } else {
+    curEl.innerHTML = '<span style="color:var(--td);font-style:italic">None added</span>';
+  }
+}
+function _delSheetOcc(key) {
+  if (App.S.occasions) delete App.S.occasions[key];
+  App.save(); fbDebouncedPush(); renderCal();
+  _renderSheetOcc(key);
+  toast('Occasion removed.');
+}
+function addOccasionFromSheet() {
+  const key = _sheetKey;
+  if (!key) return;
+  const name = (document.getElementById('cdmoOccIn').value || '').trim();
+  if (!name) { toast('Please enter an occasion name 🪔'); return; }
+  if (!App.S.occasions) App.S.occasions = {};
+  App.S.occasions[key] = name;
+  document.getElementById('cdmoOccIn').value = '';
+  App.save(); fbDebouncedPush(); renderCal();
+  _renderSheetOcc(key);
+  toast('Occasion added! 🪔 ' + name);
+}
+function closeDaySheet() {
+  document.getElementById('cdmo').classList.remove('show');
+  _sheetKey = null;
 }
 function addOccasion(){
-  const date=(document.getElementById('occDate').value||'').trim();
-  const name=(document.getElementById('occName').value||'').trim();
-  if(!date){toast('Please select a date 📅');return;} if(!name){toast('Please enter a name 🪔');return;}
+  const date=(document.getElementById('occDate')||{value:''}).value.trim();
+  const name=(document.getElementById('occName')||{value:''}).value.trim();
+  if(!date||!name)return;
   if(!App.S.occasions)App.S.occasions={};
   App.S.occasions[date]=name;
-  document.getElementById('occDate').value=''; document.getElementById('occName').value='';
   App.save(); fbDebouncedPush(); renderCal(); toast('Occasion added! 🪔 '+name);
 }
 function deleteOccasion(key){if(App.S.occasions)delete App.S.occasions[key];App.save();fbDebouncedPush();renderCal();toast('Removed.');}
@@ -2220,6 +2291,15 @@ function toggleAsfForm(forceOpen) {
   if (chevron) chevron.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
 }
 
+// ── Collapsible: Mark as Broken ──
+function toggleBrkCollapse() {
+  const body = document.getElementById('brkBody');
+  const chevron = document.getElementById('brkChevron');
+  if (!body) return;
+  const isOpen = body.classList.toggle('open');
+  if (chevron) chevron.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
 // ── INIT ──
 window.addEventListener('load', async () => {
   await App.load();
@@ -2244,10 +2324,6 @@ window.addEventListener('load', async () => {
   const ltIn = document.getElementById('ltIn');
   if (dtIn) dtIn.addEventListener('input', function() { document.getElementById('dtMala').textContent = Math.ceil((parseInt(this.value)||0)/(App.S.ms||108)); });
   if (ltIn) ltIn.addEventListener('input', function() { document.getElementById('ltMala').textContent = Math.ceil((parseInt(this.value)||0)/(App.S.ms||108)).toLocaleString(); });
-
-  // Set today's date in calendar/occasion inputs
-  const occDateIn = document.getElementById('occDate');
-  if (occDateIn) occDateIn.value = App.getTk();
 
   App.ua();
   fbInit();

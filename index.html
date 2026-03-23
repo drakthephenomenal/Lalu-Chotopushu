@@ -83,6 +83,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 
 .ps{padding:4px 14px;display:flex;gap:10px;flex-shrink:0;}
 .pc{flex:1;background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:12px;padding:7px 8px;text-align:center;display:flex;flex-direction:row;align-items:center;gap:8px;}
+.pc-bar{flex-direction:column;align-items:stretch;justify-content:center;}
 .pl{font-size:9px;color:var(--td);letter-spacing:1px;text-transform:uppercase;margin-bottom:0;white-space:nowrap;}
 .prw{position:relative;width:54px;height:54px;flex-shrink:0;}
 .prw svg{transform:rotate(-90deg);}
@@ -94,6 +95,10 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .rct{font-size:8px;color:var(--td);}
 .pc-text{display:flex;flex-direction:column;align-items:flex-start;flex:1;min-width:0;}
 .pd{font-size:9px;color:var(--td);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lbar-pct{font-size:12px;font-weight:700;color:var(--gold);letter-spacing:0.5px;}
+.lbar-wrap{width:100%;height:6px;background:rgba(255,215,0,0.12);border-radius:4px;overflow:hidden;}
+.lbar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--gold),#FFB700);transition:width 0.5s ease;width:0%;}
+.lbar-val{font-size:10px;font-family:'EB Garamond',serif;color:var(--a2);letter-spacing:0.3px;}
 
 .mdr{display:flex;align-items:center;justify-content:center;gap:8px;padding:2px 14px;flex-shrink:0;}
 .mdl{font-size:10px;color:var(--td);}
@@ -478,6 +483,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   </div>
   <div class="timer-today" id="timerToday">Auto-starts when you tap · pauses after 6s</div>
   <div class="ps">
+    <!-- Daily: ring stays -->
     <div class="pc">
       <div class="prw">
         <svg width="54" height="54" viewBox="0 0 54 54">
@@ -491,17 +497,21 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
         <div class="pd" id="dDet">— jap</div>
       </div>
     </div>
-    <div class="pc">
-      <div class="prw">
-        <svg width="54" height="54" viewBox="0 0 54 54">
-          <circle class="rbg" cx="27" cy="27" r="22"/>
-          <circle class="rf rl2" id="ringL" cx="27" cy="27" r="22" stroke-dasharray="138" stroke-dashoffset="138"/>
-        </svg>
-        <div class="rc"><div class="rp g" id="lPct">0%</div><div class="rct" id="lCnt">0/0</div></div>
-      </div>
-      <div class="pc-text">
-        <div class="pl">Lifetime</div>
-        <div class="pd" id="lDet">— jap</div>
+    <!-- Lifetime: slim bar -->
+    <div class="pc pc-bar">
+      <div class="pc-text" style="width:100%">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <div class="pl">Lifetime</div>
+          <div class="lbar-pct" id="lPct">0%</div>
+        </div>
+        <div class="lbar-wrap">
+          <div class="lbar-fill" id="lbarFill"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;">
+          <div class="lbar-val" id="lbarDone">0</div>
+          <div class="lbar-val" id="lbarTarget" style="color:var(--td)">/ —</div>
+        </div>
+        <div class="pd" id="lDet" style="margin-top:2px;">— malas</div>
       </div>
     </div>
   </div>
@@ -1066,13 +1076,15 @@ const App = {
     const dP = this.S.dt > 0 ? Math.min(100, Math.round(tod/this.S.dt*100)) : 0;
     const lP = this.S.lt > 0 ? Math.min(100, Math.round(tot/this.S.lt*100)) : 0;
     document.getElementById('ringD').style.strokeDashoffset = C - C*dP/100;
-    document.getElementById('ringL').style.strokeDashoffset = C - C*lP/100;
     document.getElementById('dPct').textContent = dP + '%';
+    document.getElementById('dCnt').textContent = fmtIN(tod) + '/' + (this.S.dt ? fmtIN(this.S.dt) : '—');
+    document.getElementById('dDet').textContent = fmtIN(tod) + ' · ' + md + ' malas';
+    // Lifetime bar
     document.getElementById('lPct').textContent = lP + '%';
-    document.getElementById('dCnt').textContent = tod + '/' + (this.S.dt || '—');
-    document.getElementById('lCnt').textContent = tot + '/' + (this.S.lt || '—');
-    document.getElementById('dDet').textContent = tod + ' jap · ' + md + ' malas';
-    document.getElementById('lDet').textContent = tot + ' jap · ' + Math.floor(tot/ms) + ' malas';
+    document.getElementById('lbarFill').style.width = lP + '%';
+    document.getElementById('lbarDone').textContent = fmtIN(tot);
+    document.getElementById('lbarTarget').textContent = '/ ' + (this.S.lt ? fmtIN(this.S.lt) : '—');
+    document.getElementById('lDet').textContent = Math.floor(tot/ms) + ' malas done';
     this.updateTimerToday();
     uStats();
   },
@@ -1203,6 +1215,22 @@ function toast(msg) {
 }
 
 function escHtml(t) { return (t+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Indian number abbreviation: 3Cr 36L 2K 100
+function fmtIN(n) {
+  n = Math.floor(n || 0);
+  if (n === 0) return '0';
+  const CR = 1e7, L = 1e5, K = 1e3;
+  let parts = [];
+  const cr = Math.floor(n / CR); n %= CR;
+  const la = Math.floor(n / L);  n %= L;
+  const k  = Math.floor(n / K);  n %= K;
+  if (cr) parts.push(cr + 'Cr');
+  if (la) parts.push(la + 'L');
+  if (k)  parts.push(k  + 'K');
+  if (n)  parts.push(n + '');
+  return parts.join(' ');
+}
 
 // setSyncPill
 function setSyncPill(state, text) {

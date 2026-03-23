@@ -3339,13 +3339,24 @@ function fireReminder(type) {
     sandhya: 'Sandhyakal is here — time for your evening Naam Jap. राधे राधे!',
     manual: 'Time for your daily Jap! Begin your naam jap. राधे राधे 🙏'
   };
-  const n = new Notification(titles[type], {
-    body: bodies[type],
-    tag: `radha-jap-${type}`,
-    renotify: true,
-    vibrate: [200, 100, 200]
-  });
-  n.onclick = () => { window.focus(); n.close(); };
+  // Use Service Worker to show notification (required for mobile/Ulaa)
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: 'SHOW_NOTIFICATION',
+      title: titles[type],
+      body: bodies[type],
+      tag: `radha-jap-${type}`
+    });
+  } else {
+    // Fallback for desktop browsers
+    const n = new Notification(titles[type], {
+      body: bodies[type],
+      tag: `radha-jap-${type}`,
+      renotify: true,
+      vibrate: [200, 100, 200]
+    });
+    n.onclick = () => { window.focus(); n.close(); };
+  }
 }
 
 async function toggleReminderType(type) {

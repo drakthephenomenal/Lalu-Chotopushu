@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v3';  // bumped from v1 → v3
+const CACHE = 'radha-jap-v4';  // bumped from v3 → v4
 
 const PRECACHE = [
   './index.html',
@@ -81,6 +81,33 @@ self.addEventListener('fetch', e => {
         if (e.request.mode === 'navigate') return caches.match('./index.html');
         return new Response('Offline', { status: 503 });
       });
+    })
+  );
+});
+
+// ── Handle notification requests from the page ──
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SHOW_NOTIFICATION') {
+    e.waitUntil(
+      self.registration.showNotification(e.data.title, {
+        body: e.data.body,
+        tag: e.data.tag,
+        renotify: true,
+        vibrate: [200, 100, 200]
+      })
+    );
+  }
+});
+
+// ── Handle notification tap — bring app to focus ──
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window' }).then(list => {
+      for (const client of list) {
+        if ('focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow('/');
     })
   );
 });

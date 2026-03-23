@@ -59,16 +59,15 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   background:radial-gradient(ellipse at top,#0A1F55 0%,var(--bd) 65%);
   padding-bottom:calc(56px + env(safe-area-inset-bottom));
 }
-.rh{display:flex;align-items:center;justify-content:space-between;padding:6px 10px 2px;gap:4px;flex-shrink:0;}
-.rh-center{flex:0 0 auto;text-align:center;}
-.rh-side{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;}
-.rh-left{align-items:flex-start;}
-.rh-right{align-items:flex-end;}
-.rh-label{font-size:8px;color:var(--td);letter-spacing:1px;text-transform:uppercase;line-height:1.2;margin-bottom:1px;}
-.rh-time{font-family:'EB Garamond',serif;font-size:clamp(12px,3vw,15px);color:var(--gold);letter-spacing:1px;line-height:1.2;filter:drop-shadow(0 0 6px rgba(255,215,0,0.5));}
-.rh-sub{font-size:8px;color:var(--td);line-height:1.2;}
-.rn{font-family:'Tiro Devanagari Hindi',serif;font-size:clamp(38px,11vw,58px);color:#FFD700;
-  text-shadow:0 0 30px rgba(255,215,0,0.6),0 0 60px rgba(255,215,0,0.25);line-height:1.0;letter-spacing:4px;}
+.rh{display:flex;align-items:center;justify-content:space-between;padding:8px 10px 2px;gap:4px;flex-shrink:0;}
+.rh-center{flex:0 0 62px;display:flex;align-items:center;justify-content:center;}
+.rn{font-family:'Tiro Devanagari Hindi',serif;font-size:clamp(32px,9vw,48px);color:#FFD700;
+  text-shadow:0 0 30px rgba(255,215,0,0.6),0 0 60px rgba(255,215,0,0.25);line-height:1.0;letter-spacing:3px;}
+.rh-card{flex:1;display:flex;flex-direction:column;gap:3px;padding:2px 4px;}
+.rh-card-title{font-size:9px;color:var(--a2);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;opacity:0.85;}
+.rh-row{display:flex;align-items:baseline;gap:4px;}
+.rh-lbl{font-size:9px;color:var(--gold);opacity:0.8;white-space:nowrap;}
+.rh-val{font-family:'EB Garamond',serif;font-size:15px;color:var(--a2);letter-spacing:0.5px;filter:drop-shadow(0 0 6px rgba(109,184,255,0.4));line-height:1.2;white-space:nowrap;}
 
 .timer-bar{display:flex;align-items:center;justify-content:center;gap:10px;padding:3px 16px 1px;flex-shrink:0;}
 .timer-display{font-family:'EB Garamond',serif;font-size:26px;color:var(--a2);
@@ -460,20 +459,21 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 <!-- JAP VIEW -->
 <div class="view active" id="vj">
   <div class="rh">
-    <div class="rh-side rh-left">
-      <div class="rh-label">🌙 Brahma Muhurta</div>
-      <div class="rh-time" id="bm-start">--:--</div>
-      <div class="rh-sub">to <span id="bm-end">--:--</span></div>
-      <div class="rh-label" style="margin-top:5px">🌅 Sunrise</div>
-      <div class="rh-time" id="rh-sunrise">--:--</div>
+    <!-- Brahma Muhurta card -->
+    <div class="rh-card">
+      <div class="rh-card-title">🌙 Brahma Muhurta</div>
+      <div class="rh-row"><span class="rh-lbl">Start</span><span class="rh-val" id="bm-start">--:--</span></div>
+      <div class="rh-row"><span class="rh-lbl">End</span><span class="rh-val" id="bm-end">--:--</span></div>
+      <div class="rh-row"><span class="rh-lbl">Sunrise</span><span class="rh-val" id="rh-sunrise">--:--</span></div>
     </div>
+    <!-- राधा center -->
     <div class="rh-center"><div class="rn">राधा</div></div>
-    <div class="rh-side rh-right">
-      <div class="rh-label">🔔 Sandhya Kal</div>
-      <div class="rh-time" id="sk-start">--:--</div>
-      <div class="rh-sub">to <span id="sk-end">--:--</span></div>
-      <div class="rh-label" style="margin-top:5px">🌇 Sunset</div>
-      <div class="rh-time" id="rh-sunset">--:--</div>
+    <!-- Sandhya Kal card -->
+    <div class="rh-card" style="padding-left:10px;align-items:flex-end">
+      <div class="rh-card-title">🔔 Sandhya Kal</div>
+      <div class="rh-row"><span class="rh-lbl">Start</span><span class="rh-val" id="sk-start">--:--</span></div>
+      <div class="rh-row"><span class="rh-lbl">Sunset</span><span class="rh-val" id="rh-sunset">--:--</span></div>
+      <div class="rh-row"><span class="rh-lbl">Ends</span><span class="rh-val" id="sk-end">--:--</span></div>
     </div>
   </div>
   <div class="timer-bar">

@@ -41,6 +41,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 
 .view{display:none;min-height:100vh;position:relative;z-index:1;flex-direction:column;}
 .view.active{display:flex;}
+#vj.active{min-height:unset;height:100vh;height:100dvh;overflow:hidden;}
 
 /* BOTTOM NAV — 6 items now (removed Target tab) */
 .bnav{position:fixed;bottom:0;left:0;right:0;
@@ -53,51 +54,55 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .nb.active{color:var(--a2);}
 .nb.active svg{filter:drop-shadow(0 0 5px rgba(109,184,255,0.8));}
 
-/* JAP VIEW */
-#vj{background:radial-gradient(ellipse at top,#0A1F55 0%,var(--bd) 65%);overflow-x:hidden;}
-.rh{display:flex;align-items:center;justify-content:space-between;padding:10px 10px 2px;gap:4px;}
+/* JAP VIEW — fixed full-screen, no scroll */
+#vj{
+  background:radial-gradient(ellipse at top,#0A1F55 0%,var(--bd) 65%);
+  padding-bottom:calc(56px + env(safe-area-inset-bottom));
+}
+.rh{display:flex;align-items:center;justify-content:space-between;padding:6px 10px 2px;gap:4px;flex-shrink:0;}
 .rh-center{flex:0 0 auto;text-align:center;}
 .rh-side{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;}
 .rh-left{align-items:flex-start;}
 .rh-right{align-items:flex-end;}
-.rh-label{font-size:9px;color:var(--td);letter-spacing:1px;text-transform:uppercase;line-height:1.2;margin-bottom:1px;}
-.rh-time{font-family:'EB Garamond',serif;font-size:clamp(13px,3.5vw,17px);color:var(--gold);letter-spacing:1px;line-height:1.2;filter:drop-shadow(0 0 6px rgba(255,215,0,0.5));}
-.rh-sub{font-size:9px;color:var(--td);line-height:1.2;}
-.rn{font-family:'Tiro Devanagari Hindi',serif;font-size:clamp(50px,15vw,82px);color:#FFD700;
+.rh-label{font-size:8px;color:var(--td);letter-spacing:1px;text-transform:uppercase;line-height:1.2;margin-bottom:1px;}
+.rh-time{font-family:'EB Garamond',serif;font-size:clamp(12px,3vw,15px);color:var(--gold);letter-spacing:1px;line-height:1.2;filter:drop-shadow(0 0 6px rgba(255,215,0,0.5));}
+.rh-sub{font-size:8px;color:var(--td);line-height:1.2;}
+.rn{font-family:'Tiro Devanagari Hindi',serif;font-size:clamp(38px,11vw,58px);color:#FFD700;
   text-shadow:0 0 30px rgba(255,215,0,0.6),0 0 60px rgba(255,215,0,0.25);line-height:1.0;letter-spacing:4px;}
 
-.timer-bar{display:flex;align-items:center;justify-content:center;gap:10px;padding:6px 16px 2px;}
-.timer-display{font-family:'EB Garamond',serif;font-size:28px;color:var(--a2);
+.timer-bar{display:flex;align-items:center;justify-content:center;gap:10px;padding:3px 16px 1px;flex-shrink:0;}
+.timer-display{font-family:'EB Garamond',serif;font-size:26px;color:var(--a2);
   letter-spacing:3px;filter:drop-shadow(0 0 8px rgba(109,184,255,0.5));min-width:100px;text-align:center;}
 .timer-display.running{color:var(--gold);filter:drop-shadow(0 0 10px rgba(255,215,0,0.6));}
-.tbtn{padding:7px 14px;border-radius:20px;border:none;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;}
+.tbtn{padding:6px 13px;border-radius:20px;border:none;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;}
 .tbtn.start{background:linear-gradient(135deg,#27ae60,#2ecc71);color:white;}
 .tbtn.pause{background:linear-gradient(135deg,var(--bg),var(--a));color:white;}
 .tbtn.reset{background:rgba(232,51,109,0.15);border:1px solid rgba(232,51,109,0.3);color:var(--rl);}
 .tbtn:active{transform:scale(0.94);}
-.timer-today{font-size:10px;color:var(--td);text-align:center;padding:2px 0 4px;letter-spacing:1px;}
+.timer-today{font-size:9px;color:var(--td);text-align:center;padding:1px 0 2px;letter-spacing:1px;flex-shrink:0;}
 
-.ps{padding:6px 14px;display:flex;gap:10px;}
-.pc{flex:1;background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:14px;padding:10px;text-align:center;}
-.pl{font-size:10px;color:var(--td);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;}
-.prw{position:relative;width:76px;height:76px;margin:0 auto 5px;}
+.ps{padding:4px 14px;display:flex;gap:10px;flex-shrink:0;}
+.pc{flex:1;background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:12px;padding:7px 8px;text-align:center;display:flex;flex-direction:row;align-items:center;gap:8px;}
+.pl{font-size:9px;color:var(--td);letter-spacing:1px;text-transform:uppercase;margin-bottom:0;white-space:nowrap;}
+.prw{position:relative;width:54px;height:54px;flex-shrink:0;}
 .prw svg{transform:rotate(-90deg);}
-.rbg{fill:none;stroke:rgba(74,144,226,0.12);stroke-width:6;}
-.rf{fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset 0.5s ease;}
+.rbg{fill:none;stroke:rgba(74,144,226,0.12);stroke-width:5;}
+.rf{fill:none;stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset 0.5s ease;}
 .rd{stroke:var(--a2);}.rl2{stroke:var(--gold);}
 .rc{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;}
-.rp{font-size:15px;font-weight:600;color:var(--a2);}.rp.g{color:var(--gold);}
-.rct{font-size:9px;color:var(--td);}
-.pd{font-size:10px;color:var(--td);}
+.rp{font-size:13px;font-weight:600;color:var(--a2);}.rp.g{color:var(--gold);}
+.rct{font-size:8px;color:var(--td);}
+.pc-text{display:flex;flex-direction:column;align-items:flex-start;flex:1;min-width:0;}
+.pd{font-size:9px;color:var(--td);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
-.mdr{display:flex;align-items:center;justify-content:center;gap:8px;padding:2px 14px;}
-.mdl{font-size:11px;color:var(--td);}
+.mdr{display:flex;align-items:center;justify-content:center;gap:8px;padding:2px 14px;flex-shrink:0;}
+.mdl{font-size:10px;color:var(--td);}
 .mdd{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;max-width:190px;}
 .mdt{width:7px;height:7px;border-radius:50%;background:rgba(74,144,226,0.15);border:1px solid rgba(74,144,226,0.25);transition:all 0.3s;}
 .mdt.on{background:var(--a2);border-color:var(--a);box-shadow:0 0 5px var(--a2);}
 .mdtt{font-size:12px;color:var(--tl);font-weight:600;}
 
-.tzr{flex:1;display:flex;align-items:stretch;margin:6px 14px;min-height:170px;}
+.tzr{flex:1;display:flex;align-items:stretch;margin:5px 14px 5px;min-height:0;}
 .jcs{display:flex;flex-direction:column;align-items:center;justify-content:center;
   width:62px;flex-shrink:0;background:rgba(74,144,226,0.07);
   border:1px solid rgba(74,144,226,0.18);border-right:none;border-radius:18px 0 0 18px;padding:12px 6px;gap:8px;}
@@ -474,26 +479,30 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   <div class="timer-today" id="timerToday">Auto-starts when you tap · pauses after 6s</div>
   <div class="ps">
     <div class="pc">
-      <div class="pl">Daily Target</div>
       <div class="prw">
-        <svg width="76" height="76" viewBox="0 0 76 76">
-          <circle class="rbg" cx="38" cy="38" r="30"/>
-          <circle class="rf rd" id="ringD" cx="38" cy="38" r="30" stroke-dasharray="188" stroke-dashoffset="188"/>
+        <svg width="54" height="54" viewBox="0 0 54 54">
+          <circle class="rbg" cx="27" cy="27" r="22"/>
+          <circle class="rf rd" id="ringD" cx="27" cy="27" r="22" stroke-dasharray="138" stroke-dashoffset="138"/>
         </svg>
         <div class="rc"><div class="rp" id="dPct">0%</div><div class="rct" id="dCnt">0/0</div></div>
       </div>
-      <div class="pd" id="dDet">— jap</div>
+      <div class="pc-text">
+        <div class="pl">Daily</div>
+        <div class="pd" id="dDet">— jap</div>
+      </div>
     </div>
     <div class="pc">
-      <div class="pl">Lifetime Target</div>
       <div class="prw">
-        <svg width="76" height="76" viewBox="0 0 76 76">
-          <circle class="rbg" cx="38" cy="38" r="30"/>
-          <circle class="rf rl2" id="ringL" cx="38" cy="38" r="30" stroke-dasharray="188" stroke-dashoffset="188"/>
+        <svg width="54" height="54" viewBox="0 0 54 54">
+          <circle class="rbg" cx="27" cy="27" r="22"/>
+          <circle class="rf rl2" id="ringL" cx="27" cy="27" r="22" stroke-dasharray="138" stroke-dashoffset="138"/>
         </svg>
         <div class="rc"><div class="rp g" id="lPct">0%</div><div class="rct" id="lCnt">0/0</div></div>
       </div>
-      <div class="pd" id="lDet">— jap</div>
+      <div class="pc-text">
+        <div class="pl">Lifetime</div>
+        <div class="pd" id="lDet">— jap</div>
+      </div>
     </div>
   </div>
   <div class="mdr">
@@ -1053,7 +1062,7 @@ const App = {
       de.appendChild(d);
     }
     document.getElementById('mtot').textContent = md + ' mala' + (md !== 1 ? 's' : '');
-    const C = 188;
+    const C = 138;
     const dP = this.S.dt > 0 ? Math.min(100, Math.round(tod/this.S.dt*100)) : 0;
     const lP = this.S.lt > 0 ? Math.min(100, Math.round(tot/this.S.lt*100)) : 0;
     document.getElementById('ringD').style.strokeDashoffset = C - C*dP/100;

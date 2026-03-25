@@ -73,6 +73,19 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .timer-display{font-family:'EB Garamond',serif;font-size:26px;color:var(--a2);
   letter-spacing:3px;filter:drop-shadow(0 0 8px rgba(109,184,255,0.5));min-width:100px;text-align:center;}
 .timer-display.running{color:var(--gold);filter:drop-shadow(0 0 10px rgba(255,215,0,0.6));}
+.mala-time-float{
+  position:fixed;pointer-events:none;z-index:200;
+  font-family:'EB Garamond',serif;font-weight:600;
+  color:#2ECC71;
+  text-shadow:0 0 18px rgba(46,204,113,0.95),0 0 36px rgba(46,204,113,0.5);
+  animation:mala-float-up 2s ease-out forwards;
+}
+@keyframes mala-float-up{
+  0%  {opacity:0; transform:translateY(0)   scale(0.7);}
+  15% {opacity:1; transform:translateY(-18px) scale(1.18);}
+  70% {opacity:1; transform:translateY(-72px) scale(1.05);}
+  100%{opacity:0; transform:translateY(-130px) scale(0.9);}
+}
 .tbtn{padding:6px 13px;border-radius:20px;border:none;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;}
 .tbtn.start{background:linear-gradient(135deg,#27ae60,#2ecc71);color:white;}
 .tbtn.pause{background:linear-gradient(135deg,var(--bg),var(--a));color:white;}
@@ -747,6 +760,14 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
     </div>
   </div>
 
+  <!-- TODAY'S MALA SESSION LOG -->
+  <div class="sc" id="malaLogSection" style="background:rgba(46,204,113,0.04);border-color:rgba(46,204,113,0.18);margin-bottom:4px">
+    <h3 style="color:var(--green)">📿 Today's Mala Log <span id="malaLogCount" style="opacity:0.6;font-weight:400"></span></h3>
+    <div id="malaLogList" style="display:flex;flex-direction:column;gap:5px;margin-top:2px">
+      <div style="font-size:11px;color:var(--td);text-align:center;padding:6px 0">No malas completed yet today</div>
+    </div>
+  </div>
+
   <!-- JAP ENTRY TOOLS — moved from Target tab -->
   <div class="sc" style="background:rgba(46,204,113,0.06);border-color:rgba(46,204,113,0.2);margin-top:4px">
     <h3 style="color:var(--green)">✍️ Add Jap Manually (Today)</h3>
@@ -1014,6 +1035,7 @@ const App = {
   lmc: 0, lm28: 0,
   timerRunning: false, timerSeconds: 0, timerInterval: null,
   timerSavedSeconds: 0, autoStopTimeout: null,
+  malaSessionStart: 0,  // timerSeconds at start of current mala
   fbDebouncePush: null,
 
   // ── IndexedDB ──
@@ -1021,13 +1043,14 @@ const App = {
 
   async initDB() {
     return new Promise((res, rej) => {
-      const req = indexedDB.open('RadhaJapDB', 2);
+      const req = indexedDB.open('RadhaJapDB', 3);
       req.onupgradeneeded = e => {
         const db = e.target.result;
         if (!db.objectStoreNames.contains('state')) db.createObjectStore('state');
         if (!db.objectStoreNames.contains('history')) db.createObjectStore('history');
         if (!db.objectStoreNames.contains('h28')) db.createObjectStore('h28');
         if (!db.objectStoreNames.contains('timerHistory')) db.createObjectStore('timerHistory');
+        if (!db.objectStoreNames.contains('malaLog')) db.createObjectStore('malaLog');
       };
       req.onsuccess = e => { this.db = e.target.result; res(); };
       req.onerror = () => rej(req.error);
@@ -1083,6 +1106,8 @@ const App = {
     if (this.S.history[tk] !== undefined) await this.dbPut('history', tk, this.S.history[tk]);
     if (this.S.h28[tk] !== undefined) await this.dbPut('h28', tk, this.S.h28[tk]);
     if (this.S.timerHistory[tk] !== undefined) await this.dbPut('timerHistory', tk, this.S.timerHistory[tk]);
+    // Save malaLog — only keep today's log
+    if (this.S.malaLog) await this.dbPut('malaLog', 'today', { date: tk, log: this.S.malaLog });
     // Also mirror to localStorage as fallback
     try { localStorage.setItem('rjap5', JSON.stringify(this.S)); } catch(e) {}
   },
@@ -1127,6 +1152,13 @@ const App = {
     if (!this.S.timerHistory) this.S.timerHistory = {};
     if (!this.S.sankalpas) this.S.sankalpas = [];
     if (!this.S.occasions) this.S.occasions = {};
+    // Load malaLog — only if it's from today
+    const malaLogRec = await this.dbGet('malaLog', 'today');
+    if (malaLogRec && malaLogRec.date === this.S.tk) {
+      this.S.malaLog = malaLogRec.log || [];
+    } else {
+      this.S.malaLog = [];
+    }
     STLIST.forEach(x => { if (!this.S.stotrams[x.id]) this.S.stotrams[x.id] = {}; });
   },
 
@@ -1241,7 +1273,7 @@ const App = {
     uStats();
   },
 
-  // ── Mala Complete — Bell sound + TRIPLE vibration synced with animation ──
+  // ── Mala Complete — Bell sound + TRIPLE vibration + log duration + animate timer ──
   malaOk() {
     const f = document.getElementById('mf');
     f.classList.add('show'); setTimeout(() => f.classList.remove('show'), 2800);
@@ -1249,6 +1281,31 @@ const App = {
     if (this.S.cfg.sound) playSynthBell();
     // Triple long vibration synced with bell
     this.vib([200, 80, 200, 80, 300]);
+    // Record mala duration
+    const malaDuration = this.timerSeconds - this.malaSessionStart;
+    this.malaSessionStart = this.timerSeconds;
+    if (!this.S.malaLog) this.S.malaLog = [];
+    this.S.malaLog.push(malaDuration);
+    this.save();
+    // Animate mala duration on timer display
+    this.flashMalaDuration(malaDuration);
+  },
+
+  flashMalaDuration(sec) {
+    const disp = document.getElementById('timerDisplay');
+    if (!disp) return;
+    const m = Math.floor(sec / 60), s = sec % 60;
+    const durStr = (m > 0 ? m + 'm ' : '') + s + 's';
+    // Spawn floating label anchored to the timer display position
+    const rect = disp.getBoundingClientRect();
+    const el = document.createElement('div');
+    el.className = 'mala-time-float';
+    el.textContent = '📿 ' + durStr;
+    el.style.fontSize = '22px';
+    el.style.left = (rect.left + rect.width / 2 - 40) + 'px';
+    el.style.top  = (rect.top - 4) + 'px';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2100);
   },
 
   // ── Main tap ──
@@ -1528,6 +1585,30 @@ function uStats() {
   const pji = document.getElementById('prevJapIn');
   if (mji) { const n = parseInt(mji.value)||0; document.getElementById('manualMalaPreview').textContent = n>0?Math.floor(n/ms):'0'; document.getElementById('manualTodayPreview').textContent = n>0?(tod+n):'—'; }
   if (pji) { const n = parseInt(pji.value)||0; document.getElementById('prevMalaPreview').textContent = n>0?Math.floor(n/ms):'0'; document.getElementById('prevLifetimePreview').textContent = n>0?(tot+n).toLocaleString():'—'; }
+  renderMalaLog();
+}
+
+function renderMalaLog() {
+  const log = App.S.malaLog || [];
+  const listEl = document.getElementById('malaLogList');
+  const countEl = document.getElementById('malaLogCount');
+  if (!listEl) return;
+  if (countEl) countEl.textContent = log.length > 0 ? '(' + log.length + ')' : '';
+  if (log.length === 0) {
+    listEl.innerHTML = '<div style="font-size:11px;color:var(--td);text-align:center;padding:6px 0">No malas completed yet today</div>';
+    return;
+  }
+  listEl.innerHTML = '';
+  log.forEach((sec, i) => {
+    const m = Math.floor(sec / 60), s = sec % 60;
+    const durStr = m > 0 ? m + 'm ' + s + 's' : s + 's';
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:rgba(46,204,113,0.07);border:1px solid rgba(46,204,113,0.15);border-radius:9px;';
+    row.innerHTML =
+      '<span style="font-size:11px;color:var(--td)">Mala ' + (i+1) + '</span>' +
+      '<span style="font-family:\'EB Garamond\',serif;font-size:16px;color:var(--green);letter-spacing:0.5px">' + durStr + '</span>';
+    listEl.appendChild(row);
+  });
 }
 
 // ── Reset ──
@@ -1546,14 +1627,14 @@ function cr2(tp) {
   document.getElementById('moCf').onclick = doReset;
 }
 function doReset() {
-  if (pr === 'today') { App.S.history[App.S.tk] = 0; App.lmc = 0; }
+  if (pr === 'today') { App.S.history[App.S.tk] = 0; App.lmc = 0; App.S.malaLog = []; }
   else if (pr === '28today') { App.S.h28[App.S.tk] = 0; App.lm28 = 0; u28(); }
   else if (pr === 'range') {
     const f = document.getElementById('rfrom').value, to = document.getElementById('rto').value;
     Object.keys(App.S.history).forEach(k => { if (k >= f && k <= to) { App.S.history[k] = 0; if (App.S.timerHistory[k]) App.S.timerHistory[k] = 0; } });
   } else {
     App.S.history = {}; App.S.h28 = {}; App.S.dt = 0; App.S.lt = 0;
-    App.S.stotrams = {}; App.S.brahma = {}; App.S.timerHistory = {};
+    App.S.stotrams = {}; App.S.brahma = {}; App.S.timerHistory = {}; App.S.malaLog = [];
     App.lmc = 0; App.lm28 = 0;
     STLIST.forEach(x => { App.S.stotrams[x.id] = {}; });
     App.resetTimer();
@@ -2496,10 +2577,12 @@ window.addEventListener('load', async () => {
   App.lmc = Math.floor(App.gTod() / (App.S.ms||108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk]||0) / (App.S.ms||108));
 
-  // Restore timer
-  App.timerSavedSeconds = App.S.timerHistory[App.S.tk] || 0;
-  App.timerSeconds = App.timerSavedSeconds;
-  document.getElementById('timerDisplay').textContent = App.fmtTime(App.timerSeconds);
+  // Timer always starts from 0 on each app open.
+  // timerSavedSeconds tracks what's already committed to timerHistory this session.
+  App.timerSeconds = 0;
+  App.timerSavedSeconds = 0;
+  App.malaSessionStart = 0;
+  document.getElementById('timerDisplay').textContent = '00:00:00';
 
   // Apply settings UI
   if (App.S.cfg.vib) document.getElementById('tgVib').classList.add('on');

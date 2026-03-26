@@ -2096,7 +2096,6 @@ function fbSignInGoogle() {
 function fbSignInFacebook() {
   if (!fbInit()) { toast('Firebase not ready. Check your connection.'); return; }
   const provider = new firebase.auth.FacebookAuthProvider();
-  provider.addScope('email');
   provider.addScope('public_profile');
 
   fbAuth.signInWithPopup(provider)

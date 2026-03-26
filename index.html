@@ -8,6 +8,24 @@
 <meta name="apple-mobile-web-app-title" content="Radha Jap">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#060D1F">
+
+<!-- ══ Open Graph / Facebook Share Preview ══ -->
+<meta property="fb:app_id" content="1255682936744001">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://drakthephenomenal.github.io/Lalu-Chotopushu/">
+<meta property="og:title" content="Radha Naam Jap — Daily Naam Jap Counter">
+<meta property="og:description" content="Track your daily Radha Naam jap, set mala targets, sync across devices, and deepen your devotion. Free spiritual app — Radhe Radhe 🙏">
+<meta property="og:image" content="https://drakthephenomenal.github.io/Lalu-Chotopushu/og-image.PNG">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="hi_IN">
+<meta property="og:site_name" content="Radha Naam Jap">
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Radha Naam Jap — Daily Naam Jap Counter">
+<meta name="twitter:description" content="Track your daily Radha Naam jap, set mala targets, sync across devices. Free spiritual app 🙏">
+<meta name="twitter:image" content="https://drakthephenomenal.github.io/Lalu-Chotopushu/og-image.PNG">
+
 <title>Radha Naam Jap</title>
 <link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=Hind+Siliguri:wght@400;600;700&family=Cinzel+Decorative:wght@400;700&family=EB+Garamond:wght@400;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -407,6 +425,14 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   margin-bottom:10px;transition:background 0.2s;}
 .google-btn:active{background:rgba(255,255,255,0.15);}
 .google-btn svg{width:20px;height:20px;flex-shrink:0;}
+
+/* Facebook Sign-In button */
+.facebook-btn{width:100%;padding:12px;border-radius:11px;border:1px solid rgba(24,119,242,0.4);
+  background:rgba(24,119,242,0.12);color:var(--tl);font-size:14px;font-weight:500;
+  cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:10px;
+  margin-bottom:10px;transition:background 0.2s;}
+.facebook-btn:active{background:rgba(24,119,242,0.22);}
+.facebook-btn svg{width:22px;height:22px;flex-shrink:0;}
 
 /* Auto-sync status pill */
 .sync-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(46,204,113,0.1);
@@ -945,6 +971,10 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
       <button class="google-btn" onclick="fbSignInGoogle()">
         <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         Sign in with Google
+      </button>
+      <button class="facebook-btn" onclick="fbSignInFacebook()">
+        <svg viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.269h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+        Sign in with Facebook
       </button>
       <div id="fbErr" style="font-size:12px;color:var(--red);margin-top:6px;text-align:center"></div>
     </div>
@@ -1997,7 +2027,9 @@ function fbInit() {
       if (user) {
         document.getElementById('fbLoggedOut').style.display = 'none';
         document.getElementById('fbLoggedIn').style.display = 'block';
-        document.getElementById('fbUserEmail').textContent = user.email || user.displayName || 'Google User';
+        const providerIds = user.providerData.map(p => p.providerId);
+        const isFb = providerIds.includes('facebook.com');
+        document.getElementById('fbUserEmail').textContent = user.email || user.displayName || (isFb ? 'Facebook User' : 'Signed In');
         setSyncPill('syncing', 'Connecting…');
         fbAutoSync();
       } else {
@@ -2053,6 +2085,51 @@ function fbSignInGoogle() {
             }
           }
         }, 1000);
+      } else {
+        const el = document.getElementById('fbErr');
+        if (el) { el.textContent = e.message; setTimeout(() => el.textContent = '', 5000); }
+      }
+    });
+}
+
+// ── "Sign in with Facebook" button ──
+function fbSignInFacebook() {
+  if (!fbInit()) { toast('Firebase not ready. Check your connection.'); return; }
+  const provider = new firebase.auth.FacebookAuthProvider();
+  provider.addScope('email');
+  provider.addScope('public_profile');
+
+  fbAuth.signInWithPopup(provider)
+    .then(result => {
+      toast('Signed in with Facebook! ☁️ Sync active 🙏');
+    })
+    .catch(e => {
+      if (
+        e.code === 'auth/popup-blocked' ||
+        e.code === 'auth/popup-closed-by-user' ||
+        e.code === 'auth/cancelled-popup-request' ||
+        e.message.includes('sessionStorage') ||
+        e.message.includes('initial state') ||
+        e.message.includes('storage-partitioned')
+      ) {
+        toast('Opening in your browser for sign-in…');
+        setTimeout(() => {
+          try {
+            fbAuth.signInWithRedirect(provider);
+          } catch(err) {
+            const el = document.getElementById('fbErr');
+            if (el) {
+              el.textContent = 'Please open this app in Chrome or Safari to sign in with Facebook.';
+              setTimeout(() => el.textContent = '', 8000);
+            }
+          }
+        }, 1000);
+      } else if (e.code === 'auth/account-exists-with-different-credential') {
+        const el = document.getElementById('fbErr');
+        if (el) {
+          el.textContent = 'This email is already linked to a Google account. Please sign in with Google.';
+          setTimeout(() => el.textContent = '', 8000);
+        }
       } else {
         const el = document.getElementById('fbErr');
         if (el) { el.textContent = e.message; setTimeout(() => el.textContent = '', 5000); }

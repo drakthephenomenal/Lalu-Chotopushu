@@ -827,6 +827,32 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
     </div>
   </div>
 
+  <!-- DEDUCT NAME JAP FROM LIFETIME — collapsible -->
+  <div class="cs-wrap" style="background:rgba(232,51,109,0.05);border:1px solid rgba(232,51,109,0.22)">
+    <div class="cs-header" onclick="toggleCs('nameJapDeductBody','nameJapDeductChev')">
+      <h3 style="color:var(--rl)">✂️ Deduct Name Jap — Lifetime Total</h3>
+      <span class="cs-chevron" id="nameJapDeductChev" style="color:var(--rl)">▾</span>
+    </div>
+    <div class="cs-body" id="nameJapDeductBody">
+      <p style="font-size:12px;color:var(--td);margin-bottom:10px">If part of your lifetime jap was done using the 28 Names or other Name Jap (not counted in the main Radha jap), deduct it here so your Total Jap stat reflects only the correct count.</p>
+      <div style="font-size:11px;color:var(--td);margin-bottom:8px">Currently deducted: <span id="nameJapDeductCur" style="color:var(--rl);font-weight:600">0</span> jap (<span id="nameJapDeductMalas" style="color:var(--rl)">0</span> malas)</div>
+      <!-- Add deduction -->
+      <div style="background:rgba(232,51,109,0.06);border:1px solid rgba(232,51,109,0.18);border-radius:12px;padding:11px;margin-bottom:10px">
+        <div style="font-size:10px;color:var(--rl);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">➕ Add to Deduction</div>
+        <div class="fr"><input type="number" class="fi" id="nameJapDeductIn" placeholder="e.g. 5000" min="1" style="border-color:rgba(232,51,109,0.35)"><span class="fu" style="color:var(--rl)">jap</span></div>
+        <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapDeductPreview" style="color:var(--rl)">—</span></div>
+        <button class="pb" onclick="addNameJapDeduct()" style="background:linear-gradient(135deg,#c0392b,#e74c3c)">✂️ Apply Deduction</button>
+      </div>
+      <!-- Remove deduction -->
+      <div style="background:rgba(232,51,109,0.03);border:1px solid rgba(232,51,109,0.12);border-radius:12px;padding:11px">
+        <div style="font-size:10px;color:var(--rl);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">↩ Remove Deduction</div>
+        <div class="fr"><input type="number" class="fi" id="nameJapRestoreIn" placeholder="Amount to restore" min="1" style="border-color:rgba(232,51,109,0.25)"><span class="fu" style="color:var(--rl)">jap</span></div>
+        <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapRestorePreview" style="color:var(--a2)">—</span></div>
+        <button class="pb" onclick="removeNameJapDeduct()" style="background:linear-gradient(135deg,#1a5e3e,#27ae60)">↩ Restore to Lifetime</button>
+      </div>
+    </div>
+  </div>
+
   <!-- PREVIOUS JAP LIFETIME — collapsible -->
   <div class="cs-wrap" style="background:rgba(109,184,255,0.05);border:1px solid rgba(109,184,255,0.2)">
     <div class="cs-header" onclick="toggleCs('prevJapBody','prevJapChev')">
@@ -1295,7 +1321,7 @@ const App = {
   },
 
   gTod() { return this.S.history[this.S.tk] || 0; },
-  gTot() { return Object.values(this.S.history).reduce((a,b) => a+b, 0); },
+  gTot() { return Math.max(0, Object.values(this.S.history).reduce((a,b) => a+b, 0) - (this.S.nameJapDeduct || 0)); },
 
   // ── Haptic Heartbeat ──
   // 10ms on every tap; triple long pulse (200-80-200-80-300ms) synced with mala complete
@@ -1606,7 +1632,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Live preview for new jap entry fields — trigger uStats on any change
   ['manualJapIn','prevJapIn','addJapOtherIn','addJapOtherDate','deductTodayIn','deductOtherIn','deductOtherDate',
    'jtAddTodayMin','jtAddTodaySec','jtAddOtherMin','jtAddOtherSec','jtAddOtherDate',
-   'jtDedTodayMin','jtDedTodaySec','jtDedOtherMin','jtDedOtherSec','jtDedOtherDate'].forEach(id => {
+   'jtDedTodayMin','jtDedTodaySec','jtDedOtherMin','jtDedOtherSec','jtDedOtherDate',
+   'nameJapDeductIn','nameJapRestoreIn'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', uStats);
     if (el) el.addEventListener('change', uStats);
@@ -1661,6 +1688,31 @@ function addPrevJap() {
   App.save(); App.ua(); fbDebouncedPush();
   document.getElementById('prevJapIn').value = '';
   toast('Added ' + n.toLocaleString() + ' jap to lifetime! 🙏 Jai Radhe!');
+}
+
+// ── Deduct Name Jap from Lifetime ──
+function addNameJapDeduct() {
+  const n = parseInt(document.getElementById('nameJapDeductIn').value) || 0;
+  if (n <= 0) { toast('Please enter a number > 0'); return; }
+  App.S.nameJapDeduct = (App.S.nameJapDeduct || 0) + n;
+  App.save(); App.ua(); fbDebouncedPush();
+  document.getElementById('nameJapDeductIn').value = '';
+  document.getElementById('nameJapDeductPreview').textContent = '—';
+  uStats();
+  toast('Deducted ' + n.toLocaleString() + ' name jap from lifetime total 🙏');
+}
+
+function removeNameJapDeduct() {
+  const n = parseInt(document.getElementById('nameJapRestoreIn').value) || 0;
+  if (n <= 0) { toast('Please enter a number > 0'); return; }
+  const cur = App.S.nameJapDeduct || 0;
+  if (n > cur) { toast('Cannot restore more than currently deducted (' + cur.toLocaleString() + ')'); return; }
+  App.S.nameJapDeduct = cur - n;
+  App.save(); App.ua(); fbDebouncedPush();
+  document.getElementById('nameJapRestoreIn').value = '';
+  document.getElementById('nameJapRestorePreview').textContent = '—';
+  uStats();
+  toast('Restored ' + n.toLocaleString() + ' jap to lifetime total 🙏');
 }
 
 function deductTodayJap() {
@@ -1773,7 +1825,7 @@ function uStats() {
   const ws = wk.reduce((s,k) => s + (App.S.history[k]||0), 0);
   const mp = now.toISOString().slice(0,7);
   let ms2 = 0, best = 0, streak = 0;
-  Object.entries(App.S.history).forEach(([k,v]) => { if (k.startsWith(mp)) ms2 += v; if (v > best) best = v; });
+  Object.entries(App.S.history).forEach(([k,v]) => { if (k.startsWith(mp)) ms2 += v; if (!k.startsWith('prev_') && v > best) best = v; });
   const d2 = new Date();
   while (streak < 999) { const k = d2.toISOString().split('T')[0]; if ((App.S.history[k]||0) > 0) { streak++; d2.setDate(d2.getDate()-1); } else break; }
   document.getElementById('sTod').textContent = tod;
@@ -1816,6 +1868,17 @@ function uStats() {
   if (aoi && aod) { const n = parseInt(aoi.value)||0; const d = aod.value; const cur = d ? (App.S.history[d]||0) : 0; document.getElementById('addJapOtherPreview').textContent = n>0 && d ? (cur+n) : '—'; }
   if (dti2) { const n = parseInt(dti2.value)||0; document.getElementById('deductTodayPreview').textContent = n>0 ? Math.max(0, tod-n) : '—'; }
   if (doi && dod) { const n = parseInt(doi.value)||0; const d = dod.value; const cur = d ? (App.S.history[d]||0) : 0; document.getElementById('deductOtherPreview').textContent = n>0 && d ? Math.max(0,cur-n) : '—'; }
+  // Name Jap Deduct live previews
+  const curDeduct = App.S.nameJapDeduct || 0;
+  const rawTot = Object.values(App.S.history).reduce((a,b)=>a+b,0);
+  const njdi = document.getElementById('nameJapDeductIn');
+  const njri = document.getElementById('nameJapRestoreIn');
+  const njdCur = document.getElementById('nameJapDeductCur');
+  const njdMalas = document.getElementById('nameJapDeductMalas');
+  if (njdCur) njdCur.textContent = curDeduct.toLocaleString();
+  if (njdMalas) njdMalas.textContent = Math.floor(curDeduct/(ms)).toLocaleString();
+  if (njdi) { const n=parseInt(njdi.value)||0; document.getElementById('nameJapDeductPreview').textContent = n>0 ? Math.max(0,rawTot-curDeduct-n).toLocaleString() : '—'; }
+  if (njri) { const n=parseInt(njri.value)||0; document.getElementById('nameJapRestorePreview').textContent = n>0 ? Math.min(rawTot, Math.max(0,rawTot-curDeduct+n)).toLocaleString() : '—'; }
   // Jap time previews
   function _fmtSec(s) { const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60; return (h>0?h+'h ':'')+m+'m '+sc+'s'; }
   const curTimeTod = App.S.timerHistory[App.S.tk]||0;
@@ -1886,7 +1949,7 @@ function doReset() {
     const f = document.getElementById('rfrom').value, to = document.getElementById('rto').value;
     Object.keys(App.S.history).forEach(k => { if (k >= f && k <= to) { App.S.history[k] = 0; if (App.S.timerHistory[k]) App.S.timerHistory[k] = 0; } });
   } else {
-    App.S.history = {}; App.S.h28 = {}; App.S.dt = 0; App.S.lt = 0;
+    App.S.history = {}; App.S.h28 = {}; App.S.dt = 0; App.S.lt = 0; App.S.nameJapDeduct = 0;
     App.S.stotrams = {}; App.S.brahma = {}; App.S.timerHistory = {}; App.S.malaLog = [];
     App.lmc = 0; App.lm28 = 0;
     STLIST.forEach(x => { App.S.stotrams[x.id] = {}; });
@@ -1903,7 +1966,7 @@ function exportAllData() {
     history: App.S.history||{}, h28: App.S.h28||{}, timerHistory: App.S.timerHistory||{},
     stotrams: App.S.stotrams||{}, brahma: App.S.brahma||{}, customSt: App.S.customSt||[],
     sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{},
-    ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, cfg: App.S.cfg||{}
+    ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{}
   };
   const blob = new Blob([JSON.stringify(backup,null,2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -1933,6 +1996,7 @@ function importAllData(input) {
       if (data.ms) App.S.ms = data.ms;
       if (data.dt !== undefined) App.S.dt = data.dt;
       if (data.lt !== undefined) App.S.lt = data.lt;
+      if (data.nameJapDeduct !== undefined) App.S.nameJapDeduct = data.nameJapDeduct;
       if (data.cfg) App.S.cfg = {...App.S.cfg, ...data.cfg};
       App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history));
       App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28));
@@ -2144,7 +2208,7 @@ async function fbPushFull() {
     history: App.S.history||{}, h28: App.S.h28||{}, stotrams: App.S.stotrams||{},
     brahma: App.S.brahma||{}, customSt: App.S.customSt||[], timerHistory: App.S.timerHistory||{},
     sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{}, malaLog: App.S.malaLog||[],
-    ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, cfg: App.S.cfg||{},
+    ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{},
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId
   };
@@ -2178,6 +2242,7 @@ function fbApplyRemote(d) {
   if (d.ms) App.S.ms = d.ms;
   if (d.dt !== undefined) App.S.dt = d.dt;
   if (d.lt !== undefined) App.S.lt = d.lt;
+  if (d.nameJapDeduct !== undefined) App.S.nameJapDeduct = d.nameJapDeduct;
   if (d.cfg) App.S.cfg = JSON.parse(JSON.stringify(d.cfg || {}));
   if (!App.S.history[App.S.tk]) App.S.history[App.S.tk] = 0;
   if (!App.S.h28[App.S.tk]) App.S.h28[App.S.tk] = 0;
@@ -2240,7 +2305,7 @@ async function gdDriveSilentBackup() {
       history: App.S.history||{}, h28: App.S.h28||{}, timerHistory: App.S.timerHistory||{},
       stotrams: App.S.stotrams||{}, brahma: App.S.brahma||{}, customSt: App.S.customSt||[],
       sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{},
-      ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, cfg: App.S.cfg||{}
+      ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{}
     }, null, 2);
     // Find existing file
     const listResp = await fetch(

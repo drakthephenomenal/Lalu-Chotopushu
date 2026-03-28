@@ -359,6 +359,11 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 @keyframes fu28{0%{opacity:0.9;transform:translateY(0);}60%{opacity:0.7;}100%{opacity:0;transform:translateY(-90px);}}
 .n28meaning{font-size:12px;color:var(--a2);margin-top:6px;letter-spacing:1px;text-align:center;opacity:0.85;}
 .n28cycle{font-size:11px;color:var(--td);margin-top:10px;letter-spacing:2px;text-transform:uppercase;}
+.n28timers{display:flex;gap:14px;justify-content:center;margin-top:8px;flex-wrap:wrap;}
+.n28timer-box{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.n28timer-val{font-family:'EB Garamond',serif;font-size:20px;color:var(--a2);letter-spacing:2px;filter:drop-shadow(0 0 6px rgba(109,184,255,0.4));}
+.n28timer-val.gold{color:var(--gold);filter:drop-shadow(0 0 6px rgba(255,215,0,0.4));}
+.n28timer-lbl{font-size:9px;color:var(--td);letter-spacing:1.5px;text-transform:uppercase;}
 .n28prog{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;max-width:240px;margin-top:8px;}
 .n28dot{width:8px;height:8px;border-radius:50%;background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.25);transition:all 0.2s;}
 .n28dot.done{background:var(--gold);border-color:var(--gold);box-shadow:0 0 5px rgba(255,215,0,0.7);}
@@ -649,6 +654,16 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
       <div class="n28meaning" id="n28meaning">The Supreme Beloved</div>
       <div class="n28cycle" id="n28cycle">Cycle 0 · tap to begin</div>
       <div class="n28prog" id="n28prog"></div>
+      <div class="n28timers">
+        <div class="n28timer-box">
+          <div class="n28timer-val" id="n28CycleTimer">0:00</div>
+          <div class="n28timer-lbl">Cycle Time</div>
+        </div>
+        <div class="n28timer-box">
+          <div class="n28timer-val gold" id="n28TotalTimer">0:00</div>
+          <div class="n28timer-lbl">Total Time</div>
+        </div>
+      </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:8px">
       <button class="cb danger" onclick="App.undo28()">↩ Undo</button>
@@ -798,79 +813,127 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
     </div>
   </div>
 
-  <!-- ADD JAP MANUALLY TODAY — collapsible -->
-  <div class="cs-wrap" style="background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.2)">
-    <div class="cs-header" onclick="toggleCs('addJapTodayBody','addJapTodayChev')">
-      <h3 style="color:var(--green)">✍️ Add Jap Manually (Today)</h3>
-      <span class="cs-chevron" id="addJapTodayChev" style="color:var(--green)">▾</span>
+  <!-- ADD JAP MANUALLY — outer collapsible -->
+  <div class="cs-wrap" style="background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.25)">
+    <div class="cs-header" onclick="toggleCs('addJapManuallyBody','addJapManuallyChev')">
+      <h3 style="color:var(--green)">➕ Add Jap Manually</h3>
+      <span class="cs-chevron" id="addJapManuallyChev" style="color:var(--green)">▾</span>
     </div>
-    <div class="cs-body" id="addJapTodayBody">
-      <p style="font-size:12px;color:var(--td);margin-bottom:10px">Did jap by rosary, mentally, or any other way?</p>
-      <div class="fr"><input type="number" class="fi" id="manualJapIn" placeholder="Number of jap" min="1"><span class="fu">jap</span></div>
-      <div style="font-size:11px;color:var(--td);margin-bottom:8px">= <span id="manualMalaPreview">0</span> malas · Today will become: <span id="manualTodayPreview" style="color:var(--a2)">—</span></div>
-      <button class="pb" onclick="addManualJap()" style="background:linear-gradient(135deg,#27ae60,#2ecc71)">➕ Add to Today</button>
-    </div>
-  </div>
+    <div class="cs-body" id="addJapManuallyBody">
+      <p style="font-size:12px;color:var(--td);margin-bottom:12px">Jap done on Mala made of Sacred Tulsi Wood / Mala / Finger counts or other digital counter?</p>
 
-  <!-- ADD JAP TO OTHER DAY — collapsible (new) -->
-  <div class="cs-wrap" style="background:rgba(46,204,113,0.04);border:1px solid rgba(46,204,113,0.15)">
-    <div class="cs-header" onclick="toggleCs('addJapOtherBody','addJapOtherChev')">
-      <h3 style="color:var(--green)">✍️ Add Jap — Other Day</h3>
-      <span class="cs-chevron" id="addJapOtherChev" style="color:var(--green)">▾</span>
-    </div>
-    <div class="cs-body" id="addJapOtherBody">
-      <p style="font-size:12px;color:var(--td);margin-bottom:10px">Add jap count to any past or future date.</p>
-      <div class="fr"><input type="date" class="fi" id="addJapOtherDate" style="font-size:13px"></div>
-      <div class="fr"><input type="number" class="fi" id="addJapOtherIn" placeholder="Number of jap" min="1"><span class="fu">jap</span></div>
-      <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="addJapOtherPreview" style="color:var(--green)">—</span></div>
-      <button class="pb" onclick="addOtherDayJap()" style="background:linear-gradient(135deg,#1a6b3c,#27ae60)">➕ Add to Selected Day</button>
-    </div>
-  </div>
-
-  <!-- DEDUCT NAME JAP FROM LIFETIME — collapsible -->
-  <div class="cs-wrap" style="background:rgba(232,51,109,0.05);border:1px solid rgba(232,51,109,0.22)">
-    <div class="cs-header" onclick="toggleCs('nameJapDeductBody','nameJapDeductChev')">
-      <h3 style="color:var(--rl)">✂️ Deduct Name Jap — Lifetime Total</h3>
-      <span class="cs-chevron" id="nameJapDeductChev" style="color:var(--rl)">▾</span>
-    </div>
-    <div class="cs-body" id="nameJapDeductBody">
-      <p style="font-size:12px;color:var(--td);margin-bottom:10px">If part of your lifetime jap was done using the 28 Names or other Name Jap (not counted in the main Radha jap), deduct it here so your Total Jap stat reflects only the correct count.</p>
-      <div style="font-size:11px;color:var(--td);margin-bottom:8px">Currently deducted: <span id="nameJapDeductCur" style="color:var(--rl);font-weight:600">0</span> jap (<span id="nameJapDeductMalas" style="color:var(--rl)">0</span> malas)</div>
-      <!-- Add deduction -->
-      <div style="background:rgba(232,51,109,0.06);border:1px solid rgba(232,51,109,0.18);border-radius:12px;padding:11px;margin-bottom:10px">
-        <div style="font-size:10px;color:var(--rl);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">➕ Add to Deduction</div>
-        <div class="fr"><input type="number" class="fi" id="nameJapDeductIn" placeholder="e.g. 5000" min="1" style="border-color:rgba(232,51,109,0.35)"><span class="fu" style="color:var(--rl)">jap</span></div>
-        <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapDeductPreview" style="color:var(--rl)">—</span></div>
-        <button class="pb" onclick="addNameJapDeduct()" style="background:linear-gradient(135deg,#c0392b,#e74c3c)">✂️ Apply Deduction</button>
+      <!-- Inner: Today -->
+      <div class="cs-wrap" style="background:rgba(46,204,113,0.05);border:1px solid rgba(46,204,113,0.18);margin-bottom:8px">
+        <div class="cs-header" onclick="toggleCs('addJapTodayBody','addJapTodayChev')" style="padding:10px 14px">
+          <h3 style="color:var(--green);font-size:10px">📅 TODAY</h3>
+          <span class="cs-chevron" id="addJapTodayChev" style="color:var(--green)">▾</span>
+        </div>
+        <div class="cs-body" id="addJapTodayBody">
+          <div class="fr"><input type="number" class="fi" id="manualJapIn" placeholder="Number of jap" min="1"><span class="fu">jap</span></div>
+          <div style="font-size:11px;color:var(--td);margin-bottom:8px">= <span id="manualMalaPreview">0</span> malas · Today will become: <span id="manualTodayPreview" style="color:var(--a2)">—</span></div>
+          <button class="pb" onclick="addManualJap()" style="background:linear-gradient(135deg,#27ae60,#2ecc71)">➕ Add to Today</button>
+        </div>
       </div>
-      <!-- Remove deduction -->
-      <div style="background:rgba(232,51,109,0.03);border:1px solid rgba(232,51,109,0.12);border-radius:12px;padding:11px">
-        <div style="font-size:10px;color:var(--rl);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">↩ Remove Deduction</div>
-        <div class="fr"><input type="number" class="fi" id="nameJapRestoreIn" placeholder="Amount to restore" min="1" style="border-color:rgba(232,51,109,0.25)"><span class="fu" style="color:var(--rl)">jap</span></div>
-        <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapRestorePreview" style="color:var(--a2)">—</span></div>
-        <button class="pb" onclick="removeNameJapDeduct()" style="background:linear-gradient(135deg,#1a5e3e,#27ae60)">↩ Restore to Lifetime</button>
+
+      <!-- Inner: Other Day -->
+      <div class="cs-wrap" style="background:rgba(46,204,113,0.04);border:1px solid rgba(46,204,113,0.14);margin-bottom:8px">
+        <div class="cs-header" onclick="toggleCs('addJapOtherBody','addJapOtherChev')" style="padding:10px 14px">
+          <h3 style="color:var(--green);font-size:10px">📆 OTHER DAY</h3>
+          <span class="cs-chevron" id="addJapOtherChev" style="color:var(--green)">▾</span>
+        </div>
+        <div class="cs-body" id="addJapOtherBody">
+          <div class="fr"><input type="date" class="fi" id="addJapOtherDate" style="font-size:13px"></div>
+          <div class="fr"><input type="number" class="fi" id="addJapOtherIn" placeholder="Number of jap" min="1"><span class="fu">jap</span></div>
+          <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="addJapOtherPreview" style="color:var(--green)">—</span></div>
+          <button class="pb" onclick="addOtherDayJap()" style="background:linear-gradient(135deg,#1a6b3c,#27ae60)">➕ Add to Selected Day</button>
+        </div>
       </div>
+
+      <!-- Inner: Before This App (Lifetime) -->
+      <div class="cs-wrap" style="background:rgba(109,184,255,0.05);border:1px solid rgba(109,184,255,0.18)">
+        <div class="cs-header" onclick="toggleCs('prevJapBody','prevJapChev')" style="padding:10px 14px">
+          <h3 style="color:var(--a2);font-size:10px">📜 BEFORE THIS APP (LIFETIME)</h3>
+          <span class="cs-chevron" id="prevJapChev" style="color:var(--a2)">▾</span>
+        </div>
+        <div class="cs-body" id="prevJapBody">
+          <p style="font-size:12px;color:var(--td);margin-bottom:10px">Jap done before using this app? Add to lifetime total.</p>
+          <div class="fr"><input type="number" class="fi" id="prevJapIn" placeholder="e.g. 50000" min="1"><span class="fu">jap</span></div>
+          <div style="font-size:11px;color:var(--td);margin-bottom:8px">= <span id="prevMalaPreview">0</span> malas · Lifetime: <span id="prevLifetimePreview" style="color:var(--gold)">—</span></div>
+          <button class="pb" onclick="addPrevJap()" style="background:linear-gradient(135deg,#8B5CF6,#6D28D9)">📿 Add to Lifetime</button>
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <!-- PREVIOUS JAP LIFETIME — collapsible -->
-  <div class="cs-wrap" style="background:rgba(109,184,255,0.05);border:1px solid rgba(109,184,255,0.2)">
-    <div class="cs-header" onclick="toggleCs('prevJapBody','prevJapChev')">
-      <h3 style="color:var(--a2)">📜 Previous Jap (Lifetime)</h3>
-      <span class="cs-chevron" id="prevJapChev" style="color:var(--a2)">▾</span>
+  <!-- DEDUCT JAP — outer collapsible -->
+  <div class="cs-wrap" style="background:rgba(232,51,109,0.05);border:1px solid rgba(232,51,109,0.25)">
+    <div class="cs-header" onclick="toggleCs('deductJapMainBody','deductJapMainChev')">
+      <h3 style="color:var(--rl)">✂️ Deduct Jap</h3>
+      <span class="cs-chevron" id="deductJapMainChev" style="color:var(--rl)">▾</span>
     </div>
-    <div class="cs-body" id="prevJapBody">
-      <p style="font-size:12px;color:var(--td);margin-bottom:10px">Jap done before this app? Add to lifetime total.</p>
-      <div class="fr"><input type="number" class="fi" id="prevJapIn" placeholder="e.g. 50000" min="1"><span class="fu">jap</span></div>
-      <div style="font-size:11px;color:var(--td);margin-bottom:8px">= <span id="prevMalaPreview">0</span> malas · Lifetime: <span id="prevLifetimePreview" style="color:var(--gold)">—</span></div>
-      <button class="pb" onclick="addPrevJap()" style="background:linear-gradient(135deg,#8B5CF6,#6D28D9)">📿 Add to Lifetime</button>
+    <div class="cs-body" id="deductJapMainBody">
+      <p style="font-size:12px;color:var(--td);margin-bottom:12px">Jap you want to deduct — for dedicating to someone, wrong entry, or system bug showing false results.</p>
+
+      <!-- Inner: Today -->
+      <div class="cs-wrap" style="background:rgba(232,51,109,0.05);border:1px solid rgba(232,51,109,0.18);margin-bottom:8px">
+        <div class="cs-header" onclick="toggleCs('deductTodayBody','deductTodayChev')" style="padding:10px 14px">
+          <h3 style="color:var(--rl);font-size:10px">📅 TODAY</h3>
+          <span class="cs-chevron" id="deductTodayChev" style="color:var(--rl)">▾</span>
+        </div>
+        <div class="cs-body" id="deductTodayBody">
+          <div class="fr"><input type="number" class="fi" id="deductTodayIn" placeholder="Number to deduct" min="1"><span class="fu">jap</span></div>
+          <div style="font-size:11px;color:var(--td);margin-bottom:8px">Today will become: <span id="deductTodayPreview" style="color:var(--rl)">—</span></div>
+          <button class="pb" onclick="deductTodayJap()" style="background:linear-gradient(135deg,#c0392b,#e74c3c)">✂️ Deduct from Today</button>
+        </div>
+      </div>
+
+      <!-- Inner: Other Day -->
+      <div class="cs-wrap" style="background:rgba(232,51,109,0.04);border:1px solid rgba(232,51,109,0.14);margin-bottom:8px">
+        <div class="cs-header" onclick="toggleCs('deductOtherBody','deductOtherChev')" style="padding:10px 14px">
+          <h3 style="color:var(--rl);font-size:10px">📆 OTHER DAY</h3>
+          <span class="cs-chevron" id="deductOtherChev" style="color:var(--rl)">▾</span>
+        </div>
+        <div class="cs-body" id="deductOtherBody">
+          <div class="fr"><input type="date" class="fi" id="deductOtherDate" style="font-size:13px"></div>
+          <div class="fr"><input type="number" class="fi" id="deductOtherIn" placeholder="Number to deduct" min="1"><span class="fu">jap</span></div>
+          <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="deductOtherPreview" style="color:var(--rl)">—</span></div>
+          <button class="pb" onclick="deductOtherJap()" style="background:linear-gradient(135deg,#922b21,#c0392b)">✂️ Deduct from Selected Day</button>
+        </div>
+      </div>
+
+      <!-- Inner: Name Jap — Lifetime -->
+      <div class="cs-wrap" style="background:rgba(232,51,109,0.04);border:1px solid rgba(232,51,109,0.14)">
+        <div class="cs-header" onclick="toggleCs('nameJapDeductBody','nameJapDeductChev')" style="padding:10px 14px">
+          <h3 style="color:var(--rl);font-size:10px">📿 NAME JAP — LIFETIME</h3>
+          <span class="cs-chevron" id="nameJapDeductChev" style="color:var(--rl)">▾</span>
+        </div>
+        <div class="cs-body" id="nameJapDeductBody">
+          <div style="font-size:11px;color:var(--td);margin-bottom:8px">Currently deducted: <span id="nameJapDeductCur" style="color:var(--rl);font-weight:600">0</span> jap (<span id="nameJapDeductMalas" style="color:var(--rl)">0</span> malas)</div>
+          <!-- Add deduction -->
+          <div style="background:rgba(232,51,109,0.06);border:1px solid rgba(232,51,109,0.18);border-radius:12px;padding:11px;margin-bottom:10px">
+            <div style="font-size:10px;color:var(--rl);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">➕ Add to Deduction</div>
+            <div class="fr"><input type="number" class="fi" id="nameJapDeductIn" placeholder="e.g. 5000" min="1" style="border-color:rgba(232,51,109,0.35)"><span class="fu" style="color:var(--rl)">jap</span></div>
+            <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapDeductPreview" style="color:var(--rl)">—</span></div>
+            <button class="pb" onclick="addNameJapDeduct()" style="background:linear-gradient(135deg,#c0392b,#e74c3c)">✂️ Apply Deduction</button>
+          </div>
+          <!-- Remove deduction -->
+          <div style="background:rgba(232,51,109,0.03);border:1px solid rgba(232,51,109,0.12);border-radius:12px;padding:11px">
+            <div style="font-size:10px;color:var(--rl);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">↩ Remove Deduction</div>
+            <div class="fr"><input type="number" class="fi" id="nameJapRestoreIn" placeholder="Amount to restore" min="1" style="border-color:rgba(232,51,109,0.25)"><span class="fu" style="color:var(--rl)">jap</span></div>
+            <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapRestorePreview" style="color:var(--a2)">—</span></div>
+            <button class="pb" onclick="removeNameJapDeduct()" style="background:linear-gradient(135deg,#1a5e3e,#27ae60)">↩ Restore to Lifetime</button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <!-- JAP TIME MANUAL ENTRY — new section -->
+  <!-- JAP TIME ADD/DEDUCT — section -->
   <div class="cs-wrap" style="background:rgba(255,215,0,0.04);border:1px solid rgba(255,215,0,0.18)">
     <div class="cs-header" onclick="toggleCs('japTimeBody','japTimeChev')">
-      <h3 style="color:var(--gold)">⏱ Jap Time — Manual Entry</h3>
+      <h3 style="color:var(--gold)">⏱ Jap Time — Add / Deduct</h3>
       <span class="cs-chevron" id="japTimeChev" style="color:var(--gold)">▾</span>
     </div>
     <div class="cs-body" id="japTimeBody">
@@ -913,33 +976,6 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
         <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="jtDedOtherPreview" style="color:var(--rl)">—</span></div>
         <button class="pb" onclick="deductJapTimeOther()" style="background:linear-gradient(135deg,#922b21,#c0392b)">✂️ Deduct Time from Selected Day</button>
       </div>
-    </div>
-  </div>
-
-  <!-- DEDUCT JAP TODAY — collapsible -->
-  <div class="cs-wrap" style="background:rgba(232,51,109,0.05);border:1px solid rgba(232,51,109,0.2)">
-    <div class="cs-header" onclick="toggleCs('deductTodayBody','deductTodayChev')">
-      <h3 style="color:var(--rl)">✂️ Deduct Jap — Today</h3>
-      <span class="cs-chevron" id="deductTodayChev" style="color:var(--rl)">▾</span>
-    </div>
-    <div class="cs-body" id="deductTodayBody">
-      <div class="fr"><input type="number" class="fi" id="deductTodayIn" placeholder="Number to deduct" min="1"><span class="fu">jap</span></div>
-      <div style="font-size:11px;color:var(--td);margin-bottom:8px">Today will become: <span id="deductTodayPreview" style="color:var(--rl)">—</span></div>
-      <button class="pb" onclick="deductTodayJap()" style="background:linear-gradient(135deg,#c0392b,#e74c3c)">✂️ Deduct from Today</button>
-    </div>
-  </div>
-
-  <!-- DEDUCT JAP OTHER DAY — collapsible -->
-  <div class="cs-wrap" style="background:rgba(232,51,109,0.04);border:1px solid rgba(232,51,109,0.15)">
-    <div class="cs-header" onclick="toggleCs('deductOtherBody','deductOtherChev')">
-      <h3 style="color:var(--rl)">✂️ Deduct Jap — Other Day</h3>
-      <span class="cs-chevron" id="deductOtherChev" style="color:var(--rl)">▾</span>
-    </div>
-    <div class="cs-body" id="deductOtherBody">
-      <div class="fr"><input type="date" class="fi" id="deductOtherDate" style="font-size:13px"></div>
-      <div class="fr"><input type="number" class="fi" id="deductOtherIn" placeholder="Number to deduct" min="1"><span class="fu">jap</span></div>
-      <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="deductOtherPreview" style="color:var(--rl)">—</span></div>
-      <button class="pb" onclick="deductOtherJap()" style="background:linear-gradient(135deg,#922b21,#c0392b)">✂️ Deduct from Selected Day</button>
     </div>
   </div>
 
@@ -1246,7 +1282,7 @@ const App = {
       ms: this.S.ms, dt: this.S.dt, lt: this.S.lt,
       cfg: this.S.cfg, stotrams: this.S.stotrams, brahma: this.S.brahma,
       customSt: this.S.customSt, sankalpas: this.S.sankalpas, occasions: this.S.occasions,
-      history: this.S.history, h28: this.S.h28, timerHistory: this.S.timerHistory, malaLog: this.S.malaLog || [],
+      history: this.S.history, h28: this.S.h28, timerHistory: this.S.timerHistory,
       syncBaseline: this.S.syncBaseline, syncBaseline28: this.S.syncBaseline28,
       syncBaselineTimer: this.S.syncBaselineTimer, migrationV2Done: this.S.migrationV2Done
     });
@@ -1305,12 +1341,14 @@ const App = {
     if (!this.S.timerHistory) this.S.timerHistory = {};
     if (!this.S.sankalpas) this.S.sankalpas = [];
     if (!this.S.occasions) this.S.occasions = {};
-    // Load malaLog — prefer today's dedicated record, otherwise use main snapshot
+    // Load malaLog — only use if it's from today, otherwise start fresh
     const malaLogRec = await this.dbGet('malaLog', 'today');
     if (malaLogRec && malaLogRec.date === this.S.tk) {
       this.S.malaLog = malaLogRec.log || [];
     } else {
-      this.S.malaLog = Array.isArray(main?.malaLog) ? main.malaLog : [];
+      // New day — discard any previous log entirely
+      this.S.malaLog = [];
+      await this.dbPut('malaLog', 'today', { date: this.S.tk, log: [] });
     }
     STLIST.forEach(x => { if (!this.S.stotrams[x.id]) this.S.stotrams[x.id] = {}; });
   },
@@ -1484,6 +1522,58 @@ const App = {
     }
   },
 
+  // ── 28 Names timers ──
+  _n28CycleStart: null,
+  _n28TotalStart: null,
+  _n28TimerInterval: null,
+  _n28SavedSecs: 0,  // seconds already flushed into timerHistory
+
+  start28Timers() {
+    if (!this._n28TotalStart) { this._n28TotalStart = Date.now(); this._n28SavedSecs = 0; }
+    if (!this._n28CycleStart) this._n28CycleStart = Date.now();
+    if (this._n28TimerInterval) return;
+    this._n28TimerInterval = setInterval(() => {
+      const fmt = s => Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60);
+      const cycSec = Math.floor((Date.now() - this._n28CycleStart) / 1000);
+      const totSec = Math.floor((Date.now() - this._n28TotalStart) / 1000);
+      const ce = document.getElementById('n28CycleTimer');
+      const te = document.getElementById('n28TotalTimer');
+      if (ce) ce.textContent = fmt(cycSec);
+      if (te) te.textContent = fmt(totSec);
+    }, 1000);
+  },
+
+  flush28TimeToHistory() {
+    if (!this._n28TotalStart) return;
+    const elapsed = Math.floor((Date.now() - this._n28TotalStart) / 1000);
+    const newSecs = elapsed - this._n28SavedSecs;
+    if (newSecs > 0) {
+      this.S.timerHistory[this.S.tk] = (this.S.timerHistory[this.S.tk] || 0) + newSecs;
+      this._n28SavedSecs = elapsed;
+      this.save(); fbDebouncedPush();
+    }
+  },
+
+  resetCycleTimer28() {
+    this.flush28TimeToHistory();
+    this._n28CycleStart = Date.now();
+    const ce = document.getElementById('n28CycleTimer');
+    if (ce) ce.textContent = '0:00';
+  },
+
+  stopAll28Timers() {
+    this.flush28TimeToHistory();
+    clearInterval(this._n28TimerInterval);
+    this._n28TimerInterval = null;
+    this._n28CycleStart = null;
+    this._n28TotalStart = null;
+    this._n28SavedSecs = 0;
+    const ce = document.getElementById('n28CycleTimer');
+    const te = document.getElementById('n28TotalTimer');
+    if (ce) ce.textContent = '0:00';
+    if (te) te.textContent = '0:00';
+  },
+
   // ── 28 Names tap ──
   h28(e) {
     e.preventDefault();
@@ -1492,6 +1582,7 @@ const App = {
     this.S.h28[this.S.tk]++;
     this.save(); fbDebouncedPush();
     this.vib([10]);
+    this.start28Timers();
     spawnName28(e, NAMES28[posBefore].name);
     const nm = Math.floor(this.S.h28[this.S.tk] / (this.S.ms || 108));
     if (nm > this.lm28) { this.lm28 = nm; this.malaOk(); App.silentMonkBackup(); }
@@ -1614,6 +1705,7 @@ function sv(id, btn) {
   if (id === 'vb') renderBcal();
   if (id === 'vst') renderSt();
   if (id === 'v28') { u28(); render28Dots(get28Pos()); }
+  else { App.flush28TimeToHistory(); }
   if (id === 'vset') {
     if (App.S.dt) document.getElementById('dtIn').value = App.S.dt;
     if (App.S.lt) document.getElementById('ltIn').value = App.S.lt;
@@ -1944,7 +2036,7 @@ function cr2(tp) {
 }
 function doReset() {
   if (pr === 'today') { App.S.history[App.S.tk] = 0; App.lmc = 0; App.S.malaLog = []; }
-  else if (pr === '28today') { App.S.h28[App.S.tk] = 0; App.lm28 = 0; u28(); }
+  else if (pr === '28today') { App.S.h28[App.S.tk] = 0; App.lm28 = 0; App.stopAll28Timers(); u28(); }
   else if (pr === 'range') {
     const f = document.getElementById('rfrom').value, to = document.getElementById('rto').value;
     Object.keys(App.S.history).forEach(k => { if (k >= f && k <= to) { App.S.history[k] = 0; if (App.S.timerHistory[k]) App.S.timerHistory[k] = 0; } });
@@ -2411,6 +2503,7 @@ function spawnName28(e, nameText) {
 }
 
 function cycleDone28() {
+  App.resetCycleTimer28();
   const zone = document.getElementById('tz28');
   zone.style.background = 'radial-gradient(ellipse at center,rgba(255,215,0,0.25) 0%,rgba(6,13,31,0.6) 100%)';
   setTimeout(() => zone.style.background = '', 600);

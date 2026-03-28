@@ -2299,7 +2299,7 @@ async function fbPushFull() {
   const payload = {
     history: App.S.history||{}, h28: App.S.h28||{}, stotrams: App.S.stotrams||{},
     brahma: App.S.brahma||{}, customSt: App.S.customSt||[], timerHistory: App.S.timerHistory||{},
-    sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{}, malaLog: App.S.malaLog||[],
+    sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{}, malaLog: App.S.malaLog||[], malaLogDate: App.S.tk,
     ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{},
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId
@@ -2330,7 +2330,16 @@ function fbApplyRemote(d) {
   if ('customSt' in d) App.S.customSt = JSON.parse(JSON.stringify(d.customSt || []));
   if ('sankalpas' in d) App.S.sankalpas = JSON.parse(JSON.stringify(d.sankalpas || []));
   if ('occasions' in d) App.S.occasions = JSON.parse(JSON.stringify(d.occasions || {}));
-  if ('malaLog' in d) App.S.malaLog = JSON.parse(JSON.stringify(d.malaLog || []));
+  // Only apply malaLog from Firebase if it belongs to today
+  if ('malaLog' in d) {
+    const remoteMalaLog = d.malaLog || [];
+    const remoteMalaDate = d.malaLogDate || null;
+    if (remoteMalaDate === App.S.tk) {
+      App.S.malaLog = JSON.parse(JSON.stringify(remoteMalaLog));
+    } else {
+      // Remote log is from a different day — keep local today's log untouched
+    }
+  }
   if (d.ms) App.S.ms = d.ms;
   if (d.dt !== undefined) App.S.dt = d.dt;
   if (d.lt !== undefined) App.S.lt = d.lt;

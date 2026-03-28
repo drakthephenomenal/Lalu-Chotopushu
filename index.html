@@ -1346,9 +1346,11 @@ const App = {
     if (malaLogRec && malaLogRec.date === this.S.tk) {
       this.S.malaLog = malaLogRec.log || [];
     } else {
-      // New day — discard any previous log entirely
+      // New day — discard any previous log entirely and push empty to Firebase
       this.S.malaLog = [];
       await this.dbPut('malaLog', 'today', { date: this.S.tk, log: [] });
+      // Force push empty log to Firebase so stale cloud data is overwritten
+      setTimeout(() => { if (fbUser && !fbForcedSignout) fbDebouncedPush(); }, 3000);
     }
     STLIST.forEach(x => { if (!this.S.stotrams[x.id]) this.S.stotrams[x.id] = {}; });
   },

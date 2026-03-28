@@ -368,6 +368,23 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .n28dot{width:8px;height:8px;border-radius:50%;background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.25);transition:all 0.2s;}
 .n28dot.done{background:var(--gold);border-color:var(--gold);box-shadow:0 0 5px rgba(255,215,0,0.7);}
 .n28dot.current{background:rgba(255,215,0,0.5);border-color:var(--gold);transform:scale(1.3);}
+
+/* 28 NAMES STATS PANEL */
+.n28sp-section{background:rgba(74,144,226,0.05);border:1px solid rgba(74,144,226,0.15);border-radius:14px;padding:12px;margin-bottom:8px;}
+.n28sp-title{font-size:10px;color:var(--a2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;font-weight:600;}
+.n28sp-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.n28sp-in{flex:1;min-width:60px;background:rgba(0,0,0,0.3);border:1px solid rgba(74,144,226,0.25);border-radius:9px;padding:7px 10px;color:var(--tl);font-size:14px;font-family:'Inter',sans-serif;text-align:center;outline:none;}
+.n28sp-in:focus{border-color:var(--a2);}
+.n28sp-btn{border-radius:9px;border:none;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;}
+.n28sp-btn.add{background:linear-gradient(135deg,rgba(39,174,96,0.25),rgba(46,204,113,0.15));color:var(--green);border:1px solid rgba(46,204,113,0.35);}
+.n28sp-btn.ded{background:linear-gradient(135deg,rgba(232,51,109,0.15),rgba(192,57,43,0.1));color:var(--rl);border:1px solid rgba(232,51,109,0.3);}
+.n28sp-wish-row{display:flex;align-items:center;gap:6px;padding:8px 10px;background:rgba(255,182,193,0.05);border:1px solid rgba(232,51,109,0.15);border-radius:10px;margin-bottom:6px;}
+.n28sp-wish-name{flex:1;font-size:12px;color:var(--tl);font-family:'Hind Siliguri',sans-serif;line-height:1.4;}
+.n28sp-wish-prog{font-size:11px;color:var(--td);white-space:nowrap;}
+.n28sp-wish-in{width:52px;background:rgba(0,0,0,0.3);border:1px solid rgba(232,51,109,0.25);border-radius:7px;padding:5px 6px;color:var(--tl);font-size:13px;text-align:center;font-family:'Inter',sans-serif;outline:none;}
+.n28sp-reset-btn{width:100%;padding:9px;border-radius:10px;border:1px solid rgba(232,51,109,0.3);background:rgba(232,51,109,0.07);color:var(--rl);font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;}
+.n28sp-reset-btn:active{transform:scale(0.97);}
+
 .n28s{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:14px;}
 .sk-form{background:rgba(232,51,109,0.06);border:1px solid rgba(232,51,109,0.22);border-radius:14px;padding:14px;margin-bottom:12px;}
 .sk-form h3{font-size:12px;color:var(--rose);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;}
@@ -663,11 +680,67 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
           <div class="n28timer-val gold" id="n28TotalTimer">0:00</div>
           <div class="n28timer-lbl">Total Time</div>
         </div>
+        <div class="n28timer-box" style="justify-content:center">
+          <button id="n28PauseBtn" onclick="App.toggle28Pause()" style="display:none;background:rgba(109,184,255,0.12);border:1px solid rgba(109,184,255,0.35);border-radius:16px;color:var(--a2);font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;letter-spacing:0.5px;transition:all 0.2s;font-family:'Inter',sans-serif;">⏸ Pause</button>
+        </div>
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:8px">
       <button class="cb danger" onclick="App.undo28()">↩ Undo</button>
+      <button class="cb" id="n28StatsBtn" onclick="toggle28Stats()" style="border-color:rgba(255,215,0,0.3);color:var(--gold);background:rgba(255,215,0,0.06)">📊 Stats <span id="n28StatsChev" style="font-size:10px;transition:transform 0.25s;display:inline-block">▾</span></button>
       <button class="cb danger" onclick="cr2('28today')">↺ Reset</button>
+    </div>
+
+    <!-- 28 NAMES STATS PANEL -->
+    <div id="n28StatsPanel" style="display:none;margin-top:10px;display:none">
+
+      <!-- a) Cycle Counts -->
+      <div class="n28sp-section">
+        <div class="n28sp-title">🔄 Cycle Counts</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div class="ns"><div class="nv" id="sp28CyclesTod" style="font-size:18px">0</div><div class="nl">Today</div></div>
+          <div class="ns"><div class="nv" id="sp28CyclesAll" style="font-size:18px">0</div><div class="nl">All Time</div></div>
+        </div>
+        <div class="n28sp-row">
+          <input type="number" class="n28sp-in" id="sp28CycleVal" min="1" placeholder="Cycles">
+          <button class="n28sp-btn add" onclick="adj28Cycles(1)">＋ Add</button>
+          <button class="n28sp-btn ded" onclick="adj28Cycles(-1)">－ Deduct</button>
+        </div>
+        <div style="font-size:10px;color:var(--td);margin-top:4px">1 cycle = 28 names</div>
+      </div>
+
+      <!-- b) Cycle Time -->
+      <div class="n28sp-section">
+        <div class="n28sp-title">⏱ 28 Names Time</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div class="ns"><div class="nv" id="sp28TimeTod" style="font-size:18px">0m</div><div class="nl">Today</div></div>
+          <div class="ns"><div class="nv" id="sp28TimeAll" style="font-size:18px">0m</div><div class="nl">All Time</div></div>
+        </div>
+        <div class="n28sp-row">
+          <input type="number" class="n28sp-in" id="sp28TimeMin" min="0" placeholder="Min" style="width:56px">
+          <input type="number" class="n28sp-in" id="sp28TimeSec" min="0" max="59" placeholder="Sec" style="width:56px">
+          <button class="n28sp-btn add" onclick="adj28Time(1)">＋ Add</button>
+          <button class="n28sp-btn ded" onclick="adj28Time(-1)">－ Deduct</button>
+        </div>
+      </div>
+
+      <!-- c) Per-Wish Cycle Adjustment -->
+      <div class="n28sp-section">
+        <div class="n28sp-title">🌸 Wish Cycle Adjustment</div>
+        <div id="sp28WishList"></div>
+      </div>
+
+      <!-- d) Reset Options -->
+      <div class="n28sp-section" style="border-color:rgba(232,51,109,0.2)">
+        <div class="n28sp-title" style="color:var(--rl)">↺ Reset Options</div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <button class="n28sp-reset-btn" onclick="cr2('28today')">Reset Today's Count</button>
+          <button class="n28sp-reset-btn" onclick="reset28Time('today')">Reset Today's Time</button>
+          <button class="n28sp-reset-btn" onclick="reset28Time('all')">Reset All Time (Time only)</button>
+          <button class="n28sp-reset-btn" style="border-color:rgba(232,51,109,0.5);color:var(--rl)" onclick="cr2('28all')">Reset All 28 Names Data</button>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -752,6 +825,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
       <div class="cdmo-stat-row">📿 Jap <span class="cdmo-stat-val" id="cdmoJap">0</span></div>
       <div class="cdmo-stat-row">🔱 Malas <span class="cdmo-stat-val gold" id="cdmoMala">0</span></div>
       <div class="cdmo-stat-row">⏱ Jap Time <span class="cdmo-stat-val" id="cdmoTime">—</span></div>
+      <div class="cdmo-stat-row">🌸 28 Names Time <span class="cdmo-stat-val" style="color:var(--a2)" id="cdmoTime28">—</span></div>
       <div class="cdmo-stat-row" id="cdmoTargetRow" style="color:var(--td);font-size:11px">Target: <span id="cdmoPct" style="margin-left:auto;color:var(--td)">—</span></div>
     </div>
     <!-- Occasion -->
@@ -793,6 +867,14 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
             <div style="text-align:center"><div style="font-family:'EB Garamond',serif;font-size:20px;color:var(--gold)" id="tTod">00:00</div><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Today</div></div>
             <div style="text-align:center"><div style="font-family:'EB Garamond',serif;font-size:20px;color:var(--gold)" id="tWk">00:00</div><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:1px;margin-top:2px">This Week</div></div>
             <div style="text-align:center"><div style="font-family:'EB Garamond',serif;font-size:20px;color:var(--gold)" id="tMo">00:00</div><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:1px;margin-top:2px">This Month</div></div>
+          </div>
+        </div>
+        <div class="sb wide" style="background:rgba(109,184,255,0.05);border-color:rgba(109,184,255,0.18)">
+          <div class="sl" style="font-size:11px;color:var(--a2);margin-bottom:10px;letter-spacing:2px">⏱ 28 NAMES TIME</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <div style="text-align:center"><div style="font-family:'EB Garamond',serif;font-size:20px;color:var(--a2)" id="t28Tod">0m</div><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Today</div></div>
+            <div style="text-align:center"><div style="font-family:'EB Garamond',serif;font-size:20px;color:var(--a2)" id="t28Wk">0m</div><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:1px;margin-top:2px">This Week</div></div>
+            <div style="text-align:center"><div style="font-family:'EB Garamond',serif;font-size:20px;color:var(--a2)" id="t28Mo">0m</div><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:1px;margin-top:2px">This Month</div></div>
           </div>
         </div>
       </div>
@@ -1212,8 +1294,8 @@ const App = {
     tk: '', ms: 108, dt: 0, lt: 0,
     cfg: { vib: true, sound: true },
     history: {}, h28: {}, stotrams: {}, brahma: {},
-    customSt: [], timerHistory: {}, sankalpas: [], occasions: {},
-    syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {},
+    customSt: [], timerHistory: {}, timer28History: {}, sankalpas: [], occasions: {},
+    syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {},
     migrationV2Done: false
   },
   lmc: 0, lm28: 0,
@@ -1234,6 +1316,7 @@ const App = {
         if (!db.objectStoreNames.contains('history')) db.createObjectStore('history');
         if (!db.objectStoreNames.contains('h28')) db.createObjectStore('h28');
         if (!db.objectStoreNames.contains('timerHistory')) db.createObjectStore('timerHistory');
+        if (!db.objectStoreNames.contains('timer28History')) db.createObjectStore('timer28History');
         if (!db.objectStoreNames.contains('malaLog')) db.createObjectStore('malaLog');
       };
       req.onsuccess = e => { this.db = e.target.result; res(); };
@@ -1282,15 +1365,16 @@ const App = {
       ms: this.S.ms, dt: this.S.dt, lt: this.S.lt,
       cfg: this.S.cfg, stotrams: this.S.stotrams, brahma: this.S.brahma,
       customSt: this.S.customSt, sankalpas: this.S.sankalpas, occasions: this.S.occasions,
-      history: this.S.history, h28: this.S.h28, timerHistory: this.S.timerHistory,
+      history: this.S.history, h28: this.S.h28, timerHistory: this.S.timerHistory, timer28History: this.S.timer28History,
       syncBaseline: this.S.syncBaseline, syncBaseline28: this.S.syncBaseline28,
-      syncBaselineTimer: this.S.syncBaselineTimer, migrationV2Done: this.S.migrationV2Done
+      syncBaselineTimer: this.S.syncBaselineTimer, syncBaselineTimer28: this.S.syncBaselineTimer28, migrationV2Done: this.S.migrationV2Done
     });
     // Keep per-day stores updated for compatibility with existing offline data
     const tk = this.S.tk;
     if (this.S.history[tk] !== undefined) await this.dbPut('history', tk, this.S.history[tk]);
     if (this.S.h28[tk] !== undefined) await this.dbPut('h28', tk, this.S.h28[tk]);
     if (this.S.timerHistory[tk] !== undefined) await this.dbPut('timerHistory', tk, this.S.timerHistory[tk]);
+    if (this.S.timer28History[tk] !== undefined) await this.dbPut('timer28History', tk, this.S.timer28History[tk]);
     if (this.S.malaLog) await this.dbPut('malaLog', 'today', { date: tk, log: this.S.malaLog });
     try { localStorage.setItem('rjap5', JSON.stringify(this.S)); } catch(e) {}
     if (fbUser && !fbForcedSignout && !this._suspendCloudSync) fbDebouncedPush();
@@ -1316,11 +1400,13 @@ const App = {
     this.S.history = await this.dbGetAll('history');
     this.S.h28 = await this.dbGetAll('h28');
     this.S.timerHistory = await this.dbGetAll('timerHistory');
+    this.S.timer28History = await this.dbGetAll('timer28History');
 
     // Merge full snapshots saved in main state so past/future edits also persist locally
     if (main?.history) this.S.history = { ...main.history, ...this.S.history };
     if (main?.h28) this.S.h28 = { ...main.h28, ...this.S.h28 };
     if (main?.timerHistory) this.S.timerHistory = { ...main.timerHistory, ...this.S.timerHistory };
+    if (main?.timer28History) this.S.timer28History = { ...main.timer28History, ...this.S.timer28History };
 
     // Merge localStorage history as fallback for old data
     try {
@@ -1330,6 +1416,7 @@ const App = {
         if (d.history) { for (const k in d.history) if (!this.S.history[k]) this.S.history[k] = d.history[k]; }
         if (d.h28) { for (const k in d.h28) if (!this.S.h28[k]) this.S.h28[k] = d.h28[k]; }
         if (d.timerHistory) { for (const k in d.timerHistory) if (!this.S.timerHistory[k]) this.S.timerHistory[k] = d.timerHistory[k]; }
+        if (d.timer28History) { for (const k in d.timer28History) if (!this.S.timer28History[k]) this.S.timer28History[k] = d.timer28History[k]; }
       }
     } catch(e) {}
 
@@ -1339,6 +1426,7 @@ const App = {
     if (!this.S.brahma) this.S.brahma = {};
     if (!this.S.customSt) this.S.customSt = [];
     if (!this.S.timerHistory) this.S.timerHistory = {};
+    if (!this.S.timer28History) this.S.timer28History = {};
     if (!this.S.sankalpas) this.S.sankalpas = [];
     if (!this.S.occasions) this.S.occasions = {};
     // Load malaLog — only use if it's from today, otherwise start fresh
@@ -1431,7 +1519,7 @@ const App = {
   updateTimerToday() {
     const todSec = (this.S.timerHistory[this.S.tk] || 0) +
       (this.timerRunning ? (this.timerSeconds - this.timerSavedSeconds) : 0);
-    document.getElementById('timerToday').textContent = "Today's jap time: " + this.fmtTime(todSec);
+    document.getElementById('timerToday').textContent = "Today's Jap Time: " + this.fmtTime(todSec);
   },
 
   // ── Main UI Update ──
@@ -1528,21 +1616,115 @@ const App = {
   _n28CycleStart: null,
   _n28TotalStart: null,
   _n28TimerInterval: null,
-  _n28SavedSecs: 0,  // seconds already flushed into timerHistory
+  _n28SavedSecs: 0,      // seconds already flushed into timer28History this session
+  _n28Paused: false,
+  _n28PausedCycleSec: 0, // cycle seconds frozen at moment of pause
+  _n28PausedTotalSec: 0, // total seconds frozen at moment of pause
+  _n28AutoPauseTimeout: null,
+
+  // ── Update pause button appearance ──
+  _upd28PauseBtn() {
+    const btn = document.getElementById('n28PauseBtn');
+    if (!btn) return;
+    const hasStarted = !!this._n28TotalStart || this._n28Paused;
+    btn.style.display = hasStarted ? '' : 'none';
+    if (this._n28Paused) {
+      btn.textContent = '▶ Resume';
+      btn.style.background = 'rgba(39,174,96,0.15)';
+      btn.style.borderColor = 'rgba(46,204,113,0.4)';
+      btn.style.color = 'var(--green)';
+    } else {
+      btn.textContent = '⏸ Pause';
+      btn.style.background = 'rgba(109,184,255,0.12)';
+      btn.style.borderColor = 'rgba(109,184,255,0.35)';
+      btn.style.color = 'var(--a2)';
+    }
+  },
+
+  // ── Pause the 28 Names timers ──
+  pause28() {
+    if (this._n28Paused || !this._n28TotalStart) return;
+    // Freeze current values
+    this._n28PausedCycleSec = this._n28CycleStart
+      ? Math.floor((Date.now() - this._n28CycleStart) / 1000) : 0;
+    const sessionSec = Math.floor((Date.now() - this._n28TotalStart) / 1000);
+    const savedSec = this.S.timer28History[this.S.tk] || 0;
+    this._n28PausedTotalSec = savedSec + sessionSec;
+    // Flush elapsed time to history
+    this.flush28TimeToHistory();
+    // Stop interval
+    clearInterval(this._n28TimerInterval);
+    this._n28TimerInterval = null;
+    clearTimeout(this._n28AutoPauseTimeout);
+    this._n28AutoPauseTimeout = null;
+    // Clear session timestamps so flush doesn't double-count on resume
+    this._n28TotalStart = null;
+    this._n28CycleStart = null;
+    this._n28SavedSecs = 0;
+    this._n28Paused = true;
+    this._upd28PauseBtn();
+    // Show frozen values
+    const fmt = s => Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60);
+    const ce = document.getElementById('n28CycleTimer');
+    const te = document.getElementById('n28TotalTimer');
+    if (ce) ce.textContent = fmt(this._n28PausedCycleSec);
+    if (te) te.textContent = fmt(this._n28PausedTotalSec);
+  },
+
+  // ── Resume the 28 Names timers ──
+  resume28() {
+    if (!this._n28Paused) return;
+    this._n28Paused = false;
+    // Re-anchor timestamps accounting for already-elapsed time
+    // We offset TotalStart so the running total picks up from where it paused
+    // (timer28History already has savedSec baked in from flush)
+    this._n28TotalStart = Date.now();
+    this._n28SavedSecs = 0;
+    // Re-anchor cycle start so cycle timer picks up from frozen value
+    this._n28CycleStart = Date.now() - (this._n28PausedCycleSec * 1000);
+    this._upd28PauseBtn();
+    this.start28Timers();
+    // Re-arm 6s auto-pause
+    this._arm28AutoPause();
+  },
+
+  // ── Toggle pause/resume ──
+  toggle28Pause() {
+    if (this._n28Paused) this.resume28();
+    else this.pause28();
+  },
+
+  // ── Arm 6-second auto-pause ──
+  _arm28AutoPause() {
+    clearTimeout(this._n28AutoPauseTimeout);
+    this._n28AutoPauseTimeout = setTimeout(() => {
+      if (!this._n28Paused) this.pause28();
+    }, 6000);
+  },
 
   start28Timers() {
-    if (!this._n28TotalStart) { this._n28TotalStart = Date.now(); this._n28SavedSecs = 0; }
+    if (this._n28Paused) return; // don't start if paused
+    if (!this._n28TotalStart) {
+      this._n28TotalStart = Date.now();
+      this._n28SavedSecs = 0;
+    }
     if (!this._n28CycleStart) this._n28CycleStart = Date.now();
-    if (this._n28TimerInterval) return;
+    if (this._n28TimerInterval) return; // already running
     this._n28TimerInterval = setInterval(() => {
+      if (this._n28Paused) return;
       const fmt = s => Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60);
-      const cycSec = Math.floor((Date.now() - this._n28CycleStart) / 1000);
-      const totSec = Math.floor((Date.now() - this._n28TotalStart) / 1000);
+      const cycSec = this._n28CycleStart
+        ? Math.floor((Date.now() - this._n28CycleStart) / 1000) : 0;
+      const sessionSec = this._n28TotalStart
+        ? Math.floor((Date.now() - this._n28TotalStart) / 1000) : 0;
+      const todaySavedSec = this.S.timer28History[this.S.tk] || 0;
+      const totSec = todaySavedSec + sessionSec;
       const ce = document.getElementById('n28CycleTimer');
       const te = document.getElementById('n28TotalTimer');
       if (ce) ce.textContent = fmt(cycSec);
       if (te) te.textContent = fmt(totSec);
     }, 1000);
+    this._upd28PauseBtn();
   },
 
   flush28TimeToHistory() {
@@ -1550,7 +1732,7 @@ const App = {
     const elapsed = Math.floor((Date.now() - this._n28TotalStart) / 1000);
     const newSecs = elapsed - this._n28SavedSecs;
     if (newSecs > 0) {
-      this.S.timerHistory[this.S.tk] = (this.S.timerHistory[this.S.tk] || 0) + newSecs;
+      this.S.timer28History[this.S.tk] = (this.S.timer28History[this.S.tk] || 0) + newSecs;
       this._n28SavedSecs = elapsed;
       this.save(); fbDebouncedPush();
     }
@@ -1558,33 +1740,55 @@ const App = {
 
   resetCycleTimer28() {
     this.flush28TimeToHistory();
-    this._n28CycleStart = Date.now();
-    const ce = document.getElementById('n28CycleTimer');
-    if (ce) ce.textContent = '0:00';
+    // Reset cycle anchor — if paused, reset frozen cycle sec too
+    if (this._n28Paused) {
+      this._n28PausedCycleSec = 0;
+      const ce = document.getElementById('n28CycleTimer');
+      if (ce) ce.textContent = '0:00';
+    } else {
+      this._n28CycleStart = Date.now();
+      const ce = document.getElementById('n28CycleTimer');
+      if (ce) ce.textContent = '0:00';
+    }
   },
 
   stopAll28Timers() {
+    clearTimeout(this._n28AutoPauseTimeout);
+    this._n28AutoPauseTimeout = null;
     this.flush28TimeToHistory();
     clearInterval(this._n28TimerInterval);
     this._n28TimerInterval = null;
     this._n28CycleStart = null;
     this._n28TotalStart = null;
     this._n28SavedSecs = 0;
+    this._n28Paused = false;
+    this._n28PausedCycleSec = 0;
+    this._n28PausedTotalSec = 0;
     const ce = document.getElementById('n28CycleTimer');
     const te = document.getElementById('n28TotalTimer');
     if (ce) ce.textContent = '0:00';
-    if (te) te.textContent = '0:00';
+    // Show today's total accumulated 28 time
+    const fmt = s => Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60);
+    const todaySec = this.S.timer28History[this.S.tk] || 0;
+    if (te) te.textContent = fmt(todaySec);
+    this._upd28PauseBtn();
   },
 
   // ── 28 Names tap ──
   h28(e) {
     e.preventDefault();
+    // If paused, resume on tap
+    if (this._n28Paused) {
+      this.resume28();
+    }
     if (!this.S.h28[this.S.tk]) this.S.h28[this.S.tk] = 0;
     const posBefore = get28Pos();
     this.S.h28[this.S.tk]++;
     this.save(); fbDebouncedPush();
     this.vib([10]);
     this.start28Timers();
+    // Re-arm 6s auto-pause on every tap
+    this._arm28AutoPause();
     spawnName28(e, NAMES28[posBefore].name);
     const nm = Math.floor(this.S.h28[this.S.tk] / (this.S.ms || 108));
     if (nm > this.lm28) { this.lm28 = nm; this.malaOk(); App.silentMonkBackup(); }
@@ -1667,6 +1871,7 @@ setInterval(() => {
     if (!App.S.history[App.S.tk]) App.S.history[App.S.tk] = 0;
     if (!App.S.h28[App.S.tk]) App.S.h28[App.S.tk] = 0;
     if (!App.S.timerHistory[App.S.tk]) App.S.timerHistory[App.S.tk] = 0;
+    if (!App.S.timer28History[App.S.tk]) App.S.timer28History[App.S.tk] = 0;
     App.lmc = 0;
     App.save();
     App.ua();
@@ -1965,6 +2170,16 @@ function uStats() {
   document.getElementById('tTod').textContent = fmtShort(timeTod);
   document.getElementById('tWk').textContent = fmtShort(timeWk);
   document.getElementById('tMo').textContent = fmtShort(timeMo);
+  // 28 Names time — separate from main jap time
+  const _28running = !!App._n28TimerInterval;
+  const _28liveExtra = _28running ? Math.floor((Date.now() - (App._n28TotalStart || Date.now())) / 1000) - (App._n28SavedSecs || 0) : 0;
+  const t28Tod = (App.S.timer28History[App.S.tk]||0) + Math.max(0, _28liveExtra);
+  const t28Wk  = wk.reduce((s,k) => s + (App.S.timer28History[k]||0), 0) + (_28running && wk.includes(App.S.tk) ? Math.max(0,_28liveExtra) : 0);
+  const t28Mo  = Object.entries(App.S.timer28History).filter(([k]) => k.startsWith(mp)).reduce((s,[,v]) => s+v, 0) + ((_28running && App.S.tk.startsWith(mp)) ? Math.max(0,_28liveExtra) : 0);
+  const e28Tod = document.getElementById('t28Tod'), e28Wk = document.getElementById('t28Wk'), e28Mo = document.getElementById('t28Mo');
+  if (e28Tod) e28Tod.textContent = fmtShort(t28Tod);
+  if (e28Wk)  e28Wk.textContent  = fmtShort(t28Wk);
+  if (e28Mo)  e28Mo.textContent  = fmtShort(t28Mo);
 
   // Live previews for jap entry
   const mji = document.getElementById('manualJapIn');
@@ -2045,6 +2260,7 @@ function cr2(tp) {
   const t = document.getElementById('moT'), d = document.getElementById('moD');
   if (tp === 'today') { t.textContent = 'Reset Today?'; d.textContent = "Clear today's " + App.gTod() + " jap count."; }
   else if (tp === '28today') { t.textContent = 'Reset 28 Names Today?'; d.textContent = "Clear today's " + (App.S.h28[App.S.tk]||0) + " count."; }
+  else if (tp === '28all') { t.textContent = '⚠️ Reset All 28 Names Data?'; d.textContent = 'All 28 Names counts and time will be permanently deleted.'; }
   else if (tp === 'range') {
     const f = document.getElementById('rfrom').value, to = document.getElementById('rto').value;
     if (!f || !to) { toast('Please select both dates'); return; }
@@ -2055,13 +2271,14 @@ function cr2(tp) {
 }
 function doReset() {
   if (pr === 'today') { App.S.history[App.S.tk] = 0; App.lmc = 0; App.S.malaLog = []; }
-  else if (pr === '28today') { App.S.h28[App.S.tk] = 0; App.lm28 = 0; App.stopAll28Timers(); u28(); }
+  else if (pr === '28today') { App.S.h28[App.S.tk] = 0; App.S.timer28History[App.S.tk] = 0; App.lm28 = 0; App.stopAll28Timers(); u28(); }
+  else if (pr === '28all') { App.S.h28 = {}; App.S.timer28History = {}; App.lm28 = 0; App.stopAll28Timers(); u28(); render28StatsPanel(); }
   else if (pr === 'range') {
     const f = document.getElementById('rfrom').value, to = document.getElementById('rto').value;
-    Object.keys(App.S.history).forEach(k => { if (k >= f && k <= to) { App.S.history[k] = 0; if (App.S.timerHistory[k]) App.S.timerHistory[k] = 0; } });
+    Object.keys(App.S.history).forEach(k => { if (k >= f && k <= to) { App.S.history[k] = 0; if (App.S.timerHistory[k]) App.S.timerHistory[k] = 0; if (App.S.timer28History[k]) App.S.timer28History[k] = 0; } });
   } else {
     App.S.history = {}; App.S.h28 = {}; App.S.dt = 0; App.S.lt = 0; App.S.nameJapDeduct = 0;
-    App.S.stotrams = {}; App.S.brahma = {}; App.S.timerHistory = {}; App.S.malaLog = [];
+    App.S.stotrams = {}; App.S.brahma = {}; App.S.timerHistory = {}; App.S.timer28History = {}; App.S.malaLog = [];
     App.lmc = 0; App.lm28 = 0;
     STLIST.forEach(x => { App.S.stotrams[x.id] = {}; });
     App.resetTimer();
@@ -2073,8 +2290,9 @@ function cm() { document.getElementById('mo').classList.remove('show'); }
 // ── Backup / Restore ──
 function exportAllData() {
   const backup = {
-    _version: 2, _exported: new Date().toISOString(),
-    history: App.S.history||{}, h28: App.S.h28||{}, timerHistory: App.S.timerHistory||{},
+    _version: 3, _exported: new Date().toISOString(),
+    history: App.S.history||{}, h28: App.S.h28||{},
+    timerHistory: App.S.timerHistory||{}, timer28History: App.S.timer28History||{},
     stotrams: App.S.stotrams||{}, brahma: App.S.brahma||{}, customSt: App.S.customSt||[],
     sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{},
     ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{}
@@ -2099,6 +2317,7 @@ function importAllData(input) {
       if (data.history) App.S.history = {...App.S.history, ...data.history};
       if (data.h28) App.S.h28 = {...App.S.h28, ...data.h28};
       if (data.timerHistory) App.S.timerHistory = {...App.S.timerHistory, ...data.timerHistory};
+      if (data.timer28History) App.S.timer28History = {...App.S.timer28History, ...data.timer28History};
       if (data.stotrams) App.S.stotrams = {...App.S.stotrams, ...data.stotrams};
       if (data.brahma) App.S.brahma = {...App.S.brahma, ...data.brahma};
       if (data.customSt) App.S.customSt = data.customSt;
@@ -2112,6 +2331,7 @@ function importAllData(input) {
       App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history));
       App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28));
       App.S.syncBaselineTimer = JSON.parse(JSON.stringify(App.S.timerHistory));
+      App.S.syncBaselineTimer28 = JSON.parse(JSON.stringify(App.S.timer28History));
       App.save();
       App.ua(); renderSt(); u28(); renderBcal(); renderCal(); uStats(); renderSankalpas();
       App.lmc = Math.floor((App.S.history[App.S.tk]||0) / (App.S.ms||108));
@@ -2318,6 +2538,7 @@ async function fbPushFull() {
   const payload = {
     history: App.S.history||{}, h28: App.S.h28||{}, stotrams: App.S.stotrams||{},
     brahma: App.S.brahma||{}, customSt: App.S.customSt||[], timerHistory: App.S.timerHistory||{},
+    timer28History: App.S.timer28History||{},
     sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{}, malaLog: App.S.malaLog||[], malaLogDate: App.S.tk,
     ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{},
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2328,6 +2549,7 @@ async function fbPushFull() {
     App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history||{}));
     App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28||{}));
     App.S.syncBaselineTimer = JSON.parse(JSON.stringify(App.S.timerHistory||{}));
+    App.S.syncBaselineTimer28 = JSON.parse(JSON.stringify(App.S.timer28History||{}));
     App._suspendCloudSync = true;
     await App.save();
     App._suspendCloudSync = false;
@@ -2344,6 +2566,7 @@ function fbApplyRemote(d) {
   if ('history' in d) App.S.history = JSON.parse(JSON.stringify(d.history || {}));
   if ('h28' in d) App.S.h28 = JSON.parse(JSON.stringify(d.h28 || {}));
   if ('timerHistory' in d) App.S.timerHistory = JSON.parse(JSON.stringify(d.timerHistory || {}));
+  if ('timer28History' in d) App.S.timer28History = JSON.parse(JSON.stringify(d.timer28History || {}));
   if ('stotrams' in d) App.S.stotrams = JSON.parse(JSON.stringify(d.stotrams || {}));
   if ('brahma' in d) App.S.brahma = JSON.parse(JSON.stringify(d.brahma || {}));
   if ('customSt' in d) App.S.customSt = JSON.parse(JSON.stringify(d.customSt || []));
@@ -2367,9 +2590,11 @@ function fbApplyRemote(d) {
   if (!App.S.history[App.S.tk]) App.S.history[App.S.tk] = 0;
   if (!App.S.h28[App.S.tk]) App.S.h28[App.S.tk] = 0;
   if (!App.S.timerHistory[App.S.tk]) App.S.timerHistory[App.S.tk] = 0;
+  if (!App.S.timer28History[App.S.tk]) App.S.timer28History[App.S.tk] = 0;
   App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history||{}));
   App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28||{}));
   App.S.syncBaselineTimer = JSON.parse(JSON.stringify(App.S.timerHistory||{}));
+  App.S.syncBaselineTimer28 = JSON.parse(JSON.stringify(App.S.timer28History||{}));
   App._suspendCloudSync = true;
   App.save().finally(() => { App._suspendCloudSync = false; });
   App.lmc = Math.floor(App.gTod() / (App.S.ms||108));
@@ -2421,8 +2646,9 @@ async function gdDriveSilentBackup() {
   if (!gdAccessToken) return; // Not signed in with Google Drive scope
   try {
     const data = JSON.stringify({
-      version: 2, exportedAt: new Date().toISOString(),
-      history: App.S.history||{}, h28: App.S.h28||{}, timerHistory: App.S.timerHistory||{},
+      version: 3, exportedAt: new Date().toISOString(),
+      history: App.S.history||{}, h28: App.S.h28||{},
+      timerHistory: App.S.timerHistory||{}, timer28History: App.S.timer28History||{},
       stotrams: App.S.stotrams||{}, brahma: App.S.brahma||{}, customSt: App.S.customSt||[],
       sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{},
       ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{}
@@ -2516,6 +2742,14 @@ function u28() {
   if (cycEl) { cycEl.textContent = tod===0 ? 'Tap to begin · Cycle 1' : pos===0&&tod>0 ? '✨ Cycle '+(cc+1)+' begins!' : 'Cycle '+(cc+1)+' · '+pos+'/28 done'; }
   render28Dots(pos);
   renderSankalpas();
+  // Show today's accumulated 28-Names time in Total Timer if not currently running
+  if (!App._n28TimerInterval) {
+    const fmt28 = s => Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60);
+    const saved28 = App.S.timer28History[App.S.tk] || 0;
+    const te = document.getElementById('n28TotalTimer');
+    if (te && saved28 > 0) te.textContent = fmt28(saved28);
+  }
+  App._upd28PauseBtn();
 }
 
 function spawnName28(e, nameText) {
@@ -2544,6 +2778,8 @@ function cycleDone28() {
   if (fulfilled) { App.save(); fbDebouncedPush(); renderSankalpas(); toast('🌟 Sankalp fulfilled! Jai Radhe Radhe! 🙏'); }
   else { toast('🌸 Cycle complete! राधे राधे 🙏'); }
   if (navigator.vibrate) navigator.vibrate([80,40,80,40,200]);
+  // Auto-pause after cycle completion — resume by tapping
+  setTimeout(() => { if (!App._n28Paused) App.pause28(); }, 400);
 }
 
 // ── Sankalp ──
@@ -2679,6 +2915,140 @@ function deleteSankalp(id) {
   toast('Removed.');
 }
 function toggleSankalp() { const c=document.getElementById('skCollapse'),v=document.getElementById('skChevron'); const open=c.classList.toggle('open'); if(v)v.style.transform=open?'rotate(180deg)':'rotate(0deg)'; if(open)renderSankalpas(); }
+
+// ═══════════════════════════════════════════════════════
+// 28 NAMES STATS PANEL
+// ═══════════════════════════════════════════════════════
+function toggle28Stats() {
+  const panel = document.getElementById('n28StatsPanel');
+  const chev  = document.getElementById('n28StatsChev');
+  const open   = panel.style.display === 'block';
+  panel.style.display = open ? 'none' : 'block';
+  if (chev) chev.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
+  if (!open) render28StatsPanel();
+}
+
+function fmt28Short(s) {
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
+  return (h>0 ? h+'h ' : '') + m + 'm';
+}
+
+function render28StatsPanel() {
+  const tk = App.S.tk;
+  // Cycle counts
+  const todCycles = Math.floor((App.S.h28[tk]||0) / 28);
+  const allCycles = Math.floor(Object.values(App.S.h28).reduce((a,b)=>a+b,0) / 28);
+  const e1 = document.getElementById('sp28CyclesTod'), e2 = document.getElementById('sp28CyclesAll');
+  if (e1) e1.textContent = todCycles;
+  if (e2) e2.textContent = allCycles;
+  // Time
+  const todTime = App.S.timer28History[tk] || 0;
+  const allTime = Object.values(App.S.timer28History).reduce((a,b)=>a+b,0);
+  const et = document.getElementById('sp28TimeTod'), ea = document.getElementById('sp28TimeAll');
+  if (et) et.textContent = fmt28Short(todTime);
+  if (ea) ea.textContent = fmt28Short(allTime);
+  // Wish list
+  render28WishAdjust();
+}
+
+function render28WishAdjust() {
+  const el = document.getElementById('sp28WishList'); if (!el) return;
+  const active = (App.S.sankalpas||[]).filter(s=>!s.done);
+  if (!active.length) { el.innerHTML = '<div style="font-size:11px;color:var(--td);text-align:center;padding:6px">No active wishes 🌸</div>'; return; }
+  el.innerHTML = active.map(sk => {
+    const prog = getSankalpProgressById(sk.id, null);
+    return '<div class="n28sp-wish-row">'
+      + '<div class="n28sp-wish-name">'+escHtml(sk.wish.length>40?sk.wish.slice(0,40)+'…':sk.wish)+'</div>'
+      + '<div class="n28sp-wish-prog">'+prog+'/'+sk.target+'</div>'
+      + '<input class="n28sp-wish-in" type="number" min="1" placeholder="N" id="wpadj-'+sk.id+'">'
+      + '<button class="n28sp-btn add" style="padding:5px 8px;font-size:11px" onclick="adjWishCycles(\''+sk.id+'\',1)">＋</button>'
+      + '<button class="n28sp-btn ded" style="padding:5px 8px;font-size:11px" onclick="adjWishCycles(\''+sk.id+'\',-1)">－</button>'
+      + '</div>';
+  }).join('');
+}
+
+// Add/deduct cycles (1 cycle = 28 taps)
+function adj28Cycles(sign) {
+  const n = parseInt(document.getElementById('sp28CycleVal').value)||0;
+  if (n < 1) { toast('Enter number of cycles'); return; }
+  const taps = n * 28;
+  const tk = App.S.tk;
+  if (sign > 0) {
+    App.S.h28[tk] = (App.S.h28[tk]||0) + taps;
+    // Advance sankalp progress
+    const active = getActiveSankalp();
+    if (active && active.startCycles !== null) {
+      const prog = getTotalCycles28() - active.startCycles;
+      if (prog >= active.target) { active.done = true; active.doneDate = tk; activateNextSankalp(); renderSankalpas(); toast('🌟 Sankalp fulfilled! 🙏'); }
+    }
+  } else {
+    const cur = App.S.h28[tk]||0;
+    if (taps > cur) { toast('Cannot deduct more than today\'s count'); return; }
+    App.S.h28[tk] = cur - taps;
+    App.lm28 = Math.floor(App.S.h28[tk] / (App.S.ms||108));
+  }
+  App.save(); fbDebouncedPush(); u28(); render28StatsPanel();
+  document.getElementById('sp28CycleVal').value = '';
+  toast((sign>0?'Added ':'Deducted ')+n+' cycle'+(n>1?'s':'')+' 🙏');
+}
+
+// Add/deduct time (minutes + seconds)
+function adj28Time(sign) {
+  const m = parseInt(document.getElementById('sp28TimeMin').value)||0;
+  const s = parseInt(document.getElementById('sp28TimeSec').value)||0;
+  const secs = m*60 + Math.min(59, Math.max(0, s));
+  if (secs < 1) { toast('Enter time to adjust'); return; }
+  const tk = App.S.tk;
+  if (sign > 0) {
+    App.S.timer28History[tk] = (App.S.timer28History[tk]||0) + secs;
+  } else {
+    const cur = App.S.timer28History[tk]||0;
+    if (secs > cur) { toast('Cannot deduct more than today\'s 28 Names time'); return; }
+    App.S.timer28History[tk] = cur - secs;
+  }
+  App.save(); fbDebouncedPush(); render28StatsPanel(); uStats();
+  document.getElementById('sp28TimeMin').value = '';
+  document.getElementById('sp28TimeSec').value = '';
+  toast((sign>0?'Added ':'Deducted ')+m+'m '+s+'s 🙏');
+}
+
+// Add/deduct cycles toward a specific wish
+function adjWishCycles(id, sign) {
+  const n = parseInt(document.getElementById('wpadj-'+id)?.value)||0;
+  if (n < 1) { toast('Enter number of cycles'); return; }
+  const sk = (App.S.sankalpas||[]).find(s=>s.id===id);
+  if (!sk) return;
+  if (sign > 0) {
+    // Simulate progress by pushing startCycles back
+    if (sk.startCycles === null) sk.startCycles = getTotalCycles28();
+    sk.startCycles = Math.max(0, sk.startCycles - n);
+    const prog = getSankalpProgressById(id, null);
+    if (prog >= sk.target) { sk.done = true; sk.doneDate = App.S.tk; activateNextSankalp(); toast('🌟 Wish fulfilled! 🙏'); }
+    else { toast('Added '+n+' cycle'+(n>1?'s':'')+' to wish 🌸'); }
+  } else {
+    if (sk.startCycles === null) { toast('Wish not started yet'); return; }
+    sk.startCycles = sk.startCycles + n;
+    toast('Deducted '+n+' cycle'+(n>1?'s':'')+' from wish');
+  }
+  App.save(); fbDebouncedPush(); renderSankalpas(); render28StatsPanel();
+  const inp = document.getElementById('wpadj-'+id);
+  if (inp) inp.value = '';
+}
+
+// Reset 28 Names time
+function reset28Time(scope) {
+  if (scope === 'today') {
+    App.S.timer28History[App.S.tk] = 0;
+    // Also stop live timer if running
+    if (App._n28TotalStart || App._n28Paused) App.stopAll28Timers();
+    toast('Today\'s 28 Names time reset 🙏');
+  } else {
+    App.S.timer28History = {};
+    App.stopAll28Timers();
+    toast('All 28 Names time reset 🙏');
+  }
+  App.save(); fbDebouncedPush(); render28StatsPanel(); uStats();
+}
 
 // ── STOTRAM LIST (lyrics removed to keep file size manageable — same IDs as original) ──
 const STLIST = [
@@ -2865,7 +3235,7 @@ function renderCal(){
   for(let i=0;i<fd;i++)g.appendChild(document.createElement('div'));
   for(let d=1;d<=dim;d++){
     const key=yr+'-'+String(mo+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    const cnt=App.S.history[key]||0, timeSec=App.S.timerHistory[key]||0;
+    const cnt=App.S.history[key]||0, timeSec=App.S.timerHistory[key]||0, time28Sec=App.S.timer28History[key]||0;
     const occ=App.S.occasions&&App.S.occasions[key];
     const c=document.createElement('div');c.className='cc';
     if(key===ts)c.classList.add('today');
@@ -2875,14 +3245,14 @@ function renderCal(){
     if(cnt>0)inner+='<span class="ccc">'+cnt+'</span>';
     if(occ)inner+='<span class="cco">'+escHtml(occ)+'</span>';
     c.innerHTML=inner;
-    c.onclick=(()=>{const k=key,n=cnt,t=timeSec;return()=>showDay(k,n,t);})();
+    c.onclick=(()=>{const k=key,n=cnt,t=timeSec,t28=time28Sec;return()=>showDay(k,n,t,t28);})();
     g.appendChild(c);
   }
 }
 function chm(d){cald.setMonth(cald.getMonth()+d);renderCal();}
 // ── Calendar day bottom sheet ──
 let _sheetKey = null;
-function showDay(key, cnt, timeSec) {
+function showDay(key, cnt, timeSec, time28Sec) {
   _sheetKey = key;
   const ms = App.S.ms || 108;
   const pts = key.split('-'), yr = pts[0], mo = pts[1], d = pts[2];
@@ -2895,6 +3265,8 @@ function showDay(key, cnt, timeSec) {
   document.getElementById('cdmoJap').textContent = cnt;
   document.getElementById('cdmoMala').textContent = Math.floor(cnt / ms);
   document.getElementById('cdmoTime').textContent = timeSec > 0 ? App.fmtTime(timeSec) : '—';
+  const el28 = document.getElementById('cdmoTime28');
+  if (el28) el28.textContent = time28Sec > 0 ? App.fmtTime(time28Sec) : '—';
   const pct = App.S.dt > 0 ? Math.round(cnt / App.S.dt * 100) + '%' : '—';
   document.getElementById('cdmoPct').textContent = pct;
 

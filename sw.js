@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v6';  // bumped v5 → v6 (name jap deduct + best day fix)
+const CACHE = 'radha-jap-v7';  // bumped v6 → v7 (midnight date-rollover fix for mala log)
 
 const PRECACHE = [
   './index.html',

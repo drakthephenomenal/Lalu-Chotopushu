@@ -1657,6 +1657,23 @@ document.addEventListener('touchend', e => { const n = Date.now(); if (n - lt2 <
 // Stats timer tick
 setInterval(() => { if (App.timerRunning) App.updateTimerToday(); }, 1000);
 
+// ── Midnight date-rollover check ──
+// Fixes mala log not resetting when app stays open past midnight
+setInterval(() => {
+  const newTk = App.getTk();
+  if (newTk !== App.S.tk) {
+    App.S.tk = newTk;
+    App.S.malaLog = [];
+    if (!App.S.history[App.S.tk]) App.S.history[App.S.tk] = 0;
+    if (!App.S.h28[App.S.tk]) App.S.h28[App.S.tk] = 0;
+    if (!App.S.timerHistory[App.S.tk]) App.S.timerHistory[App.S.tk] = 0;
+    App.lmc = 0;
+    App.save();
+    App.ua();
+    uStats();
+  }
+}, 60000);
+
 // ── Toast ──
 function toast(msg) {
   let t = document.getElementById('toast');

@@ -2862,6 +2862,10 @@ function adjustSankalpCycles(id, sign) {
   if (amt < 1) { toast("Enter a valid number"); return; }
   if (sign === "add") {
     sk._savedProgress = (sk._savedProgress || 0) + amt;
+    // Also record in h28 history so All Time count updates
+    if (!App.S.h28) App.S.h28 = {};
+    if (!App.S.h28[App.S.tk]) App.S.h28[App.S.tk] = 0;
+    App.S.h28[App.S.tk] += amt;
   } else {
     const totalProg = getSankalpProgressById(id, null);
     if (amt > totalProg) { toast("Cannot deduct more than current progress ("+totalProg+")"); return; }
@@ -2886,7 +2890,9 @@ function renderSankalpas() {
   const nonDone = all.filter(s=>!s.done), done = all.filter(s=>s.done);
   let html = '';
   nonDone.forEach((sk,idx) => {
-    const prog = getSankalpProgress(sk), isActive = (prog >= 0);
+    const activeSk = getActiveSankalp();
+    const isActive = (activeSk && activeSk.id === sk.id);
+    const prog = getSankalpProgressById(sk.id, null);
     if (isActive) {
       const pct = Math.round(prog/sk.target*100);
       html += '<div class="sk-item" style="border-color:rgba(232,51,109,0.55);background:rgba(232,51,109,0.07)">'

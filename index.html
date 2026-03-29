@@ -2767,7 +2767,7 @@ function cycleDone28() {
   const active = getActiveSankalp();
   let fulfilled = false;
   if (active && active.startCycles !== null) {
-    const prog = Math.max(0, getTotalCycles28() - active.startCycles);
+    const prog = (active._savedProgress||0) + Math.max(0, getTotalCycles28() - active.startCycles);
     if (prog >= active.target) { active.done = true; active.doneDate = App.S.tk; fulfilled = true; activateNextSankalp(); }
   }
   if (fulfilled) { App.save(); fbDebouncedPush(); renderSankalpas(); toast('🌟 Sankalp fulfilled! Jai Radhe Radhe! 🙏'); }
@@ -2780,8 +2780,21 @@ function cycleDone28() {
 // ── Sankalp ──
 function getTotalCycles28() { return Math.floor(Object.values(App.S.h28).reduce((a,b)=>a+b,0)/28); }
 function getActiveSankalp() { return (App.S.sankalpas||[]).find(s=>!s.done)||null; }
-function activateNextSankalp() { const next=(App.S.sankalpas||[]).find(s=>!s.done); if(next&&next.startCycles===null)next.startCycles=getTotalCycles28(); }
-function getSankalpProgress(sk) { const active=getActiveSankalp(); if(!active||active.id!==sk.id) return -1; if(sk.startCycles===null) return 0; return Math.min(Math.max(0,getTotalCycles28()-sk.startCycles),sk.target); }
+function activateNextSankalp() {
+  const next=(App.S.sankalpas||[]).find(s=>!s.done);
+  if(next && next.startCycles===null) {
+    next.startCycles = getTotalCycles28();
+  }
+}
+function getSankalpProgress(sk) {
+  const saved = sk._savedProgress || 0;
+  const active = getActiveSankalp();
+  if (active && active.id === sk.id) {
+    if (sk.startCycles === null) return saved;
+    return Math.min(saved + Math.max(0, getTotalCycles28() - sk.startCycles), sk.target);
+  }
+  return saved > 0 ? saved : -1;
+}
 
 function addSankalp() {
   const wish = (document.getElementById('skWish').value||'').trim();
@@ -2789,7 +2802,7 @@ function addSankalp() {
   if (!wish) { toast('ইচ্ছা লিখুন 🙏'); return; }
   if (target < 1) { toast('Please enter target cycles'); return; }
   const hasActive = (App.S.sankalpas||[]).some(s=>!s.done);
-  const sk = { id:'sk_'+Date.now(), wish, target, startDate:App.S.tk, startCycles:hasActive?null:getTotalCycles28(), done:false, doneDate:null };
+  const sk = { id:'sk_'+Date.now(), wish, target, startDate:App.S.tk, startCycles:hasActive?null:getTotalCycles28(), done:false, doneDate:null, _savedProgress:0 };
   App.S.sankalpas.push(sk);
   document.getElementById('skWish').value = '';
   document.getElementById('skTarget').value = '';
@@ -2806,11 +2819,10 @@ function prioritizeSankalp(id) {
   // Pause current active — reset its startCycles so progress is preserved
   const prevActive = all.find(s=>!s.done);
   if (prevActive && prevActive.startCycles !== null) {
-    // Store accumulated progress as an offset so we don't lose it
-    prevActive._savedProgress = getSankalpProgressById(prevActive.id, all);
-    prevActive.startCycles = null; // will be re-activated when it returns to front
+    const liveProgress = Math.max(0, getTotalCycles28() - prevActive.startCycles);
+    prevActive._savedProgress = (prevActive._savedProgress || 0) + liveProgress;
+    prevActive.startCycles = null;
   }
-  // Activate the prioritized wish now
   sk.startCycles = getTotalCycles28();
   all.unshift(sk);
   App.S.sankalpas = all;
@@ -2820,8 +2832,10 @@ function prioritizeSankalp(id) {
 
 function getSankalpProgressById(id, list) {
   const sk = (list||App.S.sankalpas||[]).find(s=>s.id===id);
-  if (!sk || sk.startCycles===null) return 0;
-  return Math.min(Math.max(0, getTotalCycles28()-sk.startCycles), sk.target);
+  if (!sk) return 0;
+  const saved = sk._savedProgress || 0;
+  if (sk.startCycles === null) return saved;
+  return Math.min(saved + Math.max(0, getTotalCycles28() - sk.startCycles), sk.target);
 }
 
 // ── Edit target: update cycle count for a wish ──
@@ -2846,24 +2860,22 @@ function adjustSankalpCycles(id, sign) {
   if (!el) return;
   const amt = parseInt(el.value)||0;
   if (amt < 1) { toast("Enter a valid number"); return; }
-  if (sk.startCycles === null) { toast("Wish not yet active"); return; }
-  const tk = App.S.tk;
-  const taps = amt * 28;
   if (sign === "add") {
-    App.S.h28[tk] = (App.S.h28[tk]||0) + taps;
+    sk._savedProgress = (sk._savedProgress || 0) + amt;
   } else {
-    const prog = Math.max(0, getTotalCycles28() - sk.startCycles);
-    if (amt > prog) { toast("Cannot deduct more than current progress ("+prog+")"); return; }
-    const cur = App.S.h28[tk]||0;
-    App.S.h28[tk] = Math.max(0, cur - taps);
+    const totalProg = getSankalpProgressById(id, null);
+    if (amt > totalProg) { toast("Cannot deduct more than current progress ("+totalProg+")"); return; }
+    sk._savedProgress = Math.max(0, (sk._savedProgress || 0) - amt);
   }
   el.value = "";
-  App.save(); fbDebouncedPush(); renderSankalpas(); render28StatsPanel(); u28(); uStats();
+  App.save(); fbDebouncedPush(); renderSankalpas();
   toast((sign==="add"?"Added ":"Deducted ")+amt+" cycle(s) 🙏");
-  const active2 = getActiveSankalp();
-  if (active2 && active2.startCycles !== null) {
-    const p2 = Math.max(0, getTotalCycles28() - active2.startCycles);
-    if (p2 >= active2.target) { active2.done = true; active2.doneDate = App.S.tk; activateNextSankalp(); renderSankalpas(); toast('🌟 Sankalp fulfilled! 🙏'); }
+  const totalProg2 = getSankalpProgressById(id, null);
+  if (!sk.done && totalProg2 >= sk.target) {
+    sk.done = true; sk.doneDate = App.S.tk;
+    activateNextSankalp();
+    App.save(); fbDebouncedPush(); renderSankalpas();
+    toast('🌟 Sankalp fulfilled! 🙏');
   }
 }
 
@@ -2899,10 +2911,13 @@ function renderSankalpas() {
         +'<button class="sk-btn grey" onclick="deleteSankalp(\''+sk.id+'\')">✕</button></div>'
         +'</div>';
     } else {
+      const qProg = sk._savedProgress || 0;
+      const qPct = sk.target > 0 ? Math.round(qProg/sk.target*100) : 0;
       html += '<div class="sk-item" style="opacity:0.85">'
         +'<div style="font-size:9px;color:var(--td);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px">⏳ QUEUED #'+(idx+1)+'</div>'
         +'<div class="sk-wish" style="color:var(--tl)">'+escHtml(sk.wish)+'</div>'
         +'<div class="sk-meta">Target: <strong style="color:var(--tl)">'+sk.target+'</strong> cycles</div>'
+        +(qProg > 0 ? '<div class="sk-bar-wrap"><div class="sk-bar" style="width:'+Math.min(qPct,100)+'%"></div></div><div class="sk-prog-text">'+qProg+' / '+sk.target+' cycles ('+qPct+'%) — paused</div>' : '')
         // Edit target row for queued
         +'<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;padding:7px 9px;background:rgba(255,255,255,0.03);border-radius:8px">'
         +'<span style="font-size:11px;color:var(--td);flex:1">✏ Change target:</span>'
@@ -3022,7 +3037,7 @@ function adj28Cycles(sign) {
     App.S.h28[tk] = (App.S.h28[tk]||0) + taps;
     const active = getActiveSankalp();
     if (active && active.startCycles !== null) {
-      const prog = getTotalCycles28() - active.startCycles;
+      const prog = (active._savedProgress||0) + getTotalCycles28() - active.startCycles;
       if (prog >= active.target) { active.done = true; active.doneDate = tk; activateNextSankalp(); renderSankalpas(); toast('🌟 Sankalp fulfilled! 🙏'); }
     }
   } else {

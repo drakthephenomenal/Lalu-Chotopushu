@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v10';  // bumped v9 → v10 (bug fixes: cycle count, mala log, mala stat removed)
+const CACHE = 'radha-jap-v11';  // bumped v9 → v10 (bug fixes: cycle count, mala log, mala stat removed)
 
 const PRECACHE = [
   './index.html',

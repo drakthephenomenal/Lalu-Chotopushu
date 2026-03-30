@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v13';  // bumped v9 → v10 (bug fixes: cycle count, mala log, mala stat removed)
+const CACHE = 'radha-jap-v14';  // bumped v13 → v14 (28 Names timer buttons)
 
 const PRECACHE = [
   './index.html',

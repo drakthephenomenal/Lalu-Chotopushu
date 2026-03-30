@@ -666,13 +666,6 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
       <div class="n28meaning" id="n28meaning">The Supreme Beloved</div>
       <div class="n28cycle" id="n28cycle">Cycle 0 · tap to begin</div>
       <div class="n28prog" id="n28prog"></div>
-      <!-- Timer Bar — same pattern as Jap section -->
-      <div class="timer-bar" style="margin-top:8px;">
-        <button class="tbtn reset" onclick="App.reset28Timer()">↺</button>
-        <div class="timer-display" id="n28TimerDisplay">00:00:00</div>
-        <button class="tbtn start" id="n28TimerBtn" onclick="App.toggle28Timer()">▶ Start</button>
-      </div>
-      <div class="timer-today" id="n28TimerToday">Auto-starts when you tap · pauses after 6s</div>
       <div class="n28timers">
         <div class="n28timer-box">
           <div class="n28timer-val" id="n28CycleTimer">0:00</div>
@@ -681,6 +674,9 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
         <div class="n28timer-box">
           <div class="n28timer-val gold" id="n28TotalTimer">0:00</div>
           <div class="n28timer-lbl">Total Time</div>
+        </div>
+        <div class="n28timer-box" style="justify-content:center">
+          <button id="n28PauseBtn" onclick="App.toggle28Pause()" style="display:none;background:rgba(109,184,255,0.12);border:1px solid rgba(109,184,255,0.35);border-radius:16px;color:var(--a2);font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;letter-spacing:0.5px;transition:all 0.2s;font-family:'Inter',sans-serif;">⏸ Pause</button>
         </div>
       </div>
     </div>
@@ -1619,9 +1615,21 @@ const App = {
 
   // ── Update pause button appearance ──
   _upd28PauseBtn() {
-    // Update the main timer bar button
-    this._upd28TimerBtn();
-    this.update28TimerToday();
+    const btn = document.getElementById('n28PauseBtn');
+    if (!btn) return;
+    const hasStarted = !!this._n28TotalStart || this._n28Paused;
+    btn.style.display = hasStarted ? '' : 'none';
+    if (this._n28Paused) {
+      btn.textContent = '▶ Resume';
+      btn.style.background = 'rgba(39,174,96,0.15)';
+      btn.style.borderColor = 'rgba(46,204,113,0.4)';
+      btn.style.color = 'var(--green)';
+    } else {
+      btn.textContent = '⏸ Pause';
+      btn.style.background = 'rgba(109,184,255,0.12)';
+      btn.style.borderColor = 'rgba(109,184,255,0.35)';
+      btn.style.color = 'var(--a2)';
+    }
   },
 
   // ── Pause the 28 Names timers ──
@@ -1632,7 +1640,7 @@ const App = {
       ? Math.floor((Date.now() - this._n28CycleStart) / 1000) : 0;
     const sessionSec = Math.floor((Date.now() - this._n28TotalStart) / 1000);
     const savedSec = this.S.timer28History[this.S.tk] || 0;
-    this._n28PausedTotalSec = savedSec + sessionSec;
+    this._n28PausedTotalSec = savedSec + (sessionSec - (this._n28SavedSecs || 0));
     // Flush elapsed time to history
     this.flush28TimeToHistory();
     // Stop interval
@@ -1652,9 +1660,6 @@ const App = {
     const te = document.getElementById('n28TotalTimer');
     if (ce) ce.textContent = fmt(this._n28PausedCycleSec);
     if (te) te.textContent = fmt(this._n28PausedTotalSec);
-    // Update main display
-    const mainDisp = document.getElementById('n28TimerDisplay');
-    if (mainDisp) mainDisp.textContent = this.fmtTime(this._n28PausedTotalSec);
   },
 
   // ── Resume the 28 Names timers ──
@@ -1678,63 +1683,6 @@ const App = {
   toggle28Pause() {
     if (this._n28Paused) this.resume28();
     else this.pause28();
-  },
-
-  // ── Toggle 28 Names timer (Start/Pause) — mirrors Jap toggleTimer() ──
-  toggle28Timer() {
-    clearTimeout(this._n28AutoPauseTimeout);
-    if (this._n28Paused) {
-      this.resume28();
-    } else if (this._n28TotalStart) {
-      this.pause28();
-    } else {
-      // First start
-      this.start28Timers();
-      this._arm28AutoPause();
-    }
-    this._upd28TimerBtn();
-  },
-
-  // ── Reset 28 Names session timer — mirrors Jap resetTimer() ──
-  reset28Timer() {
-    clearTimeout(this._n28AutoPauseTimeout);
-    this.stopAll28Timers();
-    document.getElementById('n28TimerDisplay').textContent = '00:00:00';
-    document.getElementById('n28TimerDisplay').classList.remove('running');
-    this._upd28TimerBtn();
-    this.update28TimerToday();
-  },
-
-  // ── Update 28 Names timer button appearance — mirrors Jap timerBtn ──
-  _upd28TimerBtn() {
-    const btn = document.getElementById('n28TimerBtn');
-    const disp = document.getElementById('n28TimerDisplay');
-    if (!btn) return;
-    const isRunning = !!(this._n28TotalStart && !this._n28Paused);
-    const isPaused = this._n28Paused;
-    if (isRunning) {
-      btn.textContent = '⏸ Pause';
-      btn.className = 'tbtn pause';
-      if (disp) disp.classList.add('running');
-    } else if (isPaused) {
-      btn.textContent = '▶ Resume';
-      btn.className = 'tbtn start';
-      if (disp) disp.classList.remove('running');
-    } else {
-      btn.textContent = '▶ Start';
-      btn.className = 'tbtn start';
-      if (disp) disp.classList.remove('running');
-    }
-  },
-
-  // ── Update "Today's 28 Names Time" display ──
-  update28TimerToday() {
-    const todSec = (this.S.timer28History[this.S.tk] || 0) +
-      (this._n28TotalStart && !this._n28Paused
-        ? Math.max(0, Math.floor((Date.now() - this._n28TotalStart) / 1000) - (this._n28SavedSecs || 0))
-        : 0);
-    const el = document.getElementById('n28TimerToday');
-    if (el) el.textContent = "Today\'s 28 Names Time: " + this.fmtTime(todSec);
   },
 
   // ── Arm 6-second auto-pause ──
@@ -1766,10 +1714,6 @@ const App = {
       const te = document.getElementById('n28TotalTimer');
       if (ce) ce.textContent = fmt(cycSec);
       if (te) te.textContent = fmt(totSec);
-      // Update main timer display (HH:MM:SS format like Jap section)
-      const mainDisp = document.getElementById('n28TimerDisplay');
-      if (mainDisp) mainDisp.textContent = this.fmtTime(totSec);
-      this.update28TimerToday();
     }, 1000);
     this._upd28PauseBtn();
   },
@@ -1818,12 +1762,6 @@ const App = {
     const fmt = s => Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60);
     const todaySec = this.S.timer28History[this.S.tk] || 0;
     if (te) te.textContent = fmt(todaySec);
-    // Reset main timer display
-    const mainDisp = document.getElementById('n28TimerDisplay');
-    if (mainDisp) {
-      mainDisp.textContent = todaySec > 0 ? this.fmtTime(todaySec) : '00:00:00';
-      mainDisp.classList.remove('running');
-    }
     this._upd28PauseBtn();
   },
 
@@ -1842,7 +1780,6 @@ const App = {
     this.start28Timers();
     // Re-arm 6s auto-pause on every tap
     this._arm28AutoPause();
-    this._upd28TimerBtn();
     spawnName28(e, NAMES28[posBefore].name);
     const nm = Math.floor(this.S.h28[this.S.tk] / (this.S.ms || 108));
     if (nm > this.lm28) { this.lm28 = nm; this.malaOk(); App.silentMonkBackup(); }
@@ -2955,6 +2892,15 @@ function adjustSankalpCycles(id, sign) {
     sk._savedProgress = Math.max(0, (sk._savedProgress || 0) - amt);
     // Rebase startCycles so live taps don't re-add the deducted amount
     if (sk.startCycles !== null) sk.startCycles = getTotalCycles28();
+  }
+
+  // Rebase the ACTIVE wish's startCycles too (if different from target)
+  // so it doesn't absorb the h28 change as phantom live progress
+  const activeWish = getActiveSankalp();
+  if (activeWish && activeWish.id !== id && activeWish.startCycles !== null) {
+    const activeLive = Math.max(0, getTotalCycles28() - activeWish.startCycles);
+    activeWish._savedProgress = (activeWish._savedProgress || 0) + activeLive;
+    activeWish.startCycles = getTotalCycles28();
   }
 
   el.value = "";

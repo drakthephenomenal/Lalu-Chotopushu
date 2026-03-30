@@ -360,6 +360,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .n28meaning{font-size:12px;color:var(--a2);margin-top:6px;letter-spacing:1px;text-align:center;opacity:0.85;}
 .n28cycle{font-size:11px;color:var(--td);margin-top:10px;letter-spacing:2px;text-transform:uppercase;}
 .n28timers{display:flex;gap:14px;justify-content:center;margin-top:8px;flex-wrap:wrap;}
+.n28-top-timers .n28timer-box{background:rgba(0,0,0,0.2);border-radius:10px;padding:4px 10px;}
 .n28timer-box{display:flex;flex-direction:column;align-items:center;gap:2px;}
 .n28timer-val{font-family:'EB Garamond',serif;font-size:20px;color:var(--a2);letter-spacing:2px;filter:drop-shadow(0 0 6px rgba(109,184,255,0.4));}
 .n28timer-val.gold{color:var(--gold);filter:drop-shadow(0 0 6px rgba(255,215,0,0.4));}
@@ -660,24 +661,28 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
       <div class="ns"><div class="nv" id="n28t">0</div><div class="nl">Today</div></div>
       <div class="ns"><div class="nv" id="n28tot">0</div><div class="nl">Cycles</div></div>
     </div>
+    <div class="n28-top-timers" style="display:flex;justify-content:space-between;align-items:flex-start;padding:0 4px;margin-bottom:6px;">
+      <div class="n28timer-box" style="text-align:left">
+        <div class="n28timer-val" id="n28CycleTimer" style="font-size:18px">0:00</div>
+        <div class="n28timer-lbl">Cycle Time</div>
+      </div>
+      <div class="n28timer-box" style="text-align:right">
+        <div class="n28timer-val gold" id="n28TotalTimer" style="font-size:18px">0:00</div>
+        <div class="n28timer-lbl">Total Time</div>
+      </div>
+    </div>
     <div class="n28tz" id="tz28" ontouchstart="App.h28(event)" onmousedown="App.h28(event)">
+      <div class="mf" id="mf28" style="border-radius:22px;">
+        <div class="mf-line1">Radha Vallabh</div>
+        <div class="mf-line2">Sri Harivangsa</div>
+      </div>
       <div class="n28num" id="n28num">১</div>
       <div class="n28name" id="n28name">রাধা</div>
       <div class="n28meaning" id="n28meaning">The Supreme Beloved</div>
       <div class="n28cycle" id="n28cycle">Cycle 0 · tap to begin</div>
       <div class="n28prog" id="n28prog"></div>
-      <div class="n28timers">
-        <div class="n28timer-box">
-          <div class="n28timer-val" id="n28CycleTimer">0:00</div>
-          <div class="n28timer-lbl">Cycle Time</div>
-        </div>
-        <div class="n28timer-box">
-          <div class="n28timer-val gold" id="n28TotalTimer">0:00</div>
-          <div class="n28timer-lbl">Total Time</div>
-        </div>
-        <div class="n28timer-box" style="justify-content:center">
+      <div class="n28timer-box" style="position:absolute;top:10px;right:12px;z-index:5">
           <button id="n28PauseBtn" onclick="App.toggle28Pause()" style="display:none;background:rgba(109,184,255,0.12);border:1px solid rgba(109,184,255,0.35);border-radius:16px;color:var(--a2);font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;letter-spacing:0.5px;transition:all 0.2s;font-family:'Inter',sans-serif;">⏸ Pause</button>
-        </div>
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -2266,7 +2271,7 @@ function cr2(tp) {
 function doReset() {
   if (pr === 'today') { App.S.history[App.S.tk] = 0; App.lmc = 0; App.S.malaLog = []; }
   else if (pr === '28today') { App.S.h28[App.S.tk] = 0; App.S.timer28History[App.S.tk] = 0; App.lm28 = 0; App.stopAll28Timers(); u28(); }
-  else if (pr === '28all') { App.S.h28 = {}; App.S.timer28History = {}; App.S.h28[App.S.tk] = 0; App.S.timer28History[App.S.tk] = 0; App.lm28 = 0; App.stopAll28Timers(); u28(); render28StatsPanel(); }
+  else if (pr === '28all') { App.S.h28 = {}; App.S.timer28History = {}; App.S.h28[App.S.tk] = 0; App.S.timer28History[App.S.tk] = 0; App.lm28 = 0; App.S.sankalpas = []; App.stopAll28Timers(); u28(); render28StatsPanel(); renderSankalpas(); }
   else if (pr === 'range') {
     const f = document.getElementById('rfrom').value, to = document.getElementById('rto').value;
     Object.keys(App.S.history).forEach(k => { if (k >= f && k <= to) { App.S.history[k] = 0; if (App.S.timerHistory[k]) App.S.timerHistory[k] = 0; if (App.S.timer28History[k]) App.S.timer28History[k] = 0; } });
@@ -2761,7 +2766,57 @@ function spawnName28(e, nameText) {
 }
 
 function cycleDone28() {
+  // Capture cycle time before resetting
+  const cycleTimeSec = App._n28CycleStart
+    ? Math.floor((Date.now() - App._n28CycleStart) / 1000) : 0;
+  const fmtCyc = s => Math.floor(s/60)+'m '+(s%60)+'s';
+
   App.resetCycleTimer28();
+
+  // Show Radha Vallabh / Sri Harivangsa animation
+  const mf28 = document.getElementById('mf28');
+  if (mf28) {
+    mf28.classList.add('show');
+    setTimeout(() => mf28.classList.remove('show'), 3000);
+  }
+
+  // Show cycle time floating animation
+  if (cycleTimeSec > 0) {
+    const te = document.getElementById('n28CycleTimer');
+    if (te) {
+      const rect = te.getBoundingClientRect();
+      const el = document.createElement('div');
+      el.className = 'mala-time-float';
+      el.textContent = '📿 ' + fmtCyc(cycleTimeSec);
+      el.style.fontSize = '20px';
+      el.style.left = (rect.left + rect.width / 2 - 40) + 'px';
+      el.style.top = (rect.top - 4) + 'px';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 2100);
+    }
+  }
+
+  // Stop total timer, reset cycle timer to zero
+  App.flush28TimeToHistory();
+  clearInterval(App._n28TimerInterval);
+  App._n28TimerInterval = null;
+  clearTimeout(App._n28AutoPauseTimeout);
+  App._n28AutoPauseTimeout = null;
+  App._n28CycleStart = null;
+  App._n28TotalStart = null;
+  App._n28SavedSecs = 0;
+  App._n28Paused = false;
+  App._n28PausedCycleSec = 0;
+  App._n28PausedTotalSec = 0;
+  const ce = document.getElementById('n28CycleTimer');
+  if (ce) ce.textContent = '0:00';
+  // Show accumulated total time (frozen)
+  const fmt28t = s => Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60);
+  const todaySec = App.S.timer28History[App.S.tk] || 0;
+  const teDisp = document.getElementById('n28TotalTimer');
+  if (teDisp) teDisp.textContent = fmt28t(todaySec);
+  App._upd28PauseBtn();
+
   const zone = document.getElementById('tz28');
   zone.style.background = 'radial-gradient(ellipse at center,rgba(255,215,0,0.25) 0%,rgba(6,13,31,0.6) 100%)';
   setTimeout(() => zone.style.background = '', 600);
@@ -2774,8 +2829,6 @@ function cycleDone28() {
   if (fulfilled) { App.save(); fbDebouncedPush(); renderSankalpas(); toast('🌟 Sankalp fulfilled! Jai Radhe Radhe! 🙏'); }
   else { toast('🌸 Cycle complete! राधे राधे 🙏'); }
   if (navigator.vibrate) navigator.vibrate([80,40,80,40,200]);
-  // Auto-pause after cycle completion — resume by tapping
-  setTimeout(() => { if (!App._n28Paused) App.pause28(); }, 400);
 }
 
 // ── Sankalp ──

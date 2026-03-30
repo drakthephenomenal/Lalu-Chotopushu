@@ -1867,6 +1867,7 @@ setInterval(() => {
     if (!App.S.timer28History[App.S.tk]) App.S.timer28History[App.S.tk] = 0;
     App.lmc = 0;
     App.save();
+    fbDebouncedPush();
     App.ua();
     uStats();
   }
@@ -1956,13 +1957,13 @@ function svt(tp) {
 }
 function svm() {
   App.S.ms = parseInt(document.getElementById('msIn').value) || 108;
-  App.save(); App.ua(); toast('Mala size saved! 📿');
+  App.save(); App.ua(); fbDebouncedPush(); gdDriveSilentBackup(); toast('Mala size saved! 📿');
 }
 function tgs(k) {
   App.S.cfg[k] = !App.S.cfg[k];
   const m = { vib: 'tgVib', sound: 'tgSnd' };
   App.S.cfg[k] ? document.getElementById(m[k]).classList.add('on') : document.getElementById(m[k]).classList.remove('on');
-  App.save();
+  App.save(); fbDebouncedPush();
 }
 
 // ── Collapsible Section Toggle ──
@@ -2276,7 +2277,7 @@ function doReset() {
     STLIST.forEach(x => { App.S.stotrams[x.id] = {}; });
     App.resetTimer();
   }
-  App.save(); App.ua(); renderCal(); cm(); toast('Reset complete 🙏');
+  App.save(); App.ua(); fbDebouncedPush(); gdDriveSilentBackup(); renderCal(); cm(); toast('Reset complete 🙏');
 }
 function cm() { document.getElementById('mo').classList.remove('show'); }
 
@@ -2894,7 +2895,7 @@ function adjustSankalpCycles(id, sign) {
   }
 
   el.value = "";
-  App.save(); fbDebouncedPush(); renderSankalpas(); render28StatsPanel(); u28();
+  App.save(); fbDebouncedPush(); gdDriveSilentBackup(); renderSankalpas(); render28StatsPanel(); u28();
   toast((sign==="add"?"Added ":"Deducted ")+amt+" cycle(s) 🙏");
   const totalProg2 = getSankalpProgressById(id, null);
   if (!sk.done && totalProg2 >= sk.target) {
@@ -3098,7 +3099,7 @@ function adj28Cycles(sign) {
   document.getElementById('sp28CycleVal').value = '';
   const pr = document.getElementById('sp28CyclePreview'); if (pr) pr.textContent = '';
   render28StatsPanel(); u28(); uStats(); renderSankalpas();
-  App.save(); fbDebouncedPush();
+  App.save(); fbDebouncedPush(); gdDriveSilentBackup();
   toast((sign>0?'Added ':'Deducted ')+n+' cycle'+(n>1?'s':'')+' 🙏');
 }
 

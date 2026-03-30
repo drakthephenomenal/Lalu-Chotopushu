@@ -2860,21 +2860,39 @@ function adjustSankalpCycles(id, sign) {
   if (!el) return;
   const amt = parseInt(el.value)||0;
   if (amt < 1) { toast("Enter a valid number"); return; }
+
+  // ── STEP 1: Freeze this wish's live progress into _savedProgress ──
+  // This rebases startCycles so the upcoming h28 change doesn't
+  // cause a double-count or under-count on the wish bar.
+  if (sk.startCycles !== null) {
+    const live = Math.max(0, getTotalCycles28() - sk.startCycles);
+    sk._savedProgress = (sk._savedProgress || 0) + live;
+    sk.startCycles = getTotalCycles28(); // will be updated again below after h28 changes
+  }
+
   if (sign === "add") {
-    sk._savedProgress = (sk._savedProgress || 0) + amt;
-    // Also record in h28 history so All Time count updates (h28 stores taps, 1 cycle = 28 taps)
+    // Write to h28 → shows in All Time cycles and Stats panel automatically
     if (!App.S.h28) App.S.h28 = {};
     if (!App.S.h28[App.S.tk]) App.S.h28[App.S.tk] = 0;
     App.S.h28[App.S.tk] += amt * 28;
+    App.lm28 = Math.floor(App.S.h28[App.S.tk] / (App.S.ms||108));
+    // Credit this wish's progress bar for exactly amt cycles
+    sk._savedProgress = (sk._savedProgress || 0) + amt;
+    // Rebase startCycles to new total so live taps don't re-add these cycles
+    if (sk.startCycles !== null) sk.startCycles = getTotalCycles28();
   } else {
     const totalProg = getSankalpProgressById(id, null);
     if (amt > totalProg) { toast("Cannot deduct more than current progress ("+totalProg+")"); return; }
-    sk._savedProgress = Math.max(0, (sk._savedProgress || 0) - amt);
-    // Also deduct from h28 history to keep Stats in sync (h28 stores taps)
+    // Deduct from h28 → Stats and All Time go down
     if (!App.S.h28[App.S.tk]) App.S.h28[App.S.tk] = 0;
     App.S.h28[App.S.tk] = Math.max(0, App.S.h28[App.S.tk] - amt * 28);
     App.lm28 = Math.floor(App.S.h28[App.S.tk] / (App.S.ms||108));
+    // Remove from this wish's progress bar for exactly amt cycles
+    sk._savedProgress = Math.max(0, (sk._savedProgress || 0) - amt);
+    // Rebase startCycles so live taps don't re-add the deducted amount
+    if (sk.startCycles !== null) sk.startCycles = getTotalCycles28();
   }
+
   el.value = "";
   App.save(); fbDebouncedPush(); renderSankalpas(); render28StatsPanel(); u28();
   toast((sign==="add"?"Added ":"Deducted ")+amt+" cycle(s) 🙏");
@@ -3043,12 +3061,27 @@ function adj28Cycles(sign) {
   if (n < 1) { toast('Enter number of cycles'); return; }
   const taps = n * 28;
   const tk = App.S.tk;
+
+  // ── Freeze ALL active wishes before touching h28 ──
+  // Each wish's live progress = _savedProgress + (getTotalCycles28() - startCycles).
+  // If we change h28 without freezing, every wish bar drifts by the same amount.
+  // So we bake the live portion into _savedProgress first, then rebase after.
+  (App.S.sankalpas||[]).filter(s => !s.done && s.startCycles !== null).forEach(s => {
+    s._savedProgress = (s._savedProgress || 0) + Math.max(0, getTotalCycles28() - s.startCycles);
+    s.startCycles = getTotalCycles28();
+  });
+
   if (sign > 0) {
     App.S.h28[tk] = (App.S.h28[tk]||0) + taps;
+    App.lm28 = Math.floor(App.S.h28[tk] / (App.S.ms||108));
+    // Rebase all active wishes to the new global total — their bars stay put
+    (App.S.sankalpas||[]).filter(s => !s.done && s.startCycles !== null).forEach(s => {
+      s.startCycles = getTotalCycles28();
+    });
+    // Check fulfillment for active wish
     const active = getActiveSankalp();
-    if (active && active.startCycles !== null) {
-      // h28 taps flow through getTotalCycles28() to sankalp progress automatically
-      const prog = (active._savedProgress||0) + Math.max(0, getTotalCycles28() - active.startCycles);
+    if (active) {
+      const prog = getSankalpProgressById(active.id, null);
       if (prog >= active.target) { active.done = true; active.doneDate = tk; activateNextSankalp(); renderSankalpas(); toast('🌟 Sankalp fulfilled! 🙏'); }
     }
   } else {
@@ -3056,18 +3089,15 @@ function adj28Cycles(sign) {
     if (taps > cur) { toast('Cannot deduct more than today\'s count'); return; }
     App.S.h28[tk] = cur - taps;
     App.lm28 = Math.floor(App.S.h28[tk] / (App.S.ms||108));
-    // Also deduct from active sankalp _savedProgress to keep Wishes in sync
-    const active = getActiveSankalp();
-    if (active && active.startCycles !== null) {
-      active._savedProgress = Math.max(0, (active._savedProgress || 0) - n);
-    }
+    // Rebase all active wishes to the new (lower) global total — bars stay put
+    (App.S.sankalpas||[]).filter(s => !s.done && s.startCycles !== null).forEach(s => {
+      s.startCycles = getTotalCycles28();
+    });
   }
-  // Clear input and preview instantly
+
   document.getElementById('sp28CycleVal').value = '';
   const pr = document.getElementById('sp28CyclePreview'); if (pr) pr.textContent = '';
-  // Update all displays immediately
   render28StatsPanel(); u28(); uStats(); renderSankalpas();
-  // Save and sync in background
   App.save(); fbDebouncedPush();
   toast((sign>0?'Added ':'Deducted ')+n+' cycle'+(n>1?'s':'')+' 🙏');
 }

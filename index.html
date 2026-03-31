@@ -1804,8 +1804,6 @@ const App = {
     // Re-arm 6s auto-pause on every tap
     this._arm28AutoPause();
     spawnName28(e, NAMES28[posBefore].name);
-    const nm = Math.floor(this.S.h28[this.S.tk] / (this.S.ms || 108));
-    if (nm > this.lm28) { this.lm28 = nm; this.malaOk(); App.silentMonkBackup(); }
     if (this.S.h28[this.S.tk] % 28 === 0) cycleDone28();
     u28();
   },
@@ -1818,7 +1816,6 @@ const App = {
         s.startCycles = getTotalCycles28();
       });
       this.S.h28[this.S.tk]--;
-      this.lm28 = Math.floor((this.S.h28[this.S.tk] || 0) / (this.S.ms || 108));
       // Rebase wishes to new lower total
       (this.S.sankalpas||[]).filter(s => !s.done && s.startCycles !== null).forEach(s => {
         s.startCycles = getTotalCycles28();

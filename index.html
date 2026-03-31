@@ -1347,6 +1347,16 @@ const App = {
     });
   },
 
+  async dbClearStore(store) {
+    if (!this.db) return;
+    return new Promise(res => {
+      const tx = this.db.transaction(store, 'readwrite');
+      tx.objectStore(store).clear();
+      tx.oncomplete = res;
+      tx.onerror = res;
+    });
+  },
+
   async save() {
     // Save full state snapshot to IDB so all dates and edits persist locally
     await this.dbPut('state', 'main', {
@@ -2291,9 +2301,45 @@ function doReset() {
     (App.S.sankalpas||[]).filter(s => !s.done && s.startCycles !== null).forEach(s => {
       s.startCycles = getTotalCycles28();
     });
+    // Write 0 into IDB per-day store and localStorage so it can't come back
+    App.dbPut('h28', App.S.tk, 0);
+    App.dbPut('timer28History', App.S.tk, 0);
+    try {
+      const ls = localStorage.getItem('rjap5');
+      if (ls) {
+        const d = JSON.parse(ls);
+        if (d.h28) d.h28[App.S.tk] = 0;
+        if (d.timer28History) d.timer28History[App.S.tk] = 0;
+        localStorage.setItem('rjap5', JSON.stringify(d));
+      }
+    } catch(e) {}
+    App.save();
     u28(); render28StatsPanel(); renderSankalpas();
   }
-  else if (pr === '28all') { App.S.h28 = {}; App.S.timer28History = {}; App.S.h28[App.S.tk] = 0; App.S.timer28History[App.S.tk] = 0; App.lm28 = 0; App.S.sankalpas = []; App.stopAll28Timers(); u28(); render28StatsPanel(); renderSankalpas(); App.save(); fbDebouncedPush(); gdDriveSilentBackup(); toast('All 28 Names data reset 🙏'); return; }
+  else if (pr === '28all') {
+    // 1. Clear in-memory
+    App.S.h28 = {}; App.S.timer28History = {};
+    App.S.h28[App.S.tk] = 0; App.S.timer28History[App.S.tk] = 0;
+    App.S.sankalpas = []; App.S.syncBaseline28 = {};
+    App.lm28 = 0; App.stopAll28Timers();
+    // 2. Wipe the IDB per-day stores entirely so old keys can't merge back
+    App.dbClearStore('h28').then(() => App.dbPut('h28', App.S.tk, 0));
+    App.dbClearStore('timer28History').then(() => App.dbPut('timer28History', App.S.tk, 0));
+    // 3. Also clear localStorage so it can't resurrect either
+    try {
+      const ls = localStorage.getItem('rjap5');
+      if (ls) {
+        const d = JSON.parse(ls);
+        d.h28 = {}; d.timer28History = {}; d.sankalpas = []; d.syncBaseline28 = {};
+        localStorage.setItem('rjap5', JSON.stringify(d));
+      }
+    } catch(e) {}
+    // 4. Save main state with empty h28 so main IDB key is also clean
+    App.save();
+    fbDebouncedPush(); gdDriveSilentBackup();
+    u28(); render28StatsPanel(); renderSankalpas();
+    toast('All 28 Names data reset 🙏'); return;
+  }
   else if (pr === 'range') {
     const f = document.getElementById('rfrom').value, to = document.getElementById('rto').value;
     Object.keys(App.S.history).forEach(k => { if (k >= f && k <= to) { App.S.history[k] = 0; if (App.S.timerHistory[k]) App.S.timerHistory[k] = 0; if (App.S.timer28History[k]) App.S.timer28History[k] = 0; } });

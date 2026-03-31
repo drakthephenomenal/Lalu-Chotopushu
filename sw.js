@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v15';  // v15: fix reset sync bug, undo wish rebase, remove duplicate reset btn, clean stats UI
+const CACHE = 'radha-jap-v16';  // v16: nuclear reset - clear IDB stores + localStorage so data cannot resurrect
 
 const PRECACHE = [
   './index.html',

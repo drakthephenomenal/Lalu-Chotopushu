@@ -688,7 +688,6 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
     <div style="display:flex;gap:8px;margin-top:8px">
       <button class="cb danger" onclick="App.undo28()">↩ Undo</button>
       <button class="cb" id="n28StatsBtn" onclick="toggle28Stats()" style="border-color:rgba(255,215,0,0.3);color:var(--gold);background:rgba(255,215,0,0.06)">📊 Stats <span id="n28StatsChev" style="font-size:10px;transition:transform 0.25s;display:inline-block">▾</span></button>
-      <button class="cb danger" onclick="cr2('28today')">↺ Reset</button>
     </div>
 
     <!-- 28 NAMES STATS PANEL -->
@@ -697,16 +696,10 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
       <!-- a) Cycle Counts -->
       <div class="n28sp-section">
         <div class="n28sp-title">🔄 Cycle Counts</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px">
           <div class="ns"><div class="nv" id="sp28CyclesTod" style="font-size:18px">0</div><div class="nl">Today</div></div>
           <div class="ns"><div class="nv" id="sp28CyclesAll" style="font-size:18px">0</div><div class="nl">All Time</div></div>
         </div>
-        <div class="n28sp-row">
-          <input type="number" class="n28sp-in" id="sp28CycleVal" min="1" placeholder="Cycles" oninput="prev28Cycles(this.value)">
-          <button class="n28sp-btn add" onclick="adj28Cycles(1)">＋ Add</button>
-          <button class="n28sp-btn ded" onclick="adj28Cycles(-1)">－ Deduct</button>
-        </div>
-        <div style="font-size:10px;color:var(--td);margin-top:4px">1 cycle = 28 names &nbsp;·&nbsp; <span id="sp28CyclePreview" style="color:var(--gold)"></span></div>
       </div>
 
       <!-- b) Cycle Time -->
@@ -1802,8 +1795,17 @@ const App = {
 
   undo28() {
     if ((this.S.h28[this.S.tk] || 0) > 0) {
+      // Freeze wish progress before changing h28 so bar reflects the undo
+      (this.S.sankalpas||[]).filter(s => !s.done && s.startCycles !== null).forEach(s => {
+        s._savedProgress = (s._savedProgress || 0) + Math.max(0, getTotalCycles28() - s.startCycles);
+        s.startCycles = getTotalCycles28();
+      });
       this.S.h28[this.S.tk]--;
       this.lm28 = Math.floor((this.S.h28[this.S.tk] || 0) / (this.S.ms || 108));
+      // Rebase wishes to new lower total
+      (this.S.sankalpas||[]).filter(s => !s.done && s.startCycles !== null).forEach(s => {
+        s.startCycles = getTotalCycles28();
+      });
       this.save(); u28(); this.vib([10]);
     }
   },
@@ -2278,8 +2280,20 @@ function cr2(tp) {
 }
 function doReset() {
   if (pr === 'today') { App.S.history[App.S.tk] = 0; App.lmc = 0; App.S.malaLog = []; }
-  else if (pr === '28today') { App.S.h28[App.S.tk] = 0; App.S.timer28History[App.S.tk] = 0; App.lm28 = 0; App.stopAll28Timers(); u28(); }
-  else if (pr === '28all') { App.S.h28 = {}; App.S.timer28History = {}; App.S.h28[App.S.tk] = 0; App.S.timer28History[App.S.tk] = 0; App.lm28 = 0; App.S.sankalpas = []; App.stopAll28Timers(); u28(); render28StatsPanel(); renderSankalpas(); }
+  else if (pr === '28today') {
+    // Freeze active wishes before zeroing today's count so progress bars drop correctly
+    (App.S.sankalpas||[]).filter(s => !s.done && s.startCycles !== null).forEach(s => {
+      s._savedProgress = (s._savedProgress || 0) + Math.max(0, getTotalCycles28() - s.startCycles);
+      s.startCycles = getTotalCycles28();
+    });
+    App.S.h28[App.S.tk] = 0; App.S.timer28History[App.S.tk] = 0; App.lm28 = 0; App.stopAll28Timers();
+    // Rebase wishes to new (lower) total after zeroing today
+    (App.S.sankalpas||[]).filter(s => !s.done && s.startCycles !== null).forEach(s => {
+      s.startCycles = getTotalCycles28();
+    });
+    u28(); render28StatsPanel(); renderSankalpas();
+  }
+  else if (pr === '28all') { App.S.h28 = {}; App.S.timer28History = {}; App.S.h28[App.S.tk] = 0; App.S.timer28History[App.S.tk] = 0; App.lm28 = 0; App.S.sankalpas = []; App.stopAll28Timers(); u28(); render28StatsPanel(); renderSankalpas(); App.save(); fbDebouncedPush(); gdDriveSilentBackup(); toast('All 28 Names data reset 🙏'); return; }
   else if (pr === 'range') {
     const f = document.getElementById('rfrom').value, to = document.getElementById('rto').value;
     Object.keys(App.S.history).forEach(k => { if (k >= f && k <= to) { App.S.history[k] = 0; if (App.S.timerHistory[k]) App.S.timerHistory[k] = 0; if (App.S.timer28History[k]) App.S.timer28History[k] = 0; } });

@@ -341,32 +341,29 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .sk-panel{overflow:hidden;max-height:0;transition:max-height 0.38s ease;background:rgba(232,51,109,0.04);border-bottom:1px solid rgba(232,51,109,0.18);}
 .sk-panel.open{max-height:70vh;overflow-y:auto;}
 .sk-panel-inner{padding:10px 14px 14px;}
-.n28stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
 .n28tz{flex:1;background:radial-gradient(ellipse at center,rgba(34,85,204,0.22) 0%,rgba(6,13,31,0.6) 100%);
   border:1px solid rgba(74,144,226,0.2);border-radius:22px;
   display:flex;align-items:center;justify-content:center;flex-direction:column;
-  cursor:pointer;user-select:none;-webkit-user-select:none;position:relative;overflow:hidden;min-height:300px;}
+  cursor:pointer;user-select:none;-webkit-user-select:none;position:relative;overflow:hidden;min-height:320px;}
 .n28tz::before{content:'';position:absolute;inset:0;
   background:radial-gradient(circle at var(--tx,50%) var(--ty,50%),rgba(109,184,255,0.18) 0%,transparent 60%);
   opacity:0;transition:opacity 0.25s;}
 .n28tz.tapped::before{opacity:1;}
-.n28num{font-family:'EB Garamond',serif;font-size:15px;color:var(--td);letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;}
-.n28name{font-family:'Hind Siliguri','Tiro Devanagari Hindi',serif;font-size:clamp(30px,9vw,52px);color:var(--gold);
+.n28name{font-family:'Hind Siliguri','Tiro Devanagari Hindi',serif;font-size:clamp(34px,10vw,58px);color:var(--gold);
   font-weight:700;line-height:1.3;text-align:center;padding:0 10px;
   text-shadow:0 0 25px rgba(255,215,0,0.8),0 0 50px rgba(255,215,0,0.35);
   animation:nameIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards;}
 @keyframes nameIn{0%{opacity:0;transform:scale(0.7) translateY(12px);}100%{opacity:1;transform:scale(1) translateY(0);}}
 @keyframes fu28{0%{opacity:0.9;transform:translateY(0);}60%{opacity:0.7;}100%{opacity:0;transform:translateY(-90px);}}
 .n28meaning{font-size:12px;color:var(--a2);margin-top:6px;letter-spacing:1px;text-align:center;opacity:0.85;}
-.n28cycle{font-size:11px;color:var(--td);margin-top:10px;letter-spacing:2px;text-transform:uppercase;}
+.n28cycle{font-size:11px;color:var(--td);margin-top:6px;letter-spacing:2px;text-transform:uppercase;}
 .n28timers{display:flex;gap:14px;justify-content:center;margin-top:8px;flex-wrap:wrap;}
-.n28-top-timers .n28timer-box{background:rgba(0,0,0,0.2);border-radius:10px;padding:4px 10px;}
 .n28timer-box{display:flex;flex-direction:column;align-items:center;gap:2px;}
-.n28timer-val{font-family:'EB Garamond',serif;font-size:20px;color:var(--a2);letter-spacing:2px;filter:drop-shadow(0 0 6px rgba(109,184,255,0.4));}
-.n28timer-val.gold{color:var(--gold);filter:drop-shadow(0 0 6px rgba(255,215,0,0.4));}
-.n28timer-lbl{font-size:9px;color:var(--td);letter-spacing:1.5px;text-transform:uppercase;}
-.n28prog{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;max-width:240px;margin-top:8px;}
-.n28dot{width:8px;height:8px;border-radius:50%;background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.25);transition:all 0.2s;}
+.n28timer-val{font-family:'EB Garamond',serif;font-size:13px;color:var(--a2);letter-spacing:1px;filter:drop-shadow(0 0 4px rgba(109,184,255,0.4));}
+.n28timer-val.gold{color:var(--gold);filter:drop-shadow(0 0 4px rgba(255,215,0,0.4));}
+.n28timer-lbl{font-size:8px;color:var(--td);letter-spacing:1px;text-transform:uppercase;}
+.n28prog{display:flex;gap:4px;flex-wrap:nowrap;justify-content:center;width:100%;margin-top:8px;overflow:hidden;}
+.n28dot{width:7px;height:7px;border-radius:50%;background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.25);transition:all 0.2s;flex-shrink:0;}
 .n28dot.done{background:var(--gold);border-color:var(--gold);box-shadow:0 0 5px rgba(255,215,0,0.7);}
 .n28dot.current{background:rgba(255,215,0,0.5);border-color:var(--gold);transform:scale(1.3);}
 
@@ -657,35 +654,45 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
     </div>
   </div>
   <div class="n28wrap">
-    <div class="n28stats">
-      <div class="ns"><div class="nv" id="n28t">0</div><div class="nl">Today</div></div>
-      <div class="ns"><div class="nv" id="n28tot">0</div><div class="nl">Cycles</div></div>
-    </div>
-    <div class="n28-top-timers" style="display:flex;justify-content:space-between;align-items:flex-start;padding:0 4px;margin-bottom:6px;">
-      <div class="n28timer-box" style="text-align:left">
-        <div class="n28timer-val" id="n28CycleTimer" style="font-size:18px">0:00</div>
+    <!-- Single line timers: small, left and right -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 4px 6px;">
+      <div class="n28timer-box" style="align-items:flex-start">
+        <div class="n28timer-val" id="n28CycleTimer">0:00</div>
         <div class="n28timer-lbl">Cycle Time</div>
       </div>
-      <div class="n28timer-box" style="text-align:right">
-        <div class="n28timer-val gold" id="n28TotalTimer" style="font-size:18px">0:00</div>
+      <div class="n28timer-box" style="align-items:center">
+        <div class="n28timer-val" id="n28t" style="color:var(--gold);font-size:13px">0</div>
+        <div class="n28timer-lbl">Today</div>
+      </div>
+      <div class="n28timer-box" style="align-items:flex-end">
+        <div class="n28timer-val gold" id="n28TotalTimer">0:00</div>
         <div class="n28timer-lbl">Total Time</div>
       </div>
     </div>
+
+    <!-- Tap area: Radha name at top, meaning, pause button -->
     <div class="n28tz" id="tz28" ontouchstart="App.h28(event)" onmousedown="App.h28(event)">
       <div class="mf" id="mf28" style="border-radius:22px;">
         <div class="mf-line1">Radha Vallabh</div>
         <div class="mf-line2">Sri Harivangsa</div>
       </div>
+      <!-- Sanskrit Radha at top inside tap area -->
+      <div style="position:absolute;top:14px;left:0;right:0;text-align:center;font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif;font-size:clamp(13px,3.5vw,18px);color:rgba(255,215,0,0.55);letter-spacing:3px;pointer-events:none;">राधा</div>
       <div class="n28name" id="n28name">রাধা</div>
       <div class="n28meaning" id="n28meaning">The Supreme Beloved</div>
       <div class="n28timer-box" style="position:absolute;top:10px;right:12px;z-index:5">
-          <button id="n28PauseBtn" onclick="App.toggle28Pause()" style="display:none;background:rgba(109,184,255,0.12);border:1px solid rgba(109,184,255,0.35);border-radius:16px;color:var(--a2);font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;letter-spacing:0.5px;transition:all 0.2s;font-family:'Inter',sans-serif;">⏸ Pause</button>
+        <button id="n28PauseBtn" onclick="App.toggle28Pause()" style="display:none;background:rgba(109,184,255,0.12);border:1px solid rgba(109,184,255,0.35);border-radius:16px;color:var(--a2);font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;letter-spacing:0.5px;transition:all 0.2s;font-family:'Inter',sans-serif;">⏸ Pause</button>
       </div>
     </div>
-    <div class="n28num" id="n28num" style="margin-top:8px">১</div>
-    <div class="n28cycle" id="n28cycle">Cycle 0 · tap to begin</div>
-    <div class="n28prog" id="n28prog"></div>
-    <div style="display:flex;gap:8px;margin-top:8px">
+
+    <!-- Cycle status text -->
+    <div class="n28cycle" id="n28cycle" style="text-align:center;margin-top:6px;">Tap to begin · Cycle 1</div>
+
+    <!-- 28 beads in a single line -->
+    <div class="n28prog" id="n28prog" style="margin-top:6px;"></div>
+
+    <!-- Undo + Stats buttons -->
+    <div style="display:flex;gap:8px;margin-top:10px">
       <button class="cb danger" onclick="App.undo28()">↩ Undo</button>
       <button class="cb" id="n28StatsBtn" onclick="toggle28Stats()" style="border-color:rgba(255,215,0,0.3);color:var(--gold);background:rgba(255,215,0,0.06)">📊 Stats <span id="n28StatsChev" style="font-size:10px;transition:transform 0.25s;display:inline-block">▾</span></button>
     </div>
@@ -2798,13 +2805,11 @@ function u28() {
   const tod = App.S.h28[App.S.tk]||0;
   const tot = Object.values(App.S.h28).reduce((a,b) => a+b, 0);
   const cycles28 = Math.floor(tot/28);
-  document.getElementById('n28t').textContent = tod;
-  document.getElementById('n28tot').textContent = cycles28;
+  const todEl = document.getElementById('n28t'); if (todEl) todEl.textContent = tod;
   const pos = get28Pos(), entry = NAMES28[pos];
-  const numEl = document.getElementById('n28num'), nameEl = document.getElementById('n28name');
+  const nameEl = document.getElementById('n28name');
   const meanEl = document.getElementById('n28meaning'), cycEl = document.getElementById('n28cycle');
   const isCompleting = !!App._n28CompletionAnimating;
-  if (numEl) numEl.textContent = entry.num;
   if (nameEl) {
     if (isCompleting) {
       nameEl.style.animation = 'none';

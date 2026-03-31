@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v16';  // v16: nuclear reset - clear IDB stores + localStorage so data cannot resurrect
+const CACHE = 'radha-jap-v17';  // v17: clean layout - Sanskrit Radha top, single-line timers, single-line beads, bigger tap area
 
 const PRECACHE = [
   './index.html',

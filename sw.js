@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v18';  // v18: fix 28 names taps falsely triggering mala log
+const CACHE = 'radha-jap-v20';  // v20: mala bead strip + sadhana journey timeline for regular milestones
 
 const PRECACHE = [
   './index.html',

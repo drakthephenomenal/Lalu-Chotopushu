@@ -198,7 +198,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .cs-header h3{font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600;margin:0;}
 .cs-chevron{font-size:14px;transition:transform 0.3s;display:inline-block;margin-left:8px;opacity:0.7;}
 .cs-body{max-height:0;overflow:hidden;transition:max-height 0.38s ease,padding 0.3s ease;padding:0 16px;}
-.cs-body.open{max-height:2000px;padding:0 16px 16px;}
+.cs-body.open{max-height:12000px;padding:0 16px 16px;}
 .sg-wrap{border-radius:18px;background:rgba(74,144,226,0.05);border:1px solid rgba(74,144,226,0.15);margin-bottom:12px;overflow:hidden;}
 .sg-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;user-select:none;-webkit-user-select:none;}
 .sg-header span{font-size:11px;color:var(--a2);letter-spacing:2px;text-transform:uppercase;font-weight:600;}
@@ -564,6 +564,9 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .mahima-card-bar{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--gold),#FFB700);transition:width 0.5s ease;}
 .mahima-card-pct{font-size:11px;color:var(--td);text-align:right;margin-top:3px;}
 .mahima-card-date{font-size:10px;color:var(--green);margin-top:3px;}
+.mahima-card-desc{font-size:12px;color:var(--tl);line-height:1.7;margin-top:8px;padding:10px 12px;background:rgba(74,144,226,0.06);border-radius:10px;border-left:2px solid rgba(255,215,0,0.3);font-family:'Hind Siliguri',sans-serif;}
+.mahima-card.unlocked .mahima-card-desc{border-left-color:rgba(255,215,0,0.5);background:rgba(255,215,0,0.04);}
+.mahima-card-author{font-size:10px;color:var(--td);font-style:italic;margin-top:6px;text-align:right;}
 .mahima-quote{font-family:'Tiro Devanagari Hindi',serif;font-size:14px;color:var(--gold);text-align:center;
   font-style:italic;margin:18px 14px 4px;line-height:1.8;}
 .mahima-quote-attr{font-size:11px;color:var(--td);text-align:center;margin-bottom:14px;}
@@ -632,10 +635,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
     Brahma
   </button>
-  <button class="nb" onclick="sv('vc',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-    Calendar
-  </button>
+
   <button class="nb" onclick="sv('vs',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
     Stats
@@ -891,22 +891,24 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
       <div class="ns"><div class="nv" style="color:var(--a2)" id="bmp">0%</div><div class="nl">Success Rate</div></div>
     </div>
   </div>
+
+  <!-- Jap Calendar (moved here) -->
+  <div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(74,144,226,0.15)">
+    <div class="vt" style="font-size:16px;margin-bottom:8px">📅 Jap Calendar</div>
+    <div class="ch">
+      <button class="cnb" onclick="chm(-1)">‹</button>
+      <div class="cmy" id="cmy"></div>
+      <button class="cnb" onclick="chm(1)">›</button>
+    </div>
+    <div class="cg" id="cg">
+      <div class="cdl">Sun</div><div class="cdl">Mon</div><div class="cdl">Tue</div>
+      <div class="cdl">Wed</div><div class="cdl">Thu</div><div class="cdl">Fri</div><div class="cdl">Sat</div>
+    </div>
+    <div style="padding:10px 14px 6px;font-size:11px;color:var(--td);text-align:center;letter-spacing:1px;">Tap a date to see details &amp; add occasion</div>
+  </div>
 </div>
 
-<!-- CALENDAR VIEW -->
-<div class="view" id="vc">
-  <div class="vt">Jap Calendar</div>
-  <div class="ch">
-    <button class="cnb" onclick="chm(-1)">‹</button>
-    <div class="cmy" id="cmy"></div>
-    <button class="cnb" onclick="chm(1)">›</button>
-  </div>
-  <div class="cg" id="cg">
-    <div class="cdl">Sun</div><div class="cdl">Mon</div><div class="cdl">Tue</div>
-    <div class="cdl">Wed</div><div class="cdl">Thu</div><div class="cdl">Fri</div><div class="cdl">Sat</div>
-  </div>
-  <div style="padding:10px 14px 6px;font-size:11px;color:var(--td);text-align:center;letter-spacing:1px;">Tap a date to see details &amp; add occasion</div>
-</div>
+
 
 <!-- CALENDAR DAY BOTTOM SHEET -->
 <div class="cdmo" id="cdmo" onclick="if(event.target===this)closeDaySheet()">
@@ -2094,9 +2096,8 @@ function sv(id, btn) {
   document.querySelectorAll('.nb').forEach(b => b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if (btn) btn.classList.add('active');
-  if (id === 'vc') renderCal();
   if (id === 'vs') uStats();
-  if (id === 'vb') renderBcal();
+  if (id === 'vb') { renderBcal(); renderCal(); }
   if (id === 'vst') renderSt();
   if (id === 'v28') { u28(); render28Dots(get28Pos()); }
   else { App.flush28TimeToHistory(); }
@@ -5075,13 +5076,17 @@ function dismissMilestone() {
 function checkMilestones() {
   const tot = App.gTot();
   const data = getMilestoneData();
+  let latestNew = null;
   for (const ms of MILESTONES) {
     if (tot >= ms.count && !data.reached[ms.count]) {
       data.reached[ms.count] = new Date().toISOString();
-      saveMilestoneData(data);
-      setTimeout(() => showMilestoneCelebration(ms), 500);
-      return;
+      latestNew = ms;
     }
+  }
+  if (latestNew) {
+    saveMilestoneData(data);
+    // Show celebration for the highest newly reached milestone
+    setTimeout(() => showMilestoneCelebration(latestNew), 500);
   }
 }
 
@@ -5121,23 +5126,24 @@ function renderMsView() {
           '<div class="mahima-card-bar-wrap"><div class="mahima-card-bar" style="width:' + pct.toFixed(1) + '%"></div></div>' +
           '<div class="mahima-card-pct">' + pct.toFixed(1) + '%</div>' +
           (unlocked ? '<div class="mahima-card-date">✓ Achieved ' + dateStr + '</div>' : '') +
+          (m.desc ? '<div class="mahima-card-desc">' + m.desc + '<div class="mahima-card-author">— Shri Hit Premanand Ji Maharaj</div></div>' : '') +
           '</div></div>';
       });
     });
     cardsEl.innerHTML = html;
   }
 
-  // Regular milestone progress bar
+  // Regular milestone progress bar — based on actual count, not reached status
   const regMilestones = MILESTONES.filter(m => m.type === 'regular');
-  const next = regMilestones.find(m => !data.reached[m.count]);
+  const next = regMilestones.find(m => tot < m.count);
   if (next) {
     const nextEl = document.getElementById('msNextVal');
     if (nextEl) nextEl.textContent = formatMsCount(next.count);
-    const prevIdx = regMilestones.indexOf(next) - 1;
-    const prevCount = prevIdx >= 0 ? regMilestones[prevIdx].count : 0;
+    const nextIdx = regMilestones.indexOf(next);
+    const prevCount = nextIdx > 0 ? regMilestones[nextIdx - 1].count : 0;
     const pct = Math.min(100, ((tot - prevCount) / (next.count - prevCount)) * 100);
     const fillEl = document.getElementById('msProgFill');
-    if (fillEl) fillEl.style.width = pct + '%';
+    if (fillEl) fillEl.style.width = Math.max(0, pct).toFixed(1) + '%';
   } else {
     const nextEl = document.getElementById('msNextVal');
     if (nextEl) nextEl.textContent = 'All done! 🙏';
@@ -5172,3 +5178,4 @@ function renderMsView() {
 
 </body>
 </html>
+

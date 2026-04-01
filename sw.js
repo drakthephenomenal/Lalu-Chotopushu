@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v20';  // v20: mala bead strip + sadhana journey timeline for regular milestones
+const CACHE = 'radha-jap-v21';  // v21: lakh gati tracker + sadhana journey date customisation
 
 const PRECACHE = [
   './index.html',
@@ -15,8 +15,6 @@ const PRECACHE = [
 ];
 
 // Firebase & Google auth must pass through — their SDKs handle offline internally
-// accounts.google.com is listed broadly so ALL GSI runtime auth calls are bypassed,
-// not just the /o/oauth2 path (fixes Google Sign-In interception bug).
 const BYPASS = [
   'firestore.googleapis.com',
   'identitytoolkit.googleapis.com',
@@ -25,7 +23,7 @@ const BYPASS = [
   'firebase.googleapis.com',
   'firebaseio.com',
   'oauth2.googleapis.com',
-  'accounts.google.com'   // broadened from /o/oauth2 — covers all GSI auth traffic
+  'accounts.google.com'
 ];
 
 // ── Install: pre-cache critical assets ──
@@ -64,7 +62,6 @@ self.addEventListener('fetch', e => {
 
   e.respondWith(
     caches.match(e.request).then(cached => {
-      // Always fetch fresh in background to keep cache updated
       const networkFetch = fetch(e.request).then(resp => {
         if (resp && resp.status === 200 && resp.type !== 'error') {
           const clone = resp.clone();
@@ -73,13 +70,10 @@ self.addEventListener('fetch', e => {
         return resp;
       }).catch(() => null);
 
-      // Serve cache instantly if available, update in background
       if (cached) return cached;
 
-      // Not cached — wait for network
       return networkFetch.then(resp => {
         if (resp) return resp;
-        // Offline fallback: return main HTML for navigation requests
         if (e.request.mode === 'navigate') return caches.match('./index.html');
         return new Response('Offline', { status: 503 });
       });

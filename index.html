@@ -591,6 +591,43 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .mala-fill-inner{height:100%;background:linear-gradient(90deg,rgba(255,215,0,0.4),#FFD700);border-radius:2px;transition:width 0.6s cubic-bezier(.4,0,.2,1);}
 .mala-remaining{font-size:10px;color:var(--td);margin-top:6px;text-align:center;}
 
+
+/* ── Lakh Gati Tracking ── */
+.lakh-gati-wrap{margin:14px 0 6px;padding:16px 14px;background:linear-gradient(135deg,rgba(255,215,0,0.06),rgba(74,144,226,0.04));border:1px solid rgba(255,215,0,0.22);border-radius:16px;position:relative;overflow:hidden;}
+.lakh-gati-wrap::before{content:'';position:absolute;top:-50%;right:-30%;width:200px;height:200px;background:radial-gradient(circle,rgba(255,215,0,0.08),transparent 70%);pointer-events:none;}
+.lakh-gati-title{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.lakh-gati-title span:first-child{font-size:18px;}
+.lakh-gati-title span:last-child{font-size:12px;color:var(--gold);text-transform:uppercase;letter-spacing:2px;font-weight:600;}
+.lakh-gati-grid{display:flex;flex-direction:column;gap:6px;}
+.lakh-card{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(6,13,31,0.5);border:1px solid rgba(255,215,0,0.12);border-radius:12px;transition:all 0.3s ease;}
+.lakh-card.reached{border-color:rgba(255,215,0,0.35);background:rgba(255,215,0,0.05);}
+.lakh-card.reached .lakh-icon{background:linear-gradient(135deg,rgba(255,215,0,0.25),rgba(255,180,0,0.15));border-color:rgba(255,215,0,0.5);}
+.lakh-card.current{border-color:rgba(109,184,255,0.4);background:rgba(109,184,255,0.06);animation:lakh-pulse 2.5s ease-in-out infinite;}
+@keyframes lakh-pulse{0%,100%{box-shadow:0 0 0 rgba(109,184,255,0);}50%{box-shadow:0 0 15px rgba(109,184,255,0.15);}}
+.lakh-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;background:rgba(74,144,226,0.1);border:1px solid rgba(74,144,226,0.2);flex-shrink:0;color:var(--td);font-family:'EB Garamond',serif;}
+.lakh-card.reached .lakh-icon{color:var(--gold);}
+.lakh-info{flex:1;min-width:0;}
+.lakh-name{font-size:13px;font-weight:600;color:var(--tl);}
+.lakh-card.reached .lakh-name{color:var(--gold);}
+.lakh-meta{display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap;}
+.lakh-date{font-size:10px;color:var(--td);}
+.lakh-duration{font-size:10px;color:var(--green);font-weight:500;padding:1px 6px;background:rgba(46,204,113,0.1);border-radius:8px;}
+.lakh-card:not(.reached) .lakh-duration{color:var(--td);background:none;}
+.lakh-progress{width:50px;text-align:right;}
+.lakh-pct{font-size:12px;font-weight:600;color:var(--a2);font-family:'EB Garamond',serif;}
+.lakh-card.reached .lakh-pct{color:var(--green);}
+.lakh-bar-mini{width:50px;height:3px;background:rgba(74,144,226,0.12);border-radius:2px;margin-top:3px;overflow:hidden;}
+.lakh-bar-mini-fill{height:100%;background:linear-gradient(90deg,var(--a),var(--a2));border-radius:2px;transition:width 0.5s ease;}
+.lakh-card.reached .lakh-bar-mini-fill{background:linear-gradient(90deg,var(--green),#2ECC71);}
+
+/* ── Sadhana Journey Date Picker ── */
+.sj-date-wrap{display:flex;align-items:center;gap:8px;padding:10px 12px;margin:10px 0;background:rgba(74,144,226,0.06);border:1px solid rgba(74,144,226,0.18);border-radius:12px;}
+.sj-date-label{font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:1px;white-space:nowrap;}
+.sj-date-input{flex:1;background:rgba(6,13,31,0.6);border:1px solid rgba(74,144,226,0.25);border-radius:8px;padding:6px 10px;color:var(--a2);font-family:'EB Garamond',serif;font-size:14px;outline:none;cursor:pointer;}
+.sj-date-input:focus{border-color:var(--gold);box-shadow:0 0 8px rgba(255,215,0,0.2);}
+.sj-date-input::-webkit-calendar-picker-indicator{filter:invert(0.7) sepia(1) saturate(3) hue-rotate(180deg);cursor:pointer;}
+.sj-date-since{font-size:10px;color:var(--gold);text-align:center;margin-top:4px;letter-spacing:0.5px;}
+
 /* ── Sadhana Journey Timeline ── */
 .sj-wrap{margin-top:12px;padding:14px 14px 6px;background:rgba(74,144,226,0.04);border:1px solid rgba(74,144,226,0.15);border-radius:14px;}
 .sj-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;cursor:pointer;}
@@ -985,10 +1022,19 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
       <div class="mahima-quote">"Zubaan se naam nahi chhutna chahiye, chahe uthte-baithte kuch bhi kar rahe ho."</div>
       <div class="mahima-quote-attr">— Shri Hit Premanand Ji Maharaj</div>
 
+      <!-- Lakh Gati Tracking -->
+      <div class="lakh-gati-wrap">
+        <div class="lakh-gati-title">
+          <span>📿</span>
+          <span>Jap ki Gati — Lakh Tracker</span>
+        </div>
+        <div class="lakh-gati-grid" id="lakhGatiGrid"></div>
+      </div>
+
       <!-- Mala Bead Strip — Regular Milestones -->
       <div class="mala-strip-wrap">
         <div class="mala-strip-head">
-          <span class="mala-strip-lbl">📿 Jap ki Gati</span>
+          <span class="mala-strip-lbl">📿 Next Milestone</span>
           <span><span class="mala-strip-next" id="msNextVal">1,000</span>&nbsp;<span class="mala-strip-pct" id="msNextPct"></span></span>
         </div>
         <div class="mala-beads" id="malaBeads"></div>
@@ -1003,6 +1049,12 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
           <span class="cs-chevron" id="sjChev" style="color:var(--a2)">▾</span>
         </div>
         <div class="cs-body open sj-body" id="sjBody">
+          <!-- Sadhana Start Date Customiser -->
+          <div class="sj-date-wrap">
+            <span class="sj-date-label">🪔 Journey Start</span>
+            <input type="date" class="sj-date-input" id="sadhanaStartDate" onchange="saveSadhanaStartDate(this.value)">
+          </div>
+          <div class="sj-date-since" id="sadhanaSince"></div>
           <div class="sj-list" id="msLogList">
             <div class="sj-empty">No milestones reached yet. Keep chanting! 🙏</div>
           </div>
@@ -4975,6 +5027,13 @@ for (let k = 1; k <= 99; k++) {
   MILESTONES.push({ count: k * 1000, icon: '✨', label: (k) + 'K Jap', badge: '🎖️', type: 'regular' });
 }
 // Add bigger regular milestones
+// Add all lakh milestones for tracking
+for (let ll = 1; ll <= 130; ll++) {
+  const lc = ll * 100000;
+  if (![100000, 200000, 300000, 500000, 1000000, 2000000, 5000000].includes(lc)) {
+    MILESTONES.push({ count: lc, icon: '📿', label: ll + ' Lakh Jap', badge: '📿', type: 'regular' });
+  }
+}
 [100000, 200000, 300000, 500000, 1000000, 2000000, 5000000].forEach(c => {
   MILESTONES.push({ count: c, icon: '👑', label: formatMsCountLabel(c), badge: '👑', type: 'regular' });
 });
@@ -5112,6 +5171,140 @@ function checkMilestones() {
   }
 }
 
+
+// ── LAKH MILESTONES for Jap ki Gati ──
+const LAKH_MILESTONES = [];
+for (let l = 1; l <= 130; l++) {
+  LAKH_MILESTONES.push({ count: l * 100000, label: l + ' Lakh', num: l });
+}
+
+function formatDuration(ms) {
+  if (!ms || ms <= 0) return '—';
+  const days = Math.floor(ms / 86400000);
+  const hrs = Math.floor((ms % 86400000) / 3600000);
+  if (days > 365) {
+    const yrs = Math.floor(days / 365);
+    const remDays = days % 365;
+    return yrs + 'y ' + remDays + 'd';
+  }
+  if (days > 0) return days + 'd ' + hrs + 'h';
+  const mins = Math.floor((ms % 3600000) / 60000);
+  if (hrs > 0) return hrs + 'h ' + mins + 'm';
+  return mins + 'm';
+}
+
+function renderLakhGati() {
+  const grid = document.getElementById('lakhGatiGrid');
+  if (!grid) return;
+  const tot = App.gTot();
+  const data = getMilestoneData();
+  
+  // Show lakhs: all reached + next 2 unreached
+  const reachedLakhs = LAKH_MILESTONES.filter(l => tot >= l.count);
+  const unreachedLakhs = LAKH_MILESTONES.filter(l => tot < l.count).slice(0, 2);
+  const visibleLakhs = [...reachedLakhs, ...unreachedLakhs];
+  
+  if (visibleLakhs.length === 0) {
+    grid.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--td);padding:12px">Keep chanting to reach your first Lakh! 🙏</div>';
+    return;
+  }
+  
+  let html = '';
+  visibleLakhs.forEach((lakh, idx) => {
+    const isReached = tot >= lakh.count;
+    const isCurrent = !isReached && (idx === 0 || tot >= visibleLakhs[idx-1].count);
+    const cls = isReached ? 'reached' : (isCurrent ? 'current' : '');
+    
+    // Date reached
+    const reachedDate = data.reached[lakh.count];
+    const dateStr = reachedDate ? new Date(reachedDate).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'}) : '';
+    
+    // Duration from previous lakh
+    let durationStr = '';
+    if (isReached && reachedDate) {
+      const prevLakh = idx > 0 ? visibleLakhs[idx-1] : null;
+      let prevDate = null;
+      if (prevLakh && data.reached[prevLakh.count]) {
+        prevDate = new Date(data.reached[prevLakh.count]);
+      } else {
+        // Use sadhana start date for first lakh
+        const startStr = localStorage.getItem('rjap_sadhana_start');
+        if (startStr) prevDate = new Date(startStr);
+      }
+      if (prevDate) {
+        const diff = new Date(reachedDate).getTime() - prevDate.getTime();
+        durationStr = formatDuration(diff);
+      }
+    }
+    
+    // Progress for current/unreached
+    let pct = isReached ? 100 : 0;
+    if (!isReached) {
+      const prevCount = idx > 0 ? visibleLakhs[idx-1].count : 0;
+      pct = Math.min(100, Math.max(0, ((tot - prevCount) / (lakh.count - prevCount)) * 100));
+    }
+    
+    html += '<div class="lakh-card ' + cls + '">' +
+      '<div class="lakh-icon">' + lakh.num + 'L</div>' +
+      '<div class="lakh-info">' +
+        '<div class="lakh-name">' + lakh.label + (isReached ? ' ✓' : '') + '</div>' +
+        '<div class="lakh-meta">' +
+          (dateStr ? '<span class="lakh-date">📅 ' + dateStr + '</span>' : '') +
+          (durationStr ? '<span class="lakh-duration">⏱ ' + durationStr + '</span>' : '') +
+          (!isReached ? '<span class="lakh-date">' + (lakh.count - tot).toLocaleString('en-IN') + ' remaining</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="lakh-progress">' +
+        (isReached ? '<div class="lakh-pct">✅</div>' : '<div class="lakh-pct">' + pct.toFixed(0) + '%</div>') +
+        (!isReached ? '<div class="lakh-bar-mini"><div class="lakh-bar-mini-fill" style="width:' + pct.toFixed(1) + '%"></div></div>' : '') +
+      '</div>' +
+    '</div>';
+  });
+  
+  grid.innerHTML = html;
+}
+
+// ── Sadhana Journey Start Date ──
+function saveSadhanaStartDate(val) {
+  if (val) {
+    localStorage.setItem('rjap_sadhana_start', val);
+    updateSadhanaSince();
+    renderLakhGati();
+  }
+}
+
+function loadSadhanaStartDate() {
+  const saved = localStorage.getItem('rjap_sadhana_start');
+  const input = document.getElementById('sadhanaStartDate');
+  if (saved && input) {
+    input.value = saved;
+  }
+  updateSadhanaSince();
+}
+
+function updateSadhanaSince() {
+  const el = document.getElementById('sadhanaSince');
+  const saved = localStorage.getItem('rjap_sadhana_start');
+  if (!el) return;
+  if (!saved) {
+    el.textContent = 'Set your journey start date above ☝️';
+    return;
+  }
+  const start = new Date(saved);
+  const now = new Date();
+  const diff = now.getTime() - start.getTime();
+  const days = Math.floor(diff / 86400000);
+  const years = Math.floor(days / 365);
+  const remDays = days % 365;
+  const months = Math.floor(remDays / 30);
+  let str = '🙏 ';
+  if (years > 0) str += years + ' year' + (years>1?'s':'') + ' ';
+  if (months > 0) str += months + ' month' + (months>1?'s':'') + ' ';
+  str += (remDays % 30) + ' days of Sadhana';
+  el.textContent = str;
+}
+
+
 function renderMsView() {
   const data = getMilestoneData();
   const tot = App.gTot();
@@ -5202,6 +5395,10 @@ function renderMsView() {
     }
     beadsEl.innerHTML = html;
   }
+
+  // ── Lakh Gati ──
+  renderLakhGati();
+  loadSadhanaStartDate();
 
   // ── Sadhana Journey Timeline ──
   const logList = document.getElementById('msLogList');

@@ -505,6 +505,90 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .cdmo-occ-in{flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.25);border-radius:9px;padding:8px 11px;color:var(--tl);font-size:13px;font-family:'Inter',sans-serif;outline:none;}
 .cdmo-occ-in:focus{border-color:var(--gold);}
 .cdmo-occ-add{padding:8px 14px;border-radius:9px;border:none;background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,215,0,0.15));color:var(--gold);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;}
+
+/* ── MILESTONE SYSTEM ── */
+.ms-overlay{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at center,rgba(10,21,53,0.97) 0%,rgba(6,13,31,0.99) 100%);
+  opacity:0;pointer-events:none;transition:opacity 0.5s;}
+.ms-overlay.show{opacity:1;pointer-events:auto;}
+.ms-particles{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+.ms-particle{position:absolute;border-radius:50%;animation:ms-fall linear forwards;}
+@keyframes ms-fall{0%{opacity:1;transform:translateY(-20px) rotate(0deg);}100%{opacity:0;transform:translateY(100vh) rotate(720deg);}}
+.ms-icon{font-size:80px;animation:ms-pulse 1.5s ease-in-out infinite;z-index:1;}
+@keyframes ms-pulse{0%,100%{transform:scale(1);filter:drop-shadow(0 0 20px rgba(255,215,0,0.8));}50%{transform:scale(1.15);filter:drop-shadow(0 0 40px rgba(255,215,0,1));}}
+.ms-title{font-family:'Tiro Devanagari Hindi',serif;font-size:clamp(24px,7vw,36px);color:var(--gold);
+  text-shadow:0 0 30px rgba(255,215,0,0.8),0 0 60px rgba(255,215,0,0.4);margin-top:16px;text-align:center;z-index:1;letter-spacing:2px;}
+.ms-count{font-family:'EB Garamond',serif;font-size:clamp(18px,5vw,24px);color:var(--a2);
+  text-shadow:0 0 25px rgba(109,184,255,0.7);margin:8px 0;z-index:1;letter-spacing:2px;text-transform:uppercase;}
+.ms-sub{font-size:14px;color:var(--td);z-index:1;margin-top:4px;text-align:center;letter-spacing:1px;max-width:340px;line-height:1.6;}
+.ms-badge-icon{font-size:48px;margin-top:12px;z-index:1;animation:ms-badge-pop 0.6s ease-out;}
+@keyframes ms-badge-pop{0%{transform:scale(0) rotate(-180deg);opacity:0;}100%{transform:scale(1) rotate(0deg);opacity:1;}}
+.ms-dismiss{margin-top:24px;padding:10px 32px;border-radius:25px;border:1px solid rgba(255,215,0,0.4);
+  background:rgba(255,215,0,0.1);color:var(--gold);font-size:14px;cursor:pointer;z-index:1;
+  font-family:'Inter',sans-serif;letter-spacing:1px;transition:all 0.2s;}
+.ms-dismiss:active{transform:scale(0.95);background:rgba(255,215,0,0.2);}
+.ms-desc{font-family:'Hind Siliguri',sans-serif;font-size:13px;color:var(--tl);z-index:1;text-align:center;max-width:320px;line-height:1.7;margin-top:10px;}
+.ms-sthan{font-size:12px;color:var(--a2);z-index:1;letter-spacing:2px;text-transform:uppercase;margin-top:4px;}
+.ms-author{font-size:11px;color:var(--td);z-index:1;margin-top:10px;font-style:italic;}
+
+/* Milestone section in Stats */
+.mahima-title{font-family:'Cinzel Decorative',cursive;font-size:16px;color:var(--gold);text-align:center;
+  letter-spacing:4px;text-shadow:0 0 15px rgba(255,215,0,0.4);margin-bottom:4px;}
+.mahima-sub{font-family:'Tiro Devanagari Hindi',serif;font-size:18px;color:var(--gold);text-align:center;margin-bottom:2px;}
+.mahima-attr{font-size:11px;color:var(--td);text-align:center;margin-bottom:14px;}
+.mahima-lifetime{background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:14px;padding:14px;text-align:center;margin-bottom:14px;}
+.mahima-lifetime-count{font-family:'EB Garamond',serif;font-size:36px;color:var(--a2);line-height:1;}
+.mahima-lifetime-lbl{font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:2px;margin-top:2px;}
+.mahima-lifetime-sub{font-size:12px;color:var(--gold);margin-top:4px;}
+.mahima-phase{text-align:center;margin:18px 0 8px;position:relative;}
+.mahima-phase::before,.mahima-phase::after{content:'';position:absolute;top:50%;width:25%;height:1px;background:linear-gradient(90deg,transparent,rgba(74,144,226,0.3));}
+.mahima-phase::before{left:2%;}
+.mahima-phase::after{right:2%;background:linear-gradient(90deg,rgba(74,144,226,0.3),transparent);}
+.mahima-phase-name{font-family:'EB Garamond',serif;font-size:16px;color:var(--tl);letter-spacing:1px;}
+.mahima-phase-sub{font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:2px;margin-top:2px;}
+.mahima-card{background:rgba(74,144,226,0.06);border:1px solid rgba(74,144,226,0.18);border-radius:16px;padding:14px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;transition:all 0.3s;}
+.mahima-card.unlocked{border-color:rgba(255,215,0,0.35);background:rgba(255,215,0,0.06);box-shadow:0 0 12px rgba(255,215,0,0.08);}
+.mahima-card.phase-bhagwat{border-color:rgba(232,51,109,0.25);}
+.mahima-card.phase-bhagwat.unlocked{border-color:rgba(232,51,109,0.45);background:rgba(232,51,109,0.06);}
+.mahima-card.phase-shakti{border-color:rgba(255,215,0,0.2);}
+.mahima-card-icon{width:44px;height:44px;border-radius:12px;background:rgba(74,144,226,0.1);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.mahima-card.unlocked .mahima-card-icon{background:rgba(255,215,0,0.15);}
+.mahima-card-body{flex:1;min-width:0;}
+.mahima-card-top{display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap;}
+.mahima-card-count{font-size:13px;color:var(--td);}
+.mahima-card.unlocked .mahima-card-count{color:var(--gold);}
+.mahima-card-tag{font-size:9px;padding:2px 8px;border-radius:10px;background:rgba(74,144,226,0.15);color:var(--a2);letter-spacing:0.5px;}
+.mahima-card-name{font-size:15px;color:var(--tl);font-weight:600;margin-bottom:1px;}
+.mahima-card-eng{font-size:12px;color:var(--td);margin-bottom:6px;}
+.mahima-card-bar-wrap{height:5px;background:rgba(255,215,0,0.08);border-radius:3px;overflow:hidden;}
+.mahima-card-bar{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--gold),#FFB700);transition:width 0.5s ease;}
+.mahima-card-pct{font-size:11px;color:var(--td);text-align:right;margin-top:3px;}
+.mahima-card-date{font-size:10px;color:var(--green);margin-top:3px;}
+.mahima-quote{font-family:'Tiro Devanagari Hindi',serif;font-size:14px;color:var(--gold);text-align:center;
+  font-style:italic;margin:18px 14px 4px;line-height:1.8;}
+.mahima-quote-attr{font-size:11px;color:var(--td);text-align:center;margin-bottom:14px;}
+
+/* Regular milestone progress bar */
+.ms-progress-bar{margin:0 0 8px;padding:8px 14px;background:rgba(255,215,0,0.05);border:1px solid rgba(255,215,0,0.15);border-radius:10px;}
+.ms-prog-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.ms-prog-lbl{font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:1px;}
+.ms-prog-val{font-size:12px;color:var(--gold);font-weight:600;}
+.ms-prog-track{height:6px;background:rgba(255,215,0,0.1);border-radius:4px;overflow:hidden;}
+.ms-prog-fill{height:100%;background:linear-gradient(90deg,var(--gold),#FFB700);border-radius:4px;transition:width 0.5s ease;}
+
+/* Milestone log */
+.ms-log-wrap{background:rgba(74,144,226,0.04);border:1px solid rgba(74,144,226,0.15);border-radius:12px;overflow:hidden;margin-top:10px;}
+.ms-log-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;}
+.ms-log-header h3{font-size:13px;color:var(--a2);letter-spacing:1px;}
+.ms-log-body{max-height:300px;overflow-y:auto;padding:0 12px 10px;}
+.ms-log-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(74,144,226,0.08);}
+.ms-log-item:last-child{border:none;}
+.ms-log-icon{font-size:20px;flex-shrink:0;}
+.ms-log-info{flex:1;min-width:0;}
+.ms-log-name{font-size:12px;color:var(--tl);font-weight:500;}
+.ms-log-date{font-size:10px;color:var(--td);}
+.ms-log-count{font-family:'EB Garamond',serif;font-size:14px;color:var(--gold);flex-shrink:0;}
+
 </style>
 </head>
 <body>
@@ -516,6 +600,21 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 </div>
 
 <!-- NAV — 6 tabs (no separate Target) -->
+
+<!-- MILESTONE CELEBRATION OVERLAY -->
+<div class="ms-overlay" id="msOverlay">
+  <div class="ms-particles" id="msParticles"></div>
+  <div class="ms-icon" id="msIcon">✦</div>
+  <div class="ms-count" id="msCount">1 CRORE JAP COMPLETE</div>
+  <div class="ms-title" id="msTitle">Sharir ki Shuddhi</div>
+  <div class="ms-sthan" id="msSthan">Tanu Sthan</div>
+  <div class="ms-sub" id="msSub">BODY PURIFICATION</div>
+  <div class="ms-desc" id="msDesc" style="display:none"></div>
+  <div class="ms-author" id="msAuthor" style="display:none">— Shri Hit Premanand Ji Maharaj</div>
+  <div class="ms-badge-icon" id="msBadgeIcon">⭐</div>
+  <button class="ms-dismiss" onclick="dismissMilestone()">🙏 Jai Shri Radhe</button>
+</div>
+
 <nav class="bnav">
   <button class="nb active" onclick="sv('vj',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v2M12 16v2M6 12H4M20 12h-2"/></svg>
@@ -541,6 +640,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
     Stats
   </button>
+  <!-- Milestones moved to Stats -->
   <button class="nb" onclick="sv('vset',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     Settings
@@ -1052,6 +1152,52 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
         <div class="fr"><input type="number" class="fi" id="jtDedOtherSec" placeholder="Seconds (optional)" min="0" max="59" style="border-color:rgba(232,51,109,0.3)"><span class="fu" style="color:var(--rl)">sec</span></div>
         <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="jtDedOtherPreview" style="color:var(--rl)">—</span></div>
         <button class="pb" onclick="deductJapTimeOther()" style="background:linear-gradient(135deg,#922b21,#c0392b)">✂️ Deduct Time from Selected Day</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- MILESTONES — NAAM JAP KI MAHIMA (inside Stats) -->
+  <div class="cs-wrap" style="background:rgba(255,215,0,0.03);border:1px solid rgba(255,215,0,0.18)">
+    <div class="cs-header" onclick="toggleCs('mahimaBody','mahimaChev')">
+      <h3 style="color:var(--gold)">🏆 Milestones — Naam Jap ki Mahima</h3>
+      <span class="cs-chevron" id="mahimaChev" style="color:var(--gold)">▾</span>
+    </div>
+    <div class="cs-body" id="mahimaBody">
+      <div class="mahima-title">MILESTONES</div>
+      <div class="mahima-sub">Naam Jap ki Mahima</div>
+      <div class="mahima-attr">Shri Hit Premanand Ji Maharaj ke anusaar</div>
+      <div class="mahima-lifetime">
+        <div class="mahima-lifetime-lbl">LIFETIME JAP COUNT</div>
+        <div class="mahima-lifetime-count" id="mahimaCount">0</div>
+        <div class="mahima-lifetime-sub" id="mahimaMsReached">0/13 milestones reached</div>
+      </div>
+      <div id="mahimaCards"></div>
+      <div class="mahima-quote">"Zubaan se naam nahi chhutna chahiye, chahe uthte-baithte kuch bhi kar rahe ho."</div>
+      <div class="mahima-quote-attr">— Shri Hit Premanand Ji Maharaj</div>
+
+      <!-- Regular 1K milestones progress -->
+      <div style="margin-top:14px">
+        <div class="ms-progress-bar">
+          <div class="ms-prog-top">
+            <span class="ms-prog-lbl">Next Regular Milestone</span>
+            <span class="ms-prog-val" id="msNextVal">1,000</span>
+          </div>
+          <div class="ms-prog-track"><div class="ms-prog-fill" id="msProgFill" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <!-- Milestone History Log -->
+      <div class="ms-log-wrap">
+        <div class="ms-log-header" onclick="toggleCs('msLogBody','msLogChev')">
+          <h3>📜 Milestone History</h3>
+          <span class="cs-chevron" id="msLogChev" style="color:var(--a2)">▾</span>
+        </div>
+        <div class="cs-body open" id="msLogBody">
+          <div class="ms-log-body" id="msLogList">
+            <div style="font-size:11px;color:var(--td);text-align:center;padding:12px 0">No milestones reached yet. Keep chanting! 🙏</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1608,6 +1754,7 @@ const App = {
     const nm = Math.floor(this.gTod() / ms);
     if (nm > this.lmc) { this.lmc = nm; this.malaOk(); App.silentMonkBackup(); }
     this.ua();
+    checkMilestones();
   },
 
   undo1() {
@@ -1953,6 +2100,7 @@ function sv(id, btn) {
   if (id === 'vst') renderSt();
   if (id === 'v28') { u28(); render28Dots(get28Pos()); }
   else { App.flush28TimeToHistory(); }
+  if (id === 'vs') renderMsView();
   if (id === 'vset') {
     if (App.S.dt) document.getElementById('dtIn').value = App.S.dt;
     if (App.S.lt) document.getElementById('ltIn').value = App.S.lt;
@@ -2017,6 +2165,7 @@ function addManualJap() {
   document.getElementById('manualMalaPreview').textContent = '0';
   document.getElementById('manualTodayPreview').textContent = App.gTod();
   toast('Added ' + n + ' jap to today! Total: ' + App.gTod() + ' 🙏');
+  checkMilestones();
 }
 
 function addPrevJap() {
@@ -4755,6 +4904,270 @@ async function initReminderUI() {
     if (cfg[type]?.enabled) scheduleType(type, cfg);
   });
 })();
+
+// ══════════════════════════════════════════
+// ── MILESTONE SYSTEM ──
+// ══════════════════════════════════════════
+
+// ── 13 CRORE SPIRITUAL MILESTONES (Shri Hit Premanand Ji Maharaj) ──
+const CRORE = 10000000; // 1 crore = 10 million
+const SPIRITUAL_MILESTONES = [
+  { count: 1*CRORE, icon: '⭐', label: 'Sharir ki Shuddhi', tag: 'Tanu Sthan', eng: 'Body Purification', phase: 'shuddhikaran',
+    desc: 'Sharir nishpaap hone lagta hai. Rajogun aur Tamogun khatam hokar Shuddha Sattva aata hai. Rogon ke beej nasht hote hain aur sapne mein Devi-Devtaon ke darshan hone lagte hain.' },
+  { count: 2*CRORE, icon: '◇', label: 'Dhan Sthan ki Shuddhi', tag: 'Dhan Sthan', eng: 'Wealth Purification', phase: 'shuddhikaran',
+    desc: 'Garibi aur daridrata ka dukh hamesha ke liye khatam ho jata hai. Bhagwan ya toh itna dhan de dete hain ki chah khatam ho jaye, ya fir man se paise ki bhookh hi mita dete hain.' },
+  { count: 3*CRORE, icon: '✦', label: 'Antahkaran ki Shuddhi', tag: 'Parakram Sthan', eng: 'Inner Strength', phase: 'shuddhikaran',
+    desc: 'Jo kaam pehle Asadhya lagte the (jaise gussa ya moh chhodna), wo Sadhya ho jate hain. Pura sansar aapko prem ki nazar se dekhne lagta hai.' },
+  { count: 4*CRORE, icon: '❊', label: 'Hriday ki Shuddhi', tag: 'Sukh Sthan', eng: 'Heart Purification', phase: 'shuddhikaran',
+    desc: 'Nityatva Bodh hota hai — aapko feel hone lagta hai ki aap ye marne wala sharir nahi, balki ek nitya Atma ho. Man aur buddhi par kisi bhi worldly dukh ka asar nahi padta.' },
+  { count: 5*CRORE, icon: '☀', label: 'Vidya Sthan Jagrit', tag: 'Vidya Sthan', eng: 'Knowledge Awakening', phase: 'shakti',
+    desc: 'Shastron ka gyan apne aap andar se nikalne lagta hai. Agar koi worldly wish ho (jaise santan ya lambi umar), toh wo bina maange puri hone lagti hai.' },
+  { count: 6*CRORE, icon: '⚔', label: 'Shatruo par Vijay', tag: 'Ripu Sthan', eng: 'Victory Over Enemies', phase: 'shakti',
+    desc: 'Bahar ke dushman hi nahi, balki andar ke 6 dushman (Kaam, Krodh, Lobh, Moh, Mad, Matsar) haar jate hain. Koi bhi incurable disease sankalp matra se thik ho sakta hai.' },
+  { count: 7*CRORE, icon: '◉', label: 'Ichchhaon par Niyantran', tag: 'Jaya Sthan', eng: 'Desire Mastery', phase: 'shakti',
+    desc: 'Duniya ki koi bhi attraction aise sadhak ko bhatka nahi sakti. Is stage par Narad Ji jaise maha-purushon se Pratyaksh milan aur baatchit shuru ho jati hai.' },
+  { count: 8*CRORE, icon: '∞', label: 'Mrityu Bhay ka Ant', tag: 'Mrityu Sthan', eng: 'Death Fear Removed', phase: 'shakti',
+    desc: 'Maut ka darr hamesha ke liye chala jata hai. Sadhak Atma-Raj ke sinhasan par baith jata hai, yani wo apne swaroop mein sthit ho jata hai.' },
+  { count: 9*CRORE, icon: '◎', label: 'Saakshaatkaar', tag: 'Dharam Sthan', eng: 'Direct Divine Vision', phase: 'bhagwat',
+    desc: 'Aap jiska naam jap rahe hain (Ram, Krishna, Shiva, ya Radha), unka Saakshaatkaar (Direct Vision) hota hai. Sadhak ki vani Satya ho jati hai — jo bologe wo ho jayega.' },
+  { count: 10*CRORE, icon: '✿', label: 'Karm Bandhan Mukti', tag: 'Karm Sthan', eng: 'Karma Liberation', phase: 'bhagwat',
+    desc: 'Saare purane karmo ka stock (Sanchit) aur current karmo ka phal bhasm ho jata hai. Ab janm-maran ka chakra hamesha ke liye khatam.' },
+  { count: 11*CRORE, icon: '◈', label: 'Saari Siddhiyan Prapt', tag: 'Siddhi Sthan', eng: 'All Siddhis Attained', phase: 'bhagwat',
+    desc: 'Saari Siddhiyan aur Riddhiyan haath jodkar khadi rehti hain. Sadhak Bhagwan ki nitya leelaon (Vrindavan, Saket etc.) mein pravesh kar jata hai.' },
+  { count: 12*CRORE, icon: '☸', label: 'Bhagwan Bhakt ke Adheen', tag: 'Bhakti Sthan', eng: 'God Follows Devotee', phase: 'bhagwat',
+    desc: 'Sadhak itna powerful ho jata hai ki Bhagwan uske piche-piche dolte hain (Bhagwan bhakt ke adheen ho jate hain).' },
+  { count: 13*CRORE, icon: 'ੴ', label: 'Moksh Pradaan ki Shakti', tag: 'Moksh Sthan', eng: 'Power to Grant Liberation', phase: 'bhagwat',
+    desc: 'Ye limit hai. Jo 13 crore naam jap leta hai, wo itna samarth ho jata hai ki wo kisi bhi Paapi insan ko bhi Moksha (liberation) dila sakta hai.' },
+];
+
+const PHASES = [
+  { id: 'shuddhikaran', name: 'Shuddhikaran', sub: 'PURIFICATION · 1-4 CRORE', range: [1,4] },
+  { id: 'shakti', name: 'Shakti & Vijay', sub: 'POWER & MASTERY · 5-8 CRORE', range: [5,8] },
+  { id: 'bhagwat', name: 'Bhagwat Prapti', sub: 'ULTIMATE UNION · 9-13 CRORE', range: [9,13] },
+];
+
+// Regular 1K milestones (kept for regular celebrations)
+const MILESTONES = [];
+for (let k = 1; k <= 99; k++) {
+  MILESTONES.push({ count: k * 1000, icon: '✨', label: (k) + 'K Jap', badge: '🎖️', type: 'regular' });
+}
+// Add bigger regular milestones
+[100000, 200000, 300000, 500000, 1000000, 2000000, 5000000].forEach(c => {
+  MILESTONES.push({ count: c, icon: '👑', label: formatMsCountLabel(c), badge: '👑', type: 'regular' });
+});
+// Add spiritual milestones to MILESTONES for celebration triggers
+SPIRITUAL_MILESTONES.forEach(sm => {
+  MILESTONES.push({ count: sm.count, icon: sm.icon, label: sm.label, badge: sm.icon, type: 'spiritual', tag: sm.tag, eng: sm.eng, desc: sm.desc });
+});
+MILESTONES.sort((a, b) => a.count - b.count);
+
+function formatMsCountLabel(n) {
+  if (n >= CRORE) return (n/CRORE) + ' Crore';
+  if (n >= 100000) return (n/100000) + ' Lakh';
+  if (n >= 1000) return (n/1000) + 'K';
+  return n.toLocaleString('en-IN');
+}
+
+function getMilestoneData() {
+  try {
+    const d = localStorage.getItem('rjap_milestones');
+    return d ? JSON.parse(d) : { reached: {}, lastChecked: 0 };
+  } catch(e) { return { reached: {}, lastChecked: 0 }; }
+}
+
+function saveMilestoneData(data) {
+  try { localStorage.setItem('rjap_milestones', JSON.stringify(data)); } catch(e) {}
+}
+
+function formatMsCount(n) {
+  if (n >= CRORE) return (n/CRORE) + ' Crore';
+  if (n >= 100000) return (n/100000).toFixed(n%100000 ? 1 : 0).replace(/\.0$/, '') + ' Lakh';
+  return n.toLocaleString('en-IN');
+}
+
+function playShankha() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const duration = 3.5;
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const osc3 = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const gain2 = ctx.createGain();
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(130, ctx.currentTime);
+    osc1.frequency.linearRampToValueAtTime(145, ctx.currentTime + 0.8);
+    osc1.frequency.linearRampToValueAtTime(138, ctx.currentTime + 2.5);
+    osc1.frequency.linearRampToValueAtTime(130, ctx.currentTime + duration);
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(260, ctx.currentTime);
+    osc2.frequency.linearRampToValueAtTime(290, ctx.currentTime + 0.8);
+    osc2.frequency.linearRampToValueAtTime(270, ctx.currentTime + duration);
+    osc3.type = 'triangle';
+    osc3.frequency.setValueAtTime(520, ctx.currentTime);
+    osc3.frequency.linearRampToValueAtTime(580, ctx.currentTime + 1);
+    osc3.frequency.linearRampToValueAtTime(530, ctx.currentTime + duration);
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.35, ctx.currentTime + 1.5);
+    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + duration);
+    gain2.gain.setValueAtTime(0, ctx.currentTime);
+    gain2.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.5);
+    gain2.gain.linearRampToValueAtTime(0, ctx.currentTime + duration);
+    osc1.connect(gain); osc2.connect(gain); osc3.connect(gain2);
+    gain.connect(ctx.destination); gain2.connect(ctx.destination);
+    osc1.start(); osc2.start(); osc3.start();
+    osc1.stop(ctx.currentTime + duration); osc2.stop(ctx.currentTime + duration); osc3.stop(ctx.currentTime + duration);
+    setTimeout(() => ctx.close(), (duration + 0.5) * 1000);
+  } catch(e) { console.log('Shankha sound error:', e); }
+}
+
+function spawnMsParticles() {
+  const container = document.getElementById('msParticles');
+  container.innerHTML = '';
+  const colors = ['#FFD700', '#FF6B9D', '#6DB8FF', '#2ECC71', '#FFB700', '#E8336D'];
+  for (let i = 0; i < 50; i++) {
+    const p = document.createElement('div');
+    p.className = 'ms-particle';
+    const size = 4 + Math.random() * 8;
+    p.style.cssText = 'width:' + size + 'px;height:' + size + 'px;left:' + Math.random()*100 + '%;top:-10px;' +
+      'background:' + colors[Math.floor(Math.random()*colors.length)] + ';' +
+      'animation-duration:' + (2 + Math.random()*3) + 's;animation-delay:' + Math.random()*2 + 's;';
+    container.appendChild(p);
+  }
+}
+
+function showMilestoneCelebration(milestone) {
+  const overlay = document.getElementById('msOverlay');
+  document.getElementById('msIcon').textContent = milestone.icon;
+  document.getElementById('msBadgeIcon').textContent = milestone.badge || milestone.icon;
+
+  if (milestone.type === 'spiritual') {
+    const croreNum = milestone.count / CRORE;
+    document.getElementById('msCount').textContent = croreNum + ' CRORE JAP COMPLETE';
+    document.getElementById('msTitle').textContent = milestone.label;
+    document.getElementById('msSub').textContent = (milestone.tag || '') + '\n' + (milestone.eng || '').toUpperCase();
+    // Show description
+    let descEl = document.getElementById('msDesc');
+    if (descEl) { descEl.textContent = milestone.desc || ''; descEl.style.display = milestone.desc ? 'block' : 'none'; }
+    let authorEl = document.getElementById('msAuthor');
+    if (authorEl) authorEl.style.display = 'block';
+  } else {
+    document.getElementById('msTitle').textContent = 'जय श्री राधे!';
+    document.getElementById('msCount').textContent = formatMsCount(milestone.count) + ' JAP COMPLETE';
+    document.getElementById('msSub').textContent = 'Jap Milestone Reached! 🎉';
+    let descEl = document.getElementById('msDesc');
+    if (descEl) descEl.style.display = 'none';
+    let authorEl = document.getElementById('msAuthor');
+    if (authorEl) authorEl.style.display = 'none';
+  }
+
+  spawnMsParticles();
+  overlay.classList.add('show');
+  playShankha();
+  if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 500, 200, 300, 100, 300]);
+}
+
+function dismissMilestone() {
+  document.getElementById('msOverlay').classList.remove('show');
+}
+
+function checkMilestones() {
+  const tot = App.gTot();
+  const data = getMilestoneData();
+  for (const ms of MILESTONES) {
+    if (tot >= ms.count && !data.reached[ms.count]) {
+      data.reached[ms.count] = new Date().toISOString();
+      saveMilestoneData(data);
+      setTimeout(() => showMilestoneCelebration(ms), 500);
+      return;
+    }
+  }
+}
+
+function renderMsView() {
+  const data = getMilestoneData();
+  const tot = App.gTot();
+
+  // Update lifetime count
+  const countEl = document.getElementById('mahimaCount');
+  if (countEl) countEl.textContent = tot.toLocaleString('en-IN');
+
+  // Count spiritual milestones reached
+  const spReached = SPIRITUAL_MILESTONES.filter(m => data.reached[m.count]).length;
+  const reachedEl = document.getElementById('mahimaMsReached');
+  if (reachedEl) reachedEl.textContent = spReached + '/13 milestones reached';
+
+  // Render spiritual milestone cards grouped by phase
+  const cardsEl = document.getElementById('mahimaCards');
+  if (cardsEl) {
+    let html = '';
+    PHASES.forEach(phase => {
+      html += '<div class="mahima-phase"><div class="mahima-phase-name">' + phase.name + '</div>' +
+        '<div class="mahima-phase-sub">' + phase.sub + '</div></div>';
+      SPIRITUAL_MILESTONES.filter(m => m.phase === phase.id).forEach(m => {
+        const unlocked = !!data.reached[m.count];
+        const pct = Math.min(100, (tot / m.count) * 100);
+        const croreNum = m.count / CRORE;
+        const phaseClass = phase.id === 'bhagwat' ? ' phase-bhagwat' : (phase.id === 'shakti' ? ' phase-shakti' : '');
+        const dateStr = unlocked ? new Date(data.reached[m.count]).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '';
+        html += '<div class="mahima-card' + (unlocked ? ' unlocked' : '') + phaseClass + '">' +
+          '<div class="mahima-card-icon">' + m.icon + '</div>' +
+          '<div class="mahima-card-body">' +
+          '<div class="mahima-card-top"><span class="mahima-card-count">' + croreNum + ' Crore</span>' +
+          '<span class="mahima-card-tag">' + m.tag + '</span></div>' +
+          '<div class="mahima-card-name">' + m.label + '</div>' +
+          '<div class="mahima-card-eng">' + m.eng + '</div>' +
+          '<div class="mahima-card-bar-wrap"><div class="mahima-card-bar" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+          '<div class="mahima-card-pct">' + pct.toFixed(1) + '%</div>' +
+          (unlocked ? '<div class="mahima-card-date">✓ Achieved ' + dateStr + '</div>' : '') +
+          '</div></div>';
+      });
+    });
+    cardsEl.innerHTML = html;
+  }
+
+  // Regular milestone progress bar
+  const regMilestones = MILESTONES.filter(m => m.type === 'regular');
+  const next = regMilestones.find(m => !data.reached[m.count]);
+  if (next) {
+    const nextEl = document.getElementById('msNextVal');
+    if (nextEl) nextEl.textContent = formatMsCount(next.count);
+    const prevIdx = regMilestones.indexOf(next) - 1;
+    const prevCount = prevIdx >= 0 ? regMilestones[prevIdx].count : 0;
+    const pct = Math.min(100, ((tot - prevCount) / (next.count - prevCount)) * 100);
+    const fillEl = document.getElementById('msProgFill');
+    if (fillEl) fillEl.style.width = pct + '%';
+  } else {
+    const nextEl = document.getElementById('msNextVal');
+    if (nextEl) nextEl.textContent = 'All done! 🙏';
+    const fillEl = document.getElementById('msProgFill');
+    if (fillEl) fillEl.style.width = '100%';
+  }
+
+  // History log
+  const logList = document.getElementById('msLogList');
+  if (logList) {
+    const allReached = MILESTONES.filter(m => data.reached[m.count])
+      .sort((a, b) => new Date(data.reached[b.count]) - new Date(data.reached[a.count]));
+    if (allReached.length === 0) {
+      logList.innerHTML = '<div style="font-size:11px;color:var(--td);text-align:center;padding:12px 0">No milestones reached yet. Keep chanting! 🙏</div>';
+    } else {
+      logList.innerHTML = allReached.slice(0, 20).map(m => {
+        const d = new Date(data.reached[m.count]);
+        const dateStr = d.toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) + ' · ' +
+          d.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
+        return '<div class="ms-log-item">' +
+          '<div class="ms-log-icon">' + (m.badge || m.icon) + '</div>' +
+          '<div class="ms-log-info"><div class="ms-log-name">' + m.label + (m.type==='spiritual'?' 🙏':'') + '</div>' +
+          '<div class="ms-log-date">' + dateStr + '</div></div>' +
+          '<div class="ms-log-count">' + formatMsCount(m.count) + '</div></div>';
+      }).join('');
+    }
+  }
+}
+
+
 </script>
 
 </body>

@@ -665,6 +665,28 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .sj-item.spiritual .sj-count{color:rgba(180,120,255,0.9);}
 .sj-item.spiritual .sj-ago{background:rgba(160,90,255,0.08);color:rgba(180,120,255,0.6);border-color:rgba(160,90,255,0.2);}
 
+
+/* ── Naam Selector Toggle ── */
+.naam-sel-wrap{position:relative;display:flex;justify-content:center;z-index:20;}
+.naam-sel-btn{background:rgba(74,144,226,0.12);border:1px solid rgba(74,144,226,0.3);border-radius:14px;
+  padding:3px 10px;color:var(--a2);font-size:10px;cursor:pointer;display:flex;align-items:center;gap:4px;
+  font-family:'Inter',sans-serif;letter-spacing:0.5px;transition:all 0.2s;margin-bottom:2px;}
+.naam-sel-btn:active{transform:scale(0.95);background:rgba(74,144,226,0.2);}
+.naam-sel-btn .ns-arrow{font-size:8px;transition:transform 0.25s;}
+.naam-sel-btn.open .ns-arrow{transform:rotate(180deg);}
+.naam-sel-dd{position:absolute;top:100%;left:50%;transform:translateX(-50%);background:var(--bc);
+  border:1px solid rgba(74,144,226,0.3);border-radius:12px;padding:4px;min-width:200px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.6);display:none;z-index:30;}
+.naam-sel-dd.show{display:block;}
+.naam-sel-opt{padding:8px 12px;border-radius:8px;cursor:pointer;font-size:12px;color:var(--tl);
+  transition:background 0.15s;display:flex;align-items:center;gap:8px;font-family:'Tiro Devanagari Hindi',serif;}
+.naam-sel-opt:hover{background:rgba(74,144,226,0.12);}
+.naam-sel-opt.active{background:rgba(255,215,0,0.1);color:var(--gold);border:1px solid rgba(255,215,0,0.25);}
+.naam-sel-opt .ns-check{font-size:14px;min-width:18px;}
+/* Two-line floating naam for RV mode */
+.fn-rv{position:absolute;pointer-events:none;z-index:10;animation:fu 2.4s ease-out forwards;
+  display:flex;flex-direction:column;align-items:center;line-height:1.15;}
+.fn-rv span{font-family:'Tiro Devanagari Hindi',serif;display:block;}
 </style>
 </head>
 <body>
@@ -748,7 +770,20 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
       <div class="rh-row"><span class="rh-lbl">Sunrise</span><span class="rh-val" id="rh-sunrise">--:--</span></div>
     </div>
     <!-- राधा center -->
-    <div class="rh-center"><div class="rn">राधा</div></div>
+    <div class="rh-center" style="flex-direction:column;flex:0 0 auto;">
+      <div class="naam-sel-wrap">
+        <button class="naam-sel-btn" id="naamSelBtn" onclick="toggleNaamSel()"><span id="naamSelLabel">▼</span></button>
+        <div class="naam-sel-dd" id="naamSelDd">
+          <div class="naam-sel-opt active" id="naamOptRadha" onclick="switchJapMode('radha')">
+            <span class="ns-check">✓</span> राधा
+          </div>
+          <div class="naam-sel-opt" id="naamOptRV" onclick="switchJapMode('rv')">
+            <span class="ns-check"></span> राधावल्लभ श्री हरिवंश
+          </div>
+        </div>
+      </div>
+      <div class="rn" id="rnTitle">राधा</div>
+    </div>
     <!-- Sandhya Kal card -->
     <div class="rh-card" style="padding-left:10px;align-items:flex-end">
       <div class="rh-card-title">🔔 Sandhya Kal</div>
@@ -1370,6 +1405,15 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
     <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="ltIn" placeholder="Lifetime target (jap)"><span class="fu">total</span></div>
     <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="ltMala">0</span> malas lifetime</div>
     <button class="pb" onclick="svt('l')">Save Lifetime Target</button>
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,215,0,0.15)">
+      <div style="font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;font-weight:600">📿 राधावल्लभ श्री हरिवंश Targets</div>
+      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtRVIn" placeholder="Daily target (jap)" oninput="document.getElementById('dtRVMala').textContent=Math.floor((parseInt(this.value)||0)/(App.S.ms||108))"><span class="fu">/ day</span></div>
+      <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="dtRVMala">0</span> malas per day</div>
+      <button class="pb" onclick="svtRV('d')" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(255,215,0,0.4),rgba(255,180,0,0.3))">Save RV Daily Target</button>
+      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="ltRVIn" placeholder="Lifetime target (jap)" oninput="document.getElementById('ltRVMala').textContent=Math.floor((parseInt(this.value)||0)/(App.S.ms||108))"><span class="fu">total</span></div>
+      <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="ltRVMala">0</span> malas lifetime</div>
+      <button class="pb" onclick="svtRV('l')" style="background:linear-gradient(135deg,rgba(255,215,0,0.4),rgba(255,180,0,0.3))">Save RV Lifetime Target</button>
+    </div>
   </div>
 
   <!-- PREFERENCES -->
@@ -1545,8 +1589,13 @@ const App = {
     history: {}, h28: {}, stotrams: {}, brahma: {},
     customSt: [], timerHistory: {}, timer28History: {}, sankalpas: [], occasions: {},
     syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {},
-    migrationV2Done: false
+    migrationV2Done: false,
+    japMode: 'radha',
+    historyRV: {}, timerHistoryRV: {}, dtRV: 0, ltRV: 0, nameJapDeductRV: 0,
+    malaLogRV: [],
+    syncBaselineRV: {}, syncBaselineTimerRV: {}
   },
+  lmcRV: 0,
   lmc: 0, lm28: 0,
   timerRunning: false, timerSeconds: 0, timerInterval: null,
   timerSavedSeconds: 0, autoStopTimeout: null,
@@ -1626,7 +1675,10 @@ const App = {
       customSt: this.S.customSt, sankalpas: this.S.sankalpas, occasions: this.S.occasions,
       history: this.S.history, h28: this.S.h28, timerHistory: this.S.timerHistory, timer28History: this.S.timer28History,
       syncBaseline: this.S.syncBaseline, syncBaseline28: this.S.syncBaseline28,
-      syncBaselineTimer: this.S.syncBaselineTimer, syncBaselineTimer28: this.S.syncBaselineTimer28, migrationV2Done: this.S.migrationV2Done
+      syncBaselineTimer: this.S.syncBaselineTimer, syncBaselineTimer28: this.S.syncBaselineTimer28, migrationV2Done: this.S.migrationV2Done,
+      japMode: this.S.japMode, historyRV: this.S.historyRV, timerHistoryRV: this.S.timerHistoryRV,
+      dtRV: this.S.dtRV, ltRV: this.S.ltRV, nameJapDeductRV: this.S.nameJapDeductRV, malaLogRV: this.S.malaLogRV,
+      syncBaselineRV: this.S.syncBaselineRV, syncBaselineTimerRV: this.S.syncBaselineTimerRV
     });
     // Keep per-day stores updated for compatibility with existing offline data
     const tk = this.S.tk;
@@ -1688,6 +1740,17 @@ const App = {
     if (!this.S.timer28History) this.S.timer28History = {};
     if (!this.S.sankalpas) this.S.sankalpas = [];
     if (!this.S.occasions) this.S.occasions = {};
+    if (!this.S.historyRV) this.S.historyRV = {};
+    if (!this.S.timerHistoryRV) this.S.timerHistoryRV = {};
+    if (!this.S.japMode) this.S.japMode = 'radha';
+    if (!this.S.dtRV) this.S.dtRV = 0;
+    if (!this.S.ltRV) this.S.ltRV = 0;
+    if (!this.S.nameJapDeductRV) this.S.nameJapDeductRV = 0;
+    if (!this.S.malaLogRV) this.S.malaLogRV = [];
+    if (!this.S.syncBaselineRV) this.S.syncBaselineRV = {};
+    if (!this.S.syncBaselineTimerRV) this.S.syncBaselineTimerRV = {};
+    if (!this.S.historyRV[this.S.tk]) this.S.historyRV[this.S.tk] = 0;
+    if (!this.S.timerHistoryRV[this.S.tk]) this.S.timerHistoryRV[this.S.tk] = 0;
     // Load malaLog — only use if it's from today AND today has actual jap count
     const malaLogRec = await this.dbGet('malaLog', 'today');
     const todayJap = this.S.history[this.S.tk] || 0;
@@ -1708,8 +1771,18 @@ const App = {
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   },
 
-  gTod() { return this.S.history[this.S.tk] || 0; },
-  gTot() { return Math.max(0, Object.values(this.S.history).reduce((a,b) => a+b, 0) - (this.S.nameJapDeduct || 0)); },
+  gTod() {
+    if (this.S.japMode === 'rv') return this.S.historyRV[this.S.tk] || 0;
+    return this.S.history[this.S.tk] || 0;
+  },
+  gTot() {
+    if (this.S.japMode === 'rv') return Math.max(0, Object.values(this.S.historyRV).reduce((a,b) => a+b, 0) - (this.S.nameJapDeductRV || 0));
+    return Math.max(0, Object.values(this.S.history).reduce((a,b) => a+b, 0) - (this.S.nameJapDeduct || 0));
+  },
+  getCurHistory() { return this.S.japMode === 'rv' ? this.S.historyRV : this.S.history; },
+  getCurTimerHistory() { return this.S.japMode === 'rv' ? this.S.timerHistoryRV : this.S.timerHistory; },
+  getCurDt() { return this.S.japMode === 'rv' ? this.S.dtRV : this.S.dt; },
+  getCurLt() { return this.S.japMode === 'rv' ? this.S.ltRV : this.S.lt; },
 
   // ── Haptic Heartbeat ──
   // 10ms on every tap; triple long pulse (200-80-200-80-300ms) synced with mala complete
@@ -1749,7 +1822,8 @@ const App = {
     document.getElementById('timerDisplay').classList.remove('running');
     document.getElementById('timerBtn').textContent = '▶ Resume';
     document.getElementById('timerBtn').className = 'tbtn start';
-    this.S.timerHistory[this.S.tk] = (this.S.timerHistory[this.S.tk] || 0) + (this.timerSeconds - this.timerSavedSeconds);
+    const _th = this.getCurTimerHistory();
+    _th[this.S.tk] = (_th[this.S.tk] || 0) + (this.timerSeconds - this.timerSavedSeconds);
     this.timerSavedSeconds = this.timerSeconds;
     this.save(); this.updateTimerToday();
   },
@@ -1777,7 +1851,8 @@ const App = {
   },
 
   updateTimerToday() {
-    const todSec = (this.S.timerHistory[this.S.tk] || 0) +
+    const th = this.getCurTimerHistory();
+    const todSec = (th[this.S.tk] || 0) +
       (this.timerRunning ? (this.timerSeconds - this.timerSavedSeconds) : 0);
     document.getElementById('timerToday').textContent = "Today's Jap Time: " + this.fmtTime(todSec);
   },
@@ -1785,6 +1860,7 @@ const App = {
   // ── Main UI Update ──
   ua() {
     const tod = this.gTod(), tot = this.gTot(), ms = this.S.ms || 108;
+    const curDt = this.getCurDt(), curLt = this.getCurLt();
     const md = Math.floor(tod / ms);
     const beadPos = (tod % ms) || ms;
     document.getElementById('jms').textContent = beadPos;
@@ -1796,19 +1872,19 @@ const App = {
       de.appendChild(d);
     }
     document.getElementById('mtot').textContent = md + ' mala' + (md !== 1 ? 's' : '');
-    const dP = this.S.dt > 0 ? Math.min(100, Math.round(tod/this.S.dt*100)) : 0;
-    const lP = this.S.lt > 0 ? Math.min(100, Math.round(tot/this.S.lt*100)) : 0;
+    const dP = curDt > 0 ? Math.min(100, Math.round(tod/curDt*100)) : 0;
+    const lP = curLt > 0 ? Math.min(100, Math.round(tot/curLt*100)) : 0;
     // Daily bar (blue)
     document.getElementById('dPct').textContent = dP + '%';
     document.getElementById('dbarFill').style.width = dP + '%';
     document.getElementById('dbarDone').textContent = fmtIN(tod);
-    document.getElementById('dbarTarget').textContent = '/ ' + (this.S.dt ? fmtIN(this.S.dt) : '—');
+    document.getElementById('dbarTarget').textContent = '/ ' + (curDt ? fmtIN(curDt) : '—');
     document.getElementById('dDet').textContent = md + ' malas done';
     // Lifetime bar (gold)
     document.getElementById('lPct').textContent = lP + '%';
     document.getElementById('lbarFill').style.width = lP + '%';
     document.getElementById('lbarDone').textContent = fmtIN(tot);
-    document.getElementById('lbarTarget').textContent = '/ ' + (this.S.lt ? fmtIN(this.S.lt) : '—');
+    document.getElementById('lbarTarget').textContent = '/ ' + (curLt ? fmtIN(curLt) : '—');
     document.getElementById('lDet').textContent = Math.floor(tot/ms) + ' malas done';
     this.updateTimerToday();
     uStats();
@@ -1825,8 +1901,14 @@ const App = {
     // Record mala duration
     const malaDuration = this.timerSeconds - this.malaSessionStart;
     this.malaSessionStart = this.timerSeconds;
-    if (!this.S.malaLog) this.S.malaLog = [];
-    this.S.malaLog.push(malaDuration);
+    const isRVm = this.S.japMode === 'rv';
+    if (isRVm) {
+      if (!this.S.malaLogRV) this.S.malaLogRV = [];
+      this.S.malaLogRV.push(malaDuration);
+    } else {
+      if (!this.S.malaLog) this.S.malaLog = [];
+      this.S.malaLog.push(malaDuration);
+    }
     this.save();
     // Animate mala duration on timer display
     this.flashMalaDuration(malaDuration);
@@ -1853,22 +1935,35 @@ const App = {
   ht(e) {
     e.preventDefault();
     const ms = this.S.ms || 108;
-    this.S.history[this.S.tk] = (this.S.history[this.S.tk] || 0) + 1;
+    const isRV = this.S.japMode === 'rv';
+    if (isRV) {
+      this.S.historyRV[this.S.tk] = (this.S.historyRV[this.S.tk] || 0) + 1;
+    } else {
+      this.S.history[this.S.tk] = (this.S.history[this.S.tk] || 0) + 1;
+    }
     this.save(); fbDebouncedPush();
     // Haptic heartbeat — 10ms bead feeling
     this.vib([10]);
     this.tapTimer();
-    spawn(e, document.getElementById('tz'));
+    if (isRV) {
+      spawnRV(e, document.getElementById('tz'));
+    } else {
+      spawn(e, document.getElementById('tz'));
+    }
     const nm = Math.floor(this.gTod() / ms);
-    if (nm > this.lmc) { this.lmc = nm; this.malaOk(); App.silentMonkBackup(); }
+    const lmcKey = isRV ? 'lmcRV' : 'lmc';
+    if (nm > this[lmcKey]) { this[lmcKey] = nm; this.malaOk(); App.silentMonkBackup(); }
     this.ua();
-    checkMilestones();
+    if (!isRV) checkMilestones();
   },
 
   undo1() {
-    if ((this.S.history[this.S.tk] || 0) > 0) {
-      this.S.history[this.S.tk]--;
-      this.lmc = Math.floor(this.gTod() / (this.S.ms || 108));
+    const isRV = this.S.japMode === 'rv';
+    const hist = isRV ? this.S.historyRV : this.S.history;
+    if ((hist[this.S.tk] || 0) > 0) {
+      hist[this.S.tk]--;
+      const lmcKey = isRV ? 'lmcRV' : 'lmc';
+      this[lmcKey] = Math.floor(this.gTod() / (this.S.ms || 108));
       this.save(); fbDebouncedPush(); this.ua(); this.vib([10]);
     }
   },
@@ -2129,6 +2224,22 @@ function spawn(e, zone) {
   zone.appendChild(el); setTimeout(() => el.remove(), 2400);
 }
 
+function spawnRV(e, zone) {
+  const r = zone.getBoundingClientRect();
+  let x, y;
+  if (e.touches && e.touches[0]) { x = e.touches[0].clientX - r.left; y = e.touches[0].clientY - r.top; }
+  else { x = e.clientX - r.left; y = e.clientY - r.top; }
+  const el = document.createElement('div');
+  el.className = 'fn-rv';
+  const fs = 55 + Math.random()*25;
+  el.innerHTML = '<span style="font-size:'+fs+'px">राधावल्लभ</span><span style="font-size:'+(fs*0.85)+'px">श्री हरिवंश</span>';
+  el.style.left = (x - fs*1.2) + 'px'; el.style.top = (y - fs*0.5) + 'px';
+  acf = !acf;
+  el.style.color = acf ? '#FFD700' : '#6DB8FF';
+  el.style.textShadow = acf ? '0 0 30px rgba(255,215,0,0.9)' : '0 0 30px rgba(109,184,255,0.9)';
+  zone.appendChild(el); setTimeout(() => el.remove(), 2400);
+}
+
 // Prevent double-tap zoom
 let lt2 = 0;
 document.addEventListener('touchend', e => { const n = Date.now(); if (n - lt2 < 300) e.preventDefault(); lt2 = n; }, { passive: false });
@@ -2149,7 +2260,12 @@ setInterval(() => {
     if (!App.S.h28[App.S.tk]) App.S.h28[App.S.tk] = 0;
     if (!App.S.timerHistory[App.S.tk]) App.S.timerHistory[App.S.tk] = 0;
     if (!App.S.timer28History[App.S.tk]) App.S.timer28History[App.S.tk] = 0;
+    if (!App.S.historyRV) App.S.historyRV = {};
+    if (!App.S.historyRV[App.S.tk]) App.S.historyRV[App.S.tk] = 0;
+    if (!App.S.timerHistoryRV) App.S.timerHistoryRV = {};
+    if (!App.S.timerHistoryRV[App.S.tk]) App.S.timerHistoryRV[App.S.tk] = 0;
     App.lmc = 0;
+    App.lmcRV = 0;
     App.save();
     fbDebouncedPush();
     App.ua();
@@ -2168,6 +2284,90 @@ function toast(msg) {
   t.textContent = msg; t.style.opacity = '1';
   setTimeout(() => t.style.opacity = '0', 2000);
 }
+
+// ── RV Target Save ──
+function svtRV(type) {
+  const ms = App.S.ms || 108;
+  if (type === 'd') {
+    const v = parseInt(document.getElementById('dtRVIn').value) || 0;
+    App.S.dtRV = v;
+  } else {
+    const v = parseInt(document.getElementById('ltRVIn').value) || 0;
+    App.S.ltRV = v;
+  }
+  App.save(); fbDebouncedPush(); App.ua(); toast('RV Target saved! 🎯');
+}
+
+// ── Init RV mode UI on page load ──
+function initJapModeUI() {
+  if (App.S.japMode === 'rv') switchJapMode('rv');
+  // Populate RV target inputs
+  const dtRVIn = document.getElementById('dtRVIn');
+  const ltRVIn = document.getElementById('ltRVIn');
+  if (dtRVIn && App.S.dtRV) dtRVIn.value = App.S.dtRV;
+  if (ltRVIn && App.S.ltRV) ltRVIn.value = App.S.ltRV;
+  const ms = App.S.ms || 108;
+  const dtRVM = document.getElementById('dtRVMala');
+  const ltRVM = document.getElementById('ltRVMala');
+  if (dtRVM) dtRVM.textContent = Math.floor((App.S.dtRV||0)/ms);
+  if (ltRVM) ltRVM.textContent = Math.floor((App.S.ltRV||0)/ms);
+}
+
+// ── Naam Selector Toggle ──
+function toggleNaamSel() {
+  const dd = document.getElementById('naamSelDd');
+  const btn = document.getElementById('naamSelBtn');
+  dd.classList.toggle('show');
+  btn.classList.toggle('open');
+  // Close on outside click
+  if (dd.classList.contains('show')) {
+    setTimeout(() => {
+      document.addEventListener('click', closeNaamSelOutside);
+    }, 10);
+  }
+}
+function closeNaamSelOutside(e) {
+  const dd = document.getElementById('naamSelDd');
+  const btn = document.getElementById('naamSelBtn');
+  if (!dd.contains(e.target) && !btn.contains(e.target)) {
+    dd.classList.remove('show');
+    btn.classList.remove('open');
+    document.removeEventListener('click', closeNaamSelOutside);
+  }
+}
+function switchJapMode(mode) {
+  App.S.japMode = mode;
+  const dd = document.getElementById('naamSelDd');
+  const btn = document.getElementById('naamSelBtn');
+  dd.classList.remove('show');
+  btn.classList.remove('open');
+  document.removeEventListener('click', closeNaamSelOutside);
+  // Update UI
+  const optR = document.getElementById('naamOptRadha');
+  const optRV = document.getElementById('naamOptRV');
+  const titleEl = document.getElementById('rnTitle');
+  if (mode === 'rv') {
+    optR.classList.remove('active'); optR.querySelector('.ns-check').textContent = '';
+    optRV.classList.add('active'); optRV.querySelector('.ns-check').textContent = '✓';
+    titleEl.innerHTML = '<span style="font-size:clamp(18px,5vw,28px);line-height:1.1">राधावल्लभ</span><br><span style="font-size:clamp(16px,4.5vw,24px);line-height:1.1">श्री हरिवंश</span>';
+    titleEl.style.textAlign = 'center';
+  } else {
+    optRV.classList.remove('active'); optRV.querySelector('.ns-check').textContent = '';
+    optR.classList.add('active'); optR.querySelector('.ns-check').textContent = '✓';
+    titleEl.textContent = 'राधा';
+    titleEl.style.textAlign = '';
+  }
+  // Reset mala counter for the mode
+  const ms = App.S.ms || 108;
+  if (mode === 'rv') {
+    App.lmcRV = Math.floor((App.S.historyRV[App.S.tk]||0) / ms);
+  } else {
+    App.lmc = Math.floor((App.S.history[App.S.tk]||0) / ms);
+  }
+  App.save(); App.ua(); uStats();
+  toast(mode === 'rv' ? 'राधावल्लभ श्री हरिवंश 🙏' : 'राधा 🙏');
+}
+
 
 function escHtml(t) { return (t+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -2415,14 +2615,16 @@ function deductJapTimeOther() {
 // ── Stats ──
 function uStats() {
   const ms = App.S.ms || 108, tod = App.gTod(), tot = App.gTot(), now = new Date();
+  const curHist = App.getCurHistory();
+  const curTimerHist = App.getCurTimerHistory();
   const wk = [];
   for (let i = 6; i >= 0; i--) { const d = new Date(now); d.setDate(d.getDate()-i); wk.push(d.toISOString().split('T')[0]); }
-  const ws = wk.reduce((s,k) => s + (App.S.history[k]||0), 0);
+  const ws = wk.reduce((s,k) => s + (curHist[k]||0), 0);
   const mp = now.toISOString().slice(0,7);
   let ms2 = 0, best = 0, streak = 0;
-  Object.entries(App.S.history).forEach(([k,v]) => { if (k.startsWith(mp)) ms2 += v; if (!k.startsWith('prev_') && v > best) best = v; });
+  Object.entries(curHist).forEach(([k,v]) => { if (k.startsWith(mp)) ms2 += v; if (!k.startsWith('prev_') && v > best) best = v; });
   const d2 = new Date();
-  while (streak < 999) { const k = d2.toISOString().split('T')[0]; if ((App.S.history[k]||0) > 0) { streak++; d2.setDate(d2.getDate()-1); } else break; }
+  while (streak < 999) { const k = d2.toISOString().split('T')[0]; if ((curHist[k]||0) > 0) { streak++; d2.setDate(d2.getDate()-1); } else break; }
   document.getElementById('sTod').textContent = tod;
   document.getElementById('sTodM').textContent = Math.floor(tod/ms) + ' malas';
   document.getElementById('sWk').textContent = ws;
@@ -2434,17 +2636,17 @@ function uStats() {
   document.getElementById('sStr').textContent = streak;
   document.getElementById('sBest').textContent = best;
   const bars = document.getElementById('cbrs'); bars.innerHTML = '';
-  const mx = Math.max(...wk.map(k => App.S.history[k]||0), 1);
+  const mx = Math.max(...wk.map(k => curHist[k]||0), 1);
   const dn = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   wk.forEach(k => {
-    const v = App.S.history[k]||0, h = Math.max(2, Math.round(v/mx*50));
+    const v = curHist[k]||0, h = Math.max(2, Math.round(v/mx*50));
     const c = document.createElement('div'); c.className = 'cbc';
     c.innerHTML = '<div class="cbb" style="height:'+h+'px"></div><div class="cbl">'+dn[new Date(k+'T12:00:00').getDay()]+'</div>';
     bars.appendChild(c);
   });
-  const timeTod = (App.S.timerHistory[App.S.tk]||0) + (App.timerRunning ? (App.timerSeconds - App.timerSavedSeconds) : 0);
-  const timeWk = wk.reduce((s,k) => s + (App.S.timerHistory[k]||0), 0) + (App.timerRunning ? (App.timerSeconds - App.timerSavedSeconds) : 0);
-  const timeMo = Object.entries(App.S.timerHistory).filter(([k]) => k.startsWith(mp)).reduce((s,[,v]) => s+v, 0) + (App.timerRunning ? (App.timerSeconds - App.timerSavedSeconds) : 0);
+  const timeTod = (curTimerHist[App.S.tk]||0) + (App.timerRunning ? (App.timerSeconds - App.timerSavedSeconds) : 0);
+  const timeWk = wk.reduce((s,k) => s + (curTimerHist[k]||0), 0) + (App.timerRunning ? (App.timerSeconds - App.timerSavedSeconds) : 0);
+  const timeMo = Object.entries(curTimerHist).filter(([k]) => k.startsWith(mp)).reduce((s,[,v]) => s+v, 0) + (App.timerRunning ? (App.timerSeconds - App.timerSavedSeconds) : 0);
   function fmtShort(s) { const h = Math.floor(s/3600), m = Math.floor((s%3600)/60); return (h>0?h+'h ':'')+m+'m'; }
   document.getElementById('tTod').textContent = fmtShort(timeTod);
   document.getElementById('tWk').textContent = fmtShort(timeWk);
@@ -2622,7 +2824,9 @@ function exportAllData() {
     timerHistory: App.S.timerHistory||{}, timer28History: App.S.timer28History||{},
     stotrams: App.S.stotrams||{}, brahma: App.S.brahma||{}, customSt: App.S.customSt||[],
     sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{},
-    ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{}
+    ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{},
+    japMode: App.S.japMode||'radha', historyRV: App.S.historyRV||{}, timerHistoryRV: App.S.timerHistoryRV||{},
+    dtRV: App.S.dtRV||0, ltRV: App.S.ltRV||0, nameJapDeductRV: App.S.nameJapDeductRV||0, malaLogRV: App.S.malaLogRV||[]
   };
   const blob = new Blob([JSON.stringify(backup,null,2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -2655,6 +2859,13 @@ function importAllData(input) {
       if (data.lt !== undefined) App.S.lt = data.lt;
       if (data.nameJapDeduct !== undefined) App.S.nameJapDeduct = data.nameJapDeduct;
       if (data.cfg) App.S.cfg = {...App.S.cfg, ...data.cfg};
+      if (data.historyRV) App.S.historyRV = {...App.S.historyRV, ...data.historyRV};
+      if (data.timerHistoryRV) App.S.timerHistoryRV = {...App.S.timerHistoryRV, ...data.timerHistoryRV};
+      if (data.japMode) App.S.japMode = data.japMode;
+      if (data.dtRV !== undefined) App.S.dtRV = data.dtRV;
+      if (data.ltRV !== undefined) App.S.ltRV = data.ltRV;
+      if (data.nameJapDeductRV !== undefined) App.S.nameJapDeductRV = data.nameJapDeductRV;
+      if (data.malaLogRV) App.S.malaLogRV = data.malaLogRV;
       App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history));
       App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28));
       App.S.syncBaselineTimer = JSON.parse(JSON.stringify(App.S.timerHistory));
@@ -2868,6 +3079,8 @@ async function fbPushFull() {
     timer28History: App.S.timer28History||{},
     sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{}, malaLog: App.S.malaLog||[], malaLogDate: App.S.tk,
     ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{},
+    japMode: App.S.japMode||'radha', historyRV: App.S.historyRV||{}, timerHistoryRV: App.S.timerHistoryRV||{},
+    dtRV: App.S.dtRV||0, ltRV: App.S.ltRV||0, nameJapDeductRV: App.S.nameJapDeductRV||0, malaLogRV: App.S.malaLogRV||[],
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId
   };
@@ -2916,6 +3129,17 @@ function fbApplyRemote(d) {
   if (d.lt !== undefined) App.S.lt = d.lt;
   if (d.nameJapDeduct !== undefined) App.S.nameJapDeduct = d.nameJapDeduct;
   if (d.cfg) App.S.cfg = JSON.parse(JSON.stringify(d.cfg || {}));
+  if ('historyRV' in d) App.S.historyRV = JSON.parse(JSON.stringify(d.historyRV || {}));
+  if ('timerHistoryRV' in d) App.S.timerHistoryRV = JSON.parse(JSON.stringify(d.timerHistoryRV || {}));
+  if (d.japMode) App.S.japMode = d.japMode;
+  if (d.dtRV !== undefined) App.S.dtRV = d.dtRV;
+  if (d.ltRV !== undefined) App.S.ltRV = d.ltRV;
+  if (d.nameJapDeductRV !== undefined) App.S.nameJapDeductRV = d.nameJapDeductRV;
+  if (d.malaLogRV) App.S.malaLogRV = JSON.parse(JSON.stringify(d.malaLogRV || []));
+  if (!App.S.historyRV) App.S.historyRV = {};
+  if (!App.S.timerHistoryRV) App.S.timerHistoryRV = {};
+  if (!App.S.historyRV[App.S.tk]) App.S.historyRV[App.S.tk] = 0;
+  if (!App.S.timerHistoryRV[App.S.tk]) App.S.timerHistoryRV[App.S.tk] = 0;
   if (!App.S.history[App.S.tk]) App.S.history[App.S.tk] = 0;
   if (!App.S.h28[App.S.tk]) App.S.h28[App.S.tk] = 0;
   if (!App.S.timerHistory[App.S.tk]) App.S.timerHistory[App.S.tk] = 0;
@@ -2980,7 +3204,9 @@ async function gdDriveSilentBackup() {
       timerHistory: App.S.timerHistory||{}, timer28History: App.S.timer28History||{},
       stotrams: App.S.stotrams||{}, brahma: App.S.brahma||{}, customSt: App.S.customSt||[],
       sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{},
-      ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{}
+      ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{},
+      japMode: App.S.japMode||'radha', historyRV: App.S.historyRV||{}, timerHistoryRV: App.S.timerHistoryRV||{},
+      dtRV: App.S.dtRV||0, ltRV: App.S.ltRV||0, nameJapDeductRV: App.S.nameJapDeductRV||0, malaLogRV: App.S.malaLogRV||[]
     }, null, 2);
     // Find existing file
     const listResp = await fetch(

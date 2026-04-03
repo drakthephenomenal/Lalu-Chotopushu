@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v29';  // v29: fix japMode UI not restoring on app open/sync/import
+const CACHE = 'radha-jap-v30';  // v30: combined stats for both jap modes, RV lifetime target removed, iPad milestone fix
 
 const PRECACHE = [
   './index.html',

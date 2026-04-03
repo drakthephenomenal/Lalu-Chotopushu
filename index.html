@@ -522,7 +522,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .cdmo-occ-add{padding:8px 14px;border-radius:9px;border:none;background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,215,0,0.15));color:var(--gold);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;}
 
 /* ── MILESTONE SYSTEM ── */
-.ms-overlay{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;
+.ms-overlay{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 0;
   background:radial-gradient(ellipse at center,rgba(10,21,53,0.97) 0%,rgba(6,13,31,0.99) 100%);
   opacity:0;pointer-events:none;transition:opacity 0.5s;}
 .ms-overlay.show{opacity:1;pointer-events:auto;}
@@ -542,7 +542,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   background:rgba(255,215,0,0.1);color:var(--gold);font-size:14px;cursor:pointer;z-index:1;
   font-family:'Inter',sans-serif;letter-spacing:1px;transition:all 0.2s;}
 .ms-dismiss:active{transform:scale(0.95);background:rgba(255,215,0,0.2);}
-.ms-desc{font-family:'Hind Siliguri',sans-serif;font-size:13px;color:var(--tl);z-index:1;text-align:center;max-width:320px;line-height:1.7;margin-top:10px;}
+.ms-desc{font-family:'Hind Siliguri',sans-serif;font-size:13px;color:var(--tl);z-index:1;text-align:center;max-width:320px;line-height:1.7;margin-top:10px;max-height:30vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .ms-sthan{font-size:12px;color:var(--a2);z-index:1;letter-spacing:2px;text-transform:uppercase;margin-top:4px;}
 .ms-author{font-size:11px;color:var(--td);z-index:1;margin-top:10px;font-style:italic;}
 
@@ -1389,9 +1389,6 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
       <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtRVIn" placeholder="Daily target (jap)" oninput="document.getElementById('dtRVMala').textContent=Math.floor((parseInt(this.value)||0)/(App.S.ms||108))"><span class="fu">/ day</span></div>
       <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="dtRVMala">0</span> malas per day</div>
       <button class="pb" onclick="svtRV('d')" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(255,215,0,0.4),rgba(255,180,0,0.3))">Save RV Daily Target</button>
-      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="ltRVIn" placeholder="Lifetime target (jap)" oninput="document.getElementById('ltRVMala').textContent=Math.floor((parseInt(this.value)||0)/(App.S.ms||108))"><span class="fu">total</span></div>
-      <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="ltRVMala">0</span> malas lifetime</div>
-      <button class="pb" onclick="svtRV('l')" style="background:linear-gradient(135deg,rgba(255,215,0,0.4),rgba(255,180,0,0.3))">Save RV Lifetime Target</button>
     </div>
   </div>
 
@@ -1768,6 +1765,22 @@ const App = {
   },
   getCurHistory() { return this.S.japMode === 'rv' ? this.S.historyRV : this.S.history; },
   getCurTimerHistory() { return this.S.japMode === 'rv' ? this.S.timerHistoryRV : this.S.timerHistory; },
+  // Combined helpers for stats
+  gTodCombined() {
+    return (this.S.history[this.S.tk] || 0) + (this.S.historyRV[this.S.tk] || 0);
+  },
+  getCombinedHistory() {
+    const combined = {};
+    for (const k in this.S.history) combined[k] = (combined[k]||0) + this.S.history[k];
+    for (const k in this.S.historyRV) combined[k] = (combined[k]||0) + this.S.historyRV[k];
+    return combined;
+  },
+  getCombinedTimerHistory() {
+    const combined = {};
+    for (const k in this.S.timerHistory) combined[k] = (combined[k]||0) + this.S.timerHistory[k];
+    if (this.S.timerHistoryRV) { for (const k in this.S.timerHistoryRV) combined[k] = (combined[k]||0) + this.S.timerHistoryRV[k]; }
+    return combined;
+  },
   getCurDt() { return this.S.japMode === 'rv' ? this.S.dtRV : this.S.dt; },
   getCurLt() { return this.S.japMode === 'rv' ? this.S.ltRV : this.S.lt; },
 
@@ -1851,8 +1864,8 @@ const App = {
 
   // ── Main UI Update ──
   ua() {
-    const tod = this.gTod(), tot = this.gTot(), ms = this.S.ms || 108;
-    const curDt = this.getCurDt(), curLt = this.getCurLt();
+    const tod = this.gTod(), tot = this.gTot(), totCombined = this.gTotCombined(), ms = this.S.ms || 108;
+    const curDt = this.getCurDt(), curLt = this.S.lt || 0;
     const md = Math.floor(tod / ms);
     const beadPos = (tod % ms) || ms;
     document.getElementById('jms').textContent = beadPos;
@@ -1865,7 +1878,7 @@ const App = {
     }
     document.getElementById('mtot').textContent = md + ' mala' + (md !== 1 ? 's' : '');
     const dP = curDt > 0 ? Math.min(100, Math.round(tod/curDt*100)) : 0;
-    const lP = curLt > 0 ? Math.min(100, Math.round(tot/curLt*100)) : 0;
+    const lP = curLt > 0 ? Math.min(100, Math.round(totCombined/curLt*100)) : 0;
     // Daily bar (blue)
     document.getElementById('dPct').textContent = dP + '%';
     document.getElementById('dbarFill').style.width = dP + '%';
@@ -1875,9 +1888,9 @@ const App = {
     // Lifetime bar (gold)
     document.getElementById('lPct').textContent = lP + '%';
     document.getElementById('lbarFill').style.width = lP + '%';
-    document.getElementById('lbarDone').textContent = fmtIN(tot);
+    document.getElementById('lbarDone').textContent = fmtIN(totCombined);
     document.getElementById('lbarTarget').textContent = '/ ' + (curLt ? fmtIN(curLt) : '—');
-    document.getElementById('lDet').textContent = Math.floor(tot/ms) + ' malas done';
+    document.getElementById('lDet').textContent = Math.floor(totCombined/ms) + ' malas done';
     this.updateTimerToday();
     uStats();
   },
@@ -2612,9 +2625,9 @@ function deductJapTimeOther() {
 
 // ── Stats ──
 function uStats() {
-  const ms = App.S.ms || 108, tod = App.gTod(), tot = App.gTot(), now = new Date();
-  const curHist = App.getCurHistory();
-  const curTimerHist = App.getCurTimerHistory();
+  const ms = App.S.ms || 108, tod = App.gTodCombined(), tot = App.gTotCombined(), now = new Date();
+  const curHist = App.getCombinedHistory();
+  const curTimerHist = App.getCombinedTimerHistory();
   const wk = [];
   for (let i = 6; i >= 0; i--) { const d = new Date(now); d.setDate(d.getDate()-i); wk.push(d.toISOString().split('T')[0]); }
   const ws = wk.reduce((s,k) => s + (curHist[k]||0), 0);
@@ -2699,7 +2712,7 @@ function uStats() {
 }
 
 function renderMalaLog() {
-  const log = App.S.malaLog || [];
+  const log = (App.S.malaLog || []).concat(App.S.malaLogRV || []);
   const listEl = document.getElementById('malaLogList');
   const countEl = document.getElementById('malaLogCount');
   const avgEl = document.getElementById('malaLogAvg');

@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v27';  // v23: fixed text overlap + loading cleanup + spinning radha rings opening animation + lakh gati tracker + sadhana journey date customisation
+const CACHE = 'radha-jap-v29';  // v29: Fix mala wall-clock timing + remove milestone sub-sections
 
 const PRECACHE = [
   './index.html',

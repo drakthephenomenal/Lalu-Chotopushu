@@ -25,13 +25,13 @@
   --tl:#D6E8FF;--td:#6A8FBF;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-body{font-family:'Inter',sans-serif;background:var(--bd);color:var(--tl);min-height:100vh;overflow-x:hidden;position:relative;}
+body{font-family:'Inter',sans-serif;background:var(--bd);color:var(--tl);min-height:100vh;min-height:100dvh;overflow-x:hidden;position:relative;width:100vw;max-width:100%;}
 body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:120vmax;height:120vmax;
   background:radial-gradient(circle at 50% 30%,rgba(34,85,204,0.18) 0%,transparent 50%),
   radial-gradient(circle at 20% 80%,rgba(74,144,226,0.10) 0%,transparent 40%);
   pointer-events:none;z-index:0;}
 
-.ls{position:fixed;inset:0;background:var(--bd);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity 0.8s;}
+.ls{position:fixed;inset:0;background:var(--bd);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity 0.8s;width:100vw;height:100vh;height:100dvh;}
 .ls.hide{opacity:0;pointer-events:none;visibility:hidden;}
 .ls-img{width:200px;height:200px;border-radius:50%;object-fit:cover;object-position:top center;
   border:3px solid rgba(255,215,0,0.6);animation:glow 2s ease-in-out infinite;position:relative;z-index:10;}
@@ -41,20 +41,28 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .ls-sub{font-size:12px;color:#D6E8FF;letter-spacing:4px;text-transform:uppercase;margin-top:10px;
   text-shadow:0 2px 8px rgba(0,0,0,0.9);position:relative;z-index:20;}
 /* Spinning Radha Text Rings */
-.ls-rings{position:relative;display:flex;align-items:center;justify-content:center;width:320px;height:320px;flex-shrink:0;}
+.ls-rings{position:relative;display:flex;align-items:center;justify-content:center;width:min(320px,85vw);height:min(320px,85vw);flex-shrink:0;}
 .ls-rings .glow1{position:absolute;width:280px;height:280px;border-radius:50%;background:rgba(255,215,0,0.3);filter:blur(60px);animation:glow 2s ease-in-out infinite;}
 .ls-rings .glow2{position:absolute;width:240px;height:240px;border-radius:50%;background:rgba(255,215,0,0.2);filter:blur(40px);animation:glow 2s ease-in-out infinite;}
 .ls-ring{position:absolute;}
-.ls-ring-blue{width:280px;height:280px;animation:spin-rev 12s linear infinite;}
-.ls-ring-yellow{width:310px;height:310px;animation:spin-fwd 15s linear infinite;}
+.ls-ring-blue{width:min(280px,75vw);height:min(280px,75vw);animation:spin-rev 12s linear infinite;}
+.ls-ring-yellow{width:min(310px,83vw);height:min(310px,83vw);animation:spin-fwd 15s linear infinite;}
 .ls-ring text{font-family:'Noto Sans Devanagari','Tiro Devanagari Hindi',serif;font-size:18px;font-weight:700;}
 .ls-ring .fill-blue{fill:#4A90E2;}
 .ls-ring .fill-yellow{fill:#FFD700;}
 @keyframes spin-fwd{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 @keyframes spin-rev{from{transform:rotate(0deg);}to{transform:rotate(-360deg);}}
+/* iOS/iPad Safari fixes */
+@supports (-webkit-touch-callout: none) {
+  .ls{height:-webkit-fill-available;}
+  .view{min-height:-webkit-fill-available;}
+  #vj.active{height:-webkit-fill-available;}
+  body{min-height:-webkit-fill-available;}
+}
 
 
-.view{display:none;min-height:100vh;position:relative;z-index:1;flex-direction:column;}
+
+.view{display:none;min-height:100vh;min-height:100dvh;position:relative;z-index:1;flex-direction:column;}
 .view.active{display:flex;}
 #vj.active{min-height:unset;height:100vh;height:100dvh;overflow:hidden;}
 
@@ -63,9 +71,9 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   background:linear-gradient(180deg,var(--bm) 0%,var(--bd) 100%);
   border-top:1px solid rgba(74,144,226,0.25);
   display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom);}
-.nb{flex:1;padding:8px 1px 6px;background:none;border:none;color:var(--td);font-size:8px;cursor:pointer;
+.nb{flex:1;padding:6px 0 5px;background:none;border:none;color:var(--td);font-size:7px;cursor:pointer;
   display:flex;flex-direction:column;align-items:center;gap:3px;transition:color 0.2s;font-family:'Inter',sans-serif;}
-.nb svg{width:20px;height:20px;}
+.nb svg{width:18px;height:18px;}
 .nb.active{color:var(--a2);}
 .nb.active svg{filter:drop-shadow(0 0 5px rgba(109,184,255,0.8));}
 
@@ -687,6 +695,37 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .fn-rv{position:absolute;pointer-events:none;z-index:10;animation:fu 2.4s ease-out forwards;
   display:flex;flex-direction:column;align-items:center;line-height:1.15;}
 .fn-rv span{font-family:'Tiro Devanagari Hindi',serif;display:block;}
+
+/* MILESTONES VIEW — dedicated tab */
+#vms{background:radial-gradient(ellipse at top,#0A1535 0%,var(--bd) 60%);padding:22px 12px 80px;overflow-y:auto;}
+
+/* Divine celebration particles in jap area */
+.divine-particle{position:absolute;pointer-events:none;z-index:60;opacity:0;}
+.divine-particle.feather{font-size:20px;animation:divine-float 3s ease-out forwards;}
+.divine-particle.golden{width:6px;height:6px;border-radius:50%;background:radial-gradient(circle,#FFD700,#FFB700);box-shadow:0 0 8px rgba(255,215,0,0.8);animation:divine-sparkle 2.5s ease-out forwards;}
+@keyframes divine-float{
+  0%{opacity:0;transform:translate(0,0) rotate(0deg) scale(0.5);}
+  15%{opacity:1;transform:translate(var(--dx,-20px),var(--dy,-40px)) rotate(45deg) scale(1.2);}
+  70%{opacity:0.8;transform:translate(calc(var(--dx,-20px)*2.5),calc(var(--dy,-40px)*3)) rotate(180deg) scale(1);}
+  100%{opacity:0;transform:translate(calc(var(--dx,-20px)*3.5),calc(var(--dy,-40px)*4.5)) rotate(360deg) scale(0.6);}
+}
+@keyframes divine-sparkle{
+  0%{opacity:0;transform:translate(0,0) scale(0);}
+  20%{opacity:1;transform:translate(var(--dx,10px),var(--dy,-30px)) scale(1.5);}
+  60%{opacity:0.7;transform:translate(calc(var(--dx,10px)*2),calc(var(--dy,-30px)*3)) scale(1);}
+  100%{opacity:0;transform:translate(calc(var(--dx,10px)*3),calc(var(--dy,-30px)*5)) scale(0.3);}
+}
+
+/* Velocity tracker list */
+.vel-list{margin-top:14px;}
+.vel-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(74,144,226,0.05);border:1px solid rgba(74,144,226,0.12);border-radius:12px;margin-bottom:6px;}
+.vel-item.highlight{border-color:rgba(255,215,0,0.3);background:rgba(255,215,0,0.04);}
+.vel-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:rgba(74,144,226,0.1);border:1px solid rgba(74,144,226,0.2);flex-shrink:0;font-family:'EB Garamond',serif;color:var(--td);}
+.vel-item.highlight .vel-icon{background:rgba(255,215,0,0.12);border-color:rgba(255,215,0,0.3);color:var(--gold);}
+.vel-info{flex:1;min-width:0;}
+.vel-name{font-size:12px;font-weight:600;color:var(--tl);}
+.vel-meta{font-size:10px;color:var(--td);margin-top:2px;}
+.vel-time{font-size:11px;color:var(--green);font-weight:500;padding:2px 8px;background:rgba(46,204,113,0.1);border-radius:8px;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -748,11 +787,14 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
     Brahma
   </button>
 
+  <button class="nb" onclick="sv('vms',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"/></svg>
+    Milestones
+  </button>
   <button class="nb" onclick="sv('vs',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
     Stats
   </button>
-  <!-- Milestones moved to Stats -->
   <button class="nb" onclick="sv('vset',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     Settings
@@ -1064,73 +1106,33 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   </div>
 </div>
 
+<!-- MILESTONES VIEW — dedicated tab -->
+<div class="view" id="vms">
+  <div class="vt">🏆 Milestones</div>
+  
+  <!-- Naam Jap ki Mahima -->
+  <div class="mahima-title">MILESTONES</div>
+  <div class="mahima-sub">Naam Jap ki Mahima</div>
+  <div class="mahima-attr">Shri Hit Premanand Ji Maharaj ke anusaar</div>
+  <div class="mahima-lifetime">
+    <div class="mahima-lifetime-lbl">LIFETIME JAP COUNT</div>
+    <div class="mahima-lifetime-count" id="mahimaCount2">0</div>
+    <div class="mahima-lifetime-sub" id="mahimaMsReached2">0/13 milestones reached</div>
+  </div>
+  <div id="mahimaCards2"></div>
+  <div class="mahima-quote">"Zubaan se naam nahi chhutna chahiye, chahe uthte-baithte kuch bhi kar rahe ho."</div>
+  <div class="mahima-quote-attr">— Shri Hit Premanand Ji Maharaj</div>
+
+  <!-- Removed: Lakh Gati, Next Milestone, Velocity Tracker, Sadhana Journey -->
+</div>
+
 <!-- STATS VIEW — includes jap entry tools -->
 <div class="view" id="vs">
   <div class="vt">Jap Summary</div>
 
 
 
-  <!-- MILESTONES — NAAM JAP KI MAHIMA (inside Stats) -->
-  <div class="cs-wrap" style="background:rgba(255,215,0,0.03);border:1px solid rgba(255,215,0,0.18)">
-    <div class="cs-header" onclick="toggleCs('mahimaBody','mahimaChev')">
-      <h3 style="color:var(--gold)">🏆 Milestones — Naam Jap ki Mahima</h3>
-      <span class="cs-chevron" id="mahimaChev" style="color:var(--gold)">▾</span>
-    </div>
-    <div class="cs-body" id="mahimaBody">
-      <div class="mahima-title">MILESTONES</div>
-      <div class="mahima-sub">Naam Jap ki Mahima</div>
-      <div class="mahima-attr">Shri Hit Premanand Ji Maharaj ke anusaar</div>
-      <div class="mahima-lifetime">
-        <div class="mahima-lifetime-lbl">LIFETIME JAP COUNT</div>
-        <div class="mahima-lifetime-count" id="mahimaCount">0</div>
-        <div class="mahima-lifetime-sub" id="mahimaMsReached">0/13 milestones reached</div>
-      </div>
-      <div id="mahimaCards"></div>
-      <div class="mahima-quote">"Zubaan se naam nahi chhutna chahiye, chahe uthte-baithte kuch bhi kar rahe ho."</div>
-      <div class="mahima-quote-attr">— Shri Hit Premanand Ji Maharaj</div>
-
-      <!-- Lakh Gati Tracking -->
-      <div class="lakh-gati-wrap">
-        <div class="lakh-gati-title">
-          <span>📿</span>
-          <span>Jap ki Gati — Lakh Tracker</span>
-        </div>
-        <div class="lakh-gati-grid" id="lakhGatiGrid"></div>
-      </div>
-
-      <!-- Mala Bead Strip — Regular Milestones -->
-      <div class="mala-strip-wrap">
-        <div class="mala-strip-head">
-          <span class="mala-strip-lbl">📿 Next Milestone</span>
-          <span><span class="mala-strip-next" id="msNextVal">1,000</span>&nbsp;<span class="mala-strip-pct" id="msNextPct"></span></span>
-        </div>
-        <div class="mala-beads" id="malaBeads"></div>
-        <div class="mala-fill-bar"><div class="mala-fill-inner" id="msProgFill" style="width:0%"></div></div>
-        <div class="mala-remaining" id="msRemaining"></div>
-      </div>
-
-      <!-- Sadhana Journey Timeline -->
-      <div class="sj-wrap">
-        <div class="sj-head" onclick="toggleCs('sjBody','sjChev')">
-          <h3>🕐 Sadhana Journey</h3>
-          <span class="cs-chevron" id="sjChev" style="color:var(--a2)">▾</span>
-        </div>
-        <div class="cs-body open sj-body" id="sjBody">
-          <!-- Sadhana Start Date Customiser -->
-          <div class="sj-date-wrap">
-            <span class="sj-date-label">🪔 Journey Start</span>
-            <input type="date" class="sj-date-input" id="sadhanaStartDate" onchange="saveSadhanaStartDate(this.value)">
-          </div>
-          <div class="sj-date-since" id="sadhanaSince"></div>
-          <div class="sj-list" id="msLogList">
-            <div class="sj-empty">No milestones reached yet. Keep chanting! 🙏</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Summary Stats Grid — collapsible -->
+    <!-- Summary Stats Grid — collapsible -->
   <div class="sg-wrap">
     <div class="sg-header" onclick="toggleCs('sgStats','sgChev')">
       <span>📊 Summary Stats</span>
@@ -1597,7 +1599,7 @@ const App = {
   lmc: 0, lm28: 0,
   timerRunning: false, timerSeconds: 0, timerInterval: null,
   timerSavedSeconds: 0, autoStopTimeout: null,
-  malaSessionStart: 0,  // timerSeconds at start of current mala
+  malaWallStart: 0,  // Date.now() at start of current mala (persisted in localStorage)
   fbDebouncePush: null,
 
   // ── IndexedDB ──
@@ -1918,6 +1920,16 @@ const App = {
     uStats();
   },
 
+  // ── Set wall-clock start for new mala if needed ──
+  ensureMalaWallStart() {
+    const ms = this.S.ms || 108;
+    const countInMala = this.gTod() % ms;
+    if (countInMala === 1 || this.malaWallStart === 0) {
+      this.malaWallStart = Date.now();
+      localStorage.setItem('rjap_malaWallStart', String(this.malaWallStart));
+    }
+  },
+
   // ── Mala Complete — Bell sound + TRIPLE vibration + log duration + animate timer ──
   malaOk() {
     const f = document.getElementById('mf');
@@ -1927,8 +1939,10 @@ const App = {
     // Triple long vibration synced with bell
     this.vib([200, 80, 200, 80, 300]);
     // Record mala duration
-    const malaDuration = this.timerSeconds - this.malaSessionStart;
-    this.malaSessionStart = this.timerSeconds;
+    const now = Date.now();
+    const malaDuration = Math.round((now - this.malaWallStart) / 1000);
+    this.malaWallStart = now;
+    localStorage.setItem('rjap_malaWallStart', String(now));
     const isRVm = this.S.japMode === 'rv';
     if (isRVm) {
       if (!this.S.malaLogRV) this.S.malaLogRV = [];
@@ -1969,6 +1983,7 @@ const App = {
     } else {
       this.S.history[this.S.tk] = (this.S.history[this.S.tk] || 0) + 1;
     }
+    this.ensureMalaWallStart();
     this.save(); fbDebouncedPush();
     // Haptic heartbeat — 10ms bead feeling
     this.vib([10]);
@@ -2429,6 +2444,7 @@ function sv(id, btn) {
   if (id === 'v28') { u28(); render28Dots(get28Pos()); }
   else { App.flush28TimeToHistory(); }
   if (id === 'vs') renderMsView();
+  if (id === 'vms') renderMilestonesTab();
   if (id === 'vset') {
     if (App.S.dt) document.getElementById('dtIn').value = App.S.dt;
     if (App.S.lt) document.getElementById('ltIn').value = App.S.lt;
@@ -2486,6 +2502,7 @@ function addManualJap() {
   const n = parseInt(document.getElementById('manualJapIn').value) || 0;
   if (n <= 0) { toast('Please enter a number > 0'); return; }
   App.S.history[App.S.tk] = (App.S.history[App.S.tk] || 0) + n;
+  App.ensureMalaWallStart();
   const nm = Math.floor(App.gTod() / (App.S.ms || 108));
   if (nm > App.lmc) { App.lmc = nm; App.malaOk(); }
   App.save(); App.ua(); fbDebouncedPush();
@@ -2773,7 +2790,7 @@ function cr2(tp) {
   document.getElementById('moCf').onclick = doReset;
 }
 function doReset() {
-  if (pr === 'today') { App.S.history[App.S.tk] = 0; App.lmc = 0; App.S.malaLog = []; }
+  if (pr === 'today') { App.S.history[App.S.tk] = 0; App.lmc = 0; App.S.malaLog = []; App.malaWallStart = Date.now(); localStorage.setItem('rjap_malaWallStart', String(App.malaWallStart)); }
   else if (pr === '28today') {
     // Freeze active wishes before zeroing today's count so progress bars drop correctly
     (App.S.sankalpas||[]).filter(s => !s.done && s.startCycles !== null).forEach(s => {
@@ -2905,6 +2922,322 @@ function importAllData(input) {
   };
   reader.readAsText(file);
 }
+
+// ═══════════════════════════════════════════════
+// DIVINE CELEBRATION — Morpankh & Golden Particles
+// ═══════════════════════════════════════════════
+function spawnDivineCelebration() {
+  const tz = document.getElementById('tz');
+  if (!tz) return;
+  const rect = tz.getBoundingClientRect();
+  const feathers = ['🪶','✨','🦚','💫','⭐'];
+  
+  // Spawn 25 particles
+  for (let i = 0; i < 25; i++) {
+    const el = document.createElement('div');
+    const isFeather = i < 10;
+    el.className = 'divine-particle ' + (isFeather ? 'feather' : 'golden');
+    const angle = (Math.PI * 2 * i) / 25;
+    const dist = 60 + Math.random() * 100;
+    el.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+    el.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+    el.style.left = '50%';
+    el.style.top = '50%';
+    el.style.animationDelay = (Math.random() * 0.5) + 's';
+    if (isFeather) el.textContent = feathers[i % feathers.length];
+    tz.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+  
+  // Sacred vibration pattern for milestone
+  if (navigator.vibrate) {
+    try { navigator.vibrate([100, 50, 100, 50, 200, 100, 300]); } catch(e) {}
+  }
+}
+
+// ═══════════════════════════════════════════════
+// VELOCITY TRACKER
+// ═══════════════════════════════════════════════
+function renderVelocityTracker() {
+  const el = document.getElementById('velocityList');
+  if (!el) return;
+  const data = getMilestoneData();
+  const tot = App.gTot();
+  
+  // Collect all dynamic milestones: 10k, 1L, 1Cr
+  const allMs = [];
+  
+  // 10k milestones
+  for (let i = 1; i <= Math.floor(tot / 10000); i++) {
+    const c = i * 10000;
+    if (data.reached[c]) {
+      allMs.push({ count: c, label: (i*10) + 'K', date: data.reached[c], type: '10k', icon: '🎖️' });
+    }
+  }
+  
+  // 1 Lakh milestones
+  for (let i = 1; i <= Math.floor(tot / 100000); i++) {
+    const c = i * 100000;
+    if (data.reached[c]) {
+      allMs.push({ count: c, label: i + 'L', date: data.reached[c], type: 'lakh', icon: '📿' });
+    }
+  }
+  
+  // Crore milestones
+  SPIRITUAL_MILESTONES.forEach(sm => {
+    if (data.reached[sm.count]) {
+      allMs.push({ count: sm.count, label: (sm.count/CRORE) + 'Cr', date: data.reached[sm.count], type: 'crore', icon: sm.icon });
+    }
+  });
+  
+  // Sort by count descending
+  allMs.sort((a, b) => b.count - a.count);
+  
+  if (allMs.length === 0) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--td);text-align:center;padding:12px">Keep chanting to see your velocity! 🙏</div>';
+    return;
+  }
+  
+  // Show latest 30
+  const visible = allMs.slice(0, 30);
+  let html = '';
+  visible.forEach((ms, idx) => {
+    const d = new Date(ms.date);
+    const dateStr = d.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'});
+    
+    // Find previous milestone in same category for velocity
+    let durationStr = '—';
+    const prevMs = allMs.find(m => m.count < ms.count && m.type === ms.type);
+    if (prevMs) {
+      const diff = new Date(ms.date).getTime() - new Date(prevMs.date).getTime();
+      durationStr = formatDuration(diff);
+    } else {
+      const startStr = localStorage.getItem('rjap_sadhana_start');
+      if (startStr) {
+        const diff = new Date(ms.date).getTime() - new Date(startStr).getTime();
+        durationStr = formatDuration(diff);
+      }
+    }
+    
+    const isHighlight = ms.type === 'lakh' || ms.type === 'crore';
+    html += '<div class="vel-item' + (isHighlight ? ' highlight' : '') + '">' +
+      '<div class="vel-icon">' + ms.icon + '</div>' +
+      '<div class="vel-info">' +
+        '<div class="vel-name">' + formatMsCount(ms.count) + ' Jap</div>' +
+        '<div class="vel-meta">📅 ' + dateStr + '</div>' +
+      '</div>' +
+      '<div class="vel-time">⏱ ' + durationStr + '</div>' +
+    '</div>';
+  });
+  
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════
+// RENDER MILESTONES TAB
+// ═══════════════════════════════════════════════
+function renderMilestonesTab() {
+  const data = getMilestoneData();
+  const tot = App.gTot();
+
+  // Lifetime count
+  const c2 = document.getElementById('mahimaCount2');
+  if (c2) c2.textContent = tot.toLocaleString('en-IN');
+  
+  const spReached = SPIRITUAL_MILESTONES.filter(m => data.reached[m.count]).length;
+  const r2 = document.getElementById('mahimaMsReached2');
+  if (r2) r2.textContent = spReached + '/13 milestones reached';
+
+  // Spiritual milestone cards
+  const cards2 = document.getElementById('mahimaCards2');
+  if (cards2) {
+    let html = '';
+    PHASES.forEach(phase => {
+      html += '<div class="mahima-phase"><div class="mahima-phase-name">' + phase.name + '</div>' +
+        '<div class="mahima-phase-sub">' + phase.sub + '</div></div>';
+      SPIRITUAL_MILESTONES.filter(m => m.phase === phase.id).forEach(m => {
+        const unlocked = !!data.reached[m.count];
+        const pct = Math.min(100, (tot / m.count) * 100);
+        const croreNum = m.count / CRORE;
+        const phaseClass = phase.id === 'bhagwat' ? ' phase-bhagwat' : (phase.id === 'shakti' ? ' phase-shakti' : '');
+        const dateStr = unlocked ? new Date(data.reached[m.count]).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '';
+        html += '<div class="mahima-card' + (unlocked ? ' unlocked' : '') + phaseClass + '">' +
+          '<div class="mahima-card-icon">' + m.icon + '</div>' +
+          '<div class="mahima-card-body">' +
+          '<div class="mahima-card-top"><span class="mahima-card-count">' + croreNum + ' Crore</span>' +
+          '<span class="mahima-card-tag">' + m.tag + '</span></div>' +
+          '<div class="mahima-card-name">' + m.label + '</div>' +
+          '<div class="mahima-card-eng">' + m.eng + '</div>' +
+          '<div class="mahima-card-bar-wrap"><div class="mahima-card-bar" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+          '<div class="mahima-card-pct">' + pct.toFixed(1) + '%</div>' +
+          (unlocked ? '<div class="mahima-card-date">✓ Achieved ' + dateStr + '</div>' : '') +
+          (m.desc ? '<div class="mahima-card-desc">' + m.desc + '<div class="mahima-card-author">— Shri Hit Premanand Ji Maharaj</div></div>' : '') +
+          '</div></div>';
+      });
+    });
+    cards2.innerHTML = html;
+  }
+
+  // Mala Bead Strip
+  const regMilestones = MILESTONES.filter(m => m.type === 'regular');
+  const next = regMilestones.find(m => tot < m.count);
+  const nextEl2 = document.getElementById('msNextVal2');
+  const pctEl2  = document.getElementById('msNextPct2');
+  const fillEl2 = document.getElementById('msProgFill2');
+  const remEl2  = document.getElementById('msRemaining2');
+  const beadsEl2 = document.getElementById('malaBeads2');
+
+  let pct = 0;
+  if (next) {
+    const nextIdx = regMilestones.indexOf(next);
+    const prevCount = nextIdx > 0 ? regMilestones[nextIdx - 1].count : 0;
+    pct = Math.min(100, Math.max(0, ((tot - prevCount) / (next.count - prevCount)) * 100));
+    if (nextEl2) nextEl2.textContent = formatMsCount(next.count);
+    if (pctEl2)  pctEl2.textContent  = pct.toFixed(0) + '%';
+    const rem = next.count - tot;
+    if (remEl2) remEl2.textContent = rem.toLocaleString('en-IN') + ' more jap to go';
+  } else {
+    if (nextEl2) nextEl2.textContent = 'Sadhana Poorna 🙏';
+    if (pctEl2)  pctEl2.textContent  = '';
+    if (remEl2)  remEl2.textContent  = '';
+    pct = 100;
+  }
+  if (fillEl2) fillEl2.style.width = pct.toFixed(1) + '%';
+
+  // Build beads
+  if (beadsEl2) {
+    const activeIdx = next ? regMilestones.indexOf(next) : regMilestones.length - 1;
+    const windowStart = Math.max(0, activeIdx - 4);
+    const windowEnd   = Math.min(regMilestones.length - 1, windowStart + 8);
+    let html = '';
+    for (let i = windowStart; i <= windowEnd; i++) {
+      const m = regMilestones[i];
+      const isReached = !!data.reached[m.count];
+      const isActive  = next && m.count === next.count;
+      const cls = isReached ? 'reached' : (isActive ? 'active' : '');
+      const lbl = m.count >= 100000 ? formatMsCount(m.count) : (m.count/1000) + 'K';
+      const tipDate = isReached && data.reached[m.count]
+        ? new Date(data.reached[m.count]).toLocaleDateString('en-IN',{day:'numeric',month:'short'})
+        : (isActive ? pct.toFixed(0)+'%' : '');
+      html += '<div class="mala-bead ' + cls + '">' + lbl +
+        (tipDate ? '<span class="bead-tip">' + tipDate + '</span>' : '') + '</div>';
+      if (i < windowEnd) html += '<div class="mala-thread"></div>';
+    }
+    beadsEl2.innerHTML = html;
+  }
+
+  // Lakh Gati (render to grid2)
+  // renderLakhGati2(); // removed
+  
+  // Load sadhana start date for tab2
+  const saved = localStorage.getItem('rjap_sadhana_start');
+  const input2 = document.getElementById('sadhanaStartDate2');
+  if (saved && input2) input2.value = saved;
+  const sinceEl = document.getElementById('sadhanaSince2');
+  if (sinceEl) {
+    if (!saved) { sinceEl.textContent = 'Set your journey start date above ☝️'; }
+    else {
+      const start = new Date(saved);
+      const now = new Date();
+      const diff = now.getTime() - start.getTime();
+      const days = Math.floor(diff / 86400000);
+      const years = Math.floor(days / 365);
+      const remDays = days % 365;
+      const months = Math.floor(remDays / 30);
+      let str = '🙏 ';
+      if (years > 0) str += years + ' year' + (years>1?'s':'') + ' ';
+      if (months > 0) str += months + ' month' + (months>1?'s':'') + ' ';
+      str += (remDays % 30) + ' days of Sadhana';
+      sinceEl.textContent = str;
+    }
+  }
+
+  // Sadhana Journey Timeline (removed from milestones tab)
+  const logList2 = document.getElementById('msLogList2');
+  if (logList2) {
+    const allReached = MILESTONES.filter(m => data.reached[m.count])
+      .sort((a, b) => new Date(data.reached[b.count]) - new Date(data.reached[a.count]));
+    if (allReached.length === 0) {
+      logList2.innerHTML = '<div class="sj-empty">No milestones reached yet. Keep chanting! 🙏</div>';
+    } else {
+      const now = Date.now();
+      logList2.innerHTML = allReached.slice(0, 30).map((m, idx, arr) => {
+        const d = new Date(data.reached[m.count]);
+        const dateStr = d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+        const diffMs = now - d.getTime();
+        const diffDays = Math.floor(diffMs / 86400000);
+        const ago = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : diffDays + 'd ago';
+        const isSp = m.type === 'spiritual';
+        return '<div class="sj-item' + (isSp ? ' spiritual' : '') + '">' +
+          '<div class="sj-left">' +
+            '<div class="sj-dot">' + (m.badge || m.icon) + '</div>' +
+            (idx < arr.length - 1 ? '<div class="sj-line"></div>' : '') +
+          '</div>' +
+          '<div class="sj-right">' +
+            '<div class="sj-name">' + m.label + (isSp ? ' 🙏' : '') + '</div>' +
+            '<div class="sj-meta">' +
+              '<span class="sj-count">' + formatMsCount(m.count) + '</span>' +
+              '<span class="sj-date">' + dateStr + '</span>' +
+              '<span class="sj-ago">' + ago + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+  }
+
+  // Velocity
+  // renderVelocityTracker(); // removed
+}
+
+function renderLakhGati2() {
+  const grid = document.getElementById('lakhGatiGrid2');
+  if (!grid) return;
+  const tot = App.gTot();
+  const data = getMilestoneData();
+  const reachedLakhs = LAKH_MILESTONES.filter(l => tot >= l.count);
+  const unreachedLakhs = LAKH_MILESTONES.filter(l => tot < l.count).slice(0, 2);
+  const visibleLakhs = [...reachedLakhs, ...unreachedLakhs];
+  if (visibleLakhs.length === 0) {
+    grid.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--td);padding:12px">Keep chanting to reach your first Lakh! 🙏</div>';
+    return;
+  }
+  let html = '';
+  visibleLakhs.forEach((lakh, idx) => {
+    const isReached = tot >= lakh.count;
+    const isCurrent = !isReached && (idx === 0 || tot >= visibleLakhs[idx-1].count);
+    const cls = isReached ? 'reached' : (isCurrent ? 'current' : '');
+    const reachedDate = data.reached[lakh.count];
+    const dateStr = reachedDate ? new Date(reachedDate).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'}) : '';
+    let durationStr = '';
+    if (isReached && reachedDate) {
+      const prevLakh = idx > 0 ? visibleLakhs[idx-1] : null;
+      let prevDate = null;
+      if (prevLakh && data.reached[prevLakh.count]) prevDate = new Date(data.reached[prevLakh.count]);
+      else { const startStr = localStorage.getItem('rjap_sadhana_start'); if (startStr) prevDate = new Date(startStr); }
+      if (prevDate) durationStr = formatDuration(new Date(reachedDate).getTime() - prevDate.getTime());
+    }
+    let pct2 = isReached ? 100 : 0;
+    if (!isReached) {
+      const prevCount = idx > 0 ? visibleLakhs[idx-1].count : 0;
+      pct2 = Math.min(100, Math.max(0, ((tot - prevCount) / (lakh.count - prevCount)) * 100));
+    }
+    html += '<div class="lakh-card ' + cls + '">' +
+      '<div class="lakh-icon">' + lakh.num + 'L</div>' +
+      '<div class="lakh-info"><div class="lakh-name">' + lakh.label + (isReached ? ' ✓' : '') + '</div>' +
+      '<div class="lakh-meta">' +
+        (dateStr ? '<span class="lakh-date">📅 ' + dateStr + '</span>' : '') +
+        (durationStr ? '<span class="lakh-duration">⏱ ' + durationStr + '</span>' : '') +
+        (!isReached ? '<span class="lakh-date">' + (lakh.count - tot).toLocaleString('en-IN') + ' remaining</span>' : '') +
+      '</div></div>' +
+      '<div class="lakh-progress">' +
+        (isReached ? '<div class="lakh-pct">✅</div>' : '<div class="lakh-pct">' + pct2.toFixed(0) + '%</div>') +
+        (!isReached ? '<div class="lakh-bar-mini"><div class="lakh-bar-mini-fill" style="width:' + pct2.toFixed(1) + '%"></div></div>' : '') +
+      '</div></div>';
+  });
+  grid.innerHTML = html;
+}
+
 </script>
 <script>
 // ═══════════════════════════════════════════════════════
@@ -3253,6 +3586,322 @@ async function gdDriveSilentBackup() {
     else if (uploadResp.status === 401) { gdAccessToken = null; localStorage.removeItem('rjap_gd_token'); }
   } catch(e) { console.warn('Drive backup failed:', e.message); }
 }
+
+// ═══════════════════════════════════════════════
+// DIVINE CELEBRATION — Morpankh & Golden Particles
+// ═══════════════════════════════════════════════
+function spawnDivineCelebration() {
+  const tz = document.getElementById('tz');
+  if (!tz) return;
+  const rect = tz.getBoundingClientRect();
+  const feathers = ['🪶','✨','🦚','💫','⭐'];
+  
+  // Spawn 25 particles
+  for (let i = 0; i < 25; i++) {
+    const el = document.createElement('div');
+    const isFeather = i < 10;
+    el.className = 'divine-particle ' + (isFeather ? 'feather' : 'golden');
+    const angle = (Math.PI * 2 * i) / 25;
+    const dist = 60 + Math.random() * 100;
+    el.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+    el.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+    el.style.left = '50%';
+    el.style.top = '50%';
+    el.style.animationDelay = (Math.random() * 0.5) + 's';
+    if (isFeather) el.textContent = feathers[i % feathers.length];
+    tz.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+  
+  // Sacred vibration pattern for milestone
+  if (navigator.vibrate) {
+    try { navigator.vibrate([100, 50, 100, 50, 200, 100, 300]); } catch(e) {}
+  }
+}
+
+// ═══════════════════════════════════════════════
+// VELOCITY TRACKER
+// ═══════════════════════════════════════════════
+function renderVelocityTracker() {
+  const el = document.getElementById('velocityList');
+  if (!el) return;
+  const data = getMilestoneData();
+  const tot = App.gTot();
+  
+  // Collect all dynamic milestones: 10k, 1L, 1Cr
+  const allMs = [];
+  
+  // 10k milestones
+  for (let i = 1; i <= Math.floor(tot / 10000); i++) {
+    const c = i * 10000;
+    if (data.reached[c]) {
+      allMs.push({ count: c, label: (i*10) + 'K', date: data.reached[c], type: '10k', icon: '🎖️' });
+    }
+  }
+  
+  // 1 Lakh milestones
+  for (let i = 1; i <= Math.floor(tot / 100000); i++) {
+    const c = i * 100000;
+    if (data.reached[c]) {
+      allMs.push({ count: c, label: i + 'L', date: data.reached[c], type: 'lakh', icon: '📿' });
+    }
+  }
+  
+  // Crore milestones
+  SPIRITUAL_MILESTONES.forEach(sm => {
+    if (data.reached[sm.count]) {
+      allMs.push({ count: sm.count, label: (sm.count/CRORE) + 'Cr', date: data.reached[sm.count], type: 'crore', icon: sm.icon });
+    }
+  });
+  
+  // Sort by count descending
+  allMs.sort((a, b) => b.count - a.count);
+  
+  if (allMs.length === 0) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--td);text-align:center;padding:12px">Keep chanting to see your velocity! 🙏</div>';
+    return;
+  }
+  
+  // Show latest 30
+  const visible = allMs.slice(0, 30);
+  let html = '';
+  visible.forEach((ms, idx) => {
+    const d = new Date(ms.date);
+    const dateStr = d.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'});
+    
+    // Find previous milestone in same category for velocity
+    let durationStr = '—';
+    const prevMs = allMs.find(m => m.count < ms.count && m.type === ms.type);
+    if (prevMs) {
+      const diff = new Date(ms.date).getTime() - new Date(prevMs.date).getTime();
+      durationStr = formatDuration(diff);
+    } else {
+      const startStr = localStorage.getItem('rjap_sadhana_start');
+      if (startStr) {
+        const diff = new Date(ms.date).getTime() - new Date(startStr).getTime();
+        durationStr = formatDuration(diff);
+      }
+    }
+    
+    const isHighlight = ms.type === 'lakh' || ms.type === 'crore';
+    html += '<div class="vel-item' + (isHighlight ? ' highlight' : '') + '">' +
+      '<div class="vel-icon">' + ms.icon + '</div>' +
+      '<div class="vel-info">' +
+        '<div class="vel-name">' + formatMsCount(ms.count) + ' Jap</div>' +
+        '<div class="vel-meta">📅 ' + dateStr + '</div>' +
+      '</div>' +
+      '<div class="vel-time">⏱ ' + durationStr + '</div>' +
+    '</div>';
+  });
+  
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════
+// RENDER MILESTONES TAB
+// ═══════════════════════════════════════════════
+function renderMilestonesTab() {
+  const data = getMilestoneData();
+  const tot = App.gTot();
+
+  // Lifetime count
+  const c2 = document.getElementById('mahimaCount2');
+  if (c2) c2.textContent = tot.toLocaleString('en-IN');
+  
+  const spReached = SPIRITUAL_MILESTONES.filter(m => data.reached[m.count]).length;
+  const r2 = document.getElementById('mahimaMsReached2');
+  if (r2) r2.textContent = spReached + '/13 milestones reached';
+
+  // Spiritual milestone cards
+  const cards2 = document.getElementById('mahimaCards2');
+  if (cards2) {
+    let html = '';
+    PHASES.forEach(phase => {
+      html += '<div class="mahima-phase"><div class="mahima-phase-name">' + phase.name + '</div>' +
+        '<div class="mahima-phase-sub">' + phase.sub + '</div></div>';
+      SPIRITUAL_MILESTONES.filter(m => m.phase === phase.id).forEach(m => {
+        const unlocked = !!data.reached[m.count];
+        const pct = Math.min(100, (tot / m.count) * 100);
+        const croreNum = m.count / CRORE;
+        const phaseClass = phase.id === 'bhagwat' ? ' phase-bhagwat' : (phase.id === 'shakti' ? ' phase-shakti' : '');
+        const dateStr = unlocked ? new Date(data.reached[m.count]).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '';
+        html += '<div class="mahima-card' + (unlocked ? ' unlocked' : '') + phaseClass + '">' +
+          '<div class="mahima-card-icon">' + m.icon + '</div>' +
+          '<div class="mahima-card-body">' +
+          '<div class="mahima-card-top"><span class="mahima-card-count">' + croreNum + ' Crore</span>' +
+          '<span class="mahima-card-tag">' + m.tag + '</span></div>' +
+          '<div class="mahima-card-name">' + m.label + '</div>' +
+          '<div class="mahima-card-eng">' + m.eng + '</div>' +
+          '<div class="mahima-card-bar-wrap"><div class="mahima-card-bar" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+          '<div class="mahima-card-pct">' + pct.toFixed(1) + '%</div>' +
+          (unlocked ? '<div class="mahima-card-date">✓ Achieved ' + dateStr + '</div>' : '') +
+          (m.desc ? '<div class="mahima-card-desc">' + m.desc + '<div class="mahima-card-author">— Shri Hit Premanand Ji Maharaj</div></div>' : '') +
+          '</div></div>';
+      });
+    });
+    cards2.innerHTML = html;
+  }
+
+  // Mala Bead Strip
+  const regMilestones = MILESTONES.filter(m => m.type === 'regular');
+  const next = regMilestones.find(m => tot < m.count);
+  const nextEl2 = document.getElementById('msNextVal2');
+  const pctEl2  = document.getElementById('msNextPct2');
+  const fillEl2 = document.getElementById('msProgFill2');
+  const remEl2  = document.getElementById('msRemaining2');
+  const beadsEl2 = document.getElementById('malaBeads2');
+
+  let pct = 0;
+  if (next) {
+    const nextIdx = regMilestones.indexOf(next);
+    const prevCount = nextIdx > 0 ? regMilestones[nextIdx - 1].count : 0;
+    pct = Math.min(100, Math.max(0, ((tot - prevCount) / (next.count - prevCount)) * 100));
+    if (nextEl2) nextEl2.textContent = formatMsCount(next.count);
+    if (pctEl2)  pctEl2.textContent  = pct.toFixed(0) + '%';
+    const rem = next.count - tot;
+    if (remEl2) remEl2.textContent = rem.toLocaleString('en-IN') + ' more jap to go';
+  } else {
+    if (nextEl2) nextEl2.textContent = 'Sadhana Poorna 🙏';
+    if (pctEl2)  pctEl2.textContent  = '';
+    if (remEl2)  remEl2.textContent  = '';
+    pct = 100;
+  }
+  if (fillEl2) fillEl2.style.width = pct.toFixed(1) + '%';
+
+  // Build beads
+  if (beadsEl2) {
+    const activeIdx = next ? regMilestones.indexOf(next) : regMilestones.length - 1;
+    const windowStart = Math.max(0, activeIdx - 4);
+    const windowEnd   = Math.min(regMilestones.length - 1, windowStart + 8);
+    let html = '';
+    for (let i = windowStart; i <= windowEnd; i++) {
+      const m = regMilestones[i];
+      const isReached = !!data.reached[m.count];
+      const isActive  = next && m.count === next.count;
+      const cls = isReached ? 'reached' : (isActive ? 'active' : '');
+      const lbl = m.count >= 100000 ? formatMsCount(m.count) : (m.count/1000) + 'K';
+      const tipDate = isReached && data.reached[m.count]
+        ? new Date(data.reached[m.count]).toLocaleDateString('en-IN',{day:'numeric',month:'short'})
+        : (isActive ? pct.toFixed(0)+'%' : '');
+      html += '<div class="mala-bead ' + cls + '">' + lbl +
+        (tipDate ? '<span class="bead-tip">' + tipDate + '</span>' : '') + '</div>';
+      if (i < windowEnd) html += '<div class="mala-thread"></div>';
+    }
+    beadsEl2.innerHTML = html;
+  }
+
+  // Lakh Gati (render to grid2)
+  // renderLakhGati2(); // removed
+  
+  // Load sadhana start date for tab2
+  const saved = localStorage.getItem('rjap_sadhana_start');
+  const input2 = document.getElementById('sadhanaStartDate2');
+  if (saved && input2) input2.value = saved;
+  const sinceEl = document.getElementById('sadhanaSince2');
+  if (sinceEl) {
+    if (!saved) { sinceEl.textContent = 'Set your journey start date above ☝️'; }
+    else {
+      const start = new Date(saved);
+      const now = new Date();
+      const diff = now.getTime() - start.getTime();
+      const days = Math.floor(diff / 86400000);
+      const years = Math.floor(days / 365);
+      const remDays = days % 365;
+      const months = Math.floor(remDays / 30);
+      let str = '🙏 ';
+      if (years > 0) str += years + ' year' + (years>1?'s':'') + ' ';
+      if (months > 0) str += months + ' month' + (months>1?'s':'') + ' ';
+      str += (remDays % 30) + ' days of Sadhana';
+      sinceEl.textContent = str;
+    }
+  }
+
+  // Sadhana Journey Timeline (removed from milestones tab)
+  const logList2 = document.getElementById('msLogList2');
+  if (logList2) {
+    const allReached = MILESTONES.filter(m => data.reached[m.count])
+      .sort((a, b) => new Date(data.reached[b.count]) - new Date(data.reached[a.count]));
+    if (allReached.length === 0) {
+      logList2.innerHTML = '<div class="sj-empty">No milestones reached yet. Keep chanting! 🙏</div>';
+    } else {
+      const now = Date.now();
+      logList2.innerHTML = allReached.slice(0, 30).map((m, idx, arr) => {
+        const d = new Date(data.reached[m.count]);
+        const dateStr = d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+        const diffMs = now - d.getTime();
+        const diffDays = Math.floor(diffMs / 86400000);
+        const ago = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : diffDays + 'd ago';
+        const isSp = m.type === 'spiritual';
+        return '<div class="sj-item' + (isSp ? ' spiritual' : '') + '">' +
+          '<div class="sj-left">' +
+            '<div class="sj-dot">' + (m.badge || m.icon) + '</div>' +
+            (idx < arr.length - 1 ? '<div class="sj-line"></div>' : '') +
+          '</div>' +
+          '<div class="sj-right">' +
+            '<div class="sj-name">' + m.label + (isSp ? ' 🙏' : '') + '</div>' +
+            '<div class="sj-meta">' +
+              '<span class="sj-count">' + formatMsCount(m.count) + '</span>' +
+              '<span class="sj-date">' + dateStr + '</span>' +
+              '<span class="sj-ago">' + ago + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+  }
+
+  // Velocity
+  // renderVelocityTracker(); // removed
+}
+
+function renderLakhGati2() {
+  const grid = document.getElementById('lakhGatiGrid2');
+  if (!grid) return;
+  const tot = App.gTot();
+  const data = getMilestoneData();
+  const reachedLakhs = LAKH_MILESTONES.filter(l => tot >= l.count);
+  const unreachedLakhs = LAKH_MILESTONES.filter(l => tot < l.count).slice(0, 2);
+  const visibleLakhs = [...reachedLakhs, ...unreachedLakhs];
+  if (visibleLakhs.length === 0) {
+    grid.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--td);padding:12px">Keep chanting to reach your first Lakh! 🙏</div>';
+    return;
+  }
+  let html = '';
+  visibleLakhs.forEach((lakh, idx) => {
+    const isReached = tot >= lakh.count;
+    const isCurrent = !isReached && (idx === 0 || tot >= visibleLakhs[idx-1].count);
+    const cls = isReached ? 'reached' : (isCurrent ? 'current' : '');
+    const reachedDate = data.reached[lakh.count];
+    const dateStr = reachedDate ? new Date(reachedDate).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'}) : '';
+    let durationStr = '';
+    if (isReached && reachedDate) {
+      const prevLakh = idx > 0 ? visibleLakhs[idx-1] : null;
+      let prevDate = null;
+      if (prevLakh && data.reached[prevLakh.count]) prevDate = new Date(data.reached[prevLakh.count]);
+      else { const startStr = localStorage.getItem('rjap_sadhana_start'); if (startStr) prevDate = new Date(startStr); }
+      if (prevDate) durationStr = formatDuration(new Date(reachedDate).getTime() - prevDate.getTime());
+    }
+    let pct2 = isReached ? 100 : 0;
+    if (!isReached) {
+      const prevCount = idx > 0 ? visibleLakhs[idx-1].count : 0;
+      pct2 = Math.min(100, Math.max(0, ((tot - prevCount) / (lakh.count - prevCount)) * 100));
+    }
+    html += '<div class="lakh-card ' + cls + '">' +
+      '<div class="lakh-icon">' + lakh.num + 'L</div>' +
+      '<div class="lakh-info"><div class="lakh-name">' + lakh.label + (isReached ? ' ✓' : '') + '</div>' +
+      '<div class="lakh-meta">' +
+        (dateStr ? '<span class="lakh-date">📅 ' + dateStr + '</span>' : '') +
+        (durationStr ? '<span class="lakh-duration">⏱ ' + durationStr + '</span>' : '') +
+        (!isReached ? '<span class="lakh-date">' + (lakh.count - tot).toLocaleString('en-IN') + ' remaining</span>' : '') +
+      '</div></div>' +
+      '<div class="lakh-progress">' +
+        (isReached ? '<div class="lakh-pct">✅</div>' : '<div class="lakh-pct">' + pct2.toFixed(0) + '%</div>') +
+        (!isReached ? '<div class="lakh-bar-mini"><div class="lakh-bar-mini-fill" style="width:' + pct2.toFixed(1) + '%"></div></div>' : '') +
+      '</div></div>';
+  });
+  grid.innerHTML = html;
+}
+
 </script>
 <script>
 // ═══════════════════════════════════════════════════════
@@ -4186,7 +4835,17 @@ window.addEventListener('load', async () => {
   // timerSavedSeconds tracks what's already committed to timerHistory this session.
   App.timerSeconds = 0;
   App.timerSavedSeconds = 0;
-  App.malaSessionStart = 0;
+  // Restore wall-clock mala start for cross-session timing
+  const savedMalaWall = localStorage.getItem('rjap_malaWallStart');
+  const todayCount = App.gTod();
+  const ms = App.S.ms || 108;
+  const countInCurrentMala = todayCount % ms;
+  if (savedMalaWall && countInCurrentMala > 0) {
+    App.malaWallStart = parseInt(savedMalaWall);
+  } else {
+    App.malaWallStart = Date.now();
+    localStorage.setItem('rjap_malaWallStart', String(App.malaWallStart));
+  }
   document.getElementById('timerDisplay').textContent = '00:00:00';
 
   // Apply settings UI
@@ -4231,6 +4890,322 @@ if ('serviceWorker' in navigator) {
       .catch(e => console.warn('SW registration failed:', e.message));
   });
 }
+
+// ═══════════════════════════════════════════════
+// DIVINE CELEBRATION — Morpankh & Golden Particles
+// ═══════════════════════════════════════════════
+function spawnDivineCelebration() {
+  const tz = document.getElementById('tz');
+  if (!tz) return;
+  const rect = tz.getBoundingClientRect();
+  const feathers = ['🪶','✨','🦚','💫','⭐'];
+  
+  // Spawn 25 particles
+  for (let i = 0; i < 25; i++) {
+    const el = document.createElement('div');
+    const isFeather = i < 10;
+    el.className = 'divine-particle ' + (isFeather ? 'feather' : 'golden');
+    const angle = (Math.PI * 2 * i) / 25;
+    const dist = 60 + Math.random() * 100;
+    el.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+    el.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+    el.style.left = '50%';
+    el.style.top = '50%';
+    el.style.animationDelay = (Math.random() * 0.5) + 's';
+    if (isFeather) el.textContent = feathers[i % feathers.length];
+    tz.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+  
+  // Sacred vibration pattern for milestone
+  if (navigator.vibrate) {
+    try { navigator.vibrate([100, 50, 100, 50, 200, 100, 300]); } catch(e) {}
+  }
+}
+
+// ═══════════════════════════════════════════════
+// VELOCITY TRACKER
+// ═══════════════════════════════════════════════
+function renderVelocityTracker() {
+  const el = document.getElementById('velocityList');
+  if (!el) return;
+  const data = getMilestoneData();
+  const tot = App.gTot();
+  
+  // Collect all dynamic milestones: 10k, 1L, 1Cr
+  const allMs = [];
+  
+  // 10k milestones
+  for (let i = 1; i <= Math.floor(tot / 10000); i++) {
+    const c = i * 10000;
+    if (data.reached[c]) {
+      allMs.push({ count: c, label: (i*10) + 'K', date: data.reached[c], type: '10k', icon: '🎖️' });
+    }
+  }
+  
+  // 1 Lakh milestones
+  for (let i = 1; i <= Math.floor(tot / 100000); i++) {
+    const c = i * 100000;
+    if (data.reached[c]) {
+      allMs.push({ count: c, label: i + 'L', date: data.reached[c], type: 'lakh', icon: '📿' });
+    }
+  }
+  
+  // Crore milestones
+  SPIRITUAL_MILESTONES.forEach(sm => {
+    if (data.reached[sm.count]) {
+      allMs.push({ count: sm.count, label: (sm.count/CRORE) + 'Cr', date: data.reached[sm.count], type: 'crore', icon: sm.icon });
+    }
+  });
+  
+  // Sort by count descending
+  allMs.sort((a, b) => b.count - a.count);
+  
+  if (allMs.length === 0) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--td);text-align:center;padding:12px">Keep chanting to see your velocity! 🙏</div>';
+    return;
+  }
+  
+  // Show latest 30
+  const visible = allMs.slice(0, 30);
+  let html = '';
+  visible.forEach((ms, idx) => {
+    const d = new Date(ms.date);
+    const dateStr = d.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'});
+    
+    // Find previous milestone in same category for velocity
+    let durationStr = '—';
+    const prevMs = allMs.find(m => m.count < ms.count && m.type === ms.type);
+    if (prevMs) {
+      const diff = new Date(ms.date).getTime() - new Date(prevMs.date).getTime();
+      durationStr = formatDuration(diff);
+    } else {
+      const startStr = localStorage.getItem('rjap_sadhana_start');
+      if (startStr) {
+        const diff = new Date(ms.date).getTime() - new Date(startStr).getTime();
+        durationStr = formatDuration(diff);
+      }
+    }
+    
+    const isHighlight = ms.type === 'lakh' || ms.type === 'crore';
+    html += '<div class="vel-item' + (isHighlight ? ' highlight' : '') + '">' +
+      '<div class="vel-icon">' + ms.icon + '</div>' +
+      '<div class="vel-info">' +
+        '<div class="vel-name">' + formatMsCount(ms.count) + ' Jap</div>' +
+        '<div class="vel-meta">📅 ' + dateStr + '</div>' +
+      '</div>' +
+      '<div class="vel-time">⏱ ' + durationStr + '</div>' +
+    '</div>';
+  });
+  
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════
+// RENDER MILESTONES TAB
+// ═══════════════════════════════════════════════
+function renderMilestonesTab() {
+  const data = getMilestoneData();
+  const tot = App.gTot();
+
+  // Lifetime count
+  const c2 = document.getElementById('mahimaCount2');
+  if (c2) c2.textContent = tot.toLocaleString('en-IN');
+  
+  const spReached = SPIRITUAL_MILESTONES.filter(m => data.reached[m.count]).length;
+  const r2 = document.getElementById('mahimaMsReached2');
+  if (r2) r2.textContent = spReached + '/13 milestones reached';
+
+  // Spiritual milestone cards
+  const cards2 = document.getElementById('mahimaCards2');
+  if (cards2) {
+    let html = '';
+    PHASES.forEach(phase => {
+      html += '<div class="mahima-phase"><div class="mahima-phase-name">' + phase.name + '</div>' +
+        '<div class="mahima-phase-sub">' + phase.sub + '</div></div>';
+      SPIRITUAL_MILESTONES.filter(m => m.phase === phase.id).forEach(m => {
+        const unlocked = !!data.reached[m.count];
+        const pct = Math.min(100, (tot / m.count) * 100);
+        const croreNum = m.count / CRORE;
+        const phaseClass = phase.id === 'bhagwat' ? ' phase-bhagwat' : (phase.id === 'shakti' ? ' phase-shakti' : '');
+        const dateStr = unlocked ? new Date(data.reached[m.count]).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '';
+        html += '<div class="mahima-card' + (unlocked ? ' unlocked' : '') + phaseClass + '">' +
+          '<div class="mahima-card-icon">' + m.icon + '</div>' +
+          '<div class="mahima-card-body">' +
+          '<div class="mahima-card-top"><span class="mahima-card-count">' + croreNum + ' Crore</span>' +
+          '<span class="mahima-card-tag">' + m.tag + '</span></div>' +
+          '<div class="mahima-card-name">' + m.label + '</div>' +
+          '<div class="mahima-card-eng">' + m.eng + '</div>' +
+          '<div class="mahima-card-bar-wrap"><div class="mahima-card-bar" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+          '<div class="mahima-card-pct">' + pct.toFixed(1) + '%</div>' +
+          (unlocked ? '<div class="mahima-card-date">✓ Achieved ' + dateStr + '</div>' : '') +
+          (m.desc ? '<div class="mahima-card-desc">' + m.desc + '<div class="mahima-card-author">— Shri Hit Premanand Ji Maharaj</div></div>' : '') +
+          '</div></div>';
+      });
+    });
+    cards2.innerHTML = html;
+  }
+
+  // Mala Bead Strip
+  const regMilestones = MILESTONES.filter(m => m.type === 'regular');
+  const next = regMilestones.find(m => tot < m.count);
+  const nextEl2 = document.getElementById('msNextVal2');
+  const pctEl2  = document.getElementById('msNextPct2');
+  const fillEl2 = document.getElementById('msProgFill2');
+  const remEl2  = document.getElementById('msRemaining2');
+  const beadsEl2 = document.getElementById('malaBeads2');
+
+  let pct = 0;
+  if (next) {
+    const nextIdx = regMilestones.indexOf(next);
+    const prevCount = nextIdx > 0 ? regMilestones[nextIdx - 1].count : 0;
+    pct = Math.min(100, Math.max(0, ((tot - prevCount) / (next.count - prevCount)) * 100));
+    if (nextEl2) nextEl2.textContent = formatMsCount(next.count);
+    if (pctEl2)  pctEl2.textContent  = pct.toFixed(0) + '%';
+    const rem = next.count - tot;
+    if (remEl2) remEl2.textContent = rem.toLocaleString('en-IN') + ' more jap to go';
+  } else {
+    if (nextEl2) nextEl2.textContent = 'Sadhana Poorna 🙏';
+    if (pctEl2)  pctEl2.textContent  = '';
+    if (remEl2)  remEl2.textContent  = '';
+    pct = 100;
+  }
+  if (fillEl2) fillEl2.style.width = pct.toFixed(1) + '%';
+
+  // Build beads
+  if (beadsEl2) {
+    const activeIdx = next ? regMilestones.indexOf(next) : regMilestones.length - 1;
+    const windowStart = Math.max(0, activeIdx - 4);
+    const windowEnd   = Math.min(regMilestones.length - 1, windowStart + 8);
+    let html = '';
+    for (let i = windowStart; i <= windowEnd; i++) {
+      const m = regMilestones[i];
+      const isReached = !!data.reached[m.count];
+      const isActive  = next && m.count === next.count;
+      const cls = isReached ? 'reached' : (isActive ? 'active' : '');
+      const lbl = m.count >= 100000 ? formatMsCount(m.count) : (m.count/1000) + 'K';
+      const tipDate = isReached && data.reached[m.count]
+        ? new Date(data.reached[m.count]).toLocaleDateString('en-IN',{day:'numeric',month:'short'})
+        : (isActive ? pct.toFixed(0)+'%' : '');
+      html += '<div class="mala-bead ' + cls + '">' + lbl +
+        (tipDate ? '<span class="bead-tip">' + tipDate + '</span>' : '') + '</div>';
+      if (i < windowEnd) html += '<div class="mala-thread"></div>';
+    }
+    beadsEl2.innerHTML = html;
+  }
+
+  // Lakh Gati (render to grid2)
+  // renderLakhGati2(); // removed
+  
+  // Load sadhana start date for tab2
+  const saved = localStorage.getItem('rjap_sadhana_start');
+  const input2 = document.getElementById('sadhanaStartDate2');
+  if (saved && input2) input2.value = saved;
+  const sinceEl = document.getElementById('sadhanaSince2');
+  if (sinceEl) {
+    if (!saved) { sinceEl.textContent = 'Set your journey start date above ☝️'; }
+    else {
+      const start = new Date(saved);
+      const now = new Date();
+      const diff = now.getTime() - start.getTime();
+      const days = Math.floor(diff / 86400000);
+      const years = Math.floor(days / 365);
+      const remDays = days % 365;
+      const months = Math.floor(remDays / 30);
+      let str = '🙏 ';
+      if (years > 0) str += years + ' year' + (years>1?'s':'') + ' ';
+      if (months > 0) str += months + ' month' + (months>1?'s':'') + ' ';
+      str += (remDays % 30) + ' days of Sadhana';
+      sinceEl.textContent = str;
+    }
+  }
+
+  // Sadhana Journey Timeline (removed from milestones tab)
+  const logList2 = document.getElementById('msLogList2');
+  if (logList2) {
+    const allReached = MILESTONES.filter(m => data.reached[m.count])
+      .sort((a, b) => new Date(data.reached[b.count]) - new Date(data.reached[a.count]));
+    if (allReached.length === 0) {
+      logList2.innerHTML = '<div class="sj-empty">No milestones reached yet. Keep chanting! 🙏</div>';
+    } else {
+      const now = Date.now();
+      logList2.innerHTML = allReached.slice(0, 30).map((m, idx, arr) => {
+        const d = new Date(data.reached[m.count]);
+        const dateStr = d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+        const diffMs = now - d.getTime();
+        const diffDays = Math.floor(diffMs / 86400000);
+        const ago = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : diffDays + 'd ago';
+        const isSp = m.type === 'spiritual';
+        return '<div class="sj-item' + (isSp ? ' spiritual' : '') + '">' +
+          '<div class="sj-left">' +
+            '<div class="sj-dot">' + (m.badge || m.icon) + '</div>' +
+            (idx < arr.length - 1 ? '<div class="sj-line"></div>' : '') +
+          '</div>' +
+          '<div class="sj-right">' +
+            '<div class="sj-name">' + m.label + (isSp ? ' 🙏' : '') + '</div>' +
+            '<div class="sj-meta">' +
+              '<span class="sj-count">' + formatMsCount(m.count) + '</span>' +
+              '<span class="sj-date">' + dateStr + '</span>' +
+              '<span class="sj-ago">' + ago + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+  }
+
+  // Velocity
+  // renderVelocityTracker(); // removed
+}
+
+function renderLakhGati2() {
+  const grid = document.getElementById('lakhGatiGrid2');
+  if (!grid) return;
+  const tot = App.gTot();
+  const data = getMilestoneData();
+  const reachedLakhs = LAKH_MILESTONES.filter(l => tot >= l.count);
+  const unreachedLakhs = LAKH_MILESTONES.filter(l => tot < l.count).slice(0, 2);
+  const visibleLakhs = [...reachedLakhs, ...unreachedLakhs];
+  if (visibleLakhs.length === 0) {
+    grid.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--td);padding:12px">Keep chanting to reach your first Lakh! 🙏</div>';
+    return;
+  }
+  let html = '';
+  visibleLakhs.forEach((lakh, idx) => {
+    const isReached = tot >= lakh.count;
+    const isCurrent = !isReached && (idx === 0 || tot >= visibleLakhs[idx-1].count);
+    const cls = isReached ? 'reached' : (isCurrent ? 'current' : '');
+    const reachedDate = data.reached[lakh.count];
+    const dateStr = reachedDate ? new Date(reachedDate).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'}) : '';
+    let durationStr = '';
+    if (isReached && reachedDate) {
+      const prevLakh = idx > 0 ? visibleLakhs[idx-1] : null;
+      let prevDate = null;
+      if (prevLakh && data.reached[prevLakh.count]) prevDate = new Date(data.reached[prevLakh.count]);
+      else { const startStr = localStorage.getItem('rjap_sadhana_start'); if (startStr) prevDate = new Date(startStr); }
+      if (prevDate) durationStr = formatDuration(new Date(reachedDate).getTime() - prevDate.getTime());
+    }
+    let pct2 = isReached ? 100 : 0;
+    if (!isReached) {
+      const prevCount = idx > 0 ? visibleLakhs[idx-1].count : 0;
+      pct2 = Math.min(100, Math.max(0, ((tot - prevCount) / (lakh.count - prevCount)) * 100));
+    }
+    html += '<div class="lakh-card ' + cls + '">' +
+      '<div class="lakh-icon">' + lakh.num + 'L</div>' +
+      '<div class="lakh-info"><div class="lakh-name">' + lakh.label + (isReached ? ' ✓' : '') + '</div>' +
+      '<div class="lakh-meta">' +
+        (dateStr ? '<span class="lakh-date">📅 ' + dateStr + '</span>' : '') +
+        (durationStr ? '<span class="lakh-duration">⏱ ' + durationStr + '</span>' : '') +
+        (!isReached ? '<span class="lakh-date">' + (lakh.count - tot).toLocaleString('en-IN') + ' remaining</span>' : '') +
+      '</div></div>' +
+      '<div class="lakh-progress">' +
+        (isReached ? '<div class="lakh-pct">✅</div>' : '<div class="lakh-pct">' + pct2.toFixed(0) + '%</div>') +
+        (!isReached ? '<div class="lakh-bar-mini"><div class="lakh-bar-mini-fill" style="width:' + pct2.toFixed(1) + '%"></div></div>' : '') +
+      '</div></div>';
+  });
+  grid.innerHTML = html;
+}
+
 </script>
 
 <script>
@@ -5445,16 +6420,44 @@ function checkMilestones() {
   const tot = App.gTot();
   const data = getMilestoneData();
   let latestNew = null;
+  
+  // Check standard milestones
   for (const ms of MILESTONES) {
     if (tot >= ms.count && !data.reached[ms.count]) {
       data.reached[ms.count] = new Date().toISOString();
       latestNew = ms;
     }
   }
+  
+  // Dynamic 10K milestones
+  const cur10k = Math.floor(tot / 10000);
+  for (let i = 1; i <= cur10k; i++) {
+    const c = i * 10000;
+    if (!data.reached[c]) {
+      data.reached[c] = new Date().toISOString();
+      if (!latestNew || c > latestNew.count) {
+        latestNew = { count: c, icon: '✨', label: (i*10) + 'K Jap', badge: '🎖️', type: 'regular' };
+      }
+    }
+  }
+  
+  // Dynamic 1 Lakh milestones
+  const curLakh = Math.floor(tot / 100000);
+  for (let i = 1; i <= curLakh; i++) {
+    const c = i * 100000;
+    if (!data.reached[c]) {
+      data.reached[c] = new Date().toISOString();
+      if (!latestNew || c > latestNew.count) {
+        latestNew = { count: c, icon: '📿', label: i + ' Lakh Jap', badge: '📿', type: 'regular' };
+      }
+    }
+  }
+  
   if (latestNew) {
     saveMilestoneData(data);
-    // Show celebration for the highest newly reached milestone
     setTimeout(() => showMilestoneCelebration(latestNew), 500);
+    // Trigger divine celebration in jap area
+    setTimeout(() => spawnDivineCelebration(), 200);
   }
 }
 
@@ -5722,6 +6725,322 @@ function renderMsView() {
   }
 }
 
+
+
+// ═══════════════════════════════════════════════
+// DIVINE CELEBRATION — Morpankh & Golden Particles
+// ═══════════════════════════════════════════════
+function spawnDivineCelebration() {
+  const tz = document.getElementById('tz');
+  if (!tz) return;
+  const rect = tz.getBoundingClientRect();
+  const feathers = ['🪶','✨','🦚','💫','⭐'];
+  
+  // Spawn 25 particles
+  for (let i = 0; i < 25; i++) {
+    const el = document.createElement('div');
+    const isFeather = i < 10;
+    el.className = 'divine-particle ' + (isFeather ? 'feather' : 'golden');
+    const angle = (Math.PI * 2 * i) / 25;
+    const dist = 60 + Math.random() * 100;
+    el.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+    el.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+    el.style.left = '50%';
+    el.style.top = '50%';
+    el.style.animationDelay = (Math.random() * 0.5) + 's';
+    if (isFeather) el.textContent = feathers[i % feathers.length];
+    tz.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+  
+  // Sacred vibration pattern for milestone
+  if (navigator.vibrate) {
+    try { navigator.vibrate([100, 50, 100, 50, 200, 100, 300]); } catch(e) {}
+  }
+}
+
+// ═══════════════════════════════════════════════
+// VELOCITY TRACKER
+// ═══════════════════════════════════════════════
+function renderVelocityTracker() {
+  const el = document.getElementById('velocityList');
+  if (!el) return;
+  const data = getMilestoneData();
+  const tot = App.gTot();
+  
+  // Collect all dynamic milestones: 10k, 1L, 1Cr
+  const allMs = [];
+  
+  // 10k milestones
+  for (let i = 1; i <= Math.floor(tot / 10000); i++) {
+    const c = i * 10000;
+    if (data.reached[c]) {
+      allMs.push({ count: c, label: (i*10) + 'K', date: data.reached[c], type: '10k', icon: '🎖️' });
+    }
+  }
+  
+  // 1 Lakh milestones
+  for (let i = 1; i <= Math.floor(tot / 100000); i++) {
+    const c = i * 100000;
+    if (data.reached[c]) {
+      allMs.push({ count: c, label: i + 'L', date: data.reached[c], type: 'lakh', icon: '📿' });
+    }
+  }
+  
+  // Crore milestones
+  SPIRITUAL_MILESTONES.forEach(sm => {
+    if (data.reached[sm.count]) {
+      allMs.push({ count: sm.count, label: (sm.count/CRORE) + 'Cr', date: data.reached[sm.count], type: 'crore', icon: sm.icon });
+    }
+  });
+  
+  // Sort by count descending
+  allMs.sort((a, b) => b.count - a.count);
+  
+  if (allMs.length === 0) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--td);text-align:center;padding:12px">Keep chanting to see your velocity! 🙏</div>';
+    return;
+  }
+  
+  // Show latest 30
+  const visible = allMs.slice(0, 30);
+  let html = '';
+  visible.forEach((ms, idx) => {
+    const d = new Date(ms.date);
+    const dateStr = d.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'});
+    
+    // Find previous milestone in same category for velocity
+    let durationStr = '—';
+    const prevMs = allMs.find(m => m.count < ms.count && m.type === ms.type);
+    if (prevMs) {
+      const diff = new Date(ms.date).getTime() - new Date(prevMs.date).getTime();
+      durationStr = formatDuration(diff);
+    } else {
+      const startStr = localStorage.getItem('rjap_sadhana_start');
+      if (startStr) {
+        const diff = new Date(ms.date).getTime() - new Date(startStr).getTime();
+        durationStr = formatDuration(diff);
+      }
+    }
+    
+    const isHighlight = ms.type === 'lakh' || ms.type === 'crore';
+    html += '<div class="vel-item' + (isHighlight ? ' highlight' : '') + '">' +
+      '<div class="vel-icon">' + ms.icon + '</div>' +
+      '<div class="vel-info">' +
+        '<div class="vel-name">' + formatMsCount(ms.count) + ' Jap</div>' +
+        '<div class="vel-meta">📅 ' + dateStr + '</div>' +
+      '</div>' +
+      '<div class="vel-time">⏱ ' + durationStr + '</div>' +
+    '</div>';
+  });
+  
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════
+// RENDER MILESTONES TAB
+// ═══════════════════════════════════════════════
+function renderMilestonesTab() {
+  const data = getMilestoneData();
+  const tot = App.gTot();
+
+  // Lifetime count
+  const c2 = document.getElementById('mahimaCount2');
+  if (c2) c2.textContent = tot.toLocaleString('en-IN');
+  
+  const spReached = SPIRITUAL_MILESTONES.filter(m => data.reached[m.count]).length;
+  const r2 = document.getElementById('mahimaMsReached2');
+  if (r2) r2.textContent = spReached + '/13 milestones reached';
+
+  // Spiritual milestone cards
+  const cards2 = document.getElementById('mahimaCards2');
+  if (cards2) {
+    let html = '';
+    PHASES.forEach(phase => {
+      html += '<div class="mahima-phase"><div class="mahima-phase-name">' + phase.name + '</div>' +
+        '<div class="mahima-phase-sub">' + phase.sub + '</div></div>';
+      SPIRITUAL_MILESTONES.filter(m => m.phase === phase.id).forEach(m => {
+        const unlocked = !!data.reached[m.count];
+        const pct = Math.min(100, (tot / m.count) * 100);
+        const croreNum = m.count / CRORE;
+        const phaseClass = phase.id === 'bhagwat' ? ' phase-bhagwat' : (phase.id === 'shakti' ? ' phase-shakti' : '');
+        const dateStr = unlocked ? new Date(data.reached[m.count]).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '';
+        html += '<div class="mahima-card' + (unlocked ? ' unlocked' : '') + phaseClass + '">' +
+          '<div class="mahima-card-icon">' + m.icon + '</div>' +
+          '<div class="mahima-card-body">' +
+          '<div class="mahima-card-top"><span class="mahima-card-count">' + croreNum + ' Crore</span>' +
+          '<span class="mahima-card-tag">' + m.tag + '</span></div>' +
+          '<div class="mahima-card-name">' + m.label + '</div>' +
+          '<div class="mahima-card-eng">' + m.eng + '</div>' +
+          '<div class="mahima-card-bar-wrap"><div class="mahima-card-bar" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+          '<div class="mahima-card-pct">' + pct.toFixed(1) + '%</div>' +
+          (unlocked ? '<div class="mahima-card-date">✓ Achieved ' + dateStr + '</div>' : '') +
+          (m.desc ? '<div class="mahima-card-desc">' + m.desc + '<div class="mahima-card-author">— Shri Hit Premanand Ji Maharaj</div></div>' : '') +
+          '</div></div>';
+      });
+    });
+    cards2.innerHTML = html;
+  }
+
+  // Mala Bead Strip
+  const regMilestones = MILESTONES.filter(m => m.type === 'regular');
+  const next = regMilestones.find(m => tot < m.count);
+  const nextEl2 = document.getElementById('msNextVal2');
+  const pctEl2  = document.getElementById('msNextPct2');
+  const fillEl2 = document.getElementById('msProgFill2');
+  const remEl2  = document.getElementById('msRemaining2');
+  const beadsEl2 = document.getElementById('malaBeads2');
+
+  let pct = 0;
+  if (next) {
+    const nextIdx = regMilestones.indexOf(next);
+    const prevCount = nextIdx > 0 ? regMilestones[nextIdx - 1].count : 0;
+    pct = Math.min(100, Math.max(0, ((tot - prevCount) / (next.count - prevCount)) * 100));
+    if (nextEl2) nextEl2.textContent = formatMsCount(next.count);
+    if (pctEl2)  pctEl2.textContent  = pct.toFixed(0) + '%';
+    const rem = next.count - tot;
+    if (remEl2) remEl2.textContent = rem.toLocaleString('en-IN') + ' more jap to go';
+  } else {
+    if (nextEl2) nextEl2.textContent = 'Sadhana Poorna 🙏';
+    if (pctEl2)  pctEl2.textContent  = '';
+    if (remEl2)  remEl2.textContent  = '';
+    pct = 100;
+  }
+  if (fillEl2) fillEl2.style.width = pct.toFixed(1) + '%';
+
+  // Build beads
+  if (beadsEl2) {
+    const activeIdx = next ? regMilestones.indexOf(next) : regMilestones.length - 1;
+    const windowStart = Math.max(0, activeIdx - 4);
+    const windowEnd   = Math.min(regMilestones.length - 1, windowStart + 8);
+    let html = '';
+    for (let i = windowStart; i <= windowEnd; i++) {
+      const m = regMilestones[i];
+      const isReached = !!data.reached[m.count];
+      const isActive  = next && m.count === next.count;
+      const cls = isReached ? 'reached' : (isActive ? 'active' : '');
+      const lbl = m.count >= 100000 ? formatMsCount(m.count) : (m.count/1000) + 'K';
+      const tipDate = isReached && data.reached[m.count]
+        ? new Date(data.reached[m.count]).toLocaleDateString('en-IN',{day:'numeric',month:'short'})
+        : (isActive ? pct.toFixed(0)+'%' : '');
+      html += '<div class="mala-bead ' + cls + '">' + lbl +
+        (tipDate ? '<span class="bead-tip">' + tipDate + '</span>' : '') + '</div>';
+      if (i < windowEnd) html += '<div class="mala-thread"></div>';
+    }
+    beadsEl2.innerHTML = html;
+  }
+
+  // Lakh Gati (render to grid2)
+  // renderLakhGati2(); // removed
+  
+  // Load sadhana start date for tab2
+  const saved = localStorage.getItem('rjap_sadhana_start');
+  const input2 = document.getElementById('sadhanaStartDate2');
+  if (saved && input2) input2.value = saved;
+  const sinceEl = document.getElementById('sadhanaSince2');
+  if (sinceEl) {
+    if (!saved) { sinceEl.textContent = 'Set your journey start date above ☝️'; }
+    else {
+      const start = new Date(saved);
+      const now = new Date();
+      const diff = now.getTime() - start.getTime();
+      const days = Math.floor(diff / 86400000);
+      const years = Math.floor(days / 365);
+      const remDays = days % 365;
+      const months = Math.floor(remDays / 30);
+      let str = '🙏 ';
+      if (years > 0) str += years + ' year' + (years>1?'s':'') + ' ';
+      if (months > 0) str += months + ' month' + (months>1?'s':'') + ' ';
+      str += (remDays % 30) + ' days of Sadhana';
+      sinceEl.textContent = str;
+    }
+  }
+
+  // Sadhana Journey Timeline (removed from milestones tab)
+  const logList2 = document.getElementById('msLogList2');
+  if (logList2) {
+    const allReached = MILESTONES.filter(m => data.reached[m.count])
+      .sort((a, b) => new Date(data.reached[b.count]) - new Date(data.reached[a.count]));
+    if (allReached.length === 0) {
+      logList2.innerHTML = '<div class="sj-empty">No milestones reached yet. Keep chanting! 🙏</div>';
+    } else {
+      const now = Date.now();
+      logList2.innerHTML = allReached.slice(0, 30).map((m, idx, arr) => {
+        const d = new Date(data.reached[m.count]);
+        const dateStr = d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+        const diffMs = now - d.getTime();
+        const diffDays = Math.floor(diffMs / 86400000);
+        const ago = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : diffDays + 'd ago';
+        const isSp = m.type === 'spiritual';
+        return '<div class="sj-item' + (isSp ? ' spiritual' : '') + '">' +
+          '<div class="sj-left">' +
+            '<div class="sj-dot">' + (m.badge || m.icon) + '</div>' +
+            (idx < arr.length - 1 ? '<div class="sj-line"></div>' : '') +
+          '</div>' +
+          '<div class="sj-right">' +
+            '<div class="sj-name">' + m.label + (isSp ? ' 🙏' : '') + '</div>' +
+            '<div class="sj-meta">' +
+              '<span class="sj-count">' + formatMsCount(m.count) + '</span>' +
+              '<span class="sj-date">' + dateStr + '</span>' +
+              '<span class="sj-ago">' + ago + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+  }
+
+  // Velocity
+  // renderVelocityTracker(); // removed
+}
+
+function renderLakhGati2() {
+  const grid = document.getElementById('lakhGatiGrid2');
+  if (!grid) return;
+  const tot = App.gTot();
+  const data = getMilestoneData();
+  const reachedLakhs = LAKH_MILESTONES.filter(l => tot >= l.count);
+  const unreachedLakhs = LAKH_MILESTONES.filter(l => tot < l.count).slice(0, 2);
+  const visibleLakhs = [...reachedLakhs, ...unreachedLakhs];
+  if (visibleLakhs.length === 0) {
+    grid.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--td);padding:12px">Keep chanting to reach your first Lakh! 🙏</div>';
+    return;
+  }
+  let html = '';
+  visibleLakhs.forEach((lakh, idx) => {
+    const isReached = tot >= lakh.count;
+    const isCurrent = !isReached && (idx === 0 || tot >= visibleLakhs[idx-1].count);
+    const cls = isReached ? 'reached' : (isCurrent ? 'current' : '');
+    const reachedDate = data.reached[lakh.count];
+    const dateStr = reachedDate ? new Date(reachedDate).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'}) : '';
+    let durationStr = '';
+    if (isReached && reachedDate) {
+      const prevLakh = idx > 0 ? visibleLakhs[idx-1] : null;
+      let prevDate = null;
+      if (prevLakh && data.reached[prevLakh.count]) prevDate = new Date(data.reached[prevLakh.count]);
+      else { const startStr = localStorage.getItem('rjap_sadhana_start'); if (startStr) prevDate = new Date(startStr); }
+      if (prevDate) durationStr = formatDuration(new Date(reachedDate).getTime() - prevDate.getTime());
+    }
+    let pct2 = isReached ? 100 : 0;
+    if (!isReached) {
+      const prevCount = idx > 0 ? visibleLakhs[idx-1].count : 0;
+      pct2 = Math.min(100, Math.max(0, ((tot - prevCount) / (lakh.count - prevCount)) * 100));
+    }
+    html += '<div class="lakh-card ' + cls + '">' +
+      '<div class="lakh-icon">' + lakh.num + 'L</div>' +
+      '<div class="lakh-info"><div class="lakh-name">' + lakh.label + (isReached ? ' ✓' : '') + '</div>' +
+      '<div class="lakh-meta">' +
+        (dateStr ? '<span class="lakh-date">📅 ' + dateStr + '</span>' : '') +
+        (durationStr ? '<span class="lakh-duration">⏱ ' + durationStr + '</span>' : '') +
+        (!isReached ? '<span class="lakh-date">' + (lakh.count - tot).toLocaleString('en-IN') + ' remaining</span>' : '') +
+      '</div></div>' +
+      '<div class="lakh-progress">' +
+        (isReached ? '<div class="lakh-pct">✅</div>' : '<div class="lakh-pct">' + pct2.toFixed(0) + '%</div>') +
+        (!isReached ? '<div class="lakh-bar-mini"><div class="lakh-bar-mini-fill" style="width:' + pct2.toFixed(1) + '%"></div></div>' : '') +
+      '</div></div>';
+  });
+  grid.innerHTML = html;
+}
 
 </script>
 

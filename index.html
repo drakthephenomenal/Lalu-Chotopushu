@@ -687,50 +687,6 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .fn-rv{position:absolute;pointer-events:none;z-index:10;animation:fu 2.4s ease-out forwards;
   display:flex;flex-direction:column;align-items:center;line-height:1.15;}
 .fn-rv span{font-family:'Tiro Devanagari Hindi',serif;display:block;}
-
-/* ── Peacock Feather Celebration ── */
-.peacock-overlay{position:fixed;inset:0;z-index:9998;pointer-events:none;overflow:hidden;}
-.peacock-feather{position:absolute;font-size:32px;animation:peacock-radiate 3s ease-out forwards;pointer-events:none;filter:drop-shadow(0 0 12px rgba(0,200,100,0.6));}
-@keyframes peacock-radiate{
-  0%{opacity:0;transform:translate(0,0) scale(0.3) rotate(0deg);}
-  20%{opacity:1;transform:translate(var(--dx),var(--dy)) scale(1.1) rotate(var(--rot));}
-  70%{opacity:0.8;transform:translate(calc(var(--dx)*1.8),calc(var(--dy)*1.8)) scale(0.9) rotate(calc(var(--rot)*1.5));}
-  100%{opacity:0;transform:translate(calc(var(--dx)*2.5),calc(var(--dy)*2.5)) scale(0.5) rotate(calc(var(--rot)*2));}
-}
-.peacock-glow{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;
-  border-radius:50%;background:radial-gradient(circle,rgba(0,180,100,0.3),rgba(0,100,200,0.15),transparent 70%);
-  animation:peacock-pulse 2s ease-out forwards;pointer-events:none;z-index:9997;}
-@keyframes peacock-pulse{0%{opacity:0;transform:translate(-50%,-50%) scale(0.3);}30%{opacity:1;transform:translate(-50%,-50%) scale(1.2);}100%{opacity:0;transform:translate(-50%,-50%) scale(2);}}
-
-/* ── 10K/Lakh Tracker ── */
-.tracker-section{margin-bottom:14px;padding:0 2px;}
-.tracker-title{display:flex;align-items:center;gap:8px;margin-bottom:12px;justify-content:center;}
-.tracker-title span:first-child{font-size:20px;}
-.tracker-title span:last-child{font-size:12px;color:var(--gold);text-transform:uppercase;letter-spacing:2px;font-weight:600;}
-.tracker-grid{display:flex;flex-direction:column;gap:6px;max-height:350px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(74,144,226,0.2) transparent;}
-.tracker-card{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(6,13,31,0.5);border:1px solid rgba(255,215,0,0.12);border-radius:12px;transition:all 0.3s ease;}
-.tracker-card.reached{border-color:rgba(255,215,0,0.35);background:rgba(255,215,0,0.05);}
-.tracker-card.reached.lakh{border-color:rgba(0,200,100,0.4);background:rgba(0,200,100,0.06);box-shadow:0 0 10px rgba(0,200,100,0.1);}
-.tracker-card.current{border-color:rgba(109,184,255,0.4);background:rgba(109,184,255,0.06);animation:lakh-pulse 2.5s ease-in-out infinite;}
-.tracker-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:rgba(74,144,226,0.1);border:1px solid rgba(74,144,226,0.2);flex-shrink:0;color:var(--td);font-family:'EB Garamond',serif;}
-.tracker-card.reached .tracker-icon{color:var(--gold);background:linear-gradient(135deg,rgba(255,215,0,0.2),rgba(255,180,0,0.1));border-color:rgba(255,215,0,0.4);}
-.tracker-card.reached.lakh .tracker-icon{color:#2ECC71;background:linear-gradient(135deg,rgba(0,200,100,0.2),rgba(0,150,80,0.1));border-color:rgba(0,200,100,0.4);}
-.tracker-info{flex:1;min-width:0;}
-.tracker-name{font-size:13px;font-weight:600;color:var(--tl);}
-.tracker-card.reached .tracker-name{color:var(--gold);}
-.tracker-card.reached.lakh .tracker-name{color:#2ECC71;}
-.tracker-meta{display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap;}
-.tracker-date{font-size:10px;color:var(--td);}
-.tracker-duration{font-size:10px;color:var(--green);font-weight:500;padding:1px 6px;background:rgba(46,204,113,0.1);border-radius:8px;}
-.tracker-progress{width:50px;text-align:right;}
-.tracker-pct{font-size:12px;font-weight:600;color:var(--a2);font-family:'EB Garamond',serif;}
-.tracker-card.reached .tracker-pct{color:var(--green);}
-.tracker-bar-mini{width:50px;height:3px;background:rgba(74,144,226,0.12);border-radius:2px;margin-top:3px;overflow:hidden;}
-.tracker-bar-mini-fill{height:100%;background:linear-gradient(90deg,var(--a),var(--a2));border-radius:2px;transition:width 0.5s ease;}
-.tracker-card.reached .tracker-bar-mini-fill{background:linear-gradient(90deg,var(--green),#2ECC71);}
-.tracker-tabs{display:flex;gap:6px;margin-bottom:10px;justify-content:center;}
-.tracker-tab{padding:5px 14px;border-radius:20px;border:1px solid rgba(74,144,226,0.25);background:rgba(74,144,226,0.08);color:var(--td);font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;}
-.tracker-tab.active{background:rgba(255,215,0,0.15);border-color:rgba(255,215,0,0.4);color:var(--gold);}
 </style>
 </head>
 <body>
@@ -1114,8 +1070,13 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 
 
 
-  <!-- MILESTONES — NAAM JAP KI MAHIMA (free, not collapsible) -->
-  <div style="background:rgba(255,215,0,0.03);border:1px solid rgba(255,215,0,0.18);border-radius:18px;margin-bottom:12px;padding:16px;">
+  <!-- MILESTONES — NAAM JAP KI MAHIMA (inside Stats) -->
+  <div class="cs-wrap" style="background:rgba(255,215,0,0.03);border:1px solid rgba(255,215,0,0.18)">
+    <div class="cs-header" onclick="toggleCs('mahimaBody','mahimaChev')">
+      <h3 style="color:var(--gold)">🏆 Milestones — Naam Jap ki Mahima</h3>
+      <span class="cs-chevron" id="mahimaChev" style="color:var(--gold)">▾</span>
+    </div>
+    <div class="cs-body" id="mahimaBody">
       <div class="mahima-title">MILESTONES</div>
       <div class="mahima-sub">Naam Jap ki Mahima</div>
       <div class="mahima-attr">Shri Hit Premanand Ji Maharaj ke anusaar</div>
@@ -1128,15 +1089,45 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
       <div class="mahima-quote">"Zubaan se naam nahi chhutna chahiye, chahe uthte-baithte kuch bhi kar rahe ho."</div>
       <div class="mahima-quote-attr">— Shri Hit Premanand Ji Maharaj</div>
 
-      <!-- 10K & Lakh Tracker -->
-      <div class="tracker-section">
-        <div class="tracker-title"><span>🦚</span><span>10K & Lakh Tracker</span></div>
-        <div class="tracker-tabs">
-          <button class="tracker-tab active" onclick="switchTrackerTab('10k',this)">10K Steps</button>
-          <button class="tracker-tab" onclick="switchTrackerTab('lakh',this)">Lakh Steps</button>
+      <!-- Lakh Gati Tracking -->
+      <div class="lakh-gati-wrap">
+        <div class="lakh-gati-title">
+          <span>📿</span>
+          <span>Jap ki Gati — Lakh Tracker</span>
         </div>
-        <div class="tracker-grid" id="trackerGrid"></div>
+        <div class="lakh-gati-grid" id="lakhGatiGrid"></div>
       </div>
+
+      <!-- Mala Bead Strip — Regular Milestones -->
+      <div class="mala-strip-wrap">
+        <div class="mala-strip-head">
+          <span class="mala-strip-lbl">📿 Next Milestone</span>
+          <span><span class="mala-strip-next" id="msNextVal">1,000</span>&nbsp;<span class="mala-strip-pct" id="msNextPct"></span></span>
+        </div>
+        <div class="mala-beads" id="malaBeads"></div>
+        <div class="mala-fill-bar"><div class="mala-fill-inner" id="msProgFill" style="width:0%"></div></div>
+        <div class="mala-remaining" id="msRemaining"></div>
+      </div>
+
+      <!-- Sadhana Journey Timeline -->
+      <div class="sj-wrap">
+        <div class="sj-head" onclick="toggleCs('sjBody','sjChev')">
+          <h3>🕐 Sadhana Journey</h3>
+          <span class="cs-chevron" id="sjChev" style="color:var(--a2)">▾</span>
+        </div>
+        <div class="cs-body open sj-body" id="sjBody">
+          <!-- Sadhana Start Date Customiser -->
+          <div class="sj-date-wrap">
+            <span class="sj-date-label">🪔 Journey Start</span>
+            <input type="date" class="sj-date-input" id="sadhanaStartDate" onchange="saveSadhanaStartDate(this.value)">
+          </div>
+          <div class="sj-date-since" id="sadhanaSince"></div>
+          <div class="sj-list" id="msLogList">
+            <div class="sj-empty">No milestones reached yet. Keep chanting! 🙏</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Summary Stats Grid — collapsible -->
@@ -2892,152 +2883,6 @@ function importAllData(input) {
   };
   reader.readAsText(file);
 }
-// ── 10K & LAKH TRACKER with Time Duration ──
-window._trackerTab = localStorage.getItem('rjap_tracker_tab') || '10k';
-
-function switchTrackerTab(tab, btn) {
-  window._trackerTab = tab;
-  localStorage.setItem('rjap_tracker_tab', tab);
-  document.querySelectorAll('.tracker-tab').forEach(t => t.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  renderTracker(tab);
-}
-
-function renderTracker(tab) {
-  const grid = document.getElementById('trackerGrid');
-  if (!grid) return;
-  const tot = App.gTot();
-  const data = getMilestoneData();
-  
-  let milestones = [];
-  if (tab === '10k') {
-    for (let k = 1; k <= 1000; k++) milestones.push({ count: k * 10000, label: (k*10) + 'K', num: (k*10)+'K', isLakh: k % 10 === 0 });
-  } else {
-    for (let l = 1; l <= 130; l++) milestones.push({ count: l * 100000, label: l + ' Lakh', num: l+'L', isLakh: true });
-  }
-  
-  const reached = milestones.filter(m => tot >= m.count);
-  const unreached = milestones.filter(m => tot < m.count).slice(0, 3);
-  const visible = [...reached.slice(-10), ...unreached];
-  
-  if (visible.length === 0) {
-    grid.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--td);padding:12px">Keep chanting! 🙏</div>';
-    return;
-  }
-  
-  let html = '';
-  visible.forEach((m, idx) => {
-    const isReached = tot >= m.count;
-    const isCurrent = !isReached && (idx === 0 || tot >= visible[idx-1].count);
-    const cls = (isReached ? 'reached' : (isCurrent ? 'current' : '')) + (m.isLakh && isReached ? ' lakh' : '');
-    
-    const reachedDate = data.reached[m.count];
-    const dateStr = reachedDate ? new Date(reachedDate).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'2-digit'}) : '';
-    
-    let durationStr = '';
-    if (isReached && reachedDate) {
-      const prevM = idx > 0 ? visible[idx-1] : null;
-      let prevDate = null;
-      if (prevM && data.reached[prevM.count]) {
-        prevDate = new Date(data.reached[prevM.count]);
-      } else {
-        const startStr = localStorage.getItem('rjap_sadhana_start');
-        if (startStr) prevDate = new Date(startStr);
-      }
-      if (prevDate) {
-        const diff = new Date(reachedDate).getTime() - prevDate.getTime();
-        durationStr = formatDuration(diff);
-      }
-    }
-    
-    let pct = isReached ? 100 : 0;
-    if (!isReached) {
-      const prevCount = idx > 0 ? visible[idx-1].count : 0;
-      pct = Math.min(100, Math.max(0, ((tot - prevCount) / (m.count - prevCount)) * 100));
-    }
-    
-    html += '<div class="tracker-card ' + cls + '">' +
-      '<div class="tracker-icon">' + m.num + '</div>' +
-      '<div class="tracker-info">' +
-        '<div class="tracker-name">' + m.label + (isReached ? ' ✓' : '') + '</div>' +
-        '<div class="tracker-meta">' +
-          (dateStr ? '<span class="tracker-date">📅 ' + dateStr + '</span>' : '') +
-          (durationStr ? '<span class="tracker-duration">⏱ ' + durationStr + '</span>' : '') +
-          (!isReached ? '<span class="tracker-date">' + (m.count - tot).toLocaleString('en-IN') + ' remaining</span>' : '') +
-        '</div>' +
-      '</div>' +
-      '<div class="tracker-progress">' +
-        (isReached ? '<div class="tracker-pct">✅</div>' : '<div class="tracker-pct">' + pct.toFixed(0) + '%</div>') +
-        (!isReached ? '<div class="tracker-bar-mini"><div class="tracker-bar-mini-fill" style="width:' + pct.toFixed(1) + '%"></div></div>' : '') +
-      '</div>' +
-    '</div>';
-  });
-  
-  grid.innerHTML = html;
-  // Auto-scroll to bottom (latest)
-  grid.scrollTop = grid.scrollHeight;
-}
-
-// ── Peacock Feather Celebration ──
-function showPeacockCelebration(count, isLakh) {
-  const overlay = document.getElementById('peacockOverlay');
-  if (!overlay) return;
-  overlay.innerHTML = '';
-  
-  // Glow
-  const glow = document.createElement('div');
-  glow.className = 'peacock-glow';
-  overlay.appendChild(glow);
-  
-  // Feathers radiating from center
-  const featherEmojis = ['🪶', '🦚'];
-  const numFeathers = isLakh ? 24 : 14;
-  for (let i = 0; i < numFeathers; i++) {
-    const f = document.createElement('div');
-    f.className = 'peacock-feather';
-    const angle = (360 / numFeathers) * i;
-    const rad = angle * Math.PI / 180;
-    const dist = 120 + Math.random() * 80;
-    const dx = Math.cos(rad) * dist;
-    const dy = Math.sin(rad) * dist;
-    const rot = angle + (Math.random() * 60 - 30);
-    f.style.cssText = 'left:50%;top:50%;transform:translate(-50%,-50%);' +
-      '--dx:' + dx + 'px;--dy:' + dy + 'px;--rot:' + rot + 'deg;' +
-      'animation-delay:' + (Math.random() * 0.5) + 's;' +
-      'font-size:' + (isLakh ? 38 : 28) + 'px;';
-    f.textContent = featherEmojis[i % 2];
-    overlay.appendChild(f);
-  }
-  
-  setTimeout(() => { overlay.innerHTML = ''; }, 3500);
-}
-
-// Override checkMilestones to add peacock celebration for 10K and 1 Lakh
-const _origCheckMilestones = checkMilestones;
-checkMilestones = function() {
-  const totBefore = App.gTot();
-  _origCheckMilestones();
-  const totAfter = App.gTot();
-  
-  // Check for new 10K milestones
-  const prev10k = Math.floor(totBefore / 10000);
-  const curr10k = Math.floor(totAfter / 10000);
-  if (curr10k > prev10k) {
-    const isLakh = (curr10k * 10000) % 100000 === 0;
-    // Save reached timestamp for 10K milestones
-    const data = getMilestoneData();
-    for (let k = prev10k + 1; k <= curr10k; k++) {
-      const c = k * 10000;
-      if (!data.reached[c]) {
-        data.reached[c] = new Date().toISOString();
-      }
-    }
-    saveMilestoneData(data);
-    setTimeout(() => showPeacockCelebration(curr10k * 10000, isLakh), 600);
-  }
-};
-
-
 </script>
 <script>
 // ═══════════════════════════════════════════════════════
@@ -3386,7 +3231,6 @@ async function gdDriveSilentBackup() {
     else if (uploadResp.status === 401) { gdAccessToken = null; localStorage.removeItem('rjap_gd_token'); }
   } catch(e) { console.warn('Drive backup failed:', e.message); }
 }
-
 </script>
 <script>
 // ═══════════════════════════════════════════════════════
@@ -4361,7 +4205,6 @@ if ('serviceWorker' in navigator) {
       .catch(e => console.warn('SW registration failed:', e.message));
   });
 }
-
 </script>
 
 <script>
@@ -5766,15 +5609,96 @@ function renderMsView() {
     cardsEl.innerHTML = html;
   }
 
-  // ── 10K & Lakh Tracker ──
-  renderTracker(window._trackerTab || '10k');
-}
+  // ── Mala Bead Strip ──
+  const regMilestones = MILESTONES.filter(m => m.type === 'regular');
+  const next = regMilestones.find(m => tot < m.count);
+  const nextEl = document.getElementById('msNextVal');
+  const pctEl  = document.getElementById('msNextPct');
+  const fillEl = document.getElementById('msProgFill');
+  const remEl  = document.getElementById('msRemaining');
+  const beadsEl = document.getElementById('malaBeads');
 
+  let pct = 0;
+  if (next) {
+    const nextIdx = regMilestones.indexOf(next);
+    const prevCount = nextIdx > 0 ? regMilestones[nextIdx - 1].count : 0;
+    pct = Math.min(100, Math.max(0, ((tot - prevCount) / (next.count - prevCount)) * 100));
+    if (nextEl) nextEl.textContent = formatMsCount(next.count);
+    if (pctEl)  pctEl.textContent  = pct.toFixed(0) + '%';
+    const rem = next.count - tot;
+    if (remEl) remEl.textContent = rem.toLocaleString('en-IN') + ' more jap to go';
+  } else {
+    if (nextEl) nextEl.textContent = 'Sadhana Poorna 🙏';
+    if (pctEl)  pctEl.textContent  = '';
+    if (remEl)  remEl.textContent  = '';
+    pct = 100;
+  }
+  if (fillEl) fillEl.style.width = pct.toFixed(1) + '%';
+
+  // Build visible bead window: show up to 9 beads centered around active one
+  if (beadsEl) {
+    const activeIdx = next ? regMilestones.indexOf(next) : regMilestones.length - 1;
+    const windowStart = Math.max(0, activeIdx - 4);
+    const windowEnd   = Math.min(regMilestones.length - 1, windowStart + 8);
+    let html = '';
+    for (let i = windowStart; i <= windowEnd; i++) {
+      const m = regMilestones[i];
+      const isReached = !!data.reached[m.count];
+      const isActive  = next && m.count === next.count;
+      const cls = isReached ? 'reached' : (isActive ? 'active' : '');
+      const lbl = m.count >= 100000 ? formatMsCount(m.count) : (m.count/1000) + 'K';
+      const tipDate = isReached && data.reached[m.count]
+        ? new Date(data.reached[m.count]).toLocaleDateString('en-IN',{day:'numeric',month:'short'})
+        : (isActive ? pct.toFixed(0)+'%' : '');
+      html += '<div class="mala-bead ' + cls + '">' + lbl +
+        (tipDate ? '<span class="bead-tip">' + tipDate + '</span>' : '') + '</div>';
+      if (i < windowEnd) html += '<div class="mala-thread"></div>';
+    }
+    beadsEl.innerHTML = html;
+  }
+
+  // ── Lakh Gati ──
+  renderLakhGati();
+  loadSadhanaStartDate();
+
+  // ── Sadhana Journey Timeline ──
+  const logList = document.getElementById('msLogList');
+  if (logList) {
+    const allReached = MILESTONES.filter(m => data.reached[m.count])
+      .sort((a, b) => new Date(data.reached[b.count]) - new Date(data.reached[a.count]));
+    if (allReached.length === 0) {
+      logList.innerHTML = '<div class="sj-empty">No milestones reached yet. Keep chanting! 🙏</div>';
+    } else {
+      const now = Date.now();
+      logList.innerHTML = allReached.slice(0, 30).map((m, idx, arr) => {
+        const d   = new Date(data.reached[m.count]);
+        const dateStr = d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+        const diffMs  = now - d.getTime();
+        const diffDays = Math.floor(diffMs / 86400000);
+        const ago = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : diffDays + 'd ago';
+        const isSp = m.type === 'spiritual';
+        return '<div class="sj-item' + (isSp ? ' spiritual' : '') + '">' +
+          '<div class="sj-left">' +
+            '<div class="sj-dot">' + (m.badge || m.icon) + '</div>' +
+            (idx < arr.length - 1 ? '<div class="sj-line"></div>' : '') +
+          '</div>' +
+          '<div class="sj-right">' +
+            '<div class="sj-name">' + m.label + (isSp ? ' 🙏' : '') + '</div>' +
+            '<div class="sj-meta">' +
+              '<span class="sj-count">' + formatMsCount(m.count) + '</span>' +
+              '<span class="sj-date">' + dateStr + '</span>' +
+              '<span class="sj-ago">' + ago + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+  }
+}
 
 
 </script>
 
-<div class="peacock-overlay" id="peacockOverlay"></div>
 </body>
 </html>
 

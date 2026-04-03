@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v28';  // v28: full milestone descriptions fix nav tab, mala log fix, 10K/1L tracker, peacock celebration
+const CACHE = 'radha-jap-v28';  // v28: fixed renderMsView syntax error, full 13 crore milestone descriptions
 
 const PRECACHE = [
   './index.html',

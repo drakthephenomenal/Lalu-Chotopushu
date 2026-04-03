@@ -5252,31 +5252,31 @@ async function initReminderUI() {
 const CRORE = 10000000; // 1 crore = 10 million
 const SPIRITUAL_MILESTONES = [
   { count: 1*CRORE, icon: '⭐', label: 'Sharir ki Shuddhi', tag: 'Tanu Sthan', eng: 'Body Purification', phase: 'shuddhikaran',
-    desc: 'Tanu Shuddhi: Ek crore naam jap karne se "Tanu Sthan" yani sharir ki shuddhi hoti hai. Sharir nishpaap aur param pavitra ho jata hai.\n\nGunon ka Parivartan: Rajogun aur Tamogun ka nash ho jata hai aur hamesha shuddh Satogun ki sthiti bani rehti hai.\n\nRog Nash: Hone wale jitne bhi paap-beej (roganu) hain, wo sab nasht ho jate hain aur vartaman rog sehne ki samarthya milti hai.\n\nDivya Anubhav: Swapna mein bade-bade devta, rishi-muni aur sant darshan dete hain aur vartalaap karte hain.' },
+    desc: '• Tanu Shuddhi: Ek crore naam jap karne se "Tanu Sthan" yani sharir ki shuddhi hoti hai. Sharir nishpaap aur param pavitra ho jata hai.\n• Gunon ka Parivartan: Rajogun aur Tamogun ka nash ho jata hai aur hamesha shuddh Satogun ki sthiti bani rehti hai.\n• Rog Nash: Hone wale jitne bhi paap-beej (roganu) hain, wo sab nasht ho jate hain aur vartaman rog sehne ki samarthya milti hai.\n• Divya Anubhav: Swapna mein bade-bade devta, rishi-muni aur sant darshan dete hain aur vartalaap karte hain.' },
   { count: 2*CRORE, icon: '◇', label: 'Dhan Sthan ki Shuddhi', tag: 'Dhan Sthan', eng: 'Wealth Purification', phase: 'shuddhikaran',
-    desc: 'Dhan ka Abhaav Nash: Dhan ki chah aur nirdhanta ki peeda khatam ho jati hai. Bhagwan avashyakta se badhkar dhan dene lagte hain.\n\nSukhmay Sansar: Daridrata ke upadrav shant ho jate hain aur kutumb mein sukh ki vriddhi hoti hai. Saubhagya aur vaibhav sadhak ko charo taraf se gher lete hain.' },
+    desc: '• Dhan ka Abhaav Nash: Dhan ki chah aur nirdhanta ki peeda khatam ho jati hai. Bhagwan avashyakta se badhkar dhan dene lagte hain.\n• Sukhmay Sansar: Daridrata ke upadrav shant ho jate hain aur kutumb mein sukh ki vriddhi hoti hai. Saubhagya aur vaibhav sadhak ko charo taraf se gher lete hain.' },
   { count: 3*CRORE, icon: '✦', label: 'Antahkaran ki Shuddhi', tag: 'Parakram Sthan', eng: 'Inner Strength', phase: 'shuddhikaran',
-    desc: 'Antahkaran ki Shuddhi: Hriday param pavitra hone lagta hai aur "Parakram Sthan" vishuddh ho jata hai.\n\nAsadhya Karya Siddhi: Jo karya pehle asadhya lagte the (jaise kaam-krodh na chhod pana), wo sab sahaj hi sadhy hone lagte hain.\n\nVishwa Prem: Pura sansar sadhak ko sagge bhai ki tarah prem se dekhne lagta hai.' },
+    desc: '• Antahkaran ki Shuddhi: Hriday param pavitra hone lagta hai aur "Parakram Sthan" vishuddh ho jata hai.\n• Asadhya Karya Siddhi: Jo karya pehle asadhya lagte the (jaise kaam-krodh na chhod pana), wo sab sahaj hi sadhy hone lagte hain.\n• Vishwa Prem: Pura sansar sadhak ko sagge bhai ki tarah prem se dekhne lagta hai.' },
   { count: 4*CRORE, icon: '❊', label: 'Hriday ki Shuddhi', tag: 'Sukh Sthan', eng: 'Heart Purification', phase: 'shuddhikaran',
-    desc: 'Sukh Sthan ki Shuddhi: Hriday (sukh sthan) vishuddh ho jata hai aur sadhak ko "Bhagvadanand" ka sparsh hone lagta hai.\n\nDwandon se Mukti: Maan-apmaan, laabh-haani aur dukh-sukh jaise dwand hridaya ko prabhavit nahi kar paate.\n\nNityatva Bodh: Sadhak ko apne nitya swaroop ka bodh ho jata hai ki "Main nitya hoon aur sharir anitya hai".' },
+    desc: '• Sukh Sthan ki Shuddhi: Hriday (sukh sthan) vishuddh ho jata hai aur sadhak ko "Bhagvadanand" ka sparsh hone lagta hai.\n• Dwandon se Mukti: Maan-apmaan, laabh-haani aur dukh-sukh jaise dwand hridaya ko prabhavit nahi kar paate.\n• Nityatva Bodh: Sadhak ko apne nitya swaroop ka bodh ho jata hai ki "Main nitya hoon aur sharir anitya hai".' },
   { count: 5*CRORE, icon: '☀', label: 'Vidya Sthan Jagrit', tag: 'Vidya Sthan', eng: 'Knowledge Awakening', phase: 'shakti',
-    desc: 'Vidya ka Pradurbhav: Vidya aur apar gyan ka uday hota hai. Shastron ka gyan swatah vaani se prakat hone lagta hai.\n\nSiddhiyan: Yadi sansarik kamna ho toh putrahin putravan ho jata hai aur murkh vidwan ban jata hai.' },
+    desc: '• Vidya ka Pradurbhav: Vidya aur apar gyan ka uday hota hai. Shastron ka gyan swatah vaani se prakat hone lagta hai.\n• Siddhiyan: Yadi sansarik kamna ho toh putrahin putravan ho jata hai aur murkh vidwan ban jata hai.' },
   { count: 6*CRORE, icon: '⚔', label: 'Shatruo par Vijay', tag: 'Ripu Sthan', eng: 'Victory Over Enemies', phase: 'shakti',
-    desc: 'Shatru Vijay: Sadhaak cheh (6) aantarik shatruon—Kaam, Krodh, Lobh, Moh, Mad, aur Matsar—par vijay prapt kar leta hai.\n\nArogya: Dusadhya aur asadhya rog, jo kabhi theek nahi ho sakte, wo sankalp maatra se samool nasht ho jate hain.' },
+    desc: '• Shatru Vijay: Sadhaak cheh (6) aantarik shatruon—Kaam, Krodh, Lobh, Moh, Mad, aur Matsar—par vijay prapt kar leta hai.\n• Arogya: Dusadhya aur asadhya rog, jo kabhi theek nahi ho sakte, wo sankalp maatra se samool nasht ho jate hain.' },
   { count: 7*CRORE, icon: '◉', label: 'Ichchhaon par Niyantran', tag: 'Jaya Sthan', eng: 'Desire Mastery', phase: 'shakti',
-    desc: 'Jaya Sthan Shuddhi: Kaamini (lust) ka prabhav bilkul samapt ho jata hai. Tribhuvan ki apsaraein bhi sadhak ko mohit nahi kar sakti.\n\nMahabhagvaton se Milan: Devrishi Narad aur Sanakadik jaise mahapurushon se pratyaksh milan aur vartalaap shuru ho jata hai.' },
+    desc: '• Jaya Sthan Shuddhi: Kaamini (lust) ka prabhav bilkul samapt ho jata hai. Tribhuvan ki apsaraein bhi sadhak ko mohit nahi kar sakti.\n• Mahabhagvaton se Milan: Devrishi Narad aur Sanakadik jaise mahapurushon se pratyaksh milan aur vartalaap shuru ho jata hai.' },
   { count: 8*CRORE, icon: '∞', label: 'Mrityu Bhay ka Ant', tag: 'Mrityu Sthan', eng: 'Death Fear Removed', phase: 'shakti',
-    desc: 'Mrityu ka Bhay Nash: Mrityu ka bhay khatam ho jata hai aur akal mrityu ka nash hota hai. Sadhak deerghayu hota hai.\n\nAtma-Sakshatkar: Sadhak apne "Atma Swaroop" mein sthit hokar Atma-singhasan par aaseen ho jata hai. Wo purna Atma-gyani ban jata hai.' },
+    desc: '• Mrityu ka Bhay Nash: Mrityu ka bhay khatam ho jata hai aur akal mrityu ka nash hota hai. Sadhak deerghayu hota hai.\n• Atma-Sakshatkar: Sadhak apne "Atma Swaroop" mein sthit hokar Atma-singhasan par aaseen ho jata hai. Wo purna Atma-gyani ban jata hai.' },
   { count: 9*CRORE, icon: '◎', label: 'Saakshaatkaar', tag: 'Dharam Sthan', eng: 'Direct Divine Vision', phase: 'bhagwat',
-    desc: 'Dharma Sthan Shuddhi: Bhagwat dharma shuddh hota hai aur apne Ishta (Mantra Devta) ka sagun roop mein sakshatkar hota hai.\n\nSatya Vakta: Sadhak ki vaani siddh ho jati hai; wo jo bolega wahi satya ho jayega.' },
+    desc: '• Dharma Sthan Shuddhi: Bhagwat dharma shuddh hota hai aur apne Ishta (Mantra Devta) ka sagun roop mein sakshatkar hota hai.\n• Satya Vakta: Sadhak ki vaani siddh ho jati hai; wo jo bolega wahi satya ho jayega.' },
   { count: 10*CRORE, icon: '✿', label: 'Karm Bandhan Mukti', tag: 'Karm Sthan', eng: 'Karma Liberation', phase: 'bhagwat',
-    desc: 'Karma Nash: Sanchit karma aur kriyamana karma bhasm ho jate hain. Prarabdha bhogne ki kshamta aa jati hai.\n\nMoksha ki aur: Sharir, man aur vaani ke saare karma sanskar khatam ho jate hain aur sadhak bhav-swaroop mein pravesh karta hai.' },
+    desc: '• Karma Nash: Sanchit karma aur kriyamana karma bhasm ho jate hain. Prarabdha bhogne ki kshamta aa jati hai.\n• Moksha ki aur: Sharir, man aur vaani ke saare karma sanskar khatam ho jate hain aur sadhak bhav-swaroop mein pravesh karta hai.' },
   { count: 11*CRORE, icon: '◈', label: 'Saari Siddhiyan Prapt', tag: 'Siddhi Sthan', eng: 'All Siddhis Attained', phase: 'bhagwat',
-    desc: 'Sarva Siddhi: Is sthiti mein "laabh" shabd hi khatam ho jata hai kyunki sab kuch prapt ho chuka hota hai. Gyan, bhakti aur yog ki saari bhoomikaein jagrut ho jati hain.\n\nLeela Pravesh: Gokul, Ayodhya ya Kashi ki divya leelaein sadhak ke samne prakat hone lagti hain.' },
+    desc: '• Sarva Siddhi: Is sthiti mein "laabh" shabd hi khatam ho jata hai kyunki sab kuch prapt ho chuka hota hai. Gyan, bhakti aur yog ki saari bhoomikaein jagrut ho jati hain.\n• Leela Pravesh: Gokul, Ayodhya ya Kashi ki divya leelaein sadhak ke samne prakat hone lagti hain.' },
   { count: 12*CRORE, icon: '☸', label: 'Bhagwan Bhakt ke Adheen', tag: 'Bhakti Sthan', eng: 'God Follows Devotee', phase: 'bhagwat',
-    desc: 'Bhagwan Adheen: Sadhak ke paas naam ka itna khazana ho jata hai ki swayam Bhagwan uske adheen hokar uske peeche-peeche dolte hain.' },
+    desc: '• Bhagwan Adheen: Sadhak ke paas naam ka itna khazana ho jata hai ki swayam Bhagwan uske adheen hokar uske peeche-peeche dolte hain.' },
   { count: 13*CRORE, icon: 'ੴ', label: 'Moksh Pradaan ki Shakti', tag: 'Moksh Sthan', eng: 'Power to Grant Liberation', phase: 'bhagwat',
-    desc: 'Samarthya: 13 crore naam jap karne wala sadhak itna samarth ho jata hai ki wo kisi bhi paapi vyakti ko moksha pradan kar sakta hai.\n\nMaharaj Ji ka nishkarsh: Naam mein sab kuch virajman hai. Bas ise nirantar bina ruke japte raho.' },
+    desc: '• Samarthya: 13 crore naam jap karne wala sadhak itna samarth ho jata hai ki wo kisi bhi paapi vyakti ko moksha pradan kar sakta hai.\n\nMaharaj Ji ka nishkarsh: Naam mein sab kuch virajman hai. Bas ise nirantar bina ruke japte raho.' },
 ];
 
 const PHASES = [
@@ -5800,12 +5800,12 @@ function renderMsView() {
     });
     cardsEl.innerHTML = html;
   }
-
-  // Render sub-trackers
-  renderTenKLakhTracker();
-  renderLakhGati();
 }
 
+</script>
+
+</body>
+</html>
 </script>
 
 </body>

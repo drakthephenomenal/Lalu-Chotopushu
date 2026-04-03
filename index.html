@@ -213,7 +213,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .cs-header h3{font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600;margin:0;}
 .cs-chevron{font-size:14px;transition:transform 0.3s;display:inline-block;margin-left:8px;opacity:0.7;}
 .cs-body{max-height:0;overflow:hidden;transition:max-height 0.38s ease,padding 0.3s ease;padding:0 16px;}
-.cs-body.open{max-height:12000px;padding:0 16px 16px;}
+.cs-body.open{max-height:none;padding:0 16px 16px;}
 .sg-wrap{border-radius:18px;background:rgba(74,144,226,0.05);border:1px solid rgba(74,144,226,0.15);margin-bottom:12px;overflow:hidden;}
 .sg-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;user-select:none;-webkit-user-select:none;}
 .sg-header span{font-size:11px;color:var(--a2);letter-spacing:2px;text-transform:uppercase;font-weight:600;}
@@ -687,6 +687,21 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .fn-rv{position:absolute;pointer-events:none;z-index:10;animation:fu 2.4s ease-out forwards;
   display:flex;flex-direction:column;align-items:center;line-height:1.15;}
 .fn-rv span{font-family:'Tiro Devanagari Hindi',serif;display:block;}
+
+/* Peacock Feather Celebration */
+.peacock-celebration{position:fixed;inset:0;z-index:9998;pointer-events:none;overflow:hidden;}
+.peacock-feather{position:absolute;font-size:40px;animation:peacock-radiate 2.5s ease-out forwards;pointer-events:none;}
+@keyframes peacock-radiate{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(0.3) rotate(0deg);}
+  20%{opacity:1;transform:translate(var(--dx),var(--dy)) scale(1.2) rotate(var(--rot));}
+  80%{opacity:0.8;transform:translate(calc(var(--dx)*2.2),calc(var(--dy)*2.2)) scale(1) rotate(calc(var(--rot)*1.5));}
+  100%{opacity:0;transform:translate(calc(var(--dx)*3),calc(var(--dy)*3)) scale(0.5) rotate(calc(var(--rot)*2));}
+}
+.peacock-wish-text{position:fixed;top:35%;left:50%;transform:translate(-50%,-50%);z-index:9999;
+  font-family:'Tiro Devanagari Hindi',serif;font-size:clamp(22px,6vw,36px);color:#FFD700;
+  text-shadow:0 0 30px rgba(255,215,0,0.9),0 0 60px rgba(255,215,0,0.5);
+  text-align:center;pointer-events:none;animation:wish-pop 3s ease-out forwards;line-height:1.4;}
+@keyframes wish-pop{0%{opacity:0;transform:translate(-50%,-50%) scale(0.5);}15%{opacity:1;transform:translate(-50%,-50%) scale(1.1);}70%{opacity:1;transform:translate(-50%,-50%) scale(1);}100%{opacity:0;transform:translate(-50%,-50%) scale(0.8) translateY(-30px);}}
 </style>
 </head>
 <body>
@@ -752,7 +767,10 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
     Stats
   </button>
-  <!-- Milestones moved to Stats -->
+  <button class="nb" onclick="sv('vms',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 15l-2 5h4l-2-5z"/><path d="M8 11h8l-4-9-4 9z"/><circle cx="12" cy="11" r="1"/></svg>
+    Milestones
+  </button>
   <button class="nb" onclick="sv('vset',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     Settings
@@ -1064,71 +1082,32 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   </div>
 </div>
 
+<!-- MILESTONES VIEW -->
+<div class="view" id="vms" style="background:radial-gradient(ellipse at top,#0A1535 0%,var(--bd) 60%);padding:22px 12px 80px;overflow-y:auto;">
+  <div class="mahima-title">MILESTONES</div>
+  <div class="mahima-sub">Naam Jap ki Mahima</div>
+  <div class="mahima-attr">Shri Hit Premanand Ji Maharaj ke anusaar</div>
+  <div class="mahima-lifetime">
+    <div class="mahima-lifetime-lbl">LIFETIME JAP COUNT</div>
+    <div class="mahima-lifetime-count" id="mahimaCount">0</div>
+    <div class="mahima-lifetime-sub" id="mahimaMsReached">0/13 milestones reached</div>
+  </div>
+  <div id="mahimaCards"></div>
+  <div class="mahima-quote">"Zubaan se naam nahi chhutna chahiye, chahe uthte-baithte kuch bhi kar rahe ho."</div>
+  <div class="mahima-quote-attr">— Shri Hit Premanand Ji Maharaj</div>
+
+  <!-- 10K & 1 Lakh Tracker -->
+  <div style="margin-top:18px">
+    <div style="font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;font-weight:600;text-align:center">📿 10K & 1 Lakh Tracker</div>
+    <div id="tenKLakhGrid"></div>
+  </div>
+</div>
+
 <!-- STATS VIEW — includes jap entry tools -->
 <div class="view" id="vs">
   <div class="vt">Jap Summary</div>
 
 
-
-  <!-- MILESTONES — NAAM JAP KI MAHIMA (inside Stats) -->
-  <div class="cs-wrap" style="background:rgba(255,215,0,0.03);border:1px solid rgba(255,215,0,0.18)">
-    <div class="cs-header" onclick="toggleCs('mahimaBody','mahimaChev')">
-      <h3 style="color:var(--gold)">🏆 Milestones — Naam Jap ki Mahima</h3>
-      <span class="cs-chevron" id="mahimaChev" style="color:var(--gold)">▾</span>
-    </div>
-    <div class="cs-body" id="mahimaBody">
-      <div class="mahima-title">MILESTONES</div>
-      <div class="mahima-sub">Naam Jap ki Mahima</div>
-      <div class="mahima-attr">Shri Hit Premanand Ji Maharaj ke anusaar</div>
-      <div class="mahima-lifetime">
-        <div class="mahima-lifetime-lbl">LIFETIME JAP COUNT</div>
-        <div class="mahima-lifetime-count" id="mahimaCount">0</div>
-        <div class="mahima-lifetime-sub" id="mahimaMsReached">0/13 milestones reached</div>
-      </div>
-      <div id="mahimaCards"></div>
-      <div class="mahima-quote">"Zubaan se naam nahi chhutna chahiye, chahe uthte-baithte kuch bhi kar rahe ho."</div>
-      <div class="mahima-quote-attr">— Shri Hit Premanand Ji Maharaj</div>
-
-      <!-- Lakh Gati Tracking -->
-      <div class="lakh-gati-wrap">
-        <div class="lakh-gati-title">
-          <span>📿</span>
-          <span>Jap ki Gati — Lakh Tracker</span>
-        </div>
-        <div class="lakh-gati-grid" id="lakhGatiGrid"></div>
-      </div>
-
-      <!-- Mala Bead Strip — Regular Milestones -->
-      <div class="mala-strip-wrap">
-        <div class="mala-strip-head">
-          <span class="mala-strip-lbl">📿 Next Milestone</span>
-          <span><span class="mala-strip-next" id="msNextVal">1,000</span>&nbsp;<span class="mala-strip-pct" id="msNextPct"></span></span>
-        </div>
-        <div class="mala-beads" id="malaBeads"></div>
-        <div class="mala-fill-bar"><div class="mala-fill-inner" id="msProgFill" style="width:0%"></div></div>
-        <div class="mala-remaining" id="msRemaining"></div>
-      </div>
-
-      <!-- Sadhana Journey Timeline -->
-      <div class="sj-wrap">
-        <div class="sj-head" onclick="toggleCs('sjBody','sjChev')">
-          <h3>🕐 Sadhana Journey</h3>
-          <span class="cs-chevron" id="sjChev" style="color:var(--a2)">▾</span>
-        </div>
-        <div class="cs-body open sj-body" id="sjBody">
-          <!-- Sadhana Start Date Customiser -->
-          <div class="sj-date-wrap">
-            <span class="sj-date-label">🪔 Journey Start</span>
-            <input type="date" class="sj-date-input" id="sadhanaStartDate" onchange="saveSadhanaStartDate(this.value)">
-          </div>
-          <div class="sj-date-since" id="sadhanaSince"></div>
-          <div class="sj-list" id="msLogList">
-            <div class="sj-empty">No milestones reached yet. Keep chanting! 🙏</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <!-- Summary Stats Grid — collapsible -->
   <div class="sg-wrap">
@@ -1600,6 +1579,7 @@ const App = {
   timerRunning: false, timerSeconds: 0, timerInterval: null,
   timerSavedSeconds: 0, autoStopTimeout: null,
   malaSessionStart: 0,  // timerSeconds at start of current mala
+  malaAccumTime: 0,  // accumulated time from previous partial sessions for current mala
   fbDebouncePush: null,
 
   // ── IndexedDB ──
@@ -1779,6 +1759,13 @@ const App = {
     if (this.S.japMode === 'rv') return Math.max(0, Object.values(this.S.historyRV).reduce((a,b) => a+b, 0) - (this.S.nameJapDeductRV || 0));
     return Math.max(0, Object.values(this.S.history).reduce((a,b) => a+b, 0) - (this.S.nameJapDeduct || 0));
   },
+
+  // Combined total for milestones (both radha + rv)
+  gTotCombined() {
+    const radhaTotal = Math.max(0, Object.values(this.S.history).reduce((a,b) => a+b, 0) - (this.S.nameJapDeduct || 0));
+    const rvTotal = Math.max(0, Object.values(this.S.historyRV).reduce((a,b) => a+b, 0) - (this.S.nameJapDeductRV || 0));
+    return radhaTotal + rvTotal;
+  },
   getCurHistory() { return this.S.japMode === 'rv' ? this.S.historyRV : this.S.history; },
   getCurTimerHistory() { return this.S.japMode === 'rv' ? this.S.timerHistoryRV : this.S.timerHistory; },
   getCurDt() { return this.S.japMode === 'rv' ? this.S.dtRV : this.S.dt; },
@@ -1825,6 +1812,11 @@ const App = {
     const _th = this.getCurTimerHistory();
     _th[this.S.tk] = (_th[this.S.tk] || 0) + (this.timerSeconds - this.timerSavedSeconds);
     this.timerSavedSeconds = this.timerSeconds;
+    // Save accumulated partial-mala time so next session can pick it up
+    const partialMalaSec = this.timerSeconds - this.malaSessionStart;
+    this.malaAccumTime += partialMalaSec;
+    this.malaSessionStart = this.timerSeconds;
+    localStorage.setItem('rjap_mala_accum_time', String(this.malaAccumTime));
     this.save(); this.updateTimerToday();
   },
 
@@ -1898,9 +1890,12 @@ const App = {
     if (this.S.cfg.sound) playSynthBell();
     // Triple long vibration synced with bell
     this.vib([200, 80, 200, 80, 300]);
-    // Record mala duration
-    const malaDuration = this.timerSeconds - this.malaSessionStart;
+    // Record mala duration (includes time accumulated from previous partial sessions)
+    const sessionDuration = this.timerSeconds - this.malaSessionStart;
+    const malaDuration = this.malaAccumTime + sessionDuration;
     this.malaSessionStart = this.timerSeconds;
+    this.malaAccumTime = 0;
+    localStorage.setItem('rjap_mala_accum_time', '0');
     const isRVm = this.S.japMode === 'rv';
     if (isRVm) {
       if (!this.S.malaLogRV) this.S.malaLogRV = [];
@@ -1954,7 +1949,8 @@ const App = {
     const lmcKey = isRV ? 'lmcRV' : 'lmc';
     if (nm > this[lmcKey]) { this[lmcKey] = nm; this.malaOk(); App.silentMonkBackup(); }
     this.ua();
-    if (!isRV) checkMilestones();
+    checkMilestones();
+    checkTapCelebration();
   },
 
   undo1() {
@@ -2408,6 +2404,7 @@ function sv(id, btn) {
   if (id === 'v28') { u28(); render28Dots(get28Pos()); }
   else { App.flush28TimeToHistory(); }
   if (id === 'vs') renderMsView();
+  if (id === 'vms') renderMsView();
   if (id === 'vset') {
     if (App.S.dt) document.getElementById('dtIn').value = App.S.dt;
     if (App.S.lt) document.getElementById('ltIn').value = App.S.lt;
@@ -2473,6 +2470,7 @@ function addManualJap() {
   document.getElementById('manualTodayPreview').textContent = App.gTod();
   toast('Added ' + n + ' jap to today! Total: ' + App.gTod() + ' 🙏');
   checkMilestones();
+  checkTapCelebration();
 }
 
 function addPrevJap() {
@@ -4162,6 +4160,8 @@ window.addEventListener('load', async () => {
   App.timerSeconds = 0;
   App.timerSavedSeconds = 0;
   App.malaSessionStart = 0;
+  // Restore accumulated partial-mala time from previous session
+  App.malaAccumTime = parseInt(localStorage.getItem('rjap_mala_accum_time') || '0');
   document.getElementById('timerDisplay').textContent = '00:00:00';
 
   // Apply settings UI
@@ -4178,6 +4178,9 @@ window.addEventListener('load', async () => {
   if (dtIn) dtIn.addEventListener('input', function() { document.getElementById('dtMala').textContent = Math.ceil((parseInt(this.value)||0)/(App.S.ms||108)); });
   if (ltIn) ltIn.addEventListener('input', function() { document.getElementById('ltMala').textContent = Math.ceil((parseInt(this.value)||0)/(App.S.ms||108)).toLocaleString(); });
 
+  // Init celebration tracker
+  const _tot = App.gTotCombined();
+  _lastCelebratedCount = Math.floor(_tot / 10000) * 10000;
   App.ua();
   fbInit();
   initSunTimes();
@@ -5249,31 +5252,31 @@ async function initReminderUI() {
 const CRORE = 10000000; // 1 crore = 10 million
 const SPIRITUAL_MILESTONES = [
   { count: 1*CRORE, icon: '⭐', label: 'Sharir ki Shuddhi', tag: 'Tanu Sthan', eng: 'Body Purification', phase: 'shuddhikaran',
-    desc: 'Sharir nishpaap hone lagta hai. Rajogun aur Tamogun khatam hokar Shuddha Sattva aata hai. Rogon ke beej nasht hote hain aur sapne mein Devi-Devtaon ke darshan hone lagte hain.' },
+    desc: 'Tanu Shuddhi: Ek crore naam jap karne se "Tanu Sthan" yani sharir ki shuddhi hoti hai. Sharir nishpaap aur param pavitra ho jata hai.\n\nGunon ka Parivartan: Rajogun aur Tamogun ka nash ho jata hai aur hamesha shuddh Satogun ki sthiti bani rehti hai.\n\nRog Nash: Hone wale jitne bhi paap-beej (roganu) hain, wo sab nasht ho jate hain aur vartaman rog sehne ki samarthya milti hai.\n\nDivya Anubhav: Swapna mein bade-bade devta, rishi-muni aur sant darshan dete hain aur vartalaap karte hain.' },
   { count: 2*CRORE, icon: '◇', label: 'Dhan Sthan ki Shuddhi', tag: 'Dhan Sthan', eng: 'Wealth Purification', phase: 'shuddhikaran',
-    desc: 'Garibi aur daridrata ka dukh hamesha ke liye khatam ho jata hai. Bhagwan ya toh itna dhan de dete hain ki chah khatam ho jaye, ya fir man se paise ki bhookh hi mita dete hain.' },
+    desc: 'Dhan ka Abhaav Nash: Dhan ki chah aur nirdhanta ki peeda khatam ho jati hai. Bhagwan avashyakta se badhkar dhan dene lagte hain.\n\nSukhmay Sansar: Daridrata ke upadrav shant ho jate hain aur kutumb mein sukh ki vriddhi hoti hai. Saubhagya aur vaibhav sadhak ko charo taraf se gher lete hain.' },
   { count: 3*CRORE, icon: '✦', label: 'Antahkaran ki Shuddhi', tag: 'Parakram Sthan', eng: 'Inner Strength', phase: 'shuddhikaran',
-    desc: 'Jo kaam pehle Asadhya lagte the (jaise gussa ya moh chhodna), wo Sadhya ho jate hain. Pura sansar aapko prem ki nazar se dekhne lagta hai.' },
+    desc: 'Antahkaran ki Shuddhi: Hriday param pavitra hone lagta hai aur "Parakram Sthan" vishuddh ho jata hai.\n\nAsadhya Karya Siddhi: Jo karya pehle asadhya lagte the (jaise kaam-krodh na chhod pana), wo sab sahaj hi sadhy hone lagte hain.\n\nVishwa Prem: Pura sansar sadhak ko sagge bhai ki tarah prem se dekhne lagta hai.' },
   { count: 4*CRORE, icon: '❊', label: 'Hriday ki Shuddhi', tag: 'Sukh Sthan', eng: 'Heart Purification', phase: 'shuddhikaran',
-    desc: 'Nityatva Bodh hota hai — aapko feel hone lagta hai ki aap ye marne wala sharir nahi, balki ek nitya Atma ho. Man aur buddhi par kisi bhi worldly dukh ka asar nahi padta.' },
+    desc: 'Sukh Sthan ki Shuddhi: Hriday (sukh sthan) vishuddh ho jata hai aur sadhak ko "Bhagvadanand" ka sparsh hone lagta hai.\n\nDwandon se Mukti: Maan-apmaan, laabh-haani aur dukh-sukh jaise dwand hridaya ko prabhavit nahi kar paate.\n\nNityatva Bodh: Sadhak ko apne nitya swaroop ka bodh ho jata hai ki "Main nitya hoon aur sharir anitya hai".' },
   { count: 5*CRORE, icon: '☀', label: 'Vidya Sthan Jagrit', tag: 'Vidya Sthan', eng: 'Knowledge Awakening', phase: 'shakti',
-    desc: 'Shastron ka gyan apne aap andar se nikalne lagta hai. Agar koi worldly wish ho (jaise santan ya lambi umar), toh wo bina maange puri hone lagti hai.' },
+    desc: 'Vidya ka Pradurbhav: Vidya aur apar gyan ka uday hota hai. Shastron ka gyan swatah vaani se prakat hone lagta hai.\n\nSiddhiyan: Yadi sansarik kamna ho toh putrahin putravan ho jata hai aur murkh vidwan ban jata hai.' },
   { count: 6*CRORE, icon: '⚔', label: 'Shatruo par Vijay', tag: 'Ripu Sthan', eng: 'Victory Over Enemies', phase: 'shakti',
-    desc: 'Bahar ke dushman hi nahi, balki andar ke 6 dushman (Kaam, Krodh, Lobh, Moh, Mad, Matsar) haar jate hain. Koi bhi incurable disease sankalp matra se thik ho sakta hai.' },
+    desc: 'Shatru Vijay: Sadhaak cheh (6) aantarik shatruon—Kaam, Krodh, Lobh, Moh, Mad, aur Matsar—par vijay prapt kar leta hai.\n\nArogya: Dusadhya aur asadhya rog, jo kabhi theek nahi ho sakte, wo sankalp maatra se samool nasht ho jate hain.' },
   { count: 7*CRORE, icon: '◉', label: 'Ichchhaon par Niyantran', tag: 'Jaya Sthan', eng: 'Desire Mastery', phase: 'shakti',
-    desc: 'Duniya ki koi bhi attraction aise sadhak ko bhatka nahi sakti. Is stage par Narad Ji jaise maha-purushon se Pratyaksh milan aur baatchit shuru ho jati hai.' },
+    desc: 'Jaya Sthan Shuddhi: Kaamini (lust) ka prabhav bilkul samapt ho jata hai. Tribhuvan ki apsaraein bhi sadhak ko mohit nahi kar sakti.\n\nMahabhagvaton se Milan: Devrishi Narad aur Sanakadik jaise mahapurushon se pratyaksh milan aur vartalaap shuru ho jata hai.' },
   { count: 8*CRORE, icon: '∞', label: 'Mrityu Bhay ka Ant', tag: 'Mrityu Sthan', eng: 'Death Fear Removed', phase: 'shakti',
-    desc: 'Maut ka darr hamesha ke liye chala jata hai. Sadhak Atma-Raj ke sinhasan par baith jata hai, yani wo apne swaroop mein sthit ho jata hai.' },
+    desc: 'Mrityu ka Bhay Nash: Mrityu ka bhay khatam ho jata hai aur akal mrityu ka nash hota hai. Sadhak deerghayu hota hai.\n\nAtma-Sakshatkar: Sadhak apne "Atma Swaroop" mein sthit hokar Atma-singhasan par aaseen ho jata hai. Wo purna Atma-gyani ban jata hai.' },
   { count: 9*CRORE, icon: '◎', label: 'Saakshaatkaar', tag: 'Dharam Sthan', eng: 'Direct Divine Vision', phase: 'bhagwat',
-    desc: 'Aap jiska naam jap rahe hain (Ram, Krishna, Shiva, ya Radha), unka Saakshaatkaar (Direct Vision) hota hai. Sadhak ki vani Satya ho jati hai — jo bologe wo ho jayega.' },
+    desc: 'Dharma Sthan Shuddhi: Bhagwat dharma shuddh hota hai aur apne Ishta (Mantra Devta) ka sagun roop mein sakshatkar hota hai.\n\nSatya Vakta: Sadhak ki vaani siddh ho jati hai; wo jo bolega wahi satya ho jayega.' },
   { count: 10*CRORE, icon: '✿', label: 'Karm Bandhan Mukti', tag: 'Karm Sthan', eng: 'Karma Liberation', phase: 'bhagwat',
-    desc: 'Saare purane karmo ka stock (Sanchit) aur current karmo ka phal bhasm ho jata hai. Ab janm-maran ka chakra hamesha ke liye khatam.' },
+    desc: 'Karma Nash: Sanchit karma aur kriyamana karma bhasm ho jate hain. Prarabdha bhogne ki kshamta aa jati hai.\n\nMoksha ki aur: Sharir, man aur vaani ke saare karma sanskar khatam ho jate hain aur sadhak bhav-swaroop mein pravesh karta hai.' },
   { count: 11*CRORE, icon: '◈', label: 'Saari Siddhiyan Prapt', tag: 'Siddhi Sthan', eng: 'All Siddhis Attained', phase: 'bhagwat',
-    desc: 'Saari Siddhiyan aur Riddhiyan haath jodkar khadi rehti hain. Sadhak Bhagwan ki nitya leelaon (Vrindavan, Saket etc.) mein pravesh kar jata hai.' },
+    desc: 'Sarva Siddhi: Is sthiti mein "laabh" shabd hi khatam ho jata hai kyunki sab kuch prapt ho chuka hota hai. Gyan, bhakti aur yog ki saari bhoomikaein jagrut ho jati hain.\n\nLeela Pravesh: Gokul, Ayodhya ya Kashi ki divya leelaein sadhak ke samne prakat hone lagti hain.' },
   { count: 12*CRORE, icon: '☸', label: 'Bhagwan Bhakt ke Adheen', tag: 'Bhakti Sthan', eng: 'God Follows Devotee', phase: 'bhagwat',
-    desc: 'Sadhak itna powerful ho jata hai ki Bhagwan uske piche-piche dolte hain (Bhagwan bhakt ke adheen ho jate hain).' },
+    desc: 'Bhagwan Adheen: Sadhak ke paas naam ka itna khazana ho jata hai ki swayam Bhagwan uske adheen hokar uske peeche-peeche dolte hain.' },
   { count: 13*CRORE, icon: 'ੴ', label: 'Moksh Pradaan ki Shakti', tag: 'Moksh Sthan', eng: 'Power to Grant Liberation', phase: 'bhagwat',
-    desc: 'Ye limit hai. Jo 13 crore naam jap leta hai, wo itna samarth ho jata hai ki wo kisi bhi Paapi insan ko bhi Moksha (liberation) dila sakta hai.' },
+    desc: 'Samarthya: 13 crore naam jap karne wala sadhak itna samarth ho jata hai ki wo kisi bhi paapi vyakti ko moksha pradan kar sakta hai.\n\nMaharaj Ji ka nishkarsh: Naam mein sab kuch virajman hai. Bas ise nirantar bina ruke japte raho.' },
 ];
 
 const PHASES = [
@@ -5415,8 +5418,114 @@ function dismissMilestone() {
   document.getElementById('msOverlay').classList.remove('show');
 }
 
+
+// ── Peacock Feather Celebration ──
+function playWishSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Ethereal flute-like sound
+    const notes = [523, 659, 784, 1047, 784, 659, 523];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      const t = ctx.currentTime + i * 0.25;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.2, t + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+      osc.start(t);
+      osc.stop(t + 0.5);
+    });
+    // Shankha overtone
+    setTimeout(() => playShankha(), 800);
+  } catch(e) {}
+}
+
+function spawnPeacockCelebration(label) {
+  // Create container
+  const container = document.createElement('div');
+  container.className = 'peacock-celebration';
+  document.body.appendChild(container);
+  
+  // Spawn radiating peacock feathers from center
+  const feathers = ['🪶', '🦚', '🪶', '💫', '🪶', '✨', '🪶', '🦚', '🪶', '💫', '🪶', '✨', '🪶', '🦚', '🪶', '💫'];
+  const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+  
+  feathers.forEach((f, i) => {
+    const el = document.createElement('div');
+    el.className = 'peacock-feather';
+    el.textContent = f;
+    const angle = (i / feathers.length) * Math.PI * 2;
+    const dist = 80 + Math.random() * 60;
+    el.style.left = cx + 'px';
+    el.style.top = cy + 'px';
+    el.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+    el.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+    el.style.setProperty('--rot', (Math.random() * 360 - 180) + 'deg');
+    el.style.animationDelay = (Math.random() * 0.5) + 's';
+    el.style.fontSize = (30 + Math.random() * 30) + 'px';
+    container.appendChild(el);
+  });
+  
+  // Wish text
+  const wishEl = document.createElement('div');
+  wishEl.className = 'peacock-wish-text';
+  wishEl.innerHTML = label;
+  document.body.appendChild(wishEl);
+  
+  // Sound
+  playWishSound();
+  
+  // Vibrate
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
+  
+  // Cleanup
+  setTimeout(() => {
+    container.remove();
+    wishEl.remove();
+  }, 3500);
+}
+
+// ── Check for 10K/1L/1Cr celebrations on each tap ──
+let _lastCelebratedCount = 0;
+function checkTapCelebration() {
+  const tot = App.gTotCombined();
+  const CRORE_VAL = 10000000;
+  
+  // Check crore milestones (highest priority)
+  for (let c = 13; c >= 1; c--) {
+    const threshold = c * CRORE_VAL;
+    if (tot >= threshold && _lastCelebratedCount < threshold) {
+      _lastCelebratedCount = threshold;
+      setTimeout(() => spawnPeacockCelebration('🦚 ' + c + ' करोड़ जप! 🦚<br>जय श्री राधे!'), 300);
+      return;
+    }
+  }
+  
+  // Check 1 Lakh milestones
+  const lakhCount = Math.floor(tot / 100000);
+  const lakhThreshold = lakhCount * 100000;
+  if (lakhThreshold > 0 && _lastCelebratedCount < lakhThreshold) {
+    _lastCelebratedCount = lakhThreshold;
+    setTimeout(() => spawnPeacockCelebration('🪶 ' + lakhCount + ' लाख जप! 🪶<br>राधे राधे!'), 300);
+    return;
+  }
+  
+  // Check 10K milestones
+  const tenKCount = Math.floor(tot / 10000);
+  const tenKThreshold = tenKCount * 10000;
+  if (tenKThreshold > 0 && _lastCelebratedCount < tenKThreshold) {
+    _lastCelebratedCount = tenKThreshold;
+    setTimeout(() => spawnPeacockCelebration('✨ ' + (tenKCount * 10) + 'K जप! ✨'), 300);
+    return;
+  }
+}
+
 function checkMilestones() {
-  const tot = App.gTot();
+  const tot = App.gTotCombined();
   const data = getMilestoneData();
   let latestNew = null;
   for (const ms of MILESTONES) {
@@ -5457,7 +5566,7 @@ function formatDuration(ms) {
 function renderLakhGati() {
   const grid = document.getElementById('lakhGatiGrid');
   if (!grid) return;
-  const tot = App.gTot();
+  const tot = App.gTotCombined();
   const data = getMilestoneData();
   
   // Show lakhs: all reached + next 2 unreached
@@ -5566,9 +5675,92 @@ function updateSadhanaSince() {
 }
 
 
+
+// ── 10K & 1 Lakh Increment Tracker ──
+function renderTenKLakhTracker() {
+  const grid = document.getElementById('tenKLakhGrid');
+  if (!grid) return;
+  const tot = App.gTotCombined();
+  const data = getMilestoneData();
+  
+  // Build list: every 10K up to next unreached, then every 1L
+  const items = [];
+  // 10K increments
+  const max10K = Math.min(Math.ceil(tot / 10000) + 2, 10); // show up to 100K in 10K steps
+  for (let i = 1; i <= max10K; i++) {
+    items.push({ count: i * 10000, label: (i * 10) + 'K', type: '10k' });
+  }
+  // 1L increments (skip those already shown as 10K)
+  const maxL = Math.min(Math.ceil(tot / 100000) + 2, 130);
+  for (let i = 1; i <= maxL; i++) {
+    const c = i * 100000;
+    if (c > 100000 || !items.find(x => x.count === c)) {
+      items.push({ count: c, label: i + 'L', type: '1l' });
+    }
+  }
+  items.sort((a, b) => a.count - b.count);
+  // Remove duplicates
+  const seen = new Set();
+  const unique = items.filter(x => { if (seen.has(x.count)) return false; seen.add(x.count); return true; });
+  
+  // Show reached + next 3 unreached
+  const reached = unique.filter(x => tot >= x.count);
+  const unreached = unique.filter(x => tot < x.count).slice(0, 3);
+  const visible = [...reached, ...unreached];
+  
+  if (visible.length === 0) {
+    grid.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--td);padding:12px">Keep chanting! 🙏</div>';
+    return;
+  }
+  
+  let html = '';
+  visible.forEach((item, idx) => {
+    const isReached = tot >= item.count;
+    const reachedDate = data.reached[item.count];
+    const dateStr = reachedDate ? new Date(reachedDate).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'}) : '';
+    
+    // Duration from previous milestone
+    let durationStr = '';
+    if (isReached && reachedDate && idx > 0) {
+      const prev = visible[idx - 1];
+      const prevDate = data.reached[prev.count];
+      if (prevDate) {
+        const diff = new Date(reachedDate).getTime() - new Date(prevDate).getTime();
+        durationStr = formatDuration(diff);
+      }
+    } else if (isReached && reachedDate && idx === 0) {
+      const startStr = localStorage.getItem('rjap_sadhana_start');
+      if (startStr) {
+        const diff = new Date(reachedDate).getTime() - new Date(startStr).getTime();
+        durationStr = formatDuration(diff);
+      }
+    }
+    
+    const pct = isReached ? 100 : Math.min(100, ((tot - (idx > 0 ? visible[idx-1].count : 0)) / (item.count - (idx > 0 ? visible[idx-1].count : 0))) * 100);
+    const cls = isReached ? 'reached' : '';
+    
+    html += '<div class="lakh-card ' + cls + '" style="margin-bottom:6px">' +
+      '<div class="lakh-icon" style="font-size:' + (item.type === '1l' ? '14' : '12') + 'px">' + item.label + '</div>' +
+      '<div class="lakh-info">' +
+        '<div class="lakh-name">' + item.label + ' Jap' + (isReached ? ' ✓' : '') + '</div>' +
+        '<div class="lakh-meta">' +
+          (dateStr ? '<span class="lakh-date">📅 ' + dateStr + '</span>' : '') +
+          (durationStr ? '<span class="lakh-duration">⏱ ' + durationStr + '</span>' : '') +
+          (!isReached ? '<span class="lakh-date">' + (item.count - tot).toLocaleString('en-IN') + ' remaining</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="lakh-progress">' +
+        (isReached ? '<div class="lakh-pct">✅</div>' : '<div class="lakh-pct">' + pct.toFixed(0) + '%</div>') +
+        (!isReached ? '<div class="lakh-bar-mini"><div class="lakh-bar-mini-fill" style="width:' + pct.toFixed(1) + '%"></div></div>' : '') +
+      '</div>' +
+    '</div>';
+  });
+  grid.innerHTML = html;
+}
+
 function renderMsView() {
   const data = getMilestoneData();
-  const tot = App.gTot();
+  const tot = App.gTotCombined();
 
   // Update lifetime count
   const countEl = document.getElementById('mahimaCount');
@@ -5602,100 +5794,17 @@ function renderMsView() {
           '<div class="mahima-card-bar-wrap"><div class="mahima-card-bar" style="width:' + pct.toFixed(1) + '%"></div></div>' +
           '<div class="mahima-card-pct">' + pct.toFixed(1) + '%</div>' +
           (unlocked ? '<div class="mahima-card-date">✓ Achieved ' + dateStr + '</div>' : '') +
-          (m.desc ? '<div class="mahima-card-desc">' + m.desc + '<div class="mahima-card-author">— Shri Hit Premanand Ji Maharaj</div></div>' : '') +
+          (m.desc ? '<div class="mahima-card-desc">' + m.desc.replace(/\n/g,'<br>') + '<div class="mahima-card-author">— Shri Hit Premanand Ji Maharaj</div></div>' : '') +
           '</div></div>';
       });
     });
     cardsEl.innerHTML = html;
   }
 
-  // ── Mala Bead Strip ──
-  const regMilestones = MILESTONES.filter(m => m.type === 'regular');
-  const next = regMilestones.find(m => tot < m.count);
-  const nextEl = document.getElementById('msNextVal');
-  const pctEl  = document.getElementById('msNextPct');
-  const fillEl = document.getElementById('msProgFill');
-  const remEl  = document.getElementById('msRemaining');
-  const beadsEl = document.getElementById('malaBeads');
-
-  let pct = 0;
-  if (next) {
-    const nextIdx = regMilestones.indexOf(next);
-    const prevCount = nextIdx > 0 ? regMilestones[nextIdx - 1].count : 0;
-    pct = Math.min(100, Math.max(0, ((tot - prevCount) / (next.count - prevCount)) * 100));
-    if (nextEl) nextEl.textContent = formatMsCount(next.count);
-    if (pctEl)  pctEl.textContent  = pct.toFixed(0) + '%';
-    const rem = next.count - tot;
-    if (remEl) remEl.textContent = rem.toLocaleString('en-IN') + ' more jap to go';
-  } else {
-    if (nextEl) nextEl.textContent = 'Sadhana Poorna 🙏';
-    if (pctEl)  pctEl.textContent  = '';
-    if (remEl)  remEl.textContent  = '';
-    pct = 100;
-  }
-  if (fillEl) fillEl.style.width = pct.toFixed(1) + '%';
-
-  // Build visible bead window: show up to 9 beads centered around active one
-  if (beadsEl) {
-    const activeIdx = next ? regMilestones.indexOf(next) : regMilestones.length - 1;
-    const windowStart = Math.max(0, activeIdx - 4);
-    const windowEnd   = Math.min(regMilestones.length - 1, windowStart + 8);
-    let html = '';
-    for (let i = windowStart; i <= windowEnd; i++) {
-      const m = regMilestones[i];
-      const isReached = !!data.reached[m.count];
-      const isActive  = next && m.count === next.count;
-      const cls = isReached ? 'reached' : (isActive ? 'active' : '');
-      const lbl = m.count >= 100000 ? formatMsCount(m.count) : (m.count/1000) + 'K';
-      const tipDate = isReached && data.reached[m.count]
-        ? new Date(data.reached[m.count]).toLocaleDateString('en-IN',{day:'numeric',month:'short'})
-        : (isActive ? pct.toFixed(0)+'%' : '');
-      html += '<div class="mala-bead ' + cls + '">' + lbl +
-        (tipDate ? '<span class="bead-tip">' + tipDate + '</span>' : '') + '</div>';
-      if (i < windowEnd) html += '<div class="mala-thread"></div>';
-    }
-    beadsEl.innerHTML = html;
-  }
-
-  // ── Lakh Gati ──
+  // Render sub-trackers
+  renderTenKLakhTracker();
   renderLakhGati();
-  loadSadhanaStartDate();
-
-  // ── Sadhana Journey Timeline ──
-  const logList = document.getElementById('msLogList');
-  if (logList) {
-    const allReached = MILESTONES.filter(m => data.reached[m.count])
-      .sort((a, b) => new Date(data.reached[b.count]) - new Date(data.reached[a.count]));
-    if (allReached.length === 0) {
-      logList.innerHTML = '<div class="sj-empty">No milestones reached yet. Keep chanting! 🙏</div>';
-    } else {
-      const now = Date.now();
-      logList.innerHTML = allReached.slice(0, 30).map((m, idx, arr) => {
-        const d   = new Date(data.reached[m.count]);
-        const dateStr = d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
-        const diffMs  = now - d.getTime();
-        const diffDays = Math.floor(diffMs / 86400000);
-        const ago = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : diffDays + 'd ago';
-        const isSp = m.type === 'spiritual';
-        return '<div class="sj-item' + (isSp ? ' spiritual' : '') + '">' +
-          '<div class="sj-left">' +
-            '<div class="sj-dot">' + (m.badge || m.icon) + '</div>' +
-            (idx < arr.length - 1 ? '<div class="sj-line"></div>' : '') +
-          '</div>' +
-          '<div class="sj-right">' +
-            '<div class="sj-name">' + m.label + (isSp ? ' 🙏' : '') + '</div>' +
-            '<div class="sj-meta">' +
-              '<span class="sj-count">' + formatMsCount(m.count) + '</span>' +
-              '<span class="sj-date">' + dateStr + '</span>' +
-              '<span class="sj-ago">' + ago + '</span>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
-      }).join('');
-    }
-  }
 }
-
 
 </script>
 

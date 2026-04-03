@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v28';  // v28: fixed renderMsView syntax error, full 13 crore milestone descriptions
+const CACHE = 'radha-jap-v29';  // v29: fix japMode UI not restoring on app open/sync/import
 
 const PRECACHE = [
   './index.html',

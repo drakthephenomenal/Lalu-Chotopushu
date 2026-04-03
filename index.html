@@ -2872,6 +2872,8 @@ function importAllData(input) {
       App.ua(); renderSt(); u28(); renderBcal(); renderCal(); uStats(); renderSankalpas();
       App.lmc = Math.floor((App.S.history[App.S.tk]||0) / (App.S.ms||108));
       App.lm28 = Math.floor((App.S.h28[App.S.tk]||0) / (App.S.ms||108));
+      App.lmcRV = Math.floor((App.S.historyRV[App.S.tk]||0) / (App.S.ms||108));
+      initJapModeUI();
       if (st) { st.textContent = '✅ Data restored successfully! 🙏 Jai Radhe!'; st.style.color = 'var(--green)'; }
       toast('All data restored! 🙏 Jai Radhe!');
       input.value = '';
@@ -3150,7 +3152,9 @@ function fbApplyRemote(d) {
   App.save().finally(() => { App._suspendCloudSync = false; });
   App.lmc = Math.floor(App.gTod() / (App.S.ms||108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk]||0) / (App.S.ms||108));
+  App.lmcRV = Math.floor((App.S.historyRV[App.S.tk]||0) / (App.S.ms||108));
   App.ua(); renderSt(); u28(); renderBcal(); renderCal(); uStats(); renderSankalpas();
+  initJapModeUI();
   setSyncPill('', '🔄 Synced from cloud');
 }
 
@@ -4154,6 +4158,10 @@ window.addEventListener('load', async () => {
   await App.load();
   App.lmc = Math.floor(App.gTod() / (App.S.ms||108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk]||0) / (App.S.ms||108));
+  App.lmcRV = Math.floor((App.S.historyRV[App.S.tk]||0) / (App.S.ms||108));
+
+  // Restore japMode UI (title + selector) to match saved state
+  initJapModeUI();
 
   // Timer always starts from 0 on each app open.
   // timerSavedSeconds tracks what's already committed to timerHistory this session.

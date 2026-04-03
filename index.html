@@ -1410,9 +1410,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
       <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtRVIn" placeholder="Daily target (jap)" oninput="document.getElementById('dtRVMala').textContent=Math.floor((parseInt(this.value)||0)/(App.S.ms||108))"><span class="fu">/ day</span></div>
       <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="dtRVMala">0</span> malas per day</div>
       <button class="pb" onclick="svtRV('d')" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(255,215,0,0.4),rgba(255,180,0,0.3))">Save RV Daily Target</button>
-      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="ltRVIn" placeholder="Lifetime target (jap)" oninput="document.getElementById('ltRVMala').textContent=Math.floor((parseInt(this.value)||0)/(App.S.ms||108))"><span class="fu">total</span></div>
-      <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="ltRVMala">0</span> malas lifetime</div>
-      <button class="pb" onclick="svtRV('l')" style="background:linear-gradient(135deg,rgba(255,215,0,0.4),rgba(255,180,0,0.3))">Save RV Lifetime Target</button>
+      <!-- RV Lifetime Target removed — shared with राधा -->
     </div>
   </div>
 
@@ -1775,14 +1773,43 @@ const App = {
     if (this.S.japMode === 'rv') return this.S.historyRV[this.S.tk] || 0;
     return this.S.history[this.S.tk] || 0;
   },
+  // Combined today: radha + RV
+  gTodCombined() {
+    return (this.S.history[this.S.tk] || 0) + (this.S.historyRV[this.S.tk] || 0);
+  },
   gTot() {
+    // COMBINED lifetime total from BOTH jap types
+    const radhaTotal = Math.max(0, Object.values(this.S.history).reduce((a,b) => a+b, 0) - (this.S.nameJapDeduct || 0));
+    const rvTotal = Math.max(0, Object.values(this.S.historyRV).reduce((a,b) => a+b, 0) - (this.S.nameJapDeductRV || 0));
+    return radhaTotal + rvTotal;
+  },
+  // Mode-specific total (for daily bar only)
+  gTotMode() {
     if (this.S.japMode === 'rv') return Math.max(0, Object.values(this.S.historyRV).reduce((a,b) => a+b, 0) - (this.S.nameJapDeductRV || 0));
     return Math.max(0, Object.values(this.S.history).reduce((a,b) => a+b, 0) - (this.S.nameJapDeduct || 0));
   },
   getCurHistory() { return this.S.japMode === 'rv' ? this.S.historyRV : this.S.history; },
   getCurTimerHistory() { return this.S.japMode === 'rv' ? this.S.timerHistoryRV : this.S.timerHistory; },
+  // Combined history: merge radha + RV counts per day
+  getCombinedHistory() {
+    const combined = {};
+    const h1 = this.S.history || {};
+    const h2 = this.S.historyRV || {};
+    const allKeys = new Set([...Object.keys(h1), ...Object.keys(h2)]);
+    allKeys.forEach(k => { combined[k] = (h1[k]||0) + (h2[k]||0); });
+    return combined;
+  },
+  // Combined timer history: merge radha + RV timer per day
+  getCombinedTimerHistory() {
+    const combined = {};
+    const t1 = this.S.timerHistory || {};
+    const t2 = this.S.timerHistoryRV || {};
+    const allKeys = new Set([...Object.keys(t1), ...Object.keys(t2)]);
+    allKeys.forEach(k => { combined[k] = (t1[k]||0) + (t2[k]||0); });
+    return combined;
+  },
   getCurDt() { return this.S.japMode === 'rv' ? this.S.dtRV : this.S.dt; },
-  getCurLt() { return this.S.japMode === 'rv' ? this.S.ltRV : this.S.lt; },
+  getCurLt() { return this.S.lt; },
 
   // ── Haptic Heartbeat ──
   // 10ms on every tap; triple long pulse (200-80-200-80-300ms) synced with mala complete
@@ -1859,8 +1886,9 @@ const App = {
 
   // ── Main UI Update ──
   ua() {
-    const tod = this.gTod(), tot = this.gTot(), ms = this.S.ms || 108;
-    const curDt = this.getCurDt(), curLt = this.getCurLt();
+    const tod = this.gTod(), ms = this.S.ms || 108;
+    const tot = this.gTot(); // COMBINED lifetime total
+    const curDt = this.getCurDt(), curLt = this.getCurLt(); // shared lifetime target
     const md = Math.floor(tod / ms);
     const beadPos = (tod % ms) || ms;
     document.getElementById('jms').textContent = beadPos;
@@ -1874,13 +1902,13 @@ const App = {
     document.getElementById('mtot').textContent = md + ' mala' + (md !== 1 ? 's' : '');
     const dP = curDt > 0 ? Math.min(100, Math.round(tod/curDt*100)) : 0;
     const lP = curLt > 0 ? Math.min(100, Math.round(tot/curLt*100)) : 0;
-    // Daily bar (blue)
+    // Daily bar (blue) — mode-specific
     document.getElementById('dPct').textContent = dP + '%';
     document.getElementById('dbarFill').style.width = dP + '%';
     document.getElementById('dbarDone').textContent = fmtIN(tod);
     document.getElementById('dbarTarget').textContent = '/ ' + (curDt ? fmtIN(curDt) : '—');
     document.getElementById('dDet').textContent = md + ' malas done';
-    // Lifetime bar (gold)
+    // Lifetime bar (gold) — COMBINED total, shared target
     document.getElementById('lPct').textContent = lP + '%';
     document.getElementById('lbarFill').style.width = lP + '%';
     document.getElementById('lbarDone').textContent = fmtIN(tot);
@@ -1954,7 +1982,7 @@ const App = {
     const lmcKey = isRV ? 'lmcRV' : 'lmc';
     if (nm > this[lmcKey]) { this[lmcKey] = nm; this.malaOk(); App.silentMonkBackup(); }
     this.ua();
-    if (!isRV) checkMilestones();
+    checkMilestones(); // check milestones on BOTH jap types (combined total)
   },
 
   undo1() {
@@ -2291,11 +2319,8 @@ function svtRV(type) {
   if (type === 'd') {
     const v = parseInt(document.getElementById('dtRVIn').value) || 0;
     App.S.dtRV = v;
-  } else {
-    const v = parseInt(document.getElementById('ltRVIn').value) || 0;
-    App.S.ltRV = v;
   }
-  App.save(); fbDebouncedPush(); App.ua(); toast('RV Target saved! 🎯');
+  App.save(); fbDebouncedPush(); App.ua(); toast('RV Daily Target saved! 🎯');
 }
 
 // ── Init RV mode UI on page load ──
@@ -2303,14 +2328,10 @@ function initJapModeUI() {
   if (App.S.japMode === 'rv') switchJapMode('rv');
   // Populate RV target inputs
   const dtRVIn = document.getElementById('dtRVIn');
-  const ltRVIn = document.getElementById('ltRVIn');
   if (dtRVIn && App.S.dtRV) dtRVIn.value = App.S.dtRV;
-  if (ltRVIn && App.S.ltRV) ltRVIn.value = App.S.ltRV;
   const ms = App.S.ms || 108;
   const dtRVM = document.getElementById('dtRVMala');
-  const ltRVM = document.getElementById('ltRVMala');
   if (dtRVM) dtRVM.textContent = Math.floor((App.S.dtRV||0)/ms);
-  if (ltRVM) ltRVM.textContent = Math.floor((App.S.ltRV||0)/ms);
 }
 
 // ── Naam Selector Toggle ──
@@ -2614,9 +2635,10 @@ function deductJapTimeOther() {
 
 // ── Stats ──
 function uStats() {
-  const ms = App.S.ms || 108, tod = App.gTod(), tot = App.gTot(), now = new Date();
-  const curHist = App.getCurHistory();
-  const curTimerHist = App.getCurTimerHistory();
+  const ms = App.S.ms || 108, tot = App.gTot(), now = new Date();
+  const tod = App.gTodCombined(); // COMBINED today for stats
+  const curHist = App.getCombinedHistory(); // COMBINED radha + RV
+  const curTimerHist = App.getCombinedTimerHistory(); // COMBINED timer
   const wk = [];
   for (let i = 6; i >= 0; i--) { const d = new Date(now); d.setDate(d.getDate()-i); wk.push(d.toISOString().split('T')[0]); }
   const ws = wk.reduce((s,k) => s + (curHist[k]||0), 0);
@@ -2701,7 +2723,7 @@ function uStats() {
 }
 
 function renderMalaLog() {
-  const log = App.S.malaLog || [];
+  const log = [...(App.S.malaLog || []), ...(App.S.malaLogRV || [])];
   const listEl = document.getElementById('malaLogList');
   const countEl = document.getElementById('malaLogCount');
   const avgEl = document.getElementById('malaLogAvg');
@@ -3964,11 +3986,12 @@ function renderCal(){
   for(let i=0;i<fd;i++)g.appendChild(document.createElement('div'));
   for(let d=1;d<=dim;d++){
     const key=yr+'-'+String(mo+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    const cnt=App.S.history[key]||0, timeSec=App.S.timerHistory[key]||0, time28Sec=App.S.timer28History[key]||0;
+    const cnt=(App.S.history[key]||0)+(App.S.historyRV[key]||0), timeSec=(App.S.timerHistory[key]||0)+(App.S.timerHistoryRV[key]||0), time28Sec=App.S.timer28History[key]||0;
     const occ=App.S.occasions&&App.S.occasions[key];
     const c=document.createElement('div');c.className='cc';
     if(key===ts)c.classList.add('today');
-    if(cnt>0){c.classList.add('hd');if(App.S.dt>0&&cnt>=App.S.dt)c.classList.add('tm');}
+    const combinedDt=(App.S.dt||0)+(App.S.dtRV||0);
+    if(cnt>0){c.classList.add('hd');if(combinedDt>0&&cnt>=combinedDt)c.classList.add('tm');}
     if(occ)c.classList.add('occ');
     let inner='<span>'+d+'</span>';
     if(cnt>0)inner+='<span class="ccc">'+cnt+'</span>';
@@ -3990,13 +4013,14 @@ function showDay(key, cnt, timeSec, time28Sec) {
   // Title
   document.getElementById('cdmoTitle').textContent = MN[parseInt(mo)-1] + ' ' + parseInt(d) + ', ' + yr;
 
-  // Stats
+  // Stats — combined
   document.getElementById('cdmoJap').textContent = cnt;
   document.getElementById('cdmoMala').textContent = Math.floor(cnt / ms);
   document.getElementById('cdmoTime').textContent = timeSec > 0 ? App.fmtTime(timeSec) : '—';
   const el28 = document.getElementById('cdmoTime28');
   if (el28) el28.textContent = time28Sec > 0 ? App.fmtTime(time28Sec) : '—';
-  const pct = App.S.dt > 0 ? Math.round(cnt / App.S.dt * 100) + '%' : '—';
+  const combinedDt = (App.S.dt||0) + (App.S.dtRV||0);
+  const pct = combinedDt > 0 ? Math.round(cnt / combinedDt * 100) + '%' : '—';
   document.getElementById('cdmoPct').textContent = pct;
 
   // Occasion
@@ -4156,6 +4180,7 @@ window.addEventListener('load', async () => {
   await App.load();
   App.lmc = Math.floor(App.gTod() / (App.S.ms||108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk]||0) / (App.S.ms||108));
+  App.lmcRV = Math.floor((App.S.historyRV[App.S.tk]||0) / (App.S.ms||108));
 
   // Timer always starts from 0 on each app open.
   // timerSavedSeconds tracks what's already committed to timerHistory this session.
@@ -4179,6 +4204,7 @@ window.addEventListener('load', async () => {
   if (ltIn) ltIn.addEventListener('input', function() { document.getElementById('ltMala').textContent = Math.ceil((parseInt(this.value)||0)/(App.S.ms||108)).toLocaleString(); });
 
   App.ua();
+  initJapModeUI();
   fbInit();
   initSunTimes();
   buildPwaManifest();

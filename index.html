@@ -620,33 +620,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .mala-remaining{font-size:10px;color:var(--td);margin-top:6px;text-align:center;}
 
 
-/* ── Lakh Gati Tracking ── */
-.lakh-gati-wrap{margin:14px 0 6px;padding:16px 14px;background:linear-gradient(135deg,rgba(255,215,0,0.06),rgba(74,144,226,0.04));border:1px solid rgba(255,215,0,0.22);border-radius:16px;position:relative;overflow:hidden;}
-.lakh-gati-wrap::before{content:'';position:absolute;top:-50%;right:-30%;width:200px;height:200px;background:radial-gradient(circle,rgba(255,215,0,0.08),transparent 70%);pointer-events:none;}
-.lakh-gati-title{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
-.lakh-gati-title span:first-child{font-size:18px;}
-.lakh-gati-title span:last-child{font-size:12px;color:var(--gold);text-transform:uppercase;letter-spacing:2px;font-weight:600;}
-.lakh-gati-grid{display:flex;flex-direction:column;gap:6px;}
-.lakh-card{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(6,13,31,0.5);border:1px solid rgba(255,215,0,0.12);border-radius:12px;transition:all 0.3s ease;}
-.lakh-card.reached{border-color:rgba(255,215,0,0.35);background:rgba(255,215,0,0.05);}
-.lakh-card.reached .lakh-icon{background:linear-gradient(135deg,rgba(255,215,0,0.25),rgba(255,180,0,0.15));border-color:rgba(255,215,0,0.5);}
-.lakh-card.current{border-color:rgba(109,184,255,0.4);background:rgba(109,184,255,0.06);animation:lakh-pulse 2.5s ease-in-out infinite;}
-@keyframes lakh-pulse{0%,100%{box-shadow:0 0 0 rgba(109,184,255,0);}50%{box-shadow:0 0 15px rgba(109,184,255,0.15);}}
-.lakh-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;background:rgba(74,144,226,0.1);border:1px solid rgba(74,144,226,0.2);flex-shrink:0;color:var(--td);font-family:'EB Garamond',serif;}
-.lakh-card.reached .lakh-icon{color:var(--gold);}
-.lakh-info{flex:1;min-width:0;}
-.lakh-name{font-size:13px;font-weight:600;color:var(--tl);}
-.lakh-card.reached .lakh-name{color:var(--gold);}
-.lakh-meta{display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap;}
-.lakh-date{font-size:10px;color:var(--td);}
-.lakh-duration{font-size:10px;color:var(--green);font-weight:500;padding:1px 6px;background:rgba(46,204,113,0.1);border-radius:8px;}
-.lakh-card:not(.reached) .lakh-duration{color:var(--td);background:none;}
-.lakh-progress{width:50px;text-align:right;}
-.lakh-pct{font-size:12px;font-weight:600;color:var(--a2);font-family:'EB Garamond',serif;}
-.lakh-card.reached .lakh-pct{color:var(--green);}
-.lakh-bar-mini{width:50px;height:3px;background:rgba(74,144,226,0.12);border-radius:2px;margin-top:3px;overflow:hidden;}
-.lakh-bar-mini-fill{height:100%;background:linear-gradient(90deg,var(--a),var(--a2));border-radius:2px;transition:width 0.5s ease;}
-.lakh-card.reached .lakh-bar-mini-fill{background:linear-gradient(90deg,var(--green),#2ECC71);}
+/* Lakh Gati CSS removed */
 
 /* ── Sadhana Journey Date Picker ── */
 .sj-date-wrap{display:flex;align-items:center;gap:8px;padding:10px 12px;margin:10px 0;background:rgba(74,144,226,0.06);border:1px solid rgba(74,144,226,0.18);border-radius:12px;}
@@ -2739,20 +2713,34 @@ function uStats() {
 }
 
 function renderMalaLog() {
-  const isRV = App.S.japMode === 'rv';
-  const log = isRV ? [...(App.S.malaLogRV || [])] : [...(App.S.malaLog || [])];
   const listEl = document.getElementById('malaLogList');
   const countEl = document.getElementById('malaLogCount');
   const avgEl = document.getElementById('malaLogAvg');
-  if (!listEl) return;
-  if (countEl) countEl.textContent = log.length > 0 ? '(' + log.length + ')' : '';
   const typeEl = document.getElementById('malaLogType');
-  if (typeEl) typeEl.textContent = isRV ? '(राधावल्लभ)' : '(राधा)';
+  
+  // FIX: Always clear the container first to prevent ghost data
+  if (listEl) listEl.innerHTML = '';
+  if (avgEl) { avgEl.style.display = 'none'; avgEl.textContent = ''; }
+  if (countEl) countEl.textContent = '';
+  
+  const isRV = App.S.japMode === 'rv';
+  
+  // FIX: Reset type label fresh each time — no global carryover
+  if (typeEl) typeEl.textContent = isRV ? '(\u0930\u093e\u0927\u093e\u0935\u0932\u094d\u0932\u092d)' : '(\u0930\u093e\u0927\u093e)';
+  
+  // FIX: Strict filtering — get the correct log for current mode only
+  const rawLog = isRV ? (App.S.malaLogRV || []) : (App.S.malaLog || []);
+  // Filter out entries with 0 or invalid values
+  const log = rawLog.filter(sec => typeof sec === 'number' && sec > 0 && isFinite(sec));
+  
+  if (countEl) countEl.textContent = log.length > 0 ? '(' + log.length + ')' : '';
+  
   if (log.length === 0) {
     listEl.innerHTML = '<div style="font-size:11px;color:var(--td);text-align:center;padding:6px 0">No malas completed yet today</div>';
     if (avgEl) avgEl.style.display = 'none';
     return;
   }
+  
   // Average per mala
   if (avgEl && log.length > 0) {
     const totalSec = log.reduce((a,b) => a+b, 0);
@@ -2762,7 +2750,7 @@ function renderMalaLog() {
     avgEl.style.display = 'block';
     avgEl.style.cssText = 'font-size:11px;color:var(--green);margin-bottom:6px;text-align:center;padding:5px 10px;background:rgba(46,204,113,0.08);border-radius:8px;border:1px solid rgba(46,204,113,0.18);display:block';
   }
-  listEl.innerHTML = '';
+  
   log.forEach((sec, i) => {
     const m = Math.floor(sec / 60), s = sec % 60;
     const durStr = m > 0 ? m + 'm ' + s + 's' : s + 's';
@@ -2960,20 +2948,7 @@ function spawnDivineCelebration() {
 // ═══════════════════════════════════════════════
 // VELOCITY TRACKER
 // ═══════════════════════════════════════════════
-function renderVelocityTracker() {
-  const el = document.getElementById('velocityList');
-  if (!el) return;
-  const data = getMilestoneData();
-  const tot = App.gTot();
-  
-  // Collect all dynamic milestones: 10k, 1L, 1Cr
-  const allMs = [];
-  
-  // 10k milestones
-  for (let i = 1; i <= Math.floor(tot / 10000); i++) {
-    const c = i * 10000;
-    if (data.reached[c]) {
-      allMs.push({ count: c, label: (i*10) + 'K', date: data.reached[c], type: '10k', icon: '🎖️' });
+function renderVelocityTracker() { /* removed */ });
     }
   }
   
@@ -3038,207 +3013,9 @@ function renderVelocityTracker() {
 // ═══════════════════════════════════════════════
 // RENDER MILESTONES TAB
 // ═══════════════════════════════════════════════
-function renderMilestonesTab() {
-  const data = getMilestoneData();
-  const tot = App.gTot();
+function renderMilestonesTab() { /* removed */ }
 
-  // Lifetime count
-  const c2 = document.getElementById('mahimaCount2');
-  if (c2) c2.textContent = tot.toLocaleString('en-IN');
-  
-  const spReached = SPIRITUAL_MILESTONES.filter(m => data.reached[m.count]).length;
-  const r2 = document.getElementById('mahimaMsReached2');
-  if (r2) r2.textContent = spReached + '/13 milestones reached';
-
-  // Spiritual milestone cards
-  const cards2 = document.getElementById('mahimaCards2');
-  if (cards2) {
-    let html = '';
-    PHASES.forEach(phase => {
-      html += '<div class="mahima-phase"><div class="mahima-phase-name">' + phase.name + '</div>' +
-        '<div class="mahima-phase-sub">' + phase.sub + '</div></div>';
-      SPIRITUAL_MILESTONES.filter(m => m.phase === phase.id).forEach(m => {
-        const unlocked = !!data.reached[m.count];
-        const pct = Math.min(100, (tot / m.count) * 100);
-        const croreNum = m.count / CRORE;
-        const phaseClass = phase.id === 'bhagwat' ? ' phase-bhagwat' : (phase.id === 'shakti' ? ' phase-shakti' : '');
-        const dateStr = unlocked ? new Date(data.reached[m.count]).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '';
-        html += '<div class="mahima-card' + (unlocked ? ' unlocked' : '') + phaseClass + '">' +
-          '<div class="mahima-card-icon">' + m.icon + '</div>' +
-          '<div class="mahima-card-body">' +
-          '<div class="mahima-card-top"><span class="mahima-card-count">' + croreNum + ' Crore</span>' +
-          '<span class="mahima-card-tag">' + m.tag + '</span></div>' +
-          '<div class="mahima-card-name">' + m.label + '</div>' +
-          '<div class="mahima-card-eng">' + m.eng + '</div>' +
-          '<div class="mahima-card-bar-wrap"><div class="mahima-card-bar" style="width:' + pct.toFixed(1) + '%"></div></div>' +
-          '<div class="mahima-card-pct">' + pct.toFixed(1) + '%</div>' +
-          (unlocked ? '<div class="mahima-card-date">✓ Achieved ' + dateStr + '</div>' : '') +
-          (m.desc ? '<div class="mahima-card-desc">' + m.desc + '<div class="mahima-card-author">— Shri Hit Premanand Ji Maharaj</div></div>' : '') +
-          '</div></div>';
-      });
-    });
-    cards2.innerHTML = html;
-  }
-
-  // Mala Bead Strip
-  const regMilestones = MILESTONES.filter(m => m.type === 'regular');
-  const next = regMilestones.find(m => tot < m.count);
-  const nextEl2 = document.getElementById('msNextVal2');
-  const pctEl2  = document.getElementById('msNextPct2');
-  const fillEl2 = document.getElementById('msProgFill2');
-  const remEl2  = document.getElementById('msRemaining2');
-  const beadsEl2 = document.getElementById('malaBeads2');
-
-  let pct = 0;
-  if (next) {
-    const nextIdx = regMilestones.indexOf(next);
-    const prevCount = nextIdx > 0 ? regMilestones[nextIdx - 1].count : 0;
-    pct = Math.min(100, Math.max(0, ((tot - prevCount) / (next.count - prevCount)) * 100));
-    if (nextEl2) nextEl2.textContent = formatMsCount(next.count);
-    if (pctEl2)  pctEl2.textContent  = pct.toFixed(0) + '%';
-    const rem = next.count - tot;
-    if (remEl2) remEl2.textContent = rem.toLocaleString('en-IN') + ' more jap to go';
-  } else {
-    if (nextEl2) nextEl2.textContent = 'Sadhana Poorna 🙏';
-    if (pctEl2)  pctEl2.textContent  = '';
-    if (remEl2)  remEl2.textContent  = '';
-    pct = 100;
-  }
-  if (fillEl2) fillEl2.style.width = pct.toFixed(1) + '%';
-
-  // Build beads
-  if (beadsEl2) {
-    const activeIdx = next ? regMilestones.indexOf(next) : regMilestones.length - 1;
-    const windowStart = Math.max(0, activeIdx - 4);
-    const windowEnd   = Math.min(regMilestones.length - 1, windowStart + 8);
-    let html = '';
-    for (let i = windowStart; i <= windowEnd; i++) {
-      const m = regMilestones[i];
-      const isReached = !!data.reached[m.count];
-      const isActive  = next && m.count === next.count;
-      const cls = isReached ? 'reached' : (isActive ? 'active' : '');
-      const lbl = m.count >= 100000 ? formatMsCount(m.count) : (m.count/1000) + 'K';
-      const tipDate = isReached && data.reached[m.count]
-        ? new Date(data.reached[m.count]).toLocaleDateString('en-IN',{day:'numeric',month:'short'})
-        : (isActive ? pct.toFixed(0)+'%' : '');
-      html += '<div class="mala-bead ' + cls + '">' + lbl +
-        (tipDate ? '<span class="bead-tip">' + tipDate + '</span>' : '') + '</div>';
-      if (i < windowEnd) html += '<div class="mala-thread"></div>';
-    }
-    beadsEl2.innerHTML = html;
-  }
-
-  // Lakh Gati (render to grid2)
-  // renderLakhGati2(); // removed
-  
-  // Load sadhana start date for tab2
-  const saved = localStorage.getItem('rjap_sadhana_start');
-  const input2 = document.getElementById('sadhanaStartDate2');
-  if (saved && input2) input2.value = saved;
-  const sinceEl = document.getElementById('sadhanaSince2');
-  if (sinceEl) {
-    if (!saved) { sinceEl.textContent = 'Set your journey start date above ☝️'; }
-    else {
-      const start = new Date(saved);
-      const now = new Date();
-      const diff = now.getTime() - start.getTime();
-      const days = Math.floor(diff / 86400000);
-      const years = Math.floor(days / 365);
-      const remDays = days % 365;
-      const months = Math.floor(remDays / 30);
-      let str = '🙏 ';
-      if (years > 0) str += years + ' year' + (years>1?'s':'') + ' ';
-      if (months > 0) str += months + ' month' + (months>1?'s':'') + ' ';
-      str += (remDays % 30) + ' days of Sadhana';
-      sinceEl.textContent = str;
-    }
-  }
-
-  // Sadhana Journey Timeline (removed from milestones tab)
-  const logList2 = document.getElementById('msLogList2');
-  if (logList2) {
-    const allReached = MILESTONES.filter(m => data.reached[m.count])
-      .sort((a, b) => new Date(data.reached[b.count]) - new Date(data.reached[a.count]));
-    if (allReached.length === 0) {
-      logList2.innerHTML = '<div class="sj-empty">No milestones reached yet. Keep chanting! 🙏</div>';
-    } else {
-      const now = Date.now();
-      logList2.innerHTML = allReached.slice(0, 30).map((m, idx, arr) => {
-        const d = new Date(data.reached[m.count]);
-        const dateStr = d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
-        const diffMs = now - d.getTime();
-        const diffDays = Math.floor(diffMs / 86400000);
-        const ago = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : diffDays + 'd ago';
-        const isSp = m.type === 'spiritual';
-        return '<div class="sj-item' + (isSp ? ' spiritual' : '') + '">' +
-          '<div class="sj-left">' +
-            '<div class="sj-dot">' + (m.badge || m.icon) + '</div>' +
-            (idx < arr.length - 1 ? '<div class="sj-line"></div>' : '') +
-          '</div>' +
-          '<div class="sj-right">' +
-            '<div class="sj-name">' + m.label + (isSp ? ' 🙏' : '') + '</div>' +
-            '<div class="sj-meta">' +
-              '<span class="sj-count">' + formatMsCount(m.count) + '</span>' +
-              '<span class="sj-date">' + dateStr + '</span>' +
-              '<span class="sj-ago">' + ago + '</span>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
-      }).join('');
-    }
-  }
-
-  // Velocity
-  // renderVelocityTracker(); // removed
-}
-
-function renderLakhGati2() {
-  const grid = document.getElementById('lakhGatiGrid2');
-  if (!grid) return;
-  const tot = App.gTot();
-  const data = getMilestoneData();
-  const reachedLakhs = LAKH_MILESTONES.filter(l => tot >= l.count);
-  const unreachedLakhs = LAKH_MILESTONES.filter(l => tot < l.count).slice(0, 2);
-  const visibleLakhs = [...reachedLakhs, ...unreachedLakhs];
-  if (visibleLakhs.length === 0) {
-    grid.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--td);padding:12px">Keep chanting to reach your first Lakh! 🙏</div>';
-    return;
-  }
-  let html = '';
-  visibleLakhs.forEach((lakh, idx) => {
-    const isReached = tot >= lakh.count;
-    const isCurrent = !isReached && (idx === 0 || tot >= visibleLakhs[idx-1].count);
-    const cls = isReached ? 'reached' : (isCurrent ? 'current' : '');
-    const reachedDate = data.reached[lakh.count];
-    const dateStr = reachedDate ? new Date(reachedDate).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'}) : '';
-    let durationStr = '';
-    if (isReached && reachedDate) {
-      const prevLakh = idx > 0 ? visibleLakhs[idx-1] : null;
-      let prevDate = null;
-      if (prevLakh && data.reached[prevLakh.count]) prevDate = new Date(data.reached[prevLakh.count]);
-      else { const startStr = localStorage.getItem('rjap_sadhana_start'); if (startStr) prevDate = new Date(startStr); }
-      if (prevDate) durationStr = formatDuration(new Date(reachedDate).getTime() - prevDate.getTime());
-    }
-    let pct2 = isReached ? 100 : 0;
-    if (!isReached) {
-      const prevCount = idx > 0 ? visibleLakhs[idx-1].count : 0;
-      pct2 = Math.min(100, Math.max(0, ((tot - prevCount) / (lakh.count - prevCount)) * 100));
-    }
-    html += '<div class="lakh-card ' + cls + '">' +
-      '<div class="lakh-icon">' + lakh.num + 'L</div>' +
-      '<div class="lakh-info"><div class="lakh-name">' + lakh.label + (isReached ? ' ✓' : '') + '</div>' +
-      '<div class="lakh-meta">' +
-        (dateStr ? '<span class="lakh-date">📅 ' + dateStr + '</span>' : '') +
-        (durationStr ? '<span class="lakh-duration">⏱ ' + durationStr + '</span>' : '') +
-        (!isReached ? '<span class="lakh-date">' + (lakh.count - tot).toLocaleString('en-IN') + ' remaining</span>' : '') +
-      '</div></div>' +
-      '<div class="lakh-progress">' +
-        (isReached ? '<div class="lakh-pct">✅</div>' : '<div class="lakh-pct">' + pct2.toFixed(0) + '%</div>') +
-        (!isReached ? '<div class="lakh-bar-mini"><div class="lakh-bar-mini-fill" style="width:' + pct2.toFixed(1) + '%"></div></div>' : '') +
-      '</div></div>';
-  });
-  grid.innerHTML = html;
-}
+function renderLakhGati2() { /* removed */ }
 
 </script>
 <script>
@@ -3624,20 +3401,7 @@ function spawnDivineCelebration() {
 // ═══════════════════════════════════════════════
 // VELOCITY TRACKER
 // ═══════════════════════════════════════════════
-function renderVelocityTracker() {
-  const el = document.getElementById('velocityList');
-  if (!el) return;
-  const data = getMilestoneData();
-  const tot = App.gTot();
-  
-  // Collect all dynamic milestones: 10k, 1L, 1Cr
-  const allMs = [];
-  
-  // 10k milestones
-  for (let i = 1; i <= Math.floor(tot / 10000); i++) {
-    const c = i * 10000;
-    if (data.reached[c]) {
-      allMs.push({ count: c, label: (i*10) + 'K', date: data.reached[c], type: '10k', icon: '🎖️' });
+function renderVelocityTracker() { /* removed */ });
     }
   }
   
@@ -3702,207 +3466,9 @@ function renderVelocityTracker() {
 // ═══════════════════════════════════════════════
 // RENDER MILESTONES TAB
 // ═══════════════════════════════════════════════
-function renderMilestonesTab() {
-  const data = getMilestoneData();
-  const tot = App.gTot();
+function renderMilestonesTab() { /* removed */ }
 
-  // Lifetime count
-  const c2 = document.getElementById('mahimaCount2');
-  if (c2) c2.textContent = tot.toLocaleString('en-IN');
-  
-  const spReached = SPIRITUAL_MILESTONES.filter(m => data.reached[m.count]).length;
-  const r2 = document.getElementById('mahimaMsReached2');
-  if (r2) r2.textContent = spReached + '/13 milestones reached';
-
-  // Spiritual milestone cards
-  const cards2 = document.getElementById('mahimaCards2');
-  if (cards2) {
-    let html = '';
-    PHASES.forEach(phase => {
-      html += '<div class="mahima-phase"><div class="mahima-phase-name">' + phase.name + '</div>' +
-        '<div class="mahima-phase-sub">' + phase.sub + '</div></div>';
-      SPIRITUAL_MILESTONES.filter(m => m.phase === phase.id).forEach(m => {
-        const unlocked = !!data.reached[m.count];
-        const pct = Math.min(100, (tot / m.count) * 100);
-        const croreNum = m.count / CRORE;
-        const phaseClass = phase.id === 'bhagwat' ? ' phase-bhagwat' : (phase.id === 'shakti' ? ' phase-shakti' : '');
-        const dateStr = unlocked ? new Date(data.reached[m.count]).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '';
-        html += '<div class="mahima-card' + (unlocked ? ' unlocked' : '') + phaseClass + '">' +
-          '<div class="mahima-card-icon">' + m.icon + '</div>' +
-          '<div class="mahima-card-body">' +
-          '<div class="mahima-card-top"><span class="mahima-card-count">' + croreNum + ' Crore</span>' +
-          '<span class="mahima-card-tag">' + m.tag + '</span></div>' +
-          '<div class="mahima-card-name">' + m.label + '</div>' +
-          '<div class="mahima-card-eng">' + m.eng + '</div>' +
-          '<div class="mahima-card-bar-wrap"><div class="mahima-card-bar" style="width:' + pct.toFixed(1) + '%"></div></div>' +
-          '<div class="mahima-card-pct">' + pct.toFixed(1) + '%</div>' +
-          (unlocked ? '<div class="mahima-card-date">✓ Achieved ' + dateStr + '</div>' : '') +
-          (m.desc ? '<div class="mahima-card-desc">' + m.desc + '<div class="mahima-card-author">— Shri Hit Premanand Ji Maharaj</div></div>' : '') +
-          '</div></div>';
-      });
-    });
-    cards2.innerHTML = html;
-  }
-
-  // Mala Bead Strip
-  const regMilestones = MILESTONES.filter(m => m.type === 'regular');
-  const next = regMilestones.find(m => tot < m.count);
-  const nextEl2 = document.getElementById('msNextVal2');
-  const pctEl2  = document.getElementById('msNextPct2');
-  const fillEl2 = document.getElementById('msProgFill2');
-  const remEl2  = document.getElementById('msRemaining2');
-  const beadsEl2 = document.getElementById('malaBeads2');
-
-  let pct = 0;
-  if (next) {
-    const nextIdx = regMilestones.indexOf(next);
-    const prevCount = nextIdx > 0 ? regMilestones[nextIdx - 1].count : 0;
-    pct = Math.min(100, Math.max(0, ((tot - prevCount) / (next.count - prevCount)) * 100));
-    if (nextEl2) nextEl2.textContent = formatMsCount(next.count);
-    if (pctEl2)  pctEl2.textContent  = pct.toFixed(0) + '%';
-    const rem = next.count - tot;
-    if (remEl2) remEl2.textContent = rem.toLocaleString('en-IN') + ' more jap to go';
-  } else {
-    if (nextEl2) nextEl2.textContent = 'Sadhana Poorna 🙏';
-    if (pctEl2)  pctEl2.textContent  = '';
-    if (remEl2)  remEl2.textContent  = '';
-    pct = 100;
-  }
-  if (fillEl2) fillEl2.style.width = pct.toFixed(1) + '%';
-
-  // Build beads
-  if (beadsEl2) {
-    const activeIdx = next ? regMilestones.indexOf(next) : regMilestones.length - 1;
-    const windowStart = Math.max(0, activeIdx - 4);
-    const windowEnd   = Math.min(regMilestones.length - 1, windowStart + 8);
-    let html = '';
-    for (let i = windowStart; i <= windowEnd; i++) {
-      const m = regMilestones[i];
-      const isReached = !!data.reached[m.count];
-      const isActive  = next && m.count === next.count;
-      const cls = isReached ? 'reached' : (isActive ? 'active' : '');
-      const lbl = m.count >= 100000 ? formatMsCount(m.count) : (m.count/1000) + 'K';
-      const tipDate = isReached && data.reached[m.count]
-        ? new Date(data.reached[m.count]).toLocaleDateString('en-IN',{day:'numeric',month:'short'})
-        : (isActive ? pct.toFixed(0)+'%' : '');
-      html += '<div class="mala-bead ' + cls + '">' + lbl +
-        (tipDate ? '<span class="bead-tip">' + tipDate + '</span>' : '') + '</div>';
-      if (i < windowEnd) html += '<div class="mala-thread"></div>';
-    }
-    beadsEl2.innerHTML = html;
-  }
-
-  // Lakh Gati (render to grid2)
-  // renderLakhGati2(); // removed
-  
-  // Load sadhana start date for tab2
-  const saved = localStorage.getItem('rjap_sadhana_start');
-  const input2 = document.getElementById('sadhanaStartDate2');
-  if (saved && input2) input2.value = saved;
-  const sinceEl = document.getElementById('sadhanaSince2');
-  if (sinceEl) {
-    if (!saved) { sinceEl.textContent = 'Set your journey start date above ☝️'; }
-    else {
-      const start = new Date(saved);
-      const now = new Date();
-      const diff = now.getTime() - start.getTime();
-      const days = Math.floor(diff / 86400000);
-      const years = Math.floor(days / 365);
-      const remDays = days % 365;
-      const months = Math.floor(remDays / 30);
-      let str = '🙏 ';
-      if (years > 0) str += years + ' year' + (years>1?'s':'') + ' ';
-      if (months > 0) str += months + ' month' + (months>1?'s':'') + ' ';
-      str += (remDays % 30) + ' days of Sadhana';
-      sinceEl.textContent = str;
-    }
-  }
-
-  // Sadhana Journey Timeline (removed from milestones tab)
-  const logList2 = document.getElementById('msLogList2');
-  if (logList2) {
-    const allReached = MILESTONES.filter(m => data.reached[m.count])
-      .sort((a, b) => new Date(data.reached[b.count]) - new Date(data.reached[a.count]));
-    if (allReached.length === 0) {
-      logList2.innerHTML = '<div class="sj-empty">No milestones reached yet. Keep chanting! 🙏</div>';
-    } else {
-      const now = Date.now();
-      logList2.innerHTML = allReached.slice(0, 30).map((m, idx, arr) => {
-        const d = new Date(data.reached[m.count]);
-        const dateStr = d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
-        const diffMs = now - d.getTime();
-        const diffDays = Math.floor(diffMs / 86400000);
-        const ago = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : diffDays + 'd ago';
-        const isSp = m.type === 'spiritual';
-        return '<div class="sj-item' + (isSp ? ' spiritual' : '') + '">' +
-          '<div class="sj-left">' +
-            '<div class="sj-dot">' + (m.badge || m.icon) + '</div>' +
-            (idx < arr.length - 1 ? '<div class="sj-line"></div>' : '') +
-          '</div>' +
-          '<div class="sj-right">' +
-            '<div class="sj-name">' + m.label + (isSp ? ' 🙏' : '') + '</div>' +
-            '<div class="sj-meta">' +
-              '<span class="sj-count">' + formatMsCount(m.count) + '</span>' +
-              '<span class="sj-date">' + dateStr + '</span>' +
-              '<span class="sj-ago">' + ago + '</span>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
-      }).join('');
-    }
-  }
-
-  // Velocity
-  // renderVelocityTracker(); // removed
-}
-
-function renderLakhGati2() {
-  const grid = document.getElementById('lakhGatiGrid2');
-  if (!grid) return;
-  const tot = App.gTot();
-  const data = getMilestoneData();
-  const reachedLakhs = LAKH_MILESTONES.filter(l => tot >= l.count);
-  const unreachedLakhs = LAKH_MILESTONES.filter(l => tot < l.count).slice(0, 2);
-  const visibleLakhs = [...reachedLakhs, ...unreachedLakhs];
-  if (visibleLakhs.length === 0) {
-    grid.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--td);padding:12px">Keep chanting to reach your first Lakh! 🙏</div>';
-    return;
-  }
-  let html = '';
-  visibleLakhs.forEach((lakh, idx) => {
-    const isReached = tot >= lakh.count;
-    const isCurrent = !isReached && (idx === 0 || tot >= visibleLakhs[idx-1].count);
-    const cls = isReached ? 'reached' : (isCurrent ? 'current' : '');
-    const reachedDate = data.reached[lakh.count];
-    const dateStr = reachedDate ? new Date(reachedDate).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'}) : '';
-    let durationStr = '';
-    if (isReached && reachedDate) {
-      const prevLakh = idx > 0 ? visibleLakhs[idx-1] : null;
-      let prevDate = null;
-      if (prevLakh && data.reached[prevLakh.count]) prevDate = new Date(data.reached[prevLakh.count]);
-      else { const startStr = localStorage.getItem('rjap_sadhana_start'); if (startStr) prevDate = new Date(startStr); }
-      if (prevDate) durationStr = formatDuration(new Date(reachedDate).getTime() - prevDate.getTime());
-    }
-    let pct2 = isReached ? 100 : 0;
-    if (!isReached) {
-      const prevCount = idx > 0 ? visibleLakhs[idx-1].count : 0;
-      pct2 = Math.min(100, Math.max(0, ((tot - prevCount) / (lakh.count - prevCount)) * 100));
-    }
-    html += '<div class="lakh-card ' + cls + '">' +
-      '<div class="lakh-icon">' + lakh.num + 'L</div>' +
-      '<div class="lakh-info"><div class="lakh-name">' + lakh.label + (isReached ? ' ✓' : '') + '</div>' +
-      '<div class="lakh-meta">' +
-        (dateStr ? '<span class="lakh-date">📅 ' + dateStr + '</span>' : '') +
-        (durationStr ? '<span class="lakh-duration">⏱ ' + durationStr + '</span>' : '') +
-        (!isReached ? '<span class="lakh-date">' + (lakh.count - tot).toLocaleString('en-IN') + ' remaining</span>' : '') +
-      '</div></div>' +
-      '<div class="lakh-progress">' +
-        (isReached ? '<div class="lakh-pct">✅</div>' : '<div class="lakh-pct">' + pct2.toFixed(0) + '%</div>') +
-        (!isReached ? '<div class="lakh-bar-mini"><div class="lakh-bar-mini-fill" style="width:' + pct2.toFixed(1) + '%"></div></div>' : '') +
-      '</div></div>';
-  });
-  grid.innerHTML = html;
-}
+function renderLakhGati2() { /* removed */ }
 
 </script>
 <script>
@@ -4959,20 +4525,7 @@ function spawnDivineCelebration() {
 // ═══════════════════════════════════════════════
 // VELOCITY TRACKER
 // ═══════════════════════════════════════════════
-function renderVelocityTracker() {
-  const el = document.getElementById('velocityList');
-  if (!el) return;
-  const data = getMilestoneData();
-  const tot = App.gTot();
-  
-  // Collect all dynamic milestones: 10k, 1L, 1Cr
-  const allMs = [];
-  
-  // 10k milestones
-  for (let i = 1; i <= Math.floor(tot / 10000); i++) {
-    const c = i * 10000;
-    if (data.reached[c]) {
-      allMs.push({ count: c, label: (i*10) + 'K', date: data.reached[c], type: '10k', icon: '🎖️' });
+function renderVelocityTracker() { /* removed */ });
     }
   }
   
@@ -5037,207 +4590,9 @@ function renderVelocityTracker() {
 // ═══════════════════════════════════════════════
 // RENDER MILESTONES TAB
 // ═══════════════════════════════════════════════
-function renderMilestonesTab() {
-  const data = getMilestoneData();
-  const tot = App.gTot();
+function renderMilestonesTab() { /* removed */ }
 
-  // Lifetime count
-  const c2 = document.getElementById('mahimaCount2');
-  if (c2) c2.textContent = tot.toLocaleString('en-IN');
-  
-  const spReached = SPIRITUAL_MILESTONES.filter(m => data.reached[m.count]).length;
-  const r2 = document.getElementById('mahimaMsReached2');
-  if (r2) r2.textContent = spReached + '/13 milestones reached';
-
-  // Spiritual milestone cards
-  const cards2 = document.getElementById('mahimaCards2');
-  if (cards2) {
-    let html = '';
-    PHASES.forEach(phase => {
-      html += '<div class="mahima-phase"><div class="mahima-phase-name">' + phase.name + '</div>' +
-        '<div class="mahima-phase-sub">' + phase.sub + '</div></div>';
-      SPIRITUAL_MILESTONES.filter(m => m.phase === phase.id).forEach(m => {
-        const unlocked = !!data.reached[m.count];
-        const pct = Math.min(100, (tot / m.count) * 100);
-        const croreNum = m.count / CRORE;
-        const phaseClass = phase.id === 'bhagwat' ? ' phase-bhagwat' : (phase.id === 'shakti' ? ' phase-shakti' : '');
-        const dateStr = unlocked ? new Date(data.reached[m.count]).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '';
-        html += '<div class="mahima-card' + (unlocked ? ' unlocked' : '') + phaseClass + '">' +
-          '<div class="mahima-card-icon">' + m.icon + '</div>' +
-          '<div class="mahima-card-body">' +
-          '<div class="mahima-card-top"><span class="mahima-card-count">' + croreNum + ' Crore</span>' +
-          '<span class="mahima-card-tag">' + m.tag + '</span></div>' +
-          '<div class="mahima-card-name">' + m.label + '</div>' +
-          '<div class="mahima-card-eng">' + m.eng + '</div>' +
-          '<div class="mahima-card-bar-wrap"><div class="mahima-card-bar" style="width:' + pct.toFixed(1) + '%"></div></div>' +
-          '<div class="mahima-card-pct">' + pct.toFixed(1) + '%</div>' +
-          (unlocked ? '<div class="mahima-card-date">✓ Achieved ' + dateStr + '</div>' : '') +
-          (m.desc ? '<div class="mahima-card-desc">' + m.desc + '<div class="mahima-card-author">— Shri Hit Premanand Ji Maharaj</div></div>' : '') +
-          '</div></div>';
-      });
-    });
-    cards2.innerHTML = html;
-  }
-
-  // Mala Bead Strip
-  const regMilestones = MILESTONES.filter(m => m.type === 'regular');
-  const next = regMilestones.find(m => tot < m.count);
-  const nextEl2 = document.getElementById('msNextVal2');
-  const pctEl2  = document.getElementById('msNextPct2');
-  const fillEl2 = document.getElementById('msProgFill2');
-  const remEl2  = document.getElementById('msRemaining2');
-  const beadsEl2 = document.getElementById('malaBeads2');
-
-  let pct = 0;
-  if (next) {
-    const nextIdx = regMilestones.indexOf(next);
-    const prevCount = nextIdx > 0 ? regMilestones[nextIdx - 1].count : 0;
-    pct = Math.min(100, Math.max(0, ((tot - prevCount) / (next.count - prevCount)) * 100));
-    if (nextEl2) nextEl2.textContent = formatMsCount(next.count);
-    if (pctEl2)  pctEl2.textContent  = pct.toFixed(0) + '%';
-    const rem = next.count - tot;
-    if (remEl2) remEl2.textContent = rem.toLocaleString('en-IN') + ' more jap to go';
-  } else {
-    if (nextEl2) nextEl2.textContent = 'Sadhana Poorna 🙏';
-    if (pctEl2)  pctEl2.textContent  = '';
-    if (remEl2)  remEl2.textContent  = '';
-    pct = 100;
-  }
-  if (fillEl2) fillEl2.style.width = pct.toFixed(1) + '%';
-
-  // Build beads
-  if (beadsEl2) {
-    const activeIdx = next ? regMilestones.indexOf(next) : regMilestones.length - 1;
-    const windowStart = Math.max(0, activeIdx - 4);
-    const windowEnd   = Math.min(regMilestones.length - 1, windowStart + 8);
-    let html = '';
-    for (let i = windowStart; i <= windowEnd; i++) {
-      const m = regMilestones[i];
-      const isReached = !!data.reached[m.count];
-      const isActive  = next && m.count === next.count;
-      const cls = isReached ? 'reached' : (isActive ? 'active' : '');
-      const lbl = m.count >= 100000 ? formatMsCount(m.count) : (m.count/1000) + 'K';
-      const tipDate = isReached && data.reached[m.count]
-        ? new Date(data.reached[m.count]).toLocaleDateString('en-IN',{day:'numeric',month:'short'})
-        : (isActive ? pct.toFixed(0)+'%' : '');
-      html += '<div class="mala-bead ' + cls + '">' + lbl +
-        (tipDate ? '<span class="bead-tip">' + tipDate + '</span>' : '') + '</div>';
-      if (i < windowEnd) html += '<div class="mala-thread"></div>';
-    }
-    beadsEl2.innerHTML = html;
-  }
-
-  // Lakh Gati (render to grid2)
-  // renderLakhGati2(); // removed
-  
-  // Load sadhana start date for tab2
-  const saved = localStorage.getItem('rjap_sadhana_start');
-  const input2 = document.getElementById('sadhanaStartDate2');
-  if (saved && input2) input2.value = saved;
-  const sinceEl = document.getElementById('sadhanaSince2');
-  if (sinceEl) {
-    if (!saved) { sinceEl.textContent = 'Set your journey start date above ☝️'; }
-    else {
-      const start = new Date(saved);
-      const now = new Date();
-      const diff = now.getTime() - start.getTime();
-      const days = Math.floor(diff / 86400000);
-      const years = Math.floor(days / 365);
-      const remDays = days % 365;
-      const months = Math.floor(remDays / 30);
-      let str = '🙏 ';
-      if (years > 0) str += years + ' year' + (years>1?'s':'') + ' ';
-      if (months > 0) str += months + ' month' + (months>1?'s':'') + ' ';
-      str += (remDays % 30) + ' days of Sadhana';
-      sinceEl.textContent = str;
-    }
-  }
-
-  // Sadhana Journey Timeline (removed from milestones tab)
-  const logList2 = document.getElementById('msLogList2');
-  if (logList2) {
-    const allReached = MILESTONES.filter(m => data.reached[m.count])
-      .sort((a, b) => new Date(data.reached[b.count]) - new Date(data.reached[a.count]));
-    if (allReached.length === 0) {
-      logList2.innerHTML = '<div class="sj-empty">No milestones reached yet. Keep chanting! 🙏</div>';
-    } else {
-      const now = Date.now();
-      logList2.innerHTML = allReached.slice(0, 30).map((m, idx, arr) => {
-        const d = new Date(data.reached[m.count]);
-        const dateStr = d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
-        const diffMs = now - d.getTime();
-        const diffDays = Math.floor(diffMs / 86400000);
-        const ago = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : diffDays + 'd ago';
-        const isSp = m.type === 'spiritual';
-        return '<div class="sj-item' + (isSp ? ' spiritual' : '') + '">' +
-          '<div class="sj-left">' +
-            '<div class="sj-dot">' + (m.badge || m.icon) + '</div>' +
-            (idx < arr.length - 1 ? '<div class="sj-line"></div>' : '') +
-          '</div>' +
-          '<div class="sj-right">' +
-            '<div class="sj-name">' + m.label + (isSp ? ' 🙏' : '') + '</div>' +
-            '<div class="sj-meta">' +
-              '<span class="sj-count">' + formatMsCount(m.count) + '</span>' +
-              '<span class="sj-date">' + dateStr + '</span>' +
-              '<span class="sj-ago">' + ago + '</span>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
-      }).join('');
-    }
-  }
-
-  // Velocity
-  // renderVelocityTracker(); // removed
-}
-
-function renderLakhGati2() {
-  const grid = document.getElementById('lakhGatiGrid2');
-  if (!grid) return;
-  const tot = App.gTot();
-  const data = getMilestoneData();
-  const reachedLakhs = LAKH_MILESTONES.filter(l => tot >= l.count);
-  const unreachedLakhs = LAKH_MILESTONES.filter(l => tot < l.count).slice(0, 2);
-  const visibleLakhs = [...reachedLakhs, ...unreachedLakhs];
-  if (visibleLakhs.length === 0) {
-    grid.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--td);padding:12px">Keep chanting to reach your first Lakh! 🙏</div>';
-    return;
-  }
-  let html = '';
-  visibleLakhs.forEach((lakh, idx) => {
-    const isReached = tot >= lakh.count;
-    const isCurrent = !isReached && (idx === 0 || tot >= visibleLakhs[idx-1].count);
-    const cls = isReached ? 'reached' : (isCurrent ? 'current' : '');
-    const reachedDate = data.reached[lakh.count];
-    const dateStr = reachedDate ? new Date(reachedDate).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'}) : '';
-    let durationStr = '';
-    if (isReached && reachedDate) {
-      const prevLakh = idx > 0 ? visibleLakhs[idx-1] : null;
-      let prevDate = null;
-      if (prevLakh && data.reached[prevLakh.count]) prevDate = new Date(data.reached[prevLakh.count]);
-      else { const startStr = localStorage.getItem('rjap_sadhana_start'); if (startStr) prevDate = new Date(startStr); }
-      if (prevDate) durationStr = formatDuration(new Date(reachedDate).getTime() - prevDate.getTime());
-    }
-    let pct2 = isReached ? 100 : 0;
-    if (!isReached) {
-      const prevCount = idx > 0 ? visibleLakhs[idx-1].count : 0;
-      pct2 = Math.min(100, Math.max(0, ((tot - prevCount) / (lakh.count - prevCount)) * 100));
-    }
-    html += '<div class="lakh-card ' + cls + '">' +
-      '<div class="lakh-icon">' + lakh.num + 'L</div>' +
-      '<div class="lakh-info"><div class="lakh-name">' + lakh.label + (isReached ? ' ✓' : '') + '</div>' +
-      '<div class="lakh-meta">' +
-        (dateStr ? '<span class="lakh-date">📅 ' + dateStr + '</span>' : '') +
-        (durationStr ? '<span class="lakh-duration">⏱ ' + durationStr + '</span>' : '') +
-        (!isReached ? '<span class="lakh-date">' + (lakh.count - tot).toLocaleString('en-IN') + ' remaining</span>' : '') +
-      '</div></div>' +
-      '<div class="lakh-progress">' +
-        (isReached ? '<div class="lakh-pct">✅</div>' : '<div class="lakh-pct">' + pct2.toFixed(0) + '%</div>') +
-        (!isReached ? '<div class="lakh-bar-mini"><div class="lakh-bar-mini-fill" style="width:' + pct2.toFixed(1) + '%"></div></div>' : '') +
-      '</div></div>';
-  });
-  grid.innerHTML = html;
-}
+function renderLakhGati2() { /* removed */ }
 
 </script>
 
@@ -6394,78 +5749,8 @@ function formatDuration(ms) {
   return mins + 'm';
 }
 
-function renderLakhGati() {
-  const grid = document.getElementById('lakhGatiGrid');
-  if (!grid) return;
-  const tot = App.gTot();
-  const data = getMilestoneData();
-  
-  // Show lakhs: all reached + next 2 unreached
-  const reachedLakhs = LAKH_MILESTONES.filter(l => tot >= l.count);
-  const unreachedLakhs = LAKH_MILESTONES.filter(l => tot < l.count).slice(0, 2);
-  const visibleLakhs = [...reachedLakhs, ...unreachedLakhs];
-  
-  if (visibleLakhs.length === 0) {
-    grid.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--td);padding:12px">Keep chanting to reach your first Lakh! 🙏</div>';
-    return;
-  }
-  
-  let html = '';
-  visibleLakhs.forEach((lakh, idx) => {
-    const isReached = tot >= lakh.count;
-    const isCurrent = !isReached && (idx === 0 || tot >= visibleLakhs[idx-1].count);
-    const cls = isReached ? 'reached' : (isCurrent ? 'current' : '');
-    
-    // Date reached
-    const reachedDate = data.reached[lakh.count];
-    const dateStr = reachedDate ? new Date(reachedDate).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'}) : '';
-    
-    // Duration from previous lakh
-    let durationStr = '';
-    if (isReached && reachedDate) {
-      const prevLakh = idx > 0 ? visibleLakhs[idx-1] : null;
-      let prevDate = null;
-      if (prevLakh && data.reached[prevLakh.count]) {
-        prevDate = new Date(data.reached[prevLakh.count]);
-      } else {
-        // Use sadhana start date for first lakh
-        const startStr = localStorage.getItem('rjap_sadhana_start');
-        if (startStr) prevDate = new Date(startStr);
-      }
-      if (prevDate) {
-        const diff = new Date(reachedDate).getTime() - prevDate.getTime();
-        durationStr = formatDuration(diff);
-      }
-    }
-    
-    // Progress for current/unreached
-    let pct = isReached ? 100 : 0;
-    if (!isReached) {
-      const prevCount = idx > 0 ? visibleLakhs[idx-1].count : 0;
-      pct = Math.min(100, Math.max(0, ((tot - prevCount) / (lakh.count - prevCount)) * 100));
-    }
-    
-    html += '<div class="lakh-card ' + cls + '">' +
-      '<div class="lakh-icon">' + lakh.num + 'L</div>' +
-      '<div class="lakh-info">' +
-        '<div class="lakh-name">' + lakh.label + (isReached ? ' ✓' : '') + '</div>' +
-        '<div class="lakh-meta">' +
-          (dateStr ? '<span class="lakh-date">📅 ' + dateStr + '</span>' : '') +
-          (durationStr ? '<span class="lakh-duration">⏱ ' + durationStr + '</span>' : '') +
-          (!isReached ? '<span class="lakh-date">' + (lakh.count - tot).toLocaleString('en-IN') + ' remaining</span>' : '') +
-        '</div>' +
-      '</div>' +
-      '<div class="lakh-progress">' +
-        (isReached ? '<div class="lakh-pct">✅</div>' : '<div class="lakh-pct">' + pct.toFixed(0) + '%</div>') +
-        (!isReached ? '<div class="lakh-bar-mini"><div class="lakh-bar-mini-fill" style="width:' + pct.toFixed(1) + '%"></div></div>' : '') +
-      '</div>' +
-    '</div>';
-  });
-  
-  grid.innerHTML = html;
-}
+function renderLakhGati() { /* removed */ }
 
-// ── Sadhana Journey Start Date ──
 function saveSadhanaStartDate(val) {
   if (val) {
     localStorage.setItem('rjap_sadhana_start', val);
@@ -6545,20 +5830,7 @@ function spawnDivineCelebration() {
 // ═══════════════════════════════════════════════
 // VELOCITY TRACKER
 // ═══════════════════════════════════════════════
-function renderVelocityTracker() {
-  const el = document.getElementById('velocityList');
-  if (!el) return;
-  const data = getMilestoneData();
-  const tot = App.gTot();
-  
-  // Collect all dynamic milestones: 10k, 1L, 1Cr
-  const allMs = [];
-  
-  // 10k milestones
-  for (let i = 1; i <= Math.floor(tot / 10000); i++) {
-    const c = i * 10000;
-    if (data.reached[c]) {
-      allMs.push({ count: c, label: (i*10) + 'K', date: data.reached[c], type: '10k', icon: '🎖️' });
+function renderVelocityTracker() { /* removed */ });
     }
   }
   
@@ -6623,207 +5895,9 @@ function renderVelocityTracker() {
 // ═══════════════════════════════════════════════
 // RENDER MILESTONES TAB
 // ═══════════════════════════════════════════════
-function renderMilestonesTab() {
-  const data = getMilestoneData();
-  const tot = App.gTot();
+function renderMilestonesTab() { /* removed */ }
 
-  // Lifetime count
-  const c2 = document.getElementById('mahimaCount2');
-  if (c2) c2.textContent = tot.toLocaleString('en-IN');
-  
-  const spReached = SPIRITUAL_MILESTONES.filter(m => data.reached[m.count]).length;
-  const r2 = document.getElementById('mahimaMsReached2');
-  if (r2) r2.textContent = spReached + '/13 milestones reached';
-
-  // Spiritual milestone cards
-  const cards2 = document.getElementById('mahimaCards2');
-  if (cards2) {
-    let html = '';
-    PHASES.forEach(phase => {
-      html += '<div class="mahima-phase"><div class="mahima-phase-name">' + phase.name + '</div>' +
-        '<div class="mahima-phase-sub">' + phase.sub + '</div></div>';
-      SPIRITUAL_MILESTONES.filter(m => m.phase === phase.id).forEach(m => {
-        const unlocked = !!data.reached[m.count];
-        const pct = Math.min(100, (tot / m.count) * 100);
-        const croreNum = m.count / CRORE;
-        const phaseClass = phase.id === 'bhagwat' ? ' phase-bhagwat' : (phase.id === 'shakti' ? ' phase-shakti' : '');
-        const dateStr = unlocked ? new Date(data.reached[m.count]).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '';
-        html += '<div class="mahima-card' + (unlocked ? ' unlocked' : '') + phaseClass + '">' +
-          '<div class="mahima-card-icon">' + m.icon + '</div>' +
-          '<div class="mahima-card-body">' +
-          '<div class="mahima-card-top"><span class="mahima-card-count">' + croreNum + ' Crore</span>' +
-          '<span class="mahima-card-tag">' + m.tag + '</span></div>' +
-          '<div class="mahima-card-name">' + m.label + '</div>' +
-          '<div class="mahima-card-eng">' + m.eng + '</div>' +
-          '<div class="mahima-card-bar-wrap"><div class="mahima-card-bar" style="width:' + pct.toFixed(1) + '%"></div></div>' +
-          '<div class="mahima-card-pct">' + pct.toFixed(1) + '%</div>' +
-          (unlocked ? '<div class="mahima-card-date">✓ Achieved ' + dateStr + '</div>' : '') +
-          (m.desc ? '<div class="mahima-card-desc">' + m.desc + '<div class="mahima-card-author">— Shri Hit Premanand Ji Maharaj</div></div>' : '') +
-          '</div></div>';
-      });
-    });
-    cards2.innerHTML = html;
-  }
-
-  // Mala Bead Strip
-  const regMilestones = MILESTONES.filter(m => m.type === 'regular');
-  const next = regMilestones.find(m => tot < m.count);
-  const nextEl2 = document.getElementById('msNextVal2');
-  const pctEl2  = document.getElementById('msNextPct2');
-  const fillEl2 = document.getElementById('msProgFill2');
-  const remEl2  = document.getElementById('msRemaining2');
-  const beadsEl2 = document.getElementById('malaBeads2');
-
-  let pct = 0;
-  if (next) {
-    const nextIdx = regMilestones.indexOf(next);
-    const prevCount = nextIdx > 0 ? regMilestones[nextIdx - 1].count : 0;
-    pct = Math.min(100, Math.max(0, ((tot - prevCount) / (next.count - prevCount)) * 100));
-    if (nextEl2) nextEl2.textContent = formatMsCount(next.count);
-    if (pctEl2)  pctEl2.textContent  = pct.toFixed(0) + '%';
-    const rem = next.count - tot;
-    if (remEl2) remEl2.textContent = rem.toLocaleString('en-IN') + ' more jap to go';
-  } else {
-    if (nextEl2) nextEl2.textContent = 'Sadhana Poorna 🙏';
-    if (pctEl2)  pctEl2.textContent  = '';
-    if (remEl2)  remEl2.textContent  = '';
-    pct = 100;
-  }
-  if (fillEl2) fillEl2.style.width = pct.toFixed(1) + '%';
-
-  // Build beads
-  if (beadsEl2) {
-    const activeIdx = next ? regMilestones.indexOf(next) : regMilestones.length - 1;
-    const windowStart = Math.max(0, activeIdx - 4);
-    const windowEnd   = Math.min(regMilestones.length - 1, windowStart + 8);
-    let html = '';
-    for (let i = windowStart; i <= windowEnd; i++) {
-      const m = regMilestones[i];
-      const isReached = !!data.reached[m.count];
-      const isActive  = next && m.count === next.count;
-      const cls = isReached ? 'reached' : (isActive ? 'active' : '');
-      const lbl = m.count >= 100000 ? formatMsCount(m.count) : (m.count/1000) + 'K';
-      const tipDate = isReached && data.reached[m.count]
-        ? new Date(data.reached[m.count]).toLocaleDateString('en-IN',{day:'numeric',month:'short'})
-        : (isActive ? pct.toFixed(0)+'%' : '');
-      html += '<div class="mala-bead ' + cls + '">' + lbl +
-        (tipDate ? '<span class="bead-tip">' + tipDate + '</span>' : '') + '</div>';
-      if (i < windowEnd) html += '<div class="mala-thread"></div>';
-    }
-    beadsEl2.innerHTML = html;
-  }
-
-  // Lakh Gati (render to grid2)
-  // renderLakhGati2(); // removed
-  
-  // Load sadhana start date for tab2
-  const saved = localStorage.getItem('rjap_sadhana_start');
-  const input2 = document.getElementById('sadhanaStartDate2');
-  if (saved && input2) input2.value = saved;
-  const sinceEl = document.getElementById('sadhanaSince2');
-  if (sinceEl) {
-    if (!saved) { sinceEl.textContent = 'Set your journey start date above ☝️'; }
-    else {
-      const start = new Date(saved);
-      const now = new Date();
-      const diff = now.getTime() - start.getTime();
-      const days = Math.floor(diff / 86400000);
-      const years = Math.floor(days / 365);
-      const remDays = days % 365;
-      const months = Math.floor(remDays / 30);
-      let str = '🙏 ';
-      if (years > 0) str += years + ' year' + (years>1?'s':'') + ' ';
-      if (months > 0) str += months + ' month' + (months>1?'s':'') + ' ';
-      str += (remDays % 30) + ' days of Sadhana';
-      sinceEl.textContent = str;
-    }
-  }
-
-  // Sadhana Journey Timeline (removed from milestones tab)
-  const logList2 = document.getElementById('msLogList2');
-  if (logList2) {
-    const allReached = MILESTONES.filter(m => data.reached[m.count])
-      .sort((a, b) => new Date(data.reached[b.count]) - new Date(data.reached[a.count]));
-    if (allReached.length === 0) {
-      logList2.innerHTML = '<div class="sj-empty">No milestones reached yet. Keep chanting! 🙏</div>';
-    } else {
-      const now = Date.now();
-      logList2.innerHTML = allReached.slice(0, 30).map((m, idx, arr) => {
-        const d = new Date(data.reached[m.count]);
-        const dateStr = d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
-        const diffMs = now - d.getTime();
-        const diffDays = Math.floor(diffMs / 86400000);
-        const ago = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : diffDays + 'd ago';
-        const isSp = m.type === 'spiritual';
-        return '<div class="sj-item' + (isSp ? ' spiritual' : '') + '">' +
-          '<div class="sj-left">' +
-            '<div class="sj-dot">' + (m.badge || m.icon) + '</div>' +
-            (idx < arr.length - 1 ? '<div class="sj-line"></div>' : '') +
-          '</div>' +
-          '<div class="sj-right">' +
-            '<div class="sj-name">' + m.label + (isSp ? ' 🙏' : '') + '</div>' +
-            '<div class="sj-meta">' +
-              '<span class="sj-count">' + formatMsCount(m.count) + '</span>' +
-              '<span class="sj-date">' + dateStr + '</span>' +
-              '<span class="sj-ago">' + ago + '</span>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
-      }).join('');
-    }
-  }
-
-  // Velocity
-  // renderVelocityTracker(); // removed
-}
-
-function renderLakhGati2() {
-  const grid = document.getElementById('lakhGatiGrid2');
-  if (!grid) return;
-  const tot = App.gTot();
-  const data = getMilestoneData();
-  const reachedLakhs = LAKH_MILESTONES.filter(l => tot >= l.count);
-  const unreachedLakhs = LAKH_MILESTONES.filter(l => tot < l.count).slice(0, 2);
-  const visibleLakhs = [...reachedLakhs, ...unreachedLakhs];
-  if (visibleLakhs.length === 0) {
-    grid.innerHTML = '<div style="text-align:center;font-size:11px;color:var(--td);padding:12px">Keep chanting to reach your first Lakh! 🙏</div>';
-    return;
-  }
-  let html = '';
-  visibleLakhs.forEach((lakh, idx) => {
-    const isReached = tot >= lakh.count;
-    const isCurrent = !isReached && (idx === 0 || tot >= visibleLakhs[idx-1].count);
-    const cls = isReached ? 'reached' : (isCurrent ? 'current' : '');
-    const reachedDate = data.reached[lakh.count];
-    const dateStr = reachedDate ? new Date(reachedDate).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'}) : '';
-    let durationStr = '';
-    if (isReached && reachedDate) {
-      const prevLakh = idx > 0 ? visibleLakhs[idx-1] : null;
-      let prevDate = null;
-      if (prevLakh && data.reached[prevLakh.count]) prevDate = new Date(data.reached[prevLakh.count]);
-      else { const startStr = localStorage.getItem('rjap_sadhana_start'); if (startStr) prevDate = new Date(startStr); }
-      if (prevDate) durationStr = formatDuration(new Date(reachedDate).getTime() - prevDate.getTime());
-    }
-    let pct2 = isReached ? 100 : 0;
-    if (!isReached) {
-      const prevCount = idx > 0 ? visibleLakhs[idx-1].count : 0;
-      pct2 = Math.min(100, Math.max(0, ((tot - prevCount) / (lakh.count - prevCount)) * 100));
-    }
-    html += '<div class="lakh-card ' + cls + '">' +
-      '<div class="lakh-icon">' + lakh.num + 'L</div>' +
-      '<div class="lakh-info"><div class="lakh-name">' + lakh.label + (isReached ? ' ✓' : '') + '</div>' +
-      '<div class="lakh-meta">' +
-        (dateStr ? '<span class="lakh-date">📅 ' + dateStr + '</span>' : '') +
-        (durationStr ? '<span class="lakh-duration">⏱ ' + durationStr + '</span>' : '') +
-        (!isReached ? '<span class="lakh-date">' + (lakh.count - tot).toLocaleString('en-IN') + ' remaining</span>' : '') +
-      '</div></div>' +
-      '<div class="lakh-progress">' +
-        (isReached ? '<div class="lakh-pct">✅</div>' : '<div class="lakh-pct">' + pct2.toFixed(0) + '%</div>') +
-        (!isReached ? '<div class="lakh-bar-mini"><div class="lakh-bar-mini-fill" style="width:' + pct2.toFixed(1) + '%"></div></div>' : '') +
-      '</div></div>';
-  });
-  grid.innerHTML = html;
-}
+function renderLakhGati2() { /* removed */ }
 
 </script>
 

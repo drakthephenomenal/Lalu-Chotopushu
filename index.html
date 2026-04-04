@@ -57,13 +57,13 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   .ls{height:-webkit-fill-available;}
   .view{min-height:-webkit-fill-available;}
   #vj.active{height:-webkit-fill-available;}
-  #vms.active{height:-webkit-fill-available;}
+  
   body{min-height:-webkit-fill-available;}
 }
 
 
 
-.view{display:none;min-height:100vh;min-height:100dvh;position:relative;z-index:1;flex-direction:column;}
+.view{display:none;min-height:100vh;min-height:100dvh;position:relative;z-index:1;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .view.active{display:flex;}
 #vj.active{min-height:unset;height:100vh;height:100dvh;overflow:hidden;}
 
@@ -678,7 +678,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 
 /* MILESTONES VIEW — dedicated tab */
 #vms{background:radial-gradient(ellipse at top,#0A1535 0%,var(--bd) 60%);padding:22px 12px 80px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
-#vms.active{height:100vh;height:100dvh;}
+
 
 
 /* ═══ MILESTONES TAB — GLASSMORPHIC PREMIUM ═══ */

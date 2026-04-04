@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v38';  // v38: Fix milestones scroll on iPad, add read-more for long descriptions
+const CACHE = 'radha-jap-v39';  // v39: Fix iPad Safari view scrolling scroll on iPad, add read-more for long descriptions
 
 const PRECACHE = [
   './index.html',

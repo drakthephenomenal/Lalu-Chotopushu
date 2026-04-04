@@ -9,7 +9,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#060D1F">
 <title>Radha Naam Jap</title>
-<link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=Hind+Siliguri:wght@400;600;700&family=Cinzel+Decorative:wght@400;700&family=EB+Garamond:wght@400;600&family=Inter:wght@300;400;500;600&family=Noto+Sans+Devanagari:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=Hind+Siliguri:wght@400;600;700&family=Cinzel+Decorative:wght@400;700&family=EB+Garamond:wght@400;600&family=Inter:wght@300;400;500;600&family=Noto+Sans+Devanagari:wght@700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -678,6 +678,73 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 /* MILESTONES VIEW — dedicated tab */
 #vms{background:radial-gradient(ellipse at top,#0A1535 0%,var(--bd) 60%);padding:22px 12px 80px;overflow-y:auto;}
 
+
+/* ═══ MILESTONES TAB — GLASSMORPHIC PREMIUM ═══ */
+.ms-phase-title{font-family:'Cinzel Decorative',serif;font-size:13px;color:var(--a2);letter-spacing:3px;text-transform:uppercase;margin:24px 0 12px;text-align:center;text-shadow:0 0 12px rgba(109,184,255,0.4);}
+.ms-phase-sub{font-size:10px;color:var(--td);letter-spacing:2px;text-align:center;margin-top:-8px;margin-bottom:14px;}
+.ms-toggle-wrap{display:flex;justify-content:center;gap:8px;margin-bottom:18px;}
+.ms-toggle-btn{padding:6px 16px;border-radius:20px;border:1px solid rgba(74,144,226,0.25);background:rgba(74,144,226,0.08);color:var(--td);font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.3s;}
+.ms-toggle-btn.active{background:rgba(255,215,0,0.15);border-color:rgba(255,215,0,0.4);color:var(--gold);}
+.ms-card{position:relative;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:16px;margin-bottom:14px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);cursor:pointer;transition:transform 0.25s ease,box-shadow 0.3s ease;overflow:hidden;}
+.ms-card:hover,.ms-card:active{transform:scale(1.02);}
+.ms-card.tier-bronze{box-shadow:0 0 18px rgba(184,115,51,0.3),inset 0 0 30px rgba(184,115,51,0.05);}
+.ms-card.tier-silver{box-shadow:0 0 18px rgba(192,192,220,0.35),inset 0 0 30px rgba(192,192,220,0.05);}
+.ms-card.tier-gold{box-shadow:0 0 22px rgba(255,215,0,0.4),inset 0 0 30px rgba(255,215,0,0.06);}
+.ms-card.tier-saffron{box-shadow:0 0 28px rgba(255,153,51,0.5),inset 0 0 40px rgba(255,153,51,0.08);}
+.ms-card.achieved{border-color:rgba(255,215,0,0.3);}
+.ms-card.locked{opacity:0.7;}
+.ms-card.million{padding:20px;border-width:2px;border-color:rgba(255,215,0,0.4);}
+.ms-card.million .ms-icon{font-size:28px;}
+@keyframes ms-shimmer{0%{background-position:-200% center;}100%{background-position:200% center;}}
+.ms-card.million::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 30%,rgba(255,215,0,0.08) 50%,transparent 70%);background-size:200% 100%;animation:ms-shimmer 3s linear infinite;border-radius:18px;pointer-events:none;}
+.ms-card-header{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.ms-icon{font-size:22px;flex-shrink:0;}
+.ms-label{font-family:'Cinzel Decorative',serif;font-size:13px;color:var(--tl);letter-spacing:1px;}
+.ms-eng{font-size:10px;color:var(--td);letter-spacing:1px;margin-top:1px;}
+.ms-count-label{font-family:'EB Garamond',serif;font-size:11px;color:var(--a2);margin-left:auto;white-space:nowrap;}
+.ms-desc{font-size:12px;line-height:1.7;color:var(--td);margin:8px 0;font-family:'Hind Siliguri',sans-serif;}
+.ms-desc.bangla{font-family:'Noto Sans Bengali','Hind Siliguri',sans-serif;}
+.ms-progress-wrap{position:relative;height:3px;background:rgba(255,255,255,0.06);border-radius:3px;margin-top:10px;overflow:hidden;}
+.ms-progress-fill{height:100%;border-radius:3px;transition:width 0.6s ease;}
+.ms-progress-fill.bronze{background:linear-gradient(90deg,#B87333,#D4956A);box-shadow:0 0 8px rgba(184,115,51,0.6);}
+.ms-progress-fill.silver{background:linear-gradient(90deg,#C0C0DC,#E8E8F0);box-shadow:0 0 8px rgba(192,192,220,0.6);}
+.ms-progress-fill.gold{background:linear-gradient(90deg,#FFD700,#FFA500);box-shadow:0 0 10px rgba(255,215,0,0.7);}
+.ms-progress-fill.saffron{background:linear-gradient(90deg,#FF9933,#FFD700);box-shadow:0 0 12px rgba(255,153,51,0.8);}
+.ms-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:10px;font-family:'Inter',sans-serif;letter-spacing:0.5px;margin-top:6px;}
+.ms-badge.achieved{background:rgba(255,215,0,0.12);color:var(--gold);border:1px solid rgba(255,215,0,0.25);}
+.ms-badge.prediction{background:rgba(109,184,255,0.1);color:var(--a2);border:1px solid rgba(109,184,255,0.2);}
+.ms-badge.locked{background:rgba(255,255,255,0.04);color:var(--td);border:1px solid rgba(255,255,255,0.08);}
+.ms-pct{font-family:'EB Garamond',serif;font-size:12px;color:var(--a2);margin-top:4px;}
+.ms-section-sep{height:1px;background:linear-gradient(90deg,transparent,rgba(74,144,226,0.2),transparent);margin:20px 0;}
+/* Lakh section cards */
+.ms-lakh-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.ms-lakh-card{position:relative;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:12px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);cursor:pointer;transition:transform 0.2s;overflow:hidden;}
+.ms-lakh-card:hover,.ms-lakh-card:active{transform:scale(1.02);}
+.ms-lakh-card.achieved{border-color:rgba(255,215,0,0.25);}
+.ms-lakh-card .ms-lakh-label{font-family:'Cinzel Decorative',serif;font-size:11px;color:var(--tl);letter-spacing:1px;}
+.ms-lakh-card .ms-lakh-pct{font-family:'EB Garamond',serif;font-size:12px;color:var(--a2);margin-top:4px;}
+/* Detail bottom sheet */
+.ms-detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:500;display:none;align-items:flex-end;justify-content:center;}
+.ms-detail-overlay.show{display:flex;}
+.ms-detail-sheet{background:linear-gradient(180deg,var(--bc),var(--bd));border-radius:22px 22px 0 0;padding:20px 18px 40px;width:100%;max-height:85vh;overflow-y:auto;border-top:2px solid rgba(255,215,0,0.3);}
+.ms-detail-close{background:rgba(255,255,255,0.08);border:none;border-radius:9px;padding:7px 14px;color:var(--td);font-size:13px;cursor:pointer;float:right;font-family:'Inter',sans-serif;}
+.ms-detail-icon{font-size:36px;text-align:center;margin:10px 0;}
+.ms-detail-title{font-family:'Cinzel Decorative',serif;font-size:16px;color:var(--gold);text-align:center;letter-spacing:2px;margin-bottom:4px;}
+.ms-detail-eng{font-size:12px;color:var(--a2);text-align:center;letter-spacing:1px;margin-bottom:12px;}
+.ms-detail-stamp{text-align:center;font-family:'Cinzel Decorative',serif;font-size:20px;color:var(--gold);letter-spacing:4px;margin:16px 0;text-shadow:0 0 20px rgba(255,215,0,0.5);}
+.ms-detail-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0;}
+.ms-detail-stat{background:rgba(74,144,226,0.06);border:1px solid rgba(74,144,226,0.15);border-radius:12px;padding:12px;text-align:center;}
+.ms-detail-stat .val{font-family:'EB Garamond',serif;font-size:24px;color:var(--a2);}
+.ms-detail-stat .lbl{font-size:10px;color:var(--td);letter-spacing:1px;text-transform:uppercase;margin-top:3px;}
+.ms-detail-desc{font-size:13px;line-height:1.8;color:var(--tl);margin:14px 0;font-family:'Hind Siliguri',sans-serif;padding:14px;background:rgba(255,255,255,0.03);border-radius:14px;border:1px solid rgba(255,255,255,0.06);}
+.ms-detail-desc.bangla{font-family:'Noto Sans Bengali','Hind Siliguri',sans-serif;}
+/* Sadhana start date in milestones */
+.ms-sadhana-bar{display:flex;align-items:center;gap:8px;margin-bottom:16px;padding:10px 14px;background:rgba(74,144,226,0.06);border:1px solid rgba(74,144,226,0.15);border-radius:14px;}
+.ms-sadhana-bar label{font-size:11px;color:var(--td);white-space:nowrap;}
+.ms-sadhana-bar input{flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(74,144,226,0.25);border-radius:8px;padding:6px 10px;color:var(--tl);font-size:12px;font-family:'Inter',sans-serif;}
+.ms-sadhana-bar input::-webkit-calendar-picker-indicator{filter:invert(0.6);}
+.ms-sadhana-since{font-size:11px;color:var(--td);text-align:center;margin-bottom:14px;letter-spacing:1px;}
+
 /* Divine celebration particles in jap area */
 .divine-particle{position:absolute;pointer-events:none;z-index:60;opacity:0;}
 .divine-particle.feather{font-size:20px;animation:divine-float 3s ease-out forwards;}
@@ -706,6 +773,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .vel-meta{font-size:10px;color:var(--td);margin-top:2px;}
 .vel-time{font-size:11px;color:var(--green);font-weight:500;padding:2px 8px;background:rgba(46,204,113,0.1);border-radius:8px;white-space:nowrap;}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </head>
 <body>
 <!-- LOADING -->
@@ -755,7 +823,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   </button>
 
   <button class="nb" onclick="sv('vms',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3c-1.5 2-4 4-6 4.5C7 10 9.5 12 12 12c2.5 0 5-2 6-4.5C16 8 13.5 5 12 3z"/><path d="M12 12c-2 2.5-5 4-7 4.5C6.5 19 9 21 12 21s5.5-2 7-4.5C17 16 14 14.5 12 12z"/><path d="M12 3v18"/><path d="M8 21c0-2 1.5-3.5 4-5"/><path d="M16 21c0-2-1.5-3.5-4-5"/></svg>
     Milestones
   </button>
   <button class="nb" onclick="sv('vs',this)">
@@ -1075,9 +1143,20 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 
 <!-- MILESTONES VIEW — dedicated tab -->
 <div class="view" id="vms">
-  <div class="vt">🏆 Milestones</div>
-  <div style="text-align:center;padding:40px 20px;color:var(--td);font-size:14px">
-    Coming soon — will be rebuilt from scratch 🙏
+  <div class="vt">🪷 Milestones</div>
+  <div class="ms-toggle-wrap">
+    <button class="ms-toggle-btn active" id="msLangHi" onclick="setMsLang('hi')">हिंग्लिश</button>
+    <button class="ms-toggle-btn" id="msLangBn" onclick="setMsLang('bn')">বাংলা</button>
+  </div>
+  <div class="ms-sadhana-bar">
+    <label>🙏 Journey Start:</label>
+    <input type="date" id="msSadhanaStart" onchange="saveSadhanaStartDate(this.value);renderMilestonesTab();">
+  </div>
+  <div class="ms-sadhana-since" id="msSadhanaSince"></div>
+  <div id="msContent"></div>
+  <!-- Detail bottom sheet -->
+  <div class="ms-detail-overlay" id="msDetailOverlay" onclick="if(event.target===this)closeMsDetail()">
+    <div class="ms-detail-sheet" id="msDetailSheet"></div>
   </div>
 </div>
 
@@ -2404,7 +2483,7 @@ function sv(id, btn) {
   if (id === 'vst') renderSt();
   if (id === 'v28') { u28(); render28Dots(get28Pos()); }
   else { App.flush28TimeToHistory(); }
-  if (id === 'vms') {} // milestones removed
+  if (id === 'vms') { renderMilestonesTab(); }
   if (id === 'vset') {
     if (App.S.dt) document.getElementById('dtIn').value = App.S.dt;
     if (App.S.lt) document.getElementById('ltIn').value = App.S.lt;
@@ -2958,9 +3037,275 @@ function renderVelocityTracker() { /* removed */ }
 // ═══════════════════════════════════════════════
 // RENDER MILESTONES TAB
 // ═══════════════════════════════════════════════
-function renderMilestonesTab() { /* removed */ }
+function renderMilestonesTab() {
+  const el = document.getElementById('msContent');
+  if (!el) return;
+  const hist = App.S.history || {};
+  const histRV = App.S.historyRV || {};
+  const rawTot = Object.values(hist).reduce((a,b)=>a+b,0) + Object.values(histRV).reduce((a,b)=>a+b,0);
+  const deduct = App.S.nameJapDeduct || 0;
+  const total = Math.max(0, rawTot - deduct);
+  const lang = window._msLang || 'hi';
 
-function renderLakhGati2() { /* removed */ }
+  // Calculate 7-day average
+  const today = new Date();
+  let sum7 = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const k = d.toISOString().slice(0,10);
+    sum7 += (hist[k]||0) + (histRV[k]||0);
+  }
+  const avg7 = sum7 / 7;
+
+  // Sadhana start date
+  const startInput = document.getElementById('msSadhanaStart');
+  const saved = localStorage.getItem('rjap_sadhana_start');
+  if (saved && startInput) startInput.value = saved;
+  const sinceEl = document.getElementById('msSadhanaSince');
+  if (sinceEl && saved) {
+    const diff = Date.now() - new Date(saved).getTime();
+    const days = Math.floor(diff/86400000);
+    const yrs = Math.floor(days/365), rem = days%365, mos = Math.floor(rem/30);
+    let s = '🙏 ';
+    if (yrs>0) s += yrs + ' year'+(yrs>1?'s':'')+' ';
+    if (mos>0) s += mos + ' month'+(mos>1?'s':'')+' ';
+    s += (rem%30) + ' days of Sadhana';
+    sinceEl.textContent = s;
+  }
+
+  // Build lakh milestones (1L to 130L)
+  const lakhMs = [];
+  const keyLakhs = [1,2,3,5,10,20,50];
+  for (let l=1; l<=130; l++) {
+    const count = l*100000;
+    const isKey = keyLakhs.includes(l);
+    const isMillion = l >= 10;
+    let tier = 'bronze';
+    if (l >= 10) tier = 'gold';
+    else if (l >= 1 && l < 10) tier = (l<=1?'bronze': l<=5?'silver':'silver');
+    if (l <= 1) tier = 'bronze';
+    else if (l <= 5) tier = 'silver';
+    else tier = 'gold';
+    lakhMs.push({count, label: l+' Lakh', tier, isKey, isMillion: l>=10});
+  }
+
+  // Predict date
+  function predictDate(remaining) {
+    if (avg7 <= 0) return null;
+    const daysNeeded = Math.ceil(remaining / avg7);
+    const d = new Date(); d.setDate(d.getDate() + daysNeeded);
+    return d.toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'});
+  }
+
+  let out = '';
+
+  // ─── LAKH MILESTONES ───
+  out += '<div class="ms-phase-title">📿 Lakh Milestones</div>';
+  out += '<div class="ms-phase-sub">10K → 1 CRORE JOURNEY</div>';
+
+  // Key lakhs as full cards
+  const keyLakhData = lakhMs.filter(m => m.isKey || m.isMillion);
+  keyLakhData.forEach(m => {
+    if (m.count >= CRORE) return; // skip crore+, handled below
+    const pct = Math.min(100, (total/m.count)*100);
+    const achieved = total >= m.count;
+    const remaining = Math.max(0, m.count - total);
+    const pred = !achieved ? predictDate(remaining) : null;
+    const tierClass = m.tier;
+    const millionClass = m.isMillion ? ' million' : '';
+    out += '<div class="ms-card tier-'+tierClass+(achieved?' achieved':' locked')+millionClass+'" onclick="openMsDetail(\'lakh\','+m.count+','+pct.toFixed(1)+','+achieved+')">';
+    out += '<div class="ms-card-header">';
+    out += '<span class="ms-icon">'+(achieved?'👑':'📿')+'</span>';
+    out += '<div><div class="ms-label">'+m.label+'</div></div>';
+    out += '<span class="ms-count-label">'+formatMsCount(m.count)+'</span>';
+    out += '</div>';
+    if (achieved) {
+      out += '<div class="ms-badge achieved">✓ ACHIEVED</div>';
+    } else if (pred) {
+      out += '<div class="ms-badge prediction">⏳ Estimated: '+pred+'</div>';
+    } else if (!achieved) {
+      out += '<div class="ms-badge locked">🙏 Keep chanting to see prediction</div>';
+    }
+    out += '<div class="ms-pct">'+pct.toFixed(1)+'% — '+formatMsCount(total)+' / '+formatMsCount(m.count)+'</div>';
+    out += '<div class="ms-progress-wrap"><div class="ms-progress-fill '+tierClass+'" style="width:'+pct+'%"></div></div>';
+    out += '</div>';
+  });
+
+  // Grid for remaining lakhs
+  const otherLakhs = lakhMs.filter(m => !m.isKey && !m.isMillion && m.count < CRORE);
+  if (otherLakhs.length) {
+    out += '<div class="ms-lakh-grid">';
+    otherLakhs.forEach(m => {
+      const pct = Math.min(100, (total/m.count)*100);
+      const achieved = total >= m.count;
+      out += '<div class="ms-lakh-card'+(achieved?' achieved':'')+'" onclick="openMsDetail(\'lakh\','+m.count+','+pct.toFixed(1)+','+achieved+')">';
+      out += '<div class="ms-lakh-label">'+(achieved?'✓ ':'')+m.label+'</div>';
+      out += '<div class="ms-lakh-pct">'+pct.toFixed(1)+'%</div>';
+      out += '<div class="ms-progress-wrap"><div class="ms-progress-fill '+(achieved?'gold':'bronze')+'" style="width:'+pct+'%"></div></div>';
+      out += '</div>';
+    });
+    out += '</div>';
+  }
+
+  out += '<div class="ms-section-sep"></div>';
+
+  // ─── SPIRITUAL CRORE MILESTONES ───
+  PHASES.forEach(phase => {
+    out += '<div class="ms-phase-title">'+phase.name+'</div>';
+    out += '<div class="ms-phase-sub">'+phase.sub+'</div>';
+    SPIRITUAL_MILESTONES.filter(sm => {
+      const crNum = sm.count/CRORE;
+      return crNum >= phase.range[0] && crNum <= phase.range[1];
+    }).forEach(sm => {
+      const pct = Math.min(100, (total/sm.count)*100);
+      const achieved = total >= sm.count;
+      const remaining = Math.max(0, sm.count - total);
+      const pred = !achieved ? predictDate(remaining) : null;
+      const crNum = sm.count / CRORE;
+      const isBig = crNum >= 10;
+      const descHi = CRORE_DESCS_HI[crNum] || sm.desc;
+      const descBn = CRORE_DESCS_BN[crNum] || '';
+      const desc = lang === 'bn' && descBn ? descBn : descHi;
+      out += '<div class="ms-card tier-saffron'+(achieved?' achieved':' locked')+(isBig?' million':'')+'" onclick="openMsDetail(\'crore\','+sm.count+','+pct.toFixed(1)+','+achieved+')">';
+      out += '<div class="ms-card-header">';
+      out += '<span class="ms-icon">'+sm.icon+'</span>';
+      out += '<div><div class="ms-label">'+crNum+' Crore</div>';
+      out += '<div class="ms-eng">'+sm.eng+'</div></div>';
+      out += '<span class="ms-count-label">'+sm.tag+'</span>';
+      out += '</div>';
+      out += '<div class="ms-desc'+(lang==='bn'?' bangla':'')+'">'+desc+'</div>';
+      if (achieved) {
+        out += '<div class="ms-badge achieved">✓ ACHIEVED</div>';
+      } else if (pred) {
+        out += '<div class="ms-badge prediction">⏳ Estimated: '+pred+'</div>';
+      } else {
+        out += '<div class="ms-badge locked">🙏 Keep chanting to see prediction</div>';
+      }
+      out += '<div class="ms-pct">'+pct.toFixed(1)+'% — '+formatMsCount(total)+' / '+formatMsCount(sm.count)+'</div>';
+      out += '<div class="ms-progress-wrap"><div class="ms-progress-fill saffron" style="width:'+pct+'%"></div></div>';
+      out += '</div>';
+    });
+  });
+
+  el.innerHTML = out;
+}
+
+// ─── CRORE DESCRIPTIONS ───
+const CRORE_DESCS_HI = {
+  1: 'Tanu Shuddhi: Sharir puri tarah nishpaap aur pavitra ho jata hai. Rajogun aur Tamogun ka nash hota hai, aur har samay Shuddh Satogun bana rehta hai. Har samay Bhagwan ka bhajan hota he. Bimariyon ke \'paap beej\' (root causes) khatam ho jate hain. Agar koi rog hai bhi, toh use sehne ki taqat mil jati hai. Sapne mein devta, rishi-muni aur sant, bhakta aakar baatein karte hain.',
+  2: 'Dhan (Wealth): Dhan ka abhaav (lack of money) khatam ho jata hai. Sabse badi baat ye hai ki insan ke andar se ameer banne ki chah (desire) hi mit jati hai. Bhagwan do tarah se madad karte hain—ya toh desire hata dete hain, ya fir bina maange itna dhan dete hain ki chah khatam ho jaye. Jaise nadiyaan apne aap samundar mein milti hain, saara vaibhav sadhak ko gher leta hai. Return to home from abroad.',
+  3: 'Mental Purity: Antahkaran param pavitra hota hai. Jo buri aadatein (kaam, krodh) pehle \'asadhy\' (impossible) lagti thi, wo aasaan ho jati hain. Pura sansaar sadhak ko sage bhai ki tarah pyar karne lagta hai.',
+  4: 'Sukha Sthan: Hriday mein Bhagvadanand (Divine Bliss) prakat hota hai. Stability: Maan-apmaan ya dukh-sukh ka hriday par koi asar nahi padta. Self-Realization: Bina shastra padhe hi \'Nityatva Bodh\' ho jata hai ki \'Main nitya hoon, ye sharir anitya hai\'.',
+  5: 'Divine Knowledge: Vidya ka prakaash hota hai. Sadhak ki vaani se shastra nikalne lagte hain. Material Success: Agar koi worldly cheez chahiye (putra, lambi aayu, ya dushman par vijay), toh wo turant mil jati hai.',
+  6: 'Victory over Enemies: Kaam, krodh, lobh, moh, mad, aur matsarya par puri vijay. Healing: \'Dushadhya\' (incurable) rog bhi sankalp se samool vinash ho jate hain.',
+  7: 'Purity from Lust: Duniya ki koi bhi apsara ya kaamini use mohit nahi kar sakti. Direct Interaction: Narad Ji aur Sanakadi jaise mahabhagwat prakat mein milkar baatein karte hain.',
+  8: 'No Fear of Death: Mritiyu ka bhay khatam. Sadhak hamesha \'Atma-Singhasan\' par viraajman rehta hai.',
+  9: 'Sagun Sakshatkar: Jiska naam japa (Ram, Radha, Shiv), unka sakhshat darshan hota hai. Satyavakta: Sadhak jo bolega wahi hoga. Uska kalyan ho jayega.',
+  10: 'Karma Burn: Saare sanchit aur prarabdha karma bhasm ho jate hain. No Rebirth: Ab dubara janm nahi lena padega. Hriday mein itna anand hota hai ki uska varnan nahi ho sakta.',
+  11: '11 Crore: Gyan, bhakti aur yog ki saari bhumikaayein aur siddhiyaan haazir ho jati hain. Gokul, Ayodhya, Kashi ki leelaon mein pravesh milta hai.',
+  12: '12 Crore: Bhagwan bhakt ke adheen ho jate hain aur uske piche-piche dolte hain.',
+  13: '13 Crore: Sadhak kisi bhi paapi insan ko \'Moksha\' dila sakta hai.'
+};
+
+const CRORE_DESCS_BN = {
+  1: 'তনু শুদ্ধি: শরীর পুরোপুরি নিষ্পাপ ও পবিত্র হয়ে যায়। রজোগুণ ও তমোগুণ নাশ হয় এবং সর্বদা শুদ্ধ সত্যগুণ বজায় থাকে। সব সময় ভগবানের ভজন হতে থাকে। রোগের \'পাপ বীজ\' (মূল কারণ) খতম হয়ে যায়। যদি কোনো রোগ থাকেও, তবে তা সহ্য করার শক্তি পাওয়া যায়। স্বপ্নে দেবতা, ঋষি-মুনি এবং সন্ত-ভক্তরা এসে কথা বলেন।',
+  2: 'ধন (সম্পদ): ধনের অভাব খতম হয়ে যায়। সবচেয়ে বড় কথা হলো মানুষের ভিতর থেকে ধনী হওয়ার তৃষ্ণা (ইচ্ছা) মিটে যায়। ভগবান দুইভাবে সাহায্য করেন—হয় ইচ্ছা সরিয়ে দেন, না হয় না চাইতেই এত ধন দেন যে ইচ্ছা শেষ হয়ে যায়। যেমন নদী নিজে থেকেই সমুদ্রে গিয়ে মেশে, তেমনই সমস্ত বৈভব সাধককে ঘিরে ধরে। বিদেশ থেকে স্বদেশে প্রত্যাবর্তন।',
+  3: 'মানসিক পবিত্রতা: অন্তঃকরণ পরম পবিত্র হয়। যে খারাপ অভ্যাসগুলো (কাম, ক্রোধ) আগে \'অসাধ্য\' (অসম্ভব) মনে হতো, তা সহজ হয়ে যায়। সারা পৃথিবী সাধককে নিজের আপন ভাইয়ের মতো ভালোবাসতে শুরু করে।',
+  4: 'সুখ স্থান: হৃদয়ে ভগবদানন্দ (দিব্য আনন্দ) প্রকট হয়। স্থায়িত্ব: মান-অপমান বা সুখ-দুঃখের হৃদয়ের ওপর কোনো প্রভাব পড়ে না। আত্ম-উপলব্ধি: শাস্ত্র না পড়েই \'নিত্যত্ব বোধ\' হয়ে যায় যে \'আমি নিত্য, এই শরীর অনিত্য\'।',
+  5: 'দিব্য জ্ঞান: বিদ্যার প্রকাশ ঘটে। সাধকের বাণী থেকে শাস্ত্র নির্গত হতে থাকে। জাগতিক সাফল্য: যদি কোনো পার্থিব বস্তু (পুত্র, দীর্ঘ আয়ু, বা শত্রুর ওপর বিজয়) প্রয়োজন হয়, তবে তা তৎক্ষণাৎ মিলে যায়।',
+  6: 'শত্রুর ওপর বিজয়: কাম, ক্রোধ, লোভ, মোহ, মদ এবং মাৎসর্যের ওপর পূর্ণ বিজয়। নিরাময়: \'দুসাধ্য\' (অসাধ্য) রোগও সংকল্পের মাধ্যমে সমূলে বিনাশ হয়ে যায়।',
+  7: 'কামনাবাসনা থেকে মুক্তি: দুনিয়ার কোনো অপ্সরা বা কামিনী তাকে মোহিত করতে পারে না। সরাসরি আলাপচারিতা: নারদ জী এবং সনকাদির মতো মহাভাগবতরা সশরীরে এসে কথা বলেন।',
+  8: 'মৃত্যুর ভয় নেই: মৃত্যুর ভয় শেষ হয়ে যায়। সাধক সর্বদা \'আত্ম-সিংহাসনে\' বিরাজমান থাকেন।',
+  9: 'সগুণ সাক্ষাৎকার: যাঁর নাম জপ করা হয় (রাম, রাধা, শিব), তাঁর সাক্ষাৎ দর্শন মেলে। সত্যবক্তা: সাধক যা বলবেন তাই হবে। তার কল্যাণ হয়ে যাবে।',
+  10: 'কর্ম দহন: সমস্ত সঞ্চিত এবং প্রারব্ধ কর্ম ভস্ম হয়ে যায়। পুনর্জন্ম রোধ: আর দ্বিতীয়বার জন্ম নিতে হবে না। হৃদয়ে এত আনন্দ হয় যে তার বর্ণনা করা সম্ভব নয়।',
+  11: '১১ কোটি: জ্ঞান, ভক্তি ও যোগের সমস্ত ভূমিকা ও সিদ্ধি উপস্থিত হয়। গোকুল, অযোধ্যা, কাশীর লীলায় প্রবেশাধিকার মেলে।',
+  12: '১২ কোটি: ভগবান ভক্তের অধীন হয়ে যান এবং তার পিছু পিছু ঘোরেন।',
+  13: '১৩ কোটি: সাধক যেকোনো পাপী মানুষকেও \'মোক্ষ\' পাইয়ে দিতে পারেন।'
+};
+
+window._msLang = 'hi';
+function setMsLang(lang) {
+  window._msLang = lang;
+  document.getElementById('msLangHi').classList.toggle('active', lang==='hi');
+  document.getElementById('msLangBn').classList.toggle('active', lang==='bn');
+  renderMilestonesTab();
+}
+
+function openMsDetail(type, count, pct, achieved) {
+  const sheet = document.getElementById('msDetailSheet');
+  const overlay = document.getElementById('msDetailOverlay');
+  if (!sheet || !overlay) return;
+  const lang = window._msLang || 'hi';
+  const hist = App.S.history || {};
+  const histRV = App.S.historyRV || {};
+  const rawTot = Object.values(hist).reduce((a,b)=>a+b,0) + Object.values(histRV).reduce((a,b)=>a+b,0);
+  const total = Math.max(0, rawTot - (App.S.nameJapDeduct||0));
+
+  let icon='📿', title='', eng='', desc='', descBn='';
+  if (type === 'crore') {
+    const sm = SPIRITUAL_MILESTONES.find(s => s.count === count);
+    if (sm) { icon=sm.icon; title=(count/CRORE)+' Crore — '+sm.label; eng=sm.eng; desc=CRORE_DESCS_HI[count/CRORE]||sm.desc; descBn=CRORE_DESCS_BN[count/CRORE]||''; }
+  } else {
+    const l = count/100000;
+    icon = achieved ? '👑' : '📿';
+    title = l + ' Lakh Jap';
+    eng = formatMsCount(count) + ' completed';
+    desc = '';
+  }
+
+  // Total days calculation
+  const startDate = localStorage.getItem('rjap_sadhana_start');
+  let totalDays = '—';
+  if (startDate) {
+    const diff = Date.now() - new Date(startDate).getTime();
+    totalDays = Math.floor(diff/86400000) + ' days';
+  }
+
+  // Peak day
+  const allHist = {...hist};
+  Object.keys(histRV).forEach(k => { allHist[k] = (allHist[k]||0) + (histRV[k]||0); });
+  let peakDay = '—', peakVal = 0;
+  Object.entries(allHist).forEach(([k,v]) => {
+    if (v > peakVal) { peakVal = v; peakDay = k; }
+  });
+  if (peakVal > 0) {
+    peakDay = new Date(peakDay).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) + ' ('+peakVal.toLocaleString('en-IN')+' jap)';
+  }
+
+  const displayDesc = (lang==='bn' && descBn) ? descBn : desc;
+
+  let h = '<button class="ms-detail-close" onclick="closeMsDetail()">✕ Close</button>';
+  h += '<div class="ms-detail-icon">'+icon+'</div>';
+  h += '<div class="ms-detail-title">'+title+'</div>';
+  h += '<div class="ms-detail-eng">'+eng+'</div>';
+  if (achieved) {
+    h += '<div class="ms-detail-stamp">✦ ACHIEVED ✦</div>';
+  } else {
+    h += '<div class="ms-detail-stamp" style="color:var(--td);font-size:14px">'+pct+'% complete</div>';
+  }
+  h += '<div class="ms-detail-stats">';
+  h += '<div class="ms-detail-stat"><div class="val">'+totalDays+'</div><div class="lbl">Journey Duration</div></div>';
+  h += '<div class="ms-detail-stat"><div class="val">'+peakDay.split(' (')[0]+'</div><div class="lbl">Peak Day</div></div>';
+  h += '<div class="ms-detail-stat"><div class="val">'+formatMsCount(total)+'</div><div class="lbl">Total Jap</div></div>';
+  h += '<div class="ms-detail-stat"><div class="val">'+pct+'%</div><div class="lbl">Progress</div></div>';
+  h += '</div>';
+  if (displayDesc) {
+    h += '<div class="ms-detail-desc'+(lang==='bn'?' bangla':'')+'">'+displayDesc+'</div>';
+  }
+  sheet.innerHTML = h;
+  overlay.classList.add('show');
+
+  // Fire confetti for achieved milestones
+  if (achieved && typeof confetti === 'function') {
+    confetti({particleCount:80, spread:70, colors:['#FFD700','#FF9933','#FFA500'], origin:{y:0.7}});
+  }
+}
+
+function closeMsDetail() {
+  document.getElementById('msDetailOverlay').classList.remove('show');
+}
+
+function renderLakhGati2() { renderMilestonesTab(); }
 
 </script>
 <script>
@@ -5500,7 +5845,7 @@ function formatDuration(ms) {
   return mins + 'm';
 }
 
-function renderLakhGati() { /* removed */ }
+function renderLakhGati() { renderMilestonesTab(); }
 
 function saveSadhanaStartDate(val) {
   if (val) {
@@ -5542,7 +5887,7 @@ function updateSadhanaSince() {
 }
 
 
-function renderMsView() { /* removed */ }
+function renderMsView() { renderMilestonesTab(); }
 
 
 </script>

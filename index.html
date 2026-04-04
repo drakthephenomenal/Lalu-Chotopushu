@@ -1686,6 +1686,12 @@ const App = {
       }
     } catch(e) {}
 
+    // CRITICAL FIX: Re-set tk to today AFTER restoring state from IDB/localStorage
+    // Object.assign overwrites tk with the stored (possibly stale) date,
+    // which caused malaLog from yesterday to survive past midnight.
+    this.S.tk = this.getTk();
+
+
     if (!this.S.history[this.S.tk]) this.S.history[this.S.tk] = 0;
     if (!this.S.h28[this.S.tk]) this.S.h28[this.S.tk] = 0;
     if (!this.S.stotrams) this.S.stotrams = {};
@@ -3208,7 +3214,15 @@ function fbApplyRemote(d) {
   if (d.dtRV !== undefined) App.S.dtRV = d.dtRV;
   if (d.ltRV !== undefined) App.S.ltRV = d.ltRV;
   if (d.nameJapDeductRV !== undefined) App.S.nameJapDeductRV = d.nameJapDeductRV;
-  if (d.malaLogRV) App.S.malaLogRV = JSON.parse(JSON.stringify(d.malaLogRV || []));
+  // Only apply malaLogRV from Firebase if it belongs to today AND local today has RV jap
+  if (d.malaLogRV) {
+    const localTodayJapRV = App.S.historyRV[App.S.tk] || 0;
+    if (localTodayJapRV > 0) {
+      App.S.malaLogRV = JSON.parse(JSON.stringify(d.malaLogRV || []));
+    } else {
+      App.S.malaLogRV = [];
+    }
+  }
   if (!App.S.historyRV) App.S.historyRV = {};
   if (!App.S.timerHistoryRV) App.S.timerHistoryRV = {};
   if (!App.S.historyRV[App.S.tk]) App.S.historyRV[App.S.tk] = 0;

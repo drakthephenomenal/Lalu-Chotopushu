@@ -2948,68 +2948,7 @@ function spawnDivineCelebration() {
 // ═══════════════════════════════════════════════
 // VELOCITY TRACKER
 // ═══════════════════════════════════════════════
-function renderVelocityTracker() { /* removed */ });
-    }
-  }
-  
-  // 1 Lakh milestones
-  for (let i = 1; i <= Math.floor(tot / 100000); i++) {
-    const c = i * 100000;
-    if (data.reached[c]) {
-      allMs.push({ count: c, label: i + 'L', date: data.reached[c], type: 'lakh', icon: '📿' });
-    }
-  }
-  
-  // Crore milestones
-  SPIRITUAL_MILESTONES.forEach(sm => {
-    if (data.reached[sm.count]) {
-      allMs.push({ count: sm.count, label: (sm.count/CRORE) + 'Cr', date: data.reached[sm.count], type: 'crore', icon: sm.icon });
-    }
-  });
-  
-  // Sort by count descending
-  allMs.sort((a, b) => b.count - a.count);
-  
-  if (allMs.length === 0) {
-    el.innerHTML = '<div style="font-size:11px;color:var(--td);text-align:center;padding:12px">Keep chanting to see your velocity! 🙏</div>';
-    return;
-  }
-  
-  // Show latest 30
-  const visible = allMs.slice(0, 30);
-  let html = '';
-  visible.forEach((ms, idx) => {
-    const d = new Date(ms.date);
-    const dateStr = d.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'});
-    
-    // Find previous milestone in same category for velocity
-    let durationStr = '—';
-    const prevMs = allMs.find(m => m.count < ms.count && m.type === ms.type);
-    if (prevMs) {
-      const diff = new Date(ms.date).getTime() - new Date(prevMs.date).getTime();
-      durationStr = formatDuration(diff);
-    } else {
-      const startStr = localStorage.getItem('rjap_sadhana_start');
-      if (startStr) {
-        const diff = new Date(ms.date).getTime() - new Date(startStr).getTime();
-        durationStr = formatDuration(diff);
-      }
-    }
-    
-    const isHighlight = ms.type === 'lakh' || ms.type === 'crore';
-    html += '<div class="vel-item' + (isHighlight ? ' highlight' : '') + '">' +
-      '<div class="vel-icon">' + ms.icon + '</div>' +
-      '<div class="vel-info">' +
-        '<div class="vel-name">' + formatMsCount(ms.count) + ' Jap</div>' +
-        '<div class="vel-meta">📅 ' + dateStr + '</div>' +
-      '</div>' +
-      '<div class="vel-time">⏱ ' + durationStr + '</div>' +
-    '</div>';
-  });
-  
-  el.innerHTML = html;
-}
-
+function renderVelocityTracker() { /* removed */ }
 // ═══════════════════════════════════════════════
 // RENDER MILESTONES TAB
 // ═══════════════════════════════════════════════
@@ -3401,68 +3340,7 @@ function spawnDivineCelebration() {
 // ═══════════════════════════════════════════════
 // VELOCITY TRACKER
 // ═══════════════════════════════════════════════
-function renderVelocityTracker() { /* removed */ });
-    }
-  }
-  
-  // 1 Lakh milestones
-  for (let i = 1; i <= Math.floor(tot / 100000); i++) {
-    const c = i * 100000;
-    if (data.reached[c]) {
-      allMs.push({ count: c, label: i + 'L', date: data.reached[c], type: 'lakh', icon: '📿' });
-    }
-  }
-  
-  // Crore milestones
-  SPIRITUAL_MILESTONES.forEach(sm => {
-    if (data.reached[sm.count]) {
-      allMs.push({ count: sm.count, label: (sm.count/CRORE) + 'Cr', date: data.reached[sm.count], type: 'crore', icon: sm.icon });
-    }
-  });
-  
-  // Sort by count descending
-  allMs.sort((a, b) => b.count - a.count);
-  
-  if (allMs.length === 0) {
-    el.innerHTML = '<div style="font-size:11px;color:var(--td);text-align:center;padding:12px">Keep chanting to see your velocity! 🙏</div>';
-    return;
-  }
-  
-  // Show latest 30
-  const visible = allMs.slice(0, 30);
-  let html = '';
-  visible.forEach((ms, idx) => {
-    const d = new Date(ms.date);
-    const dateStr = d.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'});
-    
-    // Find previous milestone in same category for velocity
-    let durationStr = '—';
-    const prevMs = allMs.find(m => m.count < ms.count && m.type === ms.type);
-    if (prevMs) {
-      const diff = new Date(ms.date).getTime() - new Date(prevMs.date).getTime();
-      durationStr = formatDuration(diff);
-    } else {
-      const startStr = localStorage.getItem('rjap_sadhana_start');
-      if (startStr) {
-        const diff = new Date(ms.date).getTime() - new Date(startStr).getTime();
-        durationStr = formatDuration(diff);
-      }
-    }
-    
-    const isHighlight = ms.type === 'lakh' || ms.type === 'crore';
-    html += '<div class="vel-item' + (isHighlight ? ' highlight' : '') + '">' +
-      '<div class="vel-icon">' + ms.icon + '</div>' +
-      '<div class="vel-info">' +
-        '<div class="vel-name">' + formatMsCount(ms.count) + ' Jap</div>' +
-        '<div class="vel-meta">📅 ' + dateStr + '</div>' +
-      '</div>' +
-      '<div class="vel-time">⏱ ' + durationStr + '</div>' +
-    '</div>';
-  });
-  
-  el.innerHTML = html;
-}
-
+function renderVelocityTracker() { /* removed */ }
 // ═══════════════════════════════════════════════
 // RENDER MILESTONES TAB
 // ═══════════════════════════════════════════════
@@ -4525,68 +4403,7 @@ function spawnDivineCelebration() {
 // ═══════════════════════════════════════════════
 // VELOCITY TRACKER
 // ═══════════════════════════════════════════════
-function renderVelocityTracker() { /* removed */ });
-    }
-  }
-  
-  // 1 Lakh milestones
-  for (let i = 1; i <= Math.floor(tot / 100000); i++) {
-    const c = i * 100000;
-    if (data.reached[c]) {
-      allMs.push({ count: c, label: i + 'L', date: data.reached[c], type: 'lakh', icon: '📿' });
-    }
-  }
-  
-  // Crore milestones
-  SPIRITUAL_MILESTONES.forEach(sm => {
-    if (data.reached[sm.count]) {
-      allMs.push({ count: sm.count, label: (sm.count/CRORE) + 'Cr', date: data.reached[sm.count], type: 'crore', icon: sm.icon });
-    }
-  });
-  
-  // Sort by count descending
-  allMs.sort((a, b) => b.count - a.count);
-  
-  if (allMs.length === 0) {
-    el.innerHTML = '<div style="font-size:11px;color:var(--td);text-align:center;padding:12px">Keep chanting to see your velocity! 🙏</div>';
-    return;
-  }
-  
-  // Show latest 30
-  const visible = allMs.slice(0, 30);
-  let html = '';
-  visible.forEach((ms, idx) => {
-    const d = new Date(ms.date);
-    const dateStr = d.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'});
-    
-    // Find previous milestone in same category for velocity
-    let durationStr = '—';
-    const prevMs = allMs.find(m => m.count < ms.count && m.type === ms.type);
-    if (prevMs) {
-      const diff = new Date(ms.date).getTime() - new Date(prevMs.date).getTime();
-      durationStr = formatDuration(diff);
-    } else {
-      const startStr = localStorage.getItem('rjap_sadhana_start');
-      if (startStr) {
-        const diff = new Date(ms.date).getTime() - new Date(startStr).getTime();
-        durationStr = formatDuration(diff);
-      }
-    }
-    
-    const isHighlight = ms.type === 'lakh' || ms.type === 'crore';
-    html += '<div class="vel-item' + (isHighlight ? ' highlight' : '') + '">' +
-      '<div class="vel-icon">' + ms.icon + '</div>' +
-      '<div class="vel-info">' +
-        '<div class="vel-name">' + formatMsCount(ms.count) + ' Jap</div>' +
-        '<div class="vel-meta">📅 ' + dateStr + '</div>' +
-      '</div>' +
-      '<div class="vel-time">⏱ ' + durationStr + '</div>' +
-    '</div>';
-  });
-  
-  el.innerHTML = html;
-}
-
+function renderVelocityTracker() { /* removed */ }
 // ═══════════════════════════════════════════════
 // RENDER MILESTONES TAB
 // ═══════════════════════════════════════════════
@@ -5830,68 +5647,7 @@ function spawnDivineCelebration() {
 // ═══════════════════════════════════════════════
 // VELOCITY TRACKER
 // ═══════════════════════════════════════════════
-function renderVelocityTracker() { /* removed */ });
-    }
-  }
-  
-  // 1 Lakh milestones
-  for (let i = 1; i <= Math.floor(tot / 100000); i++) {
-    const c = i * 100000;
-    if (data.reached[c]) {
-      allMs.push({ count: c, label: i + 'L', date: data.reached[c], type: 'lakh', icon: '📿' });
-    }
-  }
-  
-  // Crore milestones
-  SPIRITUAL_MILESTONES.forEach(sm => {
-    if (data.reached[sm.count]) {
-      allMs.push({ count: sm.count, label: (sm.count/CRORE) + 'Cr', date: data.reached[sm.count], type: 'crore', icon: sm.icon });
-    }
-  });
-  
-  // Sort by count descending
-  allMs.sort((a, b) => b.count - a.count);
-  
-  if (allMs.length === 0) {
-    el.innerHTML = '<div style="font-size:11px;color:var(--td);text-align:center;padding:12px">Keep chanting to see your velocity! 🙏</div>';
-    return;
-  }
-  
-  // Show latest 30
-  const visible = allMs.slice(0, 30);
-  let html = '';
-  visible.forEach((ms, idx) => {
-    const d = new Date(ms.date);
-    const dateStr = d.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'2-digit'});
-    
-    // Find previous milestone in same category for velocity
-    let durationStr = '—';
-    const prevMs = allMs.find(m => m.count < ms.count && m.type === ms.type);
-    if (prevMs) {
-      const diff = new Date(ms.date).getTime() - new Date(prevMs.date).getTime();
-      durationStr = formatDuration(diff);
-    } else {
-      const startStr = localStorage.getItem('rjap_sadhana_start');
-      if (startStr) {
-        const diff = new Date(ms.date).getTime() - new Date(startStr).getTime();
-        durationStr = formatDuration(diff);
-      }
-    }
-    
-    const isHighlight = ms.type === 'lakh' || ms.type === 'crore';
-    html += '<div class="vel-item' + (isHighlight ? ' highlight' : '') + '">' +
-      '<div class="vel-icon">' + ms.icon + '</div>' +
-      '<div class="vel-info">' +
-        '<div class="vel-name">' + formatMsCount(ms.count) + ' Jap</div>' +
-        '<div class="vel-meta">📅 ' + dateStr + '</div>' +
-      '</div>' +
-      '<div class="vel-time">⏱ ' + durationStr + '</div>' +
-    '</div>';
-  });
-  
-  el.innerHTML = html;
-}
-
+function renderVelocityTracker() { /* removed */ }
 // ═══════════════════════════════════════════════
 // RENDER MILESTONES TAB
 // ═══════════════════════════════════════════════

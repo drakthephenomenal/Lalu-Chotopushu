@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v32';  // v32: Merge Brahmacharya into Jap Calendar + remove milestone sub-sections
+const CACHE = 'radha-jap-v33';  // v33: Fix renderVelocityTracker syntax error causing splash freeze
 
 const PRECACHE = [
   './index.html',

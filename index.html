@@ -244,6 +244,11 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .cc.tm{background:rgba(109,184,255,0.2);}
 .cc.occ{border-bottom:2px solid var(--gold);}
 .ccc{font-size:8px;color:var(--td);}
+
+/* Brahmacharya calendar cell coloring */
+.cc.bc-m{background:rgba(46,204,113,0.18);border-color:rgba(46,204,113,0.35);}
+.cc.bc-b{background:rgba(231,76,60,0.22);border-color:rgba(231,76,60,0.4);}
+.cc.bc-m .ccc{color:var(--tl);}.cc.bc-b .ccc{color:var(--tl);}
 .cco{font-size:7px;color:var(--gold);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 1px;}
 .cd{background:rgba(74,144,226,0.07);border:1px solid rgba(74,144,226,0.18);border-radius:14px;padding:14px;margin-top:12px;min-height:55px;}
 .cd h4{font-family:'EB Garamond',serif;font-size:15px;color:var(--a2);margin-bottom:6px;}
@@ -755,19 +760,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 
 <!-- NAV — 6 tabs (no separate Target) -->
 
-<!-- MILESTONE CELEBRATION OVERLAY -->
-<div class="ms-overlay" id="msOverlay">
-  <div class="ms-particles" id="msParticles"></div>
-  <div class="ms-icon" id="msIcon">✦</div>
-  <div class="ms-count" id="msCount">1 CRORE JAP COMPLETE</div>
-  <div class="ms-title" id="msTitle">Sharir ki Shuddhi</div>
-  <div class="ms-sthan" id="msSthan">Tanu Sthan</div>
-  <div class="ms-sub" id="msSub">BODY PURIFICATION</div>
-  <div class="ms-desc" id="msDesc" style="display:none"></div>
-  <div class="ms-author" id="msAuthor" style="display:none">— Shri Hit Premanand Ji Maharaj</div>
-  <div class="ms-badge-icon" id="msBadgeIcon">⭐</div>
-  <button class="ms-dismiss" onclick="dismissMilestone()">🙏 Jai Shri Radhe</button>
-</div>
+<!-- Milestones: removed, will rebuild -->
 
 <nav class="bnav">
   <button class="nb active" onclick="sv('vj',this)">
@@ -784,7 +777,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   </button>
   <button class="nb" onclick="sv('vb',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-    Brahma
+    B&C
   </button>
 
   <button class="nb" onclick="sv('vms',this)">
@@ -1029,50 +1022,37 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 
 <!-- BRAHMACHARYA VIEW -->
 <div class="view" id="vb">
-  <div class="vt">Brahmacharya</div>
+  <div class="vt">📅 Jap & Brahmacharya Calendar</div>
+
+  <!-- Brahmacharya Status Bar -->
   <div class="bsr">
     <div class="bsb g"><div class="bv" id="bcs">0</div><div class="bl">Current Streak</div></div>
     <div class="bsb g"><div class="bv" id="bbs">0</div><div class="bl">Best Streak</div></div>
     <div class="bsb r"><div class="bv" id="bbc">0</div><div class="bl">Total Breaks</div></div>
   </div>
-  <div style="margin-bottom:10px">
-    <div style="display:flex;justify-content:space-between;margin-bottom:7px">
-      <button class="cnb" onclick="cbm(-1)">‹</button>
-      <div class="cmy" id="bmy"></div>
-      <button class="cnb" onclick="cbm(1)">›</button>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:5px">
-      <div style="text-align:center;font-size:10px;color:var(--td)">Su</div><div style="text-align:center;font-size:10px;color:var(--td)">Mo</div>
-      <div style="text-align:center;font-size:10px;color:var(--td)">Tu</div><div style="text-align:center;font-size:10px;color:var(--td)">We</div>
-      <div style="text-align:center;font-size:10px;color:var(--td)">Th</div><div style="text-align:center;font-size:10px;color:var(--td)">Fr</div>
-      <div style="text-align:center;font-size:10px;color:var(--td)">Sa</div>
-    </div>
-    <div class="bcal" id="bcal"></div>
-  </div>
-  <div class="sc">
-    <h3>📊 Summary</h3>
-    <div class="n2s">
-      <div class="ns"><div class="nv" style="color:var(--green)" id="bmd">0</div><div class="nl">Maintained</div></div>
-      <div class="ns"><div class="nv" style="color:var(--red)" id="bbd">0</div><div class="nl">Broken Days</div></div>
-      <div class="ns"><div class="nv" style="color:var(--red)" id="btm">0</div><div class="nl">Total Count</div></div>
-      <div class="ns"><div class="nv" style="color:var(--a2)" id="bmp">0%</div><div class="nl">Success Rate</div></div>
-    </div>
+
+  <!-- Brahmacharya Summary Grid -->
+  <div class="n2s" style="margin-bottom:14px">
+    <div class="ns"><div class="nv" style="color:var(--green)" id="bmd">0</div><div class="nl">Maintained</div></div>
+    <div class="ns"><div class="nv" style="color:var(--red)" id="bbd">0</div><div class="nl">Broken Days</div></div>
+    <div class="ns"><div class="nv" style="color:var(--red)" id="btm">0</div><div class="nl">Total Count</div></div>
+    <div class="ns"><div class="nv" style="color:var(--a2)" id="bmp">0%</div><div class="nl">Success Rate</div></div>
   </div>
 
-  <!-- Jap Calendar (moved here) -->
-  <div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(74,144,226,0.15)">
-    <div class="vt" style="font-size:16px;margin-bottom:8px">📅 Jap Calendar</div>
-    <div class="ch">
-      <button class="cnb" onclick="chm(-1)">‹</button>
-      <div class="cmy" id="cmy"></div>
-      <button class="cnb" onclick="chm(1)">›</button>
-    </div>
-    <div class="cg" id="cg">
-      <div class="cdl">Sun</div><div class="cdl">Mon</div><div class="cdl">Tue</div>
-      <div class="cdl">Wed</div><div class="cdl">Thu</div><div class="cdl">Fri</div><div class="cdl">Sat</div>
-    </div>
-    <div style="padding:10px 14px 6px;font-size:11px;color:var(--td);text-align:center;letter-spacing:1px;">Tap a date to see details &amp; add occasion</div>
+  <!-- Unified Calendar -->
+  <div class="ch">
+    <button class="cnb" onclick="chm(-1)">&#8249;</button>
+    <div class="cmy" id="cmy"></div>
+    <button class="cnb" onclick="chm(1)">&#8250;</button>
   </div>
+  <div class="cg" id="cg">
+    <div class="cdl">Sun</div><div class="cdl">Mon</div><div class="cdl">Tue</div>
+    <div class="cdl">Wed</div><div class="cdl">Thu</div><div class="cdl">Fri</div><div class="cdl">Sat</div>
+  </div>
+  <div style="padding:6px 14px 4px;display:flex;justify-content:center;gap:14px;font-size:10px;color:var(--td)">
+    <span>🟢 Maintained</span><span>🔴 Broken</span><span>🟡 Occasion</span>
+  </div>
+  <div style="padding:4px 14px 6px;font-size:11px;color:var(--td);text-align:center;letter-spacing:1px;">Tap a date to see details</div>
 </div>
 
 
@@ -1103,27 +1083,28 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
         <button class="cdmo-occ-add" onclick="addOccasionFromSheet()">Add</button>
       </div>
     </div>
+    <!-- Brahmacharya Controls -->
+    <div class="cdmo-bc" id="cdmoBcSection" style="background:rgba(46,204,113,0.05);border:1px solid rgba(46,204,113,0.2);border-radius:14px;padding:13px 14px;margin-bottom:10px;">
+      <div style="font-size:10px;color:var(--green);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">🛡️ Brahmacharya Status</div>
+      <div id="cdmoBcStatus" style="font-size:13px;color:var(--tl);margin-bottom:10px">—</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="blb gb" id="cdmoBcMaint" onclick="sheetMarkBc('m')" style="flex:1;padding:10px;font-size:13px">✅ Mark Maintained</button>
+        <button class="blb rb2" id="cdmoBcBrk" onclick="sheetMarkBc('b')" style="flex:1;padding:10px;font-size:13px">❌ Mark Broken</button>
+      </div>
+      <div id="cdmoBcCntRow" style="display:none;align-items:center;gap:10px;margin-bottom:6px">
+        <label style="font-size:12px;color:var(--tl);flex:1">Break count:</label>
+        <input type="number" id="cdmoBcCnt" value="1" min="1" style="width:70px;background:rgba(0,0,0,0.3);border:1px solid rgba(231,76,60,0.3);border-radius:9px;padding:7px 11px;color:var(--tl);font-size:15px;text-align:center;font-family:'Inter',sans-serif;">
+      </div>
+    </div>
   </div>
 </div>
 
 <!-- MILESTONES VIEW — dedicated tab -->
 <div class="view" id="vms">
   <div class="vt">🏆 Milestones</div>
-  
-  <!-- Naam Jap ki Mahima -->
-  <div class="mahima-title">MILESTONES</div>
-  <div class="mahima-sub">Naam Jap ki Mahima</div>
-  <div class="mahima-attr">Shri Hit Premanand Ji Maharaj ke anusaar</div>
-  <div class="mahima-lifetime">
-    <div class="mahima-lifetime-lbl">LIFETIME JAP COUNT</div>
-    <div class="mahima-lifetime-count" id="mahimaCount2">0</div>
-    <div class="mahima-lifetime-sub" id="mahimaMsReached2">0/13 milestones reached</div>
+  <div style="text-align:center;padding:40px 20px;color:var(--td);font-size:14px">
+    Coming soon — will be rebuilt from scratch 🙏
   </div>
-  <div id="mahimaCards2"></div>
-  <div class="mahima-quote">"Zubaan se naam nahi chhutna chahiye, chahe uthte-baithte kuch bhi kar rahe ho."</div>
-  <div class="mahima-quote-attr">— Shri Hit Premanand Ji Maharaj</div>
-
-  <!-- Removed: Lakh Gati, Next Milestone, Velocity Tracker, Sadhana Journey -->
 </div>
 
 <!-- STATS VIEW — includes jap entry tools -->
@@ -1170,7 +1151,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   <!-- TODAY'S MALA SESSION LOG — collapsible -->
   <div class="cs-wrap" style="background:rgba(46,204,113,0.04);border:1px solid rgba(46,204,113,0.18)">
     <div class="cs-header" onclick="toggleCs('malaLogBody','malaLogChev')">
-      <h3 style="color:var(--green)">📿 Today's Mala Log <span id="malaLogCount" style="opacity:0.6;font-weight:400;font-size:11px"></span></h3>
+      <h3 style="color:var(--green)">📿 Today's Mala Log <span id="malaLogType" style="opacity:0.6;font-weight:400;font-size:10px;color:var(--gold)"></span> <span id="malaLogCount" style="opacity:0.6;font-weight:400;font-size:11px"></span></h3>
       <span class="cs-chevron" id="malaLogChev" style="color:var(--green)">▾</span>
     </div>
     <div class="cs-body open" id="malaLogBody">
@@ -1880,10 +1861,11 @@ const App = {
   },
 
   updateTimerToday() {
-    const th = this.getCurTimerHistory();
-    const todSec = (th[this.S.tk] || 0) +
-      (this.timerRunning ? (this.timerSeconds - this.timerSavedSeconds) : 0);
-    document.getElementById('timerToday').textContent = "Today's Jap Time: " + this.fmtTime(todSec);
+    const radhaTimeSec = (this.S.timerHistory[this.S.tk] || 0);
+    const rvTimeSec = (this.S.timerHistoryRV[this.S.tk] || 0);
+    const liveSec = this.timerRunning ? (this.timerSeconds - this.timerSavedSeconds) : 0;
+    const combinedSec = radhaTimeSec + rvTimeSec + liveSec;
+    document.getElementById('timerToday').textContent = "Today's Jap Time: " + this.fmtTime(combinedSec);
   },
 
   // ── Main UI Update ──
@@ -1997,7 +1979,6 @@ const App = {
     const lmcKey = isRV ? 'lmcRV' : 'lmc';
     if (nm > this[lmcKey]) { this[lmcKey] = nm; this.malaOk(); App.silentMonkBackup(); }
     this.ua();
-    checkMilestones(); // check milestones on BOTH jap types (combined total)
   },
 
   undo1() {
@@ -2299,6 +2280,7 @@ setInterval(() => {
   if (newTk !== App.S.tk) {
     App.S.tk = newTk;
     App.S.malaLog = [];
+    App.S.malaLogRV = [];
     if (!App.S.history[App.S.tk]) App.S.history[App.S.tk] = 0;
     if (!App.S.h28[App.S.tk]) App.S.h28[App.S.tk] = 0;
     if (!App.S.timerHistory[App.S.tk]) App.S.timerHistory[App.S.tk] = 0;
@@ -2400,7 +2382,7 @@ function switchJapMode(mode) {
   } else {
     App.lmc = Math.floor((App.S.history[App.S.tk]||0) / ms);
   }
-  App.save(); App.ua(); uStats();
+  App.save(); App.ua(); uStats(); renderMalaLog();
   toast(mode === 'rv' ? 'राधावल्लभ श्री हरिवंश 🙏' : 'राधा 🙏');
 }
 
@@ -2439,12 +2421,11 @@ function sv(id, btn) {
   document.getElementById(id).classList.add('active');
   if (btn) btn.classList.add('active');
   if (id === 'vs') uStats();
-  if (id === 'vb') { renderBcal(); renderCal(); }
+  if (id === 'vb') { renderCal(); }
   if (id === 'vst') renderSt();
   if (id === 'v28') { u28(); render28Dots(get28Pos()); }
   else { App.flush28TimeToHistory(); }
-  if (id === 'vs') renderMsView();
-  if (id === 'vms') renderMilestonesTab();
+  if (id === 'vms') {} // milestones removed
   if (id === 'vset') {
     if (App.S.dt) document.getElementById('dtIn').value = App.S.dt;
     if (App.S.lt) document.getElementById('ltIn').value = App.S.lt;
@@ -2501,23 +2482,27 @@ function toggleCs(bodyId, chevId) {
 function addManualJap() {
   const n = parseInt(document.getElementById('manualJapIn').value) || 0;
   if (n <= 0) { toast('Please enter a number > 0'); return; }
-  App.S.history[App.S.tk] = (App.S.history[App.S.tk] || 0) + n;
+  const isRV = App.S.japMode === 'rv';
+  if (isRV) { App.S.historyRV[App.S.tk] = (App.S.historyRV[App.S.tk] || 0) + n; }
+  else { App.S.history[App.S.tk] = (App.S.history[App.S.tk] || 0) + n; }
   App.ensureMalaWallStart();
   const nm = Math.floor(App.gTod() / (App.S.ms || 108));
-  if (nm > App.lmc) { App.lmc = nm; App.malaOk(); }
+  const lmcKey = isRV ? 'lmcRV' : 'lmc';
+  if (nm > App[lmcKey]) { App[lmcKey] = nm; App.malaOk(); }
   App.save(); App.ua(); fbDebouncedPush();
   document.getElementById('manualJapIn').value = '';
   document.getElementById('manualMalaPreview').textContent = '0';
   document.getElementById('manualTodayPreview').textContent = App.gTod();
   toast('Added ' + n + ' jap to today! Total: ' + App.gTod() + ' 🙏');
-  checkMilestones();
 }
 
 function addPrevJap() {
   const n = parseInt(document.getElementById('prevJapIn').value) || 0;
   if (n <= 0) { toast('Please enter a number > 0'); return; }
   const prevKey = 'prev_' + Date.now();
-  App.S.history[prevKey] = n;
+  const isRV = App.S.japMode === 'rv';
+  if (isRV) { App.S.historyRV[prevKey] = n; }
+  else { App.S.history[prevKey] = n; }
   App.save(); App.ua(); fbDebouncedPush();
   document.getElementById('prevJapIn').value = '';
   toast('Added ' + n.toLocaleString() + ' jap to lifetime! 🙏 Jai Radhe!');
@@ -2527,7 +2512,8 @@ function addPrevJap() {
 function addNameJapDeduct() {
   const n = parseInt(document.getElementById('nameJapDeductIn').value) || 0;
   if (n <= 0) { toast('Please enter a number > 0'); return; }
-  App.S.nameJapDeduct = (App.S.nameJapDeduct || 0) + n;
+  if (App.S.japMode === 'rv') { App.S.nameJapDeductRV = (App.S.nameJapDeductRV || 0) + n; }
+  else { App.S.nameJapDeduct = (App.S.nameJapDeduct || 0) + n; }
   App.save(); App.ua(); fbDebouncedPush();
   document.getElementById('nameJapDeductIn').value = '';
   document.getElementById('nameJapDeductPreview').textContent = '—';
@@ -2538,9 +2524,11 @@ function addNameJapDeduct() {
 function removeNameJapDeduct() {
   const n = parseInt(document.getElementById('nameJapRestoreIn').value) || 0;
   if (n <= 0) { toast('Please enter a number > 0'); return; }
-  const cur = App.S.nameJapDeduct || 0;
+  const isRV = App.S.japMode === 'rv';
+  const cur = isRV ? (App.S.nameJapDeductRV || 0) : (App.S.nameJapDeduct || 0);
   if (n > cur) { toast('Cannot restore more than currently deducted (' + cur.toLocaleString() + ')'); return; }
-  App.S.nameJapDeduct = cur - n;
+  if (isRV) { App.S.nameJapDeductRV = cur - n; }
+  else { App.S.nameJapDeduct = cur - n; }
   App.save(); App.ua(); fbDebouncedPush();
   document.getElementById('nameJapRestoreIn').value = '';
   document.getElementById('nameJapRestorePreview').textContent = '—';
@@ -2551,10 +2539,13 @@ function removeNameJapDeduct() {
 function deductTodayJap() {
   const n = parseInt(document.getElementById('deductTodayIn').value) || 0;
   if (n <= 0) { toast('Please enter a number > 0'); return; }
-  const cur = App.S.history[App.S.tk] || 0;
+  const isRV = App.S.japMode === 'rv';
+  const hist = isRV ? App.S.historyRV : App.S.history;
+  const cur = hist[App.S.tk] || 0;
   if (n > cur) { toast('Cannot deduct more than today\'s count (' + cur + ')'); return; }
-  App.S.history[App.S.tk] = cur - n;
-  App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
+  hist[App.S.tk] = cur - n;
+  const lmcKey = isRV ? 'lmcRV' : 'lmc';
+  App[lmcKey] = Math.floor(App.gTod() / (App.S.ms || 108));
   App.save(); App.ua(); fbDebouncedPush();
   document.getElementById('deductTodayIn').value = '';
   toast('Deducted ' + n + '. New total: ' + App.gTod() + ' 🙏');
@@ -2565,9 +2556,11 @@ function deductOtherJap() {
   const n = parseInt(document.getElementById('deductOtherIn').value) || 0;
   if (!date) { toast('Please select a date'); return; }
   if (n <= 0) { toast('Please enter a number > 0'); return; }
-  const cur = App.S.history[date] || 0;
+  const isRV = App.S.japMode === 'rv';
+  const hist = isRV ? App.S.historyRV : App.S.history;
+  const cur = hist[date] || 0;
   if (n > cur) { toast('Cannot deduct more than that day\'s count (' + cur + ')'); return; }
-  App.S.history[date] = cur - n;
+  hist[date] = cur - n;
   App.save(); App.ua(); fbDebouncedPush(); renderCal();
   document.getElementById('deductOtherIn').value = '';
   toast('Deducted ' + n + ' from ' + date + ' 🙏');
@@ -2578,7 +2571,9 @@ function addOtherDayJap() {
   const n = parseInt(document.getElementById('addJapOtherIn').value) || 0;
   if (!date) { toast('Please select a date'); return; }
   if (n <= 0) { toast('Please enter a number > 0'); return; }
-  App.S.history[date] = (App.S.history[date] || 0) + n;
+  const isRV = App.S.japMode === 'rv';
+  const hist = isRV ? App.S.historyRV : App.S.history;
+  hist[date] = (hist[date] || 0) + n;
   App.save(); App.ua(); fbDebouncedPush(); renderCal();
   document.getElementById('addJapOtherIn').value = '';
   document.getElementById('addJapOtherPreview').textContent = '—';
@@ -2595,7 +2590,8 @@ function _jtSecs(minId, secId) {
 function addJapTimeToday() {
   const secs = _jtSecs('jtAddTodayMin', 'jtAddTodaySec');
   if (secs <= 0) { toast('Please enter at least 1 minute'); return; }
-  App.S.timerHistory[App.S.tk] = (App.S.timerHistory[App.S.tk] || 0) + secs;
+  const th = App.getCurTimerHistory();
+  th[App.S.tk] = (th[App.S.tk] || 0) + secs;
   App.save(); App.ua(); fbDebouncedPush();
   document.getElementById('jtAddTodayMin').value = '';
   document.getElementById('jtAddTodaySec').value = '';
@@ -2609,7 +2605,8 @@ function addJapTimeOther() {
   const secs = _jtSecs('jtAddOtherMin', 'jtAddOtherSec');
   if (!date) { toast('Please select a date'); return; }
   if (secs <= 0) { toast('Please enter at least 1 minute'); return; }
-  App.S.timerHistory[date] = (App.S.timerHistory[date] || 0) + secs;
+  const th2 = App.getCurTimerHistory();
+  th2[date] = (th2[date] || 0) + secs;
   App.save(); App.ua(); fbDebouncedPush();
   document.getElementById('jtAddOtherMin').value = '';
   document.getElementById('jtAddOtherSec').value = '';
@@ -2622,9 +2619,10 @@ function addJapTimeOther() {
 function deductJapTimeToday() {
   const secs = _jtSecs('jtDedTodayMin', 'jtDedTodaySec');
   if (secs <= 0) { toast('Please enter at least 1 minute'); return; }
-  const cur = App.S.timerHistory[App.S.tk] || 0;
+  const th3 = App.getCurTimerHistory();
+  const cur = th3[App.S.tk] || 0;
   if (secs > cur) { toast('Cannot deduct more than today\'s time'); return; }
-  App.S.timerHistory[App.S.tk] = cur - secs;
+  th3[App.S.tk] = cur - secs;
   App.save(); App.ua(); fbDebouncedPush();
   document.getElementById('jtDedTodayMin').value = '';
   document.getElementById('jtDedTodaySec').value = '';
@@ -2638,9 +2636,10 @@ function deductJapTimeOther() {
   const secs = _jtSecs('jtDedOtherMin', 'jtDedOtherSec');
   if (!date) { toast('Please select a date'); return; }
   if (secs <= 0) { toast('Please enter at least 1 minute'); return; }
-  const cur = App.S.timerHistory[date] || 0;
+  const th4 = App.getCurTimerHistory();
+  const cur = th4[date] || 0;
   if (secs > cur) { toast('Cannot deduct more than that day\'s time (' + Math.floor(cur/60) + 'm)'); return; }
-  App.S.timerHistory[date] = cur - secs;
+  th4[date] = cur - secs;
   App.save(); App.ua(); fbDebouncedPush();
   document.getElementById('jtDedOtherMin').value = '';
   document.getElementById('jtDedOtherSec').value = '';
@@ -2740,12 +2739,15 @@ function uStats() {
 }
 
 function renderMalaLog() {
-  const log = [...(App.S.malaLog || []), ...(App.S.malaLogRV || [])];
+  const isRV = App.S.japMode === 'rv';
+  const log = isRV ? [...(App.S.malaLogRV || [])] : [...(App.S.malaLog || [])];
   const listEl = document.getElementById('malaLogList');
   const countEl = document.getElementById('malaLogCount');
   const avgEl = document.getElementById('malaLogAvg');
   if (!listEl) return;
   if (countEl) countEl.textContent = log.length > 0 ? '(' + log.length + ')' : '';
+  const typeEl = document.getElementById('malaLogType');
+  if (typeEl) typeEl.textContent = isRV ? '(राधावल्लभ)' : '(राधा)';
   if (log.length === 0) {
     listEl.innerHTML = '<div style="font-size:11px;color:var(--td);text-align:center;padding:6px 0">No malas completed yet today</div>';
     if (avgEl) avgEl.style.display = 'none';
@@ -4556,26 +4558,7 @@ const BRAHMA_START = '2026-03-16';
 let bcd = new Date();
 const MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-function renderBcal() {
-  const yr=bcd.getFullYear(),mo=bcd.getMonth();
-  document.getElementById('bmy').textContent = MN[mo]+' '+yr;
-  const g=document.getElementById('bcal'); g.innerHTML='';
-  const fd=new Date(yr,mo,1).getDay(),dim=new Date(yr,mo+1,0).getDate(),ts=App.getTk();
-  for(let i=0;i<fd;i++){const e=document.createElement('div');e.className='bcl e';g.appendChild(e);}
-  for(let d=1;d<=dim;d++){
-    const key=yr+'-'+String(mo+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    const en=App.S.brahma[key], isBroken=en&&en.status==='b';
-    const isActive=key>=BRAHMA_START&&key<=ts;
-    const c=document.createElement('div');
-    c.className='bcl '+(isActive?(isBroken?'b':'m'):'e');
-    if(key===ts)c.classList.add('tc');
-    c.innerHTML='<span style="font-size:11px">'+d+'</span>';
-    if(isBroken&&en.count>1)c.innerHTML+='<span style="font-size:8px;display:block">'+en.count+'x</span>';
-    if(isActive){c.style.cursor='pointer';(function(k,brk,cnt){c.onclick=function(){openBcDay(k,brk,cnt);};})(key,isBroken,en&&en.count||1);}
-    g.appendChild(c);
-  }
-  uBStats();
-}
+function renderBcal() { renderCal(); }
 function cbm(d){bcd.setMonth(bcd.getMonth()+d);renderBcal();}
 function openBcDay(key,isBroken,cnt){
   const parts=key.split('-'), label=MN[parseInt(parts[1])-1]+' '+parseInt(parts[2])+', '+parts[0];
@@ -4639,6 +4622,10 @@ function renderCal(){
     const occ=App.S.occasions&&App.S.occasions[key];
     const c=document.createElement('div');c.className='cc';
     if(key===ts)c.classList.add('today');
+    // Brahmacharya coloring
+    const bcEn=App.S.brahma[key], isBcBroken=bcEn&&bcEn.status==='b';
+    const isBcActive=key>=BRAHMA_START&&key<=ts;
+    if(isBcActive){c.classList.add(isBcBroken?'bc-b':'bc-m');}
     const combinedDt=(App.S.dt||0)+(App.S.dtRV||0);
     if(cnt>0){c.classList.add('hd');if(combinedDt>0&&cnt>=combinedDt)c.classList.add('tm');}
     if(occ)c.classList.add('occ');
@@ -4649,6 +4636,7 @@ function renderCal(){
     c.onclick=(()=>{const k=key,n=cnt,t=timeSec,t28=time28Sec;return()=>showDay(k,n,t,t28);})();
     g.appendChild(c);
   }
+  uBStats();
 }
 function chm(d){cald.setMonth(cald.getMonth()+d);renderCal();}
 // ── Calendar day bottom sheet ──
@@ -4674,6 +4662,33 @@ function showDay(key, cnt, timeSec, time28Sec) {
 
   // Occasion
   _renderSheetOcc(key);
+
+  // Brahmacharya section
+  const bcSec = document.getElementById('cdmoBcSection');
+  const bcStatus = document.getElementById('cdmoBcStatus');
+  const bcCntRow = document.getElementById('cdmoBcCntRow');
+  const bcMaintBtn = document.getElementById('cdmoBcMaint');
+  const bcBrkBtn = document.getElementById('cdmoBcBrk');
+  const ts = App.getTk();
+  const isBcActive = key >= BRAHMA_START && key <= ts;
+  if (isBcActive) {
+    bcSec.style.display = '';
+    const bcEn = App.S.brahma[key], isBroken = bcEn && bcEn.status === 'b';
+    if (isBroken) {
+      bcStatus.innerHTML = '❌ <span style="color:var(--red)">Broken</span>' + (bcEn.count > 1 ? ' (' + bcEn.count + 'x)' : '');
+      bcMaintBtn.style.display = '';
+      bcBrkBtn.style.display = 'none';
+      bcCntRow.style.display = 'none';
+    } else {
+      bcStatus.innerHTML = '✅ <span style="color:var(--green)">Maintained</span>';
+      bcMaintBtn.style.display = 'none';
+      bcBrkBtn.style.display = '';
+      bcCntRow.style.display = 'flex';
+    }
+    document.getElementById('cdmoBcCnt').value = (bcEn && bcEn.count) || 1;
+  } else {
+    bcSec.style.display = 'none';
+  }
 
   // Clear input
   document.getElementById('cdmoOccIn').value = '';
@@ -4712,6 +4727,24 @@ function addOccasionFromSheet() {
 function closeDaySheet() {
   document.getElementById('cdmo').classList.remove('show');
   _sheetKey = null;
+}
+function sheetMarkBc(action) {
+  const key = _sheetKey;
+  if (!key) return;
+  if (action === 'b') {
+    const cnt = parseInt(document.getElementById('cdmoBcCnt').value) || 1;
+    App.S.brahma[key] = { status: 'b', count: cnt };
+    toast('Marked as broken 🙏');
+  } else {
+    delete App.S.brahma[key];
+    toast('✅ Restored as maintained!');
+  }
+  App.save(); fbDebouncedPush(); renderCal();
+  // Refresh the sheet to show updated status
+  const cnt2 = (App.S.history[key]||0) + (App.S.historyRV[key]||0);
+  const timeSec2 = (App.S.timerHistory[key]||0) + (App.S.timerHistoryRV[key]||0);
+  const time28Sec2 = App.S.timer28History[key]||0;
+  showDay(key, cnt2, timeSec2, time28Sec2);
 }
 function addOccasion(){
   const date=(document.getElementById('occDate')||{value:''}).value.trim();
@@ -6329,137 +6362,15 @@ function formatMsCount(n) {
   return n.toLocaleString('en-IN');
 }
 
-function playShankha() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const duration = 3.5;
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const osc3 = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const gain2 = ctx.createGain();
-    osc1.type = 'sawtooth';
-    osc1.frequency.setValueAtTime(130, ctx.currentTime);
-    osc1.frequency.linearRampToValueAtTime(145, ctx.currentTime + 0.8);
-    osc1.frequency.linearRampToValueAtTime(138, ctx.currentTime + 2.5);
-    osc1.frequency.linearRampToValueAtTime(130, ctx.currentTime + duration);
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(260, ctx.currentTime);
-    osc2.frequency.linearRampToValueAtTime(290, ctx.currentTime + 0.8);
-    osc2.frequency.linearRampToValueAtTime(270, ctx.currentTime + duration);
-    osc3.type = 'triangle';
-    osc3.frequency.setValueAtTime(520, ctx.currentTime);
-    osc3.frequency.linearRampToValueAtTime(580, ctx.currentTime + 1);
-    osc3.frequency.linearRampToValueAtTime(530, ctx.currentTime + duration);
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 0.3);
-    gain.gain.setValueAtTime(0.35, ctx.currentTime + 1.5);
-    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + duration);
-    gain2.gain.setValueAtTime(0, ctx.currentTime);
-    gain2.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.5);
-    gain2.gain.linearRampToValueAtTime(0, ctx.currentTime + duration);
-    osc1.connect(gain); osc2.connect(gain); osc3.connect(gain2);
-    gain.connect(ctx.destination); gain2.connect(ctx.destination);
-    osc1.start(); osc2.start(); osc3.start();
-    osc1.stop(ctx.currentTime + duration); osc2.stop(ctx.currentTime + duration); osc3.stop(ctx.currentTime + duration);
-    setTimeout(() => ctx.close(), (duration + 0.5) * 1000);
-  } catch(e) { console.log('Shankha sound error:', e); }
-}
+function playShankha() { /* removed */ }
 
-function spawnMsParticles() {
-  const container = document.getElementById('msParticles');
-  container.innerHTML = '';
-  const colors = ['#FFD700', '#FF6B9D', '#6DB8FF', '#2ECC71', '#FFB700', '#E8336D'];
-  for (let i = 0; i < 50; i++) {
-    const p = document.createElement('div');
-    p.className = 'ms-particle';
-    const size = 4 + Math.random() * 8;
-    p.style.cssText = 'width:' + size + 'px;height:' + size + 'px;left:' + Math.random()*100 + '%;top:-10px;' +
-      'background:' + colors[Math.floor(Math.random()*colors.length)] + ';' +
-      'animation-duration:' + (2 + Math.random()*3) + 's;animation-delay:' + Math.random()*2 + 's;';
-    container.appendChild(p);
-  }
-}
+function spawnMsParticles() { /* removed */ }
 
-function showMilestoneCelebration(milestone) {
-  const overlay = document.getElementById('msOverlay');
-  document.getElementById('msIcon').textContent = milestone.icon;
-  document.getElementById('msBadgeIcon').textContent = milestone.badge || milestone.icon;
+function showMilestoneCelebration() { /* removed */ }
 
-  if (milestone.type === 'spiritual') {
-    const croreNum = milestone.count / CRORE;
-    document.getElementById('msCount').textContent = croreNum + ' CRORE JAP COMPLETE';
-    document.getElementById('msTitle').textContent = milestone.label;
-    document.getElementById('msSub').textContent = (milestone.tag || '') + '\n' + (milestone.eng || '').toUpperCase();
-    // Show description
-    let descEl = document.getElementById('msDesc');
-    if (descEl) { descEl.textContent = milestone.desc || ''; descEl.style.display = milestone.desc ? 'block' : 'none'; }
-    let authorEl = document.getElementById('msAuthor');
-    if (authorEl) authorEl.style.display = 'block';
-  } else {
-    document.getElementById('msTitle').textContent = 'जय श्री राधे!';
-    document.getElementById('msCount').textContent = formatMsCount(milestone.count) + ' JAP COMPLETE';
-    document.getElementById('msSub').textContent = 'Jap Milestone Reached! 🎉';
-    let descEl = document.getElementById('msDesc');
-    if (descEl) descEl.style.display = 'none';
-    let authorEl = document.getElementById('msAuthor');
-    if (authorEl) authorEl.style.display = 'none';
-  }
+function dismissMilestone() { /* removed */ }
 
-  spawnMsParticles();
-  overlay.classList.add('show');
-  playShankha();
-  if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 500, 200, 300, 100, 300]);
-}
 
-function dismissMilestone() {
-  document.getElementById('msOverlay').classList.remove('show');
-}
-
-function checkMilestones() {
-  const tot = App.gTot();
-  const data = getMilestoneData();
-  let latestNew = null;
-  
-  // Check standard milestones
-  for (const ms of MILESTONES) {
-    if (tot >= ms.count && !data.reached[ms.count]) {
-      data.reached[ms.count] = new Date().toISOString();
-      latestNew = ms;
-    }
-  }
-  
-  // Dynamic 10K milestones
-  const cur10k = Math.floor(tot / 10000);
-  for (let i = 1; i <= cur10k; i++) {
-    const c = i * 10000;
-    if (!data.reached[c]) {
-      data.reached[c] = new Date().toISOString();
-      if (!latestNew || c > latestNew.count) {
-        latestNew = { count: c, icon: '✨', label: (i*10) + 'K Jap', badge: '🎖️', type: 'regular' };
-      }
-    }
-  }
-  
-  // Dynamic 1 Lakh milestones
-  const curLakh = Math.floor(tot / 100000);
-  for (let i = 1; i <= curLakh; i++) {
-    const c = i * 100000;
-    if (!data.reached[c]) {
-      data.reached[c] = new Date().toISOString();
-      if (!latestNew || c > latestNew.count) {
-        latestNew = { count: c, icon: '📿', label: i + ' Lakh Jap', badge: '📿', type: 'regular' };
-      }
-    }
-  }
-  
-  if (latestNew) {
-    saveMilestoneData(data);
-    setTimeout(() => showMilestoneCelebration(latestNew), 500);
-    // Trigger divine celebration in jap area
-    setTimeout(() => spawnDivineCelebration(), 200);
-  }
-}
 
 
 // ── LAKH MILESTONES for Jap ki Gati ──
@@ -6595,135 +6506,7 @@ function updateSadhanaSince() {
 }
 
 
-function renderMsView() {
-  const data = getMilestoneData();
-  const tot = App.gTot();
-
-  // Update lifetime count
-  const countEl = document.getElementById('mahimaCount');
-  if (countEl) countEl.textContent = tot.toLocaleString('en-IN');
-
-  // Count spiritual milestones reached
-  const spReached = SPIRITUAL_MILESTONES.filter(m => data.reached[m.count]).length;
-  const reachedEl = document.getElementById('mahimaMsReached');
-  if (reachedEl) reachedEl.textContent = spReached + '/13 milestones reached';
-
-  // Render spiritual milestone cards grouped by phase
-  const cardsEl = document.getElementById('mahimaCards');
-  if (cardsEl) {
-    let html = '';
-    PHASES.forEach(phase => {
-      html += '<div class="mahima-phase"><div class="mahima-phase-name">' + phase.name + '</div>' +
-        '<div class="mahima-phase-sub">' + phase.sub + '</div></div>';
-      SPIRITUAL_MILESTONES.filter(m => m.phase === phase.id).forEach(m => {
-        const unlocked = !!data.reached[m.count];
-        const pct = Math.min(100, (tot / m.count) * 100);
-        const croreNum = m.count / CRORE;
-        const phaseClass = phase.id === 'bhagwat' ? ' phase-bhagwat' : (phase.id === 'shakti' ? ' phase-shakti' : '');
-        const dateStr = unlocked ? new Date(data.reached[m.count]).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '';
-        html += '<div class="mahima-card' + (unlocked ? ' unlocked' : '') + phaseClass + '">' +
-          '<div class="mahima-card-icon">' + m.icon + '</div>' +
-          '<div class="mahima-card-body">' +
-          '<div class="mahima-card-top"><span class="mahima-card-count">' + croreNum + ' Crore</span>' +
-          '<span class="mahima-card-tag">' + m.tag + '</span></div>' +
-          '<div class="mahima-card-name">' + m.label + '</div>' +
-          '<div class="mahima-card-eng">' + m.eng + '</div>' +
-          '<div class="mahima-card-bar-wrap"><div class="mahima-card-bar" style="width:' + pct.toFixed(1) + '%"></div></div>' +
-          '<div class="mahima-card-pct">' + pct.toFixed(1) + '%</div>' +
-          (unlocked ? '<div class="mahima-card-date">✓ Achieved ' + dateStr + '</div>' : '') +
-          (m.desc ? '<div class="mahima-card-desc">' + m.desc + '<div class="mahima-card-author">— Shri Hit Premanand Ji Maharaj</div></div>' : '') +
-          '</div></div>';
-      });
-    });
-    cardsEl.innerHTML = html;
-  }
-
-  // ── Mala Bead Strip ──
-  const regMilestones = MILESTONES.filter(m => m.type === 'regular');
-  const next = regMilestones.find(m => tot < m.count);
-  const nextEl = document.getElementById('msNextVal');
-  const pctEl  = document.getElementById('msNextPct');
-  const fillEl = document.getElementById('msProgFill');
-  const remEl  = document.getElementById('msRemaining');
-  const beadsEl = document.getElementById('malaBeads');
-
-  let pct = 0;
-  if (next) {
-    const nextIdx = regMilestones.indexOf(next);
-    const prevCount = nextIdx > 0 ? regMilestones[nextIdx - 1].count : 0;
-    pct = Math.min(100, Math.max(0, ((tot - prevCount) / (next.count - prevCount)) * 100));
-    if (nextEl) nextEl.textContent = formatMsCount(next.count);
-    if (pctEl)  pctEl.textContent  = pct.toFixed(0) + '%';
-    const rem = next.count - tot;
-    if (remEl) remEl.textContent = rem.toLocaleString('en-IN') + ' more jap to go';
-  } else {
-    if (nextEl) nextEl.textContent = 'Sadhana Poorna 🙏';
-    if (pctEl)  pctEl.textContent  = '';
-    if (remEl)  remEl.textContent  = '';
-    pct = 100;
-  }
-  if (fillEl) fillEl.style.width = pct.toFixed(1) + '%';
-
-  // Build visible bead window: show up to 9 beads centered around active one
-  if (beadsEl) {
-    const activeIdx = next ? regMilestones.indexOf(next) : regMilestones.length - 1;
-    const windowStart = Math.max(0, activeIdx - 4);
-    const windowEnd   = Math.min(regMilestones.length - 1, windowStart + 8);
-    let html = '';
-    for (let i = windowStart; i <= windowEnd; i++) {
-      const m = regMilestones[i];
-      const isReached = !!data.reached[m.count];
-      const isActive  = next && m.count === next.count;
-      const cls = isReached ? 'reached' : (isActive ? 'active' : '');
-      const lbl = m.count >= 100000 ? formatMsCount(m.count) : (m.count/1000) + 'K';
-      const tipDate = isReached && data.reached[m.count]
-        ? new Date(data.reached[m.count]).toLocaleDateString('en-IN',{day:'numeric',month:'short'})
-        : (isActive ? pct.toFixed(0)+'%' : '');
-      html += '<div class="mala-bead ' + cls + '">' + lbl +
-        (tipDate ? '<span class="bead-tip">' + tipDate + '</span>' : '') + '</div>';
-      if (i < windowEnd) html += '<div class="mala-thread"></div>';
-    }
-    beadsEl.innerHTML = html;
-  }
-
-  // ── Lakh Gati ──
-  renderLakhGati();
-  loadSadhanaStartDate();
-
-  // ── Sadhana Journey Timeline ──
-  const logList = document.getElementById('msLogList');
-  if (logList) {
-    const allReached = MILESTONES.filter(m => data.reached[m.count])
-      .sort((a, b) => new Date(data.reached[b.count]) - new Date(data.reached[a.count]));
-    if (allReached.length === 0) {
-      logList.innerHTML = '<div class="sj-empty">No milestones reached yet. Keep chanting! 🙏</div>';
-    } else {
-      const now = Date.now();
-      logList.innerHTML = allReached.slice(0, 30).map((m, idx, arr) => {
-        const d   = new Date(data.reached[m.count]);
-        const dateStr = d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
-        const diffMs  = now - d.getTime();
-        const diffDays = Math.floor(diffMs / 86400000);
-        const ago = diffDays === 0 ? 'Today' : diffDays === 1 ? 'Yesterday' : diffDays + 'd ago';
-        const isSp = m.type === 'spiritual';
-        return '<div class="sj-item' + (isSp ? ' spiritual' : '') + '">' +
-          '<div class="sj-left">' +
-            '<div class="sj-dot">' + (m.badge || m.icon) + '</div>' +
-            (idx < arr.length - 1 ? '<div class="sj-line"></div>' : '') +
-          '</div>' +
-          '<div class="sj-right">' +
-            '<div class="sj-name">' + m.label + (isSp ? ' 🙏' : '') + '</div>' +
-            '<div class="sj-meta">' +
-              '<span class="sj-count">' + formatMsCount(m.count) + '</span>' +
-              '<span class="sj-date">' + dateStr + '</span>' +
-              '<span class="sj-ago">' + ago + '</span>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
-      }).join('');
-    }
-  }
-}
+function renderMsView() { /* removed */ }
 
 
 

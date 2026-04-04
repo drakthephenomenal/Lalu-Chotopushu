@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v37';  // v34: Fix malaLog not resetting at midnight due to stale tk
+const CACHE = 'radha-jap-v38';  // v38: Fix milestones scroll on iPad, add read-more for long descriptions
 
 const PRECACHE = [
   './index.html',

@@ -57,6 +57,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   .ls{height:-webkit-fill-available;}
   .view{min-height:-webkit-fill-available;}
   #vj.active{height:-webkit-fill-available;}
+  #vms.active{height:-webkit-fill-available;}
   body{min-height:-webkit-fill-available;}
 }
 
@@ -676,7 +677,8 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .fn-rv span{font-family:'Tiro Devanagari Hindi',serif;display:block;}
 
 /* MILESTONES VIEW — dedicated tab */
-#vms{background:radial-gradient(ellipse at top,#0A1535 0%,var(--bd) 60%);padding:22px 12px 80px;overflow-y:auto;}
+#vms{background:radial-gradient(ellipse at top,#0A1535 0%,var(--bd) 60%);padding:22px 12px 80px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+#vms.active{height:100vh;height:100dvh;}
 
 
 /* ═══ MILESTONES TAB — GLASSMORPHIC PREMIUM ═══ */
@@ -702,8 +704,11 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .ms-label{font-family:'Cinzel Decorative',serif;font-size:13px;color:var(--tl);letter-spacing:1px;}
 .ms-eng{font-size:10px;color:var(--td);letter-spacing:1px;margin-top:1px;}
 .ms-count-label{font-family:'EB Garamond',serif;font-size:11px;color:var(--a2);margin-left:auto;white-space:nowrap;}
-.ms-desc{font-size:12px;line-height:1.7;color:var(--td);margin:8px 0;font-family:'Hind Siliguri',sans-serif;}
+.ms-desc{font-size:12px;line-height:1.7;color:var(--td);margin:8px 0;font-family:'Hind Siliguri',sans-serif;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;}
+.ms-desc.expanded{display:block;-webkit-line-clamp:unset;}
 .ms-desc.bangla{font-family:'Noto Sans Bengali','Hind Siliguri',sans-serif;}
+.ms-read-more{font-size:10px;color:var(--a2);cursor:pointer;margin-top:2px;opacity:0.8;}
 .ms-progress-wrap{position:relative;height:3px;background:rgba(255,255,255,0.06);border-radius:3px;margin-top:10px;overflow:hidden;}
 .ms-progress-fill{height:100%;border-radius:3px;transition:width 0.6s ease;}
 .ms-progress-fill.bronze{background:linear-gradient(90deg,#B87333,#D4956A);box-shadow:0 0 8px rgba(184,115,51,0.6);}
@@ -3173,7 +3178,9 @@ function renderMilestonesTab() {
       out += '<div class="ms-eng">'+sm.eng+'</div></div>';
       out += '<span class="ms-count-label">'+sm.tag+'</span>';
       out += '</div>';
-      out += '<div class="ms-desc'+(lang==='bn'?' bangla':'')+'">'+desc+'</div>';
+      const descId = 'msDesc'+sm.count;
+      out += '<div class="ms-desc'+(lang==='bn'?' bangla':'')+'" id="'+descId+'">'+desc+'</div>';
+      out += '<span class="ms-read-more" onclick="event.stopPropagation();toggleMsDesc(\''+descId+'\',this)">Read more ▾</span>';
       if (achieved) {
         out += '<div class="ms-badge achieved">✓ ACHIEVED</div>';
       } else if (pred) {
@@ -3229,6 +3236,13 @@ function setMsLang(lang) {
   document.getElementById('msLangHi').classList.toggle('active', lang==='hi');
   document.getElementById('msLangBn').classList.toggle('active', lang==='bn');
   renderMilestonesTab();
+}
+
+function toggleMsDesc(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('expanded');
+  btn.textContent = el.classList.contains('expanded') ? 'Show less ▴' : 'Read more ▾';
 }
 
 function openMsDetail(type, count, pct, achieved) {

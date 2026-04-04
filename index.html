@@ -1625,7 +1625,7 @@ const App = {
   async save() {
     // Save full state snapshot to IDB so all dates and edits persist locally
     await this.dbPut('state', 'main', {
-      ms: this.S.ms, dt: this.S.dt, lt: this.S.lt,
+      ms: this.S.ms, dt: this.S.dt, lt: this.S.lt, nameJapDeduct: this.S.nameJapDeduct||0, malaLog: this.S.malaLog||[], malaLogDate: this.S.tk,
       cfg: this.S.cfg, stotrams: this.S.stotrams, brahma: this.S.brahma,
       customSt: this.S.customSt, sankalpas: this.S.sankalpas, occasions: this.S.occasions,
       history: this.S.history, h28: this.S.h28, timerHistory: this.S.timerHistory, timer28History: this.S.timer28History,
@@ -1686,12 +1686,6 @@ const App = {
       }
     } catch(e) {}
 
-    // CRITICAL FIX: Re-set tk to today AFTER restoring state from IDB/localStorage
-    // Object.assign overwrites tk with the stored (possibly stale) date,
-    // which caused malaLog from yesterday to survive past midnight.
-    this.S.tk = this.getTk();
-
-
     if (!this.S.history[this.S.tk]) this.S.history[this.S.tk] = 0;
     if (!this.S.h28[this.S.tk]) this.S.h28[this.S.tk] = 0;
     if (!this.S.stotrams) this.S.stotrams = {};
@@ -1708,6 +1702,11 @@ const App = {
     if (!this.S.ltRV) this.S.ltRV = 0;
     if (!this.S.nameJapDeductRV) this.S.nameJapDeductRV = 0;
     if (!this.S.malaLogRV) this.S.malaLogRV = [];
+    // Load malaLogRV — only keep if from today AND today has RV jap
+    const todayRVJap = this.S.historyRV[this.S.tk] || 0;
+    if (todayRVJap <= 0) {
+      this.S.malaLogRV = [];
+    }
     if (!this.S.syncBaselineRV) this.S.syncBaselineRV = {};
     if (!this.S.syncBaselineTimerRV) this.S.syncBaselineTimerRV = {};
     if (!this.S.historyRV[this.S.tk]) this.S.historyRV[this.S.tk] = 0;
@@ -2860,6 +2859,7 @@ function exportAllData() {
     stotrams: App.S.stotrams||{}, brahma: App.S.brahma||{}, customSt: App.S.customSt||[],
     sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{},
     ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{},
+    malaLog: App.S.malaLog||[], malaLogDate: App.S.tk,
     japMode: App.S.japMode||'radha', historyRV: App.S.historyRV||{}, timerHistoryRV: App.S.timerHistoryRV||{},
     dtRV: App.S.dtRV||0, ltRV: App.S.ltRV||0, nameJapDeductRV: App.S.nameJapDeductRV||0, malaLogRV: App.S.malaLogRV||[]
   };
@@ -3158,6 +3158,7 @@ async function fbPushFull() {
     timer28History: App.S.timer28History||{},
     sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{}, malaLog: App.S.malaLog||[], malaLogDate: App.S.tk,
     ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{},
+    malaLog: App.S.malaLog||[], malaLogDate: App.S.tk,
     japMode: App.S.japMode||'radha', historyRV: App.S.historyRV||{}, timerHistoryRV: App.S.timerHistoryRV||{},
     dtRV: App.S.dtRV||0, ltRV: App.S.ltRV||0, nameJapDeductRV: App.S.nameJapDeductRV||0, malaLogRV: App.S.malaLogRV||[],
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
@@ -3215,10 +3216,12 @@ function fbApplyRemote(d) {
   if (d.ltRV !== undefined) App.S.ltRV = d.ltRV;
   if (d.nameJapDeductRV !== undefined) App.S.nameJapDeductRV = d.nameJapDeductRV;
   // Only apply malaLogRV from Firebase if it belongs to today AND local today has RV jap
-  if (d.malaLogRV) {
-    const localTodayJapRV = App.S.historyRV[App.S.tk] || 0;
-    if (localTodayJapRV > 0) {
-      App.S.malaLogRV = JSON.parse(JSON.stringify(d.malaLogRV || []));
+  if ('malaLogRV' in d) {
+    const remoteMalaLogRV = d.malaLogRV || [];
+    const remoteMalaDate = d.malaLogDate || null;
+    const localTodayRVJap = App.S.historyRV[App.S.tk] || 0;
+    if (remoteMalaDate === App.S.tk && localTodayRVJap > 0) {
+      App.S.malaLogRV = JSON.parse(JSON.stringify(remoteMalaLogRV));
     } else {
       App.S.malaLogRV = [];
     }
@@ -3292,6 +3295,7 @@ async function gdDriveSilentBackup() {
       stotrams: App.S.stotrams||{}, brahma: App.S.brahma||{}, customSt: App.S.customSt||[],
       sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{},
       ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{},
+      malaLog: App.S.malaLog||[], malaLogDate: App.S.tk,
       japMode: App.S.japMode||'radha', historyRV: App.S.historyRV||{}, timerHistoryRV: App.S.timerHistoryRV||{},
       dtRV: App.S.dtRV||0, ltRV: App.S.ltRV||0, nameJapDeductRV: App.S.nameJapDeductRV||0, malaLogRV: App.S.malaLogRV||[]
     }, null, 2);

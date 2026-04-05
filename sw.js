@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v41';  // v41: Fix iPad Safari @supports block overriding scroll with min-height
+const CACHE = 'radha-jap-v42';  // v42: Stats summary layout fix for expanded section scrolling without shrinking lower cards
 
 const PRECACHE = [
   './index.html',

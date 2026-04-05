@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v42';  // v42: Stats summary layout fix for expanded section scrolling without shrinking lower cards
+const CACHE = 'radha-jap-v43';  // v43: Calendar detail breakdown, lifetime jap time, 28 Names mm:ss format
 
 const PRECACHE = [
   './index.html',

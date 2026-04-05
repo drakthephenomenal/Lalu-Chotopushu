@@ -1115,10 +1115,15 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
     </div>
     <!-- Jap + Timer stats -->
     <div class="cdmo-stat" id="cdmoStat">
-      <div class="cdmo-stat-row">📿 Jap <span class="cdmo-stat-val" id="cdmoJap">0</span></div>
-      <div class="cdmo-stat-row">🔱 Malas <span class="cdmo-stat-val gold" id="cdmoMala">0</span></div>
-      <div class="cdmo-stat-row">⏱ Jap Time <span class="cdmo-stat-val" id="cdmoTime">—</span></div>
-      <div class="cdmo-stat-row">🌸 28 Names Time <span class="cdmo-stat-val" style="color:var(--a2)" id="cdmoTime28">—</span></div>
+      <div class="cdmo-stat-row">🕉️ Radha Jap <span class="cdmo-stat-val" id="cdmoRadhaJap">—</span></div>
+      <div class="cdmo-stat-row">🌸 Radha Vallabh Sri Harivangsa Jap <span class="cdmo-stat-val" id="cdmoRvJap">—</span></div>
+      <div class="cdmo-stat-row">⏱ Radha Jap Time <span class="cdmo-stat-val" id="cdmoRadhaTime">—</span></div>
+      <div class="cdmo-stat-row">⏱ Radha Vallabh Sri Harivangsa Jap Time <span class="cdmo-stat-val" id="cdmoRvTime">—</span></div>
+      <div class="cdmo-stat-row">✨ 28 Names <span class="cdmo-stat-val" id="cdmo28Names">—</span></div>
+      <div class="cdmo-stat-row">⏱ 28 Names Time <span class="cdmo-stat-val" style="color:var(--a2)" id="cdmoTime28">—</span></div>
+      <div style="border-top:1px solid rgba(74,144,226,0.15);margin:8px 0"></div>
+      <div class="cdmo-stat-row">📿 Total Count <span class="cdmo-stat-val gold" id="cdmoTotalCount">—</span></div>
+      <div class="cdmo-stat-row">⏳ Total Time <span class="cdmo-stat-val" id="cdmoTotalTime">—</span></div>
       <div class="cdmo-stat-row" id="cdmoTargetRow" style="color:var(--td);font-size:11px">Target: <span id="cdmoPct" style="margin-left:auto;color:var(--td)">—</span></div>
     </div>
     <!-- Occasion -->
@@ -1185,6 +1190,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
         <div class="sb"><div class="sv2" id="sWk">0</div><div class="sl">This Week</div><div class="ss" id="sWkM">0 malas</div></div>
         <div class="sb"><div class="sv2" id="sMo">0</div><div class="sl">This Month</div><div class="ss" id="sMoM">0 malas</div></div>
         <div class="sb"><div class="sv2" id="sTot">0</div><div class="sl">Total Jap</div><div class="ss" id="sTotM">0 malas</div></div>
+        <div class="sb wide" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.12)"><div class="sv2" style="color:var(--gold)" id="sLtTime">0m 0s</div><div class="sl" style="color:var(--gold)">Lifetime Jap Time</div></div>
         <div class="sb wide"><div class="sl" style="font-size:11px">Last 7 Days</div><div class="cbrs" id="cbrs"></div></div>
         <div class="sb"><div class="sv2" id="sStr">0</div><div class="sl">Day Streak</div><div class="ss">🔥 Consecutive</div></div>
         <div class="sb"><div class="sv2" id="sBest">0</div><div class="sl">Best Day</div><div class="ss">Personal best</div></div>
@@ -2736,6 +2742,10 @@ function uStats() {
   document.getElementById('sMoM').textContent = Math.floor(ms2/ms) + ' malas';
   document.getElementById('sTot').textContent = tot;
   document.getElementById('sTotM').textContent = Math.floor(tot/ms) + ' malas';
+  // Lifetime Jap Time (all jap time + all 28 names time)
+  const ltTimeSec = Object.values(App.getCombinedTimerHistory()).reduce((a,b)=>a+b,0) + Object.values(App.S.timer28History||{}).reduce((a,b)=>a+b,0);
+  const ltH = Math.floor(ltTimeSec/3600), ltM = Math.floor((ltTimeSec%3600)/60), ltS = ltTimeSec%60;
+  document.getElementById('sLtTime').textContent = ltH > 0 ? ltH+'h '+ltM+'m '+String(ltS).padStart(2,'0')+'s' : ltM+'m '+String(ltS).padStart(2,'0')+'s';
   document.getElementById('sStr').textContent = streak;
   document.getElementById('sBest').textContent = best;
   const bars = document.getElementById('cbrs'); bars.innerHTML = '';
@@ -2761,9 +2771,9 @@ function uStats() {
   const t28Wk  = wk.reduce((s,k) => s + (App.S.timer28History[k]||0), 0) + (_28running && wk.includes(App.S.tk) ? Math.max(0,_28liveExtra) : 0);
   const t28Mo  = Object.entries(App.S.timer28History).filter(([k]) => k.startsWith(mp)).reduce((s,[,v]) => s+v, 0) + ((_28running && App.S.tk.startsWith(mp)) ? Math.max(0,_28liveExtra) : 0);
   const e28Tod = document.getElementById('t28Tod'), e28Wk = document.getElementById('t28Wk'), e28Mo = document.getElementById('t28Mo');
-  if (e28Tod) e28Tod.textContent = fmtShort(t28Tod);
-  if (e28Wk)  e28Wk.textContent  = fmtShort(t28Wk);
-  if (e28Mo)  e28Mo.textContent  = fmtShort(t28Mo);
+  if (e28Tod) e28Tod.textContent = fmt28Short(t28Tod);
+  if (e28Wk)  e28Wk.textContent  = fmt28Short(t28Wk);
+  if (e28Mo)  e28Mo.textContent  = fmt28Short(t28Mo);
 
   // Live previews for jap entry
   const mji = document.getElementById('manualJapIn');
@@ -4101,8 +4111,9 @@ function refresh28StatsIfOpen() {
 }
 
 function fmt28Short(s) {
-  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
-  return (h>0 ? h+'h ' : '') + m + 'm';
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s % 60;
+  if (h > 0) return h + 'h ' + m + ':' + String(sec).padStart(2,'0');
+  return m + ':' + String(sec).padStart(2,'0');
 }
 
 function render28StatsPanel() {
@@ -4431,12 +4442,32 @@ function showDay(key, cnt, timeSec, time28Sec) {
   // Title
   document.getElementById('cdmoTitle').textContent = MN[parseInt(mo)-1] + ' ' + parseInt(d) + ', ' + yr;
 
-  // Stats — combined
-  document.getElementById('cdmoJap').textContent = cnt;
-  document.getElementById('cdmoMala').textContent = Math.floor(cnt / ms);
-  document.getElementById('cdmoTime').textContent = timeSec > 0 ? App.fmtTime(timeSec) : '—';
+  // Stats — detailed breakdown
+  const radhaCount = App.S.history[key] || 0;
+  const rvCount = App.S.historyRV[key] || 0;
+  const radhaTime = App.S.timerHistory[key] || 0;
+  const rvTime = App.S.timerHistoryRV[key] || 0;
+  const n28Count = App.S.h28[key] || 0;
+  const n28TimeSec = App.S.timer28History[key] || 0;
+  const n28Cycles = Math.floor(n28Count / 28);
+  const radhaMalas = Math.floor(radhaCount / ms);
+  const rvMalas = Math.floor(rvCount / ms);
+  const totalCount = radhaCount + rvCount;
+  const totalMalas = Math.floor(totalCount / ms);
+
+  document.getElementById('cdmoRadhaJap').textContent = radhaCount > 0 ? radhaCount + ' jap · ' + radhaMalas + ' malas' : '—';
+  document.getElementById('cdmoRvJap').textContent = rvCount > 0 ? rvCount + ' jap · ' + rvMalas + ' malas' : '—';
+  document.getElementById('cdmoRadhaTime').textContent = radhaTime > 0 ? App.fmtTime(radhaTime) : '—';
+  document.getElementById('cdmoRvTime').textContent = rvTime > 0 ? App.fmtTime(rvTime) : '—';
+  document.getElementById('cdmo28Names').textContent = n28Count > 0 ? n28Count + ' jap · ' + n28Cycles + ' cycles' : '—';
   const el28 = document.getElementById('cdmoTime28');
-  if (el28) el28.textContent = time28Sec > 0 ? App.fmtTime(time28Sec) : '—';
+  if (el28) {
+    if (n28TimeSec > 0) { const _m = Math.floor(n28TimeSec / 60), _s = n28TimeSec % 60; el28.textContent = _m + ':' + String(_s).padStart(2,'0'); }
+    else el28.textContent = '—';
+  }
+  document.getElementById('cdmoTotalCount').textContent = totalCount > 0 ? totalCount + ' jap (' + totalMalas + ' malas)' : '—';
+  const totalTimeSec = (radhaTime + rvTime + n28TimeSec);
+  document.getElementById('cdmoTotalTime').textContent = totalTimeSec > 0 ? App.fmtTime(totalTimeSec) : '—';
   const combinedDt = (App.S.dt||0) + (App.S.dtRV||0);
   const pct = combinedDt > 0 ? Math.round(cnt / combinedDt * 100) + '%' : '—';
   document.getElementById('cdmoPct').textContent = pct;

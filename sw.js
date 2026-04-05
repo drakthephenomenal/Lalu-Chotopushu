@@ -2,10 +2,14 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v44';  // v44: Calendar detail breakdown, lifetime jap time, 28 Names mm:ss format
+const CACHE = 'radha-jap-v46';  // v46: iPad Devanagari font fix, Brahmacharya start date picker
 
 const PRECACHE = [
   './index.html',
+  './guru.jpg',
+  './icon-192.jpg',
+  './icon-512.jpg',
+  './manifest.json',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js',

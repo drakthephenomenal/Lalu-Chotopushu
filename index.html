@@ -55,15 +55,14 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 /* iOS/iPad Safari fixes */
 @supports (-webkit-touch-callout: none) {
   .ls{height:-webkit-fill-available;}
-  .view{min-height:-webkit-fill-available;}
-  #vj.active{height:-webkit-fill-available;}
-  
-  body{min-height:-webkit-fill-available;}
+  .view{height:-webkit-fill-available;max-height:-webkit-fill-available;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  #vj.active{height:-webkit-fill-available;overflow:hidden;}
+  body{height:-webkit-fill-available;}
 }
 
 
 
-.view{display:none;min-height:100vh;min-height:100dvh;position:relative;z-index:1;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.view{display:none;height:100vh;height:100dvh;position:relative;z-index:1;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .view.active{display:flex;}
 #vj.active{min-height:unset;height:100vh;height:100dvh;overflow:hidden;}
 
@@ -678,6 +677,8 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 
 /* MILESTONES VIEW — dedicated tab */
 #vms{background:radial-gradient(ellipse at top,#0A1535 0%,var(--bd) 60%);padding:22px 12px 80px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+#vms > *{flex-shrink:0;}
+#msContent{flex:1 0 auto;}
 
 
 
@@ -1113,10 +1114,15 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
     </div>
     <!-- Jap + Timer stats -->
     <div class="cdmo-stat" id="cdmoStat">
-      <div class="cdmo-stat-row">📿 Jap <span class="cdmo-stat-val" id="cdmoJap">0</span></div>
-      <div class="cdmo-stat-row">🔱 Malas <span class="cdmo-stat-val gold" id="cdmoMala">0</span></div>
-      <div class="cdmo-stat-row">⏱ Jap Time <span class="cdmo-stat-val" id="cdmoTime">—</span></div>
-      <div class="cdmo-stat-row">🌸 28 Names Time <span class="cdmo-stat-val" style="color:var(--a2)" id="cdmoTime28">—</span></div>
+      <div class="cdmo-stat-row">🕉️ Radha Jap <span class="cdmo-stat-val" id="cdmoRadhaJap">—</span></div>
+      <div class="cdmo-stat-row">🌸 RV Sri Harivangsa Jap <span class="cdmo-stat-val" id="cdmoRVJap">—</span></div>
+      <div class="cdmo-stat-row">⏱ Radha Jap Time <span class="cdmo-stat-val" id="cdmoRadhaTime">—</span></div>
+      <div class="cdmo-stat-row">⏱ RV Sri Harivangsa Jap Time <span class="cdmo-stat-val" id="cdmoRVTime">—</span></div>
+      <div class="cdmo-stat-row">✨ 28 Names <span class="cdmo-stat-val" id="cdmo28Names">—</span></div>
+      <div class="cdmo-stat-row">⏱ 28 Names Time <span class="cdmo-stat-val" style="color:var(--a2)" id="cdmoTime28">—</span></div>
+      <div style="border-top:1px solid rgba(74,144,226,0.15);margin:8px 0"></div>
+      <div class="cdmo-stat-row">📿 Total Count <span class="cdmo-stat-val gold" id="cdmoTotalCount">—</span></div>
+      <div class="cdmo-stat-row">⏳ Total Time <span class="cdmo-stat-val" id="cdmoTotalTime">—</span></div>
       <div class="cdmo-stat-row" id="cdmoTargetRow" style="color:var(--td);font-size:11px">Target: <span id="cdmoPct" style="margin-left:auto;color:var(--td)">—</span></div>
     </div>
     <!-- Occasion -->
@@ -1197,9 +1203,9 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
         <div class="sb wide" style="background:rgba(109,184,255,0.05);border-color:rgba(109,184,255,0.18)">
           <div class="sl" style="font-size:11px;color:var(--a2);margin-bottom:10px;letter-spacing:2px">⏱ 28 NAMES TIME</div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-            <div style="text-align:center"><div style="font-family:'EB Garamond',serif;font-size:20px;color:var(--a2)" id="t28Tod">0m</div><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Today</div></div>
-            <div style="text-align:center"><div style="font-family:'EB Garamond',serif;font-size:20px;color:var(--a2)" id="t28Wk">0m</div><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:1px;margin-top:2px">This Week</div></div>
-            <div style="text-align:center"><div style="font-family:'EB Garamond',serif;font-size:20px;color:var(--a2)" id="t28Mo">0m</div><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:1px;margin-top:2px">This Month</div></div>
+            <div style="text-align:center"><div style="font-family:'EB Garamond',serif;font-size:20px;color:var(--a2)" id="t28Tod">0:00</div><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Today</div></div>
+            <div style="text-align:center"><div style="font-family:'EB Garamond',serif;font-size:20px;color:var(--a2)" id="t28Wk">0:00</div><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:1px;margin-top:2px">This Week</div></div>
+            <div style="text-align:center"><div style="font-family:'EB Garamond',serif;font-size:20px;color:var(--a2)" id="t28Mo">0:00</div><div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:1px;margin-top:2px">This Month</div></div>
           </div>
         </div>
       </div>
@@ -2752,16 +2758,17 @@ function uStats() {
   document.getElementById('tTod').textContent = fmtShort(timeTod);
   document.getElementById('tWk').textContent = fmtShort(timeWk);
   document.getElementById('tMo').textContent = fmtShort(timeMo);
-  // 28 Names time — separate from main jap time
+  // 28 Names time — separate from main jap time (mm:ss format)
+  function fmt28mmss(s) { const _m=Math.floor(s/60),_s=s%60; return _m+':'+String(_s).padStart(2,'0'); }
   const _28running = !!(App._n28TimerInterval && App._n28TotalStart);
   const _28liveExtra = _28running ? Math.max(0, Math.floor((Date.now() - App._n28TotalStart) / 1000) - (App._n28SavedSecs || 0)) : 0;
   const t28Tod = (App.S.timer28History[App.S.tk]||0) + Math.max(0, _28liveExtra);
   const t28Wk  = wk.reduce((s,k) => s + (App.S.timer28History[k]||0), 0) + (_28running && wk.includes(App.S.tk) ? Math.max(0,_28liveExtra) : 0);
   const t28Mo  = Object.entries(App.S.timer28History).filter(([k]) => k.startsWith(mp)).reduce((s,[,v]) => s+v, 0) + ((_28running && App.S.tk.startsWith(mp)) ? Math.max(0,_28liveExtra) : 0);
   const e28Tod = document.getElementById('t28Tod'), e28Wk = document.getElementById('t28Wk'), e28Mo = document.getElementById('t28Mo');
-  if (e28Tod) e28Tod.textContent = fmtShort(t28Tod);
-  if (e28Wk)  e28Wk.textContent  = fmtShort(t28Wk);
-  if (e28Mo)  e28Mo.textContent  = fmtShort(t28Mo);
+  if (e28Tod) e28Tod.textContent = fmt28mmss(t28Tod);
+  if (e28Wk)  e28Wk.textContent  = fmt28mmss(t28Wk);
+  if (e28Mo)  e28Mo.textContent  = fmt28mmss(t28Mo);
 
   // Live previews for jap entry
   const mji = document.getElementById('manualJapIn');
@@ -2798,6 +2805,17 @@ function uStats() {
   if (jtAom && jtAod && jtAod.value) { const curO = App.S.timerHistory[jtAod.value]||0; const s = (parseInt(jtAom.value)||0)*60+(jtAos?parseInt(jtAos.value)||0:0); document.getElementById('jtAddOtherPreview').textContent = s>0?_fmtSec(curO+s):'—'; }
   const jtDom = document.getElementById('jtDedOtherMin'), jtDos = document.getElementById('jtDedOtherSec'), jtDod = document.getElementById('jtDedOtherDate');
   if (jtDom && jtDod && jtDod.value) { const curO2 = App.S.timerHistory[jtDod.value]||0; const s = (parseInt(jtDom.value)||0)*60+(jtDos?parseInt(jtDos.value)||0:0); document.getElementById('jtDedOtherPreview').textContent = s>0?_fmtSec(Math.max(0,curO2-s)):'—'; }
+  // Lifetime Jap Time
+  const allTimerHist = App.getCombinedTimerHistory();
+  const allTimer28Hist = App.S.timer28History || {};
+  let lifetimeTimeSec = 0;
+  const allTimeKeys = new Set([...Object.keys(allTimerHist), ...Object.keys(allTimer28Hist)]);
+  allTimeKeys.forEach(k => { lifetimeTimeSec += (allTimerHist[k]||0) + (allTimer28Hist[k]||0); });
+  if (App.timerRunning) lifetimeTimeSec += (App.timerSeconds - App.timerSavedSeconds);
+  if (_28running) lifetimeTimeSec += _28liveExtra;
+  const ltH = Math.floor(lifetimeTimeSec/3600), ltM = Math.floor((lifetimeTimeSec%3600)/60), ltSc = lifetimeTimeSec%60;
+  const ltEl = document.getElementById('sLifeTime');
+  if (ltEl) ltEl.textContent = ltH > 0 ? ltH+'h '+ltM+'m '+String(ltSc).padStart(2,'0')+'s' : ltM+'m '+String(ltSc).padStart(2,'0')+'s';
   renderMalaLog();
 }
 
@@ -4099,8 +4117,8 @@ function refresh28StatsIfOpen() {
 }
 
 function fmt28Short(s) {
-  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
-  return (h>0 ? h+'h ' : '') + m + 'm';
+  const _m = Math.floor(s/60), _s = s%60;
+  return _m + ':' + String(_s).padStart(2, '0');
 }
 
 function render28StatsPanel() {
@@ -4429,12 +4447,30 @@ function showDay(key, cnt, timeSec, time28Sec) {
   // Title
   document.getElementById('cdmoTitle').textContent = MN[parseInt(mo)-1] + ' ' + parseInt(d) + ', ' + yr;
 
-  // Stats — combined
-  document.getElementById('cdmoJap').textContent = cnt;
-  document.getElementById('cdmoMala').textContent = Math.floor(cnt / ms);
-  document.getElementById('cdmoTime').textContent = timeSec > 0 ? App.fmtTime(timeSec) : '—';
+  // Stats — detailed breakdown
+  const radhaCount = App.S.history[key]||0;
+  const rvCount = App.S.historyRV[key]||0;
+  const radhaTime = App.S.timerHistory[key]||0;
+  const rvTime = App.S.timerHistoryRV[key]||0;
+  const n28Count = App.S.h28[key]||0;
+  const n28Cycles = Math.floor(n28Count/28);
+  const n28Time = App.S.timer28History[key]||0;
+  const radhaMalas = Math.floor(radhaCount/ms);
+  const rvMalas = Math.floor(rvCount/ms);
+  const totalCount = radhaCount + rvCount;
+  const totalMalas = Math.floor(totalCount/ms);
+  const totalTime = (radhaTime + rvTime) + n28Time;
+  function _fmt28mmss(s) { const _m=Math.floor(s/60),_s=s%60; return _m+':'+String(_s).padStart(2,'0'); }
+
+  document.getElementById('cdmoRadhaJap').textContent = radhaCount > 0 ? radhaCount + ' jap · ' + radhaMalas + ' malas' : '—';
+  document.getElementById('cdmoRVJap').textContent = rvCount > 0 ? rvCount + ' jap · ' + rvMalas + ' malas' : '—';
+  document.getElementById('cdmoRadhaTime').textContent = radhaTime > 0 ? App.fmtTime(radhaTime) : '—';
+  document.getElementById('cdmoRVTime').textContent = rvTime > 0 ? App.fmtTime(rvTime) : '—';
+  document.getElementById('cdmo28Names').textContent = n28Count > 0 ? n28Count + ' jap · ' + n28Cycles + ' cycles' : '—';
   const el28 = document.getElementById('cdmoTime28');
-  if (el28) el28.textContent = time28Sec > 0 ? App.fmtTime(time28Sec) : '—';
+  if (el28) el28.textContent = n28Time > 0 ? _fmt28mmss(n28Time) : '—';
+  document.getElementById('cdmoTotalCount').textContent = totalCount > 0 ? totalCount + ' jap (' + totalMalas + ' malas)' : '—';
+  document.getElementById('cdmoTotalTime').textContent = totalTime > 0 ? App.fmtTime(totalTime) : '—';
   const combinedDt = (App.S.dt||0) + (App.S.dtRV||0);
   const pct = combinedDt > 0 ? Math.round(cnt / combinedDt * 100) + '%' : '—';
   document.getElementById('cdmoPct').textContent = pct;

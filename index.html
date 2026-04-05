@@ -452,6 +452,17 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   margin-bottom:10px;transition:background 0.2s;}
 .google-btn:active{background:rgba(255,255,255,0.15);}
 .google-btn svg{width:20px;height:20px;flex-shrink:0;}
+.email-divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--td);font-size:11px;letter-spacing:0.5px;}
+.email-divider::before,.email-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.1);}
+.email-input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:var(--tl);font-size:13px;font-family:'Inter',sans-serif;outline:none;box-sizing:border-box;margin-bottom:8px;}
+.email-input:focus{border-color:var(--a);background:rgba(255,255,255,0.1);}
+.email-input::placeholder{color:var(--td);}
+.email-signin-btn{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(109,184,255,0.3);background:rgba(109,184,255,0.1);color:var(--a2);font-size:13px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:background 0.2s;margin-bottom:6px;}
+.email-signin-btn:active{background:rgba(109,184,255,0.2);}
+.email-toggle{font-size:11px;color:var(--td);text-align:center;cursor:pointer;text-decoration:underline;margin-top:4px;}
+.email-toggle:hover{color:var(--a2);}
+.email-reset-link{font-size:11px;color:var(--td);text-align:right;cursor:pointer;text-decoration:underline;margin-top:-4px;margin-bottom:6px;}
+.email-reset-link:hover{color:var(--a2);}
 
 /* Auto-sync status pill */
 .sync-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(46,204,113,0.1);
@@ -1418,11 +1429,19 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   <div class="sc" id="fbCard">
     <h3>☁️ Cloud Sync &amp; Backup</h3>
     <div id="fbLoggedOut">
-      <p style="font-size:12px;color:var(--td);margin-bottom:14px">One sign-in handles both real-time sync across all your devices AND automatic Google Drive backups.</p>
+      <p style="font-size:12px;color:var(--td);margin-bottom:14px">Sign in to sync across devices. Google sign-in also enables Drive backups. Email sign-in (Zoho, Yahoo, etc.) enables cloud sync.</p>
       <button class="google-btn" onclick="fbSignInGoogle()">
         <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         Sign in with Google
       </button>
+      <div class="email-divider">OR</div>
+      <div id="emailAuthForm">
+        <input class="email-input" type="email" id="emailInput" placeholder="Email (e.g. you@zohomail.com)" autocomplete="email">
+        <input class="email-input" type="password" id="passwordInput" placeholder="Password (min 6 chars)" autocomplete="current-password">
+        <div class="email-reset-link" id="emailResetLink" onclick="fbResetPassword()">Forgot password?</div>
+        <button class="email-signin-btn" id="emailSignInBtn" onclick="fbEmailSignIn()">Sign in with Email</button>
+        <div class="email-toggle" id="emailToggle" onclick="toggleEmailMode()">Don't have an account? Sign up</div>
+      </div>
       <div id="fbErr" style="font-size:12px;color:var(--red);margin-top:6px;text-align:center"></div>
     </div>
     <div id="fbLoggedIn" style="display:none">
@@ -1430,7 +1449,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
         <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--bg),var(--a));display:flex;align-items:center;justify-content:center;font-size:16px">🙏</div>
         <div>
           <div style="font-size:13px;color:var(--tl);font-weight:500" id="fbUserEmail"></div>
-          <div style="font-size:11px;color:var(--green)">✓ Signed in · Drive backup active</div>
+          <div style="font-size:11px;color:var(--green)" id="fbSignInStatus">✓ Signed in · Sync active</div>
         </div>
       </div>
       <div style="text-align:center;margin-bottom:12px">
@@ -3436,7 +3455,9 @@ function fbInit() {
       if (user) {
         document.getElementById('fbLoggedOut').style.display = 'none';
         document.getElementById('fbLoggedIn').style.display = 'block';
-        document.getElementById('fbUserEmail').textContent = user.email || user.displayName || 'Google User';
+        document.getElementById('fbUserEmail').textContent = user.email || user.displayName || 'User';
+        const statusEl = document.getElementById('fbSignInStatus');
+        if (statusEl) statusEl.textContent = gdAccessToken ? '✓ Signed in · Drive backup active' : '✓ Signed in · Sync active';
         setSyncPill('syncing', 'Connecting…');
         // Single-device: claim this session & watch for other devices
         fbClaimSession().then(() => {
@@ -3506,7 +3527,54 @@ function fbSignInGoogle() {
     });
 }
 
-function fbSignOut() {
+// ── Email/Password Sign-In ──
+let emailSignUpMode = false;
+
+function toggleEmailMode() {
+  emailSignUpMode = !emailSignUpMode;
+  const btn = document.getElementById('emailSignInBtn');
+  const toggle = document.getElementById('emailToggle');
+  const resetLink = document.getElementById('emailResetLink');
+  if (emailSignUpMode) {
+    btn.textContent = 'Create Account';
+    toggle.textContent = 'Already have an account? Sign in';
+    resetLink.style.display = 'none';
+  } else {
+    btn.textContent = 'Sign in with Email';
+    toggle.textContent = "Don't have an account? Sign up";
+    resetLink.style.display = 'block';
+  }
+}
+
+function fbEmailSignIn() {
+  if (!fbInit()) { toast('Firebase not ready. Check your connection.'); return; }
+  const email = document.getElementById('emailInput').value.trim();
+  const password = document.getElementById('passwordInput').value;
+  const errEl = document.getElementById('fbErr');
+  if (!email || !password) { errEl.textContent = 'Please enter email and password.'; setTimeout(() => errEl.textContent = '', 4000); return; }
+  if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; setTimeout(() => errEl.textContent = '', 4000); return; }
+
+  if (emailSignUpMode) {
+    fbAuth.createUserWithEmailAndPassword(email, password)
+      .then(() => { toast('Account created & signed in! ☁️🙏'); })
+      .catch(e => { errEl.textContent = e.message.replace('Firebase: ', ''); setTimeout(() => errEl.textContent = '', 6000); });
+  } else {
+    fbAuth.signInWithEmailAndPassword(email, password)
+      .then(() => { toast('Signed in! ☁️🙏'); })
+      .catch(e => { errEl.textContent = e.message.replace('Firebase: ', ''); setTimeout(() => errEl.textContent = '', 6000); });
+  }
+}
+
+function fbResetPassword() {
+  const email = document.getElementById('emailInput').value.trim();
+  const errEl = document.getElementById('fbErr');
+  if (!email) { errEl.textContent = 'Enter your email first, then tap Forgot password.'; setTimeout(() => errEl.textContent = '', 4000); return; }
+  fbAuth.sendPasswordResetEmail(email)
+    .then(() => { toast('Password reset email sent! Check your inbox.'); })
+    .catch(e => { errEl.textContent = e.message.replace('Firebase: ', ''); setTimeout(() => errEl.textContent = '', 6000); });
+}
+
+
   if (!fbAuth) return;
   if (fbSessionListener) { fbSessionListener(); fbSessionListener = null; }
   if (fbListener) { fbListener(); fbListener = null; }

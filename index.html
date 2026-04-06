@@ -50,7 +50,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .ls-ring{position:absolute;}
 .ls-ring-blue{width:min(280px,75vw);height:min(280px,75vw);animation:spin-rev 12s linear infinite;}
 .ls-ring-yellow{width:min(310px,83vw);height:min(310px,83vw);animation:spin-fwd 15s linear infinite;}
-.ls-ring text{font-family:'Kohinoor Devanagari','Devanagari Sangam MN','Noto Sans Devanagari','Tiro Devanagari Hindi',sans-serif;font-size:18px;font-weight:700;}
+.ls-ring text{font-family:'Kohinoor Devanagari',sans-serif;font-size:18px;font-weight:700;}
 .ls-ring .fill-blue{fill:#4A90E2;}
 .ls-ring .fill-yellow{fill:#FFD700;}
 @keyframes spin-fwd{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
@@ -1261,6 +1261,15 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
         <div class="cs-body" id="addJapTodayBody">
           <div class="fr"><input type="number" class="fi" id="manualJapIn" placeholder="Number of jap" min="1"><span class="fu">jap</span></div>
           <div style="font-size:11px;color:var(--td);margin-bottom:8px">= <span id="manualMalaPreview">0</span> malas · Today will become: <span id="manualTodayPreview" style="color:var(--a2)">—</span></div>
+          <div style="margin-top:6px;padding:8px 10px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.18);border-radius:9px">
+            <div style="font-size:10px;color:var(--gold);margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TAKEN (optional)</div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="number" class="fi" id="manualJapMin" placeholder="Min" min="0" style="width:70px;font-size:13px">
+              <span style="color:var(--td);font-size:11px">m</span>
+              <input type="number" class="fi" id="manualJapSec" placeholder="Sec" min="0" max="59" style="width:70px;font-size:13px">
+              <span style="color:var(--td);font-size:11px">s</span>
+            </div>
+          </div>
           <button class="pb" onclick="addManualJap()" style="background:linear-gradient(135deg,#27ae60,#2ecc71)">➕ Add to Today</button>
         </div>
       </div>
@@ -2576,15 +2585,33 @@ function addManualJap() {
   const isRV = App.S.japMode === 'rv';
   if (isRV) { App.S.historyRV[App.S.tk] = (App.S.historyRV[App.S.tk] || 0) + n; }
   else { App.S.history[App.S.tk] = (App.S.history[App.S.tk] || 0) + n; }
+  // Handle time input — add to today's timer and create mala log entries
+  const minEl = document.getElementById('manualJapMin');
+  const secEl = document.getElementById('manualJapSec');
+  const timeSecs = (parseInt(minEl?.value) || 0) * 60 + Math.min(59, Math.max(0, parseInt(secEl?.value) || 0));
+  if (timeSecs > 0) {
+    const th = App.getCurTimerHistory();
+    th[App.S.tk] = (th[App.S.tk] || 0) + timeSecs;
+    // Create mala log entries with averaged time
+    const ms = App.S.ms || 108;
+    const malasAdded = Math.floor(n / ms);
+    if (malasAdded > 0) {
+      const avgPerMala = Math.round(timeSecs / malasAdded);
+      const log = isRV ? (App.S.malaLogRV || (App.S.malaLogRV = [])) : (App.S.malaLog || (App.S.malaLog = []));
+      for (let i = 0; i < malasAdded; i++) log.push(avgPerMala);
+    }
+  }
   App.ensureMalaWallStart();
   const nm = Math.floor(App.gTod() / (App.S.ms || 108));
   const lmcKey = isRV ? 'lmcRV' : 'lmc';
   if (nm > App[lmcKey]) { App[lmcKey] = nm; App.malaOk(); }
   App.save(); App.ua(); fbDebouncedPush();
   document.getElementById('manualJapIn').value = '';
+  if (minEl) minEl.value = '';
+  if (secEl) secEl.value = '';
   document.getElementById('manualMalaPreview').textContent = '0';
   document.getElementById('manualTodayPreview').textContent = App.gTod();
-  toast('Added ' + n + ' jap to today! Total: ' + App.gTod() + ' 🙏');
+  toast('Added ' + n + ' jap' + (timeSecs > 0 ? ' + ' + Math.floor(timeSecs/60) + 'm ' + (timeSecs%60) + 's' : '') + ' to today! Total: ' + App.gTod() + ' 🙏');
 }
 
 function addPrevJap() {
@@ -2879,9 +2906,46 @@ function renderMalaLog() {
     row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:rgba(46,204,113,0.07);border:1px solid rgba(46,204,113,0.15);border-radius:9px;';
     row.innerHTML =
       '<span style="font-size:11px;color:var(--td)">Mala ' + (i+1) + '</span>' +
-      '<span style="font-family:\'EB Garamond\',serif;font-size:16px;color:var(--green);letter-spacing:0.5px">' + durStr + '</span>';
+      '<span style="display:flex;align-items:center;gap:8px">' +
+        '<span style="font-family:\'EB Garamond\',serif;font-size:16px;color:var(--green);letter-spacing:0.5px">' + durStr + '</span>' +
+        '<span onclick="editMalaEntry('+i+')" style="cursor:pointer;font-size:13px;opacity:0.6" title="Edit">✏️</span>' +
+        '<span onclick="deleteMalaEntry('+i+')" style="cursor:pointer;font-size:13px;opacity:0.6" title="Delete">🗑️</span>' +
+      '</span>';
     listEl.appendChild(row);
   });
+}
+
+function editMalaEntry(idx) {
+  const isRV = App.S.japMode === 'rv';
+  const log = isRV ? App.S.malaLogRV : App.S.malaLog;
+  if (!log || idx >= log.length) return;
+  const cur = log[idx];
+  const curM = Math.floor(cur / 60), curS = cur % 60;
+  const input = prompt('Edit Mala ' + (idx+1) + ' time (format: M:SS)', curM + ':' + String(curS).padStart(2,'0'));
+  if (input === null) return;
+  const parts = input.split(':');
+  const newSecs = (parseInt(parts[0])||0) * 60 + (parseInt(parts[1])||0);
+  if (newSecs <= 0) { toast('Invalid time'); return; }
+  const oldSecs = log[idx];
+  log[idx] = newSecs;
+  // Update today's timer history with the difference
+  const th = App.getCurTimerHistory();
+  th[App.S.tk] = Math.max(0, (th[App.S.tk]||0) + (newSecs - oldSecs));
+  App.save(); App.ua(); fbDebouncedPush(); renderMalaLog();
+  toast('Mala ' + (idx+1) + ' updated ✏️');
+}
+
+function deleteMalaEntry(idx) {
+  const isRV = App.S.japMode === 'rv';
+  const log = isRV ? App.S.malaLogRV : App.S.malaLog;
+  if (!log || idx >= log.length) return;
+  if (!confirm('Delete Mala ' + (idx+1) + ' entry?')) return;
+  const removed = log.splice(idx, 1)[0];
+  // Subtract removed time from today's timer
+  const th = App.getCurTimerHistory();
+  th[App.S.tk] = Math.max(0, (th[App.S.tk]||0) - removed);
+  App.save(); App.ua(); fbDebouncedPush(); renderMalaLog();
+  toast('Mala entry deleted 🗑️');
 }
 
 // ── Reset ──
@@ -2976,6 +3040,7 @@ function exportAllData() {
     sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{},
     ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{},
     malaLog: App.S.malaLog||[], malaLogDate: App.S.tk,
+    brahmacharya_start_date: App.S.brahmacharya_start_date||'',
     japMode: App.S.japMode||'radha', historyRV: App.S.historyRV||{}, timerHistoryRV: App.S.timerHistoryRV||{},
     dtRV: App.S.dtRV||0, ltRV: App.S.ltRV||0, nameJapDeductRV: App.S.nameJapDeductRV||0, malaLogRV: App.S.malaLogRV||[]
   };
@@ -3022,7 +3087,8 @@ function importAllData(input) {
       App.S.syncBaselineTimer = JSON.parse(JSON.stringify(App.S.timerHistory));
       App.S.syncBaselineTimer28 = JSON.parse(JSON.stringify(App.S.timer28History));
       App.save();
-      App.ua(); renderSt(); u28(); renderBcal(); renderCal(); uStats(); renderSankalpas();
+      switchJapMode(App.S.japMode || 'radha');
+      renderSt(); u28(); renderBcal(); renderCal(); uStats(); renderSankalpas(); renderMalaLog();
       App.lmc = Math.floor((App.S.history[App.S.tk]||0) / (App.S.ms||108));
       App.lm28 = Math.floor((App.S.h28[App.S.tk]||0) / (App.S.ms||108));
       if (st) { st.textContent = '✅ Data restored successfully! 🙏 Jai Radhe!'; st.style.color = 'var(--green)'; }
@@ -3584,8 +3650,10 @@ async function fbPushFull() {
     sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{},
     ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{},
     malaLog: App.S.malaLog||[], malaLogDate: App.S.tk,
+    brahmacharya_start_date: App.S.brahmacharya_start_date||'',
     japMode: App.S.japMode||'radha', historyRV: App.S.historyRV||{}, timerHistoryRV: App.S.timerHistoryRV||{},
     dtRV: App.S.dtRV||0, ltRV: App.S.ltRV||0, nameJapDeductRV: App.S.nameJapDeductRV||0, malaLogRV: App.S.malaLogRV||[],
+    brahmacharya_start_date: App.S.brahmacharya_start_date||'',
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId
   };
@@ -3640,6 +3708,7 @@ function fbApplyRemote(d) {
   if (d.dtRV !== undefined) App.S.dtRV = d.dtRV;
   if (d.ltRV !== undefined) App.S.ltRV = d.ltRV;
   if (d.nameJapDeductRV !== undefined) App.S.nameJapDeductRV = d.nameJapDeductRV;
+  if (d.brahmacharya_start_date) App.S.brahmacharya_start_date = d.brahmacharya_start_date;
   // Only apply malaLogRV from Firebase if it belongs to today AND local today has RV jap
   if ('malaLogRV' in d) {
     const remoteMalaLogRV = d.malaLogRV || [];
@@ -3667,7 +3736,8 @@ function fbApplyRemote(d) {
   App.save().finally(() => { App._suspendCloudSync = false; });
   App.lmc = Math.floor(App.gTod() / (App.S.ms||108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk]||0) / (App.S.ms||108));
-  App.ua(); renderSt(); u28(); renderBcal(); renderCal(); uStats(); renderSankalpas();
+  switchJapMode(App.S.japMode || 'radha');
+  renderSt(); u28(); renderBcal(); renderCal(); uStats(); renderSankalpas(); renderMalaLog();
   setSyncPill('', '🔄 Synced from cloud');
 }
 

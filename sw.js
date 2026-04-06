@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v46';  // v46: iPad Devanagari font fix, Brahmacharya start date picker
+const CACHE = 'radha-jap-v48';  // v48: Fix title/data desync on Firebase sync & restore
 
 const PRECACHE = [
   './index.html',

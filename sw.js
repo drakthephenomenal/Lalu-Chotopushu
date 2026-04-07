@@ -2,10 +2,12 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v49';  // v49: JPG→PNG icons fix for Android launcher crash
+const CACHE = 'radha-jap-v50';  // v50: Split into index.html + style.css + app.js
 
 const PRECACHE = [
   './index.html',
+  './style.css',
+  './app.js',
   './guru.jpg',
   './icon-192.png',
   './icon-512.png',

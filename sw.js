@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // v55: Background Periodic Sync for Drive backup
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v55';
+const CACHE = 'radha-jap-v56';
 
 const PRECACHE = [
   './index.html',

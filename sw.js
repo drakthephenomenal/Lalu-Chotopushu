@@ -2,8 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v52';  // v52: GitHub Pages + OAuth + Drive auto-backup
-const APP_URL = 'https://drakthephenomenal.github.io/Lalu-Chotopushu';
+const CACHE = 'radha-jap-v51';  // v51: Modularized data into stotrams.js
 
 const PRECACHE = [
   './index.html',
@@ -110,9 +109,9 @@ self.addEventListener('notificationclick', e => {
   e.waitUntil(
     clients.matchAll({ type: 'window' }).then(list => {
       for (const client of list) {
-        if (client.url.includes('drakthephenomenal.github.io') && 'focus' in client) return client.focus();
+        if ('focus' in client) return client.focus();
       }
-      if (clients.openWindow) return clients.openWindow(APP_URL);
+      if (clients.openWindow) return clients.openWindow('/');
     })
   );
 });

@@ -1,12 +1,13 @@
 {
   "name": "Radha Naam Jap",
   "short_name": "Radha Jap",
-  "description": "Radha Naam Jap Sadhana App",
-  "start_url": "./index.html",
+  "description": "Radha Naam Jap Sadhana App — Jai Shri Radhe 🙏",
+  "start_url": "https://drakthephenomenal.github.io/Lalu-Chotopushu/",
+  "scope": "https://drakthephenomenal.github.io/Lalu-Chotopushu/",
   "display": "standalone",
   "background_color": "#060D1F",
   "theme_color": "#060D1F",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "./icon-192.png",

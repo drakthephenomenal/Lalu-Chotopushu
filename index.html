@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Radha Jap">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#060D1F">
+<link rel="canonical" href="https://drakthephenomenal.github.io/Lalu-Chotopushu">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="./icon-192.png">
@@ -304,6 +305,16 @@
       <button class="asb" onclick="addSt()">Add Stotram</button>
     </div>
   </div>
+
+  <!-- DEV ONLY: Add global stotram visible to all users -->
+  <div id="devAddStPanel" style="display:none;margin:0 0 10px 0;padding:12px 14px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.25);border-radius:13px">
+    <div style="font-size:11px;color:var(--gold);letter-spacing:2px;font-weight:600;margin-bottom:8px">👑 DEV: Add Global Stotram (visible to ALL users)</div>
+    <input type="text" class="sti" id="devSnIn" placeholder="Stotram name (required)" style="border-color:rgba(255,215,0,0.3)">
+    <input type="text" class="sti" id="devSsIn" placeholder="Short description (optional)">
+    <textarea class="sti" id="devSlIn" rows="6" placeholder="Full lyrics here…" style="resize:vertical;min-height:110px;font-family:Hind Siliguri,serif;font-size:14px;line-height:1.8;border-color:rgba(255,215,0,0.3)"></textarea>
+    <button onclick="devAddGlobalStotram()" style="width:100%;padding:10px;border-radius:11px;border:none;background:linear-gradient(135deg,rgba(255,215,0,0.3),rgba(255,165,0,0.4));color:var(--gold);font-size:14px;font-weight:600;cursor:pointer;margin-top:6px">🌍 Publish for All Users</button>
+  </div>
+
   <div id="stList"></div>
 </div>
 
@@ -434,6 +445,24 @@
         <div class="sb"><div class="sv2" id="sWk">0</div><div class="sl">This Week</div><div class="ss" id="sWkM">0 malas</div></div>
         <div class="sb"><div class="sv2" id="sMo">0</div><div class="sl">This Month</div><div class="ss" id="sMoM">0 malas</div></div>
         <div class="sb"><div class="sv2" id="sTot">0</div><div class="sl">Total Jap</div><div class="ss" id="sTotM">0 malas</div></div>
+        <!-- Per-type lifetime breakdown -->
+        <div class="sb wide" style="background:rgba(232,51,109,0.04);border-color:rgba(232,51,109,0.15)">
+          <div class="sl" style="font-size:11px;color:var(--rose);margin-bottom:8px;letter-spacing:2px">📊 LIFETIME BREAKDOWN</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <div style="text-align:center">
+              <div style="font-family:'EB Garamond',serif;font-size:18px;color:#FFD700" id="sRadhaTotal">0</div>
+              <div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">राधा Jap</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-family:'EB Garamond',serif;font-size:18px;color:var(--a2)" id="sRVTotal">0</div>
+              <div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">RV Jap</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-family:'EB Garamond',serif;font-size:18px;color:var(--green)" id="s28Total">0</div>
+              <div style="font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px">28 Names</div>
+            </div>
+          </div>
+        </div>
         <div class="sb wide" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.12)"><div class="sv2" style="color:var(--gold)" id="sLtTime">0m 0s</div><div class="sl" style="color:var(--gold)">Lifetime Jap Time</div></div>
         <div class="sb wide"><div class="sl" style="font-size:11px">Last 7 Days</div><div class="cbrs" id="cbrs"></div></div>
         <div class="sb"><div class="sv2" id="sStr">0</div><div class="sl">Day Streak</div><div class="ss">🔥 Consecutive</div></div>
@@ -796,6 +825,37 @@
       <input type="file" id="restoreFileIn" accept=".json" style="display:none" onchange="importAllData(this)">
     </label>
     <div id="restoreStatus" style="font-size:12px;margin-top:8px;text-align:center;color:var(--green);min-height:18px"></div>
+  </div>
+
+  <!-- GOOGLE DRIVE AUTO-BACKUP -->
+  <div class="sc" style="border-color:rgba(66,133,244,0.3);background:rgba(66,133,244,0.04)">
+    <h3 style="color:var(--a2)">☁️ Google Drive Auto-Backup</h3>
+    <p style="font-size:12px;color:var(--td);margin-bottom:12px">Like WhatsApp — automatically backs up every midnight as a visible JSON file in your Google Drive. Sign in with Google above to enable.</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button onclick="gdDriveNamedBackup()" style="flex:1;padding:9px 14px;border-radius:11px;border:1px solid rgba(74,144,226,0.35);background:rgba(74,144,226,0.1);color:var(--a2);font-size:13px;cursor:pointer;min-width:120px">
+        📤 Backup Now
+      </button>
+      <button onclick="gdListBackupFiles()" style="flex:1;padding:9px 14px;border-radius:11px;border:1px solid rgba(46,204,113,0.35);background:rgba(46,204,113,0.08);color:var(--green);font-size:13px;cursor:pointer;min-width:120px">
+        📋 Browse &amp; Restore
+      </button>
+    </div>
+    <div id="gdBackupList" style="max-height:260px;overflow-y:auto"></div>
+    <div style="font-size:11px;color:var(--td);margin-top:8px;line-height:1.6">
+      💡 Backup files are saved as <strong style="color:var(--a2)">radha-naam-jap-backup-YYYY-MM-DD.json</strong> in your Google Drive. You can open, view, and restore them anytime.
+    </div>
+  </div>
+
+  <!-- SHARE THIS APP -->
+  <div class="sc" style="border-color:rgba(255,215,0,0.25);background:rgba(255,215,0,0.03)">
+    <h3 style="color:var(--gold)">🔗 Share This App</h3>
+    <p style="font-size:12px;color:var(--td);margin-bottom:12px">Spread the divine name! Share Radha Naam Jap with friends and family 🙏</p>
+    <button onclick="shareApp()" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,215,0,0.4);background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,165,0,0.1));color:var(--gold);font-size:14px;font-weight:600;cursor:pointer;letter-spacing:0.5px">
+      🌸 Share Radha Naam Jap App
+    </button>
+    <div style="margin-top:10px;padding:10px;background:rgba(0,0,0,0.2);border-radius:9px;border:1px dashed rgba(255,215,0,0.2)">
+      <div style="font-size:11px;color:var(--td);margin-bottom:6px">App Link:</div>
+      <div style="font-size:12px;color:var(--a2);word-break:break-all;user-select:all" id="appShareUrl"></div>
+    </div>
   </div>
 </div>
 

@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Update CACHE version when index.html changes
 // ═══════════════════════════════════════════════
-const CACHE = 'radha-jap-v53';  // v53: Force cache bust — new sections now visible in PWA
+const CACHE = 'radha-jap-v53';  // v54: Force cache bust — new sections now visible in PWA
 
 const PRECACHE = [
   './index.html',

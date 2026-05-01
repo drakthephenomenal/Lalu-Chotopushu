@@ -2,6 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<!-- Cache control: always revalidate index.html — prevents stale PWA -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="app-version" content="53">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -304,6 +309,21 @@
       <button class="asb" onclick="addSt()">Add Stotram</button>
     </div>
   </div>
+  <!-- Developer Panel (visible only to developer accounts) -->
+  <div id="devStSection" style="margin-bottom:10px">
+    <button id="devStBtn" onclick="toggleDevPanel()" style="display:none;width:100%;padding:10px;border-radius:11px;border:1px solid rgba(255,215,0,0.3);background:rgba(255,215,0,0.06);color:var(--gold);font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;margin-bottom:6px">🛠 Developer: Edit/Add Global Stotrams ▾</button>
+    <div id="devStPanel" style="display:none;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.2);border-radius:11px;padding:12px;margin-bottom:10px">
+      <!-- Add Global Stotram Form -->
+      <div style="font-size:12px;color:var(--gold);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">🌍 Add Global Stotram (visible to all users)</div>
+      <input type="text" id="devStName" placeholder="Stotram name (required)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.2);border-radius:8px;padding:8px 11px;color:var(--tl);font-size:13px;font-family:Hind Siliguri,serif;box-sizing:border-box;margin-bottom:6px">
+      <input type="text" id="devStSub" placeholder="Description (optional)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.2);border-radius:8px;padding:8px 11px;color:var(--tl);font-size:13px;font-family:Hind Siliguri,serif;box-sizing:border-box;margin-bottom:6px">
+      <textarea id="devStLyrics" rows="5" placeholder="Full lyrics (optional)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.2);border-radius:8px;padding:8px 11px;color:var(--tl);font-size:13px;font-family:Hind Siliguri,serif;resize:vertical;box-sizing:border-box;margin-bottom:6px"></textarea>
+      <button onclick="devAddGlobalStotram()" style="width:100%;padding:9px;border-radius:9px;border:none;background:linear-gradient(135deg,rgba(255,215,0,0.4),rgba(255,180,0,0.25));color:var(--gold);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px">🌍 Add for All Users</button>
+      <hr style="border:none;border-top:1px solid rgba(255,215,0,0.15);margin:8px 0 12px">
+      <!-- Edit inbuilt stotrams + global list -->
+      <div id="devStList"></div>
+    </div>
+  </div>
   <div id="stList"></div>
 </div>
 
@@ -434,6 +454,10 @@
         <div class="sb"><div class="sv2" id="sWk">0</div><div class="sl">This Week</div><div class="ss" id="sWkM">0 malas</div></div>
         <div class="sb"><div class="sv2" id="sMo">0</div><div class="sl">This Month</div><div class="ss" id="sMoM">0 malas</div></div>
         <div class="sb"><div class="sv2" id="sTot">0</div><div class="sl">Total Jap</div><div class="ss" id="sTotM">0 malas</div></div>
+        <!-- Separated lifetime totals -->
+        <div class="sb" style="background:rgba(255,215,0,0.05);border-color:rgba(255,215,0,0.18)"><div class="sv2" style="color:var(--gold)" id="sRadhaTot">0</div><div class="sl" style="color:var(--gold)">राधा Lifetime</div><div class="ss" id="sRadhaTotM">0 malas</div></div>
+        <div class="sb" style="background:rgba(74,144,226,0.05);border-color:rgba(74,144,226,0.18)"><div class="sv2" style="color:var(--a2)" id="sRVTot">0</div><div class="sl" style="color:var(--a2)">RV Lifetime</div><div class="ss" id="sRVTotM">0 malas</div></div>
+        <div class="sb" style="background:rgba(46,204,113,0.05);border-color:rgba(46,204,113,0.18)"><div class="sv2" style="color:var(--green)" id="s28Tot">0</div><div class="sl" style="color:var(--green)">28 Names Lifetime</div><div class="ss" id="s28TotM">0 cycles</div></div>
         <div class="sb wide" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.12)"><div class="sv2" style="color:var(--gold)" id="sLtTime">0m 0s</div><div class="sl" style="color:var(--gold)">Lifetime Jap Time</div></div>
         <div class="sb wide"><div class="sl" style="font-size:11px">Last 7 Days</div><div class="cbrs" id="cbrs"></div></div>
         <div class="sb"><div class="sv2" id="sStr">0</div><div class="sl">Day Streak</div><div class="ss">🔥 Consecutive</div></div>
@@ -786,6 +810,14 @@
     <div style="font-size:11px;color:var(--td);text-align:center;margin-top:4px" id="remLocStatus"></div>
   </div>
 
+  <!-- SHARE APP -->
+  <div class="sc" style="background:rgba(255,215,0,0.03);border-color:rgba(255,215,0,0.18)">
+    <h3>🌸 Share This App</h3>
+    <p style="font-size:12px;color:var(--td);margin-bottom:10px">Spread the divine name! Share Radha Naam Jap with friends and family 🙏</p>
+    <div id="appLinkDisplay" style="font-size:11px;color:var(--a2);background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:8px;padding:8px 11px;margin-bottom:10px;word-break:break-all;font-family:monospace;cursor:pointer" onclick="shareApp()" title="Tap to copy"></div>
+    <button class="pb" onclick="shareApp()" style="background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,180,0,0.25));color:var(--gold);border:1px solid rgba(255,215,0,0.4)">🌸 Share Radha Naam Jap App</button>
+  </div>
+
   <!-- BACKUP & RESTORE -->
   <div class="sc">
     <h3>💾 Local Backup &amp; Restore</h3>
@@ -796,6 +828,23 @@
       <input type="file" id="restoreFileIn" accept=".json" style="display:none" onchange="importAllData(this)">
     </label>
     <div id="restoreStatus" style="font-size:12px;margin-top:8px;text-align:center;color:var(--green);min-height:18px"></div>
+  </div>
+
+  <!-- GOOGLE DRIVE AUTO BACKUP -->
+  <div class="sc" style="background:rgba(74,144,226,0.04);border-color:rgba(74,144,226,0.18)">
+    <h3 style="color:var(--a2)">☁️ Auto Drive Backup</h3>
+    <p style="font-size:12px;color:var(--td);margin-bottom:14px">Like WhatsApp — automatically backs up your data to Google Drive every midnight. Each day creates a separate dated JSON file you can restore anytime.</p>
+    <div style="font-size:12px;color:var(--a2);background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:9px;padding:10px;margin-bottom:12px">
+      <div>🔐 Requires Google sign-in above (already done if you're signed in)</div>
+      <div style="margin-top:4px;font-size:11px;color:var(--td)">Backup files are saved as <code style="color:var(--a2)">radha-naam-jap-auto-YYYY-MM-DD.json</code> in your Drive — fully readable JSON.</div>
+    </div>
+    <button class="pb" onclick="gdMidnightBackup().then(()=>toast('✅ Backed up to Drive! 🙏'))" style="margin-bottom:10px">📤 Backup Now to Drive</button>
+    <div style="font-size:11px;color:var(--td);margin-bottom:12px;text-align:center" id="gdLastAutoBackup"></div>
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.07);margin:10px 0">
+    <div style="font-size:12px;color:var(--tl);font-weight:600;margin-bottom:8px">📂 Restore from Drive Backup</div>
+    <button class="pb" onclick="gdListDriveBackups()" style="background:rgba(74,144,226,0.15);border:1px solid rgba(74,144,226,0.3);margin-bottom:8px">🔍 Show Available Backups</button>
+    <div id="gdRestoreList" style="max-height:240px;overflow-y:auto;border:1px solid rgba(255,255,255,0.07);border-radius:9px;background:rgba(0,0,0,0.2)"></div>
+    <div id="gdRestoreStatus" style="font-size:12px;margin-top:8px;text-align:center;min-height:18px"></div>
   </div>
 </div>
 

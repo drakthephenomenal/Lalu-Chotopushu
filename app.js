@@ -29,6 +29,13 @@ const App = {
   // ── IndexedDB ──
   db: null,
 
+  // ── Current signed-in UID (set by Firebase auth callback) ──
+  _uid: null,
+
+  // ── IDB key prefix scoped to UID (guest = 'guest') ──
+  _stateKey() { return (this._uid || 'guest') + ':main'; },
+  _lsKey()    { return 'rjap5_' + (this._uid || 'guest'); },
+
   async initDB() {
     return new Promise((res, rej) => {
       const req = indexedDB.open('RadhaJapDB', 3);
@@ -93,7 +100,7 @@ const App = {
 
   async save() {
     // Save full state snapshot to IDB so all dates and edits persist locally
-    await this.dbPut('state', 'main', {
+    await this.dbPut('state', this._stateKey(), {
       ms: this.S.ms, dt: this.S.dt, lt: this.S.lt, nameJapDeduct: this.S.nameJapDeduct||0, malaLog: this.S.malaLog||[], malaLogDate: this.S.tk,
       cfg: this.S.cfg, stotrams: this.S.stotrams, brahma: this.S.brahma,
       customSt: this.S.customSt, sankalpas: this.S.sankalpas, occasions: this.S.occasions,
@@ -112,7 +119,7 @@ const App = {
     if (this.S.timerHistory[tk] !== undefined) await this.dbPut('timerHistory', tk, this.S.timerHistory[tk]);
     if (this.S.timer28History[tk] !== undefined) await this.dbPut('timer28History', tk, this.S.timer28History[tk]);
     if (this.S.malaLog) await this.dbPut('malaLog', 'today', { date: tk, log: this.S.malaLog });
-    try { localStorage.setItem('rjap5', JSON.stringify(this.S)); } catch(e) {}
+    try { localStorage.setItem(this._lsKey(), JSON.stringify(this.S)); } catch(e) {}
     if (fbUser && !fbForcedSignout && !this._suspendCloudSync) fbDebouncedPush();
   },
 
@@ -121,13 +128,13 @@ const App = {
     this.S.tk = this.getTk();
 
     // Try IndexedDB first
-    const main = await this.dbGet('state', 'main');
+    const main = await this.dbGet('state', this._stateKey());
     if (main) {
       Object.assign(this.S, main);
     } else {
-      // Fallback: migrate from localStorage
+      // Fallback: migrate from localStorage (UID-scoped key first, then legacy)
       try {
-        const ls = localStorage.getItem('rjap5');
+        const ls = localStorage.getItem(this._lsKey()) || localStorage.getItem('rjap5');
         if (ls) { const d = JSON.parse(ls); Object.assign(this.S, d); }
       } catch(e) {}
     }
@@ -146,7 +153,7 @@ const App = {
 
     // Merge localStorage history as fallback for old data
     try {
-      const ls = localStorage.getItem('rjap5');
+      const ls = localStorage.getItem(this._lsKey()) || localStorage.getItem('rjap5');
       if (ls) {
         const d = JSON.parse(ls);
         if (d.history) { for (const k in d.history) if (!this.S.history[k]) this.S.history[k] = d.history[k]; }
@@ -747,6 +754,52 @@ setInterval(() => {
   }
 }, 60000);
 
+// ── Get canonical app URL (strips index.html, query, hash) ──
+function _getAppUrl() {
+  let url = window.location.href;
+  // Remove index.html from the end if present
+  url = url.replace(/\/index\.html([?#].*)?$/, '/');
+  // Remove query string and hash
+  url = url.split('?')[0].split('#')[0];
+  // Ensure trailing slash
+  if (!url.endsWith('/')) url += '/';
+  return url;
+}
+
+// ── Share App ──
+function shareApp() {
+  const url = _getAppUrl();
+  const shareText = '🙏 Radha Naam Jap Sadhana App — Track your jap sadhana. Jai Radhe Radhe! 🌸';
+  if (navigator.share) {
+    navigator.share({ title: 'Radha Naam Jap 🙏', text: shareText, url })
+      .then(() => toast('Shared! 🙏 Jai Radhe!'))
+      .catch(err => {
+        // User cancelled or share failed — fall back to copy
+        if (err.name !== 'AbortError') _copyAppUrl(url);
+      });
+  } else {
+    _copyAppUrl(url);
+  }
+}
+
+function _copyAppUrl(url) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url)
+      .then(() => toast('✅ App link copied! 🙏 Jai Radhe!'))
+      .catch(() => _legacyCopy(url));
+  } else {
+    _legacyCopy(url);
+  }
+}
+
+function _legacyCopy(url) {
+  const ta = document.createElement('textarea');
+  ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try { document.execCommand('copy'); toast('✅ App link copied! 🙏 Jai Radhe!'); } catch(e) { toast('Link: ' + url); }
+  ta.remove();
+}
+
 // ── Toast ──
 function toast(msg) {
   let t = document.getElementById('toast');
@@ -880,6 +933,14 @@ function sv(id, btn) {
     if (App.S.lt) document.getElementById('ltIn').value = App.S.lt;
     document.getElementById('msIn').value = App.S.ms || 108;
     initReminderUI();
+    // Show last auto-backup date
+    const lb = localStorage.getItem(GD_AUTO_BACKUP_KEY);
+    const gdLb = document.getElementById('gdLastAutoBackup');
+    if (gdLb) gdLb.textContent = lb ? ('Last auto backup: ' + lb) : 'No auto backup yet — will run at midnight.';
+    // Populate the app link display
+    const appUrl = _getAppUrl();
+    const linkEl = document.getElementById('appLinkDisplay');
+    if (linkEl) linkEl.textContent = appUrl;
   }
 }
 
@@ -1138,6 +1199,16 @@ function uStats() {
   document.getElementById('sMoM').textContent = Math.floor(ms2/ms) + ' malas';
   document.getElementById('sTot').textContent = tot;
   document.getElementById('sTotM').textContent = Math.floor(tot/ms) + ' malas';
+  // ── SEPARATED LIFETIME TOTALS ──
+  const radhaLifetime = Math.max(0, Object.values(App.S.history||{}).reduce((a,b)=>a+b,0) - (App.S.nameJapDeduct||0));
+  const rvLifetime = Math.max(0, Object.values(App.S.historyRV||{}).reduce((a,b)=>a+b,0) - (App.S.nameJapDeductRV||0));
+  const n28Lifetime = Object.values(App.S.h28||{}).reduce((a,b)=>a+b,0);
+  const sRadha = document.getElementById('sRadhaTot'); if (sRadha) sRadha.textContent = radhaLifetime.toLocaleString('en-IN');
+  const sRadhaM = document.getElementById('sRadhaTotM'); if (sRadhaM) sRadhaM.textContent = Math.floor(radhaLifetime/ms) + ' malas';
+  const sRV = document.getElementById('sRVTot'); if (sRV) sRV.textContent = rvLifetime.toLocaleString('en-IN');
+  const sRVM = document.getElementById('sRVTotM'); if (sRVM) sRVM.textContent = Math.floor(rvLifetime/ms) + ' malas';
+  const s28 = document.getElementById('s28Tot'); if (s28) s28.textContent = n28Lifetime.toLocaleString('en-IN');
+  const s28M = document.getElementById('s28TotM'); if (s28M) s28M.textContent = Math.floor(n28Lifetime/28) + ' cycles';
   // Lifetime Jap Time (all jap time + all 28 names time)
   const ltTimeSec = Object.values(App.getCombinedTimerHistory()).reduce((a,b)=>a+b,0) + Object.values(App.S.timer28History||{}).reduce((a,b)=>a+b,0);
   const ltH = Math.floor(ltTimeSec/3600), ltM = Math.floor((ltTimeSec%3600)/60), ltS = ltTimeSec%60;
@@ -1369,11 +1440,24 @@ function doReset() {
     const f = document.getElementById('rfrom').value, to = document.getElementById('rto').value;
     Object.keys(App.S.history).forEach(k => { if (k >= f && k <= to) { App.S.history[k] = 0; if (App.S.timerHistory[k]) App.S.timerHistory[k] = 0; if (App.S.timer28History[k]) App.S.timer28History[k] = 0; } });
   } else {
-    App.S.history = {}; App.S.h28 = {}; App.S.dt = 0; App.S.lt = 0; App.S.nameJapDeduct = 0;
-    App.S.stotrams = {}; App.S.brahma = {}; App.S.timerHistory = {}; App.S.timer28History = {}; App.S.malaLog = [];
-    App.lmc = 0; App.lm28 = 0;
+    // ── Full Reset: ALL data including lifetime, RV, brahmacharya ──
+    App.S.history = {}; App.S.h28 = {}; App.S.historyRV = {};
+    App.S.dt = 0; App.S.lt = 0; App.S.dtRV = 0; App.S.ltRV = 0;
+    App.S.nameJapDeduct = 0; App.S.nameJapDeductRV = 0;
+    App.S.stotrams = {}; App.S.brahma = {}; App.S.brahmacharya_start_date = '';
+    App.S.timerHistory = {}; App.S.timer28History = {}; App.S.timerHistoryRV = {};
+    App.S.malaLog = []; App.S.malaLogRV = []; App.S.sankalpas = []; App.S.occasions = {};
+    App.S.syncBaseline = {}; App.S.syncBaseline28 = {}; App.S.syncBaselineTimer = {}; App.S.syncBaselineTimer28 = {};
+    App.S.syncBaselineRV = {}; App.S.syncBaselineTimerRV = {};
+    App.lmc = 0; App.lm28 = 0; App.lmcRV = 0;
     STLIST.forEach(x => { App.S.stotrams[x.id] = {}; });
-    App.resetTimer();
+    // Clear IDB stores too
+    App.dbClearStore('history'); App.dbClearStore('h28');
+    App.dbClearStore('timerHistory'); App.dbClearStore('timer28History');
+    App.resetTimer(); App.stopAll28Timers();
+    // Clear saved targets from settings UI
+    ['dtIn','ltIn','msIn'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    initBrahmaStartInput();
   }
   App.save(); App.ua(); fbDebouncedPush(); gdDriveSilentBackup(); renderCal(); cm(); toast('Reset complete 🙏');
 }
@@ -1782,6 +1866,8 @@ const firebaseConfig = {
   appId: "1:368485403238:web:a3ab5c1427ad0c40fffba7",
   measurementId: "G-SJP0N1FDZD"
 };
+// NOTE: Make sure drakthephenomenal.github.io is added as an Authorized Domain
+// in Firebase Console → Authentication → Settings → Authorized domains
 
 let fbApp = null, fbAuth = null, fbDb = null, fbUser = null;
 let fbListener = null;
@@ -1865,10 +1951,33 @@ function fbInit() {
       console.warn('getRedirectResult:', e.message);
     });
 
-    fbAuth.onAuthStateChanged(user => {
+    fbAuth.onAuthStateChanged(async user => {
       if (fbForcedSignout) { lockSignedOutScreen(); return; }
+      const prevUid = App._uid;
       fbUser = user;
       if (user) {
+        // ── CRITICAL: if UID changed, reload data scoped to new user ──
+        if (prevUid !== user.uid) {
+          App._uid = user.uid;
+          // Reset in-memory state to defaults before loading new user's data
+          App.S = {
+            tk: App.getTk(), ms: 108, dt: 0, lt: 0,
+            cfg: { vib: true, sound: true },
+            history: {}, h28: {}, stotrams: {}, brahma: {},
+            customSt: [], timerHistory: {}, timer28History: {}, sankalpas: [], occasions: {},
+            syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {},
+            migrationV2Done: false, japMode: 'radha',
+            historyRV: {}, timerHistoryRV: {}, dtRV: 0, ltRV: 0, nameJapDeductRV: 0,
+            malaLogRV: [], syncBaselineRV: {}, syncBaselineTimerRV: {}
+          };
+          // Load THIS user's local data first (will be overwritten by cloud pull)
+          await App.load();
+          App.lmc = Math.floor(App.gTod() / (App.S.ms||108));
+          App.lmcRV = Math.floor((App.S.historyRV[App.S.tk]||0) / (App.S.ms||108));
+          App.lm28 = Math.floor((App.S.h28[App.S.tk]||0) / (App.S.ms||108));
+          switchJapMode(App.S.japMode || 'radha');
+          App.ua(); renderSt(); u28(); renderBcal(); renderCal(); uStats(); renderSankalpas(); renderMalaLog();
+        }
         document.getElementById('fbLoggedOut').style.display = 'none';
         document.getElementById('fbLoggedIn').style.display = 'block';
         document.getElementById('fbUserEmail').textContent = user.email || user.displayName || 'Google User';
@@ -1878,6 +1987,8 @@ function fbInit() {
           fbWatchSession();
           // Pull data from Firebase on sign-in
           fbAutoSync();
+          // Load global stotrams (inbuilt overrides + global stotrams for all users)
+          loadGlobalStotrams();
         });
       } else {
         document.getElementById('fbLoggedOut').style.display = 'block';
@@ -1981,6 +2092,7 @@ function fbSignOut() {
   if (fbListener) { fbListener(); fbListener = null; }
   gdAccessToken = null;
   localStorage.removeItem('rjap_gd_token');
+  App._uid = null;
   fbAuth.signOut().then(() => toast('Signed out 🙏'));
 }
 
@@ -2025,6 +2137,8 @@ async function fbPushFull() {
 
 function fbApplyRemote(d) {
   if (d.deviceId && d.deviceId === fbDeviceId) return;
+  // Ensure UID is set before saving (prevents saving to wrong UID key)
+  if (fbUser && App._uid !== fbUser.uid) App._uid = fbUser.uid;
   if ('history' in d) App.S.history = JSON.parse(JSON.stringify(d.history || {}));
   if ('h28' in d) App.S.h28 = JSON.parse(JSON.stringify(d.h28 || {}));
   if ('timerHistory' in d) App.S.timerHistory = JSON.parse(JSON.stringify(d.timerHistory || {}));
@@ -2171,7 +2285,151 @@ async function gdDriveSilentBackup() {
 
 
 // ═══════════════════════════════════════════════════════
-// 28 NAMES, SANKALP, STOTRAM, BRAHMACHARYA, CALENDAR
+// AUTO MIDNIGHT GOOGLE DRIVE BACKUP (like WhatsApp)
+// Backs up at midnight every night. Uses a dated filename
+// so each day creates its own visible JSON in Drive.
+// Also works silently when app is open.
+// ═══════════════════════════════════════════════════════
+const GD_AUTO_BACKUP_KEY = 'rjap_gd_lastAutoBackup';
+
+async function gdMidnightBackup() {
+  if (!gdAccessToken) return;
+  const today = App.getTk();
+  const lastBackup = localStorage.getItem(GD_AUTO_BACKUP_KEY);
+  if (lastBackup === today) return; // Already backed up today
+  const filename = 'radha-naam-jap-auto-' + today + '.json';
+  try {
+    const data = JSON.stringify({
+      version: 3, exportedAt: new Date().toISOString(), backupType: 'auto-midnight',
+      history: App.S.history||{}, h28: App.S.h28||{},
+      timerHistory: App.S.timerHistory||{}, timer28History: App.S.timer28History||{},
+      stotrams: App.S.stotrams||{}, brahma: App.S.brahma||{}, customSt: App.S.customSt||[],
+      sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{},
+      ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{},
+      malaLog: App.S.malaLog||[], malaLogDate: App.S.tk, brahmacharya_start_date: App.S.brahmacharya_start_date||'',
+      japMode: App.S.japMode||'radha', historyRV: App.S.historyRV||{}, timerHistoryRV: App.S.timerHistoryRV||{},
+      dtRV: App.S.dtRV||0, ltRV: App.S.ltRV||0, nameJapDeductRV: App.S.nameJapDeductRV||0, malaLogRV: App.S.malaLogRV||[]
+    }, null, 2);
+
+    // Check if a backup for this date already exists in Drive
+    const listResp = await fetch(
+      'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent("name='" + filename + "' and trashed=false") + '&spaces=drive&fields=files(id)',
+      { headers: { 'Authorization': 'Bearer ' + gdAccessToken } }
+    );
+    if (!listResp.ok) { gdAccessToken = null; localStorage.removeItem('rjap_gd_token'); return; }
+    const listData = await listResp.json();
+    const fileId = listData.files && listData.files.length ? listData.files[0].id : null;
+    const boundary = 'rjap_mid_' + Date.now();
+    const metadata = JSON.stringify({ name: filename, mimeType: 'application/json' });
+    const body = '--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+metadata+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+data+'\r\n--'+boundary+'--';
+    const method = fileId ? 'PATCH' : 'POST';
+    const url = fileId
+      ? 'https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=multipart'
+      : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+    const uploadResp = await fetch(url, {
+      method, headers: { 'Authorization': 'Bearer ' + gdAccessToken, 'Content-Type': 'multipart/related; boundary=' + boundary },
+      body
+    });
+    if (uploadResp.ok) {
+      localStorage.setItem(GD_AUTO_BACKUP_KEY, today);
+      setSyncPill('', '☁️ Auto backup: ' + today);
+      console.log('Auto midnight backup done:', filename);
+    } else if (uploadResp.status === 401) {
+      gdAccessToken = null; localStorage.removeItem('rjap_gd_token');
+    }
+  } catch(e) { console.warn('Auto backup failed:', e.message); }
+}
+
+// ── Midnight backup scheduler — runs every minute to catch the midnight moment ──
+function _scheduleMidnightBackup() {
+  setInterval(() => {
+    const now = new Date();
+    // Run between midnight and 12:05 AM to catch midnight
+    if (now.getHours() === 0 && now.getMinutes() < 5) {
+      gdMidnightBackup();
+    }
+  }, 60000);
+
+  // Also run on app open — back up previous day if missed
+  setTimeout(() => {
+    const lastBackup = localStorage.getItem(GD_AUTO_BACKUP_KEY);
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    const yKey = yesterday.getFullYear() + '-' + String(yesterday.getMonth()+1).padStart(2,'0') + '-' + String(yesterday.getDate()).padStart(2,'0');
+    // If we never backed up yesterday and it's past midnight, back up now
+    if (lastBackup !== App.getTk()) {
+      gdMidnightBackup();
+    }
+  }, 10000);
+}
+_scheduleMidnightBackup();
+
+// Manual restore from Drive: list available auto-backup files and let user pick
+async function gdListDriveBackups() {
+  const el = document.getElementById('gdRestoreList');
+  if (!el) return;
+  if (!gdAccessToken) { el.innerHTML = '<div style="font-size:12px;color:var(--red)">Please sign in with Google first.</div>'; return; }
+  el.innerHTML = '<div style="font-size:12px;color:var(--td)">Loading backups from Drive…</div>';
+  try {
+    const resp = await fetch(
+      'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent("name contains 'radha-naam-jap' and trashed=false") + '&spaces=drive&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc&pageSize=30',
+      { headers: { 'Authorization': 'Bearer ' + gdAccessToken } }
+    );
+    if (!resp.ok) { el.innerHTML = '<div style="font-size:12px;color:var(--red)">Auth error. Please sign in again.</div>'; return; }
+    const data = await resp.json();
+    if (!data.files || !data.files.length) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--td);text-align:center;padding:8px">No Drive backups found.</div>';
+      return;
+    }
+    el.innerHTML = data.files.map(f => {
+      const dt = new Date(f.modifiedTime).toLocaleString('en-IN', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid rgba(255,255,255,0.06)">'
+        + '<div style="flex:1"><div style="font-size:12px;color:var(--tl)">' + escHtml(f.name) + '</div><div style="font-size:10px;color:var(--td)">' + dt + '</div></div>'
+        + '<button onclick="gdRestoreBackup(\'' + f.id + '\',\'' + escHtml(f.name) + '\')" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(74,144,226,0.4);background:rgba(74,144,226,0.1);color:var(--a2);font-size:11px;cursor:pointer;white-space:nowrap">Restore</button>'
+        + '</div>';
+    }).join('');
+  } catch(e) { el.innerHTML = '<div style="font-size:12px;color:var(--red)">Error: ' + e.message + '</div>'; }
+}
+
+async function gdRestoreBackup(fileId, filename) {
+  if (!confirm('Restore "' + filename + '"? Current data will be overwritten.')) return;
+  const st = document.getElementById('gdRestoreStatus');
+  if (st) st.textContent = 'Downloading…';
+  try {
+    const resp = await fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
+      headers: { 'Authorization': 'Bearer ' + gdAccessToken }
+    });
+    if (!resp.ok) throw new Error('Download failed: ' + resp.status);
+    const data = await resp.json();
+    // Reuse existing importAllData logic
+    const input = { files: [new File([JSON.stringify(data)], filename, {type:'application/json'})] };
+    // Apply data directly
+    if (data.history) App.S.history = {...App.S.history, ...data.history};
+    if (data.h28) App.S.h28 = {...App.S.h28, ...data.h28};
+    if (data.timerHistory) App.S.timerHistory = {...App.S.timerHistory, ...data.timerHistory};
+    if (data.timer28History) App.S.timer28History = {...App.S.timer28History, ...data.timer28History};
+    if (data.stotrams) App.S.stotrams = {...App.S.stotrams, ...data.stotrams};
+    if (data.brahma) App.S.brahma = {...App.S.brahma, ...data.brahma};
+    if (data.customSt) App.S.customSt = data.customSt;
+    if (data.sankalpas) App.S.sankalpas = data.sankalpas;
+    if (data.occasions) App.S.occasions = {...App.S.occasions, ...data.occasions};
+    if (data.ms) App.S.ms = data.ms;
+    if (data.dt !== undefined) App.S.dt = data.dt;
+    if (data.lt !== undefined) App.S.lt = data.lt;
+    if (data.nameJapDeduct !== undefined) App.S.nameJapDeduct = data.nameJapDeduct;
+    if (data.historyRV) App.S.historyRV = {...App.S.historyRV, ...data.historyRV};
+    if (data.timerHistoryRV) App.S.timerHistoryRV = {...App.S.timerHistoryRV, ...data.timerHistoryRV};
+    if (data.brahmacharya_start_date) App.S.brahmacharya_start_date = data.brahmacharya_start_date;
+    App.save();
+    switchJapMode(App.S.japMode || 'radha');
+    renderSt(); u28(); renderBcal(); renderCal(); uStats(); renderSankalpas(); renderMalaLog();
+    if (st) { st.textContent = '✅ Restored from ' + filename + '! 🙏'; st.style.color = 'var(--green)'; }
+    toast('✅ Drive backup restored! 🙏 Jai Radhe!');
+  } catch(e) {
+    if (st) { st.textContent = '❌ ' + e.message; st.style.color = 'var(--red)'; }
+  }
+}
+
+
 // (same logic as original, using App.S instead of S)
 // ═══════════════════════════════════════════════════════
 
@@ -2723,15 +2981,23 @@ function reset28Time(scope) {
 
 function renderSt() {
   const list = document.getElementById('stList'); list.innerHTML = '';
-  const all = [...STLIST,...(App.S.customSt||[]).map(x=>({...x,custom:true}))];
+  // Merge: inbuilt + global (from Firestore) + personal custom
+  const globalSt = (_globalStotrams||[]).map(x=>({...x,global:true}));
+  const all = [...STLIST,...globalSt,...(App.S.customSt||[]).map(x=>({...x,custom:true}))];
+  // Show dev panel toggle button for developers
+  const devBtn = document.getElementById('devStBtn');
+  if (devBtn) devBtn.style.display = isDeveloper() ? '' : 'none';
   all.forEach(st => {
     const tc = (App.S.stotrams[st.id]||{})[App.S.tk]||0;
     const tot = Object.values(App.S.stotrams[st.id]||{}).reduce((a,b)=>a+b,0);
-    // Show 📖 for built-in (LYRICS[id]) OR custom with lyrics
-    const hasLyrics = !!LYRICS[st.id] || (st.custom && st.lyrics && st.lyrics.trim().length > 0);
+    // Show 📖 for built-in (via LYRICS or override), global, or custom with lyrics
+    const effLyrics = getEffectiveLyrics(st.id);
+    const hasLyrics = !!(effLyrics && effLyrics.trim().length > 0);
     const c = document.createElement('div'); c.className = 'stc';
+    // Tag for global stotrams
+    const globalTag = st.global ? '<span style="font-size:9px;color:var(--gold);border:1px solid rgba(255,215,0,0.3);border-radius:4px;padding:1px 5px;margin-left:5px;vertical-align:middle">🌍 GLOBAL</span>' : '';
     let inner = '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:3px">'
-      +'<span class="stn">'+escHtml(st.name)+'</span>'
+      +'<span class="stn">'+escHtml(st.name)+globalTag+'</span>'
       +(st.custom
         ?'<div style="display:flex;gap:5px">'
           +'<button class="dsb" style="color:var(--a2);border-color:rgba(74,144,226,0.35)" onclick="toggleStEdit(\''+st.id+'\')">✏</button>'
@@ -2761,6 +3027,135 @@ function renderSt() {
     list.appendChild(c);
   });
 }
+
+// ─────────────────────────────────────────────────────────
+// DEVELOPER STOTRAM MANAGEMENT
+// Developer IDs: drakthephenomenal@gmail.com, akthephenomenal@zohomail.com, anupkumarpaulshuvo@gmail.com
+// ─────────────────────────────────────────────────────────
+const DEV_IDS = [
+  'drakthephenomenal@gmail.com',
+  'akthephenomenal@zohomail.com',
+  'anupkumarpaulshuvo@gmail.com'
+];
+
+function isDeveloper() {
+  if (!fbUser) return false;
+  const email = (fbUser.email || '').toLowerCase().trim();
+  return DEV_IDS.map(e=>e.toLowerCase()).includes(email);
+}
+
+// Global stotrams stored in Firestore — visible to ALL users
+let _globalStotrams = [];
+let _globalLyricsOverrides = {}; // {stotramId: newLyrics}
+
+async function loadGlobalStotrams() {
+  if (!fbDb) return;
+  try {
+    const snap = await fbDb.collection('global_stotrams').orderBy('createdAt', 'asc').get();
+    _globalStotrams = snap.docs.map(d => ({id: d.id, ...d.data()}));
+  } catch(e) {
+    // Collection may not exist yet
+    _globalStotrams = [];
+  }
+  try {
+    const overrides = await fbDb.collection('stotram_overrides').get();
+    _globalLyricsOverrides = {};
+    overrides.docs.forEach(d => { _globalLyricsOverrides[d.id] = d.data().lyrics || ''; });
+  } catch(e) {
+    _globalLyricsOverrides = {};
+  }
+  renderSt();
+}
+
+function getEffectiveLyrics(id) {
+  if (_globalLyricsOverrides[id]) return _globalLyricsOverrides[id];
+  return LYRICS[id] || ((App.S.customSt||[]).find(x=>x.id===id)||{}).lyrics
+       || ((_globalStotrams||[]).find(x=>x.id===id)||{}).lyrics || '';
+}
+
+async function devSaveInbuiltLyrics(id) {
+  if (!isDeveloper()) { toast('Access denied'); return; }
+  const ta = document.getElementById('devLyrEdit-' + id);
+  if (!ta) return;
+  const lyrics = ta.value.trim();
+  if (!lyrics) { toast('Lyrics cannot be empty'); return; }
+  try {
+    await fbDb.collection('stotram_overrides').doc(id).set({ lyrics, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: fbUser.email });
+    _globalLyricsOverrides[id] = lyrics;
+    renderSt();
+    toast('✅ Lyrics saved for all users! 🙏');
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+async function devAddGlobalStotram() {
+  if (!isDeveloper()) { toast('Access denied'); return; }
+  const name = (document.getElementById('devStName').value || '').trim();
+  const sub = (document.getElementById('devStSub').value || '').trim();
+  const lyrics = (document.getElementById('devStLyrics').value || '').trim();
+  if (!name) { toast('Stotram name required'); return; }
+  const id = 'gs_' + Date.now();
+  try {
+    await fbDb.collection('global_stotrams').doc(id).set({
+      name, sub, lyrics, createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy: fbUser.email
+    });
+    _globalStotrams.push({ id, name, sub, lyrics });
+    document.getElementById('devStName').value = '';
+    document.getElementById('devStSub').value = '';
+    document.getElementById('devStLyrics').value = '';
+    renderSt();
+    renderDevStotramPanel();
+    toast('✅ Global stotram added for all users! 🙏');
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+async function devDeleteGlobalStotram(id) {
+  if (!isDeveloper()) { toast('Access denied'); return; }
+  if (!confirm('Delete this global stotram for all users?')) return;
+  try {
+    await fbDb.collection('global_stotrams').doc(id).delete();
+    _globalStotrams = _globalStotrams.filter(s => s.id !== id);
+    renderSt();
+    renderDevStotramPanel();
+    toast('Deleted.');
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+let _devPanelOpen = false;
+function toggleDevPanel() {
+  _devPanelOpen = !_devPanelOpen;
+  const panel = document.getElementById('devStPanel');
+  if (panel) { panel.style.display = _devPanelOpen ? 'block' : 'none'; }
+  if (_devPanelOpen) renderDevStotramPanel();
+}
+
+function renderDevStotramPanel() {
+  const el = document.getElementById('devStList');
+  if (!el) return;
+  let html = '';
+  // Section 1: Edit inbuilt stotram lyrics
+  html += '<div style="font-size:12px;color:var(--gold);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">✏ Edit Inbuilt Stotram Lyrics</div>';
+  STLIST.forEach(st => {
+    const cur = getEffectiveLyrics(st.id);
+    const hasOverride = !!_globalLyricsOverrides[st.id];
+    html += '<div style="margin-bottom:10px;border:1px solid rgba(255,215,0,0.2);border-radius:9px;padding:9px">';
+    html += '<div style="font-size:12px;color:var(--tl);margin-bottom:6px">' + escHtml(st.name) + (hasOverride ? ' <span style="color:var(--green);font-size:10px">● overridden</span>' : '') + '</div>';
+    html += '<textarea id="devLyrEdit-' + st.id + '" rows="4" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.2);border-radius:7px;padding:7px;color:var(--tl);font-size:12px;font-family:Hind Siliguri,serif;resize:vertical;box-sizing:border-box">' + escHtml(cur) + '</textarea>';
+    html += '<button onclick="devSaveInbuiltLyrics(\'' + st.id + '\')" style="margin-top:5px;padding:6px 14px;border-radius:7px;border:none;background:linear-gradient(135deg,rgba(255,215,0,0.3),rgba(255,180,0,0.2));color:var(--gold);font-size:12px;cursor:pointer">💾 Save for All Users</button>';
+    html += '</div>';
+  });
+  // Section 2: Global stotrams list
+  if (_globalStotrams.length) {
+    html += '<div style="font-size:12px;color:var(--gold);letter-spacing:1px;margin:12px 0 8px;text-transform:uppercase">🌍 Global Stotrams Added</div>';
+    _globalStotrams.forEach(st => {
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:7px;background:rgba(255,215,0,0.05);border-radius:7px;margin-bottom:6px">';
+      html += '<div style="flex:1;font-size:12px;color:var(--tl)">' + escHtml(st.name) + (st.sub ? '<br><span style="font-size:10px;color:var(--td)">'+escHtml(st.sub)+'</span>' : '') + '</div>';
+      html += '<button onclick="devDeleteGlobalStotram(\'' + st.id + '\')" style="padding:4px 10px;border-radius:7px;border:1px solid rgba(232,51,109,0.3);background:rgba(232,51,109,0.08);color:var(--rl);font-size:11px;cursor:pointer">Delete</button>';
+      html += '</div>';
+    });
+  }
+  el.innerHTML = html;
+}
+
 function adjSt(id,d) {
   if(!App.S.stotrams[id])App.S.stotrams[id]={};
   if(!App.S.stotrams[id][App.S.tk])App.S.stotrams[id][App.S.tk]=0;
@@ -3211,8 +3606,29 @@ window.addEventListener('load', async () => {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js', {scope:'./'})
-      .then(r => console.log('SW registered:', r.scope))
+      .then(r => {
+        console.log('SW registered:', r.scope);
+        // When a new SW takes over, reload the page to get fresh files
+        r.addEventListener('updatefound', () => {
+          const newWorker = r.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'activated') {
+              console.log('[SW] New SW activated — reloading for fresh content');
+              window.location.reload();
+            }
+          });
+        });
+      })
       .catch(e => console.warn('SW registration failed:', e.message));
+
+    // Also listen for SW_UPDATED message from the service worker
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data && e.data.type === 'SW_UPDATED') {
+        console.log('[SW] Received SW_UPDATED, reloading…', e.data.version);
+        window.location.reload();
+      }
+    });
   });
 }
 
@@ -3266,10 +3682,10 @@ window.addEventListener('load', function() {
 
 // ── showLyrics function ──
 function showLyrics(id) {
-  // Built-in stotram lyrics first, then custom stotram lyrics
-  const ly = LYRICS[id] || ((App.S.customSt||[]).find(x=>x.id===id)||{}).lyrics || '';
+  const ly = getEffectiveLyrics(id);
   if (!ly) { toast('পাঠ্য পাওয়া যায়নি 🙏'); return; }
-  const nm = [...STLIST,...(App.S.customSt||[])].find(x => x.id === id);
+  const allSt = [...STLIST,...(_globalStotrams||[]),...(App.S.customSt||[])];
+  const nm = allSt.find(x => x.id === id);
   document.getElementById('lmTitle').textContent = nm ? nm.name : id;
   document.getElementById('lyrBody').textContent = ly;
   document.getElementById('lmo').classList.add('show');

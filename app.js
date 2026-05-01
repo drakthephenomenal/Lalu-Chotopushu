@@ -288,8 +288,10 @@ const App = {
     document.getElementById('timerDisplay').classList.remove('running');
     document.getElementById('timerBtn').textContent = '▶ Resume';
     document.getElementById('timerBtn').className = 'tbtn start';
+    // Save only the delta since last save (avoids double-counting on resume)
     const _th = this.getCurTimerHistory();
-    _th[this.S.tk] = (_th[this.S.tk] || 0) + (this.timerSeconds - this.timerSavedSeconds);
+    const delta = this.timerSeconds - this.timerSavedSeconds;
+    _th[this.S.tk] = (_th[this.S.tk] || 0) + delta;
     this.timerSavedSeconds = this.timerSeconds;
     this.save(); this.updateTimerToday();
   },
@@ -309,7 +311,7 @@ const App = {
     clearTimeout(this.autoStopTimeout);
     clearInterval(this.timerInterval); this.timerInterval = null;
     this.timerRunning = false; this.timerSeconds = 0; this.timerSavedSeconds = 0;
-    this._malaTimerStart = 0; // reset mala-timer anchor too
+    this._malaTimerStart = 0; // reset per-mala timer anchor
     document.getElementById('timerDisplay').textContent = '00:00:00';
     document.getElementById('timerDisplay').classList.remove('running');
     document.getElementById('timerBtn').textContent = '▶ Start';
@@ -318,6 +320,9 @@ const App = {
   },
 
   updateTimerToday() {
+    // ── UNIFIED: Today's Jap Time = committed mala log sum + live in-progress delta ──
+    // timerHistory[today] is always kept equal to mala log sum (by syncTimerFromMalaLog).
+    // The live delta (timerSeconds - timerSavedSeconds) is the current incomplete mala.
     const radhaTimeSec = (this.S.timerHistory[this.S.tk] || 0);
     const rvTimeSec = (this.S.timerHistoryRV[this.S.tk] || 0);
     const liveSec = this.timerRunning ? (this.timerSeconds - this.timerSavedSeconds) : 0;
@@ -325,7 +330,24 @@ const App = {
     document.getElementById('timerToday').textContent = "Today's Jap Time: " + this.fmtTime(combinedSec);
   },
 
-  // ── Main UI Update ──
+  // ── UNIFIED TIME: sync timerHistory[today] = sum of mala log entries ──
+  // Called after any mala log change so all time displays stay in harmony.
+  syncTimerFromMalaLog() {
+    const isRV = this.S.japMode === 'rv';
+    const log = isRV ? (this.S.malaLogRV || []) : (this.S.malaLog || []);
+    const logSum = log.reduce((a, b) => a + b, 0);
+    const th = this.getCurTimerHistory();
+    th[this.S.tk] = logSum;
+    // Re-anchor timerSavedSeconds so live delta is measured from current position
+    this.timerSavedSeconds = this.timerSeconds;
+  },
+
+  // ── Get mala log sum for today (excludes live in-progress mala) ──
+  getMalaLogSum() {
+    const isRV = this.S.japMode === 'rv';
+    const log = isRV ? (this.S.malaLogRV || []) : (this.S.malaLog || []);
+    return log.reduce((a, b) => a + b, 0);
+  },
   ua() {
     const tod = this.gTod(), ms = this.S.ms || 108;
     const tot = this.gTot(); // COMBINED lifetime total
@@ -366,9 +388,8 @@ const App = {
     if (countInMala === 1 || this.malaWallStart === 0) {
       this.malaWallStart = Date.now();
       localStorage.setItem('rjap_malaWallStart', String(this.malaWallStart));
-      // Also anchor the timer-based mala start to current timerSeconds.
-      // This is the authoritative clock for mala log duration.
-      this._malaTimerStart = this.timerSeconds;
+      // Also anchor the timer-based mala start — this is the authoritative clock
+      if (this._malaTimerStart === undefined) this._malaTimerStart = this.timerSeconds;
     }
   },
 
@@ -380,35 +401,33 @@ const App = {
     if (this.S.cfg.sound) playSynthBell();
     // Triple long vibration synced with bell
     this.vib([200, 80, 200, 80, 300]);
-    // Record mala duration using the SAME clock as the visible timer display.
-    // timerSeconds is the authoritative source — it only ticks when the app
+    // ── Record mala duration using the SAME clock as the visible timer ──
+    // timerSeconds is the authoritative source — it only ticks while the app
     // interval is actually running, matching exactly what the user sees on screen.
-    // malaWallStart (wall-clock) is kept only as a fallback when the timer
-    // was never started this session (e.g. manual jap entry).
+    // Wall-clock (malaWallStart) is NOT used because it keeps running even when
+    // the phone screen is off or the browser throttles the interval.
     let malaDuration;
     if (this.timerSeconds > 0 && this._malaTimerStart !== undefined) {
-      // Use timer-based delta: current timerSeconds minus timerSeconds at mala start
       malaDuration = Math.max(1, this.timerSeconds - this._malaTimerStart);
     } else {
-      // Fallback: wall-clock (e.g. app just opened, timer never ran)
-      const now = Date.now();
-      malaDuration = Math.max(1, Math.round((now - this.malaWallStart) / 1000));
+      // Fallback: wall-clock (e.g. timer was never started, manual jap entry)
+      malaDuration = Math.max(1, Math.round((Date.now() - this.malaWallStart) / 1000));
     }
-    // Reset mala-start anchors for the next mala
+    // Anchor next mala's timer start to current timerSeconds
     this._malaTimerStart = this.timerSeconds;
     this.malaWallStart = Date.now();
     localStorage.setItem('rjap_malaWallStart', String(this.malaWallStart));
     const isRVm = this.S.japMode === 'rv';
-    // Skip log push when called from addManualJap (it already added averaged entries)
-    if (!this._skipMalaLogPush) {
-      if (isRVm) {
-        if (!this.S.malaLogRV) this.S.malaLogRV = [];
-        this.S.malaLogRV.push(malaDuration);
-      } else {
-        if (!this.S.malaLog) this.S.malaLog = [];
-        this.S.malaLog.push(malaDuration);
-      }
+    if (isRVm) {
+      if (!this.S.malaLogRV) this.S.malaLogRV = [];
+      this.S.malaLogRV.push(malaDuration);
+    } else {
+      if (!this.S.malaLog) this.S.malaLog = [];
+      this.S.malaLog.push(malaDuration);
     }
+    // ── UNIFIED TIME: timerHistory[today] = sum of mala log entries ──
+    // This keeps all time displays (timer, stats, mala log, B&C day view) in harmony.
+    this.syncTimerFromMalaLog();
     this.save();
     // Animate mala duration on timer display
     this.flashMalaDuration(malaDuration);
@@ -1015,13 +1034,11 @@ function addManualJap() {
   const isRV = App.S.japMode === 'rv';
   if (isRV) { App.S.historyRV[App.S.tk] = (App.S.historyRV[App.S.tk] || 0) + n; }
   else { App.S.history[App.S.tk] = (App.S.history[App.S.tk] || 0) + n; }
-  // Handle time input — add to today's timer and create mala log entries
+  // Handle time input — add mala log entries then sync timerHistory from log sum
   const minEl = document.getElementById('manualJapMin');
   const secEl = document.getElementById('manualJapSec');
   const timeSecs = (parseInt(minEl?.value) || 0) * 60 + Math.min(59, Math.max(0, parseInt(secEl?.value) || 0));
   if (timeSecs > 0) {
-    const th = App.getCurTimerHistory();
-    th[App.S.tk] = (th[App.S.tk] || 0) + timeSecs;
     // Create mala log entries with averaged time
     const ms = App.S.ms || 108;
     const malasAdded = Math.floor(n / ms);
@@ -1030,21 +1047,13 @@ function addManualJap() {
       const log = isRV ? (App.S.malaLogRV || (App.S.malaLogRV = [])) : (App.S.malaLog || (App.S.malaLog = []));
       for (let i = 0; i < malasAdded; i++) log.push(avgPerMala);
     }
+    // Sync timerHistory from mala log sum — single source of truth
+    App.syncTimerFromMalaLog();
   }
   App.ensureMalaWallStart();
   const nm = Math.floor(App.gTod() / (App.S.ms || 108));
   const lmcKey = isRV ? 'lmcRV' : 'lmc';
-  if (nm > App[lmcKey]) {
-    App[lmcKey] = nm;
-    // When time was manually provided, the mala log entries are already added above.
-    // Only trigger bell/vibrate effects via malaOk — skip its internal log push
-    // by setting a flag that malaOk reads.
-    if (timeSecs > 0) {
-      App._skipMalaLogPush = true;
-    }
-    App.malaOk();
-    App._skipMalaLogPush = false;
-  }
+  if (nm > App[lmcKey]) { App[lmcKey] = nm; App.malaOk(); }
   App.save(); App.ua(); fbDebouncedPush();
   document.getElementById('manualJapIn').value = '';
   if (minEl) minEl.value = '';
@@ -1104,6 +1113,25 @@ function deductTodayJap() {
   hist[App.S.tk] = cur - n;
   const lmcKey = isRV ? 'lmcRV' : 'lmc';
   App[lmcKey] = Math.floor(App.gTod() / (App.S.ms || 108));
+  // Proportionally remove time and mala log entries that correspond to deducted jap
+  // Ratio of jap being deducted vs total
+  const ratio = n / cur; // fraction being removed
+  const log = isRV ? (App.S.malaLogRV || []) : (App.S.malaLog || []);
+  if (log.length > 0) {
+    // Remove mala log entries from the END (most recent first, as we're deducting)
+    const malasToRemove = Math.floor(n / (App.S.ms || 108));
+    if (malasToRemove > 0 && malasToRemove <= log.length) {
+      const removed = log.splice(log.length - malasToRemove, malasToRemove);
+      const removedTime = removed.reduce((a, b) => a + b, 0);
+      const th = App.getCurTimerHistory();
+      th[App.S.tk] = Math.max(0, (th[App.S.tk] || 0) - removedTime);
+    } else if (malasToRemove === 0 && ratio > 0 && log.length > 0) {
+      // Deducting less than one mala — proportionally shrink the last entry's time
+      const timeShrink = Math.round(ratio * (App.getCurTimerHistory()[App.S.tk] || 0));
+      const th = App.getCurTimerHistory();
+      th[App.S.tk] = Math.max(0, (th[App.S.tk] || 0) - timeShrink);
+    }
+  }
   App.save(); App.ua(); fbDebouncedPush();
   document.getElementById('deductTodayIn').value = '';
   toast('Deducted ' + n + '. New total: ' + App.gTod() + ' 🙏');
@@ -1150,6 +1178,24 @@ function addJapTimeToday() {
   if (secs <= 0) { toast('Please enter at least 1 minute'); return; }
   const th = App.getCurTimerHistory();
   th[App.S.tk] = (th[App.S.tk] || 0) + secs;
+  // Keep mala log in harmony: distribute added time proportionally across existing entries
+  // or add a single adjustment entry if no malas done yet today
+  const isRV = App.S.japMode === 'rv';
+  const log = isRV ? (App.S.malaLogRV || (App.S.malaLogRV = [])) : (App.S.malaLog || (App.S.malaLog = []));
+  if (log.length > 0) {
+    // Distribute proportionally: each mala entry gets its share
+    const total = log.reduce((a, b) => a + b, 0);
+    let remaining = secs;
+    for (let i = 0; i < log.length - 1; i++) {
+      const share = Math.round(secs * log[i] / total);
+      log[i] += share;
+      remaining -= share;
+    }
+    log[log.length - 1] += remaining; // last entry absorbs rounding difference
+  } else {
+    // No malas done yet — add as a single time-adjustment entry
+    log.push(secs);
+  }
   App.save(); App.ua(); fbDebouncedPush();
   document.getElementById('jtAddTodayMin').value = '';
   document.getElementById('jtAddTodaySec').value = '';
@@ -1179,8 +1225,23 @@ function deductJapTimeToday() {
   if (secs <= 0) { toast('Please enter at least 1 minute'); return; }
   const th3 = App.getCurTimerHistory();
   const cur = th3[App.S.tk] || 0;
-  if (secs > cur) { toast('Cannot deduct more than today\'s time'); return; }
+  if (secs > cur) { toast('Cannot deduct more than today\'s time (' + Math.floor(cur/60) + 'm ' + (cur%60) + 's)'); return; }
   th3[App.S.tk] = cur - secs;
+  // Keep mala log in harmony: reduce entries proportionally
+  const isRV = App.S.japMode === 'rv';
+  const log = isRV ? (App.S.malaLogRV || []) : (App.S.malaLog || []);
+  if (log.length > 0) {
+    const total = log.reduce((a, b) => a + b, 0);
+    if (total > 0) {
+      let remaining = secs;
+      for (let i = 0; i < log.length - 1; i++) {
+        const share = Math.round(secs * log[i] / total);
+        log[i] = Math.max(1, log[i] - share); // keep each entry at least 1s
+        remaining -= share;
+      }
+      log[log.length - 1] = Math.max(1, log[log.length - 1] - remaining);
+    }
+  }
   App.save(); App.ua(); fbDebouncedPush();
   document.getElementById('jtDedTodayMin').value = '';
   document.getElementById('jtDedTodaySec').value = '';
@@ -1376,11 +1437,9 @@ function editMalaEntry(idx) {
   const parts = input.split(':');
   const newSecs = (parseInt(parts[0])||0) * 60 + (parseInt(parts[1])||0);
   if (newSecs <= 0) { toast('Invalid time'); return; }
-  const oldSecs = log[idx];
   log[idx] = newSecs;
-  // Update today's timer history with the difference
-  const th = App.getCurTimerHistory();
-  th[App.S.tk] = Math.max(0, (th[App.S.tk]||0) + (newSecs - oldSecs));
+  // Sync timerHistory from the updated mala log sum (single source of truth)
+  App.syncTimerFromMalaLog();
   App.save(); App.ua(); fbDebouncedPush(); renderMalaLog();
   toast('Mala ' + (idx+1) + ' updated ✏️');
 }
@@ -1390,10 +1449,9 @@ function deleteMalaEntry(idx) {
   const log = isRV ? App.S.malaLogRV : App.S.malaLog;
   if (!log || idx >= log.length) return;
   if (!confirm('Delete Mala ' + (idx+1) + ' entry?')) return;
-  const removed = log.splice(idx, 1)[0];
-  // Subtract removed time from today's timer
-  const th = App.getCurTimerHistory();
-  th[App.S.tk] = Math.max(0, (th[App.S.tk]||0) - removed);
+  log.splice(idx, 1);
+  // Sync timerHistory from updated mala log sum (single source of truth)
+  App.syncTimerFromMalaLog();
   App.save(); App.ua(); fbDebouncedPush(); renderMalaLog();
   toast('Mala entry deleted 🗑️');
 }
@@ -1415,7 +1473,7 @@ function cr2(tp) {
   document.getElementById('moCf').onclick = doReset;
 }
 function doReset() {
-  if (pr === 'today') { App.S.history[App.S.tk] = 0; App.lmc = 0; App.S.malaLog = []; App.malaWallStart = Date.now(); App._malaTimerStart = App.timerSeconds; localStorage.setItem('rjap_malaWallStart', String(App.malaWallStart)); }
+  if (pr === 'today') { App.S.history[App.S.tk] = 0; App.lmc = 0; App.S.malaLog = []; App.malaWallStart = Date.now(); localStorage.setItem('rjap_malaWallStart', String(App.malaWallStart)); App._malaTimerStart = App.timerSeconds; App.syncTimerFromMalaLog(); }
   else if (pr === '28today') {
     // Freeze active wishes before zeroing today's count so progress bars drop correctly
     (App.S.sankalpas||[]).filter(s => !s.done && s.startCycles !== null).forEach(s => {
@@ -3716,8 +3774,8 @@ window.addEventListener('load', async () => {
   // timerSavedSeconds tracks what's already committed to timerHistory this session.
   App.timerSeconds = 0;
   App.timerSavedSeconds = 0;
-  App._malaTimerStart = 0; // timer-based anchor for mala log duration
-  // Restore wall-clock mala start for cross-session timing
+  App._malaTimerStart = 0; // timer-based anchor for mala duration (authoritative clock)
+  // Restore wall-clock mala start for cross-session timing (fallback only)
   const savedMalaWall = localStorage.getItem('rjap_malaWallStart');
   const todayCount = App.gTod();
   const ms = App.S.ms || 108;

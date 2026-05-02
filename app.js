@@ -972,10 +972,6 @@ function sv(id, btn) {
     if (App.S.lt) document.getElementById('ltIn').value = App.S.lt;
     document.getElementById('msIn').value = App.S.ms || 108;
     initReminderUI();
-    // Show last auto-backup date
-    const lb = localStorage.getItem(GD_AUTO_BACKUP_KEY);
-    const gdLb = document.getElementById('gdLastAutoBackup');
-    if (gdLb) gdLb.textContent = lb ? ('Last auto backup: ' + lb) : 'No auto backup yet — will run at midnight.';
     // Populate the app link display
     const appUrl = _getAppUrl();
     const linkEl = document.getElementById('appLinkDisplay');
@@ -1987,9 +1983,6 @@ function lockSignedOutScreen() {
   fbForcedSignout = true;
   if (fbSessionListener) { fbSessionListener(); fbSessionListener = null; }
   if (fbListener) { fbListener(); fbListener = null; }
-  gdAccessToken = null;
-  localStorage.removeItem('rjap_gd_token');
-  localStorage.removeItem('rjap_gd_token_expiry');
   document.body.innerHTML = '';
   document.body.style.cssText = 'margin:0;padding:0;background:#000;';
   const overlay = document.createElement('div');
@@ -2031,8 +2024,7 @@ function fbInit() {
     // Handle redirect sign-in result (for in-app browsers that used signInWithRedirect)
     fbAuth.getRedirectResult().then(result => {
       if (result && result.credential && result.credential.accessToken) {
-        gdSaveToken(result.credential.accessToken, 3600);
-        toast('Signed in with Google! ☁️ Drive backup active 🙏');
+        toast('Signed in with Google! ☁️ Sync active 🙏');
       }
     }).catch(e => {
       // Ignore errors here — redirect result may simply not exist
@@ -2077,8 +2069,6 @@ function fbInit() {
           fbAutoSync();
           // Load global stotrams (inbuilt overrides + global stotrams for all users)
           loadGlobalStotrams();
-          // Initialize Gemini AI (developer only)
-          if (typeof initGeminiAI === 'function') initGeminiAI(user.email);
         });
       } else {
         document.getElementById('fbLoggedOut').style.display = 'block';
@@ -2098,16 +2088,11 @@ function fbInit() {
 function fbSignInGoogle() {
   if (!fbInit()) { toast('Firebase not ready. Check your connection.'); return; }
   const provider = new firebase.auth.GoogleAuthProvider();
-  provider.addScope('https://www.googleapis.com/auth/drive.file');
-
   // Try popup first; if it fails (in-app browsers, storage-partitioned envs), fall back to redirect
   fbAuth.signInWithPopup(provider)
     .then(result => {
       const credential = result.credential;
-      if (credential && credential.accessToken) {
-        gdSaveToken(credential.accessToken, 3600);
-      }
-      toast('Signed in with Google! ☁️ Drive backup active 🙏');
+      toast('Signed in with Google! ☁️ Sync active 🙏');
     })
     .catch(e => {
       // Popup blocked or storage partitioned (e.g. Facebook in-app browser)
@@ -2179,9 +2164,6 @@ function fbSignOut() {
   if (!fbAuth) return;
   if (fbSessionListener) { fbSessionListener(); fbSessionListener = null; }
   if (fbListener) { fbListener(); fbListener = null; }
-  gdAccessToken = null;
-  localStorage.removeItem('rjap_gd_token');
-  localStorage.removeItem('rjap_gd_token_expiry');
   App._uid = null;
   fbAuth.signOut().then(() => toast('Signed out 🙏'));
 }
@@ -2330,328 +2312,6 @@ function fbDebouncedPush() {
 // GOOGLE DRIVE — Silent Monk Auto Backup
 // Uses the access token from Google Sign-In (same login)
 // ═══════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════════════
-// GOOGLE DRIVE BACKUP SYSTEM — WhatsApp-style auto backup
-// • Midnight auto backup — one dated file per day (runs on app open if missed)
-// • Manual "Backup Now" button
-// • Background Periodic Sync via Service Worker (works when app closed)
-// • Manual restore only — user picks which backup to restore
-// • Firebase handles all real-time sync; Drive is for daily snapshots only
-// ═══════════════════════════════════════════════════════════════════════
-
-const GDRIVE_FILENAME  = 'radha-naam-jap-backup.json';
-const GD_AUTO_BACKUP_KEY   = 'rjap_gd_lastAutoBackup';
-const GD_TOKEN_KEY         = 'rjap_gd_token';
-const GD_TOKEN_EXPIRY_KEY  = 'rjap_gd_token_expiry';
-
-let gdAccessToken = localStorage.getItem(GD_TOKEN_KEY) || null;
-
-// ── Store token with expiry (Google tokens last ~1 hour) ──
-function gdSaveToken(token, expiresInSeconds) {
-  gdAccessToken = token;
-  localStorage.setItem(GD_TOKEN_KEY, token);
-  const expiry = Date.now() + ((expiresInSeconds || 3600) - 120) * 1000; // 2min safety margin
-  localStorage.setItem(GD_TOKEN_EXPIRY_KEY, String(expiry));
-}
-
-// ── Check if stored token is still valid ──
-function gdTokenValid() {
-  if (!gdAccessToken) return false;
-  const expiry = parseInt(localStorage.getItem(GD_TOKEN_EXPIRY_KEY) || '0');
-  return expiry > Date.now();
-}
-
-// ── Silently refresh Google OAuth token via Firebase re-auth ──
-// Returns fresh token or null if user needs to sign in again
-async function gdRefreshToken() {
-  if (!fbUser || !fbAuth) return null;
-  try {
-    // Ask Firebase to silently re-authenticate and get a fresh credential
-    const provider = new firebase.auth.GoogleAuthProvider();
-    provider.addScope('https://www.googleapis.com/auth/drive.file');
-    // getRedirectResult won't work here; use currentUser.getIdToken to verify session is alive
-    await fbUser.getIdToken(true); // Refreshes Firebase session
-    // Re-sign in silently to get a fresh Google access token
-    const result = await fbAuth.signInWithPopup(provider);
-    if (result && result.credential && result.credential.accessToken) {
-      gdSaveToken(result.credential.accessToken, 3600);
-      return result.credential.accessToken;
-    }
-  } catch(e) {
-    console.warn('gdRefreshToken failed:', e.message);
-  }
-  return null;
-}
-
-// ── Get a valid token, refreshing silently if expired ──
-// Does NOT show a popup unless the token is truly gone
-async function gdGetToken() {
-  if (gdTokenValid()) return gdAccessToken;
-  // Token expired but user is signed in — try to get fresh token
-  // We can't silently get a new Google OAuth token without a popup in browser
-  // So we just clear it and let the UI show "sign in again"
-  console.warn('GDrive token expired. User needs to re-sign in.');
-  gdAccessToken = null;
-  localStorage.removeItem(GD_TOKEN_KEY);
-  localStorage.removeItem(GD_TOKEN_EXPIRY_KEY);
-  return null;
-}
-
-// ── Build the JSON payload for backup ──
-function gdBuildPayload(backupType) {
-  return JSON.stringify({
-    version: 3, exportedAt: new Date().toISOString(), backupType: backupType || 'silent',
-    history: App.S.history||{}, h28: App.S.h28||{},
-    timerHistory: App.S.timerHistory||{}, timer28History: App.S.timer28History||{},
-    stotrams: App.S.stotrams||{}, brahma: App.S.brahma||{}, customSt: App.S.customSt||[],
-    sankalpas: App.S.sankalpas||[], occasions: App.S.occasions||{},
-    ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0,
-    nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{},
-    malaLog: App.S.malaLog||[], malaLogDate: App.S.tk,
-    brahmacharya_start_date: App.S.brahmacharya_start_date||'',
-    japMode: App.S.japMode||'radha',
-    historyRV: App.S.historyRV||{}, timerHistoryRV: App.S.timerHistoryRV||{},
-    dtRV: App.S.dtRV||0, ltRV: App.S.ltRV||0,
-    nameJapDeductRV: App.S.nameJapDeductRV||0, malaLogRV: App.S.malaLogRV||[]
-  }, null, 2);
-}
-
-// ── Core upload function — upserts a file in Drive ──
-async function gdUploadFile(token, filename, jsonData) {
-  const listResp = await fetch(
-    'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent("name='" + filename + "' and trashed=false") + '&spaces=drive&fields=files(id)',
-    { headers: { 'Authorization': 'Bearer ' + token } }
-  );
-  if (!listResp.ok) {
-    if (listResp.status === 401) { gdAccessToken = null; localStorage.removeItem(GD_TOKEN_KEY); localStorage.removeItem(GD_TOKEN_EXPIRY_KEY); }
-    throw new Error('List failed: ' + listResp.status);
-  }
-  const listData = await listResp.json();
-  const fileId = listData.files && listData.files.length ? listData.files[0].id : null;
-  const boundary = 'rjap_' + Date.now();
-  const metadata = JSON.stringify({ name: filename, mimeType: 'application/json' });
-  const body = '--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+metadata+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+jsonData+'\r\n--'+boundary+'--';
-  const method = fileId ? 'PATCH' : 'POST';
-  const url = fileId
-    ? 'https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=multipart'
-    : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
-  const uploadResp = await fetch(url, {
-    method,
-    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'multipart/related; boundary=' + boundary },
-    body
-  });
-  if (!uploadResp.ok) {
-    if (uploadResp.status === 401) { gdAccessToken = null; localStorage.removeItem(GD_TOKEN_KEY); localStorage.removeItem(GD_TOKEN_EXPIRY_KEY); }
-    throw new Error('Upload failed: ' + uploadResp.status);
-  }
-  return true;
-}
-
-// Silent per-save backup removed — Firebase handles real-time sync.
-// Drive backup is midnight auto + manual only. See gdMidnightBackup().
-
-// ── Midnight/daily backup — one dated file per day, like WhatsApp ──
-async function gdMidnightBackup() {
-  const token = await gdGetToken();
-  if (!token) return;
-  const today = App.getTk();
-  const lastBackup = localStorage.getItem(GD_AUTO_BACKUP_KEY);
-  if (lastBackup === today) return; // Already done today
-  try {
-    const filename = 'radha-naam-jap-auto-' + today + '.json';
-    await gdUploadFile(token, filename, gdBuildPayload('auto-midnight'));
-    localStorage.setItem(GD_AUTO_BACKUP_KEY, today);
-    setSyncPill('', '☁️ Auto backup: ' + today);
-    const el = document.getElementById('gdLastAutoBackup');
-    if (el) el.textContent = 'Last auto backup: ' + today;
-    console.log('[GDrive] Auto midnight backup done:', filename);
-    // Notify user (if notifications are enabled)
-    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({
-        type: 'SHOW_NOTIFICATION',
-        title: '☁️ Radha Naam Jap Backed Up',
-        body: 'Auto backup saved to Google Drive for ' + today + ' 🙏',
-        tag: 'gdrive-backup'
-      });
-    }
-  } catch(e) { console.warn('[GDrive] Midnight backup failed:', e.message); }
-}
-
-// ── Save latest data snapshot to SW cache for background sync ──
-function _gdCacheForSW() {
-  try {
-    const token = gdAccessToken;
-    const tokenExpiry = parseInt(localStorage.getItem(GD_TOKEN_EXPIRY_KEY) || '0');
-    const lastBackupDate = localStorage.getItem(GD_AUTO_BACKUP_KEY) || '';
-    if (!token || !navigator.serviceWorker || !navigator.serviceWorker.controller) return;
-    navigator.serviceWorker.controller.postMessage({
-      type: 'CACHE_BACKUP_DATA',
-      token: token,
-      payload: gdBuildPayload('sw-background'),
-      tokenExpiry: tokenExpiry,
-      lastBackupDate: lastBackupDate
-    });
-  } catch(e) { console.warn('_gdCacheForSW failed:', e.message); }
-}
-
-// ── Register Background Periodic Sync (Android PWA, Chrome) ──
-// This allows backup to run even when app is closed, like WhatsApp
-async function _gdRegisterPeriodicSync() {
-  if (!('serviceWorker' in navigator) || !('periodicSync' in ServiceWorkerRegistration.prototype)) return;
-  try {
-    const reg = await navigator.serviceWorker.ready;
-    // Check permission
-    const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
-    if (status.state === 'granted') {
-      await reg.periodicSync.register('gdrive-midnight-backup', {
-        minInterval: 24 * 60 * 60 * 1000 // once per day minimum
-      });
-      console.log('[GDrive] Periodic background sync registered ✓');
-    }
-  } catch(e) {
-    console.log('[GDrive] Periodic sync not supported:', e.message);
-  }
-}
-
-// ── Listen for SW triggering backup (from background sync) ──
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.addEventListener('message', async e => {
-    if (e.data && e.data.type === 'TRIGGER_GDRIVE_BACKUP') {
-      await gdMidnightBackup();
-    }
-  });
-}
-
-// ── Midnight scheduler — runs every minute while app is open ──
-// Catches midnight AND backs up on app open if today's backup is missing
-function _scheduleMidnightBackup() {
-  // Check every minute for midnight window
-  setInterval(() => {
-    const now = new Date();
-    if (now.getHours() === 0 && now.getMinutes() < 5) {
-      gdMidnightBackup();
-    }
-  }, 60000);
-
-  // On app open: back up immediately if today's backup hasn't happened yet
-  setTimeout(async () => {
-    const lastBackup = localStorage.getItem(GD_AUTO_BACKUP_KEY);
-    if (lastBackup !== App.getTk()) {
-      await gdMidnightBackup();
-    }
-    // Register background sync for when app is closed
-    _gdRegisterPeriodicSync();
-  }, 8000);
-}
-_scheduleMidnightBackup();
-
-// ── List Drive backups for restore UI ──
-async function gdListDriveBackups() {
-  const el = document.getElementById('gdRestoreList');
-  if (!el) return;
-  const token = await gdGetToken();
-  if (!token) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--red)">⚠️ Session expired. Please sign out and sign in again to refresh Drive access.</div>';
-    return;
-  }
-  el.innerHTML = '<div style="font-size:12px;color:var(--td)">Loading backups from Drive…</div>';
-  try {
-    const resp = await fetch(
-      'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent("name contains 'radha-naam-jap' and trashed=false") +
-      '&spaces=drive&fields=files(id,name,modifiedTime,size)&orderBy=modifiedTime desc&pageSize=50',
-      { headers: { 'Authorization': 'Bearer ' + token } }
-    );
-    if (!resp.ok) {
-      el.innerHTML = '<div style="font-size:12px;color:var(--red)">Auth error (' + resp.status + '). Please sign in again.</div>';
-      return;
-    }
-    const data = await resp.json();
-    if (!data.files || !data.files.length) {
-      el.innerHTML = '<div style="font-size:12px;color:var(--td);text-align:center;padding:12px">No Drive backups found yet.</div>';
-      return;
-    }
-    el.innerHTML = data.files.map(f => {
-      const dt = new Date(f.modifiedTime).toLocaleString('en-IN', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-      const isAuto = f.name.includes('auto-');
-      const isLatest = f.name === GDRIVE_FILENAME;
-      const badge = isLatest
-        ? '<span style="font-size:9px;background:rgba(74,144,226,0.2);color:var(--a2);border-radius:4px;padding:1px 5px;margin-left:5px">LATEST</span>'
-        : isAuto
-          ? '<span style="font-size:9px;background:rgba(255,215,0,0.15);color:var(--gold);border-radius:4px;padding:1px 5px;margin-left:5px">AUTO</span>'
-          : '';
-      return '<div style="display:flex;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid rgba(255,255,255,0.06)">'
-        + '<div style="flex:1;min-width:0">'
-        + '<div style="font-size:12px;color:var(--tl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(f.name) + badge + '</div>'
-        + '<div style="font-size:10px;color:var(--td);margin-top:2px">' + dt + '</div>'
-        + '</div>'
-        + '<button onclick="gdRestoreBackup(\'' + f.id + '\',\'' + escHtml(f.name) + '\')" '
-        + 'style="flex-shrink:0;padding:5px 12px;border-radius:8px;border:1px solid rgba(74,144,226,0.4);background:rgba(74,144,226,0.1);color:var(--a2);font-size:11px;cursor:pointer">Restore</button>'
-        + '</div>';
-    }).join('');
-  } catch(e) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--red)">Error: ' + e.message + '</div>';
-  }
-}
-
-// ── Restore a backup file from Drive ──
-async function gdRestoreBackup(fileId, filename) {
-  if (!confirm('Restore "' + filename + '"?\n\nYour current data will be overwritten. This cannot be undone.')) return;
-  const st = document.getElementById('gdRestoreStatus');
-  if (st) { st.textContent = '⏳ Downloading from Drive…'; st.style.color = 'var(--td)'; }
-  const token = await gdGetToken();
-  if (!token) {
-    if (st) { st.textContent = '❌ Session expired. Please sign in again.'; st.style.color = 'var(--red)'; }
-    return;
-  }
-  try {
-    const resp = await fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-    if (!resp.ok) throw new Error('Download failed: ' + resp.status);
-    const data = await resp.json();
-    // Apply all data fields
-    if (data.history) App.S.history = data.history;
-    if (data.h28) App.S.h28 = data.h28;
-    if (data.timerHistory) App.S.timerHistory = data.timerHistory;
-    if (data.timer28History) App.S.timer28History = data.timer28History;
-    if (data.stotrams) App.S.stotrams = data.stotrams;
-    if (data.brahma) App.S.brahma = data.brahma;
-    if (data.customSt) App.S.customSt = data.customSt;
-    if (data.sankalpas) App.S.sankalpas = data.sankalpas;
-    if (data.occasions) App.S.occasions = data.occasions;
-    if (data.ms) App.S.ms = data.ms;
-    if (data.dt !== undefined) App.S.dt = data.dt;
-    if (data.lt !== undefined) App.S.lt = data.lt;
-    if (data.nameJapDeduct !== undefined) App.S.nameJapDeduct = data.nameJapDeduct;
-    if (data.cfg) App.S.cfg = data.cfg;
-    if (data.historyRV) App.S.historyRV = data.historyRV;
-    if (data.timerHistoryRV) App.S.timerHistoryRV = data.timerHistoryRV;
-    if (data.dtRV !== undefined) App.S.dtRV = data.dtRV;
-    if (data.ltRV !== undefined) App.S.ltRV = data.ltRV;
-    if (data.nameJapDeductRV !== undefined) App.S.nameJapDeductRV = data.nameJapDeductRV;
-    if (data.malaLogRV) App.S.malaLogRV = data.malaLogRV;
-    if (data.malaLog) App.S.malaLog = data.malaLog;
-    if (data.brahmacharya_start_date) App.S.brahmacharya_start_date = data.brahmacharya_start_date;
-    if (data.japMode) App.S.japMode = data.japMode;
-    // Reset sync baselines so Firestore doesn't conflict
-    App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history||{}));
-    App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28||{}));
-    App.S.syncBaselineTimer = JSON.parse(JSON.stringify(App.S.timerHistory||{}));
-    App.S.syncBaselineTimer28 = JSON.parse(JSON.stringify(App.S.timer28History||{}));
-    App.S.syncBaselineRV = JSON.parse(JSON.stringify(App.S.historyRV||{}));
-    App.S.syncBaselineTimerRV = JSON.parse(JSON.stringify(App.S.timerHistoryRV||{}));
-    await App.save();
-    switchJapMode(App.S.japMode || 'radha');
-    renderSt(); u28(); renderBcal(); renderCal(); uStats(); renderSankalpas(); renderMalaLog();
-    fbDebouncedPush(); // Push restored data to Firestore too
-    if (st) { st.textContent = '✅ Restored from ' + filename + '! 🙏 Jai Radhe!'; st.style.color = 'var(--green)'; }
-    toast('✅ Drive backup restored! 🙏 Jai Radhe!');
-  } catch(e) {
-    if (st) { st.textContent = '❌ ' + e.message; st.style.color = 'var(--red)'; }
-  }
-}
-
-// (same logic as original, using App.S instead of S)
 // ═══════════════════════════════════════════════════════
 
 const NAMES28 = [
@@ -3809,10 +3469,6 @@ window.addEventListener('load', async () => {
   fbInit();
   initSunTimes();
   buildPwaManifest();
-
-  // Restore Drive token if re-opened
-  const savedToken = localStorage.getItem('rjap_gd_token');
-  if (savedToken) gdAccessToken = savedToken;
 
   // Hide loading — guaranteed cleanup
   setTimeout(() => {

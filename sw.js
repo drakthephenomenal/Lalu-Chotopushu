@@ -1,16 +1,14 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker
-// v57: Added Gemini AI files to cache
+// v62: Removed Gemini AI files from cache
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v61';
+const CACHE = 'radha-jap-v62';
 
 const PRECACHE = [
   './index.html',
   './style.css',
   './stotrams.js',
   './app.js',
-  './gemini-ai.js',
-  './ai-styles.css',
   './guru.jpg',
   './icon-192.png',
   './icon-512.png',
@@ -34,8 +32,7 @@ const BYPASS = [
   'oauth2.googleapis.com',
   'accounts.google.com',
   'googleapis.com/drive',
-  'googleapis.com/upload',
-  'generativelanguage.googleapis.com'
+  'googleapis.com/upload'
 ];
 
 // ── Install ──
@@ -77,7 +74,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  if (url.pathname.endsWith('app.js') || url.pathname.endsWith('style.css') || url.pathname.endsWith('stotrams.js') || url.pathname.endsWith('gemini-ai.js') || url.pathname.endsWith('ai-styles.css')) {
+  if (url.pathname.endsWith('app.js') || url.pathname.endsWith('style.css') || url.pathname.endsWith('stotrams.js')) {
     e.respondWith(
       fetch(e.request, { cache: 'no-cache' })
         .then(resp => {

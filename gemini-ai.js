@@ -17,8 +17,8 @@ let aiListening = false;
 // ═══════════════════════════════════════════════════════════════════
 function initGeminiAI(userEmail) {
 if (userEmail !== AI_DEV_EMAIL) return;
-const btn = document.getElementById(‘aiNavBtn’);
-if (btn) btn.style.display = ‘flex’;
+const sec = document.getElementById('aiSection');
+if (sec) sec.style.display = 'block';
 try {
 const saved = sessionStorage.getItem(‘rjap_ai_history’);
 if (saved) aiChatHistory = JSON.parse(saved);
@@ -179,6 +179,7 @@ throw new Error(err.error?.message || ’Gemini API error ’ + resp.status);
 const data = await resp.json();
 const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || ‘কোনো উত্তর পাওয়া যায়নি।’;
 
+```
 aiChatHistory.push({ role: 'model', parts: [{ text: replyText }] });
 try { sessionStorage.setItem('rjap_ai_history', JSON.stringify(aiChatHistory)); } catch(e) {}
 
@@ -189,6 +190,7 @@ if (updateMatch) {
   try { pendingUpdate = JSON.parse(updateMatch[1].trim()); } catch(e) {}
 }
 return { reply: cleanReply, update: pendingUpdate };
+```
 
 } catch(e) {
 console.error(’[GeminiAI]’, e);
@@ -210,7 +212,7 @@ history: JSON.parse(JSON.stringify(S.history || {})),
 historyRV: JSON.parse(JSON.stringify(S.historyRV || {})),
 timerHistory: JSON.parse(JSON.stringify(S.timerHistory || {})),
 brahma: JSON.parse(JSON.stringify(S.brahma || {})),
-malaLog: [...(S.malaLog || [])],
+malaLog: […(S.malaLog || [])],
 action: update
 };
 
@@ -373,8 +375,8 @@ if (!chat) return;
 const div = document.createElement(‘div’);
 div.className = ‘ai-msg ai-msg-’ + role;
 div.innerHTML = text
-.replace(/**(.*?)**/g, ‘<strong>$1</strong>’)
-.replace(/*(.*?)*/g, ‘<em>$1</em>’)
+.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+.replace(/\*(.*?)\*/g, '<em>$1</em>')
 .replace(/\n/g, ‘<br>’);
 chat.appendChild(div);
 chat.scrollTop = chat.scrollHeight;

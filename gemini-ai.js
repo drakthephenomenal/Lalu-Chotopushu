@@ -179,7 +179,6 @@ throw new Error(err.error?.message || ’Gemini API error ’ + resp.status);
 const data = await resp.json();
 const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || ‘কোনো উত্তর পাওয়া যায়নি।’;
 
-```
 aiChatHistory.push({ role: 'model', parts: [{ text: replyText }] });
 try { sessionStorage.setItem('rjap_ai_history', JSON.stringify(aiChatHistory)); } catch(e) {}
 
@@ -190,7 +189,6 @@ if (updateMatch) {
   try { pendingUpdate = JSON.parse(updateMatch[1].trim()); } catch(e) {}
 }
 return { reply: cleanReply, update: pendingUpdate };
-```
 
 } catch(e) {
 console.error(’[GeminiAI]’, e);
@@ -212,7 +210,7 @@ history: JSON.parse(JSON.stringify(S.history || {})),
 historyRV: JSON.parse(JSON.stringify(S.historyRV || {})),
 timerHistory: JSON.parse(JSON.stringify(S.timerHistory || {})),
 brahma: JSON.parse(JSON.stringify(S.brahma || {})),
-malaLog: […(S.malaLog || [])],
+malaLog: [...(S.malaLog || [])],
 action: update
 };
 

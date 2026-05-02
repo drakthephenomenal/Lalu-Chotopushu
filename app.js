@@ -17,7 +17,8 @@ const App = {
     japMode: 'radha',
     historyRV: {}, timerHistoryRV: {}, dtRV: 0, ltRV: 0, nameJapDeductRV: 0,
     malaLogRV: [],
-    syncBaselineRV: {}, syncBaselineTimerRV: {}
+    syncBaselineRV: {}, syncBaselineTimerRV: {},
+    activityLog: []
   },
   lmcRV: 0,
   lmc: 0, lm28: 0,
@@ -110,7 +111,8 @@ const App = {
       japMode: this.S.japMode, historyRV: this.S.historyRV, timerHistoryRV: this.S.timerHistoryRV,
       dtRV: this.S.dtRV, ltRV: this.S.ltRV, nameJapDeductRV: this.S.nameJapDeductRV, malaLogRV: this.S.malaLogRV,
       syncBaselineRV: this.S.syncBaselineRV, syncBaselineTimerRV: this.S.syncBaselineTimerRV,
-      brahmacharya_start_date: this.S.brahmacharya_start_date
+      brahmacharya_start_date: this.S.brahmacharya_start_date,
+      activityLog: this.S.activityLog || []
     });
     // Keep per-day stores updated for compatibility with existing offline data
     const tk = this.S.tk;
@@ -186,6 +188,7 @@ const App = {
     }
     if (!this.S.syncBaselineRV) this.S.syncBaselineRV = {};
     if (!this.S.syncBaselineTimerRV) this.S.syncBaselineTimerRV = {};
+    if (!this.S.activityLog) this.S.activityLog = [];
     if (!this.S.historyRV[this.S.tk]) this.S.historyRV[this.S.tk] = 0;
     if (!this.S.timerHistoryRV[this.S.tk]) this.S.timerHistoryRV[this.S.tk] = 0;
     // Load malaLog — only use if it's from today AND today has actual jap count
@@ -270,6 +273,7 @@ const App = {
 
   startTimer() {
     if (this.timerRunning) return;
+    if (!this._sessionStart) this._sessionStart = Date.now();
     this.timerRunning = true;
     document.getElementById('timerDisplay').classList.add('running');
     document.getElementById('timerBtn').textContent = '⏸ Pause';
@@ -293,6 +297,11 @@ const App = {
     const delta = this.timerSeconds - this.timerSavedSeconds;
     _th[this.S.tk] = (_th[this.S.tk] || 0) + delta;
     this.timerSavedSeconds = this.timerSeconds;
+    // Log this jap session with timestamps
+    if (this._sessionStart) {
+      logActivity({ t: 'session', ts: this._sessionStart, end: Date.now(), mode: this.S.japMode, secs: delta });
+      this._sessionStart = null;
+    }
     this.save(); this.updateTimerToday();
   },
 
@@ -425,6 +434,11 @@ const App = {
       if (!this.S.malaLog) this.S.malaLog = [];
       this.S.malaLog.push(malaDuration);
     }
+    // Log mala completion with full timestamp for AI analysis
+    const malaNum = isRVm
+      ? Math.floor((this.S.historyRV[this.S.tk]||0) / (this.S.ms||108))
+      : Math.floor((this.S.history[this.S.tk]||0) / (this.S.ms||108));
+    logActivity({ t: 'mala', ts: Date.now(), mode: this.S.japMode, n: malaNum, sec: malaDuration });
     // ── UNIFIED TIME: timerHistory[today] = sum of mala log entries ──
     // This keeps all time displays (timer, stats, mala log, B&C day view) in harmony.
     this.syncTimerFromMalaLog();
@@ -2048,7 +2062,7 @@ function fbInit() {
             syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {},
             migrationV2Done: false, japMode: 'radha',
             historyRV: {}, timerHistoryRV: {}, dtRV: 0, ltRV: 0, nameJapDeductRV: 0,
-            malaLogRV: [], syncBaselineRV: {}, syncBaselineTimerRV: {}
+            malaLogRV: [], activityLog: [], syncBaselineRV: {}, syncBaselineTimerRV: {}
           };
           // Load THIS user's local data first (will be overwritten by cloud pull)
           await App.load();
@@ -2187,6 +2201,7 @@ async function fbPushFull() {
     japMode: App.S.japMode||'radha', historyRV: App.S.historyRV||{}, timerHistoryRV: App.S.timerHistoryRV||{},
     dtRV: App.S.dtRV||0, ltRV: App.S.ltRV||0, nameJapDeductRV: App.S.nameJapDeductRV||0, malaLogRV: App.S.malaLogRV||[],
     brahmacharya_start_date: App.S.brahmacharya_start_date||'',
+    activityLog: App.S.activityLog || [],
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId
   };
@@ -2244,6 +2259,19 @@ function fbApplyRemote(d) {
   if (d.ltRV !== undefined) App.S.ltRV = d.ltRV;
   if (d.nameJapDeductRV !== undefined) App.S.nameJapDeductRV = d.nameJapDeductRV;
   if (d.brahmacharya_start_date) App.S.brahmacharya_start_date = d.brahmacharya_start_date;
+  if ('activityLog' in d) {
+    // Merge remote + local, deduplicate by ts+t, keep latest 500
+    const remote = d.activityLog || [];
+    const local = App.S.activityLog || [];
+    const seen = new Set();
+    const merged = [...remote, ...local].filter(e => {
+      const key = e.t + '_' + e.ts;
+      if (seen.has(key)) return false;
+      seen.add(key); return true;
+    });
+    merged.sort((a,b) => a.ts - b.ts);
+    App.S.activityLog = merged.slice(-500);
+  }
   // Only apply malaLogRV from Firebase if it belongs to today AND local today has RV jap
   if ('malaLogRV' in d) {
     const remoteMalaLogRV = d.malaLogRV || [];
@@ -2408,6 +2436,8 @@ function cycleDone28() {
   // Capture cycle time before resetting
   const cycleTimeSec = App._n28CycleStart
     ? Math.floor((Date.now() - App._n28CycleStart) / 1000) : 0;
+  const cycleNum = Math.floor((App.S.h28[App.S.tk]||0) / 28);
+  logActivity({ t: '28cycle', ts: Date.now(), n: cycleNum, sec: cycleTimeSec });
   const fmtCyc = s => Math.floor(s/60)+'m '+(s%60)+'s';
   App._n28CompletionAnimating = true;
   clearTimeout(App._n28CompletionTimer);
@@ -3041,6 +3071,7 @@ function adjSt(id,d) {
   if(!App.S.stotrams[id])App.S.stotrams[id]={};
   if(!App.S.stotrams[id][App.S.tk])App.S.stotrams[id][App.S.tk]=0;
   App.S.stotrams[id][App.S.tk]=Math.max(0,App.S.stotrams[id][App.S.tk]+d);
+  if (d > 0) logActivity({ t: 'stotram', ts: Date.now(), id: id, count: App.S.stotrams[id][App.S.tk] });
   App.save(); fbDebouncedPush();
   const e=document.getElementById('sc'+id); if(e)e.textContent=App.S.stotrams[id][App.S.tk]; App.vib([20]);
 }
@@ -3302,9 +3333,11 @@ function sheetMarkBc(action) {
   if (action === 'b') {
     const cnt = parseInt(document.getElementById('cdmoBcCnt').value) || 1;
     App.S.brahma[key] = { status: 'b', count: cnt };
+    logActivity({ t: 'brahma', ts: Date.now(), status: 'b', date: key, count: cnt });
     toast('Marked as broken 🙏');
   } else {
     delete App.S.brahma[key];
+    logActivity({ t: 'brahma', ts: Date.now(), status: 'm', date: key });
     toast('✅ Restored as maintained!');
   }
   App.save(); fbDebouncedPush(); renderCal();
@@ -3423,6 +3456,21 @@ function toggleBrkCollapse() {
   if (!body) return;
   const isOpen = body.classList.toggle('open');
   if (chevron) chevron.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+// ─────────────────────────────────────────────────────────
+// ACTIVITY LOG — records every action with Unix timestamp
+// Powers the AI assistant's data science analysis
+// ─────────────────────────────────────────────────────────
+function logActivity(entry) {
+  if (!App.S.activityLog) App.S.activityLog = [];
+  App.S.activityLog.push(entry);
+  // Keep last 500 entries (~50KB) — well within Firestore 1MB doc limit
+  if (App.S.activityLog.length > 500) {
+    App.S.activityLog = App.S.activityLog.slice(-500);
+  }
+  // Debounced save — don't save on every single tap, batch with existing save
+  // App.save() is already called by the caller (malaOk, pauseTimer etc)
 }
 
 // ── INIT ──

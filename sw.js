@@ -1,14 +1,16 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker
-// v55: Background Periodic Sync for Drive backup
+// v57: Added Gemini AI files to cache
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v56';
+const CACHE = 'radha-jap-v57';
 
 const PRECACHE = [
   './index.html',
   './style.css',
   './stotrams.js',
   './app.js',
+  './gemini-ai.js',
+  './ai-styles.css',
   './guru.jpg',
   './icon-192.png',
   './icon-512.png',
@@ -32,7 +34,8 @@ const BYPASS = [
   'oauth2.googleapis.com',
   'accounts.google.com',
   'googleapis.com/drive',
-  'googleapis.com/upload'
+  'googleapis.com/upload',
+  'generativelanguage.googleapis.com'
 ];
 
 // ── Install ──
@@ -74,7 +77,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  if (url.pathname.endsWith('app.js') || url.pathname.endsWith('style.css') || url.pathname.endsWith('stotrams.js')) {
+  if (url.pathname.endsWith('app.js') || url.pathname.endsWith('style.css') || url.pathname.endsWith('stotrams.js') || url.pathname.endsWith('gemini-ai.js') || url.pathname.endsWith('ai-styles.css')) {
     e.respondWith(
       fetch(e.request, { cache: 'no-cache' })
         .then(resp => {
@@ -98,16 +101,14 @@ self.addEventListener('fetch', e => {
   );
 });
 
-// ── Background Periodic Sync — fires daily when app is closed (Android PWA) ──
+// ── Background Periodic Sync ──
 self.addEventListener('periodicsync', e => {
   if (e.tag === 'gdrive-midnight-backup') {
     e.waitUntil(
       self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
         if (clients.length > 0) {
-          // App is open — tell it to run backup
           clients.forEach(client => client.postMessage({ type: 'TRIGGER_GDRIVE_BACKUP' }));
         } else {
-          // App is closed — do backup directly from SW
           return _swDoDirectBackup();
         }
       })
@@ -115,7 +116,7 @@ self.addEventListener('periodicsync', e => {
   }
 });
 
-// ── Direct backup from SW (app is closed) ──
+// ── Direct backup from SW ──
 async function _swDoDirectBackup() {
   try {
     const cache = await caches.open('rjap-backup-data');
@@ -129,8 +130,8 @@ async function _swDoDirectBackup() {
     const meta = metaResp ? JSON.parse(await metaResp.text()) : {};
     const today = new Date().toISOString().split('T')[0];
 
-    if (meta.lastBackupDate === today) return; // Already done
-    if (meta.tokenExpiry && meta.tokenExpiry < Date.now()) return; // Token expired
+    if (meta.lastBackupDate === today) return;
+    if (meta.tokenExpiry && meta.tokenExpiry < Date.now()) return;
 
     const filename = 'radha-naam-jap-auto-' + today + '.json';
     const listResp = await fetch(
@@ -164,7 +165,6 @@ async function _swDoDirectBackup() {
         icon: './icon-192.png',
         vibrate: [200, 100, 200]
       });
-      console.log('[SW] Background backup done:', filename);
     }
   } catch(e) {
     console.warn('[SW] Background backup error:', e.message);
@@ -185,7 +185,6 @@ self.addEventListener('message', e => {
     );
   }
 
-  // App caches token + payload in SW for background sync use when app is closed
   if (e.data && e.data.type === 'CACHE_BACKUP_DATA') {
     e.waitUntil((async () => {
       const cache = await caches.open('rjap-backup-data');

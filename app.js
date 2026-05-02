@@ -2077,6 +2077,8 @@ function fbInit() {
           fbAutoSync();
           // Load global stotrams (inbuilt overrides + global stotrams for all users)
           loadGlobalStotrams();
+          // Initialize Gemini AI (developer only)
+          if (typeof initGeminiAI === 'function') initGeminiAI(user.email);
         });
       } else {
         document.getElementById('fbLoggedOut').style.display = 'block';

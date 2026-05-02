@@ -1,6 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════
    Radha Naam Jap — Gemini AI Panel Styles
-   Add this to the END of style.css
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── AI View ── */
@@ -10,6 +9,7 @@
   height: 100%;
   background: #060D1F;
   padding: 0;
+  padding-bottom: calc(56px + env(safe-area-inset-bottom));
 }
 
 /* ── AI Chat Header ── */
@@ -70,6 +70,7 @@
   flex-direction: column;
   gap: 12px;
   -webkit-overflow-scrolling: touch;
+  min-height: 0;
 }
 
 /* ── Welcome Screen ── */
@@ -244,10 +245,12 @@
   align-items: flex-end;
   gap: 8px;
   padding: 10px 12px;
-  padding-bottom: max(10px, env(safe-area-inset-bottom));
-  background: rgba(10,5,25,0.95);
-  border-top: 1px solid rgba(124,58,237,0.15);
+  background: rgba(10,5,25,0.98);
+  border-top: 1px solid rgba(124,58,237,0.2);
   flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
 }
 #aiInput {
   flex: 1;
@@ -331,7 +334,7 @@
   transform: translateX(-50%) translateY(0);
 }
 
-/* ── Nav button (hidden by default, shown only for dev) ── */
+/* ── Nav button ── */
 #aiNavBtn {
-  display: none; /* shown via JS only for dev email */
+  display: none;
 }

@@ -4,7 +4,8 @@
 // ═══════════════════════════════════════════════════════════════════
 
 
-const GEMINI_URL = 'https://radha-naam-jap.vercel.app/api/gemini';
+const GEMINI_URL = 'https://radharadharadha.vercel.app/api/gemini
+';
 
 const AI_DEV_EMAIL = 'drakthephenomenal@gmail.com';
 

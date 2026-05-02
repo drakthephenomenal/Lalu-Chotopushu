@@ -16,9 +16,55 @@ let aiListening = false;
 // ENTRY POINT
 // ═══════════════════════════════════════════════════════════════════
 function initGeminiAI(userEmail) {
-const dbg = document.getElementById('aiDebug');
-if (dbg) dbg.textContent = 'AI init: ' + (userEmail || 'NO EMAIL');
 if (userEmail !== 'drakthephenomenal@gmail.com') return;
+
+// Inject AI panel into Stats view dynamically (bypasses cached index.html)
+const vsView = document.getElementById('vs');
+if (vsView && !document.getElementById('aiSection')) {
+  const panel = document.createElement('div');
+  panel.id = 'aiSection';
+  panel.innerHTML = `
+    <div class="sc" style="padding:0;overflow:hidden;border-color:rgba(138,43,226,0.3)">
+      <div class="ai-header" style="border-radius:12px 12px 0 0">
+        <div class="ai-header-left">
+          <div class="ai-header-icon">🕉️</div>
+          <div>
+            <div class="ai-header-title">AI Sadhana Guru</div>
+            <div class="ai-header-sub">Powered by Gemini • Developer Only</div>
+          </div>
+        </div>
+        <div class="ai-header-actions">
+          <button class="ai-header-btn" onclick="undoAIChange()">↩️ Undo</button>
+          <button class="ai-header-btn" onclick="aiClearChat()">🗑️ Clear</button>
+        </div>
+      </div>
+      <div class="ai-chat-body" id="aiChatBody" style="border-radius:0">
+        <div class="ai-welcome">
+          <div class="ai-welcome-icon">🕉️</div>
+          <div class="ai-welcome-title">রাধে রাধে, Drak!</div>
+          <div class="ai-welcome-sub">আমি তোমার AI সাধনা সহায়ক। তোমার জাপ, ব্রহ্মচর্য বা যেকোনো আধ্যাত্মিক তথ্য জিজ্ঞেস করো।</div>
+          <div class="ai-suggestions">
+            <button onclick="aiQuickAsk('আজকে আমার সাধনা কেমন হয়েছে?')">📊 আজকের সারসংক্ষেপ</button>
+            <button onclick="aiQuickAsk('এই মাসে কোন দিন ব্রহ্মচর্য ভেঙেছি?')">🛡️ ব্রহ্মচর্য রিপোর্ট</button>
+            <button onclick="aiQuickAsk('কোন দিন আমার একাগ্রতা সবচেয়ে ভালো ছিল?')">🎯 সেরা দিন</button>
+            <button onclick="aiQuickAsk('আমার জাপের গতি কেমন? মিথ্যা জাপ হচ্ছে কি?')">🔍 জাপ বিশ্লেষণ</button>
+          </div>
+        </div>
+      </div>
+      <div class="ai-input-bar" style="border-radius:0 0 12px 12px">
+        <button id="aiVoiceBtn" onclick="aiToggleVoice()">🎤</button>
+        <textarea id="aiInput"
+          placeholder="জিজ্ঞেস করো... (Bengali / Hindi / English)"
+          rows="1"
+          onkeydown="aiInputKeydown(event)"
+          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"
+        ></textarea>
+        <button class="ai-send-btn" onclick="aiHandleSend()">➤</button>
+      </div>
+    </div>`;
+  vsView.appendChild(panel);
+}
+
 const sec = document.getElementById('aiSection');
 if (sec) sec.style.display = 'block';
 try {

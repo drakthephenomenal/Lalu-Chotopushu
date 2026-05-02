@@ -16,7 +16,9 @@ let aiListening = false;
 // ENTRY POINT
 // ═══════════════════════════════════════════════════════════════════
 function initGeminiAI(userEmail) {
-if (userEmail !== AI_DEV_EMAIL) return;
+const dbg = document.getElementById('aiDebug');
+if (dbg) dbg.textContent = 'AI init: ' + (userEmail || 'NO EMAIL');
+if (userEmail !== 'drakthephenomenal@gmail.com') return;
 const sec = document.getElementById('aiSection');
 if (sec) sec.style.display = 'block';
 try {

@@ -216,15 +216,15 @@ css.textContent = `#rjai-toggle{display:flex;align-items:center;gap:9px;width:10
 document.head.appendChild(css);
 
 ```
-// Toggle button at top of Stats section
+// Toggle button — inject at very start of Stats section
 const statsView = document.getElementById('vs');
 if (statsView) {
-  const statsTitle = statsView.querySelector('.vt');
   const btn = document.createElement('button');
   btn.id = 'rjai-toggle';
-  btn.innerHTML = '<div class="rjai-tgl-icon">AI</div><div class="rjai-tgl-txt"><div class="rjai-tgl-lbl">Claude AI — Sadhana Assistant</div><div class="rjai-tgl-sub">Tap to analyse your data with AI</div></div><span class="rjai-tgl-arr">▶</span>';
-  btn.onclick = () => RJ_AI.open();
-  if (statsTitle) statsTitle.after(btn); else statsView.prepend(btn);
+  btn.innerHTML = '<div class="rjai-tgl-icon">AI</div><div class="rjai-tgl-txt"><div class="rjai-tgl-lbl">Claude AI — Sadhana Assistant</div><div class="rjai-tgl-sub">Tap to analyse your sadhana data</div></div><span class="rjai-tgl-arr">▶</span>';
+  btn.onclick = function() { RJ_AI.open(); };
+  // Insert as very first child of stats view
+  statsView.insertBefore(btn, statsView.firstChild);
 }
 
 // Full-screen panel
@@ -247,6 +247,12 @@ this.QUICK.forEach(q => {
 };
 
 (function waitMount() {
-if (typeof App !== ‘undefined’ && App.S && document.getElementById(‘vs’)) { RJ_AI.mount(); }
-else setTimeout(waitMount, 400);
+if (typeof App !== ‘undefined’ && App.S) {
+// Try to mount now; if vs not ready yet, retry
+const vs = document.getElementById(‘vs’);
+if (vs) { RJ_AI.mount(); }
+else { setTimeout(waitMount, 300); }
+} else {
+setTimeout(waitMount, 400);
+}
 })();

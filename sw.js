@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // v57: Added Gemini AI files to cache
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v57';
+const CACHE = 'radha-jap-v58';
 
 const PRECACHE = [
   './index.html',

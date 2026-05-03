@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // v64: Removed Google Drive backup system
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v66';
+const CACHE = 'radha-jap-v67';
 
 const PRECACHE = [
   './index.html',
@@ -13,6 +13,7 @@ const PRECACHE = [
   './icon-192.png',
   './icon-512.png',
   './manifest.json',
+  './ai-assistant.js',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js',

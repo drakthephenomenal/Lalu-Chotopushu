@@ -1,71 +1,62 @@
-// api/chat.js — Vercel Serverless Function (Groq AI)
+// api/chat.js — Vercel Serverless Function (CommonJS)
+// Secure proxy: GEMINI_API_KEY never exposed to frontend
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'GROQ_API_KEY is not set in Vercel environment variables.' });
-  }
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'GEMINI_API_KEY not set in Vercel environment variables' });
 
   try {
-    let body = req.body;
-    if (typeof body === 'string') body = JSON.parse(body);
-    if (!body) return res.status(400).json({ error: 'Empty request body' });
+    const { messages, systemPrompt } = req.body;
+    const geminiContents = [];
 
-    const messages = body.messages || [];
-    let systemPrompt = body.systemPrompt || '';
-
-    // Trim system prompt to max 6000 chars
-    if (systemPrompt.length > 6000) {
-      systemPrompt = systemPrompt.substring(0, 6000) + '\n...[data truncated]';
-    }
-
-    // Build Groq messages array
-    const groqMessages = [];
     if (systemPrompt) {
-      groqMessages.push({ role: 'system', content: systemPrompt });
+      geminiContents.push({ role: 'user', parts: [{ text: '[SYSTEM CONTEXT]\n\n' + systemPrompt }] });
+      geminiContents.push({ role: 'model', parts: [{ text: 'Understood. Jai Radhe 🙏 Ready to help.' }] });
     }
-    messages.forEach(function(m) {
-      groqMessages.push({ role: m.role, content: m.content });
-    });
 
-    // Call Groq API
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: groqMessages,
-        max_tokens: 1024,
-        temperature: 0.7
-      })
-    });
-
-    const raw = await groqRes.text();
-
-    if (!groqRes.ok) {
-      console.error('Groq API error:', raw.substring(0, 500));
-      return res.status(502).json({
-        error: 'Groq API returned an error.',
-        detail: raw.substring(0, 300)
+    if (messages && Array.isArray(messages)) {
+      messages.forEach(function(m) {
+        geminiContents.push({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        });
       });
     }
 
-    const data = JSON.parse(raw);
-    const reply = data?.choices?.[0]?.message?.content || 'Jai Radhe 🙏 (No response from Groq)';
+    const geminiRes = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: geminiContents,
+          generationConfig: { maxOutputTokens: 1024, temperature: 0.7 }
+        })
+      }
+    );
 
-    return res.status(200).json({ reply });
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text();
+      return res.status(502).json({ error: 'Gemini API error', detail: errText });
+    }
+
+    const data = await geminiRes.json();
+    const text = data && data.candidates && data.candidates[0] &&
+                 data.candidates[0].content && data.candidates[0].content.parts &&
+                 data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text
+                 ? data.candidates[0].content.parts[0].text
+                 : 'Jai Radhe 🙏 No response received.';
+
+    return res.status(200).json({ reply: text });
 
   } catch (err) {
-    console.error('Server error:', err.message);
-    return res.status(500).json({ error: 'Server error: ' + err.message });
+    return res.status(500).json({ error: 'Server error', detail: err.message });
   }
 };

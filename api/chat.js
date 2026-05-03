@@ -1,4 +1,4 @@
-// api/chat.js — Vercel Serverless Function (Gemini AI)
+// api/chat.js — Vercel Serverless Function (Groq AI)
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -7,9 +7,9 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY is not set in Vercel environment variables.' });
+    return res.status(500).json({ error: 'GROQ_API_KEY is not set in Vercel environment variables.' });
   }
 
   try {
@@ -20,56 +20,47 @@ module.exports = async function handler(req, res) {
     const messages = body.messages || [];
     let systemPrompt = body.systemPrompt || '';
 
-    // Trim system prompt to max 6000 chars to avoid Gemini token limits
+    // Trim system prompt to max 6000 chars
     if (systemPrompt.length > 6000) {
       systemPrompt = systemPrompt.substring(0, 6000) + '\n...[data truncated]';
     }
 
-    // Build Gemini contents array
-    const geminiContents = [];
-
-    // Inject system prompt as a user/model pair (Gemini doesn't have system role)
+    // Build Groq messages array
+    const groqMessages = [];
     if (systemPrompt) {
-      geminiContents.push({ role: 'user', parts: [{ text: '[SYSTEM]\n' + systemPrompt }] });
-      geminiContents.push({ role: 'model', parts: [{ text: 'Understood. Jai Radhe 🙏' }] });
+      groqMessages.push({ role: 'system', content: systemPrompt });
     }
-
-    // Add conversation history
     messages.forEach(function(m) {
-      geminiContents.push({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }]
-      });
+      groqMessages.push({ role: m.role, content: m.content });
     });
 
-    // Call Gemini API
-    const geminiRes = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: geminiContents,
-          generationConfig: {
-            maxOutputTokens: 1024,
-            temperature: 0.7
-          }
-        })
-      }
-    );
+    // Call Groq API
+    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: groqMessages,
+        max_tokens: 1024,
+        temperature: 0.7
+      })
+    });
 
-    const raw = await geminiRes.text();
+    const raw = await groqRes.text();
 
-    if (!geminiRes.ok) {
-      console.error('Gemini API error:', raw.substring(0, 500));
+    if (!groqRes.ok) {
+      console.error('Groq API error:', raw.substring(0, 500));
       return res.status(502).json({
-        error: 'Gemini API returned an error.',
+        error: 'Groq API returned an error.',
         detail: raw.substring(0, 300)
       });
     }
 
     const data = JSON.parse(raw);
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Jai Radhe 🙏 (No response from Gemini)';
+    const reply = data?.choices?.[0]?.message?.content || 'Jai Radhe 🙏 (No response from Groq)';
 
     return res.status(200).json({ reply });
 

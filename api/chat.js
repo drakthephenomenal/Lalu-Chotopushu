@@ -18,7 +18,7 @@ module.exports = async function handler(req, res) {
 
     if (systemPrompt) {
       geminiContents.push({ role: 'user', parts: [{ text: '[SYSTEM CONTEXT]\n\n' + systemPrompt }] });
-      geminiContents.push({ role: 'model', parts: [{ text: 'Understood. Jai Radhe 🙏 Ready to help.' }] });
+      geminiContents.push({ role: 'model', parts: [{ text: 'Understood. Radhe Radhe 🙏 Ready to help.' }] });
     }
 
     if (messages && Array.isArray(messages)) {

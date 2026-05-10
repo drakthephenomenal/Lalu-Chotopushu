@@ -232,6 +232,246 @@ function buildCtx() {
   };
 }
 
+
+// ── OFFLINE INTELLIGENCE ENGINE ─────────────────────────────────
+// Handles analytics questions locally — no API needed
+// Returns null if the question needs real AI
+
+function offlineAnswer(msg, ctx) {
+  var q = msg.toLowerCase().trim();
+  var S = App.S;
+  var j = ctx.jap;
+  var fc = ctx.forecast;
+  var pat = ctx.patterns;
+  var ms = j.ms || 108;
+
+  // ── helpers ──
+  function bold(v) { return '**' + v + '**'; }
+  function num(n) { return (n||0).toLocaleString('en-IN'); }
+  function pct(a,b) { return b ? Math.round(a/b*100)+'%' : 'N/A'; }
+
+  // ── TODAY ────────────────────────────────────────────────────
+  if (/\b(today|aaj|abhi|current|now)\b/.test(q) && !/add|set|log|edit|mark|undo/.test(q)) {
+    var todR = j.today_r, todRV = j.today_rv, tot = j.today_total;
+    var malas = Math.floor(tot / ms);
+    var rem = j.dt > 0 ? Math.max(0, j.dt - tot) : null;
+    var timeSec = j.today_sec;
+    var timeStr = timeSec > 0 ? (Math.floor(timeSec/3600)>0 ? Math.floor(timeSec/3600)+'h ' : '') + Math.floor((timeSec%3600)/60)+'m' : 'Not timed';
+
+    var lines = ['📊 **Today — ' + ctx.today + '**\n'];
+    lines.push('🌸 Radha Naam: ' + bold(num(todR)) + ' (' + Math.floor(todR/ms) + ' malas)');
+    if (todRV > 0) lines.push('💙 RV Naam: ' + bold(num(todRV)) + ' (' + Math.floor(todRV/ms) + ' malas)');
+    lines.push('🔢 Total: ' + bold(num(tot)) + ' jap · ' + bold(malas) + ' malas');
+    lines.push('⏱ Time: ' + bold(timeStr));
+    if (j.dt > 0) {
+      lines.push('🎯 Target: ' + bold(num(j.dt)) + (rem > 0 ? ' · ' + bold(num(rem)) + ' remaining' : ' · ✅ Target hit!'));
+    }
+    lines.push('🔥 Streak: ' + bold(j.streak) + ' days');
+    return lines.join('\n');
+  }
+
+  // ── STREAK / CONSISTENCY / GAPS / BEST PERIODS ───────────────
+  if (/streak|consist|gap|best period|longest|continuous/.test(q)) {
+    var hist = S.history || {};
+    var histRV = S.historyRV || {};
+    var allKeys = [...new Set(Object.keys(hist).concat(Object.keys(histRV)))].sort();
+    var activeDays = allKeys.filter(function(k){ return (hist[k]||0)+(histRV[k]||0) > 0; });
+
+    // Current streak
+    var streak = j.streak;
+
+    // Longest streak
+    var sorted = allKeys.sort();
+    var maxStreak = 0, curS = 0, prevDate = null;
+    sorted.forEach(function(k) {
+      var v = (hist[k]||0)+(histRV[k]||0);
+      if (v > 0) {
+        if (prevDate) {
+          var diff = (new Date(k) - new Date(prevDate)) / 86400000;
+          curS = diff === 1 ? curS + 1 : 1;
+        } else { curS = 1; }
+        maxStreak = Math.max(maxStreak, curS);
+        prevDate = k;
+      } else { prevDate = null; curS = 0; }
+    });
+
+    // Consistency last 30 days
+    var last30keys = [];
+    for (var d=0; d<30; d++) {
+      var dd = new Date(); dd.setDate(dd.getDate()-d);
+      last30keys.push(dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+String(dd.getDate()).padStart(2,'0'));
+    }
+    var activeLast30 = last30keys.filter(function(k){ return (hist[k]||0)+(histRV[k]||0) > 0; }).length;
+    var consistPct = Math.round(activeLast30/30*100);
+
+    // Best day
+    var best = j.best;
+
+    // Gap analysis — days with 0 jap in last 30
+    var gapDays = 30 - activeLast30;
+    var gaps30 = last30keys.filter(function(k){ return (hist[k]||0)+(histRV[k]||0) === 0; });
+
+    var lines = ['🔥 **Streak & Consistency Report**\n'];
+    lines.push('⚡ Current streak: ' + bold(streak + ' days'));
+    lines.push('🏆 Longest streak ever: ' + bold(maxStreak + ' days'));
+    lines.push('📅 Last 30 days: ' + bold(activeLast30 + '/30 days') + ' active (' + bold(consistPct+'%') + ' consistency)');
+    lines.push('😴 Gaps (missed days last 30): ' + bold(gapDays) + (gapDays === 0 ? ' 🌟 Perfect month!' : ''));
+    if (best) lines.push('🌟 Best day ever: ' + bold(num(best.count)) + ' jap on ' + best.date);
+    if (pat && pat.peakHourLabel) lines.push('⏰ Peak practice hour: ' + bold(pat.peakHourLabel));
+    if (pat && pat.peakDow) lines.push('📆 Peak day of week: ' + bold(pat.peakDow));
+    if (fc) lines.push('📊 30-day avg: ' + bold(num(fc.avg30)) + ' jap/day');
+    return lines.join('\n');
+  }
+
+  // ── PATTERNS / TIMING ────────────────────────────────────────
+  if (/pattern|timing|time of day|peak|schedule|when do i|best time|hour|day of week|dow/.test(q)) {
+    if (!pat || !pat.peakHour) return 'Jai Radhe 🙏 No session data yet to detect patterns. Complete a few timed sessions first!';
+
+    var dowFull = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    var lines = ['⏰ **Practice Patterns**\n'];
+    lines.push('🕐 Peak hour: ' + bold(pat.peakHourLabel) + ' (most jap done at this time)');
+    lines.push('📆 Best day: ' + bold(pat.peakDow) + (pat.peakDow === 'Fri' ? ' 🌸 Shukravar — auspicious for Radha!' : ''));
+    lines.push('📊 Day distribution: ' + pat.dowDistribution);
+    if (pat.avgGapHours) lines.push('⏱ Avg gap between sessions: ' + bold(pat.avgGapHours + ' hours'));
+    lines.push('\n💡 **Suggestion:** Your peak is ' + pat.peakHourLabel + ' — try to start your jap then daily for best consistency.');
+    return lines.join('\n');
+  }
+
+  // ── FORECAST / GOAL ──────────────────────────────────────────
+  if (/forecast|goal|when.*reach|lifetime|crore|target|how long|days left|reach my/.test(q)) {
+    if (!fc) return 'Jai Radhe 🙏 Set a lifetime target first (in Settings) and do some jap — then I can forecast!';
+
+    var lines = ['🎯 **Goal Forecast**\n'];
+    lines.push('📿 Total jap so far: ' + bold(num(j.life_total)));
+    lines.push('🏆 Lifetime target: ' + bold(num(j.lt)));
+    if (fc.remaining !== null) lines.push('⏳ Remaining: ' + bold(num(fc.remaining)));
+    lines.push('📊 30-day average: ' + bold(num(fc.avg30)) + ' jap/day');
+    lines.push('📅 Consistency: ' + bold(fc.consistency) + ' active days in last 30');
+    if (fc.goalDate) {
+      lines.push('🎉 Estimated goal date: ' + bold(fc.goalDate));
+      if (fc.daysToGoal) lines.push('📆 Days to goal: ' + bold(num(fc.daysToGoal)) + ' days');
+    } else {
+      lines.push('⚠️ Set a lifetime target to see forecast.');
+    }
+    return lines.join('\n');
+  }
+
+  // ── LIFETIME / TOTAL STATS ───────────────────────────────────
+  if (/lifetime|total|overall|all time|ever|life/.test(q) && !/target|goal|forecast/.test(q)) {
+    var hrs = parseFloat(j.life_hrs);
+    var lines = ['📿 **Lifetime Stats**\n'];
+    lines.push('🌸 Radha Naam: ' + bold(num(j.life_r)));
+    if (j.life_rv > 0) lines.push('💙 Radha Vallabh: ' + bold(num(j.life_rv)));
+    lines.push('🔢 Total: ' + bold(num(j.life_total)) + ' (' + bold(Math.floor(j.life_total/ms)) + ' malas)');
+    lines.push('⏱ Total time: ' + bold(hrs.toFixed(1) + ' hours'));
+    lines.push('📅 Active days: ' + bold(j.active_days));
+    lines.push('📊 Daily average: ' + bold(num(j.avg)) + ' jap/day');
+    lines.push('🔥 Current streak: ' + bold(j.streak) + ' days');
+    if (j.best) lines.push('🌟 Best day: ' + bold(num(j.best.count)) + ' on ' + j.best.date);
+    return lines.join('\n');
+  }
+
+  // ── BRAHMACHARYA ─────────────────────────────────────────────
+  if (/brahma|brahmach|celibacy|bc/.test(q)) {
+    var bc = ctx.brahma;
+    var bcLog = ctx.brahma_log || [];
+    var lines = ['🛡️ **Brahmacharya Report**\n'];
+    if (bc.start) lines.push('📅 Started: ' + bold(bc.start));
+    lines.push('✅ Maintained: ' + bold(bc.maintained + ' days'));
+    lines.push('❌ Broken: ' + bold(bc.broken + ' times'));
+    lines.push('📊 Success rate: ' + bold(bc.rate));
+
+    if (bcLog.length > 0) {
+      // Day of week pattern for breaks
+      var breaksByDow = {};
+      bcLog.filter(function(e){ return e.status === 'b'; }).forEach(function(e){
+        var dow = e.dow || '';
+        breaksByDow[dow] = (breaksByDow[dow]||0) + 1;
+      });
+      var breakDows = Object.entries(breaksByDow).sort(function(a,b){return b[1]-a[1];});
+      if (breakDows.length > 0) lines.push('⚠️ Most breaks on: ' + bold(breakDows[0][0]));
+      lines.push('📋 Recent log: ' + bcLog.slice(-5).map(function(e){ return e.date+' '+(e.status==='b'?'❌':'✅'); }).join(' · '));
+    }
+    return lines.join('\n');
+  }
+
+  // ── 7-DAY REPORT ─────────────────────────────────────────────
+  if (/7.day|week|weekly|last 7|7 days/.test(q)) {
+    var l7 = ctx.last7 || [];
+    var lines = ['📈 **7-Day Report**\n'];
+    var total7 = 0, days7 = 0;
+    l7.forEach(function(d) {
+      var tot7 = d.r + d.rv;
+      total7 += tot7;
+      if (tot7 > 0) days7++;
+      var bar = tot7 > 0 ? '▓'.repeat(Math.min(10, Math.ceil(tot7/j.dt*5||1))) : '░';
+      lines.push(d.date.slice(5) + ' ' + bar + ' ' + bold(num(tot7)));
+    });
+    lines.push('\n📊 Week total: ' + bold(num(total7)) + ' (' + Math.floor(total7/ms) + ' malas)');
+    lines.push('📅 Active days: ' + bold(days7 + '/7'));
+    lines.push('📈 Daily avg this week: ' + bold(num(Math.round(total7/7))));
+    if (fc) lines.push('📊 vs 30-day avg: ' + bold(num(fc.avg30)) + '/day');
+    return lines.join('\n');
+  }
+
+  // ── STOTRAMS ─────────────────────────────────────────────────
+  if (/stotram|stotra|path|paath/.test(q)) {
+    var st = ctx.stotrams || {};
+    var stKeys = Object.keys(st);
+    if (!stKeys.length) return 'Jai Radhe 🙏 No stotrams logged yet. Start reciting and log them here!';
+    var lines = ['📖 **Stotram Progress**\n'];
+    stKeys.forEach(function(id) {
+      lines.push('• ' + bold(id) + ': Today ' + bold(st[id].today) + ' · Total ' + bold(num(st[id].total)));
+    });
+    return lines.join('\n');
+  }
+
+  // ── 28 NAMES ─────────────────────────────────────────────────
+  if (/28 name|28naam|28-name|ashtottara|ashta/.test(q)) {
+    var n28 = ctx.n28 || {};
+    var lines = ['🌸 **28 Names of Radha**\n'];
+    lines.push('📅 Today: ' + bold(n28.today || 0) + ' cycles');
+    lines.push('🏆 All time: ' + bold(num(n28.life || 0)) + ' cycles');
+    return lines.join('\n');
+  }
+
+  // ── MOOD ─────────────────────────────────────────────────────
+  if (/mood|feel|emotion|how am i|mental/.test(q) && !/log mood|add mood/.test(q)) {
+    var mood = ctx.mood;
+    if (!mood) return 'Jai Radhe 🙏 No mood entries yet. Say "log mood 8" to start tracking!';
+    var lines = ['😊 **Mood Insights** (last ' + mood.entries + ' entries)\n'];
+    lines.push('📊 Average: ' + bold(mood.avg + '/10'));
+    if (mood.best) lines.push('🌟 Best: ' + bold(mood.best.score + '/10') + (mood.best.note ? ' — ' + mood.best.note : ''));
+    if (mood.worst) lines.push('😔 Lowest: ' + bold(mood.worst.score + '/10') + (mood.worst.note ? ' — ' + mood.worst.note : ''));
+    return lines.join('\n');
+  }
+
+  // ── UNDO ─────────────────────────────────────────────────────
+  if (/^undo$|show.*undo|recent action|undo history/.test(q)) {
+    return JA.undoHistory();
+  }
+
+  // ── GREET / HELLO ────────────────────────────────────────────
+  if (/^(hi|hello|hey|jai radhe|radhe|namaste|hare krishna|hare radhe|pranam)/.test(q)) {
+    var tod2 = j.today_total;
+    var reply = 'Jai Radhe 🙏\n\n';
+    reply += tod2 > 0
+      ? 'Today so far: ' + bold(num(tod2)) + ' jap (' + Math.floor(tod2/ms) + ' malas) · Streak: ' + bold(j.streak) + ' days 🔥'
+      : 'No jap logged yet today. Start your sadhana 🌸';
+    reply += '\n\nAsk me anything about your sadhana — streak, stats, forecast, or say "add 108 jap"!';
+    return reply;
+  }
+
+  // ── HELP ─────────────────────────────────────────────────────
+  if (/\b(help|what can|capabilities|what do you|commands)\b/.test(q)) {
+    return '🙏 **Jarvis can help with:**\n\n📊 *Analytics* — today, streak, 7-day, patterns, forecast\n✏️ *Edit* — "add 108 jap", "set today 1000", "mark brahma broken"\n😊 *Mood* — "log mood 7", "my mood history"\n🎯 *Goals* — "when do I hit my target?"\n🛡️ *Brahma* — brahmacharya analysis\n📖 *Stotrams* — stotram progress\n↩️ *Undo* — "undo last action"\n\nJust type naturally!';
+  }
+
+  // ── No offline match — needs AI ──────────────────────────────
+  return null;
+}
+
+
 // ── Build system prompt ─────────────────────────────────────────
 function buildSystemPrompt(ctx) {
   return 'You are Jarvis, the AI assistant for Radha Naam Jap — a spiritual sadhana tracker for a devotee of Radha Rani.\n\n'
@@ -288,6 +528,23 @@ var Jarvis = {
     this.showTyping(true);
     this.setBtn(false);
     var ctx = buildCtx();
+
+    // ── Try offline first ──────────────────────────────────────
+    var offlineReply = offlineAnswer(msg, ctx);
+    if (offlineReply !== null) {
+      var self = this;
+      setTimeout(function() {
+        self.history.push({role:'user',content:msg});
+        self.history.push({role:'assistant',content:offlineReply});
+        if(self.history.length>20) self.history=self.history.slice(-20);
+        self.showTyping(false);
+        self.addMsg('ai', offlineReply);
+        self.isLoading=false; self.setBtn(true);
+      }, 350);
+      return;
+    }
+
+    // ── Fall back to Claude API for complex/edit/spiritual queries ──
     var sp = buildSystemPrompt(ctx);
     var messages = this.history.concat([{role:'user',content:msg}]);
     fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:messages,systemPrompt:sp})})

@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 //  JARVIS — Radha Naam Jap AI Assistant  v2.0
-//  Powered by Gemini 2.5 Flash · Voice + Chat · Full Analytics + Edit
+//  Powered by Claude AI · Voice + Chat · Full Analytics + Edit
 //  Advanced: Mood tracking · Ritual detection · Smart scheduling
 //  Prophecy (jap forecast) · Spiritual insights · Mantra suggestions
 // ═══════════════════════════════════════════════════════════════
@@ -366,7 +366,7 @@ var Jarvis = {
         var pat=ctx.patterns;
         var greeting = tod>0
           ?'Jai Radhe 🙏 Today: **'+tod.toLocaleString('en-IN')+' jap** ('+ctx.jap.today_malas+' malas) · Streak: **'+str+' days** 🔥'
-          :'Jai Radhe 🙏 I am Jarvis — your sadhana AI powered by Gemini.';
+          :'Jai Radhe 🙏 I am Jarvis — your sadhana AI assistant.';
         var extra = '';
         if(fc && fc.goalDate) extra += '\n🎯 At your current pace, lifetime goal by **'+fc.goalDate+'**';
         if(pat && pat.peakHourLabel) extra += '\n⏰ Your peak practice time: **'+pat.peakHourLabel+'**';
@@ -455,13 +455,13 @@ var Jarvis = {
     var vs=document.getElementById('vs');
     if(vs){
       var btn=document.createElement('button');btn.id='rjai-toggle';
-      btn.innerHTML='<div class="rjai-tgl-ic">'+icon+'</div><div class="rjai-tgl-txt"><div class="rjai-tgl-lbl">Jarvis — AI Assistant</div><div class="rjai-tgl-sub">Gemini 2.5 · Voice + Chat · Analytics + Edit + Forecast</div></div><span class="rjai-tgl-arr">▶</span>';
+      btn.innerHTML='<div class="rjai-tgl-ic">'+icon+'</div><div class="rjai-tgl-txt"><div class="rjai-tgl-lbl">Jarvis — AI Assistant</div><div class="rjai-tgl-sub">Claude AI · Voice + Chat · Analytics + Edit + Forecast</div></div><span class="rjai-tgl-arr">▶</span>';
       btn.onclick=function(){Jarvis.open();};
       vs.insertBefore(btn,vs.firstChild);
     }
 
     var panel=document.createElement('div');panel.id='rjai-panel';
-    panel.innerHTML='<div class="rjai-hdr"><div class="rjai-hdr-ic">'+icon+'</div><div class="rjai-hdr-info"><div class="rjai-hdr-name">Jarvis</div><div class="rjai-hdr-desc">Sadhana AI · Gemini 2.5 Flash</div></div><button class="rjai-cls" onclick="Jarvis.close()">✕ Close</button></div>'
+    panel.innerHTML='<div class="rjai-hdr"><div class="rjai-hdr-ic">'+icon+'</div><div class="rjai-hdr-info"><div class="rjai-hdr-name">Jarvis</div><div class="rjai-hdr-desc">Sadhana AI · Claude Intelligence</div></div><button class="rjai-cls" onclick="Jarvis.close()">✕ Close</button></div>'
       +'<div class="rjai-quick" id="rjai-quick"></div>'
       +'<div id="rjai-feed"></div>'
       +'<div id="rjai-typing"><div class="rjai-av">'+icSm+'</div><div class="rjai-tbub"><div class="rjai-dot"></div><div class="rjai-dot"></div><div class="rjai-dot"></div></div></div>'

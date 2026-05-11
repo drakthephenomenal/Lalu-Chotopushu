@@ -245,18 +245,23 @@ function calcBcStreaks() {
   var S = App.S;
   var startD = new Date(getBcStart()); startD.setHours(0,0,0,0);
   var todayD = new Date(); todayD.setHours(0,0,0,0);
+  var todayK = todayD.toISOString().split('T')[0];
   var totalDays = Math.max(0, Math.round((todayD - startD) / 86400000) + 1);
   var broken = Object.values(S.brahma||{}).filter(function(e){ return e && e.status === 'b'; }).length;
   var maintained = totalDays - broken;
   var successPct = totalDays > 0 ? Math.round(maintained / totalDays * 100) : 0;
 
-  // Current streak (days since last break)
-  var cs = 0, d = new Date(); d.setHours(0,0,0,0);
-  while (cs < 9999) {
-    var k = d.toISOString().split('T')[0];
-    if (k < getBcStart()) break;
-    var en = S.brahma[k];
-    if (!en || en.status !== 'b') { cs++; d.setDate(d.getDate()-1); } else break;
+  // Current streak — if today is broken, streak = 0
+  var todayBroken = S.brahma[todayK] && S.brahma[todayK].status === 'b';
+  var cs = 0;
+  if (!todayBroken) {
+    var d = new Date(); d.setHours(0,0,0,0);
+    while (cs < 9999) {
+      var k = d.toISOString().split('T')[0];
+      if (k < getBcStart()) break;
+      var en = S.brahma[k];
+      if (!en || en.status !== 'b') { cs++; d.setDate(d.getDate()-1); } else break;
+    }
   }
 
   // Best streak ever
@@ -268,86 +273,135 @@ function calcBcStreaks() {
     if (!en || en.status !== 'b') { run++; if(run > bs) bs = run; } else run = 0;
   });
 
-  // Recent streaks (list of all streaks)
-  var streaks = [], runStart = null, runLen = 0;
-  allDays.forEach(function(k, i) {
+  // All streaks with start/end dates
+  var streaks = [], runStart = null, runEnd = null, runLen = 0;
+  allDays.forEach(function(k) {
     var en = S.brahma[k];
     if (!en || en.status !== 'b') {
       if (!runStart) runStart = k;
-      runLen++;
+      runEnd = k; runLen++;
     } else {
-      if (runLen > 0) streaks.push({ start: runStart, len: runLen });
-      runStart = null; runLen = 0;
+      if (runLen > 0) streaks.push({ start: runStart, end: runEnd, len: runLen });
+      runStart = null; runEnd = null; runLen = 0;
     }
   });
-  if (runLen > 0) streaks.push({ start: runStart, len: runLen });
+  if (runLen > 0) streaks.push({ start: runStart, end: runEnd, len: runLen });
 
-  return { current: cs, best: bs, total: totalDays, maintained: maintained, broken: broken, pct: successPct, streaks: streaks, allDays: allDays };
+  // Break events with exact timestamp from activityLog
+  var breakLog = (S.activityLog||[]).filter(function(e){ return e.t === 'brahma' && e.status === 'b'; });
+
+  return {
+    current: cs,
+    best: bs,
+    total: totalDays,
+    maintained: maintained,
+    broken: broken,
+    pct: successPct,
+    streaks: streaks,
+    allDays: allDays,
+    todayBroken: todayBroken,
+    breakLog: breakLog
+  };
 }
 
-// ── Lunar month graph (29-30 day cycle) ─────────────────────────
+// ── Lunar tithi graph ─────────────────────────────────────────────
 function renderLunarGraph() {
   var S = App.S;
-  // Use last 30 days as a lunar month approximation
-  var days = [];
+  var TITHI = [
+    'Prati-\npada','Dwitiya','Tritiya','Chaturthi','Panchami',
+    'Shashthi','Saptami','Ashtami','Navami','Dashami',
+    'Ekadashi','Dwadashi','Trayodashi','Chaturdashi','Purnima /\nAmavasya'
+  ];
+  var TITHI_SHORT = [
+    'P1','D2','T3','C4','P5','S6','S7','A8','N9','D10','E11','D12','T13','C14','P/A'
+  ];
+
+  // Build last 30 days
   var today = new Date(); today.setHours(0,0,0,0);
+  var todayK = today.toISOString().split('T')[0];
+  var days = [];
   for (var i = 29; i >= 0; i--) {
     var d = new Date(today); d.setDate(d.getDate() - i);
     var k = d.toISOString().split('T')[0];
     var en = S.brahma[k];
-    var isBcActive = k >= getBcStart() && k <= today.toISOString().split('T')[0];
-    var broken = isBcActive && en && en.status === 'b';
-    var maintained = isBcActive && (!en || en.status !== 'b');
-    days.push({ date: k, day: d.getDate(), broken: broken, maintained: maintained, active: isBcActive });
+    var isBcActive = k >= getBcStart() && k <= todayK;
+    days.push({
+      date: k,
+      day: d.getDate(),
+      month: d.getMonth(),
+      broken: isBcActive && en && en.status === 'b',
+      maintained: isBcActive && (!en || en.status !== 'b'),
+      active: isBcActive,
+      isToday: k === todayK
+    });
   }
 
-  // Build HTML grid — lunar calendar style (6 rows × 5 cols)
-  var html = '<div style="font-family:Inter,sans-serif;padding:4px 0;">';
-  html += '<div style="font-size:12px;font-weight:700;color:#FFD700;margin-bottom:8px;letter-spacing:0.5px;">🌙 Brahmacharya — Lunar Month (Last 30 Days)</div>';
-  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:6px;">';
-  var dowLabels = ['S','M','T','W','T','F','S'];
-  dowLabels.forEach(function(l) {
-    html += '<div style="text-align:center;font-size:9px;color:rgba(255,255,255,0.35);font-weight:600;padding-bottom:2px;">'+l+'</div>';
-  });
-  html += '</div>';
-
-  // Find first day's weekday to offset
-  var firstDay = new Date(days[0].date).getDay();
-  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">';
-  for (var off = 0; off < firstDay; off++) {
-    html += '<div></div>';
+  // Build 15-bucket tithi groups (2 days per tithi ≈ 30 day lunar month)
+  var buckets = [];
+  for (var t = 0; t < 15; t++) {
+    var d1 = days[t * 2] || null;
+    var d2 = days[t * 2 + 1] || null;
+    var anyBroken = (d1 && d1.broken) || (d2 && d2.broken);
+    var anyMaint  = (d1 && d1.maintained) || (d2 && d2.maintained);
+    var anyToday  = (d1 && d1.isToday) || (d2 && d2.isToday);
+    var labels = [d1 ? d1.day : '', d2 ? d2.day : ''].filter(Boolean).join('/');
+    buckets.push({ tithi: t, label: labels, broken: anyBroken, maintained: anyMaint, today: anyToday, d1: d1, d2: d2 });
   }
-  days.forEach(function(d) {
-    var bg, border, symbol;
-    if (!d.active) {
-      bg = 'rgba(255,255,255,0.04)'; border = '1px solid rgba(255,255,255,0.08)'; symbol = '';
-    } else if (d.broken) {
-      bg = 'rgba(231,76,60,0.25)'; border = '1px solid rgba(231,76,60,0.6)'; symbol = '✗';
+
+  var html = '<div style="font-family:Inter,sans-serif;padding:2px 0;overflow-x:auto;">';
+  html += '<div style="font-size:12px;font-weight:700;color:#FFD700;margin-bottom:10px;letter-spacing:0.5px;">🌙 Brahmacharya — Lunar Month</div>';
+
+  // Bar chart with tithi labels
+  html += '<div style="display:flex;gap:3px;align-items:flex-end;height:80px;margin-bottom:4px;">';
+  buckets.forEach(function(b) {
+    var bg, border;
+    if (!b.maintained && !b.broken) {
+      bg = 'rgba(255,255,255,0.06)'; border = '1px solid rgba(255,255,255,0.1)';
+    } else if (b.broken && b.maintained) {
+      bg = 'linear-gradient(to top,rgba(231,76,60,0.5),rgba(46,204,113,0.3))'; border = '1px solid rgba(255,165,0,0.5)';
+    } else if (b.broken) {
+      bg = 'rgba(231,76,60,0.4)'; border = '1px solid rgba(231,76,60,0.7)';
     } else {
-      bg = 'rgba(46,204,113,0.18)'; border = '1px solid rgba(46,204,113,0.45)'; symbol = '✓';
+      bg = 'rgba(46,204,113,0.3)'; border = '1px solid rgba(46,204,113,0.55)';
     }
-    var isToday = d.date === today.toISOString().split('T')[0];
-    if (isToday) border = '1px solid #FFD700';
-    html += '<div style="background:'+bg+';border:'+border+';border-radius:5px;padding:3px 1px;text-align:center;">'
-      + '<div style="font-size:9px;color:rgba(255,255,255,'+(isToday?'1':'0.5')+');font-weight:'+(isToday?'700':'400')+';">'+d.day+'</div>'
-      + '<div style="font-size:9px;color:'+(d.broken?'#e74c3c':d.maintained?'#2ecc71':'transparent')+';">'+symbol+'</div>'
-      + '</div>';
+    if (b.today) border = '2px solid #FFD700';
+    var symbol = b.broken ? '✗' : (b.maintained ? '✓' : '');
+    var symColor = b.broken ? '#e74c3c' : '#2ecc71';
+    html += '<div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;">';
+    html += '<div style="color:'+symColor+';font-size:8px;font-weight:700;">'+symbol+'</div>';
+    html += '<div style="width:100%;height:52px;background:'+bg+';border:'+border+';border-radius:5px 5px 3px 3px;display:flex;align-items:center;justify-content:center;">';
+    html += '<span style="font-size:8px;color:rgba(255,255,255,'+(b.today?'1':'0.45')+');font-weight:'+(b.today?'700':'400')+';">'+b.label+'</span>';
+    html += '</div></div>';
   });
   html += '</div>';
 
-  // Legend + summary
+  // Tithi labels on X-axis
+  html += '<div style="display:flex;gap:3px;margin-bottom:8px;">';
+  TITHI_SHORT.forEach(function(t, i) {
+    var isSpecial = i === 7 || i === 10 || i === 14; // Ashtami, Ekadashi, Purnima
+    html += '<div style="flex:1;min-width:0;text-align:center;font-size:7px;color:'+(isSpecial?'#FFD700':'rgba(255,255,255,0.35)')+';font-weight:'+(isSpecial?'700':'400')+';overflow:hidden;">'+t+'</div>';
+  });
+  html += '</div>';
+
+  // Full tithi names row (scrollable hint)
+  html += '<div style="font-size:8px;color:rgba(255,255,255,0.25);margin-bottom:8px;line-height:1.5;">';
+  html += 'E11=Ekadashi 🌟 · A8=Ashtami · P/A=Purnima/Amavasya';
+  html += '</div>';
+
+  // Legend + stats
   var bcS = calcBcStreaks();
-  html += '<div style="display:flex;gap:12px;margin-top:8px;font-size:10px;color:rgba(255,255,255,0.55);">'
+  html += '<div style="display:flex;gap:10px;font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:6px;">'
     + '<span><span style="color:#2ecc71;">✓</span> Maintained</span>'
     + '<span><span style="color:#e74c3c;">✗</span> Broken</span>'
-    + '<span style="color:#FFD700;">□</span> Today'
+    + '<span style="color:#FFD700;">■</span> Today'
     + '</div>';
-  html += '<div style="margin-top:8px;font-size:11px;line-height:1.7;color:rgba(255,255,255,0.8);">'
-    + '⚡ Current streak: <strong style="color:#2ecc71;">'+bcS.current+' days</strong> &nbsp;'
-    + '🏆 Best ever: <strong style="color:#FFD700;">'+bcS.best+' days</strong><br>'
-    + '✅ Maintained: <strong>'+bcS.maintained+'</strong> &nbsp;'
-    + '❌ Broken: <strong style="color:#e74c3c;">'+bcS.broken+'</strong> &nbsp;'
-    + '📊 Success: <strong style="color:#2ecc71;">'+bcS.pct+'%</strong>'
+  html += '<div style="font-size:11px;line-height:1.8;color:rgba(255,255,255,0.82);">'
+    + '⚡ Current: <strong style="color:' + (bcS.todayBroken?'#e74c3c':'#2ecc71') + ';">'
+    + (bcS.todayBroken ? '0 days (broken today)' : bcS.current+' days') + '</strong>'
+    + ' &nbsp;🏆 Best: <strong style="color:#FFD700;">'+bcS.best+' days</strong><br>'
+    + '✅ <strong>'+bcS.maintained+'</strong> maintained &nbsp;'
+    + '❌ <strong style="color:#e74c3c;">'+bcS.broken+'</strong> broken &nbsp;'
+    + '📊 <strong style="color:#2ecc71;">'+bcS.pct+'%</strong> success'
     + '</div>';
   html += '</div>';
   return { html: html, stats: bcS };
@@ -373,18 +427,34 @@ function offlineAnswer(msg, ctx) {
   if (/brahma|brahmach|celibacy|\bbc\b|lunar|streak.*break|break.*streak/.test(q)) {
     var g = renderLunarGraph();
     var st = g.stats;
-    // Recent streaks list (last 5)
-    var recentStreaks = st.streaks.slice(-5).reverse().map(function(s, i) {
-      return (i===0 ? '⚡ Current' : '  #'+(i+1)) + ': ' + bold(s.len + ' days') + (s.start ? ' (from ' + s.start + ')' : '');
+
+    // Last break with exact time from activityLog
+    var lastBreakStr = '—';
+    if (st.breakLog && st.breakLog.length > 0) {
+      var lb = st.breakLog[st.breakLog.length - 1];
+      var lbDate = new Date(lb.ts);
+      lastBreakStr = lb.date + ' at ' + lbDate.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', hour12:true});
+    }
+
+    // Recent streaks (last 3)
+    var recentStreakLines = st.streaks.slice(-3).reverse().map(function(s, i) {
+      var label = i === 0 && !st.todayBroken ? '⚡ Current' : ('  #'+(i+1));
+      return label + ': ' + bold(s.len + ' days') + ' (' + s.start + ' → ' + (s.end||'today') + ')';
     });
+
+    var currentLabel = st.todayBroken
+      ? '⚡ Current streak: ' + bold('0') + ' (broken today ❌)'
+      : '⚡ Current streak: ' + bold(st.current + ' days');
+
     var textPart = '🛡️ **Brahmacharya**\n'
       + '📅 Started: ' + bold(getBcStart()) + '\n'
-      + '⚡ Current streak: ' + bold(st.current + ' days') + '\n'
+      + currentLabel + '\n'
       + '🏆 Best streak: ' + bold(st.best + ' days') + '\n'
+      + '⏰ Last break: ' + bold(lastBreakStr) + '\n'
       + '✅ Maintained: ' + bold(st.maintained + ' / ' + st.total + ' days') + '\n'
       + '❌ Broken: ' + bold(st.broken + ' times') + '\n'
       + '📊 Success rate: ' + bold(st.pct + '%') + '\n\n'
-      + (recentStreaks.length > 1 ? '**Recent streaks:**\n' + recentStreaks.join('\n') : '');
+      + (recentStreakLines.length > 0 ? '**Recent streaks:**\n' + recentStreakLines.join('\n') : '');
     return { text: textPart, html: g.html };
   }
 

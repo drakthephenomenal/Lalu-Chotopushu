@@ -14,7 +14,7 @@ const App = {
     customSt: [], timerHistory: {}, timer28History: {}, sankalpas: [], occasions: {},
     syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {},
     migrationV2Done: false,
-    japMode: 'radha', inputMode: 'tap',
+    japMode: 'radha',
     historyRV: {}, timerHistoryRV: {}, dtRV: 0, ltRV: 0, nameJapDeductRV: 0,
     malaLogRV: [],
     syncBaselineRV: {}, syncBaselineTimerRV: {},
@@ -108,7 +108,7 @@ const App = {
       history: this.S.history, h28: this.S.h28, timerHistory: this.S.timerHistory, timer28History: this.S.timer28History,
       syncBaseline: this.S.syncBaseline, syncBaseline28: this.S.syncBaseline28,
       syncBaselineTimer: this.S.syncBaselineTimer, syncBaselineTimer28: this.S.syncBaselineTimer28, migrationV2Done: this.S.migrationV2Done,
-      japMode: this.S.japMode, inputMode: this.S.inputMode||'tap', historyRV: this.S.historyRV, timerHistoryRV: this.S.timerHistoryRV,
+      japMode: this.S.japMode, historyRV: this.S.historyRV, timerHistoryRV: this.S.timerHistoryRV,
       dtRV: this.S.dtRV, ltRV: this.S.ltRV, nameJapDeductRV: this.S.nameJapDeductRV, malaLogRV: this.S.malaLogRV,
       syncBaselineRV: this.S.syncBaselineRV, syncBaselineTimerRV: this.S.syncBaselineTimerRV,
       brahmacharya_start_date: this.S.brahmacharya_start_date,
@@ -177,7 +177,6 @@ const App = {
     if (!this.S.historyRV) this.S.historyRV = {};
     if (!this.S.timerHistoryRV) this.S.timerHistoryRV = {};
     if (!this.S.japMode) this.S.japMode = 'radha';
-    if (!this.S.inputMode) this.S.inputMode = 'tap';
     if (!this.S.dtRV) this.S.dtRV = 0;
     if (!this.S.ltRV) this.S.ltRV = 0;
     if (!this.S.nameJapDeductRV) this.S.nameJapDeductRV = 0;
@@ -774,176 +773,6 @@ function spawnRV(e, zone) {
   zone.appendChild(el); setTimeout(() => el.remove(), 2400);
 }
 
-// ── Voice Mode Engine ──
-const VoiceJap = (() => {
-  let recog = null;
-  let active = false;
-  let _restarting = false;
-
-  // Valid phrases for each mode
-  const RADHA_PHRASES   = ['radha', 'राधा', 'radha radha', 'राधा राधा'];
-  const RV_PHRASES      = [
-    'radha vallabh sri harivansha', 'radha vallabh sri harivansh',
-    'radha ballabh sri harivansha', 'radha ballabh sri harivansh',
-    'राधावल्लभ श्री हरिवंश', 'राधावल्लभ श्री हरिवंशा'
-  ];
-
-  function countMatches(transcript, phrases) {
-    // count how many times any phrase appears (handles "radha radha" → 2 if single "radha")
-    const t = transcript.toLowerCase().trim();
-    // Count occurrences of 'radha' for radha mode (each word = 1 jap)
-    if (phrases === RADHA_PHRASES) {
-      const matches = t.match(/radha|राधा/gi);
-      return matches ? matches.length : 0;
-    }
-    // RV: each full phrase = 1 jap
-    for (const ph of phrases) {
-      if (t.includes(ph.toLowerCase())) return 1;
-    }
-    return 0;
-  }
-
-  function fireJap(count, transcript) {
-    const tz = document.getElementById('tz');
-    if (!tz) return;
-    const isRV = App.S.japMode === 'rv';
-    for (let i = 0; i < count; i++) {
-      // Increment count same as tap
-      if (isRV) {
-        App.S.historyRV[App.S.tk] = (App.S.historyRV[App.S.tk] || 0) + 1;
-      } else {
-        App.S.history[App.S.tk] = (App.S.history[App.S.tk] || 0) + 1;
-      }
-      App.ensureMalaWallStart();
-      App.tapTimer();
-      // Spawn animation at centre of tz
-      const r = tz.getBoundingClientRect();
-      const fakeE = { clientX: r.left + r.width/2, clientY: r.top + r.height/2 };
-      if (isRV) spawnRV(fakeE, tz); else spawn(fakeE, tz);
-      // Mala check
-      const ms = App.S.ms || 108;
-      const lmcKey = isRV ? 'lmcRV' : 'lmc';
-      const nm = Math.floor(App.gTod() / ms);
-      if (nm > App[lmcKey]) { App[lmcKey] = nm; App.malaOk(); App.silentMonkBackup(); }
-    }
-    if (count > 0) { App.save(); fbDebouncedPush(); App.ua(); }
-  }
-
-  function setMicStatus(text, cls) {
-    const el = document.getElementById('micStatus');
-    if (!el) return;
-    el.textContent = text;
-    el.className = 'mic-status' + (cls ? ' ' + cls : '');
-  }
-
-  function start() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      setMicStatus('Not supported', 'error');
-      return false;
-    }
-    if (recog) { try { recog.abort(); } catch(e) {} recog = null; }
-
-    recog = new SpeechRecognition();
-    recog.lang = 'hi-IN';           // Hindi — recognises both Devanagari + romanised Hindi
-    recog.continuous = true;
-    recog.interimResults = false;
-    recog.maxAlternatives = 2;
-
-    recog.onstart = () => {
-      active = true; _restarting = false;
-      setMicStatus('● Listening', 'listening');
-    };
-
-    recog.onresult = (e) => {
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (!e.results[i].isFinal) continue;
-        // Check all alternatives
-        let best = 0;
-        for (let a = 0; a < e.results[i].length; a++) {
-          const t = e.results[i][a].transcript;
-          const isRV = App.S.japMode === 'rv';
-          const phrases = isRV ? RV_PHRASES : RADHA_PHRASES;
-          const n = countMatches(t, phrases);
-          if (n > best) best = n;
-        }
-        if (best > 0) fireJap(best);
-      }
-    };
-
-    recog.onerror = (e) => {
-      if (e.error === 'no-speech') return; // normal — just keep going
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-        setMicStatus('Mic denied', 'error');
-        active = false;
-        // revert toggle
-        App.S.inputMode = 'tap'; App.save(); fbDebouncedPush();
-        applyInputModeUI('tap');
-        return;
-      }
-      // transient errors — will auto-restart via onend
-    };
-
-    recog.onend = () => {
-      if (!active || _restarting) return;
-      // Auto-restart — recognition stops on silence; keep looping
-      _restarting = true;
-      setTimeout(() => {
-        if (!active) return;
-        _restarting = false;
-        try { recog.start(); } catch(err) {}
-      }, 200);
-    };
-
-    try { recog.start(); return true; }
-    catch(e) { setMicStatus('Mic error', 'error'); return false; }
-  }
-
-  function stop() {
-    active = false; _restarting = false;
-    if (recog) { try { recog.abort(); } catch(e) {} recog = null; }
-    setMicStatus('');
-  }
-
-  return { start, stop, isActive: () => active };
-})();
-
-// ── Input mode toggle (persisted in Firebase via App.S.inputMode) ──
-function applyInputModeUI(mode) {
-  const toggle = document.getElementById('inputModeToggle');
-  const tz = document.getElementById('tz');
-  const hint = document.getElementById('timerToday');
-  if (!toggle) return;
-  if (mode === 'voice') {
-    toggle.classList.add('voice-on');
-    if (tz) { tz.style.pointerEvents = 'none'; tz.style.opacity = '0.6'; }
-    if (hint && !hint.textContent.startsWith("Today")) hint.textContent = 'Say "Radha" clearly · each word counted';
-  } else {
-    toggle.classList.remove('voice-on');
-    if (tz) { tz.style.pointerEvents = ''; tz.style.opacity = ''; }
-    if (hint && !hint.textContent.startsWith("Today")) hint.textContent = 'Auto-starts when you tap · pauses after 6s';
-  }
-}
-
-function toggleInputMode() {
-  const cur = App.S.inputMode || 'tap';
-  const next = cur === 'tap' ? 'voice' : 'tap';
-  App.S.inputMode = next;
-  App.save(); fbDebouncedPush();
-  applyInputModeUI(next);
-  if (next === 'voice') {
-    VoiceJap.start();
-  } else {
-    VoiceJap.stop();
-  }
-}
-
-function initInputMode() {
-  const mode = App.S.inputMode || 'tap';
-  applyInputModeUI(mode);
-  if (mode === 'voice') VoiceJap.start();
-}
-
 // Prevent double-tap zoom
 let lt2 = 0;
 document.addEventListener('touchend', e => { const n = Date.now(); if (n - lt2 < 300) e.preventDefault(); lt2 = n; }, { passive: false });
@@ -1146,12 +975,6 @@ function sv(id, btn) {
   document.querySelectorAll('.nb').forEach(b => b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if (btn) btn.classList.add('active');
-  // Pause voice when leaving Jap tab; resume if returning to it
-  if (id === 'vj') {
-    if ((App.S.inputMode || 'tap') === 'voice' && !VoiceJap.isActive()) VoiceJap.start();
-  } else {
-    if (VoiceJap.isActive()) VoiceJap.stop();
-  }
   if (id === 'vs') uStats();
   if (id === 'vb') { initBrahmaStartInput(); renderCal(); }
   if (id === 'vst') renderSt();
@@ -2237,7 +2060,7 @@ function fbInit() {
             history: {}, h28: {}, stotrams: {}, brahma: {},
             customSt: [], timerHistory: {}, timer28History: {}, sankalpas: [], occasions: {},
             syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {},
-            migrationV2Done: false, japMode: 'radha', inputMode: 'tap',
+            migrationV2Done: false, japMode: 'radha',
             historyRV: {}, timerHistoryRV: {}, dtRV: 0, ltRV: 0, nameJapDeductRV: 0,
             malaLogRV: [], activityLog: [], syncBaselineRV: {}, syncBaselineTimerRV: {}
           };
@@ -2375,7 +2198,7 @@ async function fbPushFull() {
     ms: App.S.ms||108, dt: App.S.dt||0, lt: App.S.lt||0, nameJapDeduct: App.S.nameJapDeduct||0, cfg: App.S.cfg||{},
     malaLog: App.S.malaLog||[], malaLogDate: App.S.tk,
     brahmacharya_start_date: App.S.brahmacharya_start_date||'',
-    japMode: App.S.japMode||'radha', inputMode: App.S.inputMode||'tap', historyRV: App.S.historyRV||{}, timerHistoryRV: App.S.timerHistoryRV||{},
+    japMode: App.S.japMode||'radha', historyRV: App.S.historyRV||{}, timerHistoryRV: App.S.timerHistoryRV||{},
     dtRV: App.S.dtRV||0, ltRV: App.S.ltRV||0, nameJapDeductRV: App.S.nameJapDeductRV||0, malaLogRV: App.S.malaLogRV||[],
     brahmacharya_start_date: App.S.brahmacharya_start_date||'',
     activityLog: App.S.activityLog || [],
@@ -2432,7 +2255,6 @@ function fbApplyRemote(d) {
   if ('historyRV' in d) App.S.historyRV = JSON.parse(JSON.stringify(d.historyRV || {}));
   if ('timerHistoryRV' in d) App.S.timerHistoryRV = JSON.parse(JSON.stringify(d.timerHistoryRV || {}));
   if (d.japMode) App.S.japMode = d.japMode;
-  if (d.inputMode) App.S.inputMode = d.inputMode;
   if (d.dtRV !== undefined) App.S.dtRV = d.dtRV;
   if (d.ltRV !== undefined) App.S.ltRV = d.ltRV;
   if (d.nameJapDeductRV !== undefined) App.S.nameJapDeductRV = d.nameJapDeductRV;
@@ -2478,7 +2300,6 @@ function fbApplyRemote(d) {
   App.lmc = Math.floor(App.gTod() / (App.S.ms||108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk]||0) / (App.S.ms||108));
   switchJapMode(App.S.japMode || 'radha');
-  applyInputModeUI(App.S.inputMode || 'tap');
   renderSt(); u28(); renderBcal(); renderCal(); uStats(); renderSankalpas(); renderMalaLog();
   setSyncPill('', '🔄 Synced from cloud');
 }
@@ -3693,7 +3514,6 @@ window.addEventListener('load', async () => {
 
   App.ua();
   initJapModeUI();
-  initInputMode();
   fbInit();
   initSunTimes();
   buildPwaManifest();

@@ -24,14 +24,9 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   text-shadow:0 2px 8px rgba(0,0,0,0.9);position:relative;z-index:20;}
 /* Spinning Radha Text Rings */
 .ls-rings{position:relative;display:flex;align-items:center;justify-content:center;width:min(320px,85vw);height:min(320px,85vw);flex-shrink:0;}
-.ls-rings .glow1{position:absolute;width:280px;height:280px;border-radius:50%;background:rgba(255,215,0,0.3);filter:blur(60px);animation:glow 2s ease-in-out infinite;}
-.ls-rings .glow2{position:absolute;width:240px;height:240px;border-radius:50%;background:rgba(255,215,0,0.2);filter:blur(40px);animation:glow 2s ease-in-out infinite;}
-.ls-ring{position:absolute;}
-.ls-ring-blue{width:min(280px,75vw);height:min(280px,75vw);animation:spin-rev 12s linear infinite;}
-.ls-ring-yellow{width:min(310px,83vw);height:min(310px,83vw);animation:spin-fwd 15s linear infinite;}
-.ls-ring text{font-family:'Noto Sans Devanagari','Hind Siliguri',sans-serif;font-size:16px;font-weight:700;letter-spacing:1px;}
-.ls-ring .fill-blue{fill:#4A90E2;}
-.ls-ring .fill-yellow{fill:#FFD700;}
+.ls-rings .glow1{position:absolute;width:min(260px,70vw);height:min(260px,70vw);border-radius:50%;background:radial-gradient(circle,rgba(255,215,0,0.35) 0%,transparent 70%);filter:blur(18px);animation:glow 2s ease-in-out infinite;pointer-events:none;}
+.ls-rings .glow2{position:absolute;width:min(200px,54vw);height:min(200px,54vw);border-radius:50%;background:radial-gradient(circle,rgba(255,215,0,0.22) 0%,transparent 70%);filter:blur(12px);animation:glow 2s ease-in-out infinite;pointer-events:none;}
+.ls-ring{display:none;}
 @keyframes spin-fwd{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 @keyframes spin-rev{from{transform:rotate(0deg);}to{transform:rotate(-360deg);}}
 /* iOS/iPad Safari fixes */

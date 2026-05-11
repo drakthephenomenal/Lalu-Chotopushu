@@ -31,80 +31,76 @@
   <div class="ls-rings">
     <div class="glow1"></div>
     <div class="glow2"></div>
-    <div class="ls-ring ls-ring-blue">
-      <canvas id="blueRingCanvas" style="display:block;width:100%;height:100%;"></canvas>
-    </div>
-    <div class="ls-ring ls-ring-yellow">
-      <canvas id="yellowRingCanvas" style="display:block;width:100%;height:100%;"></canvas>
-    </div>
+    <canvas id="ringCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;"></canvas>
     <script>
     (function() {
-      var RADHA = 'राधा';
-      var SEP   = ' · ';
+      var RADHA = 'राधा · ';
+      var raf, rot1 = 0, rot2 = 0, fontReady = false;
 
-      function drawRing(canvas, px, radius, color) {
-        var dpr = window.devicePixelRatio || 1;
-        canvas.width  = px * dpr;
-        canvas.height = px * dpr;
-        var ctx = canvas.getContext('2d');
-        ctx.scale(dpr, dpr);
-
-        var cx = px / 2, cy = px / 2;
-        var fs = Math.round(px * 0.048); // font size ~13px for 280px canvas
-        var font = '700 ' + fs + 'px "Noto Sans Devanagari", "Tiro Devanagari Hindi", sans-serif';
-        ctx.font = font;
+      function drawTextOnRing(ctx, cx, cy, radius, rotOffset, color, fs) {
+        ctx.save();
+        ctx.font = '700 ' + fs + 'px "Noto Sans Devanagari", sans-serif';
         ctx.fillStyle = color;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-
-        var wR = ctx.measureText(RADHA).width;
-        var wS = ctx.measureText(SEP).width;
-        var unitW = wR + wS;
+        var unitW = ctx.measureText(RADHA).width;
         var circ  = 2 * Math.PI * radius;
-        var reps  = Math.ceil(circ / unitW) + 2;
-
-        var angle = -Math.PI / 2;
-        for (var n = 0; n < reps; n++) {
-          // draw राधा
-          var a1 = wR / radius;
-          angle += a1 / 2;
+        var reps  = Math.ceil(circ / unitW) + 1;
+        var anglePerUnit = unitW / radius;
+        for (var i = 0; i < reps; i++) {
+          var midAngle = rotOffset + i * anglePerUnit;
+          if (midAngle > rotOffset + 2 * Math.PI) break;
           ctx.save();
-          ctx.translate(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
-          ctx.rotate(angle + Math.PI / 2);
+          ctx.translate(cx + radius * Math.cos(midAngle), cy + radius * Math.sin(midAngle));
+          ctx.rotate(midAngle + Math.PI / 2);
           ctx.fillText(RADHA, 0, 0);
           ctx.restore();
-          angle += a1 / 2;
-          // draw separator
-          var a2 = wS / radius;
-          angle += a2 / 2;
-          ctx.save();
-          ctx.translate(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
-          ctx.rotate(angle + Math.PI / 2);
-          ctx.fillText(SEP, 0, 0);
-          ctx.restore();
-          angle += a2 / 2;
-          if (angle >= 3 * Math.PI / 2) break;
         }
+        ctx.restore();
       }
 
-      function drawBoth() {
-        var vw = Math.min(window.innerWidth, 400);
-        var blueSize   = Math.min(280, Math.round(vw * 0.75));
-        var yellowSize = Math.min(310, Math.round(vw * 0.83));
-        var blueCanvas   = document.getElementById('blueRingCanvas');
-        var yellowCanvas = document.getElementById('yellowRingCanvas');
-        if (blueCanvas)   drawRing(blueCanvas,   blueSize,   blueSize   * 0.464, '#4A90E2');
-        if (yellowCanvas) drawRing(yellowCanvas, yellowSize, yellowSize * 0.468, '#FFD700');
+      function frame() {
+        var canvas = document.getElementById('ringCanvas');
+        var ls = document.getElementById('ls');
+        if (!canvas || !ls || ls.classList.contains('hide')) return;
+
+        var size = canvas.parentElement.offsetWidth || 320;
+        var dpr  = window.devicePixelRatio || 1;
+        if (canvas.width !== size * dpr) {
+          canvas.width  = size * dpr;
+          canvas.height = size * dpr;
+        }
+        var ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.scale(dpr, dpr);
+
+        var cx = size / 2, cy = size / 2;
+        var r1 = size * 0.42;  // yellow outer ring
+        var r2 = size * 0.38;  // blue inner ring
+        var fs = Math.max(10, Math.round(size * 0.047));
+
+        drawTextOnRing(ctx, cx, cy, r1,  rot1, '#FFD700', fs);
+        drawTextOnRing(ctx, cx, cy, r2, -rot2, '#4A90E2', fs);
+
+        ctx.restore();
+
+        rot1 += 0.003;  // yellow spins forward
+        rot2 += 0.0024; // blue spins backward (negated above)
+        raf = requestAnimationFrame(frame);
+      }
+
+      function startAnim() {
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(frame);
       }
 
       function tryDraw() {
         if (document.fonts && document.fonts.load) {
-          var test = '700 13px "Noto Sans Devanagari"';
-          document.fonts.load(test, RADHA)
-            .then(drawBoth)
-            .catch(function() { setTimeout(drawBoth, 500); });
+          document.fonts.load('700 14px "Noto Sans Devanagari"', 'राधा')
+            .then(startAnim).catch(startAnim);
         } else {
-          setTimeout(drawBoth, 1000);
+          setTimeout(startAnim, 800);
         }
       }
 

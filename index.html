@@ -194,6 +194,15 @@
     <button class="tbtn start" id="timerBtn" onclick="App.toggleTimer()">▶ Start</button>
   </div>
   <div class="timer-today" id="timerToday">Auto-starts when you tap · pauses after 6s</div>
+  <!-- Tap / Voice mode toggle -->
+  <div class="input-mode-bar">
+    <div class="input-mode-toggle" id="inputModeToggle" onclick="toggleInputMode()">
+      <span class="im-opt" id="imTapOpt">👆 Tap</span>
+      <span class="im-thumb" id="imThumb"></span>
+      <span class="im-opt" id="imVoiceOpt">🎙️ Voice</span>
+    </div>
+    <span class="mic-status" id="micStatus"></span>
+  </div>
   <div class="ps">
     <!-- Daily: blue bar + jap count + undo -->
     <div class="pc pc-bar" style="position:relative;">

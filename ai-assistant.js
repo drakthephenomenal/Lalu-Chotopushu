@@ -233,9 +233,125 @@ function buildCtx() {
 }
 
 
-// ── OFFLINE INTELLIGENCE ENGINE ─────────────────────────────────
-// Handles analytics questions locally — no API needed
-// Returns null if the question needs real AI
+// ═══════════════════════════════════════════════════════════════
+// LOCAL INTELLIGENCE ENGINE — precise, data-direct, no API needed
+// Returns string answer or null (→ falls to Claude for edit/spiritual)
+// ═══════════════════════════════════════════════════════════════
+
+// ── Brahmacharya helpers (mirrors app.js logic exactly) ─────────
+function getBcStart() { return App.S.brahmacharya_start_date || '2026-01-01'; }
+
+function calcBcStreaks() {
+  var S = App.S;
+  var startD = new Date(getBcStart()); startD.setHours(0,0,0,0);
+  var todayD = new Date(); todayD.setHours(0,0,0,0);
+  var totalDays = Math.max(0, Math.round((todayD - startD) / 86400000) + 1);
+  var broken = Object.values(S.brahma||{}).filter(function(e){ return e && e.status === 'b'; }).length;
+  var maintained = totalDays - broken;
+  var successPct = totalDays > 0 ? Math.round(maintained / totalDays * 100) : 0;
+
+  // Current streak (days since last break)
+  var cs = 0, d = new Date(); d.setHours(0,0,0,0);
+  while (cs < 9999) {
+    var k = d.toISOString().split('T')[0];
+    if (k < getBcStart()) break;
+    var en = S.brahma[k];
+    if (!en || en.status !== 'b') { cs++; d.setDate(d.getDate()-1); } else break;
+  }
+
+  // Best streak ever
+  var allDays = [], cur = new Date(getBcStart()); cur.setHours(0,0,0,0);
+  while (cur <= todayD) { allDays.push(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate()+1); }
+  var bs = 0, run = 0;
+  allDays.forEach(function(k) {
+    var en = S.brahma[k];
+    if (!en || en.status !== 'b') { run++; if(run > bs) bs = run; } else run = 0;
+  });
+
+  // Recent streaks (list of all streaks)
+  var streaks = [], runStart = null, runLen = 0;
+  allDays.forEach(function(k, i) {
+    var en = S.brahma[k];
+    if (!en || en.status !== 'b') {
+      if (!runStart) runStart = k;
+      runLen++;
+    } else {
+      if (runLen > 0) streaks.push({ start: runStart, len: runLen });
+      runStart = null; runLen = 0;
+    }
+  });
+  if (runLen > 0) streaks.push({ start: runStart, len: runLen });
+
+  return { current: cs, best: bs, total: totalDays, maintained: maintained, broken: broken, pct: successPct, streaks: streaks, allDays: allDays };
+}
+
+// ── Lunar month graph (29-30 day cycle) ─────────────────────────
+function renderLunarGraph() {
+  var S = App.S;
+  // Use last 30 days as a lunar month approximation
+  var days = [];
+  var today = new Date(); today.setHours(0,0,0,0);
+  for (var i = 29; i >= 0; i--) {
+    var d = new Date(today); d.setDate(d.getDate() - i);
+    var k = d.toISOString().split('T')[0];
+    var en = S.brahma[k];
+    var isBcActive = k >= getBcStart() && k <= today.toISOString().split('T')[0];
+    var broken = isBcActive && en && en.status === 'b';
+    var maintained = isBcActive && (!en || en.status !== 'b');
+    days.push({ date: k, day: d.getDate(), broken: broken, maintained: maintained, active: isBcActive });
+  }
+
+  // Build HTML grid — lunar calendar style (6 rows × 5 cols)
+  var html = '<div style="font-family:Inter,sans-serif;padding:4px 0;">';
+  html += '<div style="font-size:12px;font-weight:700;color:#FFD700;margin-bottom:8px;letter-spacing:0.5px;">🌙 Brahmacharya — Lunar Month (Last 30 Days)</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:6px;">';
+  var dowLabels = ['S','M','T','W','T','F','S'];
+  dowLabels.forEach(function(l) {
+    html += '<div style="text-align:center;font-size:9px;color:rgba(255,255,255,0.35);font-weight:600;padding-bottom:2px;">'+l+'</div>';
+  });
+  html += '</div>';
+
+  // Find first day's weekday to offset
+  var firstDay = new Date(days[0].date).getDay();
+  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">';
+  for (var off = 0; off < firstDay; off++) {
+    html += '<div></div>';
+  }
+  days.forEach(function(d) {
+    var bg, border, symbol;
+    if (!d.active) {
+      bg = 'rgba(255,255,255,0.04)'; border = '1px solid rgba(255,255,255,0.08)'; symbol = '';
+    } else if (d.broken) {
+      bg = 'rgba(231,76,60,0.25)'; border = '1px solid rgba(231,76,60,0.6)'; symbol = '✗';
+    } else {
+      bg = 'rgba(46,204,113,0.18)'; border = '1px solid rgba(46,204,113,0.45)'; symbol = '✓';
+    }
+    var isToday = d.date === today.toISOString().split('T')[0];
+    if (isToday) border = '1px solid #FFD700';
+    html += '<div style="background:'+bg+';border:'+border+';border-radius:5px;padding:3px 1px;text-align:center;">'
+      + '<div style="font-size:9px;color:rgba(255,255,255,'+(isToday?'1':'0.5')+');font-weight:'+(isToday?'700':'400')+';">'+d.day+'</div>'
+      + '<div style="font-size:9px;color:'+(d.broken?'#e74c3c':d.maintained?'#2ecc71':'transparent')+';">'+symbol+'</div>'
+      + '</div>';
+  });
+  html += '</div>';
+
+  // Legend + summary
+  var bcS = calcBcStreaks();
+  html += '<div style="display:flex;gap:12px;margin-top:8px;font-size:10px;color:rgba(255,255,255,0.55);">'
+    + '<span><span style="color:#2ecc71;">✓</span> Maintained</span>'
+    + '<span><span style="color:#e74c3c;">✗</span> Broken</span>'
+    + '<span style="color:#FFD700;">□</span> Today'
+    + '</div>';
+  html += '<div style="margin-top:8px;font-size:11px;line-height:1.7;color:rgba(255,255,255,0.8);">'
+    + '⚡ Current streak: <strong style="color:#2ecc71;">'+bcS.current+' days</strong> &nbsp;'
+    + '🏆 Best ever: <strong style="color:#FFD700;">'+bcS.best+' days</strong><br>'
+    + '✅ Maintained: <strong>'+bcS.maintained+'</strong> &nbsp;'
+    + '❌ Broken: <strong style="color:#e74c3c;">'+bcS.broken+'</strong> &nbsp;'
+    + '📊 Success: <strong style="color:#2ecc71;">'+bcS.pct+'%</strong>'
+    + '</div>';
+  html += '</div>';
+  return { html: html, stats: bcS };
+}
 
 function offlineAnswer(msg, ctx) {
   var q = msg.toLowerCase().trim();
@@ -245,229 +361,266 @@ function offlineAnswer(msg, ctx) {
   var pat = ctx.patterns;
   var ms = j.ms || 108;
 
-  // ── helpers ──
   function bold(v) { return '**' + v + '**'; }
   function num(n) { return (n||0).toLocaleString('en-IN'); }
-  function pct(a,b) { return b ? Math.round(a/b*100)+'%' : 'N/A'; }
+  function fmtSec(sec) {
+    if (!sec) return '—';
+    var h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+    return h > 0 ? h+'h '+m+'m' : m+'m '+s+'s';
+  }
 
-  // ── TODAY ────────────────────────────────────────────────────
-  if (/\b(today|aaj|abhi|current|now)\b/.test(q) && !/add|set|log|edit|mark|undo/.test(q)) {
+  // ── BRAHMACHARYA (lunar graph + precise stats) ──────────────
+  if (/brahma|brahmach|celibacy|\bbc\b|lunar|streak.*break|break.*streak/.test(q)) {
+    var g = renderLunarGraph();
+    var st = g.stats;
+    // Recent streaks list (last 5)
+    var recentStreaks = st.streaks.slice(-5).reverse().map(function(s, i) {
+      return (i===0 ? '⚡ Current' : '  #'+(i+1)) + ': ' + bold(s.len + ' days') + (s.start ? ' (from ' + s.start + ')' : '');
+    });
+    var textPart = '🛡️ **Brahmacharya**\n'
+      + '📅 Started: ' + bold(getBcStart()) + '\n'
+      + '⚡ Current streak: ' + bold(st.current + ' days') + '\n'
+      + '🏆 Best streak: ' + bold(st.best + ' days') + '\n'
+      + '✅ Maintained: ' + bold(st.maintained + ' / ' + st.total + ' days') + '\n'
+      + '❌ Broken: ' + bold(st.broken + ' times') + '\n'
+      + '📊 Success rate: ' + bold(st.pct + '%') + '\n\n'
+      + (recentStreaks.length > 1 ? '**Recent streaks:**\n' + recentStreaks.join('\n') : '');
+    return { text: textPart, html: g.html };
+  }
+
+  // ── TODAY ───────────────────────────────────────────────────
+  if (/\b(today|aaj|abhi)\b/.test(q) && !/add|set|log|edit|mark|undo/.test(q)) {
     var todR = j.today_r, todRV = j.today_rv, tot = j.today_total;
     var malas = Math.floor(tot / ms);
-    var rem = j.dt > 0 ? Math.max(0, j.dt - tot) : null;
     var timeSec = j.today_sec;
-    var timeStr = timeSec > 0 ? (Math.floor(timeSec/3600)>0 ? Math.floor(timeSec/3600)+'h ' : '') + Math.floor((timeSec%3600)/60)+'m' : 'Not timed';
-
-    var lines = ['📊 **Today — ' + ctx.today + '**\n'];
-    lines.push('🌸 Radha Naam: ' + bold(num(todR)) + ' (' + Math.floor(todR/ms) + ' malas)');
-    if (todRV > 0) lines.push('💙 RV Naam: ' + bold(num(todRV)) + ' (' + Math.floor(todRV/ms) + ' malas)');
-    lines.push('🔢 Total: ' + bold(num(tot)) + ' jap · ' + bold(malas) + ' malas');
-    lines.push('⏱ Time: ' + bold(timeStr));
-    if (j.dt > 0) {
-      lines.push('🎯 Target: ' + bold(num(j.dt)) + (rem > 0 ? ' · ' + bold(num(rem)) + ' remaining' : ' · ✅ Target hit!'));
-    }
-    lines.push('🔥 Streak: ' + bold(j.streak) + ' days');
+    var avgMalaSec = malas > 0 && timeSec > 0 ? Math.round(timeSec / malas) : 0;
+    var lines = [
+      '📊 **Today — ' + ctx.today + '**',
+      '🌸 Radha Naam: ' + bold(num(todR)) + ' (' + Math.floor(todR/ms) + ' malas)',
+      todRV > 0 ? '💙 RV Naam: ' + bold(num(todRV)) + ' (' + Math.floor(todRV/ms) + ' malas)' : null,
+      '🔢 Total: ' + bold(num(tot)) + ' jap · ' + bold(malas) + ' malas',
+      timeSec > 0 ? '⏱ Time: ' + bold(fmtSec(timeSec)) + (avgMalaSec > 0 ? ' · ' + bold(fmtSec(avgMalaSec)) + '/mala avg' : '') : null,
+      j.dt > 0 ? '🎯 Target: ' + bold(num(j.dt)) + (tot >= j.dt ? ' ✅ Done!' : ' · ' + bold(num(j.dt - tot)) + ' remaining') : null,
+      '🔥 Streak: ' + bold(j.streak + ' days'),
+    ].filter(Boolean);
     return lines.join('\n');
   }
 
-  // ── STREAK / CONSISTENCY / GAPS / BEST PERIODS ───────────────
-  if (/streak|consist|gap|best period|longest|continuous/.test(q)) {
-    var hist = S.history || {};
-    var histRV = S.historyRV || {};
-    var allKeys = [...new Set(Object.keys(hist).concat(Object.keys(histRV)))].sort();
-    var activeDays = allKeys.filter(function(k){ return (hist[k]||0)+(histRV[k]||0) > 0; });
-
-    // Current streak
-    var streak = j.streak;
-
-    // Longest streak
-    var sorted = allKeys.sort();
-    var maxStreak = 0, curS = 0, prevDate = null;
-    sorted.forEach(function(k) {
-      var v = (hist[k]||0)+(histRV[k]||0);
-      if (v > 0) {
-        if (prevDate) {
-          var diff = (new Date(k) - new Date(prevDate)) / 86400000;
-          curS = diff === 1 ? curS + 1 : 1;
-        } else { curS = 1; }
-        maxStreak = Math.max(maxStreak, curS);
-        prevDate = k;
-      } else { prevDate = null; curS = 0; }
+  // ── JAP STREAK ──────────────────────────────────────────────
+  if (/streak|longest|best period|continuous|consistent/.test(q) && !/brahma|bc/.test(q)) {
+    var hist = S.history||{}, histRV = S.historyRV||{};
+    var allK = Array.from(new Set(Object.keys(hist).concat(Object.keys(histRV)))).sort();
+    // Longest jap streak
+    var maxS = 0, curS2 = 0, prevK = null;
+    allK.forEach(function(k) {
+      if ((hist[k]||0)+(histRV[k]||0) > 0) {
+        if (prevK && (new Date(k)-new Date(prevK))/86400000 === 1) curS2++; else curS2 = 1;
+        if (curS2 > maxS) maxS = curS2;
+        prevK = k;
+      } else { prevK = null; curS2 = 0; }
     });
-
-    // Consistency last 30 days
-    var last30keys = [];
-    for (var d=0; d<30; d++) {
-      var dd = new Date(); dd.setDate(dd.getDate()-d);
-      last30keys.push(dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+String(dd.getDate()).padStart(2,'0'));
-    }
-    var activeLast30 = last30keys.filter(function(k){ return (hist[k]||0)+(histRV[k]||0) > 0; }).length;
-    var consistPct = Math.round(activeLast30/30*100);
-
-    // Best day
-    var best = j.best;
-
-    // Gap analysis — days with 0 jap in last 30
-    var gapDays = 30 - activeLast30;
-    var gaps30 = last30keys.filter(function(k){ return (hist[k]||0)+(histRV[k]||0) === 0; });
-
-    var lines = ['🔥 **Streak & Consistency Report**\n'];
-    lines.push('⚡ Current streak: ' + bold(streak + ' days'));
-    lines.push('🏆 Longest streak ever: ' + bold(maxStreak + ' days'));
-    lines.push('📅 Last 30 days: ' + bold(activeLast30 + '/30 days') + ' active (' + bold(consistPct+'%') + ' consistency)');
-    lines.push('😴 Gaps (missed days last 30): ' + bold(gapDays) + (gapDays === 0 ? ' 🌟 Perfect month!' : ''));
-    if (best) lines.push('🌟 Best day ever: ' + bold(num(best.count)) + ' jap on ' + best.date);
-    if (pat && pat.peakHourLabel) lines.push('⏰ Peak practice hour: ' + bold(pat.peakHourLabel));
-    if (pat && pat.peakDow) lines.push('📆 Peak day of week: ' + bold(pat.peakDow));
-    if (fc) lines.push('📊 30-day avg: ' + bold(num(fc.avg30)) + ' jap/day');
-    return lines.join('\n');
+    var last30 = [], d30 = new Date();
+    for (var i=0;i<30;i++) { var dd=new Date(d30);dd.setDate(dd.getDate()-i);last30.push(dd.toISOString().split('T')[0]); }
+    var active30 = last30.filter(function(k){return (hist[k]||0)+(histRV[k]||0)>0;}).length;
+    return [
+      '🔥 **Jap Streak**',
+      '⚡ Current: ' + bold(j.streak + ' days'),
+      '🏆 Best ever: ' + bold(maxS + ' days'),
+      '📅 Last 30 days: ' + bold(active30 + '/30') + ' active (' + bold(Math.round(active30/30*100)+'%') + ')',
+      j.best ? '🌟 Best day: ' + bold(num(j.best.count)) + ' on ' + j.best.date : null,
+      fc ? '📊 30-day avg: ' + bold(num(fc.avg30)) + ' jap/day' : null,
+    ].filter(Boolean).join('\n');
   }
 
-  // ── PATTERNS / TIMING ────────────────────────────────────────
-  if (/pattern|timing|time of day|peak|schedule|when do i|best time|hour|day of week|dow/.test(q)) {
-    if (!pat || !pat.peakHour) return 'Jai Radhe 🙏 No session data yet to detect patterns. Complete a few timed sessions first!';
-
-    var dowFull = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    var lines = ['⏰ **Practice Patterns**\n'];
-    lines.push('🕐 Peak hour: ' + bold(pat.peakHourLabel) + ' (most jap done at this time)');
-    lines.push('📆 Best day: ' + bold(pat.peakDow) + (pat.peakDow === 'Fri' ? ' 🌸 Shukravar — auspicious for Radha!' : ''));
-    lines.push('📊 Day distribution: ' + pat.dowDistribution);
-    if (pat.avgGapHours) lines.push('⏱ Avg gap between sessions: ' + bold(pat.avgGapHours + ' hours'));
-    lines.push('\n💡 **Suggestion:** Your peak is ' + pat.peakHourLabel + ' — try to start your jap then daily for best consistency.');
-    return lines.join('\n');
+  // ── MALA STATS ──────────────────────────────────────────────
+  if (/mala|bead|session stat|duration|how long.*mala|mala.*time/.test(q)) {
+    var malaLog = (S.activityLog||[]).filter(function(e){ return e.t==='mala'; });
+    if (!malaLog.length) return 'Jai Radhe 🙏 No mala sessions logged yet. Use the timer during jap to record sessions!';
+    var recent = malaLog.slice(-20);
+    var totalSec2 = recent.reduce(function(a,e){ return a+(e.sec||0); }, 0);
+    var totalMalas2 = recent.reduce(function(a,e){ return a+(e.n||0); }, 0);
+    var avgSec = totalMalas2 > 0 ? Math.round(totalSec2/totalMalas2) : 0;
+    var fastest = recent.reduce(function(a,e){ return (e.sec&&e.n&&(e.sec/e.n)<(a.sec/a.n||9999)) ? e : a; }, recent[0]);
+    var lines = [
+      '📿 **Mala Session Stats** (last ' + recent.length + ' sessions)',
+      '⏱ Avg per mala: ' + bold(fmtSec(avgSec)),
+      fastest ? '⚡ Fastest mala: ' + bold(fmtSec(Math.round((fastest.sec||0)/(fastest.n||1)))) : null,
+      '📊 Total sessions: ' + bold(malaLog.length),
+    ];
+    // Last 5 sessions
+    lines.push('\n**Last 5 sessions:**');
+    malaLog.slice(-5).reverse().forEach(function(e) {
+      var d = new Date(e.ts);
+      var dateStr = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+      var timeStr2 = d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+      var perMala = e.n && e.sec ? fmtSec(Math.round(e.sec/e.n)) : '—';
+      lines.push('• '+dateStr+' '+timeStr2+' · '+bold(e.n||0)+' malas · '+bold(fmtSec(e.sec||0))+' total · '+perMala+'/mala');
+    });
+    return lines.filter(Boolean).join('\n');
   }
 
-  // ── FORECAST / GOAL ──────────────────────────────────────────
-  if (/forecast|goal|when.*reach|lifetime|crore|target|how long|days left|reach my/.test(q)) {
-    if (!fc) return 'Jai Radhe 🙏 Set a lifetime target first (in Settings) and do some jap — then I can forecast!';
-
-    var lines = ['🎯 **Goal Forecast**\n'];
-    lines.push('📿 Total jap so far: ' + bold(num(j.life_total)));
-    lines.push('🏆 Lifetime target: ' + bold(num(j.lt)));
-    if (fc.remaining !== null) lines.push('⏳ Remaining: ' + bold(num(fc.remaining)));
-    lines.push('📊 30-day average: ' + bold(num(fc.avg30)) + ' jap/day');
-    lines.push('📅 Consistency: ' + bold(fc.consistency) + ' active days in last 30');
-    if (fc.goalDate) {
-      lines.push('🎉 Estimated goal date: ' + bold(fc.goalDate));
-      if (fc.daysToGoal) lines.push('📆 Days to goal: ' + bold(num(fc.daysToGoal)) + ' days');
-    } else {
-      lines.push('⚠️ Set a lifetime target to see forecast.');
-    }
-    return lines.join('\n');
+  // ── THIS WEEK ────────────────────────────────────────────────
+  if (/\b(week|7.day|this week|last 7)\b/.test(q)) {
+    var l7 = ctx.last7 || [];
+    var total7=0, days7=0, malas7=0;
+    var rows = l7.map(function(d) {
+      var t = d.r+d.rv; total7+=t; if(t>0)days7++; malas7+=Math.floor(t/ms);
+      var bar = t>0 ? '▓'.repeat(Math.min(8,Math.max(1,Math.ceil(t/(j.dt||108)*4)))) : '░';
+      return d.date.slice(5)+' '+bar+' '+bold(num(t))+(d.sec>0?' ('+fmtSec(d.sec)+')':'');
+    });
+    return ['📈 **This Week**'].concat(rows).concat([
+      '',
+      '📊 Total: ' + bold(num(total7)) + ' · ' + bold(malas7) + ' malas',
+      '📅 Active: ' + bold(days7+'/7 days'),
+      '📈 Daily avg: ' + bold(num(Math.round(total7/7))),
+      fc ? '📊 vs 30-day avg: ' + bold(num(fc.avg30)) + '/day' : null,
+    ].filter(Boolean)).join('\n');
   }
 
-  // ── LIFETIME / TOTAL STATS ───────────────────────────────────
+  // ── THIS MONTH ───────────────────────────────────────────────
+  if (/\b(month|this month|monthly|mahina)\b/.test(q)) {
+    var hist2 = S.history||{}, histRV2 = S.historyRV||{};
+    var now = new Date(), ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+    var monthKeys = Object.keys(hist2).concat(Object.keys(histRV2)).filter(function(k){ return k.startsWith(ym); });
+    monthKeys = Array.from(new Set(monthKeys)).sort();
+    var mTotal=0, mActive=0, mMalas=0;
+    monthKeys.forEach(function(k) { var v=(hist2[k]||0)+(histRV2[k]||0); mTotal+=v; if(v>0)mActive++; mMalas+=Math.floor(v/ms); });
+    var daysInMonth = new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+    var dayOfMonth = now.getDate();
+    return [
+      '📅 **This Month (' + ym + ')**',
+      '🔢 Total: ' + bold(num(mTotal)) + ' jap · ' + bold(mMalas) + ' malas',
+      '📅 Active: ' + bold(mActive+'/'+dayOfMonth+' days'),
+      '📊 Daily avg: ' + bold(num(Math.round(mTotal/Math.max(1,dayOfMonth)))),
+      '📈 On track for: ' + bold(num(Math.round(mTotal/dayOfMonth*daysInMonth))) + ' this month',
+    ].join('\n');
+  }
+
+  // ── THIS YEAR ────────────────────────────────────────────────
+  if (/\b(year|this year|yearly|annual|sal)\b/.test(q)) {
+    var hist3 = S.history||{}, histRV3 = S.historyRV||{};
+    var yr = new Date().getFullYear()+'';
+    var yKeys = Array.from(new Set(Object.keys(hist3).concat(Object.keys(histRV3)))).filter(function(k){return k.startsWith(yr);});
+    var yTotal=0, yActive=0;
+    yKeys.forEach(function(k){ var v=(hist3[k]||0)+(histRV3[k]||0); yTotal+=v; if(v>0)yActive++; });
+    var dayOfYear = Math.floor((new Date()-new Date(yr+'-01-01'))/86400000)+1;
+    return [
+      '📆 **This Year (' + yr + ')**',
+      '🔢 Total: ' + bold(num(yTotal)) + ' jap · ' + bold(Math.floor(yTotal/ms)) + ' malas',
+      '📅 Active: ' + bold(yActive+'/'+dayOfYear+' days'),
+      '📊 Daily avg: ' + bold(num(Math.round(yTotal/Math.max(1,dayOfYear)))),
+      '📈 Projected year total: ' + bold(num(Math.round(yTotal/dayOfYear*365))),
+    ].join('\n');
+  }
+
+  // ── PEAK PERIOD ──────────────────────────────────────────────
+  if (/peak|best time|best day|prime|most jap|highest/.test(q)) {
+    var hist4 = S.history||{}, histRV4 = S.historyRV||{};
+    // Best week
+    var weekTotals = {};
+    Object.keys(hist4).concat(Object.keys(histRV4)).forEach(function(k) {
+      var d = new Date(k), wk = d.getFullYear()+'-W'+String(Math.ceil((d.getDate()-d.getDay()+10)/7)).padStart(2,'0');
+      weekTotals[wk] = (weekTotals[wk]||0) + ((hist4[k]||0)+(histRV4[k]||0));
+    });
+    var bestWeek = Object.entries(weekTotals).sort(function(a,b){return b[1]-a[1];})[0];
+    // Best month
+    var monthTotals = {};
+    Object.keys(hist4).concat(Object.keys(histRV4)).forEach(function(k) {
+      var mo = k.slice(0,7);
+      monthTotals[mo] = (monthTotals[mo]||0) + ((hist4[k]||0)+(histRV4[k]||0));
+    });
+    var bestMonth = Object.entries(monthTotals).sort(function(a,b){return b[1]-a[1];})[0];
+    return [
+      '🌟 **Peak Periods**',
+      j.best ? '📅 Best day: ' + bold(num(j.best.count)) + ' jap on ' + j.best.date : null,
+      bestWeek ? '📆 Best week: ' + bold(num(bestWeek[1])) + ' (' + bestWeek[0] + ')' : null,
+      bestMonth ? '🗓 Best month: ' + bold(num(bestMonth[1])) + ' (' + bestMonth[0] + ')' : null,
+      pat && pat.peakHourLabel ? '⏰ Peak hour: ' + bold(pat.peakHourLabel) : null,
+      pat && pat.peakDow ? '📆 Peak day of week: ' + bold(pat.peakDow) : null,
+    ].filter(Boolean).join('\n');
+  }
+
+  // ── LIFETIME / ALL TIME ──────────────────────────────────────
   if (/lifetime|total|overall|all time|ever|life/.test(q) && !/target|goal|forecast/.test(q)) {
     var hrs = parseFloat(j.life_hrs);
-    var lines = ['📿 **Lifetime Stats**\n'];
-    lines.push('🌸 Radha Naam: ' + bold(num(j.life_r)));
-    if (j.life_rv > 0) lines.push('💙 Radha Vallabh: ' + bold(num(j.life_rv)));
-    lines.push('🔢 Total: ' + bold(num(j.life_total)) + ' (' + bold(Math.floor(j.life_total/ms)) + ' malas)');
-    lines.push('⏱ Total time: ' + bold(hrs.toFixed(1) + ' hours'));
-    lines.push('📅 Active days: ' + bold(j.active_days));
-    lines.push('📊 Daily average: ' + bold(num(j.avg)) + ' jap/day');
-    lines.push('🔥 Current streak: ' + bold(j.streak) + ' days');
-    if (j.best) lines.push('🌟 Best day: ' + bold(num(j.best.count)) + ' on ' + j.best.date);
-    return lines.join('\n');
+    return [
+      '📿 **Lifetime Stats**',
+      '🌸 Radha Naam: ' + bold(num(j.life_r)),
+      j.life_rv > 0 ? '💙 Radha Vallabh: ' + bold(num(j.life_rv)) : null,
+      '🔢 Total: ' + bold(num(j.life_total)) + ' (' + bold(Math.floor(j.life_total/ms)) + ' malas)',
+      '⏱ Total time: ' + bold(hrs.toFixed(1) + ' hours'),
+      '📅 Active days: ' + bold(j.active_days),
+      '📊 Daily average: ' + bold(num(j.avg)) + ' jap/day',
+      '🔥 Current streak: ' + bold(j.streak + ' days'),
+      j.best ? '🌟 Best day: ' + bold(num(j.best.count)) + ' on ' + j.best.date : null,
+    ].filter(Boolean).join('\n');
   }
 
-  // ── BRAHMACHARYA ─────────────────────────────────────────────
-  if (/brahma|brahmach|celibacy|bc/.test(q)) {
-    var bc = ctx.brahma;
-    var bcLog = ctx.brahma_log || [];
-    var lines = ['🛡️ **Brahmacharya Report**\n'];
-    if (bc.start) lines.push('📅 Started: ' + bold(bc.start));
-    lines.push('✅ Maintained: ' + bold(bc.maintained + ' days'));
-    lines.push('❌ Broken: ' + bold(bc.broken + ' times'));
-    lines.push('📊 Success rate: ' + bold(bc.rate));
-
-    if (bcLog.length > 0) {
-      // Day of week pattern for breaks
-      var breaksByDow = {};
-      bcLog.filter(function(e){ return e.status === 'b'; }).forEach(function(e){
-        var dow = e.dow || '';
-        breaksByDow[dow] = (breaksByDow[dow]||0) + 1;
-      });
-      var breakDows = Object.entries(breaksByDow).sort(function(a,b){return b[1]-a[1];});
-      if (breakDows.length > 0) lines.push('⚠️ Most breaks on: ' + bold(breakDows[0][0]));
-      lines.push('📋 Recent log: ' + bcLog.slice(-5).map(function(e){ return e.date+' '+(e.status==='b'?'❌':'✅'); }).join(' · '));
-    }
-    return lines.join('\n');
-  }
-
-  // ── 7-DAY REPORT ─────────────────────────────────────────────
-  if (/7.day|week|weekly|last 7|7 days/.test(q)) {
-    var l7 = ctx.last7 || [];
-    var lines = ['📈 **7-Day Report**\n'];
-    var total7 = 0, days7 = 0;
-    l7.forEach(function(d) {
-      var tot7 = d.r + d.rv;
-      total7 += tot7;
-      if (tot7 > 0) days7++;
-      var bar = tot7 > 0 ? '▓'.repeat(Math.min(10, Math.ceil(tot7/j.dt*5||1))) : '░';
-      lines.push(d.date.slice(5) + ' ' + bar + ' ' + bold(num(tot7)));
-    });
-    lines.push('\n📊 Week total: ' + bold(num(total7)) + ' (' + Math.floor(total7/ms) + ' malas)');
-    lines.push('📅 Active days: ' + bold(days7 + '/7'));
-    lines.push('📈 Daily avg this week: ' + bold(num(Math.round(total7/7))));
-    if (fc) lines.push('📊 vs 30-day avg: ' + bold(num(fc.avg30)) + '/day');
-    return lines.join('\n');
+  // ── FORECAST ─────────────────────────────────────────────────
+  if (/forecast|goal|when.*reach|lifetime.*target|how long|days left/.test(q)) {
+    if (!fc) return 'Jai Radhe 🙏 Set a lifetime target in Settings first, then I can forecast!';
+    return [
+      '🎯 **Goal Forecast**',
+      '📿 Done: ' + bold(num(j.life_total)) + ' / ' + bold(num(j.lt)),
+      fc.remaining !== null ? '⏳ Remaining: ' + bold(num(fc.remaining)) : null,
+      '📊 30-day avg: ' + bold(num(fc.avg30)) + '/day',
+      '📅 Consistency: ' + bold(fc.consistency),
+      fc.goalDate ? '🎉 Goal date: ' + bold(fc.goalDate) + ' (' + bold(fc.daysToGoal + ' days away') + ')' : '⚠️ Set a target to forecast.',
+    ].filter(Boolean).join('\n');
   }
 
   // ── STOTRAMS ─────────────────────────────────────────────────
-  if (/stotram|stotra|path|paath/.test(q)) {
-    var st = ctx.stotrams || {};
-    var stKeys = Object.keys(st);
-    if (!stKeys.length) return 'Jai Radhe 🙏 No stotrams logged yet. Start reciting and log them here!';
-    var lines = ['📖 **Stotram Progress**\n'];
-    stKeys.forEach(function(id) {
-      lines.push('• ' + bold(id) + ': Today ' + bold(st[id].today) + ' · Total ' + bold(num(st[id].total)));
-    });
-    return lines.join('\n');
+  if (/stotram|stotra|path|paath|hit chaurasi|chaurasi/.test(q)) {
+    var st2 = ctx.stotrams || {};
+    var stK = Object.keys(st2);
+    if (!stK.length) return 'Jai Radhe 🙏 No stotrams logged yet!';
+    var lines2 = ['📖 **Stotrams**'];
+    stK.forEach(function(id) { lines2.push('• ' + bold(id) + ': Today ' + bold(st2[id].today) + ' · Total ' + bold(num(st2[id].total))); });
+    return lines2.join('\n');
   }
 
   // ── 28 NAMES ─────────────────────────────────────────────────
-  if (/28 name|28naam|28-name|ashtottara|ashta/.test(q)) {
-    var n28 = ctx.n28 || {};
-    var lines = ['🌸 **28 Names of Radha**\n'];
-    lines.push('📅 Today: ' + bold(n28.today || 0) + ' cycles');
-    lines.push('🏆 All time: ' + bold(num(n28.life || 0)) + ' cycles');
-    return lines.join('\n');
+  if (/28 name|28naam|ashtottara/.test(q)) {
+    var n28 = ctx.n28||{};
+    return '🌸 **28 Names**\n📅 Today: ' + bold(n28.today||0) + ' cycles\n🏆 All time: ' + bold(num(n28.life||0)) + ' cycles';
   }
 
-  // ── MOOD ─────────────────────────────────────────────────────
-  if (/mood|feel|emotion|how am i|mental/.test(q) && !/log mood|add mood/.test(q)) {
-    var mood = ctx.mood;
-    if (!mood) return 'Jai Radhe 🙏 No mood entries yet. Say "log mood 8" to start tracking!';
-    var lines = ['😊 **Mood Insights** (last ' + mood.entries + ' entries)\n'];
-    lines.push('📊 Average: ' + bold(mood.avg + '/10'));
-    if (mood.best) lines.push('🌟 Best: ' + bold(mood.best.score + '/10') + (mood.best.note ? ' — ' + mood.best.note : ''));
-    if (mood.worst) lines.push('😔 Lowest: ' + bold(mood.worst.score + '/10') + (mood.worst.note ? ' — ' + mood.worst.note : ''));
-    return lines.join('\n');
+  // ── PATTERNS ─────────────────────────────────────────────────
+  if (/pattern|timing|peak hour|best time|day of week|when do i practice/.test(q)) {
+    if (!pat || !pat.peakHour) return 'Jai Radhe 🙏 No session data yet. Use the timer during jap to detect patterns!';
+    return [
+      '⏰ **Practice Patterns**',
+      '🕐 Peak hour: ' + bold(pat.peakHourLabel),
+      '📆 Best day: ' + bold(pat.peakDow),
+      pat.avgGapHours ? '⏱ Avg gap between sessions: ' + bold(pat.avgGapHours + ' hours') : null,
+      '📊 Distribution: ' + pat.dowDistribution,
+    ].filter(Boolean).join('\n');
   }
 
   // ── UNDO ─────────────────────────────────────────────────────
-  if (/^undo$|show.*undo|recent action|undo history/.test(q)) {
-    return JA.undoHistory();
-  }
+  if (/^undo$|recent action|undo history/.test(q)) { return JA.undoHistory(); }
 
-  // ── GREET / HELLO ────────────────────────────────────────────
-  if (/^(hi|hello|hey|jai radhe|radhe|namaste|hare krishna|hare radhe|pranam)/.test(q)) {
+  // ── GREET ────────────────────────────────────────────────────
+  if (/^(hi|hello|hey|jai radhe|radhe|namaste|pranam)/.test(q)) {
     var tod2 = j.today_total;
-    var reply = 'Jai Radhe 🙏\n\n';
-    reply += tod2 > 0
-      ? 'Today so far: ' + bold(num(tod2)) + ' jap (' + Math.floor(tod2/ms) + ' malas) · Streak: ' + bold(j.streak) + ' days 🔥'
-      : 'No jap logged yet today. Start your sadhana 🌸';
-    reply += '\n\nAsk me anything about your sadhana — streak, stats, forecast, or say "add 108 jap"!';
-    return reply;
+    return 'Jai Radhe 🙏\n\n'
+      + (tod2 > 0 ? 'Today: ' + bold(num(tod2)) + ' jap · ' + Math.floor(tod2/ms) + ' malas · Streak: ' + bold(j.streak + ' days 🔥') : 'No jap yet today. Start your sadhana 🌸')
+      + '\n\nAsk: today · week · month · year · streak · brahmacharya · mala stats · peak · forecast · stotrams';
   }
 
   // ── HELP ─────────────────────────────────────────────────────
-  if (/\b(help|what can|capabilities|what do you|commands)\b/.test(q)) {
-    return '🙏 **Jarvis can help with:**\n\n📊 *Analytics* — today, streak, 7-day, patterns, forecast\n✏️ *Edit* — "add 108 jap", "set today 1000", "mark brahma broken"\n😊 *Mood* — "log mood 7", "my mood history"\n🎯 *Goals* — "when do I hit my target?"\n🛡️ *Brahma* — brahmacharya analysis\n📖 *Stotrams* — stotram progress\n↩️ *Undo* — "undo last action"\n\nJust type naturally!';
+  if (/\b(help|what can|commands|capabilities)\b/.test(q)) {
+    return '🙏 **Ask me:**\n'
+      + '📊 today · week · month · year\n'
+      + '🔥 streak · peak period · patterns\n'
+      + '🛡️ brahmacharya (lunar graph!)\n'
+      + '📿 mala stats · session duration\n'
+      + '🎯 forecast · lifetime total\n'
+      + '📖 stotrams · 28 names\n'
+      + '✏️ "add 108 jap" · "mark brahma broken" · undo';
   }
 
-  // ── No offline match — needs AI ──────────────────────────────
+  // ── No offline match → Claude API ────────────────────────────
   return null;
 }
 
@@ -534,13 +687,15 @@ var Jarvis = {
     if (offlineReply !== null) {
       var self = this;
       setTimeout(function() {
+        var replyText = typeof offlineReply === 'object' ? offlineReply.text : offlineReply;
+        var replyHtml = typeof offlineReply === 'object' ? offlineReply.html : null;
         self.history.push({role:'user',content:msg});
-        self.history.push({role:'assistant',content:offlineReply});
+        self.history.push({role:'assistant',content:replyText});
         if(self.history.length>20) self.history=self.history.slice(-20);
         self.showTyping(false);
-        self.addMsg('ai', offlineReply);
+        self.addMsg('ai', replyText, replyHtml);
         self.isLoading=false; self.setBtn(true);
-      }, 350);
+      }, 250);
       return;
     }
 
@@ -595,13 +750,14 @@ var Jarvis = {
     var b=document.getElementById('rjai-voice');if(b){b.textContent='🎤';b.style.background='linear-gradient(135deg,#1a6b3a,#2ecc71)';}
   },
 
-  addMsg: function(role,text){
+  addMsg: function(role, text, extraHtml){
     var feed=document.getElementById('rjai-feed');if(!feed)return;
     var wrap=document.createElement('div');wrap.className='rjai-msg rjai-'+role;
     var html=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
       .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
       .replace(/`([^`\n]+)`/g,'<code>$1</code>')
       .replace(/\n/g,'<br>');
+    if (extraHtml) html += '<div style="margin-top:10px;">'+extraHtml+'</div>';
     var icon='<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     wrap.innerHTML=role==='ai'?'<div class="rjai-av">'+icon+'</div><div class="rjai-bub">'+html+'</div>':'<div class="rjai-bub">'+html+'</div>';
     feed.appendChild(wrap);
@@ -648,16 +804,17 @@ var Jarvis = {
   },
 
   QUICK:[
-    {l:'📊 Today',        q:'Detailed analysis of today — jap, malas, session timing, how am I doing vs target?'},
-    {l:'🔥 Streak',       q:'My streak, consistency %, gaps and best periods.'},
-    {l:'⏰ Patterns',     q:'What time of day do I practice most? Day-of-week patterns? Average gap between sessions?'},
-    {l:'🛡️ Brahma',      q:'Brahmacharya analysis — exact timing of breaks, day-of-week patterns, correlation with jap count.'},
-    {l:'📈 7-Day',        q:'Data science weekly report with trends, improvements, and suggestions.'},
-    {l:'🎯 Forecast',     q:'When will I reach my lifetime goal? Show the math based on my 30-day average.'},
-    {l:'🌸 Spiritual',    q:'Give me a spiritual insight or quote relevant to my current sadhana progress. Encourage me.'},
-    {l:'😊 Log mood',     q:'I want to log my current mood. Help me do that.'},
-    {l:'🌺 28 Names',     q:'28 Names practice stats, patterns and suggestions.'},
-    {l:'↩️ Undo',         q:'Show my recent actions and undo the last one.'},
+    {l:'📊 Today',        q:'today'},
+    {l:'🛡️ Brahmacharya', q:'brahmacharya lunar graph'},
+    {l:'🔥 Streak',       q:'streak'},
+    {l:'📿 Mala Stats',   q:'mala session stats duration'},
+    {l:'📈 This Week',    q:'this week'},
+    {l:'📅 This Month',   q:'this month'},
+    {l:'📆 This Year',    q:'this year'},
+    {l:'🌟 Peak Period',  q:'peak period best day week month'},
+    {l:'🎯 Forecast',     q:'forecast goal'},
+    {l:'📖 Stotrams',     q:'stotrams'},
+    {l:'↩️ Undo',         q:'undo history'},
   ],
 
   mount:function(){

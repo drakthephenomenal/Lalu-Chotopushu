@@ -95,7 +95,6 @@ self.addEventListener('fetch', e => {
   );
 });
 
-
 // ── Messages from the page ──
 self.addEventListener('message', e => {
   if (e.data && e.data.type === 'SHOW_NOTIFICATION') {
@@ -109,7 +108,6 @@ self.addEventListener('message', e => {
       })
     );
   }
-
 
   if (e.data && e.data.type === 'SKIP_WAITING') {
     self.skipWaiting();

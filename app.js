@@ -337,6 +337,9 @@ const App = {
     const liveSec = this.timerRunning ? (this.timerSeconds - this.timerSavedSeconds) : 0;
     const combinedSec = radhaTimeSec + rvTimeSec + liveSec;
     document.getElementById('timerToday').textContent = "Today's Jap Time: " + this.fmtTime(combinedSec);
+    // ── UNIFIED TIMER: mirror the same Jap timer on the 28 Names tab ──
+    const te28 = document.getElementById('n28TotalTimer');
+    if (te28) te28.textContent = this.fmtTime(this.timerSeconds);
   },
 
   // ── UNIFIED TIME: sync timerHistory[today] = sum of mala log entries ──
@@ -554,12 +557,12 @@ const App = {
     this._n28SavedSecs = 0;
     this._n28Paused = true;
     this._upd28PauseBtn();
-    // Show frozen values
+    // Show frozen cycle value; n28TotalTimer shows unified Jap timer
     const fmt = s => Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60);
     const ce = document.getElementById('n28CycleTimer');
     const te = document.getElementById('n28TotalTimer');
     if (ce) ce.textContent = fmt(this._n28PausedCycleSec);
-    if (te) te.textContent = fmt(this._n28PausedTotalSec);
+    if (te) te.textContent = this.fmtTime(this.timerSeconds);
   },
 
   // ── Resume the 28 Names timers ──
@@ -606,14 +609,9 @@ const App = {
       const fmt = s => Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60);
       const cycSec = this._n28CycleStart
         ? Math.floor((Date.now() - this._n28CycleStart) / 1000) : 0;
-      const sessionSec = this._n28TotalStart
-        ? Math.floor((Date.now() - this._n28TotalStart) / 1000) : 0;
-      const todaySavedSec = this.S.timer28History[this.S.tk] || 0;
-      const totSec = todaySavedSec + sessionSec - (this._n28SavedSecs || 0);
       const ce = document.getElementById('n28CycleTimer');
-      const te = document.getElementById('n28TotalTimer');
       if (ce) ce.textContent = fmt(cycSec);
-      if (te) te.textContent = fmt(totSec);
+      // n28TotalTimer is now driven by the unified Jap timer (App.timerSeconds)
     }, 1000);
     this._upd28PauseBtn();
   },
@@ -661,10 +659,8 @@ const App = {
     const ce = document.getElementById('n28CycleTimer');
     const te = document.getElementById('n28TotalTimer');
     if (ce) ce.textContent = '0:00';
-    // Show today's total accumulated 28 time
-    const fmt = s => Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60);
-    const todaySec = this.S.timer28History[this.S.tk] || 0;
-    if (te) te.textContent = fmt(todaySec);
+    // Show unified Jap timer (same as main Jap tab)
+    if (te) te.textContent = this.fmtTime(this.timerSeconds);
     const mf28 = document.getElementById('mf28');
     if (mf28) mf28.classList.remove('show');
     this._upd28PauseBtn();
@@ -686,7 +682,7 @@ const App = {
     this.start28Timers();
     // Re-arm 6s auto-pause on every tap
     this._arm28AutoPause();
-    spawnName28(e, NAMES28[posBefore].name);
+    spawnName28(e, get28Name(NAMES28[posBefore]));
     if (this.S.h28[this.S.tk] % 28 === 0) cycleDone28();
     u28();
   },
@@ -2343,37 +2339,49 @@ function fbDebouncedPush() {
 // ═══════════════════════════════════════════════════════
 
 const NAMES28 = [
-  {num:'১', name:'রাধা', meaning:'The Supreme Beloved'},
-  {num:'২', name:'রাসেশ্বরী', meaning:'Goddess of the Rasa dance'},
-  {num:'৩', name:'রম্যা', meaning:'The most beautiful & delightful'},
-  {num:'৪', name:'শ্রীকৃষ্ণমন্ত্রাধিদেবতা', meaning:'Presiding deity of Krishna-mantra'},
-  {num:'৫', name:'সর্বাদ্যা', meaning:'The primordial, first of all'},
-  {num:'৬', name:'সর্ববন্দ্যা', meaning:'Worthy of worship by all'},
-  {num:'৭', name:'বৃন্দাবনবিহারিণী', meaning:'Who plays in Vrindavan'},
-  {num:'৮', name:'বৃন্দারাধ্যা', meaning:'Worshipped by Vrinda Devi'},
-  {num:'৯', name:'রমা', meaning:'The blissful one'},
-  {num:'১০', name:'অশেষগোপীমণ্ডলপূজিতা', meaning:'Worshipped by all the gopis'},
-  {num:'১১', name:'সত্যা', meaning:'The eternal Truth'},
-  {num:'১২', name:'সত্যপরা', meaning:'Supreme among the truthful'},
-  {num:'১৩', name:'সত্যভামা', meaning:'True and lustrous one'},
-  {num:'১৪', name:'শ্রীকৃষ্ণবল্লভা', meaning:'The beloved of Shri Krishna'},
-  {num:'১৫', name:'বৃষভানুসুতা', meaning:'Daughter of King Vrishabhanu'},
-  {num:'১৬', name:'গোপী', meaning:'The divine cowherd girl'},
-  {num:'১৭', name:'মূলপ্রকৃতি', meaning:'The primordial nature'},
-  {num:'১৮', name:'ঈশ্বরী', meaning:'The supreme goddess'},
-  {num:'১৯', name:'গান্ধর্বা', meaning:'Goddess of divine music'},
-  {num:'২০', name:'রাধিকা', meaning:'She who worships Krishna'},
-  {num:'২১', name:'আরম্যা', meaning:'Noble, honoured one'},
-  {num:'২২', name:'রুক্মিণী', meaning:'Adorned with gold'},
-  {num:'২৩', name:'পরমেশ্বরী', meaning:'The supreme ruler'},
-  {num:'২৪', name:'পরাৎপরতরা', meaning:'Beyond the beyond'},
-  {num:'২৫', name:'পূর্ণা', meaning:'The complete, perfect one'},
-  {num:'২৬', name:'পূর্ণচন্দ্রনিভাননা', meaning:'Face like the full moon'},
-  {num:'২৭', name:'ভুক্তিমুক্তিপ্রদা', meaning:'Giver of enjoyment & liberation'},
-  {num:'২৮', name:'ভবব্যাধিবিনাশিনী', meaning:'Destroyer of worldly suffering'}
+  {num:'১', name:'রাধা', nameHindi:'राधा', meaning:'The Supreme Beloved'},
+  {num:'২', name:'রাসেশ্বরী', nameHindi:'रासेश्वरी', meaning:'Goddess of the Rasa dance'},
+  {num:'৩', name:'রম্যা', nameHindi:'रम्या', meaning:'The most beautiful & delightful'},
+  {num:'৪', name:'শ্রীকৃষ্ণমন্ত্রাধিদেবতা', nameHindi:'श्रीकृष्णमन्त्राधिदेवता', meaning:'Presiding deity of Krishna-mantra'},
+  {num:'৫', name:'সর্বাদ্যা', nameHindi:'सर्वाद्या', meaning:'The primordial, first of all'},
+  {num:'৬', name:'সর্ববন্দ্যা', nameHindi:'सर्वबन्द्या', meaning:'Worthy of worship by all'},
+  {num:'৭', name:'বৃন্দাবনবিহারিণী', nameHindi:'वृन्दावनविहारिणी', meaning:'Who plays in Vrindavan'},
+  {num:'৮', name:'বৃন্দারাধ্যা', nameHindi:'वृन्दाराध्या', meaning:'Worshipped by Vrinda Devi'},
+  {num:'৯', name:'রমা', nameHindi:'रमा', meaning:'The blissful one'},
+  {num:'১০', name:'অশেষগোপীমণ্ডলপূজিতা', nameHindi:'अशेषगोपीमण्डलपूजिता', meaning:'Worshipped by all the gopis'},
+  {num:'১১', name:'সত্যা', nameHindi:'सत्या', meaning:'The eternal Truth'},
+  {num:'১২', name:'সত্যপরা', nameHindi:'सत्यपरा', meaning:'Supreme among the truthful'},
+  {num:'১৩', name:'সত্যভামা', nameHindi:'सत्यभामा', meaning:'True and lustrous one'},
+  {num:'১৪', name:'শ্রীকৃষ্ণবল্লভা', nameHindi:'श्रीकृष्णवल्लभा', meaning:'The beloved of Shri Krishna'},
+  {num:'১৫', name:'বৃষভানুসুতা', nameHindi:'वृषभानुसुता', meaning:'Daughter of King Vrishabhanu'},
+  {num:'১৬', name:'গোপী', nameHindi:'गोपी', meaning:'The divine cowherd girl'},
+  {num:'১৭', name:'মূলপ্রকৃতি', nameHindi:'मूलप्रकृति', meaning:'The primordial nature'},
+  {num:'১৮', name:'ঈশ্বরী', nameHindi:'ईश्वरी', meaning:'The supreme goddess'},
+  {num:'১৯', name:'গান্ধর্বা', nameHindi:'गान्धर्वा', meaning:'Goddess of divine music'},
+  {num:'২০', name:'রাধিকা', nameHindi:'राधिका', meaning:'She who worships Krishna'},
+  {num:'২১', name:'আরম্যা', nameHindi:'आरम्या', meaning:'Noble, honoured one'},
+  {num:'২২', name:'রুক্মিণী', nameHindi:'रुक्मिणी', meaning:'Adorned with gold'},
+  {num:'২৩', name:'পরমেশ্বরী', nameHindi:'परमेश्वरी', meaning:'The supreme ruler'},
+  {num:'২৪', name:'পরাৎপরতরা', nameHindi:'परात्परतरा', meaning:'Beyond the beyond'},
+  {num:'২৫', name:'পূর্ণা', nameHindi:'पूर्णा', meaning:'The complete, perfect one'},
+  {num:'২৬', name:'পূর্ণচন্দ্রনিভাননা', nameHindi:'पूर्णचन्द्रनिभानना', meaning:'Face like the full moon'},
+  {num:'২৭', name:'ভুক্তিমুক্তিপ্রদা', nameHindi:'भुक्तिमुक्तिप्रदा', meaning:'Giver of enjoyment & liberation'},
+  {num:'২৮', name:'ভবব্যাধিবিনাশিনী', nameHindi:'भवव्याधिविनाशिनी', meaning:'Destroyer of worldly suffering'}
 ];
 
-function get28Pos() { return (App.S.h28[App.S.tk]||0) % 28; }
+// Hindi/Bengali script toggle for 28 Names (default: Bengali)
+let _n28ScriptHindi = false;
+function toggle28Script() {
+  _n28ScriptHindi = !_n28ScriptHindi;
+  const btn = document.getElementById('n28ScriptToggle');
+  if (btn) btn.textContent = _n28ScriptHindi ? 'বাংলা' : 'हिन्दी';
+  u28();
+}
+function get28Name(entry) {
+  return (_n28ScriptHindi && entry.nameHindi) ? entry.nameHindi : entry.name;
+}
+
+
 
 function render28Dots(pos) {
   const pg = document.getElementById('n28prog'); if (!pg) return; pg.innerHTML = '';
@@ -2401,7 +2409,7 @@ function u28() {
       nameEl.style.animation = 'none';
       nameEl.offsetHeight;
       nameEl.style.animation = 'nameIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards';
-      nameEl.textContent = entry.name;
+      nameEl.textContent = get28Name(entry);
     }
   }
   if (meanEl) meanEl.textContent = isCompleting ? '' : entry.meaning;
@@ -2411,10 +2419,8 @@ function u28() {
   renderSankalpas();
   // Show today's accumulated 28-Names time in Total Timer if not currently running
   if (!App._n28TimerInterval) {
-    const fmt28 = s => Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60);
-    const saved28 = App.S.timer28History[App.S.tk] || 0;
     const te = document.getElementById('n28TotalTimer');
-    if (te && saved28 > 0) te.textContent = fmt28(saved28);
+    if (te) te.textContent = App.fmtTime(App.timerSeconds);
   }
   App._upd28PauseBtn();
   refresh28StatsIfOpen();
@@ -2484,11 +2490,9 @@ function cycleDone28() {
   App._n28PausedTotalSec = 0;
   const ce = document.getElementById('n28CycleTimer');
   if (ce) ce.textContent = '0:00';
-  // Show accumulated total time (frozen)
-  const fmt28t = s => Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60);
-  const todaySec = App.S.timer28History[App.S.tk] || 0;
+  // Show unified Jap timer (same as main Jap tab)
   const teDisp = document.getElementById('n28TotalTimer');
-  if (teDisp) teDisp.textContent = fmt28t(todaySec);
+  if (teDisp) teDisp.textContent = App.fmtTime(App.timerSeconds);
   App._upd28PauseBtn();
 
   const zone = document.getElementById('tz28');

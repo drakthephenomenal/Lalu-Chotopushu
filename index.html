@@ -256,9 +256,12 @@
 <div class="view" id="v28">
   <div class="v28-header">
     <div class="v28-title">28 Names of Radha</div>
-    <button class="sk-icon-btn" id="skToggleBtn" onclick="toggleSankalp()">
-      🙏 Wishes <span class="sk-chevron" id="skChevron">▾</span>
-    </button>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button id="n28ScriptToggle" onclick="toggle28Script()" style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);border-radius:16px;color:var(--gold);font-size:12px;font-weight:600;padding:5px 13px;cursor:pointer;font-family:'Hind Siliguri',serif;letter-spacing:0.3px;transition:all 0.2s;">हिन्दी</button>
+      <button class="sk-icon-btn" id="skToggleBtn" onclick="toggleSankalp()">
+        🙏 Wishes <span class="sk-chevron" id="skChevron">▾</span>
+      </button>
+    </div>
   </div>
   <div class="sk-panel" id="skCollapse">
     <div class="sk-panel-inner">
@@ -286,8 +289,8 @@
         <div class="n28timer-lbl">Today</div>
       </div>
       <div class="n28timer-box" style="align-items:flex-end">
-        <div class="n28timer-val gold" id="n28TotalTimer">0:00</div>
-        <div class="n28timer-lbl">Total Time</div>
+        <div class="n28timer-val gold" id="n28TotalTimer">00:00:00</div>
+        <div class="n28timer-lbl">Jap Timer</div>
       </div>
     </div>
 

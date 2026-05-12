@@ -680,6 +680,8 @@ const App = {
     this.save(); fbDebouncedPush();
     this.vib([10]);
     this.start28Timers();
+    // Also drive the unified Jap timer so both tabs share the same clock
+    this.tapTimer();
     // Re-arm 6s auto-pause on every tap
     this._arm28AutoPause();
     spawnName28(e, get28Name(NAMES28[posBefore]));
@@ -2382,6 +2384,8 @@ function get28Name(entry) {
 }
 
 
+
+function get28Pos() { return (App.S.h28[App.S.tk]||0) % 28; }
 
 function render28Dots(pos) {
   const pg = document.getElementById('n28prog'); if (!pg) return; pg.innerHTML = '';

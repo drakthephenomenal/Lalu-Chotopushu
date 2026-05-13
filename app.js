@@ -318,7 +318,14 @@ const App = {
   tapTimer() {
     this.startTimer();
     clearTimeout(this.autoStopTimeout);
-    this.autoStopTimeout = setTimeout(() => this.pauseTimer(), 6000);
+    // Snapshot timerSeconds at the moment of the last tap.
+    // When auto-pause fires 6 s later we roll back to this snapshot
+    // so the idle gap is never counted as jap time.
+    const secondsAtTap = this.timerSeconds;
+    this.autoStopTimeout = setTimeout(() => {
+      this.timerSeconds = secondsAtTap;
+      this.pauseTimer();
+    }, 6000);
   },
 
   toggleTimer() {
@@ -1343,7 +1350,7 @@ function uStats() {
   const timeTod = (curTimerHist[App.S.tk]||0) + (App.timerRunning ? (App.timerSeconds - App.timerSavedSeconds) : 0);
   const timeWk = wk.reduce((s,k) => s + (curTimerHist[k]||0), 0) + (App.timerRunning ? (App.timerSeconds - App.timerSavedSeconds) : 0);
   const timeMo = Object.entries(curTimerHist).filter(([k]) => k.startsWith(mp)).reduce((s,[,v]) => s+v, 0) + (App.timerRunning ? (App.timerSeconds - App.timerSavedSeconds) : 0);
-  function fmtShort(s) { const h = Math.floor(s/3600), m = Math.floor((s%3600)/60); return (h>0?h+'h ':'')+m+'m'; }
+  function fmtShort(s) { const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sc = s%60; return (h>0?h+'h ':'')+(m>0||h>0?m+'m ':'')+sc+'s'; }
   document.getElementById('tTod').textContent = fmtShort(timeTod);
   document.getElementById('tWk').textContent = fmtShort(timeWk);
   document.getElementById('tMo').textContent = fmtShort(timeMo);

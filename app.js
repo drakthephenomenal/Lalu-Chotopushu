@@ -1440,6 +1440,10 @@ function uStats() {
   const s28 = document.getElementById('s28Tot'); if (s28) s28.textContent = n28Lifetime.toLocaleString('en-IN');
   const s28M = document.getElementById('s28TotM'); if (s28M) s28M.textContent = Math.floor(n28Lifetime/28) + ' cycles';
   const s28F = document.getElementById('s28TotF'); if (s28F) s28F.textContent = fmtCount(n28Lifetime) + ' names';
+  // Combined Lifetime Jap (Radha + RV + 28 names)
+  const ltJapAll = radhaLifetime + rvLifetime + n28Lifetime;
+  const sLtJA = document.getElementById('sLtJapAll'); if (sLtJA) sLtJA.textContent = ltJapAll.toLocaleString('en-IN');
+  const sLtJAF = document.getElementById('sLtJapAllF'); if (sLtJAF) sLtJAF.textContent = fmtCount(ltJapAll) + ' jap';
   // Lifetime Jap Time (all jap time + all 28 names time)
   const ltTimeSec = Object.values(App.getCombinedTimerHistory()).reduce((a,b)=>a+b,0) + Object.values(App.S.timer28History||{}).reduce((a,b)=>a+b,0);
   const ltH = Math.floor(ltTimeSec/3600), ltM = Math.floor((ltTimeSec%3600)/60), ltS = ltTimeSec%60;
@@ -1475,18 +1479,22 @@ function uStats() {
   const vWk  = wk.reduce((s,k)=>s+(rvTH[k]||0),0)    + (isRVMode  ? liveExtra : 0);
   const vMo  = Object.entries(rvTH).filter(([k])=>k.startsWith(mp)).reduce((s,[,v])=>s+v,0)    + (isRVMode  ? liveExtra : 0);
   const _set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = fmtShort(v); };
-  _set('tRadhaTod', rTod); _set('tRadhaWk', rWk); _set('tRadhaMo', rMo);
-  _set('tRVTod',    vTod); _set('tRVWk',    vWk); _set('tRVMo',    vMo);
+  const rLt = Object.values(radhaTH).reduce((s,v)=>s+v,0) + (!isRVMode ? liveExtra : 0);
+  const vLt = Object.values(rvTH).reduce((s,v)=>s+v,0) + (isRVMode ? liveExtra : 0);
+  _set('tRadhaTod', rTod); _set('tRadhaWk', rWk); _set('tRadhaMo', rMo); _set('tRadhaLt', rLt);
+  _set('tRVTod',    vTod); _set('tRVWk',    vWk); _set('tRVMo',    vMo); _set('tRVLt', vLt);
   // 28 Names time — separate from main jap time
   const _28running = !!(App._n28TimerInterval && App._n28TotalStart);
   const _28liveExtra = _28running ? Math.max(0, Math.floor((Date.now() - App._n28TotalStart) / 1000) - (App._n28SavedSecs || 0)) : 0;
   const t28Tod = (App.S.timer28History[App.S.tk]||0) + Math.max(0, _28liveExtra);
   const t28Wk  = wk.reduce((s,k) => s + (App.S.timer28History[k]||0), 0) + (_28running && wk.includes(App.S.tk) ? Math.max(0,_28liveExtra) : 0);
   const t28Mo  = Object.entries(App.S.timer28History).filter(([k]) => k.startsWith(mp)).reduce((s,[,v]) => s+v, 0) + ((_28running && App.S.tk.startsWith(mp)) ? Math.max(0,_28liveExtra) : 0);
-  const e28Tod = document.getElementById('t28Tod'), e28Wk = document.getElementById('t28Wk'), e28Mo = document.getElementById('t28Mo');
+  const t28Lt  = Object.values(App.S.timer28History||{}).reduce((s,v)=>s+v,0) + (_28running ? Math.max(0,_28liveExtra) : 0);
+  const e28Tod = document.getElementById('t28Tod'), e28Wk = document.getElementById('t28Wk'), e28Mo = document.getElementById('t28Mo'), e28Lt = document.getElementById('t28Lt');
   if (e28Tod) e28Tod.textContent = fmt28Short(t28Tod);
   if (e28Wk)  e28Wk.textContent  = fmt28Short(t28Wk);
   if (e28Mo)  e28Mo.textContent  = fmt28Short(t28Mo);
+  if (e28Lt)  e28Lt.textContent  = fmt28Short(t28Lt);
 
   // Live previews for jap entry
   const mji = document.getElementById('manualJapIn');

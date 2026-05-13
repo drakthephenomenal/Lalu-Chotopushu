@@ -1326,12 +1326,28 @@ function uStats() {
   const radhaLifetime = Math.max(0, Object.values(App.S.history||{}).reduce((a,b)=>a+b,0) - (App.S.nameJapDeduct||0));
   const rvLifetime = Math.max(0, Object.values(App.S.historyRV||{}).reduce((a,b)=>a+b,0) - (App.S.nameJapDeductRV||0));
   const n28Lifetime = Object.values(App.S.h28||{}).reduce((a,b)=>a+b,0);
+  function fmtCount(n) {
+    if (n <= 0) return '0';
+    const cr = Math.floor(n / 10000000);
+    const l  = Math.floor((n % 10000000) / 100000);
+    const k  = Math.floor((n % 100000) / 1000);
+    const r  = n % 1000;
+    let parts = [];
+    if (cr) parts.push(cr + ' Cr');
+    if (l)  parts.push(l + ' L');
+    if (k)  parts.push(k + 'K');
+    if (r)  parts.push(r + '');
+    return parts.join(' ') || '0';
+  }
   const sRadha = document.getElementById('sRadhaTot'); if (sRadha) sRadha.textContent = radhaLifetime.toLocaleString('en-IN');
   const sRadhaM = document.getElementById('sRadhaTotM'); if (sRadhaM) sRadhaM.textContent = Math.floor(radhaLifetime/ms) + ' malas';
+  const sRadhaF = document.getElementById('sRadhaTotF'); if (sRadhaF) sRadhaF.textContent = fmtCount(radhaLifetime) + ' jap';
   const sRV = document.getElementById('sRVTot'); if (sRV) sRV.textContent = rvLifetime.toLocaleString('en-IN');
   const sRVM = document.getElementById('sRVTotM'); if (sRVM) sRVM.textContent = Math.floor(rvLifetime/ms) + ' malas';
+  const sRVF = document.getElementById('sRVTotF'); if (sRVF) sRVF.textContent = fmtCount(rvLifetime) + ' jap';
   const s28 = document.getElementById('s28Tot'); if (s28) s28.textContent = n28Lifetime.toLocaleString('en-IN');
   const s28M = document.getElementById('s28TotM'); if (s28M) s28M.textContent = Math.floor(n28Lifetime/28) + ' cycles';
+  const s28F = document.getElementById('s28TotF'); if (s28F) s28F.textContent = fmtCount(n28Lifetime) + ' names';
   // Lifetime Jap Time (all jap time + all 28 names time)
   const ltTimeSec = Object.values(App.getCombinedTimerHistory()).reduce((a,b)=>a+b,0) + Object.values(App.S.timer28History||{}).reduce((a,b)=>a+b,0);
   const ltH = Math.floor(ltTimeSec/3600), ltM = Math.floor((ltTimeSec%3600)/60), ltS = ltTimeSec%60;

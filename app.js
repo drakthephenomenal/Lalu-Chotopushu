@@ -411,6 +411,7 @@ const App = {
     document.getElementById('lbarTarget').textContent = '/ ' + (curLt ? fmtIN(curLt) : '—');
     document.getElementById('lDet').textContent = Math.floor(tot/ms) + ' malas done';
     this.updateTimerToday();
+    if (typeof renderBeadFrame === 'function') renderBeadFrame(dP);
     uStats();
   },
 
@@ -1049,6 +1050,78 @@ function tgs(k) {
   App.save(); fbDebouncedPush();
 }
 
+// ── Rectangular mala bead frame (108 beads around Daily + Lifetime boxes) ──
+const BEAD_SVG_NS = 'http://www.w3.org/2000/svg';
+function ensureBeadFrame() {
+  const wrap = document.getElementById('beadFrameWrap');
+  const svg  = document.getElementById('beadFrame');
+  if (!wrap || !svg) return null;
+  if (svg.childElementCount !== 108) {
+    svg.innerHTML = '';
+    for (let i = 0; i < 108; i++) {
+      const c = document.createElementNS(BEAD_SVG_NS, 'circle');
+      c.setAttribute('r', '4');
+      c.setAttribute('class', 'bead bead-blue');
+      svg.appendChild(c);
+    }
+  }
+  return { wrap, svg };
+}
+function renderBeadFrame(pct) {
+  const refs = ensureBeadFrame();
+  if (!refs) return;
+  const { wrap, svg } = refs;
+  const rect = wrap.getBoundingClientRect();
+  const W = rect.width, H = rect.height;
+  if (!W || !H) return;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const inset = 7;
+  const x0 = inset, y0 = inset, x1 = W - inset, y1 = H - inset;
+  const w = x1 - x0, h = y1 - y0;
+  const N = 108;
+  const perim = 2 * (w + h);
+  const step = perim / N;
+  // Last 8 beads = guru section (always gold). Remaining 100 fill clockwise from top-left by daily %.
+  const fillable = N - 8;
+  const filled = Math.max(0, Math.min(fillable, Math.round((pct || 0) / 100 * fillable)));
+  const beads = svg.children;
+  for (let i = 0; i < N; i++) {
+    const d = i * step + step / 2;
+    let x, y;
+    if (d < w) { x = x0 + d;            y = y0; }
+    else if (d < w + h) { x = x1;       y = y0 + (d - w); }
+    else if (d < 2 * w + h) { x = x1 - (d - w - h); y = y1; }
+    else { x = x0;                       y = y1 - (d - 2 * w - h); }
+    const c = beads[i];
+    c.setAttribute('cx', x);
+    c.setAttribute('cy', y);
+    const isGuru = i >= fillable;          // last 8 — golden marker section
+    const isFilled = i < filled;            // dynamic progress
+    c.setAttribute('class', isGuru ? 'bead bead-guru' : (isFilled ? 'bead bead-gold' : 'bead bead-blue'));
+  }
+}
+window.addEventListener('resize', () => {
+  const pct = parseInt((document.getElementById('dPct')?.textContent || '0')) || 0;
+  renderBeadFrame(pct);
+});
+window.addEventListener('load', () => {
+  setTimeout(() => renderBeadFrame(parseInt((document.getElementById('dPct')?.textContent || '0')) || 0), 100);
+});
+
+// ── Auto-load today's view in History on first open ──
+let _historyAutoLoaded = false;
+function autoLoadHistory() {
+  if (_historyAutoLoaded) return;
+  const body = document.getElementById('historyBody');
+  if (!body || !body.classList.contains('open')) return;
+  _historyAutoLoaded = true;
+  const today = new Date().toISOString().split('T')[0];
+  const f = document.getElementById('histFrom'), t = document.getElementById('histTo');
+  if (f && !f.value) f.value = today;
+  if (t && !t.value) t.value = today;
+  if (typeof renderHistory === 'function') try { renderHistory(); } catch (e) {}
+}
+
 // ── Collapsible Section Toggle ──
 function toggleCs(bodyId, chevId) {
   const body = document.getElementById(bodyId);
@@ -1367,9 +1440,24 @@ function uStats() {
   const timeWk = wk.reduce((s,k) => s + (curTimerHist[k]||0), 0) + (App.timerRunning ? (App.timerSeconds - App.timerSavedSeconds) : 0);
   const timeMo = Object.entries(curTimerHist).filter(([k]) => k.startsWith(mp)).reduce((s,[,v]) => s+v, 0) + (App.timerRunning ? (App.timerSeconds - App.timerSavedSeconds) : 0);
   function fmtShort(s) { const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sc = s%60; return (h>0?h+'h ':'')+(m>0||h>0?m+'m ':'')+sc+'s'; }
-  document.getElementById('tTod').textContent = fmtShort(timeTod);
-  document.getElementById('tWk').textContent = fmtShort(timeWk);
-  document.getElementById('tMo').textContent = fmtShort(timeMo);
+  // Legacy hidden combined nodes (kept for any external readers)
+  const _tTod = document.getElementById('tTod'); if (_tTod) _tTod.textContent = fmtShort(timeTod);
+  const _tWk  = document.getElementById('tWk');  if (_tWk)  _tWk.textContent  = fmtShort(timeWk);
+  const _tMo  = document.getElementById('tMo');  if (_tMo)  _tMo.textContent  = fmtShort(timeMo);
+  // Split Radha vs RV time per row
+  const radhaTH = App.S.timerHistory || {};
+  const rvTH    = App.S.timerHistoryRV || {};
+  const liveExtra = App.timerRunning ? Math.max(0, App.timerSeconds - App.timerSavedSeconds) : 0;
+  const isRVMode  = App.S.japMode === 'rv';
+  const rTod = (radhaTH[App.S.tk]||0) + (!isRVMode ? liveExtra : 0);
+  const rWk  = wk.reduce((s,k)=>s+(radhaTH[k]||0),0) + (!isRVMode ? liveExtra : 0);
+  const rMo  = Object.entries(radhaTH).filter(([k])=>k.startsWith(mp)).reduce((s,[,v])=>s+v,0) + (!isRVMode ? liveExtra : 0);
+  const vTod = (rvTH[App.S.tk]||0)    + (isRVMode  ? liveExtra : 0);
+  const vWk  = wk.reduce((s,k)=>s+(rvTH[k]||0),0)    + (isRVMode  ? liveExtra : 0);
+  const vMo  = Object.entries(rvTH).filter(([k])=>k.startsWith(mp)).reduce((s,[,v])=>s+v,0)    + (isRVMode  ? liveExtra : 0);
+  const _set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = fmtShort(v); };
+  _set('tRadhaTod', rTod); _set('tRadhaWk', rWk); _set('tRadhaMo', rMo);
+  _set('tRVTod',    vTod); _set('tRVWk',    vWk); _set('tRVMo',    vMo);
   // 28 Names time — separate from main jap time
   const _28running = !!(App._n28TimerInterval && App._n28TotalStart);
   const _28liveExtra = _28running ? Math.max(0, Math.floor((Date.now() - App._n28TotalStart) / 1000) - (App._n28SavedSecs || 0)) : 0;
@@ -1428,6 +1516,7 @@ function uStats() {
 function renderMalaLog() {
   const listEl = document.getElementById('malaLogList');
   const countEl = document.getElementById('malaLogCount');
+  const inlineEl = document.getElementById('malaLogInline');
   const avgEl = document.getElementById('malaLogAvg');
   const typeEl = document.getElementById('malaLogType');
   
@@ -1435,6 +1524,7 @@ function renderMalaLog() {
   if (listEl) listEl.innerHTML = '';
   if (avgEl) { avgEl.style.display = 'none'; avgEl.textContent = ''; }
   if (countEl) countEl.textContent = '';
+  if (inlineEl) inlineEl.textContent = '';
   
   const isRV = App.S.japMode === 'rv';
   
@@ -1463,6 +1553,7 @@ function renderMalaLog() {
     avgEl.textContent = 'Average per mala: ' + avgStr;
     avgEl.style.display = 'block';
     avgEl.style.cssText = 'font-size:11px;color:var(--green);margin-bottom:6px;text-align:center;padding:5px 10px;background:rgba(46,204,113,0.08);border-radius:8px;border:1px solid rgba(46,204,113,0.18);display:block';
+    if (inlineEl) inlineEl.textContent = '· ' + log.length + ' malas · avg ' + avgStr;
   }
   
   log.forEach((sec, i) => {

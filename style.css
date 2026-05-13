@@ -762,3 +762,34 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .vel-name{font-size:12px;font-weight:600;color:var(--tl);}
 .vel-meta{font-size:10px;color:var(--td);margin-top:2px;}
 .vel-time{font-size:11px;color:var(--green);font-weight:500;padding:2px 8px;background:rgba(46,204,113,0.1);border-radius:8px;white-space:nowrap;}
+
+/* === Rectangular mala bead frame around Daily + Lifetime target boxes === */
+.bead-frame-wrap{
+  position:relative;
+  padding:14px 16px;
+  margin:2px 4px 4px;
+  flex-shrink:0;
+}
+.bead-frame-wrap .ps{padding:4px 0;position:relative;z-index:1;}
+.bead-frame{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+  overflow:visible;
+  z-index:0;
+}
+.bead-frame .bead{transition:fill 0.45s ease, filter 0.45s ease;}
+.bead-frame .bead-blue{
+  fill:#4a90e2;
+  filter:drop-shadow(0 0 2px rgba(74,144,226,0.55));
+}
+.bead-frame .bead-gold{
+  fill:#FFD700;
+  filter:drop-shadow(0 0 3px rgba(255,215,0,0.85));
+}
+.bead-frame .bead-guru{
+  fill:#FFB700;
+  filter:drop-shadow(0 0 4px rgba(255,200,0,0.95));
+}

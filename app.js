@@ -388,14 +388,18 @@ const App = {
     const md = Math.floor(tod / ms);
     const beadPos = (tod % ms) || ms;
     document.getElementById('jms').textContent = beadPos;
-    const inM = tod % ms, show = Math.min(ms, 12);
-    const de = document.getElementById('mdots'); de.innerHTML = '';
-    for (let i = 0; i < show; i++) {
-      const d = document.createElement('div');
-      d.className = 'mdt' + (i < Math.floor(inM * show / ms) ? ' on' : '');
-      de.appendChild(d);
+    const de = document.getElementById('mdots');
+    if (de) {
+      const inM = tod % ms, show = Math.min(ms, 12);
+      de.innerHTML = '';
+      for (let i = 0; i < show; i++) {
+        const d = document.createElement('div');
+        d.className = 'mdt' + (i < Math.floor(inM * show / ms) ? ' on' : '');
+        de.appendChild(d);
+      }
     }
-    document.getElementById('mtot').textContent = md + ' mala' + (md !== 1 ? 's' : '');
+    const mtotEl = document.getElementById('mtot');
+    if (mtotEl) mtotEl.textContent = md + ' mala' + (md !== 1 ? 's' : '');
     const dP = curDt > 0 ? Math.min(100, Math.round(tod/curDt*100)) : 0;
     const lP = curLt > 0 ? Math.min(100, Math.round(tot/curLt*100)) : 0;
     // Daily bar (blue) — mode-specific
@@ -1061,7 +1065,8 @@ function ensureBeadFrame() {
     for (let i = 0; i < 108; i++) {
       const c = document.createElementNS(BEAD_SVG_NS, 'circle');
       c.setAttribute('r', '4');
-      c.setAttribute('class', 'bead bead-blue');
+      // First 100 = blue, last 8 = gold (guru section)
+      c.setAttribute('class', i < 100 ? 'bead bead-blue' : 'bead bead-gold');
       svg.appendChild(c);
     }
   }
@@ -1087,12 +1092,11 @@ function renderBeadFrame(tod, target) {
   const N = 108;
   const perim = 2 * (w + h);
   const step = perim / N;
-  // Last 8 beads = guru section (always gold). Remaining 100 fill granularly by tod/target.
-  const fillable = N - 8;
-  const progress = target > 0 ? Math.max(0, Math.min(1, tod / target)) : 0;
-  const exact = progress * fillable;
-  const filled = Math.floor(exact);
-  const partial = exact - filled; // 0..1 for the next bead
+  // Fill 1 bead per tap within the current mala (matches the small 12-dot row logic)
+  const ms = (App && App.S && App.S.ms) || 108;
+  const inMala = tod % ms;
+  // Map progress within the mala (0..ms) to beads (0..N) so all 108 fill across one mala
+  const filled = inMala === 0 && tod > 0 ? N : Math.floor(inMala * N / ms);
   const beads = svg.children;
   const justAdvanced = filled > _beadState.lastFilled && _beadState.lastFilled !== -1;
   for (let i = 0; i < N; i++) {
@@ -1105,29 +1109,14 @@ function renderBeadFrame(tod, target) {
     const c = beads[i];
     c.setAttribute('cx', x);
     c.setAttribute('cy', y);
-    const isGuru = i >= fillable;
-    let cls = 'bead bead-blue', style = '';
-    if (isGuru) {
-      cls = 'bead bead-guru';
-    } else if (i < filled) {
-      cls = 'bead bead-gold';
-    } else if (i === filled && partial > 0 && progress < 1) {
-      // Smoothly morph this bead from blue → gold based on partial progress
-      cls = 'bead bead-partial';
-      const pctMix = (partial * 100).toFixed(1);
-      const r = (4 + partial * 1.2).toFixed(2); // gentle grow
-      style = `fill: color-mix(in oklab, #FFD700 ${pctMix}%, #4a90e2); ` +
-              `filter: drop-shadow(0 0 ${(2 + partial * 2).toFixed(2)}px rgba(255,215,0,${(0.4 + partial * 0.5).toFixed(2)}));`;
-      c.setAttribute('r', r);
-    }
-    if (cls !== 'bead bead-partial') c.setAttribute('r', '4');
-    c.setAttribute('class', cls);
-    c.setAttribute('style', style);
+    c.setAttribute('r', '4');
+    c.setAttribute('style', '');
+    const baseCls = i < 100 ? 'bead bead-blue' : 'bead bead-gold';
+    c.setAttribute('class', baseCls + (i < filled ? ' filled' : ''));
   }
-  // Pulse the freshly-filled bead so the user sees the click land
-  if (justAdvanced && filled > 0 && filled <= fillable) {
-    const idx = Math.min(filled - 1, fillable - 1);
-    const pulsed = beads[idx];
+  // Pulse the freshly-filled bead so the user sees the tap land
+  if (justAdvanced && filled > 0 && filled <= N) {
+    const pulsed = beads[filled - 1];
     if (pulsed) {
       pulsed.classList.add('bead-pulse');
       setTimeout(() => pulsed.classList.remove('bead-pulse'), 500);

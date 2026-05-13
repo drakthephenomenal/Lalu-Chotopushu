@@ -411,7 +411,7 @@ const App = {
     document.getElementById('lbarTarget').textContent = '/ ' + (curLt ? fmtIN(curLt) : '—');
     document.getElementById('lDet').textContent = Math.floor(tot/ms) + ' malas done';
     this.updateTimerToday();
-    if (typeof renderBeadFrame === 'function') renderBeadFrame(dP);
+    if (typeof renderBeadFrame === 'function') renderBeadFrame(tod, curDt);
     uStats();
   },
 
@@ -1067,9 +1067,15 @@ function ensureBeadFrame() {
   }
   return { wrap, svg };
 }
-function renderBeadFrame(pct) {
+let _beadState = { tod: 0, target: 0, lastFilled: -1 };
+function renderBeadFrame(tod, target) {
   const refs = ensureBeadFrame();
   if (!refs) return;
+  if (typeof tod === 'number' && typeof target === 'number') {
+    _beadState.tod = tod; _beadState.target = target;
+  } else {
+    tod = _beadState.tod; target = _beadState.target;
+  }
   const { wrap, svg } = refs;
   const rect = wrap.getBoundingClientRect();
   const W = rect.width, H = rect.height;
@@ -1081,10 +1087,14 @@ function renderBeadFrame(pct) {
   const N = 108;
   const perim = 2 * (w + h);
   const step = perim / N;
-  // Last 8 beads = guru section (always gold). Remaining 100 fill clockwise from top-left by daily %.
+  // Last 8 beads = guru section (always gold). Remaining 100 fill granularly by tod/target.
   const fillable = N - 8;
-  const filled = Math.max(0, Math.min(fillable, Math.round((pct || 0) / 100 * fillable)));
+  const progress = target > 0 ? Math.max(0, Math.min(1, tod / target)) : 0;
+  const exact = progress * fillable;
+  const filled = Math.floor(exact);
+  const partial = exact - filled; // 0..1 for the next bead
   const beads = svg.children;
+  const justAdvanced = filled > _beadState.lastFilled && _beadState.lastFilled !== -1;
   for (let i = 0; i < N; i++) {
     const d = i * step + step / 2;
     let x, y;
@@ -1095,18 +1105,38 @@ function renderBeadFrame(pct) {
     const c = beads[i];
     c.setAttribute('cx', x);
     c.setAttribute('cy', y);
-    const isGuru = i >= fillable;          // last 8 — golden marker section
-    const isFilled = i < filled;            // dynamic progress
-    c.setAttribute('class', isGuru ? 'bead bead-guru' : (isFilled ? 'bead bead-gold' : 'bead bead-blue'));
+    const isGuru = i >= fillable;
+    let cls = 'bead bead-blue', style = '';
+    if (isGuru) {
+      cls = 'bead bead-guru';
+    } else if (i < filled) {
+      cls = 'bead bead-gold';
+    } else if (i === filled && partial > 0 && progress < 1) {
+      // Smoothly morph this bead from blue → gold based on partial progress
+      cls = 'bead bead-partial';
+      const pctMix = (partial * 100).toFixed(1);
+      const r = (4 + partial * 1.2).toFixed(2); // gentle grow
+      style = `fill: color-mix(in oklab, #FFD700 ${pctMix}%, #4a90e2); ` +
+              `filter: drop-shadow(0 0 ${(2 + partial * 2).toFixed(2)}px rgba(255,215,0,${(0.4 + partial * 0.5).toFixed(2)}));`;
+      c.setAttribute('r', r);
+    }
+    if (cls !== 'bead bead-partial') c.setAttribute('r', '4');
+    c.setAttribute('class', cls);
+    c.setAttribute('style', style);
   }
+  // Pulse the freshly-filled bead so the user sees the click land
+  if (justAdvanced && filled > 0 && filled <= fillable) {
+    const idx = Math.min(filled - 1, fillable - 1);
+    const pulsed = beads[idx];
+    if (pulsed) {
+      pulsed.classList.add('bead-pulse');
+      setTimeout(() => pulsed.classList.remove('bead-pulse'), 500);
+    }
+  }
+  _beadState.lastFilled = filled;
 }
-window.addEventListener('resize', () => {
-  const pct = parseInt((document.getElementById('dPct')?.textContent || '0')) || 0;
-  renderBeadFrame(pct);
-});
-window.addEventListener('load', () => {
-  setTimeout(() => renderBeadFrame(parseInt((document.getElementById('dPct')?.textContent || '0')) || 0), 100);
-});
+window.addEventListener('resize', () => renderBeadFrame());
+window.addEventListener('load', () => { setTimeout(() => renderBeadFrame(), 100); });
 
 // ── Auto-load today's view in History on first open ──
 let _historyAutoLoaded = false;

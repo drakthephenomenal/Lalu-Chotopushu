@@ -780,7 +780,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   overflow:visible;
   z-index:0;
 }
-.bead-frame .bead{transition:fill 0.45s ease, filter 0.45s ease;}
+.bead-frame .bead{transition:fill 0.35s ease, filter 0.35s ease, r 0.25s ease, transform 0.25s ease; transform-box:fill-box; transform-origin:center;}
 .bead-frame .bead-blue{
   fill:#4a90e2;
   filter:drop-shadow(0 0 2px rgba(74,144,226,0.55));
@@ -793,3 +793,9 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   fill:#FFB700;
   filter:drop-shadow(0 0 4px rgba(255,200,0,0.95));
 }
+@keyframes beadPulse{
+  0%{transform:scale(1);}
+  40%{transform:scale(1.9); filter:drop-shadow(0 0 8px rgba(255,215,0,1));}
+  100%{transform:scale(1);}
+}
+.bead-frame .bead-pulse{animation:beadPulse 0.5s ease-out;}

@@ -18,7 +18,8 @@ const App = {
     historyRV: {}, timerHistoryRV: {}, dtRV: 0, ltRV: 0, nameJapDeductRV: 0,
     malaLogRV: [],
     syncBaselineRV: {}, syncBaselineTimerRV: {},
-    activityLog: []
+    activityLog: [],
+    sadhanaStart: ''
   },
   lmcRV: 0,
   lmc: 0, lm28: 0,
@@ -112,7 +113,8 @@ const App = {
       dtRV: this.S.dtRV, ltRV: this.S.ltRV, nameJapDeductRV: this.S.nameJapDeductRV, malaLogRV: this.S.malaLogRV,
       syncBaselineRV: this.S.syncBaselineRV, syncBaselineTimerRV: this.S.syncBaselineTimerRV,
       brahmacharya_start_date: this.S.brahmacharya_start_date,
-      activityLog: this.S.activityLog || []
+      activityLog: this.S.activityLog || [],
+      sadhanaStart: this.S.sadhanaStart || ''
     });
     // Keep per-day stores updated for compatibility with existing offline data
     const tk = this.S.tk;
@@ -189,6 +191,7 @@ const App = {
     if (!this.S.syncBaselineRV) this.S.syncBaselineRV = {};
     if (!this.S.syncBaselineTimerRV) this.S.syncBaselineTimerRV = {};
     if (!this.S.activityLog) this.S.activityLog = [];
+    if (!this.S.sadhanaStart) this.S.sadhanaStart = localStorage.getItem('rjap_sadhana_start') || '';
     if (!this.S.historyRV[this.S.tk]) this.S.historyRV[this.S.tk] = 0;
     if (!this.S.timerHistoryRV[this.S.tk]) this.S.timerHistoryRV[this.S.tk] = 0;
     // Load malaLog — only use if it's from today AND today has actual jap count
@@ -1689,10 +1692,11 @@ function renderMilestonesTab() {
   }
   const avg7 = sum7 / 7;
 
-  // Sadhana start date
+  // Sadhana start date — read from App.S (persistent) with localStorage fallback
+  const saved = App.S.sadhanaStart || localStorage.getItem('rjap_sadhana_start') || '';
+  if (saved) { App.S.sadhanaStart = saved; localStorage.setItem('rjap_sadhana_start', saved); }
   const startInput = document.getElementById('msSadhanaStart');
-  const saved = localStorage.getItem('rjap_sadhana_start');
-  if (saved && startInput) startInput.value = saved;
+  if (startInput && saved) startInput.value = saved;
   const sinceEl = document.getElementById('msSadhanaSince');
   if (sinceEl && saved) {
     const diff = Date.now() - new Date(saved).getTime();
@@ -1703,6 +1707,8 @@ function renderMilestonesTab() {
     if (mos>0) s += mos + ' month'+(mos>1?'s':'')+' ';
     s += (rem%30) + ' days of Sadhana';
     sinceEl.textContent = s;
+  } else if (sinceEl) {
+    sinceEl.textContent = 'Set your journey start date above ☝️';
   }
 
   // Build lakh milestones (1L to 130L)
@@ -4014,23 +4020,29 @@ function renderLakhGati() { renderMilestonesTab(); }
 function saveSadhanaStartDate(val) {
   if (val) {
     localStorage.setItem('rjap_sadhana_start', val);
+    App.S.sadhanaStart = val;
+    App.save(); fbDebouncedPush();
     updateSadhanaSince();
     renderLakhGati();
   }
 }
 
 function loadSadhanaStartDate() {
-  const saved = localStorage.getItem('rjap_sadhana_start');
-  const input = document.getElementById('sadhanaStartDate');
-  if (saved && input) {
-    input.value = saved;
+  // Read from App.S first (syncs across devices), fallback to localStorage
+  const saved = App.S.sadhanaStart || localStorage.getItem('rjap_sadhana_start') || '';
+  if (saved) {
+    // Keep both in sync
+    App.S.sadhanaStart = saved;
+    localStorage.setItem('rjap_sadhana_start', saved);
   }
+  const input = document.getElementById('msSadhanaStart');
+  if (saved && input) input.value = saved;
   updateSadhanaSince();
 }
 
 function updateSadhanaSince() {
-  const el = document.getElementById('sadhanaSince');
-  const saved = localStorage.getItem('rjap_sadhana_start');
+  const el = document.getElementById('sadhanaSince') || document.getElementById('msSadhanaSince');
+  const saved = App.S.sadhanaStart || localStorage.getItem('rjap_sadhana_start');
   if (!el) return;
   if (!saved) {
     el.textContent = 'Set your journey start date above ☝️';

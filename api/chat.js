@@ -23,8 +23,8 @@ module.exports = async function handler(req, res) {
     });
 
     let systemPrompt = body.systemPrompt || '';
-    if (systemPrompt.length > 6000) {
-      systemPrompt = systemPrompt.substring(0, 6000) + '\n...[truncated]';
+    if (systemPrompt.length > 10000) {
+      systemPrompt = systemPrompt.substring(0, 10000) + '\n...[truncated]';
     }
 
     if (messages.length === 0) {
@@ -33,7 +33,7 @@ module.exports = async function handler(req, res) {
 
     const payload = {
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
+      max_tokens: 2048,
       messages: messages
     };
     if (systemPrompt) payload.system = systemPrompt;

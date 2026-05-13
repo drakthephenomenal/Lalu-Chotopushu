@@ -2167,7 +2167,8 @@ function fbInit() {
             historyRV: {}, timerHistoryRV: {}, dtRV: 0, ltRV: 0, nameJapDeductRV: 0,
             malaLogRV: [], activityLog: [], syncBaselineRV: {}, syncBaselineTimerRV: {}
           };
-          // Load THIS user's local data first (will be overwritten by cloud pull)
+          // ── Always load IDB first so app is usable offline ──
+          // Cloud pull in fbMigrate() will immediately overwrite with authoritative data.
           await App.load();
           App.lmc = Math.floor(App.gTod() / (App.S.ms||108));
           App.lmcRV = Math.floor((App.S.historyRV[App.S.tk]||0) / (App.S.ms||108));
@@ -2178,12 +2179,14 @@ function fbInit() {
         document.getElementById('fbLoggedOut').style.display = 'none';
         document.getElementById('fbLoggedIn').style.display = 'block';
         document.getElementById('fbUserEmail').textContent = user.email || user.displayName || 'Google User';
-        setSyncPill('syncing', 'Connecting…');
-        // Single-device: claim this session & watch for other devices
-        fbClaimSession().then(() => {
+        setSyncPill('syncing', 'Loading from cloud…');
+        // ── ALWAYS pull from Firebase first on every login/refresh ──
+        // fbMigrate() does a direct .get() (not just onSnapshot) so it is
+        // guaranteed to fetch the latest cloud data before anything is rendered.
+        fbClaimSession().then(async () => {
           fbWatchSession();
-          // Pull data from Firebase on sign-in
-          fbAutoSync();
+          // Direct cloud pull — overwrites local cache with authoritative Firebase data
+          await fbAutoSync();
           // Load global stotrams (inbuilt overrides + global stotrams for all users)
           loadGlobalStotrams();
         });
@@ -2411,21 +2414,39 @@ function fbApplyRemote(d) {
 }
 
 async function fbMigrate() {
-  if (App.S.migrationV2Done) return;
+  // Always pull fresh from Firebase on every login/refresh.
+  // migrationV2Done only guards the one-time data-format migration,
+  // but we ALWAYS fetch the latest cloud state so the device is up to date.
   try {
     const docRef = fbDb.collection('users').doc(fbUser.uid).collection('data').doc('main');
+    setSyncPill('syncing', 'Loading from cloud…');
     const snap = await docRef.get();
-    if (!snap.exists) { await fbPushFull(); }
-    else { fbApplyRemote({...snap.data(), deviceId: null}); await fbPushFull(); }
-    App.S.migrationV2Done = true;
-    App.save();
-    setSyncPill('', '✅ Sync ready');
-  } catch(e) { console.warn('Migration:', e.message); }
+    if (!snap.exists) {
+      // No cloud data yet — push local state up
+      await fbPushFull();
+    } else {
+      // Cloud data exists — ALWAYS apply it (overrides local cache)
+      fbApplyRemote({...snap.data(), deviceId: null});
+      if (!App.S.migrationV2Done) {
+        // First-ever migration: push merged state back
+        await fbPushFull();
+        App.S.migrationV2Done = true;
+        App.save();
+      }
+    }
+    setSyncPill('', '✅ Synced from cloud');
+  } catch(e) {
+    console.warn('Cloud pull failed:', e.message);
+    setSyncPill('error', 'Sync failed');
+  }
 }
 
-function fbAutoSync() {
+async function fbAutoSync() {
   if (fbListener) { fbListener(); fbListener = null; }
-  setTimeout(() => fbMigrate(), 1500);
+  // ── Always do an immediate direct pull from Firebase (no delay, no cache) ──
+  // This ensures every login/refresh gets authoritative cloud data first.
+  await fbMigrate();
+  // ── Then set up the real-time listener for subsequent changes ──
   try {
     const docRef = fbDb.collection('users').doc(fbUser.uid).collection('data').doc('main');
     fbListener = docRef.onSnapshot(snap => {

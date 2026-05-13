@@ -355,11 +355,15 @@ const App = {
   // ── UNIFIED TIME: sync timerHistory[today] = sum of mala log entries ──
   // Called after any mala log change so all time displays stay in harmony.
   syncTimerFromMalaLog() {
-    const isRV = this.S.japMode === 'rv';
-    const log = isRV ? (this.S.malaLogRV || []) : (this.S.malaLog || []);
-    const logSum = log.reduce((a, b) => a + b, 0);
-    const th = this.getCurTimerHistory();
-    th[this.S.tk] = logSum;
+    // Always sync BOTH modes independently — mode switching must not corrupt either
+    const radhaSum = (this.S.malaLog || []).reduce((a, b) => a + b, 0);
+    const rvSum    = (this.S.malaLogRV || []).reduce((a, b) => a + b, 0);
+    if (!this.S.timerHistory)   this.S.timerHistory   = {};
+    if (!this.S.timerHistoryRV) this.S.timerHistoryRV = {};
+    if (radhaSum > 0 || (this.S.malaLog||[]).length > 0)
+      this.S.timerHistory[this.S.tk]   = radhaSum;
+    if (rvSum > 0 || (this.S.malaLogRV||[]).length > 0)
+      this.S.timerHistoryRV[this.S.tk] = rvSum;
     // Re-anchor timerSavedSeconds so live delta is measured from current position
     this.timerSavedSeconds = this.timerSeconds;
   },
@@ -448,10 +452,13 @@ const App = {
       this.S.malaLog.push(malaDuration);
     }
     // Log mala completion with full timestamp for AI analysis
+    // Use malaLog.length as the mala number — it's always the correct sequential count
     const malaNum = isRVm
-      ? Math.floor((this.S.historyRV[this.S.tk]||0) / (this.S.ms||108))
-      : Math.floor((this.S.history[this.S.tk]||0) / (this.S.ms||108));
-    logActivity({ t: 'mala', ts: Date.now(), mode: this.S.japMode, n: malaNum, sec: malaDuration });
+      ? (this.S.malaLogRV || []).length
+      : (this.S.malaLog || []).length;
+    // Store wall-clock start so the history detail can show accurate start time
+    const malaStartTs = Date.now() - (malaDuration * 1000);
+    logActivity({ t: 'mala', ts: Date.now(), startTs: malaStartTs, mode: this.S.japMode, n: malaNum, sec: malaDuration });
     // ── UNIFIED TIME: timerHistory[today] = sum of mala log entries ──
     // This keeps all time displays (timer, stats, mala log, B&C day view) in harmony.
     this.syncTimerFromMalaLog();
@@ -4154,6 +4161,7 @@ function renderHistory() {
   const t28Hist = App.S.timer28History || {};
 
   let totRadha=0, totRV=0, tot28taps=0, totTimeSec=0, totTimeSec28=0;
+  window._ptRadhaSec = 0; window._ptRVSec = 0; // reset per-mode time accumulators
   let activeDays = 0;
   tbody.innerHTML = '';
 
@@ -4161,7 +4169,11 @@ function renderHistory() {
     const radha  = hist[tk]   || 0;
     const rv     = histRV[tk] || 0;
     const taps28 = h28[tk]    || 0;
-    const tSec   = (tHist[tk]||0) + (tHistRV[tk]||0);
+    // Use malaLog arrays as ground truth for today's time (prevents mode-switch corruption)
+    const isRowToday = (tk === App.S.tk);
+    const tSecR_row  = isRowToday ? (App.S.malaLog||[]).reduce((a,b)=>a+b,0)   : (tHist[tk]||0);
+    const tSecRV_row = isRowToday ? (App.S.malaLogRV||[]).reduce((a,b)=>a+b,0) : (tHistRV[tk]||0);
+    const tSec   = tSecR_row + tSecRV_row;
     const t28Sec = t28Hist[tk] || 0;
     const totalSec = tSec + t28Sec;
 
@@ -4171,8 +4183,11 @@ function renderHistory() {
     totRadha   += radha;
     totRV      += rv;
     tot28taps  += taps28;
-    totTimeSec += tSec;
+    totTimeSec += tSec;  // tSec = Radha + RV combined (already ground-truth for today)
     totTimeSec28 += t28Sec;
+    // Track per-mode time for Period Totals display
+    window._ptRadhaSec += tSecR_row;
+    window._ptRVSec    += tSecRV_row;
 
     const radhaM = Math.floor(radha/ms);
     const rvM    = Math.floor(rv/ms);
@@ -4219,7 +4234,8 @@ function renderHistory() {
       <div style="color:var(--a2)">RV Jap: <strong>${totRVM} malas</strong> <span style="color:var(--td);font-size:10px">(${totRV})</span></div>
       <div style="color:var(--green)">28 Names: <strong>${totCyc28} cycles</strong> <span style="color:var(--td);font-size:10px">(${tot28taps} taps)</span></div>
       <div style="color:var(--tl)">Total Time: <strong>${_histFmtSec(grandTotal)}</strong></div>
-      <div style="color:var(--td);font-size:11px">Radha Time: ${_histFmtSec(totTimeSec)}</div>
+      <div style="color:var(--td);font-size:11px">Radha Time: ${_histFmtSec(window._ptRadhaSec||0)}</div>
+      <div style="color:var(--td);font-size:11px">RV Time: ${_histFmtSec(window._ptRVSec||0)}</div>
       <div style="color:var(--td);font-size:11px">28 Names Time: ${_histFmtSec(totTimeSec28)}</div>
     </div>
   `;
@@ -4253,10 +4269,13 @@ function showHistDay(tk) {
   html += `<div style="background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.15);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;font-family:Inter,sans-serif">`;
   html += `<div style="font-size:10px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;font-weight:600">Day Summary</div>`;
   html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px">`;
-  if (radha > 0)  html += `<div style="color:var(--gold)">Radha: <strong>${radhaM} mala</strong> (${radha}) · ${_histFmtSec(tSecR)}</div>`;
-  if (rv > 0)     html += `<div style="color:var(--a2)">RV: <strong>${rvM} mala</strong> (${rv}) · ${_histFmtSec(tSecRV)}</div>`;
+  // For today: use malaLog arrays as ground-truth time (they never have sync issues)
+  const tSecR_disp  = isToday ? (App.S.malaLog||[]).reduce((a,b)=>a+b,0)   : tSecR;
+  const tSecRV_disp = isToday ? (App.S.malaLogRV||[]).reduce((a,b)=>a+b,0) : tSecRV;
+  if (radha > 0)  html += `<div style="color:var(--gold)">Radha: <strong>${radhaM} mala</strong> (${radha}) · ${_histFmtSec(tSecR_disp)}</div>`;
+  if (rv > 0)     html += `<div style="color:var(--a2)">RV: <strong>${rvM} mala</strong> (${rv}) · ${_histFmtSec(tSecRV_disp)}</div>`;
   if (taps28 > 0) html += `<div style="color:var(--green)">28 Names: <strong>${cyc28} cycles</strong> (${taps28}) · ${_histFmtSec(t28Sec)}</div>`;
-  const grand = tSecR + tSecRV + t28Sec;
+  const grand = tSecR_disp + tSecRV_disp + t28Sec;
   if (grand > 0)  html += `<div style="color:var(--tl)">Total: <strong>${_histFmtSec(grand)}</strong></div>`;
   html += `</div></div>`;
 
@@ -4309,11 +4328,13 @@ function _histMalaTable(label, entries, color) {
   </tr></thead><tbody>`;
 
   entries.forEach((e, i) => {
-    const endTs    = e.ts;
-    const startTs  = endTs - (e.sec * 1000);
+    const endTs   = e.ts;
+    // Use stored startTs if available (accurate wall-clock); fall back to computed
+    const startTs = e.startTs ? e.startTs : (endTs - (e.sec * 1000));
     const even = i % 2 === 0;
+    // Always use sequential index (i+1) — e.n can repeat when modes switch
     html += `<tr style="background:${even ? 'rgba(0,0,0,0.15)' : 'transparent'}">
-      <td style="padding:6px 8px;color:${color};font-weight:600">Mala ${e.n || (i+1)}</td>
+      <td style="padding:6px 8px;color:${color};font-weight:600">Mala ${i+1}</td>
       <td style="padding:6px 8px;color:var(--tl)">${_histFmtTime(endTs)}</td>
       <td style="padding:6px 8px;color:var(--td)">${_histFmtTime(startTs)}</td>
       <td style="padding:6px 8px;text-align:right;color:var(--green)">${_histFmtSec(e.sec)}</td>

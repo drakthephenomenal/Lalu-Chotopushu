@@ -221,9 +221,9 @@ function buildCtx() {
     stotrams:stSum,
     sankalpas:(S.sankalpas||[]).map(function(sk){return{wish:sk.wish,target:sk.target,done:sk.current||0,pct:sk.target?Math.round(((sk.current||0)/sk.target)*100):0};}),
     last7:l7,
-    mala_log:(S.activityLog||[]).filter(function(e){return e.t==='mala';}).slice(-20).map(function(e){var d=new Date(e.ts);return{n:e.n,mode:e.mode,sec:e.sec,at:d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}),date:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};}),
-    brahma_log:(S.activityLog||[]).filter(function(e){return e.t==='brahma';}).slice(-15).map(function(e){var d=new Date(e.ts);return{date:e.date,status:e.status,at:d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}),dow:d.toLocaleDateString('en-IN',{weekday:'short'})};}),
-    session_log:(S.activityLog||[]).filter(function(e){return e.t==='session';}).slice(-10).map(function(e){var s=new Date(e.ts),en=new Date(e.end);return{mode:e.mode,start:s.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}),end:en.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}),min:Math.round((e.secs||0)/60)};}),
+    mala_log:(S.activityLog||[]).filter(function(e){return e.t==='mala';}).slice(-200).map(function(e){var d=new Date(e.ts);return{n:e.n,mode:e.mode,sec:e.sec,at:d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}),date:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};}),
+    brahma_log:(S.activityLog||[]).filter(function(e){return e.t==='brahma';}).slice(-150).map(function(e){var d=new Date(e.ts);return{date:e.date,status:e.status,at:d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}),dow:d.toLocaleDateString('en-IN',{weekday:'short'})};}),
+    session_log:(S.activityLog||[]).filter(function(e){return e.t==='session';}).slice(-100).map(function(e){var s=new Date(e.ts),en=new Date(e.end);return{mode:e.mode,start:s.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}),end:en.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}),min:Math.round((e.secs||0)/60)};}),
     undo_available:undoStack.map(function(u){return u.desc;}),
     // ── Advanced fields ──
     patterns: patterns,
@@ -527,14 +527,23 @@ var Jarvis = {
     this.addMsg('user',msg);
     this.showTyping(true);
     this.setBtn(false);
-    var ctx = buildCtx();
+    // ── Load lifetime activityLog from IDB, then proceed ──────────
+    var self = this;
+    var msgRef = msg;
+    (typeof getLifetimeActivityLog === 'function' ? getLifetimeActivityLog() : Promise.resolve(App.S.activityLog || []))
+    .then(function(lifetimeLog) {
+      // Inject lifetime log into state temporarily for context building
+      var origLog = App.S.activityLog;
+      App.S.activityLog = lifetimeLog;
+      var ctx = buildCtx();
+      App.S.activityLog = origLog; // restore
+      ctx._lifetimeEntries = lifetimeLog.length;
 
     // ── Try offline first ──────────────────────────────────────
-    var offlineReply = offlineAnswer(msg, ctx);
+    var offlineReply = offlineAnswer(msgRef, ctx);
     if (offlineReply !== null) {
-      var self = this;
       setTimeout(function() {
-        self.history.push({role:'user',content:msg});
+        self.history.push({role:'user',content:msgRef});
         self.history.push({role:'assistant',content:offlineReply});
         if(self.history.length>20) self.history=self.history.slice(-20);
         self.showTyping(false);
@@ -546,7 +555,7 @@ var Jarvis = {
 
     // ── Fall back to Claude API for complex/edit/spiritual queries ──
     var sp = buildSystemPrompt(ctx);
-    var messages = this.history.concat([{role:'user',content:msg}]);
+    var messages = self.history.concat([{role:'user',content:msgRef}]);
     fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:messages,systemPrompt:sp})})
     .then(function(res){return res.json().then(function(d){if(!res.ok)throw new Error(d.error||d.detail||'HTTP '+res.status);return d;});})
     .then(function(data){
@@ -560,7 +569,7 @@ var Jarvis = {
           if(JA[act.fn]){ ar='\n\n✅ '+JA[act.fn].apply(null,act.args||[]); reply=reply.replace(/```action[\s\S]*?```/,'').trim(); }
         }catch(e){ ar='\n\n⚠️ Action error: '+e.message; }
       }
-      Jarvis.history.push({role:'user',content:msg});
+      Jarvis.history.push({role:'user',content:msgRef});
       Jarvis.history.push({role:'assistant',content:reply});
       if(Jarvis.history.length>20) Jarvis.history=Jarvis.history.slice(-20);
       Jarvis.showTyping(false);
@@ -571,6 +580,7 @@ var Jarvis = {
       Jarvis.addMsg('ai','🙏 Error: '+err.message);
     })
     .finally(function(){Jarvis.isLoading=false;Jarvis.setBtn(true);});
+    }); // end getLifetimeActivityLog.then
   },
 
   startVoice: function() {

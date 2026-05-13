@@ -40,7 +40,7 @@ const App = {
 
   async initDB() {
     return new Promise((res, rej) => {
-      const req = indexedDB.open('RadhaJapDB', 3);
+      const req = indexedDB.open('RadhaJapDB', 4);
       req.onupgradeneeded = e => {
         const db = e.target.result;
         if (!db.objectStoreNames.contains('state')) db.createObjectStore('state');
@@ -49,6 +49,8 @@ const App = {
         if (!db.objectStoreNames.contains('timerHistory')) db.createObjectStore('timerHistory');
         if (!db.objectStoreNames.contains('timer28History')) db.createObjectStore('timer28History');
         if (!db.objectStoreNames.contains('malaLog')) db.createObjectStore('malaLog');
+        // v4: lifetime per-day activityLog archive — no entry limit
+        if (!db.objectStoreNames.contains('activityLogArchive')) db.createObjectStore('activityLogArchive');
       };
       req.onsuccess = e => { this.db = e.target.result; res(); };
       req.onerror = () => rej(req.error);
@@ -123,6 +125,11 @@ const App = {
     if (this.S.timerHistory[tk] !== undefined) await this.dbPut('timerHistory', tk, this.S.timerHistory[tk]);
     if (this.S.timer28History[tk] !== undefined) await this.dbPut('timer28History', tk, this.S.timer28History[tk]);
     if (this.S.malaLog) await this.dbPut('malaLog', 'today', { date: tk, log: this.S.malaLog });
+    // Archive today's activityLog entries into lifetime per-day store (no 500 limit)
+    if (this.S.activityLog && this.S.activityLog.length > 0) {
+      const todayEntries = this.S.activityLog.filter(e => e.ts && new Date(e.ts).toISOString().split('T')[0] === tk);
+      if (todayEntries.length > 0) await this.dbPut('activityLogArchive', tk, todayEntries);
+    }
     try { localStorage.setItem(this._lsKey(), JSON.stringify(this.S)); } catch(e) {}
     if (fbUser && !fbForcedSignout && !this._suspendCloudSync) fbDebouncedPush();
   },
@@ -2264,7 +2271,8 @@ function fbApplyRemote(d) {
   if (d.nameJapDeductRV !== undefined) App.S.nameJapDeductRV = d.nameJapDeductRV;
   if (d.brahmacharya_start_date) App.S.brahmacharya_start_date = d.brahmacharya_start_date;
   if ('activityLog' in d) {
-    // Merge remote + local, deduplicate by ts+t, keep latest 500
+    // Merge remote + local, deduplicate by ts+t, keep latest 2000 in memory
+    // Full lifetime data lives in activityLogArchive IDB store
     const remote = d.activityLog || [];
     const local = App.S.activityLog || [];
     const seen = new Set();
@@ -2274,7 +2282,7 @@ function fbApplyRemote(d) {
       seen.add(key); return true;
     });
     merged.sort((a,b) => a.ts - b.ts);
-    App.S.activityLog = merged.slice(-500);
+    App.S.activityLog = merged.slice(-2000);
   }
   // Only apply malaLogRV from Firebase if it belongs to today AND local today has RV jap
   if ('malaLogRV' in d) {
@@ -3479,9 +3487,11 @@ function toggleBrkCollapse() {
 function logActivity(entry) {
   if (!App.S.activityLog) App.S.activityLog = [];
   App.S.activityLog.push(entry);
-  // Keep last 500 entries (~50KB) — well within Firestore 1MB doc limit
-  if (App.S.activityLog.length > 500) {
-    App.S.activityLog = App.S.activityLog.slice(-500);
+  // Keep last 2000 entries in memory (~200KB) — still within Firestore 1MB doc limit
+  // Older entries are archived per-day in activityLogArchive IDB store (no limit).
+  // getLifetimeActivityLog() merges archive + in-memory for full history.
+  if (App.S.activityLog.length > 2000) {
+    App.S.activityLog = App.S.activityLog.slice(-2000);
   }
   // Debounced save — don't save on every single tap, batch with existing save
   // App.save() is already called by the caller (malaOk, pauseTimer etc)
@@ -4409,4 +4419,26 @@ function copyHistoryText() {
   lines.push('🙏 Radha Vallabh Sri Harivangsa 🙏');
 
   navigator.clipboard.writeText(lines.join('\n')).then(() => toast('History copied! 📋')).catch(() => toast('Copy failed'));
+}
+
+// ─────────────────────────────────────────────────────────
+// LIFETIME ACTIVITY LOG — loads ALL archived days from IDB
+// No 500-entry limit. Used by AI assistant for full history.
+// ─────────────────────────────────────────────────────────
+async function getLifetimeActivityLog() {
+  // Load all days from the archive store
+  const archive = await App.dbGetAll('activityLogArchive');
+  // Merge all arrays, sort by timestamp ascending
+  let all = [];
+  Object.values(archive).forEach(function(entries) {
+    if (Array.isArray(entries)) all = all.concat(entries);
+  });
+  // Also include any in-memory entries not yet archived (today's live entries)
+  const inMem = App.S.activityLog || [];
+  const archiveSet = new Set(all.map(e => e.ts + '|' + e.t));
+  inMem.forEach(function(e) {
+    if (!archiveSet.has(e.ts + '|' + e.t)) all.push(e);
+  });
+  all.sort(function(a, b) { return (a.ts || 0) - (b.ts || 0); });
+  return all;
 }

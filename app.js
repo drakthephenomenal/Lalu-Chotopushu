@@ -458,7 +458,7 @@ const App = {
       if (!this.S.malaLog) this.S.malaLog = [];
       this.S.malaLog.push(malaDuration);
     }
-    // Log mala completion with full timestamp for AI analysis
+    // Log mala completion with full timestamp
     // Use malaLog.length as the mala number — it's always the correct sequential count
     const malaNum = isRVm
       ? (this.S.malaLogRV || []).length
@@ -3614,7 +3614,7 @@ function toggleBrkCollapse() {
 
 // ─────────────────────────────────────────────────────────
 // ACTIVITY LOG — records every action with Unix timestamp
-// Powers the AI assistant's data science analysis
+
 // ─────────────────────────────────────────────────────────
 function logActivity(entry) {
   if (!App.S.activityLog) App.S.activityLog = [];
@@ -4576,7 +4576,7 @@ function copyHistoryText() {
 
 // ─────────────────────────────────────────────────────────
 // LIFETIME ACTIVITY LOG — loads ALL archived days from IDB
-// No 500-entry limit. Used by AI assistant for full history.
+// No 500-entry limit.
 // ─────────────────────────────────────────────────────────
 async function getLifetimeActivityLog() {
   // Load all days from the archive store

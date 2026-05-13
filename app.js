@@ -4064,3 +4064,349 @@ function updateSadhanaSince() {
 
 
 function renderMsView() { renderMilestonesTab(); }
+
+// ═══════════════════════════════════════════════════════
+// HISTORY SECTION
+// ═══════════════════════════════════════════════════════
+
+function _histFmtDate(tk) {
+  // tk = 'YYYY-MM-DD' → '13 May 2026'
+  const [y, m, d] = tk.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return parseInt(d) + ' ' + months[parseInt(m)-1] + ' ' + y;
+}
+
+function _histFmtSec(s) {
+  if (!s || s <= 0) return '—';
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sc = s%60;
+  if (h > 0) return h+'h '+m+'m '+String(sc).padStart(2,'0')+'s';
+  if (m > 0) return m+'m '+String(sc).padStart(2,'0')+'s';
+  return sc+'s';
+}
+
+function _histFmtTime(ts) {
+  // ts = Date.now() timestamp → 'HH:MM:SS AM/PM'
+  if (!ts) return '—';
+  const d = new Date(ts);
+  let h = d.getHours(), m = d.getMinutes(), s = d.getSeconds();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0') + ' ' + ampm;
+}
+
+function histPreset(days) {
+  const to = new Date();
+  const from = new Date();
+  from.setDate(from.getDate() - (days - 1));
+  document.getElementById('histFrom').value = from.toISOString().slice(0,10);
+  document.getElementById('histTo').value = to.toISOString().slice(0,10);
+}
+
+function histPresetMonth() {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), 1);
+  document.getElementById('histFrom').value = from.toISOString().slice(0,10);
+  document.getElementById('histTo').value = now.toISOString().slice(0,10);
+}
+
+function _histGetDates(from, to) {
+  const dates = [];
+  const cur = new Date(from);
+  const end = new Date(to);
+  while (cur <= end) {
+    dates.push(cur.toISOString().slice(0,10));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+}
+
+function renderHistory() {
+  const from = document.getElementById('histFrom').value;
+  const to   = document.getElementById('histTo').value;
+  const sumLine = document.getElementById('histSummaryLine');
+  const wrap = document.getElementById('histTableWrap');
+  const tbody = document.getElementById('histTableBody');
+  const totDiv = document.getElementById('histTotals');
+  const detail = document.getElementById('histDayDetail');
+
+  if (!from || !to) { sumLine.textContent = 'Please select both From and To dates.'; return; }
+  if (from > to)    { sumLine.textContent = 'From date must be before To date.'; return; }
+
+  detail.style.display = 'none';
+  const dates = _histGetDates(from, to);
+  const ms = App.S.ms || 108;
+
+  const hist    = App.S.history        || {};
+  const histRV  = App.S.historyRV      || {};
+  const h28     = App.S.h28            || {};
+  const tHist   = App.S.timerHistory   || {};
+  const tHistRV = App.S.timerHistoryRV || {};
+  const t28Hist = App.S.timer28History || {};
+
+  let totRadha=0, totRV=0, tot28taps=0, totTimeSec=0, totTimeSec28=0;
+  let activeDays = 0;
+  tbody.innerHTML = '';
+
+  dates.forEach(tk => {
+    const radha  = hist[tk]   || 0;
+    const rv     = histRV[tk] || 0;
+    const taps28 = h28[tk]    || 0;
+    const tSec   = (tHist[tk]||0) + (tHistRV[tk]||0);
+    const t28Sec = t28Hist[tk] || 0;
+    const totalSec = tSec + t28Sec;
+
+    if (radha === 0 && rv === 0 && taps28 === 0) return; // skip empty days
+
+    activeDays++;
+    totRadha   += radha;
+    totRV      += rv;
+    tot28taps  += taps28;
+    totTimeSec += tSec;
+    totTimeSec28 += t28Sec;
+
+    const radhaM = Math.floor(radha/ms);
+    const rvM    = Math.floor(rv/ms);
+    const cyc28  = Math.floor(taps28/28);
+
+    const tr = document.createElement('tr');
+    tr.style.cssText = 'border-bottom:1px solid rgba(255,215,0,0.07);cursor:pointer;transition:background 0.15s';
+    tr.onmouseenter = () => tr.style.background = 'rgba(255,215,0,0.06)';
+    tr.onmouseleave = () => tr.style.background = '';
+    tr.onclick = () => showHistDay(tk);
+
+    const radhaStr = radha > 0 ? radhaM+'m <span style="font-size:10px;color:var(--td)">('+radha+')</span>' : '<span style="color:rgba(255,255,255,0.15)">—</span>';
+    const rvStr    = rv    > 0 ? rvM   +'m <span style="font-size:10px;color:var(--td)">('+rv+')</span>'    : '<span style="color:rgba(255,255,255,0.15)">—</span>';
+    const n28Str   = taps28> 0 ? cyc28 +'c <span style="font-size:10px;color:var(--td)">('+taps28+')</span>': '<span style="color:rgba(255,255,255,0.15)">—</span>';
+
+    tr.innerHTML = `
+      <td style="padding:8px 10px;color:var(--tl);white-space:nowrap;font-size:11px">${_histFmtDate(tk)}</td>
+      <td style="padding:8px 6px;text-align:center;color:var(--gold)">${radhaStr}</td>
+      <td style="padding:8px 6px;text-align:center;color:var(--a2)">${rvStr}</td>
+      <td style="padding:8px 6px;text-align:center;color:var(--green)">${n28Str}</td>
+      <td style="padding:8px 6px;text-align:center;color:var(--td);font-size:11px;white-space:nowrap">${_histFmtSec(totalSec)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  if (activeDays === 0) {
+    sumLine.textContent = 'No jap recorded in this date range.';
+    wrap.style.display = 'none';
+    return;
+  }
+
+  sumLine.textContent = activeDays + ' active day' + (activeDays>1?'s':'') + ' in range · tap a row for details';
+  wrap.style.display = 'block';
+
+  // Totals row
+  const totRadhaM = Math.floor(totRadha/ms);
+  const totRVM    = Math.floor(totRV/ms);
+  const totCyc28  = Math.floor(tot28taps/28);
+  const grandTotal = totTimeSec + totTimeSec28;
+  totDiv.innerHTML = `
+    <div style="color:var(--gold);font-weight:700;font-size:11px;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase">📊 Period Totals</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:12px">
+      <div style="color:var(--gold)">Radha Jap: <strong>${totRadhaM} malas</strong> <span style="color:var(--td);font-size:10px">(${totRadha})</span></div>
+      <div style="color:var(--a2)">RV Jap: <strong>${totRVM} malas</strong> <span style="color:var(--td);font-size:10px">(${totRV})</span></div>
+      <div style="color:var(--green)">28 Names: <strong>${totCyc28} cycles</strong> <span style="color:var(--td);font-size:10px">(${tot28taps} taps)</span></div>
+      <div style="color:var(--tl)">Total Time: <strong>${_histFmtSec(grandTotal)}</strong></div>
+      <div style="color:var(--td);font-size:11px">Radha Time: ${_histFmtSec(totTimeSec)}</div>
+      <div style="color:var(--td);font-size:11px">28 Names Time: ${_histFmtSec(totTimeSec28)}</div>
+    </div>
+  `;
+}
+
+function showHistDay(tk) {
+  const detail  = document.getElementById('histDayDetail');
+  const title   = document.getElementById('histDayTitle');
+  const content = document.getElementById('histDayContent');
+
+  title.textContent = _histFmtDate(tk);
+  detail.style.display = 'block';
+  detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  const ms     = App.S.ms || 108;
+  const radha  = App.S.history[tk]        || 0;
+  const rv     = App.S.historyRV[tk]      || 0;
+  const taps28 = App.S.h28[tk]            || 0;
+  const tSecR  = App.S.timerHistory[tk]   || 0;
+  const tSecRV = App.S.timerHistoryRV[tk] || 0;
+  const t28Sec = App.S.timer28History[tk] || 0;
+
+  const radhaM = Math.floor(radha/ms);
+  const rvM    = Math.floor(rv/ms);
+  const cyc28  = Math.floor(taps28/28);
+  const isToday = (tk === App.S.tk);
+
+  let html = '';
+
+  // ── Day Summary ──
+  html += `<div style="background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.15);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;font-family:Inter,sans-serif">`;
+  html += `<div style="font-size:10px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;font-weight:600">Day Summary</div>`;
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px">`;
+  if (radha > 0)  html += `<div style="color:var(--gold)">Radha: <strong>${radhaM} mala</strong> (${radha}) · ${_histFmtSec(tSecR)}</div>`;
+  if (rv > 0)     html += `<div style="color:var(--a2)">RV: <strong>${rvM} mala</strong> (${rv}) · ${_histFmtSec(tSecRV)}</div>`;
+  if (taps28 > 0) html += `<div style="color:var(--green)">28 Names: <strong>${cyc28} cycles</strong> (${taps28}) · ${_histFmtSec(t28Sec)}</div>`;
+  const grand = tSecR + tSecRV + t28Sec;
+  if (grand > 0)  html += `<div style="color:var(--tl)">Total: <strong>${_histFmtSec(grand)}</strong></div>`;
+  html += `</div></div>`;
+
+  // ── Per-Mala Detail from activityLog ──
+  const log = App.S.activityLog || [];
+  const tkPrefix = tk.slice(0,10);
+
+  // Get mala entries for this day
+  const radhaEntries = log.filter(e => e.t === 'mala' && e.mode !== 'rv' && new Date(e.ts).toISOString().slice(0,10) === tkPrefix);
+  const rvEntries    = log.filter(e => e.t === 'mala' && e.mode === 'rv'  && new Date(e.ts).toISOString().slice(0,10) === tkPrefix);
+  const cycleEntries = log.filter(e => e.t === '28cycle'                  && new Date(e.ts).toISOString().slice(0,10) === tkPrefix);
+
+  const hasDetail = radhaEntries.length > 0 || rvEntries.length > 0 || cycleEntries.length > 0;
+
+  if (!hasDetail && !isToday) {
+    html += `<div style="font-size:11px;color:var(--td);text-align:center;padding:8px 0">Per-mala detail not available for this date<br><span style="font-size:10px">(activity log only keeps recent sessions)</span></div>`;
+  }
+
+  if (radhaEntries.length > 0) {
+    html += _histMalaTable('🌸 Radha Jap — Per Mala', radhaEntries, 'var(--gold)');
+  }
+  if (rvEntries.length > 0) {
+    html += _histMalaTable('🔵 RV Jap — Per Mala', rvEntries, 'var(--a2)');
+  }
+  if (cycleEntries.length > 0) {
+    html += _hist28CycleTable(cycleEntries);
+  }
+
+  // Today: also show from malaLog (more complete, has all malas even if log is short)
+  if (isToday && radhaEntries.length === 0 && (App.S.malaLog||[]).length > 0) {
+    html += _histTodayMalaLogTable('🌸 Radha Jap — Today\'s Malas', App.S.malaLog, 'var(--gold)');
+  }
+  if (isToday && rvEntries.length === 0 && (App.S.malaLogRV||[]).length > 0) {
+    html += _histTodayMalaLogTable('🔵 RV Jap — Today\'s Malas', App.S.malaLogRV, 'var(--a2)');
+  }
+
+  content.innerHTML = html;
+}
+
+function _histMalaTable(label, entries, color) {
+  let html = `<div style="margin-bottom:10px">`;
+  html += `<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:${color};margin-bottom:6px;font-weight:600">${label}</div>`;
+  html += `<div style="overflow-x:auto;border-radius:10px;border:1px solid rgba(255,255,255,0.08)">`;
+  html += `<table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;font-size:11px">`;
+  html += `<thead><tr style="background:rgba(255,255,255,0.05);color:var(--td)">
+    <th style="padding:6px 8px;text-align:left">Mala #</th>
+    <th style="padding:6px 8px;text-align:left">End Time</th>
+    <th style="padding:6px 8px;text-align:left">Start Time</th>
+    <th style="padding:6px 8px;text-align:right">Duration</th>
+  </tr></thead><tbody>`;
+
+  entries.forEach((e, i) => {
+    const endTs    = e.ts;
+    const startTs  = endTs - (e.sec * 1000);
+    const even = i % 2 === 0;
+    html += `<tr style="background:${even ? 'rgba(0,0,0,0.15)' : 'transparent'}">
+      <td style="padding:6px 8px;color:${color};font-weight:600">Mala ${e.n || (i+1)}</td>
+      <td style="padding:6px 8px;color:var(--tl)">${_histFmtTime(endTs)}</td>
+      <td style="padding:6px 8px;color:var(--td)">${_histFmtTime(startTs)}</td>
+      <td style="padding:6px 8px;text-align:right;color:var(--green)">${_histFmtSec(e.sec)}</td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div></div>`;
+  return html;
+}
+
+function _hist28CycleTable(entries) {
+  let html = `<div style="margin-bottom:10px">`;
+  html += `<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--green);margin-bottom:6px;font-weight:600">🌿 28 Names — Cycles</div>`;
+  html += `<div style="overflow-x:auto;border-radius:10px;border:1px solid rgba(255,255,255,0.08)">`;
+  html += `<table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;font-size:11px">`;
+  html += `<thead><tr style="background:rgba(255,255,255,0.05);color:var(--td)">
+    <th style="padding:6px 8px;text-align:left">Cycle #</th>
+    <th style="padding:6px 8px;text-align:left">Completed At</th>
+    <th style="padding:6px 8px;text-align:right">Cycle Time</th>
+  </tr></thead><tbody>`;
+
+  entries.forEach((e, i) => {
+    const even = i % 2 === 0;
+    html += `<tr style="background:${even ? 'rgba(0,0,0,0.15)' : 'transparent'}">
+      <td style="padding:6px 8px;color:var(--green);font-weight:600">Cycle ${e.n || (i+1)}</td>
+      <td style="padding:6px 8px;color:var(--tl)">${_histFmtTime(e.ts)}</td>
+      <td style="padding:6px 8px;text-align:right;color:var(--gold)">${_histFmtSec(e.sec)}</td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div></div>`;
+  return html;
+}
+
+function _histTodayMalaLogTable(label, malaLog, color) {
+  // malaLog is array of durations (seconds) only — no timestamps
+  // reconstruct approximate start times from total timer
+  let html = `<div style="margin-bottom:10px">`;
+  html += `<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:${color};margin-bottom:6px;font-weight:600">${label}</div>`;
+  html += `<div style="overflow-x:auto;border-radius:10px;border:1px solid rgba(255,255,255,0.08)">`;
+  html += `<table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;font-size:11px">`;
+  html += `<thead><tr style="background:rgba(255,255,255,0.05);color:var(--td)">
+    <th style="padding:6px 8px;text-align:left">Mala #</th>
+    <th style="padding:6px 8px;text-align:right">Duration</th>
+  </tr></thead><tbody>`;
+
+  malaLog.forEach((sec, i) => {
+    const even = i % 2 === 0;
+    html += `<tr style="background:${even ? 'rgba(0,0,0,0.15)' : 'transparent'}">
+      <td style="padding:6px 8px;color:${color};font-weight:600">Mala ${i+1}</td>
+      <td style="padding:6px 8px;text-align:right;color:var(--green)">${_histFmtSec(sec)}</td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div>`;
+  html += `<div style="font-size:10px;color:var(--td);margin-top:4px;padding:0 2px">* Start/end times available in future sessions (stored in activity log)</div>`;
+  html += `</div>`;
+  return html;
+}
+
+function copyHistoryText() {
+  const from = document.getElementById('histFrom').value;
+  const to   = document.getElementById('histTo').value;
+  if (!from || !to) return;
+
+  const ms     = App.S.ms || 108;
+  const dates  = _histGetDates(from, to);
+  const hist   = App.S.history || {};
+  const histRV = App.S.historyRV || {};
+  const h28    = App.S.h28 || {};
+  const tHist  = App.S.timerHistory || {};
+  const tHistRV= App.S.timerHistoryRV || {};
+  const t28Hist= App.S.timer28History || {};
+
+  let lines = ['📿 Radha Naam Jap — History Report'];
+  lines.push('Period: ' + _histFmtDate(from) + ' to ' + _histFmtDate(to));
+  lines.push('─'.repeat(42));
+
+  let totR=0, totRV=0, tot28=0, totT=0, totT28=0;
+  let days = 0;
+
+  dates.forEach(tk => {
+    const r   = hist[tk]||0, rv = histRV[tk]||0, t28 = h28[tk]||0;
+    const tR  = tHist[tk]||0, tRV = tHistRV[tk]||0, t28s = t28Hist[tk]||0;
+    if (r===0 && rv===0 && t28===0) return;
+    days++;
+    totR+=r; totRV+=rv; tot28+=t28; totT+=tR+tRV; totT28+=t28s;
+
+    const parts = [];
+    if (r>0)   parts.push('Radha: '+Math.floor(r/ms)+'m ('+r+') '+_histFmtSec(tR));
+    if (rv>0)  parts.push('RV: '+Math.floor(rv/ms)+'m ('+rv+') '+_histFmtSec(tRV));
+    if (t28>0) parts.push('28 Names: '+Math.floor(t28/28)+'c ('+t28+') '+_histFmtSec(t28s));
+    const total = tR+tRV+t28s;
+    if (total>0) parts.push('Total: '+_histFmtSec(total));
+
+    lines.push(_histFmtDate(tk) + ' — ' + parts.join(' | '));
+  });
+
+  lines.push('─'.repeat(42));
+  lines.push('TOTALS ('+days+' days):');
+  lines.push('Radha: '+Math.floor(totR/ms)+' malas ('+totR+') | RV: '+Math.floor(totRV/ms)+' malas ('+totRV+') | 28 Names: '+Math.floor(tot28/28)+' cycles ('+tot28+')');
+  lines.push('Jap Time: '+_histFmtSec(totT)+' | 28 Names Time: '+_histFmtSec(totT28)+' | Grand Total: '+_histFmtSec(totT+totT28));
+  lines.push('🙏 Radha Vallabh Sri Harivangsa 🙏');
+
+  navigator.clipboard.writeText(lines.join('\n')).then(() => toast('History copied! 📋')).catch(() => toast('Copy failed'));
+}

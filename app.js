@@ -470,8 +470,8 @@ const App = {
   flashMalaDuration(sec) {
     const disp = document.getElementById('timerDisplay');
     if (!disp) return;
-    const m = Math.floor(sec / 60), s = sec % 60;
-    const durStr = (m > 0 ? m + 'm ' : '') + s + 's';
+    const _fh = Math.floor(sec/3600), _fm = Math.floor((sec%3600)/60), _fs = sec%60;
+    const durStr = _fh > 0 ? _fh+'h '+_fm+'m '+String(_fs).padStart(2,'0')+'s' : _fm > 0 ? _fm+'m '+String(_fs).padStart(2,'0')+'s' : _fs+'s';
     // Spawn floating label anchored to the timer display position
     const rect = disp.getBoundingClientRect();
     const el = document.createElement('div');
@@ -1383,7 +1383,13 @@ function uStats() {
   if (njdi) { const n=parseInt(njdi.value)||0; document.getElementById('nameJapDeductPreview').textContent = n>0 ? Math.max(0,rawTot-curDeduct-n).toLocaleString() : '—'; }
   if (njri) { const n=parseInt(njri.value)||0; document.getElementById('nameJapRestorePreview').textContent = n>0 ? Math.min(rawTot, Math.max(0,rawTot-curDeduct+n)).toLocaleString() : '—'; }
   // Jap time previews
-  function _fmtSec(s) { const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60; return (h>0?h+'h ':'')+m+'m '+sc+'s'; }
+  function _fmtSec(s) {
+  s = Math.round(s || 0);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sc = s % 60;
+  if (h > 0) return h + 'h ' + m + 'm ' + String(sc).padStart(2, '0') + 's';
+  if (m > 0) return m + 'm ' + String(sc).padStart(2, '0') + 's';
+  return sc + 's';
+}
   const curTimeTod = App.S.timerHistory[App.S.tk]||0;
   const jtAtm = document.getElementById('jtAddTodayMin'), jtAts = document.getElementById('jtAddTodaySec');
   if (jtAtm) { const s = (parseInt(jtAtm.value)||0)*60+(jtAts?parseInt(jtAts.value)||0:0); document.getElementById('jtAddTodayPreview').textContent = s>0?_fmtSec(curTimeTod+s):'—'; }
@@ -1429,15 +1435,16 @@ function renderMalaLog() {
   if (avgEl && log.length > 0) {
     const totalSec = log.reduce((a,b) => a+b, 0);
     const avgSec = Math.round(totalSec / log.length);
-    const am = Math.floor(avgSec / 60), as2 = avgSec % 60;
-    avgEl.textContent = 'Average per mala: ' + (am > 0 ? am + 'm ' : '') + as2 + 's';
+    const _ah = Math.floor(avgSec/3600), _am = Math.floor((avgSec%3600)/60), _as = avgSec%60;
+    const avgStr = _ah > 0 ? _ah+'h '+_am+'m '+String(_as).padStart(2,'0')+'s' : _am > 0 ? _am+'m '+String(_as).padStart(2,'0')+'s' : _as+'s';
+    avgEl.textContent = 'Average per mala: ' + avgStr;
     avgEl.style.display = 'block';
     avgEl.style.cssText = 'font-size:11px;color:var(--green);margin-bottom:6px;text-align:center;padding:5px 10px;background:rgba(46,204,113,0.08);border-radius:8px;border:1px solid rgba(46,204,113,0.18);display:block';
   }
   
   log.forEach((sec, i) => {
-    const m = Math.floor(sec / 60), s = sec % 60;
-    const durStr = m > 0 ? m + 'm ' + s + 's' : s + 's';
+    const _mh = Math.floor(sec/3600), _mm = Math.floor((sec%3600)/60), _ms2 = sec%60;
+    const durStr = _mh > 0 ? _mh+'h '+_mm+'m '+String(_ms2).padStart(2,'0')+'s' : _mm > 0 ? _mm+'m '+String(_ms2).padStart(2,'0')+'s' : _ms2+'s';
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:rgba(46,204,113,0.07);border:1px solid rgba(46,204,113,0.15);border-radius:9px;';
     row.innerHTML =
@@ -1497,82 +1504,153 @@ function cr2(tp) {
   document.getElementById('mo').classList.add('show');
   document.getElementById('moCf').onclick = doReset;
 }
+// ── Helper: suspend Firestore listener, push clean state, then re-enable ──
+async function _fbResetPush() {
+  // 1. Stop the live listener so cloud data can't fire back and overwrite our reset
+  if (typeof fbListener === 'function') { fbListener(); fbListener = null; }
+  clearTimeout(_fbDeb); _fbDeb = null;
+  // 2. Push the clean local state to Firebase immediately (overwrite cloud)
+  if (fbUser && !fbForcedSignout) {
+    try { await fbPushFull(); } catch(e) { console.warn('Reset push failed:', e.message); }
+  }
+  // 3. Re-start the listener so future changes sync normally
+  if (fbUser && !fbForcedSignout && typeof fbAutoSync === 'function') {
+    setTimeout(() => fbAutoSync(), 500);
+  }
+}
+
 function doReset() {
-  if (pr === 'today') { App.S.history[App.S.tk] = 0; App.lmc = 0; App.S.malaLog = []; App.malaWallStart = Date.now(); localStorage.setItem('rjap_malaWallStart', String(App.malaWallStart)); App._malaTimerStart = App.timerSeconds; App.syncTimerFromMalaLog(); }
-  else if (pr === '28today') {
-    // Freeze active wishes before zeroing today's count so progress bars drop correctly
+  const tk = App.S.tk;
+
+  // ── STEP 1: Stop Firestore listener immediately so it can't restore old data ──
+  if (typeof fbListener === 'function') { fbListener(); fbListener = null; }
+  clearTimeout(_fbDeb); _fbDeb = null;
+  App._suspendCloudSync = true;
+  App._resetInProgress   = true;
+
+  if (pr === 'today') {
+    // ── Reset Today: ALL modes — Radha + RV + 28 Names ──
+    App.S.history[tk]        = 0;
+    App.S.historyRV[tk]      = 0;
+    App.S.h28[tk]            = 0;
+    App.S.timerHistory[tk]   = 0;
+    App.S.timerHistoryRV[tk] = 0;
+    App.S.timer28History[tk] = 0;
+    App.S.malaLog            = [];
+    App.S.malaLogRV          = [];
+    App.S.activityLog        = (App.S.activityLog || []).filter(e => !e.ts || new Date(e.ts).toISOString().slice(0,10) !== tk);
+    App.lmc = 0; App.lmcRV = 0; App.lm28 = 0;
+    // Reset all sankalpas anchors since 28 Names count just zeroed
     (App.S.sankalpas||[]).filter(s => !s.done && s.startCycles !== null).forEach(s => {
       s._savedProgress = (s._savedProgress || 0) + Math.max(0, getTotalCycles28() - s.startCycles);
       s.startCycles = getTotalCycles28();
     });
-    App.S.h28[App.S.tk] = 0; App.S.timer28History[App.S.tk] = 0; App.lm28 = 0; App.stopAll28Timers();
-    // Rebase wishes to new (lower) total after zeroing today
+    App.stopAll28Timers();
+    App.malaWallStart = Date.now();
+    localStorage.setItem('rjap_malaWallStart', String(App.malaWallStart));
+    App._malaTimerStart = App.timerSeconds;
+    App.syncTimerFromMalaLog();
+    // Persist zeros to IDB immediately (prevent resurrection on reload)
+    App.dbPut('history',             tk, 0);
+    App.dbPut('timerHistory',        tk, 0);
+    App.dbPut('timerHistoryRV',      tk, 0);
+    App.dbPut('h28',                 tk, 0);
+    App.dbPut('timer28History',      tk, 0);
+    App.dbPut('malaLog',            'today', { date: tk, log: [] });
+    App.dbPut('activityLogArchive',  tk, []);
+    renderMalaLog();
+    u28(); render28StatsPanel(); renderSankalpas();
+  }
+  else if (pr === '28today') {
+    // Freeze active wishes before zeroing
+    (App.S.sankalpas||[]).filter(s => !s.done && s.startCycles !== null).forEach(s => {
+      s._savedProgress = (s._savedProgress || 0) + Math.max(0, getTotalCycles28() - s.startCycles);
+      s.startCycles = getTotalCycles28();
+    });
+    App.S.h28[tk] = 0; App.S.timer28History[tk] = 0; App.lm28 = 0; App.stopAll28Timers();
     (App.S.sankalpas||[]).filter(s => !s.done && s.startCycles !== null).forEach(s => {
       s.startCycles = getTotalCycles28();
     });
-    // Write 0 into IDB per-day store and localStorage so it can't come back
-    App.dbPut('h28', App.S.tk, 0);
-    App.dbPut('timer28History', App.S.tk, 0);
-    try {
-      const ls = localStorage.getItem('rjap5');
-      if (ls) {
-        const d = JSON.parse(ls);
-        if (d.h28) d.h28[App.S.tk] = 0;
-        if (d.timer28History) d.timer28History[App.S.tk] = 0;
-        localStorage.setItem('rjap5', JSON.stringify(d));
-      }
-    } catch(e) {}
-    App.save();
+    App.dbPut('h28', tk, 0);
+    App.dbPut('timer28History', tk, 0);
     u28(); render28StatsPanel(); renderSankalpas();
   }
   else if (pr === '28all') {
-    // 1. Clear in-memory
     App.S.h28 = {}; App.S.timer28History = {};
-    App.S.h28[App.S.tk] = 0; App.S.timer28History[App.S.tk] = 0;
+    App.S.h28[tk] = 0; App.S.timer28History[tk] = 0;
     App.S.sankalpas = []; App.S.syncBaseline28 = {};
     App.lm28 = 0; App.stopAll28Timers();
-    // 2. Wipe the IDB per-day stores entirely so old keys can't merge back
-    App.dbClearStore('h28').then(() => App.dbPut('h28', App.S.tk, 0));
-    App.dbClearStore('timer28History').then(() => App.dbPut('timer28History', App.S.tk, 0));
-    // 3. Also clear localStorage so it can't resurrect either
-    try {
-      const ls = localStorage.getItem('rjap5');
-      if (ls) {
-        const d = JSON.parse(ls);
-        d.h28 = {}; d.timer28History = {}; d.sankalpas = []; d.syncBaseline28 = {};
-        localStorage.setItem('rjap5', JSON.stringify(d));
-      }
-    } catch(e) {}
-    // 4. Save main state with empty h28 so main IDB key is also clean
-    App.save();
-    fbDebouncedPush(); 
+    App.dbClearStore('h28').then(() => App.dbPut('h28', tk, 0));
+    App.dbClearStore('timer28History').then(() => App.dbPut('timer28History', tk, 0));
     u28(); render28StatsPanel(); renderSankalpas();
-    toast('All 28 Names data reset 🙏'); return;
   }
   else if (pr === 'range') {
     const f = document.getElementById('rfrom').value, to = document.getElementById('rto').value;
-    Object.keys(App.S.history).forEach(k => { if (k >= f && k <= to) { App.S.history[k] = 0; if (App.S.timerHistory[k]) App.S.timerHistory[k] = 0; if (App.S.timer28History[k]) App.S.timer28History[k] = 0; } });
+    const allKeys = new Set([
+      ...Object.keys(App.S.history||{}),
+      ...Object.keys(App.S.historyRV||{}),
+      ...Object.keys(App.S.h28||{})
+    ]);
+    allKeys.forEach(k => {
+      if (k >= f && k <= to) {
+        if (App.S.history)        App.S.history[k]        = 0;
+        if (App.S.historyRV)      App.S.historyRV[k]      = 0;
+        if (App.S.h28)            App.S.h28[k]            = 0;
+        if (App.S.timerHistory)   App.S.timerHistory[k]   = 0;
+        if (App.S.timerHistoryRV) App.S.timerHistoryRV[k] = 0;
+        if (App.S.timer28History) App.S.timer28History[k] = 0;
+      }
+    });
+    // If today is in range, also clear live logs and IDB
+    if (tk >= f && tk <= to) {
+      App.S.malaLog = []; App.S.malaLogRV = [];
+      App.S.activityLog = (App.S.activityLog||[]).filter(e => !e.ts || new Date(e.ts).toISOString().slice(0,10) < f || new Date(e.ts).toISOString().slice(0,10) > to);
+      App.lmc = 0; App.lmcRV = 0; App.lm28 = 0; App.stopAll28Timers();
+      App.dbPut('history',        tk, 0);
+      App.dbPut('timerHistory',   tk, 0);
+      App.dbPut('timerHistoryRV', tk, 0);
+      App.dbPut('h28',            tk, 0);
+      App.dbPut('timer28History', tk, 0);
+      App.dbPut('malaLog',       'today', { date: tk, log: [] });
+      App.syncTimerFromMalaLog();
+      renderMalaLog();
+    }
   } else {
-    // ── Full Reset: ALL data including lifetime, RV, brahmacharya ──
+    // ── Full Reset: EVERYTHING — Radha + RV + 28 Names + all history ──
     App.S.history = {}; App.S.h28 = {}; App.S.historyRV = {};
     App.S.dt = 0; App.S.lt = 0; App.S.dtRV = 0; App.S.ltRV = 0;
     App.S.nameJapDeduct = 0; App.S.nameJapDeductRV = 0;
     App.S.stotrams = {}; App.S.brahma = {}; App.S.brahmacharya_start_date = '';
     App.S.timerHistory = {}; App.S.timer28History = {}; App.S.timerHistoryRV = {};
-    App.S.malaLog = []; App.S.malaLogRV = []; App.S.sankalpas = []; App.S.occasions = {};
-    App.S.syncBaseline = {}; App.S.syncBaseline28 = {}; App.S.syncBaselineTimer = {}; App.S.syncBaselineTimer28 = {};
+    App.S.malaLog = []; App.S.malaLogRV = [];
+    App.S.activityLog = []; // wipe full activity log
+    App.S.sankalpas = []; App.S.occasions = {};
+    App.S.syncBaseline = {}; App.S.syncBaseline28 = {};
+    App.S.syncBaselineTimer = {}; App.S.syncBaselineTimer28 = {};
     App.S.syncBaselineRV = {}; App.S.syncBaselineTimerRV = {};
     App.lmc = 0; App.lm28 = 0; App.lmcRV = 0;
     STLIST.forEach(x => { App.S.stotrams[x.id] = {}; });
-    // Clear IDB stores too
-    App.dbClearStore('history'); App.dbClearStore('h28');
+    // Clear ALL IDB stores including activityLogArchive
+    App.dbClearStore('history');      App.dbClearStore('h28');
     App.dbClearStore('timerHistory'); App.dbClearStore('timer28History');
+    App.dbClearStore('timerHistoryRV');
+    App.dbClearStore('activityLogArchive');
+    App.dbClearStore('malaLog');
     App.resetTimer(); App.stopAll28Timers();
-    // Clear saved targets from settings UI
     ['dtIn','ltIn','msIn'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     initBrahmaStartInput();
+    renderMalaLog(); u28(); render28StatsPanel(); renderSankalpas();
   }
-  App.save(); App.ua(); fbDebouncedPush();  renderCal(); cm(); toast('Reset complete 🙏');
+
+  // ── STEP 2: Save clean state locally ──
+  App._suspendCloudSync = false;
+  App.save();
+  App.ua(); renderCal(); cm();
+  toast('Resetting… pushing to cloud ☁️');
+
+  // ── STEP 3: Push clean state to Firebase (overwrites old cloud data) ──
+  // Then restart listener so future changes sync normally
+  _fbResetPush().then(() => { App._resetInProgress = false; toast('Reset complete 🙏'); });
 }
 function cm() { document.getElementById('mo').classList.remove('show'); }
 
@@ -2242,6 +2320,8 @@ async function fbPushFull() {
 
 function fbApplyRemote(d) {
   if (d.deviceId && d.deviceId === fbDeviceId) return;
+  // If a reset is in progress, ignore incoming cloud data to prevent resurrection
+  if (App._resetInProgress) return;
   // Ensure UID is set before saving (prevents saving to wrong UID key)
   if (fbUser && App._uid !== fbUser.uid) App._uid = fbUser.uid;
   if ('history' in d) App.S.history = JSON.parse(JSON.stringify(d.history || {}));
@@ -2468,8 +2548,9 @@ function cycleDone28() {
   const cycleTimeSec = App._n28CycleStart
     ? Math.floor((Date.now() - App._n28CycleStart) / 1000) : 0;
   const cycleNum = Math.floor((App.S.h28[App.S.tk]||0) / 28);
-  logActivity({ t: '28cycle', ts: Date.now(), n: cycleNum, sec: cycleTimeSec });
-  const fmtCyc = s => Math.floor(s/60)+'m '+(s%60)+'s';
+  const cycleStartTs = App._n28CycleStart ? App._n28CycleStart : (Date.now() - cycleTimeSec * 1000);
+  logActivity({ t: '28cycle', ts: Date.now(), startTs: cycleStartTs, n: cycleNum, sec: cycleTimeSec });
+  const fmtCyc = s => { s=Math.round(s); const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60; if(h>0)return h+'h '+m+'m '+String(sc).padStart(2,'0')+'s'; if(m>0)return m+'m '+String(sc).padStart(2,'0')+'s'; return sc+'s'; };
   App._n28CompletionAnimating = true;
   clearTimeout(App._n28CompletionTimer);
 
@@ -4095,10 +4176,13 @@ function _histFmtDate(tk) {
 
 function _histFmtSec(s) {
   if (!s || s <= 0) return '—';
-  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sc = s%60;
-  if (h > 0) return h+'h '+m+'m '+String(sc).padStart(2,'0')+'s';
-  if (m > 0) return m+'m '+String(sc).padStart(2,'0')+'s';
-  return sc+'s';
+  s = Math.round(s);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sc = s % 60;
+  if (h > 0) return h + 'h ' + m + 'm ' + String(sc).padStart(2, '0') + 's';
+  if (m > 0) return m + 'm ' + String(sc).padStart(2, '0') + 's';
+  return sc + 's';
 }
 
 function _histFmtTime(ts) {
@@ -4352,15 +4436,19 @@ function _hist28CycleTable(entries) {
   html += `<table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;font-size:11px">`;
   html += `<thead><tr style="background:rgba(255,255,255,0.05);color:var(--td)">
     <th style="padding:6px 8px;text-align:left">Cycle #</th>
-    <th style="padding:6px 8px;text-align:left">Completed At</th>
+    <th style="padding:6px 8px;text-align:left">End Time</th>
+    <th style="padding:6px 8px;text-align:left">Start Time</th>
     <th style="padding:6px 8px;text-align:right">Cycle Time</th>
   </tr></thead><tbody>`;
 
   entries.forEach((e, i) => {
+    const endTs   = e.ts;
+    const startTs = e.startTs ? e.startTs : (endTs - (e.sec || 0) * 1000);
     const even = i % 2 === 0;
     html += `<tr style="background:${even ? 'rgba(0,0,0,0.15)' : 'transparent'}">
-      <td style="padding:6px 8px;color:var(--green);font-weight:600">Cycle ${e.n || (i+1)}</td>
-      <td style="padding:6px 8px;color:var(--tl)">${_histFmtTime(e.ts)}</td>
+      <td style="padding:6px 8px;color:var(--green);font-weight:600">Cycle ${i+1}</td>
+      <td style="padding:6px 8px;color:var(--tl)">${_histFmtTime(endTs)}</td>
+      <td style="padding:6px 8px;color:var(--td)">${_histFmtTime(startTs)}</td>
       <td style="padding:6px 8px;text-align:right;color:var(--gold)">${_histFmtSec(e.sec)}</td>
     </tr>`;
   });

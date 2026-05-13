@@ -692,6 +692,15 @@
               <div class="fr"><input type="date" class="fi" id="addJapOtherDate" style="font-size:13px"></div>
               <div class="fr"><input type="number" class="fi" id="addJapOtherIn" placeholder="Number of jap" min="1"><span class="fu">jap</span></div>
               <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="addJapOtherPreview" style="color:var(--green)">—</span></div>
+              <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.18);border-radius:9px">
+                <div style="font-size:10px;color:var(--gold);margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TAKEN (optional)</div>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <input type="number" class="fi" id="addJapOtherMin" placeholder="Min" min="0" style="width:70px;font-size:13px">
+                  <span style="color:var(--td);font-size:11px">m</span>
+                  <input type="number" class="fi" id="addJapOtherSec" placeholder="Sec" min="0" max="59" style="width:70px;font-size:13px">
+                  <span style="color:var(--td);font-size:11px">s</span>
+                </div>
+              </div>
               <button class="pb" onclick="addOtherDayJap()" style="background:linear-gradient(135deg,#1a6b3c,#27ae60)">➕ Add to Selected Day</button>
             </div>
           </div>
@@ -730,6 +739,15 @@
             <div class="cs-body" id="deductTodayBody">
               <div class="fr"><input type="number" class="fi" id="deductTodayIn" placeholder="Number to deduct" min="1"><span class="fu">jap</span></div>
               <div style="font-size:11px;color:var(--td);margin-bottom:8px">Today will become: <span id="deductTodayPreview" style="color:var(--rl)">—</span></div>
+              <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(232,51,109,0.06);border:1px solid rgba(232,51,109,0.22);border-radius:9px">
+                <div style="font-size:10px;color:var(--rl);margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TO DEDUCT (optional)</div>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <input type="number" class="fi" id="deductTodayMin" placeholder="Min" min="0" style="width:70px;font-size:13px">
+                  <span style="color:var(--td);font-size:11px">m</span>
+                  <input type="number" class="fi" id="deductTodaySec" placeholder="Sec" min="0" max="59" style="width:70px;font-size:13px">
+                  <span style="color:var(--td);font-size:11px">s</span>
+                </div>
+              </div>
               <button class="pb" onclick="deductTodayJap()" style="background:linear-gradient(135deg,#c0392b,#e74c3c)">✂️ Deduct from Today</button>
             </div>
           </div>
@@ -743,6 +761,15 @@
               <div class="fr"><input type="date" class="fi" id="deductOtherDate" style="font-size:13px"></div>
               <div class="fr"><input type="number" class="fi" id="deductOtherIn" placeholder="Number to deduct" min="1"><span class="fu">jap</span></div>
               <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="deductOtherPreview" style="color:var(--rl)">—</span></div>
+              <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(232,51,109,0.06);border:1px solid rgba(232,51,109,0.22);border-radius:9px">
+                <div style="font-size:10px;color:var(--rl);margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TO DEDUCT (optional)</div>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <input type="number" class="fi" id="deductOtherMin" placeholder="Min" min="0" style="width:70px;font-size:13px">
+                  <span style="color:var(--td);font-size:11px">m</span>
+                  <input type="number" class="fi" id="deductOtherSec" placeholder="Sec" min="0" max="59" style="width:70px;font-size:13px">
+                  <span style="color:var(--td);font-size:11px">s</span>
+                </div>
+              </div>
               <button class="pb" onclick="deductOtherJap()" style="background:linear-gradient(135deg,#922b21,#c0392b)">✂️ Deduct from Selected Day</button>
             </div>
           </div>

@@ -1064,8 +1064,8 @@ function ensureBeadFrame() {
     svg.innerHTML = '';
     for (let i = 0; i < 108; i++) {
       const c = document.createElementNS(BEAD_SVG_NS, 'circle');
-      c.setAttribute('r', '4');
-      // First 100 = blue, last 8 = gold (guru section)
+      c.setAttribute('r', '2.2');
+      // Last 8 of each mala = gold (guru section); first 100 = blue
       c.setAttribute('class', i < 100 ? 'bead bead-blue' : 'bead bead-gold');
       svg.appendChild(c);
     }
@@ -1095,12 +1095,20 @@ function renderBeadFrame(tod, target) {
   // Fill 1 bead per tap within the current mala (matches the small 12-dot row logic)
   const ms = (App && App.S && App.S.ms) || 108;
   const inMala = tod % ms;
+  const malaIdx = Math.floor(tod / ms);
+  // When viewing a freshly-completed mala (inMala==0 && tod>0), show that mala's direction.
+  const completedView = inMala === 0 && tod > 0;
+  const effectiveMala = completedView ? malaIdx - 1 : malaIdx;
+  // Alternate direction every mala: even = clockwise, odd = anticlockwise.
+  // Reversing direction naturally shifts the gold "guru" cluster to the opposite side.
+  const isCW = (effectiveMala % 2) === 0;
   // Map progress within the mala (0..ms) to beads (0..N) so all 108 fill across one mala
-  const filled = inMala === 0 && tod > 0 ? N : Math.floor(inMala * N / ms);
+  const filled = completedView ? N : Math.floor(inMala * N / ms);
   const beads = svg.children;
   const justAdvanced = filled > _beadState.lastFilled && _beadState.lastFilled !== -1;
   for (let i = 0; i < N; i++) {
-    const d = i * step + step / 2;
+    // i = tap order within mala (0 = first tap, 107 = last/gold). Direction flips per mala.
+    const d = isCW ? (i * step + step / 2) : (perim - (i * step + step / 2));
     let x, y;
     if (d < w) { x = x0 + d;            y = y0; }
     else if (d < w + h) { x = x1;       y = y0 + (d - w); }
@@ -1109,7 +1117,7 @@ function renderBeadFrame(tod, target) {
     const c = beads[i];
     c.setAttribute('cx', x);
     c.setAttribute('cy', y);
-    c.setAttribute('r', '4');
+    c.setAttribute('r', '2.2');
     c.setAttribute('style', '');
     const baseCls = i < 100 ? 'bead bead-blue' : 'bead bead-gold';
     c.setAttribute('class', baseCls + (i < filled ? ' filled' : ''));
@@ -1237,12 +1245,24 @@ function deductTodayJap() {
   hist[App.S.tk] = cur - n;
   const lmcKey = isRV ? 'lmcRV' : 'lmc';
   App[lmcKey] = Math.floor(App.gTod() / (App.S.ms || 108));
-  // Proportionally remove time and mala log entries that correspond to deducted jap
-  // Ratio of jap being deducted vs total
-  const ratio = n / cur; // fraction being removed
-  const log = isRV ? (App.S.malaLogRV || []) : (App.S.malaLog || []);
-  if (log.length > 0) {
-    // Remove mala log entries from the END (most recent first, as we're deducting)
+
+  // Explicit time input wins; otherwise fall back to proportional removal from mala log
+  const minEl = document.getElementById('deductTodayMin');
+  const secEl = document.getElementById('deductTodaySec');
+  const explicitTime = (parseInt(minEl?.value) || 0) * 60 + Math.min(59, Math.max(0, parseInt(secEl?.value) || 0));
+  const log = isRV ? (App.S.malaLogRV || (App.S.malaLogRV = [])) : (App.S.malaLog || (App.S.malaLog = []));
+
+  if (explicitTime > 0) {
+    // Shrink the mala log entries proportionally so total drops by explicitTime,
+    // then re-sync timerHistory[today] from the log (single source of truth).
+    const total = log.reduce((a, b) => a + b, 0);
+    if (total > 0) {
+      const factor = Math.max(0, (total - explicitTime) / total);
+      for (let i = 0; i < log.length; i++) log[i] = Math.round(log[i] * factor);
+    }
+    App.syncTimerFromMalaLog();
+  } else if (log.length > 0) {
+    const ratio = n / cur;
     const malasToRemove = Math.floor(n / (App.S.ms || 108));
     if (malasToRemove > 0 && malasToRemove <= log.length) {
       const removed = log.splice(log.length - malasToRemove, malasToRemove);
@@ -1250,15 +1270,17 @@ function deductTodayJap() {
       const th = App.getCurTimerHistory();
       th[App.S.tk] = Math.max(0, (th[App.S.tk] || 0) - removedTime);
     } else if (malasToRemove === 0 && ratio > 0 && log.length > 0) {
-      // Deducting less than one mala — proportionally shrink the last entry's time
       const timeShrink = Math.round(ratio * (App.getCurTimerHistory()[App.S.tk] || 0));
       const th = App.getCurTimerHistory();
       th[App.S.tk] = Math.max(0, (th[App.S.tk] || 0) - timeShrink);
     }
   }
+
   App.save(); App.ua(); fbDebouncedPush();
   document.getElementById('deductTodayIn').value = '';
-  toast('Deducted ' + n + '. New total: ' + App.gTod() + ' 🙏');
+  if (minEl) minEl.value = '';
+  if (secEl) secEl.value = '';
+  toast('Deducted ' + n + (explicitTime > 0 ? ' + ' + Math.floor(explicitTime/60) + 'm ' + (explicitTime%60) + 's' : '') + '. New total: ' + App.gTod() + ' 🙏');
 }
 
 function deductOtherJap() {
@@ -1271,9 +1293,21 @@ function deductOtherJap() {
   const cur = hist[date] || 0;
   if (n > cur) { toast('Cannot deduct more than that day\'s count (' + cur + ')'); return; }
   hist[date] = cur - n;
+
+  // Optional time deduction — directly subtract from per-day timerHistory
+  const minEl = document.getElementById('deductOtherMin');
+  const secEl = document.getElementById('deductOtherSec');
+  const timeSecs = (parseInt(minEl?.value) || 0) * 60 + Math.min(59, Math.max(0, parseInt(secEl?.value) || 0));
+  if (timeSecs > 0) {
+    const th = isRV ? (App.S.timerHistoryRV || (App.S.timerHistoryRV = {})) : (App.S.timerHistory || (App.S.timerHistory = {}));
+    th[date] = Math.max(0, (th[date] || 0) - timeSecs);
+  }
+
   App.save(); App.ua(); fbDebouncedPush(); renderCal();
   document.getElementById('deductOtherIn').value = '';
-  toast('Deducted ' + n + ' from ' + date + ' 🙏');
+  if (minEl) minEl.value = '';
+  if (secEl) secEl.value = '';
+  toast('Deducted ' + n + (timeSecs > 0 ? ' + ' + Math.floor(timeSecs/60) + 'm ' + (timeSecs%60) + 's' : '') + ' from ' + date + ' 🙏');
 }
 
 function addOtherDayJap() {
@@ -1284,10 +1318,22 @@ function addOtherDayJap() {
   const isRV = App.S.japMode === 'rv';
   const hist = isRV ? App.S.historyRV : App.S.history;
   hist[date] = (hist[date] || 0) + n;
+
+  // Optional estimated time — directly add to per-day timerHistory
+  const minEl = document.getElementById('addJapOtherMin');
+  const secEl = document.getElementById('addJapOtherSec');
+  const timeSecs = (parseInt(minEl?.value) || 0) * 60 + Math.min(59, Math.max(0, parseInt(secEl?.value) || 0));
+  if (timeSecs > 0) {
+    const th = isRV ? (App.S.timerHistoryRV || (App.S.timerHistoryRV = {})) : (App.S.timerHistory || (App.S.timerHistory = {}));
+    th[date] = (th[date] || 0) + timeSecs;
+  }
+
   App.save(); App.ua(); fbDebouncedPush(); renderCal();
   document.getElementById('addJapOtherIn').value = '';
+  if (minEl) minEl.value = '';
+  if (secEl) secEl.value = '';
   document.getElementById('addJapOtherPreview').textContent = '—';
-  toast('Added ' + n + ' jap to ' + date + ' 🙏');
+  toast('Added ' + n + (timeSecs > 0 ? ' + ' + Math.floor(timeSecs/60) + 'm ' + (timeSecs%60) + 's' : '') + ' jap to ' + date + ' 🙏');
 }
 
 // ── Jap Time Manual Entry ──

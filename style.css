@@ -768,7 +768,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 /* === Rectangular mala bead frame around Daily + Lifetime target boxes === */
 .bead-frame-wrap{
   position:relative;
-  padding:14px 16px;
+  padding:6px 8px;
   margin:2px 4px 4px;
   flex-shrink:0;
 }
@@ -822,3 +822,10 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   100%{transform:scale(1);}
 }
 .bead-frame .bead-pulse{animation:beadPulse 0.5s ease-out;}
+/* Sumeru bead — Priya & Pritam. Fixed at top-center. Never counted, never moves. */
+.bead-frame .bead-sumeru{
+  fill:#1a0a2e;
+  stroke:#FFD700;
+  stroke-width:1.6;
+  filter:drop-shadow(0 0 3px rgba(255,105,180,0.6)) drop-shadow(0 0 6px rgba(255,215,0,0.4));
+}

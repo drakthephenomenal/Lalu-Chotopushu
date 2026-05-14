@@ -1065,7 +1065,7 @@ function ensureBeadFrame() {
   const wrap = document.getElementById('beadFrameWrap');
   const svg  = document.getElementById('beadFrame');
   if (!wrap || !svg) return null;
-  if (svg.childElementCount !== 108) {
+  if (svg.childElementCount !== 109) {
     svg.innerHTML = '';
     for (let i = 0; i < 108; i++) {
       const c = document.createElementNS(BEAD_SVG_NS, 'circle');
@@ -1074,6 +1074,12 @@ function ensureBeadFrame() {
       c.setAttribute('class', i < 100 ? 'bead bead-blue' : 'bead bead-gold');
       svg.appendChild(c);
     }
+    // Sumeru bead — index 108. Fixed at top-center. Never counted, never moved.
+    const sumeru = document.createElementNS(BEAD_SVG_NS, 'circle');
+    sumeru.setAttribute('id', 'beadSumeru');
+    sumeru.setAttribute('r', '4.5');
+    sumeru.setAttribute('class', 'bead bead-sumeru');
+    svg.appendChild(sumeru);
   }
   return { wrap, svg };
 }
@@ -1091,7 +1097,7 @@ function renderBeadFrame(tod, target) {
   const W = rect.width, H = rect.height;
   if (!W || !H) return;
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  const inset = 7;
+  const inset = 4;
   const x0 = inset, y0 = inset, x1 = W - inset, y1 = H - inset;
   const w = x1 - x0, h = y1 - y0;
   const N = 108;
@@ -1111,6 +1117,7 @@ function renderBeadFrame(tod, target) {
   const filled = completedView ? N : Math.floor(inMala * N / ms);
   const beads = svg.children;
   const justAdvanced = filled > _beadState.lastFilled && _beadState.lastFilled !== -1;
+  // ── Position the 108 mala beads only (index 0–107). Sumeru (index 108) is never touched here. ──
   for (let i = 0; i < N; i++) {
     // i = tap order within mala (0 = first tap, 107 = last/gold). Direction flips per mala.
     const d = isCW ? (i * step + step / 2) : (perim - (i * step + step / 2));
@@ -1126,6 +1133,12 @@ function renderBeadFrame(tod, target) {
     c.setAttribute('style', '');
     const baseCls = i < 100 ? 'bead bead-blue' : 'bead bead-gold';
     c.setAttribute('class', baseCls + (i < filled ? ' filled' : ''));
+  }
+  // ── Sumeru bead: fixed at top-center. Set position only once when it has no cx yet. ──
+  const sumeruEl = document.getElementById('beadSumeru');
+  if (sumeruEl && !sumeruEl.getAttribute('cx')) {
+    sumeruEl.setAttribute('cx', W / 2);
+    sumeruEl.setAttribute('cy', y0);
   }
   // Pulse the freshly-filled bead so the user sees the tap land
   if (justAdvanced && filled > 0 && filled <= N) {

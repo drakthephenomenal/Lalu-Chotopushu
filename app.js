@@ -1195,7 +1195,17 @@ function addManualJap() {
   App.ensureMalaWallStart();
   const nm = Math.floor(App.gTod() / (App.S.ms || 108));
   const lmcKey = isRV ? 'lmcRV' : 'lmc';
-  if (nm > App[lmcKey]) { App[lmcKey] = nm; App.malaOk(); }
+  if (nm > App[lmcKey]) {
+    App[lmcKey] = nm;
+    // Celebrate the new mala milestone WITHOUT calling malaOk() —
+    // malaOk() pushes a wall-clock duration into malaLog which creates a
+    // ghost entry. We only want the visual/audio celebration here.
+    const _mf = document.getElementById('mf');
+    if (_mf) { _mf.classList.add('show'); setTimeout(() => _mf.classList.remove('show'), 2800); }
+    if (App.S.cfg && App.S.cfg.sound) playSynthBell();
+    App.vib([200, 80, 200, 80, 300]);
+    App.flashMalaDuration(avgPerMala || 0);
+  }
   App.save(); App.ua(); fbDebouncedPush();
   renderMalaLog();
   if (typeof renderHistory === 'function') { try { renderHistory(); } catch(e) {} }

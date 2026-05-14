@@ -1176,15 +1176,20 @@ function addManualJap() {
   const secEl = document.getElementById('manualJapSec');
   const timeSecs = (parseInt(minEl?.value) || 0) * 60 + Math.min(59, Math.max(0, parseInt(secEl?.value) || 0));
   if (timeSecs > 0) {
-    // Create mala log entries with averaged time
-    const ms = App.S.ms || 108;
-    const malasAdded = Math.floor(n / ms);
-    if (malasAdded > 0) {
-      const avgPerMala = Math.round(timeSecs / malasAdded);
-      const log = isRV ? (App.S.malaLogRV || (App.S.malaLogRV = [])) : (App.S.malaLog || (App.S.malaLog = []));
-      for (let i = 0; i < malasAdded; i++) log.push(avgPerMala);
+    // Push averaged mala entries into malaLog so Today's Mala Log shows them.
+    // Also log to activityLog so history per-mala table shows them correctly.
+    const ms2 = App.S.ms || 108;
+    const malasAdded = Math.max(1, Math.floor(n / ms2));
+    const avgPerMala = Math.round(timeSecs / malasAdded);
+    const log = isRV ? (App.S.malaLogRV || (App.S.malaLogRV = [])) : (App.S.malaLog || (App.S.malaLog = []));
+    const now = Date.now();
+    for (let i = 0; i < malasAdded; i++) {
+      log.push(avgPerMala);
+      logActivity({ t: 'mala', mode: isRV ? 'rv' : 'radha', sec: avgPerMala,
+                    ts: now + i * 1000, startTs: now + i * 1000 - avgPerMala * 1000,
+                    manual: true });
     }
-    // Sync timerHistory from mala log sum — single source of truth
+    // Sync timerHistory from updated mala log sum
     App.syncTimerFromMalaLog();
   }
   App.ensureMalaWallStart();
@@ -1192,6 +1197,8 @@ function addManualJap() {
   const lmcKey = isRV ? 'lmcRV' : 'lmc';
   if (nm > App[lmcKey]) { App[lmcKey] = nm; App.malaOk(); }
   App.save(); App.ua(); fbDebouncedPush();
+  renderMalaLog();
+  if (typeof renderHistory === 'function') { try { renderHistory(); } catch(e) {} }
   document.getElementById('manualJapIn').value = '';
   if (minEl) minEl.value = '';
   if (secEl) secEl.value = '';

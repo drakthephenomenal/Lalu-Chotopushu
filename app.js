@@ -1084,6 +1084,18 @@ function ensureBeadFrame() {
   return { wrap, svg };
 }
 let _beadState = { tod: 0, target: 0, lastFilled: -1 };
+
+// ── Convert a perimeter distance (0..perim) to x,y on the rectangle ──
+function _perimToXY(d, x0, y0, x1, y1) {
+  const w = x1 - x0, h = y1 - y0;
+  const perim = 2 * (w + h);
+  d = ((d % perim) + perim) % perim; // normalise
+  if (d < w)           return { x: x0 + d,           y: y0 };
+  else if (d < w + h)  return { x: x1,                y: y0 + (d - w) };
+  else if (d < 2*w+h)  return { x: x1 - (d - w - h), y: y1 };
+  else                 return { x: x0,                y: y1 - (d - 2*w - h) };
+}
+
 function renderBeadFrame(tod, target) {
   const refs = ensureBeadFrame();
   if (!refs) return;
@@ -1101,46 +1113,61 @@ function renderBeadFrame(tod, target) {
   const x0 = inset, y0 = inset, x1 = W - inset, y1 = H - inset;
   const w = x1 - x0, h = y1 - y0;
   const N = 108;
+  const GOLD = 8; // last 8 beads of each mala are gold
   const perim = 2 * (w + h);
-  const step = perim / N;
-  // Fill 1 bead per tap within the current mala (matches the small 12-dot row logic)
+  // 109 total slots (108 mala beads + 1 Sumeru) — equal spacing for all
+  const step = perim / 109;
+
   const ms = (App && App.S && App.S.ms) || 108;
   const inMala = tod % ms;
   const malaIdx = Math.floor(tod / ms);
-  // When viewing a freshly-completed mala (inMala==0 && tod>0), show that mala's direction.
   const completedView = inMala === 0 && tod > 0;
   const effectiveMala = completedView ? malaIdx - 1 : malaIdx;
-  // Alternate direction every mala: even = clockwise, odd = anticlockwise.
-  // Reversing direction naturally shifts the gold "guru" cluster to the opposite side.
+  // Even mala = CW (gold block on RIGHT of Sumeru), odd = CCW (gold block on LEFT of Sumeru)
   const isCW = (effectiveMala % 2) === 0;
-  // Map progress within the mala (0..ms) to beads (0..N) so all 108 fill across one mala
   const filled = completedView ? N : Math.floor(inMala * N / ms);
   const beads = svg.children;
   const justAdvanced = filled > _beadState.lastFilled && _beadState.lastFilled !== -1;
-  // ── Position the 108 mala beads only (index 0–107). Sumeru (index 108) is never touched here. ──
+
+  // ── Sumeru sits at top-center. Always fixed. ──
+  const sumeruCX = W / 2;
+  const sumeruCY = y0;
+  const sumeruEl = document.getElementById('beadSumeru');
+  if (sumeruEl) {
+    sumeruEl.setAttribute('cx', sumeruCX);
+    sumeruEl.setAttribute('cy', sumeruCY);
+  }
+
+  // Sumeru sits at top-center occupying slot 0 of 109 equal slots.
+  // The 108 mala beads fill slots 1-108 around it.
+  // sumeruD = distance from top-left corner to Sumeru along the top edge.
+  const sumeruD = sumeruCX - x0;
+
+  // CW mala:  bead 0 departs 1 slot LEFT of Sumeru, travels CW  → gold (100-107) arrive RIGHT ✓
+  // CCW mala: bead 0 departs 1 slot RIGHT of Sumeru, travels CCW → gold (100-107) arrive LEFT ✓
+  const cwOrigin  = sumeruD - step;  // 1 slot left of Sumeru
+  const ccwOrigin = sumeruD + step;  // 1 slot right of Sumeru
+
   for (let i = 0; i < N; i++) {
-    // i = tap order within mala (0 = first tap, 107 = last/gold). Direction flips per mala.
-    const d = isCW ? (i * step + step / 2) : (perim - (i * step + step / 2));
-    let x, y;
-    if (d < w) { x = x0 + d;            y = y0; }
-    else if (d < w + h) { x = x1;       y = y0 + (d - w); }
-    else if (d < 2 * w + h) { x = x1 - (d - w - h); y = y1; }
-    else { x = x0;                       y = y1 - (d - 2 * w - h); }
+    let d;
+    if (isCW) {
+      d = cwOrigin - i * step; // going left→top-left corner→bottom→right→top-right→right of Sumeru
+      // Negative d wraps around: normalise via _perimToXY
+    } else {
+      d = ccwOrigin + i * step; // going right→top-right corner→bottom→left→top-left→left of Sumeru
+    }
+    const { x, y } = _perimToXY(d, x0, y0, x1, y1);
     const c = beads[i];
     c.setAttribute('cx', x);
     c.setAttribute('cy', y);
     c.setAttribute('r', '2.2');
     c.setAttribute('style', '');
-    const baseCls = i < 100 ? 'bead bead-blue' : 'bead bead-gold';
+    const isGold = i >= (N - GOLD);
+    const baseCls = isGold ? 'bead bead-gold' : 'bead bead-blue';
     c.setAttribute('class', baseCls + (i < filled ? ' filled' : ''));
   }
-  // ── Sumeru bead: fixed at top-center. Set position only once when it has no cx yet. ──
-  const sumeruEl = document.getElementById('beadSumeru');
-  if (sumeruEl && !sumeruEl.getAttribute('cx')) {
-    sumeruEl.setAttribute('cx', W / 2);
-    sumeruEl.setAttribute('cy', y0);
-  }
-  // Pulse the freshly-filled bead so the user sees the tap land
+
+  // Pulse the freshly-filled bead
   if (justAdvanced && filled > 0 && filled <= N) {
     const pulsed = beads[filled - 1];
     if (pulsed) {

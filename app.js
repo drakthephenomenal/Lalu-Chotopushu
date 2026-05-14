@@ -1123,13 +1123,14 @@ function renderBeadFrame(tod, target) {
   const malaIdx = Math.floor(tod / ms);
   const completedView = inMala === 0 && tod > 0;
   const effectiveMala = completedView ? malaIdx - 1 : malaIdx;
-  // Even mala = CW (gold block on RIGHT of Sumeru), odd = CCW (gold block on LEFT of Sumeru)
+  // Mala 1,3,5… (odd, effectiveMala=0,2,4 zero-based) → CW: start RIGHT of Sumeru, gold ends LEFT
+  // Mala 2,4,6… (even, effectiveMala=1,3,5 zero-based) → CCW: start LEFT of Sumeru, gold ends RIGHT
   const isCW = (effectiveMala % 2) === 0;
   const filled = completedView ? N : Math.floor(inMala * N / ms);
   const beads = svg.children;
   const justAdvanced = filled > _beadState.lastFilled && _beadState.lastFilled !== -1;
 
-  // ── Sumeru sits at top-center. Always fixed. ──
+  // ── Sumeru: always fixed at top-center ──
   const sumeruCX = W / 2;
   const sumeruCY = y0;
   const sumeruEl = document.getElementById('beadSumeru');
@@ -1138,23 +1139,28 @@ function renderBeadFrame(tod, target) {
     sumeruEl.setAttribute('cy', sumeruCY);
   }
 
-  // Sumeru sits at top-center occupying slot 0 of 109 equal slots.
-  // The 108 mala beads fill slots 1-108 around it.
-  // sumeruD = distance from top-left corner to Sumeru along the top edge.
+  // 109 equal slots around the perimeter. Sumeru occupies the top-center slot.
+  // sumeruD = distance from top-left corner along top edge to Sumeru.
   const sumeruD = sumeruCX - x0;
 
-  // CW mala:  bead 0 departs 1 slot RIGHT of Sumeru, travels CW  → gold (100-107) arrive LEFT ✓
-  // CCW mala: bead 0 departs 1 slot LEFT of Sumeru, travels CCW → gold (100-107) arrive RIGHT ✓
-  const cwOrigin  = sumeruD + step;  // 1 slot right of Sumeru
-  const ccwOrigin = sumeruD - step;  // 1 slot left of Sumeru
+  // CW mala (odd):
+  //   Bead 0 is 1 slot to the RIGHT of Sumeru (clockwise from Sumeru).
+  //   Each next bead advances clockwise (+step in perimeter distance).
+  //   Bead 107 (last gold) lands 1 slot to the LEFT of Sumeru. Gold block = LEFT side. ✓
+  //
+  // CCW mala (even):
+  //   Bead 0 is 1 slot to the LEFT of Sumeru (anticlockwise from Sumeru).
+  //   Each next bead advances anticlockwise (-step in perimeter distance).
+  //   Bead 107 (last gold) lands 1 slot to the RIGHT of Sumeru. Gold block = RIGHT side. ✓
 
   for (let i = 0; i < N; i++) {
     let d;
     if (isCW) {
-      d = cwOrigin - i * step; // going left→top-left corner→bottom→right→top-right→right of Sumeru
-      // Negative d wraps around: normalise via _perimToXY
+      // Start 1 slot RIGHT of Sumeru, advance clockwise (increasing perimeter distance)
+      d = sumeruD + step + i * step;
     } else {
-      d = ccwOrigin + i * step; // going right→top-right corner→bottom→left→top-left→left of Sumeru
+      // Start 1 slot LEFT of Sumeru, advance anticlockwise (decreasing perimeter distance)
+      d = sumeruD - step - i * step;
     }
     const { x, y } = _perimToXY(d, x0, y0, x1, y1);
     const c = beads[i];

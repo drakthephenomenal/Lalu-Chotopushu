@@ -1143,10 +1143,10 @@ function renderBeadFrame(tod, target) {
   // sumeruD = distance from top-left corner to Sumeru along the top edge.
   const sumeruD = sumeruCX - x0;
 
-  // CW mala:  bead 0 departs 1 slot LEFT of Sumeru, travels CW  → gold (100-107) arrive RIGHT ✓
-  // CCW mala: bead 0 departs 1 slot RIGHT of Sumeru, travels CCW → gold (100-107) arrive LEFT ✓
-  const cwOrigin  = sumeruD - step;  // 1 slot left of Sumeru
-  const ccwOrigin = sumeruD + step;  // 1 slot right of Sumeru
+  // CW mala:  bead 0 departs 1 slot RIGHT of Sumeru, travels CW  → gold (100-107) arrive LEFT ✓
+  // CCW mala: bead 0 departs 1 slot LEFT of Sumeru, travels CCW → gold (100-107) arrive RIGHT ✓
+  const cwOrigin  = sumeruD + step;  // 1 slot right of Sumeru
+  const ccwOrigin = sumeruD - step;  // 1 slot left of Sumeru
 
   for (let i = 0; i < N; i++) {
     let d;

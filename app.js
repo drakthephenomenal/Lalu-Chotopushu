@@ -217,8 +217,13 @@ const App = {
   },
 
   getTk() {
-    const d = new Date();
-    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    // ── TIME SYNC FIX: Use server-corrected time if available, else local UTC ──
+    // Using UTC prevents cross-device timezone mismatch (e.g. one device in IST,
+    // another in UTC) from producing different date keys for the same day.
+    // _serverTimeOffsetMs is set by fbSyncServerTime() on every Firebase connection.
+    const now = Date.now() + (window._serverTimeOffsetMs || 0);
+    const d = new Date(now);
+    return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0');
   },
 
   gTod() {
@@ -1002,7 +1007,7 @@ function sv(id, btn) {
   document.querySelectorAll('.nb').forEach(b => b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if (btn) btn.classList.add('active');
-  if (id === 'vs') uStats();
+  if (id === 'vs') { uStats(); _historyAutoLoaded = false; }
   if (id === 'vb') { initBrahmaStartInput(); renderCal(); }
   if (id === 'vst') renderSt();
   if (id === 'v28') { u28(); render28Dots(get28Pos()); }
@@ -1304,6 +1309,8 @@ function deductOtherJap() {
   }
 
   App.save(); App.ua(); fbDebouncedPush(); renderCal();
+  // ── HISTORY FIX: re-render history table so the change appears immediately ──
+  if (typeof renderHistory === 'function') { try { renderHistory(); } catch(e) {} }
   document.getElementById('deductOtherIn').value = '';
   if (minEl) minEl.value = '';
   if (secEl) secEl.value = '';
@@ -1329,6 +1336,8 @@ function addOtherDayJap() {
   }
 
   App.save(); App.ua(); fbDebouncedPush(); renderCal();
+  // ── HISTORY FIX: re-render history table so the new entry appears immediately ──
+  if (typeof renderHistory === 'function') { try { renderHistory(); } catch(e) {} }
   document.getElementById('addJapOtherIn').value = '';
   if (minEl) minEl.value = '';
   if (secEl) secEl.value = '';
@@ -1382,6 +1391,8 @@ function addJapTimeOther() {
   const th2 = App.getCurTimerHistory();
   th2[date] = (th2[date] || 0) + secs;
   App.save(); App.ua(); fbDebouncedPush();
+  // ── HISTORY FIX: re-render history table so the new time appears immediately ──
+  if (typeof renderHistory === 'function') { try { renderHistory(); } catch(e) {} }
   document.getElementById('jtAddOtherMin').value = '';
   document.getElementById('jtAddOtherSec').value = '';
   document.getElementById('jtAddOtherDate').value = '';
@@ -1430,6 +1441,8 @@ function deductJapTimeOther() {
   if (secs > cur) { toast('Cannot deduct more than that day\'s time (' + Math.floor(cur/60) + 'm)'); return; }
   th4[date] = cur - secs;
   App.save(); App.ua(); fbDebouncedPush();
+  // ── HISTORY FIX: re-render history table so the change appears immediately ──
+  if (typeof renderHistory === 'function') { try { renderHistory(); } catch(e) {} }
   document.getElementById('jtDedOtherMin').value = '';
   document.getElementById('jtDedOtherSec').value = '';
   document.getElementById('jtDedOtherDate').value = '';
@@ -2306,6 +2319,39 @@ function fbWatchSession() {
 }
 
 
+// ── SERVER TIME SYNC ──
+// Measures offset between local clock and Firebase server clock.
+// Stored in window._serverTimeOffsetMs so getTk() uses corrected time.
+// This prevents date-key mismatches when device clock is wrong or across timezones.
+window._serverTimeOffsetMs = 0;
+async function fbSyncServerTime() {
+  if (!fbDb) return;
+  try {
+    const localBefore = Date.now();
+    // Write a server timestamp and immediately read it back to measure offset
+    const tempRef = fbDb.collection('_timesync').doc('probe');
+    await tempRef.set({ t: firebase.firestore.FieldValue.serverTimestamp() });
+    const snap = await tempRef.get();
+    const localAfter = Date.now();
+    if (snap.exists && snap.data().t) {
+      const serverMs = snap.data().t.toMillis();
+      const localMid = Math.round((localBefore + localAfter) / 2);
+      window._serverTimeOffsetMs = serverMs - localMid;
+      const driftSec = Math.round(window._serverTimeOffsetMs / 1000);
+      if (Math.abs(driftSec) > 60) {
+        console.warn('[TimeSync] Device clock drifts from server by ' + driftSec + 's. Correcting getTk().');
+        toast('⚠️ Device clock corrected by ' + driftSec + 's for accurate sync');
+      } else {
+        console.log('[TimeSync] Server offset: ' + window._serverTimeOffsetMs + 'ms (within tolerance)');
+      }
+      // Clean up probe document
+      tempRef.delete().catch(() => {});
+    }
+  } catch(e) {
+    console.warn('[TimeSync] Could not sync server time:', e.message);
+  }
+}
+
 function fbInit() {
   if (fbApp) return true;
   if (typeof firebase === 'undefined') {
@@ -2365,6 +2411,9 @@ function fbInit() {
         // guaranteed to fetch the latest cloud data before anything is rendered.
         fbClaimSession().then(async () => {
           fbWatchSession();
+          // ── Sync device clock with Firebase server time ──
+          // Corrects getTk() if local clock is wrong or in different timezone
+          await fbSyncServerTime();
           // Direct cloud pull — overwrites local cache with authoritative Firebase data
           await fbAutoSync();
           // Load global stotrams (inbuilt overrides + global stotrams for all users)
@@ -4461,10 +4510,11 @@ function renderHistory() {
     const radha  = hist[tk]   || 0;
     const rv     = histRV[tk] || 0;
     const taps28 = h28[tk]    || 0;
-    // Use malaLog arrays as ground truth for today's time (prevents mode-switch corruption)
-    const isRowToday = (tk === App.S.tk);
-    const tSecR_row  = isRowToday ? (App.S.malaLog||[]).reduce((a,b)=>a+b,0)   : (tHist[tk]||0);
-    const tSecRV_row = isRowToday ? (App.S.malaLogRV||[]).reduce((a,b)=>a+b,0) : (tHistRV[tk]||0);
+    // ── TIME FIX: Always read from timerHistory (single source of truth).
+    // timerHistory is kept in sync with malaLog by syncTimerFromMalaLog(),
+    // so using malaLog directly caused mismatch when manual jap+time was added.
+    const tSecR_row  = tHist[tk]   || 0;
+    const tSecRV_row = tHistRV[tk] || 0;
     const tSec   = tSecR_row + tSecRV_row;
     const t28Sec = t28Hist[tk] || 0;
     const totalSec = tSec + t28Sec;
@@ -4561,9 +4611,10 @@ function showHistDay(tk) {
   html += `<div style="background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.15);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;font-family:Inter,sans-serif">`;
   html += `<div style="font-size:10px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;font-weight:600">Day Summary</div>`;
   html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px">`;
-  // For today: use malaLog arrays as ground-truth time (they never have sync issues)
-  const tSecR_disp  = isToday ? (App.S.malaLog||[]).reduce((a,b)=>a+b,0)   : tSecR;
-  const tSecRV_disp = isToday ? (App.S.malaLogRV||[]).reduce((a,b)=>a+b,0) : tSecRV;
+  // ── TIME FIX: Always use timerHistory (syncTimerFromMalaLog keeps it authoritative).
+  // Previous isToday override caused mismatch when manual jap+time was added to today.
+  const tSecR_disp  = tSecR;
+  const tSecRV_disp = tSecRV;
   if (radha > 0)  html += `<div style="color:var(--gold)">Radha: <strong>${radhaM} mala</strong> (${radha}) · ${_histFmtSec(tSecR_disp)}</div>`;
   if (rv > 0)     html += `<div style="color:var(--a2)">RV: <strong>${rvM} mala</strong> (${rv}) · ${_histFmtSec(tSecRV_disp)}</div>`;
   if (taps28 > 0) html += `<div style="color:var(--green)">28 Names: <strong>${cyc28} cycles</strong> (${taps28}) · ${_histFmtSec(t28Sec)}</div>`;

@@ -1214,6 +1214,13 @@ function toggleCs(bodyId, chevId) {
 function addManualJap() {
   const n = parseInt(document.getElementById('manualJapIn').value) || 0;
   if (n <= 0) { toast('Please enter a number > 0'); return; }
+  // ── DAILY-TARGET FIX: ensure tk matches current day before writing ──
+  // Previously a stale App.S.tk could cause the new jap to be written to a
+  // different date key than the one gTod() reads back from, leaving the
+  // Daily progress bar showing 0 until a later refresh corrected it.
+  App.S.tk = App.getTk();
+  if (!App.S.history) App.S.history = {};
+  if (!App.S.historyRV) App.S.historyRV = {};
   const isRV = App.S.japMode === 'rv';
   if (isRV) { App.S.historyRV[App.S.tk] = (App.S.historyRV[App.S.tk] || 0) + n; }
   else { App.S.history[App.S.tk] = (App.S.history[App.S.tk] || 0) + n; }
@@ -1221,12 +1228,15 @@ function addManualJap() {
   const minEl = document.getElementById('manualJapMin');
   const secEl = document.getElementById('manualJapSec');
   const timeSecs = (parseInt(minEl?.value) || 0) * 60 + Math.min(59, Math.max(0, parseInt(secEl?.value) || 0));
+  // Hoisted so the celebration block below can safely reference it even when
+  // no time was entered (previously a block-scoped const threw a ReferenceError).
+  let avgPerMala = 0;
   if (timeSecs > 0) {
     // Push averaged mala entries into malaLog so Today's Mala Log shows them.
     // Also log to activityLog so history per-mala table shows them correctly.
     const ms2 = App.S.ms || 108;
     const malasAdded = Math.max(1, Math.floor(n / ms2));
-    const avgPerMala = Math.round(timeSecs / malasAdded);
+    avgPerMala = Math.round(timeSecs / malasAdded);
     const log = isRV ? (App.S.malaLogRV || (App.S.malaLogRV = [])) : (App.S.malaLog || (App.S.malaLog = []));
     const now = Date.now();
     for (let i = 0; i < malasAdded; i++) {
@@ -1241,7 +1251,7 @@ function addManualJap() {
   App.ensureMalaWallStart();
   const nm = Math.floor(App.gTod() / (App.S.ms || 108));
   const lmcKey = isRV ? 'lmcRV' : 'lmc';
-  if (nm > App[lmcKey]) {
+  if (nm > (App[lmcKey] || 0)) {
     App[lmcKey] = nm;
     // Celebrate the new mala milestone WITHOUT calling malaOk() —
     // malaOk() pushes a wall-clock duration into malaLog which creates a
@@ -1250,11 +1260,19 @@ function addManualJap() {
     if (_mf) { _mf.classList.add('show'); setTimeout(() => _mf.classList.remove('show'), 2800); }
     if (App.S.cfg && App.S.cfg.sound) playSynthBell();
     App.vib([200, 80, 200, 80, 300]);
-    App.flashMalaDuration(avgPerMala || 0);
+    App.flashMalaDuration(avgPerMala);
   }
   App.save(); App.ua(); fbDebouncedPush();
+  // ── DAILY-TARGET FIX: force every dependent view to re-read from state now,
+  // not just the home progress bar. This eliminates the lag where the Daily
+  // bar/Stats stayed at the old value until a later sync triggered a redraw. ──
+  try { uStats(); } catch(e) {}
+  try { if (typeof renderCal === 'function') renderCal(); } catch(e) {}
+  try { if (typeof renderBcal === 'function') renderBcal(); } catch(e) {}
   renderMalaLog();
   if (typeof renderHistory === 'function') { try { renderHistory(); } catch(e) {} }
+  // Defensive second pass on next tick to win any race with concurrent renders.
+  setTimeout(() => { try { App.ua(); uStats(); } catch(e) {} }, 0);
   document.getElementById('manualJapIn').value = '';
   if (minEl) minEl.value = '';
   if (secEl) secEl.value = '';

@@ -3616,8 +3616,27 @@ function renderBcGraph() {
   const canvas = document.getElementById('bcGraph');
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
-  const W = canvas.offsetWidth || 320;
-  const H = canvas.offsetHeight || 160;
+  // Make graph BIG and horizontally scrollable so each day gets breathing room
+  const parent = canvas.parentElement;
+  if (parent) {
+    parent.style.overflowX = 'auto';
+    parent.style.overflowY = 'hidden';
+    parent.style.webkitOverflowScrolling = 'touch';
+  }
+  const containerW = (parent && parent.clientWidth) || canvas.offsetWidth || 320;
+  // Estimate days in window for sizing (recomputed below precisely)
+  const _today = new Date(); _today.setHours(0,0,0,0);
+  const _wEnd = new Date(_today);
+  if (_bcRangeOffset < 0) _wEnd.setDate(_wEnd.getDate() + _bcRangeOffset);
+  const _wStart = new Date(_wEnd); _wStart.setDate(_wStart.getDate() - 89);
+  const _startD = new Date(getBrahmaStart()); _startD.setHours(0,0,0,0);
+  if (_wStart < _startD) _wStart.setTime(_startD.getTime());
+  const _DAYS = Math.round((_wEnd - _wStart) / 86400000) + 1;
+  const PER_DAY = 22; // px per day — generous spacing
+  const W = Math.max(containerW, _DAYS * PER_DAY + 50);
+  const H = 320; // big graph
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
   canvas.width = W * dpr;
   canvas.height = H * dpr;
   const ctx = canvas.getContext('2d');
@@ -3679,7 +3698,7 @@ function renderBcGraph() {
   const days = allDayData;
 
   const maxStreak = Math.max(...days.map(d => d.streak), 1);
-  const PAD = { l: 32, r: 10, t: 12, b: 24 };
+  const PAD = { l: 40, r: 14, t: 18, b: 44 };
   const gW = W - PAD.l - PAD.r;
   const gH = H - PAD.t - PAD.b;
   const xStep = gW / (days.length - 1 || 1);
@@ -3782,36 +3801,43 @@ function renderBcGraph() {
     }
   });
 
-  // X-axis month/date labels
-  ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  ctx.font = '9px Inter';
-  ctx.textAlign = 'left';
+  // X-axis: tithi numbers (1..30) under each day, plus month label on tithi 1
+  ctx.textAlign = 'center';
   let lastMonth = -1;
   days.forEach((d, i) => {
+    const x = PAD.l + i * xStep;
+    const t = getLunarTithi(d.date);
+    // Tithi number — color-coded by paksha (gold = Shukla 1-15, indigo = Krishna 16-30)
+    // Display as 1..15 in each paksha (so Krishna shows 1..15 too)
+    const display = t <= 15 ? t : (t - 15);
+    ctx.fillStyle = t <= 15 ? 'rgba(241,196,15,0.85)' : 'rgba(155,140,255,0.85)';
+    ctx.font = 'bold 10px Inter';
+    ctx.fillText(String(display), x, H - 22);
+    // Month label when month changes
     if (d.date.getMonth() !== lastMonth) {
       lastMonth = d.date.getMonth();
-      const x = PAD.l + i * xStep;
-      const label = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.date.getMonth()];
-      ctx.fillText(label, Math.min(x, W - PAD.r - 18), H - 5);
+      const label = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.date.getMonth()] + ' ' + d.date.getDate();
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.font = '9px Inter';
+      ctx.fillText(label, x, H - 6);
     }
   });
-
-  // Legend
   ctx.textAlign = 'left';
-  ctx.font = '9px Inter';
-  ctx.fillStyle = 'rgba(46,204,113,0.8)';
-  ctx.fillText('● Streak', W - 90, PAD.t + 10);
-  ctx.fillStyle = '#E74C3C';
-  ctx.fillText('● Relapse', W - 90, PAD.t + 22);
-  ctx.fillStyle = 'rgba(231,76,60,0.4)';
-  ctx.fillRect(W - 50, PAD.t + 27, 8, 8);
-  ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  ctx.fillText('Risk', W - 40, PAD.t + 35);
-  // Tithi legend
-  ctx.fillStyle = '#F1C40F'; ctx.fillText('Pu/Am', W - 90, PAD.t + 47);
-  ctx.fillStyle = 'rgba(189,147,249,0.9)'; ctx.fillText('Ek/Prati', W - 90, PAD.t + 59);
 
-  // Always refresh pattern engine when graph renders
+  // Legend (top-left, stays visible on scroll start)
+  ctx.textAlign = 'left';
+  ctx.font = '10px Inter';
+  ctx.fillStyle = 'rgba(46,204,113,0.9)';
+  ctx.fillText('● Streak', PAD.l + 6, PAD.t + 12);
+  ctx.fillStyle = '#E74C3C';
+  ctx.fillText('● Relapse', PAD.l + 70, PAD.t + 12);
+  ctx.fillStyle = 'rgba(231,76,60,0.4)';
+  ctx.fillRect(PAD.l + 140, PAD.t + 4, 10, 10);
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.fillText('Risk', PAD.l + 154, PAD.t + 12);
+  ctx.fillStyle = '#F1C40F'; ctx.fillText('Shukla 1–15', PAD.l + 190, PAD.t + 12);
+  ctx.fillStyle = 'rgba(155,140,255,0.95)'; ctx.fillText('Krishna 1–15', PAD.l + 270, PAD.t + 12);
+
   renderPatternEngine();
 }
 

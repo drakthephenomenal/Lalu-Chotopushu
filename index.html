@@ -422,6 +422,37 @@
     <div class="ns"><div class="nv" style="color:var(--a2)" id="bmp">0%</div><div class="nl">Success Rate</div></div>
   </div>
 
+  <!-- Brahmacharya Progress Graph -->
+  <div class="bc-graph-wrap">
+    <div class="bc-graph-title">📈 Streak Progress <span class="bc-graph-legend"><span class="bc-leg-risk">▊</span> Risk window (Navami–Trayodashi)</span></div>
+    <!-- Range Selector -->
+    <div class="bc-range-row" id="bcRangeRow">
+      <button class="bc-range-btn" onclick="bcShiftRange(-90)">&#8249; Prev 90d</button>
+      <span class="bc-range-label" id="bcRangeLabel">Last 90 days</span>
+      <button class="bc-range-btn" id="bcRangeNext" onclick="bcShiftRange(90)">Next 90d &#8250;</button>
+    </div>
+    <canvas id="bcGraph" class="bc-graph-canvas"></canvas>
+  </div>
+
+  <!-- Pattern Engine / Vulnerability Predictor -->
+  <div class="bc-pattern-wrap" id="bcPatternWrap">
+    <div class="bc-pattern-header" onclick="toggleBcPattern()">
+      <span>🧠 Vulnerability Pattern Engine</span>
+      <span class="bc-pattern-chevron" id="bcPatternChevron">▼</span>
+    </div>
+    <div class="bc-pattern-body" id="bcPatternBody">
+      <!-- Today's Risk Score -->
+      <div class="bc-risk-today" id="bcRiskToday">
+        <div class="bc-risk-label">Today's Risk Score</div>
+        <div class="bc-risk-bar-wrap"><div class="bc-risk-bar" id="bcRiskBar"></div></div>
+        <div class="bc-risk-pct" id="bcRiskPct">—</div>
+        <div class="bc-risk-slots" id="bcRiskSlots"></div>
+      </div>
+      <!-- Pattern Cards -->
+      <div class="bc-pattern-cards" id="bcPatternCards"></div>
+    </div>
+  </div>
+
   <!-- Unified Calendar -->
   <div class="ch">
     <button class="cnb" onclick="chm(-1)">&#8249;</button>
@@ -483,6 +514,8 @@
         <label style="font-size:12px;color:var(--tl);flex:1">Break count:</label>
         <input type="number" id="cdmoBcCnt" value="1" min="1" style="width:70px;background:rgba(0,0,0,0.3);border:1px solid rgba(231,76,60,0.3);border-radius:9px;padding:7px 11px;color:var(--tl);font-size:15px;text-align:center;font-family:'Inter',sans-serif;">
       </div>
+      <!-- Time inputs — one per break instance -->
+      <div id="bcTimeRows" style="display:none;margin-top:6px"></div>
     </div>
   </div>
 </div>

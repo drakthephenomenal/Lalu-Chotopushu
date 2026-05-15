@@ -829,3 +829,59 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   stroke-width:1.6;
   filter:drop-shadow(0 0 3px rgba(255,105,180,0.6)) drop-shadow(0 0 6px rgba(255,215,0,0.4));
 }
+
+/* ── Brahmacharya Graph ── */
+.bc-graph-wrap{padding:6px 14px 10px;margin-bottom:4px;}
+.bc-graph-title{font-size:10px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;font-weight:600;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;}
+.bc-graph-legend{font-size:9px;color:var(--td);letter-spacing:0;text-transform:none;font-weight:400;display:flex;align-items:center;gap:4px;}
+.bc-leg-risk{color:rgba(231,76,60,0.6);font-size:12px;}
+.bc-graph-canvas{width:100%;height:160px;border-radius:12px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.1);display:block;}
+
+/* ── Brahmacharya Time Entry Rows ── */
+#bcTimeRows{margin-top:4px;}
+.bc-time-row{display:flex;align-items:center;gap:7px;margin-bottom:7px;background:rgba(231,76,60,0.06);border:1px solid rgba(231,76,60,0.2);border-radius:10px;padding:8px 10px;}
+.bc-time-label{font-size:10px;color:var(--td);min-width:64px;font-weight:600;letter-spacing:.5px;}
+.bc-time-input{background:rgba(0,0,0,0.35);border:1px solid rgba(231,76,60,0.35);border-radius:8px;padding:6px 9px;color:var(--tl);font-size:13px;font-family:'Inter',sans-serif;width:110px;outline:none;}
+.bc-note-input{background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 9px;color:var(--tl);font-size:12px;font-family:'Inter',sans-serif;flex:1;outline:none;}
+.bc-note-input::placeholder{color:rgba(255,255,255,0.25);}
+
+/* ── Brahmacharya Time Display (in broken status) ── */
+.bc-times-display{margin-top:8px;display:flex;flex-direction:column;gap:5px;}
+.bc-time-item{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.bc-instance-num{font-size:10px;color:var(--td);min-width:20px;font-weight:600;}
+.bc-time-badge{background:rgba(231,76,60,0.18);border:1px solid rgba(231,76,60,0.35);border-radius:7px;padding:3px 9px;font-size:12px;color:var(--red);font-weight:600;}
+.bc-time-unknown{opacity:0.5;}
+.bc-note-badge{background:rgba(255,255,255,0.07);border-radius:7px;padding:3px 8px;font-size:11px;color:var(--td);font-style:italic;}
+
+/* ── Brahmacharya Graph Range Selector ── */
+.bc-range-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:6px;}
+.bc-range-btn{background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.18);color:var(--gold);font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;flex-shrink:0;transition:background .2s;}
+.bc-range-btn:active{background:rgba(255,215,0,0.18);}
+.bc-range-label{font-size:10px;color:var(--td);text-align:center;flex:1;letter-spacing:.5px;}
+
+/* ── Pattern Engine ── */
+.bc-pattern-wrap{margin:0 14px 14px;border-radius:14px;background:rgba(0,0,0,0.28);border:1px solid rgba(255,215,0,0.10);overflow:hidden;}
+.bc-pattern-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;cursor:pointer;color:var(--gold);font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;user-select:none;}
+.bc-pattern-chevron{font-size:10px;opacity:.7;}
+.bc-pattern-body{display:none;padding:0 14px 14px;}
+
+/* Risk score bar */
+.bc-risk-today{margin-bottom:14px;}
+.bc-risk-label{font-size:10px;color:var(--td);letter-spacing:.5px;margin-bottom:5px;text-transform:uppercase;}
+.bc-risk-bar-wrap{background:rgba(255,255,255,0.07);border-radius:20px;height:8px;overflow:hidden;margin-bottom:5px;}
+.bc-risk-bar{height:8px;border-radius:20px;transition:width .4s ease;}
+.bc-risk-pct{font-size:13px;font-weight:700;margin-bottom:6px;}
+.bc-risk-slot{display:inline-block;background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.3);color:#E74C3C;font-size:9px;padding:2px 7px;border-radius:10px;margin:2px 2px 0 0;}
+
+/* Pattern cards */
+.bc-pattern-cards{display:flex;flex-direction:column;gap:10px;}
+.bc-pc{background:rgba(255,255,255,0.04);border-radius:10px;padding:10px 12px;}
+.bc-pc-title{font-size:10px;color:var(--gold);font-weight:600;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;}
+.bc-pc-row{display:flex;align-items:center;gap:7px;margin-bottom:5px;font-size:11px;color:rgba(255,255,255,.8);}
+.bc-pc-row span:first-child{width:90px;flex-shrink:0;font-size:10px;}
+.bc-pc-bar-wrap{flex:1;background:rgba(255,255,255,.07);border-radius:20px;height:6px;overflow:hidden;}
+.bc-pc-bar{height:6px;border-radius:20px;min-width:2px;transition:width .3s ease;}
+.bc-pc-val{font-size:10px;color:var(--td);width:28px;text-align:right;flex-shrink:0;}
+.bc-pc-insight{font-size:10px;color:rgba(255,255,255,.45);margin-top:5px;font-style:italic;}
+.bc-pc-note{font-size:10px;color:var(--td);opacity:.6;}
+.bc-pc-empty{font-size:11px;color:var(--td);opacity:.6;text-align:center;padding:10px 0;}

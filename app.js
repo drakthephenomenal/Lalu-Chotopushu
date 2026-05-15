@@ -3565,6 +3565,440 @@ function toggleStEdit(id) {
 }
 function delSt(id) { App.S.customSt=(App.S.customSt||[]).filter(x=>x.id!==id); delete App.S.stotrams[id]; App.save(); fbDebouncedPush(); renderSt(); toast('Removed'); }
 
+// ── Brahmacharya Progress Graph ──
+// Anchor: May 16, 2026 = Amavasya (new moon, tithi 30/0 of Krishna paksha)
+// Synodic month ≈ 29.530589 days
+const BC_AMAVASYA_ANCHOR = new Date('2026-05-16T00:00:00');
+const SYNODIC_MONTH = 29.530589;
+
+function getLunarTithi(date) {
+  // Returns tithi 1–30 (1=Shukla Pratipada ... 15=Purnima, 16=Krishna Pratipada ... 30=Amavasya)
+  const diffDays = (date - BC_AMAVASYA_ANCHOR) / 86400000;
+  // diffDays from amavasya anchor; amavasya = tithi 30
+  // Normalize to synodic cycle
+  let phase = ((diffDays % SYNODIC_MONTH) + SYNODIC_MONTH) % SYNODIC_MONTH;
+  // tithi 30 starts at phase 0 (amavasya), tithi 1 at phase 1 day
+  let tithi = Math.floor(phase) + 1; // 1..30
+  if (tithi > 30) tithi = 30;
+  // Map: 1..15 = Shukla (bright half), 16..30 = Krishna (dark half)
+  // In our system: Navami=9, Trayodashi=13 in each paksha
+  // Shukla Navami = tithi 9, Shukla Trayodashi = tithi 13
+  // Krishna Navami = tithi 24 (15+9), Krishna Trayodashi = tithi 28 (15+13)
+  return tithi;
+}
+
+function isRiskDay(date) {
+  const t = getLunarTithi(date);
+  // Risk window: Navami to Trayodashi in both paksha
+  // Shukla: 9-13, Krishna: 24-28 (15+9 to 15+13)
+  return (t >= 9 && t <= 13) || (t >= 24 && t <= 28);
+}
+
+// ── Graph range state: offset in days from today (0 = last 90d, -90 = prev 90d, etc.)
+let _bcRangeOffset = 0;
+
+function bcShiftRange(delta) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const startD = new Date(getBrahmaStart()); startD.setHours(0,0,0,0);
+  const totalDays = Math.round((today - startD) / 86400000) + 1;
+  _bcRangeOffset += delta;
+  // Clamp: can't go before start, can't go after today
+  if (_bcRangeOffset > 0) _bcRangeOffset = 0;
+  const minOffset = -(Math.max(0, totalDays - 90));
+  if (_bcRangeOffset < minOffset) _bcRangeOffset = minOffset;
+  // Update next button visibility
+  const nextBtn = document.getElementById('bcRangeNext');
+  if (nextBtn) nextBtn.style.opacity = _bcRangeOffset < 0 ? '1' : '0.3';
+  renderBcGraph();
+}
+
+function renderBcGraph() {
+  const canvas = document.getElementById('bcGraph');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth || 320;
+  const H = canvas.offsetHeight || 160;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const startD = new Date(getBrahmaStart()); startD.setHours(0,0,0,0);
+  const totalDays = Math.round((today - startD) / 86400000) + 1;
+
+  // Compute window end/start based on offset
+  // _bcRangeOffset <= 0; 0 means last 90 days ending today
+  const windowEnd = new Date(today);
+  windowEnd.setDate(windowEnd.getDate() + _bcRangeOffset); // offset is <=0 so this goes back
+  // Actually offset shifts the window: positive delta moves forward, so:
+  // windowEnd = today + _bcRangeOffset (negative = earlier end)
+  // But we want: 0 = last 90 days (end = today), -90 = prev window (end = today-90)
+  // Recalculate: windowEnd is today when offset=0
+  const wEnd = new Date(today);
+  if (_bcRangeOffset < 0) wEnd.setDate(wEnd.getDate() + _bcRangeOffset);
+  const wStart = new Date(wEnd);
+  wStart.setDate(wStart.getDate() - 89); // 90 days window
+  // clamp wStart to brahma start
+  if (wStart < startD) wStart.setTime(startD.getTime());
+
+  const DAYS = Math.round((wEnd - wStart) / 86400000) + 1;
+
+  // Update range label
+  const lbl = document.getElementById('bcRangeLabel');
+  if (lbl) {
+    const fmt = d => d.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
+    const isLatest = _bcRangeOffset === 0;
+    lbl.textContent = isLatest ? 'Last 90 days' : `${fmt(wStart)} – ${fmt(wEnd)}`;
+  }
+  const nextBtn = document.getElementById('bcRangeNext');
+  if (nextBtn) nextBtn.style.opacity = _bcRangeOffset < 0 ? '1' : '0.3';
+
+  if (DAYS < 2) {
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.font = '12px Inter';
+    ctx.fillText('Not enough data yet', 10, H/2);
+    renderPatternEngine();
+    return;
+  }
+
+  // Build streak from brahma start up to wEnd (for correct streak count in window)
+  const allStart = new Date(startD);
+  const fullDays = Math.round((wEnd - allStart) / 86400000) + 1;
+  let streak = 0;
+  const allDayData = [];
+  for (let i = 0; i < fullDays; i++) {
+    const d = new Date(allStart); d.setDate(d.getDate() + i);
+    const key = d.toISOString().split('T')[0];
+    const en = App.S.brahma[key];
+    const broken = en && en.status === 'b';
+    if (broken) { streak = 0; } else { streak++; }
+    const inWindow = d >= wStart && d <= wEnd;
+    if (inWindow) allDayData.push({ date: new Date(d), key, broken, streak, risk: isRiskDay(d), times: (en && en.times) || [] });
+  }
+  const days = allDayData;
+
+  const maxStreak = Math.max(...days.map(d => d.streak), 1);
+  const PAD = { l: 32, r: 10, t: 12, b: 24 };
+  const gW = W - PAD.l - PAD.r;
+  const gH = H - PAD.t - PAD.b;
+  const xStep = gW / (days.length - 1 || 1);
+
+  // Draw risk bands
+  days.forEach((d, i) => {
+    if (d.risk) {
+      const x = PAD.l + i * xStep;
+      ctx.fillStyle = 'rgba(231,76,60,0.10)';
+      ctx.fillRect(Math.floor(x - xStep/2), PAD.t, Math.ceil(xStep + 1), gH);
+    }
+  });
+
+  // Draw grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 1;
+  [0.25, 0.5, 0.75, 1].forEach(f => {
+    const y = PAD.t + gH - f * gH;
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '9px Inter';
+    ctx.fillText(Math.round(f * maxStreak), 2, y + 3);
+  });
+
+  // Draw filled streak line
+  ctx.beginPath();
+  days.forEach((d, i) => {
+    const x = PAD.l + i * xStep;
+    const y = PAD.t + gH - (d.streak / maxStreak) * gH;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  const lastX = PAD.l + (days.length - 1) * xStep;
+  ctx.lineTo(lastX, PAD.t + gH);
+  ctx.lineTo(PAD.l, PAD.t + gH);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + gH);
+  grad.addColorStop(0, 'rgba(46,204,113,0.55)');
+  grad.addColorStop(1, 'rgba(46,204,113,0.05)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Draw streak line stroke
+  ctx.beginPath();
+  days.forEach((d, i) => {
+    const x = PAD.l + i * xStep;
+    const y = PAD.t + gH - (d.streak / maxStreak) * gH;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = 'rgba(46,204,113,0.9)';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // Draw relapse dots with time labels
+  days.forEach((d, i) => {
+    if (!d.broken) return;
+    const x = PAD.l + i * xStep;
+    const y = PAD.t + gH - 2;
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#E74C3C';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    const times = d.times || [];
+    if (times.length > 0 && times[0].time) {
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.font = 'bold 8px Inter';
+      ctx.textAlign = 'center';
+      ctx.fillText(times[0].time, x, y - 8);
+      if (times.length > 1) ctx.fillText('+' + (times.length-1) + 'x', x, y - 17);
+    }
+  });
+
+  // X-axis month/date labels
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.font = '9px Inter';
+  ctx.textAlign = 'left';
+  let lastMonth = -1;
+  days.forEach((d, i) => {
+    if (d.date.getMonth() !== lastMonth) {
+      lastMonth = d.date.getMonth();
+      const x = PAD.l + i * xStep;
+      const label = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.date.getMonth()];
+      ctx.fillText(label, Math.min(x, W - PAD.r - 18), H - 5);
+    }
+  });
+
+  // Legend
+  ctx.textAlign = 'left';
+  ctx.font = '9px Inter';
+  ctx.fillStyle = 'rgba(46,204,113,0.8)';
+  ctx.fillText('● Streak', W - 90, PAD.t + 10);
+  ctx.fillStyle = '#E74C3C';
+  ctx.fillText('● Relapse', W - 90, PAD.t + 22);
+  ctx.fillStyle = 'rgba(231,76,60,0.4)';
+  ctx.fillRect(W - 50, PAD.t + 27, 8, 8);
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.fillText('Risk', W - 40, PAD.t + 35);
+
+  // Always refresh pattern engine when graph renders
+  renderPatternEngine();
+}
+
+// ── Pattern Engine ──────────────────────────────────────────────
+
+let _bcPatternOpen = false;
+function toggleBcPattern() {
+  _bcPatternOpen = !_bcPatternOpen;
+  const body = document.getElementById('bcPatternBody');
+  const chev = document.getElementById('bcPatternChevron');
+  if (body) body.style.display = _bcPatternOpen ? 'block' : 'none';
+  if (chev) chev.textContent = _bcPatternOpen ? '▲' : '▼';
+  if (_bcPatternOpen) renderPatternEngine();
+}
+
+function renderPatternEngine() {
+  const brahma = App.S.brahma || {};
+  // Gather all break entries with rich data
+  const breaks = []; // {date, dow, hour, tithi, streakDay}
+  const allKeys = Object.keys(brahma).filter(k => brahma[k].status === 'b').sort();
+
+  // Compute streak-before-break for each relapse
+  const startD = new Date(getBrahmaStart()); startD.setHours(0,0,0,0);
+  allKeys.forEach(key => {
+    const d = new Date(key + 'T00:00:00');
+    const en = brahma[key];
+    const times = en.times || [];
+    // Compute streak length before this break
+    let sb = 0;
+    const prev = new Date(d); prev.setDate(prev.getDate() - 1);
+    while (true) {
+      const pk = prev.toISOString().split('T')[0];
+      if (prev < startD) break;
+      const pe = brahma[pk];
+      if (pe && pe.status === 'b') break;
+      sb++; prev.setDate(prev.getDate() - 1);
+      if (sb > 200) break;
+    }
+    const tithi = getLunarTithi(d);
+    if (times.length === 0) {
+      // No time data — record as hour-unknown (-1)
+      breaks.push({ date: d, dow: d.getDay(), hour: -1, tithi, streakDay: sb, count: en.count || 1 });
+    } else {
+      times.forEach(t => {
+        const hr = t.time ? parseInt(t.time.split(':')[0]) : -1;
+        breaks.push({ date: d, dow: d.getDay(), hour: hr, tithi, streakDay: sb, count: 1 });
+      });
+    }
+  });
+
+  // ── Today's live risk score ──────────────────────
+  const today = new Date(); today.setHours(0,0,0,0);
+  const nowH = new Date().getHours();
+  const todayDow = today.getDay();
+  const todayTithi = getLunarTithi(today);
+
+  // Component 1: time-of-day risk (what hour is vulnerable)
+  const hourCounts = new Array(24).fill(0);
+  let knownHourBreaks = 0;
+  breaks.forEach(b => { if (b.hour >= 0) { hourCounts[b.hour]++; knownHourBreaks++; } });
+  const maxHourCount = Math.max(...hourCounts, 1);
+  const timeScore = knownHourBreaks > 0 ? (hourCounts[nowH] / maxHourCount) * 100 : 0;
+
+  // Component 2: day-of-week risk
+  const dowCounts = new Array(7).fill(0);
+  breaks.forEach(b => dowCounts[b.dow]++);
+  const maxDow = Math.max(...dowCounts, 1);
+  const dowScore = (dowCounts[todayDow] / maxDow) * 100;
+
+  // Component 3: lunar tithi risk
+  const tithibroken = breaks.filter(b => b.tithi === todayTithi).length;
+  const tithiTotal = breaks.length;
+  const tithiScore = tithiTotal > 0 ? Math.min(100, (tithibroken / tithiTotal) * 100 * 5) : 0;
+
+  // Component 4: streak vulnerability — today's streak day
+  let todayStreak = 0;
+  const tmpD = new Date(today);
+  while (true) {
+    const k = tmpD.toISOString().split('T')[0];
+    if (tmpD < startD) break;
+    const e = brahma[k];
+    if (e && e.status === 'b') break;
+    todayStreak++; tmpD.setDate(tmpD.getDate() - 1);
+    if (todayStreak > 200) break;
+  }
+  const streakDays = breaks.map(b => b.streakDay);
+  const streakVulnWindow = 3;
+  const streakMatches = streakDays.filter(s => Math.abs(s - todayStreak) <= streakVulnWindow).length;
+  const streakScore = streakDays.length > 0 ? Math.min(100, (streakMatches / streakDays.length) * 100 * 4) : 0;
+
+  // Composite risk
+  const totalBreaks = breaks.length;
+  let composite;
+  if (totalBreaks < 3) {
+    composite = isRiskDay(today) ? 55 : 25; // fallback for sparse data
+  } else {
+    composite = Math.min(100, Math.round(
+      timeScore * 0.35 + dowScore * 0.25 + tithiScore * 0.20 + streakScore * 0.20
+    ));
+  }
+
+  // Render risk score UI
+  const riskBar = document.getElementById('bcRiskBar');
+  const riskPct = document.getElementById('bcRiskPct');
+  const riskSlots = document.getElementById('bcRiskSlots');
+  if (riskBar) {
+    const col = composite >= 70 ? '#E74C3C' : composite >= 40 ? '#F39C12' : '#2ECC71';
+    riskBar.style.width = composite + '%';
+    riskBar.style.background = col;
+  }
+  if (riskPct) {
+    const label = composite >= 70 ? '🔴 High Risk' : composite >= 40 ? '🟡 Moderate' : '🟢 Low Risk';
+    riskPct.textContent = `${composite}% — ${label}`;
+    riskPct.style.color = composite >= 70 ? '#E74C3C' : composite >= 40 ? '#F39C12' : '#2ECC71';
+  }
+
+  // Next 3 vulnerable time slots today
+  if (riskSlots) {
+    const sortedHours = hourCounts
+      .map((c, h) => ({ h, c }))
+      .filter(x => x.h > nowH && x.c > 0)
+      .sort((a, b) => b.c - a.c)
+      .slice(0, 3);
+    if (sortedHours.length > 0) {
+      riskSlots.innerHTML = '<div style="font-size:10px;opacity:.6;margin-bottom:4px">⚠️ Vulnerable slots ahead today:</div>' +
+        sortedHours.map(x => {
+          const pct = Math.round((x.c / maxHourCount) * 100);
+          return `<span class="bc-risk-slot">${x.h}:00–${x.h+1}:00 (${pct}%)</span>`;
+        }).join(' ');
+    } else if (knownHourBreaks === 0) {
+      riskSlots.innerHTML = '<div style="font-size:10px;opacity:.5">Add break times to see hourly predictions</div>';
+    } else {
+      riskSlots.innerHTML = '<div style="font-size:10px;color:#2ECC71">✓ No high-risk slots remaining today</div>';
+    }
+  }
+
+  if (!_bcPatternOpen) return; // Don't render cards if collapsed
+
+  // ── Pattern Cards ────────────────────────────────
+  const cards = document.getElementById('bcPatternCards');
+  if (!cards) return;
+  if (totalBreaks < 2) {
+    cards.innerHTML = '<div class="bc-pc-empty">Need at least 2 relapse entries with times to build patterns. Keep logging! 🙏</div>';
+    return;
+  }
+
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const DAYS_W = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  // Card 1: Peak hours
+  const topHours = hourCounts
+    .map((c, h) => ({ h, c }))
+    .filter(x => x.c > 0)
+    .sort((a, b) => b.c - a.c)
+    .slice(0, 3);
+  let c1 = '<div class="bc-pc"><div class="bc-pc-title">🕐 Peak Vulnerable Hours</div>';
+  if (topHours.length === 0) {
+    c1 += '<div class="bc-pc-note">No time data. Add times when logging breaks.</div>';
+  } else {
+    topHours.forEach(x => {
+      const pct = Math.round((x.c / knownHourBreaks) * 100);
+      c1 += `<div class="bc-pc-row"><span>${x.h}:00–${x.h+1}:00</span><div class="bc-pc-bar-wrap"><div class="bc-pc-bar" style="width:${pct}%;background:#E74C3C"></div></div><span class="bc-pc-val">${pct}%</span></div>`;
+    });
+    const [t1, t2] = topHours;
+    c1 += `<div class="bc-pc-insight">Most vulnerable: ${t1.h}:00–${t1.h+1}:00${t2 ? ` and ${t2.h}:00–${t2.h+1}:00` : ''}</div>`;
+  }
+  c1 += '</div>';
+
+  // Card 2: Day of week
+  const dowRank = dowCounts.map((c,i) => ({d:i,c})).sort((a,b) => b.c - a.c);
+  const topDows = dowRank.filter(x => x.c > 0).slice(0, 3);
+  let c2 = '<div class="bc-pc"><div class="bc-pc-title">📅 High-Risk Days of Week</div>';
+  topDows.forEach(x => {
+    const pct = Math.round((x.c / totalBreaks) * 100);
+    c2 += `<div class="bc-pc-row"><span>${DAYS_W[x.d]}</span><div class="bc-pc-bar-wrap"><div class="bc-pc-bar" style="width:${pct}%;background:#F39C12"></div></div><span class="bc-pc-val">${pct}%</span></div>`;
+  });
+  if (topDows.length >= 2) c2 += `<div class="bc-pc-insight">${DAYS_W[topDows[0].d]} & ${DAYS_W[topDows[1].d]} are your highest-risk days</div>`;
+  c2 += '</div>';
+
+  // Card 3: Streak vulnerability
+  const streakBuckets = {};
+  breaks.forEach(b => {
+    const bucket = Math.floor(b.streakDay / 5) * 5; // bucket by 5-day ranges
+    streakBuckets[bucket] = (streakBuckets[bucket] || 0) + 1;
+  });
+  const topStreak = Object.entries(streakBuckets).sort((a,b) => b[1] - a[1]).slice(0, 3);
+  let c3 = '<div class="bc-pc"><div class="bc-pc-title">⏱ Streak Day Vulnerability</div>';
+  topStreak.forEach(([bucket, cnt]) => {
+    const b = parseInt(bucket);
+    const pct = Math.round((cnt / totalBreaks) * 100);
+    c3 += `<div class="bc-pc-row"><span>Day ${b}–${b+4}</span><div class="bc-pc-bar-wrap"><div class="bc-pc-bar" style="width:${pct}%;background:#9B59B6"></div></div><span class="bc-pc-val">${pct}%</span></div>`;
+  });
+  if (topStreak.length > 0) {
+    const topB = parseInt(topStreak[0][0]);
+    c3 += `<div class="bc-pc-insight">Relapses cluster around day ${topB}–${topB+4} of a streak</div>`;
+  }
+  c3 += '</div>';
+
+  // Card 4: Lunar tithi pattern
+  const tithiBuckets = {};
+  breaks.forEach(b => { tithiBuckets[b.tithi] = (tithiBuckets[b.tithi] || 0) + 1; });
+  const topTithis = Object.entries(tithiBuckets).sort((a,b) => b[1]-a[1]).slice(0,3);
+  const tithiNames = { 9:'Navami', 10:'Dashami', 11:'Ekadashi', 12:'Dwadashi', 13:'Trayodashi',
+    15:'Purnima', 24:'Krishna Navami', 28:'Krishna Trayodashi', 30:'Amavasya' };
+  const tithiLabel = t => tithiNames[parseInt(t)] || `Tithi ${t}`;
+  let c4 = '<div class="bc-pc"><div class="bc-pc-title">🌙 Lunar Tithi Pattern</div>';
+  topTithis.forEach(([t, cnt]) => {
+    const pct = Math.round((cnt / totalBreaks) * 100);
+    c4 += `<div class="bc-pc-row"><span>${tithiLabel(t)}</span><div class="bc-pc-bar-wrap"><div class="bc-pc-bar" style="width:${pct}%;background:#1ABC9C"></div></div><span class="bc-pc-val">${pct}%</span></div>`;
+  });
+  const riskWindowBreaks = breaks.filter(b => isRiskDay(b.date)).length;
+  const riskPctVal = totalBreaks > 0 ? Math.round((riskWindowBreaks / totalBreaks) * 100) : 0;
+  c4 += `<div class="bc-pc-insight">${riskPctVal}% of relapses fall in Navami–Trayodashi window</div></div>`;
+
+  cards.innerHTML = c1 + c2 + c3 + c4;
+}
+
 // ── Brahmacharya ──
 function getBrahmaStart(){ return App.S.brahmacharya_start_date || '2026-03-16'; }
 function confirmBrahmaStartChange(val){
@@ -3664,6 +4098,7 @@ function renderCal(){
     g.appendChild(c);
   }
   uBStats();
+  renderBcGraph();
 }
 function chm(d){cald.setMonth(cald.getMonth()+d);renderCal();}
 // ── Calendar day bottom sheet ──
@@ -3722,17 +4157,37 @@ function showDay(key, cnt, timeSec, time28Sec) {
     bcSec.style.display = '';
     const bcEn = App.S.brahma[key], isBroken = bcEn && bcEn.status === 'b';
     if (isBroken) {
-      bcStatus.innerHTML = '❌ <span style="color:var(--red)">Broken</span>' + (bcEn.count > 1 ? ' (' + bcEn.count + 'x)' : '');
+      // Build time display from saved times array
+      const savedTimes = bcEn.times || [];
+      let timesHtml = '';
+      if (savedTimes.length > 0) {
+        timesHtml = '<div class="bc-times-display">';
+        savedTimes.forEach((t, i) => {
+          const tStr = t.time ? ('<span class="bc-time-badge">🕐 ' + t.time + '</span>') : '<span class="bc-time-badge bc-time-unknown">🕐 —</span>';
+          const nStr = t.note ? ('<span class="bc-note-badge">' + escHtml(t.note) + '</span>') : '';
+          timesHtml += '<div class="bc-time-item">' + (savedTimes.length > 1 ? '<span class="bc-instance-num">#' + (i+1) + '</span>' : '') + tStr + nStr + '</div>';
+        });
+        timesHtml += '</div>';
+      }
+      bcStatus.innerHTML = '❌ <span style="color:var(--red)">Broken</span>' + (bcEn.count > 1 ? ' (' + bcEn.count + 'x)' : '') + timesHtml;
       bcMaintBtn.style.display = '';
       bcBrkBtn.style.display = 'none';
       bcCntRow.style.display = 'none';
+      const bcTimeRows = document.getElementById('bcTimeRows');
+      if (bcTimeRows) bcTimeRows.style.display = 'none';
     } else {
       bcStatus.innerHTML = '✅ <span style="color:var(--green)">Maintained</span>';
       bcMaintBtn.style.display = 'none';
       bcBrkBtn.style.display = '';
       bcCntRow.style.display = 'flex';
+      const bcTimeRows = document.getElementById('bcTimeRows');
+      if (bcTimeRows) bcTimeRows.style.display = 'block';
+      renderBcTimeRows();
     }
+    const cntInputEl = document.getElementById('cdmoBcCnt');
+    if (cntInputEl) cntInputEl.oninput = function() { renderBcTimeRows(); };
     document.getElementById('cdmoBcCnt').value = (bcEn && bcEn.count) || 1;
+    if (!isBroken) renderBcTimeRows();
   } else {
     bcSec.style.display = 'none';
   }
@@ -3780,8 +4235,18 @@ function sheetMarkBc(action) {
   if (!key) return;
   if (action === 'b') {
     const cnt = parseInt(document.getElementById('cdmoBcCnt').value) || 1;
-    App.S.brahma[key] = { status: 'b', count: cnt };
-    logActivity({ t: 'brahma', ts: Date.now(), status: 'b', date: key, count: cnt });
+    // Collect times from dynamic time inputs
+    const times = [];
+    for (let i = 0; i < cnt; i++) {
+      const tEl = document.getElementById('bcTime_' + i);
+      const nEl = document.getElementById('bcNote_' + i);
+      times.push({
+        time: tEl ? tEl.value : '',
+        note: nEl ? nEl.value.trim() : ''
+      });
+    }
+    App.S.brahma[key] = { status: 'b', count: cnt, times: times };
+    logActivity({ t: 'brahma', ts: Date.now(), status: 'b', date: key, count: cnt, times: times });
     toast('Marked as broken 🙏');
   } else {
     delete App.S.brahma[key];
@@ -3794,6 +4259,37 @@ function sheetMarkBc(action) {
   const timeSec2 = (App.S.timerHistory[key]||0) + (App.S.timerHistoryRV[key]||0);
   const time28Sec2 = App.S.timer28History[key]||0;
   showDay(key, cnt2, timeSec2, time28Sec2);
+}
+
+// ── Render dynamic time input rows in brahmacharya broken section ──
+function renderBcTimeRows() {
+  const key = _sheetKey;
+  const cntEl = document.getElementById('cdmoBcCnt');
+  const cnt = parseInt(cntEl ? cntEl.value : 1) || 1;
+  const container = document.getElementById('bcTimeRows');
+  if (!container) return;
+  // Preserve existing values
+  const existing = [];
+  const old = container.querySelectorAll('.bc-time-row');
+  old.forEach((row, i) => {
+    existing[i] = {
+      time: (row.querySelector('input[type="time"]') || {}).value || '',
+      note: (row.querySelector('input[type="text"]') || {}).value || ''
+    };
+  });
+  // Pre-fill from saved data if available
+  const saved = key && App.S.brahma[key] && App.S.brahma[key].times ? App.S.brahma[key].times : [];
+  container.innerHTML = '';
+  for (let i = 0; i < cnt; i++) {
+    const prefill = existing[i] || saved[i] || {};
+    const div = document.createElement('div');
+    div.className = 'bc-time-row';
+    div.innerHTML =
+      '<span class="bc-time-label">Instance ' + (i+1) + ':</span>' +
+      '<input type="time" id="bcTime_' + i + '" class="bc-time-input" value="' + (prefill.time||'') + '" placeholder="HH:MM">' +
+      '<input type="text" id="bcNote_' + i + '" class="bc-note-input" value="' + escHtml(prefill.note||'') + '" placeholder="Note (optional)">';
+    container.appendChild(div);
+  }
 }
 function addOccasion(){
   const date=(document.getElementById('occDate')||{value:''}).value.trim();

@@ -3620,8 +3620,10 @@ function renderBcGraph() {
   const parent = canvas.parentElement;
   if (parent) {
     parent.style.overflowX = 'auto';
-    parent.style.overflowY = 'hidden';
+    parent.style.overflowY = 'visible';
     parent.style.webkitOverflowScrolling = 'touch';
+    parent.style.flexShrink = '0';
+    parent.style.minHeight = '340px';
   }
   const containerW = (parent && parent.clientWidth) || canvas.offsetWidth || 320;
   // Estimate days in window for sizing (recomputed below precisely)

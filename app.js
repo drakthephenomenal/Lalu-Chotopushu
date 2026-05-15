@@ -3684,6 +3684,14 @@ function renderBcGraph() {
   const gH = H - PAD.t - PAD.b;
   const xStep = gW / (days.length - 1 || 1);
 
+  // Paksha background tint (Shukla = light gold, Krishna = light indigo)
+  days.forEach((d, i) => {
+    const t = getLunarTithi(d.date);
+    const x = PAD.l + i * xStep;
+    ctx.fillStyle = t <= 15 ? 'rgba(241,196,15,0.05)' : 'rgba(72,52,212,0.07)';
+    ctx.fillRect(Math.floor(x - xStep/2), PAD.t, Math.ceil(xStep + 1), gH);
+  });
+
   // Draw risk bands
   days.forEach((d, i) => {
     if (d.risk) {
@@ -3691,6 +3699,25 @@ function renderBcGraph() {
       ctx.fillStyle = 'rgba(231,76,60,0.10)';
       ctx.fillRect(Math.floor(x - xStep/2), PAD.t, Math.ceil(xStep + 1), gH);
     }
+  });
+
+  // Lunar tithi markers — Pratipada (paksha start), Ekadashi, Purnima, Amavasya
+  const tithiMarkers = { 1:'S1', 11:'Ek', 15:'Pu', 16:'K1', 26:'KEk', 30:'Am' };
+  ctx.font = 'bold 8px Inter';
+  ctx.textAlign = 'center';
+  days.forEach((d, i) => {
+    const t = getLunarTithi(d.date);
+    if (!tithiMarkers[t]) return;
+    // Avoid double-mark: only draw if previous day had different tithi
+    if (i > 0 && getLunarTithi(days[i-1].date) === t) return;
+    const x = PAD.l + i * xStep;
+    ctx.strokeStyle = (t === 15 || t === 30) ? 'rgba(241,196,15,0.55)' : 'rgba(155,89,182,0.45)';
+    ctx.setLineDash([2,2]);
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + gH); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = (t === 15 || t === 30) ? '#F1C40F' : 'rgba(189,147,249,0.9)';
+    ctx.fillText(tithiMarkers[t], x, PAD.t + 8);
   });
 
   // Draw grid lines
@@ -3780,6 +3807,9 @@ function renderBcGraph() {
   ctx.fillRect(W - 50, PAD.t + 27, 8, 8);
   ctx.fillStyle = 'rgba(255,255,255,0.4)';
   ctx.fillText('Risk', W - 40, PAD.t + 35);
+  // Tithi legend
+  ctx.fillStyle = '#F1C40F'; ctx.fillText('Pu/Am', W - 90, PAD.t + 47);
+  ctx.fillStyle = 'rgba(189,147,249,0.9)'; ctx.fillText('Ek/Prati', W - 90, PAD.t + 59);
 
   // Always refresh pattern engine when graph renders
   renderPatternEngine();
@@ -3918,7 +3948,70 @@ function renderPatternEngine() {
     }
   }
 
+  // ── Next Urge Predictor ────────────────────────────
+  // Scan next 14 days × 24 hours and find top-3 highest-risk windows
+  // using same components: hour pattern, dow pattern, tithi pattern, streak pattern
+  let predEl = document.getElementById('bcPredictor');
+  if (!predEl && riskSlots && riskSlots.parentNode) {
+    predEl = document.createElement('div');
+    predEl.id = 'bcPredictor';
+    predEl.style.cssText = 'margin-top:10px;padding:10px;border-radius:8px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.25)';
+    riskSlots.parentNode.insertBefore(predEl, riskSlots.nextSibling);
+  }
+  if (predEl) {
+    if (totalBreaks < 3) {
+      predEl.innerHTML = '<div style="font-size:11px;font-weight:600;color:#BD93F9;margin-bottom:4px">🔮 Next Urge Predictor</div><div style="font-size:10px;opacity:.6">Need at least 3 logged relapses with times to forecast next urge.</div>';
+    } else {
+      const tNames = { 1:'Shukla Pratipada',2:'Dwitiya',3:'Tritiya',4:'Chaturthi',5:'Panchami',6:'Shashthi',7:'Saptami',8:'Ashtami',9:'Navami',10:'Dashami',11:'Ekadashi',12:'Dwadashi',13:'Trayodashi',14:'Chaturdashi',15:'Purnima',16:'Krishna Pratipada',17:'K.Dwitiya',18:'K.Tritiya',19:'K.Chaturthi',20:'K.Panchami',21:'K.Shashthi',22:'K.Saptami',23:'K.Ashtami',24:'K.Navami',25:'K.Dashami',26:'K.Ekadashi',27:'K.Dwadashi',28:'K.Trayodashi',29:'K.Chaturdashi',30:'Amavasya' };
+      const slots = [];
+      const now = new Date();
+      const startScan = new Date(now); startScan.setMinutes(0,0,0);
+      for (let dh = 0; dh < 14 * 24; dh++) {
+        const dt = new Date(startScan.getTime() + dh * 3600000);
+        if (dt <= now) continue;
+        const hr = dt.getHours();
+        const dow = dt.getDay();
+        const dDay = new Date(dt); dDay.setHours(0,0,0,0);
+        const tt = getLunarTithi(dDay);
+        // Streak day at that future date (assuming no future breaks)
+        const daysAhead = Math.round((dDay - today) / 86400000);
+        const futureStreak = todayStreak + daysAhead;
+        const hScore = knownHourBreaks > 0 ? (hourCounts[hr] / maxHourCount) : 0;
+        const dScore = (dowCounts[dow] / maxDow);
+        const ttCount = breaks.filter(b => b.tithi === tt).length;
+        const ttScore = totalBreaks > 0 ? Math.min(1, (ttCount / totalBreaks) * 5) : 0;
+        const sMatches = streakDays.filter(s => Math.abs(s - futureStreak) <= streakVulnWindow).length;
+        const sScore = streakDays.length > 0 ? Math.min(1, (sMatches / streakDays.length) * 4) : 0;
+        const score = hScore * 0.40 + dScore * 0.20 + ttScore * 0.20 + sScore * 0.20;
+        if (score > 0) slots.push({ dt, score, tt, hr });
+      }
+      slots.sort((a,b) => b.score - a.score);
+      const top = slots.slice(0, 3);
+      const fmtDt = d => {
+        const dl = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+        const ml = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+        return `${dl} ${d.getDate()} ${ml}, ${d.getHours()}:00`;
+      };
+      let html = '<div style="font-size:11px;font-weight:600;color:#BD93F9;margin-bottom:6px">🔮 Next Urge Predictor — top forecasts</div>';
+      if (top.length === 0 || top[0].score === 0) {
+        html += '<div style="font-size:10px;opacity:.6">No clear pattern yet — keep logging.</div>';
+      } else {
+        top.forEach((s, idx) => {
+          const conf = Math.round(s.score * 100);
+          const col = conf >= 50 ? '#E74C3C' : conf >= 25 ? '#F39C12' : '#2ECC71';
+          html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:11px;border-top:${idx?'1px solid rgba(255,255,255,0.05)':'none'}">
+            <div><span style="opacity:.5">${idx+1}.</span> <b>${fmtDt(s.dt)}</b><div style="font-size:9px;opacity:.55">${tNames[s.tt] || 'Tithi '+s.tt}</div></div>
+            <div style="color:${col};font-weight:600">${conf}%</div>
+          </div>`;
+        });
+        html += '<div style="font-size:9px;opacity:.5;margin-top:4px">Plan a stotram, walk, or cold shower at these times. 🙏</div>';
+      }
+      predEl.innerHTML = html;
+    }
+  }
+
   if (!_bcPatternOpen) return; // Don't render cards if collapsed
+
 
   // ── Pattern Cards ────────────────────────────────
   const cards = document.getElementById('bcPatternCards');

@@ -4170,24 +4170,26 @@ function showDay(key, cnt, timeSec, time28Sec) {
         timesHtml += '</div>';
       }
       bcStatus.innerHTML = '❌ <span style="color:var(--red)">Broken</span>' + (bcEn.count > 1 ? ' (' + bcEn.count + 'x)' : '') + timesHtml;
+      // Allow editing count/times directly without first marking maintained
       bcMaintBtn.style.display = '';
-      bcBrkBtn.style.display = 'none';
-      bcCntRow.style.display = 'none';
+      bcBrkBtn.style.display = '';
+      bcBrkBtn.textContent = 'Update';
+      bcCntRow.style.display = 'flex';
       const bcTimeRows = document.getElementById('bcTimeRows');
-      if (bcTimeRows) bcTimeRows.style.display = 'none';
+      if (bcTimeRows) bcTimeRows.style.display = 'block';
     } else {
       bcStatus.innerHTML = '✅ <span style="color:var(--green)">Maintained</span>';
       bcMaintBtn.style.display = 'none';
       bcBrkBtn.style.display = '';
+      bcBrkBtn.textContent = 'Mark Broken';
       bcCntRow.style.display = 'flex';
       const bcTimeRows = document.getElementById('bcTimeRows');
       if (bcTimeRows) bcTimeRows.style.display = 'block';
-      renderBcTimeRows();
     }
     const cntInputEl = document.getElementById('cdmoBcCnt');
     if (cntInputEl) cntInputEl.oninput = function() { renderBcTimeRows(); };
     document.getElementById('cdmoBcCnt').value = (bcEn && bcEn.count) || 1;
-    if (!isBroken) renderBcTimeRows();
+    renderBcTimeRows();
   } else {
     bcSec.style.display = 'none';
   }

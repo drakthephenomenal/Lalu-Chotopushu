@@ -1032,7 +1032,7 @@ function sv(id, btn) {
   document.getElementById(id).classList.add('active');
   if (btn) btn.classList.add('active');
   if (id === 'vs') { uStats(); _historyAutoLoaded = false; }
-  if (id === 'vb') { initBrahmaStartInput(); renderCal(); renderEkadashiList(); setTimeout(renderBcGraph, 100); }
+  if (id === 'vb') { initBrahmaStartInput(); renderCal(); renderEkadashiList(); requestAnimationFrame(function(){ setTimeout(renderBcGraph, 50); }); }
   if (id === 'vst') renderSt();
   if (id === 'v28') { u28(); render28Dots(get28Pos()); }
   else { App.flush28TimeToHistory(); }
@@ -3900,7 +3900,7 @@ function renderBcGraph() {
     || (_vb ? _vb.offsetWidth - 28 : 0)
     || window.innerWidth - 28;
   // If still zero the tab hasn't laid out yet — retry after paint
-  if (_raw <= 10) { setTimeout(renderBcGraph, 200); return; }
+  if (_raw <= 10) { requestAnimationFrame(function(){ setTimeout(renderBcGraph, 100); }); return; }
   const containerW = _raw;
 
   const today = new Date(); today.setHours(0,0,0,0);
@@ -3932,6 +3932,7 @@ function renderBcGraph() {
   canvas.width = W * dpr;
   canvas.height = H * dpr;
   const ctx = canvas.getContext('2d');
+  if (!ctx) { setTimeout(renderBcGraph, 300); return; }
   ctx.scale(dpr, dpr);
 
   // White background

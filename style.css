@@ -838,8 +838,8 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .bc-graph-legend-row{display:flex;align-items:center;margin-bottom:14px;font-size:11px;}
 .bc-legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0;}
 .bc-legend-text{color:#555;margin-left:5px;}
-.bc-graph-scroll-wrap{overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;border-radius:12px;width:100%;box-sizing:border-box;}
-.bc-graph-canvas{display:block;border-radius:12px;background:#fff;}
+.bc-graph-scroll-wrap{overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;border-radius:12px;width:100%;box-sizing:border-box;min-height:360px;}
+.bc-graph-canvas{display:block;border-radius:12px;background:#fff;min-height:360px;width:100%;}
 .bc-range-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:6px;}
 .bc-range-btn{background:rgba(0,0,0,0.05);border:1px solid rgba(0,0,0,0.12);color:#333;font-size:11px;padding:5px 13px;border-radius:20px;cursor:pointer;flex-shrink:0;transition:background .15s;font-family:'Inter',sans-serif;}
 .bc-range-btn:active{background:rgba(0,0,0,0.12);}

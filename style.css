@@ -520,6 +520,15 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .cdmo-occ-in{flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.25);border-radius:9px;padding:8px 11px;color:var(--tl);font-size:13px;font-family:'Inter',sans-serif;outline:none;}
 .cdmo-occ-in:focus{border-color:var(--gold);}
 .cdmo-occ-add{padding:8px 14px;border-radius:9px;border:none;background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,215,0,0.15));color:var(--gold);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;}
+.cdmo-panchang{background:linear-gradient(135deg,rgba(155,89,182,0.08),rgba(90,50,190,0.06));border:1px solid rgba(155,89,182,0.25);border-radius:14px;padding:13px 14px;margin-bottom:10px;}
+.cdmo-panchang-label{font-size:10px;color:#b39ddb;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;font-weight:600;}
+.cdmo-panchang-month{font-family:'EB Garamond',serif;font-size:15px;color:#ce93d8;margin-bottom:10px;line-height:1.4;border-bottom:1px solid rgba(155,89,182,0.2);padding-bottom:8px;}
+.cdmo-panchang-grid{display:flex;flex-direction:column;gap:5px;}
+.cdmp-row{display:flex;align-items:baseline;gap:6px;}
+.cdmp-key{font-size:11px;color:rgba(255,255,255,0.4);min-width:72px;flex-shrink:0;letter-spacing:0.3px;}
+.cdmp-val{font-family:'EB Garamond',serif;font-size:14px;color:rgba(255,255,255,0.88);line-height:1.35;}
+.cdmp-val .cdmp-end{font-size:11px;color:rgba(255,255,255,0.35);margin-left:4px;}
+.cdmp-val .cdmp-bn{font-size:12px;color:#b39ddb;margin-left:5px;}
 
 /* ── MILESTONE SYSTEM ── */
 .ms-overlay{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;

@@ -464,6 +464,37 @@
       <div class="cdmo-title" id="cdmoTitle">—</div>
       <button class="cdmo-close" onclick="closeDaySheet()">✕ Close</button>
     </div>
+    <!-- Panchang Section -->
+    <div class="cdmo-panchang" id="cdmoPanchang">
+      <div class="cdmo-panchang-label">🪷 Panchang</div>
+      <div class="cdmo-panchang-month" id="cdmoPanchangMonth">—</div>
+      <div class="cdmo-panchang-grid">
+        <div class="cdmp-row">
+          <span class="cdmp-key">Paksha</span>
+          <span class="cdmp-val" id="cdmpPaksha">—</span>
+        </div>
+        <div class="cdmp-row">
+          <span class="cdmp-key">Tithi</span>
+          <span class="cdmp-val" id="cdmpTithi">—</span>
+        </div>
+        <div class="cdmp-row">
+          <span class="cdmp-key">Nakshatra</span>
+          <span class="cdmp-val" id="cdmpNakshatra">—</span>
+        </div>
+        <div class="cdmp-row">
+          <span class="cdmp-key">Yoga</span>
+          <span class="cdmp-val" id="cdmpYoga">—</span>
+        </div>
+        <div class="cdmp-row">
+          <span class="cdmp-key">Karana</span>
+          <span class="cdmp-val" id="cdmpKarana">—</span>
+        </div>
+        <div class="cdmp-row">
+          <span class="cdmp-key">Vaara</span>
+          <span class="cdmp-val" id="cdmpVaara">—</span>
+        </div>
+      </div>
+    </div>
     <!-- Jap + Timer stats -->
     <div class="cdmo-stat" id="cdmoStat">
       <div class="cdmo-stat-row">🕉️ Radha Jap <span class="cdmo-stat-val" id="cdmoRadhaJap">—</span></div>
@@ -1153,6 +1184,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="./stotrams.js"></script>
+    <script src="./panchangData.js"></script>
     <script src="./app.js"></script>
 
   </body>

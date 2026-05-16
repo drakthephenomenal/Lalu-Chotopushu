@@ -4600,6 +4600,85 @@ function renderCal(){
 function chm(d){cald.setMonth(cald.getMonth()+d);renderCal();}
 // ── Calendar day bottom sheet ──
 let _sheetKey = null;
+// ── Panchang rendering for the day popup ─────────────────────────
+function _renderDayPanchang(key) {
+  // Reset to loading state
+  const ids = ['cdmpPaksha','cdmpTithi','cdmpNakshatra','cdmpYoga','cdmpKarana','cdmpVaara'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = '<span style="color:rgba(255,255,255,0.25);font-size:12px">…</span>'; });
+  const monthEl = document.getElementById('cdmoPanchangMonth');
+  if (monthEl) monthEl.innerHTML = '<span style="color:rgba(255,255,255,0.25);font-size:12px">Loading…</span>';
+
+  if (typeof getPanchangData !== 'function') {
+    if (monthEl) monthEl.textContent = 'Panchang module not loaded';
+    return;
+  }
+
+  // Build date at local sunrise (6 AM) for that day — this gives correct tithi at sunrise
+  const parts = key.split('-');
+  const dateAtSunrise = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]), 6, 0, 0);
+
+  function _renderWithLatLng(lat, lng) {
+    try {
+      const p = getPanchangData(lat, lng, dateAtSunrise);
+
+      // Month line: "Purushottama / Purushottama" or "Jyeshtha / Trivikrama"
+      if (monthEl) {
+        const adhikBadge = p.month.isAdhik
+          ? '<span style="font-size:10px;background:rgba(206,147,216,0.2);border:1px solid rgba(206,147,216,0.4);border-radius:5px;padding:1px 6px;margin-left:6px;color:#ce93d8;vertical-align:middle;">Adhik Maas</span>'
+          : '';
+        monthEl.innerHTML =
+          `<span style="color:#ce93d8">${p.month.stdBn}</span> <span style="color:rgba(255,255,255,0.3);font-size:12px">/</span> <span style="color:#b39ddb">${p.month.gaudiyaBn}</span>${adhikBadge}<br>` +
+          `<span style="font-size:12px;color:rgba(255,255,255,0.45)">${p.month.std} / ${p.month.gaudiya}</span>` +
+          `<span style="font-size:11px;color:rgba(255,255,255,0.3);margin-left:8px">${p.gaurabdaYear} Gaurabda</span>`;
+      }
+
+      // Helper to build a val span with Bengali + end time
+      function val(en, bn, endTime) {
+        let html = `${en} <span class="cdmp-bn">${bn}</span>`;
+        if (endTime) html += ` <span class="cdmp-end">up to ${endTime}</span>`;
+        return html;
+      }
+
+      const pakshaEl = document.getElementById('cdmpPaksha');
+      if (pakshaEl) pakshaEl.innerHTML = val(p.paksha.gaudiya, p.paksha.gaudiyaBn, null);
+
+      const tithiEl = document.getElementById('cdmpTithi');
+      if (tithiEl) tithiEl.innerHTML = val(p.tithi.name, p.tithi.nameBn, p.tithi.endTimeHM);
+
+      const nakEl = document.getElementById('cdmpNakshatra');
+      if (nakEl) nakEl.innerHTML = val(p.nakshatra.name, p.nakshatra.nameBn, p.nakshatra.endTimeHM);
+
+      const yogaEl = document.getElementById('cdmpYoga');
+      if (yogaEl) yogaEl.innerHTML = val(p.yoga.name, p.yoga.nameBn, p.yoga.endTimeHM);
+
+      const karanaEl = document.getElementById('cdmpKarana');
+      if (karanaEl) karanaEl.innerHTML = val(p.karana.name, p.karana.nameBn, null);
+
+      const vaaraEl = document.getElementById('cdmpVaara');
+      if (vaaraEl) vaaraEl.innerHTML = val(p.vaara.name, p.vaara.nameBn, null);
+
+    } catch(e) {
+      if (monthEl) monthEl.textContent = 'Panchang error';
+      console.error('Panchang error:', e);
+    }
+  }
+
+  // Use saved GPS coords if available, else try to get location
+  const savedLat = App.S && App.S.lastLat;
+  const savedLng = App.S && App.S.lastLng;
+  if (savedLat && savedLng) {
+    _renderWithLatLng(savedLat, savedLng);
+  } else if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => _renderWithLatLng(pos.coords.latitude, pos.coords.longitude),
+      ()  => _renderWithLatLng(23.0, 89.5), // Bangladesh fallback
+      { timeout: 8000, maximumAge: 3600000 }
+    );
+  } else {
+    _renderWithLatLng(23.0, 89.5); // fallback
+  }
+}
+
 function showDay(key, cnt, timeSec, time28Sec) {
   _sheetKey = key;
   const ms = App.S.ms || 108;
@@ -4693,6 +4772,9 @@ function showDay(key, cnt, timeSec, time28Sec) {
 
   // Clear input
   document.getElementById('cdmoOccIn').value = '';
+
+  // Panchang
+  _renderDayPanchang(key);
 
   document.getElementById('cdmo').classList.add('show');
 }
@@ -4885,7 +4967,13 @@ function updateSunInfo(lat,lng){
 function initSunTimes(){
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(
-      pos=>{updateSunInfo(pos.coords.latitude,pos.coords.longitude);setInterval(()=>updateSunInfo(pos.coords.latitude,pos.coords.longitude),600000);},
+      pos=>{
+        const lat=pos.coords.latitude, lng=pos.coords.longitude;
+        // Save for panchang use
+        if(App.S){ App.S.lastLat=lat; App.S.lastLng=lng; }
+        updateSunInfo(lat,lng);
+        setInterval(()=>updateSunInfo(lat,lng),600000);
+      },
       ()=>updateSunInfo(23.8103,90.4125),
       {timeout:8000,maximumAge:3600000}
     );

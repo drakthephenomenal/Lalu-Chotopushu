@@ -3659,6 +3659,190 @@ function toggleStEdit(id) {
 }
 function delSt(id) { App.S.customSt=(App.S.customSt||[]).filter(x=>x.id!==id); delete App.S.stotrams[id]; App.save(); fbDebouncedPush(); renderSt(); toast('Removed'); }
 
+// ═══════════════════════════════════════════════════════════════
+// PANCHANG ENGINE — GPS-based astronomical tithi, no API key
+// Moon elongation from sun (VSOP87 simplified) → tithi 1-30
+// Each 12° of elongation = 1 tithi
+// ═══════════════════════════════════════════════════════════════
+
+function _moonElongation(date) {
+  const JD = date.getTime() / 86400000 + 2440587.5;
+  const T  = (JD - 2451545.0) / 36525.0;
+  const r  = Math.PI / 180;
+  const L0 = (280.46646 + 36000.76983 * T) % 360;
+  const M  = (357.52911 + 35999.05029 * T - 0.0001537 * T * T) % 360;
+  const Mr = M * r;
+  const C  = (1.914602 - 0.004817*T - 0.000014*T*T)*Math.sin(Mr)
+           + (0.019993 - 0.000101*T)*Math.sin(2*Mr)
+           +  0.000289*Math.sin(3*Mr);
+  const sunLon = L0 + C;
+  const Lm = (218.3164477 + 481267.88123421*T - 0.0015786*T*T) % 360;
+  const Mm = (134.9633964 + 477198.8675055 *T + 0.0087414*T*T) % 360;
+  const F  = ( 93.2720950 + 483202.0175233 *T - 0.0036539*T*T) % 360;
+  const D  = (297.8501921 + 445267.1114034 *T - 0.0018819*T*T) % 360;
+  const Mmr=Mm*r, Fr=F*r, Dr=D*r;
+  const moonLon = Lm
+    + 6.289*Math.sin(Mmr)   - 1.274*Math.sin(2*Dr-Mmr)
+    + 0.658*Math.sin(2*Dr)  - 0.214*Math.sin(2*Mmr)
+    + 0.059*Math.sin(2*Dr-2*Mmr+Mmr) - 0.057*Math.sin(2*Dr-Mr-Mmr)
+    + 0.053*Math.sin(2*Dr+Mmr) + 0.046*Math.sin(2*Dr-Mr)
+    + 0.041*Math.sin(Mmr-Mr)   - 0.034*Math.sin(Dr)
+    + 0.030*Math.sin(2*Mmr-Mr) - 0.024*Math.sin(2*(Dr-Mmr))
+    + 0.018*Math.sin(2*Dr-2*Fr-Mmr);
+  return ((moonLon - sunLon) % 360 + 360) % 360;
+}
+
+// tithi 1-30 at a given moment
+function _tithiAtMoment(date) {
+  return Math.floor(_moonElongation(date) / 12) + 1;
+}
+
+// Binary-search exact moment elongation crosses a degree boundary within [lo,hi]
+function _findElongCrossing(targetDeg, lo, hi) {
+  let loT = lo.getTime(), hiT = hi.getTime();
+  for (let i = 0; i < 48; i++) {
+    const mid = (loT + hiT) / 2;
+    const e = _moonElongation(new Date(mid));
+    const diff = ((e - targetDeg + 360) % 360);
+    if (diff < 180) hiT = mid; else loT = mid;
+    if (hiT - loT < 15000) break; // 15-second precision
+  }
+  return new Date((loT + hiT) / 2);
+}
+
+function _didCross(prev, cur, deg) {
+  if (prev > 330 && cur < 30) return deg > 330 ? prev <= deg : deg < 30 ? cur >= deg : false;
+  return prev < deg && cur >= deg;
+}
+
+// Find Ekadashi tithi start/end in a window. Returns {paksha, ekStart, ekEnd} or null.
+function _findEkInWindow(wStart, wEnd, paksha) {
+  const startDeg = paksha === 'shukla' ? 120 : 300;
+  const endDeg   = paksha === 'shukla' ? 132 : 312;
+  const DAY = 86400000;
+  let prev = _moonElongation(wStart), ekStart = null, ekEnd = null;
+  const cur = new Date(wStart);
+  while (cur <= wEnd) {
+    cur.setTime(cur.getTime() + DAY);
+    const e = _moonElongation(cur);
+    if (!ekStart && _didCross(prev, e, startDeg))
+      ekStart = _findElongCrossing(startDeg, new Date(cur.getTime()-DAY), new Date(cur));
+    if (ekStart && !ekEnd && _didCross(prev, e, endDeg))
+      ekEnd   = _findElongCrossing(endDeg,   new Date(cur.getTime()-DAY), new Date(cur));
+    if (ekStart && ekEnd) break;
+    prev = e;
+  }
+  if (!ekStart) return null;
+  if (!ekEnd) ekEnd = new Date(ekStart.getTime() + 90000000); // ~25h fallback
+  return { paksha, ekStart, ekEnd };
+}
+
+function _d2hhmm(d) {
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function _d2ymd(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+// Resolve the single fasting date per parampara from an Ek result
+function _resolveEkFasting(ek, lat, lng, name) {
+  const { paksha, ekStart, ekEnd } = ek;
+  const startDate = _d2ymd(ekStart), endDate = _d2ymd(ekEnd);
+  const startTime = _d2hhmm(ekStart), endTime = _d2hhmm(ekEnd);
+  const srData = calcSunTimes(lat, lng, ekStart);
+  const sunriseH = srData ? srData.sunriseH : 6.0;
+  const arunodayaH = sunriseH - 96/60;
+  const ekStartH = ekStart.getHours() + ekStart.getMinutes()/60;
+  const parampara = App.S.ekParampara || 'smarta';
+  let fastingDate = startDate, isViddha = false;
+  if (parampara === 'vaishnava') {
+    if (ekStartH > arunodayaH) { fastingDate = endDate; isViddha = true; }
+  } else {
+    // Smarta: fast on day where Ekadashi is present at sunrise
+    if (ekStartH > sunriseH) fastingDate = endDate;
+  }
+  const pakshaLabel = paksha === 'shukla' ? ' ☀️ Shukla' : ' 🌙 Krishna';
+  const label = (name||'Ekadashi') + pakshaLabel + (isViddha ? ' (Mahadvadashi)' : '');
+  return { name: name||'Ekadashi', paksha, isViddha, startDate, startTime, endDate, endTime, fastingDate, label };
+}
+
+// Ekadashi names by Shukla month index (0=Chaitra in Panchang ≈ March/April)
+const _EK_NAMES_SHUKLA = [
+  'Papamochani','Kamada','Varuthini','Mohini','Apara','Nirjala',
+  'Yogini','Devshayani','Kamika','Shravana Putrada','Aja','Parsva',
+  'Indira','Papankusha','Rama','Devutthana','Utpanna','Mokshada',
+  'Saphala','Putrada','Sat-tila','Jaya','Vijaya','Amalaki'
+];
+const _EK_NAMES_KRISHNA = [
+  'Chaitra K.Ek','Vaishakha K.Ek','Jyeshtha K.Ek','Ashadha K.Ek',
+  'Shravana K.Ek','Bhadrapada K.Ek','Ashwin K.Ek','Kartik K.Ek',
+  'Margashirsha K.Ek','Pausha K.Ek','Magha K.Ek','Phalguna K.Ek'
+];
+
+let _panchangFetching = false;
+
+async function fetchPanchangEkadashis() {
+  if (_panchangFetching) return;
+  _panchangFetching = true;
+  const btn = document.getElementById('panchangFetchBtn');
+  const status = document.getElementById('panchangStatus');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Computing…'; }
+  if (status) status.textContent = '📍 Getting GPS location…';
+  try {
+    const pos = await new Promise((res,rej) => {
+      if (!navigator.geolocation) { rej(new Error('GPS unavailable')); return; }
+      navigator.geolocation.getCurrentPosition(res, rej, {timeout:10000, maximumAge:3600000});
+    });
+    const lat = pos.coords.latitude, lng = pos.coords.longitude;
+    if (status) status.textContent = '🔢 Computing tithis…';
+
+    if (!App.S.customEkadashi) App.S.customEkadashi = [];
+    if (!App.S.occasions) App.S.occasions = {};
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const DAY = 86400000;
+    let added = 0, cur = new Date(today);
+    // Scan 6 months × 2 pakshas = 12 Ekadashis
+    for (let i = 0; i < 12; i++) {
+      for (const paksha of ['shukla','krishna']) {
+        const wStart = new Date(cur);
+        const wEnd   = new Date(cur.getTime() + 17*DAY);
+        const ek = _findEkInWindow(wStart, wEnd, paksha);
+        if (ek && ek.ekStart >= today) {
+          const mi = ek.ekStart.getMonth();
+          const name = paksha === 'shukla'
+            ? (_EK_NAMES_SHUKLA[mi] || 'Ekadashi')
+            : (_EK_NAMES_KRISHNA[mi] || 'Krishna Ekadashi');
+          const resolved = _resolveEkFasting(ek, lat, lng, name);
+          const exists = App.S.customEkadashi.some(e => _ekDate(e) === resolved.startDate);
+          if (!exists) {
+            App.S.customEkadashi.push({
+              name: resolved.name, paksha: resolved.paksha,
+              startDate: resolved.startDate, startTime: resolved.startTime,
+              endDate: resolved.endDate, endTime: resolved.endTime,
+              autoFetched: true
+            });
+            App.S.occasions[resolved.fastingDate] = resolved.label;
+            added++;
+          }
+        }
+        cur.setTime(cur.getTime() + 15*DAY);
+      }
+    }
+    App.S.customEkadashi.sort((a,b) => _ekDate(a)<_ekDate(b)?-1:1);
+    App.save(); fbDebouncedPush();
+    renderEkadashiList(); renderCal();
+    if (status) status.textContent = `✅ ${added} added · ${12-added} already saved`;
+    toast(`📅 ${added} Ekadashis auto-added for ~6 months! 🙏`);
+  } catch(e) {
+    if (status) status.textContent = '⚠️ ' + (e.message||'Location denied');
+    toast('GPS error: ' + (e.message||'denied'));
+  } finally {
+    _panchangFetching = false;
+    if (btn) { btn.disabled = false; btn.textContent = '🌙 Auto-Fetch from GPS'; }
+  }
+}
+
 // ── Brahmacharya Progress Graph ──
 // Anchor: May 16, 2026 = Amavasya (new moon, tithi 30/0 of Krishna paksha)
 // Synodic month ≈ 29.530589 days
@@ -3666,19 +3850,8 @@ const BC_AMAVASYA_ANCHOR = new Date('2026-05-16T00:00:00');
 const SYNODIC_MONTH = 29.530589;
 
 function getLunarTithi(date) {
-  // Returns tithi 1–30 (1=Shukla Pratipada ... 15=Purnima, 16=Krishna Pratipada ... 30=Amavasya)
-  const diffDays = (date - BC_AMAVASYA_ANCHOR) / 86400000;
-  // diffDays from amavasya anchor; amavasya = tithi 30
-  // Normalize to synodic cycle
-  let phase = ((diffDays % SYNODIC_MONTH) + SYNODIC_MONTH) % SYNODIC_MONTH;
-  // tithi 30 starts at phase 0 (amavasya), tithi 1 at phase 1 day
-  let tithi = Math.floor(phase) + 1; // 1..30
-  if (tithi > 30) tithi = 30;
-  // Map: 1..15 = Shukla (bright half), 16..30 = Krishna (dark half)
-  // In our system: Navami=9, Trayodashi=13 in each paksha
-  // Shukla Navami = tithi 9, Shukla Trayodashi = tithi 13
-  // Krishna Navami = tithi 24 (15+9), Krishna Trayodashi = tithi 28 (15+13)
-  return tithi;
+  // Primary: precise moon elongation (VSOP87 simplified)
+  return _tithiAtMoment(date);
 }
 
 function isRiskDay(date) {
@@ -3796,14 +3969,30 @@ function addEkadashiDate() {
   const shuklaRadio = document.getElementById('ekPakshaShukla');
   if (shuklaRadio) shuklaRadio.checked = true;
 
-  // Add to calendar occasions — both start and end dates
+  // ── Write single fasting-date occasion per Parampara ──
   if (!App.S.occasions) App.S.occasions = {};
-  const label = (name || 'Ekadashi') + (paksha === 'shukla' ? ' (Shukla)' : ' (Krishna)');
+  const label = (name || 'Ekadashi') + (paksha === 'shukla' ? ' ☀️ Shukla' : ' 🌙 Krishna');
   const startFmt = startTime ? _fmtTime12(startTime) : '';
   const endFmt   = endTime   ? _fmtTime12(endTime)   : '';
-  const timeRange = (startFmt && endFmt) ? ' ' + startFmt + '–' + endFmt : startFmt ? ' ' + startFmt : '';
-  App.S.occasions[startDate] = label + timeRange;
-  if (endDate && endDate !== startDate) App.S.occasions[endDate] = label + ' (ends' + (endFmt ? ' ' + endFmt : '') + ')';
+
+  let fastingDate = startDate;
+  let isViddha = false;
+  const parampara = App.S.ekParampara || 'smarta';
+  if (startTime && endDate && endDate !== startDate) {
+    const [sh, sm] = startTime.split(':').map(Number);
+    const ekStartH = sh + sm/60;
+    if (parampara === 'vaishnava') {
+      // Arunodaya = 96 min before sunrise ≈ 04:24 for 06:00 sunrise (264 min)
+      if (ekStartH * 60 >= 264) { fastingDate = endDate; isViddha = true; }
+    } else {
+      // Smarta: if tithi begins after sunrise (~06:00 = 360 min), fast on endDate
+      if (ekStartH * 60 >= 360) fastingDate = endDate;
+    }
+  }
+  const timeNote = isViddha
+    ? ' (Mahadvadashi · Arunodaya Viddha)'
+    : startFmt ? ' ' + startFmt + (endFmt ? '–' + endFmt : '') : '';
+  App.S.occasions[fastingDate] = label + timeNote;
 
   App.save(); fbDebouncedPush();
   renderEkadashiList();
@@ -3833,39 +4022,111 @@ function renderEkadashiList() {
   if (!list) return;
   const entries = App.S.customEkadashi || [];
   if (entries.length === 0) {
-    list.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;padding:10px 0 4px;">No Ekadashis saved yet. Add one above.</div>';
+    list.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;padding:10px 0 4px;">No Ekadashis saved yet.</div>';
     return;
   }
   list.innerHTML = entries.map(e => {
     const sd = _ekDate(e);
-    const ed = (typeof e === 'object' && e.endDate) ? e.endDate : sd;
-    const name = (typeof e === 'object' && e.name) ? e.name : 'Ekadashi';
-    const paksha = (typeof e === 'object' && e.paksha) ? e.paksha : '';
-    const startTime = (typeof e === 'object' && e.startTime) ? e.startTime : '';
-    const endTime   = (typeof e === 'object' && e.endTime)   ? e.endTime   : '';
-    const fmtDate = d => {
-      const obj = new Date(d + 'T00:00:00');
-      return obj.toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
-    };
-    const sfmt = startTime ? _fmtTime12(startTime) : '';
-    const efmt = endTime   ? _fmtTime12(endTime)   : '';
-    const pLabel = paksha === 'shukla'
-      ? '<span style="font-size:9px;background:rgba(241,196,15,0.2);color:#F1C40F;border-radius:4px;padding:2px 6px;font-weight:700;letter-spacing:1px;">SHUKLA</span>'
-      : paksha === 'krishna'
-      ? '<span style="font-size:9px;background:rgba(155,89,182,0.25);color:#BD93F9;border-radius:4px;padding:2px 6px;font-weight:700;letter-spacing:1px;">KRISHNA</span>'
-      : '';
-    const sameDay = sd === ed;
-    return `<div style="background:rgba(155,89,182,0.09);border:1px solid rgba(155,89,182,0.22);border-radius:12px;padding:12px;margin-bottom:10px;">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:7px;">
-        <div>
-          <div style="font-size:13px;color:#BD93F9;font-weight:700;margin-bottom:3px;">${name} ${pLabel}</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.55);">${fmtDate(sd)}${sfmt ? ' · ' + sfmt : ''}</div>
-          ${!sameDay ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);">→ ${fmtDate(ed)}${efmt ? ' · ' + efmt : ''}</div>` : (efmt ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);">ends ${efmt}</div>` : '')}
+    const ed = (typeof e==='object'&&e.endDate)?e.endDate:sd;
+    const name = (typeof e==='object'&&e.name)?e.name:'Ekadashi';
+    const paksha = (typeof e==='object'&&e.paksha)?e.paksha:'shukla';
+    const startTime=(typeof e==='object'&&e.startTime)?e.startTime:'';
+    const endTime  =(typeof e==='object'&&e.endTime  )?e.endTime  :'';
+    const isAuto   =(typeof e==='object'&&e.autoFetched)?true:false;
+    const fmtD = d => new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+    const sfmt = startTime?_fmtTime12(startTime):'';
+    const efmt = endTime  ?_fmtTime12(endTime  ):'';
+    const pLabel = paksha==='shukla'
+      ?'<span style="font-size:9px;background:rgba(241,196,15,0.2);color:#F1C40F;border-radius:4px;padding:2px 5px;font-weight:700;">☀️ SHUKLA</span>'
+      :'<span style="font-size:9px;background:rgba(155,89,182,0.25);color:#BD93F9;border-radius:4px;padding:2px 5px;font-weight:700;">🌙 KRISHNA</span>';
+    const autoTag = isAuto?'<span style="font-size:8px;color:rgba(46,204,113,0.7);margin-left:4px;">AUTO</span>':'';
+    const eid = 'ekEd_'+sd.replace(/-/g,'');
+    return `<div style="background:rgba(155,89,182,0.09);border:1px solid rgba(155,89,182,0.22);border-radius:12px;padding:11px;margin-bottom:9px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;color:#BD93F9;font-weight:700;margin-bottom:2px;">${name} ${pLabel}${autoTag}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.5);">${fmtD(sd)}${sfmt?' · '+sfmt:''} → ${fmtD(ed)}${efmt?' · '+efmt:''}</div>
         </div>
-        <button onclick="removeEkadashiDate('${sd}')" style="background:rgba(232,51,109,0.15);border:1px solid rgba(232,51,109,0.3);border-radius:7px;color:#e8336d;font-size:11px;padding:5px 10px;cursor:pointer;font-family:Inter,sans-serif;flex-shrink:0;margin-left:8px;">✕</button>
+        <div style="display:flex;gap:5px;flex-shrink:0;margin-left:7px;">
+          <button onclick="toggleEkEdit('${sd}')" style="background:rgba(74,144,226,0.15);border:1px solid rgba(74,144,226,0.3);border-radius:7px;color:#6DB8FF;font-size:11px;padding:5px 9px;cursor:pointer;font-family:Inter,sans-serif;">✏</button>
+          <button onclick="removeEkadashiDate('${sd}')" style="background:rgba(232,51,109,0.15);border:1px solid rgba(232,51,109,0.3);border-radius:7px;color:#e8336d;font-size:11px;padding:5px 9px;cursor:pointer;font-family:Inter,sans-serif;">✕</button>
+        </div>
+      </div>
+      <div id="${eid}" style="display:none;margin-top:10px;background:rgba(0,0,0,0.3);border-radius:9px;padding:10px;">
+        <div style="font-size:9px;color:rgba(189,147,249,0.6);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:700;">Edit</div>
+        <input type="text" id="${eid}_n" value="${name.replace(/"/g,'&quot;')}" placeholder="Name" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:8px;padding:7px 10px;color:#fff;font-size:12px;font-family:Inter,sans-serif;outline:none;margin-bottom:8px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px;">
+          <label style="display:flex;align-items:center;gap:6px;background:rgba(241,196,15,0.08);border:1px solid rgba(241,196,15,0.25);border-radius:7px;padding:7px 9px;cursor:pointer;">
+            <input type="radio" name="${eid}_p" value="shukla" ${paksha==='shukla'?'checked':''} style="accent-color:#F1C40F;">
+            <span style="font-size:11px;color:#F1C40F;font-weight:600;">☀️ Shukla</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.25);border-radius:7px;padding:7px 9px;cursor:pointer;">
+            <input type="radio" name="${eid}_p" value="krishna" ${paksha==='krishna'?'checked':''} style="accent-color:#BD93F9;">
+            <span style="font-size:11px;color:#BD93F9;font-weight:600;">🌙 Krishna</span>
+          </label>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px;">
+          <div><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:3px;text-transform:uppercase;">Start Date</div>
+            <input type="date" id="${eid}_sd" value="${sd}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:7px;padding:7px 5px;color:#fff;font-size:11px;font-family:Inter,sans-serif;outline:none;"></div>
+          <div><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:3px;text-transform:uppercase;">Start Time</div>
+            <input type="time" id="${eid}_st" value="${startTime}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:7px;padding:7px 5px;color:#fff;font-size:11px;font-family:Inter,sans-serif;outline:none;"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:9px;">
+          <div><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:3px;text-transform:uppercase;">End Date</div>
+            <input type="date" id="${eid}_ed" value="${ed}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:7px;padding:7px 5px;color:#fff;font-size:11px;font-family:Inter,sans-serif;outline:none;"></div>
+          <div><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:3px;text-transform:uppercase;">End Time</div>
+            <input type="time" id="${eid}_et" value="${endTime}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:7px;padding:7px 5px;color:#fff;font-size:11px;font-family:Inter,sans-serif;outline:none;"></div>
+        </div>
+        <button onclick="saveEkadashiEdit('${sd}')" style="display:block;width:100%;padding:9px;border-radius:8px;border:none;background:linear-gradient(135deg,rgba(155,89,182,0.7),rgba(90,50,190,0.6));color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">💾 Save Changes</button>
       </div>
     </div>`;
   }).join('');
+}
+
+function toggleEkEdit(startDate) {
+  const eid = 'ekEd_'+startDate.replace(/-/g,'');
+  const el = document.getElementById(eid);
+  if (el) el.style.display = el.style.display==='none'?'block':'none';
+}
+
+function saveEkadashiEdit(oldSd) {
+  const eid = 'ekEd_'+oldSd.replace(/-/g,'');
+  const newName = (document.getElementById(eid+'_n')||{}).value||'';
+  const newSd   = (document.getElementById(eid+'_sd')||{}).value||'';
+  const newSt   = (document.getElementById(eid+'_st')||{}).value||'';
+  const newEd   = (document.getElementById(eid+'_ed')||{}).value||'';
+  const newEt   = (document.getElementById(eid+'_et')||{}).value||'';
+  const pEl     = document.querySelector(`input[name="${eid}_p"]:checked`);
+  const newPaksha = pEl?pEl.value:'shukla';
+  if (!newSd) { toast('Start date required 📅'); return; }
+
+  // Remove old
+  const oldEntry = (App.S.customEkadashi||[]).find(e=>_ekDate(e)===oldSd);
+  App.S.customEkadashi = (App.S.customEkadashi||[]).filter(e=>_ekDate(e)!==oldSd);
+  if (App.S.occasions && oldEntry) {
+    [oldSd, oldEntry.endDate].filter(Boolean).forEach(d=>{
+      if(App.S.occasions[d]&&(App.S.occasions[d].includes('Ekadashi')||App.S.occasions[d].includes('Mahadvadashi')||(oldEntry.name&&App.S.occasions[d].includes(oldEntry.name))))
+        delete App.S.occasions[d];
+    });
+  }
+  // Re-compute fasting date
+  const lbl = (newName.trim()||'Ekadashi')+(newPaksha==='shukla'?' ☀️ Shukla':' 🌙 Krishna');
+  let fastingDate=newSd, isViddha=false;
+  const parampara=App.S.ekParampara||'smarta';
+  if (newSt && newEd && newEd!==newSd) {
+    const [h,m]=newSt.split(':').map(Number), ekH=h+m/60;
+    if (parampara==='vaishnava'&&ekH*60>=264) { fastingDate=newEd; isViddha=true; }
+    else if (parampara==='smarta'&&ekH*60>=360) fastingDate=newEd;
+  }
+  const sf=newSt?_fmtTime12(newSt):'', ef=newEt?_fmtTime12(newEt):'';
+  const tnote=isViddha?' (Mahadvadashi · Arunodaya Viddha)':sf?' '+sf+(ef?'–'+ef:''):'';
+  if (!App.S.occasions) App.S.occasions={};
+  App.S.occasions[fastingDate]=lbl+tnote;
+  App.S.customEkadashi.push({name:newName.trim(),paksha:newPaksha,startDate:newSd,startTime:newSt,endDate:newEd||newSd,endTime:newEt});
+  App.S.customEkadashi.sort((a,b)=>_ekDate(a)<_ekDate(b)?-1:1);
+  App.save(); fbDebouncedPush();
+  renderEkadashiList(); renderCal();
+  toast('Ekadashi updated ✅');
 }
 
 // ── Graph range state: offset in days from today (0 = last 90d, -90 = prev 90d, etc.)

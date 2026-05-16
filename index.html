@@ -424,7 +424,13 @@
 
   <!-- Brahmacharya Progress Graph -->
   <div class="bc-graph-wrap">
-    <div class="bc-graph-title">📈 Streak Progress <span class="bc-graph-legend"><span class="bc-leg-risk">▊</span> Risk window (Navami–Trayodashi)</span></div>
+    <div class="bc-graph-title">📈 Streak Progress
+      <span class="bc-graph-legend">
+        <span class="bc-leg-risk">▊</span> Risk window &nbsp;
+        <span style="color:#F1C40F;font-size:9px;font-weight:600">▊</span> Shukla &nbsp;
+        <span style="color:rgba(72,52,212,0.8);font-size:9px;font-weight:600">▊</span> Krishna
+      </span>
+    </div>
     <!-- Range Selector -->
     <div class="bc-range-row" id="bcRangeRow">
       <button class="bc-range-btn" onclick="bcShiftRange(-90)">&#8249; Prev 90d</button>
@@ -455,16 +461,36 @@
 
   <!-- Custom Ekadashi Dates -->
   <div style="background:rgba(155,89,182,0.06);border:1px solid rgba(155,89,182,0.28);border-radius:18px;margin-bottom:14px;overflow:hidden;">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;cursor:pointer;user-select:none;-webkit-user-select:none;" onclick="toggleCs('ekadashiBody','ekadashiChev')">
-      <h3 style="font-size:11px;color:rgba(189,147,249,0.9);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin:0;">📅 Custom Ekadashi Dates</h3>
-      <span class="cs-chevron" id="ekadashiChev" style="color:rgba(189,147,249,0.9)">▾</span>
+    <div class="cs-header" onclick="toggleCs('ekadashiBody','ekadashiChev')" style="padding:13px 16px">
+      <h3 style="font-size:11px;color:rgba(189,147,249,0.9);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin:0;">📅 Ekadashi Date Manager</h3>
+      <span class="cs-chevron" id="ekadashiChev" style="color:rgba(189,147,249,0.9);transform:rotate(180deg)">▾</span>
     </div>
-    <div class="cs-body" id="ekadashiBody">
-      <p style="font-size:12px;color:var(--td);margin-bottom:12px">Add exact Ekadashi dates to make the brahmacharya risk graph more accurate. A ±2 day risk window is marked around each date.</p>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
-        <input type="date" class="fi" id="ekadashiDateIn" style="flex:1;font-size:13px;background:rgba(0,0,0,0.3);border-color:rgba(155,89,182,0.35);">
-        <button onclick="addEkadashiDate()" style="padding:10px 16px;border-radius:10px;border:none;background:linear-gradient(135deg,rgba(155,89,182,0.5),rgba(100,60,180,0.4));color:#BD93F9;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'Inter',sans-serif;flex-shrink:0;">+ Add</button>
+    <div class="cs-body open" id="ekadashiBody">
+      <p style="font-size:12px;color:var(--td);margin-bottom:14px;line-height:1.5">Enter exact Ekadashi dates with timing. Every 2 consecutive dates define one Shukla + Krishna paksha division on the graph. Dates are also added to the calendar as occasions.</p>
+
+      <div style="background:rgba(0,0,0,0.25);border-radius:12px;padding:12px;margin-bottom:12px;">
+        <div style="font-size:10px;color:rgba(189,147,249,0.7);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;font-weight:600">Add Ekadashi</div>
+
+        <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+          <input type="date" class="fi" id="ekadashiDateIn" style="flex:1;font-size:13px;background:rgba(0,0,0,0.3);border-color:rgba(155,89,182,0.35);">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;margin-bottom:10px">
+          <div>
+            <div style="font-size:10px;color:var(--td);letter-spacing:1px;margin-bottom:4px">STARTS</div>
+            <input type="time" class="fi" id="ekadashiStartIn" style="width:100%;font-size:13px;background:rgba(0,0,0,0.3);border-color:rgba(155,89,182,0.35);">
+          </div>
+          <div style="font-size:14px;color:var(--td);text-align:center;padding-top:18px">→</div>
+          <div>
+            <div style="font-size:10px;color:var(--td);letter-spacing:1px;margin-bottom:4px">ENDS</div>
+            <input type="time" class="fi" id="ekadashiEndIn" style="width:100%;font-size:13px;background:rgba(0,0,0,0.3);border-color:rgba(155,89,182,0.35);">
+          </div>
+        </div>
+
+        <button onclick="addEkadashiDate()" style="width:100%;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,rgba(155,89,182,0.55),rgba(100,60,180,0.45));color:#BD93F9;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:0.5px;">+ Add Ekadashi</button>
       </div>
+
+      <div style="font-size:10px;color:rgba(189,147,249,0.6);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Saved Ekadashis</div>
       <div id="ekadashiList"></div>
     </div>
   </div>

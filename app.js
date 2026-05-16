@@ -3634,58 +3634,102 @@ function isRiskDay(date) {
   if (customDates.length > 0) {
     const dateMs = date.getTime();
     for (const ek of customDates) {
-      const ekMs = new Date(ek + 'T00:00:00').getTime();
+      const ekMs = new Date(_ekDate(ek) + 'T00:00:00').getTime();
       if (Math.abs(dateMs - ekMs) <= 2 * 86400000) return true;
     }
   }
   return false;
 }
 
+// Helper: extract date string from a customEkadashi entry (supports old string format + new object format)
+function _ekDate(e) { return typeof e === 'string' ? e : (e && e.date) || ''; }
+
 // Returns true if date is an exact custom ekadashi (for distinct graph marker)
 function isCustomEkadashiDay(date) {
   const customDates = App.S.customEkadashi || [];
   if (!customDates.length) return false;
   const key = date.toISOString().split('T')[0];
-  return customDates.includes(key);
+  return customDates.some(e => _ekDate(e) === key);
 }
 
 // ── Custom Ekadashi Date Management ──
+function _fmtTime12(t24) {
+  if (!t24) return '';
+  const [hStr, mStr] = t24.split(':');
+  let h = parseInt(hStr), m = parseInt(mStr);
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return h + ':' + String(m).padStart(2, '0') + ' ' + ap;
+}
+
 function addEkadashiDate() {
-  const inp = document.getElementById('ekadashiDateIn');
-  const val = inp ? inp.value : '';
+  const dateEl = document.getElementById('ekadashiDateIn');
+  const startEl = document.getElementById('ekadashiStartIn');
+  const endEl = document.getElementById('ekadashiEndIn');
+  const val = dateEl ? dateEl.value : '';
   if (!val) { toast('Please select a date 📅'); return; }
   if (!App.S.customEkadashi) App.S.customEkadashi = [];
-  if (App.S.customEkadashi.includes(val)) { toast('Date already added'); return; }
-  App.S.customEkadashi.push(val);
-  App.S.customEkadashi.sort();
-  if (inp) inp.value = '';
-  App.save();
+  if (App.S.customEkadashi.some(e => (typeof e === 'string' ? e : e.date) === val)) {
+    toast('Date already added'); return;
+  }
+  const entry = { date: val, startTime: startEl ? startEl.value : '', endTime: endEl ? endEl.value : '' };
+  App.S.customEkadashi.push(entry);
+  App.S.customEkadashi.sort((a, b) => (a.date || a) < (b.date || b) ? -1 : 1);
+  if (dateEl) dateEl.value = '';
+  if (startEl) startEl.value = '';
+  if (endEl) endEl.value = '';
+  // Also add to calendar occasions
+  if (!App.S.occasions) App.S.occasions = {};
+  const startFmt = entry.startTime ? _fmtTime12(entry.startTime) : '';
+  const endFmt = entry.endTime ? _fmtTime12(entry.endTime) : '';
+  const timeStr = (startFmt && endFmt) ? (' ' + startFmt + ' – ' + endFmt) : (startFmt ? ' ' + startFmt : '');
+  App.S.occasions[val] = 'Ekadashi' + timeStr;
+  App.save(); fbDebouncedPush();
   renderEkadashiList();
-  renderBcGraph();
-  toast('Ekadashi date added 📅');
+  renderCal();
+  toast('Ekadashi added to calendar 📅');
 }
 
 function removeEkadashiDate(date) {
-  App.S.customEkadashi = (App.S.customEkadashi || []).filter(d => d !== date);
-  App.save();
+  App.S.customEkadashi = (App.S.customEkadashi || []).filter(e => (typeof e === 'string' ? e : e.date) !== date);
+  // Remove from occasions only if it was set by Ekadashi (starts with "Ekadashi")
+  if (App.S.occasions && App.S.occasions[date] && App.S.occasions[date].startsWith('Ekadashi')) {
+    delete App.S.occasions[date];
+  }
+  App.save(); fbDebouncedPush();
   renderEkadashiList();
-  renderBcGraph();
-  toast('Date removed');
+  renderCal();
+  toast('Ekadashi date removed');
 }
 
 function renderEkadashiList() {
   const list = document.getElementById('ekadashiList');
   if (!list) return;
-  const dates = App.S.customEkadashi || [];
-  if (dates.length === 0) {
-    list.innerHTML = '<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0 6px">No custom Ekadashi dates yet. Add dates above to make the graph more accurate.</div>';
+  const entries = App.S.customEkadashi || [];
+  if (entries.length === 0) {
+    list.innerHTML = '<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0 8px">No Ekadashi dates saved yet.<br>Add dates above — every 2 consecutive entries define a paksha on the graph.</div>';
     return;
   }
-  list.innerHTML = dates.map(d => {
-    const fmt = new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(155,89,182,0.15)">
-      <span style="font-size:13px;color:rgba(189,147,249,0.9)">📅 ${fmt}</span>
-      <button onclick="removeEkadashiDate('${d}')" style="background:rgba(232,51,109,0.15);border:1px solid rgba(232,51,109,0.3);border-radius:7px;color:var(--rl);font-size:11px;padding:4px 10px;cursor:pointer;font-family:'Inter',sans-serif">Remove</button>
+  list.innerHTML = entries.map((e, i) => {
+    const dateKey = typeof e === 'string' ? e : e.date;
+    const startTime = typeof e === 'object' ? e.startTime : '';
+    const endTime = typeof e === 'object' ? e.endTime : '';
+    const d = new Date(dateKey + 'T00:00:00');
+    const dayName = d.toLocaleDateString('en-IN', { weekday: 'short' });
+    const dateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    const startFmt = startTime ? _fmtTime12(startTime) : '—';
+    const endFmt = endTime ? _fmtTime12(endTime) : '—';
+    const pakshaLabel = i % 2 === 0
+      ? '<span style="font-size:9px;background:rgba(241,196,15,0.2);color:#F1C40F;border-radius:4px;padding:1px 5px;margin-left:5px;letter-spacing:1px">SHUKLA</span>'
+      : '<span style="font-size:9px;background:rgba(72,52,212,0.25);color:#BD93F9;border-radius:4px;padding:1px 5px;margin-left:5px;letter-spacing:1px">KRISHNA</span>';
+    return `<div style="background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.18);border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div>
+          <span style="font-size:13px;color:rgba(189,147,249,0.95);font-weight:600">${dayName}, ${dateStr}</span>${pakshaLabel}
+        </div>
+        <button onclick="removeEkadashiDate('${dateKey}')" style="background:rgba(232,51,109,0.15);border:1px solid rgba(232,51,109,0.3);border-radius:7px;color:var(--rl);font-size:11px;padding:4px 10px;cursor:pointer;font-family:'Inter',sans-serif;flex-shrink:0">✕</button>
+      </div>
+      <div style="font-size:11px;color:var(--td)">⏱ ${startFmt} <span style="margin:0 4px">→</span> ${endFmt}</div>
     </div>`;
   }).join('');
 }
@@ -3801,13 +3845,54 @@ function renderBcGraph() {
   const gH = H - PAD.t - PAD.b;
   const xStep = gW / (days.length - 1 || 1);
 
-  // Paksha background tint (Shukla = light gold, Krishna = light indigo)
-  days.forEach((d, i) => {
-    const t = getLunarTithi(d.date);
-    const x = PAD.l + i * xStep;
-    ctx.fillStyle = t <= 15 ? 'rgba(241,196,15,0.05)' : 'rgba(72,52,212,0.07)';
-    ctx.fillRect(Math.floor(x - xStep/2), PAD.t, Math.ceil(xStep + 1), gH);
-  });
+  // Paksha background — prefer custom Ekadashi-based division when ≥2 dates exist
+  const _ekEntries = (App.S.customEkadashi || []);
+  const _ekDateKeys = _ekEntries.map(_ekDate).filter(Boolean).sort();
+  if (_ekDateKeys.length >= 2) {
+    // Between consecutive Ekadashi dates: alternate Shukla (gold) / Krishna (indigo)
+    // Before the first: same parity as band 0 (Shukla); after last: same parity as last band
+    days.forEach((d, i) => {
+      const key = d.date.toISOString().split('T')[0];
+      const x = PAD.l + i * xStep;
+      // Find which interval this day falls into
+      let bandIndex = 0;
+      if (key < _ekDateKeys[0]) {
+        bandIndex = 0; // before first Ekadashi — Shukla tint
+      } else if (key >= _ekDateKeys[_ekDateKeys.length - 1]) {
+        bandIndex = _ekDateKeys.length - 1; // after last
+      } else {
+        for (let k = 0; k < _ekDateKeys.length - 1; k++) {
+          if (key >= _ekDateKeys[k] && key < _ekDateKeys[k + 1]) { bandIndex = k; break; }
+        }
+      }
+      ctx.fillStyle = bandIndex % 2 === 0 ? 'rgba(241,196,15,0.06)' : 'rgba(72,52,212,0.09)';
+      ctx.fillRect(Math.floor(x - xStep/2), PAD.t, Math.ceil(xStep + 1), gH);
+    });
+    // Draw vertical divider at each Ekadashi date with label
+    ctx.font = 'bold 8px Inter';
+    ctx.textAlign = 'center';
+    _ekDateKeys.forEach((ek, ki) => {
+      const dayIdx = days.findIndex(d => d.date.toISOString().split('T')[0] === ek);
+      if (dayIdx < 0) return;
+      const x = PAD.l + dayIdx * xStep;
+      const isShukla = ki % 2 === 0;
+      ctx.strokeStyle = isShukla ? 'rgba(241,196,15,0.7)' : 'rgba(155,89,182,0.7)';
+      ctx.setLineDash([4,2]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + gH); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = isShukla ? '#F1C40F' : '#BD93F9';
+      ctx.fillText(isShukla ? 'S-Ek' : 'K-Ek', x, PAD.t + 8);
+    });
+  } else {
+    // Fallback: tithi-based paksha tint
+    days.forEach((d, i) => {
+      const t = getLunarTithi(d.date);
+      const x = PAD.l + i * xStep;
+      ctx.fillStyle = t <= 15 ? 'rgba(241,196,15,0.05)' : 'rgba(72,52,212,0.07)';
+      ctx.fillRect(Math.floor(x - xStep/2), PAD.t, Math.ceil(xStep + 1), gH);
+    });
+  }
 
   // Draw risk bands
   days.forEach((d, i) => {
@@ -3837,8 +3922,9 @@ function renderBcGraph() {
     ctx.fillText(tithiMarkers[t], x, PAD.t + 8);
   });
 
-  // Custom Ekadashi date markers — bold vertical pink line + 'E!' label
-  if ((App.S.customEkadashi || []).length > 0) {
+  // Custom Ekadashi markers — only show pink "Ek!" pins when fewer than 2 dates
+  // (≥2 dates already draw S-Ek / K-Ek dividers in the paksha band section above)
+  if (_ekDateKeys.length === 1) {
     days.forEach((d, i) => {
       if (!isCustomEkadashiDay(d.date)) return;
       const x = PAD.l + i * xStep;

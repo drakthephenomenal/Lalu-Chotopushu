@@ -1032,7 +1032,7 @@ function sv(id, btn) {
   document.getElementById(id).classList.add('active');
   if (btn) btn.classList.add('active');
   if (id === 'vs') { uStats(); _historyAutoLoaded = false; }
-  if (id === 'vb') { initBrahmaStartInput(); renderCal(); renderEkadashiList(); }
+  if (id === 'vb') { initBrahmaStartInput(); renderCal(); renderEkadashiList(); requestAnimationFrame(() => renderBcGraph()); }
   if (id === 'vst') renderSt();
   if (id === 'v28') { u28(); render28Dots(get28Pos()); }
   else { App.flush28TimeToHistory(); }
@@ -3891,9 +3891,14 @@ function renderBcGraph() {
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
 
-  // Container is .bc-graph-scroll-wrap — get its rendered width
+  // Container is .bc-graph-scroll-wrap — walk up DOM for a rendered width
   const scrollWrap = canvas.parentElement;
-  const containerW = (scrollWrap && scrollWrap.clientWidth) || 340;
+  const _section = scrollWrap && scrollWrap.closest && scrollWrap.closest(".bc-graph-section");
+  const _vb = document.getElementById("vb");
+  const containerW = (scrollWrap && scrollWrap.clientWidth > 0 ? scrollWrap.clientWidth : 0)
+    || (_section && _section.clientWidth > 36 ? _section.clientWidth - 36 : 0)
+    || (_vb && _vb.clientWidth > 28 ? _vb.clientWidth - 28 : 0)
+    || (window.innerWidth > 28 ? window.innerWidth - 28 : 340);
 
   const today = new Date(); today.setHours(0,0,0,0);
   const startD = new Date(getBrahmaStart()); startD.setHours(0,0,0,0);

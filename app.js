@@ -19,7 +19,8 @@ const App = {
     malaLogRV: [],
     syncBaselineRV: {}, syncBaselineTimerRV: {},
     activityLog: [],
-    sadhanaStart: ''
+    sadhanaStart: '',
+    customEkadashi: []
   },
   lmcRV: 0,
   lmc: 0, lm28: 0,
@@ -116,7 +117,8 @@ const App = {
       syncBaselineRV: this.S.syncBaselineRV, syncBaselineTimerRV: this.S.syncBaselineTimerRV,
       brahmacharya_start_date: this.S.brahmacharya_start_date,
       activityLog: this.S.activityLog || [],
-      sadhanaStart: this.S.sadhanaStart || ''
+      sadhanaStart: this.S.sadhanaStart || '',
+      customEkadashi: this.S.customEkadashi || []
     });
     // Keep per-day stores updated for compatibility with existing offline data
     const tk = this.S.tk;
@@ -199,6 +201,7 @@ const App = {
     if (!this.S.syncBaselineTimerRV) this.S.syncBaselineTimerRV = {};
     if (!this.S.activityLog) this.S.activityLog = [];
     if (!this.S.sadhanaStart) this.S.sadhanaStart = localStorage.getItem('rjap_sadhana_start') || '';
+    if (!this.S.customEkadashi) this.S.customEkadashi = [];
     if (!this.S.historyRV[this.S.tk]) this.S.historyRV[this.S.tk] = 0;
     if (!this.S.timerHistoryRV[this.S.tk]) this.S.timerHistoryRV[this.S.tk] = 0;
     // Load malaLog — only use if it's from today AND today has actual jap count
@@ -899,12 +902,31 @@ function toast(msg) {
 
 // ── RV Target Save ──
 function svtRV(type) {
-  const ms = App.S.ms || 108;
   if (type === 'd') {
     const v = parseInt(document.getElementById('dtRVIn').value) || 0;
     App.S.dtRV = v;
   }
   App.save(); fbDebouncedPush(); App.ua(); toast('RV Daily Target saved! 🎯');
+}
+
+// ── Target input sync: jap ↔ mala (used by both Radha and RV settings inputs) ──
+function syncTargetJapToMala(prefix) {
+  const ms = App.S.ms || 108;
+  const japEl = document.getElementById(prefix + 'In');
+  const malaEl = document.getElementById(prefix + 'MalaIn');
+  const dispEl = document.getElementById(prefix + 'Mala');
+  const jap = parseInt((japEl && japEl.value) || 0) || 0;
+  if (malaEl) malaEl.value = jap > 0 ? Math.round(jap / ms) : '';
+  if (dispEl) dispEl.textContent = Math.ceil(jap / ms);
+}
+function syncTargetMalaToJap(prefix) {
+  const ms = App.S.ms || 108;
+  const japEl = document.getElementById(prefix + 'In');
+  const malaEl = document.getElementById(prefix + 'MalaIn');
+  const dispEl = document.getElementById(prefix + 'Mala');
+  const malas = parseInt((malaEl && malaEl.value) || 0) || 0;
+  if (japEl) japEl.value = malas > 0 ? malas * ms : '';
+  if (dispEl) dispEl.textContent = malas;
 }
 
 // ── Init RV mode UI on page load ──
@@ -1008,15 +1030,28 @@ function sv(id, btn) {
   document.getElementById(id).classList.add('active');
   if (btn) btn.classList.add('active');
   if (id === 'vs') { uStats(); _historyAutoLoaded = false; }
-  if (id === 'vb') { initBrahmaStartInput(); renderCal(); }
+  if (id === 'vb') { initBrahmaStartInput(); renderCal(); renderEkadashiList(); }
   if (id === 'vst') renderSt();
   if (id === 'v28') { u28(); render28Dots(get28Pos()); }
   else { App.flush28TimeToHistory(); }
   if (id === 'vms') { renderMilestonesTab(); }
   if (id === 'vset') {
+    const ms = App.S.ms || 108;
     if (App.S.dt) document.getElementById('dtIn').value = App.S.dt;
     if (App.S.lt) document.getElementById('ltIn').value = App.S.lt;
-    document.getElementById('msIn').value = App.S.ms || 108;
+    document.getElementById('msIn').value = ms;
+    // Populate mala equivalents for Radha targets
+    const dtMalaInEl = document.getElementById('dtMalaIn');
+    if (dtMalaInEl) dtMalaInEl.value = App.S.dt > 0 ? Math.round(App.S.dt / ms) : '';
+    const ltMalaInEl = document.getElementById('ltMalaIn');
+    if (ltMalaInEl) ltMalaInEl.value = App.S.lt > 0 ? Math.round(App.S.lt / ms) : '';
+    // Populate RV daily target (fix: was missing, target not showing)
+    const dtRVEl = document.getElementById('dtRVIn');
+    if (dtRVEl) dtRVEl.value = App.S.dtRV > 0 ? App.S.dtRV : '';
+    const dtRVMalaInEl = document.getElementById('dtRVMalaIn');
+    if (dtRVMalaInEl) dtRVMalaInEl.value = App.S.dtRV > 0 ? Math.round(App.S.dtRV / ms) : '';
+    const dtRVMalaDisp = document.getElementById('dtRVMala');
+    if (dtRVMalaDisp) dtRVMalaDisp.textContent = Math.floor((App.S.dtRV || 0) / ms);
     initReminderUI();
     // Populate the app link display
     const appUrl = _getAppUrl();
@@ -1947,7 +1982,8 @@ function exportAllData() {
     malaLog: App.S.malaLog||[], malaLogDate: App.S.tk,
     brahmacharya_start_date: App.S.brahmacharya_start_date||'',
     japMode: App.S.japMode||'radha', historyRV: App.S.historyRV||{}, timerHistoryRV: App.S.timerHistoryRV||{},
-    dtRV: App.S.dtRV||0, ltRV: App.S.ltRV||0, nameJapDeductRV: App.S.nameJapDeductRV||0, malaLogRV: App.S.malaLogRV||[]
+    dtRV: App.S.dtRV||0, ltRV: App.S.ltRV||0, nameJapDeductRV: App.S.nameJapDeductRV||0, malaLogRV: App.S.malaLogRV||[],
+    customEkadashi: App.S.customEkadashi||[]
   };
   const blob = new Blob([JSON.stringify(backup,null,2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -2618,6 +2654,7 @@ async function fbPushFull() {
     dtRV: App.S.dtRV||0, ltRV: App.S.ltRV||0, nameJapDeductRV: App.S.nameJapDeductRV||0, malaLogRV: App.S.malaLogRV||[],
     brahmacharya_start_date: App.S.brahmacharya_start_date||'',
     activityLog: App.S.activityLog || [],
+    customEkadashi: App.S.customEkadashi || [],
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId
   };
@@ -3591,7 +3628,66 @@ function isRiskDay(date) {
   const t = getLunarTithi(date);
   // Risk window: Navami to Trayodashi in both paksha
   // Shukla: 9-13, Krishna: 24-28 (15+9 to 15+13)
-  return (t >= 9 && t <= 13) || (t >= 24 && t <= 28);
+  if ((t >= 9 && t <= 13) || (t >= 24 && t <= 28)) return true;
+  // Check custom Ekadashi dates (±2 day risk window around each)
+  const customDates = App.S.customEkadashi || [];
+  if (customDates.length > 0) {
+    const dateMs = date.getTime();
+    for (const ek of customDates) {
+      const ekMs = new Date(ek + 'T00:00:00').getTime();
+      if (Math.abs(dateMs - ekMs) <= 2 * 86400000) return true;
+    }
+  }
+  return false;
+}
+
+// Returns true if date is an exact custom ekadashi (for distinct graph marker)
+function isCustomEkadashiDay(date) {
+  const customDates = App.S.customEkadashi || [];
+  if (!customDates.length) return false;
+  const key = date.toISOString().split('T')[0];
+  return customDates.includes(key);
+}
+
+// ── Custom Ekadashi Date Management ──
+function addEkadashiDate() {
+  const inp = document.getElementById('ekadashiDateIn');
+  const val = inp ? inp.value : '';
+  if (!val) { toast('Please select a date 📅'); return; }
+  if (!App.S.customEkadashi) App.S.customEkadashi = [];
+  if (App.S.customEkadashi.includes(val)) { toast('Date already added'); return; }
+  App.S.customEkadashi.push(val);
+  App.S.customEkadashi.sort();
+  if (inp) inp.value = '';
+  App.save();
+  renderEkadashiList();
+  renderBcGraph();
+  toast('Ekadashi date added 📅');
+}
+
+function removeEkadashiDate(date) {
+  App.S.customEkadashi = (App.S.customEkadashi || []).filter(d => d !== date);
+  App.save();
+  renderEkadashiList();
+  renderBcGraph();
+  toast('Date removed');
+}
+
+function renderEkadashiList() {
+  const list = document.getElementById('ekadashiList');
+  if (!list) return;
+  const dates = App.S.customEkadashi || [];
+  if (dates.length === 0) {
+    list.innerHTML = '<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0 6px">No custom Ekadashi dates yet. Add dates above to make the graph more accurate.</div>';
+    return;
+  }
+  list.innerHTML = dates.map(d => {
+    const fmt = new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(155,89,182,0.15)">
+      <span style="font-size:13px;color:rgba(189,147,249,0.9)">📅 ${fmt}</span>
+      <button onclick="removeEkadashiDate('${d}')" style="background:rgba(232,51,109,0.15);border:1px solid rgba(232,51,109,0.3);border-radius:7px;color:var(--rl);font-size:11px;padding:4px 10px;cursor:pointer;font-family:'Inter',sans-serif">Remove</button>
+    </div>`;
+  }).join('');
 }
 
 // ── Graph range state: offset in days from today (0 = last 90d, -90 = prev 90d, etc.)
@@ -3740,6 +3836,23 @@ function renderBcGraph() {
     ctx.fillStyle = (t === 15 || t === 30) ? '#F1C40F' : 'rgba(189,147,249,0.9)';
     ctx.fillText(tithiMarkers[t], x, PAD.t + 8);
   });
+
+  // Custom Ekadashi date markers — bold vertical pink line + 'E!' label
+  if ((App.S.customEkadashi || []).length > 0) {
+    days.forEach((d, i) => {
+      if (!isCustomEkadashiDay(d.date)) return;
+      const x = PAD.l + i * xStep;
+      ctx.strokeStyle = 'rgba(232,51,109,0.85)';
+      ctx.setLineDash([3,2]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + gH); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(232,51,109,0.95)';
+      ctx.font = 'bold 8px Inter';
+      ctx.textAlign = 'center';
+      ctx.fillText('Ek!', x, PAD.t + gH + 12);
+    });
+  }
 
   // Draw grid lines
   ctx.strokeStyle = 'rgba(255,255,255,0.05)';

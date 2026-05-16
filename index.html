@@ -199,10 +199,10 @@
     <div class="ps">
       <!-- Daily: blue bar + jap count + undo -->
       <div class="pc pc-bar" style="position:relative;">
-        <div class="pc-text" style="width:100%">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <div class="pl">Daily</div>
-            <div class="lbar-pct" style="color:var(--a2)" id="dPct">0%</div>
+        <div class="pc-text" style="width:100%;padding-right:48px">
+          <div style="display:flex;align-items:center;margin-bottom:6px;">
+            <div class="pl" style="flex:1;letter-spacing:2px">Daily</div>
+            <div class="lbar-pct" style="color:var(--a2);font-size:15px;min-width:38px;text-align:right" id="dPct">0%</div>
           </div>
           <div class="lbar-wrap">
             <div class="lbar-fill" id="dbarFill" style="background:linear-gradient(90deg,var(--a2),var(--a))"></div>
@@ -223,9 +223,9 @@
       <!-- Lifetime: gold bar -->
       <div class="pc pc-bar">
         <div class="pc-text" style="width:100%">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <div class="pl">Lifetime</div>
-            <div class="lbar-pct" id="lPct">0%</div>
+          <div style="display:flex;align-items:center;margin-bottom:6px;">
+            <div class="pl" style="flex:1;letter-spacing:2px">Lifetime</div>
+            <div class="lbar-pct" id="lPct" style="font-size:15px;min-width:38px;text-align:right">0%</div>
           </div>
           <div class="lbar-wrap">
             <div class="lbar-fill" id="lbarFill"></div>
@@ -450,6 +450,22 @@
       </div>
       <!-- Pattern Cards -->
       <div class="bc-pattern-cards" id="bcPatternCards"></div>
+    </div>
+  </div>
+
+  <!-- Custom Ekadashi Dates -->
+  <div style="background:rgba(155,89,182,0.06);border:1px solid rgba(155,89,182,0.28);border-radius:18px;margin-bottom:14px;overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;cursor:pointer;user-select:none;-webkit-user-select:none;" onclick="toggleCs('ekadashiBody','ekadashiChev')">
+      <h3 style="font-size:11px;color:rgba(189,147,249,0.9);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin:0;">📅 Custom Ekadashi Dates</h3>
+      <span class="cs-chevron" id="ekadashiChev" style="color:rgba(189,147,249,0.9)">▾</span>
+    </div>
+    <div class="cs-body" id="ekadashiBody">
+      <p style="font-size:12px;color:var(--td);margin-bottom:12px">Add exact Ekadashi dates to make the brahmacharya risk graph more accurate. A ±2 day risk window is marked around each date.</p>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+        <input type="date" class="fi" id="ekadashiDateIn" style="flex:1;font-size:13px;background:rgba(0,0,0,0.3);border-color:rgba(155,89,182,0.35);">
+        <button onclick="addEkadashiDate()" style="padding:10px 16px;border-radius:10px;border:none;background:linear-gradient(135deg,rgba(155,89,182,0.5),rgba(100,60,180,0.4));color:#BD93F9;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'Inter',sans-serif;flex-shrink:0;">+ Add</button>
+      </div>
+      <div id="ekadashiList"></div>
     </div>
   </div>
 
@@ -901,16 +917,21 @@
     <div style="font-size:11px;color:var(--td);margin-bottom:10px">Default 108 beads per mala</div>
     <button class="pb" onclick="svm()" style="margin-bottom:14px">Save Mala Size</button>
 
-    <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtIn" placeholder="Daily target (jap)"><span class="fu">/ day</span></div>
+    <div style="font-size:10px;color:var(--td);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase">Daily Target</div>
+    <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtIn" placeholder="Jap count / day" oninput="syncTargetJapToMala('dt')"><span class="fu">jap</span></div>
+    <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtMalaIn" placeholder="Or: malas / day" oninput="syncTargetMalaToJap('dt')"><span class="fu" style="color:var(--gold)">malas</span></div>
     <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="dtMala">0</span> malas per day</div>
     <button class="pb" onclick="svt('d')" style="margin-bottom:14px">Save Daily Target</button>
 
-    <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="ltIn" placeholder="Lifetime target (jap)"><span class="fu">total</span></div>
+    <div style="font-size:10px;color:var(--td);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase">Lifetime Target</div>
+    <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="ltIn" placeholder="Jap count lifetime" oninput="syncTargetJapToMala('lt')"><span class="fu">jap</span></div>
+    <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="ltMalaIn" placeholder="Or: malas lifetime" oninput="syncTargetMalaToJap('lt')"><span class="fu" style="color:var(--gold)">malas</span></div>
     <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="ltMala">0</span> malas lifetime</div>
     <button class="pb" onclick="svt('l')">Save Lifetime Target</button>
     <div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,215,0,0.15)">
       <div style="font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;font-weight:600">📿 राधावल्लभ श्री हरिवंश Targets</div>
-      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtRVIn" placeholder="Daily target (jap)" oninput="document.getElementById('dtRVMala').textContent=Math.floor((parseInt(this.value)||0)/(App.S.ms||108))"><span class="fu">/ day</span></div>
+      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtRVIn" placeholder="Jap count / day" oninput="syncTargetJapToMala('dtRV')"><span class="fu">jap</span></div>
+      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtRVMalaIn" placeholder="Or: malas / day" oninput="syncTargetMalaToJap('dtRV')"><span class="fu" style="color:var(--gold)">malas</span></div>
       <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="dtRVMala">0</span> malas per day</div>
       <button class="pb" onclick="svtRV('d')" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(255,215,0,0.4),rgba(255,180,0,0.3))">Save RV Daily Target</button>
       <!-- RV Lifetime Target removed — shared with राधा -->

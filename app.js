@@ -3890,27 +3890,35 @@ function renderBcGraph() {
   const canvas = document.getElementById('bcGraph');
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
-  // Make graph BIG and horizontally scrollable so each day gets breathing room
-  const parent = canvas.parentElement;
-  if (parent) {
-    parent.style.overflowX = 'auto';
-    parent.style.overflowY = 'visible';
-    parent.style.webkitOverflowScrolling = 'touch';
-    parent.style.flexShrink = '0';
-    parent.style.minHeight = '340px';
+
+  // Container is .bc-graph-scroll-wrap — get its rendered width
+  const scrollWrap = canvas.parentElement;
+  const containerW = (scrollWrap && scrollWrap.clientWidth) || 340;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const startD = new Date(getBrahmaStart()); startD.setHours(0,0,0,0);
+
+  const wEnd = new Date(today);
+  if (_bcRangeOffset < 0) wEnd.setDate(wEnd.getDate() + _bcRangeOffset);
+  const wStart = new Date(wEnd);
+  wStart.setDate(wStart.getDate() - 89);
+  if (wStart < startD) wStart.setTime(startD.getTime());
+  const DAYS = Math.round((wEnd - wStart) / 86400000) + 1;
+
+  // Update range label
+  const lbl = document.getElementById('bcRangeLabel');
+  if (lbl) {
+    const fmt = d => d.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
+    lbl.textContent = _bcRangeOffset === 0 ? 'Last 90 days' : `${fmt(wStart)} – ${fmt(wEnd)}`;
   }
-  const containerW = (parent && parent.clientWidth) || canvas.offsetWidth || 320;
-  // Estimate days in window for sizing (recomputed below precisely)
-  const _today = new Date(); _today.setHours(0,0,0,0);
-  const _wEnd = new Date(_today);
-  if (_bcRangeOffset < 0) _wEnd.setDate(_wEnd.getDate() + _bcRangeOffset);
-  const _wStart = new Date(_wEnd); _wStart.setDate(_wStart.getDate() - 89);
-  const _startD = new Date(getBrahmaStart()); _startD.setHours(0,0,0,0);
-  if (_wStart < _startD) _wStart.setTime(_startD.getTime());
-  const _DAYS = Math.round((_wEnd - _wStart) / 86400000) + 1;
-  const PER_DAY = 22; // px per day — generous spacing
-  const W = Math.max(containerW, _DAYS * PER_DAY + 50);
-  const H = 320; // big graph
+  const nextBtn = document.getElementById('bcRangeNext');
+  if (nextBtn) nextBtn.style.opacity = _bcRangeOffset < 0 ? '1' : '0.3';
+
+  // Generous per-day width — at least 32px so each day has room to breathe
+  const PER_DAY = Math.max(32, Math.floor(containerW / Math.min(DAYS, 28)));
+  const W = Math.max(containerW, DAYS * PER_DAY + 72);
+  const H = 360;
+
   canvas.style.width = W + 'px';
   canvas.style.height = H + 'px';
   canvas.width = W * dpr;
@@ -3918,178 +3926,73 @@ function renderBcGraph() {
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
 
-  const today = new Date(); today.setHours(0,0,0,0);
-  const startD = new Date(getBrahmaStart()); startD.setHours(0,0,0,0);
-  const totalDays = Math.round((today - startD) / 86400000) + 1;
-
-  // Compute window end/start based on offset
-  // _bcRangeOffset <= 0; 0 means last 90 days ending today
-  const windowEnd = new Date(today);
-  windowEnd.setDate(windowEnd.getDate() + _bcRangeOffset); // offset is <=0 so this goes back
-  // Actually offset shifts the window: positive delta moves forward, so:
-  // windowEnd = today + _bcRangeOffset (negative = earlier end)
-  // But we want: 0 = last 90 days (end = today), -90 = prev window (end = today-90)
-  // Recalculate: windowEnd is today when offset=0
-  const wEnd = new Date(today);
-  if (_bcRangeOffset < 0) wEnd.setDate(wEnd.getDate() + _bcRangeOffset);
-  const wStart = new Date(wEnd);
-  wStart.setDate(wStart.getDate() - 89); // 90 days window
-  // clamp wStart to brahma start
-  if (wStart < startD) wStart.setTime(startD.getTime());
-
-  const DAYS = Math.round((wEnd - wStart) / 86400000) + 1;
-
-  // Update range label
-  const lbl = document.getElementById('bcRangeLabel');
-  if (lbl) {
-    const fmt = d => d.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
-    const isLatest = _bcRangeOffset === 0;
-    lbl.textContent = isLatest ? 'Last 90 days' : `${fmt(wStart)} – ${fmt(wEnd)}`;
-  }
-  const nextBtn = document.getElementById('bcRangeNext');
-  if (nextBtn) nextBtn.style.opacity = _bcRangeOffset < 0 ? '1' : '0.3';
+  // White background
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, W, H);
 
   if (DAYS < 2) {
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.font = '12px Inter';
-    ctx.fillText('Not enough data yet', 10, H/2);
-    renderPatternEngine();
+    ctx.fillStyle = '#aaa';
+    ctx.font = '13px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Not enough data yet', W / 2, H / 2);
     return;
   }
 
-  // Build streak from brahma start up to wEnd (for correct streak count in window)
+  // Build streak data — walk from brahma start for correct carry-in
   const allStart = new Date(startD);
   const fullDays = Math.round((wEnd - allStart) / 86400000) + 1;
   let streak = 0;
-  const allDayData = [];
+  const days = [];
   for (let i = 0; i < fullDays; i++) {
     const d = new Date(allStart); d.setDate(d.getDate() + i);
     const key = d.toISOString().split('T')[0];
     const en = App.S.brahma[key];
     const broken = en && en.status === 'b';
-    if (broken) { streak = 0; } else { streak++; }
-    const inWindow = d >= wStart && d <= wEnd;
-    if (inWindow) allDayData.push({ date: new Date(d), key, broken, streak, risk: isRiskDay(d), times: (en && en.times) || [] });
+    if (broken) streak = 0; else streak++;
+    if (d >= wStart && d <= wEnd) {
+      days.push({ date: new Date(d), key, broken, streak, times: (en && en.times) || [] });
+    }
   }
-  const days = allDayData;
 
   const maxStreak = Math.max(...days.map(d => d.streak), 1);
-  const PAD = { l: 40, r: 14, t: 18, b: 44 };
+
+  // Generous padding — space around every edge
+  const PAD = { l: 52, r: 28, t: 28, b: 56 };
   const gW = W - PAD.l - PAD.r;
   const gH = H - PAD.t - PAD.b;
-  const xStep = gW / (days.length - 1 || 1);
+  const xStep = days.length > 1 ? gW / (days.length - 1) : gW;
 
-  // Paksha background — prefer custom Ekadashi-based division when ≥1 entry exists
-  const _ekEntries = (App.S.customEkadashi || []).filter(_ekDate);
-  _ekEntries.sort((a, b) => _ekDate(a) < _ekDate(b) ? -1 : 1);
-  const _ekDateKeys = _ekEntries.map(_ekDate);
-  if (_ekEntries.length >= 1) {
-    // Color each day's cell based on which Ekadashi period it falls in or follows
-    days.forEach((d, i) => {
-      const key = d.date.toISOString().split('T')[0];
-      const x = PAD.l + i * xStep;
-      // Find which entry's band this day belongs to
-      // A day belongs to the NEXT entry's paksha band while between [entryN.startDate, entryN+1.startDate)
-      let paksha = _ekEntries[0].paksha || 'shukla'; // default before first
-      for (let k = 0; k < _ekEntries.length; k++) {
-        if (key >= _ekDate(_ekEntries[k])) {
-          paksha = _ekEntries[k].paksha || (k % 2 === 0 ? 'shukla' : 'krishna');
-        }
-      }
-      ctx.fillStyle = paksha === 'shukla' ? 'rgba(241,196,15,0.06)' : 'rgba(72,52,212,0.09)';
-      ctx.fillRect(Math.floor(x - xStep/2), PAD.t, Math.ceil(xStep + 1), gH);
-    });
-    // Vertical dividers at each Ekadashi start date
-    ctx.font = 'bold 8px Inter';
-    ctx.textAlign = 'center';
-    _ekEntries.forEach(ek => {
-      const startKey = _ekDate(ek);
-      const endKey   = _ekEndDate(ek);
-      const isShukla = (ek.paksha || 'shukla') === 'shukla';
-      const lineColor = isShukla ? 'rgba(241,196,15,0.7)' : 'rgba(155,89,182,0.7)';
-      const textColor = isShukla ? '#F1C40F' : '#BD93F9';
-      const label = isShukla ? 'S-Ek' : 'K-Ek';
-      [startKey, endKey !== startKey ? endKey : null].filter(Boolean).forEach((dk, di) => {
-        const dayIdx = days.findIndex(d => d.date.toISOString().split('T')[0] === dk);
-        if (dayIdx < 0) return;
-        const x = PAD.l + dayIdx * xStep;
-        ctx.strokeStyle = lineColor;
-        ctx.setLineDash([4,2]);
-        ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + gH); ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.fillStyle = textColor;
-        ctx.fillText(di === 0 ? label : (label + '↓'), x, PAD.t + 8);
-      });
-    });
-  } else {
-    // Fallback: tithi-based paksha tint
-    days.forEach((d, i) => {
-      const t = getLunarTithi(d.date);
-      const x = PAD.l + i * xStep;
-      ctx.fillStyle = t <= 15 ? 'rgba(241,196,15,0.05)' : 'rgba(72,52,212,0.07)';
-      ctx.fillRect(Math.floor(x - xStep/2), PAD.t, Math.ceil(xStep + 1), gH);
-    });
-  }
-
-  // Draw risk bands
-  days.forEach((d, i) => {
-    if (d.risk) {
-      const x = PAD.l + i * xStep;
-      ctx.fillStyle = 'rgba(231,76,60,0.10)';
-      ctx.fillRect(Math.floor(x - xStep/2), PAD.t, Math.ceil(xStep + 1), gH);
-    }
-  });
-
-  // Lunar tithi markers — Pratipada (paksha start), Ekadashi, Purnima, Amavasya
-  const tithiMarkers = { 1:'S1', 11:'Ek', 15:'Pu', 16:'K1', 26:'KEk', 30:'Am' };
-  ctx.font = 'bold 8px Inter';
-  ctx.textAlign = 'center';
-  days.forEach((d, i) => {
-    const t = getLunarTithi(d.date);
-    if (!tithiMarkers[t]) return;
-    // Avoid double-mark: only draw if previous day had different tithi
-    if (i > 0 && getLunarTithi(days[i-1].date) === t) return;
-    const x = PAD.l + i * xStep;
-    ctx.strokeStyle = (t === 15 || t === 30) ? 'rgba(241,196,15,0.55)' : 'rgba(155,89,182,0.45)';
-    ctx.setLineDash([2,2]);
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + gH); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = (t === 15 || t === 30) ? '#F1C40F' : 'rgba(189,147,249,0.9)';
-    ctx.fillText(tithiMarkers[t], x, PAD.t + 8);
-  });
-
-  // Custom Ekadashi markers — only show pink "Ek!" pins when fewer than 2 dates
-  // (≥2 dates already draw S-Ek / K-Ek dividers in the paksha band section above)
-  if (_ekDateKeys.length === 1) {
-    days.forEach((d, i) => {
-      if (!isCustomEkadashiDay(d.date)) return;
-      const x = PAD.l + i * xStep;
-      ctx.strokeStyle = 'rgba(232,51,109,0.85)';
-      ctx.setLineDash([3,2]);
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + gH); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(232,51,109,0.95)';
-      ctx.font = 'bold 8px Inter';
-      ctx.textAlign = 'center';
-      ctx.fillText('Ek!', x, PAD.t + gH + 12);
-    });
-  }
-
-  // Draw grid lines
-  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-  ctx.lineWidth = 1;
+  // Horizontal grid lines — very light, dashed
   [0.25, 0.5, 0.75, 1].forEach(f => {
     const y = PAD.t + gH - f * gH;
-    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.font = '9px Inter';
-    ctx.fillText(Math.round(f * maxStreak), 2, y + 3);
+    ctx.beginPath();
+    ctx.moveTo(PAD.l, y);
+    ctx.lineTo(W - PAD.r, y);
+    ctx.strokeStyle = 'rgba(0,0,0,0.07)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#bbb';
+    ctx.font = '10px Inter, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(f * maxStreak) + 'd', PAD.l - 10, y + 4);
   });
 
-  // Draw filled streak line
+  // Weekly vertical guide lines (Sundays) — barely visible
+  days.forEach((d, i) => {
+    if (d.date.getDay() !== 0) return;
+    const x = PAD.l + i * xStep;
+    ctx.beginPath();
+    ctx.moveTo(x, PAD.t);
+    ctx.lineTo(x, PAD.t + gH);
+    ctx.strokeStyle = 'rgba(0,0,0,0.04)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([]);
+    ctx.stroke();
+  });
+
+  // Green fill under curve
   ctx.beginPath();
   days.forEach((d, i) => {
     const x = PAD.l + i * xStep;
@@ -4100,361 +4003,102 @@ function renderBcGraph() {
   ctx.lineTo(lastX, PAD.t + gH);
   ctx.lineTo(PAD.l, PAD.t + gH);
   ctx.closePath();
-  const grad = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + gH);
-  grad.addColorStop(0, 'rgba(46,204,113,0.55)');
-  grad.addColorStop(1, 'rgba(46,204,113,0.05)');
-  ctx.fillStyle = grad;
+  const fillGrad = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + gH);
+  fillGrad.addColorStop(0, 'rgba(34,197,94,0.20)');
+  fillGrad.addColorStop(1, 'rgba(34,197,94,0.01)');
+  ctx.fillStyle = fillGrad;
   ctx.fill();
 
-  // Draw streak line stroke
+  // Green streak line — smooth, 2.5px
   ctx.beginPath();
   days.forEach((d, i) => {
     const x = PAD.l + i * xStep;
     const y = PAD.t + gH - (d.streak / maxStreak) * gH;
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   });
-  ctx.strokeStyle = 'rgba(46,204,113,0.9)';
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#22c55e';
+  ctx.lineWidth = 2.5;
   ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.setLineDash([]);
   ctx.stroke();
 
-  // Draw relapse dots with time labels
+  // Small green node dots on maintained days
+  days.forEach((d, i) => {
+    if (d.broken) return;
+    const x = PAD.l + i * xStep;
+    const y = PAD.t + gH - (d.streak / maxStreak) * gH;
+    ctx.beginPath();
+    ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#22c55e';
+    ctx.fill();
+  });
+
+  // Red broken-day dots — pinned near baseline, prominent
   days.forEach((d, i) => {
     if (!d.broken) return;
     const x = PAD.l + i * xStep;
-    const y = PAD.t + gH - 2;
+    const dotY = PAD.t + gH - 6;
+
+    // Soft shadow
     ctx.beginPath();
-    ctx.arc(x, y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#E74C3C';
+    ctx.arc(x, dotY + 2, 8, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(239,68,68,0.15)';
+    ctx.fill();
+
+    // Main dot
+    ctx.beginPath();
+    ctx.arc(x, dotY, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#ef4444';
     ctx.fill();
     ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     ctx.stroke();
+
+    // Time label above dot
     const times = d.times || [];
     if (times.length > 0 && times[0].time) {
-      ctx.fillStyle = 'rgba(255,255,255,0.75)';
-      ctx.font = 'bold 8px Inter';
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 9px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(times[0].time, x, y - 8);
-      if (times.length > 1) ctx.fillText('+' + (times.length-1) + 'x', x, y - 17);
+      ctx.fillText(times[0].time, x, dotY - 12);
+      if (times.length > 1) {
+        ctx.fillStyle = '#f87171';
+        ctx.font = '8px Inter, sans-serif';
+        ctx.fillText('+' + (times.length - 1), x, dotY - 22);
+      }
     }
   });
 
-  // X-axis: tithi numbers (1..30) under each day, plus month label on tithi 1
+  // Baseline axis line
+  ctx.beginPath();
+  ctx.moveTo(PAD.l, PAD.t + gH);
+  ctx.lineTo(W - PAD.r, PAD.t + gH);
+  ctx.strokeStyle = 'rgba(0,0,0,0.10)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([]);
+  ctx.stroke();
+
+  // X-axis labels: date on Sundays + month name when it changes
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let lastLabelMonth = -1;
   ctx.textAlign = 'center';
-  let lastMonth = -1;
   days.forEach((d, i) => {
     const x = PAD.l + i * xStep;
-    const t = getLunarTithi(d.date);
-    // Tithi number — color-coded by paksha (gold = Shukla 1-15, indigo = Krishna 16-30)
-    // Display as 1..15 in each paksha (so Krishna shows 1..15 too)
-    const display = t <= 15 ? t : (t - 15);
-    ctx.fillStyle = t <= 15 ? 'rgba(241,196,15,0.85)' : 'rgba(155,140,255,0.85)';
-    ctx.font = 'bold 10px Inter';
-    ctx.fillText(String(display), x, H - 22);
-    // Month label when month changes
-    if (d.date.getMonth() !== lastMonth) {
-      lastMonth = d.date.getMonth();
-      const label = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.date.getMonth()] + ' ' + d.date.getDate();
-      ctx.fillStyle = 'rgba(255,255,255,0.55)';
-      ctx.font = '9px Inter';
-      ctx.fillText(label, x, H - 6);
+    const isSunOrFirst = d.date.getDay() === 0 || i === 0;
+    if (isSunOrFirst) {
+      ctx.fillStyle = '#999';
+      ctx.font = '10px Inter, sans-serif';
+      ctx.fillText(d.date.getDate(), x, PAD.t + gH + 18);
+    }
+    if (d.date.getMonth() !== lastLabelMonth) {
+      lastLabelMonth = d.date.getMonth();
+      ctx.fillStyle = '#555';
+      ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.fillText(MONTHS[d.date.getMonth()], x, PAD.t + gH + 36);
     }
   });
   ctx.textAlign = 'left';
-
-  // Legend (top-left, stays visible on scroll start)
-  ctx.textAlign = 'left';
-  ctx.font = '10px Inter';
-  ctx.fillStyle = 'rgba(46,204,113,0.9)';
-  ctx.fillText('● Streak', PAD.l + 6, PAD.t + 12);
-  ctx.fillStyle = '#E74C3C';
-  ctx.fillText('● Relapse', PAD.l + 70, PAD.t + 12);
-  ctx.fillStyle = 'rgba(231,76,60,0.4)';
-  ctx.fillRect(PAD.l + 140, PAD.t + 4, 10, 10);
-  ctx.fillStyle = 'rgba(255,255,255,0.55)';
-  ctx.fillText('Risk', PAD.l + 154, PAD.t + 12);
-  ctx.fillStyle = '#F1C40F'; ctx.fillText('Shukla 1–15', PAD.l + 190, PAD.t + 12);
-  ctx.fillStyle = 'rgba(155,140,255,0.95)'; ctx.fillText('Krishna 1–15', PAD.l + 270, PAD.t + 12);
-
-  renderPatternEngine();
-}
-
-// ── Pattern Engine ──────────────────────────────────────────────
-
-let _bcPatternOpen = false;
-function toggleBcPattern() {
-  _bcPatternOpen = !_bcPatternOpen;
-  const body = document.getElementById('bcPatternBody');
-  const chev = document.getElementById('bcPatternChevron');
-  if (body) body.style.display = _bcPatternOpen ? 'block' : 'none';
-  if (chev) chev.textContent = _bcPatternOpen ? '▲' : '▼';
-  if (_bcPatternOpen) renderPatternEngine();
-}
-
-function renderPatternEngine() {
-  const brahma = App.S.brahma || {};
-  // Gather all break entries with rich data
-  const breaks = []; // {date, dow, hour, tithi, streakDay}
-  const allKeys = Object.keys(brahma).filter(k => brahma[k].status === 'b').sort();
-
-  // Compute streak-before-break for each relapse
-  const startD = new Date(getBrahmaStart()); startD.setHours(0,0,0,0);
-  allKeys.forEach(key => {
-    const d = new Date(key + 'T00:00:00');
-    const en = brahma[key];
-    const times = en.times || [];
-    // Compute streak length before this break
-    let sb = 0;
-    const prev = new Date(d); prev.setDate(prev.getDate() - 1);
-    while (true) {
-      const pk = prev.toISOString().split('T')[0];
-      if (prev < startD) break;
-      const pe = brahma[pk];
-      if (pe && pe.status === 'b') break;
-      sb++; prev.setDate(prev.getDate() - 1);
-      if (sb > 200) break;
-    }
-    const tithi = getLunarTithi(d);
-    if (times.length === 0) {
-      // No time data — record as hour-unknown (-1)
-      breaks.push({ date: d, dow: d.getDay(), hour: -1, tithi, streakDay: sb, count: en.count || 1 });
-    } else {
-      times.forEach(t => {
-        const hr = t.time ? parseInt(t.time.split(':')[0]) : -1;
-        breaks.push({ date: d, dow: d.getDay(), hour: hr, tithi, streakDay: sb, count: 1 });
-      });
-    }
-  });
-
-  // ── Today's live risk score ──────────────────────
-  const today = new Date(); today.setHours(0,0,0,0);
-  const nowH = new Date().getHours();
-  const todayDow = today.getDay();
-  const todayTithi = getLunarTithi(today);
-
-  // Component 1: time-of-day risk (what hour is vulnerable)
-  const hourCounts = new Array(24).fill(0);
-  let knownHourBreaks = 0;
-  breaks.forEach(b => { if (b.hour >= 0) { hourCounts[b.hour]++; knownHourBreaks++; } });
-  const maxHourCount = Math.max(...hourCounts, 1);
-  const timeScore = knownHourBreaks > 0 ? (hourCounts[nowH] / maxHourCount) * 100 : 0;
-
-  // Component 2: day-of-week risk
-  const dowCounts = new Array(7).fill(0);
-  breaks.forEach(b => dowCounts[b.dow]++);
-  const maxDow = Math.max(...dowCounts, 1);
-  const dowScore = (dowCounts[todayDow] / maxDow) * 100;
-
-  // Component 3: lunar tithi risk
-  const tithibroken = breaks.filter(b => b.tithi === todayTithi).length;
-  const tithiTotal = breaks.length;
-  const tithiScore = tithiTotal > 0 ? Math.min(100, (tithibroken / tithiTotal) * 100 * 5) : 0;
-
-  // Component 4: streak vulnerability — today's streak day
-  let todayStreak = 0;
-  const tmpD = new Date(today);
-  while (true) {
-    const k = tmpD.toISOString().split('T')[0];
-    if (tmpD < startD) break;
-    const e = brahma[k];
-    if (e && e.status === 'b') break;
-    todayStreak++; tmpD.setDate(tmpD.getDate() - 1);
-    if (todayStreak > 200) break;
-  }
-  const streakDays = breaks.map(b => b.streakDay);
-  const streakVulnWindow = 3;
-  const streakMatches = streakDays.filter(s => Math.abs(s - todayStreak) <= streakVulnWindow).length;
-  const streakScore = streakDays.length > 0 ? Math.min(100, (streakMatches / streakDays.length) * 100 * 4) : 0;
-
-  // Composite risk
-  const totalBreaks = breaks.length;
-  let composite;
-  if (totalBreaks < 3) {
-    composite = isRiskDay(today) ? 55 : 25; // fallback for sparse data
-  } else {
-    composite = Math.min(100, Math.round(
-      timeScore * 0.35 + dowScore * 0.25 + tithiScore * 0.20 + streakScore * 0.20
-    ));
-  }
-
-  // Render risk score UI
-  const riskBar = document.getElementById('bcRiskBar');
-  const riskPct = document.getElementById('bcRiskPct');
-  const riskSlots = document.getElementById('bcRiskSlots');
-  if (riskBar) {
-    const col = composite >= 70 ? '#E74C3C' : composite >= 40 ? '#F39C12' : '#2ECC71';
-    riskBar.style.width = composite + '%';
-    riskBar.style.background = col;
-  }
-  if (riskPct) {
-    const label = composite >= 70 ? '🔴 High Risk' : composite >= 40 ? '🟡 Moderate' : '🟢 Low Risk';
-    riskPct.textContent = `${composite}% — ${label}`;
-    riskPct.style.color = composite >= 70 ? '#E74C3C' : composite >= 40 ? '#F39C12' : '#2ECC71';
-  }
-
-  // Next 3 vulnerable time slots today
-  if (riskSlots) {
-    const sortedHours = hourCounts
-      .map((c, h) => ({ h, c }))
-      .filter(x => x.h > nowH && x.c > 0)
-      .sort((a, b) => b.c - a.c)
-      .slice(0, 3);
-    if (sortedHours.length > 0) {
-      riskSlots.innerHTML = '<div style="font-size:10px;opacity:.6;margin-bottom:4px">⚠️ Vulnerable slots ahead today:</div>' +
-        sortedHours.map(x => {
-          const pct = Math.round((x.c / maxHourCount) * 100);
-          return `<span class="bc-risk-slot">${x.h}:00–${x.h+1}:00 (${pct}%)</span>`;
-        }).join(' ');
-    } else if (knownHourBreaks === 0) {
-      riskSlots.innerHTML = '<div style="font-size:10px;opacity:.5">Add break times to see hourly predictions</div>';
-    } else {
-      riskSlots.innerHTML = '<div style="font-size:10px;color:#2ECC71">✓ No high-risk slots remaining today</div>';
-    }
-  }
-
-  // ── Next Urge Predictor ────────────────────────────
-  // Scan next 14 days × 24 hours and find top-3 highest-risk windows
-  // using same components: hour pattern, dow pattern, tithi pattern, streak pattern
-  let predEl = document.getElementById('bcPredictor');
-  if (!predEl && riskSlots && riskSlots.parentNode) {
-    predEl = document.createElement('div');
-    predEl.id = 'bcPredictor';
-    predEl.style.cssText = 'margin-top:10px;padding:10px;border-radius:8px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.25)';
-    riskSlots.parentNode.insertBefore(predEl, riskSlots.nextSibling);
-  }
-  if (predEl) {
-    if (totalBreaks < 3) {
-      predEl.innerHTML = '<div style="font-size:11px;font-weight:600;color:#BD93F9;margin-bottom:4px">🔮 Next Urge Predictor</div><div style="font-size:10px;opacity:.6">Need at least 3 logged relapses with times to forecast next urge.</div>';
-    } else {
-      const tNames = { 1:'Shukla Pratipada',2:'Dwitiya',3:'Tritiya',4:'Chaturthi',5:'Panchami',6:'Shashthi',7:'Saptami',8:'Ashtami',9:'Navami',10:'Dashami',11:'Ekadashi',12:'Dwadashi',13:'Trayodashi',14:'Chaturdashi',15:'Purnima',16:'Krishna Pratipada',17:'K.Dwitiya',18:'K.Tritiya',19:'K.Chaturthi',20:'K.Panchami',21:'K.Shashthi',22:'K.Saptami',23:'K.Ashtami',24:'K.Navami',25:'K.Dashami',26:'K.Ekadashi',27:'K.Dwadashi',28:'K.Trayodashi',29:'K.Chaturdashi',30:'Amavasya' };
-      const slots = [];
-      const now = new Date();
-      const startScan = new Date(now); startScan.setMinutes(0,0,0);
-      for (let dh = 0; dh < 14 * 24; dh++) {
-        const dt = new Date(startScan.getTime() + dh * 3600000);
-        if (dt <= now) continue;
-        const hr = dt.getHours();
-        const dow = dt.getDay();
-        const dDay = new Date(dt); dDay.setHours(0,0,0,0);
-        const tt = getLunarTithi(dDay);
-        // Streak day at that future date (assuming no future breaks)
-        const daysAhead = Math.round((dDay - today) / 86400000);
-        const futureStreak = todayStreak + daysAhead;
-        const hScore = knownHourBreaks > 0 ? (hourCounts[hr] / maxHourCount) : 0;
-        const dScore = (dowCounts[dow] / maxDow);
-        const ttCount = breaks.filter(b => b.tithi === tt).length;
-        const ttScore = totalBreaks > 0 ? Math.min(1, (ttCount / totalBreaks) * 5) : 0;
-        const sMatches = streakDays.filter(s => Math.abs(s - futureStreak) <= streakVulnWindow).length;
-        const sScore = streakDays.length > 0 ? Math.min(1, (sMatches / streakDays.length) * 4) : 0;
-        const score = hScore * 0.40 + dScore * 0.20 + ttScore * 0.20 + sScore * 0.20;
-        if (score > 0) slots.push({ dt, score, tt, hr });
-      }
-      slots.sort((a,b) => b.score - a.score);
-      const top = slots.slice(0, 3);
-      const fmtDt = d => {
-        const dl = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
-        const ml = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
-        return `${dl} ${d.getDate()} ${ml}, ${d.getHours()}:00`;
-      };
-      let html = '<div style="font-size:11px;font-weight:600;color:#BD93F9;margin-bottom:6px">🔮 Next Urge Predictor — top forecasts</div>';
-      if (top.length === 0 || top[0].score === 0) {
-        html += '<div style="font-size:10px;opacity:.6">No clear pattern yet — keep logging.</div>';
-      } else {
-        top.forEach((s, idx) => {
-          const conf = Math.round(s.score * 100);
-          const col = conf >= 50 ? '#E74C3C' : conf >= 25 ? '#F39C12' : '#2ECC71';
-          html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:11px;border-top:${idx?'1px solid rgba(255,255,255,0.05)':'none'}">
-            <div><span style="opacity:.5">${idx+1}.</span> <b>${fmtDt(s.dt)}</b><div style="font-size:9px;opacity:.55">${tNames[s.tt] || 'Tithi '+s.tt}</div></div>
-            <div style="color:${col};font-weight:600">${conf}%</div>
-          </div>`;
-        });
-        html += '<div style="font-size:9px;opacity:.5;margin-top:4px">Plan a stotram, walk, or cold shower at these times. 🙏</div>';
-      }
-      predEl.innerHTML = html;
-    }
-  }
-
-  if (!_bcPatternOpen) return; // Don't render cards if collapsed
-
-
-  // ── Pattern Cards ────────────────────────────────
-  const cards = document.getElementById('bcPatternCards');
-  if (!cards) return;
-  if (totalBreaks < 2) {
-    cards.innerHTML = '<div class="bc-pc-empty">Need at least 2 relapse entries with times to build patterns. Keep logging! 🙏</div>';
-    return;
-  }
-
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const DAYS_W = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-
-  // Card 1: Peak hours
-  const topHours = hourCounts
-    .map((c, h) => ({ h, c }))
-    .filter(x => x.c > 0)
-    .sort((a, b) => b.c - a.c)
-    .slice(0, 3);
-  let c1 = '<div class="bc-pc"><div class="bc-pc-title">🕐 Peak Vulnerable Hours</div>';
-  if (topHours.length === 0) {
-    c1 += '<div class="bc-pc-note">No time data. Add times when logging breaks.</div>';
-  } else {
-    topHours.forEach(x => {
-      const pct = Math.round((x.c / knownHourBreaks) * 100);
-      c1 += `<div class="bc-pc-row"><span>${x.h}:00–${x.h+1}:00</span><div class="bc-pc-bar-wrap"><div class="bc-pc-bar" style="width:${pct}%;background:#E74C3C"></div></div><span class="bc-pc-val">${pct}%</span></div>`;
-    });
-    const [t1, t2] = topHours;
-    c1 += `<div class="bc-pc-insight">Most vulnerable: ${t1.h}:00–${t1.h+1}:00${t2 ? ` and ${t2.h}:00–${t2.h+1}:00` : ''}</div>`;
-  }
-  c1 += '</div>';
-
-  // Card 2: Day of week
-  const dowRank = dowCounts.map((c,i) => ({d:i,c})).sort((a,b) => b.c - a.c);
-  const topDows = dowRank.filter(x => x.c > 0).slice(0, 3);
-  let c2 = '<div class="bc-pc"><div class="bc-pc-title">📅 High-Risk Days of Week</div>';
-  topDows.forEach(x => {
-    const pct = Math.round((x.c / totalBreaks) * 100);
-    c2 += `<div class="bc-pc-row"><span>${DAYS_W[x.d]}</span><div class="bc-pc-bar-wrap"><div class="bc-pc-bar" style="width:${pct}%;background:#F39C12"></div></div><span class="bc-pc-val">${pct}%</span></div>`;
-  });
-  if (topDows.length >= 2) c2 += `<div class="bc-pc-insight">${DAYS_W[topDows[0].d]} & ${DAYS_W[topDows[1].d]} are your highest-risk days</div>`;
-  c2 += '</div>';
-
-  // Card 3: Streak vulnerability
-  const streakBuckets = {};
-  breaks.forEach(b => {
-    const bucket = Math.floor(b.streakDay / 5) * 5; // bucket by 5-day ranges
-    streakBuckets[bucket] = (streakBuckets[bucket] || 0) + 1;
-  });
-  const topStreak = Object.entries(streakBuckets).sort((a,b) => b[1] - a[1]).slice(0, 3);
-  let c3 = '<div class="bc-pc"><div class="bc-pc-title">⏱ Streak Day Vulnerability</div>';
-  topStreak.forEach(([bucket, cnt]) => {
-    const b = parseInt(bucket);
-    const pct = Math.round((cnt / totalBreaks) * 100);
-    c3 += `<div class="bc-pc-row"><span>Day ${b}–${b+4}</span><div class="bc-pc-bar-wrap"><div class="bc-pc-bar" style="width:${pct}%;background:#9B59B6"></div></div><span class="bc-pc-val">${pct}%</span></div>`;
-  });
-  if (topStreak.length > 0) {
-    const topB = parseInt(topStreak[0][0]);
-    c3 += `<div class="bc-pc-insight">Relapses cluster around day ${topB}–${topB+4} of a streak</div>`;
-  }
-  c3 += '</div>';
-
-  // Card 4: Lunar tithi pattern
-  const tithiBuckets = {};
-  breaks.forEach(b => { tithiBuckets[b.tithi] = (tithiBuckets[b.tithi] || 0) + 1; });
-  const topTithis = Object.entries(tithiBuckets).sort((a,b) => b[1]-a[1]).slice(0,3);
-  const tithiNames = { 9:'Navami', 10:'Dashami', 11:'Ekadashi', 12:'Dwadashi', 13:'Trayodashi',
-    15:'Purnima', 24:'Krishna Navami', 28:'Krishna Trayodashi', 30:'Amavasya' };
-  const tithiLabel = t => tithiNames[parseInt(t)] || `Tithi ${t}`;
-  let c4 = '<div class="bc-pc"><div class="bc-pc-title">🌙 Lunar Tithi Pattern</div>';
-  topTithis.forEach(([t, cnt]) => {
-    const pct = Math.round((cnt / totalBreaks) * 100);
-    c4 += `<div class="bc-pc-row"><span>${tithiLabel(t)}</span><div class="bc-pc-bar-wrap"><div class="bc-pc-bar" style="width:${pct}%;background:#1ABC9C"></div></div><span class="bc-pc-val">${pct}%</span></div>`;
-  });
-  const riskWindowBreaks = breaks.filter(b => isRiskDay(b.date)).length;
-  const riskPctVal = totalBreaks > 0 ? Math.round((riskWindowBreaks / totalBreaks) * 100) : 0;
-  c4 += `<div class="bc-pc-insight">${riskPctVal}% of relapses fall in Navami–Trayodashi window</div></div>`;
-
-  cards.innerHTML = c1 + c2 + c3 + c4;
 }
 
 // ── Brahmacharya ──

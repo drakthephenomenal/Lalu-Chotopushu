@@ -422,43 +422,6 @@
     <div class="ns"><div class="nv" style="color:var(--a2)" id="bmp">0%</div><div class="nl">Success Rate</div></div>
   </div>
 
-  <!-- Brahmacharya Progress Graph -->
-  <div class="bc-graph-wrap">
-    <div class="bc-graph-title">📈 Streak Progress
-      <span class="bc-graph-legend">
-        <span class="bc-leg-risk">▊</span> Risk window &nbsp;
-        <span style="color:#F1C40F;font-size:9px;font-weight:600">▊</span> Shukla &nbsp;
-        <span style="color:rgba(72,52,212,0.8);font-size:9px;font-weight:600">▊</span> Krishna
-      </span>
-    </div>
-    <!-- Range Selector -->
-    <div class="bc-range-row" id="bcRangeRow">
-      <button class="bc-range-btn" onclick="bcShiftRange(-90)">&#8249; Prev 90d</button>
-      <span class="bc-range-label" id="bcRangeLabel">Last 90 days</span>
-      <button class="bc-range-btn" id="bcRangeNext" onclick="bcShiftRange(90)">Next 90d &#8250;</button>
-    </div>
-    <canvas id="bcGraph" class="bc-graph-canvas"></canvas>
-  </div>
-
-  <!-- Pattern Engine / Vulnerability Predictor -->
-  <div class="bc-pattern-wrap" id="bcPatternWrap">
-    <div class="bc-pattern-header" onclick="toggleBcPattern()">
-      <span>🧠 Vulnerability Pattern Engine</span>
-      <span class="bc-pattern-chevron" id="bcPatternChevron">▼</span>
-    </div>
-    <div class="bc-pattern-body" id="bcPatternBody">
-      <!-- Today's Risk Score -->
-      <div class="bc-risk-today" id="bcRiskToday">
-        <div class="bc-risk-label">Today's Risk Score</div>
-        <div class="bc-risk-bar-wrap"><div class="bc-risk-bar" id="bcRiskBar"></div></div>
-        <div class="bc-risk-pct" id="bcRiskPct">—</div>
-        <div class="bc-risk-slots" id="bcRiskSlots"></div>
-      </div>
-      <!-- Pattern Cards -->
-      <div class="bc-pattern-cards" id="bcPatternCards"></div>
-    </div>
-  </div>
-
   <!-- Unified Calendar -->
   <div class="ch">
     <button class="cnb" onclick="chm(-1)">&#8249;</button>
@@ -473,6 +436,23 @@
     <span>🟢 Maintained</span><span>🔴 Broken</span><span>🟡 Occasion</span>
   </div>
   <div style="padding:4px 14px 6px;font-size:11px;color:var(--td);text-align:center;letter-spacing:1px;">Tap a date to see details</div>
+
+  <!-- Brahmacharya Progress Graph — dedicated area below calendar -->
+  <div class="bc-graph-section">
+    <div class="bc-graph-section-title">📈 Brahmacharya Streak</div>
+    <div class="bc-graph-legend-row">
+      <span class="bc-legend-dot" style="background:#22c55e"></span><span class="bc-legend-text">Maintained</span>
+      <span class="bc-legend-dot" style="background:#ef4444;margin-left:18px"></span><span class="bc-legend-text">Broken</span>
+    </div>
+    <div class="bc-range-row" id="bcRangeRow">
+      <button class="bc-range-btn" onclick="bcShiftRange(-90)">&#8249; Prev 90d</button>
+      <span class="bc-range-label" id="bcRangeLabel">Last 90 days</span>
+      <button class="bc-range-btn" id="bcRangeNext" onclick="bcShiftRange(90)">Next 90d &#8250;</button>
+    </div>
+    <div class="bc-graph-scroll-wrap">
+      <canvas id="bcGraph" class="bc-graph-canvas"></canvas>
+    </div>
+  </div>
 </div>
 
 

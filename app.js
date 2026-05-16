@@ -3970,34 +3970,59 @@ function addEkadashiDate() {
   if (shuklaRadio) shuklaRadio.checked = true;
 
   // ── Write single fasting-date occasion per Parampara ──
+  // Get real GPS-based sunrise for the Ekadashi start date, then compute fasting day
   if (!App.S.occasions) App.S.occasions = {};
   const label = (name || 'Ekadashi') + (paksha === 'shukla' ? ' ☀️ Shukla' : ' 🌙 Krishna');
   const startFmt = startTime ? _fmtTime12(startTime) : '';
   const endFmt   = endTime   ? _fmtTime12(endTime)   : '';
 
-  let fastingDate = startDate;
-  let isViddha = false;
-  const parampara = App.S.ekParampara || 'smarta';
-  if (startTime && endDate && endDate !== startDate) {
-    const [sh, sm] = startTime.split(':').map(Number);
-    const ekStartH = sh + sm/60;
-    if (parampara === 'vaishnava') {
-      // Arunodaya = 96 min before sunrise ≈ 04:24 for 06:00 sunrise (264 min)
-      if (ekStartH * 60 >= 264) { fastingDate = endDate; isViddha = true; }
-    } else {
-      // Smarta: if tithi begins after sunrise (~06:00 = 360 min), fast on endDate
-      if (ekStartH * 60 >= 360) fastingDate = endDate;
+  function _applyEkFasting(sunriseH) {
+    // Arunodaya (Brahmamuhurta start) = 96 min before actual sunrise
+    const arunodayaH = sunriseH - 96/60;
+    let fastingDate = startDate;
+    let isViddha = false;
+    const parampara = App.S.ekParampara || 'smarta';
+    if (startTime && endDate && endDate !== startDate) {
+      const [sh, sm] = startTime.split(':').map(Number);
+      const ekStartH = sh + sm/60;
+      if (parampara === 'vaishnava') {
+        // Vaishnava: if Ekadashi tithi starts after Arunodaya, day is Viddha → fast on endDate (Mahadvadashi)
+        if (ekStartH >= arunodayaH) { fastingDate = endDate; isViddha = true; }
+      } else {
+        // Smarta: if Ekadashi tithi starts after actual sunrise, fast on endDate
+        if (ekStartH >= sunriseH) fastingDate = endDate;
+      }
     }
+    const timeNote = isViddha
+      ? ' (Mahadvadashi · Arunodaya Viddha · Sunrise ' + fmtHour(sunriseH) + ' / Arunodaya ' + fmtHour(arunodayaH) + ')'
+      : startFmt ? ' ' + startFmt + (endFmt ? '–' + endFmt : '') + ' (Sunrise ' + fmtHour(sunriseH) + ')' : '';
+    App.S.occasions[fastingDate] = label + timeNote;
+    App.save(); fbDebouncedPush();
+    renderEkadashiList();
+    renderCal();
+    toast('Ekadashi added 📅 (Sunrise ' + fmtHour(sunriseH) + ', Arunodaya ' + fmtHour(arunodayaH) + ')');
   }
-  const timeNote = isViddha
-    ? ' (Mahadvadashi · Arunodaya Viddha)'
-    : startFmt ? ' ' + startFmt + (endFmt ? '–' + endFmt : '') : '';
-  App.S.occasions[fastingDate] = label + timeNote;
 
-  App.save(); fbDebouncedPush();
-  renderEkadashiList();
-  renderCal();
-  toast('Ekadashi added 📅');
+  // Use GPS to get real sunrise for the Ekadashi start date
+  if (navigator.geolocation) {
+    toast('📍 Getting GPS for sunrise…');
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const ekDate = new Date(startDate + 'T00:00:00');
+        const srData = calcSunTimes(pos.coords.latitude, pos.coords.longitude, ekDate);
+        const sunriseH = srData ? srData.sunriseH : 6.0;
+        _applyEkFasting(sunriseH);
+      },
+      () => {
+        // GPS denied/failed — fall back to 6.00 AM with a warning
+        toast('⚠️ GPS unavailable, using 06:00 sunrise fallback');
+        _applyEkFasting(6.0);
+      },
+      { timeout: 8000, maximumAge: 3600000 }
+    );
+  } else {
+    _applyEkFasting(6.0);
+  }
 }
 
 function removeEkadashiDate(startDate) {
@@ -4100,7 +4125,7 @@ function saveEkadashiEdit(oldSd) {
   const newPaksha = pEl?pEl.value:'shukla';
   if (!newSd) { toast('Start date required 📅'); return; }
 
-  // Remove old
+  // Remove old entry and its occasions
   const oldEntry = (App.S.customEkadashi||[]).find(e=>_ekDate(e)===oldSd);
   App.S.customEkadashi = (App.S.customEkadashi||[]).filter(e=>_ekDate(e)!==oldSd);
   if (App.S.occasions && oldEntry) {
@@ -4109,24 +4134,52 @@ function saveEkadashiEdit(oldSd) {
         delete App.S.occasions[d];
     });
   }
-  // Re-compute fasting date
-  const lbl = (newName.trim()||'Ekadashi')+(newPaksha==='shukla'?' ☀️ Shukla':' 🌙 Krishna');
-  let fastingDate=newSd, isViddha=false;
-  const parampara=App.S.ekParampara||'smarta';
-  if (newSt && newEd && newEd!==newSd) {
-    const [h,m]=newSt.split(':').map(Number), ekH=h+m/60;
-    if (parampara==='vaishnava'&&ekH*60>=264) { fastingDate=newEd; isViddha=true; }
-    else if (parampara==='smarta'&&ekH*60>=360) fastingDate=newEd;
-  }
-  const sf=newSt?_fmtTime12(newSt):'', ef=newEt?_fmtTime12(newEt):'';
-  const tnote=isViddha?' (Mahadvadashi · Arunodaya Viddha)':sf?' '+sf+(ef?'–'+ef:''):'';
-  if (!App.S.occasions) App.S.occasions={};
-  App.S.occasions[fastingDate]=lbl+tnote;
+
+  // Push updated entry first so it's saved even before GPS resolves
   App.S.customEkadashi.push({name:newName.trim(),paksha:newPaksha,startDate:newSd,startTime:newSt,endDate:newEd||newSd,endTime:newEt});
   App.S.customEkadashi.sort((a,b)=>_ekDate(a)<_ekDate(b)?-1:1);
-  App.save(); fbDebouncedPush();
-  renderEkadashiList(); renderCal();
-  toast('Ekadashi updated ✅');
+
+  const lbl = (newName.trim()||'Ekadashi')+(newPaksha==='shukla'?' ☀️ Shukla':' 🌙 Krishna');
+  const sf = newSt?_fmtTime12(newSt):'', ef = newEt?_fmtTime12(newEt):'';
+  if (!App.S.occasions) App.S.occasions={};
+
+  function _applyEditFasting(sunriseH) {
+    // Arunodaya (Brahmamuhurta start) = 96 min before actual sunrise
+    const arunodayaH = sunriseH - 96/60;
+    let fastingDate = newSd, isViddha = false;
+    const parampara = App.S.ekParampara || 'smarta';
+    if (newSt && newEd && newEd !== newSd) {
+      const [h, m] = newSt.split(':').map(Number), ekH = h + m/60;
+      if (parampara === 'vaishnava' && ekH >= arunodayaH) { fastingDate = newEd; isViddha = true; }
+      else if (parampara === 'smarta' && ekH >= sunriseH) fastingDate = newEd;
+    }
+    const tnote = isViddha
+      ? ' (Mahadvadashi · Arunodaya Viddha · Sunrise ' + fmtHour(sunriseH) + ' / Arunodaya ' + fmtHour(arunodayaH) + ')'
+      : sf ? ' ' + sf + (ef ? '–' + ef : '') + ' (Sunrise ' + fmtHour(sunriseH) + ')' : '';
+    App.S.occasions[fastingDate] = lbl + tnote;
+    App.save(); fbDebouncedPush();
+    renderEkadashiList(); renderCal();
+    toast('Ekadashi updated ✅ (Sunrise ' + fmtHour(sunriseH) + ', Arunodaya ' + fmtHour(arunodayaH) + ')');
+  }
+
+  // Get real GPS sunrise for the (new) Ekadashi start date
+  if (navigator.geolocation) {
+    toast('📍 Getting GPS for sunrise…');
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const ekDate = new Date(newSd + 'T00:00:00');
+        const srData = calcSunTimes(pos.coords.latitude, pos.coords.longitude, ekDate);
+        _applyEditFasting(srData ? srData.sunriseH : 6.0);
+      },
+      () => {
+        toast('⚠️ GPS unavailable, using 06:00 sunrise fallback');
+        _applyEditFasting(6.0);
+      },
+      { timeout: 8000, maximumAge: 3600000 }
+    );
+  } else {
+    _applyEditFasting(6.0);
+  }
 }
 
 // ── Graph range state: offset in days from today (0 = last 90d, -90 = prev 90d, etc.)
@@ -4709,17 +4762,67 @@ function renderOccasionList(){
 
 // ── Sun Times ──
 function calcSunTimes(lat,lng,date){
-  const rad=Math.PI/180,JD=(date.getTime()/86400000)+2440587.5,n=JD-2451545.0;
-  const L=(280.46+0.9856474*n)%360,g=(357.528+0.9856003*n)%360;
-  const lambda=L+1.915*Math.sin(g*rad)+0.02*Math.sin(2*g*rad);
-  const epsilon=23.439-0.0000004*n,sinDec=Math.sin(epsilon*rad)*Math.sin(lambda*rad);
-  const dec=Math.asin(sinDec),cosHA=(Math.cos(90.833*rad)-Math.sin(lat*rad)*sinDec)/(Math.cos(lat*rad)*Math.cos(dec));
-  if(cosHA>1||cosHA<-1)return null;
-  const HA=Math.acos(cosHA)/rad,GMST=6.697375+0.0657098242*n,LMST=(GMST*15+lng)%360;
-  const transit=(360-LMST+lambda)/15,sunrise=transit-HA/15,sunset=transit+HA/15;
-  function toLocal(utcH){const off=date.getTimezoneOffset()/(-60);let h=(utcH+24+off)%24;const hh=Math.floor(h),mm=Math.round((h-hh)*60),fH=mm===60?hh+1:hh,fM=mm===60?0:mm,ap=fH>=12?'PM':'AM',h12=((fH%12)||12);return String(h12).padStart(2,'0')+':'+String(fM).padStart(2,'0')+' '+ap;}
-  function toLocalRaw(utcH){const off=date.getTimezoneOffset()/(-60);return(utcH+24+off)%24;}
-  return{sunriseH:toLocalRaw(sunrise),sunsetH:toLocalRaw(sunset),sunrise:toLocal(sunrise),sunset:toLocal(sunset)};
+  // NOAA Solar Calculator algorithm — accurate to within ~1 minute
+  // Anchors Julian Day at integer noon to eliminate time-of-day drift
+  const rad=Math.PI/180;
+  const JD = Math.floor(date.getTime()/86400000) + 2440587.5 + 0.5; // JD at noon UTC for this date
+  const T  = (JD - 2451545.0) / 36525.0;  // Julian centuries since J2000.0
+
+  // Geometric mean longitude and anomaly of the Sun
+  const L0 = ((280.46646 + 36000.76983*T + 0.0003032*T*T) % 360 + 360) % 360;
+  const M  = ((357.52911 + 35999.05029*T - 0.0001537*T*T) % 360 + 360) % 360;
+  const Mr = M*rad;
+
+  // Equation of centre
+  const C = (1.914602 - 0.004817*T - 0.000014*T*T)*Math.sin(Mr)
+           +(0.019993 - 0.000101*T)*Math.sin(2*Mr)
+           + 0.000289*Math.sin(3*Mr);
+
+  // Sun true longitude → apparent longitude (aberration + nutation)
+  const sunTrueLon = L0 + C;
+  const omega      = 125.04 - 1934.136*T;
+  const lambda     = sunTrueLon - 0.00569 - 0.00478*Math.sin(omega*rad);
+
+  // Mean obliquity + correction
+  const epsilon0 = 23.0 + 26.0/60 + 21.448/3600 - (46.8150/3600)*T - (0.00059/3600)*T*T + (0.001813/3600)*T*T*T;
+  const epsilon  = (epsilon0 + 0.00256*Math.cos(omega*rad)) * rad;
+
+  // Declination
+  const dec = Math.asin(Math.sin(epsilon)*Math.sin(lambda*rad));
+
+  // Equation of time (minutes)
+  const y    = Math.tan(epsilon/2)**2;
+  const L0r  = L0*rad;
+  const eqT  = 4/rad * (y*Math.sin(2*L0r) - 2*0.016708634*Math.sin(Mr)
+             + 4*0.016708634*y*Math.sin(Mr)*Math.cos(2*L0r)
+             - 0.5*y*y*Math.sin(4*L0r) - 1.25*0.016708634**2*Math.sin(2*Mr));
+
+  // Hour angle at sunrise / sunset (90.833° = centre of sun + atmospheric refraction)
+  const cosHA = (Math.cos(90.833*rad) - Math.sin(lat*rad)*Math.sin(dec))
+              / (Math.cos(lat*rad)*Math.cos(dec));
+  if(cosHA>1||cosHA<-1) return null; // polar night / midnight sun
+
+  const HA = Math.acos(cosHA)/rad; // degrees
+
+  // Solar noon, sunrise, sunset — all in UTC minutes from midnight
+  const solarNoonUTC = 720 - 4*lng - eqT;
+  const sunriseUTC   = solarNoonUTC - HA*4;
+  const sunsetUTC    = solarNoonUTC + HA*4;
+
+  // UTC minutes → local decimal hours using device timezone offset
+  const tzOffMin = -date.getTimezoneOffset(); // positive = east of UTC
+  function toLocalH(utcMin){ return ((utcMin + tzOffMin)/60 % 24 + 24) % 24; }
+
+  const sunriseH = toLocalH(sunriseUTC);
+  const sunsetH  = toLocalH(sunsetUTC);
+
+  function fmtH(h){
+    let hh=Math.floor(h), mm=Math.round((h-hh)*60);
+    if(mm>=60){hh++;mm=0;} if(hh>=24)hh-=24;
+    const ap=hh>=12?'PM':'AM', h12=((hh%12)||12);
+    return String(h12).padStart(2,'0')+':'+String(mm).padStart(2,'0')+' '+ap;
+  }
+  return{ sunriseH, sunsetH, sunrise:fmtH(sunriseH), sunset:fmtH(sunsetH) };
 }
 function fmtHour(h){let hh=Math.floor(h),mm=Math.round((h-hh)*60);if(mm>=60){hh++;mm=0;}if(hh>=24)hh-=24;const ap=hh>=12?'PM':'AM',h12=((hh%12)||12);return String(h12).padStart(2,'0')+':'+String(mm).padStart(2,'0')+' '+ap;}
 function updateSunInfo(lat,lng){

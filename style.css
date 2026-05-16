@@ -889,15 +889,3 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .bc-pc-insight{font-size:10px;color:rgba(255,255,255,.45);margin-top:5px;font-style:italic;}
 .bc-pc-note{font-size:10px;color:var(--td);opacity:.6;}
 .bc-pc-empty{font-size:11px;color:var(--td);opacity:.6;text-align:center;padding:10px 0;}
-
-/* ── Gaudiya Panchang Bar ── */
-#panchangBar, #bcPanchangBar {
-  background: linear-gradient(135deg, rgba(18,8,40,0.7), rgba(30,10,60,0.6));
-  border-bottom: 1px solid rgba(155,89,182,0.2);
-  font-family: 'Inter', sans-serif;
-  letter-spacing: 0.3px;
-}
-#panchangBar span, #bcPanchangBar span {
-  display: block;
-  line-height: 1.7;
-}

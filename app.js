@@ -3659,13 +3659,12 @@ function toggleStEdit(id) {
 }
 function delSt(id) { App.S.customSt=(App.S.customSt||[]).filter(x=>x.id!==id); delete App.S.stotrams[id]; App.save(); fbDebouncedPush(); renderSt(); toast('Removed'); }
 
-// ═══════════════════════════════════════════════════════════════════
-// GAUDIYA PANCHANG ENGINE
-// GPS-based: moon elongation → tithi, Gaudiya month, Gaurabdo year,
-// Purushottam Maas detection, Arunodaya-corrected Ekadashi fasting date
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// PANCHANG ENGINE — GPS-based astronomical tithi, no API key
+// Moon elongation from sun (VSOP87 simplified) → tithi 1-30
+// Each 12° of elongation = 1 tithi
+// ═══════════════════════════════════════════════════════════════
 
-// ── Moon elongation (VSOP87 simplified) ──
 function _moonElongation(date) {
   const JD = date.getTime() / 86400000 + 2440587.5;
   const T  = (JD - 2451545.0) / 36525.0;
@@ -3676,63 +3675,37 @@ function _moonElongation(date) {
   const C  = (1.914602 - 0.004817*T - 0.000014*T*T)*Math.sin(Mr)
            + (0.019993 - 0.000101*T)*Math.sin(2*Mr)
            +  0.000289*Math.sin(3*Mr);
-  const sunLon = (L0 + C + 360) % 360;
-  const Lm = (218.3164477 + 481267.88123421*T - 0.0015786*T*T + 360000) % 360;
-  const Mm = (134.9633964 + 477198.8675055 *T + 0.0087414*T*T + 360000) % 360;
-  const F  = ( 93.2720950 + 483202.0175233 *T - 0.0036539*T*T + 360000) % 360;
-  const D  = (297.8501921 + 445267.1114034 *T - 0.0018819*T*T + 360000) % 360;
-  const Mmr=Mm*r, Dr=D*r, Fr=F*r, Mr2=M*r;
-  const moonLon = (Lm
+  const sunLon = L0 + C;
+  const Lm = (218.3164477 + 481267.88123421*T - 0.0015786*T*T) % 360;
+  const Mm = (134.9633964 + 477198.8675055 *T + 0.0087414*T*T) % 360;
+  const F  = ( 93.2720950 + 483202.0175233 *T - 0.0036539*T*T) % 360;
+  const D  = (297.8501921 + 445267.1114034 *T - 0.0018819*T*T) % 360;
+  const Mmr=Mm*r, Fr=F*r, Dr=D*r;
+  const moonLon = Lm
     + 6.289*Math.sin(Mmr)   - 1.274*Math.sin(2*Dr-Mmr)
     + 0.658*Math.sin(2*Dr)  - 0.214*Math.sin(2*Mmr)
-    + 0.059*Math.sin(2*Dr-2*Mmr+Mmr)
-    - 0.057*Math.sin(2*Dr-Mr2-Mmr)
-    + 0.053*Math.sin(2*Dr+Mmr)
-    + 0.046*Math.sin(2*Dr-Mr2)
-    + 0.041*Math.sin(Mmr-Mr2)
-    - 0.034*Math.sin(Dr)
-    + 0.030*Math.sin(2*Mmr-Mr2)
-    - 0.024*Math.sin(2*(Dr-Mmr))
-    + 0.018*Math.sin(2*Dr-2*Fr-Mmr)
-    + 360000) % 360;
+    + 0.059*Math.sin(2*Dr-2*Mmr+Mmr) - 0.057*Math.sin(2*Dr-Mr-Mmr)
+    + 0.053*Math.sin(2*Dr+Mmr) + 0.046*Math.sin(2*Dr-Mr)
+    + 0.041*Math.sin(Mmr-Mr)   - 0.034*Math.sin(Dr)
+    + 0.030*Math.sin(2*Mmr-Mr) - 0.024*Math.sin(2*(Dr-Mmr))
+    + 0.018*Math.sin(2*Dr-2*Fr-Mmr);
   return ((moonLon - sunLon) % 360 + 360) % 360;
 }
 
-// tithi 1–30 at exact moment
+// tithi 1-30 at a given moment
 function _tithiAtMoment(date) {
   return Math.floor(_moonElongation(date) / 12) + 1;
 }
 
-// Sun longitude (for Rashi / Sankranti detection)
-function _sunLongitude(date) {
-  const JD = date.getTime() / 86400000 + 2440587.5;
-  const T  = (JD - 2451545.0) / 36525.0;
-  const L0 = (280.46646 + 36000.76983 * T) % 360;
-  const M  = (357.52911 + 35999.05029 * T - 0.0001537 * T * T) % 360;
-  const Mr = M * Math.PI / 180;
-  const C  = (1.914602 - 0.004817*T)*Math.sin(Mr) + 0.019993*Math.sin(2*Mr);
-  return ((L0 + C) % 360 + 360) % 360;
-}
-
-// Sun Rashi (0=Mesha…11=Meena) — sidereal (subtract ~23.15° ayanamsa)
-function _sunRashi(date) {
-  const tropical = _sunLongitude(date);
-  const JD = date.getTime() / 86400000 + 2440587.5;
-  const T  = (JD - 2451545.0) / 36525.0;
-  const ayanamsa = 23.85 + 0.013953 * T; // Lahiri approximate
-  const sidereal = ((tropical - ayanamsa) % 360 + 360) % 360;
-  return Math.floor(sidereal / 30);
-}
-
-// Binary-search exact crossing of elongation boundary
+// Binary-search exact moment elongation crosses a degree boundary within [lo,hi]
 function _findElongCrossing(targetDeg, lo, hi) {
   let loT = lo.getTime(), hiT = hi.getTime();
-  for (let i = 0; i < 52; i++) {
+  for (let i = 0; i < 48; i++) {
     const mid = (loT + hiT) / 2;
     const e = _moonElongation(new Date(mid));
     const diff = ((e - targetDeg + 360) % 360);
     if (diff < 180) hiT = mid; else loT = mid;
-    if (hiT - loT < 10000) break;
+    if (hiT - loT < 15000) break; // 15-second precision
   }
   return new Date((loT + hiT) / 2);
 }
@@ -3742,7 +3715,7 @@ function _didCross(prev, cur, deg) {
   return prev < deg && cur >= deg;
 }
 
-// Find Ekadashi tithi start/end in a day-scan window
+// Find Ekadashi tithi start/end in a window. Returns {paksha, ekStart, ekEnd} or null.
 function _findEkInWindow(wStart, wEnd, paksha) {
   const startDeg = paksha === 'shukla' ? 120 : 300;
   const endDeg   = paksha === 'shukla' ? 132 : 312;
@@ -3755,12 +3728,12 @@ function _findEkInWindow(wStart, wEnd, paksha) {
     if (!ekStart && _didCross(prev, e, startDeg))
       ekStart = _findElongCrossing(startDeg, new Date(cur.getTime()-DAY), new Date(cur));
     if (ekStart && !ekEnd && _didCross(prev, e, endDeg))
-      ekEnd = _findElongCrossing(endDeg, new Date(cur.getTime()-DAY), new Date(cur));
+      ekEnd   = _findElongCrossing(endDeg,   new Date(cur.getTime()-DAY), new Date(cur));
     if (ekStart && ekEnd) break;
     prev = e;
   }
   if (!ekStart) return null;
-  if (!ekEnd) ekEnd = new Date(ekStart.getTime() + 90000000);
+  if (!ekEnd) ekEnd = new Date(ekStart.getTime() + 90000000); // ~25h fallback
   return { paksha, ekStart, ekEnd };
 }
 
@@ -3771,234 +3744,41 @@ function _d2ymd(d) {
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 
-// ── GPS sunrise for any date (uses existing calcSunTimes) ──
-function _sunriseH(lat, lng, date) {
-  const s = calcSunTimes(lat, lng, date);
-  return s ? s.sunriseH : 6.0;
-}
-
-// ── Correct Ekadashi fasting date per parampara using real Arunodaya ──
-// Checks actual tithi at Arunodaya moment (not just start-time proxy)
+// Resolve the single fasting date per parampara from an Ek result
 function _resolveEkFasting(ek, lat, lng, name) {
   const { paksha, ekStart, ekEnd } = ek;
   const startDate = _d2ymd(ekStart), endDate = _d2ymd(ekEnd);
   const startTime = _d2hhmm(ekStart), endTime = _d2hhmm(ekEnd);
+  const srData = calcSunTimes(lat, lng, ekStart);
+  const sunriseH = srData ? srData.sunriseH : 6.0;
+  const arunodayaH = sunriseH - 96/60;
+  const ekStartH = ekStart.getHours() + ekStart.getMinutes()/60;
   const parampara = App.S.ekParampara || 'smarta';
-
-  // Get GPS sunrise for the ekStart date
-  const srH = _sunriseH(lat, lng, ekStart);
-  // Arunodaya = sunrise - 96 min (computed fresh for this specific date & GPS)
-  const arunodayaH = srH - 96/60;
-  // Arunodaya moment as a Date on ekStart's calendar date
-  const arunodayaMs = new Date(ekStart);
-  arunodayaMs.setHours(0, 0, 0, 0);
-  arunodayaMs.setTime(arunodayaMs.getTime() + arunodayaH * 3600000);
-
-  // Sunrise moment as Date
-  const sunriseMs = new Date(ekStart);
-  sunriseMs.setHours(0, 0, 0, 0);
-  sunriseMs.setTime(sunriseMs.getTime() + srH * 3600000);
-
-  // What tithi is prevailing exactly at Arunodaya?
-  const tithiAtArunodaya = _tithiAtMoment(arunodayaMs);
-  // What tithi is prevailing at Sunrise?
-  const tithiAtSunrise = _tithiAtMoment(sunriseMs);
-  // Dashami = tithi 10 (Shukla) or 25 (Krishna)
-  const dashamiTithi = paksha === 'shukla' ? 10 : 25;
-  const ekTithi      = paksha === 'shukla' ? 11 : 26;
-
   let fastingDate = startDate, isViddha = false;
-
   if (parampara === 'vaishnava') {
-    // Viddha: if Dashami is still running at Arunodaya → fast on endDate (Mahadvadashi)
-    if (tithiAtArunodaya === dashamiTithi) {
-      fastingDate = endDate;
-      isViddha = true;
-    }
-    // Also: if Ekadashi is NOT present at Arunodaya on startDate, push to endDate
-    else if (tithiAtArunodaya !== ekTithi) {
-      fastingDate = endDate;
-    }
+    if (ekStartH > arunodayaH) { fastingDate = endDate; isViddha = true; }
   } else {
-    // Smarta: fast on day where Ekadashi tithi is present at sunrise
-    if (tithiAtSunrise !== ekTithi) {
-      fastingDate = endDate;
-    }
+    // Smarta: fast on day where Ekadashi is present at sunrise
+    if (ekStartH > sunriseH) fastingDate = endDate;
   }
-
   const pakshaLabel = paksha === 'shukla' ? ' ☀️ Shukla' : ' 🌙 Krishna';
   const label = (name||'Ekadashi') + pakshaLabel + (isViddha ? ' (Mahadvadashi)' : '');
   return { name: name||'Ekadashi', paksha, isViddha, startDate, startTime, endDate, endTime, fastingDate, label };
 }
 
-// ── Ekadashi names by Gregorian month ──
+// Ekadashi names by Shukla month index (0=Chaitra in Panchang ≈ March/April)
 const _EK_NAMES_SHUKLA = [
-  'Putrada','Jaya','Vijaya','Papamochani','Kamada','Varuthini',
-  'Mohini','Apara','Nirjala','Yogini','Devshayani','Kamika',
-  'Shravana Putrada','Aja','Parsva','Indira','Papankusha','Rama',
-  'Devutthana','Utpanna','Mokshada','Saphala','Sat-tila','Amalaki'
+  'Papamochani','Kamada','Varuthini','Mohini','Apara','Nirjala',
+  'Yogini','Devshayani','Kamika','Shravana Putrada','Aja','Parsva',
+  'Indira','Papankusha','Rama','Devutthana','Utpanna','Mokshada',
+  'Saphala','Putrada','Sat-tila','Jaya','Vijaya','Amalaki'
 ];
 const _EK_NAMES_KRISHNA = [
-  'Pausha K.Ek','Magha K.Ek','Phalguna K.Ek','Chaitra K.Ek',
-  'Vaishakha K.Ek','Jyeshtha K.Ek','Ashadha K.Ek','Shravana K.Ek',
-  'Bhadrapada K.Ek','Ashwin K.Ek','Kartik K.Ek','Margashirsha K.Ek'
+  'Chaitra K.Ek','Vaishakha K.Ek','Jyeshtha K.Ek','Ashadha K.Ek',
+  'Shravana K.Ek','Bhadrapada K.Ek','Ashwin K.Ek','Kartik K.Ek',
+  'Margashirsha K.Ek','Pausha K.Ek','Magha K.Ek','Phalguna K.Ek'
 ];
 
-// ── Gaudiya Month Names (Vishnu sahasranama months) ──
-// Named by the solar Rashi the sun is in during that lunar month
-const _GAUDIYA_MONTHS = [
-  'Vishnu','Madhusudana','Trivikrama','Vamana','Shridhara','Hrishikesha',
-  'Padmanabha','Damodara','Keshava','Narayana','Madhava','Govinda'
-];
-
-// ── Tithi names ──
-const _TITHI_NAMES_SHUKLA  = ['Pratipada','Dwitiya','Tritiya','Chaturthi','Panchami',
-  'Shashthi','Saptami','Ashtami','Navami','Dashami','Ekadashi',
-  'Dwadashi','Trayodashi','Chaturdashi','Purnima'];
-const _TITHI_NAMES_KRISHNA = ['Pratipada','Dwitiya','Tritiya','Chaturthi','Panchami',
-  'Shashthi','Saptami','Ashtami','Navami','Dashami','Ekadashi',
-  'Dwadashi','Trayodashi','Chaturdashi','Amavasya'];
-
-// ── Get Gaudiya Panchang for a given date ──
-// Returns { gaurabdo, gaudiyaMonth, isPurushottam, paksha, tithiNum, tithiName,
-//           tithiEndTime (Date|null), nextTithiName, sunriseH, arunodayaH }
-// lat/lng optional — if not provided, uses cached GPS or defaults
-let _panchangGPSLat = null, _panchangGPSLng = null;
-
-function _getGaudiyaPanchang(date, lat, lng) {
-  const useLat = lat ?? _panchangGPSLat ?? 23.8103;
-  const useLng = lng ?? _panchangGPSLng ?? 90.4125;
-
-  // Sunrise for this date
-  const srH = _sunriseH(useLat, useLng, date);
-  const arunodayaH = srH - 96/60;
-
-  // Tithi at sunrise (this determines the "day's tithi" per Panchang)
-  const sunriseMoment = new Date(date);
-  sunriseMoment.setHours(Math.floor(srH), Math.round((srH % 1)*60), 0, 0);
-  const tithiAtSunrise = _tithiAtMoment(sunriseMoment);
-
-  // Determine paksha & tithi name
-  const isShukla = tithiAtSunrise <= 15;
-  const paksha = isShukla ? 'Shukla' : 'Krishna';
-  const tithiIdx = isShukla ? tithiAtSunrise - 1 : tithiAtSunrise - 16;
-  const tithiName = isShukla
-    ? _TITHI_NAMES_SHUKLA[tithiIdx]  || 'Pratipada'
-    : _TITHI_NAMES_KRISHNA[tithiIdx] || 'Pratipada';
-
-  // Find when current tithi ends (next 12° boundary)
-  const currentBoundaryDeg = tithiAtSunrise * 12; // end of current tithi
-  const searchEnd = new Date(date.getTime() + 2 * 86400000);
-  let tithiEndTime = null;
-  try {
-    // Quick scan to bracket the crossing
-    let prev = _moonElongation(sunriseMoment);
-    const step = new Date(sunriseMoment);
-    for (let h = 0; h < 48; h++) {
-      step.setTime(step.getTime() + 3600000);
-      const e = _moonElongation(step);
-      if (_didCross(prev, e, currentBoundaryDeg % 360)) {
-        tithiEndTime = _findElongCrossing(currentBoundaryDeg % 360,
-          new Date(step.getTime()-3600000), new Date(step));
-        break;
-      }
-      prev = e;
-    }
-  } catch(ex) {}
-
-  // Next tithi name
-  const nextTithiNum = (tithiAtSunrise % 30) + 1;
-  const nextIsShukla = nextTithiNum <= 15;
-  const nextIdx = nextIsShukla ? nextTithiNum - 1 : nextTithiNum - 16;
-  const nextTithiName = nextIsShukla
-    ? _TITHI_NAMES_SHUKLA[nextIdx]  || ''
-    : _TITHI_NAMES_KRISHNA[nextIdx] || '';
-
-  // Gaudiya month: determined by sun's Rashi during this lunar month
-  // Use sun's position at today's sunrise
-  const rashi = _sunRashi(sunriseMoment);
-  // Gaudiya month name = the Vishnu name for that Rashi
-  // BUT we need to detect Purushottam (Adhika) Maas:
-  // A lunar month is Adhika if sun does NOT change Rashi between the two surrounding Amavasyas
-  const isPurushottam = _isPurushottamMaas(date, useLat, useLng);
-  const gaudiyaMonth = isPurushottam ? 'Purushottama' : _GAUDIYA_MONTHS[rashi] || 'Vishnu';
-
-  // Gaurabdo: Gaudiya era from 1486 CE
-  // Advances after Gaura Purnima (Phalguna Purnima ≈ late Feb/Mar)
-  // Approximate: if month >= 3 (March onward) use year-1486, else year-1487
-  const gregYear = date.getFullYear();
-  // Gaura Purnima is roughly in March; use March 1 as cutoff
-  const gauraPurnimaApprox = new Date(gregYear, 2, 1); // March 1
-  const gaurabdo = date >= gauraPurnimaApprox ? gregYear - 1486 : gregYear - 1487;
-
-  return {
-    gaurabdo, gaudiyaMonth, isPurushottam, paksha,
-    tithiNum: tithiAtSunrise, tithiName, tithiEndTime, nextTithiName,
-    sunriseH: srH, arunodayaH
-  };
-}
-
-// ── Purushottam Maas detection ──
-// A lunar month is Purushottam if the sun stays in the SAME Rashi
-// from the previous Amavasya to the current Amavasya
-function _isPurushottamMaas(date, lat, lng) {
-  // Find the previous Amavasya (tithi 30) and next Amavasya
-  // Quick: scan backward up to 30 days for prev Amavasya, forward for next
-  const DAY = 86400000;
-  let prevAm = null, nextAm = null;
-
-  // Scan backward for previous Amavasya
-  const scanBack = new Date(date); scanBack.setHours(6,0,0,0);
-  for (let i = 0; i < 32; i++) {
-    scanBack.setTime(scanBack.getTime() - DAY);
-    const t = _tithiAtMoment(scanBack);
-    if (t === 30) { prevAm = new Date(scanBack); break; }
-  }
-  // Scan forward for next Amavasya
-  const scanFwd = new Date(date); scanFwd.setHours(6,0,0,0);
-  for (let i = 0; i < 32; i++) {
-    scanFwd.setTime(scanFwd.getTime() + DAY);
-    const t = _tithiAtMoment(scanFwd);
-    if (t === 30) { nextAm = new Date(scanFwd); break; }
-  }
-  if (!prevAm || !nextAm) return false;
-
-  // Check if sun changes Rashi between prevAm and nextAm
-  const rashiAtPrev = _sunRashi(prevAm);
-  const rashiAtNext = _sunRashi(nextAm);
-  return rashiAtPrev === rashiAtNext; // same Rashi = no Sankranti = Purushottam
-}
-
-// ── Panchang display update ──
-// Called after GPS is available; updates Jap header and B&C calendar header
-function _updatePanchangDisplay(lat, lng) {
-  _panchangGPSLat = lat;
-  _panchangGPSLng = lng;
-  const today = new Date();
-  const p = _getGaudiyaPanchang(today, lat, lng);
-
-  // Format tithi end time
-  let tithiEnd = '';
-  if (p.tithiEndTime) {
-    const h = p.tithiEndTime.getHours(), m = p.tithiEndTime.getMinutes();
-    const ap = h >= 12 ? 'PM' : 'AM', h12 = (h%12)||12;
-    tithiEnd = ' (until ' + h12 + ':' + String(m).padStart(2,'0') + ' ' + ap + ')';
-  }
-
-  const pakLabel = p.paksha === 'Shukla' ? 'Gaura' : 'Krishna';
-  const html = `<span style="color:rgba(241,196,15,0.9);font-weight:700">${p.gaurabdo} Gaurabda</span>
-    <span style="color:rgba(189,147,249,0.85)">${p.gaudiyaMonth}${p.isPurushottam?' <span style=\'color:#2ecc71;font-size:9px\'>✦ PURUSHOTTAM</span>':''}</span>
-    <span style="color:rgba(255,255,255,0.6)">${pakLabel} Paksha · ${p.tithiName}${tithiEnd}</span>`;
-
-  const el = document.getElementById('panchangBar');
-  if (el) { el.innerHTML = html; el.style.display = 'flex'; }
-
-  // Also update B&C calendar header
-  const bcEl = document.getElementById('bcPanchangBar');
-  if (bcEl) { bcEl.innerHTML = html; bcEl.style.display = 'flex'; }
-}
-
-// ── Auto-Fetch Ekadashis from GPS Panchang engine ──
 let _panchangFetching = false;
 
 async function fetchPanchangEkadashis() {
@@ -4011,21 +3791,18 @@ async function fetchPanchangEkadashis() {
   try {
     const pos = await new Promise((res,rej) => {
       if (!navigator.geolocation) { rej(new Error('GPS unavailable')); return; }
-      navigator.geolocation.getCurrentPosition(res, rej, {timeout:12000, maximumAge:3600000});
+      navigator.geolocation.getCurrentPosition(res, rej, {timeout:10000, maximumAge:3600000});
     });
     const lat = pos.coords.latitude, lng = pos.coords.longitude;
-    _panchangGPSLat = lat; _panchangGPSLng = lng;
-    if (status) status.textContent = '🔢 Computing tithis for your location…';
+    if (status) status.textContent = '🔢 Computing tithis…';
 
     if (!App.S.customEkadashi) App.S.customEkadashi = [];
     if (!App.S.occasions) App.S.occasions = {};
 
     const today = new Date(); today.setHours(0,0,0,0);
     const DAY = 86400000;
-    let added = 0;
-    let cur = new Date(today);
-
-    // Scan 6 months × 2 pakshas = up to 12 Ekadashis
+    let added = 0, cur = new Date(today);
+    // Scan 6 months × 2 pakshas = 12 Ekadashis
     for (let i = 0; i < 12; i++) {
       for (const paksha of ['shukla','krishna']) {
         const wStart = new Date(cur);
@@ -4055,10 +3832,8 @@ async function fetchPanchangEkadashis() {
     App.S.customEkadashi.sort((a,b) => _ekDate(a)<_ekDate(b)?-1:1);
     App.save(); fbDebouncedPush();
     renderEkadashiList(); renderCal();
-    // Update panchang display now we have GPS
-    _updatePanchangDisplay(lat, lng);
-    if (status) status.textContent = `✅ ${added} Ekadashis added · ${12-added} already saved`;
-    toast(`📅 ${added} Ekadashis auto-added! 🙏`);
+    if (status) status.textContent = `✅ ${added} added · ${12-added} already saved`;
+    toast(`📅 ${added} Ekadashis auto-added for ~6 months! 🙏`);
   } catch(e) {
     if (status) status.textContent = '⚠️ ' + (e.message||'Location denied');
     toast('GPS error: ' + (e.message||'denied'));
@@ -4075,9 +3850,8 @@ const BC_AMAVASYA_ANCHOR = new Date('2026-05-16T00:00:00');
 const SYNODIC_MONTH = 29.530589;
 
 function getLunarTithi(date) {
-  // Returns tithi 1–30 using precise moon elongation (VSOP87)
-  const d6 = new Date(date); d6.setHours(6,0,0,0);
-  return _tithiAtMoment(d6);
+  // Primary: precise moon elongation (VSOP87 simplified)
+  return _tithiAtMoment(date);
 }
 
 function isRiskDay(date) {
@@ -4195,48 +3969,30 @@ function addEkadashiDate() {
   const shuklaRadio = document.getElementById('ekPakshaShukla');
   if (shuklaRadio) shuklaRadio.checked = true;
 
-  // ── Write single fasting-date occasion per Parampara using real Arunodaya ──
+  // ── Write single fasting-date occasion per Parampara ──
   if (!App.S.occasions) App.S.occasions = {};
-  const pakshaLabel = paksha === 'shukla' ? ' ☀️ Shukla' : ' 🌙 Krishna';
+  const label = (name || 'Ekadashi') + (paksha === 'shukla' ? ' ☀️ Shukla' : ' 🌙 Krishna');
   const startFmt = startTime ? _fmtTime12(startTime) : '';
   const endFmt   = endTime   ? _fmtTime12(endTime)   : '';
-  const parampara = App.S.ekParampara || 'smarta';
 
-  // Compute fasting date using real sunrise/Arunodaya if GPS available
-  let fastingDate = startDate, isViddha = false;
-  const lat = _panchangGPSLat, lng = _panchangGPSLng;
-  const ekStartDate = new Date(startDate + 'T00:00:00');
+  let fastingDate = startDate;
+  let isViddha = false;
+  const parampara = App.S.ekParampara || 'smarta';
   if (startTime && endDate && endDate !== startDate) {
     const [sh, sm] = startTime.split(':').map(Number);
     const ekStartH = sh + sm/60;
-    if (lat !== null && lng !== null) {
-      // Real GPS-based Arunodaya
-      const srH = _sunriseH(lat, lng, ekStartDate);
-      const arunodayaH = srH - 96/60;
-      const sunriseH = srH;
-      const ekTithi = paksha === 'shukla' ? 11 : 26;
-      const dashamiTithi = paksha === 'shukla' ? 10 : 25;
-      // Check actual tithi at Arunodaya moment
-      const arMs = new Date(ekStartDate); arMs.setHours(0,0,0,0);
-      arMs.setTime(arMs.getTime() + arunodayaH * 3600000);
-      const tAr = _tithiAtMoment(arMs);
-      if (parampara === 'vaishnava') {
-        if (tAr === dashamiTithi) { fastingDate = endDate; isViddha = true; }
-        else if (tAr !== ekTithi) fastingDate = endDate;
-      } else {
-        const srMs = new Date(ekStartDate); srMs.setHours(0,0,0,0);
-        srMs.setTime(srMs.getTime() + sunriseH * 3600000);
-        if (_tithiAtMoment(srMs) !== ekTithi) fastingDate = endDate;
-      }
+    if (parampara === 'vaishnava') {
+      // Arunodaya = 96 min before sunrise ≈ 04:24 for 06:00 sunrise (264 min)
+      if (ekStartH * 60 >= 264) { fastingDate = endDate; isViddha = true; }
     } else {
-      // Fallback: approximate using 04:24 Arunodaya / 06:00 sunrise
-      if (parampara === 'vaishnava' && ekStartH * 60 >= 264) { fastingDate = endDate; isViddha = true; }
-      else if (parampara === 'smarta' && ekStartH * 60 >= 360) fastingDate = endDate;
+      // Smarta: if tithi begins after sunrise (~06:00 = 360 min), fast on endDate
+      if (ekStartH * 60 >= 360) fastingDate = endDate;
     }
   }
-  const timeNote = isViddha ? ' (Mahadvadashi)'
+  const timeNote = isViddha
+    ? ' (Mahadvadashi · Arunodaya Viddha)'
     : startFmt ? ' ' + startFmt + (endFmt ? '–' + endFmt : '') : '';
-  App.S.occasions[fastingDate] = (name || 'Ekadashi') + pakshaLabel + timeNote;
+  App.S.occasions[fastingDate] = label + timeNote;
 
   App.save(); fbDebouncedPush();
   renderEkadashiList();
@@ -4265,7 +4021,7 @@ function renderEkadashiList() {
   const list = document.getElementById('ekadashiList');
   if (!list) return;
   const entries = App.S.customEkadashi || [];
-  if (!entries.length) {
+  if (entries.length === 0) {
     list.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;padding:10px 0 4px;">No Ekadashis saved yet.</div>';
     return;
   }
@@ -4276,19 +4032,20 @@ function renderEkadashiList() {
     const paksha = (typeof e==='object'&&e.paksha)?e.paksha:'shukla';
     const startTime=(typeof e==='object'&&e.startTime)?e.startTime:'';
     const endTime  =(typeof e==='object'&&e.endTime  )?e.endTime  :'';
-    const isAuto   =(typeof e==='object'&&e.autoFetched);
-    const fD = d => new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
-    const sf = startTime?_fmtTime12(startTime):'', ef = endTime?_fmtTime12(endTime):'';
-    const pBadge = paksha==='shukla'
+    const isAuto   =(typeof e==='object'&&e.autoFetched)?true:false;
+    const fmtD = d => new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+    const sfmt = startTime?_fmtTime12(startTime):'';
+    const efmt = endTime  ?_fmtTime12(endTime  ):'';
+    const pLabel = paksha==='shukla'
       ?'<span style="font-size:9px;background:rgba(241,196,15,0.2);color:#F1C40F;border-radius:4px;padding:2px 5px;font-weight:700;">☀️ SHUKLA</span>'
       :'<span style="font-size:9px;background:rgba(155,89,182,0.25);color:#BD93F9;border-radius:4px;padding:2px 5px;font-weight:700;">🌙 KRISHNA</span>';
-    const autoBadge = isAuto?'<span style="font-size:8px;color:rgba(46,204,113,0.7);margin-left:3px;">AUTO</span>':'';
+    const autoTag = isAuto?'<span style="font-size:8px;color:rgba(46,204,113,0.7);margin-left:4px;">AUTO</span>':'';
     const eid = 'ekEd_'+sd.replace(/-/g,'');
     return `<div style="background:rgba(155,89,182,0.09);border:1px solid rgba(155,89,182,0.22);border-radius:12px;padding:11px;margin-bottom:9px;">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;color:#BD93F9;font-weight:700;margin-bottom:2px;">${name} ${pBadge}${autoBadge}</div>
-          <div style="font-size:10px;color:rgba(255,255,255,0.5);">${fD(sd)}${sf?' · '+sf:''} → ${fD(ed)}${ef?' · '+ef:''}</div>
+          <div style="font-size:12px;color:#BD93F9;font-weight:700;margin-bottom:2px;">${name} ${pLabel}${autoTag}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.5);">${fmtD(sd)}${sfmt?' · '+sfmt:''} → ${fmtD(ed)}${efmt?' · '+efmt:''}</div>
         </div>
         <div style="display:flex;gap:5px;flex-shrink:0;margin-left:7px;">
           <button onclick="toggleEkEdit('${sd}')" style="background:rgba(74,144,226,0.15);border:1px solid rgba(74,144,226,0.3);border-radius:7px;color:#6DB8FF;font-size:11px;padding:5px 9px;cursor:pointer;font-family:Inter,sans-serif;">✏</button>
@@ -4326,8 +4083,9 @@ function renderEkadashiList() {
   }).join('');
 }
 
-function toggleEkEdit(sd) {
-  const el = document.getElementById('ekEd_'+sd.replace(/-/g,''));
+function toggleEkEdit(startDate) {
+  const eid = 'ekEd_'+startDate.replace(/-/g,'');
+  const el = document.getElementById(eid);
   if (el) el.style.display = el.style.display==='none'?'block':'none';
 }
 
@@ -4342,45 +4100,28 @@ function saveEkadashiEdit(oldSd) {
   const newPaksha = pEl?pEl.value:'shukla';
   if (!newSd) { toast('Start date required 📅'); return; }
 
-  // Remove old entry + its occasions
+  // Remove old
   const oldEntry = (App.S.customEkadashi||[]).find(e=>_ekDate(e)===oldSd);
   App.S.customEkadashi = (App.S.customEkadashi||[]).filter(e=>_ekDate(e)!==oldSd);
   if (App.S.occasions && oldEntry) {
     [oldSd, oldEntry.endDate].filter(Boolean).forEach(d=>{
-      if (App.S.occasions[d]&&(App.S.occasions[d].includes('Ekadashi')||App.S.occasions[d].includes('Mahadvadashi')||(oldEntry.name&&App.S.occasions[d].includes(oldEntry.name))))
+      if(App.S.occasions[d]&&(App.S.occasions[d].includes('Ekadashi')||App.S.occasions[d].includes('Mahadvadashi')||(oldEntry.name&&App.S.occasions[d].includes(oldEntry.name))))
         delete App.S.occasions[d];
     });
   }
-
-  // Recompute fasting date with real Arunodaya
-  if (!App.S.occasions) App.S.occasions={};
-  const pakshaLabel2 = newPaksha==='shukla'?' ☀️ Shukla':' 🌙 Krishna';
-  let fastingDate2=newSd, isViddha2=false;
-  const parampara2=App.S.ekParampara||'smarta';
+  // Re-compute fasting date
+  const lbl = (newName.trim()||'Ekadashi')+(newPaksha==='shukla'?' ☀️ Shukla':' 🌙 Krishna');
+  let fastingDate=newSd, isViddha=false;
+  const parampara=App.S.ekParampara||'smarta';
   if (newSt && newEd && newEd!==newSd) {
     const [h,m]=newSt.split(':').map(Number), ekH=h+m/60;
-    const lat=_panchangGPSLat, lng=_panchangGPSLng;
-    if (lat!==null&&lng!==null) {
-      const ekDate=new Date(newSd+'T00:00:00');
-      const srH=_sunriseH(lat,lng,ekDate);
-      const arH=srH-96/60;
-      const arMs=new Date(ekDate); arMs.setTime(arMs.getTime()+arH*3600000);
-      const tAr=_tithiAtMoment(arMs);
-      const ekT=newPaksha==='shukla'?11:26, dT=newPaksha==='shukla'?10:25;
-      if (parampara2==='vaishnava') {
-        if (tAr===dT){fastingDate2=newEd;isViddha2=true;} else if(tAr!==ekT) fastingDate2=newEd;
-      } else {
-        const srMs=new Date(ekDate); srMs.setTime(srMs.getTime()+srH*3600000);
-        if(_tithiAtMoment(srMs)!==ekT) fastingDate2=newEd;
-      }
-    } else {
-      if(parampara2==='vaishnava'&&ekH*60>=264){fastingDate2=newEd;isViddha2=true;}
-      else if(parampara2==='smarta'&&ekH*60>=360) fastingDate2=newEd;
-    }
+    if (parampara==='vaishnava'&&ekH*60>=264) { fastingDate=newEd; isViddha=true; }
+    else if (parampara==='smarta'&&ekH*60>=360) fastingDate=newEd;
   }
-  const sf2=newSt?_fmtTime12(newSt):'', ef2=newEt?_fmtTime12(newEt):'';
-  const tn2=isViddha2?' (Mahadvadashi)':sf2?' '+sf2+(ef2?'–'+ef2:''):'';
-  App.S.occasions[fastingDate2]=(newName.trim()||'Ekadashi')+pakshaLabel2+tn2;
+  const sf=newSt?_fmtTime12(newSt):'', ef=newEt?_fmtTime12(newEt):'';
+  const tnote=isViddha?' (Mahadvadashi · Arunodaya Viddha)':sf?' '+sf+(ef?'–'+ef:''):'';
+  if (!App.S.occasions) App.S.occasions={};
+  App.S.occasions[fastingDate]=lbl+tnote;
   App.S.customEkadashi.push({name:newName.trim(),paksha:newPaksha,startDate:newSd,startTime:newSt,endDate:newEd||newSd,endTime:newEt});
   App.S.customEkadashi.sort((a,b)=>_ekDate(a)<_ekDate(b)?-1:1);
   App.save(); fbDebouncedPush();
@@ -4995,16 +4736,11 @@ function updateSunInfo(lat,lng){
 function initSunTimes(){
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(
-      pos=>{
-        const lat=pos.coords.latitude, lng=pos.coords.longitude;
-        updateSunInfo(lat,lng);
-        _updatePanchangDisplay(lat,lng);
-        setInterval(()=>{updateSunInfo(lat,lng); _updatePanchangDisplay(lat,lng);},600000);
-      },
-      ()=>{updateSunInfo(23.8103,90.4125); _updatePanchangDisplay(23.8103,90.4125);},
+      pos=>{updateSunInfo(pos.coords.latitude,pos.coords.longitude);setInterval(()=>updateSunInfo(pos.coords.latitude,pos.coords.longitude),600000);},
+      ()=>updateSunInfo(23.8103,90.4125),
       {timeout:8000,maximumAge:3600000}
     );
-  } else { updateSunInfo(23.8103,90.4125); _updatePanchangDisplay(23.8103,90.4125); }
+  } else updateSunInfo(23.8103,90.4125);
 }
 
 // ── PWA Manifest ──

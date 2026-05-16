@@ -422,48 +422,6 @@
     <div class="ns"><div class="nv" style="color:var(--a2)" id="bmp">0%</div><div class="nl">Success Rate</div></div>
   </div>
 
-  <!-- Ekadashi Date Manager -->
-  <div style="margin:0 0 14px;border-radius:16px;border:1.5px solid rgba(155,89,182,0.45);background:rgba(18,8,40,0.7);">
-    <!-- Header / toggle -->
-    <div onclick="ekToggle()" style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;cursor:pointer;background:rgba(155,89,182,0.18);border-radius:16px 16px 0 0;">
-      <div style="display:flex;align-items:center;gap:9px;">
-        <span style="font-size:16px">📅</span>
-        <span style="font-size:11px;color:#BD93F9;letter-spacing:2px;text-transform:uppercase;font-weight:700;">Ekadashi Date Manager</span>
-      </div>
-      <span id="ekadashiChev" style="color:#BD93F9;font-size:16px;">▴</span>
-    </div>
-    <!-- Body — always block, no max-height trick -->
-    <div id="ekadashiBody" style="display:block;padding:14px 16px 16px;">
-      <p style="font-size:12px;color:rgba(255,255,255,0.5);margin:0 0 14px;line-height:1.65;">Enter each Ekadashi's date and exact start → end time. Every pair of consecutive entries draws a <b style="color:#F1C40F">Shukla</b> / <b style="color:#BD93F9">Krishna</b> paksha band on the streak graph. Each date is also added as a calendar occasion automatically.</p>
-
-      <!-- Input card -->
-      <div style="background:rgba(0,0,0,0.35);border-radius:12px;padding:14px;margin-bottom:14px;">
-        <div style="font-size:10px;color:#BD93F9;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;font-weight:700;">+ New Ekadashi</div>
-
-        <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">Date</div>
-        <input type="date" id="ekadashiDateIn" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.45);border-radius:10px;padding:10px 13px;color:#fff;font-size:14px;font-family:'Inter',sans-serif;outline:none;margin-bottom:12px;">
-
-        <div style="display:grid;grid-template-columns:1fr 18px 1fr;gap:8px;align-items:end;margin-bottom:14px;">
-          <div>
-            <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">Starts</div>
-            <input type="time" id="ekadashiStartIn" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.45);border-radius:10px;padding:10px 10px;color:#fff;font-size:14px;font-family:'Inter',sans-serif;outline:none;">
-          </div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.35);text-align:center;padding-bottom:10px;">→</div>
-          <div>
-            <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">Ends</div>
-            <input type="time" id="ekadashiEndIn" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.45);border-radius:10px;padding:10px 10px;color:#fff;font-size:14px;font-family:'Inter',sans-serif;outline:none;">
-          </div>
-        </div>
-
-        <button onclick="addEkadashiDate()" style="display:block;width:100%;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,rgba(155,89,182,0.75),rgba(90,50,190,0.65));color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:0.5px;box-shadow:0 3px 14px rgba(155,89,182,0.35);">+ Add Ekadashi</button>
-      </div>
-
-      <!-- Saved list -->
-      <div style="font-size:10px;color:rgba(189,147,249,0.6);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600;">Saved Ekadashis</div>
-      <div id="ekadashiList"></div>
-    </div>
-  </div>
-
   <!-- Brahmacharya Progress Graph -->
   <div class="bc-graph-wrap">
     <div class="bc-graph-title">📈 Streak Progress
@@ -1042,6 +1000,73 @@
     <p style="font-size:12px;color:var(--td);margin-bottom:10px">Spread the divine name! Share Radha Naam Jap with friends and family 🙏</p>
     <div id="appLinkDisplay" style="font-size:11px;color:var(--a2);background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:8px;padding:8px 11px;margin-bottom:10px;word-break:break-all;font-family:monospace;cursor:pointer" onclick="shareApp()" title="Tap to copy"></div>
     <button class="pb" onclick="shareApp()" style="background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,180,0,0.25));color:var(--gold);border:1px solid rgba(255,215,0,0.4)">🌸 Share Radha Naam Jap App</button>
+  </div>
+
+  <!-- EKADASHI MANAGER -->
+  <div class="sc" style="background:rgba(18,8,40,0.6);border-color:rgba(155,89,182,0.35);">
+    <h3 style="color:#BD93F9;">📅 Ekadashi Manager</h3>
+
+    <!-- Parampara Toggle -->
+    <div style="background:rgba(0,0,0,0.3);border-radius:12px;padding:13px;margin-bottom:16px;">
+      <div style="font-size:10px;color:rgba(189,147,249,0.7);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;font-weight:700;">🔱 Parampara</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <button id="ekParSmarta" onclick="saveEkParampara('smarta')" style="padding:10px 6px;border-radius:10px;border:2px solid rgba(241,196,15,0.5);background:rgba(241,196,15,0.18);color:#F1C40F;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">☀️ Smarta</button>
+        <button id="ekParVaishnav" onclick="saveEkParampara('vaishnava')" style="padding:10px 6px;border-radius:10px;border:2px solid rgba(155,89,182,0.3);background:transparent;color:rgba(189,147,249,0.6);font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">🌸 Vaishnava</button>
+      </div>
+      <div id="ekParamparaNote" style="font-size:11px;color:rgba(255,255,255,0.4);line-height:1.6;"></div>
+    </div>
+
+    <!-- Add New Ekadashi -->
+    <div style="background:rgba(0,0,0,0.3);border-radius:12px;padding:13px;margin-bottom:14px;">
+      <div style="font-size:10px;color:#BD93F9;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;font-weight:700;">+ Add Ekadashi Period</div>
+
+      <!-- Name -->
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">Name (optional)</div>
+      <input type="text" id="ekNameIn" placeholder="e.g. Nirjala Ekadashi" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:10px;padding:10px 13px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;margin-bottom:12px;">
+
+      <!-- Paksha -->
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase;">Paksha</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <label style="display:flex;align-items:center;gap:8px;background:rgba(241,196,15,0.08);border:1px solid rgba(241,196,15,0.3);border-radius:10px;padding:10px 12px;cursor:pointer;">
+          <input type="radio" name="ekPaksha" id="ekPakshaShukla" value="shukla" checked style="accent-color:#F1C40F;">
+          <span style="font-size:13px;color:#F1C40F;font-weight:600;">☀️ Shukla</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.3);border-radius:10px;padding:10px 12px;cursor:pointer;">
+          <input type="radio" name="ekPaksha" id="ekPakshaKrishna" value="krishna" style="accent-color:#BD93F9;">
+          <span style="font-size:13px;color:#BD93F9;font-weight:600;">🌙 Krishna</span>
+        </label>
+      </div>
+
+      <!-- Start date/time -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">Start Date</div>
+          <input type="date" id="ekStartDateIn" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:10px;padding:10px 8px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;">
+        </div>
+        <div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">Start Time</div>
+          <input type="time" id="ekStartTimeIn" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:10px;padding:10px 8px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;">
+        </div>
+      </div>
+
+      <!-- End date/time -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+        <div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">End Date</div>
+          <input type="date" id="ekEndDateIn" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:10px;padding:10px 8px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;">
+        </div>
+        <div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">End Time</div>
+          <input type="time" id="ekEndTimeIn" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:10px;padding:10px 8px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;">
+        </div>
+      </div>
+
+      <button onclick="addEkadashiDate()" style="display:block;width:100%;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,rgba(155,89,182,0.75),rgba(90,50,190,0.65));color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 3px 14px rgba(155,89,182,0.3);">+ Add Ekadashi</button>
+    </div>
+
+    <!-- Saved list -->
+    <div style="font-size:10px;color:rgba(189,147,249,0.55);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600;">Saved Ekadashis</div>
+    <div id="ekadashiList"></div>
   </div>
 
   <!-- BACKUP & RESTORE -->

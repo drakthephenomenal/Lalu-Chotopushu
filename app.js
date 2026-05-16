@@ -3652,6 +3652,16 @@ function isCustomEkadashiDay(date) {
   return customDates.some(e => _ekDate(e) === key);
 }
 
+// ── Ekadashi panel toggle (display:block/none — no max-height animation) ──
+function ekToggle() {
+  const body = document.getElementById('ekadashiBody');
+  const chev = document.getElementById('ekadashiChev');
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if (chev) chev.textContent = open ? '▾' : '▴';
+}
+
 // ── Custom Ekadashi Date Management ──
 function _fmtTime12(t24) {
   if (!t24) return '';

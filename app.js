@@ -1032,7 +1032,7 @@ function sv(id, btn) {
   document.getElementById(id).classList.add('active');
   if (btn) btn.classList.add('active');
   if (id === 'vs') { uStats(); _historyAutoLoaded = false; }
-  if (id === 'vb') { initBrahmaStartInput(); renderCal(); renderEkadashiList(); requestAnimationFrame(() => renderBcGraph()); }
+  if (id === 'vb') { initBrahmaStartInput(); renderCal(); renderEkadashiList(); setTimeout(renderBcGraph, 100); }
   if (id === 'vst') renderSt();
   if (id === 'v28') { u28(); render28Dots(get28Pos()); }
   else { App.flush28TimeToHistory(); }
@@ -3891,14 +3891,17 @@ function renderBcGraph() {
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
 
-  // Container is .bc-graph-scroll-wrap — walk up DOM for a rendered width
+  // Resolve container width — use offsetWidth which works even before first paint
   const scrollWrap = canvas.parentElement;
-  const _section = scrollWrap && scrollWrap.closest && scrollWrap.closest(".bc-graph-section");
-  const _vb = document.getElementById("vb");
-  const containerW = (scrollWrap && scrollWrap.clientWidth > 0 ? scrollWrap.clientWidth : 0)
-    || (_section && _section.clientWidth > 36 ? _section.clientWidth - 36 : 0)
-    || (_vb && _vb.clientWidth > 28 ? _vb.clientWidth - 28 : 0)
-    || (window.innerWidth > 28 ? window.innerWidth - 28 : 340);
+  const _section = scrollWrap && scrollWrap.closest && scrollWrap.closest('.bc-graph-section');
+  const _vb = document.getElementById('vb');
+  const _raw = (scrollWrap ? scrollWrap.offsetWidth : 0)
+    || (_section ? _section.offsetWidth - 36 : 0)
+    || (_vb ? _vb.offsetWidth - 28 : 0)
+    || window.innerWidth - 28;
+  // If still zero the tab hasn't laid out yet — retry after paint
+  if (_raw <= 10) { setTimeout(renderBcGraph, 200); return; }
+  const containerW = _raw;
 
   const today = new Date(); today.setHours(0,0,0,0);
   const startD = new Date(getBrahmaStart()); startD.setHours(0,0,0,0);

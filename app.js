@@ -3766,18 +3766,56 @@ function _resolveEkFasting(ek, lat, lng, name) {
   return { name: name||'Ekadashi', paksha, isViddha, startDate, startTime, endDate, endTime, fastingDate, label };
 }
 
-// Ekadashi names by Shukla month index (0=Chaitra in Panchang ≈ March/April)
+// Ekadashi names indexed by JS Date.getMonth() (0=Jan … 11=Dec)
+// Shukla Paksha (Bright Fortnight) Ekadashis
 const _EK_NAMES_SHUKLA = [
-  'Papamochani','Kamada','Varuthini','Mohini','Apara','Nirjala',
-  'Yogini','Devshayani','Kamika','Shravana Putrada','Aja','Parsva',
-  'Indira','Papankusha','Rama','Devutthana','Utpanna','Mokshada',
-  'Saphala','Putrada','Sat-tila','Jaya','Vijaya','Amalaki'
+  'Pausha Putrada',  // 0 = January   (Month 10 Pausha)
+  'Jaya',            // 1 = February  (Month 11 Magha)
+  'Amalaki',         // 2 = March     (Month 12 Phalguna)
+  'Kamada',          // 3 = April     (Month 1  Chaitra)
+  'Mohini',          // 4 = May       (Month 2  Vaishakha)
+  'Nirjala',         // 5 = June      (Month 3  Jyeshtha)
+  'Devshayani',      // 6 = July      (Month 4  Ashadha)
+  'Shravana Putrada',// 7 = August    (Month 5  Shravana)
+  'Parsva',          // 8 = September (Month 6  Bhadrapada)
+  'Papankusha',      // 9 = October   (Month 7  Ashwin)
+  'Devutthana',      // 10 = November (Month 8  Kartik)
+  'Mokshada'         // 11 = December (Month 9  Margashirsha)
 ];
+// Krishna Paksha (Dark Fortnight) Ekadashis
 const _EK_NAMES_KRISHNA = [
-  'Chaitra K.Ek','Vaishakha K.Ek','Jyeshtha K.Ek','Ashadha K.Ek',
-  'Shravana K.Ek','Bhadrapada K.Ek','Ashwin K.Ek','Kartik K.Ek',
-  'Margashirsha K.Ek','Pausha K.Ek','Magha K.Ek','Phalguna K.Ek'
+  'Saphala',         // 0 = January   (Month 10 Pausha)
+  'Shattila',        // 1 = February  (Month 11 Magha)
+  'Vijaya',          // 2 = March     (Month 12 Phalguna)
+  'Papamochani',     // 3 = April     (Month 1  Chaitra)
+  'Varuthini',       // 4 = May       (Month 2  Vaishakha)
+  'Apara',           // 5 = June      (Month 3  Jyeshtha)
+  'Yogini',          // 6 = July      (Month 4  Ashadha)
+  'Kamika',          // 7 = August    (Month 5  Shravana)
+  'Aja',             // 8 = September (Month 6  Bhadrapada)
+  'Indira',          // 9 = October   (Month 7  Ashwin)
+  'Rama',            // 10 = November (Month 8  Kartik)
+  'Utpanna'          // 11 = December (Month 9  Margashirsha)
 ];
+
+// ── Adhik Maas (Purushottam Maas) Windows ──
+// Inclusive date ranges for known Adhik Maas periods.
+// shuklaEk = Padmini Ekadashi (Shukla Paksha), krishnaEk = Parama Ekadashi (Krishna Paksha)
+const _ADHIK_MAAS_WINDOWS = [
+  { start: '2026-05-17', end: '2026-06-15', shuklaEk: '2026-05-27', krishnaEk: '2026-06-11' },
+  { start: '2029-07-18', end: '2029-08-16', shuklaEk: null, krishnaEk: null }, // approx
+  { start: '2032-09-01', end: '2032-09-29', shuklaEk: null, krishnaEk: null }, // approx
+];
+
+// Returns the Adhik Maas window if date string (YYYY-MM-DD) falls within it, else null
+function _getAdhikMaasWindow(dateStr) {
+  return _ADHIK_MAAS_WINDOWS.find(w => dateStr >= w.start && dateStr <= w.end) || null;
+}
+
+// Returns true if a date string falls in a known Adhik Maas period
+function isAdhikMaasDate(dateStr) {
+  return !!_getAdhikMaasWindow(dateStr);
+}
 
 let _panchangFetching = false;
 
@@ -3810,9 +3848,17 @@ async function fetchPanchangEkadashis() {
         const ek = _findEkInWindow(wStart, wEnd, paksha);
         if (ek && ek.ekStart >= today) {
           const mi = ek.ekStart.getMonth();
-          const name = paksha === 'shukla'
-            ? (_EK_NAMES_SHUKLA[mi] || 'Ekadashi')
-            : (_EK_NAMES_KRISHNA[mi] || 'Krishna Ekadashi');
+          const ekDateStr = ek.ekStart.toISOString().slice(0,10);
+          const adhikWin = _getAdhikMaasWindow(ekDateStr);
+          let name;
+          if (adhikWin) {
+            // Adhik Maas Ekadashis: Padmini (Shukla) / Parama (Krishna)
+            name = paksha === 'shukla' ? 'Padmini' : 'Parama';
+          } else {
+            name = paksha === 'shukla'
+              ? (_EK_NAMES_SHUKLA[mi] || 'Ekadashi')
+              : (_EK_NAMES_KRISHNA[mi] || 'Ekadashi');
+          }
           const resolved = _resolveEkFasting(ek, lat, lng, name);
           const exists = App.S.customEkadashi.some(e => _ekDate(e) === resolved.startDate);
           if (!exists) {

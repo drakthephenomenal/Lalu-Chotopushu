@@ -3887,51 +3887,63 @@ function bcShiftRange(delta) {
 }
 
 function renderBcGraph() {
-  const canvas = document.getElementById('bcGraph');
+  var canvas = document.getElementById('bcGraph');
   if (!canvas) return;
-  const dpr = window.devicePixelRatio || 1;
 
-  // Resolve container width — use offsetWidth which works even before first paint
-  const scrollWrap = canvas.parentElement;
-  const _section = scrollWrap && scrollWrap.closest && scrollWrap.closest('.bc-graph-section');
-  const _vb = document.getElementById('vb');
-  const _raw = (scrollWrap ? scrollWrap.offsetWidth : 0)
-    || (_section ? _section.offsetWidth - 36 : 0)
-    || (_vb ? _vb.offsetWidth - 28 : 0)
-    || window.innerWidth - 28;
-  // If still zero the tab hasn't laid out yet — retry after paint
-  if (_raw <= 10) { requestAnimationFrame(function(){ setTimeout(renderBcGraph, 100); }); return; }
-  const containerW = _raw;
+  // Retry until App and its data are fully initialised
+  if (typeof App === 'undefined' || !App.S || typeof App.S.brahma === 'undefined') {
+    setTimeout(renderBcGraph, 400);
+    return;
+  }
 
-  const today = new Date(); today.setHours(0,0,0,0);
-  const startD = new Date(getBrahmaStart()); startD.setHours(0,0,0,0);
+  var dpr = window.devicePixelRatio || 1;
 
-  const wEnd = new Date(today);
+  // Resolve container width robustly — fall back through several anchors
+  var containerW = window.innerWidth - 56;
+  var scrollWrap = canvas.parentElement;
+  if (scrollWrap && scrollWrap.offsetWidth > 20) containerW = scrollWrap.offsetWidth;
+  else {
+    var _sec = scrollWrap && scrollWrap.closest && scrollWrap.closest('.bc-graph-section');
+    if (_sec && _sec.offsetWidth > 20) containerW = _sec.offsetWidth - 36;
+    else {
+      var _vb = document.getElementById('vb');
+      if (_vb && _vb.offsetWidth > 20) containerW = _vb.offsetWidth - 28;
+    }
+  }
+  if (containerW < 20) { requestAnimationFrame(function(){ setTimeout(renderBcGraph, 150); }); return; }
+
+  var today = new Date(); today.setHours(0,0,0,0);
+  var brahmaStart = getBrahmaStart();
+  var startD = new Date(brahmaStart); startD.setHours(0,0,0,0);
+  if (isNaN(startD.getTime())) startD = new Date(); startD.setHours(0,0,0,0);
+
+  var wEnd = new Date(today);
   if (_bcRangeOffset < 0) wEnd.setDate(wEnd.getDate() + _bcRangeOffset);
-  const wStart = new Date(wEnd);
+  var wStart = new Date(wEnd);
   wStart.setDate(wStart.getDate() - 89);
   if (wStart < startD) wStart.setTime(startD.getTime());
-  const DAYS = Math.round((wEnd - wStart) / 86400000) + 1;
+  var DAYS = Math.round((wEnd - wStart) / 86400000) + 1;
 
   // Update range label
-  const lbl = document.getElementById('bcRangeLabel');
+  var lbl = document.getElementById('bcRangeLabel');
   if (lbl) {
-    const fmt = d => d.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
-    lbl.textContent = _bcRangeOffset === 0 ? 'Last 90 days' : `${fmt(wStart)} – ${fmt(wEnd)}`;
+    var fmt = function(d){ return d.toLocaleDateString('en-GB', {day:'numeric', month:'short'}); };
+    lbl.textContent = _bcRangeOffset === 0 ? 'Last 90 days' : (fmt(wStart) + ' \u2013 ' + fmt(wEnd));
   }
-  const nextBtn = document.getElementById('bcRangeNext');
+  var nextBtn = document.getElementById('bcRangeNext');
   if (nextBtn) nextBtn.style.opacity = _bcRangeOffset < 0 ? '1' : '0.3';
 
-  // Generous per-day width — at least 32px so each day has room to breathe
-  const PER_DAY = Math.max(32, Math.floor(containerW / Math.min(DAYS, 28)));
-  const W = Math.max(containerW, DAYS * PER_DAY + 72);
-  const H = 360;
+  var PER_DAY = Math.max(32, Math.floor(containerW / Math.min(DAYS, 28)));
+  var W = Math.max(containerW, DAYS * PER_DAY + 72);
+  var H = 360;
 
-  canvas.style.width = W + 'px';
+  // Size the canvas — set CSS first so the parent expands, then internal buffer
+  canvas.style.width  = W + 'px';
   canvas.style.height = H + 'px';
-  canvas.width = W * dpr;
-  canvas.height = H * dpr;
-  const ctx = canvas.getContext('2d');
+  canvas.width  = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+
+  var ctx = canvas.getContext('2d');
   if (!ctx) { setTimeout(renderBcGraph, 300); return; }
   ctx.scale(dpr, dpr);
 
@@ -3948,32 +3960,49 @@ function renderBcGraph() {
   }
 
   // Build streak data — walk from brahma start for correct carry-in
-  const allStart = new Date(startD);
-  const fullDays = Math.round((wEnd - allStart) / 86400000) + 1;
-  let streak = 0;
-  const days = [];
-  for (let i = 0; i < fullDays; i++) {
-    const d = new Date(allStart); d.setDate(d.getDate() + i);
-    const key = d.toISOString().split('T')[0];
-    const en = App.S.brahma[key];
-    const broken = en && en.status === 'b';
-    if (broken) streak = 0; else streak++;
-    if (d >= wStart && d <= wEnd) {
-      days.push({ date: new Date(d), key, broken, streak, times: (en && en.times) || [] });
+  var brahmaData = App.S.brahma || {};
+  var allStart = new Date(startD);
+  var fullDays = Math.round((wEnd - allStart) / 86400000) + 1;
+  var streak = 0;
+  var days = [];
+  try {
+    for (var i = 0; i < fullDays; i++) {
+      var d = new Date(allStart); d.setDate(d.getDate() + i);
+      var key = d.toISOString().split('T')[0];
+      var en = brahmaData[key];
+      var broken = !!(en && en.status === 'b');
+      if (broken) streak = 0; else streak++;
+      if (d >= wStart && d <= wEnd) {
+        days.push({ date: new Date(d), key: key, broken: broken, streak: streak, times: (en && en.times) || [] });
+      }
     }
+  } catch(e) {
+    ctx.fillStyle = '#e00';
+    ctx.font = '12px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Graph error — please reload', W / 2, H / 2);
+    return;
   }
 
-  const maxStreak = Math.max(...days.map(d => d.streak), 1);
+  if (days.length === 0) {
+    ctx.fillStyle = '#aaa';
+    ctx.font = '13px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Not enough data yet', W / 2, H / 2);
+    return;
+  }
+
+  var maxStreak = Math.max.apply(null, days.map(function(d){ return d.streak; }).concat([1]));
 
   // Generous padding — space around every edge
-  const PAD = { l: 52, r: 28, t: 28, b: 56 };
-  const gW = W - PAD.l - PAD.r;
-  const gH = H - PAD.t - PAD.b;
-  const xStep = days.length > 1 ? gW / (days.length - 1) : gW;
+  var PAD = { l: 52, r: 28, t: 28, b: 56 };
+  var gW = W - PAD.l - PAD.r;
+  var gH = H - PAD.t - PAD.b;
+  var xStep = days.length > 1 ? gW / (days.length - 1) : gW;
 
   // Horizontal grid lines — very light, dashed
-  [0.25, 0.5, 0.75, 1].forEach(f => {
-    const y = PAD.t + gH - f * gH;
+  [0.25, 0.5, 0.75, 1].forEach(function(f) {
+    var y = PAD.t + gH - f * gH;
     ctx.beginPath();
     ctx.moveTo(PAD.l, y);
     ctx.lineTo(W - PAD.r, y);
@@ -3988,10 +4017,10 @@ function renderBcGraph() {
     ctx.fillText(Math.round(f * maxStreak) + 'd', PAD.l - 10, y + 4);
   });
 
-  // Weekly vertical guide lines (Sundays) — barely visible
-  days.forEach((d, i) => {
+  // Weekly vertical guide lines (Sundays)
+  days.forEach(function(d, i) {
     if (d.date.getDay() !== 0) return;
-    const x = PAD.l + i * xStep;
+    var x = PAD.l + i * xStep;
     ctx.beginPath();
     ctx.moveTo(x, PAD.t);
     ctx.lineTo(x, PAD.t + gH);
@@ -4003,16 +4032,16 @@ function renderBcGraph() {
 
   // Green fill under curve
   ctx.beginPath();
-  days.forEach((d, i) => {
-    const x = PAD.l + i * xStep;
-    const y = PAD.t + gH - (d.streak / maxStreak) * gH;
+  days.forEach(function(d, i) {
+    var x = PAD.l + i * xStep;
+    var y = PAD.t + gH - (d.streak / maxStreak) * gH;
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   });
-  const lastX = PAD.l + (days.length - 1) * xStep;
+  var lastX = PAD.l + (days.length - 1) * xStep;
   ctx.lineTo(lastX, PAD.t + gH);
   ctx.lineTo(PAD.l, PAD.t + gH);
   ctx.closePath();
-  const fillGrad = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + gH);
+  var fillGrad = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + gH);
   fillGrad.addColorStop(0, 'rgba(34,197,94,0.20)');
   fillGrad.addColorStop(1, 'rgba(34,197,94,0.01)');
   ctx.fillStyle = fillGrad;
@@ -4020,9 +4049,9 @@ function renderBcGraph() {
 
   // Green streak line — smooth, 2.5px
   ctx.beginPath();
-  days.forEach((d, i) => {
-    const x = PAD.l + i * xStep;
-    const y = PAD.t + gH - (d.streak / maxStreak) * gH;
+  days.forEach(function(d, i) {
+    var x = PAD.l + i * xStep;
+    var y = PAD.t + gH - (d.streak / maxStreak) * gH;
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   });
   ctx.strokeStyle = '#22c55e';
@@ -4033,10 +4062,10 @@ function renderBcGraph() {
   ctx.stroke();
 
   // Small green node dots on maintained days
-  days.forEach((d, i) => {
+  days.forEach(function(d, i) {
     if (d.broken) return;
-    const x = PAD.l + i * xStep;
-    const y = PAD.t + gH - (d.streak / maxStreak) * gH;
+    var x = PAD.l + i * xStep;
+    var y = PAD.t + gH - (d.streak / maxStreak) * gH;
     ctx.beginPath();
     ctx.arc(x, y, 2.5, 0, Math.PI * 2);
     ctx.fillStyle = '#22c55e';
@@ -4044,18 +4073,16 @@ function renderBcGraph() {
   });
 
   // Red broken-day dots — pinned near baseline, prominent
-  days.forEach((d, i) => {
+  days.forEach(function(d, i) {
     if (!d.broken) return;
-    const x = PAD.l + i * xStep;
-    const dotY = PAD.t + gH - 6;
+    var x = PAD.l + i * xStep;
+    var dotY = PAD.t + gH - 6;
 
-    // Soft shadow
     ctx.beginPath();
     ctx.arc(x, dotY + 2, 8, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(239,68,68,0.15)';
     ctx.fill();
 
-    // Main dot
     ctx.beginPath();
     ctx.arc(x, dotY, 7, 0, Math.PI * 2);
     ctx.fillStyle = '#ef4444';
@@ -4064,8 +4091,7 @@ function renderBcGraph() {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Time label above dot
-    const times = d.times || [];
+    var times = d.times || [];
     if (times.length > 0 && times[0].time) {
       ctx.fillStyle = '#ef4444';
       ctx.font = 'bold 9px Inter, sans-serif';
@@ -4089,12 +4115,12 @@ function renderBcGraph() {
   ctx.stroke();
 
   // X-axis labels: date on Sundays + month name when it changes
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  let lastLabelMonth = -1;
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var lastLabelMonth = -1;
   ctx.textAlign = 'center';
-  days.forEach((d, i) => {
-    const x = PAD.l + i * xStep;
-    const isSunOrFirst = d.date.getDay() === 0 || i === 0;
+  days.forEach(function(d, i) {
+    var x = PAD.l + i * xStep;
+    var isSunOrFirst = d.date.getDay() === 0 || i === 0;
     if (isSunOrFirst) {
       ctx.fillStyle = '#999';
       ctx.font = '10px Inter, sans-serif';

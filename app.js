@@ -3613,18 +3613,39 @@ const BC_AMAVASYA_ANCHOR = new Date('2026-05-16T00:00:00');
 const SYNODIC_MONTH = 29.530589;
 
 function getLunarTithi(date) {
-  // Returns tithi 1–30 (1=Shukla Pratipada ... 15=Purnima, 16=Krishna Pratipada ... 30=Amavasya)
+  // Returns tithi 1–30 (1=Shukla Pratipada…15=Purnima, 16=Krishna Pratipada…30=Amavasya)
+  // PRIMARY: if the user has saved Ekadashi entries, use the nearest one as a precise anchor.
+  // Ekadashi = tithi 11 (Shukla) or tithi 26 (Krishna, = 15+11).
+  const customEks = (App.S && App.S.customEkadashi) ? App.S.customEkadashi : [];
+  if (customEks.length > 0) {
+    // Find the closest Ekadashi entry to `date`
+    const dateMs = date.getTime ? date.getTime() : new Date(date).getTime();
+    let bestDiff = Infinity, bestTithi = null, bestRefMs = null;
+    for (const ek of customEks) {
+      const sd = _ekDate(ek);
+      if (!sd) continue;
+      const refMs = new Date(sd + 'T00:00:00').getTime();
+      const diff = Math.abs(dateMs - refMs);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        // Shukla Ekadashi = tithi 11, Krishna Ekadashi = tithi 26
+        bestTithi = (ek.paksha === 'krishna') ? 26 : 11;
+        bestRefMs = refMs;
+      }
+    }
+    if (bestRefMs !== null && bestDiff < 20 * 86400000) {
+      // Interpolate: days since ref × (1 tithi / ~0.9843 days) mod 30
+      const diffDays = (dateMs - bestRefMs) / 86400000;
+      // 1 synodic month = 29.530589 days = 30 tithis → 1 tithi ≈ 0.984353 days
+      const tithi30 = ((bestTithi - 1 + Math.round(diffDays / 0.984353)) % 30 + 30) % 30 + 1;
+      return Math.max(1, Math.min(30, tithi30));
+    }
+  }
+  // FALLBACK: astronomical anchor (May 16 2026 = Amavasya)
   const diffDays = (date - BC_AMAVASYA_ANCHOR) / 86400000;
-  // diffDays from amavasya anchor; amavasya = tithi 30
-  // Normalize to synodic cycle
   let phase = ((diffDays % SYNODIC_MONTH) + SYNODIC_MONTH) % SYNODIC_MONTH;
-  // tithi 30 starts at phase 0 (amavasya), tithi 1 at phase 1 day
-  let tithi = Math.floor(phase) + 1; // 1..30
+  let tithi = Math.floor(phase) + 1;
   if (tithi > 30) tithi = 30;
-  // Map: 1..15 = Shukla (bright half), 16..30 = Krishna (dark half)
-  // In our system: Navami=9, Trayodashi=13 in each paksha
-  // Shukla Navami = tithi 9, Shukla Trayodashi = tithi 13
-  // Krishna Navami = tithi 24 (15+9), Krishna Trayodashi = tithi 28 (15+13)
   return tithi;
 }
 
@@ -3743,14 +3764,39 @@ function addEkadashiDate() {
   const shuklaRadio = document.getElementById('ekPakshaShukla');
   if (shuklaRadio) shuklaRadio.checked = true;
 
-  // Add to calendar occasions — both start and end dates
+  // ── Compute single fasting date per Parampara rule ──
+  // Smarta: fast on startDate (Ekadashi tithi prevails at sunrise that day)
+  // Vaishnava/Arunodaya Viddha: if Dashami overlaps into the 96-min Arunodaya window
+  //   before sunrise on startDate, fast shifts to endDate (Mahadvadashi).
+  //   We detect this by checking whether the startTime (= Ekadashi tithi start) is
+  //   within 96 minutes of the startDate sunrise, i.e. startTime > (sunrise - 96min).
+  //   Practically: if Ekadashi tithi begins AFTER the Arunodaya window has already
+  //   started (i.e. startTime is not very early morning), the previous day had Dashami
+  //   running into Arunodaya — so Vaishnava fast moves to endDate.
   if (!App.S.occasions) App.S.occasions = {};
-  const label = (name || 'Ekadashi') + (paksha === 'shukla' ? ' (Shukla)' : ' (Krishna)');
+  const label = (name || 'Ekadashi') + (paksha === 'shukla' ? ' ☀️ Shukla' : ' 🌙 Krishna');
   const startFmt = startTime ? _fmtTime12(startTime) : '';
   const endFmt   = endTime   ? _fmtTime12(endTime)   : '';
-  const timeRange = (startFmt && endFmt) ? ' ' + startFmt + '–' + endFmt : startFmt ? ' ' + startFmt : '';
-  App.S.occasions[startDate] = label + timeRange;
-  if (endDate && endDate !== startDate) App.S.occasions[endDate] = label + ' (ends' + (endFmt ? ' ' + endFmt : '') + ')';
+
+  let fastingDate = startDate; // default: Smarta uses startDate
+  const parampara = App.S.ekParampara || 'smarta';
+  if (parampara === 'vaishnava' && startTime && endDate && endDate !== startDate) {
+    // Arunodaya = 96 min before sunrise ≈ before ~04:24 if sunrise ~06:00
+    // If Ekadashi tithi starts after 04:24 (i.e. startTime >= "04:24"), Dashami was
+    // present during Arunodaya → Viddha → fast on endDate (Mahadvadashi).
+    const [sh, sm] = startTime.split(':').map(Number);
+    const startMinutes = sh * 60 + sm;
+    // Arunodaya threshold: 96 min before a typical 06:00 sunrise = 04:24 = 264 min
+    // We use 264 min as the cutoff; if tithi begins after that, it is Viddha.
+    if (startMinutes >= 264) {
+      fastingDate = endDate;
+    }
+  }
+
+  const timeNote = startFmt ? (parampara === 'vaishnava' && fastingDate === endDate
+    ? ' (Mahadvadashi · Arunodaya Viddha)' : ' ' + startFmt + (endFmt ? '–' + endFmt : ''))
+    : (parampara === 'vaishnava' && fastingDate === endDate ? ' (Mahadvadashi)' : '');
+  App.S.occasions[fastingDate] = label + timeNote;
 
   App.save(); fbDebouncedPush();
   renderEkadashiList();
@@ -3762,10 +3808,15 @@ function removeEkadashiDate(startDate) {
   const entry = (App.S.customEkadashi || []).find(e => _ekDate(e) === startDate);
   App.S.customEkadashi = (App.S.customEkadashi || []).filter(e => _ekDate(e) !== startDate);
   if (App.S.occasions) {
-    // Remove both dates set by this Ekadashi
+    // Remove occasions on startDate, endDate, and any date whose label matches this entry
+    // (handles legacy saves that stored two dates, and new single-date saves)
+    const entryName = entry && entry.name ? entry.name : '';
     [startDate, entry && entry.endDate].filter(Boolean).forEach(d => {
-      if (App.S.occasions[d] && (App.S.occasions[d].includes('Ekadashi') || App.S.occasions[d].includes(entry && entry.name))) {
-        delete App.S.occasions[d];
+      if (d && App.S.occasions[d]) {
+        const occ = App.S.occasions[d];
+        if (occ.includes('Ekadashi') || (entryName && occ.includes(entryName))) {
+          delete App.S.occasions[d];
+        }
       }
     });
   }
@@ -3802,17 +3853,126 @@ function renderEkadashiList() {
       ? '<span style="font-size:9px;background:rgba(155,89,182,0.25);color:#BD93F9;border-radius:4px;padding:2px 6px;font-weight:700;letter-spacing:1px;">KRISHNA</span>'
       : '';
     const sameDay = sd === ed;
+    const editId = 'ekEdit_' + sd.replace(/-/g,'');
     return `<div style="background:rgba(155,89,182,0.09);border:1px solid rgba(155,89,182,0.22);border-radius:12px;padding:12px;margin-bottom:10px;">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:7px;">
-        <div>
+        <div style="flex:1;min-width:0;">
           <div style="font-size:13px;color:#BD93F9;font-weight:700;margin-bottom:3px;">${name} ${pLabel}</div>
           <div style="font-size:11px;color:rgba(255,255,255,0.55);">${fmtDate(sd)}${sfmt ? ' · ' + sfmt : ''}</div>
           ${!sameDay ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);">→ ${fmtDate(ed)}${efmt ? ' · ' + efmt : ''}</div>` : (efmt ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);">ends ${efmt}</div>` : '')}
         </div>
-        <button onclick="removeEkadashiDate('${sd}')" style="background:rgba(232,51,109,0.15);border:1px solid rgba(232,51,109,0.3);border-radius:7px;color:#e8336d;font-size:11px;padding:5px 10px;cursor:pointer;font-family:Inter,sans-serif;flex-shrink:0;margin-left:8px;">✕</button>
+        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px;">
+          <button onclick="toggleEkEdit('${sd}')" style="background:rgba(74,144,226,0.15);border:1px solid rgba(74,144,226,0.35);border-radius:7px;color:#6DB8FF;font-size:11px;padding:5px 10px;cursor:pointer;font-family:Inter,sans-serif;">✏</button>
+          <button onclick="removeEkadashiDate('${sd}')" style="background:rgba(232,51,109,0.15);border:1px solid rgba(232,51,109,0.3);border-radius:7px;color:#e8336d;font-size:11px;padding:5px 10px;cursor:pointer;font-family:Inter,sans-serif;">✕</button>
+        </div>
+      </div>
+      <div id="${editId}" style="display:none;background:rgba(0,0,0,0.3);border-radius:10px;padding:11px;margin-top:4px;">
+        <div style="font-size:10px;color:rgba(189,147,249,0.7);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:700;">Edit Ekadashi</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:4px;letter-spacing:1px;text-transform:uppercase;">Name</div>
+        <input type="text" id="${editId}_name" value="${name.replace(/"/g,'&quot;')}" placeholder="e.g. Nirjala Ekadashi" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:8px;padding:8px 10px;color:#fff;font-size:13px;font-family:Inter,sans-serif;outline:none;margin-bottom:9px;">
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;">Paksha</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:9px;">
+          <label style="display:flex;align-items:center;gap:7px;background:rgba(241,196,15,0.08);border:1px solid rgba(241,196,15,0.3);border-radius:8px;padding:8px 10px;cursor:pointer;">
+            <input type="radio" name="${editId}_paksha" value="shukla" ${paksha==='shukla'?'checked':''} style="accent-color:#F1C40F;">
+            <span style="font-size:12px;color:#F1C40F;font-weight:600;">☀️ Shukla</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:7px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.3);border-radius:8px;padding:8px 10px;cursor:pointer;">
+            <input type="radio" name="${editId}_paksha" value="krishna" ${paksha==='krishna'?'checked':''} style="accent-color:#BD93F9;">
+            <span style="font-size:12px;color:#BD93F9;font-weight:600;">🌙 Krishna</span>
+          </label>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+          <div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:4px;letter-spacing:1px;text-transform:uppercase;">Start Date</div>
+            <input type="date" id="${editId}_sd" value="${sd}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:8px;padding:8px 6px;color:#fff;font-size:12px;font-family:Inter,sans-serif;outline:none;">
+          </div>
+          <div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:4px;letter-spacing:1px;text-transform:uppercase;">Start Time</div>
+            <input type="time" id="${editId}_st" value="${startTime}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:8px;padding:8px 6px;color:#fff;font-size:12px;font-family:Inter,sans-serif;outline:none;">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
+          <div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:4px;letter-spacing:1px;text-transform:uppercase;">End Date</div>
+            <input type="date" id="${editId}_ed" value="${ed}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:8px;padding:8px 6px;color:#fff;font-size:12px;font-family:Inter,sans-serif;outline:none;">
+          </div>
+          <div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:4px;letter-spacing:1px;text-transform:uppercase;">End Time</div>
+            <input type="time" id="${editId}_et" value="${endTime}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:8px;padding:8px 6px;color:#fff;font-size:12px;font-family:Inter,sans-serif;outline:none;">
+          </div>
+        </div>
+        <button onclick="saveEkadashiEdit('${sd}')" style="display:block;width:100%;padding:10px;border-radius:8px;border:none;background:linear-gradient(135deg,rgba(155,89,182,0.75),rgba(90,50,190,0.65));color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">💾 Save Changes</button>
       </div>
     </div>`;
   }).join('');
+}
+
+function toggleEkEdit(startDate) {
+  const editId = 'ekEdit_' + startDate.replace(/-/g,'');
+  const el = document.getElementById(editId);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function saveEkadashiEdit(oldStartDate) {
+  const editId = 'ekEdit_' + oldStartDate.replace(/-/g,'');
+  const newName     = (document.getElementById(editId + '_name') || {}).value || '';
+  const newStartDate= (document.getElementById(editId + '_sd')   || {}).value || '';
+  const newStartTime= (document.getElementById(editId + '_st')   || {}).value || '';
+  const newEndDate  = (document.getElementById(editId + '_ed')   || {}).value || '';
+  const newEndTime  = (document.getElementById(editId + '_et')   || {}).value || '';
+  const pakshaEl    = document.querySelector(`input[name="${editId}_paksha"]:checked`);
+  const newPaksha   = pakshaEl ? pakshaEl.value : 'shukla';
+
+  if (!newStartDate) { toast('Start date is required 📅'); return; }
+
+  // Remove old entry + its occasions
+  const oldEntry = (App.S.customEkadashi || []).find(e => _ekDate(e) === oldStartDate);
+  App.S.customEkadashi = (App.S.customEkadashi || []).filter(e => _ekDate(e) !== oldStartDate);
+  if (App.S.occasions) {
+    [oldStartDate, oldEntry && oldEntry.endDate].filter(Boolean).forEach(d => {
+      if (d && App.S.occasions[d]) {
+        const occ = App.S.occasions[d];
+        if (occ.includes('Ekadashi') || (oldEntry && oldEntry.name && occ.includes(oldEntry.name))) {
+          delete App.S.occasions[d];
+        }
+      }
+    });
+  }
+
+  // Insert updated entry
+  const updatedEntry = {
+    name: newName.trim(),
+    paksha: newPaksha,
+    startDate: newStartDate,
+    startTime: newStartTime,
+    endDate: newEndDate || newStartDate,
+    endTime: newEndTime
+  };
+  if (!App.S.customEkadashi) App.S.customEkadashi = [];
+  App.S.customEkadashi.push(updatedEntry);
+  App.S.customEkadashi.sort((a, b) => _ekDate(a) < _ekDate(b) ? -1 : 1);
+
+  // Recompute single occasion date per parampara
+  if (!App.S.occasions) App.S.occasions = {};
+  const label2 = (newName.trim() || 'Ekadashi') + (newPaksha === 'shukla' ? ' ☀️ Shukla' : ' 🌙 Krishna');
+  const sf2 = newStartTime ? _fmtTime12(newStartTime) : '';
+  const ef2 = newEndTime   ? _fmtTime12(newEndTime)   : '';
+  let fastingDate2 = newStartDate;
+  const parampara2 = App.S.ekParampara || 'smarta';
+  if (parampara2 === 'vaishnava' && newStartTime && newEndDate && newEndDate !== newStartDate) {
+    const [h2, m2] = newStartTime.split(':').map(Number);
+    if (h2 * 60 + m2 >= 264) fastingDate2 = newEndDate;
+  }
+  const timeNote2 = sf2 ? (parampara2 === 'vaishnava' && fastingDate2 === newEndDate
+    ? ' (Mahadvadashi · Arunodaya Viddha)' : ' ' + sf2 + (ef2 ? '–' + ef2 : ''))
+    : (parampara2 === 'vaishnava' && fastingDate2 === newEndDate ? ' (Mahadvadashi)' : '');
+  App.S.occasions[fastingDate2] = label2 + timeNote2;
+
+  App.save(); fbDebouncedPush();
+  renderEkadashiList();
+  renderCal();
+  toast('Ekadashi updated ✅');
 }
 
 // ── Graph range state: offset in days from today (0 = last 90d, -90 = prev 90d, etc.)
@@ -4087,19 +4247,39 @@ function renderBcGraph() {
     }
   });
 
-  // X-axis: tithi numbers (1..30) under each day, plus month label on tithi 1
+  // X-axis: tithi labels — full names for key tithis, compact numbers for rest
+  const TITHI_NAMES = {
+    1:'S-Pratipada', 2:'Dwitiya', 3:'Tritiya', 4:'Chaturthi', 5:'Panchami',
+    6:'Shashthi', 7:'Saptami', 8:'Ashtami', 9:'Navami', 10:'Dashami',
+    11:'Ekadashi', 12:'Dwadashi', 13:'Trayodashi', 14:'Chaturdashi', 15:'Purnima',
+    16:'K-Pratipada', 17:'K-Dwitiya', 18:'K-Tritiya', 19:'K-Chaturthi', 20:'K-Panchami',
+    21:'K-Shashthi', 22:'K-Saptami', 23:'K-Ashtami', 24:'K-Navami', 25:'K-Dashami',
+    26:'K-Ekadashi', 27:'K-Dwadashi', 28:'K-Trayodashi', 29:'K-Chaturdashi', 30:'Amavasya'
+  };
+  // Key tithis that always get full label
+  const KEY_TITHIS = new Set([1,11,15,16,26,30]);
+
   ctx.textAlign = 'center';
+  let lastTithi = -1;
   let lastMonth = -1;
   days.forEach((d, i) => {
     const x = PAD.l + i * xStep;
     const t = getLunarTithi(d.date);
-    // Tithi number — color-coded by paksha (gold = Shukla 1-15, indigo = Krishna 16-30)
-    // Display as 1..15 in each paksha (so Krishna shows 1..15 too)
-    const display = t <= 15 ? t : (t - 15);
-    ctx.fillStyle = t <= 15 ? 'rgba(241,196,15,0.85)' : 'rgba(155,140,255,0.85)';
-    ctx.font = 'bold 10px Inter';
-    ctx.fillText(String(display), x, H - 22);
-    // Month label when month changes
+    // Only draw when tithi changes (avoid repeated labels on same tithi)
+    if (t !== lastTithi) {
+      lastTithi = t;
+      const isShukla = t <= 15;
+      const isKey = KEY_TITHIS.has(t);
+      // Color: gold = Shukla, indigo = Krishna; key tithis brighter
+      ctx.fillStyle = isShukla
+        ? (isKey ? 'rgba(241,196,15,1)' : 'rgba(241,196,15,0.75)')
+        : (isKey ? 'rgba(155,140,255,1)' : 'rgba(155,140,255,0.75)');
+      ctx.font = isKey ? 'bold 9px Inter' : '8px Inter';
+      // Show full name for key tithis, compact number for rest
+      const label = isKey ? (TITHI_NAMES[t] || String(t)) : String(t <= 15 ? t : t - 15);
+      ctx.fillText(label, x, H - 22);
+    }
+    // Month label when month changes (bottom row)
     if (d.date.getMonth() !== lastMonth) {
       lastMonth = d.date.getMonth();
       const label = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.date.getMonth()] + ' ' + d.date.getDate();
@@ -4110,7 +4290,7 @@ function renderBcGraph() {
   });
   ctx.textAlign = 'left';
 
-  // Legend (top-left, stays visible on scroll start)
+  // Legend
   ctx.textAlign = 'left';
   ctx.font = '10px Inter';
   ctx.fillStyle = 'rgba(46,204,113,0.9)';
@@ -4121,8 +4301,8 @@ function renderBcGraph() {
   ctx.fillRect(PAD.l + 140, PAD.t + 4, 10, 10);
   ctx.fillStyle = 'rgba(255,255,255,0.55)';
   ctx.fillText('Risk', PAD.l + 154, PAD.t + 12);
-  ctx.fillStyle = '#F1C40F'; ctx.fillText('Shukla 1–15', PAD.l + 190, PAD.t + 12);
-  ctx.fillStyle = 'rgba(155,140,255,0.95)'; ctx.fillText('Krishna 1–15', PAD.l + 270, PAD.t + 12);
+  ctx.fillStyle = '#F1C40F'; ctx.fillText('Shukla (S-)', PAD.l + 190, PAD.t + 12);
+  ctx.fillStyle = 'rgba(155,140,255,0.95)'; ctx.fillText('Krishna (K-)', PAD.l + 270, PAD.t + 12);
 
   renderPatternEngine();
 }

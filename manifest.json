@@ -1,12 +1,17 @@
 {
+  "id": "/",
   "name": "Radha Naam Jap",
   "short_name": "Radha Jap",
-  "description": "Radha Naam Jap Sadhana App",
-  "start_url": "./index.html",
+  "description": "Radha Naam Jap Sadhana App — Daily naam jap counter and spiritual sadhana tracker",
+  "start_url": "/index.html",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#060D1F",
   "theme_color": "#060D1F",
   "orientation": "portrait",
+  "lang": "hi",
+  "dir": "ltr",
+  "categories": ["lifestyle", "spirituality"],
   "icons": [
     {
       "src": "./icon-192.png",
@@ -32,5 +37,16 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Radha Naam Jap home screen"
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": []
 }

@@ -2,13 +2,14 @@
 // Radha Naam Jap — Service Worker
 // v64: Removed Google Drive backup system
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v72';
+const CACHE = 'radha-jap-v73';
 
 const PRECACHE = [
   './index.html',
   './style.css',
   './stotrams.js',
   './app.js',
+  './panchangData.js',
   './guru.jpg',
   './icon-192.png',
   './icon-512.png',

@@ -3802,24 +3802,8 @@ const _EK_NAMES_KRISHNA = [
   'Utpanna'          // 11 = December (Month 9  Margashirsha)
 ];
 
-// ── Adhik Maas (Purushottam Maas) Windows ──
-// Inclusive date ranges for known Adhik Maas periods.
-// shuklaEk = Padmini Ekadashi (Shukla Paksha), krishnaEk = Parama Ekadashi (Krishna Paksha)
-const _ADHIK_MAAS_WINDOWS = [
-  { start: '2026-05-17', end: '2026-06-15', shuklaEk: '2026-05-27', krishnaEk: '2026-06-11' },
-  { start: '2029-07-18', end: '2029-08-16', shuklaEk: null, krishnaEk: null }, // approx
-  { start: '2032-09-01', end: '2032-09-29', shuklaEk: null, krishnaEk: null }, // approx
-];
-
-// Returns the Adhik Maas window if date string (YYYY-MM-DD) falls within it, else null
-function _getAdhikMaasWindow(dateStr) {
-  return _ADHIK_MAAS_WINDOWS.find(w => dateStr >= w.start && dateStr <= w.end) || null;
-}
-
-// Returns true if a date string falls in a known Adhik Maas period
-function isAdhikMaasDate(dateStr) {
-  return !!_getAdhikMaasWindow(dateStr);
-}
+// _ADHIK_MAAS_WINDOWS, _getAdhikMaasWindow, isAdhikMaasDate
+// defined in panchangData.js (loaded before app.js)
 
 let _panchangFetching = false;
 

@@ -4100,6 +4100,7 @@ function renderEkadashiList() {
     list.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;padding:10px 0 4px;">No Ekadashis saved yet.</div>';
     return;
   }
+  const parampara = App.S.ekParampara || 'smarta';
   list.innerHTML = entries.map(e => {
     const sd = _ekDate(e);
     const ed = (typeof e==='object'&&e.endDate)?e.endDate:sd;
@@ -4116,11 +4117,36 @@ function renderEkadashiList() {
       :'<span style="font-size:9px;background:rgba(155,89,182,0.25);color:#BD93F9;border-radius:4px;padding:2px 5px;font-weight:700;">🌙 KRISHNA</span>';
     const autoTag = isAuto?'<span style="font-size:8px;color:rgba(46,204,113,0.7);margin-left:4px;">AUTO</span>':'';
     const eid = 'ekEd_'+sd.replace(/-/g,'');
+
+    // ── Fasting date per parampara ──────────────────────────────────
+    let fastingDate = sd, isViddha = false;
+    if (startTime) {
+      const [hh, mm] = startTime.split(':').map(Number);
+      const ekStartMinutes = hh * 60 + mm;
+      if (parampara === 'vaishnava') {
+        // Vaishnava: if Ekadashi starts after arunodaya (sunrise − 96 min ≈ 4:24 = 264 min)
+        if (ekStartMinutes >= 264) { fastingDate = ed; isViddha = true; }
+      } else {
+        // Smarta: if Ekadashi starts after sunrise (approx 6:00 = 360 min)
+        if (ekStartMinutes >= 360) fastingDate = ed;
+      }
+    }
+    const isTomorrow = fastingDate === ed && sd !== ed;
+    const fastLabel = isViddha
+      ? `<span style="color:#FF9800;font-weight:700">🌅 Fast: ${fmtD(fastingDate)}</span> <span style="font-size:9px;background:rgba(255,152,0,0.2);color:#FF9800;border-radius:4px;padding:2px 6px;">Mahadvadashi</span>`
+      : isTomorrow
+        ? `<span style="color:#76ff7a;font-weight:700">🌅 Fast: ${fmtD(fastingDate)}</span>`
+        : `<span style="color:#76ff7a;font-weight:700">🌅 Fast: ${fmtD(fastingDate)}</span>`;
+    const paramparaTag = parampara === 'vaishnava'
+      ? '<span style="font-size:8px;background:rgba(74,144,226,0.2);color:#6DB8FF;border-radius:4px;padding:1px 5px;margin-left:4px;">Vaishnava</span>'
+      : '<span style="font-size:8px;background:rgba(46,204,113,0.15);color:#2ecc71;border-radius:4px;padding:1px 5px;margin-left:4px;">Smarta</span>';
+
     return `<div style="background:rgba(155,89,182,0.09);border:1px solid rgba(155,89,182,0.22);border-radius:12px;padding:11px;margin-bottom:9px;">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;color:#BD93F9;font-weight:700;margin-bottom:2px;">${name} ${pLabel}${autoTag}</div>
-          <div style="font-size:10px;color:rgba(255,255,255,0.5);">${fmtD(sd)}${sfmt?' · '+sfmt:''} → ${fmtD(ed)}${efmt?' · '+efmt:''}</div>
+          <div style="font-size:12px;color:#BD93F9;font-weight:700;margin-bottom:3px;">${name} ${pLabel}${autoTag}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.45);margin-bottom:5px;">Tithi: ${fmtD(sd)}${sfmt?' · '+sfmt:''} → ${fmtD(ed)}${efmt?' · '+efmt:''}</div>
+          <div style="font-size:11px;margin-bottom:2px;">${fastLabel}${paramparaTag}</div>
         </div>
         <div style="display:flex;gap:5px;flex-shrink:0;margin-left:7px;">
           <button onclick="toggleEkEdit('${sd}')" style="background:rgba(74,144,226,0.15);border:1px solid rgba(74,144,226,0.3);border-radius:7px;color:#6DB8FF;font-size:11px;padding:5px 9px;cursor:pointer;font-family:Inter,sans-serif;">✏</button>
@@ -4705,9 +4731,9 @@ function _renderDayPanchang(key) {
   const parts = key.split('-');
   const dateAtMidnight = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]), 0, 0, 0);
 
-  function _renderWithLatLng(lat, lng) {
+  async function _renderWithLatLng(lat, lng) {
     try {
-      const p = getPanchangData(lat, lng, dateAtMidnight);
+      const p = await getPanchangData(lat, lng, dateAtMidnight);
 
       // Month line: "Purushottama / Purushottama" or "Jyeshtha / Trivikrama"
       if (monthEl) {

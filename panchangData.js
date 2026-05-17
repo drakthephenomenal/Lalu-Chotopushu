@@ -284,8 +284,13 @@ function _nakshatraIdx(moonSid) {
 function _yogaIdx(sunSid, moonSid) {
   return Math.floor(((sunSid + moonSid) % 360 + 360) % 360 / (360/27));
 }
-function _lunarMonthIdx(sunSid) {
-  return Math.floor(((sunSid % 360) + 360) % 360 / 30);
+// Purnimanta lunar month (ISKCON / North Indian / Gaudiya Vaishnava standard)
+// During Krishna Paksha the month name is already the NEXT month.
+// So we add 1 to the Amanta index during Krishna Paksha.
+function _lunarMonthIdx(sunSid, paksha) {
+  const amanta = Math.floor(((sunSid % 360) + 360) % 360 / 30);
+  if (paksha === 'krishna') return (amanta + 1) % 12; // Purnimanta shift
+  return amanta;
 }
 function _gaurabdaYear(date) {
   const y = date.getFullYear(), m = date.getMonth();
@@ -355,10 +360,11 @@ function _localCompute(lat, lng, date) {
   // 6. Karana
   const karana = _karanaName(tithiNum, isSecondHalf);
 
-  // 7. Month — check Adhik Maas first
-  const dateStr  = _dateStr(date);
-  const isAdhik  = isAdhikMaasDate(dateStr);
-  const monthIdx = _lunarMonthIdx(sunSid);
+  // 7. Month — Purnimanta (ISKCON/Gaudiya) + Amanta (Bengali/South Indian)
+  const dateStr    = _dateStr(date);
+  const isAdhik    = isAdhikMaasDate(dateStr);
+  const amantaIdx  = Math.floor(((sunSid % 360) + 360) % 360 / 30); // Amanta: raw sun position
+  const monthIdx   = _lunarMonthIdx(sunSid, paksha); // Purnimanta: +1 shift in Krishna Paksha
 
   // 8. Vaara and Gaurabda
   const vaaraIdx = date.getDay();
@@ -398,11 +404,18 @@ function _localCompute(lat, lng, date) {
       isSecondHalf,
     },
     month: {
-      idx:       monthIdx,
-      std:       isAdhik ? 'Purushottama' : _MONTH_STD[monthIdx],
-      stdBn:     isAdhik ? 'পুরুষোত্তম'   : _MONTH_STD_BN[monthIdx],
-      gaudiya:   isAdhik ? 'Purushottama' : _MONTH_GAUDIYA[monthIdx],
-      gaudiyaBn: isAdhik ? 'পুরুষোত্তম'   : _MONTH_GAUDIYA_BN[monthIdx],
+      // Purnimanta (ISKCON / Gaudiya Vaishnava)
+      idx:          monthIdx,
+      std:          isAdhik ? 'Purushottama' : _MONTH_STD[monthIdx],
+      stdBn:        isAdhik ? 'পুরুষোত্তম'   : _MONTH_STD_BN[monthIdx],
+      gaudiya:      isAdhik ? 'Purushottama' : _MONTH_GAUDIYA[monthIdx],
+      gaudiyaBn:    isAdhik ? 'পুরুষোত্তম'   : _MONTH_GAUDIYA_BN[monthIdx],
+      // Amanta (Bengali / South Indian)
+      amantaIdx,
+      amanta:       isAdhik ? 'Purushottama' : _MONTH_STD[amantaIdx],
+      amantaBn:     isAdhik ? 'পুরুষোত্তম'   : _MONTH_STD_BN[amantaIdx],
+      amantaGaudiya:   isAdhik ? 'Purushottama' : _MONTH_GAUDIYA[amantaIdx],
+      amantaGaudiyaBn: isAdhik ? 'পুরুষোত্তম'   : _MONTH_GAUDIYA_BN[amantaIdx],
       isAdhik,
     },
     paksha: {
@@ -485,12 +498,13 @@ async function _fetchFromProkerala(lat, lng, date) {
   const karName = karRaw?.name || '';
   const karBn   = _KARANA_BN_CYCLE[_KARANA_CYCLE.indexOf(karName)] || karName;
 
-  // Month
-  const dateStr2 = _dateStr(date);
-  const isAdhik  = isAdhikMaasDate(dateStr2);
-  // Use lunar month from local engine (API doesn't always expose this cleanly)
-  const lon       = _sunMoonLongitudes(date);
-  const monthIdx  = _lunarMonthIdx(lon.sunSid);
+  // Month — both Purnimanta and Amanta
+  const dateStr2   = _dateStr(date);
+  const isAdhik    = isAdhikMaasDate(dateStr2);
+  const lon        = _sunMoonLongitudes(date);
+  const paksha2    = tithiNum <= 15 ? "shukla" : "krishna";
+  const amantaIdx  = Math.floor(((lon.sunSid % 360) + 360) % 360 / 30);
+  const monthIdx   = _lunarMonthIdx(lon.sunSid, paksha2);
   const vaaraIdx  = date.getDay();
   const gaurabda  = _gaurabdaYear(date);
 
@@ -528,11 +542,18 @@ async function _fetchFromProkerala(lat, lng, date) {
       isSecondHalf: false,
     },
     month: {
-      idx:       monthIdx,
-      std:       isAdhik ? 'Purushottama' : _MONTH_STD[monthIdx],
-      stdBn:     isAdhik ? 'পুরুষোত্তম'   : _MONTH_STD_BN[monthIdx],
-      gaudiya:   isAdhik ? 'Purushottama' : _MONTH_GAUDIYA[monthIdx],
-      gaudiyaBn: isAdhik ? 'পুরুষোত্তম'   : _MONTH_GAUDIYA_BN[monthIdx],
+      // Purnimanta (ISKCON / Gaudiya Vaishnava)
+      idx:          monthIdx,
+      std:          isAdhik ? 'Purushottama' : _MONTH_STD[monthIdx],
+      stdBn:        isAdhik ? 'পুরুষোত্তম'   : _MONTH_STD_BN[monthIdx],
+      gaudiya:      isAdhik ? 'Purushottama' : _MONTH_GAUDIYA[monthIdx],
+      gaudiyaBn:    isAdhik ? 'পুরুষোত্তম'   : _MONTH_GAUDIYA_BN[monthIdx],
+      // Amanta (Bengali / South Indian)
+      amantaIdx,
+      amanta:       isAdhik ? 'Purushottama' : _MONTH_STD[amantaIdx],
+      amantaBn:     isAdhik ? 'পুরুষোত্তম'   : _MONTH_STD_BN[amantaIdx],
+      amantaGaudiya:   isAdhik ? 'Purushottama' : _MONTH_GAUDIYA[amantaIdx],
+      amantaGaudiyaBn: isAdhik ? 'পুরুষোত্তম'   : _MONTH_GAUDIYA_BN[amantaIdx],
       isAdhik,
     },
     paksha: {

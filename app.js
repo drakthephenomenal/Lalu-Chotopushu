@@ -4719,15 +4719,29 @@ function _renderDayPanchang(key) {
     try {
       const p = await getPanchangData(lat, lng, dateAtMidnight);
 
-      // Month line: "Purushottama / Purushottama" or "Jyeshtha / Trivikrama"
+      // Month block — Purnimanta + Amanta + Gaudiya
       if (monthEl) {
         const adhikBadge = p.month.isAdhik
-          ? '<span style="font-size:10px;background:rgba(206,147,216,0.2);border:1px solid rgba(206,147,216,0.4);border-radius:5px;padding:1px 6px;margin-left:6px;color:#ce93d8;vertical-align:middle;">Adhik Maas</span>'
+          ? ' <span style="font-size:9px;background:rgba(206,147,216,0.2);border:1px solid rgba(206,147,216,0.4);border-radius:4px;padding:1px 6px;color:#ce93d8;">Adhik Maas</span>'
           : '';
+        const sameMonth = p.month.std === p.month.amanta; // true during Shukla Paksha
         monthEl.innerHTML =
-          `<span style="color:#ce93d8">${p.month.stdBn}</span> <span style="color:rgba(255,255,255,0.3);font-size:12px">/</span> <span style="color:#b39ddb">${p.month.gaudiyaBn}</span>${adhikBadge}<br>` +
-          `<span style="font-size:12px;color:rgba(255,255,255,0.45)">${p.month.std} / ${p.month.gaudiya}</span>` +
-          `<span style="font-size:11px;color:rgba(255,255,255,0.3);margin-left:8px">${p.gaurabdaYear} Gaurabda</span>`;
+          // Row 1: Bengali names + Gaurabda
+          `<span style="font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:.5px">Purnimanta</span> ` +
+          `<span style="color:#ce93d8;font-weight:600">${p.month.stdBn}</span>` +
+          ` <span style="color:rgba(255,255,255,0.25);font-size:11px">/</span> ` +
+          `<span style="color:#b39ddb">${p.month.gaudiyaBn}</span>${adhikBadge}` +
+          `<span style="font-size:11px;color:rgba(255,255,255,0.28);margin-left:8px">${p.gaurabdaYear} Gaurabda</span><br>` +
+          // Row 2: English Purnimanta
+          `<span style="font-size:11px;color:rgba(255,255,255,0.4)">${p.month.std} / ${p.month.gaudiya}</span><br>` +
+          // Row 3: Amanta (only show if different from Purnimanta)
+          (sameMonth ? '' :
+            `<span style="font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:.5px">Amanta</span> ` +
+            `<span style="font-size:11px;color:#9fa8da">${p.month.amantaBn}</span>` +
+            ` <span style="color:rgba(255,255,255,0.2);font-size:10px">/</span> ` +
+            `<span style="font-size:11px;color:#7986cb">${p.month.amantaGaudiyaBn}</span><br>` +
+            `<span style="font-size:10px;color:rgba(255,255,255,0.28)">${p.month.amanta} / ${p.month.amantaGaudiya}</span>`
+          );
       }
 
       // Helper to build a val span with Bengali + end time

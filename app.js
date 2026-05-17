@@ -4699,13 +4699,15 @@ function _renderDayPanchang(key) {
     return;
   }
 
-  // Build date at local sunrise (6 AM) for that day — this gives correct tithi at sunrise
+  // Build date at local midnight (00:00) so the panchang search starts from the
+  // beginning of the calendar day — otherwise if called after a tithi change
+  // (e.g. Amavasya ends at 3 AM and we pass 6 AM), we miss that tithi entirely.
   const parts = key.split('-');
-  const dateAtSunrise = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]), 6, 0, 0);
+  const dateAtMidnight = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]), 0, 0, 0);
 
   function _renderWithLatLng(lat, lng) {
     try {
-      const p = getPanchangData(lat, lng, dateAtSunrise);
+      const p = getPanchangData(lat, lng, dateAtMidnight);
 
       // Month line: "Purushottama / Purushottama" or "Jyeshtha / Trivikrama"
       if (monthEl) {

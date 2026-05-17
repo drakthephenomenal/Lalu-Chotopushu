@@ -217,19 +217,24 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .cg{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;width:100%;box-sizing:border-box;}
 .cdl{text-align:center;font-size:10px;color:var(--td);padding:4px 0;}
 .cc{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  border-radius:9px;font-size:11px;color:var(--td);background:rgba(255,255,255,0.02);cursor:pointer;
-  min-width:0;overflow:hidden;}
+  border-radius:9px;font-size:11px;font-weight:700;color:#060D1F;background:#FFFFFF;cursor:pointer;
+  min-width:0;overflow:hidden;border:1px solid rgba(0,0,0,0.08);}
 .cc.today{border:1px solid var(--a2);color:var(--a2);}
-.cc.hd{background:rgba(74,144,226,0.12);color:var(--tl);}
-.cc.tm{background:rgba(109,184,255,0.2);}
-.cc.occ{border-bottom:2px solid var(--gold);}
-.ccc{font-size:8px;color:var(--td);}
+.cc.hd{background:#FFFFFF;color:#060D1F;}
+.cc.hd .ccc{color:#444;}
+.cc.tm{background:#FFFFFF;color:#060D1F;}
+.cc.tm .ccc{color:#444;}
+.cc.occ{border-bottom:3px solid var(--gold);}
+.ccc{font-size:8px;color:#555;font-weight:600;}
 
 /* Brahmacharya calendar cell coloring */
-.cc.bc-m{background:rgba(46,204,113,0.18);border-color:rgba(46,204,113,0.35);}
-.cc.bc-b{background:rgba(231,76,60,0.22);border-color:rgba(231,76,60,0.4);}
-.cc.bc-m .ccc{color:var(--tl);}.cc.bc-b .ccc{color:var(--tl);}
-.cco{font-size:7px;color:var(--gold);width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px;text-align:center;}
+.cc.bc-m{border-top:3px solid var(--green);}
+.cc.bc-b{border-top:3px solid var(--red);}
+.cc.bc-m.hd{border-top:3px solid var(--green);}
+.cc.bc-b.hd{border-top:3px solid var(--red);}
+.cc.bc-m .ccc{color:#444;}.cc.bc-b .ccc{color:#444;}
+.cc.bc-m.hd .ccc{color:#444;}.cc.bc-b.hd .ccc{color:#444;}
+.cco{font-size:7px;color:var(--gold);width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px;text-align:center;font-weight:700;}
 .cd{background:rgba(74,144,226,0.07);border:1px solid rgba(74,144,226,0.18);border-radius:14px;padding:14px;margin-top:12px;min-height:55px;}
 .cd h4{font-family:'EB Garamond',serif;font-size:15px;color:var(--a2);margin-bottom:6px;}
 .cd p{font-size:13px;color:var(--tl);}

@@ -433,7 +433,7 @@
     <div class="cdl">Wed</div><div class="cdl">Thu</div><div class="cdl">Fri</div><div class="cdl">Sat</div>
   </div>
   <div style="padding:6px 14px 4px;display:flex;justify-content:center;gap:14px;font-size:10px;color:var(--td)">
-    <span>🟢 Maintained</span><span>🔴 Broken</span><span>🟡 Occasion</span>
+    <span>🟢 Maintained</span><span>🔴 Broken</span><span style="color:var(--gold)">🟡 Occasion</span>
   </div>
   <div style="padding:4px 14px 6px;font-size:11px;color:var(--td);text-align:center;letter-spacing:1px;">Tap a date to see details</div>
 
@@ -970,6 +970,14 @@
       <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:12px;line-height:1.5;">Calculates Ekadashi tithi times astronomically for your exact location for the next 6 months — no manual entry needed. Respects your Parampara.</div>
       <button id="panchangFetchBtn" onclick="fetchPanchangEkadashis()" style="display:block;width:100%;padding:13px;border-radius:10px;border:none;background:linear-gradient(135deg,rgba(46,204,113,0.75),rgba(22,160,133,0.7));color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 3px 14px rgba(46,204,113,0.2);margin-bottom:8px;">🌙 Auto-Fetch from GPS</button>
       <div id="panchangStatus" style="font-size:11px;color:rgba(255,255,255,0.45);text-align:center;min-height:16px;"></div>
+    </div>
+
+    <!-- VAISHNAV & VRINDAVAN OCCASIONS AUTO-ADD -->
+    <div style="background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.25);border-radius:12px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:10px;color:rgba(255,215,0,0.85);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;font-weight:700;">🪔 Vaishnav &amp; Vrindavan Occasions</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:12px;line-height:1.5;">Auto-calculates all major Vaishnav festivals &amp; Vrindavan events (Janmashtami, Radhashtami, Holi, Jhulan Yatra, Kartik Purnima, Lathmar Holi, Govardhan Puja &amp; 30+ more) for this year &amp; next — using the lunar tithi calendar.</div>
+      <button id="vaishnavOccBtn" onclick="autoAddVaishnavOccasions()" style="display:block;width:100%;padding:13px;border-radius:10px;border:none;background:linear-gradient(135deg,rgba(255,215,0,0.75),rgba(255,140,0,0.65));color:#0A1535;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 3px 14px rgba(255,215,0,0.2);margin-bottom:8px;">🪔 Auto-Add Vaishnav Occasions</button>
+      <div id="vaishnavOccStatus" style="font-size:11px;color:rgba(255,255,255,0.45);text-align:center;min-height:16px;"></div>
     </div>
 
     <!-- MANUAL ENTRY (Collapsible) -->

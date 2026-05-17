@@ -4253,6 +4253,91 @@ function bcShiftRange(delta) {
   renderBcGraph();
 }
 
+// ── Brahma Muhurta boundary helpers ──────────────────────────────
+// Brahma Muhurta starts 96 minutes (1hr 36min) before sunrise.
+// For a given date's brahmacharya stamping: if current clock time is
+// between midnight and that day's Brahma Muhurta start, it belongs
+// to the PREVIOUS calendar date.
+
+// Returns Brahma Muhurta start time (Date object) for a given date
+function _getBrahmaMuhurtStart(dateObj, lat, lng) {
+  lat = lat || (App.S && App.S.lastLat) || 23.8103;
+  lng = lng || (App.S && App.S.lastLng) || 90.4125;
+  if (typeof calcSunTimes === 'function') {
+    const sr = calcSunTimes(lat, lng, dateObj);
+    if (sr && sr.sunriseH !== undefined) {
+      // sunriseH is decimal hours e.g. 5.95 = 5:57 AM
+      const sunriseMs = sr.sunriseH * 3600000;
+      const bmMs = sunriseMs - 96 * 60000; // subtract 96 minutes
+      const bm = new Date(dateObj);
+      bm.setHours(0, 0, 0, 0);
+      bm.setTime(bm.getTime() + bmMs);
+      return bm;
+    }
+  }
+  // Fallback: 4:21 AM
+  const bm = new Date(dateObj); bm.setHours(4, 21, 0, 0); return bm;
+}
+
+// Returns the correct brahmacharya date key for a given timestamp.
+// If time is between midnight and Brahma Muhurta, it belongs to previous day.
+function getBcDateKey(now) {
+  now = now || new Date();
+  const todayMidnight = new Date(now); todayMidnight.setHours(0,0,0,0);
+  const bm = _getBrahmaMuhurtStart(todayMidnight);
+  if (now < bm) {
+    // Before Brahma Muhurta — belongs to previous day
+    const prev = new Date(todayMidnight); prev.setDate(prev.getDate() - 1);
+    return prev.toISOString().slice(0,10);
+  }
+  return now.toISOString().slice(0,10);
+}
+
+// Time-of-day label: night / morning / afternoon / evening
+function _bcTimeLabel(h, bmHour) {
+  if (h < bmHour)  return 'night';      // midnight → Brahma Muhurta
+  if (h < 12)      return 'morning';    // BM → noon
+  if (h < 16)      return 'afternoon';  // noon → 4 PM
+  if (h < 20)      return 'evening';    // 4 PM → 8 PM
+  return 'night';                        // 8 PM → midnight
+}
+
+// Format break time: "16 May, 2026 at night 12:15"
+function formatBcBreakTime(timeStr, dateKey) {
+  // timeStr is HH:MM (24hr from <input type="time">)
+  // dateKey is YYYY-MM-DD (the BC date key, already adjusted for BM boundary)
+  if (!timeStr || !dateKey) return '';
+  const [hh, mm] = timeStr.split(':').map(Number);
+
+  // Get BM hour for this date to determine label
+  const dateObj = new Date(dateKey + 'T00:00:00');
+  const bm = _getBrahmaMuhurtStart(dateObj);
+  const bmHour = bm.getHours() + bm.getMinutes() / 60;
+
+  const label = _bcTimeLabel(hh + mm/60, bmHour);
+
+  // Display date — if time is night (after midnight, before BM), display date is dateKey + 1
+  // because the clock shows next day's date even though BC belongs to prev day
+  let displayDate;
+  if (hh < bmHour && hh < 6) {
+    // After midnight, before BM — clock date is dateKey+1
+    const next = new Date(dateKey + 'T00:00:00'); next.setDate(next.getDate() + 1);
+    displayDate = next;
+  } else {
+    displayDate = new Date(dateKey + 'T00:00:00');
+  }
+
+  const day = displayDate.getDate();
+  const mon = displayDate.toLocaleDateString('en-GB', { month: 'long' });
+  const yr  = displayDate.getFullYear();
+
+  // 12hr format for the time
+  let h12 = hh % 12 || 12;
+  const mStr = String(mm).padStart(2,'0');
+
+  return `${day} ${mon}, ${yr} at ${label} ${h12}:${mStr}`;
+}
+
 function renderBcGraph() {
   var canvas = document.getElementById('bcGraph');
   if (!canvas) return;
@@ -4460,10 +4545,16 @@ function renderBcGraph() {
 
     var times = d.times || [];
     if (times.length > 0 && times[0].time) {
+      // Convert HH:MM to 12hr format for graph label
+      var tParts = times[0].time.split(':');
+      var th = parseInt(tParts[0]), tm = parseInt(tParts[1]||0);
+      var tampm = th >= 12 ? 'pm' : 'am';
+      var th12 = th % 12 || 12;
+      var tLabel = th12 + ':' + String(tm).padStart(2,'0') + ' ' + tampm;
       ctx.fillStyle = '#ef4444';
       ctx.font = 'bold 9px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(times[0].time, x, dotY - 12);
+      ctx.fillText(tLabel, x, dotY - 12);
       if (times.length > 1) {
         ctx.fillStyle = '#f87171';
         ctx.font = '8px Inter, sans-serif';
@@ -4547,8 +4638,9 @@ function openBcDay(key,isBroken,cnt){
 }
 function lb(st){
   const cnt=parseInt(document.getElementById('bci').value)||1;
-  if(st==='b')App.S.brahma[App.S.tk]={status:'b',count:cnt};
-  else delete App.S.brahma[App.S.tk];
+  const bcKey = getBcDateKey(); // use BM-aware date key
+  if(st==='b')App.S.brahma[bcKey]={status:'b',count:cnt};
+  else delete App.S.brahma[bcKey];
   App.save(); fbDebouncedPush(); renderBcal();
   toast(st==='b'?'Logged. Keep going 🙏':'✅ Restored!');
 }
@@ -4746,7 +4838,10 @@ function showDay(key, cnt, timeSec, time28Sec) {
       if (savedTimes.length > 0) {
         timesHtml = '<div class="bc-times-display">';
         savedTimes.forEach((t, i) => {
-          const tStr = t.time ? ('<span class="bc-time-badge">🕐 ' + t.time + '</span>') : '<span class="bc-time-badge bc-time-unknown">🕐 —</span>';
+          const formatted = t.time ? formatBcBreakTime(t.time, key) : '';
+          const tStr = formatted
+            ? ('<span class="bc-time-badge">🕐 ' + formatted + '</span>')
+            : '<span class="bc-time-badge bc-time-unknown">🕐 —</span>';
           const nStr = t.note ? ('<span class="bc-note-badge">' + escHtml(t.note) + '</span>') : '';
           timesHtml += '<div class="bc-time-item">' + (savedTimes.length > 1 ? '<span class="bc-instance-num">#' + (i+1) + '</span>' : '') + tStr + nStr + '</div>';
         });

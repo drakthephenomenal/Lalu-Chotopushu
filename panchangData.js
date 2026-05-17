@@ -79,8 +79,10 @@ function _fmt(d) {
          String(d.getSeconds()).padStart(2,'0');
 }
 function _fmtHHMM(d) {
-  return String(d.getHours()).padStart(2,'0') + ':' +
-         String(d.getMinutes()).padStart(2,'0');
+  let h = d.getHours(), m = d.getMinutes();
+  const ampm = h >= 12 ? 'pm' : 'am';
+  h = h % 12 || 12;
+  return h + '.' + String(m).padStart(2,'0') + ' ' + ampm;
 }
 
 // ═══════════════════════════════════════════════════════════════════

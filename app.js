@@ -2701,6 +2701,7 @@ async function fbPushFull() {
     brahmacharya_start_date: App.S.brahmacharya_start_date||'',
     activityLog: App.S.activityLog || [],
     customEkadashi: App.S.customEkadashi || [], ekParampara: App.S.ekParampara||'smarta',
+    sadhanaStart: App.S.sadhanaStart || '',
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId
   };
@@ -2788,6 +2789,12 @@ function fbApplyRemote(d) {
   // ── Ekadashi data — critical for multi-device sync ──
   if ('customEkadashi' in d) App.S.customEkadashi = JSON.parse(JSON.stringify(d.customEkadashi || []));
   if ('ekParampara' in d) App.S.ekParampara = d.ekParampara || 'smarta';
+  if (d.sadhanaStart) {
+    App.S.sadhanaStart = d.sadhanaStart;
+    localStorage.setItem('rjap_sadhana_start', d.sadhanaStart);
+    const inp = document.getElementById('msSadhanaStart');
+    if (inp) inp.value = d.sadhanaStart;
+  }
 
   // ── Clean up legacy two-date Ekadashi occasions ──
   // Old saves wrote both startDate AND endDate to occasions. Remove the endDate entry
@@ -4809,6 +4816,8 @@ function addOccasionFromSheet() {
 }
 function closeDaySheet() {
   document.getElementById('cdmo').classList.remove('show');
+  const container = document.getElementById('bcTimeRows');
+  if (container) container.dataset.sheetKey = '';
   _sheetKey = null;
 }
 function sheetMarkBc(action) {
@@ -4849,20 +4858,30 @@ function renderBcTimeRows() {
   const cnt = parseInt(cntEl ? cntEl.value : 1) || 1;
   const container = document.getElementById('bcTimeRows');
   if (!container) return;
-  // Preserve existing values
+
+  // Only preserve existing DOM values if we're still on the same day
+  // (i.e. user changed the count spinner, not opened a different day)
+  const domKey = container.dataset.sheetKey;
+  const sameDay = domKey === key;
+
   const existing = [];
-  const old = container.querySelectorAll('.bc-time-row');
-  old.forEach((row, i) => {
-    existing[i] = {
-      time: (row.querySelector('input[type="time"]') || {}).value || '',
-      note: (row.querySelector('input[type="text"]') || {}).value || ''
-    };
-  });
-  // Pre-fill from saved data if available
+  if (sameDay) {
+    const old = container.querySelectorAll('.bc-time-row');
+    old.forEach((row, i) => {
+      existing[i] = {
+        time: (row.querySelector('input[type="time"]') || {}).value || '',
+        note: (row.querySelector('input[type="text"]') || {}).value || ''
+      };
+    });
+  }
+
+  // Pre-fill from saved data for this specific day
   const saved = key && App.S.brahma[key] && App.S.brahma[key].times ? App.S.brahma[key].times : [];
   container.innerHTML = '';
+  container.dataset.sheetKey = key; // stamp current day on container
+
   for (let i = 0; i < cnt; i++) {
-    const prefill = existing[i] || saved[i] || {};
+    const prefill = (sameDay && existing[i] && existing[i].time) ? existing[i] : (saved[i] || {});
     const div = document.createElement('div');
     div.className = 'bc-time-row';
     div.innerHTML =

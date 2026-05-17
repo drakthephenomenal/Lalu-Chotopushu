@@ -131,7 +131,7 @@ const App = {
     if (this.S.malaLog) await this.dbPut('malaLog', 'today', { date: tk, log: this.S.malaLog });
     // Archive today's activityLog entries into lifetime per-day store (no 500 limit)
     if (this.S.activityLog && this.S.activityLog.length > 0) {
-      const todayEntries = this.S.activityLog.filter(e => e.ts && new Date(e.ts).toISOString().split('T')[0] === tk);
+      const todayEntries = this.S.activityLog.filter(e => e.ts && _ldk(new Date(e.ts)) === tk);
       if (todayEntries.length > 0) await this.dbPut('activityLogArchive', tk, todayEntries);
     }
     try { localStorage.setItem(this._lsKey(), JSON.stringify(this.S)); } catch(e) {}
@@ -222,13 +222,10 @@ const App = {
   },
 
   getTk() {
-    // ── TIME SYNC FIX: Use server-corrected time if available, else local UTC ──
-    // Using UTC prevents cross-device timezone mismatch (e.g. one device in IST,
-    // another in UTC) from producing different date keys for the same day.
-    // _serverTimeOffsetMs is set by fbSyncServerTime() on every Firebase connection.
-    const now = Date.now() + (window._serverTimeOffsetMs || 0);
-    const d = new Date(now);
-    return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0');
+    // Date changes at 12:00 AM local time (GPS/device timezone).
+    // Use local date methods so the key matches the user's clock midnight.
+    const d = new Date(Date.now() + (window._serverTimeOffsetMs || 0));
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   },
 
   gTod() {
@@ -1232,7 +1229,7 @@ function autoLoadHistory() {
   const body = document.getElementById('historyBody');
   if (!body || !body.classList.contains('open')) return;
   _historyAutoLoaded = true;
-  const today = new Date().toISOString().split('T')[0];
+  const today = _ldk(new Date());
   const f = document.getElementById('histFrom'), t = document.getElementById('histTo');
   if (f && !f.value) f.value = today;
   if (t && !t.value) t.value = today;
@@ -1578,13 +1575,13 @@ function uStats() {
   const curHist = App.getCombinedHistory(); // COMBINED radha + RV
   const curTimerHist = App.getCombinedTimerHistory(); // COMBINED timer
   const wk = [];
-  for (let i = 6; i >= 0; i--) { const d = new Date(now); d.setDate(d.getDate()-i); wk.push(d.toISOString().split('T')[0]); }
+  for (let i = 6; i >= 0; i--) { const d = new Date(now); d.setDate(d.getDate()-i); wk.push(_ldk(d)); }
   const ws = wk.reduce((s,k) => s + (curHist[k]||0), 0);
-  const mp = now.toISOString().slice(0,7);
+  const mp = _ldk(now).slice(0,7);
   let ms2 = 0, best = 0, streak = 0;
   Object.entries(curHist).forEach(([k,v]) => { if (k.startsWith(mp)) ms2 += v; if (!k.startsWith('prev_') && v > best) best = v; });
   const d2 = new Date();
-  while (streak < 999) { const k = d2.toISOString().split('T')[0]; if ((curHist[k]||0) > 0) { streak++; d2.setDate(d2.getDate()-1); } else break; }
+  while (streak < 999) { const k = _ldk(d2); if ((curHist[k]||0) > 0) { streak++; d2.setDate(d2.getDate()-1); } else break; }
   document.getElementById('sTod').textContent = tod;
   document.getElementById('sTodM').textContent = Math.floor(tod/ms) + ' malas';
   document.getElementById('sWk').textContent = ws;
@@ -1858,7 +1855,7 @@ function doReset() {
     App.S.timer28History[tk] = 0;
     App.S.malaLog            = [];
     App.S.malaLogRV          = [];
-    App.S.activityLog        = (App.S.activityLog || []).filter(e => !e.ts || new Date(e.ts).toISOString().slice(0,10) !== tk);
+    App.S.activityLog        = (App.S.activityLog || []).filter(e => !e.ts || _ldk(new Date(e.ts)) !== tk);
     App.lmc = 0; App.lmcRV = 0; App.lm28 = 0;
     // Reset all sankalpas anchors since 28 Names count just zeroed
     (App.S.sankalpas||[]).filter(s => !s.done && s.startCycles !== null).forEach(s => {
@@ -1924,7 +1921,7 @@ function doReset() {
     // If today is in range, also clear live logs and IDB
     if (tk >= f && tk <= to) {
       App.S.malaLog = []; App.S.malaLogRV = [];
-      App.S.activityLog = (App.S.activityLog||[]).filter(e => !e.ts || new Date(e.ts).toISOString().slice(0,10) < f || new Date(e.ts).toISOString().slice(0,10) > to);
+      App.S.activityLog = (App.S.activityLog||[]).filter(e => !e.ts || _ldk(new Date(e.ts)) < f || _ldk(new Date(e.ts)) > to);
       App.lmc = 0; App.lmcRV = 0; App.lm28 = 0; App.stopAll28Timers();
       App.dbPut('history',        tk, 0);
       App.dbPut('timerHistory',   tk, 0);
@@ -2100,7 +2097,7 @@ function renderMilestonesTab() {
   let sum7 = 0;
   for (let i = 0; i < 7; i++) {
     const d = new Date(today); d.setDate(d.getDate() - i);
-    const k = d.toISOString().slice(0,10);
+    const k = _ldk(d);
     sum7 += (hist[k]||0) + (histRV[k]||0);
   }
   const avg7 = sum7 / 7;
@@ -3948,7 +3945,7 @@ function _ekEndDate(e) {
 function isCustomEkadashiDay(date) {
   const customDates = App.S.customEkadashi || [];
   if (!customDates.length) return false;
-  const key = date.toISOString().split('T')[0];
+  const key = _ldk(date);
   return customDates.some(e => key >= _ekDate(e) && key <= _ekEndDate(e));
 }
 
@@ -4279,38 +4276,28 @@ function _getBrahmaMuhurtStart(dateObj, lat, lng) {
   const bm = new Date(dateObj); bm.setHours(4, 21, 0, 0); return bm;
 }
 
-// Returns a local-timezone YYYY-MM-DD string for a Date object.
-// USE ONLY for display purposes (e.g. showing which calendar date the clock showed).
-// For data keys, use UTC like the rest of the app (getTk uses UTC).
+// Returns a local-timezone YYYY-MM-DD string — used for ALL date keys
+// (date changes at 12:00 AM local/device time, matching GPS timezone).
 function _localDateStr(d) {
-  const yr = d.getFullYear();
-  const mo = String(d.getMonth() + 1).padStart(2, '0');
-  const dy = String(d.getDate()).padStart(2, '0');
-  return `${yr}-${mo}-${dy}`;
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
+// Short alias
+function _ldk(d){ return _localDateStr(d); }
 
-// Returns the correct brahmacharya date key for a given timestamp.
-// If time is between midnight and Brahma Muhurta, it belongs to previous day.
-// Uses UTC dates (matching App.getTk()) for consistent cross-device keys.
+// Returns the brahmacharya date key for a given timestamp.
+// Date changes at 12:00 AM local time (GPS/device timezone) — same as getTk().
 function getBcDateKey(now) {
   now = now || new Date();
-  const todayMidnight = new Date(now); todayMidnight.setHours(0,0,0,0);
-  const bm = _getBrahmaMuhurtStart(todayMidnight);
-  if (now < bm) {
-    // Before Brahma Muhurta — belongs to previous day
-    const prev = new Date(todayMidnight); prev.setDate(prev.getDate() - 1);
-    return prev.toISOString().slice(0,10);
-  }
-  return now.toISOString().slice(0,10);
+  return now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
 }
 
-// Time-of-day label: night / morning / afternoon / evening
-function _bcTimeLabel(h, bmHour) {
-  if (h < bmHour)  return 'night';      // midnight → Brahma Muhurta
-  if (h < 12)      return 'morning';    // BM → noon
-  if (h < 16)      return 'afternoon';  // noon → 4 PM
-  if (h < 20)      return 'evening';    // 4 PM → 8 PM
-  return 'night';                        // 8 PM → midnight
+// Time-of-day label based on clock hour
+function _bcTimeLabel(h) {
+  if (h < 5)       return 'night';      // 12 AM – 5 AM
+  if (h < 12)      return 'morning';    // 5 AM – 12 PM
+  if (h < 16)      return 'afternoon';  // 12 PM – 4 PM
+  if (h < 20)      return 'evening';    // 4 PM – 8 PM
+  return 'night';                        // 8 PM – 12 AM
 }
 
 // Format break time: "16 May, 2026 at night 12:15"
@@ -4320,26 +4307,12 @@ function formatBcBreakTime(timeStr, dateKey) {
   if (!timeStr || !dateKey) return '';
   const [hh, mm] = timeStr.split(':').map(Number);
 
-  // Get BM hour for this date to determine label
-  const dateObj = new Date(dateKey + 'T00:00:00');
-  const bm = _getBrahmaMuhurtStart(dateObj);
-  const bmHour = bm.getHours() + bm.getMinutes() / 60;
+  const label = _bcTimeLabel(hh + mm/60);
 
-  const label = _bcTimeLabel(hh + mm/60, bmHour);
-
-  // Display date — if time is between midnight and Brahma Muhurta start,
-  // the wall-clock date is dateKey+1 (next calendar day) even though the
-  // BC record belongs to dateKey (previous day per BM boundary rule).
-  const timeDecimal = hh + mm / 60;
-  let displayDate;
-  if (timeDecimal < bmHour) {
-    // After midnight, before BM — the clock showed the next calendar date
-    const next = new Date(dateKey + 'T00:00:00'); next.setDate(next.getDate() + 1);
-    displayDate = next;
-  } else {
-    displayDate = new Date(dateKey + 'T00:00:00');
-  }
-
+  // Always show the BC date (dateKey) — this is the day the user sees in the
+  // calendar. If they broke at 1:23 AM on May 11's BC day, show "11 May".
+  // The time (1:23 AM) already makes clear it was in the early night hours.
+  const displayDate = new Date(dateKey + 'T00:00:00');
   const day = displayDate.getDate();
   const mon = displayDate.toLocaleDateString('en-GB', { month: 'long' });
   const yr  = displayDate.getFullYear();
@@ -4434,7 +4407,7 @@ function renderBcGraph() {
   try {
     for (var i = 0; i < fullDays; i++) {
       var d = new Date(allStart); d.setDate(d.getDate() + i);
-      var key = d.toISOString().split('T')[0];
+      var key = _ldk(d);
       var en = brahmaData[key];
       var broken = !!(en && en.status === 'b');
       if (broken) streak = 0; else streak++;
@@ -4667,10 +4640,10 @@ function uBStats(){
   const tmc=Object.values(App.S.brahma).filter(e=>e.status==='b').reduce((s,e)=>s+e.count,0);
   const pct=totalDays>0?Math.round(maint/totalDays*100):0;
   let cs=0;const d=new Date();d.setHours(0,0,0,0);
-  while(cs<999){const k=d.toISOString().split('T')[0];if(k<getBrahmaStart())break;const en=App.S.brahma[k];if(!en||en.status!=='b'){cs++;d.setDate(d.getDate()-1);}else break;}
+  while(cs<999){const k=_ldk(d);if(k<getBrahmaStart())break;const en=App.S.brahma[k];if(!en||en.status!=='b'){cs++;d.setDate(d.getDate()-1);}else break;}
   let bs=0,run=0;
   const allDays=[],cur=new Date(getBrahmaStart());cur.setHours(0,0,0,0);
-  while(cur<=todayD){allDays.push(cur.toISOString().split('T')[0]);cur.setDate(cur.getDate()+1);}
+  while(cur<=todayD){allDays.push(_ldk(cur));cur.setDate(cur.getDate()+1);}
   allDays.forEach(k=>{const en=App.S.brahma[k];if(!en||en.status!=='b'){run++;if(run>bs)bs=run;}else run=0;});
   document.getElementById('bcs').textContent=cs; document.getElementById('bbs').textContent=bs;
   document.getElementById('bbc').textContent=brok; document.getElementById('bmd').textContent=maint;
@@ -5802,15 +5775,15 @@ function histPreset(days) {
   const to = new Date();
   const from = new Date();
   from.setDate(from.getDate() - (days - 1));
-  document.getElementById('histFrom').value = from.toISOString().slice(0,10);
-  document.getElementById('histTo').value = to.toISOString().slice(0,10);
+  document.getElementById('histFrom').value = _ldk(from);
+  document.getElementById('histTo').value = _ldk(to);
 }
 
 function histPresetMonth() {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth(), 1);
-  document.getElementById('histFrom').value = from.toISOString().slice(0,10);
-  document.getElementById('histTo').value = now.toISOString().slice(0,10);
+  document.getElementById('histFrom').value = _ldk(from);
+  document.getElementById('histTo').value = _ldk(now);
 }
 
 function _histGetDates(from, to) {
@@ -5818,7 +5791,7 @@ function _histGetDates(from, to) {
   const cur = new Date(from);
   const end = new Date(to);
   while (cur <= end) {
-    dates.push(cur.toISOString().slice(0,10));
+    dates.push(_ldk(cur));
     cur.setDate(cur.getDate() + 1);
   }
   return dates;
@@ -5973,9 +5946,9 @@ function showHistDay(tk) {
   const tkPrefix = tk.slice(0,10);
 
   // Get mala entries for this day
-  const radhaEntries = log.filter(e => e.t === 'mala' && e.mode !== 'rv' && new Date(e.ts).toISOString().slice(0,10) === tkPrefix);
-  const rvEntries    = log.filter(e => e.t === 'mala' && e.mode === 'rv'  && new Date(e.ts).toISOString().slice(0,10) === tkPrefix);
-  const cycleEntries = log.filter(e => e.t === '28cycle'                  && new Date(e.ts).toISOString().slice(0,10) === tkPrefix);
+  const radhaEntries = log.filter(e => e.t === 'mala' && e.mode !== 'rv' && _ldk(new Date(e.ts)) === tkPrefix);
+  const rvEntries    = log.filter(e => e.t === 'mala' && e.mode === 'rv'  && _ldk(new Date(e.ts)) === tkPrefix);
+  const cycleEntries = log.filter(e => e.t === '28cycle'                  && _ldk(new Date(e.ts)) === tkPrefix);
 
   const hasDetail = radhaEntries.length > 0 || rvEntries.length > 0 || cycleEntries.length > 0;
 

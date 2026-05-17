@@ -4279,8 +4279,19 @@ function _getBrahmaMuhurtStart(dateObj, lat, lng) {
   const bm = new Date(dateObj); bm.setHours(4, 21, 0, 0); return bm;
 }
 
+// Returns a local-timezone YYYY-MM-DD string for a Date object.
+// USE ONLY for display purposes (e.g. showing which calendar date the clock showed).
+// For data keys, use UTC like the rest of the app (getTk uses UTC).
+function _localDateStr(d) {
+  const yr = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, '0');
+  const dy = String(d.getDate()).padStart(2, '0');
+  return `${yr}-${mo}-${dy}`;
+}
+
 // Returns the correct brahmacharya date key for a given timestamp.
 // If time is between midnight and Brahma Muhurta, it belongs to previous day.
+// Uses UTC dates (matching App.getTk()) for consistent cross-device keys.
 function getBcDateKey(now) {
   now = now || new Date();
   const todayMidnight = new Date(now); todayMidnight.setHours(0,0,0,0);
@@ -4316,11 +4327,13 @@ function formatBcBreakTime(timeStr, dateKey) {
 
   const label = _bcTimeLabel(hh + mm/60, bmHour);
 
-  // Display date — if time is night (after midnight, before BM), display date is dateKey + 1
-  // because the clock shows next day's date even though BC belongs to prev day
+  // Display date — if time is between midnight and Brahma Muhurta start,
+  // the wall-clock date is dateKey+1 (next calendar day) even though the
+  // BC record belongs to dateKey (previous day per BM boundary rule).
+  const timeDecimal = hh + mm / 60;
   let displayDate;
-  if (hh < bmHour && hh < 6) {
-    // After midnight, before BM — clock date is dateKey+1
+  if (timeDecimal < bmHour) {
+    // After midnight, before BM — the clock showed the next calendar date
     const next = new Date(dateKey + 'T00:00:00'); next.setDate(next.getDate() + 1);
     displayDate = next;
   } else {
@@ -4334,8 +4347,9 @@ function formatBcBreakTime(timeStr, dateKey) {
   // 12hr format for the time
   let h12 = hh % 12 || 12;
   const mStr = String(mm).padStart(2,'0');
+  const ampm = hh < 12 ? 'AM' : 'PM';
 
-  return `${day} ${mon}, ${yr} at ${label} ${h12}:${mStr}`;
+  return `${day} ${mon}, ${yr} at ${label} ${h12}:${mStr} ${ampm}`;
 }
 
 function renderBcGraph() {

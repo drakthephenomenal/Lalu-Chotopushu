@@ -6,16 +6,68 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="54">
+<meta name="app-version" content="59">
+<script>
+// ── Force-reload if SW is serving a stale cached page ──
+// This runs before anything else. If the page's version stamp doesn't
+// match what the SW last cached, we do a hard reload to get the fresh page.
+(function(){
+  var PAGE_VERSION = 59;
+  try {
+    var stored = parseInt(sessionStorage.getItem('_pv') || '0');
+    if (stored && stored < PAGE_VERSION) {
+      sessionStorage.setItem('_pv', PAGE_VERSION);
+      // Hard reload bypassing SW cache
+      window.location.reload(true);
+      return;
+    }
+    sessionStorage.setItem('_pv', PAGE_VERSION);
+  } catch(e) {}
+})();
+</script>
+<script>
+// ── v80 PWA UNSTICK ──
+// One-time cleanup for installed PWAs that were stuck on the v55 service
+// worker (which had cached an old index.html / style.css without the
+// Gaudiya card + #hkPersist absolute-positioning rules — causing the
+// toggle to lose styling and the Mahamantra to render side-by-side in
+// the tap area). Runs once per device, then never again.
+(function(){
+  try {
+    var KEY = '_unstick_v80_done';
+    if (localStorage.getItem(KEY)) return;
+    var isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
+    if (!isStandalone) { localStorage.setItem(KEY, '1'); return; }
+    if (!('serviceWorker' in navigator) || !('caches' in window)) {
+      localStorage.setItem(KEY, '1'); return;
+    }
+    localStorage.setItem(KEY, '1');
+    Promise.all([
+      caches.keys().then(function(ks){
+        return Promise.all(ks.map(function(k){ return caches.delete(k); }));
+      }),
+      navigator.serviceWorker.getRegistrations().then(function(regs){
+        return Promise.all(regs.map(function(r){ return r.unregister(); }));
+      })
+    ]).then(function(){
+      var u = new URL(window.location.href);
+      u.searchParams.set('_unstick', '80');
+      window.location.replace(u.toString());
+    });
+  } catch(e) {}
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Radha Jap">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#060D1F">
-<link rel="manifest" href="./manifest.json">
-<link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="icon" href="./icon-192.png">
+<link rel="manifest" href="./manifest.json?v=81">
+<link rel="apple-touch-icon" href="./icon-192.png?v=81">
+<link rel="icon" href="./icon-192.png?v=81">
 <title>Radha Naam Jap</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,7 +75,111 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="./style.css?v=81">
+<!-- ═══════════════════════════════════════════════════════
+     CRITICAL INLINE CSS — v80
+     These styles are inlined so they are ALWAYS fresh,
+     even if style.css is served from an old PWA cache.
+     Covers: Gaudiya/ISKCON card, HK jap display, toggle.
+     ═══════════════════════════════════════════════════════ -->
+<style>
+/* ── HK Jap Persistent Display ── */
+#hkPersist{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:8px;
+  pointer-events:none;z-index:10;
+  font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif;
+  font-size:clamp(22px,6.5vw,38px);line-height:1.55;text-align:center;
+  padding:16px;letter-spacing:1px;
+  opacity:0;transition:opacity 0.22s ease;
+}
+#hkPersist.hk-visible{opacity:1;}
+#hkPersist > div{display:block;width:100%;}
+.hk-float-name{
+  position:absolute;pointer-events:none;z-index:11;
+  animation:hkRise 2.2s ease-out forwards;
+  font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif;
+  font-size:clamp(22px,6.5vw,38px);line-height:1.55;text-align:center;
+  left:50%;transform:translateX(-50%);top:50%;margin-top:-80px;
+  letter-spacing:1px;white-space:nowrap;
+}
+.hk-float-name div{display:block;}
+#hkMalaComplete{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;
+  pointer-events:none;z-index:12;
+  font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif;
+  font-size:clamp(16px,4.5vw,26px);line-height:1.6;text-align:center;
+  padding:16px;letter-spacing:0.5px;
+  opacity:0;transition:opacity 0.4s ease;
+  color:#FFD700;text-shadow:0 0 30px rgba(255,215,0,0.9);
+}
+#hkMalaComplete.hkmc-visible{opacity:1;}
+#hkMalaComplete > div{display:block;width:100%;}
+@keyframes hkRise{
+  0%{opacity:0.95;transform:translateX(-50%) translateY(0) scale(1);}
+  20%{opacity:1;transform:translateX(-50%) translateY(-40px) scale(1.08);}
+  100%{opacity:0;transform:translateX(-50%) translateY(-220px) scale(0.88);}
+}
+/* ── Gaudiya mode visibility ── */
+.non-gaudiya-stat{transition:opacity 0.2s;}
+body.gaudiya-mode .non-gaudiya-stat{display:none!important;}
+.hk-only-stat{display:none!important;}
+body.gaudiya-mode .hk-only-stat{display:flex!important;}
+body.gaudiya-mode .sb.hk-only-stat{display:block!important;}
+#nav28{transition:opacity 0.2s;}
+body.gaudiya-mode #nav28{display:none!important;}
+body.gaudiya-mode .gaudiya-plain-stat{font-size:14px;padding:2px 0;}
+body.gaudiya-mode .gaudiya-plain-stat .cdmo-stat-val{font-size:22px;}
+/* ── Gaudiya Switch Card ── */
+/* IMPORTANT: do NOT use display:none anywhere here; always-visible card */
+.gaudiya-switch-card{
+  display:block!important;visibility:visible!important;opacity:1!important;
+  cursor:pointer;
+  padding:18px!important;margin:14px 0!important;border-radius:16px!important;
+  border:1.5px solid rgba(109,184,255,0.45)!important;
+  background:linear-gradient(135deg,rgba(109,184,255,0.18),rgba(109,184,255,0.08))!important;
+  box-shadow:0 0 18px rgba(109,184,255,0.10)!important;
+  transition:border-color 0.3s,background 0.3s,box-shadow 0.3s;
+  user-select:none;-webkit-user-select:none;
+}
+.gaudiya-switch-card:active{transform:scale(0.99);}
+body.gaudiya-mode .gaudiya-switch-card{
+  border-color:rgba(109,184,255,0.7)!important;
+  background:linear-gradient(135deg,rgba(109,184,255,0.28),rgba(109,184,255,0.12))!important;
+  box-shadow:0 0 28px rgba(109,184,255,0.25)!important;
+}
+.gaudiya-switch-top{display:flex;align-items:flex-start;gap:14px;margin-bottom:18px;}
+.gaudiya-switch-lotus{font-size:32px;line-height:1;flex-shrink:0;margin-top:2px;}
+.gaudiya-switch-title{font-size:16px;font-weight:700;color:#6DB8FF;letter-spacing:0.5px;margin-bottom:5px;}
+.gaudiya-switch-sub{font-size:12px;color:rgba(255,255,255,0.55);line-height:1.45;}
+/* ── Big Track Toggle ── */
+.gaudiya-big-toggle{display:flex;justify-content:center;}
+.gbt-track{
+  position:relative;width:200px;height:48px;
+  background:rgba(255,255,255,0.07);border-radius:24px;
+  border:1px solid rgba(255,255,255,0.12);overflow:hidden;
+  transition:background 0.35s;display:flex;align-items:center;
+}
+body.gaudiya-mode .gbt-track{background:rgba(109,184,255,0.25);border-color:rgba(109,184,255,0.4);}
+.gbt-thumb{
+  position:absolute;left:4px;width:92px;height:40px;
+  background:rgba(255,255,255,0.18);border-radius:20px;
+  transition:left 0.35s cubic-bezier(.4,1.4,.6,1);
+  box-shadow:0 2px 8px rgba(0,0,0,0.3);
+}
+body.gaudiya-mode .gbt-thumb{left:102px;background:#6DB8FF;box-shadow:0 2px 16px rgba(109,184,255,0.5);}
+.gbt-label-off,.gbt-label-on{
+  position:absolute;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  transition:opacity 0.3s;pointer-events:none;
+}
+.gbt-label-off{left:0;width:100px;text-align:center;color:rgba(255,255,255,0.4);}
+.gbt-label-on{right:0;width:100px;text-align:center;color:#6DB8FF;opacity:0.3;}
+body.gaudiya-mode .gbt-label-off{opacity:0.25;}
+body.gaudiya-mode .gbt-label-on{opacity:1;color:#001a2a;}
+/* ── Language toggle (inside Gaudiya card) ── */
+.hk-lang-row{display:flex;align-items:center;justify-content:space-between;padding-top:14px;margin-top:14px;border-top:1px solid rgba(255,255,255,0.08);}
+</style>
 </head>
 <body>
 <!-- LOADING -->
@@ -112,7 +268,7 @@
     })();
     </script>
     <img class="ls-img" id="guruImg" src="./guru.jpg" alt="Shri Radha Rani" style="position:relative;z-index:10;box-shadow:0 0 40px 15px rgba(255,215,0,0.4),0 0 80px 30px rgba(255,215,0,0.2);">
-    <img id="appIconImg" style="display:none" src="./icon-192.png" alt="App Icon"/>
+    <img id="appIconImg" style="display:none" src="./icon-192.png?v=81" alt="App Icon"/>
   </div>
   <div class="ls-title">राधे राधे</div>
   <div class="ls-sub">Jai Shri Radha</div>
@@ -127,7 +283,7 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v2M12 16v2M6 12H4M20 12h-2"/></svg>
     Jap
   </button>
-  <button class="nb" onclick="sv('v28',this)">
+  <button class="nb" id="nav28" onclick="sv('v28',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
     28 Names
   </button>
@@ -175,6 +331,9 @@
           </div>
           <div class="naam-sel-opt" id="naamOptRV" onclick="switchJapMode('rv')">
             <span class="ns-check"></span> राधावल्लभ श्री हरिवंश
+          </div>
+          <div class="naam-sel-opt" id="naamOptHK" onclick="switchJapMode('hk')">
+            <span class="ns-check"></span> <span id="naamHKLabel">हरे कृष्ण महामंत्र</span>
           </div>
         </div>
       </div>
@@ -245,6 +404,8 @@
         <div class="mf-line1">Radha Ballabh</div>
         <div class="mf-line2">Sri Harivansh</div>
       </div>
+      <div id="hkPersist"></div>
+      <div id="hkMalaComplete"></div>
     </div>
   </div>
 
@@ -497,15 +658,19 @@
     </div>
     <!-- Jap + Timer stats -->
     <div class="cdmo-stat" id="cdmoStat">
-      <div class="cdmo-stat-row">🕉️ Radha Jap <span class="cdmo-stat-val" id="cdmoRadhaJap">—</span></div>
-      <div class="cdmo-stat-row">🌸 Radha Vallabh Sri Harivangsa Jap <span class="cdmo-stat-val" id="cdmoRvJap">—</span></div>
-      <div class="cdmo-stat-row">⏱ Radha Jap Time <span class="cdmo-stat-val" id="cdmoRadhaTime">—</span></div>
-      <div class="cdmo-stat-row">⏱ Radha Vallabh Sri Harivangsa Jap Time <span class="cdmo-stat-val" id="cdmoRvTime">—</span></div>
-      <div class="cdmo-stat-row">✨ 28 Names <span class="cdmo-stat-val" id="cdmo28Names">—</span></div>
-      <div class="cdmo-stat-row">⏱ 28 Names Time <span class="cdmo-stat-val" style="color:var(--a2)" id="cdmoTime28">—</span></div>
+      <div class="cdmo-stat-row non-gaudiya-stat">🕉️ Radha Jap <span class="cdmo-stat-val" id="cdmoRadhaJap">—</span></div>
+      <div class="cdmo-stat-row non-gaudiya-stat">🌸 Radha Vallabh Sri Harivangsa Jap <span class="cdmo-stat-val" id="cdmoRvJap">—</span></div>
+      <div class="cdmo-stat-row non-gaudiya-stat">⏱ Radha Jap Time <span class="cdmo-stat-val" id="cdmoRadhaTime">—</span></div>
+      <div class="cdmo-stat-row non-gaudiya-stat">⏱ Radha Vallabh Sri Harivangsa Jap Time <span class="cdmo-stat-val" id="cdmoRvTime">—</span></div>
+      <div class="cdmo-stat-row non-gaudiya-stat">✨ 28 Names <span class="cdmo-stat-val" id="cdmo28Names">—</span></div>
+      <div class="cdmo-stat-row non-gaudiya-stat">⏱ 28 Names Time <span class="cdmo-stat-val" style="color:var(--a2)" id="cdmoTime28">—</span></div>
+      <div class="cdmo-stat-row hk-only-stat">🪷 Hare Krishna Mahamantra <span class="cdmo-stat-val" style="color:#6DB8FF" id="cdmoHkJap">—</span></div>
+      <div class="cdmo-stat-row hk-only-stat">⏱ Mahamantra Jap Time <span class="cdmo-stat-val" style="color:#6DB8FF" id="cdmoHkTime">—</span></div>
       <div style="border-top:1px solid rgba(74,144,226,0.15);margin:8px 0"></div>
-      <div class="cdmo-stat-row">📿 Total Count <span class="cdmo-stat-val gold" id="cdmoTotalCount">—</span></div>
-      <div class="cdmo-stat-row">⏳ Total Time <span class="cdmo-stat-val" id="cdmoTotalTime">—</span></div>
+      <div class="cdmo-stat-row non-gaudiya-stat">📿 Total Count <span class="cdmo-stat-val gold" id="cdmoTotalCount">—</span></div>
+      <div class="cdmo-stat-row non-gaudiya-stat">⏳ Total Time <span class="cdmo-stat-val" id="cdmoTotalTime">—</span></div>
+      <div class="cdmo-stat-row hk-only-stat">📿 Total (HK) <span class="cdmo-stat-val" style="color:#6DB8FF" id="cdmoHkTotalCount">—</span></div>
+      <div class="cdmo-stat-row hk-only-stat">⏳ HK Jap Time <span class="cdmo-stat-val" style="color:#6DB8FF" id="cdmoHkTotalTime">—</span></div>
       <div class="cdmo-stat-row" id="cdmoTargetRow" style="color:var(--td);font-size:11px">Target: <span id="cdmoPct" style="margin-left:auto;color:var(--td)">—</span></div>
     </div>
     <!-- Occasion -->
@@ -571,14 +736,14 @@
     <div class="sg-body open" id="sgStats">
       <div class="sg" style="margin-bottom:8px">
         <!-- Row 1 -->
-        <div class="sb"><div class="sv2" id="sTod">0</div><div class="sl">Today</div><div class="ss" id="sTodM">0 malas</div></div>
-        <div class="sb"><div class="sv2" id="sWk">0</div><div class="sl">This Week</div><div class="ss" id="sWkM">0 malas</div></div>
+        <div class="sb non-gaudiya-stat"><div class="sv2" id="sTod">0</div><div class="sl">Today</div><div class="ss" id="sTodM">0 malas</div></div>
+        <div class="sb non-gaudiya-stat"><div class="sv2" id="sWk">0</div><div class="sl">This Week</div><div class="ss" id="sWkM">0 malas</div></div>
         <!-- Row 2 -->
-        <div class="sb"><div class="sv2" id="sMo">0</div><div class="sl">This Month</div><div class="ss" id="sMoM">0 malas</div></div>
-        <div class="sb"><div class="sv2" id="sTot">0</div><div class="sl">Total Jap (Radha + RV)</div><div class="ss" id="sTotM">0 malas</div></div>
+        <div class="sb non-gaudiya-stat"><div class="sv2" id="sMo">0</div><div class="sl">This Month</div><div class="ss" id="sMoM">0 malas</div></div>
+        <div class="sb non-gaudiya-stat"><div class="sv2" id="sTot">0</div><div class="sl">Total Jap (Radha + RV)</div><div class="ss" id="sTotM">0 malas</div></div>
         <!-- Row 3: Radha count + Radha time -->
-        <div class="sb" style="background:rgba(255,215,0,0.05);border-color:rgba(255,215,0,0.18)"><div class="sv2" style="color:var(--gold)" id="sRadhaTot">0</div><div class="sl" style="color:var(--gold)">राधा Lifetime</div><div class="ss" id="sRadhaTotM">0 malas</div><div class="ss" id="sRadhaTotF" style="color:var(--gold);opacity:0.75;font-size:10px;margin-top:2px">0</div></div>
-        <div class="sb" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.15)">
+        <div class="sb non-gaudiya-stat" id="sbRadhaCount" style="background:rgba(255,215,0,0.05);border-color:rgba(255,215,0,0.18)"><div class="sv2" style="color:var(--gold)" id="sRadhaTot">0</div><div class="sl" style="color:var(--gold)">राधा Lifetime</div><div class="ss" id="sRadhaTotM">0 malas</div><div class="ss" id="sRadhaTotF" style="color:var(--gold);opacity:0.75;font-size:10px;margin-top:2px">0</div></div>
+        <div class="sb non-gaudiya-stat" id="sbRadhaTime" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.15)">
           <div class="sl" style="font-size:9px;color:var(--gold);letter-spacing:1.5px;margin-bottom:6px">⏱ राधा JAP TIME</div>
           <div style="display:grid;grid-template-columns:1fr;gap:3px;text-align:center">
             <div><span style="font-family:'EB Garamond',serif;font-size:15px;color:var(--gold)" id="tRadhaTod">0m</span> <span style="font-size:8px;color:var(--td);letter-spacing:1px">TODAY</span></div>
@@ -588,8 +753,8 @@
           </div>
         </div>
         <!-- Row 4: RV count + RV time -->
-        <div class="sb" style="background:rgba(74,144,226,0.05);border-color:rgba(74,144,226,0.18)"><div class="sv2" style="color:var(--a2)" id="sRVTot">0</div><div class="sl" style="color:var(--a2)">RV Lifetime</div><div class="ss" id="sRVTotM">0 malas</div><div class="ss" id="sRVTotF" style="color:var(--a2);opacity:0.75;font-size:10px;margin-top:2px">0</div></div>
-        <div class="sb" style="background:rgba(74,144,226,0.04);border-color:rgba(74,144,226,0.15)">
+        <div class="sb non-gaudiya-stat" id="sbRVCount" style="background:rgba(74,144,226,0.05);border-color:rgba(74,144,226,0.18)"><div class="sv2" style="color:var(--a2)" id="sRVTot">0</div><div class="sl" style="color:var(--a2)">RV Lifetime</div><div class="ss" id="sRVTotM">0 malas</div><div class="ss" id="sRVTotF" style="color:var(--a2);opacity:0.75;font-size:10px;margin-top:2px">0</div></div>
+        <div class="sb non-gaudiya-stat" id="sbRVTime" style="background:rgba(74,144,226,0.04);border-color:rgba(74,144,226,0.15)">
           <div class="sl" style="font-size:9px;color:var(--a2);letter-spacing:1.5px;margin-bottom:6px">⏱ RV JAP TIME</div>
           <div style="display:grid;grid-template-columns:1fr;gap:3px;text-align:center">
             <div><span style="font-family:'EB Garamond',serif;font-size:15px;color:var(--a2)" id="tRVTod">0m</span> <span style="font-size:8px;color:var(--td);letter-spacing:1px">TODAY</span></div>
@@ -599,8 +764,8 @@
           </div>
         </div>
         <!-- Row 5: 28 Names count + time -->
-        <div class="sb" style="background:rgba(46,204,113,0.05);border-color:rgba(46,204,113,0.18)"><div class="sv2" style="color:var(--green)" id="s28Tot">0</div><div class="sl" style="color:var(--green)">28 Names Lifetime</div><div class="ss" id="s28TotM">0 cycles</div><div class="ss" id="s28TotF" style="color:var(--green);opacity:0.75;font-size:10px;margin-top:2px">0</div></div>
-        <div class="sb" style="background:rgba(46,204,113,0.04);border-color:rgba(46,204,113,0.15)">
+        <div class="sb non-gaudiya-stat" id="sb28Count" style="background:rgba(46,204,113,0.05);border-color:rgba(46,204,113,0.18)"><div class="sv2" style="color:var(--green)" id="s28Tot">0</div><div class="sl" style="color:var(--green)">28 Names Lifetime</div><div class="ss" id="s28TotM">0 cycles</div><div class="ss" id="s28TotF" style="color:var(--green);opacity:0.75;font-size:10px;margin-top:2px">0</div></div>
+        <div class="sb non-gaudiya-stat" id="sb28Time" style="background:rgba(46,204,113,0.04);border-color:rgba(46,204,113,0.15)">
           <div class="sl" style="font-size:9px;color:var(--green);letter-spacing:1.5px;margin-bottom:6px">⏱ 28 NAMES JAP TIME</div>
           <div style="display:grid;grid-template-columns:1fr;gap:3px;text-align:center">
             <div><span style="font-family:'EB Garamond',serif;font-size:15px;color:var(--green)" id="t28Tod">0m</span> <span style="font-size:8px;color:var(--td);letter-spacing:1px">TODAY</span></div>
@@ -609,10 +774,56 @@
             <div><span style="font-family:'EB Garamond',serif;font-size:15px;color:var(--green)" id="t28Lt">0m</span> <span style="font-size:8px;color:var(--td);letter-spacing:1px">LIFETIME</span></div>
           </div>
         </div>
-        <!-- Row 5b: Combined Lifetime Jap (Radha + RV + 28 names) -->
-        <div class="sb wide" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.12)"><div class="sv2" style="color:var(--gold)" id="sLtJapAll">0</div><div class="sl" style="color:var(--gold)">Lifetime Jap (Radha + RV + 28 Names)</div><div class="ss" id="sLtJapAllF" style="color:var(--gold);opacity:0.75;font-size:10px;margin-top:2px">0</div></div>
+        <!-- Row 5b: HK Mahamantra stats — Lotus Petals layout (visible only in Gaudiya Mode) -->
+        <!-- Hidden legacy IDs for JS compatibility -->
+        <span id="sHKTot" style="display:none">0</span>
+        <span id="sHKTotM" style="display:none">0 malas</span>
+        <span id="sHKTotF" style="display:none">0</span>
+        <span id="tHKTod" style="display:none">0m</span>
+        <span id="tHKWk" style="display:none">0m</span>
+        <span id="tHKMo" style="display:none">0m</span>
+        <span id="tHKLt" style="display:none">0m</span>
+
+        <!-- Lotus Petals: Lifetime Hero -->
+        <div class="lp-hero hk-only-stat">
+          <div class="lp-hero-label">LIFETIME TOTAL</div>
+          <div class="lp-hero-num" id="lpHKTot">0</div>
+          <div class="lp-hero-sub"><span id="lpHKTotM">0 malas</span> · <span id="lpHKTotF">0 jap</span></div>
+        </div>
+
+        <!-- Lotus Petals: 3-column Today / Week / Month -->
+        <div class="lp-tri hk-only-stat">
+          <div class="lp-col">
+            <div class="lp-col-label">TODAY</div>
+            <div class="lp-col-num" id="lpHKTod">0</div>
+            <div class="lp-col-sub"><span id="lpHKTodM">0 malas</span> · <span id="lpHKTodT">—</span></div>
+          </div>
+          <div class="lp-col">
+            <div class="lp-col-label">WEEK</div>
+            <div class="lp-col-num" id="lpHKWk">0</div>
+            <div class="lp-col-sub"><span id="lpHKWkM">0 malas</span> · <span id="lpHKWkT">—</span></div>
+          </div>
+          <div class="lp-col">
+            <div class="lp-col-label">MONTH</div>
+            <div class="lp-col-num" id="lpHKMo">0</div>
+            <div class="lp-col-sub"><span id="lpHKMoM">0 malas</span> · <span id="lpHKMoT">—</span></div>
+          </div>
+        </div>
+
+        <!-- Lotus Petals: Jap Time row -->
+        <div class="lp-time hk-only-stat">
+          <div class="lp-time-icon">⏱ JAP TIME</div>
+          <div class="lp-time-cols">
+            <div class="lp-time-col"><div class="lp-time-val" id="lpHKTimeTod">—</div><div class="lp-time-lbl">TODAY</div></div>
+            <div class="lp-time-col"><div class="lp-time-val" id="lpHKTimeWk">—</div><div class="lp-time-lbl">WEEK</div></div>
+            <div class="lp-time-col"><div class="lp-time-val" id="lpHKTimeMo">—</div><div class="lp-time-lbl">MONTH</div></div>
+            <div class="lp-time-col"><div class="lp-time-val" id="lpHKTimeLt">—</div><div class="lp-time-lbl">LIFE</div></div>
+          </div>
+        </div>
+        <!-- Row 5c: Combined Lifetime Jap (Radha + RV + 28 names) -->
+        <div class="sb wide non-gaudiya-stat" id="sbLtJapAll" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.12)"><div class="sv2" style="color:var(--gold)" id="sLtJapAll">0</div><div class="sl" style="color:var(--gold)">Lifetime Jap (Radha + RV + 28 Names)</div><div class="ss" id="sLtJapAllF" style="color:var(--gold);opacity:0.75;font-size:10px;margin-top:2px">0</div></div>
         <!-- Row 6: Lifetime jap time -->
-        <div class="sb wide" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.12)"><div class="sv2" style="color:var(--gold)" id="sLtTime">0m 0s</div><div class="sl" style="color:var(--gold)">Lifetime Jap Time (Radha + RV + 28 Names)</div></div>
+        <div class="sb wide non-gaudiya-stat" id="sbLtTime" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.12)"><div class="sv2" style="color:var(--gold)" id="sLtTime">0m 0s</div><div class="sl" style="color:var(--gold)">Lifetime Jap Time (Radha + RV + 28 Names)</div></div>
         <!-- Row 7: Last 7 days -->
         <div class="sb wide"><div class="sl" style="font-size:11px">Last 7 Days</div><div class="cbrs" id="cbrs"></div></div>
         <!-- Row 8: streak + best (renamed) -->
@@ -656,9 +867,10 @@
             <thead>
               <tr style="background:rgba(255,215,0,0.1);color:var(--gold)">
                 <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:1px;white-space:nowrap">Date</th>
-                <th style="padding:8px 6px;text-align:center;font-size:10px;letter-spacing:1px">Radha</th>
-                <th style="padding:8px 6px;text-align:center;font-size:10px;letter-spacing:1px">RV</th>
-                <th style="padding:8px 6px;text-align:center;font-size:10px;letter-spacing:1px">28 Names</th>
+                <th class="hist-radha-col" style="padding:8px 6px;text-align:center;font-size:10px;letter-spacing:1px">Radha</th>
+                <th class="hist-radha-col" style="padding:8px 6px;text-align:center;font-size:10px;letter-spacing:1px">RV</th>
+                <th class="hist-radha-col" style="padding:8px 6px;text-align:center;font-size:10px;letter-spacing:1px">28 Names</th>
+                <th class="hist-hk-col" style="padding:8px 6px;text-align:center;font-size:10px;letter-spacing:1px;display:none;color:#6DB8FF">HK</th>
                 <th style="padding:8px 6px;text-align:center;font-size:10px;letter-spacing:1px">Total Time</th>
               </tr>
             </thead>
@@ -922,6 +1134,33 @@
     </label>
     <div id="restoreStatus" style="font-size:12px;margin-top:8px;text-align:center;color:var(--green);min-height:18px"></div>
   </div>
+
+  <!-- GAUDIYO / ISKCON MODE — large aesthetic switch -->
+  <div class="sc gaudiya-switch-card" onclick="tgs('gaudiyaMode')">
+    <div class="gaudiya-switch-top">
+      <div class="gaudiya-switch-lotus">🪷</div>
+      <div class="gaudiya-switch-text">
+        <div class="gaudiya-switch-title">Gaudiyo / ISKCON MODE</div>
+        <div class="gaudiya-switch-sub">Hare Krishna Mahamantra sadhana — stats &amp; history show HK data only</div>
+      </div>
+    </div>
+    <div class="gaudiya-big-toggle" id="tgGaudiya">
+      <div class="gbt-track">
+        <div class="gbt-thumb"></div>
+        <span class="gbt-label-off">OFF</span>
+        <span class="gbt-label-on">ON</span>
+      </div>
+    </div>
+    <!-- Language toggle — visible only when Gaudiya mode is ON -->
+    <div class="gaudiya-lang-row hk-only-stat" onclick="event.stopPropagation()">
+      <div>
+        <label style="color:#6DB8FF;font-size:13px;font-weight:600;">Mahamantra Language</label>
+        <div class="sub">Display <span id="hkLangLabel">Hindi</span> · toggle for Bangla (মহামন্ত্র)</div>
+      </div>
+      <div class="tg" id="tgHkLang" onclick="event.stopPropagation(); tgs('hkLang')"></div>
+    </div>
+  </div>
+
   <!-- TARGETS -->
   <div class="sc">
     <h3>📿 Mala Size &amp; Targets</h3>
@@ -940,13 +1179,20 @@
     <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="ltMalaIn" placeholder="Or: malas lifetime" oninput="syncTargetMalaToJap('lt')"><span class="fu" style="color:var(--gold)">malas</span></div>
     <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="ltMala">0</span> malas lifetime</div>
     <button class="pb" onclick="svt('l')">Save Lifetime Target</button>
-    <div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,215,0,0.15)">
+    <div class="non-gaudiya-setting" style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,215,0,0.15)">
       <div style="font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;font-weight:600">📿 राधावल्लभ श्री हरिवंश Targets</div>
       <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtRVIn" placeholder="Jap count / day" oninput="syncTargetJapToMala('dtRV')"><span class="fu">jap</span></div>
       <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtRVMalaIn" placeholder="Or: malas / day" oninput="syncTargetMalaToJap('dtRV')"><span class="fu" style="color:var(--gold)">malas</span></div>
       <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="dtRVMala">0</span> malas per day</div>
       <button class="pb" onclick="svtRV('d')" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(255,215,0,0.4),rgba(255,180,0,0.3))">Save RV Daily Target</button>
       <!-- RV Lifetime Target removed — shared with राधा -->
+    </div>
+    <div class="hk-only-block" style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(109,184,255,0.2)">
+      <div style="font-size:11px;color:#6DB8FF;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🪷 हरे कृष्ण महामंत्र Targets</div>
+      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtHKIn" placeholder="Jap count / day" oninput="syncTargetJapToMala('dtHK')"><span class="fu">jap</span></div>
+      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtHKMalaIn" placeholder="Or: malas / day" oninput="syncTargetMalaToJap('dtHK')"><span class="fu" style="color:#6DB8FF">malas</span></div>
+      <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="dtHKMala">0</span> malas per day</div>
+      <button class="pb" onclick="svtHK('d')" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(109,184,255,0.4),rgba(74,144,226,0.3));color:#6DB8FF">Save HK Daily Target</button>
     </div>
   </div>
 
@@ -1198,9 +1444,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-    <script src="./stotrams.js"></script>
-    <script src="./panchangData.js"></script>
-    <script src="./app.js"></script>
+    <script src="./stotrams.js?v=81"></script>
+    <script src="./panchangData.js?v=81"></script>
+    <script src="./app.js?v=81"></script>
 
   </body>
 </html>

@@ -1,8 +1,19 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker
-// v64: Removed Google Drive backup system
+// v77: Fixed cache-busting for installed (standalone) PWA
+//      panchangData.js now always fetched fresh from network
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v74';
+const CACHE = 'radha-jap-v77';
+
+// These files are ALWAYS fetched fresh from the network (network-first, no-cache).
+// Any content update in these files will be immediately visible even in installed PWA.
+const ALWAYS_FRESH = [
+  'index.html',
+  'app.js',
+  'style.css',
+  'stotrams.js',
+  'panchangData.js',
+];
 
 const PRECACHE = [
   './index.html',
@@ -59,30 +70,35 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (BYPASS.some(h => url.href.includes(h))) return;
 
-  if (url.pathname.endsWith('index.html') || url.pathname.endsWith('/') || e.request.mode === 'navigate') {
+  const filename = url.pathname.split('/').pop();
+
+  // ── Network-first for all core app files ──
+  // KEY FIX: every app file always tries network first with no-cache,
+  // so Gaudiya/ISKCON mode updates, panchang data, stotrams etc.
+  // are always fresh — even in the installed (standalone) PWA.
+  if (
+    e.request.mode === 'navigate' ||
+    url.pathname.endsWith('/') ||
+    ALWAYS_FRESH.some(f => filename === f)
+  ) {
     e.respondWith(
       fetch(e.request, { cache: 'no-cache' })
         .then(resp => {
-          if (resp && resp.status === 200) caches.open(CACHE).then(c => c.put(e.request, resp.clone()));
+          if (resp && resp.status === 200) {
+            caches.open(CACHE).then(c => c.put(e.request, resp.clone()));
+          }
           return resp;
         })
-        .catch(() => caches.match('./index.html'))
+        .catch(() =>
+          caches.match(e.request).then(cached =>
+            cached || caches.match('./index.html')
+          )
+        )
     );
     return;
   }
 
-  if (url.pathname.endsWith('app.js') || url.pathname.endsWith('style.css') || url.pathname.endsWith('stotrams.js')) {
-    e.respondWith(
-      fetch(e.request, { cache: 'no-cache' })
-        .then(resp => {
-          if (resp && resp.status === 200) caches.open(CACHE).then(c => c.put(e.request, resp.clone()));
-          return resp;
-        })
-        .catch(() => caches.match(e.request))
-    );
-    return;
-  }
-
+  // ── Cache-first for static assets (icons, images, fonts, CDN) ──
   e.respondWith(
     caches.match(e.request).then(cached => {
       const net = fetch(e.request).then(resp => {

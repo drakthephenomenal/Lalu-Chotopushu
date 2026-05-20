@@ -6341,15 +6341,18 @@ async function fetchPanchangEkadashis() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const DAY = 86400000;
-    let added = 0,
-      cur = new Date(today);
-    // Scan 6 months × 2 pakshas = 12 Ekadashis
-    for (let i = 0; i < 12; i++) {
+    let added = 0;
+    // Start from 2 months back
+    const scanFrom = new Date(today);
+    scanFrom.setMonth(scanFrom.getMonth() - 2);
+    let cur = new Date(scanFrom);
+    // Scan 8 months × 2 pakshas = 16 Ekadashis (2 months back + 6 months forward)
+    for (let i = 0; i < 16; i++) {
       for (const paksha of ["shukla", "krishna"]) {
         const wStart = new Date(cur);
         const wEnd = new Date(cur.getTime() + 17 * DAY);
         const ek = _findEkInWindow(wStart, wEnd, paksha);
-        if (ek && ek.ekStart >= today) {
+        if (ek) {
           const mi = ek.ekStart.getMonth();
           const ekDateStr = ek.ekStart.toISOString().slice(0, 10);
           const adhikWin = _getAdhikMaasWindow(ekDateStr);
@@ -6390,8 +6393,8 @@ async function fetchPanchangEkadashis() {
     renderEkadashiList();
     renderCal();
     if (status)
-      status.textContent = `✅ ${added} added · ${12 - added} already saved`;
-    toast(`📅 ${added} Ekadashis auto-added for ~6 months! 🙏`);
+      status.textContent = `✅ ${added} added · -${16 - added} already saved`;
+    toast(`📅 ${added} Ekadashis auto-added for 2 months back + 6 months ahead! 🙏`);
   } catch (e) {
     if (status) status.textContent = "⚠️ " + (e.message || "Location denied");
     toast("GPS error: " + (e.message || "denied"));

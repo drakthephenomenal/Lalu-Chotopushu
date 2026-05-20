@@ -1,33 +1,19 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker
-// v81: PWA staleness fix — installed apps were stuck on v55 caches
-//      causing Gaudiya/ISKCON toggle to lose styling and Mahamantra
-//      floaters to render side-by-side. On activate we now nuke EVERY
-//      old cache (any name) and force-navigate all clients so the
-//      browser refetches index.html + style.css + app.js from network.
+// v64: Removed Google Drive backup system
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v81';
-
-// These files are ALWAYS fetched fresh from the network (network-first, no-cache).
-// Any content update in these files will be immediately visible even in installed PWA.
-const ALWAYS_FRESH = [
-  'index.html',
-  'app.js',
-  'style.css',
-  'stotrams.js',
-  'panchangData.js',
-];
+const CACHE = 'radha-jap-v73';
 
 const PRECACHE = [
   './index.html',
-  './style.css?v=80',
-  './stotrams.js?v=80',
-  './app.js?v=80',
-  './panchangData.js?v=80',
+  './style.css',
+  './stotrams.js',
+  './app.js',
+  './panchangData.js',
   './guru.jpg',
-  './icon-192.png?v=80',
+  './icon-192.png',
   './icon-512.png',
-  './manifest.json?v=80',
+  './manifest.json',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js',
@@ -57,34 +43,14 @@ self.addEventListener('install', e => {
 });
 
 // ── Activate ──
-// CRITICAL: nuke EVERY cache (not just != CACHE) so stuck PWA users on old
-// pre-v81 SW shake loose the stale style.css?v=55 / old index.html that
-// were poisoning their layout.
 self.addEventListener('activate', e => {
-  e.waitUntil((async () => {
-    // 1. Delete every cache except the current one
-    const keys = await caches.keys();
-    await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
-
-    // 2. Take control of all open clients
-    await self.clients.claim();
-
-    // 3. Force every open client (installed PWA windows) to navigate again.
-    //    A real navigation is the only way to evict the stale top-level
-    //    response that an old SW handed them. Adds a cache-bust query so
-    //    any HTTP-cached copy is bypassed too.
-    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const c of clients) {
-      try {
-        const u = new URL(c.url);
-        u.searchParams.set('_swv', '81');
-        await c.navigate(u.toString());
-      } catch (_) {
-        // fall back to message-based reload
-        c.postMessage({ type: 'SW_UPDATED', version: CACHE });
-      }
-    }
-  })());
+  e.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then(clients => clients.forEach(c => c.postMessage({ type: 'SW_UPDATED', version: CACHE })))
+  );
 });
 
 // ── Fetch ──
@@ -93,33 +59,30 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (BYPASS.some(h => url.href.includes(h))) return;
 
-  const filename = url.pathname.split('/').pop();
-
-  // ── Network-first for all core app files ──
-  // Matches with or without ?v= query strings.
-  if (
-    e.request.mode === 'navigate' ||
-    url.pathname.endsWith('/') ||
-    ALWAYS_FRESH.some(f => filename === f)
-  ) {
+  if (url.pathname.endsWith('index.html') || url.pathname.endsWith('/') || e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request, { cache: 'no-cache' })
         .then(resp => {
-          if (resp && resp.status === 200) {
-            caches.open(CACHE).then(c => c.put(e.request, resp.clone()));
-          }
+          if (resp && resp.status === 200) caches.open(CACHE).then(c => c.put(e.request, resp.clone()));
           return resp;
         })
-        .catch(() =>
-          caches.match(e.request).then(cached =>
-            cached || caches.match('./index.html')
-          )
-        )
+        .catch(() => caches.match('./index.html'))
     );
     return;
   }
 
-  // ── Cache-first for static assets (icons, images, fonts, CDN) ──
+  if (url.pathname.endsWith('app.js') || url.pathname.endsWith('style.css') || url.pathname.endsWith('stotrams.js')) {
+    e.respondWith(
+      fetch(e.request, { cache: 'no-cache' })
+        .then(resp => {
+          if (resp && resp.status === 200) caches.open(CACHE).then(c => c.put(e.request, resp.clone()));
+          return resp;
+        })
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then(cached => {
       const net = fetch(e.request).then(resp => {

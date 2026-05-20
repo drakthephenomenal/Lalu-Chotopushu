@@ -8405,6 +8405,88 @@ window.addEventListener("load", async () => {
   }, 2800);
 });
 
+// ═══════════════════════════════════════════════════════
+// PWA ONE-CLICK INSTALL BANNER
+// ═══════════════════════════════════════════════════════
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Small delay so app loads first
+  setTimeout(() => {
+    const dismissed = localStorage.getItem('installBannerDismissed');
+    if (dismissed && Date.now() - Number(dismissed) < 3 * 24 * 60 * 60 * 1000) return;
+    if (window.matchMedia('(display-mode: standalone)').matches) return;
+    showInstallBanner();
+  }, 3000);
+});
+
+function showInstallBanner() {
+  if (document.getElementById('installBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'installBanner';
+  banner.style.cssText = `
+    position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(100px);
+    background:linear-gradient(135deg,#1a0a2e,#0d1f3c);
+    border:1px solid rgba(255,215,0,0.45);border-radius:18px;
+    padding:14px 16px;display:flex;align-items:center;gap:12px;
+    box-shadow:0 6px 32px rgba(255,215,0,0.25);
+    z-index:9999;width:92%;max-width:370px;
+    transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  `;
+  banner.innerHTML = `
+    <img src="/icon-192.png" style="width:46px;height:46px;border-radius:12px;flex-shrink:0;">
+    <div style="flex:1;min-width:0">
+      <div style="color:#FFD700;font-weight:700;font-size:14px;font-family:Inter,sans-serif">📲 Install Radha Jap</div>
+      <div style="color:#aaa;font-size:11px;margin-top:3px;font-family:Inter,sans-serif;line-height:1.4">Add to home screen for daily reminders & offline use 🙏</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+      <button id="installBtn" style="
+        background:linear-gradient(135deg,#FFD700,#FFA500);
+        color:#000;border:none;border-radius:10px;
+        padding:8px 15px;font-weight:700;font-size:13px;
+        cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;
+      ">Install</button>
+      <button id="dismissInstallBtn" style="
+        background:transparent;color:#666;border:none;
+        font-size:11px;cursor:pointer;font-family:Inter,sans-serif;
+      ">Not now</button>
+    </div>
+  `;
+  document.body.appendChild(banner);
+  // Animate in
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      banner.style.transform = 'translateX(-50%) translateY(0)';
+    });
+  });
+  document.getElementById('installBtn').addEventListener('click', triggerInstall);
+  document.getElementById('dismissInstallBtn').addEventListener('click', dismissInstallBanner);
+}
+
+function triggerInstall() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then((result) => {
+    if (result.outcome === 'accepted') dismissInstallBanner();
+    deferredPrompt = null;
+  });
+}
+
+function dismissInstallBanner() {
+  const b = document.getElementById('installBanner');
+  if (b) {
+    b.style.transform = 'translateX(-50%) translateY(100px)';
+    setTimeout(() => b.remove(), 400);
+  }
+  localStorage.setItem('installBannerDismissed', Date.now());
+}
+
+window.addEventListener('appinstalled', () => {
+  dismissInstallBanner();
+});
+
 // Service Worker
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

@@ -8226,8 +8226,8 @@ function buildPwaManifest() {
         name: "Radha Naam Jap",
         short_name: "Radha Jap",
         description: "Jai Shri Radha",
-        start_url: "./index.html",
-        scope: "./",
+        start_url: "/",
+        scope: "/",
         display: "standalone",
         orientation: "portrait-primary",
         background_color: "#060D1F",
@@ -8409,7 +8409,7 @@ window.addEventListener("load", async () => {
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("./sw.js", { scope: "./" })
+      .register("/sw.js", { scope: "/" })
       .then((r) => {
         console.log("SW registered:", r.scope);
         // When a new SW takes over, reload the page to get fresh files

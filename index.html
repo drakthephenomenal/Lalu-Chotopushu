@@ -1033,11 +1033,13 @@
     <div style="font-size:11px;color:var(--td);margin-bottom:10px">Default 108 beads per mala</div>
     <button class="pb" onclick="svm()" style="margin-bottom:14px">Save Mala Size</button>
 
-    <div style="font-size:10px;color:var(--td);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase">Daily Target</div>
-    <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtIn" placeholder="Jap count / day" oninput="syncTargetJapToMala('dt')"><span class="fu">jap</span></div>
-    <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtMalaIn" placeholder="Or: malas / day" oninput="syncTargetMalaToJap('dt')"><span class="fu" style="color:var(--gold)">malas</span></div>
-    <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="dtMala">0</span> malas per day</div>
-    <button class="pb" onclick="svt('d')" style="margin-bottom:14px">Save Daily Target</button>
+    <div class="non-gaudiya-setting">
+      <div style="font-size:10px;color:var(--td);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase">Daily Target</div>
+      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtIn" placeholder="Jap count / day" oninput="syncTargetJapToMala('dt')"><span class="fu">jap</span></div>
+      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtMalaIn" placeholder="Or: malas / day" oninput="syncTargetMalaToJap('dt')"><span class="fu" style="color:var(--gold)">malas</span></div>
+      <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="dtMala">0</span> malas per day</div>
+      <button class="pb" onclick="svt('d')" style="margin-bottom:14px">Save Daily Target</button>
+    </div>
 
     <div style="font-size:10px;color:var(--td);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase">Lifetime Target</div>
     <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="ltIn" placeholder="Jap count lifetime" oninput="syncTargetJapToMala('lt')"><span class="fu">jap</span></div>

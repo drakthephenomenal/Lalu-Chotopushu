@@ -4508,71 +4508,6 @@ function _cleanLegacyEkadashiOccasions() {
   App.S.occasions = occ;
 }
 
-// ── Migrate stored Ekadashi names to ISKCON / Drik Panchang convention ──
-// Older versions of the app stored names like "Devshayani", "Shravana Putrada",
-// "Aja", "Papankusha", "Devutthana", "Nirjala", "Shattila", "Jaya", etc.
-// ISKCON / Drik Panchang uses: Sayana, Pavitropana, Annada, Pashankusha,
-// Utthana, Pandava Nirjala, Shat Tila, Bhaimi, etc. The lookup table in
-// _EK_NAMES_*_LUNAR is already the ISKCON convention — this migration re-derives
-// each saved Ekadashi's name from its startDate + paksha and rewrites both the
-// customEkadashi entry and the matching occasions{} label.
-function _migrateEkadashiNamesToIskcon() {
-  if (typeof _ekadashiNameFor !== "function") return;
-  if (App.S._ekIskconNamesMigratedV1) return; // run once per device
-  const eks = App.S.customEkadashi || [];
-  const occ = App.S.occasions || {};
-  const parampara = App.S.ekParampara || "smarta";
-  let changed = 0;
-  eks.forEach((ek) => {
-    if (typeof ek !== "object" || !ek.startDate) return;
-    const paksha = ek.paksha || "shukla";
-    let newName = "";
-    try {
-      const d = new Date(ek.startDate + "T12:00:00");
-      newName = _ekadashiNameFor(d, paksha);
-    } catch (e) { return; }
-    if (!newName || newName === "Ekadashi") return;
-    const oldName = ek.name || "";
-    if (oldName === newName) return;
-    // Find the occasions key that this entry wrote (fasting date)
-    const sd = ek.startDate;
-    const ed = ek.endDate || sd;
-    let fastingDate = sd;
-    if (parampara === "vaishnava" && ek.startTime) {
-      const [h, m] = ek.startTime.split(":").map(Number);
-      if (h * 60 + m >= 264) fastingDate = ed;
-    } else if (ek.startTime) {
-      const [h, m] = ek.startTime.split(":").map(Number);
-      if (h * 60 + m >= 360) fastingDate = ed;
-    }
-    ek.name = newName;
-    // Rewrite the occasions label if it still references the old name or generic
-    const existing = occ[fastingDate] || "";
-    if (
-      !existing ||
-      (oldName && existing.includes(oldName)) ||
-      existing.includes("Ekadashi") ||
-      existing.includes("Mahadvadashi")
-    ) {
-      const pakshaLabel = paksha === "shukla" ? " ☀️ Shukla" : " 🌙 Krishna";
-      const sf = ek.startTime ? _fmtTime12(ek.startTime) : "";
-      const ef = ek.endTime ? _fmtTime12(ek.endTime) : "";
-      const isViddha = parampara === "vaishnava" && fastingDate === ed && ek.startTime;
-      const timeNote = isViddha
-        ? " (Mahadvadashi · Arunodaya Viddha)"
-        : sf ? " " + sf + (ef ? "–" + ef : "") : "";
-      occ[fastingDate] = newName + pakshaLabel + timeNote;
-    }
-    changed++;
-  });
-  App.S.customEkadashi = eks;
-  App.S.occasions = occ;
-  App.S._ekIskconNamesMigratedV1 = true;
-  if (changed > 0 && typeof toast === "function") {
-    setTimeout(() => toast("📅 " + changed + " Ekadashi names updated to ISKCON 🙏"), 3500);
-  }
-}
-
 async function fbPushDelta() {
   return fbPushFull();
 }
@@ -6339,108 +6274,83 @@ function _resolveEkFasting(ek, lat, lng, name) {
 }
 
 // Ekadashi names indexed by JS Date.getMonth() (0=Jan … 11=Dec)
-// Shukla Paksha (Bright Fortnight) Ekadashis
-// ── Adhik Maas windows fallback (if panchangData.js did not define them) ──────
-// 2026: Adhik Ashadha runs ~Jun 18 – Jul 16 (Dhaka, Bangladesh coordinates)
-// Tithi boundary: Ashadha Shukla Pratipada begins Jun 18 after sunrise;
-// Adhik Ashadha ends and Nija Ashadha begins Jul 17.
-// The two Adhik Ekadashis fall inside this window:
-//   Padmini  (Shukla): Jun 26, 2026
-//   Parama   (Krishna): Jul 10, 2026  (Trisparsha Mahadvadashi — fast Jul 11)
-// Fallback definitions (in case panchangData.js did not provide them).
-// Wrapped in an IIFE so `var` declarations don't clash with the `const`
-// declarations already made by panchangData.js at script scope.
-(function () {
-  if (typeof window._ADHIK_MAAS_WINDOWS === "undefined" &&
-      typeof _ADHIK_MAAS_WINDOWS === "undefined") {
-    window._ADHIK_MAAS_WINDOWS = [
-      { start: "2026-06-18", end: "2026-07-16" }, // Adhik Ashadha 2026
-    ];
+// IMPORTANT: ISKCON / Gaudiya / Purnimanta tradition names an Ekadashi after
+// the lunar month that ENDS at the NEXT Purnima (full moon) following it.
+// Both Shukla (≈3-4 days before Purnima) and Krishna (≈19 days before next
+// Purnima) Ekadashis belong to the lunar month of their upcoming Purnima.
+// Using the Ekadashi's own Gregorian month is WRONG whenever the upcoming
+// Purnima falls in the next Gregorian month (e.g. 29-Mar-2026 Shukla → its
+// Purnima is 1-Apr-2026 → month is Chaitra → name Kamada, not Amalaki).
+function _findNextPurnima(fromDate) {
+  // Purnima = moon elongation crosses 180°. Search up to 30 days ahead.
+  const DAY = 86400000;
+  let prev = _moonElongation(fromDate);
+  const cur = new Date(fromDate);
+  const end = new Date(fromDate.getTime() + 30 * DAY);
+  while (cur <= end) {
+    const next = new Date(cur.getTime() + DAY);
+    const e = _moonElongation(next);
+    if (_didCross(prev, e, 180)) {
+      return _findElongCrossing(180, cur, next);
+    }
+    prev = e;
+    cur.setTime(next.getTime());
   }
-  if (typeof window._getAdhikMaasWindow === "undefined" &&
-      typeof _getAdhikMaasWindow === "undefined") {
-    window._getAdhikMaasWindow = function (dateStr) {
-      var wins = (typeof _ADHIK_MAAS_WINDOWS !== "undefined")
-        ? _ADHIK_MAAS_WINDOWS : window._ADHIK_MAAS_WINDOWS || [];
-      return wins.find(function (w) {
-        return dateStr >= w.start && dateStr <= w.end;
-      }) || null;
-    };
-  }
-  if (typeof window.isAdhikMaasDate === "undefined" &&
-      typeof isAdhikMaasDate === "undefined") {
-    window.isAdhikMaasDate = function (dateStr) {
-      var fn = (typeof _getAdhikMaasWindow !== "undefined")
-        ? _getAdhikMaasWindow : window._getAdhikMaasWindow;
-      return !!fn(dateStr);
-    };
-  }
-})();
-
-// ─── Ekadashi names indexed by LUNAR MONTH (amanta/ISKCON convention) ───
-// monthIdx comes from panchangData._lunarMonthIdx() which already applies
-// the Purnimanta +1 shift for Krishna paksha — so the index here is the
-// lunar month that ISKCON/Drikpanchang attributes the ekadashi to.
-//   0=Chaitra  1=Vaishakha  2=Jyeshtha  3=Ashadha
-//   4=Shravana 5=Bhadrapada 6=Ashwin    7=Kartik
-//   8=Margashirsha 9=Pausha 10=Magha    11=Phalguna
-const _EK_NAMES_SHUKLA_LUNAR = [
-  "Kamada",           // 0 Chaitra Shukla
-  "Mohini",           // 1 Vaishakha Shukla
-  "Pandava Nirjala",  // 2 Jyeshtha Shukla
-  "Sayana",           // 3 Ashadha Shukla (Devshayani)
-  "Pavitropana",      // 4 Shravana Shukla (Putrada)
-  "Parshva",          // 5 Bhadrapada Shukla (Parivartini)
-  "Pashankusha",      // 6 Ashwin Shukla
-  "Utthana",          // 7 Kartik Shukla (Prabodhini)
-  "Mokshada",         // 8 Margashirsha Shukla
-  "Pausha Putrada",   // 9 Pausha Shukla
-  "Bhaimi",           // 10 Magha Shukla (Jaya)
-  "Amalaki",          // 11 Phalguna Shukla
-];
-const _EK_NAMES_KRISHNA_LUNAR = [
-  "Papamochani",      // 0 Chaitra Krishna
-  "Varuthini",        // 1 Vaishakha Krishna
-  "Apara",            // 2 Jyeshtha Krishna
-  "Yogini",           // 3 Ashadha Krishna
-  "Kamika",           // 4 Shravana Krishna
-  "Annada",           // 5 Bhadrapada Krishna (Aja)
-  "Indira",           // 6 Ashwin Krishna
-  "Rama",             // 7 Kartik Krishna
-  "Utpanna",          // 8 Margashirsha Krishna
-  "Saphala",          // 9 Pausha Krishna
-  "Shat Tila",        // 10 Magha Krishna
-  "Vijaya",           // 11 Phalguna Krishna
-];
-
-// Returns ISKCON/Drikpanchang ekadashi name for the given tithi-start date.
-// Uses panchangData._sunMoonLongitudes + _lunarMonthIdx (both global from
-// panchangData.js) so the name is driven by the true lunar month, not the
-// Gregorian month — which makes it correct across years and adhik shifts.
-function _ekadashiNameFor(ekDate, paksha) {
-  const dateStr = ekDate.getFullYear() + "-" +
-    String(ekDate.getMonth() + 1).padStart(2, "0") + "-" +
-    String(ekDate.getDate()).padStart(2, "0");
-  // Adhik Maas: special Purushottama-month names
-  if (typeof isAdhikMaasDate === "function" && isAdhikMaasDate(dateStr)) {
-    return paksha === "shukla" ? "Padmini" : "Parama";
-  }
-  try {
-    // Probe sun position deep inside the lunar month to avoid sidereal-rashi
-    // boundary off-by-one. Shukla paksha → probe near purnima (+12d).
-    // Krishna paksha → probe just past amavasya (+3d) so _lunarMonthIdx's
-    // built-in +1 purnimanta shift lands on the correct next month.
-    const offset = paksha === "shukla" ? 14 : 3;
-    const probe = new Date(ekDate.getTime() + offset * 86400000);
-    const lon = _sunMoonLongitudes(probe);
-    const mi = _lunarMonthIdx(lon.sunSid, paksha);
-    return paksha === "shukla"
-      ? _EK_NAMES_SHUKLA_LUNAR[mi] || "Ekadashi"
-      : _EK_NAMES_KRISHNA_LUNAR[mi] || "Ekadashi";
-  } catch (e) {
-    return "Ekadashi";
-  }
+  return new Date(fromDate.getTime() + 4 * DAY); // fallback
 }
+
+// Returns Gregorian month index of the next NIJA (non-Adhik) Purnima after
+// the Ekadashi. Adhik-month Purnimas are skipped so the name reflects the
+// real solar/lunar month that the Ekadashi belongs to. Adhik Ekadashis
+// themselves (Padmini / Parama) are handled separately at the call site.
+function _getAdjustedMonthIndex(ekDate) {
+  let searchFrom = ekDate;
+  let purnima = _findNextPurnima(searchFrom);
+  // Skip purnimas that fall inside an Adhik Maas window
+  for (let i = 0; i < 3; i++) {
+    const pStr = purnima.toISOString().slice(0, 10);
+    const inAdhik = (_ADHIK_MAAS_WINDOWS || []).some(function(w) {
+      return pStr >= w.start && pStr <= w.end;
+    });
+    if (!inAdhik) break;
+    searchFrom = new Date(purnima.getTime() + 86400000);
+    purnima = _findNextPurnima(searchFrom);
+  }
+  return purnima.getMonth();
+}
+
+const _EK_NAMES_SHUKLA = [
+  "Pausha Putrada", // 0 = January   (Month 10 Pausha)
+  "Jaya", // 1 = February  (Month 11 Magha)
+  "Amalaki", // 2 = March     (Month 12 Phalguna)
+  "Kamada", // 3 = April     (Month 1  Chaitra)
+  "Mohini", // 4 = May       (Month 2  Vaishakha)
+  "Nirjala", // 5 = June      (Month 3  Jyeshtha)
+  "Devshayani", // 6 = July      (Month 4  Ashadha)
+  "Shravana Putrada", // 7 = August    (Month 5  Shravana)
+  "Parsva", // 8 = September (Month 6  Bhadrapada)
+  "Papankusha", // 9 = October   (Month 7  Ashwin)
+  "Devutthana", // 10 = November (Month 8  Kartik)
+  "Mokshada", // 11 = December (Month 9  Margashirsha)
+];
+// Krishna Paksha (Dark Fortnight) Ekadashis
+const _EK_NAMES_KRISHNA = [
+  "Saphala", // 0 = January   (Month 10 Pausha)
+  "Shattila", // 1 = February  (Month 11 Magha)
+  "Vijaya", // 2 = March     (Month 12 Phalguna)
+  "Papamochani", // 3 = April     (Month 1  Chaitra)
+  "Varuthini", // 4 = May       (Month 2  Vaishakha)
+  "Apara", // 5 = June      (Month 3  Jyeshtha)
+  "Yogini", // 6 = July      (Month 4  Ashadha)
+  "Kamika", // 7 = August    (Month 5  Shravana)
+  "Aja", // 8 = September (Month 6  Bhadrapada)
+  "Indira", // 9 = October   (Month 7  Ashwin)
+  "Rama", // 10 = November (Month 8  Kartik)
+  "Utpanna", // 11 = December (Month 9  Margashirsha)
+];
+
+// _ADHIK_MAAS_WINDOWS, _getAdhikMaasWindow, isAdhikMaasDate
+// defined in panchangData.js (loaded before app.js)
 
 let _panchangFetching = false;
 
@@ -6484,7 +6394,20 @@ async function fetchPanchangEkadashis() {
         const wEnd = new Date(cur.getTime() + 17 * DAY);
         const ek = _findEkInWindow(wStart, wEnd, paksha);
         if (ek && ek.ekStart >= today) {
-          const name = _ekadashiNameFor(ek.ekStart, paksha);
+          const ekDateStr = ek.ekStart.toISOString().slice(0, 10);
+          const adhikWin = _getAdhikMaasWindow(ekDateStr);
+          let name;
+          if (adhikWin) {
+            // Adhik Maas Ekadashis: Padmini (Shukla) / Parama (Krishna)
+            name = paksha === "shukla" ? "Padmini" : "Parama";
+          } else {
+            // Offset month index by -1 after Adhik Maas to correct lunar month shift
+            const mi = _getAdjustedMonthIndex(ek.ekStart);
+            name =
+              paksha === "shukla"
+                ? _EK_NAMES_SHUKLA[mi] || "Ekadashi"
+                : _EK_NAMES_KRISHNA[mi] || "Ekadashi";
+          }
           const resolved = _resolveEkFasting(ek, lat, lng, name);
           const exists = App.S.customEkadashi.some(
             (e) => _ekDate(e) === resolved.startDate,
@@ -8513,8 +8436,6 @@ window.addEventListener("load", async () => {
   buildPwaManifest();
   // Migrate any legacy two-date Ekadashi occasions to single fasting date
   _cleanLegacyEkadashiOccasions();
-  // Re-derive stored Ekadashi names to ISKCON / Drik Panchang convention
-  _migrateEkadashiNamesToIskcon();
   // Persist the cleaned occasions immediately
   App.save();
   fbDebouncedPush();
@@ -10009,7 +9930,20 @@ function _computeYearEkadashis(year, lat, lng) {
       const wEnd = new Date(cur.getTime() + 17 * DAY);
       const ek = _findEkInWindow(wStart, wEnd, paksha);
       if (ek && ek.ekStart.getFullYear() === year) {
-        const name = _ekadashiNameFor(ek.ekStart, paksha);
+        const ekDateStr = ek.ekStart.toISOString().slice(0, 10);
+        const adhikWin = _getAdhikMaasWindow
+          ? _getAdhikMaasWindow(ekDateStr)
+          : null;
+        let name;
+        if (adhikWin) {
+          name = paksha === "shukla" ? "Padmini" : "Parama";
+        } else {
+          const mi = _getAdjustedMonthIndex(ek.ekStart);
+          name =
+            paksha === "shukla"
+              ? _EK_NAMES_SHUKLA[mi] || "Ekadashi"
+              : _EK_NAMES_KRISHNA[mi] || "Ekadashi";
+        }
         const resolved = _resolveEkFasting(ek, lat, lng, name);
         // Compute parana window
         const parana = _computeParanaWindow(ek, lat, lng, resolved.fastingDate);

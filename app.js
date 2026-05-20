@@ -6342,11 +6342,11 @@ async function fetchPanchangEkadashis() {
     today.setHours(0, 0, 0, 0);
     const DAY = 86400000;
     let added = 0;
-    // Start from 2 months back
+    // Start 2 months back
     const scanFrom = new Date(today);
     scanFrom.setMonth(scanFrom.getMonth() - 2);
     let cur = new Date(scanFrom);
-    // Scan 8 months × 2 pakshas = 16 Ekadashis (2 months back + 6 months forward)
+    // Scan 8 months x 2 pakshas = 16 Ekadashis (2 months back + 6 months forward)
     for (let i = 0; i < 16; i++) {
       for (const paksha of ["shukla", "krishna"]) {
         const wStart = new Date(cur);
@@ -6393,8 +6393,8 @@ async function fetchPanchangEkadashis() {
     renderEkadashiList();
     renderCal();
     if (status)
-      status.textContent = `✅ ${added} added · -${16 - added} already saved`;
-    toast(`📅 ${added} Ekadashis auto-added for 2 months back + 6 months ahead! 🙏`);
+      status.textContent = `✅ ${added} added · ${16 - added} already saved`;
+    toast(`📅 ${added} Ekadashis auto-added (2 months back + 6 ahead)! 🙏`);
   } catch (e) {
     if (status) status.textContent = "⚠️ " + (e.message || "Location denied");
     toast("GPS error: " + (e.message || "denied"));
@@ -9826,213 +9826,3 @@ async function getLifetimeActivityLog() {
   return all;
 }
 
-// ══════════════════════════════════════════════════════
-// ── Annual Ekadashi Calendar (2025/2026/2027) ─────────
-// ══════════════════════════════════════════════════════
-
-let _annualEkYear = null;
-let _annualEkComputing = false;
-
-function toggleAnnualEk(year) {
-  const listEl = document.getElementById("annualEkList");
-  const statusEl = document.getElementById("annualEkStatus");
-  if (!listEl) return;
-
-  // If same year toggled again, hide
-  if (_annualEkYear === year && listEl.style.display !== "none") {
-    listEl.style.display = "none";
-    _annualEkYear = null;
-    return;
-  }
-
-  _annualEkYear = year;
-  listEl.style.display = "block";
-  listEl.innerHTML =
-    '<div style="font-size:12px;color:rgba(255,255,255,0.4);text-align:center;padding:16px 0;">⏳ Computing ' +
-    year +
-    " Ekadashis…</div>";
-  if (statusEl) statusEl.textContent = "";
-
-  if (_annualEkComputing) return;
-  _annualEkComputing = true;
-
-  // Use saved GPS, fallback to India center
-  const lat = App.S && App.S.lastLat ? App.S.lastLat : 22.5;
-  const lng = App.S && App.S.lastLng ? App.S.lastLng : 78.5;
-
-  setTimeout(function () {
-    try {
-      const results = _computeYearEkadashis(year, lat, lng);
-      _renderAnnualEkList(results, year, listEl, statusEl);
-    } catch (e) {
-      listEl.innerHTML =
-        '<div style="font-size:12px;color:#e8336d;padding:8px;">Error: ' +
-        e.message +
-        "</div>";
-    }
-    _annualEkComputing = false;
-  }, 30);
-}
-
-function _computeYearEkadashis(year, lat, lng) {
-  const DAY = 86400000;
-  const results = [];
-  // Scan from Dec 1 prev year to Jan 15 next year (to catch all Ekadashis in the year)
-  const scanStart = new Date(year - 1, 11, 1); // Dec 1 of previous year
-  const scanEnd = new Date(year + 1, 0, 15); // Jan 15 of next year
-
-  for (const paksha of ["shukla", "krishna"]) {
-    let cur = new Date(scanStart);
-    while (cur < scanEnd) {
-      const wStart = new Date(cur);
-      const wEnd = new Date(cur.getTime() + 17 * DAY);
-      const ek = _findEkInWindow(wStart, wEnd, paksha);
-      if (ek && ek.ekStart.getFullYear() === year) {
-        const mi = ek.ekStart.getMonth();
-        const ekDateStr = ek.ekStart.toISOString().slice(0, 10);
-        const adhikWin = _getAdhikMaasWindow
-          ? _getAdhikMaasWindow(ekDateStr)
-          : null;
-        let name;
-        if (adhikWin) {
-          name = paksha === "shukla" ? "Padmini" : "Parama";
-        } else {
-          name =
-            paksha === "shukla"
-              ? _EK_NAMES_SHUKLA[mi] || "Ekadashi"
-              : _EK_NAMES_KRISHNA[mi] || "Ekadashi";
-        }
-        const resolved = _resolveEkFasting(ek, lat, lng, name);
-        // Compute parana window
-        const parana = _computeParanaWindow(ek, lat, lng, resolved.fastingDate);
-        results.push({ ...resolved, parana });
-      }
-      cur.setTime(cur.getTime() + 15 * DAY);
-    }
-  }
-
-  // Sort by fasting date
-  results.sort((a, b) => (a.fastingDate < b.fastingDate ? -1 : 1));
-
-  // Remove duplicates (same fastingDate)
-  const seen = new Set();
-  return results.filter((r) => {
-    if (seen.has(r.fastingDate)) return false;
-    seen.add(r.fastingDate);
-    return true;
-  });
-}
-
-// Compute Parana (fast-breaking) window:
-// Parana is on the day AFTER the fasting date, between sunrise and 1/5 of daytime
-// OR before Dvadashi tithi ends (whichever comes first)
-// Returns { date, windowStart, windowEnd } all as hh:mm strings
-function _computeParanaWindow(ek, lat, lng, fastingDate) {
-  try {
-    // Parana day = day after fasting day
-    const [fy, fm, fd] = fastingDate.split("-").map(Number);
-    const paranaDay = new Date(fy, fm - 1, fd + 1);
-    const srData = calcSunTimes(lat, lng, paranaDay);
-    if (!srData) return null;
-    const srH = srData.sunriseH; // decimal hours
-    const ssH = srData.sunsetH;
-    // 1/5 of daytime
-    const dayLen = ssH - srH;
-    const fifthDay = srH + dayLen / 5;
-    // Dvadashi ends roughly when next tithi (Trayodashi) starts
-    // Approximation: Dvadashi lasts ~24h after Ekadashi ends
-    const dvadashiEndH = ek.ekEnd
-      ? ek.ekEnd.getHours() + ek.ekEnd.getMinutes() / 60
-      : null;
-
-    // Parana window: sunrise → min(1/5 of day, dvadashi end if same day)
-    let windowEnd = fifthDay;
-    if (dvadashiEndH !== null) {
-      // If Dvadashi ends before 1/5 of day on parana day, parana must finish before that
-      windowEnd = Math.min(fifthDay, dvadashiEndH);
-    }
-    // But parana can't start before sunrise
-    const windowStart = srH;
-
-    return {
-      date:
-        paranaDay.getFullYear() +
-        "-" +
-        String(paranaDay.getMonth() + 1).padStart(2, "0") +
-        "-" +
-        String(paranaDay.getDate()).padStart(2, "0"),
-      windowStart: _decHToHHMM(windowStart),
-      windowEnd: _decHToHHMM(windowEnd),
-    };
-  } catch (e) {
-    return null;
-  }
-}
-
-function _decHToHHMM(h) {
-  const hh = Math.floor(h),
-    mm = Math.round((h - hh) * 60);
-  return String(hh).padStart(2, "0") + ":" + String(mm % 60).padStart(2, "0");
-}
-
-function _fmtDateDMY(dateStr) {
-  if (!dateStr) return "";
-  const [y, m, d] = dateStr.split("-");
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const dt = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
-  return (
-    days[dt.getDay()] +
-    " " +
-    String(parseInt(d)).padStart(2, "0") +
-    ":" +
-    String(parseInt(m)).padStart(2, "0") +
-    ":" +
-    y
-  );
-}
-
-function _renderAnnualEkList(results, year, listEl, statusEl) {
-  if (!results.length) {
-    listEl.innerHTML =
-      '<div style="font-size:12px;color:rgba(255,255,255,0.4);text-align:center;padding:10px;">No Ekadashis found for ' +
-      year +
-      "</div>";
-    return;
-  }
-  const parampara = App.S.ekParampara || "smarta";
-  const paramTag =
-    parampara === "vaishnava"
-      ? '<span style="font-size:8px;background:rgba(74,144,226,0.2);color:#6DB8FF;border-radius:4px;padding:1px 5px;">Vaishnava</span>'
-      : '<span style="font-size:8px;background:rgba(46,204,113,0.15);color:#2ecc71;border-radius:4px;padding:1px 5px;">Smarta</span>';
-
-  listEl.innerHTML = results
-    .map((r) => {
-      const pLabel =
-        r.paksha === "shukla"
-          ? '<span style="font-size:9px;background:rgba(241,196,15,0.2);color:#F1C40F;border-radius:4px;padding:2px 5px;font-weight:700;">☀️ SHUKLA</span>'
-          : '<span style="font-size:9px;background:rgba(155,89,182,0.25);color:#BD93F9;border-radius:4px;padding:2px 5px;font-weight:700;">🌙 KRISHNA</span>';
-      const viddhaTag = r.isViddha
-        ? ' <span style="font-size:8px;background:rgba(255,152,0,0.2);color:#FF9800;border-radius:4px;padding:1px 5px;">Mahadvadashi</span>'
-        : "";
-
-      const paranaHtml = r.parana
-        ? `<div style="font-size:10px;color:#FFD700;margin-top:3px;">🌅 Parana: ${_fmtDateDMY(r.parana.date)} · ${_fmtTime12(r.parana.windowStart)}–${_fmtTime12(r.parana.windowEnd)}</div>`
-        : "";
-
-      return `<div style="background:rgba(74,144,226,0.07);border:1px solid rgba(74,144,226,0.18);border-radius:10px;padding:9px 11px;margin-bottom:7px;">
-      <div style="font-size:11px;color:#6DB8FF;font-weight:700;margin-bottom:2px;">${r.name} ${pLabel}${viddhaTag}</div>
-      <div style="font-size:10px;color:rgba(255,255,255,0.45);">Tithi: ${_fmtDateDMY(r.startDate)} ${r.startTime ? "· " + _fmtTime12(r.startTime) : ""}</div>
-      <div style="font-size:10px;color:#76ff7a;font-weight:600;margin-top:2px;">🌙 Fast: ${_fmtDateDMY(r.fastingDate)} ${paramTag}</div>
-      ${paranaHtml}
-    </div>`;
-    })
-    .join("");
-
-  if (statusEl)
-    statusEl.textContent =
-      "✅ " +
-      results.length +
-      " Ekadashis for " +
-      year +
-      (App.S.lastLat ? " (GPS location)" : " (default location)");
-}

@@ -6275,19 +6275,48 @@ function _resolveEkFasting(ek, lat, lng, name) {
 
 // Ekadashi names indexed by JS Date.getMonth() (0=Jan … 11=Dec)
 // Shukla Paksha (Bright Fortnight) Ekadashis
-// Returns Gregorian month index adjusted for Adhik Maas lunar shift
-// After an Adhik Maas ends, all subsequent Ekadashi names are offset by -1 month
+// ── Adhik Maas windows fallback (if panchangData.js did not define them) ──────
+// 2026: Adhik Ashadha runs ~Jun 18 – Jul 16 (Dhaka, Bangladesh coordinates)
+// Tithi boundary: Ashadha Shukla Pratipada begins Jun 18 after sunrise;
+// Adhik Ashadha ends and Nija Ashadha begins Jul 17.
+// The two Adhik Ekadashis fall inside this window:
+//   Padmini  (Shukla): Jun 26, 2026
+//   Parama   (Krishna): Jul 10, 2026  (Trisparsha Mahadvadashi — fast Jul 11)
+if (typeof _ADHIK_MAAS_WINDOWS === "undefined") {
+  var _ADHIK_MAAS_WINDOWS = [
+    { start: "2026-06-18", end: "2026-07-16" }, // Adhik Ashadha 2026
+  ];
+}
+if (typeof _getAdhikMaasWindow === "undefined") {
+  var _getAdhikMaasWindow = function(dateStr) {
+    return (_ADHIK_MAAS_WINDOWS || []).find(function(w) {
+      return dateStr >= w.start && dateStr <= w.end;
+    }) || null;
+  };
+}
+if (typeof isAdhikMaasDate === "undefined") {
+  var isAdhikMaasDate = function(dateStr) {
+    return !!_getAdhikMaasWindow(dateStr);
+  };
+}
+
+// Returns Gregorian month index adjusted for Adhik Maas lunar shift.
+// Logic: map the Ekadashi date to its LUNAR month name by using the
+// Gregorian month of the Ekadashi start, then shifting -1 for every
+// Adhik Maas that has already ENDED before this date in the same year.
+// This keeps all pre-Adhik names correct, and post-Adhik names shifted
+// by exactly one position to account for the inserted extra month.
 function _getAdjustedMonthIndex(date) {
   const mi = date.getMonth();
   const dateStr = date.toISOString().slice(0, 10);
-  // Check if any Adhik Maas window ended before this date in the same year
   const year = date.getFullYear();
-  const pastAdhik = (_ADHIK_MAAS_WINDOWS || []).some(w => {
+  // Count how many Adhik Maas windows ended strictly before this date
+  // within the same calendar year (handles rare double-adhik years)
+  const adhikCount = (_ADHIK_MAAS_WINDOWS || []).filter(function(w) {
     return w.end < dateStr && w.end.slice(0, 4) === String(year);
-  });
-  if (pastAdhik) {
-    // Shift back by 1 to correct for the extra lunar month
-    return (mi - 1 + 12) % 12;
+  }).length;
+  if (adhikCount > 0) {
+    return (mi - adhikCount + 12) % 12;
   }
   return mi;
 }

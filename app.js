@@ -1324,17 +1324,19 @@ function _getAppUrl() {
 function shareApp() {
   const url = _getAppUrl();
   const shareText =
-    "🙏 Radha Naam Jap Sadhana App — Track your jap sadhana. Jai Radhe Radhe! 🌸";
+    "Radha Vallabh Sri Harivangsa \uD83D\uDE4F\n\n" +
+    "Boost your Naam Jap experience with this little app —\n" +
+    "track Brahmacharya, Ekadashi, daily Jap & lots of statistics \u2728 \uD83E\uDEB7\n\n" +
+    "\uD83D\uDC49 " + url;
   if (navigator.share) {
     navigator
-      .share({ title: "Radha Naam Jap 🙏", text: shareText, url })
-      .then(() => toast("Shared! 🙏 Jai Radhe!"))
+      .share({ text: shareText })
+      .then(() => toast("Shared! \uD83D\uDE4F Jai Radhe!"))
       .catch((err) => {
-        // User cancelled or share failed — fall back to copy
-        if (err.name !== "AbortError") _copyAppUrl(url);
+        if (err.name !== "AbortError") _copyAppUrl(shareText);
       });
   } else {
-    _copyAppUrl(url);
+    _copyAppUrl(shareText);
   }
 }
 

@@ -49,9 +49,18 @@ const App = {
     nameJapDeductHK: 0,
     gaudiyaMode: false,
     hkLang: "hi",
+    historyKV: {},
+    timerHistoryKV: {},
+    dtKV: 0,
+    ltKV: 0,
+    malaLogKV: [],
+    syncBaselineKV: {},
+    syncBaselineTimerKV: {},
+    nameJapDeductKV: 0,
   },
   lmcRV: 0,
   lmcHK: 0,
+  lmcKV: 0,
   lmc: 0,
   lm28: 0,
   timerRunning: false,
@@ -198,6 +207,14 @@ const App = {
       nameJapDeductHK: this.S.nameJapDeductHK || 0,
       gaudiyaMode: this.S.gaudiyaMode || false,
       hkLang: this.S.hkLang || "hi",
+      historyKV: this.S.historyKV || {},
+      timerHistoryKV: this.S.timerHistoryKV || {},
+      dtKV: this.S.dtKV || 0,
+      ltKV: this.S.ltKV || 0,
+      malaLogKV: this.S.malaLogKV || [],
+      syncBaselineKV: this.S.syncBaselineKV || {},
+      syncBaselineTimerKV: this.S.syncBaselineTimerKV || {},
+      nameJapDeductKV: this.S.nameJapDeductKV || 0,
     });
     // Keep per-day stores updated for compatibility with existing offline data
     const tk = this.S.tk;
@@ -317,6 +334,15 @@ const App = {
       this.S.sadhanaStart = localStorage.getItem("rjap_sadhana_start") || "";
     if (!this.S.customEkadashi) this.S.customEkadashi = [];
     if (!this.S.historyHK) this.S.historyHK = {};
+    if (!this.S.historyKV) this.S.historyKV = {};
+    if (!this.S.timerHistoryKV) this.S.timerHistoryKV = {};
+    if (!this.S.dtKV) this.S.dtKV = 0;
+    if (!this.S.ltKV) this.S.ltKV = 0;
+    if (!this.S.malaLogKV) this.S.malaLogKV = [];
+    if (!this.S.syncBaselineKV) this.S.syncBaselineKV = {};
+    if (!this.S.syncBaselineTimerKV) this.S.syncBaselineTimerKV = {};
+    if (!this.S.nameJapDeductKV) this.S.nameJapDeductKV = 0;
+    if (!this.S.historyKV[this.S.tk]) this.S.historyKV[this.S.tk] = 0;
     if (!this.S.timerHistoryHK) this.S.timerHistoryHK = {};
     if (this.S.dtHK === undefined) this.S.dtHK = 0;
     if (!this.S.malaLogHK) this.S.malaLogHK = [];
@@ -367,6 +393,7 @@ const App = {
   gTod() {
     if (this.S.japMode === "rv") return this.S.historyRV[this.S.tk] || 0;
     if (this.S.japMode === "hk") return this.S.historyHK[this.S.tk] || 0;
+    if (this.S.japMode === "kv") return (this.S.historyKV || {})[this.S.tk] || 0;
     return this.S.history[this.S.tk] || 0;
   },
   // Combined today: radha + RV (or HK-only when gaudiyaMode)
@@ -405,6 +432,12 @@ const App = {
         Object.values(this.S.historyRV).reduce((a, b) => a + b, 0) -
           (this.S.nameJapDeductRV || 0),
       );
+    if (this.S.japMode === "kv")
+      return Math.max(
+        0,
+        Object.values(this.S.historyKV || {}).reduce((a, b) => a + b, 0) -
+          (this.S.nameJapDeductKV || 0),
+      );
     if (this.S.japMode === "hk")
       return Math.max(
         0,
@@ -420,11 +453,13 @@ const App = {
   getCurHistory() {
     if (this.S.japMode === "rv") return this.S.historyRV;
     if (this.S.japMode === "hk") return this.S.historyHK || {};
+    if (this.S.japMode === "kv") return this.S.historyKV || {};
     return this.S.history;
   },
   getCurTimerHistory() {
     if (this.S.japMode === "rv") return this.S.timerHistoryRV;
     if (this.S.japMode === "hk") return this.S.timerHistoryHK || {};
+    if (this.S.japMode === "kv") return this.S.timerHistoryKV || {};
     return this.S.timerHistory;
   },
   // Combined history: merge radha + RV counts per day (or HK-only in gaudiyaMode)
@@ -434,9 +469,10 @@ const App = {
     const combined = {};
     const h1 = this.S.history || {};
     const h2 = this.S.historyRV || {};
-    const allKeys = new Set([...Object.keys(h1), ...Object.keys(h2)]);
+    const h3kv = this.S.historyKV || {};
+    const allKeys = new Set([...Object.keys(h1), ...Object.keys(h2), ...Object.keys(h3kv)]);
     allKeys.forEach((k) => {
-      combined[k] = (h1[k] || 0) + (h2[k] || 0);
+      combined[k] = (h1[k] || 0) + (h2[k] || 0) + (h3kv[k] || 0);
     });
     return combined;
   },
@@ -447,15 +483,17 @@ const App = {
     const combined = {};
     const t1 = this.S.timerHistory || {};
     const t2 = this.S.timerHistoryRV || {};
-    const allKeys = new Set([...Object.keys(t1), ...Object.keys(t2)]);
+    const t3kv = this.S.timerHistoryKV || {};
+    const allKeys = new Set([...Object.keys(t1), ...Object.keys(t2), ...Object.keys(t3kv)]);
     allKeys.forEach((k) => {
-      combined[k] = (t1[k] || 0) + (t2[k] || 0);
+      combined[k] = (t1[k] || 0) + (t2[k] || 0) + (t3kv[k] || 0);
     });
     return combined;
   },
   getCurDt() {
     if (this.S.japMode === "rv") return this.S.dtRV;
     if (this.S.japMode === "hk") return this.S.dtHK || 0;
+    if (this.S.japMode === "kv") return this.S.dtKV || 0;
     return this.S.dt;
   },
   getCurLt() {
@@ -596,15 +634,19 @@ const App = {
     const radhaSum = (this.S.malaLog || []).reduce((a, b) => a + b, 0);
     const rvSum = (this.S.malaLogRV || []).reduce((a, b) => a + b, 0);
     const hkSum = (this.S.malaLogHK || []).reduce((a, b) => a + b, 0);
+    const kvSum = (this.S.malaLogKV || []).reduce((a, b) => a + b, 0);
     if (!this.S.timerHistory) this.S.timerHistory = {};
     if (!this.S.timerHistoryRV) this.S.timerHistoryRV = {};
     if (!this.S.timerHistoryHK) this.S.timerHistoryHK = {};
+    if (!this.S.timerHistoryKV) this.S.timerHistoryKV = {};
     if (radhaSum > 0 || (this.S.malaLog || []).length > 0)
       this.S.timerHistory[this.S.tk] = radhaSum;
     if (rvSum > 0 || (this.S.malaLogRV || []).length > 0)
       this.S.timerHistoryRV[this.S.tk] = rvSum;
     if (hkSum > 0 || (this.S.malaLogHK || []).length > 0)
       this.S.timerHistoryHK[this.S.tk] = hkSum;
+    if (kvSum > 0 || (this.S.malaLogKV || []).length > 0)
+      this.S.timerHistoryKV[this.S.tk] = kvSum;
     // Re-anchor timerSavedSeconds so live delta is measured from current position
     this.timerSavedSeconds = this.timerSeconds;
   },
@@ -613,7 +655,10 @@ const App = {
   getMalaLogSum() {
     const isRV = this.S.japMode === "rv";
     const isHK = this.S.japMode === "hk";
-    const log = isRV
+    const isKV = this.S.japMode === "kv";
+    const log = isKV
+      ? this.S.malaLogKV || []
+      : isRV
       ? this.S.malaLogRV || []
       : isHK
         ? this.S.malaLogHK || []
@@ -723,6 +768,9 @@ const App = {
     if (isRVm) {
       if (!this.S.malaLogRV) this.S.malaLogRV = [];
       this.S.malaLogRV.push(malaDuration);
+    } else if (this.S.japMode === "kv") {
+      if (!this.S.malaLogKV) this.S.malaLogKV = [];
+      this.S.malaLogKV.push(malaDuration);
     } else if (isHKm) {
       if (!this.S.malaLogHK) this.S.malaLogHK = [];
       this.S.malaLogHK.push(malaDuration);
@@ -785,6 +833,9 @@ const App = {
     const isHK = this.S.japMode === "hk";
     if (isRV) {
       this.S.historyRV[this.S.tk] = (this.S.historyRV[this.S.tk] || 0) + 1;
+    } else if (this.S.japMode === "kv") {
+      if (!this.S.historyKV) this.S.historyKV = {};
+      this.S.historyKV[this.S.tk] = (this.S.historyKV[this.S.tk] || 0) + 1;
     } else if (isHK) {
       if (!this.S.historyHK) this.S.historyHK = {};
       this.S.historyHK[this.S.tk] = (this.S.historyHK[this.S.tk] || 0) + 1;
@@ -1324,14 +1375,14 @@ function _getAppUrl() {
 function shareApp() {
   const url = _getAppUrl();
   const shareText =
-    "Radha Vallabh Sri Harivangsa \uD83D\uDE4F\n\n" +
-    "Boost your Naam Jap experience with this little app —\n" +
-    "track Brahmacharya, Ekadashi, daily Jap & lots of statistics \u2728 \uD83E\uDEB7\n\n" +
-    "\uD83D\uDC49 " + url;
+    "Radha Vallabh Sri Harivangsa \u{1F64F}\n\n" +
+    "Boost your Naam Jap experience with this little app \u2014\n" +
+    "track Brahmacharya, Ekadashi, daily Jap & lots of statistics \u2728 \u{1FAB7}\n\n" +
+    "\u{1F449} " + url;
   if (navigator.share) {
     navigator
       .share({ text: shareText })
-      .then(() => toast("Shared! \uD83D\uDE4F Jai Radhe!"))
+      .then(() => toast("Shared! \u{1F64F} Jai Radhe!"))
       .catch((err) => {
         if (err.name !== "AbortError") _copyAppUrl(shareText);
       });
@@ -1499,7 +1550,8 @@ function switchJapMode(mode) {
   const titleEl = document.getElementById("rnTitle");
   const hkEl = document.getElementById("hkPersist");
   // Clear all active states first
-  [optR, optRV, optHK].forEach((o) => {
+  const optKV = document.getElementById("naamOptKV");
+  [optR, optRV, optHK, optKV].forEach((o) => {
     if (o) {
       o.classList.remove("active");
       o.querySelector(".ns-check").textContent = "";
@@ -1542,6 +1594,14 @@ function switchJapMode(mode) {
       hkEl.classList.remove("hk-visible");
       _hkColorIdx = 0;
     }
+  } else if (mode === "kv") {
+    _hkMalaBlocked = false;
+    const _mcKV = document.getElementById("hkMalaComplete");
+    if (_mcKV) _mcKV.classList.remove("hkmc-visible");
+    if (optKV) { optKV.classList.add("active"); optKV.querySelector(".ns-check").textContent = "✓"; }
+    titleEl.innerHTML = '<span style="font-size:clamp(11px,2.9vw,15px);line-height:1.35;text-align:center;display:block">कृष्णाय वासुदेवाय<br><span style="font-size:0.9em;opacity:0.8">हरये परमात्मने</span></span>';
+    titleEl.style.textAlign = "center";
+    if (hkEl) hkEl.classList.remove("hk-visible");
   } else {
     if (optR) {
       optR.classList.add("active");
@@ -1559,6 +1619,8 @@ function switchJapMode(mode) {
     App.lmcRV = Math.floor((App.S.historyRV[App.S.tk] || 0) / ms);
   } else if (mode === "hk") {
     App.lmcHK = Math.floor(((App.S.historyHK || {})[App.S.tk] || 0) / ms);
+  } else if (mode === "kv") {
+    App.lmcKV = Math.floor(((App.S.historyKV || {})[App.S.tk] || 0) / ms);
   } else {
     App.lmc = Math.floor((App.S.history[App.S.tk] || 0) / ms);
   }
@@ -1570,6 +1632,7 @@ function switchJapMode(mode) {
     rv: "राधावल्लभ श्री हरिवंश 🙏",
     hk: "हरे कृष्ण महामंत्र 🪷",
     radha: "राधा 🙏",
+    kv: "कृष्णाय वासुदेवाय 🙏",
   };
   toast(toastMap[mode] || "राधा 🙏");
 }
@@ -1771,6 +1834,7 @@ function tgs(k) {
       hkEl.innerHTML = newText.split("\n").map((l) => "<div>" + l + "</div>").join("");
     }
     if (App.S.japMode === "hk") switchJapMode("hk");
+    else if (App.S.japMode === "kv") switchJapMode("kv");
     App.save();
     fbDebouncedPush();
     toast(App.S.hkLang === "bn" ? "মহামন্ত্র · Bangla" : "महामंत्र · Hindi");
@@ -1788,7 +1852,7 @@ function tgs(k) {
     if (App.S.gaudiyaMode) {
       if (App.S.japMode !== "hk") switchJapMode("hk");
     } else {
-      if (App.S.japMode === "hk") switchJapMode("radha");
+      if (App.S.japMode === "hk" || App.S.japMode === "kv") switchJapMode("radha");
     }
     App.save();
     fbDebouncedPush();
@@ -2665,8 +2729,37 @@ function uStats() {
   if (sHKM) sHKM.textContent = Math.floor(hkLifetime / ms) + " malas";
   const sHKF = document.getElementById("sHKTotF");
   if (sHKF) sHKF.textContent = fmtCount(hkLifetime) + " jap";
+  // KV Lifetime
+  const kvLifetime = Math.max(0, Object.values(App.S.historyKV || {}).reduce((a, b) => a + b, 0) - (App.S.nameJapDeductKV || 0));
+  const kvTH = App.S.timerHistoryKV || {};
+  const isKVMode = App.S.japMode === "kv";
+  const liveExtraKV = App.timerRunning && isKVMode ? Math.max(0, App.timerSeconds - App.timerSavedSeconds) : 0;
+  const kvTod2 = (kvTH[App.S.tk] || 0) + liveExtraKV;
+  const kvWk2 = wk.reduce((s, k) => s + (kvTH[k] || 0), 0) + liveExtraKV;
+  const kvMo2 = Object.entries(kvTH).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0) + liveExtraKV;
+  const kvLt2 = Object.values(kvTH).reduce((s, v) => s + v, 0) + liveExtraKV;
+  const _setKV = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  _setKV("sKVTot", kvLifetime.toLocaleString("en-IN"));
+  _setKV("sKVTotM", Math.floor(kvLifetime / ms) + " malas");
+  const kvTodCount = (App.S.historyKV || {})[App.S.tk] || 0;
+  const kvWkCount = wk.reduce((s, k) => s + ((App.S.historyKV || {})[k] || 0), 0);
+  const kvMoCount = Object.entries(App.S.historyKV || {}).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0);
+  _setKV("sKVTod", kvTodCount.toLocaleString("en-IN"));
+  _setKV("sKVTodM", Math.floor(kvTodCount / ms) + " malas");
+  _setKV("sKVWk", kvWkCount.toLocaleString("en-IN"));
+  _setKV("sKVWkM", Math.floor(kvWkCount / ms) + " malas");
+  _setKV("sKVMo", kvMoCount.toLocaleString("en-IN"));
+  _setKV("sKVMoM", Math.floor(kvMoCount / ms) + " malas");
+  if (typeof fmtShort === "function") {
+    _setKV("tKVTod", fmtShort(kvTod2)); _setKV("tKVWk", fmtShort(kvWk2));
+    _setKV("tKVMo", fmtShort(kvMo2)); _setKV("tKVLt", fmtShort(kvLt2));
+  }
+  const sbKVCount = document.getElementById("sbKVCount");
+  if (sbKVCount) sbKVCount.style.display = isGaudiya ? "none" : "";
+  const sbKVTime = document.getElementById("sbKVTime");
+  if (sbKVTime) sbKVTime.style.display = isGaudiya ? "none" : "";
   // Combined Lifetime Jap (Radha + RV + 28 names)
-  const ltJapAll = radhaLifetime + rvLifetime + n28Lifetime;
+  const ltJapAll = radhaLifetime + rvLifetime + n28Lifetime + kvLifetime;
   const sLtJA = document.getElementById("sLtJapAll");
   if (sLtJA) sLtJA.textContent = ltJapAll.toLocaleString("en-IN");
   const sLtJAF = document.getElementById("sLtJapAllF");
@@ -2729,7 +2822,8 @@ function uStats() {
   // Lifetime Jap Time (all jap time + all 28 names time)
   const ltTimeSec =
     Object.values(App.getCombinedTimerHistory()).reduce((a, b) => a + b, 0) +
-    Object.values(App.S.timer28History || {}).reduce((a, b) => a + b, 0);
+    Object.values(App.S.timer28History || {}).reduce((a, b) => a + b, 0) +
+    Object.values(App.S.timerHistoryKV || {}).reduce((a, b) => a + b, 0);
   const ltH = Math.floor(ltTimeSec / 3600),
     ltM = Math.floor((ltTimeSec % 3600) / 60),
     ltS = ltTimeSec % 60;
@@ -3603,13 +3697,15 @@ function renderMilestonesTab() {
   const hist   = App.S.history || {};
   const histRV = App.S.historyRV || {};
   const histHK = App.S.historyHK || {};
+  const histKV = App.S.historyKV || {};
   const rawTot = _isG
     ? Object.values(histHK).reduce((a, b) => a + b, 0)
     : Object.values(hist).reduce((a, b) => a + b, 0) +
-      Object.values(histRV).reduce((a, b) => a + b, 0);
+      Object.values(histRV).reduce((a, b) => a + b, 0) +
+      Object.values(histKV).reduce((a, b) => a + b, 0);
   const deduct = _isG
     ? (App.S.nameJapDeductHK || 0)
-    : (App.S.nameJapDeduct || 0);
+    : (App.S.nameJapDeduct || 0) + (App.S.nameJapDeductKV || 0);
   const total = Math.max(0, rawTot - deduct);
   const lang = window._msLang || "hi";
 
@@ -3622,7 +3718,7 @@ function renderMilestonesTab() {
     const k = _ldk(d);
     sum7 += _isG
       ? (histHK[k] || 0)
-      : (hist[k] || 0) + (histRV[k] || 0);
+      : (hist[k] || 0) + (histRV[k] || 0) + (histKV[k] || 0);
   }
   const avg7 = sum7 / 7;
 
@@ -7526,10 +7622,10 @@ function renderCal() {
     const _isG = App.S.gaudiyaMode || false;
     const cnt = _isG
       ? (App.S.historyHK[key] || 0)
-      : (App.S.history[key] || 0) + (App.S.historyRV[key] || 0),
+      : (App.S.history[key] || 0) + (App.S.historyRV[key] || 0) + ((App.S.historyKV || {})[key] || 0),
       timeSec = _isG
         ? (App.S.timerHistoryHK[key] || 0)
-        : (App.S.timerHistory[key] || 0) + (App.S.timerHistoryRV[key] || 0),
+        : (App.S.timerHistory[key] || 0) + (App.S.timerHistoryRV[key] || 0) + ((App.S.timerHistoryKV || {})[key] || 0),
       time28Sec = App.S.timer28History[key] || 0;
     const occ = App.S.occasions && App.S.occasions[key];
     const c = document.createElement("div");
@@ -7542,7 +7638,7 @@ function renderCal() {
     if (isBcActive) {
       c.classList.add(isBcBroken ? "bc-b" : "bc-m");
     }
-    const combinedDt = (App.S.dt || 0) + (App.S.dtRV || 0);
+    const combinedDt = (App.S.dt || 0) + (App.S.dtRV || 0) + (App.S.dtKV || 0);
     if (cnt > 0) {
       c.classList.add("hd");
       if (combinedDt > 0 && cnt >= combinedDt) c.classList.add("tm");
@@ -7728,14 +7824,17 @@ function showDay(key, cnt, timeSec, time28Sec) {
   // Stats — detailed breakdown
   const radhaCount = App.S.history[key] || 0;
   const rvCount = App.S.historyRV[key] || 0;
+  const kvCount = (App.S.historyKV || {})[key] || 0;
   const radhaTime = App.S.timerHistory[key] || 0;
   const rvTime = App.S.timerHistoryRV[key] || 0;
+  const kvTime = (App.S.timerHistoryKV || {})[key] || 0;
   const n28Count = App.S.h28[key] || 0;
   const n28TimeSec = App.S.timer28History[key] || 0;
   const n28Cycles = Math.floor(n28Count / 28);
   const radhaMalas = Math.floor(radhaCount / ms);
   const rvMalas = Math.floor(rvCount / ms);
-  const totalCount = radhaCount + rvCount;
+  const kvMalas = Math.floor(kvCount / ms);
+  const totalCount = radhaCount + rvCount + kvCount;
   const totalMalas = Math.floor(totalCount / ms);
   // HK / Mahamantra counts for Gaudiya mode
   const hkCount = App.S.historyHK[key] || 0;
@@ -7751,6 +7850,10 @@ function showDay(key, cnt, timeSec, time28Sec) {
     radhaCount > 0 ? radhaCount + " jap · " + radhaMalas + " malas" : "—";
   document.getElementById("cdmoRvJap").textContent =
     rvCount > 0 ? rvCount + " jap · " + rvMalas + " malas" : "—";
+  const cdmoKvJap = document.getElementById("cdmoKvJap");
+  if (cdmoKvJap) cdmoKvJap.textContent = kvCount > 0 ? kvCount + " jap · " + kvMalas + " malas" : "—";
+  const cdmoKvTime = document.getElementById("cdmoKvTime");
+  if (cdmoKvTime) cdmoKvTime.textContent = kvTime > 0 ? App.fmtTime(kvTime) : "—";
   document.getElementById("cdmoRadhaTime").textContent =
     radhaTime > 0 ? App.fmtTime(radhaTime) : "—";
   document.getElementById("cdmoRvTime").textContent =
@@ -7767,10 +7870,10 @@ function showDay(key, cnt, timeSec, time28Sec) {
   }
   document.getElementById("cdmoTotalCount").textContent =
     totalCount > 0 ? totalCount + " jap (" + totalMalas + " malas)" : "—";
-  const totalTimeSec = radhaTime + rvTime + n28TimeSec;
+  const totalTimeSec = radhaTime + rvTime + kvTime + n28TimeSec;
   document.getElementById("cdmoTotalTime").textContent =
     totalTimeSec > 0 ? App.fmtTime(totalTimeSec) : "—";
-  const combinedDt = (App.S.dt || 0) + (App.S.dtRV || 0);
+  const combinedDt = (App.S.dt || 0) + (App.S.dtRV || 0) + (App.S.dtKV || 0);
   const pct = combinedDt > 0 ? Math.round((cnt / combinedDt) * 100) + "%" : "—";
   document.getElementById("cdmoPct").textContent = pct;
 
@@ -8228,8 +8331,8 @@ function buildPwaManifest() {
         name: "Radha Naam Jap",
         short_name: "Radha Jap",
         description: "Jai Shri Radha",
-        start_url: "/",
-        scope: "/",
+        start_url: "./index.html",
+        scope: "./",
         display: "standalone",
         orientation: "portrait-primary",
         background_color: "#060D1F",
@@ -8415,7 +8518,6 @@ let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  // Small delay so app loads first
   setTimeout(() => {
     const dismissed = localStorage.getItem('installBannerDismissed');
     if (dismissed && Date.now() - Number(dismissed) < 3 * 24 * 60 * 60 * 1000) return;
@@ -8428,41 +8530,10 @@ function showInstallBanner() {
   if (document.getElementById('installBanner')) return;
   const banner = document.createElement('div');
   banner.id = 'installBanner';
-  banner.style.cssText = `
-    position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(100px);
-    background:linear-gradient(135deg,#1a0a2e,#0d1f3c);
-    border:1px solid rgba(255,215,0,0.45);border-radius:18px;
-    padding:14px 16px;display:flex;align-items:center;gap:12px;
-    box-shadow:0 6px 32px rgba(255,215,0,0.25);
-    z-index:9999;width:92%;max-width:370px;
-    transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
-  `;
-  banner.innerHTML = `
-    <img src="/icon-192.png" style="width:46px;height:46px;border-radius:12px;flex-shrink:0;">
-    <div style="flex:1;min-width:0">
-      <div style="color:#FFD700;font-weight:700;font-size:14px;font-family:Inter,sans-serif">📲 Install Radha Jap</div>
-      <div style="color:#aaa;font-size:11px;margin-top:3px;font-family:Inter,sans-serif;line-height:1.4">Add to home screen for daily reminders & offline use 🙏</div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
-      <button id="installBtn" style="
-        background:linear-gradient(135deg,#FFD700,#FFA500);
-        color:#000;border:none;border-radius:10px;
-        padding:8px 15px;font-weight:700;font-size:13px;
-        cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;
-      ">Install</button>
-      <button id="dismissInstallBtn" style="
-        background:transparent;color:#666;border:none;
-        font-size:11px;cursor:pointer;font-family:Inter,sans-serif;
-      ">Not now</button>
-    </div>
-  `;
+  banner.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(100px);background:linear-gradient(135deg,#1a0a2e,#0d1f3c);border:1px solid rgba(255,215,0,0.45);border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 6px 32px rgba(255,215,0,0.25);z-index:9999;width:92%;max-width:370px;transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1);';
+  banner.innerHTML = '<img src="/icon-192.png" style="width:46px;height:46px;border-radius:12px;flex-shrink:0;"><div style="flex:1;min-width:0"><div style="color:#FFD700;font-weight:700;font-size:14px;font-family:Inter,sans-serif">\u{1F4F2} Install Radha Jap</div><div style="color:#aaa;font-size:11px;margin-top:3px;font-family:Inter,sans-serif;line-height:1.4">Add to home screen for daily reminders & offline use \u{1F64F}</div></div><div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0"><button id="installBtn" style="background:linear-gradient(135deg,#FFD700,#FFA500);color:#000;border:none;border-radius:10px;padding:8px 15px;font-weight:700;font-size:13px;cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;">Install</button><button id="dismissInstallBtn" style="background:transparent;color:#666;border:none;font-size:11px;cursor:pointer;font-family:Inter,sans-serif;">Not now</button></div>';
   document.body.appendChild(banner);
-  // Animate in
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      banner.style.transform = 'translateX(-50%) translateY(0)';
-    });
-  });
+  requestAnimationFrame(() => { requestAnimationFrame(() => { banner.style.transform = 'translateX(-50%) translateY(0)'; }); });
   document.getElementById('installBtn').addEventListener('click', triggerInstall);
   document.getElementById('dismissInstallBtn').addEventListener('click', dismissInstallBanner);
 }
@@ -8478,16 +8549,11 @@ function triggerInstall() {
 
 function dismissInstallBanner() {
   const b = document.getElementById('installBanner');
-  if (b) {
-    b.style.transform = 'translateX(-50%) translateY(100px)';
-    setTimeout(() => b.remove(), 400);
-  }
+  if (b) { b.style.transform = 'translateX(-50%) translateY(100px)'; setTimeout(() => b.remove(), 400); }
   localStorage.setItem('installBannerDismissed', Date.now());
 }
 
-window.addEventListener('appinstalled', () => {
-  dismissInstallBanner();
-});
+window.addEventListener('appinstalled', () => { dismissInstallBanner(); });
 
 // Service Worker
 if ("serviceWorker" in navigator) {

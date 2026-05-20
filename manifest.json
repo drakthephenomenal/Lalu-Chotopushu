@@ -1,10 +1,10 @@
 {
-  "id": "/Lalu-Chotopushu/",
+  "id": "/Gaudiya-/",
   "name": "Radha Naam Jap",
   "short_name": "Radha Jap",
   "description": "Radha Naam Jap Sadhana App — Daily naam jap counter and spiritual sadhana tracker",
-  "start_url": "/Lalu-Chotopushu/index.html",
-  "scope": "/Lalu-Chotopushu/",
+  "start_url": "/Gaudiya-/index.html",
+  "scope": "/Gaudiya-/",
   "display": "standalone",
   "background_color": "#060D1F",
   "theme_color": "#060D1F",
@@ -17,25 +17,25 @@
   ],
   "icons": [
     {
-      "src": "/Lalu-Chotopushu/icon-192.png",
+      "src": "/Gaudiya-/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/Lalu-Chotopushu/icon-192.png",
+      "src": "/Gaudiya-/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/Lalu-Chotopushu/icon-512.png",
+      "src": "/Gaudiya-/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/Lalu-Chotopushu/icon-512.png",
+      "src": "/Gaudiya-/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -43,7 +43,7 @@
   ],
   "screenshots": [
     {
-      "src": "/Lalu-Chotopushu/icon-512.png",
+      "src": "/Gaudiya-/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow",

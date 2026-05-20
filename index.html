@@ -1316,46 +1316,5 @@
     <script src="./panchangData.js"></script>
     <script src="./app.js"></script>
 
-  
-  <!-- ── GPS Permission Prompt ── -->
-  <div id="gpsPrompt" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(3,7,15,0.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);align-items:flex-end;justify-content:center;">
-    <div style="width:100%;max-width:480px;background:linear-gradient(180deg,#0A1628 0%,#060D1F 100%);border-radius:24px 24px 0 0;border-top:1px solid rgba(109,184,255,0.25);padding:28px 22px 36px;box-sizing:border-box;">
-      <div style="width:48px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:0 auto 22px;"></div>
-      <div style="text-align:center;margin-bottom:18px;">
-        <div style="font-size:48px;margin-bottom:10px;">📍</div>
-        <div style="font-size:19px;font-weight:bold;color:#fff;font-family:'EB Garamond','Georgia',serif;letter-spacing:0.5px;margin-bottom:6px;">Enable Location</div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.5);line-height:1.6;">Used for Brahma Muhurta &amp; Sandhya Kal times,<br>Panchang sunrise/sunset, and auspicious timings<br>based on your exact location.</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <button onclick="requestGPS(true)" style="width:100%;padding:15px;border-radius:14px;border:none;background:linear-gradient(135deg,#3a7bd5,#6DB8FF);color:#fff;font-size:15px;font-weight:bold;font-family:'Inter',sans-serif;cursor:pointer;letter-spacing:0.5px;">
-          📍 Allow Location Access
-        </button>
-        <button onclick="requestGPS(false)" style="width:100%;padding:13px;border-radius:14px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:rgba(255,255,255,0.45);font-size:13px;font-family:'Inter',sans-serif;cursor:pointer;">
-          Not Now
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── PWA Install Prompt ── -->
-  <div id="pwaPrompt" style="display:none;position:fixed;bottom:80px;left:12px;right:12px;z-index:9998;background:linear-gradient(135deg,#0A1628,#07122A);border:1px solid rgba(109,184,255,0.3);border-radius:18px;padding:16px 18px;box-shadow:0 8px 32px rgba(0,0,0,0.5);box-sizing:border-box;max-width:480px;margin:0 auto;">
-    <div style="display:flex;align-items:center;gap:14px;">
-      <img src="icon-192.png" style="width:44px;height:44px;border-radius:10px;flex-shrink:0;" alt="icon">
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:14px;font-weight:bold;color:#fff;font-family:'EB Garamond',serif;">Install Radha Naam Jap</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:2px;">Add to Home Screen for the best experience</div>
-      </div>
-      <button onclick="dismissPWA()" style="background:none;border:none;color:rgba(255,255,255,0.35);font-size:20px;cursor:pointer;padding:4px;line-height:1;flex-shrink:0;">✕</button>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:12px;">
-      <button onclick="installPWA()" style="flex:1;padding:11px;border-radius:11px;border:none;background:linear-gradient(135deg,#3a7bd5,#6DB8FF);color:#fff;font-size:13px;font-weight:bold;font-family:'Inter',sans-serif;cursor:pointer;">
-        📲 Install App
-      </button>
-      <button onclick="dismissPWA()" style="padding:11px 16px;border-radius:11px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:rgba(255,255,255,0.4);font-size:12px;font-family:'Inter',sans-serif;cursor:pointer;">
-        Later
-      </button>
-    </div>
-  </div>
-
-</body>
+  </body>
 </html>

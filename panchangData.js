@@ -100,9 +100,15 @@ const _PAKSHA            = { shukla: 'Shukla Paksha', krishna: 'Krishna Paksha' 
 const _PAKSHA_BN         = { shukla: 'শুক্ল পক্ষ',   krishna: 'কৃষ্ণ পক্ষ' };
 
 // ─── ADHIK MAAS WINDOWS ─────────────────────────────────────────────
-// Verified dates matching ISKCON / Vaishnava calendar
+// Verified dates matching ISKCON / Vaishnava calendar (Dhaka coordinates)
+// 2026: Adhik Ashadha (Purushottama Maas)
+//   Begins: Jun 18, 2026 (after sunrise) — Ashadha Shukla Pratipada starts
+//   Ends  : Jul 16, 2026 — Adhik Ashadha Amavasya ends; Nija Ashadha begins Jul 17
+//   Adhik Ekadashis inside this window:
+//     Padmini  Ekadashi (Shukla) : Jun 26, 2026
+//     Parama   Ekadashi (Krishna): Jul 10, 2026 — fast moved to Jul 11 (Trisparsha Mahadvadashi)
 const _ADHIK_MAAS_WINDOWS = [
-  { start: '2026-05-17', end: '2026-06-14' },
+  { start: '2026-06-18', end: '2026-07-16' }, // Adhik Ashadha 2026 (corrected)
   { start: '2029-07-18', end: '2029-08-16' },
   { start: '2032-09-01', end: '2032-09-29' },
 ];

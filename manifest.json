@@ -11,7 +11,10 @@
   "orientation": "portrait",
   "lang": "hi",
   "dir": "ltr",
-  "categories": ["lifestyle", "spirituality"],
+  "categories": [
+    "lifestyle",
+    "spirituality"
+  ],
   "icons": [
     {
       "src": "/Lalu-Chotopushu/icon-192.png",

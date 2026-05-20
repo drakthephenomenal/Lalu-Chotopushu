@@ -6282,23 +6282,35 @@ function _resolveEkFasting(ek, lat, lng, name) {
 // The two Adhik Ekadashis fall inside this window:
 //   Padmini  (Shukla): Jun 26, 2026
 //   Parama   (Krishna): Jul 10, 2026  (Trisparsha Mahadvadashi — fast Jul 11)
-if (typeof _ADHIK_MAAS_WINDOWS === "undefined") {
-  var _ADHIK_MAAS_WINDOWS = [
-    { start: "2026-06-18", end: "2026-07-16" }, // Adhik Ashadha 2026
-  ];
-}
-if (typeof _getAdhikMaasWindow === "undefined") {
-  var _getAdhikMaasWindow = function(dateStr) {
-    return (_ADHIK_MAAS_WINDOWS || []).find(function(w) {
-      return dateStr >= w.start && dateStr <= w.end;
-    }) || null;
-  };
-}
-if (typeof isAdhikMaasDate === "undefined") {
-  var isAdhikMaasDate = function(dateStr) {
-    return !!_getAdhikMaasWindow(dateStr);
-  };
-}
+// Fallback definitions (in case panchangData.js did not provide them).
+// Wrapped in an IIFE so `var` declarations don't clash with the `const`
+// declarations already made by panchangData.js at script scope.
+(function () {
+  if (typeof window._ADHIK_MAAS_WINDOWS === "undefined" &&
+      typeof _ADHIK_MAAS_WINDOWS === "undefined") {
+    window._ADHIK_MAAS_WINDOWS = [
+      { start: "2026-06-18", end: "2026-07-16" }, // Adhik Ashadha 2026
+    ];
+  }
+  if (typeof window._getAdhikMaasWindow === "undefined" &&
+      typeof _getAdhikMaasWindow === "undefined") {
+    window._getAdhikMaasWindow = function (dateStr) {
+      var wins = (typeof _ADHIK_MAAS_WINDOWS !== "undefined")
+        ? _ADHIK_MAAS_WINDOWS : window._ADHIK_MAAS_WINDOWS || [];
+      return wins.find(function (w) {
+        return dateStr >= w.start && dateStr <= w.end;
+      }) || null;
+    };
+  }
+  if (typeof window.isAdhikMaasDate === "undefined" &&
+      typeof isAdhikMaasDate === "undefined") {
+    window.isAdhikMaasDate = function (dateStr) {
+      var fn = (typeof _getAdhikMaasWindow !== "undefined")
+        ? _getAdhikMaasWindow : window._getAdhikMaasWindow;
+      return !!fn(dateStr);
+    };
+  }
+})();
 
 // Returns Gregorian month index adjusted for Adhik Maas lunar shift.
 // Logic: map the Ekadashi date to its LUNAR month name by using the

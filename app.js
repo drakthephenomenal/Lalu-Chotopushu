@@ -4508,6 +4508,71 @@ function _cleanLegacyEkadashiOccasions() {
   App.S.occasions = occ;
 }
 
+// ── Migrate stored Ekadashi names to ISKCON / Drik Panchang convention ──
+// Older versions of the app stored names like "Devshayani", "Shravana Putrada",
+// "Aja", "Papankusha", "Devutthana", "Nirjala", "Shattila", "Jaya", etc.
+// ISKCON / Drik Panchang uses: Sayana, Pavitropana, Annada, Pashankusha,
+// Utthana, Pandava Nirjala, Shat Tila, Bhaimi, etc. The lookup table in
+// _EK_NAMES_*_LUNAR is already the ISKCON convention — this migration re-derives
+// each saved Ekadashi's name from its startDate + paksha and rewrites both the
+// customEkadashi entry and the matching occasions{} label.
+function _migrateEkadashiNamesToIskcon() {
+  if (typeof _ekadashiNameFor !== "function") return;
+  if (App.S._ekIskconNamesMigratedV1) return; // run once per device
+  const eks = App.S.customEkadashi || [];
+  const occ = App.S.occasions || {};
+  const parampara = App.S.ekParampara || "smarta";
+  let changed = 0;
+  eks.forEach((ek) => {
+    if (typeof ek !== "object" || !ek.startDate) return;
+    const paksha = ek.paksha || "shukla";
+    let newName = "";
+    try {
+      const d = new Date(ek.startDate + "T12:00:00");
+      newName = _ekadashiNameFor(d, paksha);
+    } catch (e) { return; }
+    if (!newName || newName === "Ekadashi") return;
+    const oldName = ek.name || "";
+    if (oldName === newName) return;
+    // Find the occasions key that this entry wrote (fasting date)
+    const sd = ek.startDate;
+    const ed = ek.endDate || sd;
+    let fastingDate = sd;
+    if (parampara === "vaishnava" && ek.startTime) {
+      const [h, m] = ek.startTime.split(":").map(Number);
+      if (h * 60 + m >= 264) fastingDate = ed;
+    } else if (ek.startTime) {
+      const [h, m] = ek.startTime.split(":").map(Number);
+      if (h * 60 + m >= 360) fastingDate = ed;
+    }
+    ek.name = newName;
+    // Rewrite the occasions label if it still references the old name or generic
+    const existing = occ[fastingDate] || "";
+    if (
+      !existing ||
+      (oldName && existing.includes(oldName)) ||
+      existing.includes("Ekadashi") ||
+      existing.includes("Mahadvadashi")
+    ) {
+      const pakshaLabel = paksha === "shukla" ? " ☀️ Shukla" : " 🌙 Krishna";
+      const sf = ek.startTime ? _fmtTime12(ek.startTime) : "";
+      const ef = ek.endTime ? _fmtTime12(ek.endTime) : "";
+      const isViddha = parampara === "vaishnava" && fastingDate === ed && ek.startTime;
+      const timeNote = isViddha
+        ? " (Mahadvadashi · Arunodaya Viddha)"
+        : sf ? " " + sf + (ef ? "–" + ef : "") : "";
+      occ[fastingDate] = newName + pakshaLabel + timeNote;
+    }
+    changed++;
+  });
+  App.S.customEkadashi = eks;
+  App.S.occasions = occ;
+  App.S._ekIskconNamesMigratedV1 = true;
+  if (changed > 0 && typeof toast === "function") {
+    setTimeout(() => toast("📅 " + changed + " Ekadashi names updated to ISKCON 🙏"), 3500);
+  }
+}
+
 async function fbPushDelta() {
   return fbPushFull();
 }
@@ -8448,6 +8513,8 @@ window.addEventListener("load", async () => {
   buildPwaManifest();
   // Migrate any legacy two-date Ekadashi occasions to single fasting date
   _cleanLegacyEkadashiOccasions();
+  // Re-derive stored Ekadashi names to ISKCON / Drik Panchang convention
+  _migrateEkadashiNamesToIskcon();
   // Persist the cleaned occasions immediately
   App.save();
   fbDebouncedPush();

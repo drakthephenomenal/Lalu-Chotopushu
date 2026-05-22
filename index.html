@@ -47,10 +47,9 @@
         var circ  = 2 * Math.PI * radius;
         var reps  = Math.ceil(circ / unitW) + 1;
         var anglePerUnit = unitW / radius;
-        var endAngle = rotOffset + 2 * Math.PI - anglePerUnit * 0.5;
         for (var i = 0; i < reps; i++) {
           var midAngle = rotOffset + i * anglePerUnit;
-          if (midAngle > endAngle) break;
+          if (midAngle > rotOffset + 2 * Math.PI) break;
           ctx.save();
           ctx.translate(cx + radius * Math.cos(midAngle), cy + radius * Math.sin(midAngle));
           ctx.rotate(midAngle + Math.PI / 2);
@@ -1230,12 +1229,38 @@
 
 <!-- LYRICS MODAL -->
 <div class="lmo" id="lmo" onclick="if(event.target===this)closeLyrics()">
+  <!-- water ripple rings -->
+  <div class="lmo-ripple r1"></div>
+  <div class="lmo-ripple r2"></div>
+  <div class="lmo-ripple r3"></div>
+
   <div class="lmd">
-    <div class="lmh">
-      <div class="lmt" id="lmTitle"></div>
-      <button class="lmx" onclick="closeLyrics()">✕ Close</button>
+    <!-- close -->
+    <button class="lmx" onclick="closeLyrics()">✕</button>
+
+    <!-- title -->
+    <div class="lmt" id="lmTitle"></div>
+
+    <!-- verse counter -->
+    <div class="lm-vctr" id="lmVCtr"></div>
+
+    <!-- verse card -->
+    <div class="lm-card-wrap" id="lmb">
+      <div class="lm-water-card" id="lmCard">
+        <div class="lm-card-inner">
+          <pre class="lyr" id="lyrBody"></pre>
+        </div>
+      </div>
     </div>
-    <div class="lmb" id="lmb"><pre class="lyr" id="lyrBody"></pre></div>
+
+    <!-- dots -->
+    <div class="lm-dots" id="lmDots"></div>
+
+    <!-- nav -->
+    <div class="lm-nav">
+      <button class="lm-nav-btn" id="lmPrev" onclick="verseNav(-1)">&#8592;</button>
+      <button class="lm-nav-btn" id="lmNext" onclick="verseNav(1)">&#8594;</button>
+    </div>
   </div>
 </div>
 

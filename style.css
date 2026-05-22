@@ -335,14 +335,115 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   color:var(--rl);font-size:11px;cursor:pointer;padding:3px 8px;flex-shrink:0;}
 .sbtn.l{background:rgba(255,215,0,0.12);color:var(--gold);font-size:15px;width:auto;padding:0 10px;}
 
-.lmo{position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:400;display:none;align-items:flex-end;justify-content:center;}
+/* ── Lyrics Modal — Watery Card Reader ── */
+.lmo{position:fixed;inset:0;background:rgba(4,10,30,0.88);backdrop-filter:blur(6px);z-index:400;display:none;align-items:center;justify-content:center;overflow:hidden;}
 .lmo.show{display:flex;}
-.lmd{background:var(--bc);border-radius:22px 22px 0 0;padding:16px 16px 44px;width:100%;max-height:90vh;display:flex;flex-direction:column;border-top:2px solid rgba(109,184,255,0.3);}
-.lmh{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:10px;}
-.lmt{font-family:'Hind Siliguri','Tiro Devanagari Hindi',serif;font-size:14px;color:var(--gold);flex:1;font-weight:700;line-height:1.5;}
-.lmx{background:rgba(255,255,255,0.08);border:none;border-radius:9px;padding:7px 14px;color:var(--td);font-size:13px;cursor:pointer;flex-shrink:0;font-family:'Inter',sans-serif;}
-.lmb{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:2px;}
-.lyr{font-family:'Hind Siliguri','Tiro Devanagari Hindi',serif;font-size:15.5px;color:var(--tl);line-height:2.1;white-space:pre-wrap;letter-spacing:0.3px;}
+
+/* Ripple rings in background */
+.lmo-ripple{position:absolute;border-radius:50%;border:1.5px solid rgba(109,184,255,0.18);pointer-events:none;animation:lmoRipple 4s ease-out infinite;}
+.lmo-ripple.r1{width:260px;height:260px;animation-delay:0s;}
+.lmo-ripple.r2{width:420px;height:420px;animation-delay:1.2s;border-color:rgba(109,184,255,0.10);}
+.lmo-ripple.r3{width:580px;height:580px;animation-delay:2.4s;border-color:rgba(109,184,255,0.06);}
+@keyframes lmoRipple{0%{opacity:0;transform:scale(0.7)}40%{opacity:1}100%{opacity:0;transform:scale(1.15)}}
+
+/* Modal container */
+.lmd{position:relative;display:flex;flex-direction:column;align-items:center;width:min(92vw,420px);max-height:92vh;padding:0 0 16px;z-index:2;}
+
+/* Close button */
+.lmx{position:absolute;top:-4px;right:0;background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.15);border-radius:50%;width:34px;height:34px;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;font-family:'Inter',sans-serif;transition:background 0.15s;}
+.lmx:active{background:rgba(255,255,255,0.22);}
+
+/* Title */
+.lmt{font-family:'Hind Siliguri','Tiro Devanagari Hindi',serif;font-size:13px;color:rgba(109,184,255,0.9);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;text-align:center;margin-bottom:6px;padding:0 40px;}
+
+/* Verse counter */
+.lm-vctr{font-family:'Inter',sans-serif;font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:2px;text-align:center;margin-bottom:14px;}
+
+/* Water card wrapper */
+.lm-card-wrap{width:100%;display:flex;justify-content:center;padding:4px 2px;}
+
+/* THE WATERY CARD */
+.lm-water-card{
+  width:100%;
+  background:#ffffff;
+  border-radius:22px;
+  position:relative;
+  overflow:hidden;
+  box-shadow:
+    0 0 0 1.5px rgba(109,184,255,0.35),
+    0 8px 32px rgba(30,80,200,0.28),
+    0 2px 8px rgba(109,184,255,0.18),
+    inset 0 1px 0 rgba(255,255,255,0.9);
+  animation:cardFloat 5s ease-in-out infinite;
+}
+@keyframes cardFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+
+/* Water shimmer overlay */
+.lm-water-card::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg,rgba(109,184,255,0.10) 0%,transparent 50%,rgba(30,120,255,0.06) 100%);
+  pointer-events:none;
+  z-index:1;
+}
+/* Liquid wave at bottom */
+.lm-water-card::after{
+  content:'';
+  position:absolute;
+  bottom:-2px;left:-10%;
+  width:120%;height:28px;
+  background:rgba(109,184,255,0.12);
+  border-radius:50% 50% 0 0;
+  pointer-events:none;
+  z-index:1;
+  animation:waveShift 3s ease-in-out infinite alternate;
+}
+@keyframes waveShift{from{transform:translateX(-4px)}to{transform:translateX(4px)}}
+
+/* Inner padding */
+.lm-card-inner{position:relative;z-index:2;padding:28px 24px 34px;max-height:58vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.lm-card-inner::-webkit-scrollbar{width:3px;}
+.lm-card-inner::-webkit-scrollbar-track{background:transparent;}
+.lm-card-inner::-webkit-scrollbar-thumb{background:rgba(109,184,255,0.3);border-radius:4px;}
+
+/* Lyrics text — BLACK on WHITE */
+.lyr{
+  font-family:'Hind Siliguri','Tiro Devanagari Hindi',serif;
+  font-size:20px;
+  color:#111;
+  line-height:2.2;
+  white-space:pre-wrap;
+  letter-spacing:0.3px;
+  text-align:center;
+  width:100%;
+}
+
+/* Dots */
+.lm-dots{display:flex;justify-content:center;gap:6px;padding:14px 0 4px;flex-wrap:wrap;}
+.lm-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.18);cursor:pointer;transition:all 0.2s;flex-shrink:0;}
+.lm-dot.active{background:var(--a2);transform:scale(1.4);}
+
+/* Nav buttons */
+.lm-nav{display:flex;gap:14px;margin-top:12px;}
+.lm-nav-btn{
+  width:56px;height:56px;border-radius:50%;
+  border:1.5px solid rgba(109,184,255,0.35);
+  background:rgba(255,255,255,0.07);
+  backdrop-filter:blur(4px);
+  color:#fff;font-size:20px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.15s;
+  box-shadow:0 4px 16px rgba(30,80,200,0.2);
+}
+.lm-nav-btn:active{background:rgba(109,184,255,0.22);transform:scale(0.93);}
+.lm-nav-btn:disabled{opacity:0.25;cursor:default;}
+
+/* Slide animations */
+.lyr-slide-enter-left{animation:slideInLeft 0.22s ease;}
+.lyr-slide-enter-right{animation:slideInRight 0.22s ease;}
+@keyframes slideInLeft{from{opacity:0;transform:translateX(36px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideInRight{from{opacity:0;transform:translateX(-36px)}to{opacity:1;transform:translateX(0)}}
 
 /* 28 NAMES */
 #v28{background:radial-gradient(ellipse at top,#091A30 0%,var(--bd) 60%);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}

@@ -1189,18 +1189,9 @@ function applyHKLangLabels(lang) {
   if (newLangLbl) newLangLbl.textContent = isBn ? "বাংলা" : "हिंदी";
   // 4. Daily target heading
   const dtLbl = document.getElementById("hkDailyTargetLabel");
-  if (dtLbl) {
-    const isG = App.S.gaudiyaMode || false;
-    if (isG) {
-      dtLbl.textContent = isBn
-        ? "🪷 হরে কৃষ্ণ মহামন্ত্র Daily Target"
-        : "🪷 हरे कृष्ण महामंत्र Daily Target";
-    } else {
-      dtLbl.textContent = isBn
-        ? "🪷 হরে কৃষ্ণ মহামন্ত্র Targets"
-        : "🪷 हरे कृष्ण महामंत्र Targets";
-    }
-  }
+  if (dtLbl) dtLbl.textContent = isBn
+    ? "🪷 হরে কৃষ্ণ মহামন্ত্র Targets"
+    : "🪷 हरे कृष्ण महामंत्र Targets";
   // 5. Stats card lotus title
   const statsLotus = document.getElementById("hkcTitleLotus");
   if (statsLotus) statsLotus.textContent = isBn ? "🪷 হরে কৃষ্ণ" : "🪷 हरे कृष्ण";
@@ -1436,32 +1427,6 @@ function syncTargetMalaToJap(prefix) {
   if (dispEl) dispEl.textContent = malas;
 }
 
-// ── Lifetime crore ↔ jap sync ──
-function syncLtCroreToJap() {
-  const croreEl = document.getElementById("ltCroreIn");
-  const crore = parseFloat((croreEl && croreEl.value) || 0) || 0;
-  const jap = crore > 0 ? Math.round(crore * 10000000) : 0;
-  const japEl = document.getElementById("ltIn");
-  const malaEl = document.getElementById("ltMalaIn");
-  const dispEl = document.getElementById("ltMala");
-  const ms = App.S.ms || 108;
-  if (japEl) japEl.value = jap > 0 ? jap : "";
-  if (malaEl) malaEl.value = jap > 0 ? Math.round(jap / ms) : "";
-  if (dispEl) dispEl.textContent = jap > 0 ? Math.ceil(jap / ms).toLocaleString() : "0";
-}
-function syncLtJapToCrore() {
-  const japEl = document.getElementById("ltIn");
-  const malaEl = document.getElementById("ltMalaIn");
-  const croreEl = document.getElementById("ltCroreIn");
-  if (!croreEl) return;
-  const ms = App.S.ms || 108;
-  // If jap field was edited directly, derive jap from it; else from malas
-  const jap = japEl && japEl.value
-    ? parseInt(japEl.value) || 0
-    : (malaEl && malaEl.value ? (parseInt(malaEl.value) || 0) * ms : 0);
-  croreEl.value = jap > 0 ? +(jap / 10000000).toFixed(4) : "";
-}
-
 // ── Init jap mode UI on page load ──
 function initJapModeUI() {
   // Normalize: in Gaudiya mode only HK is allowed; otherwise HK is not allowed
@@ -1682,8 +1647,6 @@ function sv(id, btn) {
     const ms = App.S.ms || 108;
     if (App.S.dt) document.getElementById("dtIn").value = App.S.dt;
     if (App.S.lt) document.getElementById("ltIn").value = App.S.lt;
-    const ltCroreEl = document.getElementById("ltCroreIn");
-    if (ltCroreEl) ltCroreEl.value = App.S.lt > 0 ? +(App.S.lt / 10000000).toFixed(4) : "";
     document.getElementById("msIn").value = ms;
     // Populate mala equivalents for Radha targets
     const dtMalaInEl = document.getElementById("dtMalaIn");
@@ -1830,7 +1793,6 @@ function tgs(k) {
     App.save();
     fbDebouncedPush();
     uStats();
-    applyHkLang();
     renderHistory && typeof renderHistory === "function" && renderHistory();
     toast(App.S.gaudiyaMode ? "🪷 Gaudiya Mode ON" : "🪷 Gaudiya Mode OFF");
     return;
@@ -8662,26 +8624,87 @@ window.addEventListener("load", function () {
 
 // ═══════════════════════════════════════════════════════
 
-// ── showLyrics function ──
+// ── showLyrics — watery card swipe reader ──
+let _verses = [], _verseIdx = 0;
+
 function showLyrics(id) {
   const ly = getEffectiveLyrics(id);
-  if (!ly) {
-    toast("পাঠ্য পাওয়া যায়নি 🙏");
-    return;
-  }
-  const allSt = [
-    ...STLIST,
-    ...(_globalStotrams || []),
-    ...(App.S.customSt || []),
-  ];
-  const nm = allSt.find((x) => x.id === id);
+  if (!ly) { toast("পাঠ্য পাওয়া যায়নি 🙏"); return; }
+
+  // Split by blank lines into verses
+  _verses = ly.split(/\n{2,}/).map(b => b.trim()).filter(b => b.length > 0);
+  _verseIdx = 0;
+
+  const allSt = [...STLIST, ...(_globalStotrams||[]), ...(App.S.customSt||[])];
+  const nm = allSt.find(x => x.id === id);
   document.getElementById("lmTitle").textContent = nm ? nm.name : id;
-  document.getElementById("lyrBody").textContent = ly;
+
+  _renderVerse(0, null);
+  _buildDots();
   document.getElementById("lmo").classList.add("show");
-  document.getElementById("lmb").scrollTop = 0;
+  _initSwipeHandler();
 }
+
+function _renderVerse(idx, dir) {
+  const body = document.getElementById("lyrBody");
+  const ctr  = document.getElementById("lmVCtr");
+  const prev = document.getElementById("lmPrev");
+  const next = document.getElementById("lmNext");
+
+  body.textContent = _verses[idx] || "";
+
+  body.classList.remove("lyr-slide-enter-left","lyr-slide-enter-right");
+  if (dir === 1)  { void body.offsetWidth; body.classList.add("lyr-slide-enter-left"); }
+  if (dir === -1) { void body.offsetWidth; body.classList.add("lyr-slide-enter-right"); }
+
+  ctr.textContent = "VERSE " + (idx + 1) + " / " + _verses.length;
+  prev.disabled = idx === 0;
+  next.disabled = idx === _verses.length - 1;
+
+  document.querySelectorAll(".lm-dot").forEach((d,i) =>
+    d.classList.toggle("active", i === idx)
+  );
+
+  // Scroll card inner to top
+  const inner = document.querySelector(".lm-card-inner");
+  if (inner) inner.scrollTop = 0;
+}
+
+function _buildDots() {
+  const dotsEl = document.getElementById("lmDots");
+  dotsEl.innerHTML = "";
+  if (_verses.length <= 25) {
+    _verses.forEach((_, i) => {
+      const d = document.createElement("div");
+      d.className = "lm-dot" + (i === 0 ? " active" : "");
+      d.onclick = () => { const delta = i - _verseIdx; _verseIdx = i; _renderVerse(i, delta > 0 ? 1 : -1); };
+      dotsEl.appendChild(d);
+    });
+  }
+}
+
+function verseNav(delta) {
+  const newIdx = _verseIdx + delta;
+  if (newIdx < 0 || newIdx >= _verses.length) return;
+  _verseIdx = newIdx;
+  _renderVerse(_verseIdx, delta > 0 ? 1 : -1);
+}
+
+function _initSwipeHandler() {
+  const area = document.getElementById("lmb");
+  const fresh = area.cloneNode(true);
+  area.parentNode.replaceChild(fresh, area);
+  let tx = 0;
+  fresh.addEventListener("touchstart", e => { tx = e.touches[0].clientX; }, {passive:true});
+  fresh.addEventListener("touchend",   e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 40) verseNav(dx < 0 ? 1 : -1);
+  }, {passive:true});
+}
+
 function closeLyrics() {
   document.getElementById("lmo").classList.remove("show");
+  _verses = []; _verseIdx = 0;
 }
 
 // ═══════════════════════════════════════════════════════

@@ -347,7 +347,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 @keyframes lmoRipple{0%{opacity:0;transform:scale(0.7)}40%{opacity:1}100%{opacity:0;transform:scale(1.15)}}
 
 /* Modal container */
-.lmd{position:relative;display:flex;flex-direction:column;align-items:center;width:min(92vw,420px);max-height:92vh;padding:0 0 16px;z-index:2;}
+.lmd{position:relative;display:flex;flex-direction:column;align-items:center;width:min(99vw,480px);height:96vh;max-height:96vh;padding:0 0 12px;z-index:2;}
 
 /* Close button */
 .lmx{position:absolute;top:-4px;right:0;background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.15);border-radius:50%;width:34px;height:34px;color:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;font-family:'Inter',sans-serif;transition:background 0.15s;}
@@ -360,7 +360,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .lm-vctr{font-family:'Inter',sans-serif;font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:2px;text-align:center;margin-bottom:14px;}
 
 /* Water card wrapper */
-.lm-card-wrap{width:100%;display:flex;justify-content:center;padding:4px 2px;}
+.lm-card-wrap{width:100%;flex:1;display:flex;justify-content:center;padding:4px 2px;min-height:0;}
 
 /* THE WATERY CARD */
 .lm-water-card{
@@ -369,6 +369,10 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   border-radius:22px;
   position:relative;
   overflow:hidden;
+  width:100%;
+  height:100%;
+  display:flex;
+  flex-direction:column;
   box-shadow:
     0 0 0 1.5px rgba(109,184,255,0.35),
     0 8px 32px rgba(30,80,200,0.28),
@@ -402,7 +406,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 @keyframes waveShift{from{transform:translateX(-4px)}to{transform:translateX(4px)}}
 
 /* Inner padding */
-.lm-card-inner{position:relative;z-index:2;padding:28px 24px 34px;max-height:58vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.lm-card-inner{position:relative;z-index:2;padding:28px 24px 34px;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;align-items:center;justify-content:center;}
 .lm-card-inner::-webkit-scrollbar{width:3px;}
 .lm-card-inner::-webkit-scrollbar-track{background:transparent;}
 .lm-card-inner::-webkit-scrollbar-thumb{background:rgba(109,184,255,0.3);border-radius:4px;}

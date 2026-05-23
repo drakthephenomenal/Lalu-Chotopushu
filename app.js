@@ -8632,11 +8632,9 @@ function showLyrics(id) {
   if (!ly) { toast("পাঠ্য পাওয়া যায়নি 🙏"); return; }
 
   _currentStotramId = id;
-
   // Split by blank lines into verses
   _verses = ly.split(/\n{2,}/).map(b => b.trim()).filter(b => b.length > 0);
   _verseIdx = 0;
-
   _hcjStopAudio();
 
   const allSt = [...STLIST, ...(_globalStotrams||[]), ...(App.S.customSt||[])];
@@ -8672,8 +8670,6 @@ function _renderVerse(idx, dir) {
   // Scroll card inner to top
   const inner = document.querySelector(".lm-card-inner");
   if (inner) inner.scrollTop = 0;
-
-  // HCJ audio player
   _hcjRenderPlayer(idx);
 }
 
@@ -8717,111 +8713,63 @@ function closeLyrics() {
 }
 
 // ═══════════════════════════════════════════════════════
+
 // HCJ AUDIO ENGINE
-// ═══════════════════════════════════════════════════════
-var _hcjAudio = null;
-var _hcjMode  = "manual";
-var _hcjPlaying = false;
-
-function _hcjAudioPath(i) { return "https://github.com/drakthephenomenal/Lalu-Chotopushu/releases/download/v1.0-audio/hcj_" + (i + 1) + ".mp3"; }
-
+var _hcjAudio = null, _hcjMode = "manual", _hcjPlaying = false;
+function _hcjAudioPath(i) { return "https://github.com/drakthephenomenal/Lalu-Chotopushu/releases/download/v1.0-audio/hcj_"+(i+1)+".mp3"; }
 function _hcjStopAudio() {
-  if (_hcjAudio) { _hcjAudio.pause(); _hcjAudio.onended = null; _hcjAudio = null; }
-  _hcjPlaying = false;
-  _hcjSyncUI();
+  if (_hcjAudio) { _hcjAudio.pause(); _hcjAudio.onended=null; _hcjAudio=null; }
+  _hcjPlaying=false; _hcjSyncUI();
 }
-
 function _hcjPlayVerse(idx) {
   _hcjStopAudio();
   _hcjAudio = new Audio(_hcjAudioPath(idx));
-  _hcjAudio.loop = (_hcjMode === "loop");
+  _hcjAudio.loop = (_hcjMode==="loop");
   _hcjAudio.onended = function() {
-    if (_hcjMode === "continue") {
-      if (idx + 1 < _verses.length) {
-        _verseIdx = idx + 1;
-        _renderVerse(_verseIdx, 1);
-        _hcjPlayVerse(_verseIdx);
-      } else { _hcjPlaying = false; _hcjSyncUI(); }
-    } else { _hcjPlaying = false; _hcjSyncUI(); }
+    if (_hcjMode==="continue" && idx+1<_verses.length) { _verseIdx=idx+1; _renderVerse(_verseIdx,1); _hcjPlayVerse(_verseIdx); }
+    else { _hcjPlaying=false; _hcjSyncUI(); }
   };
-  _hcjAudio.play().then(function(){ _hcjPlaying = true; _hcjSyncUI(); })
-    .catch(function(){ _hcjPlaying = false; _hcjSyncUI(); });
+  _hcjAudio.play().then(function(){ _hcjPlaying=true; _hcjSyncUI(); }).catch(function(){ _hcjPlaying=false; _hcjSyncUI(); });
 }
-
-function _hcjTogglePlay() {
-  if (_hcjPlaying) { _hcjStopAudio(); } else { _hcjPlayVerse(_verseIdx); }
-}
-
-function _hcjSetMode(mode) {
-  _hcjMode = mode;
-  if (_hcjAudio) _hcjAudio.loop = (mode === "loop");
-  _hcjSyncUI();
-}
-
+function _hcjTogglePlay() { if (_hcjPlaying) _hcjStopAudio(); else _hcjPlayVerse(_verseIdx); }
+function _hcjSetMode(mode) { _hcjMode=mode; if (_hcjAudio) _hcjAudio.loop=(mode==="loop"); _hcjSyncUI(); }
 function _hcjGoToVerse(n) {
-  var idx = parseInt(n) - 1;
-  if (isNaN(idx) || idx < 0 || idx >= _verses.length) return;
-  var was = _hcjPlaying;
-  _hcjStopAudio();
-  _verseIdx = idx;
-  _renderVerse(idx, 0);
-  if (was) _hcjPlayVerse(idx);
+  var i=parseInt(n)-1; if (isNaN(i)||i<0||i>=_verses.length) return;
+  var was=_hcjPlaying; _hcjStopAudio(); _verseIdx=i; _renderVerse(i,0); if (was) _hcjPlayVerse(i);
 }
-
 function _hcjSyncUI() {
-  var pl = document.getElementById("hcj-play-btn");
-  if (!pl) return;
-  pl.textContent = _hcjPlaying ? "\u23F8 \u09AC\u09BF\u09B0\u09A4\u09BF" : "\u25B6 \u09AC\u09BE\u099C\u09BE\u0993";
-  pl.classList.toggle("hcj-playing", _hcjPlaying);
-  ["loop","continue","manual"].forEach(function(m) {
-    var b = document.getElementById("hcj-mode-" + m);
-    if (b) b.classList.toggle("hcj-mode-active", _hcjMode === m);
-  });
+  var pl=document.getElementById("hcj-play-btn"); if (!pl) return;
+  pl.textContent=_hcjPlaying?"\u23f8 \u09ac\u09bf\u09b0\u09a4\u09bf":"\u25b6 \u09ac\u09be\u099c\u09be\u0993";
+  pl.classList.toggle("hcj-playing",_hcjPlaying);
+  ["loop","continue","manual"].forEach(function(m){ var b=document.getElementById("hcj-mode-"+m); if(b) b.classList.toggle("hcj-mode-active",_hcjMode===m); });
 }
-
 function _hcjRenderPlayer(idx) {
-  var oldW = document.getElementById("hcj-player-wrap");
-  if (oldW) oldW.remove();
-  if (_currentStotramId !== "hcj") return;
-  var inner = document.querySelector(".lm-card-inner");
-  if (!inner) return;
-  var wrap = document.createElement("div");
-  wrap.id = "hcj-player-wrap";
-  var lC = _hcjMode==="loop"     ? " hcj-mode-active":"";
-  var cC = _hcjMode==="continue" ? " hcj-mode-active":"";
-  var mC = _hcjMode==="manual"   ? " hcj-mode-active":"";
-  var pC = _hcjPlaying           ? " hcj-playing":"";
-  var pL = _hcjPlaying ? "\u23F8 \u09AC\u09BF\u09B0\u09A4\u09BF" : "\u25B6 \u09AC\u09BE\u099C\u09BE\u0993";
-  var pD = idx===0 ? " disabled":"";
-  var nD = idx===_verses.length-1 ? " disabled":"";
-  wrap.innerHTML =
-    '<div class="hcj-player">' +
-      '<div class="hcj-mode-row">' +
-        '<button id="hcj-mode-loop" class="hcj-mode-btn'+lC+'" onclick="_hcjSetMode('loop')">' +
-          '\uD83D\uDD01 \u09B2\u09C1\u09AA</button>' +
-        '<button id="hcj-mode-continue" class="hcj-mode-btn'+cC+'" onclick="_hcjSetMode('continue')">' +
-          '\u23E9 \u0995\u09CD\u09B0\u09AE\u09BE\u0997\u09A4</button>' +
-        '<button id="hcj-mode-manual" class="hcj-mode-btn'+mC+'" onclick="_hcjSetMode('manual')">' +
-          '\u270B \u09AE\u09CD\u09AF\u09BE\u09A8\u09C1\u09AF\u09BC\u09BE\u09B2</button>' +
-      '</div>' +
-      '<div class="hcj-ctrl-row">' +
-        '<button class="hcj-nav-btn"'+pD+' onclick="verseNav(-1)">&#9664;</button>' +
-        '<button id="hcj-play-btn" class="hcj-play-btn'+pC+'" onclick="_hcjTogglePlay()">'+pL+'</button>' +
-        '<button class="hcj-nav-btn"'+nD+' onclick="verseNav(1)">&#9654;</button>' +
-      '</div>' +
-      '<div class="hcj-seek-row">' +
-        '<span class="hcj-seek-label">\u09AA\u09A6 \u09A8\u0982:</span>' +
-        '<input id="hcj-seek-input" type="number" min="1" max="'+_verses.length+'" value="'+(idx+1)+'" class="hcj-seek-input"' +
-          ' onkeydown="if(event.key==='Enter')_hcjGoToVerse(this.value)">' +
-        '<span class="hcj-seek-label">/ '+_verses.length+'</span>' +
-        '<button class="hcj-go-btn" onclick="_hcjGoToVerse(document.getElementById('hcj-seek-input').value)">' +
-          '\u09AF\u09BE\u0993</button>' +
-      '</div>' +
-    '</div>';
-  inner.appendChild(wrap);
+  var ow=document.getElementById("hcj-player-wrap"); if(ow) ow.remove();
+  if (_currentStotramId!=="hcj") return;
+  var ci=document.querySelector(".lm-card-inner"); if (!ci) return;
+  var wrap=document.createElement("div"); wrap.id="hcj-player-wrap";
+  var lC=_hcjMode==="loop"?" hcj-mode-active":"", cC=_hcjMode==="continue"?" hcj-mode-active":"", mC=_hcjMode==="manual"?" hcj-mode-active":"";
+  var pC=_hcjPlaying?" hcj-playing":"", pL=_hcjPlaying?"\u23f8 \u09ac\u09bf\u09b0\u09a4\u09bf":"\u25b6 \u09ac\u09be\u099c\u09be\u0993";
+  var mr=document.createElement("div"); mr.className="hcj-mode-row";
+  var mk=["loop","continue","manual"],mc=[lC,cC,mC],mt=["\uD83D\uDD01 \u09b2\u09c1\u09aa","\u23e9 \u0995\u09cd\u09b0\u09ae\u09be\u0997\u09a4","\u270b \u09ae\u09cd\u09af\u09be\u09a8\u09c1\u09af\u09bc\u09be\u09b2"];
+  for(var i=0;i<3;i++){(function(a,b,c){var btn=document.createElement("button");btn.id="hcj-mode-"+a;btn.className="hcj-mode-btn"+b;btn.textContent=c;btn.onclick=function(){_hcjSetMode(a);};mr.appendChild(btn);})(mk[i],mc[i],mt[i]);}
+  var cr=document.createElement("div"); cr.className="hcj-ctrl-row";
+  var pb=document.createElement("button"); pb.className="hcj-nav-btn"; pb.innerHTML="&#9664;"; pb.disabled=(idx===0); pb.onclick=function(){verseNav(-1);};
+  var plb=document.createElement("button"); plb.id="hcj-play-btn"; plb.className="hcj-play-btn"+pC; plb.textContent=pL; plb.onclick=function(){_hcjTogglePlay();};
+  var nb=document.createElement("button"); nb.className="hcj-nav-btn"; nb.innerHTML="&#9654;"; nb.disabled=(idx===_verses.length-1); nb.onclick=function(){verseNav(1);};
+  cr.appendChild(pb); cr.appendChild(plb); cr.appendChild(nb);
+  var sr=document.createElement("div"); sr.className="hcj-seek-row";
+  var s1=document.createElement("span"); s1.className="hcj-seek-label"; s1.textContent="\u09aa\u09a6 \u09a8\u0982:";
+  var si=document.createElement("input"); si.id="hcj-seek-input"; si.type="number"; si.min=1; si.max=_verses.length; si.value=idx+1; si.className="hcj-seek-input";
+  si.onkeydown=function(e){if(e.key==="Enter")_hcjGoToVerse(this.value);};
+  var s2=document.createElement("span"); s2.className="hcj-seek-label"; s2.textContent="/ "+_verses.length;
+  var gb=document.createElement("button"); gb.className="hcj-go-btn"; gb.textContent="\u09af\u09be\u0993"; gb.onclick=function(){_hcjGoToVerse(document.getElementById("hcj-seek-input").value);};
+  sr.appendChild(s1); sr.appendChild(si); sr.appendChild(s2); sr.appendChild(gb);
+  var pl2=document.createElement("div"); pl2.className="hcj-player";
+  pl2.appendChild(mr); pl2.appendChild(cr); pl2.appendChild(sr);
+  wrap.appendChild(pl2); ci.appendChild(wrap);
 }
 
-// ═══════════════════════════════════════════════════════
 // DAILY REMINDERS — Brahma Muhurta, Sandhyakal, Manual
 // ═══════════════════════════════════════════════════════
 const REM_KEY = "radhaJapReminders_v2";

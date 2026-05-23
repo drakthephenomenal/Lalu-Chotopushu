@@ -364,14 +364,14 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   width:100%;
   flex:1;
   display:flex;
-  align-items:stretch;
+  align-items:center;
   justify-content:center;
   padding:4px 2px 2px;
   min-height:0;
   overflow:hidden;
 }
 
-/* Card — fills wrap, clips content cleanly */
+/* Card — hugs short content, scrolls when tall */
 .lm-water-card{
   width:100%;
   background:#ffffff;
@@ -380,6 +380,9 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   overflow:hidden;
   display:flex;
   flex-direction:column;
+  /* height:auto so card shrinks to content; max-height caps it */
+  height:auto;
+  max-height:100%;
   box-shadow:
     0 0 0 1.5px rgba(109,184,255,0.35),
     0 8px 32px rgba(30,80,200,0.28),
@@ -410,7 +413,6 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .lm-card-inner{
   position:relative;
   z-index:2;
-  flex:1;
   overflow-y:auto;
   overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
@@ -418,7 +420,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   display:flex;
   flex-direction:column;
   align-items:center;
-  /* NO justify-content:center — that hides overflow at top */
+  /* NO flex:1, NO justify-content:center — let card height be natural */
 }
 .lm-card-inner::-webkit-scrollbar{width:3px;}
 .lm-card-inner::-webkit-scrollbar-track{background:transparent;}
@@ -1337,17 +1339,18 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 .lmt { margin-top: 6px; padding: 0 48px; }
 .lmx { top: max(env(safe-area-inset-top),8px); right: 12px; }
 
-/* Card wrap — stretches to fill, no centering */
+/* Card wrap — centres card vertically, card hugs content */
 .lm-card-wrap{
   width: 100%;
   padding: 0;
   flex: 1;
   min-height: 0;
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Full-bleed card */
+/* Full-bleed card — height:auto so it shrinks for short verses */
 .lm-water-card{
   border-radius: 0;
   box-shadow: none;
@@ -1355,6 +1358,8 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   background: #ffffff;
   overflow: hidden;
   width: 100%;
+  height: auto;
+  max-height: 100%;
 }
 .lm-water-card::before,
 .lm-water-card::after { display: none; }
@@ -1362,8 +1367,7 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 /* Scroll container */
 .lm-card-inner{
   padding: 20px 18px 20px;
-  flex: 1;
-  /* justify-content intentionally NOT set — content starts at top */
+  /* NO flex:1 — card height driven by content */
 }
 .lyr{
   max-width: 680px;

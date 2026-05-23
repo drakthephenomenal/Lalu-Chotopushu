@@ -8554,7 +8554,7 @@ window.addEventListener('appinstalled', () => {
 
 // ── Hard cache-bust on version change ──
 (function() {
-  const APP_VER = 'v79';
+  const APP_VER = 'v80';
   if (localStorage.getItem('appVer') !== APP_VER) {
     localStorage.setItem('appVer', APP_VER);
     var p1 = navigator.serviceWorker
@@ -8568,8 +8568,8 @@ window.addEventListener('appinstalled', () => {
         })
       : Promise.resolve();
     Promise.all([p1, p2]).then(function() {
-      if (location.search.indexOf('bust=79') === -1) {
-        location.replace(location.pathname + '?bust=79');
+      if (location.search.indexOf('bust=80') === -1) {
+        location.replace(location.pathname + '?bust=80');
       }
     });
     return;
@@ -8696,14 +8696,13 @@ function showLyrics(id) {
   document.getElementById("lmTitle").textContent = nm ? nm.name : id;
 
   _renderVerse(0, null);
-  _buildDots();
   document.getElementById("lmo").classList.add("show");
   _initSwipeHandler();
 }
 
 function _renderVerse(idx, dir) {
   const body = document.getElementById("lyrBody");
-  const ctr  = document.getElementById("lmVCtr");
+  const ctr  = null; // verse counter removed
   const prev = document.getElementById("lmPrev");
   const next = document.getElementById("lmNext");
 
@@ -8722,13 +8721,11 @@ function _renderVerse(idx, dir) {
   if (dir === 1)  { void body.offsetWidth; body.classList.add("lyr-slide-enter-left"); }
   if (dir === -1) { void body.offsetWidth; body.classList.add("lyr-slide-enter-right"); }
 
-  ctr.textContent = "VERSE " + (idx + 1) + " / " + _verses.length;
+  if (ctr) ctr.textContent = "VERSE " + (idx + 1) + " / " + _verses.length;
   prev.disabled = idx === 0;
   next.disabled = idx === _verses.length - 1;
 
-  document.querySelectorAll(".lm-dot").forEach((d,i) =>
-    d.classList.toggle("active", i === idx)
-  );
+  // dots removed
 
   // Scroll card inner to top
   const inner = document.querySelector(".lm-card-inner");
@@ -8737,18 +8734,7 @@ function _renderVerse(idx, dir) {
   _hcjOnVerseChange(idx);
 }
 
-function _buildDots() {
-  const dotsEl = document.getElementById("lmDots");
-  dotsEl.innerHTML = "";
-  if (_verses.length <= 25) {
-    _verses.forEach((_, i) => {
-      const d = document.createElement("div");
-      d.className = "lm-dot" + (i === 0 ? " active" : "");
-      d.onclick = () => { const delta = i - _verseIdx; _verseIdx = i; _renderVerse(i, delta > 0 ? 1 : -1); };
-      dotsEl.appendChild(d);
-    });
-  }
-}
+function _buildDots() { /* dots removed */ }
 
 function verseNav(delta) {
   const newIdx = _verseIdx + delta;

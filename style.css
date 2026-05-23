@@ -1318,11 +1318,14 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 
 .lm-card-inner{
   padding: 26px 22px 34px;
-  align-items: flex-start;
+  align-items: center;       /* vertical centering of the verse */
+  justify-content: center;   /* horizontal centering of the <pre> */
 }
 .lyr{
   font-size: 22px;
   line-height: 2.15;
+  max-width: 680px;          /* keep lines centered & readable on iPad */
+  margin: 0 auto;
 }
 
 /* Dots compact */
@@ -1578,4 +1581,111 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   color:rgba(255,255,255,.6);
   font-size:14px; font-weight:500;
   margin-left:2px; letter-spacing:.3px;
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   LYRICS PLAYER — Premium dark-blue buttons, gold when active
+   (overrides earlier v8 purple/orange theme)
+   ════════════════════════════════════════════════════════════ */
+
+/* Generic pill button — dark navy glass */
+.hcj-mini-btn{
+  width: 46px; height: 46px;
+  border-radius: 14px;
+  border: 1px solid rgba(120,170,255,0.18);
+  background: linear-gradient(180deg, #0F2350 0%, #081639 100%);
+  color: #cfe1ff;
+  font-size: 18px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: transform .18s cubic-bezier(.2,.8,.2,1),
+              background .25s, border-color .25s, box-shadow .25s, color .25s;
+  box-shadow:
+    0 2px 6px rgba(0,0,0,.45),
+    inset 0 1px 0 rgba(255,255,255,.06);
+  -webkit-tap-highlight-color: transparent;
+}
+.hcj-mini-btn:hover{
+  background: linear-gradient(180deg, #163571 0%, #0B1E48 100%);
+  border-color: rgba(140,190,255,0.30);
+}
+.hcj-mini-btn:active{
+  transform: scale(.92);
+  box-shadow: 0 0 0 4px rgba(255,215,0,.18),
+              inset 0 1px 0 rgba(255,255,255,.10);
+}
+.hcj-mini-btn:disabled{
+  opacity: .28;
+  cursor: default;
+}
+
+/* Mode active (loop / continue) → gold */
+.hcj-mode-active{
+  background: linear-gradient(180deg, #FFE07A 0%, #E6B12A 100%) !important;
+  color: #1a0e02 !important;
+  border-color: rgba(255,225,140,.65) !important;
+  box-shadow:
+    0 4px 14px rgba(220,160,30,.55),
+    inset 0 1px 0 rgba(255,255,255,.55) !important;
+}
+
+/* Inline arrow buttons inside the player row */
+.hcj-arrow-btn{
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+/* Play / pause — premium dark-blue hero, turns gold when playing */
+.hcj-play-btn{
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  font-size: 22px;
+  color: #fff;
+  background: radial-gradient(circle at 30% 25%, #3F7BD8 0%, #1E47A0 55%, #0B204E 100%);
+  border: 1px solid rgba(160,200,255,.30);
+  box-shadow:
+    0 8px 22px rgba(20,55,140,.55),
+    0 2px 6px rgba(0,0,0,.50),
+    inset 0 1px 0 rgba(255,255,255,.30),
+    inset 0 -6px 14px rgba(0,0,0,.30);
+}
+.hcj-play-btn:hover{
+  background: radial-gradient(circle at 30% 25%, #5491EC 0%, #2A58B6 55%, #11295C 100%);
+}
+.hcj-play-btn:active{
+  transform: scale(.93);
+  box-shadow:
+    0 0 0 6px rgba(255,215,0,.22),
+    0 4px 12px rgba(20,55,140,.55),
+    inset 0 1px 0 rgba(255,255,255,.35);
+}
+.hcj-play-btn.hcj-playing{
+  background: radial-gradient(circle at 30% 25%, #FFE07A 0%, #E6B12A 55%, #8C6610 100%);
+  color: #1a0e02;
+  border-color: rgba(255,225,140,.70);
+  box-shadow:
+    0 8px 22px rgba(220,160,30,.55),
+    0 2px 6px rgba(0,0,0,.45),
+    inset 0 1px 0 rgba(255,255,255,.45),
+    inset 0 -6px 14px rgba(0,0,0,.20);
+}
+.hcj-play-btn.hcj-playing:active{
+  box-shadow:
+    0 0 0 6px rgba(255,215,0,.28),
+    0 4px 12px rgba(220,160,30,.55),
+    inset 0 1px 0 rgba(255,255,255,.45);
+}
+
+/* Seek input — match navy theme */
+.hcj-seek-input{
+  border-color: rgba(160,200,255,.20);
+  background: rgba(8,18,45,.65);
+  color: #e6efff;
+}
+.hcj-seek-input:focus{
+  border-color: #FFD175;
+  background: rgba(15,30,68,.85);
+  box-shadow: 0 0 0 3px rgba(255,209,117,.25);
 }

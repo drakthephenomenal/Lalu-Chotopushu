@@ -8695,15 +8695,8 @@ function verseNav(delta) {
 }
 
 function _initSwipeHandler() {
-  const area = document.getElementById("lmb");
-  const fresh = area.cloneNode(true);
-  area.parentNode.replaceChild(fresh, area);
-  let tx = 0;
-  fresh.addEventListener("touchstart", e => { tx = e.touches[0].clientX; }, {passive:true});
-  fresh.addEventListener("touchend",   e => {
-    const dx = e.changedTouches[0].clientX - tx;
-    if (Math.abs(dx) > 40) verseNav(dx < 0 ? 1 : -1);
-  }, {passive:true});
+  // Horizontal swipe nav DISABLED — verse changes only via arrow buttons.
+  // Vertical scrolling inside .lm-card-inner is preserved.
 }
 
 function closeLyrics() {
@@ -8711,6 +8704,7 @@ function closeLyrics() {
   _hcjStopAudio();
   _verses = []; _verseIdx = 0;
   _currentStotramId = "";
+  var navBar=document.getElementById("lmNav"); if(navBar) navBar.style.display="";
 }
 
 // ═══════════════════════════════════════════════════════
@@ -8766,11 +8760,23 @@ function _hcjSyncUI() {
 }
 function _hcjRenderPlayer(idx) {
   var ow=document.getElementById("hcj-player-wrap"); if(ow) ow.remove();
-  if (_currentStotramId!=="hcj") return;
+  var navBar=document.getElementById("lmNav");
+  if (_currentStotramId!=="hcj") { if(navBar) navBar.style.display=""; return; }
+  if (navBar) navBar.style.display="none";
   var lmd=document.querySelector("#lmo .lmd"); if (!lmd) return;
 
   var wrap=document.createElement("div"); wrap.id="hcj-player-wrap";
   var row=document.createElement("div"); row.className="hcj-player";
+
+  // Prev arrow (left of player)
+  var prevBtn=document.createElement("button");
+  prevBtn.id="hcj-prev-btn";
+  prevBtn.className="hcj-mini-btn hcj-arrow-btn";
+  prevBtn.innerHTML="&#8592;";
+  prevBtn.title="পূর্ববর্তী পদ";
+  prevBtn.disabled=(idx===0);
+  prevBtn.onclick=function(){verseNav(-1);};
+  row.appendChild(prevBtn);
 
   // Play / pause
   var plb=document.createElement("button");
@@ -8806,6 +8812,16 @@ function _hcjRenderPlayer(idx) {
 
   var tot=document.createElement("span"); tot.className="hcj-seek-total"; tot.textContent="/"+_verses.length;
   row.appendChild(tot);
+
+  // Next arrow (right of player)
+  var nextBtn=document.createElement("button");
+  nextBtn.id="hcj-next-btn";
+  nextBtn.className="hcj-mini-btn hcj-arrow-btn";
+  nextBtn.innerHTML="&#8594;";
+  nextBtn.title="পরবর্তী পদ";
+  nextBtn.disabled=(idx===_verses.length-1);
+  nextBtn.onclick=function(){verseNav(1);};
+  row.appendChild(nextBtn);
 
   wrap.appendChild(row); lmd.appendChild(wrap);
 }

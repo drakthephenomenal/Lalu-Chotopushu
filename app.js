@@ -8678,16 +8678,42 @@ window.addEventListener("load", function () {
 
 // ═══════════════════════════════════════════════════════
 
+// ── NKC/GMS: detect if a verse is a "prose block" (narrative, not a stotram verse)
+// Prose blocks: no ॥ or । punctuation, or contain verse markers like বললেন / গোস্বামী
+function _isProseBlock(verse) {
+  const hasVerseMarker = /[॥।]/.test(verse) || /\d+\s*[।॥]/.test(verse);
+  const longProse = verse.length > 180 && !hasVerseMarker;
+  return longProse;
+}
+
+// ── IDs that support translation (অনুবাদ) button
+const TRANSLATION_IDS = ['nkc', 'gms'];
+// ── IDs where prose sections need vertical-scroll mode
+const PROSE_IDS = ['nkc'];
+
 // ── showLyrics — watery card swipe reader ──
 let _verses = [], _verseIdx = 0, _currentStotramId = '';
+let _translationVisible = false;
 
 function showLyrics(id) {
   const ly = getEffectiveLyrics(id);
   if (!ly) { toast("পাঠ্য পাওয়া যায়নি 🙏"); return; }
 
   _currentStotramId = id;
+  _translationVisible = false;
+
   // Split by blank lines into verses
-  _verses = ly.split(/\n{2,}/).map(b => b.trim()).filter(b => b.length > 0);
+  let allVerses = ly.split(/\n{2,}/).map(b => b.trim()).filter(b => b.length > 0);
+
+  // Remove first verse if it's just the stotram title (for all except hcj)
+  if (id !== 'hcj' && allVerses.length > 0) {
+    const firstV = allVerses[0];
+    // Title verse: short (< 100 chars), no ।॥ markers, no numbered shloka
+    const isTitle = firstV.length < 100 && !/[।॥]/.test(firstV) && !/শ্লোক/.test(firstV);
+    if (isTitle) allVerses = allVerses.slice(1);
+  }
+
+  _verses = allVerses;
   _verseIdx = 0;
   _hcjStopAudio();
 
@@ -8706,16 +8732,39 @@ function _renderVerse(idx, dir) {
   const prev = document.getElementById("lmPrev");
   const next = document.getElementById("lmNext");
 
-  // Render each logical line as its own span so font-size clamp keeps it on one screen line
-  const rawLines = (_verses[idx] || "").split("\n");
-  const linesHtml = rawLines.map(line =>
-    line.trim() === ""
-      ? '<span class="lyr-line-empty"></span>'
-      : '<span class="lyr-line">' + line.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") + '</span>'
-  ).join("");
-  // Decorative footer — subtle lotus dots, always at the bottom of content
+  const verseText = _verses[idx] || "";
+  const isProse = PROSE_IDS.includes(_currentStotramId) && _isProseBlock(verseText);
+
+  // For prose verses: show as scrollable text (no whitespace:nowrap)
+  // For stotram verses: existing line-by-line rendering
+  let linesHtml = '';
+  if (isProse) {
+    // Render as wrapped prose paragraph
+    const escaped = verseText.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    linesHtml = '<span class="lyr-prose">' + escaped + '</span>';
+  } else {
+    // Build verse lines, but separate অর্থ: lines for translation support
+    const rawLines = verseText.split("\n");
+    linesHtml = rawLines.map(line => {
+      if (line.trim() === "") return '<span class="lyr-line-empty"></span>';
+      const esc = line.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      if (/^অর্থ\s*:/.test(line.trim())) {
+        // Translation line — hide by default, shown when translation visible
+        return '<span class="lyr-line lyr-artha" style="display:none;color:#c0392b;">' + esc + '</span>';
+      }
+      return '<span class="lyr-line">' + esc + '</span>';
+    }).join("");
+  }
+
+  // Decorative footer
   const footerHtml = '<div class="lyr-footer">❧ &nbsp; 🌸 &nbsp; ❧</div>';
   body.innerHTML = linesHtml + footerHtml;
+
+  // Sync translation visibility
+  _syncTranslationLines();
+
+  // Translation button (below nav, for supported stotrams on non-prose verses)
+  _renderTranslationBtn(idx, isProse);
 
   body.classList.remove("lyr-slide-enter-left","lyr-slide-enter-right");
   if (dir === 1)  { void body.offsetWidth; body.classList.add("lyr-slide-enter-left"); }
@@ -8725,13 +8774,45 @@ function _renderVerse(idx, dir) {
   prev.disabled = idx === 0;
   next.disabled = idx === _verses.length - 1;
 
-  // dots removed
-
   // Scroll card inner to top
   const inner = document.querySelector(".lm-card-inner");
   if (inner) inner.scrollTop = 0;
   _hcjRenderPlayer(idx);
   _hcjOnVerseChange(idx);
+}
+
+function _syncTranslationLines() {
+  document.querySelectorAll('.lyr-artha').forEach(el => {
+    el.style.display = _translationVisible ? 'block' : 'none';
+  });
+}
+
+function _renderTranslationBtn(idx, isProse) {
+  // Remove existing btn
+  var oldBtn = document.getElementById('lm-translate-btn');
+  if (oldBtn) oldBtn.remove();
+
+  if (!TRANSLATION_IDS.includes(_currentStotramId)) return;
+  if (isProse) return; // no translate btn for prose sections
+
+  // Check if current verse has any অর্থ: lines
+  const verse = _verses[idx] || '';
+  if (!/অর্থ\s*:/.test(verse)) return;
+
+  const nav = document.getElementById('lmNav');
+  if (!nav) return;
+
+  var btn = document.createElement('button');
+  btn.id = 'lm-translate-btn';
+  btn.className = 'lm-translate-btn' + (_translationVisible ? ' active' : '');
+  btn.textContent = _translationVisible ? '✕ অনুবাদ লুকান' : '📖 অনুবাদ';
+  btn.onclick = function() {
+    _translationVisible = !_translationVisible;
+    _syncTranslationLines();
+    btn.textContent = _translationVisible ? '✕ অনুবাদ লুকান' : '📖 অনুবাদ';
+    btn.classList.toggle('active', _translationVisible);
+  };
+  nav.parentNode.insertBefore(btn, nav);
 }
 
 function _buildDots() { /* dots removed */ }
@@ -8744,8 +8825,42 @@ function verseNav(delta) {
 }
 
 function _initSwipeHandler() {
-  // Horizontal swipe nav DISABLED — verse changes only via arrow buttons.
+  // Horizontal swipe nav enabled for all stotrams EXCEPT hcj.
   // Vertical scrolling inside .lm-card-inner is preserved.
+  const card = document.getElementById('lmCard');
+  if (!card) return;
+
+  // Remove any previous swipe listeners
+  card._swipeCleanup && card._swipeCleanup();
+
+  if (_currentStotramId === 'hcj') return; // HCJ uses its own audio player arrows
+
+  let startX = 0, startY = 0, moved = false;
+
+  function onStart(e) {
+    const t = e.touches ? e.touches[0] : e;
+    startX = t.clientX;
+    startY = t.clientY;
+    moved = false;
+  }
+  function onEnd(e) {
+    const t = e.changedTouches ? e.changedTouches[0] : e;
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      // Horizontal swipe detected — prevent vertical scroll conflict
+      if (dx < 0) verseNav(1);   // swipe left → next
+      else        verseNav(-1);  // swipe right → prev
+    }
+  }
+
+  card.addEventListener('touchstart', onStart, { passive: true });
+  card.addEventListener('touchend', onEnd, { passive: true });
+
+  card._swipeCleanup = function() {
+    card.removeEventListener('touchstart', onStart);
+    card.removeEventListener('touchend', onEnd);
+  };
 }
 
 function closeLyrics() {
@@ -8753,6 +8868,9 @@ function closeLyrics() {
   _hcjStopAudio();
   _verses = []; _verseIdx = 0;
   _currentStotramId = "";
+  _translationVisible = false;
+  var oldBtn = document.getElementById('lm-translate-btn');
+  if (oldBtn) oldBtn.remove();
   var navBar=document.getElementById("lmNav"); if(navBar) navBar.style.display="";
 }
 

@@ -359,28 +359,25 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 /* Verse counter */
 .lm-vctr{font-family:'Inter',sans-serif;font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:2px;text-align:center;margin-bottom:14px;}
 
-/* Water card wrapper — centres card vertically, lets it breathe */
+/* Card wrapper — fills remaining height */
 .lm-card-wrap{
   width:100%;
   flex:1;
   display:flex;
-  align-items:center;
+  align-items:stretch;
   justify-content:center;
-  padding:6px 2px 2px;
+  padding:4px 2px 2px;
   min-height:0;
+  overflow:hidden;
 }
 
-/* THE WATERY CARD — shrinks to content, scrolls only when needed */
+/* Card — fills wrap, clips content cleanly */
 .lm-water-card{
   width:100%;
   background:#ffffff;
   border-radius:22px;
   position:relative;
-  /* clip-path preserves border-radius without clipping scroll content */
-  overflow:visible;
-  clip-path:inset(0 round 22px);
-  max-height:100%;
-  height:auto;
+  overflow:hidden;
   display:flex;
   flex-direction:column;
   box-shadow:
@@ -392,49 +389,66 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 }
 @keyframes cardFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 
-/* Shimmer overlay */
 .lm-water-card::before{
-  content:'';
-  position:absolute;
-  inset:0;
+  content:\'\';
+  position:absolute;inset:0;
   background:linear-gradient(135deg,rgba(109,184,255,0.10) 0%,transparent 50%,rgba(30,120,255,0.06) 100%);
-  pointer-events:none;
-  z-index:1;
+  pointer-events:none;z-index:1;
 }
-/* Decorative wave — always at actual bottom of card */
 .lm-water-card::after{
-  content:'';
-  position:absolute;
-  bottom:-2px;left:-10%;
+  content:\'\';
+  position:absolute;bottom:-2px;left:-10%;
   width:120%;height:28px;
   background:rgba(109,184,255,0.12);
   border-radius:50% 50% 0 0;
-  pointer-events:none;
-  z-index:1;
+  pointer-events:none;z-index:1;
   animation:waveShift 3s ease-in-out infinite alternate;
 }
 @keyframes waveShift{from{transform:translateX(-4px)}to{transform:translateX(4px)}}
 
-/* Inner — centres short verses, scrolls long ones */
+/* Scroll container — fills card, content starts at top */
 .lm-card-inner{
   position:relative;
   z-index:2;
-  padding:36px 24px 24px;
+  flex:1;
   overflow-y:auto;
   overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
-  /* Ensures first line is always fully visible when scrolled to top */
-  scroll-padding-top:36px;
+  padding:28px 24px 24px;
   display:flex;
   flex-direction:column;
   align-items:center;
-  justify-content:center;
+  /* NO justify-content:center — that hides overflow at top */
 }
 .lm-card-inner::-webkit-scrollbar{width:3px;}
 .lm-card-inner::-webkit-scrollbar-track{background:transparent;}
 .lm-card-inner::-webkit-scrollbar-thumb{background:rgba(109,184,255,0.3);border-radius:4px;}
 
-/* Decorative lotus divider — always shown below the verse */
+/* Lyrics */
+.lyr{
+  font-family:\'Hind Siliguri\',\'Tiro Devanagari Hindi\',serif;
+  color:#111;
+  letter-spacing:0.3px;
+  text-align:center;
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  font-size:20px;
+}
+.lyr-line{
+  display:block;
+  white-space:nowrap;
+  font-size:clamp(12px,4.8vw,22px);
+  line-height:2.0;
+  width:100%;
+  text-align:center;
+}
+.lyr-line-empty{
+  display:block;
+  height:0.55em;
+  width:100%;
+}
 .lyr-footer{
   display:flex;
   align-items:center;
@@ -447,34 +461,6 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   letter-spacing:6px;
   color:rgba(109,184,255,0.8);
   user-select:none;
-}
-
-/* Lyrics text — BLACK on WHITE */
-.lyr{
-  font-family:'Hind Siliguri','Tiro Devanagari Hindi',serif;
-  color:#111;
-  letter-spacing:0.3px;
-  text-align:center;
-  width:100%;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  font-size:20px; /* fallback only — each .lyr-line overrides via clamp */
-}
-/* Each logical line stays on ONE screen line — font shrinks to fit width */
-.lyr-line{
-  display:block;
-  white-space:nowrap;
-  font-size:clamp(12px,4.8vw,22px);
-  line-height:2.0;
-  width:100%;
-  text-align:center;
-}
-/* Spacer between couplets */
-.lyr-line-empty{
-  display:block;
-  height:0.55em;
-  width:100%;
 }
 
 /* Dots */
@@ -1332,82 +1318,73 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 
 
 /* ═══════════════════════════════════════════════
-   LYRICS VIEW — EXPANDED + PREMIUM REFRESH
-   (overrides earlier .lmd / .lm-water-card / .lm-nav / HCJ player rules)
+   LYRICS VIEW — FULL-BLEED MOBILE/TABLET OVERRIDES
 ═══════════════════════════════════════════════ */
 
-/* Full-bleed modal — blend with screen */
 .lmo { background: rgba(4,10,30,0.94); backdrop-filter: blur(10px); }
 
+/* Full-screen column layout */
 .lmd{
   width: 100vw;
   max-width: 100vw;
   height: 100vh;
-  max-height: 100vh;
-  padding: max(env(safe-area-inset-top), 10px) 0 max(env(safe-area-inset-bottom), 10px);
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: max(env(safe-area-inset-top),10px) 0 max(env(safe-area-inset-bottom),10px);
   gap: 4px;
 }
 
-/* Title sits inside safe area */
 .lmt { margin-top: 6px; padding: 0 48px; }
-.lmx { top: max(env(safe-area-inset-top), 8px); right: 12px; }
+.lmx { top: max(env(safe-area-inset-top),8px); right: 12px; }
 
-/* Card wrap — vertically centres the card in available space */
+/* Card wrap — stretches to fill, no centering */
 .lm-card-wrap{
   width: 100%;
-  padding: 0 0 4px;
+  padding: 0;
   flex: 1;
   min-height: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
 }
 
-/* Borderless watery card — shrinks to fit content, scrolls when tall */
+/* Full-bleed card */
 .lm-water-card{
   border-radius: 0;
   box-shadow: none;
   animation: none;
   background: #ffffff;
-  overflow: visible;
-  clip-path: none;       /* full-bleed — no rounding needed */
-  max-height: 94%;
-  height: auto;
+  overflow: hidden;
+  width: 100%;
 }
 .lm-water-card::before,
 .lm-water-card::after { display: none; }
 
+/* Scroll container */
 .lm-card-inner{
-  padding: 32px 22px 20px;
-  scroll-padding-top: 32px;
-  align-items: center;
-  justify-content: center;
+  padding: 20px 18px 20px;
+  flex: 1;
+  /* justify-content intentionally NOT set — content starts at top */
 }
 .lyr{
   max-width: 680px;
   margin: 0 auto;
 }
 .lyr-line{
-  font-size: clamp(14px, 2.6vw, 26px);
+  font-size: clamp(13px, 4.2vw, 24px);
 }
 
-/* Dots compact */
+/* Dots */
 .lm-dots{ padding: 10px 0 2px; }
 
-/* ── Tiny arrows — no circle, no border ── */
+/* Nav arrows */
 .lm-nav{ gap: 56px; margin-top: 6px; }
 .lm-nav-btn{
-  width: auto;
-  height: auto;
-  border: none;
-  background: transparent;
-  backdrop-filter: none;
-  box-shadow: none;
+  width: auto; height: auto;
+  border: none; background: transparent;
+  backdrop-filter: none; box-shadow: none;
   color: rgba(255,255,255,0.78);
-  font-size: 22px;
-  padding: 6px 10px;
-  line-height: 1;
-  border-radius: 0;
+  font-size: 22px; padding: 6px 10px;
+  line-height: 1; border-radius: 0;
   transition: opacity 0.15s, transform 0.15s, color 0.15s;
 }
 .lm-nav-btn:active{

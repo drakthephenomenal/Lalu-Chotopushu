@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker
-// v78: Fix top-line clipping via clip-path
+// v79: Fix top-line clipping via clip-path
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v78';
+const CACHE = 'radha-jap-v79';
 const VER = '?v=78';
 
 const PRECACHE = [

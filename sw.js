@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker
-// v64: Removed Google Drive backup system
+// v76: Fix verse clipping, per-line font scaling, install banner
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v75';
+const CACHE = 'radha-jap-v76';
 
 const PRECACHE = [
   './index.html',
@@ -49,7 +49,10 @@ self.addEventListener('activate', e => {
       .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
       .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
-      .then(clients => clients.forEach(c => c.postMessage({ type: 'SW_UPDATED', version: CACHE })))
+      .then(clients => clients.forEach(c => {
+        c.postMessage({ type: 'SW_UPDATED', version: CACHE });
+        c.postMessage({ type: 'SW_READY' });
+      }))
   );
 });
 

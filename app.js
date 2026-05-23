@@ -8456,17 +8456,30 @@ window.addEventListener("load", async () => {
 // PWA ONE-CLICK INSTALL BANNER
 // ═══════════════════════════════════════════════════════
 let deferredPrompt = null;
+let _installBannerShownThisSession = false;
 
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  // Small delay so app loads first
+
+  // Already shown this session — just keep the prompt fresh, don't show again
+  if (_installBannerShownThisSession) return;
+
+  // Already installed (standalone mode)
+  if (window.matchMedia('(display-mode: standalone)').matches) return;
+
+  // Dismissed within last 3 days
+  const dismissed = localStorage.getItem('installBannerDismissed');
+  if (dismissed && Date.now() - Number(dismissed) < 3 * 24 * 60 * 60 * 1000) return;
+
+  // Wait for app paint to settle, then show once
   setTimeout(() => {
-    const dismissed = localStorage.getItem('installBannerDismissed');
-    if (dismissed && Date.now() - Number(dismissed) < 3 * 24 * 60 * 60 * 1000) return;
+    // Re-check in case user installed or dismissed while waiting
+    if (_installBannerShownThisSession) return;
     if (window.matchMedia('(display-mode: standalone)').matches) return;
+    _installBannerShownThisSession = true;
     showInstallBanner();
-  }, 3000);
+  }, 2500);
 });
 
 function showInstallBanner() {
@@ -8513,11 +8526,16 @@ function showInstallBanner() {
 }
 
 function triggerInstall() {
-  if (!deferredPrompt) return;
+  if (!deferredPrompt) {
+    // Prompt no longer available — guide user to browser menu
+    toast('ব্রাউজার মেনু থেকে "Add to Home Screen" বেছে নিন 🙏');
+    dismissInstallBanner();
+    return;
+  }
   deferredPrompt.prompt();
   deferredPrompt.userChoice.then((result) => {
-    if (result.outcome === 'accepted') dismissInstallBanner();
     deferredPrompt = null;
+    dismissInstallBanner();
   });
 }
 
@@ -8557,11 +8575,23 @@ if ("serviceWorker" in navigator) {
       })
       .catch((e) => console.warn("SW registration failed:", e.message));
 
-    // Also listen for SW_UPDATED message from the service worker
+    // Also listen for SW messages
     navigator.serviceWorker.addEventListener("message", (e) => {
       if (e.data && e.data.type === "SW_UPDATED") {
         console.log("[SW] Received SW_UPDATED, reloading…", e.data.version);
         window.location.reload();
+      }
+      // SW is active — if we already have a deferred prompt waiting, show the banner now
+      if (e.data && e.data.type === "SW_READY") {
+        if (deferredPrompt && !_installBannerShownThisSession) {
+          if (!window.matchMedia('(display-mode: standalone)').matches) {
+            const dismissed = localStorage.getItem('installBannerDismissed');
+            if (!dismissed || Date.now() - Number(dismissed) >= 3 * 24 * 60 * 60 * 1000) {
+              _installBannerShownThisSession = true;
+              showInstallBanner();
+            }
+          }
+        }
       }
     });
   });
@@ -8653,7 +8683,13 @@ function _renderVerse(idx, dir) {
   const prev = document.getElementById("lmPrev");
   const next = document.getElementById("lmNext");
 
-  body.textContent = _verses[idx] || "";
+  // Render each logical line as its own span so font-size clamp keeps it on one screen line
+  const rawLines = (_verses[idx] || "").split("\n");
+  body.innerHTML = rawLines.map(line =>
+    line.trim() === ""
+      ? '<span class="lyr-line-empty"></span>'
+      : '<span class="lyr-line">' + line.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") + '</span>'
+  ).join("");
 
   body.classList.remove("lyr-slide-enter-left","lyr-slide-enter-right");
   if (dir === 1)  { void body.offsetWidth; body.classList.add("lyr-slide-enter-left"); }

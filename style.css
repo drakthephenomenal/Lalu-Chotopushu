@@ -376,9 +376,9 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   background:#ffffff;
   border-radius:22px;
   position:relative;
-  overflow:hidden;
-  /* KEY: use max-height so card never exceeds available space
-     but naturally shrinks for short verses */
+  /* clip-path preserves border-radius without clipping scroll content */
+  overflow:visible;
+  clip-path:inset(0 round 22px);
   max-height:100%;
   height:auto;
   display:flex;
@@ -419,10 +419,12 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .lm-card-inner{
   position:relative;
   z-index:2;
-  padding:32px 24px 20px;
-  /* No flex:1 — let height be natural */
+  padding:36px 24px 24px;
   overflow-y:auto;
+  overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
+  /* Ensures first line is always fully visible when scrolled to top */
+  scroll-padding-top:36px;
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -1367,7 +1369,8 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   box-shadow: none;
   animation: none;
   background: #ffffff;
-  /* On full-bleed mobile: cap at 94% of available flex space */
+  overflow: visible;
+  clip-path: none;       /* full-bleed — no rounding needed */
   max-height: 94%;
   height: auto;
 }
@@ -1375,7 +1378,8 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 .lm-water-card::after { display: none; }
 
 .lm-card-inner{
-  padding: 28px 22px 16px;
+  padding: 32px 22px 20px;
+  scroll-padding-top: 32px;
   align-items: center;
   justify-content: center;
 }

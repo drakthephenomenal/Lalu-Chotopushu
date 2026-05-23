@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker
-// v77: Shrink-to-fit card, centred verse, lotus footer
+// v78: Fix top-line clipping via clip-path
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v77';
+const CACHE = 'radha-jap-v78';
 
 const PRECACHE = [
   './index.html',

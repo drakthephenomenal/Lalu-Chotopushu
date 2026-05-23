@@ -8685,11 +8685,14 @@ function _renderVerse(idx, dir) {
 
   // Render each logical line as its own span so font-size clamp keeps it on one screen line
   const rawLines = (_verses[idx] || "").split("\n");
-  body.innerHTML = rawLines.map(line =>
+  const linesHtml = rawLines.map(line =>
     line.trim() === ""
       ? '<span class="lyr-line-empty"></span>'
       : '<span class="lyr-line">' + line.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") + '</span>'
   ).join("");
+  // Decorative footer — subtle lotus dots, always at the bottom of content
+  const footerHtml = '<div class="lyr-footer">❧ &nbsp; 🌸 &nbsp; ❧</div>';
+  body.innerHTML = linesHtml + footerHtml;
 
   body.classList.remove("lyr-slide-enter-left","lyr-slide-enter-right");
   if (dir === 1)  { void body.offsetWidth; body.classList.add("lyr-slide-enter-left"); }

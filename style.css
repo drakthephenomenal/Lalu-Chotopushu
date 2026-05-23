@@ -359,18 +359,28 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 /* Verse counter */
 .lm-vctr{font-family:'Inter',sans-serif;font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:2px;text-align:center;margin-bottom:14px;}
 
-/* Water card wrapper */
-.lm-card-wrap{width:100%;flex:1;display:flex;justify-content:center;padding:4px 2px;min-height:0;}
+/* Water card wrapper — centres card vertically, lets it breathe */
+.lm-card-wrap{
+  width:100%;
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:6px 2px 2px;
+  min-height:0;
+}
 
-/* THE WATERY CARD */
+/* THE WATERY CARD — shrinks to content, scrolls only when needed */
 .lm-water-card{
   width:100%;
   background:#ffffff;
   border-radius:22px;
   position:relative;
   overflow:hidden;
-  width:100%;
-  height:100%;
+  /* KEY: use max-height so card never exceeds available space
+     but naturally shrinks for short verses */
+  max-height:100%;
+  height:auto;
   display:flex;
   flex-direction:column;
   box-shadow:
@@ -382,7 +392,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 }
 @keyframes cardFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 
-/* Water shimmer overlay */
+/* Shimmer overlay */
 .lm-water-card::before{
   content:'';
   position:absolute;
@@ -391,7 +401,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   pointer-events:none;
   z-index:1;
 }
-/* Liquid wave at bottom */
+/* Decorative wave — always at actual bottom of card */
 .lm-water-card::after{
   content:'';
   position:absolute;
@@ -405,11 +415,37 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 }
 @keyframes waveShift{from{transform:translateX(-4px)}to{transform:translateX(4px)}}
 
-/* Inner padding */
-.lm-card-inner{position:relative;z-index:2;padding:28px 24px 34px;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;align-items:flex-start;justify-content:center;}
+/* Inner — centres short verses, scrolls long ones */
+.lm-card-inner{
+  position:relative;
+  z-index:2;
+  padding:32px 24px 20px;
+  /* No flex:1 — let height be natural */
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
 .lm-card-inner::-webkit-scrollbar{width:3px;}
 .lm-card-inner::-webkit-scrollbar-track{background:transparent;}
 .lm-card-inner::-webkit-scrollbar-thumb{background:rgba(109,184,255,0.3);border-radius:4px;}
+
+/* Decorative lotus divider — always shown below the verse */
+.lyr-footer{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  padding:18px 0 10px;
+  width:100%;
+  opacity:0.45;
+  font-size:18px;
+  letter-spacing:6px;
+  color:rgba(109,184,255,0.8);
+  user-select:none;
+}
 
 /* Lyrics text — BLACK on WHITE */
 .lyr{
@@ -1314,27 +1350,33 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 .lmt { margin-top: 6px; padding: 0 48px; }
 .lmx { top: max(env(safe-area-inset-top), 8px); right: 12px; }
 
-/* Card wrap fills the screen — no side gutters */
+/* Card wrap — vertically centres the card in available space */
 .lm-card-wrap{
   width: 100%;
-  padding: 0;
+  padding: 0 0 4px;
   flex: 1;
   min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Borderless watery card — blends with the dark screen */
+/* Borderless watery card — shrinks to fit content, scrolls when tall */
 .lm-water-card{
   border-radius: 0;
   box-shadow: none;
   animation: none;
   background: #ffffff;
+  /* On full-bleed mobile: cap at 94% of available flex space */
+  max-height: 94%;
+  height: auto;
 }
 .lm-water-card::before,
 .lm-water-card::after { display: none; }
 
 .lm-card-inner{
-  padding: 26px 22px 34px;
-  align-items: flex-start;
+  padding: 28px 22px 16px;
+  align-items: center;
   justify-content: center;
 }
 .lyr{
@@ -1342,7 +1384,7 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   margin: 0 auto;
 }
 .lyr-line{
-  font-size: clamp(14px, 2.6vw, 26px); /* wider iPad viewport — lines fit larger */
+  font-size: clamp(14px, 2.6vw, 26px);
 }
 
 /* Dots compact */

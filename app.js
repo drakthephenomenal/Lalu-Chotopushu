@@ -8671,6 +8671,7 @@ function _renderVerse(idx, dir) {
   const inner = document.querySelector(".lm-card-inner");
   if (inner) inner.scrollTop = 0;
   _hcjRenderPlayer(idx);
+  _hcjOnVerseChange(idx);
 }
 
 function _buildDots() {
@@ -8715,58 +8716,98 @@ function closeLyrics() {
 // ═══════════════════════════════════════════════════════
 
 // HCJ AUDIO ENGINE
-var _hcjAudio = null, _hcjMode = "manual", _hcjPlaying = false;
+var _hcjAudio = null, _hcjMode = "manual", _hcjPlaying = false, _hcjAudioIdx = -1;
 function _hcjAudioPath(i) { return "audio/hcj_"+(i+1)+".mp3"; }
 function _hcjStopAudio() {
   if (_hcjAudio) { _hcjAudio.pause(); _hcjAudio.onended=null; _hcjAudio=null; }
-  _hcjPlaying=false; _hcjSyncUI();
+  _hcjPlaying=false; _hcjAudioIdx=-1; _hcjSyncUI();
 }
 function _hcjPlayVerse(idx) {
-  _hcjStopAudio();
+  if (_hcjAudio) { _hcjAudio.pause(); _hcjAudio.onended=null; _hcjAudio=null; }
   _hcjAudio = new Audio(_hcjAudioPath(idx));
+  _hcjAudioIdx = idx;
   _hcjAudio.loop = (_hcjMode==="loop");
   _hcjAudio.onended = function() {
     if (_hcjMode==="continue" && idx+1<_verses.length) { _verseIdx=idx+1; _renderVerse(_verseIdx,1); _hcjPlayVerse(_verseIdx); }
-    else { _hcjPlaying=false; _hcjSyncUI(); }
+    else { _hcjPlaying=false; _hcjAudioIdx=-1; _hcjSyncUI(); }
   };
-  _hcjAudio.play().then(function(){ _hcjPlaying=true; _hcjSyncUI(); }).catch(function(){ _hcjPlaying=false; _hcjSyncUI(); });
+  _hcjAudio.play().then(function(){ _hcjPlaying=true; _hcjSyncUI(); }).catch(function(){ _hcjPlaying=false; _hcjAudioIdx=-1; _hcjSyncUI(); });
 }
 function _hcjTogglePlay() { if (_hcjPlaying) _hcjStopAudio(); else _hcjPlayVerse(_verseIdx); }
-function _hcjSetMode(mode) { _hcjMode=mode; if (_hcjAudio) _hcjAudio.loop=(mode==="loop"); _hcjSyncUI(); }
+function _hcjSetMode(mode) {
+  _hcjMode=mode;
+  if (_hcjAudio) _hcjAudio.loop=(mode==="loop");
+  _hcjSyncUI();
+}
+// Called whenever the displayed verse changes — keep audio in sync.
+function _hcjOnVerseChange(idx) {
+  if (_currentStotramId!=="hcj") return;
+  if (_hcjPlaying && _hcjAudioIdx !== idx) {
+    _hcjPlayVerse(idx);
+  }
+  var si=document.getElementById("hcj-seek-input"); if (si) si.value=idx+1;
+}
 function _hcjGoToVerse(n) {
   var i=parseInt(n)-1; if (isNaN(i)||i<0||i>=_verses.length) return;
-  var was=_hcjPlaying; _hcjStopAudio(); _verseIdx=i; _renderVerse(i,0); if (was) _hcjPlayVerse(i);
+  _verseIdx=i; _renderVerse(i,0);
 }
 function _hcjSyncUI() {
-  var pl=document.getElementById("hcj-play-btn"); if (!pl) return;
-  pl.textContent=_hcjPlaying?"\u23f8 \u09ac\u09bf\u09b0\u09a4\u09bf":"\u25b6 \u09ac\u09be\u099c\u09be\u0993";
-  pl.classList.toggle("hcj-playing",_hcjPlaying);
-  ["loop","continue","manual"].forEach(function(m){ var b=document.getElementById("hcj-mode-"+m); if(b) b.classList.toggle("hcj-mode-active",_hcjMode===m); });
+  var pl=document.getElementById("hcj-play-btn");
+  if (pl) {
+    pl.textContent=_hcjPlaying?"\u23f8":"\u25b6";
+    pl.classList.toggle("hcj-playing",_hcjPlaying);
+    pl.title=_hcjPlaying?"বিরতি":"বাজাও";
+  }
+  ["loop","continue","manual"].forEach(function(m){
+    var b=document.getElementById("hcj-mode-"+m);
+    if(b) b.classList.toggle("hcj-mode-active",_hcjMode===m);
+  });
 }
 function _hcjRenderPlayer(idx) {
   var ow=document.getElementById("hcj-player-wrap"); if(ow) ow.remove();
   if (_currentStotramId!=="hcj") return;
-  // Append OUTSIDE the scrolling lyrics card so it never overlaps the text.
   var lmd=document.querySelector("#lmo .lmd"); if (!lmd) return;
+
   var wrap=document.createElement("div"); wrap.id="hcj-player-wrap";
-  var lC=_hcjMode==="loop"?" hcj-mode-active":"", cC=_hcjMode==="continue"?" hcj-mode-active":"", mC=_hcjMode==="manual"?" hcj-mode-active":"";
-  var pC=_hcjPlaying?" hcj-playing":"", pL=_hcjPlaying?"\u23f8 \u09ac\u09bf\u09b0\u09a4\u09bf":"\u25b6 \u09ac\u09be\u099c\u09be\u0993";
-  var mr=document.createElement("div"); mr.className="hcj-mode-row";
-  var mk=["loop","continue","manual"],mc=[lC,cC,mC],mt=["\uD83D\uDD01 \u09b2\u09c1\u09aa","\u23e9 \u0995\u09cd\u09b0\u09ae\u09be\u0997\u09a4","\u270b \u09ae\u09cd\u09af\u09be\u09a8\u09c1\u09af\u09bc\u09be\u09b2"];
-  for(var i=0;i<3;i++){(function(a,b,c){var btn=document.createElement("button");btn.id="hcj-mode-"+a;btn.className="hcj-mode-btn"+b;btn.textContent=c;btn.onclick=function(){_hcjSetMode(a);};mr.appendChild(btn);})(mk[i],mc[i],mt[i]);}
-  var cr=document.createElement("div"); cr.className="hcj-ctrl-row";
-  var plb=document.createElement("button"); plb.id="hcj-play-btn"; plb.className="hcj-play-btn"+pC; plb.textContent=pL; plb.onclick=function(){_hcjTogglePlay();};
-  var sr=document.createElement("div"); sr.className="hcj-seek-row";
-  var s1=document.createElement("span"); s1.className="hcj-seek-label"; s1.textContent="\u09aa\u09a6 \u09a8\u0982:";
-  var si=document.createElement("input"); si.id="hcj-seek-input"; si.type="number"; si.min=1; si.max=_verses.length; si.value=idx+1; si.className="hcj-seek-input";
+  var row=document.createElement("div"); row.className="hcj-player";
+
+  // Play / pause
+  var plb=document.createElement("button");
+  plb.id="hcj-play-btn";
+  plb.className="hcj-mini-btn hcj-play-btn"+(_hcjPlaying?" hcj-playing":"");
+  plb.textContent=_hcjPlaying?"\u23f8":"\u25b6";
+  plb.title=_hcjPlaying?"বিরতি":"বাজাও";
+  plb.onclick=function(){_hcjTogglePlay();};
+  row.appendChild(plb);
+
+  // Mode buttons (icon-only, tiny)
+  var modes=[
+    {k:"loop",  i:"\uD83D\uDD01", t:"লুপ (একই পদ)"},
+    {k:"continue", i:"\u23ED", t:"ক্রমাগত (পরবর্তী পদ)"},
+    {k:"manual", i:"\u270B", t:"ম্যানুয়াল"}
+  ];
+  modes.forEach(function(m){
+    var b=document.createElement("button");
+    b.id="hcj-mode-"+m.k;
+    b.className="hcj-mini-btn hcj-mode-btn"+(_hcjMode===m.k?" hcj-mode-active":"");
+    b.textContent=m.i; b.title=m.t;
+    b.onclick=function(){_hcjSetMode(m.k);};
+    row.appendChild(b);
+  });
+
+  // Verse seek (compact)
+  var si=document.createElement("input");
+  si.id="hcj-seek-input"; si.type="number"; si.min=1; si.max=_verses.length;
+  si.value=idx+1; si.className="hcj-seek-input";
+  si.title="পদ নং";
+  si.onchange=function(){_hcjGoToVerse(this.value);};
   si.onkeydown=function(e){if(e.key==="Enter")_hcjGoToVerse(this.value);};
-  var s2=document.createElement("span"); s2.className="hcj-seek-label"; s2.textContent="/ "+_verses.length;
-  var gb=document.createElement("button"); gb.className="hcj-go-btn"; gb.textContent="\u09af\u09be\u0993"; gb.onclick=function(){_hcjGoToVerse(document.getElementById("hcj-seek-input").value);};
-  sr.appendChild(s1); sr.appendChild(si); sr.appendChild(s2); sr.appendChild(gb);
-  cr.appendChild(plb); cr.appendChild(sr);
-  var pl2=document.createElement("div"); pl2.className="hcj-player";
-  pl2.appendChild(mr); pl2.appendChild(cr);
-  wrap.appendChild(pl2); lmd.appendChild(wrap);
+  row.appendChild(si);
+
+  var tot=document.createElement("span"); tot.className="hcj-seek-total"; tot.textContent="/"+_verses.length;
+  row.appendChild(tot);
+
+  wrap.appendChild(row); lmd.appendChild(wrap);
 }
 
 // DAILY REMINDERS — Brahma Muhurta, Sandhyakal, Manual

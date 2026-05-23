@@ -490,30 +490,53 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   color:rgba(109,184,255,0.8);
   user-select:none;
 }
-/* Translation button */
-.lm-translate-btn{
+/* Translation toggle switch */
+.lm-translate-wrap{
   display:flex;
   align-items:center;
   justify-content:center;
-  gap:6px;
-  margin:4px auto 0;
-  padding:7px 20px;
-  background:rgba(255,255,255,0.10);
-  border:1.5px solid rgba(109,184,255,0.4);
-  border-radius:20px;
-  color:rgba(255,255,255,0.8);
-  font-size:13px;
+  gap:10px;
+  margin:6px auto 0;
+  padding:0;
+}
+.lm-toggle-label{
   font-family:'Hind Siliguri','Inter',sans-serif;
+  font-size:13px;
+  color:rgba(255,255,255,0.75);
+  letter-spacing:0.5px;
+  user-select:none;
+}
+.lm-toggle-sw{
+  position:relative;
+  width:44px;
+  height:26px;
+  border-radius:13px;
+  background:rgba(255,255,255,0.18);
+  border:1.5px solid rgba(255,255,255,0.22);
   cursor:pointer;
-  transition:background 0.2s, color 0.2s, border-color 0.2s;
-  backdrop-filter:blur(4px);
+  transition:background 0.25s, border-color 0.25s;
+  padding:0;
+  flex-shrink:0;
 }
-.lm-translate-btn.active{
-  background:rgba(192,57,43,0.18);
-  border-color:rgba(192,57,43,0.7);
-  color:#e74c3c;
+.lm-toggle-sw.on{
+  background:rgba(46,204,113,0.75);
+  border-color:rgba(46,204,113,0.9);
 }
-.lm-translate-btn:active{opacity:0.7;}
+.lm-toggle-thumb{
+  position:absolute;
+  top:3px;
+  left:3px;
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 1px 4px rgba(0,0,0,0.35);
+  transition:transform 0.25s;
+  display:block;
+}
+.lm-toggle-sw.on .lm-toggle-thumb{
+  transform:translateX(18px);
+}
 
 /* Dots */
 .lm-dots{display:flex;justify-content:center;gap:6px;padding:14px 0 4px;flex-wrap:wrap;}
@@ -1786,4 +1809,66 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   border-color: #FFD175;
   background: rgba(15,30,68,.85);
   box-shadow: 0 0 0 3px rgba(255,209,117,.25);
+}
+
+/* ════════════════════════════════════════════════════════
+   HCJ PROGRESS BAR — slim scrubber above player buttons
+   ════════════════════════════════════════════════════════ */
+.hcj-prog-row{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto 10px;
+  padding: 0 2px;
+}
+.hcj-time{
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.3px;
+  min-width: 30px;
+  font-variant-numeric: tabular-nums;
+  font-family: 'Inter', sans-serif;
+}
+.hcj-time:last-child{ text-align: right; }
+
+.hcj-prog-track{
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.12);
+  position: relative;
+  cursor: pointer;
+  /* Extend touch target vertically without changing visual height */
+  padding: 10px 0;
+  margin: -10px 0;
+}
+.hcj-prog-fill{
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #4a90e2, #FFD175);
+  width: 0%;
+  position: relative;
+  pointer-events: none;
+  transition: width 0.1s linear;
+}
+.hcj-prog-thumb{
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 0 2px rgba(74,144,226,0.6),
+    0 2px 6px rgba(0,0,0,0.45);
+  pointer-events: none;
+  transition: transform 0.15s;
+}
+.hcj-prog-track:active .hcj-prog-thumb{
+  transform: translateY(-50%) scale(1.4);
 }

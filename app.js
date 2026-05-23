@@ -8734,23 +8734,23 @@ function _renderVerse(idx, dir) {
 
   const verseText = _verses[idx] || "";
   const isProse = PROSE_IDS.includes(_currentStotramId) && _isProseBlock(verseText);
+  const hasTranslation = TRANSLATION_IDS.includes(_currentStotramId);
 
-  // For prose verses: show as scrollable text (no whitespace:nowrap)
-  // For stotram verses: existing line-by-line rendering
+  // For prose verses: show as scrollable text
+  // For stotram verses: line-by-line; অর্থ: lines included ONLY when toggle is ON
   let linesHtml = '';
   if (isProse) {
-    // Render as wrapped prose paragraph
     const escaped = verseText.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     linesHtml = '<span class="lyr-prose">' + escaped + '</span>';
   } else {
-    // Build verse lines, but separate অর্থ: lines for translation support
     const rawLines = verseText.split("\n");
     linesHtml = rawLines.map(line => {
       if (line.trim() === "") return '<span class="lyr-line-empty"></span>';
       const esc = line.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
       if (/^অর্থ\s*:/.test(line.trim())) {
-        // Translation line — hide by default, shown when translation visible
-        return '<span class="lyr-line lyr-artha" style="display:none;color:#c0392b;">' + esc + '</span>';
+        // Only inject অর্থ line if translation is currently ON — avoids empty card
+        if (!hasTranslation || !_translationVisible) return '';
+        return '<span class="lyr-line lyr-artha">' + esc + '</span>';
       }
       return '<span class="lyr-line">' + esc + '</span>';
     }).join("");
@@ -8760,11 +8760,8 @@ function _renderVerse(idx, dir) {
   const footerHtml = '<div class="lyr-footer">❧ &nbsp; 🌸 &nbsp; ❧</div>';
   body.innerHTML = linesHtml + footerHtml;
 
-  // Sync translation visibility
-  _syncTranslationLines();
-
-  // Translation button (below nav, for supported stotrams on non-prose verses)
-  _renderTranslationBtn(idx, isProse);
+  // Render persistent toggle (once in modal, stays across verse navigation)
+  _renderTranslationToggle();
 
   body.classList.remove("lyr-slide-enter-left","lyr-slide-enter-right");
   if (dir === 1)  { void body.offsetWidth; body.classList.add("lyr-slide-enter-left"); }
@@ -8781,38 +8778,58 @@ function _renderVerse(idx, dir) {
   _hcjOnVerseChange(idx);
 }
 
-function _syncTranslationLines() {
-  document.querySelectorAll('.lyr-artha').forEach(el => {
-    el.style.display = _translationVisible ? 'block' : 'none';
-  });
-}
+// Render a persistent translation toggle switch below the nav arrows.
+// Called once when stotram opens; stays for the whole session.
+// Toggle re-renders the current verse so অর্থ: lines appear/disappear cleanly.
+function _renderTranslationToggle() {
+  // Only for supported stotrams
+  if (!TRANSLATION_IDS.includes(_currentStotramId)) {
+    var old = document.getElementById('lm-translate-wrap');
+    if (old) old.remove();
+    return;
+  }
 
-function _renderTranslationBtn(idx, isProse) {
-  // Remove existing btn
-  var oldBtn = document.getElementById('lm-translate-btn');
-  if (oldBtn) oldBtn.remove();
-
-  if (!TRANSLATION_IDS.includes(_currentStotramId)) return;
-  if (isProse) return; // no translate btn for prose sections
-
-  // Check if current verse has any অর্থ: lines
-  const verse = _verses[idx] || '';
-  if (!/অর্থ\s*:/.test(verse)) return;
+  // Don't recreate if already present — just sync state
+  var existing = document.getElementById('lm-translate-wrap');
+  if (existing) {
+    _syncToggleUI();
+    return;
+  }
 
   const nav = document.getElementById('lmNav');
   if (!nav) return;
 
-  var btn = document.createElement('button');
-  btn.id = 'lm-translate-btn';
-  btn.className = 'lm-translate-btn' + (_translationVisible ? ' active' : '');
-  btn.textContent = _translationVisible ? '✕ অনুবাদ লুকান' : '📖 অনুবাদ';
-  btn.onclick = function() {
+  // Build toggle row: label + switch
+  var wrap = document.createElement('div');
+  wrap.id = 'lm-translate-wrap';
+  wrap.className = 'lm-translate-wrap';
+
+  var label = document.createElement('span');
+  label.className = 'lm-toggle-label';
+  label.textContent = 'অনুবাদ';
+
+  var sw = document.createElement('button');
+  sw.id = 'lm-toggle-sw';
+  sw.className = 'lm-toggle-sw' + (_translationVisible ? ' on' : '');
+  sw.setAttribute('role', 'switch');
+  sw.setAttribute('aria-checked', _translationVisible ? 'true' : 'false');
+  sw.innerHTML = '<span class="lm-toggle-thumb"></span>';
+  sw.onclick = function() {
     _translationVisible = !_translationVisible;
-    _syncTranslationLines();
-    btn.textContent = _translationVisible ? '✕ অনুবাদ লুকান' : '📖 অনুবাদ';
-    btn.classList.toggle('active', _translationVisible);
+    // Re-render current verse so অর্থ: lines are added/removed from DOM
+    _renderVerse(_verseIdx, null);
   };
-  nav.parentNode.insertBefore(btn, nav);
+
+  wrap.appendChild(label);
+  wrap.appendChild(sw);
+  nav.parentNode.insertBefore(wrap, nav);
+}
+
+function _syncToggleUI() {
+  var sw = document.getElementById('lm-toggle-sw');
+  if (!sw) return;
+  sw.className = 'lm-toggle-sw' + (_translationVisible ? ' on' : '');
+  sw.setAttribute('aria-checked', _translationVisible ? 'true' : 'false');
 }
 
 function _buildDots() { /* dots removed */ }
@@ -8869,8 +8886,8 @@ function closeLyrics() {
   _verses = []; _verseIdx = 0;
   _currentStotramId = "";
   _translationVisible = false;
-  var oldBtn = document.getElementById('lm-translate-btn');
-  if (oldBtn) oldBtn.remove();
+  var oldWrap = document.getElementById('lm-translate-wrap');
+  if (oldWrap) oldWrap.remove();
   var navBar=document.getElementById("lmNav"); if(navBar) navBar.style.display="";
 }
 
@@ -8878,21 +8895,76 @@ function closeLyrics() {
 
 // HCJ AUDIO ENGINE
 var _hcjAudio = null, _hcjMode = "manual", _hcjPlaying = false, _hcjAudioIdx = -1;
+var _hcjRafId = null; // requestAnimationFrame id for progress bar
+
 function _hcjAudioPath(i) { return "audio/hcj_"+(i+1)+".mp3"; }
+
+// Format seconds → m:ss
+function _hcjFmtTime(s) {
+  if (!isFinite(s) || isNaN(s)) return "0:00";
+  var m = Math.floor(s / 60), sec = Math.floor(s % 60);
+  return m + ":" + (sec < 10 ? "0" : "") + sec;
+}
+
+// RAF loop — updates progress bar & timestamps every frame while playing
+function _hcjProgressLoop() {
+  _hcjUpdateProgress();
+  if (_hcjAudio && !_hcjAudio.paused) {
+    _hcjRafId = requestAnimationFrame(_hcjProgressLoop);
+  } else {
+    _hcjRafId = null;
+  }
+}
+
+function _hcjStartProgressLoop() {
+  if (_hcjRafId) return; // already running
+  _hcjRafId = requestAnimationFrame(_hcjProgressLoop);
+}
+
+function _hcjStopProgressLoop() {
+  if (_hcjRafId) { cancelAnimationFrame(_hcjRafId); _hcjRafId = null; }
+}
+
+function _hcjUpdateProgress() {
+  var bar   = document.getElementById("hcj-prog-fill");
+  var thumb = document.getElementById("hcj-prog-thumb");
+  var cur   = document.getElementById("hcj-time-cur");
+  var tot   = document.getElementById("hcj-time-tot");
+  if (!bar) return;
+  if (_hcjAudio && _hcjAudio.duration > 0) {
+    var pct = (_hcjAudio.currentTime / _hcjAudio.duration) * 100;
+    bar.style.width = pct + "%";
+    if (thumb) thumb.style.left = pct + "%";
+    if (cur) cur.textContent = _hcjFmtTime(_hcjAudio.currentTime);
+    if (tot) tot.textContent = _hcjFmtTime(_hcjAudio.duration);
+  } else {
+    bar.style.width = "0%";
+    if (thumb) thumb.style.left = "0%";
+    if (cur) cur.textContent = "0:00";
+    if (tot) tot.textContent = "0:00";
+  }
+}
+
 function _hcjStopAudio() {
+  _hcjStopProgressLoop();
   if (_hcjAudio) { _hcjAudio.pause(); _hcjAudio.onended=null; _hcjAudio=null; }
   _hcjPlaying=false; _hcjAudioIdx=-1; _hcjSyncUI();
+  _hcjUpdateProgress();
 }
 function _hcjPlayVerse(idx) {
+  _hcjStopProgressLoop();
   if (_hcjAudio) { _hcjAudio.pause(); _hcjAudio.onended=null; _hcjAudio=null; }
   _hcjAudio = new Audio(_hcjAudioPath(idx));
   _hcjAudioIdx = idx;
   _hcjAudio.loop = (_hcjMode==="loop");
   _hcjAudio.onended = function() {
+    _hcjStopProgressLoop();
     if (_hcjMode==="continue" && idx+1<_verses.length) { _verseIdx=idx+1; _renderVerse(_verseIdx,1); _hcjPlayVerse(_verseIdx); }
-    else { _hcjPlaying=false; _hcjAudioIdx=-1; _hcjSyncUI(); }
+    else { _hcjPlaying=false; _hcjAudioIdx=-1; _hcjSyncUI(); _hcjUpdateProgress(); }
   };
-  _hcjAudio.play().then(function(){ _hcjPlaying=true; _hcjSyncUI(); }).catch(function(){ _hcjPlaying=false; _hcjAudioIdx=-1; _hcjSyncUI(); });
+  _hcjAudio.play().then(function(){
+    _hcjPlaying=true; _hcjSyncUI(); _hcjStartProgressLoop();
+  }).catch(function(){ _hcjPlaying=false; _hcjAudioIdx=-1; _hcjSyncUI(); });
 }
 function _hcjTogglePlay() { if (_hcjPlaying) _hcjStopAudio(); else _hcjPlayVerse(_verseIdx); }
 function _hcjSetMode(mode) {
@@ -8933,6 +9005,51 @@ function _hcjRenderPlayer(idx) {
   var lmd=document.querySelector("#lmo .lmd"); if (!lmd) return;
 
   var wrap=document.createElement("div"); wrap.id="hcj-player-wrap";
+
+  // ── Progress bar row (above buttons) ──
+  var progRow=document.createElement("div"); progRow.className="hcj-prog-row";
+
+  var timeCur=document.createElement("span");
+  timeCur.id="hcj-time-cur"; timeCur.className="hcj-time";
+  timeCur.textContent="0:00";
+  progRow.appendChild(timeCur);
+
+  var progTrack=document.createElement("div"); progTrack.className="hcj-prog-track";
+  var progFill=document.createElement("div");
+  progFill.id="hcj-prog-fill"; progFill.className="hcj-prog-fill";
+  var progThumb=document.createElement("div");
+  progThumb.id="hcj-prog-thumb"; progThumb.className="hcj-prog-thumb";
+  progFill.appendChild(progThumb);
+  progTrack.appendChild(progFill);
+
+  // Scrub on tap/drag
+  function _hcjScrubAt(e) {
+    if (!_hcjAudio || !_hcjAudio.duration) return;
+    e.preventDefault();
+    var rect = progTrack.getBoundingClientRect();
+    var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    var pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    _hcjAudio.currentTime = pct * _hcjAudio.duration;
+    _hcjUpdateProgress();
+  }
+  var _scrubbing = false;
+  progTrack.addEventListener("mousedown",  function(e){ _scrubbing=true; _hcjScrubAt(e); });
+  progTrack.addEventListener("touchstart", function(e){ _scrubbing=true; _hcjScrubAt(e); }, {passive:false});
+  window.addEventListener("mousemove",  function(e){ if(_scrubbing) _hcjScrubAt(e); });
+  window.addEventListener("touchmove",  function(e){ if(_scrubbing) _hcjScrubAt(e); }, {passive:false});
+  window.addEventListener("mouseup",   function(){ _scrubbing=false; });
+  window.addEventListener("touchend",  function(){ _scrubbing=false; });
+
+  progRow.appendChild(progTrack);
+
+  var timeTot=document.createElement("span");
+  timeTot.id="hcj-time-tot"; timeTot.className="hcj-time";
+  timeTot.textContent="0:00";
+  progRow.appendChild(timeTot);
+
+  wrap.appendChild(progRow);
+
+  // ── Buttons row ──
   var row=document.createElement("div"); row.className="hcj-player";
 
   // Prev arrow (left of player)

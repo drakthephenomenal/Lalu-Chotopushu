@@ -1366,7 +1366,7 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 
 /* Scroll container */
 .lm-card-inner{
-  padding: 20px 18px 20px;
+  padding: 32px 18px 24px;
   /* NO flex:1 — card height driven by content */
 }
 .lyr{
@@ -1461,9 +1461,9 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 
 /* Play / pause — primary action */
 .hcj-play-btn{
-  width: 50px;
-  height: 50px;
-  font-size: 1.15rem;
+  width: 46px;
+  height: 46px;
+  font-size: 1rem;
   background: linear-gradient(135deg, #f0a838, #c4601a);
   color: #fff;
   border-color: transparent;
@@ -1566,9 +1566,9 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 
 /* Play / Pause — hero button */
 .hcj-play-btn{
-  width:58px; height:58px;
+  width:46px; height:46px;
   border-radius:50%;
-  font-size:24px;
+  font-size:18px;
   color:#fff;
   background:radial-gradient(circle at 30% 25%, #7b5cff 0%, #4a2bd6 55%, #2a149a 100%);
   border:1px solid rgba(255,255,255,.22);
@@ -1683,9 +1683,9 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 
 /* Play / pause — premium dark-blue hero, turns gold when playing */
 .hcj-play-btn{
-  width: 58px; height: 58px;
+  width: 46px; height: 46px;
   border-radius: 50%;
-  font-size: 22px;
+  font-size: 18px;
   color: #fff;
   background: radial-gradient(circle at 30% 25%, #3F7BD8 0%, #1E47A0 55%, #0B204E 100%);
   border: 1px solid rgba(160,200,255,.30);

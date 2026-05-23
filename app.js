@@ -8723,7 +8723,7 @@ var _hcjAudio = null;
 var _hcjMode  = "manual";
 var _hcjPlaying = false;
 
-function _hcjAudioPath(i) { return "audio/hcj_" + (i + 1) + ".mp3"; }
+function _hcjAudioPath(i) { return "https://github.com/drakthephenomenal/Lalu-Chotopushu/releases/download/v1.0-audio/hcj_" + (i + 1) + ".mp3"; }
 
 function _hcjStopAudio() {
   if (_hcjAudio) { _hcjAudio.pause(); _hcjAudio.onended = null; _hcjAudio = null; }

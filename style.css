@@ -1276,3 +1276,196 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   font-size: 0.78rem;
 }
 
+
+/* ═══════════════════════════════════════════════
+   LYRICS VIEW — EXPANDED + PREMIUM REFRESH
+   (overrides earlier .lmd / .lm-water-card / .lm-nav / HCJ player rules)
+═══════════════════════════════════════════════ */
+
+/* Full-bleed modal — blend with screen */
+.lmo { background: rgba(4,10,30,0.94); backdrop-filter: blur(10px); }
+
+.lmd{
+  width: 100vw;
+  max-width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
+  padding: max(env(safe-area-inset-top), 10px) 0 max(env(safe-area-inset-bottom), 10px);
+  gap: 4px;
+}
+
+/* Title sits inside safe area */
+.lmt { margin-top: 6px; padding: 0 48px; }
+.lmx { top: max(env(safe-area-inset-top), 8px); right: 12px; }
+
+/* Card wrap fills the screen — no side gutters */
+.lm-card-wrap{
+  width: 100%;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Borderless watery card — blends with the dark screen */
+.lm-water-card{
+  border-radius: 0;
+  box-shadow: none;
+  animation: none;
+  background: #ffffff;
+}
+.lm-water-card::before,
+.lm-water-card::after { display: none; }
+
+.lm-card-inner{
+  padding: 26px 22px 34px;
+  align-items: flex-start;
+}
+.lyr{
+  font-size: 22px;
+  line-height: 2.15;
+}
+
+/* Dots compact */
+.lm-dots{ padding: 10px 0 2px; }
+
+/* ── Tiny arrows — no circle, no border ── */
+.lm-nav{ gap: 56px; margin-top: 6px; }
+.lm-nav-btn{
+  width: auto;
+  height: auto;
+  border: none;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  color: rgba(255,255,255,0.78);
+  font-size: 22px;
+  padding: 6px 10px;
+  line-height: 1;
+  border-radius: 0;
+  transition: opacity 0.15s, transform 0.15s, color 0.15s;
+}
+.lm-nav-btn:active{
+  background: transparent;
+  transform: translateX(0) scale(0.85);
+  color: var(--a2);
+}
+.lm-nav-btn:disabled{ opacity: 0.18; }
+
+/* ═══════════════════════════════════════════════
+   HCJ AUDIO PLAYER — PREMIUM GLASS
+═══════════════════════════════════════════════ */
+#hcj-player-wrap{
+  margin: 10px 14px 6px;
+  padding: 10px 14px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(20,28,55,0.85), rgba(8,14,32,0.85));
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow:
+    0 8px 28px rgba(0,0,0,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  backdrop-filter: blur(14px);
+}
+.hcj-player{
+  gap: 14px;
+  justify-content: space-evenly;
+}
+
+/* Base premium pill button */
+.hcj-mini-btn{
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  font-size: 1rem;
+  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    0 2px 8px rgba(0,0,0,0.35);
+  transition:
+    transform 0.18s cubic-bezier(.2,.7,.3,1.4),
+    background 0.2s, border-color 0.2s, box-shadow 0.2s, color 0.2s;
+}
+.hcj-mini-btn:hover{
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.18);
+}
+.hcj-mini-btn:active{
+  transform: scale(0.88);
+  background: rgba(109,184,255,0.20);
+  border-color: rgba(109,184,255,0.55);
+  color: #fff;
+  box-shadow:
+    0 0 0 4px rgba(109,184,255,0.18),
+    0 0 18px rgba(109,184,255,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.18);
+}
+
+/* Active mode — gold highlight */
+.hcj-mode-active{
+  background: linear-gradient(135deg, rgba(255,196,90,0.28), rgba(220,140,30,0.22));
+  border-color: rgba(255,196,90,0.55);
+  color: #ffe6a8;
+  box-shadow:
+    0 0 0 1px rgba(255,196,90,0.25),
+    0 4px 14px rgba(220,140,30,0.30),
+    inset 0 1px 0 rgba(255,255,255,0.18);
+}
+
+/* Play / pause — primary action */
+.hcj-play-btn{
+  width: 50px;
+  height: 50px;
+  font-size: 1.15rem;
+  background: linear-gradient(135deg, #f0a838, #c4601a);
+  color: #fff;
+  border-color: transparent;
+  box-shadow:
+    0 6px 18px rgba(220,120,30,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.hcj-play-btn:hover{
+  background: linear-gradient(135deg, #f5b34a, #d06820);
+  border-color: transparent;
+}
+.hcj-play-btn:active{
+  transform: scale(0.92);
+  box-shadow:
+    0 0 0 5px rgba(240,168,56,0.22),
+    0 0 22px rgba(240,168,56,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.hcj-play-btn.hcj-playing{
+  background: linear-gradient(135deg, #4a90e2, #1e4fa0);
+  box-shadow:
+    0 6px 18px rgba(50,110,210,0.50),
+    inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.hcj-play-btn.hcj-playing:active{
+  box-shadow:
+    0 0 0 5px rgba(74,144,226,0.22),
+    0 0 22px rgba(74,144,226,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.25);
+}
+
+/* Seek input — refined */
+.hcj-seek-input{
+  width: 54px;
+  height: 36px;
+  margin-left: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.35);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.hcj-seek-input:focus{
+  border-color: rgba(109,184,255,0.7);
+  box-shadow: 0 0 0 3px rgba(109,184,255,0.18);
+}
+.hcj-seek-total{
+  color: rgba(255,255,255,0.55);
+  font-size: 0.85rem;
+  margin-left: 2px;
+}

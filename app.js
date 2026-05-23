@@ -8552,6 +8552,30 @@ window.addEventListener('appinstalled', () => {
   dismissInstallBanner();
 });
 
+// ── Hard cache-bust on version change ──
+(function() {
+  const APP_VER = 'v78';
+  if (localStorage.getItem('appVer') !== APP_VER) {
+    localStorage.setItem('appVer', APP_VER);
+    var p1 = navigator.serviceWorker
+      ? navigator.serviceWorker.getRegistrations().then(function(regs){
+          return Promise.all(regs.map(function(r){ return r.unregister(); }));
+        })
+      : Promise.resolve();
+    var p2 = window.caches
+      ? caches.keys().then(function(keys){
+          return Promise.all(keys.map(function(k){ return caches.delete(k); }));
+        })
+      : Promise.resolve();
+    Promise.all([p1, p2]).then(function() {
+      if (location.search.indexOf('bust=78') === -1) {
+        location.replace(location.pathname + '?bust=78');
+      }
+    });
+    return;
+  }
+})();
+
 // Service Worker
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

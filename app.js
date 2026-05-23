@@ -8735,8 +8735,9 @@ function _hcjPlayVerse(idx) {
 }
 function _hcjTogglePlay() { if (_hcjPlaying) _hcjStopAudio(); else _hcjPlayVerse(_verseIdx); }
 function _hcjSetMode(mode) {
-  _hcjMode=mode;
-  if (_hcjAudio) _hcjAudio.loop=(mode==="loop");
+  // Toggle off back to manual if the same mode button is tapped again
+  _hcjMode = (_hcjMode===mode) ? "manual" : mode;
+  if (_hcjAudio) _hcjAudio.loop=(_hcjMode==="loop");
   _hcjSyncUI();
 }
 // Called whenever the displayed verse changes — keep audio in sync.
@@ -8758,7 +8759,7 @@ function _hcjSyncUI() {
     pl.classList.toggle("hcj-playing",_hcjPlaying);
     pl.title=_hcjPlaying?"বিরতি":"বাজাও";
   }
-  ["loop","continue","manual"].forEach(function(m){
+  ["loop","continue"].forEach(function(m){
     var b=document.getElementById("hcj-mode-"+m);
     if(b) b.classList.toggle("hcj-mode-active",_hcjMode===m);
   });
@@ -8783,8 +8784,7 @@ function _hcjRenderPlayer(idx) {
   // Mode buttons (icon-only, tiny)
   var modes=[
     {k:"loop",  i:"\uD83D\uDD01", t:"লুপ (একই পদ)"},
-    {k:"continue", i:"\u23ED", t:"ক্রমাগত (পরবর্তী পদ)"},
-    {k:"manual", i:"\u270B", t:"ম্যানুয়াল"}
+    {k:"continue", i:"\u23ED", t:"ক্রমাগত (পরবর্তী পদ)"}
   ];
   modes.forEach(function(m){
     var b=document.createElement("button");

@@ -1207,14 +1207,18 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
    HCJ AUDIO PLAYER
 ═══════════════════════════════════════════════ */
 #hcj-player-wrap {
-  margin-top: 18px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(255,255,255,0.15);
+  margin: 8px 10px 6px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,200,100,0.18);
+  backdrop-filter: blur(6px);
+  flex-shrink: 0;
 }
 .hcj-player {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .hcj-mode-row {
   display: flex;
@@ -1245,7 +1249,8 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 .hcj-nav-btn {
   width: 42px;

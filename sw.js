@@ -3,12 +3,13 @@
 // v78: Fix top-line clipping via clip-path
 // ═══════════════════════════════════════════════════════
 const CACHE = 'radha-jap-v78';
+const VER = '?v=78';
 
 const PRECACHE = [
   './index.html',
-  './style.css',
-  './stotrams.js',
-  './app.js',
+  './style.css' + VER,
+  './stotrams.js' + VER,
+  './app.js' + VER,
   './panchangData.js',
   './guru.jpg',
   './icon-192.png',
@@ -75,8 +76,9 @@ self.addEventListener('fetch', e => {
   }
 
   if (url.pathname.endsWith('app.js') || url.pathname.endsWith('style.css') || url.pathname.endsWith('stotrams.js')) {
+    // Always fetch fresh — these are the core files most likely to change
     e.respondWith(
-      fetch(e.request, { cache: 'no-cache' })
+      fetch(e.request.url.split('?')[0] + VER, { cache: 'no-cache' })
         .then(resp => {
           if (resp && resp.status === 200) caches.open(CACHE).then(c => c.put(e.request, resp.clone()));
           return resp;

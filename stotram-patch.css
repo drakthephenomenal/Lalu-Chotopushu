@@ -1,0 +1,93 @@
+/* ════════════════════════════════════════════════════════════
+   stotram-patch.css  — add this line to <head> in index.html:
+   <link rel="stylesheet" href="./stotram-patch.css">
+   ════════════════════════════════════════════════════════════
+
+   Fixes:
+   1. Frame image uses background-size:contain so the four corner
+      ornaments (shankha, chakra, gada, padma) are NEVER cropped
+      on Android, iPhone, iPad, or desktop.
+   2. Dark navy (#030a14) fills any empty space around the frame.
+   3. All text/UI positions recalculated for the new layout.
+   4. CSS variable --lyr-fs wired up for JS-driven adaptive text.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── 1. Frame: always show full image, never crop ─────────── */
+.lm-water-card {
+  background-size: contain !important;
+  background-position: center center !important;
+  /* background-color: #030a14 is already in your base rule */
+}
+
+/* ── 2. Portrait phones  (width/height < 2/3, i.e. narrow portrait)
+        contain scales image to fill WIDTH:
+          image_w = 100vw,  image_h = 150vw
+          image_top = 50dvh - 75vw                              ── */
+@media (max-aspect-ratio: 2/3) {
+
+  /* Golden text area */
+  .lm-card-inner {
+    top:    calc(50dvh - 58.5vw);  /* image_top + 11% of 150vw */
+    bottom: calc(50dvh - 57vw);   /* 12% margin from image bottom */
+    left:   9vw;
+    right:  9vw;
+  }
+
+  /* Title (below flute ornament ≈ 10% from image top) */
+  .lmt { top: calc(50dvh - 60vw); }
+
+  /* Dots (inside bottom ornament band) */
+  .lm-dots {
+    bottom: max(calc(50dvh - 68vw), calc(env(safe-area-inset-bottom) + 6px));
+  }
+
+  /* Translation toggle */
+  .lm-translate-wrap {
+    bottom: max(calc(50dvh - 61vw), calc(env(safe-area-inset-bottom) + 46px));
+  }
+
+  /* Prev / Next arrows at bottom edge of frame */
+  .lm-nav {
+    bottom: max(calc(50dvh - 75vw), env(safe-area-inset-bottom));
+  }
+}
+
+/* ── 3. iPad / desktop  (width/height >= 2/3)
+        contain scales image to fill HEIGHT:
+          image_h = 100dvh, image_w = 66.67dvh
+          image_left = 50vw - 33.33dvh                          ── */
+@media (min-aspect-ratio: 2/3) {
+
+  .lm-card-inner {
+    top:    11dvh;
+    bottom: 12dvh;
+    left:   calc(50vw - 27.34dvh);  /* image_left + 9% of 66.67dvh */
+    right:  calc(50vw - 27.34dvh);
+  }
+
+  .lmt { top: 10dvh; }
+
+  .lm-dots {
+    bottom: max(calc(env(safe-area-inset-bottom) + 100px), 118px);
+  }
+
+  .lm-translate-wrap {
+    bottom: max(calc(env(safe-area-inset-bottom) + 58px), 70px);
+  }
+
+  .lm-nav {
+    bottom: max(env(safe-area-inset-bottom), 10px);
+  }
+}
+
+/* ── 4. Adaptive text: JS sets --lyr-fs; CSS uses it ──────── */
+.lyr {
+  --lyr-fs: clamp(14px, 4.5vw, 36px);
+}
+.lyr-line {
+  font-size: var(--lyr-fs, clamp(14px, 4.5vw, 36px));
+  display: block;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: keep-all;   /* keeps Bengali/Devanagari words intact */
+}

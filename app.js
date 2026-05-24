@@ -8728,7 +8728,7 @@ function showLyrics(id) {
 
 function _renderVerse(idx, dir) {
   const body = document.getElementById("lyrBody");
-  const ctr  = null; // verse counter removed
+  const ctr  = null;
   const prev = document.getElementById("lmPrev");
   const next = document.getElementById("lmNext");
 
@@ -8736,8 +8736,15 @@ function _renderVerse(idx, dir) {
   const isProse = PROSE_IDS.includes(_currentStotramId) && _isProseBlock(verseText);
   const hasTranslation = TRANSLATION_IDS.includes(_currentStotramId);
 
-  // For prose verses: show as scrollable text
-  // For stotram verses: line-by-line; অর্থ: lines included ONLY when toggle is ON
+  // Does this verse have any অর্থ: lines at all?
+  const verseHasArtha = /^অর্থ\s*:/m.test(verseText);
+
+  // Does this verse have any non-artha, non-empty content lines?
+  const verseHasContent = verseText.split("\n").some(l => {
+    const t = l.trim();
+    return t.length > 0 && !/^অর্থ\s*:/.test(t);
+  });
+
   let linesHtml = '';
   if (isProse) {
     const escaped = verseText.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -8748,7 +8755,7 @@ function _renderVerse(idx, dir) {
       if (line.trim() === "") return '<span class="lyr-line-empty"></span>';
       const esc = line.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
       if (/^অর্থ\s*:/.test(line.trim())) {
-        // Only inject অর্থ line if translation is currently ON — avoids empty card
+        // Only inject অর্থ: line when translation is ON
         if (!hasTranslation || !_translationVisible) return '';
         return '<span class="lyr-line lyr-artha">' + esc + '</span>';
       }
@@ -8756,12 +8763,17 @@ function _renderVerse(idx, dir) {
     }).join("");
   }
 
-  // Decorative footer
-  const footerHtml = '<div class="lyr-footer">❧ &nbsp; 🌸 &nbsp; ❧</div>';
-  body.innerHTML = linesHtml + footerHtml;
+  // Decide if the card should be visible at all:
+  // Hide it when: translation is OFF and the verse has ONLY অর্থ: lines (no Sanskrit content)
+  const cardVisible = isProse || verseHasContent || (verseHasArtha && _translationVisible);
+  const cardWrap = document.getElementById("lmb");
+  if (cardWrap) cardWrap.style.visibility = cardVisible ? "" : "hidden";
 
-  // Render persistent toggle (once in modal, stays across verse navigation)
-  _renderTranslationToggle();
+  const footerHtml = '<div class="lyr-footer">❧ &nbsp; 🌸 &nbsp; ❧</div>';
+  body.innerHTML = (cardVisible ? linesHtml : '') + footerHtml;
+
+  // Toggle: only show when this verse actually has অর্থ: lines
+  _renderTranslationToggle(verseHasArtha);
 
   body.classList.remove("lyr-slide-enter-left","lyr-slide-enter-right");
   if (dir === 1)  { void body.offsetWidth; body.classList.add("lyr-slide-enter-left"); }
@@ -8771,35 +8783,41 @@ function _renderVerse(idx, dir) {
   prev.disabled = idx === 0;
   next.disabled = idx === _verses.length - 1;
 
-  // Scroll card inner to top
   const inner = document.querySelector(".lm-card-inner");
   if (inner) inner.scrollTop = 0;
   _hcjRenderPlayer(idx);
   _hcjOnVerseChange(idx);
 }
 
-// Render a persistent translation toggle switch below the nav arrows.
-// Called once when stotram opens; stays for the whole session.
-// Toggle re-renders the current verse so অর্থ: lines appear/disappear cleanly.
-function _renderTranslationToggle() {
-  // Only for supported stotrams
+// Render translation toggle — shown ONLY when current verse has অর্থ: lines.
+// verseHasArtha: boolean passed from _renderVerse
+function _renderTranslationToggle(verseHasArtha) {
+  // Not a translatable stotram → always remove
   if (!TRANSLATION_IDS.includes(_currentStotramId)) {
     var old = document.getElementById('lm-translate-wrap');
     if (old) old.remove();
     return;
   }
 
-  // Don't recreate if already present — just sync state
   var existing = document.getElementById('lm-translate-wrap');
+
+  // This verse has no অর্থ: → hide toggle (and reset translation state)
+  if (!verseHasArtha) {
+    if (existing) existing.style.display = 'none';
+    return;
+  }
+
+  // This verse has অর্থ: → show toggle
   if (existing) {
+    existing.style.display = '';
     _syncToggleUI();
     return;
   }
 
+  // First time — build the toggle
   const nav = document.getElementById('lmNav');
   if (!nav) return;
 
-  // Build toggle row: label + switch
   var wrap = document.createElement('div');
   wrap.id = 'lm-translate-wrap';
   wrap.className = 'lm-translate-wrap';
@@ -8816,7 +8834,6 @@ function _renderTranslationToggle() {
   sw.innerHTML = '<span class="lm-toggle-thumb"></span>';
   sw.onclick = function() {
     _translationVisible = !_translationVisible;
-    // Re-render current verse so অর্থ: lines are added/removed from DOM
     _renderVerse(_verseIdx, null);
   };
 

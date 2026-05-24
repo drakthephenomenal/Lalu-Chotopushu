@@ -25,6 +25,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <link rel="stylesheet" href="./style.css?v=83">
   <link rel="stylesheet" href="./style-stotram.css?v=83">
+  <link rel="stylesheet" href="./stotram-patch.css">
 </head>
 <body>
 <!-- LOADING -->
@@ -1336,54 +1337,6 @@
     <script src="./panchangData.js"></script>
     <script src="./app.js?v=82"></script>
 
-  <script>
-/* Adaptive text sizing: grows font to max that keeps every .lyr-line on one row */
-(function(){
-  'use strict';
-  var MIN=14,MAX=36,STEPS=12;
-  function fitOne(lyrEl){
-    var lines=lyrEl.querySelectorAll('.lyr-line');
-    if(!lines.length)return;
-    var cw=lyrEl.getBoundingClientRect().width;
-    if(cw<1)return;
-    function wide(px){
-      lyrEl.style.setProperty('--lyr-fs',px+'px');
-      for(var i=0;i<lines.length;i++){
-        if(lines[i].scrollWidth>lines[i].offsetWidth+1)return true;
-        if(lines[i].getBoundingClientRect().width>cw+1)return true;
-      }
-      return false;
-    }
-    if(wide(MIN)){lyrEl.style.setProperty('--lyr-fs',MIN+'px');return;}
-    if(!wide(MAX)){lyrEl.style.setProperty('--lyr-fs',MAX+'px');return;}
-    var lo=MIN,hi=MAX;
-    for(var s=0;s<STEPS;s++){var mid=(lo+hi)/2;if(wide(mid))hi=mid;else lo=mid;}
-    lyrEl.style.setProperty('--lyr-fs',(Math.floor(lo*10)/10)+'px');
-  }
-  function fit(){
-    var m=document.querySelector('.lmo');
-    if(!m||!m.classList.contains('show'))return;
-    requestAnimationFrame(function(){m.querySelectorAll('.lyr').forEach(fitOne);});
-  }
-  window.fitLyrLines=fit;
-  var rt;
-  window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(fit,150);});
-  function init(){
-    var m=document.querySelector('.lmo');
-    if(!m)return;
-    new MutationObserver(function(muts){
-      muts.forEach(function(mu){
-        if(mu.type==='attributes'&&m.classList.contains('show'))setTimeout(fit,60);
-        if(mu.type==='childList'&&mu.addedNodes.length)setTimeout(fit,60);
-      });
-    }).observe(m,{attributes:true,childList:true,subtree:true});
-    m.addEventListener('click',function(e){
-      if(e.target.closest('.lm-arr,.lm-dot,[data-verse]'))setTimeout(fit,100);
-    });
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
-  else init();
-})();
-</script>
-</body>
+  <script src="./stotram-patch.js"></script>
+  </body>
 </html>

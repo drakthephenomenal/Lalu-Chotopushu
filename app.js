@@ -8709,15 +8709,6 @@ function setGlobalTranslation(on) {
   if (lbl) lbl.textContent = on ? 'অনুবাদ: চালু' : 'অনুবাদ: বন্ধ';
 }
 
-function showLyrics(id) {
-  const ly = getEffectiveLyrics(id);
-  if (!ly) { toast("পাঠ্য পাওয়া যায়নি 🙏"); return; }
-
-  _currentStotramId = id;
-  // Inherit the global translation preference set on the list screen
-  _translationVisible = TRANSLATION_IDS.includes(id) ? _globalTranslationPref : false;
-
-
 // ── Devotional SVG decorations ────────────────────────────────
 // Trishul top for Shiv stotrams
 const SVG_TRISHUL_TOP = `<svg width="140" height="54" viewBox="0 0 140 54" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -8814,6 +8805,16 @@ const SVG_SHIV_BOTTOM = `<svg width="160" height="36" viewBox="0 0 160 36" fill=
   <path d="M145 10 Q150 6 146 3 Q142 1 144 6" stroke="#8B5E00" stroke-width="1" fill="none" opacity="0.45"/>
 </svg>`;
 // ──────────────────────────────────────────────────────────────
+
+function showLyrics(id) {
+  const ly = getEffectiveLyrics(id);
+  if (!ly) { toast("পাঠ্য পাওয়া যায়নি 🙏"); return; }
+
+  _currentStotramId = id;
+  // Inherit the global translation preference set on the list screen
+  _translationVisible = TRANSLATION_IDS.includes(id) ? _globalTranslationPref : false;
+
+
   // Apply devotional theme to the card based on stotram deity
   (function(){
     var card = document.querySelector('.lm-water-card');

@@ -8837,10 +8837,7 @@ function showLyrics(id) {
       if (inner && botSvg) {
         var b = document.createElement('div');
         b.id='lm-deco-bottom'; b.className='lm-theme-bottom'; b.innerHTML=botSvg;
-        // Insert before lyr-footer so it sits above the dots
-        var footer = inner.querySelector('.lyr-footer');
-        if (footer) inner.insertBefore(b, footer);
-        else inner.appendChild(b);
+        inner.appendChild(b);
       }
     }
 
@@ -9038,9 +9035,7 @@ function _reinjectThemeDecos() {
   if (botSvg) {
     var b = document.createElement('div');
     b.id='lm-deco-bottom'; b.className='lm-theme-bottom'; b.innerHTML=botSvg;
-    var footer = inner.querySelector('.lyr-footer');
-    if (footer) inner.insertBefore(b, footer);
-    else inner.appendChild(b);
+    inner.appendChild(b);
   }
 }
 

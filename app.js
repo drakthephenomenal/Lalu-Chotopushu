@@ -1416,6 +1416,13 @@ function syncTargetJapToMala(prefix) {
   const jap = parseInt((japEl && japEl.value) || 0) || 0;
   if (malaEl) malaEl.value = jap > 0 ? Math.round(jap / ms) : "";
   if (dispEl) dispEl.textContent = Math.ceil(jap / ms);
+  // sync crore display when prefix is 'lt'
+  if (prefix === "lt") {
+    const croreEl = document.getElementById("ltCroreIn");
+    const croreDisp = document.getElementById("ltCroreDisp");
+    if (croreEl) croreEl.value = jap > 0 ? +(jap / 10000000).toFixed(4) : "";
+    if (croreDisp) croreDisp.textContent = jap > 0 ? (jap / 10000000).toFixed(2) : "0";
+  }
 }
 function syncTargetMalaToJap(prefix) {
   const ms = App.S.ms || 108;
@@ -1425,6 +1432,29 @@ function syncTargetMalaToJap(prefix) {
   const malas = parseInt((malaEl && malaEl.value) || 0) || 0;
   if (japEl) japEl.value = malas > 0 ? malas * ms : "";
   if (dispEl) dispEl.textContent = malas;
+  // sync crore display when prefix is 'lt'
+  if (prefix === "lt") {
+    const jap = malas * ms;
+    const croreEl = document.getElementById("ltCroreIn");
+    const croreDisp = document.getElementById("ltCroreDisp");
+    if (croreEl) croreEl.value = jap > 0 ? +(jap / 10000000).toFixed(4) : "";
+    if (croreDisp) croreDisp.textContent = jap > 0 ? (jap / 10000000).toFixed(2) : "0";
+  }
+}
+function syncTargetCroreToJap() {
+  const ms = App.S.ms || 108;
+  const CRORE_VAL = 10000000;
+  const croreEl = document.getElementById("ltCroreIn");
+  const japEl = document.getElementById("ltIn");
+  const malaEl = document.getElementById("ltMalaIn");
+  const dispEl = document.getElementById("ltMala");
+  const croreDisp = document.getElementById("ltCroreDisp");
+  const crores = parseFloat((croreEl && croreEl.value) || 0) || 0;
+  const jap = Math.round(crores * CRORE_VAL);
+  if (japEl) japEl.value = jap > 0 ? jap : "";
+  if (malaEl) malaEl.value = jap > 0 ? Math.round(jap / ms) : "";
+  if (dispEl) dispEl.textContent = jap > 0 ? Math.ceil(jap / ms).toLocaleString() : "0";
+  if (croreDisp) croreDisp.textContent = crores > 0 ? crores.toFixed(2) : "0";
 }
 
 // ── Init jap mode UI on page load ──
@@ -1655,6 +1685,14 @@ function sv(id, btn) {
     const ltMalaInEl = document.getElementById("ltMalaIn");
     if (ltMalaInEl)
       ltMalaInEl.value = App.S.lt > 0 ? Math.round(App.S.lt / ms) : "";
+    // Populate crore equivalent
+    const ltCroreInEl = document.getElementById("ltCroreIn");
+    const ltCroreDispEl = document.getElementById("ltCroreDisp");
+    if (ltCroreInEl) ltCroreInEl.value = App.S.lt > 0 ? +(App.S.lt / 10000000).toFixed(4) : "";
+    if (ltCroreDispEl) ltCroreDispEl.textContent = App.S.lt > 0 ? (App.S.lt / 10000000).toFixed(2) : "0";
+    // Populate mala display
+    const ltMalaDispEl = document.getElementById("ltMala");
+    if (ltMalaDispEl) ltMalaDispEl.textContent = App.S.lt > 0 ? Math.ceil(App.S.lt / ms).toLocaleString() : "0";
     // Populate RV daily target (fix: was missing, target not showing)
     const dtRVEl = document.getElementById("dtRVIn");
     if (dtRVEl) dtRVEl.value = App.S.dtRV > 0 ? App.S.dtRV : "";

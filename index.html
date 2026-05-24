@@ -1052,7 +1052,8 @@
     <div style="font-size:10px;color:var(--td);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase">Lifetime Target</div>
     <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="ltIn" placeholder="Jap count lifetime" oninput="syncTargetJapToMala('lt')"><span class="fu">jap</span></div>
     <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="ltMalaIn" placeholder="Or: malas lifetime" oninput="syncTargetMalaToJap('lt')"><span class="fu" style="color:var(--gold)">malas</span></div>
-    <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="ltMala">0</span> malas lifetime</div>
+    <div class="fr" style="margin-bottom:4px"><input type="number" step="0.5" min="0" class="fi" id="ltCroreIn" placeholder="Or: crore lifetime" oninput="syncTargetCroreToJap()"><span class="fu" style="color:#ff9933;font-weight:700">crore</span></div>
+    <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="ltMala">0</span> malas · <span id="ltCroreDisp" style="color:#ff9933;font-weight:600">0</span> crore</div>
     <button class="pb" onclick="svt('l')">Save Lifetime Target</button>
     <div class="non-gaudiya-setting" style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,215,0,0.15)">
       <div style="font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;font-weight:600">📿 राधावल्लभ श्री हरिवंश Targets</div>

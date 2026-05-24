@@ -8717,6 +8717,25 @@ function showLyrics(id) {
   // Inherit the global translation preference set on the list screen
   _translationVisible = TRANSLATION_IDS.includes(id) ? _globalTranslationPref : false;
 
+  // Apply devotional theme to the card based on stotram deity
+  (function(){
+    var card = document.querySelector('.lm-water-card');
+    if (!card) return;
+    var shiv  = ['bss','ans','rds','sps'];
+    var radha = ['hcj','rks','gms','nkc','vs2'];
+    var lmo = document.getElementById('lmo');
+    if (shiv.indexOf(id) !== -1) {
+      card.setAttribute('data-theme','shiv');
+      if (lmo) lmo.setAttribute('data-bg','shiv');
+    } else if (radha.indexOf(id) !== -1) {
+      card.setAttribute('data-theme','radha');
+      if (lmo) lmo.setAttribute('data-bg','radha');
+    } else {
+      card.removeAttribute('data-theme');
+      if (lmo) lmo.removeAttribute('data-bg');
+    }
+  })();
+
   // Split by blank lines into verses
   let allVerses = ly.split(/\n{2,}/).map(b => b.trim()).filter(b => b.length > 0);
 
@@ -8927,7 +8946,11 @@ function _initSwipeHandler() {
 }
 
 function closeLyrics() {
-  document.getElementById("lmo").classList.remove("show");
+  var lmo = document.getElementById("lmo");
+  lmo.classList.remove("show");
+  lmo.removeAttribute('data-bg');
+  var card = document.querySelector('.lm-water-card');
+  if (card) card.removeAttribute('data-theme');
   _hcjStopAudio();
   _verses = []; _verseIdx = 0;
   _currentStotramId = "";

@@ -374,40 +374,124 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 /* Card — hugs short content, scrolls when tall */
 .lm-water-card{
   width:100%;
-  background:#ffffff;
+  background: linear-gradient(160deg, #e8c96a 0%, #f5d98a 30%, #e2b84a 70%, #c8960a 100%);
   border-radius:22px;
   position:relative;
   overflow:hidden;
   display:flex;
   flex-direction:column;
-  /* height:auto so card shrinks to content; max-height caps it */
   height:auto;
   max-height:100%;
   box-shadow:
-    0 0 0 1.5px rgba(109,184,255,0.35),
-    0 8px 32px rgba(30,80,200,0.28),
-    0 2px 8px rgba(109,184,255,0.18),
-    inset 0 1px 0 rgba(255,255,255,0.9);
+    0 0 0 2px #8B6010,
+    0 0 0 4px rgba(200,150,10,0.4),
+    0 12px 50px rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,240,180,0.8);
   animation:cardFloat 5s ease-in-out infinite;
 }
 @keyframes cardFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 
 .lm-water-card::before{
-  content:\'\';
+  content:'';
   position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(109,184,255,0.10) 0%,transparent 50%,rgba(30,120,255,0.06) 100%);
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(255,255,200,0.30) 0%, transparent 45%),
+    radial-gradient(ellipse at 80% 80%, rgba(160,100,0,0.18) 0%, transparent 45%);
   pointer-events:none;z-index:1;
 }
 .lm-water-card::after{
-  content:\'\';
-  position:absolute;bottom:-2px;left:-10%;
-  width:120%;height:28px;
-  background:rgba(109,184,255,0.12);
-  border-radius:50% 50% 0 0;
+  content:'';
+  display:block;
+  position:absolute;bottom:0;left:0;right:0;
+  height:55px;
+  background:linear-gradient(to top, rgba(160,90,0,0.15), transparent);
   pointer-events:none;z-index:1;
-  animation:waveShift 3s ease-in-out infinite alternate;
 }
 @keyframes waveShift{from{transform:translateX(-4px)}to{transform:translateX(4px)}}
+
+/* ══ SHIV THEME: bss, ans, rds, sps ══ */
+.lm-water-card[data-theme="shiv"]{
+  box-shadow:
+    0 0 0 3px #8B5000,
+    0 0 0 6px #c8960a,
+    0 0 0 9px rgba(200,100,0,0.25),
+    0 14px 55px rgba(0,0,0,0.72),
+    inset 0 1px 0 rgba(255,240,180,0.85);
+}
+.lm-water-card[data-theme="shiv"] .lm-card-inner{
+  border: 2px solid rgba(120,70,0,0.5);
+  border-radius: 13px;
+  margin: 10px;
+  padding: 18px 18px 14px;
+  background: rgba(255,248,210,0.20);
+  box-shadow: inset 0 0 0 1px rgba(255,215,60,0.28);
+}
+.lm-water-card[data-theme="shiv"] .lm-card-inner::before{
+  content: 'ॐ  ꩜  ॐ';
+  display:block;
+  text-align:center;
+  font-size:20px;
+  color:#5a2800;
+  opacity:0.60;
+  margin-bottom:12px;
+  letter-spacing:10px;
+}
+.lm-water-card[data-theme="shiv"] .lm-card-inner::after{
+  content:'— ✿ —';
+  display:block;
+  text-align:center;
+  font-size:13px;
+  color:#5a2800;
+  opacity:0.45;
+  margin-top:8px;
+  letter-spacing:6px;
+}
+.lm-water-card[data-theme="shiv"] .lyr-line{ color:#1a0800; }
+.lm-water-card[data-theme="shiv"] .lyr-artha{ color:#8B0000 !important; }
+.lm-water-card[data-theme="shiv"] .lyr-footer{ color:#5a2800 !important; opacity:0.5; }
+
+/* ══ RADHA / VISHNU / KRISHNA THEME: hcj, rks, gms, nkc, vs2 ══ */
+.lm-water-card[data-theme="radha"]{
+  box-shadow:
+    0 0 0 3px #1a3a6a,
+    0 0 0 6px #c8960a,
+    0 0 0 9px rgba(20,60,160,0.30),
+    0 14px 55px rgba(0,0,0,0.72),
+    inset 0 1px 0 rgba(255,240,180,0.85);
+}
+.lm-water-card[data-theme="radha"] .lm-card-inner{
+  border: 2px solid rgba(20,60,150,0.45);
+  border-radius: 13px;
+  margin: 10px;
+  padding: 18px 18px 14px;
+  background: rgba(240,248,255,0.12);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,215,60,0.28),
+    inset 0 0 20px rgba(20,60,200,0.07);
+}
+.lm-water-card[data-theme="radha"] .lm-card-inner::before{
+  content: '❈  ꩜  ❈';
+  display:block;
+  text-align:center;
+  font-size:20px;
+  color:#0a2050;
+  opacity:0.55;
+  margin-bottom:12px;
+  letter-spacing:10px;
+}
+.lm-water-card[data-theme="radha"] .lm-card-inner::after{
+  content:'— ✿ —';
+  display:block;
+  text-align:center;
+  font-size:13px;
+  color:#0a2050;
+  opacity:0.40;
+  margin-top:8px;
+  letter-spacing:6px;
+}
+.lm-water-card[data-theme="radha"] .lyr-line{ color:#050a1a; }
+.lm-water-card[data-theme="radha"] .lyr-artha{ color:#8B0000 !important; }
+.lm-water-card[data-theme="radha"] .lyr-footer{ color:#0a2050 !important; opacity:0.45; }
 
 /* Scroll container — fills card, content starts at top */
 .lm-card-inner{
@@ -1432,8 +1516,12 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   height: auto;
   max-height: 100%;
 }
-.lm-water-card::before,
-.lm-water-card::after { display: none; }
+/* Keep ::before/::after hidden only for unthemed cards */
+.lm-water-card:not([data-theme])::before,
+.lm-water-card:not([data-theme])::after { display: none; }
+/* Themed cards: restore them */
+.lm-water-card[data-theme]::before,
+.lm-water-card[data-theme]::after { display: block; }
 
 /* Scroll container */
 .lm-card-inner{
@@ -1887,4 +1975,12 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   font-size:14px;
   font-weight:600;
   color:rgba(255,255,255,0.8);
+}
+
+/* Ambient bg glow when themed card is open */
+.lmo[data-bg="shiv"]{
+  background: radial-gradient(ellipse at 50% 50%, rgba(100,40,0,0.35) 0%, rgba(4,10,30,0.96) 60%);
+}
+.lmo[data-bg="radha"]{
+  background: radial-gradient(ellipse at 50% 50%, rgba(10,30,100,0.40) 0%, rgba(4,10,30,0.96) 60%);
 }

@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker
-// v81: Fix top-line clipping via clip-path
+// v82: Theme cards + audio player + translation toggle
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v81';
-const VER = '?v=78';
+const CACHE = 'radha-jap-v82';
+const VER = '?v=82';
 
 const PRECACHE = [
   './index.html',
@@ -76,7 +76,6 @@ self.addEventListener('fetch', e => {
   }
 
   if (url.pathname.endsWith('app.js') || url.pathname.endsWith('style.css') || url.pathname.endsWith('stotrams.js')) {
-    // Always fetch fresh — these are the core files most likely to change
     e.respondWith(
       fetch(e.request.url.split('?')[0] + VER, { cache: 'no-cache' })
         .then(resp => {
@@ -113,7 +112,6 @@ self.addEventListener('message', e => {
       })
     );
   }
-
   if (e.data && e.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }

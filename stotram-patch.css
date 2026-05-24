@@ -1,93 +1,124 @@
 /* ════════════════════════════════════════════════════════════
-   stotram-patch.css  — add this line to <head> in index.html:
+   stotram-patch.css  — link in <head> AFTER style-stotram.css:
    <link rel="stylesheet" href="./stotram-patch.css">
    ════════════════════════════════════════════════════════════
-
    Fixes:
-   1. Frame image uses background-size:contain so the four corner
-      ornaments (shankha, chakra, gada, padma) are NEVER cropped
-      on Android, iPhone, iPad, or desktop.
-   2. Dark navy (#030a14) fills any empty space around the frame.
-   3. All text/UI positions recalculated for the new layout.
-   4. CSS variable --lyr-fs wired up for JS-driven adaptive text.
+   1. Frame uses background-size:contain → all 4 corner ornaments
+      (shankha, chakra, gada, padma) always fully visible.
+   2. Text area co-ordinates recalculated for contain layout.
+   3. Font size driven by --lyr-fs CSS variable (set by JS).
+   4. Font-size control bar styles (injected into <body> by JS).
    ════════════════════════════════════════════════════════════ */
 
 /* ── 1. Frame: always show full image, never crop ─────────── */
 .lm-water-card {
-  background-size: contain !important;
+  background-size:     contain !important;
   background-position: center center !important;
-  /* background-color: #030a14 is already in your base rule */
 }
 
-/* ── 2. Portrait phones  (width/height < 2/3, i.e. narrow portrait)
-        contain scales image to fill WIDTH:
-          image_w = 100vw,  image_h = 150vw
-          image_top = 50dvh - 75vw                              ── */
+/* ── 2a. Portrait phones (aspect-ratio < 2/3)
+         contain scales by WIDTH:
+           image_w = 100vw,  image_h = 150vw
+           image_top = 50dvh − 75vw                           ── */
 @media (max-aspect-ratio: 2/3) {
-
-  /* Golden text area */
+  .lmt {
+    top: calc(50dvh - 60vw);   /* flute: 10% from image top  */
+  }
   .lm-card-inner {
-    top:    calc(50dvh - 58.5vw);  /* image_top + 11% of 150vw */
-    bottom: calc(50dvh - 57vw);   /* 12% margin from image bottom */
+    top:    calc(50dvh - 58.5vw);
+    bottom: calc(50dvh - 57vw);
     left:   9vw;
     right:  9vw;
   }
-
-  /* Title (below flute ornament ≈ 10% from image top) */
-  .lmt { top: calc(50dvh - 60vw); }
-
-  /* Dots (inside bottom ornament band) */
   .lm-dots {
     bottom: max(calc(50dvh - 68vw), calc(env(safe-area-inset-bottom) + 6px));
   }
-
-  /* Translation toggle */
   .lm-translate-wrap {
     bottom: max(calc(50dvh - 61vw), calc(env(safe-area-inset-bottom) + 46px));
   }
-
-  /* Prev / Next arrows at bottom edge of frame */
   .lm-nav {
     bottom: max(calc(50dvh - 75vw), env(safe-area-inset-bottom));
   }
 }
 
-/* ── 3. iPad / desktop  (width/height >= 2/3)
-        contain scales image to fill HEIGHT:
-          image_h = 100dvh, image_w = 66.67dvh
-          image_left = 50vw - 33.33dvh                          ── */
+/* ── 2b. iPad / desktop (aspect-ratio >= 2/3)
+         contain scales by HEIGHT:
+           image_h = 100dvh,  image_w = 66.67dvh
+           image_left = 50vw − 33.33dvh                       ── */
 @media (min-aspect-ratio: 2/3) {
-
+  .lmt {
+    top: 10dvh;
+  }
   .lm-card-inner {
     top:    11dvh;
     bottom: 12dvh;
-    left:   calc(50vw - 27.34dvh);  /* image_left + 9% of 66.67dvh */
-    right:  calc(50vw - 27.34dvh);
+    left:   calc(50vw - 27.33dvh);
+    right:  calc(50vw - 27.33dvh);
   }
-
-  .lmt { top: 10dvh; }
-
   .lm-dots {
     bottom: max(calc(env(safe-area-inset-bottom) + 100px), 118px);
   }
-
   .lm-translate-wrap {
     bottom: max(calc(env(safe-area-inset-bottom) + 58px), 70px);
   }
-
   .lm-nav {
     bottom: max(env(safe-area-inset-bottom), 10px);
   }
 }
 
-/* ── 4. Adaptive text: JS sets --lyr-fs; CSS uses it ──────── */
+/* ── 3. Lyric font size — JS sets --lyr-fs on the .lyr div
+        !important overrides the original clamp() rule         ── */
 .lyr {
-  --lyr-fs: clamp(14px, 4.5vw, 36px);
+  --lyr-fs: clamp(12px, 3.6vw, 20px);   /* safe CSS fallback  */
 }
 .lyr-line {
-  font-size: var(--lyr-fs, clamp(14px, 4.5vw, 36px));
-  display: block;
-  white-space: normal;
-  overflow-wrap: break-word;
-  word-break: keep-all;   /* keeps Bengali/Devanagari words intact */
+  font-size: var(--lyr-fs) !important;
+}
+
+/* ── 4. Font size control bar (injected into <body> by JS) ── */
+#lyr-fs-ctrl {
+  position: fixed;
+  bottom: 68px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: none;          /* JS shows this when modal is open  */
+  align-items: center;
+  gap: 5px;
+  background: rgba(3, 10, 20, 0.82);
+  border: 1px solid rgba(255, 215, 0, 0.45);
+  border-radius: 22px;
+  padding: 5px 10px;
+  white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.6);
+  touch-action: manipulation;
+  user-select: none;
+}
+#lyr-fs-ctrl button {
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px solid rgba(255, 215, 0, 0.5);
+  border-radius: 14px;
+  color: #ffd700;
+  font-size: 15px;
+  line-height: 1;
+  padding: 4px 10px;
+  cursor: pointer;
+  min-width: 34px;
+  -webkit-tap-highlight-color: transparent;
+}
+#lyr-fs-ctrl button:active {
+  background: rgba(255, 215, 0, 0.30);
+}
+#lyr-fs-label {
+  color: #ffd700;
+  font-size: 12px;
+  min-width: 36px;
+  text-align: center;
+  font-family: monospace;
+  letter-spacing: 0.5px;
+}
+#lyr-fs-auto {
+  color: rgba(255, 215, 0, 0.65) !important;
+  font-size: 13px !important;
+  padding: 4px 8px !important;
 }

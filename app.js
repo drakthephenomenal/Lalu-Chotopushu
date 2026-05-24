@@ -8694,13 +8694,28 @@ const PROSE_IDS = ['nkc'];
 // ── showLyrics — watery card swipe reader ──
 let _verses = [], _verseIdx = 0, _currentStotramId = '';
 let _translationVisible = false;
+// Global preference set from the Stotram list screen toggle
+let _globalTranslationPref = false;
+
+function setGlobalTranslation(on) {
+  _globalTranslationPref = on;
+  // Sync the toggle UI on list screen
+  var sw = document.getElementById('st-global-toggle-sw');
+  if (sw) {
+    sw.className = 'lm-toggle-sw' + (on ? ' on' : '');
+    sw.setAttribute('aria-checked', on ? 'true' : 'false');
+  }
+  var lbl = document.getElementById('st-global-toggle-label');
+  if (lbl) lbl.textContent = on ? 'অনুবাদ: চালু' : 'অনুবাদ: বন্ধ';
+}
 
 function showLyrics(id) {
   const ly = getEffectiveLyrics(id);
   if (!ly) { toast("পাঠ্য পাওয়া যায়নি 🙏"); return; }
 
   _currentStotramId = id;
-  _translationVisible = false;
+  // Inherit the global translation preference set on the list screen
+  _translationVisible = TRANSLATION_IDS.includes(id) ? _globalTranslationPref : false;
 
   // Split by blank lines into verses
   let allVerses = ly.split(/\n{2,}/).map(b => b.trim()).filter(b => b.length > 0);
@@ -8713,7 +8728,21 @@ function showLyrics(id) {
     if (isTitle) allVerses = allVerses.slice(1);
   }
 
-  _verses = allVerses;
+  // Merge verses that are ONLY অর্থ: lines into the preceding verse.
+  // This prevents standalone translation-only "pages" with no Sanskrit content.
+  const mergedVerses = [];
+  for (let i = 0; i < allVerses.length; i++) {
+    const v = allVerses[i];
+    const linesOnly = v.split('\n').filter(l => l.trim().length > 0);
+    const allArtha = linesOnly.length > 0 && linesOnly.every(l => /^অর্থ\s*:/.test(l.trim()));
+    if (allArtha && mergedVerses.length > 0) {
+      // Append to previous verse with a blank line separator
+      mergedVerses[mergedVerses.length - 1] += '\n\n' + v;
+    } else {
+      mergedVerses.push(v);
+    }
+  }
+  _verses = mergedVerses;
   _verseIdx = 0;
   _hcjStopAudio();
 

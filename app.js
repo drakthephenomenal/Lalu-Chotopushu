@@ -8717,6 +8717,103 @@ function showLyrics(id) {
   // Inherit the global translation preference set on the list screen
   _translationVisible = TRANSLATION_IDS.includes(id) ? _globalTranslationPref : false;
 
+
+// ── Devotional SVG decorations ────────────────────────────────
+// Trishul top for Shiv stotrams
+const SVG_TRISHUL_TOP = `<svg width="140" height="54" viewBox="0 0 140 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- horizontal vine bar -->
+  <path d="M10 36 Q35 28 60 33 Q70 35 80 33 Q105 28 130 36" stroke="#8B5E00" stroke-width="1.4" fill="none" opacity="0.7"/>
+  <!-- left flourish -->
+  <path d="M10 36 Q4 30 8 24 Q12 18 8 14" stroke="#8B5E00" stroke-width="1.2" fill="none" opacity="0.6"/>
+  <circle cx="8" cy="13" r="2" fill="#8B5E00" opacity="0.5"/>
+  <!-- right flourish mirror -->
+  <path d="M130 36 Q136 30 132 24 Q128 18 132 14" stroke="#8B5E00" stroke-width="1.2" fill="none" opacity="0.6"/>
+  <circle cx="132" cy="13" r="2" fill="#8B5E00" opacity="0.5"/>
+  <!-- OM symbol centre -->
+  <text x="70" y="20" text-anchor="middle" font-size="22" fill="#7a3d00" opacity="0.80" font-family="serif">ॐ</text>
+  <!-- trishul above OM -->
+  <g transform="translate(70,2) scale(0.55)" opacity="0.75">
+    <!-- centre prong -->
+    <line x1="0" y1="-16" x2="0" y2="4" stroke="#7a3d00" stroke-width="2.2" stroke-linecap="round"/>
+    <!-- left prong -->
+    <path d="M0 0 Q-7 -4 -7 -12 Q-7 -18 -3 -16" stroke="#7a3d00" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+    <!-- right prong -->
+    <path d="M0 0 Q7 -4 7 -12 Q7 -18 3 -16" stroke="#7a3d00" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+    <!-- base crossbar -->
+    <line x1="-5" y1="2" x2="5" y2="2" stroke="#7a3d00" stroke-width="1.8" stroke-linecap="round"/>
+  </g>
+  <!-- side leaf pairs -->
+  <path d="M38 30 Q32 22 40 20 Q42 28 38 30Z" fill="#8B5E00" opacity="0.35"/>
+  <path d="M102 30 Q108 22 100 20 Q98 28 102 30Z" fill="#8B5E00" opacity="0.35"/>
+</svg>`;
+
+// Radha symbol (paisley/mor-pankh style) top for Radha/Krishna stotrams
+const SVG_RADHA_TOP = `<svg width="140" height="54" viewBox="0 0 140 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- horizontal vine bar -->
+  <path d="M10 38 Q35 30 60 35 Q70 37 80 35 Q105 30 130 38" stroke="#1a3a80" stroke-width="1.4" fill="none" opacity="0.6"/>
+  <!-- left flourish -->
+  <path d="M10 38 Q4 32 8 26 Q12 20 8 16" stroke="#1a3a80" stroke-width="1.2" fill="none" opacity="0.55"/>
+  <circle cx="8" cy="15" r="2" fill="#1a3a80" opacity="0.45"/>
+  <!-- right flourish -->
+  <path d="M130 38 Q136 32 132 26 Q128 20 132 16" stroke="#1a3a80" stroke-width="1.2" fill="none" opacity="0.55"/>
+  <circle cx="132" cy="15" r="2" fill="#1a3a80" opacity="0.45"/>
+  <!-- Radha paisley at centre -->
+  <g transform="translate(70,6)" opacity="0.82">
+    <!-- paisley body -->
+    <path d="M0 0 C6 -8 12 -14 8 -22 C4 -30 -4 -28 -6 -20 C-8 -12 -4 -4 0 0Z" stroke="#1a3a80" stroke-width="1.6" fill="rgba(26,58,128,0.12)"/>
+    <!-- inner curl -->
+    <path d="M0 0 C2 -6 4 -10 2 -16" stroke="#1a3a80" stroke-width="1" fill="none"/>
+    <!-- lotus base -->
+    <path d="M-6 2 Q0 -2 6 2" stroke="#1a3a80" stroke-width="1.4" fill="none"/>
+    <circle cx="0" cy="3" r="2.2" fill="#1a3a80" opacity="0.5"/>
+  </g>
+  <!-- mini peacock eye dots flanking -->
+  <circle cx="46" cy="28" r="3.5" stroke="#1a3a80" stroke-width="1.2" fill="rgba(26,58,128,0.15)" opacity="0.7"/>
+  <circle cx="46" cy="28" r="1.5" fill="#1a3a80" opacity="0.6"/>
+  <circle cx="94" cy="28" r="3.5" stroke="#1a3a80" stroke-width="1.2" fill="rgba(26,58,128,0.15)" opacity="0.7"/>
+  <circle cx="94" cy="28" r="1.5" fill="#1a3a80" opacity="0.6"/>
+  <!-- leaf pairs -->
+  <path d="M38 32 Q32 24 40 22 Q42 30 38 32Z" fill="#1a3a80" opacity="0.30"/>
+  <path d="M102 32 Q108 24 100 22 Q98 30 102 32Z" fill="#1a3a80" opacity="0.30"/>
+</svg>`;
+
+// Peacock feather bottom for Radha/Krishna stotrams
+const SVG_PEACOCK_BOTTOM = `<svg width="160" height="48" viewBox="0 0 160 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- centre lotus divider line -->
+  <line x1="20" y1="12" x2="62" y2="12" stroke="#1a3a80" stroke-width="1" opacity="0.45"/>
+  <line x1="98" y1="12" x2="140" y2="12" stroke="#1a3a80" stroke-width="1" opacity="0.45"/>
+  <!-- lotus centre -->
+  <path d="M80 4 Q74 10 76 16 Q80 14 84 16 Q86 10 80 4Z" fill="rgba(26,58,128,0.35)" opacity="0.75"/>
+  <path d="M73 8 Q70 14 74 18 Q77 16 77 12Z"  fill="rgba(26,58,128,0.25)" opacity="0.65"/>
+  <path d="M87 8 Q90 14 86 18 Q83 16 83 12Z"  fill="rgba(26,58,128,0.25)" opacity="0.65"/>
+  <!-- left peacock feather -->
+  <path d="M62 12 Q48 8 36 20 Q28 30 34 38" stroke="#1a4a20" stroke-width="1.4" fill="none" opacity="0.6"/>
+  <path d="M62 12 Q52 6 44 18 Q40 26 44 34" stroke="#2a6a30" stroke-width="1" fill="none" opacity="0.5"/>
+  <ellipse cx="34" cy="38" rx="5" ry="7" transform="rotate(-20,34,38)" fill="rgba(26,100,50,0.3)" stroke="#1a4a20" stroke-width="1" opacity="0.7"/>
+  <ellipse cx="34" cy="38" rx="2.5" ry="3.5" transform="rotate(-20,34,38)" fill="rgba(10,40,160,0.55)" opacity="0.85"/>
+  <!-- right peacock feather mirror -->
+  <path d="M98 12 Q112 8 124 20 Q132 30 126 38" stroke="#1a4a20" stroke-width="1.4" fill="none" opacity="0.6"/>
+  <path d="M98 12 Q108 6 116 18 Q120 26 116 34" stroke="#2a6a30" stroke-width="1" fill="none" opacity="0.5"/>
+  <ellipse cx="126" cy="38" rx="5" ry="7" transform="rotate(20,126,38)" fill="rgba(26,100,50,0.3)" stroke="#1a4a20" stroke-width="1" opacity="0.7"/>
+  <ellipse cx="126" cy="38" rx="2.5" ry="3.5" transform="rotate(20,126,38)" fill="rgba(10,40,160,0.55)" opacity="0.85"/>
+</svg>`;
+
+// Lotus bottom for Shiv stotrams
+const SVG_SHIV_BOTTOM = `<svg width="160" height="36" viewBox="0 0 160 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <line x1="15" y1="10" x2="64" y2="10" stroke="#8B5E00" stroke-width="1" opacity="0.45"/>
+  <line x1="96" y1="10" x2="145" y2="10" stroke="#8B5E00" stroke-width="1" opacity="0.45"/>
+  <circle cx="80" cy="10" r="3" fill="#8B5E00" opacity="0.4"/>
+  <!-- lotus petals -->
+  <path d="M80 2 Q74 8 76 14 Q80 12 84 14 Q86 8 80 2Z" fill="rgba(139,90,0,0.40)"/>
+  <path d="M73 5 Q68 12 72 16 Q76 14 75 10Z"            fill="rgba(139,90,0,0.28)"/>
+  <path d="M87 5 Q92 12 88 16 Q84 14 85 10Z"            fill="rgba(139,90,0,0.28)"/>
+  <path d="M67 9 Q63 16 68 18 Q72 16 70 12Z"            fill="rgba(139,90,0,0.20)"/>
+  <path d="M93 9 Q97 16 92 18 Q88 16 90 12Z"            fill="rgba(139,90,0,0.20)"/>
+  <!-- side scrollwork -->
+  <path d="M15 10 Q10 6 14 3 Q18 1 16 6" stroke="#8B5E00" stroke-width="1" fill="none" opacity="0.45"/>
+  <path d="M145 10 Q150 6 146 3 Q142 1 144 6" stroke="#8B5E00" stroke-width="1" fill="none" opacity="0.45"/>
+</svg>`;
+// ──────────────────────────────────────────────────────────────
   // Apply devotional theme to the card based on stotram deity
   (function(){
     var card = document.querySelector('.lm-water-card');
@@ -8724,12 +8821,36 @@ function showLyrics(id) {
     var shiv  = ['bss','ans','rds','sps'];
     var radha = ['hcj','rks','gms','nkc','vs2'];
     var lmo = document.getElementById('lmo');
+    // Remove any previous decoration elements
+    ['lm-deco-top','lm-deco-bottom'].forEach(function(cid){
+      var old = document.getElementById(cid); if(old) old.remove();
+    });
+    var inner = card.querySelector('.lm-card-inner');
+
+    function injectDeco(topSvg, botSvg) {
+      if (inner && topSvg) {
+        var t = document.createElement('div');
+        t.id='lm-deco-top'; t.className='lm-theme-top'; t.innerHTML=topSvg;
+        inner.insertBefore(t, inner.firstChild);
+      }
+      if (inner && botSvg) {
+        var b = document.createElement('div');
+        b.id='lm-deco-bottom'; b.className='lm-theme-bottom'; b.innerHTML=botSvg;
+        // Insert before lyr-footer so it sits above the dots
+        var footer = inner.querySelector('.lyr-footer');
+        if (footer) inner.insertBefore(b, footer);
+        else inner.appendChild(b);
+      }
+    }
+
     if (shiv.indexOf(id) !== -1) {
       card.setAttribute('data-theme','shiv');
       if (lmo) lmo.setAttribute('data-bg','shiv');
+      injectDeco(SVG_TRISHUL_TOP, SVG_SHIV_BOTTOM);
     } else if (radha.indexOf(id) !== -1) {
       card.setAttribute('data-theme','radha');
       if (lmo) lmo.setAttribute('data-bg','radha');
+      injectDeco(SVG_RADHA_TOP, SVG_PEACOCK_BOTTOM);
     } else {
       card.removeAttribute('data-theme');
       if (lmo) lmo.removeAttribute('data-bg');
@@ -8820,6 +8941,9 @@ function _renderVerse(idx, dir) {
   const footerHtml = '<div class="lyr-footer">❧ &nbsp; 🌸 &nbsp; ❧</div>';
   body.innerHTML = (cardVisible ? linesHtml : '') + footerHtml;
 
+  // Re-inject SVG theme decorations (lost when innerHTML was rebuilt)
+  _reinjectThemeDecos();
+
   // Toggle: only show when this verse actually has অর্থ: lines
   _renderTranslationToggle(verseHasArtha);
 
@@ -8888,6 +9012,35 @@ function _renderTranslationToggle(verseHasArtha) {
   wrap.appendChild(label);
   wrap.appendChild(sw);
   nav.parentNode.insertBefore(wrap, nav);
+}
+
+function _reinjectThemeDecos() {
+  // Remove stale decos from previous render
+  ['lm-deco-top','lm-deco-bottom'].forEach(function(cid){
+    var old = document.getElementById(cid); if(old) old.remove();
+  });
+  var card = document.querySelector('.lm-water-card');
+  if (!card) return;
+  var theme = card.getAttribute('data-theme');
+  if (!theme) return;
+  var inner = card.querySelector('.lm-card-inner');
+  if (!inner) return;
+
+  var topSvg = (theme==='shiv') ? SVG_TRISHUL_TOP : (theme==='radha') ? SVG_RADHA_TOP : null;
+  var botSvg = (theme==='shiv') ? SVG_SHIV_BOTTOM : (theme==='radha') ? SVG_PEACOCK_BOTTOM : null;
+
+  if (topSvg) {
+    var t = document.createElement('div');
+    t.id='lm-deco-top'; t.className='lm-theme-top'; t.innerHTML=topSvg;
+    inner.insertBefore(t, inner.firstChild);
+  }
+  if (botSvg) {
+    var b = document.createElement('div');
+    b.id='lm-deco-bottom'; b.className='lm-theme-bottom'; b.innerHTML=botSvg;
+    var footer = inner.querySelector('.lyr-footer');
+    if (footer) inner.insertBefore(b, footer);
+    else inner.appendChild(b);
+  }
 }
 
 function _syncToggleUI() {

@@ -353,3 +353,65 @@
     max-width: 520px;
     margin: 0 auto;
   }
+
+
+/* ════════════════════════════════════════════════════════════
+   PATCH: Android / Desktop corner-ornament fix + adaptive text
+   Appended automatically — do not edit above this block.
+════════════════════════════════════════════════════════════ */
+
+/* ── Switch to contain so the frame is NEVER cropped or distorted ── */
+.lm-water-card {
+  background-size: contain !important;
+  background-position: center center !important;
+}
+
+/* ── Portrait phones (aspect < 2/3): image fills WIDTH = 100vw, height = 150vw ── */
+@media (max-aspect-ratio: 2/3) {
+  .lm-card-inner {
+    top:    calc(50dvh - 58.5vw);
+    bottom: calc(50dvh - 57vw);
+    left:   9vw;
+    right:  9vw;
+  }
+  .lmt { top: calc(50dvh - 60vw); }
+  .lm-dots {
+    bottom: max(calc(50dvh - 68vw), calc(env(safe-area-inset-bottom) + 6px));
+  }
+  .lm-translate-wrap {
+    bottom: max(calc(50dvh - 61vw), calc(env(safe-area-inset-bottom) + 46px));
+  }
+  .lm-nav {
+    bottom: max(calc(50dvh - 75vw), env(safe-area-inset-bottom));
+  }
+}
+
+/* ── iPad / desktop (aspect >= 2/3): image fills HEIGHT = 100dvh, width = 66.67dvh ── */
+@media (min-aspect-ratio: 2/3) {
+  .lm-card-inner {
+    top:    11dvh;
+    bottom: 12dvh;
+    left:   calc(50vw - 27.34dvh);
+    right:  calc(50vw - 27.34dvh);
+  }
+  .lmt { top: 10dvh; }
+  .lm-dots {
+    bottom: max(calc(env(safe-area-inset-bottom) + 100px), 118px);
+  }
+  .lm-translate-wrap {
+    bottom: max(calc(env(safe-area-inset-bottom) + 58px), 70px);
+  }
+  .lm-nav {
+    bottom: max(env(safe-area-inset-bottom), 10px);
+  }
+}
+
+/* ── Adaptive text: JS sets --lyr-fs; these wire it up ── */
+.lyr { --lyr-fs: clamp(14px, 4.5vw, 36px); }
+.lyr-line {
+  font-size: var(--lyr-fs, clamp(14px, 4.5vw, 36px));
+  display: block;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: keep-all;
+}

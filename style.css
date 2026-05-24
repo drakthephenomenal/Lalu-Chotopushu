@@ -2048,8 +2048,11 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   color:rgba(255,255,255,0.8);
 }
 
-/* All themes use the same Krishna image */
-.lmo[data-bg="shiv"],
+/* Radha / Krishna stotrams — peacock & flute parchment */
 .lmo[data-bg="radha"]{
   background: #050e22 url('img/krishna-bg.png') center center / cover no-repeat;
+}
+/* Shiv stotrams — trishul, damru & crescent parchment */
+.lmo[data-bg="shiv"]{
+  background: #080306 url('img/shiv-bg.png') center center / cover no-repeat;
 }

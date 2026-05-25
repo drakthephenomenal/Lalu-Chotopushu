@@ -281,17 +281,17 @@
        isPlaying — true = started/resumed, false = paused/stopped
   ══════════════════════════════════════════════════════════ */
   window._lyrHcjAudioChanged = function (audioEl, isPlaying) {
-    if (isPlaying && audioEl) {
-      _audioEl = audioEl;
-      _attachAudioListeners(_audioEl);
-      syncPauseBtn();
+    /* HCJ has its own ▶ and ⏸ buttons in the player row.
+       We only manage scroll padding here — do NOT touch the
+       top-bar pause button (#lyr-fs-pause) for HCJ audio.   */
+    if (isPlaying) {
       setScrollPadding(true);
-    } else {
-      /* Paused or stopped — keep _audioEl so button shows correct icon */
-      if (audioEl) _audioEl = audioEl;
-      syncPauseBtn();
-      if (!audioEl) setScrollPadding(false); /* fully stopped → remove padding */
+    } else if (!audioEl) {
+      /* fully stopped — remove bottom padding */
+      setScrollPadding(false);
     }
+    /* paused (audioEl exists, isPlaying=false): keep padding so
+       layout stays stable while audio is paused mid-playback.  */
   };
 
   /* ══════════════════════════════════════════════════════════

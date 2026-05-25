@@ -67,6 +67,43 @@
   touch-action: pan-y;
 }
 
+/* ── 5. HCJ player positioning fix ──────────────────────────
+   The CSS says `position: sticky; bottom: 0` but .lmd is
+   `position: absolute; inset: 0` with no overflow — sticky
+   never activates. The element falls back to normal flow and
+   sits at the TOP of .lmd with z-index:6, covering the text.
+   Force it to absolute-bottom so it's actually at the bottom.
+   JS (_hcjRenderPlayer) then shrinks .lm-card-inner bottom
+   to match the player height so the two never overlap.       */
+#hcj-player-wrap {
+  position: absolute !important;
+  bottom:   0        !important;
+  left:     0        !important;
+  right:    0        !important;
+  top:      auto     !important;
+}
+
+/* ── 6. Play / Pause split-button states ─────────────────── */
+/* Dimmed = this action is currently unavailable              */
+.hcj-btn-dim {
+  opacity: 0.28 !important;
+  pointer-events: none;
+}
+/* Pause button — same shape as play but teal tint            */
+.hcj-pause-btn {
+  background: linear-gradient(180deg, #103a38 0%, #071f1e 100%) !important;
+  border-color: rgba(80,220,200,0.22) !important;
+  color: #7af0e0 !important;
+}
+.hcj-pause-btn:hover {
+  background: linear-gradient(180deg, #165250 0%, #0c2e2d 100%) !important;
+}
+.hcj-pause-btn.hcj-btn-dim {
+  background: linear-gradient(180deg, #0F2350 0%, #081639 100%) !important;
+  border-color: rgba(120,170,255,0.18) !important;
+  color: #cfe1ff !important;
+}
+
 /* ════════════════════════════════════════════════════════════
    CONTROL BAR  #lyr-fs-ctrl  —  REDESIGNED
    Frosted-glass pill, top-left of the modal overlay.

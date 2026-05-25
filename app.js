@@ -9141,6 +9141,8 @@ function closeLyrics() {
   /* Clean up HCJ player window listeners before destroying audio */
   if (_hcjPlayerCleanup) { _hcjPlayerCleanup(); _hcjPlayerCleanup = null; }
   var pw = document.getElementById("hcj-player-wrap"); if (pw) pw.remove();
+  /* Reset scroll area bottom override set by _hcjRenderPlayer */
+  var _lci = document.querySelector("#lmo .lm-card-inner"); if (_lci) _lci.style.bottom = "";
   _hcjStopAudio();
   _verses = []; _verseIdx = 0;
   _currentStotramId = "";
@@ -9271,12 +9273,13 @@ function _hcjGoToVerse(n) {
   _verseIdx=i; _renderVerse(i,0);
 }
 function _hcjSyncUI() {
+  // ▶ play button — dim when already playing
   var pl=document.getElementById("hcj-play-btn");
-  if (pl) {
-    pl.textContent=_hcjPlaying?"\u23f8":"\u25b6";
-    pl.classList.toggle("hcj-playing",_hcjPlaying);
-    pl.title=_hcjPlaying?"বিরতি":"বাজাও";
-  }
+  if (pl) pl.classList.toggle("hcj-btn-dim", _hcjPlaying);
+  // ⏸ pause button — dim when not playing
+  var pa=document.getElementById("hcj-pause-btn");
+  if (pa) pa.classList.toggle("hcj-btn-dim", !_hcjPlaying);
+  // mode buttons
   ["loop","continue"].forEach(function(m){
     var b=document.getElementById("hcj-mode-"+m);
     if(b) b.classList.toggle("hcj-mode-active",_hcjMode===m);
@@ -9287,7 +9290,11 @@ function _hcjRenderPlayer(idx) {
   /* Remove any window listeners left by the previous player render */
   if (_hcjPlayerCleanup) { _hcjPlayerCleanup(); _hcjPlayerCleanup = null; }
   var navBar=document.getElementById("lmNav");
-  if (_currentStotramId!=="hcj") { if(navBar) navBar.style.display=""; return; }
+  if (_currentStotramId!=="hcj") {
+    if(navBar) navBar.style.display="";
+    var _ci=document.querySelector("#lmo .lm-card-inner"); if(_ci) _ci.style.bottom="";
+    return;
+  }
   if (navBar) navBar.style.display="none";
   var lmd=document.querySelector("#lmo .lmd"); if (!lmd) return;
 
@@ -9363,14 +9370,31 @@ function _hcjRenderPlayer(idx) {
   prevBtn.onclick=function(){verseNav(-1);};
   row.appendChild(prevBtn);
 
-  // Play / pause
+  // ▶ Play button — always shows ▶, dims while already playing
   var plb=document.createElement("button");
   plb.id="hcj-play-btn";
-  plb.className="hcj-mini-btn hcj-play-btn"+(_hcjPlaying?" hcj-playing":"");
-  plb.textContent=_hcjPlaying?"\u23f8":"\u25b6";
-  plb.title=_hcjPlaying?"বিরতি":"বাজাও";
-  plb.onclick=function(){_hcjTogglePlay();};
+  plb.className="hcj-mini-btn hcj-play-btn"+(_hcjPlaying?" hcj-btn-dim":"");
+  plb.textContent="\u25b6"; // ▶
+  plb.title="বাজাও";
+  plb.onclick=function(){
+    if (_hcjPlaying) return; // already playing
+    if (_hcjAudio && _hcjAudioIdx===_verseIdx) {
+      _hcjAudio.play().then(function(){
+        _hcjPlaying=true; _hcjSyncUI(); _hcjStartProgressLoop();
+        if(window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(_hcjAudio,true);
+      }).catch(function(){ _hcjPlaying=false; _hcjSyncUI(); });
+    } else { _hcjPlayVerse(_verseIdx); }
+  };
   row.appendChild(plb);
+
+  // ⏸ Pause button — always shows ⏸, dims while not playing
+  var pab=document.createElement("button");
+  pab.id="hcj-pause-btn";
+  pab.className="hcj-mini-btn hcj-pause-btn"+(!_hcjPlaying?" hcj-btn-dim":"");
+  pab.textContent="\u23f8"; // ⏸
+  pab.title="বিরতি";
+  pab.onclick=function(){ if (_hcjPlaying) _hcjPauseAudio(); };
+  row.appendChild(pab);
 
   // Mode buttons (icon-only, tiny)
   var modes=[
@@ -9409,6 +9433,16 @@ function _hcjRenderPlayer(idx) {
   row.appendChild(nextBtn);
 
   wrap.appendChild(row); lmd.appendChild(wrap);
+
+  /* Shrink the scroll area so it never slides under the player.
+     The player is now position:absolute at the bottom of .lmd.
+     We read its rendered height after layout and push .lm-card-inner
+     bottom up by that amount so every touch lands in the scroll area. */
+  requestAnimationFrame(function() {
+    var pw    = document.getElementById("hcj-player-wrap");
+    var inner = document.querySelector("#lmo .lm-card-inner");
+    if (pw && inner) inner.style.bottom = pw.offsetHeight + "px";
+  });
 }
 
 // DAILY REMINDERS — Brahma Muhurta, Sandhyakal, Manual

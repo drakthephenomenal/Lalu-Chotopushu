@@ -1,9 +1,8 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker
-// v87: offline audio handled via IndexedDB (no auto-download of mp3 on install)
-//      Audio blobs are stored by the app on user request only — install stays lightweight.
+// v86: fixed offline caching for GitHub Pages / subpath installs
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v87';
+const CACHE = 'radha-jap-v86';
 
 const LOCAL_ASSETS = [
   './',
@@ -38,12 +37,6 @@ const BYPASS = [
   'oauth2.googleapis.com',
   'accounts.google.com',
 ];
-
-// Audio files (.mp3) are intentionally excluded from LOCAL_ASSETS.
-// They are fetched on demand and stored in IndexedDB (hcjAudioBlobs store)
-// by the app itself when the user taps "Download". No audio is cached
-// automatically — this keeps the install footprint small.
-const AUDIO_EXT = /\.mp3$/i;
 
 function withinScopePath(pathname) {
   const scopePath = new URL(self.registration.scope).pathname;
@@ -92,7 +85,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    // Only cache lightweight UI assets — audio mp3 files are NOT pre-cached.
     await Promise.allSettled(LOCAL_ASSETS.map((asset) => cacheLocalAsset(cache, asset)));
     await Promise.allSettled(EXTERNAL_ASSETS.map((asset) => cacheExternalAsset(cache, asset)));
   })());
@@ -116,11 +108,6 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
   if (BYPASS.some((host) => url.href.includes(host))) return;
-
-  // Audio files: never intercept — let the app handle them.
-  // When online  → browser fetches directly from the server.
-  // When offline → app plays from IndexedDB blob URL (blob: scheme, bypasses SW).
-  if (AUDIO_EXT.test(url.pathname)) return;
 
   if (event.request.mode === 'navigate') {
     event.respondWith((async () => {

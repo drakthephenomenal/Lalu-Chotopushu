@@ -812,15 +812,22 @@
 /* Wrapper — bottom-centre of lyrics area, panel fans upward */
 .hcj-offline-wrap {
   position: absolute;
-  bottom: 64px;
+  /* portrait phones: title is at ~10dvh, place toggle just below */
+  top: calc(10dvh + 26px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 60;
   display: flex;
-  flex-direction: column-reverse;  /* toggle at bottom, buttons fan upward */
+  flex-direction: column;   /* arrow on top, panel drops DOWN below it */
   align-items: center;
   gap: 6px;
   pointer-events: all;
+}
+/* iPad / wider: title is at calc(50dvh - 60.1vw), place wrap just below */
+@media (min-aspect-ratio: 2/3) {
+  .hcj-offline-wrap {
+    top: calc(50dvh - 60.1vw + 26px);
+  }
 }
 
 /* Small toggle arrow button */
@@ -852,12 +859,14 @@
   transform: rotate(180deg);
 }
 
-/* Dropdown panel — 4 stacked buttons */
+/* Dropdown panel — 4 stacked buttons, drops downward */
 .hcj-panel {
   display: none;
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  max-height: 60dvh;
+  overflow-y: auto;
 }
 .hcj-panel.open {
   display: flex;

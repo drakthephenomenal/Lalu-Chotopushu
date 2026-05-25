@@ -9138,6 +9138,9 @@ function closeLyrics() {
   lmo.removeAttribute('data-bg');
   var card = document.querySelector('.lm-water-card');
   if (card) card.removeAttribute('data-theme');
+  /* Clean up HCJ player window listeners before destroying audio */
+  if (_hcjPlayerCleanup) { _hcjPlayerCleanup(); _hcjPlayerCleanup = null; }
+  var pw = document.getElementById("hcj-player-wrap"); if (pw) pw.remove();
   _hcjStopAudio();
   _verses = []; _verseIdx = 0;
   _currentStotramId = "";
@@ -9152,6 +9155,7 @@ function closeLyrics() {
 // HCJ AUDIO ENGINE
 var _hcjAudio = null, _hcjMode = "manual", _hcjPlaying = false, _hcjAudioIdx = -1;
 var _hcjRafId = null; // requestAnimationFrame id for progress bar
+var _hcjPlayerCleanup = null; // cleanup fn for window listeners added in _hcjRenderPlayer
 
 function _hcjAudioPath(i) { return "audio/hcj_"+(i+1)+".mp3"; }
 
@@ -9206,6 +9210,15 @@ function _hcjStopAudio() {
   if (_hcjAudio) { _hcjAudio.pause(); _hcjAudio.onended=null; _hcjAudio=null; }
   _hcjPlaying=false; _hcjAudioIdx=-1; _hcjSyncUI();
   _hcjUpdateProgress();
+  if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(null, false);
+}
+function _hcjPauseAudio() {
+  /* True pause — keeps the audio element and current position */
+  _hcjStopProgressLoop();
+  if (_hcjAudio) _hcjAudio.pause();
+  _hcjPlaying = false;
+  _hcjSyncUI();
+  if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(_hcjAudio, false);
 }
 function _hcjPlayVerse(idx) {
   _hcjStopProgressLoop();
@@ -9216,13 +9229,29 @@ function _hcjPlayVerse(idx) {
   _hcjAudio.onended = function() {
     _hcjStopProgressLoop();
     if (_hcjMode==="continue" && idx+1<_verses.length) { _verseIdx=idx+1; _renderVerse(_verseIdx,1); _hcjPlayVerse(_verseIdx); }
-    else { _hcjPlaying=false; _hcjAudioIdx=-1; _hcjSyncUI(); _hcjUpdateProgress(); }
+    else { _hcjPlaying=false; _hcjAudioIdx=-1; _hcjSyncUI(); _hcjUpdateProgress();
+      if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(null, false); }
   };
   _hcjAudio.play().then(function(){
     _hcjPlaying=true; _hcjSyncUI(); _hcjStartProgressLoop();
+    if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(_hcjAudio, true);
   }).catch(function(){ _hcjPlaying=false; _hcjAudioIdx=-1; _hcjSyncUI(); });
 }
-function _hcjTogglePlay() { if (_hcjPlaying) _hcjStopAudio(); else _hcjPlayVerse(_verseIdx); }
+function _hcjTogglePlay() {
+  if (_hcjPlaying) {
+    /* True pause — keeps position so Resume works */
+    _hcjPauseAudio();
+  } else if (_hcjAudio && _hcjAudioIdx === _verseIdx) {
+    /* Resume from paused position (same verse, audio element still exists) */
+    _hcjAudio.play().then(function(){
+      _hcjPlaying=true; _hcjSyncUI(); _hcjStartProgressLoop();
+      if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(_hcjAudio, true);
+    }).catch(function(){ _hcjPlaying=false; _hcjSyncUI(); });
+  } else {
+    /* Start fresh for this verse */
+    _hcjPlayVerse(_verseIdx);
+  }
+}
 function _hcjSetMode(mode) {
   // Toggle off back to manual if the same mode button is tapped again
   _hcjMode = (_hcjMode===mode) ? "manual" : mode;
@@ -9255,6 +9284,8 @@ function _hcjSyncUI() {
 }
 function _hcjRenderPlayer(idx) {
   var ow=document.getElementById("hcj-player-wrap"); if(ow) ow.remove();
+  /* Remove any window listeners left by the previous player render */
+  if (_hcjPlayerCleanup) { _hcjPlayerCleanup(); _hcjPlayerCleanup = null; }
   var navBar=document.getElementById("lmNav");
   if (_currentStotramId!=="hcj") { if(navBar) navBar.style.display=""; return; }
   if (navBar) navBar.style.display="none";
@@ -9291,10 +9322,24 @@ function _hcjRenderPlayer(idx) {
   var _scrubbing = false;
   progTrack.addEventListener("mousedown",  function(e){ _scrubbing=true; _hcjScrubAt(e); });
   progTrack.addEventListener("touchstart", function(e){ _scrubbing=true; _hcjScrubAt(e); }, {passive:false});
-  window.addEventListener("mousemove",  function(e){ if(_scrubbing) _hcjScrubAt(e); });
-  window.addEventListener("touchmove",  function(e){ if(_scrubbing) _hcjScrubAt(e); }, {passive:false});
-  window.addEventListener("mouseup",   function(){ _scrubbing=false; });
-  window.addEventListener("touchend",  function(){ _scrubbing=false; });
+
+  /* Track window listeners so they can be removed when the player is re-rendered.
+     Without cleanup, each verse navigation stacks another set of {passive:false}
+     touchmove listeners on window, which blocks scrolling and causes screen shake. */
+  var _onMouseMove = function(e){ if(_scrubbing) _hcjScrubAt(e); };
+  var _onTouchMove = function(e){ if(_scrubbing){ e.preventDefault(); _hcjScrubAt(e); } };
+  var _onMouseUp   = function(){ _scrubbing=false; };
+  var _onTouchEnd  = function(){ _scrubbing=false; };
+  window.addEventListener("mousemove", _onMouseMove);
+  window.addEventListener("touchmove", _onTouchMove, {passive:false});
+  window.addEventListener("mouseup",   _onMouseUp);
+  window.addEventListener("touchend",  _onTouchEnd);
+  _hcjPlayerCleanup = function() {
+    window.removeEventListener("mousemove", _onMouseMove);
+    window.removeEventListener("touchmove", _onTouchMove);
+    window.removeEventListener("mouseup",   _onMouseUp);
+    window.removeEventListener("touchend",  _onTouchEnd);
+  };
 
   progRow.appendChild(progTrack);
 

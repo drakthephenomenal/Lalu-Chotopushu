@@ -131,10 +131,10 @@
     wrap.id = "lyr-fs-ctrl";
     wrap.innerHTML =
       '<button id="lyr-fs-pause" style="display:none" title="Pause/Resume">⏸</button>' +
-      '<button id="lyr-fs-down" title="Smaller">A<sup style="font-size:8px;vertical-align:top">−</sup></button>' +
+      '<button id="lyr-fs-down" title="Smaller text">A−</button>' +
       '<span id="lyr-fs-label">—</span>' +
-      '<button id="lyr-fs-up" title="Larger">A<sup style="font-size:8px;vertical-align:top">+</sup></button>' +
-      '<button id="lyr-fs-auto" style="display:none" title="Auto">↺</button>';
+      '<button id="lyr-fs-up" title="Larger text">A+</button>' +
+      '<button id="lyr-fs-auto" style="display:none" title="Reset size">↺</button>';
 
     modal.appendChild(wrap);   /* ← inside #lmo, not document.body */
 
@@ -241,30 +241,58 @@
   }
 
   /* ══════════════════════════════════════════════════════════
-     GLOBAL AUDIO DETECTION (capture phase catches everything)
+     GLOBAL AUDIO DETECTION
+     The `play` event from new Audio() does NOT bubble, so
+     document.addEventListener("play") misses HCJ audio.
+     app.js calls window._lyrHcjAudioChanged() directly instead.
+     We keep the bubbling listener as a fallback for other audio.
   ══════════════════════════════════════════════════════════ */
-  document.addEventListener("play", function (e) {
-    if (!e.target || e.target.tagName !== "AUDIO") return;
-    _audioEl = e.target;
-    /* Remove old listeners to avoid stacking */
-    _audioEl.removeEventListener("pause",  syncPauseBtn);
-    _audioEl.removeEventListener("play",   syncPauseBtn);
-    _audioEl.removeEventListener("ended",  onAudioEnded);
-    _audioEl.addEventListener("pause",  syncPauseBtn);
-    _audioEl.addEventListener("play",   syncPauseBtn);
-    _audioEl.addEventListener("ended",  onAudioEnded);
-    syncPauseBtn();
-    setScrollPadding(true);
-  }, true);
-
   function onAudioEnded() {
     setScrollPadding(false);
     syncPauseBtn();
   }
 
+  function _attachAudioListeners(el) {
+    el.removeEventListener("pause",  syncPauseBtn);
+    el.removeEventListener("play",   syncPauseBtn);
+    el.removeEventListener("ended",  onAudioEnded);
+    el.addEventListener("pause",  syncPauseBtn);
+    el.addEventListener("play",   syncPauseBtn);
+    el.addEventListener("ended",  onAudioEnded);
+  }
+
+  /* Fallback: bubbling play events from non-HCJ audio */
+  document.addEventListener("play", function (e) {
+    if (!e.target || e.target.tagName !== "AUDIO") return;
+    _audioEl = e.target;
+    _attachAudioListeners(_audioEl);
+    syncPauseBtn();
+    setScrollPadding(true);
+  }, true);
+
   document.addEventListener("pause", function (e) {
     if (e.target && e.target.tagName === "AUDIO") syncPauseBtn();
   }, true);
+
+  /* ══════════════════════════════════════════════════════════
+     GLOBAL HOOK — called by app.js for HCJ audio
+     window._lyrHcjAudioChanged(audioEl, isPlaying)
+       audioEl  — the Audio object (null when stopped)
+       isPlaying — true = started/resumed, false = paused/stopped
+  ══════════════════════════════════════════════════════════ */
+  window._lyrHcjAudioChanged = function (audioEl, isPlaying) {
+    if (isPlaying && audioEl) {
+      _audioEl = audioEl;
+      _attachAudioListeners(_audioEl);
+      syncPauseBtn();
+      setScrollPadding(true);
+    } else {
+      /* Paused or stopped — keep _audioEl so button shows correct icon */
+      if (audioEl) _audioEl = audioEl;
+      syncPauseBtn();
+      if (!audioEl) setScrollPadding(false); /* fully stopped → remove padding */
+    }
+  };
 
   /* ══════════════════════════════════════════════════════════
      INIT

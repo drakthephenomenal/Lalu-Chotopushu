@@ -1,17 +1,17 @@
 /* ════════════════════════════════════════════════════════════
    stotram-patch.js  — add before </body> in index.html:
    <script src="./stotram-patch.js"></script>
-   ════════════════════════════════════════════════════════════
 
-   ROOT CAUSE OF "TEXT TOO SMALL" (fixed here):
-   .lyr-line has  width:100%  in the original CSS.
-   Switching to display:inline-block while keeping width:100%
-   makes offsetWidth = container width (not text width), so the
-   formula always returned MIN_PX.
-   FIX: temporarily set  width:auto  during measurement.
+   KEY FIX vs previous versions:
+   The control bar is now injected INSIDE #lmo (the modal div),
+   not into document.body. Since #lmo uses display:none/flex to
+   show/hide itself, the bar automatically appears and disappears
+   with it — no MutationObserver toggling of display needed.
 
-   FONT BUTTONS: injected into document.body as position:fixed
-   so they are always visible above everything else.
+   Other fixes:
+   • width:auto during measurement → correct auto-fit
+   • Audio pause/resume button (⏸/▶)
+   • Padding-bottom on scroll area when audio player is visible
    ════════════════════════════════════════════════════════════ */
 
 (function () {
@@ -22,17 +22,22 @@
   var STEP        = 1;
   var STORAGE_KEY = "lyr_manual_px";
 
-  /* ── State ──────────────────────────────────────────────── */
   var _autoFitPx = null;
   var _manualPx  = null;
   var _pending   = false;
+  var _barBuilt  = false;
+  var _audioEl   = null;
 
   try {
-    var _saved = localStorage.getItem(STORAGE_KEY);
-    if (_saved !== null) _manualPx = parseFloat(_saved);
+    var _sv = localStorage.getItem(STORAGE_KEY);
+    if (_sv !== null) _manualPx = parseFloat(_sv);
   } catch (e) {}
 
-  /* ── Measure + compute ideal px for one .lyr container ─── */
+  /* ══════════════════════════════════════════════════════════
+     ADAPTIVE FONT SIZING
+     Fix: also set width:auto so inline-block gives true text
+     width rather than the container's 100% width.
+  ══════════════════════════════════════════════════════════ */
   function autoFitOne(lyrEl) {
     var lines = lyrEl.querySelectorAll(".lyr-line");
     if (!lines.length) return null;
@@ -40,26 +45,19 @@
     var cw = lyrEl.getBoundingClientRect().width;
     if (cw < 4) return null;
 
-    /* Set baseline font via CSS variable */
     lyrEl.style.setProperty("--lyr-fs", MIN_PX + "px");
 
-    /* Switch to inline-block + width:auto + nowrap for TRUE text width
-       KEY FIX: width:auto overrides the original width:100% so
-       offsetWidth reflects actual rendered text width, not the container */
     var i;
     for (i = 0; i < lines.length; i++) {
       lines[i].style.display    = "inline-block";
-      lines[i].style.width      = "auto";        /* ← critical fix */
+      lines[i].style.width      = "auto";        /* critical fix */
       lines[i].style.whiteSpace = "nowrap";
     }
-
-    /* Single forced reflow — batch-read all widths */
+    /* One forced reflow — read all widths */
     var maxW = 0;
     for (i = 0; i < lines.length; i++) {
-      var w = lines[i].offsetWidth;
-      if (w > maxW) maxW = w;
+      if (lines[i].offsetWidth > maxW) maxW = lines[i].offsetWidth;
     }
-
     /* Restore */
     for (i = 0; i < lines.length; i++) {
       lines[i].style.display    = "";
@@ -68,30 +66,23 @@
     }
 
     if (maxW < 1) return null;
-
-    /* Linear scale: at MIN_PX the widest line is maxW px wide.
-       We want it to be exactly cw px wide → scale factor = cw/maxW */
     var ideal = (cw / maxW) * MIN_PX;
     return Math.min(MAX_PX, Math.max(MIN_PX, ideal));
   }
 
-  /* ── Apply a font size to all .lyr elements in the modal ── */
   function applySize(px, modal) {
-    var lyrs  = modal.querySelectorAll(".lyr");
     var value = (Math.floor(px * 10) / 10) + "px";
+    var lyrs  = modal.querySelectorAll(".lyr");
     for (var i = 0; i < lyrs.length; i++) {
-      /* Set CSS variable (for any other consumers) */
       lyrs[i].style.setProperty("--lyr-fs", value);
-      /* ALSO set directly on every .lyr-line (beats all CSS specificity) */
       var lines = lyrs[i].querySelectorAll(".lyr-line");
       for (var j = 0; j < lines.length; j++) {
-        lines[j].style.fontSize = value;
+        lines[j].style.fontSize = value;  /* inline beats all CSS */
       }
     }
-    updateBarLabel(Math.round(px) + "px");
+    updateLabel(Math.round(px) + "px");
   }
 
-  /* ── Main fit routine ───────────────────────────────────── */
   function fit() {
     if (_pending) return;
     var modal = document.querySelector(".lmo");
@@ -99,61 +90,55 @@
 
     _pending = true;
     requestAnimationFrame(function () {
-      var lyrs = modal.querySelectorAll(".lyr");
-      var computed = null;
-      if (lyrs.length) computed = autoFitOne(lyrs[0]);
+      var lyrs    = modal.querySelectorAll(".lyr");
+      var computed = lyrs.length ? autoFitOne(lyrs[0]) : null;
       if (computed !== null) _autoFitPx = computed;
 
       var target = (_manualPx !== null) ? _manualPx : _autoFitPx;
       if (target !== null) applySize(target, modal);
-
       _pending = false;
     });
   }
 
-  /* Retry several times with growing delays after modal opens,
-     because lyrics are loaded asynchronously by stotrams.js   */
-  function fitWithRetries() {
-    var delays = [80, 250, 500, 900, 1500];
-    for (var d = 0; d < delays.length; d++) {
-      (function (delay) {
-        setTimeout(fit, delay);
-      })(delays[d]);
-    }
+  function fitSoon() {
+    [80, 300, 600, 1100, 2000].forEach(function (d) {
+      setTimeout(fit, d);
+    });
   }
 
-  window.fitLyrLines = fit;   /* app.js can call this */
+  window.fitLyrLines = fit;
 
-  /* ── Resize ─────────────────────────────────────────────── */
   var _resizeTimer;
   window.addEventListener("resize", function () {
     clearTimeout(_resizeTimer);
     _resizeTimer = setTimeout(fit, 220);
   });
 
-  /* ════════════════════════════════════════════════════════
-     FONT SIZE CONTROL BAR
-     Injected into document.body as position:fixed so it
-     floats above everything, regardless of modal z-index.
-  ════════════════════════════════════════════════════════ */
-
-  var _barEl = null;
-
+  /* ══════════════════════════════════════════════════════════
+     CONTROL BAR — injected INSIDE #lmo
+     Because it is a child of #lmo it shows and hides with the
+     modal automatically. position:absolute + top/left places it
+     relative to #lmo which is position:fixed covering the full
+     viewport — so top:8px / left:8px = top-left of the screen.
+  ══════════════════════════════════════════════════════════ */
   function buildBar() {
-    if (_barEl) return;
+    if (_barBuilt) return;
+    var modal = document.getElementById("lmo");
+    if (!modal) return;
+    _barBuilt = true;
 
     var wrap = document.createElement("div");
     wrap.id = "lyr-fs-ctrl";
     wrap.innerHTML =
-      '<button id="lyr-fs-down" title="Smaller text">A<sup style="font-size:9px">−</sup></button>' +
-      '<span id="lyr-fs-label">auto</span>' +
-      '<button id="lyr-fs-up" title="Larger text">A<sup style="font-size:9px">+</sup></button>' +
-      '<button id="lyr-fs-auto" title="Back to auto">↺</button>';
+      '<button id="lyr-fs-pause" style="display:none" title="Pause/Resume">⏸</button>' +
+      '<button id="lyr-fs-down" title="Smaller">A<sup style="font-size:8px;vertical-align:top">−</sup></button>' +
+      '<span id="lyr-fs-label">—</span>' +
+      '<button id="lyr-fs-up" title="Larger">A<sup style="font-size:8px;vertical-align:top">+</sup></button>' +
+      '<button id="lyr-fs-auto" style="display:none" title="Auto">↺</button>';
 
-    document.body.appendChild(wrap);
-    _barEl = wrap;
+    modal.appendChild(wrap);   /* ← inside #lmo, not document.body */
 
-    /* ── Button handlers ─────────────────────────────────── */
+    /* A− */
     document.getElementById("lyr-fs-down").addEventListener("click", function (e) {
       e.stopPropagation();
       var base = (_manualPx !== null) ? _manualPx
@@ -162,8 +147,10 @@
       savePref();
       var m = document.querySelector(".lmo");
       if (m) applySize(_manualPx, m);
+      refreshAutoBtn();
     });
 
+    /* A+ */
     document.getElementById("lyr-fs-up").addEventListener("click", function (e) {
       e.stopPropagation();
       var base = (_manualPx !== null) ? _manualPx
@@ -172,29 +159,48 @@
       savePref();
       var m = document.querySelector(".lmo");
       if (m) applySize(_manualPx, m);
+      refreshAutoBtn();
     });
 
+    /* ↺ auto reset */
     document.getElementById("lyr-fs-auto").addEventListener("click", function (e) {
       e.stopPropagation();
       _manualPx = null;
       savePref();
+      refreshAutoBtn();
       fit();
+    });
+
+    /* ⏸ pause/resume */
+    document.getElementById("lyr-fs-pause").addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (!_audioEl) return;
+      if (_audioEl.paused) { _audioEl.play(); }
+      else                 { _audioEl.pause(); }
+      syncPauseBtn();
     });
   }
 
-  function showBar(show) {
-    if (!_barEl) buildBar();
-    _barEl.style.display = show ? "flex" : "none";
-    /* Hide reset button when in auto mode */
-    var autoBtn = document.getElementById("lyr-fs-auto");
-    if (autoBtn) autoBtn.style.display = (_manualPx !== null) ? "inline-block" : "none";
+  function updateLabel(text) {
+    var el = document.getElementById("lyr-fs-label");
+    if (el) el.textContent = text;
   }
 
-  function updateBarLabel(text) {
-    var label = document.getElementById("lyr-fs-label");
-    if (label) label.textContent = text;
-    var autoBtn = document.getElementById("lyr-fs-auto");
-    if (autoBtn) autoBtn.style.display = (_manualPx !== null) ? "inline-block" : "none";
+  function refreshAutoBtn() {
+    var el = document.getElementById("lyr-fs-auto");
+    if (el) el.style.display = (_manualPx !== null) ? "inline-block" : "none";
+  }
+
+  function syncPauseBtn() {
+    var btn = document.getElementById("lyr-fs-pause");
+    if (!btn) return;
+    if (!_audioEl || (_audioEl.ended)) {
+      btn.style.display = "none";
+      return;
+    }
+    btn.style.display = "inline-block";
+    btn.textContent   = _audioEl.paused ? "▶" : "⏸";
+    btn.title         = _audioEl.paused ? "Resume" : "Pause";
   }
 
   function savePref() {
@@ -204,38 +210,86 @@
     } catch (e) {}
   }
 
-  /* ── Watch modal open/close and verse content changes ───── */
+  /* ══════════════════════════════════════════════════════════
+     SCROLL FIX DURING AUDIO PLAYBACK
+     When the player renders at the bottom it overlaps the
+     scroll area. We detect its height and add padding-bottom.
+  ══════════════════════════════════════════════════════════ */
+  function getPlayerHeight() {
+    var ids = ["hcj-player-wrap", "lm-audio-player", "audio-player-wrap",
+               "playerWrap", "player-wrap"];
+    for (var i = 0; i < ids.length; i++) {
+      var el = document.getElementById(ids[i]);
+      if (el && el.offsetHeight > 20) return el.offsetHeight + 12;
+    }
+    /* Walk up from the <audio> element */
+    if (_audioEl) {
+      var p = _audioEl.parentElement;
+      for (var k = 0; k < 5 && p; k++) {
+        if (p.offsetHeight > 30 && p.offsetHeight < 300) return p.offsetHeight + 12;
+        p = p.parentElement;
+      }
+    }
+    return 110;
+  }
+
+  function setScrollPadding(active) {
+    var modal = document.querySelector(".lmo");
+    if (!modal) return;
+    var inner = modal.querySelector(".lm-card-inner");
+    if (inner) inner.style.paddingBottom = active ? getPlayerHeight() + "px" : "";
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     GLOBAL AUDIO DETECTION (capture phase catches everything)
+  ══════════════════════════════════════════════════════════ */
+  document.addEventListener("play", function (e) {
+    if (!e.target || e.target.tagName !== "AUDIO") return;
+    _audioEl = e.target;
+    /* Remove old listeners to avoid stacking */
+    _audioEl.removeEventListener("pause",  syncPauseBtn);
+    _audioEl.removeEventListener("play",   syncPauseBtn);
+    _audioEl.removeEventListener("ended",  onAudioEnded);
+    _audioEl.addEventListener("pause",  syncPauseBtn);
+    _audioEl.addEventListener("play",   syncPauseBtn);
+    _audioEl.addEventListener("ended",  onAudioEnded);
+    syncPauseBtn();
+    setScrollPadding(true);
+  }, true);
+
+  function onAudioEnded() {
+    setScrollPadding(false);
+    syncPauseBtn();
+  }
+
+  document.addEventListener("pause", function (e) {
+    if (e.target && e.target.tagName === "AUDIO") syncPauseBtn();
+  }, true);
+
+  /* ══════════════════════════════════════════════════════════
+     INIT
+  ══════════════════════════════════════════════════════════ */
   function init() {
-    buildBar();   /* build bar immediately so it's ready */
+    buildBar();   /* bar now lives inside #lmo — always in sync */
 
     var modal = document.querySelector(".lmo");
     if (!modal) return;
 
-    /* Watch for modal show/hide AND new verse content */
     new MutationObserver(function (mutations) {
       for (var i = 0; i < mutations.length; i++) {
         var m = mutations[i];
-
-        /* Modal class changed (show/hide toggled) */
-        if (
-          m.type === "attributes" &&
-          m.target === modal &&
-          m.attributeName === "class"
-        ) {
-          var isOpen = modal.classList.contains("show");
-          showBar(isOpen);
-          if (isOpen) fitWithRetries();
+        /* Modal opened */
+        if (m.type === "attributes" &&
+            m.target === modal &&
+            m.attributeName === "class") {
+          if (modal.classList.contains("show")) fitSoon();
           return;
         }
-
-        /* New verse lines injected into #lyrBody */
-        if (m.type === "childList" && m.addedNodes.length > 0) {
-          /* Ignore our own bar insertion (it's in body, not modal) */
-          if (
-            m.addedNodes[0] &&
-            m.addedNodes[0].id === "lyr-fs-ctrl"
-          ) continue;
-          setTimeout(fit, 100);
+        /* New verse lines injected */
+        if (m.type === "childList" && m.addedNodes.length) {
+          /* Ignore our own bar injection */
+          if (m.addedNodes[0] && m.addedNodes[0].id === "lyr-fs-ctrl") continue;
+          setTimeout(fit, 120);
           return;
         }
       }
@@ -246,21 +300,14 @@
       subtree:         true,
     });
 
-    /* Also observe body so we catch the modal becoming visible
-       if it was already in the DOM with class="lmo show"        */
-    if (modal.classList.contains("show")) {
-      showBar(true);
-      fitWithRetries();
-    }
+    if (modal.classList.contains("show")) fitSoon();
 
     /* Nav clicks */
     modal.addEventListener("click", function (e) {
-      if (
-        e.target.closest(".lm-arr") ||
-        e.target.closest(".lm-nav-btn") ||
-        e.target.closest(".lm-dot") ||
-        e.target.closest("[data-verse]")
-      ) {
+      if (e.target.closest(".lm-nav-btn") ||
+          e.target.closest(".lm-arr")     ||
+          e.target.closest(".lm-dot")     ||
+          e.target.closest("[data-verse]")) {
         setTimeout(fit, 150);
       }
     });

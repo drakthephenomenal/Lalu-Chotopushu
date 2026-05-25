@@ -9198,38 +9198,57 @@ async function _hcjIsAudioDownloaded(idx) {
 // ── Corner download buttons ──────────────────────────────────────────────────
 var _hcjDlAllRunning = false, _hcjDlAllAbort = false;
 
-function _hcjShowCorners(show) {
-  var r = document.getElementById("hcj-corner-right");
-  if (r) r.style.display = show ? "flex" : "none";
+function _hcjShowOfflinePanel(show) {
+  var wrap = document.getElementById("hcj-offline-wrap");
+  if (wrap) wrap.style.display = show ? "flex" : "none";
+  if (!show) {
+    var panel = document.getElementById("hcj-panel");
+    if (panel) panel.classList.remove("open");
+    var btn = document.getElementById("hcj-toggle-btn");
+    if (btn) btn.classList.remove("open");
+  }
+}
+
+function _hcjTogglePanel() {
+  var panel = document.getElementById("hcj-panel");
+  var btn   = document.getElementById("hcj-toggle-btn");
+  if (!panel) return;
+  var isOpen = panel.classList.contains("open");
+  panel.classList.toggle("open", !isOpen);
+  if (btn) btn.classList.toggle("open", !isOpen);
+  if (!isOpen) {
+    // refresh button states when opening
+    _hcjUpdateVerseBtn(typeof _verseIdx !== "undefined" ? _verseIdx : 0);
+    _hcjUpdateAllBtn();
+  }
 }
 
 function _hcjUpdateVerseBtn(idx) {
-  var btn = document.getElementById("hcj-verse-dl-btn");
-  if (!btn) return;
+  var dlBtn  = document.getElementById("hcj-verse-dl-btn");
+  var delBtn = document.getElementById("hcj-verse-del-btn");
+  if (!dlBtn && !delBtn) return;
   _hcjIsAudioDownloaded(idx).then(function(cached) {
-    btn.disabled = false;
-    if (cached) {
-      btn.textContent = "🗑️ Remove";
-      btn.title = "Delete offline copy of this verse";
-      btn.className = "hcj-cbtn hcj-cbtn-del";
-      btn.onclick = function() {
+    if (dlBtn) {
+      dlBtn.disabled = cached;
+      dlBtn.style.opacity = cached ? "0.4" : "";
+      dlBtn.onclick = cached ? null : function() { _hcjDownloadVerse(idx); };
+    }
+    if (delBtn) {
+      delBtn.disabled = !cached;
+      delBtn.style.opacity = cached ? "" : "0.4";
+      delBtn.onclick = cached ? function() {
         App.dbDelete(_HCJ_AUDIO_STORE, "hcj_" + idx).then(function() {
           _hcjUpdateVerseBtn(idx);
           _hcjUpdateAllBtn();
         });
-      };
-    } else {
-      btn.textContent = "⬇️ This Verse";
-      btn.title = "Download this verse for offline listening";
-      btn.className = "hcj-cbtn";
-      btn.onclick = function() { _hcjDownloadVerse(idx); };
+      } : null;
     }
   });
 }
 
 async function _hcjDownloadVerse(idx) {
   var btn = document.getElementById("hcj-verse-dl-btn");
-  if (btn) { btn.disabled = true; btn.textContent = "⏳"; btn.className = "hcj-cbtn"; }
+  if (btn) { btn.disabled = true; btn.style.opacity = "0.4"; }
   try {
     var resp = await fetch(_hcjAudioPath(idx));
     if (!resp.ok) throw new Error();
@@ -9244,36 +9263,39 @@ async function _hcjDownloadVerse(idx) {
 }
 
 async function _hcjUpdateAllBtn() {
-  var btn = document.getElementById("hcj-all-dl-btn");
+  var dlBtn  = document.getElementById("hcj-all-dl-btn");
   var delBtn = document.getElementById("hcj-all-del-btn");
-  if (!btn || _hcjDlAllRunning) return;
+  if (_hcjDlAllRunning) return;
   if (!_verses || _verses.length === 0) return;
   var total = _verses.length;
   var count = 0;
   for (var i = 0; i < total; i++) {
     if (await _hcjIsAudioDownloaded(i)) count++;
   }
-  btn.disabled = false;
-  if (count === 0) {
-    btn.textContent = "⬇️ Download All";
-    btn.title = "Download all " + total + " verses for offline listening";
-    btn.className = "hcj-cbtn";
-    btn.style.display = "";
-    btn.onclick = _hcjDownloadAll;
-    if (delBtn) delBtn.style.display = "none";
-  } else if (count < total) {
-    btn.textContent = "⬇️ " + (total - count) + " Remaining";
-    btn.title = "Download remaining " + (total - count) + " verses";
-    btn.className = "hcj-cbtn";
-    btn.style.display = "";
-    btn.onclick = _hcjDownloadAll;
-    if (delBtn) { delBtn.style.display = ""; delBtn.onclick = _hcjDeleteAll; }
-  } else {
-    btn.textContent = "⬇️ Download All";
-    btn.title = "All " + total + " verses cached offline";
-    btn.className = "hcj-cbtn";
-    btn.style.display = "none";
-    if (delBtn) { delBtn.style.display = ""; delBtn.onclick = _hcjDeleteAll; }
+  if (dlBtn) {
+    dlBtn.disabled = (count === total);
+    dlBtn.style.opacity = (count === total) ? "0.4" : "";
+    if (count === 0) {
+      dlBtn.textContent = "⬇️ Download All Verses";
+      dlBtn.title = "Download all " + total + " verses for offline";
+      dlBtn.className = "hcj-cbtn";
+      dlBtn.onclick = _hcjDownloadAll;
+    } else if (count < total) {
+      dlBtn.textContent = "⬇️ Download Remaining (" + (total - count) + ")";
+      dlBtn.title = "Download remaining " + (total - count) + " verses";
+      dlBtn.className = "hcj-cbtn";
+      dlBtn.onclick = _hcjDownloadAll;
+    } else {
+      dlBtn.textContent = "⬇️ All Cached";
+      dlBtn.title = "All " + total + " verses are saved offline";
+      dlBtn.className = "hcj-cbtn";
+      dlBtn.onclick = null;
+    }
+  }
+  if (delBtn) {
+    delBtn.disabled = (count === 0);
+    delBtn.style.opacity = (count === 0) ? "0.4" : "";
+    delBtn.onclick = (count > 0) ? _hcjDeleteAll : null;
   }
 }
 
@@ -9284,8 +9306,7 @@ async function _hcjDownloadAll() {
   var total = _verses.length;
   var fetched = 0;
   var btn = document.getElementById("hcj-all-dl-btn");
-  var delBtn = document.getElementById("hcj-all-del-btn");
-  if (delBtn) delBtn.style.display = "none";
+
 
   for (var i = 0; i < total; i++) {
     if (_hcjDlAllAbort) break;
@@ -9325,8 +9346,8 @@ async function _hcjDeleteAll() {
 }
 
 function _hcjInitCornerBtns(idx) {
-  if (_currentStotramId !== "hcj") { _hcjShowCorners(false); return; }
-  _hcjShowCorners(true);
+  if (_currentStotramId !== "hcj") { _hcjShowOfflinePanel(false); return; }
+  _hcjShowOfflinePanel(true);
   _hcjUpdateVerseBtn(idx);
   _hcjUpdateAllBtn();
 }
@@ -9514,7 +9535,7 @@ function _hcjRenderPlayer(idx) {
   if (_currentStotramId!=="hcj") {
     if(navBar) navBar.style.display="";
     var _ci=document.querySelector("#lmo .lm-card-inner"); if(_ci) _ci.style.bottom="";
-    _hcjShowCorners(false);
+    _hcjShowOfflinePanel(false);
     return;
   }
   if (navBar) navBar.style.display="none";

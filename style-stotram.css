@@ -806,21 +806,66 @@
 
 
 /* ═══════════════════════════════════════════════════════
-   HCJ OFFLINE CORNER BUTTONS — bluish watery transparent
+   HCJ OFFLINE DROPDOWN PANEL
    ═══════════════════════════════════════════════════════ */
 
-/* Common container — positioned absolutely inside .lmd */
-.hcj-corner {
+/* Wrapper — top-right, leave room for × close button */
+.hcj-offline-wrap {
   position: absolute;
-  top: 10px;
+  top: max(env(safe-area-inset-top, 0px) + 6px, 8px);
+  right: 48px;
   z-index: 60;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 6px;
   pointer-events: all;
 }
-.hcj-corner-left  { left: 10px; }
-.hcj-corner-right { right: 46px; } /* leave room for the × close button */
+
+/* Small toggle arrow button */
+.hcj-toggle-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(20, 80, 160, 0.32);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(120, 200, 255, 0.55);
+  color: rgba(210, 240, 255, 0.95);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.2s, transform 0.25s;
+  box-shadow: 0 2px 10px rgba(10, 60, 150, 0.35);
+}
+.hcj-toggle-btn:active {
+  transform: scale(0.92);
+  background: rgba(30, 110, 200, 0.50);
+}
+.hcj-toggle-btn.open {
+  transform: rotate(180deg);
+}
+
+/* Dropdown panel — 4 stacked buttons */
+.hcj-panel {
+  display: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.hcj-panel.open {
+  display: flex;
+}
+.hcj-panel .hcj-cbtn {
+  width: 100%;
+  min-width: 180px;
+  justify-content: flex-start;
+}
 
 /* The button itself — frosted glass, bluish watery */
 .hcj-cbtn {

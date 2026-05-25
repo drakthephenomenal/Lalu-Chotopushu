@@ -8622,7 +8622,7 @@ window.addEventListener('appinstalled', () => {
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("/sw.js", { scope: "/" })
+      .register("./sw.js", { scope: "./" })
       .then((r) => {
         console.log("SW registered:", r.scope);
         // When a new SW takes over, reload the page to get fresh files

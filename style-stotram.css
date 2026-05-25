@@ -455,3 +455,290 @@
     }
   }
 
+
+/* ════════════════════════════════════════════════════════════
+   v87  (2026-05-25) — merged from stotram-patch.css
+   • Stronger press feedback on every HCJ audio-player button
+     (so you can SEE which one you tapped: gold flip + scale + ring).
+   • Narrow-screen layout for the HCJ row: smaller buttons, tighter
+     gap, smaller verse-seek input, horizontal scroll fallback so the
+     right-side  →  arrow is always reachable on Android phones.
+   • Text-size pill restyled for step labels (T 6/10 etc.).
+   ════════════════════════════════════════════════════════════ */
+
+/* Frame: always show full image, never crop */
+.lm-water-card {
+  background-size:     contain !important;
+  background-position: center center !important;
+}
+
+/* Portrait phones (aspect < 2/3) */
+@media (max-aspect-ratio: 2/3) {
+  .lmt { top: calc(50dvh - 60vw); }
+  .lm-card-inner {
+    top:    calc(50dvh - 58.5vw);
+    bottom: calc(50dvh - 57vw);
+    left:   9vw;
+    right:  9vw;
+  }
+  .lm-dots {
+    bottom: max(calc(50dvh - 68vw), calc(env(safe-area-inset-bottom) + 6px));
+  }
+  .lm-translate-wrap {
+    bottom: max(calc(50dvh - 61vw), calc(env(safe-area-inset-bottom) + 46px));
+  }
+  .lm-nav {
+    bottom: max(calc(50dvh - 75vw), env(safe-area-inset-bottom));
+  }
+}
+
+/* iPad / desktop (aspect >= 2/3) */
+@media (min-aspect-ratio: 2/3) {
+  .lmt { top: 10dvh; }
+  .lm-card-inner {
+    top:    11dvh;
+    bottom: 12dvh;
+    left:   calc(50vw - 27.33dvh);
+    right:  calc(50vw - 27.33dvh);
+  }
+  .lm-dots {
+    bottom: max(calc(env(safe-area-inset-bottom) + 100px), 118px);
+  }
+  .lm-translate-wrap {
+    bottom: max(calc(env(safe-area-inset-bottom) + 58px), 70px);
+  }
+  .lm-nav {
+    bottom: max(env(safe-area-inset-bottom), 10px);
+  }
+}
+
+/* Adaptive font-size variable used by the JS sizer */
+.lyr { --lyr-fs: clamp(12px, 3.6vw, 20px); }
+.lyr-line { font-size: var(--lyr-fs) !important; }
+
+/* Scroll fixes */
+.lm-card-inner {
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+#lmo .lm-water-card {
+  animation: none !important;
+  transform: none !important;
+  will-change: auto !important;
+}
+#lmo .lm-card-inner {
+  display: block !important;
+  overflow-y: scroll !important;
+  overflow-x: hidden !important;
+  touch-action: pan-y !important;
+  overscroll-behavior-y: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  overflow-anchor: none !important;
+  scroll-behavior: auto !important;
+  contain: layout paint;
+}
+#lmo .lm-card-inner::before,
+#lmo .lm-card-inner::after {
+  content: none !important;
+  display: none !important;
+}
+#lmo .lyr {
+  min-height: 100%;
+  justify-content: center;
+  transform: none !important;
+  backface-visibility: visible !important;
+}
+#lmo .lyr-slide-enter-left,
+#lmo .lyr-slide-enter-right {
+  animation: none !important;
+}
+
+/* ── HCJ audio-player — fit & feedback fixes ─────────────── */
+#hcj-player-wrap {
+  position: absolute !important;
+  bottom:   0        !important;
+  left:     0        !important;
+  right:    0        !important;
+  top:      auto     !important;
+}
+
+/* Center-justify, tighter gap, horizontal scroll fallback so the
+   right-side → arrow can never get clipped on narrow Android. */
+#hcj-player-wrap .hcj-player {
+  justify-content: center !important;
+  gap: 4px !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0 4px;
+}
+#hcj-player-wrap .hcj-player::-webkit-scrollbar { display: none; }
+
+/* Compact buttons on phones — arrows always visible */
+@media (max-width: 480px) {
+  #hcj-player-wrap .hcj-player > * {
+    height: 34px !important;
+    min-width: 34px !important;
+    padding: 0 6px !important;
+    font-size: 13px !important;
+    border-radius: 9px !important;
+  }
+  #hcj-player-wrap input[type="number"],
+  #hcj-player-wrap .hcj-seek-input {
+    width: 42px !important;
+    max-width: 46px !important;
+    padding: 0 2px !important;
+  }
+  #hcj-player-wrap .hcj-seek-total {
+    font-size: 11px !important;
+    padding: 0 2px !important;
+  }
+  #hcj-prev-btn,
+  #hcj-next-btn {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #FFD700 !important;
+    min-width: 38px !important;
+    flex: 0 0 38px !important;
+  }
+}
+
+/* Tiny-phone (≤360px) — one notch smaller */
+@media (max-width: 360px) {
+  #hcj-player-wrap .hcj-player > * {
+    height: 32px !important;
+    min-width: 30px !important;
+    padding: 0 4px !important;
+    font-size: 12px !important;
+  }
+  #hcj-player-wrap input[type="number"],
+  #hcj-player-wrap .hcj-seek-input {
+    width: 36px !important;
+    max-width: 38px !important;
+  }
+}
+
+/* STRONG press feedback — color flip + scale + glowing gold ring */
+#hcj-player-wrap button {
+  transition: background 0.10s ease,
+              color      0.10s ease,
+              transform  0.10s ease,
+              box-shadow 0.10s ease !important;
+}
+#hcj-player-wrap button:active,
+#hcj-player-wrap button.hcj-pressed {
+  background: rgba(255, 215, 0, 0.90) !important;
+  color:      #1a0d00 !important;
+  transform:  scale(0.90) !important;
+  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.45),
+              0 0 14px  rgba(255, 215, 0, 0.55) !important;
+  text-shadow: none !important;
+  border-color: rgba(255, 235, 120, 0.95) !important;
+}
+
+/* Dimmed = currently unavailable */
+.hcj-btn-dim {
+  opacity: 0.32 !important;
+  pointer-events: none;
+  filter: grayscale(0.4);
+}
+
+/* Pause button retains its teal tint when active */
+.hcj-pause-btn {
+  background: linear-gradient(180deg, #103a38 0%, #071f1e 100%) !important;
+  border-color: rgba(80,220,200,0.22) !important;
+  color: #7af0e0 !important;
+}
+.hcj-pause-btn:hover {
+  background: linear-gradient(180deg, #165250 0%, #0c2e2d 100%) !important;
+}
+.hcj-pause-btn.hcj-btn-dim {
+  background: linear-gradient(180deg, #0F2350 0%, #081639 100%) !important;
+  border-color: rgba(120,170,255,0.18) !important;
+  color: #cfe1ff !important;
+}
+
+/* Mode buttons (loop / continue) — show active selection clearly */
+.hcj-mode-btn.hcj-mode-active {
+  background: rgba(255,215,0,0.85) !important;
+  color: #1a0d00 !important;
+  box-shadow: 0 0 0 2px rgba(255,215,0,0.5) !important;
+  border-color: rgba(255,235,120,0.95) !important;
+}
+
+/* ── Text-size pill  #lyr-fs-ctrl  (top-left of stotram modal) ── */
+#lyr-fs-ctrl {
+  position:  absolute;
+  top:       max(env(safe-area-inset-top, 0px) + 8px, 10px);
+  left:      10px;
+  z-index:   30;
+  display:   flex;
+  align-items: center;
+  gap:       0;
+
+  background:          rgba(10, 8, 26, 0.78);
+  backdrop-filter:     blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+
+  border:        1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 24px;
+  padding:       3px 4px;
+
+  white-space:    nowrap;
+  box-shadow:     0 3px 16px rgba(0,0,0,0.65),
+                  inset 0 1px 0 rgba(255,255,255,0.05);
+  touch-action:   manipulation;
+  user-select:    none;
+  pointer-events: none;
+}
+#lyr-fs-ctrl button {
+  pointer-events: auto;
+  background:     transparent;
+  border:         none;
+  border-radius:  20px;
+  color:          rgba(255, 255, 255, 0.88);
+  font-size:      15px;
+  font-weight:    600;
+  font-family:    'Inter', system-ui, sans-serif;
+  line-height:    1;
+  padding:        6px 12px;
+  min-width:      32px;
+  cursor:         pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:     background 0.13s, color 0.13s, transform 0.10s;
+}
+#lyr-fs-ctrl button:active {
+  background: rgba(255, 215, 0, 0.85);
+  color:      #1a0d00;
+  transform:  scale(0.90);
+}
+#lyr-fs-label {
+  color:       rgba(255, 255, 255, 0.92);
+  font-size:   12px;
+  font-weight: 600;
+  min-width:   54px;
+  text-align:  center;
+  font-family: 'Inter', system-ui, sans-serif;
+  pointer-events: none;
+  padding:     0 4px;
+  letter-spacing: 0.2px;
+}
+#lyr-fs-down,
+#lyr-fs-up {
+  font-size:   18px;
+  font-weight: 700;
+  padding:     6px 11px;
+}
+#lyr-fs-pause {
+  color:       #60C4FF !important;
+  font-size:   15px !important;
+  font-weight: 400 !important;
+  padding:     6px 9px !important;
+}
+#lyr-fs-auto {
+  opacity:     0.85;
+  font-size:   13px !important;
+  color:       rgba(255, 195, 70, 0.95) !important;
+  padding:     6px 8px !important;
+}

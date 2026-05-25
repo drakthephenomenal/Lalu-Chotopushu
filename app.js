@@ -10892,3 +10892,318 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
       year +
       (App.S.lastLat ? " (GPS location)" : " (default location)");
 }
+
+/* ════════════════════════════════════════════════════════════
+   v87  (2026-05-25) — merged from stotram-patch.js
+   Discrete-step text-size control + audio pause/scroll padding
+   for the stotram lyric overlay.
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  "use strict";
+
+  /* Discrete font sizes (px). Step 1 = smallest, last = biggest. */
+  var STEPS        = [11, 13, 15, 17, 19, 21, 24, 28, 32, 38];
+  var DEFAULT_STEP = 3;                       // index into STEPS (≈17px)
+  var STORAGE_KEY  = "lyr_step";              // new key (integer step)
+  var LEGACY_KEY   = "lyr_manual_px";         // old key (px value)
+
+  var _autoStep   = null;
+  var _manualStep = null;
+  var _pending    = false;
+  var _barBuilt   = false;
+  var _audioEl    = null;
+
+  try {
+    var sv = localStorage.getItem(STORAGE_KEY);
+    if (sv !== null) {
+      var n = parseInt(sv, 10);
+      if (!isNaN(n)) _manualStep = clampStep(n);
+    } else {
+      var legacy = localStorage.getItem(LEGACY_KEY);
+      if (legacy !== null) _manualStep = pxToStep(parseFloat(legacy));
+    }
+  } catch (e) {}
+
+  function clampStep(i) {
+    if (i < 0) return 0;
+    if (i > STEPS.length - 1) return STEPS.length - 1;
+    return i;
+  }
+  function pxToStep(px) {
+    if (!isFinite(px)) return DEFAULT_STEP;
+    var best = 0, bestD = Infinity;
+    for (var i = 0; i < STEPS.length; i++) {
+      var d = Math.abs(STEPS[i] - px);
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    return best;
+  }
+
+  function autoFitStep(lyrEl) {
+    var lines = lyrEl.querySelectorAll(".lyr-line");
+    if (!lines.length) return null;
+    var cw = lyrEl.getBoundingClientRect().width;
+    if (cw < 4) return null;
+
+    lyrEl.style.setProperty("--lyr-fs", STEPS[0] + "px");
+    var i;
+    for (i = 0; i < lines.length; i++) {
+      lines[i].style.display    = "inline-block";
+      lines[i].style.width      = "auto";
+      lines[i].style.whiteSpace = "nowrap";
+    }
+    var maxW = 0;
+    for (i = 0; i < lines.length; i++) {
+      if (lines[i].offsetWidth > maxW) maxW = lines[i].offsetWidth;
+    }
+    for (i = 0; i < lines.length; i++) {
+      lines[i].style.display    = "";
+      lines[i].style.width      = "";
+      lines[i].style.whiteSpace = "";
+    }
+    if (maxW < 1) return null;
+    var idealPx = (cw / maxW) * STEPS[0];
+    return pxToStep(idealPx);
+  }
+
+  function applyStep(step, modal) {
+    step = clampStep(step);
+    var px    = STEPS[step];
+    var value = px + "px";
+    var lyrs  = modal.querySelectorAll(".lyr");
+    for (var i = 0; i < lyrs.length; i++) {
+      lyrs[i].style.setProperty("--lyr-fs", value);
+      var lines = lyrs[i].querySelectorAll(".lyr-line");
+      for (var j = 0; j < lines.length; j++) lines[j].style.fontSize = value;
+    }
+    updateLabel("T " + (step + 1) + "/" + STEPS.length);
+  }
+
+  function fit() {
+    if (_pending) return;
+    var modal = document.querySelector(".lmo");
+    if (!modal || !modal.classList.contains("show")) return;
+    _pending = true;
+    requestAnimationFrame(function () {
+      var lyrs = modal.querySelectorAll(".lyr");
+      var s    = lyrs.length ? autoFitStep(lyrs[0]) : null;
+      if (s !== null) _autoStep = s;
+      var target = (_manualStep !== null) ? _manualStep : _autoStep;
+      if (target !== null) applyStep(target, modal);
+      _pending = false;
+    });
+  }
+  function fitSoon() {
+    [80, 300, 600, 1100, 2000].forEach(function (d) { setTimeout(fit, d); });
+  }
+  window.fitLyrLines = fit;
+
+  var _resizeTimer;
+  window.addEventListener("resize", function () {
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(fit, 220);
+  });
+
+  function buildBar() {
+    if (_barBuilt) return;
+    var modal = document.getElementById("lmo");
+    if (!modal) return;
+    _barBuilt = true;
+
+    var wrap = document.createElement("div");
+    wrap.id = "lyr-fs-ctrl";
+    wrap.innerHTML =
+      '<button id="lyr-fs-pause" style="display:none" title="Pause/Resume">⏸</button>' +
+      '<button id="lyr-fs-down" title="Smaller text" aria-label="Smaller text">−</button>' +
+      '<span id="lyr-fs-label">—</span>' +
+      '<button id="lyr-fs-up"   title="Larger text"  aria-label="Larger text">+</button>' +
+      '<button id="lyr-fs-auto" style="display:none" title="Reset size">↺</button>';
+    modal.appendChild(wrap);
+
+    var down  = document.getElementById("lyr-fs-down");
+    var up    = document.getElementById("lyr-fs-up");
+    var auto  = document.getElementById("lyr-fs-auto");
+    var pause = document.getElementById("lyr-fs-pause");
+
+    function stepBy(delta) {
+      var base = (_manualStep !== null) ? _manualStep
+               : (_autoStep   !== null) ? _autoStep   : DEFAULT_STEP;
+      _manualStep = clampStep(base + delta);
+      savePref();
+      var m = document.querySelector(".lmo");
+      if (m) applyStep(_manualStep, m);
+      refreshAutoBtn();
+    }
+
+    bindRepeat(down, function () { stepBy(-1); });
+    bindRepeat(up,   function () { stepBy( 1); });
+
+    auto.addEventListener("click", function (e) {
+      e.stopPropagation();
+      _manualStep = null;
+      savePref();
+      refreshAutoBtn();
+      fit();
+    });
+
+    pause.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (!_audioEl) return;
+      if (_audioEl.paused) _audioEl.play(); else _audioEl.pause();
+      syncPauseBtn();
+    });
+  }
+
+  /* Tap + long-press repeat (140ms after a 380ms warm-up) */
+  function bindRepeat(btn, fn) {
+    var holdT, repT;
+    function start(e) {
+      e.stopPropagation();
+      fn();
+      holdT = setTimeout(function () { repT = setInterval(fn, 140); }, 380);
+    }
+    function stop() {
+      clearTimeout(holdT); clearInterval(repT);
+      holdT = repT = null;
+    }
+    btn.addEventListener("pointerdown",  start);
+    btn.addEventListener("pointerup",    stop);
+    btn.addEventListener("pointerleave", stop);
+    btn.addEventListener("pointercancel",stop);
+    btn.addEventListener("click", function (e) { e.stopPropagation(); });
+  }
+
+  function updateLabel(t) {
+    var el = document.getElementById("lyr-fs-label");
+    if (el) el.textContent = t;
+  }
+  function refreshAutoBtn() {
+    var el = document.getElementById("lyr-fs-auto");
+    if (el) el.style.display = (_manualStep !== null) ? "inline-block" : "none";
+  }
+  function syncPauseBtn() {
+    var btn = document.getElementById("lyr-fs-pause");
+    if (!btn) return;
+    if (!_audioEl || _audioEl.ended) { btn.style.display = "none"; return; }
+    btn.style.display = "inline-block";
+    btn.textContent   = _audioEl.paused ? "▶" : "⏸";
+    btn.title         = _audioEl.paused ? "Resume" : "Pause";
+  }
+  function savePref() {
+    try {
+      if (_manualStep === null) {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(LEGACY_KEY);
+      } else {
+        localStorage.setItem(STORAGE_KEY, String(_manualStep));
+      }
+    } catch (e) {}
+  }
+
+  function getPlayerHeight() {
+    var ids = ["hcj-player-wrap","lm-audio-player","audio-player-wrap","playerWrap","player-wrap"];
+    for (var i = 0; i < ids.length; i++) {
+      var el = document.getElementById(ids[i]);
+      if (el && el.offsetHeight > 20) return el.offsetHeight + 12;
+    }
+    if (_audioEl) {
+      var p = _audioEl.parentElement;
+      for (var k = 0; k < 5 && p; k++) {
+        if (p.offsetHeight > 30 && p.offsetHeight < 300) return p.offsetHeight + 12;
+        p = p.parentElement;
+      }
+    }
+    return 110;
+  }
+  function setScrollPadding(active) {
+    var modal = document.querySelector(".lmo");
+    if (!modal) return;
+    var inner = modal.querySelector(".lm-card-inner");
+    if (inner) inner.style.paddingBottom = active ? getPlayerHeight() + "px" : "";
+  }
+
+  function onAudioEnded() { setScrollPadding(false); syncPauseBtn(); }
+  function _attachAudioListeners(el) {
+    el.removeEventListener("pause", syncPauseBtn);
+    el.removeEventListener("play",  syncPauseBtn);
+    el.removeEventListener("ended", onAudioEnded);
+    el.addEventListener("pause", syncPauseBtn);
+    el.addEventListener("play",  syncPauseBtn);
+    el.addEventListener("ended", onAudioEnded);
+  }
+  document.addEventListener("play", function (e) {
+    if (!e.target || e.target.tagName !== "AUDIO") return;
+    _audioEl = e.target;
+    _attachAudioListeners(_audioEl);
+    syncPauseBtn();
+    setScrollPadding(true);
+  }, true);
+  document.addEventListener("pause", function (e) {
+    if (e.target && e.target.tagName === "AUDIO") syncPauseBtn();
+  }, true);
+
+  window._lyrHcjAudioChanged = function (audioEl, isPlaying) {
+    if (isPlaying) setScrollPadding(true);
+    else if (!audioEl) setScrollPadding(false);
+  };
+
+  function init() {
+    buildBar();
+    var modal = document.querySelector(".lmo");
+    if (!modal) return;
+
+    new MutationObserver(function (muts) {
+      for (var i = 0; i < muts.length; i++) {
+        var m = muts[i];
+        if (m.type === "attributes" && m.target === modal && m.attributeName === "class") {
+          if (modal.classList.contains("show")) fitSoon();
+          return;
+        }
+        if (m.type === "childList" && m.addedNodes.length) {
+          if (m.addedNodes[0] && m.addedNodes[0].id === "lyr-fs-ctrl") continue;
+          setTimeout(fit, 120);
+          return;
+        }
+      }
+    }).observe(modal, {
+      attributes: true, attributeFilter: ["class"],
+      childList: true, subtree: true
+    });
+
+    if (modal.classList.contains("show")) fitSoon();
+
+    modal.addEventListener("touchmove", function (e) {
+      if (e.target && e.target.closest && e.target.closest(".lm-card-inner")) {
+        e.stopPropagation();
+      }
+    }, { passive: true });
+
+    var clampScrollSoon = function () {
+      setTimeout(function () {
+        var inner = modal.querySelector(".lm-card-inner");
+        if (!inner) return;
+        var max = Math.max(0, inner.scrollHeight - inner.clientHeight);
+        if (inner.scrollTop > max) inner.scrollTop = max;
+      }, 50);
+    };
+    ["lyr-fs-up","lyr-fs-down","lyr-fs-auto"].forEach(function (id) {
+      var b = document.getElementById(id);
+      if (b) b.addEventListener("click", clampScrollSoon);
+    });
+
+    modal.addEventListener("click", function (e) {
+      if (e.target.closest(".lm-nav-btn") ||
+          e.target.closest(".lm-arr")     ||
+          e.target.closest(".lm-dot")     ||
+          e.target.closest("[data-verse]")) {
+        setTimeout(fit, 150);
+      }
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();

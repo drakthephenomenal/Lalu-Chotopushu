@@ -9330,20 +9330,25 @@ function _hcjRenderPlayer(idx) {
   progTrack.addEventListener("mousedown",  function(e){ _scrubbing=true; _hcjScrubAt(e); });
   progTrack.addEventListener("touchstart", function(e){ _scrubbing=true; _hcjScrubAt(e); }, {passive:false});
 
-  /* Track window listeners so they can be removed when the player is re-rendered.
-     Without cleanup, each verse navigation stacks another set of {passive:false}
-     touchmove listeners on window, which blocks scrolling and causes screen shake. */
+  /* touchmove is on progTrack only — NOT on window.
+     Touch events fire on the element where touchstart occurred, so this
+     still fires when the finger moves outside the bar. Keeping it on the
+     small progTrack element means Chrome NEVER has to wait for a global
+     touchmove handler before scrolling the text area, which eliminates
+     the shake-without-scrolling bug entirely. */
+  progTrack.addEventListener("touchmove", function(e){
+    if (_scrubbing){ e.preventDefault(); _hcjScrubAt(e); }
+  }, {passive:false});
+
+  /* Mouse drag still uses window so the cursor can leave the track */
   var _onMouseMove = function(e){ if(_scrubbing) _hcjScrubAt(e); };
-  var _onTouchMove = function(e){ if(_scrubbing){ e.preventDefault(); _hcjScrubAt(e); } };
   var _onMouseUp   = function(){ _scrubbing=false; };
   var _onTouchEnd  = function(){ _scrubbing=false; };
   window.addEventListener("mousemove", _onMouseMove);
-  window.addEventListener("touchmove", _onTouchMove, {passive:false});
   window.addEventListener("mouseup",   _onMouseUp);
   window.addEventListener("touchend",  _onTouchEnd);
   _hcjPlayerCleanup = function() {
     window.removeEventListener("mousemove", _onMouseMove);
-    window.removeEventListener("touchmove", _onTouchMove);
     window.removeEventListener("mouseup",   _onMouseUp);
     window.removeEventListener("touchend",  _onTouchEnd);
   };

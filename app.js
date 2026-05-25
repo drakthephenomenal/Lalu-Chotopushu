@@ -1261,6 +1261,10 @@ let lt2 = 0;
 document.addEventListener(
   "touchend",
   (e) => {
+    // Do not cancel touchend inside the lyrics modal. Repeated flick-scrolls
+    // can happen within 300ms; preventing them interrupts native momentum
+    // scrolling and makes the Stotram text feel stuck/shaky on mobile.
+    if (e.target && e.target.closest && e.target.closest("#lmo")) return;
     const n = Date.now();
     if (n - lt2 < 300) e.preventDefault();
     lt2 = n;
@@ -8992,7 +8996,11 @@ function _renderVerse(idx, dir) {
   next.disabled = idx === _verses.length - 1;
 
   const inner = document.querySelector(".lm-card-inner");
-  if (inner) inner.scrollTop = 0;
+  if (inner) {
+    // Reset after the DOM has painted so mobile browsers do not fight an
+    // in-progress user scroll while verse/audio UI is being re-rendered.
+    requestAnimationFrame(function(){ inner.scrollTop = 0; });
+  }
   _hcjRenderPlayer(idx);
   _hcjOnVerseChange(idx);
 }

@@ -67,6 +67,26 @@
   touch-action: pan-y;
 }
 
+/* ── 4b. Stop lyric-frame shake while reading ────────────────
+   The frame used to float with a transform animation. Because the
+   scrollable lyrics live inside that transformed element, Android/iOS
+   can visibly jitter during finger scrolling and while audio progress
+   updates repaint the player. Keep the frame fixed in the lyric modal. */
+#lmo .lm-water-card {
+  animation: none !important;
+  transform: none !important;
+  will-change: auto !important;
+}
+#lmo .lm-card-inner {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  contain: layout paint;
+}
+#lmo .lyr {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
 /* ── 5. HCJ player positioning fix ──────────────────────────
    The CSS says `position: sticky; bottom: 0` but .lmd is
    `position: absolute; inset: 0` with no overflow — sticky

@@ -92,7 +92,7 @@
     background-color: #030a14;
 
     /* Gentle float */
-    animation: cardFloat 6s ease-in-out infinite;
+    animation: none;
 
     position: relative;
     overflow: hidden;

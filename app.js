@@ -8596,7 +8596,7 @@ window.addEventListener('appinstalled', () => {
 
 // ── Hard cache-bust on version change ──
 (function() {
-  const APP_VER = 'v81';
+  const APP_VER = 'v82';
   if (localStorage.getItem('appVer') !== APP_VER) {
     localStorage.setItem('appVer', APP_VER);
     var p1 = navigator.serviceWorker
@@ -8610,8 +8610,8 @@ window.addEventListener('appinstalled', () => {
         })
       : Promise.resolve();
     Promise.all([p1, p2]).then(function() {
-      if (location.search.indexOf('bust=81') === -1) {
-        location.replace(location.pathname + '?bust=81');
+      if (location.search.indexOf('bust=82') === -1) {
+        location.replace(location.pathname + '?bust=82');
       }
     });
     return;

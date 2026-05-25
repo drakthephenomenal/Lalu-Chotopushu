@@ -9199,9 +9199,7 @@ async function _hcjIsAudioDownloaded(idx) {
 var _hcjDlAllRunning = false, _hcjDlAllAbort = false;
 
 function _hcjShowCorners(show) {
-  var l = document.getElementById("hcj-corner-left");
   var r = document.getElementById("hcj-corner-right");
-  if (l) l.style.display = show ? "flex" : "none";
   if (r) r.style.display = show ? "flex" : "none";
 }
 
@@ -9247,6 +9245,7 @@ async function _hcjDownloadVerse(idx) {
 
 async function _hcjUpdateAllBtn() {
   var btn = document.getElementById("hcj-all-dl-btn");
+  var delBtn = document.getElementById("hcj-all-del-btn");
   if (!btn || _hcjDlAllRunning) return;
   if (!_verses || _verses.length === 0) return;
   var total = _verses.length;
@@ -9259,17 +9258,22 @@ async function _hcjUpdateAllBtn() {
     btn.textContent = "⬇️ Download All";
     btn.title = "Download all " + total + " verses for offline listening";
     btn.className = "hcj-cbtn";
+    btn.style.display = "";
     btn.onclick = _hcjDownloadAll;
+    if (delBtn) delBtn.style.display = "none";
   } else if (count < total) {
     btn.textContent = "⬇️ " + (total - count) + " Remaining";
     btn.title = "Download remaining " + (total - count) + " verses";
     btn.className = "hcj-cbtn";
+    btn.style.display = "";
     btn.onclick = _hcjDownloadAll;
+    if (delBtn) { delBtn.style.display = ""; delBtn.onclick = _hcjDeleteAll; }
   } else {
-    btn.textContent = "🗑️ Delete All";
-    btn.title = "Delete all offline copies";
-    btn.className = "hcj-cbtn hcj-cbtn-del";
-    btn.onclick = _hcjDeleteAll;
+    btn.textContent = "⬇️ Download All";
+    btn.title = "All " + total + " verses cached offline";
+    btn.className = "hcj-cbtn";
+    btn.style.display = "none";
+    if (delBtn) { delBtn.style.display = ""; delBtn.onclick = _hcjDeleteAll; }
   }
 }
 
@@ -9280,6 +9284,8 @@ async function _hcjDownloadAll() {
   var total = _verses.length;
   var fetched = 0;
   var btn = document.getElementById("hcj-all-dl-btn");
+  var delBtn = document.getElementById("hcj-all-del-btn");
+  if (delBtn) delBtn.style.display = "none";
 
   for (var i = 0; i < total; i++) {
     if (_hcjDlAllAbort) break;

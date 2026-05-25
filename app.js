@@ -11161,7 +11161,17 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
         }
         if (m.type === "childList" && m.addedNodes.length) {
           if (m.addedNodes[0] && m.addedNodes[0].id === "lyr-fs-ctrl") continue;
-          setTimeout(fit, 120);
+          // Only refit when an actual lyric line is added/removed.
+          // Ignoring HCJ audio-player progress/text updates prevents
+          // mid-scroll font-size rewrites that snap the page on iPad.
+          var touchesLyrics = false;
+          for (var ai = 0; ai < m.addedNodes.length; ai++) {
+            var n = m.addedNodes[ai];
+            if (n.nodeType === 1 && (n.classList && (n.classList.contains("lyr-line") || n.classList.contains("lyr-prose")) || (n.querySelector && n.querySelector(".lyr-line, .lyr-prose")))) {
+              touchesLyrics = true; break;
+            }
+          }
+          if (touchesLyrics) setTimeout(fit, 120);
           return;
         }
       }

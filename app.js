@@ -78,7 +78,7 @@ const App = {
 
   async initDB() {
     return new Promise((res, rej) => {
-      const req = indexedDB.open("RadhaJapDB", 4);
+      const req = indexedDB.open("RadhaJapDB", 5);
       req.onupgradeneeded = (e) => {
         const db = e.target.result;
         if (!db.objectStoreNames.contains("state"))
@@ -95,6 +95,9 @@ const App = {
         // v4: lifetime per-day activityLog archive — no entry limit
         if (!db.objectStoreNames.contains("activityLogArchive"))
           db.createObjectStore("activityLogArchive");
+        // v5: offline audio blobs for HCJ stotram
+        if (!db.objectStoreNames.contains("hcjAudioBlobs"))
+          db.createObjectStore("hcjAudioBlobs");
       };
       req.onsuccess = (e) => {
         this.db = e.target.result;
@@ -146,6 +149,16 @@ const App = {
     return new Promise((res) => {
       const tx = this.db.transaction(store, "readwrite");
       tx.objectStore(store).clear();
+      tx.oncomplete = res;
+      tx.onerror = res;
+    });
+  },
+
+  async dbDelete(store, key) {
+    if (!this.db) return;
+    return new Promise((res) => {
+      const tx = this.db.transaction(store, "readwrite");
+      tx.objectStore(store).delete(key);
       tx.oncomplete = res;
       tx.onerror = res;
     });
@@ -9172,6 +9185,185 @@ var _hcjPlayerCleanup = null; // cleanup fn for window listeners added in _hcjRe
 
 function _hcjAudioPath(i) { return "audio/hcj_"+(i+1)+".mp3"; }
 
+// ── Offline Audio (IndexedDB blob storage) ──────────────────────────────────
+var _HCJ_AUDIO_STORE = "hcjAudioBlobs";
+
+async function _hcjIsAudioDownloaded(idx) {
+  try {
+    var blob = await App.dbGet(_HCJ_AUDIO_STORE, "hcj_" + idx);
+    return !!(blob && blob.size > 0);
+  } catch(e) { return false; }
+}
+
+// ── Corner download buttons ──────────────────────────────────────────────────
+var _hcjDlAllRunning = false, _hcjDlAllAbort = false;
+
+function _hcjShowCorners(show) {
+  var l = document.getElementById("hcj-corner-left");
+  var r = document.getElementById("hcj-corner-right");
+  if (l) l.style.display = show ? "flex" : "none";
+  if (r) r.style.display = show ? "flex" : "none";
+}
+
+function _hcjUpdateVerseBtn(idx) {
+  var btn = document.getElementById("hcj-verse-dl-btn");
+  if (!btn) return;
+  _hcjIsAudioDownloaded(idx).then(function(cached) {
+    btn.disabled = false;
+    if (cached) {
+      btn.textContent = "🗑️ Remove";
+      btn.title = "Delete offline copy of this verse";
+      btn.className = "hcj-cbtn hcj-cbtn-del";
+      btn.onclick = function() {
+        App.dbDelete(_HCJ_AUDIO_STORE, "hcj_" + idx).then(function() {
+          _hcjUpdateVerseBtn(idx);
+          _hcjUpdateAllBtn();
+        });
+      };
+    } else {
+      btn.textContent = "⬇️ This Verse";
+      btn.title = "Download this verse for offline listening";
+      btn.className = "hcj-cbtn";
+      btn.onclick = function() { _hcjDownloadVerse(idx); };
+    }
+  });
+}
+
+async function _hcjDownloadVerse(idx) {
+  var btn = document.getElementById("hcj-verse-dl-btn");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳"; btn.className = "hcj-cbtn"; }
+  try {
+    var resp = await fetch(_hcjAudioPath(idx));
+    if (!resp.ok) throw new Error();
+    var blob = await resp.blob();
+    await App.dbPut(_HCJ_AUDIO_STORE, "hcj_" + idx, blob);
+    if (typeof toast === "function") toast("Verse " + (idx+1) + " saved for offline! 🙏");
+  } catch(e) {
+    if (typeof toast === "function") toast("Download failed. Please check your internet connection.");
+  }
+  _hcjUpdateVerseBtn(idx);
+  _hcjUpdateAllBtn();
+}
+
+async function _hcjUpdateAllBtn() {
+  var btn = document.getElementById("hcj-all-dl-btn");
+  if (!btn || _hcjDlAllRunning) return;
+  if (!_verses || _verses.length === 0) return;
+  var total = _verses.length;
+  var count = 0;
+  for (var i = 0; i < total; i++) {
+    if (await _hcjIsAudioDownloaded(i)) count++;
+  }
+  btn.disabled = false;
+  if (count === 0) {
+    btn.textContent = "⬇️ Download All";
+    btn.title = "Download all " + total + " verses for offline listening";
+    btn.className = "hcj-cbtn";
+    btn.onclick = _hcjDownloadAll;
+  } else if (count < total) {
+    btn.textContent = "⬇️ " + (total - count) + " Remaining";
+    btn.title = "Download remaining " + (total - count) + " verses";
+    btn.className = "hcj-cbtn";
+    btn.onclick = _hcjDownloadAll;
+  } else {
+    btn.textContent = "🗑️ Delete All";
+    btn.title = "Delete all offline copies";
+    btn.className = "hcj-cbtn hcj-cbtn-del";
+    btn.onclick = _hcjDeleteAll;
+  }
+}
+
+async function _hcjDownloadAll() {
+  if (_hcjDlAllRunning) return;
+  _hcjDlAllRunning = true;
+  _hcjDlAllAbort = false;
+  var total = _verses.length;
+  var fetched = 0;
+  var btn = document.getElementById("hcj-all-dl-btn");
+
+  for (var i = 0; i < total; i++) {
+    if (_hcjDlAllAbort) break;
+    if (await _hcjIsAudioDownloaded(i)) continue;
+    if (btn) {
+      btn.textContent = "⏳ " + fetched + "/" + total;
+      btn.title = "Downloading — tap to cancel";
+      btn.className = "hcj-cbtn hcj-cbtn-progress";
+      btn.disabled = false;
+      btn.onclick = function() { _hcjDlAllAbort = true; };
+    }
+    try {
+      var resp = await fetch(_hcjAudioPath(i));
+      if (resp.ok) {
+        var blob = await resp.blob();
+        await App.dbPut(_HCJ_AUDIO_STORE, "hcj_" + i, blob);
+        fetched++;
+      }
+    } catch(e) {}
+  }
+  _hcjDlAllRunning = false;
+  _hcjDlAllAbort = false;
+  _hcjUpdateAllBtn();
+  _hcjUpdateVerseBtn(_verseIdx);
+  if (fetched > 0 && typeof toast === "function") {
+    toast(fetched + " verse(s) downloaded for offline listening! 🙏");
+  }
+}
+
+async function _hcjDeleteAll() {
+  if (!confirm("Delete all " + _verses.length + " offline copies? This will free up storage.")) return;
+  for (var i = 0; i < _verses.length; i++) {
+    await App.dbDelete(_HCJ_AUDIO_STORE, "hcj_" + i);
+  }
+  _hcjUpdateAllBtn();
+  _hcjUpdateVerseBtn(_verseIdx);
+}
+
+function _hcjInitCornerBtns(idx) {
+  if (_currentStotramId !== "hcj") { _hcjShowCorners(false); return; }
+  _hcjShowCorners(true);
+  _hcjUpdateVerseBtn(idx);
+  _hcjUpdateAllBtn();
+}
+
+// Kept for player-bar button compatibility — also syncs corner verse button
+async function _hcjDownloadAudio(idx, btn) {
+  _hcjUpdateDlBtn(btn, "loading");
+  try {
+    var resp = await fetch(_hcjAudioPath(idx));
+    if (!resp.ok) throw new Error("fetch failed");
+    var blob = await resp.blob();
+    await App.dbPut(_HCJ_AUDIO_STORE, "hcj_" + idx, blob);
+    _hcjUpdateDlBtn(btn, "downloaded", idx);
+    _hcjUpdateVerseBtn(idx); _hcjUpdateAllBtn();
+    if (typeof toast === "function") toast("Verse " + (idx+1) + " saved for offline! 🙏");
+  } catch(e) {
+    _hcjUpdateDlBtn(btn, "idle", idx);
+    if (typeof toast === "function") toast("Download failed. Please check your internet connection.");
+  }
+}
+function _hcjUpdateDlBtn(btn, state, idx) {
+  btn.disabled = false;
+  if (state === "loading") {
+    btn.disabled = true; btn.textContent = "⏳";
+    btn.title = "Downloading...";
+    btn.className = "hcj-mini-btn hcj-dl-btn"; btn.onclick = null;
+  } else if (state === "downloaded") {
+    btn.textContent = "🗑️"; btn.title = "Delete offline copy";
+    btn.className = "hcj-mini-btn hcj-dl-btn hcj-dl-cached";
+    btn.onclick = function() {
+      App.dbDelete(_HCJ_AUDIO_STORE, "hcj_" + idx).then(function() {
+        _hcjUpdateDlBtn(btn, "idle", idx);
+        _hcjUpdateVerseBtn(idx); _hcjUpdateAllBtn();
+      });
+    };
+  } else {
+    btn.textContent = "⬇️"; btn.title = "Download for offline listening";
+    btn.className = "hcj-mini-btn hcj-dl-btn";
+    btn.onclick = function() { _hcjDownloadAudio(idx, btn); };
+  }
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 // Format seconds → m:ss
 function _hcjFmtTime(s) {
   if (!isFinite(s) || isNaN(s)) return "0:00";
@@ -9236,19 +9428,30 @@ function _hcjPauseAudio() {
 function _hcjPlayVerse(idx) {
   _hcjStopProgressLoop();
   if (_hcjAudio) { _hcjAudio.pause(); _hcjAudio.onended=null; _hcjAudio=null; }
-  _hcjAudio = new Audio(_hcjAudioPath(idx));
   _hcjAudioIdx = idx;
-  _hcjAudio.loop = (_hcjMode==="loop");
-  _hcjAudio.onended = function() {
-    _hcjStopProgressLoop();
-    if (_hcjMode==="continue" && idx+1<_verses.length) { _verseIdx=idx+1; _renderVerse(_verseIdx,1); _hcjPlayVerse(_verseIdx); }
-    else { _hcjPlaying=false; _hcjAudioIdx=-1; _hcjSyncUI(); _hcjUpdateProgress();
-      if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(null, false); }
-  };
-  _hcjAudio.play().then(function(){
-    _hcjPlaying=true; _hcjSyncUI(); _hcjStartProgressLoop();
-    if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(_hcjAudio, true);
-  }).catch(function(){ _hcjPlaying=false; _hcjAudioIdx=-1; _hcjSyncUI(); });
+  function _startAudio(src) {
+    _hcjAudio = new Audio(src);
+    _hcjAudio.loop = (_hcjMode==="loop");
+    _hcjAudio.onended = function() {
+      _hcjStopProgressLoop();
+      if (src.startsWith("blob:")) URL.revokeObjectURL(src);
+      if (_hcjMode==="continue" && idx+1<_verses.length) { _verseIdx=idx+1; _renderVerse(_verseIdx,1); _hcjPlayVerse(_verseIdx); }
+      else { _hcjPlaying=false; _hcjAudioIdx=-1; _hcjSyncUI(); _hcjUpdateProgress();
+        if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(null, false); }
+    };
+    _hcjAudio.play().then(function(){
+      _hcjPlaying=true; _hcjSyncUI(); _hcjStartProgressLoop();
+      if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(_hcjAudio, true);
+    }).catch(function(){ _hcjPlaying=false; _hcjAudioIdx=-1; _hcjSyncUI(); });
+  }
+  // Try IndexedDB offline blob first, fall back to network
+  App.dbGet(_HCJ_AUDIO_STORE, "hcj_" + idx).then(function(blob) {
+    if (blob && blob.size > 0) {
+      _startAudio(URL.createObjectURL(blob));
+    } else {
+      _startAudio(_hcjAudioPath(idx));
+    }
+  }).catch(function() { _startAudio(_hcjAudioPath(idx)); });
 }
 function _hcjTogglePlay() {
   if (_hcjPlaying) {
@@ -9278,6 +9481,7 @@ function _hcjOnVerseChange(idx) {
     _hcjPlayVerse(idx);
   }
   var si=document.getElementById("hcj-seek-input"); if (si) si.value=idx+1;
+  _hcjUpdateVerseBtn(idx);
 }
 function _hcjGoToVerse(n) {
   var i=parseInt(n)-1; if (isNaN(i)||i<0||i>=_verses.length) return;
@@ -9304,6 +9508,7 @@ function _hcjRenderPlayer(idx) {
   if (_currentStotramId!=="hcj") {
     if(navBar) navBar.style.display="";
     var _ci=document.querySelector("#lmo .lm-card-inner"); if(_ci) _ci.style.bottom="";
+    _hcjShowCorners(false);
     return;
   }
   if (navBar) navBar.style.display="none";
@@ -9430,7 +9635,7 @@ function _hcjRenderPlayer(idx) {
   var si=document.createElement("input");
   si.id="hcj-seek-input"; si.type="number"; si.min=1; si.max=_verses.length;
   si.value=idx+1; si.className="hcj-seek-input";
-  si.title="পদ নং";
+  si.title="Verse no.";
   si.onchange=function(){_hcjGoToVerse(this.value);};
   si.onkeydown=function(e){if(e.key==="Enter")_hcjGoToVerse(this.value);};
   row.appendChild(si);
@@ -9448,6 +9653,18 @@ function _hcjRenderPlayer(idx) {
   nextBtn.onclick=function(){verseNav(1);};
   row.appendChild(nextBtn);
 
+  // ── Download / Delete button for offline listening ──
+  var dlBtn=document.createElement("button");
+  dlBtn.className="hcj-mini-btn hcj-dl-btn";
+  dlBtn.textContent="⬇️";
+  dlBtn.title="অফলাইন শোনার জন্য ডাউনলোড করুন";
+  dlBtn.onclick=function(){ _hcjDownloadAudio(idx, dlBtn); };
+  // Check if already downloaded and update button state
+  _hcjIsAudioDownloaded(idx).then(function(cached){
+    if (cached) _hcjUpdateDlBtn(dlBtn, "downloaded", idx);
+  });
+  row.appendChild(dlBtn);
+
   wrap.appendChild(row); lmd.appendChild(wrap);
 
   /* Shrink the scroll area so it never slides under the player.
@@ -9459,6 +9676,9 @@ function _hcjRenderPlayer(idx) {
     var inner = document.querySelector("#lmo .lm-card-inner");
     if (pw && inner) inner.style.bottom = pw.offsetHeight + "px";
   });
+
+  // Initialise corner download buttons for this verse
+  _hcjInitCornerBtns(idx);
 }
 
 // DAILY REMINDERS — Brahma Muhurta, Sandhyakal, Manual

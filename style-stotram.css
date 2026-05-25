@@ -681,10 +681,12 @@
 
 /* Mode buttons (loop / continue) — show active selection clearly */
 .hcj-mode-btn.hcj-mode-active {
-  background: rgba(255,215,0,0.85) !important;
-  color: #1a0d00 !important;
-  box-shadow: 0 0 0 2px rgba(255,215,0,0.5) !important;
-  border-color: rgba(255,235,120,0.95) !important;
+  /* Permanent thick golden border while the mode is ON (no yellow fill).
+     Press it again to toggle OFF and the border disappears. */
+  border: 4px solid #FFD700 !important;
+  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.55),
+              0 0 16px  rgba(255, 215, 0, 0.65) !important;
+  outline: none !important;
 }
 
 /* ── Text-size pill  #lyr-fs-ctrl  (top-left of stotram modal) ── */

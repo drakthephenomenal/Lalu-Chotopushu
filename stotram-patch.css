@@ -87,6 +87,39 @@
   backface-visibility: hidden;
 }
 
+
+/* ── 4c. Large-font scroll hardening ──────────────────────────
+   With manual A+ sizes the text can become much taller than the
+   frame. Make the golden area a plain native scroller (not a flex
+   scroller with pseudo-spacers), and center only short content via
+   the lyric body itself. This removes the mobile shake/stuck-scroll
+   behavior when dragging directly on enlarged verse text. */
+#lmo .lm-card-inner {
+  display: block !important;
+  overflow-y: scroll !important;
+  overflow-x: hidden !important;
+  touch-action: pan-y !important;
+  overscroll-behavior-y: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  overflow-anchor: none !important;
+  scroll-behavior: auto !important;
+}
+#lmo .lm-card-inner::before,
+#lmo .lm-card-inner::after {
+  content: none !important;
+  display: none !important;
+}
+#lmo .lyr {
+  min-height: 100%;
+  justify-content: center;
+  transform: none !important;
+  backface-visibility: visible !important;
+}
+#lmo .lyr-slide-enter-left,
+#lmo .lyr-slide-enter-right {
+  animation: none !important;
+}
+
 /* ── 5. HCJ player positioning fix ──────────────────────────
    The CSS says `position: sticky; bottom: 0` but .lmd is
    `position: absolute; inset: 0` with no overflow — sticky

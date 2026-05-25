@@ -9103,7 +9103,8 @@ function verseNav(delta) {
 
 function _initSwipeHandler() {
   // Horizontal swipe nav enabled for all stotrams EXCEPT hcj.
-  // Vertical scrolling inside .lm-card-inner is preserved.
+  // If enlarged text makes the lyric panel scrollable, touches that begin
+  // inside that panel are reserved for native vertical scrolling.
   const card = document.getElementById('lmCard');
   if (!card) return;
 
@@ -9112,15 +9113,17 @@ function _initSwipeHandler() {
 
   if (_currentStotramId === 'hcj') return; // HCJ uses its own audio player arrows
 
-  let startX = 0, startY = 0, moved = false;
+  let startX = 0, startY = 0, startedInScrollableLyrics = false;
 
   function onStart(e) {
     const t = e.touches ? e.touches[0] : e;
     startX = t.clientX;
     startY = t.clientY;
-    moved = false;
+    const inner = e.target && e.target.closest ? e.target.closest('.lm-card-inner') : null;
+    startedInScrollableLyrics = !!(inner && inner.scrollHeight > inner.clientHeight + 4);
   }
   function onEnd(e) {
+    if (startedInScrollableLyrics) return;
     const t = e.changedTouches ? e.changedTouches[0] : e;
     const dx = t.clientX - startX;
     const dy = t.clientY - startY;

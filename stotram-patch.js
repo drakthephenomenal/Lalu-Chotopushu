@@ -330,6 +330,29 @@
 
     if (modal.classList.contains("show")) fitSoon();
 
+    /* Let native lyric scrolling win over any parent gesture handling. */
+    modal.addEventListener("touchmove", function (e) {
+      if (e.target && e.target.closest && e.target.closest(".lm-card-inner")) {
+        e.stopPropagation();
+      }
+    }, { passive: true });
+
+    /* After manual font-size changes, keep the current scroll position valid. */
+    var clampScrollSoon = function () {
+      setTimeout(function () {
+        var inner = modal.querySelector(".lm-card-inner");
+        if (!inner) return;
+        var max = Math.max(0, inner.scrollHeight - inner.clientHeight);
+        if (inner.scrollTop > max) inner.scrollTop = max;
+      }, 50);
+    };
+    var fsUp = document.getElementById("lyr-fs-up");
+    var fsDown = document.getElementById("lyr-fs-down");
+    var fsAuto = document.getElementById("lyr-fs-auto");
+    if (fsUp) fsUp.addEventListener("click", clampScrollSoon);
+    if (fsDown) fsDown.addEventListener("click", clampScrollSoon);
+    if (fsAuto) fsAuto.addEventListener("click", clampScrollSoon);
+
     /* Nav clicks */
     modal.addEventListener("click", function (e) {
       if (e.target.closest(".lm-nav-btn") ||

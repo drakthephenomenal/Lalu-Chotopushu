@@ -9040,7 +9040,7 @@ function _renderTranslationToggle(verseHasArtha) {
 
   var label = document.createElement('span');
   label.className = 'lm-toggle-label';
-  label.textContent = 'অনুবাদ';
+  label.textContent = 'Translation';
 
   var sw = document.createElement('button');
   sw.id = 'lm-toggle-sw';

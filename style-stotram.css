@@ -257,14 +257,21 @@
   .lm-water-card[data-theme] .lyr-footer { color: #5a2800 !important; }
   .lm-water-card[data-theme] .lyr-prose  { color: #1a0800 !important; }
 
-  /* ── Translation toggle — overlaid above nav ── */
+  /* ── Translation toggle — pinned top-right of reader, clear of close X & Sudarshan Chakra ── */
   .lm-translate-wrap {
     position: absolute;
-    bottom: max(env(safe-area-inset-bottom) + 58px, 70px);
-    left: 50%; transform: translateX(-50%);
-    display: flex; align-items: center; justify-content: center;
-    gap: 10px; white-space: nowrap;
-    z-index: 20;
+    top: max(env(safe-area-inset-top) + 14px, 18px);
+    right: 72px;            /* leave room for close (×) button at top-right corner */
+    left: auto; bottom: auto; transform: none;
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: 8px; white-space: nowrap;
+    padding: 6px 10px;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,215,0,0.35);
+    border-radius: 999px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 60;
   }
   .lm-toggle-label {
     font-family: 'Hind Siliguri','Inter',sans-serif;
@@ -485,7 +492,9 @@
     bottom: max(calc(50dvh - 68vw), calc(env(safe-area-inset-bottom) + 6px));
   }
   .lm-translate-wrap {
-    bottom: max(calc(50dvh - 61vw), calc(env(safe-area-inset-bottom) + 46px));
+    top: max(env(safe-area-inset-top) + 10px, 14px);
+    right: 60px;
+    bottom: auto; left: auto; transform: none;
   }
   .lm-nav {
     bottom: max(calc(50dvh - 75vw), env(safe-area-inset-bottom));
@@ -505,7 +514,9 @@
     bottom: max(calc(env(safe-area-inset-bottom) + 100px), 118px);
   }
   .lm-translate-wrap {
-    bottom: max(calc(env(safe-area-inset-bottom) + 58px), 70px);
+    top: max(env(safe-area-inset-top) + 14px, 18px);
+    right: 80px;
+    bottom: auto; left: auto; transform: none;
   }
   .lm-nav {
     bottom: max(env(safe-area-inset-bottom), 10px);

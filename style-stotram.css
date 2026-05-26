@@ -309,14 +309,20 @@
   }
   .lm-dot.active { background: rgba(255,215,0,0.85); transform: scale(1.4); }
 
-  /* ── Nav arrows — overlaid at bottom ── */
+  /* ── Nav arrows — overlaid at bottom of the dark frame border,
+       NOT at the screen edge (that caused duplicate-arrow appearance
+       on Android when the frame bottom was mid-screen).            ── */
   .lm-nav {
     position: absolute;
     bottom: max(env(safe-area-inset-bottom), 10px);
     left: 50%; transform: translateX(-50%);
     display: flex; gap: 52px; z-index: 20;
+    /* Pointer events only on the buttons themselves so the dark area
+       behind them does not accidentally block card swipes */
+    pointer-events: none;
   }
   .lm-nav-btn {
+    pointer-events: auto;
     width: auto; height: auto; border: none; background: transparent;
     color: rgba(255,215,0,0.90);
     font-size: 28px; padding: 6px 16px; line-height: 1;
@@ -496,8 +502,11 @@
     right: 60px;
     bottom: auto; left: auto; transform: none;
   }
+  /* Nav arrows: sit BELOW the frame bottom edge (≈ 50dvh - 57vw).
+     Adding 6px clearance keeps them in the dark border strip, never
+     overlapping the card text area — fixes the duplicate-arrow bug.  */
   .lm-nav {
-    bottom: max(calc(50dvh - 75vw), env(safe-area-inset-bottom));
+    bottom: max(calc(50dvh - 51vw), calc(env(safe-area-inset-bottom) + 6px));
   }
 }
 
@@ -518,8 +527,9 @@
     right: 80px;
     bottom: auto; left: auto; transform: none;
   }
+  /* Frame bottom ≈ 12dvh → nav arrows in the strip below the frame  */
   .lm-nav {
-    bottom: max(env(safe-area-inset-bottom), 10px);
+    bottom: max(calc(env(safe-area-inset-bottom) + 14dvh), 14dvh);
   }
 }
 

@@ -9103,43 +9103,56 @@ function verseNav(delta) {
 
 function _initSwipeHandler() {
   // Horizontal swipe nav enabled for all stotrams EXCEPT hcj.
-  // If enlarged text makes the lyric panel scrollable, touches that begin
-  // inside that panel are reserved for native vertical scrolling.
+  // HCJ uses its own inline audio-player arrow buttons.
   const card = document.getElementById('lmCard');
   if (!card) return;
 
   // Remove any previous swipe listeners
   card._swipeCleanup && card._swipeCleanup();
 
-  if (_currentStotramId === 'hcj') return; // HCJ uses its own audio player arrows
+  if (_currentStotramId === 'hcj') return;
 
-  let startX = 0, startY = 0, startedInScrollableLyrics = false;
+  let startX = 0, startY = 0, startedInScrollableInner = false;
 
   function onStart(e) {
     const t = e.touches ? e.touches[0] : e;
     startX = t.clientX;
     startY = t.clientY;
-    const inner = e.target && e.target.closest ? e.target.closest('.lm-card-inner') : null;
-    startedInScrollableLyrics = !!(inner && inner.scrollHeight > inner.clientHeight + 4);
+    // Only consider blocking swipe when the touch starts INSIDE .lm-card-inner
+    // AND that inner area is actually overflowing (scrollable content).
+    // Touches that start on the nav arrows, outside the text area, must
+    // always allow the horizontal-swipe path.
+    const inner = e.target && e.target.closest
+      ? e.target.closest('.lm-card-inner')
+      : null;
+    startedInScrollableInner = !!(inner && inner.scrollHeight > inner.clientHeight + 8);
   }
+
   function onEnd(e) {
-    if (startedInScrollableLyrics) return;
     const t = e.changedTouches ? e.changedTouches[0] : e;
     const dx = t.clientX - startX;
     const dy = t.clientY - startY;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-      // Horizontal swipe detected — prevent vertical scroll conflict
-      if (dx < 0) verseNav(1);   // swipe left → next
-      else        verseNav(-1);  // swipe right → prev
-    }
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    // Require a clearly horizontal swipe (dx dominant, threshold 44px).
+    if (absDx < 44 || absDy > absDx) return;
+
+    // If the touch started inside a scrollable text area AND the gesture
+    // looks more vertical than horizontal, let native scroll handle it.
+    // But if it's clearly horizontal we still honour the swipe.
+    if (startedInScrollableInner && absDy > 20) return;
+
+    if (dx < 0) verseNav(1);    // swipe left  → next verse
+    else        verseNav(-1);   // swipe right → prev verse
   }
 
   card.addEventListener('touchstart', onStart, { passive: true });
-  card.addEventListener('touchend', onEnd, { passive: true });
+  card.addEventListener('touchend',   onEnd,   { passive: true });
 
   card._swipeCleanup = function() {
     card.removeEventListener('touchstart', onStart);
-    card.removeEventListener('touchend', onEnd);
+    card.removeEventListener('touchend',   onEnd);
   };
 }
 

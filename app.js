@@ -9387,15 +9387,6 @@ function _hcjRenderPlayer(idx) {
   var row=document.createElement("div"); row.className="hcj-player";
 
 
-  // ◀ Previous verse — sits just left of the Play button
-  var prv=document.createElement("button");
-  prv.id="hcj-prev-btn";
-  prv.className="hcj-mini-btn hcj-nav-btn";
-  prv.textContent="\u25c0"; // ◀
-  prv.title="পূর্ববর্তী পদ";
-  prv.onclick=function(){ if (_verseIdx>0) verseNav(-1); };
-  row.appendChild(prv);
-
   // ▶ Play button — always shows ▶, dims while already playing
   var plb=document.createElement("button");
   plb.id="hcj-play-btn";
@@ -9412,7 +9403,6 @@ function _hcjRenderPlayer(idx) {
     } else { _hcjPlayVerse(_verseIdx); }
   };
   row.appendChild(plb);
-
 
   // ⏸ Pause button — always shows ⏸, dims while not playing
   var pab=document.createElement("button");
@@ -9448,16 +9438,6 @@ function _hcjRenderPlayer(idx) {
 
   var tot=document.createElement("span"); tot.className="hcj-seek-total"; tot.textContent="/"+_verses.length;
   row.appendChild(tot);
-
-  // ▶ Next verse — sits just right of the verse count input/total
-  var nxt=document.createElement("button");
-  nxt.id="hcj-next-btn";
-  nxt.className="hcj-mini-btn hcj-nav-btn";
-  nxt.textContent="\u25b6"; // ▶
-  nxt.title="পরবর্তী পদ";
-  nxt.onclick=function(){ if (_verseIdx<_verses.length-1) verseNav(1); };
-  row.appendChild(nxt);
-
 
 
   wrap.appendChild(row); lmd.appendChild(wrap);

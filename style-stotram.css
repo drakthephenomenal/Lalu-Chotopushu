@@ -309,30 +309,34 @@
   }
   .lm-dot.active { background: rgba(255,215,0,0.85); transform: scale(1.4); }
 
-  /* ── Nav arrows — overlaid at bottom of the dark frame border,
-       NOT at the screen edge (that caused duplicate-arrow appearance
-       on Android when the frame bottom was mid-screen).            ── */
-  .lm-nav {
-    position: absolute;
-    bottom: max(env(safe-area-inset-bottom), 10px);
-    left: 50%; transform: translateX(-50%);
-    display: flex; gap: 52px; z-index: 20;
-    /* Pointer events only on the buttons themselves so the dark area
-       behind them does not accidentally block card swipes */
-    pointer-events: none;
+  /* ── Nav arrows: the old floating absolute bar is HIDDEN forever.
+       Arrows are now rendered INSIDE the card by JS (_renderInlineNav).
+       This eliminates the double-arrow bug on Android completely.     ── */
+  #lmNav { display: none !important; }
+
+  /* ── Inline nav bar (injected by JS inside .lm-card-inner) ── */
+  .lm-inline-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 52px;
+    padding: 10px 0 6px;
+    flex-shrink: 0;
+    width: 100%;
   }
   .lm-nav-btn {
-    pointer-events: auto;
     width: auto; height: auto; border: none; background: transparent;
-    color: rgba(255,215,0,0.90);
-    font-size: 28px; padding: 6px 16px; line-height: 1;
-    border-radius: 0; box-shadow: none; backdrop-filter: none;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.8);
-    transition: opacity 0.15s, transform 0.15s, color 0.15s;
+    color: rgba(26,8,0,0.70);          /* dark brown, readable on gold card */
+    font-size: 26px; padding: 8px 18px; line-height: 1;
+    border-radius: 8px;
+    text-shadow: none;
+    transition: opacity 0.15s, transform 0.15s;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
-  .lm-nav-btn:active { background: transparent; transform: scale(0.85); color: #fff; }
-  .lm-nav-btn:disabled { opacity: 0.20; cursor: default; }
+  .lm-nav-btn:active  { opacity: 0.45; transform: scale(0.88); }
+  .lm-nav-btn:disabled { opacity: 0.15; cursor: default; pointer-events: none; }
 
   /* ── Slide animations ── */
   .lyr-slide-enter-left  { animation: slideInLeft  0.22s ease; }
@@ -502,12 +506,6 @@
     right: 60px;
     bottom: auto; left: auto; transform: none;
   }
-  /* Nav arrows: sit BELOW the frame bottom edge (≈ 50dvh - 57vw).
-     Adding 6px clearance keeps them in the dark border strip, never
-     overlapping the card text area — fixes the duplicate-arrow bug.  */
-  .lm-nav {
-    bottom: max(calc(50dvh - 51vw), calc(env(safe-area-inset-bottom) + 6px));
-  }
 }
 
 /* iPad / desktop (aspect >= 2/3) */
@@ -527,15 +525,18 @@
     right: 80px;
     bottom: auto; left: auto; transform: none;
   }
-  /* Frame bottom ≈ 12dvh → nav arrows in the strip below the frame  */
-  .lm-nav {
-    bottom: max(calc(env(safe-area-inset-bottom) + 14dvh), 14dvh);
-  }
 }
 
 /* Adaptive font-size variable used by the JS sizer */
 .lyr { --lyr-fs: clamp(12px, 3.6vw, 20px); }
 .lyr-line { font-size: var(--lyr-fs) !important; }
+
+/* The inline nav must never grow/shrink with font-size changes */
+.lm-inline-nav,
+.lm-inline-nav .lm-nav-btn {
+  font-size: 26px !important;
+  flex-shrink: 0 !important;
+}
 
 /* Scroll fixes */
 .lm-card-inner {

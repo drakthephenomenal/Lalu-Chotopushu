@@ -8937,7 +8937,6 @@ function showLyrics(id) {
 
 function _renderVerse(idx, dir) {
   const body = document.getElementById("lyrBody");
-  const ctr  = null;
   const prev = document.getElementById("lmPrev");
   const next = document.getElementById("lmNext");
 
@@ -8978,8 +8977,20 @@ function _renderVerse(idx, dir) {
   const cardWrap = document.getElementById("lmb");
   if (cardWrap) cardWrap.style.visibility = cardVisible ? "" : "hidden";
 
+  // ── Inline nav arrows (rendered INSIDE the card, never duplicated) ──
+  // HCJ uses its own player arrows; all other stotrams get this inline bar.
+  const showInlineNav = (_currentStotramId !== 'hcj') && _verses.length > 1;
+  const navHtml = showInlineNav
+    ? '<div class="lm-inline-nav">' +
+        '<button class="lm-nav-btn" id="lmPrev" onclick="verseNav(-1)"' +
+          (idx === 0 ? ' disabled' : '') + '>&#8592;</button>' +
+        '<button class="lm-nav-btn" id="lmNext" onclick="verseNav(1)"' +
+          (idx === _verses.length - 1 ? ' disabled' : '') + '>&#8594;</button>' +
+      '</div>'
+    : '';
+
   const footerHtml = '<div class="lyr-footer">❧ &nbsp; 🌸 &nbsp; ❧</div>';
-  body.innerHTML = (cardVisible ? linesHtml : '') + footerHtml;
+  body.innerHTML = (cardVisible ? linesHtml : '') + footerHtml + navHtml;
 
   // Re-inject SVG theme decorations (lost when innerHTML was rebuilt)
   _reinjectThemeDecos();
@@ -8991,14 +9002,8 @@ function _renderVerse(idx, dir) {
   if (dir === 1)  { void body.offsetWidth; body.classList.add("lyr-slide-enter-left"); }
   if (dir === -1) { void body.offsetWidth; body.classList.add("lyr-slide-enter-right"); }
 
-  if (ctr) ctr.textContent = "VERSE " + (idx + 1) + " / " + _verses.length;
-  prev.disabled = idx === 0;
-  next.disabled = idx === _verses.length - 1;
-
   const inner = document.querySelector(".lm-card-inner");
   if (inner) {
-    // Reset after the DOM has painted so mobile browsers do not fight an
-    // in-progress user scroll while verse/audio UI is being re-rendered.
     requestAnimationFrame(function(){ inner.scrollTop = 0; });
   }
   _hcjRenderPlayer(idx);
@@ -9102,8 +9107,7 @@ function verseNav(delta) {
 }
 
 function _initSwipeHandler() {
-  // Horizontal swipe nav enabled for all stotrams EXCEPT hcj.
-  // HCJ uses its own inline audio-player arrow buttons.
+  // HCJ uses its own audio-player arrows — no swipe needed.
   const card = document.getElementById('lmCard');
   if (!card) return;
 
@@ -9115,13 +9119,12 @@ function _initSwipeHandler() {
   let startX = 0, startY = 0, startedInScrollableInner = false;
 
   function onStart(e) {
+    // Ignore taps on the inline nav buttons themselves
+    if (e.target && e.target.closest && e.target.closest('.lm-inline-nav')) return;
     const t = e.touches ? e.touches[0] : e;
     startX = t.clientX;
     startY = t.clientY;
-    // Only consider blocking swipe when the touch starts INSIDE .lm-card-inner
-    // AND that inner area is actually overflowing (scrollable content).
-    // Touches that start on the nav arrows, outside the text area, must
-    // always allow the horizontal-swipe path.
+    // Block swipe only when touch starts INSIDE the scrollable text area
     const inner = e.target && e.target.closest
       ? e.target.closest('.lm-card-inner')
       : null;
@@ -9135,13 +9138,12 @@ function _initSwipeHandler() {
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
 
-    // Require a clearly horizontal swipe (dx dominant, threshold 44px).
-    if (absDx < 44 || absDy > absDx) return;
+    // Must be clearly horizontal (threshold 44px, dx dominant)
+    if (absDx < 44 || absDy >= absDx) return;
 
-    // If the touch started inside a scrollable text area AND the gesture
-    // looks more vertical than horizontal, let native scroll handle it.
-    // But if it's clearly horizontal we still honour the swipe.
-    if (startedInScrollableInner && absDy > 20) return;
+    // If touch started in scrollable text AND there's meaningful vertical movement,
+    // let native scroll win. But a clearly horizontal gesture always navigates.
+    if (startedInScrollableInner && absDy > 18) return;
 
     if (dx < 0) verseNav(1);    // swipe left  → next verse
     else        verseNav(-1);   // swipe right → prev verse
@@ -11007,7 +11009,10 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
     });
   }
   function fitSoon() {
-    [80, 300, 600, 1100, 2000].forEach(function (d) { setTimeout(fit, d); });
+    // Two passes: quick render pass + one stability check.
+    // The old 5-pass sequence (80→300→600→1100→2000ms) caused visible
+    // font-size jumps on each verse swipe on Android.
+    [80, 500].forEach(function (d) { setTimeout(fit, d); });
   }
   window.fitLyrLines = fit;
 
@@ -11177,10 +11182,17 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
           // Only refit when an actual lyric line is added/removed.
           // Ignoring HCJ audio-player progress/text updates prevents
           // mid-scroll font-size rewrites that snap the page on iPad.
+          // Also ignore the inline-nav bar to prevent a refit loop.
           var touchesLyrics = false;
           for (var ai = 0; ai < m.addedNodes.length; ai++) {
             var n = m.addedNodes[ai];
-            if (n.nodeType === 1 && (n.classList && (n.classList.contains("lyr-line") || n.classList.contains("lyr-prose")) || (n.querySelector && n.querySelector(".lyr-line, .lyr-prose")))) {
+            if (n.nodeType !== 1) continue;
+            // Skip the inline nav bar — it never affects text layout
+            if (n.classList && n.classList.contains("lm-inline-nav")) continue;
+            if (n.classList && (n.classList.contains("lyr-line") || n.classList.contains("lyr-prose"))) {
+              touchesLyrics = true; break;
+            }
+            if (n.querySelector && n.querySelector(".lyr-line, .lyr-prose")) {
               touchesLyrics = true; break;
             }
           }

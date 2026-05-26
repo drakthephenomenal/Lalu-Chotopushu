@@ -9160,7 +9160,7 @@ function closeLyrics() {
   _translationVisible = false;
   var oldWrap = document.getElementById('lm-translate-wrap');
   if (oldWrap) oldWrap.remove();
-  var navBar=document.getElementById("lmNav"); if(navBar) navBar.style.display="";
+  var navBar=document.getElementById("lmNav"); if(navBar) navBar.style.display="none";
 }
 
 // ═══════════════════════════════════════════════════════
@@ -9302,7 +9302,7 @@ function _hcjRenderPlayer(idx) {
   if (_hcjPlayerCleanup) { _hcjPlayerCleanup(); _hcjPlayerCleanup = null; }
   var navBar=document.getElementById("lmNav");
   if (_currentStotramId!=="hcj") {
-    if(navBar) navBar.style.display="";
+    if(navBar) navBar.style.display="none";
     var _ci=document.querySelector("#lmo .lm-card-inner"); if(_ci) _ci.style.bottom="";
     return;
   }

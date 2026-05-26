@@ -46,11 +46,12 @@
         ctx.textBaseline = 'middle';
         var unitW = ctx.measureText(RADHA).width;
         var circ  = 2 * Math.PI * radius;
-        var reps  = Math.ceil(circ / unitW) + 1;
-        var anglePerUnit = unitW / radius;
+        // Use exact integer repetitions that fit the circumference so the
+        // text closes seamlessly without overlap or gap at the seam.
+        var reps  = Math.max(1, Math.floor(circ / unitW));
+        var anglePerUnit = (2 * Math.PI) / reps;
         for (var i = 0; i < reps; i++) {
           var midAngle = rotOffset + i * anglePerUnit;
-          if (midAngle > rotOffset + 2 * Math.PI) break;
           ctx.save();
           ctx.translate(cx + radius * Math.cos(midAngle), cy + radius * Math.sin(midAngle));
           ctx.rotate(midAngle + Math.PI / 2);
@@ -1255,8 +1256,9 @@
     </div>
 
 
-    <!-- nav (hidden when audio player renders its own inline arrows) -->
-    <div class="lm-nav" id="lmNav">
+    <!-- Verse nav arrows removed — use swipe gesture instead.
+         (HCJ audio player still renders its own inline arrows.) -->
+    <div class="lm-nav" id="lmNav" style="display:none">
       <button class="lm-nav-btn" id="lmPrev" onclick="verseNav(-1)">&#8592;</button>
       <button class="lm-nav-btn" id="lmNext" onclick="verseNav(1)">&#8594;</button>
     </div>

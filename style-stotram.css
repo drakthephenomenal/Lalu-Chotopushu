@@ -309,33 +309,34 @@
   }
   .lm-dot.active { background: rgba(255,215,0,0.85); transform: scale(1.4); }
 
-  /* ── Nav arrows: the old floating absolute bar is HIDDEN forever.
-       Arrows are now rendered INSIDE the card by JS (_renderInlineNav).
-       This eliminates the double-arrow bug on Android completely.     ── */
-  #lmNav { display: none !important; }
-
-  /* ── Inline nav bar (injected by JS inside .lm-card-inner) ── */
-  .lm-inline-nav {
+  /* ── Nav arrows ── */
+  /* The #lmNav element is moved into .lm-card-inner by JS on first open.
+     It sits as a sticky bottom row so it scrolls with content and is
+     NEVER duplicated. The old absolute positioning is gone entirely.  */
+  .lm-nav {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 52px;
-    padding: 10px 0 6px;
+    gap: 60px;
+    padding: 8px 0 4px;
     flex-shrink: 0;
     width: 100%;
+    position: sticky;
+    bottom: 0;
+    background: transparent;
+    z-index: 5;
   }
   .lm-nav-btn {
     width: auto; height: auto; border: none; background: transparent;
-    color: rgba(26,8,0,0.70);          /* dark brown, readable on gold card */
-    font-size: 26px; padding: 8px 18px; line-height: 1;
+    color: rgba(26,8,0,0.70);
+    font-size: 28px; padding: 8px 20px; line-height: 1;
     border-radius: 8px;
-    text-shadow: none;
     transition: opacity 0.15s, transform 0.15s;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
-  .lm-nav-btn:active  { opacity: 0.45; transform: scale(0.88); }
+  .lm-nav-btn:active  { opacity: 0.4; transform: scale(0.88); }
   .lm-nav-btn:disabled { opacity: 0.15; cursor: default; pointer-events: none; }
 
   /* ── Slide animations ── */
@@ -530,13 +531,6 @@
 /* Adaptive font-size variable used by the JS sizer */
 .lyr { --lyr-fs: clamp(12px, 3.6vw, 20px); }
 .lyr-line { font-size: var(--lyr-fs) !important; }
-
-/* The inline nav must never grow/shrink with font-size changes */
-.lm-inline-nav,
-.lm-inline-nav .lm-nav-btn {
-  font-size: 26px !important;
-  flex-shrink: 0 !important;
-}
 
 /* Scroll fixes */
 .lm-card-inner {

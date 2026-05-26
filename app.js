@@ -9002,8 +9002,18 @@ function _renderVerse(idx, dir) {
     requestAnimationFrame(function(){ inner.scrollTop = 0; });
   }
   _hcjRenderPlayer(idx);
-  _hcjOnVerseChange(idx);
-}
+    _hcjOnVerseChange(idx);
+    // Dynamic nav positioning: measure real card-inner bottom on every render
+    // so the arrows always land in the decorative band, not over the text.
+    requestAnimationFrame(function() {
+      var nav   = document.getElementById('lmNav');
+      var inner = document.querySelector('#lmo .lm-card-inner');
+      if (!nav || !inner) return;
+      var gap = window.innerHeight - inner.getBoundingClientRect().bottom;
+      // Centre the arrows in the gap, but keep at least 6px from screen edge.
+      nav.style.bottom = Math.max(Math.round(gap / 2), 6) + 'px';
+    });
+  }
 
 // Render translation toggle — shown ONLY when current verse has অর্থ: lines.
 // verseHasArtha: boolean passed from _renderVerse

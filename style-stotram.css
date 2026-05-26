@@ -497,8 +497,8 @@
     bottom: auto; left: auto; transform: none;
   }
   .lm-nav {
-    /* Fixed: was calc(50dvh-75vw)≈120px on Android, landing inside the text area.
-       Bottom decorative band is ~12dvh; sit in its lower half at ~4dvh. */
+    /* v88 fix: was calc(50dvh-75vw)≈120px → inside orange text area on Android.
+       Bottom decorative band ≈ 12dvh; sit in its lower half. */
     bottom: max(4dvh, calc(env(safe-area-inset-bottom) + 4px));
   }
 }

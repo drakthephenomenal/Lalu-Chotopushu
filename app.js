@@ -9002,18 +9002,8 @@ function _renderVerse(idx, dir) {
     requestAnimationFrame(function(){ inner.scrollTop = 0; });
   }
   _hcjRenderPlayer(idx);
-    _hcjOnVerseChange(idx);
-    // Dynamic nav positioning: measure real card-inner bottom on every render
-    // so the arrows always land in the decorative band, not over the text.
-    requestAnimationFrame(function() {
-      var nav   = document.getElementById('lmNav');
-      var inner = document.querySelector('#lmo .lm-card-inner');
-      if (!nav || !inner) return;
-      var gap = window.innerHeight - inner.getBoundingClientRect().bottom;
-      // Centre the arrows in the gap, but keep at least 6px from screen edge.
-      nav.style.bottom = Math.max(Math.round(gap / 2), 6) + 'px';
-    });
-  }
+  _hcjOnVerseChange(idx);
+}
 
 // Render translation toggle — shown ONLY when current verse has অর্থ: lines.
 // verseHasArtha: boolean passed from _renderVerse
@@ -9130,7 +9120,7 @@ function _initSwipeHandler() {
     startX = t.clientX;
     startY = t.clientY;
     const inner = e.target && e.target.closest ? e.target.closest('.lm-card-inner') : null;
-    startedInScrollableLyrics = !!(inner && inner.scrollHeight > inner.clientHeight + 20);
+    startedInScrollableLyrics = !!(inner && inner.scrollHeight > inner.clientHeight + 4);
   }
   function onEnd(e) {
     if (startedInScrollableLyrics) return;
@@ -9170,7 +9160,7 @@ function closeLyrics() {
   _translationVisible = false;
   var oldWrap = document.getElementById('lm-translate-wrap');
   if (oldWrap) oldWrap.remove();
-  var navBar=document.getElementById("lmNav"); if(navBar) navBar.style.display="none";
+  var navBar=document.getElementById("lmNav"); if(navBar) navBar.style.display="";
 }
 
 // ═══════════════════════════════════════════════════════
@@ -9316,7 +9306,7 @@ function _hcjRenderPlayer(idx) {
     var _ci=document.querySelector("#lmo .lm-card-inner"); if(_ci) _ci.style.bottom="";
     return;
   }
-  if (navBar) navBar.style.display="";
+  if (navBar) navBar.style.display="none";
   var lmd=document.querySelector("#lmo .lmd"); if (!lmd) return;
 
   var wrap=document.createElement("div"); wrap.id="hcj-player-wrap";
@@ -9386,15 +9376,15 @@ function _hcjRenderPlayer(idx) {
   // ── Buttons row ──
   var row=document.createElement("div"); row.className="hcj-player";
 
-
-  // ◀ Previous verse — sits just left of the Play button
-  var prv=document.createElement("button");
-  prv.id="hcj-prev-btn";
-  prv.className="hcj-mini-btn hcj-nav-btn";
-  prv.textContent="\u25c0"; // ◀
-  prv.title="পূর্ববর্তী পদ";
-  prv.onclick=function(){ if (_verseIdx>0) verseNav(-1); };
-  row.appendChild(prv);
+  // Prev arrow (left of player)
+  var prevBtn=document.createElement("button");
+  prevBtn.id="hcj-prev-btn";
+  prevBtn.className="hcj-mini-btn hcj-arrow-btn";
+  prevBtn.innerHTML="&#8592;";
+  prevBtn.title="পূর্ববর্তী পদ";
+  prevBtn.disabled=(idx===0);
+  prevBtn.onclick=function(){verseNav(-1);};
+  row.appendChild(prevBtn);
 
   // ▶ Play button — always shows ▶, dims while already playing
   var plb=document.createElement("button");
@@ -9412,7 +9402,6 @@ function _hcjRenderPlayer(idx) {
     } else { _hcjPlayVerse(_verseIdx); }
   };
   row.appendChild(plb);
-
 
   // ⏸ Pause button — always shows ⏸, dims while not playing
   var pab=document.createElement("button");
@@ -9449,16 +9438,15 @@ function _hcjRenderPlayer(idx) {
   var tot=document.createElement("span"); tot.className="hcj-seek-total"; tot.textContent="/"+_verses.length;
   row.appendChild(tot);
 
-  // ▶ Next verse — sits just right of the verse count input/total
-  var nxt=document.createElement("button");
-  nxt.id="hcj-next-btn";
-  nxt.className="hcj-mini-btn hcj-nav-btn";
-  nxt.textContent="\u25b6"; // ▶
-  nxt.title="পরবর্তী পদ";
-  nxt.onclick=function(){ if (_verseIdx<_verses.length-1) verseNav(1); };
-  row.appendChild(nxt);
-
-
+  // Next arrow (right of player)
+  var nextBtn=document.createElement("button");
+  nextBtn.id="hcj-next-btn";
+  nextBtn.className="hcj-mini-btn hcj-arrow-btn";
+  nextBtn.innerHTML="&#8594;";
+  nextBtn.title="পরবর্তী পদ";
+  nextBtn.disabled=(idx===_verses.length-1);
+  nextBtn.onclick=function(){verseNav(1);};
+  row.appendChild(nextBtn);
 
   wrap.appendChild(row); lmd.appendChild(wrap);
 

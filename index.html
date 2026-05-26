@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="Radha Jap">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#060D1F">
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="./icon-192.png">
 <title>Radha Naam Jap</title>
@@ -24,8 +24,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <link rel="stylesheet" href="./style.css?v=83">
-  <link rel="stylesheet" href="./style-stotram.css?v=83">
-  <link rel="stylesheet" href="./stotram-patch.css">
+  <link rel="stylesheet" href="./style-stotram.css?v=87">
 </head>
 <body>
 <!-- LOADING -->
@@ -401,14 +400,7 @@
       <div id="devStList"></div>
     </div>
   </div>
-  <!-- Global Translation Toggle — for GMS & NKC -->
-  <div class="st-global-toggle-row" id="st-global-toggle-row">
-    <span id="st-global-toggle-label">অনুবাদ: বন্ধ</span>
-    <button id="st-global-toggle-sw" class="lm-toggle-sw" role="switch" aria-checked="false"
-      onclick="setGlobalTranslation(!_globalTranslationPref)">
-      <span class="lm-toggle-thumb"></span>
-    </button>
-  </div>
+  <!-- Global Translation Toggle removed — moved to per-stotram reader (top-right) -->
   <div id="stList"></div>
 </div>
 
@@ -1335,8 +1327,6 @@
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="./stotrams.js?v=82"></script>
     <script src="./panchangData.js"></script>
-    <script src="./app.js?v=82"></script>
-
-  <script src="./stotram-patch.js"></script>
+    <script src="./app.js?v=87"></script>
   </body>
 </html>

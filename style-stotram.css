@@ -497,7 +497,9 @@
     bottom: auto; left: auto; transform: none;
   }
   .lm-nav {
-    bottom: max(calc(50dvh - 75vw), env(safe-area-inset-bottom));
+    /* Fixed: was calc(50dvh-75vw)≈120px on Android, landing inside the text area.
+       Bottom decorative band is ~12dvh; sit in its lower half at ~4dvh. */
+    bottom: max(4dvh, calc(env(safe-area-inset-bottom) + 4px));
   }
 }
 

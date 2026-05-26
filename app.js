@@ -9120,7 +9120,7 @@ function _initSwipeHandler() {
     startX = t.clientX;
     startY = t.clientY;
     const inner = e.target && e.target.closest ? e.target.closest('.lm-card-inner') : null;
-    startedInScrollableLyrics = !!(inner && inner.scrollHeight > inner.clientHeight + 4);
+    startedInScrollableLyrics = !!(inner && inner.scrollHeight > inner.clientHeight + 20);
   }
   function onEnd(e) {
     if (startedInScrollableLyrics) return;

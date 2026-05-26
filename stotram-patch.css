@@ -1,0 +1,251 @@
+/* ════════════════════════════════════════════════════════════
+   stotram-patch.css  — link in <head> AFTER style-stotram.css
+   <link rel="stylesheet" href="./stotram-patch.css">
+   ════════════════════════════════════════════════════════════ */
+
+/* ── 1. Frame: always show full image, never crop ─────────── */
+.lm-water-card {
+  background-size:     contain !important;
+  background-position: center center !important;
+}
+
+/* ── 2a. Portrait phones (aspect < 2/3)
+         contain → image fills WIDTH: h=150vw, top=50dvh−75vw   ── */
+@media (max-aspect-ratio: 2/3) {
+  .lmt { top: calc(50dvh - 60vw); }
+  .lm-card-inner {
+    top:    calc(50dvh - 58.5vw);
+    bottom: calc(50dvh - 57vw);
+    left:   9vw;
+    right:  9vw;
+  }
+  .lm-dots {
+    bottom: max(calc(50dvh - 68vw), calc(env(safe-area-inset-bottom) + 6px));
+  }
+  .lm-translate-wrap {
+    bottom: max(calc(50dvh - 61vw), calc(env(safe-area-inset-bottom) + 46px));
+  }
+  .lm-nav {
+    bottom: max(calc(50dvh - 75vw), env(safe-area-inset-bottom));
+  }
+}
+
+/* ── 2b. iPad / desktop (aspect >= 2/3)
+         contain → image fills HEIGHT: w=66.67dvh, centered       ── */
+@media (min-aspect-ratio: 2/3) {
+  .lmt { top: 10dvh; }
+  .lm-card-inner {
+    top:    11dvh;
+    bottom: 12dvh;
+    left:   calc(50vw - 27.33dvh);
+    right:  calc(50vw - 27.33dvh);
+  }
+  .lm-dots {
+    bottom: max(calc(env(safe-area-inset-bottom) + 100px), 118px);
+  }
+  .lm-translate-wrap {
+    bottom: max(calc(env(safe-area-inset-bottom) + 58px), 70px);
+  }
+  .lm-nav {
+    bottom: max(env(safe-area-inset-bottom), 10px);
+  }
+}
+
+/* ── 3. Adaptive font size ──────────────────────────────────── */
+.lyr { --lyr-fs: clamp(12px, 3.6vw, 20px); }
+.lyr-line { font-size: var(--lyr-fs) !important; }
+
+/* ── 4. Scroll fixes ─────────────────────────────────────────
+   overscroll-behavior: contain stops the bounce/shake that
+   happens when the user hits the top or bottom of the scroll
+   area — without it, Chrome/iOS tries to scroll the parent
+   (.lmo, overflow:hidden) and the screen visibly shakes.
+   touch-action: pan-y tells the browser this element scrolls
+   vertically so it doesn't need to wait for JS handlers.     */
+.lm-card-inner {
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+/* ── 4b. Stop lyric-frame shake while reading ────────────────
+   The frame used to float with a transform animation. Because the
+   scrollable lyrics live inside that transformed element, Android/iOS
+   can visibly jitter during finger scrolling and while audio progress
+   updates repaint the player. Keep the frame fixed in the lyric modal. */
+#lmo .lm-water-card {
+  animation: none !important;
+  transform: none !important;
+  will-change: auto !important;
+}
+#lmo .lm-card-inner {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  contain: layout paint;
+}
+#lmo .lyr {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+
+/* ── 4c. Large-font scroll hardening ──────────────────────────
+   With manual A+ sizes the text can become much taller than the
+   frame. Make the golden area a plain native scroller (not a flex
+   scroller with pseudo-spacers), and center only short content via
+   the lyric body itself. This removes the mobile shake/stuck-scroll
+   behavior when dragging directly on enlarged verse text. */
+#lmo .lm-card-inner {
+  display: block !important;
+  overflow-y: scroll !important;
+  overflow-x: hidden !important;
+  touch-action: pan-y !important;
+  overscroll-behavior-y: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  overflow-anchor: none !important;
+  scroll-behavior: auto !important;
+}
+#lmo .lm-card-inner::before,
+#lmo .lm-card-inner::after {
+  content: none !important;
+  display: none !important;
+}
+#lmo .lyr {
+  min-height: 100%;
+  justify-content: center;
+  transform: none !important;
+  backface-visibility: visible !important;
+}
+#lmo .lyr-slide-enter-left,
+#lmo .lyr-slide-enter-right {
+  animation: none !important;
+}
+
+/* ── 5. HCJ player positioning fix ──────────────────────────
+   The CSS says `position: sticky; bottom: 0` but .lmd is
+   `position: absolute; inset: 0` with no overflow — sticky
+   never activates. The element falls back to normal flow and
+   sits at the TOP of .lmd with z-index:6, covering the text.
+   Force it to absolute-bottom so it's actually at the bottom.
+   JS (_hcjRenderPlayer) then shrinks .lm-card-inner bottom
+   to match the player height so the two never overlap.       */
+#hcj-player-wrap {
+  position: absolute !important;
+  bottom:   0        !important;
+  left:     0        !important;
+  right:    0        !important;
+  top:      auto     !important;
+}
+
+/* ── 6. Play / Pause split-button states ─────────────────── */
+/* Dimmed = this action is currently unavailable              */
+.hcj-btn-dim {
+  opacity: 0.28 !important;
+  pointer-events: none;
+}
+/* Pause button — same shape as play but teal tint            */
+.hcj-pause-btn {
+  background: linear-gradient(180deg, #103a38 0%, #071f1e 100%) !important;
+  border-color: rgba(80,220,200,0.22) !important;
+  color: #7af0e0 !important;
+}
+.hcj-pause-btn:hover {
+  background: linear-gradient(180deg, #165250 0%, #0c2e2d 100%) !important;
+}
+.hcj-pause-btn.hcj-btn-dim {
+  background: linear-gradient(180deg, #0F2350 0%, #081639 100%) !important;
+  border-color: rgba(120,170,255,0.18) !important;
+  color: #cfe1ff !important;
+}
+
+/* ════════════════════════════════════════════════════════════
+   CONTROL BAR  #lyr-fs-ctrl  —  REDESIGNED
+   Frosted-glass pill, top-left of the modal overlay.
+   pointer-events:none on the container means accidental taps
+   on the pill itself (not a button) fall through to content.
+   ════════════════════════════════════════════════════════════ */
+#lyr-fs-ctrl {
+  position:  absolute;
+  top:       max(env(safe-area-inset-top, 0px) + 8px, 10px);
+  left:      10px;
+  z-index:   30;
+  display:   flex;
+  align-items: center;
+  gap:       0;
+
+  /* Frosted glass */
+  background:          rgba(10, 8, 26, 0.72);
+  backdrop-filter:     blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+
+  /* Subtle border — no gold, just light */
+  border:        1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 24px;
+  padding:       3px 5px;
+
+  white-space:    nowrap;
+  box-shadow:     0 3px 16px rgba(0,0,0,0.65),
+                  inset 0 1px 0 rgba(255,255,255,0.05);
+  touch-action:   manipulation;
+  user-select:    none;
+  pointer-events: none;
+}
+
+/* All buttons inside the bar */
+#lyr-fs-ctrl button {
+  pointer-events: auto;
+  background:     transparent;
+  border:         none;
+  border-radius:  20px;
+  color:          rgba(255, 255, 255, 0.82);
+  font-size:      13px;
+  font-weight:    500;
+  font-family:    'Inter', system-ui, sans-serif;
+  line-height:    1;
+  padding:        5px 10px;
+  cursor:         pointer;
+  min-width:      30px;
+  -webkit-tap-highlight-color: transparent;
+  transition:     background 0.13s, color 0.13s;
+  letter-spacing: 0.2px;
+}
+#lyr-fs-ctrl button:active {
+  background: rgba(255, 255, 255, 0.13);
+  color:      #fff;
+}
+
+/* Size label between the two buttons */
+#lyr-fs-label {
+  color:       rgba(255, 255, 255, 0.35);
+  font-size:   10px;
+  min-width:   22px;
+  text-align:  center;
+  font-family: monospace;
+  pointer-events: none;
+  padding:     0 2px;
+  letter-spacing: -0.3px;
+}
+
+/* A− and A+ buttons — slightly brighter */
+#lyr-fs-down,
+#lyr-fs-up {
+  color:       rgba(255, 255, 255, 0.88);
+  font-size:   14px;
+  font-weight: 600;
+  padding:     5px 9px;
+}
+
+/* Pause / resume — blue accent so it stands out */
+#lyr-fs-pause {
+  color:       #60C4FF !important;
+  font-size:   15px !important;
+  font-weight: 400 !important;
+  padding:     5px 8px !important;
+}
+
+/* Auto-reset — shown only in manual mode */
+#lyr-fs-auto {
+  opacity:     0.58;
+  font-size:   12px !important;
+  color:       rgba(255, 195, 70, 0.9) !important;
+  padding:     5px 7px !important;
+}

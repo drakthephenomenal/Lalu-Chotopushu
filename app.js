@@ -9302,11 +9302,11 @@ function _hcjRenderPlayer(idx) {
   if (_hcjPlayerCleanup) { _hcjPlayerCleanup(); _hcjPlayerCleanup = null; }
   var navBar=document.getElementById("lmNav");
   if (_currentStotramId!=="hcj") {
-    if(navBar) navBar.style.display="none";
+    if(navBar) navBar.style.display="";
     var _ci=document.querySelector("#lmo .lm-card-inner"); if(_ci) _ci.style.bottom="";
     return;
   }
-  if (navBar) navBar.style.display="none";
+  if (navBar) navBar.style.display="";
   var lmd=document.querySelector("#lmo .lmd"); if (!lmd) return;
 
   var wrap=document.createElement("div"); wrap.id="hcj-player-wrap";
@@ -9376,15 +9376,6 @@ function _hcjRenderPlayer(idx) {
   // ── Buttons row ──
   var row=document.createElement("div"); row.className="hcj-player";
 
-  // Prev arrow (left of player)
-  var prevBtn=document.createElement("button");
-  prevBtn.id="hcj-prev-btn";
-  prevBtn.className="hcj-mini-btn hcj-arrow-btn";
-  prevBtn.innerHTML="&#8592;";
-  prevBtn.title="পূর্ববর্তী পদ";
-  prevBtn.disabled=(idx===0);
-  prevBtn.onclick=function(){verseNav(-1);};
-  row.appendChild(prevBtn);
 
   // ▶ Play button — always shows ▶, dims while already playing
   var plb=document.createElement("button");
@@ -9438,15 +9429,6 @@ function _hcjRenderPlayer(idx) {
   var tot=document.createElement("span"); tot.className="hcj-seek-total"; tot.textContent="/"+_verses.length;
   row.appendChild(tot);
 
-  // Next arrow (right of player)
-  var nextBtn=document.createElement("button");
-  nextBtn.id="hcj-next-btn";
-  nextBtn.className="hcj-mini-btn hcj-arrow-btn";
-  nextBtn.innerHTML="&#8594;";
-  nextBtn.title="পরবর্তী পদ";
-  nextBtn.disabled=(idx===_verses.length-1);
-  nextBtn.onclick=function(){verseNav(1);};
-  row.appendChild(nextBtn);
 
   wrap.appendChild(row); lmd.appendChild(wrap);
 

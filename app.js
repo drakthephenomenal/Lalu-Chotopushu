@@ -8981,14 +8981,6 @@ function _renderVerse(idx, dir) {
   const footerHtml = '<div class="lyr-footer">❧ &nbsp; 🌸 &nbsp; ❧</div>';
   body.innerHTML = (cardVisible ? linesHtml : '') + footerHtml;
 
-  // ── Move #lmNav inside .lm-card-inner so it can never float outside the card ──
-  // This runs on every verse render but the DOM move is a no-op if already there.
-  const navEl  = document.getElementById("lmNav");
-  const inner  = document.querySelector("#lmo .lm-card-inner");
-  if (navEl && inner && navEl.parentElement !== inner) {
-    inner.appendChild(navEl);
-  }
-
   // Re-inject SVG theme decorations (lost when innerHTML was rebuilt)
   _reinjectThemeDecos();
 
@@ -9000,11 +8992,10 @@ function _renderVerse(idx, dir) {
   if (dir === -1) { void body.offsetWidth; body.classList.add("lyr-slide-enter-right"); }
 
   if (ctr) ctr.textContent = "VERSE " + (idx + 1) + " / " + _verses.length;
-  // Show nav only when there are multiple verses (and not HCJ which has its own player)
-  if (navEl) navEl.style.display = (_currentStotramId !== 'hcj' && _verses.length > 1) ? "" : "none";
   prev.disabled = idx === 0;
   next.disabled = idx === _verses.length - 1;
 
+  const inner = document.querySelector(".lm-card-inner");
   if (inner) {
     // Reset after the DOM has painted so mobile browsers do not fight an
     // in-progress user scroll while verse/audio UI is being re-rendered.
@@ -9111,41 +9102,44 @@ function verseNav(delta) {
 }
 
 function _initSwipeHandler() {
-  // Horizontal swipe nav for all stotrams EXCEPT hcj (hcj has its own player arrows).
+  // Horizontal swipe nav enabled for all stotrams EXCEPT hcj.
+  // If enlarged text makes the lyric panel scrollable, touches that begin
+  // inside that panel are reserved for native vertical scrolling.
   const card = document.getElementById('lmCard');
   if (!card) return;
 
+  // Remove any previous swipe listeners
   card._swipeCleanup && card._swipeCleanup();
-  if (_currentStotramId === 'hcj') return;
 
-  let startX = 0, startY = 0, inScrollArea = false;
+  if (_currentStotramId === 'hcj') return; // HCJ uses its own audio player arrows
+
+  let startX = 0, startY = 0, startedInScrollableLyrics = false;
 
   function onStart(e) {
-    // Ignore taps directly on the nav buttons
-    if (e.target && e.target.closest && e.target.closest('#lmNav')) return;
     const t = e.touches ? e.touches[0] : e;
-    startX = t.clientX; startY = t.clientY;
+    startX = t.clientX;
+    startY = t.clientY;
     const inner = e.target && e.target.closest ? e.target.closest('.lm-card-inner') : null;
-    inScrollArea = !!(inner && inner.scrollHeight > inner.clientHeight + 8);
+    startedInScrollableLyrics = !!(inner && inner.scrollHeight > inner.clientHeight + 4);
   }
-
   function onEnd(e) {
+    if (startedInScrollableLyrics) return;
     const t = e.changedTouches ? e.changedTouches[0] : e;
     const dx = t.clientX - startX;
     const dy = t.clientY - startY;
-    const adx = Math.abs(dx), ady = Math.abs(dy);
-    // Must be clearly horizontal: 44px min, dx must dominate dy
-    if (adx < 44 || adx <= ady) return;
-    // If inside scrollable area and there's notable vertical movement, let scroll win
-    if (inScrollArea && ady > 16) return;
-    if (dx < 0) verseNav(1); else verseNav(-1);
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      // Horizontal swipe detected — prevent vertical scroll conflict
+      if (dx < 0) verseNav(1);   // swipe left → next
+      else        verseNav(-1);  // swipe right → prev
+    }
   }
 
   card.addEventListener('touchstart', onStart, { passive: true });
-  card.addEventListener('touchend',   onEnd,   { passive: true });
+  card.addEventListener('touchend', onEnd, { passive: true });
+
   card._swipeCleanup = function() {
     card.removeEventListener('touchstart', onStart);
-    card.removeEventListener('touchend',   onEnd);
+    card.removeEventListener('touchend', onEnd);
   };
 }
 
@@ -9166,13 +9160,7 @@ function closeLyrics() {
   _translationVisible = false;
   var oldWrap = document.getElementById('lm-translate-wrap');
   if (oldWrap) oldWrap.remove();
-  // Move #lmNav back to .lmd (its original parent) so next showLyrics starts clean
-  var navEl = document.getElementById("lmNav");
-  var lmd   = document.querySelector("#lmo .lmd");
-  if (navEl && lmd && navEl.parentElement !== lmd) {
-    lmd.appendChild(navEl);
-  }
-  if (navEl) navEl.style.display = "";
+  var navBar=document.getElementById("lmNav"); if(navBar) navBar.style.display="";
 }
 
 // ═══════════════════════════════════════════════════════
@@ -10915,10 +10903,7 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
 
   /* Discrete font sizes (px). Step 1 = smallest, last = biggest. */
   var STEPS        = [11, 13, 15, 17, 19, 21, 24, 28, 32, 38];
-  // Default step: T6 (21px) on phones, T10 (38px) on iPad/tablet.
-  // User can override with the − / + buttons; preference is saved.
-  var _isTablet    = Math.min(screen.width, screen.height) >= 768;
-  var DEFAULT_STEP = _isTablet ? 9 : 5;   // index into STEPS
+  var DEFAULT_STEP = 3;                       // index into STEPS (≈17px)
   var STORAGE_KEY  = "lyr_step";              // new key (integer step)
   var LEGACY_KEY   = "lyr_manual_px";         // old key (px value)
 
@@ -11000,12 +10985,11 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
     if (!modal || !modal.classList.contains("show")) return;
     _pending = true;
     requestAnimationFrame(function () {
-      // If user has set a manual step, always honour it exactly — no auto-fit.
-      // If no manual step, use DEFAULT_STEP (T6 phone / T10 iPad) as the stable
-      // baseline so font size never jumps around between verses.
-      var target = (_manualStep !== null) ? _manualStep : DEFAULT_STEP;
-      if (_autoStep === null) _autoStep = DEFAULT_STEP;
-      applyStep(target, modal);
+      var lyrs = modal.querySelectorAll(".lyr");
+      var s    = lyrs.length ? autoFitStep(lyrs[0]) : null;
+      if (s !== null) _autoStep = s;
+      var target = (_manualStep !== null) ? _manualStep : _autoStep;
+      if (target !== null) applyStep(target, modal);
       _pending = false;
     });
   }

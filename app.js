@@ -2637,9 +2637,10 @@ function uStats() {
     if (!k.startsWith("prev_") && v > best) best = v;
   });
   const d2 = new Date();
+  const _dailyTgt = (App.S.dt || 0) > 0 ? App.S.dt : 1;
   while (streak < 999) {
     const k = _ldk(d2);
-    if ((curHist[k] || 0) > 0) {
+    if ((curHist[k] || 0) >= _dailyTgt) {
       streak++;
       d2.setDate(d2.getDate() - 1);
     } else break;

@@ -2908,23 +2908,35 @@ function uStats() {
     document.getElementById("manualTodayPreview").textContent =
       n > 0 ? tod + n : "—";
   }
+  // ── Mode-aware helpers (Radha / RV / HK) for lifetime previews ──
+  const _mode = App.S.gaudiyaMode ? "hk" : App.S.japMode;
+  const _modeHist =
+    _mode === "rv"
+      ? App.S.historyRV || {}
+      : _mode === "hk"
+        ? App.S.historyHK || {}
+        : App.S.history || {};
+  const _modeDeduct =
+    _mode === "rv"
+      ? App.S.nameJapDeductRV || 0
+      : _mode === "hk"
+        ? App.S.nameJapDeductHK || 0
+        : App.S.nameJapDeduct || 0;
+  const _modeRawTot = Object.values(_modeHist).reduce((a, b) => a + b, 0);
+  const _modeLifetime = Math.max(0, _modeRawTot - _modeDeduct);
+
   if (pji) {
     const n = parseInt(pji.value) || 0;
     document.getElementById("prevMalaPreview").textContent =
       n > 0 ? Math.floor(n / ms) : "0";
+    // addPrevJap() writes n into the current mode's history → mode lifetime grows by n
     document.getElementById("prevLifetimePreview").textContent =
-      n > 0 ? (tot + n).toLocaleString() : "—";
+      n > 0 ? (_modeLifetime + n).toLocaleString() : "—";
   }
   if (aoi && aod) {
     const n = parseInt(aoi.value) || 0;
     const d = aod.value;
-    const curH =
-      App.S.japMode === "rv"
-        ? App.S.historyRV
-        : App.S.japMode === "hk"
-          ? App.S.historyHK || {}
-          : App.S.history;
-    const cur = d ? curH[d] || 0 : 0;
+    const cur = d ? _modeHist[d] || 0 : 0;
     document.getElementById("addJapOtherPreview").textContent =
       n > 0 && d ? cur + n : "—";
   }
@@ -2936,36 +2948,32 @@ function uStats() {
   if (doi && dod) {
     const n = parseInt(doi.value) || 0;
     const d = dod.value;
-    const curH2 =
-      App.S.japMode === "rv"
-        ? App.S.historyRV
-        : App.S.japMode === "hk"
-          ? App.S.historyHK || {}
-          : App.S.history;
-    const cur = d ? curH2[d] || 0 : 0;
+    const cur = d ? _modeHist[d] || 0 : 0;
     document.getElementById("deductOtherPreview").textContent =
       n > 0 && d ? Math.max(0, cur - n) : "—";
   }
-  // Name Jap Deduct live previews
-  const curDeduct = App.S.nameJapDeduct || 0;
-  const rawTot = Object.values(App.S.history).reduce((a, b) => a + b, 0);
+  // Name Jap Deduct / Restore live previews — mode-aware
   const njdi = document.getElementById("nameJapDeductIn");
   const njri = document.getElementById("nameJapRestoreIn");
   const njdCur = document.getElementById("nameJapDeductCur");
   const njdMalas = document.getElementById("nameJapDeductMalas");
-  if (njdCur) njdCur.textContent = curDeduct.toLocaleString();
+  if (njdCur) njdCur.textContent = _modeDeduct.toLocaleString();
   if (njdMalas)
-    njdMalas.textContent = Math.floor(curDeduct / ms).toLocaleString();
+    njdMalas.textContent = Math.floor(_modeDeduct / ms).toLocaleString();
   if (njdi) {
     const n = parseInt(njdi.value) || 0;
+    // addNameJapDeduct() increases mode deduct by n → mode lifetime drops by n
     document.getElementById("nameJapDeductPreview").textContent =
-      n > 0 ? Math.max(0, rawTot - curDeduct - n).toLocaleString() : "—";
+      n > 0 ? Math.max(0, _modeLifetime - n).toLocaleString() : "—";
   }
   if (njri) {
     const n = parseInt(njri.value) || 0;
+    // removeNameJapDeduct() decreases mode deduct by n (capped at current deduct)
+    // → mode lifetime grows by min(n, currentDeduct), never beyond raw total
+    const restorable = Math.min(n, _modeDeduct);
     document.getElementById("nameJapRestorePreview").textContent =
       n > 0
-        ? Math.min(rawTot, Math.max(0, rawTot - curDeduct + n)).toLocaleString()
+        ? Math.min(_modeRawTot, _modeLifetime + restorable).toLocaleString()
         : "—";
   }
   // Jap time previews
@@ -3173,27 +3181,24 @@ function cr2(tp) {
   pr = tp;
   const t = document.getElementById("moT"),
     d = document.getElementById("moD");
-  if (tp === "today") {
-    t.textContent = "Reset Today?";
-    d.textContent = "Clear today's " + App.gTod() + " jap count.";
-  } else if (tp === "28today") {
+  if (tp === "28today") {
     t.textContent = "Reset 28 Names Today?";
     d.textContent = "Clear today's " + (App.S.h28[App.S.tk] || 0) + " count.";
   } else if (tp === "28all") {
     t.textContent = "⚠️ Reset All 28 Names Data?";
     d.textContent = "All 28 Names counts and time will be permanently deleted.";
-  } else if (tp === "range") {
-    const f = document.getElementById("rfrom").value,
-      to = document.getElementById("rto").value;
-    if (!f || !to) {
-      toast("Please select both dates");
-      return;
-    }
-    t.textContent = "Reset Date Range?";
-    d.textContent = "Data from " + f + " to " + to + " will be deleted.";
+  } else if (tp === "namesAndTime") {
+    t.textContent = "⚠️ Delete all Name Jap & Time data?";
+    d.textContent =
+      "This permanently deletes all Radha, RV, and HK jap counts, all jap time, all mala logs and history. 28 Names data, Brahmacharya and Milestones data will be kept. This cannot be undone.";
+  } else if (tp === "brahmaMilestones") {
+    t.textContent = "⚠️ Delete all Brahmacharya & Milestones data?";
+    d.textContent =
+      "This permanently deletes your Brahmacharya start date, all Brahmacharya records, sankalpas (milestones), and occasions. Jap and time data will be kept. This cannot be undone.";
   } else {
-    t.textContent = "⚠️ Reset All Data?";
-    d.textContent = "All history and records will be permanently deleted.";
+    // legacy fallback
+    t.textContent = "⚠️ Reset?";
+    d.textContent = "Are you sure?";
   }
   document.getElementById("mo").classList.add("show");
   document.getElementById("moCf").onclick = doReset;
@@ -3234,55 +3239,7 @@ function doReset() {
   App._suspendCloudSync = true;
   App._resetInProgress = true;
 
-  if (pr === "today") {
-    // ── Reset Today: ALL modes — Radha + RV + 28 Names ──
-    App.S.history[tk] = 0;
-    App.S.historyRV[tk] = 0;
-    App.S.h28[tk] = 0;
-    App.S.timerHistory[tk] = 0;
-    App.S.timerHistoryRV[tk] = 0;
-    App.S.timer28History[tk] = 0;
-    if (!App.S.historyHK) App.S.historyHK = {};
-    if (!App.S.timerHistoryHK) App.S.timerHistoryHK = {};
-    App.S.historyHK[tk] = 0;
-    App.S.timerHistoryHK[tk] = 0;
-    App.S.malaLog = [];
-    App.S.malaLogRV = [];
-    App.S.malaLogHK = [];
-    App.S.activityLog = (App.S.activityLog || []).filter(
-      (e) => !e.ts || _ldk(new Date(e.ts)) !== tk,
-    );
-    App.lmc = 0;
-    App.lmcRV = 0;
-    App.lmcHK = 0;
-    App.lm28 = 0;
-    // Reset all sankalpas anchors since 28 Names count just zeroed
-    (App.S.sankalpas || [])
-      .filter((s) => !s.done && s.startCycles !== null)
-      .forEach((s) => {
-        s._savedProgress =
-          (s._savedProgress || 0) +
-          Math.max(0, getTotalCycles28() - s.startCycles);
-        s.startCycles = getTotalCycles28();
-      });
-    App.stopAll28Timers();
-    App.malaWallStart = Date.now();
-    localStorage.setItem("rjap_malaWallStart", String(App.malaWallStart));
-    App._malaTimerStart = App.timerSeconds;
-    App.syncTimerFromMalaLog();
-    // Persist zeros to IDB immediately (prevent resurrection on reload)
-    App.dbPut("history", tk, 0);
-    App.dbPut("timerHistory", tk, 0);
-    App.dbPut("timerHistoryRV", tk, 0);
-    App.dbPut("h28", tk, 0);
-    App.dbPut("timer28History", tk, 0);
-    App.dbPut("malaLog", "today", { date: tk, log: [] });
-    App.dbPut("activityLogArchive", tk, []);
-    renderMalaLog();
-    u28();
-    render28StatsPanel();
-    renderSankalpas();
-  } else if (pr === "28today") {
+  if (pr === "28today") {
     // Freeze active wishes before zeroing
     (App.S.sankalpas || [])
       .filter((s) => !s.done && s.startCycles !== null)
@@ -3322,51 +3279,10 @@ function doReset() {
     u28();
     render28StatsPanel();
     renderSankalpas();
-  } else if (pr === "range") {
-    const f = document.getElementById("rfrom").value,
-      to = document.getElementById("rto").value;
-    const allKeys = new Set([
-      ...Object.keys(App.S.history || {}),
-      ...Object.keys(App.S.historyRV || {}),
-      ...Object.keys(App.S.h28 || {}),
-    ]);
-    allKeys.forEach((k) => {
-      if (k >= f && k <= to) {
-        if (App.S.history) App.S.history[k] = 0;
-        if (App.S.historyRV) App.S.historyRV[k] = 0;
-        if (App.S.h28) App.S.h28[k] = 0;
-        if (App.S.timerHistory) App.S.timerHistory[k] = 0;
-        if (App.S.timerHistoryRV) App.S.timerHistoryRV[k] = 0;
-        if (App.S.timer28History) App.S.timer28History[k] = 0;
-        if (App.S.historyHK) App.S.historyHK[k] = 0;
-        if (App.S.timerHistoryHK) App.S.timerHistoryHK[k] = 0;
-      }
-    });
-    // If today is in range, also clear live logs and IDB
-    if (tk >= f && tk <= to) {
-      App.S.malaLog = [];
-      App.S.malaLogRV = [];
-      App.S.malaLogHK = [];
-      App.S.activityLog = (App.S.activityLog || []).filter(
-        (e) => !e.ts || _ldk(new Date(e.ts)) < f || _ldk(new Date(e.ts)) > to,
-      );
-      App.lmc = 0;
-      App.lmcRV = 0;
-      App.lm28 = 0;
-      App.stopAll28Timers();
-      App.dbPut("history", tk, 0);
-      App.dbPut("timerHistory", tk, 0);
-      App.dbPut("timerHistoryRV", tk, 0);
-      App.dbPut("h28", tk, 0);
-      App.dbPut("timer28History", tk, 0);
-      App.dbPut("malaLog", "today", { date: tk, log: [] });
-      App.syncTimerFromMalaLog();
-      renderMalaLog();
-    }
-  } else {
-    // ── Full Reset: EVERYTHING — Radha + RV + HK + 28 Names + all history ──
+  } else if (pr === "namesAndTime") {
+    // Delete all Name Jap (Radha + RV + HK) and all Time data
+    // NOTE: 28 Names counts/time/sankalpas are intentionally preserved here.
     App.S.history = {};
-    App.S.h28 = {};
     App.S.historyRV = {};
     App.S.historyHK = {};
     App.S.dt = 0;
@@ -3377,52 +3293,45 @@ function doReset() {
     App.S.nameJapDeduct = 0;
     App.S.nameJapDeductRV = 0;
     App.S.nameJapDeductHK = 0;
-    App.S.stotrams = {};
-    App.S.brahma = {};
-    App.S.brahmacharya_start_date = "";
     App.S.timerHistory = {};
-    App.S.timer28History = {};
     App.S.timerHistoryRV = {};
     App.S.timerHistoryHK = {};
     App.S.malaLog = [];
     App.S.malaLogRV = [];
     App.S.malaLogHK = [];
-    App.S.activityLog = []; // wipe full activity log
-    App.S.sankalpas = [];
-    App.S.occasions = {};
+    App.S.activityLog = [];
     App.S.syncBaseline = {};
-    App.S.syncBaseline28 = {};
     App.S.syncBaselineTimer = {};
-    App.S.syncBaselineTimer28 = {};
     App.S.syncBaselineRV = {};
     App.S.syncBaselineTimerRV = {};
     App.S.syncBaselineHK = {};
     App.S.syncBaselineTimerHK = {};
     App.lmc = 0;
-    App.lm28 = 0;
     App.lmcRV = 0;
     App.lmcHK = 0;
-    STLIST.forEach((x) => {
-      App.S.stotrams[x.id] = {};
-    });
-    // Clear ALL IDB stores including activityLogArchive
     App.dbClearStore("history");
-    App.dbClearStore("h28");
     App.dbClearStore("timerHistory");
-    App.dbClearStore("timer28History");
     App.dbClearStore("timerHistoryRV");
     App.dbClearStore("activityLogArchive");
     App.dbClearStore("malaLog");
     App.resetTimer();
-    App.stopAll28Timers();
-    ["dtIn", "ltIn", "msIn"].forEach((id) => {
+    ["dtIn", "ltIn"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.value = "";
     });
-    initBrahmaStartInput();
     renderMalaLog();
     u28();
     render28StatsPanel();
+    renderSankalpas();
+  } else if (pr === "brahmaMilestones") {
+    // Delete all Brahmacharya + Milestones (sankalpas) + occasions
+    App.S.brahma = {};
+    App.S.brahmacharya_start_date = "";
+    App.S.sankalpas = [];
+    App.S.occasions = {};
+    const msEl = document.getElementById("msIn");
+    if (msEl) msEl.value = "";
+    initBrahmaStartInput();
     renderSankalpas();
   }
 
@@ -5480,9 +5389,9 @@ function renderSankalpas() {
         '<div class="sk-btns"><button class="sk-btn grn" onclick="fulfillSankalp(\'' +
         sk.id +
         "')\">✓ Fulfilled</button>" +
-        '<button class="sk-btn grey" onclick="deleteSankalp(\'' +
+        '<button class="sk-btn grey" style="color:#f55;border-color:rgba(255,68,68,0.45)" onclick="deleteSankalp(\'' +
         sk.id +
-        "')\">✕</button></div>" +
+        "')\">✕ Delete Wish</button></div>" +
         "</div>";
     } else {
       const qProg = sk._savedProgress || 0;
@@ -5539,9 +5448,9 @@ function renderSankalpas() {
             sk.id +
             "')\">⬆ Prioritize</button>"
           : "") +
-        '<button class="sk-btn grey" onclick="deleteSankalp(\'' +
+        '<button class="sk-btn grey" style="color:#f55;border-color:rgba(255,68,68,0.45)" onclick="deleteSankalp(\'' +
         sk.id +
-        "')\">✕</button></div>" +
+        "')\">✕ Delete Wish</button></div>" +
         "</div>";
     }
   });

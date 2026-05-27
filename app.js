@@ -1673,6 +1673,9 @@ function sv(id, btn) {
     render28Dots(get28Pos());
   } else {
     App.flush28TimeToHistory();
+    // If the user navigates away from 28 Names, return the shared
+    // Add/Deduct Jap Manually block to its home in the Stats view.
+    if (typeof _restoreAddDeductHome === "function") _restoreAddDeductHome();
   }
   if (id === "vms") {
     renderMilestonesTab();
@@ -5508,14 +5511,41 @@ function toggleSankalp() {
 // ═══════════════════════════════════════════════════════
 // 28 NAMES STATS PANEL
 // ═══════════════════════════════════════════════════════
+// Move the shared Add/Deduct Jap Manually block between Stats view and 28 Names panel.
+// Keeping a single DOM node guarantees the two views stay perfectly in sync.
+function _mountAddDeductIn(targetId) {
+  const block = document.getElementById("addDeductWrap");
+  const target = document.getElementById(targetId);
+  if (!block || !target) return;
+  if (!window._addDeductHome) {
+    window._addDeductHome = {
+      parent: block.parentNode,
+      next: block.nextSibling,
+    };
+  }
+  if (block.parentNode !== target) target.appendChild(block);
+}
+function _restoreAddDeductHome() {
+  const block = document.getElementById("addDeductWrap");
+  const home = window._addDeductHome;
+  if (!block || !home || !home.parent) return;
+  if (block.parentNode === home.parent) return;
+  home.parent.insertBefore(block, home.next || null);
+}
+
 function toggle28Stats() {
   const panel = document.getElementById("n28StatsPanel");
   const chev = document.getElementById("n28StatsChev");
   const open = panel.style.display === "block";
   panel.style.display = open ? "none" : "block";
   if (chev) chev.style.transform = open ? "rotate(0deg)" : "rotate(180deg)";
-  if (!open) render28StatsPanel();
+  if (open) {
+    _restoreAddDeductHome();
+  } else {
+    _mountAddDeductIn("n28AddDeductMount");
+  }
 }
+
 
 // Called from u28() to keep stats panel live when open
 function refresh28StatsIfOpen() {

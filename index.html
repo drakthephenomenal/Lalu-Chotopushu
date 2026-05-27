@@ -327,45 +327,9 @@
       <button class="cb" id="n28StatsBtn" onclick="toggle28Stats()" style="border-color:rgba(255,215,0,0.3);color:var(--gold);background:rgba(255,215,0,0.06)">📊 Stats <span id="n28StatsChev" style="font-size:10px;transition:transform 0.25s;display:inline-block">▾</span></button>
     </div>
 
-    <!-- 28 NAMES STATS PANEL -->
+    <!-- 28 NAMES STATS PANEL — hosts the shared Add/Deduct Jap Manually block from the Stats view -->
     <div id="n28StatsPanel" style="display:none;margin-top:10px">
-
-      <!-- a) Cycle Counts -->
-      <div class="n28sp-section">
-        <div class="n28sp-title">🔄 Cycle Counts</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px">
-          <div class="ns"><div class="nv" id="sp28CyclesTod" style="font-size:18px">0</div><div class="nl">Today</div></div>
-          <div class="ns"><div class="nv" id="sp28CyclesAll" style="font-size:18px">0</div><div class="nl">All Time</div></div>
-        </div>
-      </div>
-
-      <!-- b) Cycle Time -->
-      <div class="n28sp-section">
-        <div class="n28sp-title">⏱ 28 Names Time</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-          <div class="ns"><div class="nv" id="sp28TimeTod" style="font-size:18px">0m</div><div class="nl">Today</div></div>
-          <div class="ns"><div class="nv" id="sp28TimeAll" style="font-size:18px">0m</div><div class="nl">All Time</div></div>
-        </div>
-        <div class="n28sp-row">
-          <input type="number" class="n28sp-in" id="sp28TimeMin" min="0" placeholder="Min" style="width:56px" oninput="prev28Time()">
-          <input type="number" class="n28sp-in" id="sp28TimeSec" min="0" max="59" placeholder="Sec" style="width:56px" oninput="prev28Time()">
-          <button class="n28sp-btn add" onclick="adj28Time(1)">＋ Add</button>
-          <button class="n28sp-btn ded" onclick="adj28Time(-1)">－ Deduct</button>
-        </div>
-        <div style="font-size:10px;color:var(--td);margin-top:4px"><span id="sp28TimePreview" style="color:var(--a2)"></span></div>
-      </div>
-
-      <!-- d) Reset Options -->
-      <div class="n28sp-section" style="border-color:rgba(232,51,109,0.2)">
-        <div class="n28sp-title" style="color:var(--rl)">↺ Reset Options</div>
-        <div style="display:flex;flex-direction:column;gap:7px">
-          <button class="n28sp-reset-btn" onclick="cr2('28today')">Reset Today's Count</button>
-          <button class="n28sp-reset-btn" onclick="reset28Time('today')">Reset Today's Time</button>
-          <button class="n28sp-reset-btn" onclick="reset28Time('all')">Reset All Time (Time only)</button>
-          <button class="n28sp-reset-btn" style="border-color:rgba(232,51,109,0.5);color:var(--rl)" onclick="cr2('28all')">Reset All 28 Names Data</button>
-        </div>
-      </div>
-
+      <div id="n28AddDeductMount"></div>
     </div>
   </div>
 </div>
@@ -753,7 +717,7 @@
   </div>
 
   <!-- ADD / DEDUCT JAP MANUALLY — merged collapsible with two-tone header -->
-  <div class="cs-wrap" style="border:1px solid rgba(255,215,0,0.2);background:linear-gradient(90deg,rgba(46,204,113,0.07) 0%,rgba(46,204,113,0.07) 50%,rgba(232,51,109,0.07) 50%,rgba(232,51,109,0.07) 100%)">
+  <div id="addDeductWrap" class="cs-wrap" style="border:1px solid rgba(255,215,0,0.2);background:linear-gradient(90deg,rgba(46,204,113,0.07) 0%,rgba(46,204,113,0.07) 50%,rgba(232,51,109,0.07) 50%,rgba(232,51,109,0.07) 100%)">
     <div class="cs-header" onclick="toggleCs('addDeductBody','addDeductChev')">
       <h3 style="background:linear-gradient(90deg,var(--green) 0%,var(--green) 50%,var(--rl) 50%,var(--rl) 100%);-webkit-background-clip:text;background-clip:text;color:transparent">➕ Add ／ ✂️ Deduct Jap Manually</h3>
       <span class="cs-chevron" id="addDeductChev" style="color:var(--gold)">▾</span>

@@ -1999,6 +1999,8 @@ function autoLoadHistory() {
     t = document.getElementById("histTo");
   if (f && !f.value) f.value = today;
   if (t && !t.value) t.value = today;
+  const todayBtn = document.querySelector('#histPresetRow .hpb[data-preset="1"]');
+  if (todayBtn) todayBtn.classList.add("active");
   if (typeof renderHistory === "function")
     try {
       renderHistory();
@@ -10079,19 +10081,35 @@ function _histFmtTime(ts) {
   );
 }
 
-function histPreset(days) {
+function _histSetActive(btn) {
+  const row = document.getElementById("histPresetRow");
+  if (row) row.querySelectorAll(".hpb").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+}
+
+function histPreset(days, btn) {
   const to = new Date();
   const from = new Date();
   from.setDate(from.getDate() - (days - 1));
   document.getElementById("histFrom").value = _ldk(from);
   document.getElementById("histTo").value = _ldk(to);
+  _histSetActive(btn);
+  renderHistory();
 }
 
-function histPresetMonth() {
+function histPresetMonth(btn) {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth(), 1);
   document.getElementById("histFrom").value = _ldk(from);
   document.getElementById("histTo").value = _ldk(now);
+  _histSetActive(btn);
+  renderHistory();
+}
+
+function histRangeChanged() {
+  // Manual date change clears preset selection and re-renders
+  _histSetActive(null);
+  renderHistory();
 }
 
 function _histGetDates(from, to) {

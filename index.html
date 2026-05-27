@@ -694,17 +694,16 @@
       <div style="margin-bottom:10px">
         <div style="font-size:10px;color:var(--td);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Date Range</div>
         <div style="display:flex;gap:8px;margin-bottom:8px">
-          <input type="date" class="di" id="histFrom" style="border-color:rgba(255,215,0,0.25)">
-          <input type="date" class="di" id="histTo" style="border-color:rgba(255,215,0,0.25)">
+          <input type="date" class="di" id="histFrom" style="border-color:rgba(255,215,0,0.25)" onchange="histRangeChanged()">
+          <input type="date" class="di" id="histTo" style="border-color:rgba(255,215,0,0.25)" onchange="histRangeChanged()">
         </div>
-        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
-          <button class="hpb" onclick="histPreset(1)">Today</button>
-          <button class="hpb" onclick="histPreset(7)">Last 7d</button>
-          <button class="hpb" onclick="histPreset(30)">Last 30d</button>
-          <button class="hpb" onclick="histPreset(90)">Last 90d</button>
-          <button class="hpb" onclick="histPresetMonth()">This Month</button>
+        <div style="display:flex;gap:6px;margin-bottom:4px;flex-wrap:wrap" id="histPresetRow">
+          <button class="hpb" data-preset="1" onclick="histPreset(1, this)">Today</button>
+          <button class="hpb" data-preset="7" onclick="histPreset(7, this)">Last 7d</button>
+          <button class="hpb" data-preset="30" onclick="histPreset(30, this)">Last 30d</button>
+          <button class="hpb" data-preset="90" onclick="histPreset(90, this)">Last 90d</button>
+          <button class="hpb" data-preset="month" onclick="histPresetMonth(this)">This Month</button>
         </div>
-        <button class="hpb hpb-go" onclick="renderHistory()">🔍 Show History</button>
       </div>
 
       <div id="histSummaryLine" style="font-size:11px;color:var(--td);text-align:center;margin-bottom:8px;min-height:16px"></div>

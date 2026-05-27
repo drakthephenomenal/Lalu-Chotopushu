@@ -787,7 +787,7 @@
                   <span style="color:var(--td);font-size:11px">s</span>
                 </div>
               </div>
-              <button class="pb" onclick="addManualJap()" style="background:linear-gradient(135deg,#27ae60,#2ecc71)">➕ Add to Today</button>
+              <button class="pb add" onclick="addManualJap()">➕ Add to Today</button>
             </div>
           </div>
 
@@ -810,7 +810,7 @@
                   <span style="color:var(--td);font-size:11px">s</span>
                 </div>
               </div>
-              <button class="pb" onclick="addOtherDayJap()" style="background:linear-gradient(135deg,#1a6b3c,#27ae60)">➕ Add to Selected Day</button>
+              <button class="pb add" onclick="addOtherDayJap()">➕ Add to Selected Day</button>
             </div>
           </div>
 
@@ -824,7 +824,7 @@
               <p style="font-size:12px;color:var(--td);margin-bottom:10px">Jap done before using this app? Add to lifetime total.</p>
               <div class="fr"><input type="number" class="fi" id="prevJapIn" placeholder="e.g. 50000" min="1"><span class="fu">jap</span></div>
               <div style="font-size:11px;color:var(--td);margin-bottom:8px">= <span id="prevMalaPreview">0</span> malas · Lifetime: <span id="prevLifetimePreview" style="color:var(--gold)">—</span></div>
-              <button class="pb" onclick="addPrevJap()" style="background:linear-gradient(135deg,#8B5CF6,#6D28D9)">📿 Add to Lifetime</button>
+              <button class="pb deep" onclick="addPrevJap()">📿 Add to Lifetime</button>
             </div>
           </div>
 
@@ -857,7 +857,7 @@
                   <span style="color:var(--td);font-size:11px">s</span>
                 </div>
               </div>
-              <button class="pb" onclick="deductTodayJap()" style="background:linear-gradient(135deg,#c0392b,#e74c3c)">✂️ Deduct from Today</button>
+              <button class="pb deduct" onclick="deductTodayJap()">✂️ Deduct from Today</button>
             </div>
           </div>
 
@@ -879,7 +879,7 @@
                   <span style="color:var(--td);font-size:11px">s</span>
                 </div>
               </div>
-              <button class="pb" onclick="deductOtherJap()" style="background:linear-gradient(135deg,#922b21,#c0392b)">✂️ Deduct from Selected Day</button>
+              <button class="pb deduct" onclick="deductOtherJap()">✂️ Deduct from Selected Day</button>
             </div>
           </div>
 
@@ -894,13 +894,13 @@
                 <div style="font-size:10px;color:var(--rl);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">➕ Add to Deduction</div>
                 <div class="fr"><input type="number" class="fi" id="nameJapDeductIn" placeholder="e.g. 5000" min="1" style="border-color:rgba(232,51,109,0.35)"><span class="fu" style="color:var(--rl)">jap</span></div>
                 <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapDeductPreview" style="color:var(--rl)">—</span></div>
-                <button class="pb" onclick="addNameJapDeduct()" style="background:linear-gradient(135deg,#c0392b,#e74c3c)">✂️ Apply Deduction</button>
+                <button class="pb deduct" onclick="addNameJapDeduct()">✂️ Apply Deduction</button>
               </div>
               <div style="background:rgba(232,51,109,0.03);border:1px solid rgba(232,51,109,0.12);border-radius:12px;padding:11px">
                 <div style="font-size:10px;color:var(--rl);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">↩ Remove Deduction</div>
                 <div class="fr"><input type="number" class="fi" id="nameJapRestoreIn" placeholder="Amount to restore" min="1" style="border-color:rgba(232,51,109,0.25)"><span class="fu" style="color:var(--rl)">jap</span></div>
                 <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapRestorePreview" style="color:var(--a2)">—</span></div>
-                <button class="pb" onclick="removeNameJapDeduct()" style="background:linear-gradient(135deg,#1a5e3e,#27ae60)">↩ Restore to Lifetime</button>
+                <button class="pb add" onclick="removeNameJapDeduct()">↩ Restore to Lifetime</button>
               </div>
             </div>
           </div>

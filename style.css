@@ -1687,3 +1687,127 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 }
 
   
+
+
+  /* ── DEITY PERIOD CARDS (premium gold 3D) ── */
+  .dc-wrap {
+    border-radius: 14px;
+    padding: 12px 14px;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(145deg, #0f1e38 0%, #09152a 60%, #0d1f3a 100%);
+  }
+  .dc-radha {
+    border: 2.5px solid #b8820f;
+    box-shadow:
+      0 0 0 1px #f5c84244,
+      inset 0 1px 0 #f5c84255,
+      inset 0 -1px 0 #b8820f44,
+      0 4px 24px #f5c84233,
+      0 10px 36px #00000066;
+  }
+  .dc-radha::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:1px;
+    background: linear-gradient(90deg, transparent 5%, #f5c84288 40%, #f5c842cc 50%, #f5c84288 60%, transparent 95%);
+  }
+  .dc-rv {
+    border: 2.5px solid #267a70;
+    box-shadow:
+      0 0 0 1px #5eead433,
+      inset 0 1px 0 #5eead444,
+      0 4px 20px #5eead422,
+      0 10px 36px #00000066;
+  }
+  .dc-rv::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:1px;
+    background: linear-gradient(90deg, transparent 5%, #5eead466 40%, #5eead4aa 50%, #5eead466 60%, transparent 95%);
+  }
+  .dc-28n {
+    border: 2.5px solid #5a3fa0;
+    box-shadow:
+      0 0 0 1px #a78bfa33,
+      inset 0 1px 0 #a78bfa44,
+      0 4px 20px #a78bfa22,
+      0 10px 36px #00000066;
+  }
+  .dc-28n::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:1px;
+    background: linear-gradient(90deg, transparent 5%, #a78bfa66 40%, #a78bfaaa 50%, #a78bfa66 60%, transparent 95%);
+  }
+  .dc-combo {
+    border: 2px solid #d4870099;
+    box-shadow:
+      0 0 0 1px #f59e0b33,
+      inset 0 1px 0 #f59e0b44,
+      0 4px 20px #f59e0b22,
+      0 10px 32px #00000066;
+  }
+  .dc-combo::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:1px;
+    background: linear-gradient(90deg, transparent, #f59e0b88, transparent);
+  }
+  .dc-all {
+    border: 2px solid #fb718599;
+    box-shadow:
+      0 0 0 1px #fb718533,
+      inset 0 1px 0 #fb718544,
+      0 4px 20px #fb718522,
+      0 10px 32px #00000066;
+  }
+  .dc-all::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:1px;
+    background: linear-gradient(90deg, transparent, #fb718588, transparent);
+  }
+  .dc-title {
+    display:flex; align-items:center; gap:7px;
+    font-size:11px; font-weight:700; letter-spacing:0.1em;
+    text-transform:uppercase; margin-bottom:12px;
+  }
+  .dc-radha .dc-title { color:#f5c842; }
+  .dc-rv    .dc-title { color:#5eead4; }
+  .dc-28n   .dc-title { color:#a78bfa; }
+  .dc-title--combo    { color:#f59e0b !important; }
+  .dc-title--all      { color:#fb7185 !important; }
+  .dc-dot {
+    width:9px; height:9px; border-radius:50%; flex-shrink:0; display:inline-block;
+  }
+  .dc-dot--radha { background:#f5c842; box-shadow:0 0 7px #f5c84299; }
+  .dc-dot--rv    { background:#5eead4; box-shadow:0 0 7px #5eead499; }
+  .dc-dot--28n   { background:#a78bfa; box-shadow:0 0 7px #a78bfa99; }
+  .dc-table { width:100%; }
+  .dc-thead {
+    display:grid; grid-template-columns:72px 1fr 1fr 1fr;
+    padding-bottom:5px; margin-bottom:3px;
+    border-bottom:1px solid #3a507055;
+    font-size:9px; color:#3a5070; letter-spacing:0.08em;
+    text-transform:uppercase; text-align:center;
+  }
+  .dc-thead > div:first-child { text-align:left; }
+  .dc-row {
+    display:grid; grid-template-columns:72px 1fr 1fr 1fr;
+    padding:5px 0; border-bottom:1px solid #2a405022;
+    text-align:center; font-size:12px; color:#c8d8f0; font-weight:500;
+  }
+  .dc-row:last-child { border-bottom:none; }
+  .dc-row--life {
+    border-radius:7px; border-bottom:none !important;
+    margin:3px -4px 0; padding:5px 4px;
+    background:rgba(255,255,255,0.04);
+    font-size:13px; font-weight:700;
+  }
+  .dc-radha  .dc-row--life > div { color:#f5c842; }
+  .dc-rv     .dc-row--life > div { color:#5eead4; }
+  .dc-28n    .dc-row--life > div { color:#a78bfa; }
+  .dc-row--rv    > div { color:#5eead4; }
+  .dc-row--28n   > div { color:#a78bfa; }
+  .dc-row--combo > div { color:#f59e0b; }
+  .dc-row--all   > div { color:#fb7185; }
+  .dc-period {
+    font-size:11px; color:#5a7090; text-align:left; font-weight:400;
+  }
+  .dc-row--life .dc-period { color:inherit; font-weight:700; }
+  .dc-divider {
+    text-align:center; font-size:10px; color:#b8820f;
+    letter-spacing:0.12em; padding:6px 0 8px;
+  }
+  

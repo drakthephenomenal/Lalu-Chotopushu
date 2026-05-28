@@ -581,46 +581,68 @@
     </div>
     <div class="sg-body open" id="sgStats">
       <div class="sg" style="margin-bottom:8px">
-        <!-- Row 1 -->
-        <div class="sb non-gaudiya-stat"><div class="sv2" id="sTod">0</div><div class="sl">Today</div><div class="ss" id="sTodM">0 malas</div></div>
-        <div class="sb non-gaudiya-stat"><div class="sv2" id="sWk">0</div><div class="sl">This Week</div><div class="ss" id="sWkM">0 malas</div></div>
-        <!-- Row 2 -->
-        <div class="sb non-gaudiya-stat"><div class="sv2" id="sMo">0</div><div class="sl">This Month</div><div class="ss" id="sMoM">0 malas</div></div>
-        <div class="sb non-gaudiya-stat"><div class="sv2" id="sTot">0</div><div class="sl">Total Jap (Radha + RV)</div><div class="ss" id="sTotM">0 malas</div></div>
-        <!-- Row 3: Radha count + Radha time -->
-        <div class="sb non-gaudiya-stat" id="sbRadhaCount" style="background:rgba(255,215,0,0.05);border-color:rgba(255,215,0,0.18)"><div class="sv2" style="color:var(--gold)" id="sRadhaTot">0</div><div class="sl" style="color:var(--gold)">राधा Lifetime</div><div class="ss" id="sRadhaTotM">0 malas</div><div class="ss" id="sRadhaTotF" style="color:var(--gold);opacity:0.75;font-size:10px;margin-top:2px">0</div></div>
-        <div class="sb non-gaudiya-stat" id="sbRadhaTime" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.15)">
-          <div class="sl" style="font-size:9px;color:var(--gold);letter-spacing:1.5px;margin-bottom:6px">⏱ राधा JAP TIME</div>
-          <div style="display:grid;grid-template-columns:1fr;gap:3px;text-align:center">
-            <div><span style="font-family:'EB Garamond',serif;font-size:15px;color:var(--gold)" id="tRadhaTod">0m</span> <span style="font-size:8px;color:var(--td);letter-spacing:1px">TODAY</span></div>
-            <div><span style="font-family:'EB Garamond',serif;font-size:15px;color:var(--gold)" id="tRadhaWk">0m</span> <span style="font-size:8px;color:var(--td);letter-spacing:1px">WEEK</span></div>
-            <div><span style="font-family:'EB Garamond',serif;font-size:15px;color:var(--gold)" id="tRadhaMo">0m</span> <span style="font-size:8px;color:var(--td);letter-spacing:1px">MONTH</span></div>
-            <div><span style="font-family:'EB Garamond',serif;font-size:15px;color:var(--gold)" id="tRadhaLt">0m</span> <span style="font-size:8px;color:var(--td);letter-spacing:1px">LIFETIME</span></div>
+        <!-- ── Deity Cards: unified period layout ── -->
+          <!-- 1. Radha -->
+          <div class="dc-wrap dc-radha non-gaudiya-stat" style="grid-column:1/-1">
+            <div class="dc-title"><span class="dc-dot dc-dot--radha"></span>Radha (राधा)</div>
+            <div class="dc-table">
+              <div class="dc-thead"><div></div><div>Count</div><div>Malas</div><div>Time</div></div>
+              <div class="dc-row"><div class="dc-period">Today</div><div id="sRTod">0</div><div id="sRTodM">0m</div><div id="tRadhaTod">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Week</div><div id="sRWk">0</div><div id="sRWkM">0m</div><div id="tRadhaWk">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Month</div><div id="sRMo">0</div><div id="sRMoM">0m</div><div id="tRadhaMo">0s</div></div>
+              <div class="dc-row dc-row--life"><div class="dc-period">Lifetime</div><div id="sRadhaTot">0</div><div id="sRadhaTotM">0m</div><div id="tRadhaLt">0s</div></div>
+            </div>
+            <span id="sRadhaTotF" style="display:none">0</span>
           </div>
-        </div>
-        <!-- Row 4: RV count + RV time -->
-        <div class="sb non-gaudiya-stat" id="sbRVCount" style="background:rgba(74,144,226,0.05);border-color:rgba(74,144,226,0.18)"><div class="sv2" style="color:var(--a2)" id="sRVTot">0</div><div class="sl" style="color:var(--a2)">RV Lifetime</div><div class="ss" id="sRVTotM">0 malas</div><div class="ss" id="sRVTotF" style="color:var(--a2);opacity:0.75;font-size:10px;margin-top:2px">0</div></div>
-        <div class="sb non-gaudiya-stat" id="sbRVTime" style="background:rgba(74,144,226,0.04);border-color:rgba(74,144,226,0.15)">
-          <div class="sl" style="font-size:9px;color:var(--a2);letter-spacing:1.5px;margin-bottom:6px">⏱ RV JAP TIME</div>
-          <div style="display:grid;grid-template-columns:1fr;gap:3px;text-align:center">
-            <div><span style="font-family:'EB Garamond',serif;font-size:15px;color:var(--a2)" id="tRVTod">0m</span> <span style="font-size:8px;color:var(--td);letter-spacing:1px">TODAY</span></div>
-            <div><span style="font-family:'EB Garamond',serif;font-size:15px;color:var(--a2)" id="tRVWk">0m</span> <span style="font-size:8px;color:var(--td);letter-spacing:1px">WEEK</span></div>
-            <div><span style="font-family:'EB Garamond',serif;font-size:15px;color:var(--a2)" id="tRVMo">0m</span> <span style="font-size:8px;color:var(--td);letter-spacing:1px">MONTH</span></div>
-            <div><span style="font-family:'EB Garamond',serif;font-size:15px;color:var(--a2)" id="tRVLt">0m</span> <span style="font-size:8px;color:var(--td);letter-spacing:1px">LIFETIME</span></div>
+          <!-- 2. RV -->
+          <div class="dc-wrap dc-rv non-gaudiya-stat" style="grid-column:1/-1">
+            <div class="dc-title"><span class="dc-dot dc-dot--rv"></span>Radha Vallabh (RV)</div>
+            <div class="dc-table">
+              <div class="dc-thead"><div></div><div>Count</div><div>Malas</div><div>Time</div></div>
+              <div class="dc-row"><div class="dc-period">Today</div><div id="sRVPTod">0</div><div id="sRVPTodM">0m</div><div id="tRVTod">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Week</div><div id="sRVPWk">0</div><div id="sRVPWkM">0m</div><div id="tRVWk">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Month</div><div id="sRVPMo">0</div><div id="sRVPMoM">0m</div><div id="tRVMo">0s</div></div>
+              <div class="dc-row dc-row--life dc-row--rv"><div class="dc-period">Lifetime</div><div id="sRVTot">0</div><div id="sRVTotM">0m</div><div id="tRVLt">0s</div></div>
+            </div>
+            <span id="sRVTotF" style="display:none">0</span>
           </div>
-        </div>
-        <!-- Row 5: 28 Names count + time -->
-        <div class="sb non-gaudiya-stat" id="sb28Count" style="background:rgba(46,204,113,0.05);border-color:rgba(46,204,113,0.18)"><div class="sv2" style="color:var(--green)" id="s28Tot">0</div><div class="sl" style="color:var(--green)">28 Names Lifetime</div><div class="ss" id="s28TotM">0 cycles</div><div class="ss" id="s28TotF" style="color:var(--green);opacity:0.75;font-size:10px;margin-top:2px">0</div></div>
-        <div class="sb non-gaudiya-stat" id="sb28Time" style="background:rgba(46,204,113,0.04);border-color:rgba(46,204,113,0.15)">
-          <div class="sl" style="font-size:9px;color:var(--green);letter-spacing:1.5px;margin-bottom:6px">⏱ 28 NAMES JAP TIME</div>
-          <div style="display:grid;grid-template-columns:1fr;gap:3px;text-align:center">
-            <div><span style="font-family:'EB Garamond',serif;font-size:15px;color:var(--green)" id="t28Tod">0m</span> <span style="font-size:8px;color:var(--td);letter-spacing:1px">TODAY</span></div>
-            <div><span style="font-family:'EB Garamond',serif;font-size:15px;color:var(--green)" id="t28Wk">0m</span> <span style="font-size:8px;color:var(--td);letter-spacing:1px">WEEK</span></div>
-            <div><span style="font-family:'EB Garamond',serif;font-size:15px;color:var(--green)" id="t28Mo">0m</span> <span style="font-size:8px;color:var(--td);letter-spacing:1px">MONTH</span></div>
-            <div><span style="font-family:'EB Garamond',serif;font-size:15px;color:var(--green)" id="t28Lt">0m</span> <span style="font-size:8px;color:var(--td);letter-spacing:1px">LIFETIME</span></div>
+          <!-- 3. 28 Names -->
+          <div class="dc-wrap dc-28n non-gaudiya-stat" style="grid-column:1/-1">
+            <div class="dc-title"><span class="dc-dot dc-dot--28n"></span>28 Names</div>
+            <div class="dc-table">
+              <div class="dc-thead"><div></div><div>Count</div><div>Cycles</div><div>Time</div></div>
+              <div class="dc-row"><div class="dc-period">Today</div><div id="s28PTod">0</div><div id="s28PTodM">0 cy</div><div id="t28Tod">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Week</div><div id="s28PWk">0</div><div id="s28PWkM">0 cy</div><div id="t28Wk">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Month</div><div id="s28PMo">0</div><div id="s28PMoM">0 cy</div><div id="t28Mo">0s</div></div>
+              <div class="dc-row dc-row--life dc-row--28n"><div class="dc-period">Lifetime</div><div id="s28Tot">0</div><div id="s28TotM">0 cy</div><div id="t28Lt">0s</div></div>
+            </div>
+            <span id="s28TotF" style="display:none">0</span>
           </div>
-        </div>
-        <!-- Row 5b: HK Mahamantra stats — Option C Lotus Petals layout (visible only in Gaudiya Mode) -->
+          <!-- Divider -->
+          <div class="dc-divider non-gaudiya-stat" style="grid-column:1/-1">── COMBINED TOTALS ──</div>
+          <!-- 4. Radha + RV combined -->
+          <div class="dc-wrap dc-combo non-gaudiya-stat" style="grid-column:1/-1">
+            <div class="dc-title dc-title--combo">⊕ Radha + Radha Vallabh</div>
+            <div class="dc-table">
+              <div class="dc-thead"><div></div><div>Count</div><div>Malas</div><div>Time</div></div>
+              <div class="dc-row"><div class="dc-period">Today</div><div id="sTod">0</div><div id="sTodM">0m</div><div id="tTod">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Week</div><div id="sWk">0</div><div id="sWkM">0m</div><div id="tWk">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Month</div><div id="sMo">0</div><div id="sMoM">0m</div><div id="tMo">0s</div></div>
+              <div class="dc-row dc-row--life dc-row--combo"><div class="dc-period">Lifetime</div><div id="sTot">0</div><div id="sTotM">0m</div><div id="tCombLt">0s</div></div>
+            </div>
+          </div>
+          <!-- 5. All combined -->
+          <div class="dc-wrap dc-all non-gaudiya-stat" style="grid-column:1/-1">
+            <div class="dc-title dc-title--all">⊕ Radha + RV + 28 Names</div>
+            <div class="dc-table">
+              <div class="dc-thead"><div></div><div>Count</div><div></div><div>Time</div></div>
+              <div class="dc-row"><div class="dc-period">Today</div><div id="sAllTod">0</div><div></div><div id="tAllTod">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Week</div><div id="sAllWk">0</div><div></div><div id="tAllWk">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Month</div><div id="sAllMo">0</div><div></div><div id="tAllMo">0s</div></div>
+              <div class="dc-row dc-row--life dc-row--all"><div class="dc-period">Lifetime</div><div id="sLtJapAll">0</div><div id="sLtJapAllF" style="display:none">0</div><div id="sLtTime">0m 0s</div></div>
+            </div>
+          </div>
+          <!-- Row 5b: HK Mahamantra stats — Option C Lotus Petals layout (visible only in Gaudiya Mode) -->
         <div class="hk-only-stat" id="sbHKCount" style="grid-column:1/-1;display:none"><!-- legacy compat --></div>
         <div class="hk-only-stat" id="sbHKTime" style="grid-column:1/-1;display:none"><!-- legacy compat --></div>
         <div class="hk-only-stat" style="grid-column:1/-1;padding:0">
@@ -663,10 +685,6 @@
               <span id="tHKMo2" style="display:none"></span>
             </div>
         </div>
-        <!-- Row 5c: Combined Lifetime Jap (Radha + RV + 28 names) -->
-        <div class="sb wide non-gaudiya-stat" id="sbLtJapAll" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.12)"><div class="sv2" style="color:var(--gold)" id="sLtJapAll">0</div><div class="sl" style="color:var(--gold)">Lifetime Jap (Radha + RV + 28 Names)</div><div class="ss" id="sLtJapAllF" style="color:var(--gold);opacity:0.75;font-size:10px;margin-top:2px">0</div></div>
-        <!-- Row 6: Lifetime jap time -->
-        <div class="sb wide non-gaudiya-stat" id="sbLtTime" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.12)"><div class="sv2" style="color:var(--gold)" id="sLtTime">0m 0s</div><div class="sl" style="color:var(--gold)">Lifetime Jap Time (Radha + RV + 28 Names)</div></div>
         <!-- Row 7: Last 7 days -->
         <div class="sb wide"><div class="sl" style="font-size:11px">Last 7 Days</div><div class="cbrs" id="cbrs"></div></div>
         <!-- Row 8: streak + best -->

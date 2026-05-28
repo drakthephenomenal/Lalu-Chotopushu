@@ -2832,6 +2832,54 @@ function uStats() {
       ? ltH + "h " + ltM + "m " + String(ltS).padStart(2, "0") + "s"
       : ltM + "m " + String(ltS).padStart(2, "0") + "s";
   document.getElementById("sStr").textContent = streak;
+    // ── Per-deity period counts & combined totals (new UI) ──
+    const rPTod = (App.S.history || {})[App.S.tk] || 0;
+    const rPWk  = wk.reduce((s, k) => s + ((App.S.history || {})[k] || 0), 0);
+    const rPMo  = Object.entries(App.S.history || {}).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0);
+    const rvPTod = (App.S.historyRV || {})[App.S.tk] || 0;
+    const rvPWk  = wk.reduce((s, k) => s + ((App.S.historyRV || {})[k] || 0), 0);
+    const rvPMo  = Object.entries(App.S.historyRV || {}).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0);
+    const n28PTod = (App.S.h28 || {})[App.S.tk] || 0;
+    const n28PWk  = wk.reduce((s, k) => s + ((App.S.h28 || {})[k] || 0), 0);
+    const n28PMo  = Object.entries(App.S.h28 || {}).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0);
+    const _sn = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v.toLocaleString('en-IN'); };
+    const _sm = (id, v, sz) => { const e = document.getElementById(id); if (e) e.textContent = Math.floor(v / (sz || ms)) + 'm'; };
+    const _sc = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = Math.floor(v / 28) + ' cy'; };
+    _sn('sRTod', rPTod);  _sm('sRTodM', rPTod);
+    _sn('sRWk',  rPWk);   _sm('sRWkM',  rPWk);
+    _sn('sRMo',  rPMo);   _sm('sRMoM',  rPMo);
+    _sn('sRVPTod', rvPTod);  _sm('sRVPTodM', rvPTod);
+    _sn('sRVPWk',  rvPWk);   _sm('sRVPWkM',  rvPWk);
+    _sn('sRVPMo',  rvPMo);   _sm('sRVPMoM',  rvPMo);
+    _sn('s28PTod', n28PTod);  _sc('s28PTodM', n28PTod);
+    _sn('s28PWk',  n28PWk);   _sc('s28PWkM',  n28PWk);
+    _sn('s28PMo',  n28PMo);   _sc('s28PMoM',  n28PMo);
+    // Combined Radha+RV lifetime time
+    const _eCombLt = document.getElementById('tCombLt');
+    if (_eCombLt) {
+      const _combLtSec = Object.values(App.S.timerHistory || {}).reduce((a, b) => a + b, 0)
+                       + Object.values(App.S.timerHistoryRV || {}).reduce((a, b) => a + b, 0);
+      _eCombLt.textContent = fmtShort(_combLtSec);
+    }
+    // All combined period counts
+    _sn('sAllTod', rPTod + rvPTod + n28PTod);
+    _sn('sAllWk',  rPWk  + rvPWk  + n28PWk);
+    _sn('sAllMo',  rPMo  + rvPMo  + n28PMo);
+    // All combined period times
+    const _rTH = App.S.timerHistory || {}, _rvTH = App.S.timerHistoryRV || {}, _n28TH = App.S.timer28History || {};
+    const _allTodTime = (_rTH[App.S.tk] || 0) + (_rvTH[App.S.tk] || 0) + (_n28TH[App.S.tk] || 0);
+    const _allWkTime  = wk.reduce((s, k) => s + (_rTH[k] || 0) + (_rvTH[k] || 0) + (_n28TH[k] || 0), 0);
+    const _allMoKeys  = new Set([...Object.keys(_rTH), ...Object.keys(_rvTH), ...Object.keys(_n28TH)]);
+    const _allMoTime  = [..._allMoKeys].filter(k => k.startsWith(mp)).reduce((s, k) => s + (_rTH[k] || 0) + (_rvTH[k] || 0) + (_n28TH[k] || 0), 0);
+    const _allLtTime  = Object.values(_rTH).reduce((a, b) => a + b, 0)
+                      + Object.values(_rvTH).reduce((a, b) => a + b, 0)
+                      + Object.values(_n28TH).reduce((a, b) => a + b, 0);
+    const _st = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = fmtShort(v); };
+    _st('tAllTod', _allTodTime);
+    _st('tAllWk',  _allWkTime);
+    _st('tAllMo',  _allMoTime);
+    _st('tAllLt',  _allLtTime);
+  
   document.getElementById("sBest").textContent = best;
   const bars = document.getElementById("cbrs");
   bars.innerHTML = "";

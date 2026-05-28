@@ -2637,8 +2637,13 @@ function uStats() {
     if (!k.startsWith("prev_") && v > best) best = v;
   });
   const d2 = new Date();
-  // Active Streak: only counts consecutive days where daily target was hit
+  // Active Streak: consecutive days where daily target was hit.
+  // If today hasn't hit target yet, start walk from yesterday so an
+  // in-progress day doesn't break an otherwise-live streak.
   const _dailyTgt = (App.S.dt || 0) > 0 ? App.S.dt : 0;
+  if (_dailyTgt > 0 && (curHist[_ldk(d2)] || 0) < _dailyTgt) {
+    d2.setDate(d2.getDate() - 1);
+  }
   while (streak < 999 && _dailyTgt > 0) {
     const k = _ldk(d2);
     if ((curHist[k] || 0) >= _dailyTgt) {
@@ -2646,22 +2651,28 @@ function uStats() {
       d2.setDate(d2.getDate() - 1);
     } else break;
   }
-  // Conservative Days: all historical days where combined jap >= daily target
-  const hasDailyTgt = (App.S.dt || 0) > 0;
-  let conservDays = 0;
-  if (hasDailyTgt) {
-    Object.entries(curHist).forEach(([k, v]) => {
-      if (!k.startsWith("prev_") && v >= App.S.dt) conservDays++;
-    });
+  // Best Streak Ever: longest run of consecutive calendar days where jap >= target
+  let bestStreakEver = _dailyTgt > 0 ? streak : 0;
+  if (_dailyTgt > 0) {
+    const tgtDays = Object.entries(curHist)
+      .filter(([k, v]) => !k.startsWith("prev_") && v >= _dailyTgt)
+      .map(([k]) => k)
+      .sort();
+    let run = 0;
+    for (let i = 0; i < tgtDays.length; i++) {
+      if (i === 0) {
+        run = 1;
+      } else {
+        const diff = Math.round((new Date(tgtDays[i]) - new Date(tgtDays[i - 1])) / 86400000);
+        run = diff === 1 ? run + 1 : 1;
+      }
+      if (run > bestStreakEver) bestStreakEver = run;
+    }
   }
-  const sConserv = document.getElementById("sConserv");
-  const sConservSub = document.getElementById("sConservSub");
-  if (sConserv) sConserv.textContent = conservDays;
-  if (sConservSub) {
-    sConservSub.textContent = hasDailyTgt
-      ? "Days daily target (" + App.S.dt + " jap) was met"
-      : "Set a daily target to track";
-  }
+  const elBSE = document.getElementById("sBestStreakEver");
+  const elBSESub = document.getElementById("sBestStreakEverSub");
+  if (elBSE) elBSE.textContent = bestStreakEver;
+  if (elBSESub) elBSESub.textContent = _dailyTgt > 0 ? "Best ever consecutive target days" : "Set a daily target to track";
   document.getElementById("sTod").textContent = tod;
   document.getElementById("sTodM").textContent =
     Math.floor(tod / ms) + " malas";

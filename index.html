@@ -674,14 +674,14 @@
         <div class="sb wide non-gaudiya-stat" id="sbLtTime" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.12)"><div class="sv2" style="color:var(--gold)" id="sLtTime">0m 0s</div><div class="sl" style="color:var(--gold)">Lifetime Jap Time (Radha + RV + 28 Names)</div></div>
         <!-- Row 7: Last 7 days -->
         <div class="sb wide"><div class="sl" style="font-size:11px">Last 7 Days</div><div class="cbrs" id="cbrs"></div></div>
-        <!-- Row 8: streak + best (renamed) -->
+        <!-- Row 8: streak + best -->
         <div class="sb"><div class="sv2" id="sStr">0</div><div class="sl">🔥 Active Streak</div><div class="ss">Consecutive target days</div></div>
         <div class="sb"><div class="sv2" id="sBest">0</div><div class="sl">🏆 Personal Best</div><div class="ss">Top day jap</div></div>
-        <!-- Row 9: Conservative Days -->
-        <div class="sb wide non-gaudiya-stat" id="sbConservDays" style="background:rgba(245,209,122,0.06);border-color:rgba(245,209,122,0.30);box-shadow:inset 0 1px 0 rgba(255,255,255,0.05),0 2px 10px rgba(245,180,90,0.10)">
-          <div class="sv2" style="color:var(--gold)" id="sConserv">0</div>
-          <div class="sl" style="color:var(--gold);letter-spacing:1.5px">🎯 Conservative Days</div>
-          <div class="ss" id="sConservSub" style="color:var(--td)">Set a daily target to track</div>
+        <!-- Row 9: Best Streak Ever -->
+        <div class="sb wide non-gaudiya-stat" id="sbBestStreakEver" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.22)">
+          <div class="sv2" style="color:var(--gold)" id="sBestStreakEver">0</div>
+          <div class="sl" style="color:var(--gold);letter-spacing:1.5px">🏅 Best Consecutive Streak</div>
+          <div class="ss" id="sBestStreakEverSub" style="color:var(--td)">Best ever consecutive target days</div>
         </div>
         <!-- Hidden compatibility nodes for old wide JAP TIME blocks (kept so legacy IDs resolve) -->
         <span id="tTod" style="display:none"></span><span id="tWk" style="display:none"></span><span id="tMo" style="display:none"></span>
@@ -745,10 +745,10 @@
   </div>
 
   <!-- TODAY'S MALA SESSION LOG — collapsible -->
-  <div class="cs-wrap" style="background:rgba(46,204,113,0.04);border:1px solid rgba(46,204,113,0.18)">
+  <div class="cs-wrap csg">
     <div class="cs-header" onclick="toggleCs('malaLogBody','malaLogChev')">
-      <h3 style="color:var(--green)">📿 Today's Mala Log <span id="malaLogType" style="opacity:0.6;font-weight:400;font-size:10px;color:var(--gold)"></span> <span id="malaLogCount" style="opacity:0.6;font-weight:400;font-size:11px"></span> <span id="malaLogInline" style="opacity:0.7;font-weight:400;font-size:10px;color:var(--gold);margin-left:4px"></span></h3>
-      <span class="cs-chevron" id="malaLogChev" style="color:var(--green)">▾</span>
+      <h3 style="color:var(--gold)">📿 Today's Mala Log <span id="malaLogType" style="opacity:0.6;font-weight:400;font-size:10px;color:var(--gold)"></span> <span id="malaLogCount" style="opacity:0.6;font-weight:400;font-size:11px"></span> <span id="malaLogInline" style="opacity:0.7;font-weight:400;font-size:10px;color:var(--gold);margin-left:4px"></span></h3>
+      <span class="cs-chevron" id="malaLogChev" style="color:var(--gold)">▾</span>
     </div>
     <div class="cs-body open" id="malaLogBody">
       <div id="malaLogAvg" style="font-size:11px;color:var(--td);margin-bottom:6px;text-align:center;display:none"></div>
@@ -758,11 +758,11 @@
     </div>
   </div>
 
-  <!-- ADD / DEDUCT JAP MANUALLY — merged collapsible, copper theme -->
-  <div class="cs-wrap" style="border:1px solid rgba(196,120,46,0.35);background:linear-gradient(180deg,rgba(196,120,46,0.09),rgba(140,70,15,0.04))">
+  <!-- ADD / DEDUCT JAP MANUALLY — merged collapsible, gold theme -->
+  <div class="cs-wrap csg">
     <div class="cs-header" onclick="toggleCs('addDeductBody','addDeductChev')">
-      <h3 style="color:#C87534">➕ Add ／ ✂️ Deduct Jap Manually</h3>
-      <span class="cs-chevron" id="addDeductChev" style="color:#C87534">▾</span>
+      <h3 style="color:var(--gold)">➕ Add ／ ✂️ Deduct Jap Manually</h3>
+      <span class="cs-chevron" id="addDeductChev" style="color:var(--gold)">▾</span>
     </div>
     <div class="cs-body" id="addDeductBody">
 
@@ -928,8 +928,8 @@
   <!-- Reset section — collapsible (last) -->
   <div class="rs">
     <div class="cs-header" onclick="toggleCs('resetBody','resetChev')" style="padding:13px 16px">
-      <h3 style="color:#C87534;margin:0;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600">🔄 Reset Data</h3>
-      <span class="cs-chevron" id="resetChev" style="color:#C87534">▾</span>
+      <h3 style="color:var(--gold);margin:0;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600">🔄 Reset Data</h3>
+      <span class="cs-chevron" id="resetChev" style="color:var(--gold)">▾</span>
     </div>
     <div class="cs-body" id="resetBody">
       <div style="font-size:11px;color:var(--td);margin-bottom:10px;letter-spacing:1px">Choose what to permanently delete. A confirmation will appear before anything is removed.</div>

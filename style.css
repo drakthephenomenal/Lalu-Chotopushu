@@ -166,63 +166,45 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .fu{color:var(--td);font-size:12px;min-width:55px;}
 .fn2{font-size:11px;color:var(--td);margin-bottom:6px;}
 /* ── Premium Copper-Plated Buttons (.pb) ── */
+/* ── Premium Gold-Plated Action Buttons (.pb) ── */
 .pb{position:relative;width:100%;padding:15px 18px;
   background:
-    radial-gradient(120% 80% at 50% -20%, rgba(240,160,80,0.28), transparent 58%),
-    linear-gradient(180deg,#2C1608 0%,#180D05 100%);
-  border:1px solid rgba(196,120,46,0.50);
+    radial-gradient(120% 80% at 50% -20%, rgba(255,235,80,0.26), transparent 58%),
+    linear-gradient(180deg,#1C1600 0%,#0D0A00 100%);
+  border:1px solid rgba(255,215,0,0.48);
   border-radius:14px;
-  color:#F2C898;font-size:13.5px;font-weight:600;cursor:pointer;
+  color:#F5D060;font-size:13.5px;font-weight:600;cursor:pointer;
   font-family:'Inter',sans-serif;margin-top:6px;letter-spacing:0.6px;
-  text-shadow:0 1px 2px rgba(0,0,0,0.75), 0 0 14px rgba(196,120,46,0.35);
+  text-shadow:0 1px 2px rgba(0,0,0,0.80), 0 0 14px rgba(255,215,0,0.28);
   box-shadow:
-    inset 0 1px 0 rgba(245,185,100,0.30),
+    inset 0 1px 0 rgba(255,240,100,0.32),
     inset 0 -1px 0 rgba(0,0,0,0.65),
-    0 0 0 1px rgba(90,40,8,0.45),
+    0 0 0 1px rgba(80,60,0,0.45),
     0 8px 22px -8px rgba(0,0,0,0.85),
-    0 2px 14px rgba(150,75,20,0.30);
+    0 2px 14px rgba(200,170,0,0.22);
   transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease, filter .2s ease;
   overflow:hidden;isolation:isolate;}
 .pb::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
-  background:linear-gradient(180deg,rgba(245,185,90,0.22) 0%,rgba(245,185,90,0) 42%,rgba(0,0,0,0) 65%,rgba(0,0,0,0.25) 100%);
+  background:linear-gradient(180deg,rgba(255,240,100,0.22) 0%,rgba(255,240,100,0) 42%,rgba(0,0,0,0) 65%,rgba(0,0,0,0.25) 100%);
   mix-blend-mode:overlay;}
 .pb::after{content:"";position:absolute;left:-60%;top:0;height:100%;width:55%;
-  background:linear-gradient(110deg,transparent 0%,rgba(245,185,90,0.22) 50%,transparent 100%);
+  background:linear-gradient(110deg,transparent 0%,rgba(255,235,100,0.22) 50%,transparent 100%);
   transform:skewX(-18deg);transition:left .55s ease;pointer-events:none;}
-.pb:hover{border-color:rgba(220,148,68,0.75);filter:brightness(1.12);
+.pb:hover{border-color:rgba(255,215,0,0.78);filter:brightness(1.12);
   box-shadow:
-    inset 0 1px 0 rgba(245,185,100,0.42),
+    inset 0 1px 0 rgba(255,240,100,0.45),
     inset 0 -1px 0 rgba(0,0,0,0.65),
-    0 0 0 1px rgba(140,65,12,0.50),
+    0 0 0 1px rgba(120,95,0,0.50),
     0 12px 28px -10px rgba(0,0,0,0.90),
-    0 2px 16px rgba(185,95,22,0.42);}
+    0 2px 16px rgba(220,190,0,0.35);}
 .pb:hover::after{left:120%;}
 .pb:active{transform:translateY(1px) scale(0.992);
   box-shadow:
     inset 0 2px 6px rgba(0,0,0,0.80),
-    inset 0 -1px 0 rgba(245,160,70,0.10),
+    inset 0 -1px 0 rgba(255,215,0,0.10),
     0 2px 6px rgba(0,0,0,0.45);}
 
-.pb.add{color:#F2C898;
-  background:
-    radial-gradient(120% 80% at 50% -20%, rgba(240,160,80,0.28), transparent 58%),
-    linear-gradient(180deg,#2C1608 0%,#180D05 100%);
-  border-color:rgba(196,120,46,0.50);}
-.pb.add:hover{border-color:rgba(220,148,68,0.75);}
-
-.pb.deduct{color:#F2C898;
-  background:
-    radial-gradient(120% 80% at 50% -20%, rgba(240,160,80,0.28), transparent 58%),
-    linear-gradient(180deg,#2C1608 0%,#180D05 100%);
-  border-color:rgba(196,120,46,0.50);}
-.pb.deduct:hover{border-color:rgba(220,148,68,0.75);}
-
-.pb.deep{color:#F2C898;
-  background:
-    radial-gradient(120% 80% at 50% -20%, rgba(240,160,80,0.28), transparent 58%),
-    linear-gradient(180deg,#2C1608 0%,#180D05 100%);
-  border-color:rgba(196,120,46,0.50);}
-.pb.deep:hover{border-color:rgba(220,148,68,0.75);}
+.pb.add,.pb.deduct,.pb.deep{color:#F5D060;}
 .cv{font-size:11px;color:var(--td);margin-top:6px;text-align:center;}
 
 /* STATS VIEW */
@@ -244,48 +226,54 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .cbc{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;}
 .cbb{width:100%;border-radius:3px 3px 0 0;background:linear-gradient(180deg,var(--a2),var(--bg));min-height:2px;}
 .cbl{font-size:8px;color:var(--td);}
-.rs{background:linear-gradient(180deg,rgba(196,120,46,0.10),rgba(140,70,15,0.04));
-  border:1px solid rgba(196,120,46,0.35);border-radius:20px;padding:0;margin-top:14px;overflow:hidden;
-  box-shadow:0 8px 28px -16px rgba(196,120,46,0.35), inset 0 1px 0 rgba(245,185,90,0.08);}
-.rs h3{font-size:11px;color:#C87534;margin-bottom:12px;letter-spacing:2px;text-transform:uppercase;font-weight:600;}
-/* ── Premium Copper-Plated Reset Buttons (.rb) ── */
-.rb{position:relative;width:100%;padding:16px 18px;border-radius:14px;
-  border:1px solid rgba(196,120,46,0.50);
+/* ── Premium Gold-Plated Section Wrappers (.csg) ── */
+.csg{
+  border:1px solid rgba(255,215,0,0.40) !important;
   background:
-    radial-gradient(120% 80% at 50% -20%, rgba(240,160,80,0.28), transparent 58%),
-    linear-gradient(180deg,#2C1608 0%,#180D05 100%);
-  color:#F2C898;font-size:13.5px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:10px;
+    radial-gradient(110% 55% at 50% 0%, rgba(255,215,0,0.09), transparent 65%),
+    linear-gradient(180deg,rgba(255,215,0,0.05) 0%,transparent 100%) !important;
+  box-shadow:0 6px 24px -12px rgba(255,215,0,0.20), inset 0 1px 0 rgba(255,240,100,0.10) !important;}
+.csg > .cs-header h3,.csg > div > .cs-header h3{color:var(--gold) !important;}
+.csg > .cs-header .cs-chevron{color:var(--gold) !important;}
+/* ── Gold-Plated Reset Section (.rs) ── */
+.rs{background:linear-gradient(180deg,rgba(255,215,0,0.08),rgba(200,170,0,0.03));
+  border:1px solid rgba(255,215,0,0.38);border-radius:20px;padding:0;margin-top:14px;overflow:hidden;
+  box-shadow:0 8px 28px -16px rgba(255,215,0,0.25), inset 0 1px 0 rgba(255,240,100,0.10);}
+.rs h3{font-size:11px;color:var(--gold);margin-bottom:12px;letter-spacing:2px;text-transform:uppercase;font-weight:600;}
+/* ── Premium Gold-Plated Reset Buttons (.rb) ── */
+.rb{position:relative;width:100%;padding:16px 18px;border-radius:14px;
+  border:1px solid rgba(255,215,0,0.48);
+  background:
+    radial-gradient(120% 80% at 50% -20%, rgba(255,235,80,0.26), transparent 58%),
+    linear-gradient(180deg,#1C1600 0%,#0D0A00 100%);
+  color:#F5D060;font-size:13.5px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:10px;
   text-align:left;display:flex;align-items:center;gap:11px;letter-spacing:0.6px;
-  text-shadow:0 1px 2px rgba(0,0,0,0.75), 0 0 14px rgba(196,120,46,0.35);
+  text-shadow:0 1px 2px rgba(0,0,0,0.80), 0 0 14px rgba(255,215,0,0.28);
   transition:transform .15s ease, border-color .2s ease, box-shadow .2s ease, filter .2s ease;
   box-shadow:
-    inset 0 1px 0 rgba(245,185,100,0.30),
+    inset 0 1px 0 rgba(255,240,100,0.32),
     inset 0 -1px 0 rgba(0,0,0,0.65),
-    0 0 0 1px rgba(90,40,8,0.45),
+    0 0 0 1px rgba(80,60,0,0.45),
     0 8px 22px -8px rgba(0,0,0,0.85),
-    0 2px 14px rgba(150,75,20,0.30);
+    0 2px 14px rgba(200,170,0,0.22);
   overflow:hidden;isolation:isolate;}
 .rb::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
-  background:linear-gradient(180deg,rgba(245,185,90,0.22) 0%,rgba(245,185,90,0) 42%,rgba(0,0,0,0) 65%,rgba(0,0,0,0.25) 100%);
+  background:linear-gradient(180deg,rgba(255,240,100,0.22) 0%,rgba(255,240,100,0) 42%,rgba(0,0,0,0) 65%,rgba(0,0,0,0.25) 100%);
   mix-blend-mode:overlay;}
 .rb::after{content:"";position:absolute;left:-60%;top:0;height:100%;width:55%;
-  background:linear-gradient(110deg,transparent 0%,rgba(245,185,90,0.22) 50%,transparent 100%);
+  background:linear-gradient(110deg,transparent 0%,rgba(255,235,100,0.22) 50%,transparent 100%);
   transform:skewX(-18deg);transition:left .55s ease;pointer-events:none;}
-.rb:hover{border-color:rgba(220,148,68,0.75);filter:brightness(1.12);
+.rb:hover{border-color:rgba(255,215,0,0.78);filter:brightness(1.12);
   box-shadow:
-    inset 0 1px 0 rgba(245,185,100,0.42),
+    inset 0 1px 0 rgba(255,240,100,0.45),
     inset 0 -1px 0 rgba(0,0,0,0.65),
-    0 0 0 1px rgba(140,65,12,0.50),
+    0 0 0 1px rgba(120,95,0,0.50),
     0 12px 28px -10px rgba(0,0,0,0.90),
-    0 2px 16px rgba(185,95,22,0.42);}
+    0 2px 16px rgba(220,190,0,0.35);}
 .rb:hover::after{left:120%;}
 .rb:active{transform:translateY(1px) scale(0.992);
   box-shadow:inset 0 2px 6px rgba(0,0,0,0.80), 0 2px 6px rgba(0,0,0,0.45);}
-.rb.red{color:#F2C898;border-color:rgba(196,120,46,0.50);
-  background:
-    radial-gradient(120% 80% at 50% -20%, rgba(240,160,80,0.28), transparent 58%),
-    linear-gradient(180deg,#2C1608 0%,#180D05 100%);}
-.rb.red:hover{border-color:rgba(220,148,68,0.75);}
+.rb.red{color:#F5D060;}
 .drr{display:flex;gap:8px;margin-bottom:8px;}
 .di{flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(124,143,224,0.25);border-radius:9px;
   padding:7px 9px;color:var(--tl);font-size:12px;font-family:'Inter',sans-serif;}

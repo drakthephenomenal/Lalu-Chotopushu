@@ -5184,20 +5184,20 @@ function u28() {
       const newName = get28Name(entry);
       const oldName = nameEl.textContent;
       if (oldName && oldName !== newName) {
-        // Exit: slide current name upward and fade out
-        nameEl.style.animation = "nameOut 0.28s ease-in forwards";
-        if (meanEl) meanEl.style.transition = "opacity 0.2s";
+        // Exit: slow upward glide that ends at the upper border of the box
+        nameEl.style.animation = "nameOut 1.1s cubic-bezier(0.22,0.61,0.36,1) forwards";
+        if (meanEl) meanEl.style.transition = "opacity 0.6s";
         if (meanEl) meanEl.style.opacity = "0";
         setTimeout(() => {
           nameEl.textContent = newName;
           nameEl.style.animation = "none";
           nameEl.offsetHeight;
-          nameEl.style.animation = "nameIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards";
+          nameEl.style.animation = "nameIn 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards";
           if (meanEl) {
             meanEl.textContent = entry.meaning;
             meanEl.style.opacity = "0.85";
           }
-        }, 260);
+        }, 1050);
       } else {
         nameEl.style.animation = "none";
         nameEl.offsetHeight;

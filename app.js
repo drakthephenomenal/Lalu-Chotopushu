@@ -1021,15 +1021,9 @@ const App = {
     this.tapTimer();
     // Re-arm 6s auto-pause on every tap
     this._arm28AutoPause();
+    spawnName28(e, get28Name(NAMES28[posBefore]));
     if (this.S.h28[this.S.tk] % 28 === 0) cycleDone28();
-    // Animate current name exiting upward, then show new name
-    var _nameEl28 = document.getElementById('n28name');
-    if (_nameEl28) {
-      _nameEl28.style.animation = 'none';
-      void _nameEl28.offsetHeight;
-      _nameEl28.style.animation = 'nameOut28 0.28s ease-out forwards';
-    }
-    setTimeout(function() { u28(); }, 260);
+    u28();
   },
 
   undo28() {
@@ -3293,10 +3287,8 @@ function cr2(tp) {
   const t = document.getElementById("moT"),
     d = document.getElementById("moD");
   if (tp === "28today") {
-    const _28tSecs = App.S.timer28History[App.S.tk] || 0;
-    const _28tMin = Math.floor(_28tSecs / 60), _28tSec = _28tSecs % 60;
     t.textContent = "Reset 28 Names Today?";
-    d.textContent = "Clear today's " + (App.S.h28[App.S.tk] || 0) + " count" + (_28tSecs > 0 ? " and " + _28tMin + "m " + _28tSec + "s of recorded time" : "") + ".";
+    d.textContent = "Clear today's " + (App.S.h28[App.S.tk] || 0) + " count.";
   } else if (tp === "28all") {
     t.textContent = "⚠️ Reset All 28 Names Data?";
     d.textContent = "All 28 Names counts and time will be permanently deleted.";
@@ -10418,25 +10410,21 @@ function showHistDay(tk) {
   detail.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
   const ms = App.S.ms || 108;
-  const isGaudiya = App.S.gaudiyaMode || false;
   const radha = App.S.history[tk] || 0;
   const rv = App.S.historyRV[tk] || 0;
-  const hk = (App.S.historyHK || {})[tk] || 0;
   const taps28 = App.S.h28[tk] || 0;
   const tSecR = App.S.timerHistory[tk] || 0;
   const tSecRV = App.S.timerHistoryRV[tk] || 0;
-  const tSecHK = (App.S.timerHistoryHK || {})[tk] || 0;
   const t28Sec = App.S.timer28History[tk] || 0;
 
   const radhaM = Math.floor(radha / ms);
   const rvM = Math.floor(rv / ms);
-  const hkM = Math.floor(hk / ms);
   const cyc28 = Math.floor(taps28 / 28);
-  const grand = isGaudiya ? tSecHK + t28Sec : tSecR + tSecRV + t28Sec;
+  const grand = tSecR + tSecRV + t28Sec;
   const fmtN = (n) => n.toLocaleString();
 
   // Stash data for the per-set drill-down
-  window._histDayCtx = { tk, isToday: tk === App.S.tk, isGaudiya };
+  window._histDayCtx = { tk, isToday: tk === App.S.tk };
 
   // Build clickable per-set cards (premium style, same as Period Totals)
   const card = (cls, set, label, mainNum, mainUnit, sub, time, enabled) => `
@@ -10452,16 +10440,10 @@ function showHistDay(tk) {
 
   let html = '';
   html += `<div class="pt-head" style="margin-top:2px"><span class="pt-head-icon">📊</span><span class="pt-head-title">Day Totals</span><span class="pt-head-hint">tap a set for per-mala detail</span></div>`;
-  if (isGaudiya) {
-    html += `<div class="pt-grid pt-grid-2">`;
-    html += card('pt-hk',  'hk',  'HK Mahamantra', hkM,   hkM === 1 ? 'mala' : 'malas',    fmtN(hk) + ' names',    _histFmtSec(tSecHK),  hk > 0);
-    html += card('pt-28',  '28',  '28 Names',      cyc28,  cyc28 === 1 ? 'cycle' : 'cycles', fmtN(taps28) + ' taps', _histFmtSec(t28Sec), taps28 > 0);
-  } else {
-    html += `<div class="pt-grid pt-grid-3">`;
-    html += card('pt-radha', 'radha', 'Radha Jap', radhaM, radhaM === 1 ? 'mala' : 'malas', fmtN(radha) + ' names', _histFmtSec(tSecR),   radha > 0);
-    html += card('pt-rv',    'rv',    'RV Jap',    rvM,    rvM === 1 ? 'mala' : 'malas',    fmtN(rv) + ' names',    _histFmtSec(tSecRV),  rv > 0);
-    html += card('pt-28',    '28',    '28 Names',  cyc28,  cyc28 === 1 ? 'cycle' : 'cycles', fmtN(taps28) + ' taps', _histFmtSec(t28Sec), taps28 > 0);
-  }
+  html += `<div class="pt-grid pt-grid-3">`;
+  html += card('pt-radha', 'radha', 'Radha Jap', radhaM, radhaM === 1 ? 'mala' : 'malas', fmtN(radha) + ' names', _histFmtSec(tSecR), radha > 0);
+  html += card('pt-rv',    'rv',    'RV Jap',    rvM,    rvM === 1 ? 'mala' : 'malas',    fmtN(rv) + ' names',    _histFmtSec(tSecRV), rv > 0);
+  html += card('pt-28',    '28',    '28 Names',  cyc28,  cyc28 === 1 ? 'cycle' : 'cycles', fmtN(taps28) + ' taps', _histFmtSec(t28Sec), taps28 > 0);
   html += `</div>`;
   html += `<div class="pt-total"><span class="pt-total-label">Total Time</span><span class="pt-total-val">${_histFmtSec(grand)}</span></div>`;
 
@@ -10474,7 +10456,7 @@ function showHistDay(tk) {
 function showHistSet(set) {
   const ctx = window._histDayCtx;
   if (!ctx) return;
-  const { tk, isToday, isGaudiya } = ctx;
+  const { tk, isToday } = ctx;
   const slot = document.getElementById("histSetDetail");
   if (!slot) return;
 
@@ -10484,17 +10466,7 @@ function showHistSet(set) {
   let inner = '';
   const backBtn = `<button class="hist-back-btn" onclick="document.getElementById('histSetDetail').innerHTML=''">‹ Back to Day Totals</button>`;
 
-  if (set === 'hk') {
-    const hkEntries = log.filter(e => e.t === 'mala' && e.mode === 'hk' && _ldk(new Date(e.ts)) === tkPrefix);
-    inner += backBtn;
-    if (hkEntries.length > 0) {
-      inner += _histMalaTable("🔵 HK Mahamantra — Per Mala", hkEntries, "var(--a2)");
-    } else if (isToday && (App.S.malaLogHK || []).length > 0) {
-      inner += _histTodayMalaLogTable("🔵 HK Mahamantra — Today's Malas", App.S.malaLogHK, "var(--a2)");
-    } else {
-      inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-mala detail not available for this date<br><span style="font-size:10px">(activity log only keeps recent sessions)</span></div>`;
-    }
-  } else if (set === 'radha') {
+  if (set === 'radha') {
     const radhaEntries = log.filter(e => e.t === 'mala' && e.mode !== 'rv' && _ldk(new Date(e.ts)) === tkPrefix);
     inner += backBtn;
     if (radhaEntries.length > 0) {
@@ -11286,88 +11258,3 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
     init();
   }
 })();
-
-// ═══════════════════════════════════════════════════════
-// 28 NAMES: ADD / DEDUCT NAMES COUNT
-// ═══════════════════════════════════════════════════════
-var _adj28Scope = 'today';
-
-function set28AdjScope(scope) {
-  _adj28Scope = scope;
-  ['Today','Other','Life'].forEach(function(s) {
-    var btn = document.getElementById('adj28Scope' + s);
-    if (btn) btn.classList.remove('active');
-  });
-  var key = scope === 'today' ? 'Today' : scope === 'other' ? 'Other' : 'Life';
-  var active = document.getElementById('adj28Scope' + key);
-  if (active) active.classList.add('active');
-  var dateRow = document.getElementById('adj28DateRow');
-  if (dateRow) dateRow.style.display = scope === 'other' ? 'block' : 'none';
-}
-
-function adjNamesCount(sign) {
-  var n = parseInt((document.getElementById('adj28CountVal') || {}).value) || 0;
-  var m = parseInt((document.getElementById('adj28TimeMin') || {}).value) || 0;
-  var s = parseInt((document.getElementById('adj28TimeSec') || {}).value) || 0;
-  var timeSecs = m * 60 + Math.min(59, Math.max(0, s));
-
-  if (n < 1) { toast('Enter a count'); return; }
-
-  var tk = App.S.tk;
-  var isLifetime = _adj28Scope === 'lifetime';
-
-  if (_adj28Scope === 'other') {
-    var dateVal = (document.getElementById('adj28Date') || {}).value;
-    if (!dateVal) { toast('Select a date'); return; }
-    tk = dateVal;
-  }
-
-  // Freeze active wishes before touching h28
-  (App.S.sankalpas || []).filter(function(sw) {
-    return !sw.done && sw.startCycles !== null;
-  }).forEach(function(sw) {
-    sw._savedProgress = (sw._savedProgress || 0) + Math.max(0, getTotalCycles28() - sw.startCycles);
-    sw.startCycles = getTotalCycles28();
-  });
-
-  if (sign > 0) {
-    if (!App.S.h28[tk]) App.S.h28[tk] = 0;
-    App.S.h28[tk] += n;
-    if (timeSecs > 0) App.S.timer28History[tk] = (App.S.timer28History[tk] || 0) + timeSecs;
-  } else {
-    var dayCount = App.S.h28[tk] || 0;
-    if (isLifetime) {
-      var totalCount = Object.values(App.S.h28).reduce(function(a, b) { return a + b; }, 0);
-      if (n > totalCount) { toast('Cannot deduct more than lifetime total'); return; }
-    } else {
-      if (n > dayCount) { toast('Cannot deduct more than that day\'s count'); return; }
-    }
-    App.S.h28[tk] = Math.max(0, (App.S.h28[tk] || 0) - n);
-    if (timeSecs > 0) {
-      var dayTime = App.S.timer28History[tk] || 0;
-      if (timeSecs > dayTime) { toast('Cannot deduct more time than recorded for that day'); return; }
-      App.S.timer28History[tk] = Math.max(0, dayTime - timeSecs);
-    }
-  }
-
-  // Rebase wishes to updated total
-  (App.S.sankalpas || []).filter(function(sw) {
-    return !sw.done && sw.startCycles !== null;
-  }).forEach(function(sw) {
-    sw.startCycles = getTotalCycles28();
-  });
-
-  // Clear inputs
-  ['adj28CountVal','adj28TimeMin','adj28TimeSec'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-
-  render28StatsPanel();
-  u28();
-  uStats();
-  renderSankalpas();
-  App.save();
-  fbDebouncedPush();
-  toast((sign > 0 ? 'Added ' : 'Deducted ') + n + ' names \uD83D\uDE4F');
-}

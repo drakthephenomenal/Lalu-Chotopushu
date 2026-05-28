@@ -306,6 +306,8 @@
         <div class="mf-line1">Radha Vallabh</div>
         <div class="mf-line2">Sri Harivangsa</div>
       </div>
+      <!-- Sanskrit Radha at top inside tap area -->
+      <div style="position:absolute;top:14px;left:0;right:0;text-align:center;font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif;font-size:clamp(13px,3.5vw,18px);color:rgba(255,215,0,0.55);letter-spacing:3px;pointer-events:none;">राधा</div>
       <div class="n28name" id="n28name">রাধা</div>
       <div class="n28meaning" id="n28meaning">The Supreme Beloved</div>
       <div class="n28timer-box" style="position:absolute;top:10px;right:12px;z-index:5">
@@ -328,31 +330,29 @@
     <!-- 28 NAMES STATS PANEL -->
     <div id="n28StatsPanel" style="display:none;margin-top:10px">
 
-      <!-- a) Add / Deduct 28 Names Count -->
+      <!-- a) Cycle Counts -->
       <div class="n28sp-section">
-        <div class="n28sp-title">✏️ Adjust 28 Names Count</div>
-        <!-- Scope selector -->
-        <div style="display:flex;gap:6px;margin-bottom:10px">
-          <button class="n28adj-scope active" id="adj28ScopeToday" onclick="set28AdjScope('today')">Today</button>
-          <button class="n28adj-scope" id="adj28ScopeOther" onclick="set28AdjScope('other')">Other Day</button>
-          <button class="n28adj-scope" id="adj28ScopeLife" onclick="set28AdjScope('lifetime')">Lifetime</button>
+        <div class="n28sp-title">🔄 Cycle Counts</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px">
+          <div class="ns"><div class="nv" id="sp28CyclesTod" style="font-size:18px">0</div><div class="nl">Today</div></div>
+          <div class="ns"><div class="nv" id="sp28CyclesAll" style="font-size:18px">0</div><div class="nl">All Time</div></div>
         </div>
-        <!-- Date picker for "other day" -->
-        <div id="adj28DateRow" style="display:none;margin-bottom:8px">
-          <input type="date" id="adj28Date" class="n28sp-in" style="width:100%;box-sizing:border-box">
+      </div>
+
+      <!-- b) Cycle Time -->
+      <div class="n28sp-section">
+        <div class="n28sp-title">⏱ 28 Names Time</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div class="ns"><div class="nv" id="sp28TimeTod" style="font-size:18px">0m</div><div class="nl">Today</div></div>
+          <div class="ns"><div class="nv" id="sp28TimeAll" style="font-size:18px">0m</div><div class="nl">All Time</div></div>
         </div>
-        <!-- Count input + add/deduct -->
-        <div class="n28sp-row" style="margin-bottom:6px">
-          <input type="number" class="n28sp-in" id="adj28CountVal" min="1" placeholder="Count" style="flex:1;min-width:60px">
-          <button class="n28sp-btn add" onclick="adjNamesCount(1)">＋ Add</button>
-          <button class="n28sp-btn ded" onclick="adjNamesCount(-1)">－ Deduct</button>
-        </div>
-        <!-- Optional time -->
-        <div style="font-size:9px;color:var(--td);margin:4px 0 4px;letter-spacing:1px;text-transform:uppercase">Optional: also adjust time</div>
         <div class="n28sp-row">
-          <input type="number" class="n28sp-in" id="adj28TimeMin" min="0" placeholder="Min" style="width:56px">
-          <input type="number" class="n28sp-in" id="adj28TimeSec" min="0" max="59" placeholder="Sec" style="width:56px">
+          <input type="number" class="n28sp-in" id="sp28TimeMin" min="0" placeholder="Min" style="width:56px" oninput="prev28Time()">
+          <input type="number" class="n28sp-in" id="sp28TimeSec" min="0" max="59" placeholder="Sec" style="width:56px" oninput="prev28Time()">
+          <button class="n28sp-btn add" onclick="adj28Time(1)">＋ Add</button>
+          <button class="n28sp-btn ded" onclick="adj28Time(-1)">－ Deduct</button>
         </div>
+        <div style="font-size:10px;color:var(--td);margin-top:4px"><span id="sp28TimePreview" style="color:var(--a2)"></span></div>
       </div>
 
       <!-- d) Reset Options -->
@@ -360,6 +360,8 @@
         <div class="n28sp-title" style="color:var(--rl)">↺ Reset Options</div>
         <div style="display:flex;flex-direction:column;gap:7px">
           <button class="n28sp-reset-btn" onclick="cr2('28today')">Reset Today's Count</button>
+          <button class="n28sp-reset-btn" onclick="reset28Time('today')">Reset Today's Time</button>
+          <button class="n28sp-reset-btn" onclick="reset28Time('all')">Reset All Time (Time only)</button>
           <button class="n28sp-reset-btn" style="border-color:rgba(232,51,109,0.5);color:var(--rl)" onclick="cr2('28all')">Reset All 28 Names Data</button>
         </div>
       </div>

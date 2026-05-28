@@ -2652,7 +2652,7 @@ function uStats() {
     } else break;
   }
   // Best Streak Ever: longest run of consecutive calendar days where jap >= target
-  let bestStreakEver = _dailyTgt > 0 ? streak : 0;
+  let bestStreakEver = 0;
   if (_dailyTgt > 0) {
     const tgtDays = Object.entries(curHist)
       .filter(([k, v]) => !k.startsWith("prev_") && v >= _dailyTgt)
@@ -2669,6 +2669,8 @@ function uStats() {
       if (run > bestStreakEver) bestStreakEver = run;
     }
   }
+  // Always ensure the active streak is reflected as best streak when it exceeds historical best
+  if (_dailyTgt > 0) bestStreakEver = Math.max(bestStreakEver, streak);
   const elBSE = document.getElementById("sBestStreakEver");
   const elBSESub = document.getElementById("sBestStreakEverSub");
   if (elBSE) elBSE.textContent = bestStreakEver;

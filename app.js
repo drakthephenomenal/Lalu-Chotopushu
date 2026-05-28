@@ -2175,10 +2175,15 @@ function addPrevJap() {
   } else {
     App.S.history[prevKey] = n;
   }
+  // Clear input BEFORE re-render so the live preview resets to "—"
+  document.getElementById("prevJapIn").value = "";
+  const _pml = document.getElementById("prevMalaPreview");
+  if (_pml) _pml.textContent = "0";
+  const _plp = document.getElementById("prevLifetimePreview");
+  if (_plp) _plp.textContent = "—";
   App.save();
   App.ua();
   fbDebouncedPush();
-  document.getElementById("prevJapIn").value = "";
   toast("Added " + n.toLocaleString() + " jap to lifetime! 🙏 Jai Radhe!");
 }
 

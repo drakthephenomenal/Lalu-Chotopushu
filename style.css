@@ -2009,3 +2009,23 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 .hist-back-btn{display:inline-flex;align-items:center;gap:4px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);color:var(--gold);font-family:Inter,sans-serif;font-size:11px;font-weight:600;letter-spacing:.5px;padding:6px 12px;border-radius:8px;cursor:pointer;margin-bottom:10px;transition:background .15s ease,border-color .15s ease}
 .hist-back-btn:hover{background:rgba(255,215,0,0.15);border-color:rgba(255,215,0,0.45)}
 .hist-back-btn:active{transform:translateY(1px)}
+
+/* ── User request: ONLY the Daily target box gets dark-blue Bold 3D text. 108 stays yellow. ── */
+#vj .ps .pc:first-child .pl,
+#vj .ps .pc:first-child .pd,
+#vj #dPct,
+#vj #dbarDone,
+#vj #dbarTarget,
+#vj #dDet {
+  color: #1e3a8a !important;
+  font-weight: 800 !important;
+  opacity: 1 !important;
+  filter: none !important;
+  text-shadow:
+    1px 1px 0 #2547a8,
+    2px 2px 0 #1a3270,
+    3px 3px 0 #122352,
+    4px 4px 6px rgba(0,0,0,0.55),
+    0 0 8px rgba(120,160,255,0.35) !important;
+  letter-spacing: 0.5px;
+}

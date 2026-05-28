@@ -5184,20 +5184,42 @@ function u28() {
       const newName = get28Name(entry);
       const oldName = nameEl.textContent;
       if (oldName && oldName !== newName) {
-        // Exit: slow upward glide that ends at the upper border of the box
-        nameEl.style.animation = "nameOut 1.1s cubic-bezier(0.22,0.61,0.36,1) forwards";
-        if (meanEl) meanEl.style.transition = "opacity 0.6s";
-        if (meanEl) meanEl.style.opacity = "0";
-        setTimeout(() => {
-          nameEl.textContent = newName;
-          nameEl.style.animation = "none";
-          nameEl.offsetHeight;
-          nameEl.style.animation = "nameIn 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards";
-          if (meanEl) {
-            meanEl.textContent = entry.meaning;
-            meanEl.style.opacity = "0.85";
+        // Clone the current name and let the clone slowly drift out;
+        // the real element flips to the new name IMMEDIATELY so it appears at once.
+        // Multiple clones can queue and animate out in parallel.
+        try {
+          const parent = nameEl.parentNode;
+          if (parent) {
+            const ghost = nameEl.cloneNode(true);
+            ghost.removeAttribute("id");
+            // Position the ghost in the same spot as the live name
+            const cs = window.getComputedStyle(nameEl);
+            ghost.style.position = "absolute";
+            ghost.style.left = nameEl.offsetLeft + "px";
+            ghost.style.top = nameEl.offsetTop + "px";
+            ghost.style.width = nameEl.offsetWidth + "px";
+            ghost.style.height = nameEl.offsetHeight + "px";
+            ghost.style.margin = "0";
+            ghost.style.pointerEvents = "none";
+            ghost.style.zIndex = "5";
+            ghost.style.animation = "nameOut 2.2s cubic-bezier(0.22,0.61,0.36,1) forwards";
+            // Ensure parent can host absolutely positioned child
+            const pp = window.getComputedStyle(parent).position;
+            if (pp === "static") parent.style.position = "relative";
+            parent.appendChild(ghost);
+            setTimeout(() => { try { ghost.remove(); } catch (_) {} }, 2400);
           }
-        }, 1050);
+        } catch (_) {}
+        // New name appears immediately with a quick pop-in
+        nameEl.style.animation = "none";
+        nameEl.offsetHeight;
+        nameEl.textContent = newName;
+        nameEl.style.animation = "nameIn 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards";
+        if (meanEl) {
+          meanEl.style.transition = "opacity 0.25s";
+          meanEl.textContent = entry.meaning;
+          meanEl.style.opacity = "0.85";
+        }
       } else {
         nameEl.style.animation = "none";
         nameEl.offsetHeight;

@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="88">
+<meta name="app-version" content="89">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -23,8 +23,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<link rel="stylesheet" href="./style.css?v=88">
-  <link rel="stylesheet" href="./style-stotram.css?v=88">
+<link rel="stylesheet" href="./style.css?v=89">
+  <link rel="stylesheet" href="./style-stotram.css?v=89">
 </head>
 <body>
 <!-- LOADING -->
@@ -717,13 +717,16 @@
           <input type="date" class="di" id="histTo" style="border-color:rgba(255,215,0,0.25)" onchange="histRangeChanged()">
         </div>
         <div style="display:flex;gap:6px;margin-bottom:4px;flex-wrap:wrap" id="histPresetRow">
-          <button class="hpb" data-preset="1" onclick="histPreset(1, this)">Today</button>
-          <button class="hpb" data-preset="7" onclick="histPreset(7, this)">Last 7d</button>
-          <button class="hpb" data-preset="30" onclick="histPreset(30, this)">Last 30d</button>
-          <button class="hpb" data-preset="90" onclick="histPreset(90, this)">Last 90d</button>
-          <button class="hpb" data-preset="month" onclick="histPresetMonth(this)">This Month</button>
+          <button class="hpb" data-preset="1"     data-label="Today"      onclick="histPreset(1, this)">Today</button>
+          <button class="hpb" data-preset="7"     data-label="Last 7d"    onclick="histPreset(7, this)">Last 7d</button>
+          <button class="hpb" data-preset="30"    data-label="Last 30d"   onclick="histPreset(30, this)">Last 30d</button>
+          <button class="hpb" data-preset="90"    data-label="Last 90d"   onclick="histPreset(90, this)">Last 90d</button>
+          <button class="hpb" data-preset="month" data-label="This Month" onclick="histPresetMonth(this)">This Month</button>
         </div>
       </div>
+
+      <!-- Period Totals — moved here, directly under the date-range buttons -->
+      <div id="histTotals" class="hist-totals-card" style="display:none"></div>
 
       <div id="histSummaryLine" style="font-size:11px;color:var(--td);text-align:center;margin-bottom:8px;min-height:16px"></div>
 
@@ -744,7 +747,6 @@
             <tbody id="histTableBody"></tbody>
           </table>
         </div>
-        <div id="histTotals" class="hist-totals-card"></div>
         <button onclick="copyHistoryText()" class="hist-copy-btn">📋 Copy as Text</button>
       </div>
 
@@ -1346,6 +1348,6 @@
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="./stotrams.js?v=82"></script>
     <script src="./panchangData.js"></script>
-    <script src="./app.js?v=89"></script>
+    <script src="./app.js?v=90"></script>
   </body>
 </html>

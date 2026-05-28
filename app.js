@@ -2000,7 +2000,7 @@ function autoLoadHistory() {
   if (f && !f.value) f.value = today;
   if (t && !t.value) t.value = today;
   const todayBtn = document.querySelector('#histPresetRow .hpb[data-preset="1"]');
-  if (todayBtn) todayBtn.classList.add("active");
+  if (todayBtn) { todayBtn.classList.add("active"); window._histActiveLabel = "Today"; }
   if (typeof renderHistory === "function")
     try {
       renderHistory();
@@ -10187,7 +10187,12 @@ function _histFmtTime(ts) {
 function _histSetActive(btn) {
   const row = document.getElementById("histPresetRow");
   if (row) row.querySelectorAll(".hpb").forEach(b => b.classList.remove("active"));
-  if (btn) btn.classList.add("active");
+  if (btn) {
+    btn.classList.add("active");
+    window._histActiveLabel = btn.getAttribute("data-label") || btn.textContent.trim();
+  } else {
+    window._histActiveLabel = "Custom";
+  }
 }
 
 function histPreset(days, btn) {
@@ -10345,6 +10350,7 @@ function renderHistory() {
   if (activeDays === 0) {
     sumLine.textContent = "No jap recorded in this date range.";
     wrap.style.display = "none";
+    if (totDiv) { totDiv.innerHTML = ""; totDiv.style.display = "none"; }
     return;
   }
 
@@ -10362,29 +10368,32 @@ function renderHistory() {
   const totCyc28 = Math.floor(tot28taps / 28);
   const grandTotal = totTimeSec + totTimeSec28;
   const fmtN = (n) => n.toLocaleString();
-  const statCard = (cls, label, mainNum, mainUnit, sub, time) => `
+  const rangeLbl = window._histActiveLabel || "Custom";
+  const statCard = (cls, icon, label, mainNum, mainUnit, sub, time) => `
     <div class="pt-card ${cls}">
+      <div class="pt-card-icon">${icon}</div>
       <div class="pt-card-label">${label}</div>
       <div class="pt-card-main"><span class="pt-num">${fmtN(mainNum)}</span><span class="pt-unit">${mainUnit}</span></div>
       <div class="pt-card-sub">${sub}</div>
       <div class="pt-card-time">⏱ ${time}</div>
     </div>`;
 
+  totDiv.style.display = "block";
   if (isGaudiya) {
     totDiv.innerHTML = `
-      <div class="pt-head"><span class="pt-head-icon">📊</span><span class="pt-head-title">Period Totals</span><span class="pt-head-tag">Gaudiya</span></div>
+      <div class="pt-head"><span class="pt-head-icon">📊</span><span class="pt-head-title">Period Totals</span><span class="pt-head-range">(${rangeLbl})</span><span class="pt-head-tag">Gaudiya</span></div>
       <div class="pt-grid pt-grid-1">
-        ${statCard('pt-hk', 'HK Jap', totHKM, totHKM === 1 ? 'mala' : 'malas', fmtN(totHK) + ' names', _histFmtSec(window._ptHKSec || 0))}
+        ${statCard('pt-hk', '🪈', 'HK Jap', totHKM, totHKM === 1 ? 'mala' : 'malas', fmtN(totHK) + ' names', _histFmtSec(window._ptHKSec || 0))}
       </div>
       <div class="pt-total"><span class="pt-total-label">Total Time</span><span class="pt-total-val">${_histFmtSec(grandTotal)}</span></div>
     `;
   } else {
     totDiv.innerHTML = `
-      <div class="pt-head"><span class="pt-head-icon">📊</span><span class="pt-head-title">Period Totals</span></div>
+      <div class="pt-head"><span class="pt-head-icon">📊</span><span class="pt-head-title">Period Totals</span><span class="pt-head-range">(${rangeLbl})</span></div>
       <div class="pt-grid pt-grid-3">
-        ${statCard('pt-radha', 'Radha Jap', totRadhaM, totRadhaM === 1 ? 'mala' : 'malas', fmtN(totRadha) + ' names', _histFmtSec(window._ptRadhaSec || 0))}
-        ${statCard('pt-rv',    'RV Jap',    totRVM,    totRVM === 1 ? 'mala' : 'malas',    fmtN(totRV) + ' names',    _histFmtSec(window._ptRVSec || 0))}
-        ${statCard('pt-28',    '28 Names',  totCyc28,  totCyc28 === 1 ? 'cycle' : 'cycles', fmtN(tot28taps) + ' taps',  _histFmtSec(totTimeSec28))}
+        ${statCard('pt-radha', '📿', 'Radha Jap', totRadhaM, totRadhaM === 1 ? 'mala' : 'malas', fmtN(totRadha) + ' names', _histFmtSec(window._ptRadhaSec || 0))}
+        ${statCard('pt-rv',    '🕉️', 'RV Jap',    totRVM,    totRVM === 1 ? 'mala' : 'malas',    fmtN(totRV) + ' names',    _histFmtSec(window._ptRVSec || 0))}
+        ${statCard('pt-28',    '🪷', '28 Names',  totCyc28,  totCyc28 === 1 ? 'cycle' : 'cycles', fmtN(tot28taps) + ' taps',  _histFmtSec(totTimeSec28))}
       </div>
       <div class="pt-total"><span class="pt-total-label">Total Time</span><span class="pt-total-val">${_histFmtSec(grandTotal)}</span></div>
     `;

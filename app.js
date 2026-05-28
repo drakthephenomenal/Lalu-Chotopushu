@@ -2637,8 +2637,9 @@ function uStats() {
     if (!k.startsWith("prev_") && v > best) best = v;
   });
   const d2 = new Date();
-  const _dailyTgt = (App.S.dt || 0) > 0 ? App.S.dt : 1;
-  while (streak < 999) {
+  // Active Streak: only counts consecutive days where daily target was hit
+  const _dailyTgt = (App.S.dt || 0) > 0 ? App.S.dt : 0;
+  while (streak < 999 && _dailyTgt > 0) {
     const k = _ldk(d2);
     if ((curHist[k] || 0) >= _dailyTgt) {
       streak++;

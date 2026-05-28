@@ -675,7 +675,7 @@
         <!-- Row 7: Last 7 days -->
         <div class="sb wide"><div class="sl" style="font-size:11px">Last 7 Days</div><div class="cbrs" id="cbrs"></div></div>
         <!-- Row 8: streak + best (renamed) -->
-        <div class="sb"><div class="sv2" id="sStr">0</div><div class="sl">🔥 Active Streak</div><div class="ss">Consecutive days</div></div>
+        <div class="sb"><div class="sv2" id="sStr">0</div><div class="sl">🔥 Active Streak</div><div class="ss">Consecutive target days</div></div>
         <div class="sb"><div class="sv2" id="sBest">0</div><div class="sl">🏆 Personal Best</div><div class="ss">Top day jap</div></div>
         <!-- Row 9: Conservative Days -->
         <div class="sb wide non-gaudiya-stat" id="sbConservDays" style="background:rgba(245,209,122,0.06);border-color:rgba(245,209,122,0.30);box-shadow:inset 0 1px 0 rgba(255,255,255,0.05),0 2px 10px rgba(245,180,90,0.10)">
@@ -758,28 +758,28 @@
     </div>
   </div>
 
-  <!-- ADD / DEDUCT JAP MANUALLY — merged collapsible with two-tone header -->
-  <div class="cs-wrap" style="border:1px solid rgba(255,215,0,0.2);background:linear-gradient(90deg,rgba(46,204,113,0.07) 0%,rgba(46,204,113,0.07) 50%,rgba(232,51,109,0.07) 50%,rgba(232,51,109,0.07) 100%)">
+  <!-- ADD / DEDUCT JAP MANUALLY — merged collapsible, copper theme -->
+  <div class="cs-wrap" style="border:1px solid rgba(196,120,46,0.35);background:linear-gradient(180deg,rgba(196,120,46,0.09),rgba(140,70,15,0.04))">
     <div class="cs-header" onclick="toggleCs('addDeductBody','addDeductChev')">
-      <h3 style="background:linear-gradient(90deg,var(--green) 0%,var(--green) 50%,var(--rl) 50%,var(--rl) 100%);-webkit-background-clip:text;background-clip:text;color:transparent">➕ Add ／ ✂️ Deduct Jap Manually</h3>
-      <span class="cs-chevron" id="addDeductChev" style="color:var(--gold)">▾</span>
+      <h3 style="color:#C87534">➕ Add ／ ✂️ Deduct Jap Manually</h3>
+      <span class="cs-chevron" id="addDeductChev" style="color:#C87534">▾</span>
     </div>
     <div class="cs-body" id="addDeductBody">
 
       <!-- ADD JAP sub-section -->
-      <div class="cs-wrap" style="background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.25);margin-bottom:10px">
+      <div class="cs-wrap" style="background:rgba(196,120,46,0.06);border:1px solid rgba(196,120,46,0.28);margin-bottom:10px">
         <div class="cs-header" onclick="toggleCs('addJapManuallyBody','addJapManuallyChev')">
-          <h3 style="color:var(--green)">➕ Add Jap</h3>
-          <span class="cs-chevron" id="addJapManuallyChev" style="color:var(--green)">▾</span>
+          <h3 style="color:#C87534">➕ Add Jap</h3>
+          <span class="cs-chevron" id="addJapManuallyChev" style="color:#C87534">▾</span>
         </div>
         <div class="cs-body" id="addJapManuallyBody">
           <p style="font-size:12px;color:var(--td);margin-bottom:12px">Jap done on Mala made of Sacred Tulsi Wood / Mala / Finger counts or other digital counter?</p>
 
           <!-- Inner: Today -->
-          <div class="cs-wrap" style="background:rgba(46,204,113,0.05);border:1px solid rgba(46,204,113,0.18);margin-bottom:8px">
+          <div class="cs-wrap" style="background:rgba(196,120,46,0.05);border:1px solid rgba(196,120,46,0.20);margin-bottom:8px">
             <div class="cs-header" onclick="toggleCs('addJapTodayBody','addJapTodayChev')" style="padding:10px 14px">
-              <h3 style="color:var(--green);font-size:10px">📅 TODAY</h3>
-              <span class="cs-chevron" id="addJapTodayChev" style="color:var(--green)">▾</span>
+              <h3 style="color:#C87534;font-size:10px">📅 TODAY</h3>
+              <span class="cs-chevron" id="addJapTodayChev" style="color:#C87534">▾</span>
             </div>
             <div class="cs-body" id="addJapTodayBody">
               <div class="fr"><input type="number" class="fi" id="manualJapIn" placeholder="Number of jap" min="1"><span class="fu">jap</span></div>
@@ -798,15 +798,15 @@
           </div>
 
           <!-- Inner: Other Day -->
-          <div class="cs-wrap" style="background:rgba(46,204,113,0.04);border:1px solid rgba(46,204,113,0.14);margin-bottom:8px">
+          <div class="cs-wrap" style="background:rgba(196,120,46,0.04);border:1px solid rgba(196,120,46,0.16);margin-bottom:8px">
             <div class="cs-header" onclick="toggleCs('addJapOtherBody','addJapOtherChev')" style="padding:10px 14px">
-              <h3 style="color:var(--green);font-size:10px">📆 OTHER DAY</h3>
-              <span class="cs-chevron" id="addJapOtherChev" style="color:var(--green)">▾</span>
+              <h3 style="color:#C87534;font-size:10px">📆 OTHER DAY</h3>
+              <span class="cs-chevron" id="addJapOtherChev" style="color:#C87534">▾</span>
             </div>
             <div class="cs-body" id="addJapOtherBody">
               <div class="fr"><input type="date" class="fi" id="addJapOtherDate" style="font-size:13px"></div>
               <div class="fr"><input type="number" class="fi" id="addJapOtherIn" placeholder="Number of jap" min="1"><span class="fu">jap</span></div>
-              <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="addJapOtherPreview" style="color:var(--green)">—</span></div>
+              <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="addJapOtherPreview" style="color:#C87534">—</span></div>
               <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.18);border-radius:9px">
                 <div style="font-size:10px;color:var(--gold);margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TAKEN (optional)</div>
                 <div style="display:flex;gap:6px;align-items:center">
@@ -821,10 +821,10 @@
           </div>
 
           <!-- Inner: Before This App (Lifetime) -->
-          <div class="cs-wrap" style="background:rgba(109,184,255,0.05);border:1px solid rgba(109,184,255,0.18)">
+          <div class="cs-wrap" style="background:rgba(196,120,46,0.04);border:1px solid rgba(196,120,46,0.18)">
             <div class="cs-header" onclick="toggleCs('prevJapBody','prevJapChev')" style="padding:10px 14px">
-              <h3 style="color:var(--a2);font-size:10px">📜 BEFORE THIS APP (LIFETIME)</h3>
-              <span class="cs-chevron" id="prevJapChev" style="color:var(--a2)">▾</span>
+              <h3 style="color:#C87534;font-size:10px">📜 BEFORE THIS APP (LIFETIME)</h3>
+              <span class="cs-chevron" id="prevJapChev" style="color:#C87534">▾</span>
             </div>
             <div class="cs-body" id="prevJapBody">
               <p style="font-size:12px;color:var(--td);margin-bottom:10px">Jap done before using this app? Add to lifetime total.</p>
@@ -838,24 +838,24 @@
       </div>
 
       <!-- DEDUCT JAP sub-section -->
-      <div class="cs-wrap" style="background:rgba(232,51,109,0.05);border:1px solid rgba(232,51,109,0.25)">
+      <div class="cs-wrap" style="background:rgba(196,120,46,0.06);border:1px solid rgba(196,120,46,0.28)">
         <div class="cs-header" onclick="toggleCs('deductJapMainBody','deductJapMainChev')">
-          <h3 style="color:var(--rl)">✂️ Deduct Jap</h3>
-          <span class="cs-chevron" id="deductJapMainChev" style="color:var(--rl)">▾</span>
+          <h3 style="color:#C87534">✂️ Deduct Jap</h3>
+          <span class="cs-chevron" id="deductJapMainChev" style="color:#C87534">▾</span>
         </div>
         <div class="cs-body" id="deductJapMainBody">
           <p style="font-size:12px;color:var(--td);margin-bottom:12px">Jap you want to deduct — for dedicating to someone, wrong entry, or system bug showing false results.</p>
 
-          <div class="cs-wrap" style="background:rgba(232,51,109,0.05);border:1px solid rgba(232,51,109,0.18);margin-bottom:8px">
+          <div class="cs-wrap" style="background:rgba(196,120,46,0.05);border:1px solid rgba(196,120,46,0.20);margin-bottom:8px">
             <div class="cs-header" onclick="toggleCs('deductTodayBody','deductTodayChev')" style="padding:10px 14px">
-              <h3 style="color:var(--rl);font-size:10px">📅 TODAY</h3>
-              <span class="cs-chevron" id="deductTodayChev" style="color:var(--rl)">▾</span>
+              <h3 style="color:#C87534;font-size:10px">📅 TODAY</h3>
+              <span class="cs-chevron" id="deductTodayChev" style="color:#C87534">▾</span>
             </div>
             <div class="cs-body" id="deductTodayBody">
               <div class="fr"><input type="number" class="fi" id="deductTodayIn" placeholder="Number to deduct" min="1"><span class="fu">jap</span></div>
-              <div style="font-size:11px;color:var(--td);margin-bottom:8px">Today will become: <span id="deductTodayPreview" style="color:var(--rl)">—</span></div>
-              <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(232,51,109,0.06);border:1px solid rgba(232,51,109,0.22);border-radius:9px">
-                <div style="font-size:10px;color:var(--rl);margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TO DEDUCT (optional)</div>
+              <div style="font-size:11px;color:var(--td);margin-bottom:8px">Today will become: <span id="deductTodayPreview" style="color:#C87534">—</span></div>
+              <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(196,120,46,0.06);border:1px solid rgba(196,120,46,0.22);border-radius:9px">
+                <div style="font-size:10px;color:#C87534;margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TO DEDUCT (optional)</div>
                 <div style="display:flex;gap:6px;align-items:center">
                   <input type="number" class="fi" id="deductTodayMin" placeholder="Min" min="0" style="width:70px;font-size:13px">
                   <span style="color:var(--td);font-size:11px">m</span>
@@ -867,17 +867,17 @@
             </div>
           </div>
 
-          <div class="cs-wrap" style="background:rgba(232,51,109,0.04);border:1px solid rgba(232,51,109,0.14);margin-bottom:8px">
+          <div class="cs-wrap" style="background:rgba(196,120,46,0.04);border:1px solid rgba(196,120,46,0.16);margin-bottom:8px">
             <div class="cs-header" onclick="toggleCs('deductOtherBody','deductOtherChev')" style="padding:10px 14px">
-              <h3 style="color:var(--rl);font-size:10px">📆 OTHER DAY</h3>
-              <span class="cs-chevron" id="deductOtherChev" style="color:var(--rl)">▾</span>
+              <h3 style="color:#C87534;font-size:10px">📆 OTHER DAY</h3>
+              <span class="cs-chevron" id="deductOtherChev" style="color:#C87534">▾</span>
             </div>
             <div class="cs-body" id="deductOtherBody">
               <div class="fr"><input type="date" class="fi" id="deductOtherDate" style="font-size:13px"></div>
               <div class="fr"><input type="number" class="fi" id="deductOtherIn" placeholder="Number to deduct" min="1"><span class="fu">jap</span></div>
-              <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="deductOtherPreview" style="color:var(--rl)">—</span></div>
-              <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(232,51,109,0.06);border:1px solid rgba(232,51,109,0.22);border-radius:9px">
-                <div style="font-size:10px;color:var(--rl);margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TO DEDUCT (optional)</div>
+              <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="deductOtherPreview" style="color:#C87534">—</span></div>
+              <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(196,120,46,0.06);border:1px solid rgba(196,120,46,0.22);border-radius:9px">
+                <div style="font-size:10px;color:#C87534;margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TO DEDUCT (optional)</div>
                 <div style="display:flex;gap:6px;align-items:center">
                   <input type="number" class="fi" id="deductOtherMin" placeholder="Min" min="0" style="width:70px;font-size:13px">
                   <span style="color:var(--td);font-size:11px">m</span>
@@ -889,22 +889,22 @@
             </div>
           </div>
 
-          <div class="cs-wrap" style="background:rgba(232,51,109,0.04);border:1px solid rgba(232,51,109,0.14)">
+          <div class="cs-wrap" style="background:rgba(196,120,46,0.04);border:1px solid rgba(196,120,46,0.16)">
             <div class="cs-header" onclick="toggleCs('nameJapDeductBody','nameJapDeductChev')" style="padding:10px 14px">
-              <h3 style="color:var(--rl);font-size:10px">📿 NAME JAP — LIFETIME</h3>
-              <span class="cs-chevron" id="nameJapDeductChev" style="color:var(--rl)">▾</span>
+              <h3 style="color:#C87534;font-size:10px">📿 NAME JAP — LIFETIME</h3>
+              <span class="cs-chevron" id="nameJapDeductChev" style="color:#C87534">▾</span>
             </div>
             <div class="cs-body" id="nameJapDeductBody">
-              <div style="font-size:11px;color:var(--td);margin-bottom:8px">Currently deducted: <span id="nameJapDeductCur" style="color:var(--rl);font-weight:600">0</span> jap (<span id="nameJapDeductMalas" style="color:var(--rl)">0</span> malas)</div>
-              <div style="background:rgba(232,51,109,0.06);border:1px solid rgba(232,51,109,0.18);border-radius:12px;padding:11px;margin-bottom:10px">
-                <div style="font-size:10px;color:var(--rl);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">➕ Add to Deduction</div>
-                <div class="fr"><input type="number" class="fi" id="nameJapDeductIn" placeholder="e.g. 5000" min="1" style="border-color:rgba(232,51,109,0.35)"><span class="fu" style="color:var(--rl)">jap</span></div>
-                <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapDeductPreview" style="color:var(--rl)">—</span></div>
+              <div style="font-size:11px;color:var(--td);margin-bottom:8px">Currently deducted: <span id="nameJapDeductCur" style="color:#C87534;font-weight:600">0</span> jap (<span id="nameJapDeductMalas" style="color:#C87534">0</span> malas)</div>
+              <div style="background:rgba(196,120,46,0.06);border:1px solid rgba(196,120,46,0.20);border-radius:12px;padding:11px;margin-bottom:10px">
+                <div style="font-size:10px;color:#C87534;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">➕ Add to Deduction</div>
+                <div class="fr"><input type="number" class="fi" id="nameJapDeductIn" placeholder="e.g. 5000" min="1" style="border-color:rgba(196,120,46,0.40)"><span class="fu" style="color:#C87534">jap</span></div>
+                <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapDeductPreview" style="color:#C87534">—</span></div>
                 <button class="pb deduct" onclick="addNameJapDeduct()">✂️ Apply Deduction</button>
               </div>
-              <div style="background:rgba(232,51,109,0.03);border:1px solid rgba(232,51,109,0.12);border-radius:12px;padding:11px">
-                <div style="font-size:10px;color:var(--rl);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">↩ Remove Deduction</div>
-                <div class="fr"><input type="number" class="fi" id="nameJapRestoreIn" placeholder="Amount to restore" min="1" style="border-color:rgba(232,51,109,0.25)"><span class="fu" style="color:var(--rl)">jap</span></div>
+              <div style="background:rgba(196,120,46,0.03);border:1px solid rgba(196,120,46,0.14);border-radius:12px;padding:11px">
+                <div style="font-size:10px;color:#C87534;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">↩ Remove Deduction</div>
+                <div class="fr"><input type="number" class="fi" id="nameJapRestoreIn" placeholder="Amount to restore" min="1" style="border-color:rgba(196,120,46,0.35)"><span class="fu" style="color:#C87534">jap</span></div>
                 <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapRestorePreview" style="color:var(--a2)">—</span></div>
                 <button class="pb add" onclick="removeNameJapDeduct()">↩ Restore to Lifetime</button>
               </div>
@@ -928,8 +928,8 @@
   <!-- Reset section — collapsible (last) -->
   <div class="rs">
     <div class="cs-header" onclick="toggleCs('resetBody','resetChev')" style="padding:13px 16px">
-      <h3 style="color:var(--rl);margin:0;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600">🔄 Reset Data</h3>
-      <span class="cs-chevron" id="resetChev" style="color:var(--rl)">▾</span>
+      <h3 style="color:#C87534;margin:0;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600">🔄 Reset Data</h3>
+      <span class="cs-chevron" id="resetChev" style="color:#C87534">▾</span>
     </div>
     <div class="cs-body" id="resetBody">
       <div style="font-size:11px;color:var(--td);margin-bottom:10px;letter-spacing:1px">Choose what to permanently delete. A confirmation will appear before anything is removed.</div>

@@ -2645,6 +2645,22 @@ function uStats() {
       d2.setDate(d2.getDate() - 1);
     } else break;
   }
+  // Conservative Days: all historical days where combined jap >= daily target
+  const hasDailyTgt = (App.S.dt || 0) > 0;
+  let conservDays = 0;
+  if (hasDailyTgt) {
+    Object.entries(curHist).forEach(([k, v]) => {
+      if (!k.startsWith("prev_") && v >= App.S.dt) conservDays++;
+    });
+  }
+  const sConserv = document.getElementById("sConserv");
+  const sConservSub = document.getElementById("sConservSub");
+  if (sConserv) sConserv.textContent = conservDays;
+  if (sConservSub) {
+    sConservSub.textContent = hasDailyTgt
+      ? "Days daily target (" + App.S.dt + " jap) was met"
+      : "Set a daily target to track";
+  }
   document.getElementById("sTod").textContent = tod;
   document.getElementById("sTodM").textContent =
     Math.floor(tod / ms) + " malas";

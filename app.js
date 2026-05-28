@@ -3399,11 +3399,11 @@ function cr2(tp) {
   const t = document.getElementById("moT"),
     d = document.getElementById("moD");
   if (tp === "28today") {
-    t.textContent = "Reset 28 Names Today?";
-    d.textContent = "Clear today's " + (App.S.h28[App.S.tk] || 0) + " count.";
+    t.textContent = "Reset Today's Jap & Time?";
+    d.textContent = "This will clear today's " + (App.S.h28[App.S.tk] || 0) + " taps and today's 28 Names timer. Cannot be undone.";
   } else if (tp === "28all") {
-    t.textContent = "⚠️ Reset All 28 Names Data?";
-    d.textContent = "All 28 Names counts and time will be permanently deleted.";
+    t.textContent = "⚠️ Reset All 28 Names Data & Time?";
+    d.textContent = "All 28 Names counts, time, and wish progress will be permanently deleted.";
   } else if (tp === "namesAndTime") {
     t.textContent = "⚠️ Delete all Name Jap & Time data?";
     d.textContent =

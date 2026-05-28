@@ -582,10 +582,10 @@
     <div class="sg-body open" id="sgStats">
       <div class="sg" style="margin-bottom:8px">
         <!-- Row 1 -->
-        <div class="sb"><div class="sv2" id="sTod">0</div><div class="sl">Today</div><div class="ss" id="sTodM">0 malas</div></div>
-        <div class="sb"><div class="sv2" id="sWk">0</div><div class="sl">This Week</div><div class="ss" id="sWkM">0 malas</div></div>
+        <div class="sb non-gaudiya-stat"><div class="sv2" id="sTod">0</div><div class="sl">Today</div><div class="ss" id="sTodM">0 malas</div></div>
+        <div class="sb non-gaudiya-stat"><div class="sv2" id="sWk">0</div><div class="sl">This Week</div><div class="ss" id="sWkM">0 malas</div></div>
         <!-- Row 2 -->
-        <div class="sb"><div class="sv2" id="sMo">0</div><div class="sl">This Month</div><div class="ss" id="sMoM">0 malas</div></div>
+        <div class="sb non-gaudiya-stat"><div class="sv2" id="sMo">0</div><div class="sl">This Month</div><div class="ss" id="sMoM">0 malas</div></div>
         <div class="sb non-gaudiya-stat"><div class="sv2" id="sTot">0</div><div class="sl">Total Jap (Radha + RV)</div><div class="ss" id="sTotM">0 malas</div></div>
         <!-- Row 3: Radha count + Radha time -->
         <div class="sb non-gaudiya-stat" id="sbRadhaCount" style="background:rgba(255,215,0,0.05);border-color:rgba(255,215,0,0.18)"><div class="sv2" style="color:var(--gold)" id="sRadhaTot">0</div><div class="sl" style="color:var(--gold)">राधा Lifetime</div><div class="ss" id="sRadhaTotM">0 malas</div><div class="ss" id="sRadhaTotF" style="color:var(--gold);opacity:0.75;font-size:10px;margin-top:2px">0</div></div>
@@ -625,48 +625,43 @@
         <div class="hk-only-stat" id="sbHKTime" style="grid-column:1/-1;display:none"><!-- legacy compat --></div>
         <div class="hk-only-stat" style="grid-column:1/-1;padding:0">
           <div class="hkc-wrap">
-            <!-- Ambient glow -->
-            <div class="hkc-glow"></div>
-            <!-- Title -->
-            <div class="hkc-title">
-              <div class="hkc-title-lotus" id="hkcTitleLotus">🪷 হরে কৃষ্ণ</div>
-              <div class="hkc-title-sub">Mahamantra Sadhana</div>
-            </div>
-            <!-- Lifetime hero -->
-            <div class="hkc-hero">
-              <div class="hkc-hero-label">LIFETIME TOTAL</div>
-              <div class="hkc-hero-num" id="sHKTot">0</div>
-              <div class="hkc-hero-sub"><span id="sHKTotM">0 malas</span> · <span id="sHKTotF">0 jap</span></div>
-            </div>
-            <!-- 3-column period stats -->
-            <div class="hkc-periods">
-              <div class="hkc-period">
-                <div class="hkc-period-lbl">TODAY</div>
-                <div class="hkc-period-num" id="sTod2">0</div>
-                <div class="hkc-period-sub"><span id="sTodM2">0m</span> · <span id="tHKTod">0m</span></div>
+              <!-- Ambient glow -->
+              <div class="hkc-glow"></div>
+              <!-- Title -->
+              <div class="hkc-title">
+                <div class="hkc-title-lotus" id="hkcTitleLotus">🪷 হরে কৃষ্ণ</div>
+                <div class="hkc-title-sub">Mahamantra Sadhana</div>
               </div>
-              <div class="hkc-period">
-                <div class="hkc-period-lbl">WEEK</div>
-                <div class="hkc-period-num" id="sWk2">0</div>
-                <div class="hkc-period-sub"><span id="sWkM2">0m</span> · <span id="tHKWk">0m</span></div>
+              <!-- 3-column period stats (Today / Week / Month) — shown first -->
+              <div class="hkc-periods">
+                <div class="hkc-period">
+                  <div class="hkc-period-lbl">TODAY</div>
+                  <div class="hkc-period-num" id="sTod2">0</div>
+                  <div class="hkc-period-sub"><span id="sTodM2">0m</span> · <span id="tHKTod">0m</span></div>
+                </div>
+                <div class="hkc-period">
+                  <div class="hkc-period-lbl">WEEK</div>
+                  <div class="hkc-period-num" id="sWk2">0</div>
+                  <div class="hkc-period-sub"><span id="sWkM2">0m</span> · <span id="tHKWk">0m</span></div>
+                </div>
+                <div class="hkc-period">
+                  <div class="hkc-period-lbl">MONTH</div>
+                  <div class="hkc-period-num" id="sMo2">0</div>
+                  <div class="hkc-period-sub"><span id="sMoM2">0m</span> · <span id="tHKMo">0m</span></div>
+                </div>
               </div>
-              <div class="hkc-period">
-                <div class="hkc-period-lbl">MONTH</div>
-                <div class="hkc-period-num" id="sMo2">0</div>
-                <div class="hkc-period-sub"><span id="sMoM2">0m</span> · <span id="tHKMo">0m</span></div>
+              <!-- Lifetime Total hero — below periods, includes lifetime jap time -->
+              <div class="hkc-hero">
+                <div class="hkc-hero-label">LIFETIME TOTAL</div>
+                <div class="hkc-hero-num" id="sHKTot">0</div>
+                <div class="hkc-hero-sub"><span id="sHKTotM">0 malas</span> · <span id="sHKTotF">0 jap</span></div>
+                <div class="hkc-hero-sub" style="margin-top:4px;font-size:12px;opacity:0.75">⏱ Lifetime Jap Time: <span id="tHKLt">0m</span></div>
               </div>
+              <!-- Hidden stubs so JS setters don't error -->
+              <span id="tHKTod2" style="display:none"></span>
+              <span id="tHKWk2" style="display:none"></span>
+              <span id="tHKMo2" style="display:none"></span>
             </div>
-            <!-- Jap time row -->
-            <div class="hkc-timebar">
-              <span class="hkc-timebar-lbl">⏱ JAP TIME</span>
-              <div class="hkc-timebar-vals">
-                <div class="hkc-tv"><div class="hkc-tv-val" id="tHKTod2">0m</div><div class="hkc-tv-lbl">TODAY</div></div>
-                <div class="hkc-tv"><div class="hkc-tv-val" id="tHKWk2">0m</div><div class="hkc-tv-lbl">WEEK</div></div>
-                <div class="hkc-tv"><div class="hkc-tv-val" id="tHKMo2">0m</div><div class="hkc-tv-lbl">MONTH</div></div>
-                <div class="hkc-tv"><div class="hkc-tv-val" id="tHKLt">0m</div><div class="hkc-tv-lbl">LIFE</div></div>
-              </div>
-            </div>
-          </div>
         </div>
         <!-- Row 5c: Combined Lifetime Jap (Radha + RV + 28 names) -->
         <div class="sb wide non-gaudiya-stat" id="sbLtJapAll" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.12)"><div class="sv2" style="color:var(--gold)" id="sLtJapAll">0</div><div class="sl" style="color:var(--gold)">Lifetime Jap (Radha + RV + 28 Names)</div><div class="ss" id="sLtJapAllF" style="color:var(--gold);opacity:0.75;font-size:10px;margin-top:2px">0</div></div>

@@ -10931,8 +10931,22 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
 (function () {
   "use strict";
 
-  /* Discrete font sizes (px). Step 1 = smallest, last = biggest. */
-  var STEPS        = [11, 13, 15, 17, 19, 21, 24, 28, 32, 38];
+  /* Discrete font sizes (px). Step 1 = smallest, last = biggest.
+     The upper end scales with the device so larger phones/tablets
+     can reach a comfortably big size instead of being capped at 10. */
+  var BASE_STEPS = [11, 13, 15, 17, 19, 21, 24, 28, 32, 38, 44, 52, 62, 74];
+  function buildSteps() {
+    var vw  = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
+    // Cap top size at ~12% of viewport width, min 38px, max 96px.
+    var cap = Math.max(38, Math.min(96, Math.round(vw * 0.12)));
+    var out = [];
+    for (var i = 0; i < BASE_STEPS.length; i++) {
+      if (BASE_STEPS[i] <= cap) out.push(BASE_STEPS[i]);
+    }
+    if (out[out.length - 1] < cap) out.push(cap);
+    return out;
+  }
+  var STEPS        = buildSteps();
   var DEFAULT_STEP = 3;                       // index into STEPS (≈17px)
   var STORAGE_KEY  = "lyr_step";              // new key (integer step)
   var LEGACY_KEY   = "lyr_manual_px";         // old key (px value)
@@ -11031,7 +11045,11 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
   var _resizeTimer;
   window.addEventListener("resize", function () {
     clearTimeout(_resizeTimer);
-    _resizeTimer = setTimeout(fit, 220);
+    _resizeTimer = setTimeout(function () {
+      STEPS = buildSteps();
+      if (_manualStep !== null) _manualStep = clampStep(_manualStep);
+      fit();
+    }, 220);
   });
 
   function buildBar() {

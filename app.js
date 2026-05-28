@@ -2636,45 +2636,64 @@ function uStats() {
     if (k.startsWith(mp)) ms2 += v;
     if (!k.startsWith("prev_") && v > best) best = v;
   });
-  const d2 = new Date();
-  // Active Streak: consecutive days where daily target was hit.
-  // If today hasn't hit target yet, start walk from yesterday so an
-  // in-progress day doesn't break an otherwise-live streak.
-  const _dailyTgt = (App.S.dt || 0) > 0 ? App.S.dt : 0;
-  if (_dailyTgt > 0 && (curHist[_ldk(d2)] || 0) < _dailyTgt) {
-    d2.setDate(d2.getDate() - 1);
-  }
-  while (streak < 999 && _dailyTgt > 0) {
-    const k = _ldk(d2);
-    if ((curHist[k] || 0) >= _dailyTgt) {
-      streak++;
-      d2.setDate(d2.getDate() - 1);
-    } else break;
-  }
-  // Best Streak Ever: longest run of consecutive calendar days where jap >= target
-  let bestStreakEver = 0;
-  if (_dailyTgt > 0) {
-    const tgtDays = Object.entries(curHist)
-      .filter(([k, v]) => !k.startsWith("prev_") && v >= _dailyTgt)
-      .map(([k]) => k)
-      .sort();
-    let run = 0;
-    for (let i = 0; i < tgtDays.length; i++) {
-      if (i === 0) {
-        run = 1;
-      } else {
-        const diff = Math.round((new Date(tgtDays[i]) - new Date(tgtDays[i - 1])) / 86400000);
-        run = diff === 1 ? run + 1 : 1;
+  // ── Streak & Best Streak (mode-aware, per-target checking) ──
+    const _isGaudiya = App.S.gaudiyaMode || false;
+    const _radhaTarget = App.S.dt || 0;
+    const _rvTarget = App.S.dtRV || 0;
+    const _hkTarget = App.S.dtHK || 0;
+    // A target is "active" if at least one target is configured for the current mode
+    const _hasTarget = _isGaudiya ? _hkTarget > 0 : (_radhaTarget > 0 || _rvTarget > 0);
+    // Returns true only when EVERY configured target for this mode is individually met on day k
+    function _dayHitsTarget(k) {
+      if (_isGaudiya) {
+        return _hkTarget > 0 && (App.S.historyHK[k] || 0) >= _hkTarget;
       }
-      if (run > bestStreakEver) bestStreakEver = run;
+      const radhaOk = _radhaTarget <= 0 || (App.S.history[k] || 0) >= _radhaTarget;
+      const rvOk    = _rvTarget    <= 0 || (App.S.historyRV[k] || 0) >= _rvTarget;
+      return (_radhaTarget > 0 || _rvTarget > 0) && radhaOk && rvOk;
     }
-  }
-  // Always ensure the active streak is reflected as best streak when it exceeds historical best
-  if (_dailyTgt > 0) bestStreakEver = Math.max(bestStreakEver, streak);
+    // Active Streak: consecutive days where ALL configured targets were individually hit.
+    // If today hasn't hit every target yet, start from yesterday so an
+    // in-progress day doesn't break an otherwise-live streak.
+    const d2 = new Date();
+    if (_hasTarget && !_dayHitsTarget(_ldk(d2))) {
+      d2.setDate(d2.getDate() - 1);
+    }
+    while (streak < 999 && _hasTarget) {
+      const k = _ldk(d2);
+      if (_dayHitsTarget(k)) {
+        streak++;
+        d2.setDate(d2.getDate() - 1);
+      } else break;
+    }
+    // Best Streak Ever: longest consecutive run where ALL configured targets were individually hit
+    let bestStreakEver = 0;
+    if (_hasTarget) {
+      const _allHistKeys = new Set([
+        ...Object.keys(App.S.history || {}),
+        ...Object.keys(App.S.historyRV || {}),
+        ...Object.keys(App.S.historyHK || {}),
+      ]);
+      const tgtDays = Array.from(_allHistKeys)
+        .filter(k => !k.startsWith("prev_") && _dayHitsTarget(k))
+        .sort();
+      let run = 0;
+      for (let i = 0; i < tgtDays.length; i++) {
+        if (i === 0) {
+          run = 1;
+        } else {
+          const diff = Math.round((new Date(tgtDays[i]) - new Date(tgtDays[i - 1])) / 86400000);
+          run = diff === 1 ? run + 1 : 1;
+        }
+        if (run > bestStreakEver) bestStreakEver = run;
+      }
+      // Active streak always wins if it surpasses the historical best
+      bestStreakEver = Math.max(bestStreakEver, streak);
+    }
   const elBSE = document.getElementById("sBestStreakEver");
   const elBSESub = document.getElementById("sBestStreakEverSub");
   if (elBSE) elBSE.textContent = bestStreakEver;
-  if (elBSESub) elBSESub.textContent = _dailyTgt > 0 ? "Best ever consecutive target days" : "Set a daily target to track";
+  if (elBSESub) elBSESub.textContent = _hasTarget ? "Best ever consecutive target days" : "Set a daily target to track";
   document.getElementById("sTod").textContent = tod;
   document.getElementById("sTodM").textContent =
     Math.floor(tod / ms) + " malas";

@@ -1023,7 +1023,6 @@ const App = {
     this.tapTimer();
     // Re-arm 6s auto-pause on every tap
     this._arm28AutoPause();
-    spawnName28(e, get28Name(NAMES28[posBefore]));
     if (this.S.h28[this.S.tk] % 28 === 0) cycleDone28();
     u28();
   },
@@ -5180,15 +5179,35 @@ function u28() {
     if (isCompleting) {
       nameEl.style.animation = "none";
       nameEl.textContent = "";
+      if (meanEl) meanEl.textContent = "";
     } else {
-      nameEl.style.animation = "none";
-      nameEl.offsetHeight;
-      nameEl.style.animation =
-        "nameIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards";
-      nameEl.textContent = get28Name(entry);
+      const newName = get28Name(entry);
+      const oldName = nameEl.textContent;
+      if (oldName && oldName !== newName) {
+        // Exit: slide current name upward and fade out
+        nameEl.style.animation = "nameOut 0.28s ease-in forwards";
+        if (meanEl) meanEl.style.transition = "opacity 0.2s";
+        if (meanEl) meanEl.style.opacity = "0";
+        setTimeout(() => {
+          nameEl.textContent = newName;
+          nameEl.style.animation = "none";
+          nameEl.offsetHeight;
+          nameEl.style.animation = "nameIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards";
+          if (meanEl) {
+            meanEl.textContent = entry.meaning;
+            meanEl.style.opacity = "0.85";
+          }
+        }, 260);
+      } else {
+        nameEl.style.animation = "none";
+        nameEl.offsetHeight;
+        nameEl.style.animation = "nameIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards";
+        nameEl.textContent = newName;
+        if (meanEl) meanEl.textContent = entry.meaning;
+      }
     }
   }
-  if (meanEl) meanEl.textContent = isCompleting ? "" : entry.meaning;
+  if (meanEl && !isCompleting) { /* handled above */ }
   const cc = Math.floor(tod / 28);
   if (cycEl) {
     cycEl.textContent =

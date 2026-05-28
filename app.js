@@ -10306,54 +10306,37 @@ function renderHistory() {
     const cyc28 = Math.floor(taps28 / 28);
 
     const tr = document.createElement("tr");
-    tr.style.cssText =
-      "border-bottom:1px solid rgba(255,215,0,0.07);cursor:pointer;transition:background 0.15s";
-    tr.onmouseenter = () => (tr.style.background = "rgba(255,215,0,0.06)");
-    tr.onmouseleave = () => (tr.style.background = "");
+    tr.className = "hist-row";
     tr.onclick = () => showHistDay(tk);
 
-    const radhaStr =
-      radha > 0
-        ? radhaM +
-          'm <span style="font-size:10px;color:var(--td)">(' +
-          radha +
-          ")</span>"
-        : '<span style="color:rgba(255,255,255,0.15)">—</span>';
-    const rvStr =
-      rv > 0
-        ? rvM +
-          'm <span style="font-size:10px;color:var(--td)">(' +
-          rv +
-          ")</span>"
-        : '<span style="color:rgba(255,255,255,0.15)">—</span>';
-    const hkStr =
-      hk > 0
-        ? hkM +
-          'm <span style="font-size:10px;color:var(--td)">(' +
-          hk +
-          ")</span>"
-        : '<span style="color:rgba(255,255,255,0.15)">—</span>';
-    const n28Str =
-      taps28 > 0
-        ? cyc28 +
-          'c <span style="font-size:10px;color:var(--td)">(' +
-          taps28 +
-          ")</span>"
-        : '<span style="color:rgba(255,255,255,0.15)">—</span>';
+    const cell = (n, label) =>
+      n > 0
+        ? '<span class="hist-n">' + n + '</span> <span class="hist-u">' + label + '</span>'
+        : '<span class="hist-dash">—</span>';
+
+    const radhaStr = cell(radhaM, radhaM === 1 ? "mala" : "malas");
+    const rvStr    = cell(rvM,    rvM === 1 ? "mala" : "malas");
+    const hkStr    = cell(hkM,    hkM === 1 ? "mala" : "malas");
+    const n28Str   = cell(cyc28,  cyc28 === 1 ? "cycle" : "cycles");
+
+    const dateCell = `<td class="hist-date"><span class="hist-tap-dot"></span>${_histFmtDate(tk)}</td>`;
+    const chevCell = `<td class="hist-chev">›</td>`;
 
     if (isGaudiya) {
       tr.innerHTML = `
-        <td style="padding:8px 10px;color:var(--tl);white-space:nowrap;font-size:11px">${_histFmtDate(tk)}</td>
-        <td class="hist-hk-col" style="padding:8px 6px;text-align:center;color:#6DB8FF">${hkStr}</td>
-        <td style="padding:8px 6px;text-align:center;color:var(--td);font-size:11px;white-space:nowrap">${_histFmtSec(totalSec)}</td>
+        ${dateCell}
+        <td class="hist-hk-col hist-val hist-c-hk">${hkStr}</td>
+        <td class="hist-val hist-c-time">${_histFmtSec(totalSec)}</td>
+        ${chevCell}
       `;
     } else {
       tr.innerHTML = `
-        <td style="padding:8px 10px;color:var(--tl);white-space:nowrap;font-size:11px">${_histFmtDate(tk)}</td>
-        <td class="hist-radha-col" style="padding:8px 6px;text-align:center;color:var(--gold)">${radhaStr}</td>
-        <td class="hist-radha-col" style="padding:8px 6px;text-align:center;color:var(--a2)">${rvStr}</td>
-        <td class="hist-radha-col" style="padding:8px 6px;text-align:center;color:var(--green)">${n28Str}</td>
-        <td style="padding:8px 6px;text-align:center;color:var(--td);font-size:11px;white-space:nowrap">${_histFmtSec(totalSec)}</td>
+        ${dateCell}
+        <td class="hist-radha-col hist-val hist-c-gold">${radhaStr}</td>
+        <td class="hist-radha-col hist-val hist-c-rv">${rvStr}</td>
+        <td class="hist-radha-col hist-val hist-c-green">${n28Str}</td>
+        <td class="hist-val hist-c-time">${_histFmtSec(totalSec)}</td>
+        ${chevCell}
       `;
     }
     tbody.appendChild(tr);
@@ -10378,27 +10361,32 @@ function renderHistory() {
   const totHKM = Math.floor(totHK / ms);
   const totCyc28 = Math.floor(tot28taps / 28);
   const grandTotal = totTimeSec + totTimeSec28;
+  const fmtN = (n) => n.toLocaleString();
+  const statCard = (cls, label, mainNum, mainUnit, sub, time) => `
+    <div class="pt-card ${cls}">
+      <div class="pt-card-label">${label}</div>
+      <div class="pt-card-main"><span class="pt-num">${fmtN(mainNum)}</span><span class="pt-unit">${mainUnit}</span></div>
+      <div class="pt-card-sub">${sub}</div>
+      <div class="pt-card-time">⏱ ${time}</div>
+    </div>`;
+
   if (isGaudiya) {
     totDiv.innerHTML = `
-      <div style="color:var(--gold);font-weight:700;font-size:11px;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase">📊 Period Totals (Gaudiya)</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:12px">
-        <div style="color:#6DB8FF">HK Jap: <strong>${totHKM} malas</strong> <span style="color:var(--td);font-size:10px">(${totHK})</span></div>
-        <div style="color:var(--tl)">Total Time: <strong>${_histFmtSec(grandTotal)}</strong></div>
-        <div style="color:var(--td);font-size:11px">HK Time: ${_histFmtSec(window._ptHKSec || 0)}</div>
+      <div class="pt-head"><span class="pt-head-icon">📊</span><span class="pt-head-title">Period Totals</span><span class="pt-head-tag">Gaudiya</span></div>
+      <div class="pt-grid pt-grid-1">
+        ${statCard('pt-hk', 'HK Jap', totHKM, totHKM === 1 ? 'mala' : 'malas', fmtN(totHK) + ' names', _histFmtSec(window._ptHKSec || 0))}
       </div>
+      <div class="pt-total"><span class="pt-total-label">Total Time</span><span class="pt-total-val">${_histFmtSec(grandTotal)}</span></div>
     `;
   } else {
     totDiv.innerHTML = `
-      <div style="color:var(--gold);font-weight:700;font-size:11px;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase">📊 Period Totals</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:12px">
-        <div style="color:var(--gold)">Radha Jap: <strong>${totRadhaM} malas</strong> <span style="color:var(--td);font-size:10px">(${totRadha})</span></div>
-        <div style="color:var(--a2)">RV Jap: <strong>${totRVM} malas</strong> <span style="color:var(--td);font-size:10px">(${totRV})</span></div>
-        <div style="color:var(--green)">28 Names: <strong>${totCyc28} cycles</strong> <span style="color:var(--td);font-size:10px">(${tot28taps} taps)</span></div>
-        <div style="color:var(--tl)">Total Time: <strong>${_histFmtSec(grandTotal)}</strong></div>
-        <div style="color:var(--td);font-size:11px">Radha Time: ${_histFmtSec(window._ptRadhaSec || 0)}</div>
-        <div style="color:var(--td);font-size:11px">RV Time: ${_histFmtSec(window._ptRVSec || 0)}</div>
-        <div style="color:var(--td);font-size:11px">28 Names Time: ${_histFmtSec(totTimeSec28)}</div>
+      <div class="pt-head"><span class="pt-head-icon">📊</span><span class="pt-head-title">Period Totals</span></div>
+      <div class="pt-grid pt-grid-3">
+        ${statCard('pt-radha', 'Radha Jap', totRadhaM, totRadhaM === 1 ? 'mala' : 'malas', fmtN(totRadha) + ' names', _histFmtSec(window._ptRadhaSec || 0))}
+        ${statCard('pt-rv',    'RV Jap',    totRVM,    totRVM === 1 ? 'mala' : 'malas',    fmtN(totRV) + ' names',    _histFmtSec(window._ptRVSec || 0))}
+        ${statCard('pt-28',    '28 Names',  totCyc28,  totCyc28 === 1 ? 'cycle' : 'cycles', fmtN(tot28taps) + ' taps',  _histFmtSec(totTimeSec28))}
       </div>
+      <div class="pt-total"><span class="pt-total-label">Total Time</span><span class="pt-total-val">${_histFmtSec(grandTotal)}</span></div>
     `;
   }
 }

@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="app-version" content="86">
+<meta name="app-version" content="88">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -23,8 +23,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<link rel="stylesheet" href="./style.css?v=87">
-  <link rel="stylesheet" href="./style-stotram.css?v=87">
+<link rel="stylesheet" href="./style.css?v=88">
+  <link rel="stylesheet" href="./style-stotram.css?v=88">
 </head>
 <body>
 <!-- LOADING -->
@@ -728,23 +728,24 @@
       <div id="histSummaryLine" style="font-size:11px;color:var(--td);text-align:center;margin-bottom:8px;min-height:16px"></div>
 
       <div id="histTableWrap" style="display:none">
-        <div style="overflow-x:auto;border-radius:12px;border:1px solid rgba(255,215,0,0.15);margin-bottom:10px">
-          <table id="histTable" style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;font-size:12px">
+        <div class="hist-table-shell">
+          <table id="histTable" class="hist-table">
             <thead>
-              <tr style="background:rgba(255,215,0,0.1);color:var(--gold)">
-                <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:1px;white-space:nowrap">Date</th>
-                <th class="hist-radha-col" style="padding:8px 6px;text-align:center;font-size:10px;letter-spacing:1px">Radha</th>
-                <th class="hist-radha-col" style="padding:8px 6px;text-align:center;font-size:10px;letter-spacing:1px">RV</th>
-                <th class="hist-radha-col" style="padding:8px 6px;text-align:center;font-size:10px;letter-spacing:1px">28 Names</th>
-                <th class="hist-hk-col" style="padding:8px 6px;text-align:center;font-size:10px;letter-spacing:1px;display:none;color:#6DB8FF">HK</th>
-                <th style="padding:8px 6px;text-align:center;font-size:10px;letter-spacing:1px">Total Time</th>
+              <tr>
+                <th class="hist-th hist-th-date">Date</th>
+                <th class="hist-th hist-radha-col">Radha</th>
+                <th class="hist-th hist-radha-col">RV</th>
+                <th class="hist-th hist-radha-col">28 Names</th>
+                <th class="hist-th hist-hk-col" style="display:none;color:#6DB8FF">HK</th>
+                <th class="hist-th">Total Time</th>
+                <th class="hist-th hist-th-chev" aria-hidden="true"></th>
               </tr>
             </thead>
             <tbody id="histTableBody"></tbody>
           </table>
         </div>
-        <div id="histTotals" style="background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.2);border-radius:11px;padding:10px 12px;margin-bottom:10px;font-size:12px;font-family:Inter,sans-serif"></div>
-        <button onclick="copyHistoryText()" style="width:100%;padding:9px;border-radius:11px;border:1px solid rgba(255,215,0,0.25);background:rgba(255,215,0,0.05);color:var(--gold);font-size:12px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">📋 Copy as Text</button>
+        <div id="histTotals" class="hist-totals-card"></div>
+        <button onclick="copyHistoryText()" class="hist-copy-btn">📋 Copy as Text</button>
       </div>
 
       <div id="histDayDetail" style="display:none;margin-top:8px;background:rgba(6,13,31,0.8);border:1px solid rgba(109,184,255,0.25);border-radius:14px;padding:12px">

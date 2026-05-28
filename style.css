@@ -1895,3 +1895,17 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 }
 .hist-copy-btn:hover{background:linear-gradient(180deg,rgba(245,209,122,0.18),rgba(245,209,122,0.06));}
 .hist-copy-btn:active{transform:scale(0.99);}
+
+/* ── Day Totals: clickable per-set cards ── */
+.pt-head-hint{margin-left:auto;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--td);opacity:.7;font-weight:500}
+.pt-card{position:relative}
+.pt-card-tap{cursor:pointer;transition:transform .15s ease,box-shadow .2s ease,border-color .2s ease}
+.pt-card-tap:hover{transform:translateY(-1px);border-color:rgba(255,215,0,0.45);box-shadow:0 6px 20px -8px rgba(255,215,0,0.35)}
+.pt-card-tap:active{transform:translateY(0)}
+.pt-card-dim{opacity:.45;filter:saturate(.6)}
+.pt-card-chev{position:absolute;top:8px;right:10px;font-size:18px;line-height:1;color:rgba(255,215,0,0.6);font-weight:300}
+.pt-card-tap:hover .pt-card-chev{color:var(--gold)}
+
+.hist-back-btn{display:inline-flex;align-items:center;gap:4px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);color:var(--gold);font-family:Inter,sans-serif;font-size:11px;font-weight:600;letter-spacing:.5px;padding:6px 12px;border-radius:8px;cursor:pointer;margin-bottom:10px;transition:background .15s ease,border-color .15s ease}
+.hist-back-btn:hover{background:rgba(255,215,0,0.15);border-color:rgba(255,215,0,0.45)}
+.hist-back-btn:active{transform:translateY(1px)}

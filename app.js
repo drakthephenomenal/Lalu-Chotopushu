@@ -10411,88 +10411,84 @@ function showHistDay(tk) {
   const radhaM = Math.floor(radha / ms);
   const rvM = Math.floor(rv / ms);
   const cyc28 = Math.floor(taps28 / 28);
-  const isToday = tk === App.S.tk;
+  const grand = tSecR + tSecRV + t28Sec;
+  const fmtN = (n) => n.toLocaleString();
 
-  let html = "";
+  // Stash data for the per-set drill-down
+  window._histDayCtx = { tk, isToday: tk === App.S.tk };
 
-  // ── Day Summary ──
-  html += `<div style="background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.15);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;font-family:Inter,sans-serif">`;
-  html += `<div style="font-size:10px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;font-weight:600">Day Summary</div>`;
-  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px">`;
-  // ── TIME FIX: Always use timerHistory (syncTimerFromMalaLog keeps it authoritative).
-  // Previous isToday override caused mismatch when manual jap+time was added to today.
-  const tSecR_disp = tSecR;
-  const tSecRV_disp = tSecRV;
-  if (radha > 0)
-    html += `<div style="color:var(--gold)">Radha: <strong>${radhaM} mala</strong> (${radha}) · ${_histFmtSec(tSecR_disp)}</div>`;
-  if (rv > 0)
-    html += `<div style="color:var(--a2)">RV: <strong>${rvM} mala</strong> (${rv}) · ${_histFmtSec(tSecRV_disp)}</div>`;
-  if (taps28 > 0)
-    html += `<div style="color:var(--green)">28 Names: <strong>${cyc28} cycles</strong> (${taps28}) · ${_histFmtSec(t28Sec)}</div>`;
-  const grand = tSecR_disp + tSecRV_disp + t28Sec;
-  if (grand > 0)
-    html += `<div style="color:var(--tl)">Total: <strong>${_histFmtSec(grand)}</strong></div>`;
-  html += `</div></div>`;
+  // Build clickable per-set cards (premium style, same as Period Totals)
+  const card = (cls, set, label, mainNum, mainUnit, sub, time, enabled) => `
+    <div class="pt-card ${cls}${enabled ? ' pt-card-tap' : ' pt-card-dim'}"
+         ${enabled ? `onclick="showHistSet('${set}')"` : ''}
+         role="${enabled ? 'button' : ''}" tabindex="${enabled ? '0' : '-1'}">
+      <div class="pt-card-label">${label}</div>
+      <div class="pt-card-main"><span class="pt-num">${fmtN(mainNum)}</span><span class="pt-unit">${mainUnit}</span></div>
+      <div class="pt-card-sub">${sub}</div>
+      <div class="pt-card-time">⏱ ${time}</div>
+      ${enabled ? '<div class="pt-card-chev">›</div>' : ''}
+    </div>`;
 
-  // ── Per-Mala Detail from activityLog ──
+  let html = '';
+  html += `<div class="pt-head" style="margin-top:2px"><span class="pt-head-icon">📊</span><span class="pt-head-title">Day Totals</span><span class="pt-head-hint">tap a set for per-mala detail</span></div>`;
+  html += `<div class="pt-grid pt-grid-3">`;
+  html += card('pt-radha', 'radha', 'Radha Jap', radhaM, radhaM === 1 ? 'mala' : 'malas', fmtN(radha) + ' names', _histFmtSec(tSecR), radha > 0);
+  html += card('pt-rv',    'rv',    'RV Jap',    rvM,    rvM === 1 ? 'mala' : 'malas',    fmtN(rv) + ' names',    _histFmtSec(tSecRV), rv > 0);
+  html += card('pt-28',    '28',    '28 Names',  cyc28,  cyc28 === 1 ? 'cycle' : 'cycles', fmtN(taps28) + ' taps', _histFmtSec(t28Sec), taps28 > 0);
+  html += `</div>`;
+  html += `<div class="pt-total"><span class="pt-total-label">Total Time</span><span class="pt-total-val">${_histFmtSec(grand)}</span></div>`;
+
+  // Drill-down slot (populated by showHistSet)
+  html += `<div id="histSetDetail" style="margin-top:14px"></div>`;
+
+  content.innerHTML = html;
+}
+
+function showHistSet(set) {
+  const ctx = window._histDayCtx;
+  if (!ctx) return;
+  const { tk, isToday } = ctx;
+  const slot = document.getElementById("histSetDetail");
+  if (!slot) return;
+
   const log = App.S.activityLog || [];
   const tkPrefix = tk.slice(0, 10);
 
-  // Get mala entries for this day
-  const radhaEntries = log.filter(
-    (e) =>
-      e.t === "mala" && e.mode !== "rv" && _ldk(new Date(e.ts)) === tkPrefix,
-  );
-  const rvEntries = log.filter(
-    (e) =>
-      e.t === "mala" && e.mode === "rv" && _ldk(new Date(e.ts)) === tkPrefix,
-  );
-  const cycleEntries = log.filter(
-    (e) => e.t === "28cycle" && _ldk(new Date(e.ts)) === tkPrefix,
-  );
+  let inner = '';
+  const backBtn = `<button class="hist-back-btn" onclick="document.getElementById('histSetDetail').innerHTML=''">‹ Back to Day Totals</button>`;
 
-  const hasDetail =
-    radhaEntries.length > 0 || rvEntries.length > 0 || cycleEntries.length > 0;
-
-  if (!hasDetail && !isToday) {
-    html += `<div style="font-size:11px;color:var(--td);text-align:center;padding:8px 0">Per-mala detail not available for this date<br><span style="font-size:10px">(activity log only keeps recent sessions)</span></div>`;
-  }
-
-  if (radhaEntries.length > 0) {
-    html += _histMalaTable(
-      "🌸 Radha Jap — Per Mala",
-      radhaEntries,
-      "var(--gold)",
-    );
-  }
-  if (rvEntries.length > 0) {
-    html += _histMalaTable("🔵 RV Jap — Per Mala", rvEntries, "var(--a2)");
-  }
-  if (cycleEntries.length > 0) {
-    html += _hist28CycleTable(cycleEntries);
-  }
-
-  // Today: also show from malaLog (more complete, has all malas even if log is short)
-  if (
-    isToday &&
-    radhaEntries.length === 0 &&
-    (App.S.malaLog || []).length > 0
-  ) {
-    html += _histTodayMalaLogTable(
-      "🌸 Radha Jap — Today's Malas",
-      App.S.malaLog,
-      "var(--gold)",
-    );
-  }
-  if (isToday && rvEntries.length === 0 && (App.S.malaLogRV || []).length > 0) {
-    html += _histTodayMalaLogTable(
-      "🔵 RV Jap — Today's Malas",
-      App.S.malaLogRV,
-      "var(--a2)",
-    );
+  if (set === 'radha') {
+    const radhaEntries = log.filter(e => e.t === 'mala' && e.mode !== 'rv' && _ldk(new Date(e.ts)) === tkPrefix);
+    inner += backBtn;
+    if (radhaEntries.length > 0) {
+      inner += _histMalaTable("🌸 Radha Jap — Per Mala", radhaEntries, "var(--gold)");
+    } else if (isToday && (App.S.malaLog || []).length > 0) {
+      inner += _histTodayMalaLogTable("🌸 Radha Jap — Today's Malas", App.S.malaLog, "var(--gold)");
+    } else {
+      inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-mala detail not available for this date<br><span style="font-size:10px">(activity log only keeps recent sessions)</span></div>`;
+    }
+  } else if (set === 'rv') {
+    const rvEntries = log.filter(e => e.t === 'mala' && e.mode === 'rv' && _ldk(new Date(e.ts)) === tkPrefix);
+    inner += backBtn;
+    if (rvEntries.length > 0) {
+      inner += _histMalaTable("🔵 RV Jap — Per Mala", rvEntries, "var(--a2)");
+    } else if (isToday && (App.S.malaLogRV || []).length > 0) {
+      inner += _histTodayMalaLogTable("🔵 RV Jap — Today's Malas", App.S.malaLogRV, "var(--a2)");
+    } else {
+      inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-mala detail not available for this date</div>`;
+    }
+  } else if (set === '28') {
+    const cycleEntries = log.filter(e => e.t === '28cycle' && _ldk(new Date(e.ts)) === tkPrefix);
+    inner += backBtn;
+    if (cycleEntries.length > 0) {
+      inner += _hist28CycleTable(cycleEntries);
+    } else {
+      inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-cycle detail not available for this date</div>`;
+    }
   }
 
-  content.innerHTML = html;
+  slot.innerHTML = inner;
+  slot.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function _histMalaTable(label, entries, color) {

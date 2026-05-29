@@ -379,6 +379,7 @@ button.hpb.active{
 .sr .sub{font-size:11px;color:var(--td);margin-top:2px;}
 .tg{width:44px;height:24px;background:rgba(255,255,255,0.1);border-radius:12px;position:relative;cursor:pointer;transition:background 0.3s;flex-shrink:0;}
 .tg.on{background:var(--bg);}
+#tgHorizonMode.on{background:#2176AE;} /* celestial blue — distinct from default purple-blue */
 .tg::after{content:'';position:absolute;width:18px;height:18px;background:white;border-radius:50%;top:3px;left:3px;transition:left 0.3s;}
 .tg.on::after{left:23px;}
 .ei{width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(74,144,226,0.25);border-radius:9px;

@@ -7265,13 +7265,13 @@ function renderEkadashiList() {
         const _par = _computeParanaWindow(_ekObjP, _pLat, _pLng, fastingDate);
         if (_par)
           paranaHtml =
-            '<div style="font-size:10px;color:#FFD700;margin-top:3px;">☀️ Parana: ' +
-            fmtD(_par.date) +
-            " · " +
-            _fmtTime12(_par.windowStart) +
-            "–" +
-            _fmtTime12(_par.windowEnd) +
-            "</div>";
+            '<div style="margin-top:6px;padding:5px 8px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.22);border-radius:7px;display:flex;align-items:center;gap:5px;">' +
+            '<span style="font-size:10px;color:#FFD700;font-weight:700;">☀️ Parana</span>' +
+            '<span style="font-size:9px;color:rgba(255,215,0,0.55);">|</span>' +
+            '<span style="font-size:10px;color:#FFE566;">' + fmtD(_par.date) + '</span>' +
+            '<span style="font-size:9px;color:rgba(255,215,0,0.55);">·</span>' +
+            '<span style="font-size:10px;color:#FFE566;font-weight:600;">' + _fmtTime12(_par.windowStart) + "–" + _fmtTime12(_par.windowEnd) + '</span>' +
+            '</div>';
       } catch (_pe) {}
 
       return `<div style="background:rgba(155,89,182,0.09);border:1px solid rgba(155,89,182,0.22);border-radius:12px;padding:11px;margin-bottom:9px;">
@@ -11556,34 +11556,43 @@ function _computeYearEkadashis(year, lat, lng) {
 }
 
 // Compute Parana (fast-breaking) window:
-// Parana is on the day AFTER the fasting date, between sunrise and 1/5 of daytime
-// OR before Dvadashi tithi ends (whichever comes first)
-// Returns { date, windowStart, windowEnd } all as hh:mm strings
+// Parana is on the day AFTER the fasting date, between GPS-based sunrise and 1/5 of daytime
+// OR before Dvadashi tithi ends on that same day (whichever is earlier)
+// Returns { date, windowStart, windowEnd } as hh:mm strings
 function _computeParanaWindow(ek, lat, lng, fastingDate) {
   try {
     // Parana day = day after fasting day
     const [fy, fm, fd] = fastingDate.split("-").map(Number);
     const paranaDay = new Date(fy, fm - 1, fd + 1);
+
+    // Use GPS-based sun times for the Parana day (same engine used for Ekadashi fasting)
     const srData = calcSunTimes(lat, lng, paranaDay);
     if (!srData) return null;
-    const srH = srData.sunriseH; // decimal hours
+    const srH = srData.sunriseH; // local decimal hours
     const ssH = srData.sunsetH;
-    // 1/5 of daytime
+
+    // Muhurta rule: Parana must be done within first 1/5 of the day
     const dayLen = ssH - srH;
     const fifthDay = srH + dayLen / 5;
-    // Dvadashi ends roughly when next tithi (Trayodashi) starts
-    // Approximation: Dvadashi lasts ~24h after Ekadashi ends
-    const dvadashiEndH = ek.ekEnd
-      ? ek.ekEnd.getHours() + ek.ekEnd.getMinutes() / 60
-      : null;
 
-    // Parana window: sunrise → min(1/5 of day, dvadashi end if same day)
+    // Dvadashi ends ~24 hours after Ekadashi tithi ends (ek.ekEnd is the Ekadashi end Date object)
+    // Only constrain Parana end if Dvadashi actually ends on the Parana day itself
     let windowEnd = fifthDay;
-    if (dvadashiEndH !== null) {
-      // If Dvadashi ends before 1/5 of day on parana day, parana must finish before that
-      windowEnd = Math.min(fifthDay, dvadashiEndH);
+    if (ek.ekEnd instanceof Date) {
+      const dvadashiEndDt = new Date(ek.ekEnd.getTime() + 24 * 60 * 60 * 1000);
+      const isSameDay =
+        dvadashiEndDt.getFullYear() === paranaDay.getFullYear() &&
+        dvadashiEndDt.getMonth() === paranaDay.getMonth() &&
+        dvadashiEndDt.getDate() === paranaDay.getDate();
+      if (isSameDay) {
+        const dvadashiEndH = dvadashiEndDt.getHours() + dvadashiEndDt.getMinutes() / 60;
+        // Must break fast before both 1/5th of day AND Dvadashi end
+        windowEnd = Math.min(fifthDay, dvadashiEndH);
+      }
+      // If Dvadashi ends after the Parana day, no constraint — use full 1/5th window
     }
-    // But parana can't start before sunrise
+
+    // Window starts at GPS sunrise on Parana day
     const windowStart = srH;
 
     return {
@@ -11648,7 +11657,7 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
         : "";
 
       const paranaHtml = r.parana
-        ? `<div style="font-size:10px;color:#FFD700;margin-top:3px;">🌅 Parana: ${_fmtDateDMY(r.parana.date)} · ${_fmtTime12(r.parana.windowStart)}–${_fmtTime12(r.parana.windowEnd)}</div>`
+        ? `<div style="margin-top:6px;padding:5px 8px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.22);border-radius:7px;display:flex;align-items:center;gap:5px;"><span style="font-size:10px;color:#FFD700;font-weight:700;">☀️ Parana</span><span style="font-size:9px;color:rgba(255,215,0,0.55);">|</span><span style="font-size:10px;color:#FFE566;">${_fmtDateDMY(r.parana.date)}</span><span style="font-size:9px;color:rgba(255,215,0,0.55);">·</span><span style="font-size:10px;color:#FFE566;font-weight:600;">${_fmtTime12(r.parana.windowStart)}–${_fmtTime12(r.parana.windowEnd)}</span></div>`
         : "";
 
       return `<div style="background:rgba(74,144,226,0.07);border:1px solid rgba(74,144,226,0.18);border-radius:10px;padding:9px 11px;margin-bottom:7px;">

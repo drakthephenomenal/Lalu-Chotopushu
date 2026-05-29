@@ -6640,135 +6640,93 @@ async function fetchPanchangEkadashis() {
   _panchangFetching = true;
   const btn = document.getElementById("panchangFetchBtn");
   const status = document.getElementById("panchangStatus");
-  if (btn) { btn.disabled = true; btn.textContent = "⏳ Computing…"; }
-
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "⏳ Computing…";
+  }
+  if (status) status.textContent = "📍 Getting GPS location…";
   try {
-    // ── Step 1: Get coordinates ───────────────────────────────────────────────
-    // Priority: (a) saved GPS from App.S, (b) fresh getCurrentPosition, (c) default
-    let lat, lng;
-
-    const savedLat = App.S && App.S.lastLat;
-    const savedLng = App.S && App.S.lastLng;
-
-    if (savedLat && savedLng) {
-      // Already have GPS — use instantly, no prompt
-      lat = savedLat;
-      lng = savedLng;
-      if (status) status.textContent = "📍 Using saved GPS location…";
-    } else if (navigator.geolocation) {
-      if (status) status.textContent = "📍 Getting GPS location…";
-      try {
-        const pos = await new Promise((res, rej) => {
-          navigator.geolocation.getCurrentPosition(res, rej, {
-            timeout: 10000,
-            maximumAge: 3600000,
-          });
-        });
-        lat = pos.coords.latitude;
-        lng = pos.coords.longitude;
-        // Save for future use
-        if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; }
-        // Update GPS toggle UI to reflect saved state
-        const tgGps = document.getElementById("tgGpsLocation");
-        if (tgGps) tgGps.classList.add("on");
-        const gpsStatusEl = document.getElementById("gpsLocationStatus");
-        if (gpsStatusEl) gpsStatusEl.textContent = "✅ Location saved · " + lat.toFixed(3) + ", " + lng.toFixed(3);
-      } catch (_) {
-        // GPS denied or timed out — fall back to default (Vrindavan)
-        lat = 27.5794;
-        lng = 77.6964;
-        if (status) status.textContent = "⚠️ GPS denied — using Vrindavan as fallback";
-        toast("📍 GPS unavailable — using Vrindavan fallback");
+    const pos = await new Promise((res, rej) => {
+      if (!navigator.geolocation) {
+        rej(new Error("GPS unavailable"));
+        return;
       }
-    } else {
-      lat = 27.5794;
-      lng = 77.6964;
-      if (status) status.textContent = "⚠️ GPS not available — using Vrindavan fallback";
-    }
-
+      navigator.geolocation.getCurrentPosition(res, rej, {
+        timeout: 10000,
+        maximumAge: 3600000,
+      });
+    });
+    const lat = pos.coords.latitude,
+      lng = pos.coords.longitude;
     if (status) status.textContent = "🔢 Computing tithis…";
 
-    // ── Step 2: Scan for Ekadashis ────────────────────────────────────────────
     if (!App.S.customEkadashi) App.S.customEkadashi = [];
     if (!App.S.occasions) App.S.occasions = {};
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const SYNODIC_HALF = 14.7653; // precise half synodic month in days
     const DAY = 86400000;
-    let added = 0;
-
-    // Anchor: find the next Ekadashi from today and walk forward from there.
-    // We scan 24 half-months (≈12 full months = ~24 Ekadashis).
-    // Each window starts just before the expected Ekadashi and spans 5 days —
-    // this is tight enough to never catch two Ekadashis but wide enough for drift.
-    // cur advances by exactly one synodic half-month each iteration, so drift
-    // is eliminated even over 12+ months.
-    let cur = new Date(today.getTime() - 5 * DAY); // start a few days before today
-    for (let i = 0; i < 24; i++) {
-      // Try both pakshas in the current window; only one will match per half-month
-      let foundEk = null;
-      let foundPaksha = null;
+    let added = 0,
+      cur = new Date(today);
+    // Scan 6 months × 2 pakshas = 12 Ekadashis
+    for (let i = 0; i < 12; i++) {
       for (const paksha of ["shukla", "krishna"]) {
         const wStart = new Date(cur);
-        const wEnd = new Date(cur.getTime() + 18 * DAY);
+        const wEnd = new Date(cur.getTime() + 17 * DAY);
         const ek = _findEkInWindow(wStart, wEnd, paksha);
-        if (ek) { foundEk = ek; foundPaksha = paksha; break; }
-      }
-
-      if (foundEk && foundEk.ekStart >= today) {
-        const ekDateStr = foundEk.ekStart.toISOString().slice(0, 10);
-        const adhikWin = _getAdhikMaasWindow ? _getAdhikMaasWindow(ekDateStr) : null;
-        let name;
-        if (adhikWin) {
-          name = foundPaksha === "shukla" ? "Padmini" : "Parama";
-        } else {
-          const mi = _getAdjustedMonthIndex(foundEk.ekStart);
-          name = foundPaksha === "shukla"
-            ? (_EK_NAMES_SHUKLA[mi] || "Ekadashi")
-            : (_EK_NAMES_KRISHNA[mi] || "Ekadashi");
+        if (ek && ek.ekStart >= today) {
+          const ekDateStr = ek.ekStart.toISOString().slice(0, 10);
+          const adhikWin = _getAdhikMaasWindow(ekDateStr);
+          let name;
+          if (adhikWin) {
+            // Adhik Maas Ekadashis: Padmini (Shukla) / Parama (Krishna)
+            name = paksha === "shukla" ? "Padmini" : "Parama";
+          } else {
+            // Offset month index by -1 after Adhik Maas to correct lunar month shift
+            const mi = _getAdjustedMonthIndex(ek.ekStart);
+            name =
+              paksha === "shukla"
+                ? _EK_NAMES_SHUKLA[mi] || "Ekadashi"
+                : _EK_NAMES_KRISHNA[mi] || "Ekadashi";
+          }
+          const resolved = _resolveEkFasting(ek, lat, lng, name);
+          const exists = App.S.customEkadashi.some(
+            (e) => _ekDate(e) === resolved.startDate,
+          );
+          if (!exists) {
+            App.S.customEkadashi.push({
+              name: resolved.name,
+              paksha: resolved.paksha,
+              startDate: resolved.startDate,
+              startTime: resolved.startTime,
+              endDate: resolved.endDate,
+              endTime: resolved.endTime,
+              autoFetched: true,
+            });
+            App.S.occasions[resolved.fastingDate] = resolved.label;
+            added++;
+          }
         }
-        const resolved = _resolveEkFasting(foundEk, lat, lng, name);
-        const exists = App.S.customEkadashi.some(
-          (e) => _ekDate(e) === resolved.startDate,
-        );
-        if (!exists) {
-          App.S.customEkadashi.push({
-            name: resolved.name,
-            paksha: resolved.paksha,
-            startDate: resolved.startDate,
-            startTime: resolved.startTime,
-            endDate: resolved.endDate,
-            endTime: resolved.endTime,
-            autoFetched: true,
-          });
-          App.S.occasions[resolved.fastingDate] = resolved.label;
-          added++;
-        }
+        cur.setTime(cur.getTime() + 15 * DAY);
       }
-
-      // Advance by one precise synodic half-month — no drift
-      cur = new Date(cur.getTime() + Math.round(SYNODIC_HALF * DAY));
     }
-
     App.S.customEkadashi.sort((a, b) => (_ekDate(a) < _ekDate(b) ? -1 : 1));
     App.save();
     fbDebouncedPush();
     renderEkadashiList();
     renderCal();
-    const total = App.S.customEkadashi.length;
-    if (status) status.textContent = `✅ ${added} new · ${total} total saved`;
-    toast(`📅 ${added} Ekadashis added · ${total} total 🙏`);
-
+    if (status)
+      status.textContent = `✅ ${added} added · ${12 - added} already saved`;
+    toast(`📅 ${added} Ekadashis auto-added for ~6 months! 🙏`);
   } catch (e) {
-    if (status) status.textContent = "⚠️ " + (e.message || "Unexpected error");
-    toast("Error: " + (e.message || "unknown"));
-    console.error("fetchPanchangEkadashis:", e);
-    // Still render whatever is already saved
-    renderEkadashiList();
+    if (status) status.textContent = "⚠️ " + (e.message || "Location denied");
+    toast("GPS error: " + (e.message || "denied"));
   } finally {
     _panchangFetching = false;
-    if (btn) { btn.disabled = false; btn.textContent = "🌙 Auto-Fetch from GPS"; }
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "🌙 Auto-Fetch from GPS";
+    }
   }
 }
 

@@ -4727,7 +4727,14 @@ function _cleanLegacyEkadashiOccasions() {
     let fastingDate = sd;
     if (parampara === "vaishnava" && ek.startTime) {
       const [h, m] = ek.startTime.split(":").map(Number);
-      if (h * 60 + m >= 264) fastingDate = ed;
+      const _ekH = h + m / 60;
+      const _pLat2 = (App.S && App.S.lastLat) || 23.8103;
+      const _pLng2 = (App.S && App.S.lastLng) || 90.4125;
+      const _ekD2 = new Date(_ekDate(ek) + "T00:00:00");
+      const _srD2 = calcSunTimes(_pLat2, _pLng2, _ekD2);
+      const _sunH2 = _srD2 ? _srD2.sunriseH : 6.0;
+      const _arunH2 = _sunH2 - 96 / 60;
+      if (_ekH >= _arunH2) fastingDate = ed;
     }
     const wrongDate = fastingDate === sd ? ed : sd;
     // Only delete the wrongDate entry if it looks like it was written by Ekadashi code
@@ -6542,13 +6549,13 @@ function _resolveEkFasting(ek, lat, lng, name) {
   let fastingDate = startDate,
     isViddha = false;
   if (parampara === "vaishnava") {
-    if (ekStartH > arunodayaH) {
+    if (ekStartH >= arunodayaH) {
       fastingDate = endDate;
       isViddha = true;
     }
   } else {
     // Smarta: fast on day where Ekadashi is present at sunrise
-    if (ekStartH > sunriseH) fastingDate = endDate;
+    if (ekStartH >= sunriseH) fastingDate = endDate;
   }
   const pakshaLabel = paksha === "shukla" ? " ☀️ Shukla" : " 🌙 Krishna";
   const label =
@@ -6647,6 +6654,114 @@ const _EK_NAMES_KRISHNA = [
 
 let _panchangFetching = false;
 
+// ── Recalculate every saved Ekadashi with fresh live GPS + exact per-date sunrise ──
+async function recalculateAllEkadashis() {
+  const btn = document.getElementById("ekRefreshBtn");
+  const status = document.getElementById("panchangStatus");
+  if (btn) { btn.disabled = true; btn.textContent = "📍 Getting live GPS…"; }
+
+  try {
+    // Always get fresh GPS — no cache
+    if (!navigator.geolocation) {
+      toast("❌ GPS not available on this device");
+      return;
+    }
+    if (status) status.textContent = "📍 Getting your live GPS location…";
+    const pos = await new Promise((res, rej) => {
+      navigator.geolocation.getCurrentPosition(res, rej, {
+        timeout: 12000,
+        maximumAge: 0,          // ← force a brand-new GPS fix, never use cache
+        enableHighAccuracy: true
+      });
+    });
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+
+    // Save updated coords
+    if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; }
+    const gpsEl = document.getElementById("gpsLocationStatus");
+    if (gpsEl) gpsEl.textContent = "✅ Live GPS · " + lat.toFixed(4) + ", " + lng.toFixed(4);
+
+    if (status) status.textContent = "🔢 Recomputing each Ekadashi's exact sunrise…";
+
+    const entries = App.S.customEkadashi || [];
+    if (entries.length === 0) {
+      toast("No saved Ekadashis to recalculate. Tap Auto-Fetch first.");
+      return;
+    }
+
+    const parampara = App.S.ekParampara || "smarta";
+    let changed = 0;
+
+    entries.forEach((ek) => {
+      if (!ek || !ek.startDate || !ek.startTime) return;
+
+      // ── Compute exact sunrise for THIS Ekadashi's specific date at THIS GPS ──
+      const ekDate = new Date(ek.startDate + "T00:00:00");
+      const srData = calcSunTimes(lat, lng, ekDate);
+      const sunriseH = srData ? srData.sunriseH : 6.0;
+      const arunodayaH = sunriseH - 96 / 60;   // exactly 96 min before that day's sunrise
+
+      const [hh, mm] = ek.startTime.split(":").map(Number);
+      const ekStartH = hh + mm / 60;
+
+      let newFastingDate = ek.startDate;
+      let isViddha = false;
+
+      if (parampara === "vaishnava") {
+        if (ekStartH >= arunodayaH) {
+          newFastingDate = ek.endDate;
+          isViddha = true;
+        }
+      } else {
+        if (ekStartH >= sunriseH) {
+          newFastingDate = ek.endDate;
+        }
+      }
+
+      // Recompute Parana window for new fasting date
+      const paksha = ek.paksha || "shukla";
+      const label = ek.name +
+        (paksha === "shukla" ? " ☀️ Shukla" : " 🌙 Krishna") +
+        (isViddha ? " (Mahadvadashi · Arunodaya Viddha)" : "");
+
+      // Clear old occasion entries for both possible dates
+      if (App.S.occasions) {
+        [ek.startDate, ek.endDate].forEach((d) => {
+          if (d && App.S.occasions[d]) {
+            const lbl = App.S.occasions[d];
+            if (lbl.includes(ek.name) || lbl.includes("Ekadashi") || lbl.includes("Mahadvadashi")) {
+              delete App.S.occasions[d];
+            }
+          }
+        });
+        App.S.occasions[newFastingDate] = label;
+      }
+      changed++;
+    });
+
+    App.S.customEkadashi.sort((a, b) => (_ekDate(a) < _ekDate(b) ? -1 : 1));
+    await App.save();
+    fbDebouncedPush();
+    renderEkadashiList();
+    renderCal();
+
+    if (status) status.textContent = "✅ " + changed + " Ekadashis recalculated · Live GPS · " + lat.toFixed(4) + ", " + lng.toFixed(4);
+    toast("✅ All " + changed + " Ekadashis recalculated with live GPS 🙏");
+
+  } catch (err) {
+    const msg = err && err.code === 1
+      ? "GPS permission denied — please enable location"
+      : err && err.code === 3
+        ? "GPS timed out — please try again outdoors"
+        : (err.message || "Unknown error");
+    if (status) status.textContent = "⚠️ " + msg;
+    toast("❌ " + msg);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "🔄 Recalculate All with Live GPS"; }
+  }
+}
+
 async function fetchPanchangEkadashis() {
   if (_panchangFetching) return;
   _panchangFetching = true;
@@ -6659,42 +6774,42 @@ async function fetchPanchangEkadashis() {
     // Priority: (a) saved GPS from App.S, (b) fresh getCurrentPosition, (c) default
     let lat, lng;
 
-    const savedLat = App.S && App.S.lastLat;
-    const savedLng = App.S && App.S.lastLng;
-
-    if (savedLat && savedLng) {
-      // Already have GPS — use instantly, no prompt
-      lat = savedLat;
-      lng = savedLng;
-      if (status) status.textContent = "📍 Using saved GPS location…";
-    } else if (navigator.geolocation) {
-      if (status) status.textContent = "📍 Getting GPS location…";
+    // Always get a fresh GPS fix — never use cache, so every date gets computed
+    // for the user's actual current location with zero approximation
+    if (navigator.geolocation) {
+      if (status) status.textContent = "📍 Getting live GPS location…";
       try {
         const pos = await new Promise((res, rej) => {
           navigator.geolocation.getCurrentPosition(res, rej, {
-            timeout: 10000,
-            maximumAge: 3600000,
+            timeout: 12000,
+            maximumAge: 0,           // ← always fresh, never cached
+            enableHighAccuracy: true
           });
         });
         lat = pos.coords.latitude;
         lng = pos.coords.longitude;
-        // Save for future use
+        // Save updated coords
         if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; }
-        // Update GPS toggle UI to reflect saved state
         const tgGps = document.getElementById("tgGpsLocation");
         if (tgGps) tgGps.classList.add("on");
         const gpsStatusEl = document.getElementById("gpsLocationStatus");
-        if (gpsStatusEl) gpsStatusEl.textContent = "✅ Location saved · " + lat.toFixed(3) + ", " + lng.toFixed(3);
-      } catch (_) {
-        // GPS denied or timed out — fall back to default (Vrindavan)
-        lat = 27.5794;
-        lng = 77.6964;
-        if (status) status.textContent = "⚠️ GPS denied — using Vrindavan as fallback";
-        toast("📍 GPS unavailable — using Vrindavan fallback");
+        if (gpsStatusEl) gpsStatusEl.textContent = "✅ Live GPS · " + lat.toFixed(4) + ", " + lng.toFixed(4);
+      } catch (gpsErr) {
+        // Fall back to saved coords if available, else Vrindavan
+        const savedLat = App.S && App.S.lastLat;
+        const savedLng = App.S && App.S.lastLng;
+        if (savedLat && savedLng) {
+          lat = savedLat; lng = savedLng;
+          if (status) status.textContent = "⚠️ GPS timed out — using last saved location";
+          toast("📍 Live GPS failed — using saved location");
+        } else {
+          lat = 27.5794; lng = 77.6964;
+          if (status) status.textContent = "⚠️ GPS denied — using Vrindavan as fallback";
+          toast("📍 GPS unavailable — using Vrindavan fallback");
+        }
       }
     } else {
-      lat = 27.5794;
-      lng = 77.6964;
+      lat = 27.5794; lng = 77.6964;
       if (status) status.textContent = "⚠️ GPS not available — using Vrindavan fallback";
     }
 
@@ -7099,16 +7214,23 @@ function renderEkadashiList() {
         isViddha = false;
       if (startTime) {
         const [hh, mm] = startTime.split(":").map(Number);
-        const ekStartMinutes = hh * 60 + mm;
+        const ekStartH = hh + mm / 60;
+        // Use real GPS-based sunrise for this Ekadashi's start date
+        const _eLat = (App.S && App.S.lastLat) || 23.8103;
+        const _eLng = (App.S && App.S.lastLng) || 90.4125;
+        const _ekD = new Date(sd + "T00:00:00");
+        const _srD = calcSunTimes(_eLat, _eLng, _ekD);
+        const _sunriseH = _srD ? _srD.sunriseH : 6.0;
+        const _arunodayaH = _sunriseH - 96 / 60; // 96 min before sunrise
         if (parampara === "vaishnava") {
-          // Vaishnava: if Ekadashi starts after arunodaya (sunrise − 96 min ≈ 4:24 = 264 min)
-          if (ekStartMinutes >= 264) {
+          // Vaishnava: Viddha if Ekadashi tithi starts AFTER Arunodaya window begins
+          if (ekStartH >= _arunodayaH) {
             fastingDate = ed;
             isViddha = true;
           }
         } else {
-          // Smarta: if Ekadashi starts after sunrise (approx 6:00 = 360 min)
-          if (ekStartMinutes >= 360) fastingDate = ed;
+          // Smarta: fast on endDate if Ekadashi starts after actual sunrise
+          if (ekStartH >= _sunriseH) fastingDate = ed;
         }
       }
       const isTomorrow = fastingDate === ed && sd !== ed;

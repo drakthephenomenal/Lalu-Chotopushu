@@ -141,23 +141,26 @@
     const attemp  = 15.0;   // °C
 
     const result = _se.swe_rise_trans(
-      jdStart,     // JD start of search window
-      SE_SUN,      // body
-      "",          // star name (unused for planets)
-      SEFLG_MOSEPH,
-      rsmi,
-      [lng, lat, 0], // geopos: [longitude, latitude, altitude_m]
-      atpress,
-      attemp
+      jdStart,      // tjd   — JD start of search window
+      SE_SUN,       // ipl   — body (Sun = 0)
+      "",           // starname — unused for planets
+      SEFLG_MOSEPH, // epheflag
+      rsmi,         // rsmi  — rise/set flags
+      lng,          // longitude  (individual arg, NOT array)
+      lat,          // latitude
+      0,            // height above sea level (metres)
+      atpress,      // atmospheric pressure (mbar)
+      attemp        // atmospheric temperature (°C)
     );
 
-    if (!result || result.flag === -1) {
+    if (!result || result.rc === -1) {
       // Polar day / night — return null to trigger fallback
       return null;
     }
 
-    // result.tret[0] is JD (UT) of the rise/set event
-    const jdEvent = result.tret[0];
+    // result.transitTime is JD (UT) of the rise/set event (mivion API)
+    const jdEvent = result.transitTime;
+    console.log("[se-bridge] swe_rise_trans ok →", isSet ? "sunset" : "sunrise", "jdEvent:", jdEvent, "rc:", result.rc);
 
     // Convert JD (UT) → local decimal hours
     // JD UT → Unix ms → local time using device timezone

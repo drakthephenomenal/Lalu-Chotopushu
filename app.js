@@ -82,6 +82,7 @@ const App = {
     nameJapDeductHK: 0,
     gaudiyaMode: false,
     hkLang: "hi",
+    horizonMode: "apparent",  // "apparent" = 90.833° (earthy sky), "celestial" = 90.0° (ISKCON/true)
   },
   lmcRV: 0,
   lmcHK: 0,
@@ -231,6 +232,7 @@ const App = {
       nameJapDeductHK: this.S.nameJapDeductHK || 0,
       gaudiyaMode: this.S.gaudiyaMode || false,
       hkLang: this.S.hkLang || "hi",
+      horizonMode: this.S.horizonMode || "apparent",
     });
     // Keep per-day stores updated for compatibility with existing offline data
     const tk = this.S.tk;
@@ -1547,6 +1549,8 @@ function initJapModeUI() {
   if (tgG)
     App.S.gaudiyaMode ? tgG.classList.add("on") : tgG.classList.remove("on");
   if (App.S.gaudiyaMode) document.body.classList.add("gaudiya-mode");
+  // Init Horizon Mode toggle state
+  _applyHorizonToggleUI();
   // Init HK language toggle state
   const tgH = document.getElementById("tgHkLang");
   if (tgH)
@@ -1863,6 +1867,19 @@ function svm() {
   fbDebouncedPush();
   toast("Mala size saved! 📿");
 }
+// ── Horizon Mode UI helper — syncs toggle + label to App.S.horizonMode ──
+function _applyHorizonToggleUI() {
+  const isCelestial = App.S && App.S.horizonMode === "celestial";
+  const tg = document.getElementById("tgHorizonMode");
+  if (tg) isCelestial ? tg.classList.add("on") : tg.classList.remove("on");
+  const lbl = document.getElementById("horizonModeLabel");
+  if (lbl) lbl.textContent = isCelestial ? "Celestial (ISKCON / True)" : "Apparent (Earthy Sky)";
+  const desc = document.getElementById("horizonModeDesc");
+  if (desc) desc.textContent = isCelestial
+    ? "Sun's geometric centre crossing true horizon — 90.0°. Used by ISKCON & Drik Panchang. Sunrise is ~3–4 min later. Affects Ekadashi, Parana, Brahma Muhurta, Sandhyakal."
+    : "Includes atmospheric refraction & solar disc — 90.833°. Standard for most Hindu calendars. Sunrise is ~3–4 min earlier.";
+}
+
 function tgs(k) {
   if (k === "hkLang") {
     App.S.hkLang = App.S.hkLang === "bn" ? "hi" : "bn";
@@ -1955,6 +1972,25 @@ function tgs(k) {
       updateSunInfo(23.8103, 90.4125);
       toast("📍 GPS location disabled");
     }
+    return;
+  }
+
+  if (k === "horizonMode") {
+    // Toggle between apparent (earthy sky, 90.833°) and celestial (true/ISKCON, 90.0°)
+    App.S.horizonMode = (App.S.horizonMode === "celestial") ? "apparent" : "celestial";
+    _applyHorizonToggleUI();
+    App.save();
+    fbDebouncedPush();
+    // Refresh all time displays immediately with current GPS or fallback
+    const _hLat = (App.S && App.S.lastLat) || 23.8103;
+    const _hLng = (App.S && App.S.lastLng) || 90.4125;
+    updateSunInfo(_hLat, _hLng);
+    if (typeof renderEkadashiList === "function") renderEkadashiList();
+    if (typeof loadSunTimes === "function") loadSunTimes(true);
+    const _hName = App.S.horizonMode === "celestial"
+      ? "🔭 Celestial horizon (ISKCON / True)"
+      : "🌅 Apparent horizon (Earthy Sky)";
+    toast(_hName + " — all timings updated");
     return;
   }
 
@@ -3694,10 +3730,8 @@ function exportAllData() {
     nameJapDeductHK: App.S.nameJapDeductHK || 0,
     malaLogHK: App.S.malaLogHK || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
+    horizonMode: App.S.horizonMode || "apparent",
   };
-  const blob = new Blob([JSON.stringify(backup, null, 2)], {
-    type: "application/json",
-  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -4812,6 +4846,7 @@ async function fbPushFull() {
     nameJapDeductHK: App.S.nameJapDeductHK || 0,
     malaLogHK: App.S.malaLogHK || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
+    horizonMode: App.S.horizonMode || "apparent",
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId,
   };
@@ -4930,6 +4965,10 @@ function fbApplyRemote(d) {
     App.S.gaudiyaMode
       ? document.body.classList.add("gaudiya-mode")
       : document.body.classList.remove("gaudiya-mode");
+  }
+  if (d.horizonMode !== undefined) {
+    App.S.horizonMode = d.horizonMode || "apparent";
+    _applyHorizonToggleUI();
   }
   if ("malaLogHK" in d) {
     const remoteMalaLogHK = d.malaLogHK || [];
@@ -8613,9 +8652,12 @@ function calcSunTimes(lat, lng, date) {
       0.5 * y * y * Math.sin(4 * L0r) -
       1.25 * 0.016708634 ** 2 * Math.sin(2 * Mr));
 
-  // Hour angle at sunrise / sunset (90.833° = centre of sun + atmospheric refraction)
+  // Hour angle at sunrise / sunset
+  // "apparent" (earthy sky): 90.833° = solar disc radius (0.267°) + standard atmospheric refraction (0.566°)
+  // "celestial" (true/astronomical): 90.0° = geometric centre crossing true horizon — used by ISKCON
+  const horizonDeg = (typeof App !== "undefined" && App.S && App.S.horizonMode === "celestial") ? 90.0 : 90.833;
   const cosHA =
-    (Math.cos(90.833 * rad) - Math.sin(lat * rad) * Math.sin(dec)) /
+    (Math.cos(horizonDeg * rad) - Math.sin(lat * rad) * Math.sin(dec)) /
     (Math.cos(lat * rad) * Math.cos(dec));
   if (cosHA > 1 || cosHA < -1) return null; // polar night / midnight sun
 
@@ -10227,8 +10269,15 @@ async function loadSunTimes(forceRefresh) {
 
 function applySunCache(cache) {
   if (!cache) return;
-  const sr0 = new Date(cache.sunrise0);
-  const ss0 = new Date(cache.sunset0);
+  let sr0 = new Date(cache.sunrise0);
+  let ss0 = new Date(cache.sunset0);
+  // Open-Meteo returns apparent (earthy sky) sunrise/sunset.
+  // In Celestial mode (true horizon, 90.0°), sunrise is ~4 min LATER and sunset ~4 min EARLIER.
+  // Adjust so reminder times match calcSunTimes() output for the selected horizon.
+  if (typeof App !== "undefined" && App.S && App.S.horizonMode === "celestial") {
+    sr0 = new Date(sr0.getTime() + 4 * 60 * 1000); // sunrise ~4 min later
+    ss0 = new Date(ss0.getTime() - 4 * 60 * 1000); // sunset ~4 min earlier
+  }
   const bTime = brahmaNotifyTime(sr0);
   const sTime = sandhyaNotifyTime(ss0);
   const btEl = document.getElementById("remTimeBrahma");
@@ -10258,10 +10307,18 @@ function scheduleType(type, cfg) {
     } else {
       const cache = cfg.sunCache;
       if (!cache) return;
-      const sr0 = new Date(cache.sunrise0),
+      let sr0 = new Date(cache.sunrise0),
         sr1 = new Date(cache.sunrise1);
-      const ss0 = new Date(cache.sunset0),
+      let ss0 = new Date(cache.sunset0),
         ss1 = new Date(cache.sunset1);
+      // Apply celestial horizon offset if needed (Open-Meteo returns apparent times)
+      if (typeof App !== "undefined" && App.S && App.S.horizonMode === "celestial") {
+        const _off = 4 * 60 * 1000;
+        sr0 = new Date(sr0.getTime() + _off);
+        sr1 = new Date(sr1.getTime() + _off);
+        ss0 = new Date(ss0.getTime() - _off);
+        ss1 = new Date(ss1.getTime() - _off);
+      }
       if (type === "brahma") {
         fireAt = brahmaNotifyTime(sr0);
         if (fireAt <= now) fireAt = brahmaNotifyTime(sr1);

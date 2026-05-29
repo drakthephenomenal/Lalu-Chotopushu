@@ -1992,6 +1992,8 @@ function tgs(k) {
     // Toggle between apparent (earthy sky, 90.833°) and celestial (true/ISKCON, 90.0°)
     App.S.horizonMode = (App.S.horizonMode === "celestial") ? "apparent" : "celestial";
     _applyHorizonToggleUI();
+    // Resync Ekadashi fasting dates + occasions with new horizon (sunrise shifts ~4 min)
+    _resyncEkOccasions();
     App.save();
     fbDebouncedPush();
     // Refresh all time displays immediately with current GPS or fallback
@@ -1999,6 +2001,7 @@ function tgs(k) {
     const _hLng = (App.S && App.S.lastLng) || 90.4125;
     updateSunInfo(_hLat, _hLng);
     if (typeof renderEkadashiList === "function") renderEkadashiList();
+    if (typeof renderCal === "function") renderCal();
     if (typeof loadSunTimes === "function") loadSunTimes(true);
     const _hName = App.S.horizonMode === "celestial"
       ? "🔭 Celestial horizon (ISKCON / True)"
@@ -6837,52 +6840,12 @@ async function recalculateAllEkadashis() {
     const parampara = App.S.ekParampara || "smarta";
     let changed = 0;
 
-    entries.forEach((ek) => {
-      if (!ek || !ek.startDate || !ek.startTime) return;
+    // Save updated coords before resyncing so calcSunTimes uses the fresh GPS position
+    if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; }
 
-      // ── Compute exact sunrise for THIS Ekadashi's specific date at THIS GPS ──
-      const ekDate = new Date(ek.startDate + "T00:00:00");
-      const srData = calcSunTimes(lat, lng, ekDate);
-      const sunriseH = srData ? srData.sunriseH : 6.0;
-      const arunodayaH = sunriseH - 96 / 60;   // exactly 96 min before that day's sunrise
-
-      const [hh, mm] = ek.startTime.split(":").map(Number);
-      const ekStartH = hh + mm / 60;
-
-      let newFastingDate = ek.startDate;
-      let isViddha = false;
-
-      if (parampara === "vaishnava") {
-        if (ekStartH >= arunodayaH) {
-          newFastingDate = ek.endDate;
-          isViddha = true;
-        }
-      } else {
-        if (ekStartH >= sunriseH) {
-          newFastingDate = ek.endDate;
-        }
-      }
-
-      // Recompute Parana window for new fasting date
-      const paksha = ek.paksha || "shukla";
-      const label = ek.name +
-        (paksha === "shukla" ? " ☀️ Shukla" : " 🌙 Krishna") +
-        (isViddha ? " (Mahadvadashi · Arunodaya Viddha)" : "");
-
-      // Clear old occasion entries for both possible dates
-      if (App.S.occasions) {
-        [ek.startDate, ek.endDate].forEach((d) => {
-          if (d && App.S.occasions[d]) {
-            const lbl = App.S.occasions[d];
-            if (lbl.includes(ek.name) || lbl.includes("Ekadashi") || lbl.includes("Mahadvadashi")) {
-              delete App.S.occasions[d];
-            }
-          }
-        });
-        App.S.occasions[newFastingDate] = label;
-      }
-      changed++;
-    });
+    // Use _resyncEkOccasions — it honours current horizonMode + parampara correctly
+    _resyncEkOccasions();
+    changed = entries.filter(e => e && e.startDate && e.startTime).length;
 
     App.S.customEkadashi.sort((a, b) => (_ekDate(a) < _ekDate(b) ? -1 : 1));
     await App.save();
@@ -7029,10 +6992,12 @@ async function fetchPanchangEkadashis() {
     }
 
     App.S.customEkadashi.sort((a, b) => (_ekDate(a) < _ekDate(b) ? -1 : 1));
+    // Resync all occasions with current horizonMode + parampara after adding new entries
+    _resyncEkOccasions();
     App.save();
     fbDebouncedPush();
     renderEkadashiList();
-    renderCal();
+    if (typeof renderCal === "function") renderCal();
     const total = App.S.customEkadashi.length;
     if (status) status.textContent = `✅ ${added} new · ${total} total saved`;
     toast(`📅 ${added} Ekadashis added · ${total} total 🙏`);
@@ -7115,12 +7080,64 @@ const EK_NOTES = {
 
 function saveEkParampara(val) {
   App.S.ekParampara = val;
+  _resyncEkOccasions();   // recalculate fasting dates for new parampara + current horizonMode
   App.save();
   fbDebouncedPush();
   renderEkParampara();
+  renderEkadashiList();
+  if (typeof renderCal === "function") renderCal();
   toast(
     val === "smarta" ? "☀️ Smarta Parampara set" : "🌸 Vaishnava Parampara set",
   );
+}
+
+// ── Resync all stored Ekadashi fasting occasions (horizonMode + parampara aware) ──
+// Called when horizonMode or ekParampara changes so App.S.occasions stays accurate.
+function _resyncEkOccasions() {
+  const entries = App.S.customEkadashi || [];
+  if (!entries.length) return;
+  const parampara = App.S.ekParampara || "smarta";
+  const lat = (App.S && App.S.lastLat) || 23.8103;
+  const lng = (App.S && App.S.lastLng) || 90.4125;
+
+  entries.forEach((ek) => {
+    if (!ek || !ek.startDate || !ek.startTime || !ek.endDate) return;
+    const paksha = ek.paksha || "shukla";
+
+    // calcSunTimes reads App.S.horizonMode live — correct value used here
+    const ekDate = new Date(ek.startDate + "T00:00:00");
+    const srData = calcSunTimes(lat, lng, ekDate);
+    const sunriseH = srData ? srData.sunriseH : 6.0;
+    const arunodayaH = sunriseH - 96 / 60;
+
+    const [hh, mm] = ek.startTime.split(":").map(Number);
+    const ekStartH = hh + mm / 60;
+
+    let newFastingDate = ek.startDate;
+    let isViddha = false;
+
+    if (parampara === "vaishnava") {
+      if (ekStartH >= arunodayaH) { newFastingDate = ek.endDate; isViddha = true; }
+    } else {
+      if (ekStartH >= sunriseH) newFastingDate = ek.endDate;
+    }
+
+    const pakshaLabel = paksha === "shukla" ? " ☀️ Shukla" : " 🌙 Krishna";
+    const label = (ek.name || "Ekadashi") + pakshaLabel + (isViddha ? " (Mahadvadashi · Arunodaya Viddha)" : "");
+
+    // Clear stale entries for BOTH possible fasting dates for this Ekadashi
+    if (App.S.occasions) {
+      [ek.startDate, ek.endDate].forEach((d) => {
+        if (d && App.S.occasions[d]) {
+          const lbl = App.S.occasions[d];
+          if (lbl.includes(ek.name || "Ekadashi") || lbl.includes("Ekadashi") || lbl.includes("Mahadvadashi")) {
+            delete App.S.occasions[d];
+          }
+        }
+      });
+      App.S.occasions[newFastingDate] = label;
+    }
+  });
 }
 
 function renderEkParampara() {
@@ -9082,6 +9099,9 @@ window.addEventListener("load", async () => {
   buildPwaManifest();
   // Migrate any legacy two-date Ekadashi occasions to single fasting date
   _cleanLegacyEkadashiOccasions();
+  // Resync Ekadashi fasting dates using saved horizonMode + parampara
+  // (ensures correct dates even if settings were changed on another device)
+  _resyncEkOccasions();
   // Persist the cleaned occasions immediately
   App.save();
   fbDebouncedPush();

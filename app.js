@@ -1905,6 +1905,47 @@ function tgs(k) {
     return;
   }
 
+  if (k === "gpsLocation") {
+    // Toggle GPS location permission request
+    const tgGps = document.getElementById("tgGpsLocation");
+    const isCurrentlyOn = tgGps && tgGps.classList.contains("on");
+    if (!isCurrentlyOn) {
+      // User is turning ON — request location now
+      if (!navigator.geolocation) {
+        toast("⚠️ GPS not available on this device");
+        return;
+      }
+      const statusEl = document.getElementById("gpsLocationStatus");
+      if (statusEl) statusEl.textContent = "📍 Detecting your location…";
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude, lng = pos.coords.longitude;
+          if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; App.save(); }
+          updateSunInfo(lat, lng);
+          if (tgGps) tgGps.classList.add("on");
+          if (statusEl) statusEl.textContent = "✅ Location detected · " + lat.toFixed(3) + ", " + lng.toFixed(3);
+          toast("📍 GPS location saved! Brahma Muhurta times updated 🙏");
+          // Refresh reminder times with new location
+          loadSunTimes(true);
+        },
+        () => {
+          if (statusEl) statusEl.textContent = "⚠️ Location access denied. Please allow GPS in browser settings.";
+          toast("⚠️ Could not get location. Please allow GPS access.");
+        },
+        { timeout: 10000, maximumAge: 0 },
+      );
+    } else {
+      // Turning OFF — clear saved location
+      if (App.S) { delete App.S.lastLat; delete App.S.lastLng; App.save(); }
+      if (tgGps) tgGps.classList.remove("on");
+      const statusEl = document.getElementById("gpsLocationStatus");
+      if (statusEl) statusEl.textContent = "— GPS location disabled · using default";
+      updateSunInfo(23.8103, 90.4125);
+      toast("📍 GPS location disabled");
+    }
+    return;
+  }
+
   App.S.cfg[k] = !App.S.cfg[k];
   const m = { vib: "tgVib", sound: "tgSnd" };
   App.S.cfg[k]
@@ -8468,22 +8509,36 @@ function updateSunInfo(lat, lng) {
   document.getElementById("rh-sunset").textContent = times.sunset;
 }
 function initSunTimes() {
+  // If we already have GPS coords saved, use them immediately — no new location prompt
+  const savedLat = App.S && App.S.lastLat;
+  const savedLng = App.S && App.S.lastLng;
+  if (savedLat && savedLng) {
+    updateSunInfo(savedLat, savedLng);
+    setInterval(() => updateSunInfo(savedLat, savedLng), 600000);
+    return;
+  }
+  // No saved coords — only request if permission already granted, to avoid double prompt on startup
   if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude,
-          lng = pos.coords.longitude;
-        // Save for panchang use
-        if (App.S) {
-          App.S.lastLat = lat;
-          App.S.lastLng = lng;
-        }
-        updateSunInfo(lat, lng);
-        setInterval(() => updateSunInfo(lat, lng), 600000);
-      },
-      () => updateSunInfo(23.8103, 90.4125),
-      { timeout: 8000, maximumAge: 3600000 },
-    );
+    const doRequest = () => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude, lng = pos.coords.longitude;
+          if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; }
+          updateSunInfo(lat, lng);
+          setInterval(() => updateSunInfo(lat, lng), 600000);
+        },
+        () => updateSunInfo(23.8103, 90.4125),
+        { timeout: 8000, maximumAge: 3600000 },
+      );
+    };
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: "geolocation" }).then((perm) => {
+        if (perm.state === "granted") { doRequest(); }
+        else { updateSunInfo(23.8103, 90.4125); }
+      }).catch(doRequest);
+    } else {
+      doRequest();
+    }
   } else updateSunInfo(23.8103, 90.4125);
 }
 
@@ -8644,6 +8699,19 @@ window.addEventListener("load", async () => {
   if (App.S.cfg.vib) document.getElementById("tgVib").classList.add("on");
   if (App.S.cfg.sound) document.getElementById("tgSnd").classList.add("on");
 
+  // GPS Location toggle — ON if saved coords exist
+  const tgGpsInit = document.getElementById("tgGpsLocation");
+  if (tgGpsInit) {
+    const hasCoords = App.S && App.S.lastLat && App.S.lastLng;
+    if (hasCoords) tgGpsInit.classList.add("on");
+    const gpsStatusEl = document.getElementById("gpsLocationStatus");
+    if (gpsStatusEl) {
+      gpsStatusEl.textContent = hasCoords
+        ? "✅ Location saved · " + Number(App.S.lastLat).toFixed(3) + ", " + Number(App.S.lastLng).toFixed(3)
+        : "— Tap toggle to detect your location 📍";
+    }
+  }
+
   // Live previews for stats inputs
   [
     "manualJapIn",
@@ -8694,10 +8762,11 @@ window.addEventListener("load", async () => {
 });
 
 // ═══════════════════════════════════════════════════════
-// PWA ONE-CLICK INSTALL BANNER
+// PWA ONE-CLICK INSTALL MODAL — stable, single-fire
 // ═══════════════════════════════════════════════════════
 let deferredPrompt = null;
 let _installBannerShownThisSession = false;
+let _installShowTimer = null;
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
@@ -8705,98 +8774,124 @@ window.addEventListener("beforeinstallprompt", (e) => {
 
   // Already shown this session — just keep the prompt fresh, don't show again
   if (_installBannerShownThisSession) return;
-
   // Already installed (standalone mode)
   if (window.matchMedia("(display-mode: standalone)").matches) return;
-
   // Dismissed within last 3 days
   const dismissed = localStorage.getItem("installBannerDismissed");
-  if (dismissed && Date.now() - Number(dismissed) < 3 * 24 * 60 * 60 * 1000)
-    return;
+  if (dismissed && Date.now() - Number(dismissed) < 3 * 24 * 60 * 60 * 1000) return;
 
-  // Wait for app paint to settle, then show once
-  setTimeout(() => {
-    // Re-check in case user installed or dismissed while waiting
+  // Cancel any pending timer so SW_READY can't double-fire
+  if (_installShowTimer) { clearTimeout(_installShowTimer); _installShowTimer = null; }
+
+  _installShowTimer = setTimeout(() => {
+    _installShowTimer = null;
     if (_installBannerShownThisSession) return;
     if (window.matchMedia("(display-mode: standalone)").matches) return;
     _installBannerShownThisSession = true;
-    showInstallBanner();
-  }, 2500);
+    showInstallModal();
+  }, 3000);
 });
 
-function showInstallBanner() {
-  if (document.getElementById("installBanner")) return;
-  const banner = document.createElement("div");
-  banner.id = "installBanner";
-  banner.style.cssText = `
-    position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(100px);
-    background:linear-gradient(135deg,#1a0a2e,#0d1f3c);
-    border:1px solid rgba(255,215,0,0.45);border-radius:18px;
-    padding:14px 16px;display:flex;align-items:center;gap:12px;
-    box-shadow:0 6px 32px rgba(255,215,0,0.25);
-    z-index:9999;width:92%;max-width:370px;
-    transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+function showInstallModal() {
+  // Only show once — guard against any duplicate calls
+  if (document.getElementById("installModal")) return;
+
+  const modal = document.createElement("div");
+  modal.id = "installModal";
+  modal.style.cssText = `
+    position:fixed;inset:0;z-index:99999;
+    background:rgba(0,0,0,0.82);backdrop-filter:blur(6px);
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;opacity:0;transition:opacity 0.35s ease;
   `;
-  banner.innerHTML = `
-    <img src="/icon-192.png" style="width:46px;height:46px;border-radius:12px;flex-shrink:0;">
-    <div style="flex:1;min-width:0">
-      <div style="color:#FFD700;font-weight:700;font-size:14px;font-family:Inter,sans-serif">📲 Install Radha Jap</div>
-      <div style="color:#aaa;font-size:11px;margin-top:3px;font-family:Inter,sans-serif;line-height:1.4">Add to home screen for daily reminders & offline use 🙏</div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
-      <button id="installBtn" style="
-        background:linear-gradient(135deg,#FFD700,#FFA500);
-        color:#000;border:none;border-radius:10px;
-        padding:8px 15px;font-weight:700;font-size:13px;
-        cursor:pointer;font-family:Inter,sans-serif;white-space:nowrap;
-      ">Install</button>
-      <button id="dismissInstallBtn" style="
-        background:transparent;color:#666;border:none;
-        font-size:11px;cursor:pointer;font-family:Inter,sans-serif;
-      ">Not now</button>
+  modal.innerHTML = `
+    <div id="installModalCard" style="
+      background:linear-gradient(160deg,#0d1f3c 0%,#060D1F 100%);
+      border:1.5px solid rgba(255,215,0,0.38);
+      border-radius:24px;padding:30px 22px 24px;
+      width:100%;max-width:360px;
+      box-shadow:0 0 60px rgba(255,215,0,0.18),0 20px 60px rgba(0,0,0,0.7);
+      transform:scale(0.93) translateY(18px);
+      transition:transform 0.38s cubic-bezier(0.34,1.5,0.64,1);
+      text-align:center;
+    ">
+      <img src="./icon-192.png" style="width:72px;height:72px;border-radius:18px;margin-bottom:14px;box-shadow:0 0 28px rgba(255,215,0,0.35);">
+      <div style="font-family:'Cinzel Decorative',serif;font-size:17px;color:#FFD700;letter-spacing:1px;margin-bottom:6px;">Radha Naam Jap</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.65);line-height:1.6;margin-bottom:22px;font-family:Inter,sans-serif;">
+        Press <b style="color:#FFD700">Install</b> to get an app icon on your Home Screen for quick, easy access — with daily reminders &amp; offline use 🙏
+      </div>
+      <button id="installModalBtn" style="
+        display:block;width:100%;padding:15px;margin-bottom:11px;
+        background:linear-gradient(135deg,#FFD700 0%,#FFAA00 60%,#FF8C00 100%);
+        color:#1a0800;border:none;border-radius:14px;
+        font-size:15px;font-weight:800;letter-spacing:0.4px;
+        font-family:'Cinzel Decorative',serif;cursor:pointer;
+        box-shadow:0 4px 22px rgba(255,180,0,0.45),0 1px 0 rgba(255,255,255,0.25) inset;
+        transition:transform 0.12s,box-shadow 0.12s;
+      ">📲 Install Button</button>
+      <button id="installModalDismiss" style="
+        display:block;width:100%;padding:13px;
+        background:linear-gradient(135deg,rgba(74,144,226,0.22),rgba(40,90,180,0.18));
+        color:#6DB8FF;border:1.5px solid rgba(74,144,226,0.35);border-radius:14px;
+        font-size:14px;font-weight:600;
+        font-family:Inter,sans-serif;cursor:pointer;
+        box-shadow:0 2px 12px rgba(74,144,226,0.12);
+        transition:background 0.15s;
+      ">Add To Homescreen Later — Not Now</button>
     </div>
   `;
-  document.body.appendChild(banner);
+
+  document.body.appendChild(modal);
+
   // Animate in
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      banner.style.transform = "translateX(-50%) translateY(0)";
-    });
-  });
-  document
-    .getElementById("installBtn")
-    .addEventListener("click", triggerInstall);
-  document
-    .getElementById("dismissInstallBtn")
-    .addEventListener("click", dismissInstallBanner);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    modal.style.opacity = "1";
+    const card = document.getElementById("installModalCard");
+    if (card) card.style.transform = "scale(1) translateY(0)";
+  }));
+
+  const btn = document.getElementById("installModalBtn");
+  const dis = document.getElementById("installModalDismiss");
+  if (btn) {
+    btn.addEventListener("pointerdown", () => { btn.style.transform = "scale(0.97)"; });
+    btn.addEventListener("pointerup", () => { btn.style.transform = "scale(1)"; });
+    btn.addEventListener("click", triggerInstall);
+  }
+  if (dis) dis.addEventListener("click", dismissInstallModal);
+}
+
+function _closeInstallModal() {
+  const m = document.getElementById("installModal");
+  if (!m) return;
+  m.style.opacity = "0";
+  const card = document.getElementById("installModalCard");
+  if (card) card.style.transform = "scale(0.93) translateY(18px)";
+  setTimeout(() => { if (m.parentNode) m.parentNode.removeChild(m); }, 380);
 }
 
 function triggerInstall() {
   if (!deferredPrompt) {
-    // Prompt no longer available — guide user to browser menu
     toast('ব্রাউজার মেনু থেকে "Add to Home Screen" বেছে নিন 🙏');
-    dismissInstallBanner();
+    dismissInstallModal();
     return;
   }
   deferredPrompt.prompt();
-  deferredPrompt.userChoice.then((result) => {
+  deferredPrompt.userChoice.then(() => {
     deferredPrompt = null;
-    dismissInstallBanner();
+    dismissInstallModal();
   });
 }
 
-function dismissInstallBanner() {
-  const b = document.getElementById("installBanner");
-  if (b) {
-    b.style.transform = "translateX(-50%) translateY(100px)";
-    setTimeout(() => b.remove(), 400);
-  }
+function dismissInstallModal() {
+  _closeInstallModal();
   localStorage.setItem("installBannerDismissed", Date.now());
 }
 
-window.addEventListener("appinstalled", () => {
-  dismissInstallBanner();
-});
+// Legacy alias (in case anything still calls old name)
+function dismissInstallBanner() { dismissInstallModal(); }
+function showInstallBanner() { showInstallModal(); }
+
+window.addEventListener("appinstalled", () => { _closeInstallModal(); });
 
 // ── Hard cache-bust on version change ──
 (function () {
@@ -8837,43 +8932,39 @@ if ("serviceWorker" in navigator) {
       .register("./sw.js", { scope: "./" })
       .then((r) => {
         console.log("SW registered:", r.scope);
-        // When a new SW takes over, reload the page to get fresh files
-        r.addEventListener("updatefound", () => {
-          const newWorker = r.installing;
-          if (!newWorker) return;
-          newWorker.addEventListener("statechange", () => {
-            if (newWorker.state === "activated") {
-              console.log(
-                "[SW] New SW activated — reloading for fresh content",
-              );
-              window.location.reload();
-            }
-          });
-        });
+
+        // ── SW update path ──────────────────────────────────────────────────
+        // We listen for SW_UPDATED message (sent by the new SW on activate).
+        // We do NOT also listen on updatefound/statechange — that would fire a
+        // second reload on the same page load, causing the install popup flicker.
+        // One reload path only: the SW_UPDATED message below.
+        // ────────────────────────────────────────────────────────────────────
       })
       .catch((e) => console.warn("SW registration failed:", e.message));
 
-    // Also listen for SW messages
     navigator.serviceWorker.addEventListener("message", (e) => {
+      // ── SW_UPDATED: new service worker activated, reload once for fresh files
+      // Guard with sessionStorage so a rapid double-message never double-reloads.
       if (e.data && e.data.type === "SW_UPDATED") {
-        console.log("[SW] Received SW_UPDATED, reloading…", e.data.version);
+        if (sessionStorage.getItem("sw_reloaded") === e.data.version) return;
+        sessionStorage.setItem("sw_reloaded", e.data.version);
+        console.log("[SW] SW_UPDATED received — reloading for fresh content");
         window.location.reload();
       }
-      // SW is active — if we already have a deferred prompt waiting, show the banner now
-      if (e.data && e.data.type === "SW_READY") {
-        if (deferredPrompt && !_installBannerShownThisSession) {
-          if (!window.matchMedia("(display-mode: standalone)").matches) {
-            const dismissed = localStorage.getItem("installBannerDismissed");
-            if (
-              !dismissed ||
-              Date.now() - Number(dismissed) >= 3 * 24 * 60 * 60 * 1000
-            ) {
-              _installBannerShownThisSession = true;
-              showInstallBanner();
-            }
-          }
-        }
-      }
+      // SW_READY is no longer sent by sw.js — handled via controllerchange below
+    });
+
+    // ── SW_READY path: SW was already controlling when this page loaded ──────
+    // This fires when the page is a fresh load under an already-active SW
+    // (not a reload triggered by SW_UPDATED). Safe to show install modal here
+    // because beforeinstallprompt's own 3s timer is the primary trigger; this
+    // is only a fallback for cases where beforeinstallprompt already fired
+    // before the SW registration promise resolved.
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      // controllerchange fires when a new SW claims this client.
+      // This is the correct signal that a new SW is now in control.
+      // The SW_UPDATED message handles the reload; nothing extra needed here.
+      console.log("[SW] controllerchange — new SW is now controlling");
     });
   });
 }

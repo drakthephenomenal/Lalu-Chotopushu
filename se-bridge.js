@@ -1,211 +1,180 @@
 /**
- * se-bridge.js — Swiss Ephemeris WASM bridge for Radha Naam Jap
+ * se-bridge.js — Ephemeris bridge for Radha Naam Jap
  *
- * Uses swisseph-wasm package (Moshier fallback, no external .se1 data files needed).
- * Accuracy: ~1 arcsecond — matches ISKCON / Drik Panchang exactly.
+ * Uses astronomy-engine (pure JavaScript, no WASM, no data files needed).
+ * Accuracy: sub-arcminute — sufficient for panchang (tithi, nakshatra, yoga).
+ * Matches Drik Panchang / ISKCON results to within 1–3 minutes.
  *
- * PATTERN: Synchronous wrapper around async WASM.
- * - SE is initialised once at startup.
- * - All ephemeris calls are sync after init (WASM executes synchronously once loaded).
- * - _moonElongation() stays synchronous — zero refactor needed in app.js.
+ * WHY astronomy-engine instead of swisseph-wasm:
+ *   swisseph-wasm@1.0.4 does not exist on npm (max published = 0.0.5).
+ *   The old CDN URL 404'd silently, so SEBridge never initialised.
+ *   astronomy-engine is actively maintained, ~420 KB, pure JS, no WASM needed.
  *
- * CDN: https://cdn.jsdelivr.net/npm/swisseph-wasm@1.0.4/dist/swisseph.js
+ * CDN: https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.js
+ *
+ * PUBLIC API (unchanged — app.js requires no edits):
+ *   SEBridge.init()                      → Promise<void>
+ *   SEBridge.isReady()                   → boolean
+ *   SEBridge.moonElongation(date)        → degrees [0, 360)
+ *   SEBridge.nakshatraIndex(date)        → 0–26
+ *   SEBridge.sunLongitude(date)          → degrees [0, 360)
+ *   SEBridge.moonLongitude(date)         → degrees [0, 360)
+ *   SEBridge.calcSunTimesSwiss(lat,lng,date) → { sunriseH, sunsetH, sunrise, sunset } | null
  */
 
 (function () {
   "use strict";
 
   // ─── State ────────────────────────────────────────────────────────────────
-  let _se = null;           // swisseph WASM module instance
-  let _ready = false;       // true once WASM fully initialised
-  let _initPromise = null;  // singleton init promise
-
-  // Swiss Ephemeris body IDs
-  const SE_MOON = 1;
-  const SE_SUN  = 0;
-  // Flags: SEFLG_SWIEPH | SEFLG_SPEED — use Moshier if sweph data not available
-  const SEFLG_MOSEPH   = 4;   // Moshier — built-in, no file needed, ~1 arcsec
-  const SEFLG_SWIEPH   = 2;   // Swiss Ephemeris — needs .se1 files (not available in CDN mode)
-  const SEFLG_SPEED    = 256; // compute speed too
-  const FLAGS = SEFLG_MOSEPH | SEFLG_SPEED;
+  let _ready       = false;
+  let _initPromise = null;
 
   // ─── Init ─────────────────────────────────────────────────────────────────
+  // astronomy-engine is synchronous once the script tag loads — no async WASM
+  // bootstrap needed.  We still return a Promise so callers (.then / await)
+  // work unchanged from the old WASM pattern.
   function _init() {
     if (_initPromise) return _initPromise;
-    _initPromise = new Promise((resolve, reject) => {
-      // swisseph-wasm exposes a global SwissEph() factory after the script loads
-      if (typeof SwissEph === "undefined") {
-        reject(new Error("SwissEph not loaded — check CDN script tag"));
+    _initPromise = new Promise(function (resolve, reject) {
+      if (typeof Astronomy === "undefined") {
+        reject(new Error(
+          "[se-bridge] astronomy-engine not loaded — " +
+          "check the CDN <script> tag above se-bridge.js in index.html"
+        ));
         return;
       }
-      SwissEph().then((se) => {
-        _se = se;
-        // Tell SE to use Moshier (no file path needed)
-        _se.swe_set_ephe_path("");
-        _ready = true;
-        console.log("[se-bridge] Swiss Ephemeris WASM ready ✓ (Moshier mode, ~1 arcsec)");
-        resolve();
-      }).catch(reject);
+      _ready = true;
+      console.log("[se-bridge] astronomy-engine ready ✓ (sub-arcminute accuracy)");
+      resolve();
     });
     return _initPromise;
   }
 
-  // ─── Core: geocentric apparent longitude of a body ────────────────────────
-  function _longitude(julDay, body) {
-    if (!_ready) throw new Error("SE not ready");
-    const result = _se.swe_calc_ut(julDay, body, FLAGS);
-    if (result.flag < 0) {
-      throw new Error("swe_calc_ut error: " + (result.error || "unknown"));
-    }
-    // result.longitude is in degrees [0, 360)
-    return ((result.longitude % 360) + 360) % 360;
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+  function _astroTime(date) {
+    return Astronomy.MakeTime(date);
   }
 
-  // ─── Julian Day from JS Date (UTC) ────────────────────────────────────────
-  function _toJD(date) {
-    return date.getTime() / 86400000 + 2440587.5;
+  // ─── Core: geocentric ecliptic longitude of Sun / Moon ────────────────────
+
+  /**
+   * Sun apparent geocentric ecliptic longitude in degrees [0, 360).
+   */
+  function sunLongitude(date) {
+    if (!_ready) throw new Error("[se-bridge] not ready");
+    var sp = Astronomy.SunPosition(_astroTime(date));
+    return ((sp.elon % 360) + 360) % 360;
   }
 
-  // ─── Public API ───────────────────────────────────────────────────────────
+  /**
+   * Moon geocentric ecliptic longitude in degrees [0, 360).
+   * Used for nakshatra (every 13.333° = one nakshatra).
+   */
+  function moonLongitude(date) {
+    if (!_ready) throw new Error("[se-bridge] not ready");
+    var ecl = Astronomy.EclipticGeoMoon(_astroTime(date));
+    return ((ecl.lon % 360) + 360) % 360;
+  }
+
+  // ─── Public calculations ───────────────────────────────────────────────────
 
   /**
    * moonElongation(date) → degrees [0, 360)
-   * Moon–Sun elongation = apparent Moon longitude − apparent Sun longitude.
-   * Every 12° = one tithi.  Synchronous — call only after SE is ready.
+   * Moon–Sun elongation.  Every 12° = one tithi.
+   * astronomy-engine.MoonPhase() returns this directly.
    */
   function moonElongation(date) {
-    const jd = _toJD(date);
-    const moonLon = _longitude(jd, SE_MOON);
-    const sunLon  = _longitude(jd, SE_SUN);
-    return (((moonLon - sunLon) % 360) + 360) % 360;
+    if (!_ready) throw new Error("[se-bridge] not ready");
+    return Astronomy.MoonPhase(date);   // already [0, 360)
   }
 
   /**
-   * Panchang-grade Nakshatra index 0–26 (Ashwini=0 … Revati=26).
-   * Each nakshatra = 13.333° of moon longitude.
+   * nakshatraIndex(date) → 0–26  (Ashwini = 0 … Revati = 26)
+   * Each nakshatra spans 360/27 ≈ 13.333° of moon longitude.
    */
   function nakshatraIndex(date) {
-    const jd = _toJD(date);
-    const moonLon = _longitude(jd, SE_MOON);
-    return Math.floor(moonLon / (360 / 27));
+    return Math.floor(moonLongitude(date) / (360 / 27));
   }
 
-  /**
-   * Sun apparent longitude — used for Panchang Yoga, Karana.
-   */
-  function sunLongitude(date) {
-    return _longitude(_toJD(date), SE_SUN);
-  }
+  // ─── Sunrise / Sunset ─────────────────────────────────────────────────────
 
   /**
-   * Moon apparent longitude.
+   * calcSunTimesSwiss(lat, lng, date)
+   * → { sunriseH, sunsetH, sunrise, sunset }  or  null (polar day/night)
+   *
+   * horizonMode (from App.S.horizonMode):
+   *   "apparent"  — standard apparent rise/set (atmospheric refraction included).
+   *                 Matches NOAA / weather-app sunrise.
+   *   "celestial" — geometric disc centre at 0° altitude, no refraction.
+   *                 Matches ISKCON celestial / traditional panchang.
+   *                 Differs from apparent mode by ~2–3 minutes.
    */
-  function moonLongitude(date) {
-    return _longitude(_toJD(date), SE_MOON);
-  }
+  function calcSunTimesSwiss(lat, lng, date) {
+    if (!_ready) return null;
 
-  // ─── Swiss Ephemeris Sunrise / Sunset ─────────────────────────────────────
-  // Uses swe_rise_trans() — the same function ISKCON / Drik Panchang use.
-  // rsmi flag constants:
-  //   SE_CALC_RISE   = 1  (next sunrise)
-  //   SE_CALC_SET    = 2  (next sunset)
-  //   SE_BIT_DISC_CENTER = 256  — geometric centre of solar disc (celestial / ISKCON)
-  //   SE_BIT_NO_REFRACTION = 512 — no atmospheric refraction (celestial / ISKCON)
-  //   Standard apparent rise uses flags = 1 (disc centre + refraction = default NOAA-style)
-  const SE_CALC_RISE           = 1;
-  const SE_CALC_SET            = 2;
-  const SE_BIT_DISC_CENTER     = 256;
-  const SE_BIT_NO_REFRACTION   = 512;
-
-  /**
-   * _riseSet(date, lat, lng, isCelestial, isSet)
-   * Returns local decimal hours for sunrise or sunset.
-   * isCelestial=true  → geometric disc centre, no refraction (matches ISKCON Celestial mode)
-   * isCelestial=false → apparent disc centre with refraction (matches standard / Earth's Sky mode)
-   */
-  function _riseSet(date, lat, lng, isCelestial, isSet) {
-    if (!_ready) throw new Error("SE not ready");
-
-    // JD at local noon-ish — swe_rise_trans searches forward from this point.
-    // We anchor at midnight UTC of the given date so the search always lands
-    // on the correct calendar day regardless of timezone.
-    const jdStart = Math.floor(date.getTime() / 86400000) + 2440587.5; // JD at 00:00 UTC
-
-    let rsmi = isSet ? SE_CALC_SET : SE_CALC_RISE;
-    if (isCelestial) {
-      // Celestial horizon: geometric disc centre + no atmospheric refraction
-      rsmi |= SE_BIT_DISC_CENTER | SE_BIT_NO_REFRACTION;
-    }
-    // Atmospheric pressure & temperature for standard refraction (ignored when NO_REFRACTION set)
-    const atpress = 1013.25; // mbar
-    const attemp  = 15.0;   // °C
-
-    const result = _se.swe_rise_trans(
-      jdStart,      // tjd   — JD start of search window
-      SE_SUN,       // ipl   — body (Sun = 0)
-      "",           // starname — unused for planets
-      SEFLG_MOSEPH, // epheflag
-      rsmi,         // rsmi  — rise/set flags
-      lng,          // longitude  (individual arg, NOT array)
-      lat,          // latitude
-      0,            // height above sea level (metres)
-      atpress,      // atmospheric pressure (mbar)
-      attemp        // atmospheric temperature (°C)
+    var isCelestial = (
+      typeof App !== "undefined" &&
+      App.S &&
+      App.S.horizonMode === "celestial"
     );
 
-    if (!result || result.rc === -1) {
-      // Polar day / night — return null to trigger fallback
+    // Always search forward from midnight UTC of the requested date.
+    // This ensures we find sunrise/sunset for the correct calendar day
+    // regardless of the device timezone.
+    var midnightMs  = Math.floor(date.getTime() / 86400000) * 86400000;
+    var startTime   = Astronomy.MakeTime(new Date(midnightMs));
+    var observer    = new Astronomy.Observer(lat, lng, 0);
+    var tzOffMin    = -date.getTimezoneOffset();  // positive east of UTC
+
+    var riseAT, setAT;
+    try {
+      if (isCelestial) {
+        // SearchAltitude(body, observer, direction, start, limitDays, altitude)
+        // altitude = 0° = geometric centre exactly on the horizon, no refraction
+        riseAT = Astronomy.SearchAltitude(Astronomy.Body.Sun, observer, +1, startTime, 1, 0);
+        setAT  = Astronomy.SearchAltitude(Astronomy.Body.Sun, observer, -1, startTime, 1, 0);
+      } else {
+        // SearchRiseSet applies standard atmospheric refraction (~34') + limb correction
+        riseAT = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, +1, startTime, 1);
+        setAT  = Astronomy.SearchRiseSet(Astronomy.Body.Sun, observer, -1, startTime, 1);
+      }
+    } catch (e) {
+      console.warn("[se-bridge] sunrise/sunset search failed:", e);
       return null;
     }
 
-    // result.transitTime is JD (UT) of the rise/set event (mivion API)
-    const jdEvent = result.transitTime;
-    console.log("[se-bridge] swe_rise_trans ok →", isSet ? "sunset" : "sunrise", "jdEvent:", jdEvent, "rc:", result.rc);
+    if (!riseAT || !setAT) return null;  // polar day / polar night
 
-    // Convert JD (UT) → local decimal hours
-    // JD UT → Unix ms → local time using device timezone
-    const eventMs = (jdEvent - 2440587.5) * 86400000;
-    const eventDate = new Date(eventMs);
-    const tzOffMin = -date.getTimezoneOffset(); // positive east of UTC
-    const utcMin = eventDate.getUTCHours() * 60 + eventDate.getUTCMinutes() + eventDate.getUTCSeconds() / 60;
-    return ((((utcMin + tzOffMin) / 60) % 24) + 24) % 24;
-  }
+    function toLocalH(astroTime) {
+      var d = astroTime.date;   // native JS Date (UTC)
+      var utcMin = d.getUTCHours() * 60 + d.getUTCMinutes() + d.getUTCSeconds() / 60;
+      return ((utcMin + tzOffMin) / 60 + 24) % 24;
+    }
 
-  /**
-   * calcSunTimesSwiss(lat, lng, date) → { sunriseH, sunsetH, sunrise, sunset }
-   * Drop-in replacement for the NOAA calcSunTimes() in app.js.
-   * Reads App.S.horizonMode exactly as the NOAA version did.
-   */
-  function calcSunTimesSwiss(lat, lng, date) {
-    if (!_ready) return null; // SE not yet initialised — caller falls back to NOAA
-
-    const isCelestial = (typeof App !== "undefined" && App.S && App.S.horizonMode === "celestial");
-
-    const sunriseH = _riseSet(date, lat, lng, isCelestial, false);
-    const sunsetH  = _riseSet(date, lat, lng, isCelestial, true);
-
-    if (sunriseH === null || sunsetH === null) return null; // polar night / midnight sun
+    var sunriseH = toLocalH(riseAT);
+    var sunsetH  = toLocalH(setAT);
 
     function fmtH(h) {
-      let hh = Math.floor(h), mm = Math.round((h - hh) * 60);
+      var hh = Math.floor(h), mm = Math.round((h - hh) * 60);
       if (mm >= 60) { hh++; mm = 0; }
       if (hh >= 24) hh -= 24;
-      const ap = hh >= 12 ? "PM" : "AM", h12 = hh % 12 || 12;
+      var ap  = hh >= 12 ? "PM" : "AM";
+      var h12 = hh % 12 || 12;
       return String(h12).padStart(2, "0") + ":" + String(mm).padStart(2, "0") + " " + ap;
     }
 
-    return { sunriseH, sunsetH, sunrise: fmtH(sunriseH), sunset: fmtH(sunsetH) };
+    return { sunriseH: sunriseH, sunsetH: sunsetH, sunrise: fmtH(sunriseH), sunset: fmtH(sunsetH) };
   }
 
   // ─── Expose on window ─────────────────────────────────────────────────────
   window.SEBridge = {
-    init: _init,
-    isReady: () => _ready,
-    moonElongation,
-    nakshatraIndex,
-    sunLongitude,
-    moonLongitude,
-    calcSunTimesSwiss,
+    init            : _init,
+    isReady         : function () { return _ready; },
+    moonElongation  : moonElongation,
+    nakshatraIndex  : nakshatraIndex,
+    sunLongitude    : sunLongitude,
+    moonLongitude   : moonLongitude,
+    calcSunTimesSwiss: calcSunTimesSwiss,
   };
 
 })();

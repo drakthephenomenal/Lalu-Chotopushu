@@ -1867,7 +1867,7 @@ function svm() {
   fbDebouncedPush();
   toast("Mala size saved! 📿");
 }
-// ── Horizon Mode UI helper — syncs toggle + label to App.S.horizonMode ──
+// ── Horizon Mode UI helper — syncs toggle + label + pill selectors to App.S.horizonMode ──
 function _applyHorizonToggleUI() {
   const isCelestial = App.S && App.S.horizonMode === "celestial";
   const tg = document.getElementById("tgHorizonMode");
@@ -1878,6 +1878,19 @@ function _applyHorizonToggleUI() {
   if (desc) desc.textContent = isCelestial
     ? "Sun's geometric centre crossing true horizon — 90.0°. Used by ISKCON & Drik Panchang. Sunrise is ~3–4 min later. Affects Ekadashi, Parana, Brahma Muhurta, Sandhyakal."
     : "Includes atmospheric refraction & solar disc — 90.833°. Standard for most Hindu calendars. Sunrise is ~3–4 min earlier.";
+  // Sync pill selector highlight
+  const pillApparent = document.getElementById("horizonPillApparent");
+  const pillCelestial = document.getElementById("horizonPillCelestial");
+  if (pillApparent) {
+    pillApparent.style.background = isCelestial ? "rgba(255,215,0,0.04)" : "rgba(255,215,0,0.12)";
+    pillApparent.style.borderColor = isCelestial ? "rgba(255,215,0,0.18)" : "rgba(255,215,0,0.55)";
+    pillApparent.style.boxShadow = isCelestial ? "none" : "0 0 12px rgba(255,215,0,0.12)";
+  }
+  if (pillCelestial) {
+    pillCelestial.style.background = isCelestial ? "rgba(109,184,255,0.12)" : "rgba(109,184,255,0.03)";
+    pillCelestial.style.borderColor = isCelestial ? "rgba(109,184,255,0.55)" : "rgba(109,184,255,0.15)";
+    pillCelestial.style.boxShadow = isCelestial ? "0 0 12px rgba(109,184,255,0.12)" : "none";
+  }
 }
 
 function tgs(k) {

@@ -1,3 +1,36 @@
+/* === GPS dedupe (auto-added): coalesce concurrent getCurrentPosition calls and cache for 60s
+   Fixes double location prompt / double initial load. === */
+(function(){
+  if (typeof navigator === "undefined" || !navigator.geolocation) return;
+  if (navigator.geolocation.__lcDeduped) return;
+  var orig = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation);
+  var waiters = null;
+  var cached = null;
+  navigator.geolocation.getCurrentPosition = function(success, error, options){
+    try {
+      if (cached && Date.now() - cached.ts < 60000) {
+        if (success) { try { success(cached.pos); } catch(e){ console.error(e); } }
+        return;
+      }
+      if (waiters) { waiters.push({ s: success, e: error }); return; }
+      waiters = [{ s: success, e: error }];
+      orig(
+        function(pos){
+          cached = { pos: pos, ts: Date.now() };
+          var w = waiters; waiters = null;
+          w.forEach(function(cb){ if (cb.s) { try { cb.s(pos); } catch(e){ console.error(e); } } });
+        },
+        function(err){
+          var w = waiters; waiters = null;
+          w.forEach(function(cb){ if (cb.e) { try { cb.e(err); } catch(e){ console.error(e); } } });
+        },
+        options || {}
+      );
+    } catch(e){ console.error(e); if (error) try { error(e); } catch(_){} }
+  };
+  navigator.geolocation.__lcDeduped = true;
+})();
+
 // ═══════════════════════════════════════
 // Radha Naam Jap — app.js
 // ═══════════════════════════════════════

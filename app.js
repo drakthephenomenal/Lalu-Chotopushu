@@ -1873,22 +1873,18 @@ function _applyHorizonToggleUI() {
   const tg = document.getElementById("tgHorizonMode");
   if (tg) isCelestial ? tg.classList.add("on") : tg.classList.remove("on");
   const lbl = document.getElementById("horizonModeLabel");
-  if (lbl) lbl.textContent = isCelestial ? "Celestial (ISKCON / True)" : "Apparent (Earthy Sky)";
+  if (lbl) lbl.textContent = isCelestial ? "Celestial" : "Earth's Sky";
   const desc = document.getElementById("horizonModeDesc");
-  if (desc) desc.textContent = isCelestial
-    ? "Sun's geometric centre crossing true horizon — 90.0°. Used by ISKCON & Drik Panchang. Sunrise is ~3–4 min later. Affects Ekadashi, Parana, Brahma Muhurta, Sandhyakal."
-    : "Includes atmospheric refraction & solar disc — 90.833°. Standard for most Hindu calendars. Sunrise is ~3–4 min earlier.";
-  // Sync pill selector highlight
+  if (desc) desc.textContent = "";
   const pillApparent = document.getElementById("horizonPillApparent");
   const pillCelestial = document.getElementById("horizonPillCelestial");
-  if (pillApparent) {
-    pillApparent.classList.toggle("active", !isCelestial);
-    pillApparent.style.cssText = "";
-  }
-  if (pillCelestial) {
-    pillCelestial.classList.toggle("active", isCelestial);
-    pillCelestial.style.cssText = "";
-  }
+  if (pillApparent) { pillApparent.classList.toggle("active", !isCelestial); pillApparent.style.cssText = ""; }
+  if (pillCelestial) { pillCelestial.classList.toggle("active", isCelestial); pillCelestial.style.cssText = ""; }
+  // Reveal the mode panel only when GPS Location is ON
+  const sec = document.getElementById("horizonModeSection");
+  const tgGps = document.getElementById("tgGpsLocation");
+  const gpsOn = !!(tgGps && tgGps.classList.contains("on"));
+  if (sec) sec.classList.toggle("gps-on", gpsOn);
 }
 
 function tgs(k) {
@@ -1963,6 +1959,7 @@ function tgs(k) {
           if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; App.save(); }
           updateSunInfo(lat, lng);
           if (tgGps) tgGps.classList.add("on");
+          _applyHorizonToggleUI();
           if (statusEl) statusEl.textContent = "✅ Location detected · " + lat.toFixed(3) + ", " + lng.toFixed(3);
           toast("📍 GPS location saved! Brahma Muhurta times updated 🙏");
           // Refresh reminder times with new location
@@ -1978,6 +1975,7 @@ function tgs(k) {
       // Turning OFF — clear saved location
       if (App.S) { delete App.S.lastLat; delete App.S.lastLng; App.save(); }
       if (tgGps) tgGps.classList.remove("on");
+      _applyHorizonToggleUI();
       const statusEl = document.getElementById("gpsLocationStatus");
       if (statusEl) statusEl.textContent = "— GPS location disabled · using default";
       updateSunInfo(23.8103, 90.4125);

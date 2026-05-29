@@ -1107,27 +1107,31 @@
       <div class="scc-status-pill scc-status-gold" id="gpsLocationStatus">— location not yet detected · using Dhaka default</div>
       <div class="scc-hint">Enables precise <span class="scc-hint-gold">Brahma Muhurta</span>, <span class="scc-hint-gold">Sunrise</span> &amp; <span class="scc-hint-gold">Sandhyakal</span> for your exact location 🙏</div>
 
-      <!-- ── HORIZON MODE BUTTONS (inside Location) ── -->
-      <div class="hz-label">
-        <span>🌅 Horizon Mode</span>
-        <span class="hz-current" id="horizonModeLabel">Apparent (Earthy Sky)</span>
+      <!-- ── GAUDIYA / ISKCON HORIZON MODE PANEL (revealed when GPS is ON) ── -->
+      <div class="gd-modes" id="gdModes">
+        <div class="gd-modes-head">
+          <span class="gd-modes-orn">❀</span>
+          <span class="gd-modes-title">Horizon Mode</span>
+          <span class="gd-modes-orn">❀</span>
+        </div>
+        <div class="gd-modes-sub" id="horizonModeLabel">Earth's Sky</div>
+        <div class="gd-tiles">
+          <button type="button" class="gd-tile" id="horizonPillApparent"
+            onclick="if(App.S&&App.S.horizonMode!=='apparent')tgs('horizonMode')">
+            <span class="gd-tile-icon">🌅</span>
+            <span class="gd-tile-name">Earth's Sky</span>
+            <span class="gd-tile-tag">90.833°</span>
+          </button>
+          <button type="button" class="gd-tile" id="horizonPillCelestial"
+            onclick="if(App.S&&App.S.horizonMode!=='celestial')tgs('horizonMode')">
+            <span class="gd-tile-icon">🔭</span>
+            <span class="gd-tile-name">Celestial</span>
+            <span class="gd-tile-tag">90.0°</span>
+          </button>
+        </div>
+        <div class="gd-modes-affects">⚡ Affects: Sunrise · Sunset · Brahma Muhurta · Sandhyakal · Ekadashi · Parana · Reminders</div>
       </div>
-      <div class="hz-btn-row">
-        <button type="button" class="hz-btn" id="horizonPillApparent"
-          onclick="if(App.S&&App.S.horizonMode!=='apparent')tgs('horizonMode')">
-          <span class="hz-btn-icon">🌅</span>
-          <span class="hz-btn-name">Earthy Sky</span>
-          <span class="hz-btn-desc">Apparent · 90.833°</span>
-        </button>
-        <button type="button" class="hz-btn" id="horizonPillCelestial"
-          onclick="if(App.S&&App.S.horizonMode!=='celestial')tgs('horizonMode')">
-          <span class="hz-btn-icon">🔭</span>
-          <span class="hz-btn-name">Celestial</span>
-          <span class="hz-btn-desc">ISKCON · 90.0°</span>
-        </button>
-      </div>
-      <p class="scc-desc" id="horizonModeDesc">Includes atmospheric refraction &amp; solar disc — 90.833°. Standard for most Hindu calendars. Sunrise is ~3–4 min earlier.</p>
-      <div class="scc-affects">⚡ Affects: Sunrise · Sunset · Brahma Muhurta · Sandhyakal · Ekadashi · Parana · Reminders</div>
+      <div class="gd-modes-hint" id="gdModesHint">🔒 Turn on GPS Location above to choose your Horizon Mode</div>
       <div class="tg" id="tgHorizonMode" onclick="tgs('horizonMode')" style="display:none"></div>
     </div>
 

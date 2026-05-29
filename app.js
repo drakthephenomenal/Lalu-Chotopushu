@@ -8828,7 +8828,7 @@ function showInstallModal() {
         font-family:'Cinzel Decorative',serif;cursor:pointer;
         box-shadow:0 4px 22px rgba(255,180,0,0.45),0 1px 0 rgba(255,255,255,0.25) inset;
         transition:transform 0.12s,box-shadow 0.12s;
-      ">📲 Install Button</button>
+      ">📲 Install</button>
       <button id="installModalDismiss" style="
         display:block;width:100%;padding:13px;
         background:linear-gradient(135deg,rgba(74,144,226,0.22),rgba(40,90,180,0.18));
@@ -8893,37 +8893,12 @@ function showInstallBanner() { showInstallModal(); }
 
 window.addEventListener("appinstalled", () => { _closeInstallModal(); });
 
-// ── Hard cache-bust on version change ──
-(function () {
-  const APP_VER = "v82";
-  if (localStorage.getItem("appVer") !== APP_VER) {
-    localStorage.setItem("appVer", APP_VER);
-    var p1 = navigator.serviceWorker
-      ? navigator.serviceWorker.getRegistrations().then(function (regs) {
-          return Promise.all(
-            regs.map(function (r) {
-              return r.unregister();
-            }),
-          );
-        })
-      : Promise.resolve();
-    var p2 = window.caches
-      ? caches.keys().then(function (keys) {
-          return Promise.all(
-            keys.map(function (k) {
-              return caches.delete(k);
-            }),
-          );
-        })
-      : Promise.resolve();
-    Promise.all([p1, p2]).then(function () {
-      if (location.search.indexOf("bust=82") === -1) {
-        location.replace(location.pathname + "?bust=82");
-      }
-    });
-    return;
-  }
-})();
+// ── Cache-bust IIFE removed ──────────────────────────────────────────────────
+// Vercel serves fresh files on every deploy; the SW handles cache invalidation
+// via its CACHE version string (radha-jap-v107). The old IIFE was doing an
+// extra location.replace() that caused the app to visibly reload twice on first
+// open after a new deploy. Removed entirely — no user-visible impact.
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Service Worker
 if ("serviceWorker" in navigator) {
@@ -8943,15 +8918,22 @@ if ("serviceWorker" in navigator) {
       .catch((e) => console.warn("SW registration failed:", e.message));
 
     navigator.serviceWorker.addEventListener("message", (e) => {
-      // ── SW_UPDATED: new service worker activated, reload once for fresh files
-      // Guard with sessionStorage so a rapid double-message never double-reloads.
+      // ── SW_UPDATED: new SW activated — reload ONLY if this page is older than
+      // 6 seconds (fresh loads already have the new files from the SW install
+      // step and don't need a reload). Guard with sessionStorage against double-fire.
       if (e.data && e.data.type === "SW_UPDATED") {
         if (sessionStorage.getItem("sw_reloaded") === e.data.version) return;
         sessionStorage.setItem("sw_reloaded", e.data.version);
-        console.log("[SW] SW_UPDATED received — reloading for fresh content");
-        window.location.reload();
+        const pageAge = Date.now() - performance.timing.navigationStart;
+        if (pageAge < 6000) {
+          // Page is brand-new — SW already served fresh files, no reload needed
+          console.log("[SW] SW_UPDATED ignored — page is fresh (<6s old)");
+          return;
+        }
+        console.log("[SW] SW_UPDATED — scheduling reload for fresh content");
+        // Small delay so any in-flight saves/renders finish cleanly
+        setTimeout(() => window.location.reload(), 800);
       }
-      // SW_READY is no longer sent by sw.js — handled via controllerchange below
     });
 
     // ── SW_READY path: SW was already controlling when this page loaded ──────

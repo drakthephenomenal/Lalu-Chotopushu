@@ -1104,43 +1104,37 @@
   <!-- ═══ SOLAR COMPASS — compact Gaudiya-style rows ═══ -->
   <!-- GPS LOCATION (compact) -->
   <div class="sc gaudiya-mode-card" id="solarCompassCard" style="border:1px solid rgba(255,215,0,0.25);">
-    <div class="gmc-top">
+    <div class="gmc-top" style="margin-bottom:0;">
       <div class="gmc-icon">📍</div>
       <div class="gmc-text">
         <div class="gmc-title" style="background:linear-gradient(135deg,#FFD700,#FFB300);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">GPS Location</div>
         <div class="gmc-desc" id="gpsLocationStatus">Auto-detect for accurate Brahma Muhurta, Sunrise &amp; Sandhyakal 🙏</div>
       </div>
-    </div>
-    <div class="gmc-switch-wrap" onclick="tgs('gpsLocation')">
-      <div class="tg" id="tgGpsLocation"></div>
+      <div class="tg" id="tgGpsLocation" onclick="tgs('gpsLocation')" style="flex-shrink:0;"></div>
     </div>
   </div>
 
-  <!-- HORIZON MODE (compact) -->
+  <!-- HORIZON MODE (centered title + two selectable pills, no toggle) -->
   <div class="sc gaudiya-mode-card" id="horizonModeSection" style="border:1px solid rgba(109,184,255,0.25);">
-    <div class="gmc-top">
-      <div class="gmc-icon">🌅</div>
-      <div class="gmc-text">
-        <div class="gmc-title" style="background:linear-gradient(135deg,#6DB8FF,#a0d4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Horizon Mode</div>
-        <div class="gmc-desc" id="horizonModeLabel">Apparent (Earthy Sky) · 90.833°</div>
+    <div style="text-align:center;margin-bottom:14px;">
+      <div class="gmc-title" style="background:linear-gradient(135deg,#6DB8FF,#a0d4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:inline-block;">🌅 Horizon Mode</div>
+      <div class="gmc-desc" id="horizonModeLabel" style="margin-top:4px;">Apparent (Earthy Sky) · 90.833°</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="scc-pill scc-pill-apparent" id="horizonPillApparent" onclick="if(App.S&&App.S.horizonMode!=='apparent')tgs('horizonMode')" style="padding:12px 8px;border-radius:12px;cursor:pointer;text-align:center;border:1.5px solid rgba(255,215,0,0.55);background:rgba(255,215,0,0.12);transition:all 0.25s;">
+        <div style="font-size:22px;line-height:1;">🌅</div>
+        <div style="font-weight:700;color:#FFD700;font-size:14px;margin-top:6px;">Earthy Sky</div>
+        <div style="opacity:0.75;font-size:10px;margin-top:2px;">90.833°</div>
+      </div>
+      <div class="scc-pill scc-pill-celestial" id="horizonPillCelestial" onclick="if(App.S&&App.S.horizonMode!=='celestial')tgs('horizonMode')" style="padding:12px 8px;border-radius:12px;cursor:pointer;text-align:center;border:1.5px solid rgba(109,184,255,0.15);background:rgba(109,184,255,0.03);transition:all 0.25s;">
+        <div style="font-size:22px;line-height:1;">🔭</div>
+        <div style="font-weight:700;color:#6DB8FF;font-size:14px;margin-top:6px;">Celestial</div>
+        <div style="opacity:0.75;font-size:10px;margin-top:2px;">90.0°</div>
       </div>
     </div>
-    <div class="gmc-switch-wrap" onclick="tgs('horizonMode')">
-      <div class="tg" id="tgHorizonMode"></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
-      <div class="scc-pill scc-pill-apparent" id="horizonPillApparent" onclick="if(App.S&&App.S.horizonMode!=='apparent')tgs('horizonMode')" style="padding:8px;border-radius:10px;cursor:pointer;text-align:center;font-size:12px;">
-        <div style="font-size:16px;">🌅</div>
-        <div style="font-weight:600;color:#FFD700;">Apparent</div>
-        <div style="opacity:0.7;font-size:10px;">Earthy Sky · 90.833°</div>
-      </div>
-      <div class="scc-pill scc-pill-celestial" id="horizonPillCelestial" onclick="if(App.S&&App.S.horizonMode!=='celestial')tgs('horizonMode')" style="padding:8px;border-radius:10px;cursor:pointer;text-align:center;font-size:12px;">
-        <div style="font-size:16px;">🔭</div>
-        <div style="font-weight:600;color:#6DB8FF;">Celestial</div>
-        <div style="opacity:0.7;font-size:10px;">ISKCON/Drik · 90.0°</div>
-      </div>
-    </div>
-    <p class="scc-desc" id="horizonModeDesc" style="font-size:11px;opacity:0.7;margin:8px 0 0;">Affects Sunrise · Sunset · Brahma Muhurta · Sandhyakal · Ekadashi · Parana.</p>
+    <p class="scc-desc" id="horizonModeDesc" style="font-size:11px;opacity:0.7;margin:10px 0 0;text-align:center;">Affects Sunrise · Sunset · Brahma Muhurta · Sandhyakal · Ekadashi · Parana.</p>
+    <!-- hidden tg kept so app.js _applyHorizonToggleUI doesn't error -->
+    <div class="tg" id="tgHorizonMode" style="display:none;"></div>
   </div>
 
   <!-- EKADASHI MANAGER -->

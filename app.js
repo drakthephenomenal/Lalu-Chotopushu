@@ -1882,14 +1882,12 @@ function _applyHorizonToggleUI() {
   const pillApparent = document.getElementById("horizonPillApparent");
   const pillCelestial = document.getElementById("horizonPillCelestial");
   if (pillApparent) {
-    pillApparent.style.background = isCelestial ? "rgba(255,215,0,0.04)" : "rgba(255,215,0,0.12)";
-    pillApparent.style.borderColor = isCelestial ? "rgba(255,215,0,0.18)" : "rgba(255,215,0,0.55)";
-    pillApparent.style.boxShadow = isCelestial ? "none" : "0 0 12px rgba(255,215,0,0.12)";
+    pillApparent.classList.toggle("active", !isCelestial);
+    pillApparent.style.cssText = "";
   }
   if (pillCelestial) {
-    pillCelestial.style.background = isCelestial ? "rgba(109,184,255,0.12)" : "rgba(109,184,255,0.03)";
-    pillCelestial.style.borderColor = isCelestial ? "rgba(109,184,255,0.55)" : "rgba(109,184,255,0.15)";
-    pillCelestial.style.boxShadow = isCelestial ? "0 0 12px rgba(109,184,255,0.12)" : "none";
+    pillCelestial.classList.toggle("active", isCelestial);
+    pillCelestial.style.cssText = "";
   }
 }
 

@@ -734,6 +734,15 @@ const App = {
     if (this.S.cfg.sound) playSynthBell();
     // Triple long vibration synced with bell
     this.vib([200, 80, 200, 80, 300]);
+    // ── ARIA live region: announce mala completion to screen readers ──
+    const _announcer = document.getElementById("japAnnounce");
+    if (_announcer) {
+      const _malaNum = this[this.S.japMode === "rv" ? "lmcRV" : this.S.japMode === "hk" ? "lmcHK" : "lmc"];
+      _announcer.textContent = "";
+      setTimeout(() => {
+        _announcer.textContent = "Mala " + _malaNum + " complete. Radha Radha.";
+      }, 50);
+    }
     // ── Record mala duration using the SAME clock as the visible timer ──
     // timerSeconds is the authoritative source — it only ticks while the app
     // interval is actually running, matching exactly what the user sees on screen.
@@ -1560,6 +1569,7 @@ function toggleNaamSel() {
   if (dd.classList.contains("show")) {
     setTimeout(() => {
       document.addEventListener("click", closeNaamSelOutside);
+      document.addEventListener("touchstart", closeNaamSelOutside, { passive: true });
     }, 10);
   }
 }
@@ -1570,6 +1580,7 @@ function closeNaamSelOutside(e) {
     dd.classList.remove("show");
     btn.classList.remove("open");
     document.removeEventListener("click", closeNaamSelOutside);
+    document.removeEventListener("touchstart", closeNaamSelOutside);
   }
 }
 function switchJapMode(mode) {
@@ -1579,6 +1590,7 @@ function switchJapMode(mode) {
   dd.classList.remove("show");
   btn.classList.remove("open");
   document.removeEventListener("click", closeNaamSelOutside);
+  document.removeEventListener("touchstart", closeNaamSelOutside);
   // Update UI
   const optR = document.getElementById("naamOptRadha");
   const optRV = document.getElementById("naamOptRV");

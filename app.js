@@ -8721,32 +8721,38 @@ function renderOccasionList() {
 }
 
 // ── Sun Times ──
+// Primary: Swiss Ephemeris via SEBridge.calcSunTimesSwiss() — same engine as ISKCON / Drik Panchang.
+// Fallback: NOAA Solar Calculator (used only while SE WASM is still loading).
 function calcSunTimes(lat, lng, date) {
-  // NOAA Solar Calculator algorithm — accurate to within ~1 minute
-  // Anchors Julian Day at integer noon to eliminate time-of-day drift
-  const rad = Math.PI / 180;
-  const JD = Math.floor(date.getTime() / 86400000) + 2440587.5 + 0.5; // JD at noon UTC for this date
-  const T = (JD - 2451545.0) / 36525.0; // Julian centuries since J2000.0
+  // ── Swiss Ephemeris path (accurate, matches ISKCON exactly) ──────────────
+  if (typeof SEBridge !== "undefined" && SEBridge.isReady()) {
+    const result = SEBridge.calcSunTimesSwiss(lat, lng, date);
+    if (result) return result;
+    // null = polar night/midnight sun — fall through to NOAA which also returns null
+    return null;
+  }
 
-  // Geometric mean longitude and anomaly of the Sun
+  // ── NOAA fallback (used only before SE WASM finishes loading) ────────────
+  // Accurate to ~1 minute for mid-latitudes; replaced by SE once ready.
+  const rad = Math.PI / 180;
+  const JD = Math.floor(date.getTime() / 86400000) + 2440587.5 + 0.5; // JD at noon UTC
+  const T = (JD - 2451545.0) / 36525.0;
+
   const L0 =
     (((280.46646 + 36000.76983 * T + 0.0003032 * T * T) % 360) + 360) % 360;
   const M =
     (((357.52911 + 35999.05029 * T - 0.0001537 * T * T) % 360) + 360) % 360;
   const Mr = M * rad;
 
-  // Equation of centre
   const C =
     (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(Mr) +
     (0.019993 - 0.000101 * T) * Math.sin(2 * Mr) +
     0.000289 * Math.sin(3 * Mr);
 
-  // Sun true longitude → apparent longitude (aberration + nutation)
   const sunTrueLon = L0 + C;
   const omega = 125.04 - 1934.136 * T;
   const lambda = sunTrueLon - 0.00569 - 0.00478 * Math.sin(omega * rad);
 
-  // Mean obliquity + correction
   const epsilon0 =
     23.0 +
     26.0 / 60 +
@@ -8756,10 +8762,8 @@ function calcSunTimes(lat, lng, date) {
     (0.001813 / 3600) * T * T * T;
   const epsilon = (epsilon0 + 0.00256 * Math.cos(omega * rad)) * rad;
 
-  // Declination
   const dec = Math.asin(Math.sin(epsilon) * Math.sin(lambda * rad));
 
-  // Equation of time (minutes)
   const y = Math.tan(epsilon / 2) ** 2;
   const L0r = L0 * rad;
   const eqT =
@@ -8770,24 +8774,19 @@ function calcSunTimes(lat, lng, date) {
       0.5 * y * y * Math.sin(4 * L0r) -
       1.25 * 0.016708634 ** 2 * Math.sin(2 * Mr));
 
-  // Hour angle at sunrise / sunset
-  // "apparent" (earthy sky): 90.833° = solar disc radius (0.267°) + standard atmospheric refraction (0.566°)
-  // "celestial" (true/astronomical): 90.0° = geometric centre crossing true horizon — used by ISKCON
   const horizonDeg = (typeof App !== "undefined" && App.S && App.S.horizonMode === "celestial") ? 90.0 : 90.833;
   const cosHA =
     (Math.cos(horizonDeg * rad) - Math.sin(lat * rad) * Math.sin(dec)) /
     (Math.cos(lat * rad) * Math.cos(dec));
-  if (cosHA > 1 || cosHA < -1) return null; // polar night / midnight sun
+  if (cosHA > 1 || cosHA < -1) return null;
 
-  const HA = Math.acos(cosHA) / rad; // degrees
+  const HA = Math.acos(cosHA) / rad;
 
-  // Solar noon, sunrise, sunset — all in UTC minutes from midnight
   const solarNoonUTC = 720 - 4 * lng - eqT;
   const sunriseUTC = solarNoonUTC - HA * 4;
   const sunsetUTC = solarNoonUTC + HA * 4;
 
-  // UTC minutes → local decimal hours using device timezone offset
-  const tzOffMin = -date.getTimezoneOffset(); // positive = east of UTC
+  const tzOffMin = -date.getTimezoneOffset();
   function toLocalH(utcMin) {
     return ((((utcMin + tzOffMin) / 60) % 24) + 24) % 24;
   }
@@ -8798,10 +8797,7 @@ function calcSunTimes(lat, lng, date) {
   function fmtH(h) {
     let hh = Math.floor(h),
       mm = Math.round((h - hh) * 60);
-    if (mm >= 60) {
-      hh++;
-      mm = 0;
-    }
+    if (mm >= 60) { hh++; mm = 0; }
     if (hh >= 24) hh -= 24;
     const ap = hh >= 12 ? "PM" : "AM",
       h12 = hh % 12 || 12;
@@ -8833,8 +8829,9 @@ function updateSunInfo(lat, lng) {
   const now = new Date(),
     times = calcSunTimes(lat, lng, now);
   if (!times) return;
+  // Classical Brahma Muhurta: 96 min before sunrise → 48 min before sunrise (2 muhurtas)
   const bmStart = times.sunriseH - 96 / 60,
-    bmEnd = times.sunriseH - 46 / 60;
+    bmEnd = times.sunriseH - 48 / 60;
   document.getElementById("bm-start").textContent = fmtHour(
     bmStart < 0 ? bmStart + 24 : bmStart,
   );
@@ -8857,6 +8854,10 @@ function initSunTimes() {
   if (savedLat && savedLng) {
     updateSunInfo(savedLat, savedLng);
     setInterval(() => updateSunInfo(savedLat, savedLng), 600000);
+    // After SE WASM finishes loading, refresh display with accurate Swiss Ephemeris times
+    if (typeof SEBridge !== "undefined" && !SEBridge.isReady()) {
+      SEBridge.init().then(() => updateSunInfo(savedLat, savedLng)).catch(() => {});
+    }
     return;
   }
   // No saved coords — only request if permission already granted, to avoid double prompt on startup

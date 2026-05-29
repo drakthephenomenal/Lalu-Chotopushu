@@ -1,8 +1,10 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker
-// v107: fixed SW_UPDATED/SW_READY race that caused install popup flicker
+// v108: Swiss Ephemeris sunrise/sunset — matches ISKCON/Drik Panchang exactly
+//       se-bridge.js added to LOCAL_ASSETS cache
+//       BM end corrected to 48 min before sunrise (classical 2-muhurta rule)
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v107';
+const CACHE = 'radha-jap-v108';
 
 const LOCAL_ASSETS = [
   './',
@@ -12,6 +14,7 @@ const LOCAL_ASSETS = [
   './style-stotram.css',
   './stotrams.js',
   './app.js',
+  './se-bridge.js',
   './panchangData.js',
   './guru.jpg',
   './icon-192.png',

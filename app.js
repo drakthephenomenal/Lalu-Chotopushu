@@ -6457,12 +6457,23 @@ function delSt(id) {
 
 // ═══════════════════════════════════════════════════════════════
 // PANCHANG ENGINE — GPS-based astronomical tithi, no API key
-// Moon elongation from sun — full Meeus Table 47.A (60 principal terms)
-// Accurate to ~0.05° → tithi boundary error < 6 minutes (Panchang grade)
-// Each 12° of elongation = 1 tithi
+// Moon elongation from sun.
+// PRIMARY: Swiss Ephemeris WASM via SEBridge (accuracy ~1 arcsec = <2 min tithi error)
+// FALLBACK: Meeus Table 47.A full 60-term formula (~0.05° = <6 min tithi error)
+// Automatically uses Swiss Ephemeris once WASM is initialised.
 // ═══════════════════════════════════════════════════════════════
 
 function _moonElongation(date) {
+  // Use Swiss Ephemeris WASM if already initialised (zero overhead after startup)
+  if (typeof SEBridge !== "undefined" && SEBridge.isReady()) {
+    try {
+      return SEBridge.moonElongation(date);
+    } catch (e) {
+      // fall through to Meeus
+      console.warn("[_moonElongation] SE error, using Meeus fallback:", e.message);
+    }
+  }
+  // ── Meeus Table 47.A fallback (60 terms) ──────────────────────────────────
   const JD = date.getTime() / 86400000 + 2440587.5;
   const T = (JD - 2451545.0) / 36525.0;
   const r = Math.PI / 180;
@@ -8973,6 +8984,14 @@ function logActivity(entry) {
 
 // ── INIT ──
 window.addEventListener("load", async () => {
+  // ── Swiss Ephemeris WASM init (non-blocking background load) ─────────────
+  // _moonElongation() auto-uses SE once ready; Meeus 60-term is fallback.
+  if (typeof SEBridge !== "undefined") {
+    SEBridge.init()
+      .then(() => console.log("[App] Swiss Ephemeris ready — tithi precision ~1 arcsec ✓"))
+      .catch(e => console.warn("[App] SE WASM unavailable, using Meeus fallback:", e.message));
+  }
+
   await App.load();
   App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));

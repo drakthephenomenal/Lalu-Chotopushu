@@ -1101,55 +1101,100 @@
     </div>
   </div>
 
-  <!-- ═══ SOLAR COMPASS — compact Gaudiya-style rows ═══ -->
-  <!-- GPS LOCATION (compact) -->
-  <div class="sc gaudiya-mode-card" id="solarCompassCard" style="border:1px solid rgba(255,215,0,0.25);">
-    <div class="gmc-top" style="margin-bottom:0;">
-      <div class="gmc-icon">📍</div>
-      <div class="gmc-text">
-        <div class="gmc-title" style="background:linear-gradient(135deg,#FFD700,#FFB300);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">GPS Location</div>
-        <div class="gmc-desc" id="gpsLocationStatus">Auto-detect for accurate Brahma Muhurta, Sunrise &amp; Sandhyakal 🙏</div>
+  <!-- ═══ UNIFIED: Location · Horizon · Parampara · Live Times ═══ -->
+  <div class="sc" style="background:rgba(8,12,35,0.82);border:1px solid rgba(255,215,0,0.25);padding:18px 15px 15px;">
+
+    <!-- Header -->
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:15px;font-weight:800;background:linear-gradient(135deg,#FFD700,#FFA500);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:0.5px;">⏱️ Sacred Times</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.32);margin-top:3px;letter-spacing:0.5px;">Location · Horizon Mode · Parampara</div>
+    </div>
+
+    <!-- GPS Location -->
+    <div style="display:flex;align-items:center;gap:12px;background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.2);border-radius:13px;padding:11px 14px;margin-bottom:16px;" id="solarCompassCard">
+      <div style="font-size:20px;line-height:1;">📍</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:#FFD700;line-height:1.2;">GPS Location</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;" id="gpsLocationStatus">Auto-detect for accurate times 🙏</div>
       </div>
       <div class="tg" id="tgGpsLocation" onclick="tgs('gpsLocation')" style="flex-shrink:0;"></div>
     </div>
-  </div>
 
-  <!-- HORIZON MODE (centered title + two selectable pills, no toggle) -->
-  <div class="sc gaudiya-mode-card" id="horizonModeSection" style="border:1px solid rgba(109,184,255,0.25);">
-    <div style="text-align:center;margin-bottom:14px;">
-      <div class="gmc-title" style="background:linear-gradient(135deg,#6DB8FF,#a0d4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:inline-block;">🌅 Horizon Mode</div>
-      <div class="gmc-desc" id="horizonModeLabel" style="margin-top:4px;">Apparent (Earthy Sky) · 90.833°</div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <div class="scc-pill scc-pill-apparent" id="horizonPillApparent" onclick="if(App.S&&App.S.horizonMode!=='apparent')tgs('horizonMode')" style="padding:12px 8px;border-radius:12px;cursor:pointer;text-align:center;border:1.5px solid rgba(255,215,0,0.55);background:rgba(255,215,0,0.12);transition:all 0.25s;">
-        <div style="font-size:22px;line-height:1;">🌅</div>
-        <div style="font-weight:700;color:#FFD700;font-size:14px;margin-top:6px;">Earthy Sky</div>
-        <div style="opacity:0.75;font-size:10px;margin-top:2px;">90.833°</div>
+    <!-- Horizon Mode -->
+    <div style="font-size:9px;color:rgba(255,255,255,0.32);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px;">🌅 Horizon Mode</div>
+    <div id="horizonModeSection" style="margin-bottom:4px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button id="horizonPillApparent" onclick="setHorizonMode('apparent')"
+          style="padding:12px 6px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.45);font-family:Inter,sans-serif;cursor:pointer;text-align:center;transition:all 0.25s;width:100%;">
+          <div style="font-size:20px;line-height:1;">🌅</div>
+          <div style="font-weight:700;font-size:12px;margin-top:5px;">Earthy Sky</div>
+          <div style="font-size:10px;opacity:0.6;margin-top:2px;">90.833°</div>
+        </button>
+        <button id="horizonPillCelestial" onclick="setHorizonMode('celestial')"
+          style="padding:12px 6px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.45);font-family:Inter,sans-serif;cursor:pointer;text-align:center;transition:all 0.25s;width:100%;">
+          <div style="font-size:20px;line-height:1;">🔭</div>
+          <div style="font-weight:700;font-size:12px;margin-top:5px;">Celestial</div>
+          <div style="font-size:10px;opacity:0.6;margin-top:2px;">90.0° · ISKCON</div>
+        </button>
       </div>
-      <div class="scc-pill scc-pill-celestial" id="horizonPillCelestial" onclick="if(App.S&&App.S.horizonMode!=='celestial')tgs('horizonMode')" style="padding:12px 8px;border-radius:12px;cursor:pointer;text-align:center;border:1.5px solid rgba(109,184,255,0.15);background:rgba(109,184,255,0.03);transition:all 0.25s;">
-        <div style="font-size:22px;line-height:1;">🔭</div>
-        <div style="font-weight:700;color:#6DB8FF;font-size:14px;margin-top:6px;">Celestial</div>
-        <div style="opacity:0.75;font-size:10px;margin-top:2px;">90.0°</div>
+      <div id="horizonModeLabel" style="font-size:10px;color:rgba(255,255,255,0.3);text-align:center;margin-top:5px;min-height:14px;"></div>
+      <div id="horizonModeDesc" style="display:none;"></div>
+      <div class="tg" id="tgHorizonMode" style="display:none;"></div>
+    </div>
+
+    <!-- Divider -->
+    <div style="height:1px;background:rgba(255,255,255,0.07);margin:12px 0;"></div>
+
+    <!-- Parampara -->
+    <div style="font-size:9px;color:rgba(255,255,255,0.32);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px;">🔱 Ekadashi Parampara</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+      <button id="ekParSmarta" onclick="saveEkParampara('smarta')"
+        style="padding:12px 6px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.45);font-family:Inter,sans-serif;cursor:pointer;text-align:center;transition:all 0.25s;width:100%;">
+        <div style="font-size:20px;line-height:1;">☀️</div>
+        <div style="font-weight:700;font-size:12px;margin-top:5px;">Smarta</div>
+      </button>
+      <button id="ekParVaishnav" onclick="saveEkParampara('vaishnava')"
+        style="padding:12px 6px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.45);font-family:Inter,sans-serif;cursor:pointer;text-align:center;transition:all 0.25s;width:100%;">
+        <div style="font-size:20px;line-height:1;">🌸</div>
+        <div style="font-weight:700;font-size:12px;margin-top:5px;">Vaishnava</div>
+      </button>
+    </div>
+    <div id="ekParamparaNote" style="font-size:10px;color:rgba(255,255,255,0.38);line-height:1.6;min-height:12px;margin-bottom:4px;"></div>
+
+    <!-- Divider -->
+    <div style="height:1px;background:rgba(255,255,255,0.07);margin:12px 0;"></div>
+
+    <!-- Live Times Preview -->
+    <div style="font-size:9px;color:rgba(255,215,0,0.55);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">📊 Current Times</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div style="background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.18);border-radius:11px;padding:10px;">
+        <div style="font-size:9px;color:rgba(255,215,0,0.55);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:4px;">🌄 Brahma Muhurta</div>
+        <div style="font-size:12px;font-weight:700;color:#FFD700;" id="cfg-bm-start">—</div>
+        <div style="font-size:10px;color:rgba(255,215,0,0.45);">to <span id="cfg-bm-end">—</span></div>
+      </div>
+      <div style="background:rgba(255,160,50,0.06);border:1px solid rgba(255,160,50,0.18);border-radius:11px;padding:10px;">
+        <div style="font-size:9px;color:rgba(255,160,50,0.55);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:4px;">☀️ Sunrise</div>
+        <div style="font-size:14px;font-weight:700;color:#FFA030;" id="cfg-sunrise">—</div>
+      </div>
+      <div style="background:rgba(109,184,255,0.06);border:1px solid rgba(109,184,255,0.18);border-radius:11px;padding:10px;">
+        <div style="font-size:9px;color:rgba(109,184,255,0.55);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:4px;">🌅 Sandhyakal</div>
+        <div style="font-size:12px;font-weight:700;color:#6DB8FF;" id="cfg-sk-start">—</div>
+        <div style="font-size:10px;color:rgba(109,184,255,0.45);">to <span id="cfg-sk-end">—</span></div>
+      </div>
+      <div style="background:rgba(155,89,182,0.06);border:1px solid rgba(155,89,182,0.18);border-radius:11px;padding:10px;">
+        <div style="font-size:9px;color:rgba(189,147,249,0.55);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:4px;">🌇 Sunset</div>
+        <div style="font-size:14px;font-weight:700;color:#BD93F9;" id="cfg-sunset">—</div>
       </div>
     </div>
-    <p class="scc-desc" id="horizonModeDesc" style="font-size:11px;opacity:0.7;margin:10px 0 0;text-align:center;">Affects Sunrise · Sunset · Brahma Muhurta · Sandhyakal · Ekadashi · Parana.</p>
-    <!-- hidden tg kept so app.js _applyHorizonToggleUI doesn't error -->
-    <div class="tg" id="tgHorizonMode" style="display:none;"></div>
+
+    <!-- Next Ekadashi + Parana preview -->
+    <div id="cfg-next-ekadashi"></div>
+
   </div>
 
   <!-- EKADASHI MANAGER -->
   <div class="sc" style="background:rgba(18,8,40,0.6);border-color:rgba(155,89,182,0.35);">
     <h3 style="color:#BD93F9;">📅 Ekadashi Manager</h3>
-
-    <!-- Parampara Toggle -->
-    <div style="background:rgba(0,0,0,0.3);border-radius:12px;padding:13px;margin-bottom:14px;">
-      <div style="font-size:10px;color:rgba(189,147,249,0.7);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;font-weight:700;">🔱 Parampara</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-        <button id="ekParSmarta" onclick="saveEkParampara('smarta')" style="padding:10px 6px;border-radius:10px;border:2px solid rgba(241,196,15,0.5);background:rgba(241,196,15,0.18);color:#F1C40F;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">☀️ Smarta</button>
-        <button id="ekParVaishnav" onclick="saveEkParampara('vaishnava')" style="padding:10px 6px;border-radius:10px;border:2px solid rgba(155,89,182,0.3);background:transparent;color:rgba(189,147,249,0.6);font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;">🌸 Vaishnava</button>
-      </div>
-      <div id="ekParamparaNote" style="font-size:11px;color:rgba(255,255,255,0.4);line-height:1.6;"></div>
-    </div>
 
     <!-- AUTO-FETCH (Primary) -->
     <div style="background:rgba(0,0,0,0.35);border:1px solid rgba(46,204,113,0.25);border-radius:12px;padding:14px;margin-bottom:14px;">
@@ -1397,10 +1442,10 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-    <!-- astronomy-engine: pure JS ephemeris, no WASM, sub-arcminute accuracy -->
-    <!-- Replaces broken swisseph-wasm@1.0.4 (that version never existed on npm) -->
-    <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.js"></script>
-    <script src="./se-bridge.js?v=2"></script>
+    <!-- Swiss Ephemeris WASM — Moshier mode (~1 arcsec, no data files needed) -->
+    <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
+    <script src="https://cdn.jsdelivr.net/npm/swisseph-wasm@1.0.4/dist/swisseph.js"></script>
+    <script src="./se-bridge.js?v=1"></script>
     <script src="./stotrams.js?v=91"></script>
     <script src="./panchangData.js"></script>
     <script src="./app.js?v=93"></script>

@@ -1867,24 +1867,50 @@ function svm() {
   fbDebouncedPush();
   toast("Mala size saved! 📿");
 }
+// ── Sacred button active/inactive styling (golden yellow when selected) ──
+function _activateSacredBtn(el, active) {
+  if (!el) return;
+  if (active) {
+    el.style.borderColor = "rgba(255,215,0,0.75)";
+    el.style.background = "rgba(255,215,0,0.14)";
+    el.style.color = "#FFD700";
+    el.style.boxShadow = "0 2px 14px rgba(255,215,0,0.2)";
+  } else {
+    el.style.borderColor = "rgba(255,255,255,0.1)";
+    el.style.background = "rgba(255,255,255,0.04)";
+    el.style.color = "rgba(255,255,255,0.45)";
+    el.style.boxShadow = "none";
+  }
+}
+
 // ── Horizon Mode UI helper — syncs toggle + label + pill selectors to App.S.horizonMode ──
 function _applyHorizonToggleUI() {
   const isCelestial = App.S && App.S.horizonMode === "celestial";
   const tg = document.getElementById("tgHorizonMode");
   if (tg) isCelestial ? tg.classList.add("on") : tg.classList.remove("on");
   const lbl = document.getElementById("horizonModeLabel");
-  if (lbl) lbl.textContent = isCelestial ? "Celestial" : "Earth's Sky";
-  const desc = document.getElementById("horizonModeDesc");
-  if (desc) desc.textContent = "";
+  if (lbl) lbl.textContent = isCelestial ? "Celestial · 90.0° (ISKCON)" : "Earthy Sky · 90.833° (Standard)";
   const pillApparent = document.getElementById("horizonPillApparent");
   const pillCelestial = document.getElementById("horizonPillCelestial");
-  if (pillApparent) { pillApparent.classList.toggle("active", !isCelestial); pillApparent.style.cssText = ""; }
-  if (pillCelestial) { pillCelestial.classList.toggle("active", isCelestial); pillCelestial.style.cssText = ""; }
-  // Reveal the mode panel only when GPS Location is ON
-  const sec = document.getElementById("horizonModeSection");
-  const tgGps = document.getElementById("tgGpsLocation");
-  const gpsOn = !!(tgGps && tgGps.classList.contains("on"));
-  if (sec) sec.classList.toggle("gps-on", gpsOn);
+  _activateSacredBtn(pillApparent, !isCelestial);
+  _activateSacredBtn(pillCelestial, isCelestial);
+}
+
+// ── Direct horizon mode setter (called from new buttons) ──
+function setHorizonMode(mode) {
+  if (App.S && App.S.horizonMode === mode) return;
+  App.S.horizonMode = mode;
+  _applyHorizonToggleUI();
+  _resyncEkOccasions();
+  App.save();
+  fbDebouncedPush();
+  const lat = (App.S && App.S.lastLat) || 23.8103;
+  const lng = (App.S && App.S.lastLng) || 90.4125;
+  updateSunInfo(lat, lng);
+  if (typeof renderEkadashiList === "function") renderEkadashiList();
+  if (typeof renderCal === "function") renderCal();
+  if (typeof loadSunTimes === "function") loadSunTimes(true);
+  toast(mode === "celestial" ? "🔭 Celestial (ISKCON) — timings updated" : "🌅 Earthy Sky — timings updated");
 }
 
 function tgs(k) {
@@ -1986,23 +2012,7 @@ function tgs(k) {
 
   if (k === "horizonMode") {
     // Toggle between apparent (earthy sky, 90.833°) and celestial (true/ISKCON, 90.0°)
-    App.S.horizonMode = (App.S.horizonMode === "celestial") ? "apparent" : "celestial";
-    _applyHorizonToggleUI();
-    // Resync Ekadashi fasting dates + occasions with new horizon (sunrise shifts ~4 min)
-    _resyncEkOccasions();
-    App.save();
-    fbDebouncedPush();
-    // Refresh all time displays immediately with current GPS or fallback
-    const _hLat = (App.S && App.S.lastLat) || 23.8103;
-    const _hLng = (App.S && App.S.lastLng) || 90.4125;
-    updateSunInfo(_hLat, _hLng);
-    if (typeof renderEkadashiList === "function") renderEkadashiList();
-    if (typeof renderCal === "function") renderCal();
-    if (typeof loadSunTimes === "function") loadSunTimes(true);
-    const _hName = App.S.horizonMode === "celestial"
-      ? "🔭 Celestial horizon (ISKCON / True)"
-      : "🌅 Apparent horizon (Earthy Sky)";
-    toast(_hName + " — all timings updated");
+    setHorizonMode(App.S.horizonMode === "celestial" ? "apparent" : "celestial");
     return;
   }
 
@@ -7138,25 +7148,9 @@ function _resyncEkOccasions() {
 
 function renderEkParampara() {
   const p = App.S.ekParampara || "smarta";
-  const smBtn = document.getElementById("ekParSmarta");
-  const vaBtn = document.getElementById("ekParVaishnav");
+  _activateSacredBtn(document.getElementById("ekParSmarta"), p === "smarta");
+  _activateSacredBtn(document.getElementById("ekParVaishnav"), p === "vaishnava");
   const note = document.getElementById("ekParamparaNote");
-  const activeStyle =
-    "padding:10px 6px;border-radius:10px;border:2px solid;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;";
-  if (smBtn) {
-    smBtn.style.cssText =
-      activeStyle +
-      (p === "smarta"
-        ? "border-color:rgba(241,196,15,0.8);background:rgba(241,196,15,0.22);color:#F1C40F;"
-        : "border-color:rgba(241,196,15,0.2);background:transparent;color:rgba(241,196,15,0.4);");
-  }
-  if (vaBtn) {
-    vaBtn.style.cssText =
-      activeStyle +
-      (p === "vaishnava"
-        ? "border-color:rgba(189,147,249,0.8);background:rgba(155,89,182,0.22);color:#BD93F9;"
-        : "border-color:rgba(155,89,182,0.2);background:transparent;color:rgba(189,147,249,0.4);");
-  }
   if (note) note.innerHTML = EK_NOTES[p] || "";
 }
 
@@ -7474,6 +7468,71 @@ function renderEkadashiList() {
     </div>`;
     })
     .join("");
+  // Refresh the settings panel's next Ekadashi preview
+  renderCfgNextEkadashi();
+}
+
+// ── Settings panel: Next Ekadashi + Parana preview ──
+function renderCfgNextEkadashi() {
+  const el = document.getElementById("cfg-next-ekadashi");
+  if (!el) return;
+  const entries = App.S.customEkadashi || [];
+  if (!entries.length) { el.innerHTML = ""; return; }
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const parampara = App.S.ekParampara || "smarta";
+  const lat = (App.S && App.S.lastLat) || 23.8103;
+  const lng = (App.S && App.S.lastLng) || 90.4125;
+  let upcoming = null;
+  for (const e of entries) {
+    const sd = _ekDate(e);
+    const ed = (typeof e === "object" && e.endDate) ? e.endDate : sd;
+    let fastingDate = sd;
+    if (e.startTime) {
+      const [hh, mm] = e.startTime.split(":").map(Number);
+      const ekH = hh + mm / 60;
+      const srD = calcSunTimes(lat, lng, new Date(sd + "T00:00:00"));
+      const srH = srD ? srD.sunriseH : 6;
+      if (parampara === "vaishnava") { if (ekH >= srH - 96 / 60) fastingDate = ed; }
+      else { if (ekH >= srH) fastingDate = ed; }
+    }
+    const fd = new Date(fastingDate + "T00:00:00");
+    if (fd >= today && (!upcoming || fd < new Date(upcoming.fastingDate + "T00:00:00"))) {
+      upcoming = { e, sd, ed, fastingDate };
+    }
+  }
+  if (!upcoming) { el.innerHTML = ""; return; }
+  const { e, sd, ed, fastingDate } = upcoming;
+  const name = (typeof e === "object" && e.name) ? e.name : "Ekadashi";
+  const paksha = (typeof e === "object" && e.paksha) ? e.paksha : "shukla";
+  const pColor = paksha === "shukla" ? "#F1C40F" : "#BD93F9";
+  const pIcon = paksha === "shukla" ? "☀️" : "🌙";
+  const _fd = new Date(fastingDate + "T00:00:00");
+  const _D = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const _M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const fdFmt = _D[_fd.getDay()] + " " + _fd.getDate() + " " + _M[_fd.getMonth()];
+  let paranaStr = "";
+  try {
+    const _ekS = new Date(sd + "T" + (e.startTime || "06:00") + ":00");
+    const _ekE = new Date(ed + "T" + (e.endTime || "06:00") + ":00");
+    const _par = _computeParanaWindow({ ekStart: _ekS, ekEnd: _ekE }, lat, lng, fastingDate);
+    if (_par) {
+      const _pd = new Date(_par.date + "T00:00:00");
+      const pdFmt = _D[_pd.getDay()] + " " + _pd.getDate() + " " + _M[_pd.getMonth()];
+      paranaStr = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.2);border-radius:8px;padding:7px 10px;margin-top:8px;">
+        <span style="font-size:11px;font-weight:700;color:#FFD700;">☀️ Parana</span>
+        <span style="font-size:10px;color:rgba(255,215,0,0.5);">·</span>
+        <span style="font-size:10px;color:#FFE566;">${pdFmt}</span>
+        <span style="font-size:10px;color:rgba(255,215,0,0.5);">·</span>
+        <span style="font-size:10px;color:#FFE566;font-weight:600;">${_fmtTime12(_par.windowStart)}–${_fmtTime12(_par.windowEnd)}</span>
+      </div>`;
+    }
+  } catch (_) {}
+  el.innerHTML = `<div style="background:rgba(155,89,182,0.1);border:1px solid rgba(155,89,182,0.25);border-radius:11px;padding:11px;">
+    <div style="font-size:9px;color:rgba(189,147,249,0.55);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:6px;">📅 Next Ekadashi</div>
+    <div style="font-size:13px;font-weight:700;color:#BD93F9;margin-bottom:3px;">${name} <span style="font-size:11px;color:${pColor};">${pIcon}</span></div>
+    <div style="font-size:12px;font-weight:700;color:#76ff7a;">🌅 Fast: ${fdFmt}</div>
+    ${paranaStr}
+  </div>`;
 }
 
 function toggleEkEdit(startDate) {
@@ -8832,20 +8891,26 @@ function updateSunInfo(lat, lng) {
   // Classical Brahma Muhurta: 96 min before sunrise → 48 min before sunrise (2 muhurtas)
   const bmStart = times.sunriseH - 96 / 60,
     bmEnd = times.sunriseH - 48 / 60;
-  document.getElementById("bm-start").textContent = fmtHour(
-    bmStart < 0 ? bmStart + 24 : bmStart,
-  );
-  document.getElementById("bm-end").textContent = fmtHour(
-    bmEnd < 0 ? bmEnd + 24 : bmEnd,
-  );
+  const bmStartFmt = fmtHour(bmStart < 0 ? bmStart + 24 : bmStart);
+  const bmEndFmt = fmtHour(bmEnd < 0 ? bmEnd + 24 : bmEnd);
+  document.getElementById("bm-start").textContent = bmStartFmt;
+  document.getElementById("bm-end").textContent = bmEndFmt;
   document.getElementById("rh-sunrise").textContent = times.sunrise;
   const skStart = times.sunsetH - 24 / 60,
     skEnd = times.sunsetH + 24 / 60;
-  document.getElementById("sk-start").textContent = fmtHour(skStart);
-  document.getElementById("sk-end").textContent = fmtHour(
-    skEnd > 24 ? skEnd - 24 : skEnd,
-  );
+  const skStartFmt = fmtHour(skStart);
+  const skEndFmt = fmtHour(skEnd > 24 ? skEnd - 24 : skEnd);
+  document.getElementById("sk-start").textContent = skStartFmt;
+  document.getElementById("sk-end").textContent = skEndFmt;
   document.getElementById("rh-sunset").textContent = times.sunset;
+  // ── Also update Settings panel live preview ──
+  const _s = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  _s("cfg-bm-start", bmStartFmt);
+  _s("cfg-bm-end", bmEndFmt);
+  _s("cfg-sunrise", times.sunrise);
+  _s("cfg-sk-start", skStartFmt);
+  _s("cfg-sk-end", skEndFmt);
+  _s("cfg-sunset", times.sunset);
 }
 function initSunTimes() {
   // If we already have GPS coords saved, use them immediately — no new location prompt

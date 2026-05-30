@@ -7248,6 +7248,11 @@ const EK_NOTES = {
 };
 
 function saveEkParampara(val) {
+  // Gaudiya/ISKCON mode: parampara is fixed (Vaishnava/Arunodaya Viddha) — no user override
+  if (App.S && App.S.gaudiyaMode) {
+    toast("🌸 Gaudiya Mode uses Vaishnava/ISKCON rules automatically");
+    return;
+  }
   App.S.ekParampara = val;
   _resyncEkOccasions();   // recalculate fasting dates for new parampara + current horizonMode
   App.save();
@@ -7274,6 +7279,8 @@ function _resyncEkOccasions() {
 
   entries.forEach((ek) => {
     if (!ek || !ek.startDate || !ek.startTime || !ek.endDate) return;
+    // Skip Gaudiya-fetched entries — their fasting dates are fixed by ISKCON rules
+    if (ek.source === "gaudiya") return;
     const paksha = ek.paksha || "shukla";
 
     // calcSunTimes reads App.S.horizonMode live — correct value used here

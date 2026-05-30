@@ -7575,7 +7575,7 @@ function renderEkadashiList() {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;">
         <div style="flex:1;min-width:0;">
           <div style="font-size:12px;color:#BD93F9;font-weight:700;margin-bottom:3px;">${name} ${pLabel}${autoTag}</div>
-          <div style="font-size:10px;color:rgba(255,255,255,0.45);margin-bottom:5px;">Tithi: ${fmtD(sd)}${sfmt ? " · " + sfmt : ""} → ${fmtD(ed)}${efmt ? " · " + efmt : ""}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.75);margin-bottom:5px;"><span style="font-size:9px;letter-spacing:0.8px;text-transform:uppercase;color:rgba(189,147,249,0.6);font-weight:700;">TITHI</span> <span style="color:#C9A7FF;font-weight:600;">${fmtD(sd)}</span>${sfmt ? '<span style="color:rgba(255,255,255,0.5)"> · </span><span style="color:#FFE566;font-weight:700;">' + sfmt + '</span>' : ''}<span style="color:rgba(255,255,255,0.4);"> → </span><span style="color:#C9A7FF;font-weight:600;">${fmtD(ed)}</span>${efmt ? '<span style="color:rgba(255,255,255,0.5)"> · </span><span style="color:#FFE566;font-weight:700;">' + efmt + '</span>' : ''}</div>
           <div style="font-size:11px;margin-bottom:2px;">${fastLabel}${paramparaTag}</div>
           ${paranaHtml}
         </div>
@@ -11921,8 +11921,13 @@ function _computeParanaWindow(ek, lat, lng, fastingDate) {
         dvadashiEndDt.getDate() === paranaDay.getDate();
       if (isSameDay) {
         const dvadashiEndH = dvadashiEndDt.getHours() + dvadashiEndDt.getMinutes() / 60;
-        // Must break fast before both 1/5th of day AND Dvadashi end
-        windowEnd = Math.min(fifthDay, dvadashiEndH);
+        // Only apply Dvadashi constraint if it ends AFTER sunrise on the Parana day.
+        // If Dvadashi ends before sunrise (e.g. 00:39 AM), the constraint is irrelevant —
+        // Dvadashi is already over before the fast-breaking window even opens.
+        if (dvadashiEndH > srH) {
+          windowEnd = Math.min(fifthDay, dvadashiEndH);
+        }
+        // else: Dvadashi ended before sunrise → no constraint, use fifthDay
       }
       // If Dvadashi ends after the Parana day, no constraint — use full 1/5th window
     }
@@ -11997,7 +12002,7 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
 
       return `<div style="background:rgba(74,144,226,0.07);border:1px solid rgba(74,144,226,0.18);border-radius:10px;padding:9px 11px;margin-bottom:7px;">
       <div style="font-size:11px;color:#6DB8FF;font-weight:700;margin-bottom:2px;">${r.name} ${pLabel}${viddhaTag}</div>
-      <div style="font-size:10px;color:rgba(255,255,255,0.45);">Tithi: ${_fmtDateDMY(r.startDate)} ${r.startTime ? "· " + _fmtTime12(r.startTime) : ""}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.75);margin-bottom:2px;"><span style="font-size:9px;letter-spacing:0.8px;text-transform:uppercase;color:rgba(109,184,255,0.65);font-weight:700;">TITHI</span> <span style="color:#8EC8FF;font-weight:600;">${_fmtDateDMY(r.startDate)}</span>${r.startTime ? '<span style="color:rgba(255,255,255,0.5)"> · </span><span style="color:#FFE566;font-weight:700;">' + _fmtTime12(r.startTime) + '</span>' : ''} ${r.endDate && r.endDate !== r.startDate ? '<span style="color:rgba(255,255,255,0.4)"> → </span><span style="color:#8EC8FF;font-weight:600;">' + _fmtDateDMY(r.endDate) + '</span>' : ''} ${r.endTime ? '<span style="color:rgba(255,255,255,0.5)"> · </span><span style="color:#FFE566;font-weight:700;">' + _fmtTime12(r.endTime) + '</span>' : ''}</div>
       <div style="font-size:10px;color:#76ff7a;font-weight:600;margin-top:2px;">🌙 Fast: ${_fmtDateDMY(r.fastingDate)} ${paramTag}</div>
       ${paranaHtml}
     </div>`;

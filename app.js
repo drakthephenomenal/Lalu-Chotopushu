@@ -6663,27 +6663,29 @@ function _didCross(prev, cur, deg) {
 }
 
 // Find Ekadashi tithi start/end in a window. Returns {paksha, ekStart, ekEnd} or null.
+// FIX: Step in 2-hour increments (was 24h) so we never skip over a crossing.
+// A tithi spans ~24h so a 2h step guarantees we catch every boundary.
 function _findEkInWindow(wStart, wEnd, paksha) {
   const startDeg = paksha === "shukla" ? 120 : 300;
-  const endDeg = paksha === "shukla" ? 132 : 312;
-  const DAY = 86400000;
+  const endDeg   = paksha === "shukla" ? 132 : 312;
+  const STEP = 2 * 60 * 60 * 1000; // 2 hours — fine enough to never skip a tithi
   let prev = _moonElongation(wStart),
     ekStart = null,
-    ekEnd = null;
+    ekEnd   = null;
   const cur = new Date(wStart);
   while (cur <= wEnd) {
-    cur.setTime(cur.getTime() + DAY);
+    cur.setTime(cur.getTime() + STEP);
     const e = _moonElongation(cur);
     if (!ekStart && _didCross(prev, e, startDeg))
       ekStart = _findElongCrossing(
         startDeg,
-        new Date(cur.getTime() - DAY),
+        new Date(cur.getTime() - STEP),
         new Date(cur),
       );
     if (ekStart && !ekEnd && _didCross(prev, e, endDeg))
       ekEnd = _findElongCrossing(
         endDeg,
-        new Date(cur.getTime() - DAY),
+        new Date(cur.getTime() - STEP),
         new Date(cur),
       );
     if (ekStart && ekEnd) break;
@@ -6719,19 +6721,26 @@ function _resolveEkFasting(ek, lat, lng, name) {
   const startTime = _d2hhmm(ekStart),
     endTime = _d2hhmm(ekEnd);
   const srData = calcSunTimes(lat, lng, ekStart);
-  const sunriseH = srData ? srData.sunriseH : 6.0;
-  const arunodayaH = sunriseH - 96 / 60;
+
+  // FIX: Arunodaya Viddha must always use APPARENT sunrise (physical sky event).
+  // Celestial mode shifts displayed sunrise but Arunodaya is a real atmospheric
+  // phenomenon — the 96-min window before actual visible sunrise, not solar noon ±6h.
+  const apparentSunriseH = srData ? srData.apparentSunriseH : 6.0;
+  const sunriseH         = srData ? srData.sunriseH         : 6.0; // mode-aware for Smarta
+  const arunodayaH       = apparentSunriseH - 96 / 60; // 96 min before apparent sunrise
+
   const ekStartH = ekStart.getHours() + ekStart.getMinutes() / 60;
   const parampara = App.S.ekParampara || "smarta";
   let fastingDate = startDate,
     isViddha = false;
   if (parampara === "vaishnava") {
+    // Vaishnava: if Ekadashi starts at or after Arunodaya → Viddha → fast next day
     if (ekStartH >= arunodayaH) {
       fastingDate = endDate;
       isViddha = true;
     }
   } else {
-    // Smarta: fast on day where Ekadashi is present at sunrise
+    // Smarta: fast on day where Ekadashi is present at (mode-aware) sunrise
     if (ekStartH >= sunriseH) fastingDate = endDate;
   }
   const pakshaLabel = paksha === "shukla" ? " ☀️ Shukla" : " 🌙 Krishna";
@@ -7105,8 +7114,10 @@ function _resyncEkOccasions() {
     // calcSunTimes reads App.S.horizonMode live — correct value used here
     const ekDate = new Date(ek.startDate + "T00:00:00");
     const srData = calcSunTimes(lat, lng, ekDate);
-    const sunriseH = srData ? srData.sunriseH : 6.0;
-    const arunodayaH = sunriseH - 96 / 60;
+    const sunriseH         = srData ? srData.sunriseH         : 6.0;
+    // FIX: Arunodaya always uses APPARENT sunrise (physical sky event)
+    const apparentSunriseH = srData ? srData.apparentSunriseH : 6.0;
+    const arunodayaH       = apparentSunriseH - 96 / 60;
 
     const [hh, mm] = ek.startTime.split(":").map(Number);
     const ekStartH = hh + mm / 60;
@@ -11886,54 +11897,51 @@ function _computeYearEkadashis(year, lat, lng) {
 }
 
 // Compute Parana (fast-breaking) window:
-// Parana is on the day AFTER the fasting date, between GPS-based sunrise and 1/5 of daytime
-// OR before Dvadashi tithi ends on that same day (whichever is earlier)
-// Returns { date, windowStart, windowEnd } as hh:mm strings
+// Scripture: Parana = from sunrise until 1/5 of apparent daytime has elapsed,
+// OR before Dvadashi tithi ends on that day — whichever is EARLIER.
+// FIX 1: Always use APPARENT daytime for the 1/5 rule (scriptural daytime = visible day).
+// FIX 2: Compute actual Dvadashi end via binary search instead of ekEnd+24h approximation.
 function _computeParanaWindow(ek, lat, lng, fastingDate) {
   try {
     // Parana day = day after fasting day
     const [fy, fm, fd] = fastingDate.split("-").map(Number);
     const paranaDay = new Date(fy, fm - 1, fd + 1);
 
-    // Use GPS-based sun times for the Parana day
+    // Sun times for Parana day
     const srData = calcSunTimes(lat, lng, paranaDay);
     if (!srData) return null;
 
-    // Parana window START = mode-aware sunrise (celestial or apparent)
-    const srH = srData.sunriseH;
-    const ssH = srData.sunsetH;
+    // Parana START = mode-aware sunrise (celestial or apparent per user setting)
+    const windowStart = srData.sunriseH;
 
-    // 1/5 of day rule uses mode-consistent daytime length:
-    // Celestial mode  → daytime = sunsetH − sunriseH  (both = solarNoon ± 6h = exactly 12h)
-    // Apparent mode   → daytime = apparentSunset − apparentSunrise
-    // Using srH/ssH (already mode-aware from calcSunTimes) keeps start & length consistent.
-    const dayLen  = ssH - srH;
-    const fifthDay = srH + dayLen / 5;
+    // FIX 1: 1/5 of day always uses APPARENT daytime (physical visible day per scripture)
+    const apparentDayLen = srData.apparentSunsetH - srData.apparentSunriseH;
+    const fifthDay = windowStart + apparentDayLen / 5;
 
-    // Dvadashi ends ~24 hours after Ekadashi tithi ends (ek.ekEnd is the Ekadashi end Date object)
-    // Only constrain Parana end if Dvadashi actually ends on the Parana day itself
+    // FIX 2: Real Dvadashi end = binary search for elongation crossing endDeg+12°
+    // Ekadashi ends at endDeg (120 shukla / 300 krishna), Dvadashi ends 12° later
     let windowEnd = fifthDay;
     if (ek.ekEnd instanceof Date) {
-      const dvadashiEndDt = new Date(ek.ekEnd.getTime() + 24 * 60 * 60 * 1000);
+      const dvEndDeg = ek.paksha === "shukla" ? 144 : 324;
+      // Search window: ekEnd to ekEnd+30h (Dvadashi can't last more than ~26h)
+      const searchLo = ek.ekEnd;
+      const searchHi = new Date(ek.ekEnd.getTime() + 30 * 60 * 60 * 1000);
+      const dvadashiEndDt = _findElongCrossing(dvEndDeg, searchLo, searchHi);
+
       const isSameDay =
         dvadashiEndDt.getFullYear() === paranaDay.getFullYear() &&
-        dvadashiEndDt.getMonth() === paranaDay.getMonth() &&
-        dvadashiEndDt.getDate() === paranaDay.getDate();
+        dvadashiEndDt.getMonth()    === paranaDay.getMonth()    &&
+        dvadashiEndDt.getDate()     === paranaDay.getDate();
+
       if (isSameDay) {
         const dvadashiEndH = dvadashiEndDt.getHours() + dvadashiEndDt.getMinutes() / 60;
-        // Only apply Dvadashi constraint if it ends AFTER sunrise on the Parana day.
-        // If Dvadashi ends before sunrise (e.g. 00:39 AM), the constraint is irrelevant —
-        // Dvadashi is already over before the fast-breaking window even opens.
-        if (dvadashiEndH > srH) {
+        // Only constrain if Dvadashi ends AFTER sunrise (otherwise window is already open)
+        if (dvadashiEndH > windowStart) {
           windowEnd = Math.min(fifthDay, dvadashiEndH);
         }
-        // else: Dvadashi ended before sunrise → no constraint, use fifthDay
       }
-      // If Dvadashi ends after the Parana day, no constraint — use full 1/5th window
+      // If Dvadashi ends on a later day → no constraint → use full 1/5th window
     }
-
-    // Window starts at mode-aware sunrise on Parana day
-    const windowStart = srH;
 
     return {
       date:
@@ -11943,7 +11951,7 @@ function _computeParanaWindow(ek, lat, lng, fastingDate) {
         "-" +
         String(paranaDay.getDate()).padStart(2, "0"),
       windowStart: _decHToHHMM(windowStart),
-      windowEnd: _decHToHHMM(windowEnd),
+      windowEnd:   _decHToHHMM(windowEnd),
     };
   } catch (e) {
     return null;

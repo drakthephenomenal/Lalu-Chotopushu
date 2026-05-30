@@ -2215,6 +2215,8 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 /* ── HORIZON PILL BUTTONS — base + active states ── */
 #horizonPillApparent,
 #horizonPillCelestial {
+  -webkit-appearance: none;
+  appearance: none;
   padding: 12px 6px;
   border-radius: 12px;
   border: 1.5px solid rgba(255,255,255,0.1);
@@ -2225,6 +2227,7 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   text-align: center;
   width: 100%;
   display: block;
+  box-sizing: border-box;
   transition: background 0.25s, border-color 0.25s, color 0.25s, box-shadow 0.25s;
 }
 #horizonPillApparent.active {
@@ -2243,6 +2246,8 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 /* ── PARAMPARA BUTTONS — base + active states ── */
 #ekParSmarta,
 #ekParVaishnav {
+  -webkit-appearance: none;
+  appearance: none;
   padding: 12px 6px;
   border-radius: 12px;
   border: 1.5px solid rgba(255,255,255,0.1);
@@ -2252,6 +2257,7 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   cursor: pointer;
   text-align: center;
   width: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;

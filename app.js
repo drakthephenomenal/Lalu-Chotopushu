@@ -1882,6 +1882,8 @@ function _applyHorizonToggleUI() {
   if (desc) desc.textContent = "";
   const pillApparent = document.getElementById("horizonPillApparent");
   const pillCelestial = document.getElementById("horizonPillCelestial");
+  if (pillApparent) pillApparent.classList.toggle("active", !isCelestial);
+  if (pillCelestial) pillCelestial.classList.toggle("active", isCelestial);
   // Horizon Mode section is ONLY active when GPS Location toggle is ON.
   // When GPS is OFF: section is hidden/disabled and pills are non-interactive.
   const sec = document.getElementById("horizonModeSection");
@@ -1890,15 +1892,6 @@ function _applyHorizonToggleUI() {
   if (sec) {
     sec.classList.toggle("gps-on", gpsOn);
     sec.classList.toggle("gps-off", !gpsOn);
-  }
-  // When GPS is OFF: remove active from both pills (no pre-selection)
-  // When GPS is ON: apply selection based on current mode
-  if (!gpsOn) {
-    if (pillApparent) pillApparent.classList.remove("active");
-    if (pillCelestial) pillCelestial.classList.remove("active");
-  } else {
-    if (pillApparent) pillApparent.classList.toggle("active", !isCelestial);
-    if (pillCelestial) pillCelestial.classList.toggle("active", isCelestial);
   }
   // Disable pill buttons when GPS is OFF so clicking does nothing
   if (pillApparent) pillApparent.disabled = !gpsOn;
@@ -7589,7 +7582,10 @@ function setHorizonMode(mode) {
   if (typeof renderEkadashiList === "function") renderEkadashiList();
   if (typeof renderCal === "function") renderCal();
   if (typeof loadSunTimes === "function") loadSunTimes(true);
-  // toast intentionally removed
+  const _hName = mode === "celestial"
+    ? "🔭 Celestial · Solar Noon ±6h (ISKCON)"
+    : "🌅 Earthy Sky · 90.833° apparent horizon";
+  toast(_hName + " — all timings updated");
 }
 
 // ── _updateCfgTimesPreview — populates the live Sacred Times preview in Settings ──
@@ -7703,20 +7699,23 @@ function _updateCfgTimesPreview() {
 
       const glowCol  = idx === 0 ? "255,215,0" : "189,147,249";
       const nameCol  = idx === 0 ? "#FFD700"   : "#BD93F9";
-      const accentBg = idx === 0 ? "rgba(255,215,0,0.07)" : "rgba(155,89,182,0.07)";
-      const borderC  = idx === 0 ? "rgba(255,215,0,0.35)" : "rgba(189,147,249,0.3)";
+      const accentBg = idx === 0 ? "rgba(255,215,0,0.10)" : "rgba(155,89,182,0.10)";
+      const borderC  = idx === 0 ? "rgba(255,215,0,0.5)"  : "rgba(189,147,249,0.45)";
+      const shimmerC = idx === 0 ? "rgba(255,215,0,0.15)" : "rgba(189,147,249,0.15)";
 
       return '<div style="' +
-        'background:linear-gradient(145deg,' + accentBg + ',rgba(255,255,255,0.02));' +
+        'position:relative;overflow:hidden;min-width:0;box-sizing:border-box;' +
+        'background:linear-gradient(160deg,' + accentBg + ',rgba(10,8,25,0.88));' +
         'border:1.5px solid ' + borderC + ';' +
-        'border-radius:16px;padding:14px 12px;' +
-        'box-shadow:0 4px 24px rgba(' + glowCol + ',0.18),inset 0 1px 0 rgba(255,255,255,0.07);' +
-        'backdrop-filter:blur(8px);' +
-        'display:flex;flex-direction:column;gap:8px;' +
+        'border-radius:18px;padding:14px 10px 12px;' +
+        'box-shadow:0 6px 28px rgba(' + glowCol + ',0.25),0 1px 0 rgba(255,255,255,0.07) inset,0 -1px 0 rgba(0,0,0,0.4) inset;' +
+        'backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);' +
+        'display:flex;flex-direction:column;align-items:center;gap:7px;' +
         '">' +
-        '<div style="font-size:15px;color:' + nameCol + ';font-weight:800;letter-spacing:0.3px;line-height:1.2;">' + name + '</div>' +
-        '<div style="display:flex;flex-wrap:wrap;gap:3px;">' + pakshaTag + paramTag + viddhaTag + '</div>' +
-        '<div style="font-size:10px;color:rgba(255,255,255,0.5);line-height:1.5;">' +
+        '<div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,' + shimmerC + ',transparent);"></div>' +
+        '<div style="font-size:14px;color:' + nameCol + ';font-weight:800;letter-spacing:0.4px;line-height:1.2;text-align:center;text-shadow:0 0 12px rgba(' + glowCol + ',0.45);">' + name + '</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center;">' + pakshaTag + paramTag + viddhaTag + '</div>' +
+        '<div style="font-size:10px;color:rgba(255,255,255,0.45);line-height:1.5;text-align:center;">' +
         '🗓 <span style="color:#fff;font-weight:700;font-size:11px;">' + fdFmt + '</span>' +
         '</div>' +
         paranHtml +

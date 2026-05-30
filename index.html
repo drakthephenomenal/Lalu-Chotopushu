@@ -1190,6 +1190,35 @@
       </div>
     </div>
 
+    <div style="height:1px;background:rgba(255,255,255,0.07);margin:12px 0;"></div>
+
+    <!-- Tithi Engine selector — standard mode only -->
+    <div class="non-gaudiya-setting">
+      <div style="font-size:9px;color:rgba(255,255,255,0.32);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px;">⚙️ Tithi Calculation Engine</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <button id="ekEngineApp" onclick="saveEkTithiEngine('app')">
+          <div style="font-size:20px;line-height:1;">🔭</div>
+          <div style="font-weight:700;font-size:12px;margin-top:5px;">App Engine</div>
+          <div style="font-size:9px;opacity:0.6;margin-top:3px;">Swiss Ephemeris</div>
+        </button>
+        <button id="ekEnginePanchang" onclick="saveEkTithiEngine('panchang')">
+          <div style="font-size:20px;line-height:1;">🗓️</div>
+          <div style="font-weight:700;font-size:12px;margin-top:5px;">Panchang API</div>
+          <div style="font-size:9px;opacity:0.6;margin-top:3px;">Prokerala · ISKCON</div>
+        </button>
+      </div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.35);line-height:1.5;margin-bottom:8px;">
+        Both engines respect your Horizon Mode and Parampara. Only the tithi boundary source differs.
+      </div>
+    </div>
+    <!-- Gaudiya mode: engine fixed as PanchangData/ISKCON -->
+    <div class="hk-only-block" style="margin-bottom:8px;">
+      <div style="font-size:9px;color:rgba(255,215,0,0.45);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:6px;">⚙️ Tithi Calculation Engine</div>
+      <div style="background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.2);border-radius:10px;padding:9px 12px;font-size:11px;color:rgba(255,215,0,0.75);line-height:1.5;">
+        🗓️ <strong>PanchangData / ISKCON</strong> — Prokerala API used automatically in Gaudiya Mode.
+      </div>
+    </div>
+
     <!-- Next Ekadashi + Parana preview — directly below Parampara -->
     <div id="cfg-next-ekadashi"></div>
 

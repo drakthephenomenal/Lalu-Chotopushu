@@ -83,6 +83,7 @@ const App = {
     gaudiyaMode: false,
     hkLang: "hi",
     horizonMode: "apparent",  // "apparent" = 90.833° (earthy sky), "celestial" = 90.0° (ISKCON/true)
+    ekTithiEngine: "app",     // "app" = Swiss Ephemeris WASM → Meeus | "panchang" = Prokerala API → Meeus
   },
   lmcRV: 0,
   lmcHK: 0,
@@ -223,6 +224,7 @@ const App = {
       sadhanaStart: this.S.sadhanaStart || "",
       customEkadashi: this.S.customEkadashi || [],
       ekParampara: this.S.ekParampara || "smarta",
+      ekTithiEngine: this.S.ekTithiEngine || "app",
       historyHK: this.S.historyHK || {},
       timerHistoryHK: this.S.timerHistoryHK || {},
       dtHK: this.S.dtHK || 0,
@@ -5035,6 +5037,7 @@ function fbApplyRemote(d) {
   if ("customEkadashi" in d)
     App.S.customEkadashi = JSON.parse(JSON.stringify(d.customEkadashi || []));
   if ("ekParampara" in d) App.S.ekParampara = d.ekParampara || "smarta";
+  if ("ekTithiEngine" in d) App.S.ekTithiEngine = d.ekTithiEngine || "app";
   if (d.sadhanaStart) {
     App.S.sadhanaStart = d.sadhanaStart;
     localStorage.setItem("rjap_sadhana_start", d.sadhanaStart);
@@ -5083,6 +5086,7 @@ function fbApplyRemote(d) {
   renderMalaLog();
   if (typeof renderEkadashiList === "function") renderEkadashiList();
   if (typeof renderEkParampara === "function") renderEkParampara();
+  if (typeof renderEkTithiEngine === "function") renderEkTithiEngine();
   setSyncPill("", "🔄 Synced from cloud");
 }
 
@@ -6963,10 +6967,14 @@ async function fetchPanchangEkadashis() {
     // provides ISKCON-accurate tithi start/end times directly.
     // No horizon mode or parampara override — the API data IS the ISKCON standard.
     const isGaudiyaFetch = !!(App.S && App.S.gaudiyaMode);
+    const isPanchangEngine = !isGaudiyaFetch && (App.S && App.S.ekTithiEngine === "panchang");
+    const usePanchangScan  = isGaudiyaFetch || isPanchangEngine;
 
-    if (isGaudiyaFetch && typeof getPanchangData === "function") {
-      // Scan next 12 months day by day, collect Ekadashi days from panchangData
-      if (status) status.textContent = "🌸 Gaudiya Mode — fetching ISKCON panchang…";
+    if (usePanchangScan && typeof getPanchangData === "function") {
+      // Scan next 12 months day by day using panchangData engine
+      if (status) status.textContent = isGaudiyaFetch
+        ? "🌸 Gaudiya Mode — fetching ISKCON panchang…"
+        : "🗓️ PanchangData Engine — fetching tithi boundaries…";
       // Immediately refresh Upcoming Ekadashis section — hides old GPS entries right away
       if (typeof _updateCfgTimesPreview === "function") _updateCfgTimesPreview();
       const scanDays = 366;
@@ -7058,14 +7066,16 @@ async function fetchPanchangEkadashis() {
                   name: skName, paksha: ekPaksha,
                   startDate: skStartStr, startTime: skStartTime,
                   endDate: skEndStr, endTime: skEndTime,
-                  autoFetched: true, source: "gaudiya",
+                  autoFetched: true, source: isGaudiyaFetch ? "gaudiya" : "panchang",
                   fastingDate: skFastingDate, isViddha: skIsViddha,
                 });
                 App.S.occasions[skFastingDate] = skLabel;
                 added++;
                 App.S.customEkadashi.sort((a, b) => (_ekDate(a) < _ekDate(b) ? -1 : 1));
                 renderEkadashiList();
-                if (status) status.textContent = `🌸 Gaudiya Mode — found ${added} so far…`;
+                if (status) status.textContent = isGaudiyaFetch
+                ? `🌸 Gaudiya Mode — found ${added} so far…`
+                : `🗓️ PanchangData Engine — found ${added} so far…`;
               }
             } catch (skipErr) {
               console.warn("[Gaudiya fetch] skipped-Ekadashi recovery error:", skipErr.message);
@@ -7212,8 +7222,21 @@ async function fetchPanchangEkadashis() {
       renderEkadashiList();
       if (typeof renderCal === "function") renderCal();
       const total = App.S.customEkadashi.length;
-      if (status) status.textContent = `✅ ${added} new · ${total} total · 🌸 Gaudiya/ISKCON Panchang`;
-      toast(`📅 ${added} Ekadashis added · 🌸 Gaudiya/ISKCON Panchang 🙏`);
+      if (isGaudiyaFetch) {
+        if (status) status.textContent = `✅ ${added} new · ${total} total · 🌸 Gaudiya/ISKCON Panchang`;
+        toast(`📅 ${added} Ekadashis added · 🌸 Gaudiya/ISKCON Panchang 🙏`);
+      } else {
+        const horizonLabel2   = App.S.horizonMode === "celestial" ? "Celestial" : "Earthy Sky";
+        const paramparaLabel2 = App.S.ekParampara === "vaishnava" ? "Vaishnava" : "Smarta";
+        if (status) status.textContent = `✅ ${added} new · ${total} total · 🗓️ PanchangData · ${horizonLabel2} · ${paramparaLabel2}`;
+        toast(`📅 ${added} Ekadashis added · PanchangData Engine · ${horizonLabel2} · ${paramparaLabel2} 🙏`);
+        _resyncEkOccasions();
+        _updateCfgTimesPreview();
+        App.save();
+        fbDebouncedPush();
+        renderEkadashiList();
+        if (typeof renderCal === "function") renderCal();
+      }
 
     } else {
     // ── STANDARD ASTRONOMICAL ENGINE ─────────────────────────────────────────
@@ -7405,6 +7428,29 @@ const EK_NOTES = {
   vaishnava:
     '🌸 <b>Vaishnava/Gaudiya rule (Arunodaya Viddha):</b> If Dashami tithi overlaps even one second into the 96-min Arunodaya window before sunrise, that day is "Viddha" (contaminated). Fast is moved to the next day (Mahadvadashi), even though Dvadashi tithi is running.',
 };
+
+function saveEkTithiEngine(val) {
+  // Only in standard (non-Gaudiya) mode
+  if (App.S && App.S.gaudiyaMode) {
+    toast("🌸 Gaudiya Mode always uses PanchangData/ISKCON engine");
+    return;
+  }
+  App.S.ekTithiEngine = val;
+  App.save();
+  fbDebouncedPush();
+  renderEkTithiEngine();
+  toast(val === "app"
+    ? "🔭 App Engine set (Swiss Ephemeris WASM)"
+    : "🗓️ PanchangData Engine set (Prokerala API)");
+}
+
+function renderEkTithiEngine() {
+  const e = App.S.ekTithiEngine || "app";
+  const appBtn = document.getElementById("ekEngineApp");
+  const panBtn = document.getElementById("ekEnginePanchang");
+  if (appBtn) appBtn.classList.toggle("active", e === "app");
+  if (panBtn) panBtn.classList.toggle("active", e === "panchang");
+}
 
 function saveEkParampara(val) {
   // Gaudiya/ISKCON mode: parampara is fixed (Vaishnava/Arunodaya Viddha) — no user override

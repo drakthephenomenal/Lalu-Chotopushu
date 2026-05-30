@@ -1948,6 +1948,7 @@ function tgs(k) {
     fbDebouncedPush();
     uStats();
     renderHistory && typeof renderHistory === "function" && renderHistory();
+    if (typeof renderEkadashiList === "function") renderEkadashiList();
     toast(App.S.gaudiyaMode ? "🪷 Gaudiya Mode ON" : "🪷 Gaudiya Mode OFF");
     return;
   }
@@ -6787,14 +6788,18 @@ function _findNextPurnima(fromDate) {
   return new Date(fromDate.getTime() + 4 * DAY); // fallback
 }
 
-// Returns Gregorian month index of the next NIJA (non-Adhik) Purnima after
-// the Ekadashi. Adhik-month Purnimas are skipped so the name reflects the
-// real solar/lunar month that the Ekadashi belongs to. Adhik Ekadashis
-// themselves (Padmini / Parama) are handled separately at the call site.
-function _getAdjustedMonthIndex(ekDate) {
+// Returns Purnimanta lunar monthIdx (0=Chaitra … 11=Phalguna) for the Ekadashi's lunar month.
+// Uses _lunarMonthIdx (panchangData.js) which already handles the Purnimanta shift for
+// Krishna Paksha. This is the correct basis for _EK_NAMES_SHUKLA / _EK_NAMES_KRISHNA lookups.
+function _getAdjustedMonthIndex(ekDate, paksha) {
+  // _sunMoonLongitudes is defined in panchangData.js
+  if (typeof _sunMoonLongitudes === "function") {
+    const lon = _sunMoonLongitudes(ekDate);
+    return _lunarMonthIdx(lon.sunSid, paksha || "shukla");
+  }
+  // Fallback: use next-Purnima Gregorian month (less accurate, kept for safety)
   let searchFrom = ekDate;
   let purnima = _findNextPurnima(searchFrom);
-  // Skip purnimas that fall inside an Adhik Maas window
   for (let i = 0; i < 3; i++) {
     const pStr = purnima.toISOString().slice(0, 10);
     const inAdhik = (_ADHIK_MAAS_WINDOWS || []).some(function (w) {
@@ -6804,37 +6809,46 @@ function _getAdjustedMonthIndex(ekDate) {
     searchFrom = new Date(purnima.getTime() + 86400000);
     purnima = _findNextPurnima(searchFrom);
   }
-  return purnima.getMonth();
+  // Convert Gregorian Purnima month to Purnimanta lunar index:
+  // Purnima in April=Chaitra(0), May=Vaishakha(1), Jun=Jyeshtha(2),
+  // Jul=Ashadha(3), Aug=Shravana(4), Sep=Bhadrapada(5), Oct=Ashwin(6),
+  // Nov=Kartik(7), Dec=Margashirsha(8), Jan=Pausha(9), Feb=Magha(10), Mar=Phalguna(11)
+  const gregToLunar = [9,10,11,0,1,2,3,4,5,6,7,8];
+  return gregToLunar[purnima.getMonth()] ?? purnima.getMonth();
 }
 
+// Ekadashi names indexed by Purnimanta lunar monthIdx (0=Chaitra … 11=Phalguna)
+// This matches panchangData.js _MONTH_STD order and pd.monthIdx — the Gaudiya/ISKCON standard.
+// Using lunar monthIdx is correct regardless of Gregorian month or Adhik Maas.
+// Adhik (Purushottama) Maas Ekadashis (Padmini / Parama) are handled separately at the call site.
 const _EK_NAMES_SHUKLA = [
-  "Pausha Putrada", // 0 = January   (Month 10 Pausha)
-  "Jaya", // 1 = February  (Month 11 Magha)
-  "Amalaki", // 2 = March     (Month 12 Phalguna)
-  "Kamada", // 3 = April     (Month 1  Chaitra)
-  "Mohini", // 4 = May       (Month 2  Vaishakha)
-  "Nirjala", // 5 = June      (Month 3  Jyeshtha)
-  "Devshayani", // 6 = July      (Month 4  Ashadha)
-  "Shravana Putrada", // 7 = August    (Month 5  Shravana)
-  "Parsva", // 8 = September (Month 6  Bhadrapada)
-  "Papankusha", // 9 = October   (Month 7  Ashwin)
-  "Devutthana", // 10 = November (Month 8  Kartik)
-  "Mokshada", // 11 = December (Month 9  Margashirsha)
+  "Kamada",           // 0 = Chaitra
+  "Mohini",           // 1 = Vaishakha
+  "Nirjala",          // 2 = Jyeshtha
+  "Devshayani",       // 3 = Ashadha
+  "Shravana Putrada", // 4 = Shravana
+  "Parsva",           // 5 = Bhadrapada
+  "Papankusha",       // 6 = Ashwin
+  "Devutthana",       // 7 = Kartik
+  "Mokshada",         // 8 = Margashirsha
+  "Pausha Putrada",   // 9 = Pausha
+  "Jaya",             // 10 = Magha
+  "Amalaki",          // 11 = Phalguna
 ];
-// Krishna Paksha (Dark Fortnight) Ekadashis
+// Krishna Paksha (Dark Fortnight) Ekadashis — indexed by Purnimanta lunar monthIdx
 const _EK_NAMES_KRISHNA = [
-  "Saphala", // 0 = January   (Month 10 Pausha)
-  "Shattila", // 1 = February  (Month 11 Magha)
-  "Vijaya", // 2 = March     (Month 12 Phalguna)
-  "Papamochani", // 3 = April     (Month 1  Chaitra)
-  "Varuthini", // 4 = May       (Month 2  Vaishakha)
-  "Apara", // 5 = June      (Month 3  Jyeshtha)
-  "Yogini", // 6 = July      (Month 4  Ashadha)
-  "Kamika", // 7 = August    (Month 5  Shravana)
-  "Aja", // 8 = September (Month 6  Bhadrapada)
-  "Indira", // 9 = October   (Month 7  Ashwin)
-  "Rama", // 10 = November (Month 8  Kartik)
-  "Utpanna", // 11 = December (Month 9  Margashirsha)
+  "Papamochani", // 0 = Chaitra
+  "Varuthini",   // 1 = Vaishakha
+  "Apara",       // 2 = Jyeshtha
+  "Yogini",      // 3 = Ashadha
+  "Kamika",      // 4 = Shravana
+  "Aja",         // 5 = Bhadrapada
+  "Indira",      // 6 = Ashwin
+  "Rama",        // 7 = Kartik
+  "Utpanna",     // 8 = Margashirsha
+  "Saphala",     // 9 = Pausha
+  "Shattila",    // 10 = Magha
+  "Vijaya",      // 11 = Phalguna
 ];
 
 // _ADHIK_MAAS_WINDOWS, _getAdhikMaasWindow, isAdhikMaasDate
@@ -7034,10 +7048,11 @@ async function fetchPanchangEkadashis() {
             }
 
             const pakshaLabel = paksha === "shukla" ? " ☀️ Shukla" : " 🌙 Krishna";
-            const adhikWin    = _getAdhikMaasWindow ? _getAdhikMaasWindow(startDateStr) : null;
-            const mi          = _getAdjustedMonthIndex(scanDate);
+            // Use pd.monthIdx — already Purnimanta/Gaudiya-correct from panchangData.
+            // isAdhikMaas is also from pd, so Purushottama Maas Ekadashis are handled correctly.
+            const mi   = pd.monthIdx; // 0=Chaitra … 11=Phalguna (Purnimanta)
             let name;
-            if (adhikWin) {
+            if (pd.isAdhikMaas) {
               name = paksha === "shukla" ? "Padmini" : "Parama";
             } else {
               name = paksha === "shukla"
@@ -7055,7 +7070,7 @@ async function fetchPanchangEkadashis() {
             const ekActualStartTime = ekStartFromPrev ? _d2hhmm(ekStartFromPrev) : "00:00";
 
             const exists = App.S.customEkadashi.some(
-              (e) => e.startDate === startDateStr || e.startDate === ekActualStartDate
+              (e) => e.source === "gaudiya" && (e.startDate === startDateStr || e.startDate === ekActualStartDate)
             );
             if (!exists) {
               // Build ek object for _computeParanaWindow
@@ -7127,7 +7142,7 @@ async function fetchPanchangEkadashis() {
         if (adhikWin) {
           name = foundPaksha === "shukla" ? "Padmini" : "Parama";
         } else {
-          const mi = _getAdjustedMonthIndex(foundEk.ekStart);
+          const mi = _getAdjustedMonthIndex(foundEk.ekStart, foundPaksha);
           name = foundPaksha === "shukla"
             ? (_EK_NAMES_SHUKLA[mi] || "Ekadashi")
             : (_EK_NAMES_KRISHNA[mi] || "Ekadashi");
@@ -7145,6 +7160,7 @@ async function fetchPanchangEkadashis() {
             endDate: resolved.endDate,
             endTime: resolved.endTime,
             autoFetched: true,
+            source: "gps",
           });
           App.S.occasions[resolved.fastingDate] = resolved.label;
           added++;
@@ -7649,7 +7665,18 @@ function removeEkadashiDate(startDate) {
 function renderEkadashiList() {
   const list = document.getElementById("ekadashiList");
   if (!list) return;
-  const entries = App.S.customEkadashi || [];
+  const allEntries = App.S.customEkadashi || [];
+  const isGaudiya = !!(App.S && App.S.gaudiyaMode);
+
+  // Show only entries matching the current mode:
+  // Gaudiya mode → show source:"gaudiya" entries only
+  // Standard mode → show entries WITHOUT source:"gaudiya" (source:"gps" or manual)
+  const entries = allEntries.filter(e => {
+    if (typeof e !== "object") return true;
+    if (isGaudiya) return e.source === "gaudiya";
+    return e.source !== "gaudiya";
+  });
+
   if (entries.length === 0) {
     list.innerHTML =
       '<div style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;padding:10px 0 4px;">No Ekadashis saved yet.</div>';
@@ -12051,7 +12078,7 @@ function _computeYearEkadashis(year, lat, lng) {
         if (adhikWin) {
           name = paksha === "shukla" ? "Padmini" : "Parama";
         } else {
-          const mi = _getAdjustedMonthIndex(ek.ekStart);
+          const mi = _getAdjustedMonthIndex(ek.ekStart, paksha);
           name =
             paksha === "shukla"
               ? _EK_NAMES_SHUKLA[mi] || "Ekadashi"

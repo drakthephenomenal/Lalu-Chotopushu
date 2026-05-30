@@ -7436,12 +7436,25 @@ function saveEkTithiEngine(val) {
     return;
   }
   App.S.ekTithiEngine = val;
+
+  // Remove auto-fetched entries from the OTHER engine so the list stays clean.
+  // Manual entries (autoFetched=false) are always kept regardless of engine.
+  const removeSource = val === "app" ? "panchang" : "gps";
+  if (App.S.customEkadashi) {
+    App.S.customEkadashi = App.S.customEkadashi.filter(e =>
+      !(e.autoFetched && e.source === removeSource)
+    );
+  }
+
   App.save();
   fbDebouncedPush();
   renderEkTithiEngine();
+  renderEkadashiList();
+  _updateCfgTimesPreview();
+  if (typeof renderCal === "function") renderCal();
   toast(val === "app"
-    ? "🔭 App Engine set (Swiss Ephemeris WASM)"
-    : "🗓️ PanchangData Engine set (Prokerala API)");
+    ? "🔭 App Engine set — re-fetch to update list"
+    : "🗓️ Panchang Engine set — re-fetch to update list");
 }
 
 function renderEkTithiEngine() {
@@ -7608,7 +7621,10 @@ function _updateCfgTimesPreview() {
         if (!ek || typeof ek !== "object") return false;
         const isManual = !ek.autoFetched;
         if (isGaudiyaMode) return (ek.source === "gaudiya" || isManual);
-        return ek.source !== "gaudiya";
+        // Standard mode: filter by selected engine
+        const engine = App.S.ekTithiEngine || "app";
+        const expectedSource = engine === "panchang" ? "panchang" : "gps";
+        return isManual || ek.source === expectedSource;
       })
       .filter(ek => (ek.fastingDate || ek.startDate || "") >= today)
       .slice(0, 2);
@@ -7875,7 +7891,10 @@ function renderEkadashiList() {
     if (typeof e !== "object") return true;
     const isManual = !e.autoFetched;
     if (isGaudiya) return e.source === "gaudiya" || isManual;
-    return e.source !== "gaudiya";
+    // Standard mode: show only entries matching the selected engine
+    const engine = App.S.ekTithiEngine || "app";
+    const expectedSource = engine === "panchang" ? "panchang" : "gps";
+    return isManual || e.source === expectedSource;
   });
 
   if (entries.length === 0) {

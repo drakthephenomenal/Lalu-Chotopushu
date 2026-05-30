@@ -7136,6 +7136,72 @@ function _resyncEkOccasions() {
   });
 }
 
+// ── setHorizonMode — called directly by index.html pill buttons ──
+// index.html uses onclick="setHorizonMode('apparent')" and onclick="setHorizonMode('celestial')"
+function setHorizonMode(mode) {
+  if (!App.S) return;
+  if (App.S.horizonMode === mode) return; // no change
+  App.S.horizonMode = mode;
+  _applyHorizonToggleUI();
+  _resyncEkOccasions();
+  App.save();
+  fbDebouncedPush();
+  const _hLat = (App.S && App.S.lastLat) || 23.8103;
+  const _hLng = (App.S && App.S.lastLng) || 90.4125;
+  updateSunInfo(_hLat, _hLng);
+  _updateCfgTimesPreview();
+  if (typeof renderEkadashiList === "function") renderEkadashiList();
+  if (typeof renderCal === "function") renderCal();
+  if (typeof loadSunTimes === "function") loadSunTimes(true);
+  const _hName = mode === "celestial"
+    ? "🔭 Celestial · Solar Noon ±6h (ISKCON)"
+    : "🌅 Earthy Sky · 90.833° apparent horizon";
+  toast(_hName + " — all timings updated");
+}
+
+// ── _updateCfgTimesPreview — populates the live Sacred Times preview in Settings ──
+function _updateCfgTimesPreview() {
+  const lat = (App.S && App.S.lastLat) || 23.8103;
+  const lng = (App.S && App.S.lastLng) || 90.4125;
+  const now = new Date();
+  const times = calcSunTimes(lat, lng, now);
+  if (!times) return;
+  const bmStart = times.sunriseH - 96 / 60;
+  const bmEnd   = times.sunriseH - 48 / 60;
+  const skStart = times.sunsetH - 24 / 60;
+  const skEnd   = times.sunsetH + 24 / 60;
+  function _fmt(h) {
+    h = ((h % 24) + 24) % 24;
+    let hh = Math.floor(h), mm = Math.round((h - hh) * 60);
+    if (mm >= 60) { hh++; mm = 0; }
+    const ap = hh % 24 >= 12 ? "PM" : "AM";
+    return (hh % 12 || 12) + ":" + String(mm).padStart(2, "0") + " " + ap;
+  }
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set("cfg-bm-start",  _fmt(bmStart));
+  set("cfg-bm-end",    _fmt(bmEnd));
+  set("cfg-sunrise",   times.sunrise);
+  set("cfg-sk-start",  _fmt(skStart));
+  set("cfg-sunset",    times.sunset);
+  set("cfg-sk-end",    _fmt(skEnd > 24 ? skEnd - 24 : skEnd));
+  // Next Ekadashi + Parana preview
+  const cfgEk = document.getElementById("cfg-next-ekadashi");
+  if (cfgEk) {
+    const nxt = (App.S.customEkadashi || []).find(ek => {
+      const fd = ek.fastingDate || ek.startDate || ek.date || "";
+      return fd >= _ldk(now);
+    });
+    if (nxt) {
+      const fd = nxt.fastingDate || nxt.startDate || nxt.date || "";
+      cfgEk.innerHTML =
+        '<div style="font-size:10px;color:rgba(255,215,0,0.55);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;font-weight:700;">🌙 Next Ekadashi</div>' +
+        '<div style="font-size:13px;color:#FFD700;font-weight:600;">' + (nxt.name || "Ekadashi") + ' · ' + fd + '</div>';
+    } else {
+      cfgEk.innerHTML = "";
+    }
+  }
+}
+
 function renderEkParampara() {
   const p = App.S.ekParampara || "smarta";
   const smBtn = document.getElementById("ekParSmarta");
@@ -8875,6 +8941,7 @@ function updateSunInfo(lat, lng) {
     skEnd > 24 ? skEnd - 24 : skEnd,
   );
   document.getElementById("rh-sunset").textContent = times.sunset;
+  _updateCfgTimesPreview();
 }
 function initSunTimes() {
   // If we already have GPS coords saved, use them immediately — no new location prompt
@@ -10426,12 +10493,21 @@ function applySunCache(cache) {
   if (!cache) return;
   let sr0 = new Date(cache.sunrise0);
   let ss0 = new Date(cache.sunset0);
-  // Open-Meteo returns apparent (earthy sky) sunrise/sunset.
-  // In Celestial mode (true horizon, 90.0°), sunrise is ~4 min LATER and sunset ~4 min EARLIER.
-  // Adjust so reminder times match calcSunTimes() output for the selected horizon.
+  // In Celestial mode, sunrise = solar noon − 6h and sunset = solar noon + 6h.
+  // Open-Meteo returns apparent sunrise. We derive the solar noon from it and
+  // recalculate celestial times so reminder notifications match the main display.
   if (typeof App !== "undefined" && App.S && App.S.horizonMode === "celestial") {
-    sr0 = new Date(sr0.getTime() + 4 * 60 * 1000); // sunrise ~4 min later
-    ss0 = new Date(ss0.getTime() - 4 * 60 * 1000); // sunset ~4 min earlier
+    const lat  = cache.lat  || (App.S && App.S.lastLat)  || 23.8103;
+    const lng  = cache.lon  || (App.S && App.S.lastLng)  || 90.4125;
+    const solarData = calcSunTimes(lat, lng, sr0);
+    if (solarData) {
+      // solarNoonH is local decimal hours; convert to a Date on the same day
+      const noonH = solarData.solarNoonH;
+      const base  = new Date(sr0);
+      base.setHours(0, 0, 0, 0);
+      sr0 = new Date(base.getTime() + (noonH - 6) * 3600000);
+      ss0 = new Date(base.getTime() + (noonH + 6) * 3600000);
+    }
   }
   const bTime = brahmaNotifyTime(sr0);
   const sTime = sandhyaNotifyTime(ss0);

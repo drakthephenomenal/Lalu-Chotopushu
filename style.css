@@ -2206,3 +2206,66 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   font-size:10px;color:rgba(255,215,0,0.55);letter-spacing:0.4px;line-height:1.5;
   padding-top:8px;border-top:1px solid rgba(255,215,0,0.14);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   HORIZON MODE PILL BUTTONS — active state
+   #horizonPillApparent / #horizonPillCelestial use .active class
+   toggled by _applyHorizonToggleUI() in app.js
+   ══════════════════════════════════════════════════════════════ */
+#horizonPillApparent,
+#horizonPillCelestial {
+  transition: background 0.25s, border-color 0.25s, color 0.25s, box-shadow 0.25s;
+}
+#horizonPillApparent.active {
+  background: rgba(255,215,0,0.18) !important;
+  border-color: rgba(255,215,0,0.85) !important;
+  color: #FFD700 !important;
+  box-shadow: 0 0 16px rgba(255,215,0,0.30), inset 0 0 10px rgba(255,215,0,0.08) !important;
+}
+#horizonPillCelestial.active {
+  background: rgba(109,184,255,0.18) !important;
+  border-color: rgba(109,184,255,0.85) !important;
+  color: #6DB8FF !important;
+  box-shadow: 0 0 16px rgba(109,184,255,0.30), inset 0 0 10px rgba(109,184,255,0.08) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PARAMPARA BUTTONS — ekParSmarta / ekParVaishnav
+   renderEkParampara() in app.js applies inline styles;
+   these base styles ensure consistent sizing and transitions.
+   ══════════════════════════════════════════════════════════════ */
+#ekParSmarta,
+#ekParVaishnav {
+  transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  text-align: center;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 6px;
+  border-radius: 12px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SETTINGS — Sacred Times live preview cards
+   cfg-bm-start / cfg-sunrise / cfg-sk-start / cfg-sunset etc.
+   ══════════════════════════════════════════════════════════════ */
+#cfg-bm-start, #cfg-bm-end,
+#cfg-sunrise,
+#cfg-sk-start, #cfg-sk-end,
+#cfg-sunset {
+  font-family: 'EB Garamond', serif;
+  letter-spacing: 0.5px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   GPS location status text in Sacred Times card
+   ══════════════════════════════════════════════════════════════ */
+#gpsLocationStatus {
+  transition: color 0.3s;
+  word-break: break-word;
+}

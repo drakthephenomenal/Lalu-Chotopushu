@@ -7213,56 +7213,96 @@ async function fetchPanchangEkadashis() {
 
     } else {
     // ── STANDARD ASTRONOMICAL ENGINE ─────────────────────────────────────────
+    // Robust scan: cover 2 months back + 6 months ahead for ALL Ekadashis.
+    // Strategy: anchor at each New Moon and Full Moon in the range (elongation
+    // crossings of 0° and 180°), then search a 15-day window starting 2 days
+    // BEFORE each anchor for both Shukla (after NM) and Krishna (after FM).
+    // This guarantees every Ekadashi in both pakshas is found, including during
+    // Adhik Maas / Purushottama month.
 
-    let cur = new Date(today.getTime() - 5 * DAY); // start a few days before today
-    for (let i = 0; i < 24; i++) {
-      // Detect which paksha this half-month belongs to via moon elongation at cur
-      const elongAtCur = _moonElongation(cur);
-      const paksha = elongAtCur < 180 ? "shukla" : "krishna";
+    const scanFrom = new Date(today.getTime() - 62 * DAY); // 2 months back
+    const scanTo   = new Date(today.getTime() + 185 * DAY); // ~6 months ahead
 
-      let foundEk = null;
-      let foundPaksha = paksha;
-      {
-        const wStart = new Date(cur);
-        const wEnd = new Date(cur.getTime() + 18 * DAY);
-        const ek = _findEkInWindow(wStart, wEnd, paksha);
-        if (ek) { foundEk = ek; }
+    // Collect all New Moon (0°) and Full Moon (180°) crossing times in range
+    const phaseCrossings = []; // { time: Date, phase: "NM"|"FM" }
+    {
+      const STEP_H = 12 * 3600000; // 12-hour step for coarse scan
+      let t = new Date(scanFrom.getTime() - 20 * DAY); // extra buffer at start
+      const tEnd = new Date(scanTo.getTime() + 5 * DAY);
+      let prevE = _moonElongation(t);
+      while (t < tEnd) {
+        t = new Date(t.getTime() + STEP_H);
+        const e = _moonElongation(t);
+        // New Moon crossing: elongation wraps through 0° — _didCross handles wrap
+        if (_didCross(prevE, e, 0)) {
+          const nmTime = _findElongCrossing(0, new Date(t.getTime() - STEP_H), t);
+          if (nmTime) phaseCrossings.push({ time: nmTime, phase: "NM" });
+        }
+        // Full Moon crossing: elongation crosses 180°
+        if (_didCross(prevE, e, 180)) {
+          const fmTime = _findElongCrossing(180, new Date(t.getTime() - STEP_H), t);
+          if (fmTime) phaseCrossings.push({ time: fmTime, phase: "FM" });
+        }
+        prevE = e;
+      }
+    }
+
+    // For each phase crossing, search the subsequent ~15 days for the matching Ekadashi
+    const seenEkStartDates = new Set();
+    for (const crossing of phaseCrossings) {
+      // Shukla Ekadashi starts ~10-11 days after New Moon
+      // Krishna Ekadashi starts ~10-11 days after Full Moon
+      const paksha = crossing.phase === "NM" ? "shukla" : "krishna";
+      // Window: start 8 days after crossing, end 17 days after crossing
+      const wStart = new Date(crossing.time.getTime() + 8 * DAY);
+      const wEnd   = new Date(crossing.time.getTime() + 17 * DAY);
+
+      // Skip windows entirely outside scan range
+      if (wEnd < scanFrom || wStart > scanTo) continue;
+
+      const ek = _findEkInWindow(wStart, wEnd, paksha);
+      if (!ek) continue;
+
+      // Use local date string (not UTC toISOString which can shift by timezone)
+      const ekLocalDate = _d2ymd(ek.ekStart);
+      if (seenEkStartDates.has(ekLocalDate)) continue;
+      seenEkStartDates.add(ekLocalDate);
+
+      // Adhik Maas / Purushottama: use local date for lookup (UTC can differ by 1 day)
+      const adhikWin = _getAdhikMaasWindow ? _getAdhikMaasWindow(ekLocalDate) : null;
+      let name;
+      if (adhikWin) {
+        name = paksha === "shukla" ? "Padmini" : "Parama";
+      } else {
+        const mi = _getAdjustedMonthIndex(ek.ekStart, paksha);
+        name = paksha === "shukla"
+          ? (_EK_NAMES_SHUKLA[mi] || "Ekadashi")
+          : (_EK_NAMES_KRISHNA[mi] || "Ekadashi");
       }
 
-      if (foundEk && foundEk.ekStart >= today) {
-        const ekDateStr = foundEk.ekStart.toISOString().slice(0, 10);
-        const adhikWin = _getAdhikMaasWindow ? _getAdhikMaasWindow(ekDateStr) : null;
-        let name;
-        if (adhikWin) {
-          name = foundPaksha === "shukla" ? "Padmini" : "Parama";
-        } else {
-          const mi = _getAdjustedMonthIndex(foundEk.ekStart, foundPaksha);
-          name = foundPaksha === "shukla"
-            ? (_EK_NAMES_SHUKLA[mi] || "Ekadashi")
-            : (_EK_NAMES_KRISHNA[mi] || "Ekadashi");
-        }
-        const resolved = _resolveEkFasting(foundEk, lat, lng, name);
-        const exists = App.S.customEkadashi.some(
-          (e) => _ekDate(e) === resolved.startDate,
-        );
-        if (!exists) {
-          App.S.customEkadashi.push({
-            name: resolved.name,
-            paksha: resolved.paksha,
-            startDate: resolved.startDate,
-            startTime: resolved.startTime,
-            endDate: resolved.endDate,
-            endTime: resolved.endTime,
-            autoFetched: true,
-            source: "gps",
-          });
-          App.S.occasions[resolved.fastingDate] = resolved.label;
-          added++;
-        }
-      }
+      const resolved = _resolveEkFasting(ek, lat, lng, name);
 
-      // Advance by one precise synodic half-month — no drift
-      cur = new Date(cur.getTime() + Math.round(SYNODIC_HALF * DAY));
+      // Deduplicate against already-stored entries by fastingDate
+      const exists = App.S.customEkadashi.some(
+        (e) => e.source === "gps" && e.autoFetched &&
+               (e.fastingDate === resolved.fastingDate || _ekDate(e) === resolved.startDate),
+      );
+      if (!exists) {
+        App.S.customEkadashi.push({
+          name: resolved.name,
+          paksha: resolved.paksha,
+          startDate: resolved.startDate,
+          startTime: resolved.startTime,
+          endDate: resolved.endDate,
+          endTime: resolved.endTime,
+          fastingDate: resolved.fastingDate,
+          isViddha: resolved.isViddha,
+          autoFetched: true,
+          source: "gps",
+        });
+        App.S.occasions[resolved.fastingDate] = resolved.label;
+        added++;
+      }
     }
 
     App.S.customEkadashi.sort((a, b) => (_ekDate(a) < _ekDate(b) ? -1 : 1));

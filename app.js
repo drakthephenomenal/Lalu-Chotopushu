@@ -6977,6 +6977,96 @@ async function fetchPanchangEkadashis() {
           const tNum = pd.tithiNum; // 11 = Ekadashi Shukla, 26 = Ekadashi Krishna
           const isEkadashi = (tNum === 11 || tNum === 26);
 
+          // ── Skipped-Ekadashi detection ───────────────────────────────────────────
+          // When Ekadashi starts AFTER today's sunrise, it's never the udaya tithi.
+          // The scanner sees Dashami at sunrise (yesterday) → Dwadashi at sunrise (today),
+          // completely missing the Ekadashi that lived between the two sunrises.
+          // Detect: today is Dwadashi (12/27) AND prevTithi was Dashami (10/25).
+          // Reconstruct: Ekadashi start = prevTithi.endDate, fetch yesterday for end time.
+          const isDwadashi = (tNum === 12 || tNum === 27);
+          const prevWasDashami = prevTithi && (prevTithi.num === 10 || prevTithi.num === 25);
+          if (isDwadashi && prevWasDashami && prevTithi.endDate instanceof Date) {
+            // The Ekadashi tithi ran from prevTithi.endDate until sometime yesterday.
+            // Fetch yesterday's panchang to get when yesterday's Ekadashi ended.
+            try {
+              const yesterday = new Date(scanDate);
+              yesterday.setDate(yesterday.getDate() - 1);
+              const pdYest = await getPanchangData(lat, lng, yesterday);
+              // pdYest.tithi.endDate is Ekadashi's end (it was the tithi that ended yesterday)
+              // but pdYest.tithiNum is Dashami (udaya). We need the tithi that ended during yesterday.
+              // The Ekadashi end = when tithiIdx changes from 11/26 → 12/27, which is pdYest next tithi end.
+              // Since pdYest.tithiNum = Dashami, pdYest.tithi.endDate = when Dashami ended = Ekadashi START.
+              // For Ekadashi END: it's today's prev tithi (pd.tithi endDate of the previous tithi).
+              // Actually: today's tNum is Dwadashi, meaning Ekadashi ended before today's sunrise.
+              // Ekadashi started = prevTithi.endDate (Dashami end), ended = some time after that but before today's sunrise.
+              // Best estimate for ekEnd: fetch today midnight and find when tithiIdx was 11/26.
+              const ekStart = prevTithi.endDate; // exact Dashami→Ekadashi boundary
+              const ekPaksha = (prevTithi.num === 10) ? "shukla" : "krishna"; // Dashami 10=Shukla, 25=Krishna
+              // ekEnd: scan from ekStart forward until tithiIdx changes away from 11/26
+              const ekTithiNum = ekPaksha === "shukla" ? 11 : 26;
+              let ekEndDate = null;
+              if (typeof _nextChange === "function" && typeof _tithiIdx === "function") {
+                ekEndDate = _nextChange(d => _tithiIdx(d), ekTithiNum, ekStart, 3600000, 30);
+              }
+              if (!ekEndDate) ekEndDate = new Date(ekStart.getTime() + 22 * 3600000); // fallback ~22h
+
+              const skStartStr = _d2ymd(ekStart);
+              const skEndStr   = _d2ymd(ekEndDate);
+              const skStartTime = _d2hhmm(ekStart);
+              const skEndTime   = _d2hhmm(ekEndDate);
+
+              // Fasting date: Ekadashi starts after sunrise yesterday → fast on YESTERDAY (startDate)
+              // But since Ekadashi started AFTER yesterday's sunrise, check Vaidha rules
+              const srYest = calcSunTimes(lat, lng, yesterday);
+              const appSrY = srYest ? srYest.apparentSunriseH : 6.0;
+              const modeSrY = srYest ? srYest.sunriseH : 6.0;
+              const arunodayaY = appSrY - 96/60;
+              const ekStartH = ekStart.getHours() + ekStart.getMinutes()/60;
+              let skFastingDate = skStartStr;
+              let skIsViddha = false;
+              const skParampara = App.S.ekParampara || "smarta";
+              if (skParampara === "vaishnava") {
+                // Dashami (prevTithi) ended after Arunodaya of yesterday → Viddha
+                if (ekStartH >= arunodayaY) { skFastingDate = skEndStr; skIsViddha = true; }
+              } else {
+                if (ekStartH >= modeSrY) skFastingDate = skEndStr;
+              }
+
+              const skMi = pdYest ? pdYest.monthIdx : pd.monthIdx;
+              const skIsAdhik = pdYest ? pdYest.isAdhikMaas : false;
+              let skName;
+              if (skIsAdhik) {
+                skName = ekPaksha === "shukla" ? "Padmini" : "Parama";
+              } else {
+                skName = ekPaksha === "shukla"
+                  ? (_EK_NAMES_SHUKLA[skMi] || "Ekadashi")
+                  : (_EK_NAMES_KRISHNA[skMi] || "Ekadashi");
+              }
+              const skLabel = skName + (ekPaksha === "shukla" ? " ☀️ Shukla" : " 🌙 Krishna") + (skIsViddha ? " (Mahadvadashi)" : "");
+
+              const skExists = App.S.customEkadashi.some(
+                (e) => e.source === "gaudiya" && (e.startDate === skStartStr || e.startDate === skEndStr)
+              );
+              if (!skExists) {
+                const skObj = { paksha: ekPaksha, ekEnd: ekEndDate };
+                const skParana = _computeParanaWindow(skObj, lat, lng, skFastingDate);
+                App.S.customEkadashi.push({
+                  name: skName, paksha: ekPaksha,
+                  startDate: skStartStr, startTime: skStartTime,
+                  endDate: skEndStr, endTime: skEndTime,
+                  autoFetched: true, source: "gaudiya",
+                  fastingDate: skFastingDate, isViddha: skIsViddha,
+                });
+                App.S.occasions[skFastingDate] = skLabel;
+                added++;
+                App.S.customEkadashi.sort((a, b) => (_ekDate(a) < _ekDate(b) ? -1 : 1));
+                renderEkadashiList();
+                if (status) status.textContent = `🌸 Gaudiya Mode — found ${added} so far…`;
+              }
+            } catch (skipErr) {
+              console.warn("[Gaudiya fetch] skipped-Ekadashi recovery error:", skipErr.message);
+            }
+          }
 
           if (isEkadashi) {
             const paksha  = tNum === 11 ? "shukla" : "krishna";
@@ -7419,7 +7509,14 @@ function _updateCfgTimesPreview() {
   const cfgEk = document.getElementById("cfg-next-ekadashi");
   if (cfgEk) {
     const today = _ldk(now);
+    const isGaudiyaMode = !!(App.S && App.S.gaudiyaMode);
     const upcoming = (App.S.customEkadashi || [])
+      .filter(ek => {
+        if (!ek || typeof ek !== "object") return false;
+        const isManual = !ek.autoFetched;
+        if (isGaudiyaMode) return (ek.source === "gaudiya" || isManual);
+        return ek.source !== "gaudiya";
+      })
       .filter(ek => (ek.fastingDate || ek.startDate || "") >= today)
       .slice(0, 2);
 

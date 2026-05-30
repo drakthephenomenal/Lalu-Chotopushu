@@ -7317,6 +7317,11 @@ function addEkadashiDate() {
           fmtHour(sunriseH) +
           ")"
         : "";
+    // KEY: write fastingDate + isViddha back onto the stored entry so
+    // renderEkadashiList, _computeParanaWindow and _resyncEkOccasions all
+    // read the mode-aware value instead of recalculating independently.
+    entry.fastingDate = fastingDate;
+    entry.isViddha    = isViddha;
     App.S.occasions[fastingDate] = label + timeNote;
     App.save();
     fbDebouncedPush();
@@ -7427,26 +7432,24 @@ function renderEkadashiList() {
       const eid = "ekEd_" + sd.replace(/-/g, "");
 
       // ── Fasting date per parampara ──────────────────────────────────
-      let fastingDate = sd,
-        isViddha = false;
-      if (startTime) {
+      // Trust ek.fastingDate written by _resyncEkOccasions / _applyEkFasting /
+      // _applyEditFasting — all of which use mode-aware calcSunTimes already.
+      // Recalculate only if fastingDate is missing (legacy entry with no stored value).
+      let fastingDate = (typeof e === "object" && e.fastingDate) ? e.fastingDate : sd;
+      let isViddha    = (typeof e === "object" && e.isViddha)    ? !!e.isViddha  : false;
+      if (!e.fastingDate && startTime) {
+        // Legacy fallback: compute from stored tithi times + current mode sunrise
         const [hh, mm] = startTime.split(":").map(Number);
         const ekStartH = hh + mm / 60;
-        // Use real GPS-based sunrise for this Ekadashi's start date
         const _eLat = (App.S && App.S.lastLat) || 23.8103;
         const _eLng = (App.S && App.S.lastLng) || 90.4125;
         const _ekD = new Date(sd + "T00:00:00");
         const _srD = calcSunTimes(_eLat, _eLng, _ekD);
         const _sunriseH = _srD ? _srD.sunriseH : 6.0;
-        const _arunodayaH = _sunriseH - 96 / 60; // 96 min before sunrise
+        const _arunodayaH = _sunriseH - 96 / 60;
         if (parampara === "vaishnava") {
-          // Vaishnava: Viddha if Ekadashi tithi starts AFTER Arunodaya window begins
-          if (ekStartH >= _arunodayaH) {
-            fastingDate = ed;
-            isViddha = true;
-          }
+          if (ekStartH >= _arunodayaH) { fastingDate = ed; isViddha = true; }
         } else {
-          // Smarta: fast on endDate if Ekadashi starts after actual sunrise
           if (ekStartH >= _sunriseH) fastingDate = ed;
         }
       }
@@ -7621,6 +7624,14 @@ function saveEkadashiEdit(oldSd) {
           fmtHour(sunriseH) +
           ")"
         : "";
+    // KEY: write fastingDate + isViddha back onto the stored entry so all
+    // downstream code (renderEkadashiList, _computeParanaWindow) reads the
+    // mode-aware value without needing to recalculate independently.
+    const _ekIdx = App.S.customEkadashi.findIndex(e => _ekDate(e) === newSd);
+    if (_ekIdx !== -1) {
+      App.S.customEkadashi[_ekIdx].fastingDate = fastingDate;
+      App.S.customEkadashi[_ekIdx].isViddha    = isViddha;
+    }
     App.S.occasions[fastingDate] = lbl + tnote;
     App.save();
     fbDebouncedPush();

@@ -1949,6 +1949,8 @@ function tgs(k) {
     uStats();
     renderHistory && typeof renderHistory === "function" && renderHistory();
     if (typeof renderEkadashiList === "function") renderEkadashiList();
+    if (typeof _updateCfgTimesPreview === "function") _updateCfgTimesPreview();
+    if (typeof renderCal === "function") renderCal();
     toast(App.S.gaudiyaMode ? "🪷 Gaudiya Mode ON" : "🪷 Gaudiya Mode OFF");
     return;
   }
@@ -6965,6 +6967,8 @@ async function fetchPanchangEkadashis() {
     if (isGaudiyaFetch && typeof getPanchangData === "function") {
       // Scan next 12 months day by day, collect Ekadashi days from panchangData
       if (status) status.textContent = "🌸 Gaudiya Mode — fetching ISKCON panchang…";
+      // Immediately refresh Upcoming Ekadashis section — hides old GPS entries right away
+      if (typeof _updateCfgTimesPreview === "function") _updateCfgTimesPreview();
       const scanDays = 366;
       let scanDate = new Date(today);
       let prevTithi = null;
@@ -7219,6 +7223,9 @@ async function fetchPanchangEkadashis() {
     // BEFORE each anchor for both Shukla (after NM) and Krishna (after FM).
     // This guarantees every Ekadashi in both pakshas is found, including during
     // Adhik Maas / Purushottama month.
+
+    // Immediately refresh Upcoming section — hides old Gaudiya entries right away
+    if (typeof _updateCfgTimesPreview === "function") _updateCfgTimesPreview();
 
     const scanFrom = new Date(today.getTime() - 62 * DAY); // 2 months back
     const scanTo   = new Date(today.getTime() + 185 * DAY); // ~6 months ahead
@@ -7572,9 +7579,12 @@ function _updateCfgTimesPreview() {
       const pakshaTag = paksha === "shukla"
         ? '<span style="font-size:9px;background:rgba(241,196,15,0.18);color:#F1C40F;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:5px;">☀️ Shukla</span>'
         : '<span style="font-size:9px;background:rgba(155,89,182,0.2);color:#BD93F9;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:5px;">🌙 Krishna</span>';
-      const paramTag = parampara === "vaishnava"
-        ? '<span style="font-size:8px;background:rgba(74,144,226,0.18);color:#6DB8FF;border-radius:4px;padding:1px 5px;margin-left:4px;">Vaishnava</span>'
-        : '<span style="font-size:8px;background:rgba(46,204,113,0.15);color:#2ecc71;border-radius:4px;padding:1px 5px;margin-left:4px;">Smarta</span>';
+      const isGaudiyaEk = ek.source === "gaudiya";
+      const paramTag = isGaudiyaEk
+        ? '<span style="font-size:8px;background:rgba(255,105,180,0.18);color:#FF69B4;border-radius:4px;padding:1px 5px;margin-left:4px;">Vaishnava</span>'
+        : parampara === "vaishnava"
+          ? '<span style="font-size:8px;background:rgba(74,144,226,0.18);color:#6DB8FF;border-radius:4px;padding:1px 5px;margin-left:4px;">Vaishnava</span>'
+          : '<span style="font-size:8px;background:rgba(46,204,113,0.15);color:#2ecc71;border-radius:4px;padding:1px 5px;margin-left:4px;">Smarta</span>';
       const isViddha = !!ek.isViddha;
       const viddhaTag = isViddha
         ? '<span style="font-size:8px;background:rgba(255,152,0,0.18);color:#FF9800;border-radius:4px;padding:1px 5px;margin-left:4px;">Mahadvadashi</span>'
@@ -7894,8 +7904,11 @@ function renderEkadashiList() {
         : isTomorrow
           ? `<span style="color:#76ff7a;font-weight:700">🌅 Fast: ${fmtD(fastingDate)}</span>`
           : `<span style="color:#76ff7a;font-weight:700">🌅 Fast: ${fmtD(fastingDate)}</span>`;
-      const paramparaTag =
-        parampara === "vaishnava"
+      // Gaudiya entries always use ISKCON/Vaishnava rules — parampara setting is irrelevant
+      const isGaudiyaEntry = typeof e === "object" && e.source === "gaudiya";
+      const paramparaTag = isGaudiyaEntry
+        ? '<span style="font-size:8px;background:rgba(255,105,180,0.18);color:#FF69B4;border-radius:4px;padding:1px 5px;margin-left:4px;">Vaishnava</span>'
+        : parampara === "vaishnava"
           ? '<span style="font-size:8px;background:rgba(74,144,226,0.2);color:#6DB8FF;border-radius:4px;padding:1px 5px;margin-left:4px;">Vaishnava</span>'
           : '<span style="font-size:8px;background:rgba(46,204,113,0.15);color:#2ecc71;border-radius:4px;padding:1px 5px;margin-left:4px;">Smarta</span>';
 

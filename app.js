@@ -6848,6 +6848,7 @@ async function recalculateAllEkadashis() {
     fbDebouncedPush();
     renderEkadashiList();
     renderCal();
+    _updateCfgTimesPreview();
 
     if (status) status.textContent = "✅ " + changed + " Ekadashis recalculated · Live GPS · " + lat.toFixed(4) + ", " + lng.toFixed(4);
     toast("✅ All " + changed + " Ekadashis recalculated with live GPS 🙏");
@@ -6990,6 +6991,7 @@ async function fetchPanchangEkadashis() {
     App.S.customEkadashi.sort((a, b) => (_ekDate(a) < _ekDate(b) ? -1 : 1));
     // Resync all occasions with current horizonMode + parampara after adding new entries
     _resyncEkOccasions();
+    _updateCfgTimesPreview();
     App.save();
     fbDebouncedPush();
     renderEkadashiList();
@@ -7082,6 +7084,7 @@ function saveEkParampara(val) {
   renderEkParampara();
   renderEkadashiList();
   if (typeof renderCal === "function") renderCal();
+  _updateCfgTimesPreview(); // refresh Next 2 Ekadashis preview with new parampara
   toast(
     val === "smarta" ? "☀️ Smarta Parampara set" : "🌸 Vaishnava Parampara set",
   );
@@ -7191,21 +7194,81 @@ function _updateCfgTimesPreview() {
   set("cfg-sk-start",  _fmt(skStart));
   set("cfg-sunset",    times.sunset);
   set("cfg-sk-end",    _fmt(skEnd > 24 ? skEnd - 24 : skEnd));
-  // Next Ekadashi + Parana preview
+  // Next 2 Ekadashis + Paran preview — mode-aware + parampara-aware
   const cfgEk = document.getElementById("cfg-next-ekadashi");
   if (cfgEk) {
-    const nxt = (App.S.customEkadashi || []).find(ek => {
-      const fd = ek.fastingDate || ek.startDate || ek.date || "";
-      return fd >= _ldk(now);
-    });
-    if (nxt) {
-      const fd = nxt.fastingDate || nxt.startDate || nxt.date || "";
-      cfgEk.innerHTML =
-        '<div style="font-size:10px;color:rgba(255,215,0,0.55);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;font-weight:700;">🌙 Next Ekadashi</div>' +
-        '<div style="font-size:13px;color:#FFD700;font-weight:600;">' + (nxt.name || "Ekadashi") + ' · ' + fd + '</div>';
-    } else {
-      cfgEk.innerHTML = "";
+    const today = _ldk(now);
+    const upcoming = (App.S.customEkadashi || [])
+      .filter(ek => (ek.fastingDate || ek.startDate || "") >= today)
+      .slice(0, 2);
+
+    if (!upcoming.length) { cfgEk.innerHTML = ""; return; }
+
+    const parampara = App.S.ekParampara || "smarta";
+    const _pLat = lat, _pLng = lng;
+
+    function _ekCard(ek, idx) {
+      const fd  = ek.fastingDate || ek.startDate || "";
+      const name = ek.name || "Ekadashi";
+      const paksha = ek.paksha || "shukla";
+      const pakshaTag = paksha === "shukla"
+        ? '<span style="font-size:9px;background:rgba(241,196,15,0.18);color:#F1C40F;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:5px;">☀️ Shukla</span>'
+        : '<span style="font-size:9px;background:rgba(155,89,182,0.2);color:#BD93F9;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:5px;">🌙 Krishna</span>';
+      const paramTag = parampara === "vaishnava"
+        ? '<span style="font-size:8px;background:rgba(74,144,226,0.18);color:#6DB8FF;border-radius:4px;padding:1px 5px;margin-left:4px;">Vaishnava</span>'
+        : '<span style="font-size:8px;background:rgba(46,204,113,0.15);color:#2ecc71;border-radius:4px;padding:1px 5px;margin-left:4px;">Smarta</span>';
+      const isViddha = !!ek.isViddha;
+      const viddhaTag = isViddha
+        ? '<span style="font-size:8px;background:rgba(255,152,0,0.18);color:#FF9800;border-radius:4px;padding:1px 5px;margin-left:4px;">Mahadvadashi</span>'
+        : '';
+
+      // Format fasting date nicely
+      const _fd = new Date(fd + "T00:00:00");
+      const _days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      const _months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const fdFmt = _days[_fd.getDay()] + " " + _fd.getDate() + " " + _months[_fd.getMonth()];
+
+      // Paran window
+      let paranHtml = "";
+      try {
+        const ekStartDt = new Date((ek.startDate || fd) + "T" + (ek.startTime || "06:00") + ":00");
+        const ekEndDt   = new Date((ek.endDate   || fd) + "T" + (ek.endTime   || "06:00") + ":00");
+        const par = _computeParanaWindow({ ekStart: ekStartDt, ekEnd: ekEndDt }, _pLat, _pLng, fd);
+        if (par) {
+          const _pd = new Date(par.date + "T00:00:00");
+          const pdFmt = _days[_pd.getDay()] + " " + _pd.getDate() + " " + _months[_pd.getMonth()];
+          paranHtml =
+            '<div style="display:flex;align-items:center;gap:5px;margin-top:6px;padding:5px 8px;' +
+            'background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.18);border-radius:7px;">' +
+            '<span style="font-size:10px;color:#FFD700;font-weight:700;">☀️ Paran</span>' +
+            '<span style="font-size:9px;color:rgba(255,215,0,0.45);">|</span>' +
+            '<span style="font-size:10px;color:#FFE566;">' + pdFmt + '</span>' +
+            '<span style="font-size:9px;color:rgba(255,215,0,0.45);">·</span>' +
+            '<span style="font-size:10px;color:#FFE566;font-weight:600;">' +
+            _fmtTime12(par.windowStart) + '–' + _fmtTime12(par.windowEnd) + '</span>' +
+            '</div>';
+        }
+      } catch(_) {}
+
+      const borderCol = idx === 0 ? "rgba(255,215,0,0.3)" : "rgba(155,89,182,0.25)";
+      const bgCol     = idx === 0 ? "rgba(255,215,0,0.05)" : "rgba(155,89,182,0.05)";
+      const nameCol   = idx === 0 ? "#FFD700" : "#BD93F9";
+
+      return '<div style="background:' + bgCol + ';border:1px solid ' + borderCol + ';' +
+        'border-radius:11px;padding:10px 11px;margin-top:' + (idx === 0 ? "10px" : "8px") + ';">' +
+        '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;margin-bottom:4px;">' +
+        '<span style="font-size:12px;color:' + nameCol + ';font-weight:700;">' + name + '</span>' +
+        pakshaTag + paramTag + viddhaTag +
+        '</div>' +
+        '<div style="font-size:11px;color:rgba(255,255,255,0.55);">🗓 Fast: <span style="color:#fff;font-weight:600;">' + fdFmt + '</span></div>' +
+        paranHtml +
+        '</div>';
     }
+
+    cfgEk.innerHTML =
+      '<div style="font-size:9px;color:rgba(255,215,0,0.5);letter-spacing:2px;text-transform:uppercase;' +
+      'font-weight:700;margin-top:4px;">🌙 Upcoming Ekadashis</div>' +
+      upcoming.map((ek, i) => _ekCard(ek, i)).join("");
   }
 }
 

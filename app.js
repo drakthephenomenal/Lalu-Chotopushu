@@ -1880,11 +1880,20 @@ function _applyHorizonToggleUI() {
   const pillCelestial = document.getElementById("horizonPillCelestial");
   if (pillApparent) pillApparent.classList.toggle("active", !isCelestial);
   if (pillCelestial) pillCelestial.classList.toggle("active", isCelestial);
-  // Reveal the mode panel only when GPS Location is ON
+  // Horizon Mode section is ONLY active when GPS Location toggle is ON.
+  // When GPS is OFF: section is hidden/disabled and pills are non-interactive.
   const sec = document.getElementById("horizonModeSection");
   const tgGps = document.getElementById("tgGpsLocation");
   const gpsOn = !!(tgGps && tgGps.classList.contains("on"));
-  if (sec) sec.classList.toggle("gps-on", gpsOn);
+  if (sec) {
+    sec.classList.toggle("gps-on", gpsOn);
+    sec.classList.toggle("gps-off", !gpsOn);
+  }
+  // Disable pill buttons when GPS is OFF so clicking does nothing
+  if (pillApparent) pillApparent.disabled = !gpsOn;
+  if (pillCelestial) pillCelestial.disabled = !gpsOn;
+  const tgHorizon = document.getElementById("tgHorizonMode");
+  if (tgHorizon) tgHorizon.style.pointerEvents = gpsOn ? "" : "none";
 }
 
 function tgs(k) {
@@ -1957,12 +1966,17 @@ function tgs(k) {
         (pos) => {
           const lat = pos.coords.latitude, lng = pos.coords.longitude;
           if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; App.save(); }
+          // GPS coords are now saved — feed Horizon Mode and Ekadashi Parampara
           updateSunInfo(lat, lng);
           if (tgGps) tgGps.classList.add("on");
-          _applyHorizonToggleUI();
+          _applyHorizonToggleUI(); // unlocks Horizon Mode pills
           if (statusEl) statusEl.textContent = "✅ Location detected · " + lat.toFixed(3) + ", " + lng.toFixed(3);
           toast("📍 GPS location saved! Brahma Muhurta times updated 🙏");
-          // Refresh reminder times with new location
+          // Resync Ekadashi fasting dates with fresh GPS coords + current horizonMode
+          _resyncEkOccasions();
+          if (typeof renderEkadashiList === "function") renderEkadashiList();
+          if (typeof renderCal === "function") renderCal();
+          // Refresh reminder sun times using the now-saved coords
           loadSunTimes(true);
         },
         () => {
@@ -1972,29 +1986,48 @@ function tgs(k) {
         { timeout: 10000, maximumAge: 0 },
       );
     } else {
-      // Turning OFF — clear saved location
+      // Turning OFF — clear saved location and reset everything that depended on GPS
       if (App.S) { delete App.S.lastLat; delete App.S.lastLng; App.save(); }
       if (tgGps) tgGps.classList.remove("on");
-      _applyHorizonToggleUI();
+      _applyHorizonToggleUI(); // will disable Horizon Mode pills
       const statusEl = document.getElementById("gpsLocationStatus");
-      if (statusEl) statusEl.textContent = "— GPS location disabled · using default";
-      updateSunInfo(23.8103, 90.4125);
-      toast("📍 GPS location disabled");
+      if (statusEl) statusEl.textContent = "— Tap toggle to detect your location 📍";
+      // GPS is OFF — clear all time displays rather than show fake-coord times
+      ["bm-start","bm-end","rh-sunrise","sk-start","sk-end","rh-sunset"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = "—";
+      });
+      // Resync Ekadashi with default coords (GPS is gone)
+      _resyncEkOccasions();
+      if (typeof renderEkadashiList === "function") renderEkadashiList();
+      if (typeof renderCal === "function") renderCal();
+      toast("📍 GPS location disabled — times reset to default");
     }
     return;
   }
 
   if (k === "horizonMode") {
+    // GUARD: Horizon Mode requires GPS to be ON — it has no independent location source.
+    // All coordinate data must come from the GPS Location toggle.
+    const _tgGps = document.getElementById("tgGpsLocation");
+    const _gpsActive = !!(_tgGps && _tgGps.classList.contains("on"));
+    const _hasCoords = App.S && App.S.lastLat && App.S.lastLng;
+    if (!_gpsActive || !_hasCoords) {
+      toast("⚠️ Turn on GPS Location first — Horizon Mode needs your coordinates");
+      return;
+    }
     // Toggle between apparent (earthy sky, 90.833°) and celestial (true/ISKCON, 90.0°)
     App.S.horizonMode = (App.S.horizonMode === "celestial") ? "apparent" : "celestial";
     _applyHorizonToggleUI();
+    // Use ONLY the saved GPS coords from the GPS Location toggle
+    const _hLat = App.S.lastLat;
+    const _hLng = App.S.lastLng;
     // Resync Ekadashi fasting dates + occasions with new horizon (sunrise shifts ~4 min)
+    // _resyncEkOccasions reads App.S.lastLat/lastLng and App.S.horizonMode internally
     _resyncEkOccasions();
     App.save();
     fbDebouncedPush();
-    // Refresh all time displays immediately with current GPS or fallback
-    const _hLat = (App.S && App.S.lastLat) || 23.8103;
-    const _hLng = (App.S && App.S.lastLng) || 90.4125;
+    // Refresh all time displays with GPS coords from toggle
     updateSunInfo(_hLat, _hLng);
     if (typeof renderEkadashiList === "function") renderEkadashiList();
     if (typeof renderCal === "function") renderCal();
@@ -4774,8 +4807,9 @@ function _cleanLegacyEkadashiOccasions() {
     if (parampara === "vaishnava" && ek.startTime) {
       const [h, m] = ek.startTime.split(":").map(Number);
       const _ekH = h + m / 60;
-      const _pLat2 = (App.S && App.S.lastLat) || 23.8103;
-      const _pLng2 = (App.S && App.S.lastLng) || 90.4125;
+      const _pLat2 = App.S && App.S.lastLat;
+      const _pLng2 = App.S && App.S.lastLng;
+      if (!_pLat2 || !_pLng2) return; // GPS toggle OFF — skip, cannot calculate accurately
       const _ekD2 = new Date(_ekDate(ek) + "T00:00:00");
       const _srD2 = calcSunTimes(_pLat2, _pLng2, _ekD2);
       const _sunH2 = _srD2 ? _srD2.sunriseH : 6.0;
@@ -6797,35 +6831,26 @@ const _EK_NAMES_KRISHNA = [
 
 let _panchangFetching = false;
 
-// ── Recalculate every saved Ekadashi with fresh live GPS + exact per-date sunrise ──
+// ── Recalculate every saved Ekadashi — GPS toggle coords → horizonMode → parampara ──
 async function recalculateAllEkadashis() {
   const btn = document.getElementById("ekRefreshBtn");
   const status = document.getElementById("panchangStatus");
-  if (btn) { btn.disabled = true; btn.textContent = "📍 Getting live GPS…"; }
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Recalculating…"; }
 
   try {
-    // Always get fresh GPS — no cache
-    if (!navigator.geolocation) {
-      toast("❌ GPS not available on this device");
+    // LAYER 1 — GPS: coords must come from the GPS Location toggle only.
+    // This button never calls navigator.geolocation independently.
+    const tgGps = document.getElementById("tgGpsLocation");
+    const gpsOn = !!(tgGps && tgGps.classList.contains("on"));
+    const lat = App.S && App.S.lastLat;
+    const lng = App.S && App.S.lastLng;
+
+    if (!gpsOn || !lat || !lng) {
+      const msg = "Turn on GPS Location toggle first — Horizon Mode and Ekadashi need your coordinates";
+      if (status) status.textContent = "⚠️ " + msg;
+      toast("⚠️ " + msg);
       return;
     }
-    if (status) status.textContent = "📍 Getting your live GPS location…";
-    const pos = await new Promise((res, rej) => {
-      navigator.geolocation.getCurrentPosition(res, rej, {
-        timeout: 12000,
-        maximumAge: 0,          // ← force a brand-new GPS fix, never use cache
-        enableHighAccuracy: true
-      });
-    });
-    const lat = pos.coords.latitude;
-    const lng = pos.coords.longitude;
-
-    // Save updated coords
-    if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; }
-    const gpsEl = document.getElementById("gpsLocationStatus");
-    if (gpsEl) gpsEl.textContent = "✅ Live GPS · " + lat.toFixed(4) + ", " + lng.toFixed(4);
-
-    if (status) status.textContent = "🔢 Recomputing each Ekadashi's exact sunrise…";
 
     const entries = App.S.customEkadashi || [];
     if (entries.length === 0) {
@@ -6833,15 +6858,13 @@ async function recalculateAllEkadashis() {
       return;
     }
 
-    const parampara = App.S.ekParampara || "smarta";
-    let changed = 0;
+    if (status) status.textContent = "🔢 Recomputing each Ekadashi's exact sunrise…";
 
-    // Save updated coords before resyncing so calcSunTimes uses the fresh GPS position
-    if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; }
-
-    // Use _resyncEkOccasions — it honours current horizonMode + parampara correctly
+    // LAYER 2 — Horizon Mode: _resyncEkOccasions reads App.S.horizonMode internally.
+    // LAYER 3 — Parampara: _resyncEkOccasions reads App.S.ekParampara internally.
+    // All three layers flow through this single call.
     _resyncEkOccasions();
-    changed = entries.filter(e => e && e.startDate && e.startTime).length;
+    const changed = entries.filter(e => e && e.startDate && e.startTime).length;
 
     App.S.customEkadashi.sort((a, b) => (_ekDate(a) < _ekDate(b) ? -1 : 1));
     await App.save();
@@ -6850,15 +6873,13 @@ async function recalculateAllEkadashis() {
     renderCal();
     _updateCfgTimesPreview();
 
-    if (status) status.textContent = "✅ " + changed + " Ekadashis recalculated · Live GPS · " + lat.toFixed(4) + ", " + lng.toFixed(4);
-    toast("✅ All " + changed + " Ekadashis recalculated with live GPS 🙏");
+    const horizonLabel = App.S.horizonMode === "celestial" ? "Celestial" : "Earthy Sky";
+    const paramparaLabel = App.S.ekParampara === "vaishnava" ? "Vaishnava" : "Smarta";
+    if (status) status.textContent = "✅ " + changed + " Ekadashis recalculated · " + lat.toFixed(4) + ", " + lng.toFixed(4) + " · " + horizonLabel + " · " + paramparaLabel;
+    toast("✅ " + changed + " Ekadashis recalculated · GPS → Horizon → Parampara 🙏");
 
   } catch (err) {
-    const msg = err && err.code === 1
-      ? "GPS permission denied — please enable location"
-      : err && err.code === 3
-        ? "GPS timed out — please try again outdoors"
-        : (err.message || "Unknown error");
+    const msg = err.message || "Unknown error";
     if (status) status.textContent = "⚠️ " + msg;
     toast("❌ " + msg);
   } finally {
@@ -6874,50 +6895,22 @@ async function fetchPanchangEkadashis() {
   if (btn) { btn.disabled = true; btn.textContent = "⏳ Computing…"; }
 
   try {
-    // ── Step 1: Get coordinates ───────────────────────────────────────────────
-    // Priority: (a) saved GPS from App.S, (b) fresh getCurrentPosition, (c) default
-    let lat, lng;
+    // ── LAYER 1: GPS — coords come ONLY from the GPS Location toggle ──────────
+    // This function never calls navigator.geolocation independently.
+    // The GPS toggle is the single source of coordinates for all downstream layers.
+    const tgGps = document.getElementById("tgGpsLocation");
+    const gpsOn = !!(tgGps && tgGps.classList.contains("on"));
+    const lat = App.S && App.S.lastLat;
+    const lng = App.S && App.S.lastLng;
 
-    // Always get a fresh GPS fix — never use cache, so every date gets computed
-    // for the user's actual current location with zero approximation
-    if (navigator.geolocation) {
-      if (status) status.textContent = "📍 Getting live GPS location…";
-      try {
-        const pos = await new Promise((res, rej) => {
-          navigator.geolocation.getCurrentPosition(res, rej, {
-            timeout: 12000,
-            maximumAge: 0,           // ← always fresh, never cached
-            enableHighAccuracy: true
-          });
-        });
-        lat = pos.coords.latitude;
-        lng = pos.coords.longitude;
-        // Save updated coords
-        if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; }
-        const tgGps = document.getElementById("tgGpsLocation");
-        if (tgGps) tgGps.classList.add("on");
-        const gpsStatusEl = document.getElementById("gpsLocationStatus");
-        if (gpsStatusEl) gpsStatusEl.textContent = "✅ Live GPS · " + lat.toFixed(4) + ", " + lng.toFixed(4);
-      } catch (gpsErr) {
-        // Fall back to saved coords if available, else Vrindavan
-        const savedLat = App.S && App.S.lastLat;
-        const savedLng = App.S && App.S.lastLng;
-        if (savedLat && savedLng) {
-          lat = savedLat; lng = savedLng;
-          if (status) status.textContent = "⚠️ GPS timed out — using last saved location";
-          toast("📍 Live GPS failed — using saved location");
-        } else {
-          lat = 27.5794; lng = 77.6964;
-          if (status) status.textContent = "⚠️ GPS denied — using Vrindavan as fallback";
-          toast("📍 GPS unavailable — using Vrindavan fallback");
-        }
-      }
-    } else {
-      lat = 27.5794; lng = 77.6964;
-      if (status) status.textContent = "⚠️ GPS not available — using Vrindavan fallback";
+    if (!gpsOn || !lat || !lng) {
+      const msg = "Turn on GPS Location toggle first — Ekadashi calculation needs your coordinates";
+      if (status) status.textContent = "⚠️ " + msg;
+      toast("⚠️ " + msg);
+      return;
     }
 
-    if (status) status.textContent = "🔢 Computing tithis…";
+    if (status) status.textContent = "🔢 Computing tithis for your location…";
 
     // ── Step 2: Scan for Ekadashis ────────────────────────────────────────────
     if (!App.S.customEkadashi) App.S.customEkadashi = [];
@@ -6989,7 +6982,9 @@ async function fetchPanchangEkadashis() {
     }
 
     App.S.customEkadashi.sort((a, b) => (_ekDate(a) < _ekDate(b) ? -1 : 1));
-    // Resync all occasions with current horizonMode + parampara after adding new entries
+    // ── LAYER 2 + 3: Horizon Mode + Parampara ──────────────────────────────────
+    // _resyncEkOccasions reads App.S.horizonMode (Earthy Sky / Celestial) and
+    // App.S.ekParampara (Smarta / Vaishnava) — both applied to every fasting date.
     _resyncEkOccasions();
     _updateCfgTimesPreview();
     App.save();
@@ -6997,8 +6992,10 @@ async function fetchPanchangEkadashis() {
     renderEkadashiList();
     if (typeof renderCal === "function") renderCal();
     const total = App.S.customEkadashi.length;
-    if (status) status.textContent = `✅ ${added} new · ${total} total saved`;
-    toast(`📅 ${added} Ekadashis added · ${total} total 🙏`);
+    const horizonLabel = App.S.horizonMode === "celestial" ? "Celestial" : "Earthy Sky";
+    const paramparaLabel = App.S.ekParampara === "vaishnava" ? "Vaishnava" : "Smarta";
+    if (status) status.textContent = `✅ ${added} new · ${total} total · ${horizonLabel} · ${paramparaLabel}`;
+    toast(`📅 ${added} Ekadashis added · GPS → ${horizonLabel} → ${paramparaLabel} 🙏`);
 
   } catch (e) {
     if (status) status.textContent = "⚠️ " + (e.message || "Unexpected error");
@@ -7096,8 +7093,10 @@ function _resyncEkOccasions() {
   const entries = App.S.customEkadashi || [];
   if (!entries.length) return;
   const parampara = App.S.ekParampara || "smarta";
-  const lat = (App.S && App.S.lastLat) || 23.8103;
-  const lng = (App.S && App.S.lastLng) || 90.4125;
+  // GPS is the required source — no coords means no calculation
+  const lat = App.S && App.S.lastLat;
+  const lng = App.S && App.S.lastLng;
+  if (!lat || !lng) return; // GPS toggle is OFF — refuse to calculate with fake coords
 
   entries.forEach((ek) => {
     if (!ek || !ek.startDate || !ek.startTime || !ek.endDate) return;
@@ -7150,14 +7149,25 @@ function _resyncEkOccasions() {
 // index.html uses onclick="setHorizonMode('apparent')" and onclick="setHorizonMode('celestial')"
 function setHorizonMode(mode) {
   if (!App.S) return;
+  // GUARD: Horizon Mode is fed exclusively by GPS Location toggle coords.
+  // Pill buttons do nothing if GPS is OFF or coords are not yet saved.
+  const _tgGps = document.getElementById("tgGpsLocation");
+  const _gpsActive = !!(_tgGps && _tgGps.classList.contains("on"));
+  const _hasCoords = App.S && App.S.lastLat && App.S.lastLng;
+  if (!_gpsActive || !_hasCoords) {
+    toast("⚠️ Turn on GPS Location first — Horizon Mode needs your coordinates");
+    return;
+  }
   if (App.S.horizonMode === mode) return; // no change
   App.S.horizonMode = mode;
   _applyHorizonToggleUI();
+  // Resync Ekadashi with new horizon — reads App.S.lastLat/lastLng internally
   _resyncEkOccasions();
   App.save();
   fbDebouncedPush();
-  const _hLat = (App.S && App.S.lastLat) || 23.8103;
-  const _hLng = (App.S && App.S.lastLng) || 90.4125;
+  // Use ONLY the GPS coords saved by the GPS Location toggle
+  const _hLat = App.S.lastLat;
+  const _hLng = App.S.lastLng;
   updateSunInfo(_hLat, _hLng);
   _updateCfgTimesPreview();
   if (typeof renderEkadashiList === "function") renderEkadashiList();
@@ -7171,8 +7181,14 @@ function setHorizonMode(mode) {
 
 // ── _updateCfgTimesPreview — populates the live Sacred Times preview in Settings ──
 function _updateCfgTimesPreview() {
-  const lat = (App.S && App.S.lastLat) || 23.8103;
-  const lng = (App.S && App.S.lastLng) || 90.4125;
+  const lat = App.S && App.S.lastLat;
+  const lng = App.S && App.S.lastLng;
+  if (!lat || !lng) {
+    // GPS toggle is OFF — clear the preview rather than show fake-coord times
+    const cfgEk = document.getElementById("cfg-next-ekadashi");
+    if (cfgEk) cfgEk.innerHTML = '<span style="color:rgba(255,255,255,0.35);font-size:11px;">Turn on GPS Location to see times</span>';
+    return;
+  }
   const now = new Date();
   const times = calcSunTimes(lat, lng, now);
   if (!times) return;
@@ -7399,28 +7415,17 @@ function addEkadashiDate() {
     );
   }
 
-  // Use GPS to get real sunrise for the Ekadashi start date
-  if (navigator.geolocation) {
-    toast("📍 Getting GPS for sunrise…");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const ekDate = new Date(startDate + "T00:00:00");
-        const srData = calcSunTimes(
-          pos.coords.latitude,
-          pos.coords.longitude,
-          ekDate,
-        );
-        const sunriseH = srData ? srData.sunriseH : 6.0;
-        _applyEkFasting(sunriseH);
-      },
-      () => {
-        // GPS denied/failed — fall back to 6.00 AM with a warning
-        toast("⚠️ GPS unavailable, using 06:00 sunrise fallback");
-        _applyEkFasting(6.0);
-      },
-      { timeout: 8000, maximumAge: 3600000 },
-    );
+  // Use ONLY the coords saved by the GPS Location toggle.
+  // Never call navigator.geolocation independently.
+  const _addLat = App.S && App.S.lastLat;
+  const _addLng = App.S && App.S.lastLng;
+  if (_addLat && _addLng) {
+    const ekDate = new Date(startDate + "T00:00:00");
+    const srData = calcSunTimes(_addLat, _addLng, ekDate);
+    _applyEkFasting(srData ? srData.sunriseH : 6.0);
   } else {
+    // GPS toggle is OFF — fall back to 6:00 AM, advise user to enable GPS
+    toast("⚠️ Turn on GPS Location toggle for accurate sunrise times");
     _applyEkFasting(6.0);
   }
 }
@@ -7504,8 +7509,12 @@ function renderEkadashiList() {
         // Legacy fallback: compute from stored tithi times + current mode sunrise
         const [hh, mm] = startTime.split(":").map(Number);
         const ekStartH = hh + mm / 60;
-        const _eLat = (App.S && App.S.lastLat) || 23.8103;
-        const _eLng = (App.S && App.S.lastLng) || 90.4125;
+        const _eLat = App.S && App.S.lastLat;
+        const _eLng = App.S && App.S.lastLng;
+        if (!_eLat || !_eLng) {
+          // GPS is OFF — leave fastingDate as startDate, cannot compute accurately
+          fastingDate = sd;
+        } else {
         const _ekD = new Date(sd + "T00:00:00");
         const _srD = calcSunTimes(_eLat, _eLng, _ekD);
         const _sunriseH = _srD ? _srD.sunriseH : 6.0;
@@ -7514,6 +7523,7 @@ function renderEkadashiList() {
           if (ekStartH >= _arunodayaH) { fastingDate = ed; isViddha = true; }
         } else {
           if (ekStartH >= _sunriseH) fastingDate = ed;
+        }
         }
       }
       const isTomorrow = fastingDate === ed && sd !== ed;
@@ -7543,8 +7553,11 @@ function renderEkadashiList() {
             ":00",
         );
         const _ekObjP = { ekStart: _ekStartDt, ekEnd: _ekEndDt };
-        const _pLat = (App.S && App.S.lastLat) || 22.5,
-          _pLng = (App.S && App.S.lastLng) || 78.5;
+        const _pLat = App.S && App.S.lastLat;
+        const _pLng = App.S && App.S.lastLng;
+        if (!_pLat || !_pLng) {
+          paranaHtml = '<div style="margin-top:6px;padding:5px 8px;background:rgba(255,215,0,0.04);border:1px solid rgba(255,215,0,0.12);border-radius:7px;font-size:10px;color:rgba(255,215,0,0.45);">☀️ Parana — turn on GPS for accurate time</div>';
+        } else {
         const _par = _computeParanaWindow(_ekObjP, _pLat, _pLng, fastingDate);
         if (_par)
           paranaHtml =
@@ -7555,6 +7568,7 @@ function renderEkadashiList() {
             '<span style="font-size:9px;color:rgba(255,215,0,0.55);">·</span>' +
             '<span style="font-size:10px;color:#FFE566;font-weight:600;">' + _fmtTime12(_par.windowStart) + "–" + _fmtTime12(_par.windowEnd) + '</span>' +
             '</div>';
+        }
       } catch (_pe) {}
 
       return `<div style="background:rgba(155,89,182,0.09);border:1px solid rgba(155,89,182,0.22);border-radius:12px;padding:11px;margin-bottom:9px;">
@@ -7709,26 +7723,16 @@ function saveEkadashiEdit(oldSd) {
     );
   }
 
-  // Get real GPS sunrise for the (new) Ekadashi start date
-  if (navigator.geolocation) {
-    toast("📍 Getting GPS for sunrise…");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const ekDate = new Date(newSd + "T00:00:00");
-        const srData = calcSunTimes(
-          pos.coords.latitude,
-          pos.coords.longitude,
-          ekDate,
-        );
-        _applyEditFasting(srData ? srData.sunriseH : 6.0);
-      },
-      () => {
-        toast("⚠️ GPS unavailable, using 06:00 sunrise fallback");
-        _applyEditFasting(6.0);
-      },
-      { timeout: 8000, maximumAge: 3600000 },
-    );
+  // Use ONLY the coords saved by the GPS Location toggle.
+  // Never call navigator.geolocation independently.
+  const _editLat = App.S && App.S.lastLat;
+  const _editLng = App.S && App.S.lastLng;
+  if (_editLat && _editLng) {
+    const ekDate = new Date(newSd + "T00:00:00");
+    const srData = calcSunTimes(_editLat, _editLng, ekDate);
+    _applyEditFasting(srData ? srData.sunriseH : 6.0);
   } else {
+    toast("⚠️ Turn on GPS Location toggle for accurate sunrise times");
     _applyEditFasting(6.0);
   }
 }
@@ -8491,19 +8495,14 @@ function _renderDayPanchang(key) {
     }
   }
 
-  // Use saved GPS coords if available, else try to get location
+  // Use ONLY coords saved by the GPS Location toggle — no independent geolocation call.
   const savedLat = App.S && App.S.lastLat;
   const savedLng = App.S && App.S.lastLng;
   if (savedLat && savedLng) {
     _renderWithLatLng(savedLat, savedLng);
-  } else if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => _renderWithLatLng(pos.coords.latitude, pos.coords.longitude),
-      () => _renderWithLatLng(23.0, 89.5), // Bangladesh fallback
-      { timeout: 8000, maximumAge: 3600000 },
-    );
   } else {
-    _renderWithLatLng(23.0, 89.5); // fallback
+    // GPS toggle is OFF — render with default Bangladesh coords
+    _renderWithLatLng(23.0, 89.5);
   }
 }
 
@@ -9012,37 +9011,21 @@ function updateSunInfo(lat, lng) {
   _updateCfgTimesPreview();
 }
 function initSunTimes() {
-  // If we already have GPS coords saved, use them immediately — no new location prompt
+  // ARCHITECTURE: initSunTimes only reads coordinates saved by the GPS Location toggle.
+  // It never triggers its own geolocation request — the GPS toggle is the sole source.
   const savedLat = App.S && App.S.lastLat;
   const savedLng = App.S && App.S.lastLng;
   if (savedLat && savedLng) {
+    // GPS toggle was ON and coords are saved — use them
     updateSunInfo(savedLat, savedLng);
     setInterval(() => updateSunInfo(savedLat, savedLng), 600000);
-    return;
+  } else {
+    // GPS toggle is OFF — clear all time displays, show nothing fake
+    ["bm-start","bm-end","rh-sunrise","sk-start","sk-end","rh-sunset"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = "—";
+    });
   }
-  // No saved coords — only request if permission already granted, to avoid double prompt on startup
-  if (navigator.geolocation) {
-    const doRequest = () => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude, lng = pos.coords.longitude;
-          if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; }
-          updateSunInfo(lat, lng);
-          setInterval(() => updateSunInfo(lat, lng), 600000);
-        },
-        () => updateSunInfo(23.8103, 90.4125),
-        { timeout: 8000, maximumAge: 3600000 },
-      );
-    };
-    if (navigator.permissions && navigator.permissions.query) {
-      navigator.permissions.query({ name: "geolocation" }).then((perm) => {
-        if (perm.state === "granted") { doRequest(); }
-        else { updateSunInfo(23.8103, 90.4125); }
-      }).catch(doRequest);
-    } else {
-      doRequest();
-    }
-  } else updateSunInfo(23.8103, 90.4125);
 }
 
 // ── PWA Manifest ──
@@ -10514,47 +10497,38 @@ async function loadSunTimes(forceRefresh) {
     return cached;
   }
 
-  if (locEl) locEl.textContent = "📍 Detecting location…";
+  // ARCHITECTURE: loadSunTimes reads ONLY the coords saved by the GPS Location toggle.
+  // It never calls navigator.geolocation directly — the GPS toggle is the sole source.
+  const savedLat = App.S && App.S.lastLat;
+  const savedLng = App.S && App.S.lastLng;
 
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) {
-      if (locEl) locEl.textContent = "⚠️ GPS not available on this device";
-      resolve(null);
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const { latitude: lat, longitude: lon } = pos.coords;
-          const sun = await fetchSunTimes(lat, lon);
-          const cache = {
-            ts: now,
-            lat,
-            lon,
-            sunrise0: sun.sunrise[0].toISOString(),
-            sunrise1: sun.sunrise[1].toISOString(),
-            sunset0: sun.sunset[0].toISOString(),
-            sunset1: sun.sunset[1].toISOString(),
-          };
-          cfg.sunCache = cache;
-          saveRemCfg(cfg);
-          applySunCache(cache);
-          if (locEl)
-            locEl.textContent = "📍 Location detected · Times update daily";
-          resolve(cache);
-        } catch (e) {
-          if (locEl)
-            locEl.textContent = "⚠️ Could not fetch sun times. Check internet.";
-          resolve(null);
-        }
-      },
-      () => {
-        if (locEl) locEl.textContent = "⚠️ Location permission denied";
-        resolve(null);
-      },
-      { timeout: 10000 },
-    );
-  });
+  if (!savedLat || !savedLng) {
+    if (locEl) locEl.textContent = "⚠️ Turn on GPS Location toggle to enable sun times";
+    return null;
+  }
+
+  if (locEl) locEl.textContent = "📍 Computing sun times…";
+
+  try {
+    const sun = await fetchSunTimes(savedLat, savedLng);
+    const cache = {
+      ts: now,
+      lat: savedLat,
+      lon: savedLng,
+      sunrise0: sun.sunrise[0].toISOString(),
+      sunrise1: sun.sunrise[1].toISOString(),
+      sunset0: sun.sunset[0].toISOString(),
+      sunset1: sun.sunset[1].toISOString(),
+    };
+    cfg.sunCache = cache;
+    saveRemCfg(cfg);
+    applySunCache(cache);
+    if (locEl) locEl.textContent = "📍 Location active · Times update daily";
+    return cache;
+  } catch (e) {
+    if (locEl) locEl.textContent = "⚠️ Could not fetch sun times. Check internet.";
+    return null;
+  }
 }
 
 function applySunCache(cache) {

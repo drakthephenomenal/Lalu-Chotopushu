@@ -7095,6 +7095,10 @@ async function fetchPanchangEkadashis() {
                 App.S.occasions[parana.date] = App.S.occasions[parana.date] || "";
               }
               added++;
+              // ── Incremental render: show this Ekadashi immediately, don't wait for full scan ──
+              App.S.customEkadashi.sort((a, b) => (_ekDate(a) < _ekDate(b) ? -1 : 1));
+              renderEkadashiList();
+              if (status) status.textContent = `🌸 Gaudiya Mode — found ${added} so far…`;
             }
           }
 
@@ -7671,9 +7675,13 @@ function renderEkadashiList() {
   // Show only entries matching the current mode:
   // Gaudiya mode → show source:"gaudiya" entries only
   // Standard mode → show entries WITHOUT source:"gaudiya" (source:"gps" or manual)
+  // In Gaudiya mode: show source:"gaudiya" entries + manual (non-autoFetched) entries.
+  // In standard mode: show everything except source:"gaudiya".
+  // This correctly hides old GPS entries (autoFetched, no source) in Gaudiya mode.
   const entries = allEntries.filter(e => {
     if (typeof e !== "object") return true;
-    if (isGaudiya) return e.source === "gaudiya";
+    const isManual = !e.autoFetched;
+    if (isGaudiya) return e.source === "gaudiya" || isManual;
     return e.source !== "gaudiya";
   });
 

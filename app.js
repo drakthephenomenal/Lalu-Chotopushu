@@ -6940,6 +6940,160 @@ async function fetchPanchangEkadashis() {
     // This guarantees we always search for the RIGHT paksha per half-month,
     // so both Shukla AND Krishna Ekadashis are found alternately.
     // cur advances by exactly one precise synodic half-month — zero drift.
+    // ── GAUDIYA / ISKCON MODE — use panchangData.js API for tithi boundaries ──
+    // When gaudiyaMode is ON, getPanchangData() (Prokerala API → Meeus fallback)
+    // provides ISKCON-accurate tithi start/end times directly.
+    // No horizon mode or parampara override — the API data IS the ISKCON standard.
+    const isGaudiyaFetch = !!(App.S && App.S.gaudiyaMode);
+
+    if (isGaudiyaFetch && typeof getPanchangData === "function") {
+      // Scan next 12 months day by day, collect Ekadashi days from panchangData
+      if (status) status.textContent = "🌸 Gaudiya Mode — fetching ISKCON panchang…";
+      const scanDays = 366;
+      let scanDate = new Date(today);
+      let prevTithi = null;
+
+      for (let d = 0; d < scanDays; d++) {
+        try {
+          const pd = await getPanchangData(lat, lng, scanDate);
+          if (!pd) { scanDate.setDate(scanDate.getDate() + 1); continue; }
+
+          const tNum = pd.tithiNum; // 11 = Ekadashi Shukla, 26 = Ekadashi Krishna
+          const isEkadashi = (tNum === 11 || tNum === 26);
+
+          if (isEkadashi) {
+            const paksha  = tNum === 11 ? "shukla" : "krishna";
+            const dateStr = pd.tithi.endDate
+              ? _d2ymd(pd.tithi.endDate)
+              : _d2ymd(scanDate);
+
+            // ekStart = beginning of this calendar day (we don't have precise start
+            // from panchangData for start, but endDate + endTime are exact)
+            // Use previous day end as ekStart approximation for display only
+            const ekStartDate = new Date(scanDate);
+            ekStartDate.setHours(0, 0, 0, 0);
+
+            // ekEnd = exact tithi end from panchangData (matches ISKCON to ~1 min)
+            const ekEnd = pd.tithi.endDate instanceof Date
+              ? pd.tithi.endDate
+              : null;
+
+            // Arunodaya Viddha: use apparent sunrise of THIS day
+            const srData     = calcSunTimes(lat, lng, scanDate);
+            const appSr      = srData ? srData.apparentSunriseH : 6.0;
+            const modeSr     = srData ? srData.sunriseH         : 6.0;
+            const arunodayaH = appSr - 96 / 60;
+
+            // Ekadashi tithi end time on this day (hours)
+            let ekEndH = null;
+            if (ekEnd) {
+              ekEndH = ekEnd.getHours() + ekEnd.getMinutes() / 60;
+            }
+
+            // Viddha check: if tithi ends before Arunodaya → pure day → fast today
+            // If tithi ends after Arunodaya → Dashami touched Arunodaya → fast tomorrow
+            const startDateStr = _d2ymd(scanDate);
+            const endDate      = new Date(scanDate);
+            endDate.setDate(endDate.getDate() + 1);
+            const endDateStr   = _d2ymd(endDate);
+
+            const parampara   = App.S.ekParampara || "smarta";
+            let fastingDate   = startDateStr;
+            let isViddha      = false;
+
+            if (parampara === "vaishnava") {
+              // Vaishnava: Dashami must not touch the 96-min Arunodaya window
+              // If Ekadashi starts (i.e. previous tithi ends) after Arunodaya of THIS day
+              // then Dashami contaminated Arunodaya → fast moves to next day
+              // We approximate: if ekEnd (today's tithi end) is very early → tithi started late yesterday
+              // Better: check if Ekadashi was already running at Arunodaya today
+              // ekStartH not directly available; use: if tithi ends before noon it likely started late
+              // For accuracy use: fetch previous day tithi from pd
+              // Simple rule matching scripture: if Dashami present at Arunodaya → Viddha
+              // We check previous calendar day's tithi end against today's Arunodaya
+              if (prevTithi && prevTithi.endDate instanceof Date) {
+                const prevEndH = prevTithi.endDate.getHours() + prevTithi.endDate.getMinutes() / 60;
+                // If previous tithi (Dashami) ended after today's Arunodaya → Viddha
+                if (prevEndH >= arunodayaH) {
+                  fastingDate = endDateStr;
+                  isViddha    = true;
+                }
+              }
+            } else {
+              // Smarta: fast on day Ekadashi present at (mode-aware) sunrise
+              // If Ekadashi not yet started at sunrise (prevTithi still running) → fast tomorrow
+              if (prevTithi && prevTithi.endDate instanceof Date) {
+                const prevEndH = prevTithi.endDate.getHours() + prevTithi.endDate.getMinutes() / 60;
+                if (prevEndH >= modeSr) {
+                  fastingDate = endDateStr;
+                }
+              }
+            }
+
+            const pakshaLabel = paksha === "shukla" ? " ☀️ Shukla" : " 🌙 Krishna";
+            const adhikWin    = _getAdhikMaasWindow ? _getAdhikMaasWindow(startDateStr) : null;
+            const mi          = _getAdjustedMonthIndex(scanDate);
+            let name;
+            if (adhikWin) {
+              name = paksha === "shukla" ? "Padmini" : "Parama";
+            } else {
+              name = paksha === "shukla"
+                ? (_EK_NAMES_SHUKLA[mi] || "Ekadashi")
+                : (_EK_NAMES_KRISHNA[mi] || "Ekadashi");
+            }
+            const label = name + pakshaLabel + (isViddha ? " (Mahadvadashi)" : "");
+
+            const exists = App.S.customEkadashi.some(
+              (e) => _ekDate(e) === startDateStr
+            );
+            if (!exists) {
+              // Build ek object for _computeParanaWindow
+              const ekObj = {
+                paksha,
+                ekEnd: ekEnd || new Date(scanDate.getTime() + 23 * 3600000),
+              };
+              const parana = _computeParanaWindow(ekObj, lat, lng, fastingDate);
+              App.S.customEkadashi.push({
+                name,
+                paksha,
+                startDate:   startDateStr,
+                startTime:   "00:00",
+                endDate:     ekEnd ? _d2ymd(ekEnd) : endDateStr,
+                endTime:     ekEnd ? _d2hhmm(ekEnd) : "00:00",
+                autoFetched: true,
+                source:      "gaudiya",
+              });
+              App.S.occasions[fastingDate] = label;
+              if (parana) {
+                // Store parana in occasions display
+                App.S.occasions[parana.date] = App.S.occasions[parana.date] || "";
+              }
+              added++;
+            }
+          }
+
+          // Remember this tithi for next day's Viddha check
+          prevTithi = pd.tithi;
+
+        } catch (dayErr) {
+          console.warn("[Gaudiya fetch] day error:", dayErr.message);
+        }
+        scanDate.setDate(scanDate.getDate() + 1);
+      }
+
+      App.S.customEkadashi.sort((a, b) => (_ekDate(a) < _ekDate(b) ? -1 : 1));
+      _updateCfgTimesPreview();
+      App.save();
+      fbDebouncedPush();
+      renderEkadashiList();
+      if (typeof renderCal === "function") renderCal();
+      const total = App.S.customEkadashi.length;
+      if (status) status.textContent = `✅ ${added} new · ${total} total · 🌸 Gaudiya/ISKCON Panchang`;
+      toast(`📅 ${added} Ekadashis added · 🌸 Gaudiya/ISKCON Panchang 🙏`);
+
+    } else {
+    // ── STANDARD ASTRONOMICAL ENGINE ─────────────────────────────────────────
+
     let cur = new Date(today.getTime() - 5 * DAY); // start a few days before today
     for (let i = 0; i < 24; i++) {
       // Detect which paksha this half-month belongs to via moon elongation at cur
@@ -7005,6 +7159,8 @@ async function fetchPanchangEkadashis() {
     const paramparaLabel = App.S.ekParampara === "vaishnava" ? "Vaishnava" : "Smarta";
     if (status) status.textContent = `✅ ${added} new · ${total} total · ${horizonLabel} · ${paramparaLabel}`;
     toast(`📅 ${added} Ekadashis added · GPS → ${horizonLabel} → ${paramparaLabel} 🙏`);
+
+    } // end standard engine
 
   } catch (e) {
     if (status) status.textContent = "⚠️ " + (e.message || "Unexpected error");

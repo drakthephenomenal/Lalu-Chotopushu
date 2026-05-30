@@ -1878,8 +1878,8 @@ function _applyHorizonToggleUI() {
   if (desc) desc.textContent = "";
   const pillApparent = document.getElementById("horizonPillApparent");
   const pillCelestial = document.getElementById("horizonPillCelestial");
-  if (pillApparent) { pillApparent.classList.toggle("active", !isCelestial); pillApparent.style.cssText = ""; }
-  if (pillCelestial) { pillCelestial.classList.toggle("active", isCelestial); pillCelestial.style.cssText = ""; }
+  if (pillApparent) pillApparent.classList.toggle("active", !isCelestial);
+  if (pillCelestial) pillCelestial.classList.toggle("active", isCelestial);
   // Reveal the mode panel only when GPS Location is ON
   const sec = document.getElementById("horizonModeSection");
   const tgGps = document.getElementById("tgGpsLocation");
@@ -7214,23 +7214,10 @@ function renderEkParampara() {
   const smBtn = document.getElementById("ekParSmarta");
   const vaBtn = document.getElementById("ekParVaishnav");
   const note = document.getElementById("ekParamparaNote");
-  const activeStyle =
-    "padding:10px 6px;border-radius:10px;border:2px solid;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;";
-  if (smBtn) {
-    smBtn.style.cssText =
-      activeStyle +
-      (p === "smarta"
-        ? "border-color:rgba(241,196,15,0.8);background:rgba(241,196,15,0.22);color:#F1C40F;"
-        : "border-color:rgba(241,196,15,0.2);background:transparent;color:rgba(241,196,15,0.4);");
-  }
-  if (vaBtn) {
-    vaBtn.style.cssText =
-      activeStyle +
-      (p === "vaishnava"
-        ? "border-color:rgba(189,147,249,0.8);background:rgba(155,89,182,0.22);color:#BD93F9;"
-        : "border-color:rgba(155,89,182,0.2);background:transparent;color:rgba(189,147,249,0.4);");
-  }
-  if (note) note.innerHTML = EK_NOTES[p] || "";
+  // Use CSS classes only — inline style.cssText wipes base CSS button styles
+  if (smBtn)  smBtn.classList.toggle("active", p === "smarta");
+  if (vaBtn)  vaBtn.classList.toggle("active", p === "vaishnava");
+  if (note)   note.innerHTML = EK_NOTES[p] || "";
 }
 
 // ── Custom Ekadashi Date Management ──

@@ -2212,31 +2212,42 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
    #horizonPillApparent / #horizonPillCelestial use .active class
    toggled by _applyHorizonToggleUI() in app.js
    ══════════════════════════════════════════════════════════════ */
+/* ── HORIZON PILL BUTTONS — base + active states ── */
 #horizonPillApparent,
 #horizonPillCelestial {
+  padding: 12px 6px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.45);
+  font-family: Inter, sans-serif;
+  cursor: pointer;
+  text-align: center;
+  width: 100%;
+  display: block;
   transition: background 0.25s, border-color 0.25s, color 0.25s, box-shadow 0.25s;
 }
 #horizonPillApparent.active {
-  background: rgba(255,215,0,0.18) !important;
-  border-color: rgba(255,215,0,0.85) !important;
-  color: #FFD700 !important;
-  box-shadow: 0 0 16px rgba(255,215,0,0.30), inset 0 0 10px rgba(255,215,0,0.08) !important;
+  background: rgba(255,215,0,0.18);
+  border-color: rgba(255,215,0,0.85);
+  color: #FFD700;
+  box-shadow: 0 0 16px rgba(255,215,0,0.30), inset 0 0 10px rgba(255,215,0,0.08);
 }
 #horizonPillCelestial.active {
-  background: rgba(109,184,255,0.18) !important;
-  border-color: rgba(109,184,255,0.85) !important;
-  color: #6DB8FF !important;
-  box-shadow: 0 0 16px rgba(109,184,255,0.30), inset 0 0 10px rgba(109,184,255,0.08) !important;
+  background: rgba(109,184,255,0.18);
+  border-color: rgba(109,184,255,0.85);
+  color: #6DB8FF;
+  box-shadow: 0 0 16px rgba(109,184,255,0.30), inset 0 0 10px rgba(109,184,255,0.08);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   PARAMPARA BUTTONS — ekParSmarta / ekParVaishnav
-   renderEkParampara() in app.js applies inline styles;
-   these base styles ensure consistent sizing and transitions.
-   ══════════════════════════════════════════════════════════════ */
+/* ── PARAMPARA BUTTONS — base + active states ── */
 #ekParSmarta,
 #ekParVaishnav {
-  transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+  padding: 12px 6px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.45);
   font-family: 'Inter', sans-serif;
   cursor: pointer;
   text-align: center;
@@ -2246,8 +2257,19 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 12px 6px;
-  border-radius: 12px;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+#ekParSmarta.active {
+  background: rgba(241,196,15,0.22);
+  border-color: rgba(241,196,15,0.85);
+  color: #F1C40F;
+  box-shadow: 0 0 16px rgba(241,196,15,0.28), inset 0 0 10px rgba(241,196,15,0.08);
+}
+#ekParVaishnav.active {
+  background: rgba(155,89,182,0.22);
+  border-color: rgba(189,147,249,0.85);
+  color: #BD93F9;
+  box-shadow: 0 0 16px rgba(155,89,182,0.30), inset 0 0 10px rgba(155,89,182,0.08);
 }
 
 /* ══════════════════════════════════════════════════════════════

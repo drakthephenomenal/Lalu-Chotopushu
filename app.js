@@ -7121,6 +7121,13 @@ function _resyncEkOccasions() {
     const pakshaLabel = paksha === "shukla" ? " ☀️ Shukla" : " 🌙 Krishna";
     const label = (ek.name || "Ekadashi") + pakshaLabel + (isViddha ? " (Mahadvadashi · Arunodaya Viddha)" : "");
 
+    // KEY FIX: write recalculated fastingDate + isViddha back onto the stored ek entry.
+    // Without this, _computeParanaWindow reads stale ek.fastingDate from the original fetch,
+    // so Paran date/time stays wrong after horizonMode or parampara changes.
+    ek.fastingDate = newFastingDate;
+    ek.isViddha    = isViddha;
+    ek.label       = label;
+
     // Clear stale entries for BOTH possible fasting dates for this Ekadashi
     if (App.S.occasions) {
       [ek.startDate, ek.endDate].forEach((d) => {
@@ -11859,15 +11866,13 @@ function _computeParanaWindow(ek, lat, lng, fastingDate) {
 
     // Parana window START = mode-aware sunrise (celestial or apparent)
     const srH = srData.sunriseH;
+    const ssH = srData.sunsetH;
 
-    // 1/5 of day rule always uses APPARENT daytime length (matches ISKCON behaviour)
-    // srData.apparentSunriseH / apparentSunsetH are always the apparent times
-    // regardless of horizonMode, so daytime length is consistent.
-    const apparentSr = srData.apparentSunriseH !== undefined
-      ? srData.apparentSunriseH : srData.sunriseH;
-    const apparentSs = srData.apparentSunsetH !== undefined
-      ? srData.apparentSunsetH : srData.sunsetH;
-    const dayLen  = apparentSs - apparentSr;
+    // 1/5 of day rule uses mode-consistent daytime length:
+    // Celestial mode  → daytime = sunsetH − sunriseH  (both = solarNoon ± 6h = exactly 12h)
+    // Apparent mode   → daytime = apparentSunset − apparentSunrise
+    // Using srH/ssH (already mode-aware from calcSunTimes) keeps start & length consistent.
+    const dayLen  = ssH - srH;
     const fifthDay = srH + dayLen / 5;
 
     // Dvadashi ends ~24 hours after Ekadashi tithi ends (ek.ekEnd is the Ekadashi end Date object)

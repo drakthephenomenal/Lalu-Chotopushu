@@ -7192,6 +7192,9 @@ async function fetchPanchangEkadashis() {
                 startTime:   ekActualStartTime,
                 endDate:     ekEnd ? _d2ymd(ekEnd) : endDateStr,
                 endTime:     ekEnd ? _d2hhmm(ekEnd) : "00:00",
+                fastingDate: fastingDate,
+                isViddha:    isViddha,
+                parana:      parana || null,
                 autoFetched: true,
                 source:      _entrySource,
               });
@@ -7204,7 +7207,10 @@ async function fetchPanchangEkadashis() {
               // ── Incremental render: show this Ekadashi immediately, don't wait for full scan ──
               App.S.customEkadashi.sort((a, b) => (_ekDate(a) < _ekDate(b) ? -1 : 1));
               renderEkadashiList();
-              if (status) status.textContent = `🌸 Gaudiya Mode — found ${added} so far…`;
+              _updateCfgTimesPreview();
+              if (status) status.textContent = isGaudiyaFetch
+                ? `🌸 Gaudiya Mode — found ${added} so far…`
+                : `🗓️ Panchang Engine — found ${added} so far…`;
             }
           }
 

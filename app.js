@@ -7662,9 +7662,11 @@ function _updateCfgTimesPreview() {
 
       // Format fasting date nicely
       const _fd = new Date(fd + "T00:00:00");
-      const _days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      const _days   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
       const _months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-      const fdFmt = _days[_fd.getDay()] + " " + _fd.getDate() + " " + _months[_fd.getMonth()];
+      const _dt = _fd.getDate();
+      const _sfx = _dt===1||_dt===21||_dt===31?"st":_dt===2||_dt===22?"nd":_dt===3||_dt===23?"rd":"th";
+      const fdFmt = _dt + _sfx + " " + _months[_fd.getMonth()] + " " + _fd.getFullYear() + " · " + _days[_fd.getDay()];
 
       // Paran window
       let paranHtml = "";
@@ -7674,7 +7676,9 @@ function _updateCfgTimesPreview() {
         const par = _computeParanaWindow({ ekStart: ekStartDt, ekEnd: ekEndDt }, _pLat, _pLng, fd);
         if (par) {
           const _pd = new Date(par.date + "T00:00:00");
-          const pdFmt = _days[_pd.getDay()] + " " + _pd.getDate() + " " + _months[_pd.getMonth()];
+          const _pdt = _pd.getDate();
+          const _psfx = _pdt===1||_pdt===21||_pdt===31?"st":_pdt===2||_pdt===22?"nd":_pdt===3||_pdt===23?"rd":"th";
+          const pdFmt = _pdt + _psfx + " " + _months[_pd.getMonth()] + " " + _pd.getFullYear();
           paranHtml =
             '<div style="display:flex;align-items:center;gap:5px;margin-top:6px;padding:5px 8px;' +
             'background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.18);border-radius:7px;">' +
@@ -7693,25 +7697,33 @@ function _updateCfgTimesPreview() {
         }
       } catch(_) {}
 
-      const borderCol = idx === 0 ? "rgba(255,215,0,0.3)" : "rgba(155,89,182,0.25)";
-      const bgCol     = idx === 0 ? "rgba(255,215,0,0.05)" : "rgba(155,89,182,0.05)";
-      const nameCol   = idx === 0 ? "#FFD700" : "#BD93F9";
+      const glowCol  = idx === 0 ? "255,215,0" : "189,147,249";
+      const nameCol  = idx === 0 ? "#FFD700"   : "#BD93F9";
+      const accentBg = idx === 0 ? "rgba(255,215,0,0.07)" : "rgba(155,89,182,0.07)";
+      const borderC  = idx === 0 ? "rgba(255,215,0,0.35)" : "rgba(189,147,249,0.3)";
 
-      return '<div style="background:' + bgCol + ';border:1px solid ' + borderCol + ';' +
-        'border-radius:11px;padding:10px 11px;margin-top:' + (idx === 0 ? "10px" : "8px") + ';">' +
-        '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;margin-bottom:4px;">' +
-        '<span style="font-size:12px;color:' + nameCol + ';font-weight:700;">' + name + '</span>' +
-        pakshaTag + paramTag + viddhaTag +
+      return '<div style="' +
+        'background:linear-gradient(145deg,' + accentBg + ',rgba(255,255,255,0.02));' +
+        'border:1.5px solid ' + borderC + ';' +
+        'border-radius:16px;padding:14px 12px;' +
+        'box-shadow:0 4px 24px rgba(' + glowCol + ',0.18),inset 0 1px 0 rgba(255,255,255,0.07);' +
+        'backdrop-filter:blur(8px);' +
+        'display:flex;flex-direction:column;gap:8px;' +
+        '">' +
+        '<div style="font-size:15px;color:' + nameCol + ';font-weight:800;letter-spacing:0.3px;line-height:1.2;">' + name + '</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:3px;">' + pakshaTag + paramTag + viddhaTag + '</div>' +
+        '<div style="font-size:10px;color:rgba(255,255,255,0.5);line-height:1.5;">' +
+        '🗓 <span style="color:#fff;font-weight:700;font-size:11px;">' + fdFmt + '</span>' +
         '</div>' +
-        '<div style="font-size:11px;color:rgba(255,255,255,0.55);">🗓 Fast: <span style="color:#fff;font-weight:600;">' + fdFmt + '</span></div>' +
         paranHtml +
         '</div>';
     }
 
     cfgEk.innerHTML =
-      '<div style="font-size:9px;color:rgba(255,215,0,0.5);letter-spacing:2px;text-transform:uppercase;' +
-      'font-weight:700;margin-top:4px;">🌙 Upcoming Ekadashis</div>' +
-      upcoming.map((ek, i) => _ekCard(ek, i)).join("");
+      '<div style="font-size:9px;color:rgba(255,215,0,0.5);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-top:10px;margin-bottom:8px;">🌙 Upcoming Ekadashis</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+      upcoming.map((ek, i) => _ekCard(ek, i)).join("") +
+      '</div>';
   }
 }
 
@@ -7922,16 +7934,11 @@ function renderEkadashiList() {
       const isAuto = typeof e === "object" && e.autoFetched ? true : false;
       const fmtD = (d) => {
         const _d = new Date(d + "T00:00:00");
-        const _days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        return (
-          _days[_d.getDay()] +
-          " " +
-          String(_d.getDate()).padStart(2, "0") +
-          ":" +
-          String(_d.getMonth() + 1).padStart(2, "0") +
-          ":" +
-          _d.getFullYear()
-        );
+        const _days   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+        const _months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        const dt = _d.getDate();
+        const sfx = dt === 1||dt===21||dt===31 ? "st" : dt===2||dt===22 ? "nd" : dt===3||dt===23 ? "rd" : "th";
+        return dt + sfx + " " + _months[_d.getMonth()] + " " + _d.getFullYear() + " " + _days[_d.getDay()];
       };
       const sfmt = startTime ? _fmtTime12(startTime) : "";
       const efmt = endTime ? _fmtTime12(endTime) : "";
@@ -8022,17 +8029,21 @@ function renderEkadashiList() {
         }
       } catch (_pe) {}
 
-      return `<div style="background:rgba(155,89,182,0.09);border:1px solid rgba(155,89,182,0.22);border-radius:12px;padding:11px;margin-bottom:9px;">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+      return `<div style="background:linear-gradient(145deg,rgba(155,89,182,0.13),rgba(255,255,255,0.02));border:1.5px solid rgba(189,147,249,0.28);border-radius:16px;padding:14px;margin-bottom:11px;box-shadow:0 4px 20px rgba(155,89,182,0.15),inset 0 1px 0 rgba(255,255,255,0.06);">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;color:#BD93F9;font-weight:700;margin-bottom:3px;">${name} ${pLabel}${autoTag}</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.75);margin-bottom:5px;"><span style="font-size:9px;letter-spacing:0.8px;text-transform:uppercase;color:rgba(189,147,249,0.6);font-weight:700;">TITHI</span> <span style="color:#C9A7FF;font-weight:600;">${fmtD(sd)}</span>${sfmt ? '<span style="color:rgba(255,255,255,0.5)"> · </span><span style="color:#FFE566;font-weight:700;">' + sfmt + '</span>' : ''}<span style="color:rgba(255,255,255,0.4);"> → </span><span style="color:#C9A7FF;font-weight:600;">${fmtD(ed)}</span>${efmt ? '<span style="color:rgba(255,255,255,0.5)"> · </span><span style="color:#FFE566;font-weight:700;">' + efmt + '</span>' : ''}</div>
-          <div style="font-size:11px;margin-bottom:2px;">${fastLabel}${paramparaTag}</div>
+          <div style="font-size:16px;color:#BD93F9;font-weight:800;margin-bottom:6px;letter-spacing:0.3px;">${name}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">${pLabel}${autoTag}</div>
+          <div style="font-size:10px;color:rgba(189,147,249,0.6);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">TITHI</div>
+          <div style="font-size:12px;color:#C9A7FF;font-weight:600;margin-bottom:2px;">${fmtD(sd)}${sfmt ? ' <span style="color:#FFE566;font-weight:700;">· ' + sfmt + '</span>' : ''}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:8px;">→ ${fmtD(ed)}${efmt ? ' <span style="color:#FFE566;">· ' + efmt + '</span>' : ''}</div>
+          <div style="font-size:13px;margin-bottom:4px;">${fastLabel}</div>
+          <div style="margin-top:3px;">${paramparaTag}</div>
           ${paranaHtml}
         </div>
-        <div style="display:flex;gap:5px;flex-shrink:0;margin-left:7px;">
-          <button onclick="toggleEkEdit('${sd}')" style="background:rgba(74,144,226,0.15);border:1px solid rgba(74,144,226,0.3);border-radius:7px;color:#6DB8FF;font-size:11px;padding:5px 9px;cursor:pointer;font-family:Inter,sans-serif;">✏</button>
-          <button onclick="removeEkadashiDate('${sd}')" style="background:rgba(232,51,109,0.15);border:1px solid rgba(232,51,109,0.3);border-radius:7px;color:#e8336d;font-size:11px;padding:5px 9px;cursor:pointer;font-family:Inter,sans-serif;">✕</button>
+        <div style="display:flex;gap:5px;flex-shrink:0;margin-left:10px;">
+          <button onclick="toggleEkEdit('${sd}')" style="background:rgba(74,144,226,0.15);border:1px solid rgba(74,144,226,0.3);border-radius:9px;color:#6DB8FF;font-size:13px;padding:7px 11px;cursor:pointer;font-family:Inter,sans-serif;">✏</button>
+          <button onclick="removeEkadashiDate('${sd}')" style="background:rgba(232,51,109,0.15);border:1px solid rgba(232,51,109,0.3);border-radius:9px;color:#e8336d;font-size:13px;padding:7px 11px;cursor:pointer;font-family:Inter,sans-serif;">✕</button>
         </div>
       </div>
       <div id="${eid}" style="display:none;margin-top:10px;background:rgba(0,0,0,0.3);border-radius:9px;padding:10px;">

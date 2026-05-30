@@ -7056,8 +7056,9 @@ async function fetchPanchangEkadashis() {
               }
               const skLabel = skName + (ekPaksha === "shukla" ? " ☀️ Shukla" : " 🌙 Krishna") + (skIsViddha ? " (Mahadvadashi)" : "");
 
+              const _skSource = isGaudiyaFetch ? "gaudiya" : "panchang";
               const skExists = App.S.customEkadashi.some(
-                (e) => e.source === "gaudiya" && (e.startDate === skStartStr || e.startDate === skEndStr)
+                (e) => e.source === _skSource && (e.startDate === skStartStr || e.startDate === skEndStr)
               );
               if (!skExists) {
                 const skObj = { paksha: ekPaksha, ekEnd: ekEndDate };
@@ -7075,7 +7076,7 @@ async function fetchPanchangEkadashis() {
                 renderEkadashiList();
                 if (status) status.textContent = isGaudiyaFetch
                 ? `🌸 Gaudiya Mode — found ${added} so far…`
-                : `🗓️ PanchangData Engine — found ${added} so far…`;
+                : `🗓️ Panchang Engine — found ${added} so far…`;
               }
             } catch (skipErr) {
               console.warn("[Gaudiya fetch] skipped-Ekadashi recovery error:", skipErr.message);
@@ -7173,8 +7174,9 @@ async function fetchPanchangEkadashis() {
             const ekActualStartDate = ekStartFromPrev ? _d2ymd(ekStartFromPrev) : startDateStr;
             const ekActualStartTime = ekStartFromPrev ? _d2hhmm(ekStartFromPrev) : "00:00";
 
+            const _entrySource = isGaudiyaFetch ? "gaudiya" : "panchang";
             const exists = App.S.customEkadashi.some(
-              (e) => e.source === "gaudiya" && (e.startDate === startDateStr || e.startDate === ekActualStartDate)
+              (e) => e.source === _entrySource && (e.startDate === startDateStr || e.startDate === ekActualStartDate)
             );
             if (!exists) {
               // Build ek object for _computeParanaWindow
@@ -7191,7 +7193,7 @@ async function fetchPanchangEkadashis() {
                 endDate:     ekEnd ? _d2ymd(ekEnd) : endDateStr,
                 endTime:     ekEnd ? _d2hhmm(ekEnd) : "00:00",
                 autoFetched: true,
-                source:      "gaudiya",
+                source:      _entrySource,
               });
               App.S.occasions[fastingDate] = label;
               if (parana) {

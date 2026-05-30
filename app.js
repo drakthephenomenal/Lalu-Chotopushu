@@ -7043,8 +7043,16 @@ async function fetchPanchangEkadashis() {
             }
             const label = name + pakshaLabel + (isViddha ? " (Mahadvadashi)" : "");
 
+            // Ekadashi start = when Dashami ended (prevTithi.endDate from panchangData)
+            // prevTithi holds the PREVIOUS day's tithi at this point in the loop
+            const ekStartFromPrev = (prevTithi && prevTithi.endDate instanceof Date)
+              ? prevTithi.endDate
+              : null;
+            const ekActualStartDate = ekStartFromPrev ? _d2ymd(ekStartFromPrev) : startDateStr;
+            const ekActualStartTime = ekStartFromPrev ? _d2hhmm(ekStartFromPrev) : "00:00";
+
             const exists = App.S.customEkadashi.some(
-              (e) => _ekDate(e) === startDateStr
+              (e) => e.startDate === startDateStr || e.startDate === ekActualStartDate
             );
             if (!exists) {
               // Build ek object for _computeParanaWindow
@@ -7056,8 +7064,8 @@ async function fetchPanchangEkadashis() {
               App.S.customEkadashi.push({
                 name,
                 paksha,
-                startDate:   startDateStr,
-                startTime:   "00:00",
+                startDate:   ekActualStartDate,
+                startTime:   ekActualStartTime,
                 endDate:     ekEnd ? _d2ymd(ekEnd) : endDateStr,
                 endTime:     ekEnd ? _d2hhmm(ekEnd) : "00:00",
                 autoFetched: true,

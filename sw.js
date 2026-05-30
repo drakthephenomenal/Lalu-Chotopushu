@@ -1,8 +1,6 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker
-// v108: Swiss Ephemeris sunrise/sunset — matches ISKCON/Drik Panchang exactly
-//       se-bridge.js added to LOCAL_ASSETS cache
-//       BM end corrected to 48 min before sunrise (classical 2-muhurta rule)
+// v108: celestial sunrise = solar noon − 6h (ISKCON match); BM end fixed 46→48 min; paran uses apparent daytime length
 // ═══════════════════════════════════════════════════════
 const CACHE = 'radha-jap-v108';
 
@@ -14,8 +12,8 @@ const LOCAL_ASSETS = [
   './style-stotram.css',
   './stotrams.js',
   './app.js',
-  './se-bridge.js',
   './panchangData.js',
+  './se-bridge.js',
   './guru.jpg',
   './icon-192.png',
   './icon-512.png',

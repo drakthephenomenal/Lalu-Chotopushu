@@ -233,6 +233,8 @@ const App = {
       gaudiyaMode: this.S.gaudiyaMode || false,
       hkLang: this.S.hkLang || "hi",
       horizonMode: this.S.horizonMode || "apparent",
+      lastLat: this.S.lastLat ?? null,
+      lastLng: this.S.lastLng ?? null,
     });
     // Keep per-day stores updated for compatibility with existing offline data
     const tk = this.S.tk;

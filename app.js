@@ -6961,6 +6961,7 @@ async function fetchPanchangEkadashis() {
           const tNum = pd.tithiNum; // 11 = Ekadashi Shukla, 26 = Ekadashi Krishna
           const isEkadashi = (tNum === 11 || tNum === 26);
 
+
           if (isEkadashi) {
             const paksha  = tNum === 11 ? "shukla" : "krishna";
             const dateStr = pd.tithi.endDate
@@ -7436,7 +7437,12 @@ function _updateCfgTimesPreview() {
             '<span style="font-size:10px;color:#FFE566;">' + pdFmt + '</span>' +
             '<span style="font-size:9px;color:rgba(255,215,0,0.45);">·</span>' +
             '<span style="font-size:10px;color:#FFE566;font-weight:600;">' +
-            _fmtTime12(par.windowStart) + '–' + _fmtTime12(par.windowEnd) + '</span>' +
+            _fmtTime12(par.windowStart) + '</span>' +
+            '<span style="font-size:9px;color:rgba(255,215,0,0.45);"> → </span>' +
+            '<span style="font-size:10px;color:#FFE566;font-weight:600;">🌟 ' + _fmtTime12(par.recommendedEnd) + '</span>' +
+            (par.hardDeadline
+              ? '<span style="font-size:9px;color:rgba(255,100,100,0.7);"> (⏰ latest ' + _fmtTime12(par.hardDeadline) + ')</span>'
+              : '') +
             '</div>';
         }
       } catch(_) {}
@@ -7741,7 +7747,10 @@ function renderEkadashiList() {
             '<span style="font-size:9px;color:rgba(255,215,0,0.55);">|</span>' +
             '<span style="font-size:10px;color:#FFE566;">' + fmtD(_par.date) + '</span>' +
             '<span style="font-size:9px;color:rgba(255,215,0,0.55);">·</span>' +
-            '<span style="font-size:10px;color:#FFE566;font-weight:600;">' + _fmtTime12(_par.windowStart) + "–" + _fmtTime12(_par.windowEnd) + '</span>' +
+            '<span style="font-size:10px;color:#FFE566;font-weight:600;">' + _fmtTime12(_par.windowStart) + '</span>' +
+            '<span style="font-size:9px;color:rgba(255,215,0,0.45);"> → </span>' +
+            '<span style="font-size:10px;color:#FFE566;font-weight:600;">🌟 ' + _fmtTime12(_par.recommendedEnd) + '</span>' +
+            (_par.hardDeadline ? '<span style="font-size:9px;color:rgba(255,100,100,0.7);"> (⏰ latest ' + _fmtTime12(_par.hardDeadline) + ')</span>' : '') +
             '</div>';
         }
       } catch (_pe) {}
@@ -12060,11 +12069,13 @@ function _computeYearEkadashis(year, lat, lng) {
   });
 }
 
-// Compute Parana (fast-breaking) window:
-// Scripture: Parana = from sunrise until 1/5 of apparent daytime has elapsed,
-// OR before Dvadashi tithi ends on that day — whichever is EARLIER.
-// FIX 1: Always use APPARENT daytime for the 1/5 rule (scriptural daytime = visible day).
-// FIX 2: Compute actual Dvadashi end via binary search instead of ekEnd+24h approximation.
+// Compute Parana (fast-breaking) window.
+// Scripture:
+//   START   : mode-aware sunrise on the day after fasting.
+//   RECOMMENDED END : sunrise + 1/5 of mode-aware daytime — ideal time to break fast.
+//   HARD DEADLINE   : Dvadashi tithi end on Paran day — must not eat after this.
+// Both endpoints are returned so the UI can show them distinctly.
+// If Dvadashi ends on a later day → no hard deadline → only recommendedEnd applies.
 function _computeParanaWindow(ek, lat, lng, fastingDate) {
   try {
     // Parana day = day after fasting day
@@ -12075,19 +12086,19 @@ function _computeParanaWindow(ek, lat, lng, fastingDate) {
     const srData = calcSunTimes(lat, lng, paranaDay);
     if (!srData) return null;
 
-    // Parana START = mode-aware sunrise (celestial or apparent per user setting)
+    // START = mode-aware sunrise (celestial or apparent per user setting)
     const windowStart = srData.sunriseH;
 
-    // FIX 1: 1/5 of day always uses APPARENT daytime (physical visible day per scripture)
-    const apparentDayLen = srData.apparentSunsetH - srData.apparentSunriseH;
-    const fifthDay = windowStart + apparentDayLen / 5;
+    // RECOMMENDED END = sunrise + 1/5 of mode-aware daytime
+    // sunriseH and sunsetH are already mode-aware from calcSunTimes
+    const modeDayLen = srData.sunsetH - srData.sunriseH;
+    const recommendedEnd = windowStart + modeDayLen / 5;
 
-    // FIX 2: Real Dvadashi end = binary search for elongation crossing endDeg+12°
-    // Ekadashi ends at endDeg (120 shukla / 300 krishna), Dvadashi ends 12° later
-    let windowEnd = fifthDay;
+    // HARD DEADLINE = Dvadashi tithi end on Paran day (binary search)
+    // Ekadashi ends at endDeg (120° shukla / 300° krishna), Dvadashi ends 12° later
+    let hardDeadline = null;
     if (ek.ekEnd instanceof Date) {
       const dvEndDeg = ek.paksha === "shukla" ? 144 : 324;
-      // Search window: ekEnd to ekEnd+30h (Dvadashi can't last more than ~26h)
       const searchLo = ek.ekEnd;
       const searchHi = new Date(ek.ekEnd.getTime() + 30 * 60 * 60 * 1000);
       const dvadashiEndDt = _findElongCrossing(dvEndDeg, searchLo, searchHi);
@@ -12099,23 +12110,28 @@ function _computeParanaWindow(ek, lat, lng, fastingDate) {
 
       if (isSameDay) {
         const dvadashiEndH = dvadashiEndDt.getHours() + dvadashiEndDt.getMinutes() / 60;
-        // Only constrain if Dvadashi ends AFTER sunrise (otherwise window is already open)
+        // Only a constraint if Dvadashi ends after sunrise
         if (dvadashiEndH > windowStart) {
-          windowEnd = Math.min(fifthDay, dvadashiEndH);
+          hardDeadline = _decHToHHMM(dvadashiEndH);
         }
       }
-      // If Dvadashi ends on a later day → no constraint → use full 1/5th window
+      // If Dvadashi ends on a later day → no hard deadline on Paran day
     }
 
+    const dateStr =
+      paranaDay.getFullYear() +
+      "-" +
+      String(paranaDay.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(paranaDay.getDate()).padStart(2, "0");
+
     return {
-      date:
-        paranaDay.getFullYear() +
-        "-" +
-        String(paranaDay.getMonth() + 1).padStart(2, "0") +
-        "-" +
-        String(paranaDay.getDate()).padStart(2, "0"),
-      windowStart: _decHToHHMM(windowStart),
-      windowEnd:   _decHToHHMM(windowEnd),
+      date:           dateStr,
+      windowStart:    _decHToHHMM(windowStart),    // earliest: mode-aware sunrise
+      recommendedEnd: _decHToHHMM(recommendedEnd), // ideal: 1/5th of daytime
+      hardDeadline:   hardDeadline,                 // latest: Dvadashi end (null if next day)
+      // windowEnd kept for backward compat — points to hardDeadline if present, else recommendedEnd
+      windowEnd: hardDeadline || _decHToHHMM(recommendedEnd),
     };
   } catch (e) {
     return null;
@@ -12169,7 +12185,7 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
         : "";
 
       const paranaHtml = r.parana
-        ? `<div style="margin-top:6px;padding:5px 8px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.22);border-radius:7px;display:flex;align-items:center;gap:5px;"><span style="font-size:10px;color:#FFD700;font-weight:700;">☀️ Parana</span><span style="font-size:9px;color:rgba(255,215,0,0.55);">|</span><span style="font-size:10px;color:#FFE566;">${_fmtDateDMY(r.parana.date)}</span><span style="font-size:9px;color:rgba(255,215,0,0.55);">·</span><span style="font-size:10px;color:#FFE566;font-weight:600;">${_fmtTime12(r.parana.windowStart)}–${_fmtTime12(r.parana.windowEnd)}</span></div>`
+        ? `<div style="margin-top:6px;padding:5px 8px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.22);border-radius:7px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;"><span style="font-size:10px;color:#FFD700;font-weight:700;">☀️ Parana</span><span style="font-size:9px;color:rgba(255,215,0,0.55);">|</span><span style="font-size:10px;color:#FFE566;">${_fmtDateDMY(r.parana.date)}</span><span style="font-size:9px;color:rgba(255,215,0,0.55);">·</span><span style="font-size:10px;color:#FFE566;font-weight:600;">${_fmtTime12(r.parana.windowStart)}</span><span style="font-size:9px;color:rgba(255,215,0,0.45);"> → </span><span style="font-size:10px;color:#FFE566;font-weight:600;">🌟 ${_fmtTime12(r.parana.recommendedEnd)}</span>${r.parana.hardDeadline ? '<span style="font-size:9px;color:rgba(255,100,100,0.7);"> (⏰ latest ' + _fmtTime12(r.parana.hardDeadline) + ')</span>' : ''}</div>`
         : "";
 
       return `<div style="background:rgba(74,144,226,0.07);border:1px solid rgba(74,144,226,0.18);border-radius:10px;padding:9px 11px;margin-bottom:7px;">

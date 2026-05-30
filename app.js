@@ -7227,24 +7227,27 @@ function _updateCfgTimesPreview() {
       const fd  = ek.fastingDate || ek.startDate || "";
       const name = ek.name || "Ekadashi";
       const paksha = ek.paksha || "shukla";
-      const pakshaTag = paksha === "shukla"
-        ? '<span style="font-size:9px;background:rgba(241,196,15,0.18);color:#F1C40F;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:5px;">☀️ Shukla</span>'
-        : '<span style="font-size:9px;background:rgba(155,89,182,0.2);color:#BD93F9;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:5px;">🌙 Krishna</span>';
-      const paramTag = parampara === "vaishnava"
-        ? '<span style="font-size:8px;background:rgba(74,144,226,0.18);color:#6DB8FF;border-radius:4px;padding:1px 5px;margin-left:4px;">Vaishnava</span>'
-        : '<span style="font-size:8px;background:rgba(46,204,113,0.15);color:#2ecc71;border-radius:4px;padding:1px 5px;margin-left:4px;">Smarta</span>';
+      const isShukla = paksha === "shukla";
       const isViddha = !!ek.isViddha;
+
+      const accentCol   = isShukla ? "#F1C40F" : "#BD93F9";
+      const borderCol   = isShukla ? "rgba(241,196,15,0.35)"  : "rgba(155,89,182,0.35)";
+      const bgCol       = isShukla ? "rgba(241,196,15,0.06)"  : "rgba(155,89,182,0.07)";
+      const pakshaIcon  = isShukla ? "☀️" : "🌙";
+      const pakshaLabel = isShukla ? "Shukla" : "Krishna";
+
+      const paramTag = parampara === "vaishnava"
+        ? '<span style="font-size:8px;background:rgba(74,144,226,0.18);color:#6DB8FF;border-radius:4px;padding:1px 5px;">Vaishnava</span>'
+        : '<span style="font-size:8px;background:rgba(46,204,113,0.15);color:#2ecc71;border-radius:4px;padding:1px 5px;">Smarta</span>';
       const viddhaTag = isViddha
-        ? '<span style="font-size:8px;background:rgba(255,152,0,0.18);color:#FF9800;border-radius:4px;padding:1px 5px;margin-left:4px;">Mahadvadashi</span>'
+        ? '<div style="margin-top:4px;"><span style="font-size:8px;background:rgba(255,152,0,0.18);color:#FF9800;border-radius:4px;padding:1px 5px;">Mahadvadashi</span></div>'
         : '';
 
-      // Format fasting date nicely
       const _fd = new Date(fd + "T00:00:00");
       const _days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
       const _months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
       const fdFmt = _days[_fd.getDay()] + " " + _fd.getDate() + " " + _months[_fd.getMonth()];
 
-      // Paran window
       let paranHtml = "";
       try {
         const ekStartDt = new Date((ek.startDate || fd) + "T" + (ek.startTime || "06:00") + ":00");
@@ -7254,29 +7257,22 @@ function _updateCfgTimesPreview() {
           const _pd = new Date(par.date + "T00:00:00");
           const pdFmt = _days[_pd.getDay()] + " " + _pd.getDate() + " " + _months[_pd.getMonth()];
           paranHtml =
-            '<div style="display:flex;align-items:center;gap:5px;margin-top:6px;padding:5px 8px;' +
-            'background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.18);border-radius:7px;">' +
-            '<span style="font-size:10px;color:#FFD700;font-weight:700;">☀️ Paran</span>' +
-            '<span style="font-size:9px;color:rgba(255,215,0,0.45);">|</span>' +
-            '<span style="font-size:10px;color:#FFE566;">' + pdFmt + '</span>' +
-            '<span style="font-size:9px;color:rgba(255,215,0,0.45);">·</span>' +
-            '<span style="font-size:10px;color:#FFE566;font-weight:600;">' +
-            _fmtTime12(par.windowStart) + '–' + _fmtTime12(par.windowEnd) + '</span>' +
+            '<div style="margin-top:8px;padding:5px 7px;background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.2);border-radius:7px;">' +
+            '<div style="font-size:9px;color:#FFD700;font-weight:700;margin-bottom:2px;">☀️ Paran · ' + pdFmt + '</div>' +
+            '<div style="font-size:11px;color:#FFE566;font-weight:700;">' + _fmtTime12(par.windowStart) + ' – ' + _fmtTime12(par.windowEnd) + '</div>' +
             '</div>';
         }
       } catch(_) {}
 
-      const borderCol = idx === 0 ? "rgba(255,215,0,0.3)" : "rgba(155,89,182,0.25)";
-      const bgCol     = idx === 0 ? "rgba(255,215,0,0.05)" : "rgba(155,89,182,0.05)";
-      const nameCol   = idx === 0 ? "#FFD700" : "#BD93F9";
-
       return '<div style="background:' + bgCol + ';border:1px solid ' + borderCol + ';' +
-        'border-radius:11px;padding:10px 11px;margin-top:' + (idx === 0 ? "10px" : "8px") + ';">' +
-        '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;margin-bottom:4px;">' +
-        '<span style="font-size:12px;color:' + nameCol + ';font-weight:700;">' + name + '</span>' +
-        pakshaTag + paramTag + viddhaTag +
+        'border-radius:13px;padding:11px 10px;display:flex;flex-direction:column;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+        '<span style="font-size:13px;color:' + accentCol + ';font-weight:800;">' + name + '</span>' +
+        '<span style="font-size:9px;color:' + accentCol + ';font-weight:700;opacity:0.85;">' + pakshaIcon + ' ' + pakshaLabel + '</span>' +
         '</div>' +
-        '<div style="font-size:11px;color:rgba(255,255,255,0.55);">🗓 Fast: <span style="color:#fff;font-weight:600;">' + fdFmt + '</span></div>' +
+        '<div style="margin-bottom:3px;">' + paramTag + viddhaTag + '</div>' +
+        '<div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:4px;">Fast</div>' +
+        '<div style="font-size:12px;color:#fff;font-weight:700;">' + fdFmt + '</div>' +
         paranHtml +
         '</div>';
     }
@@ -7284,7 +7280,9 @@ function _updateCfgTimesPreview() {
     cfgEk.innerHTML =
       '<div style="font-size:9px;color:rgba(255,215,0,0.5);letter-spacing:2px;text-transform:uppercase;' +
       'font-weight:700;margin-top:4px;">🌙 Upcoming Ekadashis</div>' +
-      upcoming.map((ek, i) => _ekCard(ek, i)).join("");
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">' +
+      upcoming.map((ek, i) => _ekCard(ek, i)).join("") +
+      '</div>';
   }
 }
 
@@ -7571,19 +7569,32 @@ function renderEkadashiList() {
         }
       } catch (_pe) {}
 
-      return `<div style="background:rgba(155,89,182,0.09);border:1px solid rgba(155,89,182,0.22);border-radius:12px;padding:11px;margin-bottom:9px;">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+      const _isShukla = paksha === "shukla";
+      const _accentCol = _isShukla ? "#F1C40F" : "#BD93F9";
+      const _borderCol = _isShukla ? "rgba(241,196,15,0.28)" : "rgba(155,89,182,0.28)";
+      const _bgCol     = _isShukla ? "rgba(241,196,15,0.05)" : "rgba(155,89,182,0.07)";
+
+      return `<div style="background:${_bgCol};border:1px solid ${_borderCol};border-radius:13px;padding:11px;margin-bottom:9px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;color:#BD93F9;font-weight:700;margin-bottom:3px;">${name} ${pLabel}${autoTag}</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.75);margin-bottom:5px;"><span style="font-size:9px;letter-spacing:0.8px;text-transform:uppercase;color:rgba(189,147,249,0.6);font-weight:700;">TITHI</span> <span style="color:#C9A7FF;font-weight:600;">${fmtD(sd)}</span>${sfmt ? '<span style="color:rgba(255,255,255,0.5)"> · </span><span style="color:#FFE566;font-weight:700;">' + sfmt + '</span>' : ''}<span style="color:rgba(255,255,255,0.4);"> → </span><span style="color:#C9A7FF;font-weight:600;">${fmtD(ed)}</span>${efmt ? '<span style="color:rgba(255,255,255,0.5)"> · </span><span style="color:#FFE566;font-weight:700;">' + efmt + '</span>' : ''}</div>
-          <div style="font-size:11px;margin-bottom:2px;">${fastLabel}${paramparaTag}</div>
-          ${paranaHtml}
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+            <span style="font-size:13px;color:${_accentCol};font-weight:800;">${name}</span>
+            ${pLabel}${autoTag}
+          </div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.5);line-height:1.6;">
+            <span style="font-size:8px;letter-spacing:0.8px;text-transform:uppercase;color:rgba(189,147,249,0.55);font-weight:700;">TITHI</span>
+            <span style="color:#C9A7FF;font-weight:600;margin-left:4px;">${fmtD(sd)}</span>${sfmt ? \`<span style="color:rgba(255,255,255,0.4)"> · </span><span style="color:#FFE566;font-weight:700;">\${sfmt}</span>\` : ""}
+            <span style="color:rgba(255,255,255,0.35);margin:0 3px;">→</span>
+            <span style="color:#C9A7FF;font-weight:600;">${fmtD(ed)}</span>${efmt ? \`<span style="color:rgba(255,255,255,0.4)"> · </span><span style="color:#FFE566;font-weight:700;">\${efmt}</span>\` : ""}
+          </div>
         </div>
         <div style="display:flex;gap:5px;flex-shrink:0;margin-left:7px;">
           <button onclick="toggleEkEdit('${sd}')" style="background:rgba(74,144,226,0.15);border:1px solid rgba(74,144,226,0.3);border-radius:7px;color:#6DB8FF;font-size:11px;padding:5px 9px;cursor:pointer;font-family:Inter,sans-serif;">✏</button>
           <button onclick="removeEkadashiDate('${sd}')" style="background:rgba(232,51,109,0.15);border:1px solid rgba(232,51,109,0.3);border-radius:7px;color:#e8336d;font-size:11px;padding:5px 9px;cursor:pointer;font-family:Inter,sans-serif;">✕</button>
         </div>
       </div>
+      <div style="font-size:11px;margin-bottom:4px;">${fastLabel}${paramparaTag}</div>
+      ${paranaHtml}
       <div id="${eid}" style="display:none;margin-top:10px;background:rgba(0,0,0,0.3);border-radius:9px;padding:10px;">
         <div style="font-size:9px;color:rgba(189,147,249,0.6);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:700;">Edit</div>
         <input type="text" id="${eid}_n" value="${name.replace(/"/g, "&quot;")}" placeholder="Name" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:8px;padding:7px 10px;color:#fff;font-size:12px;font-family:Inter,sans-serif;outline:none;margin-bottom:8px;">

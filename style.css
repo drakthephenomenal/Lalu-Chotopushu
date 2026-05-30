@@ -2244,6 +2244,40 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 }
 
 /* ── PARAMPARA BUTTONS — base + active states ── */
+#ekEngineApp,
+#ekEnginePanchang {
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 12px 6px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.45);
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  text-align: center;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+#ekEngineApp.active {
+  background: rgba(100,210,255,0.18);
+  border-color: rgba(100,210,255,0.85);
+  color: #64D2FF;
+  box-shadow: 0 0 16px rgba(100,210,255,0.28), inset 0 0 10px rgba(100,210,255,0.08);
+}
+#ekEnginePanchang.active {
+  background: rgba(46,204,113,0.18);
+  border-color: rgba(46,204,113,0.85);
+  color: #2ECC71;
+  box-shadow: 0 0 16px rgba(46,204,113,0.28), inset 0 0 10px rgba(46,204,113,0.08);
+}
+
 #ekParSmarta,
 #ekParVaishnav {
   -webkit-appearance: none;

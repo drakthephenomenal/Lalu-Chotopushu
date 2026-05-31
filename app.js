@@ -12770,14 +12770,28 @@ function _computeParanaWindow(ek, lat, lng, fastingDate) {
     // START = mode-aware sunrise (celestial or apparent per user setting)
     const windowStart = srData.sunriseH;
 
-    // RECOMMENDED END:
-    //   Gaudiya/ISKCON mode → windowStart + 3/8 of mode-aware daytime
-    //   Standard mode      → windowStart + 1/5 of mode-aware daytime
-    //   Both use the same mode-aware daytime (Earthy Sky or Celestial per horizonMode).
-    //   Only the fraction differs: Gaudiya = 3/8 (3 of 8 muhurtas), Standard = 1/5.
+    // RECOMMENDED END — verified against ISKCON Mayapur Panjika 2026 (Kashiani UTC+6):
+    //
+    //   Gaudiya/ISKCON Earthy-Sky mode:
+    //     START = apparent sunrise
+    //     END   = apparent sunrise + 1/3 × apparent daytime
+    //     (e.g. PARAMA 12 Jun: 05:15 → 09:46 ≈ ISKCON 09:45 ✅)
+    //
+    //   Gaudiya/ISKCON Celestial mode:
+    //     START = celestial sunrise (solar noon − 6h)
+    //     END   = celestial sunrise + 1/3 × apparent daytime
+    //     (e.g. PARAMA 12 Jun: 06:01 → 10:32 = ISKCON 10:32 ✅)
+    //     NOTE: the LENGTH fraction uses apparent daytime, not celestial 12h.
+    //
+    //   Standard (Smarta) mode:
+    //     END = mode-aware sunrise + 1/5 × mode-aware daytime
     const isGaudiya = !!(typeof App !== "undefined" && App.S && App.S.gaudiyaMode);
-    const modeDayLen = srData.sunsetH - srData.sunriseH; // mode-aware daytime
-    const recommendedEnd = windowStart + modeDayLen * (isGaudiya ? 3/8 : 1/5);
+    const isCelestial = !!(typeof App !== "undefined" && App.S && App.S.horizonMode === "celestial");
+    const apparentDayLen = srData.apparentSunsetH - srData.apparentSunriseH;
+    const modeDayLen = srData.sunsetH - srData.sunriseH;
+    const recommendedEnd = isGaudiya
+      ? windowStart + apparentDayLen * (1/3)   // windowStart is already celestial or apparent per mode
+      : windowStart + modeDayLen * (1/5);       // Smarta: 1/5 of mode-aware daytime
     // HARD DEADLINE = Dvadashi tithi end on Paran day (binary search)
     // Ekadashi ends at endDeg (120° shukla / 300° krishna), Dvadashi ends 12° later
     let hardDeadline = null;

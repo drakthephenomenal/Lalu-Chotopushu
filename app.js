@@ -7176,11 +7176,14 @@ async function fetchPanchangEkadashis() {
               let skFastingDate = skStartStr;
               let skIsViddha = false;
               const skParampara = isGaudiyaFetch ? "vaishnava" : (App.S.ekParampara || "smarta");
+              // FIX: use full Date comparison (ekStart is a Date object) vs Arunodaya timestamp
               if (skParampara === "vaishnava") {
-                // Dashami (prevTithi) ended after Arunodaya of yesterday → Viddha
-                if (ekStartH >= arunodayaY) { skFastingDate = skEndStr; skIsViddha = true; }
+                // Ekadashi started (= Dashami ended) after Arunodaya of yesterday → Viddha
+                const arunodayaYestMs = yesterday.setHours(0,0,0,0) + arunodayaY * 3600000;
+                if (ekStart.getTime() >= arunodayaYestMs) { skFastingDate = skEndStr; skIsViddha = true; }
               } else {
-                if (ekStartH >= modeSrY) skFastingDate = skEndStr;
+                const sunriseYestMs = new Date(yesterday).setHours(0,0,0,0) + modeSrY * 3600000;
+                if (ekStart.getTime() >= sunriseYestMs) skFastingDate = skEndStr;
               }
 
               const skMi = pdYest ? pdYest.monthIdx : pd.monthIdx;
@@ -7275,29 +7278,35 @@ async function fetchPanchangEkadashis() {
             let isViddha      = false;
 
             if (parampara === "vaishnava") {
-              // Vaishnava: Dashami must not touch the 96-min Arunodaya window
-              // If Ekadashi starts (i.e. previous tithi ends) after Arunodaya of THIS day
-              // then Dashami contaminated Arunodaya → fast moves to next day
-              // We approximate: if ekEnd (today's tithi end) is very early → tithi started late yesterday
-              // Better: check if Ekadashi was already running at Arunodaya today
-              // ekStartH not directly available; use: if tithi ends before noon it likely started late
-              // For accuracy use: fetch previous day tithi from pd
-              // Simple rule matching scripture: if Dashami present at Arunodaya → Viddha
-              // We check previous calendar day's tithi end against today's Arunodaya
+              // Vaishnava Arunodaya-Viddha rule (ISKCON standard):
+              // If Dashami was STILL RUNNING at Arunodaya of scanDate → Viddha → fast tomorrow.
+              // Dashami ends when Ekadashi starts = prevTithi.endDate (a full Date object).
+              // CORRECT check: prevTithi.endDate >= arunodaya timestamp of scanDate.
+              // BUG FIXED: previously used .getHours() only — ignored the DATE, causing
+              // Dashami that ended the previous calendar day to wrongly appear as Viddha.
               if (prevTithi && prevTithi.endDate instanceof Date) {
-                const prevEndH = prevTithi.endDate.getHours() + prevTithi.endDate.getMinutes() / 60;
-                // If previous tithi (Dashami) ended after today's Arunodaya → Viddha
-                if (prevEndH >= arunodayaH) {
+                // Build the Arunodaya moment as a full Date on scanDate
+                const arunodayaMs = scanDate.getTime()
+                  - scanDate.getHours() * 3600000
+                  - scanDate.getMinutes() * 60000
+                  - scanDate.getSeconds() * 1000
+                  + arunodayaH * 3600000; // arunodayaH hours from midnight of scanDate
+                // Dashami (prevTithi) ended AFTER Arunodaya → it polluted the pre-dawn → Viddha
+                if (prevTithi.endDate.getTime() >= arunodayaMs) {
                   fastingDate = endDateStr;
                   isViddha    = true;
                 }
               }
             } else {
-              // Smarta: fast on day Ekadashi present at (mode-aware) sunrise
-              // If Ekadashi not yet started at sunrise (prevTithi still running) → fast tomorrow
+              // Smarta: fast on day Ekadashi present at (mode-aware) sunrise.
+              // If Dashami was still running at sunrise of scanDate → Ekadashi not yet started → fast tomorrow.
               if (prevTithi && prevTithi.endDate instanceof Date) {
-                const prevEndH = prevTithi.endDate.getHours() + prevTithi.endDate.getMinutes() / 60;
-                if (prevEndH >= modeSr) {
+                const sunriseMs = scanDate.getTime()
+                  - scanDate.getHours() * 3600000
+                  - scanDate.getMinutes() * 60000
+                  - scanDate.getSeconds() * 1000
+                  + modeSr * 3600000;
+                if (prevTithi.endDate.getTime() >= sunriseMs) {
                   fastingDate = endDateStr;
                 }
               }

@@ -1796,11 +1796,6 @@ function sv(id, btn) {
     const dtHKMalaDisp = document.getElementById("dtHKMala");
     if (dtHKMalaDisp)
       dtHKMalaDisp.textContent = Math.floor((App.S.dtHK || 0) / ms);
-    // Populate 28 Names daily target
-    const dt28El = document.getElementById("dt28CycleIn");
-    if (dt28El) dt28El.value = (App.S.dt28Cycles || 0) > 0 ? App.S.dt28Cycles : "";
-    const dt28Disp = document.getElementById("dt28JapDisp");
-    if (dt28Disp) dt28Disp.textContent = (App.S.dt28Cycles || 0) * 28;
     // Gaudiya Mode toggle
     const tgG = document.getElementById("tgGaudiya");
     if (tgG)
@@ -1903,6 +1898,7 @@ function _applyHorizonToggleUI() {
   if (pillCelestial) pillCelestial.disabled = !gpsOn;
   const tgHorizon = document.getElementById("tgHorizonMode");
   if (tgHorizon) tgHorizon.style.pointerEvents = gpsOn ? "" : "none";
+  if (gpsOn && typeof _updateHorizonPillTimes === "function") _updateHorizonPillTimes();
 }
 
 function tgs(k) {
@@ -5355,47 +5351,12 @@ function render28Dots(pos) {
   }
 }
 
-// ── 28 Names Daily Target helpers ──
-function sync28CycleTarget() {
-  const v = parseInt(document.getElementById("dt28CycleIn")?.value) || 0;
-  const el = document.getElementById("dt28JapDisp");
-  if (el) el.textContent = v * 28;
-}
-function svt28() {
-  const v = parseInt(document.getElementById("dt28CycleIn")?.value) || 0;
-  App.S.dt28Cycles = v;
-  save();
-  toast("✅ 28 Names daily target saved: " + v + " cycle" + (v !== 1 ? "s" : "") + " (" + (v * 28) + " japs/day)");
-  u28();
-}
-function _update28ProgressBar(todJaps) {
-  const target = (App.S.dt28Cycles || 0) * 28;
-  const wrap = document.getElementById("n28ProgressWrap");
-  const bar  = document.getElementById("n28ProgressBar");
-  const lbl  = document.getElementById("n28ProgressLabel");
-  if (!wrap) return;
-  if (!target) { wrap.style.display = "none"; return; }
-  wrap.style.display = "block";
-  const todCycles = Math.floor(todJaps / 28);
-  const targetCycles = App.S.dt28Cycles || 0;
-  const pct = Math.min(100, Math.round((todJaps / target) * 100));
-  if (bar) {
-    bar.style.width = pct + "%";
-    bar.style.background = pct >= 100
-      ? "linear-gradient(90deg,rgba(46,204,113,0.8),rgba(0,200,100,0.95))"
-      : "linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9))";
-    bar.style.boxShadow = pct >= 100 ? "0 0 10px rgba(46,204,113,0.6)" : "0 0 8px rgba(189,147,249,0.5)";
-  }
-  if (lbl) lbl.textContent = todCycles + " / " + targetCycles + " cycles (" + pct + "%)";
-}
-
 function u28() {
   const tod = App.S.h28[App.S.tk] || 0;
   const tot = Object.values(App.S.h28).reduce((a, b) => a + b, 0);
   const cycles28 = Math.floor(tot / 28);
   const todEl = document.getElementById("n28t");
   if (todEl) todEl.textContent = tod;
-  _update28ProgressBar(tod);
   const pos = get28Pos(),
     entry = NAMES28[pos];
   const nameEl = document.getElementById("n28name");
@@ -7477,6 +7438,22 @@ const EK_NOTES = {
     '🌸 <b>Vaishnava/Gaudiya rule (Arunodaya Viddha):</b> If Dashami tithi overlaps even one second into the 96-min Arunodaya window before sunrise, that day is "Viddha" (contaminated). Fast is moved to the next day (Mahadvadashi), even though Dvadashi tithi is running.',
 };
 
+// ── Auto-fetch: triggers fetchPanchangEkadashis when both Parampara + Engine are chosen ──
+function _maybeAutoFetch(reason) {
+  const lat = App.S && App.S.lastLat;
+  const lng = App.S && App.S.lastLng;
+  if (!lat || !lng) return; // GPS not available yet
+  const hasParampara = !!(App.S.ekParampara);
+  const hasEngine    = !!(App.S.ekTithiEngine);
+  if (!hasParampara || !hasEngine) return;
+  // Avoid fetching twice in same second
+  const now = Date.now();
+  if (App._lastAutoFetch && (now - App._lastAutoFetch) < 3000) return;
+  App._lastAutoFetch = now;
+  toast("🔄 Auto-fetching Ekadashis for new " + reason + "…");
+  setTimeout(() => fetchPanchangEkadashis(), 300);
+}
+
 function saveEkTithiEngine(val) {
   // Only in standard (non-Gaudiya) mode
   if (App.S && App.S.gaudiyaMode) {
@@ -7500,9 +7477,7 @@ function saveEkTithiEngine(val) {
   renderEkadashiList();
   _updateCfgTimesPreview();
   if (typeof renderCal === "function") renderCal();
-  toast(val === "app"
-    ? "🔭 App Engine set — re-fetch to update list"
-    : "🗓️ Panchang Engine set — re-fetch to update list");
+  _maybeAutoFetch("Tithi Engine");
 }
 
 function renderEkTithiEngine() {
@@ -7526,10 +7501,8 @@ function saveEkParampara(val) {
   renderEkParampara();
   renderEkadashiList();
   if (typeof renderCal === "function") renderCal();
-  _updateCfgTimesPreview(); // refresh Next 2 Ekadashis preview with new parampara
-  toast(
-    val === "smarta" ? "☀️ Smarta Parampara set" : "🌸 Vaishnava Parampara set",
-  );
+  _updateCfgTimesPreview();
+  _maybeAutoFetch("Parampara");
 }
 
 // ── Resync all stored Ekadashi fasting occasions (horizonMode + parampara aware) ──
@@ -7629,6 +7602,54 @@ function setHorizonMode(mode) {
 }
 
 // ── _updateCfgTimesPreview — populates the live Sacred Times preview in Settings ──
+// ── Also fills both horizon pill time panels for side-by-side comparison ──
+function _updateHorizonPillTimes() {
+  const lat = App.S && App.S.lastLat;
+  const lng = App.S && App.S.lastLng;
+  const apWrap  = document.getElementById("hpTimes-apparent");
+  const celWrap = document.getElementById("hpTimes-celestial");
+  if (!lat || !lng) {
+    if (apWrap)  apWrap.style.display  = "none";
+    if (celWrap) celWrap.style.display = "none";
+    return;
+  }
+  const now = new Date();
+  function _fmt(h) {
+    h = ((h % 24) + 24) % 24;
+    let hh = Math.floor(h), mm = Math.round((h - hh) * 60);
+    if (mm >= 60) { hh++; mm = 0; }
+    const ap = hh % 24 >= 12 ? "PM" : "AM";
+    return (hh % 12 || 12) + ":" + String(mm).padStart(2, "0") + " " + ap;
+  }
+  function _calcForMode(mode) {
+    // Temporarily override horizonMode to calculate times for that mode
+    const prev = App.S.horizonMode;
+    App.S.horizonMode = mode;
+    const t = calcSunTimes(lat, lng, now);
+    App.S.horizonMode = prev;
+    if (!t) return null;
+    return {
+      bm:  _fmt(t.sunriseH - 96/60),
+      sr:  t.sunrise,
+      sk:  _fmt(t.sunsetH  - 24/60),
+      ss:  t.sunset
+    };
+  }
+  const ap  = _calcForMode("apparent");
+  const cel = _calcForMode("celestial");
+  function _set(id, val) { const el = document.getElementById(id); if (el) el.textContent = val || "—"; }
+  if (ap && apWrap) {
+    apWrap.style.display = "block";
+    _set("hp-ap-bm", ap.bm); _set("hp-ap-sr", ap.sr);
+    _set("hp-ap-sk", ap.sk); _set("hp-ap-ss", ap.ss);
+  }
+  if (cel && celWrap) {
+    celWrap.style.display = "block";
+    _set("hp-cel-bm", cel.bm); _set("hp-cel-sr", cel.sr);
+    _set("hp-cel-sk", cel.sk); _set("hp-cel-ss", cel.ss);
+  }
+}
+
 function _updateCfgTimesPreview() {
   const lat = App.S && App.S.lastLat;
   const lng = App.S && App.S.lastLng;
@@ -7659,6 +7680,8 @@ function _updateCfgTimesPreview() {
   set("cfg-sk-start",  _fmt(skStart));
   set("cfg-sunset",    times.sunset);
   set("cfg-sk-end",    _fmt(skEnd > 24 ? skEnd - 24 : skEnd));
+  // Also refresh both horizon pill time panels
+  _updateHorizonPillTimes();
   // Next 2 Ekadashis + Paran preview — mode-aware + parampara-aware
   const cfgEk = document.getElementById("cfg-next-ekadashi");
   if (cfgEk) {

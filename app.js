@@ -7169,7 +7169,7 @@ async function fetchPanchangEkadashis() {
               const ekStartH = ekStart.getHours() + ekStart.getMinutes()/60;
               let skFastingDate = skStartStr;
               let skIsViddha = false;
-              const skParampara = App.S.ekParampara || "smarta";
+              const skParampara = isGaudiyaFetch ? "vaishnava" : (App.S.ekParampara || "smarta");
               if (skParampara === "vaishnava") {
                 // Dashami (prevTithi) ended after Arunodaya of yesterday → Viddha
                 if (ekStartH >= arunodayaY) { skFastingDate = skEndStr; skIsViddha = true; }
@@ -7261,7 +7261,10 @@ async function fetchPanchangEkadashis() {
             endDate.setDate(endDate.getDate() + 1);
             const endDateStr   = _d2ymd(endDate);
 
-            const parampara   = App.S.ekParampara || "smarta";
+            // Gaudiya/ISKCON mode always uses Vaishnava/Arunodaya-Viddha rules.
+            // ekParampara may be null in Gaudiya mode (user never sets it there),
+            // so we must not fall back to "smarta" — force "vaishnava" when isGaudiyaFetch.
+            const parampara   = isGaudiyaFetch ? "vaishnava" : (App.S.ekParampara || "smarta");
             let fastingDate   = startDateStr;
             let isViddha      = false;
 

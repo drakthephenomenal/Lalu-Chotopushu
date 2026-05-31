@@ -6850,15 +6850,41 @@ function _resolveEkFasting(ek, lat, lng, name) {
   const arunodayaH       = apparentSunriseH - 96 / 60; // 96 min before apparent sunrise
 
   const ekStartH = ekStart.getHours() + ekStart.getMinutes() / 60;
+  const ekEndH   = ekEnd.getHours()   + ekEnd.getMinutes()   / 60;
   const parampara = App.S.ekParampara || "smarta";
   let fastingDate = startDate,
     isViddha = false;
   if (parampara === "vaishnava") {
-    // Vaishnava: if Ekadashi starts at or after Arunodaya → Viddha → fast next day
+    // CORRECT Vaishnava/ISKCON Arunodaya-Viddha rule:
+    // Fast on the day whose Arunodaya (96 min before apparent sunrise) falls
+    // WITHIN the Ekadashi window (ekStart..ekEnd).
+    //
+    // Case A: Ekadashi starts BEFORE Arunodaya of startDate
+    //         → Arunodaya of startDate is inside Ekadashi → fast startDate
+    // Case B: Ekadashi starts AFTER Arunodaya of startDate (startDate is Viddha)
+    //         → check endDate: Arunodaya of endDate must be < ekEnd (Ekadashi still running)
+    //         → fast endDate
+    //
+    // Verified against ISKCON Mayapur Panjika 2026:
+    //   PARAMA: Ek starts 11 Jun 01:30 AM, Arunodaya 03:38 → 01:30 < 03:38 → fast 11 Jun ✅
+    //   NIRJALA: Ek starts 24 Jun 18:44, Arunodaya 25 Jun 03:41, Ek ends 25 Jun 20:41
+    //            18:44 > 03:41 (24 Jun Arun) → check 25 Jun: Arun 03:41 < ekEnd 20:41 → fast 25 Jun ✅
+    //   YOGINI: Ek starts 10 Jul 08:48, Arunodaya 10 Jul 03:46 → 08:48 > 03:46
+    //            check 11 Jul: Arun 03:47, Ek ends 11 Jul 05:54 → 03:47 < 05:54 → fast 11 Jul ✅
     if (ekStartH >= arunodayaH) {
-      fastingDate = endDate;
-      isViddha = true;
+      // startDate Arunodaya is before Ekadashi started → check endDate
+      const srEnd = calcSunTimes(lat, lng, ekEnd);
+      const arunodayaEndH = (srEnd ? srEnd.apparentSunriseH : 6.0) - 96 / 60;
+      const ekEndHours = ekEnd.getHours() + ekEnd.getMinutes() / 60;
+      if (arunodayaEndH < ekEndHours) {
+        // Arunodaya of endDate falls within Ekadashi → fast endDate
+        fastingDate = endDate;
+        isViddha = true;
+      }
+      // else: rare edge case — Ekadashi ends before Arunodaya of endDate too
+      // keep startDate (best available day)
     }
+    // else: Arunodaya of startDate is within Ekadashi → fast startDate (default)
   } else {
     // Smarta: fast on day where Ekadashi is present at (mode-aware) sunrise
     if (ekStartH >= sunriseH) fastingDate = endDate;
@@ -7729,7 +7755,19 @@ function _resyncEkOccasions() {
     // Standard entries use the user-chosen parampara.
     const effectiveParampara = (ek.source === "gaudiya") ? "vaishnava" : parampara;
     if (effectiveParampara === "vaishnava") {
-      if (ekStartH >= arunodayaH) { newFastingDate = ek.endDate; isViddha = true; }
+      // CORRECT rule: fast on the day whose Arunodaya falls WITHIN Ekadashi window
+      if (ekStartH >= arunodayaH) {
+        // Ekadashi starts after Arunodaya of startDate → check endDate
+        const ekEndDate = new Date(ek.endDate + "T00:00:00");
+        const srEnd = calcSunTimes(lat, lng, ekEndDate);
+        const arunodayaEndH = (srEnd ? srEnd.apparentSunriseH : 6.0) - 96 / 60;
+        const [ehh, emm] = ek.endTime.split(":").map(Number);
+        const ekEndH = ehh + emm / 60;
+        if (arunodayaEndH < ekEndH) {
+          newFastingDate = ek.endDate;
+          isViddha = true;
+        }
+      }
     } else {
       if (ekStartH >= sunriseH) newFastingDate = ek.endDate;
     }
@@ -8117,10 +8155,18 @@ function addEkadashiDate() {
       const [sh, sm] = startTime.split(":").map(Number);
       const ekStartH = sh + sm / 60;
       if (parampara === "vaishnava") {
-        // Vaishnava: if Ekadashi tithi starts after Arunodaya, day is Viddha → fast on endDate (Mahadvadashi)
+        // CORRECT rule: fast on day whose Arunodaya falls WITHIN Ekadashi window
         if (ekStartH >= arunodayaH) {
-          fastingDate = endDate;
-          isViddha = true;
+          // Ekadashi starts after Arunodaya of startDate → check endDate
+          const ekEndDate = new Date(endDate + "T00:00:00");
+          const srEnd = calcSunTimes(_pLat, _pLng, ekEndDate);
+          const arunodayaEndH = (srEnd ? srEnd.apparentSunriseH : 6.0) - 96 / 60;
+          const [eh, em] = endTime.split(":").map(Number);
+          const ekEndH = eh + em / 60;
+          if (arunodayaEndH < ekEndH) {
+            fastingDate = endDate;
+            isViddha = true;
+          }
         }
       } else {
         // Smarta: if Ekadashi tithi starts after actual sunrise, fast on endDate

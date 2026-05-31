@@ -7036,6 +7036,17 @@ async function fetchPanchangEkadashis() {
   const status = document.getElementById("panchangStatus");
   if (btn) { btn.disabled = true; btn.textContent = "⏳ Computing…"; }
 
+  // ── Show the calculation banner in Settings (visible on current page) ──
+  const _ecBanner = document.getElementById("engineCalcBanner");
+  const _ecTitle  = document.getElementById("engineCalcTitle");
+  const _ecSub    = document.getElementById("engineCalcSub");
+  const _isGaudiyaFetch0 = !!(App.S && App.S.gaudiyaMode);
+  if (_ecBanner) _ecBanner.style.display = "";
+  if (_ecTitle)  _ecTitle.textContent = _isGaudiyaFetch0
+    ? "Computing ISKCON Panchang…"
+    : "Calculating Ekadashis…";
+  if (_ecSub) _ecSub.textContent = "This may take a few seconds. Results appear in B\u0026C as they\u2019re found.";
+
   try {
     // ── LAYER 1: GPS — coords come ONLY from the GPS Location toggle ──────────
     // This function never calls navigator.geolocation independently.
@@ -7192,6 +7203,8 @@ async function fetchPanchangEkadashis() {
                 if (_gfStatus) _gfStatus.textContent = isGaudiyaFetch
                   ? `Found ${added} Ekadashi${added > 1 ? "s" : ""} — still computing…`
                   : `Found ${added} so far — scanning…`;
+                const _ecSub1 = document.getElementById("engineCalcSub");
+                if (_ecSub1) _ecSub1.textContent = `Found ${added} Ekadashi${added > 1 ? "s" : ""} so far — still scanning…`;
               }
             } catch (skipErr) {
               console.warn("[Gaudiya fetch] skipped-Ekadashi recovery error:", skipErr.message);
@@ -7330,6 +7343,8 @@ async function fetchPanchangEkadashis() {
               if (_gfStatus2) _gfStatus2.textContent = isGaudiyaFetch
                 ? `Found ${added} Ekadashi${added > 1 ? "s" : ""} — still computing…`
                 : `Found ${added} so far — scanning…`;
+              const _ecSub2 = document.getElementById("engineCalcSub");
+              if (_ecSub2) _ecSub2.textContent = `Found ${added} Ekadashi${added > 1 ? "s" : ""} so far — still scanning…`;
             }
           }
 
@@ -7486,9 +7501,23 @@ async function fetchPanchangEkadashis() {
     console.error("fetchPanchangEkadashis:", e);
     // Still render whatever is already saved
     renderEkadashiList();
+    // Show error in banner
+    const _ecTitleErr = document.getElementById("engineCalcTitle");
+    const _ecSubErr   = document.getElementById("engineCalcSub");
+    if (_ecTitleErr) _ecTitleErr.textContent = "⚠️ Calculation error";
+    if (_ecSubErr)   _ecSubErr.textContent = e.message || "Unknown error — try again";
   } finally {
     _panchangFetching = false;
     if (btn) { btn.disabled = false; btn.textContent = "🌙 Auto-Fetch from GPS"; }
+    // Show ✅ done state in banner, then hide after 3s
+    const _ecBannerF = document.getElementById("engineCalcBanner");
+    const _ecTitleF  = document.getElementById("engineCalcTitle");
+    const _ecSubF    = document.getElementById("engineCalcSub");
+    if (_ecBannerF && _ecBannerF.style.display !== "none") {
+      if (_ecTitleF) _ecTitleF.textContent = "✅ Ekadashis ready";
+      if (_ecSubF)   _ecSubF.textContent   = "Check B\u0026C tab to see all upcoming fasting dates";
+      setTimeout(() => { if (_ecBannerF) _ecBannerF.style.display = "none"; }, 3500);
+    }
   }
 }
 

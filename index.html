@@ -1342,6 +1342,19 @@
       <div style="font-size:10px;color:rgba(255,255,255,0.35);line-height:1.5;margin-bottom:8px;">
         Both engines respect your Horizon Mode and Parampara. Only the tithi boundary source differs.
       </div>
+      <!-- Calculation progress banner — shown whenever any engine fetch is running -->
+      <div id="engineCalcBanner" style="display:none;background:rgba(46,204,113,0.07);border:1.5px solid rgba(46,204,113,0.35);border-radius:12px;padding:11px 14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="ek-pulse-icon" style="font-size:22px;">⏳</span>
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:700;color:#2ecc71;margin-bottom:2px;" id="engineCalcTitle">Calculating Ekadashis…</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.45);line-height:1.4;" id="engineCalcSub">This may take a few seconds. Results appear in B&amp;C as they're found.</div>
+          </div>
+        </div>
+        <div style="margin-top:9px;height:3px;border-radius:2px;background:rgba(46,204,113,0.12);overflow:hidden;">
+          <div class="ek-progress-bar" style="background:linear-gradient(90deg,transparent,#2ecc71,transparent);"></div>
+        </div>
+      </div>
     </div>
 
 

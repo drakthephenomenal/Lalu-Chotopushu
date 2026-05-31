@@ -537,11 +537,18 @@
 
     <!-- Date Range Filter -->
     <div class="ek-range-bar">
-      <label>From</label>
-      <input type="date" class="ek-range-input" id="ekRangeFrom" onchange="renderEkadashiList()">
-      <label>To</label>
-      <input type="date" class="ek-range-input" id="ekRangeTo" onchange="renderEkadashiList()">
-      <button class="ek-range-clear" onclick="clearEkRange()">✕ Clear</button>
+      <div class="ek-range-dates">
+        <div class="ek-range-field">
+          <span class="ek-range-lbl">FROM</span>
+          <input type="date" class="ek-range-input" id="ekRangeFrom" onchange="renderEkadashiList()">
+        </div>
+        <div class="ek-range-sep">→</div>
+        <div class="ek-range-field">
+          <span class="ek-range-lbl">TO</span>
+          <input type="date" class="ek-range-input" id="ekRangeTo" onchange="renderEkadashiList()">
+        </div>
+      </div>
+      <button class="ek-range-clear" onclick="clearEkRange()">✕</button>
     </div>
 
     <div class="ek-count-label" id="ekCountLabel"></div>

@@ -8174,10 +8174,21 @@ function removeEkadashiDate(startDate) {
 }
 
 // ── Vaishnava / Purnimanta month names (index 0=Chaitra … 11=Phalguna) ──
+// Vaishnava month names — Gaurabda deity name + traditional Hindu name
+// Index 0=Chaitra … 11=Phalguna (Purnimanta order)
 const _VAISHNAVA_MONTH_NAMES = [
-  "Chaitra","Vaishakha","Jyeshtha","Ashadha",
-  "Shravana","Bhadrapada","Ashwin","Kartik",
-  "Margashirsha","Pausha","Magha","Phalguna"
+  { deity: "Vishnu",      hindu: "Chaitra"      },
+  { deity: "Madhusudana", hindu: "Vaishakha"    },
+  { deity: "Trivikrama",  hindu: "Jyeshtha"     },
+  { deity: "Vamana",      hindu: "Ashadha"      },
+  { deity: "Sridhara",    hindu: "Shravana"     },
+  { deity: "Hrishikesha", hindu: "Bhadrapada"   },
+  { deity: "Padmanabha",  hindu: "Ashwin"       },
+  { deity: "Damodara",    hindu: "Kartik"       },
+  { deity: "Keshava",     hindu: "Margashirsha" },
+  { deity: "Narayana",    hindu: "Pausha"       },
+  { deity: "Madhava",     hindu: "Magha"        },
+  { deity: "Govinda",     hindu: "Phalguna"     },
 ];
 
 // Gaurabda Year from a Gregorian date (approx: Gaurabda 1 = 1486 CE)
@@ -8227,19 +8238,16 @@ function renderEkadashiList() {
       entries.length + " Ekadashi" + (entries.length !== 1 ? "s" : "") +
       " in selected range";
   } else {
-    // Default: 24 upcoming (fasting date ≥ today), plus already-past ones above
-    const upcoming = entries.filter(e => {
+    // Default: 24 UPCOMING only (fasting date ≥ today) — no past entries
+    entries = entries.filter(e => {
       const fd = (typeof e === "object" && e.fastingDate) ? e.fastingDate : _ekDate(e);
       return fd >= todayStr;
     });
-    const past = entries.filter(e => {
-      const fd = (typeof e === "object" && e.fastingDate) ? e.fastingDate : _ekDate(e);
-      return fd < todayStr;
-    });
-    entries = [...past, ...upcoming.slice(0, 24)];
-    const hidden = Math.max(0, upcoming.length - 24);
+    const total = entries.length;
+    entries = entries.slice(0, 24);
+    const hidden = Math.max(0, total - 24);
     if (countLbl) countLbl.textContent =
-      upcoming.length + " upcoming · showing " + Math.min(upcoming.length, 24) +
+      total + " upcoming · showing " + entries.length +
       (hidden > 0 ? " (+" + hidden + " more — use Range to see all)" : "");
   }
 
@@ -8290,15 +8298,15 @@ function renderEkadashiList() {
         const _adhW = _getAdhikMaasWindow ? _getAdhikMaasWindow(sd) : null;
         isAdhikMaas = !!_adhW;
       } catch (_) {}
-      const vaishnavaMonthName = isAdhikMaas
-        ? "Purushottam Maas"
-        : (lunarMi >= 0 ? (_VAISHNAVA_MONTH_NAMES[lunarMi] || "") : "");
+      const _monthObj = isAdhikMaas
+        ? { deity: "Purushottama", hindu: "Adhik Maas" }
+        : (lunarMi >= 0 ? (_VAISHNAVA_MONTH_NAMES[lunarMi] || null) : null);
 
-      const monthBadge = vaishnavaMonthName
-        ? `<span class="ek-month-badge">${vaishnavaMonthName}</span>`
+      const monthBadge = _monthObj
+        ? `<span class="ek-month-badge">${_monthObj.deity} <span style="opacity:0.6;font-weight:500;">· ${_monthObj.hindu}</span></span>`
         : "";
       const adhikBadge = isAdhikMaas
-        ? `<span class="ek-adhik-badge">✨ Adhik Maas</span>`
+        ? `<span class="ek-adhik-badge">✨ Purushottama Maas</span>`
         : "";
       const gaurabdaBadge = gaurabdaYr > 0
         ? `<span class="ek-gaurabda-badge">${gaurabdaYr} Gaurabda</span>`
@@ -8350,13 +8358,11 @@ function renderEkadashiList() {
       // ── Fast row ────────────────────────────────────────────────
       const fastHtml = isViddha
         ? `<div class="ek-fast-row">
-            <span class="ek-fast-label">FAST</span>
-            <span class="ek-fast-date">🌅 ${fmtD(fastingDate)}</span>
-            <span style="font-size:9px;background:rgba(255,152,0,0.18);color:#FF9800;border-radius:20px;padding:2px 8px;border:1px solid rgba(255,152,0,0.35);font-weight:700;flex-shrink:0;">Mahadvadashi</span>
+            <div class="ek-fast-date">🌅 ${fmtD(fastingDate)}</div>
+            <div style="text-align:center;margin-top:4px;"><span style="font-size:10px;background:rgba(255,152,0,0.18);color:#FF9800;border-radius:20px;padding:3px 12px;border:1px solid rgba(255,152,0,0.35);font-weight:700;">⚡ Mahadvadashi</span></div>
            </div>`
         : `<div class="ek-fast-row">
-            <span class="ek-fast-label">FAST</span>
-            <span class="ek-fast-date">🌅 ${fmtD(fastingDate)}</span>
+            <div class="ek-fast-date">🌅 ${fmtD(fastingDate)}</div>
            </div>`;
 
       // ── Parana (fast-breaking) ───────────────────────────────────
@@ -8427,40 +8433,7 @@ function renderEkadashiList() {
           <!-- Parana -->
           ${paranaHtml}
 
-          <!-- Edit panel (hidden by default) -->
-          <div id="${eid}" style="display:none;background:rgba(0,0,0,0.35);border-radius:12px;padding:12px;margin-top:4px;border:1px solid rgba(155,89,182,0.25);">
-            <div style="font-size:9px;color:rgba(189,147,249,0.6);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:700;">✏ Edit</div>
-            <input type="text" id="${eid}_n" value="${name.replace(/"/g, "&quot;")}" placeholder="Name" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:8px;padding:7px 10px;color:#fff;font-size:12px;font-family:Inter,sans-serif;outline:none;margin-bottom:8px;">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px;">
-              <label style="display:flex;align-items:center;gap:6px;background:rgba(241,196,15,0.08);border:1px solid rgba(241,196,15,0.25);border-radius:7px;padding:7px 9px;cursor:pointer;">
-                <input type="radio" name="${eid}_p" value="shukla" ${paksha === "shukla" ? "checked" : ""} style="accent-color:#F1C40F;">
-                <span style="font-size:11px;color:#F1C40F;font-weight:600;">☀️ Shukla</span>
-              </label>
-              <label style="display:flex;align-items:center;gap:6px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.25);border-radius:7px;padding:7px 9px;cursor:pointer;">
-                <input type="radio" name="${eid}_p" value="krishna" ${paksha === "krishna" ? "checked" : ""} style="accent-color:#BD93F9;">
-                <span style="font-size:11px;color:#BD93F9;font-weight:600;">🌙 Krishna</span>
-              </label>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px;">
-              <div><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:3px;text-transform:uppercase;">Start Date</div>
-                <input type="date" id="${eid}_sd" value="${sd}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:7px;padding:7px 5px;color:#fff;font-size:11px;font-family:Inter,sans-serif;outline:none;"></div>
-              <div><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:3px;text-transform:uppercase;">Start Time</div>
-                <input type="time" id="${eid}_st" value="${startTime}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:7px;padding:7px 5px;color:#fff;font-size:11px;font-family:Inter,sans-serif;outline:none;"></div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:9px;">
-              <div><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:3px;text-transform:uppercase;">End Date</div>
-                <input type="date" id="${eid}_ed" value="${ed}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:7px;padding:7px 5px;color:#fff;font-size:11px;font-family:Inter,sans-serif;outline:none;"></div>
-              <div><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:3px;text-transform:uppercase;">End Time</div>
-                <input type="time" id="${eid}_et" value="${endTime}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:7px;padding:7px 5px;color:#fff;font-size:11px;font-family:Inter,sans-serif;outline:none;"></div>
-            </div>
-            <button onclick="saveEkadashiEdit('${sd}')" style="display:block;width:100%;padding:9px;border-radius:8px;border:none;background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(200,150,12,0.4));color:#FFD700;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.4);">💾 Save Changes</button>
-          </div>
 
-          <!-- Actions -->
-          <div class="ek-actions-row">
-            <button class="ek-btn-edit" onclick="toggleEkEdit('${sd}')">✏ Edit</button>
-            <button class="ek-btn-remove" onclick="removeEkadashiDate('${sd}')">✕ Remove</button>
-          </div>
         </div>
       </div>`;
     })

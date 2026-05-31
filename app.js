@@ -9278,6 +9278,11 @@ function _renderDayPanchang(key) {
     try {
       const p = await getPanchangData(lat, lng, dateAtMidnight);
 
+      // ── Guaranteed Gaurabda — never NaN ──────────────────────────
+      const _gyRaw = p.gaurabdaYear ?? p.gaurabda ?? _gaurabdaYear(key);
+      const gaurabdaSafe = (typeof _gyRaw === 'number' && !isNaN(_gyRaw))
+        ? _gyRaw : _gaurabdaYear(key);
+
       // Month block — Purnimanta + Amanta + Gaudiya
       if (monthEl) {
         const adhikBadge = p.month.isAdhik
@@ -9290,7 +9295,7 @@ function _renderDayPanchang(key) {
           `<span style="color:#ce93d8;font-weight:600">${p.month.stdBn}</span>` +
           ` <span style="color:rgba(255,255,255,0.25);font-size:11px">/</span> ` +
           `<span style="color:#b39ddb">${p.month.gaudiyaBn}</span>${adhikBadge}` +
-          `<span style="font-size:11px;color:rgba(255,255,255,0.28);margin-left:8px">${p.gaurabdaYear ?? p.gaurabda ?? _gaurabdaYear(key)} Gaurabda</span><br>` +
+          `<span style="font-size:11px;color:rgba(255,255,255,0.28);margin-left:8px">${gaurabdaSafe} Gaurabda</span><br>` +
           // Row 2: English Purnimanta
           `<span style="font-size:11px;color:rgba(255,255,255,0.4)">${p.month.std} / ${p.month.gaudiya}</span><br>` +
           // Row 3: Amanta (only show if different from Purnimanta)

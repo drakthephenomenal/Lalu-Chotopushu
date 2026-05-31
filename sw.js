@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker
-// v109: fix NaN Gaurabda — gaurabdaYear fallback; panchangData versioned; v108: celestial sunrise = solar noon − 6h (ISKCON match); BM end fixed 46→48 min; paran uses apparent daytime length
+// v110: fix NaN Gaurabda — gaurabdaYear fallback; panchangData versioned; v108: celestial sunrise = solar noon − 6h (ISKCON match); BM end fixed 46→48 min; paran uses apparent daytime length
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v109';
+const CACHE = 'radha-jap-v110';
 
 const LOCAL_ASSETS = [
   './',

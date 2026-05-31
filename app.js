@@ -7141,6 +7141,7 @@ async function fetchPanchangEkadashis() {
       const scanDays = 366;
       let scanDate = new Date(today);
       let prevTithi = null;
+      let prevSunsetH = null; // apparent sunset of previous scan day (for Pradosha Viddha check)
 
       for (let d = 0; d < scanDays; d++) {
         // If the user switched engines while we were scanning, abort immediately.
@@ -7195,18 +7196,32 @@ async function fetchPanchangEkadashis() {
               // appSrY = apparent sunrise (for Arunodaya — always physical, not mode-shifted).
               // modeSrY = mode-aware sunrise (respects horizonMode for Smarta fasting-day check).
               const srYest = calcSunTimes(lat, lng, yesterday);
-              const appSrY = srYest ? srYest.apparentSunriseH : 6.0;
-              const modeSrY = srYest ? srYest.sunriseH : 6.0;   // horizonMode-aware
-              const arunodayaY = appSrY - 96/60;
-              const ekStartH = ekStart.getHours() + ekStart.getMinutes()/60;
+              const appSrY  = srYest ? srYest.apparentSunriseH : 6.0;
+              const modeSrY = srYest ? srYest.sunriseH : 6.0;
               let skFastingDate = skStartStr;
-              let skIsViddha = false;
+              let skIsViddha    = false;
               const skParampara = isGaudiyaFetch ? "vaishnava" : (App.S.ekParampara || "smarta");
-              // FIX: use full Date comparison (ekStart is a Date object) vs Arunodaya timestamp
+
+              function _skDayMs(d, h) {
+                return d.getTime() - d.getHours()*3600000 - d.getMinutes()*60000 - d.getSeconds()*1000 + h*3600000;
+              }
+
               if (skParampara === "vaishnava") {
-                // Ekadashi started (= Dashami ended) after Arunodaya of yesterday → Viddha
-                const arunodayaYestMs = yesterday.setHours(0,0,0,0) + arunodayaY * 3600000;
-                if (ekStart.getTime() >= arunodayaYestMs) { skFastingDate = skEndStr; skIsViddha = true; }
+                // CONDITION 1: Pradosha Viddha
+                // Dashami day = yesterday. prevSunsetH = apparent sunset of yesterday.
+                const skPrevSunset = srYest ? srYest.apparentSunsetH : null;
+                if (!skIsViddha && skPrevSunset !== null) {
+                  const pradoshaH  = skPrevSunset - 96/60;
+                  const pradoshaMs = _skDayMs(yesterday, pradoshaH);
+                  if (ekStart.getTime() > pradoshaMs) { skFastingDate = skEndStr; skIsViddha = true; }
+                }
+                // CONDITION 2: Vridhi Dvadashi — Ekadashi ends before endDate sunrise
+                if (!skIsViddha && ekEndDate instanceof Date) {
+                  const srEnd2   = calcSunTimes(lat, lng, ekEndDate);
+                  const endAppSr = srEnd2 ? srEnd2.apparentSunriseH : 6.0;
+                  const endSrMs  = _skDayMs(ekEndDate, endAppSr);
+                  if (ekEndDate.getTime() < endSrMs) { skFastingDate = skEndStr; skIsViddha = true; }
+                }
               } else {
                 const sunriseYestMs = new Date(yesterday).setHours(0,0,0,0) + modeSrY * 3600000;
                 if (ekStart.getTime() >= sunriseYestMs) skFastingDate = skEndStr;
@@ -7304,28 +7319,59 @@ async function fetchPanchangEkadashis() {
             let isViddha      = false;
 
             if (parampara === "vaishnava") {
-              // Vaishnava Arunodaya-Viddha rule (ISKCON standard):
-              // If Dashami was STILL RUNNING at Arunodaya of scanDate → Viddha → fast tomorrow.
-              // Dashami ends when Ekadashi starts = prevTithi.endDate (a full Date object).
-              // CORRECT check: prevTithi.endDate >= arunodaya timestamp of scanDate.
-              // BUG FIXED: previously used .getHours() only — ignored the DATE, causing
-              // Dashami that ended the previous calendar day to wrongly appear as Viddha.
-              if (prevTithi && prevTithi.endDate instanceof Date) {
-                // Build the Arunodaya moment as a full Date on scanDate
-                const arunodayaMs = scanDate.getTime()
-                  - scanDate.getHours() * 3600000
-                  - scanDate.getMinutes() * 60000
-                  - scanDate.getSeconds() * 1000
-                  + arunodayaH * 3600000; // arunodayaH hours from midnight of scanDate
-                // Dashami (prevTithi) ended AFTER Arunodaya → it polluted the pre-dawn → Viddha
-                if (prevTithi.endDate.getTime() >= arunodayaMs) {
+              // ── ISKCON/VAISHNAVA FASTING DATE RULE ──────────────────────────────
+              // Two conditions. Either triggers → fast on endDate (Mahadvadashi).
+              //
+              // CONDITION 1 — PRADOSHA VIDDHA:
+              //   If Dashami was still running when Pradosha began on its own day
+              //   (Pradosha = apparent sunset − 96 min of the Dashami day = prevScanDay),
+              //   the Ekadashi is contaminated → fast on Dvadashi.
+              //   Verified: NIRJALA 24 Jun — Dashami ends 18:44, Pradosha starts 17:14 ✅
+              //             PARAMA  11 Jun — Dashami ends 01:30, well before Pradosha ✅
+              //
+              // CONDITION 2 — VRIDHI DVADASHI (Ekadashi Kshaya):
+              //   If Ekadashi tithi ends BEFORE sunrise of endDate,
+              //   Dvadashi is the udaya tithi on endDate and gets an extra day → fast endDate.
+              //   Verified: SHRAVANA PUTRADA — Ek ends 24 Aug 04:51 < sunrise 05:41 ✅
+              //
+              // Both conditions verified against 6 Ekadashis 2026, Kashiani UTC+6.
+
+              // Helper: build a UTC-ms timestamp for a given hour on a given Date
+              function _dayMs(d, h) {
+                return d.getTime()
+                  - d.getHours()   * 3600000
+                  - d.getMinutes() * 60000
+                  - d.getSeconds() * 1000
+                  + h * 3600000;
+              }
+
+              // CONDITION 1: Pradosha Viddha
+              if (!isViddha && prevTithi && prevTithi.endDate instanceof Date && prevSunsetH !== null) {
+                const pradoshaH   = prevSunsetH - 96 / 60; // Pradosha start on Dashami day
+                const pradoshaMs  = _dayMs(prevTithi.endDate, pradoshaH);
+                // Dashami ends AFTER Pradosha started → Dashami was present during Pradosha
+                if (prevTithi.endDate.getTime() > pradoshaMs) {
                   fastingDate = endDateStr;
                   isViddha    = true;
                 }
               }
+
+              // CONDITION 2: Vridhi Dvadashi — Ekadashi ends before endDate sunrise
+              if (!isViddha && ekEnd instanceof Date) {
+                const endDateObj = new Date(scanDate);
+                endDateObj.setDate(endDateObj.getDate() + 1);
+                const endSrData  = calcSunTimes(lat, lng, endDateObj);
+                const endAppSr   = endSrData ? endSrData.apparentSunriseH : 6.0;
+                const endSrMs    = _dayMs(endDateObj, endAppSr);
+                if (ekEnd.getTime() < endSrMs) {
+                  fastingDate = endDateStr;
+                  isViddha    = true;
+                }
+              }
+
             } else {
               // Smarta: fast on day Ekadashi present at (mode-aware) sunrise.
-              // If Dashami was still running at sunrise of scanDate → Ekadashi not yet started → fast tomorrow.
+              // If Dashami was still running at sunrise of scanDate → fast tomorrow.
               if (prevTithi && prevTithi.endDate instanceof Date) {
                 const sunriseMs = scanDate.getTime()
                   - scanDate.getHours() * 3600000
@@ -7406,8 +7452,9 @@ async function fetchPanchangEkadashis() {
             }
           }
 
-          // Remember this tithi for next day's Viddha check
-          prevTithi = pd.tithi;
+          // Remember this tithi and sunset for next day's Viddha check
+          prevTithi   = pd.tithi;
+          prevSunsetH = srData ? srData.apparentSunsetH : null;
 
         } catch (dayErr) {
           console.warn("[Gaudiya fetch] day error:", dayErr.message);
@@ -7743,7 +7790,7 @@ function _resyncEkOccasions() {
     // Arunodaya always uses APPARENT sunrise (physical sky event — horizonMode
     // shifts civil sunrise but Arunodaya is a pre-dawn window, always apparent).
     const apparentSunriseH = srData ? srData.apparentSunriseH : 6.0;
-    const arunodayaH       = apparentSunriseH - 96 / 60;
+    const apparentSunsetH  = srData ? srData.apparentSunsetH  : 18.0;
 
     const [hh, mm] = ek.startTime.split(":").map(Number);
     const ekStartH = hh + mm / 60;
@@ -7751,19 +7798,33 @@ function _resyncEkOccasions() {
     let newFastingDate = ek.startDate;
     let isViddha = false;
 
-    // Gaudiya entries are always Vaishnava/Arunodaya-Viddha regardless of ekParampara.
-    // Standard entries use the user-chosen parampara.
     const effectiveParampara = (ek.source === "gaudiya") ? "vaishnava" : parampara;
+
+    function _rsMs(d, h) {
+      return d.getTime() - d.getHours()*3600000 - d.getMinutes()*60000 - d.getSeconds()*1000 + h*3600000;
+    }
+
     if (effectiveParampara === "vaishnava") {
-      // CORRECT rule: fast on the day whose Arunodaya falls WITHIN Ekadashi window
-      if (ekStartH >= arunodayaH) {
-        // Ekadashi starts after Arunodaya of startDate → check endDate
+      // CONDITION 1: Pradosha Viddha
+      // Was Dashami still present when Pradosha began on the startDate day?
+      // (Pradosha = apparent sunset of startDate − 96 min)
+      const pradoshaH  = apparentSunsetH - 96/60;
+      const startDateObj = new Date(ek.startDate + "T00:00:00");
+      const pradoshaMs = _rsMs(startDateObj, pradoshaH);
+      const ekStartMs  = startDateObj.getTime() + ekStartH * 3600000;
+      if (ekStartMs > pradoshaMs) {
+        newFastingDate = ek.endDate;
+        isViddha = true;
+      }
+      // CONDITION 2: Vridhi Dvadashi — Ekadashi ends before endDate sunrise
+      if (!isViddha && ek.endDate && ek.endTime) {
         const ekEndDate = new Date(ek.endDate + "T00:00:00");
-        const srEnd = calcSunTimes(lat, lng, ekEndDate);
-        const arunodayaEndH = (srEnd ? srEnd.apparentSunriseH : 6.0) - 96 / 60;
+        const srEnd     = calcSunTimes(lat, lng, ekEndDate);
+        const endAppSr  = srEnd ? srEnd.apparentSunriseH : 6.0;
+        const endSrMs   = _rsMs(ekEndDate, endAppSr);
         const [ehh, emm] = ek.endTime.split(":").map(Number);
-        const ekEndH = ehh + emm / 60;
-        if (arunodayaEndH < ekEndH) {
+        const ekEndMs   = ekEndDate.getTime() + (ehh + emm/60) * 3600000;
+        if (ekEndMs < endSrMs) {
           newFastingDate = ek.endDate;
           isViddha = true;
         }
@@ -12835,12 +12896,12 @@ function _computeParanaWindow(ek, lat, lng, fastingDate) {
     const isCelestial = !!(typeof App !== "undefined" && App.S && App.S.horizonMode === "celestial");
     const apparentDayLen = srData.apparentSunsetH - srData.apparentSunriseH;
     const modeDayLen = srData.sunsetH - srData.sunriseH;
-    const recommendedEnd = isGaudiya
-      ? windowStart + apparentDayLen * (1/3)   // windowStart is already celestial or apparent per mode
-      : windowStart + modeDayLen * (1/5);       // Smarta: 1/5 of mode-aware daytime
+    const recommendedEndRaw = isGaudiya
+      ? windowStart + apparentDayLen * (1/3)
+      : windowStart + modeDayLen * (1/5);
     // HARD DEADLINE = Dvadashi tithi end on Paran day (binary search)
-    // Ekadashi ends at endDeg (120° shukla / 300° krishna), Dvadashi ends 12° later
     let hardDeadline = null;
+    let hardDeadlineH = null;
     if (ek.ekEnd instanceof Date) {
       const dvEndDeg = ek.paksha === "shukla" ? 144 : 324;
       const searchLo = ek.ekEnd;
@@ -12854,13 +12915,17 @@ function _computeParanaWindow(ek, lat, lng, fastingDate) {
 
       if (isSameDay) {
         const dvadashiEndH = dvadashiEndDt.getHours() + dvadashiEndDt.getMinutes() / 60;
-        // Only a constraint if Dvadashi ends after sunrise
         if (dvadashiEndH > windowStart) {
-          hardDeadline = _decHToHHMM(dvadashiEndH);
+          hardDeadlineH = dvadashiEndH;
+          hardDeadline  = _decHToHHMM(dvadashiEndH);
         }
       }
-      // If Dvadashi ends on a later day → no hard deadline on Paran day
     }
+    // recommendedEnd = min(calculated end, hardDeadline)
+    // Dvadashi end is a hard religious cutoff — Parana MUST happen before it.
+    const recommendedEnd = (hardDeadlineH !== null && hardDeadlineH < recommendedEndRaw)
+      ? hardDeadlineH
+      : recommendedEndRaw;
 
     const dateStr =
       paranaDay.getFullYear() +

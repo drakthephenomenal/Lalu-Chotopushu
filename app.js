@@ -7159,10 +7159,12 @@ async function fetchPanchangEkadashis() {
               const skEndTime   = _d2hhmm(ekEndDate);
 
               // Fasting date: Ekadashi starts after sunrise yesterday → fast on YESTERDAY (startDate)
-              // But since Ekadashi started AFTER yesterday's sunrise, check Vaidha rules
+              // But since Ekadashi started AFTER yesterday's sunrise, check Viddha rules.
+              // appSrY = apparent sunrise (for Arunodaya — always physical, not mode-shifted).
+              // modeSrY = mode-aware sunrise (respects horizonMode for Smarta fasting-day check).
               const srYest = calcSunTimes(lat, lng, yesterday);
               const appSrY = srYest ? srYest.apparentSunriseH : 6.0;
-              const modeSrY = srYest ? srYest.sunriseH : 6.0;
+              const modeSrY = srYest ? srYest.sunriseH : 6.0;   // horizonMode-aware
               const arunodayaY = appSrY - 96/60;
               const ekStartH = ekStart.getHours() + ekStart.getMinutes()/60;
               let skFastingDate = skStartStr;
@@ -7237,10 +7239,13 @@ async function fetchPanchangEkadashis() {
               ? pd.tithi.endDate
               : null;
 
-            // Arunodaya Viddha: use apparent sunrise of THIS day
+            // Arunodaya Viddha: Arunodaya reference is always APPARENT sunrise
+            // (pre-dawn window is a physical event, not shifted by horizonMode).
+            // Civil sunrise (modeSr) IS mode-aware — Celestial vs Earthy Sky shifts
+            // it by ~4 min and therefore affects the Smarta fasting-day assignment.
             const srData     = calcSunTimes(lat, lng, scanDate);
             const appSr      = srData ? srData.apparentSunriseH : 6.0;
-            const modeSr     = srData ? srData.sunriseH         : 6.0;
+            const modeSr     = srData ? srData.sunriseH         : 6.0; // mode-aware
             const arunodayaH = appSr - 96 / 60;
 
             // Ekadashi tithi end time on this day (hours)
@@ -7682,15 +7687,17 @@ function _resyncEkOccasions() {
 
   entries.forEach((ek) => {
     if (!ek || !ek.startDate || !ek.startTime || !ek.endDate) return;
-    // Skip Gaudiya-fetched entries — their fasting dates are fixed by ISKCON rules
-    if (ek.source === "gaudiya") return;
     const paksha = ek.paksha || "shukla";
 
-    // calcSunTimes reads App.S.horizonMode live — correct value used here
+    // calcSunTimes reads App.S.horizonMode live — correct value used here.
+    // Gaudiya entries are NO LONGER skipped: horizonMode (Celestial / Earthy Sky)
+    // shifts civil sunrise and therefore the Paran window open time, so we must
+    // resync all entries — including Gaudiya — whenever horizonMode changes.
     const ekDate = new Date(ek.startDate + "T00:00:00");
     const srData = calcSunTimes(lat, lng, ekDate);
     const sunriseH         = srData ? srData.sunriseH         : 6.0;
-    // FIX: Arunodaya always uses APPARENT sunrise (physical sky event)
+    // Arunodaya always uses APPARENT sunrise (physical sky event — horizonMode
+    // shifts civil sunrise but Arunodaya is a pre-dawn window, always apparent).
     const apparentSunriseH = srData ? srData.apparentSunriseH : 6.0;
     const arunodayaH       = apparentSunriseH - 96 / 60;
 
@@ -7700,7 +7707,10 @@ function _resyncEkOccasions() {
     let newFastingDate = ek.startDate;
     let isViddha = false;
 
-    if (parampara === "vaishnava") {
+    // Gaudiya entries are always Vaishnava/Arunodaya-Viddha regardless of ekParampara.
+    // Standard entries use the user-chosen parampara.
+    const effectiveParampara = (ek.source === "gaudiya") ? "vaishnava" : parampara;
+    if (effectiveParampara === "vaishnava") {
       if (ekStartH >= arunodayaH) { newFastingDate = ek.endDate; isViddha = true; }
     } else {
       if (ekStartH >= sunriseH) newFastingDate = ek.endDate;

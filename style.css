@@ -2313,3 +2313,27 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   transition: color 0.3s;
   word-break: break-word;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   GAUDIYA AUTO-FETCH BANNER — pulsing ⏳ + progress bar
+   ══════════════════════════════════════════════════════════════ */
+@keyframes ek-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.85); }
+}
+@keyframes ek-progress {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+.ek-pulse-icon {
+  display: inline-block;
+  animation: ek-pulse 1.4s ease-in-out infinite;
+}
+
+.ek-progress-bar {
+  width: 30%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, #FFD700, transparent);
+  animation: ek-progress 1.6s ease-in-out infinite;
+}

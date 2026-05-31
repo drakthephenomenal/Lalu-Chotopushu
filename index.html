@@ -471,23 +471,6 @@
   </div>
   <div style="padding:4px 14px 6px;font-size:11px;color:var(--td);text-align:center;letter-spacing:1px;">Tap a date to see details</div>
 
-  <!-- Brahmacharya Progress Graph — dedicated area below calendar -->
-  <div class="bc-graph-section">
-    <div class="bc-graph-section-title">📈 Brahmacharya Streak</div>
-    <div class="bc-graph-legend-row">
-      <span class="bc-legend-dot" style="background:#22c55e"></span><span class="bc-legend-text">Maintained</span>
-      <span class="bc-legend-dot" style="background:#ef4444;margin-left:18px"></span><span class="bc-legend-text">Broken</span>
-    </div>
-    <div class="bc-range-row" id="bcRangeRow">
-      <button class="bc-range-btn" onclick="bcShiftRange(-90)">&#8249; Prev 90d</button>
-      <span class="bc-range-label" id="bcRangeLabel">Last 90 days</span>
-      <button class="bc-range-btn" id="bcRangeNext" onclick="bcShiftRange(90)">Next 90d &#8250;</button>
-    </div>
-    <div class="bc-graph-scroll-wrap">
-      <canvas id="bcGraph" class="bc-graph-canvas" width="300" height="360"></canvas>
-    </div>
-  </div>
-
   <!-- EKADASHI MANAGER -->
   <div class="sc" style="background:rgba(18,8,40,0.6);border-color:rgba(155,89,182,0.35);">
     <h3 style="color:#BD93F9;">📅 Ekadashi Manager</h3>
@@ -552,6 +535,23 @@
     <!-- Saved list -->
     <div style="font-size:10px;color:rgba(189,147,249,0.55);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600;">Saved Ekadashis</div>
     <div id="ekadashiList"></div>
+  </div>
+
+  <!-- Brahmacharya Progress Graph — dedicated area below Ekadashi Manager -->
+  <div class="bc-graph-section">
+    <div class="bc-graph-section-title">📈 Brahmacharya Streak</div>
+    <div class="bc-graph-legend-row">
+      <span class="bc-legend-dot" style="background:#22c55e"></span><span class="bc-legend-text">Maintained</span>
+      <span class="bc-legend-dot" style="background:#ef4444;margin-left:18px"></span><span class="bc-legend-text">Broken</span>
+    </div>
+    <div class="bc-range-row" id="bcRangeRow">
+      <button class="bc-range-btn" onclick="bcShiftRange(-90)">&#8249; Prev 90d</button>
+      <span class="bc-range-label" id="bcRangeLabel">Last 90 days</span>
+      <button class="bc-range-btn" id="bcRangeNext" onclick="bcShiftRange(90)">Next 90d &#8250;</button>
+    </div>
+    <div class="bc-graph-scroll-wrap">
+      <canvas id="bcGraph" class="bc-graph-canvas" width="300" height="360"></canvas>
+    </div>
   </div>
 </div>
 
@@ -1108,6 +1108,15 @@
           <div class="gmc-switch-label-off">OFF</div>
           <div class="gmc-switch-label-on">ON</div>
         </div>
+      </div>
+    </div>
+    <!-- Auto-fetch progress banner — shown when Gaudiya mode triggers panchang computation -->
+    <div id="gaudiyaFetchBanner" style="display:none;margin-top:12px;background:rgba(241,196,15,0.08);border:1.5px solid rgba(241,196,15,0.4);border-radius:12px;padding:12px 14px;text-align:center;">
+      <div style="font-size:20px;margin-bottom:5px;" class="ek-pulse-icon">⏳</div>
+      <div style="font-size:13px;font-weight:700;color:#FFD700;margin-bottom:3px;">Computing ISKCON Ekadashis…</div>
+      <div id="gaudiyaFetchStatus" style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.5;">Fetching panchang data for your location</div>
+      <div style="margin-top:8px;height:3px;border-radius:2px;background:rgba(255,215,0,0.15);overflow:hidden;">
+        <div class="ek-progress-bar"></div>
       </div>
     </div>
   </div>

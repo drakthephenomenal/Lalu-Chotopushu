@@ -1971,47 +1971,65 @@ function tgs(k) {
       const gpsOn = !!(tgGps && tgGps.classList.contains("on"));
       const lat = App.S && App.S.lastLat;
       const lng = App.S && App.S.lastLng;
+
+      // Helper: show/hide the in-card banner (visible on current Settings page)
+      function _showGaudiyaBanner(statusText) {
+        const banner = document.getElementById("gaudiyaFetchBanner");
+        const statusEl = document.getElementById("gaudiyaFetchStatus");
+        if (banner) banner.style.display = "";
+        if (statusEl && statusText) statusEl.textContent = statusText;
+      }
+      function _hideGaudiyaBanner(finalText) {
+        const banner = document.getElementById("gaudiyaFetchBanner");
+        const statusEl = document.getElementById("gaudiyaFetchStatus");
+        if (statusEl && finalText) statusEl.textContent = finalText;
+        // Keep banner visible briefly so user sees the ✅, then fade out
+        setTimeout(() => {
+          if (banner) banner.style.display = "none";
+        }, 3000);
+      }
+
       if (gpsOn && lat && lng) {
-        // Show a prominent "Calculating…" banner immediately
+        // Show animated banner immediately — user is on Settings page and can see it
+        _showGaudiyaBanner("Fetching ISKCON panchang for your location…");
+
+        // Also update panchangStatus on the B&C page (visible if they switch tabs)
         const status = document.getElementById("panchangStatus");
         if (status) {
-          status.textContent = "🔢 Gaudiya Mode — computing ISKCON panchang…";
+          status.textContent = "🔢 Computing ISKCON Ekadashis…";
           status.style.color = "#F1C40F";
           status.style.fontWeight = "700";
         }
-        // Show the calculating overlay banner in the ekadashi list area
-        const ekList = document.getElementById("ekadashiList");
-        if (ekList && !ekList.querySelector(".ek-auto-calc-banner")) {
-          const banner = document.createElement("div");
-          banner.className = "ek-auto-calc-banner";
-          banner.style.cssText = "background:rgba(241,196,15,0.08);border:1px solid rgba(241,196,15,0.3);border-radius:12px;padding:14px;text-align:center;margin-bottom:10px;";
-          banner.innerHTML = "<div style='font-size:22px;margin-bottom:6px;'>⏳</div><div style='font-size:13px;color:#F1C40F;font-weight:700;'>Computing ISKCON Ekadashis…</div><div style='font-size:11px;color:rgba(255,255,255,0.45);margin-top:4px;'>Upcoming dates will appear as they are calculated</div>";
-          ekList.insertBefore(banner, ekList.firstChild);
-        }
-        // Delay slightly so UI updates are visible, then fetch
+
+        // Delay 80ms so the banner renders before the heavy computation starts
         setTimeout(() => {
           if (typeof fetchPanchangEkadashis === "function") {
             fetchPanchangEkadashis().then(() => {
-              // Remove the calculating banner once done
-              const ekList2 = document.getElementById("ekadashiList");
-              if (ekList2) {
-                const b = ekList2.querySelector(".ek-auto-calc-banner");
-                if (b) b.remove();
-              }
+              _hideGaudiyaBanner("✅ Ekadashis computed and saved 🙏");
               const status2 = document.getElementById("panchangStatus");
               if (status2) {
+                status2.textContent = "✅ ISKCON Ekadashis computed";
                 status2.style.color = "";
                 status2.style.fontWeight = "";
               }
+            }).catch(() => {
+              _hideGaudiyaBanner("⚠️ Could not fetch — try Auto-Fetch manually");
             });
           }
         }, 80);
       } else {
-        // GPS not available — show a gentle nudge
-        const status = document.getElementById("panchangStatus");
-        if (status) status.textContent = "⚠️ Turn on GPS Location to auto-fetch ISKCON Ekadashis";
+        // GPS not available — show nudge inside the banner
+        _showGaudiyaBanner("⚠️ Enable GPS Location first to auto-fetch Ekadashis");
+        setTimeout(() => {
+          const banner = document.getElementById("gaudiyaFetchBanner");
+          if (banner) banner.style.display = "none";
+        }, 4000);
         toast("⚠️ Enable GPS Location to auto-fetch ISKCON Ekadashis 🙏");
       }
+    } else {
+      // Gaudiya turned OFF — ensure banner is hidden
+      const banner = document.getElementById("gaudiyaFetchBanner");
+      if (banner) banner.style.display = "none";
     }
     return;
   }
@@ -7170,6 +7188,10 @@ async function fetchPanchangEkadashis() {
                 if (status) status.textContent = isGaudiyaFetch
                 ? `🌸 Gaudiya Mode — found ${added} so far…`
                 : `🗓️ Panchang Engine — found ${added} so far…`;
+                const _gfStatus = document.getElementById("gaudiyaFetchStatus");
+                if (_gfStatus) _gfStatus.textContent = isGaudiyaFetch
+                  ? `Found ${added} Ekadashi${added > 1 ? "s" : ""} — still computing…`
+                  : `Found ${added} so far — scanning…`;
               }
             } catch (skipErr) {
               console.warn("[Gaudiya fetch] skipped-Ekadashi recovery error:", skipErr.message);
@@ -7304,6 +7326,10 @@ async function fetchPanchangEkadashis() {
               if (status) status.textContent = isGaudiyaFetch
                 ? `🌸 Gaudiya Mode — found ${added} so far…`
                 : `🗓️ Panchang Engine — found ${added} so far…`;
+              const _gfStatus2 = document.getElementById("gaudiyaFetchStatus");
+              if (_gfStatus2) _gfStatus2.textContent = isGaudiyaFetch
+                ? `Found ${added} Ekadashi${added > 1 ? "s" : ""} — still computing…`
+                : `Found ${added} so far — scanning…`;
             }
           }
 

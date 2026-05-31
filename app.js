@@ -1961,6 +1961,55 @@ function tgs(k) {
     if (typeof _updateCfgTimesPreview === "function") _updateCfgTimesPreview();
     if (typeof renderCal === "function") renderCal();
     toast(App.S.gaudiyaMode ? "🪷 Gaudiya Mode ON" : "🪷 Gaudiya Mode OFF");
+
+    // ── AUTO-FETCH: trigger panchang computation when Gaudiya mode is turned ON ──
+    if (App.S.gaudiyaMode) {
+      const tgGps = document.getElementById("tgGpsLocation");
+      const gpsOn = !!(tgGps && tgGps.classList.contains("on"));
+      const lat = App.S && App.S.lastLat;
+      const lng = App.S && App.S.lastLng;
+      if (gpsOn && lat && lng) {
+        // Show a prominent "Calculating…" banner immediately
+        const status = document.getElementById("panchangStatus");
+        if (status) {
+          status.textContent = "🔢 Gaudiya Mode — computing ISKCON panchang…";
+          status.style.color = "#F1C40F";
+          status.style.fontWeight = "700";
+        }
+        // Show the calculating overlay banner in the ekadashi list area
+        const ekList = document.getElementById("ekadashiList");
+        if (ekList && !ekList.querySelector(".ek-auto-calc-banner")) {
+          const banner = document.createElement("div");
+          banner.className = "ek-auto-calc-banner";
+          banner.style.cssText = "background:rgba(241,196,15,0.08);border:1px solid rgba(241,196,15,0.3);border-radius:12px;padding:14px;text-align:center;margin-bottom:10px;";
+          banner.innerHTML = "<div style='font-size:22px;margin-bottom:6px;'>⏳</div><div style='font-size:13px;color:#F1C40F;font-weight:700;'>Computing ISKCON Ekadashis…</div><div style='font-size:11px;color:rgba(255,255,255,0.45);margin-top:4px;'>Upcoming dates will appear as they are calculated</div>";
+          ekList.insertBefore(banner, ekList.firstChild);
+        }
+        // Delay slightly so UI updates are visible, then fetch
+        setTimeout(() => {
+          if (typeof fetchPanchangEkadashis === "function") {
+            fetchPanchangEkadashis().then(() => {
+              // Remove the calculating banner once done
+              const ekList2 = document.getElementById("ekadashiList");
+              if (ekList2) {
+                const b = ekList2.querySelector(".ek-auto-calc-banner");
+                if (b) b.remove();
+              }
+              const status2 = document.getElementById("panchangStatus");
+              if (status2) {
+                status2.style.color = "";
+                status2.style.fontWeight = "";
+              }
+            });
+          }
+        }, 80);
+      } else {
+        // GPS not available — show a gentle nudge
+        const status = document.getElementById("panchangStatus");
+        if (status) status.textContent = "⚠️ Turn on GPS Location to auto-fetch ISKCON Ekadashis";
+        toast("⚠️ Enable GPS Location to auto-fetch ISKCON Ekadashis 🙏");
+      }
+    }
     return;
   }
 

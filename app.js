@@ -1808,6 +1808,8 @@ function sv(id, btn) {
     initReminderUI();
     renderEkadashiList();
     renderEkParampara();
+    if (typeof _applyHKLangBtnStyles === "function") _applyHKLangBtnStyles();
+    if (typeof _updateHorizonButtonTimes === "function") _updateHorizonButtonTimes();
     // Populate the app link display
     const appUrl = _getAppUrl();
     const linkEl = document.getElementById("appLinkDisplay");
@@ -1922,7 +1924,8 @@ function tgs(k) {
         App.S.hkLang === "bn" ? "হরে কৃষ্ণ মহামন্ত্র" : "हरे कृष्ण महामंत्र";
     // Update Daily Target section label
     applyHKLangLabels(App.S.hkLang);
-    // Update hkPersist text immediately if visible
+    // Update active state on lower language buttons
+    if (typeof _applyHKLangBtnStyles === "function") _applyHKLangBtnStyles();
     const hkEl = document.getElementById("hkPersist");
     if (hkEl && hkEl.classList.contains("hk-visible")) {
       const newText = App.S.hkLang === "bn" ? HK_TEXT_BN : HK_TEXT;
@@ -7501,8 +7504,14 @@ function saveEkTithiEngine(val) {
   _updateCfgTimesPreview();
   if (typeof renderCal === "function") renderCal();
   toast(val === "app"
-    ? "🔭 App Engine set — re-fetch to update list"
-    : "🗓️ Panchang Engine set — re-fetch to update list");
+    ? "🔭 App Engine set — fetching…"
+    : "🗓️ Panchang Engine set — fetching…");
+  // Auto-trigger GPS fetch so the list updates immediately
+  if (App.S.lastLat && App.S.lastLng) {
+    setTimeout(() => {
+      if (typeof fetchPanchangEkadashis === "function") fetchPanchangEkadashis();
+    }, 300);
+  }
 }
 
 function renderEkTithiEngine() {
@@ -7528,8 +7537,14 @@ function saveEkParampara(val) {
   if (typeof renderCal === "function") renderCal();
   _updateCfgTimesPreview(); // refresh Next 2 Ekadashis preview with new parampara
   toast(
-    val === "smarta" ? "☀️ Smarta Parampara set" : "🌸 Vaishnava Parampara set",
+    val === "smarta" ? "☀️ Smarta Parampara set — fetching…" : "🌸 Vaishnava Parampara set — fetching…",
   );
+  // Auto-trigger GPS fetch so the list updates immediately
+  if (App.S.lastLat && App.S.lastLng) {
+    setTimeout(() => {
+      if (typeof fetchPanchangEkadashis === "function") fetchPanchangEkadashis();
+    }, 300);
+  }
 }
 
 // ── Resync all stored Ekadashi fasting occasions (horizonMode + parampara aware) ──
@@ -7594,6 +7609,96 @@ function _resyncEkOccasions() {
   });
 }
 
+// ── _updateHorizonButtonTimes — fills Current Times inside each Horizon Mode pill button ──
+// Called whenever GPS coords or horizon mode changes.
+function _updateHorizonButtonTimes() {
+  const lat = App.S && App.S.lastLat;
+  const lng = App.S && App.S.lastLng;
+  function _fmt(h) {
+    h = ((h % 24) + 24) % 24;
+    let hh = Math.floor(h), mm = Math.round((h - hh) * 60);
+    if (mm >= 60) { hh++; mm = 0; }
+    const ap = hh % 24 >= 12 ? "PM" : "AM";
+    return (hh % 12 || 12) + ":" + String(mm).padStart(2, "0") + " " + ap;
+  }
+  const _set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  if (!lat || !lng) {
+    ["hm-app-sunrise","hm-app-sunset","hm-app-bm","hm-app-sk",
+     "hm-cel-sunrise","hm-cel-sunset","hm-cel-bm","hm-cel-sk"].forEach(id => _set(id, "—"));
+    return;
+  }
+  const now = new Date();
+  // Apparent (Earthy Sky) times — forced to apparent mode
+  const origMode = App.S.horizonMode;
+  App.S.horizonMode = "apparent";
+  const tApp = calcSunTimes(lat, lng, now);
+  App.S.horizonMode = "celestial";
+  const tCel = calcSunTimes(lat, lng, now);
+  App.S.horizonMode = origMode; // restore
+  if (tApp) {
+    const bmApp = tApp.sunriseH - 96/60;
+    const skApp = tApp.sunsetH - 24/60;
+    _set("hm-app-sunrise", tApp.sunrise || _fmt(tApp.sunriseH));
+    _set("hm-app-sunset",  tApp.sunset  || _fmt(tApp.sunsetH));
+    _set("hm-app-bm",      _fmt(bmApp));
+    _set("hm-app-sk",      _fmt(skApp));
+  }
+  if (tCel) {
+    const bmCel = tCel.sunriseH - 96/60;
+    const skCel = tCel.sunsetH - 24/60;
+    _set("hm-cel-sunrise", tCel.sunrise || _fmt(tCel.sunriseH));
+    _set("hm-cel-sunset",  tCel.sunset  || _fmt(tCel.sunsetH));
+    _set("hm-cel-bm",      _fmt(bmCel));
+    _set("hm-cel-sk",      _fmt(skCel));
+  }
+}
+
+// ── setHKLangDirect — directly set HK language to 'hi' or 'bn', used by lower Language buttons ──
+function setHKLangDirect(lang) {
+  if (!App || !App.S) return;
+  if (App.S.hkLang === lang) return; // already selected, no-op
+  App.S.hkLang = lang;
+  // Sync the toggle element if it exists
+  const tgH = document.getElementById("tgHkLang");
+  if (tgH) lang === "bn" ? tgH.classList.add("on") : tgH.classList.remove("on");
+  // Sync label
+  const lblH = document.getElementById("hkLangLabel");
+  if (lblH) lblH.textContent = lang === "bn" ? "Bangla" : "Hindi";
+  // Update HK label in Jap page dropdown
+  const naamHKLbl = document.getElementById("naamHKLabel");
+  if (naamHKLbl) naamHKLbl.textContent = lang === "bn" ? "হরে কৃষ্ণ মহামন্ত্র" : "हरे कृष्ण महामंत्र";
+  applyHKLangLabels(lang);
+  // Update hkPersist if visible
+  const hkEl = document.getElementById("hkPersist");
+  if (hkEl && hkEl.classList.contains("hk-visible")) {
+    const newText = lang === "bn" ? HK_TEXT_BN : HK_TEXT;
+    hkEl.innerHTML = newText.split("\n").map(l => "<div>" + l + "</div>").join("");
+  }
+  if (App.S.japMode === "hk") switchJapMode("hk");
+  // Update active state on both language buttons
+  _applyHKLangBtnStyles();
+  App.save();
+  fbDebouncedPush();
+  toast(lang === "bn" ? "মহামন্ত্র · Bangla" : "महामंत्र · Hindi");
+}
+
+// ── _applyHKLangBtnStyles — highlight active language button in the lower selector ──
+function _applyHKLangBtnStyles() {
+  const lang = (App.S && App.S.hkLang) || "hi";
+  const hiBtn = document.getElementById("hkLangBtnHiSq");
+  const bnBtn = document.getElementById("hkLangBtnBnSq");
+  if (hiBtn) {
+    hiBtn.style.border    = lang === "hi" ? "2px solid rgba(255,215,0,0.7)" : "1.5px solid rgba(255,215,0,0.3)";
+    hiBtn.style.background = lang === "hi" ? "rgba(255,215,0,0.14)" : "rgba(255,215,0,0.06)";
+    hiBtn.style.boxShadow  = lang === "hi" ? "0 0 10px rgba(255,215,0,0.2)" : "none";
+  }
+  if (bnBtn) {
+    bnBtn.style.border    = lang === "bn" ? "2px solid rgba(109,184,255,0.7)" : "1.5px solid rgba(109,184,255,0.25)";
+    bnBtn.style.background = lang === "bn" ? "rgba(109,184,255,0.14)" : "rgba(109,184,255,0.05)";
+    bnBtn.style.boxShadow  = lang === "bn" ? "0 0 10px rgba(109,184,255,0.2)" : "none";
+  }
+}
+
 // ── setHorizonMode — called directly by index.html pill buttons ──
 // index.html uses onclick="setHorizonMode('apparent')" and onclick="setHorizonMode('celestial')"
 function setHorizonMode(mode) {
@@ -7630,6 +7735,8 @@ function setHorizonMode(mode) {
 
 // ── _updateCfgTimesPreview — populates the live Sacred Times preview in Settings ──
 function _updateCfgTimesPreview() {
+  // Also refresh the times shown inside each Horizon Mode pill button
+  if (typeof _updateHorizonButtonTimes === "function") _updateHorizonButtonTimes();
   const lat = App.S && App.S.lastLat;
   const lng = App.S && App.S.lastLng;
   if (!lat || !lng) {

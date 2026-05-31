@@ -12757,14 +12757,13 @@ function _computeParanaWindow(ek, lat, lng, fastingDate) {
     const windowStart = srData.sunriseH;
 
     // RECOMMENDED END:
-    //   Gaudiya/ISKCON mode → sunrise + 3/8 of celestial daytime (3 muhurtas of 8-part day)
-    //     Verified: celestial day 06:01–18:01 = 12h, 3/8 × 12h = 4.5h → 06:01 + 4:30 = 10:31 ✓
-    //   Standard mode → sunrise + 1/5 of apparent daytime (scriptural 1/5th rule)
-    // sunriseH and sunsetH are already mode-aware from calcSunTimes
-    const modeDayLen = srData.sunsetH - srData.sunriseH;
+    //   Gaudiya/ISKCON mode → windowStart + 3/8 of mode-aware daytime
+    //   Standard mode      → windowStart + 1/5 of mode-aware daytime
+    //   Both use the same mode-aware daytime (Earthy Sky or Celestial per horizonMode).
+    //   Only the fraction differs: Gaudiya = 3/8 (3 of 8 muhurtas), Standard = 1/5.
     const isGaudiya = !!(typeof App !== "undefined" && App.S && App.S.gaudiyaMode);
+    const modeDayLen = srData.sunsetH - srData.sunriseH; // mode-aware daytime
     const recommendedEnd = windowStart + modeDayLen * (isGaudiya ? 3/8 : 1/5);
-
     // HARD DEADLINE = Dvadashi tithi end on Paran day (binary search)
     // Ekadashi ends at endDeg (120° shukla / 300° krishna), Dvadashi ends 12° later
     let hardDeadline = null;

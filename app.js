@@ -72,7 +72,7 @@ const App = {
     activityLog: [],
     sadhanaStart: "",
     customEkadashi: [],
-    ekParampara: "smarta",
+    ekParampara: null,   // null = never chosen; "smarta" / "vaishnava" once user picks
     historyHK: {},
     timerHistoryHK: {},
     dtHK: 0,
@@ -82,8 +82,8 @@ const App = {
     nameJapDeductHK: 0,
     gaudiyaMode: false,
     hkLang: "hi",
-    horizonMode: "apparent",  // "apparent" = 90.833° (earthy sky), "celestial" = 90.0° (ISKCON/true)
-    ekTithiEngine: "app",     // "app" = Swiss Ephemeris WASM → Meeus | "panchang" = Prokerala API → Meeus
+    horizonMode: null,     // null = never chosen; "apparent" / "celestial" once user picks
+    ekTithiEngine: null,   // null = never chosen; "app" / "panchang" once user picks
   },
   lmcRV: 0,
   lmcHK: 0,
@@ -223,8 +223,8 @@ const App = {
       activityLog: this.S.activityLog || [],
       sadhanaStart: this.S.sadhanaStart || "",
       customEkadashi: this.S.customEkadashi || [],
-      ekParampara: this.S.ekParampara || "smarta",
-      ekTithiEngine: this.S.ekTithiEngine || "app",
+      ekParampara: this.S.ekParampara ?? null,
+      ekTithiEngine: this.S.ekTithiEngine ?? null,
       historyHK: this.S.historyHK || {},
       timerHistoryHK: this.S.timerHistoryHK || {},
       dtHK: this.S.dtHK || 0,
@@ -234,7 +234,7 @@ const App = {
       nameJapDeductHK: this.S.nameJapDeductHK || 0,
       gaudiyaMode: this.S.gaudiyaMode || false,
       hkLang: this.S.hkLang || "hi",
-      horizonMode: this.S.horizonMode || "apparent",
+      horizonMode: this.S.horizonMode ?? null,
       lastLat: this.S.lastLat ?? null,
       lastLng: this.S.lastLng ?? null,
     });
@@ -1879,16 +1879,19 @@ function svm() {
 }
 // ── Horizon Mode UI helper — syncs toggle + label + pill selectors to App.S.horizonMode ──
 function _applyHorizonToggleUI() {
-  const isCelestial = App.S && App.S.horizonMode === "celestial";
+  const mode = App.S && App.S.horizonMode;  // null = never chosen
+  const isCelestial = mode === "celestial";
+  const isApparent  = mode === "apparent";
   const tg = document.getElementById("tgHorizonMode");
   if (tg) isCelestial ? tg.classList.add("on") : tg.classList.remove("on");
   const lbl = document.getElementById("horizonModeLabel");
-  if (lbl) lbl.textContent = isCelestial ? "Celestial" : "Earth's Sky";
+  if (lbl) lbl.textContent = isCelestial ? "Celestial" : (isApparent ? "Earth's Sky" : "");
   const desc = document.getElementById("horizonModeDesc");
   if (desc) desc.textContent = "";
   const pillApparent = document.getElementById("horizonPillApparent");
   const pillCelestial = document.getElementById("horizonPillCelestial");
-  if (pillApparent) pillApparent.classList.toggle("active", !isCelestial);
+  // Only mark active when user has explicitly chosen; null = no selection
+  if (pillApparent)  pillApparent.classList.toggle("active", isApparent);
   if (pillCelestial) pillCelestial.classList.toggle("active", isCelestial);
   // Horizon Mode section is ONLY active when GPS Location toggle is ON.
   // When GPS is OFF: section is hidden/disabled and pills are non-interactive.
@@ -3831,17 +3834,16 @@ function exportAllData() {
     nameJapDeductRV: App.S.nameJapDeductRV || 0,
     malaLogRV: App.S.malaLogRV || [],
     customEkadashi: App.S.customEkadashi || [],
-    ekParampara: App.S.ekParampara || "smarta",
+    ekParampara: App.S.ekParampara ?? null,
     historyHK: App.S.historyHK || {},
     timerHistoryHK: App.S.timerHistoryHK || {},
     dtHK: App.S.dtHK || 0,
     nameJapDeductHK: App.S.nameJapDeductHK || 0,
     malaLogHK: App.S.malaLogHK || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
-    horizonMode: App.S.horizonMode || "apparent",
+    horizonMode: App.S.horizonMode ?? null,
   };
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
   a.href = url;
   a.download = "radha-naam-jap-backup-" + App.getTk() + ".json";
   document.body.appendChild(a);
@@ -4947,7 +4949,7 @@ async function fbPushFull() {
     brahmacharya_start_date: App.S.brahmacharya_start_date || "",
     activityLog: App.S.activityLog || [],
     customEkadashi: App.S.customEkadashi || [],
-    ekParampara: App.S.ekParampara || "smarta",
+    ekParampara: App.S.ekParampara ?? null,
     sadhanaStart: App.S.sadhanaStart || "",
     historyHK: App.S.historyHK || {},
     timerHistoryHK: App.S.timerHistoryHK || {},
@@ -4955,7 +4957,7 @@ async function fbPushFull() {
     nameJapDeductHK: App.S.nameJapDeductHK || 0,
     malaLogHK: App.S.malaLogHK || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
-    horizonMode: App.S.horizonMode || "apparent",
+    horizonMode: App.S.horizonMode ?? null,
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId,
   };
@@ -5076,7 +5078,7 @@ function fbApplyRemote(d) {
       : document.body.classList.remove("gaudiya-mode");
   }
   if (d.horizonMode !== undefined) {
-    App.S.horizonMode = d.horizonMode || "apparent";
+    App.S.horizonMode = d.horizonMode ?? null;
     _applyHorizonToggleUI();
   }
   if ("malaLogHK" in d) {
@@ -5092,8 +5094,8 @@ function fbApplyRemote(d) {
   // ── Ekadashi data — critical for multi-device sync ──
   if ("customEkadashi" in d)
     App.S.customEkadashi = JSON.parse(JSON.stringify(d.customEkadashi || []));
-  if ("ekParampara" in d) App.S.ekParampara = d.ekParampara || "smarta";
-  if ("ekTithiEngine" in d) App.S.ekTithiEngine = d.ekTithiEngine || "app";
+  if ("ekParampara" in d) App.S.ekParampara = d.ekParampara ?? null;
+  if ("ekTithiEngine" in d) App.S.ekTithiEngine = d.ekTithiEngine ?? null;
   if (d.sadhanaStart) {
     App.S.sadhanaStart = d.sadhanaStart;
     localStorage.setItem("rjap_sadhana_start", d.sadhanaStart);
@@ -7563,7 +7565,7 @@ function saveEkTithiEngine(val) {
 }
 
 function renderEkTithiEngine() {
-  const e = App.S.ekTithiEngine || "app";
+  const e = App.S.ekTithiEngine;  // null = never chosen; no default
   const appBtn = document.getElementById("ekEngineApp");
   const panBtn = document.getElementById("ekEnginePanchang");
   if (appBtn) appBtn.classList.toggle("active", e === "app");
@@ -7919,14 +7921,14 @@ function _updateCfgTimesPreview() {
 }
 
 function renderEkParampara() {
-  const p = App.S.ekParampara || "smarta";
+  const p = App.S.ekParampara;  // null = never chosen; no default
   const smBtn = document.getElementById("ekParSmarta");
   const vaBtn = document.getElementById("ekParVaishnav");
   const note = document.getElementById("ekParamparaNote");
   // Use CSS classes only — inline style.cssText wipes base CSS button styles
   if (smBtn)  smBtn.classList.toggle("active", p === "smarta");
   if (vaBtn)  vaBtn.classList.toggle("active", p === "vaishnava");
-  if (note)   note.innerHTML = EK_NOTES[p] || "";
+  if (note)   note.innerHTML = (p && EK_NOTES[p]) ? EK_NOTES[p] : "";
 }
 
 // ── Custom Ekadashi Date Management ──

@@ -6906,15 +6906,19 @@ function _findNextPurnima(fromDate) {
 }
 
 // Returns Purnimanta lunar monthIdx (0=Chaitra … 11=Phalguna) for the Ekadashi's lunar month.
-// Uses _lunarMonthIdx (panchangData.js) which already handles the Purnimanta shift for
-// Krishna Paksha. This is the correct basis for _EK_NAMES_SHUKLA / _EK_NAMES_KRISHNA lookups.
-function _getAdjustedMonthIndex(ekDate, paksha) {
-  // _sunMoonLongitudes is defined in panchangData.js
-  if (typeof _sunMoonLongitudes === "function") {
-    const lon = _sunMoonLongitudes(ekDate);
-    return _lunarMonthIdx(lon.sunSid, paksha || "shukla");
-  }
-  // Fallback: use next-Purnima Gregorian month (less accurate, kept for safety)
+// Method: find the next Full Moon (Purnima) after the Ekadashi date, then map its Gregorian
+// month to the Purnimanta month index. This is correct because in Purnimanta the month is
+// named by the Purnima that ENDS it — so whichever Purnima comes next after the Ekadashi
+// determines which month it belongs to. Skips Adhik Maas Purnimas (those are handled
+// separately at the call site via _getAdhikMaasWindow).
+//
+// NOTE: The previously used primary path — _lunarMonthIdx(sunSid at ekadashi date) — was
+// incorrect. The sidereal sun sign on the Ekadashi day does not reliably determine the
+// Purnimanta month (the sun can still be in the previous sign even though the Purnima has
+// already moved to the next month). Using the next Purnima's Gregorian month is the correct
+// and simple equivalent, verified against all 2026 ISKCON canonical Ekadashi dates.
+function _getAdjustedMonthIndex(ekDate /*, paksha unused — kept for call-site compat */) {
+  // Walk forward from ekDate to the next non-Adhik Purnima
   let searchFrom = ekDate;
   let purnima = _findNextPurnima(searchFrom);
   for (let i = 0; i < 3; i++) {

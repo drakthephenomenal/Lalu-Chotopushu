@@ -10580,13 +10580,13 @@ function _svbShowPicker() {
   var oldPicker = document.getElementById('svb-picker');
   if (oldPicker) oldPicker.remove();
 
-  // Build picker
+  // Build picker — 2-column layout (9 left, 8 right)
   var picker = document.createElement('div');
   picker.id = 'svb-picker';
   picker.style.cssText = [
     'position:absolute;inset:0;overflow-y:auto;',
     'display:flex;flex-direction:column;align-items:center;',
-    'padding:60px 16px 80px;gap:10px;',
+    'padding:60px 12px 80px;',
     '-webkit-overflow-scrolling:touch;'
   ].join('');
 
@@ -10594,28 +10594,40 @@ function _svbShowPicker() {
   subtitle.style.cssText = [
     'font-family:"Hind Siliguri",serif;font-size:12px;',
     'color:rgba(255,215,0,0.70);letter-spacing:2px;',
-    'text-transform:uppercase;margin-bottom:8px;text-align:center;'
+    'text-transform:uppercase;margin-bottom:12px;text-align:center;'
   ].join('');
   subtitle.textContent = 'বিভাগ নির্বাচন করুন';
   picker.appendChild(subtitle);
 
+  // Two-column grid wrapper
+  var grid = document.createElement('div');
+  grid.style.cssText = [
+    'display:grid;grid-template-columns:1fr 1fr;',
+    'grid-template-rows:repeat(9,auto);',
+    'grid-auto-flow:column;',
+    'gap:8px;width:100%;max-width:540px;'
+  ].join('');
+
+  var btnStyle = [
+    'background:rgba(255,215,0,0.07);',
+    'border:1px solid rgba(255,215,0,0.22);',
+    'border-radius:11px;padding:11px 10px;',
+    'color:#ffd700;font-family:"Hind Siliguri",serif;',
+    'font-size:13px;text-align:left;cursor:pointer;',
+    'line-height:1.35;transition:background 0.15s;',
+    'display:flex;gap:7px;align-items:flex-start;'
+  ].join('');
+
   _svbSections.forEach(function(sec, idx) {
     var btn = document.createElement('button');
-    btn.style.cssText = [
-      'width:100%;max-width:380px;',
-      'background:rgba(255,215,0,0.07);',
-      'border:1px solid rgba(255,215,0,0.22);',
-      'border-radius:12px;padding:13px 16px;',
-      'color:#ffd700;font-family:"Hind Siliguri",serif;',
-      'font-size:15px;text-align:left;cursor:pointer;',
-      'line-height:1.4;transition:background 0.15s;display:flex;gap:10px;align-items:center;'
-    ].join('');
-    var numSpan = '<span style="opacity:0.45;font-size:13px;min-width:22px;">' + (idx + 1) + '</span>';
+    btn.style.cssText = btnStyle;
+    var numSpan = '<span style="opacity:0.40;font-size:12px;min-width:18px;flex-shrink:0;">' + (idx + 1) + '</span>';
     var nameText = sec.title.replace(/^[০-৯]+\.\s*/, '');
     btn.innerHTML = numSpan + escHtml(nameText);
     btn.onclick = function() { _svbOpenSection(idx); };
-    picker.appendChild(btn);
+    grid.appendChild(btn);
   });
+  picker.appendChild(grid);
 
   var lmd = document.querySelector('.lmd');
   if (lmd) lmd.appendChild(picker);
@@ -13433,13 +13445,11 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
       '<button id="lyr-fs-pause" style="display:none" title="Pause/Resume">⏸</button>' +
       '<button id="lyr-fs-down" title="Smaller text" aria-label="Smaller text">−</button>' +
       '<span id="lyr-fs-label">—</span>' +
-      '<button id="lyr-fs-up"   title="Larger text"  aria-label="Larger text">+</button>' +
-      '<button id="lyr-fs-auto" style="display:none" title="Reset size">↺</button>';
+      '<button id="lyr-fs-up"   title="Larger text"  aria-label="Larger text">+</button>';
     modal.appendChild(wrap);
 
     var down = document.getElementById("lyr-fs-down");
     var up = document.getElementById("lyr-fs-up");
-    var auto = document.getElementById("lyr-fs-auto");
     var pause = document.getElementById("lyr-fs-pause");
 
     function stepBy(delta) {
@@ -13453,7 +13463,6 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
       savePref();
       var m = document.querySelector(".lmo");
       if (m) applyStep(_manualStep, m);
-      refreshAutoBtn();
     }
 
     bindRepeat(down, function () {
@@ -13461,14 +13470,6 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
     });
     bindRepeat(up, function () {
       stepBy(1);
-    });
-
-    auto.addEventListener("click", function (e) {
-      e.stopPropagation();
-      _manualStep = null;
-      savePref();
-      refreshAutoBtn();
-      fit();
     });
 
     pause.addEventListener("click", function (e) {
@@ -13507,10 +13508,6 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
   function updateLabel(t) {
     var el = document.getElementById("lyr-fs-label");
     if (el) el.textContent = t;
-  }
-  function refreshAutoBtn() {
-    var el = document.getElementById("lyr-fs-auto");
-    if (el) el.style.display = _manualStep !== null ? "inline-block" : "none";
   }
   function syncPauseBtn() {
     var btn = document.getElementById("lyr-fs-pause");
@@ -13670,7 +13667,7 @@ function _renderAnnualEkList(results, year, listEl, statusEl) {
         if (inner.scrollTop > max) inner.scrollTop = max;
       }, 50);
     };
-    ["lyr-fs-up", "lyr-fs-down", "lyr-fs-auto"].forEach(function (id) {
+    ["lyr-fs-up", "lyr-fs-down"].forEach(function (id) {
       var b = document.getElementById(id);
       if (b) b.addEventListener("click", clampScrollSoon);
     });

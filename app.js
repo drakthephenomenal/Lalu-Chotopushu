@@ -6972,6 +6972,7 @@ const _EK_NAMES_KRISHNA = [
 // defined in panchangData.js (loaded before app.js)
 
 let _panchangFetching = false;
+let _fetchGeneration = 0; // incremented on every new fetch; stale runs check this and abort early
 
 // ── Recalculate every saved Ekadashi — GPS toggle coords → horizonMode → parampara ──
 async function recalculateAllEkadashis() {
@@ -7030,7 +7031,9 @@ async function recalculateAllEkadashis() {
 }
 
 async function fetchPanchangEkadashis() {
-  if (_panchangFetching) return;
+  // Increment generation — any currently-running fetch will detect it is stale
+  // and bail out of its loop, so we never block a new engine-switch fetch.
+  const myGen = ++_fetchGeneration;
   _panchangFetching = true;
   const btn = document.getElementById("panchangFetchBtn");
   const status = document.getElementById("panchangStatus");
@@ -7104,6 +7107,8 @@ async function fetchPanchangEkadashis() {
       let prevTithi = null;
 
       for (let d = 0; d < scanDays; d++) {
+        // If the user switched engines while we were scanning, abort immediately.
+        if (_fetchGeneration !== myGen) { _panchangFetching = false; return; }
         try {
           const pd = await getPanchangData(lat, lng, scanDate);
           if (!pd) { scanDate.setDate(scanDate.getDate() + 1); continue; }
@@ -7358,6 +7363,10 @@ async function fetchPanchangEkadashis() {
       }
 
       App.S.customEkadashi.sort((a, b) => (_ekDate(a) < _ekDate(b) ? -1 : 1));
+
+      // If the user switched engines while we were scanning, discard these results.
+      if (_fetchGeneration !== myGen) { _panchangFetching = false; return; }
+
       _updateCfgTimesPreview();
       App.save();
       fbDebouncedPush();
@@ -7478,6 +7487,10 @@ async function fetchPanchangEkadashis() {
     }
 
     App.S.customEkadashi.sort((a, b) => (_ekDate(a) < _ekDate(b) ? -1 : 1));
+
+    // If the user switched engines while we were computing, discard these results.
+    if (_fetchGeneration !== myGen) { _panchangFetching = false; return; }
+
     // ── LAYER 2 + 3: Horizon Mode + Parampara ──────────────────────────────────
     // _resyncEkOccasions reads App.S.horizonMode (Earthy Sky / Celestial) and
     // App.S.ekParampara (Smarta / Vaishnava) — both applied to every fasting date.
@@ -7611,11 +7624,11 @@ function saveEkTithiEngine(val) {
   toast(val === "app"
     ? "🔭 App Engine set — fetching…"
     : "🗓️ Panchang Engine set — fetching…");
-  // Auto-trigger GPS fetch so the list updates immediately
+  // Auto-trigger fetch so the list updates immediately.
+  // The generation counter inside fetchPanchangEkadashis cancels any in-flight
+  // fetch from the previous engine, so no setTimeout delay is needed.
   if (App.S.lastLat && App.S.lastLng) {
-    setTimeout(() => {
-      if (typeof fetchPanchangEkadashis === "function") fetchPanchangEkadashis();
-    }, 300);
+    if (typeof fetchPanchangEkadashis === "function") fetchPanchangEkadashis();
   }
 }
 

@@ -1903,7 +1903,6 @@ function _applyHorizonToggleUI() {
   if (pillCelestial) pillCelestial.disabled = !gpsOn;
   const tgHorizon = document.getElementById("tgHorizonMode");
   if (tgHorizon) tgHorizon.style.pointerEvents = gpsOn ? "" : "none";
-  if (gpsOn && typeof _updateHorizonPillTimes === "function") _updateHorizonPillTimes();
 }
 
 function tgs(k) {
@@ -6874,9 +6873,9 @@ const _EK_NAMES_SHUKLA = [
   "Nirjala",          // 2 = Jyeshtha
   "Devshayani",       // 3 = Ashadha
   "Shravana Putrada", // 4 = Shravana
-  "Parivartini",      // 5 = Bhadrapada
-  "Pashankusha",      // 6 = Ashwin
-  "Devutthan",        // 7 = Kartik
+  "Parsva",           // 5 = Bhadrapada
+  "Papankusha",       // 6 = Ashwin
+  "Devutthana",       // 7 = Kartik
   "Mokshada",         // 8 = Margashirsha
   "Pausha Putrada",   // 9 = Pausha
   "Jaya",             // 10 = Magha
@@ -6884,7 +6883,7 @@ const _EK_NAMES_SHUKLA = [
 ];
 // Krishna Paksha (Dark Fortnight) Ekadashis — indexed by Purnimanta lunar monthIdx
 const _EK_NAMES_KRISHNA = [
-  "Papmochini",  // 0 = Chaitra
+  "Papamochani", // 0 = Chaitra
   "Varuthini",   // 1 = Vaishakha
   "Apara",       // 2 = Jyeshtha
   "Yogini",      // 3 = Ashadha
@@ -7478,19 +7477,6 @@ const EK_NOTES = {
     '🌸 <b>Vaishnava/Gaudiya rule (Arunodaya Viddha):</b> If Dashami tithi overlaps even one second into the 96-min Arunodaya window before sunrise, that day is "Viddha" (contaminated). Fast is moved to the next day (Mahadvadashi), even though Dvadashi tithi is running.',
 };
 
-// ── Auto-fetch: triggers fetchPanchangEkadashis when both Parampara + Engine are chosen ──
-function _maybeAutoFetch(reason) {
-  const lat = App.S && App.S.lastLat;
-  const lng = App.S && App.S.lastLng;
-  if (!lat || !lng) return;
-  if (!App.S.ekParampara || !App.S.ekTithiEngine) return;
-  const now = Date.now();
-  if (App._lastAutoFetch && (now - App._lastAutoFetch) < 3000) return;
-  App._lastAutoFetch = now;
-  toast("🔄 Auto-fetching Ekadashis for new " + reason + "…");
-  setTimeout(() => fetchPanchangEkadashis(), 300);
-}
-
 function saveEkTithiEngine(val) {
   // Only in standard (non-Gaudiya) mode
   if (App.S && App.S.gaudiyaMode) {
@@ -7514,7 +7500,9 @@ function saveEkTithiEngine(val) {
   renderEkadashiList();
   _updateCfgTimesPreview();
   if (typeof renderCal === "function") renderCal();
-  _maybeAutoFetch("Tithi Engine");
+  toast(val === "app"
+    ? "🔭 App Engine set — re-fetch to update list"
+    : "🗓️ Panchang Engine set — re-fetch to update list");
 }
 
 function renderEkTithiEngine() {
@@ -7538,8 +7526,10 @@ function saveEkParampara(val) {
   renderEkParampara();
   renderEkadashiList();
   if (typeof renderCal === "function") renderCal();
-  _updateCfgTimesPreview();
-  _maybeAutoFetch("Parampara");
+  _updateCfgTimesPreview(); // refresh Next 2 Ekadashis preview with new parampara
+  toast(
+    val === "smarta" ? "☀️ Smarta Parampara set" : "🌸 Vaishnava Parampara set",
+  );
 }
 
 // ── Resync all stored Ekadashi fasting occasions (horizonMode + parampara aware) ──
@@ -7638,48 +7628,6 @@ function setHorizonMode(mode) {
   toast(_hName + " — all timings updated");
 }
 
-// ── _updateHorizonPillTimes — fills both horizon pill time panels for side-by-side comparison ──
-function _updateHorizonPillTimes() {
-  const lat = App.S && App.S.lastLat;
-  const lng = App.S && App.S.lastLng;
-  const apWrap  = document.getElementById("hpTimes-apparent");
-  const celWrap = document.getElementById("hpTimes-celestial");
-  if (!lat || !lng) {
-    if (apWrap)  apWrap.style.display  = "none";
-    if (celWrap) celWrap.style.display = "none";
-    return;
-  }
-  const now = new Date();
-  function _fmt(h) {
-    h = ((h % 24) + 24) % 24;
-    let hh = Math.floor(h), mm = Math.round((h - hh) * 60);
-    if (mm >= 60) { hh++; mm = 0; }
-    const ap = hh % 24 >= 12 ? "PM" : "AM";
-    return (hh % 12 || 12) + ":" + String(mm).padStart(2, "0") + " " + ap;
-  }
-  function _calcForMode(mode) {
-    const prev = App.S.horizonMode;
-    App.S.horizonMode = mode;
-    const t = calcSunTimes(lat, lng, now);
-    App.S.horizonMode = prev;
-    if (!t) return null;
-    return { bm: _fmt(t.sunriseH - 96/60), sr: t.sunrise, sk: _fmt(t.sunsetH - 24/60), ss: t.sunset };
-  }
-  const ap  = _calcForMode("apparent");
-  const cel = _calcForMode("celestial");
-  function _set(id, val) { const el = document.getElementById(id); if (el) el.textContent = val || "—"; }
-  if (ap && apWrap) {
-    apWrap.style.display = "block";
-    _set("hp-ap-bm", ap.bm); _set("hp-ap-sr", ap.sr);
-    _set("hp-ap-sk", ap.sk); _set("hp-ap-ss", ap.ss);
-  }
-  if (cel && celWrap) {
-    celWrap.style.display = "block";
-    _set("hp-cel-bm", cel.bm); _set("hp-cel-sr", cel.sr);
-    _set("hp-cel-sk", cel.sk); _set("hp-cel-ss", cel.ss);
-  }
-}
-
 // ── _updateCfgTimesPreview — populates the live Sacred Times preview in Settings ──
 function _updateCfgTimesPreview() {
   const lat = App.S && App.S.lastLat;
@@ -7711,7 +7659,6 @@ function _updateCfgTimesPreview() {
   set("cfg-sk-start",  _fmt(skStart));
   set("cfg-sunset",    times.sunset);
   set("cfg-sk-end",    _fmt(skEnd > 24 ? skEnd - 24 : skEnd));
-  _updateHorizonPillTimes();
   // Next 2 Ekadashis + Paran preview — mode-aware + parampara-aware
   const cfgEk = document.getElementById("cfg-next-ekadashi");
   if (cfgEk) {

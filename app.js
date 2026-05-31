@@ -10499,9 +10499,207 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["nkc", "gms", "rsn"];
+const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb"];
 // ── IDs where prose sections need vertical-scroll mode
 const PROSE_IDS = ["nkc"];
+
+// ── SVB (Shri Hit Sevak Vani) section picker ─────────────────────────────────
+let _svbSections = [];      // [{title, content}]
+let _svbInSectionView = false;  // true when verse reader is showing a section
+
+function _svbParseSections(ly) {
+  var lines = ly.split('\n');
+  var sections = [];
+  var currentTitle = null;
+  var currentLines = [];
+
+  function _isSvbTitle(line) {
+    // Bengali-numeral + dot heading: ১. শ্রীহিত যস বিলাস
+    if (/^[০-৯]+\./.test(line) && line.length < 100) return true;
+    // ফলশ্রুতি section (no numeral): শ্রী সেবক বাণী-ফল স্তুতি
+    if (/ফল\s*(স্তুতি|শ্রুতি)/.test(line) && line.length < 100) return true;
+    return false;
+  }
+
+  function _flush() {
+    if (currentTitle && currentLines.length > 0) {
+      sections.push({ title: currentTitle, content: currentLines.join('\n').trim() });
+    }
+    currentTitle = null;
+    currentLines = [];
+  }
+
+  for (var i = 0; i < lines.length; i++) {
+    var raw = lines[i];
+    var line = raw.trim();
+
+    // Section closing marker: ! … !
+    if (line.startsWith('!') && line.endsWith('!')) {
+      _flush();
+      continue;
+    }
+
+    // Section title detected
+    if (_isSvbTitle(line)) {
+      // If we already have a section open, flush it first (handles sections 1–4
+      // which have no ! closing marker between them)
+      if (currentTitle) _flush();
+      currentTitle = line;
+      continue;
+    }
+
+    if (currentTitle) {
+      currentLines.push(raw);
+    }
+  }
+  // Flush last section if file ends without a ! marker
+  _flush();
+  return sections;
+}
+
+function _svbShowPicker() {
+  var ly = getEffectiveLyrics('svb');
+  _svbSections = _svbParseSections(ly);
+  _svbInSectionView = false;
+
+  var lmo = document.getElementById('lmo');
+  var lmTitle = document.getElementById('lmTitle');
+  if (lmTitle) lmTitle.textContent = 'শ্রী হিত সেবক বাণী';
+
+  // Hide verse-reader elements
+  var lmb = document.getElementById('lmb');
+  var lmNav = document.getElementById('lmNav');
+  if (lmb) lmb.style.display = 'none';
+  if (lmNav) lmNav.style.display = 'none';
+
+  // Remove translate wrap if present
+  var oldWrap = document.getElementById('lm-translate-wrap');
+  if (oldWrap) oldWrap.remove();
+
+  // Remove old picker if re-opening
+  var oldPicker = document.getElementById('svb-picker');
+  if (oldPicker) oldPicker.remove();
+
+  // Build picker
+  var picker = document.createElement('div');
+  picker.id = 'svb-picker';
+  picker.style.cssText = [
+    'position:absolute;inset:0;overflow-y:auto;',
+    'display:flex;flex-direction:column;align-items:center;',
+    'padding:60px 16px 80px;gap:10px;',
+    '-webkit-overflow-scrolling:touch;'
+  ].join('');
+
+  var subtitle = document.createElement('div');
+  subtitle.style.cssText = [
+    'font-family:"Hind Siliguri",serif;font-size:12px;',
+    'color:rgba(255,215,0,0.70);letter-spacing:2px;',
+    'text-transform:uppercase;margin-bottom:8px;text-align:center;'
+  ].join('');
+  subtitle.textContent = 'বিভাগ নির্বাচন করুন';
+  picker.appendChild(subtitle);
+
+  _svbSections.forEach(function(sec, idx) {
+    var btn = document.createElement('button');
+    btn.style.cssText = [
+      'width:100%;max-width:380px;',
+      'background:rgba(255,215,0,0.07);',
+      'border:1px solid rgba(255,215,0,0.22);',
+      'border-radius:12px;padding:13px 16px;',
+      'color:#ffd700;font-family:"Hind Siliguri",serif;',
+      'font-size:15px;text-align:left;cursor:pointer;',
+      'line-height:1.4;transition:background 0.15s;display:flex;gap:10px;align-items:center;'
+    ].join('');
+    var numSpan = '<span style="opacity:0.45;font-size:13px;min-width:22px;">' + (idx + 1) + '</span>';
+    var nameText = sec.title.replace(/^[০-৯]+\.\s*/, '');
+    btn.innerHTML = numSpan + escHtml(nameText);
+    btn.onclick = function() { _svbOpenSection(idx); };
+    picker.appendChild(btn);
+  });
+
+  var lmd = document.querySelector('.lmd');
+  if (lmd) lmd.appendChild(picker);
+
+  lmo.classList.add('show');
+}
+
+function _svbOpenSection(idx) {
+  var sec = _svbSections[idx];
+  if (!sec) return;
+
+  _svbInSectionView = true;
+
+  // Remove picker
+  var picker = document.getElementById('svb-picker');
+  if (picker) picker.remove();
+
+  // Show verse-reader elements
+  var lmb = document.getElementById('lmb');
+  var lmNav = document.getElementById('lmNav');
+  if (lmb) lmb.style.display = '';
+  if (lmNav) lmNav.style.display = '';
+
+  // Section title in header (strip Bengali number prefix)
+  var lmTitle = document.getElementById('lmTitle');
+  if (lmTitle) lmTitle.textContent = sec.title.replace(/^[০-৯]+\.\s*/, '');
+
+  // Add "← বিভাগ" back button if not already present
+  var existing = document.getElementById('svb-back-btn');
+  if (!existing) {
+    var backBtn = document.createElement('button');
+    backBtn.id = 'svb-back-btn';
+    backBtn.style.cssText = [
+      'position:absolute;top:max(env(safe-area-inset-top),10px);left:10px;',
+      'background:rgba(4,10,30,0.70);border:1px solid rgba(255,215,0,0.50);',
+      'border-radius:999px;padding:6px 12px;',
+      'color:#ffd700;font-size:12px;cursor:pointer;',
+      'display:flex;align-items:center;gap:5px;z-index:20;',
+      'font-family:"Hind Siliguri",sans-serif;'
+    ].join('');
+    backBtn.innerHTML = '&#8592; বিভাগ';
+    backBtn.onclick = function() {
+      _svbInSectionView = false;
+      var old = document.getElementById('svb-back-btn');
+      if (old) old.remove();
+      var lmb2 = document.getElementById('lmb');
+      var lmNav2 = document.getElementById('lmNav');
+      if (lmb2) lmb2.style.display = 'none';
+      if (lmNav2) lmNav2.style.display = 'none';
+      var oldWrap2 = document.getElementById('lm-translate-wrap');
+      if (oldWrap2) oldWrap2.remove();
+      _svbShowPicker();
+    };
+    var lmo = document.getElementById('lmo');
+    if (lmo) lmo.appendChild(backBtn);
+  }
+
+  // Parse and merge verses for this section
+  var allVerses = sec.content
+    .split(/\n{2,}/)
+    .map(function(b) { return b.trim(); })
+    .filter(function(b) { return b.length > 0; });
+
+  var mergedVerses = [];
+  for (var i = 0; i < allVerses.length; i++) {
+    var v = allVerses[i];
+    var linesOnly = v.split('\n').filter(function(l) { return l.trim().length > 0; });
+    var allArtha = linesOnly.length > 0 && linesOnly.every(function(l) {
+      return /^অর্থ\s*:/.test(l.trim());
+    });
+    if (allArtha && mergedVerses.length > 0) {
+      mergedVerses[mergedVerses.length - 1] += '\n\n' + v;
+    } else {
+      mergedVerses.push(v);
+    }
+  }
+
+  _verses = mergedVerses;
+  _verseIdx = 0;
+
+  _renderVerse(0, null);
+  _initSwipeHandler();
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ── showLyrics — watery card swipe reader ──
 let _verses = [],
@@ -10632,6 +10830,16 @@ function showLyrics(id) {
   _translationVisible = TRANSLATION_IDS.includes(id)
     ? _globalTranslationPref
     : false;
+
+  // ── SVB: show section picker instead of flat verse reader ──
+  if (id === "svb") {
+    var svbCard = document.querySelector(".lm-water-card");
+    if (svbCard) svbCard.setAttribute("data-theme", "radha");
+    var svbLmo = document.getElementById("lmo");
+    if (svbLmo) svbLmo.setAttribute("data-bg", "radha");
+    _svbShowPicker();
+    return;
+  }
 
   // Apply devotional theme to the card based on stotram deity
   (function () {
@@ -10996,10 +11204,18 @@ function closeLyrics() {
   _verseIdx = 0;
   _currentStotramId = "";
   _translationVisible = false;
+  _svbInSectionView = false;
+  _svbSections = [];
   var oldWrap = document.getElementById("lm-translate-wrap");
   if (oldWrap) oldWrap.remove();
+  var svbPicker = document.getElementById("svb-picker");
+  if (svbPicker) svbPicker.remove();
+  var svbBack = document.getElementById("svb-back-btn");
+  if (svbBack) svbBack.remove();
   var navBar = document.getElementById("lmNav");
   if (navBar) navBar.style.display = "";
+  var lmb = document.getElementById("lmb");
+  if (lmb) lmb.style.display = "";
 }
 
 // ═══════════════════════════════════════════════════════

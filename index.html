@@ -302,6 +302,17 @@
       </div>
     </div>
 
+    <!-- 28 Names Daily Progress Bar -->
+    <div id="n28ProgressWrap" style="padding:4px 4px 6px;display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:9px;color:rgba(189,147,249,0.6);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;">Daily Progress</span>
+        <span id="n28ProgressLabel" style="font-size:10px;color:#BD93F9;font-weight:700;">0 / 0 cycles</span>
+      </div>
+      <div style="height:6px;background:rgba(189,147,249,0.12);border-radius:10px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.4);">
+        <div id="n28ProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9));border-radius:10px;transition:width 0.5s ease;box-shadow:0 0 8px rgba(189,147,249,0.5);"></div>
+      </div>
+    </div>
+
     <!-- Tap area: Radha name at top, meaning, pause button -->
     <div class="n28tz" id="tz28" aria-label="Tap to chant 28 Names of Radha" role="button" tabindex="0" ontouchstart="App.h28(event)" onmousedown="App.h28(event)">
       <div class="mf" id="mf28" style="border-radius:22px;">
@@ -475,6 +486,72 @@
     <div class="bc-graph-scroll-wrap">
       <canvas id="bcGraph" class="bc-graph-canvas" width="300" height="360"></canvas>
     </div>
+  </div>
+
+  <!-- EKADASHI MANAGER -->
+  <div class="sc" style="background:rgba(18,8,40,0.6);border-color:rgba(155,89,182,0.35);">
+    <h3 style="color:#BD93F9;">📅 Ekadashi Manager</h3>
+
+    <!-- AUTO-FETCH (Primary) -->
+    <div style="background:rgba(0,0,0,0.35);border:1px solid rgba(46,204,113,0.25);border-radius:12px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:10px;color:rgba(46,204,113,0.8);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;font-weight:700;">✨ Auto-Fetch from GPS</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:12px;line-height:1.5;">Calculates Ekadashi tithi times astronomically for your exact location — 2 months back &amp; 6 months ahead. No manual entry needed. Respects your Parampara.</div>
+      <button id="panchangFetchBtn" onclick="fetchPanchangEkadashis()" style="display:block;width:100%;padding:13px;border-radius:10px;border:none;background:linear-gradient(135deg,rgba(46,204,113,0.75),rgba(22,160,133,0.7));color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 3px 14px rgba(46,204,113,0.2);margin-bottom:8px;">🌙 Auto-Fetch from GPS</button>
+      <button id="ekRefreshBtn" onclick="recalculateAllEkadashis()" style="display:block;width:100%;padding:11px;border-radius:10px;border:1px solid rgba(109,184,255,0.4);background:rgba(109,184,255,0.08);color:#6DB8FF;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:8px;">🔄 Recalculate All with Live GPS</button>
+      <div id="panchangStatus" style="font-size:11px;color:rgba(255,255,255,0.45);text-align:center;min-height:16px;"></div>
+    </div>
+
+
+    <!-- MANUAL ENTRY (Collapsible) -->
+    <div style="margin-bottom:14px;">
+      <button onclick="(function(){const m=document.getElementById('ekManualBox');m.style.display=m.style.display==='none'?'block':'none';})()" style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.25);border:1px solid rgba(155,89,182,0.2);border-radius:10px;padding:10px 14px;color:rgba(189,147,249,0.7);font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;width:100%;box-sizing:border-box;">
+        <span>＋</span><span>Manual Entry</span><span style="margin-left:auto;font-size:10px;opacity:0.5;">tap to expand</span>
+      </button>
+      <div id="ekManualBox" style="display:none;background:rgba(0,0,0,0.3);border:1px solid rgba(155,89,182,0.18);border-radius:0 0 12px 12px;padding:14px;margin-top:-2px;">
+        <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:10px;line-height:1.5;">Use this only to correct auto-fetched data or add a specific Ekadashi manually.</div>
+
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">Name</div>
+        <input type="text" id="ekNameIn" placeholder="e.g. Nirjala Ekadashi" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:10px;padding:10px 13px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;margin-bottom:12px;">
+
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase;">Paksha</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+          <label style="display:flex;align-items:center;gap:8px;background:rgba(241,196,15,0.08);border:1px solid rgba(241,196,15,0.3);border-radius:10px;padding:10px 12px;cursor:pointer;">
+            <input type="radio" name="ekPaksha" id="ekPakshaShukla" value="shukla" checked style="accent-color:#F1C40F;">
+            <span style="font-size:13px;color:#F1C40F;font-weight:600;">☀️ Shukla</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.3);border-radius:10px;padding:10px 12px;cursor:pointer;">
+            <input type="radio" name="ekPaksha" id="ekPakshaKrishna" value="krishna" style="accent-color:#BD93F9;">
+            <span style="font-size:13px;color:#BD93F9;font-weight:600;">🌙 Krishna</span>
+          </label>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+          <div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">Start Date</div>
+            <input type="date" id="ekStartDateIn" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:10px;padding:10px 8px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;">
+          </div>
+          <div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">Start Time</div>
+            <input type="time" id="ekStartTimeIn" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:10px;padding:10px 8px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+          <div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">End Date</div>
+            <input type="date" id="ekEndDateIn" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:10px;padding:10px 8px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;">
+          </div>
+          <div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">End Time</div>
+            <input type="time" id="ekEndTimeIn" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:10px;padding:10px 8px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;">
+          </div>
+        </div>
+        <button onclick="addEkadashiDate()" style="display:block;width:100%;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,rgba(155,89,182,0.75),rgba(90,50,190,0.65));color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 3px 14px rgba(155,89,182,0.3);">+ Add Ekadashi</button>
+      </div>
+    </div>
+
+    <!-- Saved list -->
+    <div style="font-size:10px;color:rgba(189,147,249,0.55);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600;">Saved Ekadashis</div>
+    <div id="ekadashiList"></div>
   </div>
 </div>
 
@@ -1065,39 +1142,82 @@
 
   <!-- TARGETS -->
   <div class="sc">
-    <h3>📿 Mala Size &amp; Targets</h3>
-    <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="msIn" min="1" placeholder="108"><span class="fu">per mala</span></div>
-    <div style="font-size:11px;color:var(--td);margin-bottom:10px">Default 108 beads per mala</div>
-    <button class="pb" onclick="svm()" style="margin-bottom:14px">Save Mala Size</button>
+    <h3>🎯 Jap Targets</h3>
 
+    <!-- ── Radha Naam Jap: Daily + Lifetime side-by-side ── -->
     <div class="non-gaudiya-setting">
-      <div style="font-size:10px;color:var(--td);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase">Daily Target</div>
-      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtIn" placeholder="Jap count / day" oninput="syncTargetJapToMala('dt')"><span class="fu">jap</span></div>
-      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtMalaIn" placeholder="Or: malas / day" oninput="syncTargetMalaToJap('dt')"><span class="fu" style="color:var(--gold)">malas</span></div>
-      <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="dtMala">0</span> malas per day</div>
-      <button class="pb" onclick="svt('d')" style="margin-bottom:14px">Save Daily Target</button>
+      <div style="font-size:9px;color:rgba(255,215,0,0.55);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">📿 Radha Naam Jap Targets</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <!-- Daily -->
+        <div style="background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));border:1.5px solid rgba(255,215,0,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(255,215,0,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
+          <div style="font-size:9px;color:rgba(255,215,0,0.7);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">Daily</div>
+          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dt')"><span class="fu" style="font-size:10px;min-width:26px;">jap</span></div>
+          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dt')"><span class="fu" style="color:var(--gold);font-size:10px;min-width:26px;">malas</span></div>
+          <div style="font-size:10px;color:var(--td);text-align:center;">= <span id="dtMala">0</span> malas/day</div>
+          <button class="pb" style="padding:10px 8px;font-size:12px;" onclick="svt('d')">Save Daily</button>
+        </div>
+        <!-- Lifetime -->
+        <div style="background:linear-gradient(160deg,rgba(255,152,0,0.09),rgba(10,8,25,0.85));border:1.5px solid rgba(255,152,0,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(255,152,0,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
+          <div style="font-size:9px;color:rgba(255,152,0,0.8);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">Lifetime</div>
+          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="ltIn" placeholder="Jap total" oninput="syncTargetJapToMala('lt')"><span class="fu" style="font-size:10px;min-width:26px;">jap</span></div>
+          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="ltMalaIn" placeholder="Malas total" oninput="syncTargetMalaToJap('lt')"><span class="fu" style="color:var(--gold);font-size:10px;min-width:26px;">malas</span></div>
+          <div style="display:flex;align-items:center;gap:4px;"><input type="number" step="0.5" min="0" class="fi" style="font-size:12px;padding:7px 8px;" id="ltCroreIn" placeholder="Crore" oninput="syncTargetCroreToJap()"><span class="fu" style="color:#ff9933;font-size:10px;font-weight:700;min-width:26px;">crore</span></div>
+          <div style="font-size:10px;color:var(--td);text-align:center;"><span id="ltMala">0</span>m · <span id="ltCroreDisp" style="color:#ff9933;font-weight:600;">0</span> cr</div>
+          <button class="pb" style="padding:10px 8px;font-size:12px;background:linear-gradient(135deg,rgba(255,152,0,0.5),rgba(200,90,0,0.35));box-shadow:0 0 16px rgba(255,152,0,0.25);" onclick="svt('l')">Save Lifetime</button>
+        </div>
+      </div>
     </div>
 
-    <div style="font-size:10px;color:var(--td);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase">Lifetime Target</div>
-    <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="ltIn" placeholder="Jap count lifetime" oninput="syncTargetJapToMala('lt')"><span class="fu">jap</span></div>
-    <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="ltMalaIn" placeholder="Or: malas lifetime" oninput="syncTargetMalaToJap('lt')"><span class="fu" style="color:var(--gold)">malas</span></div>
-    <div class="fr" style="margin-bottom:4px"><input type="number" step="0.5" min="0" class="fi" id="ltCroreIn" placeholder="Or: crore lifetime" oninput="syncTargetCroreToJap()"><span class="fu" style="color:#ff9933;font-weight:700">crore</span></div>
-    <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="ltMala">0</span> malas · <span id="ltCroreDisp" style="color:#ff9933;font-weight:600">0</span> crore</div>
-    <button class="pb" onclick="svt('l')">Save Lifetime Target</button>
-    <div class="non-gaudiya-setting" style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,215,0,0.15)">
-      <div style="font-size:11px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;font-weight:600">📿 राधावल्लभ श्री हरिवंश Targets</div>
-      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtRVIn" placeholder="Jap count / day" oninput="syncTargetJapToMala('dtRV')"><span class="fu">jap</span></div>
-      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtRVMalaIn" placeholder="Or: malas / day" oninput="syncTargetMalaToJap('dtRV')"><span class="fu" style="color:var(--gold)">malas</span></div>
-      <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="dtRVMala">0</span> malas per day</div>
-      <button class="pb" onclick="svtRV('d')" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(255,215,0,0.4),rgba(255,180,0,0.3))">Save RV Daily Target</button>
-      <!-- RV Lifetime Target removed — shared with राधा -->
+    <!-- ── RV Daily + 28 Names Daily side-by-side ── -->
+    <div class="non-gaudiya-setting" style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,215,0,0.12)">
+      <div style="font-size:9px;color:rgba(255,215,0,0.55);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">📿 Radha Vallabh Sri Harivangsa Targets</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <!-- RV Daily -->
+        <div style="background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));border:1.5px solid rgba(255,215,0,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(255,215,0,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
+          <div style="font-size:9px;color:rgba(255,215,0,0.7);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">Daily</div>
+          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtRVIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtRV')"><span class="fu" style="font-size:10px;min-width:26px;">jap</span></div>
+          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtRVMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtRV')"><span class="fu" style="color:var(--gold);font-size:10px;min-width:26px;">malas</span></div>
+          <div style="font-size:10px;color:var(--td);text-align:center;">= <span id="dtRVMala">0</span> malas/day</div>
+          <button class="pb" style="padding:10px 8px;font-size:12px;" onclick="svtRV('d')">Save Daily</button>
+        </div>
+        <!-- 28 Names Daily Target -->
+        <div style="background:linear-gradient(160deg,rgba(189,147,249,0.10),rgba(10,8,25,0.85));border:1.5px solid rgba(189,147,249,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(189,147,249,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
+          <div style="font-size:9px;color:rgba(189,147,249,0.8);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">⭐ 28 Names Daily</div>
+          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dt28CycleIn" placeholder="Cycles/day" min="1" oninput="sync28CycleTarget()"><span class="fu" style="color:#BD93F9;font-size:10px;min-width:30px;">cycles</span></div>
+          <div style="font-size:10px;color:var(--td);text-align:center;">= <span id="dt28JapDisp">0</span> japs/day</div>
+          <div style="font-size:9px;color:rgba(189,147,249,0.45);text-align:center;line-height:1.4;">1 cycle = 28 names</div>
+          <button class="pb" style="padding:10px 8px;font-size:12px;background:linear-gradient(135deg,rgba(189,147,249,0.45),rgba(120,60,200,0.35));color:#BD93F9;box-shadow:0 0 16px rgba(189,147,249,0.25);" onclick="svt28()">Save Daily</button>
+        </div>
+      </div>
     </div>
-    <div class="hk-only-block" style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(109,184,255,0.2)">
-      <div id="hkDailyTargetLabel" style="font-size:11px;color:#6DB8FF;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;font-weight:600">🪷 हरे कृष्ण महामंत्र Targets</div>
-      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtHKIn" placeholder="Jap count / day" oninput="syncTargetJapToMala('dtHK')"><span class="fu">jap</span></div>
-      <div class="fr" style="margin-bottom:4px"><input type="number" class="fi" id="dtHKMalaIn" placeholder="Or: malas / day" oninput="syncTargetMalaToJap('dtHK')"><span class="fu" style="color:#6DB8FF">malas</span></div>
-      <div style="font-size:11px;color:var(--td);margin-bottom:10px">= <span id="dtHKMala">0</span> malas per day</div>
-      <button class="pb" onclick="svtHK('d')" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(109,184,255,0.4),rgba(74,144,226,0.3));color:#6DB8FF">Save HK Daily Target</button>
+
+    <!-- ── HK Daily + Language side-by-side ── -->
+    <div class="hk-only-block" style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(109,184,255,0.15)">
+      <div id="hkDailyTargetLabel" style="font-size:9px;color:rgba(109,184,255,0.7);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">🪷 Hare Krishna Mahamantra Targets</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <!-- HK Daily -->
+        <div style="background:linear-gradient(160deg,rgba(109,184,255,0.09),rgba(10,8,25,0.85));border:1.5px solid rgba(109,184,255,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(109,184,255,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
+          <div style="font-size:9px;color:rgba(109,184,255,0.8);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">Daily</div>
+          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtHKIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtHK')"><span class="fu" style="font-size:10px;min-width:26px;">jap</span></div>
+          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtHKMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtHK')"><span class="fu" style="color:#6DB8FF;font-size:10px;min-width:26px;">malas</span></div>
+          <div style="font-size:10px;color:var(--td);text-align:center;">= <span id="dtHKMala">0</span> malas/day</div>
+          <button class="pb" style="padding:10px 8px;font-size:12px;background:linear-gradient(135deg,rgba(109,184,255,0.4),rgba(74,144,226,0.3));color:#6DB8FF;box-shadow:0 0 16px rgba(109,184,255,0.2);" onclick="svtHK('d')">Save Daily</button>
+        </div>
+        <!-- Mahamantra Language selector -->
+        <div style="background:linear-gradient(160deg,rgba(109,184,255,0.08),rgba(10,8,25,0.85));border:1.5px solid rgba(109,184,255,0.28);border-radius:16px;padding:12px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:0 4px 18px rgba(109,184,255,0.10),inset 0 1px 0 rgba(255,255,255,0.06);box-sizing:border-box;">
+          <div style="font-size:9px;color:rgba(109,184,255,0.7);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">Language</div>
+          <div onclick="if(App.S.hkLang!=='hi')tgs('hkLang')" id="hkLangBtnHiSq" style="width:100%;padding:9px 6px;border-radius:11px;text-align:center;cursor:pointer;border:1.5px solid rgba(255,215,0,0.3);background:rgba(255,215,0,0.06);transition:all 0.25s;box-sizing:border-box;">
+            <div style="font-size:17px;margin-bottom:3px;">🕉️</div>
+            <div style="font-size:13px;color:#FFD700;font-family:'Hind Siliguri',serif;font-weight:700;">हिन्दी</div>
+            <div style="font-size:9px;color:rgba(255,215,0,0.5);letter-spacing:1px;margin-top:2px;">HINDI</div>
+          </div>
+          <div onclick="if(App.S.hkLang!=='bn')tgs('hkLang')" id="hkLangBtnBnSq" style="width:100%;padding:9px 6px;border-radius:11px;text-align:center;cursor:pointer;border:1.5px solid rgba(109,184,255,0.25);background:rgba(109,184,255,0.05);transition:all 0.25s;box-sizing:border-box;">
+            <div style="font-size:17px;margin-bottom:3px;">🪷</div>
+            <div style="font-size:14px;color:#6DB8FF;font-family:'Hind Siliguri',serif;font-weight:700;">বাংলা</div>
+            <div style="font-size:9px;color:rgba(109,184,255,0.5);letter-spacing:1px;margin-top:2px;">BANGLA</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1241,72 +1361,6 @@
     <!-- Next Ekadashi + Parana preview — directly below Parampara -->
     <div id="cfg-next-ekadashi"></div>
 
-  </div>
-
-  <!-- EKADASHI MANAGER -->
-  <div class="sc" style="background:rgba(18,8,40,0.6);border-color:rgba(155,89,182,0.35);">
-    <h3 style="color:#BD93F9;">📅 Ekadashi Manager</h3>
-
-    <!-- AUTO-FETCH (Primary) -->
-    <div style="background:rgba(0,0,0,0.35);border:1px solid rgba(46,204,113,0.25);border-radius:12px;padding:14px;margin-bottom:14px;">
-      <div style="font-size:10px;color:rgba(46,204,113,0.8);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;font-weight:700;">✨ Auto-Fetch from GPS</div>
-      <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:12px;line-height:1.5;">Calculates Ekadashi tithi times astronomically for your exact location — 2 months back &amp; 6 months ahead. No manual entry needed. Respects your Parampara.</div>
-      <button id="panchangFetchBtn" onclick="fetchPanchangEkadashis()" style="display:block;width:100%;padding:13px;border-radius:10px;border:none;background:linear-gradient(135deg,rgba(46,204,113,0.75),rgba(22,160,133,0.7));color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 3px 14px rgba(46,204,113,0.2);margin-bottom:8px;">🌙 Auto-Fetch from GPS</button>
-      <button id="ekRefreshBtn" onclick="recalculateAllEkadashis()" style="display:block;width:100%;padding:11px;border-radius:10px;border:1px solid rgba(109,184,255,0.4);background:rgba(109,184,255,0.08);color:#6DB8FF;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:8px;">🔄 Recalculate All with Live GPS</button>
-      <div id="panchangStatus" style="font-size:11px;color:rgba(255,255,255,0.45);text-align:center;min-height:16px;"></div>
-    </div>
-
-
-    <!-- MANUAL ENTRY (Collapsible) -->
-    <div style="margin-bottom:14px;">
-      <button onclick="(function(){const m=document.getElementById('ekManualBox');m.style.display=m.style.display==='none'?'block':'none';})()" style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.25);border:1px solid rgba(155,89,182,0.2);border-radius:10px;padding:10px 14px;color:rgba(189,147,249,0.7);font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;width:100%;box-sizing:border-box;">
-        <span>＋</span><span>Manual Entry</span><span style="margin-left:auto;font-size:10px;opacity:0.5;">tap to expand</span>
-      </button>
-      <div id="ekManualBox" style="display:none;background:rgba(0,0,0,0.3);border:1px solid rgba(155,89,182,0.18);border-radius:0 0 12px 12px;padding:14px;margin-top:-2px;">
-        <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:10px;line-height:1.5;">Use this only to correct auto-fetched data or add a specific Ekadashi manually.</div>
-
-        <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">Name</div>
-        <input type="text" id="ekNameIn" placeholder="e.g. Nirjala Ekadashi" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:10px;padding:10px 13px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;margin-bottom:12px;">
-
-        <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase;">Paksha</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-          <label style="display:flex;align-items:center;gap:8px;background:rgba(241,196,15,0.08);border:1px solid rgba(241,196,15,0.3);border-radius:10px;padding:10px 12px;cursor:pointer;">
-            <input type="radio" name="ekPaksha" id="ekPakshaShukla" value="shukla" checked style="accent-color:#F1C40F;">
-            <span style="font-size:13px;color:#F1C40F;font-weight:600;">☀️ Shukla</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.3);border-radius:10px;padding:10px 12px;cursor:pointer;">
-            <input type="radio" name="ekPaksha" id="ekPakshaKrishna" value="krishna" style="accent-color:#BD93F9;">
-            <span style="font-size:13px;color:#BD93F9;font-weight:600;">🌙 Krishna</span>
-          </label>
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-          <div>
-            <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">Start Date</div>
-            <input type="date" id="ekStartDateIn" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:10px;padding:10px 8px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;">
-          </div>
-          <div>
-            <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">Start Time</div>
-            <input type="time" id="ekStartTimeIn" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:10px;padding:10px 8px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;">
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
-          <div>
-            <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">End Date</div>
-            <input type="date" id="ekEndDateIn" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:10px;padding:10px 8px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;">
-          </div>
-          <div>
-            <div style="font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;">End Time</div>
-            <input type="time" id="ekEndTimeIn" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.4);border-radius:10px;padding:10px 8px;color:#fff;font-size:13px;font-family:'Inter',sans-serif;outline:none;">
-          </div>
-        </div>
-        <button onclick="addEkadashiDate()" style="display:block;width:100%;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,rgba(155,89,182,0.75),rgba(90,50,190,0.65));color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 3px 14px rgba(155,89,182,0.3);">+ Add Ekadashi</button>
-      </div>
-    </div>
-
-    <!-- Saved list -->
-    <div style="font-size:10px;color:rgba(189,147,249,0.55);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600;">Saved Ekadashis</div>
-    <div id="ekadashiList"></div>
   </div>
 
   <!-- PREFERENCES -->

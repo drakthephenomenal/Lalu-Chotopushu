@@ -1796,6 +1796,11 @@ function sv(id, btn) {
     const dtHKMalaDisp = document.getElementById("dtHKMala");
     if (dtHKMalaDisp)
       dtHKMalaDisp.textContent = Math.floor((App.S.dtHK || 0) / ms);
+    // Populate 28 Names daily target
+    const dt28El = document.getElementById("dt28CycleIn");
+    if (dt28El) dt28El.value = (App.S.dt28Cycles || 0) > 0 ? App.S.dt28Cycles : "";
+    const dt28Disp = document.getElementById("dt28JapDisp");
+    if (dt28Disp) dt28Disp.textContent = (App.S.dt28Cycles || 0) * 28;
     // Gaudiya Mode toggle
     const tgG = document.getElementById("tgGaudiya");
     if (tgG)
@@ -5351,12 +5356,47 @@ function render28Dots(pos) {
   }
 }
 
+// ── 28 Names Daily Target helpers ──
+function sync28CycleTarget() {
+  const v = parseInt(document.getElementById("dt28CycleIn")?.value) || 0;
+  const el = document.getElementById("dt28JapDisp");
+  if (el) el.textContent = v * 28;
+}
+function svt28() {
+  const v = parseInt(document.getElementById("dt28CycleIn")?.value) || 0;
+  App.S.dt28Cycles = v;
+  save();
+  toast("✅ 28 Names daily target saved: " + v + " cycle" + (v !== 1 ? "s" : "") + " (" + (v * 28) + " japs/day)");
+  u28();
+}
+function _update28ProgressBar(todJaps) {
+  const target = (App.S.dt28Cycles || 0) * 28;
+  const wrap = document.getElementById("n28ProgressWrap");
+  const bar  = document.getElementById("n28ProgressBar");
+  const lbl  = document.getElementById("n28ProgressLabel");
+  if (!wrap) return;
+  if (!target) { wrap.style.display = "none"; return; }
+  wrap.style.display = "block";
+  const todCycles = Math.floor(todJaps / 28);
+  const targetCycles = App.S.dt28Cycles || 0;
+  const pct = Math.min(100, Math.round((todJaps / target) * 100));
+  if (bar) {
+    bar.style.width = pct + "%";
+    bar.style.background = pct >= 100
+      ? "linear-gradient(90deg,rgba(46,204,113,0.8),rgba(0,200,100,0.95))"
+      : "linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9))";
+    bar.style.boxShadow = pct >= 100 ? "0 0 10px rgba(46,204,113,0.6)" : "0 0 8px rgba(189,147,249,0.5)";
+  }
+  if (lbl) lbl.textContent = todCycles + " / " + targetCycles + " cycles (" + pct + "%)";
+}
+
 function u28() {
   const tod = App.S.h28[App.S.tk] || 0;
   const tot = Object.values(App.S.h28).reduce((a, b) => a + b, 0);
   const cycles28 = Math.floor(tot / 28);
   const todEl = document.getElementById("n28t");
   if (todEl) todEl.textContent = tod;
+  _update28ProgressBar(tod);
   const pos = get28Pos(),
     entry = NAMES28[pos];
   const nameEl = document.getElementById("n28name");
@@ -6834,9 +6874,9 @@ const _EK_NAMES_SHUKLA = [
   "Nirjala",          // 2 = Jyeshtha
   "Devshayani",       // 3 = Ashadha
   "Shravana Putrada", // 4 = Shravana
-  "Parsva",           // 5 = Bhadrapada
-  "Papankusha",       // 6 = Ashwin
-  "Devutthana",       // 7 = Kartik
+  "Parivartini",      // 5 = Bhadrapada
+  "Pashankusha",      // 6 = Ashwin
+  "Devutthan",        // 7 = Kartik
   "Mokshada",         // 8 = Margashirsha
   "Pausha Putrada",   // 9 = Pausha
   "Jaya",             // 10 = Magha
@@ -6844,7 +6884,7 @@ const _EK_NAMES_SHUKLA = [
 ];
 // Krishna Paksha (Dark Fortnight) Ekadashis — indexed by Purnimanta lunar monthIdx
 const _EK_NAMES_KRISHNA = [
-  "Papamochani", // 0 = Chaitra
+  "Papmochini",  // 0 = Chaitra
   "Varuthini",   // 1 = Vaishakha
   "Apara",       // 2 = Jyeshtha
   "Yogini",      // 3 = Ashadha
@@ -7442,11 +7482,8 @@ const EK_NOTES = {
 function _maybeAutoFetch(reason) {
   const lat = App.S && App.S.lastLat;
   const lng = App.S && App.S.lastLng;
-  if (!lat || !lng) return; // GPS not available yet
-  const hasParampara = !!(App.S.ekParampara);
-  const hasEngine    = !!(App.S.ekTithiEngine);
-  if (!hasParampara || !hasEngine) return;
-  // Avoid fetching twice in same second
+  if (!lat || !lng) return;
+  if (!App.S.ekParampara || !App.S.ekTithiEngine) return;
   const now = Date.now();
   if (App._lastAutoFetch && (now - App._lastAutoFetch) < 3000) return;
   App._lastAutoFetch = now;
@@ -7601,8 +7638,7 @@ function setHorizonMode(mode) {
   toast(_hName + " — all timings updated");
 }
 
-// ── _updateCfgTimesPreview — populates the live Sacred Times preview in Settings ──
-// ── Also fills both horizon pill time panels for side-by-side comparison ──
+// ── _updateHorizonPillTimes — fills both horizon pill time panels for side-by-side comparison ──
 function _updateHorizonPillTimes() {
   const lat = App.S && App.S.lastLat;
   const lng = App.S && App.S.lastLng;
@@ -7622,18 +7658,12 @@ function _updateHorizonPillTimes() {
     return (hh % 12 || 12) + ":" + String(mm).padStart(2, "0") + " " + ap;
   }
   function _calcForMode(mode) {
-    // Temporarily override horizonMode to calculate times for that mode
     const prev = App.S.horizonMode;
     App.S.horizonMode = mode;
     const t = calcSunTimes(lat, lng, now);
     App.S.horizonMode = prev;
     if (!t) return null;
-    return {
-      bm:  _fmt(t.sunriseH - 96/60),
-      sr:  t.sunrise,
-      sk:  _fmt(t.sunsetH  - 24/60),
-      ss:  t.sunset
-    };
+    return { bm: _fmt(t.sunriseH - 96/60), sr: t.sunrise, sk: _fmt(t.sunsetH - 24/60), ss: t.sunset };
   }
   const ap  = _calcForMode("apparent");
   const cel = _calcForMode("celestial");
@@ -7650,6 +7680,7 @@ function _updateHorizonPillTimes() {
   }
 }
 
+// ── _updateCfgTimesPreview — populates the live Sacred Times preview in Settings ──
 function _updateCfgTimesPreview() {
   const lat = App.S && App.S.lastLat;
   const lng = App.S && App.S.lastLng;
@@ -7680,7 +7711,6 @@ function _updateCfgTimesPreview() {
   set("cfg-sk-start",  _fmt(skStart));
   set("cfg-sunset",    times.sunset);
   set("cfg-sk-end",    _fmt(skEnd > 24 ? skEnd - 24 : skEnd));
-  // Also refresh both horizon pill time panels
   _updateHorizonPillTimes();
   // Next 2 Ekadashis + Paran preview — mode-aware + parampara-aware
   const cfgEk = document.getElementById("cfg-next-ekadashi");

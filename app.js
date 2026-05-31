@@ -7356,14 +7356,22 @@ async function fetchPanchangEkadashis() {
                 }
               }
 
-              // CONDITION 2: Vridhi Dvadashi — Ekadashi ends before endDate sunrise
+              // CONDITION 2: Vridhi Dvadashi (Ekadashi Kshaya) —
+              //   Ekadashi tithi ends BEFORE sunrise of scanDate (its own udaya day).
+              //   This means Ekadashi never touched sunrise on scanDate, so Dvadashi
+              //   is the udaya tithi → fast on endDate (Mahadvadashi).
+              //
+              //   FIX: compare ekEnd against sunrise of scanDate (startDate), NOT endDate.
+              //   The previous code compared against endDate sunrise which is always later
+              //   in absolute time, causing false positives (e.g. Yogini: Ekadashi ends
+              //   11 Jul 05:54 was wrongly treated as < 12 Jul 05:23 → shifted to 12 Jul).
+              //
+              //   Verified: SHRAVANA PUTRADA — Ek ends 23 Aug 04:51 < sunrise 23 Aug 05:40 ✅
+              //             YOGINI           — Ek ends 11 Jul 05:54 > sunrise 11 Jul 05:23
+              //                                → does NOT trigger ✅ fast stays 11 Jul ✅
               if (!isViddha && ekEnd instanceof Date) {
-                const endDateObj = new Date(scanDate);
-                endDateObj.setDate(endDateObj.getDate() + 1);
-                const endSrData  = calcSunTimes(lat, lng, endDateObj);
-                const endAppSr   = endSrData ? endSrData.apparentSunriseH : 6.0;
-                const endSrMs    = _dayMs(endDateObj, endAppSr);
-                if (ekEnd.getTime() < endSrMs) {
+                const startSrMs = _dayMs(scanDate, appSr);
+                if (ekEnd.getTime() < startSrMs) {
                   fastingDate = endDateStr;
                   isViddha    = true;
                 }
@@ -7816,15 +7824,20 @@ function _resyncEkOccasions() {
         newFastingDate = ek.endDate;
         isViddha = true;
       }
-      // CONDITION 2: Vridhi Dvadashi — Ekadashi ends before endDate sunrise
-      if (!isViddha && ek.endDate && ek.endTime) {
-        const ekEndDate = new Date(ek.endDate + "T00:00:00");
-        const srEnd     = calcSunTimes(lat, lng, ekEndDate);
-        const endAppSr  = srEnd ? srEnd.apparentSunriseH : 6.0;
-        const endSrMs   = _rsMs(ekEndDate, endAppSr);
-        const [ehh, emm] = ek.endTime.split(":").map(Number);
-        const ekEndMs   = ekEndDate.getTime() + (ehh + emm/60) * 3600000;
-        if (ekEndMs < endSrMs) {
+      // CONDITION 2: Vridhi Dvadashi (Ekadashi Kshaya) —
+      //   Ekadashi ends BEFORE sunrise of startDate (its own udaya day).
+      //   FIX: compare ekEnd against startDate sunrise, NOT endDate sunrise.
+      //   Comparing against endDate sunrise (always later in abs time) caused
+      //   false positives for every early-morning Ekadashi end (e.g. Yogini).
+      if (!isViddha && ek.endTime) {
+        const startDateObj2 = new Date(ek.startDate + "T00:00:00");
+        const srStart2      = calcSunTimes(lat, lng, startDateObj2);
+        const startAppSr2   = srStart2 ? srStart2.apparentSunriseH : 6.0;
+        const startSrMs2    = _rsMs(startDateObj2, startAppSr2);
+        const [ehh, emm]    = ek.endTime.split(":").map(Number);
+        const ekEndDateObj2 = new Date((ek.endDate || ek.startDate) + "T00:00:00");
+        const ekEndMs2      = ekEndDateObj2.getTime() + (ehh + emm/60) * 3600000;
+        if (ekEndMs2 < startSrMs2) {
           newFastingDate = ek.endDate;
           isViddha = true;
         }
@@ -12868,7 +12881,36 @@ function _computeParanaWindow(ek, lat, lng, fastingDate) {
   try {
     // Parana day = day after fasting day
     const [fy, fm, fd] = fastingDate.split("-").map(Number);
-    const paranaDay = new Date(fy, fm - 1, fd + 1);
+    let paranaDay = new Date(fy, fm - 1, fd + 1);
+
+    // BUG 2 FIX: If Dvadashi spans the entire paranaDay (ends after sunset),
+    // the devotee must observe Dvadashi that day too — parana advances to day+2.
+    // Example: NIRJALA — fasting 25 Jun, paranaDay 26 Jun, Dvadashi ends 22:54 on 26 Jun.
+    // ISKCON moves parana to 27 Jun (Pandava Vrata observed on 26 Jun instead).
+    // Detection: find Dvadashi end; if it falls AFTER sunset of paranaDay → advance.
+    if (ek.ekEnd instanceof Date) {
+      const dvEndDeg   = ek.paksha === "shukla" ? 144 : 324;
+      const searchLo   = new Date(paranaDay); searchLo.setHours(0, 0, 0, 0);
+      const searchHi   = new Date(searchLo.getTime() + 36 * 3600000); // 36h covers full paranaDay
+      const dvEndTest  = _findElongCrossing(dvEndDeg, searchLo, searchHi);
+      if (dvEndTest) {
+        const parSrData  = calcSunTimes(lat, lng, paranaDay);
+        const parSunsetH = parSrData ? parSrData.apparentSunsetH : 18.5;
+        const parSunsetMs = paranaDay.getTime()
+          - paranaDay.getHours() * 3600000
+          - paranaDay.getMinutes() * 60000
+          - paranaDay.getSeconds() * 1000
+          + parSunsetH * 3600000;
+        const dvEndSameDay =
+          dvEndTest.getFullYear() === paranaDay.getFullYear() &&
+          dvEndTest.getMonth()    === paranaDay.getMonth()    &&
+          dvEndTest.getDate()     === paranaDay.getDate();
+        // If Dvadashi ends AFTER sunset of paranaDay → Dvadashi spans the whole day → advance
+        if (dvEndSameDay && dvEndTest.getTime() > parSunsetMs) {
+          paranaDay = new Date(fy, fm - 1, fd + 2);
+        }
+      }
+    }
 
     // Sun times for Parana day
     const srData = calcSunTimes(lat, lng, paranaDay);
@@ -12900,14 +12942,23 @@ function _computeParanaWindow(ek, lat, lng, fastingDate) {
       ? windowStart + apparentDayLen * (1/3)
       : windowStart + modeDayLen * (1/5);
     // HARD DEADLINE = Dvadashi tithi end on Paran day (binary search)
+    // BUG 3 FIX: search from paranaDay midnight (not ek.ekEnd).
+    // For Mahadvadashi cases the fasting date is pushed 2 days past Ekadashi end,
+    // so Dvadashi can end 48+ hours after ekEnd — outside the old 30h window.
+    // Anchoring to paranaDay midnight always covers the right window regardless
+    // of how far Dvadashi is from Ekadashi end.
+    // Example: SHRAVANA PUTRADA — Ek ends 23 Aug 04:51, paranaDay = 25 Aug,
+    //          Dvadashi ends 25 Aug 06:53 → found correctly ✅
+    //          KAMIKA — Ek ends 9 Aug 11:37, paranaDay = 10 Aug,
+    //          Dvadashi ends 10 Aug 08:33 → found correctly ✅
     let hardDeadline = null;
     let hardDeadlineH = null;
-    if (ek.ekEnd instanceof Date) {
-      const dvEndDeg = ek.paksha === "shukla" ? 144 : 324;
-      const searchLo = ek.ekEnd;
-      const searchHi = new Date(ek.ekEnd.getTime() + 30 * 60 * 60 * 1000);
+    {
+      const dvEndDeg  = ek.paksha === "shukla" ? 144 : 324;
+      const searchLo  = new Date(paranaDay); searchLo.setHours(0, 0, 0, 0);
+      const searchHi  = new Date(searchLo.getTime() + 30 * 3600000); // covers full paranaDay
       const dvadashiEndDt = _findElongCrossing(dvEndDeg, searchLo, searchHi);
-
+      if (dvadashiEndDt) {
       const isSameDay =
         dvadashiEndDt.getFullYear() === paranaDay.getFullYear() &&
         dvadashiEndDt.getMonth()    === paranaDay.getMonth()    &&
@@ -12919,6 +12970,7 @@ function _computeParanaWindow(ek, lat, lng, fastingDate) {
           hardDeadlineH = dvadashiEndH;
           hardDeadline  = _decHToHHMM(dvadashiEndH);
         }
+      }
       }
     }
     // recommendedEnd = min(calculated end, hardDeadline)

@@ -7100,6 +7100,12 @@ async function fetchPanchangEkadashis() {
     const usePanchangScan  = isGaudiyaFetch || isPanchangEngine;
 
     if (usePanchangScan && typeof getPanchangData === "function") {
+      // Purge stale auto-fetched entries for this engine before re-scanning.
+      // Without this the exists-check skips re-adding entries with wrong fasting dates.
+      const _purgeSource = isGaudiyaFetch ? "gaudiya" : "panchang";
+      App.S.customEkadashi = (App.S.customEkadashi || []).filter(
+        e => !(e.autoFetched && e.source === _purgeSource)
+      );
       // Scan next 12 months day by day using panchangData engine
       if (status) status.textContent = isGaudiyaFetch
         ? "🌸 Gaudiya Mode — fetching ISKCON panchang…"

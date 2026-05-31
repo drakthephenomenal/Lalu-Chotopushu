@@ -1808,7 +1808,6 @@ function sv(id, btn) {
     initReminderUI();
     renderEkadashiList();
     renderEkParampara();
-    if (typeof _applyHKLangBtnStyles === "function") _applyHKLangBtnStyles();
     if (typeof _updateHorizonButtonTimes === "function") _updateHorizonButtonTimes();
     // Populate the app link display
     const appUrl = _getAppUrl();
@@ -7627,46 +7626,61 @@ function _updateHorizonButtonTimes() {
      "hm-cel-sunrise","hm-cel-sunset","hm-cel-bm","hm-cel-sk"].forEach(id => _set(id, "—"));
     return;
   }
+  // Compute apparent (Earthy Sky) times directly from the NOAA formula
+  // without touching App.S.horizonMode — avoids any state mutation side effects.
   const now = new Date();
-  // Apparent (Earthy Sky) times — forced to apparent mode
-  const origMode = App.S.horizonMode;
-  App.S.horizonMode = "apparent";
-  const tApp = calcSunTimes(lat, lng, now);
-  App.S.horizonMode = "celestial";
-  const tCel = calcSunTimes(lat, lng, now);
-  App.S.horizonMode = origMode; // restore
-  if (tApp) {
-    const bmApp = tApp.sunriseH - 96/60;
-    const skApp = tApp.sunsetH - 24/60;
-    _set("hm-app-sunrise", tApp.sunrise || _fmt(tApp.sunriseH));
-    _set("hm-app-sunset",  tApp.sunset  || _fmt(tApp.sunsetH));
-    _set("hm-app-bm",      _fmt(bmApp));
-    _set("hm-app-sk",      _fmt(skApp));
-  }
-  if (tCel) {
-    const bmCel = tCel.sunriseH - 96/60;
-    const skCel = tCel.sunsetH - 24/60;
-    _set("hm-cel-sunrise", tCel.sunrise || _fmt(tCel.sunriseH));
-    _set("hm-cel-sunset",  tCel.sunset  || _fmt(tCel.sunsetH));
-    _set("hm-cel-bm",      _fmt(bmCel));
-    _set("hm-cel-sk",      _fmt(skCel));
-  }
+  const rad = Math.PI / 180;
+  const JD = Math.floor(now.getTime() / 86400000) + 2440587.5 + 0.5;
+  const T = (JD - 2451545.0) / 36525.0;
+  const L0 = (((280.46646 + 36000.76983*T + 0.0003032*T*T) % 360) + 360) % 360;
+  const M  = (((357.52911 + 35999.05029*T - 0.0001537*T*T) % 360) + 360) % 360;
+  const Mr = M * rad;
+  const C  = (1.914602 - 0.004817*T - 0.000014*T*T)*Math.sin(Mr)
+           + (0.019993 - 0.000101*T)*Math.sin(2*Mr)
+           + 0.000289*Math.sin(3*Mr);
+  const sunTrueLon = L0 + C;
+  const omega  = 125.04 - 1934.136*T;
+  const lambda = sunTrueLon - 0.00569 - 0.00478*Math.sin(omega*rad);
+  const eps0   = 23 + 26/60 + 21.448/3600 - (46.815/3600)*T - (0.00059/3600)*T*T + (0.001813/3600)*T*T*T;
+  const eps    = (eps0 + 0.00256*Math.cos(omega*rad)) * rad;
+  const dec    = Math.asin(Math.sin(eps)*Math.sin(lambda*rad));
+  const y      = Math.tan(eps/2)**2;
+  const L0r    = L0*rad;
+  const eqT    = (4/rad)*(y*Math.sin(2*L0r) - 2*0.016708634*Math.sin(Mr)
+               + 4*0.016708634*y*Math.sin(Mr)*Math.cos(2*L0r)
+               - 0.5*y*y*Math.sin(4*L0r) - 1.25*0.016708634**2*Math.sin(2*Mr));
+  const cosHA  = (Math.cos(90.833*rad) - Math.sin(lat*rad)*Math.sin(dec))
+               / (Math.cos(lat*rad)*Math.cos(dec));
+  if (cosHA > 1 || cosHA < -1) return; // polar edge case
+  const HA     = Math.acos(cosHA) / rad;
+  const tzOff  = -now.getTimezoneOffset();
+  const solarNoonUTC = 720 - 4*lng - eqT;
+  const sunriseUTC   = solarNoonUTC - HA*4;
+  const sunsetUTC    = solarNoonUTC + HA*4;
+  function toLocalH(utcMin) { return ((((utcMin + tzOff) / 60) % 24) + 24) % 24; }
+  const appSunriseH  = toLocalH(sunriseUTC);
+  const appSunsetH   = toLocalH(sunsetUTC);
+  const solarNoonH   = toLocalH(solarNoonUTC);
+  const celSunriseH  = solarNoonH - 6;
+  const celSunsetH   = solarNoonH + 6;
+  // Apparent (Earthy Sky) times
+  _set("hm-app-sunrise", _fmt(appSunriseH));
+  _set("hm-app-sunset",  _fmt(appSunsetH));
+  _set("hm-app-bm",      _fmt(appSunriseH - 96/60));
+  _set("hm-app-sk",      _fmt(appSunsetH  - 24/60));
+  // Celestial (ISKCON noon±6h) times
+  _set("hm-cel-sunrise", _fmt(celSunriseH));
+  _set("hm-cel-sunset",  _fmt(celSunsetH));
+  _set("hm-cel-bm",      _fmt(celSunriseH - 96/60));
+  _set("hm-cel-sk",      _fmt(celSunsetH  - 24/60));
 }
 
-// ── setHKLangDirect — directly set HK language to 'hi' or 'bn', used by lower Language buttons ──
+// ── setHKLangDirect — directly set HK language to 'hi' or 'bn', used by Mahamantra Language buttons ──
 function setHKLangDirect(lang) {
   if (!App || !App.S) return;
-  if (App.S.hkLang === lang) return; // already selected, no-op
+  if (App.S.hkLang === lang) return; // already selected
   App.S.hkLang = lang;
-  // Sync the toggle element if it exists
-  const tgH = document.getElementById("tgHkLang");
-  if (tgH) lang === "bn" ? tgH.classList.add("on") : tgH.classList.remove("on");
-  // Sync label
-  const lblH = document.getElementById("hkLangLabel");
-  if (lblH) lblH.textContent = lang === "bn" ? "Bangla" : "Hindi";
-  // Update HK label in Jap page dropdown
-  const naamHKLbl = document.getElementById("naamHKLabel");
-  if (naamHKLbl) naamHKLbl.textContent = lang === "bn" ? "হরে কৃষ্ণ মহামন্ত্র" : "हरे कृष्ण महामंत्र";
+  // applyHKLangLabels handles: body.hk-bn class (CSS active states), all labels, toggle UI
   applyHKLangLabels(lang);
   // Update hkPersist if visible
   const hkEl = document.getElementById("hkPersist");
@@ -7675,28 +7689,9 @@ function setHKLangDirect(lang) {
     hkEl.innerHTML = newText.split("\n").map(l => "<div>" + l + "</div>").join("");
   }
   if (App.S.japMode === "hk") switchJapMode("hk");
-  // Update active state on both language buttons
-  _applyHKLangBtnStyles();
   App.save();
   fbDebouncedPush();
   toast(lang === "bn" ? "মহামন্ত্র · Bangla" : "महामंत्र · Hindi");
-}
-
-// ── _applyHKLangBtnStyles — highlight active language button in the lower selector ──
-function _applyHKLangBtnStyles() {
-  const lang = (App.S && App.S.hkLang) || "hi";
-  const hiBtn = document.getElementById("hkLangBtnHiSq");
-  const bnBtn = document.getElementById("hkLangBtnBnSq");
-  if (hiBtn) {
-    hiBtn.style.border    = lang === "hi" ? "2px solid rgba(255,215,0,0.7)" : "1.5px solid rgba(255,215,0,0.3)";
-    hiBtn.style.background = lang === "hi" ? "rgba(255,215,0,0.14)" : "rgba(255,215,0,0.06)";
-    hiBtn.style.boxShadow  = lang === "hi" ? "0 0 10px rgba(255,215,0,0.2)" : "none";
-  }
-  if (bnBtn) {
-    bnBtn.style.border    = lang === "bn" ? "2px solid rgba(109,184,255,0.7)" : "1.5px solid rgba(109,184,255,0.25)";
-    bnBtn.style.background = lang === "bn" ? "rgba(109,184,255,0.14)" : "rgba(109,184,255,0.05)";
-    bnBtn.style.boxShadow  = lang === "bn" ? "0 0 10px rgba(109,184,255,0.2)" : "none";
-  }
 }
 
 // ── setHorizonMode — called directly by index.html pill buttons ──

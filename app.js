@@ -8173,38 +8173,101 @@ function removeEkadashiDate(startDate) {
   toast("Ekadashi removed");
 }
 
+// ── Vaishnava / Purnimanta month names (index 0=Chaitra … 11=Phalguna) ──
+const _VAISHNAVA_MONTH_NAMES = [
+  "Chaitra","Vaishakha","Jyeshtha","Ashadha",
+  "Shravana","Bhadrapada","Ashwin","Kartik",
+  "Margashirsha","Pausha","Magha","Phalguna"
+];
+
+// Gaurabda Year from a Gregorian date (approx: Gaurabda 1 = 1486 CE)
+// Gaurabda year increments on Gaura Purnima (Phalguna Purnima, roughly Feb/Mar).
+// Simplified: use Gregorian year − 1486; adjust if before ~March of that year.
+function _gaurabdaYear(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  const y = d.getFullYear();
+  const m = d.getMonth(); // 0=Jan
+  // Gaura Purnima is around March; before March of a year, still in previous Gaurabda
+  return m < 2 ? (y - 1486 - 1) : (y - 1486);
+}
+
 function renderEkadashiList() {
   const list = document.getElementById("ekadashiList");
   if (!list) return;
   const allEntries = App.S.customEkadashi || [];
   const isGaudiya = !!(App.S && App.S.gaudiyaMode);
 
-  // Show only entries matching the current mode:
-  // Gaudiya mode → show source:"gaudiya" entries only
-  // Standard mode → show entries WITHOUT source:"gaudiya" (source:"gps" or manual)
-  // In Gaudiya mode: show source:"gaudiya" entries + manual (non-autoFetched) entries.
-  // In standard mode: show everything except source:"gaudiya".
-  // This correctly hides old GPS entries (autoFetched, no source) in Gaudiya mode.
-  const entries = allEntries.filter(e => {
+  // Filter by mode (same logic as before)
+  let entries = allEntries.filter(e => {
     if (typeof e !== "object") return true;
     const isManual = !e.autoFetched;
     if (isGaudiya) return e.source === "gaudiya" || isManual;
-    // Standard mode: show only entries matching the selected engine
-    // If no engine chosen yet (null), only show manual entries
     const engine = App.S.ekTithiEngine;
-    if (!engine) return isManual; // no engine chosen — only manual entries visible
+    if (!engine) return isManual;
     const expectedSource = engine === "panchang" ? "panchang" : "gps";
     return isManual || e.source === expectedSource;
   });
 
+  // ── Range filter vs default 24 upcoming ──────────────────────────
+  const rangeFrom = (document.getElementById("ekRangeFrom") || {}).value || "";
+  const rangeTo   = (document.getElementById("ekRangeTo")   || {}).value || "";
+  const todayStr  = new Date().toISOString().slice(0, 10);
+  const countLbl  = document.getElementById("ekCountLabel");
+
+  let usingRange = false;
+  if (rangeFrom || rangeTo) {
+    usingRange = true;
+    entries = entries.filter(e => {
+      const sd = _ekDate(e);
+      if (rangeFrom && sd < rangeFrom) return false;
+      if (rangeTo   && sd > rangeTo)   return false;
+      return true;
+    });
+    if (countLbl) countLbl.textContent =
+      entries.length + " Ekadashi" + (entries.length !== 1 ? "s" : "") +
+      " in selected range";
+  } else {
+    // Default: 24 upcoming (fasting date ≥ today), plus already-past ones above
+    const upcoming = entries.filter(e => {
+      const fd = (typeof e === "object" && e.fastingDate) ? e.fastingDate : _ekDate(e);
+      return fd >= todayStr;
+    });
+    const past = entries.filter(e => {
+      const fd = (typeof e === "object" && e.fastingDate) ? e.fastingDate : _ekDate(e);
+      return fd < todayStr;
+    });
+    entries = [...past, ...upcoming.slice(0, 24)];
+    const hidden = Math.max(0, upcoming.length - 24);
+    if (countLbl) countLbl.textContent =
+      upcoming.length + " upcoming · showing " + Math.min(upcoming.length, 24) +
+      (hidden > 0 ? " (+" + hidden + " more — use Range to see all)" : "");
+  }
+
   if (entries.length === 0) {
     list.innerHTML =
-      '<div style="font-size:11px;color:rgba(255,255,255,0.3);text-align:center;padding:10px 0 4px;">No Ekadashis saved yet.</div>';
+      '<div style="font-size:11px;color:rgba(255,215,0,0.35);text-align:center;padding:16px 0;letter-spacing:1px;">No Ekadashis found 🙏</div>';
     return;
   }
+
+  // Find the first upcoming (fast date ≥ today) to mark as "NEXT"
+  const firstUpcomingIdx = entries.findIndex(e => {
+    const fd = (typeof e === "object" && e.fastingDate) ? e.fastingDate : _ekDate(e);
+    return fd >= todayStr;
+  });
+
   const parampara = App.S.ekParampara || "smarta";
+
+  const fmtD = (d) => {
+    const _d = new Date(d + "T00:00:00");
+    const _days   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const _months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const dt = _d.getDate();
+    const sfx = dt === 1||dt===21||dt===31 ? "st" : dt===2||dt===22 ? "nd" : dt===3||dt===23 ? "rd" : "th";
+    return dt + sfx + " " + _months[_d.getMonth()] + " " + _d.getFullYear() + " · " + _days[_d.getDay()];
+  };
+
   list.innerHTML = entries
-    .map((e) => {
+    .map((e, idx) => {
       const sd = _ekDate(e);
       const ed = typeof e === "object" && e.endDate ? e.endDate : sd;
       const name = typeof e === "object" && e.name ? e.name : "Ekadashi";
@@ -8212,150 +8275,204 @@ function renderEkadashiList() {
       const startTime = typeof e === "object" && e.startTime ? e.startTime : "";
       const endTime = typeof e === "object" && e.endTime ? e.endTime : "";
       const isAuto = typeof e === "object" && e.autoFetched ? true : false;
-      const fmtD = (d) => {
-        const _d = new Date(d + "T00:00:00");
-        const _days   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-        const _months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-        const dt = _d.getDate();
-        const sfx = dt === 1||dt===21||dt===31 ? "st" : dt===2||dt===22 ? "nd" : dt===3||dt===23 ? "rd" : "th";
-        return dt + sfx + " " + _months[_d.getMonth()] + " " + _d.getFullYear() + " " + _days[_d.getDay()];
-      };
-      const sfmt = startTime ? _fmtTime12(startTime) : "";
-      const efmt = endTime ? _fmtTime12(endTime) : "";
-      const pLabel =
-        paksha === "shukla"
-          ? '<span style="font-size:9px;background:rgba(241,196,15,0.2);color:#F1C40F;border-radius:4px;padding:2px 5px;font-weight:700;">☀️ SHUKLA</span>'
-          : '<span style="font-size:9px;background:rgba(155,89,182,0.25);color:#BD93F9;border-radius:4px;padding:2px 5px;font-weight:700;">🌙 KRISHNA</span>';
-      const autoTag = isAuto
-        ? '<span style="font-size:8px;color:rgba(46,204,113,0.7);margin-left:4px;">AUTO</span>'
+      const isNext = (idx === firstUpcomingIdx);
+
+      // ── Gaurabda Year + Vaishnava Month ────────────────────────
+      const gaurabdaYr = _gaurabdaYear(sd);
+      // Get lunar month index (0–11) using the same function used at fetch time
+      let lunarMi = -1;
+      try {
+        lunarMi = _getAdjustedMonthIndex(new Date(sd + "T00:00:00"));
+      } catch (_) {}
+      // Check if Adhik Maas
+      let isAdhikMaas = false;
+      try {
+        const _adhW = _getAdhikMaasWindow ? _getAdhikMaasWindow(sd) : null;
+        isAdhikMaas = !!_adhW;
+      } catch (_) {}
+      const vaishnavaMonthName = isAdhikMaas
+        ? "Purushottam Maas"
+        : (lunarMi >= 0 ? (_VAISHNAVA_MONTH_NAMES[lunarMi] || "") : "");
+
+      const monthBadge = vaishnavaMonthName
+        ? `<span class="ek-month-badge">${vaishnavaMonthName}</span>`
         : "";
+      const adhikBadge = isAdhikMaas
+        ? `<span class="ek-adhik-badge">✨ Adhik Maas</span>`
+        : "";
+      const gaurabdaBadge = gaurabdaYr > 0
+        ? `<span class="ek-gaurabda-badge">${gaurabdaYr} Gaurabda</span>`
+        : "";
+
+      // ── Paksha tag ──────────────────────────────────────────────
+      const pLabel = paksha === "shukla"
+        ? `<span style="font-size:9px;background:rgba(241,196,15,0.18);color:#F1C40F;border-radius:20px;padding:2px 9px;font-weight:700;letter-spacing:.5px;border:1px solid rgba(241,196,15,0.3);">☀️ Shukla</span>`
+        : `<span style="font-size:9px;background:rgba(155,89,182,0.22);color:#BD93F9;border-radius:20px;padding:2px 9px;font-weight:700;letter-spacing:.5px;border:1px solid rgba(155,89,182,0.35);">🌙 Krishna</span>`;
+
+      // ── Parampara tag ───────────────────────────────────────────
+      const isGaudiyaEntry = typeof e === "object" && e.source === "gaudiya";
+      const paramparaTag = isGaudiyaEntry
+        ? `<span style="font-size:9px;background:rgba(255,105,180,0.15);color:#FF69B4;border-radius:20px;padding:2px 9px;font-weight:700;border:1px solid rgba(255,105,180,0.3);">Vaishnava</span>`
+        : parampara === "vaishnava"
+          ? `<span style="font-size:9px;background:rgba(74,144,226,0.17);color:#6DB8FF;border-radius:20px;padding:2px 9px;font-weight:700;border:1px solid rgba(74,144,226,0.3);">Vaishnava</span>`
+          : `<span style="font-size:9px;background:rgba(46,204,113,0.13);color:#2ecc71;border-radius:20px;padding:2px 9px;font-weight:700;border:1px solid rgba(46,204,113,0.28);">Smarta</span>`;
+
+      const autoTag = isAuto
+        ? `<span style="font-size:8px;color:rgba(46,204,113,0.65);border-radius:20px;padding:2px 7px;border:1px solid rgba(46,204,113,0.22);">AUTO</span>`
+        : "";
+
       const eid = "ekEd_" + sd.replace(/-/g, "");
 
-      // ── Fasting date per parampara ──────────────────────────────────
-      // Trust ek.fastingDate written by _resyncEkOccasions / _applyEkFasting /
-      // _applyEditFasting — all of which use mode-aware calcSunTimes already.
-      // Recalculate only if fastingDate is missing (legacy entry with no stored value).
+      // ── Fasting date (same logic preserved) ────────────────────
       let fastingDate = (typeof e === "object" && e.fastingDate) ? e.fastingDate : sd;
       let isViddha    = (typeof e === "object" && e.isViddha)    ? !!e.isViddha  : false;
       if (!e.fastingDate && startTime) {
-        // Legacy fallback: compute from stored tithi times + current mode sunrise
         const [hh, mm] = startTime.split(":").map(Number);
         const ekStartH = hh + mm / 60;
         const _eLat = App.S && App.S.lastLat;
         const _eLng = App.S && App.S.lastLng;
         if (!_eLat || !_eLng) {
-          // GPS is OFF — leave fastingDate as startDate, cannot compute accurately
           fastingDate = sd;
         } else {
-        const _ekD = new Date(sd + "T00:00:00");
-        const _srD = calcSunTimes(_eLat, _eLng, _ekD);
-        const _sunriseH = _srD ? _srD.sunriseH : 6.0;
-        const _arunodayaH = _sunriseH - 96 / 60;
-        if (parampara === "vaishnava") {
-          if (ekStartH >= _arunodayaH) { fastingDate = ed; isViddha = true; }
-        } else {
-          if (ekStartH >= _sunriseH) fastingDate = ed;
-        }
+          const _ekD = new Date(sd + "T00:00:00");
+          const _srD = calcSunTimes(_eLat, _eLng, _ekD);
+          const _sunriseH = _srD ? _srD.sunriseH : 6.0;
+          const _arunodayaH = _sunriseH - 96 / 60;
+          if (parampara === "vaishnava") {
+            if (ekStartH >= _arunodayaH) { fastingDate = ed; isViddha = true; }
+          } else {
+            if (ekStartH >= _sunriseH) fastingDate = ed;
+          }
         }
       }
       const isTomorrow = fastingDate === ed && sd !== ed;
-      const fastLabel = isViddha
-        ? `<span style="color:#FF9800;font-weight:700">🌅 Fast: ${fmtD(fastingDate)}</span> <span style="font-size:9px;background:rgba(255,152,0,0.2);color:#FF9800;border-radius:4px;padding:2px 6px;">Mahadvadashi</span>`
-        : isTomorrow
-          ? `<span style="color:#76ff7a;font-weight:700">🌅 Fast: ${fmtD(fastingDate)}</span>`
-          : `<span style="color:#76ff7a;font-weight:700">🌅 Fast: ${fmtD(fastingDate)}</span>`;
-      // Gaudiya entries always use ISKCON/Vaishnava rules — parampara setting is irrelevant
-      const isGaudiyaEntry = typeof e === "object" && e.source === "gaudiya";
-      const paramparaTag = isGaudiyaEntry
-        ? '<span style="font-size:8px;background:rgba(255,105,180,0.18);color:#FF69B4;border-radius:4px;padding:1px 5px;margin-left:4px;">Vaishnava</span>'
-        : parampara === "vaishnava"
-          ? '<span style="font-size:8px;background:rgba(74,144,226,0.2);color:#6DB8FF;border-radius:4px;padding:1px 5px;margin-left:4px;">Vaishnava</span>'
-          : '<span style="font-size:8px;background:rgba(46,204,113,0.15);color:#2ecc71;border-radius:4px;padding:1px 5px;margin-left:4px;">Smarta</span>';
 
-      // ── Parana (fast-breaking) time ──
+      // ── Fast row ────────────────────────────────────────────────
+      const fastHtml = isViddha
+        ? `<div class="ek-fast-row">
+            <span class="ek-fast-label">FAST</span>
+            <span class="ek-fast-date">🌅 ${fmtD(fastingDate)}</span>
+            <span style="font-size:9px;background:rgba(255,152,0,0.18);color:#FF9800;border-radius:20px;padding:2px 8px;border:1px solid rgba(255,152,0,0.35);font-weight:700;flex-shrink:0;">Mahadvadashi</span>
+           </div>`
+        : `<div class="ek-fast-row">
+            <span class="ek-fast-label">FAST</span>
+            <span class="ek-fast-date">🌅 ${fmtD(fastingDate)}</span>
+           </div>`;
+
+      // ── Parana (fast-breaking) ───────────────────────────────────
       let paranaHtml = "";
       try {
-        const _ekStartDt = new Date(
-          sd +
-            "T" +
-            (typeof e === "object" && e.startTime ? e.startTime : "06:00") +
-            ":00",
-        );
-        const _ekEndDt = new Date(
-          ed +
-            "T" +
-            (typeof e === "object" && e.endTime ? e.endTime : "06:00") +
-            ":00",
-        );
-        const _ekObjP = { ekStart: _ekStartDt, ekEnd: _ekEndDt };
+        const _ekStartDt = new Date(sd + "T" + (startTime || "06:00") + ":00");
+        const _ekEndDt   = new Date(ed + "T" + (endTime   || "06:00") + ":00");
+        const _ekObjP    = { ekStart: _ekStartDt, ekEnd: _ekEndDt };
         const _pLat = App.S && App.S.lastLat;
         const _pLng = App.S && App.S.lastLng;
         if (!_pLat || !_pLng) {
-          paranaHtml = '<div style="margin-top:6px;padding:5px 8px;background:rgba(255,215,0,0.04);border:1px solid rgba(255,215,0,0.12);border-radius:7px;font-size:10px;color:rgba(255,215,0,0.45);">☀️ Parana — turn on GPS for accurate time</div>';
+          paranaHtml = `<div class="ek-parana-row"><span style="color:rgba(255,215,0,0.5)">☀️ Parana</span><span style="color:rgba(255,255,255,0.3);font-size:9px;">— turn on GPS for accurate time</span></div>`;
         } else {
-        const _par = _computeParanaWindow(_ekObjP, _pLat, _pLng, fastingDate);
-        if (_par)
-          paranaHtml =
-            '<div style="margin-top:6px;padding:5px 8px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.22);border-radius:7px;display:flex;align-items:center;gap:5px;">' +
-            '<span style="font-size:10px;color:#FFD700;font-weight:700;">☀️ Parana</span>' +
-            '<span style="font-size:9px;color:rgba(255,215,0,0.55);">|</span>' +
-            '<span style="font-size:10px;color:#FFE566;">' + fmtD(_par.date) + '</span>' +
-            '<span style="font-size:9px;color:rgba(255,215,0,0.55);">·</span>' +
-            '<span style="font-size:10px;color:#FFE566;font-weight:600;">' + _fmtTime12(_par.windowStart) + '</span>' +
-            '<span style="font-size:9px;color:rgba(255,215,0,0.45);"> → </span>' +
-            '<span style="font-size:10px;color:#FFE566;font-weight:600;">🌟 ' + _fmtTime12(_par.recommendedEnd) + '</span>' +
-            (_par.hardDeadline ? '<span style="font-size:9px;color:rgba(255,100,100,0.7);"> (⏰ latest ' + _fmtTime12(_par.hardDeadline) + ')</span>' : '') +
-            '</div>';
+          const _par = _computeParanaWindow(_ekObjP, _pLat, _pLng, fastingDate);
+          if (_par)
+            paranaHtml =
+              `<div class="ek-parana-row">` +
+              `<span style="color:#FFD700;font-weight:700;">☀️ Parana</span>` +
+              `<span style="color:rgba(255,215,0,0.45);">|</span>` +
+              `<span>${fmtD(_par.date)}</span>` +
+              `<span style="color:rgba(255,215,0,0.45);">·</span>` +
+              `<span style="font-weight:700;">${_fmtTime12(_par.windowStart)}</span>` +
+              `<span style="color:rgba(255,215,0,0.4);">→</span>` +
+              `<span style="font-weight:700;color:#FFD700;">🌟 ${_fmtTime12(_par.recommendedEnd)}</span>` +
+              (_par.hardDeadline ? `<span style="color:rgba(255,100,100,0.65);font-size:9px;">(⏰ ${_fmtTime12(_par.hardDeadline)})</span>` : '') +
+              `</div>`;
         }
       } catch (_pe) {}
 
-      return `<div style="background:linear-gradient(145deg,rgba(155,89,182,0.13),rgba(255,255,255,0.02));border:1.5px solid rgba(189,147,249,0.28);border-radius:16px;padding:14px;margin-bottom:11px;box-shadow:0 4px 20px rgba(155,89,182,0.15),inset 0 1px 0 rgba(255,255,255,0.06);">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:16px;color:#BD93F9;font-weight:800;margin-bottom:6px;letter-spacing:0.3px;">${name}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">${pLabel}${autoTag}</div>
-          <div style="font-size:10px;color:rgba(189,147,249,0.6);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">TITHI</div>
-          <div style="font-size:12px;color:#C9A7FF;font-weight:600;margin-bottom:2px;">${fmtD(sd)}${sfmt ? ' <span style="color:#FFE566;font-weight:700;">· ' + sfmt + '</span>' : ''}</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:8px;">→ ${fmtD(ed)}${efmt ? ' <span style="color:#FFE566;">· ' + efmt + '</span>' : ''}</div>
-          <div style="font-size:13px;margin-bottom:4px;">${fastLabel}</div>
-          <div style="margin-top:3px;">${paramparaTag}</div>
+      const sfmt = startTime ? _fmtTime12(startTime) : "";
+      const efmt = endTime ? _fmtTime12(endTime) : "";
+
+      const nextBadge = isNext
+        ? `<div style="text-align:center;margin-top:5px;">
+            <span class="ek-next-badge">⟡ NEXT EKADASHI ⟡</span>
+           </div>`
+        : "";
+
+      return `<div class="ek-premium-card${isNext ? " ek-upcoming-next" : ""}">
+        <!-- Top shimmer line via ::before -->
+        <div class="ek-card-name-wrap">
+          <span class="ek-card-name">${name}</span>
+          ${nextBadge}
+        </div>
+        <div class="ek-card-divider"></div>
+        <div class="ek-card-body">
+
+          <!-- Gaurabda + Vaishnava Month row -->
+          <div class="ek-month-row">
+            ${monthBadge}${adhikBadge}${gaurabdaBadge}
+          </div>
+
+          <!-- Paksha + Parampara + Auto tags -->
+          <div class="ek-tags-row">
+            ${pLabel}${paramparaTag}${autoTag}
+          </div>
+
+          <!-- Tithi timing -->
+          <div class="ek-tithi-section">
+            <div class="ek-tithi-label">Tithi</div>
+            <div class="ek-tithi-start">${fmtD(sd)}${sfmt ? ` <span style="color:#FFE566;font-weight:700;">· ${sfmt}</span>` : ""}</div>
+            <div class="ek-tithi-end">→ ${fmtD(ed)}${efmt ? ` <span style="color:#FFE566;">· ${efmt}</span>` : ""}</div>
+          </div>
+
+          <!-- Fast date -->
+          ${fastHtml}
+
+          <!-- Parana -->
           ${paranaHtml}
+
+          <!-- Edit panel (hidden by default) -->
+          <div id="${eid}" style="display:none;background:rgba(0,0,0,0.35);border-radius:12px;padding:12px;margin-top:4px;border:1px solid rgba(155,89,182,0.25);">
+            <div style="font-size:9px;color:rgba(189,147,249,0.6);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:700;">✏ Edit</div>
+            <input type="text" id="${eid}_n" value="${name.replace(/"/g, "&quot;")}" placeholder="Name" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:8px;padding:7px 10px;color:#fff;font-size:12px;font-family:Inter,sans-serif;outline:none;margin-bottom:8px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px;">
+              <label style="display:flex;align-items:center;gap:6px;background:rgba(241,196,15,0.08);border:1px solid rgba(241,196,15,0.25);border-radius:7px;padding:7px 9px;cursor:pointer;">
+                <input type="radio" name="${eid}_p" value="shukla" ${paksha === "shukla" ? "checked" : ""} style="accent-color:#F1C40F;">
+                <span style="font-size:11px;color:#F1C40F;font-weight:600;">☀️ Shukla</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.25);border-radius:7px;padding:7px 9px;cursor:pointer;">
+                <input type="radio" name="${eid}_p" value="krishna" ${paksha === "krishna" ? "checked" : ""} style="accent-color:#BD93F9;">
+                <span style="font-size:11px;color:#BD93F9;font-weight:600;">🌙 Krishna</span>
+              </label>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px;">
+              <div><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:3px;text-transform:uppercase;">Start Date</div>
+                <input type="date" id="${eid}_sd" value="${sd}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:7px;padding:7px 5px;color:#fff;font-size:11px;font-family:Inter,sans-serif;outline:none;"></div>
+              <div><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:3px;text-transform:uppercase;">Start Time</div>
+                <input type="time" id="${eid}_st" value="${startTime}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:7px;padding:7px 5px;color:#fff;font-size:11px;font-family:Inter,sans-serif;outline:none;"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:9px;">
+              <div><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:3px;text-transform:uppercase;">End Date</div>
+                <input type="date" id="${eid}_ed" value="${ed}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:7px;padding:7px 5px;color:#fff;font-size:11px;font-family:Inter,sans-serif;outline:none;"></div>
+              <div><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:3px;text-transform:uppercase;">End Time</div>
+                <input type="time" id="${eid}_et" value="${endTime}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:7px;padding:7px 5px;color:#fff;font-size:11px;font-family:Inter,sans-serif;outline:none;"></div>
+            </div>
+            <button onclick="saveEkadashiEdit('${sd}')" style="display:block;width:100%;padding:9px;border-radius:8px;border:none;background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(200,150,12,0.4));color:#FFD700;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.4);">💾 Save Changes</button>
+          </div>
+
+          <!-- Actions -->
+          <div class="ek-actions-row">
+            <button class="ek-btn-edit" onclick="toggleEkEdit('${sd}')">✏ Edit</button>
+            <button class="ek-btn-remove" onclick="removeEkadashiDate('${sd}')">✕ Remove</button>
+          </div>
         </div>
-        <div style="display:flex;gap:5px;flex-shrink:0;margin-left:10px;">
-          <button onclick="toggleEkEdit('${sd}')" style="background:rgba(74,144,226,0.15);border:1px solid rgba(74,144,226,0.3);border-radius:9px;color:#6DB8FF;font-size:13px;padding:7px 11px;cursor:pointer;font-family:Inter,sans-serif;">✏</button>
-          <button onclick="removeEkadashiDate('${sd}')" style="background:rgba(232,51,109,0.15);border:1px solid rgba(232,51,109,0.3);border-radius:9px;color:#e8336d;font-size:13px;padding:7px 11px;cursor:pointer;font-family:Inter,sans-serif;">✕</button>
-        </div>
-      </div>
-      <div id="${eid}" style="display:none;margin-top:10px;background:rgba(0,0,0,0.3);border-radius:9px;padding:10px;">
-        <div style="font-size:9px;color:rgba(189,147,249,0.6);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:700;">Edit</div>
-        <input type="text" id="${eid}_n" value="${name.replace(/"/g, "&quot;")}" placeholder="Name" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:8px;padding:7px 10px;color:#fff;font-size:12px;font-family:Inter,sans-serif;outline:none;margin-bottom:8px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px;">
-          <label style="display:flex;align-items:center;gap:6px;background:rgba(241,196,15,0.08);border:1px solid rgba(241,196,15,0.25);border-radius:7px;padding:7px 9px;cursor:pointer;">
-            <input type="radio" name="${eid}_p" value="shukla" ${paksha === "shukla" ? "checked" : ""} style="accent-color:#F1C40F;">
-            <span style="font-size:11px;color:#F1C40F;font-weight:600;">☀️ Shukla</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;background:rgba(155,89,182,0.08);border:1px solid rgba(155,89,182,0.25);border-radius:7px;padding:7px 9px;cursor:pointer;">
-            <input type="radio" name="${eid}_p" value="krishna" ${paksha === "krishna" ? "checked" : ""} style="accent-color:#BD93F9;">
-            <span style="font-size:11px;color:#BD93F9;font-weight:600;">🌙 Krishna</span>
-          </label>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:5px;">
-          <div><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:3px;text-transform:uppercase;">Start Date</div>
-            <input type="date" id="${eid}_sd" value="${sd}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:7px;padding:7px 5px;color:#fff;font-size:11px;font-family:Inter,sans-serif;outline:none;"></div>
-          <div><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:3px;text-transform:uppercase;">Start Time</div>
-            <input type="time" id="${eid}_st" value="${startTime}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:7px;padding:7px 5px;color:#fff;font-size:11px;font-family:Inter,sans-serif;outline:none;"></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:9px;">
-          <div><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:3px;text-transform:uppercase;">End Date</div>
-            <input type="date" id="${eid}_ed" value="${ed}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:7px;padding:7px 5px;color:#fff;font-size:11px;font-family:Inter,sans-serif;outline:none;"></div>
-          <div><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:3px;text-transform:uppercase;">End Time</div>
-            <input type="time" id="${eid}_et" value="${endTime}" style="display:block;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.4);border:1px solid rgba(155,89,182,0.35);border-radius:7px;padding:7px 5px;color:#fff;font-size:11px;font-family:Inter,sans-serif;outline:none;"></div>
-        </div>
-        <button onclick="saveEkadashiEdit('${sd}')" style="display:block;width:100%;padding:9px;border-radius:8px;border:none;background:linear-gradient(135deg,rgba(155,89,182,0.7),rgba(90,50,190,0.6));color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">💾 Save Changes</button>
-      </div>
-    </div>`;
+      </div>`;
     })
     .join("");
+}
+
+function clearEkRange() {
+  const f = document.getElementById("ekRangeFrom");
+  const t = document.getElementById("ekRangeTo");
+  if (f) f.value = "";
+  if (t) t.value = "";
+  renderEkadashiList();
 }
 
 function toggleEkEdit(startDate) {

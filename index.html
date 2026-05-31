@@ -533,7 +533,18 @@
     </div>
 
     <!-- Saved list -->
-    <div style="font-size:10px;color:rgba(189,147,249,0.55);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600;">Saved Ekadashis</div>
+    <div style="font-size:10px;color:rgba(189,147,249,0.55);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:600;">🪔 Upcoming Ekadashis</div>
+
+    <!-- Date Range Filter -->
+    <div class="ek-range-bar">
+      <label>From</label>
+      <input type="date" class="ek-range-input" id="ekRangeFrom" onchange="renderEkadashiList()">
+      <label>To</label>
+      <input type="date" class="ek-range-input" id="ekRangeTo" onchange="renderEkadashiList()">
+      <button class="ek-range-clear" onclick="clearEkRange()">✕ Clear</button>
+    </div>
+
+    <div class="ek-count-label" id="ekCountLabel"></div>
     <div id="ekadashiList"></div>
   </div>
 

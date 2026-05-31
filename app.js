@@ -7843,13 +7843,26 @@ function _updateCfgTimesPreview() {
   if (cfgEk) {
     const today = _ldk(now);
     const isGaudiyaMode = !!(App.S && App.S.gaudiyaMode);
+
+    // ── First-run guard: don't show Ekadashis until user has chosen engine + parampara ──
+    if (!isGaudiyaMode) {
+      const engineChosen = App.S.ekTithiEngine === "app" || App.S.ekTithiEngine === "panchang";
+      const paramparaChosen = App.S.ekParampara === "smarta" || App.S.ekParampara === "vaishnava";
+      if (!engineChosen || !paramparaChosen) {
+        cfgEk.innerHTML = !engineChosen
+          ? '<span style="color:rgba(255,255,255,0.3);font-size:11px;">Select a Tithi Calculation Engine above to see upcoming Ekadashis</span>'
+          : '<span style="color:rgba(255,255,255,0.3);font-size:11px;">Select a Parampara above to see upcoming Ekadashis</span>';
+        return;
+      }
+    }
+
     const upcoming = (App.S.customEkadashi || [])
       .filter(ek => {
         if (!ek || typeof ek !== "object") return false;
         const isManual = !ek.autoFetched;
         if (isGaudiyaMode) return (ek.source === "gaudiya" || isManual);
-        // Standard mode: filter by selected engine
-        const engine = App.S.ekTithiEngine || "app";
+        // Standard mode: filter by selected engine (engine is guaranteed non-null here due to guard above)
+        const engine = App.S.ekTithiEngine;
         const expectedSource = engine === "panchang" ? "panchang" : "gps";
         return isManual || ek.source === expectedSource;
       })
@@ -8131,7 +8144,9 @@ function renderEkadashiList() {
     const isManual = !e.autoFetched;
     if (isGaudiya) return e.source === "gaudiya" || isManual;
     // Standard mode: show only entries matching the selected engine
-    const engine = App.S.ekTithiEngine || "app";
+    // If no engine chosen yet (null), only show manual entries
+    const engine = App.S.ekTithiEngine;
+    if (!engine) return isManual; // no engine chosen — only manual entries visible
     const expectedSource = engine === "panchang" ? "panchang" : "gps";
     return isManual || e.source === expectedSource;
   });

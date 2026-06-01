@@ -10564,7 +10564,7 @@ function _svbShowPicker() {
 
   var lmo = document.getElementById('lmo');
   var lmTitle = document.getElementById('lmTitle');
-  if (lmTitle) lmTitle.textContent = 'শ্রী হিত সেবক বাণী';
+  if (lmTitle) { lmTitle.textContent = 'শ্রী হিত সেবক বাণী'; lmTitle.style.display = 'none'; }
 
   // Hide verse-reader elements
   var lmb = document.getElementById('lmb');
@@ -10580,21 +10580,37 @@ function _svbShowPicker() {
   var oldPicker = document.getElementById('svb-picker');
   if (oldPicker) oldPicker.remove();
 
+  // Hide font-size controls while picker is visible
+  var fsCtrl = document.getElementById('lyr-fs-ctrl');
+  if (fsCtrl) fsCtrl.style.display = 'none';
+
+  // Responsive sizing: larger on tablets/iPad
+  var vw = window.innerWidth;
+  var isWide = vw >= 600;
+  var hPad = isWide ? '20px' : '14px';
+  var btnFontSize = isWide ? '15px' : '13px';
+  var btnPadding = isWide ? '14px 13px' : '12px 10px';
+  var gridGap = isWide ? '10px' : '8px';
+  var gridMaxWidth = isWide ? '820px' : '520px';
+  var subtitleSize = isWide ? '13px' : '12px';
+  var topPad = isWide ? '50px' : '52px';
+
   // Build picker — 2-column layout (9 left, 8 right)
   var picker = document.createElement('div');
   picker.id = 'svb-picker';
   picker.style.cssText = [
     'position:absolute;inset:0;overflow-y:auto;',
     'display:flex;flex-direction:column;align-items:center;',
-    'padding:60px 12px 80px;',
-    '-webkit-overflow-scrolling:touch;'
+    'padding:' + topPad + ' ' + hPad + ' 24px;',
+    '-webkit-overflow-scrolling:touch;',
+    'box-sizing:border-box;'
   ].join('');
 
   var subtitle = document.createElement('div');
   subtitle.style.cssText = [
-    'font-family:"Hind Siliguri",serif;font-size:12px;',
+    'font-family:"Hind Siliguri",serif;font-size:' + subtitleSize + ';',
     'color:rgba(255,215,0,0.70);letter-spacing:2px;',
-    'text-transform:uppercase;margin-bottom:12px;text-align:center;'
+    'text-transform:uppercase;margin-bottom:14px;text-align:center;'
   ].join('');
   subtitle.textContent = 'বিভাগ নির্বাচন করুন';
   picker.appendChild(subtitle);
@@ -10605,17 +10621,17 @@ function _svbShowPicker() {
     'display:grid;grid-template-columns:1fr 1fr;',
     'grid-template-rows:repeat(9,auto);',
     'grid-auto-flow:column;',
-    'gap:8px;width:100%;max-width:540px;'
+    'gap:' + gridGap + ';width:100%;max-width:' + gridMaxWidth + ';'
   ].join('');
 
   var btnStyle = [
     'background:rgba(255,215,0,0.07);',
     'border:1px solid rgba(255,215,0,0.22);',
-    'border-radius:11px;padding:11px 10px;',
+    'border-radius:11px;padding:' + btnPadding + ';',
     'color:#ffd700;font-family:"Hind Siliguri",serif;',
-    'font-size:13px;text-align:left;cursor:pointer;',
-    'line-height:1.35;transition:background 0.15s;',
-    'display:flex;gap:7px;align-items:flex-start;'
+    'font-size:' + btnFontSize + ';text-align:left;cursor:pointer;',
+    'line-height:1.4;transition:background 0.15s;',
+    'display:flex;gap:7px;align-items:flex-start;width:100%;box-sizing:border-box;'
   ].join('');
 
   _svbSections.forEach(function(sec, idx) {
@@ -10651,9 +10667,14 @@ function _svbOpenSection(idx) {
   if (lmb) lmb.style.display = '';
   if (lmNav) lmNav.style.display = '';
 
+  // Restore font-size controls
+  var fsCtrl = document.getElementById('lyr-fs-ctrl');
+  if (fsCtrl) fsCtrl.style.display = '';
+
+
   // Section title in header (strip Bengali number prefix)
   var lmTitle = document.getElementById('lmTitle');
-  if (lmTitle) lmTitle.textContent = sec.title.replace(/^[০-৯]+\.\s*/, '');
+  if (lmTitle) { lmTitle.style.display = ''; lmTitle.textContent = sec.title.replace(/^[০-৯]+\.\s*/, ''); }
 
   // Add "← বিভাগ" back button if not already present
   var existing = document.getElementById('svb-back-btn');

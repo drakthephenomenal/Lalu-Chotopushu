@@ -467,7 +467,7 @@
     <div class="cdl">Wed</div><div class="cdl">Thu</div><div class="cdl">Fri</div><div class="cdl">Sat</div>
   </div>
   <div style="padding:6px 14px 4px;display:flex;justify-content:center;gap:14px;font-size:10px;color:var(--td)">
-    <span>🟢 Maintained</span><span>🔴 Broken</span><span style="color:var(--gold)">🟡 Occasion</span>
+    <span>⬜ Maintained</span><span>🔴 Broken</span><span style="color:var(--gold)">🟡 Occasion</span>
   </div>
   <div style="padding:4px 14px 6px;font-size:11px;color:var(--td);text-align:center;letter-spacing:1px;">Tap a date to see details</div>
 
@@ -1103,7 +1103,7 @@
   <div class="sc">
     <h3>💾 Local Backup &amp; Restore</h3>
     <p style="font-size:12px;color:var(--td);margin-bottom:14px">Export all your data as a JSON file. Use to transfer to a new device.</p>
-    <button class="pb" onclick="exportAllData()" style="background:linear-gradient(135deg,#1a6b3c,#27ae60);margin-bottom:10px">📥 Export All Data</button>
+    <button class="pb pb-export" onclick="exportAllData()" style="margin-bottom:10px">📥 Export All Data</button>
     <label style="display:block;width:100%;padding:10px;border-radius:11px;border:1px dashed rgba(74,144,226,0.4);background:rgba(74,144,226,0.06);color:var(--a2);font-size:13px;text-align:center;cursor:pointer;font-family:'Inter',sans-serif;box-sizing:border-box">
       📤 Choose Backup File to Restore
       <input type="file" id="restoreFileIn" accept=".json" style="display:none" onchange="importAllData(this)">

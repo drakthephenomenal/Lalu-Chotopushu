@@ -1,11 +1,12 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker
+// v113: stotrams.js → stotram.js in LOCAL_ASSETS
 // v112: fix Ekadashi viddha Condition 2 (compare ekEnd vs startDate sunrise not endDate);
 //       fix _resyncEkOccasions same bug; fix parana day advance when Dvadashi spans full day;
 //       fix hard deadline search anchored to paranaDay not ekEnd
 // v111: fix NaN Gaurabda — gaurabdaYear fallback; panchangData versioned; v108: celestial sunrise = solar noon − 6h (ISKCON match); BM end fixed 46→48 min; paran uses apparent daytime length
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v112';
+const CACHE = 'radha-jap-v113';
 
 const LOCAL_ASSETS = [
   './',
@@ -13,7 +14,7 @@ const LOCAL_ASSETS = [
   './404.html',
   './style.css',
   './style-stotram.css',
-  './stotrams.js',
+  './stotram.js',
   './app.js',
   './panchangData.js',
   './se-bridge.js',

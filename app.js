@@ -6260,8 +6260,8 @@ function reset28Time(scope) {
   fbDebouncedPush();
 }
 
-// ── STOTRAM LIST & LYRICS are now in stotrams.js ──
-// Make sure to include stotrams.js before app.js in your HTML
+// ── STOTRAM LIST & LYRICS are now in stotram.js ──
+// Make sure to include stotram.js before app.js in your HTML
 
 function renderSt() {
   const list = document.getElementById("stList");

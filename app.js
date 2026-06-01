@@ -6266,88 +6266,113 @@ function reset28Time(scope) {
 function renderSt() {
   const list = document.getElementById("stList");
   list.innerHTML = "";
-  // Merge: inbuilt + global (from Firestore) + personal custom
+
+  // Inject premium glow animations once
+  if (!document.getElementById('st-card-styles')) {
+    const styleEl = document.createElement('style');
+    styleEl.id = 'st-card-styles';
+    styleEl.textContent = [
+      '@keyframes stCardGlow{0%,100%{box-shadow:0 0 7px 1px var(--sgc,#ffd700),0 2px 18px rgba(0,0,0,0.55);border-color:rgba(255,215,0,0.30)}50%{box-shadow:0 0 22px 5px var(--sgc,#ffd700),0 2px 24px rgba(0,0,0,0.65);border-color:rgba(255,215,0,0.72)}}',
+      '@keyframes stColorCycle{0%{--sgc:#ffd700}20%{--sgc:#ff9d00}40%{--sgc:#ff6bff}60%{--sgc:#00e5ff}80%{--sgc:#7dff6b}100%{--sgc:#ffd700}}',
+      '@keyframes stNameShimmer{0%,100%{background-position:-200% center}100%{background-position:200% center}}',
+      '@keyframes stFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}',
+      '@keyframes stCountPop{0%{transform:scale(1)}40%{transform:scale(1.22);color:#fff}100%{transform:scale(1)}}',
+      '.st-card{animation:stCardGlow var(--spd,3.2s) ease-in-out infinite,stColorCycle var(--scd,10s) ease-in-out infinite,stFadeUp 0.45s ease both;animation-delay:var(--sad,0s),var(--sod,0s),var(--sfd,0s);background:rgba(0,0,0,0.48);border:1px solid rgba(255,215,0,0.30);border-radius:16px;padding:16px 16px 14px;margin-bottom:12px;box-sizing:border-box;transition:transform 0.15s;-webkit-tap-highlight-color:transparent}',
+      '.st-card:active{transform:scale(0.985)}',
+      '.st-name{background:linear-gradient(90deg,#ffd700 0%,#fff8dc 30%,#ffaa00 50%,#fff8dc 70%,#ffd700 100%);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:stNameShimmer 3.5s linear infinite;font-family:"Hind Siliguri",serif;font-size:17px;font-weight:700;line-height:1.3}',
+      '.st-sub{font-family:"Hind Siliguri",serif;font-size:12px;color:rgba(255,215,0,0.45);margin-top:3px;letter-spacing:0.3px}',
+      '.st-count{font-size:40px;font-weight:700;color:#ffd700;line-height:1;font-family:"Inter",sans-serif;text-shadow:0 0 12px rgba(255,215,0,0.5)}',
+      '.st-count.pop{animation:stCountPop 0.3s ease}',
+      '.st-meta{font-size:11px;color:rgba(255,215,0,0.42);margin-top:4px;letter-spacing:0.3px}',
+      '.st-meta strong{color:rgba(255,215,0,0.80)}',
+      '.st-row{display:flex;align-items:center;justify-content:space-between;margin-top:12px;gap:8px}',
+      '.st-btns{display:flex;gap:8px}',
+      '.st-btn{width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,215,0,0.30);background:rgba(255,215,0,0.08);color:#ffd700;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s,box-shadow 0.15s;-webkit-tap-highlight-color:transparent}',
+      '.st-btn:active{background:rgba(255,215,0,0.22);box-shadow:0 0 10px 2px rgba(255,215,0,0.4)}',
+      '.st-btn.read{font-size:18px}',
+      '.st-edit-btn{font-size:13px;width:32px;height:32px;border-radius:8px;border:1px solid rgba(74,144,226,0.35);background:rgba(74,144,226,0.10);color:#7ab8ff;cursor:pointer;display:flex;align-items:center;justify-content:center}',
+    ].join('');
+    document.head.appendChild(styleEl);
+  }
+
   const globalSt = (_globalStotrams || []).map((x) => ({ ...x, global: true }));
   const all = [
     ...STLIST,
     ...globalSt,
     ...(App.S.customSt || []).map((x) => ({ ...x, custom: true })),
   ];
-  // Show dev panel toggle button for developers
   const devBtn = document.getElementById("devStBtn");
   if (devBtn) devBtn.style.display = isDeveloper() ? "" : "none";
-  all.forEach((st) => {
+
+  const glowColors = ['#ffd700','#ffaa00','#ff6bff','#00e5ff','#7dff6b','#ff6b6b','#b388ff','#00ffcc','#ffd700','#ff9d00'];
+
+  all.forEach((st, idx) => {
     const tc = (App.S.stotrams[st.id] || {})[App.S.tk] || 0;
-    const tot = Object.values(App.S.stotrams[st.id] || {}).reduce(
-      (a, b) => a + b,
-      0,
-    );
-    // Show 📖 for built-in (via LYRICS or override), global, or custom with lyrics
+    const tot = Object.values(App.S.stotrams[st.id] || {}).reduce((a,b)=>a+b, 0);
     const effLyrics = getEffectiveLyrics(st.id);
     const hasLyrics = !!(effLyrics && effLyrics.trim().length > 0);
+
+    const gc = glowColors[idx % glowColors.length];
+    const pulseDur = (2.8 + (idx % 5) * 0.45).toFixed(1) + 's';
+    const colorDur = (9 + (idx % 4) * 1.5).toFixed(1) + 's';
+    const fadeDelay = (idx * 0.055).toFixed(2) + 's';
+    const colorOff = '-' + (idx * 0.7).toFixed(1) + 's';
+
     const c = document.createElement("div");
-    c.className = "stc";
-    // Tag for global stotrams
+    c.className = "st-card";
+    c.style.cssText = '--sgc:' + gc + ';--spd:' + pulseDur + ';--scd:' + colorDur + ';--sad:' + fadeDelay + ';--sod:' + colorOff + ';--sfd:' + fadeDelay + ';';
+
     const globalTag = st.global
-      ? '<span style="font-size:9px;color:var(--gold);border:1px solid rgba(255,215,0,0.3);border-radius:4px;padding:1px 5px;margin-left:5px;vertical-align:middle">🌍 GLOBAL</span>'
-      : "";
+      ? '<span style="font-size:9px;color:#ffd700;border:1px solid rgba(255,215,0,0.35);border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:middle;letter-spacing:0.5px">🌍 GLOBAL</span>'
+      : '';
+
+    let headerRight = '';
+    if (st.custom) {
+      headerRight = '<div style="display:flex;gap:5px;flex-shrink:0">' +
+        '<button class="st-edit-btn" onclick="toggleStEdit(\'' + st.id + '\')">✏</button>' +
+        '<button class="st-edit-btn" style="border-color:rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08)" onclick="delSt(\'' + st.id + '\')">✕</button>' +
+        '</div>';
+    }
+
     let inner =
-      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:3px">' +
-      '<span class="stn">' +
-      escHtml(st.name) +
-      globalTag +
-      "</span>" +
-      (st.custom
-        ? '<div style="display:flex;gap:5px">' +
-          '<button class="dsb" style="color:var(--a2);border-color:rgba(74,144,226,0.35)" onclick="toggleStEdit(\'' +
-          st.id +
-          "')\">✏</button>" +
-          '<button class="dsb" onclick="delSt(\'' +
-          st.id +
-          "')\">✕</button>" +
-          "</div>"
-        : "") +
-      "</div>" +
-      (st.sub ? '<div class="sts">' + escHtml(st.sub) + "</div>" : "") +
-      '<div class="scr"><div>' +
-      '<div class="scnt" id="sc' +
-      st.id +
-      '">' +
-      tc +
-      "</div>" +
-      '<div class="std2">Today · Total: <strong style="color:var(--a2)">' +
-      tot +
-      "</strong></div>" +
-      "</div>" +
-      '<div class="sbtns">' +
-      '<button class="sbtn m" onclick="adjSt(\'' +
-      st.id +
-      "',-1)\">−</button>" +
-      '<button class="sbtn p" onclick="adjSt(\'' +
-      st.id +
-      "',1)\">+</button>" +
-      (hasLyrics
-        ? '<button class="sbtn l" onclick="showLyrics(\'' +
-          st.id +
-          "')\">📖</button>"
-        : "") +
-      "</div></div>";
-    // Edit lyrics panel (custom only) — hidden by default
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div class="st-name">' + escHtml(st.name) + globalTag + '</div>' +
+          (st.sub ? '<div class="st-sub">' + escHtml(st.sub) + '</div>' : '') +
+        '</div>' +
+        headerRight +
+      '</div>' +
+      '<div class="st-row">' +
+        '<div>' +
+          '<div class="st-count" id="sc' + st.id + '">' + tc + '</div>' +
+          '<div class="st-meta">Today · Total: <strong>' + tot + '</strong></div>' +
+        '</div>' +
+        '<div class="st-btns">' +
+          '<button class="st-btn" onclick="adjSt(\'' + st.id + '\',-1)">−</button>' +
+          '<button class="st-btn" onclick="adjSt(\'' + st.id + '\',1)">+</button>' +
+          (hasLyrics ? '<button class="st-btn read" onclick="showLyrics(\'' + st.id + '\')">📖</button>' : '') +
+        '</div>' +
+      '</div>';
+
     if (st.custom) {
       inner +=
-        '<div id="slePanel-' +
-        st.id +
-        '" style="display:none;margin-top:10px">' +
-        '<div style="font-size:11px;color:var(--a2);margin-bottom:5px;letter-spacing:1px">✏ Edit Lyrics (stored in your account)</div>' +
-        '<textarea id="sle-' +
-        st.id +
-        '" rows="8" style="width:100%;background:rgba(0,0,0,0.35);border:1px solid rgba(74,144,226,0.25);border-radius:9px;padding:9px 11px;color:var(--tl);font-size:14px;font-family:Hind Siliguri,serif;resize:vertical;line-height:1.8;box-sizing:border-box" placeholder="Paste full lyrics here…"></textarea>' +
-        "<button onclick=\"editStLyrics('" +
-        st.id +
-        '\')" style="margin-top:7px;padding:8px 18px;border-radius:9px;border:none;background:linear-gradient(135deg,var(--bg),var(--a));color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">💾 Save Lyrics</button>' +
-        "</div>";
+        '<div id="slePanel-' + st.id + '" style="display:none;margin-top:12px">' +
+        '<div style="font-size:11px;color:rgba(74,144,226,0.8);margin-bottom:6px;letter-spacing:1px">✏ Edit Lyrics</div>' +
+        '<textarea id="sle-' + st.id + '" rows="8" style="width:100%;background:rgba(0,0,0,0.40);border:1px solid rgba(74,144,226,0.25);border-radius:10px;padding:10px 12px;color:var(--tl);font-size:14px;font-family:Hind Siliguri,serif;resize:vertical;line-height:1.8;box-sizing:border-box" placeholder="Paste full lyrics here…"></textarea>' +
+        '<button onclick="editStLyrics(\'' + st.id + '\')" style="margin-top:8px;padding:9px 20px;border-radius:10px;border:none;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">💾 Save Lyrics</button>' +
+        '</div>';
     }
+
     c.innerHTML = inner;
+
+    // Pop animation on count change
+    c.querySelectorAll('.st-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const cntEl = c.querySelector('.st-count');
+        if (cntEl) { cntEl.classList.remove('pop'); void cntEl.offsetWidth; cntEl.classList.add('pop'); }
+      });
+    });
+
     list.appendChild(c);
   });
 }

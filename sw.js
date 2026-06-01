@@ -14,7 +14,7 @@ const LOCAL_ASSETS = [
   './404.html',
   './style.css',
   './style-stotram.css',
-  './stotram.js',
+  './stotrams.js',
   './app.js',
   './panchangData.js',
   './se-bridge.js',

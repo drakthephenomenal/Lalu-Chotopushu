@@ -10584,38 +10584,92 @@ function _svbShowPicker() {
   var fsCtrl = document.getElementById('lyr-fs-ctrl');
   if (fsCtrl) fsCtrl.style.display = 'none';
 
-  // Responsive sizing: larger on tablets/iPad
+  // Inject premium animation keyframes once
+  if (!document.getElementById('svb-picker-styles')) {
+    var styleEl = document.createElement('style');
+    styleEl.id = 'svb-picker-styles';
+    styleEl.textContent = [
+      '@keyframes svbGlowPulse {',
+      '  0%,100% { box-shadow: 0 0 6px 1px var(--gc,#ffd700), inset 0 0 8px rgba(255,215,0,0.06); border-color: rgba(255,215,0,0.35); }',
+      '  50%    { box-shadow: 0 0 18px 4px var(--gc,#ffd700), inset 0 0 16px rgba(255,215,0,0.13); border-color: rgba(255,215,0,0.75); }',
+      '}',
+      '@keyframes svbColorShift {',
+      '  0%   { --gc: #ffd700; color: #ffd700; }',
+      '  20%  { --gc: #ff9d00; color: #ffb830; }',
+      '  40%  { --gc: #ff6bff; color: #ffaaff; }',
+      '  60%  { --gc: #00e5ff; color: #80f0ff; }',
+      '  80%  { --gc: #7dff6b; color: #b8ffb0; }',
+      '  100% { --gc: #ffd700; color: #ffd700; }',
+      '}',
+      '@keyframes svbTitleShimmer {',
+      '  0%,100% { background-position: -200% center; }',
+      '  100%    { background-position: 200% center; }',
+      '}',
+      '@keyframes svbFadeUp {',
+      '  from { opacity:0; transform:translateY(14px); }',
+      '  to   { opacity:1; transform:translateY(0); }',
+      '}',
+      '#svb-picker-title {',
+      '  background: linear-gradient(90deg,#ffd700 0%,#fff8dc 30%,#ffaa00 50%,#fff8dc 70%,#ffd700 100%);',
+      '  background-size: 200% auto;',
+      '  -webkit-background-clip: text;',
+      '  -webkit-text-fill-color: transparent;',
+      '  background-clip: text;',
+      '  animation: svbTitleShimmer 3s linear infinite;',
+      '}',
+      '.svb-btn {',
+      '  animation: svbGlowPulse var(--pd,3s) ease-in-out infinite, svbColorShift var(--cd,9s) ease-in-out infinite, svbFadeUp 0.4s ease both;',
+      '  animation-delay: var(--ad,0s), var(--od,0s), var(--fd,0s);',
+      '}',
+      '.svb-btn:active { transform: scale(0.96); filter: brightness(1.3); }',
+    ].join('\n');
+    document.head.appendChild(styleEl);
+  }
+
+  // Responsive sizing
   var vw = window.innerWidth;
   var isWide = vw >= 600;
-  var hPad = isWide ? '20px' : '14px';
-  var btnFontSize = isWide ? '15px' : '13px';
-  var btnPadding = isWide ? '14px 13px' : '12px 10px';
-  var gridGap = isWide ? '10px' : '8px';
-  var gridMaxWidth = isWide ? '820px' : '520px';
-  var subtitleSize = isWide ? '13px' : '12px';
-  var topPad = isWide ? '50px' : '52px';
+  var hPad = isWide ? '24px' : '14px';
+  var btnFontSize = isWide ? '16px' : '14px';
+  var btnPadding = isWide ? '16px 14px' : '13px 12px';
+  var gridGap = isWide ? '12px' : '10px';
+  var gridMaxWidth = isWide ? '860px' : '600px';
+  var topPad = isWide ? '48px' : '48px';
 
-  // Build picker — 2-column layout (9 left, 8 right)
+  // Build picker
   var picker = document.createElement('div');
   picker.id = 'svb-picker';
   picker.style.cssText = [
     'position:absolute;inset:0;overflow-y:auto;',
     'display:flex;flex-direction:column;align-items:center;',
-    'padding:' + topPad + ' ' + hPad + ' 24px;',
+    'padding:' + topPad + ' ' + hPad + ' 28px;',
     '-webkit-overflow-scrolling:touch;',
     'box-sizing:border-box;'
   ].join('');
 
+  // Shimmer title
+  var titleDiv = document.createElement('div');
+  titleDiv.id = 'svb-picker-title';
+  titleDiv.style.cssText = [
+    'font-family:"Hind Siliguri",serif;',
+    'font-size:' + (isWide ? '22px' : '18px') + ';',
+    'font-weight:700;letter-spacing:3px;',
+    'margin-bottom:6px;text-align:center;'
+  ].join('');
+  titleDiv.textContent = 'শ্রী হিত সেবক বাণী';
+  picker.appendChild(titleDiv);
+
   var subtitle = document.createElement('div');
   subtitle.style.cssText = [
-    'font-family:"Hind Siliguri",serif;font-size:' + subtitleSize + ';',
-    'color:rgba(255,215,0,0.70);letter-spacing:2px;',
-    'text-transform:uppercase;margin-bottom:14px;text-align:center;'
+    'font-family:"Hind Siliguri",serif;',
+    'font-size:' + (isWide ? '12px' : '11px') + ';',
+    'color:rgba(255,215,0,0.50);letter-spacing:2.5px;',
+    'text-transform:uppercase;margin-bottom:18px;text-align:center;'
   ].join('');
   subtitle.textContent = 'বিভাগ নির্বাচন করুন';
   picker.appendChild(subtitle);
 
-  // Two-column grid wrapper
+  // Two-column grid
   var grid = document.createElement('div');
   grid.style.cssText = [
     'display:grid;grid-template-columns:1fr 1fr;',
@@ -10624,22 +10678,54 @@ function _svbShowPicker() {
     'gap:' + gridGap + ';width:100%;max-width:' + gridMaxWidth + ';'
   ].join('');
 
-  var btnStyle = [
-    'background:rgba(255,215,0,0.07);',
-    'border:1px solid rgba(255,215,0,0.22);',
-    'border-radius:11px;padding:' + btnPadding + ';',
-    'color:#ffd700;font-family:"Hind Siliguri",serif;',
-    'font-size:' + btnFontSize + ';text-align:left;cursor:pointer;',
-    'line-height:1.4;transition:background 0.15s;',
-    'display:flex;gap:7px;align-items:flex-start;width:100%;box-sizing:border-box;'
-  ].join('');
+  // Color palette cycling per button
+  var glowColors = [
+    '#ffd700','#ffaa00','#ff6bff','#00e5ff','#7dff6b',
+    '#ff6b6b','#ffd700','#b388ff','#00ffcc','#ffaa00',
+    '#ffd700','#ff6bff','#00e5ff','#7dff6b','#ff6b6b',
+    '#ffd700','#b388ff'
+  ];
 
   _svbSections.forEach(function(sec, idx) {
     var btn = document.createElement('button');
-    btn.style.cssText = btnStyle;
-    var numSpan = '<span style="opacity:0.40;font-size:12px;min-width:18px;flex-shrink:0;">' + (idx + 1) + '</span>';
-    var nameText = sec.title.replace(/^[০-৯]+\.\s*/, '');
-    btn.innerHTML = numSpan + escHtml(nameText);
+    var gc = glowColors[idx % glowColors.length];
+    var pulseDur = (2.8 + (idx % 5) * 0.4).toFixed(1) + 's';
+    var colorDur = (8 + (idx % 4) * 1.5).toFixed(1) + 's';
+    var fadeDelay = (idx * 0.045).toFixed(2) + 's';
+    var colorOffset = '-' + (idx * 0.6).toFixed(1) + 's';
+
+    btn.className = 'svb-btn';
+    btn.style.cssText = [
+      '--gc:' + gc + ';',
+      '--pd:' + pulseDur + ';',
+      '--cd:' + colorDur + ';',
+      '--fd:' + fadeDelay + ';',
+      '--od:' + colorOffset + ';',
+      '--ad:' + fadeDelay + ';',
+      'background:rgba(0,0,0,0.45);',
+      'border:1px solid rgba(255,215,0,0.35);',
+      'border-radius:13px;padding:' + btnPadding + ';',
+      'color:#ffd700;font-family:"Hind Siliguri",serif;',
+      'font-size:' + btnFontSize + ';text-align:left;cursor:pointer;',
+      'line-height:1.45;',
+      'display:flex;gap:8px;align-items:center;',
+      'width:100%;box-sizing:border-box;',
+      'transition:transform 0.1s,filter 0.1s;',
+      '-webkit-tap-highlight-color:transparent;'
+    ].join('');
+
+    var numSpan = document.createElement('span');
+    numSpan.style.cssText = [
+      'opacity:0.38;font-size:11px;min-width:16px;',
+      'flex-shrink:0;font-weight:600;letter-spacing:0.5px;'
+    ].join('');
+    numSpan.textContent = String(idx + 1);
+
+    var nameSpan = document.createElement('span');
+    nameSpan.textContent = sec.title.replace(/^[০-৯]+\.\s*/, '');
+
+    btn.appendChild(numSpan);
+    btn.appendChild(nameSpan);
     btn.onclick = function() { _svbOpenSection(idx); };
     grid.appendChild(btn);
   });

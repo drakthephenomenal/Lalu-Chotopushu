@@ -7541,7 +7541,7 @@ nkc:`নারায়ণ কবচম্
 ॥ জয় জয় শ্রীহিত হরিবংশচন্দ্র বিরচিত
 শ্রীহিত স্ফুট বাণী জূ কী জয় জয় শ্রীহিত হরিবংশ ॥`
 
-}
+};
 // ═══════════════════════════════════════════════════════
 // SECTIONED-STOTRAM PICKER (svb, blv, …)
 // All UI/logic for stotrams that have numbered sub-sections

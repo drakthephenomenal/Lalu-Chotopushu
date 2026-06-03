@@ -1,12 +1,45 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker
-// v116: removed dead se-bridge.js + dead Ekadashi detector (getEkadashiInfo)
-//       from panchangData.js; asset versions aligned to 115; offline-ready.
+// v118: FCM integrated — handles background push messages directly.
+//       Removed local SHOW_NOTIFICATION (no more setTimeout-based notifications).
+//       importScripts Firebase at top so FCM push events work in this SW.
+// v117: removed dead se-bridge.js + dead Ekadashi detector
 // v115: removed all Ekadashi / Mahadvadashi / Paran logic & UI
-//       (panchangData.js kept — only source of tithi calculation)
-
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v117';
+
+// Firebase Messaging — must be imported before any push event can be handled
+importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+  apiKey:            'AIzaSyCvvXEdsJjXpTbITE2HuyYFnPZfZIkxVWA',
+  authDomain:        'guru-kripahi-kevalam-108.firebaseapp.com',
+  projectId:         'guru-kripahi-kevalam-108',
+  storageBucket:     'guru-kripahi-kevalam-108.firebasestorage.app',
+  messagingSenderId: '368485403238',
+  appId:             '1:368485403238:web:a3ab5c1427ad0c40fffba7',
+});
+
+const messaging = firebase.messaging();
+
+// Called when a push arrives and the app is in the BACKGROUND or closed
+messaging.onBackgroundMessage((payload) => {
+  const n    = payload.notification || {};
+  const tag  = (payload.data && payload.data.tag) || 'radha-jap';
+  return self.registration.showNotification(n.title || 'राधे राधे 🙏', {
+    body:     n.body || '',
+    tag,
+    icon:     './icon-192.png',
+    badge:    './icon-192.png',
+    renotify: true,
+    vibrate:  [200, 100, 200],
+  });
+});
+
+// ───────────────────────────────────────────────────────
+// Offline cache
+// ───────────────────────────────────────────────────────
+const CACHE = 'radha-jap-v118';
 
 const LOCAL_ASSETS = [
   './',
@@ -27,6 +60,7 @@ const EXTERNAL_ASSETS = [
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js',
+  'https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js',
   'https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=Hind+Siliguri:wght@400;600;700&family=Cinzel+Decorative:wght@400;700&family=EB+Garamond:wght@400;600&family=Inter:wght@300;400;500;600&family=Noto+Sans+Devanagari:wght@400;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap',
   'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js',
 ];
@@ -40,6 +74,7 @@ const BYPASS = [
   'firebaseio.com',
   'oauth2.googleapis.com',
   'accounts.google.com',
+  'fcm.googleapis.com',
 ];
 
 function withinScopePath(pathname) {
@@ -50,12 +85,9 @@ function withinScopePath(pathname) {
 function toLocalCacheKey(requestOrUrl) {
   const raw = typeof requestOrUrl === 'string' ? requestOrUrl : requestOrUrl.url;
   const url = new URL(raw, self.location.origin);
-
   if (url.origin !== self.location.origin) return null;
-
   let relativePath = withinScopePath(url.pathname);
   if (relativePath == null) return null;
-
   if (!relativePath || relativePath === '/') return './index.html';
   if (relativePath.startsWith('/')) relativePath = relativePath.slice(1);
   return `./${relativePath}`;
@@ -64,18 +96,14 @@ function toLocalCacheKey(requestOrUrl) {
 async function cacheLocalAsset(cache, asset) {
   try {
     const response = await fetch(asset, { cache: 'reload' });
-    if (response && response.ok) {
-      await cache.put(asset, response.clone());
-    }
+    if (response && response.ok) await cache.put(asset, response.clone());
   } catch (_) {}
 }
 
 async function cacheExternalAsset(cache, url) {
   try {
     const response = await fetch(url, { cache: 'reload', mode: 'no-cors' });
-    if (response && (response.ok || response.type === 'opaque')) {
-      await cache.put(url, response.clone());
-    }
+    if (response && (response.ok || response.type === 'opaque')) await cache.put(url, response.clone());
   } catch (_) {}
 }
 
@@ -89,27 +117,23 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    await Promise.allSettled(LOCAL_ASSETS.map((asset) => cacheLocalAsset(cache, asset)));
-    await Promise.allSettled(EXTERNAL_ASSETS.map((asset) => cacheExternalAsset(cache, asset)));
+    await Promise.allSettled(LOCAL_ASSETS.map((a) => cacheLocalAsset(cache, a)));
+    await Promise.allSettled(EXTERNAL_ASSETS.map((a) => cacheExternalAsset(cache, a)));
   })());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
+    await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
     await self.clients.claim();
-
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    clients.forEach((client) => {
-      client.postMessage({ type: 'SW_UPDATED', version: CACHE });
-    });
+    clients.forEach((c) => c.postMessage({ type: 'SW_UPDATED', version: CACHE }));
   })());
 });
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-
   const url = new URL(event.request.url);
   if (BYPASS.some((host) => url.href.includes(host))) return;
 
@@ -117,14 +141,11 @@ self.addEventListener('fetch', (event) => {
     event.respondWith((async () => {
       try {
         const response = await fetch(event.request, { cache: 'no-cache' });
-        if (response && response.ok) {
-          await storeResponse('./index.html', response);
-        }
+        if (response && response.ok) await storeResponse('./index.html', response);
         return response;
       } catch (_) {
         return (await caches.match('./index.html')) || new Response('Offline', {
-          status: 503,
-          headers: { 'content-type': 'text/plain; charset=utf-8' },
+          status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' },
         });
       }
     })());
@@ -136,16 +157,12 @@ self.addEventListener('fetch', (event) => {
     event.respondWith((async () => {
       const cached = await caches.match(localCacheKey);
       if (cached) return cached;
-
       try {
         const response = await fetch(event.request, { cache: 'no-cache' });
         await storeResponse(localCacheKey, response);
         return response;
       } catch (_) {
-        return cached || new Response('Offline', {
-          status: 503,
-          headers: { 'content-type': 'text/plain; charset=utf-8' },
-        });
+        return new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
       }
     })());
     return;
@@ -154,33 +171,18 @@ self.addEventListener('fetch', (event) => {
   event.respondWith((async () => {
     const cached = await caches.match(event.request);
     if (cached) return cached;
-
     try {
       const response = await fetch(event.request);
       await storeResponse(event.request, response);
       return response;
     } catch (_) {
-      return new Response('Offline', {
-        status: 503,
-        headers: { 'content-type': 'text/plain; charset=utf-8' },
-      });
+      return new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
     }
   })());
 });
 
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
-    event.waitUntil(
-      self.registration.showNotification(event.data.title, {
-        body: event.data.body,
-        tag: event.data.tag,
-        renotify: true,
-        vibrate: [200, 100, 200],
-        icon: './icon-192.png',
-      })
-    );
-  }
-
+  // All notifications now come via Firebase Cloud Messaging — no local SHOW_NOTIFICATION.
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }

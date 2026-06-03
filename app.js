@@ -7896,13 +7896,7 @@ function logActivity(entry) {
 
 // ── INIT ──
 window.addEventListener("load", async () => {
-  // ── Swiss Ephemeris WASM init (non-blocking background load) ─────────────
-  // _moonElongation() auto-uses SE once ready; Meeus 60-term is fallback.
-  if (typeof SEBridge !== "undefined") {
-    SEBridge.init()
-      .then(() => console.log("[App] Swiss Ephemeris ready — tithi precision ~1 arcsec ✓"))
-      .catch(e => console.warn("[App] SE WASM unavailable, using Meeus fallback:", e.message));
-  }
+
 
   await App.load();
   App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));

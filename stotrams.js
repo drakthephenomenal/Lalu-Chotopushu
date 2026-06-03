@@ -7762,11 +7762,39 @@ nkc:`নারায়ণ কবচম্
       }
     }
 
-    global._verses   = merged;
-    global._verseIdx = 0;
+    // FIX: app.js declares `_verses`/`_verseIdx` with `let` (script-scoped),
+    // so assigning to window._verses does NOT update them. Route through
+    // showLyrics() by temporarily un-sectioning this id and overriding the
+    // lyrics getter to return only the chosen section's verses.
+    var idToOpen        = _activeId;
+    var savedTitle      = SECTIONED[idToOpen];
+    var savedGetLyrics  = window.getEffectiveLyrics;
+    var sectionLyrics   = merged.join('\n\n');
 
-    if (typeof _renderVerse      === 'function') _renderVerse(0, null);
-    if (typeof _initSwipeHandler === 'function') _initSwipeHandler();
+    delete SECTIONED[idToOpen];
+    window.getEffectiveLyrics = function (qid) {
+      if (qid === idToOpen) return sectionLyrics;
+      return savedGetLyrics.apply(this, arguments);
+    };
+    try {
+      if (typeof window.showLyrics === 'function') {
+        window.showLyrics(idToOpen);
+      }
+    } finally {
+      window.getEffectiveLyrics = savedGetLyrics;
+      SECTIONED[idToOpen] = savedTitle;
+    }
+
+    // Re-apply section title (showLyrics overwrites lmTitle with stotram name)
+    var lmTitle2 = document.getElementById('lmTitle');
+    if (lmTitle2) lmTitle2.textContent = sec.title.replace(/^[০-৯]+\.\s*/, '');
+
+    // Re-apply radha theme to the card (svb/blv aren't in shiv/radha lists
+    // so showLyrics clears data-theme).
+    var cardEl = document.querySelector('.lm-water-card');
+    if (cardEl) cardEl.setAttribute('data-theme', 'radha');
+    var lmoEl = document.getElementById('lmo');
+    if (lmoEl) lmoEl.setAttribute('data-bg', 'radha');
   }
 
   // ── Reset, called by app.js when the lyrics modal is closed ───────────

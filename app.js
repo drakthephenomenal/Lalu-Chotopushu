@@ -9241,12 +9241,15 @@ async function fcmRequestAndSaveToken() {
 
   try {
     const token = await msg.getToken({ vapidKey: FCM_VAPID });
-    if (!token) return null;
+    if (!token) {
+      console.error("FCM getToken returned null — check COEP headers or SW registration");
+      return null;
+    }
     _fcmToken = token;
     await _saveFcmTokenToFirestore(token);
     return token;
   } catch (e) {
-    console.warn("FCM getToken failed:", e.message);
+    console.error("FCM getToken failed:", e.message, e);
     return null;
   }
 }

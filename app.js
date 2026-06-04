@@ -1941,6 +1941,10 @@ function tgs(k) {
         (pos) => {
           const lat = pos.coords.latitude, lng = pos.coords.longitude;
           if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; App.save(); }
+          // Auto-update reminder prefs with new location
+          const remCfg = getRemCfg();
+          const anyEnabled = ["brahma","sandhya","manual"].some(t => remCfg[t]?.enabled);
+          if (anyEnabled) { _saveRemPrefsToFirestore(remCfg); }
           updateSunInfo(lat, lng);
           if (tgGps) tgGps.classList.add("on");
           if (statusEl) statusEl.textContent = "✅ Location detected · " + lat.toFixed(3) + ", " + lng.toFixed(3);

@@ -9226,6 +9226,26 @@ function _getFcmMessaging() {
   }
 }
 
+// ── Get or register the firebase-messaging SW ────────────────────────────
+// GitHub Pages serves the app from a subpath (/Lalu-Chotopushu/), so FCM's
+// default SW lookup at the domain root fails. We must explicitly register
+// firebase-messaging-sw.js at the correct scope and pass it to getToken.
+async function _getFcmSwRegistration() {
+  if (!("serviceWorker" in navigator)) return undefined;
+  try {
+    // Use the same relative path as the app scope
+    const swUrl = new URL("./firebase-messaging-sw.js", window.location.href).href;
+    const existing = await navigator.serviceWorker.getRegistration(swUrl);
+    if (existing) return existing;
+    const reg = await navigator.serviceWorker.register(swUrl, { scope: "./" });
+    await navigator.serviceWorker.ready;
+    return reg;
+  } catch (e) {
+    console.warn("FCM SW registration failed:", e.message);
+    return undefined;
+  }
+}
+
 // ── Request permission + get FCM token + save to Firestore ───────────────
 async function fcmRequestAndSaveToken() {
   const perm =
@@ -9240,7 +9260,8 @@ async function fcmRequestAndSaveToken() {
   if (!msg) { console.warn("FCM messaging not available"); return null; }
 
   try {
-    const token = await msg.getToken({ vapidKey: FCM_VAPID });
+    const swReg = await _getFcmSwRegistration();
+    const token = await msg.getToken({ vapidKey: FCM_VAPID, serviceWorkerRegistration: swReg });
     if (!token) {
       console.error("FCM getToken returned null — check COEP headers or SW registration");
       return null;

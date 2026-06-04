@@ -23,7 +23,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <link rel="stylesheet" href="./style.css?v=115">
   <link rel="stylesheet" href="./style-stotram.css?v=115">
 </head>
@@ -490,7 +489,6 @@
 </div>
 
 
-
 <!-- CALENDAR DAY BOTTOM SHEET -->
 <div class="cdmo" id="cdmo" onclick="if(event.target===this)closeDaySheet()">
   <div class="cdmd">
@@ -595,7 +593,6 @@
 <!-- STATS VIEW — includes jap entry tools -->
 <div class="view" id="vs">
   <div class="vt">Jap Summary</div>
-
 
 
     <!-- Summary Stats Grid — collapsible -->
@@ -1158,57 +1155,6 @@
     <button onclick="testSound()" style="padding:7px 14px;border-radius:20px;border:1px solid rgba(74,144,226,0.3);background:rgba(74,144,226,0.12);color:var(--a2);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;margin-top:6px">🔔 Test Bell</button>
   </div>
 
-  <!-- DAILY REMINDER -->
-  <div class="sc" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.18)">
-    <h3 style="color:var(--gold)">⏰ Daily Reminders</h3>
-    <p style="font-size:12px;color:var(--td);margin-bottom:14px">राधे राधे 🙏 — Get notified before your sacred jap times. All reminders can be active together.</p>
-
-    <!-- Brahma Muhurta -->
-    <div class="rem-card" id="remCardBrahma">
-      <div class="rem-card-top">
-        <div class="rem-card-icon">🌄</div>
-        <div class="rem-card-info">
-          <div class="rem-card-title">Brahma Muhurta</div>
-          <div class="rem-card-sub">5 min before Brahma Muhurta (auto via GPS)</div>
-          <div class="rem-card-time" id="remTimeBrahma">— detecting…</div>
-        </div>
-        <div class="tg" id="tgBrahma" onclick="toggleReminderType('brahma')"></div>
-      </div>
-    </div>
-
-    <!-- Sandhyakal -->
-    <div class="rem-card" id="remCardSandhya">
-      <div class="rem-card-top">
-        <div class="rem-card-icon">🌅</div>
-        <div class="rem-card-info">
-          <div class="rem-card-title">Sandhyakal</div>
-          <div class="rem-card-sub">5 min before sunset (auto via GPS)</div>
-          <div class="rem-card-time" id="remTimeSandhya">— detecting…</div>
-        </div>
-        <div class="tg" id="tgSandhya" onclick="toggleReminderType('sandhya')"></div>
-      </div>
-    </div>
-
-    <!-- Manual -->
-    <div class="rem-card" id="remCardManual">
-      <div class="rem-card-top">
-        <div class="rem-card-icon">🕐</div>
-        <div class="rem-card-info">
-          <div class="rem-card-title">Custom Time</div>
-          <div class="rem-card-sub">Set your own reminder time</div>
-          <div class="rem-card-time" id="remTimeManual">Not set</div>
-        </div>
-        <div class="tg" id="tgManual" onclick="toggleReminderType('manual')"></div>
-      </div>
-      <div class="reminder-time-row" id="reminderTimeRow" style="display:none">
-        <input type="time" class="reminder-time-input" id="reminderTimeIn" value="06:00">
-        <button class="reminder-save-btn" onclick="saveManualReminderTime()">Save</button>
-      </div>
-    </div>
-
-    <!-- Location status -->
-    <div style="font-size:11px;color:var(--td);text-align:center;margin-top:4px" id="remLocStatus"></div>
-  </div>
 
   <!-- SHARE APP -->
   <div class="sc" style="background:rgba(255,215,0,0.03);border-color:rgba(255,215,0,0.18)">
@@ -1278,51 +1224,6 @@
   </div>
 </div>
 
-<!-- PWA INSTALL GUIDE MODAL (manual install steps, shown when auto-prompt unavailable) -->
-<div class="pwa-mo" id="pwaMo" onclick="if(event.target===this)closePwaGuide()">
-  <div class="pwa-sheet">
-    <div class="pwa-title">📲 Install as App</div>
-    <div class="pwa-subtitle">To enable daily reminders, install this app on your home screen</div>
-
-    <div class="pwa-note">
-      🔔 Notifications only work when Radha Jap is installed as a <b style="color:var(--gold)">PWA (home screen app)</b> — not from a browser tab.
-    </div>
-
-    <div class="pwa-step">
-      <div class="pwa-step-num">1</div>
-      <div class="pwa-step-body">
-        <div class="pwa-step-title">Open in Chrome</div>
-        <div class="pwa-step-desc">Make sure you're using <b>Google Chrome</b> on Android. Other browsers may not support installation.</div>
-      </div>
-    </div>
-
-    <div class="pwa-step">
-      <div class="pwa-step-num">2</div>
-      <div class="pwa-step-body">
-        <div class="pwa-step-title">Tap the Menu (⋮)</div>
-        <div class="pwa-step-desc">Tap the <b>three-dot menu</b> (⋮) at the top-right corner of Chrome.</div>
-      </div>
-    </div>
-
-    <div class="pwa-step">
-      <div class="pwa-step-num">3</div>
-      <div class="pwa-step-body">
-        <div class="pwa-step-title">Tap "Add to Home screen"</div>
-        <div class="pwa-step-desc">Select <b>"Add to Home screen"</b> or <b>"Install app"</b> from the menu. Tap <b>Add</b> to confirm.</div>
-      </div>
-    </div>
-
-    <div class="pwa-step">
-      <div class="pwa-step-num">4</div>
-      <div class="pwa-step-body">
-        <div class="pwa-step-title">Open from Home Screen</div>
-        <div class="pwa-step-desc">From now on, always open <b>Radha Naam Jap</b> from your home screen icon — then reminders will work! 🙏</div>
-      </div>
-    </div>
-
-    <button class="pwa-close" onclick="closePwaGuide()">🙏 Got it, I'll install it!</button>
-  </div>
-</div>
 
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <!-- Swiss Ephemeris WASM — Moshier mode (~1 arcsec, no data files needed) -->

@@ -1804,6 +1804,9 @@ function sv(id, btn) {
 
 // ── Settings ──
 document.addEventListener("DOMContentLoaded", () => {
+  // Restore reminder toggle UI state on every app open (including PWA homescreen launch)
+  initReminderUI();
+
   const dti = document.getElementById("dtIn");
   const lti = document.getElementById("ltIn");
   if (dti)

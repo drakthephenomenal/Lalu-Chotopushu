@@ -9183,26 +9183,134 @@ function _hcjRenderPlayer(idx) {
   });
 }
 
-// DAILY REMINDERS — Firebase Cloud Messaging only
+// DAILY REMINDERS — Brahma Muhurta, Sandhyakal, Manual
+// DAILY REMINDERS — FCM Push (Firebase Cloud Messaging)
+// Replaces old local setTimeout system with server-sent push notifications.
+// Works when app is closed/backgrounded on iOS PWA + Android Chrome PWA.
 // ═══════════════════════════════════════════════════════
-const REM_KEY   = 'radhaJapReminders_v2';
-const FCM_VAPID = 'BBgnbM2KTEB0yT9xOHK--eWm6MO93ihHSLwNpu-NieG59LwygSfRk9MF66_9zjrOrPe0Pff78RmPu68gJ3t-k3o';
+const REM_KEY   = "radhaJapReminders_v2";
+const FCM_VAPID = "BBgnbM2KTEB0yT9xOHK--eWm6MO93ihHSLwNpu-NieG59LwygSfRk9MF66_9zjrOrPe0Pff78RmPu68gJ3t-k3o";
 
+let _fcmMessaging = null;
+let _fcmToken     = null;
+
+// ── PWA install guide ────────────────────────────────────────────────────
 function showPwaGuide() {
-  document.getElementById('pwaMo').classList.add('show');
-  document.body.style.overflow = 'hidden';
+  document.getElementById("pwaMo").classList.add("show");
+  document.body.style.overflow = "hidden";
 }
 function closePwaGuide() {
-  document.getElementById('pwaMo').classList.remove('show');
-  document.body.style.overflow = '';
+  document.getElementById("pwaMo").classList.remove("show");
+  document.body.style.overflow = "";
 }
 
+// ── Local reminder config (enabled state + sun cache for display) ─────────
 function getRemCfg() {
   try { return JSON.parse(localStorage.getItem(REM_KEY)) || {}; }
   catch { return {}; }
 }
-function saveRemCfg(cfg) { localStorage.setItem(REM_KEY, JSON.stringify(cfg)); }
+function saveRemCfg(cfg) {
+  localStorage.setItem(REM_KEY, JSON.stringify(cfg));
+}
 
+// ── Lazy FCM messaging instance ───────────────────────────────────────────
+function _getFcmMessaging() {
+  if (_fcmMessaging) return _fcmMessaging;
+  if (typeof firebase === "undefined" || !firebase.messaging) return null;
+  try {
+    _fcmMessaging = firebase.messaging();
+    return _fcmMessaging;
+  } catch (e) {
+    console.warn("FCM messaging init failed:", e.message);
+    return null;
+  }
+}
+
+// ── Request permission + get FCM token + save to Firestore ───────────────
+async function fcmRequestAndSaveToken() {
+  const perm =
+    typeof Notification !== "undefined" && Notification.permission === "granted"
+      ? "granted"
+      : typeof Notification !== "undefined"
+        ? await Notification.requestPermission()
+        : "denied";
+  if (perm !== "granted") return null;
+
+  const msg = _getFcmMessaging();
+  if (!msg) { console.warn("FCM messaging not available"); return null; }
+
+  try {
+    const token = await msg.getToken({ vapidKey: FCM_VAPID });
+    if (!token) return null;
+    _fcmToken = token;
+    await _saveFcmTokenToFirestore(token);
+    return token;
+  } catch (e) {
+    console.warn("FCM getToken failed:", e.message);
+    return null;
+  }
+}
+
+async function _saveFcmTokenToFirestore(token) {
+  if (!fbUser || !fbDb) return;
+  try {
+    await fbDb
+      .collection("users").doc(fbUser.uid)
+      .collection("fcmTokens").doc("web")
+      .set(
+        { token, updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+        { merge: true }
+      );
+  } catch (e) {
+    console.warn("FCM token save failed:", e.message);
+  }
+}
+
+// ── Push reminder prefs to Firestore so Cloud Function can schedule ───────
+async function _saveRemPrefsToFirestore(cfg) {
+  if (!fbUser || !fbDb) return;
+  const prefs = {};
+  ["brahma", "sandhya", "manual"].forEach((type) => {
+    if (cfg[type]) {
+      prefs[type] = {
+        enabled: !!cfg[type].enabled,
+        ...(type === "manual" && cfg[type].time ? { time: cfg[type].time } : {}),
+      };
+    }
+  });
+  prefs.lat = App.S.lastLat  ?? null;
+  prefs.lng = App.S.lastLng  ?? null;
+  prefs.tz  = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+  try {
+    await fbDb
+      .collection("users").doc(fbUser.uid)
+      .collection("reminders").doc("prefs")
+      .set(
+        { ...prefs, updatedAt: firebase.firestore.FieldValue.serverTimestamp() },
+        { merge: true }
+      );
+  } catch (e) {
+    console.warn("Reminder prefs save failed:", e.message);
+  }
+}
+
+// ── FCM foreground handler — show notification when app is open ───────────
+function _initFcmForegroundHandler() {
+  const msg = _getFcmMessaging();
+  if (!msg) return;
+  msg.onMessage((payload) => {
+    const title = payload.notification?.title || "राधे राधे 🙏";
+    const body  = payload.notification?.body  || "Time for your daily Naam Jap!";
+    const tag   = payload.notification?.tag   || payload.data?.tag || "radha-jap";
+    if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: "SHOW_NOTIFICATION", title, body, tag,
+      });
+    }
+  });
+}
+
+// ── Sun time helpers (for UI display only — actual scheduling is server-side) ─
 async function fetchSunTimes(lat, lon) {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=sunrise,sunset&timezone=auto&forecast_days=2`;
   const r = await fetch(url);
@@ -9213,29 +9321,38 @@ async function fetchSunTimes(lat, lon) {
   };
 }
 function brahmaNotifyTime(sunrise) { return new Date(sunrise.getTime() - 101 * 60 * 1000); }
-function sandhyaNotifyTime(sunset)  { return new Date(sunset.getTime()  - 5   * 60 * 1000); }
+function sandhyaNotifyTime(sunset)  { return new Date(sunset.getTime()  -   5 * 60 * 1000); }
 function fmt12(date) {
   let h = date.getHours(), m = date.getMinutes();
-  const ap = h >= 12 ? 'PM' : 'AM';
+  const ap = h >= 12 ? "PM" : "AM";
   h = h % 12 || 12;
-  return `${h}:${String(m).padStart(2,'0')} ${ap}`;
+  return `${h}:${String(m).padStart(2, "0")} ${ap}`;
 }
 
 async function loadSunTimes(forceRefresh) {
   const cfg    = getRemCfg();
   const now    = Date.now();
   const cached = cfg.sunCache;
-  const locEl  = document.getElementById('remLocStatus');
-  if (!forceRefresh && cached && now - cached.ts < 6 * 3600 * 1000) { applySunCache(cached); return cached; }
+  const locEl  = document.getElementById("remLocStatus");
+
+  if (!forceRefresh && cached && now - cached.ts < 6 * 3600 * 1000) {
+    applySunCache(cached);
+    return cached;
+  }
+
+  // Reads ONLY the coords saved by the GPS Location toggle — never calls GPS directly
   const savedLat = App.S && App.S.lastLat;
   const savedLng = App.S && App.S.lastLng;
+
   if (!savedLat || !savedLng) {
-    if (locEl) locEl.textContent = '⚠️ Turn on GPS Location toggle to enable sun times';
+    if (locEl) locEl.textContent = "⚠️ Turn on GPS Location toggle to enable sun times";
     return null;
   }
-  if (locEl) locEl.textContent = '📍 Computing sun times…';
+
+  if (locEl) locEl.textContent = "📍 Computing sun times…";
+
   try {
-    const sun   = await fetchSunTimes(savedLat, savedLng);
+    const sun = await fetchSunTimes(savedLat, savedLng);
     const cache = {
       ts: now, lat: savedLat, lon: savedLng,
       sunrise0: sun.sunrise[0].toISOString(), sunrise1: sun.sunrise[1].toISOString(),
@@ -9244,164 +9361,158 @@ async function loadSunTimes(forceRefresh) {
     cfg.sunCache = cache;
     saveRemCfg(cfg);
     applySunCache(cache);
-    if (locEl) locEl.textContent = '📍 Location active · Times update daily';
+    if (locEl) locEl.textContent = "📍 Location active · Times update daily";
     return cache;
   } catch (e) {
-    if (locEl) locEl.textContent = '⚠️ Could not fetch sun times. Check internet.';
+    if (locEl) locEl.textContent = "⚠️ Could not fetch sun times. Check internet.";
     return null;
   }
 }
 
 function applySunCache(cache) {
   if (!cache) return;
-  const sr0  = new Date(cache.sunrise0);
-  const ss0  = new Date(cache.sunset0);
-  const btEl = document.getElementById('remTimeBrahma');
-  const stEl = document.getElementById('remTimeSandhya');
-  if (btEl) btEl.textContent = `Notify at ${fmt12(brahmaNotifyTime(sr0))} · Sunrise ${fmt12(sr0)}`;
-  if (stEl) stEl.textContent = `Notify at ${fmt12(sandhyaNotifyTime(ss0))} · Sunset ${fmt12(ss0)}`;
+  const sr0   = new Date(cache.sunrise0);
+  const ss0   = new Date(cache.sunset0);
+  const bTime = brahmaNotifyTime(sr0);
+  const sTime = sandhyaNotifyTime(ss0);
+  const btEl  = document.getElementById("remTimeBrahma");
+  const stEl  = document.getElementById("remTimeSandhya");
+  if (btEl) btEl.textContent = `Notify at ${fmt12(bTime)} · Sunrise ${fmt12(sr0)}`;
+  if (stEl) stEl.textContent = `Notify at ${fmt12(sTime)} · Sunset ${fmt12(ss0)}`;
 }
 
-function computeNextFireAtUTC(type, cfg) {
-  const now = new Date();
-  if (type === 'manual') {
-    const [h, m] = ((cfg.manual && cfg.manual.time) || '06:00').split(':').map(Number);
-    const t = new Date(); t.setHours(h, m, 0, 0);
-    if (t <= now) t.setDate(t.getDate() + 1);
-    return t.toISOString();
-  }
-  const cache = cfg.sunCache;
-  if (!cache) return null;
-  const sr0 = new Date(cache.sunrise0), sr1 = new Date(cache.sunrise1);
-  const ss0 = new Date(cache.sunset0),  ss1 = new Date(cache.sunset1);
-  let fireAt;
-  if (type === 'brahma') { fireAt = brahmaNotifyTime(sr0); if (fireAt <= now) fireAt = brahmaNotifyTime(sr1); }
-  else                   { fireAt = sandhyaNotifyTime(ss0); if (fireAt <= now) fireAt = sandhyaNotifyTime(ss1); }
-  return fireAt ? fireAt.toISOString() : null;
-}
-
-let _fcmToken = null;
-
-async function initFCM() {
-  if (!window.firebase || !firebase.messaging) return null;
-  if (!fbUser) return null;
-  try {
-    const swReg  = await navigator.serviceWorker.ready;
-    const fcmMsg = firebase.messaging();
-    const token  = await fcmMsg.getToken({ vapidKey: FCM_VAPID, serviceWorkerRegistration: swReg });
-    if (!token) return null;
-    _fcmToken = token;
-    fcmMsg.onMessage((payload) => {
-      const n = payload.notification || {};
-      if (typeof toast === 'function') toast((n.title || 'राधे राधे') + ' · ' + (n.body || ''));
-    });
-    return token;
-  } catch (e) {
-    console.warn('[FCM] initFCM:', e.message);
-    return null;
-  }
-}
-
-async function syncReminderToFirestore(type, enabled, cfg) {
-  if (!fbUser || !fbDb || !_fcmToken) return;
-  const ref = fbDb.collection('fcmReminders').doc(`${fbUser.uid}_${type}`);
-  if (!enabled) { await ref.set({ enabled: false, token: _fcmToken, uid: fbUser.uid, type }, { merge: true }); return; }
-  const nextFireAtUTC = computeNextFireAtUTC(type, cfg);
-  if (!nextFireAtUTC) { console.warn('[FCM] no nextFireAtUTC for', type); return; }
-  await ref.set({
-    uid: fbUser.uid, token: _fcmToken, type, enabled: true, nextFireAtUTC,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-  });
-}
-
-async function refreshAllFCMReminders() {
-  if (!fbUser || !fbDb || !_fcmToken) return;
-  const cfg = getRemCfg();
-  for (const type of ['brahma', 'sandhya', 'manual']) {
-    if (cfg[type] && cfg[type].enabled) await syncReminderToFirestore(type, true, cfg);
-  }
-}
-
+// ── Toggle called by UI buttons ───────────────────────────────────────────
 async function toggleReminderType(type) {
-  if (!('Notification' in window)) { showPwaGuide(); return; }
-  const cfg  = getRemCfg();
-  const isOn = cfg[type] && cfg[type].enabled;
+  if (!("Notification" in window)) { showPwaGuide(); return; }
+
+  const cfg   = getRemCfg();
+  const isOn  = cfg[type]?.enabled;
+  const label = type === "brahma" ? "Brahma Muhurta"
+              : type === "sandhya" ? "Sandhyakal"
+              : "Custom";
+
   if (isOn) {
-    if (!cfg[type]) cfg[type] = {};
-    cfg[type].enabled = false;
+    // Turn OFF
+    cfg[type] = { ...(cfg[type] || {}), enabled: false };
     saveRemCfg(cfg);
     updateReminderUI(type, false, cfg);
-    await syncReminderToFirestore(type, false, cfg);
-    const label = type === 'brahma' ? 'Brahma Muhurta' : type === 'sandhya' ? 'Sandhyakal' : 'Custom';
+    await _saveRemPrefsToFirestore(cfg);
     toast(`${label} reminder off`);
     return;
   }
-  const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
-  if (perm !== 'granted') { showPwaGuide(); return; }
+
+  // Turn ON — need permission + FCM token first
+  const perm =
+    typeof Notification !== "undefined" && Notification.permission === "granted"
+      ? "granted"
+      : typeof Notification !== "undefined"
+        ? await Notification.requestPermission()
+        : "denied";
+  if (perm !== "granted") { showPwaGuide(); return; }
+
   if (!_fcmToken) {
-    const tok = await initFCM();
-    if (!tok) { toast('Notifications need add-to-homescreen on iOS 16.4+'); return; }
+    const tok = await fcmRequestAndSaveToken();
+    if (!tok) {
+      toast("Could not register for notifications. Allow notifications & retry.");
+      return;
+    }
   }
-  if (type !== 'manual') {
+
+  // For GPS-based reminders, load sun times for display
+  if (type !== "manual") {
     const cache = await loadSunTimes(false);
-    if (!cache) { toast('Could not get location. Allow GPS first.'); return; }
+    if (!cache) { toast("Could not get location. Please allow GPS access."); return; }
   }
+
   if (!cfg[type]) cfg[type] = {};
   cfg[type].enabled = true;
-  if (type === 'manual' && !(cfg.manual && cfg.manual.time)) cfg.manual = Object.assign({}, cfg.manual, { time: '06:00' });
+  if (type === "manual" && !cfg.manual?.time) cfg.manual.time = "06:00";
   saveRemCfg(cfg);
   updateReminderUI(type, true, cfg);
-  await syncReminderToFirestore(type, true, cfg);
-  const label = type === 'brahma' ? '🌄 Brahma Muhurta' : type === 'sandhya' ? '🌅 Sandhyakal' : '🕐 Custom';
-  toast(`${label} reminder on!`);
+  await _saveRemPrefsToFirestore(cfg);
+  const icon = type === "brahma" ? "🌄" : type === "sandhya" ? "🌅" : "🕐";
+  toast(`${icon} ${label} reminder on!`);
 }
 
-async function saveManualReminderTime() {
-  const time = document.getElementById('reminderTimeIn').value;
-  if (!time) { toast('Please select a time'); return; }
+function saveManualReminderTime() {
+  const time = document.getElementById("reminderTimeIn").value;
+  if (!time) { toast("Please select a time"); return; }
   const cfg = getRemCfg();
   if (!cfg.manual) cfg.manual = {};
   cfg.manual.time    = time;
   cfg.manual.enabled = true;
   saveRemCfg(cfg);
-  updateReminderUI('manual', true, cfg);
-  await syncReminderToFirestore('manual', true, cfg);
-  toast('Custom reminder saved 🙏');
+  updateReminderUI("manual", true, cfg);
+  _saveRemPrefsToFirestore(cfg);
+  toast("Custom reminder saved 🙏");
 }
 
 function updateReminderUI(type, on, cfg) {
-  const tgMap = { brahma: 'tgBrahma', sandhya: 'tgSandhya', manual: 'tgManual' };
+  const tgMap = { brahma: "tgBrahma", sandhya: "tgSandhya", manual: "tgManual" };
   const tg = document.getElementById(tgMap[type]);
-  if (tg) on ? tg.classList.add('on') : tg.classList.remove('on');
-  if (type === 'manual') {
-    const row    = document.getElementById('reminderTimeRow');
-    const timeEl = document.getElementById('remTimeManual');
-    if (row) row.style.display = on ? 'flex' : 'none';
+  if (tg) on ? tg.classList.add("on") : tg.classList.remove("on");
+  if (type === "manual") {
+    const row    = document.getElementById("reminderTimeRow");
+    const timeEl = document.getElementById("remTimeManual");
+    if (row) row.style.display = on ? "flex" : "none";
     if (timeEl) {
-      const t = cfg.manual && cfg.manual.time;
+      const t = cfg.manual?.time;
       if (on && t) {
-        const [h, m] = t.split(':').map(Number);
-        const ap = h >= 12 ? 'PM' : 'AM', h12 = h % 12 || 12;
-        timeEl.textContent = `${h12}:${String(m).padStart(2,'0')} ${ap} daily`;
-      } else { timeEl.textContent = 'Not set'; }
+        const [h, m] = t.split(":").map(Number);
+        const ap = h >= 12 ? "PM" : "AM", h12 = h % 12 || 12;
+        timeEl.textContent = `${h12}:${String(m).padStart(2, "0")} ${ap} daily`;
+      } else {
+        timeEl.textContent = "Not set";
+      }
     }
   }
 }
 
 async function initReminderUI() {
   const cfg = getRemCfg();
-  ['brahma', 'sandhya', 'manual'].forEach((t) => updateReminderUI(t, !!(cfg[t] && cfg[t].enabled), cfg));
-  const tIn = document.getElementById('reminderTimeIn');
-  if (tIn && cfg.manual && cfg.manual.time) tIn.value = cfg.manual.time;
+  ["brahma", "sandhya", "manual"].forEach((type) =>
+    updateReminderUI(type, !!cfg[type]?.enabled, cfg)
+  );
+  if (cfg.manual?.time) document.getElementById("reminderTimeIn").value = cfg.manual.time;
   if (cfg.sunCache) applySunCache(cfg.sunCache);
-  if ((cfg.brahma && cfg.brahma.enabled) || (cfg.sandhya && cfg.sandhya.enabled)) {
+  if (cfg.brahma?.enabled || cfg.sandhya?.enabled) {
     await loadSunTimes(false);
   } else {
-    const locEl = document.getElementById('remLocStatus');
-    if (locEl) locEl.textContent = 'Enable Brahma Muhurta or Sandhyakal to auto-detect times';
+    const locEl = document.getElementById("remLocStatus");
+    if (locEl) locEl.textContent = "Enable Brahma Muhurta or Sandhyakal to auto-detect times";
   }
-  if (fbUser && _fcmToken) refreshAllFCMReminders().catch(() => {});
+  // Re-register FCM token if reminders already enabled (e.g. after re-login)
+  const anyEnabled = ["brahma", "sandhya", "manual"].some((t) => cfg[t]?.enabled);
+  if (
+    anyEnabled && fbUser && !_fcmToken &&
+    typeof Notification !== "undefined" &&
+    Notification.permission === "granted"
+  ) {
+    fcmRequestAndSaveToken().catch(() => {});
+  }
+  _initFcmForegroundHandler();
 }
+
+// ── Re-register token automatically on login if reminders were previously ON ─
+(function _restoreTokenOnLogin() {
+  const _poll = setInterval(() => {
+    if (typeof fbUser === "undefined") return;
+    clearInterval(_poll);
+    if (!fbUser) return;
+    const cfg        = getRemCfg();
+    const anyEnabled = ["brahma", "sandhya", "manual"].some((t) => cfg[t]?.enabled);
+    if (
+      anyEnabled &&
+      typeof Notification !== "undefined" &&
+      Notification.permission === "granted" &&
+      !_fcmToken
+    ) {
+      fcmRequestAndSaveToken().catch(() => {});
+    }
+  }, 800);
+  setTimeout(() => clearInterval(_poll), 30000);
+})();
+
 
 // ══════════════════════════════════════════
 // ── MILESTONE SYSTEM ──

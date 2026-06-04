@@ -1,44 +1,9 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker
-// v118: FCM integrated — handles background push messages directly.
-//       Removed local SHOW_NOTIFICATION (no more setTimeout-based notifications).
-//       importScripts Firebase at top so FCM push events work in this SW.
-// v117: removed dead se-bridge.js + dead Ekadashi detector
-// v115: removed all Ekadashi / Mahadvadashi / Paran logic & UI
+// v118: FCM push integration — firebase-messaging-sw.js added to cache;
+//       firebase-messaging-compat.js added to EXTERNAL_ASSETS; cache bumped.
+
 // ═══════════════════════════════════════════════════════
-
-// Firebase Messaging — must be imported before any push event can be handled
-importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
-
-firebase.initializeApp({
-  apiKey:            'AIzaSyCvvXEdsJjXpTbITE2HuyYFnPZfZIkxVWA',
-  authDomain:        'guru-kripahi-kevalam-108.firebaseapp.com',
-  projectId:         'guru-kripahi-kevalam-108',
-  storageBucket:     'guru-kripahi-kevalam-108.firebasestorage.app',
-  messagingSenderId: '368485403238',
-  appId:             '1:368485403238:web:a3ab5c1427ad0c40fffba7',
-});
-
-const messaging = firebase.messaging();
-
-// Called when a push arrives and the app is in the BACKGROUND or closed
-messaging.onBackgroundMessage((payload) => {
-  const n    = payload.notification || {};
-  const tag  = (payload.data && payload.data.tag) || 'radha-jap';
-  return self.registration.showNotification(n.title || 'राधे राधे 🙏', {
-    body:     n.body || '',
-    tag,
-    icon:     './icon-192.png',
-    badge:    './icon-192.png',
-    renotify: true,
-    vibrate:  [200, 100, 200],
-  });
-});
-
-// ───────────────────────────────────────────────────────
-// Offline cache
-// ───────────────────────────────────────────────────────
 const CACHE = 'radha-jap-v118';
 
 const LOCAL_ASSETS = [
@@ -54,6 +19,7 @@ const LOCAL_ASSETS = [
   './icon-192.png',
   './icon-512.png',
   './manifest.json',
+  './firebase-messaging-sw.js',
 ];
 
 const EXTERNAL_ASSETS = [
@@ -117,18 +83,18 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    await Promise.allSettled(LOCAL_ASSETS.map((a) => cacheLocalAsset(cache, a)));
-    await Promise.allSettled(EXTERNAL_ASSETS.map((a) => cacheExternalAsset(cache, a)));
+    await Promise.allSettled(LOCAL_ASSETS.map((asset) => cacheLocalAsset(cache, asset)));
+    await Promise.allSettled(EXTERNAL_ASSETS.map((asset) => cacheExternalAsset(cache, asset)));
   })());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+    await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
     await self.clients.claim();
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    clients.forEach((c) => c.postMessage({ type: 'SW_UPDATED', version: CACHE }));
+    clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED', version: CACHE }));
   })());
 });
 
@@ -144,9 +110,7 @@ self.addEventListener('fetch', (event) => {
         if (response && response.ok) await storeResponse('./index.html', response);
         return response;
       } catch (_) {
-        return (await caches.match('./index.html')) || new Response('Offline', {
-          status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' },
-        });
+        return (await caches.match('./index.html')) || new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
       }
     })());
     return;
@@ -162,7 +126,7 @@ self.addEventListener('fetch', (event) => {
         await storeResponse(localCacheKey, response);
         return response;
       } catch (_) {
-        return new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+        return cached || new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
       }
     })());
     return;
@@ -182,10 +146,18 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('message', (event) => {
-  // All notifications now come via Firebase Cloud Messaging — no local SHOW_NOTIFICATION.
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    event.waitUntil(
+      self.registration.showNotification(event.data.title, {
+        body: event.data.body,
+        tag: event.data.tag,
+        renotify: true,
+        vibrate: [200, 100, 200],
+        icon: './icon-192.png',
+      })
+    );
   }
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('notificationclick', (event) => {

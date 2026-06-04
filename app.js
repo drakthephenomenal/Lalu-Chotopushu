@@ -1944,7 +1944,7 @@ function tgs(k) {
           // Auto-update reminder prefs with new location
           const remCfg = getRemCfg();
           const anyEnabled = ["brahma","sandhya","manual"].some(t => remCfg[t]?.enabled);
-          if (anyEnabled) { _saveRemPrefsToFirestore(remCfg); }
+          if (anyEnabled) { _saveRemPrefsToFirestore(remCfg, lat, lng); }
           updateSunInfo(lat, lng);
           if (tgGps) tgGps.classList.add("on");
           if (statusEl) statusEl.textContent = "✅ Location detected · " + lat.toFixed(3) + ", " + lng.toFixed(3);
@@ -4518,6 +4518,9 @@ function fbInit() {
         // ── CRITICAL: if UID changed, reload data scoped to new user ──
         if (prevUid !== user.uid) {
           App._uid = user.uid;
+          // Preserve GPS coords across user switch
+          const _prevLat = App.S.lastLat ?? null;
+          const _prevLng = App.S.lastLng ?? null;
           // Reset in-memory state to defaults before loading new user's data
           App.S = {
             tk: App.getTk(),
@@ -4557,6 +4560,8 @@ function fbInit() {
             syncBaselineTimerHK: {},
             nameJapDeductHK: 0,
             gaudiyaMode: false,
+            lastLat: _prevLat,
+            lastLng: _prevLng,
           };
           // ── Always load IDB first so app is usable offline ──
           // Cloud pull in fbMigrate() will immediately overwrite with authoritative data.
@@ -9298,7 +9303,7 @@ async function _saveFcmTokenToFirestore(token) {
 }
 
 // ── Push reminder prefs to Firestore so Cloud Function can schedule ───────
-async function _saveRemPrefsToFirestore(cfg) {
+async function _saveRemPrefsToFirestore(cfg, explicitLat, explicitLng) {
   if (!fbUser || !fbDb) return;
   const prefs = {};
   ["brahma", "sandhya", "manual"].forEach((type) => {
@@ -9309,8 +9314,8 @@ async function _saveRemPrefsToFirestore(cfg) {
       };
     }
   });
-  prefs.lat = App.S.lastLat  ?? null;
-  prefs.lng = App.S.lastLng  ?? null;
+  prefs.lat = explicitLat ?? App.S.lastLat ?? null;
+  prefs.lng = explicitLng ?? App.S.lastLng ?? null;
   prefs.tz  = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
   try {
     await fbDb

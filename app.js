@@ -1968,10 +1968,9 @@ function tgs(k) {
   }
 
   App.S.cfg[k] = !App.S.cfg[k];
-  const m = { vib: "tgVib", sound: "tgSnd" };
-  App.S.cfg[k]
-    ? document.getElementById(m[k]).classList.add("on")
-    : document.getElementById(m[k]).classList.remove("on");
+  const m = { sound: "tgSnd" };
+  const el = m[k] ? document.getElementById(m[k]) : null;
+  if (el) App.S.cfg[k] ? el.classList.add("on") : el.classList.remove("on");
   App.save();
   fbDebouncedPush();
 }
@@ -7929,7 +7928,6 @@ window.addEventListener("load", async () => {
   document.getElementById("timerDisplay").textContent = "00:00:00";
 
   // Apply settings UI
-  if (App.S.cfg.vib) document.getElementById("tgVib").classList.add("on");
   if (App.S.cfg.sound) document.getElementById("tgSnd").classList.add("on");
 
   // GPS Location toggle — ON if saved coords exist

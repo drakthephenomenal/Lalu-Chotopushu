@@ -4688,6 +4688,84 @@ function fbInit() {
           fbSessionListener();
           fbSessionListener = null;
         }
+        if (fbListener) {
+          fbListener();
+          fbListener = null;
+        }
+        // ── Sign-out: reset in-memory jap state so the device shows a clean
+        // slate. Any jap done while signed out then accumulates in the
+        // "guest" IDB bucket (App._uid = null) and CANNOT leak back into
+        // the previously signed-in account on next login, because the
+        // sign-in flow does a fresh App.load() + cloud pull keyed by uid.
+        if (prevUid) {
+          App._uid = null;
+          App._cloudHydrated = false;
+          App._allowInitialPush = false;
+          const _prevLat2 = App.S && App.S.lastLat != null ? App.S.lastLat : null;
+          const _prevLng2 = App.S && App.S.lastLng != null ? App.S.lastLng : null;
+          App.S = {
+            tk: App.getTk(),
+            ms: 108,
+            dt: 0,
+            lt: 0,
+            cfg: { vib: true, sound: true },
+            history: {},
+            h28: {},
+            stotrams: {},
+            brahma: {},
+            customSt: [],
+            timerHistory: {},
+            timer28History: {},
+            sankalpas: [],
+            occasions: {},
+            syncBaseline: {},
+            syncBaseline28: {},
+            syncBaselineTimer: {},
+            syncBaselineTimer28: {},
+            migrationV2Done: false,
+            japMode: "radha",
+            historyRV: {},
+            timerHistoryRV: {},
+            dtRV: 0,
+            ltRV: 0,
+            nameJapDeductRV: 0,
+            malaLogRV: [],
+            activityLog: [],
+            syncBaselineRV: {},
+            syncBaselineTimerRV: {},
+            historyHK: {},
+            timerHistoryHK: {},
+            dtHK: 0,
+            malaLogHK: [],
+            syncBaselineHK: {},
+            syncBaselineTimerHK: {},
+            nameJapDeductHK: 0,
+            gaudiyaMode: false,
+            lastLat: _prevLat2,
+            lastLng: _prevLng2,
+          };
+          // Try to load any existing guest-state IDB (if user signed out
+          // before and did jap as guest, preserve it across page reloads).
+          try { await App.load(); } catch (_e) {}
+          App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
+          App.lmcRV = Math.floor(
+            (App.S.historyRV[App.S.tk] || 0) / (App.S.ms || 108),
+          );
+          App.lmcHK = Math.floor(
+            ((App.S.historyHK || {})[App.S.tk] || 0) / (App.S.ms || 108),
+          );
+          App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));
+          document.body.classList.remove("gaudiya-mode");
+          switchJapMode(App.S.japMode || "radha");
+          App.ua();
+          try { renderSt(); } catch (_e) {}
+          try { u28(); } catch (_e) {}
+          try { renderBcal(); } catch (_e) {}
+          try { renderCal(); } catch (_e) {}
+          try { uStats(); } catch (_e) {}
+          try { renderSankalpas(); } catch (_e) {}
+          try { renderMalaLog(); } catch (_e) {}
+        }
       }
     });
     return true;

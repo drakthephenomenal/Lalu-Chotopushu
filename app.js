@@ -533,6 +533,8 @@ const App = {
     document.getElementById("timerBtn").className = "tbtn pause";
     this.timerInterval = setInterval(() => {
       this.timerSeconds++;
+      // Persist so per-mala duration survives app close / reopen
+      try { localStorage.setItem("rjap_timerSeconds", String(this.timerSeconds)); } catch(e){}
       document.getElementById("timerDisplay").textContent = this.fmtTime(
         this.timerSeconds,
       );
@@ -595,7 +597,7 @@ const App = {
     this.timerSeconds = 0;
     this.timerSavedSeconds = 0;
     this._malaTimerStart = 0; // reset per-mala timer anchor
-    document.getElementById("timerDisplay").textContent = "00:00:00";
+    document.getElementById("timerDisplay").textContent = App.fmtTime(App.timerSeconds);
     document.getElementById("timerDisplay").classList.remove("running");
     document.getElementById("timerBtn").textContent = "▶ Start";
     document.getElementById("timerBtn").className = "tbtn start";
@@ -702,8 +704,9 @@ const App = {
       this.malaWallStart = Date.now();
       localStorage.setItem("rjap_malaWallStart", String(this.malaWallStart));
       // Also anchor the timer-based mala start — this is the authoritative clock
-      if (this._malaTimerStart === undefined)
+      if (this._malaTimerStart === undefined || this._malaTimerStart === null)
         this._malaTimerStart = this.timerSeconds;
+      localStorage.setItem("rjap_malaTimerStart", String(this._malaTimerStart));
     }
   },
 
@@ -755,8 +758,12 @@ const App = {
         Math.round((Date.now() - this.malaWallStart) / 1000),
       );
     }
+    // Capture the REAL wall-clock start of this mala BEFORE we reset it
+    const _malaRealStart = this.malaWallStart || (Date.now() - malaDuration * 1000);
     // Anchor next mala's timer start to current timerSeconds
     this._malaTimerStart = this.timerSeconds;
+    localStorage.setItem("rjap_malaTimerStart", String(this._malaTimerStart));
+    localStorage.setItem("rjap_timerSeconds", String(this.timerSeconds));
     this.malaWallStart = Date.now();
     localStorage.setItem("rjap_malaWallStart", String(this.malaWallStart));
     const isRVm = this.S.japMode === "rv";
@@ -777,7 +784,8 @@ const App = {
       ? (this.S.malaLogRV || []).length
       : (this.S.malaLog || []).length;
     // Store wall-clock start so the history detail can show accurate start time
-    const malaStartTs = Date.now() - malaDuration * 1000;
+    // Real wall-clock start (e.g. 12:01) and real end (e.g. 12:21)
+    const malaStartTs = _malaRealStart;
     logActivity({
       t: "mala",
       ts: Date.now(),
@@ -7914,16 +7922,26 @@ window.addEventListener("load", async () => {
   App.timerSeconds = 0;
   App.timerSavedSeconds = 0;
   App._malaTimerStart = 0; // timer-based anchor for mala duration (authoritative clock)
-  // Restore wall-clock mala start for cross-session timing (fallback only)
+  // Restore wall-clock mala start for cross-session timing
   const savedMalaWall = localStorage.getItem("rjap_malaWallStart");
   const todayCount = App.gTod();
   const ms = App.S.ms || 108;
   const countInCurrentMala = todayCount % ms;
   if (savedMalaWall && countInCurrentMala > 0) {
     App.malaWallStart = parseInt(savedMalaWall);
+    // Mala in progress → restore active-tap timer so duration accumulates correctly
+    const savedTS = parseInt(localStorage.getItem("rjap_timerSeconds") || "0");
+    const savedMTS = parseInt(localStorage.getItem("rjap_malaTimerStart") || "0");
+    if (!isNaN(savedTS) && savedTS > 0) {
+      App.timerSeconds = savedTS;
+      App.timerSavedSeconds = savedTS;
+    }
+    if (!isNaN(savedMTS)) App._malaTimerStart = savedMTS;
   } else {
     App.malaWallStart = Date.now();
     localStorage.setItem("rjap_malaWallStart", String(App.malaWallStart));
+    localStorage.removeItem("rjap_timerSeconds");
+    localStorage.removeItem("rjap_malaTimerStart");
   }
   document.getElementById("timerDisplay").textContent = "00:00:00";
 

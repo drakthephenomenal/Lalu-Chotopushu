@@ -253,7 +253,7 @@ const App = {
     try {
       localStorage.setItem(this._lsKey(), JSON.stringify(this.S));
     } catch (e) {}
-    if (fbUser && !fbForcedSignout && !this._suspendCloudSync)
+    if (fbUser && !fbForcedSignout && !this._suspendCloudSync && App._cloudHydrated)
       fbDebouncedPush();
   },
 
@@ -371,10 +371,7 @@ const App = {
       // New day or no jap done today — discard any previous log entirely
       this.S.malaLog = [];
       await this.dbPut("malaLog", "today", { date: this.S.tk, log: [] });
-      // Force push empty log to Firebase so stale cloud data is overwritten
-      setTimeout(() => {
-        if (fbUser && !fbForcedSignout) fbDebouncedPush();
-      }, 3000);
+      // (removed) destructive force-push of empty malaLog — would overwrite cloud on cold start
     }
     STLIST.forEach((x) => {
       if (!this.S.stotrams[x.id]) this.S.stotrams[x.id] = {};
@@ -604,21 +601,36 @@ const App = {
     this.updateTimerToday();
   },
 
-  updateTimerToday() {
-    // ── UNIFIED: Today's Jap Time = committed mala log sum + live in-progress delta ──
-    // timerHistory[today] is always kept equal to mala log sum (by syncTimerFromMalaLog).
-    // The live delta (timerSeconds - timerSavedSeconds) is the current incomplete mala.
-    const radhaTimeSec = this.S.timerHistory[this.S.tk] || 0;
-    const rvTimeSec = this.S.timerHistoryRV[this.S.tk] || 0;
-    const liveSec = this.timerRunning
-      ? this.timerSeconds - this.timerSavedSeconds
+  // ── UNIFIED: total Jap seconds today across ALL modes ──
+  // = committed Radha + Radha Vallabh + Hare Krishna + 28 Names history for today
+  //   + live in-progress deltas from whichever timer is currently running.
+  getTotalJapSecondsToday() {
+    const tk = this.S.tk;
+    const radhaSec = (this.S.timerHistory   || {})[tk] || 0;
+    const rvSec    = (this.S.timerHistoryRV || {})[tk] || 0;
+    const hkSec    = (this.S.timerHistoryHK || {})[tk] || 0;
+    const n28Sec   = (this.S.timer28History || {})[tk] || 0;
+    // live delta from the Radha/RV/HK jap timer
+    const liveJap = this.timerRunning
+      ? Math.max(0, this.timerSeconds - this.timerSavedSeconds)
       : 0;
-    const combinedSec = radhaTimeSec + rvTimeSec + liveSec;
-    document.getElementById("timerToday").textContent =
-      "Today's Jap Time: " + this.fmtTime(combinedSec);
-    // ── UNIFIED TIMER: mirror the same Jap timer on the 28 Names tab ──
+    // live delta from the 28-Names timer (elapsed since session start − already flushed)
+    let live28 = 0;
+    if (this._n28TotalStart && !this._n28Paused) {
+      const elapsed = Math.floor((Date.now() - this._n28TotalStart) / 1000);
+      live28 = Math.max(0, elapsed - (this._n28SavedSecs || 0));
+    }
+    return radhaSec + rvSec + hkSec + n28Sec + liveJap + live28;
+  },
+
+  updateTimerToday() {
+    // ── UNIFIED: Today's Jap Time shared by Radha/RV/HK page AND 28 Names tab ──
+    const combinedSec = this.getTotalJapSecondsToday();
+    const tt = document.getElementById("timerToday");
+    if (tt) tt.textContent = "Today's Jap Time: " + this.fmtTime(combinedSec);
+    // Mirror the SAME total on the 28 Names tab
     const te28 = document.getElementById("n28TotalTimer");
-    if (te28) te28.textContent = this.fmtTime(this.timerSeconds);
+    if (te28) te28.textContent = this.fmtTime(combinedSec);
   },
 
   // ── UNIFIED TIME: sync timerHistory[today] = sum of mala log entries ──
@@ -994,7 +1006,8 @@ const App = {
         : 0;
       const ce = document.getElementById("n28CycleTimer");
       if (ce) ce.textContent = fmt(cycSec);
-      // n28TotalTimer is now driven by the unified Jap timer (App.timerSeconds)
+      // Keep the unified "Total Jap Time" mirror in sync every second
+      this.updateTimerToday();
     }, 1000);
     this._upd28PauseBtn();
   },
@@ -4563,6 +4576,7 @@ function fbInit() {
           };
           // ── Always load IDB first so app is usable offline ──
           // Cloud pull in fbMigrate() will immediately overwrite with authoritative data.
+          App._cloudHydrated = false; // block any push until cloud pull completes
           await App.load();
           App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
           App.lmcRV = Math.floor(
@@ -4729,6 +4743,13 @@ async function fbPushDelta() {
 
 async function fbPushFull() {
   if (!fbUser) return;
+  // SAFETY: never push local state to cloud until we have successfully
+  // pulled the authoritative cloud copy at least once this session.
+  // Prevents wiping cloud data after "Clear app data" + re-login.
+  if (!App._cloudHydrated && !App._allowInitialPush) {
+    console.warn("fbPushFull blocked: cloud not yet hydrated");
+    return;
+  }
   setSyncPill("syncing", "Syncing…");
   const payload = {
     history: App.S.history || {},
@@ -4952,11 +4973,14 @@ async function fbMigrate() {
     setSyncPill("syncing", "Loading from cloud…");
     const snap = await docRef.get();
     if (!snap.exists) {
-      // No cloud data yet — push local state up
-      await fbPushFull();
+      // No cloud doc exists yet — safe to push local state up as the initial copy.
+      App._allowInitialPush = true;
+      try { await fbPushFull(); } finally { App._allowInitialPush = false; }
+      App._cloudHydrated = true;
     } else {
       // Cloud data exists — ALWAYS apply it (overrides local cache)
       fbApplyRemote({ ...snap.data(), deviceId: null });
+      App._cloudHydrated = true; // cloud copy applied, future saves may push
       if (!App.S.migrationV2Done) {
         // First-ever migration: push merged state back
         await fbPushFull();
@@ -5213,24 +5237,38 @@ function svt28() {
   u28();
 }
 function _update28ProgressBar(todJaps) {
-  const target = (App.S.dt28Cycles || 0) * 28;
+  const targetCycles = App.S.dt28Cycles || 0;
+  const target = targetCycles * 28;
   const wrap = document.getElementById("n28ProgressWrap");
   const bar  = document.getElementById("n28ProgressBar");
   const lbl  = document.getElementById("n28ProgressLabel");
   if (!wrap) return;
-  if (!target) { wrap.style.display = "none"; return; }
+  // Show whenever there's a target OR any activity today (so progress is
+  // visible on every device even if the daily target was only set elsewhere).
+  if (!target && !todJaps) { wrap.style.display = "none"; return; }
   wrap.style.display = "block";
   const todCycles = Math.floor(todJaps / 28);
-  const targetCycles = App.S.dt28Cycles || 0;
-  const pct = Math.min(100, Math.round((todJaps / target) * 100));
-  if (bar) {
-    bar.style.width = pct + "%";
-    bar.style.background = pct >= 100
-      ? "linear-gradient(90deg,rgba(46,204,113,0.8),rgba(0,200,100,0.95))"
-      : "linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9))";
-    bar.style.boxShadow = pct >= 100 ? "0 0 10px rgba(46,204,113,0.6)" : "0 0 8px rgba(189,147,249,0.5)";
+  if (target) {
+    const pct = Math.min(100, Math.round((todJaps / target) * 100));
+    if (bar) {
+      bar.style.width = pct + "%";
+      bar.style.background = pct >= 100
+        ? "linear-gradient(90deg,rgba(46,204,113,0.8),rgba(0,200,100,0.95))"
+        : "linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9))";
+      bar.style.boxShadow = pct >= 100 ? "0 0 10px rgba(46,204,113,0.6)" : "0 0 8px rgba(189,147,249,0.5)";
+    }
+    if (lbl) lbl.textContent = todCycles + " / " + targetCycles + " cycles (" + pct + "%)";
+  } else {
+    // No target on this device — show progress within the current cycle.
+    const inCycle = todJaps % 28;
+    const pct = Math.round((inCycle / 28) * 100);
+    if (bar) {
+      bar.style.width = pct + "%";
+      bar.style.background = "linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9))";
+      bar.style.boxShadow = "0 0 8px rgba(189,147,249,0.5)";
+    }
+    if (lbl) lbl.textContent = todCycles + " cycles · " + inCycle + "/28";
   }
-  if (lbl) lbl.textContent = todCycles + " / " + targetCycles + " cycles (" + pct + "%)";
 }
 
 function u28() {

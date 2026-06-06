@@ -1620,6 +1620,7 @@ function initJapModeUI() {
   if (lblH) lblH.textContent = App.S.hkLang === "bn" ? "Bangla" : "Hindi";
   // Apply all language-sensitive labels on load
   applyHKLangLabels(App.S.hkLang || "hi");
+  try { populateSettingsUI(); } catch (_e) {}
 }
 
 // ── Naam Selector Toggle ──
@@ -1807,63 +1808,63 @@ function sv(id, btn) {
     renderMilestonesTab();
   }
   if (id === "vset") {
-    const ms = App.S.ms || 108;
-    if (App.S.dt) document.getElementById("dtIn").value = App.S.dt;
-    if (App.S.lt) document.getElementById("ltIn").value = App.S.lt;
-    document.getElementById("msIn").value = ms;
-    // Populate mala equivalents for Radha targets
-    const dtMalaInEl = document.getElementById("dtMalaIn");
-    if (dtMalaInEl)
-      dtMalaInEl.value = App.S.dt > 0 ? Math.round(App.S.dt / ms) : "";
-    const ltMalaInEl = document.getElementById("ltMalaIn");
-    if (ltMalaInEl)
-      ltMalaInEl.value = App.S.lt > 0 ? Math.round(App.S.lt / ms) : "";
-    // Populate crore equivalent
-    const ltCroreInEl = document.getElementById("ltCroreIn");
-    const ltCroreDispEl = document.getElementById("ltCroreDisp");
-    if (ltCroreInEl)
-      ltCroreInEl.value = App.S.lt > 0 ? +(App.S.lt / 10000000).toFixed(4) : "";
-    if (ltCroreDispEl)
-      ltCroreDispEl.textContent =
-        App.S.lt > 0 ? (App.S.lt / 10000000).toFixed(2) : "0";
-    // Populate mala display
-    const ltMalaDispEl = document.getElementById("ltMala");
-    if (ltMalaDispEl)
-      ltMalaDispEl.textContent =
-        App.S.lt > 0 ? Math.ceil(App.S.lt / ms).toLocaleString() : "0";
-    // Populate RV daily target (fix: was missing, target not showing)
-    const dtRVEl = document.getElementById("dtRVIn");
-    if (dtRVEl) dtRVEl.value = App.S.dtRV > 0 ? App.S.dtRV : "";
-    const dtRVMalaInEl = document.getElementById("dtRVMalaIn");
-    if (dtRVMalaInEl)
-      dtRVMalaInEl.value = App.S.dtRV > 0 ? Math.round(App.S.dtRV / ms) : "";
-    const dtRVMalaDisp = document.getElementById("dtRVMala");
-    if (dtRVMalaDisp)
-      dtRVMalaDisp.textContent = Math.floor((App.S.dtRV || 0) / ms);
-    // Populate HK daily target
-    const dtHKEl = document.getElementById("dtHKIn");
-    if (dtHKEl) dtHKEl.value = (App.S.dtHK || 0) > 0 ? App.S.dtHK : "";
-    const dtHKMalaInEl = document.getElementById("dtHKMalaIn");
-    if (dtHKMalaInEl)
-      dtHKMalaInEl.value =
-        (App.S.dtHK || 0) > 0 ? Math.round((App.S.dtHK || 0) / ms) : "";
-    const dtHKMalaDisp = document.getElementById("dtHKMala");
-    if (dtHKMalaDisp)
-      dtHKMalaDisp.textContent = Math.floor((App.S.dtHK || 0) / ms);
-    // Populate 28 Names daily target
-    const dt28El = document.getElementById("dt28CycleIn");
-    if (dt28El) dt28El.value = (App.S.dt28Cycles || 0) > 0 ? App.S.dt28Cycles : "";
-    const dt28Disp = document.getElementById("dt28JapDisp");
-    if (dt28Disp) dt28Disp.textContent = (App.S.dt28Cycles || 0) * 28;
-    // Gaudiya Mode toggle
-    const tgG = document.getElementById("tgGaudiya");
-    if (tgG)
-      App.S.gaudiyaMode ? tgG.classList.add("on") : tgG.classList.remove("on");
-    // Populate the app link display
-    const appUrl = _getAppUrl();
-    const linkEl = document.getElementById("appLinkDisplay");
-    if (linkEl) linkEl.textContent = appUrl;
+    populateSettingsUI();
   }
+}
+
+// ── Populate ALL Settings target/input fields from App.S ──
+// Safe to call anytime (no-ops when elements aren't present yet).
+// Called when navigating to Settings AND after every cloud pull / sign-in.
+function populateSettingsUI() {
+  const ms = App.S.ms || 108;
+  // Radha Daily
+  const dtIn = document.getElementById("dtIn");
+  if (dtIn) dtIn.value = App.S.dt > 0 ? App.S.dt : "";
+  const dtMalaInEl = document.getElementById("dtMalaIn");
+  if (dtMalaInEl) dtMalaInEl.value = App.S.dt > 0 ? Math.round(App.S.dt / ms) : "";
+  const dtMalaDisp = document.getElementById("dtMala");
+  if (dtMalaDisp) dtMalaDisp.textContent = App.S.dt > 0 ? Math.ceil(App.S.dt / ms) : "0";
+  // Radha Lifetime
+  const ltIn = document.getElementById("ltIn");
+  if (ltIn) ltIn.value = App.S.lt > 0 ? App.S.lt : "";
+  const ltMalaInEl = document.getElementById("ltMalaIn");
+  if (ltMalaInEl) ltMalaInEl.value = App.S.lt > 0 ? Math.round(App.S.lt / ms) : "";
+  const ltCroreInEl = document.getElementById("ltCroreIn");
+  if (ltCroreInEl) ltCroreInEl.value = App.S.lt > 0 ? +(App.S.lt / 10000000).toFixed(4) : "";
+  const ltCroreDispEl = document.getElementById("ltCroreDisp");
+  if (ltCroreDispEl) ltCroreDispEl.textContent = App.S.lt > 0 ? (App.S.lt / 10000000).toFixed(2) : "0";
+  const ltMalaDispEl = document.getElementById("ltMala");
+  if (ltMalaDispEl) ltMalaDispEl.textContent = App.S.lt > 0 ? Math.ceil(App.S.lt / ms).toLocaleString() : "0";
+  // Mala size
+  const msIn = document.getElementById("msIn");
+  if (msIn) msIn.value = ms;
+  // RV Daily
+  const dtRVEl = document.getElementById("dtRVIn");
+  if (dtRVEl) dtRVEl.value = App.S.dtRV > 0 ? App.S.dtRV : "";
+  const dtRVMalaInEl = document.getElementById("dtRVMalaIn");
+  if (dtRVMalaInEl) dtRVMalaInEl.value = App.S.dtRV > 0 ? Math.round(App.S.dtRV / ms) : "";
+  const dtRVMalaDisp = document.getElementById("dtRVMala");
+  if (dtRVMalaDisp) dtRVMalaDisp.textContent = App.S.dtRV > 0 ? Math.floor(App.S.dtRV / ms) : "0";
+  // HK Daily
+  const dtHKEl = document.getElementById("dtHKIn");
+  if (dtHKEl) dtHKEl.value = (App.S.dtHK || 0) > 0 ? App.S.dtHK : "";
+  const dtHKMalaInEl = document.getElementById("dtHKMalaIn");
+  if (dtHKMalaInEl) dtHKMalaInEl.value = (App.S.dtHK || 0) > 0 ? Math.round((App.S.dtHK || 0) / ms) : "";
+  const dtHKMalaDisp = document.getElementById("dtHKMala");
+  if (dtHKMalaDisp) dtHKMalaDisp.textContent = (App.S.dtHK || 0) > 0 ? Math.floor((App.S.dtHK || 0) / ms) : "0";
+  // 28 Names daily target (cycles)
+  const dt28El = document.getElementById("dt28CycleIn");
+  if (dt28El) dt28El.value = (App.S.dt28Cycles || 0) > 0 ? App.S.dt28Cycles : "";
+  const dt28Disp = document.getElementById("dt28JapDisp");
+  if (dt28Disp) dt28Disp.textContent = (App.S.dt28Cycles || 0) * 28;
+  // Gaudiya Mode toggle
+  const tgG = document.getElementById("tgGaudiya");
+  if (tgG) App.S.gaudiyaMode ? tgG.classList.add("on") : tgG.classList.remove("on");
+  // App link display (if visible)
+  try {
+    const linkEl = document.getElementById("appLinkDisplay");
+    if (linkEl && typeof _getAppUrl === "function") linkEl.textContent = _getAppUrl();
+  } catch (_e) {}
 }
 
 // ── Settings ──
@@ -4755,6 +4756,7 @@ function fbInit() {
             syncBaselineTimerHK: {},
             nameJapDeductHK: 0,
             gaudiyaMode: false,
+            dt28Cycles: 0,
             lastLat: _prevLat2,
             lastLng: _prevLng2,
           };
@@ -4779,6 +4781,7 @@ function fbInit() {
           try { uStats(); } catch (_e) {}
           try { renderSankalpas(); } catch (_e) {}
           try { renderMalaLog(); } catch (_e) {}
+          try { populateSettingsUI(); } catch (_e) {}
         }
       }
     });
@@ -4993,6 +4996,7 @@ async function fbPushFull() {
     nameJapDeductHK: App.S.nameJapDeductHK || 0,
     malaLogHK: App.S.malaLogHK || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
+    dt28Cycles: App.S.dt28Cycles || 0,
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId,
   };
@@ -5104,6 +5108,7 @@ function fbApplyRemote(d) {
   if ("timerHistoryHK" in d)
     App.S.timerHistoryHK = JSON.parse(JSON.stringify(d.timerHistoryHK || {}));
   if (d.dtHK !== undefined) App.S.dtHK = d.dtHK;
+  if (d.dt28Cycles !== undefined) App.S.dt28Cycles = d.dt28Cycles;
   if (d.nameJapDeductHK !== undefined)
     App.S.nameJapDeductHK = d.nameJapDeductHK;
   if (d.gaudiyaMode !== undefined) {
@@ -5165,6 +5170,7 @@ function fbApplyRemote(d) {
   uStats();
   renderSankalpas();
   renderMalaLog();
+  try { populateSettingsUI(); } catch (_e) {}
   setSyncPill("", "🔄 Synced from cloud");
 }
 
@@ -5458,9 +5464,11 @@ function sync28CycleTarget() {
 function svt28() {
   const v = parseInt(document.getElementById("dt28CycleIn")?.value) || 0;
   App.S.dt28Cycles = v;
-  save();
-  toast("✅ 28 Names daily target saved: " + v + " cycle" + (v !== 1 ? "s" : "") + " (" + (v * 28) + " japs/day)");
+  App.save();
+  if (typeof fbDebouncedPush === "function") fbDebouncedPush();
+  App.ua();
   u28();
+  toast("✅ 28 Names daily target saved: " + v + " cycle" + (v !== 1 ? "s" : "") + " (" + (v * 28) + " japs/day)");
 }
 function _update28ProgressBar(todJaps) {
   const targetCycles = App.S.dt28Cycles || 0;

@@ -6476,30 +6476,65 @@ function renderSt() {
   const list = document.getElementById("stList");
   list.innerHTML = "";
 
-  // Inject premium glow animations once
+  // Inject premium card animations once
   if (!document.getElementById('st-card-styles')) {
     const styleEl = document.createElement('style');
     styleEl.id = 'st-card-styles';
     styleEl.textContent = [
+      // Generic card glow (cycling rainbow for non-special stotrams)
       '@keyframes stCardGlow{0%,100%{box-shadow:0 0 7px 1px var(--sgc,#ffd700),0 2px 18px rgba(0,0,0,0.55);border-color:rgba(255,215,0,0.30)}50%{box-shadow:0 0 22px 5px var(--sgc,#ffd700),0 2px 24px rgba(0,0,0,0.65);border-color:rgba(255,215,0,0.72)}}',
       '@keyframes stColorCycle{0%{--sgc:#ffd700}20%{--sgc:#ff9d00}40%{--sgc:#ff6bff}60%{--sgc:#00e5ff}80%{--sgc:#7dff6b}100%{--sgc:#ffd700}}',
       '@keyframes stNameShimmer{0%,100%{background-position:-200% center}100%{background-position:200% center}}',
       '@keyframes stFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}',
-      '@keyframes stCountPop{0%{transform:scale(1)}40%{transform:scale(1.22);color:#fff}100%{transform:scale(1)}}',
-      '.st-card{animation:stCardGlow var(--spd,3.2s) ease-in-out infinite,stColorCycle var(--scd,10s) ease-in-out infinite,stFadeUp 0.45s ease both;animation-delay:var(--sad,0s),var(--sod,0s),var(--sfd,0s);background:rgba(0,0,0,0.48);border:1px solid rgba(255,215,0,0.30);border-radius:16px;padding:16px 16px 14px;margin-bottom:12px;box-sizing:border-box;transition:transform 0.15s;-webkit-tap-highlight-color:transparent}',
-      '.st-card:active{transform:scale(0.985)}',
+      // HCJ — rose-gold pulse
+      '@keyframes hcjGlow{0%,100%{box-shadow:0 0 10px 2px rgba(212,155,80,0.45),0 4px 28px rgba(0,0,0,0.65);border-color:rgba(212,155,80,0.35)}50%{box-shadow:0 0 32px 8px rgba(255,192,100,0.55),0 4px 36px rgba(0,0,0,0.75);border-color:rgba(255,210,130,0.75)}}',
+      '@keyframes hcjShimmer{0%{background-position:-300% center}100%{background-position:300% center}}',
+      '@keyframes hcjLotus{0%,100%{opacity:0.12;transform:scale(1) rotate(0deg)}50%{opacity:0.22;transform:scale(1.06) rotate(8deg)}}',
+      // RKS — deep indigo pulse + eye shimmer
+      '@keyframes rksGlow{0%,100%{box-shadow:0 0 12px 3px rgba(120,60,220,0.45),0 4px 28px rgba(0,0,0,0.70);border-color:rgba(140,80,230,0.35)}50%{box-shadow:0 0 36px 10px rgba(160,80,255,0.55),0 4px 36px rgba(0,0,0,0.80);border-color:rgba(180,100,255,0.72)}}',
+      '@keyframes rksShimmer{0%{background-position:-300% center}100%{background-position:300% center}}',
+      '@keyframes rksEye{0%,100%{opacity:0.10;transform:scale(1)}50%{opacity:0.20;transform:scale(1.08)}}',
+      '@keyframes rksDot{0%,100%{opacity:0.6}50%{opacity:1}}',
+      // Generic card base
+      '.st-card{animation:stCardGlow var(--spd,3.2s) ease-in-out infinite,stColorCycle var(--scd,10s) ease-in-out infinite,stFadeUp 0.45s ease both;animation-delay:var(--sad,0s),var(--sod,0s),var(--sfd,0s);background:rgba(0,0,0,0.48);border:1px solid rgba(255,215,0,0.30);border-radius:16px;padding:16px 16px 14px;margin-bottom:12px;box-sizing:border-box;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.12s,filter 0.12s}',
+      '.st-card:active{transform:scale(0.97);filter:brightness(1.15)}',
       '.st-name{background:linear-gradient(90deg,#ffd700 0%,#fff8dc 30%,#ffaa00 50%,#fff8dc 70%,#ffd700 100%);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:stNameShimmer 3.5s linear infinite;font-family:"Hind Siliguri",serif;font-size:17px;font-weight:700;line-height:1.3}',
       '.st-sub{font-family:"Hind Siliguri",serif;font-size:12px;color:rgba(255,215,0,0.45);margin-top:3px;letter-spacing:0.3px}',
-      '.st-count{font-size:40px;font-weight:700;color:#ffd700;line-height:1;font-family:"Inter",sans-serif;text-shadow:0 0 12px rgba(255,215,0,0.5)}',
-      '.st-count.pop{animation:stCountPop 0.3s ease}',
-      '.st-meta{font-size:11px;color:rgba(255,215,0,0.42);margin-top:4px;letter-spacing:0.3px}',
-      '.st-meta strong{color:rgba(255,215,0,0.80)}',
-      '.st-row{display:flex;align-items:center;justify-content:space-between;margin-top:12px;gap:8px}',
-      '.st-btns{display:flex;gap:8px}',
-      '.st-btn{width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,215,0,0.30);background:rgba(255,215,0,0.08);color:#ffd700;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s,box-shadow 0.15s;-webkit-tap-highlight-color:transparent}',
-      '.st-btn:active{background:rgba(255,215,0,0.22);box-shadow:0 0 10px 2px rgba(255,215,0,0.4)}',
-      '.st-btn.read{font-size:18px}',
-      '.st-edit-btn{font-size:13px;width:32px;height:32px;border-radius:8px;border:1px solid rgba(74,144,226,0.35);background:rgba(74,144,226,0.10);color:#7ab8ff;cursor:pointer;display:flex;align-items:center;justify-content:center}',
+      '.st-edit-btn{font-size:13px;width:32px;height:32px;border-radius:8px;border:1px solid rgba(74,144,226,0.35);background:rgba(74,144,226,0.10);color:#7ab8ff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}',
+      // ── HCJ premium card ──
+      '.st-card-hcj{position:relative;overflow:hidden;border-radius:20px;padding:20px 18px 18px;margin-bottom:14px;cursor:pointer;box-sizing:border-box;background:linear-gradient(135deg,rgba(30,15,5,0.95) 0%,rgba(50,25,5,0.95) 50%,rgba(30,15,5,0.95) 100%);border:1.5px solid rgba(212,155,80,0.40);animation:hcjGlow 3.8s ease-in-out infinite,stFadeUp 0.45s ease both;-webkit-tap-highlight-color:transparent;transition:transform 0.12s}',
+      '.st-card-hcj:active{transform:scale(0.97)}',
+      '.hcj-watermark{position:absolute;right:-14px;bottom:-14px;font-size:96px;line-height:1;opacity:0;animation:hcjLotus 5s ease-in-out infinite;pointer-events:none;user-select:none;filter:blur(1px)}',
+      '.hcj-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-family:"Inter",sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#c87820;border:1px solid rgba(200,120,32,0.45);border-radius:4px;padding:2px 7px;margin-bottom:8px;background:rgba(200,120,32,0.08)}',
+      '.hcj-name{font-family:"Hind Siliguri",serif;font-size:19px;font-weight:700;line-height:1.25;background:linear-gradient(90deg,#d4975a 0%,#ffe0a0 22%,#f5c070 40%,#fffaed 55%,#f0c060 70%,#d4975a 100%);background-size:300% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:hcjShimmer 4s linear infinite}',
+      '.hcj-sub{font-family:"Hind Siliguri",serif;font-size:12px;color:rgba(220,155,70,0.55);margin-top:4px;letter-spacing:0.3px}',
+      '.hcj-sig{font-family:"Hind Siliguri",serif;font-size:11px;color:rgba(200,130,50,0.42);margin-top:10px;font-style:italic;letter-spacing:0.2px;border-top:1px solid rgba(200,130,50,0.15);padding-top:8px}',
+      '.hcj-meta-row{display:flex;align-items:center;justify-content:space-between;margin-top:12px;gap:8px}',
+      '.hcj-pada-ring{position:relative;width:46px;height:46px;flex-shrink:0}',
+      '.hcj-pada-ring svg{position:absolute;inset:0}',
+      '.hcj-pada-val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}',
+      '.hcj-pada-num{font-size:15px;font-weight:700;color:#e8b060;font-family:"Inter",sans-serif}',
+      '.hcj-pada-lbl{font-size:7.5px;color:rgba(220,155,70,0.55);letter-spacing:0.5px;font-family:"Inter",sans-serif;text-transform:uppercase}',
+      '.hcj-counts{text-align:right}',
+      '.hcj-count-today{font-size:13px;color:rgba(220,155,70,0.70);font-family:"Hind Siliguri",serif}',
+      '.hcj-count-tot{font-size:11px;color:rgba(200,130,50,0.42);margin-top:2px;font-family:"Hind Siliguri",serif}',
+      '.hcj-tap-hint{font-size:10px;color:rgba(200,130,50,0.35);letter-spacing:1.2px;font-family:"Inter",sans-serif;text-align:center;margin-top:10px;text-transform:uppercase}',
+      // ── RKS premium card ──
+      '.st-card-rks{position:relative;overflow:hidden;border-radius:20px;padding:20px 18px 18px;margin-bottom:14px;cursor:pointer;box-sizing:border-box;background:linear-gradient(135deg,rgba(8,5,25,0.97) 0%,rgba(20,10,45,0.97) 50%,rgba(8,5,25,0.97) 100%);border:1.5px solid rgba(140,80,220,0.40);animation:rksGlow 4.2s ease-in-out infinite,stFadeUp 0.45s ease both;-webkit-tap-highlight-color:transparent;transition:transform 0.12s}',
+      '.st-card-rks:active{transform:scale(0.97)}',
+      '.rks-eye-watermark{position:absolute;right:-10px;bottom:-10px;font-size:88px;line-height:1;opacity:0;animation:rksEye 6s ease-in-out infinite;pointer-events:none;user-select:none;filter:blur(1.5px)}',
+      '.rks-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-family:"Inter",sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#9d6cda;border:1px solid rgba(160,100,230,0.40);border-radius:4px;padding:2px 7px;margin-bottom:8px;background:rgba(140,80,220,0.10)}',
+      '.rks-name{font-family:"Hind Siliguri","Noto Sans Bengali",serif;font-size:17px;font-weight:700;line-height:1.3;background:linear-gradient(90deg,#7040c0 0%,#c8a0ff 22%,#a060e0 40%,#f0e0ff 55%,#9050d0 70%,#7040c0 100%);background-size:300% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:rksShimmer 4.5s linear infinite}',
+      '.rks-sub{font-family:"Hind Siliguri",serif;font-size:12px;color:rgba(180,120,240,0.50);margin-top:4px;letter-spacing:0.3px}',
+      '.rks-refrain{font-family:"Hind Siliguri","Noto Sans Bengali",serif;font-size:11.5px;color:rgba(180,130,240,0.45);margin-top:10px;border-top:1px solid rgba(140,80,220,0.18);padding-top:8px;letter-spacing:0.3px;animation:rksDot 3s ease-in-out infinite}',
+      '.rks-meta-row{display:flex;align-items:center;justify-content:space-between;margin-top:12px;gap:8px}',
+      '.rks-shloka-pill{display:flex;align-items:center;gap:6px;background:rgba(140,80,220,0.12);border:1px solid rgba(140,80,220,0.28);border-radius:20px;padding:5px 12px}',
+      '.rks-shloka-num{font-size:18px;font-weight:700;color:#b080f0;font-family:"Inter",sans-serif;line-height:1}',
+      '.rks-shloka-lbl{font-size:9.5px;color:rgba(180,130,240,0.55);font-family:"Inter",sans-serif;text-transform:uppercase;letter-spacing:0.8px;line-height:1.3}',
+      '.rks-counts{text-align:right}',
+      '.rks-count-today{font-size:13px;color:rgba(180,130,240,0.65);font-family:"Hind Siliguri",serif}',
+      '.rks-count-tot{font-size:11px;color:rgba(140,80,220,0.40);margin-top:2px;font-family:"Hind Siliguri",serif}',
+      '.rks-tap-hint{font-size:10px;color:rgba(140,80,220,0.32);letter-spacing:1.2px;font-family:"Inter",sans-serif;text-align:center;margin-top:10px;text-transform:uppercase}',
     ].join('');
     document.head.appendChild(styleEl);
   }
@@ -6520,14 +6555,92 @@ function renderSt() {
     const tot = Object.values(App.S.stotrams[st.id] || {}).reduce((a,b)=>a+b, 0);
     const effLyrics = getEffectiveLyrics(st.id);
     const hasLyrics = !!(effLyrics && effLyrics.trim().length > 0);
+    const fadeDelay = (idx * 0.055).toFixed(2) + 's';
 
+    const c = document.createElement("div");
+
+    // ─────────── HCJ SPECIAL CARD ───────────
+    if (st.id === 'hcj') {
+      c.className = 'st-card-hcj';
+      c.style.animationDelay = '0s,' + fadeDelay;
+
+      // Compute arc progress (today's count as fraction of 84)
+      const padaFrac = Math.min(tc / 84, 1);
+      const R = 19, C = 23, circ = 2 * Math.PI * R;
+      const dash = (padaFrac * circ).toFixed(1);
+      const gap = (circ - padaFrac * circ).toFixed(1);
+
+      c.innerHTML =
+        '<div class="hcj-watermark">🪷</div>' +
+        '<div class="hcj-badge">✦ শ্রী হিত রচনা · ৮৪ পদ</div>' +
+        '<div class="hcj-name">' + escHtml(st.name) + '</div>' +
+        (st.global ? '<span style="font-size:9px;color:#c87820;border:1px solid rgba(200,120,32,0.35);border-radius:4px;padding:1px 6px;margin-top:4px;display:inline-block">🌍 GLOBAL</span>' : '') +
+        '<div class="hcj-sig">জৈ শ্রী হিত হরিবংশ · জৈ শ্রী হিত হরিবংশ…</div>' +
+        '<div class="hcj-meta-row">' +
+          '<div class="hcj-pada-ring" title="আজকের পদ">' +
+            '<svg width="46" height="46" viewBox="0 0 46 46">' +
+              '<circle cx="23" cy="23" r="' + R + '" fill="none" stroke="rgba(200,130,50,0.15)" stroke-width="3.5"/>' +
+              '<circle cx="23" cy="23" r="' + R + '" fill="none" stroke="rgba(212,155,80,0.70)" stroke-width="3.5" stroke-dasharray="' + dash + ' ' + gap + '" stroke-dashoffset="' + (circ * 0.25).toFixed(1) + '" stroke-linecap="round" transform="rotate(-90,23,23)"/>' +
+            '</svg>' +
+            '<div class="hcj-pada-val"><span class="hcj-pada-num">' + tc + '</span><span class="hcj-pada-lbl">আজ</span></div>' +
+          '</div>' +
+          '<div class="hcj-counts">' +
+            '<div class="hcj-count-today">মোট পঠন: <strong style="color:#e8b060">' + tot + '</strong></div>' +
+          '</div>' +
+        '</div>' +
+        '';
+
+      if (hasLyrics) {
+        c.addEventListener('click', function(e) {
+          if (e.target.closest('.st-edit-btn')) return;
+          showLyrics('hcj');
+        });
+      }
+
+      list.appendChild(c);
+      return;
+    }
+
+    // ─────────── RKS SPECIAL CARD ───────────
+    if (st.id === 'rks') {
+      c.className = 'st-card-rks';
+      c.style.animationDelay = '0s,' + fadeDelay;
+
+      c.innerHTML =
+        '<div class="rks-eye-watermark">✨</div>' +
+        '<div class="rks-badge">◈ সংস্কৃত স্তবরাজ · ২২ শ্লোক</div>' +
+        '<div class="rks-name">' + escHtml(st.name) + '</div>' +
+        (st.global ? '<span style="font-size:9px;color:#9d6cda;border:1px solid rgba(160,100,230,0.35);border-radius:4px;padding:1px 6px;margin-top:4px;display:inline-block">🌍 GLOBAL</span>' : '') +
+        '<div class="rks-refrain">কদা করিষ্যসীহ মাং কৃপাকটাক্ষভাজনম্…</div>' +
+        '<div class="rks-meta-row">' +
+          '<div class="rks-shloka-pill">' +
+            '<span class="rks-shloka-num">২২</span>' +
+            '<span class="rks-shloka-lbl">শ্লোক<br>মোট</span>' +
+          '</div>' +
+          '<div class="rks-counts">' +
+            '<div class="rks-count-today">আজ: <strong style="color:#b080f0">' + tc + '</strong></div>' +
+            '<div class="rks-count-tot">মোট: <strong>' + tot + '</strong></div>' +
+          '</div>' +
+        '</div>' +
+        '';
+
+      if (hasLyrics) {
+        c.addEventListener('click', function(e) {
+          if (e.target.closest('.st-edit-btn')) return;
+          showLyrics('rks');
+        });
+      }
+
+      list.appendChild(c);
+      return;
+    }
+
+    // ─────────── GENERIC CARD (tap-to-open, no +/-/read buttons) ───────────
     const gc = glowColors[idx % glowColors.length];
     const pulseDur = (2.8 + (idx % 5) * 0.45).toFixed(1) + 's';
     const colorDur = (9 + (idx % 4) * 1.5).toFixed(1) + 's';
-    const fadeDelay = (idx * 0.055).toFixed(2) + 's';
     const colorOff = '-' + (idx * 0.7).toFixed(1) + 's';
 
-    const c = document.createElement("div");
     c.className = "st-card";
     c.style.cssText = '--sgc:' + gc + ';--spd:' + pulseDur + ';--scd:' + colorDur + ';--sad:' + fadeDelay + ';--sod:' + colorOff + ';--sfd:' + fadeDelay + ';';
 
@@ -6538,8 +6651,8 @@ function renderSt() {
     let headerRight = '';
     if (st.custom) {
       headerRight = '<div style="display:flex;gap:5px;flex-shrink:0">' +
-        '<button class="st-edit-btn" onclick="toggleStEdit(\'' + st.id + '\')">✏</button>' +
-        '<button class="st-edit-btn" style="border-color:rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08)" onclick="delSt(\'' + st.id + '\')">✕</button>' +
+        '<button class="st-edit-btn" onclick="event.stopPropagation();toggleStEdit(\'' + st.id + '\')">✏</button>' +
+        '<button class="st-edit-btn" style="border-color:rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08)" onclick="event.stopPropagation();delSt(\'' + st.id + '\')">✕</button>' +
         '</div>';
     }
 
@@ -6551,16 +6664,9 @@ function renderSt() {
         '</div>' +
         headerRight +
       '</div>' +
-      '<div class="st-row">' +
-        '<div>' +
-          '<div class="st-count" id="sc' + st.id + '">' + tc + '</div>' +
-          '<div class="st-meta">Today · Total: <strong>' + tot + '</strong></div>' +
-        '</div>' +
-        '<div class="st-btns">' +
-          '<button class="st-btn" onclick="adjSt(\'' + st.id + '\',-1)">−</button>' +
-          '<button class="st-btn" onclick="adjSt(\'' + st.id + '\',1)">+</button>' +
-          (hasLyrics ? '<button class="st-btn read" onclick="showLyrics(\'' + st.id + '\')">📖</button>' : '') +
-        '</div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:8px">' +
+        '<div style="font-size:11px;color:rgba(255,215,0,0.38);font-family:Hind Siliguri,serif;letter-spacing:0.3px">আজ: <strong style="color:rgba(255,215,0,0.75)">' + tc + '</strong> &nbsp;·&nbsp; মোট: <strong style="color:rgba(255,215,0,0.75)">' + tot + '</strong></div>' +
+        (hasLyrics ? '' : '') +
       '</div>';
 
     if (st.custom) {
@@ -6568,19 +6674,19 @@ function renderSt() {
         '<div id="slePanel-' + st.id + '" style="display:none;margin-top:12px">' +
         '<div style="font-size:11px;color:rgba(74,144,226,0.8);margin-bottom:6px;letter-spacing:1px">✏ Edit Lyrics</div>' +
         '<textarea id="sle-' + st.id + '" rows="8" style="width:100%;background:rgba(0,0,0,0.40);border:1px solid rgba(74,144,226,0.25);border-radius:10px;padding:10px 12px;color:var(--tl);font-size:14px;font-family:Hind Siliguri,serif;resize:vertical;line-height:1.8;box-sizing:border-box" placeholder="Paste full lyrics here…"></textarea>' +
-        '<button onclick="editStLyrics(\'' + st.id + '\')" style="margin-top:8px;padding:9px 20px;border-radius:10px;border:none;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">💾 Save Lyrics</button>' +
+        '<button onclick="event.stopPropagation();editStLyrics(\'' + st.id + '\')" style="margin-top:8px;padding:9px 20px;border-radius:10px;border:none;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">💾 Save Lyrics</button>' +
         '</div>';
     }
 
     c.innerHTML = inner;
 
-    // Pop animation on count change
-    c.querySelectorAll('.st-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const cntEl = c.querySelector('.st-count');
-        if (cntEl) { cntEl.classList.remove('pop'); void cntEl.offsetWidth; cntEl.classList.add('pop'); }
+    // Tap card to open lyrics
+    if (hasLyrics) {
+      c.addEventListener('click', function(e) {
+        if (e.target.closest('.st-edit-btn')) return;
+        showLyrics(st.id);
       });
-    });
+    }
 
     list.appendChild(c);
   });
@@ -8881,14 +8987,48 @@ function showLyrics(id) {
     if (shiv.indexOf(id) !== -1) {
       card.setAttribute("data-theme", "shiv");
       if (lmo) lmo.setAttribute("data-bg", "shiv");
+      if (lmo) lmo.removeAttribute("data-hcj-silver");
+      var oldSweep = document.getElementById("hcj-silver-sweep");
+      if (oldSweep) oldSweep.remove();
+      var oldBadge = document.getElementById("hcj-silver-verse-badge");
+      if (oldBadge) oldBadge.remove();
       injectDeco(SVG_TRISHUL_TOP, SVG_SHIV_BOTTOM);
+    } else if (id === "hcj") {
+      // ── HCJ: premium silver environment ──
+      card.setAttribute("data-theme", "radha");
+      if (lmo) { lmo.setAttribute("data-bg", "radha"); lmo.setAttribute("data-hcj-silver", "1"); }
+      // Inject golden sweep helper div
+      var oldSweep2 = document.getElementById("hcj-silver-sweep");
+      if (oldSweep2) oldSweep2.remove();
+      var sweep = document.createElement("div");
+      sweep.id = "hcj-silver-sweep";
+      card.insertBefore(sweep, card.firstChild);
+      // Inject verse badge
+      var oldBadge2 = document.getElementById("hcj-silver-verse-badge");
+      if (oldBadge2) oldBadge2.remove();
+      var badge = document.createElement("div");
+      badge.id = "hcj-silver-verse-badge";
+      badge.textContent = "পদ ১ / ৮৪";
+      var lmd2 = document.querySelector("#lmo .lmd");
+      if (lmd2) lmd2.appendChild(badge);
+      injectDeco(SVG_RADHA_TOP, SVG_PEACOCK_BOTTOM);
     } else if (radha.indexOf(id) !== -1) {
       card.setAttribute("data-theme", "radha");
       if (lmo) lmo.setAttribute("data-bg", "radha");
+      if (lmo) lmo.removeAttribute("data-hcj-silver");
+      var oldSweep3 = document.getElementById("hcj-silver-sweep");
+      if (oldSweep3) oldSweep3.remove();
+      var oldBadge3 = document.getElementById("hcj-silver-verse-badge");
+      if (oldBadge3) oldBadge3.remove();
       injectDeco(SVG_RADHA_TOP, SVG_PEACOCK_BOTTOM);
     } else {
       card.removeAttribute("data-theme");
       if (lmo) lmo.removeAttribute("data-bg");
+      if (lmo) lmo.removeAttribute("data-hcj-silver");
+      var oldSweep4 = document.getElementById("hcj-silver-sweep");
+      if (oldSweep4) oldSweep4.remove();
+      var oldBadge4 = document.getElementById("hcj-silver-verse-badge");
+      if (oldBadge4) oldBadge4.remove();
     }
   })();
 
@@ -9026,6 +9166,14 @@ function _renderVerse(idx, dir) {
   }
   _hcjRenderPlayer(idx);
   _hcjOnVerseChange(idx);
+  // Update verse badge for HCJ silver environment
+  var _silverBadge = document.getElementById("hcj-silver-verse-badge");
+  if (_silverBadge && _currentStotramId === "hcj") {
+    var _toBengali = function(n) {
+      return String(n).replace(/[0-9]/g, function(d){ return ['০','১','২','৩','৪','৫','৬','৭','৮','৯'][+d]; });
+    };
+    _silverBadge.textContent = "পদ " + _toBengali(idx + 1) + " / " + _toBengali(_verses.length);
+  }
 }
 
 // Render translation toggle — shown ONLY when current verse has অর্থ: lines.
@@ -9151,7 +9299,8 @@ function _initSwipeHandler() {
   // Remove any previous swipe listeners
   card._swipeCleanup && card._swipeCleanup();
 
-  if (_currentStotramId === "hcj") return; // HCJ uses its own audio player arrows
+  // HCJ silver mode: enable horizontal swipe for verse navigation
+  // (replaces the old audio-player arrows as the primary nav gesture)
 
   let startX = 0,
     startY = 0,
@@ -9161,6 +9310,8 @@ function _initSwipeHandler() {
     const t = e.touches ? e.touches[0] : e;
     startX = t.clientX;
     startY = t.clientY;
+    // For HCJ silver: touches started inside the scrollable inner are
+    // reserved for vertical scrolling; touches anywhere else can swipe.
     const inner =
       e.target && e.target.closest ? e.target.closest(".lm-card-inner") : null;
     startedInScrollableLyrics = !!(
@@ -9173,10 +9324,8 @@ function _initSwipeHandler() {
     const dx = t.clientX - startX;
     const dy = t.clientY - startY;
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-      // Horizontal swipe detected — prevent vertical scroll conflict
-      if (dx < 0)
-        verseNav(1); // swipe left → next
-      else verseNav(-1); // swipe right → prev
+      if (dx < 0) verseNav(1);  // swipe left  → next
+      else         verseNav(-1); // swipe right → prev
     }
   }
 
@@ -9193,6 +9342,11 @@ function closeLyrics() {
   var lmo = document.getElementById("lmo");
   lmo.classList.remove("show");
   lmo.removeAttribute("data-bg");
+  lmo.removeAttribute("data-hcj-silver");
+  var sweep = document.getElementById("hcj-silver-sweep");
+  if (sweep) sweep.remove();
+  var badge = document.getElementById("hcj-silver-verse-badge");
+  if (badge) badge.remove();
   var card = document.querySelector(".lm-water-card");
   if (card) card.removeAttribute("data-theme");
   /* Clean up HCJ player window listeners before destroying audio */

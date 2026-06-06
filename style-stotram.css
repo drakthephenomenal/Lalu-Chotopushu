@@ -956,3 +956,232 @@
   z-index: 20;
   font-family: "Hind Siliguri", sans-serif;
 }
+
+/* ════════════════════════════════════════════════════════════
+   HCJ PREMIUM SILVER ENVIRONMENT — full-screen viewer override
+   Activated when #lmo has data-hcj-silver="1"
+   A pure silvery-white world with a continuous golden wave
+   sweeping left→right→left on every verse page.
+   ════════════════════════════════════════════════════════════ */
+
+/* Keyframes */
+@keyframes hcjSilverWave {
+  0%   { background-position: -300% 50%; }
+  100% { background-position: 300% 50%; }
+}
+@keyframes hcjSilverGlow {
+  0%,100% { box-shadow: 0 0 40px 12px rgba(255,220,120,0.18), inset 0 0 60px rgba(255,230,160,0.06); }
+  50%      { box-shadow: 0 0 70px 24px rgba(255,220,100,0.28), inset 0 0 90px rgba(255,230,160,0.12); }
+}
+@keyframes hcjGoldSweep {
+  0%   { left: -180%; }
+  100% { left: 200%;  }
+}
+@keyframes hcjTitlePulse {
+  0%,100% { text-shadow: 0 0 18px rgba(200,140,30,0.50), 0 2px 8px rgba(0,0,0,0.25); }
+  50%      { text-shadow: 0 0 38px rgba(255,195,50,0.75), 0 2px 10px rgba(0,0,0,0.30); }
+}
+@keyframes hcjVerseNum {
+  0%,100% { opacity: 0.55; }
+  50%      { opacity: 0.85; }
+}
+
+/* ── Silver overlay background ── */
+#lmo[data-hcj-silver="1"] {
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 20%, rgba(245,242,235,1) 0%, rgba(220,215,205,1) 55%, rgba(190,185,175,1) 100%)
+    !important;
+}
+
+/* ── The main card: pure silver glass ── */
+#lmo[data-hcj-silver="1"] .lm-water-card {
+  background:
+    linear-gradient(160deg,
+      rgba(255,253,250,0.97) 0%,
+      rgba(240,237,230,0.97) 40%,
+      rgba(248,245,238,0.97) 100%) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  animation: hcjSilverGlow 5s ease-in-out infinite !important;
+}
+
+/* ── The gold sweep beam — continuous ── */
+#lmo[data-hcj-silver="1"] .lm-water-card::before {
+  content: '' !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+  overflow: hidden !important;
+  border-radius: inherit !important;
+}
+/* Sweep implemented as a pseudo on a helper div injected by JS (#hcj-silver-sweep) */
+#hcj-silver-sweep {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+  border-radius: inherit;
+}
+#hcj-silver-sweep::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -180%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255,215,80,0.04) 20%,
+    rgba(255,220,100,0.14) 45%,
+    rgba(255,230,140,0.22) 50%,
+    rgba(255,220,100,0.14) 55%,
+    rgba(255,215,80,0.04) 80%,
+    transparent 100%
+  );
+  animation: hcjGoldSweep 4s ease-in-out infinite;
+  transform: skewX(-8deg);
+}
+
+/* ── Scrollable inner ── */
+#lmo[data-hcj-silver="1"] .lm-card-inner {
+  position: absolute !important;
+  top: max(env(safe-area-inset-top, 0px) + 54px, 60px) !important;
+  bottom: 120px !important;
+  left: 0 !important;
+  right: 0 !important;
+  padding: 12px 22px 20px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-y: contain !important;
+  touch-action: pan-y !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  z-index: 5 !important;
+  background: transparent !important;
+}
+
+/* ── Lyric text: dark ink on silver ── */
+#lmo[data-hcj-silver="1"] .lyr-line {
+  color: #1a0e00 !important;
+  font-family: 'Hind Siliguri', 'Tiro Devanagari Hindi', serif !important;
+  line-height: 2.0 !important;
+  text-align: center !important;
+}
+#lmo[data-hcj-silver="1"] .lyr {
+  color: #1a0e00 !important;
+}
+#lmo[data-hcj-silver="1"] .lyr-artha {
+  color: #5a1a00 !important;
+}
+
+/* ── Title bar on silver ── */
+#lmo[data-hcj-silver="1"] .lmt {
+  color: #7a4800 !important;
+  text-shadow: 0 0 18px rgba(200,140,30,0.50), 0 2px 8px rgba(0,0,0,0.20) !important;
+  animation: hcjTitlePulse 3.5s ease-in-out infinite !important;
+  font-size: 15px !important;
+  letter-spacing: 2px !important;
+  background: transparent !important;
+  -webkit-text-fill-color: #7a4800 !important;
+}
+
+/* ── Close button on silver ── */
+#lmo[data-hcj-silver="1"] .lmx {
+  background: rgba(255,250,240,0.80) !important;
+  border-color: rgba(200,140,30,0.50) !important;
+  color: #7a4800 !important;
+}
+
+/* ── Nav arrows on silver ── */
+#lmo[data-hcj-silver="1"] .lm-nav,
+#lmo[data-hcj-silver="1"] #lmNav { display: none !important; }
+
+/* ── Nav dots: golden on silver ── */
+#lmo[data-hcj-silver="1"] .lm-dots {
+  bottom: 106px !important;
+}
+#lmo[data-hcj-silver="1"] .lm-dot {
+  background: rgba(150,90,0,0.22) !important;
+}
+#lmo[data-hcj-silver="1"] .lm-dot.active {
+  background: rgba(180,110,0,0.75) !important;
+}
+
+/* ── HCJ audio player on silver ── */
+#lmo[data-hcj-silver="1"] #hcj-player-wrap {
+  background: linear-gradient(180deg, rgba(240,235,225,0.96) 0%, rgba(225,218,205,0.98) 100%) !important;
+  border-top: 1px solid rgba(200,150,50,0.30) !important;
+  box-shadow: 0 -4px 20px rgba(200,140,30,0.12) !important;
+}
+#lmo[data-hcj-silver="1"] #hcj-player-wrap button {
+  background: rgba(255,248,235,0.80) !important;
+  border-color: rgba(200,140,30,0.30) !important;
+  color: #7a4800 !important;
+}
+#lmo[data-hcj-silver="1"] #hcj-player-wrap button:active {
+  background: rgba(255,220,100,0.50) !important;
+  border-color: rgba(200,140,30,0.80) !important;
+}
+#lmo[data-hcj-silver="1"] .hcj-prog-track {
+  background: rgba(200,150,50,0.18) !important;
+}
+#lmo[data-hcj-silver="1"] .hcj-prog-fill {
+  background: linear-gradient(90deg, #c87820, #f0c040) !important;
+}
+#lmo[data-hcj-silver="1"] .hcj-time {
+  color: rgba(120,72,0,0.65) !important;
+}
+
+/* ── Text-size pill on silver ── */
+#lmo[data-hcj-silver="1"] #lyr-fs-ctrl button {
+  background: rgba(255,248,235,0.75) !important;
+  border-color: rgba(200,140,30,0.25) !important;
+  color: #7a4800 !important;
+}
+#lmo[data-hcj-silver="1"] #lyr-fs-label {
+  background: rgba(255,248,235,0.75) !important;
+  color: #7a4800 !important;
+}
+
+/* ── Deco SVGs hidden on silver (they're dark themed) ── */
+#lmo[data-hcj-silver="1"] #lm-deco-top,
+#lmo[data-hcj-silver="1"] #lm-deco-bottom { opacity: 0.25 !important; filter: sepia(1) hue-rotate(-10deg) !important; }
+
+/* ── Swipe hint strip at bottom of inner scroll area ── */
+#hcj-silver-swipe-hint {
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  font-family: 'Inter', sans-serif;
+  color: rgba(150,90,0,0.35);
+  text-transform: uppercase;
+  margin-top: 18px;
+  padding-bottom: 4px;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* ── Verse number badge (golden arc on silver) ── */
+#hcj-silver-verse-badge {
+  position: absolute;
+  top: max(env(safe-area-inset-top, 0px) + 10px, 14px);
+  left: 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(120,72,0,0.55);
+  letter-spacing: 0.5px;
+  animation: hcjVerseNum 4s ease-in-out infinite;
+  z-index: 20;
+  background: rgba(255,248,235,0.70);
+  border: 1px solid rgba(200,140,30,0.22);
+  border-radius: 20px;
+  padding: 3px 10px;
+}

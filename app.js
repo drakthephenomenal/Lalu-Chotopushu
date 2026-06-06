@@ -71,6 +71,7 @@ const App = {
     syncBaselineTimerRV: {},
     activityLog: [],
     sadhanaStart: "",
+    milestones: { reached: {}, lastChecked: 0 },
     historyHK: {},
     timerHistoryHK: {},
     dtHK: 0,
@@ -230,6 +231,7 @@ const App = {
       nameJapDeductHK: this.S.nameJapDeductHK || 0,
       gaudiyaMode: this.S.gaudiyaMode || false,
       dt28Cycles: this.S.dt28Cycles || 0,
+      milestones: this.S.milestones || { reached: {}, lastChecked: 0 },
       hkLang: this.S.hkLang || "hi",
       lastLat: this.S.lastLat ?? null,
       lastLng: this.S.lastLng ?? null,
@@ -4666,6 +4668,7 @@ function fbInit() {
             syncBaselineTimerHK: {},
             nameJapDeductHK: 0,
             gaudiyaMode: false,
+            milestones: { reached: {}, lastChecked: 0 },
             lastLat: _prevLat,
             lastLng: _prevLng,
           };
@@ -4773,6 +4776,7 @@ function fbInit() {
             nameJapDeductHK: 0,
             gaudiyaMode: false,
             dt28Cycles: 0,
+            milestones: { reached: {}, lastChecked: 0 },
             lastLat: _prevLat2,
             lastLng: _prevLng2,
           };
@@ -4978,6 +4982,7 @@ async function fbSignOut() {
     historyHK: {}, timerHistoryHK: {}, dtHK: 0, malaLogHK: [],
     syncBaselineHK: {}, syncBaselineTimerHK: {}, nameJapDeductHK: 0,
     gaudiyaMode: false, dt28Cycles: 0,
+    milestones: { reached: {}, lastChecked: 0 },
     lastLat: _prevLat, lastLng: _prevLng,
   };
   App.lmc = 0; App.lmcRV = 0; App.lmcHK = 0; App.lm28 = 0;
@@ -5044,6 +5049,7 @@ async function fbPushFull() {
     malaLogHK: App.S.malaLogHK || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
     dt28Cycles: App.S.dt28Cycles || 0,
+    milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId,
   };
@@ -5156,6 +5162,20 @@ function fbApplyRemote(d) {
     App.S.timerHistoryHK = JSON.parse(JSON.stringify(d.timerHistoryHK || {}));
   if (d.dtHK !== undefined) App.S.dtHK = d.dtHK;
   if (d.dt28Cycles !== undefined) App.S.dt28Cycles = d.dt28Cycles;
+  if (d.milestones) {
+    // Merge: union of local + remote reached flags so neither device loses a celebration
+    const localReached = (App.S.milestones && App.S.milestones.reached) || {};
+    const remoteReached = d.milestones.reached || {};
+    App.S.milestones = {
+      reached: { ...remoteReached, ...localReached },
+      lastChecked: Math.max(
+        (App.S.milestones && App.S.milestones.lastChecked) || 0,
+        d.milestones.lastChecked || 0
+      ),
+    };
+    // Keep localStorage mirror in sync
+    try { localStorage.setItem("rjap_milestones", JSON.stringify(App.S.milestones)); } catch (_) {}
+  }
   if (d.nameJapDeductHK !== undefined)
     App.S.nameJapDeductHK = d.nameJapDeductHK;
   if (d.gaudiyaMode !== undefined) {
@@ -9776,6 +9796,8 @@ function formatMsCountLabel(n) {
 }
 
 function getMilestoneData() {
+  // Primary: use App.S (synced via Firebase). Fallback: localStorage (legacy).
+  if (App.S && App.S.milestones) return App.S.milestones;
   try {
     const d = localStorage.getItem("rjap_milestones");
     return d ? JSON.parse(d) : { reached: {}, lastChecked: 0 };
@@ -9785,6 +9807,13 @@ function getMilestoneData() {
 }
 
 function saveMilestoneData(data) {
+  // Save to App.S so it gets persisted to IDB and pushed to Firebase.
+  if (App.S) {
+    App.S.milestones = data;
+    App.save();
+    if (typeof fbDebouncedPush === "function" && App._cloudHydrated) fbDebouncedPush();
+  }
+  // Also mirror to localStorage as fallback.
   try {
     localStorage.setItem("rjap_milestones", JSON.stringify(data));
   } catch (e) {}

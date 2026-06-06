@@ -10300,17 +10300,20 @@ function showHistDeityDates(deityKey) {
     rows.push({ tk, val, sec });
   });
 
+  // Hide the Period Totals card — drill-down replaces it in the same space
+  const totDiv = document.getElementById("histTotals");
+  if (totDiv) totDiv.style.display = "none";
+
   // Hide the flat history table — drill-down replaces it
   if (wrap) wrap.style.display = "none";
   sumLine.textContent = "";
 
   if (rows.length === 0) {
     drill.style.display = "block";
+    drill.className = "hist-totals-card";
     drill.innerHTML = `
-      <div class="hist-totals-card">
         <button class="hist-back-btn" onclick="closeHistDeityDrill()">‹ Period Totals</button>
-        <div style="text-align:center;color:var(--td);font-size:12px;padding:16px 0">No ${c.label} recorded in this period.</div>
-      </div>`;
+        <div style="text-align:center;color:var(--td);font-size:12px;padding:16px 0">No ${c.label} recorded in this period.</div>`;
     return;
   }
 
@@ -10331,8 +10334,8 @@ function showHistDeityDates(deityKey) {
   }).join("");
 
   drill.style.display = "block";
+  drill.className = "hist-totals-card";
   drill.innerHTML = `
-    <div class="hist-totals-card">
       <div class="pt-head">
         <button class="hist-back-btn" style="margin:0" onclick="closeHistDeityDrill()">‹ Back</button>
         <span class="pt-head-icon" style="margin-left:8px">${c.icon}</span>
@@ -10345,17 +10348,18 @@ function showHistDeityDates(deityKey) {
         <span class="hdd-sum-sub">${c.toSub(totVal)}</span>
         <span class="hdd-sum-time">⏱ ${_histFmtSec(totSec)}</span>
       </div>
-      <div class="hdd-list">${rowsHtml}</div>
-    </div>`;
+      <div class="hdd-list">${rowsHtml}</div>`;
   drill.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function closeHistDeityDrill() {
   const drill = document.getElementById("histDeityDrill");
   const wrap  = document.getElementById("histTableWrap");
+  const totDiv = document.getElementById("histTotals");
   const sumLine = document.getElementById("histSummaryLine");
-  if (drill) drill.style.display = "none";
-  if (drill) drill.innerHTML = "";
+  if (drill) { drill.style.display = "none"; drill.innerHTML = ""; drill.className = ""; }
+  // Restore Period Totals card
+  if (totDiv) totDiv.style.display = "block";
   // Restore the summary table
   if (wrap && document.querySelector("#histTableBody tr")) {
     wrap.style.display = "block";

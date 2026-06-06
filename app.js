@@ -4960,6 +4960,38 @@ async function fbSignOut() {
   await clearLocalUserData(outgoingUid);
   App._uid = null;
   App._suspendCloudSync = false;
+
+  // ── Reset in-memory state to zero-zero immediately ──
+  // Do NOT wait for onAuthStateChanged — it won't re-render because _uid is already null.
+  const _prevLat = App.S && App.S.lastLat != null ? App.S.lastLat : null;
+  const _prevLng = App.S && App.S.lastLng != null ? App.S.lastLng : null;
+  App.S = {
+    tk: App.getTk(), ms: 108, dt: 0, lt: 0,
+    cfg: { vib: true, sound: true },
+    history: {}, h28: {}, stotrams: {}, brahma: {}, customSt: [],
+    timerHistory: {}, timer28History: {}, sankalpas: [], occasions: {},
+    syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {},
+    migrationV2Done: false, japMode: "radha",
+    historyRV: {}, timerHistoryRV: {}, dtRV: 0, ltRV: 0, nameJapDeductRV: 0,
+    malaLogRV: [], activityLog: [], syncBaselineRV: {}, syncBaselineTimerRV: {},
+    historyHK: {}, timerHistoryHK: {}, dtHK: 0, malaLogHK: [],
+    syncBaselineHK: {}, syncBaselineTimerHK: {}, nameJapDeductHK: 0,
+    gaudiyaMode: false, dt28Cycles: 0,
+    lastLat: _prevLat, lastLng: _prevLng,
+  };
+  App.lmc = 0; App.lmcRV = 0; App.lmcHK = 0; App.lm28 = 0;
+  document.body.classList.remove("gaudiya-mode");
+  switchJapMode("radha");
+  try { App.ua(); } catch (_e) {}
+  try { renderSt(); } catch (_e) {}
+  try { u28(); } catch (_e) {}
+  try { renderBcal(); } catch (_e) {}
+  try { renderCal(); } catch (_e) {}
+  try { uStats(); } catch (_e) {}
+  try { renderSankalpas(); } catch (_e) {}
+  try { renderMalaLog(); } catch (_e) {}
+  try { populateSettingsUI(); } catch (_e) {}
+
   fbAuth.signOut().then(() => toast("Signed out 🙏"));
 }
 async function fbPushDelta() {

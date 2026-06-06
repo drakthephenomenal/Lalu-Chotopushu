@@ -3600,11 +3600,16 @@ async function _fbResetPush() {
   clearTimeout(_fbDeb);
   _fbDeb = null;
   // 2. Push the clean local state to Firebase immediately (overwrite cloud)
+  // IMPORTANT: bypass the _cloudHydrated guard — a reset must ALWAYS reach Firebase.
   if (fbUser && !fbForcedSignout) {
+    const prevAllowInitialPush = App._allowInitialPush;
+    App._allowInitialPush = true; // force push through the hydration guard
     try {
       await fbPushFull();
     } catch (e) {
       console.warn("Reset push failed:", e.message);
+    } finally {
+      App._allowInitialPush = prevAllowInitialPush;
     }
   }
   // 3. Re-start the listener so future changes sync normally
@@ -3697,8 +3702,11 @@ function doReset() {
     App.lmcRV = 0;
     App.lmcHK = 0;
     App.dbClearStore("history");
+    App.dbClearStore("historyRV").catch(() => {});
+    App.dbClearStore("historyHK").catch(() => {});
     App.dbClearStore("timerHistory");
     App.dbClearStore("timerHistoryRV");
+    App.dbClearStore("timerHistoryHK").catch(() => {});
     App.dbClearStore("activityLogArchive");
     App.dbClearStore("malaLog");
     App.resetTimer();
@@ -3716,6 +3724,8 @@ function doReset() {
     App.S.brahmacharya_start_date = "";
     App.S.sankalpas = [];
     App.S.occasions = {};
+    App.S.milestones = { reached: {}, lastChecked: 0 };
+    try { localStorage.removeItem("rjap_milestones"); } catch (_) {}
     const msEl = document.getElementById("msIn");
     if (msEl) msEl.value = "";
     initBrahmaStartInput();
@@ -5274,10 +5284,37 @@ async function fbMigrate() {
       }
     }
     if (!snap.exists) {
-      // Confirmed by server: no cloud doc yet — safe to seed initial copy.
-      App._allowInitialPush = true;
-      try { await fbPushFull(); } finally { App._allowInitialPush = false; }
-      App._cloudHydrated = true;
+      // Server confirmed no cloud doc exists yet.
+      // SAFETY: only seed Firebase if local state actually has meaningful data.
+      // After a browser "Delete & reset", local is zeros AND cloud may incorrectly
+      // appear empty due to cache wipe — never overwrite cloud with zeros.
+      const hasLocalData =
+        Object.values(App.S.history || {}).some(v => v > 0) ||
+        Object.values(App.S.historyRV || {}).some(v => v > 0) ||
+        Object.values(App.S.historyHK || {}).some(v => v > 0) ||
+        (App.S.dt || 0) > 0 || (App.S.dtRV || 0) > 0 || (App.S.dtHK || 0) > 0;
+      if (hasLocalData) {
+        // Genuine first-time user with local data — seed Firebase
+        App._allowInitialPush = true;
+        try { await fbPushFull(); } finally { App._allowInitialPush = false; }
+        App._cloudHydrated = true;
+      } else {
+        // Local is zeros — could be a fresh install OR a browser reset wipe.
+        // Do a second server fetch after a short delay to confirm truly no doc.
+        await new Promise(r => setTimeout(r, 2000));
+        let snap2 = null;
+        try { snap2 = await docRef.get({ source: "server" }); } catch (_) {}
+        if (snap2 && snap2.exists) {
+          // Doc appeared on retry — browser reset scenario. Apply cloud data.
+          fbApplyRemote({ ...snap2.data(), deviceId: null });
+          App._cloudHydrated = true;
+        } else {
+          // Confirmed truly new user — safe to seed
+          App._allowInitialPush = true;
+          try { await fbPushFull(); } finally { App._allowInitialPush = false; }
+          App._cloudHydrated = true;
+        }
+      }
     } else {
       // ── OFFLINE-WORK PRESERVATION ──
       // Snapshot local counts BEFORE applying cloud data.

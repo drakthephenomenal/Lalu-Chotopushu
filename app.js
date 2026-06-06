@@ -5171,7 +5171,13 @@ function fbApplyRemote(d) {
   if ("timerHistoryHK" in d)
     App.S.timerHistoryHK = JSON.parse(JSON.stringify(d.timerHistoryHK || {}));
   if (d.dtHK !== undefined) App.S.dtHK = d.dtHK;
-  if (d.dt28Cycles !== undefined) App.S.dt28Cycles = d.dt28Cycles;
+  if (d.dt28Cycles !== undefined) {
+    // Only apply remote dt28Cycles if it's actually set (>0), or if local is also 0.
+    // Prevents a stale Firebase doc (dt28Cycles:0) from wiping a freshly saved target.
+    if ((d.dt28Cycles || 0) > 0 || (App.S.dt28Cycles || 0) === 0) {
+      App.S.dt28Cycles = d.dt28Cycles;
+    }
+  }
   if (d.milestones) {
     // Merge: union of local + remote reached flags so neither device loses a celebration
     const localReached = (App.S.milestones && App.S.milestones.reached) || {};
@@ -5617,7 +5623,13 @@ function svt28() {
   const v = parseInt(document.getElementById("dt28CycleIn")?.value) || 0;
   App.S.dt28Cycles = v;
   App.save();
-  if (typeof fbDebouncedPush === "function") fbDebouncedPush();
+  // Push immediately (not debounced) so the value reaches Firebase before
+  // the realtime listener can fire back with a stale dt28Cycles value.
+  if (typeof fbPushFull === "function" && App._cloudHydrated) {
+    fbPushFull().catch(e => console.warn("svt28 push:", e && e.message));
+  } else if (typeof fbDebouncedPush === "function") {
+    fbDebouncedPush();
+  }
   App.ua();
   u28();
   toast("✅ 28 Names daily target saved: " + v + " cycle" + (v !== 1 ? "s" : "") + " (" + (v * 28) + " japs/day)");

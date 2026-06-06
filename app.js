@@ -229,6 +229,7 @@ const App = {
       syncBaselineTimerHK: this.S.syncBaselineTimerHK || {},
       nameJapDeductHK: this.S.nameJapDeductHK || 0,
       gaudiyaMode: this.S.gaudiyaMode || false,
+      dt28Cycles: this.S.dt28Cycles || 0,
       hkLang: this.S.hkLang || "hi",
       lastLat: this.S.lastLat ?? null,
       lastLng: this.S.lastLng ?? null,

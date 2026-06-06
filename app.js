@@ -183,6 +183,9 @@ const App = {
   },
 
   async save() {
+    // GUEST MODE: never persist to IDB or localStorage — guest jap is intentionally ephemeral.
+    // Only signed-in users get local persistence (as an offline buffer for cloud sync).
+    if (!this._uid) return;
     // Save full state snapshot to IDB so all dates and edits persist locally
     await this.dbPut("state", this._stateKey(), {
       ms: this.S.ms,
@@ -260,6 +263,10 @@ const App = {
   async load() {
     await this.initDB();
     this.S.tk = this.getTk();
+
+    // GUEST MODE: never load from IDB or localStorage — start clean every time.
+    // Signed-in users load from IDB as an offline buffer; cloud pull immediately follows.
+    if (!this._uid) return;
 
     // Try IndexedDB first
     const main = await this.dbGet("state", this._stateKey());
@@ -4592,8 +4599,15 @@ function fbInit() {
     if (!fbInit._onlineHooked) {
       fbInit._onlineHooked = true;
       window.addEventListener("online", () => {
-        if (fbUser && !fbForcedSignout && App._cloudHydrated) {
-          fbPushFull().catch((e) => console.warn("Online resync:", e && e.message));
+        if (fbUser && !fbForcedSignout) {
+          if (!App._cloudHydrated) {
+            // App went offline before the initial cloud pull completed.
+            // Re-run the full sync cycle: pull from Firebase first, then push offline work.
+            fbAutoSync().catch((e) => console.warn("Online resync (full):", e && e.message));
+          } else {
+            // Already hydrated — just push any offline jap accumulated since last sync.
+            fbPushFull().catch((e) => console.warn("Online resync (push):", e && e.message));
+          }
         }
       });
     }
@@ -4654,8 +4668,9 @@ function fbInit() {
             lastLat: _prevLat,
             lastLng: _prevLng,
           };
-          // ── Always load IDB first so app is usable offline ──
-          // Cloud pull in fbMigrate() will immediately overwrite with authoritative data.
+          // ── Load IDB offline buffer (only if we were previously signed in offline) ──
+          // Cloud pull in fbMigrate() will ALWAYS overwrite with authoritative data.
+          // Guest-mode jap is intentionally NOT carried over here (guest IDB is never written).
           App._cloudHydrated = false; // block any push until cloud pull completes
           await App.load();
           App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
@@ -4760,9 +4775,8 @@ function fbInit() {
             lastLat: _prevLat2,
             lastLng: _prevLng2,
           };
-          // Try to load any existing guest-state IDB (if user signed out
-          // before and did jap as guest, preserve it across page reloads).
-          try { await App.load(); } catch (_e) {}
+          // GUEST MODE: intentionally do NOT load from IDB or localStorage.
+          // Guest jap is ephemeral — never persisted, never merged into signed-in state.
           App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
           App.lmcRV = Math.floor(
             (App.S.historyRV[App.S.tk] || 0) / (App.S.ms || 108),
@@ -5200,7 +5214,9 @@ async function fbMigrate() {
       if (!snap || !snap.exists) {
         // Could not confirm cloud state — refuse to push so we never
         // overwrite real cloud data with empty local state.
-        setSyncPill("error", "Offline — cloud not loaded");
+        // _cloudHydrated stays false — the "online" listener will retry fbAutoSync() automatically.
+        App._cloudHydrated = false;
+        setSyncPill("error", "Offline — will sync when online");
         return;
       }
     }
@@ -5210,9 +5226,55 @@ async function fbMigrate() {
       try { await fbPushFull(); } finally { App._allowInitialPush = false; }
       App._cloudHydrated = true;
     } else {
-      // Cloud data exists — ALWAYS apply it (overrides local cache)
+      // ── OFFLINE-WORK PRESERVATION ──
+      // Snapshot local counts BEFORE applying cloud data.
+      // If the user did jap while signed-in but offline (app closed & reopened),
+      // local IDB has higher counts than cloud. We must not overwrite them.
+      const localHistory      = JSON.parse(JSON.stringify(App.S.history      || {}));
+      const localH28          = JSON.parse(JSON.stringify(App.S.h28          || {}));
+      const localTimerHistory = JSON.parse(JSON.stringify(App.S.timerHistory || {}));
+      const localHistoryRV    = JSON.parse(JSON.stringify(App.S.historyRV    || {}));
+      const localHistoryHK    = JSON.parse(JSON.stringify(App.S.historyHK    || {}));
+      const localTimerHistoryRV = JSON.parse(JSON.stringify(App.S.timerHistoryRV || {}));
+      const localTimerHistoryHK = JSON.parse(JSON.stringify(App.S.timerHistoryHK || {}));
+      const localDt   = App.S.dt   || 0;
+      const localDtRV = App.S.dtRV || 0;
+      const localDtHK = App.S.dtHK || 0;
+
+      // Cloud data exists — apply it (overrides local cache)
       fbApplyRemote({ ...snap.data(), deviceId: null });
       App._cloudHydrated = true; // cloud copy applied, future saves may push
+
+      // ── MERGE: for each date key, keep whichever is higher (local offline wins) ──
+      let offlineWorkFound = false;
+      function mergeMax(local, applied) {
+        for (const k in local) {
+          if ((local[k] || 0) > (applied[k] || 0)) {
+            applied[k] = local[k];
+            offlineWorkFound = true;
+          }
+        }
+      }
+      mergeMax(localHistory,        App.S.history);
+      mergeMax(localH28,            App.S.h28);
+      mergeMax(localTimerHistory,   App.S.timerHistory);
+      mergeMax(localHistoryRV,      App.S.historyRV);
+      mergeMax(localHistoryHK,      App.S.historyHK);
+      mergeMax(localTimerHistoryRV, App.S.timerHistoryRV);
+      mergeMax(localTimerHistoryHK, App.S.timerHistoryHK);
+      // Also preserve higher dt (lifetime jap seconds) if local is ahead
+      if (localDt   > App.S.dt)   { App.S.dt   = localDt;   offlineWorkFound = true; }
+      if (localDtRV > App.S.dtRV) { App.S.dtRV = localDtRV; offlineWorkFound = true; }
+      if (localDtHK > App.S.dtHK) { App.S.dtHK = localDtHK; offlineWorkFound = true; }
+
+      if (offlineWorkFound) {
+        // Local had offline jap ahead of cloud — push the merged state immediately
+        console.log("Offline work detected — pushing merged state to Firebase");
+        setSyncPill("syncing", "Syncing offline jap…");
+        App._allowInitialPush = true;
+        try { await fbPushFull(); } finally { App._allowInitialPush = false; }
+      }
+
       if (!App.S.migrationV2Done) {
         // First-ever migration: push merged state back
         await fbPushFull();

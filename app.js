@@ -4583,6 +4583,20 @@ function fbInit() {
         console.warn("getRedirectResult:", e.message);
       });
 
+    // ── When the device comes back online, push any local changes
+    //    accumulated while offline. Firestore persistence also replays its
+    //    own queued writes, but this ensures the latest in-memory state
+    //    (including counters incremented since the last debounced push)
+    //    reaches the cloud immediately on reconnect.
+    if (!fbInit._onlineHooked) {
+      fbInit._onlineHooked = true;
+      window.addEventListener("online", () => {
+        if (fbUser && !fbForcedSignout && App._cloudHydrated) {
+          fbPushFull().catch((e) => console.warn("Online resync:", e && e.message));
+        }
+      });
+    }
+
     fbAuth.onAuthStateChanged(async (user) => {
       if (fbForcedSignout) {
         lockSignedOutScreen();
@@ -4867,17 +4881,68 @@ function fbSignInZoho() {
     });
 }
 
-function fbSignOut() {
+// ── Wipe ALL locally cached data for a given UID. Used on sign-out so
+//    the next login (same device or another) ALWAYS pulls authoritative
+//    state from Firebase, never from a stale local cache. Guest data is
+//    cleared too so the signed-out screen shows a clean zero-zero state.
+async function clearLocalUserData(uid) {
+  try {
+    if (App.db) {
+      // Remove this UID's main snapshot
+      await new Promise((res) => {
+        const tx = App.db.transaction("state", "readwrite");
+        tx.objectStore("state").delete((uid || "guest") + ":main");
+        tx.oncomplete = res; tx.onerror = res; tx.onabort = res;
+      });
+      // Also clear the guest snapshot so guest mode starts clean.
+      await new Promise((res) => {
+        const tx = App.db.transaction("state", "readwrite");
+        tx.objectStore("state").delete("guest:main");
+        tx.oncomplete = res; tx.onerror = res; tx.onabort = res;
+      });
+      // Clear shared per-date stores (not UID-scoped in IDB schema).
+      for (const store of ["history","h28","timerHistory","timer28History","malaLog","activityLogArchive"]) {
+        try { await App.dbClearStore(store); } catch (_) {}
+      }
+    }
+  } catch (e) { console.warn("clearLocalUserData IDB:", e.message); }
+  // Wipe localStorage mirrors for both UID and legacy keys.
+  try { if (uid) localStorage.removeItem("rjap5_" + uid); } catch (_) {}
+  try { localStorage.removeItem("rjap5_guest"); } catch (_) {}
+  try { localStorage.removeItem("rjap5"); } catch (_) {}
+  try { localStorage.removeItem("rjap_sadhana_start"); } catch (_) {}
+}
+
+async function fbSignOut() {
   if (!fbAuth) return;
-  if (fbSessionListener) {
-    fbSessionListener();
-    fbSessionListener = null;
+  const outgoingUid = (fbUser && fbUser.uid) || App._uid || null;
+  // ── STEP 1: Push current state to Firebase BEFORE signing out so the
+  //    user's "last state" is preserved as the next-login baseline.
+  //    Firestore offline persistence will queue the write while offline;
+  //    we still attempt it so reconnection can replay it.
+  if (fbUser && App._cloudHydrated) {
+    try {
+      setSyncPill("syncing", "Saving before sign-out…");
+      if (!navigator.onLine) {
+        toast("Offline — your last state will sync when you're back online");
+      }
+      await fbPushFull();
+    } catch (e) {
+      console.warn("Push before sign-out failed:", e && e.message);
+    }
   }
-  if (fbListener) {
-    fbListener();
-    fbListener = null;
-  }
+  // Stop sync listeners so cloud changes cannot resurrect local state mid-wipe.
+  if (fbSessionListener) { fbSessionListener(); fbSessionListener = null; }
+  if (fbListener) { fbListener(); fbListener = null; }
+  // Block any further writes until the next sign-in completes its cloud pull.
+  App._cloudHydrated = false;
+  App._allowInitialPush = false;
+  App._suspendCloudSync = true;
+  // ── STEP 2: Wipe local data so re-login always reflects Firebase, and
+  //    so the signed-out (guest) display starts at zero-zero.
+  await clearLocalUserData(outgoingUid);
   App._uid = null;
+  App._suspendCloudSync = false;
   fbAuth.signOut().then(() => toast("Signed out 🙏"));
 }
 async function fbPushDelta() {

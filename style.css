@@ -2359,3 +2359,57 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   transition: color 0.3s;
   word-break: break-word;
 }
+
+/* ── Deity Date Drill-down (hdd) ── */
+.hdd-summary{
+  display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 10px;
+  padding:10px 14px;margin-bottom:12px;
+  background:rgba(255,255,255,0.04);border-radius:12px;
+  border:1px solid rgba(255,255,255,0.08);
+}
+.hdd-sum-num{font-size:28px;font-weight:800;letter-spacing:-0.5px;line-height:1;}
+.hdd-sum-unit{font-size:12px;color:var(--td);font-weight:500;}
+.hdd-sum-sub{font-size:11px;color:var(--td);margin-left:4px;}
+.hdd-sum-time{font-size:11px;color:var(--gold);margin-left:auto;font-variant-numeric:tabular-nums;}
+
+.hdd-list{display:flex;flex-direction:column;gap:6px;}
+
+.hdd-row{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  grid-template-rows:auto auto;
+  column-gap:10px;row-gap:2px;
+  align-items:center;
+  padding:10px 14px;border-radius:13px;cursor:pointer;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.07);
+  transition:background .15s ease, border-color .15s ease, transform .12s ease;
+  position:relative;
+}
+.hdd-row:hover{background:rgba(255,255,255,0.07);border-color:rgba(255,215,0,0.3);transform:translateY(-1px);}
+.hdd-row:active{transform:translateY(0);}
+
+.hdd-date{
+  grid-column:1;grid-row:1;
+  font-size:12px;font-weight:700;color:var(--tl);letter-spacing:.3px;
+}
+.hdd-main{
+  grid-column:2;grid-row:1;
+  display:flex;align-items:baseline;gap:4px;
+}
+.hdd-num{font-size:17px;font-weight:800;letter-spacing:-0.3px;line-height:1;}
+.hdd-unit{font-size:10px;color:var(--td);font-weight:500;}
+.hdd-sub{
+  grid-column:1;grid-row:2;
+  font-size:10px;color:var(--td);opacity:.8;
+}
+.hdd-time{
+  grid-column:2;grid-row:2;
+  font-size:10px;color:var(--gold);font-variant-numeric:tabular-nums;opacity:.9;
+}
+.hdd-chev{
+  grid-column:3;grid-row:1/3;
+  font-size:20px;color:rgba(255,215,0,0.45);line-height:1;
+  align-self:center;
+}
+.hdd-row:hover .hdd-chev{color:var(--gold);}

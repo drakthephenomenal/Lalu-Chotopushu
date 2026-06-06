@@ -10095,6 +10095,8 @@ function renderHistory() {
   }
 
   detail.style.display = "none";
+  const drillPanel = document.getElementById("histDeityDrill");
+  if (drillPanel) { drillPanel.style.display = "none"; drillPanel.innerHTML = ""; }
   const dates = _histGetDates(from, to);
   const ms = App.S.ms || 108;
   const isGaudiya = App.S.gaudiyaMode || false;
@@ -10221,13 +10223,14 @@ function renderHistory() {
   const grandTotal = totTimeSec + totTimeSec28;
   const fmtN = (n) => n.toLocaleString();
   const rangeLbl = window._histActiveLabel || "Custom";
-  const statCard = (cls, icon, label, mainNum, mainUnit, sub, time) => `
-    <div class="pt-card ${cls}">
+  const statCard = (cls, icon, label, mainNum, mainUnit, sub, time, deityKey) => `
+    <div class="pt-card ${cls} pt-card-tap" onclick="showHistDeityDates('${deityKey}')" role="button" tabindex="0" style="cursor:pointer">
       <div class="pt-card-icon">${icon}</div>
       <div class="pt-card-label">${label}</div>
       <div class="pt-card-main"><span class="pt-num">${fmtN(mainNum)}</span><span class="pt-unit">${mainUnit}</span></div>
       <div class="pt-card-sub">${sub}</div>
       <div class="pt-card-time">⏱ ${time}</div>
+      <div class="pt-card-chev">›</div>
     </div>`;
 
   totDiv.style.display = "block";
@@ -10239,7 +10242,7 @@ function renderHistory() {
     totDiv.innerHTML = `
       <div class="pt-head"><span class="pt-head-icon">📊</span><span class="pt-head-title">Period Totals</span><span class="pt-head-range">(${rangeLbl})</span><span class="pt-head-tag">Gaudiya</span></div>
       <div class="pt-grid pt-grid-1">
-        ${statCard("pt-hk", "🪈", _hkPTLabel, totHKM, totHKM === 1 ? "mala" : "malas", fmtN(totHK) + " names", _histFmtSec(window._ptHKSec || 0))}
+        ${statCard("pt-hk", "🪈", _hkPTLabel, totHKM, totHKM === 1 ? "mala" : "malas", fmtN(totHK) + " names", _histFmtSec(window._ptHKSec || 0), "hk")}
       </div>
       <div class="pt-total"><span class="pt-total-label">Total Time</span><span class="pt-total-val">${_histFmtSec(grandTotal)}</span></div>
     `;
@@ -10247,12 +10250,117 @@ function renderHistory() {
     totDiv.innerHTML = `
       <div class="pt-head"><span class="pt-head-icon">📊</span><span class="pt-head-title">Period Totals</span><span class="pt-head-range">(${rangeLbl})</span></div>
       <div class="pt-grid pt-grid-3">
-        ${statCard("pt-radha", "📿", "Radha Jap", totRadhaM, totRadhaM === 1 ? "mala" : "malas", fmtN(totRadha) + " names", _histFmtSec(window._ptRadhaSec || 0))}
-        ${statCard("pt-rv", "🕉️", "RV Jap", totRVM, totRVM === 1 ? "mala" : "malas", fmtN(totRV) + " names", _histFmtSec(window._ptRVSec || 0))}
-        ${statCard("pt-28", "🪷", "28 Names", totCyc28, totCyc28 === 1 ? "cycle" : "cycles", fmtN(tot28taps) + " taps", _histFmtSec(totTimeSec28))}
+        ${statCard("pt-radha", "📿", "Radha Jap", totRadhaM, totRadhaM === 1 ? "mala" : "malas", fmtN(totRadha) + " names", _histFmtSec(window._ptRadhaSec || 0), "radha")}
+        ${statCard("pt-rv", "🕉️", "RV Jap", totRVM, totRVM === 1 ? "mala" : "malas", fmtN(totRV) + " names", _histFmtSec(window._ptRVSec || 0), "rv")}
+        ${statCard("pt-28", "🪷", "28 Names", totCyc28, totCyc28 === 1 ? "cycle" : "cycles", fmtN(tot28taps) + " taps", _histFmtSec(totTimeSec28), "28")}
       </div>
       <div class="pt-total"><span class="pt-total-label">Total Time</span><span class="pt-total-val">${_histFmtSec(grandTotal)}</span></div>
     `;
+  }
+}
+
+// ── Period Totals drill-down: show date-wise rows for a single deity ──
+function showHistDeityDates(deityKey) {
+  const drill = document.getElementById("histDeityDrill");
+  const wrap  = document.getElementById("histTableWrap");
+  const sumLine = document.getElementById("histSummaryLine");
+  if (!drill) return;
+
+  const from = document.getElementById("histFrom").value;
+  const to   = document.getElementById("histTo").value;
+  if (!from || !to) return;
+
+  const dates  = _histGetDates(from, to);
+  const ms     = App.S.ms || 108;
+  const fmtN   = (n) => n.toLocaleString();
+  const isGaudiya = App.S.gaudiyaMode || false;
+
+  // Config per deity
+  const cfg = {
+    radha: { label: "Radha Jap",    cls: "pt-radha", icon: "📿",  color: "var(--gold)",  histKey: "history",   timerKey: "timerHistory",   unit: (m) => m === 1 ? "mala" : "malas",  toMain: (v) => Math.floor(v / ms), toSub: (v) => fmtN(v) + " names" },
+    rv:    { label: "RV Jap",       cls: "pt-rv",    icon: "🕉️",  color: "var(--a2)",    histKey: "historyRV", timerKey: "timerHistoryRV", unit: (m) => m === 1 ? "mala" : "malas",  toMain: (v) => Math.floor(v / ms), toSub: (v) => fmtN(v) + " names" },
+    "28":  { label: "28 Names",     cls: "pt-28",    icon: "🪷",  color: "var(--green)", histKey: "h28",       timerKey: "timer28History", unit: (c) => c === 1 ? "cycle" : "cycles", toMain: (v) => Math.floor(v / 28), toSub: (v) => fmtN(v) + " taps"  },
+    hk:    { label: "हरे कृष्ण",   cls: "pt-hk",    icon: "🪈",  color: "#6DB8FF",      histKey: "historyHK", timerKey: "timerHistoryHK", unit: (m) => m === 1 ? "mala" : "malas",  toMain: (v) => Math.floor(v / ms), toSub: (v) => fmtN(v) + " names" },
+  };
+
+  const c = cfg[deityKey];
+  if (!c) return;
+
+  const hist  = App.S[c.histKey]  || {};
+  const tHist = App.S[c.timerKey] || {};
+
+  // Build rows — only active days
+  const rows = [];
+  let totVal = 0, totSec = 0;
+  dates.forEach((tk) => {
+    const val = hist[tk] || 0;
+    const sec = tHist[tk] || 0;
+    if (val === 0) return;
+    totVal += val; totSec += sec;
+    rows.push({ tk, val, sec });
+  });
+
+  // Hide the flat history table — drill-down replaces it
+  if (wrap) wrap.style.display = "none";
+  sumLine.textContent = "";
+
+  if (rows.length === 0) {
+    drill.style.display = "block";
+    drill.innerHTML = `
+      <div class="hist-totals-card">
+        <button class="hist-back-btn" onclick="closeHistDeityDrill()">‹ Period Totals</button>
+        <div style="text-align:center;color:var(--td);font-size:12px;padding:16px 0">No ${c.label} recorded in this period.</div>
+      </div>`;
+    return;
+  }
+
+  const totMain = c.toMain(totVal);
+  const rowsHtml = rows.map(({ tk, val, sec }) => {
+    const main = c.toMain(val);
+    return `
+      <div class="hdd-row" onclick="showHistDay('${tk}')">
+        <div class="hdd-date">${_histFmtDate(tk)}</div>
+        <div class="hdd-main" style="color:${c.color}">
+          <span class="hdd-num">${fmtN(main)}</span>
+          <span class="hdd-unit">${c.unit(main)}</span>
+        </div>
+        <div class="hdd-sub">${c.toSub(val)}</div>
+        <div class="hdd-time">⏱ ${_histFmtSec(sec)}</div>
+        <div class="hdd-chev">›</div>
+      </div>`;
+  }).join("");
+
+  drill.style.display = "block";
+  drill.innerHTML = `
+    <div class="hist-totals-card">
+      <div class="pt-head">
+        <button class="hist-back-btn" style="margin:0" onclick="closeHistDeityDrill()">‹ Back</button>
+        <span class="pt-head-icon" style="margin-left:8px">${c.icon}</span>
+        <span class="pt-head-title" style="color:${c.color}">${c.label}</span>
+        <span class="pt-head-range">(${window._histActiveLabel || "Custom"})</span>
+      </div>
+      <div class="hdd-summary">
+        <span class="hdd-sum-num" style="color:${c.color}">${fmtN(totMain)}</span>
+        <span class="hdd-sum-unit">${c.unit(totMain)}</span>
+        <span class="hdd-sum-sub">${c.toSub(totVal)}</span>
+        <span class="hdd-sum-time">⏱ ${_histFmtSec(totSec)}</span>
+      </div>
+      <div class="hdd-list">${rowsHtml}</div>
+    </div>`;
+  drill.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function closeHistDeityDrill() {
+  const drill = document.getElementById("histDeityDrill");
+  const wrap  = document.getElementById("histTableWrap");
+  const sumLine = document.getElementById("histSummaryLine");
+  if (drill) drill.style.display = "none";
+  if (drill) drill.innerHTML = "";
+  // Restore the summary table
+  if (wrap && document.querySelector("#histTableBody tr")) {
+    wrap.style.display = "block";
+    const activeDays = document.querySelectorAll("#histTableBody tr").length;
+    if (sumLine) sumLine.textContent = activeDays + " active day" + (activeDays !== 1 ? "s" : "") + " in range · tap a row for details";
   }
 }
 

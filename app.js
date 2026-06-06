@@ -8890,25 +8890,7 @@ function showLyrics(id) {
       card.removeAttribute("data-theme");
       if (lmo) lmo.removeAttribute("data-bg");
     }
-
-    // ── Per-stotram color frame + title banner ──
-    try {
-      var _st = (typeof STLIST !== 'undefined') ? STLIST.find(function(x){return x.id===id;}) : null;
-      var _color = (_st && _st.color) ? _st.color : 'gold';
-      card.dataset.color = _color;
-      if (inner) {
-        var _old = inner.querySelector('.lmt-banner');
-        if (_old) _old.remove();
-        if (_color !== 'gold' && _st && _st.name) {
-          var _b = document.createElement('div');
-          _b.className = 'lmt-banner';
-          _b.textContent = _st.name;
-          inner.insertBefore(_b, inner.firstChild);
-        }
-      }
-    } catch(e){ console.error('color/banner wiring',e); }
   })();
-
 
   // Split by blank lines into verses
   let allVerses = ly

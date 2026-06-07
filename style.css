@@ -2484,3 +2484,19 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 body.gaudiya-mode .tz .rv-wm,
 body.gaudiya-mode .tz .hitju-wm,
 body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !important;}
+
+
+/* Sri Chaitanya Mahaprabhu — Jap hero for Gaudiya / ISKCON mode */
+.tz .cm-wm{
+  position:absolute; top:var(--rv-top); left:50%; transform:translateX(-50%);
+  width:var(--rv-w); height:auto;
+  opacity:0;
+  filter:drop-shadow(0 0 22px rgba(245,209,122,.45));
+  pointer-events:none; user-select:none; z-index:1;
+  display:none;
+}
+body.gaudiya-mode .tz .cm-wm{
+  display:block !important;
+  opacity:.6;
+  animation:tzGoldPulseStrong 4.5s ease-in-out infinite;
+}

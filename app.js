@@ -79,7 +79,7 @@ const App = {
     syncBaselineHK: {},
     syncBaselineTimerHK: {},
     nameJapDeductHK: 0,
-    gaudiyaMode: true,  // single mode for all — Gaudiya/ISKCON
+    gaudiyaMode: false,  // single mode for all — Gaudiya/ISKCON
     hkLang: "hi",
   },
   lmcRV: 0,
@@ -8384,7 +8384,7 @@ window.addEventListener("load", async () => {
   // Apply settings UI
   if (App.S.cfg.sound) document.getElementById("tgSnd").classList.add("on");
 
-  // GPS Location toggle — ON if saved coords exist
+  // GPS Location toggle — ON if saved coords exist; auto-request if not
   const tgGpsInit = document.getElementById("tgGpsLocation");
   if (tgGpsInit) {
     const hasCoords = App.S && App.S.lastLat && App.S.lastLng;
@@ -8393,7 +8393,23 @@ window.addEventListener("load", async () => {
     if (gpsStatusEl) {
       gpsStatusEl.textContent = hasCoords
         ? "✅ Location saved · " + Number(App.S.lastLat).toFixed(3) + ", " + Number(App.S.lastLng).toFixed(3)
-        : "— Tap toggle to detect your location 📍";
+        : "📍 Detecting your location…";
+    }
+    // Always keep GPS ON: auto-request location on every app load if not saved
+    if (!hasCoords && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        function(pos){
+          const lat = pos.coords.latitude, lng = pos.coords.longitude;
+          if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; App.save(); }
+          tgGpsInit.classList.add("on");
+          if (gpsStatusEl) gpsStatusEl.textContent = "✅ Location saved · " + lat.toFixed(3) + ", " + lng.toFixed(3);
+          try { initSunTimes && initSunTimes(); } catch(_){}
+        },
+        function(){
+          if (gpsStatusEl) gpsStatusEl.textContent = "⚠️ Location access denied. Please allow GPS in browser settings.";
+        },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
+      );
     }
   }
 

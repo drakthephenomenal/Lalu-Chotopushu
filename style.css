@@ -2418,31 +2418,29 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 /* Watermarks inside Jap tap area */
 .tz { position: relative; }
 
-/* Radha Vallabh Laal Ju — top center */
+/* Radha Vallabh Laal Ju — large, top center hero */
 .tz .rv-wm{
-  position:absolute; top:10px; left:50%; transform:translateX(-50%);
-  width:clamp(120px,28vw,200px); height:auto;
-  opacity:.24;
-  filter:drop-shadow(0 0 14px rgba(245,209,122,.4));
+  position:absolute; top:20px; left:50%; transform:translateX(-50%);
+  width:clamp(260px,62vw,520px); height:auto;
+  opacity:.55;
+  filter:drop-shadow(0 0 22px rgba(245,209,122,.45));
   pointer-events:none; user-select:none; z-index:1;
 }
 
-/* Hit Ju Maharaj — bottom left */
+/* Hit Ju Maharaj — smaller, bottom left */
 .tz .hitju-wm{
-  position:absolute; bottom:10px; left:10px;
-  width:clamp(90px,22vw,160px); height:clamp(107px,26vw,190px);
-  object-fit:cover; object-position:top center;
-  opacity:.22;
+  position:absolute; bottom:14px; left:10px;
+  width:clamp(80px,18vw,140px); height:auto;
+  opacity:.5;
   filter:drop-shadow(0 0 12px rgba(245,209,122,.35));
   pointer-events:none; user-select:none; z-index:1;
 }
 
-/* Gurudev — bottom right */
+/* Gurudev — smaller, bottom right */
 .tz .gurudev-wm{
-  position:absolute; bottom:10px; right:10px;
-  width:clamp(90px,22vw,160px); height:clamp(107px,26vw,190px);
-  object-fit:cover; object-position:top center;
-  opacity:.22;
+  position:absolute; bottom:14px; right:10px;
+  width:clamp(80px,18vw,140px); height:auto;
+  opacity:.5;
   filter:drop-shadow(0 0 12px rgba(245,209,122,.35));
   pointer-events:none; user-select:none; z-index:1;
 }

@@ -2456,10 +2456,32 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 /* Gurudev — bottom-right, sits just below RV's bottom edge */
 .tz .gurudev-wm{
   position:absolute;
-  bottom: clamp(4px, 0.8vh, 10px);
+  bottom: clamp(0px, 0.2vh, 3px);
   right:10px;
   width:var(--side-w); height:auto;
   opacity:.5;
   filter:drop-shadow(0 0 12px rgba(245,209,122,.35));
   pointer-events:none; user-select:none; z-index:1;
 }
+
+/* Tighten gap between tap area and bottom nav so it matches Android */
+.tzr{margin:5px 14px 1px !important;}
+.tz .hitju-wm{bottom: clamp(0px, 0.2vh, 3px) !important;}
+
+/* Dynamic golden glow — gentle breathing pulse on the three watermarks */
+@keyframes tzGoldPulse{
+  0%,100%{filter:drop-shadow(0 0 10px rgba(245,209,122,0.30)) drop-shadow(0 0 18px rgba(255,193,74,0.20));}
+  50%   {filter:drop-shadow(0 0 22px rgba(245,209,122,0.75)) drop-shadow(0 0 38px rgba(255,193,74,0.55));}
+}
+@keyframes tzGoldPulseStrong{
+  0%,100%{filter:drop-shadow(0 0 18px rgba(245,209,122,0.40)) drop-shadow(0 0 28px rgba(255,193,74,0.25));}
+  50%   {filter:drop-shadow(0 0 32px rgba(245,209,122,0.85)) drop-shadow(0 0 60px rgba(255,193,74,0.6));}
+}
+.tz .rv-wm{animation:tzGoldPulseStrong 4.5s ease-in-out infinite;}
+.tz .hitju-wm,.tz .gurudev-wm{animation:tzGoldPulse 3.8s ease-in-out infinite;}
+.tz .gurudev-wm{animation-delay:1.9s;}
+
+/* Hide these devotional images in Gaudiya / ISKCON mode */
+body.gaudiya-mode .tz .rv-wm,
+body.gaudiya-mode .tz .hitju-wm,
+body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !important;}

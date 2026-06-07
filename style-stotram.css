@@ -79,7 +79,7 @@
   .lm-water-card {
     width: 100vw;
     height: 100dvh;
-    background-size: cover;
+    background-size: contain;
     background-position: center center;
     background-repeat: no-repeat;
     background-color: #030a14;
@@ -210,33 +210,33 @@
   /* — Rose / mauve — */
   .lm-water-card[data-stotram="hcj"]  .lm-card-inner,
   .lm-water-card[data-stotram="rks"]  .lm-card-inner,
-  .lm-water-card[data-stotram="blv"]  .lm-card-inner { background-color: rgba(185,115,120,0.72); }
+  .lm-water-card[data-stotram="blv"]  .lm-card-inner { background-color: rgba(185,115,120,0.92); }
 
   /* — Dusty rose / warm pink — */
   .lm-water-card[data-stotram="nmb"]  .lm-card-inner,
-  .lm-water-card[data-stotram="hmg"]  .lm-card-inner { background-color: rgba(195,140,145,0.72); }
+  .lm-water-card[data-stotram="hmg"]  .lm-card-inner { background-color: rgba(195,140,145,0.92); }
 
   /* — Cream / ivory — */
   .lm-water-card[data-stotram="rsn"]  .lm-card-inner,
   .lm-water-card[data-stotram="sfv"]  .lm-card-inner,
-  .lm-water-card[data-stotram="svb"]  .lm-card-inner { background-color: rgba(210,198,178,0.72); }
+  .lm-water-card[data-stotram="svb"]  .lm-card-inner { background-color: rgba(210,198,178,0.92); }
 
   /* — Lavender / soft purple — */
-  .lm-water-card[data-stotram="yms"]  .lm-card-inner { background-color: rgba(185,170,205,0.72); }
+  .lm-water-card[data-stotram="yms"]  .lm-card-inner { background-color: rgba(185,170,205,0.92); }
 
   /* — Light steel blue — */
   .lm-water-card[data-stotram="gms"]  .lm-card-inner,
   .lm-water-card[data-stotram="nkc"]  .lm-card-inner,
-  .lm-water-card[data-stotram="vs2"]  .lm-card-inner { background-color: rgba(168,195,215,0.72); }
+  .lm-water-card[data-stotram="vs2"]  .lm-card-inner { background-color: rgba(168,195,215,0.92); }
 
   /* — Silver grey — */
   .lm-water-card[data-stotram="bss"]  .lm-card-inner,
   .lm-water-card[data-stotram="ans"]  .lm-card-inner,
-  .lm-water-card[data-stotram="sps"]  .lm-card-inner { background-color: rgba(190,190,200,0.72); }
+  .lm-water-card[data-stotram="sps"]  .lm-card-inner { background-color: rgba(190,190,200,0.92); }
 
   /* — Warm saffron — */
-  .lm-water-card[data-stotram="rds"]  .lm-card-inner { background-color: rgba(225,155,80,0.65); }
-  .lm-water-card[data-stotram="hnc"]  .lm-card-inner { background-color: rgba(235,145,60,0.65); }
+  .lm-water-card[data-stotram="rds"]  .lm-card-inner { background-color: rgba(225,155,80,0.92); }
+  .lm-water-card[data-stotram="hnc"]  .lm-card-inner { background-color: rgba(235,145,60,0.92); }
 
   /* ── Lyrics text — warm brown on parchment ── */
   .lyr {

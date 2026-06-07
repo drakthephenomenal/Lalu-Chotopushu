@@ -512,7 +512,7 @@ const App = {
     // Visual fallback
     const z = document.getElementById("tz");
     if (z) {
-      z.style.boxShadow = "0 0 22px rgba(109,184,255,0.65)";
+      z.style.boxShadow = "0 0 22px rgba(109,184,255,0.92)";
       setTimeout(() => (z.style.boxShadow = ""), 80);
     }
   },
@@ -5772,7 +5772,7 @@ function spawnName28(e, nameText) {
   el.style.cssText =
     "position:absolute;font-family:serif;pointer-events:none;z-index:10;font-size:" +
     (22 + Math.random() * 16).toFixed(0) +
-    "px;color:rgba(255,215,0,0.65);text-shadow:0 0 8px rgba(255,215,0,0.5);left:" +
+    "px;color:rgba(255,215,0,0.92);text-shadow:0 0 8px rgba(255,215,0,0.5);left:" +
     (x - 40) +
     "px;top:" +
     (y - 10) +
@@ -6491,20 +6491,20 @@ function saveStotramColor(id, color) {
 
 // Preset colour palette  [display hex, rgba value for the overlay]
 var ST_COLOR_PRESETS = [
-  { hex:'#c0797e', rgba:'rgba(185,115,120,0.72)', label:'Rose' },
-  { hex:'#c48c90', rgba:'rgba(195,140,145,0.72)', label:'Dusty Pink' },
-  { hex:'#d2c6b2', rgba:'rgba(210,198,178,0.72)', label:'Cream' },
-  { hex:'#dcd2be', rgba:'rgba(220,210,190,0.72)', label:'Ivory' },
-  { hex:'#b9aacd', rgba:'rgba(185,170,205,0.72)', label:'Lavender' },
-  { hex:'#a0aad7', rgba:'rgba(160,170,215,0.72)', label:'Periwinkle' },
-  { hex:'#a8c3d7', rgba:'rgba(168,195,215,0.72)', label:'Sky Blue' },
-  { hex:'#a0cdb9', rgba:'rgba(160,205,185,0.72)', label:'Mint' },
-  { hex:'#aac3a5', rgba:'rgba(170,195,165,0.72)', label:'Sage' },
-  { hex:'#e1b996', rgba:'rgba(225,185,150,0.72)', label:'Peach' },
-  { hex:'#d29b50', rgba:'rgba(210,155,80,0.65)',  label:'Saffron' },
-  { hex:'#bebebc', rgba:'rgba(190,190,188,0.72)', label:'Silver' },
-  { hex:'#d2af50', rgba:'rgba(210,175,80,0.65)',  label:'Gold' },
-  { hex:'#c8a0a8', rgba:'rgba(200,160,168,0.72)', label:'Mauve' },
+  { hex:'#c0797e', rgba:'rgba(185,115,120,0.92)', label:'Rose' },
+  { hex:'#c48c90', rgba:'rgba(195,140,145,0.92)', label:'Dusty Pink' },
+  { hex:'#d2c6b2', rgba:'rgba(210,198,178,0.92)', label:'Cream' },
+  { hex:'#dcd2be', rgba:'rgba(220,210,190,0.92)', label:'Ivory' },
+  { hex:'#b9aacd', rgba:'rgba(185,170,205,0.92)', label:'Lavender' },
+  { hex:'#a0aad7', rgba:'rgba(160,170,215,0.92)', label:'Periwinkle' },
+  { hex:'#a8c3d7', rgba:'rgba(168,195,215,0.92)', label:'Sky Blue' },
+  { hex:'#a0cdb9', rgba:'rgba(160,205,185,0.92)', label:'Mint' },
+  { hex:'#aac3a5', rgba:'rgba(170,195,165,0.92)', label:'Sage' },
+  { hex:'#e1b996', rgba:'rgba(225,185,150,0.92)', label:'Peach' },
+  { hex:'#d29b50', rgba:'rgba(210,155,80,0.92)',  label:'Saffron' },
+  { hex:'#bebebc', rgba:'rgba(190,190,188,0.92)', label:'Silver' },
+  { hex:'#d2af50', rgba:'rgba(210,175,80,0.92)',  label:'Gold' },
+  { hex:'#c8a0a8', rgba:'rgba(200,160,168,0.92)', label:'Mauve' },
 ];
 
 function showStColorPicker(id, btnEl) {
@@ -6617,7 +6617,7 @@ function renderSt() {
     const styleEl = document.createElement('style');
     styleEl.id = 'st-card-styles';
     styleEl.textContent = [
-      '@keyframes stCardGlow{0%,100%{box-shadow:0 0 7px 1px var(--sgc,#ffd700),0 2px 18px rgba(0,0,0,0.55);border-color:rgba(255,215,0,0.30)}50%{box-shadow:0 0 22px 5px var(--sgc,#ffd700),0 2px 24px rgba(0,0,0,0.65);border-color:rgba(255,215,0,0.72)}}',
+      '@keyframes stCardGlow{0%,100%{box-shadow:0 0 7px 1px var(--sgc,#ffd700),0 2px 18px rgba(0,0,0,0.55);border-color:rgba(255,215,0,0.30)}50%{box-shadow:0 0 22px 5px var(--sgc,#ffd700),0 2px 24px rgba(0,0,0,0.92);border-color:rgba(255,215,0,0.92)}}',
       '@keyframes stColorCycle{0%{--sgc:#ffd700}20%{--sgc:#ff9d00}40%{--sgc:#ff6bff}60%{--sgc:#00e5ff}80%{--sgc:#7dff6b}100%{--sgc:#ffd700}}',
       '@keyframes stNameShimmer{0%,100%{background-position:-200% center}100%{background-position:200% center}}',
       '@keyframes stFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}',
@@ -8647,7 +8647,7 @@ function showInstallModal() {
     ">
       <img src="./icon-192.png" style="width:72px;height:72px;border-radius:18px;margin-bottom:14px;box-shadow:0 0 28px rgba(255,215,0,0.35);">
       <div style="font-family:'Cinzel Decorative',serif;font-size:17px;color:#FFD700;letter-spacing:1px;margin-bottom:6px;">Radha Naam Jap</div>
-      <div style="font-size:13px;color:rgba(255,255,255,0.65);line-height:1.6;margin-bottom:22px;font-family:Inter,sans-serif;">
+      <div style="font-size:13px;color:rgba(255,255,255,0.92);line-height:1.6;margin-bottom:22px;font-family:Inter,sans-serif;">
         Press <b style="color:#FFD700">Install</b> to get an app icon on your Home Screen for quick, easy access — for offline use 🙏
       </div>
       <button id="installModalBtn" style="

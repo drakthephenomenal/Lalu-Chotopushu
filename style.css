@@ -2443,7 +2443,7 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 /* Hit Ju Maharaj — bottom-left, anchored to RV's bottom edge */
 .tz .hitju-wm{
   position:absolute;
-  top: calc(var(--rv-bottom) - var(--side-w) * 0.9);
+  top: calc(var(--rv-bottom) - var(--side-w) * 0.35);
   left:10px;
   width:var(--side-w); height:auto;
   opacity:.5;
@@ -2451,10 +2451,10 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   pointer-events:none; user-select:none; z-index:1;
 }
 
-/* Gurudev — bottom-right, anchored to RV's bottom edge */
+/* Gurudev — bottom-right, sits just below RV's bottom edge */
 .tz .gurudev-wm{
   position:absolute;
-  top: calc(var(--rv-bottom) - var(--side-w) * 0.9);
+  top: calc(var(--rv-bottom) - var(--side-w) * 0.35);
   right:10px;
   width:var(--side-w); height:auto;
   opacity:.5;

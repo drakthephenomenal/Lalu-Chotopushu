@@ -6472,141 +6472,7 @@ function reset28Time(scope) {
 // ── STOTRAM LIST & LYRICS are now in stotram.js ──
 // Make sure to include stotram.js before app.js in your HTML
 
-// ─────────────────────────────────────────────────────────
-// STOTRAM COLOUR PREFERENCES — saved per user in localStorage
-// ─────────────────────────────────────────────────────────
-function _stColorKey() {
-  return 'stotram_colors_' + (App._uid || 'guest');
-}
-function getStotramColors() {
-  try { return JSON.parse(localStorage.getItem(_stColorKey()) || '{}'); }
-  catch(e) { return {}; }
-}
-function saveStotramColor(id, color) {
-  var colors = getStotramColors();
-  if (color === null) { delete colors[id]; }
-  else { colors[id] = color; }
-  try { localStorage.setItem(_stColorKey(), JSON.stringify(colors)); } catch(e) {}
-}
 
-// Preset colour palette  [display hex, rgba value for the overlay]
-var ST_COLOR_PRESETS = [
-  { hex:'#c0797e', rgba:'rgba(185,115,120,0.92)', label:'Rose' },
-  { hex:'#c48c90', rgba:'rgba(195,140,145,0.92)', label:'Dusty Pink' },
-  { hex:'#d2c6b2', rgba:'rgba(210,198,178,0.92)', label:'Cream' },
-  { hex:'#dcd2be', rgba:'rgba(220,210,190,0.92)', label:'Ivory' },
-  { hex:'#b9aacd', rgba:'rgba(185,170,205,0.92)', label:'Lavender' },
-  { hex:'#a0aad7', rgba:'rgba(160,170,215,0.92)', label:'Periwinkle' },
-  { hex:'#a8c3d7', rgba:'rgba(168,195,215,0.92)', label:'Sky Blue' },
-  { hex:'#a0cdb9', rgba:'rgba(160,205,185,0.92)', label:'Mint' },
-  { hex:'#aac3a5', rgba:'rgba(170,195,165,0.92)', label:'Sage' },
-  { hex:'#e1b996', rgba:'rgba(225,185,150,0.92)', label:'Peach' },
-  { hex:'#d29b50', rgba:'rgba(210,155,80,0.92)',  label:'Saffron' },
-  { hex:'#bebebc', rgba:'rgba(190,190,188,0.92)', label:'Silver' },
-  { hex:'#d2af50', rgba:'rgba(210,175,80,0.92)',  label:'Gold' },
-  { hex:'#c8a0a8', rgba:'rgba(200,160,168,0.92)', label:'Mauve' },
-];
-
-function showStColorPicker(id, btnEl) {
-  // Remove any existing picker
-  var old = document.getElementById('stColorPickerPopup');
-  if (old) { old.remove(); if (old._closedFor === id) return; }
-
-  var colors = getStotramColors();
-  var current = colors[id] || null;
-
-  var popup = document.createElement('div');
-  popup.id = 'stColorPickerPopup';
-  popup._closedFor = id;
-  popup.style.cssText = [
-    'position:fixed;z-index:9999;',
-    'background:rgba(8,16,40,0.97);',
-    'border:1px solid rgba(255,215,0,0.45);',
-    'border-radius:16px;padding:14px 12px 12px;',
-    'box-shadow:0 8px 40px rgba(0,0,0,0.8);',
-    'max-width:260px;width:90vw;',
-  ].join('');
-
-  // Position near the button
-  var rect = btnEl.getBoundingClientRect();
-  var top = rect.bottom + 8;
-  if (top + 220 > window.innerHeight) top = rect.top - 228;
-  var left = Math.min(rect.left, window.innerWidth - 270);
-  popup.style.top = top + 'px';
-  popup.style.left = Math.max(6, left) + 'px';
-
-  var html = '<div style="font-size:12px;color:rgba(255,215,0,0.85);letter-spacing:1px;margin-bottom:10px;font-family:Inter,sans-serif">🎨 Lyric View Colour</div>';
-  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:10px">';
-  ST_COLOR_PRESETS.forEach(function(p) {
-    var isCur = current === p.rgba;
-    html += '<div onclick="applyStColor(\'' + id + '\',\'' + p.rgba + '\',this)" title="' + p.label + '" style="'
-      + 'width:28px;height:28px;border-radius:50%;background:' + p.hex + ';cursor:pointer;'
-      + 'border:' + (isCur ? '3px solid #ffd700' : '2px solid rgba(255,255,255,0.18)') + ';'
-      + 'box-sizing:border-box;transition:transform 0.1s;flex-shrink:0'
-      + '"></div>';
-  });
-  html += '</div>';
-  // Custom colour input
-  var customHex = current ? current.replace(/rgba?\((\d+),(\d+),(\d+).*/, function(_,r,g,b){
-    return '#' + [r,g,b].map(function(n){return (+n).toString(16).padStart(2,'0')}).join('');
-  }) : '#d2c6b2';
-  html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
-    + '<input type="color" id="stColorCustom" value="' + customHex + '" style="width:36px;height:28px;border:none;border-radius:6px;cursor:pointer;padding:0;background:none">'
-    + '<span style="font-size:11px;color:rgba(255,255,255,0.55);font-family:Inter,sans-serif">Custom colour</span>'
-    + '<button onclick="applyStColorCustom(\'' + id + '\')" style="margin-left:auto;padding:4px 10px;border-radius:8px;border:1px solid rgba(255,215,0,0.35);background:rgba(255,215,0,0.10);color:#ffd700;font-size:11px;cursor:pointer;font-family:Inter,sans-serif">Apply</button>'
-    + '</div>';
-  // Reset button
-  html += '<button onclick="applyStColor(\'' + id + '\',null,null)" style="width:100%;padding:7px;border-radius:8px;border:1px solid rgba(255,80,80,0.30);background:rgba(255,80,80,0.08);color:rgba(255,120,120,0.9);font-size:12px;cursor:pointer;font-family:Inter,sans-serif">✕ Reset to default</button>';
-
-  popup.innerHTML = html;
-
-  // Close on outside tap
-  function onOutside(e) {
-    if (!popup.contains(e.target) && e.target !== btnEl) {
-      popup.remove();
-      document.removeEventListener('pointerdown', onOutside);
-    }
-  }
-  setTimeout(function(){ document.addEventListener('pointerdown', onOutside); }, 10);
-
-  document.body.appendChild(popup);
-}
-
-function applyStColor(id, rgba, swatchEl) {
-  saveStotramColor(id, rgba);
-  // Update live inner area if stotram modal is open
-  var card = document.querySelector('.lm-water-card');
-  if (card && card.getAttribute('data-stotram') === id) {
-    var inner = card.querySelector('.lm-card-inner');
-    if (inner) inner.style.backgroundColor = rgba || '';
-  }
-  // Update swatch button colour in the list
-  var btn = document.querySelector('.st-color-swatch[data-sid="' + id + '"]');
-  if (btn) {
-    var colors = getStotramColors();
-    var col = colors[id];
-    btn.style.background = col
-      ? col.replace(/0\.\d+\)$/, '1)')
-      : 'rgba(255,215,0,0.10)';
-    btn.innerHTML = col ? '●' : '🎨';
-  }
-  // Close popup
-  var popup = document.getElementById('stColorPickerPopup');
-  if (popup) popup.remove();
-  // Refresh stotram list to show updated swatch
-  try { renderSt(); } catch(e) {}
-}
-
-function applyStColorCustom(id) {
-  var inp = document.getElementById('stColorCustom');
-  if (!inp) return;
-  var hex = inp.value;
-  // Convert hex to rgba
-  var r = parseInt(hex.slice(1,3),16);
-  var g = parseInt(hex.slice(3,5),16);
-  var b = parseInt(hex.slice(5,7),16);
-  applyStColor(id, 'rgba(' + r + ',' + g + ',' + b + ',0.72)', null);
-}
 
 function renderSt() {
   const list = document.getElementById("stList");
@@ -6636,8 +6502,6 @@ function renderSt() {
       '.st-btn:active{background:rgba(255,215,0,0.22);box-shadow:0 0 10px 2px rgba(255,215,0,0.4)}',
       '.st-btn.read{font-size:18px}',
       '.st-edit-btn{font-size:13px;width:32px;height:32px;border-radius:8px;border:1px solid rgba(74,144,226,0.35);background:rgba(74,144,226,0.10);color:#7ab8ff;cursor:pointer;display:flex;align-items:center;justify-content:center}',
-      '.st-color-swatch{width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,215,0,0.40);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform 0.15s,box-shadow 0.15s;-webkit-tap-highlight-color:transparent}',
-      '.st-color-swatch:active{transform:scale(0.88);box-shadow:0 0 10px 3px rgba(255,215,0,0.5)}',
     ].join('');
     document.head.appendChild(styleEl);
   }
@@ -6699,14 +6563,6 @@ function renderSt() {
           '<button class="st-btn" onclick="adjSt(\'' + st.id + '\',1)">+</button>' +
           (hasLyrics ? '<button class="st-btn read" onclick="showLyrics(\'' + st.id + '\')">📖</button>' : '') +
         '</div>' +
-        (function(){
-          if (!hasLyrics) return '';
-          var savedColors = getStotramColors();
-          var sc = savedColors[st.id];
-          var swatchBg = sc ? sc.replace(/[\d.]+\)$/, '1)') : 'rgba(255,215,0,0.10)';
-          var swatchIcon = sc ? '●' : '🎨';
-          return '<button class="st-color-swatch" data-sid="' + st.id + '" onclick="showStColorPicker(\'' + st.id + '\',this)" style="background:' + swatchBg + '" title="Set lyric view colour">' + swatchIcon + '</button>';
-        })() +
       '</div>';
 
     if (st.custom) {
@@ -9012,12 +8868,6 @@ function showLyrics(id) {
     });
     var inner = card.querySelector(".lm-card-inner");
 
-    // Apply user-saved colour preference (overrides CSS default)
-    if (inner) {
-      var savedCol = getStotramColors()[id];
-      inner.style.backgroundColor = savedCol || '';
-    }
-
     function injectDeco(topSvg, botSvg) {
       if (inner && topSvg) {
         var t = document.createElement("div");
@@ -9791,7 +9641,14 @@ function _hcjRenderPlayer(idx) {
   requestAnimationFrame(function () {
     var pw = document.getElementById("hcj-player-wrap");
     var inner = document.querySelector("#lmo .lm-card-inner");
-    if (pw && inner) inner.style.bottom = pw.offsetHeight + "px";
+    if (pw && inner) {
+      var lmo = document.getElementById("lmo");
+      var lmoH = lmo ? lmo.getBoundingClientRect().height : window.innerHeight;
+      var pwRect = pw.getBoundingClientRect();
+      var lmoRect = lmo ? lmo.getBoundingClientRect() : {top:0};
+      var bottomOffset = lmoH - (pwRect.top - lmoRect.top);
+      inner.style.bottom = Math.max(0, bottomOffset) + "px";
+    }
   });
 }
 
@@ -11079,7 +10936,8 @@ function _fmtDateDMY(dateStr) {
   });
 
   function buildBar() {
-    if (_barBuilt) return;
+    if (_barBuilt && document.getElementById('lyr-fs-ctrl')) return;
+    _barBuilt = false;
     var modal = document.getElementById("lmo");
     if (!modal) return;
     _barBuilt = true;

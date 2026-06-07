@@ -10250,8 +10250,8 @@ function renderHistory() {
     activeDays +
     " active day" +
     (activeDays > 1 ? "s" : "") +
-    " in range · tap a row for details";
-  wrap.style.display = "block";
+    " in range · tap a card below to view dates";
+  wrap.style.display = "none";
 
   // Totals row
   const totRadhaM = Math.floor(totRadha / ms);
@@ -10398,12 +10398,10 @@ function closeHistDeityDrill() {
   if (drill) { drill.style.display = "none"; drill.innerHTML = ""; drill.className = ""; }
   // Restore Period Totals card
   if (totDiv) totDiv.style.display = "block";
-  // Restore the summary table
-  if (wrap && document.querySelector("#histTableBody tr")) {
-    wrap.style.display = "block";
-    const activeDays = document.querySelectorAll("#histTableBody tr").length;
-    if (sumLine) sumLine.textContent = activeDays + " active day" + (activeDays !== 1 ? "s" : "") + " in range · tap a row for details";
-  }
+  // Keep the flat table hidden — drill via Period Totals cards only
+  if (wrap) wrap.style.display = "none";
+  const _activeDays = document.querySelectorAll("#histTableBody tr").length;
+  if (sumLine) sumLine.textContent = _activeDays + " active day" + (_activeDays !== 1 ? "s" : "") + " in range · tap a card above to view dates";
 }
 
 function showHistDay(tk) {

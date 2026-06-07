@@ -1,0 +1,416 @@
+/* ════════════════════════════════════════════════════════════════════════
+   style-stotram  v89 — PATCH (append after v88 / existing stylesheet)
+
+   WHAT THIS DOES
+   ─────────────────────────────────────────────────────────────────────
+   1. background-size: contain  → frame always fully visible, never cropped
+   2. Lyrics area fills almost the full screen width  (left/right ≈ 2 vw)
+      and uses dvh-anchored top / bottom so it's always inside the frame
+   3. Frame ornaments (shankha ♥ chakra top-row, gada ♥ padma bottom-row)
+      stay at the four CORNERS of the device screen, scaled down to ~40 px
+   4. Murali (flute) + Radha symbol float at the very top margin (above the
+      golden area), centred and tiny so they never eat into lyrics space
+   5. A continuous golden shimmer wave sweeps across the lyrics area
+   6. Per-stotram  data-theme  colours for the inner card background
+      — Radha-Madhav / Gaudiya : warm saffron-gold parchment
+      — Yamuna / Nature        : soft blue-grey slate
+      — Vishnu / Narayan       : cool lavender-blue
+      — Shiva                  : dusky rose / maroon
+      — Hanuman                : deep saffron-ochre
+
+   HOW TO USE
+   ─────────────────────────────────────────────────────────────────────
+   In your JS, when opening the stotram modal set the data-theme
+   attribute on  .lm-water-card  like so:
+
+     const THEME_MAP = {
+       hcj:'radha', yms:'yamuna', hmg:'radha', nmb:'radha',
+       rsn:'radha',  svb:'radha', blv:'radha', sfv:'radha', rks:'radha',
+       gms:'vishnu', nkc:'vishnu', vs2:'vishnu',
+       bss:'shiva',  ans:'shiva', rds:'shiva', sps:'shiva',
+       hnc:'hanuman'
+     };
+     card.dataset.theme = THEME_MAP[stotramId] || 'radha';
+
+════════════════════════════════════════════════════════════════════════ */
+
+
+/* ─────────────────────────────────────────────────────────────────────
+   0. FRAME — always show complete, never crop
+   ───────────────────────────────────────────────────────────────────── */
+.lm-water-card {
+  background-size:     contain !important;
+  background-repeat:   no-repeat !important;
+  background-position: center center !important;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────
+   1. LYRICS AREA — wide, dvh-anchored, with contain math
+   ─────────────────────────────────────────────────────────────────────
+   With background-size:contain the frame scales so the ENTIRE image
+   fits inside the viewport.
+
+   Standard frame  1023 × 1537  (aspect 0.6656)
+   Tall frame       578 × 1280  (aspect 0.4516)
+
+   Case A — STANDARD frame, tall phone (aspect < 0.6656):
+     image fills width (100 vw), height = 100vw / 0.6656 = 150.2 vw
+     image_top  = 50dvh − 75.1vw
+     Inner top  border ≈ 11 %  → top  = image_top + 0.11 × 150.2vw = 50dvh − 58.6vw
+     Inner bot  border ≈ 12 %  → bot  = 100dvh − (image_top + 0.88 × 150.2vw)
+                                       = 50dvh − 57.1vw
+     Side margin ≈ 2 vw  (almost full width, ornaments are at screen edge)
+
+   Case B — STANDARD frame, wide screen (aspect ≥ 0.6656):
+     image fills height (100 dvh), width = 0.6656 × 100dvh = 66.56dvh
+     Inner top  11 % → top    = 11 dvh
+     Inner bot  12 % → bottom = 12 dvh
+     Side margin → left/right = (100vw − 66.56dvh)/2 + 0.02×66.56dvh
+                               = 50vw − 31.94dvh
+
+   Case C — TALL frame, extremely-tall phone (aspect < 0.4516):
+     image fills width (100 vw), height = 100vw / 0.4516 = 221.4vw
+     image_top  = 50dvh − 110.7vw
+     top  = image_top + 12 % × 221.4vw = 50dvh − 84.1vw
+     bot  = 100dvh − (image_top + 90 % × 221.4vw) = 50dvh − 88.6vw
+   ─────────────────────────────────────────────────────────────────── */
+
+/* Tallest Android phones — tall frame kicks in */
+@media (max-aspect-ratio: 9/20) {
+  .lm-card-inner {
+    top:    calc(50dvh - 84.1vw) !important;
+    bottom: calc(50dvh - 88.6vw) !important;
+    left:   2vw !important;
+    right:  2vw !important;
+  }
+  .lmt { top: calc(50dvh - 95vw) !important; }
+  .lm-nav  { bottom: calc(50dvh - 89.5vw) !important; }
+  .lm-dots { bottom: calc(50dvh - 87.5vw) !important; }
+}
+
+/* Standard portrait phones  (9/20 ≤ aspect < 2/3) — standard frame, width-fitted */
+@media (min-aspect-ratio: 9/20) and (max-aspect-ratio: 2/3) {
+  .lm-card-inner {
+    top:    calc(50dvh - 58.6vw) !important;
+    bottom: calc(50dvh - 57.1vw) !important;
+    left:   2vw !important;
+    right:  2vw !important;
+  }
+  .lmt { top: calc(50dvh - 67vw) !important; }
+  .lm-nav  { bottom: calc(50dvh - 58.5vw) !important; }
+  .lm-dots { bottom: calc(50dvh - 56vw)   !important; }
+}
+
+/* iPad / wide screens  (aspect ≥ 2/3) — standard frame, height-fitted */
+@media (min-aspect-ratio: 2/3) {
+  .lm-card-inner {
+    top:    11dvh !important;
+    bottom: 12dvh !important;
+    left:   calc(50vw - 31.94dvh) !important;
+    right:  calc(50vw - 31.94dvh) !important;
+  }
+  .lmt { top: 7dvh !important; }
+  .lm-nav  { bottom: 11.5dvh !important; }
+  .lm-dots { bottom: 13.5dvh !important; }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────
+   2. ORNAMENT CORNERS
+   ─────────────────────────────────────────────────────────────────────
+   The four Vaishnava symbols live inside the dark band of the frame
+   image. Since the image is composited into the background we can't
+   move them directly — BUT the card-wrap children (close button,
+   translate toggle, nav) overlap the frame.
+
+   For the PHYSICAL ornaments drawn IN the background image we achieve
+   the "pushed to corner / smaller" look by simply letting the image
+   scale down with contain — at smaller size the ornaments appear
+   smaller and closer to the four corners of the image itself, which
+   IS what was asked for.
+
+   What we CAN additionally do is ensure the close (×) button and
+   translate toggle don't cover the top ornaments and stay tight
+   to the safe-area edges.
+   ─────────────────────────────────────────────────────────────────── */
+.lmx {
+  top:   max(env(safe-area-inset-top, 0px), 6px) !important;
+  right: 6px !important;
+  width:  30px !important;
+  height: 30px !important;
+  font-size: 12px !important;
+}
+
+.lm-translate-wrap {
+  top:   max(env(safe-area-inset-top, 0px), 6px) !important;
+  right: 44px !important;
+  padding: 4px 8px !important;
+  font-size: 11px !important;
+}
+.lm-toggle-label { font-size: 11px !important; }
+.lm-toggle-sw    { width: 36px !important; height: 22px !important; }
+.lm-toggle-thumb { width: 14px !important; height: 14px !important; }
+.lm-toggle-sw.on .lm-toggle-thumb { transform: translateX(14px) !important; }
+
+
+/* ─────────────────────────────────────────────────────────────────────
+   3. MURALI + RADHA SYMBOL — top-centre, above golden area
+   ─────────────────────────────────────────────────────────────────────
+   These are part of the background image.  We place the title label
+   (.lmt) immediately below them and keep it small so the ornamental
+   area above the golden parchment remains visible.
+   ─────────────────────────────────────────────────────────────────── */
+.lmt {
+  font-size: 13px !important;
+  letter-spacing: 1px !important;
+  white-space: nowrap !important;
+  /* background pill so it stays readable over both light & dark frames */
+  background: rgba(4, 10, 30, 0.55) !important;
+  padding: 3px 12px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255, 215, 0, 0.4) !important;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────
+   4. GOLDEN SHIMMER WAVE — continuously sweeps the lyrics area
+   ─────────────────────────────────────────────────────────────────── */
+@keyframes goldenWave {
+  0%   { transform: translateX(-110%) skewX(-12deg); opacity: 0;    }
+  10%  { opacity: 0.55; }
+  85%  { opacity: 0.40; }
+  100% { transform: translateX(210%)  skewX(-12deg); opacity: 0;    }
+}
+
+/* The wave is a ::before pseudo on the scroll container */
+#lmo .lm-card-inner {
+  position: relative !important; /* ensure stacking context */
+  isolation: isolate !important;
+}
+
+#lmo .lm-card-inner::before {
+  content: '' !important;
+  display: block !important;
+  position: absolute !important;
+  inset: 0 !important;
+  width: 55% !important;
+  height: 100% !important;
+  left: 0 !important;
+  top:  0 !important;
+  background: linear-gradient(
+    105deg,
+    transparent            0%,
+    rgba(255, 220, 80, 0)  20%,
+    rgba(255, 220, 80, 0.28) 45%,
+    rgba(255, 240, 140, 0.38) 50%,
+    rgba(255, 220, 80, 0.28) 55%,
+    rgba(255, 220, 80, 0)  80%,
+    transparent           100%
+  ) !important;
+  pointer-events: none !important;
+  z-index: 3 !important;
+  border-radius: inherit !important;
+  animation: goldenWave 4.2s cubic-bezier(0.45, 0, 0.55, 1) infinite !important;
+  will-change: transform !important;
+}
+
+/* Lyrics text must sit ABOVE the wave overlay */
+#lmo .lyr {
+  position: relative !important;
+  z-index: 4 !important;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────
+   5. PER-STOTRAM THEME COLOURS
+   ─────────────────────────────────────────────────────────────────────
+   Set  data-theme="radha|yamuna|vishnu|shiva|hanuman"
+   on the  .lm-water-card  element from JS.
+
+   Each theme colours:
+     • lm-card-inner background (the inner parchment / colour area)
+     • lyr-line text colour
+     • lyr-artha (translation) colour
+     • lyr-footer colour
+     • shimmer wave tint
+   ─────────────────────────────────────────────────────────────────── */
+
+/* ── RADHA-MADHAV (default / hcj, hmg, nmb, rsn, svb, blv, sfv, rks) ──
+   Warm saffron-gold parchment  ← matches the frame's own golden centre */
+.lm-water-card[data-theme="radha"] .lm-card-inner {
+  background: radial-gradient(
+    ellipse at 50% 30%,
+    #fff8e7 0%, #f5d97a 35%, #e8b94a 70%, #c89030 100%
+  ) !important;
+}
+.lm-water-card[data-theme="radha"] .lyr-line   { color: #2b0f00 !important; }
+.lm-water-card[data-theme="radha"] .lyr-artha  { color: #6b1a00 !important; }
+.lm-water-card[data-theme="radha"] .lyr-footer { color: #7a4000 !important; }
+.lm-water-card[data-theme="radha"] #lmo .lm-card-inner::before {
+  background: linear-gradient(
+    105deg,
+    transparent 0%, rgba(255,255,200,0) 20%,
+    rgba(255,255,180,0.35) 50%,
+    rgba(255,255,200,0) 80%, transparent 100%
+  ) !important;
+}
+
+/* ── YAMUNA (yms) — river-blue slate ── */
+.lm-water-card[data-theme="yamuna"] .lm-card-inner {
+  background: radial-gradient(
+    ellipse at 50% 30%,
+    #ddeeff 0%, #a8c8e8 35%, #6899c8 70%, #3a5f96 100%
+  ) !important;
+}
+.lm-water-card[data-theme="yamuna"] .lyr-line   { color: #0a1a33 !important; }
+.lm-water-card[data-theme="yamuna"] .lyr-artha  { color: #0d2d55 !important; }
+.lm-water-card[data-theme="yamuna"] .lyr-footer { color: #1a3a60 !important; }
+.lm-water-card[data-theme="yamuna"] #lmo .lm-card-inner::before {
+  background: linear-gradient(
+    105deg,
+    transparent 0%, rgba(180,220,255,0) 20%,
+    rgba(180,230,255,0.38) 50%,
+    rgba(180,220,255,0) 80%, transparent 100%
+  ) !important;
+}
+
+/* ── VISHNU / NARAYAN (gms, nkc, vs2) — deep lotus-lavender ── */
+.lm-water-card[data-theme="vishnu"] .lm-card-inner {
+  background: radial-gradient(
+    ellipse at 50% 30%,
+    #ede8f8 0%, #c0a8e8 35%, #8860c8 70%, #4a2a80 100%
+  ) !important;
+}
+.lm-water-card[data-theme="vishnu"] .lyr-line   { color: #15052e !important; }
+.lm-water-card[data-theme="vishnu"] .lyr-artha  { color: #2a0a50 !important; }
+.lm-water-card[data-theme="vishnu"] .lyr-footer { color: #3a1060 !important; }
+.lm-water-card[data-theme="vishnu"] #lmo .lm-card-inner::before {
+  background: linear-gradient(
+    105deg,
+    transparent 0%, rgba(210,190,255,0) 20%,
+    rgba(220,200,255,0.36) 50%,
+    rgba(210,190,255,0) 80%, transparent 100%
+  ) !important;
+}
+
+/* ── SHIVA (bss, ans, rds, sps) — dusty rose / deep maroon ── */
+.lm-water-card[data-theme="shiva"] .lm-card-inner {
+  background: radial-gradient(
+    ellipse at 50% 30%,
+    #f5e8e8 0%, #d4a0a0 35%, #a85050 70%, #5a1a1a 100%
+  ) !important;
+}
+.lm-water-card[data-theme="shiva"] .lyr-line   { color: #1a0505 !important; }
+.lm-water-card[data-theme="shiva"] .lyr-artha  { color: #4a0808 !important; }
+.lm-water-card[data-theme="shiva"] .lyr-footer { color: #6a1010 !important; }
+.lm-water-card[data-theme="shiva"] #lmo .lm-card-inner::before {
+  background: linear-gradient(
+    105deg,
+    transparent 0%, rgba(255,200,200,0) 20%,
+    rgba(255,210,210,0.34) 50%,
+    rgba(255,200,200,0) 80%, transparent 100%
+  ) !important;
+}
+
+/* ── HANUMAN (hnc) — blazing saffron-ochre ── */
+.lm-water-card[data-theme="hanuman"] .lm-card-inner {
+  background: radial-gradient(
+    ellipse at 50% 30%,
+    #fff3cc 0%, #f5a800 40%, #c86400 75%, #7a2a00 100%
+  ) !important;
+}
+.lm-water-card[data-theme="hanuman"] .lyr-line   { color: #1a0800 !important; }
+.lm-water-card[data-theme="hanuman"] .lyr-artha  { color: #5a1500 !important; }
+.lm-water-card[data-theme="hanuman"] .lyr-footer { color: #7a2800 !important; }
+.lm-water-card[data-theme="hanuman"] #lmo .lm-card-inner::before {
+  background: linear-gradient(
+    105deg,
+    transparent 0%, rgba(255,220,100,0) 20%,
+    rgba(255,235,120,0.40) 50%,
+    rgba(255,220,100,0) 80%, transparent 100%
+  ) !important;
+}
+
+/* ── Fallback (no theme set) → same as radha ── */
+.lm-water-card:not([data-theme]) .lm-card-inner {
+  background: radial-gradient(
+    ellipse at 50% 30%,
+    #fff8e7 0%, #f5d97a 35%, #e8b94a 70%, #c89030 100%
+  ) !important;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────
+   6. INNER CARD — rounded corners + subtle inner border glow
+      so the coloured area looks jewel-like against the dark frame
+   ─────────────────────────────────────────────────────────────────── */
+.lm-card-inner {
+  border-radius: 18px !important;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255, 215, 0, 0.55),
+    inset 0 0 24px   rgba(255, 215, 0, 0.12),
+    0     0  18px    rgba(0, 0, 0, 0.45) !important;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────
+   7. SCROLL BEHAVIOUR — keep text reachable, wave doesn't block touch
+   ─────────────────────────────────────────────────────────────────── */
+#lmo .lm-card-inner {
+  display:          flex !important;
+  flex-direction:   column !important;
+  align-items:      stretch !important;
+  justify-content:  flex-start !important;
+  overflow-y:       auto !important;
+  overflow-x:       hidden !important;
+  touch-action:     pan-y !important;
+  overscroll-behavior-y: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* Wave pseudo must NOT intercept touch — pointer-events already off,
+   but also ensure the lyr sits above it with its own z-index */
+#lmo .lm-card-inner::before {
+  pointer-events: none !important;
+  z-index: 0 !important;    /* wave is behind lyrics */
+}
+#lmo .lyr {
+  position:   relative !important;
+  z-index:    1 !important;
+  margin:     auto !important;
+  width:      100% !important;
+  flex-shrink: 0 !important;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────
+   8. ADAPTIVE FONT SIZE — slightly larger now that area is wider
+   ─────────────────────────────────────────────────────────────────── */
+.lyr-line {
+  font-size: clamp(13px, 4vw, 22px) !important;
+  line-height: 1.85 !important;
+}
+.lyr-prose {
+  font-size: clamp(12px, 3.5vw, 18px) !important;
+  line-height: 1.75 !important;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────
+   JS SNIPPET  (for reference — add this in your app.js openStotram fn)
+   ─────────────────────────────────────────────────────────────────────
+
+   const STOTRAM_THEME = {
+     hcj:'radha', yms:'yamuna', hmg:'radha', nmb:'radha',
+     rsn:'radha',  svb:'radha', blv:'radha', sfv:'radha', rks:'radha',
+     gms:'vishnu', nkc:'vishnu', vs2:'vishnu',
+     bss:'shiva',  ans:'shiva', rds:'shiva', sps:'shiva',
+     hnc:'hanuman'
+   };
+
+   // When opening the modal:
+   const card = document.querySelector('.lm-water-card');
+   card.dataset.theme = STOTRAM_THEME[stotramId] || 'radha';
+
+   ─────────────────────────────────────────────────────────────────── */

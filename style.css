@@ -41,7 +41,9 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 
 .view{display:none;height:100vh;height:100dvh;position:relative;z-index:1;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .view.active{display:flex;}
-#vj.active{min-height:unset;height:100vh;height:100dvh;overflow:hidden;}
+#vj.active{position:fixed;inset:0;min-height:unset;height:100vh;height:100dvh;overflow:hidden;}
+/* Prevent the page itself from scrolling while the Jap view is active */
+html:has(#vj.active),body:has(#vj.active){overflow:hidden;height:100vh;height:100dvh;}
 
 /* BOTTOM NAV — 6 items now (removed Target tab) */
 .bnav{position:fixed;bottom:0;left:0;right:0;
@@ -2443,7 +2445,7 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 /* Hit Ju Maharaj — bottom-left, anchored to RV's bottom edge */
 .tz .hitju-wm{
   position:absolute;
-  top: calc(var(--rv-bottom) - var(--side-w) * 0.35);
+  top: calc(var(--rv-bottom) + var(--side-w) * 0.15);
   left:10px;
   width:var(--side-w); height:auto;
   opacity:.5;
@@ -2454,7 +2456,7 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 /* Gurudev — bottom-right, sits just below RV's bottom edge */
 .tz .gurudev-wm{
   position:absolute;
-  top: calc(var(--rv-bottom) - var(--side-w) * 0.35);
+  top: calc(var(--rv-bottom) + var(--side-w) * 0.15);
   right:10px;
   width:var(--side-w); height:auto;
   opacity:.5;

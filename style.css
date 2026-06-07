@@ -2416,30 +2416,47 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 
 
 /* Watermarks inside Jap tap area */
-.tz { position: relative; }
+.tz {
+  position: relative;
+  /* Shared sizing tokens so the side watermarks track the hero image
+     across all viewports (phone, tablet, desktop) instead of getting
+     stranded at the bottom of a tall container. */
+  --rv-w: clamp(260px, 62vw, 520px);
+  --rv-top: 20px;
+  /* Approximate natural aspect ratio (height / width) of the
+     Radha Vallabh Laal Ju image — used to compute where its
+     bottom edge lands so the side images sit right beside it. */
+  --rv-aspect: 1.15;
+  --rv-bottom: calc(var(--rv-top) + var(--rv-w) * var(--rv-aspect));
+  --side-w: clamp(90px, 20vw, 150px);
+}
 
 /* Radha Vallabh Laal Ju — large, top center hero */
 .tz .rv-wm{
-  position:absolute; top:20px; left:50%; transform:translateX(-50%);
-  width:clamp(260px,62vw,520px); height:auto;
+  position:absolute; top:var(--rv-top); left:50%; transform:translateX(-50%);
+  width:var(--rv-w); height:auto;
   opacity:.55;
   filter:drop-shadow(0 0 22px rgba(245,209,122,.45));
   pointer-events:none; user-select:none; z-index:1;
 }
 
-/* Hit Ju Maharaj — smaller, bottom left */
+/* Hit Ju Maharaj — bottom-left, anchored to RV's bottom edge */
 .tz .hitju-wm{
-  position:absolute; bottom:14px; left:10px;
-  width:clamp(80px,18vw,140px); height:auto;
+  position:absolute;
+  top: calc(var(--rv-bottom) - var(--side-w) * 0.9);
+  left:10px;
+  width:var(--side-w); height:auto;
   opacity:.5;
   filter:drop-shadow(0 0 12px rgba(245,209,122,.35));
   pointer-events:none; user-select:none; z-index:1;
 }
 
-/* Gurudev — smaller, bottom right */
+/* Gurudev — bottom-right, anchored to RV's bottom edge */
 .tz .gurudev-wm{
-  position:absolute; bottom:14px; right:10px;
-  width:clamp(80px,18vw,140px); height:auto;
+  position:absolute;
+  top: calc(var(--rv-bottom) - var(--side-w) * 0.9);
+  right:10px;
+  width:var(--side-w); height:auto;
   opacity:.5;
   filter:drop-shadow(0 0 12px rgba(245,209,122,.35));
   pointer-events:none; user-select:none; z-index:1;

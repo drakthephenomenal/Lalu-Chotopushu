@@ -2014,6 +2014,14 @@ function tgs(k) {
         (pos) => {
           const lat = pos.coords.latitude, lng = pos.coords.longitude;
           if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; App.save(); }
+          // Persist GPS-enabled state and coords to localStorage so the toggle
+          // stays ON across refreshes for both guest and signed-in users,
+          // WITHOUT re-prompting for geolocation permission on load.
+          try {
+            localStorage.setItem("rjap_gps_enabled", "1");
+            localStorage.setItem("rjap_lastLat", String(lat));
+            localStorage.setItem("rjap_lastLng", String(lng));
+          } catch(e) {}
           updateSunInfo(lat, lng);
           if (tgGps) tgGps.classList.add("on");
           if (statusEl) statusEl.textContent = "✅ Location detected · " + lat.toFixed(3) + ", " + lng.toFixed(3);
@@ -2029,6 +2037,11 @@ function tgs(k) {
     } else {
       // Turning OFF — clear saved location and reset everything that depended on GPS
       if (App.S) { delete App.S.lastLat; delete App.S.lastLng; App.save(); }
+      try {
+        localStorage.removeItem("rjap_gps_enabled");
+        localStorage.removeItem("rjap_lastLat");
+        localStorage.removeItem("rjap_lastLng");
+      } catch(e) {}
       if (tgGps) tgGps.classList.remove("on");
       const statusEl = document.getElementById("gpsLocationStatus");
       if (statusEl) statusEl.textContent = "— Tap toggle to detect your location 📍";
@@ -8384,16 +8397,40 @@ window.addEventListener("load", async () => {
   // Apply settings UI
   if (App.S.cfg.sound) document.getElementById("tgSnd").classList.add("on");
 
-  // GPS Location toggle — ON if saved coords exist; auto-request if not
+  // GPS Location toggle — persist across refreshes via localStorage flag.
+  // Never auto-request geolocation permission on app load (the user enables it
+  // manually from settings). Toggle state survives refresh / re-open even for
+  // guest users (who don't persist App.S), as long as data is not cleared.
   const tgGpsInit = document.getElementById("tgGpsLocation");
   if (tgGpsInit) {
-    const hasCoords = App.S && App.S.lastLat && App.S.lastLng;
-    if (hasCoords) tgGpsInit.classList.add("on");
+    let lsGpsOn = false, lsLat = null, lsLng = null;
+    try {
+      lsGpsOn = localStorage.getItem("rjap_gps_enabled") === "1";
+      const _la = parseFloat(localStorage.getItem("rjap_lastLat"));
+      const _ln = parseFloat(localStorage.getItem("rjap_lastLng"));
+      if (!isNaN(_la) && !isNaN(_ln)) { lsLat = _la; lsLng = _ln; }
+    } catch(e) {}
+    // Backfill App.S coords from localStorage if missing (e.g. guest mode).
+    if (App.S && (App.S.lastLat == null || App.S.lastLng == null) && lsLat != null) {
+      App.S.lastLat = lsLat; App.S.lastLng = lsLng;
+    }
+    // Backfill localStorage from App.S for users who enabled GPS before this fix.
+    if (!lsGpsOn && App.S && App.S.lastLat != null && App.S.lastLng != null) {
+      try {
+        localStorage.setItem("rjap_gps_enabled", "1");
+        localStorage.setItem("rjap_lastLat", String(App.S.lastLat));
+        localStorage.setItem("rjap_lastLng", String(App.S.lastLng));
+      } catch(e) {}
+      lsGpsOn = true;
+    }
+    const hasCoords = App.S && App.S.lastLat != null && App.S.lastLng != null;
+    const gpsOn = lsGpsOn || hasCoords;
+    if (gpsOn) tgGpsInit.classList.add("on");
     const gpsStatusEl = document.getElementById("gpsLocationStatus");
     if (gpsStatusEl) {
       gpsStatusEl.textContent = hasCoords
         ? "✅ Location saved · " + Number(App.S.lastLat).toFixed(3) + ", " + Number(App.S.lastLng).toFixed(3)
-        : "— Tap toggle to detect your location 📍";
+        : (gpsOn ? "📍 GPS enabled — tap toggle to refresh location" : "— Tap toggle to detect your location 📍");
     }
     // Do NOT auto-request geolocation on app load — only when the user taps the GPS toggle.
   }

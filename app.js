@@ -512,7 +512,7 @@ const App = {
     // Visual fallback
     const z = document.getElementById("tz");
     if (z) {
-      z.style.boxShadow = "0 0 22px rgba(109,184,255,0.92)";
+      z.style.boxShadow = "0 0 22px rgba(109,184,255,0.65)";
       setTimeout(() => (z.style.boxShadow = ""), 80);
     }
   },
@@ -5772,7 +5772,7 @@ function spawnName28(e, nameText) {
   el.style.cssText =
     "position:absolute;font-family:serif;pointer-events:none;z-index:10;font-size:" +
     (22 + Math.random() * 16).toFixed(0) +
-    "px;color:rgba(255,215,0,0.92);text-shadow:0 0 8px rgba(255,215,0,0.5);left:" +
+    "px;color:rgba(255,215,0,0.65);text-shadow:0 0 8px rgba(255,215,0,0.5);left:" +
     (x - 40) +
     "px;top:" +
     (y - 10) +
@@ -6472,8 +6472,6 @@ function reset28Time(scope) {
 // ── STOTRAM LIST & LYRICS are now in stotram.js ──
 // Make sure to include stotram.js before app.js in your HTML
 
-
-
 function renderSt() {
   const list = document.getElementById("stList");
   list.innerHTML = "";
@@ -6483,7 +6481,7 @@ function renderSt() {
     const styleEl = document.createElement('style');
     styleEl.id = 'st-card-styles';
     styleEl.textContent = [
-      '@keyframes stCardGlow{0%,100%{box-shadow:0 0 7px 1px var(--sgc,#ffd700),0 2px 18px rgba(0,0,0,0.55);border-color:rgba(255,215,0,0.30)}50%{box-shadow:0 0 22px 5px var(--sgc,#ffd700),0 2px 24px rgba(0,0,0,0.92);border-color:rgba(255,215,0,0.92)}}',
+      '@keyframes stCardGlow{0%,100%{box-shadow:0 0 7px 1px var(--sgc,#ffd700),0 2px 18px rgba(0,0,0,0.55);border-color:rgba(255,215,0,0.30)}50%{box-shadow:0 0 22px 5px var(--sgc,#ffd700),0 2px 24px rgba(0,0,0,0.65);border-color:rgba(255,215,0,0.72)}}',
       '@keyframes stColorCycle{0%{--sgc:#ffd700}20%{--sgc:#ff9d00}40%{--sgc:#ff6bff}60%{--sgc:#00e5ff}80%{--sgc:#7dff6b}100%{--sgc:#ffd700}}',
       '@keyframes stNameShimmer{0%,100%{background-position:-200% center}100%{background-position:200% center}}',
       '@keyframes stFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}',
@@ -8503,7 +8501,7 @@ function showInstallModal() {
     ">
       <img src="./icon-192.png" style="width:72px;height:72px;border-radius:18px;margin-bottom:14px;box-shadow:0 0 28px rgba(255,215,0,0.35);">
       <div style="font-family:'Cinzel Decorative',serif;font-size:17px;color:#FFD700;letter-spacing:1px;margin-bottom:6px;">Radha Naam Jap</div>
-      <div style="font-size:13px;color:rgba(255,255,255,0.92);line-height:1.6;margin-bottom:22px;font-family:Inter,sans-serif;">
+      <div style="font-size:13px;color:rgba(255,255,255,0.65);line-height:1.6;margin-bottom:22px;font-family:Inter,sans-serif;">
         Press <b style="color:#FFD700">Install</b> to get an app icon on your Home Screen for quick, easy access — for offline use 🙏
       </div>
       <button id="installModalBtn" style="
@@ -8842,10 +8840,7 @@ function showLyrics(id) {
   // ── Sectioned stotrams (svb, blv, …): show section picker ──
   if (window.StotramSections && window.StotramSections.isSectioned(id)) {
     var stsCard = document.querySelector(".lm-water-card");
-    if (stsCard) {
-      stsCard.setAttribute("data-theme", "radha");
-      stsCard.setAttribute("data-stotram", id);
-    }
+    if (stsCard) stsCard.setAttribute("data-theme", "radha");
     var stsLmo = document.getElementById("lmo");
     if (stsLmo) stsLmo.setAttribute("data-bg", "radha");
     window.StotramSections.show(id);
@@ -8856,8 +8851,6 @@ function showLyrics(id) {
   (function () {
     var card = document.querySelector(".lm-water-card");
     if (!card) return;
-    // Set stotram id so CSS can tint the inner area with the right colour
-    card.setAttribute("data-stotram", id);
     var shiv = ["bss", "ans", "rds", "sps"];
     var radha = ["hcj", "rks", "gms", "nkc", "vs2"];
     var lmo = document.getElementById("lmo");
@@ -9641,14 +9634,7 @@ function _hcjRenderPlayer(idx) {
   requestAnimationFrame(function () {
     var pw = document.getElementById("hcj-player-wrap");
     var inner = document.querySelector("#lmo .lm-card-inner");
-    if (pw && inner) {
-      var lmo = document.getElementById("lmo");
-      var lmoH = lmo ? lmo.getBoundingClientRect().height : window.innerHeight;
-      var pwRect = pw.getBoundingClientRect();
-      var lmoRect = lmo ? lmo.getBoundingClientRect() : {top:0};
-      var bottomOffset = lmoH - (pwRect.top - lmoRect.top);
-      inner.style.bottom = Math.max(0, bottomOffset) + "px";
-    }
+    if (pw && inner) inner.style.bottom = pw.offsetHeight + "px";
   });
 }
 
@@ -10936,8 +10922,7 @@ function _fmtDateDMY(dateStr) {
   });
 
   function buildBar() {
-    if (_barBuilt && document.getElementById('lyr-fs-ctrl')) return;
-    _barBuilt = false;
+    if (_barBuilt) return;
     var modal = document.getElementById("lmo");
     if (!modal) return;
     _barBuilt = true;

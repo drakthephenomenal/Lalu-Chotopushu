@@ -10516,16 +10516,40 @@ function showHistSet(set) {
   const slot = document.getElementById("histSetDetail");
   if (!slot) return;
 
-  const log = App.S.activityLog || [];
   const tkPrefix = tk.slice(0, 10);
 
+  // Build a unified entry list for this date:
+  //   1) in-memory activityLog (live + recent)
+  //   2) lifetime archive entries from IDB for this exact day
+  // De-duplicated by ts+t so older malas don't disappear once they roll
+  // out of the 2000-entry in-memory cap.
+  const _inMem = (App.S.activityLog || []).filter(
+    (e) => _ldk(new Date(e.ts)) === tkPrefix,
+  );
+  const _renderWith = (log) => _renderHistSetInner(set, tk, isToday, log, slot);
+
+  // Render immediately with what we have, then upgrade from archive.
+  _renderWith(_inMem);
+  App.dbGet("activityLogArchive", tk)
+    .then((archived) => {
+      if (!Array.isArray(archived) || archived.length === 0) return;
+      const seen = new Set(_inMem.map((e) => e.ts + "|" + e.t));
+      const merged = _inMem.concat(
+        archived.filter((e) => !seen.has(e.ts + "|" + e.t)),
+      );
+      merged.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      _renderWith(merged);
+    })
+    .catch(() => {});
+}
+
+function _renderHistSetInner(set, tk, isToday, log, slot) {
   let inner = "";
   const backBtn = `<button class="hist-back-btn" onclick="document.getElementById('histSetDetail').innerHTML=''">‹ Back to Day Totals</button>`;
 
   if (set === "radha") {
     const radhaEntries = log.filter(
-      (e) =>
-        e.t === "mala" && e.mode !== "rv" && _ldk(new Date(e.ts)) === tkPrefix,
+      (e) => e.t === "mala" && e.mode !== "rv" && e.mode !== "hk",
     );
     inner += backBtn;
     if (radhaEntries.length > 0) {
@@ -10544,10 +10568,7 @@ function showHistSet(set) {
       inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-mala detail not available for this date<br><span style="font-size:10px">(activity log only keeps recent sessions)</span></div>`;
     }
   } else if (set === "rv") {
-    const rvEntries = log.filter(
-      (e) =>
-        e.t === "mala" && e.mode === "rv" && _ldk(new Date(e.ts)) === tkPrefix,
-    );
+    const rvEntries = log.filter((e) => e.t === "mala" && e.mode === "rv");
     inner += backBtn;
     if (rvEntries.length > 0) {
       inner += _histMalaTable("🔵 RV Jap — Per Mala", rvEntries, "var(--a2)");
@@ -10561,9 +10582,7 @@ function showHistSet(set) {
       inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-mala detail not available for this date</div>`;
     }
   } else if (set === "28") {
-    const cycleEntries = log.filter(
-      (e) => e.t === "28cycle" && _ldk(new Date(e.ts)) === tkPrefix,
-    );
+    const cycleEntries = log.filter((e) => e.t === "28cycle");
     inner += backBtn;
     if (cycleEntries.length > 0) {
       inner += _hist28CycleTable(cycleEntries);
@@ -10571,10 +10590,7 @@ function showHistSet(set) {
       inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-cycle detail not available for this date</div>`;
     }
   } else if (set === "hk") {
-    const hkEntries = log.filter(
-      (e) =>
-        e.t === "mala" && e.mode === "hk" && _ldk(new Date(e.ts)) === tkPrefix,
-    );
+    const hkEntries = log.filter((e) => e.t === "mala" && e.mode === "hk");
     const _hkSetLang = App.S.hkLang || "hi";
     const _hkSetLabel =
       _hkSetLang === "bn"

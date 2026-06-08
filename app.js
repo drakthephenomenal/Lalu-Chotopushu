@@ -4007,10 +4007,12 @@ function renderMilestonesTab() {
   }
   const startInput = document.getElementById("msSadhanaStart");
   if (startInput && saved) startInput.value = saved;
+  const msDisp = document.getElementById("msSadhanaStartDisp");
+  if (msDisp) msDisp.textContent = _fmtDateFriendly(saved);
   const sinceEl = document.getElementById("msSadhanaSince");
   if (sinceEl && saved) {
     const diff = Date.now() - new Date(saved).getTime();
-    const days = Math.floor(diff / 86400000);
+    const days = Math.floor(diff / 86400000) + 1; // +1: start day counts as Day 1
     const yrs = Math.floor(days / 365),
       rem = days % 365,
       mos = Math.floor(rem / 30);
@@ -4046,13 +4048,8 @@ function renderMilestonesTab() {
     const daysNeeded = Math.ceil(remaining / avg7);
     const d = new Date();
     d.setDate(d.getDate() + daysNeeded);
-    return (
-      String(d.getDate()).padStart(2, "0") +
-      ":" +
-      String(d.getMonth() + 1).padStart(2, "0") +
-      ":" +
-      d.getFullYear()
-    );
+    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    return d.getDate() + " " + months[d.getMonth()] + ", " + d.getFullYear();
   }
 
   let out = "";
@@ -7382,11 +7379,21 @@ function confirmBrahmaStartChange(val) {
   App.save();
   fbDebouncedPush();
   renderBcal();
+  const disp = document.getElementById("brahmaStartDisp");
+  if (disp) disp.textContent = _fmtDateFriendly(val);
   toast("Start date updated 🛡️");
+}
+function _fmtDateFriendly(isoStr) {
+  if (!isoStr) return "";
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const d = new Date(isoStr + "T00:00:00");
+  return d.getDate() + " " + months[d.getMonth()] + ", " + d.getFullYear();
 }
 function initBrahmaStartInput() {
   const el = document.getElementById("brahmaStartInput");
   if (el) el.value = getBrahmaStart();
+  const disp = document.getElementById("brahmaStartDisp");
+  if (disp) disp.textContent = _fmtDateFriendly(getBrahmaStart());
 }
 let bcd = new Date();
 const MN = [
@@ -7412,13 +7419,9 @@ function cbm(d) {
   renderBcal();
 }
 function openBcDay(key, isBroken, cnt) {
-  const parts = key.split("-"),
-    label =
-      String(parseInt(parts[2])).padStart(2, "0") +
-      ":" +
-      String(parseInt(parts[1])).padStart(2, "0") +
-      ":" +
-      parts[0];
+  const parts = key.split("-");
+  const _bcMonths = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const label = parseInt(parts[2]) + " " + _bcMonths[parseInt(parts[1]) - 1] + ", " + parts[0];
   document.getElementById("bcmoT").textContent =
     (isBroken ? "❌ Broken — " : "✅ Maintained — ") + label;
   document.getElementById("bcmoD").textContent = isBroken
@@ -9962,6 +9965,8 @@ function saveSadhanaStartDate(val) {
     App.S.sadhanaStart = val;
     App.save();
     fbDebouncedPush();
+    const disp = document.getElementById("msSadhanaStartDisp");
+    if (disp) disp.textContent = _fmtDateFriendly(val);
     updateSadhanaSince();
     renderLakhGati();
   }
@@ -9978,6 +9983,8 @@ function loadSadhanaStartDate() {
   }
   const input = document.getElementById("msSadhanaStart");
   if (saved && input) input.value = saved;
+  const disp = document.getElementById("msSadhanaStartDisp");
+  if (disp) disp.textContent = _fmtDateFriendly(saved);
   updateSadhanaSince();
 }
 
@@ -9995,7 +10002,7 @@ function updateSadhanaSince() {
   const start = new Date(saved);
   const now = new Date();
   const diff = now.getTime() - start.getTime();
-  const days = Math.floor(diff / 86400000);
+  const days = Math.floor(diff / 86400000) + 1; // +1: start day counts as Day 1
   const years = Math.floor(days / 365);
   const remDays = days % 365;
   const months = Math.floor(remDays / 30);

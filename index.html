@@ -443,6 +443,7 @@
   <div style="padding:8px 14px 6px;display:flex;align-items:center;gap:10px;justify-content:center;">
     <label style="font-size:11px;color:var(--gold);letter-spacing:1px;font-weight:600;">🛡️ Brahmacharya Start Date</label>
     <input type="date" id="brahmaStartInput" style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,215,0,0.3);border-radius:9px;padding:6px 12px;color:var(--gold);font-size:13px;font-family:'Inter',sans-serif;outline:none;" onchange="confirmBrahmaStartChange(this.value)">
+    <span id="brahmaStartDisp" style="font-size:13px;color:var(--gold);font-weight:600;margin-left:4px;"></span>
   </div>
 
   <!-- Brahmacharya Status Bar -->
@@ -585,6 +586,7 @@
   <div class="ms-sadhana-bar">
     <label>🙏 Journey Start:</label>
     <input type="date" id="msSadhanaStart" onchange="saveSadhanaStartDate(this.value);renderMilestonesTab();">
+    <span id="msSadhanaStartDisp" style="font-size:13px;color:var(--gold);font-weight:600;margin-left:4px;"></span>
   </div>
   <div class="ms-sadhana-since" id="msSadhanaSince"></div>
   <div id="msContent"></div>

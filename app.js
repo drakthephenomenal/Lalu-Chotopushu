@@ -1879,6 +1879,11 @@ function populateSettingsUI() {
 
 // ── Settings ──
 document.addEventListener("DOMContentLoaded", () => {
+  // iPad tap-zone height fix — run after layout settles
+  if (typeof _fixTzrHeight === "function") {
+    setTimeout(_fixTzrHeight, 100);
+    setTimeout(_fixTzrHeight, 600);
+  }
 
   const dti = document.getElementById("dtIn");
   const lti = document.getElementById("ltIn");
@@ -8404,6 +8409,11 @@ window.addEventListener("load", async () => {
 
 
   await App.load();
+  // iPad tap-zone fix — DOM + data are now fully ready
+  if (typeof _fixTzrHeight === "function") {
+    _fixTzrHeight();
+    setTimeout(_fixTzrHeight, 400);
+  }
   App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));
   App.lmcRV = Math.floor((App.S.historyRV[App.S.tk] || 0) / (App.S.ms || 108));
@@ -8803,17 +8813,35 @@ function _fixTzrHeight() {
   const tzrMarginTop    = parseFloat(tzrStyle.marginTop)    || 0;
   const tzrMarginBottom = parseFloat(tzrStyle.marginBottom) || 0;
 
-  // Available height = viewport − siblings − nav − tzr margins − 4px for bottom border visibility
-  const available = window.innerHeight - siblingsH - navH - tzrMarginTop - tzrMarginBottom - 4;
-  tzr.style.flex     = "none";
-  tzr.style.height   = Math.max(available, 80) + "px";
-  tzr.style.overflow = "visible"; // ensure bottom border is never clipped
+  // Available height = viewport − siblings − nav − tzr margins − 10px gap so bottom border is visible
+  const available = window.innerHeight - siblingsH - navH - tzrMarginTop - tzrMarginBottom - 10;
+  tzr.style.flex        = "none";
+  tzr.style.height      = Math.max(available, 80) + "px";
+  tzr.style.overflow    = "visible";
+  tzr.style.marginBottom = "6px"; // explicit gap between border and nav
 }
 
-_fixTzrHeight();
+// Run after DOM is ready, after load, and on resize/orientation change
+// Multiple delays to handle Safari's deferred layout on iPad
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(_fixTzrHeight, 50);
+    setTimeout(_fixTzrHeight, 300);
+    setTimeout(_fixTzrHeight, 800);
+  });
+} else {
+  setTimeout(_fixTzrHeight, 50);
+  setTimeout(_fixTzrHeight, 300);
+  setTimeout(_fixTzrHeight, 800);
+}
+window.addEventListener("load", function() {
+  setTimeout(_fixTzrHeight, 100);
+  setTimeout(_fixTzrHeight, 500);
+});
 window.addEventListener("resize", _fixTzrHeight);
-// Also re-run after a short delay to catch any deferred rendering
-setTimeout(_fixTzrHeight, 300);
+window.addEventListener("orientationchange", function() {
+  setTimeout(_fixTzrHeight, 300);
+});
 // ── end iPad fix ────────────────────────────────────────────────────────────
 
 // ═══════════════════════════════════════════════════════

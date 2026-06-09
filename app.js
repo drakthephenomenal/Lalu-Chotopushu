@@ -1879,12 +1879,6 @@ function populateSettingsUI() {
 
 // ── Settings ──
 document.addEventListener("DOMContentLoaded", () => {
-  // iPad tap-zone height fix — run after layout settles
-  if (typeof _fixTzrHeight === "function") {
-    setTimeout(_fixTzrHeight, 100);
-    setTimeout(_fixTzrHeight, 600);
-  }
-
   const dti = document.getElementById("dtIn");
   const lti = document.getElementById("ltIn");
   if (dti)
@@ -8409,11 +8403,6 @@ window.addEventListener("load", async () => {
 
 
   await App.load();
-  // iPad tap-zone fix — DOM + data are now fully ready
-  if (typeof _fixTzrHeight === "function") {
-    _fixTzrHeight();
-    setTimeout(_fixTzrHeight, 400);
-  }
   App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));
   App.lmcRV = Math.floor((App.S.historyRV[App.S.tk] || 0) / (App.S.ms || 108));
@@ -8784,65 +8773,6 @@ window.addEventListener("load", function () {
   }
 });
 
-// ── iPad tap-zone gap fix ──────────────────────────────────────────────────
-// On iPad (min-width 768px) Safari renders .tzr with flex:1 which balloons
-// to fill all remaining space, creating a large dead gap above the nav bar.
-// We measure the actual sibling heights and set .tzr height explicitly.
-// Runs on load + resize (handles orientation change).
-function _fixTzrHeight() {
-  if (window.innerWidth < 768) return; // Android / phone — do nothing
-  const tzr = document.querySelector(".tzr");
-  const vj  = document.getElementById("vj");
-  if (!tzr || !vj) return;
-
-  // #vj already has padding-bottom:calc(56px + safe-area) in CSS which reserves
-  // nav space. So we measure the actual usable client height of #vj itself,
-  // not window.innerHeight, to avoid double-counting the nav clearance.
-  const vjRect      = vj.getBoundingClientRect();
-  const vjPadBottom = parseFloat(window.getComputedStyle(vj).paddingBottom) || 56;
-  const vjUsable    = vjRect.height - vjPadBottom; // content area above nav
-
-  // Sum pixel height of every flex sibling that comes BEFORE .tzr
-  let siblingsH = 0;
-  let el = vj.firstElementChild;
-  while (el && el !== tzr) {
-    siblingsH += el.getBoundingClientRect().height;
-    el = el.nextElementSibling;
-  }
-
-  // Get .tzr's own top margin
-  const tzrMarginTop = parseFloat(window.getComputedStyle(tzr).marginTop) || 0;
-
-  // Available = usable vj height − siblings − tzr top margin − 8px so bottom border shows
-  const available = vjUsable - siblingsH - tzrMarginTop - 8;
-  tzr.style.flex         = "none";
-  tzr.style.height       = Math.max(available, 80) + "px";
-  tzr.style.marginBottom = "0px";
-  tzr.style.overflow     = "visible";
-}
-
-// Run after DOM is ready, after load, and on resize/orientation change
-// Multiple delays to handle Safari's deferred layout on iPad
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", function() {
-    setTimeout(_fixTzrHeight, 50);
-    setTimeout(_fixTzrHeight, 300);
-    setTimeout(_fixTzrHeight, 800);
-  });
-} else {
-  setTimeout(_fixTzrHeight, 50);
-  setTimeout(_fixTzrHeight, 300);
-  setTimeout(_fixTzrHeight, 800);
-}
-window.addEventListener("load", function() {
-  setTimeout(_fixTzrHeight, 100);
-  setTimeout(_fixTzrHeight, 500);
-});
-window.addEventListener("resize", _fixTzrHeight);
-window.addEventListener("orientationchange", function() {
-  setTimeout(_fixTzrHeight, 300);
-});
-// ── end iPad fix ────────────────────────────────────────────────────────────
 
 // ═══════════════════════════════════════════════════════
 

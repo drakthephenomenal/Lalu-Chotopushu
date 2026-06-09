@@ -8793,15 +8793,21 @@ function _fixTzrHeight() {
     el = el.nextElementSibling;
   }
 
-  // Nav bar height (56px) + iOS safe-area-inset-bottom (0 on iPad, ~20 on iPhone)
+  // Nav bar height
   const navH = document.querySelector(".bnav")
     ? document.querySelector(".bnav").getBoundingClientRect().height
     : 56;
 
-  // Available height for .tzr = total viewport − siblings − nav
-  const available = window.innerHeight - siblingsH - navH;
-  tzr.style.flex    = "none";
-  tzr.style.height  = Math.max(available, 80) + "px"; // never collapse below 80px
+  // Get computed top+bottom margin on .tzr itself
+  const tzrStyle = window.getComputedStyle(tzr);
+  const tzrMarginTop    = parseFloat(tzrStyle.marginTop)    || 0;
+  const tzrMarginBottom = parseFloat(tzrStyle.marginBottom) || 0;
+
+  // Available height = viewport − siblings − nav − tzr margins − 4px for bottom border visibility
+  const available = window.innerHeight - siblingsH - navH - tzrMarginTop - tzrMarginBottom - 4;
+  tzr.style.flex     = "none";
+  tzr.style.height   = Math.max(available, 80) + "px";
+  tzr.style.overflow = "visible"; // ensure bottom border is never clipped
 }
 
 _fixTzrHeight();

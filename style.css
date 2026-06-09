@@ -2471,8 +2471,9 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
    CSS only needs to ensure flex is overrideable and margin is zero on iPad. */
 @media (min-width: 768px) {
   .tzr {
-    margin: 0 14px 0 !important;
+    margin: 0 14px 4px !important;
     min-height: 0 !important;
+    overflow: visible !important;
   }
 }
 

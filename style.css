@@ -2467,45 +2467,28 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 /* Tighten gap between tap area and bottom nav so it matches Android */
 .tzr{margin:5px 14px 1px !important;}
 
-/* ── iPad tap-zone fix (pure CSS, no JS) ───────────────────────────────────
-   Problem: on iPad, the siblings above .tzr have fixed/natural heights but
-   #vj's total height is 100dvh. flex:1 on .tzr works correctly in theory,
-   but Safari on iPad doesn't always respect it when siblings overflow.
-
-   Fix: make #vj a strict flex column with overflow:hidden so it never
-   exceeds 100dvh, and give every sibling flex-shrink:0 except .tzr which
-   gets flex:1 min-height:0. Then add padding-bottom on .tzr itself so
-   the border line is always visible above the nav clearance.
-
-   min-width:768px targets iPad Air 5 (820pt). Android (393pt) unaffected. */
-@media (min-width: 768px) {
-  #vj {
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-    /* Use -webkit-fill-available as fallback for older Safari */
-    height: -webkit-fill-available !important;
-    height: 100dvh !important;
-    /* Keep existing nav clearance */
-    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
-    box-sizing: border-box !important;
-  }
+/* ── iPad / tablet: eliminate the gap between tap zone and bottom nav ──
+   iPad Air 5 (820×1180pt). On tablet, .tzr (flex:1) balloons to fill all
+   remaining vertical space, leaving a large dead zone above the nav bar.
+   Target: min-width 768pt + touch (pointer:coarse) = iPad/tablet only.
+   Android phones (≤520pt wide) are completely unaffected.
+   The rows above .tzr total ~197px (header + timer + progress + mala dots).
+   max-height = 100dvh − nav(56px) − safe-area − rows-above(197px)         */
+@media (min-width: 768px) and (pointer: coarse) {
   .tzr {
-    flex: 1 1 0 !important;
-    min-height: 0 !important;
-    /* Remove side margins so border is fully visible */
-    margin: 0 14px 6px !important;
-    overflow: visible !important;
-    /* Ensure the box itself doesn't overflow its allocated space */
-    box-sizing: border-box !important;
+    margin: 0 14px 0 !important;
+    max-height: calc(100dvh - 56px - env(safe-area-inset-bottom, 0px) - 197px) !important;
   }
-  /* All siblings must not grow — they take natural height only */
-  #vj > .rh,
-  #vj > .timer-bar,
-  #vj > .timer-today,
-  #vj > .bead-frame-wrap {
-    flex-shrink: 0 !important;
-    flex-grow: 0 !important;
+  #vj {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* iPad landscape: screen is shorter, rows above tzr stay same height,
+   so the same formula still works — just let it calculate naturally.   */
+@media (min-width: 768px) and (pointer: coarse) and (orientation: landscape) {
+  .tzr {
+    max-height: calc(100dvh - 56px - env(safe-area-inset-bottom, 0px) - 197px) !important;
   }
 }
 

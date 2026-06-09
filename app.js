@@ -4011,8 +4011,9 @@ function renderMilestonesTab() {
   if (msDisp) msDisp.textContent = _fmtDateFriendly(saved);
   const sinceEl = document.getElementById("msSadhanaSince");
   if (sinceEl && saved) {
-    const diff = Date.now() - new Date(saved).getTime();
-    const days = Math.floor(diff / 86400000) + 1; // +1: start day counts as Day 1
+    const startLocal = _gpsParseDate(saved);
+    const todayLocal = _gpsLocalToday();
+    const days = Math.round((todayLocal - startLocal) / 86400000) + 1; // +1: start day = Day 1
     const yrs = Math.floor(days / 365),
       rem = days % 365,
       mos = Math.floor(rem / 30);
@@ -4342,8 +4343,10 @@ function openMsDetail(type, count, pct, achieved) {
   const startDate = localStorage.getItem("rjap_sadhana_start");
   let totalDays = "—";
   if (startDate) {
-    const diff = Date.now() - new Date(startDate).getTime();
-    totalDays = Math.floor(diff / 86400000) + " days";
+    const startLocal = _gpsParseDate(startDate);
+    const todayLocal = _gpsLocalToday();
+    const d = Math.round((todayLocal - startLocal) / 86400000) + 1; // +1: start = Day 1
+    totalDays = d + " day" + (d !== 1 ? "s" : "");
   }
 
   // Peak day
@@ -4351,6 +4354,7 @@ function openMsDetail(type, count, pct, achieved) {
   Object.keys(histRV).forEach((k) => {
     allHist[k] = (allHist[k] || 0) + (histRV[k] || 0);
   });
+  const _pdMonths = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   let peakDay = "—",
     peakVal = 0;
   Object.entries(allHist).forEach(([k, v]) => {
@@ -4360,16 +4364,10 @@ function openMsDetail(type, count, pct, achieved) {
     }
   });
   if (peakVal > 0) {
-    const _pd = new Date(peakDay);
+    const _pd = new Date(peakDay + "T00:00:00");
     peakDay =
-      String(_pd.getDate()).padStart(2, "0") +
-      ":" +
-      String(_pd.getMonth() + 1).padStart(2, "0") +
-      ":" +
-      _pd.getFullYear() +
-      " (" +
-      peakVal.toLocaleString("en-IN") +
-      " jap)";
+      _pd.getDate() + " " + _pdMonths[_pd.getMonth()] + ", " + _pd.getFullYear() +
+      " (" + peakVal.toLocaleString("en-IN") + " jap)";
   }
 
   const displayDesc = lang === "bn" && descBn ? descBn : desc;
@@ -6997,6 +6995,51 @@ function _localDateStr(d) {
     "-" +
     String(d.getDate()).padStart(2, "0")
   );
+}
+
+// Returns UTC offset in minutes for a given GPS longitude.
+// Snaps to the nearest standard timezone offset used in the region.
+// Falls back to device timezone if no GPS available.
+function _gpsUtcOffsetMin() {
+  const lat = (App.S && App.S.lastLat != null) ? App.S.lastLat
+            : parseFloat(localStorage.getItem("rjap_lastLat") || "");
+  const lng = (App.S && App.S.lastLng != null) ? App.S.lastLng
+            : parseFloat(localStorage.getItem("rjap_lastLng") || "");
+  if (isNaN(lat) || isNaN(lng)) {
+    // No GPS — fall back to device timezone
+    return -new Date().getTimezoneOffset();
+  }
+  // Derive raw solar offset from longitude (15° = 1 hour)
+  const rawMin = Math.round(lng / 15 * 60);
+  // Snap to real standard timezone offsets (covers India, Bangladesh, and neighbours)
+  const knownOffsets = [
+    -600,-570,-540,-510,-480,-450,-420,-390,-360,-330,-300,-270,-240,-210,
+    -180,-150,-120,-60,0,60,120,180,210,240,270,300,330,345,360,390,
+    420,450,480,510,525,540,570,600,630,660
+  ];
+  return knownOffsets.reduce((best, off) =>
+    Math.abs(off - rawMin) < Math.abs(best - rawMin) ? off : best
+  , knownOffsets[0]);
+}
+
+// Returns "today" Date object at GPS-local midnight (00:00:00 in the GPS timezone).
+function _gpsLocalToday() {
+  const offsetMin = _gpsUtcOffsetMin();
+  const nowUtcMs = Date.now();
+  // Shift now into the GPS timezone, extract calendar date, return midnight in that tz
+  const localMs = nowUtcMs + offsetMin * 60000;
+  const d = new Date(localMs);
+  const yyyy = d.getUTCFullYear(), mm = d.getUTCMonth(), dd = d.getUTCDate();
+  // Return as UTC ms representing midnight in GPS timezone
+  return new Date(Date.UTC(yyyy, mm, dd) - offsetMin * 60000);
+}
+
+// Parse a YYYY-MM-DD string as midnight in the GPS timezone.
+function _gpsParseDate(isoStr) {
+  if (!isoStr) return null;
+  const [y, mo, day] = isoStr.split("-").map(Number);
+  const offsetMin = _gpsUtcOffsetMin();
+  return new Date(Date.UTC(y, mo - 1, day) - offsetMin * 60000);
 }
 // Short alias
 function _ldk(d) {
@@ -9999,10 +10042,9 @@ function updateSadhanaSince() {
     el.textContent = "Set your journey start date above ☝️";
     return;
   }
-  const start = new Date(saved);
-  const now = new Date();
-  const diff = now.getTime() - start.getTime();
-  const days = Math.floor(diff / 86400000) + 1; // +1: start day counts as Day 1
+  const start = _gpsParseDate(saved);
+  const todayLocal = _gpsLocalToday();
+  const days = Math.round((todayLocal - start) / 86400000) + 1; // +1: start day = Day 1
   const years = Math.floor(days / 365);
   const remDays = days % 365;
   const months = Math.floor(remDays / 30);

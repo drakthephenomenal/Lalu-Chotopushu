@@ -8795,7 +8795,14 @@ function _fixTzrHeight() {
   const vj  = document.getElementById("vj");
   if (!tzr || !vj) return;
 
-  // Sum the pixel height of every flex sibling that comes BEFORE .tzr
+  // #vj already has padding-bottom:calc(56px + safe-area) in CSS which reserves
+  // nav space. So we measure the actual usable client height of #vj itself,
+  // not window.innerHeight, to avoid double-counting the nav clearance.
+  const vjRect      = vj.getBoundingClientRect();
+  const vjPadBottom = parseFloat(window.getComputedStyle(vj).paddingBottom) || 56;
+  const vjUsable    = vjRect.height - vjPadBottom; // content area above nav
+
+  // Sum pixel height of every flex sibling that comes BEFORE .tzr
   let siblingsH = 0;
   let el = vj.firstElementChild;
   while (el && el !== tzr) {
@@ -8803,22 +8810,15 @@ function _fixTzrHeight() {
     el = el.nextElementSibling;
   }
 
-  // Nav bar height
-  const navH = document.querySelector(".bnav")
-    ? document.querySelector(".bnav").getBoundingClientRect().height
-    : 56;
+  // Get .tzr's own top margin
+  const tzrMarginTop = parseFloat(window.getComputedStyle(tzr).marginTop) || 0;
 
-  // Get computed top+bottom margin on .tzr itself
-  const tzrStyle = window.getComputedStyle(tzr);
-  const tzrMarginTop    = parseFloat(tzrStyle.marginTop)    || 0;
-  const tzrMarginBottom = parseFloat(tzrStyle.marginBottom) || 0;
-
-  // Available height = viewport − siblings − nav − tzr margins − 10px gap so bottom border is visible
-  const available = window.innerHeight - siblingsH - navH - tzrMarginTop - tzrMarginBottom - 10;
-  tzr.style.flex        = "none";
-  tzr.style.height      = Math.max(available, 80) + "px";
-  tzr.style.overflow    = "visible";
-  tzr.style.marginBottom = "6px"; // explicit gap between border and nav
+  // Available = usable vj height − siblings − tzr top margin − 8px so bottom border shows
+  const available = vjUsable - siblingsH - tzrMarginTop - 8;
+  tzr.style.flex         = "none";
+  tzr.style.height       = Math.max(available, 80) + "px";
+  tzr.style.marginBottom = "0px";
+  tzr.style.overflow     = "visible";
 }
 
 // Run after DOM is ready, after load, and on resize/orientation change

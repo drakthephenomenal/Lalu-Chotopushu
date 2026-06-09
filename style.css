@@ -2469,10 +2469,10 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 
 @media (min-width: 768px) {
   #vj {
-    padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px)) !important;
+    padding-bottom: 56px !important;
   }
   .tzr {
-    margin: 0 14px 0 !important;
+    margin: 0 14px 2px !important;
   }
 }
 

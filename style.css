@@ -2467,28 +2467,12 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 /* Tighten gap between tap area and bottom nav so it matches Android */
 .tzr{margin:5px 14px 1px !important;}
 
-/* ── iPad / tablet: eliminate the gap between tap zone and bottom nav ──
-   iPad Air 5 (820×1180pt). On tablet, .tzr (flex:1) balloons to fill all
-   remaining vertical space, leaving a large dead zone above the nav bar.
-   Target: min-width 768pt + touch (pointer:coarse) = iPad/tablet only.
-   Android phones (≤520pt wide) are completely unaffected.
-   The rows above .tzr total ~197px (header + timer + progress + mala dots).
-   max-height = 100dvh − nav(56px) − safe-area − rows-above(197px)         */
-@media (min-width: 768px) and (pointer: coarse) {
+/* ── iPad gap: JS (_fixTzrHeight in app.js) handles the dynamic height.
+   CSS only needs to ensure flex is overrideable and margin is zero on iPad. */
+@media (min-width: 768px) {
   .tzr {
     margin: 0 14px 0 !important;
-    max-height: calc(100dvh - 56px - env(safe-area-inset-bottom, 0px) - 197px) !important;
-  }
-  #vj {
-    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
-  }
-}
-
-/* iPad landscape: screen is shorter, rows above tzr stay same height,
-   so the same formula still works — just let it calculate naturally.   */
-@media (min-width: 768px) and (pointer: coarse) and (orientation: landscape) {
-  .tzr {
-    max-height: calc(100dvh - 56px - env(safe-area-inset-bottom, 0px) - 197px) !important;
+    min-height: 0 !important;
   }
 }
 

@@ -8774,6 +8774,42 @@ window.addEventListener("load", function () {
   }
 });
 
+// ── iPad tap-zone gap fix ──────────────────────────────────────────────────
+// On iPad (min-width 768px) Safari renders .tzr with flex:1 which balloons
+// to fill all remaining space, creating a large dead gap above the nav bar.
+// We measure the actual sibling heights and set .tzr height explicitly.
+// Runs on load + resize (handles orientation change).
+function _fixTzrHeight() {
+  if (window.innerWidth < 768) return; // Android / phone — do nothing
+  const tzr = document.querySelector(".tzr");
+  const vj  = document.getElementById("vj");
+  if (!tzr || !vj) return;
+
+  // Sum the pixel height of every flex sibling that comes BEFORE .tzr
+  let siblingsH = 0;
+  let el = vj.firstElementChild;
+  while (el && el !== tzr) {
+    siblingsH += el.getBoundingClientRect().height;
+    el = el.nextElementSibling;
+  }
+
+  // Nav bar height (56px) + iOS safe-area-inset-bottom (0 on iPad, ~20 on iPhone)
+  const navH = document.querySelector(".bnav")
+    ? document.querySelector(".bnav").getBoundingClientRect().height
+    : 56;
+
+  // Available height for .tzr = total viewport − siblings − nav
+  const available = window.innerHeight - siblingsH - navH;
+  tzr.style.flex    = "none";
+  tzr.style.height  = Math.max(available, 80) + "px"; // never collapse below 80px
+}
+
+_fixTzrHeight();
+window.addEventListener("resize", _fixTzrHeight);
+// Also re-run after a short delay to catch any deferred rendering
+setTimeout(_fixTzrHeight, 300);
+// ── end iPad fix ────────────────────────────────────────────────────────────
+
 // ═══════════════════════════════════════════════════════
 
 // ── NKC/GMS: detect if a verse is a "prose block" (narrative, not a stotram verse)

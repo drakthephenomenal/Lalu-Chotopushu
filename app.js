@@ -4984,7 +4984,134 @@ function fbSignInEmail() {
     })
     .catch((e) => _fbEmailErr(e.message || "Sign-in failed"));
 }
+// ── Persistent info modal for auth flows. Stays open until the user
+//    explicitly closes it (no auto-dismiss timer). Used for verification
+//    email + forgot-password confirmations so the instructions stay
+//    visible long enough to read.
+function _fbInfoModal(title, bodyHtml) {
+  try {
+    var old = document.getElementById("fbAuthInfoModal");
+    if (old) old.remove();
+    var ov = document.createElement("div");
+    ov.id = "fbAuthInfoModal";
+    ov.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.72);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:18px;font-family:Inter,sans-serif;animation:fbInfoFade .2s ease-out";
+    ov.innerHTML = ''
+      + '<style>@keyframes fbInfoFade{from{opacity:0}to{opacity:1}}@keyframes fbInfoPop{from{transform:translateY(14px) scale(.97);opacity:0}to{transform:none;opacity:1}}</style>'
+      + '<div role="dialog" aria-modal="true" style="max-width:440px;width:100%;max-height:88vh;overflow-y:auto;background:linear-gradient(180deg,#1a2244,#0f1530);border:1px solid rgba(255,215,0,0.25);border-radius:18px;padding:22px 22px 18px;box-shadow:0 24px 60px rgba(0,0,0,0.55);animation:fbInfoPop .25s ease-out">'
+      +   '<div style="font-size:17px;font-weight:700;color:#ffd97a;margin-bottom:12px;text-align:center;letter-spacing:.3px">' + title + '</div>'
+      +   '<div style="font-size:13.5px;color:#e6e9f5;line-height:1.65">' + bodyHtml + '</div>'
+      +   '<button id="fbAuthInfoClose" style="margin-top:18px;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(74,144,226,0.5);background:rgba(74,144,226,0.22);color:#cfe2ff;font-size:14px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">Got it</button>'
+      + '</div>';
+    document.body.appendChild(ov);
+    var close = function () { try { ov.remove(); } catch (_) {} };
+    ov.querySelector("#fbAuthInfoClose").addEventListener("click", close);
+    // Click backdrop (outside dialog) does NOT close — prevents accidental dismissal.
+    // User must tap the explicit button.
+  } catch (e) { try { alert(title + "\n\n" + bodyHtml.replace(/<[^>]+>/g, "")); } catch (_) {} }
+}
+
+// ── Phone / OTP sign-in (Firebase) ──────────────────────────────────
+// Requires "Phone" provider enabled in Firebase Console → Authentication.
+let _fbRecaptcha = null;
+let _fbConfirmation = null;
+
+function _fbEnsureRecaptcha() {
+  if (!fbAuth) return null;
+  if (_fbRecaptcha) return _fbRecaptcha;
+  try {
+    _fbRecaptcha = new firebase.auth.RecaptchaVerifier("fbRecaptchaContainer", {
+      size: "invisible",
+      callback: function () { /* solved — proceed */ },
+      "expired-callback": function () {
+        try { _fbRecaptcha.clear(); } catch (_) {}
+        _fbRecaptcha = null;
+      }
+    });
+    _fbRecaptcha.render().catch(function (e) { console.warn("reCAPTCHA render:", e && e.message); });
+  } catch (e) {
+    console.warn("reCAPTCHA init:", e && e.message);
+    _fbRecaptcha = null;
+  }
+  return _fbRecaptcha;
+}
+
+function _fbReadPhone() {
+  const el = document.getElementById("fbPhoneIn");
+  let v = (el && el.value || "").trim().replace(/[\s\-()]/g, "");
+  return v;
+}
+
+function fbSendPhoneOtp(isResend) {
+  if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
+  const phone = _fbReadPhone();
+  if (!phone || !/^\+[1-9]\d{6,14}$/.test(phone)) {
+    _fbEmailErr("Enter phone with country code, e.g. +919876543210");
+    return;
+  }
+  const verifier = _fbEnsureRecaptcha();
+  if (!verifier) { _fbEmailErr("Could not initialize verification. Please reload."); return; }
+
+  const btn = document.getElementById("fbPhoneSendBtn");
+  if (btn) { btn.disabled = true; btn.textContent = isResend ? "Resending…" : "Sending…"; }
+  _fbEmailErr("");
+
+  fbAuth.signInWithPhoneNumber(phone, verifier)
+    .then(function (confirmation) {
+      _fbConfirmation = confirmation;
+      const otpRow = document.getElementById("fbOtpRow");
+      if (otpRow) otpRow.style.display = "block";
+      const otpIn = document.getElementById("fbOtpIn");
+      if (otpIn) { otpIn.value = ""; try { otpIn.focus(); } catch (_) {} }
+      if (btn) { btn.disabled = false; btn.textContent = "Resend"; }
+      _fbInfoModal("📱 OTP sent",
+        '<p style="margin:0 0 10px">A 6-digit code has just been texted to:<br><span style="color:#ffd97a">' + phone + '</span></p>'
+        + '<ol style="margin:8px 0 10px 18px;padding:0">'
+        +   '<li>Open the SMS and read the 6-digit code.</li>'
+        +   '<li>Type it into the <b>OTP</b> field and tap <b>Verify &amp; Sign In</b>.</li>'
+        +   '<li>Didn\'t get it within a minute? Tap <b>Resend OTP</b>.</li>'
+        + '</ol>'
+        + '<p style="margin:10px 0 0;font-size:12.5px;opacity:.85">Make sure the number includes your country code (e.g. <b>+91</b> for India, <b>+1</b> for US).</p>'
+      );
+    })
+    .catch(function (e) {
+      if (btn) { btn.disabled = false; btn.textContent = "Send OTP"; }
+      try { if (_fbRecaptcha) { _fbRecaptcha.clear(); } } catch (_) {}
+      _fbRecaptcha = null;
+      _fbEmailErr((e && e.message) || "Could not send OTP");
+    });
+}
+
+function fbVerifyPhoneOtp() {
+  if (!_fbConfirmation) { _fbEmailErr("Please request an OTP first"); return; }
+  const otpEl = document.getElementById("fbOtpIn");
+  const code = (otpEl && otpEl.value || "").trim();
+  if (!/^\d{4,8}$/.test(code)) { _fbEmailErr("Enter the 6-digit OTP from your SMS"); return; }
+  _fbEmailErr("");
+  _fbConfirmation.confirm(code)
+    .then(function () {
+      _fbConfirmation = null;
+      try { if (_fbRecaptcha) { _fbRecaptcha.clear(); } } catch (_) {}
+      _fbRecaptcha = null;
+      const otpRow = document.getElementById("fbOtpRow");
+      if (otpRow) otpRow.style.display = "none";
+      toast("Signed in! ☁️ Sync active 🙏");
+    })
+    .catch(function (e) {
+      _fbEmailErr((e && e.message) || "Invalid or expired OTP");
+    });
+}
+
+function fbResetPhoneOtp() {
+  _fbConfirmation = null;
+  const otpRow = document.getElementById("fbOtpRow");
+  if (otpRow) otpRow.style.display = "none";
+  const btn = document.getElementById("fbPhoneSendBtn");
+  if (btn) { btn.disabled = false; btn.textContent = "Send OTP"; }
+  _fbEmailErr("");
+}
+
 function fbSignUpEmail() {
+
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
   const { email, pass } = _fbReadEmailPass();
   if (!email || !pass) { _fbEmailErr("Enter email and password"); return; }
@@ -4998,8 +5125,16 @@ function fbSignUpEmail() {
       return send.then(() => {
         try { fbAuth.signOut(); } catch (_e) {}
         _fbEmailErr("");
-        toast("Verification email sent 📬 Please verify, then sign in.");
-        try { alert("A verification link has been sent to " + (u && u.email ? u.email : email) + ".\n\nPlease open it from your inbox to verify your email, then come back and Sign In."); } catch (_e) {}
+        const addr = (u && u.email) ? u.email : email;
+        _fbInfoModal("📬 Verification email sent",
+          '<p style="margin:0 0 10px"><b>A verification link has been sent to:</b><br><span style="color:#ffd97a;word-break:break-all">' + addr + '</span></p>'
+          + '<ol style="margin:8px 0 10px 18px;padding:0">'
+          +   '<li>Open your inbox and tap the link to verify your email.</li>'
+          +   '<li><b>Can\'t find it?</b> Check your <b>Spam</b>, <b>Promotions</b>, or <b>Junk</b> folder.</li>'
+          +   '<li>Come back here and tap <b>Sign In</b> with the same email & password.</li>'
+          + '</ol>'
+          + '<p style="margin:10px 0 0;font-size:12.5px;opacity:.85">Once verified, future sign-ins on this or any other device will <u>not</u> need another confirmation email.</p>'
+        );
       });
     })
     .catch((e) => _fbEmailErr(e.message || "Sign-up failed"));
@@ -5009,7 +5144,18 @@ function fbResetEmail() {
   const { email } = _fbReadEmailPass();
   if (!email) { _fbEmailErr("Enter your email above first"); return; }
   fbAuth.sendPasswordResetEmail(email)
-    .then(() => { toast("Password reset email sent 📬"); _fbEmailErr(""); })
+    .then(() => {
+      _fbEmailErr("");
+      _fbInfoModal("🔑 Password reset email sent",
+        '<p style="margin:0 0 10px"><b>A password-reset link has been sent to:</b><br><span style="color:#ffd97a;word-break:break-all">' + email + '</span></p>'
+        + '<ol style="margin:8px 0 10px 18px;padding:0">'
+        +   '<li>Open your inbox and tap the reset link.</li>'
+        +   '<li><b>Can\'t find it?</b> Check your <b>Spam</b>, <b>Promotions</b>, or <b>Junk</b> folder.</li>'
+        +   '<li>Choose a new password, then come back and tap <b>Sign In</b>.</li>'
+        + '</ol>'
+        + '<p style="margin:10px 0 0;font-size:12.5px;opacity:.85">The link expires after a short time — request another one if needed.</p>'
+      );
+    })
     .catch((e) => _fbEmailErr(e.message || "Could not send reset email"));
 }
 

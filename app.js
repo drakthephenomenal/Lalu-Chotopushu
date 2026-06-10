@@ -4967,6 +4967,73 @@ function _fbReadEmailPass() {
   const p = (document.getElementById("fbPassIn") || {}).value || "";
   return { email: e.trim(), pass: p };
 }
+// ── Lovable-style 2-step email auth ──
+// Mode: 'signin' (default) or 'signup'. Step 1 collects email, step 2 collects password.
+let _fbEmailMode = 'signin';
+
+function _isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+
+function fbEmailSetMode(mode) {
+  _fbEmailMode = (mode === 'signup') ? 'signup' : 'signin';
+  const contLbl = document.getElementById('emailContinueLabel');
+  const subLbl  = document.getElementById('emailSubmitLabel');
+  const sw1 = document.getElementById('emailStep1Switch');
+  const sw2 = document.getElementById('emailStep2Switch');
+  if (_fbEmailMode === 'signup') {
+    if (contLbl) contLbl.textContent = 'Continue';
+    if (subLbl)  subLbl.textContent  = 'Create account';
+    if (sw1) sw1.innerHTML = 'Already have an account? <button type="button" class="fb-link" onclick="fbEmailSetMode(\'signin\')">Sign in</button>';
+    if (sw2) sw2.innerHTML = 'Already have an account? <button type="button" class="fb-link" onclick="fbEmailSetMode(\'signin\')">Sign in</button>';
+  } else {
+    if (contLbl) contLbl.textContent = 'Continue';
+    if (subLbl)  subLbl.textContent  = 'Log in';
+    if (sw1) sw1.innerHTML = 'Don\'t have an account? <button type="button" class="fb-link" onclick="fbEmailSetMode(\'signup\')">Create your account</button>';
+    if (sw2) sw2.innerHTML = 'Don\'t have an account? <button type="button" class="fb-link" onclick="fbEmailSetMode(\'signup\')">Create your account</button>';
+  }
+}
+
+function fbEmailBackToStep1() {
+  const s1 = document.getElementById('emailStep1');
+  const s2 = document.getElementById('emailStep2');
+  if (s1) s1.style.display = '';
+  if (s2) s2.style.display = 'none';
+  const pw = document.getElementById('fbPassIn'); if (pw) pw.value = '';
+  _fbEmailErr('');
+}
+
+function fbEmailContinue() {
+  const el = document.getElementById('fbEmailIn');
+  const email = ((el && el.value) || '').trim();
+  if (!_isValidEmail(email)) { _fbEmailErr('Enter a valid email address'); return; }
+  const lock = document.getElementById('emailLockedText');
+  if (lock) lock.textContent = email;
+  document.getElementById('emailStep1').style.display = 'none';
+  document.getElementById('emailStep2').style.display = '';
+  _fbEmailErr('');
+  setTimeout(() => { const pw = document.getElementById('fbPassIn'); if (pw) pw.focus(); }, 50);
+}
+
+function fbEmailSubmit() {
+  if (_fbEmailMode === 'signup') return fbSignUpEmail();
+  return fbSignInEmail();
+}
+
+function _fbReadEmailPass() {
+  const e = (document.getElementById("fbEmailIn") || {}).value || "";
+  const p = (document.getElementById("fbPassIn") || {}).value || "";
+  return { email: e.trim(), pass: p };
+}
+
+function _fbActionSettings() {
+  // After the user clicks the link in their inbox, Firebase shows its own
+  // verified page and then redirects back here. The app boot detects that
+  // emailVerified flipped and flips the UI to the signed-in state — same
+  // experience as the Google flow (land back in the app, already in).
+  try {
+    return { url: window.location.origin + window.location.pathname, handleCodeInApp: false };
+  } catch (_) { return undefined; }
+}
+
 function fbSignInEmail() {
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
   const { email, pass } = _fbReadEmailPass();
@@ -4975,15 +5042,18 @@ function fbSignInEmail() {
     .then((cred) => {
       const u = cred && cred.user;
       if (u && !u.emailVerified) {
-        try { u.sendEmailVerification(); } catch (_e) {}
-        try { fbAuth.signOut(); } catch (_e) {}
-        _fbEmailErr("Please verify your email first. A new verification link has been sent to " + (u.email || email) + ".");
+        // Keep the session active so the moment the user verifies (in the same
+        // or another tab) the app picks it up — no manual sign-in required.
+        try { u.sendEmailVerification(_fbActionSettings()); } catch (_e) {}
+        _fbEmailErr("Verification email sent to " + (u.email || email) + ". Open the link, then come back — you'll be signed in automatically.");
+        _fbStartVerifyPolling();
         return;
       }
       toast("Signed in! ☁️ Sync active 🙏"); _fbEmailErr("");
     })
     .catch((e) => _fbEmailErr(e.message || "Sign-in failed"));
 }
+
 function fbSignUpEmail() {
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
   const { email, pass } = _fbReadEmailPass();
@@ -4993,17 +5063,20 @@ function fbSignUpEmail() {
     .then((cred) => {
       const u = cred && cred.user;
       const send = (u && u.sendEmailVerification)
-        ? u.sendEmailVerification()
+        ? u.sendEmailVerification(_fbActionSettings())
         : Promise.resolve();
       return send.then(() => {
-        try { fbAuth.signOut(); } catch (_e) {}
+        // IMPORTANT: do NOT sign out. Keep the session active so once the
+        // user clicks the verification link and returns, the app is already
+        // logged in (mirrors the Google sign-in UX).
         _fbEmailErr("");
-        toast("Verification email sent 📬 Please verify, then sign in.");
-        try { alert("A verification link has been sent to " + (u && u.email ? u.email : email) + ".\n\nPlease open it from your inbox to verify your email, then come back and Sign In."); } catch (_e) {}
+        toast("Verification email sent 📬 Open the link to finish sign-in.");
+        _fbStartVerifyPolling();
       });
     })
     .catch((e) => _fbEmailErr(e.message || "Sign-up failed"));
 }
+
 function fbResetEmail() {
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
   const { email } = _fbReadEmailPass();
@@ -5012,6 +5085,47 @@ function fbResetEmail() {
     .then(() => { toast("Password reset email sent 📬"); _fbEmailErr(""); })
     .catch((e) => _fbEmailErr(e.message || "Could not send reset email"));
 }
+
+// Poll the current user's verification status so that returning to the app
+// after clicking the verification link automatically transitions the UI to
+// the signed-in state without requiring a manual re-login.
+function _fbStartVerifyPolling() {
+  if (_fbStartVerifyPolling._t) return;
+  const tick = async () => {
+    try {
+      const u = fbAuth && fbAuth.currentUser;
+      if (!u) { _fbStopVerifyPolling(); return; }
+      await u.reload();
+      if (u.emailVerified) {
+        _fbStopVerifyPolling();
+        toast("Email verified! ☁️ Sync active 🙏");
+        // Re-fire auth state so the rest of the app refreshes its UI/sync.
+        try { fbAuth.updateCurrentUser(u); } catch (_) {}
+        try {
+          const loIn = document.getElementById('fbLoggedIn');
+          const loOut = document.getElementById('fbLoggedOut');
+          if (loIn) loIn.style.display = '';
+          if (loOut) loOut.style.display = 'none';
+          const em = document.getElementById('fbUserEmail');
+          if (em) em.textContent = u.email || '';
+        } catch (_) {}
+      }
+    } catch (_) {}
+  };
+  _fbStartVerifyPolling._t = setInterval(tick, 3000);
+  _fbStartVerifyPolling._vis = () => { if (document.visibilityState === 'visible') tick(); };
+  document.addEventListener('visibilitychange', _fbStartVerifyPolling._vis);
+  window.addEventListener('focus', _fbStartVerifyPolling._vis);
+}
+function _fbStopVerifyPolling() {
+  if (_fbStartVerifyPolling._t) { clearInterval(_fbStartVerifyPolling._t); _fbStartVerifyPolling._t = null; }
+  if (_fbStartVerifyPolling._vis) {
+    document.removeEventListener('visibilitychange', _fbStartVerifyPolling._vis);
+    window.removeEventListener('focus', _fbStartVerifyPolling._vis);
+    _fbStartVerifyPolling._vis = null;
+  }
+}
+
 
 // ── Wipe ALL locally cached data for a given UID. Used on sign-out so
 //    the next login (same device or another) ALWAYS pulls authoritative

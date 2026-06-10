@@ -1017,26 +1017,47 @@
         Sign in with Zoho
       </button>
 
-      <!-- EMAIL / PASSWORD SIGN-IN -->
+      <!-- EMAIL / PASSWORD SIGN-IN (Lovable-style 2-step) -->
       <style>
-        .fb-email-input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:#1a1f3a !important;color:#fff !important;font-size:13px;font-family:Inter,sans-serif;margin-bottom:8px;box-sizing:border-box;color-scheme:dark;-webkit-text-fill-color:#fff;outline:none;height:auto;backdrop-filter:none}
+        .fb-email-input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:#1a1f3a !important;color:#fff !important;font-size:13px;font-family:Inter,sans-serif;box-sizing:border-box;color-scheme:dark;-webkit-text-fill-color:#fff;outline:none;height:auto;backdrop-filter:none}
         .fb-email-input::placeholder{color:rgba(255,255,255,0.45)}
         .fb-email-input:focus{border-color:rgba(74,144,226,0.6)}
         .fb-email-input:-webkit-autofill,.fb-email-input:-webkit-autofill:hover,.fb-email-input:-webkit-autofill:focus{-webkit-text-fill-color:#fff !important;-webkit-box-shadow:0 0 0 1000px #1a1f3a inset !important;box-shadow:0 0 0 1000px #1a1f3a inset !important;caret-color:#fff;transition:background-color 9999s ease-in-out 0s}
+        .fb-label{display:block;font-size:12px;font-weight:600;color:var(--tl);margin-bottom:6px;font-family:Inter,sans-serif}
+        .fb-primary-btn{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(74,144,226,0.45);background:linear-gradient(180deg,rgba(74,144,226,0.25),rgba(74,144,226,0.12));color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif}
+        .fb-primary-btn:hover{background:linear-gradient(180deg,rgba(74,144,226,0.35),rgba(74,144,226,0.18))}
+        .fb-link{color:var(--a2);text-decoration:underline;font-family:Inter,sans-serif;cursor:pointer;background:none;border:none;padding:0;font-size:inherit}
       </style>
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08);background:transparent;height:auto">
-        <div style="font-size:11px;color:var(--td);text-align:center;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">or use Email</div>
-        <div style="font-size:11px;color:var(--gold);text-align:center;margin-bottom:10px;padding:6px 8px;border-radius:8px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.15);line-height:1.5">
-          <b>New here?</b> Enter your email & password and tap <b>Create Account</b>.<br>
-          <b>Already have an account?</b> Tap <b>Sign In</b> to log in.
+      <div id="emailAuthBlock" style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08)">
+        <div style="font-size:11px;color:var(--td);text-align:center;margin-bottom:14px;letter-spacing:1px;text-transform:uppercase">or use Email</div>
+
+        <!-- STEP 1: email -->
+        <div id="emailStep1">
+          <label class="fb-label" for="fbEmailIn">Email</label>
+          <input type="email" id="fbEmailIn" class="fb-email-input" placeholder="Email" autocomplete="email" style="margin-bottom:14px">
+          <button class="fb-primary-btn" onclick="fbEmailContinue()"><span id="emailContinueLabel">Continue</span></button>
+          <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--td)" id="emailStep1Switch">
+            Don't have an account? <button type="button" class="fb-link" onclick="fbEmailSetMode('signup')">Create your account</button>
+          </div>
         </div>
-        <input type="email" id="fbEmailIn" class="fb-email-input" placeholder="Email address" autocomplete="email">
-        <input type="password" id="fbPassIn" class="fb-email-input" placeholder="Password (min 6 chars)" autocomplete="current-password" style="margin-bottom:10px">
-        <div style="display:flex;gap:8px">
-          <button onclick="fbSignInEmail()" style="flex:1;padding:9px;border-radius:10px;border:1px solid rgba(74,144,226,0.4);background:rgba(74,144,226,0.15);color:var(--a2);font-size:12px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">Sign In</button>
-          <button onclick="fbSignUpEmail()" style="flex:1;padding:9px;border-radius:10px;border:1px solid rgba(46,204,113,0.4);background:rgba(46,204,113,0.12);color:#7ee2a8;font-size:12px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">Create Account</button>
+
+        <!-- STEP 2: password -->
+        <div id="emailStep2" style="display:none">
+          <label class="fb-label">Email</label>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,215,0,0.25);background:rgba(255,215,0,0.06);margin-bottom:14px">
+            <span id="emailLockedText" style="color:#fff;font-size:13px;font-family:Inter,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0"></span>
+            <button type="button" class="fb-link" onclick="fbEmailBackToStep1()" style="margin-left:8px;flex-shrink:0">Edit</button>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <label class="fb-label" style="margin:0" for="fbPassIn">Password</label>
+            <button type="button" class="fb-link" id="forgotPwLink" onclick="fbResetEmail()" style="font-size:11px">Forgot password?</button>
+          </div>
+          <input type="password" id="fbPassIn" class="fb-email-input" placeholder="Password (min 6 chars)" autocomplete="current-password" style="margin-bottom:14px">
+          <button class="fb-primary-btn" onclick="fbEmailSubmit()"><span id="emailSubmitLabel">Log in</span></button>
+          <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--td)" id="emailStep2Switch">
+            Don't have an account? <button type="button" class="fb-link" onclick="fbEmailSetMode('signup')">Create your account</button>
+          </div>
         </div>
-        <button onclick="fbResetEmail()" style="width:100%;margin-top:8px;padding:6px;border-radius:8px;border:none;background:transparent;color:var(--td);font-size:11px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">Forgot password?</button>
       </div>
 
       <div id="fbErr" style="font-size:12px;color:var(--red);margin-top:6px;text-align:center"></div>

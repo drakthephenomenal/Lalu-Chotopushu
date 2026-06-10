@@ -5025,13 +5025,24 @@ function _fbReadEmailPass() {
 }
 
 function _fbActionSettings() {
-  // After the user clicks the link in their inbox, Firebase shows its own
-  // verified page and then redirects back here. The app boot detects that
-  // emailVerified flipped and flips the UI to the signed-in state — same
-  // experience as the Google flow (land back in the app, already in).
+  // Try to pass a continue URL so Firebase redirects the user back into the
+  // app after they click the verification link. If the URL isn't whitelisted
+  // in Firebase's Authorized Domains the call will reject — callers must
+  // fall back to sendEmailVerification() with no arguments.
   try {
     return { url: window.location.origin + window.location.pathname, handleCodeInApp: false };
   } catch (_) { return undefined; }
+}
+
+// Send verification email robustly: try with continue-URL action settings
+// first; if that fails (e.g. unauthorized continue URI), retry without.
+function _fbSendVerification(u) {
+  if (!u || !u.sendEmailVerification) return Promise.resolve();
+  return u.sendEmailVerification(_fbActionSettings())
+    .catch((err) => {
+      console.warn('sendEmailVerification with actionSettings failed, retrying without:', err && err.message);
+      return u.sendEmailVerification();
+    });
 }
 
 function fbSignInEmail() {
@@ -5042,9 +5053,9 @@ function fbSignInEmail() {
     .then((cred) => {
       const u = cred && cred.user;
       if (u && !u.emailVerified) {
-        // Keep the session active so the moment the user verifies (in the same
-        // or another tab) the app picks it up — no manual sign-in required.
-        try { u.sendEmailVerification(_fbActionSettings()); } catch (_e) {}
+        // Session stays active. Resend a fresh verification link and poll so
+        // returning to the app after clicking it signs the user in.
+        _fbSendVerification(u).catch(() => {});
         _fbEmailErr("Verification email sent to " + (u.email || email) + ". Open the link, then come back — you'll be signed in automatically.");
         _fbStartVerifyPolling();
         return;
@@ -5062,20 +5073,18 @@ function fbSignUpEmail() {
   fbAuth.createUserWithEmailAndPassword(email, pass)
     .then((cred) => {
       const u = cred && cred.user;
-      const send = (u && u.sendEmailVerification)
-        ? u.sendEmailVerification(_fbActionSettings())
-        : Promise.resolve();
-      return send.then(() => {
-        // IMPORTANT: do NOT sign out. Keep the session active so once the
-        // user clicks the verification link and returns, the app is already
-        // logged in (mirrors the Google sign-in UX).
-        _fbEmailErr("");
-        toast("Verification email sent 📬 Open the link to finish sign-in.");
-        _fbStartVerifyPolling();
+      // Always show success UX; verification send is best-effort with fallback.
+      _fbEmailErr("");
+      toast("Account created 🎉 Verification email sent — open the link to finish.");
+      _fbStartVerifyPolling();
+      return _fbSendVerification(u).catch((err) => {
+        console.warn('Verification email failed:', err && err.message);
+        _fbEmailErr("Couldn't send verification email automatically. Tap 'Resend' or check spam.");
       });
     })
     .catch((e) => _fbEmailErr(e.message || "Sign-up failed"));
 }
+
 
 function fbResetEmail() {
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }

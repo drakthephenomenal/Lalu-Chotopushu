@@ -1021,7 +1021,7 @@
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08)">
         <div style="font-size:11px;color:var(--td);text-align:center;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">or use Phone number</div>
         <div style="font-size:11px;color:var(--gold);text-align:left;margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.18);line-height:1.55">
-          Enter your number with country code (e.g. <b>+919876543210</b>). We'll text you a one-time code (OTP). Standard SMS rates may apply.
+          Enter your number with country code (e.g. <b>+919876543210</b>). OTP comes by SMS; on Android it may also appear above your keyboard—tap that code or check your Messages/SMS inbox.
         </div>
         <input type="tel" id="fbPhoneIn" class="fb-email-input" placeholder="+91 98765 43210" autocomplete="tel">
         <div id="fbPhoneSendRow" style="display:flex;gap:8px">
@@ -1035,8 +1035,9 @@
           </div>
           <button onclick="fbSendPhoneOtp(true)" style="width:100%;margin-top:6px;padding:6px;border-radius:8px;border:none;background:transparent;color:var(--td);font-size:11px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">Resend OTP</button>
         </div>
-        <!-- Invisible reCAPTCHA mount point (required by Firebase Phone Auth) -->
-        <div id="fbRecaptchaContainer" style="margin-top:6px"></div>
+        <!-- Firebase phone verification runs invisibly; keep the badge from covering bottom navigation. -->
+        <style>#fbRecaptchaContainer{position:absolute!important;left:-9999px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important}.grecaptcha-badge{visibility:hidden!important;pointer-events:none!important}</style>
+        <div id="fbRecaptchaContainer" aria-hidden="true"></div>
       </div>
 
 

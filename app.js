@@ -5019,20 +5019,35 @@ function _fbEnsureRecaptcha() {
   if (!fbAuth) return null;
   if (_fbRecaptcha) return _fbRecaptcha;
   try {
+    _fbHideRecaptchaBadge();
     _fbRecaptcha = new firebase.auth.RecaptchaVerifier("fbRecaptchaContainer", {
       size: "invisible",
-      callback: function () { /* solved — proceed */ },
+      callback: function () { _fbHideRecaptchaBadge(); },
       "expired-callback": function () {
         try { _fbRecaptcha.clear(); } catch (_) {}
         _fbRecaptcha = null;
       }
     });
-    _fbRecaptcha.render().catch(function (e) { console.warn("reCAPTCHA render:", e && e.message); });
+    _fbRecaptcha.render()
+      .then(function () { _fbHideRecaptchaBadge(); })
+      .catch(function (e) { console.warn("reCAPTCHA render:", e && e.message); });
   } catch (e) {
     console.warn("reCAPTCHA init:", e && e.message);
     _fbRecaptcha = null;
   }
   return _fbRecaptcha;
+}
+
+function _fbHideRecaptchaBadge() {
+  try {
+    var st = document.getElementById("fbRecaptchaHideStyle");
+    if (!st) {
+      st = document.createElement("style");
+      st.id = "fbRecaptchaHideStyle";
+      st.textContent = ".grecaptcha-badge{visibility:hidden!important;pointer-events:none!important}#fbRecaptchaContainer{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;overflow:hidden!important}";
+      document.head.appendChild(st);
+    }
+  } catch (_) {}
 }
 
 function _fbReadPhone() {
@@ -5066,8 +5081,8 @@ function fbSendPhoneOtp(isResend) {
       _fbInfoModal("📱 OTP sent",
         '<p style="margin:0 0 10px">A 6-digit code has just been texted to:<br><span style="color:#ffd97a">' + phone + '</span></p>'
         + '<ol style="margin:8px 0 10px 18px;padding:0">'
-        +   '<li>Open the SMS and read the 6-digit code.</li>'
-        +   '<li>Type it into the <b>OTP</b> field and tap <b>Verify &amp; Sign In</b>.</li>'
+        +   '<li>Check your Messages/SMS inbox. On Android, the code may also appear in the keyboard suggestion/clipboard bar.</li>'
+        +   '<li>Tap that suggested code or type it into the <b>OTP</b> field, then tap <b>Verify &amp; Sign In</b>.</li>'
         +   '<li>Didn\'t get it within a minute? Tap <b>Resend OTP</b>.</li>'
         + '</ol>'
         + '<p style="margin:10px 0 0;font-size:12.5px;opacity:.85">Make sure the number includes your country code (e.g. <b>+91</b> for India, <b>+1</b> for US).</p>'

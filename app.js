@@ -45,7 +45,7 @@ const App = {
     ms: 108,
     dt: 0,
     lt: 0,
-    cfg: { vib: true, sound: true, soundType: "bell" },
+    cfg: { vib: true, sound: true, soundType: "shankya" },
     history: {},
     h28: {},
     stotrams: {},
@@ -1218,7 +1218,7 @@ function playShankya() {
 
 // Decide which completion sound to play based on user preference
 function playMalaSound() {
-  const t = (App.S && App.S.cfg && App.S.cfg.soundType) || "bell";
+  const t = (App.S && App.S.cfg && App.S.cfg.soundType) || "shankya";
   if (t === "shankya") playShankya();
   else playSynthBell();
 }
@@ -1903,7 +1903,7 @@ function populateSettingsUI() {
   if (tgG) App.S.gaudiyaMode ? tgG.classList.add("on") : tgG.classList.remove("on");
   // Sound type select
   const stSel = document.getElementById("soundTypeSel");
-  if (stSel) stSel.value = (App.S.cfg && App.S.cfg.soundType) || "bell";
+  if (stSel) stSel.value = (App.S.cfg && App.S.cfg.soundType) || "shankya";
   // App link display (if visible)
   try {
     const linkEl = document.getElementById("appLinkDisplay");
@@ -4686,7 +4686,7 @@ function fbInit() {
             ms: 108,
             dt: 0,
             lt: 0,
-            cfg: { vib: true, sound: true, soundType: "bell" },
+            cfg: { vib: true, sound: true, soundType: "shankya" },
             history: {},
             h28: {},
             stotrams: {},
@@ -4793,7 +4793,7 @@ function fbInit() {
             ms: 108,
             dt: 0,
             lt: 0,
-            cfg: { vib: true, sound: true, soundType: "bell" },
+            cfg: { vib: true, sound: true, soundType: "shankya" },
             history: {},
             h28: {},
             stotrams: {},
@@ -4972,7 +4972,16 @@ function fbSignInEmail() {
   const { email, pass } = _fbReadEmailPass();
   if (!email || !pass) { _fbEmailErr("Enter email and password"); return; }
   fbAuth.signInWithEmailAndPassword(email, pass)
-    .then(() => { toast("Signed in! ☁️ Sync active 🙏"); _fbEmailErr(""); })
+    .then((cred) => {
+      const u = cred && cred.user;
+      if (u && !u.emailVerified) {
+        try { u.sendEmailVerification(); } catch (_e) {}
+        try { fbAuth.signOut(); } catch (_e) {}
+        _fbEmailErr("Please verify your email first. A new verification link has been sent to " + (u.email || email) + ".");
+        return;
+      }
+      toast("Signed in! ☁️ Sync active 🙏"); _fbEmailErr("");
+    })
     .catch((e) => _fbEmailErr(e.message || "Sign-in failed"));
 }
 function fbSignUpEmail() {
@@ -4981,7 +4990,18 @@ function fbSignUpEmail() {
   if (!email || !pass) { _fbEmailErr("Enter email and password"); return; }
   if (pass.length < 6) { _fbEmailErr("Password must be at least 6 characters"); return; }
   fbAuth.createUserWithEmailAndPassword(email, pass)
-    .then(() => { toast("Account created! ☁️ Sync active 🙏"); _fbEmailErr(""); })
+    .then((cred) => {
+      const u = cred && cred.user;
+      const send = (u && u.sendEmailVerification)
+        ? u.sendEmailVerification()
+        : Promise.resolve();
+      return send.then(() => {
+        try { fbAuth.signOut(); } catch (_e) {}
+        _fbEmailErr("");
+        toast("Verification email sent 📬 Please verify, then sign in.");
+        try { alert("A verification link has been sent to " + (u && u.email ? u.email : email) + ".\n\nPlease open it from your inbox to verify your email, then come back and Sign In."); } catch (_e) {}
+      });
+    })
     .catch((e) => _fbEmailErr(e.message || "Sign-up failed"));
 }
 function fbResetEmail() {
@@ -5062,7 +5082,7 @@ async function fbSignOut() {
   const _prevLng = App.S && App.S.lastLng != null ? App.S.lastLng : null;
   App.S = {
     tk: App.getTk(), ms: 108, dt: 0, lt: 0,
-    cfg: { vib: true, sound: true, soundType: "bell" },
+    cfg: { vib: true, sound: true, soundType: "shankya" },
     history: {}, h28: {}, stotrams: {}, brahma: {}, customSt: [],
     timerHistory: {}, timer28History: {}, sankalpas: [], occasions: {},
     syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {},

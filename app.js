@@ -81,6 +81,11 @@ const App = {
     nameJapDeductHK: 0,
     gaudiyaMode: false,  // single mode for all — Gaudiya/ISKCON
     hkLang: "hi",
+    lbOptIn: false,        // leaderboard opt-in
+    lbDisplayName: "",     // leaderboard display name
+    bgRadhaVallabh: 1,
+    bgHitju: 1,
+    bgGurudev: 1,
   },
   lmcRV: 0,
   lmcHK: 0,
@@ -822,6 +827,8 @@ const App = {
     this.save();
     // Animate mala duration on timer display
     this.flashMalaDuration(malaDuration);
+    // ✨ MALA GLOW FLASH: briefly reveal all deity images fully with intense glow
+    if (typeof triggerMalaGlowFlash === 'function') triggerMalaGlowFlash();
   },
 
   flashMalaDuration(sec) {
@@ -1857,6 +1864,7 @@ function sv(id, btn) {
 // Safe to call anytime (no-ops when elements aren't present yet).
 // Called when navigating to Settings AND after every cloud pull / sign-in.
 function populateSettingsUI() {
+  if (typeof renderPhotoPickers === 'function') renderPhotoPickers();
   const ms = App.S.ms || 108;
   // Radha Daily
   const dtIn = document.getElementById("dtIn");
@@ -1908,6 +1916,18 @@ function populateSettingsUI() {
   try {
     const linkEl = document.getElementById("appLinkDisplay");
     if (linkEl && typeof _getAppUrl === "function") linkEl.textContent = _getAppUrl();
+  } catch (_e) {}
+  // Leaderboard settings
+  try { populateLbSettingsUI(); } catch (_e) {}
+  // Background Photos settings
+  try {
+    const inBgRV = document.getElementById("inBgRadhaVallabh");
+    if (inBgRV) inBgRV.value = App.S.bgRadhaVallabh || 1;
+    const inBgHJ = document.getElementById("inBgHitju");
+    if (inBgHJ) inBgHJ.value = App.S.bgHitju || 1;
+    const inBgGD = document.getElementById("inBgGurudev");
+    if (inBgGD) inBgGD.value = App.S.bgGurudev || 1;
+    if (typeof applyBgPhotos === 'function') applyBgPhotos();
   } catch (_e) {}
 }
 
@@ -4750,7 +4770,7 @@ function fbInit() {
         document.getElementById("fbLoggedOut").style.display = "none";
         document.getElementById("fbLoggedIn").style.display = "block";
         document.getElementById("fbUserEmail").textContent =
-          user.email || user.displayName || "Google User";
+          user.phoneNumber || user.email || user.displayName || "Devotee";
         setSyncPill("syncing", "Loading from cloud…");
         // ── ALWAYS pull from Firebase first on every login/refresh ──
         // fbMigrate() does a direct .get() (not just onSnapshot) so it is
@@ -5052,15 +5072,19 @@ function _fbHideRecaptchaBadge() {
 
 function _fbReadPhone() {
   const el = document.getElementById("fbPhoneIn");
+  const codeEl = document.getElementById("fbPhoneCountry");
+  const code = codeEl ? codeEl.value : "+91";
   let v = (el && el.value || "").trim().replace(/[\s\-()]/g, "");
-  return v;
+  if (!v) return "";
+  if (v.startsWith('+')) return v;
+  return code + v;
 }
 
 function fbSendPhoneOtp(isResend) {
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
   const phone = _fbReadPhone();
   if (!phone || !/^\+[1-9]\d{6,14}$/.test(phone)) {
-    _fbEmailErr("Enter phone with country code, e.g. +919876543210");
+    _fbEmailErr("Enter phone number (e.g. 9876543210)");
     return;
   }
   const verifier = _fbEnsureRecaptcha();
@@ -5321,6 +5345,11 @@ async function fbPushFull() {
     gaudiyaMode: App.S.gaudiyaMode || false,
     dt28Cycles: App.S.dt28Cycles || 0,
     milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
+    lbOptIn: App.S.lbOptIn || false,
+    lbDisplayName: App.S.lbDisplayName || "",
+    bgRadhaVallabh: App.S.bgRadhaVallabh || 1,
+    bgHitju: App.S.bgHitju || 1,
+    bgGurudev: App.S.bgGurudev || 1,
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId,
   };
@@ -5331,6 +5360,8 @@ async function fbPushFull() {
       .collection("data")
       .doc("main")
       .set(payload);
+    // ── Push leaderboard entry if opted in ──
+    pushLeaderboard().catch(() => {});
     App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history || {}));
     App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28 || {}));
     App.S.syncBaselineTimer = JSON.parse(
@@ -5477,6 +5508,12 @@ function fbApplyRemote(d) {
     const inp = document.getElementById("msSadhanaStart");
     if (inp) inp.value = d.sadhanaStart;
   }
+  // Leaderboard & Photo settings
+  if (d.lbOptIn !== undefined) App.S.lbOptIn = d.lbOptIn;
+  if (d.lbDisplayName !== undefined) App.S.lbDisplayName = d.lbDisplayName;
+  if (d.bgRadhaVallabh !== undefined) App.S.bgRadhaVallabh = d.bgRadhaVallabh;
+  if (d.bgHitju !== undefined) App.S.bgHitju = d.bgHitju;
+  if (d.bgGurudev !== undefined) App.S.bgGurudev = d.bgGurudev;
 
   // Old saves wrote both startDate AND endDate to occasions. Remove the endDate entry
 
@@ -10381,6 +10418,118 @@ function _histSetActive(btn) {
   }
 }
 
+function showHistDay(tk, filterMode) {
+  const detail = document.getElementById("histDayDetail");
+  const title = document.getElementById("histDayTitle");
+  const content = document.getElementById("histDayContent");
+
+  const ms = App.S.ms || 108;
+  const isGaudiya = App.S.gaudiyaMode || false;
+  const _hkDayLang = App.S.hkLang || "hi";
+  const _hkDayLabel = _hkDayLang === "bn" ? "হরে কৃষ্ণ মহামন্ত্র" : "हरे कृष्ण महामंत्र";
+
+  // Map deityKey names to showHistSet set values
+  const deityToSet = { radha: 'radha', rv: 'rv', '28': '28', hk: 'hk' };
+  const autoSet = filterMode ? deityToSet[filterMode] : null;
+
+  // If we have a specific mode filter AND that mode has data, go straight to per-mala detail
+  if (autoSet) {
+    const radha = App.S.history[tk] || 0;
+    const rv = (App.S.historyRV || {})[tk] || 0;
+    const hk = (App.S.historyHK || {})[tk] || 0;
+    const taps28 = (App.S.h28 || {})[tk] || 0;
+    const hasData = autoSet === 'radha' ? radha > 0
+                  : autoSet === 'rv'    ? rv > 0
+                  : autoSet === 'hk'    ? hk > 0
+                  : taps28 > 0;
+
+    // Build a minimal title showing date + mode
+    const modeLabel = autoSet === 'radha' ? '🌸 Radha Jap'
+                    : autoSet === 'rv'    ? '🌼 Radha Vallabh'
+                    : autoSet === '28'   ? '🪷 28 Names'
+                    : _hkDayLabel;
+    title.textContent = _histFmtDate(tk) + ' — ' + modeLabel;
+    detail.style.display = "block";
+    detail.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+    // Stash context then immediately show per-mala set detail
+    window._histDayCtx = { tk, isToday: tk === App.S.tk };
+
+    if (!hasData) {
+      content.innerHTML = `<div style="text-align:center;color:var(--td);padding:24px;font-size:13px">
+        No ${modeLabel} recorded on this day.</div>`;
+      return;
+    }
+
+    // Show the per-mala list directly — no card grid needed
+    content.innerHTML = '<div id="histSetDetail" style="margin-top:4px"></div>';
+    showHistSet(autoSet);
+    return;
+  }
+
+  // Default: no filter mode — show all types grid
+  title.textContent = _histFmtDate(tk);
+  detail.style.display = "block";
+  detail.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+  const radha = App.S.history[tk] || 0;
+  const rv = App.S.historyRV[tk] || 0;
+  const hk = App.S.historyHK[tk] || 0;
+  const taps28 = App.S.h28[tk] || 0;
+  const tSecR = App.S.timerHistory[tk] || 0;
+  const tSecRV = App.S.timerHistoryRV[tk] || 0;
+  const tSecHK = App.S.timerHistoryHK[tk] || 0;
+  const t28Sec = App.S.timer28History[tk] || 0;
+
+  const radhaM = Math.floor(radha / ms);
+  const rvM = Math.floor(rv / ms);
+  const hkM = Math.floor(hk / ms);
+  const cyc28 = Math.floor(taps28 / 28);
+  const grand = isGaudiya ? tSecHK : tSecR + tSecRV + t28Sec;
+  const fmtN = (n) => n.toLocaleString();
+
+  // Stash data for the per-set drill-down
+  window._histDayCtx = { tk, isToday: tk === App.S.tk };
+
+  // Build clickable per-set cards (premium style, same as Period Totals)
+  const card = (cls, set, label, mainNum, mainUnit, sub, time, enabled) => `
+    <div class="pt-card ${cls}${enabled ? " pt-card-tap" : " pt-card-dim"}"
+         ${enabled ? `onclick="showHistSet('${set}')"` : ""}
+         role="${enabled ? "button" : ""}" tabindex="${enabled ? "0" : "-1"}">
+      <div class="pt-card-label">${label}</div>
+      <div class="pt-card-main"><span class="pt-num">${fmtN(mainNum)}</span><span class="pt-unit">${mainUnit}</span></div>
+      <div class="pt-card-sub">${sub}</div>
+      <div class="pt-card-time">⏱ ${time}</div>
+      ${enabled ? '<div class="pt-card-chev">›</div>' : ""}
+    </div>`;
+
+  let html = "";
+  html += `<div class="pt-head" style="margin-top:2px"><span class="pt-head-icon">📊</span><span class="pt-head-title">Day Totals</span><span class="pt-head-hint">tap a set for per-mala detail</span></div>`;
+
+  if (isGaudiya) {
+    html += `<div class="pt-grid pt-grid-1">`;
+    html += card(
+      "pt-hk", "hk", _hkDayLabel,
+      hkM, hkM === 1 ? "mala" : "malas",
+      fmtN(hk) + " names", _histFmtSec(tSecHK), hk > 0,
+    );
+    html += `</div>`;
+  } else {
+    html += `<div class="pt-grid pt-grid-3">`;
+    html += card("pt-radha", "radha", "Radha Jap", radhaM, radhaM === 1 ? "mala" : "malas", fmtN(radha) + " names", _histFmtSec(tSecR), radha > 0);
+    html += card("pt-rv",    "rv",    "RV Jap",    rvM,    rvM === 1    ? "mala" : "malas", fmtN(rv)    + " names", _histFmtSec(tSecRV), rv > 0);
+    html += card("pt-28",   "28",    "28 Names",  cyc28,  cyc28 === 1  ? "cycle" : "cycles", fmtN(taps28) + " taps", _histFmtSec(t28Sec), taps28 > 0);
+    html += card("pt-hk",   "hk",    _hkDayLabel, hkM,    hkM === 1    ? "mala" : "malas", fmtN(hk)    + " names", _histFmtSec(tSecHK), hk > 0);
+    html += `</div>`;
+  }
+  html += `<div class="pt-total"><span class="pt-total-label">Total Time</span><span class="pt-total-val">${_histFmtSec(grand)}</span></div>`;
+
+  // Drill-down slot (populated by showHistSet)
+  html += `<div id="histSetDetail" style="margin-top:14px"></div>`;
+
+  content.innerHTML = html;
+}
+
 function histPreset(days, btn) {
   const to = new Date();
   const from = new Date();
@@ -10662,7 +10811,7 @@ function showHistDeityDates(deityKey) {
   const rowsHtml = rows.map(({ tk, val, sec }) => {
     const main = c.toMain(val);
     return `
-      <div class="hdd-row" onclick="showHistDay('${tk}')">
+      <div class="hdd-row" onclick="showHistDay('${tk}', '${deityKey}')">
         <div class="hdd-date">${_histFmtDate(tk)}</div>
         <div class="hdd-main" style="color:${c.color}">
           <span class="hdd-num">${fmtN(main)}</span>
@@ -10707,110 +10856,6 @@ function closeHistDeityDrill() {
   if (sumLine) sumLine.textContent = _activeDays + " active day" + (_activeDays !== 1 ? "s" : "") + " in range · tap a card above to view dates";
 }
 
-function showHistDay(tk) {
-  const detail = document.getElementById("histDayDetail");
-  const title = document.getElementById("histDayTitle");
-  const content = document.getElementById("histDayContent");
-
-  title.textContent = _histFmtDate(tk);
-  detail.style.display = "block";
-  detail.scrollIntoView({ behavior: "smooth", block: "nearest" });
-
-  const ms = App.S.ms || 108;
-  const isGaudiya = App.S.gaudiyaMode || false;
-  const radha = App.S.history[tk] || 0;
-  const rv = App.S.historyRV[tk] || 0;
-  const hk = App.S.historyHK[tk] || 0;
-  const taps28 = App.S.h28[tk] || 0;
-  const tSecR = App.S.timerHistory[tk] || 0;
-  const tSecRV = App.S.timerHistoryRV[tk] || 0;
-  const tSecHK = App.S.timerHistoryHK[tk] || 0;
-  const t28Sec = App.S.timer28History[tk] || 0;
-
-  const radhaM = Math.floor(radha / ms);
-  const rvM = Math.floor(rv / ms);
-  const hkM = Math.floor(hk / ms);
-  const cyc28 = Math.floor(taps28 / 28);
-  const grand = isGaudiya ? tSecHK : tSecR + tSecRV + t28Sec;
-  const fmtN = (n) => n.toLocaleString();
-
-  // Full localized HK name
-  const _hkDayLang = App.S.hkLang || "hi";
-  const _hkDayLabel =
-    _hkDayLang === "bn" ? "হরে কৃষ্ণ মহামন্ত্র" : "हरे कृष्ण महामंत्र";
-
-  // Stash data for the per-set drill-down
-  window._histDayCtx = { tk, isToday: tk === App.S.tk };
-
-  // Build clickable per-set cards (premium style, same as Period Totals)
-  const card = (cls, set, label, mainNum, mainUnit, sub, time, enabled) => `
-    <div class="pt-card ${cls}${enabled ? " pt-card-tap" : " pt-card-dim"}"
-         ${enabled ? `onclick="showHistSet('${set}')"` : ""}
-         role="${enabled ? "button" : ""}" tabindex="${enabled ? "0" : "-1"}">
-      <div class="pt-card-label">${label}</div>
-      <div class="pt-card-main"><span class="pt-num">${fmtN(mainNum)}</span><span class="pt-unit">${mainUnit}</span></div>
-      <div class="pt-card-sub">${sub}</div>
-      <div class="pt-card-time">⏱ ${time}</div>
-      ${enabled ? '<div class="pt-card-chev">›</div>' : ""}
-    </div>`;
-
-  let html = "";
-  html += `<div class="pt-head" style="margin-top:2px"><span class="pt-head-icon">📊</span><span class="pt-head-title">Day Totals</span><span class="pt-head-hint">tap a set for per-mala detail</span></div>`;
-
-  if (isGaudiya) {
-    html += `<div class="pt-grid pt-grid-1">`;
-    html += card(
-      "pt-hk",
-      "hk",
-      _hkDayLabel,
-      hkM,
-      hkM === 1 ? "mala" : "malas",
-      fmtN(hk) + " names",
-      _histFmtSec(tSecHK),
-      hk > 0,
-    );
-    html += `</div>`;
-  } else {
-    html += `<div class="pt-grid pt-grid-3">`;
-    html += card(
-      "pt-radha",
-      "radha",
-      "Radha Jap",
-      radhaM,
-      radhaM === 1 ? "mala" : "malas",
-      fmtN(radha) + " names",
-      _histFmtSec(tSecR),
-      radha > 0,
-    );
-    html += card(
-      "pt-rv",
-      "rv",
-      "RV Jap",
-      rvM,
-      rvM === 1 ? "mala" : "malas",
-      fmtN(rv) + " names",
-      _histFmtSec(tSecRV),
-      rv > 0,
-    );
-    html += card(
-      "pt-28",
-      "28",
-      "28 Names",
-      cyc28,
-      cyc28 === 1 ? "cycle" : "cycles",
-      fmtN(taps28) + " taps",
-      _histFmtSec(t28Sec),
-      taps28 > 0,
-    );
-    html += `</div>`;
-  }
-  html += `<div class="pt-total"><span class="pt-total-label">Total Time</span><span class="pt-total-val">${_histFmtSec(grand)}</span></div>`;
-
-  // Drill-down slot (populated by showHistSet)
-  html += `<div id="histSetDetail" style="margin-top:14px"></div>`;
-
-  content.innerHTML = html;
-}
 
 function showHistSet(set) {
   const ctx = window._histDayCtx;
@@ -11533,3 +11578,651 @@ function _fmtDateDMY(dateStr) {
     init();
   }
 })();
+
+// ═══════════════════════════════════════════════════════
+// LEADERBOARD MODULE
+// ═══════════════════════════════════════════════════════
+
+window._lbPeriod = 'alltime';
+window._lbUnsubscribe = null;
+
+/** Get the date key prefix for the current period filter */
+function _lbGetPeriodKeys(period) {
+  const now = new Date();
+  const keys = [];
+  if (period === 'alltime') return null; // null = use totalJap field (no date filter)
+  if (period === 'today') {
+    if (window.App && window.App.S && window.App.S.tk) {
+      return [window.App.S.tk];
+    }
+    return [now.toISOString().slice(0,10)];
+  }
+  if (period === 'month') {
+    const y = now.getFullYear(), m = now.getMonth();
+    const days = new Date(y, m + 1, 0).getDate();
+    for (let d = 1; d <= days; d++) {
+      const dd = String(d).padStart(2,'0');
+      const mm = String(m + 1).padStart(2,'0');
+      keys.push(`${y}-${mm}-${dd}`);
+    }
+    return keys;
+  }
+  if (period === 'week') {
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const dd = String(d.getDate()).padStart(2,'0');
+      keys.push(`${y}-${m}-${dd}`);
+    }
+    return keys;
+  }
+  return null;
+}
+
+/** Format large jap counts with K/L abbreviations */
+function _lbFmtJap(n) {
+  if (!n) return '0';
+  if (n >= 10000000) return (n/10000000).toFixed(1).replace(/\.0$/,'') + ' Cr';
+  if (n >= 100000)   return (n/100000).toFixed(1).replace(/\.0$/,'')  + ' L';
+  if (n >= 1000)     return (n/1000).toFixed(1).replace(/\.0$/,'')    + 'K';
+  return n.toLocaleString('en-IN');
+}
+
+/** Load leaderboard from Firestore and render it */
+async function loadLeaderboard(period) {
+  window._lbPeriod = period || 'alltime';
+
+  // Unsubscribe any previous listener
+  if (window._lbUnsubscribe) { try { window._lbUnsubscribe(); } catch(_) {} }
+
+  const list = document.getElementById('lbList');
+  const empty = document.getElementById('lbEmpty');
+  const signInPrompt = document.getElementById('lbSigninPrompt');
+  const optinBanner = document.getElementById('lbOptinBanner');
+  const myRankCard = document.getElementById('lbMyRank');
+
+  // Hide/show states
+  if (empty) empty.style.display = 'none';
+  if (signInPrompt) signInPrompt.style.display = 'none';
+  if (myRankCard) myRankCard.style.display = 'none';
+
+  // Show shimmer
+  if (list) {
+    list.innerHTML = '';
+    for (let i = 0; i < 5; i++) {
+      const sh = document.createElement('div');
+      sh.className = 'lb-shimmer';
+      list.appendChild(sh);
+    }
+  }
+
+  // Must be signed in
+  if (!fbUser || !fbDb) {
+    if (list) list.innerHTML = '';
+    if (signInPrompt) signInPrompt.style.display = 'block';
+    if (optinBanner) optinBanner.style.display = 'none';
+    return;
+  }
+
+  // Show opt-in banner if not opted in
+  const optedIn = App.S.lbOptIn || false;
+  if (optinBanner) optinBanner.style.display = optedIn ? 'none' : 'flex';
+
+  // Populate settings UI
+  populateLbSettingsUI();
+
+  try {
+    // Real-time snapshot of leaderboard collection
+    window._lbUnsubscribe = fbDb.collection('leaderboard')
+      .where('optIn', '==', true)
+      .limit(100)
+      .onSnapshot(function(snap) {
+        const docs = [];
+        snap.forEach(function(doc) {
+          const d = doc.data();
+          d._uid = doc.id;
+          docs.push(d);
+        });
+        renderLeaderboard(docs, window._lbPeriod);
+      }, function(err) {
+        console.warn('Leaderboard snapshot error:', err.message);
+        if (list) list.innerHTML = '<div class="lb-empty"><div style="font-size:40px;margin-bottom:12px">⚠️</div><div style="font-size:13px;color:var(--rl)">Could not load leaderboard</div></div>';
+      });
+  } catch(e) {
+    console.warn('loadLeaderboard error:', e.message);
+  }
+}
+
+/** Render leaderboard entries given raw Firestore docs */
+function renderLeaderboard(docs, period) {
+  const list = document.getElementById('lbList');
+  const empty = document.getElementById('lbEmpty');
+  const myRankCard = document.getElementById('lbMyRank');
+  const myRankNum = document.getElementById('lbMyRankNum');
+  const myRankJap = document.getElementById('lbMyRankJap');
+  if (!list) return;
+
+  // Compute score for each doc based on period
+  const periodKeys = _lbGetPeriodKeys(period);
+  const scored = docs.map(function(d) {
+    let score = 0;
+    let timeScore = 0;
+    if (!periodKeys) {
+      // All time — use stored totalJap
+      score = (d.totalJap || 0);
+      timeScore = (d.timerSeconds || 0);
+      const sr = Object.values(d.history || {}).reduce((a,b)=>a+b,0);
+      const srv = Object.values(d.historyRV || {}).reduce((a,b)=>a+b,0);
+      const shk = Object.values(d.historyHK || {}).reduce((a,b)=>a+b,0);
+      const s28 = Object.values(d.history28 || {}).reduce((a,b)=>a+b,0);
+      d._breakdown = { r: sr, rv: srv, hk: shk, n28: s28 };
+    } else {
+      // Sum history for this period
+      const hist   = d.history || {};
+      const histRV = d.historyRV || {};
+      const histHK = d.historyHK || {};
+      const hist28 = d.history28 || {};
+      let sr = 0, srv = 0, shk = 0, s28 = 0;
+      let tr = 0, trv = 0, thk = 0, t28 = 0;
+      const tHist = d.timerHistory || {};
+      const tHistRV = d.timerHistoryRV || {};
+      const tHistHK = d.timerHistoryHK || {};
+      const tHist28 = d.timer28History || {};
+      periodKeys.forEach(function(k) {
+        sr += (hist[k] || 0);
+        srv += (histRV[k] || 0);
+        shk += (histHK[k] || 0);
+        s28 += (hist28[k] || 0);
+        tr += (tHist[k] || 0);
+        trv += (tHistRV[k] || 0);
+        thk += (tHistHK[k] || 0);
+        t28 += (tHist28[k] || 0);
+      });
+      score += sr + srv + shk + s28;
+      timeScore += tr + trv + thk + t28;
+      d._breakdown = { r: sr, rv: srv, hk: shk, n28: s28 };
+    }
+    return { ...d, score, timeScore };
+  });
+
+  // Sort descending, filter out zero scores
+  const filtered = scored
+    .filter(function(d) { return d.score > 0; })
+    .sort(function(a, b) { return b.score - a.score; })
+    .slice(0, 50);
+
+  if (!filtered.length) {
+    list.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    if (myRankCard) myRankCard.style.display = 'none';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  // Find current user's rank
+  const myUid = fbUser && fbUser.uid;
+  let myRank = -1;
+  let myScore = 0;
+  filtered.forEach(function(d, idx) {
+    if (d._uid === myUid) { myRank = idx + 1; myScore = d.score; }
+  });
+
+  // Update my-rank card
+  if (myRank > 0 && App.S.lbOptIn) {
+    if (myRankCard) myRankCard.style.display = 'flex';
+    if (myRankNum) myRankNum.textContent = '#' + myRank;
+    if (myRankJap) myRankJap.textContent = _lbFmtJap(myScore) + ' jap';
+  } else {
+    if (myRankCard) myRankCard.style.display = 'none';
+  }
+
+  // Build HTML
+  const medals = ['🥇','🥈','🥉'];
+  const html = filtered.map(function(d, idx) {
+    const rank = idx + 1;
+        const isMe = (d._uid === myUid);
+    const isTop3 = rank <= 3;
+    const medal = rank <= 3 ? medals[rank-1] : null;
+    const badgeClass = rank === 1 ? 'lb-badge-1' : rank === 2 ? 'lb-badge-2' : rank === 3 ? 'lb-badge-3' : 'lb-badge-n';
+    const badgeContent = medal ? medal : rank;
+    const rowClass = 'lb-row' + (isMe ? ' lb-row-me' : '') + (isTop3 ? ' lb-row-top3' : '');
+    const nameClass = 'lb-name' + (isMe ? ' lb-name-me' : '');
+    const meMark = isMe ? ' ✦ You' : '';
+    const name = (d.displayName || 'Anonymous Devotee').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const malas = Math.floor(d.score / (App.S.ms || 108));
+    
+    let b = d._breakdown || { r:0, rv:0, hk:0, n28:0 };
+    let bdStr = [];
+    if (b.r > 0) bdStr.push('R: ' + _lbFmtJap(b.r));
+    if (b.rv > 0) bdStr.push('RV: ' + _lbFmtJap(b.rv));
+    if (b.n28 > 0) bdStr.push('28N: ' + _lbFmtJap(b.n28));
+    if (b.hk > 0) bdStr.push('HK: ' + _lbFmtJap(b.hk));
+    const breakdown = bdStr.length > 0 ? ' (' + bdStr.join(' | ') + ')' : '';
+    
+    const timeDisplay = d.timeScore > 0 ? ' · ⏱ ' + _histFmtSec(d.timeScore) : '';
+    const meta = _lbFmtJap(d.score) + ' jap' + breakdown + timeDisplay + ' · ' + malas.toLocaleString('en-IN') + ' malas' + (d.streak > 0 ? ' · 🔥' + d.streak + 'd' : '');
+    return `<div class="${rowClass}">
+      <div class="lb-badge ${badgeClass}">${badgeContent}</div>
+      <div class="lb-info">
+        <div class="${nameClass}">${name}${meMark}</div>
+        <div class="lb-meta">${meta}</div>
+      </div>
+      <div class="lb-count">
+        <div class="lb-count-num">${_lbFmtJap(d.score)}</div>
+        <div class="lb-count-lbl">jap</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  list.innerHTML = html;
+}
+
+/** Switch leaderboard period tab */
+function lbSwitchPeriod(period) {
+  window._lbPeriod = period;
+  ['alltime','month','week','today'].forEach(function(p) {
+    const btn = document.getElementById('lbTab' + p.charAt(0).toUpperCase() + p.slice(1));
+    if (btn) btn.classList.toggle('active', p === period);
+  });
+  // Re-render with the same snapshot data (avoid extra Firestore read)
+  // If there's no snapshot loaded yet, do a full load
+  loadLeaderboard(period);
+}
+
+/** Push current user's data to the leaderboard collection */
+async function pushLeaderboard() {
+  if (!fbUser || !fbDb) return;
+  if (!App.S.lbOptIn) {
+    // If opted out, remove the entry
+    try {
+      await fbDb.collection('leaderboard').doc(fbUser.uid).delete();
+    } catch(_) {}
+    return;
+  }
+
+  // Compute lifetime totals
+  const hist   = App.S.history   || {};
+  const histRV = App.S.historyRV || {};
+  const histHK = App.S.historyHK || {};
+  const totalRadha = Object.values(hist).reduce((a,b)=>a+b,0);
+  const totalRV    = Object.values(histRV).reduce((a,b)=>a+b,0);
+  const totalHK    = Object.values(histHK).reduce((a,b)=>a+b,0);
+  const totalJap   = Math.max(0, totalRadha + totalRV + totalHK - (App.S.nameJapDeduct||0) - (App.S.nameJapDeductRV||0) - (App.S.nameJapDeductHK||0));
+
+  // Build display name
+  let displayName = (App.S.lbDisplayName || '').trim();
+  if (!displayName && fbUser) {
+    displayName = (fbUser.displayName || (fbUser.email || '').split('@')[0] || 'Anonymous Devotee').slice(0,30);
+  }
+  if (!displayName) displayName = 'Anonymous Devotee';
+
+  // Compute streak from App.S (reuse existing streak logic)
+  let streak = 0;
+  try {
+    const tk = App.S.tk;
+    const allHist = {};
+    Object.keys({...hist,...histRV,...histHK}).forEach(function(k) {
+      allHist[k] = (hist[k]||0)+(histRV[k]||0)+(histHK[k]||0);
+    });
+    const today = new Date(tk+'T00:00:00');
+    let d = new Date(today);
+    while(true) {
+      const key = d.toISOString().slice(0,10);
+      const dayJap = allHist[key] || 0;
+      const target = App.S.dt || App.S.dtRV || App.S.dtHK || 0;
+      if (dayJap <= 0 || (target > 0 && dayJap < target)) break;
+      streak++;
+      d.setDate(d.getDate()-1);
+      if (streak > 3650) break;
+    }
+  } catch(_) {}
+
+  const payload = {
+    displayName,
+    totalJap,
+    totalMalas: Math.floor(totalJap / (App.S.ms || 108)),
+    streak,
+    optIn: true,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    // Store per-day histories so month/week filtering works
+    history:   hist,
+    historyRV: histRV,
+    historyHK: histHK,
+    history28: App.S.h28 || {},
+    // Push total timer seconds for leaderboard display
+    timerSeconds: Object.values(App.S.timerHistory || {}).reduce((a,b)=>a+b,0) +
+                  Object.values(App.S.timerHistoryRV || {}).reduce((a,b)=>a+b,0) +
+                  Object.values(App.S.timerHistoryHK || {}).reduce((a,b)=>a+b,0) +
+                  Object.values(App.S.timer28History || {}).reduce((a,b)=>a+b,0),
+    timerHistory:   App.S.timerHistory || {},
+    timerHistoryRV: App.S.timerHistoryRV || {},
+    timerHistoryHK: App.S.timerHistoryHK || {},
+    timer28History: App.S.timer28History || {},
+  };
+
+  try {
+    await fbDb.collection('leaderboard').doc(fbUser.uid).set(payload);
+  } catch(e) {
+    console.warn('pushLeaderboard error:', e.message);
+  }
+}
+
+/** Toggle leaderboard opt-in from Settings */
+async function toggleLbOptIn() {
+  if (!fbUser) {
+    toast('Please sign in to join the leaderboard');
+    return;
+  }
+  App.S.lbOptIn = !App.S.lbOptIn;
+  populateLbSettingsUI();
+  App.save();
+  if (App.S.lbOptIn) {
+    toast('🏆 Joined the leaderboard!');
+    await pushLeaderboard();
+  } else {
+    toast('Removed from leaderboard');
+    await pushLeaderboard(); // will delete the doc
+  }
+  // Refresh if the leaderboard view is currently visible
+  const vlb = document.getElementById('vlb');
+  if (vlb && vlb.classList.contains('active')) {
+    loadLeaderboard(window._lbPeriod || 'alltime');
+  }
+}
+
+/** Save display name from Settings */
+async function saveLbName() {
+  const inp = document.getElementById('lbNameIn');
+  const fb  = document.getElementById('lbNameFeedback');
+  if (!inp) return;
+  const name = inp.value.trim().slice(0, 30);
+  if (!name) {
+    if (fb) { fb.textContent = 'Please enter a name'; fb.style.color = 'var(--rl)'; }
+    return;
+  }
+  App.S.lbDisplayName = name;
+  App.save();
+  if (fb) {
+    fb.textContent = '✓ Saved!';
+    fb.style.color = 'var(--green)';
+    setTimeout(function() { if(fb) fb.textContent = ''; }, 2500);
+  }
+  if (App.S.lbOptIn) {
+    await pushLeaderboard();
+  }
+  toast('Display name saved 🙏');
+}
+
+/** Sync Settings UI with current App.S leaderboard state */
+function populateLbSettingsUI() {
+  const tg  = document.getElementById('tgLbOptIn');
+  const inp = document.getElementById('lbNameIn');
+  if (tg)  tg.classList.toggle('on', !!App.S.lbOptIn);
+  if (inp && !inp.value) inp.value = App.S.lbDisplayName || '';
+
+  // Opt-in banner in leaderboard view
+  const banner = document.getElementById('lbOptinBanner');
+  if (banner) banner.style.display = (App.S.lbOptIn ? 'none' : 'flex');
+}
+
+// ═══════════════════════════════════════════════════════
+// BACKGROUND PHOTO CUSTOMIZATION (Visual Picker + Upload)
+// ═══════════════════════════════════════════════════════
+
+// 1. Initialize dedicated Photos Database to prevent localStorage bloating
+const PhotosDB = {
+  db: null,
+  async init() {
+    if (this.db) return;
+    return new Promise((res, rej) => {
+      const req = indexedDB.open("RadhaJapPhotosDB", 1);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains("photos")) db.createObjectStore("photos");
+      };
+      req.onsuccess = e => { this.db = e.target.result; res(); };
+      req.onerror = () => rej(req.error);
+    });
+  },
+  async get(key) {
+    await this.init();
+    return new Promise(res => {
+      const req = this.db.transaction("photos", "readonly").objectStore("photos").get(key);
+      req.onsuccess = () => res(req.result || null);
+      req.onerror = () => res(null);
+    });
+  },
+  async put(key, dataUrl) {
+    await this.init();
+    return new Promise(res => {
+      const tx = this.db.transaction("photos", "readwrite");
+      tx.objectStore("photos").put(dataUrl, key);
+      tx.oncomplete = res;
+    });
+  },
+  async del(key) {
+    await this.init();
+    return new Promise(res => {
+      const tx = this.db.transaction("photos", "readwrite");
+      tx.objectStore("photos").delete(key);
+      tx.oncomplete = res;
+    });
+  }
+};
+
+const PHOTO_CONFIG = {
+  rv:     { id: 'bgRadhaVallabh', stateKey: 'bgRadhaVallabh', folder: 'radha_vallabh',  maxNum: 9, fallback: 'Radha-Vallabh.png' },
+  hitju:  { id: 'bgHitju',        stateKey: 'bgHitju',        folder: 'hitju_maharaj',  maxNum: 9, fallback: 'hitju-maharaj.png' },
+  gurudev:{ id: 'bgGurudev',      stateKey: 'bgGurudev',      folder: 'gurudev',        maxNum: 9, fallback: 'gurudev.png' }
+};
+
+window.renderPhotoPickers = async function() {
+  for (const [key, conf] of Object.entries(PHOTO_CONFIG)) {
+    const stripId = key === 'rv' ? 'photoStripRV' : key === 'hitju' ? 'photoStripHitju' : 'photoStripGurudev';
+    const strip = document.getElementById(stripId);
+    if (!strip) continue;
+    strip.innerHTML = '';
+    
+    let currentVal = App.S[conf.stateKey] || 1;
+    
+    // Add default repo photos
+    for (let i = 1; i <= conf.maxNum; i++) {
+      const img = document.createElement('img');
+      img.className = `photo-thumb ${currentVal === i ? 'selected' : ''}`;
+      img.src = `./${conf.folder}/${i}.jpg`;
+      // If JPG fails, try PNG. If both fail, hide it entirely so missing files don't show broken icons.
+      img.onerror = () => {
+        if (img.src.endsWith('.jpg')) {
+          img.src = `./${conf.folder}/${i}.png`;
+        } else {
+          img.style.display = 'none';
+        }
+      };
+      img.onclick = () => selectRepoPhoto(key, i);
+      strip.appendChild(img);
+    }
+    
+    // If a custom photo is in IDB, append it as a thumbnail always
+    const customData = await PhotosDB.get(key);
+    if (customData) {
+      const wrap = document.createElement('div');
+      wrap.style.position = 'relative';
+      wrap.style.display = 'inline-block';
+      wrap.style.flexShrink = '0';
+      
+      const img = document.createElement('img');
+      img.className = `photo-thumb ${currentVal === 'custom' ? 'selected' : ''}`;
+      img.src = customData;
+      img.onclick = () => {
+        App.S[conf.stateKey] = 'custom';
+        App.save();
+        renderPhotoPickers();
+        applyBgPhotos();
+      };
+      
+      const delBtn = document.createElement('div');
+      delBtn.innerHTML = '🗑️';
+      delBtn.style.position = 'absolute';
+      delBtn.style.top = '-4px';
+      delBtn.style.right = '-4px';
+      delBtn.style.background = '#ff4d4d';
+      delBtn.style.borderRadius = '50%';
+      delBtn.style.padding = '4px';
+      delBtn.style.fontSize = '12px';
+      delBtn.style.lineHeight = '1';
+      delBtn.style.cursor = 'pointer';
+      delBtn.style.boxShadow = '0 2px 5px rgba(0,0,0,0.5)';
+      delBtn.onclick = async (e) => {
+        e.stopPropagation();
+        await PhotosDB.del(key);
+        if (App.S[conf.stateKey] === 'custom') {
+          App.S[conf.stateKey] = 1;
+          App.save();
+          applyBgPhotos();
+        }
+        renderPhotoPickers();
+      };
+      
+      wrap.appendChild(img);
+      wrap.appendChild(delBtn);
+      strip.appendChild(wrap);
+    }
+    
+    // Update active state of buttons below the strip
+    setTimeout(() => {
+      const row = strip.parentElement;
+      if (!row) return;
+      const btns = row.querySelectorAll('.photo-reset-btn, .photo-upload-btn');
+      btns.forEach(b => b.classList.remove('active'));
+      if (currentVal === 0 || currentVal === '0') {
+        const blankBtn = Array.from(btns).find(b => b.textContent.includes('Blank'));
+        if (blankBtn) blankBtn.classList.add('active');
+      } else if (currentVal === 'custom') {
+        const uploadBtn = Array.from(btns).find(b => b.textContent.includes('Upload'));
+        if (uploadBtn) uploadBtn.classList.add('active');
+      } else {
+        const defBtn = Array.from(btns).find(b => b.textContent.includes('Default'));
+        if (defBtn) defBtn.classList.add('active');
+      }
+    }, 10);
+  }
+};
+
+window.selectRepoPhoto = function(key, num) {
+  const conf = PHOTO_CONFIG[key];
+  App.S[conf.stateKey] = num;
+  App.save();
+  renderPhotoPickers();
+  applyBgPhotos();
+};
+
+window.uploadCustomPhoto = function(key, inputElement) {
+  const file = inputElement.files[0];
+  if (!file) return;
+  
+  // Validate file size (prevent huge memory issues, limit to ~5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    if(typeof toast === 'function') toast("File too large. Please select an image under 5MB.");
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const dataUrl = e.target.result;
+    await PhotosDB.put(key, dataUrl);
+    const conf = PHOTO_CONFIG[key];
+    App.S[conf.stateKey] = 'custom';
+    App.save();
+    renderPhotoPickers();
+    applyBgPhotos();
+    if(typeof toast === 'function') toast("Custom photo saved! 🙏");
+  };
+  reader.readAsDataURL(file);
+};
+
+window.resetPhoto = async function(key) {
+  // We no longer delete the custom photo from IDB, just switch away from it
+  selectRepoPhoto(key, 1);
+  if(typeof toast === 'function') toast("Reset to default photo");
+};
+
+window.applyBgPhotos = async function() {
+  for (const [key, conf] of Object.entries(PHOTO_CONFIG)) {
+    const el = document.getElementById(conf.id);
+    if (!el) continue;
+    
+    let val = App.S[conf.stateKey];
+    if (val === undefined) val = 1;
+    
+    // Blank Mode
+    if (val === 0 || val === '0') {
+      el.style.display = 'none';
+      continue;
+    } else {
+      el.style.display = '';
+    }
+    
+    if (val === 'custom') {
+      const customData = await PhotosDB.get(key);
+      if (customData) {
+        el.src = customData;
+        el.classList.add('custom-bg');
+      } else {
+        val = 1; // Fallback if IDB entry is missing
+      }
+    }
+    
+    if (val !== 'custom' && val !== 0) {
+      el.classList.remove('custom-bg');
+      const jpgSrc = `./${conf.folder}/${val}.jpg`;
+      const pngSrc = `./${conf.folder}/${val}.png`;
+      const fallbackSrc = `./${conf.fallback || (conf.folder + '/1.png')}`;
+      const temp = new Image();
+      temp.onload = () => { el.src = jpgSrc; };
+      temp.onerror = () => {
+        const temp2 = new Image();
+        temp2.onload = () => { el.src = pngSrc; };
+        temp2.onerror = () => { el.src = fallbackSrc; }; // Final fallback to root file
+        temp2.src = pngSrc;
+      };
+      temp.src = jpgSrc;
+    }
+  }
+};
+
+// ✨ MALA GLOW FLASH — all deity images briefly show fully with huge glow, synced
+window.triggerMalaGlowFlash = function() {
+  const ids = ['bgRadhaVallabh', 'bgHitju', 'bgGurudev'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || el.style.display === 'none') return;
+    // 1. Remove the watery mask + grey filter instantly
+    el.classList.add('mala-glow-flash');
+    // 2. After 2.4s, remove the flash class to restore normal state
+    setTimeout(() => {
+      el.classList.remove('mala-glow-flash');
+    }, 2400);
+  });
+};
+
+// ═══════════════════════════════════════════════════════
+// MOTION BLUR ON SCROLL
+// ═══════════════════════════════════════════════════════
+let scrollBlurTimer = null;
+let lastScrollTop = 0;
+document.querySelectorAll('.view').forEach(view => {
+  view.addEventListener('scroll', (e) => {
+    const st = view.scrollTop;
+    const diff = Math.abs(st - lastScrollTop);
+    lastScrollTop = st;
+    if (diff > 10) { // Only blur on fast scrolls
+      view.style.filter = `blur(${Math.min(diff / 10, 3)}px)`;
+      clearTimeout(scrollBlurTimer);
+      scrollBlurTimer = setTimeout(() => {
+        view.style.filter = 'none';
+      }, 50);
+    }
+  }, { passive: true });
+});

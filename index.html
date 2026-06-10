@@ -1016,6 +1016,19 @@
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#F7A81B" stroke-width="2"/><text x="12" y="16" text-anchor="middle" fill="#F7A81B" font-size="12" font-weight="bold" font-family="sans-serif">Z</text></svg>
         Sign in with Zoho
       </button>
+
+      <!-- EMAIL / PASSWORD SIGN-IN -->
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08)">
+        <div style="font-size:11px;color:var(--td);text-align:center;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">or use Email</div>
+        <input type="email" id="fbEmailIn" placeholder="Email address" autocomplete="email" style="width:100%;padding:9px 11px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:var(--tl);font-size:13px;font-family:Inter,sans-serif;margin-bottom:8px;box-sizing:border-box">
+        <input type="password" id="fbPassIn" placeholder="Password (min 6 chars)" autocomplete="current-password" style="width:100%;padding:9px 11px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:var(--tl);font-size:13px;font-family:Inter,sans-serif;margin-bottom:10px;box-sizing:border-box">
+        <div style="display:flex;gap:8px">
+          <button onclick="fbSignInEmail()" style="flex:1;padding:9px;border-radius:10px;border:1px solid rgba(74,144,226,0.4);background:rgba(74,144,226,0.15);color:var(--a2);font-size:12px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">Sign In</button>
+          <button onclick="fbSignUpEmail()" style="flex:1;padding:9px;border-radius:10px;border:1px solid rgba(46,204,113,0.4);background:rgba(46,204,113,0.12);color:#7ee2a8;font-size:12px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">Create Account</button>
+        </div>
+        <button onclick="fbResetEmail()" style="width:100%;margin-top:8px;padding:6px;border-radius:8px;border:none;background:transparent;color:var(--td);font-size:11px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">Forgot password?</button>
+      </div>
+
       <div id="fbErr" style="font-size:12px;color:var(--red);margin-top:6px;text-align:center"></div>
     </div>
     <div id="fbLoggedIn" style="display:none">
@@ -1151,13 +1164,21 @@
   <div class="sc">
     <h3>🔔 Preferences</h3>
     <div class="sr">
-      <div><label>Bell Sound</label><div class="sub">Bell plays after completing a mala</div></div>
+      <div><label>Completion Sound</label><div class="sub">Plays after completing a mala</div></div>
       <div class="tg on" id="tgSnd" onclick="tgs('sound')"></div>
+    </div>
+
+    <div class="sr" style="align-items:center">
+      <div><label>Sound Type</label><div class="sub">Choose between bell chime or Panchojanno Shankya</div></div>
+      <select id="soundTypeSel" onchange="setSoundType(this.value)" style="padding:7px 10px;border-radius:10px;border:1px solid rgba(74,144,226,0.35);background:rgba(74,144,226,0.10);color:var(--a2);font-size:12px;font-family:Inter,sans-serif;cursor:pointer">
+        <option value="bell">🔔 Bell Chime</option>
+        <option value="shankya">🐚 Panchojanno Shankya</option>
+      </select>
     </div>
 
     <!-- Mahamantra Language toggle moved to its own card below Gaudiya -->
     <span id="hkLangLabel" style="display:none">Hindi</span>
-    <button onclick="testSound()" style="padding:7px 14px;border-radius:20px;border:1px solid rgba(74,144,226,0.3);background:rgba(74,144,226,0.12);color:var(--a2);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;margin-top:6px">🔔 Test Bell</button>
+    <button onclick="testSound()" style="padding:7px 14px;border-radius:20px;border:1px solid rgba(74,144,226,0.3);background:rgba(74,144,226,0.12);color:var(--a2);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;margin-top:6px">🔔 Test Sound</button>
   </div>
 
 

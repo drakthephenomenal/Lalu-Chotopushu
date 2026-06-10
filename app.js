@@ -45,7 +45,7 @@ const App = {
     ms: 108,
     dt: 0,
     lt: 0,
-    cfg: { vib: true, sound: true },
+    cfg: { vib: true, sound: true, soundType: "bell" },
     history: {},
     h28: {},
     stotrams: {},
@@ -752,8 +752,8 @@ const App = {
       f.classList.add("show");
       setTimeout(() => f.classList.remove("show"), 2800);
     }
-    // Bell sound
-    if (this.S.cfg.sound) playSynthBell();
+    // Completion sound (bell chime or Panchojanno Shankya)
+    if (this.S.cfg.sound) playMalaSound();
     // Triple long vibration synced with bell
     this.vib([200, 80, 200, 80, 300]);
     // ── ARIA live region: announce mala completion to screen readers ──
@@ -1201,9 +1201,40 @@ function playSynthBell() {
   } catch (e) {}
 }
 
-// Test Bell Sound button
+// Panchojanno Shankya — plays the bundled MP3
+const SHANKYA_URL = "./Panchojanno%20Shankya.mp3";
+let _shankyaAudio = null;
+function playShankya() {
+  try {
+    if (!_shankyaAudio) {
+      _shankyaAudio = new Audio(SHANKYA_URL);
+      _shankyaAudio.preload = "auto";
+    }
+    _shankyaAudio.currentTime = 0;
+    const p = _shankyaAudio.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+  } catch (e) {}
+}
+
+// Decide which completion sound to play based on user preference
+function playMalaSound() {
+  const t = (App.S && App.S.cfg && App.S.cfg.soundType) || "bell";
+  if (t === "shankya") playShankya();
+  else playSynthBell();
+}
+
+// Test Sound button
 function testSound() {
-  playSynthBell();
+  playMalaSound();
+}
+
+// Setting handler for the sound type <select>
+function setSoundType(v) {
+  if (!App.S.cfg) App.S.cfg = {};
+  App.S.cfg.soundType = v === "shankya" ? "shankya" : "bell";
+  try { App.save(); } catch (_e) {}
+  try { fbDebouncedPush(); } catch (_e) {}
+  playMalaSound();
 }
 
 // Floating राधा spawn
@@ -1870,6 +1901,9 @@ function populateSettingsUI() {
   // Gaudiya Mode toggle
   const tgG = document.getElementById("tgGaudiya");
   if (tgG) App.S.gaudiyaMode ? tgG.classList.add("on") : tgG.classList.remove("on");
+  // Sound type select
+  const stSel = document.getElementById("soundTypeSel");
+  if (stSel) stSel.value = (App.S.cfg && App.S.cfg.soundType) || "bell";
   // App link display (if visible)
   try {
     const linkEl = document.getElementById("appLinkDisplay");
@@ -2350,7 +2384,7 @@ function addManualJap() {
         setTimeout(() => _mf.classList.remove("show"), 2800);
       }
     }
-    if (App.S.cfg && App.S.cfg.sound) playSynthBell();
+    if (App.S.cfg && App.S.cfg.sound) playMalaSound();
     App.vib([200, 80, 200, 80, 300]);
     App.flashMalaDuration(avgPerMala);
   }
@@ -4652,7 +4686,7 @@ function fbInit() {
             ms: 108,
             dt: 0,
             lt: 0,
-            cfg: { vib: true, sound: true },
+            cfg: { vib: true, sound: true, soundType: "bell" },
             history: {},
             h28: {},
             stotrams: {},
@@ -4759,7 +4793,7 @@ function fbInit() {
             ms: 108,
             dt: 0,
             lt: 0,
-            cfg: { vib: true, sound: true },
+            cfg: { vib: true, sound: true, soundType: "bell" },
             history: {},
             h28: {},
             stotrams: {},
@@ -4920,6 +4954,45 @@ function fbSignInZoho() {
     });
 }
 
+// ── Email / Password sign-in helpers ──
+function _fbEmailErr(msg) {
+  const el = document.getElementById("fbErr");
+  if (el) {
+    el.textContent = msg || "";
+    if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ""; }, 6000);
+  }
+}
+function _fbReadEmailPass() {
+  const e = (document.getElementById("fbEmailIn") || {}).value || "";
+  const p = (document.getElementById("fbPassIn") || {}).value || "";
+  return { email: e.trim(), pass: p };
+}
+function fbSignInEmail() {
+  if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
+  const { email, pass } = _fbReadEmailPass();
+  if (!email || !pass) { _fbEmailErr("Enter email and password"); return; }
+  fbAuth.signInWithEmailAndPassword(email, pass)
+    .then(() => { toast("Signed in! ☁️ Sync active 🙏"); _fbEmailErr(""); })
+    .catch((e) => _fbEmailErr(e.message || "Sign-in failed"));
+}
+function fbSignUpEmail() {
+  if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
+  const { email, pass } = _fbReadEmailPass();
+  if (!email || !pass) { _fbEmailErr("Enter email and password"); return; }
+  if (pass.length < 6) { _fbEmailErr("Password must be at least 6 characters"); return; }
+  fbAuth.createUserWithEmailAndPassword(email, pass)
+    .then(() => { toast("Account created! ☁️ Sync active 🙏"); _fbEmailErr(""); })
+    .catch((e) => _fbEmailErr(e.message || "Sign-up failed"));
+}
+function fbResetEmail() {
+  if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
+  const { email } = _fbReadEmailPass();
+  if (!email) { _fbEmailErr("Enter your email above first"); return; }
+  fbAuth.sendPasswordResetEmail(email)
+    .then(() => { toast("Password reset email sent 📬"); _fbEmailErr(""); })
+    .catch((e) => _fbEmailErr(e.message || "Could not send reset email"));
+}
+
 // ── Wipe ALL locally cached data for a given UID. Used on sign-out so
 //    the next login (same device or another) ALWAYS pulls authoritative
 //    state from Firebase, never from a stale local cache. Guest data is
@@ -4989,7 +5062,7 @@ async function fbSignOut() {
   const _prevLng = App.S && App.S.lastLng != null ? App.S.lastLng : null;
   App.S = {
     tk: App.getTk(), ms: 108, dt: 0, lt: 0,
-    cfg: { vib: true, sound: true },
+    cfg: { vib: true, sound: true, soundType: "bell" },
     history: {}, h28: {}, stotrams: {}, brahma: {}, customSt: [],
     timerHistory: {}, timer28History: {}, sankalpas: [], occasions: {},
     syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {},

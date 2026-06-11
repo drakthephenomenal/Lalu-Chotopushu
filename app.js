@@ -4827,6 +4827,7 @@ function fbInit() {
           }
           fetchGuideVideoLink();
           fetchLatestNotification();
+          watchNewFeedback(); // Dev-only: real-time badge for new user feedback
         });
       } else {
         document.getElementById("fbLoggedOut").style.display = "block";
@@ -12521,13 +12522,19 @@ window.openDevFeedbackPanel = async function() {
   const content = document.getElementById('devFeedbackContent');
   if (!modal || !content) return;
   
+  // Show as full-screen flex
   modal.style.display = 'flex';
+  // Hide the feedback badge since developer is now reading
+  const badge = document.getElementById('feedbackBadge');
+  if (badge) badge.style.display = 'none';
+  localStorage.setItem('rjap_lastFeedbackRead', Date.now().toString());
+
   content.innerHTML = '<div style="text-align:center;color:var(--td);margin-top:20px;">Loading feedback...</div>';
   
   try {
     const snap = await fbDb.collection('feedbacks').orderBy('createdAt', 'desc').limit(50).get();
     if (snap.empty) {
-      content.innerHTML = '<div style="text-align:center;color:var(--td);margin-top:20px;">No feedback found.</div>';
+      content.innerHTML = '<div style="text-align:center;color:var(--td);margin-top:30px;font-size:15px;">No feedback yet.</div>';
       return;
     }
     
@@ -12536,17 +12543,39 @@ window.openDevFeedbackPanel = async function() {
       const data = doc.data();
       const dateStr = data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString() : 'Unknown Date';
       html += `
-        <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(46,204,113,0.2);border-radius:8px;padding:12px;margin-bottom:12px;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:11px;color:var(--td);">
-            <div>${escHtml(data.email || 'Unknown User')}</div>
-            <div>${dateStr}</div>
+        <div style="background:rgba(0,0,0,0.35);border:1px solid rgba(46,204,113,0.2);border-radius:12px;padding:14px;margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:4px;">
+            <div style="font-size:11px;color:#2ecc71;font-weight:600;">${escHtml(data.email || 'Anonymous')}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.35);">${dateStr}</div>
           </div>
-          <div style="white-space:pre-wrap;color:var(--tl);font-size:13px;">${escHtml(data.text)}</div>
+          <div style="white-space:pre-wrap;color:var(--tl);font-size:13px;line-height:1.6;">${escHtml(data.text)}</div>
         </div>
       `;
     });
     content.innerHTML = html;
   } catch(e) {
-    content.innerHTML = '<div style="text-align:center;color:var(--td);margin-top:20px;">Error loading feedback: ' + e.message + '</div>';
+    content.innerHTML = '<div style="text-align:center;color:#ff8888;margin-top:20px;">Error loading feedback: ' + e.message + '</div>';
   }
 }
+
+// Watch for new feedback (developer only) — shows red badge on feedback button
+let _feedbackWatcher = null;
+function watchNewFeedback() {
+  if (!isDeveloper()) return;
+  if (_feedbackWatcher) { try { _feedbackWatcher(); } catch(_) {} }
+  const lastRead = parseInt(localStorage.getItem('rjap_lastFeedbackRead') || '0');
+  _feedbackWatcher = fbDb.collection('feedbacks')
+    .orderBy('createdAt', 'desc')
+    .limit(1)
+    .onSnapshot((snap) => {
+      if (snap.empty) return;
+      const data = snap.docs[0].data();
+      const ts = data.createdAt ? data.createdAt.toMillis() : 0;
+      const badge = document.getElementById('feedbackBadge');
+      const lastR = parseInt(localStorage.getItem('rjap_lastFeedbackRead') || '0');
+      if (badge && ts > lastR) {
+        badge.style.display = 'block';
+      }
+    }, () => {});
+}
+

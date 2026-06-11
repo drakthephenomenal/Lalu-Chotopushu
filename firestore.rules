@@ -22,7 +22,17 @@ service cloud.firestore {
       allow write: if isDeveloper();
     }
 
+    // Stotram lyrics overrides — any user can read, only developer can write
+    match /stotram_overrides/{docId} {
+      allow read: if true;
+      allow write: if isDeveloper();
+    }
 
+    // Per-stotram YouTube links — any user can read, only developer can write
+    match /stotram_youtube_links/{docId} {
+      allow read: if true;
+      allow write: if isDeveloper();
+    }
 
     // Time sync probe — needed for fbSyncServerTime()
     match /_timesync/{doc} {

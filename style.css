@@ -2820,69 +2820,6 @@ body.gaudiya-mode .tz .cm-wm{
 .lb-change.up{background:rgba(57,201,151,0.15);color:var(--green);}
 .lb-change.down{background:rgba(232,51,109,0.12);color:var(--rl);}
 
-/* ═══════════════════════════════════════════════════════
-   COMMUNITY CHAT
-   ═══════════════════════════════════════════════════════ */
-#communityChat{
-  transition:box-shadow 0.3s;
-}
-#chatHeader:active{
-  background:rgba(255,215,0,0.12);
-}
-#chatMessages{
-  scrollbar-width:thin;
-  scrollbar-color:rgba(255,215,0,0.2) transparent;
-}
-#chatMessages::-webkit-scrollbar{width:4px;}
-#chatMessages::-webkit-scrollbar-track{background:transparent;}
-#chatMessages::-webkit-scrollbar-thumb{background:rgba(255,215,0,0.2);border-radius:4px;}
-
-#chatInputRow{
-  display:flex !important; /* override inline display:none managed by JS */
-}
-/* When chatBody is shown the inputRow flex is set by JS; this just keeps textarea full width */
-#chatInput{width:100%;box-sizing:border-box;}
-
-/* Chat message bubble animation */
-@keyframes chatMsgIn{
-  from{opacity:0;transform:translateY(8px);}
-  to{opacity:1;transform:translateY(0);}
-}
-#chatMessages > div{
-  animation:chatMsgIn 0.25s ease forwards;
-}
-
-/* ═══════════════════════════════════════════════════════
-   DEVELOPER NOTIFICATION POPUP
-   ═══════════════════════════════════════════════════════ */
-@keyframes devNotifSlideIn{
-  from{opacity:0;transform:translateY(-28px) scale(0.96);}
-  to{opacity:1;transform:translateY(0) scale(1);}
-}
-@keyframes devNotifSlideOut{
-  from{opacity:1;transform:translateY(0);}
-  to{opacity:0;transform:translateY(-16px);}
-}
-#devNotifPopup{
-  animation:devNotifSlideIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
-}
-
-/* Dev notification composer panel */
-#devNotifComposer input,
-#devNotifComposer textarea{
-  font-family:'Inter',sans-serif;
-  transition:border-color 0.2s;
-}
-#devNotifComposer input:focus,
-#devNotifComposer textarea:focus{
-  outline:none;
-  border-color:rgba(255,215,0,0.45)!important;
-}
-
-/* Dev notification button wrapper in settings */
-#devNotifBtnWrap{
-  /* shown/hidden by JS based on isDeveloper() */
-}
 
 /* ═══════════════════════════════════════════════════════
    COMMUNITY nav tab update — people icon fits 8-tab nav

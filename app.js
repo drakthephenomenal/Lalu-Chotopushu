@@ -6901,7 +6901,7 @@ function renderSt() {
           '<button class="st-btn" onclick="adjSt(\'' + st.id + '\',-1)">−</button>' +
           '<button class="st-btn" onclick="adjSt(\'' + st.id + '\',1)">+</button>' +
           (hasLyrics ? '<button class="st-btn read" onclick="showLyrics(\'' + st.id + '\')">📖</button>' : '') +
-          (st.ytLink ? '<button class="st-btn read" onclick="window.open(\'' + escHtml(st.ytLink) + '\', \'_blank\')" style="color:#ff6b6b;font-size:16px;">▶</button>' : '') +
+          ((_globalYtLinks[st.id] || st.ytLink) ? '<button class="st-btn yt-btn" onclick="window.open(\'' + escHtml(_globalYtLinks[st.id] || st.ytLink) + '\', \'_blank\')" title="Watch on YouTube" style="background:rgba(255,0,0,0.12);border-color:rgba(255,0,0,0.35);padding:0;width:44px;height:44px;"><svg viewBox=\'0 0 24 24\' width=\'22\' height=\'22\' fill=\'#FF0000\'><path d=\'M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1C4.5 20.5 12 20.5 12 20.5s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.2 3.5-6.2 3.5z\'/></svg></button>' : '') +
         '</div>' +
       '</div>';
 
@@ -6947,6 +6947,7 @@ function isDeveloper() {
 // Global stotrams stored in Firestore — visible to ALL users
 let _globalStotrams = [];
 let _globalLyricsOverrides = {}; // {stotramId: newLyrics}
+let _globalYtLinks = {}; // {stotramId: youtubeUrl} — set by developer via Firestore
 
 async function loadGlobalStotrams() {
   if (!fbDb) return;
@@ -6968,6 +6969,16 @@ async function loadGlobalStotrams() {
     });
   } catch (e) {
     _globalLyricsOverrides = {};
+  }
+  // Load YouTube links for ALL stotrams (set by developer)
+  try {
+    const ytSnap = await fbDb.collection("stotram_youtube_links").get();
+    _globalYtLinks = {};
+    ytSnap.docs.forEach((d) => {
+      _globalYtLinks[d.id] = d.data().url || "";
+    });
+  } catch (e) {
+    _globalYtLinks = {};
   }
   renderSt();
 }
@@ -7071,6 +7082,31 @@ function toggleDevPanel() {
   if (_devPanelOpen) renderDevStotramPanel();
 }
 
+async function devSaveYtLink(id) {
+  if (!isDeveloper()) { toast('Access denied'); return; }
+  const inp = document.getElementById('devYtLink-' + id);
+  if (!inp) return;
+  const url = inp.value.trim();
+  try {
+    if (url) {
+      await fbDb.collection('stotram_youtube_links').doc(id).set({
+        url,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedBy: fbUser.email
+      });
+      _globalYtLinks[id] = url;
+    } else {
+      await fbDb.collection('stotram_youtube_links').doc(id).delete();
+      delete _globalYtLinks[id];
+    }
+    renderSt();
+    toast(url ? '✅ YouTube link saved for all users!' : '🗑 YouTube link removed.');
+  } catch(e) {
+    toast('Error: ' + e.message);
+  }
+}
+
+
 function renderDevStotramPanel() {
   const el = document.getElementById("devStList");
   if (!el) return;
@@ -7081,6 +7117,7 @@ function renderDevStotramPanel() {
   STLIST.forEach((st) => {
     const cur = getEffectiveLyrics(st.id);
     const hasOverride = !!_globalLyricsOverrides[st.id];
+    const curYtLink = _globalYtLinks[st.id] || '';
     html +=
       '<div style="margin-bottom:10px;border:1px solid rgba(255,215,0,0.2);border-radius:9px;padding:9px">';
     html +=
@@ -7089,18 +7126,24 @@ function renderDevStotramPanel() {
       (hasOverride
         ? ' <span style="color:var(--green);font-size:10px">● overridden</span>'
         : "") +
-      "</div>";
+      '</div>';
     html +=
       '<textarea id="devLyrEdit-' +
       st.id +
       '" rows="4" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.2);border-radius:7px;padding:7px;color:var(--tl);font-size:12px;font-family:Hind Siliguri,serif;resize:vertical;box-sizing:border-box">' +
       escHtml(cur) +
-      "</textarea>";
+      '</textarea>';
     html +=
-      "<button onclick=\"devSaveInbuiltLyrics('" +
+      '<div style="display:flex;align-items:center;gap:6px;margin-top:6px">' +
+      '<svg viewBox="0 0 24 24" width="16" height="16" fill="#FF0000"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1C4.5 20.5 12 20.5 12 20.5s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.2 3.5-6.2 3.5z"/></svg>' +
+      '<input type="url" id="devYtLink-' + st.id + '" placeholder="YouTube URL for this stotram (optional)" value="' + escHtml(curYtLink) + '" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,0,0,0.25);border-radius:7px;padding:6px 8px;color:var(--tl);font-size:12px;box-sizing:border-box">' +
+      '<button onclick="devSaveYtLink(\'' + st.id + '\')" style="padding:6px 10px;border-radius:7px;border:1px solid rgba(255,0,0,0.3);background:rgba(255,0,0,0.12);color:#ffaaaa;font-size:11px;cursor:pointer;white-space:nowrap">🔗 Save</button>' +
+      '</div>';
+    html +=
+      '<button onclick="devSaveInbuiltLyrics(\'' +
       st.id +
-      '\')" style="margin-top:5px;padding:6px 14px;border-radius:7px;border:none;background:linear-gradient(135deg,rgba(255,215,0,0.3),rgba(255,180,0,0.2));color:var(--gold);font-size:12px;cursor:pointer">💾 Save for All Users</button>';
-    html += "</div>";
+      '\')" style="margin-top:5px;padding:6px 14px;border-radius:7px;border:none;background:linear-gradient(135deg,rgba(255,215,0,0.3),rgba(255,180,0,0.2));color:var(--gold);font-size:12px;cursor:pointer">💾 Save Lyrics for All Users</button>';
+    html += '</div>';
   });
   // Section 2: Global stotrams list
   if (_globalStotrams.length) {
@@ -12336,34 +12379,38 @@ window.toggleNotificationSheet = function() {
   }
 }
 
-async function fetchLatestNotification() {
+// Real-time notification listener — fires immediately and on every new notification
+let _notifListener = null;
+function fetchLatestNotification() {
   if (!window.fbDb) return;
-  try {
-    const snap = await fbDb.collection('notifications').orderBy('createdAt', 'desc').limit(1).get();
-    if (!snap.empty) {
+  // Unsubscribe any previous listener first
+  if (_notifListener) { try { _notifListener(); } catch(_) {} }
+  _notifListener = fbDb.collection('notifications')
+    .orderBy('createdAt', 'desc')
+    .limit(1)
+    .onSnapshot((snap) => {
+      if (snap.empty) return;
       const doc = snap.docs[0];
       const data = doc.data();
       _latestNotifId = doc.id;
-      
+
       const contentEl = document.getElementById('notifContent');
       if (contentEl) {
-        const dateStr = data.createdAt ? new Date(data.createdAt.toDate()).toLocaleDateString() : '';
-        contentEl.innerHTML = `
-          <div style="font-weight:bold;font-size:16px;margin-bottom:5px;color:var(--gold);">${escHtml(data.title)}</div>
-          <div style="font-size:11px;color:var(--td);margin-bottom:10px;">${dateStr}</div>
-          <div style="white-space:pre-wrap;">${escHtml(data.body)}</div>
-        `;
+        const dateStr = data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString() : '';
+        contentEl.innerHTML =
+          '<div style="font-weight:700;font-size:17px;margin-bottom:6px;color:#FFD700;">' + escHtml(data.title) + '</div>' +
+          '<div style="font-size:11px;color:rgba(255,215,0,0.5);margin-bottom:14px;">' + dateStr + '</div>' +
+          '<div style="white-space:pre-wrap;color:var(--tl);font-size:14px;line-height:1.7;">' + escHtml(data.body) + '</div>';
       }
-      
+
       const lastRead = localStorage.getItem('rjap_lastNotifRead');
       if (lastRead !== _latestNotifId) {
         const badge = document.getElementById('notificationBadge');
         if (badge) badge.style.display = 'block';
       }
-    }
-  } catch(e) {
-    console.error('Error fetching notification', e);
-  }
+    }, (e) => {
+      console.error('Notification listener error:', e);
+    });
 }
 
 window.sendGlobalNotification = async function() {
@@ -12395,15 +12442,17 @@ window.sendGlobalNotification = async function() {
 // 3. Feedback System
 window.submitFeedback = async function() {
   const textEl = document.getElementById('feedbackText');
+  if (!textEl) return;
   const text = textEl.value.trim();
   
   if (!text) {
-    toast('Please enter your feedback.');
+    toast('Please write your feedback before sending.');
     return;
   }
   
-  if (!window.fbUser) {
-    toast('Please sign in to send feedback.');
+  // Use module-level fbUser (not window.fbUser — that is undefined)
+  if (!fbUser) {
+    toast('Please sign in first to send feedback.');
     return;
   }
   
@@ -12411,13 +12460,13 @@ window.submitFeedback = async function() {
     await fbDb.collection('feedbacks').add({
       text,
       uid: fbUser.uid,
-      email: fbUser.email,
+      email: fbUser.email || fbUser.phoneNumber || 'Anonymous',
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     toast('Feedback sent! Thank you 🙏');
     textEl.value = '';
   } catch(e) {
-    toast('Error: ' + e.message);
+    toast('Error sending feedback: ' + e.message);
   }
 }
 

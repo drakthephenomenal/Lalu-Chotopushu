@@ -6902,7 +6902,6 @@ function renderSt() {
           '<button class="st-btn" onclick="adjSt(\'' + st.id + '\',-1)">−</button>' +
           '<button class="st-btn" onclick="adjSt(\'' + st.id + '\',1)">+</button>' +
           (hasLyrics ? '<button class="st-btn read" onclick="showLyrics(\'' + st.id + '\')">📖</button>' : '') +
-          ((_globalYtLinks[st.id] || st.ytLink) ? '<button class="st-btn yt-btn" onclick="window.open(\'' + escHtml(_globalYtLinks[st.id] || st.ytLink) + '\', \'_blank\')" title="Watch on YouTube" style="background:rgba(255,0,0,0.12);border-color:rgba(255,0,0,0.35);padding:0;width:44px;height:44px;"><svg viewBox=\'0 0 24 24\' width=\'22\' height=\'22\' fill=\'#FF0000\'><path d=\'M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1C4.5 20.5 12 20.5 12 20.5s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.2 3.5-6.2 3.5z\'/></svg></button>' : '') +
         '</div>' +
       '</div>';
 
@@ -6947,8 +6946,6 @@ function isDeveloper() {
 
 // Global stotrams stored in Firestore — visible to ALL users
 let _globalStotrams = [];
-let _globalLyricsOverrides = {}; // {stotramId: newLyrics}
-let _globalYtLinks = {}; // {stotramId: youtubeUrl} — set by developer via Firestore
 
 async function loadGlobalStotrams() {
   if (!fbDb) return;
@@ -6962,62 +6959,16 @@ async function loadGlobalStotrams() {
     // Collection may not exist yet
     _globalStotrams = [];
   }
-  try {
-    const overrides = await fbDb.collection("stotram_overrides").get();
-    _globalLyricsOverrides = {};
-    overrides.docs.forEach((d) => {
-      _globalLyricsOverrides[d.id] = d.data().lyrics || "";
-    });
-  } catch (e) {
-    _globalLyricsOverrides = {};
-  }
-  // Load YouTube links for ALL stotrams (set by developer)
-  try {
-    const ytSnap = await fbDb.collection("stotram_youtube_links").get();
-    _globalYtLinks = {};
-    ytSnap.docs.forEach((d) => {
-      _globalYtLinks[d.id] = d.data().url || "";
-    });
-  } catch (e) {
-    _globalYtLinks = {};
-  }
   renderSt();
 }
 
 function getEffectiveLyrics(id) {
-  if (_globalLyricsOverrides[id]) return _globalLyricsOverrides[id];
   return (
     LYRICS[id] ||
     ((App.S.customSt || []).find((x) => x.id === id) || {}).lyrics ||
     ((_globalStotrams || []).find((x) => x.id === id) || {}).lyrics ||
     ""
   );
-}
-
-async function devSaveInbuiltLyrics(id) {
-  if (!isDeveloper()) {
-    toast("Access denied");
-    return;
-  }
-  const ta = document.getElementById("devLyrEdit-" + id);
-  if (!ta) return;
-  const lyrics = ta.value.trim();
-  if (!lyrics) {
-    toast("Lyrics cannot be empty");
-    return;
-  }
-  try {
-    await fbDb.collection("stotram_overrides").doc(id).set({
-      lyrics,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedBy: fbUser.email,
-    });
-    _globalLyricsOverrides[id] = lyrics;
-    renderSt();
-    toast("✅ Lyrics saved for all users! 🙏");
-  } catch (e) {
-    toast("Error: " + e.message);
-  }
 }
 
 async function devAddGlobalStotram() {
@@ -7083,70 +7034,11 @@ function toggleDevPanel() {
   if (_devPanelOpen) renderDevStotramPanel();
 }
 
-async function devSaveYtLink(id) {
-  if (!isDeveloper()) { toast('Access denied'); return; }
-  const inp = document.getElementById('devYtLink-' + id);
-  if (!inp) return;
-  const url = inp.value.trim();
-  try {
-    if (url) {
-      await fbDb.collection('stotram_youtube_links').doc(id).set({
-        url,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedBy: fbUser.email
-      });
-      _globalYtLinks[id] = url;
-    } else {
-      await fbDb.collection('stotram_youtube_links').doc(id).delete();
-      delete _globalYtLinks[id];
-    }
-    renderSt();
-    toast(url ? '✅ YouTube link saved for all users!' : '🗑 YouTube link removed.');
-  } catch(e) {
-    toast('Error: ' + e.message);
-  }
-}
-
-
 function renderDevStotramPanel() {
   const el = document.getElementById("devStList");
   if (!el) return;
   let html = "";
-  // Section 1: Edit inbuilt stotram lyrics
-  html +=
-    '<div style="font-size:12px;color:var(--gold);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">✏ Edit Inbuilt Stotram Lyrics</div>';
-  STLIST.forEach((st) => {
-    const cur = getEffectiveLyrics(st.id);
-    const hasOverride = !!_globalLyricsOverrides[st.id];
-    const curYtLink = _globalYtLinks[st.id] || '';
-    html +=
-      '<div style="margin-bottom:10px;border:1px solid rgba(255,215,0,0.2);border-radius:9px;padding:9px">';
-    html +=
-      '<div style="font-size:12px;color:var(--tl);margin-bottom:6px">' +
-      escHtml(st.name) +
-      (hasOverride
-        ? ' <span style="color:var(--green);font-size:10px">● overridden</span>'
-        : "") +
-      '</div>';
-    html +=
-      '<textarea id="devLyrEdit-' +
-      st.id +
-      '" rows="4" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.2);border-radius:7px;padding:7px;color:var(--tl);font-size:12px;font-family:Hind Siliguri,serif;resize:vertical;box-sizing:border-box">' +
-      escHtml(cur) +
-      '</textarea>';
-    html +=
-      '<div style="display:flex;align-items:center;gap:6px;margin-top:6px">' +
-      '<svg viewBox="0 0 24 24" width="16" height="16" fill="#FF0000"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1C4.5 20.5 12 20.5 12 20.5s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.2 3.5-6.2 3.5z"/></svg>' +
-      '<input type="url" id="devYtLink-' + st.id + '" placeholder="YouTube URL for this stotram (optional)" value="' + escHtml(curYtLink) + '" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,0,0,0.25);border-radius:7px;padding:6px 8px;color:var(--tl);font-size:12px;box-sizing:border-box">' +
-      '<button onclick="devSaveYtLink(\'' + st.id + '\')" style="padding:6px 10px;border-radius:7px;border:1px solid rgba(255,0,0,0.3);background:rgba(255,0,0,0.12);color:#ffaaaa;font-size:11px;cursor:pointer;white-space:nowrap">🔗 Save</button>' +
-      '</div>';
-    html +=
-      '<button onclick="devSaveInbuiltLyrics(\'' +
-      st.id +
-      '\')" style="margin-top:5px;padding:6px 14px;border-radius:7px;border:none;background:linear-gradient(135deg,rgba(255,215,0,0.3),rgba(255,180,0,0.2));color:var(--gold);font-size:12px;cursor:pointer">💾 Save Lyrics for All Users</button>';
-    html += '</div>';
-  });
-  // Section 2: Global stotrams list
+  // Global stotrams list
   if (_globalStotrams.length) {
     html +=
       '<div style="font-size:12px;color:var(--gold);letter-spacing:1px;margin:12px 0 8px;text-transform:uppercase">🌍 Global Stotrams Added</div>';
@@ -12380,6 +12272,21 @@ window.toggleNotificationSheet = function() {
   }
 }
 
+window.toggleNotificationSheet = function() {
+  const sheet = document.getElementById('notifSheet');
+  const badge = document.getElementById('notificationBadge');
+  if (!sheet) return;
+  if (sheet.style.display === 'flex') {
+    sheet.style.display = 'none';
+  } else {
+    sheet.style.display = 'flex';
+    if (badge) badge.style.display = 'none';
+    if (_latestNotifId) localStorage.setItem('rjap_lastNotifRead', _latestNotifId);
+  }
+}
+
+let _latestNotifId = null;
+
 // Real-time notification listener — fires immediately and on every new notification
 let _notifListener = null;
 function fetchLatestNotification() {
@@ -12408,6 +12315,8 @@ function fetchLatestNotification() {
       if (lastRead !== _latestNotifId) {
         const badge = document.getElementById('notificationBadge');
         if (badge) badge.style.display = 'block';
+        // Give a popup toast as well
+        toast('🔔 New Update: ' + data.title);
       }
     }, (e) => {
       console.error('Notification listener error:', e);

@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isDeveloper() {
+      return request.auth != null && request.auth.token.email in [
+        'drakthephenomenal@gmail.com',
+        'akthephenomenal@zohomail.com',
+        'anupkumarpaulshuvo@gmail.com'
+      ];
+    }
+
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == userId;
+    }
+
+    match /global_stotrams/{docId} {
+      allow read: if true;
+      allow write: if isDeveloper();
+    }
+
+    match /stotram_overrides/{docId} {
+      allow read: if true;
+      allow write: if isDeveloper();
+    }
+
+    // Time sync probe — needed for fbSyncServerTime()
+    match /_timesync/{doc} {
+      allow read, write: if request.auth != null;
+    }
+
+    // --- NEW LEADERBOARD RULE ---
+    match /leaderboard/{userId} {
+      allow read: if request.auth != null; // Anyone signed in can read the leaderboard
+      allow write: if request.auth != null && request.auth.uid == userId; // Users can only update their own rank
+    }
+
+    // --- NEW FEEDBACK RULE ---
+    match /feedbacks/{docId} {
+      // Developers can read all feedback, anyone signed in can create feedback
+      allow read: if isDeveloper();
+      allow create: if request.auth != null;
+      allow update, delete: if isDeveloper();
+    }
+
+    // --- NEW NOTIFICATIONS RULE ---
+    match /notifications/{docId} {
+      allow read: if true;
+      allow write: if isDeveloper();
+    }
+
+    // --- NEW GLOBAL CONFIG RULE ---
+    match /global_config/{docId} {
+      allow read: if true;
+      allow write: if isDeveloper();
+    }
+  }
+}

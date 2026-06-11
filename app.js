@@ -4817,6 +4817,16 @@ function fbInit() {
           await fbAutoSync();
           // Load global stotrams (inbuilt overrides + global stotrams for all users)
           loadGlobalStotrams();
+
+          if (isDeveloper()) {
+            const devOptionsPanel = document.getElementById("devOptionsPanel");
+            if (devOptionsPanel) devOptionsPanel.style.display = "block";
+          } else {
+            const devOptionsPanel = document.getElementById("devOptionsPanel");
+            if (devOptionsPanel) devOptionsPanel.style.display = "none";
+          }
+          fetchGuideVideoLink();
+          fetchLatestNotification();
         });
       } else {
         document.getElementById("fbLoggedOut").style.display = "block";
@@ -6891,6 +6901,7 @@ function renderSt() {
           '<button class="st-btn" onclick="adjSt(\'' + st.id + '\',-1)">−</button>' +
           '<button class="st-btn" onclick="adjSt(\'' + st.id + '\',1)">+</button>' +
           (hasLyrics ? '<button class="st-btn read" onclick="showLyrics(\'' + st.id + '\')">📖</button>' : '') +
+          (st.ytLink ? '<button class="st-btn read" onclick="window.open(\'' + escHtml(st.ytLink) + '\', \'_blank\')" style="color:#ff6b6b;font-size:16px;">▶</button>' : '') +
         '</div>' +
       '</div>';
 
@@ -7005,6 +7016,7 @@ async function devAddGlobalStotram() {
   const name = (document.getElementById("devStName").value || "").trim();
   const sub = (document.getElementById("devStSub").value || "").trim();
   const lyrics = (document.getElementById("devStLyrics").value || "").trim();
+  const ytLink = (document.getElementById("devStYoutube")?.value || "").trim();
   if (!name) {
     toast("Stotram name required");
     return;
@@ -7015,13 +7027,15 @@ async function devAddGlobalStotram() {
       name,
       sub,
       lyrics,
+      ytLink,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       createdBy: fbUser.email,
     });
-    _globalStotrams.push({ id, name, sub, lyrics });
+    _globalStotrams.push({ id, name, sub, lyrics, ytLink });
     document.getElementById("devStName").value = "";
     document.getElementById("devStSub").value = "";
     document.getElementById("devStLyrics").value = "";
+    if (document.getElementById("devStYoutube")) document.getElementById("devStYoutube").value = "";
     renderSt();
     renderDevStotramPanel();
     toast("✅ Global stotram added for all users! 🙏");
@@ -8839,6 +8853,9 @@ window.addEventListener("load", async () => {
   // Persist the cleaned occasions immediately
   App.save();
   fbDebouncedPush();
+
+  // Trigger auto-backup check
+  setTimeout(checkAutoBackup, 2000);
 
   // Hide loading — guaranteed cleanup
   setTimeout(() => {
@@ -12254,5 +12271,233 @@ window.triggerMalaGlowFlash = function() {
   });
 };
 
+// ==========================================
+// NEW FEATURES: AUTO-BACKUP, NOTIFICATIONS, FEEDBACK, VIDEO LINK
+// ==========================================
+
+// 1. Auto Backup on Open
+async function checkAutoBackup() {
+  const lastBackupStr = localStorage.getItem('rjap_lastAutoBackup');
+  let lastBackup = lastBackupStr ? parseInt(lastBackupStr) : 0;
+  
+  const now = new Date();
+  let mostRecentThreshold = new Date(now);
+  mostRecentThreshold.setMinutes(0, 0, 0);
+  if (now.getHours() >= 12) {
+    mostRecentThreshold.setHours(12);
+  } else {
+    mostRecentThreshold.setHours(0);
+  }
+  
+  // Also only run if we have App.S initialized to prevent empty backups
+  if (lastBackup < mostRecentThreshold.getTime() && window.App && App.S) {
+    let backupData = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      let key = localStorage.key(i);
+      backupData[key] = localStorage.getItem(key);
+    }
+    
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    
+    const dStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    const timeStr = now.getHours() >= 12 ? '12PM' : '12AM';
+    a.download = `RadhaNaamJap_Backup_${dStr}_${timeStr}.json`;
+    
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1000);
+    
+    localStorage.setItem('rjap_lastAutoBackup', Date.now().toString());
+    toast('Auto Backup Generated! 🙏');
+  }
+}
+
+// 2. Notifications System
+let _latestNotifId = null;
+
+window.toggleNotificationSheet = function() {
+  const sheet = document.getElementById('notifSheet');
+  if(!sheet) return;
+  const isOpen = sheet.style.display === 'flex';
+  sheet.style.display = isOpen ? 'none' : 'flex';
+  if (!isOpen) {
+    // Hide badge when opened
+    const badge = document.getElementById('notificationBadge');
+    if (badge) badge.style.display = 'none';
+    if (_latestNotifId) {
+      localStorage.setItem('rjap_lastNotifRead', _latestNotifId);
+    }
+  }
+}
+
+async function fetchLatestNotification() {
+  if (!window.fbDb) return;
+  try {
+    const snap = await fbDb.collection('notifications').orderBy('createdAt', 'desc').limit(1).get();
+    if (!snap.empty) {
+      const doc = snap.docs[0];
+      const data = doc.data();
+      _latestNotifId = doc.id;
+      
+      const contentEl = document.getElementById('notifContent');
+      if (contentEl) {
+        const dateStr = data.createdAt ? new Date(data.createdAt.toDate()).toLocaleDateString() : '';
+        contentEl.innerHTML = `
+          <div style="font-weight:bold;font-size:16px;margin-bottom:5px;color:var(--gold);">${escHtml(data.title)}</div>
+          <div style="font-size:11px;color:var(--td);margin-bottom:10px;">${dateStr}</div>
+          <div style="white-space:pre-wrap;">${escHtml(data.body)}</div>
+        `;
+      }
+      
+      const lastRead = localStorage.getItem('rjap_lastNotifRead');
+      if (lastRead !== _latestNotifId) {
+        const badge = document.getElementById('notificationBadge');
+        if (badge) badge.style.display = 'block';
+      }
+    }
+  } catch(e) {
+    console.error('Error fetching notification', e);
+  }
+}
+
+window.sendGlobalNotification = async function() {
+  if (!isDeveloper()) return;
+  const title = document.getElementById('devNotifTitle').value.trim();
+  const body = document.getElementById('devNotifBody').value.trim();
+  
+  if (!title || !body) {
+    toast('Title and body required');
+    return;
+  }
+  
+  try {
+    await fbDb.collection('notifications').add({
+      title,
+      body,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: fbUser.email
+    });
+    toast('Notification sent! 📢');
+    document.getElementById('devNotifTitle').value = '';
+    document.getElementById('devNotifBody').value = '';
+    fetchLatestNotification();
+  } catch(e) {
+    toast('Error: ' + e.message);
+  }
+}
+
+// 3. Feedback System
+window.submitFeedback = async function() {
+  const textEl = document.getElementById('feedbackText');
+  const text = textEl.value.trim();
+  
+  if (!text) {
+    toast('Please enter your feedback.');
+    return;
+  }
+  
+  if (!window.fbUser) {
+    toast('Please sign in to send feedback.');
+    return;
+  }
+  
+  try {
+    await fbDb.collection('feedbacks').add({
+      text,
+      uid: fbUser.uid,
+      email: fbUser.email,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast('Feedback sent! Thank you 🙏');
+    textEl.value = '';
+  } catch(e) {
+    toast('Error: ' + e.message);
+  }
+}
+
+// 4. Video Guide Link System
+let _guideVideoLink = null;
+
+async function fetchGuideVideoLink() {
+  if (!window.fbDb) return;
+  try {
+    const doc = await fbDb.collection('global_config').doc('video_link').get();
+    if (doc.exists) {
+      _guideVideoLink = doc.data().url;
+      const btn = document.getElementById('guideVideoBtn');
+      if (btn && _guideVideoLink) {
+        btn.style.display = 'inline-block';
+      }
+      const devIn = document.getElementById('devVideoLinkIn');
+      if (devIn) devIn.value = _guideVideoLink || '';
+    }
+  } catch(e) {
+    console.error('Error fetching video link', e);
+  }
+}
+
+window.openGuideVideo = function() {
+  if (_guideVideoLink) {
+    window.open(_guideVideoLink, '_blank');
+  }
+}
+
+window.updateGuideVideo = async function() {
+  if (!isDeveloper()) return;
+  const url = document.getElementById('devVideoLinkIn').value.trim();
+  try {
+    await fbDb.collection('global_config').doc('video_link').set({
+      url,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: fbUser.email
+    });
+    toast('Video link updated!');
+    fetchGuideVideoLink();
+  } catch(e) {
+    toast('Error: ' + e.message);
+  }
+}
+
 // Motion blur on scroll removed.
 
+window.openDevFeedbackPanel = async function() {
+  if (!isDeveloper()) return;
+  const modal = document.getElementById('devFeedbackModal');
+  const content = document.getElementById('devFeedbackContent');
+  if (!modal || !content) return;
+  
+  modal.style.display = 'flex';
+  content.innerHTML = '<div style="text-align:center;color:var(--td);margin-top:20px;">Loading feedback...</div>';
+  
+  try {
+    const snap = await fbDb.collection('feedbacks').orderBy('createdAt', 'desc').limit(50).get();
+    if (snap.empty) {
+      content.innerHTML = '<div style="text-align:center;color:var(--td);margin-top:20px;">No feedback found.</div>';
+      return;
+    }
+    
+    let html = '';
+    snap.forEach(doc => {
+      const data = doc.data();
+      const dateStr = data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString() : 'Unknown Date';
+      html += `
+        <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(46,204,113,0.2);border-radius:8px;padding:12px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:11px;color:var(--td);">
+            <div>${escHtml(data.email || 'Unknown User')}</div>
+            <div>${dateStr}</div>
+          </div>
+          <div style="white-space:pre-wrap;color:var(--tl);font-size:13px;">${escHtml(data.text)}</div>
+        </div>
+      `;
+    });
+    content.innerHTML = html;
+  } catch(e) {
+    content.innerHTML = '<div style="text-align:center;color:var(--td);margin-top:20px;">Error loading feedback: ' + e.message + '</div>';
+  }
+}

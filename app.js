@@ -12285,8 +12285,6 @@ window.toggleNotificationSheet = function() {
   }
 }
 
-let _latestNotifId = null;
-
 // Real-time notification listener — fires immediately and on every new notification
 let _notifListener = null;
 function fetchLatestNotification() {

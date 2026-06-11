@@ -1000,14 +1000,23 @@
     <div class="lb-hero-sub">Guru Kripahi Kevalam.Ladder-board is valueless</div>
   </div>
 
-  <!-- Opt-in banner (shown only when not opted in and signed in) -->
-  <div class="lb-optin-banner" id="lbOptinBanner" style="display:none">
-    <div class="lb-optin-icon">🙏</div>
-    <div class="lb-optin-text">
-      <div class="lb-optin-title">Join the Community Board</div>
-      <div class="lb-optin-desc">Share your jap count with devotees. Enable in <b>Settings → Leaderboard</b>.</div>
+  <!-- LEADERBOARD SETTINGS (Moved from Settings tab) -->
+  <div class="sc" id="lbSettingCard" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.25);margin:16px 16px 8px 16px;padding-bottom:8px;">
+    <!-- Opt-in toggle -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;margin-bottom:12px;">
+      <div style="font-size:14px;color:var(--gold);font-weight:600">🏆 Join Ladderboard</div>
+      <div class="tg" id="tgLbOptIn" onclick="toggleLbOptIn()"></div>
     </div>
-    <button class="lb-optin-btn" onclick="sv('vset', document.querySelector('.nb:last-child')); setTimeout(()=>{document.getElementById('lbSettingCard').scrollIntoView({behavior:'smooth'})},300)">Enable ›</button>
+
+    <!-- Display name -->
+    <div id="lbNameRow" style="display:none;">
+      <div style="font-size:11px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;font-weight:600;margin-bottom:7px">Display Name</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="lbNameIn" autocomplete="off" spellcheck="false" maxlength="30" placeholder="Keep original name or type custom name…" style="flex:1;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:13px;font-family:'Inter',sans-serif;outline:none">
+        <button onclick="saveLbName()" style="padding:9px 16px;border-radius:10px;border:1px solid rgba(255,215,0,0.5);background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,180,0,0.05));color:#FFD700;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;box-shadow:0 4px 12px rgba(255,215,0,0.2),inset 0 1px 0 rgba(255,255,255,0.1);transition:all 0.3s ease;text-shadow:0 0 8px rgba(255,215,0,0.4);">✨ Save</button>
+      </div>
+      <div id="lbNameFeedback" style="font-size:11px;margin-top:5px;color:var(--green);min-height:16px"></div>
+    </div>
   </div>
 
   <!-- Period Tabs -->
@@ -1392,30 +1401,7 @@
   </div>
 
 
-  <!-- LEADERBOARD SETTINGS -->
-  <div class="sc" id="lbSettingCard" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.25)">
-    <h3>🏆 Community Leaderboard</h3>
-    <p style="font-size:12px;color:var(--td);margin-bottom:14px">Share your jap count on the community leaderboard. Your display name and total jap count become visible to all signed-in users.</p>
 
-    <!-- Opt-in toggle -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,215,0,0.12);margin-bottom:12px">
-      <div>
-        <div style="font-size:13px;color:var(--tl);font-weight:500">Join Leaderboard</div>
-        <div style="font-size:11px;color:var(--td);margin-top:2px">Show my jap count publicly</div>
-      </div>
-      <div class="tg" id="tgLbOptIn" onclick="toggleLbOptIn()"></div>
-    </div>
-
-    <!-- Display name -->
-    <div id="lbNameRow">
-      <div style="font-size:11px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;font-weight:600;margin-bottom:7px">Display Name</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="text" id="lbNameIn" autocomplete="off" spellcheck="false" maxlength="30" placeholder="Radha Das / Devotee name…" style="flex:1;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:13px;font-family:'Inter',sans-serif;outline:none">
-        <button onclick="saveLbName()" style="padding:9px 16px;border-radius:10px;border:1px solid rgba(255,215,0,0.5);background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,180,0,0.05));color:#FFD700;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;box-shadow:0 4px 12px rgba(255,215,0,0.2),inset 0 1px 0 rgba(255,255,255,0.1);transition:all 0.3s ease;text-shadow:0 0 8px rgba(255,215,0,0.4);">✨ Save</button>
-      </div>
-      <div id="lbNameFeedback" style="font-size:11px;margin-top:5px;color:var(--green);min-height:16px"></div>
-    </div>
-  </div>
 
   <!-- PHOTO CUSTOMIZATION SETTINGS -->
   <div class="sc photo-settings-card non-gaudiya-setting">

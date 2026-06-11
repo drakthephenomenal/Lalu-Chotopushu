@@ -11790,7 +11790,14 @@ function renderLeaderboard(docs, period) {
     const rowClass = 'lb-row' + (isMe ? ' lb-row-me' : '') + (isTop3 ? ' lb-row-top3' : '');
     const nameClass = 'lb-name' + (isMe ? ' lb-name-me' : '');
     const meMark = isMe ? ' ✦ You' : '';
-    const name = (d.displayName || 'Anonymous Devotee').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    
+    const nowMs = Date.now();
+    let isOnline = false;
+    if (d.lastActive) isOnline = (nowMs - d.lastActive.toDate().getTime()) < 5 * 60 * 1000;
+    else if (d.updatedAt) isOnline = (nowMs - d.updatedAt.toDate().getTime()) < 5 * 60 * 1000;
+    const onlineDot = isOnline ? '<span style="display:inline-block;width:8px;height:8px;background:#4ade80;border-radius:50%;margin-left:6px;box-shadow:0 0 6px rgba(74,222,128,0.6)" title="Online"></span>' : '';
+    
+    const name = (d.displayName || 'Anonymous Devotee').replace(/</g,'&lt;').replace(/>/g,'&gt;') + onlineDot;
     const malas = Math.floor(d.score / (App.S.ms || 108));
     
     let b = d._breakdown || { r:0, rv:0, hk:0, n28:0 };
@@ -11959,17 +11966,24 @@ async function saveLbName() {
 function populateLbSettingsUI() {
   const tg  = document.getElementById('tgLbOptIn');
   const inp = document.getElementById('lbNameIn');
+  const row = document.getElementById('lbNameRow');
   if (tg)  tg.classList.toggle('on', !!App.S.lbOptIn);
   if (inp && !inp.value) inp.value = App.S.lbDisplayName || '';
-
-  // Opt-in banner in leaderboard view
-  const banner = document.getElementById('lbOptinBanner');
-  if (banner) banner.style.display = (App.S.lbOptIn ? 'none' : 'flex');
+  if (row) row.style.display = App.S.lbOptIn ? 'block' : 'none';
 }
 
 // ═══════════════════════════════════════════════════════
 // BACKGROUND PHOTO CUSTOMIZATION (Visual Picker + Upload)
 // ═══════════════════════════════════════════════════════
+
+// Keep online status updated every 3 minutes while app is active
+setInterval(() => {
+  if (App && App.S && App.S.lbOptIn && fbUser && fbDb && !document.hidden) {
+    fbDb.collection('leaderboard').doc(fbUser.uid).update({
+      lastActive: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(()=>{});
+  }
+}, 3 * 60 * 1000);
 
 // 1. Initialize dedicated Photos Database to prevent localStorage bloating
 const PhotosDB = {

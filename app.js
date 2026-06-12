@@ -4815,8 +4815,6 @@ function fbInit() {
           await fbSyncServerTime();
           // Direct cloud pull — overwrites local cache with authoritative Firebase data
           await fbAutoSync();
-          // Load global stotrams (inbuilt overrides + global stotrams for all users)
-          loadGlobalStotrams();
 
           if (isDeveloper()) {
             const devOptionsPanel = document.getElementById("devOptionsPanel");
@@ -4825,7 +4823,6 @@ function fbInit() {
             const devOptionsPanel = document.getElementById("devOptionsPanel");
             if (devOptionsPanel) devOptionsPanel.style.display = "none";
           }
-          fetchGuideVideoLink();
           fetchLatestNotification();
           watchNewFeedback(); // Dev-only: real-time badge for new user feedback
         });
@@ -6846,14 +6843,10 @@ function renderSt() {
     document.head.appendChild(styleEl);
   }
 
-  const globalSt = (_globalStotrams || []).map((x) => ({ ...x, global: true }));
   const all = [
     ...STLIST,
-    ...globalSt,
     ...(App.S.customSt || []).map((x) => ({ ...x, custom: true })),
   ];
-  const devBtn = document.getElementById("devStBtn");
-  if (devBtn) devBtn.style.display = isDeveloper() ? "" : "none";
 
   const glowColors = ['#ffd700','#ffaa00','#ff6bff','#00e5ff','#7dff6b','#ff6b6b','#b388ff','#00ffcc','#ffd700','#ff9d00'];
 
@@ -6902,7 +6895,6 @@ function renderSt() {
           '<button class="st-btn" onclick="adjSt(\'' + st.id + '\',-1)">−</button>' +
           '<button class="st-btn" onclick="adjSt(\'' + st.id + '\',1)">+</button>' +
           (hasLyrics ? '<button class="st-btn read" onclick="showLyrics(\'' + st.id + '\')">📖</button>' : '') +
-          ((_globalYtLinks[st.id] || st.ytLink) ? '<button class="st-btn yt-btn" onclick="window.open(\'' + escHtml(_globalYtLinks[st.id] || st.ytLink) + '\', \'_blank\')" title="Watch on YouTube" style="background:rgba(255,0,0,0.12);border-color:rgba(255,0,0,0.35);padding:0;width:44px;height:44px;"><svg viewBox=\'0 0 24 24\' width=\'22\' height=\'22\' fill=\'#FF0000\'><path d=\'M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1C4.5 20.5 12 20.5 12 20.5s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.2 3.5-6.2 3.5z\'/></svg></button>' : '') +
         '</div>' +
       '</div>';
 
@@ -6945,232 +6937,14 @@ function isDeveloper() {
   return DEV_IDS.map((e) => e.toLowerCase()).includes(email);
 }
 
-// Global stotrams stored in Firestore — visible to ALL users
-let _globalStotrams = [];
-let _globalLyricsOverrides = {}; // {stotramId: newLyrics}
-let _globalYtLinks = {}; // {stotramId: youtubeUrl} — set by developer via Firestore
-
-async function loadGlobalStotrams() {
-  if (!fbDb) return;
-  try {
-    const snap = await fbDb
-      .collection("global_stotrams")
-      .orderBy("createdAt", "asc")
-      .get();
-    _globalStotrams = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  } catch (e) {
-    // Collection may not exist yet
-    _globalStotrams = [];
-  }
-  try {
-    const overrides = await fbDb.collection("stotram_overrides").get();
-    _globalLyricsOverrides = {};
-    overrides.docs.forEach((d) => {
-      _globalLyricsOverrides[d.id] = d.data().lyrics || "";
-    });
-  } catch (e) {
-    _globalLyricsOverrides = {};
-  }
-  // Load YouTube links for ALL stotrams (set by developer)
-  try {
-    const ytSnap = await fbDb.collection("stotram_youtube_links").get();
-    _globalYtLinks = {};
-    ytSnap.docs.forEach((d) => {
-      _globalYtLinks[d.id] = d.data().url || "";
-    });
-  } catch (e) {
-    _globalYtLinks = {};
-  }
-  renderSt();
-}
-
 function getEffectiveLyrics(id) {
-  if (_globalLyricsOverrides[id]) return _globalLyricsOverrides[id];
   return (
     LYRICS[id] ||
     ((App.S.customSt || []).find((x) => x.id === id) || {}).lyrics ||
-    ((_globalStotrams || []).find((x) => x.id === id) || {}).lyrics ||
     ""
   );
 }
 
-async function devSaveInbuiltLyrics(id) {
-  if (!isDeveloper()) {
-    toast("Access denied");
-    return;
-  }
-  const ta = document.getElementById("devLyrEdit-" + id);
-  if (!ta) return;
-  const lyrics = ta.value.trim();
-  if (!lyrics) {
-    toast("Lyrics cannot be empty");
-    return;
-  }
-  try {
-    await fbDb.collection("stotram_overrides").doc(id).set({
-      lyrics,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedBy: fbUser.email,
-    });
-    _globalLyricsOverrides[id] = lyrics;
-    renderSt();
-    toast("✅ Lyrics saved for all users! 🙏");
-  } catch (e) {
-    toast("Error: " + e.message);
-  }
-}
-
-async function devAddGlobalStotram() {
-  if (!isDeveloper()) {
-    toast("Access denied");
-    return;
-  }
-  const name = (document.getElementById("devStName").value || "").trim();
-  const sub = (document.getElementById("devStSub").value || "").trim();
-  const lyrics = (document.getElementById("devStLyrics").value || "").trim();
-  const ytLink = (document.getElementById("devStYoutube")?.value || "").trim();
-  if (!name) {
-    toast("Stotram name required");
-    return;
-  }
-  const id = "gs_" + Date.now();
-  try {
-    await fbDb.collection("global_stotrams").doc(id).set({
-      name,
-      sub,
-      lyrics,
-      ytLink,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: fbUser.email,
-    });
-    _globalStotrams.push({ id, name, sub, lyrics, ytLink });
-    document.getElementById("devStName").value = "";
-    document.getElementById("devStSub").value = "";
-    document.getElementById("devStLyrics").value = "";
-    if (document.getElementById("devStYoutube")) document.getElementById("devStYoutube").value = "";
-    renderSt();
-    renderDevStotramPanel();
-    toast("✅ Global stotram added for all users! 🙏");
-  } catch (e) {
-    toast("Error: " + e.message);
-  }
-}
-
-async function devDeleteGlobalStotram(id) {
-  if (!isDeveloper()) {
-    toast("Access denied");
-    return;
-  }
-  if (!confirm("Delete this global stotram for all users?")) return;
-  try {
-    await fbDb.collection("global_stotrams").doc(id).delete();
-    _globalStotrams = _globalStotrams.filter((s) => s.id !== id);
-    renderSt();
-    renderDevStotramPanel();
-    toast("Deleted.");
-  } catch (e) {
-    toast("Error: " + e.message);
-  }
-}
-
-let _devPanelOpen = false;
-function toggleDevPanel() {
-  _devPanelOpen = !_devPanelOpen;
-  const panel = document.getElementById("devStPanel");
-  if (panel) {
-    panel.style.display = _devPanelOpen ? "block" : "none";
-  }
-  if (_devPanelOpen) renderDevStotramPanel();
-}
-
-async function devSaveYtLink(id) {
-  if (!isDeveloper()) { toast('Access denied'); return; }
-  const inp = document.getElementById('devYtLink-' + id);
-  if (!inp) return;
-  const url = inp.value.trim();
-  try {
-    if (url) {
-      await fbDb.collection('stotram_youtube_links').doc(id).set({
-        url,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedBy: fbUser.email
-      });
-      _globalYtLinks[id] = url;
-    } else {
-      await fbDb.collection('stotram_youtube_links').doc(id).delete();
-      delete _globalYtLinks[id];
-    }
-    renderSt();
-    toast(url ? '✅ YouTube link saved for all users!' : '🗑 YouTube link removed.');
-  } catch(e) {
-    toast('Error: ' + e.message);
-  }
-}
-
-
-function renderDevStotramPanel() {
-  const el = document.getElementById("devStList");
-  if (!el) return;
-  let html = "";
-  // Section 1: Edit inbuilt stotram lyrics
-  html +=
-    '<div style="font-size:12px;color:var(--gold);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">✏ Edit Inbuilt Stotram Lyrics</div>';
-  STLIST.forEach((st) => {
-    const cur = getEffectiveLyrics(st.id);
-    const hasOverride = !!_globalLyricsOverrides[st.id];
-    const curYtLink = _globalYtLinks[st.id] || '';
-    html +=
-      '<div style="margin-bottom:10px;border:1px solid rgba(255,215,0,0.2);border-radius:9px;padding:9px">';
-    html +=
-      '<div style="font-size:12px;color:var(--tl);margin-bottom:6px">' +
-      escHtml(st.name) +
-      (hasOverride
-        ? ' <span style="color:var(--green);font-size:10px">● overridden</span>'
-        : "") +
-      '</div>';
-    html +=
-      '<textarea id="devLyrEdit-' +
-      st.id +
-      '" rows="4" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.2);border-radius:7px;padding:7px;color:var(--tl);font-size:12px;font-family:Hind Siliguri,serif;resize:vertical;box-sizing:border-box">' +
-      escHtml(cur) +
-      '</textarea>';
-    html +=
-      '<div style="display:flex;align-items:center;gap:6px;margin-top:6px">' +
-      '<svg viewBox="0 0 24 24" width="16" height="16" fill="#FF0000"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1C4.5 20.5 12 20.5 12 20.5s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.8 15.5V8.5l6.2 3.5-6.2 3.5z"/></svg>' +
-      '<input type="url" id="devYtLink-' + st.id + '" placeholder="YouTube URL for this stotram (optional)" value="' + escHtml(curYtLink) + '" style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,0,0,0.25);border-radius:7px;padding:6px 8px;color:var(--tl);font-size:12px;box-sizing:border-box">' +
-      '<button onclick="devSaveYtLink(\'' + st.id + '\')" style="padding:6px 10px;border-radius:7px;border:1px solid rgba(255,0,0,0.3);background:rgba(255,0,0,0.12);color:#ffaaaa;font-size:11px;cursor:pointer;white-space:nowrap">🔗 Save</button>' +
-      '</div>';
-    html +=
-      '<button onclick="devSaveInbuiltLyrics(\'' +
-      st.id +
-      '\')" style="margin-top:5px;padding:6px 14px;border-radius:7px;border:none;background:linear-gradient(135deg,rgba(255,215,0,0.3),rgba(255,180,0,0.2));color:var(--gold);font-size:12px;cursor:pointer">💾 Save Lyrics for All Users</button>';
-    html += '</div>';
-  });
-  // Section 2: Global stotrams list
-  if (_globalStotrams.length) {
-    html +=
-      '<div style="font-size:12px;color:var(--gold);letter-spacing:1px;margin:12px 0 8px;text-transform:uppercase">🌍 Global Stotrams Added</div>';
-    _globalStotrams.forEach((st) => {
-      html +=
-        '<div style="display:flex;align-items:center;gap:8px;padding:7px;background:rgba(255,215,0,0.05);border-radius:7px;margin-bottom:6px">';
-      html +=
-        '<div style="flex:1;font-size:12px;color:var(--tl)">' +
-        escHtml(st.name) +
-        (st.sub
-          ? '<br><span style="font-size:10px;color:var(--td)">' +
-            escHtml(st.sub) +
-            "</span>"
-          : "") +
-        "</div>";
-      html +=
-        "<button onclick=\"devDeleteGlobalStotram('" +
-        st.id +
-        '\')" style="padding:4px 10px;border-radius:7px;border:1px solid rgba(232,51,109,0.3);background:rgba(232,51,109,0.08);color:var(--rl);font-size:11px;cursor:pointer">Delete</button>';
-      html += "</div>";
-    });
-  }
-  el.innerHTML = html;
-}
 
 function adjSt(id, d) {
   if (!App.S.stotrams[id]) App.S.stotrams[id] = {};
@@ -9398,7 +9172,6 @@ function showLyrics(id) {
 
   const allSt = [
     ...STLIST,
-    ...(_globalStotrams || []),
     ...(App.S.customSt || []),
   ];
   const nm = allSt.find((x) => x.id === id);
@@ -12414,32 +12187,6 @@ function fetchLatestNotification() {
     });
 }
 
-window.sendGlobalNotification = async function() {
-  if (!isDeveloper()) return;
-  const title = document.getElementById('devNotifTitle').value.trim();
-  const body = document.getElementById('devNotifBody').value.trim();
-  
-  if (!title || !body) {
-    toast('Title and body required');
-    return;
-  }
-  
-  try {
-    await fbDb.collection('notifications').add({
-      title,
-      body,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: fbUser.email
-    });
-    toast('Notification sent! 📢');
-    document.getElementById('devNotifTitle').value = '';
-    document.getElementById('devNotifBody').value = '';
-    fetchLatestNotification();
-  } catch(e) {
-    toast('Error: ' + e.message);
-  }
-}
-
 // 3. Feedback System
 window.submitFeedback = async function() {
   const textEl = document.getElementById('feedbackText');
@@ -12468,49 +12215,6 @@ window.submitFeedback = async function() {
     textEl.value = '';
   } catch(e) {
     toast('Error sending feedback: ' + e.message);
-  }
-}
-
-// 4. Video Guide Link System
-let _guideVideoLink = null;
-
-async function fetchGuideVideoLink() {
-  if (!window.fbDb) return;
-  try {
-    const doc = await fbDb.collection('global_config').doc('video_link').get();
-    if (doc.exists) {
-      _guideVideoLink = doc.data().url;
-      const btn = document.getElementById('guideVideoBtn');
-      if (btn && _guideVideoLink) {
-        btn.style.display = 'inline-block';
-      }
-      const devIn = document.getElementById('devVideoLinkIn');
-      if (devIn) devIn.value = _guideVideoLink || '';
-    }
-  } catch(e) {
-    console.error('Error fetching video link', e);
-  }
-}
-
-window.openGuideVideo = function() {
-  if (_guideVideoLink) {
-    window.open(_guideVideoLink, '_blank');
-  }
-}
-
-window.updateGuideVideo = async function() {
-  if (!isDeveloper()) return;
-  const url = document.getElementById('devVideoLinkIn').value.trim();
-  try {
-    await fbDb.collection('global_config').doc('video_link').set({
-      url,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      updatedBy: fbUser.email
-    });
-    toast('Video link updated!');
-    fetchGuideVideoLink();
-  } catch(e) {
-    toast('Error: ' + e.message);
   }
 }
 
@@ -12558,23 +12262,56 @@ window.openDevFeedbackPanel = async function() {
   }
 }
 
-// Watch for new feedback (developer only) — shows red badge on feedback button
+// Watch for new feedback (developer only) — shows red badge + popup alert on new feedback
 let _feedbackWatcher = null;
+let _feedbackPopupShownFor = null;
+function _showFeedbackPopup(data) {
+  let p = document.getElementById('feedbackPopup');
+  if (!p) {
+    p = document.createElement('div');
+    p.id = 'feedbackPopup';
+    p.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-120%);width:min(360px,92vw);background:linear-gradient(135deg,rgba(46,204,113,0.18),rgba(6,13,31,0.97));border:1px solid rgba(46,204,113,0.5);border-radius:14px;padding:14px 16px;z-index:99999;box-shadow:0 8px 30px rgba(0,0,0,0.5);transition:transform 0.35s ease;cursor:pointer;font-family:Inter,sans-serif;";
+    document.body.appendChild(p);
+    p.onclick = function() {
+      p.style.transform = 'translateX(-50%) translateY(-120%)';
+      window.openDevFeedbackPanel();
+    };
+  }
+  const fromWho = escHtml(data.email || 'Anonymous');
+  const preview = escHtml((data.text || '').slice(0, 90)) + ((data.text || '').length > 90 ? '…' : '');
+  p.innerHTML =
+    '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+      '<div style="font-size:22px;">📥</div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:12px;font-weight:700;color:#2ecc71;letter-spacing:0.5px;margin-bottom:3px;">New Feedback Received</div>' +
+        '<div style="font-size:11px;color:var(--td);margin-bottom:4px;">' + fromWho + '</div>' +
+        '<div style="font-size:13px;color:var(--tl);line-height:1.4;">' + preview + '</div>' +
+      '</div>' +
+    '</div>';
+  requestAnimationFrame(() => { p.style.transform = 'translateX(-50%) translateY(0)'; });
+  clearTimeout(p._hideT);
+  p._hideT = setTimeout(() => { p.style.transform = 'translateX(-50%) translateY(-120%)'; }, 6000);
+}
+
 function watchNewFeedback() {
   if (!isDeveloper()) return;
   if (_feedbackWatcher) { try { _feedbackWatcher(); } catch(_) {} }
-  const lastRead = parseInt(localStorage.getItem('rjap_lastFeedbackRead') || '0');
   _feedbackWatcher = fbDb.collection('feedbacks')
     .orderBy('createdAt', 'desc')
     .limit(1)
     .onSnapshot((snap) => {
       if (snap.empty) return;
-      const data = snap.docs[0].data();
+      const docSnap = snap.docs[0];
+      const data = docSnap.data();
       const ts = data.createdAt ? data.createdAt.toMillis() : 0;
       const badge = document.getElementById('feedbackBadge');
       const lastR = parseInt(localStorage.getItem('rjap_lastFeedbackRead') || '0');
-      if (badge && ts > lastR) {
-        badge.style.display = 'block';
+      if (ts > lastR) {
+        if (badge) badge.style.display = 'block';
+        if (_feedbackPopupShownFor !== docSnap.id && ts > (Date.now() - 5 * 60 * 1000)) {
+          _feedbackPopupShownFor = docSnap.id;
+          _showFeedbackPopup(data);
+        }
       }
     }, () => {});
 }

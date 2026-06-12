@@ -440,22 +440,6 @@
       <button class="asb" onclick="addSt()">Add Stotram</button>
     </div>
   </div>
-  <!-- Developer Panel (visible only to developer accounts) -->
-  <div id="devStSection" style="margin-bottom:10px">
-    <button id="devStBtn" onclick="toggleDevPanel()" style="display:none;width:100%;padding:10px;border-radius:11px;border:1px solid rgba(255,215,0,0.3);background:rgba(255,215,0,0.06);color:var(--gold);font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;margin-bottom:6px">🛠 Developer: Edit/Add Global Stotrams ▾</button>
-    <div id="devStPanel" style="display:none;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.2);border-radius:11px;padding:12px;margin-bottom:10px">
-      <!-- Add Global Stotram Form -->
-      <div style="font-size:12px;color:var(--gold);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">🌍 Add Global Stotram (visible to all users)</div>
-      <input type="text" id="devStName" placeholder="Stotram name (required)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.2);border-radius:8px;padding:8px 11px;color:var(--tl);font-size:13px;font-family:Hind Siliguri,serif;box-sizing:border-box;margin-bottom:6px">
-      <input type="text" id="devStSub" placeholder="Description (optional)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.2);border-radius:8px;padding:8px 11px;color:var(--tl);font-size:13px;font-family:Hind Siliguri,serif;box-sizing:border-box;margin-bottom:6px">
-      <textarea id="devStLyrics" rows="5" placeholder="Full lyrics (optional)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.2);border-radius:8px;padding:8px 11px;color:var(--tl);font-size:13px;font-family:Hind Siliguri,serif;resize:vertical;box-sizing:border-box;margin-bottom:6px"></textarea>
-      <input type="url" id="devStYoutube" placeholder="YouTube Link (optional)" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.2);border-radius:8px;padding:8px 11px;color:var(--tl);font-size:13px;font-family:Hind Siliguri,serif;box-sizing:border-box;margin-bottom:6px">
-      <button onclick="devAddGlobalStotram()" style="width:100%;padding:9px;border-radius:9px;border:none;background:linear-gradient(135deg,rgba(255,215,0,0.4),rgba(255,180,0,0.25));color:var(--gold);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px">🌍 Add for All Users</button>
-      <hr style="border:none;border-top:1px solid rgba(255,215,0,0.15);margin:8px 0 12px">
-      <!-- Edit inbuilt stotrams + global list -->
-      <div id="devStList"></div>
-    </div>
-  </div>
   <!-- Global Translation Toggle removed — moved to per-stotram reader (top-right) -->
   <div id="stList"></div>
 </div>
@@ -1489,7 +1473,6 @@
     <div id="appLinkDisplay" style="font-size:11px;color:var(--a2);background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:8px;padding:8px 11px;margin-bottom:10px;word-break:break-all;font-family:monospace;cursor:pointer" onclick="shareApp()" title="Tap to copy"></div>
     <script>(function(){function p(){var el=document.getElementById('appLinkDisplay');if(!el)return;var u=location.href.replace(/\/index\.html([?#].*)?$/,'/').split('?')[0].split('#')[0];if(!u.endsWith('/'))u+='/';el.textContent=u;}if(document.readyState!=='loading')p();else document.addEventListener('DOMContentLoaded',p);})();</script>
     <button class="pb" onclick="shareApp()" style="background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,180,0,0.25));color:var(--gold);border:1px solid rgba(255,215,0,0.4)">🌸 Share Radha Naam Jap App</button>
-    <button id="guideVideoBtn" class="pb" onclick="openGuideVideo()" style="display:none; margin-top:10px;background:linear-gradient(135deg,rgba(255,0,0,0.35),rgba(200,0,0,0.25));color:#ffdddd;border:1px solid rgba(255,0,0,0.4)">📺 Watch App Guide Video</button>
   </div>
 
   <!-- FEEDBACK FORM -->
@@ -1504,19 +1487,6 @@
   <div id="devOptionsPanel" class="sc" style="display:none;background:rgba(46,204,113,0.05);border-color:rgba(46,204,113,0.2)">
     <h3 style="color:var(--green)">🛠️ Developer Settings</h3>
     
-    <div style="margin-top:15px;">
-      <div style="font-size:12px;color:var(--green);margin-bottom:5px;">Update Guide Video Link</div>
-      <input type="url" id="devVideoLinkIn" placeholder="https://youtube.com/..." style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(46,204,113,0.2);border-radius:8px;padding:8px;color:var(--tl);font-size:13px;box-sizing:border-box;margin-bottom:6px;">
-      <button class="pb" onclick="updateGuideVideo()" style="background:rgba(46,204,113,0.15);color:var(--green);border:1px solid rgba(46,204,113,0.3)">💾 Save Video Link</button>
-    </div>
-
-    <div style="margin-top:15px;border-top:1px solid rgba(46,204,113,0.15);padding-top:15px;">
-      <div style="font-size:12px;color:var(--green);margin-bottom:5px;">Send Global Notification</div>
-      <input type="text" id="devNotifTitle" placeholder="Notification Title" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(46,204,113,0.2);border-radius:8px;padding:8px;color:var(--tl);font-size:13px;box-sizing:border-box;margin-bottom:6px;">
-      <textarea id="devNotifBody" rows="3" placeholder="Notification Body..." style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(46,204,113,0.2);border-radius:8px;padding:8px;color:var(--tl);font-size:13px;box-sizing:border-box;margin-bottom:6px;resize:vertical;"></textarea>
-      <button class="pb" onclick="sendGlobalNotification()" style="background:rgba(46,204,113,0.15);color:var(--green);border:1px solid rgba(46,204,113,0.3)">📢 Publish Notification</button>
-    </div>
-
     <div style="margin-top:15px;border-top:1px solid rgba(46,204,113,0.15);padding-top:15px;">
       <div style="font-size:12px;color:var(--green);margin-bottom:5px;">User Feedback</div>
       <button class="pb" onclick="openDevFeedbackPanel()" style="background:rgba(46,204,113,0.15);color:var(--green);border:1px solid rgba(46,204,113,0.3);position:relative;">
@@ -1528,7 +1498,7 @@
 
   <!-- DEVELOPER FEEDBACK MODAL -->
   <div id="devFeedbackModal" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(6,13,31,0.97);backdrop-filter:blur(12px);flex-direction:column;align-items:center;justify-content:center;padding:16px;">
-    <div style="background:linear-gradient(160deg,#0a1f12 0%,#060D1F 100%);border:2px solid rgba(46,204,113,0.6);border-radius:20px;width:100%;max-width:420px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 0 30px rgba(46,204,113,0.15);overflow:hidden;">
+    <div style="background:linear-gradient(160deg,#0a1f12 0%,#060D1F 100%);border:2px solid rgba(46,204,113,0.6);border-radius:20px;width:100%;max-width:680px;height:92vh;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 0 30px rgba(46,204,113,0.15);overflow:hidden;">
       <div style="background:linear-gradient(90deg,rgba(46,204,113,0.08),rgba(46,204,113,0.22),rgba(46,204,113,0.08));padding:18px 20px;text-align:center;border-bottom:1px solid rgba(46,204,113,0.25);flex-shrink:0;">
         <div style="font-size:28px;margin-bottom:6px;">📥</div>
         <div style="color:#2ecc71;font-size:17px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">User Feedback</div>

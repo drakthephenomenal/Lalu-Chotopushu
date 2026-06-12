@@ -29,21 +29,7 @@
 <body>
 <!-- NOTIFICATION BELL MOVED TO COMMUNITY VIEW -->
 
-<!-- BEAUTIFUL NOTIFICATION PAGE -->
-<div id="notifSheet" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(6,13,31,0.95);backdrop-filter:blur(10px);flex-direction:column;align-items:center;justify-content:center;padding:20px;animation:fadeIn 0.3s ease;">
-  <div style="background:linear-gradient(160deg, #0d1f3c 0%, #060D1F 100%);border:2px solid rgba(255,215,0,0.6);border-radius:20px;width:100%;max-width:400px;box-shadow:0 0 30px rgba(255,215,0,0.15), inset 0 0 20px rgba(255,215,0,0.05);overflow:hidden;position:relative;">
-    <div style="background:linear-gradient(90deg, rgba(255,215,0,0.1), rgba(255,215,0,0.25), rgba(255,215,0,0.1));padding:20px;text-align:center;border-bottom:1px solid rgba(255,215,0,0.3);">
-      <div style="font-size:32px;margin-bottom:8px;">🔔</div>
-      <div style="color:#FFD700;font-size:18px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Developer Update</div>
-    </div>
-    <div id="notifContent" style="padding:25px;color:var(--tl);font-size:15px;line-height:1.7;max-height:60vh;overflow-y:auto;">
-      <div style="text-align:center;color:var(--td);margin-top:20px;">No new notifications.</div>
-    </div>
-    <div style="padding:15px 20px;background:rgba(0,0,0,0.3);border-top:1px solid rgba(255,215,0,0.15);text-align:center;">
-      <button onclick="toggleNotificationSheet()" style="background:linear-gradient(135deg,rgba(255,215,0,0.3),rgba(255,180,0,0.15));color:#FFD700;border:1px solid rgba(255,215,0,0.5);padding:10px 30px;border-radius:12px;font-size:14px;font-weight:bold;cursor:pointer;transition:all 0.2s;">✕ Close</button>
-    </div>
-  </div>
-</div>
+
 <!-- LOADING -->
 <div class="ls" id="ls">
   <div class="ls-rings">
@@ -174,8 +160,7 @@
   <button class="nb" id="navLb" onclick="sv('vlb',this);loadLeaderboard(window._lbPeriod||'alltime')" style="position:relative;">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     Community
-    <!-- Notification badge — always in DOM, shown/hidden by JS -->
-    <span id="notificationBadge" style="display:none;position:absolute;top:4px;right:6px;width:10px;height:10px;background:#FF3B30;border-radius:50%;border:2px solid #060D1F;box-shadow:0 0 6px rgba(255,59,48,0.8);"></span>
+
   </button>
   <button class="nb" onclick="sv('vset',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -1005,11 +990,7 @@
     <div class="lb-hero-title">Community</div>
     <div class="lb-hero-sub">Devotees together · Guru Kripahi Kevalam</div>
     
-    <!-- NOTIFICATION BELL -->
-    <div id="notificationBell" style="position:absolute;top:15px;right:15px;z-index:10;width:40px;height:40px;background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.4);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(5px);box-shadow:0 0 10px rgba(0,0,0,0.5);transition:all 0.3s;" onclick="toggleNotificationSheet()">
-      <span style="font-size:20px;">🔔</span>
-      <div id="notificationBadge" style="position:absolute;top:0px;right:0px;width:12px;height:12px;background:red;border-radius:50%;display:none;border:2px solid #060D1F;"></div>
-    </div>
+
   </div>
 
   <!-- LEADERBOARD SETTINGS (Moved from Settings tab) -->

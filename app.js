@@ -4823,7 +4823,6 @@ function fbInit() {
             const devOptionsPanel = document.getElementById("devOptionsPanel");
             if (devOptionsPanel) devOptionsPanel.style.display = "none";
           }
-          fetchLatestNotification();
           watchNewFeedback(); // Dev-only: real-time badge for new user feedback
           watchMyFeedback(); // All users: show developer replies + popup notification
         });
@@ -12138,57 +12137,7 @@ async function checkAutoBackup() {
   }
 }
 
-// 2. Notifications System
-let _latestNotifId = null;
-
-window.toggleNotificationSheet = function() {
-  const sheet = document.getElementById('notifSheet');
-  if(!sheet) return;
-  const isOpen = sheet.style.display === 'flex';
-  sheet.style.display = isOpen ? 'none' : 'flex';
-  if (!isOpen) {
-    // Hide badge when opened
-    const badge = document.getElementById('notificationBadge');
-    if (badge) badge.style.display = 'none';
-    if (_latestNotifId) {
-      localStorage.setItem('rjap_lastNotifRead', _latestNotifId);
-    }
-  }
-}
-
-// Real-time notification listener — fires immediately and on every new notification
-let _notifListener = null;
-function fetchLatestNotification() {
-  if (!window.fbDb) return;
-  // Unsubscribe any previous listener first
-  if (_notifListener) { try { _notifListener(); } catch(_) {} }
-  _notifListener = fbDb.collection('notifications')
-    .orderBy('createdAt', 'desc')
-    .limit(1)
-    .onSnapshot((snap) => {
-      if (snap.empty) return;
-      const doc = snap.docs[0];
-      const data = doc.data();
-      _latestNotifId = doc.id;
-
-      const contentEl = document.getElementById('notifContent');
-      if (contentEl) {
-        const dateStr = data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString() : '';
-        contentEl.innerHTML =
-          '<div style="font-weight:700;font-size:17px;margin-bottom:6px;color:#FFD700;">' + escHtml(data.title) + '</div>' +
-          '<div style="font-size:11px;color:rgba(255,215,0,0.5);margin-bottom:14px;">' + dateStr + '</div>' +
-          '<div style="white-space:pre-wrap;color:var(--tl);font-size:14px;line-height:1.7;">' + escHtml(data.body) + '</div>';
-      }
-
-      const lastRead = localStorage.getItem('rjap_lastNotifRead');
-      if (lastRead !== _latestNotifId) {
-        const badge = document.getElementById('notificationBadge');
-        if (badge) badge.style.display = 'block';
-      }
-    }, (e) => {
-      console.error('Notification listener error:', e);
-    });
-}
+// 2. Notifications System — removed
 
 // 3. Feedback System
 window.submitFeedback = async function() {

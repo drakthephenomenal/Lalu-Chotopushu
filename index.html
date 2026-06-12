@@ -39,7 +39,7 @@
     <canvas id="ringCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;background:transparent;"></canvas>
     <script>
     (function() {
-      var RADHA = 'राधे';
+      var RADHA = 'राधा';
       var raf, rot1 = 0, rot2 = 0, fontReady = false;
 
       function drawTextOnRing(ctx, cx, cy, radius, rotOffset, color, fs) {
@@ -122,9 +122,40 @@
     <img class="ls-img" id="guruImg" src="./guru.jpg" alt="Shri Radha Rani" style="position:relative;z-index:10;">
     <img id="appIconImg" style="display:none" src="./icon-192.png" alt="App Icon"/>
   </div>
-  <div class="ls-title">राधे राधे</div>
+  <div class="ls-title">जय जय श्री हरिवंश</div>
   <div class="ls-sub">Jai Shri Radha</div>
 </div>
+
+<!-- Falling Peacock Feathers -->
+<div class="ls-feathers" id="lsFeathers"></div>
+<script>
+(function(){
+  var container = document.getElementById('lsFeathers');
+  var featherEmojis = ['🪈','🦚','🪈','🦚','🪈'];
+  var feathers = [];
+  var count = 18;
+  for(var i=0;i<count;i++){
+    var el = document.createElement('span');
+    el.className = 'feather';
+    var delay = (Math.random()*8).toFixed(2);
+    var dur   = (5 + Math.random()*6).toFixed(2);
+    var left  = (Math.random()*100).toFixed(1);
+    var size  = (20 + Math.random()*18).toFixed(0);
+    el.style.cssText = 'left:'+left+'vw;font-size:'+size+'px;animation-duration:'+dur+'s;animation-delay:'+delay+'s;';
+    el.textContent = featherEmojis[i % featherEmojis.length];
+    container.appendChild(el);
+    feathers.push(el);
+  }
+  // Hide feathers when splash hides
+  var ls = document.getElementById('ls');
+  if(ls){
+    var obs = new MutationObserver(function(){
+      if(ls.classList.contains('hide')) container.style.display='none';
+    });
+    obs.observe(ls,{attributes:true,attributeFilter:['class']});
+  }
+})();
+</script>
 
 <!-- NAV — 6 tabs (no separate Target) -->
 

@@ -12252,7 +12252,7 @@ window.openDevFeedbackPanel = async function() {
             <div style="font-size:11px;color:#2ecc71;font-weight:600;">${escHtml(data.email || 'Anonymous')}</div>
             <div style="font-size:10px;color:rgba(255,255,255,0.35);">${dateStr}</div>
           </div>
-          <div style="white-space:pre-wrap;color:var(--tl);font-size:13px;line-height:1.6;">${escHtml(data.text)}</div>
+          <div style="white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;color:var(--tl);font-size:13px;line-height:1.6;">${escHtml(data.text)}</div>
         </div>
       `;
     });

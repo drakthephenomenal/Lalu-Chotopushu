@@ -12406,6 +12406,8 @@ function renderMyFeedbackReplies(docsWithReplies) {
   const el = document.getElementById('myFeedbackReplies');
   if (!el) return;
   if (!docsWithReplies.length) { el.innerHTML = ''; return; }
+  // Mark all unseen replies as seen now that the user is viewing them
+  window.markMyRepliesSeen && window.markMyRepliesSeen();
   let html = '<div style="font-size:11px;color:var(--a2);letter-spacing:1px;margin-bottom:6px;text-transform:uppercase;">↩ Developer Replies</div>';
   docsWithReplies.forEach(d => {
     const dateStr = d.repliedAt ? new Date(d.repliedAt.toDate()).toLocaleString() : '';
@@ -12420,6 +12422,17 @@ function renderMyFeedbackReplies(docsWithReplies) {
   el.innerHTML = html;
 }
 
+function _updateReplyBadge(unseenCount) {
+  const badge = document.getElementById('replyBadge');
+  if (!badge) return;
+  if (unseenCount > 0) {
+    badge.textContent = unseenCount > 99 ? '99+' : String(unseenCount);
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
 function watchMyFeedback() {
   if (!fbUser) return;
   if (_myFeedbackWatcher) { try { _myFeedbackWatcher(); } catch(_) {} }
@@ -12429,11 +12442,14 @@ function watchMyFeedback() {
     .onSnapshot((snap) => {
       const withReplies = [];
       let newest = null;
+      let unseenCount = 0;
       snap.forEach(doc => {
         const data = doc.data();
         if (data.reply && data.reply.trim()) {
           withReplies.push(data);
           const ts = data.repliedAt ? data.repliedAt.toMillis() : 0;
+          // Count replies the user hasn't seen yet (replySeen===false in Firestore)
+          if (data.replySeen === false) unseenCount++;
           if (ts > lastSeen && (!newest || ts > newest._ts)) { newest = data; newest._ts = ts; }
         }
       });
@@ -12443,10 +12459,26 @@ function watchMyFeedback() {
         return tb - ta;
       });
       renderMyFeedbackReplies(withReplies);
+      _updateReplyBadge(unseenCount);
       if (newest) {
         _showReplyPopup(newest);
         localStorage.setItem('rjap_lastReplySeen', String(newest._ts));
       }
     }, () => {});
+}
+
+// Call this when the user views the replies section — marks all their unseen replies as seen
+window.markMyRepliesSeen = async function() {
+  if (!fbUser) return;
+  try {
+    const snap = await fbDb.collection('feedbacks')
+      .where('uid', '==', fbUser.uid)
+      .where('replySeen', '==', false)
+      .get();
+    const batch = fbDb.batch();
+    snap.forEach(doc => batch.update(doc.ref, { replySeen: true }));
+    if (!snap.empty) await batch.commit();
+    _updateReplyBadge(0);
+  } catch(e) {}
 }
 

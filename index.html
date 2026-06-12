@@ -1480,7 +1480,9 @@
     <h3 style="color:var(--a2)">💬 Send Feedback</h3>
     <p style="font-size:12px;color:var(--td);margin-bottom:10px">Found a bug or have a suggestion? Send it directly to the developer.</p>
     <textarea id="feedbackText" rows="4" placeholder="Type your feedback here..." style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(74,144,226,0.2);border-radius:8px;padding:8px;color:var(--tl);font-size:13px;box-sizing:border-box;margin-bottom:10px;resize:vertical;"></textarea>
-    <button class="pb" onclick="submitFeedback()" style="background:rgba(74,144,226,0.15);color:var(--a2);border:1px solid rgba(74,144,226,0.3)">✉️ Send Feedback</button>
+    <button class="pb" onclick="submitFeedback()" style="background:rgba(74,144,226,0.15);color:var(--a2);border:1px solid rgba(74,144,226,0.3);position:relative;">✉️ Send Feedback
+      <span id="replyBadge" style="display:none;position:absolute;top:-8px;right:-8px;min-width:20px;height:20px;padding:0 5px;background:#FF3B30;border-radius:10px;border:2px solid #060D1F;color:#fff;font-size:11px;font-weight:700;line-height:16px;text-align:center;font-family:Inter,sans-serif;align-items:center;justify-content:center;"></span>
+    </button>
     <div id="myFeedbackReplies" style="margin-top:12px;"></div>
   </div>
 

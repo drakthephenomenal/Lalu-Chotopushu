@@ -8684,7 +8684,7 @@ window.addEventListener("load", async () => {
         if (ls.parentNode) ls.parentNode.removeChild(ls);
       }, 900);
     }
-  }, 2800);
+  }, 5000);
 });
 
 // ═══════════════════════════════════════════════════════
@@ -12078,16 +12078,38 @@ window.applyBgPhotos = async function() {
 // ✨ MALA GLOW FLASH — all deity images briefly show fully with huge glow, synced
 window.triggerMalaGlowFlash = function() {
   const ids = ['bgRadhaVallabh', 'bgHitju', 'bgGurudev'];
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el || el.style.display === 'none') return;
-    // 1. Remove the watery mask + grey filter instantly
-    el.classList.add('mala-glow-flash');
-    // 2. After 2.4s, remove the flash class to restore normal state
-    setTimeout(() => {
-      el.classList.remove('mala-glow-flash');
-    }, 2400);
+  const els = ids.map(id => document.getElementById(id)).filter(el => el && el.style.display !== 'none');
+  if (!els.length) return;
+
+  // Add sustained glow class — stays ON until shankya finishes
+  els.forEach(el => {
+    el.classList.remove('mala-glow-flash');
+    el.classList.add('mala-glow-sustained');
   });
+
+  // Listen for Panchojanno Shankya audio end to remove glow
+  function removeSustainedGlow() {
+    els.forEach(el => {
+      el.classList.remove('mala-glow-sustained');
+    });
+  }
+
+  // Attach to shankya audio onended if available
+  if (typeof _shankyaAudio !== 'undefined' && _shankyaAudio) {
+    const handler = function() {
+      removeSustainedGlow();
+      _shankyaAudio.removeEventListener('ended', handler);
+    };
+    _shankyaAudio.addEventListener('ended', handler);
+    // Safety fallback: if audio doesn't fire ended within 30s, remove anyway
+    setTimeout(() => {
+      removeSustainedGlow();
+      try { _shankyaAudio.removeEventListener('ended', handler); } catch(e){}
+    }, 30000);
+  } else {
+    // No audio: hold glow for 4s fallback
+    setTimeout(removeSustainedGlow, 4000);
+  }
 };
 
 // ==========================================

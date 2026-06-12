@@ -1955,11 +1955,11 @@ function populateSettingsUI() {
   // Background Photos settings
   try {
     const inBgRV = document.getElementById("inBgRadhaVallabh");
-    if (inBgRV) inBgRV.value = App.S.bgRadhaVallabh || 1;
+    if (inBgRV) inBgRV.value = App.S.bgRadhaVallabh ?? 1;
     const inBgHJ = document.getElementById("inBgHitju");
-    if (inBgHJ) inBgHJ.value = App.S.bgHitju || 1;
+    if (inBgHJ) inBgHJ.value = App.S.bgHitju ?? 1;
     const inBgGD = document.getElementById("inBgGurudev");
-    if (inBgGD) inBgGD.value = App.S.bgGurudev || 1;
+    if (inBgGD) inBgGD.value = App.S.bgGurudev ?? 1;
     if (typeof applyBgPhotos === 'function') applyBgPhotos();
   } catch (_e) {}
 }
@@ -5389,9 +5389,9 @@ async function fbPushFull() {
     milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
     lbOptIn: App.S.lbOptIn || false,
     lbDisplayName: App.S.lbDisplayName || "",
-    bgRadhaVallabh: App.S.bgRadhaVallabh || 1,
-    bgHitju: App.S.bgHitju || 1,
-    bgGurudev: App.S.bgGurudev || 1,
+    bgRadhaVallabh: App.S.bgRadhaVallabh ?? 1,
+    bgHitju: App.S.bgHitju ?? 1,
+    bgGurudev: App.S.bgGurudev ?? 1,
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId,
   };
@@ -11907,7 +11907,7 @@ window.renderPhotoPickers = async function() {
     if (!strip) continue;
     strip.innerHTML = '';
     
-    let currentVal = App.S[conf.stateKey] || 1;
+    let currentVal = App.S[conf.stateKey] ?? 1;
     
     // Add default repo photos
     for (let i = 1; i <= conf.maxNum; i++) {

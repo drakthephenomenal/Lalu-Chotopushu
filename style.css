@@ -36,6 +36,8 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   .view{height:-webkit-fill-available;max-height:-webkit-fill-available;overflow-y:auto;-webkit-overflow-scrolling:touch;}
   #vj.active{height:-webkit-fill-available;overflow:hidden;}
   body{height:-webkit-fill-available;}
+  #devFeedbackModal{height:-webkit-fill-available;}
+  #devFeedbackModal>div{max-height:-webkit-fill-available;}
 }
 
 
@@ -839,12 +841,13 @@ button.n28-gold-btn-danger,
 }
 .photo-upload-btn:hover { background:linear-gradient(135deg, rgba(74,144,226,0.25), rgba(74,144,226,0.15)); box-shadow:0 0 16px rgba(74,144,226,0.3); }
 .photo-upload-btn.active, .photo-reset-btn.active {
-  background: linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,180,0,0.05));
-  border-color: rgba(255,215,0,0.6);
+  background: linear-gradient(135deg, rgba(255,215,0,0.22), rgba(255,180,0,0.08));
+  border: 2.5px solid #FFD700;
   color: #FFD700;
-  text-shadow: 0 0 8px rgba(255,215,0,0.5);
-  box-shadow: 0 0 16px rgba(255,215,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+  text-shadow: 0 0 8px rgba(255,215,0,0.6);
+  box-shadow: 0 0 0 2px rgba(255,215,0,0.25), 0 0 18px rgba(255,215,0,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
   transform: translateY(-1px);
+  outline: none;
 }
 .photo-reset-btn {
   background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));

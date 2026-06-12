@@ -1481,6 +1481,7 @@
     <p style="font-size:12px;color:var(--td);margin-bottom:10px">Found a bug or have a suggestion? Send it directly to the developer.</p>
     <textarea id="feedbackText" rows="4" placeholder="Type your feedback here..." style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(74,144,226,0.2);border-radius:8px;padding:8px;color:var(--tl);font-size:13px;box-sizing:border-box;margin-bottom:10px;resize:vertical;"></textarea>
     <button class="pb" onclick="submitFeedback()" style="background:rgba(74,144,226,0.15);color:var(--a2);border:1px solid rgba(74,144,226,0.3)">✉️ Send Feedback</button>
+    <div id="myFeedbackReplies" style="margin-top:12px;"></div>
   </div>
 
   <!-- DEVELOPER ONLY SECTION -->
@@ -1491,14 +1492,14 @@
       <div style="font-size:12px;color:var(--green);margin-bottom:5px;">User Feedback</div>
       <button class="pb" onclick="openDevFeedbackPanel()" style="background:rgba(46,204,113,0.15);color:var(--green);border:1px solid rgba(46,204,113,0.3);position:relative;">
         📥 Read Feedback
-        <span id="feedbackBadge" style="display:none;position:absolute;top:-5px;right:-5px;width:12px;height:12px;background:#FF3B30;border-radius:50%;border:2px solid #060D1F;"></span>
+        <span id="feedbackBadge" style="display:none;position:absolute;top:-8px;right:-8px;min-width:20px;height:20px;padding:0 5px;background:#FF3B30;border-radius:10px;border:2px solid #060D1F;color:#fff;font-size:11px;font-weight:700;line-height:16px;text-align:center;font-family:Inter,sans-serif;"></span>
       </button>
     </div>
   </div>
 
   <!-- DEVELOPER FEEDBACK MODAL -->
-  <div id="devFeedbackModal" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(6,13,31,0.97);backdrop-filter:blur(12px);flex-direction:column;align-items:center;justify-content:center;padding:16px;">
-    <div style="background:linear-gradient(160deg,#0a1f12 0%,#060D1F 100%);border:2px solid rgba(46,204,113,0.6);border-radius:20px;width:100%;max-width:680px;height:92vh;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 0 30px rgba(46,204,113,0.15);overflow:hidden;">
+  <div id="devFeedbackModal" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(6,13,31,0.97);backdrop-filter:blur(12px);flex-direction:column;align-items:center;justify-content:center;padding:16px;overflow:hidden;">
+    <div style="background:linear-gradient(160deg,#0a1f12 0%,#060D1F 100%);border:2px solid rgba(46,204,113,0.6);border-radius:20px;width:100%;max-width:680px;height:100%;max-height:calc(100dvh - 32px);display:flex;flex-direction:column;box-shadow:0 0 30px rgba(46,204,113,0.15);overflow:hidden;">
       <div style="background:linear-gradient(90deg,rgba(46,204,113,0.08),rgba(46,204,113,0.22),rgba(46,204,113,0.08));padding:18px 20px;text-align:center;border-bottom:1px solid rgba(46,204,113,0.25);flex-shrink:0;">
         <div style="font-size:28px;margin-bottom:6px;">📥</div>
         <div style="color:#2ecc71;font-size:17px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">User Feedback</div>

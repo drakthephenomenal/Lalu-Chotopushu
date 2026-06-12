@@ -14,7 +14,12 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   radial-gradient(circle at 20% 80%,rgba(74,144,226,0.10) 0%,transparent 40%);
   pointer-events:none;z-index:0;}
 
-.ls{position:fixed;inset:0;background:var(--bd);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity 0.8s;width:100vw;height:100vh;height:100dvh;}
+.ls{position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 38%,rgba(180,120,10,0.72) 0%,rgba(140,90,5,0.48) 25%,rgba(80,50,2,0.28) 50%,transparent 75%),
+    radial-gradient(ellipse 95% 80% at 50% 40%,rgba(100,65,5,0.35) 0%,transparent 65%),
+    #070A1C;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity 0.8s;width:100vw;height:100vh;height:100dvh;}
 .ls.hide{opacity:0;pointer-events:none;visibility:hidden;}
 .ls-img{width:200px;height:200px;border-radius:50%;object-fit:cover;object-position:top center;
   border:3px solid rgba(255,215,0,0.6);animation:glow 2s ease-in-out infinite;position:relative;z-index:10;}
@@ -25,8 +30,8 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
   text-shadow:0 2px 8px rgba(0,0,0,0.9);position:relative;z-index:20;}
 /* Spinning Radha Text Rings */
 .ls-rings{position:relative;display:flex;align-items:center;justify-content:center;width:min(320px,85vw);height:min(320px,85vw);flex-shrink:0;}
-.ls-rings .glow1{position:absolute;width:min(260px,70vw);height:min(260px,70vw);border-radius:50%;background:radial-gradient(circle,rgba(255,215,0,0.35) 0%,transparent 70%);animation:glow 2s ease-in-out infinite;pointer-events:none;}
-.ls-rings .glow2{position:absolute;width:min(200px,54vw);height:min(200px,54vw);border-radius:50%;background:radial-gradient(circle,rgba(255,215,0,0.22) 0%,transparent 70%);animation:glow 2s ease-in-out infinite;pointer-events:none;}
+.ls-rings .glow1{position:absolute;width:min(300px,80vw);height:min(300px,80vw);border-radius:50%;background:radial-gradient(circle,rgba(255,185,0,0.55) 0%,rgba(200,130,0,0.25) 45%,transparent 70%);animation:glow 2s ease-in-out infinite;pointer-events:none;}
+.ls-rings .glow2{position:absolute;width:min(230px,62vw);height:min(230px,62vw);border-radius:50%;background:radial-gradient(circle,rgba(255,210,80,0.45) 0%,rgba(220,150,0,0.18) 50%,transparent 72%);animation:glow 2s ease-in-out infinite;pointer-events:none;}
 .ls-ring{display:none;}
 @keyframes spin-fwd{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 @keyframes spin-rev{from{transform:rotate(0deg);}to{transform:rotate(-360deg);}}

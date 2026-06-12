@@ -17,16 +17,16 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 .ls{position:fixed;inset:0;background:var(--bd);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity 0.8s;width:100vw;height:100vh;height:100dvh;}
 .ls.hide{opacity:0;pointer-events:none;visibility:hidden;}
 .ls-img{width:200px;height:200px;border-radius:50%;object-fit:cover;object-position:top center;
-  border:3px solid rgba(255,215,0,0.6);animation:glow 2s ease-in-out infinite;position:relative;z-index:10;}
-@keyframes glow{0%,100%{box-shadow:0 0 30px rgba(255,215,0,0.35);}50%{box-shadow:0 0 65px rgba(255,215,0,0.75);}}
+  border:none;animation:glow 2s ease-in-out infinite;position:relative;z-index:10;}
+@keyframes glow{0%,100%{box-shadow:0 0 40px 10px rgba(255,215,0,0.5),0 0 80px 25px rgba(255,215,0,0.25);}50%{box-shadow:0 0 70px 20px rgba(255,215,0,0.85),0 0 120px 50px rgba(255,215,0,0.4),0 0 160px 70px rgba(255,165,0,0.2);}}
 .ls-title{font-family:'Tiro Devanagari Hindi',serif;font-size:28px;color:var(--gold);letter-spacing:8px;margin-top:40px;
   text-shadow:0 0 20px rgba(255,215,0,0.8),0 2px 8px rgba(0,0,0,0.9);position:relative;z-index:20;}
 .ls-sub{font-size:12px;color:#D6E8FF;letter-spacing:4px;text-transform:uppercase;margin-top:10px;
   text-shadow:0 2px 8px rgba(0,0,0,0.9);position:relative;z-index:20;}
 /* Spinning Radha Text Rings */
 .ls-rings{position:relative;display:flex;align-items:center;justify-content:center;width:min(320px,85vw);height:min(320px,85vw);flex-shrink:0;}
-.ls-rings .glow1{position:absolute;width:min(260px,70vw);height:min(260px,70vw);border-radius:50%;background:radial-gradient(circle,rgba(255,215,0,0.35) 0%,transparent 70%);animation:glow 2s ease-in-out infinite;pointer-events:none;}
-.ls-rings .glow2{position:absolute;width:min(200px,54vw);height:min(200px,54vw);border-radius:50%;background:radial-gradient(circle,rgba(255,215,0,0.22) 0%,transparent 70%);animation:glow 2s ease-in-out infinite;pointer-events:none;}
+.ls-rings .glow1{display:none;}
+.ls-rings .glow2{display:none;}
 .ls-ring{display:none;}
 @keyframes spin-fwd{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 @keyframes spin-rev{from{transform:rotate(0deg);}to{transform:rotate(-360deg);}}

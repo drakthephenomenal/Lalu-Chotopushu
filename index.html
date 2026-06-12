@@ -39,7 +39,7 @@
     <canvas id="ringCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;background:transparent;"></canvas>
     <script>
     (function() {
-      var RADHA = 'राधा';
+      var RADHA = 'राधे';
       var raf, rot1 = 0, rot2 = 0, fontReady = false;
 
       function drawTextOnRing(ctx, cx, cy, radius, rotOffset, color, fs) {
@@ -84,9 +84,9 @@
         ctx.scale(dpr, dpr);
 
         var cx = size / 2, cy = size / 2;
-        var r1 = size * 0.42;  // yellow outer ring
-        var r2 = size * 0.38;  // blue inner ring
-        var fs = Math.max(10, Math.round(size * 0.047));
+        var r1 = size * 0.46;  // yellow outer ring
+        var r2 = size * 0.40;  // blue inner ring
+        var fs = Math.max(11, Math.round(size * 0.052));
 
         drawTextOnRing(ctx, cx, cy, r1,  rot1, '#FFD700', fs);
         drawTextOnRing(ctx, cx, cy, r2, -rot2, '#4A90E2', fs);
@@ -119,7 +119,7 @@
       }
     })();
     </script>
-    <img class="ls-img" id="guruImg" src="./guru.jpg" alt="Shri Radha Rani" style="position:relative;z-index:10;box-shadow:0 0 40px 15px rgba(255,215,0,0.4),0 0 80px 30px rgba(255,215,0,0.2);">
+    <img class="ls-img" id="guruImg" src="./guru.jpg" alt="Shri Radha Rani" style="position:relative;z-index:10;">
     <img id="appIconImg" style="display:none" src="./icon-192.png" alt="App Icon"/>
   </div>
   <div class="ls-title">राधे राधे</div>

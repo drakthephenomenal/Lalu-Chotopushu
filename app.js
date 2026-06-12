@@ -1890,6 +1890,27 @@ function sv(id, btn) {
   }
   if (id === "vset") {
     populateSettingsUI();
+    // Mark developer replies as seen when user visits settings
+    const allReplies = document.getElementById('myFeedbackReplies');
+    if (allReplies && allReplies.innerHTML) {
+      localStorage.setItem('rjap_lastReplySeen', String(Date.now()));
+      // Re-render without unread dots
+      if (typeof watchMyFeedback === 'function') {
+        // Re-trigger to refresh badges — cheapest is just re-reading lastSeen
+        const el = document.getElementById('myFeedbackReplies');
+        if (el) {
+          // Remove all red dots/badges from rendered HTML
+          el.querySelectorAll('span[style*="FF3B30"]').forEach(s => s.remove());
+          // Reset border on all reply cards
+          el.querySelectorAll('div[style*="border:1px solid rgba(74,144,226"]').forEach(d => {
+            d.style.border = '1px solid rgba(74,144,226,0.2)';
+          });
+          // Remove the unread count badge from the header
+          const header = el.querySelector('div > span[style*="FF3B30"]');
+          if (header) header.remove();
+        }
+      }
+    }
   }
 }
 
@@ -12164,20 +12185,28 @@ function fetchLatestNotification() {
   if (_notifListener) { try { _notifListener(); } catch(_) {} }
   _notifListener = fbDb.collection('notifications')
     .orderBy('createdAt', 'desc')
-    .limit(1)
+    .limit(20)
     .onSnapshot((snap) => {
       if (snap.empty) return;
-      const doc = snap.docs[0];
-      const data = doc.data();
-      _latestNotifId = doc.id;
+      const newestDoc = snap.docs[0];
+      _latestNotifId = newestDoc.id;
 
       const contentEl = document.getElementById('notifContent');
       if (contentEl) {
-        const dateStr = data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString() : '';
-        contentEl.innerHTML =
-          '<div style="font-weight:700;font-size:17px;margin-bottom:6px;color:#FFD700;">' + escHtml(data.title) + '</div>' +
-          '<div style="font-size:11px;color:rgba(255,215,0,0.5);margin-bottom:14px;">' + dateStr + '</div>' +
-          '<div style="white-space:pre-wrap;color:var(--tl);font-size:14px;line-height:1.7;">' + escHtml(data.body) + '</div>';
+        const lastRead = localStorage.getItem('rjap_lastNotifRead');
+        let html = '';
+        snap.docs.forEach((doc, idx) => {
+          const data = doc.data();
+          const dateStr = data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString() : '';
+          const sep = idx > 0 ? 'margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,215,0,0.12);' : '';
+          html +=
+            '<div style="' + sep + '">' +
+            '<div style="font-weight:700;font-size:17px;margin-bottom:6px;color:#FFD700;">' + escHtml(data.title) + '</div>' +
+            '<div style="font-size:11px;color:rgba(255,215,0,0.5);margin-bottom:14px;">' + dateStr + '</div>' +
+            '<div style="white-space:pre-wrap;color:var(--tl);font-size:14px;line-height:1.7;">' + escHtml(data.body) + '</div>' +
+            '</div>';
+        });
+        contentEl.innerHTML = html;
       }
 
       const lastRead = localStorage.getItem('rjap_lastNotifRead');
@@ -12404,16 +12433,26 @@ function _showReplyPopup(data) {
   p._hideT = setTimeout(() => { p.style.transform = 'translateX(-50%) translateY(-120%)'; }, 6000);
 }
 
-function renderMyFeedbackReplies(docsWithReplies) {
+function renderMyFeedbackReplies(docsWithReplies, lastSeen) {
   const el = document.getElementById('myFeedbackReplies');
   if (!el) return;
   if (!docsWithReplies.length) { el.innerHTML = ''; return; }
-  let html = '<div style="font-size:11px;color:var(--a2);letter-spacing:1px;margin-bottom:6px;text-transform:uppercase;">↩ Developer Replies</div>';
+  const unreadCount = docsWithReplies.filter(d => {
+    const ts = d.repliedAt ? d.repliedAt.toMillis() : 0;
+    return ts > (lastSeen || 0);
+  }).length;
+  const badgeHtml = unreadCount > 0
+    ? `<span style="display:inline-flex;align-items:center;justify-content:center;background:#FF3B30;color:#fff;font-size:10px;font-weight:700;border-radius:10px;min-width:18px;height:18px;padding:0 5px;margin-left:6px;border:1.5px solid #060D1F;">${unreadCount}</span>`
+    : '';
+  let html = `<div style="display:flex;align-items:center;font-size:11px;color:var(--a2);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase;">↩ Developer Replies${badgeHtml}</div>`;
   docsWithReplies.forEach(d => {
     const dateStr = d.repliedAt ? new Date(d.repliedAt.toDate()).toLocaleString() : '';
+    const ts = d.repliedAt ? d.repliedAt.toMillis() : 0;
+    const isNew = ts > (lastSeen || 0);
+    const newDot = isNew ? '<span style="display:inline-block;width:7px;height:7px;background:#FF3B30;border-radius:50%;margin-left:6px;vertical-align:middle;"></span>' : '';
     html += `
-      <div style="background:rgba(74,144,226,0.06);border:1px solid rgba(74,144,226,0.2);border-radius:10px;padding:10px;margin-bottom:8px;">
-        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:5px;">Re: "${escHtml((d.text||'').slice(0,60))}${(d.text||'').length>60?'…':''}"</div>
+      <div style="background:rgba(74,144,226,0.06);border:1px solid ${isNew ? 'rgba(74,144,226,0.5)' : 'rgba(74,144,226,0.2)'};border-radius:10px;padding:10px;margin-bottom:8px;">
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:5px;">Re: "${escHtml((d.text||'').slice(0,60))}${(d.text||'').length>60?'…':''}"${newDot}</div>
         <div style="white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;color:var(--tl);font-size:13px;line-height:1.5;">${escHtml(d.reply)}</div>
         ${dateStr ? `<div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:5px;">${dateStr}</div>` : ''}
       </div>
@@ -12444,10 +12483,10 @@ function watchMyFeedback() {
         const tb = b.repliedAt ? b.repliedAt.toMillis() : 0;
         return tb - ta;
       });
-      renderMyFeedbackReplies(withReplies);
+      renderMyFeedbackReplies(withReplies, lastSeen);
       if (newest) {
         _showReplyPopup(newest);
-        localStorage.setItem('rjap_lastReplySeen', String(newest._ts));
+        // Do NOT mark as seen here — user must visit Settings to clear the badge
       }
     }, () => {});
 }

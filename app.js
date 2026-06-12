@@ -1508,6 +1508,12 @@ setInterval(() => {
     App.lmcHK = 0;
     App.save();
     fbDebouncedPush();
+    // Push leaderboard immediately on date rollover so "Today" tab resets to 0 for all viewers
+    if (typeof pushLeaderboard === 'function') {
+      pushLeaderboard().then(() => {
+        localStorage.setItem('rjap_lastLbPushDate', newTk);
+      }).catch(() => {});
+    }
     App.ua();
     uStats();
   }
@@ -8675,6 +8681,19 @@ window.addEventListener("load", async () => {
   // Trigger auto-backup check
   setTimeout(checkAutoBackup, 2000);
 
+  // Push leaderboard on fresh open so "Today" tab never shows stale yesterday data.
+  // Runs after cloud hydration completes (which happens inside fbInit → fbPull).
+  // A 6-second delay gives fbPull time to finish before we push.
+  setTimeout(() => {
+    const lastLbPushDate = localStorage.getItem('rjap_lastLbPushDate') || '';
+    const todayKey = App.S.tk || App.getTk();
+    if (lastLbPushDate !== todayKey && typeof pushLeaderboard === 'function') {
+      pushLeaderboard().then(() => {
+        localStorage.setItem('rjap_lastLbPushDate', todayKey);
+      }).catch(() => {});
+    }
+  }, 6000);
+
   // Hide loading — guaranteed cleanup
   setTimeout(() => {
     const ls = document.getElementById("ls");
@@ -11459,10 +11478,15 @@ function _lbGetPeriodKeys(period) {
   const keys = [];
   if (period === 'alltime') return null; // null = use totalJap field (no date filter)
   if (period === 'today') {
+    // Always use local date key (App.S.tk) — avoids UTC offset bug for UTC+5:30/+6 users
     if (window.App && window.App.S && window.App.S.tk) {
       return [window.App.S.tk];
     }
-    return [now.toISOString().slice(0,10)];
+    // Fallback: derive local date from device clock (NOT toISOString which is UTC)
+    const y = now.getFullYear();
+    const m = String(now.getMonth()+1).padStart(2,'0');
+    const d = String(now.getDate()).padStart(2,'0');
+    return [y + '-' + m + '-' + d];
   }
   if (period === 'month') {
     const y = now.getFullYear(), m = now.getMonth();

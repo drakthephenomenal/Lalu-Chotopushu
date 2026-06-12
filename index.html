@@ -49,7 +49,7 @@
   <div class="ls-rings">
     <div class="glow1"></div>
     <div class="glow2"></div>
-    <canvas id="ringCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;"></canvas>
+    <canvas id="ringCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;background:transparent;"></canvas>
     <script>
     (function() {
       var RADHA = 'राधा';
@@ -84,7 +84,8 @@
         var ls = document.getElementById('ls');
         if (!canvas || !ls || ls.classList.contains('hide')) return;
 
-        var size = canvas.parentElement.offsetWidth || 320;
+        var rect = canvas.parentElement.getBoundingClientRect();
+        var size = rect.width || 320;
         var dpr  = window.devicePixelRatio || 1;
         if (canvas.width !== size * dpr) {
           canvas.width  = size * dpr;

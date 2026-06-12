@@ -27,16 +27,16 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 }
 .ls-title{font-family:'Tiro Devanagari Hindi',serif;font-size:22px;color:var(--gold);letter-spacing:4px;margin-top:36px;
   text-shadow:0 0 20px rgba(255,215,0,0.8),0 2px 8px rgba(0,0,0,0.9);position:relative;z-index:20;text-align:center;line-height:1.5;}
-.ls-sub{font-size:11px;color:#D6E8FF;letter-spacing:4px;text-transform:uppercase;margin-top:10px;
+.ls-sub{font-size:14px;color:#D6E8FF;letter-spacing:2px;margin-top:10px;font-family:'Noto Sans Bengali','Noto Sans',sans-serif;
   text-shadow:0 2px 8px rgba(0,0,0,0.9);position:relative;z-index:20;}
 /* Falling peacock feathers */
-.ls-feathers{position:fixed;inset:0;pointer-events:none;z-index:998;overflow:hidden;}
-.feather{position:absolute;top:-80px;font-size:28px;opacity:0;animation:featherFall linear infinite;}
+.ls-feathers{position:fixed;inset:0;pointer-events:none;z-index:1000;overflow:hidden;}
+.feather{position:absolute;top:-80px;opacity:0;animation:featherFall linear infinite;}
 @keyframes featherFall{
-  0%  {opacity:0;transform:translateY(0) rotate(0deg) translateX(0px);}
-  10% {opacity:0.9;}
-  80% {opacity:0.7;}
-  100%{opacity:0;transform:translateY(110vh) rotate(360deg) translateX(30px);}
+  0%  {opacity:0;  transform:translate(0px, 0vh)   rotate(0deg);}
+  8%  {opacity:1;}
+  85% {opacity:0.8;}
+  100%{opacity:0;  transform:translate(20px, 110vh) rotate(380deg);}
 }
 /* Spinning Radha Text Rings */
 .ls-rings{position:relative;display:flex;align-items:center;justify-content:center;width:min(320px,85vw);height:min(320px,85vw);flex-shrink:0;}

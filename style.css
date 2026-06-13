@@ -594,7 +594,8 @@ button.hpb.active{
 .sk-panel-inner{padding:10px 14px 14px;}
 .n28tz{flex:1;background:radial-gradient(ellipse at center,rgba(34,85,204,0.22) 0%,rgba(6,13,31,0.6) 100%);
   border:1px solid rgba(74,144,226,0.2);border-radius:22px;
-  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  display:flex;align-items:center;justify-content:flex-end;flex-direction:column;
+  padding-bottom:70px;
   cursor:pointer;user-select:none;-webkit-user-select:none;position:relative;overflow:hidden;min-height:320px;
   touch-action:manipulation;-webkit-touch-callout:none;}
 .n28name{font-family:'Hind Siliguri','Tiro Devanagari Hindi',serif;font-size:clamp(34px,10vw,58px);color:#FFD93D;

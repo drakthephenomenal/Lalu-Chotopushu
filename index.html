@@ -308,7 +308,10 @@
 <!-- 28 NAMES VIEW -->
 <div class="view" id="v28">
   <div class="v28-header">
-    <div class="v28-title">28 Names of Radha</div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="sk-icon-btn" id="n28StatsBtn" onclick="toggle28Stats()" style="background:rgba(255,215,0,0.08);border-color:rgba(255,215,0,0.3);color:var(--gold);">📊 Stats <span id="n28StatsChev" style="font-size:10px;transition:transform 0.25s;display:inline-block">▾</span></button>
+      <button class="sk-icon-btn" onclick="App.undo28()" style="background:rgba(109,184,255,0.10);border-color:rgba(109,184,255,0.35);color:var(--a2);">↺ Undo</button>
+    </div>
     <div style="display:flex;gap:6px;align-items:center">
       <button id="n28ScriptToggle" onclick="toggle28Script()" style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);border-radius:16px;color:var(--gold);font-size:12px;font-weight:600;padding:5px 13px;cursor:pointer;font-family:'Hind Siliguri',serif;letter-spacing:0.3px;transition:all 0.2s;">हिन्दी</button>
       <button class="sk-icon-btn" id="skToggleBtn" onclick="toggleSankalp()">
@@ -331,34 +334,11 @@
     </div>
   </div>
   <div class="n28wrap">
-    <!-- Single line timers: small, left and right -->
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 4px 6px;">
-      <div class="n28timer-box" style="align-items:flex-start">
-        <div class="n28timer-val" id="n28CycleTimer">0:00</div>
-        <div class="n28timer-lbl">Cycle Time</div>
-      </div>
-      <div class="n28timer-box" style="align-items:center">
-        <div class="n28timer-val" id="n28t" style="color:var(--gold);font-size:13px">0</div>
-        <div class="n28timer-lbl">Today</div>
-      </div>
-      <div class="n28timer-box" style="align-items:flex-end">
-        <div class="n28timer-val gold" id="n28TotalTimer">00:00:00</div>
-        <div class="n28timer-lbl">Jap Timer</div>
-      </div>
-    </div>
+    <!-- Hidden helpers (kept for JS functionality) -->
+    <span id="n28CycleTimer" style="display:none">0:00</span>
+    <span id="n28t" style="display:none">0</span>
 
-    <!-- 28 Names Daily Progress Bar -->
-    <div id="n28ProgressWrap" style="padding:4px 4px 6px;display:none;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span style="font-size:9px;color:rgba(189,147,249,0.6);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;">Daily Progress</span>
-        <span id="n28ProgressLabel" style="font-size:10px;color:#BD93F9;font-weight:700;">0 / 0 cycles</span>
-      </div>
-      <div style="height:6px;background:rgba(189,147,249,0.12);border-radius:10px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.4);">
-        <div id="n28ProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9));border-radius:10px;transition:width 0.5s ease;box-shadow:0 0 8px rgba(189,147,249,0.5);"></div>
-      </div>
-    </div>
-
-    <!-- Tap area: Radha name at top, meaning, pause button -->
+    <!-- Tap area: Radha name (lowered toward bottom), meaning, pause button -->
     <div class="n28tz" id="tz28" aria-label="Tap to chant 28 Names of Radha" role="button" tabindex="0" ontouchstart="App.h28(event)" onmousedown="App.h28(event)">
       <div class="mf" id="mf28" style="border-radius:22px;">
         <div class="mf-line1">Radha Vallabh</div>
@@ -377,10 +357,18 @@
     <!-- 28 beads in a single line -->
     <div class="n28prog" id="n28prog" style="margin-top:6px;"></div>
 
-    <!-- Undo + Stats buttons -->
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="cb danger" onclick="App.undo28()">↩ Undo</button>
-      <button class="cb" id="n28StatsBtn" onclick="toggle28Stats()" style="border-color:rgba(255,215,0,0.3);color:var(--gold);background:rgba(255,215,0,0.06)">📊 Stats <span id="n28StatsChev" style="font-size:10px;transition:transform 0.25s;display:inline-block">▾</span></button>
+    <!-- Bottom bar: Daily Progress + Today's Jap Time + cycles · N/28 -->
+    <div id="n28ProgressWrap" style="padding:10px 4px 4px;display:flex;align-items:center;gap:10px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:9px;color:rgba(189,147,249,0.6);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:4px;">Daily Progress</div>
+        <div style="height:6px;background:rgba(189,147,249,0.12);border-radius:10px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.4);">
+          <div id="n28ProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9));border-radius:10px;transition:width 0.5s ease;box-shadow:0 0 8px rgba(189,147,249,0.5);"></div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:13px;color:var(--gold);font-family:'EB Garamond',serif;letter-spacing:0.5px;white-space:nowrap;">
+        Today’s Jap Time : <span id="n28TotalTimer">00:00:00</span>
+      </div>
+      <div id="n28ProgressLabel" style="text-align:right;font-size:11px;color:#BD93F9;font-weight:700;white-space:nowrap;">0 cycles · 0/28</div>
     </div>
 
     <!-- 28 NAMES STATS PANEL -->

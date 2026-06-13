@@ -5986,11 +5986,10 @@ function _update28ProgressBar(todJaps) {
   const bar  = document.getElementById("n28ProgressBar");
   const lbl  = document.getElementById("n28ProgressLabel");
   if (!wrap) return;
-  // Show whenever there's a target OR any activity today (so progress is
-  // visible on every device even if the daily target was only set elsewhere).
-  if (!target && !todJaps) { wrap.style.display = "none"; return; }
-  wrap.style.display = "block";
+  // Always show the bottom bar (it holds the unified Today's Jap Time + cycles label).
+  wrap.style.display = "flex";
   const todCycles = Math.floor(todJaps / 28);
+  const inCycle = todJaps % 28;
   if (target) {
     const pct = Math.min(100, Math.round((todJaps / target) * 100));
     if (bar) {
@@ -6000,18 +5999,16 @@ function _update28ProgressBar(todJaps) {
         : "linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9))";
       bar.style.boxShadow = pct >= 100 ? "0 0 10px rgba(46,204,113,0.6)" : "0 0 8px rgba(189,147,249,0.5)";
     }
-    if (lbl) lbl.textContent = todCycles + " / " + targetCycles + " cycles (" + pct + "%)";
   } else {
-    // No target on this device — show progress within the current cycle.
-    const inCycle = todJaps % 28;
     const pct = Math.round((inCycle / 28) * 100);
     if (bar) {
       bar.style.width = pct + "%";
       bar.style.background = "linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9))";
       bar.style.boxShadow = "0 0 8px rgba(189,147,249,0.5)";
     }
-    if (lbl) lbl.textContent = todCycles + " cycles · " + inCycle + "/28";
   }
+  // Always render label as "{cycles} cycles · {N}/28"
+  if (lbl) lbl.textContent = todCycles + " cycle" + (todCycles === 1 ? "" : "s") + " · " + inCycle + "/28";
 }
 
 function u28() {

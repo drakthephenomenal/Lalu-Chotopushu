@@ -9414,7 +9414,7 @@ function _initSwipeHandler() {
   // Remove any previous swipe listeners
   card._swipeCleanup && card._swipeCleanup();
 
-  if (_currentStotramId === "hcj") return; // HCJ uses its own audio player arrows
+  if (_AUDIO_STOTRAMS[_currentStotramId]) return; // audio stotrams use their own player arrows
 
   let startX = 0,
     startY = 0,
@@ -9492,8 +9492,16 @@ var _hcjAudio = null,
 var _hcjRafId = null; // requestAnimationFrame id for progress bar
 var _hcjPlayerCleanup = null; // cleanup fn for window listeners added in _hcjRenderPlayer
 
+// Audio clip path — works for any stotram that has audio clips
+// Add new stotram IDs here as needed
+var _AUDIO_STOTRAMS = {
+  hcj: { prefix: "hcj" },
+  bss: { prefix: "bss" }
+};
 function _hcjAudioPath(i) {
-  return "audio/hcj_" + (i + 1) + ".mp3";
+  var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  var prefix = cfg ? cfg.prefix : "hcj";
+  return "audio/" + prefix + "_" + (i + 1) + ".mp3";
 }
 
 // Format seconds → m:ss
@@ -9638,7 +9646,7 @@ function _hcjSetMode(mode) {
 }
 // Called whenever the displayed verse changes — keep audio in sync.
 function _hcjOnVerseChange(idx) {
-  if (_currentStotramId !== "hcj") return;
+  if (!_AUDIO_STOTRAMS[_currentStotramId]) return;
   if (_hcjPlaying && _hcjAudioIdx !== idx) {
     _hcjPlayVerse(idx);
   }
@@ -9673,7 +9681,8 @@ function _hcjRenderPlayer(idx) {
     _hcjPlayerCleanup = null;
   }
   var navBar = document.getElementById("lmNav");
-  if (_currentStotramId !== "hcj") {
+  var _hasAudioPlayer = !!_AUDIO_STOTRAMS[_currentStotramId];
+  if (!_hasAudioPlayer) {
     if (navBar) navBar.style.display = "";
     var _ci = document.querySelector("#lmo .lm-card-inner");
     if (_ci) _ci.style.bottom = "";

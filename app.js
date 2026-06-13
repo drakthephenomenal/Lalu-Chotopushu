@@ -9187,6 +9187,13 @@ function showLyrics(id) {
       mergedVerses.push(v);
     }
   }
+  // Strip colophon final verse (e.g. ॥ ইতি ... সম্পূর্ণম্ ॥) for audio stotrams
+  // so clip count matches exactly
+  if (_AUDIO_STOTRAMS[id] && mergedVerses.length > 0) {
+    const last = mergedVerses[mergedVerses.length - 1];
+    const isColophon = last.trim().startsWith('॥') && last.trim().endsWith('॥') && last.split('\n').length <= 2;
+    if (isColophon) mergedVerses.pop();
+  }
   _verses = mergedVerses;
   _verseIdx = 0;
   _hcjStopAudio();

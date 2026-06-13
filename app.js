@@ -759,7 +759,7 @@ const App = {
     }
     // Completion sound (bell chime or Panchojanno Shankya)
     if (this.S.cfg.sound) playMalaSound();
-    // Triple long vibration synced with bell
+    // Triple long vibration synced with bell (only if vibration enabled in settings)
     this.vib([200, 80, 200, 80, 300]);
     // ── ARIA live region: announce mala completion to screen readers ──
     const _announcer = document.getElementById("japAnnounce");
@@ -2149,7 +2149,7 @@ function tgs(k) {
   }
 
   App.S.cfg[k] = !App.S.cfg[k];
-  const m = { sound: "tgSnd" };
+  const m = { sound: "tgSnd", vib: "tgVib" };
   const el = m[k] ? document.getElementById(m[k]) : null;
   if (el) App.S.cfg[k] ? el.classList.add("on") : el.classList.remove("on");
   App.save();
@@ -4047,8 +4047,8 @@ function spawnDivineCelebration() {
     setTimeout(() => el.remove(), 3500);
   }
 
-  // Sacred vibration pattern for milestone
-  if (navigator.vibrate) {
+  // Sacred vibration pattern for milestone (only if vibration enabled)
+  if ((window.App && window.App.S && window.App.S.cfg && window.App.S.cfg.vib) && navigator.vibrate) {
     try {
       navigator.vibrate([100, 50, 100, 50, 200, 100, 300]);
     } catch (e) {}
@@ -6227,7 +6227,7 @@ function cycleDone28() {
   } else {
     toast("🌸 Cycle complete! राधे राधे 🙏");
   }
-  if (navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 200]);
+  if ((window.App && window.App.S && window.App.S.cfg && window.App.S.cfg.vib) && navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 200]);
 }
 
 // ── Sankalp ──
@@ -8603,6 +8603,8 @@ window.addEventListener("load", async () => {
 
   // Apply settings UI
   if (App.S.cfg.sound) document.getElementById("tgSnd").classList.add("on");
+  const tgVibEl = document.getElementById("tgVib");
+  if (tgVibEl) { App.S.cfg.vib ? tgVibEl.classList.add("on") : tgVibEl.classList.remove("on"); }
 
   // GPS Location toggle — persist across refreshes via localStorage flag.
   // Never auto-request geolocation permission on app load (the user enables it
@@ -12203,14 +12205,47 @@ window.submitFeedback = async function() {
   }
   
   try {
-    await fbDb.collection('feedbacks').add({
+    const userName = fbUser.displayName || (fbUser.email || '').split('@')[0] || 'Devotee';
+    const userPhone = fbUser.phoneNumber || null;
+    const userEmail = fbUser.email || null;
+    const uid = fbUser.uid;
+
+    // Check if a feedback thread already exists for this user
+    const existingSnap = await fbDb.collection('feedbacks').where('uid','==',uid).limit(1).get();
+    let threadRef;
+
+    if (!existingSnap.empty) {
+      // Existing thread — just add a new message to subcollection
+      threadRef = existingSnap.docs[0].ref;
+      // Update unread count and last message preview for dev
+      await threadRef.update({
+        lastMessage: text,
+        lastAt: firebase.firestore.FieldValue.serverTimestamp(),
+        devRead: false,   // mark as unread for developer
+        userName, userPhone, userEmail
+      });
+    } else {
+      // New thread
+      threadRef = await fbDb.collection('feedbacks').add({
+        uid,
+        userName,
+        userPhone,
+        userEmail,
+        lastMessage: text,
+        lastAt: firebase.firestore.FieldValue.serverTimestamp(),
+        devRead: false,
+        reply: '',
+        replySeen: true
+      });
+    }
+
+    // Always add the message to subcollection for full conversation history
+    await threadRef.collection('messages').add({
       text,
-      uid: fbUser.uid,
-      email: fbUser.email || fbUser.phoneNumber || 'Anonymous',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      reply: '',
-      replySeen: true
+      sender: 'user',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+
     toast('Feedback sent! Thank you 🙏');
     textEl.value = '';
   } catch(e) {
@@ -12225,87 +12260,120 @@ window.openDevFeedbackPanel = async function() {
   const modal = document.getElementById('devFeedbackModal');
   const content = document.getElementById('devFeedbackContent');
   if (!modal || !content) return;
-  
-  // Show as full-screen flex
+
   modal.style.display = 'flex';
-  // Hide the feedback badge since developer is now reading
   const badge = document.getElementById('feedbackBadge');
   if (badge) badge.style.display = 'none';
   localStorage.setItem('rjap_lastFeedbackRead', Date.now().toString());
 
   content.innerHTML = '<div style="text-align:center;color:var(--td);margin-top:20px;">Loading feedback...</div>';
-  
+
   try {
-    const snap = await fbDb.collection('feedbacks').orderBy('createdAt', 'desc').limit(50).get();
+    const snap = await fbDb.collection('feedbacks').orderBy('lastAt', 'desc').limit(50).get();
     if (snap.empty) {
       content.innerHTML = '<div style="text-align:center;color:var(--td);margin-top:30px;font-size:15px;">No feedback yet.</div>';
       return;
     }
-    
+
+    // Mark all threads as devRead
+    const batch = fbDb.batch();
+    snap.forEach(doc => { if (!doc.data().devRead) batch.update(doc.ref, { devRead: true }); });
+    batch.commit().catch(() => {});
+
     let html = '';
-    snap.forEach(doc => {
+    for (const doc of snap.docs) {
       const data = doc.data();
-      const dateStr = data.createdAt ? new Date(data.createdAt.toDate()).toLocaleString() : 'Unknown Date';
-      const hasReply = !!(data.reply && data.reply.trim());
+      const dateStr = data.lastAt ? new Date(data.lastAt.toDate()).toLocaleString() : 'Unknown';
+      const isUnread = data.devRead === false;
+      const userName = escHtml(data.userName || data.userEmail || 'Anonymous');
+      const phone = data.userPhone ? escHtml(data.userPhone) : null;
+
+      // Load full conversation history from subcollection
+      let msgHtml = '';
+      try {
+        const msgSnap = await doc.ref.collection('messages').orderBy('createdAt', 'asc').get();
+        msgSnap.forEach(m => {
+          const md = m.data();
+          const mTime = md.createdAt ? new Date(md.createdAt.toDate()).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+          const isUser = md.sender === 'user';
+          msgHtml += `<div style="display:flex;flex-direction:column;align-items:${isUser?'flex-start':'flex-end'};margin-bottom:8px;">
+            <div style="max-width:85%;background:${isUser?'rgba(0,0,0,0.35)':'rgba(74,144,226,0.15)'};border:1px solid ${isUser?'rgba(46,204,113,0.2)':'rgba(74,144,226,0.3)'};border-radius:10px;padding:8px 12px;">
+              <div style="white-space:pre-wrap;word-break:break-word;color:var(--tl);font-size:13px;line-height:1.5;">${escHtml(md.text||'')}</div>
+            </div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:2px;">${mTime}</div>
+          </div>`;
+        });
+      } catch(e) { msgHtml = `<div style="color:#ff8888;font-size:12px;">Could not load history</div>`; }
+
       html += `
-        <div style="background:rgba(0,0,0,0.35);border:1px solid rgba(46,204,113,0.2);border-radius:12px;padding:14px;margin-bottom:14px;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:4px;">
-            <div style="font-size:11px;color:#2ecc71;font-weight:600;">${escHtml(data.email || 'Anonymous')}</div>
+        <div style="background:rgba(0,0,0,0.35);border:1.5px solid ${isUnread?'rgba(255,200,0,0.5)':'rgba(46,204,113,0.2)'};border-radius:12px;padding:14px;margin-bottom:14px;position:relative;">
+          ${isUnread ? '<div style="position:absolute;top:10px;right:10px;background:#FFD700;color:#000;font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;letter-spacing:0.5px;">UNREAD</div>' : ''}
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;flex-wrap:wrap;gap:4px;">
+            <div>
+              <div style="font-size:13px;color:#2ecc71;font-weight:700;">${userName}</div>
+              ${phone ? `<div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:2px;">📱 ${phone}</div>` : ''}
+            </div>
             <div style="font-size:10px;color:rgba(255,255,255,0.35);">${dateStr}</div>
           </div>
-          <div style="white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;color:var(--tl);font-size:13px;line-height:1.6;">${escHtml(data.text)}</div>
-          ${hasReply ? `
-          <div style="margin-top:10px;padding:10px;background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:9px;">
-            <div style="font-size:10px;color:var(--a2);font-weight:600;margin-bottom:4px;letter-spacing:0.5px;">↩ YOUR REPLY</div>
-            <div style="white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;color:var(--tl);font-size:13px;line-height:1.5;">${escHtml(data.reply)}</div>
-          </div>` : ''}
-          <div style="margin-top:10px;">
-            <textarea id="devReplyIn-${doc.id}" rows="2" placeholder="${hasReply ? 'Edit reply...' : 'Write a reply to this user...'}" style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(46,204,113,0.2);border-radius:8px;padding:7px;color:var(--tl);font-size:12px;box-sizing:border-box;resize:vertical;font-family:Inter,sans-serif;">${escHtml(data.reply || '')}</textarea>
-            <button onclick="devSendFeedbackReply('${doc.id}')" style="margin-top:6px;padding:7px 14px;border-radius:8px;border:1px solid rgba(46,204,113,0.35);background:rgba(46,204,113,0.12);color:#2ecc71;font-size:12px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;">↩ ${hasReply ? 'Update Reply' : 'Send Reply'}</button>
+          <!-- Full conversation history -->
+          <div style="margin-bottom:12px;padding:10px;background:rgba(0,0,0,0.2);border-radius:8px;max-height:240px;overflow-y:auto;border:1px solid rgba(255,255,255,0.06);">
+            ${msgHtml || '<div style="color:rgba(255,255,255,0.3);font-size:12px;text-align:center;">No messages</div>'}
+          </div>
+          <!-- Dev reply -->
+          <div>
+            <textarea id="devReplyIn-${doc.id}" rows="2" placeholder="Write a reply..." style="width:100%;background:rgba(0,0,0,0.3);border:1px solid rgba(46,204,113,0.2);border-radius:8px;padding:7px;color:var(--tl);font-size:12px;box-sizing:border-box;resize:vertical;font-family:Inter,sans-serif;"></textarea>
+            <button onclick="devSendFeedbackReply('${doc.id}')" style="margin-top:6px;padding:7px 14px;border-radius:8px;border:1px solid rgba(46,204,113,0.35);background:rgba(46,204,113,0.12);color:#2ecc71;font-size:12px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;">↩ Send Reply</button>
           </div>
         </div>
       `;
-    });
+    }
     content.innerHTML = html;
   } catch(e) {
-    content.innerHTML = '<div style="text-align:center;color:#ff8888;margin-top:20px;">Error loading feedback: ' + e.message + '</div>';
+    content.innerHTML = '<div style="text-align:center;color:#ff8888;margin-top:20px;">Error: ' + e.message + '</div>';
   }
 }
 
-// Developer sends/updates a reply to a specific feedback entry
+// Developer sends a reply — adds to messages subcollection + updates thread
 window.devSendFeedbackReply = async function(feedbackId) {
   if (!isDeveloper()) return;
   const ta = document.getElementById('devReplyIn-' + feedbackId);
   if (!ta) return;
   const reply = ta.value.trim();
+  if (!reply) { toast('Please write a reply first.'); return; }
   try {
-    await fbDb.collection('feedbacks').doc(feedbackId).update({
+    const threadRef = fbDb.collection('feedbacks').doc(feedbackId);
+    // Add to messages subcollection for full conversation history
+    await threadRef.collection('messages').add({
+      text: reply,
+      sender: 'developer',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    // Update thread doc with latest reply preview
+    await threadRef.update({
       reply,
       repliedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      replySeen: false
+      replySeen: false,
+      lastMessage: reply,
+      lastAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    toast(reply ? '✅ Reply sent to user' : 'Reply cleared');
+    ta.value = '';
+    toast('✅ Reply sent to user');
   } catch(e) {
     toast('Error: ' + e.message);
   }
 }
 
-// Count unread feedback (created after developer's last-read timestamp)
+// Count unread feedback using devRead field
 async function _updateFeedbackBadgeCount() {
   if (!isDeveloper()) return;
   const badge = document.getElementById('feedbackBadge');
   if (!badge) return;
-  const lastR = parseInt(localStorage.getItem('rjap_lastFeedbackRead') || '0');
   try {
     const snap = await fbDb.collection('feedbacks')
-      .orderBy('createdAt', 'desc')
-      .limit(50)
+      .where('devRead', '==', false)
+      .limit(99)
       .get();
-    let count = 0;
-    snap.forEach(doc => {
-      const ts = doc.data().createdAt ? doc.data().createdAt.toMillis() : 0;
-      if (ts > lastR) count++;
-    });
+    const count = snap.size;
     if (count > 0) {
       badge.textContent = count > 99 ? '99+' : String(count);
       badge.style.display = 'flex';

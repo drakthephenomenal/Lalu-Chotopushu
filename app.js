@@ -6000,7 +6000,7 @@ function _update28ProgressBar(todJaps) {
         : "linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9))";
       bar.style.boxShadow = pct >= 100 ? "0 0 10px rgba(46,204,113,0.6)" : "0 0 8px rgba(189,147,249,0.5)";
     }
-    if (lbl) lbl.textContent = (todJaps % 28) + " / 28";
+    if (lbl) lbl.textContent = todCycles + " / " + targetCycles + " cycles (" + pct + "%)";
   } else {
     // No target on this device — show progress within the current cycle.
     const inCycle = todJaps % 28;
@@ -6010,7 +6010,7 @@ function _update28ProgressBar(todJaps) {
       bar.style.background = "linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9))";
       bar.style.boxShadow = "0 0 8px rgba(189,147,249,0.5)";
     }
-    if (lbl) lbl.textContent = (todJaps % 28) + " / 28";
+    if (lbl) lbl.textContent = todCycles + " cycles · " + inCycle + "/28";
   }
 }
 

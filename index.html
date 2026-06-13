@@ -1517,8 +1517,8 @@
 
   <!-- DEVELOPER FEEDBACK MODAL -->
   <!-- ══ DEVELOPER CHAT PANEL ══ -->
-  <div id="devFeedbackModal" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(6,13,31,0.97);backdrop-filter:blur(12px);flex-direction:column;align-items:center;justify-content:center;padding:16px;overflow:hidden;">
-    <div style="background:linear-gradient(160deg,#0a1f12 0%,#060D1F 100%);border:2px solid rgba(46,204,113,0.6);border-radius:20px;width:100%;max-width:680px;height:100%;max-height:calc(100dvh - 32px);display:flex;flex-direction:column;box-shadow:0 0 30px rgba(46,204,113,0.15);overflow:hidden;">
+  <div id="devFeedbackModal" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(6,13,31,0.97);backdrop-filter:blur(12px);flex-direction:column;align-items:center;justify-content:center;padding:12px 12px max(12px,env(safe-area-inset-bottom)) 12px;box-sizing:border-box;">
+    <div style="background:linear-gradient(160deg,#0a1f12 0%,#060D1F 100%);border:2px solid rgba(46,204,113,0.6);border-radius:20px;width:100%;max-width:680px;height:100%;max-height:min(calc(100vh - 24px),calc(100dvh - 24px));display:flex;flex-direction:column;box-shadow:0 0 30px rgba(46,204,113,0.15);overflow:hidden;">
       <div style="background:linear-gradient(90deg,rgba(46,204,113,0.08),rgba(46,204,113,0.22),rgba(46,204,113,0.08));padding:14px 16px;border-bottom:1px solid rgba(46,204,113,0.25);flex-shrink:0;display:flex;align-items:center;gap:12px;">
         <button id="devPanelBackBtn" onclick="window._devPanelBack()" style="background:rgba(46,204,113,0.15);color:#2ecc71;border:1px solid rgba(46,204,113,0.4);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:bold;cursor:pointer;flex-shrink:0;">✕ Close</button>
         <div style="flex:1;text-align:center;">
@@ -1528,23 +1528,23 @@
         <div style="width:70px;"></div>
       </div>
       <!-- Thread list view -->
-      <div id="devFeedbackContent" style="padding:16px;color:var(--tl);font-size:14px;line-height:1.6;overflow-y:auto;flex:1;border-bottom:2px solid rgba(46,204,113,0.35);">
+      <div id="devFeedbackContent" style="padding:16px;color:var(--tl);font-size:14px;line-height:1.6;overflow-y:auto;flex:1;min-height:0;border-bottom:2px solid rgba(46,204,113,0.35);">
         <div style="text-align:center;color:var(--td);margin-top:20px;">Loading...</div>
       </div>
       <!-- Per-thread chat view (hidden initially) -->
-      <div id="devChatView" style="display:none;flex-direction:column;flex:1;overflow:hidden;border-bottom:2px solid rgba(46,204,113,0.35);">
-        <div id="devChatMessages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;"></div>
-        <div style="padding:10px 14px;background:rgba(0,0,0,0.3);border-top:1px solid rgba(46,204,113,0.15);display:flex;gap:8px;align-items:flex-end;">
-          <textarea id="devChatInput" rows="2" placeholder="Type reply..." style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(46,204,113,0.25);border-radius:10px;padding:8px 10px;color:var(--tl);font-size:13px;resize:none;font-family:Inter,sans-serif;"></textarea>
-          <button onclick="window._devChatSend()" style="background:rgba(46,204,113,0.2);color:#2ecc71;border:1px solid rgba(46,204,113,0.4);padding:9px 16px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">Send ↩</button>
+      <div id="devChatView" style="display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0;">
+        <div id="devChatMessages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;min-height:0;"></div>
+        <div style="flex-shrink:0;padding:10px 14px 12px;background:rgba(0,0,0,0.3);border-top:1px solid rgba(46,204,113,0.2);display:flex;gap:8px;align-items:flex-end;">
+          <textarea id="devChatInput" rows="2" placeholder="Type reply..." style="flex:1;min-width:0;background:rgba(0,0,0,0.3);border:1px solid rgba(46,204,113,0.3);border-radius:10px;padding:8px 10px;color:var(--tl);font-size:13px;resize:none;font-family:Inter,sans-serif;box-sizing:border-box;"></textarea>
+          <button onclick="window._devChatSend()" style="flex-shrink:0;background:rgba(46,204,113,0.2);color:#2ecc71;border:1px solid rgba(46,204,113,0.4);padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">Send ↩</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- ══ USER CHAT MODAL ══ -->
-  <div id="userChatModal" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(6,13,31,0.97);backdrop-filter:blur(12px);flex-direction:column;align-items:center;justify-content:center;padding:16px;overflow:hidden;">
-    <div style="background:linear-gradient(160deg,#060D1F 0%,#0a1225 100%);border:2px solid rgba(74,144,226,0.5);border-radius:20px;width:100%;max-width:680px;height:100%;max-height:calc(100dvh - 32px);display:flex;flex-direction:column;box-shadow:0 0 30px rgba(74,144,226,0.15);overflow:hidden;">
+  <div id="userChatModal" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(6,13,31,0.97);backdrop-filter:blur(12px);flex-direction:column;align-items:center;justify-content:center;padding:12px 12px max(12px,env(safe-area-inset-bottom)) 12px;box-sizing:border-box;">
+    <div style="background:linear-gradient(160deg,#060D1F 0%,#0a1225 100%);border:2px solid rgba(74,144,226,0.5);border-radius:20px;width:100%;max-width:680px;height:100%;max-height:min(calc(100vh - 24px),calc(100dvh - 24px));display:flex;flex-direction:column;box-shadow:0 0 30px rgba(74,144,226,0.15);overflow:hidden;">
       <div style="background:linear-gradient(90deg,rgba(74,144,226,0.08),rgba(74,144,226,0.22),rgba(74,144,226,0.08));padding:14px 16px;border-bottom:1px solid rgba(74,144,226,0.25);flex-shrink:0;display:flex;align-items:center;gap:12px;">
         <button onclick="window.closeUserChat()" style="background:rgba(74,144,226,0.15);color:var(--a2);border:1px solid rgba(74,144,226,0.4);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:bold;cursor:pointer;flex-shrink:0;">✕ Close</button>
         <div style="flex:1;text-align:center;">
@@ -1553,12 +1553,13 @@
         </div>
         <div style="width:70px;"></div>
       </div>
-      <div id="userChatMessages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;">
+      <div id="userChatMessages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;min-height:0;">
         <div style="text-align:center;color:var(--td);margin-top:30px;">Loading chat...</div>
       </div>
-      <div style="padding:10px 14px;background:rgba(0,0,0,0.3);border-top:1px solid rgba(74,144,226,0.15);border-bottom:2px solid rgba(74,144,226,0.35);display:flex;gap:8px;align-items:flex-end;">
-        <textarea id="userChatInput" rows="2" placeholder="Type your message..." style="flex:1;background:rgba(0,0,0,0.3);border:1px solid rgba(74,144,226,0.25);border-radius:10px;padding:8px 10px;color:var(--tl);font-size:13px;resize:none;font-family:Inter,sans-serif;"></textarea>
-        <button onclick="window._userChatSend()" style="background:rgba(74,144,226,0.2);color:var(--a2);border:1px solid rgba(74,144,226,0.4);padding:9px 16px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">Send</button>
+      <!-- Input row: flex-shrink:0 ensures it is never squashed or hidden -->
+      <div style="flex-shrink:0;padding:10px 14px 12px;background:rgba(0,0,0,0.3);border-top:1px solid rgba(74,144,226,0.2);display:flex;gap:8px;align-items:flex-end;">
+        <textarea id="userChatInput" rows="2" placeholder="Type your message..." style="flex:1;min-width:0;background:rgba(0,0,0,0.3);border:1px solid rgba(74,144,226,0.3);border-radius:10px;padding:8px 10px;color:var(--tl);font-size:13px;resize:none;font-family:Inter,sans-serif;box-sizing:border-box;"></textarea>
+        <button onclick="window._userChatSend()" style="flex-shrink:0;background:rgba(74,144,226,0.25);color:var(--a2);border:1px solid rgba(74,144,226,0.5);padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">Send</button>
       </div>
     </div>
   </div>

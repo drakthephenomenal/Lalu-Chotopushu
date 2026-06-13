@@ -998,13 +998,13 @@ const App = {
     this._n28SavedSecs = 0;
     this._n28Paused = true;
     this._upd28PauseBtn();
-    // Show frozen cycle value; n28TotalTimer shows unified Jap timer
+    // Show frozen cycle value; n28TotalTimer shows unified Today's Jap Time
     const fmt = (s) =>
       Math.floor(s / 60) + ":" + (s % 60 < 10 ? "0" : "") + (s % 60);
     const ce = document.getElementById("n28CycleTimer");
-    const te = document.getElementById("n28TotalTimer");
     if (ce) ce.textContent = fmt(this._n28PausedCycleSec);
-    if (te) te.textContent = this.fmtTime(this.timerSeconds);
+    this.updateTimerToday();
+
   },
 
   // ── Resume the 28 Names timers ──
@@ -1104,10 +1104,10 @@ const App = {
     this._n28PausedCycleSec = 0;
     this._n28PausedTotalSec = 0;
     const ce = document.getElementById("n28CycleTimer");
-    const te = document.getElementById("n28TotalTimer");
     if (ce) ce.textContent = "0:00";
-    // Show unified Jap timer (same as main Jap tab)
-    if (te) te.textContent = this.fmtTime(this.timerSeconds);
+    // Show unified Today's Jap Time
+    this.updateTimerToday();
+
     const mf28 = document.getElementById("mf28");
     if (mf28) mf28.classList.remove("show");
     this._upd28PauseBtn();
@@ -1475,8 +1475,9 @@ document.addEventListener(
 
 // Stats timer tick
 setInterval(() => {
-  if (App.timerRunning) App.updateTimerToday();
+  App.updateTimerToday();
 }, 1000);
+
 // 28 Names stats panel live tick — refreshes time while timer is running
 setInterval(() => {
   if (App._n28TimerInterval) refresh28StatsIfOpen();
@@ -6000,13 +6001,16 @@ function _update28ProgressBar(todJaps) {
       bar.style.boxShadow = pct >= 100 ? "0 0 10px rgba(46,204,113,0.6)" : "0 0 8px rgba(189,147,249,0.5)";
     }
   } else {
-    const pct = Math.round((inCycle / 28) * 100);
+    // No daily target set — show current cycle progress (full bar when a cycle just completed).
+    const num = inCycle === 0 && todCycles > 0 ? 28 : inCycle;
+    const pct = Math.round((num / 28) * 100);
     if (bar) {
       bar.style.width = pct + "%";
       bar.style.background = "linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9))";
       bar.style.boxShadow = "0 0 8px rgba(189,147,249,0.5)";
     }
   }
+
   // Always render label as "{cycles} cycles · {N}/28"
   if (lbl) lbl.textContent = todCycles + " cycle" + (todCycles === 1 ? "" : "s") + " · " + inCycle + "/28";
 }
@@ -6090,11 +6094,9 @@ function u28() {
   }
   render28Dots(pos);
   renderSankalpas();
-  // Show today's accumulated 28-Names time in Total Timer if not currently running
-  if (!App._n28TimerInterval) {
-    const te = document.getElementById("n28TotalTimer");
-    if (te) te.textContent = App.fmtTime(App.timerSeconds);
-  }
+  // Always mirror the unified Today's Jap Time
+  if (typeof App.updateTimerToday === "function") App.updateTimerToday();
+
   App._upd28PauseBtn();
   refresh28StatsIfOpen();
 }

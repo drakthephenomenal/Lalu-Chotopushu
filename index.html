@@ -308,8 +308,9 @@
 <!-- 28 NAMES VIEW -->
 <div class="view" id="v28">
   <div class="v28-header">
-    <div class="v28-title">28 Names of Radha</div>
-    <div style="display:flex;gap:6px;align-items:center">
+    <!-- [1] "28 Names of Radha" title hidden per UI redesign -->
+    <div class="v28-title" style="visibility:hidden;height:0;margin:0;padding:0;overflow:hidden;">28 Names of Radha</div>
+    <div style="display:flex;gap:6px;align-items:center;width:100%;justify-content:flex-end;">
       <button id="n28ScriptToggle" onclick="toggle28Script()" style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);border-radius:16px;color:var(--gold);font-size:12px;font-weight:600;padding:5px 13px;cursor:pointer;font-family:'Hind Siliguri',serif;letter-spacing:0.3px;transition:all 0.2s;">हिन्दी</button>
       <button class="sk-icon-btn" id="skToggleBtn" onclick="toggleSankalp()">
         🙏 Wishes <span class="sk-chevron" id="skChevron">▾</span>
@@ -333,39 +334,46 @@
   <div class="n28wrap">
     <!-- Single line timers: small, left and right -->
     <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 4px 6px;">
+      <!-- [2] Cycle Time value kept (functionality), label hidden -->
       <div class="n28timer-box" style="align-items:flex-start">
         <div class="n28timer-val" id="n28CycleTimer">0:00</div>
-        <div class="n28timer-lbl">Cycle Time</div>
+        <div class="n28timer-lbl" style="visibility:hidden;">Cycle Time</div>
       </div>
-      <div class="n28timer-box" style="align-items:center">
+      <!-- [3] Today count hidden entirely -->
+      <div class="n28timer-box" style="align-items:center;visibility:hidden;">
         <div class="n28timer-val" id="n28t" style="color:var(--gold);font-size:13px">0</div>
         <div class="n28timer-lbl">Today</div>
       </div>
+      <!-- [4] Renamed to "Today's Jap Time" -->
       <div class="n28timer-box" style="align-items:flex-end">
         <div class="n28timer-val gold" id="n28TotalTimer">00:00:00</div>
-        <div class="n28timer-lbl">Jap Timer</div>
+        <div class="n28timer-lbl">Today's Jap Time</div>
       </div>
     </div>
 
-    <!-- 28 Names Daily Progress Bar -->
+    <!-- [5] Progress bar — shows X/28 name count in current cycle -->
     <div id="n28ProgressWrap" style="padding:4px 4px 6px;display:none;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <span style="font-size:9px;color:rgba(189,147,249,0.6);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;">Daily Progress</span>
-        <span id="n28ProgressLabel" style="font-size:10px;color:#BD93F9;font-weight:700;">0 / 0 cycles</span>
+        <!-- n28ProgressLabel now shows "X / 28" name count, updated by JS -->
+        <span id="n28ProgressLabel" style="font-size:12px;color:#BD93F9;font-weight:700;letter-spacing:0.5px;">0 / 28</span>
       </div>
       <div style="height:6px;background:rgba(189,147,249,0.12);border-radius:10px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.4);">
         <div id="n28ProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9));border-radius:10px;transition:width 0.5s ease;box-shadow:0 0 8px rgba(189,147,249,0.5);"></div>
       </div>
     </div>
 
-    <!-- Tap area: Radha name at top, meaning, pause button -->
-    <div class="n28tz" id="tz28" aria-label="Tap to chant 28 Names of Radha" role="button" tabindex="0" ontouchstart="App.h28(event)" onmousedown="App.h28(event)">
-      <div class="mf" id="mf28" style="border-radius:22px;">
+    <!-- Tap area: [6] name+meaning pushed lower with flex layout -->
+    <div class="n28tz" id="tz28" aria-label="Tap to chant 28 Names of Radha" role="button" tabindex="0" ontouchstart="App.h28(event)" onmousedown="App.h28(event)" style="display:flex;flex-direction:column;justify-content:flex-end;padding-bottom:28px;">
+      <div class="mf" id="mf28" style="border-radius:22px;position:absolute;top:10px;left:50%;transform:translateX(-50%);">
         <div class="mf-line1">Radha Vallabh</div>
         <div class="mf-line2">Sri Harivangsa</div>
       </div>
-      <div class="n28name" id="n28name">রাধা</div>
-      <div class="n28meaning" id="n28meaning">The Supreme Beloved</div>
+      <!-- [6] name + meaning near bottom -->
+      <div style="text-align:center;">
+        <div class="n28name" id="n28name">রাধা</div>
+        <div class="n28meaning" id="n28meaning">The Supreme Beloved</div>
+      </div>
       <div class="n28timer-box" style="position:absolute;top:10px;right:12px;z-index:5">
         <button id="n28PauseBtn" onclick="App.toggle28Pause()" style="display:none;background:rgba(109,184,255,0.12);border:1px solid rgba(109,184,255,0.35);border-radius:16px;color:var(--a2);font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;letter-spacing:0.5px;transition:all 0.2s;font-family:'Inter',sans-serif;">⏸ Pause</button>
       </div>

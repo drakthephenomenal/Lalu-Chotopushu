@@ -12711,41 +12711,53 @@ function _showUserReplyPopup(text) {
         "transform:translate(" + nameX + "px," + nameY + "px) scale(1);opacity:1;";
       tz.appendChild(ghost);
 
-      // Coin spawns just above the name and travels WITH it into the bank door.
-      var coinSize = 38;
+      // Coin spawns just above the name with a bounce-in, then flies to bank.
+      var coinSize = 54;
       var coinStartX = nameX + srcRect.width / 2 - coinSize / 2;
-      var coinStartY = nameY - coinSize - 8;
+      var coinStartY = nameY - coinSize - 10;
+      var coinEndX   = doorCenterX - coinSize / 2;
+      var coinEndY   = doorCenterY - coinSize / 2;
+      var startTf    = "translate(" + coinStartX + "px," + coinStartY + "px)";
 
       var coin = document.createElement("div");
       coin.className = "radha-coin";
-      coin.style.transform = "translate(" + coinStartX + "px," + coinStartY + "px) scale(1)";
-      coin.style.opacity = "1";
+      // Use CSS custom property so coinAppear keyframe knows start position
+      coin.style.setProperty("--coin-start-tf", startTf);
+      coin.style.transform = startTf + " scale(0.4)";
+      coin.style.opacity = "0";
       tz.appendChild(coin);
 
-      // Phase 1 & 2 combined: name ghost AND coin travel together all the way
-      // into the bank door, shrinking and fading as they enter through it.
+      // Phase 1: coin pops in above the name (400 ms bounce)
       requestAnimationFrame(function () {
+        coin.style.animation = "coinAppear 0.42s cubic-bezier(0.34,1.56,0.64,1) forwards";
+      });
+
+      // Phase 2 (after pop-in): ghost name AND coin fly together into bank door
+      setTimeout(function () {
+        coin.style.animation = "none";
+        coin.style.transform  = startTf + " scale(1)";
+        coin.style.opacity    = "1";
+
+        // Ghost appears at name position, same moment coin starts flying
         var ghostEndX = doorCenterX - srcRect.width / 2;
         var ghostEndY = doorCenterY - srcRect.height / 2;
-        // Ghost travels to door, fades out only in the last 30% of the journey
         ghost.style.transition =
-          "transform 1700ms cubic-bezier(0.20,0.72,0.26,1), " +
-          "opacity 600ms 1100ms ease-in";
+          "transform 1600ms cubic-bezier(0.20,0.72,0.26,1), " +
+          "opacity 500ms 1100ms ease-in";
         ghost.style.transform = "translate(" + ghostEndX + "px," + ghostEndY + "px) scale(0.18)";
         ghost.style.opacity = "0";
 
-        // Coin travels alongside ghost — stays just above it all the way
-        var coinEndX = doorCenterX - coinSize / 2;
-        var coinEndY = doorCenterY - coinSize / 2;
-        coin.style.transition =
-          "transform 1700ms cubic-bezier(0.20,0.72,0.26,1), " +
-          "opacity 600ms 1100ms ease-in";
-        coin.style.transform = "translate(" + coinEndX + "px," + coinEndY + "px) scale(0.15) rotate(720deg)";
-        coin.style.opacity = "0";
-      });
+        // One frame later so transition picks up new starting values
+        requestAnimationFrame(function () {
+          coin.style.transition =
+            "transform 1600ms cubic-bezier(0.20,0.72,0.26,1), " +
+            "opacity 500ms 1100ms ease-in";
+          coin.style.transform = "translate(" + coinEndX + "px," + coinEndY + "px) scale(0.14) rotate(720deg)";
+          coin.style.opacity = "0";
+        });
+      }, 430);
 
-      // Phase 3: bank pulses + counter ticks — cleanup after animation completes
-      // At animation end: remove elements, sparkle burst, bank pulse, counter tick
+      // Phase 3: sparkle burst + bank pulse + counter — cleanup after flight
       setTimeout(function () {
         if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
         if (coin.parentNode) coin.parentNode.removeChild(coin);
@@ -12806,7 +12818,7 @@ function _showUserReplyPopup(text) {
           bbc.textContent = n;
           try { localStorage.setItem("radhaCurrency", String(n)); } catch (e) {}
         }
-      }, 1750);
+      }, 2080);
     }
 
     var origH28 = App.h28.bind(App);

@@ -583,7 +583,7 @@ button.hpb.active{
 
   /* 28 NAMES */
 #v28{background:radial-gradient(ellipse at top,#091A30 0%,var(--bd) 60%);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
-.n28wrap{display:flex;flex-direction:column;flex:1;min-height:0;padding:0 12px 100px;overflow-x:hidden;}
+.n28wrap{display:flex;flex-direction:column;flex:1;min-height:0;padding:0 12px 0;overflow-x:hidden;}
 .v28-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 4px;}
 .v28-title{font-family:'Cinzel Decorative',serif;font-size:14px;color:var(--a2);letter-spacing:2px;}
 .sk-icon-btn{background:rgba(232,51,109,0.12);border:1px solid rgba(232,51,109,0.35);border-radius:22px;padding:6px 14px;color:var(--rose);font-size:16px;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;transition:all 0.2s;}
@@ -2884,10 +2884,10 @@ body.gaudiya-mode .tz .cm-wm{
 /* ───────────────────────────────────────────────────────────
    BHAGAVADIK BANK + RADHA CURRENCY (28 NAMES SECTION)
    ─────────────────────────────────────────────────────────── */
-.n28wrap{ padding-bottom:calc(80px + env(safe-area-inset-bottom)); }
+.n28wrap{ padding-bottom:calc(52px + env(safe-area-inset-bottom)); }
 .n28tz{
   padding-top: clamp(270px, 44vh, 320px);
-  padding-bottom: clamp(52px, 8vh, 76px);
+  padding-bottom: clamp(20px, 3vh, 36px);
   min-height: clamp(520px, calc(100dvh - 188px), 800px);
 }  /* larger tap zone with bank inside it */
 
@@ -2939,12 +2939,7 @@ body.gaudiya-mode .tz .cm-wm{
   color:#FFD93D; text-shadow:0 0 6px rgba(255,215,0,0.6);
   white-space:nowrap;
 }
-.bb-count{
-  position:absolute; bottom:2px; left:50%; transform:translateX(-50%);
-  font-family:'EB Garamond',serif; font-size:clamp(13px,3vw,16px); color:#6DB8FF;
-  letter-spacing:1px;
-  text-shadow:0 0 4px rgba(109,184,255,0.5);
-}
+.bb-count{ display:none; }
 .bb-wrap.bb-pulse .bb-img{ animation: bbReceive 0.55s ease-out; }
 @keyframes bbReceive{
   0%{ transform: translateX(-50%) scale(1); filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55)); }
@@ -2955,17 +2950,27 @@ body.gaudiya-mode .tz .cm-wm{
 /* Radha Currency coin that flies from the tapped name into the bank door */
 .radha-coin{
   position:absolute; left:0; top:0;
-  width:38px; height:38px; border-radius:50%;
-  background: radial-gradient(circle at 35% 30%, #FFF6B0 0%, #FFD93D 45%, #C9961A 100%);
-  border:2px solid #FFE066;
-  box-shadow: 0 0 18px rgba(255,215,0,0.95), 0 0 26px rgba(109,184,255,0.28), inset 0 0 7px rgba(255,255,255,0.7);
+  width:54px; height:54px; border-radius:50%;
+  background: radial-gradient(circle at 35% 30%, #FFF8D0 0%, #FFD93D 40%, #C9961A 100%);
+  border:2.5px solid #FFE57A;
+  box-shadow:
+    0 0 0 3px rgba(255,215,0,0.25),
+    0 0 22px rgba(255,215,0,1),
+    0 0 42px rgba(255,200,40,0.65),
+    inset 0 0 10px rgba(255,255,255,0.75);
   display:flex; align-items:center; justify-content:center;
-  font-family:'Hind Siliguri',serif; font-weight:800; color:#7a3a00;
-  font-size:14px; text-shadow:0 1px 0 rgba(255,255,255,0.5);
+  font-family:'Hind Siliguri',serif; font-weight:800; color:#6a2c00;
+  font-size:16px; text-shadow:0 1px 0 rgba(255,255,255,0.6);
   pointer-events:none; z-index:30;
   will-change: transform, opacity;
 }
-.radha-coin::before{ content:"राधा"; font-size:12px; line-height:1; }
+.radha-coin::before{ content:"राधा"; font-size:14px; line-height:1; }
+@keyframes coinAppear{
+  0%  { transform:var(--coin-start-tf) scale(0.4); opacity:0; }
+  55% { transform:var(--coin-start-tf) scale(1.18); opacity:1; }
+  80% { transform:var(--coin-start-tf) scale(0.94); opacity:1; }
+  100%{ transform:var(--coin-start-tf) scale(1);    opacity:1; }
+}
 .n28name-ghost{
   filter: drop-shadow(0 0 18px rgba(255,215,0,0.85));
 }
@@ -2987,9 +2992,9 @@ body.gaudiya-mode .tz .cm-wm{
 }
 
 #n28ProgressWrap{
-  margin-top:6px !important;
-  margin-bottom:6px !important;
-  padding-bottom:8px;
+  margin-top:4px !important;
+  margin-bottom:0 !important;
+  padding-bottom:4px;
 }
 
 /* ───────────────────────────────────────────────────────────

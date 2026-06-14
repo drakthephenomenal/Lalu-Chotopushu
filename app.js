@@ -12119,19 +12119,21 @@ window.applyBgPhotos = async function() {
 window.triggerMalaGlowFlash = function() {
   const ids = ['bgRadhaVallabh', 'bgHitju', 'bgGurudev'];
   const els = ids.map(id => document.getElementById(id)).filter(el => el && el.style.display !== 'none');
-  if (!els.length) return;
+  const tz = document.getElementById('tz');
 
   // Add sustained glow class — stays ON until shankya finishes
   els.forEach(el => {
     el.classList.remove('mala-glow-flash');
     el.classList.add('mala-glow-sustained');
   });
+  if (tz) tz.classList.add('tz-mala-glow');
 
   // Listen for Panchojanno Shankya audio end to remove glow
   function removeSustainedGlow() {
     els.forEach(el => {
       el.classList.remove('mala-glow-sustained');
     });
+    if (tz) tz.classList.remove('tz-mala-glow');
   }
 
   // Attach to shankya audio onended if available
@@ -12695,8 +12697,7 @@ function _showUserReplyPopup(text) {
       var nameX = srcRect.left - tzRect.left;
       var nameY = srcRect.top  - tzRect.top;
       var bankCX = dstRect.left - tzRect.left + dstRect.width / 2;
-      // Land at the bank's MIDDLE — where the treasury boxes sit, not the pedestal
-      var bankCY = dstRect.top  - tzRect.top  + dstRect.height * 0.52;
+      var bankCY = dstRect.top  - tzRect.top  + dstRect.height * 0.35;
 
       // Ghost name rises into the bank
       var ghost = document.createElement("div");
@@ -12752,28 +12753,27 @@ function _showUserReplyPopup(text) {
         coinImg.style.animation = "coinSpinFlight 0.6s linear infinite";
       }, 520);
 
-      // Phase 2 (540ms): ghost + coin glide to bank — SLOW & dignified, ghost stays readable
+      // Phase 2 (540ms): ghost + coin glide to bank
       setTimeout(function () {
         coinWrap.style.transition = "none";
         coinWrap.style.transform  = "translate(" + coinStartX + "px," + coinStartY + "px) scale(1)";
 
-        // Slow glide (4.2s) and only shrink to 0.55 (not tiny 0.12), late fade
-        ghost.style.transition = "transform 4200ms cubic-bezier(0.22,0.8,0.32,1), opacity 1200ms 3000ms ease-in";
-        ghost.style.transform  = "translate(" + ghostEndX + "px," + ghostEndY + "px) scale(0.55)";
+        ghost.style.transition = "transform 2200ms ease-out, opacity 600ms 1600ms ease-in";
+        ghost.style.transform  = "translate(" + ghostEndX + "px," + ghostEndY + "px) scale(0.12)";
         ghost.style.opacity    = "0";
 
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
-            coinWrap.style.transition = "transform 4200ms cubic-bezier(0.22,0.8,0.44,1)";
+            coinWrap.style.transition = "transform 2200ms cubic-bezier(0.22,0.8,0.44,1)";
             coinWrap.style.transform  = "translate(" + coinEndX + "px," + coinEndY + "px) scale(0.6)";
           });
         });
       }, 540);
 
-      // Phase 3 (4760ms): deposit — coin spins fast into bank and fades
+      // Phase 3 (2780ms): deposit — coin spins fast into bank and fades
       setTimeout(function () {
-        coinImg.style.animation = "coinDeposit 0.8s ease-in forwards";
-      }, 4760);
+        coinImg.style.animation = "coinDeposit 0.65s ease-in forwards";
+      }, 2780);
 
       // Phase 4: sparkle burst + bank pulse + counter — cleanup after deposit
       setTimeout(function () {
@@ -12824,7 +12824,7 @@ function _showUserReplyPopup(text) {
                         ? freshTz.closest("#v28").querySelector(".bb-img")
                         : document.querySelector("#v28 .bb-img");
           if (bankImg) {
-            bankImg.style.animation = "bbBankFlash 0.65s ease-out";
+            bankImg.style.animation = "bbBankFlash 0.65s ease-out, bbFloat 4.5s 0.65s ease-in-out infinite";
           }
         }
 
@@ -12849,7 +12849,7 @@ function _showUserReplyPopup(text) {
             });
           }
         }
-      }, 5700);
+      }, 3500);
     }
 
     var origH28 = App.h28.bind(App);

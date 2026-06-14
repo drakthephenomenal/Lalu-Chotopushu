@@ -2609,6 +2609,45 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   transition: none !important;
 }
 
+/* ✨ FULL TAP-AREA MALA GLOW — washes the ENTIRE tap zone with alternating
+   golden ↔ blue divine light during mala completion (until shankya ends) */
+@keyframes tzMalaAreaGlow{
+  0%,100% {
+    box-shadow:
+      inset 0 0 80px 10px rgba(255,215,80,0.55),
+      inset 0 0 180px 40px rgba(255,180,0,0.45),
+      0 0 60px 8px rgba(255,220,100,0.55);
+    background-color: rgba(255,210,80,0.10);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 80px 10px rgba(90,170,255,0.60),
+      inset 0 0 180px 40px rgba(60,130,255,0.50),
+      0 0 60px 8px rgba(140,200,255,0.55);
+    background-color: rgba(90,170,255,0.12);
+  }
+}
+.tz.tz-mala-glow{
+  animation: tzMalaAreaGlow 2s ease-in-out infinite !important;
+  border-radius: 18px;
+  transition: none !important;
+}
+.tz.tz-mala-glow::after{
+  content:"";
+  position:absolute; inset:0;
+  border-radius:inherit;
+  pointer-events:none;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(ellipse at 50% 55%, rgba(255,230,120,0.35) 0%, rgba(255,200,40,0.18) 35%, rgba(255,200,40,0) 70%);
+  animation: tzMalaAreaOverlay 2s ease-in-out infinite;
+  z-index: 5;
+}
+@keyframes tzMalaAreaOverlay{
+  0%,100% { opacity: 0.9; background: radial-gradient(ellipse at 50% 55%, rgba(255,230,120,0.40) 0%, rgba(255,200,40,0.20) 38%, rgba(255,200,40,0) 72%); }
+  50%     { opacity: 0.9; background: radial-gradient(ellipse at 50% 55%, rgba(150,210,255,0.45) 0%, rgba(80,160,255,0.22) 38%, rgba(80,160,255,0) 72%); }
+}
+
 /* Hit Ju Maharaj — bottom-left, anchored to RV's bottom edge */
 .tz .hitju-wm{
   position:absolute;
@@ -2667,11 +2706,11 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   100% → back to dark (glow=0) — loops
 */
 @keyframes divineBreathGlow{
-  0%   { opacity:0.55; filter:drop-shadow(0 0 0px   rgba(255,215,0,0))    drop-shadow(0 0 0px   rgba(80,160,255,0)); }
-  25%  { opacity:1;    filter:drop-shadow(0 0 90px  rgba(255,215,0,1))    drop-shadow(0 0 180px rgba(255,180,0,0.9))  drop-shadow(0 0 280px rgba(255,200,40,0.75)) drop-shadow(0 0 380px rgba(255,220,80,0.55)); }
-  50%  { opacity:0.55; filter:drop-shadow(0 0 0px   rgba(255,215,0,0))    drop-shadow(0 0 0px   rgba(80,160,255,0)); }
-  75%  { opacity:1;    filter:drop-shadow(0 0 90px  rgba(80,160,255,1))   drop-shadow(0 0 180px rgba(60,120,255,0.9)) drop-shadow(0 0 280px rgba(150,200,255,0.75)) drop-shadow(0 0 380px rgba(180,220,255,0.55)); }
-  100% { opacity:0.55; filter:drop-shadow(0 0 0px   rgba(255,215,0,0))    drop-shadow(0 0 0px   rgba(80,160,255,0)); }
+  0%   { opacity:0.45; filter:drop-shadow(0 0 0px  rgba(255,215,0,0))   drop-shadow(0 0 0px  rgba(80,160,255,0)); }
+  25%  { opacity:0.85; filter:drop-shadow(0 0 32px rgba(255,215,0,0.80)) drop-shadow(0 0 55px rgba(255,180,0,0.60)); }
+  50%  { opacity:0.45; filter:drop-shadow(0 0 0px  rgba(255,215,0,0))   drop-shadow(0 0 0px  rgba(80,160,255,0)); }
+  75%  { opacity:0.85; filter:drop-shadow(0 0 32px rgba(80,160,255,0.80)) drop-shadow(0 0 55px rgba(60,120,255,0.60)); }
+  100% { opacity:0.45; filter:drop-shadow(0 0 0px  rgba(255,215,0,0))   drop-shadow(0 0 0px  rgba(80,160,255,0)); }
 }
 @keyframes divineBreathGlowStrong{
   0%   { opacity:0.50; filter:drop-shadow(0 0 0px  rgba(255,215,0,0))   drop-shadow(0 0 0px  rgba(80,160,255,0)); }
@@ -2913,20 +2952,19 @@ body.gaudiya-mode .tz .cm-wm{
 
 .bb-wrap{
   position:absolute; top:4px; left:50%; transform:translateX(-50%);
-  width:min(100vw,760px); height:clamp(300px,54vh,600px); z-index:24;
+  width:min(98vw,700px); height:clamp(280px,50vh,540px); z-index:24;
   display:flex; align-items:center; justify-content:center;
   pointer-events:none;
   background: radial-gradient(circle at center, rgba(255,217,61,0.10) 0%, rgba(109,184,255,0.06) 55%, rgba(0,0,0,0) 75%);
   border-radius: 18px;
-  animation: bbFloat 4.5s ease-in-out infinite, bbImgGlow 2.6s ease-in-out infinite;
-  will-change: transform, filter;
 }
 .bb-img{
-  position:absolute; left:50%; top:8px; transform:translateX(-50%);
-  width:min(100vw,740px); height:auto; max-height:clamp(290px,54vh,580px);
+  position:absolute; left:50%; top:16px; transform:translateX(-50%);
+  width:min(96vw,680px); height:auto; max-height:clamp(260px,48vh,510px);
   object-fit:contain;
-  -webkit-mask-image: none;
-  mask-image: none;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 46%, rgba(0,0,0,1) 40%, rgba(0,0,0,0.75) 60%, rgba(0,0,0,0) 80%);
+  mask-image: radial-gradient(ellipse at 50% 46%, rgba(0,0,0,1) 40%, rgba(0,0,0,0.75) 60%, rgba(0,0,0,0) 80%);
+  animation: bbFloat 4.5s ease-in-out infinite, bbImgGlow 2.6s ease-in-out infinite;
   will-change: transform, filter;
 }
 .bb-glow{

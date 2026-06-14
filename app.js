@@ -12119,21 +12119,19 @@ window.applyBgPhotos = async function() {
 window.triggerMalaGlowFlash = function() {
   const ids = ['bgRadhaVallabh', 'bgHitju', 'bgGurudev'];
   const els = ids.map(id => document.getElementById(id)).filter(el => el && el.style.display !== 'none');
-  const tz = document.getElementById('tz');
+  if (!els.length) return;
 
   // Add sustained glow class — stays ON until shankya finishes
   els.forEach(el => {
     el.classList.remove('mala-glow-flash');
     el.classList.add('mala-glow-sustained');
   });
-  if (tz) tz.classList.add('tz-mala-glow');
 
   // Listen for Panchojanno Shankya audio end to remove glow
   function removeSustainedGlow() {
     els.forEach(el => {
       el.classList.remove('mala-glow-sustained');
     });
-    if (tz) tz.classList.remove('tz-mala-glow');
   }
 
   // Attach to shankya audio onended if available

@@ -6156,6 +6156,15 @@ function cycleDone28() {
 
   App.resetCycleTimer28();
 
+  // ── Cycle completion: whole tap zone glows ──
+  const tz28El = document.getElementById("tz28");
+  if (tz28El) {
+    tz28El.classList.remove("rc-cycle-glow");
+    void tz28El.offsetWidth;
+    tz28El.classList.add("rc-cycle-glow");
+    setTimeout(() => tz28El.classList.remove("rc-cycle-glow"), 3200);
+  }
+
   // Show Radha Vallabh / Sri Harivangsa animation
   const mf28 = document.getElementById("mf28");
   if (mf28) mf28.classList.add("show");
@@ -12726,12 +12735,16 @@ function _showUserReplyPopup(text) {
     var src = nameEl.getBoundingClientRect();
     var tzRect = tz.getBoundingClientRect();
 
+    // Coin starts at center of the name element
     var startX = src.left + src.width / 2;
     var startY = src.top + src.height / 2;
-    // Land at the visual center of the bank watermark: tz28's box,
-    // matching .bb-img's object-position (center 38%).
-    var endX = tzRect.left + tzRect.width / 2;
-    var endY = tzRect.top + tzRect.height * 0.52;
+
+    // ── Random landing: scatter across the bank area to fill every corner ──
+    var padX    = tzRect.width  * 0.20;
+    var padYTop = tzRect.height * 0.15;
+    var padYBot = tzRect.height * 0.35;
+    var endX = tzRect.left + padX + Math.random() * (tzRect.width  - 2 * padX);
+    var endY = tzRect.top  + padYTop + Math.random() * (tzRect.height - padYTop - padYBot);
 
     // ── Flying coin ──
     var coin = document.createElement("div");
@@ -12759,7 +12772,9 @@ function _showUserReplyPopup(text) {
     document.body.appendChild(coin);
     void coin.getBoundingClientRect();
 
-    // ── Flying ghost copy of the chanted name ──
+    // ── Ghost name: starts BELOW the coin (coin half = 70px, plus 6px gap) ──
+    var COIN_HALF = 70;
+    var NAME_OFFSET = COIN_HALF + 6;
     var nameStyle = window.getComputedStyle(nameEl);
     var ghost = document.createElement("div");
     ghost.className = "rc-ghost-name";
@@ -12769,7 +12784,7 @@ function _showUserReplyPopup(text) {
     ghost.style.fontWeight = nameStyle.fontWeight;
     ghost.style.color      = nameStyle.color;
     ghost.style.left = startX + "px";
-    ghost.style.top  = startY + "px";
+    ghost.style.top  = (startY + NAME_OFFSET) + "px";
     document.body.appendChild(ghost);
     void ghost.getBoundingClientRect();
 
@@ -12782,8 +12797,9 @@ function _showUserReplyPopup(text) {
         coin.style.top  = endY + "px";
         coin.classList.add("rc-fly");
 
+        // Ghost travels to same X, offset below the coin landing point
         ghost.style.left = endX + "px";
-        ghost.style.top  = endY + "px";
+        ghost.style.top  = (endY + NAME_OFFSET) + "px";
         ghost.classList.add("rc-fly");
       });
     });

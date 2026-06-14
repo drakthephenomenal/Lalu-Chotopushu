@@ -2906,7 +2906,7 @@ body.gaudiya-mode .tz .cm-wm{
    ─────────────────────────────────────────────────────────── */
 .n28wrap{ padding-bottom:calc(52px + env(safe-area-inset-bottom)); }
 .n28tz{
-  padding-top: clamp(310px, 52vh, 560px);
+  padding-top: clamp(16px, 4vh, 40px);
   padding-bottom: clamp(20px, 3vh, 36px);
   min-height: clamp(520px, calc(100dvh - 188px), 900px);
 }  /* larger tap zone with bank inside it */
@@ -2915,7 +2915,7 @@ body.gaudiya-mode .tz .cm-wm{
 .bb-img{
   position:absolute; inset:0;
   width:100%; height:100%;
-  object-fit:contain; object-position:center 38%;
+  object-fit:contain; object-position:center 42%;
   opacity:0.42;
   filter: drop-shadow(0 0 30px rgba(255,215,0,0.35));
   pointer-events:none; user-select:none; z-index:0;
@@ -3019,8 +3019,8 @@ body.gaudiya-mode .tz .cm-wm{
    ─────────────────────────────────────────────────────────── */
 .rc-coin{
   position:fixed;
-  width:96px; height:96px;
-  margin-left:-48px; margin-top:-48px; /* center on left/top point */
+  width:140px; height:140px;
+  margin-left:-70px; margin-top:-70px; /* center on left/top point */
   border-radius:50%;
   pointer-events:none;
   z-index:9000;
@@ -3066,7 +3066,7 @@ body.gaudiya-mode .tz .cm-wm{
 /* ── Flying ghost copy of the chanted name ── */
 .rc-ghost-name{
   position:fixed;
-  transform:translate(-50%,-50%) scale(1);
+  transform:translate(-50%, 0) scale(1); /* offset downward from coin in JS */
   pointer-events:none;
   z-index:8999;
   white-space:nowrap;
@@ -3080,13 +3080,13 @@ body.gaudiya-mode .tz .cm-wm{
     opacity 0.25s ease;
 }
 .rc-ghost-name.rc-go{
-  opacity:0.9;
+  opacity:0.92;
 }
 .rc-ghost-name.rc-fly{
-  transform:translate(-50%,-50%) scale(0.35);
+  transform:translate(-50%, 0) scale(0.38);
 }
 .rc-ghost-name.rc-land{
-  transform:translate(-50%,-50%) scale(0.05);
+  transform:translate(-50%, 0) scale(0.05);
   opacity:0;
   transition:
     left 0.32s cubic-bezier(0.4,0,0.6,1),
@@ -3099,6 +3099,28 @@ body.gaudiya-mode .tz .cm-wm{
   50%    { filter:drop-shadow(0 0 26px rgba(255,215,0,0.85)) brightness(1.18); }
 }
 .bb-img.rc-pulse{ animation: rcBankPulse 0.7s ease-in-out; }
+
+/* ── Cycle completion: whole tz28 glows ── */
+@keyframes n28CycleGlow{
+  0%  { box-shadow:none; }
+  18% { box-shadow:0 0 0 6px rgba(255,215,0,0.9), 0 0 60px 24px rgba(255,180,0,0.75), 0 0 120px 48px rgba(255,120,0,0.45); }
+  55% { box-shadow:0 0 0 8px rgba(200,120,255,0.8), 0 0 80px 32px rgba(160,80,255,0.65), 0 0 160px 60px rgba(100,40,200,0.35); }
+  80% { box-shadow:0 0 0 4px rgba(255,215,0,0.6), 0 0 40px 14px rgba(255,200,0,0.4); }
+  100%{ box-shadow:none; }
+}
+.n28tz.rc-cycle-glow{
+  animation: n28CycleGlow 3s ease-in-out forwards;
+}
+/* The bank image also brightens */
+.n28tz.rc-cycle-glow .bb-img{
+  animation: n28BankCycleGlow 3s ease-in-out forwards !important;
+}
+@keyframes n28BankCycleGlow{
+  0%  { opacity:0.42; filter:drop-shadow(0 0 30px rgba(255,215,0,0.35)); }
+  25% { opacity:0.85; filter:drop-shadow(0 0 60px rgba(255,215,0,1)) brightness(1.35); }
+  60% { opacity:0.75; filter:drop-shadow(0 0 50px rgba(160,80,255,0.9)) brightness(1.2); }
+  100%{ opacity:0.42; filter:drop-shadow(0 0 30px rgba(255,215,0,0.35)); }
+}
 
 #n28ProgressWrap{
   margin-top:4px !important;

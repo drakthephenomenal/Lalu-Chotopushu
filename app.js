@@ -6036,7 +6036,7 @@ function u28() {
     } else {
       const newName = get28Name(entry);
       const oldName = nameEl.textContent;
-      if (oldName && oldName !== newName) {
+      if (oldName && oldName !== newName && !window.__bbTakeover28) {
         // Clone the current name and let the clone slowly drift out;
         // the real element flips to the new name IMMEDIATELY so it appears at once.
         // Multiple clones can queue and animate out in parallel.
@@ -12676,72 +12676,76 @@ function _showUserReplyPopup(text) {
       if (bbc && !isNaN(saved)) bbc.textContent = saved;
     } catch (e) {}
 
-    function spawnCoin() {
+    function spawnCoin(nameText) {
       var tz = document.getElementById("tz28");
       var bank = document.querySelector("#v28 .bb-wrap");
       var door = document.querySelector("#v28 .bb-door");
       var nameEl = document.getElementById("n28name");
-      if (!tz || !bank || !door) return;
+      if (!tz || !bank || !door || !nameEl) return;
 
       var tzRect = tz.getBoundingClientRect();
-      var srcRect = (nameEl || tz).getBoundingClientRect();
+      var srcRect = nameEl.getBoundingClientRect();
       var dstRect = door.getBoundingClientRect();
+      var nameStyle = window.getComputedStyle(nameEl);
 
-      // Name start position (relative to tz28)
+      // Name start position (relative to tz28). The Radha Currency begins
+      // visibly just above the tapped/current name.
       var nameX = srcRect.left - tzRect.left;
       var nameY = srcRect.top  - tzRect.top;
-      // Where the name should drift to (just under the bank)
-      var nameEndY = dstRect.top - tzRect.top + dstRect.height + 6;
+      var doorCenterX = dstRect.left - tzRect.left + dstRect.width / 2;
+      var doorCenterY = dstRect.top  - tzRect.top  + dstRect.height / 2;
+      var nameEndY = Math.max(12, doorCenterY - srcRect.height * 0.58);
 
-      // Clone the tapped name and float it upward toward the bank
+      // Clone the exact tapped name and make that visible name travel all the
+      // way to the bank instead of disappearing midway.
       var ghost = document.createElement("div");
       ghost.className = "n28name-ghost";
-      ghost.textContent = nameEl ? nameEl.textContent : "राधा";
+      ghost.textContent = nameText || nameEl.textContent || "राधा";
       ghost.style.cssText =
         "position:absolute;left:0;top:0;" +
         "width:" + srcRect.width + "px;height:" + srcRect.height + "px;" +
         "display:flex;align-items:center;justify-content:center;" +
-        "font-family:'Hind Siliguri','Tiro Devanagari Hindi',serif;" +
-        "font-size:" + (window.getComputedStyle(nameEl).fontSize || "44px") + ";" +
-        "color:#FFD93D;text-shadow:0 0 12px rgba(255,215,0,0.85);" +
-        "pointer-events:none;z-index:18;will-change:transform,opacity;" +
+        "font-family:" + nameStyle.fontFamily + ";font-weight:" + nameStyle.fontWeight + ";" +
+        "font-size:" + (nameStyle.fontSize || "50px") + ";line-height:" + (nameStyle.lineHeight || "1.25") + ";" +
+        "color:#FFD93D;text-shadow:0 0 24px rgba(255,215,0,0.92),0 0 44px rgba(255,200,40,0.45);" +
+        "pointer-events:none;z-index:28;will-change:transform,opacity;" +
         "transform:translate(" + nameX + "px," + nameY + "px) scale(1);opacity:1;";
       tz.appendChild(ghost);
 
-      // Coin spawns at the side of the name
-      var coinSize = 30;
-      var coinStartX = nameX + srcRect.width - 4; // right side of name
-      var coinStartY = nameY + srcRect.height / 2 - coinSize / 2;
-      var coinEndX   = dstRect.left - tzRect.left + dstRect.width / 2 - coinSize / 2;
-      var coinEndY   = dstRect.top  - tzRect.top  + dstRect.height / 2 - coinSize / 2;
+      // Coin spawns on top of the name and follows it upward before entering.
+      var coinSize = 38;
+      var coinStartX = nameX + srcRect.width / 2 - coinSize / 2;
+      var coinStartY = nameY - coinSize - 8;
+      var coinEndX   = doorCenterX - coinSize / 2;
+      var coinEndY   = doorCenterY - coinSize / 2;
 
       var coin = document.createElement("div");
       coin.className = "radha-coin";
-      coin.style.transform = "translate(" + coinStartX + "px," + coinStartY + "px) scale(0.4)";
-      coin.style.opacity = "0";
+      coin.style.transform = "translate(" + coinStartX + "px," + coinStartY + "px) scale(1)";
+      coin.style.opacity = "1";
       tz.appendChild(coin);
 
-      // Phase 1 (0–900ms): name floats upward to just under the bank and fades;
-      // coin appears beside it and rises along with it.
+      // Phase 1: name and currency travel upward together, almost to the door.
       requestAnimationFrame(function () {
-        ghost.style.transition = "transform 900ms cubic-bezier(0.22,0.61,0.36,1), opacity 900ms ease-in";
-        ghost.style.transform = "translate(" + nameX + "px," + nameEndY + "px) scale(0.55)";
-        ghost.style.opacity = "0";
+        var ghostEndX = doorCenterX - srcRect.width / 2;
+        ghost.style.transition = "transform 1500ms cubic-bezier(0.20,0.72,0.26,1), opacity 1500ms ease-in";
+        ghost.style.transform = "translate(" + ghostEndX + "px," + nameEndY + "px) scale(0.38)";
+        ghost.style.opacity = "0.18";
 
-        coin.style.transition = "transform 900ms cubic-bezier(0.22,0.61,0.36,1), opacity 320ms ease-out";
-        var coinRiseX = coinEndX + 36; // stay beside the name, not yet on door
-        var coinRiseY = nameEndY + 6;
-        coin.style.transform = "translate(" + coinRiseX + "px," + coinRiseY + "px) scale(1) rotate(180deg)";
+        coin.style.transition = "transform 1500ms cubic-bezier(0.20,0.72,0.26,1), opacity 220ms ease-out";
+        var coinRiseX = doorCenterX - coinSize / 2;
+        var coinRiseY = Math.max(8, nameEndY - coinSize * 0.45);
+        coin.style.transform = "translate(" + coinRiseX + "px," + coinRiseY + "px) scale(0.92) rotate(360deg)";
         coin.style.opacity = "1";
       });
 
-      // Phase 2 (after name disappears): coin slowly enters the bank door
+      // Phase 2: after the travelling name fades at the bank, currency slowly enters the door.
       setTimeout(function () {
         if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
-        coin.style.transition = "transform 700ms cubic-bezier(0.55,0.08,0.68,0.53), opacity 700ms ease-in";
-        coin.style.transform = "translate(" + coinEndX + "px," + coinEndY + "px) scale(0.18) rotate(540deg)";
+        coin.style.transition = "transform 1050ms cubic-bezier(0.48,0.02,0.68,0.50), opacity 1050ms ease-in";
+        coin.style.transform = "translate(" + coinEndX + "px," + coinEndY + "px) scale(0.12) rotate(760deg)";
         coin.style.opacity = "0";
-      }, 920);
+      }, 1520);
 
       // Phase 3: bank pulses + counter ticks
       setTimeout(function () {
@@ -12754,17 +12758,28 @@ function _showUserReplyPopup(text) {
           bbc.textContent = n;
           try { localStorage.setItem("radhaCurrency", String(n)); } catch (e) {}
         }
-      }, 1640);
+      }, 2600);
     }
 
     var origH28 = App.h28.bind(App);
     App.h28 = function (e) {
       var wasAnimating = this._n28CompletionAnimating;
-      var r = origH28(e);
-      // Only spawn when the tap actually counted (not blocked by mala-complete anim)
-      if (!wasAnimating) {
-        try { spawnCoin(); } catch (err) { /* no-op */ }
+      var beforeCount = (this.S && this.S.h28 && this.S.tk) ? (this.S.h28[this.S.tk] || 0) : 0;
+      var nameEl = document.getElementById("n28name");
+      var tappedName = nameEl ? nameEl.textContent : "";
+      var r;
+      try {
+        window.__bbTakeover28 = true;
+        r = origH28(e);
+      } finally {
+        window.__bbTakeover28 = false;
       }
+      var afterCount = (this.S && this.S.h28 && this.S.tk) ? (this.S.h28[this.S.tk] || 0) : beforeCount;
+      // Only spawn when the tap actually counted (not blocked by mala-complete anim)
+      if (!wasAnimating && afterCount > beforeCount) {
+        try { spawnCoin(tappedName); } catch (err) { window.__bbTakeover28 = false; }
+      }
+      if (typeof u28 === "function") setTimeout(u28, 2850);
       return r;
     };
   }

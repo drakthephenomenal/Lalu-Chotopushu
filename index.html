@@ -338,15 +338,15 @@
     <span id="n28CycleTimer" style="display:none">0:00</span>
     <span id="n28t" style="display:none">0</span>
 
-    <!-- Tap area: Radha name (lowered toward bottom), meaning, pause button -->
+    <!-- Tap area: Radha name, Radha Currency, and Bhagavadik Bank -->
     <div class="n28tz" id="tz28" aria-label="Tap to chant 28 Names of Radha" role="button" tabindex="0" ontouchstart="App.h28(event)" onmousedown="App.h28(event)">
-      <!-- Bhagavadik Bank: collects a Radha Currency coin for every name tapped -->
+      <!-- Bhagavadik Bank: collects one Radha Currency from every tapped name -->
       <div class="bb-wrap" aria-hidden="true">
         <div class="bb-glow"></div>
         <img class="bb-img" src="./bhagavadik-bank.png" alt="Bhagavadik Bank" draggable="false">
         <div class="bb-door"></div>
         <div class="bb-label">Bhagavadik Bank</div>
-        <div class="bb-count">०<span id="bbCount">0</span></div>
+        <div class="bb-count"><span id="bbCount">0</span> Radha Currency</div>
       </div>
       <div class="mf" id="mf28" style="border-radius:22px;">
         <div class="mf-line1">Radha Vallabh</div>
@@ -366,7 +366,7 @@
     <span id="n28prog" style="display:none"></span>
 
     <!-- Bottom bar: Daily Progress (row 1) + Today's Jap Time (row 2) -->
-    <div id="n28ProgressWrap" style="padding:10px 4px 4px;display:flex;flex-direction:column;gap:6px;">
+    <div id="n28ProgressWrap" style="padding:6px 4px 0;display:flex;flex-direction:column;gap:4px;">
       <div style="display:flex;align-items:center;gap:10px;">
         <div style="flex:1;min-width:0;">
           <div style="font-size:9px;color:rgba(189,147,249,0.6);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:4px;">Daily Progress</div>

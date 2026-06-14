@@ -2884,11 +2884,16 @@ body.gaudiya-mode .tz .cm-wm{
 /* ───────────────────────────────────────────────────────────
    BHAGAVADIK BANK + RADHA CURRENCY (28 NAMES SECTION)
    ─────────────────────────────────────────────────────────── */
-.n28tz{ padding-top: 168px; }  /* make room for the bank inside the tap zone */
+.n28wrap{ padding-bottom:calc(46px + env(safe-area-inset-bottom)); }
+.n28tz{
+  padding-top: clamp(210px, 36vh, 260px);
+  padding-bottom: clamp(52px, 8vh, 76px);
+  min-height: clamp(470px, calc(100dvh - 188px), 720px);
+}  /* larger tap zone with bank inside it */
 
 .bb-wrap{
-  position:absolute; top:14px; left:50%; transform:translateX(-50%);
-  width:150px; height:150px; z-index:6;
+  position:absolute; top:10px; left:50%; transform:translateX(-50%);
+  width:min(76vw,285px); height:clamp(205px,32vh,245px); z-index:24;
   display:flex; align-items:center; justify-content:center;
   pointer-events:none;
   /* subtle frame so it's visually anchored inside the tap area */
@@ -2896,16 +2901,16 @@ body.gaudiya-mode .tz .cm-wm{
   border-radius: 18px;
 }
 .bb-img{
-  position:absolute; left:50%; top:14px; transform:translateX(-50%);
-  width:108px; height:108px;
+  position:absolute; left:50%; top:24px; transform:translateX(-50%);
+  width:min(68vw,252px); height:auto; max-height:188px;
   object-fit:contain;
   filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55));
   animation: bbFloat 4.5s ease-in-out infinite;
   will-change: transform, filter;
 }
 .bb-glow{
-  position:absolute; left:50%; top:14px; transform:translateX(-50%);
-  width:128px; height:128px; border-radius:50%;
+  position:absolute; left:50%; top:16px; transform:translateX(-50%);
+  width:min(72vw,270px); height:min(48vw,190px); border-radius:50%;
   background: radial-gradient(circle, rgba(255,215,0,0.55) 0%, rgba(255,215,0,0) 65%);
   filter: blur(8px);
   animation: bbGlowSwap 2.6s ease-in-out infinite;
@@ -2921,8 +2926,8 @@ body.gaudiya-mode .tz .cm-wm{
 }
 /* Small "door slot" the coin enters through */
 .bb-door{
-  position:absolute; left:50%; top:78px;
-  width:24px; height:7px; border-radius:3px;
+  position:absolute; left:50%; top:clamp(145px,23vw,164px);
+  width:42px; height:12px; border-radius:5px;
   background: linear-gradient(180deg,#1a0a00,#3a1a00);
   box-shadow: inset 0 0 4px #000, 0 0 8px rgba(0,0,0,0.6);
   transform: translateX(-50%);
@@ -2930,13 +2935,13 @@ body.gaudiya-mode .tz .cm-wm{
 }
 .bb-label{
   position:absolute; top:0; left:50%; transform:translateX(-50%);
-  font-family:'Cinzel Decorative',serif; font-size:9px; letter-spacing:1.8px;
+  font-family:'Cinzel Decorative',serif; font-size:clamp(11px,2.5vw,15px); letter-spacing:2.6px;
   color:#FFD93D; text-shadow:0 0 6px rgba(255,215,0,0.6);
   white-space:nowrap;
 }
 .bb-count{
-  position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
-  font-family:'EB Garamond',serif; font-size:12px; color:#6DB8FF;
+  position:absolute; bottom:2px; left:50%; transform:translateX(-50%);
+  font-family:'EB Garamond',serif; font-size:clamp(13px,3vw,16px); color:#6DB8FF;
   letter-spacing:1px;
   text-shadow:0 0 4px rgba(109,184,255,0.5);
 }
@@ -2950,17 +2955,26 @@ body.gaudiya-mode .tz .cm-wm{
 /* Radha Currency coin that flies from the tapped name into the bank door */
 .radha-coin{
   position:absolute; left:0; top:0;
-  width:30px; height:30px; border-radius:50%;
+  width:38px; height:38px; border-radius:50%;
   background: radial-gradient(circle at 35% 30%, #FFF6B0 0%, #FFD93D 45%, #C9961A 100%);
-  border:1.5px solid #FFE066;
-  box-shadow: 0 0 12px rgba(255,215,0,0.9), inset 0 0 6px rgba(255,255,255,0.6);
+  border:2px solid #FFE066;
+  box-shadow: 0 0 18px rgba(255,215,0,0.95), 0 0 26px rgba(109,184,255,0.28), inset 0 0 7px rgba(255,255,255,0.7);
   display:flex; align-items:center; justify-content:center;
   font-family:'Hind Siliguri',serif; font-weight:800; color:#7a3a00;
   font-size:14px; text-shadow:0 1px 0 rgba(255,255,255,0.5);
-  pointer-events:none; z-index:20;
+  pointer-events:none; z-index:30;
   will-change: transform, opacity;
 }
-.radha-coin::before{ content:"राधा"; font-size:10px; line-height:1; }
+.radha-coin::before{ content:"राधा"; font-size:12px; line-height:1; }
+.n28name-ghost{
+  filter: drop-shadow(0 0 18px rgba(255,215,0,0.85));
+}
+
+#n28ProgressWrap{
+  margin-top:4px !important;
+  margin-bottom:0 !important;
+  transform:translateY(10px);
+}
 
 /* ───────────────────────────────────────────────────────────
    PREMIUM GLOSSY YELLOW TOP BUTTONS (28-NAMES HEADER)

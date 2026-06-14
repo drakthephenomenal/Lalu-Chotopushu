@@ -3,7 +3,7 @@
 // Push notifications & FCM removed.
 
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v127';
+const CACHE = 'radha-jap-v128';
 
 const LOCAL_ASSETS = [
   './',
@@ -18,6 +18,8 @@ const LOCAL_ASSETS = [
   './icon-192.png',
   './icon-512.png',
   './manifest.json',
+  './radha-coin.png',
+  './bhagavadik-bank.png',
 ];
 
 const EXTERNAL_ASSETS = [

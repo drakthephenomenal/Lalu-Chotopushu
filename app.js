@@ -12695,7 +12695,8 @@ function _showUserReplyPopup(text) {
       var nameX = srcRect.left - tzRect.left;
       var nameY = srcRect.top  - tzRect.top;
       var bankCX = dstRect.left - tzRect.left + dstRect.width / 2;
-      var bankCY = dstRect.top  - tzRect.top  + dstRect.height * 0.35;
+      // Land at the bank's MIDDLE — where the treasury boxes sit, not the pedestal
+      var bankCY = dstRect.top  - tzRect.top  + dstRect.height * 0.52;
 
       // Ghost name rises into the bank
       var ghost = document.createElement("div");

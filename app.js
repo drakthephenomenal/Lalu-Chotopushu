@@ -12685,7 +12685,15 @@ function _showUserReplyPopup(text) {
       var bank = document.querySelector("#v28 .bb-wrap");
       var bankImg = document.querySelector("#v28 .bb-img");
       var nameEl = document.getElementById("n28name");
-      if (!tz || !bank || !bankImg || !nameEl) return;
+      if (!tz || !bank || !bankImg || !nameEl) {
+        console.warn("[RadhaCoin] spawnCoin aborted — missing element(s):",
+          { tz: !!tz, bank: !!bank, bankImg: !!bankImg, nameEl: !!nameEl });
+        return;
+      }
+      // Ensure the tap zone is a positioning context and never clips the
+      // coin/ghost during their flight to the bank.
+      tz.style.position = tz.style.position || "relative";
+      tz.style.overflow = "visible";
 
       var tzRect = tz.getBoundingClientRect();
       var srcRect = nameEl.getBoundingClientRect();
@@ -12708,7 +12716,7 @@ function _showUserReplyPopup(text) {
         "font-family:" + nameStyle.fontFamily + ";font-weight:" + nameStyle.fontWeight + ";" +
         "font-size:" + (nameStyle.fontSize || "50px") + ";line-height:" + (nameStyle.lineHeight || "1.25") + ";" +
         "color:#FFD93D;text-shadow:0 0 24px rgba(255,215,0,0.92),0 0 44px rgba(255,200,40,0.45);" +
-        "pointer-events:none;z-index:28;will-change:transform,opacity;" +
+        "pointer-events:none;z-index:54;will-change:transform,opacity;" +
         "transform:translate(" + nameX + "px," + nameY + "px) scale(1);opacity:1;";
       tz.appendChild(ghost);
 
@@ -12725,13 +12733,17 @@ function _showUserReplyPopup(text) {
       var coinWrap = document.createElement("div");
       coinWrap.className = "radha-coin-wrap";
       coinWrap.style.cssText =
-        "transform:translate(" + coinStartX + "px," + coinStartY + "px) scale(0);opacity:0;";
+        "transform:translate(" + coinStartX + "px," + coinStartY + "px) scale(0);opacity:0;z-index:55;";
 
       // Single img: handles spin animation via perspective+rotateY keyframes
       var coinImg = document.createElement("img");
       coinImg.className = "radha-coin-img";
       coinImg.src = "./radha-coin.png";
+      coinImg.alt = "Radha Coin";
       coinImg.draggable = false;
+      coinImg.onerror = function () {
+        console.error("[RadhaCoin] failed to load ./radha-coin.png — check the file is deployed at the app root.");
+      };
 
       coinWrap.appendChild(coinImg);
       tz.appendChild(coinWrap);

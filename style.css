@@ -3000,7 +3000,7 @@ body.gaudiya-mode .tz .cm-wm{
 /* Sparkle burst particles spawned when coin enters bank door */
 .bb-spark{
   position:absolute; border-radius:50%;
-  pointer-events:none; z-index:35; will-change:transform,opacity;
+  pointer-events:none; z-index:55; will-change:transform,opacity;
 }
 @keyframes bbSparkFly{
   0%  { transform:translate(var(--tx,0px),var(--ty,0px)) scale(1.2); opacity:1; }

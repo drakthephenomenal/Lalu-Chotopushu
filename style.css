@@ -3206,7 +3206,7 @@ body.gaudiya-mode .tz .cm-wm{
    ─────────────────────────────────────────────────────────── */
 .bb-float-counter{
   position:absolute;
-  top:27%; left:50%; transform:translateX(-50%);
+  top:20%; left:50%; transform:translateX(-50%);
   z-index:26;
   display:flex; align-items:center; gap:6px;
   padding:5px 14px;

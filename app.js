@@ -12811,7 +12811,7 @@ function _showUserReplyPopup(text) {
 
   function setup() {
     var tz = document.getElementById("tz28");
-    if (!window.App || !tz) {
+    if (typeof App === "undefined" || !App || !tz) {
       return setTimeout(setup, 120);
     }
     if (App.__radhaCoinWrapped) return;

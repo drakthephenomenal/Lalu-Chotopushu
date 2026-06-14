@@ -12745,74 +12745,119 @@ function _showUserReplyPopup(text) {
 
     // Suppress the u28() nameOut ghost clone so it does not fly upward
     // alongside our coin — the coin IS the visual departure.
-    // We do this by briefly hiding any ghost clones just added inside tz28.
     try {
       var clones = tz.querySelectorAll(".n28name:not(#n28name)");
       clones.forEach(function(c) { c.style.display = "none"; });
     } catch(_) {}
 
-    // ── Flying coin ──
+    // ── Coin and name travel as ONE unit ──
+    // We wrap them in a single container so they move together with one transition.
+    var COIN_SIZE = 140; // px (matches CSS width/height)
+    var GAP = 6;         // px between coin bottom and name top
+
+    // Container: positioned at coin centre, no transform offset (children handle their own offset)
+    var pod = document.createElement("div");
+    pod.style.cssText = [
+      "position:fixed",
+      "left:" + startX + "px",
+      "top:"  + startY + "px",
+      "pointer-events:none",
+      "z-index:9000",
+      "display:flex",
+      "flex-direction:column",
+      "align-items:center",
+      "opacity:0",
+      "transform:scale(0.3)",
+      "will-change:left,top,transform,opacity",
+      "transition:" + [
+        "left 0.85s cubic-bezier(0.33,0.0,0.2,1)",
+        "top  0.85s cubic-bezier(0.33,0.0,0.2,1)",
+        "transform 0.85s cubic-bezier(0.33,0.0,0.2,1)",
+        "opacity 0.18s ease"
+      ].join(",")
+    ].join(";");
+
+    // ── Coin inside pod ──
     var coin = document.createElement("div");
-    coin.className = "rc-coin";
+    coin.style.cssText = [
+      "width:" + COIN_SIZE + "px",
+      "height:" + COIN_SIZE + "px",
+      "border-radius:50%",
+      "overflow:hidden",
+      "flex-shrink:0",
+      "box-shadow:0 0 18px rgba(255,215,0,0.9),0 0 40px rgba(255,180,0,0.5)"
+    ].join(";");
 
     if (coinImageOk) {
       var img = document.createElement("img");
       img.src = COIN_SRC;
       img.alt = "Radha Coin";
       img.draggable = false;
+      img.style.cssText = "width:100%;height:100%;border-radius:50%;display:block;";
       img.onerror = function () {
         coinImageOk = false;
+        coin.innerHTML = "";
         coin.textContent = "🪙";
-        coin.classList.add("rc-emoji");
-        if (img.parentNode) img.parentNode.removeChild(img);
+        coin.style.fontSize = "72px";
+        coin.style.lineHeight = "1";
+        coin.style.background = "transparent";
+        coin.style.boxShadow = "none";
       };
       coin.appendChild(img);
     } else {
       coin.textContent = "🪙";
-      coin.classList.add("rc-emoji");
+      coin.style.fontSize = "72px";
+      coin.style.lineHeight = "1";
+      coin.style.background = "transparent";
+      coin.style.boxShadow = "none";
     }
+    pod.appendChild(coin);
 
-    coin.style.left = startX + "px";
-    coin.style.top  = startY + "px";
-    document.body.appendChild(coin);
-    void coin.getBoundingClientRect();
-
-    // ── Ghost name: use the name that WAS displayed when tapped (captured before u28 runs) ──
-    var COIN_HALF = 70;
-    var NAME_OFFSET = COIN_HALF + 6;
+    // ── Name label inside pod, just below the coin ──
     var nameStyle = window.getComputedStyle(nameEl);
     var ghost = document.createElement("div");
-    ghost.className = "rc-ghost-name";
+    ghost.style.cssText = [
+      "margin-top:" + GAP + "px",
+      "font-family:" + nameStyle.fontFamily,
+      "font-size:" + nameStyle.fontSize,
+      "font-weight:" + nameStyle.fontWeight,
+      "color:" + nameStyle.color,
+      "white-space:nowrap",
+      "text-align:center",
+      "text-shadow:0 0 25px rgba(255,217,61,0.85),0 0 50px rgba(255,200,40,0.4)"
+    ].join(";");
     ghost.textContent = tappedName || nameEl.textContent;
-    ghost.style.fontFamily = nameStyle.fontFamily;
-    ghost.style.fontSize   = nameStyle.fontSize;
-    ghost.style.fontWeight = nameStyle.fontWeight;
-    ghost.style.color      = nameStyle.color;
-    ghost.style.left = startX + "px";
-    ghost.style.top  = (startY + NAME_OFFSET) + "px";
-    document.body.appendChild(ghost);
-    void ghost.getBoundingClientRect();
+    pod.appendChild(ghost);
+
+    // Pod centre = coin centre (top of pod aligns with coin top, offset by half coin)
+    // We want the pod positioned so the coin centre is at startX, startY
+    pod.style.marginLeft = (-COIN_SIZE / 2) + "px";
+    pod.style.marginTop  = (-COIN_SIZE / 2) + "px";
+
+    document.body.appendChild(pod);
+    void pod.getBoundingClientRect();
 
     requestAnimationFrame(function () {
-      coin.classList.add("rc-go");
-      ghost.classList.add("rc-go");
+      pod.style.opacity = "1";
+      pod.style.transform = "scale(1)";
 
       requestAnimationFrame(function () {
-        coin.style.left = endX + "px";
-        coin.style.top  = endY + "px";
-        coin.classList.add("rc-fly");
-
-        // Ghost travels to same X, offset below the coin landing point
-        ghost.style.left = endX + "px";
-        ghost.style.top  = (endY + NAME_OFFSET) + "px";
-        ghost.classList.add("rc-fly");
+        pod.style.left = endX + "px";
+        pod.style.top  = endY + "px";
+        pod.style.transform = "scale(0.6)";
       });
     });
 
-    // On arrival: shrink/spin out, pulse the bank, bump the counter
+    // On arrival: shrink to nothing, pulse the bank, bump the counter
     setTimeout(function () {
-      coin.classList.add("rc-land");
-      ghost.classList.add("rc-land");
+      pod.style.transition = [
+        "left 0.32s cubic-bezier(0.4,0,0.6,1)",
+        "top  0.32s cubic-bezier(0.4,0,0.6,1)",
+        "transform 0.32s cubic-bezier(0.4,0,0.6,1)",
+        "opacity 0.32s ease 0.05s"
+      ].join(",");
+      pod.style.transform = "scale(0.05)";
+      pod.style.opacity   = "0";
       bankImg.classList.remove("rc-pulse");
       void bankImg.offsetWidth;
       bankImg.classList.add("rc-pulse");
@@ -12821,8 +12866,7 @@ function _showUserReplyPopup(text) {
 
     // Cleanup
     setTimeout(function () {
-      if (coin.parentNode) coin.parentNode.removeChild(coin);
-      if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
+      if (pod.parentNode) pod.parentNode.removeChild(pod);
     }, 1400);
   }
 

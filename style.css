@@ -3025,14 +3025,13 @@ body.gaudiya-mode .tz .cm-wm{
   pointer-events:none;
   z-index:9000;
   will-change:left, top, transform, opacity;
-  border:3px solid #FFE57A;
+  border:none;
   box-shadow:
-    0 0 0 4px rgba(255,215,0,0.25),
-    0 0 24px rgba(255,215,0,0.95),
-    0 0 48px rgba(255,180,0,0.6);
-  background:#1a1206;
+    0 0 18px rgba(255,215,0,0.9),
+    0 0 40px rgba(255,180,0,0.5);
+  background:transparent;
   opacity:0;
-  transform:scale(0.3) rotate(0deg);
+  transform:scale(0.3);
   display:flex; align-items:center; justify-content:center;
   transition:
     left 0.85s cubic-bezier(0.33,0.0,0.2,1),
@@ -3042,19 +3041,20 @@ body.gaudiya-mode .tz .cm-wm{
 }
 .rc-coin img{
   width:100%; height:100%; border-radius:50%; display:block;
+  background:transparent;
 }
 .rc-coin.rc-emoji{
-  font-size:56px; line-height:1; background:transparent; border:none; box-shadow:none;
+  font-size:72px; line-height:1; background:transparent; border:none; box-shadow:none;
 }
 .rc-coin.rc-go{
   opacity:1;
-  transform:scale(1) rotate(0deg);
+  transform:scale(1);
 }
 .rc-coin.rc-fly{
-  transform:scale(0.55) rotate(540deg);
+  transform:scale(0.6);
 }
 .rc-coin.rc-land{
-  transform:scale(0.15) rotate(620deg);
+  transform:scale(0.1);
   opacity:0;
   transition:
     left 0.32s cubic-bezier(0.4,0,0.6,1),
@@ -3209,7 +3209,7 @@ body.gaudiya-mode .tz .cm-wm{
    ─────────────────────────────────────────────────────────── */
 .bb-float-counter{
   position:absolute;
-  top:14px; right:14px;
+  top:36%; left:50%; transform:translateX(-50%);
   z-index:26;
   display:flex; align-items:center; gap:6px;
   padding:6px 12px;
@@ -3221,8 +3221,8 @@ body.gaudiya-mode .tz .cm-wm{
   animation: bbFloatBob 3.2s ease-in-out infinite;
 }
 @keyframes bbFloatBob{
-  0%,100%{ transform:translateY(0); }
-  50%    { transform:translateY(-5px); }
+  0%,100%{ transform:translateX(-50%) translateY(0); }
+  50%    { transform:translateX(-50%) translateY(-5px); }
 }
 .bb-float-emoji{
   font-size:clamp(16px,4vw,22px);

@@ -12673,7 +12673,11 @@ function _showUserReplyPopup(text) {
     try {
       var saved = parseInt(localStorage.getItem("radhaCurrency") || "0", 10);
       var bbc = document.getElementById("bbCount");
-      if (bbc && !isNaN(saved)) bbc.textContent = saved;
+      var bbctr = document.getElementById("bbCounter");
+      if (bbc && !isNaN(saved)) {
+        bbc.textContent = saved;
+        if (saved > 0 && bbctr) bbctr.classList.add("visible");
+      }
     } catch (e) {}
 
     function spawnCoin(nameText) {
@@ -12688,16 +12692,12 @@ function _showUserReplyPopup(text) {
       var dstRect = bankImg.getBoundingClientRect();
       var nameStyle = window.getComputedStyle(nameEl);
 
-      // Name start position (relative to tz28). The Radha Currency begins
-      // visibly just above the tapped/current name.
       var nameX = srcRect.left - tzRect.left;
       var nameY = srcRect.top  - tzRect.top;
-      // Target the upper-center of the bank image (the top portion / roof area)
-      var doorCenterX = dstRect.left - tzRect.left + dstRect.width / 2;
-      var doorCenterY = dstRect.top  - tzRect.top  + dstRect.height * 0.35;
-      var nameEndY = Math.max(12, doorCenterY - srcRect.height * 0.58);
+      var bankCX = dstRect.left - tzRect.left + dstRect.width / 2;
+      var bankCY = dstRect.top  - tzRect.top  + dstRect.height * 0.35;
 
-      // Ghost name travels ALL the way into the bank door (not just to midline).
+      // Ghost name rises into the bank
       var ghost = document.createElement("div");
       ghost.className = "n28name-ghost";
       ghost.textContent = nameText || nameEl.textContent || "राधा";
@@ -12712,62 +12712,87 @@ function _showUserReplyPopup(text) {
         "transform:translate(" + nameX + "px," + nameY + "px) scale(1);opacity:1;";
       tz.appendChild(ghost);
 
-      // Coin spawns just above the name — pop-in bounce (no CSS keyframe vars),
-      // then glides slowly with the ghost name all the way to the bank door.
-      var coinSize   = 54;
+      // ── 3D Radha Coin ──
+      var coinSize   = 72;
       var coinStartX = nameX + srcRect.width / 2 - coinSize / 2;
       var coinStartY = nameY - coinSize - 10;
-      var coinEndX   = doorCenterX - coinSize / 2;
-      var coinEndY   = doorCenterY - coinSize / 2;
-      var ghostEndX  = doorCenterX - srcRect.width / 2;
-      var ghostEndY  = doorCenterY - srcRect.height / 2;
+      var coinEndX   = bankCX - coinSize / 2;
+      var coinEndY   = bankCY - coinSize / 2;
+      var ghostEndX  = bankCX - srcRect.width / 2;
+      var ghostEndY  = bankCY - srcRect.height / 2;
 
-      var coin = document.createElement("div");
-      coin.className = "radha-coin";
-      coin.style.cssText =
-        "position:absolute;left:0;top:0;" +
-        "transform:translate(" + coinStartX + "px," + coinStartY + "px) scale(0);" +
-        "opacity:0;";
-      tz.appendChild(coin);
+      // Outer wrapper: handles translate + scale (position)
+      var coinWrap = document.createElement("div");
+      coinWrap.className = "radha-coin-wrap";
+      coinWrap.style.cssText =
+        "transform:translate(" + coinStartX + "px," + coinStartY + "px) scale(0);opacity:0;";
 
-      // Phase 1: coin pops in above name — double-RAF is reliable on all browsers
+      // Inner: handles 3D spin animation
+      var coinInner = document.createElement("div");
+      coinInner.className = "radha-coin-inner";
+
+      // Face side: the Radha coin image
+      var coinFace = document.createElement("div");
+      coinFace.className = "radha-coin-face";
+
+      // Back side: gold reverse
+      var coinBack = document.createElement("div");
+      coinBack.className = "radha-coin-back";
+
+      coinInner.appendChild(coinFace);
+      coinInner.appendChild(coinBack);
+      coinWrap.appendChild(coinInner);
+      tz.appendChild(coinWrap);
+
+      // Phase 1: coin pops in with 3D spin pop-in (0.5s)
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
-          coin.style.transition =
-            "transform 0.38s cubic-bezier(0.34,1.56,0.64,1), opacity 0.18s ease";
-          coin.style.transform = "translate(" + coinStartX + "px," + coinStartY + "px) scale(1)";
-          coin.style.opacity   = "1";
+          coinWrap.style.transition = "transform 0.42s cubic-bezier(0.34,1.56,0.64,1), opacity 0.18s ease";
+          coinWrap.style.transform  = "translate(" + coinStartX + "px," + coinStartY + "px) scale(1)";
+          coinWrap.style.opacity    = "1";
+          coinInner.style.animation = "coinPopIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards";
         });
       });
 
-      // Phase 2 (400 ms after pop-in): coin AND ghost glide slowly to bank door
+      // After pop-in, switch inner to continuous spin
       setTimeout(function () {
-        // Reset coin to no-transition so we can set the travel transition cleanly
-        coin.style.transition = "none";
-        coin.style.transform  = "translate(" + coinStartX + "px," + coinStartY + "px) scale(1)";
+        coinInner.style.animation = "coinSpinFlight 0.55s linear infinite";
+      }, 520);
 
-        // Ghost starts moving at same moment
-        ghost.style.transition =
-          "transform 2500ms ease-out, opacity 700ms 1800ms ease-in";
-        ghost.style.transform = "translate(" + ghostEndX + "px," + ghostEndY + "px) scale(0.15)";
-        ghost.style.opacity   = "0";
+      // Phase 2 (520ms): ghost + coin glide to bank while spinning (2200ms flight)
+      setTimeout(function () {
+        coinWrap.style.transition = "none";
+        coinWrap.style.transform  = "translate(" + coinStartX + "px," + coinStartY + "px) scale(1)";
 
-        // Double-RAF so browser registers the reset before the new transition
+        ghost.style.transition = "transform 2200ms ease-out, opacity 600ms 1600ms ease-in";
+        ghost.style.transform  = "translate(" + ghostEndX + "px," + ghostEndY + "px) scale(0.12)";
+        ghost.style.opacity    = "0";
+
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
-            coin.style.transition =
-              "transform 2500ms ease-out, opacity 700ms 1800ms ease-in";
-            coin.style.transform =
-              "translate(" + coinEndX + "px," + coinEndY + "px) scale(0.12) rotate(720deg)";
-            coin.style.opacity = "0";
+            coinWrap.style.transition = "transform 2200ms cubic-bezier(0.22,0.8,0.44,1), opacity 400ms 1800ms ease-in";
+            coinWrap.style.transform  = "translate(" + coinEndX + "px," + coinEndY + "px) scale(0.55)";
+            coinWrap.style.opacity    = "1";
           });
         });
-      }, 420);
+      }, 540);
 
-      // Phase 3: sparkle burst + bank pulse + counter — cleanup after flight
+      // Phase 3 (2800ms): deposit — coin tilts into the bank with rotateX
+      setTimeout(function () {
+        coinInner.style.animation = "none";
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            coinInner.style.animation    = "coinDeposit 0.65s ease-in forwards";
+            coinWrap.style.transition    = "opacity 0.45s 0.2s ease-in";
+            coinWrap.style.opacity       = "0";
+          });
+        });
+      }, 2780);
+
+      // Phase 4: sparkle burst + bank pulse + counter — cleanup after deposit
       setTimeout(function () {
         if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
-        if (coin.parentNode) coin.parentNode.removeChild(coin);
+        if (coinWrap.parentNode) coinWrap.parentNode.removeChild(coinWrap);
 
         // ── Sparkle burst at the bank door ──
         var freshDoor = document.querySelector("#v28 .bb-img");
@@ -12820,12 +12845,25 @@ function _showUserReplyPopup(text) {
         bank.classList.add("bb-pulse");
         setTimeout(function () { bank.classList.remove("bb-pulse"); }, 600);
         var bbc = document.getElementById("bbCount");
+        var bbctr = document.getElementById("bbCounter");
         if (bbc) {
           var n = (parseInt(bbc.textContent || "0", 10) || 0) + 1;
-          bbc.textContent = n;
+          // Format with commas for large numbers
+          bbc.textContent = n >= 1000 ? n.toLocaleString() : String(n);
           try { localStorage.setItem("radhaCurrency", String(n)); } catch (e) {}
+          // Make counter visible and play pop animation
+          if (bbctr) {
+            bbctr.classList.add("visible");
+            bbctr.classList.remove("pop");
+            void bbctr.offsetWidth; // force reflow to restart animation
+            bbctr.classList.add("pop");
+            bbctr.addEventListener("animationend", function onEnd() {
+              bbctr.classList.remove("pop");
+              bbctr.removeEventListener("animationend", onEnd);
+            });
+          }
         }
-      }, 3050);
+      }, 3500);
     }
 
     var origH28 = App.h28.bind(App);

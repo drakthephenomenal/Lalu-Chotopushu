@@ -12723,7 +12723,7 @@ function _showUserReplyPopup(text) {
     }
   }
 
-  function spawnCoin() {
+  function spawnCoin(tappedName) {
     var nameEl = document.getElementById("n28name");
     var tz = document.getElementById("tz28");
     var bankImg = document.getElementById("bbImg");
@@ -12739,12 +12739,17 @@ function _showUserReplyPopup(text) {
     var startX = src.left + src.width / 2;
     var startY = src.top + src.height / 2;
 
-    // ── Random landing: scatter across the bank area to fill every corner ──
-    var padX    = tzRect.width  * 0.20;
-    var padYTop = tzRect.height * 0.15;
-    var padYBot = tzRect.height * 0.35;
-    var endX = tzRect.left + padX + Math.random() * (tzRect.width  - 2 * padX);
-    var endY = tzRect.top  + padYTop + Math.random() * (tzRect.height - padYTop - padYBot);
+    // Land at visual centre of the bank — always
+    var endX = tzRect.left + tzRect.width  * 0.5;
+    var endY = tzRect.top  + tzRect.height * 0.42;
+
+    // Suppress the u28() nameOut ghost clone so it does not fly upward
+    // alongside our coin — the coin IS the visual departure.
+    // We do this by briefly hiding any ghost clones just added inside tz28.
+    try {
+      var clones = tz.querySelectorAll(".n28name:not(#n28name)");
+      clones.forEach(function(c) { c.style.display = "none"; });
+    } catch(_) {}
 
     // ── Flying coin ──
     var coin = document.createElement("div");
@@ -12772,13 +12777,13 @@ function _showUserReplyPopup(text) {
     document.body.appendChild(coin);
     void coin.getBoundingClientRect();
 
-    // ── Ghost name: starts BELOW the coin (coin half = 70px, plus 6px gap) ──
+    // ── Ghost name: use the name that WAS displayed when tapped (captured before u28 runs) ──
     var COIN_HALF = 70;
     var NAME_OFFSET = COIN_HALF + 6;
     var nameStyle = window.getComputedStyle(nameEl);
     var ghost = document.createElement("div");
     ghost.className = "rc-ghost-name";
-    ghost.textContent = nameEl.textContent;
+    ghost.textContent = tappedName || nameEl.textContent;
     ghost.style.fontFamily = nameStyle.fontFamily;
     ghost.style.fontSize   = nameStyle.fontSize;
     ghost.style.fontWeight = nameStyle.fontWeight;
@@ -12822,19 +12827,20 @@ function _showUserReplyPopup(text) {
   }
 
   function onTapCapture() {
-    // Capture phase: fires BEFORE the inline onclick/ontouchstart
-    // handler (App.h28) runs, so this is the true "before" count.
+    // Capture phase: fires BEFORE App.h28 runs — snap current displayed name
     onTap._before = getTod();
+    var nameEl = document.getElementById("n28name");
+    onTap._capturedName = nameEl ? nameEl.textContent : "";
   }
 
   function onTap() {
     var before = (typeof onTap._before === "number") ? onTap._before : getTod();
-    // Let the native handler (App.h28 via inline onclick) run first,
-    // then check on the next tick whether the tap actually counted.
+    var capturedName = onTap._capturedName || "";
+    // Let the native handler (App.h28) run first, then check on next tick
     setTimeout(function () {
       var after = getTod();
       if (after > before && !App._n28CompletionAnimating) {
-        try { spawnCoin(); } catch (err) { console.error("[RadhaCoin] spawn error:", err); }
+        try { spawnCoin(capturedName); } catch (err) { console.error("[RadhaCoin] spawn error:", err); }
       }
     }, 0);
   }

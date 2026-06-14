@@ -2903,15 +2903,16 @@ body.gaudiya-mode .tz .cm-wm{
   position:absolute; left:50%; top:16px; transform:translateX(-50%);
   width:min(96vw,680px); height:auto; max-height:clamp(260px,48vh,510px);
   object-fit:contain;
-  filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55));
-  animation: bbFloat 4.5s ease-in-out infinite;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 46%, rgba(0,0,0,1) 40%, rgba(0,0,0,0.75) 60%, rgba(0,0,0,0) 80%);
+  mask-image: radial-gradient(ellipse at 50% 46%, rgba(0,0,0,1) 40%, rgba(0,0,0,0.75) 60%, rgba(0,0,0,0) 80%);
+  animation: bbFloat 4.5s ease-in-out infinite, bbImgGlow 2.6s ease-in-out infinite;
   will-change: transform, filter;
 }
 .bb-glow{
   position:absolute; left:50%; top:16px; transform:translateX(-50%);
-  width:min(72vw,270px); height:min(48vw,190px); border-radius:50%;
-  background: radial-gradient(circle, rgba(255,215,0,0.55) 0%, rgba(255,215,0,0) 65%);
-  filter: blur(8px);
+  width:min(88vw,360px); height:min(62vw,260px); border-radius:50%;
+  background: radial-gradient(circle, rgba(255,215,0,0.65) 0%, rgba(255,215,0,0) 65%);
+  filter: blur(14px);
   animation: bbGlowSwap 2.6s ease-in-out infinite;
   z-index:0;
 }
@@ -2923,15 +2924,11 @@ body.gaudiya-mode .tz .cm-wm{
   0%,100%{ transform: translate(-50%, 0); }
   50%   { transform: translate(-50%,-4px); }
 }
-/* Small "door slot" the coin enters through — scales with larger bank image */
-.bb-door{
-  position:absolute; left:50%; top:clamp(190px,30vw,380px);
-  width:56px; height:16px; border-radius:7px;
-  background: linear-gradient(180deg,#1a0a00,#3a1a00);
-  box-shadow: inset 0 0 4px #000, 0 0 8px rgba(0,0,0,0.6);
-  transform: translateX(-50%);
-  z-index:2;
+@keyframes bbImgGlow{
+  0%,100%{ filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55)) drop-shadow(0 0 30px rgba(255,215,0,0.9)) drop-shadow(0 0 60px rgba(255,180,0,0.5)); }
+  50%   { filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55)) drop-shadow(0 0 30px rgba(109,184,255,0.9)) drop-shadow(0 0 60px rgba(60,140,255,0.5)); }
 }
+
 .bb-label{
   position:absolute; top:0; left:50%; transform:translateX(-50%);
   font-family:'Cinzel Decorative',serif; font-size:clamp(11px,2.5vw,15px); letter-spacing:2.6px;
@@ -2979,9 +2976,9 @@ body.gaudiya-mode .tz .cm-wm{
   100%{ transform:translate(var(--ex,0px),var(--ey,0px)) scale(0);   opacity:0; }
 }
 @keyframes bbBankFlash{
-  0%  { filter:drop-shadow(0 6px 14px rgba(0,0,0,0.55)) brightness(1); }
-  25% { filter:drop-shadow(0 0 32px rgba(255,215,0,1))   brightness(1.55); }
-  100%{ filter:drop-shadow(0 6px 14px rgba(0,0,0,0.55)) brightness(1); }
+  0%  { filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55)) brightness(1); }
+  25% { filter: drop-shadow(0 0 48px rgba(255,215,0,1)) drop-shadow(0 0 80px rgba(255,180,0,0.8)) brightness(1.65); }
+  100%{ filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55)) brightness(1); }
 }
 
 #n28ProgressWrap{
@@ -3029,3 +3026,39 @@ body.gaudiya-mode .tz .cm-wm{
   55%  { left:120%; }
   100% { left:120%; }
 }
+
+/* ───────────────────────────────────────────────────────────
+   GOLDEN PAUSE/RESUME BUTTON — next to Today's Jap Timer
+   ─────────────────────────────────────────────────────────── */
+#n28PauseBtn{
+  background: linear-gradient(180deg,#FFF1A8 0%,#FFD93D 45%,#E0A800 100%);
+  border: 1px solid #FFE066;
+  color: #3a2200;
+  font-weight: 800;
+  font-size: 11px;
+  border-radius: 16px;
+  padding: 5px 13px;
+  cursor: pointer;
+  letter-spacing: 0.4px;
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.85) inset,
+    0 -2px 4px rgba(180,120,0,0.35) inset,
+    0 4px 10px rgba(255,180,0,0.45),
+    0 0 14px rgba(255,215,0,0.35);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.25s ease;
+  animation: btnGlossPulse 3.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+#n28PauseBtn::after{
+  content:; position:absolute; top:0; left:-60%;
+  width:55%; height:100%;
+  background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.75) 50%, transparent 100%);
+  transform: skewX(-22deg);
+  animation: btnSheen 3.4s ease-in-out infinite;
+  pointer-events:none;
+}
+#n28PauseBtn:active{ transform: scale(0.96); filter: brightness(1.05); }

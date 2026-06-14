@@ -12679,21 +12679,22 @@ function _showUserReplyPopup(text) {
     function spawnCoin(nameText) {
       var tz = document.getElementById("tz28");
       var bank = document.querySelector("#v28 .bb-wrap");
-      var door = document.querySelector("#v28 .bb-door");
+      var bankImg = document.querySelector("#v28 .bb-img");
       var nameEl = document.getElementById("n28name");
-      if (!tz || !bank || !door || !nameEl) return;
+      if (!tz || !bank || !bankImg || !nameEl) return;
 
       var tzRect = tz.getBoundingClientRect();
       var srcRect = nameEl.getBoundingClientRect();
-      var dstRect = door.getBoundingClientRect();
+      var dstRect = bankImg.getBoundingClientRect();
       var nameStyle = window.getComputedStyle(nameEl);
 
       // Name start position (relative to tz28). The Radha Currency begins
       // visibly just above the tapped/current name.
       var nameX = srcRect.left - tzRect.left;
       var nameY = srcRect.top  - tzRect.top;
+      // Target the upper-center of the bank image (the top portion / roof area)
       var doorCenterX = dstRect.left - tzRect.left + dstRect.width / 2;
-      var doorCenterY = dstRect.top  - tzRect.top  + dstRect.height / 2;
+      var doorCenterY = dstRect.top  - tzRect.top  + dstRect.height * 0.35;
       var nameEndY = Math.max(12, doorCenterY - srcRect.height * 0.58);
 
       // Ghost name travels ALL the way into the bank door (not just to midline).
@@ -12769,7 +12770,7 @@ function _showUserReplyPopup(text) {
         if (coin.parentNode) coin.parentNode.removeChild(coin);
 
         // ── Sparkle burst at the bank door ──
-        var freshDoor = document.querySelector("#v28 .bb-door");
+        var freshDoor = document.querySelector("#v28 .bb-img");
         var freshTz   = document.getElementById("tz28");
         if (freshDoor && freshTz) {
           var fd = freshDoor.getBoundingClientRect();

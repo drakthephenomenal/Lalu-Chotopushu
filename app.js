@@ -1146,9 +1146,7 @@ const App = {
     this._arm28AutoPause();
     if (this.S.h28[this.S.tk] % 28 === 0) cycleDone28();
     u28();
-    try { flyRadhaCoin(); } catch(_) {}
   },
-
 
   undo28() {
     if ((this.S.h28[this.S.tk] || 0) > 0) {
@@ -12658,37 +12656,121 @@ function _showUserReplyPopup(text) {
 }
 
 
-/* ====== Vagobatik Bank coin flight animation ====== */
-function flyRadhaCoin(){
-  const name = document.getElementById('n28name');
-  const slot = document.getElementById('vbankSlot');
-  const bank = document.getElementById('vbankImg');
-  if (!name || !slot || !bank) return;
-  const nr = name.getBoundingClientRect();
-  const sr = slot.getBoundingClientRect();
-  const startX = nr.left + nr.width/2;
-  const startY = nr.top + nr.height/2;
-  const endX = sr.left + sr.width/2;
-  const endY = sr.top + sr.height/2;
+/* ───────────────────────────────────────────────────────────
+   BHAGAVADIK BANK — Radha Currency animation hook
+   Wraps App.h28 so every tap on the 28-Names area sends
+   one Radha coin floating upward into the bank's door slot.
+   ─────────────────────────────────────────────────────────── */
+(function () {
+  function setup() {
+    if (!window.App || typeof App.h28 !== "function") {
+      return setTimeout(setup, 120);
+    }
+    if (App.__bbWrapped) return;
+    App.__bbWrapped = true;
 
-  const coin = document.createElement('div');
-  coin.className = 'radha-coin';
-  coin.textContent = 'राधा';
-  coin.style.left = startX + 'px';
-  coin.style.top = startY + 'px';
-  document.body.appendChild(coin);
+    // Persistent coin counter (Radha Currency stored in the bank)
+    try {
+      var saved = parseInt(localStorage.getItem("radhaCurrency") || "0", 10);
+      var bbc = document.getElementById("bbCount");
+      if (bbc && !isNaN(saved)) bbc.textContent = saved;
+    } catch (e) {}
 
-  // Force reflow so transition triggers
-  void coin.offsetWidth;
-  const dx = endX - startX;
-  const dy = endY - startY;
-  coin.classList.add('flying');
-  coin.style.transform = `translate(-50%,-50%) translate(${dx}px,${dy}px) scale(0.35) rotate(720deg)`;
-  coin.style.opacity = '0';
+    function spawnCoin() {
+      var tz = document.getElementById("tz28");
+      var bank = document.querySelector("#v28 .bb-wrap");
+      var door = document.querySelector("#v28 .bb-door");
+      var nameEl = document.getElementById("n28name");
+      if (!tz || !bank || !door) return;
 
-  setTimeout(()=>{
-    bank.classList.add('deposit');
-    setTimeout(()=>bank.classList.remove('deposit'), 420);
-  }, 760);
-  setTimeout(()=>{ try{ coin.remove(); }catch(_){} }, 1100);
-}
+      var tzRect = tz.getBoundingClientRect();
+      var srcRect = (nameEl || tz).getBoundingClientRect();
+      var dstRect = door.getBoundingClientRect();
+
+      // Name start position (relative to tz28)
+      var nameX = srcRect.left - tzRect.left;
+      var nameY = srcRect.top  - tzRect.top;
+      // Where the name should drift to (just under the bank)
+      var nameEndY = dstRect.top - tzRect.top + dstRect.height + 6;
+
+      // Clone the tapped name and float it upward toward the bank
+      var ghost = document.createElement("div");
+      ghost.className = "n28name-ghost";
+      ghost.textContent = nameEl ? nameEl.textContent : "राधा";
+      ghost.style.cssText =
+        "position:absolute;left:0;top:0;" +
+        "width:" + srcRect.width + "px;height:" + srcRect.height + "px;" +
+        "display:flex;align-items:center;justify-content:center;" +
+        "font-family:'Hind Siliguri','Tiro Devanagari Hindi',serif;" +
+        "font-size:" + (window.getComputedStyle(nameEl).fontSize || "44px") + ";" +
+        "color:#FFD93D;text-shadow:0 0 12px rgba(255,215,0,0.85);" +
+        "pointer-events:none;z-index:18;will-change:transform,opacity;" +
+        "transform:translate(" + nameX + "px," + nameY + "px) scale(1);opacity:1;";
+      tz.appendChild(ghost);
+
+      // Coin spawns at the side of the name
+      var coinSize = 30;
+      var coinStartX = nameX + srcRect.width - 4; // right side of name
+      var coinStartY = nameY + srcRect.height / 2 - coinSize / 2;
+      var coinEndX   = dstRect.left - tzRect.left + dstRect.width / 2 - coinSize / 2;
+      var coinEndY   = dstRect.top  - tzRect.top  + dstRect.height / 2 - coinSize / 2;
+
+      var coin = document.createElement("div");
+      coin.className = "radha-coin";
+      coin.style.transform = "translate(" + coinStartX + "px," + coinStartY + "px) scale(0.4)";
+      coin.style.opacity = "0";
+      tz.appendChild(coin);
+
+      // Phase 1 (0–900ms): name floats upward to just under the bank and fades;
+      // coin appears beside it and rises along with it.
+      requestAnimationFrame(function () {
+        ghost.style.transition = "transform 900ms cubic-bezier(0.22,0.61,0.36,1), opacity 900ms ease-in";
+        ghost.style.transform = "translate(" + nameX + "px," + nameEndY + "px) scale(0.55)";
+        ghost.style.opacity = "0";
+
+        coin.style.transition = "transform 900ms cubic-bezier(0.22,0.61,0.36,1), opacity 320ms ease-out";
+        var coinRiseX = coinEndX + 36; // stay beside the name, not yet on door
+        var coinRiseY = nameEndY + 6;
+        coin.style.transform = "translate(" + coinRiseX + "px," + coinRiseY + "px) scale(1) rotate(180deg)";
+        coin.style.opacity = "1";
+      });
+
+      // Phase 2 (after name disappears): coin slowly enters the bank door
+      setTimeout(function () {
+        if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
+        coin.style.transition = "transform 700ms cubic-bezier(0.55,0.08,0.68,0.53), opacity 700ms ease-in";
+        coin.style.transform = "translate(" + coinEndX + "px," + coinEndY + "px) scale(0.18) rotate(540deg)";
+        coin.style.opacity = "0";
+      }, 920);
+
+      // Phase 3: bank pulses + counter ticks
+      setTimeout(function () {
+        if (coin.parentNode) coin.parentNode.removeChild(coin);
+        bank.classList.add("bb-pulse");
+        setTimeout(function () { bank.classList.remove("bb-pulse"); }, 600);
+        var bbc = document.getElementById("bbCount");
+        if (bbc) {
+          var n = (parseInt(bbc.textContent || "0", 10) || 0) + 1;
+          bbc.textContent = n;
+          try { localStorage.setItem("radhaCurrency", String(n)); } catch (e) {}
+        }
+      }, 1640);
+    }
+
+    var origH28 = App.h28.bind(App);
+    App.h28 = function (e) {
+      var wasAnimating = this._n28CompletionAnimating;
+      var r = origH28(e);
+      // Only spawn when the tap actually counted (not blocked by mala-complete anim)
+      if (!wasAnimating) {
+        try { spawnCoin(); } catch (err) { /* no-op */ }
+      }
+      return r;
+    };
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setup);
+  } else {
+    setup();
+  }
+})();

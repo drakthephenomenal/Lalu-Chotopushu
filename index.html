@@ -228,19 +228,29 @@
       <div class="rn" id="rnTitle">राधा</div>
     </div>
     <!-- Sandhya Kal card -->
-    <div class="rh-card" style="padding-left:10px;align-items:flex-end">
+    <div class="rh-card" style="padding-left:6px;align-items:flex-end">
       <div class="rh-card-title">🔔 Sandhya Kal</div>
       <div class="rh-row"><span class="rh-lbl">Start</span><span class="rh-val" id="sk-start">--:--</span></div>
       <div class="rh-row"><span class="rh-lbl">Sunset</span><span class="rh-val" id="rh-sunset">--:--</span></div>
       <div class="rh-row"><span class="rh-lbl">Ends</span><span class="rh-val" id="sk-end">--:--</span></div>
     </div>
   </div>
-  <div class="timer-bar">
-    <button class="tbtn reset" onclick="App.resetTimer()">↺</button>
-    <div class="timer-display" id="timerDisplay">00:00:00</div>
-    <button class="tbtn start" id="timerBtn" onclick="App.toggleTimer()">▶ Start</button>
+  <div class="timer-row">
+    <div class="timer-box">
+      <div class="timer-box-lbl">Session</div>
+      <div class="timer-box-main">
+        <button class="tbtn reset" onclick="App.resetTimer()">↺</button>
+        <div class="timer-display" id="timerDisplay">00:00:00</div>
+        <button class="tbtn start" id="timerBtn" onclick="App.toggleTimer()">▶ Start</button>
+      </div>
+    </div>
+    <div class="timer-box">
+      <div class="timer-box-lbl">Today's Jap Time</div>
+      <div class="timer-box-main timer-box-main--solo">
+        <div class="timer-display timer-display--today" id="timerToday2">00:00:00</div>
+      </div>
+    </div>
   </div>
-  <div class="timer-today" id="timerToday">Auto-starts when you tap · pauses after 6s</div>
   <div class="bead-frame-wrap" id="beadFrameWrap" role="region" aria-label="Mala bead progress">
     <svg class="bead-frame" id="beadFrame" aria-hidden="true"></svg>
     <!-- ARIA live region: announces mala completions and jap count to screen readers -->

@@ -641,8 +641,8 @@ const App = {
   updateTimerToday() {
     // ── UNIFIED: Today's Jap Time shared by Radha/RV/HK page AND 28 Names tab ──
     const combinedSec = this.getTotalJapSecondsToday();
-    const tt = document.getElementById("timerToday");
-    if (tt) tt.textContent = "Today's Jap Time: " + this.fmtTime(combinedSec);
+    const tt = document.getElementById("timerToday2") || document.getElementById("timerToday");
+    if (tt) tt.textContent = this.fmtTime(combinedSec);
     // Mirror the SAME total on the 28 Names tab
     const te28 = document.getElementById("n28TotalTimer");
     if (te28) te28.textContent = this.fmtTime(combinedSec);

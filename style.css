@@ -79,20 +79,25 @@ html:has(#vj.active),body:has(#vj.active){overflow:hidden;height:100vh;height:10
   background:radial-gradient(ellipse at top,#0A1F55 0%,var(--bd) 65%);
   padding-bottom:calc(56px + env(safe-area-inset-bottom));
 }
-.rh{display:flex;align-items:center;justify-content:space-between;padding:8px 10px 2px;gap:4px;flex-shrink:0;}
-.rh-center{flex:0 0 62px;display:flex;align-items:safe center;justify-content:safe center;}
-.rn{font-family:'Tiro Devanagari Hindi',serif;font-size:clamp(32px,9vw,48px);color:#FFD700;
+.rh{display:flex;align-items:center;justify-content:space-between;padding:6px 8px 1px;gap:2px;flex-shrink:0;}
+.rh-center{flex:0 0 56px;display:flex;align-items:safe center;justify-content:safe center;}
+.rn{font-family:'Tiro Devanagari Hindi',serif;font-size:clamp(28px,8vw,44px);color:#FFD700;
   text-shadow:0 0 30px rgba(255,215,0,0.6),0 0 60px rgba(255,215,0,0.25);line-height:1.0;letter-spacing:3px;}
-.rh-card{flex:1;display:flex;flex-direction:column;gap:3px;padding:2px 4px;}
-.rh-card-title{font-size:9px;color:var(--a2);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;opacity:0.85;}
+.rh-card{flex:1;display:flex;flex-direction:column;gap:1px;padding:1px 3px;}
+.rh-card-title{font-size:8px;color:var(--a2);letter-spacing:1px;text-transform:uppercase;margin-bottom:1px;opacity:0.85;}
 .rh-row{display:flex;align-items:baseline;gap:4px;}
-.rh-lbl{font-size:9px;color:var(--gold);opacity:0.8;white-space:nowrap;}
-.rh-val{font-family:'EB Garamond',serif;font-size:15px;color:var(--a2);letter-spacing:0.5px;filter:drop-shadow(0 0 6px rgba(109,184,255,0.4));line-height:1.2;white-space:nowrap;}
+.rh-lbl{font-size:8px;color:var(--gold);opacity:0.8;white-space:nowrap;}
+.rh-val{font-family:'EB Garamond',serif;font-size:13px;color:var(--a2);letter-spacing:0.5px;filter:drop-shadow(0 0 6px rgba(109,184,255,0.4));line-height:1.15;white-space:nowrap;}
 
-.timer-bar{display:flex;align-items:center;justify-content:center;gap:10px;padding:3px 16px 1px;flex-shrink:0;}
-.timer-display{font-family:'EB Garamond',serif;font-size:26px;color:var(--a2);
-  letter-spacing:3px;filter:drop-shadow(0 0 8px rgba(109,184,255,0.5));min-width:100px;text-align:center;}
+.timer-row{display:flex;gap:8px;padding:3px 10px;flex-shrink:0;}
+.timer-box{flex:1;background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:10px;padding:3px 6px;display:flex;flex-direction:column;align-items:center;min-width:0;}
+.timer-box-lbl{font-size:8px;color:var(--td);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:1px;}
+.timer-box-main{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;}
+.timer-box-main--solo{justify-content:center;}
+.timer-display{font-family:'EB Garamond',serif;font-size:18px;color:var(--a2);
+  letter-spacing:1.5px;filter:drop-shadow(0 0 8px rgba(109,184,255,0.5));min-width:0;text-align:center;}
 .timer-display.running{color:var(--gold);filter:drop-shadow(0 0 10px rgba(255,215,0,0.6));}
+.timer-display--today{color:var(--gold);}
 .mala-time-float{
   position:fixed;pointer-events:none;z-index:200;
   font-family:'EB Garamond',serif;font-weight:600;
@@ -106,15 +111,14 @@ html:has(#vj.active),body:has(#vj.active){overflow:hidden;height:100vh;height:10
   70% {opacity:1; transform:translateY(-72px) scale(1.05);}
   100%{opacity:0; transform:translateY(-130px) scale(0.9);}
 }
-.tbtn{padding:6px 13px;border-radius:20px;border:none;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;}
+.tbtn{padding:4px 9px;border-radius:16px;border:none;font-size:11px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;flex-shrink:0;}
 .tbtn.start{background:linear-gradient(135deg,#27ae60,#2ecc71);color:white;}
 .tbtn.pause{background:linear-gradient(135deg,var(--bg),var(--a));color:white;}
 .tbtn.reset{background:rgba(232,51,109,0.15);border:1px solid rgba(232,51,109,0.3);color:var(--rl);}
 .tbtn:active{transform:scale(0.94);}
-.timer-today{font-size:9px;color:var(--td);text-align:center;padding:1px 0 2px;letter-spacing:1px;flex-shrink:0;}
 
-.ps{padding:4px 14px;display:flex;gap:10px;flex-shrink:0;}
-.pc{flex:1;background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:12px;padding:7px 8px;text-align:center;display:flex;flex-direction:row;align-items:center;gap:8px;}
+.ps{padding:3px 10px;display:flex;gap:8px;flex-shrink:0;}
+.pc{flex:1;background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:10px;padding:5px 7px;text-align:center;display:flex;flex-direction:row;align-items:center;gap:6px;}
 .pc-bar{flex-direction:column;align-items:stretch;justify-content:center;}
 .pl{font-size:9px;color:var(--td);letter-spacing:1px;text-transform:uppercase;margin-bottom:0;white-space:nowrap;}
 .prw{position:relative;width:54px;height:54px;flex-shrink:0;}
@@ -1215,11 +1219,11 @@ button.n28-gold-btn-danger,
 /* === Rectangular mala bead frame around Daily + Lifetime target boxes === */
 .bead-frame-wrap{
   position:relative;
-  padding:6px 8px;
-  margin:2px 4px 4px;
+  padding:3px 6px;
+  margin:1px 4px 2px;
   flex-shrink:0;
 }
-.bead-frame-wrap .ps{padding:4px 0;position:relative;z-index:1;}
+.bead-frame-wrap .ps{padding:2px 0;position:relative;z-index:1;}
 .bead-frame{
   position:absolute;
   inset:0;
@@ -2541,21 +2545,23 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   position: relative;
   /* Shared sizing tokens so the side watermarks track the hero image
      across all viewports (phone, tablet, desktop) instead of getting
-     stranded at the bottom of a tall container. */
-  --rv-w: clamp(260px, 62vw, 520px);
-  --rv-top: 20px;
+     stranded at the bottom of a tall container.
+     Bounded by both viewport width AND viewport height so the hero
+     image never grows taller than the tap area on short screens. */
+  --rv-w: min(clamp(220px, 60vw, 480px), 78vh);
+  --rv-top: 14px;
   /* Approximate natural aspect ratio (height / width) of the
      Radha Vallabh Laal Ju image — used to compute where its
      bottom edge lands so the side images sit right beside it. */
   --rv-aspect: 1.15;
   --rv-bottom: calc(var(--rv-top) + var(--rv-w) * var(--rv-aspect));
-  --side-w: clamp(90px, 20vw, 150px);
+  --side-w: min(clamp(80px, 18vw, 140px), 22vh);
 }
 
 /* Radha Vallabh Laal Ju — large, top center hero */
 .tz .rv-wm{
   position:absolute; top:var(--rv-top); left:50%; transform:translateX(-50%);
-  width:var(--rv-w); height:auto;
+  width:var(--rv-w); height:auto; max-height:78%;
   opacity:.50;
   filter:none;
   pointer-events:none; user-select:none; z-index:1;
@@ -2606,8 +2612,8 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 /* Hit Ju Maharaj — bottom-left, anchored to RV's bottom edge */
 .tz .hitju-wm{
   position:absolute;
-  bottom: clamp(22px, 4.5vh, 60px);
-  left:10px;
+  top: min(var(--rv-bottom), calc(100% - var(--side-w) * var(--rv-aspect)));
+  left:8px;
   width:var(--side-w); height:auto;
   opacity:.45;
   filter:none;
@@ -2617,8 +2623,8 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 /* Gurudev — bottom-right, same plane as Hitju */
 .tz .gurudev-wm{
   position:absolute;
-  bottom: clamp(22px, 4.5vh, 60px);
-  right:10px;
+  top: min(var(--rv-bottom), calc(100% - var(--side-w) * var(--rv-aspect)));
+  right:8px;
   width:var(--side-w); height:auto;
   opacity:.45;
   filter:none;
@@ -2626,7 +2632,7 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
 }
 
 /* Tighten gap between tap area and bottom nav so it matches Android */
-.tzr{margin:5px 14px 1px !important;}
+.tzr{margin:3px 10px 1px !important;}
 
 @media (min-width: 768px) {
   #vj {
@@ -2637,6 +2643,20 @@ body.hk-bn #hkLangBtnHi{opacity:0.55;}
   }
 }
 
+/* Short-screen safety net: shrink hero/side watermarks further so they
+   never overlap the tap area edges on small-height devices */
+@media (max-height: 700px) {
+  .tz {
+    --rv-w: min(clamp(200px, 56vw, 440px), 68vh);
+    --side-w: min(clamp(70px, 16vw, 120px), 18vh);
+  }
+}
+@media (max-height: 600px) {
+  .tz {
+    --rv-w: min(clamp(180px, 52vw, 400px), 60vh);
+    --side-w: min(clamp(60px, 14vw, 100px), 15vh);
+  }
+}
 /* ✨ DIVINE BREATHING GLOW — 0→80% golden→0, then 0→80% blue→0, in sync, all 3 images */
 /*
   Timeline over 10s (ease-in-out per segment):

@@ -12656,234 +12656,127 @@ function _showUserReplyPopup(text) {
 }
 
 
+
 /* ───────────────────────────────────────────────────────────
-   BHAGAVADIK BANK — Radha Currency animation hook
-   Wraps App.h28 so every tap on the 28-Names area sends
-   one Radha coin floating upward into the bank's door slot.
+   RADHA COIN FLIGHT — rebuilt from scratch
+   On every successful 28-Names tap, spawn one ./radha-coin.png
+   coin at the tapped name's position and fly it to the
+   Bhagavadik Bank, then increment the bank's coin counter.
+   Uses fixed positioning (viewport coords) so it can never be
+   clipped or mis-stacked by parent overflow/z-index rules.
    ─────────────────────────────────────────────────────────── */
 (function () {
+  var COIN_SRC = "./radha-coin.png";
+  var STORAGE_KEY = "radhaCurrency";
+
+  function restoreCounter() {
+    try {
+      var saved = parseInt(localStorage.getItem(STORAGE_KEY) || "0", 10);
+      var bbc = document.getElementById("bbCount");
+      var bbctr = document.getElementById("bbCounter");
+      if (bbc && !isNaN(saved) && saved > 0) {
+        bbc.textContent = saved >= 1000 ? saved.toLocaleString() : String(saved);
+        if (bbctr) bbctr.classList.add("visible");
+      }
+    } catch (_) {}
+  }
+
+  function bumpCounter() {
+    var bbc = document.getElementById("bbCount");
+    var bbctr = document.getElementById("bbCounter");
+    if (!bbc) return;
+    var n = (parseInt((bbc.textContent || "0").replace(/,/g, ""), 10) || 0) + 1;
+    bbc.textContent = n >= 1000 ? n.toLocaleString() : String(n);
+    try { localStorage.setItem(STORAGE_KEY, String(n)); } catch (_) {}
+    if (bbctr) {
+      bbctr.classList.add("visible");
+      bbctr.classList.remove("pop");
+      void bbctr.offsetWidth;
+      bbctr.classList.add("pop");
+    }
+  }
+
+  function spawnCoin() {
+    var nameEl = document.getElementById("n28name");
+    var bankImg = document.querySelector("#v28 .bb-img");
+    if (!nameEl || !bankImg) {
+      console.warn("[RadhaCoin] missing nameEl or bankImg — cannot spawn coin");
+      return;
+    }
+
+    var src = nameEl.getBoundingClientRect();
+    var dst = bankImg.getBoundingClientRect();
+
+    var startX = src.left + src.width / 2;
+    var startY = src.top + src.height / 2;
+    var endX = dst.left + dst.width / 2;
+    var endY = dst.top + dst.height * 0.35;
+
+    var coin = document.createElement("div");
+    coin.className = "rc-coin";
+    coin.style.left = startX + "px";
+    coin.style.top = startY + "px";
+
+    var img = document.createElement("img");
+    img.src = COIN_SRC;
+    img.alt = "Radha Coin";
+    img.draggable = false;
+    img.onerror = function () {
+      console.error("[RadhaCoin] failed to load " + COIN_SRC);
+    };
+    coin.appendChild(img);
+    document.body.appendChild(coin);
+
+    // Frame 1: pop in at start position
+    requestAnimationFrame(function () {
+      coin.classList.add("rc-go");
+      coin.style.transform = "translate(-50%,-50%) scale(1) rotate(0deg)";
+
+      // Frame 2: fly to the bank
+      requestAnimationFrame(function () {
+        coin.style.left = endX + "px";
+        coin.style.top = endY + "px";
+        coin.style.transform = "translate(-50%,-50%) scale(0.55) rotate(540deg)";
+      });
+    });
+
+    // On arrival: shrink/spin out, pulse the bank, bump the counter
+    setTimeout(function () {
+      coin.classList.add("rc-land");
+      bankImg.classList.remove("rc-pulse");
+      void bankImg.offsetWidth;
+      bankImg.classList.add("rc-pulse");
+      bumpCounter();
+    }, 850);
+
+    // Cleanup
+    setTimeout(function () {
+      if (coin.parentNode) coin.parentNode.removeChild(coin);
+    }, 1300);
+  }
+
   function setup() {
     if (!window.App || typeof App.h28 !== "function") {
       return setTimeout(setup, 120);
     }
-    if (App.__bbWrapped) return;
-    App.__bbWrapped = true;
+    if (App.__radhaCoinWrapped) return;
+    App.__radhaCoinWrapped = true;
 
-    // Persistent coin counter (Radha Currency stored in the bank)
-    try {
-      var saved = parseInt(localStorage.getItem("radhaCurrency") || "0", 10);
-      var bbc = document.getElementById("bbCount");
-      var bbctr = document.getElementById("bbCounter");
-      if (bbc && !isNaN(saved)) {
-        bbc.textContent = saved;
-        if (saved > 0 && bbctr) bbctr.classList.add("visible");
-      }
-    } catch (e) {}
+    restoreCounter();
 
-    function spawnCoin(nameText) {
-      var tz = document.getElementById("tz28");
-      var bank = document.querySelector("#v28 .bb-wrap");
-      var bankImg = document.querySelector("#v28 .bb-img");
-      var nameEl = document.getElementById("n28name");
-      if (!tz || !bank || !bankImg || !nameEl) {
-        console.warn("[RadhaCoin] spawnCoin aborted — missing element(s):",
-          { tz: !!tz, bank: !!bank, bankImg: !!bankImg, nameEl: !!nameEl });
-        return;
-      }
-      // Ensure the tap zone is a positioning context and never clips the
-      // coin/ghost during their flight to the bank.
-      tz.style.position = tz.style.position || "relative";
-      tz.style.overflow = "visible";
-
-      var tzRect = tz.getBoundingClientRect();
-      var srcRect = nameEl.getBoundingClientRect();
-      var dstRect = bankImg.getBoundingClientRect();
-      var nameStyle = window.getComputedStyle(nameEl);
-
-      var nameX = srcRect.left - tzRect.left;
-      var nameY = srcRect.top  - tzRect.top;
-      var bankCX = dstRect.left - tzRect.left + dstRect.width / 2;
-      var bankCY = dstRect.top  - tzRect.top  + dstRect.height * 0.35;
-
-      // Ghost name rises into the bank
-      var ghost = document.createElement("div");
-      ghost.className = "n28name-ghost";
-      ghost.textContent = nameText || nameEl.textContent || "राधा";
-      ghost.style.cssText =
-        "position:absolute;left:0;top:0;" +
-        "width:" + srcRect.width + "px;height:" + srcRect.height + "px;" +
-        "display:flex;align-items:center;justify-content:center;" +
-        "font-family:" + nameStyle.fontFamily + ";font-weight:" + nameStyle.fontWeight + ";" +
-        "font-size:" + (nameStyle.fontSize || "50px") + ";line-height:" + (nameStyle.lineHeight || "1.25") + ";" +
-        "color:#FFD93D;text-shadow:0 0 24px rgba(255,215,0,0.92),0 0 44px rgba(255,200,40,0.45);" +
-        "pointer-events:none;z-index:54;will-change:transform,opacity;" +
-        "transform:translate(" + nameX + "px," + nameY + "px) scale(1);opacity:1;";
-      tz.appendChild(ghost);
-
-      // ── Radha Coin (single-img, iOS-safe) ──
-      var coinSize   = 72;
-      var coinStartX = nameX + srcRect.width / 2 - coinSize / 2;
-      var coinStartY = nameY - coinSize - 10;
-      var coinEndX   = bankCX - coinSize / 2;
-      var coinEndY   = bankCY - coinSize / 2;
-      var ghostEndX  = bankCX - srcRect.width / 2;
-      var ghostEndY  = bankCY - srcRect.height / 2;
-
-      // Wrapper: handles position (translate + scale)
-      var coinWrap = document.createElement("div");
-      coinWrap.className = "radha-coin-wrap";
-      coinWrap.style.cssText =
-        "transform:translate(" + coinStartX + "px," + coinStartY + "px) scale(0);opacity:0;z-index:55;";
-
-      // Single img: handles spin animation via perspective+rotateY keyframes
-      var coinImg = document.createElement("img");
-      coinImg.className = "radha-coin-img";
-      coinImg.src = "./radha-coin.png";
-      coinImg.alt = "Radha Coin";
-      coinImg.draggable = false;
-      coinImg.onerror = function () {
-        console.error("[RadhaCoin] failed to load ./radha-coin.png — check the file is deployed at the app root.");
-      };
-
-      coinWrap.appendChild(coinImg);
-      tz.appendChild(coinWrap);
-
-      // Phase 1: wrapper pops in (scale 0→1), img spins in
-      requestAnimationFrame(function () {
-        requestAnimationFrame(function () {
-          coinWrap.style.transition = "transform 0.42s cubic-bezier(0.34,1.56,0.64,1), opacity 0.18s ease";
-          coinWrap.style.transform  = "translate(" + coinStartX + "px," + coinStartY + "px) scale(1)";
-          coinWrap.style.opacity    = "1";
-          coinImg.style.animation   = "coinPopIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards";
-        });
-      });
-
-      // Switch to continuous spin after pop-in
-      setTimeout(function () {
-        coinImg.style.animation = "coinSpinFlight 0.6s linear infinite";
-      }, 520);
-
-      // Phase 2 (540ms): ghost + coin glide to bank
-      setTimeout(function () {
-        coinWrap.style.transition = "none";
-        coinWrap.style.transform  = "translate(" + coinStartX + "px," + coinStartY + "px) scale(1)";
-
-        ghost.style.transition = "transform 2200ms ease-out, opacity 600ms 1600ms ease-in";
-        ghost.style.transform  = "translate(" + ghostEndX + "px," + ghostEndY + "px) scale(0.12)";
-        ghost.style.opacity    = "0";
-
-        requestAnimationFrame(function () {
-          requestAnimationFrame(function () {
-            coinWrap.style.transition = "transform 2200ms cubic-bezier(0.22,0.8,0.44,1)";
-            coinWrap.style.transform  = "translate(" + coinEndX + "px," + coinEndY + "px) scale(0.6)";
-          });
-        });
-      }, 540);
-
-      // Phase 3 (2780ms): deposit — coin spins fast into bank and fades
-      setTimeout(function () {
-        coinImg.style.animation = "coinDeposit 0.65s ease-in forwards";
-      }, 2780);
-
-      // Phase 4: sparkle burst + bank pulse + counter — cleanup after deposit
-      setTimeout(function () {
-        if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
-        if (coinWrap && coinWrap.parentNode) coinWrap.parentNode.removeChild(coinWrap);
-
-        // ── Sparkle burst at the bank door ──
-        var freshDoor = document.querySelector("#v28 .bb-img");
-        var freshTz   = document.getElementById("tz28");
-        if (freshDoor && freshTz) {
-          var fd = freshDoor.getBoundingClientRect();
-          var ft = freshTz.getBoundingClientRect();
-          var cx = fd.left - ft.left + fd.width  / 2;
-          var cy = fd.top  - ft.top  + fd.height / 2;
-          var colors = [
-            "#FFD93D","#FFF8DC","#FFE066","#6DB8FF","#ffffff",
-            "#FFAA00","#B0E0FF","#FFD700","#E0CFFF","#FFB347"
-          ];
-          var count = 12;
-          for (var i = 0; i < count; i++) {
-            (function(idx){
-              var angle  = (idx / count) * Math.PI * 2 + Math.random() * 0.4;
-              var dist   = 28 + Math.random() * 38;
-              var size   = 5 + Math.random() * 9;
-              var dur    = 520 + Math.random() * 340;
-              var delay  = Math.random() * 80;
-              var color  = colors[idx % colors.length];
-
-              var ex = Math.cos(angle) * dist;
-              var ey = Math.sin(angle) * dist;
-
-              var sp = document.createElement("div");
-              sp.className = "bb-spark";
-              sp.style.cssText =
-                "left:0;top:0;width:" + size + "px;height:" + size + "px;" +
-                "background:" + color + ";" +
-                "box-shadow:0 0 " + (size * 1.8) + "px " + color + ";" +
-                "--tx:" + (cx - size/2) + "px;--ty:" + (cy - size/2) + "px;" +
-                "--ex:" + (cx - size/2 + ex) + "px;--ey:" + (cy - size/2 + ey) + "px;" +
-                "animation:bbSparkFly " + dur + "ms " + delay + "ms cubic-bezier(0.22,0.61,0.36,1) forwards;";
-              freshTz.appendChild(sp);
-              setTimeout(function(){ if(sp.parentNode) sp.parentNode.removeChild(sp); }, dur + delay + 50);
-            })(i);
-          }
-
-          // Also flash the bank image bright gold
-          var bankImg = freshTz.closest && freshTz.closest("#v28")
-                        ? freshTz.closest("#v28").querySelector(".bb-img")
-                        : document.querySelector("#v28 .bb-img");
-          if (bankImg) {
-            bankImg.style.animation = "bbBankFlash 0.65s ease-out, bbFloat 4.5s 0.65s ease-in-out infinite";
-          }
-        }
-
-        bank.classList.add("bb-pulse");
-        setTimeout(function () { bank.classList.remove("bb-pulse"); }, 600);
-        var bbc = document.getElementById("bbCount");
-        var bbctr = document.getElementById("bbCounter");
-        if (bbc) {
-          var n = (parseInt(bbc.textContent || "0", 10) || 0) + 1;
-          // Format with commas for large numbers
-          bbc.textContent = n >= 1000 ? n.toLocaleString() : String(n);
-          try { localStorage.setItem("radhaCurrency", String(n)); } catch (e) {}
-          // Make counter visible and play pop animation
-          if (bbctr) {
-            bbctr.classList.add("visible");
-            bbctr.classList.remove("pop");
-            void bbctr.offsetWidth; // force reflow to restart animation
-            bbctr.classList.add("pop");
-            bbctr.addEventListener("animationend", function onEnd() {
-              bbctr.classList.remove("pop");
-              bbctr.removeEventListener("animationend", onEnd);
-            });
-          }
-        }
-      }, 3500);
-    }
-
-    var origH28 = App.h28.bind(App);
+    var originalH28 = App.h28.bind(App);
     App.h28 = function (e) {
       var wasAnimating = this._n28CompletionAnimating;
-      var beforeCount = (this.S && this.S.h28 && this.S.tk) ? (this.S.h28[this.S.tk] || 0) : 0;
-      var nameEl = document.getElementById("n28name");
-      var tappedName = nameEl ? nameEl.textContent : "";
-      var r;
-      try {
-        window.__bbTakeover28 = true;
-        r = origH28(e);
-      } finally {
-        window.__bbTakeover28 = false;
+      var before = (this.S && this.S.h28 && this.S.tk) ? (this.S.h28[this.S.tk] || 0) : 0;
+      var result = originalH28(e);
+      var after = (this.S && this.S.h28 && this.S.tk) ? (this.S.h28[this.S.tk] || 0) : before;
+      if (!wasAnimating && after > before) {
+        try { spawnCoin(); } catch (err) { console.error("[RadhaCoin] spawn error:", err); }
       }
-      var afterCount = (this.S && this.S.h28 && this.S.tk) ? (this.S.h28[this.S.tk] || 0) : beforeCount;
-      // Only spawn when the tap actually counted (not blocked by mala-complete anim)
-      if (!wasAnimating && afterCount > beforeCount) {
-        try { spawnCoin(tappedName); } catch (err) { window.__bbTakeover28 = false; }
-      }
-      if (typeof u28 === "function") setTimeout(u28, 2850);
-      return r;
+      return result;
     };
   }
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", setup);
   } else {

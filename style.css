@@ -2954,64 +2954,48 @@ body.gaudiya-mode .tz .cm-wm{
   white-space:nowrap;
 }
 .bb-count{ display:none; } /* legacy */
-.bb-wrap.bb-pulse .bb-img{ animation: bbReceive 0.55s ease-out; }
-@keyframes bbReceive{
-  0%{ transform: translateX(-50%) scale(1); filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55)); }
-  40%{ transform: translateX(-50%) scale(1.10); filter: drop-shadow(0 6px 22px rgba(255,215,0,0.95)); }
-  100%{ transform: translateX(-50%) scale(1); filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55)); }
-}
 
-/* ── Radha Coin (single-element, iOS-safe) ── */
-.radha-coin-wrap{
-  position:absolute; left:0; top:0;
-  width:72px; height:72px;
-  pointer-events:none; z-index:30;
-  will-change:transform, opacity;
-}
-.radha-coin-img{
-  width:100%; height:100%;
+/* ───────────────────────────────────────────────────────────
+   RADHA COIN FLIGHT (rebuilt) — spawns over the tapped name,
+   flies to the Bhagavadik Bank, and pops on arrival.
+   ─────────────────────────────────────────────────────────── */
+.rc-coin{
+  position:fixed;
+  width:54px; height:54px;
   border-radius:50%;
-  display:block;
-  border:2.5px solid #FFE57A;
+  pointer-events:none;
+  z-index:9000;
+  will-change:transform, opacity;
+  border:2px solid #FFE57A;
   box-shadow:
-    0 0 0 3px rgba(255,215,0,0.28),
-    0 0 22px rgba(255,215,0,1),
-    0 0 48px rgba(255,200,40,0.7);
-  will-change:transform;
+    0 0 0 3px rgba(255,215,0,0.25),
+    0 0 18px rgba(255,215,0,0.95),
+    0 0 36px rgba(255,180,0,0.6);
+  background:#1a1206;
+  opacity:0;
+  transform:translate(-50%,-50%) scale(0.3) rotate(0deg);
+  transition:
+    transform 0.85s cubic-bezier(0.33,0.0,0.2,1),
+    opacity 0.18s ease;
 }
-@keyframes coinSpinFlight{
-  from{ transform:perspective(400px) rotateY(0deg); }
-  to  { transform:perspective(400px) rotateY(360deg); }
+.rc-coin img{
+  width:100%; height:100%; border-radius:50%; display:block;
 }
-@keyframes coinPopIn{
-  0%  { transform:perspective(400px) rotateY(0deg) scale(0); }
-  55% { transform:perspective(400px) rotateY(260deg) scale(1.22); }
-  100%{ transform:perspective(400px) rotateY(360deg) scale(1); }
+.rc-coin.rc-go{
+  opacity:1;
 }
-@keyframes coinDeposit{
-  0%  { transform:perspective(400px) rotateY(0deg) scale(1); opacity:1; }
-  40% { transform:perspective(400px) rotateY(200deg) translateY(-14px) scale(0.5); opacity:0.85; }
-  100%{ transform:perspective(400px) rotateY(400deg) translateY(-28px) scale(0.04); opacity:0; }
+.rc-coin.rc-land{
+  transform:translate(-50%,-50%) scale(0.15) rotate(620deg);
+  opacity:0;
+  transition:
+    transform 0.32s cubic-bezier(0.4,0,0.6,1),
+    opacity 0.32s ease 0.05s;
 }
-.n28name-ghost{
-  filter: drop-shadow(0 0 18px rgba(255,215,0,0.85));
+@keyframes rcBankPulse{
+  0%,100%{ filter:drop-shadow(0 6px 14px rgba(0,0,0,0.55)) brightness(1); }
+  35%    { filter:drop-shadow(0 0 40px rgba(255,215,0,1)) brightness(1.5); }
 }
-
-/* Sparkle burst particles spawned when coin enters bank door */
-.bb-spark{
-  position:absolute; border-radius:50%;
-  pointer-events:none; z-index:55; will-change:transform,opacity;
-}
-@keyframes bbSparkFly{
-  0%  { transform:translate(var(--tx,0px),var(--ty,0px)) scale(1.2); opacity:1; }
-  60% { opacity:0.85; }
-  100%{ transform:translate(var(--ex,0px),var(--ey,0px)) scale(0);   opacity:0; }
-}
-@keyframes bbBankFlash{
-  0%  { filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55)) brightness(1); }
-  25% { filter: drop-shadow(0 0 48px rgba(255,215,0,1)) drop-shadow(0 0 80px rgba(255,180,0,0.8)) brightness(1.65); }
-  100%{ filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55)) brightness(1); }
-}
+.bb-img.rc-pulse{ animation: rcBankPulse 0.5s ease-out; }
 
 #n28ProgressWrap{
   margin-top:4px !important;

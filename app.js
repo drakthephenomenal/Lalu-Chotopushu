@@ -12686,10 +12686,8 @@ function _showUserReplyPopup(text) {
     try {
       var saved = parseInt(localStorage.getItem(STORAGE_KEY) || "0", 10);
       var bbc = document.getElementById("bbCount");
-      var bbctr = document.getElementById("bbCounter");
       if (bbc && !isNaN(saved) && saved > 0) {
         bbc.textContent = saved >= 1000 ? saved.toLocaleString() : String(saved);
-        if (bbctr) bbctr.classList.add("visible");
       }
     } catch (_) {}
   }
@@ -12702,7 +12700,6 @@ function _showUserReplyPopup(text) {
     bbc.textContent = n >= 1000 ? n.toLocaleString() : String(n);
     try { localStorage.setItem(STORAGE_KEY, String(n)); } catch (_) {}
     if (bbctr) {
-      bbctr.classList.add("visible");
       bbctr.classList.remove("pop");
       void bbctr.offsetWidth;
       bbctr.classList.add("pop");
@@ -12719,20 +12716,24 @@ function _showUserReplyPopup(text) {
 
   function spawnCoin() {
     var nameEl = document.getElementById("n28name");
-    var bankImg = document.querySelector("#v28 .bb-img");
-    if (!nameEl || !bankImg) {
-      console.warn("[RadhaCoin] missing nameEl or bankImg — cannot spawn coin");
+    var tz = document.getElementById("tz28");
+    var bankImg = document.getElementById("bbImg");
+    if (!nameEl || !tz || !bankImg) {
+      console.warn("[RadhaCoin] missing nameEl, tz28 or bbImg — cannot spawn coin");
       return;
     }
 
     var src = nameEl.getBoundingClientRect();
-    var dst = bankImg.getBoundingClientRect();
+    var tzRect = tz.getBoundingClientRect();
 
     var startX = src.left + src.width / 2;
     var startY = src.top + src.height / 2;
-    var endX = dst.left + dst.width / 2;
-    var endY = dst.top + dst.height * 0.35;
+    // Land at the visual center of the bank watermark: tz28's box,
+    // matching .bb-img's object-position (center 38%).
+    var endX = tzRect.left + tzRect.width / 2;
+    var endY = tzRect.top + tzRect.height * 0.52;
 
+    // ── Flying coin ──
     var coin = document.createElement("div");
     coin.className = "rc-coin";
 
@@ -12753,32 +12754,44 @@ function _showUserReplyPopup(text) {
       coin.classList.add("rc-emoji");
     }
 
-    // Set initial position BEFORE appending, so the very first paint
-    // already shows the coin at the start point (no transition yet).
     coin.style.left = startX + "px";
     coin.style.top  = startY + "px";
     document.body.appendChild(coin);
-
-    // Force a layout flush so the browser registers the starting
-    // position before we change anything — required for the
-    // transition on the next change to actually animate.
     void coin.getBoundingClientRect();
 
+    // ── Flying ghost copy of the chanted name ──
+    var nameStyle = window.getComputedStyle(nameEl);
+    var ghost = document.createElement("div");
+    ghost.className = "rc-ghost-name";
+    ghost.textContent = nameEl.textContent;
+    ghost.style.fontFamily = nameStyle.fontFamily;
+    ghost.style.fontSize   = nameStyle.fontSize;
+    ghost.style.fontWeight = nameStyle.fontWeight;
+    ghost.style.color      = nameStyle.color;
+    ghost.style.left = startX + "px";
+    ghost.style.top  = startY + "px";
+    document.body.appendChild(ghost);
+    void ghost.getBoundingClientRect();
+
     requestAnimationFrame(function () {
-      coin.classList.add("rc-go"); // fades/scales in at start point
+      coin.classList.add("rc-go");
+      ghost.classList.add("rc-go");
 
       requestAnimationFrame(function () {
-        // Now move to the bank — left/top + transform are both
-        // in the transition list, so this animates smoothly.
         coin.style.left = endX + "px";
         coin.style.top  = endY + "px";
         coin.classList.add("rc-fly");
+
+        ghost.style.left = endX + "px";
+        ghost.style.top  = endY + "px";
+        ghost.classList.add("rc-fly");
       });
     });
 
     // On arrival: shrink/spin out, pulse the bank, bump the counter
     setTimeout(function () {
       coin.classList.add("rc-land");
+      ghost.classList.add("rc-land");
       bankImg.classList.remove("rc-pulse");
       void bankImg.offsetWidth;
       bankImg.classList.add("rc-pulse");
@@ -12788,6 +12801,7 @@ function _showUserReplyPopup(text) {
     // Cleanup
     setTimeout(function () {
       if (coin.parentNode) coin.parentNode.removeChild(coin);
+      if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
     }, 1400);
   }
 

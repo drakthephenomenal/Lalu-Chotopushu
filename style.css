@@ -2913,18 +2913,16 @@ body.gaudiya-mode .tz .cm-wm{
 
 .bb-wrap{
   position:absolute; top:4px; left:50%; transform:translateX(-50%);
-  width:min(98vw,700px); height:clamp(280px,50vh,540px); z-index:24;
+  width:min(100vw,760px); height:clamp(300px,54vh,600px); z-index:24;
   display:flex; align-items:center; justify-content:center;
   pointer-events:none;
   background: radial-gradient(circle at center, rgba(255,217,61,0.10) 0%, rgba(109,184,255,0.06) 55%, rgba(0,0,0,0) 75%);
   border-radius: 18px;
 }
 .bb-img{
-  position:absolute; left:50%; top:16px; transform:translateX(-50%);
-  width:min(96vw,680px); height:auto; max-height:clamp(260px,48vh,510px);
+  position:absolute; left:50%; top:8px; transform:translateX(-50%);
+  width:min(100vw,760px); height:auto; max-height:clamp(300px,54vh,600px);
   object-fit:contain;
-  -webkit-mask-image: radial-gradient(ellipse at 50% 46%, rgba(0,0,0,1) 40%, rgba(0,0,0,0.75) 60%, rgba(0,0,0,0) 80%);
-  mask-image: radial-gradient(ellipse at 50% 46%, rgba(0,0,0,1) 40%, rgba(0,0,0,0.75) 60%, rgba(0,0,0,0) 80%);
   animation: bbFloat 4.5s ease-in-out infinite, bbImgGlow 2.6s ease-in-out infinite;
   will-change: transform, filter;
 }

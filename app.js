@@ -1146,7 +1146,9 @@ const App = {
     this._arm28AutoPause();
     if (this.S.h28[this.S.tk] % 28 === 0) cycleDone28();
     u28();
+    try { flyRadhaCoin(); } catch(_) {}
   },
+
 
   undo28() {
     if ((this.S.h28[this.S.tk] || 0) > 0) {
@@ -12655,3 +12657,38 @@ function _showUserReplyPopup(text) {
   p._hideT = setTimeout(() => { p.style.transform = 'translateX(-50%) translateY(-120%)'; }, 6000);
 }
 
+
+/* ====== Vagobatik Bank coin flight animation ====== */
+function flyRadhaCoin(){
+  const name = document.getElementById('n28name');
+  const slot = document.getElementById('vbankSlot');
+  const bank = document.getElementById('vbankImg');
+  if (!name || !slot || !bank) return;
+  const nr = name.getBoundingClientRect();
+  const sr = slot.getBoundingClientRect();
+  const startX = nr.left + nr.width/2;
+  const startY = nr.top + nr.height/2;
+  const endX = sr.left + sr.width/2;
+  const endY = sr.top + sr.height/2;
+
+  const coin = document.createElement('div');
+  coin.className = 'radha-coin';
+  coin.textContent = 'राधा';
+  coin.style.left = startX + 'px';
+  coin.style.top = startY + 'px';
+  document.body.appendChild(coin);
+
+  // Force reflow so transition triggers
+  void coin.offsetWidth;
+  const dx = endX - startX;
+  const dy = endY - startY;
+  coin.classList.add('flying');
+  coin.style.transform = `translate(-50%,-50%) translate(${dx}px,${dy}px) scale(0.35) rotate(720deg)`;
+  coin.style.opacity = '0';
+
+  setTimeout(()=>{
+    bank.classList.add('deposit');
+    setTimeout(()=>bank.classList.remove('deposit'), 420);
+  }, 760);
+  setTimeout(()=>{ try{ coin.remove(); }catch(_){} }, 1100);
+}

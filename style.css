@@ -2880,3 +2880,29 @@ body.gaudiya-mode .tz .cm-wm{
   width:18px;height:18px;
 }
 
+
+/* ============ Vagobatik Bank + Coin Flight ============ */
+.vbank-wrap{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 0 4px;margin-top:4px;}
+.vbank-img{height:120px;width:auto;max-width:80%;object-fit:contain;
+  filter:drop-shadow(0 6px 18px rgba(255,180,40,0.35)) drop-shadow(0 0 22px rgba(255,215,0,0.25));
+  animation:vbankGlow 3.6s ease-in-out infinite;}
+@keyframes vbankGlow{0%,100%{filter:drop-shadow(0 6px 18px rgba(255,180,40,0.30)) drop-shadow(0 0 22px rgba(255,215,0,0.22));}
+  50%{filter:drop-shadow(0 8px 26px rgba(255,200,80,0.55)) drop-shadow(0 0 34px rgba(255,215,0,0.45));}}
+/* Invisible anchor at the bank's coin-slot location (top center of img) */
+.vbank-slot{position:absolute;top:14px;left:50%;width:2px;height:2px;pointer-events:none;}
+.vbank-label{font-family:'Cinzel Decorative',serif;font-size:11px;letter-spacing:3px;color:var(--gold);
+  text-transform:uppercase;margin-top:-2px;opacity:0.85;text-shadow:0 0 12px rgba(255,215,0,0.4);}
+
+/* Flying coin */
+.radha-coin{position:fixed;width:34px;height:34px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff5b0 0%,#ffd23a 35%,#c98b08 80%,#7a4d00 100%);
+  border:1.5px solid #fff2a8;
+  box-shadow:0 0 14px rgba(255,215,0,0.85),0 0 28px rgba(255,180,40,0.55),inset 0 -2px 4px rgba(120,70,0,0.5);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Hind Siliguri','Tiro Devanagari Hindi',serif;font-weight:800;font-size:13px;color:#5a3500;
+  text-shadow:0 1px 0 rgba(255,255,200,0.6);
+  pointer-events:none;z-index:9999;will-change:transform,opacity;
+  transform:translate(-50%,-50%) scale(1);}
+.radha-coin.flying{transition:transform 850ms cubic-bezier(.55,-0.2,.3,1.4),opacity 200ms ease 700ms;}
+.vbank-img.deposit{animation:vbankPop 380ms ease;}
+@keyframes vbankPop{0%{transform:scale(1);}40%{transform:scale(1.06) translateY(-2px);}100%{transform:scale(1);}}

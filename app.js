@@ -12711,51 +12711,57 @@ function _showUserReplyPopup(text) {
         "transform:translate(" + nameX + "px," + nameY + "px) scale(1);opacity:1;";
       tz.appendChild(ghost);
 
-      // Coin spawns just above the name with a bounce-in, then flies to bank.
-      var coinSize = 54;
+      // Coin spawns just above the name — pop-in bounce (no CSS keyframe vars),
+      // then glides slowly with the ghost name all the way to the bank door.
+      var coinSize   = 54;
       var coinStartX = nameX + srcRect.width / 2 - coinSize / 2;
       var coinStartY = nameY - coinSize - 10;
       var coinEndX   = doorCenterX - coinSize / 2;
       var coinEndY   = doorCenterY - coinSize / 2;
-      var startTf    = "translate(" + coinStartX + "px," + coinStartY + "px)";
+      var ghostEndX  = doorCenterX - srcRect.width / 2;
+      var ghostEndY  = doorCenterY - srcRect.height / 2;
 
       var coin = document.createElement("div");
       coin.className = "radha-coin";
-      // Use CSS custom property so coinAppear keyframe knows start position
-      coin.style.setProperty("--coin-start-tf", startTf);
-      coin.style.transform = startTf + " scale(0.4)";
-      coin.style.opacity = "0";
+      coin.style.cssText =
+        "position:absolute;left:0;top:0;" +
+        "transform:translate(" + coinStartX + "px," + coinStartY + "px) scale(0);" +
+        "opacity:0;";
       tz.appendChild(coin);
 
-      // Phase 1: coin pops in above the name (400 ms bounce)
+      // Phase 1: coin pops in above name — double-RAF is reliable on all browsers
       requestAnimationFrame(function () {
-        coin.style.animation = "coinAppear 0.42s cubic-bezier(0.34,1.56,0.64,1) forwards";
-      });
-
-      // Phase 2 (after pop-in): ghost name AND coin fly together into bank door
-      setTimeout(function () {
-        coin.style.animation = "none";
-        coin.style.transform  = startTf + " scale(1)";
-        coin.style.opacity    = "1";
-
-        // Ghost appears at name position, same moment coin starts flying
-        var ghostEndX = doorCenterX - srcRect.width / 2;
-        var ghostEndY = doorCenterY - srcRect.height / 2;
-        ghost.style.transition =
-          "transform 1600ms cubic-bezier(0.20,0.72,0.26,1), " +
-          "opacity 500ms 1100ms ease-in";
-        ghost.style.transform = "translate(" + ghostEndX + "px," + ghostEndY + "px) scale(0.18)";
-        ghost.style.opacity = "0";
-
-        // One frame later so transition picks up new starting values
         requestAnimationFrame(function () {
           coin.style.transition =
-            "transform 1600ms cubic-bezier(0.20,0.72,0.26,1), " +
-            "opacity 500ms 1100ms ease-in";
-          coin.style.transform = "translate(" + coinEndX + "px," + coinEndY + "px) scale(0.14) rotate(720deg)";
-          coin.style.opacity = "0";
+            "transform 0.38s cubic-bezier(0.34,1.56,0.64,1), opacity 0.18s ease";
+          coin.style.transform = "translate(" + coinStartX + "px," + coinStartY + "px) scale(1)";
+          coin.style.opacity   = "1";
         });
-      }, 430);
+      });
+
+      // Phase 2 (400 ms after pop-in): coin AND ghost glide slowly to bank door
+      setTimeout(function () {
+        // Reset coin to no-transition so we can set the travel transition cleanly
+        coin.style.transition = "none";
+        coin.style.transform  = "translate(" + coinStartX + "px," + coinStartY + "px) scale(1)";
+
+        // Ghost starts moving at same moment
+        ghost.style.transition =
+          "transform 2500ms ease-out, opacity 700ms 1800ms ease-in";
+        ghost.style.transform = "translate(" + ghostEndX + "px," + ghostEndY + "px) scale(0.15)";
+        ghost.style.opacity   = "0";
+
+        // Double-RAF so browser registers the reset before the new transition
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            coin.style.transition =
+              "transform 2500ms ease-out, opacity 700ms 1800ms ease-in";
+            coin.style.transform =
+              "translate(" + coinEndX + "px," + coinEndY + "px) scale(0.12) rotate(720deg)";
+            coin.style.opacity = "0";
+          });
+        });
+      }, 420);
 
       // Phase 3: sparkle burst + bank pulse + counter — cleanup after flight
       setTimeout(function () {
@@ -12818,7 +12824,7 @@ function _showUserReplyPopup(text) {
           bbc.textContent = n;
           try { localStorage.setItem("radhaCurrency", String(n)); } catch (e) {}
         }
-      }, 2080);
+      }, 3050);
     }
 
     var origH28 = App.h28.bind(App);

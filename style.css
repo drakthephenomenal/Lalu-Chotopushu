@@ -603,7 +603,7 @@ button.hpb.active{
   text-shadow:0 0 25px rgba(255,217,61,0.85),0 0 50px rgba(255,200,40,0.4);
   animation:nameIn 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards;will-change:transform,opacity;}
 @keyframes nameIn{0%{opacity:0;transform:translateY(22px);}100%{opacity:1;transform:translateY(0);}}
-@keyframes nameOut{0%{opacity:1;transform:translateY(0) scale(1);}55%{opacity:0.75;transform:translateY(-180px) scale(0.65);}85%{opacity:0.3;transform:translateY(-310px) scale(0.35);}100%{opacity:0;transform:translateY(-380px) scale(0.12);}}
+@keyframes nameOut{0%{opacity:1;transform:translateY(0) scale(1);}100%{opacity:0;transform:translateY(-420px) scale(0.1);}}
 .n28meaning{font-size:12px;color:var(--a2);margin-top:6px;letter-spacing:1px;text-align:center;opacity:0.85;}
 .n28cycle{font-size:11px;color:var(--td);margin-top:6px;letter-spacing:2px;text-transform:uppercase;}
 .n28timers{display:flex;gap:14px;justify-content:center;margin-top:8px;flex-wrap:wrap;}
@@ -2886,23 +2886,22 @@ body.gaudiya-mode .tz .cm-wm{
    ─────────────────────────────────────────────────────────── */
 .n28wrap{ padding-bottom:calc(52px + env(safe-area-inset-bottom)); }
 .n28tz{
-  padding-top: clamp(270px, 44vh, 320px);
+  padding-top: clamp(310px, 52vh, 560px);
   padding-bottom: clamp(20px, 3vh, 36px);
-  min-height: clamp(520px, calc(100dvh - 188px), 800px);
+  min-height: clamp(520px, calc(100dvh - 188px), 900px);
 }  /* larger tap zone with bank inside it */
 
 .bb-wrap{
-  position:absolute; top:8px; left:50%; transform:translateX(-50%);
-  width:min(96vw,360px); height:clamp(255px,40vh,300px); z-index:24;
+  position:absolute; top:4px; left:50%; transform:translateX(-50%);
+  width:min(98vw,700px); height:clamp(280px,50vh,540px); z-index:24;
   display:flex; align-items:center; justify-content:center;
   pointer-events:none;
-  /* subtle frame so it's visually anchored inside the tap area */
   background: radial-gradient(circle at center, rgba(255,217,61,0.10) 0%, rgba(109,184,255,0.06) 55%, rgba(0,0,0,0) 75%);
   border-radius: 18px;
 }
 .bb-img{
-  position:absolute; left:50%; top:22px; transform:translateX(-50%);
-  width:min(88vw,320px); height:auto; max-height:240px;
+  position:absolute; left:50%; top:16px; transform:translateX(-50%);
+  width:min(96vw,680px); height:auto; max-height:clamp(260px,48vh,510px);
   object-fit:contain;
   filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55));
   animation: bbFloat 4.5s ease-in-out infinite;
@@ -2924,10 +2923,10 @@ body.gaudiya-mode .tz .cm-wm{
   0%,100%{ transform: translate(-50%, 0); }
   50%   { transform: translate(-50%,-4px); }
 }
-/* Small "door slot" the coin enters through */
+/* Small "door slot" the coin enters through — scales with larger bank image */
 .bb-door{
-  position:absolute; left:50%; top:clamp(175px,28vw,200px);
-  width:48px; height:14px; border-radius:6px;
+  position:absolute; left:50%; top:clamp(190px,30vw,380px);
+  width:56px; height:16px; border-radius:7px;
   background: linear-gradient(180deg,#1a0a00,#3a1a00);
   box-shadow: inset 0 0 4px #000, 0 0 8px rgba(0,0,0,0.6);
   transform: translateX(-50%);
@@ -2965,12 +2964,6 @@ body.gaudiya-mode .tz .cm-wm{
   will-change: transform, opacity;
 }
 .radha-coin::before{ content:"राधा"; font-size:14px; line-height:1; }
-@keyframes coinAppear{
-  0%  { transform:var(--coin-start-tf) scale(0.4); opacity:0; }
-  55% { transform:var(--coin-start-tf) scale(1.18); opacity:1; }
-  80% { transform:var(--coin-start-tf) scale(0.94); opacity:1; }
-  100%{ transform:var(--coin-start-tf) scale(1);    opacity:1; }
-}
 .n28name-ghost{
   filter: drop-shadow(0 0 18px rgba(255,215,0,0.85));
 }

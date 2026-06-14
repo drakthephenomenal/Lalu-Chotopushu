@@ -12712,7 +12712,7 @@ function _showUserReplyPopup(text) {
         "transform:translate(" + nameX + "px," + nameY + "px) scale(1);opacity:1;";
       tz.appendChild(ghost);
 
-      // ── 3D Radha Coin ──
+      // ── Radha Coin (single-img, iOS-safe) ──
       var coinSize   = 72;
       var coinStartX = nameX + srcRect.width / 2 - coinSize / 2;
       var coinStartY = nameY - coinSize - 10;
@@ -12721,45 +12721,37 @@ function _showUserReplyPopup(text) {
       var ghostEndX  = bankCX - srcRect.width / 2;
       var ghostEndY  = bankCY - srcRect.height / 2;
 
-      // Outer wrapper: handles translate + scale (position)
+      // Wrapper: handles position (translate + scale)
       var coinWrap = document.createElement("div");
       coinWrap.className = "radha-coin-wrap";
       coinWrap.style.cssText =
         "transform:translate(" + coinStartX + "px," + coinStartY + "px) scale(0);opacity:0;";
 
-      // Inner: handles 3D spin animation
-      var coinInner = document.createElement("div");
-      coinInner.className = "radha-coin-inner";
+      // Single img: handles spin animation via perspective+rotateY keyframes
+      var coinImg = document.createElement("img");
+      coinImg.className = "radha-coin-img";
+      coinImg.src = "./radha-coin.png";
+      coinImg.draggable = false;
 
-      // Face side: the Radha coin image
-      var coinFace = document.createElement("div");
-      coinFace.className = "radha-coin-face";
-
-      // Back side: gold reverse
-      var coinBack = document.createElement("div");
-      coinBack.className = "radha-coin-back";
-
-      coinInner.appendChild(coinFace);
-      coinInner.appendChild(coinBack);
-      coinWrap.appendChild(coinInner);
+      coinWrap.appendChild(coinImg);
       tz.appendChild(coinWrap);
 
-      // Phase 1: coin pops in with 3D spin pop-in (0.5s)
+      // Phase 1: wrapper pops in (scale 0→1), img spins in
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
           coinWrap.style.transition = "transform 0.42s cubic-bezier(0.34,1.56,0.64,1), opacity 0.18s ease";
           coinWrap.style.transform  = "translate(" + coinStartX + "px," + coinStartY + "px) scale(1)";
           coinWrap.style.opacity    = "1";
-          coinInner.style.animation = "coinPopIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards";
+          coinImg.style.animation   = "coinPopIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards";
         });
       });
 
-      // After pop-in, switch inner to continuous spin
+      // Switch to continuous spin after pop-in
       setTimeout(function () {
-        coinInner.style.animation = "coinSpinFlight 0.55s linear infinite";
+        coinImg.style.animation = "coinSpinFlight 0.6s linear infinite";
       }, 520);
 
-      // Phase 2 (520ms): ghost + coin glide to bank while spinning (2200ms flight)
+      // Phase 2 (540ms): ghost + coin glide to bank
       setTimeout(function () {
         coinWrap.style.transition = "none";
         coinWrap.style.transform  = "translate(" + coinStartX + "px," + coinStartY + "px) scale(1)";
@@ -12770,29 +12762,21 @@ function _showUserReplyPopup(text) {
 
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
-            coinWrap.style.transition = "transform 2200ms cubic-bezier(0.22,0.8,0.44,1), opacity 400ms 1800ms ease-in";
-            coinWrap.style.transform  = "translate(" + coinEndX + "px," + coinEndY + "px) scale(0.55)";
-            coinWrap.style.opacity    = "1";
+            coinWrap.style.transition = "transform 2200ms cubic-bezier(0.22,0.8,0.44,1)";
+            coinWrap.style.transform  = "translate(" + coinEndX + "px," + coinEndY + "px) scale(0.6)";
           });
         });
       }, 540);
 
-      // Phase 3 (2800ms): deposit — coin tilts into the bank with rotateX
+      // Phase 3 (2780ms): deposit — coin spins fast into bank and fades
       setTimeout(function () {
-        coinInner.style.animation = "none";
-        requestAnimationFrame(function () {
-          requestAnimationFrame(function () {
-            coinInner.style.animation    = "coinDeposit 0.65s ease-in forwards";
-            coinWrap.style.transition    = "opacity 0.45s 0.2s ease-in";
-            coinWrap.style.opacity       = "0";
-          });
-        });
+        coinImg.style.animation = "coinDeposit 0.65s ease-in forwards";
       }, 2780);
 
       // Phase 4: sparkle burst + bank pulse + counter — cleanup after deposit
       setTimeout(function () {
         if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
-        if (coinWrap.parentNode) coinWrap.parentNode.removeChild(coinWrap);
+        if (coinWrap && coinWrap.parentNode) coinWrap.parentNode.removeChild(coinWrap);
 
         // ── Sparkle burst at the bank door ──
         var freshDoor = document.querySelector("#v28 .bb-img");

@@ -2943,57 +2943,37 @@ body.gaudiya-mode .tz .cm-wm{
   100%{ transform: translateX(-50%) scale(1); filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55)); }
 }
 
-/* ── 3D Radha Coin ── */
+/* ── Radha Coin (single-element, iOS-safe) ── */
 .radha-coin-wrap{
   position:absolute; left:0; top:0;
   width:72px; height:72px;
-  perspective:700px;
   pointer-events:none; z-index:30;
   will-change:transform, opacity;
 }
-.radha-coin-inner{
+.radha-coin-img{
   width:100%; height:100%;
   border-radius:50%;
-  position:relative;
-  transform-style:preserve-3d;
-}
-.radha-coin-face, .radha-coin-back{
-  position:absolute; inset:0;
-  border-radius:50%;
-  backface-visibility:hidden;
-  -webkit-backface-visibility:hidden;
+  display:block;
   border:2.5px solid #FFE57A;
   box-shadow:
-    0 0 0 3px rgba(255,215,0,0.3),
+    0 0 0 3px rgba(255,215,0,0.28),
     0 0 22px rgba(255,215,0,1),
-    0 0 48px rgba(255,200,40,0.7),
-    inset 0 0 8px rgba(255,255,255,0.5);
+    0 0 48px rgba(255,200,40,0.7);
+  will-change:transform;
 }
-.radha-coin-face{
-  background:url('./radha-coin.png') center/cover no-repeat;
-}
-.radha-coin-back{
-  background: radial-gradient(circle at 38% 32%, #FFF8D0 0%, #FFD93D 42%, #C9961A 100%);
-  transform:rotateY(180deg);
-  display:flex; align-items:center; justify-content:center;
-  font-family:'Hind Siliguri',serif; font-weight:900; color:#5a1a00;
-  font-size:18px; text-shadow:0 1px 0 rgba(255,255,255,0.7);
-}
-.radha-coin-back::before{ content:"राधा"; font-size:16px; line-height:1; }
 @keyframes coinSpinFlight{
-  from{ transform:rotateY(0deg); }
-  to  { transform:rotateY(360deg); }
+  from{ transform:perspective(400px) rotateY(0deg); }
+  to  { transform:perspective(400px) rotateY(360deg); }
 }
 @keyframes coinPopIn{
-  0%  { transform:rotateY(0deg) scale(0); }
-  55% { transform:rotateY(220deg) scale(1.18); }
-  100%{ transform:rotateY(360deg) scale(1); }
+  0%  { transform:perspective(400px) rotateY(0deg) scale(0); }
+  55% { transform:perspective(400px) rotateY(260deg) scale(1.22); }
+  100%{ transform:perspective(400px) rotateY(360deg) scale(1); }
 }
 @keyframes coinDeposit{
-  0%  { transform:rotateY(0deg) rotateX(0deg) scale(1); }
-  35% { transform:rotateY(90deg) rotateX(35deg) scale(0.65); }
-  70% { transform:rotateY(185deg) rotateX(75deg) scale(0.25); }
-  100%{ transform:rotateY(270deg) rotateX(90deg) scale(0.04); }
+  0%  { transform:perspective(400px) rotateY(0deg) scale(1); opacity:1; }
+  40% { transform:perspective(400px) rotateY(200deg) translateY(-14px) scale(0.5); opacity:0.85; }
+  100%{ transform:perspective(400px) rotateY(400deg) translateY(-28px) scale(0.04); opacity:0; }
 }
 .n28name-ghost{
   filter: drop-shadow(0 0 18px rgba(255,215,0,0.85));

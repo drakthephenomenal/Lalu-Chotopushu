@@ -12696,8 +12696,7 @@ function _showUserReplyPopup(text) {
       var doorCenterY = dstRect.top  - tzRect.top  + dstRect.height / 2;
       var nameEndY = Math.max(12, doorCenterY - srcRect.height * 0.58);
 
-      // Clone the exact tapped name and make that visible name travel all the
-      // way to the bank instead of disappearing midway.
+      // Ghost name travels ALL the way into the bank door (not just to midline).
       var ghost = document.createElement("div");
       ghost.className = "n28name-ghost";
       ghost.textContent = nameText || nameEl.textContent || "राधा";
@@ -12712,12 +12711,10 @@ function _showUserReplyPopup(text) {
         "transform:translate(" + nameX + "px," + nameY + "px) scale(1);opacity:1;";
       tz.appendChild(ghost);
 
-      // Coin spawns on top of the name and follows it upward before entering.
+      // Coin spawns just above the name and travels WITH it into the bank door.
       var coinSize = 38;
       var coinStartX = nameX + srcRect.width / 2 - coinSize / 2;
       var coinStartY = nameY - coinSize - 8;
-      var coinEndX   = doorCenterX - coinSize / 2;
-      var coinEndY   = doorCenterY - coinSize / 2;
 
       var coin = document.createElement("div");
       coin.className = "radha-coin";
@@ -12725,31 +12722,82 @@ function _showUserReplyPopup(text) {
       coin.style.opacity = "1";
       tz.appendChild(coin);
 
-      // Phase 1: name and currency travel upward together, almost to the door.
+      // Phase 1 & 2 combined: name ghost AND coin travel together all the way
+      // into the bank door, shrinking and fading as they enter through it.
       requestAnimationFrame(function () {
         var ghostEndX = doorCenterX - srcRect.width / 2;
-        ghost.style.transition = "transform 1500ms cubic-bezier(0.20,0.72,0.26,1), opacity 1500ms ease-in";
-        ghost.style.transform = "translate(" + ghostEndX + "px," + nameEndY + "px) scale(0.38)";
-        ghost.style.opacity = "0.18";
+        var ghostEndY = doorCenterY - srcRect.height / 2;
+        // Ghost travels to door, fades out only in the last 30% of the journey
+        ghost.style.transition =
+          "transform 1700ms cubic-bezier(0.20,0.72,0.26,1), " +
+          "opacity 600ms 1100ms ease-in";
+        ghost.style.transform = "translate(" + ghostEndX + "px," + ghostEndY + "px) scale(0.18)";
+        ghost.style.opacity = "0";
 
-        coin.style.transition = "transform 1500ms cubic-bezier(0.20,0.72,0.26,1), opacity 220ms ease-out";
-        var coinRiseX = doorCenterX - coinSize / 2;
-        var coinRiseY = Math.max(8, nameEndY - coinSize * 0.45);
-        coin.style.transform = "translate(" + coinRiseX + "px," + coinRiseY + "px) scale(0.92) rotate(360deg)";
-        coin.style.opacity = "1";
+        // Coin travels alongside ghost — stays just above it all the way
+        var coinEndX = doorCenterX - coinSize / 2;
+        var coinEndY = doorCenterY - coinSize / 2;
+        coin.style.transition =
+          "transform 1700ms cubic-bezier(0.20,0.72,0.26,1), " +
+          "opacity 600ms 1100ms ease-in";
+        coin.style.transform = "translate(" + coinEndX + "px," + coinEndY + "px) scale(0.15) rotate(720deg)";
+        coin.style.opacity = "0";
       });
 
-      // Phase 2: after the travelling name fades at the bank, currency slowly enters the door.
+      // Phase 3: bank pulses + counter ticks — cleanup after animation completes
+      // At animation end: remove elements, sparkle burst, bank pulse, counter tick
       setTimeout(function () {
         if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
-        coin.style.transition = "transform 1050ms cubic-bezier(0.48,0.02,0.68,0.50), opacity 1050ms ease-in";
-        coin.style.transform = "translate(" + coinEndX + "px," + coinEndY + "px) scale(0.12) rotate(760deg)";
-        coin.style.opacity = "0";
-      }, 1520);
-
-      // Phase 3: bank pulses + counter ticks
-      setTimeout(function () {
         if (coin.parentNode) coin.parentNode.removeChild(coin);
+
+        // ── Sparkle burst at the bank door ──
+        var freshDoor = document.querySelector("#v28 .bb-door");
+        var freshTz   = document.getElementById("tz28");
+        if (freshDoor && freshTz) {
+          var fd = freshDoor.getBoundingClientRect();
+          var ft = freshTz.getBoundingClientRect();
+          var cx = fd.left - ft.left + fd.width  / 2;
+          var cy = fd.top  - ft.top  + fd.height / 2;
+          var colors = [
+            "#FFD93D","#FFF8DC","#FFE066","#6DB8FF","#ffffff",
+            "#FFAA00","#B0E0FF","#FFD700","#E0CFFF","#FFB347"
+          ];
+          var count = 12;
+          for (var i = 0; i < count; i++) {
+            (function(idx){
+              var angle  = (idx / count) * Math.PI * 2 + Math.random() * 0.4;
+              var dist   = 28 + Math.random() * 38;
+              var size   = 5 + Math.random() * 9;
+              var dur    = 520 + Math.random() * 340;
+              var delay  = Math.random() * 80;
+              var color  = colors[idx % colors.length];
+
+              var ex = Math.cos(angle) * dist;
+              var ey = Math.sin(angle) * dist;
+
+              var sp = document.createElement("div");
+              sp.className = "bb-spark";
+              sp.style.cssText =
+                "left:0;top:0;width:" + size + "px;height:" + size + "px;" +
+                "background:" + color + ";" +
+                "box-shadow:0 0 " + (size * 1.8) + "px " + color + ";" +
+                "--tx:" + (cx - size/2) + "px;--ty:" + (cy - size/2) + "px;" +
+                "--ex:" + (cx - size/2 + ex) + "px;--ey:" + (cy - size/2 + ey) + "px;" +
+                "animation:bbSparkFly " + dur + "ms " + delay + "ms cubic-bezier(0.22,0.61,0.36,1) forwards;";
+              freshTz.appendChild(sp);
+              setTimeout(function(){ if(sp.parentNode) sp.parentNode.removeChild(sp); }, dur + delay + 50);
+            })(i);
+          }
+
+          // Also flash the bank image bright gold
+          var bankImg = freshTz.closest && freshTz.closest("#v28")
+                        ? freshTz.closest("#v28").querySelector(".bb-img")
+                        : document.querySelector("#v28 .bb-img");
+          if (bankImg) {
+            bankImg.style.animation = "bbBankFlash 0.65s ease-out, bbFloat 4.5s 0.65s ease-in-out infinite";
+          }
+        }
+
         bank.classList.add("bb-pulse");
         setTimeout(function () { bank.classList.remove("bb-pulse"); }, 600);
         var bbc = document.getElementById("bbCount");
@@ -12758,7 +12806,7 @@ function _showUserReplyPopup(text) {
           bbc.textContent = n;
           try { localStorage.setItem("radhaCurrency", String(n)); } catch (e) {}
         }
-      }, 2600);
+      }, 1750);
     }
 
     var origH28 = App.h28.bind(App);

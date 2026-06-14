@@ -12739,9 +12739,9 @@ function _showUserReplyPopup(text) {
     var startX = src.left + src.width / 2;
     var startY = src.top + src.height / 2;
 
-    // Land at visual centre of the bank — always
+    // Land at the interior hall of the bank (behind the columns, below the facade)
     var endX = tzRect.left + tzRect.width  * 0.5;
-    var endY = tzRect.top  + tzRect.height * 0.42;
+    var endY = tzRect.top  + tzRect.height * 0.58;
 
     // Suppress the u28() nameOut ghost clone so it does not fly upward
     // alongside our coin — the coin IS the visual departure.

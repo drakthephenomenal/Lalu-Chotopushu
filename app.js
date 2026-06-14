@@ -12658,16 +12658,29 @@ function _showUserReplyPopup(text) {
 
 
 /* ───────────────────────────────────────────────────────────
-   RADHA COIN FLIGHT — rebuilt from scratch
-   On every successful 28-Names tap, spawn one ./radha-coin.png
-   coin at the tapped name's position and fly it to the
-   Bhagavadik Bank, then increment the bank's coin counter.
-   Uses fixed positioning (viewport coords) so it can never be
-   clipped or mis-stacked by parent overflow/z-index rules.
+   RADHA COIN FLIGHT — rebuilt from scratch (v2)
+   Listens directly on the 28-Names tap zone (#tz28) for taps,
+   independent of any wrapping around App.h28. After the native
+   tap handler runs and the daily count increases, spawns one
+   ./radha-coin.png coin at the tapped name and flies it to the
+   Bhagavadik Bank image, then bumps the bank's coin counter.
+   Falls back to a 🪙 emoji if the coin image fails to load.
    ─────────────────────────────────────────────────────────── */
 (function () {
   var COIN_SRC = "./radha-coin.png";
   var STORAGE_KEY = "radhaCurrency";
+  var coinImageOk = true;
+
+  // Preflight: check the coin image actually loads
+  (function preloadCoin() {
+    var test = new Image();
+    test.onload = function () { coinImageOk = true; };
+    test.onerror = function () {
+      coinImageOk = false;
+      console.error("[RadhaCoin] " + COIN_SRC + " failed to load — falling back to 🪙 emoji");
+    };
+    test.src = COIN_SRC;
+  })();
 
   function restoreCounter() {
     try {
@@ -12696,6 +12709,14 @@ function _showUserReplyPopup(text) {
     }
   }
 
+  function getTod() {
+    try {
+      return (App.S.h28[App.S.tk] || 0);
+    } catch (_) {
+      return 0;
+    }
+  }
+
   function spawnCoin() {
     var nameEl = document.getElementById("n28name");
     var bankImg = document.querySelector("#v28 .bb-img");
@@ -12714,29 +12735,44 @@ function _showUserReplyPopup(text) {
 
     var coin = document.createElement("div");
     coin.className = "rc-coin";
-    coin.style.left = startX + "px";
-    coin.style.top = startY + "px";
 
-    var img = document.createElement("img");
-    img.src = COIN_SRC;
-    img.alt = "Radha Coin";
-    img.draggable = false;
-    img.onerror = function () {
-      console.error("[RadhaCoin] failed to load " + COIN_SRC);
-    };
-    coin.appendChild(img);
+    if (coinImageOk) {
+      var img = document.createElement("img");
+      img.src = COIN_SRC;
+      img.alt = "Radha Coin";
+      img.draggable = false;
+      img.onerror = function () {
+        coinImageOk = false;
+        coin.textContent = "🪙";
+        coin.classList.add("rc-emoji");
+        if (img.parentNode) img.parentNode.removeChild(img);
+      };
+      coin.appendChild(img);
+    } else {
+      coin.textContent = "🪙";
+      coin.classList.add("rc-emoji");
+    }
+
+    // Set initial position BEFORE appending, so the very first paint
+    // already shows the coin at the start point (no transition yet).
+    coin.style.left = startX + "px";
+    coin.style.top  = startY + "px";
     document.body.appendChild(coin);
 
-    // Frame 1: pop in at start position
-    requestAnimationFrame(function () {
-      coin.classList.add("rc-go");
-      coin.style.transform = "translate(-50%,-50%) scale(1) rotate(0deg)";
+    // Force a layout flush so the browser registers the starting
+    // position before we change anything — required for the
+    // transition on the next change to actually animate.
+    void coin.getBoundingClientRect();
 
-      // Frame 2: fly to the bank
+    requestAnimationFrame(function () {
+      coin.classList.add("rc-go"); // fades/scales in at start point
+
       requestAnimationFrame(function () {
+        // Now move to the bank — left/top + transform are both
+        // in the transition list, so this animates smoothly.
         coin.style.left = endX + "px";
-        coin.style.top = endY + "px";
-        coin.style.transform = "translate(-50%,-50%) scale(0.55) rotate(540deg)";
+        coin.style.top  = endY + "px";
+        coin.classList.add("rc-fly");
       });
     });
 
@@ -12747,16 +12783,35 @@ function _showUserReplyPopup(text) {
       void bankImg.offsetWidth;
       bankImg.classList.add("rc-pulse");
       bumpCounter();
-    }, 850);
+    }, 900);
 
     // Cleanup
     setTimeout(function () {
       if (coin.parentNode) coin.parentNode.removeChild(coin);
-    }, 1300);
+    }, 1400);
+  }
+
+  function onTapCapture() {
+    // Capture phase: fires BEFORE the inline onclick/ontouchstart
+    // handler (App.h28) runs, so this is the true "before" count.
+    onTap._before = getTod();
+  }
+
+  function onTap() {
+    var before = (typeof onTap._before === "number") ? onTap._before : getTod();
+    // Let the native handler (App.h28 via inline onclick) run first,
+    // then check on the next tick whether the tap actually counted.
+    setTimeout(function () {
+      var after = getTod();
+      if (after > before && !App._n28CompletionAnimating) {
+        try { spawnCoin(); } catch (err) { console.error("[RadhaCoin] spawn error:", err); }
+      }
+    }, 0);
   }
 
   function setup() {
-    if (!window.App || typeof App.h28 !== "function") {
+    var tz = document.getElementById("tz28");
+    if (!window.App || !tz) {
       return setTimeout(setup, 120);
     }
     if (App.__radhaCoinWrapped) return;
@@ -12764,17 +12819,10 @@ function _showUserReplyPopup(text) {
 
     restoreCounter();
 
-    var originalH28 = App.h28.bind(App);
-    App.h28 = function (e) {
-      var wasAnimating = this._n28CompletionAnimating;
-      var before = (this.S && this.S.h28 && this.S.tk) ? (this.S.h28[this.S.tk] || 0) : 0;
-      var result = originalH28(e);
-      var after = (this.S && this.S.h28 && this.S.tk) ? (this.S.h28[this.S.tk] || 0) : before;
-      if (!wasAnimating && after > before) {
-        try { spawnCoin(); } catch (err) { console.error("[RadhaCoin] spawn error:", err); }
-      }
-      return result;
-    };
+    tz.addEventListener("touchstart", onTapCapture, { capture: true, passive: true });
+    tz.addEventListener("mousedown", onTapCapture, { capture: true });
+    tz.addEventListener("touchstart", onTap, { passive: true });
+    tz.addEventListener("mousedown", onTap);
   }
 
   if (document.readyState === "loading") {

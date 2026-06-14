@@ -1219,11 +1219,11 @@ button.n28-gold-btn-danger,
 /* === Rectangular mala bead frame around Daily + Lifetime target boxes === */
 .bead-frame-wrap{
   position:relative;
-  padding:3px 6px;
+  padding:9px 11px;
   margin:1px 4px 2px;
   flex-shrink:0;
 }
-.bead-frame-wrap .ps{padding:2px 0;position:relative;z-index:1;}
+.bead-frame-wrap .ps{padding:0;position:relative;z-index:1;}
 .bead-frame{
   position:absolute;
   inset:0;

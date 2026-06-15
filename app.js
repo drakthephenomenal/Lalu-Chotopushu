@@ -6036,6 +6036,20 @@ function u28() {
     } else {
       const newName = get28Name(entry);
       const oldName = nameEl.textContent;
+
+      // Force full container width on nameEl every update — fixes WebKit flex bug
+      // where long names overflow right due to GPU layer width being locked
+      const _tz = nameEl.parentNode;
+      if (_tz) {
+        const _w = _tz.getBoundingClientRect().width;
+        if (_w > 0) {
+          nameEl.style.width = _w + "px";
+          nameEl.style.maxWidth = _w + "px";
+          nameEl.style.left = "0px";
+          nameEl.style.position = "relative";
+        }
+      }
+
       if (oldName && oldName !== newName && !window.__bbTakeover28) {
         // Ghost clone removed — coin pod carries the old name visually.
         // New name appears immediately with a quick pop-in.
@@ -6140,31 +6154,80 @@ function cycleDone28() {
     setTimeout(() => tz28El.classList.remove("rc-cycle-glow"), 3200);
   }
 
-  // ── Cycle completion: coin deposit sound (Web Audio, no file needed) ──
+  // ── Cycle completion: Panchajanya Shankha (conch shell) sound ──
   try {
     const actx = new (window.AudioContext || window.webkitAudioContext)();
-    const play = (freq, type, start, dur, gainVal) => {
-      const o = actx.createOscillator();
+    const t = actx.currentTime;
+
+    // Shankha has a rich harmonic series with a fundamental ~250Hz (Bb3-ish)
+    // and strong 2nd, 3rd, 5th partials giving the hollow conch resonance
+    const harmonics = [
+      { ratio: 1,    gain: 0.55 },
+      { ratio: 2.01, gain: 0.30 },  // slightly detuned partials = conch character
+      { ratio: 3.02, gain: 0.18 },
+      { ratio: 4.05, gain: 0.10 },
+      { ratio: 5.08, gain: 0.07 },
+      { ratio: 6.12, gain: 0.04 },
+    ];
+
+    const masterGain = actx.createGain();
+    // Shankha envelope: instant attack, long sustained blow, slow decay
+    masterGain.gain.setValueAtTime(0, t);
+    masterGain.gain.linearRampToValueAtTime(0.7, t + 0.08);   // quick attack
+    masterGain.gain.setValueAtTime(0.7, t + 0.08);
+    masterGain.gain.linearRampToValueAtTime(0.65, t + 1.2);   // held breath
+    masterGain.gain.exponentialRampToValueAtTime(0.001, t + 3.2); // long decay
+
+    // Slight pitch rise at start (player pressing harder) then settle
+    const fundamental = 233; // Bb3 — traditional deep conch
+
+    harmonics.forEach(({ ratio, gain }) => {
+      const osc = actx.createOscillator();
       const g = actx.createGain();
-      o.connect(g); g.connect(actx.destination);
-      o.type = type; o.frequency.setValueAtTime(freq, actx.currentTime + start);
-      o.frequency.exponentialRampToValueAtTime(freq * 0.5, actx.currentTime + start + dur);
-      g.gain.setValueAtTime(0, actx.currentTime + start);
-      g.gain.linearRampToValueAtTime(gainVal, actx.currentTime + start + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + start + dur);
-      o.start(actx.currentTime + start);
-      o.stop(actx.currentTime + start + dur + 0.05);
-    };
-    // Coin clink: bright metallic tap + resonant ring
-    play(1800, "sine",   0.00, 0.12, 0.55);
-    play(900,  "sine",   0.01, 0.45, 0.35);
-    play(1200, "sine",   0.02, 0.30, 0.20);
-    play(600,  "sine",   0.03, 0.80, 0.18);
-    // Triumphant chord swell
-    play(523,  "sine",   0.15, 1.20, 0.22);
-    play(659,  "sine",   0.18, 1.10, 0.18);
-    play(784,  "sine",   0.21, 1.00, 0.15);
-    play(1046, "sine",   0.24, 0.90, 0.12);
+      osc.type = "sine";
+      // Pitch swells up slightly at start (breath attack)
+      osc.frequency.setValueAtTime(fundamental * ratio * 0.94, t);
+      osc.frequency.linearRampToValueAtTime(fundamental * ratio, t + 0.18);
+      osc.frequency.setValueAtTime(fundamental * ratio, t + 0.18);
+      // Slight vibrato after 0.3s — shankha resonance flutter
+      const lfo = actx.createOscillator();
+      const lfoGain = actx.createGain();
+      lfo.frequency.setValueAtTime(5.5, t);
+      lfoGain.gain.setValueAtTime(0, t);
+      lfoGain.gain.linearRampToValueAtTime(fundamental * ratio * 0.008, t + 0.5);
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      lfo.start(t); lfo.stop(t + 3.5);
+
+      g.gain.setValueAtTime(gain, t);
+      osc.connect(g);
+      g.connect(masterGain);
+      osc.start(t); osc.stop(t + 3.5);
+    });
+
+    // Breath noise layer — gives the "air through shell" texture
+    const bufSize = actx.sampleRate * 3.5;
+    const noiseBuffer = actx.createBuffer(1, bufSize, actx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1);
+    const noise = actx.createBufferSource();
+    noise.buffer = noiseBuffer;
+    const noiseFilter = actx.createBiquadFilter();
+    noiseFilter.type = "bandpass";
+    noiseFilter.frequency.setValueAtTime(fundamental * 2.5, t);
+    noiseFilter.Q.setValueAtTime(0.8, t);
+    const noiseGain = actx.createGain();
+    noiseGain.gain.setValueAtTime(0, t);
+    noiseGain.gain.linearRampToValueAtTime(0.06, t + 0.1);
+    noiseGain.gain.linearRampToValueAtTime(0.03, t + 0.8);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 3.0);
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(masterGain);
+    noise.start(t); noise.stop(t + 3.5);
+
+    masterGain.connect(actx.destination);
+    setTimeout(() => { try { actx.close(); } catch(_){} }, 4000);
   } catch(e) {}
 
   // Show Radha Vallabh / Sri Harivangsa animation
@@ -8881,7 +8944,7 @@ if ("serviceWorker" in navigator) {
       if (e.data && e.data.type === "SW_UPDATED") {
         if (sessionStorage.getItem("sw_reloaded") === e.data.version) return;
         sessionStorage.setItem("sw_reloaded", e.data.version);
-        const pageAge = Date.now() - performance.timing.navigationStart;
+        const pageAge = performance.now(); // ms since page navigation start
         if (pageAge < 6000) {
           // Page is brand-new — SW already served fresh files, no reload needed
           console.log("[SW] SW_UPDATED ignored — page is fresh (<6s old)");

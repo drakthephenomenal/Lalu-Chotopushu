@@ -19,6 +19,7 @@ const LOCAL_ASSETS = [
   './icon-512.png',
   './manifest.json',
   './bhagavadik-bank.png',
+  './radha-coin.png',
   './Panchojanno%20Shankya.mp3',
 ];
 

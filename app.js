@@ -12715,7 +12715,7 @@ function _showUserReplyPopup(text) {
     }
   }
 
-  function spawnCoin(tappedName) {
+  function spawnCoin(tappedName, tapX, tapY) {
     var nameEl = document.getElementById("n28name");
     var tz = document.getElementById("tz28");
     var bankImg = document.getElementById("bbImg");
@@ -12724,7 +12724,6 @@ function _showUserReplyPopup(text) {
       return;
     }
 
-    var src = nameEl.getBoundingClientRect();
     var tzRect = tz.getBoundingClientRect();
 
     // ── Coin and name travel as ONE unit ──
@@ -12732,13 +12731,13 @@ function _showUserReplyPopup(text) {
     var GAP = 8;         // px between coin bottom and name top
     var COIN_HALF = COIN_SIZE / 2; // = 90
 
-    // Pod top-left starts so coin centre is at name centre
-    var startX = src.left + src.width / 2  - COIN_HALF;
-    var startY = src.top  + src.height / 2 - COIN_HALF;
+    // Pod starts at TAP position (centred on finger)
+    var startX = (tapX || (tzRect.left + tzRect.width * 0.5)) - COIN_HALF;
+    var startY = (tapY || (tzRect.top  + tzRect.height * 0.75)) - COIN_HALF;
 
-    // Travel STRAIGHT UP — same X, only Y moves to bank hall level
+    // Travel to CENTRE of bank hall
     var isIPad = window.innerWidth >= 768;
-    var endX = startX; // same horizontal position — straight up
+    var endX = tzRect.left + tzRect.width  * 0.5  - COIN_HALF;
     var endY = tzRect.top  + tzRect.height * (isIPad ? 0.44 : 0.32) - COIN_HALF;
 
     // Suppress any stray nameOut clones
@@ -12777,7 +12776,7 @@ function _showUserReplyPopup(text) {
       "border-radius:50%",
       "flex-shrink:0",
       "background:transparent",
-      "box-shadow:0 0 28px 8px rgba(255,215,0,0.95),0 0 60px 20px rgba(255,165,0,0.55),0 0 100px 36px rgba(255,120,0,0.25)"
+      "box-shadow:none"
     ].join(";");
 
     if (coinImageOk) {
@@ -12785,7 +12784,7 @@ function _showUserReplyPopup(text) {
       img.src = COIN_SRC;
       img.alt = "Radha Coin";
       img.draggable = false;
-      img.style.cssText = "width:100%;height:100%;border-radius:50%;display:block;";
+      img.style.cssText = "width:100%;height:100%;border-radius:50%;display:block;filter:drop-shadow(0 0 18px rgba(255,215,0,0.9)) drop-shadow(0 0 40px rgba(255,170,0,0.5));";
       img.onerror = function () {
         coinImageOk = false;
         coin.innerHTML = "";
@@ -12860,21 +12859,27 @@ function _showUserReplyPopup(text) {
     }, 1400);
   }
 
-  function onTapCapture() {
-    // Capture phase: fires BEFORE App.h28 runs — snap current displayed name
+  function onTapCapture(e) {
+    // Capture phase: fires BEFORE App.h28 runs — snap current displayed name + tap position
     onTap._before = getTod();
     var nameEl = document.getElementById("n28name");
     onTap._capturedName = nameEl ? nameEl.textContent : "";
+    // Get tap coordinates (touch or mouse)
+    var touch = e && e.touches && e.touches[0];
+    onTap._tapX = touch ? touch.clientX : (e ? e.clientX : null);
+    onTap._tapY = touch ? touch.clientY : (e ? e.clientY : null);
   }
 
   function onTap() {
     var before = (typeof onTap._before === "number") ? onTap._before : getTod();
     var capturedName = onTap._capturedName || "";
+    var tapX = onTap._tapX;
+    var tapY = onTap._tapY;
     // Let the native handler (App.h28) run first, then check on next tick
     setTimeout(function () {
       var after = getTod();
       if (after > before && !App._n28CompletionAnimating) {
-        try { spawnCoin(capturedName); } catch (err) { console.error("[RadhaCoin] spawn error:", err); }
+        try { spawnCoin(capturedName, tapX, tapY); } catch (err) { console.error("[RadhaCoin] spawn error:", err); }
       }
     }, 0);
   }

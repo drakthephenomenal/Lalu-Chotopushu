@@ -12807,14 +12807,18 @@ function _showUserReplyPopup(text) {
     // ── Name label inside pod, just below the coin ──
     var nameStyle = window.getComputedStyle(nameEl);
     var ghost = document.createElement("div");
+    var screenW = window.innerWidth;
     ghost.style.cssText = [
       "margin-top:" + GAP + "px",
       "font-family:" + nameStyle.fontFamily,
       "font-size:" + nameStyle.fontSize,
       "font-weight:" + nameStyle.fontWeight,
       "color:" + nameStyle.color,
-      "white-space:nowrap",
+      "white-space:normal",
+      "word-break:break-word",
       "text-align:center",
+      "width:" + Math.min(screenW - 32, 420) + "px",
+      "max-width:" + Math.min(screenW - 32, 420) + "px",
       "text-shadow:0 0 25px rgba(255,217,61,0.85),0 0 50px rgba(255,200,40,0.4)"
     ].join(";");
     ghost.textContent = tappedName || nameEl.textContent;

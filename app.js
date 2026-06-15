@@ -11753,7 +11753,7 @@ function renderLeaderboard(docs, period) {
     if (d.timeScore > 0) totalStr += ' ⏱ ' + _histFmtSec(d.timeScore);
     if (d.streak > 0) totalStr += ' 🔥' + d.streak + 'd';
     const breakdown = bdParts.length > 0 ? bdParts.join(' · ') : '';
-    const meta = (breakdown ? breakdown + '<br>' : '') + totalStr;
+    const meta = (breakdown ? breakdown + '<br>' : '') + 'Total: ' + totalStr;
     return `<div class="${rowClass}">
       <div class="lb-badge ${badgeClass}">${badgeContent}</div>
       <div class="lb-info">

@@ -6037,33 +6037,8 @@ function u28() {
       const newName = get28Name(entry);
       const oldName = nameEl.textContent;
       if (oldName && oldName !== newName && !window.__bbTakeover28) {
-        // Clone the current name and let the clone slowly drift out;
-        // the real element flips to the new name IMMEDIATELY so it appears at once.
-        // Multiple clones can queue and animate out in parallel.
-        try {
-          const parent = nameEl.parentNode;
-          if (parent) {
-            const ghost = nameEl.cloneNode(true);
-            ghost.removeAttribute("id");
-            // Position the ghost in the same spot as the live name
-            const cs = window.getComputedStyle(nameEl);
-            ghost.style.position = "absolute";
-            ghost.style.left = nameEl.offsetLeft + "px";
-            ghost.style.top = nameEl.offsetTop + "px";
-            ghost.style.width = nameEl.offsetWidth + "px";
-            ghost.style.height = nameEl.offsetHeight + "px";
-            ghost.style.margin = "0";
-            ghost.style.pointerEvents = "none";
-            ghost.style.zIndex = "5";
-            ghost.style.animation = "nameOut 2.2s cubic-bezier(0.22,0.61,0.36,1) forwards";
-            // Ensure parent can host absolutely positioned child
-            const pp = window.getComputedStyle(parent).position;
-            if (pp === "static") parent.style.position = "relative";
-            parent.appendChild(ghost);
-            setTimeout(() => { try { ghost.remove(); } catch (_) {} }, 2400);
-          }
-        } catch (_) {}
-        // New name appears immediately with a quick pop-in
+        // Ghost clone removed — coin pod carries the old name visually.
+        // New name appears immediately with a quick pop-in.
         nameEl.style.animation = "none";
         nameEl.offsetHeight;
         nameEl.textContent = newName;
@@ -12812,7 +12787,8 @@ function _showUserReplyPopup(text) {
       "height:" + COIN_SIZE + "px",
       "border-radius:50%",
       "flex-shrink:0",
-      "box-shadow:0 0 20px rgba(255,215,0,0.6),0 0 44px rgba(255,180,0,0.3)"
+      "background:transparent",
+      "box-shadow:none"
     ].join(";");
 
     if (coinImageOk) {

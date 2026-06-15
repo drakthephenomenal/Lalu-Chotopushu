@@ -3252,7 +3252,7 @@ body.gaudiya-mode .tz .cm-wm{
 @media (min-width: 768px) {
   /* Counter sits slightly lower on iPad because the tap zone is taller */
   .bb-float-counter {
-    top: 15% !important;
+    top: 22% !important;
   }
 }
 

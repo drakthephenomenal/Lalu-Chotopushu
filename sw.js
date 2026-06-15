@@ -3,7 +3,7 @@
 // Push notifications & FCM removed.
 
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v143';
+const CACHE = 'radha-jap-v144';
 
 const LOCAL_ASSETS = [
   './',
@@ -153,4 +153,3 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
-

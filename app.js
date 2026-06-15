@@ -12905,6 +12905,7 @@ function _showUserReplyPopup(text) {
   function onTapCapture(e) {
     // Capture phase: fires BEFORE App.h28 runs — snap current displayed name + tap position
     onTap._before = getTod();
+    onTap._wasAnimating = !!App._n28CompletionAnimating; // snapshot BEFORE cycleDone28 can fire
     var nameEl = document.getElementById("n28name");
     onTap._capturedName = nameEl ? nameEl.textContent : "";
     // Get tap coordinates (touch or mouse)
@@ -12915,13 +12916,15 @@ function _showUserReplyPopup(text) {
 
   function onTap() {
     var before = (typeof onTap._before === "number") ? onTap._before : getTod();
+    var wasAnimating = !!onTap._wasAnimating; // pre-captured in onTapCapture, before cycleDone28
     var capturedName = onTap._capturedName || "";
     var tapX = onTap._tapX;
     var tapY = onTap._tapY;
     // Let the native handler (App.h28) run first, then check on next tick
     setTimeout(function () {
       var after = getTod();
-      if (after > before && !App._n28CompletionAnimating) {
+      // Use wasAnimating (state BEFORE this tap) not current — fixes name 28 coin not banking
+      if (after > before && !wasAnimating) {
         try { spawnCoin(capturedName, tapX, tapY); } catch (err) { console.error("[RadhaCoin] spawn error:", err); }
       }
     }, 0);

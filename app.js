@@ -11626,6 +11626,11 @@ function renderLeaderboard(docs, period) {
       const shk = Object.values(d.historyHK || {}).reduce((a,b)=>a+b,0);
       const s28 = Object.values(d.history28 || {}).reduce((a,b)=>a+b,0);
       d._breakdown = { r: sr, rv: srv, hk: shk, n28: s28 };
+      const tr2 = Object.values(d.timerHistory || {}).reduce((a,b)=>a+b,0);
+      const trv2 = Object.values(d.timerHistoryRV || {}).reduce((a,b)=>a+b,0);
+      const thk2 = Object.values(d.timerHistoryHK || {}).reduce((a,b)=>a+b,0);
+      const t282 = Object.values(d.timer28History || {}).reduce((a,b)=>a+b,0);
+      d._timeBreakdown = { r: tr2, rv: trv2, hk: thk2, n28: t282 };
     } else {
       // Sum history for this period
       const hist   = d.history || {};
@@ -11651,6 +11656,7 @@ function renderLeaderboard(docs, period) {
       score += sr + srv + shk + s28;
       timeScore += tr + trv + thk + t28;
       d._breakdown = { r: sr, rv: srv, hk: shk, n28: s28 };
+      d._timeBreakdown = { r: tr, rv: trv, hk: thk, n28: t28 };
     }
     return { ...d, score, timeScore };
   });
@@ -11706,18 +11712,48 @@ function renderLeaderboard(docs, period) {
     const onlineDot = isOnline ? '<span style="display:inline-block;width:8px;height:8px;background:#4ade80;border-radius:50%;margin-left:6px;box-shadow:0 0 6px rgba(74,222,128,0.6)" title="Online"></span>' : '';
     
     const name = (d.displayName || 'Anonymous Devotee').replace(/</g,'&lt;').replace(/>/g,'&gt;') + onlineDot;
-    const malas = Math.floor(d.score / (App.S.ms || 108));
+    const ms = App.S.ms || 108;
     
     let b = d._breakdown || { r:0, rv:0, hk:0, n28:0 };
-    let bdStr = [];
-    if (b.r > 0) bdStr.push('R: ' + _lbFmtJap(b.r));
-    if (b.rv > 0) bdStr.push('RV: ' + _lbFmtJap(b.rv));
-    if (b.n28 > 0) bdStr.push('28N: ' + _lbFmtJap(b.n28));
-    if (b.hk > 0) bdStr.push('HK: ' + _lbFmtJap(b.hk));
-    const breakdown = bdStr.length > 0 ? ' (' + bdStr.join(' | ') + ')' : '';
+    let tb = d._timeBreakdown || { r:0, rv:0, hk:0, n28:0 };
     
-    const timeDisplay = d.timeScore > 0 ? ' · ⏱ ' + _histFmtSec(d.timeScore) : '';
-    const meta = _lbFmtJap(d.score) + ' jap' + breakdown + timeDisplay + ' · ' + malas.toLocaleString('en-IN') + ' malas' + (d.streak > 0 ? ' · 🔥' + d.streak + 'd' : '');
+    // Build per-type breakdown: R and RV show malas (count/108), 28N shows cycles (count/28), HK shows malas
+    let bdParts = [];
+    if (b.r > 0) {
+      const rM = Math.floor(b.r / ms);
+      const rStr = _lbFmtJap(b.r) + (rM > 0 ? ' (' + rM + 'M)' : '');
+      bdParts.push('R: ' + rStr + (tb.r > 0 ? ' ⏱ ' + _histFmtSec(tb.r) : ''));
+    }
+    if (b.rv > 0) {
+      const rvM = Math.floor(b.rv / ms);
+      const rvStr = _lbFmtJap(b.rv) + (rvM > 0 ? ' (' + rvM + 'M)' : '');
+      bdParts.push('RV: ' + rvStr + (tb.rv > 0 ? ' ⏱ ' + _histFmtSec(tb.rv) : ''));
+    }
+    if (b.n28 > 0) {
+      const cyc28 = Math.floor(b.n28 / 28);
+      const cyc28Str = (cyc28 > 0 ? cyc28 + 'C ' : '') + '(' + _lbFmtJap(b.n28) + ')';
+      bdParts.push('28N: ' + cyc28Str + (tb.n28 > 0 ? ' ⏱ ' + _histFmtSec(tb.n28) : ''));
+    }
+    if (b.hk > 0) {
+      const hkM = Math.floor(b.hk / ms);
+      const hkStr = _lbFmtJap(b.hk) + (hkM > 0 ? ' (' + hkM + 'M)' : '');
+      bdParts.push('HK: ' + hkStr + (tb.hk > 0 ? ' ⏱ ' + _histFmtSec(tb.hk) : ''));
+    }
+    // Total: only count R+RV+HK malas (not 28N), 28N shown as cycles separately
+    const japOnly = (b.r || 0) + (b.rv || 0) + (b.hk || 0);
+    const totalMalas = Math.floor(japOnly / ms);
+    const total28Cyc = Math.floor((b.n28 || 0) / 28);
+    let totalStr = _lbFmtJap(d.score) + ' jap';
+    if (totalMalas > 0 || total28Cyc > 0) {
+      let tParts = [];
+      if (totalMalas > 0) tParts.push(totalMalas + 'M');
+      if (total28Cyc > 0) tParts.push(total28Cyc + 'C');
+      totalStr += ' (' + tParts.join(', ') + ')';
+    }
+    if (d.timeScore > 0) totalStr += ' ⏱ ' + _histFmtSec(d.timeScore);
+    if (d.streak > 0) totalStr += ' 🔥' + d.streak + 'd';
+    const breakdown = bdParts.length > 0 ? bdParts.join(' · ') : '';
+    const meta = (breakdown ? breakdown + '<br>' : '') + totalStr;
     return `<div class="${rowClass}">
       <div class="lb-badge ${badgeClass}">${badgeContent}</div>
       <div class="lb-info">

@@ -12727,8 +12727,12 @@ function _showUserReplyPopup(text) {
     var src = nameEl.getBoundingClientRect();
     var tzRect = tz.getBoundingClientRect();
 
-    // Pod top-left starts so coin centre is at name centre
+    // ── Coin and name travel as ONE unit ──
+    var COIN_SIZE = 140; // px — must be declared BEFORE COIN_HALF
+    var GAP = 6;         // px between coin bottom and name top
     var COIN_HALF = COIN_SIZE / 2; // = 70
+
+    // Pod top-left starts so coin centre is at name centre
     var startX = src.left + src.width / 2  - COIN_HALF;
     var startY = src.top  + src.height / 2 - COIN_HALF;
 
@@ -12737,17 +12741,11 @@ function _showUserReplyPopup(text) {
     var endX = tzRect.left + tzRect.width  * 0.5  - COIN_HALF;
     var endY = tzRect.top  + tzRect.height * (isIPad ? 0.44 : 0.32) - COIN_HALF;
 
-    // Suppress the u28() nameOut ghost clone so it does not fly upward
-    // alongside our coin — the coin IS the visual departure.
+    // Suppress any stray nameOut clones
     try {
       var clones = tz.querySelectorAll(".n28name:not(#n28name)");
       clones.forEach(function(c) { c.style.display = "none"; });
     } catch(_) {}
-
-    // ── Coin and name travel as ONE unit ──
-    // We wrap them in a single container so they move together with one transition.
-    var COIN_SIZE = 140; // px (matches CSS width/height)
-    var GAP = 6;         // px between coin bottom and name top
 
     // Container: positioned at coin centre, no transform offset (children handle their own offset)
     var pod = document.createElement("div");

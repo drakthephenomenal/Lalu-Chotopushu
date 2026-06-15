@@ -3,7 +3,7 @@
 // Push notifications & FCM removed.
 
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v137';
+const CACHE = 'radha-jap-v138';
 
 const LOCAL_ASSETS = [
   './',
@@ -79,10 +79,12 @@ async function storeResponse(cacheKey, response) {
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
+  // Only block install on LOCAL assets — external (Firebase/fonts/CDN) cached in background
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     await Promise.allSettled(LOCAL_ASSETS.map((asset) => cacheLocalAsset(cache, asset)));
-    await Promise.allSettled(EXTERNAL_ASSETS.map((asset) => cacheExternalAsset(cache, asset)));
+    // External assets fetched in background — do not block install
+    Promise.allSettled(EXTERNAL_ASSETS.map((asset) => cacheExternalAsset(cache, asset)));
   })());
 });
 

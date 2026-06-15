@@ -6154,81 +6154,8 @@ function cycleDone28() {
     setTimeout(() => tz28El.classList.remove("rc-cycle-glow"), 3200);
   }
 
-  // ── Cycle completion: Panchajanya Shankha (conch shell) sound ──
-  try {
-    const actx = new (window.AudioContext || window.webkitAudioContext)();
-    const t = actx.currentTime;
-
-    // Shankha has a rich harmonic series with a fundamental ~250Hz (Bb3-ish)
-    // and strong 2nd, 3rd, 5th partials giving the hollow conch resonance
-    const harmonics = [
-      { ratio: 1,    gain: 0.55 },
-      { ratio: 2.01, gain: 0.30 },  // slightly detuned partials = conch character
-      { ratio: 3.02, gain: 0.18 },
-      { ratio: 4.05, gain: 0.10 },
-      { ratio: 5.08, gain: 0.07 },
-      { ratio: 6.12, gain: 0.04 },
-    ];
-
-    const masterGain = actx.createGain();
-    // Shankha envelope: instant attack, long sustained blow, slow decay
-    masterGain.gain.setValueAtTime(0, t);
-    masterGain.gain.linearRampToValueAtTime(0.7, t + 0.08);   // quick attack
-    masterGain.gain.setValueAtTime(0.7, t + 0.08);
-    masterGain.gain.linearRampToValueAtTime(0.65, t + 1.2);   // held breath
-    masterGain.gain.exponentialRampToValueAtTime(0.001, t + 3.2); // long decay
-
-    // Slight pitch rise at start (player pressing harder) then settle
-    const fundamental = 233; // Bb3 — traditional deep conch
-
-    harmonics.forEach(({ ratio, gain }) => {
-      const osc = actx.createOscillator();
-      const g = actx.createGain();
-      osc.type = "sine";
-      // Pitch swells up slightly at start (breath attack)
-      osc.frequency.setValueAtTime(fundamental * ratio * 0.94, t);
-      osc.frequency.linearRampToValueAtTime(fundamental * ratio, t + 0.18);
-      osc.frequency.setValueAtTime(fundamental * ratio, t + 0.18);
-      // Slight vibrato after 0.3s — shankha resonance flutter
-      const lfo = actx.createOscillator();
-      const lfoGain = actx.createGain();
-      lfo.frequency.setValueAtTime(5.5, t);
-      lfoGain.gain.setValueAtTime(0, t);
-      lfoGain.gain.linearRampToValueAtTime(fundamental * ratio * 0.008, t + 0.5);
-      lfo.connect(lfoGain);
-      lfoGain.connect(osc.frequency);
-      lfo.start(t); lfo.stop(t + 3.5);
-
-      g.gain.setValueAtTime(gain, t);
-      osc.connect(g);
-      g.connect(masterGain);
-      osc.start(t); osc.stop(t + 3.5);
-    });
-
-    // Breath noise layer — gives the "air through shell" texture
-    const bufSize = actx.sampleRate * 3.5;
-    const noiseBuffer = actx.createBuffer(1, bufSize, actx.sampleRate);
-    const data = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1);
-    const noise = actx.createBufferSource();
-    noise.buffer = noiseBuffer;
-    const noiseFilter = actx.createBiquadFilter();
-    noiseFilter.type = "bandpass";
-    noiseFilter.frequency.setValueAtTime(fundamental * 2.5, t);
-    noiseFilter.Q.setValueAtTime(0.8, t);
-    const noiseGain = actx.createGain();
-    noiseGain.gain.setValueAtTime(0, t);
-    noiseGain.gain.linearRampToValueAtTime(0.06, t + 0.1);
-    noiseGain.gain.linearRampToValueAtTime(0.03, t + 0.8);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 3.0);
-    noise.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    noiseGain.connect(masterGain);
-    noise.start(t); noise.stop(t + 3.5);
-
-    masterGain.connect(actx.destination);
-    setTimeout(() => { try { actx.close(); } catch(_){} }, 4000);
-  } catch(e) {}
+  // ── Cycle completion: Panchajanya Shankha MP3 ──
+  try { playShankya(); } catch(e) {}
 
   // Show Radha Vallabh / Sri Harivangsa animation
   const mf28 = document.getElementById("mf28");
@@ -12800,14 +12727,15 @@ function _showUserReplyPopup(text) {
     var src = nameEl.getBoundingClientRect();
     var tzRect = tz.getBoundingClientRect();
 
-    // Coin starts at center of the name element
-    var startX = src.left + src.width / 2;
-    var startY = src.top + src.height / 2;
+    // Pod top-left starts so coin centre is at name centre
+    var COIN_HALF = COIN_SIZE / 2; // = 70
+    var startX = src.left + src.width / 2  - COIN_HALF;
+    var startY = src.top  + src.height / 2 - COIN_HALF;
 
-    // Land at the interior hall of the bank — device-specific depth
-    var endX = tzRect.left + tzRect.width  * 0.5;
+    // Pod top-left ends so coin centre is at bank hall centre
     var isIPad = window.innerWidth >= 768;
-    var endY = tzRect.top  + tzRect.height * (isIPad ? 0.44 : 0.32);
+    var endX = tzRect.left + tzRect.width  * 0.5  - COIN_HALF;
+    var endY = tzRect.top  + tzRect.height * (isIPad ? 0.44 : 0.32) - COIN_HALF;
 
     // Suppress the u28() nameOut ghost clone so it does not fly upward
     // alongside our coin — the coin IS the visual departure.
@@ -12895,10 +12823,8 @@ function _showUserReplyPopup(text) {
     ghost.textContent = tappedName || nameEl.textContent;
     pod.appendChild(ghost);
 
-    // Pod centre = coin centre (top of pod aligns with coin top, offset by half coin)
-    // We want the pod positioned so the coin centre is at startX, startY
-    pod.style.marginLeft = (-COIN_SIZE / 2) + "px";
-    pod.style.marginTop  = (-COIN_SIZE / 2) + "px";
+    // Bake the -COIN_SIZE/2 offset into left/top (margins ignored on position:fixed)
+    // This makes pod.left = coin-centre-x and pod.top = coin-centre-y
 
     document.body.appendChild(pod);
     void pod.getBoundingClientRect();

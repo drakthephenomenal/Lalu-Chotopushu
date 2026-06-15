@@ -3,7 +3,7 @@
 // Push notifications & FCM removed.
 
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v136';
+const CACHE = 'radha-jap-v137';
 
 const LOCAL_ASSETS = [
   './',
@@ -19,6 +19,7 @@ const LOCAL_ASSETS = [
   './icon-512.png',
   './manifest.json',
   './bhagavadik-bank.png',
+  './Panchojanno%20Shankya.mp3',
 ];
 
 const EXTERNAL_ASSETS = [
@@ -88,10 +89,15 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
+    const oldKeys = keys.filter((key) => key !== CACHE);
+    const isUpdate = oldKeys.length > 0; // false on very first install, true on update
+    await Promise.all(oldKeys.map((key) => caches.delete(key)));
     await self.clients.claim();
-    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED', version: CACHE }));
+    // Only notify existing clients on UPDATE (not fresh install) to avoid double-load
+    if (isUpdate) {
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED', version: CACHE }));
+    }
   })());
 });
 

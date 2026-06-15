@@ -3,7 +3,7 @@
 // Push notifications & FCM removed.
 
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v142';
+const CACHE = 'radha-jap-v143';
 
 const LOCAL_ASSETS = [
   './',

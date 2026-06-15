@@ -12731,14 +12731,17 @@ function _showUserReplyPopup(text) {
     var GAP = 8;         // px between coin bottom and name top
     var COIN_HALF = COIN_SIZE / 2; // = 90
 
-    // Pod starts at TAP position (centred on finger)
-    var startX = (tapX || (tzRect.left + tzRect.width * 0.5)) - COIN_HALF;
-    var startY = (tapY || (tzRect.top  + tzRect.height * 0.75)) - COIN_HALF;
-
-    // Travel to CENTRE of bank hall
+    // Use transform:translateX(-50%) so pod always centres regardless of its width
+    var tapCX  = tapX || (tzRect.left + tzRect.width * 0.5);  // tap centre X
+    var tapCY  = tapY || (tzRect.top  + tzRect.height * 0.75); // tap centre Y
     var isIPad = window.innerWidth >= 768;
-    var endX = tzRect.left + tzRect.width  * 0.5  - COIN_HALF;
-    var endY = tzRect.top  + tzRect.height * (isIPad ? 0.44 : 0.32) - COIN_HALF;
+    var bankCX = tzRect.left + tzRect.width  * 0.5;
+    var bankCY = tzRect.top  + tzRect.height * (isIPad ? 0.44 : 0.32);
+    // Pod left is always set to the target centre X; translateX(-50%) centres it
+    var startX = tapCX;
+    var startY = tapCY - COIN_HALF;   // top of coin at tap point
+    var endX   = bankCX;
+    var endY   = bankCY - COIN_HALF;
 
     // Suppress any stray nameOut clones
     try {
@@ -12758,7 +12761,7 @@ function _showUserReplyPopup(text) {
       "flex-direction:column",
       "align-items:center",
       "opacity:0",
-      "transform:scale(0.3)",
+      "transform:translateX(-50%) scale(0.3)",
       "will-change:left,top,transform,opacity",
       "transition:" + [
         "left 0.85s cubic-bezier(0.33,0.0,0.2,1)",
@@ -12832,12 +12835,12 @@ function _showUserReplyPopup(text) {
 
     requestAnimationFrame(function () {
       pod.style.opacity = "1";
-      pod.style.transform = "scale(1)";
+      pod.style.transform = "translateX(-50%) scale(1)";
 
       requestAnimationFrame(function () {
         pod.style.left = endX + "px";
         pod.style.top  = endY + "px";
-        pod.style.transform = "scale(0.6)";
+        pod.style.transform = "translateX(-50%) scale(0.6)";
       });
     });
 
@@ -12849,7 +12852,7 @@ function _showUserReplyPopup(text) {
         "transform 0.32s cubic-bezier(0.4,0,0.6,1)",
         "opacity 0.32s ease 0.05s"
       ].join(",");
-      pod.style.transform = "scale(0.05)";
+      pod.style.transform = "translateX(-50%) scale(0.05)";
       pod.style.opacity   = "0";
       bankImg.classList.remove("rc-pulse");
       void bankImg.offsetWidth;

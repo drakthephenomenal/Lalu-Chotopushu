@@ -12728,17 +12728,17 @@ function _showUserReplyPopup(text) {
     var tzRect = tz.getBoundingClientRect();
 
     // ── Coin and name travel as ONE unit ──
-    var COIN_SIZE = 140; // px — must be declared BEFORE COIN_HALF
-    var GAP = 6;         // px between coin bottom and name top
-    var COIN_HALF = COIN_SIZE / 2; // = 70
+    var COIN_SIZE = 180; // px — must be declared BEFORE COIN_HALF
+    var GAP = 8;         // px between coin bottom and name top
+    var COIN_HALF = COIN_SIZE / 2; // = 90
 
     // Pod top-left starts so coin centre is at name centre
     var startX = src.left + src.width / 2  - COIN_HALF;
     var startY = src.top  + src.height / 2 - COIN_HALF;
 
-    // Pod top-left ends so coin centre is at bank hall centre
+    // Travel STRAIGHT UP — same X, only Y moves to bank hall level
     var isIPad = window.innerWidth >= 768;
-    var endX = tzRect.left + tzRect.width  * 0.5  - COIN_HALF;
+    var endX = startX; // same horizontal position — straight up
     var endY = tzRect.top  + tzRect.height * (isIPad ? 0.44 : 0.32) - COIN_HALF;
 
     // Suppress any stray nameOut clones
@@ -12777,7 +12777,7 @@ function _showUserReplyPopup(text) {
       "border-radius:50%",
       "flex-shrink:0",
       "background:transparent",
-      "box-shadow:none"
+      "box-shadow:0 0 28px 8px rgba(255,215,0,0.95),0 0 60px 20px rgba(255,165,0,0.55),0 0 100px 36px rgba(255,120,0,0.25)"
     ].join(";");
 
     if (coinImageOk) {

@@ -598,12 +598,12 @@ button.hpb.active{
 .sk-panel-inner{padding:10px 14px 14px;}
 .n28tz{flex:1;background:radial-gradient(ellipse at center,rgba(34,85,204,0.22) 0%,rgba(6,13,31,0.6) 100%);
   border:1px solid rgba(74,144,226,0.2);border-radius:22px;
-  display:flex;align-items:center;justify-content:flex-end;flex-direction:column;
+  display:flex;align-items:stretch;justify-content:flex-end;flex-direction:column;
   padding-bottom:70px;
   cursor:pointer;user-select:none;-webkit-user-select:none;position:relative;overflow:hidden;min-height:320px;
   touch-action:manipulation;-webkit-touch-callout:none;}
-.n28name{font-family:'Hind Siliguri','Tiro Devanagari Hindi',serif;font-size:clamp(18px,5.5vw,52px);color:#FFD93D;
-  font-weight:700;line-height:1.3;text-align:center;padding:0 8px;
+.n28name{font-family:'Hind Siliguri','Tiro Devanagari Hindi',serif;font-size:clamp(28px,8vw,58px);color:#FFD93D;
+  font-weight:700;line-height:1.3;text-align:center;padding:0 12px;
   width:100%;max-width:100%;box-sizing:border-box;
   word-break:break-word;overflow-wrap:break-word;white-space:normal;
   text-shadow:0 0 25px rgba(255,217,61,0.85),0 0 50px rgba(255,200,40,0.4);
@@ -3026,8 +3026,8 @@ body.gaudiya-mode .tz .cm-wm{
   will-change:left, top, transform, opacity;
   border:none;
   box-shadow:
-    0 0 18px rgba(255,215,0,0.9),
-    0 0 40px rgba(255,180,0,0.5);
+    0 0 24px rgba(255,215,0,0.7),
+    0 0 48px rgba(255,180,0,0.35);
   background:transparent;
   opacity:0;
   transform:scale(0.3);
@@ -3252,7 +3252,7 @@ body.gaudiya-mode .tz .cm-wm{
 @media (min-width: 768px) {
   /* Counter sits slightly lower on iPad because the tap zone is taller */
   .bb-float-counter {
-    top: 13% !important;
+    top: 15% !important;
   }
 }
 

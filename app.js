@@ -6165,6 +6165,33 @@ function cycleDone28() {
     setTimeout(() => tz28El.classList.remove("rc-cycle-glow"), 3200);
   }
 
+  // ── Cycle completion: coin deposit sound (Web Audio, no file needed) ──
+  try {
+    const actx = new (window.AudioContext || window.webkitAudioContext)();
+    const play = (freq, type, start, dur, gainVal) => {
+      const o = actx.createOscillator();
+      const g = actx.createGain();
+      o.connect(g); g.connect(actx.destination);
+      o.type = type; o.frequency.setValueAtTime(freq, actx.currentTime + start);
+      o.frequency.exponentialRampToValueAtTime(freq * 0.5, actx.currentTime + start + dur);
+      g.gain.setValueAtTime(0, actx.currentTime + start);
+      g.gain.linearRampToValueAtTime(gainVal, actx.currentTime + start + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + start + dur);
+      o.start(actx.currentTime + start);
+      o.stop(actx.currentTime + start + dur + 0.05);
+    };
+    // Coin clink: bright metallic tap + resonant ring
+    play(1800, "sine",   0.00, 0.12, 0.55);
+    play(900,  "sine",   0.01, 0.45, 0.35);
+    play(1200, "sine",   0.02, 0.30, 0.20);
+    play(600,  "sine",   0.03, 0.80, 0.18);
+    // Triumphant chord swell
+    play(523,  "sine",   0.15, 1.20, 0.22);
+    play(659,  "sine",   0.18, 1.10, 0.18);
+    play(784,  "sine",   0.21, 1.00, 0.15);
+    play(1046, "sine",   0.24, 0.90, 0.12);
+  } catch(e) {}
+
   // Show Radha Vallabh / Sri Harivangsa animation
   const mf28 = document.getElementById("mf28");
   if (mf28) mf28.classList.add("show");
@@ -12742,7 +12769,7 @@ function _showUserReplyPopup(text) {
     // Land at the interior hall of the bank — device-specific depth
     var endX = tzRect.left + tzRect.width  * 0.5;
     var isIPad = window.innerWidth >= 768;
-    var endY = tzRect.top  + tzRect.height * (isIPad ? 0.38 : 0.32);
+    var endY = tzRect.top  + tzRect.height * (isIPad ? 0.44 : 0.32);
 
     // Suppress the u28() nameOut ghost clone so it does not fly upward
     // alongside our coin — the coin IS the visual departure.
@@ -12784,9 +12811,8 @@ function _showUserReplyPopup(text) {
       "width:" + COIN_SIZE + "px",
       "height:" + COIN_SIZE + "px",
       "border-radius:50%",
-      "overflow:hidden",
       "flex-shrink:0",
-      "box-shadow:0 0 18px rgba(255,215,0,0.9),0 0 40px rgba(255,180,0,0.5)"
+      "box-shadow:0 0 20px rgba(255,215,0,0.6),0 0 44px rgba(255,180,0,0.3)"
     ].join(";");
 
     if (coinImageOk) {

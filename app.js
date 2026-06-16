@@ -2106,6 +2106,7 @@ function tgs(k) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const lat = pos.coords.latitude, lng = pos.coords.longitude;
+          window._appLat = lat; window._appLng = lng; // share with Vedic Panchanga engine
           if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; App.save(); }
           // Persist GPS-enabled state and coords to localStorage so the toggle
           // stays ON across refreshes for both guest and signed-in users,
@@ -8424,6 +8425,7 @@ function initSunTimes() {
   const savedLat = App.S && App.S.lastLat;
   const savedLng = App.S && App.S.lastLng;
   if (savedLat && savedLng) {
+    window._appLat = savedLat; window._appLng = savedLng; // seed for Vedic Panchanga
     // GPS toggle was ON and coords are saved — use them
     updateSunInfo(savedLat, savedLng);
     setInterval(() => updateSunInfo(savedLat, savedLng), 600000);

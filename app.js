@@ -10949,13 +10949,18 @@ function _histMalaTable(label, entries, color) {
     const endTs = e.ts;
     // Use stored startTs if available (accurate wall-clock); fall back to computed
     const startTs = e.startTs ? e.startTs : endTs - e.sec * 1000;
+    // Always derive displayed duration from wall-clock timestamps — e.sec is the
+    // session-timer delta which accumulates idle gaps and gives inflated values.
+    const wallDurationSec = e.startTs
+      ? Math.max(1, Math.round((endTs - e.startTs) / 1000))
+      : e.sec; // fallback only if no startTs stored (old entries)
     const even = i % 2 === 0;
     // Always use sequential index (i+1) — e.n can repeat when modes switch
     html += `<tr style="background:${even ? "rgba(0,0,0,0.15)" : "transparent"}">
       <td style="padding:6px 8px;color:${color};font-weight:600">Mala ${i + 1}</td>
       <td style="padding:6px 8px;color:var(--tl)">${_histFmtTime(endTs)}</td>
       <td style="padding:6px 8px;color:var(--td)">${_histFmtTime(startTs)}</td>
-      <td style="padding:6px 8px;text-align:right;color:var(--green)">${_histFmtSec(e.sec)}</td>
+      <td style="padding:6px 8px;text-align:right;color:var(--green)">${_histFmtSec(wallDurationSec)}</td>
     </tr>`;
   });
 
@@ -10978,12 +10983,15 @@ function _hist28CycleTable(entries) {
   entries.forEach((e, i) => {
     const endTs = e.ts;
     const startTs = e.startTs ? e.startTs : endTs - (e.sec || 0) * 1000;
+    const wallDurationSec = e.startTs
+      ? Math.max(1, Math.round((endTs - e.startTs) / 1000))
+      : (e.sec || 0);
     const even = i % 2 === 0;
     html += `<tr style="background:${even ? "rgba(0,0,0,0.15)" : "transparent"}">
       <td style="padding:6px 8px;color:var(--green);font-weight:600">Cycle ${i + 1}</td>
       <td style="padding:6px 8px;color:var(--tl)">${_histFmtTime(endTs)}</td>
       <td style="padding:6px 8px;color:var(--td)">${_histFmtTime(startTs)}</td>
-      <td style="padding:6px 8px;text-align:right;color:var(--gold)">${_histFmtSec(e.sec)}</td>
+      <td style="padding:6px 8px;text-align:right;color:var(--gold)">${_histFmtSec(wallDurationSec)}</td>
     </tr>`;
   });
 

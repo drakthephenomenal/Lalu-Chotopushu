@@ -1932,11 +1932,9 @@ function vpSwitchTab(tab) {
     btnBnC.style.background = 'transparent';
     btnBnC.style.borderColor = 'rgba(245,209,122,0.3)';
     btnBnC.style.color = 'var(--td)';
-    // Update location from main app
-    if (window._appLat && window._appLng) {
-      const el = document.getElementById('vp-loc-text');
-      if (el) el.textContent = window._appLat.toFixed(3) + '°N ' + window._appLng.toFixed(3) + '°E';
-    }
+    // Update location label + (re)try GPS fetch from the Panchanga engine itself
+    window.vpUpdateLocLabel && window.vpUpdateLocLabel();
+    window.vpEnsureGps && window.vpEnsureGps();
     window.vpActivate && window.vpActivate();
     window.vpStartClock && window.vpStartClock();
     window.vpStartRefresh && window.vpStartRefresh();
@@ -2176,10 +2174,30 @@ function gaurabda(date){
   return y-1486-(date<gauPurnima?1:0);
 }
 function hinduMonth(jd){const idx=Math.floor(sunLongSid(jd)/30)%12;return{name:HM[idx],vaishnavName:VM[idx]}}
-function adhikMaas(jd){
+// Find the most recent New Moon at or before jd, and the next New Moon at or
+// after jd, using a tight ±2.5-day bisection window centred on a synodic-rate
+// estimate. A wide blind window (the old approach) could accidentally skip
+// over the nearby conjunction and lock onto the NEXT one instead whenever jd
+// sat within ~1-2 days of an upcoming New Moon — silently merging two lunar
+// months into one and breaking Adhik Maas (leap month) detection.
+const SYNODIC_MONTH=29.530589;
+function prevNewMoon(jd){
   const elong=norm(moonLong(jd)-sunLong(jd));
-  const prevNM=findElong(jd-(elong/360)*29.53-2,jd,0);
-  const nextNM=findElong(jd,jd+32,0);
+  const estDays=elong/360*SYNODIC_MONTH;
+  let lo=jd-estDays-2.5,hi=jd-estDays+2.5;
+  if(hi>jd)hi=jd;
+  return findElong(lo,hi,0);
+}
+function nextNewMoon(jd){
+  const elong=norm(moonLong(jd)-sunLong(jd));
+  const estDays=(360-elong)/360*SYNODIC_MONTH;
+  let lo=jd+estDays-2.5,hi=jd+estDays+2.5;
+  if(lo<jd)lo=jd;
+  return findElong(lo,hi,0);
+}
+function adhikMaas(jd){
+  const prevNM=prevNewMoon(jd);
+  const nextNM=nextNewMoon(jd);
   const sS=sunLongSid(prevNM),sE=sunLongSid(nextNM);
   const moved=norm(sE-sS);
   const dist=norm((Math.floor(sS/30)+1)*30-sS);
@@ -2761,8 +2779,69 @@ window.vpToggleGrid = function() {
   if(b) b.classList.toggle('open');
 };
 
+// ── GPS-based location for the Panchanga engine ──────────────────────
+// Reads live globals first (freshest, set by the main app's GPS toggle),
+// falling back to the same localStorage keys the GPS toggle persists to —
+// this matters because this script block can run/refresh before the main
+// app.js init has had a chance to seed window._appLat/_appLng on this page
+// load.
+function vpGetCachedCoords() {
+  if (window._appLat && window._appLng) return { lat: window._appLat, lng: window._appLng };
+  try {
+    const la = parseFloat(localStorage.getItem('rjap_lastLat'));
+    const ln = parseFloat(localStorage.getItem('rjap_lastLng'));
+    if (!isNaN(la) && !isNaN(ln)) return { lat: la, lng: ln };
+  } catch (e) {}
+  return null;
+}
+function vpIsGpsEnabled() {
+  try { return localStorage.getItem('rjap_gps_enabled') === '1'; } catch (e) { return false; }
+}
+window.vpUpdateLocLabel = function() {
+  const el = document.getElementById('vp-loc-text');
+  const c = vpGetCachedCoords();
+  if (c) {
+    LAT = c.lat; LNG = c.lng;
+    window._appLat = c.lat; window._appLng = c.lng;
+    if (el) el.textContent = c.lat.toFixed(3) + '°N ' + c.lng.toFixed(3) + '°E';
+  } else if (el) {
+    el.textContent = vpIsGpsEnabled() ? 'Detecting your location…' : 'Default location — enable GPS in Settings';
+  }
+};
+window._vpGpsFetchInFlight = false;
+window.vpEnsureGps = function() {
+  // Only step in when the user has already granted GPS via the Settings
+  // toggle but we don't yet have coordinates on this page load (e.g. this
+  // script ran before app.js finished seeding window._appLat/_appLng, or
+  // the previous fix attempt timed out). This never prompts for permission
+  // on its own — the GPS toggle remains the sole source of consent.
+  if (vpGetCachedCoords()) return;
+  if (!vpIsGpsEnabled() || window._vpGpsFetchInFlight || !navigator.geolocation) return;
+  window._vpGpsFetchInFlight = true;
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      window._vpGpsFetchInFlight = false;
+      const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      window._appLat = lat; window._appLng = lng;
+      try {
+        localStorage.setItem('rjap_lastLat', String(lat));
+        localStorage.setItem('rjap_lastLng', String(lng));
+      } catch (e) {}
+      window.vpUpdateLocLabel();
+      try { DATA = computeAll(); renderAll(); } catch (e) {}
+    },
+    function() {
+      window._vpGpsFetchInFlight = false;
+      const el = document.getElementById('vp-loc-text');
+      if (el) el.textContent = 'Location unavailable — check GPS permission';
+    },
+    { timeout: 10000, maximumAge: 60000 },
+  );
+};
+
 window.vpActivate = function() {
-  if(window._appLat && window._appLng) { LAT = window._appLat; LNG = window._appLng; }
+  window.vpUpdateLocLabel();
+  window.vpEnsureGps();
   try { DATA = computeAll(); renderAll(); } catch(e) { console.error('VP render error:', e); }
 };
 
@@ -2785,7 +2864,8 @@ window._vpRefreshInterval = null;
 window.vpStartRefresh = function() {
   if(window._vpRefreshInterval) return;
   window._vpRefreshInterval = setInterval(function() {
-    if(window._appLat && window._appLng) { LAT = window._appLat; LNG = window._appLng; }
+    window.vpUpdateLocLabel();
+    window.vpEnsureGps();
     try { DATA = computeAll(); renderAll(); } catch(e) {}
   }, 30000);
 };
@@ -2797,7 +2877,8 @@ window.vpStopRefresh = function() {
 // Initial load if SunCalc ready
 function vpTryInit() {
   if(typeof SunCalc === 'undefined') { setTimeout(vpTryInit, 400); return; }
-  if(window._appLat && window._appLng) { LAT = window._appLat; LNG = window._appLng; }
+  window.vpUpdateLocLabel();
+  window.vpEnsureGps();
   try { DATA = computeAll(); } catch(e) { console.error('VP init error:', e); }
 }
 vpTryInit();

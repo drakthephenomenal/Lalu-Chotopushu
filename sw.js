@@ -1,23 +1,27 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker
 // Push notifications & FCM removed.
-
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v145';
+const CACHE = 'radha-jap-v146';
 
-const LOCAL_ASSETS = [
+// Core assets needed to render the shell — fetched during install
+const CORE_ASSETS = [
   './',
   './index.html',
   './404.html',
   './style.css',
-  './style-stotram.css',
-  './stotrams.js',
   './app.js',
-  './panchangData.js',
-  './guru.jpg',
   './icon-192.png',
   './icon-512.png',
   './manifest.json',
+];
+
+// Large / optional local assets — cached in background, not blocking install
+const LAZY_LOCAL_ASSETS = [
+  './style-stotram.css',
+  './stotrams.js',
+  './panchangData.js',       // can be large — never block install on this
+  './guru.jpg',
   './bhagavadik-bank.png',
   './radha-coin.png',
   './gurudev/1.png',
@@ -46,6 +50,12 @@ const BYPASS = [
   'accounts.google.com',
 ];
 
+// ── Prokerala / astronomy APIs — always bypass (live data, never cache) ──
+const BYPASS_PREFIXES = [
+  'https://api.prokerala.com',
+  'https://astronomy-engine',
+];
+
 function withinScopePath(pathname) {
   const scopePath = new URL(self.registration.scope).pathname;
   return pathname.startsWith(scopePath) ? pathname.slice(scopePath.length) : null;
@@ -62,45 +72,57 @@ function toLocalCacheKey(requestOrUrl) {
   return `./${relativePath}`;
 }
 
+// Fetch with a timeout — rejects after ms milliseconds
+function fetchWithTimeout(request, options, ms) {
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), ms);
+  return fetch(request, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(tid));
+}
+
 async function cacheLocalAsset(cache, asset) {
   try {
-    const response = await fetch(asset, { cache: 'reload' });
+    const response = await fetchWithTimeout(asset, { cache: 'reload' }, 8000);
     if (response && response.ok) await cache.put(asset, response.clone());
   } catch (_) {}
 }
 
 async function cacheExternalAsset(cache, url) {
   try {
-    const response = await fetch(url, { cache: 'reload', mode: 'no-cors' });
+    const response = await fetchWithTimeout(url, { cache: 'reload', mode: 'no-cors' }, 8000);
     if (response && (response.ok || response.type === 'opaque')) await cache.put(url, response.clone());
   } catch (_) {}
 }
 
 async function storeResponse(cacheKey, response) {
   if (!response || (!response.ok && response.type !== 'opaque')) return;
-  const cache = await caches.open(CACHE);
-  await cache.put(cacheKey, response.clone());
+  try {
+    const cache = await caches.open(CACHE);
+    await cache.put(cacheKey, response.clone());
+  } catch (_) {}
 }
 
+// ── INSTALL: only block on CORE assets; lazy + external are background ──
 self.addEventListener('install', (event) => {
   self.skipWaiting();
-  // Only block install on LOCAL assets — external (Firebase/fonts/CDN) cached in background
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    await Promise.allSettled(LOCAL_ASSETS.map((asset) => cacheLocalAsset(cache, asset)));
-    // External assets fetched in background — do not block install
+    // Core assets — wait for these (8s timeout each)
+    await Promise.allSettled(CORE_ASSETS.map((asset) => cacheLocalAsset(cache, asset)));
+    // Large local + external assets — fully background, never block install
+    Promise.allSettled(LAZY_LOCAL_ASSETS.map((asset) => cacheLocalAsset(cache, asset)));
     Promise.allSettled(EXTERNAL_ASSETS.map((asset) => cacheExternalAsset(cache, asset)));
   })());
 });
 
+// ── ACTIVATE: delete old caches, claim clients ──
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
     const oldKeys = keys.filter((key) => key !== CACHE);
-    const isUpdate = oldKeys.length > 0; // false on very first install, true on update
+    const isUpdate = oldKeys.length > 0;
     await Promise.all(oldKeys.map((key) => caches.delete(key)));
     await self.clients.claim();
-    // Only notify existing clients on UPDATE (not fresh install) to avoid double-load
     if (isUpdate) {
       const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED', version: CACHE }));
@@ -109,31 +131,34 @@ self.addEventListener('activate', (event) => {
   })());
 });
 
+// ── FETCH ──
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
-  if (BYPASS.some((host) => url.href.includes(host))) return;
 
+  // Bypass Firebase & live API calls
+  if (BYPASS.some((host) => url.href.includes(host))) return;
+  if (BYPASS_PREFIXES.some((prefix) => url.href.startsWith(prefix))) return;
+
+  // ── Navigation requests (page load) ──
+  // Strategy: cache-first with 4s network timeout → instant load from cache,
+  // background revalidation. Falls back to cache if network is slow/offline.
   if (event.request.mode === 'navigate') {
     event.respondWith((async () => {
+      const cached = await caches.match('./index.html');
       try {
-        const response = await fetch(event.request, { cache: 'no-cache' });
+        // Race: network with 4s timeout vs immediate cache return
+        const networkPromise = fetchWithTimeout(event.request, { cache: 'no-cache' }, 4000);
+        if (cached) {
+          // Return cache immediately; revalidate in background
+          networkPromise.then(async (response) => {
+            if (response && response.ok) await storeResponse('./index.html', response);
+          }).catch(() => {});
+          return cached;
+        }
+        // No cache yet — wait for network (first install)
+        const response = await networkPromise;
         if (response && response.ok) await storeResponse('./index.html', response);
-        return response;
-      } catch (_) {
-        return (await caches.match('./index.html')) || new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
-      }
-    })());
-    return;
-  }
-
-  const localCacheKey = toLocalCacheKey(event.request);
-  if (localCacheKey) {
-    event.respondWith((async () => {
-      const cached = await caches.match(localCacheKey);
-      try {
-        const response = await fetch(event.request, { cache: 'reload' });
-        await storeResponse(localCacheKey, response);
         return response;
       } catch (_) {
         return cached || new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
@@ -142,11 +167,36 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  const localCacheKey = toLocalCacheKey(event.request);
+  if (localCacheKey) {
+    // ── Local assets: cache-first, stale-while-revalidate ──
+    // Serve from cache immediately; update cache in background from network.
+    event.respondWith((async () => {
+      const cached = await caches.match(localCacheKey);
+      // Background revalidation (stale-while-revalidate)
+      const networkPromise = fetchWithTimeout(event.request, { cache: 'reload' }, 6000)
+        .then(async (response) => {
+          if (response && response.ok) await storeResponse(localCacheKey, response);
+          return response;
+        })
+        .catch(() => null);
+      if (cached) {
+        // Return cache instantly; network updates it in background
+        return cached;
+      }
+      // Nothing cached yet — must wait for network
+      const response = await networkPromise;
+      return response || new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+    })());
+    return;
+  }
+
+  // ── External assets (fonts, CDN): cache-first, fallback to network ──
   event.respondWith((async () => {
     const cached = await caches.match(event.request);
     if (cached) return cached;
     try {
-      const response = await fetch(event.request);
+      const response = await fetchWithTimeout(event.request, {}, 8000);
       await storeResponse(event.request, response);
       return response;
     } catch (_) {

@@ -619,14 +619,27 @@ const App = {
       if (token !== this._autoStopToken) return; // invalidated by malaOk
       this.timerSeconds = secondsAtTap;
       this.currentMalaSeconds = malaSecondsAtTap;
+      try {
+        localStorage.setItem("rjap_timerSeconds", String(this.timerSeconds));
+        localStorage.setItem("rjap_currentMalaSeconds", String(this.currentMalaSeconds));
+      } catch(_){}
       this.pauseTimer();
+      // Roll the visible SESSION display back to the snapshot too — pauseTimer
+      // only refreshes Today's Jap Time, not the session readout.
+      const td = document.getElementById("timerDisplay");
+      if (td) td.textContent = this.fmtTime(this.timerSeconds);
     }, 6000);
   },
 
   toggleTimer() {
-    clearTimeout(this.autoStopTimeout);
-    if (this.timerRunning) this.pauseTimer();
-    else this.startTimer();
+    if (this.timerRunning) {
+      clearTimeout(this.autoStopTimeout);
+      this.pauseTimer();
+    } else {
+      // Resume should behave exactly like a tap: start the timer AND arm the
+      // 6-second auto-pause so an idle Resume still pauses on its own.
+      this.tapTimer();
+    }
   },
 
   resetTimer() {

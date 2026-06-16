@@ -580,13 +580,11 @@ const App = {
     document.getElementById("timerDisplay").classList.remove("running");
     document.getElementById("timerBtn").textContent = "▶ Resume";
     document.getElementById("timerBtn").className = "tbtn start";
-    // FIX: Do NOT commit delta into timerHistory here.
-    // timerHistory[tk] is the sum of COMPLETED malas (maintained by
-    // syncTimerFromMalaLog). The in-progress mala is already reflected live
-    // via currentMalaSeconds inside getTotalJapSecondsToday(). Writing delta
-    // here double-counts the in-progress mala and makes Today's Jap Time
-    // jump (e.g. 6 -> 12) on every pause / 6s auto-pause rollback.
-    const delta = this.timerSeconds - this.timerSavedSeconds;
+    // Do NOT commit an unfinished mala into timerHistory here.
+    // timerHistory is the sum of completed malas only; Today's Jap Time already
+    // adds currentMalaSeconds live. Writing the delta on pause/resume causes the
+    // visible time to double (6s becomes 12s) and corrupts later idle rollback.
+    const delta = Math.max(0, this.timerSeconds - this.timerSavedSeconds);
     this.timerSavedSeconds = this.timerSeconds;
     // Log this jap session with timestamps
     if (this._sessionStart) {
@@ -619,27 +617,22 @@ const App = {
       if (token !== this._autoStopToken) return; // invalidated by malaOk
       this.timerSeconds = secondsAtTap;
       this.currentMalaSeconds = malaSecondsAtTap;
+      this.timerSavedSeconds = secondsAtTap;
       try {
         localStorage.setItem("rjap_timerSeconds", String(this.timerSeconds));
         localStorage.setItem("rjap_currentMalaSeconds", String(this.currentMalaSeconds));
-      } catch(_){}
-      this.pauseTimer();
-      // Roll the visible SESSION display back to the snapshot too — pauseTimer
-      // only refreshes Today's Jap Time, not the session readout.
+      } catch(_){ }
       const td = document.getElementById("timerDisplay");
       if (td) td.textContent = this.fmtTime(this.timerSeconds);
+      this.updateTimerToday();
+      this.pauseTimer();
     }, 6000);
   },
 
   toggleTimer() {
-    if (this.timerRunning) {
-      clearTimeout(this.autoStopTimeout);
-      this.pauseTimer();
-    } else {
-      // Resume should behave exactly like a tap: start the timer AND arm the
-      // 6-second auto-pause so an idle Resume still pauses on its own.
-      this.tapTimer();
-    }
+    clearTimeout(this.autoStopTimeout);
+    if (this.timerRunning) this.pauseTimer();
+    else this.tapTimer();
   },
 
   resetTimer() {

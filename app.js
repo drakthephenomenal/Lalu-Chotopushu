@@ -11493,7 +11493,7 @@ window._lbUnsubscribe = null;
 
 /** Get the date key prefix for the current period filter */
 function _lbGetPeriodKeys(period) {
-  const now = new Date();
+  const now = new Date(Date.now() + (window._serverTimeOffsetMs || 0));
   const keys = [];
   if (period === 'alltime') return null; // null = use totalJap field (no date filter)
   if (period === 'today') {
@@ -11656,16 +11656,29 @@ function renderLeaderboard(docs, period) {
       const tHistRV = d.timerHistoryRV || {};
       const tHistHK = d.timerHistoryHK || {};
       const tHist28 = d.timer28History || {};
-      periodKeys.forEach(function(k) {
-        sr += (hist[k] || 0);
-        srv += (histRV[k] || 0);
-        shk += (histHK[k] || 0);
-        s28 += (hist28[k] || 0);
-        tr += (tHist[k] || 0);
-        trv += (tHistRV[k] || 0);
-        thk += (tHistHK[k] || 0);
-        t28 += (tHist28[k] || 0);
-      });
+      if (period === 'today' && d.todayKey === periodKeys[0] && Number(d.todayJap || 0) > 0) {
+        const bd = d.todayBreakdown || {};
+        const tbd = d.todayTimeBreakdown || {};
+        sr = bd.r || 0;
+        srv = bd.rv || 0;
+        shk = bd.hk || 0;
+        s28 = bd.n28 || 0;
+        tr = tbd.r || 0;
+        trv = tbd.rv || 0;
+        thk = tbd.hk || 0;
+        t28 = tbd.n28 || 0;
+      } else {
+        periodKeys.forEach(function(k) {
+          sr += (hist[k] || 0);
+          srv += (histRV[k] || 0);
+          shk += (histHK[k] || 0);
+          s28 += (hist28[k] || 0);
+          tr += (tHist[k] || 0);
+          trv += (tHistRV[k] || 0);
+          thk += (tHistHK[k] || 0);
+          t28 += (tHist28[k] || 0);
+        });
+      }
       score += sr + srv + shk + s28;
       timeScore += tr + trv + thk + t28;
       d._breakdown = { r: sr, rv: srv, hk: shk, n28: s28 };
@@ -11806,10 +11819,16 @@ async function pushLeaderboard() {
     return;
   }
 
+  // Use a live date key when publishing leaderboard data; App.S.tk can be
+  // stale on devices left open across midnight or restored from cache.
+  const liveTk = (window.App && typeof App.getTk === 'function') ? App.getTk() : (App.S.tk || '');
+  if (liveTk && App.S.tk !== liveTk) App.S.tk = liveTk;
+
   // Compute lifetime totals
   const hist   = App.S.history   || {};
   const histRV = App.S.historyRV || {};
   const histHK = App.S.historyHK || {};
+  const hist28 = App.S.h28 || {};
   const totalRadha = Object.values(hist).reduce((a,b)=>a+b,0);
   const totalRV    = Object.values(histRV).reduce((a,b)=>a+b,0);
   const totalHK    = Object.values(histHK).reduce((a,b)=>a+b,0);
@@ -11825,7 +11844,7 @@ async function pushLeaderboard() {
   // Compute streak from App.S (reuse existing streak logic)
   let streak = 0;
   try {
-    const tk = App.S.tk;
+    const tk = liveTk || App.S.tk;
     const allHist = {};
     Object.keys({...hist,...histRV,...histHK}).forEach(function(k) {
       allHist[k] = (hist[k]||0)+(histRV[k]||0)+(histHK[k]||0);
@@ -11843,6 +11862,21 @@ async function pushLeaderboard() {
     }
   } catch(_) {}
 
+  const todayBreakdown = {
+    r: hist[liveTk] || 0,
+    rv: histRV[liveTk] || 0,
+    hk: histHK[liveTk] || 0,
+    n28: hist28[liveTk] || 0,
+  };
+  const todayTimeBreakdown = {
+    r: (App.S.timerHistory || {})[liveTk] || 0,
+    rv: (App.S.timerHistoryRV || {})[liveTk] || 0,
+    hk: (App.S.timerHistoryHK || {})[liveTk] || 0,
+    n28: (App.S.timer28History || {})[liveTk] || 0,
+  };
+  const todayJap = todayBreakdown.r + todayBreakdown.rv + todayBreakdown.hk + todayBreakdown.n28;
+  const todayTimerSeconds = todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.hk + todayTimeBreakdown.n28;
+
   const payload = {
     displayName,
     totalJap,
@@ -11850,11 +11884,16 @@ async function pushLeaderboard() {
     streak,
     optIn: true,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    todayKey: liveTk,
+    todayJap,
+    todayTimerSeconds,
+    todayBreakdown,
+    todayTimeBreakdown,
     // Store per-day histories so month/week filtering works
     history:   hist,
     historyRV: histRV,
     historyHK: histHK,
-    history28: App.S.h28 || {},
+    history28: hist28,
     // Push total timer seconds for leaderboard display
     timerSeconds: Object.values(App.S.timerHistory || {}).reduce((a,b)=>a+b,0) +
                   Object.values(App.S.timerHistoryRV || {}).reduce((a,b)=>a+b,0) +

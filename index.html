@@ -1425,11 +1425,12 @@
 /* Vaar strip */
 #vpanchanga-view .vp-vaar-strip{display:flex;gap:6px;padding:10px 16px;overflow-x:auto;scrollbar-width:none}
 #vpanchanga-view .vp-vaar-strip::-webkit-scrollbar{display:none}
-#vpanchanga-view .vp-vaar-btn{flex:1;min-width:64px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 8px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.03);cursor:pointer;transition:all .15s;color:var(--tl);font-family:'Inter',sans-serif}
+#vpanchanga-view .vp-vaar-btn{appearance:none;-webkit-appearance:none;flex:1;min-width:64px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 8px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.018));cursor:pointer;transition:all .15s;color:var(--tl);font-family:'Inter',sans-serif;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
 #vpanchanga-view .vp-vaar-btn.today{border-color:rgba(245,209,122,.5);background:rgba(245,209,122,.1)}
 #vpanchanga-view .vp-vaar-btn.selected{border-color:rgba(184,196,245,.5);background:rgba(184,196,245,.1)}
 #vpanchanga-view .vp-vaar-btn .vp-vi{font-size:1.1rem}
 #vpanchanga-view .vp-vaar-btn .vp-vn{font-size:.55rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--td)}
+#vpanchanga-view .vp-vaar-btn .vp-vd{font-size:.5rem;color:rgba(128,137,184,.78);line-height:1.2}
 #vpanchanga-view .vp-vaar-btn.today .vp-vn{color:var(--gold)}
 #vpanchanga-view .vp-vaar-btn.selected .vp-vn{color:var(--a2)}
 
@@ -1903,7 +1904,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=115"></script>
-    <script src="./app.js?v=132"></script>
+    <script src="./app.js?v=133"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════
@@ -2534,15 +2535,20 @@ function renderAll(){
 
   // Muhurta data for the DISPLAYED vaar
   const md=getMuhurtaData(displayVaar,LAT,LNG);
+  const headerRef=isActive?now:displayVaar.sunrise;
+  const headerJD=dateToJD(headerRef);
+  const headerHM=hinduMonth(headerJD);
+  const headerAM=adhikMaas(headerJD);
+  const headerPaksha=tithiIdx(headerJD)<15?'Sukla':'Krishna';
+  const headerWhen=isActive?'Today':(displayVaar.dayOffset===1?'Tomorrow':displayVaar.dayOffset===-1?'Yesterday':displayVaar.dayOffset>0?'+'+displayVaar.dayOffset+' days':displayVaar.dayOffset+' days');
 
-  // Header always shows today's info
-  document.getElementById('vp-gaurabda').textContent='Gaurabda '+ga;
-  document.getElementById('vp-vaar-name').textContent=activeVaar.name+' Vaar';
-  const paksha=currentTithiIdx<15?'Sukla':'Krishna';
+  // Header follows selected Vaar so the month/date context is clear
+  document.getElementById('vp-gaurabda').textContent='Gaurabda '+gaurabda(headerRef);
+  document.getElementById('vp-vaar-name').textContent=displayVaar.name+' Vaar';
   document.getElementById('vp-month-line').innerHTML=
-    (am.isAdhik?`<span class="vp-adhik-badge">${am.isPurushottam?'Purushottam':'Adhik'}</span>${am.nextMonthName}`:hm.name)+
-    ' &nbsp;·&nbsp; '+paksha+' Paksha';
-  document.getElementById('vp-vaishnav-line').textContent='Vaishnav Month of '+hm.vaishnavName;
+    (headerAM.isAdhik?`<span class="vp-adhik-badge">${headerAM.isPurushottam?'Purushottam':'Adhik'}</span>${headerAM.nextMonthName}`:headerHM.name)+
+    ' &nbsp;·&nbsp; '+headerPaksha+' Paksha &nbsp;·&nbsp; '+headerWhen+' '+fmtDate(headerRef);
+  document.getElementById('vp-vaishnav-line').textContent='Vaishnav Month of '+headerHM.vaishnavName;
 
   // Vaar strip — highlight today and selected separately
   document.getElementById('vp-vaar-strip').innerHTML=vaarStrip.map(v=>{
@@ -2551,10 +2557,10 @@ function renderAll(){
     if(selectedVaarIdx!==null&&v.index===selectedVaarIdx)cls='selected';
     const dayLabel=v.dayOffset===0?'Today':v.dayOffset===1?'Tmrw':v.dayOffset===-1?'Yest':
       v.dayOffset>0?'+'+v.dayOffset+'d':v.dayOffset+'d';
-    return`<button class="vaar-btn ${cls}" onclick="vpSelectVaar(${v.index})">
-      <span class="icon">${VAAR_ICON[v.index]}</span>
-      <span class="name">${v.name}</span>
-      <span class="name-bn" style="font-size:.5rem;color:var(--muted)">${dayLabel}</span>
+    return`<button class="vp-vaar-btn ${cls}" onclick="vpSelectVaar(${v.index})">
+      <span class="vp-vi">${VAAR_ICON[v.index]}</span>
+      <span class="vp-vn">${v.name}</span>
+      <span class="vp-vd">${dayLabel}</span>
     </button>`;
   }).join('');
 

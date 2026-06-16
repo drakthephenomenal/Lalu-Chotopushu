@@ -3,7 +3,7 @@
 // Push notifications & FCM removed.
 
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v146';
+const CACHE = 'radha-jap-v145';
 
 const LOCAL_ASSETS = [
   './',
@@ -104,6 +104,7 @@ self.addEventListener('activate', (event) => {
     if (isUpdate) {
       const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED', version: CACHE }));
+      await Promise.allSettled(clients.map((client) => client.url ? client.navigate(client.url) : null));
     }
   })());
 });
@@ -130,9 +131,8 @@ self.addEventListener('fetch', (event) => {
   if (localCacheKey) {
     event.respondWith((async () => {
       const cached = await caches.match(localCacheKey);
-      if (cached) return cached;
       try {
-        const response = await fetch(event.request, { cache: 'no-cache' });
+        const response = await fetch(event.request, { cache: 'reload' });
         await storeResponse(localCacheKey, response);
         return response;
       } catch (_) {

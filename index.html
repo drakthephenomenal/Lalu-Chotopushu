@@ -2422,7 +2422,7 @@ function buildNowPanel(now,tithiPeriods,nakshatraPeriods,yogaPeriods,karanaPerio
   // Show every active period — auspicious AND inauspicious — separately so the user sees both.
   const activeAll=isSelected?[]:allM.filter(m=>refForMuhurta>=m.s&&refForMuhurta<m.e);
   const activeGood=activeAll.find(m=>m.type==='good');
-  const activeWarn=activeAll.find(m=>m.type==='warn');
+  const activeWarns=activeAll.filter(m=>m.type==='warn');
 
   function timeStr(start,end){
     return `${fmtDate(start)} ${fmt12(start)} – ${fmtEnd(end,start)}<br><span style="color:rgba(107,107,133,.5)">${dur(start,end)} duration</span>`;
@@ -2487,18 +2487,18 @@ function buildNowPanel(now,tithiPeriods,nakshatraPeriods,yogaPeriods,karanaPerio
       activeGood.label,MEFF[activeGood.label]||'',
       timeStr(activeGood.s,activeGood.e),'good');
   }
-  if(activeWarn){
+  activeWarns.forEach(aw=>{
     html+=cellWithStatus('Inauspicious Active','● Now','active',
-      activeWarn.label,MEFF[activeWarn.label]||'',
-      timeStr(activeWarn.s,activeWarn.e),'warn');
-  }
+      aw.label,MEFF[aw.label]||'',
+      timeStr(aw.s,aw.e),'warn');
+  });
 
 
   if(!isSelected){
-    // Upcoming muhurtas — show next auspicious AND next inauspicious separately
+    // Upcoming muhurtas — show next auspicious AND next TWO inauspicious separately
     const futureM=allM.filter(m=>m.s>refForMuhurta).sort((a,b)=>a.s-b.s);
     const nextGood=futureM.find(m=>m.type==='good');
-    const nextWarn=futureM.find(m=>m.type==='warn');
+    const nextWarns=futureM.filter(m=>m.type==='warn').slice(0,2);
 
     function soonTag(m){
       const mins=Math.round((+m.s-+now)/60000);
@@ -2512,13 +2512,13 @@ function buildNowPanel(now,tithiPeriods,nakshatraPeriods,yogaPeriods,karanaPerio
         timeStr(nextGood.s,nextGood.e),
         'good');
     }
-    if(nextWarn){
-      html+=cellWithStatus('Coming Soon — Inauspicious',soonTag(nextWarn),'warn-soon',
-        nextWarn.label,
-        MEFF[nextWarn.label]||'',
-        timeStr(nextWarn.s,nextWarn.e),
+    nextWarns.forEach(nw=>{
+      html+=cellWithStatus('Coming Soon — Inauspicious',soonTag(nw),'warn-soon',
+        nw.label,
+        MEFF[nw.label]||'',
+        timeStr(nw.s,nw.e),
         'warn');
-    }
+    });
   } else {
     // Selected vaar — show first muhurta of day
     const nextMuhurta=allM.filter(m=>m.s>refForMuhurta).sort((a,b)=>a.s-b.s)[0];

@@ -939,6 +939,14 @@ const App = {
     } catch(_){}
     const _td = document.getElementById("timerDisplay");
     if (_td) _td.textContent = this.fmtTime(this.timerSeconds);
+    // ── PAUSE BOTH TIMERS ON MALA COMPLETION ──────────────────────────
+    // On mala completion the Session Timer and Today's Jap timer must
+    // pause together. (Today's Jap stops naturally because
+    // currentMalaSeconds was just reset to 0; we must also explicitly
+    // pause the running session interval so timerSeconds stops ticking.)
+    // The next bead tap will call tapTimer() → startTimer() and both
+    // counters resume in lockstep.
+    if (this.timerRunning) this.pauseTimer();
     // Animate mala duration on timer display
     this.flashMalaDuration(malaDuration);
     // ✨ MALA GLOW FLASH: briefly reveal all deity images fully with intense glow
@@ -10992,20 +11000,18 @@ function _histMalaTable(label, entries, color) {
 
   entries.forEach((e, i) => {
     const endTs = e.ts;
-    // Use stored startTs if available (accurate wall-clock); fall back to computed
-    const startTs = e.startTs ? e.startTs : endTs - e.sec * 1000;
-    // Always derive displayed duration from wall-clock timestamps — e.sec is the
-    // session-timer delta which accumulates idle gaps and gives inflated values.
-    const wallDurationSec = e.startTs
-      ? Math.max(1, Math.round((endTs - e.startTs) / 1000))
-      : e.sec; // fallback only if no startTs stored (old entries)
+    // Duration MUST match the Mala Log (active chanting time = e.sec).
+    // Derive the displayed Start Time by subtracting the active duration from
+    // the end timestamp so End − Start === Duration in the table.
+    const durationSec = Math.max(1, e.sec || 0);
+    const startTs = endTs - durationSec * 1000;
     const even = i % 2 === 0;
     // Always use sequential index (i+1) — e.n can repeat when modes switch
     html += `<tr style="background:${even ? "rgba(0,0,0,0.15)" : "transparent"}">
       <td style="padding:6px 8px;color:${color};font-weight:600">Mala ${i + 1}</td>
       <td style="padding:6px 8px;color:var(--tl)">${_histFmtTime(endTs)}</td>
       <td style="padding:6px 8px;color:var(--td)">${_histFmtTime(startTs)}</td>
-      <td style="padding:6px 8px;text-align:right;color:var(--green)">${_histFmtSec(wallDurationSec)}</td>
+      <td style="padding:6px 8px;text-align:right;color:var(--green)">${_histFmtSec(durationSec)}</td>
     </tr>`;
   });
 
@@ -11027,16 +11033,16 @@ function _hist28CycleTable(entries) {
 
   entries.forEach((e, i) => {
     const endTs = e.ts;
-    const startTs = e.startTs ? e.startTs : endTs - (e.sec || 0) * 1000;
-    const wallDurationSec = e.startTs
-      ? Math.max(1, Math.round((endTs - e.startTs) / 1000))
-      : (e.sec || 0);
+    // Match the log: duration = active chanting time (e.sec). Derive Start
+    // Time from End − Duration so the table stays internally consistent.
+    const durationSec = Math.max(1, e.sec || 0);
+    const startTs = endTs - durationSec * 1000;
     const even = i % 2 === 0;
     html += `<tr style="background:${even ? "rgba(0,0,0,0.15)" : "transparent"}">
       <td style="padding:6px 8px;color:var(--green);font-weight:600">Cycle ${i + 1}</td>
       <td style="padding:6px 8px;color:var(--tl)">${_histFmtTime(endTs)}</td>
       <td style="padding:6px 8px;color:var(--td)">${_histFmtTime(startTs)}</td>
-      <td style="padding:6px 8px;text-align:right;color:var(--gold)">${_histFmtSec(wallDurationSec)}</td>
+      <td style="padding:6px 8px;text-align:right;color:var(--gold)">${_histFmtSec(durationSec)}</td>
     </tr>`;
   });
 

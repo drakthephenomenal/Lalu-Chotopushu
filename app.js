@@ -580,10 +580,13 @@ const App = {
     document.getElementById("timerDisplay").classList.remove("running");
     document.getElementById("timerBtn").textContent = "▶ Resume";
     document.getElementById("timerBtn").className = "tbtn start";
-    // Save only the delta since last save (avoids double-counting on resume)
-    const _th = this.getCurTimerHistory();
+    // FIX: Do NOT commit delta into timerHistory here.
+    // timerHistory[tk] is the sum of COMPLETED malas (maintained by
+    // syncTimerFromMalaLog). The in-progress mala is already reflected live
+    // via currentMalaSeconds inside getTotalJapSecondsToday(). Writing delta
+    // here double-counts the in-progress mala and makes Today's Jap Time
+    // jump (e.g. 6 -> 12) on every pause / 6s auto-pause rollback.
     const delta = this.timerSeconds - this.timerSavedSeconds;
-    _th[this.S.tk] = (_th[this.S.tk] || 0) + delta;
     this.timerSavedSeconds = this.timerSeconds;
     // Log this jap session with timestamps
     if (this._sessionStart) {

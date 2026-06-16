@@ -397,6 +397,13 @@ const App = {
     // Date changes at 12:00 AM local time (GPS/device timezone).
     // Use local date methods so the key matches the user's clock midnight.
     const d = new Date(Date.now() + (window._serverTimeOffsetMs || 0));
+    return this.tkFromDate(d);
+  },
+
+  // Build a YYYY-MM-DD key from a Date using LOCAL (GPS-driven) fields.
+  // Never use toISOString() for date keys — that returns UTC and shifts
+  // the day boundary for any user not at UTC+0.
+  tkFromDate(d) {
     return (
       d.getFullYear() +
       "-" +
@@ -734,6 +741,12 @@ const App = {
       if (this._malaTimerStart === undefined || this._malaTimerStart === null)
         this._malaTimerStart = this.timerSeconds;
       localStorage.setItem("rjap_malaTimerStart", String(this._malaTimerStart));
+      // Capture the GPS-local date this mala STARTED on so the whole mala
+      // (including count + time) gets credited to the start date even if
+      // it finishes after midnight.
+      this.S.malaStartTk = this.getTk();
+      this.S.malaStartMode = this.S.japMode;
+      localStorage.setItem("rjap_malaStartTk", this.S.malaStartTk);
     }
   },
 
@@ -821,10 +834,63 @@ const App = {
       n: malaNum,
       sec: malaDuration,
     });
+    // ── GPS START-DATE CREDITING ─────────────────────────────────────
+    // If this mala started on a different GPS-local date than it finished
+    // on (e.g. began 23:58 June 15, completed 00:59 June 16), move the
+    // 108 count + the full malaDuration back to the start date.
+    try {
+      const _startTk = this.S.malaStartTk;
+      const _endTk = this.getTk();
+      if (_startTk && _startTk !== _endTk) {
+        const _ms = this.S.ms || 108;
+        const _mode = this.S.malaStartMode || this.S.japMode;
+        const _hist =
+          _mode === "rv" ? (this.S.historyRV = this.S.historyRV || {})
+          : _mode === "hk" ? (this.S.historyHK = this.S.historyHK || {})
+          : (this.S.history = this.S.history || {});
+        const _moveCount = Math.min(_ms, _hist[_endTk] || 0);
+        if (_moveCount > 0) {
+          _hist[_endTk] = (_hist[_endTk] || 0) - _moveCount;
+          _hist[_startTk] = (_hist[_startTk] || 0) + _moveCount;
+        }
+        // Move the mala's elapsed seconds from end-day bucket to start-day bucket.
+        const _th =
+          _mode === "rv" ? (this.S.timerHistoryRV = this.S.timerHistoryRV || {})
+          : _mode === "hk" ? (this.S.timerHistoryHK = this.S.timerHistoryHK || {})
+          : (this.S.timerHistory = this.S.timerHistory || {});
+        const _moveSec = Math.min(malaDuration, _th[_endTk] || 0);
+        if (_moveSec > 0) {
+          _th[_endTk] = (_th[_endTk] || 0) - _moveSec;
+          _th[_startTk] = (_th[_startTk] || 0) + _moveSec;
+        }
+        // Re-anchor live mala counters against the (now reduced) end-day bucket
+        // so the next tap on the new day starts mala #1 fresh.
+        this.lmc   = Math.floor((this.S.history   [_endTk] || 0) / _ms);
+        this.lmcRV = Math.floor((this.S.historyRV [_endTk] || 0) / _ms);
+        this.lmcHK = Math.floor(((this.S.historyHK||{})[_endTk] || 0) / _ms);
+      }
+    } catch (e) { console.warn("startTk credit:", e); }
+    this.S.malaStartTk = "";
+    this.S.malaStartMode = "";
+    try { localStorage.removeItem("rjap_malaStartTk"); } catch(_){}
     // ── UNIFIED TIME: timerHistory[today] = sum of mala log entries ──
     // This keeps all time displays (timer, stats, mala log, B&C day view) in harmony.
     this.syncTimerFromMalaLog();
     this.save();
+    // ── RESET VISIBLE TIMER to 0:00:00 after each completed mala ─────
+    // Per user spec: next mala's elapsed time is measured from zero.
+    // timerHistory was already updated above so today's banked time is safe.
+    this.timerSeconds = 0;
+    this.timerSavedSeconds = 0;
+    this._malaTimerStart = 0;
+    this.malaWallStart = 0;
+    try {
+      localStorage.setItem("rjap_timerSeconds", "0");
+      localStorage.setItem("rjap_malaTimerStart", "0");
+      localStorage.setItem("rjap_malaWallStart", "0");
+    } catch(_){}
+    const _td = document.getElementById("timerDisplay");
+    if (_td) _td.textContent = this.fmtTime(0);
     // Animate mala duration on timer display
     this.flashMalaDuration(malaDuration);
     // ✨ MALA GLOW FLASH: briefly reveal all deity images fully with intense glow
@@ -11852,7 +11918,7 @@ async function pushLeaderboard() {
     const today = new Date(tk+'T00:00:00');
     let d = new Date(today);
     while(true) {
-      const key = d.toISOString().slice(0,10);
+      const key = App.tkFromDate(d);
       const dayJap = allHist[key] || 0;
       const target = App.S.dt || App.S.dtRV || App.S.dtHK || 0;
       if (dayJap <= 0 || (target > 0 && dayJap < target)) break;

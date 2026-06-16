@@ -2395,9 +2395,12 @@ function buildNowPanel(now,tithiPeriods,nakshatraPeriods,yogaPeriods,karanaPerio
   // Re-use the passed-in lat/lng via closure (LAT/LNG are global)
   const nextBMStart=new Date(+SunCalc.getTimes(nextDayDate,LAT,LNG).sunrise-96*60*1000);
   const nextBMEnd=new Date(+nextBMStart+48*60*1000);
+  // Tuesday (Mangol Vaar, wd=2) — classical rule: Abhijit Muhurta is itself
+  // inauspicious on Tuesday ("Anabhijit"), so we flag it as warn instead of good.
+  const abhijitType=mdToday.wd===2?'warn':'good';
   const allM=[
     {label:'Brahma Muhurta',s:mdToday.brahmaMuhurta.start,e:mdToday.brahmaMuhurta.end,type:'good'},
-    {label:'Abhijit Muhurta',s:mdToday.abhijit.start,e:mdToday.abhijit.end,type:'good'},
+    {label:'Abhijit Muhurta',s:mdToday.abhijit.start,e:mdToday.abhijit.end,type:abhijitType},
     {label:'Vijaya Muhurta',s:mdToday.vijaya.start,e:mdToday.vijaya.end,type:'good'},
     {label:'Godhuli Muhurta',s:mdToday.godhuli.start,e:mdToday.godhuli.end,type:'good'},
     {label:'Nishita Muhurta',s:mdToday.nishita.start,e:mdToday.nishita.end,type:'good'},
@@ -2412,7 +2415,11 @@ function buildNowPanel(now,tithiPeriods,nakshatraPeriods,yogaPeriods,karanaPerio
   ];
   // For selected vaar use sunrise as reference; for today use current time
   const refForMuhurta=now;
-  const activeMuhurta=isSelected?null:allM.find(m=>refForMuhurta>=m.s&&refForMuhurta<m.e);
+  // Multiple muhurtas can be active simultaneously (e.g. Abhijit overlaps Dur Muhurta 2).
+  // Show every active period — auspicious AND inauspicious — separately so the user sees both.
+  const activeAll=isSelected?[]:allM.filter(m=>refForMuhurta>=m.s&&refForMuhurta<m.e);
+  const activeGood=activeAll.find(m=>m.type==='good');
+  const activeWarn=activeAll.find(m=>m.type==='warn');
 
   function timeStr(start,end){
     return `${fmtDate(start)} ${fmt12(start)} – ${fmtEnd(end,start)}<br><span style="color:rgba(107,107,133,.5)">${dur(start,end)} duration</span>`;
@@ -2471,15 +2478,18 @@ function buildNowPanel(now,tithiPeriods,nakshatraPeriods,yogaPeriods,karanaPerio
     karFx,
     `ends ${fmtEnd(jdToDate(curKarana.endJD),now)}<br><span style="color:rgba(107,107,133,.5)">${dur(now,jdToDate(curKarana.endJD))} ${timeLeftLabel}</span>`,karCls);
 
-  // Active muhurta
-  if(activeMuhurta){
-    html+=cellWithStatus('Muhurta Active','● Now',
-      'active',
-      activeMuhurta.label,
-      MEFF[activeMuhurta.label]||'',
-      timeStr(activeMuhurta.s,activeMuhurta.e),
-      activeMuhurta.type==='warn'?'warn':'good');
+  // Active muhurta — render auspicious and inauspicious separately when both overlap
+  if(activeGood){
+    html+=cellWithStatus('Muhurta Active','● Now','active',
+      activeGood.label,MEFF[activeGood.label]||'',
+      timeStr(activeGood.s,activeGood.e),'good');
   }
+  if(activeWarn){
+    html+=cellWithStatus('Inauspicious Active','● Now','active',
+      activeWarn.label,MEFF[activeWarn.label]||'',
+      timeStr(activeWarn.s,activeWarn.e),'warn');
+  }
+
 
   if(!isSelected){
     // Upcoming muhurtas — show next auspicious AND next inauspicious separately

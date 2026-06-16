@@ -11497,15 +11497,26 @@ function _lbGetPeriodKeys(period) {
   const keys = [];
   if (period === 'alltime') return null; // null = use totalJap field (no date filter)
   if (period === 'today') {
-    // Always use local date key (App.S.tk) — avoids UTC offset bug for UTC+5:30/+6 users
-    if (window.App && window.App.S && window.App.S.tk) {
-      return [window.App.S.tk];
+    // Always derive the key from the live device clock via App.getTk() so a
+    // stale App.S.tk (e.g. viewer's app backgrounded across midnight) doesn't
+    // make us sum yesterday's history for every other devotee. Keep App.S.tk
+    // in sync as a side-effect so the rest of the UI also refreshes.
+    let key = null;
+    try {
+      if (window.App && typeof window.App.getTk === 'function') {
+        key = window.App.getTk();
+        if (window.App.S && window.App.S.tk !== key) {
+          window.App.S.tk = key;
+        }
+      }
+    } catch(_) {}
+    if (!key) {
+      const y = now.getFullYear();
+      const m = String(now.getMonth()+1).padStart(2,'0');
+      const d = String(now.getDate()).padStart(2,'0');
+      key = y + '-' + m + '-' + d;
     }
-    // Fallback: derive local date from device clock (NOT toISOString which is UTC)
-    const y = now.getFullYear();
-    const m = String(now.getMonth()+1).padStart(2,'0');
-    const d = String(now.getDate()).padStart(2,'0');
-    return [y + '-' + m + '-' + d];
+    return [key];
   }
   if (period === 'month') {
     const y = now.getFullYear(), m = now.getMonth();

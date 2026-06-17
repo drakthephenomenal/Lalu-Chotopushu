@@ -12905,21 +12905,23 @@ function _showUserReplyPopup(text) {
     test.src = COIN_SRC;
   })();
 
+  function todayCount() {
+    try { return (App.S.h28[App.S.tk] || 0); } catch (_) { return 0; }
+  }
+
   function restoreCounter() {
-    try {
-      var saved = parseInt(localStorage.getItem(STORAGE_KEY) || "0", 10);
-      var bbc = document.getElementById("bbCount");
-      if (bbc && !isNaN(saved) && saved > 0) {
-        bbc.textContent = saved >= 1000 ? saved.toLocaleString() : String(saved);
-      }
-    } catch (_) {}
+    var bbc = document.getElementById("bbCount");
+    if (!bbc) return;
+    var n = todayCount();
+    bbc.textContent = n >= 1000 ? n.toLocaleString() : String(n);
   }
 
   function bumpCounter() {
     var bbc = document.getElementById("bbCount");
     var bbctr = document.getElementById("bbCounter");
     if (!bbc) return;
-    var n = (parseInt((bbc.textContent || "0").replace(/,/g, ""), 10) || 0) + 1;
+    // Always reflect TODAY's tap count (resets at midnight via App.S.tk)
+    var n = todayCount();
     bbc.textContent = n >= 1000 ? n.toLocaleString() : String(n);
     try { localStorage.setItem(STORAGE_KEY, String(n)); } catch (_) {}
     if (bbctr) {

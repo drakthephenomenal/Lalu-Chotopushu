@@ -416,6 +416,15 @@ function fmtDT(d){return fmtDate(d)+' '+fmt12(d)}
 function sameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate()}
 function fmtEnd(end,ref){return sameDay(end,ref)?fmt12(end):fmtDate(end)+' '+fmt12(end)}
 function dur(s,e){const m=Math.round((+e-+s)/60000);return m<60?m+'m':Math.floor(m/60)+'h '+(m%60?m%60+'m':'')}
+// Relative-time pill — "starts in 2h 14m" / "3h 41m left" / "ended 12m ago"
+function relStr(s,e,now){
+  if(!s||!e||isNaN(+s)||isNaN(+e))return{cls:'past',txt:''};
+  const nm=+now;
+  if(nm<+s){const m=Math.round((+s-nm)/60000);return{cls:'soon',txt:'starts in '+(m<60?m+'m':Math.floor(m/60)+'h '+(m%60?m%60+'m':''))}}
+  if(nm<+e){const m=Math.round((+e-nm)/60000);return{cls:'live',txt:(m<60?m+'m':Math.floor(m/60)+'h '+(m%60?m%60+'m':''))+' left'}}
+  const m=Math.round((nm-+e)/60000);return{cls:'past',txt:'ended '+(m<60?m+'m':Math.floor(m/60)+'h '+(m%60?m%60+'m':''))+' ago'};
+}
+function relHTML(s,e,now){const r=relStr(s,e,now);if(!r.txt)return'';return`<span class="vp-rel vp-rel-${r.cls}">${r.txt}</span>`}
 
 // ═══════════════════════════════════════════════════════════════
 // STATE
@@ -749,15 +758,14 @@ function renderAll(){
     const cs=new Date(Math.max(+sd,bmStart)),ce=new Date(Math.min(+ed,nextDayBM));
     const label=`${fmtDT(cs)}<br>– ${fmtDT(ce)}`;
     const isK=p.paksha==='Krishna';
+    const relPill=isActive?relHTML(cs,ce,now):'';
     return`<div class="vp-p-row ${isK?'krishna':'sukla'}">
-      <div><span class="vp-p-row-name">${p.name}</span><span class="vp-p-row-badge ${isK?'k':'s'}">${p.paksha}</span></div>
+      <div><span class="vp-p-row-name">${p.name}</span><span class="vp-p-row-badge ${isK?'k':'s'}">${p.paksha}</span>${relPill}</div>
       <div class="vp-p-row-time">${label}</div>
     </div>`;
   }).join('');
 
   // Nakshatra/Yoga/Karana rows — always today's data (panchanga angas don't change by vaar selection)
-  // Helper: format start time — if the period started in the past (before now), show "from <date>"
-  // Filter: skip entries whose duration is < 2 minutes (bisection boundary artefacts)
   function pRowTime(p){
     const sd=jdToDate(p.startJD),ed=jdToDate(p.endJD);
     const durMin=(p.endJD-p.startJD)*1440; // minutes
@@ -765,9 +773,12 @@ function renderAll(){
     return `${fmtDT(sd)}<br>– ${fmtDT(ed)}`;
   }
   function renderPeriodRows(periods){
-    return periods.map(p=>{const t=pRowTime(p);if(!t)return'';return`
+    return periods.map(p=>{const t=pRowTime(p);if(!t)return'';
+      const sd=jdToDate(p.startJD),ed=jdToDate(p.endJD);
+      const relPill=relHTML(sd,ed,now);
+      return`
     <div class="vp-p-row sukla" style="padding-left:14px">
-      <span class="vp-p-row-name">${p.name}</span>
+      <div><span class="vp-p-row-name">${p.name}</span>${relPill}</div>
       <div class="vp-p-row-time">${t}</div>
     </div>`;}).join('');
   }
@@ -779,12 +790,13 @@ function renderAll(){
   function isNowM(s,e){return isActive&&s&&e&&now>=s&&now<e}
   function mRowH(icon,label,s,e,desc,type){
     const active=isNowM(s,e);
+    const relPill=isActive?relHTML(s,e,now):'';
     const timeLeft=active?`<div class="vp-m-time-left">ends ${fmtEnd(e,now)} &nbsp;·&nbsp; ${dur(now,e)} left</div>`:'';
     const nowBadge=active?`<span class="vp-m-now-badge"><span class="dot"></span>NOW</span>`:'';
     const pulseCls=active?(type==='auspicious'?' pulse-auspicious':(type==='inauspicious'?' pulse-inauspicious':'')):'';
     return`<div class="vp-m-row ${type}${active?' now-active':''}${pulseCls}">
       <span class="vp-m-icon">${icon}</span>
-      <div class="vp-m-body"><div class="vp-m-label">${label}${nowBadge}</div><div class="vp-m-desc">${desc}</div>${timeLeft}</div>
+      <div class="vp-m-body"><div class="vp-m-label">${label}${nowBadge}${active?'':relPill}</div><div class="vp-m-desc">${desc}</div>${timeLeft}</div>
       <div class="vp-m-time">${fmtDate(s)}<br>${fmt12(s)} – ${fmtEnd(e,s)}<br><span style="opacity:.6">${dur(s,e)}</span></div>
     </div>`;
   }

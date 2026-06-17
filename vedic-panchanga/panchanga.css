@@ -14,11 +14,11 @@
    Brihaspati=Jupiter(yellow), Sukro=Venus(white/cyan), Shani=Saturn(deep blue) */
 /* Master planetary palette — user-spec hex → rgb triples */
 #vpanchanga-view .vp-vaar-btn[data-vaar="0"]{--vc:255,94,54;--vc2:201,48,26}      /* Sun  #FF5E36 — Ruby Glow */
-#vpanchanga-view .vp-vaar-btn[data-vaar="1"]{--vc:234,242,248;--vc2:184,201,217}  /* Moon #EAF2F8 — Lunar Pearl */
+#vpanchanga-view .vp-vaar-btn[data-vaar="1"]{--vc:232,236,239;--vc2:200,206,212}  /* Moon — Soft Lunar Pearl Silver */
 #vpanchanga-view .vp-vaar-btn[data-vaar="2"]{--vc:231,76,60;--vc2:192,57,43}      /* Mars #E74C3C — Coral Red */
 #vpanchanga-view .vp-vaar-btn[data-vaar="3"]{--vc:46,204,113;--vc2:30,132,73}     /* Bud  #2ECC71 — Jade Green */
 #vpanchanga-view .vp-vaar-btn[data-vaar="4"]{--vc:241,196,15;--vc2:183,149,11}    /* Jup  #F1C40F — Royal Topaz */
-#vpanchanga-view .vp-vaar-btn[data-vaar="5"]{--vc:255,255,255;--vc2:212,239,223}  /* Ven  #FFFFFF / #D4EFDF — Diamond White */
+#vpanchanga-view .vp-vaar-btn[data-vaar="5"]{--vc:255,255,255;--vc2:245,249,250}  /* Ven  — Diamond White (Shukra) */
 #vpanchanga-view .vp-vaar-btn[data-vaar="6"]{--vc:44,62,80;--vc2:93,109,126}      /* Sat  #2C3E50 — Cosmic Sapphire */
 /* All buttons take a subtle bottom tint from their Vaara color */
 #vpanchanga-view .vp-vaar-btn{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(var(--vc,255,255,255),.07))}
@@ -239,3 +239,111 @@
   #vpanchanga-view .pulse-inauspicious{animation:none}
 }
 
+
+/* ══════════════════════════════════════════════════════════════
+   PREMIUM POLISH v2 — Dark Blue × Golden Yellow
+   Countdown pills · richer card surfaces · refined glow states
+   ══════════════════════════════════════════════════════════════ */
+
+/* Countdown / relative-time pill ─────────────────────────── */
+#vpanchanga-view .vp-rel{
+  display:inline-flex;align-items:center;gap:4px;
+  font-family:'Inter',sans-serif;font-size:.54rem;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;
+  padding:3px 8px;border-radius:999px;margin-left:8px;
+  border:1px solid transparent;white-space:nowrap;vertical-align:middle;
+  backdrop-filter:blur(6px);
+}
+#vpanchanga-view .vp-rel::before{
+  content:'';width:5px;height:5px;border-radius:50%;
+  background:currentColor;box-shadow:0 0 8px currentColor;
+}
+#vpanchanga-view .vp-rel-soon{
+  color:#cfd9ff;background:rgba(120,140,220,.14);
+  border-color:rgba(184,196,245,.32);
+}
+#vpanchanga-view .vp-rel-live{
+  color:#1a0f00;background:linear-gradient(135deg,#fde68a,#f5d17a);
+  border-color:rgba(245,209,122,.7);
+  box-shadow:0 0 14px rgba(245,209,122,.55),inset 0 1px 0 rgba(255,255,255,.5);
+  animation:vpRelLive 1.6s ease-in-out infinite;
+}
+#vpanchanga-view .vp-rel-past{
+  color:rgba(180,190,210,.6);background:rgba(255,255,255,.04);
+  border-color:rgba(255,255,255,.08);
+}
+#vpanchanga-view .vp-rel-past::before{box-shadow:none;opacity:.5}
+@keyframes vpRelLive{
+  0%,100%{box-shadow:0 0 10px rgba(245,209,122,.45),inset 0 1px 0 rgba(255,255,255,.5)}
+  50%    {box-shadow:0 0 20px rgba(245,209,122,.85),0 0 30px rgba(245,209,122,.4),inset 0 1px 0 rgba(255,255,255,.6)}
+}
+@media (prefers-reduced-motion:reduce){
+  #vpanchanga-view .vp-rel-live{animation:none}
+}
+
+/* Panchanga rows: layout fix so countdown pill sits beside name nicely */
+#vpanchanga-view .vp-p-row>div:first-child{display:flex;align-items:center;flex-wrap:wrap;gap:4px 0}
+
+/* Richer card surface — deep navy with a hair of gold inner light */
+#vpanchanga-view .vp-p-row,
+#vpanchanga-view .vp-m-row,
+#vpanchanga-view .vp-db-card,
+#vpanchanga-view .vp-now-cell{
+  background:
+    linear-gradient(180deg,rgba(28,34,72,.62),rgba(10,13,32,.92)),
+    radial-gradient(140% 80% at 50% 0%,rgba(245,209,122,.06),transparent 60%);
+  background-blend-mode:normal;
+  transition:transform .2s ease,border-color .2s ease,box-shadow .25s ease;
+}
+#vpanchanga-view .vp-p-row:hover,
+#vpanchanga-view .vp-m-row:hover{
+  transform:translateY(-1px);
+  border-color:rgba(245,209,122,.35);
+  box-shadow:0 6px 22px rgba(8,12,32,.6),0 0 0 1px rgba(245,209,122,.12);
+}
+
+/* Active muhurta row — richer gold halo */
+#vpanchanga-view .vp-m-row.now-active{
+  background:
+    linear-gradient(180deg,rgba(245,209,122,.14),rgba(40,28,8,.55)),
+    radial-gradient(120% 80% at 50% 0%,rgba(245,209,122,.22),transparent 70%)!important;
+  box-shadow:0 0 0 1px rgba(245,209,122,.6),0 8px 30px rgba(245,209,122,.28),inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+/* Tithi toggle — even more premium, with sheen */
+#vpanchanga-view .vp-tithi-toggle{
+  background:
+    linear-gradient(135deg,rgba(245,209,122,.18),rgba(245,209,122,.04)),
+    linear-gradient(180deg,rgba(28,34,72,.6),rgba(10,13,32,.9));
+  position:relative;overflow:hidden;
+}
+#vpanchanga-view .vp-tithi-toggle::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.14) 50%,transparent 70%);
+  transform:translateX(-100%);transition:transform .8s ease;
+}
+#vpanchanga-view .vp-tithi-toggle:hover::after{transform:translateX(100%)}
+
+/* Section heads — slightly more dramatic gradient lines */
+#vpanchanga-view .vp-sec-head{font-size:.78rem}
+#vpanchanga-view .vp-sec-head::before{width:24px}
+
+/* Active banner — pull more attention with layered gold glow */
+#vpanchanga-view .vp-active-banner{
+  background:
+    linear-gradient(135deg,rgba(245,209,122,.16),rgba(245,209,122,.02)),
+    radial-gradient(120% 100% at 0% 0%,rgba(245,209,122,.25),transparent 60%);
+  box-shadow:0 6px 26px rgba(245,209,122,.22),inset 0 1px 0 rgba(255,255,255,.1);
+}
+
+/* Day-boundary cards — premium lift */
+#vpanchanga-view .vp-db-card{
+  box-shadow:0 4px 18px rgba(8,12,32,.55),inset 0 1px 0 rgba(245,209,122,.08);
+}
+#vpanchanga-view .vp-db-card:hover{
+  border-color:rgba(245,209,122,.4);
+  box-shadow:0 8px 28px rgba(245,209,122,.18),inset 0 1px 0 rgba(245,209,122,.14);
+}
+
+/* Smoother scrolling for the long page */
+#vpanchanga-view{scroll-behavior:smooth}

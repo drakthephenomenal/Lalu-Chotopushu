@@ -20,6 +20,25 @@
 #vpanchanga-view .vp-vaar-btn[data-vaar="4"]{--vc:241,196,15;--vc2:183,149,11}    /* Jup  #F1C40F — Royal Topaz */
 #vpanchanga-view .vp-vaar-btn[data-vaar="5"]{--vc:255,255,255;--vc2:245,249,250}  /* Ven  — Diamond White (Shukra) */
 #vpanchanga-view .vp-vaar-btn[data-vaar="6"]{--vc:44,62,80;--vc2:93,109,126}      /* Sat  #2C3E50 — Cosmic Sapphire */
+/* Recolor default colored emoji to match desired metallic tones for Moon & Venus */
+#vpanchanga-view .vp-vaar-btn[data-vaar="1"] .vp-vi{
+  filter:grayscale(1) brightness(1.75) contrast(.92)
+         drop-shadow(0 0 6px rgba(232,236,239,.55));
+}
+#vpanchanga-view .vp-vaar-btn[data-vaar="5"] .vp-vi{
+  filter:grayscale(1) brightness(2.25) contrast(.85)
+         drop-shadow(0 0 6px rgba(255,255,255,.75));
+}
+#vpanchanga-view .vp-vaar-btn.today[data-vaar="1"] .vp-vi{
+  filter:grayscale(1) brightness(2) contrast(.9)
+         drop-shadow(0 0 14px rgba(232,236,239,.9))
+         drop-shadow(0 0 26px rgba(200,206,212,.6));
+}
+#vpanchanga-view .vp-vaar-btn.today[data-vaar="5"] .vp-vi{
+  filter:grayscale(1) brightness(2.4) contrast(.85)
+         drop-shadow(0 0 14px rgba(255,255,255,.95))
+         drop-shadow(0 0 26px rgba(245,249,250,.7));
+}
 /* All buttons take a subtle bottom tint from their Vaara color */
 #vpanchanga-view .vp-vaar-btn{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(var(--vc,255,255,255),.07))}
 #vpanchanga-view .vp-vaar-btn:hover{border-color:rgba(var(--vc),.45);transform:translateY(-1px)}

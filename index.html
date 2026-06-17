@@ -1682,6 +1682,203 @@
   box-shadow:0 0 0 1px #8E44AD, 0 0 28px rgba(142,68,173,.4) !important;
 }
 
+
+/* ════════════════════════════════════════════════════════════════
+   v2 OVERLAY — Navagraha colors, urgency ramp, anga strips, violet
+   (Replaces v1 overlay. v1 selectors still safe — these override.)
+   ════════════════════════════════════════════════════════════════ */
+
+/* ---- Navagraha planet colors (PERMANENT per Vaar, never overridden) ---- */
+#vpanchanga-view .vp-vaar-btn[data-vaar="0"]{--vc:#C0392B;--vc-soft:rgba(192,57,43,.22)}   /* Surya  — copper-red */
+#vpanchanga-view .vp-vaar-btn[data-vaar="1"]{--vc:#E8EEF5;--vc-soft:rgba(232,238,245,.22)} /* Chandra— pearl-silver */
+#vpanchanga-view .vp-vaar-btn[data-vaar="2"]{--vc:#E74C3C;--vc-soft:rgba(231,76,60,.22)}   /* Mangal — coral-red */
+#vpanchanga-view .vp-vaar-btn[data-vaar="3"]{--vc:#2ECC71;--vc-soft:rgba(46,204,113,.22)}  /* Budh   — emerald */
+#vpanchanga-view .vp-vaar-btn[data-vaar="4"]{--vc:#F1C40F;--vc-soft:rgba(241,196,15,.22)}  /* Guru   — golden-yellow */
+#vpanchanga-view .vp-vaar-btn[data-vaar="5"]{--vc:#AED6F1;--vc-soft:rgba(174,214,241,.22)} /* Shukra — opal blue-white */
+#vpanchanga-view .vp-vaar-btn[data-vaar="6"]{--vc:#5B5BD6;--vc-soft:rgba(91,91,214,.22)}   /* Shani  — deep indigo */
+
+/* Every chip ALWAYS shows its planet's tint — today/selected just adds a ring */
+#vpanchanga-view .vp-vaar-btn{
+  background:linear-gradient(180deg, color-mix(in oklab, var(--vc) 12%, rgba(255,255,255,.025)),
+                                       color-mix(in oklab, var(--vc) 4%, rgba(255,255,255,.01))) !important;
+  border:1px solid color-mix(in oklab, var(--vc) 45%, rgba(255,255,255,.06)) !important;
+  box-shadow:0 4px 22px rgba(0,0,0,.35), inset 0 0 18px color-mix(in oklab, var(--vc) 10%, transparent) !important;
+  backdrop-filter:blur(10px) saturate(140%);
+  animation:none !important;
+  color:var(--tl);
+}
+#vpanchanga-view .vp-vaar-btn .vp-vn{color:color-mix(in oklab, var(--vc) 80%, #fff) !important; text-shadow:0 0 10px color-mix(in oklab, var(--vc) 50%, transparent)}
+#vpanchanga-view .vp-vaar-btn .vp-vi{color:var(--vc); display:inline-flex; align-items:center; justify-content:center; height:18px}
+#vpanchanga-view .vp-vaar-btn .vp-vi svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 6px color-mix(in oklab, var(--vc) 50%, transparent))}
+#vpanchanga-view .vp-vaar-btn:hover{transform:translateY(-1px); border-color:color-mix(in oklab, var(--vc) 75%, transparent) !important}
+
+/* "Today" — brighter outer ring + breathing, color stays planet's */
+#vpanchanga-view .vp-vaar-btn.today{
+  box-shadow:0 0 0 1.5px var(--vc), 0 0 22px color-mix(in oklab, var(--vc) 55%, transparent),
+             inset 0 0 22px color-mix(in oklab, var(--vc) 18%, transparent) !important;
+  animation:vpVaarBreath 2.6s ease-in-out infinite !important;
+}
+#vpanchanga-view .vp-vaar-btn.selected:not(.today){
+  box-shadow:0 0 0 1.5px color-mix(in oklab, var(--vc) 85%, #fff),
+             0 0 16px color-mix(in oklab, var(--vc) 35%, transparent),
+             inset 0 0 14px color-mix(in oklab, var(--vc) 12%, transparent) !important;
+}
+@keyframes vpVaarBreath{
+  0%,100%{filter:brightness(1.0)}
+  50%{filter:brightness(1.18)}
+}
+
+/* ---- LIVE STATUS BAR — gold for auspicious, violet for inauspicious ---- */
+#vpanchanga-view .vp-status-bar[data-state="inauspicious"]{
+  border-color:rgba(142,68,173,.55);
+  background:linear-gradient(90deg, rgba(142,68,173,.14), rgba(108,52,131,.04));
+  color:#d8b4fe;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ANGA HORIZONTAL STRIPS — every period in the Vedic day, swipable
+   ════════════════════════════════════════════════════════════════ */
+#vpanchanga-view #vp-tithi-rows,
+#vpanchanga-view #vp-nakshatra-rows,
+#vpanchanga-view #vp-yoga-rows,
+#vpanchanga-view #vp-karana-rows{
+  display:flex; flex-direction:row !important; gap:8px;
+  overflow-x:auto; overflow-y:hidden;
+  padding:4px 2px 10px;
+  scroll-snap-type:x mandatory;
+  scrollbar-width:none;
+}
+#vpanchanga-view #vp-tithi-rows::-webkit-scrollbar,
+#vpanchanga-view #vp-nakshatra-rows::-webkit-scrollbar,
+#vpanchanga-view #vp-yoga-rows::-webkit-scrollbar,
+#vpanchanga-view #vp-karana-rows::-webkit-scrollbar{display:none}
+
+#vpanchanga-view #vp-tithi-rows .vp-p-row,
+#vpanchanga-view #vp-nakshatra-rows .vp-p-row,
+#vpanchanga-view #vp-yoga-rows .vp-p-row,
+#vpanchanga-view #vp-karana-rows .vp-p-row{
+  flex:0 0 auto; min-width:152px; max-width:200px;
+  display:flex !important; flex-direction:column; gap:6px;
+  padding:10px 12px !important;
+  border-radius:12px;
+  background:rgba(120,150,220,.06) !important;
+  border:1px solid rgba(120,150,220,.22) !important;
+  scroll-snap-align:start;
+  transition:all .35s ease;
+}
+#vpanchanga-view .vp-p-row .vp-p-row-name{font-size:.78rem;font-weight:600;color:#cfd8e8}
+#vpanchanga-view .vp-p-row .vp-p-row-badge{margin-left:6px;font-size:.55rem}
+#vpanchanga-view .vp-p-row .vp-p-row-time{font-size:.62rem;color:rgba(207,216,232,.7);line-height:1.35}
+
+/* Live "currently active" anga chip — soft blue glow */
+#vpanchanga-view .vp-p-row.vp-p-now{
+  background:rgba(120,170,255,.16) !important;
+  border-color:#7BB0FF !important;
+  box-shadow:0 0 0 1px #7BB0FF, 0 0 22px rgba(120,170,255,.35);
+  animation:vpAngaPulse 2.6s ease-in-out infinite;
+}
+@keyframes vpAngaPulse{
+  0%,100%{box-shadow:0 0 0 1px #7BB0FF, 0 0 16px rgba(120,170,255,.28)}
+  50%{box-shadow:0 0 0 1px #7BB0FF, 0 0 28px rgba(120,170,255,.55)}
+}
+
+/* ════════════════════════════════════════════════════════════════
+   COLOR LANGUAGE — gold = featured, blue = routine, violet = bad
+   ════════════════════════════════════════════════════════════════ */
+/* Replace any leftover red sec-head with violet */
+#vpanchanga-view .vp-sec-head-red{color:#c084fc !important; text-shadow:0 0 18px rgba(142,68,173,.4) !important}
+#vpanchanga-view .vp-sec-head-red::before{background:linear-gradient(90deg,transparent,rgba(142,68,173,.6)) !important}
+#vpanchanga-view .vp-sec-head-red::after{background:linear-gradient(90deg,rgba(142,68,173,.25),transparent) !important}
+
+/* All inauspicious → violet (overrides any prior red) */
+#vpanchanga-view .vp-m-row.inauspicious{
+  border:1px solid rgba(142,68,173,.55) !important;
+  background:linear-gradient(180deg,rgba(38,18,52,.55),rgba(18,10,28,.85)) !important;
+}
+#vpanchanga-view .vp-m-row.inauspicious .vp-m-now-badge{background:rgba(142,68,173,.25);color:#d8b4fe}
+
+/* Routine auspicious = blue (default look) */
+#vpanchanga-view .vp-m-row.auspicious{
+  border:1px solid rgba(120,170,255,.45) !important;
+  background:linear-gradient(180deg,rgba(20,32,58,.55),rgba(12,18,38,.85)) !important;
+}
+#vpanchanga-view .vp-m-row.auspicious::before{background:#7BB0FF !important; box-shadow:0 0 0 0 rgba(123,176,255,.5) !important; animation:vpDotBlue 2.8s ease-in-out infinite !important}
+@keyframes vpDotBlue{
+  0%,100%{box-shadow:0 0 0 0 rgba(123,176,255,.55), 0 0 8px rgba(123,176,255,.55)}
+  50%{box-shadow:0 0 0 10px rgba(123,176,255,0), 0 0 14px rgba(123,176,255,.85)}
+}
+
+/* Featured auspicious (Brahma / Abhijit / Special Yoga) = gold */
+#vpanchanga-view .vp-m-row.auspicious.vp-featured{
+  border:1px solid rgba(241,196,15,.6) !important;
+  background:linear-gradient(180deg,rgba(54,42,16,.55),rgba(26,20,8,.85)) !important;
+}
+#vpanchanga-view .vp-m-row.auspicious.vp-featured::before{background:#F1C40F !important; animation:vpDotGold 2.5s ease-in-out infinite !important}
+
+/* Violet warn banner replaces red */
+#vpanchanga-view .vp-active-banner.warn{
+  border-color:rgba(142,68,173,.5) !important;
+  background:linear-gradient(135deg,rgba(142,68,173,.14),rgba(108,52,131,.03)) !important;
+  box-shadow:0 4px 18px rgba(142,68,173,.18) !important;
+}
+#vpanchanga-view .vp-active-banner.warn .vp-amb-dot{background:#c084fc !important; box-shadow:0 0 12px rgba(192,132,252,.6) !important}
+#vpanchanga-view .vp-active-banner.warn .vp-amb-name{color:#d8b4fe !important; text-shadow:0 0 14px rgba(142,68,173,.5) !important}
+
+/* ════════════════════════════════════════════════════════════════
+   RIGHT NOW CARD — gradient sweep border + urgency ramp
+   ════════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-active-banner,
+#vpanchanga-view .vp-m-row.now-active{
+  position:relative;
+  isolation:isolate;
+  z-index:0;
+  animation:vpNowBreath 3.2s ease-in-out infinite;
+}
+/* Sweeping conic gradient border via ::after pseudo */
+#vpanchanga-view .vp-active-banner::after,
+#vpanchanga-view .vp-m-row.now-active::after{
+  content:""; position:absolute; inset:-1.5px;
+  border-radius:inherit; padding:1.5px; z-index:-1;
+  background:conic-gradient(from var(--sweep,0deg),
+    transparent 0deg, var(--nowAccent,#7BB0FF) 60deg, transparent 140deg, transparent 360deg);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
+  animation:vpSweep 4.5s linear infinite;
+  pointer-events:none;
+}
+@keyframes vpSweep{to{--sweep:360deg}}
+@property --sweep{syntax:'<angle>'; inherits:false; initial-value:0deg}
+@keyframes vpNowBreath{
+  0%,100%{filter:brightness(1.0)}
+  50%{filter:brightness(1.12)}
+}
+
+/* Choose the accent by parent type */
+#vpanchanga-view .vp-active-banner{--nowAccent:#7BB0FF}
+#vpanchanga-view .vp-active-banner.warn{--nowAccent:#c084fc}
+#vpanchanga-view .vp-m-row.now-active.auspicious{--nowAccent:#7BB0FF}
+#vpanchanga-view .vp-m-row.now-active.auspicious.vp-featured{--nowAccent:#F1C40F}
+#vpanchanga-view .vp-m-row.now-active.inauspicious{--nowAccent:#c084fc}
+
+/* Urgency tiers — set by JS via class on the same elements */
+#vpanchanga-view .vp-urgency-mid{filter:brightness(1.08) saturate(1.1)}
+#vpanchanga-view .vp-urgency-mid::after{animation-duration:3s !important}
+
+#vpanchanga-view .vp-urgency-high{
+  --nowAccent:#FF7A45 !important;
+  animation:vpNowBreathFast 1.4s ease-in-out infinite !important;
+  box-shadow:0 0 0 1px #FF7A45, 0 0 28px rgba(255,122,69,.55) !important;
+}
+#vpanchanga-view .vp-urgency-high::after{
+  animation-duration:1.8s !important;
+  background:conic-gradient(from var(--sweep,0deg),
+    transparent 0deg, #FF7A45 50deg, #FF3D2E 110deg, transparent 180deg, transparent 360deg) !important;
+}
+@keyframes vpNowBreathFast{
+  0%,100%{filter:brightness(1.05) saturate(1.15)}
+  50%{filter:brightness(1.3) saturate(1.3)}
+}
+
 </style>
         <div id="fbRecaptchaContainer" aria-hidden="true"></div>
       </div>
@@ -2167,7 +2364,7 @@ const KAR_MOV=['Bava','Balava','Kaulava','Taitila','Garija','Vanija','Vishti'];
 const KAR_END=['Chatushpada','Naga','Kimstughna'];
 function karName(i){if(i===0)return'Kimstughna';if(i>=57)return KAR_END[i-57];return KAR_MOV[(i-1)%7]}
 const VAAR=['Rabi','Som','Mangol','Budh','Brihaspati','Sukro','Shani'];
-const VAAR_ICON=['☀️','🌙','🔴','💚','🪐','⭐','💙'];
+const VAAR_ICON=["<svg viewBox='0 0 24 24'><circle cx='12' cy='12' r='4'/><path d='M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1'/></svg>","<svg viewBox='0 0 24 24'><path d='M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z'/></svg>","<svg viewBox='0 0 24 24'><path d='M12 4l8 15H4z'/></svg>","<svg viewBox='0 0 24 24'><path d='M12 3l8 9-8 9-8-9z'/></svg>","<svg viewBox='0 0 24 24'><path d='M12 3l2 7 7 2-7 2-2 7-2-7-7-2 7-2z'/></svg>","<svg viewBox='0 0 24 24'><circle cx='12' cy='9' r='5'/><path d='M12 14v7M9 18h6'/></svg>","<svg viewBox='0 0 24 24'><ellipse cx='12' cy='12' rx='5' ry='5'/><path d='M3 14c4 3 14 3 18 0'/></svg>"];
 const VAAR_BN=['রবি','সোম','মঙ্গল','বুধ','বৃহস্পতি','শুক্র','শনি'];
 const HM=['Chaitra','Vaishakha','Jyeshtha','Ashadha','Shravana','Bhadrapada','Ashwina','Kartika','Margashirsha','Pausha','Magha','Phalguna'];
 const VM=['Vishnu','Madhusudana','Trivikrama','Vamana','Shridhara','Hrishikesha','Padmanabha','Damodara','Keshava','Narayana','Madhava','Govinda'];
@@ -2777,7 +2974,7 @@ function renderAll(){
     const cs=new Date(Math.max(+sd,bmStart)),ce=new Date(Math.min(+ed,nextDayBM));
     const label=`${fmtDT(cs)}<br>– ${fmtDT(ce)}`;
     const isK=p.paksha==='Krishna';
-    return`<div class="vp-p-row ${isK?'krishna':'sukla'}">
+    return`<div class="vp-p-row ${isK?'krishna':'sukla'}" data-start="${+cs}" data-end="${+ce}">
       <div><span class="vp-p-row-name">${p.name}</span><span class="vp-p-row-badge ${isK?'k':'s'}">${p.paksha}</span></div>
       <div class="vp-p-row-time">${label}</div>
     </div>`;
@@ -2793,8 +2990,8 @@ function renderAll(){
     return `${fmtDT(sd)}<br>– ${fmtDT(ed)}`;
   }
   function renderPeriodRows(periods){
-    return periods.map(p=>{const t=pRowTime(p);if(!t)return'';return`
-    <div class="vp-p-row sukla" style="padding-left:14px">
+    return periods.map(p=>{const t=pRowTime(p);if(!t)return'';const _sd=jdToDate(p.startJD),_ed=jdToDate(p.endJD);return`
+    <div class="vp-p-row sukla" data-start="${+_sd}" data-end="${+_ed}" style="padding-left:14px">
       <span class="vp-p-row-name">${p.name}</span>
       <div class="vp-p-row-time">${t}</div>
     </div>`;}).join('');
@@ -2809,7 +3006,7 @@ function renderAll(){
     const active=isNowM(s,e);
     const timeLeft=active?`<div class="vp-m-time-left">ends ${fmtEnd(e,now)} &nbsp;·&nbsp; ${dur(now,e)} left</div>`:'';
     const nowBadge=active?`<span class="vp-m-now-badge"><span class="dot"></span>NOW</span>`:'';
-    return`<div class="vp-m-row ${type}${active?' now-active':''}">
+    return`<div class="vp-m-row ${type}${active?' now-active':''}" data-start="${s?+s:0}" data-end="${e?+e:0}">
       <span class="vp-m-icon">${icon}</span>
       <div class="vp-m-body"><div class="vp-m-label">${label}${nowBadge}</div><div class="vp-m-desc">${desc}</div>${timeLeft}</div>
       <div class="vp-m-time">${fmtDate(s)}<br>${fmt12(s)} – ${fmtEnd(e,s)}<br><span style="opacity:.6">${dur(s,e)}</span></div>
@@ -2818,7 +3015,7 @@ function renderAll(){
   function activeBanner(items,warnCls){
     const a=items.find(x=>isNowM(x.s,x.e));
     if(!a)return'';
-    return`<div class="vp-active-banner ${warnCls}">
+    return`<div class="vp-active-banner ${warnCls}" data-start="${+a.s}" data-end="${+a.e}">
       <div class="vp-amb-dot"></div>
       <div class="vp-amb-body">
         <div class="vp-amb-label">Active Now</div>
@@ -3047,6 +3244,43 @@ vpTryInit();
   }
   setInterval(updateStatusBar,3000);
   document.addEventListener('DOMContentLoaded',function(){setTimeout(updateStatusBar,1500);});
+})();
+</script>
+
+<script>
+(function(){
+  var FEATURED = /Brahma Muhurta|Abhijit Muhurta|Special Yoga/i;
+  function tag(){
+    // mark featured auspicious rows
+    document.querySelectorAll('#vpanchanga-view .vp-m-row.auspicious').forEach(function(r){
+      var lbl = r.querySelector('.vp-m-label');
+      if(lbl && FEATURED.test(lbl.textContent)) r.classList.add('vp-featured');
+      else r.classList.remove('vp-featured');
+    });
+    var now = Date.now();
+    // anga chip "now" highlight
+    document.querySelectorAll('#vp-tithi-rows .vp-p-row, #vp-nakshatra-rows .vp-p-row, #vp-yoga-rows .vp-p-row, #vp-karana-rows .vp-p-row').forEach(function(c){
+      var sd = +c.dataset.start, ed = +c.dataset.end;
+      if(sd && ed && now>=sd && now<ed) c.classList.add('vp-p-now');
+      else c.classList.remove('vp-p-now');
+    });
+    // urgency ramp on Right Now elements
+    document.querySelectorAll('#vpanchanga-view .vp-active-banner[data-start], #vpanchanga-view .vp-m-row.now-active[data-start]').forEach(function(el){
+      var sd = +el.dataset.start, ed = +el.dataset.end;
+      if(!sd || !ed || ed<=sd){el.classList.remove('vp-urgency-mid','vp-urgency-high');return;}
+      var pct = (now - sd) / (ed - sd);
+      el.classList.toggle('vp-urgency-high', pct >= 0.8);
+      el.classList.toggle('vp-urgency-mid',  pct >= 0.6 && pct < 0.8);
+    });
+  }
+  // run after every render — observe the main panchanga container
+  var target = document.getElementById('vpanchanga-view');
+  if(target){
+    var mo = new MutationObserver(function(){ requestAnimationFrame(tag); });
+    mo.observe(target, {subtree:true, childList:true});
+  }
+  setInterval(tag, 2000);
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(tag, 1200); });
 })();
 </script>
 </body>

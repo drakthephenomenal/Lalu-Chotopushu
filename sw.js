@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Push notifications & FCM removed.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v146';
+const CACHE = 'radha-jap-v147';
 
 // Core assets needed to render the shell — fetched during install
 const CORE_ASSETS = [
@@ -29,6 +29,10 @@ const LAZY_LOCAL_ASSETS = [
   './radha_vallabh/1.png',
   './hitju_maharaj/1.png',
   './Panchojanno%20Shankya.mp3',
+  // Vedic Panchanga module — externalised in v147, cached lazily
+  './vedic-panchanga/panchanga.html',
+  './vedic-panchanga/panchanga.css',
+  './vedic-panchanga/panchanga.js',
 ];
 
 const EXTERNAL_ASSETS = [
@@ -120,14 +124,14 @@ self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
     const oldKeys = keys.filter((key) => key !== CACHE);
-    const isUpdate = oldKeys.length > 0;
     await Promise.all(oldKeys.map((key) => caches.delete(key)));
     await self.clients.claim();
-    if (isUpdate) {
-      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED', version: CACHE }));
-      await Promise.allSettled(clients.map((client) => client.url ? client.navigate(client.url) : null));
-    }
+    // v147: do NOT force-navigate open tabs after activation — that was the
+    // main cause of "long load" complaints (every SW update triggered a hard
+    // reload mid-session). Just notify the page; new code is picked up on the
+    // next natural navigation.
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED', version: CACHE }));
   })());
 });
 

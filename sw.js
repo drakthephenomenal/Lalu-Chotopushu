@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Push notifications & FCM removed.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v147';
+const CACHE = 'radha-jap-v148';
 
 // Core assets needed to render the shell — fetched during install
 const CORE_ASSETS = [
@@ -29,7 +29,7 @@ const LAZY_LOCAL_ASSETS = [
   './radha_vallabh/1.png',
   './hitju_maharaj/1.png',
   './Panchojanno%20Shankya.mp3',
-  // Vedic Panchanga module — externalised in v147, cached lazily
+  // Vedic Panchanga module — externalised in v147, dynamic pulse states added in v148, cached lazily
   './vedic-panchanga/panchanga.html',
   './vedic-panchanga/panchanga.css',
   './vedic-panchanga/panchanga.js',
@@ -126,7 +126,7 @@ self.addEventListener('activate', (event) => {
     const oldKeys = keys.filter((key) => key !== CACHE);
     await Promise.all(oldKeys.map((key) => caches.delete(key)));
     await self.clients.claim();
-    // v147: do NOT force-navigate open tabs after activation — that was the
+    // v148: do NOT force-navigate open tabs after activation — that was the
     // main cause of "long load" complaints (every SW update triggered a hard
     // reload mid-session). Just notify the page; new code is picked up on the
     // next natural navigation.

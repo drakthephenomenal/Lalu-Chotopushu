@@ -12,13 +12,14 @@
 /* ── Classical per-Vaara color codes (Sun→Sat = 0→6) ────────────
    Rabi=Sun(gold), Som=Moon(silver), Mangol=Mars(red), Budh=Mercury(green),
    Brihaspati=Jupiter(yellow), Sukro=Venus(white/cyan), Shani=Saturn(deep blue) */
-#vpanchanga-view .vp-vaar-btn[data-vaar="0"]{--vc:245,209,122;--vc2:255,176,46}    /* Sun – gold/amber */
-#vpanchanga-view .vp-vaar-btn[data-vaar="1"]{--vc:220,232,255;--vc2:170,196,240}  /* Moon – silver */
-#vpanchanga-view .vp-vaar-btn[data-vaar="2"]{--vc:248,113,113;--vc2:225,55,72}    /* Mars – red */
-#vpanchanga-view .vp-vaar-btn[data-vaar="3"]{--vc:95,227,178;--vc2:34,197,134}    /* Mercury – emerald */
-#vpanchanga-view .vp-vaar-btn[data-vaar="4"]{--vc:250,204,21;--vc2:217,151,15}    /* Jupiter – yellow */
-#vpanchanga-view .vp-vaar-btn[data-vaar="5"]{--vc:236,254,255;--vc2:165,243,252}  /* Venus – pearl/cyan */
-#vpanchanga-view .vp-vaar-btn[data-vaar="6"]{--vc:139,127,245;--vc2:79,70,229}    /* Saturn – indigo */
+/* Master planetary palette — user-spec hex → rgb triples */
+#vpanchanga-view .vp-vaar-btn[data-vaar="0"]{--vc:255,94,54;--vc2:201,48,26}      /* Sun  #FF5E36 — Ruby Glow */
+#vpanchanga-view .vp-vaar-btn[data-vaar="1"]{--vc:234,242,248;--vc2:184,201,217}  /* Moon #EAF2F8 — Lunar Pearl */
+#vpanchanga-view .vp-vaar-btn[data-vaar="2"]{--vc:231,76,60;--vc2:192,57,43}      /* Mars #E74C3C — Coral Red */
+#vpanchanga-view .vp-vaar-btn[data-vaar="3"]{--vc:46,204,113;--vc2:30,132,73}     /* Bud  #2ECC71 — Jade Green */
+#vpanchanga-view .vp-vaar-btn[data-vaar="4"]{--vc:241,196,15;--vc2:183,149,11}    /* Jup  #F1C40F — Royal Topaz */
+#vpanchanga-view .vp-vaar-btn[data-vaar="5"]{--vc:255,255,255;--vc2:212,239,223}  /* Ven  #FFFFFF / #D4EFDF — Diamond White */
+#vpanchanga-view .vp-vaar-btn[data-vaar="6"]{--vc:44,62,80;--vc2:93,109,126}      /* Sat  #2C3E50 — Cosmic Sapphire */
 /* All buttons take a subtle bottom tint from their Vaara color */
 #vpanchanga-view .vp-vaar-btn{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(var(--vc,255,255,255),.07))}
 #vpanchanga-view .vp-vaar-btn:hover{border-color:rgba(var(--vc),.45);transform:translateY(-1px)}
@@ -199,4 +200,42 @@
 
 /* Adhik badge */
 #vpanchanga-view .vp-adhik-badge{font-size:.5rem;font-weight:700;padding:2px 6px;border-radius:5px;background:rgba(245,209,122,.15);color:#f59e0b;border:1px solid rgba(245,209,122,.3);letter-spacing:.08em;text-transform:uppercase;margin-right:4px}
+
+/* ══════════════════════════════════════════════════════════════
+   DYNAMIC STATUS — Auspicious (Gold) / Inauspicious (Violet)
+   Per design tokens. Reduced-motion friendly.
+   ══════════════════════════════════════════════════════════════ */
+:root{
+  --vp-obsidian:#0A0D1A;
+  --vp-auspicious:#F1C40F;
+  --vp-inauspicious:#8E44AD;
+}
+#vpanchanga-view .vp-glass{
+  background:rgba(255,255,255,0.03);
+  backdrop-filter:blur(12px) saturate(140%);
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:16px;
+}
+#vpanchanga-view .pulse-auspicious{
+  position:relative;
+  border-color:rgba(241,196,15,.55) !important;
+  animation:vpAuspiciousPulse 2.5s ease-in-out infinite;
+}
+#vpanchanga-view .pulse-inauspicious{
+  position:relative;
+  border-color:rgba(142,68,173,.55) !important;
+  animation:vpInauspiciousPulse 4s ease-in-out infinite;
+}
+@keyframes vpAuspiciousPulse{
+  0%,100%{box-shadow:0 0 0 rgba(241,196,15,0),inset 0 0 0 rgba(241,196,15,0)}
+  50%    {box-shadow:0 0 8px 2px rgba(241,196,15,.55),0 0 22px rgba(241,196,15,.35),inset 0 0 12px rgba(241,196,15,.18)}
+}
+@keyframes vpInauspiciousPulse{
+  0%,100%{box-shadow:0 0 0 rgba(142,68,173,0),inset 0 0 0 rgba(142,68,173,0)}
+  50%    {box-shadow:0 0 8px 2px rgba(142,68,173,.5),0 0 22px rgba(142,68,173,.32),inset 0 0 12px rgba(142,68,173,.16)}
+}
+@media (prefers-reduced-motion:reduce){
+  #vpanchanga-view .pulse-auspicious,
+  #vpanchanga-view .pulse-inauspicious{animation:none}
+}
 

@@ -781,7 +781,8 @@ function renderAll(){
     const active=isNowM(s,e);
     const timeLeft=active?`<div class="vp-m-time-left">ends ${fmtEnd(e,now)} &nbsp;·&nbsp; ${dur(now,e)} left</div>`:'';
     const nowBadge=active?`<span class="vp-m-now-badge"><span class="dot"></span>NOW</span>`:'';
-    return`<div class="vp-m-row ${type}${active?' now-active':''}">
+    const pulseCls=active?(type==='auspicious'?' pulse-auspicious':(type==='inauspicious'?' pulse-inauspicious':'')):'';
+    return`<div class="vp-m-row ${type}${active?' now-active':''}${pulseCls}">
       <span class="vp-m-icon">${icon}</span>
       <div class="vp-m-body"><div class="vp-m-label">${label}${nowBadge}</div><div class="vp-m-desc">${desc}</div>${timeLeft}</div>
       <div class="vp-m-time">${fmtDate(s)}<br>${fmt12(s)} – ${fmtEnd(e,s)}<br><span style="opacity:.6">${dur(s,e)}</span></div>
@@ -790,7 +791,8 @@ function renderAll(){
   function activeBanner(items,warnCls){
     const a=items.find(x=>isNowM(x.s,x.e));
     if(!a)return'';
-    return`<div class="vp-active-banner ${warnCls}">
+    const pulseCls=warnCls==='warn'?'pulse-inauspicious':'pulse-auspicious';
+    return`<div class="vp-active-banner ${warnCls} ${pulseCls}">
       <div class="vp-amb-dot"></div>
       <div class="vp-amb-body">
         <div class="vp-amb-label">Active Now</div>

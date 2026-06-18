@@ -194,6 +194,8 @@ const App = {
   },
 
   async save() {
+    // GHOST MODE: developer is viewing another user's profile — never persist anything locally or to cloud.
+    if (window.__ghostMode) return;
     // GUEST MODE: never persist to IDB or localStorage — guest jap is intentionally ephemeral.
     // Only signed-in users get local persistence (as an offline buffer for cloud sync).
     if (!this._uid) return;
@@ -5474,6 +5476,7 @@ async function fbPushDelta() {
 }
 
 async function fbPushFull() {
+  if (window.__ghostMode) return; // ghost mode: never push
   if (!fbUser) return;
   // SAFETY: never push local state to cloud until we have successfully
   // pulled the authoritative cloud copy at least once this session.
@@ -11944,6 +11947,7 @@ function lbSwitchPeriod(period) {
 
 /** Push current user's data to the leaderboard collection */
 async function pushLeaderboard() {
+  if (window.__ghostMode) return;
   if (!fbUser || !fbDb) return;
   if (!App.S.lbOptIn) {
     // If opted out, remove the entry
@@ -12503,6 +12507,7 @@ async function _ensureUserThread() {
 }
 
 window.openUserChat = async function() {
+  if (window.__ghostMode) { try { toast('👻 Ghost mode — read only'); } catch(_) {} return; }
   if (!fbUser) { toast('Please sign in first to use chat.'); return; }
   const modal = document.getElementById('userChatModal');
   const msgBox = document.getElementById('userChatMessages');
@@ -12545,6 +12550,7 @@ window.closeUserChat = function() {
 };
 
 window._userChatSend = async function() {
+  if (window.__ghostMode) return;
   const inp = document.getElementById('userChatInput');
   if (!inp) return;
   const text = inp.value.trim();
@@ -13138,5 +13144,188 @@ function _showUserReplyPopup(text) {
     document.addEventListener("DOMContentLoaded", setup);
   } else {
     setup();
+  }
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// GHOST MODE — Developer-only invisible impersonation (read-only)
+// ───────────────────────────────────────────────────────────────────
+// • A presence beacon writes /presence/{uid} for every signed-in user
+//   so developers can list who's online.
+// • Developers can pick a user → app re-renders that user's profile
+//   exactly as it would look to them. All writes (App.save, fbPushFull,
+//   leaderboard, chat) are hard-blocked while window.__ghostMode is true.
+// • The visited user's data NEVER touches the developer's IDB or
+//   their own cloud doc, and the user never sees anything (no UI,
+//   no presence flag, no session claim on their account).
+// ═══════════════════════════════════════════════════════════════════
+(function ghostModeInit(){
+  window.__ghostMode = false;
+  window.__ghostUid  = null;
+  window.__ghostBackupS = null;
+
+  // ── Presence beacon: write /presence/{uid} every 60s while signed in.
+  let _ghostBeaconTimer = null;
+  async function ghostPresenceTick() {
+    try {
+      if (!window.fbUser || !window.fbDb) return;
+      if (window.__ghostMode) return; // never write under impersonated identity
+      await fbDb.collection('presence').doc(fbUser.uid).set({
+        uid: fbUser.uid,
+        name: fbUser.displayName || '',
+        email: fbUser.email || '',
+        phone: fbUser.phoneNumber || '',
+        photo: fbUser.photoURL || '',
+        lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    } catch(e) { /* silent — rules may reject if signed out */ }
+  }
+  function startGhostBeacon() {
+    if (_ghostBeaconTimer) return;
+    ghostPresenceTick();
+    _ghostBeaconTimer = setInterval(ghostPresenceTick, 60000);
+  }
+  // Poll for fbUser becoming available, then start the beacon.
+  const _ghostBoot = setInterval(() => {
+    if (window.fbUser && window.fbDb) {
+      clearInterval(_ghostBoot);
+      startGhostBeacon();
+      // Show ghost button only for developers.
+      const btn = document.getElementById('ghostModeBtn');
+      if (btn) btn.style.display = (typeof isDeveloper === 'function' && isDeveloper()) ? '' : 'none';
+    }
+  }, 1000);
+
+  // ── Re-render helpers ────────────────────────────────────────────
+  function ghostRerenderAll() {
+    try {
+      App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
+      App.lmcRV = Math.floor((App.S.historyRV[App.S.tk] || 0) / (App.S.ms || 108));
+      App.lmcHK = Math.floor(((App.S.historyHK || {})[App.S.tk] || 0) / (App.S.ms || 108));
+      App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));
+      if (App.S.gaudiyaMode) document.body.classList.add('gaudiya-mode');
+      else document.body.classList.remove('gaudiya-mode');
+      if (typeof switchJapMode === 'function') switchJapMode(App.S.japMode || 'radha');
+      if (typeof App.ua === 'function') App.ua();
+      if (typeof renderSt === 'function') renderSt();
+      if (typeof u28 === 'function') u28();
+      if (typeof renderBcal === 'function') renderBcal();
+      if (typeof renderCal === 'function') renderCal();
+      if (typeof uStats === 'function') uStats();
+      if (typeof renderSankalpas === 'function') renderSankalpas();
+      if (typeof renderMalaLog === 'function') renderMalaLog();
+    } catch(e) { console.warn('Ghost rerender failed:', e && e.message); }
+  }
+
+  // ── Open the user picker modal ───────────────────────────────────
+  window.openGhostMode = async function openGhostMode() {
+    if (!isDeveloper()) return;
+    if (!fbDb) { try{toast('Cloud not ready');}catch(_){}; return; }
+    const modal = document.getElementById('ghostModeModal');
+    const list  = document.getElementById('ghostUserList');
+    if (!modal || !list) return;
+    list.innerHTML = '<div style="text-align:center;color:#888;padding:30px;">Loading users…</div>';
+    modal.style.display = 'flex';
+    try {
+      const snap = await fbDb.collection('presence').orderBy('lastSeen','desc').limit(200).get();
+      if (snap.empty) { list.innerHTML = '<div style="text-align:center;color:#888;padding:30px;">No signed-in users yet.</div>'; return; }
+      const html = [];
+      snap.forEach(d => {
+        const u = d.data() || {};
+        const id = d.id;
+        if (id === fbUser.uid) return; // skip self
+        const name = (u.name || u.email || u.phone || id).toString();
+        const sub  = (u.email || u.phone || '').toString();
+        const ts   = u.lastSeen && u.lastSeen.toMillis ? u.lastSeen.toMillis() : 0;
+        const seen = ts ? new Date(ts).toLocaleString() : '';
+        const safe = (x) => String(x).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
+        html.push(
+          '<div onclick="window.enterGhost(\''+id+'\',\''+safe(name).replace(/\\/g,"\\\\").replace(/\'/g,"\\\'")+'\')" '
+          +'style="padding:12px;margin-bottom:8px;background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.25);border-radius:10px;cursor:pointer;">'
+          +'<div style="font-weight:700;color:#2ecc71;font-size:14px;">'+safe(name)+'</div>'
+          +(sub?'<div style="font-size:11px;color:#9ab;margin-top:2px;">'+safe(sub)+'</div>':'')
+          +(seen?'<div style="font-size:10px;color:#678;margin-top:2px;">last seen: '+safe(seen)+'</div>':'')
+          +'</div>'
+        );
+      });
+      list.innerHTML = html.join('') || '<div style="text-align:center;color:#888;padding:30px;">No other users.</div>';
+    } catch(e) {
+      list.innerHTML = '<div style="text-align:center;color:#e74c3c;padding:30px;">Failed to load: '+(e&&e.message||e)+'</div>';
+    }
+  };
+
+  window.closeGhostModeModal = function() {
+    const m = document.getElementById('ghostModeModal');
+    if (m) m.style.display = 'none';
+  };
+
+  // ── Enter ghost: load target user's data into App.S (read-only)
+  window.enterGhost = async function enterGhost(targetUid, targetLabel) {
+    if (!isDeveloper() || !fbDb || !fbUser) return;
+    if (targetUid === fbUser.uid) return;
+    try {
+      // Snapshot developer's own state so we can restore on exit.
+      window.__ghostBackupS = JSON.parse(JSON.stringify(App.S));
+      window.__ghostBackupUid = App._uid;
+
+      // Tear down listeners that would otherwise overwrite App.S with dev's data.
+      try { if (window.fbListener) { fbListener(); window.fbListener = null; } } catch(_){}
+
+      const snap = await fbDb.collection('users').doc(targetUid).collection('data').doc('main').get();
+      if (!snap.exists) { try{toast('No data for this user');}catch(_){}; return; }
+      // Engage ghost mode BEFORE we mutate App.S, so save() is blocked.
+      window.__ghostMode = true;
+      window.__ghostUid  = targetUid;
+      App._suspendCloudSync = true;
+      // Apply the target user's payload by reusing the existing remote-apply path.
+      try { fbApplyRemote({ ...snap.data(), deviceId: null }); } catch(_){
+        // Fallback: shallow merge
+        Object.assign(App.S, snap.data() || {});
+      }
+      ghostRerenderAll();
+      window.closeGhostModeModal();
+      ghostShowBanner(targetLabel || targetUid);
+    } catch(e) {
+      window.__ghostMode = false;
+      try{toast('Ghost failed: '+(e&&e.message||e));}catch(_){}
+    }
+  };
+
+  // ── Exit ghost: restore developer's own state without touching anything
+  window.exitGhost = async function exitGhost() {
+    if (!window.__ghostMode) return;
+    window.__ghostMode = false;
+    window.__ghostUid  = null;
+    try {
+      if (window.__ghostBackupS) {
+        App.S = window.__ghostBackupS;
+        window.__ghostBackupS = null;
+      }
+      App._suspendCloudSync = false;
+      ghostRerenderAll();
+      // Re-pull authoritative dev data from cloud to be safe.
+      if (typeof fbAutoSync === 'function') fbAutoSync().catch(()=>{});
+      ghostHideBanner();
+      try{toast('👻 Ghost mode off');}catch(_){}
+    } catch(e) { console.warn('Exit ghost failed:', e && e.message); }
+  };
+
+  function ghostShowBanner(label) {
+    let b = document.getElementById('ghostBanner');
+    if (!b) {
+      b = document.createElement('div');
+      b.id = 'ghostBanner';
+      b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;background:linear-gradient(90deg,#1a0a2e,#2e1a4a,#1a0a2e);color:#fff;font:600 12px Inter,system-ui;padding:6px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(155,89,182,0.6);';
+      b.innerHTML = '<span id="ghostBannerLabel">👻 Ghost mode</span>'
+        + '<button onclick="window.exitGhost()" style="background:rgba(231,76,60,0.25);color:#fff;border:1px solid rgba(231,76,60,0.6);padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">Exit</button>';
+      document.body.appendChild(b);
+    }
+    const lab = document.getElementById('ghostBannerLabel');
+    if (lab) lab.textContent = '👻 Viewing: ' + label;
+    b.style.display = 'flex';
+  }
+  function ghostHideBanner() {
+    const b = document.getElementById('ghostBanner');
+    if (b) b.style.display = 'none';
   }
 })();

@@ -852,7 +852,7 @@ function renderAll(){
   orbitWrap.querySelectorAll('.vp-orbit-btn').forEach(b=>b.remove());
   orbitWrap.insertAdjacentHTML('beforeend',orbitHTML);
   initOrbitSwipe(orbitWrap);
-  document.getElementById('vp-orbit-center-icon').textContent=VAAR_ICON[displayVaarIdx];
+  {const _ci=document.getElementById('vp-orbit-center-icon');_ci.textContent='';_ci.setAttribute('data-vaar',displayVaarIdx);}
   document.getElementById('vp-orbit-center-label').textContent=displayVaar.name;
   document.getElementById('vp-orbit-center-sub').textContent=headerWhen;
 

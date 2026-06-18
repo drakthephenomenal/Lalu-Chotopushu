@@ -13227,28 +13227,63 @@ function _showUserReplyPopup(text) {
     list.innerHTML = '<div style="text-align:center;color:#888;padding:30px;">Loading users…</div>';
     modal.style.display = 'flex';
     try {
-      const snap = await fbDb.collection('presence').orderBy('lastSeen','desc').limit(200).get();
-      if (snap.empty) { list.innerHTML = '<div style="text-align:center;color:#888;padding:30px;">No signed-in users yet.</div>'; return; }
-      const html = [];
-      snap.forEach(d => {
+      // Aggregate users from multiple sources so we don't depend on the
+      // /presence beacon (which only populates AFTER a user signs in with
+      // the new build). We merge:
+      //   • /leaderboard      — everyone who has opted into the leaderboard
+      //   • /feedbacks        — anyone who has ever messaged the developer
+      //   • /presence         — anyone signed in since ghost mode shipped
+      const users = new Map(); // uid -> { name, sub, ts }
+      const add = (id, name, sub, ts) => {
+        if (!id || id === fbUser.uid) return;
+        const prev = users.get(id) || { name:'', sub:'', ts:0 };
+        users.set(id, {
+          name: prev.name || name || '',
+          sub:  prev.sub  || sub  || '',
+          ts:   Math.max(prev.ts || 0, ts || 0),
+        });
+      };
+      const toMs = (v) => (v && v.toMillis) ? v.toMillis() : (typeof v === 'number' ? v : 0);
+      const results = await Promise.allSettled([
+        fbDb.collection('leaderboard').limit(500).get(),
+        fbDb.collection('feedbacks').limit(500).get(),
+        fbDb.collection('presence').limit(500).get(),
+      ]);
+      // leaderboard
+      if (results[0].status === 'fulfilled') results[0].value.forEach(d => {
         const u = d.data() || {};
-        const id = d.id;
-        if (id === fbUser.uid) return; // skip self
-        const name = (u.name || u.email || u.phone || id).toString();
-        const sub  = (u.email || u.phone || '').toString();
-        const ts   = u.lastSeen && u.lastSeen.toMillis ? u.lastSeen.toMillis() : 0;
-        const seen = ts ? new Date(ts).toLocaleString() : '';
-        const safe = (x) => String(x).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
-        html.push(
-          '<div onclick="window.enterGhost(\''+id+'\',\''+safe(name).replace(/\\/g,"\\\\").replace(/\'/g,"\\\'")+'\')" '
+        add(d.id, u.displayName, '', toMs(u.updatedAt));
+      });
+      // feedbacks
+      if (results[1].status === 'fulfilled') results[1].value.forEach(d => {
+        const u = d.data() || {};
+        add(d.id, u.userName, u.userEmail || u.userPhone, toMs(u.lastAt));
+      });
+      // presence
+      if (results[2].status === 'fulfilled') results[2].value.forEach(d => {
+        const u = d.data() || {};
+        add(d.id, u.name, u.email || u.phone, toMs(u.lastSeen));
+      });
+      if (!users.size) {
+        list.innerHTML = '<div style="text-align:center;color:#888;padding:30px;">No users found.</div>';
+        return;
+      }
+      const safe = (x) => String(x).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
+      const arr = Array.from(users.entries())
+        .map(([id, v]) => ({ id, ...v }))
+        .sort((a,b) => (b.ts||0) - (a.ts||0));
+      const html = arr.map(u => {
+        const name = (u.name || u.sub || u.id).toString();
+        const seen = u.ts ? new Date(u.ts).toLocaleString() : '';
+        const nameAttr = safe(name).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+        return '<div onclick="window.enterGhost(\''+u.id+'\',\''+nameAttr+'\')" '
           +'style="padding:12px;margin-bottom:8px;background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.25);border-radius:10px;cursor:pointer;">'
           +'<div style="font-weight:700;color:#2ecc71;font-size:14px;">'+safe(name)+'</div>'
-          +(sub?'<div style="font-size:11px;color:#9ab;margin-top:2px;">'+safe(sub)+'</div>':'')
-          +(seen?'<div style="font-size:10px;color:#678;margin-top:2px;">last seen: '+safe(seen)+'</div>':'')
-          +'</div>'
-        );
+          +(u.sub?'<div style="font-size:11px;color:#9ab;margin-top:2px;">'+safe(u.sub)+'</div>':'')
+          +'<div style="font-size:10px;color:#678;margin-top:2px;">uid: '+safe(u.id.slice(0,16))+'…'+(seen?' • last seen: '+safe(seen):'')+'</div>'
+          +'</div>';
       });
-      list.innerHTML = html.join('') || '<div style="text-align:center;color:#888;padding:30px;">No other users.</div>';
+      list.innerHTML = '<div style="font-size:11px;color:#9ab;margin-bottom:10px;text-align:center;">'+arr.length+' user'+(arr.length===1?'':'s')+' found</div>' + html.join('');
     } catch(e) {
       list.innerHTML = '<div style="text-align:center;color:#e74c3c;padding:30px;">Failed to load: '+(e&&e.message||e)+'</div>';
     }

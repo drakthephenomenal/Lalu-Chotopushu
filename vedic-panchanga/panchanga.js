@@ -138,7 +138,7 @@ const KAR_MOV=['Bava','Balava','Kaulava','Taitila','Garija','Vanija','Vishti'];
 const KAR_END=['Chatushpada','Naga','Kimstughna'];
 function karName(i){if(i===0)return'Kimstughna';if(i>=57)return KAR_END[i-57];return KAR_MOV[(i-1)%7]}
 const VAAR=['Rabi','Som','Mangol','Budh','Brihaspati','Sukro','Shani'];
-const VAAR_ICON=['☀️','🌙','🔴','💚','🪐','⭐','💙'];
+const VAAR_ICON=['☀️','🌙','🔥','🌿','🪐','✨','⏳'];
 const VAAR_BN=['রবি','সোম','মঙ্গল','বুধ','বৃহস্পতি','শুক্র','শনি'];
 const HM=['Chaitra','Vaishakha','Jyeshtha','Ashadha','Shravana','Bhadrapada','Ashwina','Kartika','Margashirsha','Pausha','Magha','Phalguna'];
 const VM=['Vishnu','Madhusudana','Trivikrama','Vamana','Shridhara','Hrishikesha','Padmanabha','Damodara','Keshava','Narayana','Madhava','Govinda'];
@@ -148,6 +148,18 @@ const TITHI_FX=['New beginning, auspicious start','Prosperity & growth','Victory
 'New beginning after full moon','Growth of plans','Success in undertakings','Obstacle — delay decisions','Auspicious, creative work','Pleasant, social activities','Overcoming adversaries','Eight directions — be cautious','Completion of tasks','Good for regular activities','Ekadashi fast — sacred vrat','Post Ekadashi, charity','Avoid new ventures','Ancestral rites','New Moon — worship ancestors'];
 const NAK_FX=['Swift & fierce, good for bold acts','Fierce, avoid auspicious deeds','Mixed, good for cooking & fire','Very auspicious, love & growth','Gentle, good for creativity','Sharp, removal & healing work','Auspicious, renew & restore','Excellent for all beginnings','Sharp, avoid new activities','Good for old work & traditions','Pleasant, arts & romance','Stable, sacred ceremonies','Mobile, journey & trading','Sharp, piercing tasks','Good for moving & travel','Auspicious, spiritual growth','Devotion & fixed tasks','Sharp, fierce activities','Fierce, avoid auspicious deeds','Speed & travel, good for haste','Fixed, stable ceremonies','Good for learning & devotion','Quick, good for moving tasks','Severe, purification tasks','Fierce, avoid major starts','Fixed, stable ceremonies','Gentle, renewal & auspicious'];
 const YOGA_FX=['Inauspicious — obstacles likely','Love & friendliness abound','Longevity & health favored','Good fortune in all matters','Prosperous & beautiful time','Anger & sudden obstacles','Good deeds bring results','Stability & determination','Thorny path — avoid big moves','Obstacles & health issues','Growth & financial gain','Fixed & stable, good for vows','Sudden setbacks possible','Joy & happiness prevail','Sudden dangers — be careful','Success in all endeavors','Highly inauspicious — avoid','Very auspicious & favorable','Encircling obstacles to remove','Auspicious, Shiva-blessed','Success with effort','Achievement of goals','Auspicious for good deeds','Pure & clean time','Brahma-blessed — sacred deeds','Indra-blessed — victory','Highly inauspicious — avoid'];
+const KARANA_FX_LOOKUP={
+  'Bava':'Auspicious for all works — good for new beginnings & prosperity',
+  'Balava':'Favorable for love, arts & pleasant activities',
+  'Kaulava':'Good for friends, family matters & gentle pursuits',
+  'Taitila':'Auspicious for agriculture, trade & steady work',
+  'Garija':'Suitable for travel, seeking boons & religious acts',
+  'Vanija':'Excellent for commerce, trade & financial dealings',
+  'Vishti':'Inauspicious (Bhadra) — avoid new work & important decisions',
+  'Kimstughna':'Fixed — auspicious start of lunar cycle, good for sacred rites',
+  'Chatushpada':'Fixed — auspicious for animal-related & agricultural work',
+  'Naga':'Fixed — good for mantra, tantra & occult practices',
+};
 const MEFF={
   'Brahma Muhurta':'Best for meditation, study & prayer. Spiritual practices begun now bear great fruit.',
   'Abhijit Muhurta':'Victory muhurta. Excellent for important work, meetings & new starts.',
@@ -431,6 +443,7 @@ function relHTML(s,e,now){const r=relStr(s,e,now);if(!r.txt)return'';return`<spa
 // ═══════════════════════════════════════════════════════════════
 let LAT=22.5726,LNG=88.3639;
 let selectedVaarIdx=null;
+let selectedAnga='tithi'; // tithi | nakshatra | yoga | karana — option-driven anga view
 let DATA=null;
 
 // GPS
@@ -454,6 +467,81 @@ function selectVaar(idx){
   renderAll();
 }
 function clearSelectedVaar(){selectedVaarIdx=null;renderAll();}
+
+// Step the displayed day forward (+1) or backward (-1) around the 7-day
+// orbit ring, relative to whichever day is currently shown — used by the
+// swipe gesture on the dial. Mirrors tap selection (an explicit index equal
+// to activeVaarIdx renders identically to the null/"today" state).
+function swipeVaar(delta){
+  if(!DATA)return;
+  const activeVaarIdx=DATA.activeVaarIdx;
+  const curIdx=selectedVaarIdx!==null?selectedVaarIdx:activeVaarIdx;
+  const curPos=((curIdx-activeVaarIdx)+7)%7;
+  const nextPos=((curPos+delta)%7+7)%7;
+  selectedVaarIdx=(activeVaarIdx+nextPos)%7;
+  renderAll();
+}
+
+// Pointer-based swipe (covers touch + mouse) on the orbit dial: a horizontal
+// drag past a small threshold steps to the next/previous day, with a damped
+// live nudge while dragging and a spring-back snap on release. Bound once
+// per wrap element (guarded) since renderAll() only replaces the orbit
+// BUTTONS, not the wrap itself, on every re-render.
+function initOrbitSwipe(wrap){
+  if(!wrap||wrap._vpSwipeBound)return;
+  wrap._vpSwipeBound=true;
+  const THRESH=42,NUDGE_MAX=26,NUDGE_RATIO=.3,DEADZONE=6;
+  let sx=0,sy=0,tracking=false,swiped=false,captured=false;
+  function onDown(e){
+    if(e.pointerType==='mouse'&&e.button!==0)return;
+    sx=e.clientX;sy=e.clientY;tracking=true;swiped=false;captured=false;
+  }
+  function onMove(e){
+    if(!tracking)return;
+    const dx=e.clientX-sx,dy=e.clientY-sy;
+    if(Math.abs(dx)<=Math.abs(dy))return; // more vertical than horizontal — leave it to page scroll
+    if(Math.abs(dx)>DEADZONE){
+      if(!captured){
+        // Only now do we know this is a genuine drag, not a tap — capture
+        // the pointer so the gesture tracks correctly even if it leaves the
+        // dial. Capturing unconditionally on pointerdown would retarget the
+        // native click event of a plain tap away from the button it hit.
+        captured=true;
+        wrap.classList.add('vp-dragging');
+        try{wrap.setPointerCapture(e.pointerId);}catch(err){}
+      }
+      const nudge=Math.max(-NUDGE_MAX,Math.min(NUDGE_MAX,dx*NUDGE_RATIO));
+      wrap.style.transform=`translateX(${nudge}px)`;
+    }
+    if(Math.abs(dx)>THRESH)swiped=true;
+  }
+  function onUp(e){
+    if(!tracking)return;
+    tracking=false;
+    if(captured){
+      wrap.classList.remove('vp-dragging');
+      wrap.style.transform='';
+      try{wrap.releasePointerCapture(e.pointerId);}catch(err){}
+      captured=false;
+    }
+    if(swiped){
+      const dx=e.clientX-sx;
+      swipeVaar(dx<0?1:-1); // swipe left = next day, swipe right = previous day
+    }
+  }
+  function onCancel(e){
+    tracking=false;
+    if(captured){
+      wrap.classList.remove('vp-dragging');wrap.style.transform='';
+      try{wrap.releasePointerCapture(e.pointerId);}catch(err){}
+      captured=false;
+    }
+  }
+  wrap.addEventListener('pointerdown',onDown,{passive:true});
+  wrap.addEventListener('pointermove',onMove,{passive:true});
+  wrap.addEventListener('pointerup',onUp,{passive:true});
+  wrap.addEventListener('pointercancel',onCancel,{passive:true});
+}
 
 // ═══════════════════════════════════════════════════════════════
 // COMPUTE
@@ -571,19 +659,7 @@ function buildNowPanel(now,tithiPeriods,nakshatraPeriods,yogaPeriods,karanaPerio
     YOGA_FX[curYoga.index],
     `ends ${fmtEnd(jdToDate(curYoga.endJD),now)}<br><span style="color:rgba(245,209,122,.85)">${dur(now,jdToDate(curYoga.endJD))} ${timeLeftLabel}</span>`,'');
   // Karana effects lookup
-  const KARANA_FX={
-    'Bava':'Auspicious for all works — good for new beginnings & prosperity',
-    'Balava':'Favorable for love, arts & pleasant activities',
-    'Kaulava':'Good for friends, family matters & gentle pursuits',
-    'Taitila':'Auspicious for agriculture, trade & steady work',
-    'Garija':'Suitable for travel, seeking boons & religious acts',
-    'Vanija':'Excellent for commerce, trade & financial dealings',
-    'Vishti':'Inauspicious (Bhadra) — avoid new work & important decisions',
-    'Kimstughna':'Fixed — auspicious start of lunar cycle, good for sacred rites',
-    'Chatushpada':'Fixed — auspicious for animal-related & agricultural work',
-    'Naga':'Fixed — good for mantra, tantra & occult practices',
-  };
-  const karFx=KARANA_FX[curKarana.name]||'Half-tithi unit — governs the quality of the lunar half';
+  const karFx=KARANA_FX_LOOKUP[curKarana.name]||'Half-tithi unit — governs the quality of the lunar half';
   const karCls=curKarana.name==='Vishti'?'warn':'';
   // Karana
   html+=cell('Karana '+nowLabel,curKarana.name,
@@ -672,20 +748,35 @@ function renderAll(){
     ' &nbsp;·&nbsp; '+headerPaksha+' Paksha &nbsp;·&nbsp; '+headerWhen+' '+fmtDate(headerRef);
   document.getElementById('vp-vaishnav-line').textContent='Vaishnav Month of '+headerHM.vaishnavName;
 
-  // Vaar strip — highlight today and selected separately
-  document.getElementById('vp-vaar-strip').innerHTML=vaarStrip.map(v=>{
-    let cls='';
-    if(v.isActive)cls='today';
-    if(selectedVaarIdx!==null&&v.index===selectedVaarIdx)cls='selected';
+  // Orbit dial — 7 planetary days arranged on a ring, active day at top (12 o'clock).
+  // Center shows whichever day is currently being viewed (today, or the selected one).
+  const orbitWrap=document.getElementById('vp-orbit-wrap');
+  const RADIUS=104; // px from center to each orbit button's center
+  let orbitHTML='';
+  vaarStrip.forEach(v=>{
+    // Position relative to the active (today) day so "today" always sits at 12 o'clock,
+    // and the week reads clockwise from there.
+    const posIdx=((v.index-activeVaarIdx)+7)%7;
+    const angleDeg=posIdx*(360/7)-90; // -90 so position 0 (today) is at the top
+    const rad=angleDeg*Math.PI/180;
+    const x=Math.cos(rad)*RADIUS, y=Math.sin(rad)*RADIUS;
+    let cls='vp-orbit-btn';
+    if(v.isActive)cls+=' today';
+    if(selectedVaarIdx!==null&&v.index===selectedVaarIdx)cls+=' selected';
     const dayLabel=v.dayOffset===0?'Today':v.dayOffset===1?'Tmrw':v.dayOffset===-1?'Yest':
       v.dayOffset>0?'+'+v.dayOffset+'d':v.dayOffset+'d';
-    return`<button class="vp-vaar-btn ${cls}" data-vaar="${v.index}" onclick="vpSelectVaar(${v.index})">
-      ${v.isActive?'<span class="vp-vaar-ring" aria-hidden="true"></span>':''}
-      <span class="vp-vi">${VAAR_ICON[v.index]}</span>
-      <span class="vp-vn">${v.name}</span>
-      <span class="vp-vd">${dayLabel}</span>
+    orbitHTML+=`<button class="${cls}" data-vaar="${v.index}" style="transform:translate(${x}px,${y}px)" onclick="vpSelectVaar(${v.index})" title="${v.name} Vaar — ${dayLabel}" aria-label="${v.name} Vaar, ${dayLabel}">
+      <span class="vp-ob-icon">${VAAR_ICON[v.index]}</span>
+      <span class="vp-ob-day">${dayLabel}</span>
     </button>`;
-  }).join('');
+  });
+  // Keep the static ring/center markup, just refresh the orbit buttons after it
+  orbitWrap.querySelectorAll('.vp-orbit-btn').forEach(b=>b.remove());
+  orbitWrap.insertAdjacentHTML('beforeend',orbitHTML);
+  initOrbitSwipe(orbitWrap);
+  document.getElementById('vp-orbit-center-icon').textContent=VAAR_ICON[displayVaarIdx];
+  document.getElementById('vp-orbit-center-label').textContent=displayVaar.name;
+  document.getElementById('vp-orbit-center-sub').textContent=headerWhen;
 
   // Now panel — uses selected vaar if chosen, else current moment
   let panelRef, panelTithiP, panelNakP, panelYogaP, panelKarP, panelMd, panelLabel;
@@ -732,6 +823,91 @@ function renderAll(){
     `<div class="vp-paksha-label k">Krishna Paksha — Waning Moon</div>`+
     krishna.map((t,i)=>tCell(t,i+1,t.index===currentTithiIdx,'K')).join('');
 
+  // ── PANCHANGA ANGAS — option-driven tabs + one focused detail panel ──
+  // Tithi rows use the DISPLAYED vaar's vedic-day window; the other three
+  // angas are always "today" data (they don't shift with vaar selection).
+  const bmStart=+displayVaar.brahmaMuhurtaStart;
+  const nextDayBM=+new Date(+displayVaar.sunrise+86400000-96*60*1000);
+  const tithiRel=panelTithiP.filter(p=>+jdToDate(p.endJD)>bmStart&&+jdToDate(p.startJD)<nextDayBM);
+
+  function pRowValid(p){
+    const durMin=(p.endJD-p.startJD)*1440;
+    return durMin>=2; // discard artefact slivers
+  }
+
+  const ANGA_DEFS={
+    tithi:{icon:'🌙',label:'Tithi',periods:tithiRel.filter(pRowValid),hasPaksha:true},
+    nakshatra:{icon:'⭐',label:'Nakshatra',periods:panelNakP.filter(pRowValid),hasPaksha:false},
+    yoga:{icon:'☯️',label:'Yoga',periods:panelYogaP.filter(pRowValid),hasPaksha:false},
+    karana:{icon:'◐',label:'Karana',periods:panelKarP.filter(pRowValid),hasPaksha:false},
+  };
+  if(!ANGA_DEFS[selectedAnga])selectedAnga='tithi';
+
+  // Tabs — each shows icon + label + the name that's CURRENT for that anga,
+  // so a glance at the tab row already tells the story without opening any of them.
+  document.getElementById('vp-anga-tabs').innerHTML=Object.keys(ANGA_DEFS).map(key=>{
+    const def=ANGA_DEFS[key];
+    const cur=def.periods.find(p=>+jdToDate(p.startJD)<=+panelRef&&+panelRef<+jdToDate(p.endJD))||def.periods[0];
+    const activeCls=key===selectedAnga?' active':'';
+    return`<button class="vp-anga-tab${activeCls}" onclick="vpSelectAnga('${key}')">
+      <span class="vp-anga-tab-icon">${def.icon}</span>
+      <span>
+        <div class="vp-anga-tab-label">${def.label}</div>
+        <div class="vp-anga-tab-name">${cur?cur.name:'—'}</div>
+      </span>
+    </button>`;
+  }).join('');
+
+  // Panel — the chosen anga's current state as a hero card, then the rest as a clean list
+  (function renderAngaPanel(){
+    const def=ANGA_DEFS[selectedAnga];
+    const periods=def.periods;
+    if(!periods.length){
+      document.getElementById('vp-anga-panel').innerHTML=
+        '<div style="text-align:center;padding:20px;color:var(--vp-ink-faint);font-size:.78rem">No data available.</div>';
+      return;
+    }
+    const curIdx=periods.findIndex(p=>+jdToDate(p.startJD)<=+panelRef&&+panelRef<+jdToDate(p.endJD));
+    const cur=curIdx>=0?periods[curIdx]:periods[0];
+    const isK=def.hasPaksha&&cur.paksha==='Krishna';
+    const sd=jdToDate(cur.startJD),ed=jdToDate(cur.endJD);
+    const fx=selectedAnga==='tithi'?TITHI_FX[cur.index]:
+             selectedAnga==='nakshatra'?NAK_FX[cur.index]:
+             selectedAnga==='yoga'?YOGA_FX[cur.index]:
+             (KARANA_FX_LOOKUP[cur.name]||'Half-tithi unit — governs the quality of the lunar half');
+    const badgeText=def.hasPaksha?cur.paksha.slice(0,1)+cur.paksha.slice(1,3):def.label.slice(0,3).toUpperCase();
+
+    let html=`<div class="vp-anga-current${isK?' krishna':''}">
+      <div class="vp-anga-current-badge">${badgeText}</div>
+      <div>
+        <div class="vp-anga-current-name">${cur.name}${def.hasPaksha?` <span style="font-size:.62rem;font-weight:700;color:var(--vp-ink-faint);text-transform:uppercase;letter-spacing:.06em">${cur.paksha} Paksha</span>`:''}</div>
+        <div class="vp-anga-current-meta">${fmtDT(sd)} &nbsp;→&nbsp; ${fmtEnd(ed,sd)} &nbsp;·&nbsp; ${dur(sd,ed)}</div>
+        <div class="vp-anga-current-fx">${fx}</div>
+      </div>
+    </div>`;
+
+    html+='<div class="vp-anga-list">';
+    periods.forEach((p,i)=>{
+      if(i===curIdx)return; // already shown as hero above
+      const psd=jdToDate(p.startJD),ped=jdToDate(p.endJD);
+      const pIsK=def.hasPaksha&&p.paksha==='Krishna';
+      const isNow=i===curIdx;
+      const relPill=relHTML(psd,ped,panelRef);
+      const badge=def.hasPaksha?`<span class="vp-anga-row-badge ${pIsK?'k':'s'}">${p.paksha}</span>`:'';
+      html+=`<div class="vp-anga-row ${pIsK?'krishna':'sukla'}${isNow?' is-now':''}">
+        <span class="vp-anga-dot"></span>
+        <div class="vp-anga-row-body">
+          <div class="vp-anga-row-name-line">
+            <span class="vp-anga-row-name">${p.name}</span>${badge}${relPill}
+          </div>
+          <div class="vp-anga-row-time">${fmtDT(psd)} – ${fmtEnd(ped,psd)}</div>
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+    document.getElementById('vp-anga-panel').innerHTML=html;
+  })();
+
   // Day boundaries — from DISPLAYED vaar
   document.getElementById('vp-db-grid').innerHTML=[
     {icon:'🌄',label:'Brahma Muhurta',s:md.brahmaMuhurta.start,e:md.brahmaMuhurta.end},
@@ -746,45 +922,6 @@ function renderAll(){
     <div class="vp-db-label">${x.icon} ${x.label}</div>
     <div class="vp-db-time">${fmtDT(x.s)}${x.e?`<span class="vp-sub"><br>– ${fmtEnd(x.e,x.s)}</span>`:''}</div>
   </div>`).join('');
-
-  // Tithi rows — for the DISPLAYED vaar's vedic day window
-  // Use panelTithiP which is already computed for the correct vaar (today or selected)
-  const bmStart=+displayVaar.brahmaMuhurtaStart;
-  const nextDayBM=+new Date(+displayVaar.sunrise+86400000-96*60*1000);
-  const rel=panelTithiP.filter(p=>+jdToDate(p.endJD)>bmStart&&+jdToDate(p.startJD)<nextDayBM);
-  const nextVaarName=VAAR[(displayVaarIdx+1)%7];
-  document.getElementById('vp-tithi-rows').innerHTML=rel.map(p=>{
-    const sd=jdToDate(p.startJD),ed=jdToDate(p.endJD);
-    const cs=new Date(Math.max(+sd,bmStart)),ce=new Date(Math.min(+ed,nextDayBM));
-    const label=`${fmtDT(cs)}<br>– ${fmtDT(ce)}`;
-    const isK=p.paksha==='Krishna';
-    const relPill=isActive?relHTML(cs,ce,now):'';
-    return`<div class="vp-p-row ${isK?'krishna':'sukla'}">
-      <div><span class="vp-p-row-name">${p.name}</span><span class="vp-p-row-badge ${isK?'k':'s'}">${p.paksha}</span>${relPill}</div>
-      <div class="vp-p-row-time">${label}</div>
-    </div>`;
-  }).join('');
-
-  // Nakshatra/Yoga/Karana rows — always today's data (panchanga angas don't change by vaar selection)
-  function pRowTime(p){
-    const sd=jdToDate(p.startJD),ed=jdToDate(p.endJD);
-    const durMin=(p.endJD-p.startJD)*1440; // minutes
-    if(durMin<2) return null; // discard artefact
-    return `${fmtDT(sd)}<br>– ${fmtDT(ed)}`;
-  }
-  function renderPeriodRows(periods){
-    return periods.map(p=>{const t=pRowTime(p);if(!t)return'';
-      const sd=jdToDate(p.startJD),ed=jdToDate(p.endJD);
-      const relPill=relHTML(sd,ed,now);
-      return`
-    <div class="vp-p-row sukla" style="padding-left:14px">
-      <div><span class="vp-p-row-name">${p.name}</span>${relPill}</div>
-      <div class="vp-p-row-time">${t}</div>
-    </div>`;}).join('');
-  }
-  document.getElementById('vp-nakshatra-rows').innerHTML=renderPeriodRows(nakshatraPeriods);
-  document.getElementById('vp-yoga-rows').innerHTML=renderPeriodRows(yogaPeriods);
-  document.getElementById('vp-karana-rows').innerHTML=renderPeriodRows(karanaPeriods);
 
   // Auspicious/Inauspicious — from DISPLAYED vaar
   function isNowM(s,e){return isActive&&s&&e&&now>=s&&now<e}
@@ -901,6 +1038,7 @@ function init(){
 // ── Public API ───────────────────────────────────────────────
 window.vpSelectVaar = function(idx) { selectVaar(idx); };
 window.vpClearSelectedVaar = function() { clearSelectedVaar(); };
+window.vpSelectAnga = function(name) { selectedAnga = name; renderAll(); };
 window.vpToggleGrid = function() {
   const w = document.getElementById('vp-month-grid-wrap');
   const b = document.getElementById('vp-tithi-toggle');

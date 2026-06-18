@@ -1,25 +1,39 @@
-  <div id="vpanchanga-view" style="display:none;padding-bottom:20px">
+  <div id="vpanchanga-view" style="display:none;padding-bottom:24px">
 
-    <!-- Header row with location -->
-    <div style="text-align:center;padding:6px 16px 2px">
-      <div style="font-size:.58rem;color:var(--td);letter-spacing:.15em;text-transform:uppercase;margin-top:2px" id="vp-gaurabda"></div>
-      <div style="font-size:.55rem;color:var(--td);letter-spacing:.1em;text-transform:uppercase;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:4px">
-        <span style="width:5px;height:5px;background:var(--gold);border-radius:50%;display:inline-block"></span>
+    <!-- Header -->
+    <div class="vp-head">
+      <div class="vp-gaurabda" id="vp-gaurabda"></div>
+      <div class="vp-loc-row">
+        <span class="vp-loc-dot"></span>
         <span id="vp-loc-text">Locating…</span>
       </div>
     </div>
 
     <!-- Clock -->
-    <div style="text-align:center;padding:8px 20px 2px;position:relative">
-      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:.03;font-size:90px;font-family:'Tiro Devanagari Hindi',serif">ॐ</div>
-      <div id="vp-clock" style="font-family:'EB Garamond',serif;font-size:2.8rem;font-weight:700;color:var(--gold);letter-spacing:-.03em;text-shadow:0 0 40px rgba(245,209,122,.3)"></div>
+    <div class="vp-clock-wrap">
+      <div class="vp-om-bg">ॐ</div>
+      <div id="vp-clock"></div>
     </div>
-    <div id="vp-vaar-name" style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:500;text-align:center;margin-top:2px;color:var(--tl)"></div>
-    <div id="vp-month-line" style="font-size:.72rem;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;text-align:center;margin-top:4px"></div>
-    <div id="vp-vaishnav-line" style="font-size:.62rem;color:var(--td);font-style:italic;font-family:'EB Garamond',serif;text-align:center;margin-top:2px"></div>
+    <div id="vp-vaar-name"></div>
+    <div id="vp-month-line"></div>
+    <div id="vp-vaishnav-line"></div>
 
-    <!-- Vaar strip -->
-    <div id="vp-vaar-strip" class="vp-vaar-strip"></div>
+    <!-- ORBITAL DIAL — planetary view of the week, today at center -->
+    <div class="vp-orbit-wrap" id="vp-orbit-wrap">
+      <div class="vp-orbit-ring"></div>
+      <div class="vp-orbit-center" id="vp-orbit-center">
+        <div class="vp-orbit-center-icon" id="vp-orbit-center-icon"></div>
+        <div class="vp-orbit-center-label" id="vp-orbit-center-label"></div>
+        <div class="vp-orbit-center-sub" id="vp-orbit-center-sub"></div>
+      </div>
+      <!-- 7 orbit buttons injected by JS with computed positions -->
+    </div>
+
+    <!-- Viewing bar for selected vaar -->
+    <div id="vp-viewing-bar" style="display:none">
+      <span class="vp-viewing-chip" id="vp-viewing-label"></span>
+      <button class="vp-back-btn" onclick="vpClearSelectedVaar()">← Back to today</button>
+    </div>
 
     <!-- NOW PANEL -->
     <div class="vp-now-panel" id="vp-now-panel">
@@ -28,14 +42,6 @@
         <span id="vp-now-panel-title">Right Now &amp; Coming Soon</span>
       </div>
       <div class="vp-now-grid" id="vp-now-grid"></div>
-    </div>
-
-    <!-- Viewing bar for selected vaar -->
-    <div id="vp-viewing-bar" style="display:none">
-      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:6px 16px 0">
-        <span class="vp-viewing-chip" id="vp-viewing-label"></span>
-        <button onclick="vpClearSelectedVaar()" style="font-size:.52rem;color:var(--td);text-transform:uppercase;letter-spacing:.1em;cursor:pointer;background:none;border:none;padding:0;color:var(--td)">← Back to today</button>
-      </div>
     </div>
 
     <!-- Tithi grid toggle -->
@@ -47,51 +53,33 @@
       <div class="vp-month-grid" id="vp-month-grid"></div>
     </div>
 
-    <div class="vp-divider">✧</div>
-
-    <section style="padding:0 16px">
+    <!-- PANCHANGA ANGAS — option-driven tabs, one focused panel -->
+    <section class="vp-anga-section">
       <div class="vp-sec-head">Panchanga Angas</div>
-      <div class="vp-ang-sub">Tithi</div>
-      <div class="vp-space-y" id="vp-tithi-rows"></div>
-      <br>
-      <div class="vp-ang-sub">Nakshatra</div>
-      <div class="vp-space-y" id="vp-nakshatra-rows"></div>
-      <br>
-      <div class="vp-ang-sub">Yoga</div>
-      <div class="vp-space-y" id="vp-yoga-rows"></div>
-      <br>
-      <div class="vp-ang-sub">Karana</div>
-      <div class="vp-space-y" id="vp-karana-rows"></div>
+      <div class="vp-anga-tabs" id="vp-anga-tabs"></div>
+      <div class="vp-anga-panel" id="vp-anga-panel"></div>
     </section>
 
-    <div class="vp-divider">✧</div>
-
-    <section style="padding:0 16px">
+    <section class="vp-m-section">
       <div class="vp-sec-head vp-sec-head-green">Auspicious Periods</div>
       <div class="vp-space-y" id="vp-ausp-rows"></div>
     </section>
 
-    <div class="vp-divider">✧</div>
-
-    <section style="padding:0 16px">
+    <section class="vp-m-section">
       <div class="vp-sec-head vp-sec-head-red">Inauspicious Periods</div>
       <div class="vp-space-y" id="vp-inaup-rows"></div>
     </section>
 
     <div id="vp-special-yoga-sec" style="display:none">
-      <div class="vp-divider">✧</div>
-      <section style="padding:0 16px">
-        <div class="vp-sec-head" style="color:rgba(245,209,122,.8)">Special Yogas</div>
+      <section class="vp-m-section">
+        <div class="vp-sec-head" style="color:var(--vp-gold)">Special Yogas</div>
         <div class="vp-space-y" id="vp-yoga-cards"></div>
       </section>
     </div>
 
-    <div class="vp-divider">✧</div>
-
-    <section style="padding:0 16px 24px">
+    <section class="vp-db-section">
       <div class="vp-sec-head">Day Boundaries</div>
       <div class="vp-db-grid" id="vp-db-grid"></div>
     </section>
 
   </div>
-

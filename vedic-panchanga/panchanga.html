@@ -18,7 +18,7 @@
     <div id="vp-month-line"></div>
     <div id="vp-vaishnav-line"></div>
 
-    <!-- ORBITAL DIAL — planetary view of the week, today at center -->
+    <!-- ORBITAL DIAL -->
     <div class="vp-orbit-wrap" id="vp-orbit-wrap">
       <div class="vp-orbit-ring"></div>
       <div class="vp-orbit-center" id="vp-orbit-center">
@@ -26,7 +26,6 @@
         <div class="vp-orbit-center-label" id="vp-orbit-center-label"></div>
         <div class="vp-orbit-center-sub" id="vp-orbit-center-sub"></div>
       </div>
-      <!-- 7 orbit buttons injected by JS with computed positions -->
     </div>
 
     <!-- Viewing bar for selected vaar -->
@@ -35,14 +34,42 @@
       <button class="vp-back-btn" onclick="vpClearSelectedVaar()">← Back to today</button>
     </div>
 
-    <!-- NOW PANEL -->
+    <!-- ══════════════════════════════════════════
+         SPECIAL YOGAS — top of content (if any)
+         ══════════════════════════════════════════ -->
+    <div id="vp-special-yoga-sec" style="display:none">
+      <section class="vp-m-section vp-special-yoga-section">
+        <div class="vp-sec-head vp-sec-head-gold">✨ Special Yoga Today</div>
+        <div class="vp-space-y" id="vp-yoga-cards"></div>
+      </section>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         PANCHANGA NOW — 4 Angas in one row
+         with collapsible upcoming rows under each
+         ══════════════════════════════════════════ -->
     <div class="vp-now-panel" id="vp-now-panel">
       <div class="vp-now-panel-head">
         <div class="vp-pulse"></div>
         <span id="vp-now-panel-title">Right Now &amp; Coming Soon</span>
       </div>
-      <div class="vp-now-grid" id="vp-now-grid"></div>
+
+      <!-- 4 Anga Cards in a row -->
+      <div class="vp-anga-row-cards" id="vp-anga-row-cards"></div>
     </div>
+
+    <!-- ══════════════════════════════════════════
+         ACTIVE MUHURTA BANNER (Current Now)
+         ══════════════════════════════════════════ -->
+    <div id="vp-current-muhurta-wrap"></div>
+
+    <!-- ══════════════════════════════════════════
+         UPCOMING — serial order, color-coded
+         ══════════════════════════════════════════ -->
+    <section class="vp-m-section" id="vp-upcoming-section">
+      <div class="vp-sec-head vp-sec-head-upcoming">Coming Up</div>
+      <div class="vp-upcoming-list" id="vp-upcoming-list"></div>
+    </section>
 
     <!-- Tithi grid toggle -->
     <button class="vp-tithi-toggle" id="vp-tithi-toggle" onclick="vpToggleGrid()">
@@ -53,33 +80,15 @@
       <div class="vp-month-grid" id="vp-month-grid"></div>
     </div>
 
-    <!-- PANCHANGA ANGAS — option-driven tabs, one focused panel -->
-    <section class="vp-anga-section">
-      <div class="vp-sec-head">Panchanga Angas</div>
-      <div class="vp-anga-tabs" id="vp-anga-tabs"></div>
-      <div class="vp-anga-panel" id="vp-anga-panel"></div>
-    </section>
-
-    <section class="vp-m-section">
-      <div class="vp-sec-head vp-sec-head-green">Auspicious Periods</div>
-      <div class="vp-space-y" id="vp-ausp-rows"></div>
-    </section>
-
-    <section class="vp-m-section">
-      <div class="vp-sec-head vp-sec-head-red">Inauspicious Periods</div>
-      <div class="vp-space-y" id="vp-inaup-rows"></div>
-    </section>
-
-    <div id="vp-special-yoga-sec" style="display:none">
-      <section class="vp-m-section">
-        <div class="vp-sec-head" style="color:var(--vp-gold)">Special Yogas</div>
-        <div class="vp-space-y" id="vp-yoga-cards"></div>
-      </section>
-    </div>
-
-    <section class="vp-db-section">
-      <div class="vp-sec-head">Day Boundaries</div>
+    <!-- ══════════════════════════════════════════
+         DAY BOUNDARIES — collapsible
+         ══════════════════════════════════════════ -->
+    <button class="vp-collapsible-toggle" id="vp-db-toggle" onclick="vpToggleDayBoundaries()">
+      <span>🌄 &nbsp;Day Boundaries</span>
+      <span class="vp-chevron" id="vp-db-chevron">▾</span>
+    </button>
+    <div class="vp-collapsible-wrap" id="vp-db-wrap">
       <div class="vp-db-grid" id="vp-db-grid"></div>
-    </section>
+    </div>
 
   </div>

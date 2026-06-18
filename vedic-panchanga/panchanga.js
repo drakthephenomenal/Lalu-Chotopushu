@@ -569,153 +569,231 @@ function computeAll(){
 }
 
 // ═══════════════════════════════════════════════════════════════
-// NOW PANEL — always uses real current time
+// HELPERS — muhurta list builder (shared)
 // ═══════════════════════════════════════════════════════════════
-function buildNowPanel(now,tithiPeriods,nakshatraPeriods,yogaPeriods,karanaPeriods,mdToday,isSelected){
-  const jd=dateToJD(now);
-  // Current tithi
-  const curTithi=tithiPeriods.find(p=>+jdToDate(p.startJD)<=+now&&+now<+jdToDate(p.endJD))
-    ||tithiPeriods[0];
-  // Next tithi
-  const nextTithi=tithiPeriods.find(p=>+jdToDate(p.startJD)>+now);
-  // Current nakshatra
-  const curNak=nakshatraPeriods.find(p=>+jdToDate(p.startJD)<=+now&&+now<+jdToDate(p.endJD))
-    ||nakshatraPeriods[0];
-  // Current yoga
-  const curYoga=yogaPeriods.find(p=>+jdToDate(p.startJD)<=+now&&+now<+jdToDate(p.endJD))
-    ||yogaPeriods[0];
-  // Current karana
-  const curKarana=karanaPeriods.find(p=>+jdToDate(p.startJD)<=+now&&+now<+jdToDate(p.endJD))
-    ||karanaPeriods[0];
-
-  // All muhurtas from today
-  // Also compute next day's Brahma Muhurta so "Coming Soon" works after midnight/late night
+function buildAllMuhurtas(mdToday){
   const nextDayDate=new Date(+mdToday.sunrise+86400000);
-  const nextDaySR=SunCalc.getTimes(nextDayDate,mdToday.sunrise.lat||LAT,mdToday.sunrise.lng||LNG);
-  // Re-use the passed-in lat/lng via closure (LAT/LNG are global)
   const nextBMStart=new Date(+SunCalc.getTimes(nextDayDate,LAT,LNG).sunrise-96*60*1000);
   const nextBMEnd=new Date(+nextBMStart+48*60*1000);
-  // Tuesday (Mangol Vaar, wd=2) — classical rule: Abhijit Muhurta is itself
-  // inauspicious on Tuesday ("Anabhijit"), so we flag it as warn instead of good.
   const abhijitType=mdToday.wd===2?'warn':'good';
-  const allM=[
-    {label:'Brahma Muhurta',s:mdToday.brahmaMuhurta.start,e:mdToday.brahmaMuhurta.end,type:'good'},
-    {label:'Abhijit Muhurta',s:mdToday.abhijit.start,e:mdToday.abhijit.end,type:abhijitType},
-    {label:'Vijaya Muhurta',s:mdToday.vijaya.start,e:mdToday.vijaya.end,type:'good'},
-    {label:'Godhuli Muhurta',s:mdToday.godhuli.start,e:mdToday.godhuli.end,type:'good'},
-    {label:'Nishita Muhurta',s:mdToday.nishita.start,e:mdToday.nishita.end,type:'good'},
-    ...(mdToday.amritaKala?[{label:'Amrita Kala',s:mdToday.amritaKala.start,e:mdToday.amritaKala.end,type:'good'}]:[]),
-    {label:'Rahu Kalam',s:mdToday.rahuKalam.start,e:mdToday.rahuKalam.end,type:'warn'},
-    {label:'Yamaganda',s:mdToday.yamaganda.start,e:mdToday.yamaganda.end,type:'warn'},
-    {label:'Gulika (Mandi)',s:mdToday.gulika.start,e:mdToday.gulika.end,type:'warn'},
-    ...(mdToday.varjyam?[{label:'Varjyam / Tyajya',s:mdToday.varjyam.start,e:mdToday.varjyam.end,type:'warn'}]:[]),
-    ...mdToday.durMuhurtas.map((d,i)=>({label:`Dur Muhurta ${i+1}`,s:d.start,e:d.end,type:'warn'})),
-    // Next day's BM so "Coming Soon" is never empty in the post-midnight/pre-BM window
-    {label:'Brahma Muhurta',s:nextBMStart,e:nextBMEnd,type:'good'},
+  return[
+    {icon:'🌅',label:'Brahma Muhurta',s:mdToday.brahmaMuhurta.start,e:mdToday.brahmaMuhurta.end,type:'good'},
+    {icon:'🏆',label:'Abhijit Muhurta',s:mdToday.abhijit.start,e:mdToday.abhijit.end,type:abhijitType},
+    {icon:'⚔️',label:'Vijaya Muhurta',s:mdToday.vijaya.start,e:mdToday.vijaya.end,type:'good'},
+    {icon:'🌄',label:'Godhuli Muhurta',s:mdToday.godhuli.start,e:mdToday.godhuli.end,type:'good'},
+    {icon:'🌙',label:'Nishita Muhurta',s:mdToday.nishita.start,e:mdToday.nishita.end,type:'good'},
+    ...(mdToday.amritaKala?[{icon:'✨',label:'Amrita Kala',s:mdToday.amritaKala.start,e:mdToday.amritaKala.end,type:'good'}]:[]),
+    {icon:'☠️',label:'Rahu Kalam',s:mdToday.rahuKalam.start,e:mdToday.rahuKalam.end,type:'warn'},
+    {icon:'⚰️',label:'Yamaganda',s:mdToday.yamaganda.start,e:mdToday.yamaganda.end,type:'warn'},
+    {icon:'🐍',label:'Gulika (Mandi)',s:mdToday.gulika.start,e:mdToday.gulika.end,type:'warn'},
+    ...(mdToday.varjyam?[{icon:'🚫',label:'Varjyam / Tyajya',s:mdToday.varjyam.start,e:mdToday.varjyam.end,type:'warn'}]:[]),
+    ...mdToday.durMuhurtas.map((d,i)=>({icon:'⚠️',label:`Dur Muhurta ${i+1}`,s:d.start,e:d.end,type:'warn'})),
+    {icon:'🌅',label:'Brahma Muhurta',s:nextBMStart,e:nextBMEnd,type:'good'},
   ];
-  // For selected vaar use sunrise as reference; for today use current time
-  const refForMuhurta=now;
-  // Multiple muhurtas can be active simultaneously (e.g. Abhijit overlaps Dur Muhurta 2).
-  // Show every active period — auspicious AND inauspicious — separately so the user sees both.
-  const activeAll=isSelected?[]:allM.filter(m=>refForMuhurta>=m.s&&refForMuhurta<m.e);
-  const activeGood=activeAll.find(m=>m.type==='good');
-  const activeWarns=activeAll.filter(m=>m.type==='warn');
+}
 
-  function timeStr(start,end){
-    return `${fmtDate(start)} ${fmt12(start)} – ${fmtEnd(end,start)}<br><span style="color:rgba(245,209,122,.85)">${dur(start,end)} duration</span>`;
+// ═══════════════════════════════════════════════════════════════
+// ANGA ROW CARDS — 4 angas in a single horizontal row
+// each with a collapsible "upcoming" section beneath
+// ═══════════════════════════════════════════════════════════════
+function buildAngaRowCards(now,tithiPeriods,nakshatraPeriods,yogaPeriods,karanaPeriods,isSelected){
+  // Current anga finders
+  function curP(arr){return arr.find(p=>+jdToDate(p.startJD)<=+now&&+now<+jdToDate(p.endJD))||arr[0]}
+  function nextP(arr,cur){return arr.filter(p=>+jdToDate(p.startJD)>+now).slice(0,3)}
+  const timeLeftLabel=isSelected?'at sunrise':'left';
+
+  function durLeft(endJD){
+    const ed=jdToDate(endJD);
+    if(+ed<=+now)return'';
+    return dur(now,ed)+' '+timeLeftLabel;
   }
 
-  function cell(label,name,fx,timeHTML,cls=''){
-    return`<div class="vp-now-cell ${cls}">
-      <div class="vp-now-cell-top"><div class="vp-now-cell-label">${label}</div></div>
-      <div class="vp-now-cell-name">${name}</div>
-      <div class="vp-now-cell-effect">${fx}</div>
-      <div class="vp-now-cell-time">${timeHTML}</div>
+  const curTithi=curP(tithiPeriods);
+  const curNak=curP(nakshatraPeriods);
+  const curYoga=curP(yogaPeriods);
+  const curKar=curP(karanaPeriods);
+  const karFx=KARANA_FX_LOOKUP[curKar.name]||'Half-tithi unit — governs the quality of the lunar half';
+  const karWarn=curKar.name==='Vishti';
+
+  // Auspicious/inauspicious colour class per anga current
+  const inauspiciousYoga=['Vishkambha','Atiganda','Shula','Ganda','Vajra','Vyatipata','Parigha','Vaidhriti'];
+  const yogaWarn=inauspiciousYoga.includes(curYoga.name);
+
+  function angaCard(label,cur,fx,periods,warn){
+    const upcoming=periods.filter(p=>+jdToDate(p.startJD)>+now).slice(0,3);
+    const endDate=jdToDate(cur.endJD);
+    const id='vpc-'+label.toLowerCase().replace(/\s/g,'');
+    const leftTxt=durLeft(cur.endJD);
+    const upcomingHtml=upcoming.map(p=>{
+      const ps=jdToDate(p.startJD),pe=jdToDate(p.endJD);
+      return`<div class="vp-anga-upcoming-item">
+        <div class="vp-anga-upcoming-dot"></div>
+        <div>
+          <div class="vp-anga-upcoming-name">${p.name}${p.paksha?' <span style="font-size:.5rem;color:var(--vp-ink-faint)">('+p.paksha+')</span>':''}</div>
+          <div class="vp-anga-upcoming-time">${fmt12(ps)} – ${fmtEnd(pe,ps)}</div>
+        </div>
+      </div>`;
+    }).join('');
+    return`<div class="vp-anga-card ${warn?'warn':'good'}">
+      <div class="vp-anga-card-label">${label} Now</div>
+      <div class="vp-anga-card-name">${cur.name}</div>
+      ${cur.paksha?`<div class="vp-anga-card-paksha">${cur.paksha} Paksha</div>`:''}
+      <div class="vp-anga-card-fx">${fx}</div>
+      <div class="vp-anga-card-time">ends ${fmtEnd(endDate,now)}</div>
+      ${leftTxt?`<div class="vp-anga-card-left">${leftTxt}</div>`:''}
+      ${upcoming.length?`
+      <button class="vp-anga-card-toggle" id="btn-${id}" onclick="vpToggleAngaCard('${id}')">
+        Next <span class="vp-chevron-sm">▾</span>
+      </button>
+      <div class="vp-anga-upcoming-wrap" id="${id}">
+        ${upcomingHtml}
+      </div>`:''}
     </div>`;
   }
-  function cellWithStatus(label,status,statusCls,name,fx,timeHTML,cls=''){
-    return`<div class="vp-now-cell ${cls}">
-      <div class="vp-now-cell-top"><div class="vp-now-cell-label">${label}</div><span class="vp-now-cell-status ${statusCls}">${status}</span></div>
-      <div class="vp-now-cell-name">${name}</div>
-      <div class="vp-now-cell-effect">${fx}</div>
-      <div class="vp-now-cell-time">${timeHTML}</div>
-    </div>`;
-  }
 
-  const nowLabel=isSelected?'At Sunrise':'Now';
-  const timeLeftLabel=isSelected?'during sunrise':'left';
   let html='';
-  // Tithi
-  html+=cell('Tithi '+nowLabel,
-    curTithi.name+' <small style="font-size:.6rem;color:var(--muted)">'+curTithi.paksha+'</small>',
-    TITHI_FX[curTithi.index],
-    `ends ${fmtEnd(jdToDate(curTithi.endJD),now)}<br><span style="color:rgba(245,209,122,.85)">${dur(now,jdToDate(curTithi.endJD))} ${timeLeftLabel}</span>`,'good');
-  // Nakshatra
-  html+=cell('Nakshatra '+nowLabel,curNak.name,
-    NAK_FX[curNak.index],
-    `ends ${fmtEnd(jdToDate(curNak.endJD),now)}<br><span style="color:rgba(245,209,122,.85)">${dur(now,jdToDate(curNak.endJD))} ${timeLeftLabel}</span>`,'good');
-  // Yoga
-  html+=cell('Yoga '+nowLabel,curYoga.name,
-    YOGA_FX[curYoga.index],
-    `ends ${fmtEnd(jdToDate(curYoga.endJD),now)}<br><span style="color:rgba(245,209,122,.85)">${dur(now,jdToDate(curYoga.endJD))} ${timeLeftLabel}</span>`,'');
-  // Karana effects lookup
-  const karFx=KARANA_FX_LOOKUP[curKarana.name]||'Half-tithi unit — governs the quality of the lunar half';
-  const karCls=curKarana.name==='Vishti'?'warn':'';
-  // Karana
-  html+=cell('Karana '+nowLabel,curKarana.name,
-    karFx,
-    `ends ${fmtEnd(jdToDate(curKarana.endJD),now)}<br><span style="color:rgba(245,209,122,.85)">${dur(now,jdToDate(curKarana.endJD))} ${timeLeftLabel}</span>`,karCls);
-
-  // Active muhurta — render auspicious and inauspicious separately when both overlap
-  if(activeGood){
-    html+=cellWithStatus('Muhurta Active','● Now','active',
-      activeGood.label,MEFF[activeGood.label]||'',
-      timeStr(activeGood.s,activeGood.e),'good');
-  }
-  activeWarns.forEach(aw=>{
-    html+=cellWithStatus('Inauspicious Active','● Now','active',
-      aw.label,MEFF[aw.label]||'',
-      timeStr(aw.s,aw.e),'warn');
-  });
-
-
-  if(!isSelected){
-    // Upcoming muhurtas — show next auspicious AND next TWO inauspicious separately
-    const futureM=allM.filter(m=>m.s>refForMuhurta).sort((a,b)=>a.s-b.s);
-    const nextGood=futureM.find(m=>m.type==='good');
-    const nextWarns=futureM.filter(m=>m.type==='warn').slice(0,2);
-
-    function soonTag(m){
-      const mins=Math.round((+m.s-+now)/60000);
-      return mins<60?`in ${mins}m`:`in ${Math.floor(mins/60)}h${mins%60?' '+mins%60+'m':''}`;
-    }
-
-    if(nextGood){
-      html+=cellWithStatus('Coming Soon — Auspicious',soonTag(nextGood),'soon',
-        nextGood.label,
-        MEFF[nextGood.label]||'',
-        timeStr(nextGood.s,nextGood.e),
-        'good');
-    }
-    nextWarns.forEach(nw=>{
-      html+=cellWithStatus('Coming Soon — Inauspicious',soonTag(nw),'warn-soon',
-        nw.label,
-        MEFF[nw.label]||'',
-        timeStr(nw.s,nw.e),
-        'warn');
-    });
-  } else {
-    // Selected vaar — show first muhurta of day
-    const nextMuhurta=allM.filter(m=>m.s>refForMuhurta).sort((a,b)=>a.s-b.s)[0];
-    if(nextMuhurta){
-      html+=cellWithStatus('First Muhurta of Day',fmtDate(nextMuhurta.s),'soon',
-        nextMuhurta.label,
-        MEFF[nextMuhurta.label]||'',
-        timeStr(nextMuhurta.s,nextMuhurta.e),
-        nextMuhurta.type==='warn'?'warn':'');
-    }
-  }
+  html+=angaCard('Tithi',curTithi,TITHI_FX[curTithi.index],tithiPeriods,false);
+  html+=angaCard('Nakshatra',curNak,NAK_FX[curNak.index],nakshatraPeriods,false);
+  html+=angaCard('Yoga',curYoga,YOGA_FX[curYoga.index],yogaPeriods,yogaWarn);
+  html+=angaCard('Karana',curKar,karFx,karanaPeriods,karWarn);
   return html;
+}
+
+window.vpToggleAngaCard=function(id){
+  const wrap=document.getElementById(id);
+  const btn=document.getElementById('btn-'+id);
+  if(!wrap)return;
+  wrap.classList.toggle('open');
+  if(btn)btn.classList.toggle('vp-anga-toggle-open');
+};
+
+// ═══════════════════════════════════════════════════════════════
+// CURRENT MUHURTA BANNER — smart conflict resolution
+// ═══════════════════════════════════════════════════════════════
+function buildCurrentMuhurtaBanner(now,allM,isSelected){
+  if(isSelected)return'';
+  const active=allM.filter(m=>now>=m.s&&now<m.e);
+  if(!active.length)return'';
+
+  const goods=active.filter(m=>m.type==='good');
+  const warns=active.filter(m=>m.type==='warn');
+
+  function timeRemaining(m){
+    const mins=Math.round((+m.e-+now)/60000);
+    return mins<60?mins+'m left':Math.floor(mins/60)+'h '+(mins%60?mins%60+'m':'')+' left';
+  }
+  function timeRange(m){return`${fmt12(m.s)} – ${fmtEnd(m.e,m.s)}`}
+
+  // Conflict: both good and warn active simultaneously
+  if(goods.length&&warns.length){
+    const g=goods[0];
+    const w=warns[0];
+    // Decision: inauspicious overrides for new starts; auspicious good for ongoing work
+    const adviceGood='✅ Good for ongoing work & prayer';
+    const adviceWarn='⛔ Avoid new starts & decisions';
+    let html=`<div class="vp-current-banner conflict">
+      <div class="vp-cb-dot"></div>
+      <div class="vp-cb-body">
+        <div class="vp-cb-eyebrow">⚖️ Mixed — Good &amp; Inauspicious Overlap</div>
+        <div class="vp-cb-name">${g.icon||'🌅'} ${g.label} &amp; ${w.icon||'⚠️'} ${w.label}</div>
+        <div class="vp-cb-desc">${MEFF[g.label]||''} — but ${(MEFF[w.label]||'inauspicious period').toLowerCase()} is also active.</div>
+        <div class="vp-cb-advice">${adviceGood}</div>
+        <div class="vp-cb-advice" style="margin-top:4px">${adviceWarn}</div>
+        <div class="vp-cb-time">${g.label}: ${timeRange(g)} · ${timeRemaining(g)}</div>
+        <div class="vp-cb-time">${w.label}: ${timeRange(w)} · ${timeRemaining(w)}</div>
+      </div>
+    </div>`;
+    // Additional overlapping items
+    const extras=[...goods.slice(1),...warns.slice(1)];
+    if(extras.length){
+      html=html.slice(0,-6)+'<div class="vp-cb-also">Also active: '+
+        extras.map(e=>`<span class="vp-cb-also-item ${e.type==='good'?'good':''}">${e.icon||''} ${e.label}</span>`).join('')+
+        '</div></div></div>';
+    }
+    return html;
+  }
+
+  // Only inauspicious
+  if(warns.length&&!goods.length){
+    const w=warns[0];
+    const avoidText='⛔ Avoid new beginnings, auspicious rites & important decisions';
+    let html=`<div class="vp-current-banner inaup">
+      <div class="vp-cb-dot"></div>
+      <div class="vp-cb-body">
+        <div class="vp-cb-eyebrow">Inauspicious Active</div>
+        <div class="vp-cb-name">${w.icon||'⚠️'} ${w.label}</div>
+        <div class="vp-cb-desc">${MEFF[w.label]||''}</div>
+        <div class="vp-cb-advice">${avoidText}</div>
+        <div class="vp-cb-time">${timeRange(w)} · ${timeRemaining(w)}</div>
+      </div>
+    </div>`;
+    if(warns.length>1){
+      html=html.slice(0,-6)+'<div class="vp-cb-also">Also: '+
+        warns.slice(1).map(e=>`<span class="vp-cb-also-item">${e.icon||''} ${e.label}</span>`).join('')+
+        '</div></div></div>';
+    }
+    return html;
+  }
+
+  // Only auspicious
+  if(goods.length){
+    const g=goods[0];
+    const doText='✅ Excellent — proceed with confidence';
+    let html=`<div class="vp-current-banner ausp">
+      <div class="vp-cb-dot"></div>
+      <div class="vp-cb-body">
+        <div class="vp-cb-eyebrow">Auspicious Active</div>
+        <div class="vp-cb-name">${g.icon||'🌅'} ${g.label}</div>
+        <div class="vp-cb-desc">${MEFF[g.label]||''}</div>
+        <div class="vp-cb-advice">${doText}</div>
+        <div class="vp-cb-time">${timeRange(g)} · ${timeRemaining(g)}</div>
+      </div>
+    </div>`;
+    if(goods.length>1){
+      html=html.slice(0,-6)+'<div class="vp-cb-also">Also active: '+
+        goods.slice(1).map(e=>`<span class="vp-cb-also-item good">${e.icon||''} ${e.label}</span>`).join('')+
+        '</div></div></div>';
+    }
+    return html;
+  }
+  return'';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UPCOMING LIST — serial order, gold/violet color coded
+// ═══════════════════════════════════════════════════════════════
+function buildUpcomingList(now,allM,isSelected){
+  const future=allM.filter(m=>m.s>now).sort((a,b)=>+a.s-+b.s).slice(0,8);
+  if(!future.length)return'<div style="padding:12px;text-align:center;font-size:.76rem;color:var(--vp-ink-faint)">No upcoming periods today</div>';
+
+  function soonStr(m){
+    const mins=Math.round((+m.s-+now)/60000);
+    if(mins<60)return`in ${mins}m`;
+    return`in ${Math.floor(mins/60)}h${mins%60?' '+mins%60+'m':''}`;
+  }
+
+  return future.map((m,i)=>{
+    const isAusp=m.type==='good';
+    const cls=isAusp?'ausp':'inaup';
+    return`<div class="vp-upcoming-row ${cls}">
+      <div class="vp-upcoming-serial">${i+1}</div>
+      <div class="vp-upcoming-icon">${m.icon||'⏰'}</div>
+      <div class="vp-upcoming-body">
+        <div class="vp-upcoming-label">${m.label}</div>
+        <div class="vp-upcoming-desc">${MEFF[m.label]||''}</div>
+        <div class="vp-upcoming-timeblock">${fmt12(m.s)} – ${fmtEnd(m.e,m.s)}</div>
+        <div class="vp-upcoming-dur">${dur(m.s,m.e)} duration</div>
+      </div>
+      <div class="vp-upcoming-right">
+        <span class="vp-in-pill">${soonStr(m)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Legacy stub — kept so any remaining callers don't break
+function buildNowPanel(now,tithiPeriods,nakshatraPeriods,yogaPeriods,karanaPeriods,mdToday,isSelected){
+  return'';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -803,7 +881,42 @@ function renderAll(){
     panelLabel='Right Now &amp; Coming Soon';
   }
   document.getElementById('vp-now-panel-title').innerHTML=panelLabel;
-  document.getElementById('vp-now-grid').innerHTML=buildNowPanel(panelRef,panelTithiP,panelNakP,panelYogaP,panelKarP,panelMd,!isActive);
+
+  // ── 4 Anga cards in one row ──────────────────────────────────
+  document.getElementById('vp-anga-row-cards').innerHTML=
+    buildAngaRowCards(panelRef,panelTithiP,panelNakP,panelYogaP,panelKarP,!isActive);
+
+  // ── Build unified muhurta list ────────────────────────────────
+  const allM=buildAllMuhurtas(panelMd);
+
+  // ── Current muhurta banner ────────────────────────────────────
+  document.getElementById('vp-current-muhurta-wrap').innerHTML=
+    buildCurrentMuhurtaBanner(panelRef,allM,!isActive);
+
+  // ── Upcoming list — serial, gold/violet ───────────────────────
+  const upcomingSection=document.getElementById('vp-upcoming-section');
+  const upcomingList=document.getElementById('vp-upcoming-list');
+  if(isActive){
+    upcomingSection.style.display='block';
+    upcomingList.innerHTML=buildUpcomingList(panelRef,allM,false);
+  }else{
+    // For selected vaar, show all muhurtas in order (from sunrise)
+    upcomingSection.style.display='block';
+    const allFromSR=allM.filter(m=>m.s>=panelRef).sort((a,b)=>+a.s-+b.s).slice(0,8);
+    upcomingList.innerHTML=allFromSR.length?allFromSR.map((m,i)=>{
+      const cls=m.type==='good'?'ausp':'inaup';
+      return`<div class="vp-upcoming-row ${cls}">
+        <div class="vp-upcoming-serial">${i+1}</div>
+        <div class="vp-upcoming-icon">${m.icon||'⏰'}</div>
+        <div class="vp-upcoming-body">
+          <div class="vp-upcoming-label">${m.label}</div>
+          <div class="vp-upcoming-desc">${MEFF[m.label]||''}</div>
+          <div class="vp-upcoming-timeblock">${fmt12(m.s)} – ${fmtEnd(m.e,m.s)}</div>
+          <div class="vp-upcoming-dur">${dur(m.s,m.e)} duration</div>
+        </div>
+      </div>`;
+    }).join(''):'<div style="padding:12px;text-align:center;font-size:.76rem;color:var(--vp-ink-faint)">No upcoming periods</div>';
+  }
 
   // Viewing bar
   const vb=document.getElementById('vp-viewing-bar');
@@ -823,92 +936,7 @@ function renderAll(){
     `<div class="vp-paksha-label k">Krishna Paksha — Waning Moon</div>`+
     krishna.map((t,i)=>tCell(t,i+1,t.index===currentTithiIdx,'K')).join('');
 
-  // ── PANCHANGA ANGAS — option-driven tabs + one focused detail panel ──
-  // Tithi rows use the DISPLAYED vaar's vedic-day window; the other three
-  // angas are always "today" data (they don't shift with vaar selection).
-  const bmStart=+displayVaar.brahmaMuhurtaStart;
-  const nextDayBM=+new Date(+displayVaar.sunrise+86400000-96*60*1000);
-  const tithiRel=panelTithiP.filter(p=>+jdToDate(p.endJD)>bmStart&&+jdToDate(p.startJD)<nextDayBM);
-
-  function pRowValid(p){
-    const durMin=(p.endJD-p.startJD)*1440;
-    return durMin>=2; // discard artefact slivers
-  }
-
-  const ANGA_DEFS={
-    tithi:{icon:'🌙',label:'Tithi',periods:tithiRel.filter(pRowValid),hasPaksha:true},
-    nakshatra:{icon:'⭐',label:'Nakshatra',periods:panelNakP.filter(pRowValid),hasPaksha:false},
-    yoga:{icon:'☯️',label:'Yoga',periods:panelYogaP.filter(pRowValid),hasPaksha:false},
-    karana:{icon:'◐',label:'Karana',periods:panelKarP.filter(pRowValid),hasPaksha:false},
-  };
-  if(!ANGA_DEFS[selectedAnga])selectedAnga='tithi';
-
-  // Tabs — each shows icon + label + the name that's CURRENT for that anga,
-  // so a glance at the tab row already tells the story without opening any of them.
-  document.getElementById('vp-anga-tabs').innerHTML=Object.keys(ANGA_DEFS).map(key=>{
-    const def=ANGA_DEFS[key];
-    const cur=def.periods.find(p=>+jdToDate(p.startJD)<=+panelRef&&+panelRef<+jdToDate(p.endJD))||def.periods[0];
-    const activeCls=key===selectedAnga?' active':'';
-    return`<button class="vp-anga-tab${activeCls}" onclick="vpSelectAnga('${key}')">
-      <span class="vp-anga-tab-icon">${def.icon}</span>
-      <span>
-        <div class="vp-anga-tab-label">${def.label}</div>
-        <div class="vp-anga-tab-name">${cur?cur.name:'—'}</div>
-      </span>
-    </button>`;
-  }).join('');
-
-  // Panel — the chosen anga's current state as a hero card, then the rest as a clean list
-  (function renderAngaPanel(){
-    const def=ANGA_DEFS[selectedAnga];
-    const periods=def.periods;
-    if(!periods.length){
-      document.getElementById('vp-anga-panel').innerHTML=
-        '<div style="text-align:center;padding:20px;color:var(--vp-ink-faint);font-size:.78rem">No data available.</div>';
-      return;
-    }
-    const curIdx=periods.findIndex(p=>+jdToDate(p.startJD)<=+panelRef&&+panelRef<+jdToDate(p.endJD));
-    const cur=curIdx>=0?periods[curIdx]:periods[0];
-    const isK=def.hasPaksha&&cur.paksha==='Krishna';
-    const sd=jdToDate(cur.startJD),ed=jdToDate(cur.endJD);
-    const fx=selectedAnga==='tithi'?TITHI_FX[cur.index]:
-             selectedAnga==='nakshatra'?NAK_FX[cur.index]:
-             selectedAnga==='yoga'?YOGA_FX[cur.index]:
-             (KARANA_FX_LOOKUP[cur.name]||'Half-tithi unit — governs the quality of the lunar half');
-    const badgeText=def.hasPaksha?cur.paksha.slice(0,1)+cur.paksha.slice(1,3):def.label.slice(0,3).toUpperCase();
-
-    let html=`<div class="vp-anga-current${isK?' krishna':''}">
-      <div class="vp-anga-current-badge">${badgeText}</div>
-      <div>
-        <div class="vp-anga-current-name">${cur.name}${def.hasPaksha?` <span style="font-size:.62rem;font-weight:700;color:var(--vp-ink-faint);text-transform:uppercase;letter-spacing:.06em">${cur.paksha} Paksha</span>`:''}</div>
-        <div class="vp-anga-current-meta">${fmtDT(sd)} &nbsp;→&nbsp; ${fmtEnd(ed,sd)} &nbsp;·&nbsp; ${dur(sd,ed)}</div>
-        <div class="vp-anga-current-fx">${fx}</div>
-      </div>
-    </div>`;
-
-    html+='<div class="vp-anga-list">';
-    periods.forEach((p,i)=>{
-      if(i===curIdx)return; // already shown as hero above
-      const psd=jdToDate(p.startJD),ped=jdToDate(p.endJD);
-      const pIsK=def.hasPaksha&&p.paksha==='Krishna';
-      const isNow=i===curIdx;
-      const relPill=relHTML(psd,ped,panelRef);
-      const badge=def.hasPaksha?`<span class="vp-anga-row-badge ${pIsK?'k':'s'}">${p.paksha}</span>`:'';
-      html+=`<div class="vp-anga-row ${pIsK?'krishna':'sukla'}${isNow?' is-now':''}">
-        <span class="vp-anga-dot"></span>
-        <div class="vp-anga-row-body">
-          <div class="vp-anga-row-name-line">
-            <span class="vp-anga-row-name">${p.name}</span>${badge}${relPill}
-          </div>
-          <div class="vp-anga-row-time">${fmtDT(psd)} – ${fmtEnd(ped,psd)}</div>
-        </div>
-      </div>`;
-    });
-    html+='</div>';
-    document.getElementById('vp-anga-panel').innerHTML=html;
-  })();
-
-  // Day boundaries — from DISPLAYED vaar
+  // Day boundaries — collapsible
   document.getElementById('vp-db-grid').innerHTML=[
     {icon:'🌄',label:'Brahma Muhurta',s:md.brahmaMuhurta.start,e:md.brahmaMuhurta.end},
     {icon:'☀️',label:'Sunrise',s:md.sunrise,e:null},
@@ -922,51 +950,6 @@ function renderAll(){
     <div class="vp-db-label">${x.icon} ${x.label}</div>
     <div class="vp-db-time">${fmtDT(x.s)}${x.e?`<span class="vp-sub"><br>– ${fmtEnd(x.e,x.s)}</span>`:''}</div>
   </div>`).join('');
-
-  // Auspicious/Inauspicious — from DISPLAYED vaar
-  function isNowM(s,e){return isActive&&s&&e&&now>=s&&now<e}
-  function mRowH(icon,label,s,e,desc,type){
-    const active=isNowM(s,e);
-    const relPill=isActive?relHTML(s,e,now):'';
-    const timeLeft=active?`<div class="vp-m-time-left">ends ${fmtEnd(e,now)} &nbsp;·&nbsp; ${dur(now,e)} left</div>`:'';
-    const nowBadge=active?`<span class="vp-m-now-badge"><span class="dot"></span>NOW</span>`:'';
-    const pulseCls=active?(type==='auspicious'?' pulse-auspicious':(type==='inauspicious'?' pulse-inauspicious':'')):'';
-    return`<div class="vp-m-row ${type}${active?' now-active':''}${pulseCls}">
-      <span class="vp-m-icon">${icon}</span>
-      <div class="vp-m-body"><div class="vp-m-label">${label}${nowBadge}${active?'':relPill}</div><div class="vp-m-desc">${desc}</div>${timeLeft}</div>
-      <div class="vp-m-time">${fmtDate(s)}<br>${fmt12(s)} – ${fmtEnd(e,s)}<br><span style="opacity:.6">${dur(s,e)}</span></div>
-    </div>`;
-  }
-  function activeBanner(items,warnCls){
-    const a=items.find(x=>isNowM(x.s,x.e));
-    if(!a)return'';
-    const pulseCls=warnCls==='warn'?'pulse-inauspicious':'pulse-auspicious';
-    return`<div class="vp-active-banner ${warnCls} ${pulseCls}">
-      <div class="vp-amb-dot"></div>
-      <div class="vp-amb-body">
-        <div class="vp-amb-label">Active Now</div>
-        <div class="vp-amb-name">${a.icon} ${a.label}</div>
-        <div class="vp-amb-time">${fmt12(a.s)} – ${fmtEnd(a.e,a.s)} &nbsp;·&nbsp; ${dur(now,a.e)} left</div>
-      </div>
-    </div>`;
-  }
-  const auspItems=[
-    {icon:'🌅',label:'Brahma Muhurta',s:md.brahmaMuhurta.start,e:md.brahmaMuhurta.end,desc:'Best for meditation, study & prayer'},
-    {icon:'🏆',label:'Abhijit Muhurta',s:md.abhijit.start,e:md.abhijit.end,desc:'Victory muhurta — excellent for important work'},
-    {icon:'⚔️',label:'Vijaya Muhurta',s:md.vijaya.start,e:md.vijaya.end,desc:'Afternoon victory — good for negotiations'},
-    {icon:'🌄',label:'Godhuli Muhurta',s:md.godhuli.start,e:md.godhuli.end,desc:'Sacred cow-dust time — around sunset'},
-    {icon:'🌙',label:'Nishita Muhurta',s:md.nishita.start,e:md.nishita.end,desc:'Midnight — Tantra, Mantra & deep Sadhana'},
-    ...(md.amritaKala?[{icon:'✨',label:'Amrita Kala',s:md.amritaKala.start,e:md.amritaKala.end,desc:'Nakshatra nectar time — abundant results'}]:[]),
-  ];
-  const inaupItems=[
-    {icon:'☠️',label:'Rahu Kalam',s:md.rahuKalam.start,e:md.rahuKalam.end,desc:'Strictly avoid new beginnings & auspicious work'},
-    {icon:'⚰️',label:'Yamaganda',s:md.yamaganda.start,e:md.yamaganda.end,desc:"Yama\u2019s period — avoid travel & decisions"},
-    {icon:'🐍',label:'Gulika (Mandi)',s:md.gulika.start,e:md.gulika.end,desc:'Saturn-influenced — delays & obstacles'},
-    ...(md.varjyam?[{icon:'🚫',label:'Varjyam / Tyajya',s:md.varjyam.start,e:md.varjyam.end,desc:'Moon-based window — avoid sacred activities'}]:[]),
-    ...md.durMuhurtas.map((d,i)=>({icon:'⚠️',label:`Dur Muhurta ${i+1}`,s:d.start,e:d.end,desc:'Daily inauspicious slot — avoid new ventures'})),
-  ];
-  document.getElementById('vp-ausp-rows').innerHTML=activeBanner(auspItems,'')+auspItems.map(x=>mRowH(x.icon,x.label,x.s,x.e,x.desc,'auspicious')).join('');
-  document.getElementById('vp-inaup-rows').innerHTML=activeBanner(inaupItems,'warn')+inaupItems.map(x=>mRowH(x.icon,x.label,x.s,x.e,x.desc,'inauspicious')).join('');
 
   // Special yogas — recompute for displayVaar (may differ from activeVaar)
   let spDisplay=sp;
@@ -1042,6 +1025,13 @@ window.vpSelectAnga = function(name) { selectedAnga = name; renderAll(); };
 window.vpToggleGrid = function() {
   const w = document.getElementById('vp-month-grid-wrap');
   const b = document.getElementById('vp-tithi-toggle');
+  if(w) w.classList.toggle('open');
+  if(b) b.classList.toggle('open');
+};
+
+window.vpToggleDayBoundaries = function() {
+  const w = document.getElementById('vp-db-wrap');
+  const b = document.getElementById('vp-db-toggle');
   if(w) w.classList.toggle('open');
   if(b) b.classList.toggle('open');
 };

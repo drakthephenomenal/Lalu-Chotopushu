@@ -1,26 +1,32 @@
 /* ══════════════════════════════════════════════════════════════
-   VEDIC PANCHANGA — "Celestial Observatory" theme
-   Bright, planetary, option-driven. Scoped under #vpanchanga-view.
+   VEDIC PANCHANGA — Redesigned Layout
    ══════════════════════════════════════════════════════════════ */
 
 #vpanchanga-view{
-  /* Local tokens — independent of host page dark theme */
   --vp-sky-top:#FFF8EC;
   --vp-sky-bot:#FDEFD9;
-  --vp-ink:#241B45;        /* deep cosmic indigo — primary text   */
-  --vp-ink-soft:#5A4F82;   /* secondary text                       */
-  --vp-ink-faint:#8B81AC;  /* tertiary / meta text                 */
+  --vp-ink:#241B45;
+  --vp-ink-soft:#5A4F82;
+  --vp-ink-faint:#8B81AC;
   --vp-card:#FFFFFF;
   --vp-card-edge:rgba(36,27,69,.10);
-  --vp-sun:#FF8A3D;        /* solar amber — primary accent         */
+  --vp-sun:#FF8A3D;
   --vp-sun2:#FFB35C;
-  --vp-violet:#7C5CFC;     /* celestial violet — secondary accent  */
+  --vp-violet:#7C5CFC;
   --vp-violet2:#A78BFA;
-  --vp-jade:#0EA672;       /* auspicious                            */
+  --vp-jade:#0EA672;
   --vp-jade-bg:#E7F8F0;
-  --vp-rose:#E1485F;       /* inauspicious                          */
+  --vp-rose:#E1485F;
   --vp-rose-bg:#FDEAEC;
   --vp-gold:#D89A1F;
+  --vp-gold-bg:#FFF8DC;
+  /* Upcoming color scheme */
+  --vp-ausp-glow:#C8960A;     /* golden glow for auspicious */
+  --vp-ausp-bg:linear-gradient(135deg,#FFF9E0,#FFFDF5);
+  --vp-ausp-border:rgba(200,150,10,.35);
+  --vp-inaup-color:#6B3FA0;   /* violet for inauspicious */
+  --vp-inaup-bg:linear-gradient(135deg,#F3EEFF,#FAF7FF);
+  --vp-inaup-border:rgba(107,63,160,.3);
   --vp-shadow:0 8px 24px rgba(76,58,150,.10);
   --vp-shadow-lift:0 16px 36px rgba(76,58,150,.18);
   color:var(--vp-ink);
@@ -30,7 +36,6 @@
   overflow-x:hidden;
 }
 
-/* ambient starfield-as-light-rays backdrop, very subtle on bright theme */
 #vpanchanga-view::before{
   content:'';position:absolute;top:0;left:0;right:0;height:480px;pointer-events:none;z-index:0;
   background:
@@ -54,8 +59,7 @@
 #vpanchanga-view #vp-vaishnav-line{font-size:.66rem;color:var(--vp-ink-faint);font-style:italic;font-family:'EB Garamond',serif;text-align:center;margin-top:2px}
 
 /* ══════════════════════════════════════════════════════════════
-   ORBITAL DIAL — the signature element.
-   Seven planetary glyphs arranged on a ring around the active day.
+   ORBITAL DIAL
    ══════════════════════════════════════════════════════════════ */
 #vpanchanga-view .vp-orbit-wrap{position:relative;width:272px;height:272px;margin:22px auto 8px;display:flex;align-items:center;justify-content:center;touch-action:pan-y;cursor:grab;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
 #vpanchanga-view .vp-orbit-wrap.vp-dragging{transition:none;cursor:grabbing}
@@ -96,7 +100,7 @@
 }
 @media (prefers-reduced-motion:reduce){#vpanchanga-view .vp-orbit-btn.today{animation:none}}
 
-/* Per-planet hues for orbit buttons (Sun..Sat = 0..6) */
+/* Per-planet hues */
 #vpanchanga-view .vp-orbit-btn[data-vaar="0"]{--vc:255,138,61}
 #vpanchanga-view .vp-orbit-btn[data-vaar="1"]{--vc:148,150,176}
 #vpanchanga-view .vp-orbit-btn[data-vaar="2"]{--vc:225,72,95}
@@ -105,11 +109,6 @@
 #vpanchanga-view .vp-orbit-btn[data-vaar="5"]{--vc:124,92,252}
 #vpanchanga-view .vp-orbit-btn[data-vaar="6"]{--vc:90,79,130}
 
-/* Position 7 buttons evenly on the ring — set via inline transform from JS */
-
-/* Compact day strip fallback for very narrow screens (under orbit) */
-#vpanchanga-view .vp-orbit-legend{display:flex;justify-content:center;gap:6px;margin:4px 0 6px;font-size:.56rem;color:var(--vp-ink-faint)}
-
 /* Viewing bar */
 #vpanchanga-view #vp-viewing-bar{text-align:center;margin-top:4px}
 #vpanchanga-view .vp-viewing-chip{font-size:.58rem;color:var(--vp-violet);background:rgba(124,92,252,.1);border:1px solid rgba(124,92,252,.3);padding:5px 14px;border-radius:999px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
@@ -117,122 +116,325 @@
 #vpanchanga-view .vp-back-btn:hover{color:var(--vp-violet)}
 
 /* ══════════════════════════════════════════════════════════════
-   NOW PANEL — bright glass cards in a responsive grid
+   SPECIAL YOGAS — gold banner at top
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-special-yoga-section{margin:18px 16px 0 !important}
+#vpanchanga-view .vp-yoga-card{
+  background:linear-gradient(135deg,#FFF9DC,#FFFFF5);
+  border:1px solid rgba(216,154,31,.45);
+  border-radius:16px;padding:16px 18px;
+  display:flex;align-items:flex-start;gap:13px;
+  box-shadow:0 4px 20px rgba(216,154,31,.25),0 0 0 1px rgba(216,154,31,.15);
+  animation:vpYogaGlow 3s ease-in-out infinite;
+}
+@keyframes vpYogaGlow{
+  0%,100%{box-shadow:0 4px 20px rgba(216,154,31,.2),0 0 0 1px rgba(216,154,31,.12)}
+  50%{box-shadow:0 6px 28px rgba(216,154,31,.38),0 0 0 1px rgba(216,154,31,.25)}
+}
+#vpanchanga-view .vp-yoga-icon{font-size:1.6rem;flex-shrink:0;margin-top:2px}
+#vpanchanga-view .vp-yoga-name{font-family:'EB Garamond',serif;font-size:1.08rem;font-weight:700;color:var(--vp-gold)}
+#vpanchanga-view .vp-yoga-desc{font-size:.74rem;color:var(--vp-ink-soft);margin-top:4px;line-height:1.55}
+#vpanchanga-view .vp-yoga-time{font-size:.68rem;background:rgba(216,154,31,.12);color:var(--vp-gold);border:1px solid rgba(216,154,31,.28);padding:4px 11px;border-radius:8px;margin-top:8px;display:inline-block;font-weight:700}
+
+/* ══════════════════════════════════════════════════════════════
+   NOW PANEL — 4 Angas in one horizontal row
    ══════════════════════════════════════════════════════════════ */
 #vpanchanga-view .vp-now-panel{margin:18px 16px 0;border-radius:20px;background:linear-gradient(150deg,#FFF3DF,#FFFFFF 60%);border:1px solid rgba(255,138,61,.22);box-shadow:var(--vp-shadow);overflow:hidden}
 #vpanchanga-view .vp-now-panel-head{padding:14px 16px 8px;display:flex;align-items:center;gap:7px}
 #vpanchanga-view .vp-pulse{width:7px;height:7px;background:var(--vp-sun);border-radius:50%;animation:vpPulse 1.8s ease-in-out infinite;flex-shrink:0;box-shadow:0 0 8px rgba(255,138,61,.6)}
 @keyframes vpPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
 #vpanchanga-view .vp-now-panel-head span{font-size:.62rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--vp-ink)}
-#vpanchanga-view .vp-now-grid{display:grid;grid-template-columns:1fr;gap:10px;padding:4px 14px 16px}
-@media(min-width:540px){#vpanchanga-view .vp-now-grid{grid-template-columns:repeat(2,1fr)}}
-@media(min-width:860px){#vpanchanga-view .vp-now-grid{grid-template-columns:repeat(3,1fr)}}
 
-#vpanchanga-view .vp-now-cell{background:var(--vp-card);border-radius:16px;padding:14px 16px;border:1px solid var(--vp-card-edge);box-shadow:0 3px 10px rgba(76,58,150,.06);transition:transform .2s ease,box-shadow .2s ease}
-#vpanchanga-view .vp-now-cell:hover{transform:translateY(-2px);box-shadow:var(--vp-shadow)}
-#vpanchanga-view .vp-now-cell-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
-#vpanchanga-view .vp-now-cell-label{font-size:.62rem;color:var(--vp-ink-faint);text-transform:uppercase;letter-spacing:.1em;font-weight:800}
-#vpanchanga-view .vp-now-cell-status{font-size:.56rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px}
-#vpanchanga-view .vp-now-cell-status.active{background:rgba(255,138,61,.16);color:var(--vp-sun)}
-#vpanchanga-view .vp-now-cell-status.soon{background:rgba(124,92,252,.12);color:var(--vp-violet)}
-#vpanchanga-view .vp-now-cell-status.warn-soon{background:var(--vp-rose-bg);color:var(--vp-rose)}
-#vpanchanga-view .vp-now-cell-name{font-family:'EB Garamond',serif;font-size:1.16rem;font-weight:700;color:var(--vp-ink);margin-bottom:4px}
-#vpanchanga-view .vp-now-cell-effect{font-size:.74rem;color:var(--vp-ink-soft);line-height:1.5;margin-bottom:8px}
-#vpanchanga-view .vp-now-cell-time{font-size:.7rem;font-family:'Inter',sans-serif;color:var(--vp-ink);line-height:1.5;font-weight:600}
-#vpanchanga-view .vp-now-cell.warn{background:linear-gradient(150deg,var(--vp-rose-bg),#FFFFFF 60%);border-color:rgba(225,72,95,.25)}
-#vpanchanga-view .vp-now-cell.warn .vp-now-cell-name{color:var(--vp-rose)}
-#vpanchanga-view .vp-now-cell.good .vp-now-cell-name{color:var(--vp-sun)}
+/* 4-column anga row */
+#vpanchanga-view .vp-anga-row-cards{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  padding:4px 12px 14px;
+}
+@media(max-width:600px){
+  #vpanchanga-view .vp-anga-row-cards{grid-template-columns:repeat(2,1fr)}
+}
+
+/* Each anga card */
+#vpanchanga-view .vp-anga-card{
+  background:var(--vp-card);
+  border-radius:14px;
+  border:1px solid var(--vp-card-edge);
+  padding:11px 12px;
+  box-shadow:0 3px 10px rgba(76,58,150,.06);
+  cursor:pointer;
+  transition:transform .2s ease,box-shadow .2s ease;
+  position:relative;
+  overflow:hidden;
+}
+#vpanchanga-view .vp-anga-card:hover{transform:translateY(-2px);box-shadow:var(--vp-shadow)}
+#vpanchanga-view .vp-anga-card.warn{
+  background:linear-gradient(150deg,var(--vp-rose-bg),#FFFFFF 70%);
+  border-color:rgba(225,72,95,.25);
+}
+#vpanchanga-view .vp-anga-card.good{
+  background:linear-gradient(150deg,#FFF3DF,#FFFFFF 70%);
+  border-color:rgba(255,138,61,.22);
+}
+
+/* Card label row */
+#vpanchanga-view .vp-anga-card-label{
+  font-size:.56rem;color:var(--vp-ink-faint);
+  text-transform:uppercase;letter-spacing:.1em;font-weight:800;
+  margin-bottom:5px;
+}
+/* Card anga name */
+#vpanchanga-view .vp-anga-card-name{
+  font-family:'EB Garamond',serif;
+  font-size:.98rem;font-weight:700;
+  color:var(--vp-ink);
+  line-height:1.2;
+  margin-bottom:3px;
+}
+#vpanchanga-view .vp-anga-card.good .vp-anga-card-name{color:var(--vp-sun)}
+#vpanchanga-view .vp-anga-card.warn .vp-anga-card-name{color:var(--vp-rose)}
+
+/* Card paksha sub */
+#vpanchanga-view .vp-anga-card-paksha{
+  font-size:.52rem;color:var(--vp-ink-faint);
+  font-weight:600;margin-bottom:4px;
+}
+/* Card effect */
+#vpanchanga-view .vp-anga-card-fx{
+  font-size:.64rem;color:var(--vp-ink-soft);
+  line-height:1.4;margin-bottom:6px;
+}
+/* Card end time */
+#vpanchanga-view .vp-anga-card-time{
+  font-size:.58rem;color:var(--vp-ink-soft);
+  font-weight:600;
+}
+/* Gold time remaining */
+#vpanchanga-view .vp-anga-card-left{
+  font-size:.58rem;color:var(--vp-sun);font-weight:700;
+}
+
+/* Collapsible upcoming for each anga card */
+#vpanchanga-view .vp-anga-card-toggle{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-top:6px;cursor:pointer;
+  font-size:.55rem;color:var(--vp-violet);font-weight:700;
+  letter-spacing:.05em;text-transform:uppercase;
+  background:rgba(124,92,252,.07);
+  border:none;border-radius:8px;
+  padding:5px 8px;width:100%;font-family:inherit;
+  transition:background .2s;
+}
+#vpanchanga-view .vp-anga-card-toggle:hover{background:rgba(124,92,252,.14)}
+#vpanchanga-view .vp-anga-card-toggle .vp-chevron-sm{
+  font-size:.6rem;transition:transform .2s;display:inline-block;
+}
+#vpanchanga-view .vp-anga-upcoming-wrap{
+  overflow:hidden;max-height:0;
+  transition:max-height .3s ease;
+  margin-top:0;
+}
+#vpanchanga-view .vp-anga-upcoming-wrap.open{max-height:400px;margin-top:6px}
+#vpanchanga-view .vp-anga-toggle-open .vp-chevron-sm{transform:rotate(180deg)}
+
+/* Upcoming items inside each anga card */
+#vpanchanga-view .vp-anga-upcoming-item{
+  display:flex;align-items:flex-start;gap:6px;
+  padding:6px 4px;
+  border-top:1px solid var(--vp-card-edge);
+}
+#vpanchanga-view .vp-anga-upcoming-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--vp-violet2);flex-shrink:0;margin-top:5px;
+}
+#vpanchanga-view .vp-anga-upcoming-name{
+  font-family:'EB Garamond',serif;
+  font-size:.82rem;font-weight:600;color:var(--vp-ink);
+  line-height:1.2;
+}
+#vpanchanga-view .vp-anga-upcoming-time{
+  font-size:.6rem;color:var(--vp-ink-faint);margin-top:1px;
+}
 
 /* ══════════════════════════════════════════════════════════════
-   ANGA TABS — option-driven view replacing the long scroll list.
-   Tithi / Nakshatra / Yoga / Karana as selectable pill-tabs with
-   one focused detail panel beneath (no stacked rows).
+   CURRENT MUHURTA BANNER
    ══════════════════════════════════════════════════════════════ */
-#vpanchanga-view .vp-anga-section{margin:26px 16px 0}
-#vpanchanga-view .vp-sec-head{font-size:.66rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--vp-ink-faint);display:flex;align-items:center;gap:10px;margin-bottom:14px}
+#vpanchanga-view #vp-current-muhurta-wrap{margin:14px 16px 0}
+#vpanchanga-view .vp-current-banner{
+  border-radius:18px;padding:16px 18px;
+  display:flex;align-items:flex-start;gap:14px;
+  border:1.5px solid;
+}
+#vpanchanga-view .vp-current-banner.ausp{
+  background:linear-gradient(135deg,#FFF9DC,#FFFEF5);
+  border-color:rgba(14,166,114,.4);
+  box-shadow:0 6px 22px rgba(14,166,114,.15);
+}
+#vpanchanga-view .vp-current-banner.inaup{
+  background:linear-gradient(135deg,var(--vp-rose-bg),#FFF8F9);
+  border-color:rgba(225,72,95,.4);
+  box-shadow:0 6px 22px rgba(225,72,95,.15);
+}
+#vpanchanga-view .vp-current-banner.conflict{
+  background:linear-gradient(135deg,#FFF9DC,#FFF0F4);
+  border-color:rgba(216,154,31,.4);
+  box-shadow:0 6px 22px rgba(200,100,50,.18);
+}
+
+#vpanchanga-view .vp-cb-dot{
+  width:11px;height:11px;border-radius:50%;flex-shrink:0;margin-top:4px;
+  animation:vpPulse 1.8s ease-in-out infinite;
+}
+#vpanchanga-view .vp-current-banner.ausp .vp-cb-dot{
+  background:var(--vp-jade);box-shadow:0 0 12px rgba(14,166,114,.5);
+}
+#vpanchanga-view .vp-current-banner.inaup .vp-cb-dot{
+  background:var(--vp-rose);box-shadow:0 0 12px rgba(225,72,95,.5);
+}
+#vpanchanga-view .vp-current-banner.conflict .vp-cb-dot{
+  background:var(--vp-gold);box-shadow:0 0 12px rgba(216,154,31,.5);
+}
+#vpanchanga-view .vp-cb-body{flex:1;min-width:0}
+#vpanchanga-view .vp-cb-eyebrow{
+  font-size:.58rem;text-transform:uppercase;letter-spacing:.12em;font-weight:800;
+  margin-bottom:3px;
+}
+#vpanchanga-view .vp-current-banner.ausp .vp-cb-eyebrow{color:var(--vp-jade)}
+#vpanchanga-view .vp-current-banner.inaup .vp-cb-eyebrow{color:var(--vp-rose)}
+#vpanchanga-view .vp-current-banner.conflict .vp-cb-eyebrow{color:var(--vp-gold)}
+
+#vpanchanga-view .vp-cb-name{
+  font-family:'EB Garamond',serif;font-size:1.16rem;font-weight:700;
+  color:var(--vp-ink);line-height:1.2;margin-bottom:3px;
+}
+#vpanchanga-view .vp-cb-desc{font-size:.74rem;color:var(--vp-ink-soft);line-height:1.5;margin-bottom:6px}
+#vpanchanga-view .vp-cb-advice{
+  font-size:.72rem;font-weight:700;padding:5px 12px;border-radius:10px;
+  display:inline-block;margin-top:2px;
+}
+#vpanchanga-view .vp-current-banner.ausp .vp-cb-advice{
+  background:rgba(14,166,114,.12);color:var(--vp-jade);border:1px solid rgba(14,166,114,.25);
+}
+#vpanchanga-view .vp-current-banner.inaup .vp-cb-advice{
+  background:rgba(225,72,95,.1);color:var(--vp-rose);border:1px solid rgba(225,72,95,.22);
+}
+#vpanchanga-view .vp-current-banner.conflict .vp-cb-advice{
+  background:rgba(216,154,31,.12);color:var(--vp-gold);border:1px solid rgba(216,154,31,.25);
+}
+#vpanchanga-view .vp-cb-time{
+  font-size:.68rem;font-weight:600;color:var(--vp-ink-soft);margin-top:5px;
+}
+
+/* Multiple active at once — stacked mini rows */
+#vpanchanga-view .vp-cb-also{
+  margin-top:8px;padding-top:8px;border-top:1px solid var(--vp-card-edge);
+  font-size:.65rem;color:var(--vp-ink-soft);
+}
+#vpanchanga-view .vp-cb-also-item{
+  display:inline-flex;align-items:center;gap:5px;margin:3px 4px 0 0;
+  background:var(--vp-rose-bg);border:1px solid rgba(225,72,95,.18);
+  border-radius:8px;padding:3px 9px;font-weight:600;
+}
+#vpanchanga-view .vp-cb-also-item.good{
+  background:var(--vp-jade-bg);border-color:rgba(14,166,114,.2);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   UPCOMING LIST — serial order, gold (auspicious) / violet (inauspicious)
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-upcoming-list{display:flex;flex-direction:column;gap:9px;padding:0}
+#vpanchanga-view .vp-upcoming-row{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:13px 15px;border-radius:16px;
+  border:1.5px solid;position:relative;
+  transition:transform .2s ease,box-shadow .2s ease;
+}
+#vpanchanga-view .vp-upcoming-row:hover{transform:translateY(-1px)}
+
+/* Auspicious — glowing golden */
+#vpanchanga-view .vp-upcoming-row.ausp{
+  background:var(--vp-ausp-bg);
+  border-color:var(--vp-ausp-border);
+  box-shadow:0 3px 14px rgba(200,150,10,.12);
+}
+#vpanchanga-view .vp-upcoming-row.ausp:hover{
+  box-shadow:0 6px 22px rgba(200,150,10,.22);
+}
+
+/* Inauspicious — violet */
+#vpanchanga-view .vp-upcoming-row.inaup{
+  background:var(--vp-inaup-bg);
+  border-color:var(--vp-inaup-border);
+  box-shadow:0 3px 14px rgba(107,63,160,.09);
+}
+#vpanchanga-view .vp-upcoming-row.inaup:hover{
+  box-shadow:0 6px 20px rgba(107,63,160,.18);
+}
+
+/* Left color stripe */
+#vpanchanga-view .vp-upcoming-row::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:16px 0 0 16px;
+}
+#vpanchanga-view .vp-upcoming-row.ausp::before{background:linear-gradient(180deg,#F0C040,#C8960A)}
+#vpanchanga-view .vp-upcoming-row.inaup::before{background:linear-gradient(180deg,#9B7FFF,#6B3FA0)}
+
+#vpanchanga-view .vp-upcoming-icon{font-size:1.3rem;flex-shrink:0;margin-top:2px}
+#vpanchanga-view .vp-upcoming-body{flex:1;min-width:0}
+#vpanchanga-view .vp-upcoming-label{
+  font-size:.82rem;font-weight:700;
+  color:var(--vp-ink);line-height:1.3;margin-bottom:2px;
+}
+#vpanchanga-view .vp-upcoming-row.ausp .vp-upcoming-label{color:var(--vp-ausp-glow)}
+#vpanchanga-view .vp-upcoming-row.inaup .vp-upcoming-label{color:var(--vp-inaup-color)}
+#vpanchanga-view .vp-upcoming-desc{font-size:.7rem;color:var(--vp-ink-soft);line-height:1.4;margin-bottom:4px}
+#vpanchanga-view .vp-upcoming-timeblock{font-size:.68rem;color:var(--vp-ink-soft);font-weight:600}
+#vpanchanga-view .vp-upcoming-dur{font-size:.64rem;color:var(--vp-ink-faint)}
+
+#vpanchanga-view .vp-upcoming-right{flex-shrink:0;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:5px;padding-left:8px}
+#vpanchanga-view .vp-in-pill{
+  font-size:.6rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  padding:4px 11px;border-radius:999px;white-space:nowrap;
+}
+#vpanchanga-view .vp-upcoming-row.ausp .vp-in-pill{
+  background:rgba(200,150,10,.15);color:var(--vp-ausp-glow);
+  border:1px solid rgba(200,150,10,.3);
+}
+#vpanchanga-view .vp-upcoming-row.inaup .vp-in-pill{
+  background:rgba(107,63,160,.12);color:var(--vp-inaup-color);
+  border:1px solid rgba(107,63,160,.25);
+}
+
+/* Serial number badge */
+#vpanchanga-view .vp-upcoming-serial{
+  width:22px;height:22px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.58rem;font-weight:800;flex-shrink:0;margin-top:2px;
+}
+#vpanchanga-view .vp-upcoming-row.ausp .vp-upcoming-serial{
+  background:rgba(200,150,10,.15);color:var(--vp-ausp-glow);
+}
+#vpanchanga-view .vp-upcoming-row.inaup .vp-upcoming-serial{
+  background:rgba(107,63,160,.12);color:var(--vp-inaup-color);
+}
+
+/* Section headings */
+#vpanchanga-view .vp-m-section{margin:20px 16px 0}
+#vpanchanga-view .vp-space-y>*+*{margin-top:9px}
+#vpanchanga-view .vp-sec-head{
+  font-size:.66rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--vp-ink-faint);display:flex;align-items:center;gap:10px;margin-bottom:14px;
+}
 #vpanchanga-view .vp-sec-head::before{content:'';width:16px;height:1px;background:var(--vp-ink-faint);opacity:.4}
 #vpanchanga-view .vp-sec-head::after{content:'';flex:1;height:1px;background:var(--vp-ink-faint);opacity:.18}
-#vpanchanga-view .vp-sec-head-green{color:var(--vp-jade)}
-#vpanchanga-view .vp-sec-head-green::before,#vpanchanga-view .vp-sec-head-green::after{background:var(--vp-jade);opacity:.3}
-#vpanchanga-view .vp-sec-head-red{color:var(--vp-rose)}
-#vpanchanga-view .vp-sec-head-red::before,#vpanchanga-view .vp-sec-head-red::after{background:var(--vp-rose);opacity:.3}
-
-#vpanchanga-view .vp-anga-tabs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;margin-bottom:16px}
-#vpanchanga-view .vp-anga-tabs::-webkit-scrollbar{display:none}
-#vpanchanga-view .vp-anga-tab{
-  flex:0 0 auto;display:flex;align-items:center;gap:7px;
-  padding:10px 16px;border-radius:14px;border:1.5px solid rgba(36,27,69,.08);
-  background:#FFFFFF;cursor:pointer;font-family:'Inter',sans-serif;
-  transition:all .2s ease;appearance:none;-webkit-appearance:none;
-  box-shadow:0 2px 8px rgba(76,58,150,.05);
-}
-#vpanchanga-view .vp-anga-tab-icon{font-size:1.05rem}
-#vpanchanga-view .vp-anga-tab-label{font-size:.7rem;font-weight:700;color:var(--vp-ink-soft);letter-spacing:.02em;white-space:nowrap}
-#vpanchanga-view .vp-anga-tab-name{font-family:'EB Garamond',serif;font-size:.78rem;font-weight:600;color:var(--vp-ink-faint);white-space:nowrap}
-#vpanchanga-view .vp-anga-tab:hover{border-color:rgba(124,92,252,.3);transform:translateY(-1px)}
-#vpanchanga-view .vp-anga-tab.active{
-  background:linear-gradient(135deg,var(--vp-violet),#9B7FFF);
-  border-color:var(--vp-violet);box-shadow:0 6px 18px rgba(124,92,252,.35);
-}
-#vpanchanga-view .vp-anga-tab.active .vp-anga-tab-label,
-#vpanchanga-view .vp-anga-tab.active .vp-anga-tab-name{color:#FFFFFF}
-
-/* Detail panel for the selected anga — a single focused "planet card" view */
-#vpanchanga-view .vp-anga-panel{background:var(--vp-card);border-radius:20px;border:1px solid var(--vp-card-edge);box-shadow:var(--vp-shadow);padding:18px;overflow:hidden}
-#vpanchanga-view .vp-anga-current{
-  display:flex;align-items:center;gap:14px;padding:16px;border-radius:16px;
-  background:linear-gradient(135deg,#FFF3DF,#FFFFFF);border:1px solid rgba(255,138,61,.2);
-  margin-bottom:14px;
-}
-#vpanchanga-view .vp-anga-current.krishna{background:linear-gradient(135deg,#F1EFFD,#FFFFFF);border-color:rgba(124,92,252,.2)}
-#vpanchanga-view .vp-anga-current-badge{
-  width:48px;height:48px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
-  font-size:.62rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;text-align:center;
-  background:radial-gradient(circle at 35% 30%,#fff,#FFE3BF);color:var(--vp-sun);
-  box-shadow:0 4px 12px rgba(255,138,61,.3);
-}
-#vpanchanga-view .vp-anga-current.krishna .vp-anga-current-badge{background:radial-gradient(circle at 35% 30%,#fff,#E2D9FF);color:var(--vp-violet);box-shadow:0 4px 12px rgba(124,92,252,.3)}
-#vpanchanga-view .vp-anga-current-name{font-family:'EB Garamond',serif;font-size:1.3rem;font-weight:700;color:var(--vp-ink)}
-#vpanchanga-view .vp-anga-current-meta{font-size:.7rem;color:var(--vp-ink-soft);margin-top:2px;line-height:1.5}
-#vpanchanga-view .vp-anga-current-fx{font-size:.74rem;color:var(--vp-ink-faint);margin-top:4px;line-height:1.5;font-style:italic}
-
-#vpanchanga-view .vp-anga-list{display:flex;flex-direction:column;gap:8px}
-#vpanchanga-view .vp-anga-row{
-  display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;
-  background:#FBFAFF;border:1px solid var(--vp-card-edge);transition:all .2s ease;
-}
-#vpanchanga-view .vp-anga-row:hover{border-color:rgba(124,92,252,.25);transform:translateX(2px)}
-#vpanchanga-view .vp-anga-row.is-now{background:linear-gradient(135deg,#FFF3DF,#FBFAFF);border-color:rgba(255,138,61,.35)}
-#vpanchanga-view .vp-anga-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;background:var(--vp-violet2)}
-#vpanchanga-view .vp-anga-row.sukla .vp-anga-dot{background:var(--vp-sun)}
-#vpanchanga-view .vp-anga-row.krishna .vp-anga-dot{background:var(--vp-violet)}
-#vpanchanga-view .vp-anga-row.is-now .vp-anga-dot{box-shadow:0 0 0 4px rgba(255,138,61,.2);animation:vpPulse 1.8s ease-in-out infinite}
-#vpanchanga-view .vp-anga-row-body{flex:1;min-width:0}
-#vpanchanga-view .vp-anga-row-name-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-#vpanchanga-view .vp-anga-row-name{font-family:'EB Garamond',serif;font-size:.96rem;font-weight:600;color:var(--vp-ink)}
-#vpanchanga-view .vp-anga-row-badge{font-size:.56rem;padding:2px 8px;border-radius:999px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
-#vpanchanga-view .vp-anga-row-badge.s{background:rgba(255,138,61,.14);color:var(--vp-sun)}
-#vpanchanga-view .vp-anga-row-badge.k{background:rgba(124,92,252,.12);color:var(--vp-violet)}
-#vpanchanga-view .vp-anga-row-time{font-size:.68rem;color:var(--vp-ink-faint);margin-top:2px}
-#vpanchanga-view .vp-anga-row-now-tag{font-size:.54rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--vp-sun);color:#fff;padding:2px 8px;border-radius:999px;flex-shrink:0}
-
-/* Relative-time pill (kept, restyled bright) */
-#vpanchanga-view .vp-rel{
-  display:inline-flex;align-items:center;gap:4px;font-size:.54rem;font-weight:800;
-  letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:999px;
-  border:1px solid transparent;white-space:nowrap;vertical-align:middle;
-}
-#vpanchanga-view .vp-rel::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
-#vpanchanga-view .vp-rel-soon{color:var(--vp-violet);background:rgba(124,92,252,.1);border-color:rgba(124,92,252,.25)}
-#vpanchanga-view .vp-rel-live{color:#fff;background:linear-gradient(135deg,var(--vp-sun),var(--vp-sun2));border-color:rgba(255,138,61,.6);box-shadow:0 0 10px rgba(255,138,61,.45);animation:vpRelLive 1.6s ease-in-out infinite}
-#vpanchanga-view .vp-rel-past{color:var(--vp-ink-faint);background:rgba(36,27,69,.05);border-color:rgba(36,27,69,.08)}
-#vpanchanga-view .vp-rel-past::before{box-shadow:none;opacity:.5}
-@keyframes vpRelLive{0%,100%{box-shadow:0 0 8px rgba(255,138,61,.4)}50%{box-shadow:0 0 18px rgba(255,138,61,.7)}}
-@media (prefers-reduced-motion:reduce){#vpanchanga-view .vp-rel-live{animation:none}}
+#vpanchanga-view .vp-sec-head-gold{color:var(--vp-gold)}
+#vpanchanga-view .vp-sec-head-gold::before,#vpanchanga-view .vp-sec-head-gold::after{background:var(--vp-gold);opacity:.35}
+#vpanchanga-view .vp-sec-head-upcoming{color:var(--vp-violet)}
+#vpanchanga-view .vp-sec-head-upcoming::before,#vpanchanga-view .vp-sec-head-upcoming::after{background:var(--vp-violet);opacity:.3}
 
 /* ── Lunar month toggle + grid ─────────────────────────────────*/
 #vpanchanga-view .vp-tithi-toggle{
-  margin:18px 16px 0;padding:14px 18px;border-radius:16px;width:calc(100% - 32px);
+  margin:20px 16px 0;padding:14px 18px;border-radius:16px;width:calc(100% - 32px);
   display:flex;align-items:center;justify-content:space-between;cursor:pointer;
   background:linear-gradient(135deg,var(--vp-violet),#9B7FFF);border:none;color:#fff;
   box-shadow:0 8px 22px rgba(124,92,252,.3);position:relative;overflow:hidden;
@@ -264,44 +466,24 @@
 #vpanchanga-view .vp-tcell-start{font-size:.64rem;color:var(--vp-ink-soft);margin-top:5px;font-weight:600}
 #vpanchanga-view .vp-tcell-end{font-size:.62rem;color:var(--vp-ink-faint)}
 
-/* ── Muhurta rows (auspicious / inauspicious) ──────────────────*/
-#vpanchanga-view .vp-m-section{margin:26px 16px 0}
-#vpanchanga-view .vp-space-y>*+*{margin-top:9px}
-#vpanchanga-view .vp-m-row{display:flex;align-items:flex-start;gap:13px;padding:14px 16px;border-radius:16px;border:1px solid var(--vp-card-edge);background:#FFFFFF;box-shadow:0 2px 8px rgba(76,58,150,.05);transition:transform .2s ease,box-shadow .2s ease}
-#vpanchanga-view .vp-m-row:hover{transform:translateY(-1px);box-shadow:var(--vp-shadow)}
-#vpanchanga-view .vp-m-row.auspicious{background:linear-gradient(135deg,var(--vp-jade-bg),#fff)}
-#vpanchanga-view .vp-m-row.inauspicious{background:linear-gradient(135deg,var(--vp-rose-bg),#fff)}
-#vpanchanga-view .vp-m-row.now-active{box-shadow:0 0 0 2px var(--vp-sun),0 8px 24px rgba(255,138,61,.3)}
-#vpanchanga-view .vp-m-now-badge{display:inline-flex;align-items:center;gap:4px;font-size:.54rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--vp-sun);color:#fff;padding:2px 8px;border-radius:999px;margin-left:7px;vertical-align:middle}
-#vpanchanga-view .vp-m-now-badge .dot{width:5px;height:5px;background:#fff;border-radius:50%;animation:vpPulse 1.8s ease-in-out infinite;flex-shrink:0}
-#vpanchanga-view .vp-m-time-left{font-size:.66rem;color:var(--vp-sun);font-weight:700;margin-top:4px}
-#vpanchanga-view .vp-m-icon{font-size:1.3rem;flex-shrink:0;margin-top:1px}
-#vpanchanga-view .vp-m-body{flex:1;min-width:0}
-#vpanchanga-view .vp-m-label{font-size:.84rem;font-weight:700;color:var(--vp-ink)}
-#vpanchanga-view .vp-m-desc{font-size:.72rem;color:var(--vp-ink-soft);margin-top:3px;line-height:1.5}
-#vpanchanga-view .vp-m-time{font-size:.72rem;color:var(--vp-ink);text-align:right;flex-shrink:0;line-height:1.5;white-space:nowrap;font-weight:600}
-#vpanchanga-view .vp-m-time .vp-sub-dim{opacity:.55}
+/* ── Day Boundaries — collapsible ──────────────────────────────*/
+#vpanchanga-view .vp-collapsible-toggle{
+  margin:20px 16px 0;padding:13px 18px;border-radius:16px;width:calc(100% - 32px);
+  display:flex;align-items:center;justify-content:space-between;cursor:pointer;
+  background:var(--vp-card);
+  border:1px solid var(--vp-card-edge);
+  color:var(--vp-ink);
+  box-shadow:0 4px 14px rgba(76,58,150,.07);
+  font-family:'Inter',sans-serif;
+  transition:box-shadow .2s ease;
+}
+#vpanchanga-view .vp-collapsible-toggle:hover{box-shadow:var(--vp-shadow)}
+#vpanchanga-view .vp-collapsible-toggle span:first-child{font-size:.74rem;font-weight:700;color:var(--vp-ink-soft)}
+#vpanchanga-view .vp-collapsible-wrap{overflow:hidden;max-height:0;transition:max-height .35s ease}
+#vpanchanga-view .vp-collapsible-wrap.open{max-height:1200px}
+#vpanchanga-view .vp-collapsible-toggle.open .vp-chevron{transform:rotate(180deg)}
 
-#vpanchanga-view .vp-active-banner{margin:0 0 12px;padding:14px 16px;border-radius:16px;display:flex;align-items:center;gap:12px;border:1px solid rgba(255,138,61,.35);background:linear-gradient(135deg,#FFF3DF,#fff);box-shadow:0 6px 20px rgba(255,138,61,.18)}
-#vpanchanga-view .vp-active-banner.warn{border-color:rgba(225,72,95,.3);background:linear-gradient(135deg,var(--vp-rose-bg),#fff);box-shadow:0 6px 20px rgba(225,72,95,.16)}
-#vpanchanga-view .vp-amb-dot{width:10px;height:10px;border-radius:50%;background:var(--vp-sun);animation:vpPulse 1.8s ease-in-out infinite;flex-shrink:0;box-shadow:0 0 12px rgba(255,138,61,.5)}
-#vpanchanga-view .vp-active-banner.warn .vp-amb-dot{background:var(--vp-rose);box-shadow:0 0 12px rgba(225,72,95,.5)}
-#vpanchanga-view .vp-amb-body{flex:1}
-#vpanchanga-view .vp-amb-label{font-size:.6rem;color:var(--vp-ink-faint);text-transform:uppercase;letter-spacing:.1em;font-weight:800}
-#vpanchanga-view .vp-amb-name{font-size:.96rem;font-weight:700;font-family:'EB Garamond',serif;color:var(--vp-sun)}
-#vpanchanga-view .vp-active-banner.warn .vp-amb-name{color:var(--vp-rose)}
-#vpanchanga-view .vp-amb-time{font-size:.7rem;color:var(--vp-ink-soft);font-weight:600}
-
-/* Special yoga cards */
-#vpanchanga-view .vp-yoga-card{background:linear-gradient(135deg,#FFF3DF,#fff);border:1px solid rgba(255,138,61,.3);border-radius:16px;padding:16px 18px;display:flex;align-items:flex-start;gap:13px;box-shadow:0 6px 20px rgba(255,138,61,.15)}
-#vpanchanga-view .vp-yoga-icon{font-size:1.6rem;flex-shrink:0;margin-top:2px}
-#vpanchanga-view .vp-yoga-name{font-family:'EB Garamond',serif;font-size:1.04rem;font-weight:700;color:var(--vp-gold)}
-#vpanchanga-view .vp-yoga-desc{font-size:.74rem;color:var(--vp-ink-soft);margin-top:4px;line-height:1.55}
-#vpanchanga-view .vp-yoga-time{font-size:.68rem;background:rgba(255,138,61,.12);color:var(--vp-sun);border:1px solid rgba(255,138,61,.28);padding:4px 11px;border-radius:8px;margin-top:8px;display:inline-block;font-weight:700}
-
-/* ── Day boundary grid ──────────────────────────────────────────*/
-#vpanchanga-view .vp-db-section{margin:26px 16px 26px}
-#vpanchanga-view .vp-db-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#vpanchanga-view .vp-db-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px}
 @media(min-width:540px){#vpanchanga-view .vp-db-grid{grid-template-columns:repeat(4,1fr)}}
 #vpanchanga-view .vp-db-card{background:#fff;border:1px solid var(--vp-card-edge);border-radius:16px;padding:13px 15px;box-shadow:0 3px 10px rgba(76,58,150,.06);transition:all .2s ease}
 #vpanchanga-view .vp-db-card:hover{transform:translateY(-2px);box-shadow:var(--vp-shadow);border-color:rgba(255,138,61,.3)}
@@ -309,14 +491,23 @@
 #vpanchanga-view .vp-db-time{font-size:.92rem;font-weight:700;color:var(--vp-ink);letter-spacing:.01em}
 #vpanchanga-view .vp-db-time .vp-sub{font-size:.76rem;color:var(--vp-ink-soft);font-weight:600}
 
-/* Divider */
-#vpanchanga-view .vp-divider{display:flex;align-items:center;justify-content:center;gap:12px;padding:6px 0;opacity:.4;color:var(--vp-sun)}
-#vpanchanga-view .vp-divider::before,#vpanchanga-view .vp-divider::after{content:'';flex:0 0 40px;height:1px;background:linear-gradient(90deg,transparent,currentColor,transparent)}
+/* Relative-time pill */
+#vpanchanga-view .vp-rel{
+  display:inline-flex;align-items:center;gap:4px;font-size:.54rem;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:999px;
+  border:1px solid transparent;white-space:nowrap;vertical-align:middle;
+}
+#vpanchanga-view .vp-rel::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+#vpanchanga-view .vp-rel-soon{color:var(--vp-violet);background:rgba(124,92,252,.1);border-color:rgba(124,92,252,.25)}
+#vpanchanga-view .vp-rel-live{color:#fff;background:linear-gradient(135deg,var(--vp-sun),var(--vp-sun2));border-color:rgba(255,138,61,.6);box-shadow:0 0 10px rgba(255,138,61,.45);animation:vpRelLive 1.6s ease-in-out infinite}
+#vpanchanga-view .vp-rel-past{color:var(--vp-ink-faint);background:rgba(36,27,69,.05);border-color:rgba(36,27,69,.08)}
+@keyframes vpRelLive{0%,100%{box-shadow:0 0 8px rgba(255,138,61,.4)}50%{box-shadow:0 0 18px rgba(255,138,61,.7)}}
+@media (prefers-reduced-motion:reduce){#vpanchanga-view .vp-rel-live,#vpanchanga-view .vp-yoga-card{animation:none}}
 
 /* Adhik badge */
 #vpanchanga-view .vp-adhik-badge{font-size:.5rem;font-weight:800;padding:2px 7px;border-radius:999px;background:rgba(255,138,61,.14);color:var(--vp-sun);letter-spacing:.06em;text-transform:uppercase;margin-right:4px}
 
-/* Pulses reused for active states */
+/* Pulses */
 #vpanchanga-view .pulse-auspicious{animation:vpAuspiciousPulse 2.5s ease-in-out infinite}
 #vpanchanga-view .pulse-inauspicious{animation:vpInauspiciousPulse 4s ease-in-out infinite}
 @keyframes vpAuspiciousPulse{0%,100%{box-shadow:0 0 0 2px var(--vp-sun),0 4px 16px rgba(255,138,61,.18)}50%{box-shadow:0 0 0 2px var(--vp-sun),0 10px 30px rgba(255,138,61,.4)}}
@@ -324,6 +515,4 @@
 @media (prefers-reduced-motion:reduce){#vpanchanga-view .pulse-auspicious,#vpanchanga-view .pulse-inauspicious{animation:none}}
 
 #vpanchanga-view{scroll-behavior:smooth}
-
-/* Focus visibility for keyboard users */
 #vpanchanga-view button:focus-visible{outline:2px solid var(--vp-violet);outline-offset:2px}

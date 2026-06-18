@@ -98,16 +98,19 @@
 }
 @keyframes vpStarTwinkle{0%,100%{opacity:.4}50%{opacity:.62}}
 
-/* Orbit track ring */
-#vpanchanga-view .vp-orbit-ring{
-  position:absolute;inset:18px;border-radius:50%;
-  border:1px dashed rgba(180,150,255,.18);
+/* Orbit track rings — one per planet, sized by real distance from Sun */
+#vpanchanga-view .vp-orbit-ring-guides{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
   pointer-events:none;z-index:1;
 }
-#vpanchanga-view .vp-orbit-ring::before{
-  content:'';position:absolute;inset:-10px;border-radius:50%;
-  border:1px dotted rgba(255,200,100,.10);
+#vpanchanga-view .vp-orbit-guide{
+  position:absolute;
+  border-radius:50%;
+  border:1px dashed rgba(180,150,255,.16);
 }
+/* Legacy single ring kept hidden/unused fallback */
+#vpanchanga-view .vp-orbit-ring{display:none}
 
 /* ── SUN at center — spinning, corona glowing ───────────────── */
 #vpanchanga-view .vp-orbit-center{
@@ -183,11 +186,11 @@
 #vpanchanga-view .vp-planet-node{
   position:absolute;
   width:52px;height:52px;
-  top:-26px;
+  left:0;top:0; /* overwritten every frame by JS */
   display:flex;align-items:center;justify-content:center;
   pointer-events:all;
   cursor:pointer;
-  will-change:transform;
+  will-change:transform,left,top;
 }
 /* Planet image — self-spin driven by JS */
 #vpanchanga-view .vp-planet-img{

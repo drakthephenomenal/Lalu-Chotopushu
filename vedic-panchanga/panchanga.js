@@ -836,148 +836,215 @@ function renderAll(){
   document.getElementById('vp-vaishnav-line').textContent='Vaishnav Month of '+headerHM.vaishnavName;
 
   // ── SOLAR SYSTEM ORBIT DIAL ──────────────────────────────────
-  // Sun always fixed at center spinning.
-  // 6 planets orbit around it using JS requestAnimationFrame —
-  // far more reliable cross-browser than CSS calc() in keyframes.
-  // Each planet: orbits around sun + self-spins on a 45° tilted axis.
-  const orbitWrap = document.getElementById('vp-orbit-wrap');
+  // Sun always fixed at center, spinning continuously.
+  // 6 planets orbit around it at radii proportional to their real
+  // distance from the Sun. The orbit/self angles persist in
+  // window._vpOrbit across re-renders so the animation NEVER resets
+  // (renderAll() runs every 30s for data refresh — DOM/labels update
+  // in place, the orbit loop itself is built only once).
+  (function setupOrbitDial(){
+    const orbitWrap = document.getElementById('vp-orbit-wrap');
+    const centerEl2 = document.getElementById('vp-orbit-center');
 
-  // Orbital speed (degrees per second) — vary per planet
-  // Rabi(0)=Sun, Som(1)=Moon, Mangol(2)=Mars, Budh(3)=Mercury,
-  // Brihaspati(4)=Jupiter, Sukro(5)=Venus, Shani(6)=Saturn
-  const ORBIT_SPD  = [0,    17,   11,   25,    8,   14,    7  ]; // °/s around sun
-  const SELF_SPD   = [22,   28,   22,   38,   16,   24,   12  ]; // °/s self-axis spin
-  const ORBIT_R    = 108; // px from center
-
-  // Stable start angles so planets spread naturally
-  const START_ANG  = [0, 0, 52, 103, 155, 206, 258]; // index = vaar index
-
-  // Build DOM — one div per orbiting planet, absolutely positioned
-  orbitWrap.querySelectorAll('.vp-planet-arm,.vp-orbit-btn').forEach(b=>b.remove());
-
-  const centerEl2 = document.getElementById('vp-orbit-center');
-  const planetEls = {}; // vaarIdx -> { wrap, img, label }
-
-  vaarStrip.forEach(v=>{
-    if(v.index===0) return; // Sun stays in center
-
-    let nodeCls = 'vp-planet-node';
-    if(v.isActive) nodeCls += ' today';
-    if(selectedVaarIdx!==null && v.index===selectedVaarIdx) nodeCls += ' selected';
-
-    const dayLabel = v.dayOffset===0?'Today':v.dayOffset===1?'Tmrw':v.dayOffset===-1?'Yest':
-      v.dayOffset>0?'+'+v.dayOffset+'d':v.dayOffset+'d';
-
-    const imgSrc = VAAR_PLANET_IMG[v.index]||'';
-    const imgTag = imgSrc
-      ? `<img class="vp-planet-img" src="${imgSrc}" alt="${v.name}" draggable="false">`
-      : `<span class="vp-ob-icon">${VAAR_ICON[v.index]}</span>`;
-
-    const wrap = document.createElement('div');
-    wrap.className = 'vp-planet-arm';
-    wrap.setAttribute('data-vaar', v.index);
-    wrap.innerHTML = `<div class="${nodeCls}" data-vaar="${v.index}"
-        onclick="vpSelectVaar(${v.index})"
-        title="${v.name} Vaar — ${dayLabel}"
-        style="left:${ORBIT_R}px">
-        ${imgTag}
-        <span class="vp-planet-day-label">${dayLabel}</span>
-      </div>`;
-
-    centerEl2.insertAdjacentElement('beforebegin', wrap);
-
-    planetEls[v.index] = {
-      arm:   wrap,
-      img:   wrap.querySelector('.vp-planet-img'),
-      label: wrap.querySelector('.vp-planet-day-label'),
-      orbitAng: START_ANG[v.index] || 0,
-      selfAng:  0,
+    // Orbital speed (deg/s) and radius (px from center) — radius is
+    // scaled from each planet's real average distance from the Sun
+    // (Mercury≈0.39AU ... Saturn≈9.58AU), compressed log-ish so all
+    // 6 rings fit inside the dial while preserving correct ORDER and
+    // relative spacing close to reality.
+    // Rabi(0)=Sun(Surya), Som(1)=Moon(Chandra) -> treated as Earth-orbit proxy,
+    // Mangol(2)=Mars, Budh(3)=Mercury, Brihaspati(4)=Jupiter, Sukro(5)=Venus, Shani(6)=Saturn
+    const PLANET_INFO = {
+      // idx: [ name-order-by-distance, AU,  orbitSpeed°/s, selfSpeed°/s ]
+      3: { au: 0.39,  spd: 26, self: 38 },  // Mercury — closest, fastest
+      5: { au: 0.72,  spd: 19, self: 24 },  // Venus
+      1: { au: 1.00,  spd: 15, self: 22 },  // Moon (Earth proxy)
+      2: { au: 1.52,  spd: 11, self: 20 },  // Mars
+      4: { au: 5.20,  spd: 6,  self: 16 },  // Jupiter
+      6: { au: 9.58,  spd: 4,  self: 12 },  // Saturn — farthest, slowest
     };
-  });
-
-  // Sun in center — always spinning
-  const centerIconEl = document.getElementById('vp-orbit-center-icon');
-  if(VAAR_PLANET_IMG[0]){
-    centerIconEl.innerHTML = `<img class="vp-orbit-center-planet" src="${VAAR_PLANET_IMG[0]}" alt="Surya" draggable="false"/>`;
-  } else {
-    centerIconEl.textContent = '☀️';
-  }
-  document.getElementById('vp-orbit-center-label').textContent = displayVaar.name;
-  document.getElementById('vp-orbit-center-sub').textContent   = headerWhen;
-
-  // ── rAF animation loop ────────────────────────────────────────
-  // Cancel any previous loop first
-  if(window._vpOrbitRAF){ cancelAnimationFrame(window._vpOrbitRAF); window._vpOrbitRAF=null; }
-  if(window._vpOrbitLastT) window._vpOrbitLastT = null;
-
-  let sunAng = 0;
-  const sunEl = centerIconEl.querySelector('.vp-orbit-center-planet');
-
-  function vpOrbitTick(ts){
-    if(!document.getElementById('vp-orbit-wrap')){
-      // Dial was removed from DOM — stop loop
-      window._vpOrbitRAF = null; return;
+    const MIN_R = 46, MAX_R = 122; // px — inner/outer ring bounds inside the dial
+    const AUs = Object.values(PLANET_INFO).map(p=>p.au);
+    const minAU = Math.min(...AUs), maxAU = Math.max(...AUs);
+    // sqrt scaling keeps inner planets from crowding together while still
+    // preserving strict distance ORDER (Mercury < Venus < Moon < Mars < Jupiter < Saturn)
+    function auToRadius(au){
+      const t = (Math.sqrt(au) - Math.sqrt(minAU)) / (Math.sqrt(maxAU) - Math.sqrt(minAU));
+      return MIN_R + t * (MAX_R - MIN_R);
     }
-    if(document.hidden){ window._vpOrbitRAF = requestAnimationFrame(vpOrbitTick); return; }
+    Object.keys(PLANET_INFO).forEach(k=>{ PLANET_INFO[k].r = auToRadius(PLANET_INFO[k].au); });
 
-    const dt = window._vpOrbitLastT ? Math.min((ts - window._vpOrbitLastT)/1000, 0.1) : 0.016;
-    window._vpOrbitLastT = ts;
+    // Stable, spread starting angles (only used the FIRST time we build)
+    const START_ANG = { 1:0, 2:52, 3:104, 4:156, 5:208, 6:260 };
 
-    // Sun spins
-    sunAng = (sunAng + 22*dt) % 360;
-    if(sunEl) sunEl.style.transform = `rotate(${sunAng}deg)`;
+    // Persistent state survives across renderAll() calls
+    if(!window._vpOrbit){
+      window._vpOrbit = {
+        built:false,
+        planets:{}, // vaarIdx -> {orbitAng, selfAng}
+        sunAng:0,
+        lastT:null,
+        rafId:null,
+      };
+      Object.keys(PLANET_INFO).forEach(k=>{
+        window._vpOrbit.planets[k] = { orbitAng: START_ANG[k]||0, selfAng:0 };
+      });
+    }
+    const S = window._vpOrbit;
 
-    // Each orbiting planet
-    Object.entries(planetEls).forEach(([vi, p])=>{
-      const idx = parseInt(vi);
-      // Advance orbit angle
-      p.orbitAng = (p.orbitAng + ORBIT_SPD[idx]*dt) % 360;
-      p.selfAng  = (p.selfAng  + SELF_SPD[idx]*dt)  % 360;
+    // Build DOM ONLY ONCE — subsequent renderAll() calls just update
+    // classes/labels on the existing nodes so the animation never resets.
+    if(!S.built){
+      orbitWrap.querySelectorAll('.vp-planet-arm,.vp-orbit-btn').forEach(b=>b.remove());
 
-      const rad = p.orbitAng * Math.PI/180;
-      const px  = Math.cos(rad)*ORBIT_R;
-      const py  = Math.sin(rad)*ORBIT_R;
+      Object.keys(PLANET_INFO).forEach(viStr=>{
+        const vi = parseInt(viStr);
+        const wrap = document.createElement('div');
+        wrap.className = 'vp-planet-arm';
+        wrap.setAttribute('data-vaar', vi);
+        wrap.innerHTML = `<div class="vp-planet-node" data-vaar="${vi}"
+            onclick="vpSelectVaar(${vi})">
+            <img class="vp-planet-img" src="" alt="" draggable="false">
+            <span class="vp-planet-day-label"></span>
+          </div>`;
+        centerEl2.insertAdjacentElement('beforebegin', wrap);
+      });
 
-      // Position the planet node directly (center-relative)
-      const node = p.arm.querySelector('.vp-planet-node');
-      if(node){
-        node.style.left = (px - 26) + 'px';
-        node.style.top  = (py - 26) + 'px';
+      // Orbit ring guides — one per radius, drawn once
+      const ringGuides = document.createElement('div');
+      ringGuides.className = 'vp-orbit-ring-guides';
+      ringGuides.innerHTML = Object.keys(PLANET_INFO).map(k=>{
+        const r = PLANET_INFO[k].r;
+        return `<div class="vp-orbit-guide" style="width:${r*2}px;height:${r*2}px"></div>`;
+      }).join('');
+      orbitWrap.insertBefore(ringGuides, orbitWrap.querySelector('.vp-orbit-ring'));
+
+      S.built = true;
+    }
+
+    // ── Update per-planet DOM (classes, image src, label, radius) ──
+    // Safe to run every renderAll() — does not touch angles.
+    vaarStrip.forEach(v=>{
+      if(v.index===0) return; // Sun stays in center
+      const info = PLANET_INFO[v.index];
+      if(!info) return;
+      const armEl = orbitWrap.querySelector(`.vp-planet-arm[data-vaar="${v.index}"]`);
+      if(!armEl) return;
+      const node = armEl.querySelector('.vp-planet-node');
+      const img  = armEl.querySelector('.vp-planet-img');
+      const label= armEl.querySelector('.vp-planet-day-label');
+
+      let nodeCls = 'vp-planet-node';
+      if(v.isActive) nodeCls += ' today';
+      if(selectedVaarIdx!==null && v.index===selectedVaarIdx) nodeCls += ' selected';
+      node.className = nodeCls;
+      node.setAttribute('data-vaar', v.index);
+      node.title = `${v.name} Vaar`;
+
+      const dayLabel = v.dayOffset===0?'Today':v.dayOffset===1?'Tmrw':v.dayOffset===-1?'Yest':
+        v.dayOffset>0?'+'+v.dayOffset+'d':v.dayOffset+'d';
+      label.textContent = dayLabel;
+      node.setAttribute('aria-label', `${v.name} Vaar, ${dayLabel}`);
+
+      const imgSrc = VAAR_PLANET_IMG[v.index]||'';
+      if(imgSrc && img.getAttribute('src')!==imgSrc){
+        img.setAttribute('src', imgSrc);
+        img.setAttribute('alt', v.name);
       }
 
-      // Planet image: 45°-tilted-axis self-spin, simulated with scaleY
-      // (true 3D rotateX would need a perspective container; scaleY reads
-      // as a believable tilted spin at this size and stays crisp on mobile)
-      if(p.img){
-        p.img.style.transform =
-          `rotate(${p.selfAng}deg) scaleY(0.72)`;
-      }
-      // Label always stays upright: counter-rotate by orbit angle
-      if(p.label){
-        p.label.style.transform = `translateX(-50%) rotate(${-p.orbitAng}deg)`;
-      }
+      armEl._vpRadius = info.r; // stash for the tick loop
+      armEl._vpOrbitSpd = info.spd;
+      armEl._vpSelfSpd = info.self;
     });
 
-    window._vpOrbitRAF = requestAnimationFrame(vpOrbitTick);
-  }
-
-  // Only run when panchanga tab is visible
-  if(document.getElementById('vpanchanga-view').style.display !== 'none'){
-    window._vpOrbitRAF = requestAnimationFrame(vpOrbitTick);
-  }
-
-  // Pause/resume on tab visibility change
-  if(!orbitWrap._vpVisChange){
-    orbitWrap._vpVisChange = true;
-    document.addEventListener('visibilitychange', ()=>{
-      if(document.hidden){
-        if(window._vpOrbitRAF){ cancelAnimationFrame(window._vpOrbitRAF); window._vpOrbitRAF=null; }
+    // Sun in center — image set once, always spinning
+    const centerIconEl = document.getElementById('vp-orbit-center-icon');
+    if(!centerIconEl.querySelector('.vp-orbit-center-planet')){
+      if(VAAR_PLANET_IMG[0]){
+        centerIconEl.innerHTML = `<img class="vp-orbit-center-planet" src="${VAAR_PLANET_IMG[0]}" alt="Surya" draggable="false"/>`;
       } else {
-        window._vpOrbitLastT = null;
-        if(!window._vpOrbitRAF) window._vpOrbitRAF = requestAnimationFrame(vpOrbitTick);
+        centerIconEl.textContent = '☀️';
       }
-    });
-  }
+    }
+    document.getElementById('vp-orbit-center-label').textContent = displayVaar.name;
+    document.getElementById('vp-orbit-center-sub').textContent   = headerWhen;
+
+    // ── Start the rAF loop EXACTLY ONCE (module-level, never restarted) ──
+    if(!S.rafId && !document.hidden){
+      S.lastT = null;
+      S.rafId = requestAnimationFrame(vpOrbitTick);
+    }
+
+    function vpOrbitTick(ts){
+      const wrap = document.getElementById('vp-orbit-wrap');
+      if(!wrap){ S.rafId = null; return; } // dial unmounted — stop for good
+
+      if(document.hidden){ S.rafId = requestAnimationFrame(vpOrbitTick); return; }
+
+      const dt = S.lastT!==null ? Math.min((ts - S.lastT)/1000, 0.1) : 0.016;
+      S.lastT = ts;
+
+      // Sun spins continuously
+      S.sunAng = (S.sunAng + 14*dt) % 360;
+      const sunImg = wrap.querySelector('.vp-orbit-center-planet');
+      if(sunImg) sunImg.style.transform = `rotate(${S.sunAng}deg)`;
+
+      // Each planet
+      wrap.querySelectorAll('.vp-planet-arm').forEach(armEl=>{
+        const vi = parseInt(armEl.getAttribute('data-vaar'));
+        const st = S.planets[vi];
+        if(!st) return;
+        const orbitSpd = armEl._vpOrbitSpd || 10;
+        const selfSpd  = armEl._vpSelfSpd  || 20;
+        const r        = armEl._vpRadius   || 90;
+
+        st.orbitAng = (st.orbitAng + orbitSpd*dt) % 360;
+        st.selfAng  = (st.selfAng  + selfSpd*dt)  % 360;
+
+        const rad = st.orbitAng * Math.PI/180;
+        const px = Math.cos(rad)*r;
+        const py = Math.sin(rad)*r;
+
+        const node = armEl.querySelector('.vp-planet-node');
+        if(node){
+          node.style.left = (px - 26) + 'px';
+          node.style.top  = (py - 26) + 'px';
+        }
+        // Planet spins on its own axis — plain rotation, no squash.
+        // The "tilted axis" feel comes from each planet's fixed CSS
+        // border-radius/shadow + the orbit motion itself, so the
+        // sprite never gets visually squashed or distorted.
+        const img = armEl.querySelector('.vp-planet-img');
+        if(img) img.style.transform = `rotate(${st.selfAng}deg)`;
+
+        // Day label stays horizontal & upright — counter-rotate orbit only
+        const label = armEl.querySelector('.vp-planet-day-label');
+        if(label) label.style.transform = `translateX(-50%) rotate(${-st.orbitAng}deg)`;
+      });
+
+      S.rafId = requestAnimationFrame(vpOrbitTick);
+    }
+
+    // Expose a resume hook so vpStartClock() can restart the loop after
+    // the user switches back from the B&C sub-tab (vpStopClock paused it).
+    S.resume = function(){
+      if(!S.rafId && document.getElementById('vp-orbit-wrap') && !document.hidden){
+        S.lastT = null;
+        S.rafId = requestAnimationFrame(vpOrbitTick);
+      }
+    };
+
+    // Pause/resume on OS-level tab visibility change (perf) — wired once
+    if(!window._vpOrbitVisWired){
+      window._vpOrbitVisWired = true;
+      document.addEventListener('visibilitychange', ()=>{
+        if(document.hidden){
+          if(S.rafId){ cancelAnimationFrame(S.rafId); S.rafId=null; }
+        } else {
+          S.resume && S.resume();
+        }
+      });
+    }
+  })();
 
   // Now panel — uses selected vaar if chosen, else current moment
   let panelRef, panelTithiP, panelNakP, panelYogaP, panelKarP, panelMd, panelLabel;
@@ -1227,6 +1294,7 @@ window.vpActivate = function() {
 
 window._vpClockInterval = null;
 window.vpStartClock = function() {
+  if(window._vpOrbit && window._vpOrbit.resume) window._vpOrbit.resume();
   if(window._vpClockInterval) return;
   window._vpClockInterval = setInterval(function() {
     const el = document.getElementById('vp-clock');
@@ -1238,6 +1306,12 @@ window.vpStartClock = function() {
 window.vpStopClock = function() {
   clearInterval(window._vpClockInterval);
   window._vpClockInterval = null;
+  // Pause the orbit dial's rAF loop when leaving the Panchanga sub-tab
+  // (saves battery/CPU); resumed automatically by vpStartClock.
+  if(window._vpOrbit && window._vpOrbit.rafId){
+    cancelAnimationFrame(window._vpOrbit.rafId);
+    window._vpOrbit.rafId = null;
+  }
 };
 
 window._vpRefreshInterval = null;

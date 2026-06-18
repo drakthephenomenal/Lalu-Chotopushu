@@ -830,7 +830,7 @@ function renderAll(){
   // Center shows whichever day is currently being viewed (today, or the selected one).
   const orbitWrap=document.getElementById('vp-orbit-wrap');
   const RADIUS=104; // px from center to each orbit button's center
-  let orbitHTML='';
+  let orbitHTML='<div class="vp-orbit-spin">';
   vaarStrip.forEach(v=>{
     // Position relative to the active (today) day so "today" always sits at 12 o'clock,
     // and the week reads clockwise from there.
@@ -843,16 +843,18 @@ function renderAll(){
     if(selectedVaarIdx!==null&&v.index===selectedVaarIdx)cls+=' selected';
     const dayLabel=v.dayOffset===0?'Today':v.dayOffset===1?'Tmrw':v.dayOffset===-1?'Yest':
       v.dayOffset>0?'+'+v.dayOffset+'d':v.dayOffset+'d';
-    orbitHTML+=`<button class="${cls}" data-vaar="${v.index}" style="transform:translate(${x}px,${y}px)" onclick="vpSelectVaar(${v.index})" title="${v.name} Vaar — ${dayLabel}" aria-label="${v.name} Vaar, ${dayLabel}">
-      <span class="vp-ob-icon">${VAAR_ICON[v.index]}</span>
+    orbitHTML+=`<button class="${cls}" data-vaar="${v.index}" style="left:calc(50% + ${x}px);top:calc(50% + ${y}px)" onclick="vpSelectVaar(${v.index})" title="${v.name} Vaar — ${dayLabel}" aria-label="${v.name} Vaar, ${dayLabel}">
+      <span class="vp-ob-icon"></span>
       <span class="vp-ob-day">${dayLabel}</span>
     </button>`;
   });
+  orbitHTML+='</div>';
   // Keep the static ring/center markup, just refresh the orbit buttons after it
-  orbitWrap.querySelectorAll('.vp-orbit-btn').forEach(b=>b.remove());
+  orbitWrap.querySelectorAll('.vp-orbit-spin, .vp-orbit-btn').forEach(b=>b.remove());
   orbitWrap.insertAdjacentHTML('beforeend',orbitHTML);
   initOrbitSwipe(orbitWrap);
-  {const _ci=document.getElementById('vp-orbit-center-icon');_ci.textContent='';_ci.setAttribute('data-vaar',displayVaarIdx);}
+  // Center is ALWAYS the Sun (Surya) — dominant, always glowing
+  {const _ci=document.getElementById('vp-orbit-center-icon');_ci.textContent='';_ci.setAttribute('data-vaar','0');}
   document.getElementById('vp-orbit-center-label').textContent=displayVaar.name;
   document.getElementById('vp-orbit-center-sub').textContent=headerWhen;
 

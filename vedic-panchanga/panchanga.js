@@ -835,44 +835,149 @@ function renderAll(){
     ' &nbsp;·&nbsp; '+headerPaksha+' Paksha &nbsp;·&nbsp; '+headerWhen+' '+fmtDate(headerRef);
   document.getElementById('vp-vaishnav-line').textContent='Vaishnav Month of '+headerHM.vaishnavName;
 
-  // Orbit dial — 7 planetary days arranged on a ring, active day at top (12 o'clock).
-  // Center shows whichever day is currently being viewed (today, or the selected one).
-  const orbitWrap=document.getElementById('vp-orbit-wrap');
-  const RADIUS=104; // px from center to each orbit button's center
-  let orbitHTML='';
+  // ── SOLAR SYSTEM ORBIT DIAL ──────────────────────────────────
+  // Sun always fixed at center spinning.
+  // 6 planets orbit around it using JS requestAnimationFrame —
+  // far more reliable cross-browser than CSS calc() in keyframes.
+  // Each planet: orbits around sun + self-spins on a 45° tilted axis.
+  const orbitWrap = document.getElementById('vp-orbit-wrap');
+
+  // Orbital speed (degrees per second) — vary per planet
+  // Rabi(0)=Sun, Som(1)=Moon, Mangol(2)=Mars, Budh(3)=Mercury,
+  // Brihaspati(4)=Jupiter, Sukro(5)=Venus, Shani(6)=Saturn
+  const ORBIT_SPD  = [0,    17,   11,   25,    8,   14,    7  ]; // °/s around sun
+  const SELF_SPD   = [22,   28,   22,   38,   16,   24,   12  ]; // °/s self-axis spin
+  const ORBIT_R    = 108; // px from center
+
+  // Stable start angles so planets spread naturally
+  const START_ANG  = [0, 0, 52, 103, 155, 206, 258]; // index = vaar index
+
+  // Build DOM — one div per orbiting planet, absolutely positioned
+  orbitWrap.querySelectorAll('.vp-planet-arm,.vp-orbit-btn').forEach(b=>b.remove());
+
+  const centerEl2 = document.getElementById('vp-orbit-center');
+  const planetEls = {}; // vaarIdx -> { wrap, img, label }
+
   vaarStrip.forEach(v=>{
-    // Position relative to the active (today) day so "today" always sits at 12 o'clock,
-    // and the week reads clockwise from there.
-    const posIdx=((v.index-activeVaarIdx)+7)%7;
-    const angleDeg=posIdx*(360/7)-90; // -90 so position 0 (today) is at the top
-    const rad=angleDeg*Math.PI/180;
-    const x=Math.cos(rad)*RADIUS, y=Math.sin(rad)*RADIUS;
-    let cls='vp-orbit-btn';
-    if(v.isActive)cls+=' today';
-    if(selectedVaarIdx!==null&&v.index===selectedVaarIdx)cls+=' selected';
-    const dayLabel=v.dayOffset===0?'Today':v.dayOffset===1?'Tmrw':v.dayOffset===-1?'Yest':
+    if(v.index===0) return; // Sun stays in center
+
+    let nodeCls = 'vp-planet-node';
+    if(v.isActive) nodeCls += ' today';
+    if(selectedVaarIdx!==null && v.index===selectedVaarIdx) nodeCls += ' selected';
+
+    const dayLabel = v.dayOffset===0?'Today':v.dayOffset===1?'Tmrw':v.dayOffset===-1?'Yest':
       v.dayOffset>0?'+'+v.dayOffset+'d':v.dayOffset+'d';
-    const planetImg=VAAR_PLANET_IMG[v.index]
-      ?`<img class="vp-ob-planet" src="${VAAR_PLANET_IMG[v.index]}" alt="${v.name}" draggable="false"/>`
-      :`<span class="vp-ob-icon">${VAAR_ICON[v.index]}</span>`;
-    orbitHTML+=`<button class="${cls}" data-vaar="${v.index}" style="transform:translate(${x}px,${y}px)" onclick="vpSelectVaar(${v.index})" title="${v.name} Vaar — ${dayLabel}" aria-label="${v.name} Vaar, ${dayLabel}">
-      <div class="vp-ob-planet-wrap">${planetImg}</div>
-      <span class="vp-ob-day">${dayLabel}</span>
-    </button>`;
+
+    const imgSrc = VAAR_PLANET_IMG[v.index]||'';
+    const imgTag = imgSrc
+      ? `<img class="vp-planet-img" src="${imgSrc}" alt="${v.name}" draggable="false">`
+      : `<span class="vp-ob-icon">${VAAR_ICON[v.index]}</span>`;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'vp-planet-arm';
+    wrap.setAttribute('data-vaar', v.index);
+    wrap.innerHTML = `<div class="${nodeCls}" data-vaar="${v.index}"
+        onclick="vpSelectVaar(${v.index})"
+        title="${v.name} Vaar — ${dayLabel}"
+        style="left:${ORBIT_R}px">
+        ${imgTag}
+        <span class="vp-planet-day-label">${dayLabel}</span>
+      </div>`;
+
+    centerEl2.insertAdjacentElement('beforebegin', wrap);
+
+    planetEls[v.index] = {
+      arm:   wrap,
+      img:   wrap.querySelector('.vp-planet-img'),
+      label: wrap.querySelector('.vp-planet-day-label'),
+      orbitAng: START_ANG[v.index] || 0,
+      selfAng:  0,
+    };
   });
-  // Keep the static ring/center markup, just refresh the orbit buttons after it
-  orbitWrap.querySelectorAll('.vp-orbit-btn').forEach(b=>b.remove());
-  orbitWrap.insertAdjacentHTML('beforeend',orbitHTML);
-  initOrbitSwipe(orbitWrap);
-  // Center: show the display vaar planet image
-  const centerImgEl=document.getElementById('vp-orbit-center-icon');
-  if(VAAR_PLANET_IMG[displayVaarIdx]){
-    centerImgEl.innerHTML=`<img class="vp-orbit-center-planet" src="${VAAR_PLANET_IMG[displayVaarIdx]}" alt="${displayVaar.name}" draggable="false"/>`;
-  }else{
-    centerImgEl.textContent=VAAR_ICON[displayVaarIdx];
+
+  // Sun in center — always spinning
+  const centerIconEl = document.getElementById('vp-orbit-center-icon');
+  if(VAAR_PLANET_IMG[0]){
+    centerIconEl.innerHTML = `<img class="vp-orbit-center-planet" src="${VAAR_PLANET_IMG[0]}" alt="Surya" draggable="false"/>`;
+  } else {
+    centerIconEl.textContent = '☀️';
   }
-  document.getElementById('vp-orbit-center-label').textContent=displayVaar.name;
-  document.getElementById('vp-orbit-center-sub').textContent=headerWhen;
+  document.getElementById('vp-orbit-center-label').textContent = displayVaar.name;
+  document.getElementById('vp-orbit-center-sub').textContent   = headerWhen;
+
+  // ── rAF animation loop ────────────────────────────────────────
+  // Cancel any previous loop first
+  if(window._vpOrbitRAF){ cancelAnimationFrame(window._vpOrbitRAF); window._vpOrbitRAF=null; }
+  if(window._vpOrbitLastT) window._vpOrbitLastT = null;
+
+  let sunAng = 0;
+  const sunEl = centerIconEl.querySelector('.vp-orbit-center-planet');
+
+  function vpOrbitTick(ts){
+    if(!document.getElementById('vp-orbit-wrap')){
+      // Dial was removed from DOM — stop loop
+      window._vpOrbitRAF = null; return;
+    }
+    if(document.hidden){ window._vpOrbitRAF = requestAnimationFrame(vpOrbitTick); return; }
+
+    const dt = window._vpOrbitLastT ? Math.min((ts - window._vpOrbitLastT)/1000, 0.1) : 0.016;
+    window._vpOrbitLastT = ts;
+
+    // Sun spins
+    sunAng = (sunAng + 22*dt) % 360;
+    if(sunEl) sunEl.style.transform = `rotate(${sunAng}deg)`;
+
+    // Each orbiting planet
+    Object.entries(planetEls).forEach(([vi, p])=>{
+      const idx = parseInt(vi);
+      // Advance orbit angle
+      p.orbitAng = (p.orbitAng + ORBIT_SPD[idx]*dt) % 360;
+      p.selfAng  = (p.selfAng  + SELF_SPD[idx]*dt)  % 360;
+
+      const rad = p.orbitAng * Math.PI/180;
+      const px  = Math.cos(rad)*ORBIT_R;
+      const py  = Math.sin(rad)*ORBIT_R;
+
+      // Position the planet node directly (center-relative)
+      const node = p.arm.querySelector('.vp-planet-node');
+      if(node){
+        node.style.left = (px - 26) + 'px';
+        node.style.top  = (py - 26) + 'px';
+      }
+
+      // Planet image: 45°-tilted-axis self-spin, simulated with scaleY
+      // (true 3D rotateX would need a perspective container; scaleY reads
+      // as a believable tilted spin at this size and stays crisp on mobile)
+      if(p.img){
+        p.img.style.transform =
+          `rotate(${p.selfAng}deg) scaleY(0.72)`;
+      }
+      // Label always stays upright: counter-rotate by orbit angle
+      if(p.label){
+        p.label.style.transform = `translateX(-50%) rotate(${-p.orbitAng}deg)`;
+      }
+    });
+
+    window._vpOrbitRAF = requestAnimationFrame(vpOrbitTick);
+  }
+
+  // Only run when panchanga tab is visible
+  if(document.getElementById('vpanchanga-view').style.display !== 'none'){
+    window._vpOrbitRAF = requestAnimationFrame(vpOrbitTick);
+  }
+
+  // Pause/resume on tab visibility change
+  if(!orbitWrap._vpVisChange){
+    orbitWrap._vpVisChange = true;
+    document.addEventListener('visibilitychange', ()=>{
+      if(document.hidden){
+        if(window._vpOrbitRAF){ cancelAnimationFrame(window._vpOrbitRAF); window._vpOrbitRAF=null; }
+      } else {
+        window._vpOrbitLastT = null;
+        if(!window._vpOrbitRAF) window._vpOrbitRAF = requestAnimationFrame(vpOrbitTick);
+      }
+    });
+  }
 
   // Now panel — uses selected vaar if chosen, else current moment
   let panelRef, panelTithiP, panelNakP, panelYogaP, panelKarP, panelMd, panelLabel;

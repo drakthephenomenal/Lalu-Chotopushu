@@ -61,14 +61,14 @@
 /* ══════════════════════════════════════════════════════════════
    ORBITAL DIAL
    ══════════════════════════════════════════════════════════════ */
-#vpanchanga-view .vp-orbit-wrap{position:relative;width:272px;height:272px;margin:22px auto 8px;display:flex;align-items:center;justify-content:center;touch-action:pan-y;cursor:grab;transition:transform .3s cubic-bezier(.2,.8,.2,1);perspective:900px}
+#vpanchanga-view .vp-orbit-wrap{position:relative;width:272px;height:272px;margin:22px auto 8px;display:flex;align-items:center;justify-content:center;touch-action:pan-y;cursor:grab;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
 #vpanchanga-view .vp-orbit-wrap.vp-dragging{transition:none;cursor:grabbing}
-/* Tilted elliptical orbit rings (planetary plane) */
-#vpanchanga-view .vp-orbit-ring{position:absolute;inset:0;border-radius:50%;border:1.5px dashed rgba(124,92,252,.28);transform:rotateX(62deg);transform-style:preserve-3d}
+/* Flat 2D orbit ring around the Sun */
+#vpanchanga-view .vp-orbit-ring{position:absolute;inset:0;border-radius:50%;border:1.5px dashed rgba(124,92,252,.28)}
 #vpanchanga-view .vp-orbit-ring::before{content:'';position:absolute;inset:18px;border-radius:50%;border:1px dotted rgba(255,138,61,.22)}
-/* Spinning orbital plane that carries the planets around the Sun */
-#vpanchanga-view .vp-orbit-spin{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(62deg);animation:vpOrbitRevolve 60s linear infinite}
-@keyframes vpOrbitRevolve{from{transform:rotateX(62deg) rotateZ(0deg)}to{transform:rotateX(62deg) rotateZ(360deg)}}
+/* 2D revolving plane — planets orbit the Sun in a flat circle */
+#vpanchanga-view .vp-orbit-spin{position:absolute;inset:0;animation:vpOrbitRevolve 90s linear infinite}
+@keyframes vpOrbitRevolve{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 
 /* ── SUN at the center — always dominant, explosive glow ── */
 #vpanchanga-view .vp-orbit-center{
@@ -104,17 +104,16 @@
   background:transparent;border:none;box-shadow:none;
   cursor:pointer;transition:transform .25s ease,filter .25s ease;
   appearance:none;-webkit-appearance:none;padding:0;font-family:inherit;
-  transform-style:preserve-3d;
+  /* counter-rotate so each planet stays upright as the orbit plane revolves */
+  animation:vpOrbitBtnCounter 90s linear infinite;
 }
-#vpanchanga-view .vp-orbit-btn .vp-ob-icon{font-size:1.18rem;line-height:1}
+@keyframes vpOrbitBtnCounter{from{transform:rotate(0deg)}to{transform:rotate(-360deg)}}
+#vpanchanga-view .vp-orbit-btn .vp-ob-icon{font-size:1.18rem;line-height:1;position:relative}
 #vpanchanga-view .vp-orbit-btn .vp-ob-day{
   font-size:.42rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
   color:rgba(var(--vc,90,79,130),.95);margin-top:2px;
-  /* counter the orbital tilt + spin so labels stay readable */
-  animation:vpOrbitLabelCounter 60s linear infinite;
   text-shadow:0 1px 2px rgba(255,248,236,.9);
 }
-@keyframes vpOrbitLabelCounter{from{transform:rotateZ(0deg)}to{transform:rotateZ(-360deg)}}
 #vpanchanga-view .vp-orbit-btn:hover{filter:brightness(1.15) drop-shadow(0 0 8px rgba(var(--vc,124,92,252),.6))}
 
 /* Current Vaar (today) — explosive glow without any box around the planet */
@@ -557,12 +556,12 @@
 
 #vpanchanga-view{scroll-behavior:smooth}
 #vpanchanga-view button:focus-visible{outline:2px solid var(--vp-violet);outline-offset:2px}
-/* ===== PLANET DIAL — base64 navagraha planets (added by Lovable) ===== */
-#vpanchanga-view .vp-orbit-btn{background:radial-gradient(circle at 35% 30%,#fffdf7,#f4ecdb);}
+/* ===== PLANET DIAL — base64 navagraha planets (no surrounding circle) ===== */
 #vpanchanga-view .vp-orbit-btn .vp-ob-icon{
   width:40px;height:40px;background-size:contain;background-repeat:no-repeat;background-position:center;
   font-size:0;color:transparent;animation:vpPlanetSpin 45s linear infinite;
   filter:drop-shadow(0 2px 4px rgba(0,0,0,.25));
+  position:relative;
 }
 #vpanchanga-view .vp-orbit-btn.today .vp-ob-icon{width:50px;height:50px;animation-duration:60s}
 #vpanchanga-view .vp-orbit-center-icon{

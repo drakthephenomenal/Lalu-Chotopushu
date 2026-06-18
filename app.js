@@ -194,8 +194,8 @@ const App = {
   },
 
   async save() {
-    // GHOST MODE: developer is viewing another user's profile — never persist anything locally or to cloud.
-    if (window.__ghostMode) return;
+    // GHOST MODE: never write to IDB while viewing another user's data.
+    if (isGhostMode()) return;
     // GUEST MODE: never persist to IDB or localStorage — guest jap is intentionally ephemeral.
     // Only signed-in users get local persistence (as an offline buffer for cloud sync).
     if (!this._uid) return;
@@ -990,6 +990,7 @@ const App = {
 
   // ── Main tap ──
   ht(e) {
+    if (isGhostMode()) return; // ghost mode: read-only, no jap
     // Suppress synthesized mousedown that follows a touchstart on the same tap
     if (e) {
       try { e.preventDefault(); } catch (_) {}
@@ -1058,6 +1059,7 @@ const App = {
   },
 
   undo1() {
+    if (isGhostMode()) return; // ghost mode: read-only
     const isRV = this.S.japMode === "rv";
     const isHK = this.S.japMode === "hk";
     const hist = isRV
@@ -1308,6 +1310,7 @@ const App = {
   // ── Silent Monk Auto Backup: triggered on every mala complete ──
   silentMonkBackup() {
     if (!fbUser) return;
+    if (isGhostMode()) return; // ghost mode: read-only
     // Delta push to Firebase (near-instant cross-device sync)
     clearTimeout(this.fbDebouncePush);
     fbPushDelta();
@@ -2466,6 +2469,7 @@ function toggleCs(bodyId, chevId) {
 
 // ── Manual Jap Entry ──
 function addManualJap() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const n = parseInt(document.getElementById("manualJapIn").value) || 0;
   if (n <= 0) {
     toast("Please enter a number > 0");
@@ -2629,6 +2633,7 @@ function addManualJap() {
 }
 
 function addPrevJap() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const n = parseInt(document.getElementById("prevJapIn").value) || 0;
   if (n <= 0) {
     toast("Please enter a number > 0");
@@ -2655,6 +2660,7 @@ function addPrevJap() {
 
 // ── Deduct Name Jap from Lifetime ──
 function addNameJapDeduct() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const n = parseInt(document.getElementById("nameJapDeductIn").value) || 0;
   if (n <= 0) {
     toast("Please enter a number > 0");
@@ -2677,6 +2683,7 @@ function addNameJapDeduct() {
 }
 
 function removeNameJapDeduct() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const n = parseInt(document.getElementById("nameJapRestoreIn").value) || 0;
   if (n <= 0) {
     toast("Please enter a number > 0");
@@ -2714,6 +2721,7 @@ function removeNameJapDeduct() {
 }
 
 function deductTodayJap() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const n = parseInt(document.getElementById("deductTodayIn").value) || 0;
   if (n <= 0) {
     toast("Please enter a number > 0");
@@ -2796,6 +2804,7 @@ function deductTodayJap() {
 }
 
 function deductOtherJap() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const date = (document.getElementById("deductOtherDate").value || "").trim();
   const n = parseInt(document.getElementById("deductOtherIn").value) || 0;
   if (!date) {
@@ -2861,6 +2870,7 @@ function deductOtherJap() {
 }
 
 function addOtherDayJap() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const date = (document.getElementById("addJapOtherDate").value || "").trim();
   const n = parseInt(document.getElementById("addJapOtherIn").value) || 0;
   if (!date) {
@@ -2929,6 +2939,7 @@ function _jtSecs(minId, secId) {
 }
 
 function addJapTimeToday() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const secs = _jtSecs("jtAddTodayMin", "jtAddTodaySec");
   if (secs <= 0) {
     toast("Please enter at least 1 minute");
@@ -2971,6 +2982,7 @@ function addJapTimeToday() {
 }
 
 function addJapTimeOther() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const date = (document.getElementById("jtAddOtherDate").value || "").trim();
   const secs = _jtSecs("jtAddOtherMin", "jtAddOtherSec");
   if (!date) {
@@ -3002,6 +3014,7 @@ function addJapTimeOther() {
 }
 
 function deductJapTimeToday() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const secs = _jtSecs("jtDedTodayMin", "jtDedTodaySec");
   if (secs <= 0) {
     toast("Please enter at least 1 minute");
@@ -3047,6 +3060,7 @@ function deductJapTimeToday() {
 }
 
 function deductJapTimeOther() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const date = (document.getElementById("jtDedOtherDate").value || "").trim();
   const secs = _jtSecs("jtDedOtherMin", "jtDedOtherSec");
   if (!date) {
@@ -4691,6 +4705,7 @@ let fbSessionListener = null;
 // ── Single-device session enforcement ──
 async function fbClaimSession() {
   if (!fbUser || !fbDb) return;
+  if (isGhostMode()) return; // ghost mode: read-only
   const sessionRef = fbDb
     .collection("users")
     .doc(fbUser.uid)
@@ -5472,12 +5487,13 @@ async function fbSignOut() {
   fbAuth.signOut().then(() => toast("Signed out 🙏"));
 }
 async function fbPushDelta() {
+  if (isGhostMode()) return; // ghost mode: read-only
   return fbPushFull();
 }
 
 async function fbPushFull() {
-  if (window.__ghostMode) return; // ghost mode: never push
   if (!fbUser) return;
+  if (isGhostMode()) return; // ghost mode: never write to Firestore
   // SAFETY: never push local state to cloud until we have successfully
   // pulled the authoritative cloud copy at least once this session.
   // Prevents wiping cloud data after "Clear app data" + re-login.
@@ -7071,6 +7087,242 @@ function isDeveloper() {
   const email = (fbUser.email || "").toLowerCase().trim();
   return DEV_IDS.map((e) => e.toLowerCase()).includes(email);
 }
+
+// ══════════════════════════════════════════════════════════════
+// ── GHOST MODE  (developer read-only view of any user's data) ──
+// ══════════════════════════════════════════════════════════════
+
+let _ghostViewingUid  = null;   // UID currently being viewed; null = not in ghost mode
+let _ghostOwnState    = null;   // deep-copy of dev's own App.S before entering ghost mode
+let _ghostAllUsers    = [];     // cached list of {uid, name, email, phone, source}
+
+/** True while developer is shadowing another user's account. */
+function isGhostMode() { return !!_ghostViewingUid; }
+
+// ── Open the user-selection modal ─────────────────────────────
+window.openGhostUserList = async function () {
+  if (!isDeveloper()) return;
+  const modal = document.getElementById('ghostModal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.getElementById('ghostSearchInput').value = '';
+  _renderGhostList([]);
+  _setGhostListHtml('<div style="text-align:center;color:rgba(255,215,0,0.45);padding:30px 0;font-size:13px;">Loading users…</div>');
+  _ghostAllUsers = await _fetchAllKnownUsers();
+  filterGhostList();
+};
+
+window.closeGhostModal = function () {
+  const modal = document.getElementById('ghostModal');
+  if (modal) modal.style.display = 'none';
+};
+
+// ── Collect users from every available Firestore source ───────
+async function _fetchAllKnownUsers() {
+  const byUid = {};
+
+  // Helper to merge a record
+  const add = (uid, patch) => {
+    if (!uid) return;
+    if (!byUid[uid]) byUid[uid] = { uid };
+    Object.assign(byUid[uid], patch);
+  };
+
+  try {
+    // 1. feedbacks collection — uid-keyed, has userName / userEmail / userPhone
+    const fbSnap = await fbDb.collection('feedbacks').get();
+    fbSnap.forEach(doc => {
+      const d = doc.data();
+      add(doc.id, {
+        name:  d.userName  || '',
+        email: d.userEmail || '',
+        phone: d.userPhone || '',
+        source: 'feedback',
+      });
+    });
+  } catch (_) {}
+
+  try {
+    // 2. leaderboard collection — uid-keyed, has displayName + totalJap
+    const lbSnap = await fbDb.collection('leaderboard').get();
+    lbSnap.forEach(doc => {
+      const d = doc.data();
+      add(doc.id, {
+        name:  byUid[doc.id]?.name  || d.displayName || '',
+        email: byUid[doc.id]?.email || d.email       || '',
+        jap:   d.totalJap || 0,
+        source: byUid[doc.id] ? byUid[doc.id].source : 'leaderboard',
+      });
+    });
+  } catch (_) {}
+
+  // Sort: users with names first, then by name alpha
+  return Object.values(byUid).sort((a, b) => {
+    const an = (a.name || a.email || '').toLowerCase();
+    const bn = (b.name || b.email || '').toLowerCase();
+    if (an && !bn) return -1;
+    if (!an && bn) return  1;
+    return an.localeCompare(bn);
+  });
+}
+
+// ── Filter + render the list ──────────────────────────────────
+window.filterGhostList = function () {
+  const q = (document.getElementById('ghostSearchInput')?.value || '').toLowerCase().trim();
+  const filtered = q
+    ? _ghostAllUsers.filter(u =>
+        (u.uid   || '').toLowerCase().includes(q) ||
+        (u.name  || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q) ||
+        (u.phone || '').toLowerCase().includes(q)
+      )
+    : _ghostAllUsers;
+  _renderGhostList(filtered);
+};
+
+function _setGhostListHtml(html) {
+  const el = document.getElementById('ghostUserList');
+  if (el) el.innerHTML = html;
+}
+
+function _renderGhostList(users) {
+  const el = document.getElementById('ghostUserList');
+  if (!el) return;
+  if (!users.length) {
+    el.innerHTML = '<div style="text-align:center;color:rgba(255,215,0,0.35);padding:30px 0;font-size:13px;">No matching users found.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  users.forEach(u => {
+    const label   = u.name  || u.email || '(no name)';
+    const sublabel = u.email && u.name ? u.email : (u.phone || '');
+    const japStr  = u.jap ? ' · ' + _lbFmtJap(u.jap) + ' jap' : '';
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1px solid rgba(255,215,0,0.18);background:rgba(255,215,0,0.03);cursor:pointer;transition:background 0.15s;';
+    row.onmouseenter = () => { row.style.background = 'rgba(255,215,0,0.09)'; };
+    row.onmouseleave = () => { row.style.background = 'rgba(255,215,0,0.03)'; };
+    row.innerHTML = `
+      <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,215,0,0.12);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">👤</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:#FFD700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_escHtmlG(label)}${japStr}</div>
+        ${sublabel ? `<div style="font-size:11px;color:rgba(255,255,255,0.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_escHtmlG(sublabel)}</div>` : ''}
+        <div style="font-size:10px;color:rgba(255,215,0,0.28);margin-top:1px;font-family:monospace;">${u.uid}</div>
+      </div>
+      <div style="font-size:20px;flex-shrink:0;color:rgba(255,215,0,0.5);">›</div>`;
+    row.onclick = () => devEnterGhostMode(u.uid, label);
+    el.appendChild(row);
+  });
+}
+
+function _escHtmlG(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Enter ghost mode for a given UID ─────────────────────────
+window.devEnterGhostMode = async function (uid, displayLabel) {
+  if (!isDeveloper()) return;
+
+  // 1. Close the selection modal
+  closeGhostModal();
+
+  // 2. Save the developer's own clean state
+  _ghostOwnState = JSON.parse(JSON.stringify(App.S));
+
+  // 3. Prevent ALL writes while in ghost mode
+  _ghostViewingUid = uid;
+
+  // 4. Kill the real-time listener so viewed user's live changes
+  //    don't trigger a push back to the dev's own account
+  if (typeof fbListener === 'function') { try { fbListener(); } catch(_){} fbListener = null; }
+
+  // 5. Pull the viewed user's data from Firestore (read-only)
+  let snap;
+  try {
+    snap = await fbDb.collection('users').doc(uid).collection('data').doc('main').get();
+  } catch (e) {
+    toast('⚠️ Cannot read that user\'s data: ' + (e.message || e));
+    _ghostViewingUid = null;
+    _ghostOwnState   = null;
+    return;
+  }
+
+  if (!snap || !snap.exists) {
+    toast('⚠️ No data document found for that user.');
+    _ghostViewingUid = null;
+    _ghostOwnState   = null;
+    return;
+  }
+
+  // 6. Stamp viewed data into App.S without touching IDB / cloud
+  App._cloudHydrated = false;          // block any accidental push trigger
+  fbApplyRemote(snap.data());
+  App._cloudHydrated = false;          // keep blocked
+
+  // 7. Re-render everything
+  if (typeof switchJapMode === 'function') switchJapMode(App.S.japMode || 'radha');
+  App.ua();
+  if (typeof renderSt       === 'function') renderSt();
+  if (typeof u28            === 'function') u28();
+  if (typeof renderBcal     === 'function') renderBcal();
+  if (typeof renderCal      === 'function') renderCal();
+  if (typeof uStats         === 'function') uStats();
+  if (typeof renderSankalpas=== 'function') renderSankalpas();
+  if (typeof renderMalaLog  === 'function') renderMalaLog();
+
+  // 8. Update the dev panel UI
+  const pill = document.getElementById('ghostActivePill');
+  const exitBtn = document.getElementById('ghostExitBtn');
+  if (pill)   pill.style.display   = 'inline-block';
+  if (exitBtn) exitBtn.style.display = '';
+
+  toast('👁 Ghost: ' + _escHtmlG(displayLabel || uid.slice(0,10) + '…'));
+};
+
+// ── Exit ghost mode — restore dev's own state ─────────────────
+window.devExitGhostMode = async function () {
+  if (!isDeveloper()) return;
+
+  // 1. Clear ghost flag immediately so write guards lift
+  _ghostViewingUid = null;
+
+  // 2. Restore the dev's own state snapshot (no cloud call needed)
+  if (_ghostOwnState) {
+    App.S = JSON.parse(JSON.stringify(_ghostOwnState));
+    _ghostOwnState = null;
+  }
+
+  // 3. Re-hydrate from cloud to get any fresh changes since we entered ghost mode
+  App._cloudHydrated = false;
+  try {
+    await fbAutoSync();   // pulls dev's own cloud doc and sets up real-time listener
+  } catch (e) {
+    // If offline, just render from the snapshot we restored
+    App._cloudHydrated = true;
+  }
+
+  // 4. Re-render with dev's own data
+  if (typeof switchJapMode === 'function') switchJapMode(App.S.japMode || 'radha');
+  App.ua();
+  if (typeof renderSt       === 'function') renderSt();
+  if (typeof u28            === 'function') u28();
+  if (typeof renderBcal     === 'function') renderBcal();
+  if (typeof renderCal      === 'function') renderCal();
+  if (typeof uStats         === 'function') uStats();
+  if (typeof renderSankalpas=== 'function') renderSankalpas();
+  if (typeof renderMalaLog  === 'function') renderMalaLog();
+
+  // 5. Reset panel UI
+  const pill   = document.getElementById('ghostActivePill');
+  const exitBtn = document.getElementById('ghostExitBtn');
+  if (pill)    pill.style.display   = 'none';
+  if (exitBtn) exitBtn.style.display = 'none';
+
+  toast('↩ Back to your own account');
+};
+
+// ══════════════════════════════════════════════════════════════
+// END GHOST MODE
+// ══════════════════════════════════════════════════════════════
 
 function getEffectiveLyrics(id) {
   return (
@@ -11947,8 +12199,8 @@ function lbSwitchPeriod(period) {
 
 /** Push current user's data to the leaderboard collection */
 async function pushLeaderboard() {
-  if (window.__ghostMode) return;
   if (!fbUser || !fbDb) return;
+  if (isGhostMode()) return; // ghost mode: read-only
   if (!App.S.lbOptIn) {
     // If opted out, remove the entry
     try {
@@ -12507,7 +12759,6 @@ async function _ensureUserThread() {
 }
 
 window.openUserChat = async function() {
-  if (window.__ghostMode) { try { toast('👻 Ghost mode — read only'); } catch(_) {} return; }
   if (!fbUser) { toast('Please sign in first to use chat.'); return; }
   const modal = document.getElementById('userChatModal');
   const msgBox = document.getElementById('userChatMessages');
@@ -12550,7 +12801,6 @@ window.closeUserChat = function() {
 };
 
 window._userChatSend = async function() {
-  if (window.__ghostMode) return;
   const inp = document.getElementById('userChatInput');
   if (!inp) return;
   const text = inp.value.trim();
@@ -13144,223 +13394,5 @@ function _showUserReplyPopup(text) {
     document.addEventListener("DOMContentLoaded", setup);
   } else {
     setup();
-  }
-})();
-
-// ═══════════════════════════════════════════════════════════════════
-// GHOST MODE — Developer-only invisible impersonation (read-only)
-// ───────────────────────────────────────────────────────────────────
-// • A presence beacon writes /presence/{uid} for every signed-in user
-//   so developers can list who's online.
-// • Developers can pick a user → app re-renders that user's profile
-//   exactly as it would look to them. All writes (App.save, fbPushFull,
-//   leaderboard, chat) are hard-blocked while window.__ghostMode is true.
-// • The visited user's data NEVER touches the developer's IDB or
-//   their own cloud doc, and the user never sees anything (no UI,
-//   no presence flag, no session claim on their account).
-// ═══════════════════════════════════════════════════════════════════
-(function ghostModeInit(){
-  window.__ghostMode = false;
-  window.__ghostUid  = null;
-  window.__ghostBackupS = null;
-
-  // ── Presence beacon: write /presence/{uid} every 60s while signed in.
-  let _ghostBeaconTimer = null;
-  async function ghostPresenceTick() {
-    try {
-      if (!window.fbUser || !window.fbDb) return;
-      if (window.__ghostMode) return; // never write under impersonated identity
-      await fbDb.collection('presence').doc(fbUser.uid).set({
-        uid: fbUser.uid,
-        name: fbUser.displayName || '',
-        email: fbUser.email || '',
-        phone: fbUser.phoneNumber || '',
-        photo: fbUser.photoURL || '',
-        lastSeen: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-    } catch(e) { /* silent — rules may reject if signed out */ }
-  }
-  function startGhostBeacon() {
-    if (_ghostBeaconTimer) return;
-    ghostPresenceTick();
-    _ghostBeaconTimer = setInterval(ghostPresenceTick, 60000);
-  }
-  // Poll for fbUser becoming available, then start the beacon.
-  const _ghostBoot = setInterval(() => {
-    if (window.fbUser && window.fbDb) {
-      clearInterval(_ghostBoot);
-      startGhostBeacon();
-      // Show ghost button only for developers.
-      const btn = document.getElementById('ghostModeBtn');
-      if (btn) btn.style.display = (typeof isDeveloper === 'function' && isDeveloper()) ? '' : 'none';
-    }
-  }, 1000);
-
-  // ── Re-render helpers ────────────────────────────────────────────
-  function ghostRerenderAll() {
-    try {
-      App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
-      App.lmcRV = Math.floor((App.S.historyRV[App.S.tk] || 0) / (App.S.ms || 108));
-      App.lmcHK = Math.floor(((App.S.historyHK || {})[App.S.tk] || 0) / (App.S.ms || 108));
-      App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));
-      if (App.S.gaudiyaMode) document.body.classList.add('gaudiya-mode');
-      else document.body.classList.remove('gaudiya-mode');
-      if (typeof switchJapMode === 'function') switchJapMode(App.S.japMode || 'radha');
-      if (typeof App.ua === 'function') App.ua();
-      if (typeof renderSt === 'function') renderSt();
-      if (typeof u28 === 'function') u28();
-      if (typeof renderBcal === 'function') renderBcal();
-      if (typeof renderCal === 'function') renderCal();
-      if (typeof uStats === 'function') uStats();
-      if (typeof renderSankalpas === 'function') renderSankalpas();
-      if (typeof renderMalaLog === 'function') renderMalaLog();
-    } catch(e) { console.warn('Ghost rerender failed:', e && e.message); }
-  }
-
-  // ── Open the user picker modal ───────────────────────────────────
-  window.openGhostMode = async function openGhostMode() {
-    if (!isDeveloper()) return;
-    if (!fbDb) { try{toast('Cloud not ready');}catch(_){}; return; }
-    const modal = document.getElementById('ghostModeModal');
-    const list  = document.getElementById('ghostUserList');
-    if (!modal || !list) return;
-    list.innerHTML = '<div style="text-align:center;color:#888;padding:30px;">Loading users…</div>';
-    modal.style.display = 'flex';
-    try {
-      // Aggregate users from multiple sources so we don't depend on the
-      // /presence beacon (which only populates AFTER a user signs in with
-      // the new build). We merge:
-      //   • /leaderboard      — everyone who has opted into the leaderboard
-      //   • /feedbacks        — anyone who has ever messaged the developer
-      //   • /presence         — anyone signed in since ghost mode shipped
-      const users = new Map(); // uid -> { name, sub, ts }
-      const add = (id, name, sub, ts) => {
-        if (!id || id === fbUser.uid) return;
-        const prev = users.get(id) || { name:'', sub:'', ts:0 };
-        users.set(id, {
-          name: prev.name || name || '',
-          sub:  prev.sub  || sub  || '',
-          ts:   Math.max(prev.ts || 0, ts || 0),
-        });
-      };
-      const toMs = (v) => (v && v.toMillis) ? v.toMillis() : (typeof v === 'number' ? v : 0);
-      const results = await Promise.allSettled([
-        fbDb.collection('leaderboard').limit(500).get(),
-        fbDb.collection('feedbacks').limit(500).get(),
-        fbDb.collection('presence').limit(500).get(),
-      ]);
-      // leaderboard
-      if (results[0].status === 'fulfilled') results[0].value.forEach(d => {
-        const u = d.data() || {};
-        add(d.id, u.displayName, '', toMs(u.updatedAt));
-      });
-      // feedbacks
-      if (results[1].status === 'fulfilled') results[1].value.forEach(d => {
-        const u = d.data() || {};
-        add(d.id, u.userName, u.userEmail || u.userPhone, toMs(u.lastAt));
-      });
-      // presence
-      if (results[2].status === 'fulfilled') results[2].value.forEach(d => {
-        const u = d.data() || {};
-        add(d.id, u.name, u.email || u.phone, toMs(u.lastSeen));
-      });
-      if (!users.size) {
-        list.innerHTML = '<div style="text-align:center;color:#888;padding:30px;">No users found.</div>';
-        return;
-      }
-      const safe = (x) => String(x).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
-      const arr = Array.from(users.entries())
-        .map(([id, v]) => ({ id, ...v }))
-        .sort((a,b) => (b.ts||0) - (a.ts||0));
-      const html = arr.map(u => {
-        const name = (u.name || u.sub || u.id).toString();
-        const seen = u.ts ? new Date(u.ts).toLocaleString() : '';
-        const nameAttr = safe(name).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
-        return '<div onclick="window.enterGhost(\''+u.id+'\',\''+nameAttr+'\')" '
-          +'style="padding:12px;margin-bottom:8px;background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.25);border-radius:10px;cursor:pointer;">'
-          +'<div style="font-weight:700;color:#2ecc71;font-size:14px;">'+safe(name)+'</div>'
-          +(u.sub?'<div style="font-size:11px;color:#9ab;margin-top:2px;">'+safe(u.sub)+'</div>':'')
-          +'<div style="font-size:10px;color:#678;margin-top:2px;">uid: '+safe(u.id.slice(0,16))+'…'+(seen?' • last seen: '+safe(seen):'')+'</div>'
-          +'</div>';
-      });
-      list.innerHTML = '<div style="font-size:11px;color:#9ab;margin-bottom:10px;text-align:center;">'+arr.length+' user'+(arr.length===1?'':'s')+' found</div>' + html.join('');
-    } catch(e) {
-      list.innerHTML = '<div style="text-align:center;color:#e74c3c;padding:30px;">Failed to load: '+(e&&e.message||e)+'</div>';
-    }
-  };
-
-  window.closeGhostModeModal = function() {
-    const m = document.getElementById('ghostModeModal');
-    if (m) m.style.display = 'none';
-  };
-
-  // ── Enter ghost: load target user's data into App.S (read-only)
-  window.enterGhost = async function enterGhost(targetUid, targetLabel) {
-    if (!isDeveloper() || !fbDb || !fbUser) return;
-    if (targetUid === fbUser.uid) return;
-    try {
-      // Snapshot developer's own state so we can restore on exit.
-      window.__ghostBackupS = JSON.parse(JSON.stringify(App.S));
-      window.__ghostBackupUid = App._uid;
-
-      // Tear down listeners that would otherwise overwrite App.S with dev's data.
-      try { if (window.fbListener) { fbListener(); window.fbListener = null; } } catch(_){}
-
-      const snap = await fbDb.collection('users').doc(targetUid).collection('data').doc('main').get();
-      if (!snap.exists) { try{toast('No data for this user');}catch(_){}; return; }
-      // Engage ghost mode BEFORE we mutate App.S, so save() is blocked.
-      window.__ghostMode = true;
-      window.__ghostUid  = targetUid;
-      App._suspendCloudSync = true;
-      // Apply the target user's payload by reusing the existing remote-apply path.
-      try { fbApplyRemote({ ...snap.data(), deviceId: null }); } catch(_){
-        // Fallback: shallow merge
-        Object.assign(App.S, snap.data() || {});
-      }
-      ghostRerenderAll();
-      window.closeGhostModeModal();
-      ghostShowBanner(targetLabel || targetUid);
-    } catch(e) {
-      window.__ghostMode = false;
-      try{toast('Ghost failed: '+(e&&e.message||e));}catch(_){}
-    }
-  };
-
-  // ── Exit ghost: restore developer's own state without touching anything
-  window.exitGhost = async function exitGhost() {
-    if (!window.__ghostMode) return;
-    window.__ghostMode = false;
-    window.__ghostUid  = null;
-    try {
-      if (window.__ghostBackupS) {
-        App.S = window.__ghostBackupS;
-        window.__ghostBackupS = null;
-      }
-      App._suspendCloudSync = false;
-      ghostRerenderAll();
-      // Re-pull authoritative dev data from cloud to be safe.
-      if (typeof fbAutoSync === 'function') fbAutoSync().catch(()=>{});
-      ghostHideBanner();
-      try{toast('👻 Ghost mode off');}catch(_){}
-    } catch(e) { console.warn('Exit ghost failed:', e && e.message); }
-  };
-
-  function ghostShowBanner(label) {
-    let b = document.getElementById('ghostBanner');
-    if (!b) {
-      b = document.createElement('div');
-      b.id = 'ghostBanner';
-      b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;background:linear-gradient(90deg,#1a0a2e,#2e1a4a,#1a0a2e);color:#fff;font:600 12px Inter,system-ui;padding:6px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(155,89,182,0.6);';
-      b.innerHTML = '<span id="ghostBannerLabel">👻 Ghost mode</span>'
-        + '<button onclick="window.exitGhost()" style="background:rgba(231,76,60,0.25);color:#fff;border:1px solid rgba(231,76,60,0.6);padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">Exit</button>';
-      document.body.appendChild(b);
-    }
-    const lab = document.getElementById('ghostBannerLabel');
-    if (lab) lab.textContent = '👻 Viewing: ' + label;
-    b.style.display = 'flex';
-  }
-  function ghostHideBanner() {
-    const b = document.getElementById('ghostBanner');
-    if (b) b.style.display = 'none';
   }
 })();

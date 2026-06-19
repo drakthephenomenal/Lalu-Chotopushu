@@ -222,17 +222,23 @@ function getNakshatraPeriods(jd,count=3){
   const SPAN=360/27;const periods=[];
   // Search up to 3 days back; use jd+0.5 as upper bound so bisection
   // doesn't collapse to jd when the current nakshatra is still ongoing
-  const curNakStart=Math.floor(moonLongSid(jd)/SPAN)*SPAN;
+  let idx=Math.floor(moonLongSid(jd)/SPAN)%27;
+  const curNakStart=idx*SPAN;
   let trueStart=findMoonLng(jd-3,jd+0.5,curNakStart);
   // Safety: if bisection returned a start that's after jd (no crossing found
   // in window), fall back one full nakshatra span earlier
   if(trueStart>jd) trueStart=findMoonLng(jd-4,jd,curNakStart);
   let s=trueStart;
   for(let i=0;i<count;i++){
-    const idx=Math.floor(moonLongSid(s)/SPAN)%27;
+    // NOTE: idx is carried forward rather than re-derived from
+    // moonLongSid(s) here — s sits exactly ON a boundary, and
+    // floating-point bisection can land a hair below it, which would
+    // floor() into the WRONG (previous) index and collapse this
+    // period's start/end to the same instant (0-duration bug).
     const end=findMoonLng(s,s+3,((idx+1)%27)*SPAN);
     periods.push({index:idx,name:NAKSHATRA[idx],startJD:s,endJD:end});
     s=end+.0001;
+    idx=(idx+1)%27;
   }
   return periods;
 }
@@ -240,33 +246,39 @@ function getNakshatraPeriods(jd,count=3){
 function getYogaPeriods(jd,count=3){
   const SPAN=360/27;const periods=[];
   const c0=norm(moonLongSid(jd)+sunLongSid(jd));
-  const curYogaStart=Math.floor(c0/SPAN)*SPAN;
+  let idx=Math.floor(c0/SPAN)%27;
+  const curYogaStart=idx*SPAN;
   let trueStart=findYoga(jd-3,jd+0.5,curYogaStart);
   if(trueStart>jd) trueStart=findYoga(jd-4,jd,curYogaStart);
   let s=trueStart;
   for(let i=0;i<count;i++){
-    const c=norm(moonLongSid(s)+sunLongSid(s));
-    const idx=Math.floor(c/SPAN)%27;
+    // idx carried forward — see note in getNakshatraPeriods above for why
+    // re-deriving it from moonLongSid(s)+sunLongSid(s) at the boundary
+    // itself is unsafe (floating-point rounding causes 0-duration bug).
     const end=findYoga(s,s+4,((idx+1)%27)*SPAN);
     periods.push({index:idx,name:YOGA_N[idx],startJD:s,endJD:end});
     s=end+.0001;
+    idx=(idx+1)%27;
   }
   return periods;
 }
 
 function getKaranaPeriods(jd,count=5){
   const periods=[];
-  const idx0=Math.floor(norm(moonLong(jd)-sunLong(jd))/6);
+  let idx=Math.floor(norm(moonLong(jd)-sunLong(jd))/6);
   // Extend window to jd+0.5 so bisection doesn't collapse when karana
   // boundary is right around now; also search 2 days back (karana ~6h)
-  let trueStart=findElong(jd-2,jd+0.5,idx0*6);
-  if(trueStart>jd) trueStart=findElong(jd-2,jd,idx0*6);
+  let trueStart=findElong(jd-2,jd+0.5,idx*6);
+  if(trueStart>jd) trueStart=findElong(jd-2,jd,idx*6);
   let s=trueStart;
   for(let i=0;i<count;i++){
-    const idx=Math.floor(norm(moonLong(s)-sunLong(s))/6);
+    // idx carried forward — see note in getNakshatraPeriods above for why
+    // re-deriving it from norm(moonLong(s)-sunLong(s)) at the boundary
+    // itself is unsafe (floating-point rounding causes 0-duration bug).
     const end=findElong(s,s+1.5,((idx+1)%60)*6);
     periods.push({index:idx,name:karName(idx),startJD:s,endJD:end});
     s=end+.0001;
+    idx=(idx+1)%60;
   }
   return periods;
 }

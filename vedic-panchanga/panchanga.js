@@ -1223,6 +1223,169 @@ function init(){
 
 // init handled by vpTryInit above
 
+// ═══════════════════════════════════════════════════════════════
+// CALENDAR DATE PICKER — pick any date, see its 5 Panchanga Angas
+// ═══════════════════════════════════════════════════════════════
+// State: the month currently shown in the modal grid, and the date
+// the user has picked (null = no date selected, results panel hidden).
+let vpCalViewMonth = null; // Date — first of the visible month
+let vpCalSelectedDate = null; // Date — the picked date, or null
+
+function vpCalOpen(){
+  const overlay = document.getElementById('vp-cal-overlay');
+  if(!overlay) return;
+  // Default the grid to the selected date's month, else today's month
+  const base = vpCalSelectedDate || new Date();
+  vpCalViewMonth = new Date(base.getFullYear(), base.getMonth(), 1);
+  vpCalRenderGrid();
+  overlay.classList.add('open');
+}
+function vpCalClose(){
+  const overlay = document.getElementById('vp-cal-overlay');
+  if(overlay) overlay.classList.remove('open');
+}
+function vpCalCloseBackdrop(e){
+  // Only close if the click landed on the dim backdrop itself, not the modal card
+  if(e.target && e.target.id === 'vp-cal-overlay') vpCalClose();
+}
+function vpCalChangeMonth(delta){
+  if(!vpCalViewMonth) vpCalViewMonth = new Date();
+  vpCalViewMonth = new Date(vpCalViewMonth.getFullYear(), vpCalViewMonth.getMonth()+delta, 1);
+  vpCalRenderGrid();
+}
+function vpCalGoToday(){
+  const t = new Date();
+  vpCalSelectedDate = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+  vpCalViewMonth = new Date(t.getFullYear(), t.getMonth(), 1);
+  vpCalRenderGrid();
+  vpRenderDateResult();
+  vpCalClose();
+}
+function vpCalPickDay(y,m,d){
+  vpCalSelectedDate = new Date(y,m,d);
+  vpCalRenderGrid();
+  vpRenderDateResult();
+  vpCalClose();
+}
+function vpClearDateResult(){
+  vpCalSelectedDate = null;
+  const wrap = document.getElementById('vp-dateresult-wrap');
+  if(wrap) wrap.style.display='none';
+}
+
+function vpCalRenderGrid(){
+  if(!vpCalViewMonth) return;
+  const y = vpCalViewMonth.getFullYear(), m = vpCalViewMonth.getMonth();
+  const monthLabel = vpCalViewMonth.toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  const titleEl = document.getElementById('vp-cal-month-label');
+  if(titleEl) titleEl.textContent = monthLabel;
+
+  const firstDow = new Date(y,m,1).getDay(); // 0=Sun
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const today = new Date();
+  const isCurMonth = today.getFullYear()===y && today.getMonth()===m;
+
+  let html = '';
+  for(let i=0;i<firstDow;i++) html += `<div class="vp-cal-day vp-cal-day-empty"></div>`;
+  for(let d=1; d<=daysInMonth; d++){
+    let cls = 'vp-cal-day';
+    if(isCurMonth && d===today.getDate()) cls += ' vp-cal-day-today';
+    if(vpCalSelectedDate && vpCalSelectedDate.getFullYear()===y &&
+       vpCalSelectedDate.getMonth()===m && vpCalSelectedDate.getDate()===d){
+      cls += ' vp-cal-day-selected';
+    }
+    html += `<button class="${cls}" onclick="vpCalPickDay(${y},${m},${d})">${d}</button>`;
+  }
+  const grid = document.getElementById('vp-cal-grid');
+  if(grid) grid.innerHTML = html;
+}
+
+// Compute & render the 5 Panchanga Angas (Vaar, Tithi, Nakshatra, Yoga,
+// Karana) for whichever date the user picked. Uses noon of the selected
+// date as the reference instant — the same convention getVaarStrip() uses
+// — so the result reflects "the panchanga in effect during that day,"
+// not a razor-thin midnight snapshot that could land in a different
+// tithi/nakshatra than what's actually observed that day.
+function vpRenderDateResult(){
+  const wrap = document.getElementById('vp-dateresult-wrap');
+  if(!wrap || !vpCalSelectedDate) return;
+
+  const d = vpCalSelectedDate;
+  const noon = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
+  const jd = dateToJD(noon);
+
+  // Vaar (weekday) — Vedic day boundary is sunrise-based, so resolve it
+  // properly rather than just using JS getDay() (which would be wrong
+  // for the pre-sunrise sliver of a civil day).
+  const vaarIdx = getVedicVaarIdx(noon, LAT, LNG);
+  const vaarName = VAAR[vaarIdx];
+
+  // Tithi, Nakshatra, Yoga, Karana — all current-at-noon on the picked date
+  const tithiPeriods = getTithiPeriods(jd, 1);
+  const curTithi = tithiPeriods.find(p=>p.startJD<=jd && jd<p.endJD) || tithiPeriods[0];
+
+  const nakPeriods = getNakshatraPeriods(jd, 1);
+  const curNak = nakPeriods.find(p=>p.startJD<=jd && jd<p.endJD) || nakPeriods[0];
+
+  const yogaPeriods = getYogaPeriods(jd, 1);
+  const curYoga = yogaPeriods.find(p=>p.startJD<=jd && jd<p.endJD) || yogaPeriods[0];
+
+  const karPeriods = getKaranaPeriods(jd, 1);
+  const curKar = karPeriods.find(p=>p.startJD<=jd && jd<p.endJD) || karPeriods[0];
+
+  const karFx = KARANA_FX_LOOKUP[curKar.name] || 'Half-tithi unit — governs the quality of the lunar half';
+
+  // Header date label
+  const dateLabel = d.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const dateEl = document.getElementById('vp-dateresult-date');
+  if(dateEl) dateEl.textContent = dateLabel;
+
+  const planetImg = VAAR_PLANET_IMG[vaarIdx] || '';
+  const planetTag = planetImg
+    ? `<img class="vp-dr-vaar-planet" src="${planetImg}" alt="${vaarName}">`
+    : `<span style="font-size:1.6rem">${VAAR_ICON[vaarIdx]}</span>`;
+
+  const grid = document.getElementById('vp-dateresult-grid');
+  if(grid){
+    grid.innerHTML = `
+      <div class="vp-dr-card vp-dr-vaar">
+        ${planetTag}
+        <div class="vp-dr-vaar-body">
+          <div class="vp-dr-label">Vaar (Weekday)</div>
+          <div class="vp-dr-name">${vaarName} Vaar</div>
+        </div>
+      </div>
+      <div class="vp-dr-card">
+        <div class="vp-dr-label">Tithi</div>
+        <div class="vp-dr-name">${curTithi.name}</div>
+        <div class="vp-dr-paksha">${curTithi.paksha} Paksha</div>
+        <div class="vp-dr-fx">${TITHI_FX[curTithi.index]}</div>
+      </div>
+      <div class="vp-dr-card">
+        <div class="vp-dr-label">Nakshatra</div>
+        <div class="vp-dr-name">${curNak.name}</div>
+        <div class="vp-dr-fx">${NAK_FX[curNak.index]}</div>
+      </div>
+      <div class="vp-dr-card">
+        <div class="vp-dr-label">Yoga</div>
+        <div class="vp-dr-name">${curYoga.name}</div>
+        <div class="vp-dr-fx">${YOGA_FX[curYoga.index]}</div>
+      </div>
+      <div class="vp-dr-card">
+        <div class="vp-dr-label">Karana</div>
+        <div class="vp-dr-name">${curKar.name}</div>
+        <div class="vp-dr-fx">${karFx}</div>
+      </div>
+    `;
+  }
+
+  wrap.style.display = 'block';
+  // Scroll the result into view so the user immediately sees what they picked
+  requestAnimationFrame(()=>{
+    wrap.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+}
+
 
 // ── Public API ───────────────────────────────────────────────
 window.vpSelectVaar = function(idx) { selectVaar(idx); };
@@ -1241,6 +1404,15 @@ window.vpToggleDayBoundaries = function() {
   if(w) w.classList.toggle('open');
   if(b) b.classList.toggle('open');
 };
+
+// Calendar date-picker
+window.vpOpenCalendar = function(){ vpCalOpen(); };
+window.vpCloseCalendar = function(){ vpCalClose(); };
+window.vpCloseCalendarBackdrop = function(e){ vpCalCloseBackdrop(e); };
+window.vpCalChangeMonth = function(delta){ vpCalChangeMonth(delta); };
+window.vpCalGoToday = function(){ vpCalGoToday(); };
+window.vpCalPickDay = function(y,m,d){ vpCalPickDay(y,m,d); };
+window.vpClearDateResult = function(){ vpClearDateResult(); };
 
 // ── GPS-based location for the Panchanga engine ──────────────────────
 // Reads live globals first (freshest, set by the main app's GPS toggle),

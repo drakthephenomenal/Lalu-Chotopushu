@@ -50,6 +50,27 @@
 #vpanchanga-view .vp-loc-row{font-size:.58rem;color:var(--vp-ink-soft);letter-spacing:.08em;text-transform:uppercase;margin-top:6px;display:inline-flex;align-items:center;gap:5px;background:rgba(124,92,252,.08);padding:4px 12px;border-radius:999px}
 #vpanchanga-view .vp-loc-dot{width:5px;height:5px;background:var(--vp-violet);border-radius:50%;display:inline-block;box-shadow:0 0 8px rgba(124,92,252,.6)}
 
+/* Calendar trigger button */
+#vpanchanga-view .vp-cal-trigger{
+  display:inline-flex;align-items:center;gap:6px;
+  margin-top:10px;
+  font-family:inherit;font-size:.66rem;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;
+  color:#fff;
+  background:linear-gradient(135deg,var(--vp-violet),#9B7FFF);
+  border:none;border-radius:999px;
+  padding:8px 16px;
+  cursor:pointer;
+  box-shadow:0 6px 18px rgba(124,92,252,.32);
+  transition:transform .2s ease,box-shadow .2s ease;
+}
+#vpanchanga-view .vp-cal-trigger:hover{
+  transform:translateY(-1px);
+  box-shadow:0 8px 22px rgba(124,92,252,.42);
+}
+#vpanchanga-view .vp-cal-trigger:active{transform:translateY(0) scale(.97)}
+#vpanchanga-view .vp-cal-trigger-icon{font-size:.82rem;line-height:1}
+
 /* Clock */
 #vpanchanga-view .vp-clock-wrap{text-align:center;padding:10px 20px 0;position:relative}
 #vpanchanga-view .vp-om-bg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:.05;font-size:96px;font-family:'Tiro Devanagari Hindi',serif;color:var(--vp-sun)}
@@ -732,3 +753,193 @@
 
 #vpanchanga-view{scroll-behavior:smooth}
 #vpanchanga-view button:focus-visible{outline:2px solid var(--vp-violet);outline-offset:2px}
+
+/* ══════════════════════════════════════════════════════════════
+   CALENDAR DATE PICKER — modal overlay
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-cal-overlay{
+  position:fixed;inset:0;z-index:2000;
+  background:rgba(20,12,40,.55);
+  backdrop-filter:blur(3px);
+  display:none;
+  align-items:center;justify-content:center;
+  padding:20px;
+}
+#vpanchanga-view .vp-cal-overlay.open{display:flex}
+
+#vpanchanga-view .vp-cal-modal{
+  width:100%;max-width:360px;
+  background:var(--vp-card);
+  border-radius:22px;
+  box-shadow:0 24px 60px rgba(20,12,50,.45);
+  padding:18px 18px 16px;
+  animation:vpCalPopIn .22s cubic-bezier(.2,.9,.3,1.2);
+}
+@keyframes vpCalPopIn{
+  from{opacity:0;transform:scale(.92) translateY(10px)}
+  to{opacity:1;transform:scale(1) translateY(0)}
+}
+
+#vpanchanga-view .vp-cal-modal-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:12px;
+}
+#vpanchanga-view .vp-cal-modal-title{
+  font-family:'EB Garamond',serif;font-size:1.18rem;font-weight:700;
+  color:var(--vp-ink);
+}
+#vpanchanga-view .vp-cal-nav-btn{
+  width:34px;height:34px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(124,92,252,.1);
+  border:none;color:var(--vp-violet);
+  font-size:1.2rem;font-weight:700;line-height:1;
+  cursor:pointer;
+  transition:background .2s ease;
+}
+#vpanchanga-view .vp-cal-nav-btn:hover{background:rgba(124,92,252,.2)}
+
+#vpanchanga-view .vp-cal-weekdays{
+  display:grid;grid-template-columns:repeat(7,1fr);
+  margin-bottom:4px;
+}
+#vpanchanga-view .vp-cal-weekdays span{
+  text-align:center;font-size:.6rem;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;
+  color:var(--vp-ink-faint);padding:6px 0;
+}
+
+#vpanchanga-view .vp-cal-grid{
+  display:grid;grid-template-columns:repeat(7,1fr);
+  gap:3px;
+}
+#vpanchanga-view .vp-cal-day{
+  aspect-ratio:1;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:11px;
+  font-size:.8rem;font-weight:600;color:var(--vp-ink);
+  background:transparent;border:none;
+  cursor:pointer;
+  transition:background .15s ease,transform .15s ease;
+  position:relative;
+  font-family:inherit;
+}
+#vpanchanga-view .vp-cal-day:hover{background:rgba(124,92,252,.1)}
+#vpanchanga-view .vp-cal-day:active{transform:scale(.92)}
+#vpanchanga-view .vp-cal-day.vp-cal-day-empty{cursor:default;pointer-events:none}
+#vpanchanga-view .vp-cal-day.vp-cal-day-today{
+  color:var(--vp-sun);font-weight:800;
+  box-shadow:inset 0 0 0 1.5px var(--vp-sun);
+}
+#vpanchanga-view .vp-cal-day.vp-cal-day-selected{
+  background:linear-gradient(135deg,var(--vp-violet),#9B7FFF);
+  color:#fff;font-weight:800;
+  box-shadow:0 4px 14px rgba(124,92,252,.4);
+}
+#vpanchanga-view .vp-cal-day.vp-cal-day-selected:hover{background:linear-gradient(135deg,var(--vp-violet),#9B7FFF)}
+
+#vpanchanga-view .vp-cal-modal-foot{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-top:14px;padding-top:12px;
+  border-top:1px solid var(--vp-card-edge);
+}
+#vpanchanga-view .vp-cal-today-btn{
+  font-family:inherit;font-size:.66rem;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;
+  color:var(--vp-violet);background:rgba(124,92,252,.1);
+  border:none;border-radius:999px;padding:8px 16px;
+  cursor:pointer;transition:background .2s ease;
+}
+#vpanchanga-view .vp-cal-today-btn:hover{background:rgba(124,92,252,.18)}
+#vpanchanga-view .vp-cal-close-btn{
+  font-family:inherit;font-size:.66rem;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;
+  color:var(--vp-ink-faint);background:none;
+  border:none;padding:8px 10px;cursor:pointer;
+}
+#vpanchanga-view .vp-cal-close-btn:hover{color:var(--vp-ink)}
+
+/* ══════════════════════════════════════════════════════════════
+   SELECTED DATE — 5 Angas result panel
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-dateresult-section{
+  border-radius:20px;
+  background:linear-gradient(150deg,#F3EEFF,#FFFFFF 55%);
+  border:1px solid rgba(124,92,252,.22);
+  box-shadow:var(--vp-shadow);
+  padding:16px 16px 18px;
+  margin-top:20px;
+}
+#vpanchanga-view .vp-dateresult-head{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  margin-bottom:14px;
+}
+#vpanchanga-view .vp-dateresult-title{
+  display:flex;align-items:center;gap:10px;
+}
+#vpanchanga-view .vp-dateresult-icon{font-size:1.5rem;line-height:1}
+#vpanchanga-view .vp-dateresult-label{
+  font-size:.6rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--vp-violet);
+}
+#vpanchanga-view .vp-dateresult-date{
+  font-family:'EB Garamond',serif;font-size:1.2rem;font-weight:700;
+  color:var(--vp-ink);line-height:1.25;
+}
+#vpanchanga-view .vp-dateresult-close{
+  width:30px;height:30px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(124,92,252,.1);border:none;
+  color:var(--vp-violet);font-size:.9rem;cursor:pointer;
+  flex-shrink:0;
+  transition:background .2s ease;
+}
+#vpanchanga-view .vp-dateresult-close:hover{background:rgba(124,92,252,.2)}
+
+/* 5 Anga cards grid — Tithi, Vaar, Nakshatra, Yoga, Karana */
+#vpanchanga-view .vp-dateresult-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+}
+@media(min-width:560px){
+  #vpanchanga-view .vp-dateresult-grid{grid-template-columns:repeat(3,1fr)}
+}
+#vpanchanga-view .vp-dr-card{
+  background:#fff;border-radius:14px;
+  border:1px solid var(--vp-card-edge);
+  padding:12px 13px;
+  box-shadow:0 3px 10px rgba(76,58,150,.06);
+}
+#vpanchanga-view .vp-dr-card.vp-dr-vaar{
+  grid-column:1/-1;
+  display:flex;align-items:center;gap:12px;
+  background:linear-gradient(135deg,#FFF3DF,#fff);
+  border-color:rgba(255,138,61,.25);
+}
+#vpanchanga-view .vp-dr-vaar-planet{
+  width:46px;height:46px;object-fit:contain;
+  filter:drop-shadow(0 2px 8px rgba(0,0,0,.2));
+  flex-shrink:0;
+}
+#vpanchanga-view .vp-dr-vaar-body{flex:1;min-width:0}
+#vpanchanga-view .vp-dr-label{
+  font-size:.55rem;color:var(--vp-ink-faint);
+  text-transform:uppercase;letter-spacing:.1em;font-weight:800;
+  margin-bottom:4px;
+}
+#vpanchanga-view .vp-dr-name{
+  font-family:'EB Garamond',serif;font-size:1.02rem;font-weight:700;
+  color:var(--vp-ink);line-height:1.2;margin-bottom:3px;
+}
+#vpanchanga-view .vp-dr-card.vp-dr-vaar .vp-dr-name{color:var(--vp-sun)}
+#vpanchanga-view .vp-dr-paksha{
+  font-size:.56rem;color:var(--vp-ink-faint);font-weight:600;margin-bottom:3px;
+}
+#vpanchanga-view .vp-dr-fx{
+  font-size:.66rem;color:var(--vp-ink-soft);line-height:1.4;
+}
+
+@media(prefers-reduced-motion:reduce){
+  #vpanchanga-view .vp-cal-modal{animation:none}
+}

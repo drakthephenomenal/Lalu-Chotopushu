@@ -7,6 +7,10 @@
         <span class="vp-loc-dot"></span>
         <span id="vp-loc-text">Locating…</span>
       </div>
+      <button class="vp-cal-trigger" id="vp-cal-trigger" onclick="vpOpenCalendar()" aria-label="Pick a date">
+        <span class="vp-cal-trigger-icon">📅</span>
+        <span>Pick a Date</span>
+      </button>
     </div>
 
     <!-- Clock -->
@@ -35,6 +39,46 @@
     <div id="vp-viewing-bar" style="display:none">
       <span class="vp-viewing-chip" id="vp-viewing-label"></span>
       <button class="vp-back-btn" onclick="vpClearSelectedVaar()">← Back to today</button>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         CALENDAR DATE PICKER — modal overlay
+         ══════════════════════════════════════════ -->
+    <div class="vp-cal-overlay" id="vp-cal-overlay" onclick="vpCloseCalendarBackdrop(event)">
+      <div class="vp-cal-modal" id="vp-cal-modal">
+        <div class="vp-cal-modal-head">
+          <button class="vp-cal-nav-btn" onclick="vpCalChangeMonth(-1)" aria-label="Previous month">‹</button>
+          <div class="vp-cal-modal-title" id="vp-cal-month-label"></div>
+          <button class="vp-cal-nav-btn" onclick="vpCalChangeMonth(1)" aria-label="Next month">›</button>
+        </div>
+        <div class="vp-cal-weekdays">
+          <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+        </div>
+        <div class="vp-cal-grid" id="vp-cal-grid"></div>
+        <div class="vp-cal-modal-foot">
+          <button class="vp-cal-today-btn" onclick="vpCalGoToday()">Today</button>
+          <button class="vp-cal-close-btn" onclick="vpCloseCalendar()">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         SELECTED DATE — All 5 Panchanga Angas
+         ══════════════════════════════════════════ -->
+    <div id="vp-dateresult-wrap" style="display:none">
+      <section class="vp-m-section vp-dateresult-section">
+        <div class="vp-dateresult-head">
+          <div class="vp-dateresult-title">
+            <span class="vp-dateresult-icon">📆</span>
+            <div>
+              <div class="vp-dateresult-label">Panchanga for</div>
+              <div class="vp-dateresult-date" id="vp-dateresult-date"></div>
+            </div>
+          </div>
+          <button class="vp-dateresult-close" onclick="vpClearDateResult()" aria-label="Close">✕</button>
+        </div>
+        <div class="vp-dateresult-grid" id="vp-dateresult-grid"></div>
+      </section>
     </div>
 
     <!-- ══════════════════════════════════════════

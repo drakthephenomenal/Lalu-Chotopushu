@@ -1250,6 +1250,13 @@ const App = {
 
   // ── 28 Names tap ──
   h28(e) {
+    // v154: ghost mode is strictly read-only. Block the tap before ANY state
+    // mutation so we never imprint the viewed user's session onto the dev's
+    // own profile. Wish target cycle counts remain visible via renderSankalpas().
+    if (isGhostMode()) {
+      if (e) { try { e.preventDefault(); } catch (_) {} }
+      return;
+    }
     if (e) {
       try { e.preventDefault(); } catch (_) {}
       const now = Date.now();
@@ -1284,6 +1291,7 @@ const App = {
   },
 
   undo28() {
+    if (isGhostMode()) return; // ghost mode: read-only, never mutate state
     if ((this.S.h28[this.S.tk] || 0) > 0) {
       // Freeze wish progress before changing h28 so bar reflects the undo
       (this.S.sankalpas || [])
@@ -5906,6 +5914,10 @@ async function fbAutoSync() {
 let _fbDeb = null;
 function fbDebouncedPush() {
   if (!fbUser) return;
+  // v154: hard belt-and-suspenders guard. Even if some future tap path forgets
+  // its own isGhostMode() check, no ghost-mode write will ever reach Firestore
+  // and imprint the viewed user's data onto the developer's own profile.
+  if (typeof isGhostMode === "function" && isGhostMode()) return;
   clearTimeout(_fbDeb);
   _fbDeb = setTimeout(() => fbPushDelta(), 3000);
 }
@@ -9250,21 +9262,17 @@ if ("serviceWorker" in navigator) {
       .catch((e) => console.warn("SW registration failed:", e.message));
 
     navigator.serviceWorker.addEventListener("message", (e) => {
-      // ── SW_UPDATED: new SW activated — reload ONLY if this page is older than
-      // 6 seconds (fresh loads already have the new files from the SW install
-      // step and don't need a reload). Guard with sessionStorage against double-fire.
+      // ── SW_UPDATED (v154): NO auto-reload. ──
+      // Previous versions did window.location.reload() ~800ms after this
+      // message, which was the root cause of the "app loads twice / loading
+      // bar disappears then comes back" complaint on slow networks.
+      // The new SW (v154) no longer calls clients.claim(), so the current
+      // page keeps running on the old SW until the user navigates or
+      // manually refreshes — guaranteed clean, no flicker.
       if (e.data && e.data.type === "SW_UPDATED") {
-        if (sessionStorage.getItem("sw_reloaded") === e.data.version) return;
-        sessionStorage.setItem("sw_reloaded", e.data.version);
-        const pageAge = performance.now(); // ms since page navigation start
-        if (pageAge < 6000) {
-          // Page is brand-new — SW already served fresh files, no reload needed
-          console.log("[SW] SW_UPDATED ignored — page is fresh (<6s old)");
-          return;
-        }
-        console.log("[SW] SW_UPDATED — scheduling reload for fresh content");
-        // Small delay so any in-flight saves/renders finish cleanly
-        setTimeout(() => window.location.reload(), 800);
+        console.log("[SW] update ready (" + e.data.version + ") — will apply on next navigation");
+        // Optional: surface a soft toast / pill here if desired.
+        try { if (typeof toast === "function") toast("✨ Update ready — refresh anytime"); } catch (_) {}
       }
     });
 

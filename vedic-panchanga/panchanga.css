@@ -787,13 +787,6 @@
 #vpanchanga-view .vp-cal-modal-title{
   font-family:'EB Garamond',serif;font-size:1.18rem;font-weight:700;
   color:var(--vp-ink);
-  background:none;border:none;cursor:pointer;
-  padding:4px 10px;border-radius:10px;
-  transition:background .2s ease;
-}
-#vpanchanga-view .vp-cal-modal-title:hover{background:rgba(124,92,252,.08)}
-#vpanchanga-view .vp-cal-modal-title::after{
-  content:' ▾';font-size:.7rem;color:var(--vp-violet);
 }
 #vpanchanga-view .vp-cal-nav-btn{
   width:34px;height:34px;border-radius:50%;
@@ -866,39 +859,8 @@
 }
 #vpanchanga-view .vp-cal-close-btn:hover{color:var(--vp-ink)}
 
-/* Year-picker view */
-#vpanchanga-view .vp-cal-year-nav{
-  display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:10px;
-}
-#vpanchanga-view .vp-cal-year-range{
-  font-size:.7rem;font-weight:800;letter-spacing:.06em;
-  color:var(--vp-ink-soft);text-transform:uppercase;
-}
-#vpanchanga-view .vp-cal-year-grid{
-  display:grid;grid-template-columns:repeat(4,1fr);
-  gap:6px;
-  padding-bottom:4px;
-}
-#vpanchanga-view .vp-cal-year-cell{
-  padding:12px 4px;border-radius:11px;
-  text-align:center;font-size:.82rem;font-weight:700;
-  color:var(--vp-ink);background:rgba(124,92,252,.05);
-  border:none;cursor:pointer;font-family:inherit;
-  transition:background .15s ease,transform .15s ease;
-}
-#vpanchanga-view .vp-cal-year-cell:hover{background:rgba(124,92,252,.14)}
-#vpanchanga-view .vp-cal-year-cell:active{transform:scale(.94)}
-#vpanchanga-view .vp-cal-year-cell.vp-cal-year-current{
-  box-shadow:inset 0 0 0 1.5px var(--vp-sun);color:var(--vp-sun);
-}
-#vpanchanga-view .vp-cal-year-cell.vp-cal-year-selected{
-  background:linear-gradient(135deg,var(--vp-violet),#9B7FFF);
-  color:#fff;box-shadow:0 4px 14px rgba(124,92,252,.4);
-}
-
 /* ══════════════════════════════════════════════════════════════
-   SELECTED DATE — Full Panchanga Horoscope result
+   SELECTED DATE — 5 Angas result panel
    ══════════════════════════════════════════════════════════════ */
 #vpanchanga-view .vp-dateresult-section{
   border-radius:20px;
@@ -924,9 +886,6 @@
   font-family:'EB Garamond',serif;font-size:1.2rem;font-weight:700;
   color:var(--vp-ink);line-height:1.25;
 }
-#vpanchanga-view .vp-dateresult-sub{
-  font-size:.62rem;color:var(--vp-ink-faint);margin-top:2px;
-}
 #vpanchanga-view .vp-dateresult-close{
   width:30px;height:30px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
@@ -937,108 +896,48 @@
 }
 #vpanchanga-view .vp-dateresult-close:hover{background:rgba(124,92,252,.2)}
 
-/* Vaar summary strip */
-#vpanchanga-view .vp-dr-vaar-strip{
-  display:flex;align-items:center;gap:12px;
-  background:linear-gradient(135deg,#FFF3DF,#fff);
-  border:1px solid rgba(255,138,61,.25);
-  border-radius:14px;padding:12px 14px;
-  margin-bottom:14px;
+/* 5 Anga cards grid — Tithi, Vaar, Nakshatra, Yoga, Karana */
+#vpanchanga-view .vp-dateresult-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+}
+@media(min-width:560px){
+  #vpanchanga-view .vp-dateresult-grid{grid-template-columns:repeat(3,1fr)}
+}
+#vpanchanga-view .vp-dr-card{
+  background:#fff;border-radius:14px;
+  border:1px solid var(--vp-card-edge);
+  padding:12px 13px;
   box-shadow:0 3px 10px rgba(76,58,150,.06);
 }
+#vpanchanga-view .vp-dr-card.vp-dr-vaar{
+  grid-column:1/-1;
+  display:flex;align-items:center;gap:12px;
+  background:linear-gradient(135deg,#FFF3DF,#fff);
+  border-color:rgba(255,138,61,.25);
+}
 #vpanchanga-view .vp-dr-vaar-planet{
-  width:44px;height:44px;object-fit:contain;
+  width:46px;height:46px;object-fit:contain;
   filter:drop-shadow(0 2px 8px rgba(0,0,0,.2));
   flex-shrink:0;
 }
 #vpanchanga-view .vp-dr-vaar-body{flex:1;min-width:0}
-#vpanchanga-view .vp-dr-vaar-label{
+#vpanchanga-view .vp-dr-label{
   font-size:.55rem;color:var(--vp-ink-faint);
   text-transform:uppercase;letter-spacing:.1em;font-weight:800;
-  margin-bottom:3px;
+  margin-bottom:4px;
 }
-#vpanchanga-view .vp-dr-vaar-name{
-  font-family:'EB Garamond',serif;font-size:1.06rem;font-weight:700;
-  color:var(--vp-sun);line-height:1.2;
+#vpanchanga-view .vp-dr-name{
+  font-family:'EB Garamond',serif;font-size:1.02rem;font-weight:700;
+  color:var(--vp-ink);line-height:1.2;margin-bottom:3px;
 }
-
-/* Anga timeline cards — one per anga, each showing Previous/Current/Next */
-#vpanchanga-view .vp-dr-anga-list{
-  display:flex;flex-direction:column;gap:12px;
+#vpanchanga-view .vp-dr-card.vp-dr-vaar .vp-dr-name{color:var(--vp-sun)}
+#vpanchanga-view .vp-dr-paksha{
+  font-size:.56rem;color:var(--vp-ink-faint);font-weight:600;margin-bottom:3px;
 }
-#vpanchanga-view .vp-dr-anga-card{
-  background:#fff;border-radius:16px;
-  border:1px solid var(--vp-card-edge);
-  box-shadow:0 3px 12px rgba(76,58,150,.07);
-  overflow:hidden;
-}
-#vpanchanga-view .vp-dr-anga-head{
-  display:flex;align-items:center;gap:8px;
-  padding:11px 14px;
-  background:rgba(124,92,252,.06);
-  border-bottom:1px solid var(--vp-card-edge);
-}
-#vpanchanga-view .vp-dr-anga-head-icon{font-size:.95rem}
-#vpanchanga-view .vp-dr-anga-head-label{
-  font-size:.66rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--vp-ink-soft);
-}
-
-/* Timeline rows: Previous / Current / Next */
-#vpanchanga-view .vp-dr-tl-row{
-  display:flex;align-items:flex-start;gap:10px;
-  padding:10px 14px;
-  border-bottom:1px solid var(--vp-card-edge);
-  position:relative;
-}
-#vpanchanga-view .vp-dr-tl-row:last-child{border-bottom:none}
-#vpanchanga-view .vp-dr-tl-row.current{
-  background:linear-gradient(135deg,#FFF9DC,#FFFEF5);
-}
-/* Left timeline rail */
-#vpanchanga-view .vp-dr-tl-marker{
-  flex-shrink:0;width:10px;display:flex;flex-direction:column;align-items:center;
-  padding-top:3px;
-}
-#vpanchanga-view .vp-dr-tl-dot{
-  width:8px;height:8px;border-radius:50%;
-  background:var(--vp-ink-faint);
-}
-#vpanchanga-view .vp-dr-tl-row.current .vp-dr-tl-dot{
-  background:var(--vp-sun);
-  box-shadow:0 0 0 3px rgba(255,138,61,.18);
-}
-#vpanchanga-view .vp-dr-tl-row.prev .vp-dr-tl-dot{background:var(--vp-ink-faint);opacity:.5}
-#vpanchanga-view .vp-dr-tl-row.next .vp-dr-tl-dot{background:var(--vp-violet2)}
-
-#vpanchanga-view .vp-dr-tl-body{flex:1;min-width:0}
-#vpanchanga-view .vp-dr-tl-tag{
-  font-size:.54rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
-  margin-bottom:3px;display:block;
-}
-#vpanchanga-view .vp-dr-tl-row.prev .vp-dr-tl-tag{color:var(--vp-ink-faint)}
-#vpanchanga-view .vp-dr-tl-row.current .vp-dr-tl-tag{color:var(--vp-sun)}
-#vpanchanga-view .vp-dr-tl-row.next .vp-dr-tl-tag{color:var(--vp-violet)}
-
-#vpanchanga-view .vp-dr-tl-name{
-  font-family:'EB Garamond',serif;font-size:.96rem;font-weight:700;
-  color:var(--vp-ink);line-height:1.2;
-}
-#vpanchanga-view .vp-dr-tl-paksha{
-  font-size:.56rem;color:var(--vp-ink-faint);font-weight:600;
-  margin-left:6px;text-transform:uppercase;letter-spacing:.04em;
-}
-#vpanchanga-view .vp-dr-tl-fx{
-  font-size:.66rem;color:var(--vp-ink-soft);line-height:1.4;margin-top:3px;
-}
-#vpanchanga-view .vp-dr-tl-time{
-  font-size:.62rem;color:var(--vp-ink-soft);font-weight:600;margin-top:5px;
-}
-#vpanchanga-view .vp-dr-tl-dur{
-  display:inline-flex;align-items:center;gap:3px;
-  font-size:.58rem;font-weight:800;
-  color:var(--vp-violet);background:rgba(124,92,252,.09);
-  border-radius:999px;padding:2px 9px;margin-top:5px;
+#vpanchanga-view .vp-dr-fx{
+  font-size:.66rem;color:var(--vp-ink-soft);line-height:1.4;
 }
 
 @media(prefers-reduced-motion:reduce){

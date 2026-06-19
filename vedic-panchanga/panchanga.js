@@ -846,32 +846,48 @@ function renderAll(){
     const orbitWrap = document.getElementById('vp-orbit-wrap');
     const centerEl2 = document.getElementById('vp-orbit-center');
 
-    // Orbital speed (deg/s) and radius (px from center) — radius is
-    // scaled from each planet's real average distance from the Sun
-    // (Mercury≈0.39AU ... Saturn≈9.58AU), compressed log-ish so all
-    // 6 rings fit inside the dial while preserving correct ORDER and
-    // relative spacing close to reality.
+    // Orbital speed (deg/s) — vary per planet, closer = faster (Kepler-ish).
+    // Speeds are deliberately non-commensurate (no shared integer ratios)
+    // so planets essentially never realign at the exact same angle twice —
+    // any overlap is a passing moment, not a recurring collision.
     // Rabi(0)=Sun(Surya), Som(1)=Moon(Chandra) -> treated as Earth-orbit proxy,
     // Mangol(2)=Mars, Budh(3)=Mercury, Brihaspati(4)=Jupiter, Sukro(5)=Venus, Shani(6)=Saturn
+    // Distance order (closest→farthest from Sun): Mercury, Venus, Moon, Mars, Jupiter, Saturn
     const PLANET_INFO = {
-      // idx: [ name-order-by-distance, AU,  orbitSpeed°/s, selfSpeed°/s ]
-      3: { au: 0.39,  spd: 26, self: 38 },  // Mercury — closest, fastest
-      5: { au: 0.72,  spd: 19, self: 24 },  // Venus
-      1: { au: 1.00,  spd: 15, self: 22 },  // Moon (Earth proxy)
-      2: { au: 1.52,  spd: 11, self: 20 },  // Mars
-      4: { au: 5.20,  spd: 6,  self: 16 },  // Jupiter
-      6: { au: 9.58,  spd: 4,  self: 12 },  // Saturn — farthest, slowest
+      3: { au: 0.39,  spd: 26.3, self: 38.7 },  // Mercury — closest, fastest
+      5: { au: 0.72,  spd: 18.9, self: 23.6 },  // Venus
+      1: { au: 1.00,  spd: 14.7, self: 21.3 },  // Moon (Earth proxy)
+      2: { au: 1.52,  spd: 11.2, self: 19.4 },  // Mars
+      4: { au: 5.20,  spd: 6.1,  self: 15.8 },  // Jupiter
+      6: { au: 9.58,  spd: 3.9,  self: 12.2 },  // Saturn — farthest, slowest
     };
-    const MIN_R = 46, MAX_R = 122; // px — inner/outer ring bounds inside the dial
-    const AUs = Object.values(PLANET_INFO).map(p=>p.au);
-    const minAU = Math.min(...AUs), maxAU = Math.max(...AUs);
-    // sqrt scaling keeps inner planets from crowding together while still
-    // preserving strict distance ORDER (Mercury < Venus < Moon < Mars < Jupiter < Saturn)
-    function auToRadius(au){
-      const t = (Math.sqrt(au) - Math.sqrt(minAU)) / (Math.sqrt(maxAU) - Math.sqrt(minAU));
-      return MIN_R + t * (MAX_R - MIN_R);
-    }
-    Object.keys(PLANET_INFO).forEach(k=>{ PLANET_INFO[k].r = auToRadius(PLANET_INFO[k].au); });
+
+    // ── Radius assignment: distinct, clearly-separated rings ─────
+    // Sort planets by real distance from Sun (preserving correct
+    // astronomical ORDER), then space their orbit rings evenly across
+    // the dial. With 6 bodies orbiting in a phone-sized circle, true
+    // permanent non-overlap isn't geometrically possible at a tappable
+    // node size — so instead: (1) rings are spaced as far apart as the
+    // dial allows, (2) each planet runs at a different, non-aligning
+    // speed so any overlap is brief, and (3) hover/today/selected nodes
+    // get a z-index lift so the right one is always on top to tap.
+    // Radii are computed from the dial's ACTUAL rendered size (it can
+    // shrink to 92vw on narrow phones), so rings always stay proportional
+    // and never spill outside the circle.
+    const NODE_D = 34; // planet node diameter (px) — keep in sync with CSS
+    const dialPx = orbitWrap.getBoundingClientRect().width || 344;
+    const dialR  = dialPx / 2;
+    const INNER_R = Math.max(36, dialR * 0.26); // clears the Sun's corona
+    const MAX_R   = dialR - (NODE_D/2) - 12;     // stays inside the dial, room for label
+
+    const orderedIdx = Object.keys(PLANET_INFO)
+      .map(k=>parseInt(k))
+      .sort((a,b)=>PLANET_INFO[a].au - PLANET_INFO[b].au); // closest first
+
+    const step = (MAX_R - INNER_R) / (orderedIdx.length - 1);
+    orderedIdx.forEach((vi, i)=>{
+      PLANET_INFO[vi].r = INNER_R + i * step;
+    });
 
     // Stable, spread starting angles (only used the FIRST time we build)
     const START_ANG = { 1:0, 2:52, 3:104, 4:156, 5:208, 6:260 };
@@ -914,7 +930,7 @@ function renderAll(){
       ringGuides.className = 'vp-orbit-ring-guides';
       ringGuides.innerHTML = Object.keys(PLANET_INFO).map(k=>{
         const r = PLANET_INFO[k].r;
-        return `<div class="vp-orbit-guide" style="width:${r*2}px;height:${r*2}px"></div>`;
+        return `<div class="vp-orbit-guide" data-vaar="${k}" style="width:${r*2}px;height:${r*2}px"></div>`;
       }).join('');
       orbitWrap.insertBefore(ringGuides, orbitWrap.querySelector('.vp-orbit-ring'));
 
@@ -1006,8 +1022,8 @@ function renderAll(){
 
         const node = armEl.querySelector('.vp-planet-node');
         if(node){
-          node.style.left = (px - 26) + 'px';
-          node.style.top  = (py - 26) + 'px';
+          node.style.left = (px - 17) + 'px';
+          node.style.top  = (py - 17) + 'px';
         }
         // Planet spins on its own axis — plain rotation, no squash.
         // The "tilted axis" feel comes from each planet's fixed CSS

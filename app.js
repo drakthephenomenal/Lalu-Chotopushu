@@ -9350,7 +9350,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb"];
+const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc"];
 // ── IDs where prose sections need vertical-scroll mode
 const PROSE_IDS = ["nkc"];
 
@@ -9887,7 +9887,8 @@ var _hcjPlayerCleanup = null; // cleanup fn for window listeners added in _hcjRe
 // Audio clip path — works for any stotram that has audio clips
 var _AUDIO_STOTRAMS = {
   hcj: { prefix: "hcj" },
-  bss: { prefix: "bss" }
+  bss: { prefix: "bss" },
+  dkc: { prefix: "dkc" }
 };
 function _hcjAudioPath(i) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];

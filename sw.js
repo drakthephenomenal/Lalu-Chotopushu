@@ -2,7 +2,7 @@
 // Radha Naam Jap — Service Worker
 // Push notifications & FCM removed.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v149';
+const CACHE = 'radha-jap-v148';
 
 // Core assets needed to render the shell — fetched during install
 const CORE_ASSETS = [

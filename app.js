@@ -120,7 +120,7 @@ const App = {
 
   async initDB() {
     return new Promise((res, rej) => {
-      const req = indexedDB.open("RadhaJapDB", 4);
+      const req = indexedDB.open("RadhaJapDB", 5);
       req.onupgradeneeded = (e) => {
         const db = e.target.result;
         if (!db.objectStoreNames.contains("state"))
@@ -137,6 +137,9 @@ const App = {
         // v4: lifetime per-day activityLog archive — no entry limit
         if (!db.objectStoreNames.contains("activityLogArchive"))
           db.createObjectStore("activityLogArchive");
+        // v5: lifetime per-day rich mala log archive {startTs, endTs, sec, mode, n}
+        if (!db.objectStoreNames.contains("malaLogArchive"))
+          db.createObjectStore("malaLogArchive");
       };
       req.onsuccess = (e) => {
         this.db = e.target.result;
@@ -245,6 +248,7 @@ const App = {
       dt28Cycles: this.S.dt28Cycles || 0,
       milestones: this.S.milestones || { reached: {}, lastChecked: 0 },
       hkLang: this.S.hkLang || "hi",
+      ltHK: this.S.ltHK || 0,
       lastLat: this.S.lastLat ?? null,
       lastLng: this.S.lastLng ?? null,
     });
@@ -260,6 +264,17 @@ const App = {
       await this.dbPut("timer28History", tk, this.S.timer28History[tk]);
     if (this.S.malaLog)
       await this.dbPut("malaLog", "today", { date: tk, log: this.S.malaLog });
+    // Archive today's rich mala log entries into lifetime per-day IDB store
+    {
+      const _allTodayMalas = [
+        ...(this.S.malaLog   || []).map(e => typeof e === 'object' && e ? e : { sec: e, mode: 'radha' }),
+        ...(this.S.malaLogRV || []).map(e => typeof e === 'object' && e ? e : { sec: e, mode: 'rv' }),
+        ...(this.S.malaLogHK || []).map(e => typeof e === 'object' && e ? e : { sec: e, mode: 'hk' }),
+      ].filter(e => _secOf(e) > 0);
+      if (_allTodayMalas.length > 0) {
+        await this.dbPut("malaLogArchive", tk, _allTodayMalas).catch(() => {});
+      }
+    }
     // Archive today's activityLog entries into lifetime per-day store (no 500 limit)
     if (this.S.activityLog && this.S.activityLog.length > 0) {
       const todayEntries = this.S.activityLog.filter(
@@ -696,9 +711,9 @@ const App = {
   // Called after any mala log change so all time displays stay in harmony.
   syncTimerFromMalaLog() {
     // Always sync ALL modes independently — mode switching must not corrupt any
-    const radhaSum = (this.S.malaLog || []).reduce((a, b) => a + b, 0);
-    const rvSum = (this.S.malaLogRV || []).reduce((a, b) => a + b, 0);
-    const hkSum = (this.S.malaLogHK || []).reduce((a, b) => a + b, 0);
+    const radhaSum = _sumLog(this.S.malaLog);
+    const rvSum = _sumLog(this.S.malaLogRV);
+    const hkSum = _sumLog(this.S.malaLogHK);
     if (!this.S.timerHistory) this.S.timerHistory = {};
     if (!this.S.timerHistoryRV) this.S.timerHistoryRV = {};
     if (!this.S.timerHistoryHK) this.S.timerHistoryHK = {};
@@ -721,7 +736,7 @@ const App = {
       : isHK
         ? this.S.malaLogHK || []
         : this.S.malaLog || [];
-    return log.reduce((a, b) => a + b, 0);
+    return _sumLog(log);
   },
   ua() {
     const tod = this.gTod(),
@@ -869,31 +884,48 @@ const App = {
     } catch(_){}
     const isRVm = this.S.japMode === "rv";
     const isHKm = this.S.japMode === "hk";
+    // Build a rich mala record with full timestamps
+    const malaEndTs = Date.now();
+    const richEntry = {
+      startTs: _malaRealStart,
+      endTs:   malaEndTs,
+      sec:     malaDuration,
+      mode:    this.S.japMode || "radha",
+    };
     if (isRVm) {
       if (!this.S.malaLogRV) this.S.malaLogRV = [];
-      this.S.malaLogRV.push(malaDuration);
+      this.S.malaLogRV.push(richEntry);
+      richEntry.n = this.S.malaLogRV.length;
     } else if (isHKm) {
       if (!this.S.malaLogHK) this.S.malaLogHK = [];
-      this.S.malaLogHK.push(malaDuration);
+      this.S.malaLogHK.push(richEntry);
+      richEntry.n = this.S.malaLogHK.length;
     } else {
       if (!this.S.malaLog) this.S.malaLog = [];
-      this.S.malaLog.push(malaDuration);
+      this.S.malaLog.push(richEntry);
+      richEntry.n = this.S.malaLog.length;
     }
+    // Archive rich entry to per-day IDB store (lifetime history, no limit)
+    const _archiveTk = this.S.malaStartTk || this.getTk();
+    this.dbGet("malaLogArchive", _archiveTk).then(existing => {
+      const arr = Array.isArray(existing) ? existing : [];
+      arr.push(richEntry);
+      this.dbPut("malaLogArchive", _archiveTk, arr);
+    }).catch(() => {
+      this.dbPut("malaLogArchive", _archiveTk, [richEntry]);
+    });
     // Log mala completion with full timestamp
-    // Use malaLog.length as the mala number — it's always the correct sequential count
-    const malaNum = isRVm
-      ? (this.S.malaLogRV || []).length
-      : (this.S.malaLog || []).length;
+    const malaNum = richEntry.n;
     // Store wall-clock start so the history detail can show accurate start time
     // Real wall-clock start (e.g. 12:01) and real end (e.g. 12:21)
     const malaStartTs = _malaRealStart;
     logActivity({
       t: "mala",
-      ts: Date.now(),
-      startTs: malaStartTs,
-      mode: this.S.japMode,
-      n: malaNum,
-      sec: malaDuration,
+      ts:      richEntry.endTs,
+      startTs: richEntry.startTs,
+      mode:    richEntry.mode,
+      n:       malaNum,
+      sec:     malaDuration,
     });
     // ── GPS START-DATE CREDITING ─────────────────────────────────────
     // If this mala started on a different GPS-local date than it finished
@@ -1718,6 +1750,13 @@ function _legacyCopy(url) {
 }
 
 // ── Toast ──
+// ── malaLog backward-compat helper ──────────────────────────────────────────
+// Old entries were plain numbers (seconds). New entries are rich objects
+// {startTs, endTs, sec, mode, n}. _secOf() extracts seconds from either format.
+function _secOf(e) { return typeof e === 'number' ? e : (e && e.sec) || 0; }
+// _sumLog(arr) returns total seconds from a mixed old/new malaLog array
+function _sumLog(arr) { return (arr || []).reduce((a, b) => a + _secOf(b), 0); }
+
 function toast(msg) {
   let t = document.getElementById("toast");
   if (!t) {
@@ -2515,13 +2554,24 @@ function addManualJap() {
     const now = Date.now();
     const modeStr = isRV ? "rv" : isHK ? "hk" : "radha";
     for (let i = 0; i < malasAdded; i++) {
-      log.push(avgPerMala);
+      const entryStartTs = now + i * 1000 - avgPerMala * 1000;
+      const entryEndTs   = now + i * 1000;
+      const richEntry = { startTs: entryStartTs, endTs: entryEndTs, sec: avgPerMala, mode: modeStr, manual: true };
+      log.push(richEntry);
+      richEntry.n = log.length;
+      // Archive to IDB
+      const _tk = App.S.tk;
+      App.dbGet("malaLogArchive", _tk).then(existing => {
+        const arr = Array.isArray(existing) ? existing : [];
+        arr.push(richEntry);
+        App.dbPut("malaLogArchive", _tk, arr);
+      }).catch(() => { App.dbPut("malaLogArchive", _tk, [richEntry]); });
       logActivity({
         t: "mala",
         mode: modeStr,
         sec: avgPerMala,
-        ts: now + i * 1000,
-        startTs: now + i * 1000 - avgPerMala * 1000,
+        ts: entryEndTs,
+        startTs: entryStartTs,
         manual: true,
       });
     }
@@ -2758,10 +2808,13 @@ function deductTodayJap() {
   if (explicitTime > 0) {
     // Shrink the mala log entries proportionally so total drops by explicitTime,
     // then re-sync timerHistory[today] from the log (single source of truth).
-    const total = log.reduce((a, b) => a + b, 0);
+    const total = _sumLog(log);
     if (total > 0) {
       const factor = Math.max(0, (total - explicitTime) / total);
-      for (let i = 0; i < log.length; i++) log[i] = Math.round(log[i] * factor);
+      for (let i = 0; i < log.length; i++) {
+        const e = log[i]; const s = _secOf(e);
+        log[i] = typeof e === 'object' && e ? { ...e, sec: Math.round(s * factor) } : Math.round(s * factor);
+      }
     }
     App.syncTimerFromMalaLog();
   } else if (log.length > 0) {
@@ -2769,7 +2822,7 @@ function deductTodayJap() {
     const malasToRemove = Math.floor(n / (App.S.ms || 108));
     if (malasToRemove > 0 && malasToRemove <= log.length) {
       const removed = log.splice(log.length - malasToRemove, malasToRemove);
-      const removedTime = removed.reduce((a, b) => a + b, 0);
+      const removedTime = _sumLog(removed);
       const th = App.getCurTimerHistory();
       th[App.S.tk] = Math.max(0, (th[App.S.tk] || 0) - removedTime);
     } else if (malasToRemove === 0 && ratio > 0 && log.length > 0) {
@@ -2958,14 +3011,16 @@ function addJapTimeToday() {
       : App.S.malaLog || (App.S.malaLog = []);
   if (log.length > 0) {
     // Distribute proportionally: each mala entry gets its share
-    const total = log.reduce((a, b) => a + b, 0);
+    const total = _sumLog(log);
     let remaining = secs;
     for (let i = 0; i < log.length - 1; i++) {
-      const share = Math.round((secs * log[i]) / total);
-      log[i] += share;
+      const e = log[i]; const s = _secOf(e);
+      const share = Math.round((secs * s) / total);
+      log[i] = typeof e === 'object' && e ? { ...e, sec: s + share } : s + share;
       remaining -= share;
     }
-    log[log.length - 1] += remaining; // last entry absorbs rounding difference
+    const el = log[log.length - 1]; const sl = _secOf(el);
+    log[log.length - 1] = typeof el === 'object' && el ? { ...el, sec: sl + remaining } : sl + remaining;
   } else {
     // No malas done yet — add as a single time-adjustment entry
     log.push(secs);
@@ -3037,15 +3092,17 @@ function deductJapTimeToday() {
   const isRV = App.S.japMode === "rv";
   const log = isRV ? App.S.malaLogRV || [] : App.S.malaLog || [];
   if (log.length > 0) {
-    const total = log.reduce((a, b) => a + b, 0);
+    const total = _sumLog(log);
     if (total > 0) {
       let remaining = secs;
       for (let i = 0; i < log.length - 1; i++) {
-        const share = Math.round((secs * log[i]) / total);
-        log[i] = Math.max(1, log[i] - share); // keep each entry at least 1s
+        const e = log[i]; const s = _secOf(e);
+        const share = Math.round((secs * s) / total);
+        log[i] = typeof e === 'object' && e ? { ...e, sec: Math.max(1, s - share) } : Math.max(1, s - share);
         remaining -= share;
       }
-      log[log.length - 1] = Math.max(1, log[log.length - 1] - remaining);
+      const el = log[log.length - 1]; const sl = _secOf(el);
+      log[log.length - 1] = typeof el === 'object' && el ? { ...el, sec: Math.max(1, sl - remaining) } : Math.max(1, sl - remaining);
     }
   }
   App.save();
@@ -3699,7 +3756,7 @@ function renderMalaLog() {
       : App.S.malaLog || [];
   // Filter out entries with 0 or invalid values
   const log = rawLog.filter(
-    (sec) => typeof sec === "number" && sec > 0 && isFinite(sec),
+    (e) => { const s = _secOf(e); return s > 0 && isFinite(s); },
   );
 
   if (countEl)
@@ -3714,7 +3771,7 @@ function renderMalaLog() {
 
   // Average per mala
   if (avgEl && log.length > 0) {
-    const totalSec = log.reduce((a, b) => a + b, 0);
+    const totalSec = _sumLog(log);
     const avgSec = Math.round(totalSec / log.length);
     const _ah = Math.floor(avgSec / 3600),
       _am = Math.floor((avgSec % 3600) / 60),
@@ -3733,7 +3790,8 @@ function renderMalaLog() {
       inlineEl.textContent = "· " + log.length + " malas · avg " + avgStr;
   }
 
-  log.forEach((sec, i) => {
+  log.forEach((entry, i) => {
+    const sec = _secOf(entry);
     const _mh = Math.floor(sec / 3600),
       _mm = Math.floor((sec % 3600) / 60),
       _ms2 = sec % 60;
@@ -3743,14 +3801,30 @@ function renderMalaLog() {
         : _mm > 0
           ? _mm + "m " + String(_ms2).padStart(2, "0") + "s"
           : _ms2 + "s";
+    // Build timestamp label if rich entry
+    let tsHtml = "";
+    if (entry && typeof entry === 'object' && entry.startTs && entry.endTs) {
+      const fmt = ts => {
+        const d = new Date(ts);
+        const h = d.getHours(), m = d.getMinutes(), s = d.getSeconds();
+        return (h % 12 || 12) + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0') + ' ' + (h < 12 ? 'AM' : 'PM');
+      };
+      tsHtml = '<div style="font-size:10px;color:var(--td);margin-top:2px;line-height:1.3;">' +
+        fmt(entry.startTs) + ' → ' + fmt(entry.endTs) +
+        (entry.manual ? ' <span style="opacity:0.5">(manual)</span>' : '') +
+        '</div>';
+    }
     const row = document.createElement("div");
     row.style.cssText =
-      "display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:rgba(46,204,113,0.07);border:1px solid rgba(46,204,113,0.15);border-radius:9px;";
+      "display:flex;align-items:flex-start;justify-content:space-between;padding:7px 10px;background:rgba(46,204,113,0.07);border:1px solid rgba(46,204,113,0.15);border-radius:9px;gap:8px;";
     row.innerHTML =
+      '<div style="display:flex;flex-direction:column;min-width:0;">' +
       '<span style="font-size:11px;color:var(--td)">Mala ' +
       (i + 1) +
       "</span>" +
-      '<span style="display:flex;align-items:center;gap:8px">' +
+      tsHtml +
+      '</div>' +
+      '<span style="display:flex;align-items:center;gap:8px;flex-shrink:0">' +
       "<span style=\"font-family:'EB Garamond',serif;font-size:16px;color:var(--green);letter-spacing:0.5px\">" +
       durStr +
       "</span>" +
@@ -3771,8 +3845,9 @@ function editMalaEntry(idx) {
   const log = isRV ? App.S.malaLogRV : isHK ? App.S.malaLogHK : App.S.malaLog;
   if (!log || idx >= log.length) return;
   const cur = log[idx];
-  const curM = Math.floor(cur / 60),
-    curS = cur % 60;
+  const curSec = _secOf(cur);
+  const curM = Math.floor(curSec / 60),
+    curS = curSec % 60;
   const input = prompt(
     "Edit Mala " + (idx + 1) + " time (format: M:SS)",
     curM + ":" + String(curS).padStart(2, "0"),
@@ -3784,7 +3859,8 @@ function editMalaEntry(idx) {
     toast("Invalid time");
     return;
   }
-  log[idx] = newSecs;
+  // Preserve rich object shape, just update sec
+  if (typeof cur === 'object' && cur !== null) { log[idx] = { ...cur, sec: newSecs }; } else { log[idx] = newSecs; }
   // Sync timerHistory from the updated mala log sum (single source of truth)
   App.syncTimerFromMalaLog();
   App.save();
@@ -3956,6 +4032,7 @@ function doReset() {
     App.dbClearStore("timerHistoryRV");
     App.dbClearStore("timerHistoryHK").catch(() => {});
     App.dbClearStore("activityLogArchive");
+    App.dbClearStore("malaLogArchive").catch(() => {});
     App.dbClearStore("malaLog");
     App.resetTimer();
     ["dtIn", "ltIn"].forEach((id) => {
@@ -4000,40 +4077,80 @@ function cm() {
 }
 
 // ── Backup / Restore ──
-function exportAllData() {
+async function exportAllData() {
+  // Gather lifetime mala archive from IDB (all dates, not just today)
+  let malaLogArchiveAll = {};
+  try {
+    // IDB keys for malaLogArchive are YYYY-MM-DD strings
+    const allKeys = await new Promise((res, rej) => {
+      const tx = App.db.transaction("malaLogArchive", "readonly");
+      const req = tx.objectStore("malaLogArchive").getAllKeys();
+      req.onsuccess = () => res(req.result);
+      req.onerror  = () => rej(req.error);
+    });
+    for (const k of allKeys) {
+      const val = await App.dbGet("malaLogArchive", k).catch(() => null);
+      if (val) malaLogArchiveAll[k] = val;
+    }
+  } catch (_) {}
+
   const backup = {
-    _version: 3,
+    _version: 4,
     _exported: new Date().toISOString(),
+    // ── Jap counts ──
     history: App.S.history || {},
     h28: App.S.h28 || {},
+    historyRV: App.S.historyRV || {},
+    historyHK: App.S.historyHK || {},
+    // ── Jap time ──
     timerHistory: App.S.timerHistory || {},
     timer28History: App.S.timer28History || {},
+    timerHistoryRV: App.S.timerHistoryRV || {},
+    timerHistoryHK: App.S.timerHistoryHK || {},
+    // ── Lifetime / session totals ──
+    dt: App.S.dt || 0,
+    lt: App.S.lt || 0,
+    dtRV: App.S.dtRV || 0,
+    ltRV: App.S.ltRV || 0,
+    dtHK: App.S.dtHK || 0,
+    ltHK: App.S.ltHK || 0,
+    dt28Cycles: App.S.dt28Cycles || 0,
+    nameJapDeduct: App.S.nameJapDeduct || 0,
+    nameJapDeductRV: App.S.nameJapDeductRV || 0,
+    nameJapDeductHK: App.S.nameJapDeductHK || 0,
+    // ── Today's rich mala logs (start/end timestamps) ──
+    malaLog: App.S.malaLog || [],
+    malaLogRV: App.S.malaLogRV || [],
+    malaLogHK: App.S.malaLogHK || [],
+    malaLogDate: App.S.tk,
+    // ── All-time mala archive (keyed by YYYY-MM-DD) ──
+    malaLogArchive: malaLogArchiveAll,
+    // ── Activity log ──
+    activityLog: App.S.activityLog || [],
+    // ── Settings ──
+    ms: App.S.ms || 108,
+    japMode: App.S.japMode || "radha",
+    gaudiyaMode: App.S.gaudiyaMode || false,
+    hkLang: App.S.hkLang || "hi",
+    cfg: App.S.cfg || {},
+    // ── Content ──
     stotrams: App.S.stotrams || {},
     brahma: App.S.brahma || {},
     customSt: App.S.customSt || [],
     sankalpas: App.S.sankalpas || [],
     occasions: App.S.occasions || {},
-    ms: App.S.ms || 108,
-    dt: App.S.dt || 0,
-    lt: App.S.lt || 0,
-    nameJapDeduct: App.S.nameJapDeduct || 0,
-    cfg: App.S.cfg || {},
-    malaLog: App.S.malaLog || [],
-    malaLogDate: App.S.tk,
+    // ── Sadhana ──
     brahmacharya_start_date: App.S.brahmacharya_start_date || "",
-    japMode: App.S.japMode || "radha",
-    historyRV: App.S.historyRV || {},
-    timerHistoryRV: App.S.timerHistoryRV || {},
-    dtRV: App.S.dtRV || 0,
-    ltRV: App.S.ltRV || 0,
-    nameJapDeductRV: App.S.nameJapDeductRV || 0,
-    malaLogRV: App.S.malaLogRV || [],
-    historyHK: App.S.historyHK || {},
-    timerHistoryHK: App.S.timerHistoryHK || {},
-    dtHK: App.S.dtHK || 0,
-    nameJapDeductHK: App.S.nameJapDeductHK || 0,
-    malaLogHK: App.S.malaLogHK || [],
-    gaudiyaMode: App.S.gaudiyaMode || false,
+    sadhanaStart: App.S.sadhanaStart || "",
+    milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
+    // ── Leaderboard ──
+    lbOptIn: App.S.lbOptIn || false,
+    lbDisplayName: App.S.lbDisplayName || "",
+    // ── UI preferences ──
+    bgRadhaVallabh: App.S.bgRadhaVallabh ?? 1,
+    bgHitju: App.S.bgHitju ?? 1,
+    bgGurudev: App.S.bgGurudev ?? 1,
+    migrationV2Done: App.S.migrationV2Done || false,
   };
   try {
     const json = JSON.stringify(backup, null, 2);
@@ -4074,63 +4191,130 @@ function importAllData(input) {
   const st = document.getElementById("restoreStatus");
   if (st) st.textContent = "Reading file…";
   const reader = new FileReader();
-  reader.onload = function (e) {
+  reader.onload = async function (e) {
     try {
       const data = JSON.parse(e.target.result);
+
+      // ── Jap counts ──
       if (data.history) App.S.history = { ...App.S.history, ...data.history };
       if (data.h28) App.S.h28 = { ...App.S.h28, ...data.h28 };
+      if (data.historyRV)
+        App.S.historyRV = { ...App.S.historyRV, ...data.historyRV };
+      if (data.historyHK)
+        App.S.historyHK = { ...App.S.historyHK, ...data.historyHK };
+
+      // ── Jap time ──
       if (data.timerHistory)
         App.S.timerHistory = { ...App.S.timerHistory, ...data.timerHistory };
       if (data.timer28History)
-        App.S.timer28History = {
-          ...App.S.timer28History,
-          ...data.timer28History,
-        };
-      if (data.stotrams)
-        App.S.stotrams = { ...App.S.stotrams, ...data.stotrams };
-      if (data.brahma) App.S.brahma = { ...App.S.brahma, ...data.brahma };
-      if (data.customSt) App.S.customSt = data.customSt;
-      if (data.sankalpas) App.S.sankalpas = data.sankalpas;
-      if (data.occasions)
-        App.S.occasions = { ...App.S.occasions, ...data.occasions };
+        App.S.timer28History = { ...App.S.timer28History, ...data.timer28History };
+      if (data.timerHistoryRV)
+        App.S.timerHistoryRV = { ...App.S.timerHistoryRV, ...data.timerHistoryRV };
+      if (data.timerHistoryHK)
+        App.S.timerHistoryHK = { ...App.S.timerHistoryHK, ...data.timerHistoryHK };
+
+      // ── Lifetime / session totals ──
       if (data.ms) App.S.ms = data.ms;
       if (data.dt !== undefined) App.S.dt = data.dt;
       if (data.lt !== undefined) App.S.lt = data.lt;
-      if (data.nameJapDeduct !== undefined)
-        App.S.nameJapDeduct = data.nameJapDeduct;
-      if (data.cfg) App.S.cfg = { ...App.S.cfg, ...data.cfg };
-      if (data.historyRV)
-        App.S.historyRV = { ...App.S.historyRV, ...data.historyRV };
-      if (data.timerHistoryRV)
-        App.S.timerHistoryRV = {
-          ...App.S.timerHistoryRV,
-          ...data.timerHistoryRV,
-        };
-      if (data.japMode) App.S.japMode = data.japMode;
       if (data.dtRV !== undefined) App.S.dtRV = data.dtRV;
       if (data.ltRV !== undefined) App.S.ltRV = data.ltRV;
-      if (data.nameJapDeductRV !== undefined)
-        App.S.nameJapDeductRV = data.nameJapDeductRV;
-      if (data.malaLogRV) App.S.malaLogRV = data.malaLogRV;
-      if (data.historyHK)
-        App.S.historyHK = { ...App.S.historyHK, ...data.historyHK };
-      if (data.timerHistoryHK)
-        App.S.timerHistoryHK = {
-          ...App.S.timerHistoryHK,
-          ...data.timerHistoryHK,
-        };
       if (data.dtHK !== undefined) App.S.dtHK = data.dtHK;
-      if (data.nameJapDeductHK !== undefined)
-        App.S.nameJapDeductHK = data.nameJapDeductHK;
+      if (data.ltHK !== undefined) App.S.ltHK = data.ltHK;
+      if (data.dt28Cycles !== undefined) App.S.dt28Cycles = data.dt28Cycles;
+      if (data.nameJapDeduct !== undefined) App.S.nameJapDeduct = data.nameJapDeduct;
+      if (data.nameJapDeductRV !== undefined) App.S.nameJapDeductRV = data.nameJapDeductRV;
+      if (data.nameJapDeductHK !== undefined) App.S.nameJapDeductHK = data.nameJapDeductHK;
+
+      // ── Today's mala logs ──
+      if (data.malaLog) App.S.malaLog = data.malaLog;
+      if (data.malaLogRV) App.S.malaLogRV = data.malaLogRV;
       if (data.malaLogHK) App.S.malaLogHK = data.malaLogHK;
+
+      // ── All-time mala archive → restore to IDB ──
+      if (data.malaLogArchive && typeof data.malaLogArchive === 'object') {
+        for (const [date, malas] of Object.entries(data.malaLogArchive)) {
+          if (Array.isArray(malas) && malas.length > 0) {
+            // Merge with any existing IDB entries for this date
+            const existing = await App.dbGet("malaLogArchive", date).catch(() => null);
+            const merged = Array.isArray(existing) ? [...existing] : [];
+            const existingEndTs = new Set(merged.map(m => m.endTs).filter(Boolean));
+            for (const m of malas) {
+              if (!m.endTs || !existingEndTs.has(m.endTs)) merged.push(m);
+            }
+            await App.dbPut("malaLogArchive", date, merged).catch(() => {});
+          }
+        }
+      }
+
+      // ── Activity log ──
+      if (data.activityLog) {
+        const remote = data.activityLog || [];
+        const local = App.S.activityLog || [];
+        const seen = new Set();
+        const merged = [...remote, ...local].filter(ev => {
+          const key = ev.t + "_" + ev.ts;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        merged.sort((a, b) => a.ts - b.ts);
+        App.S.activityLog = merged.slice(-2000);
+      }
+
+      // ── Content ──
+      if (data.stotrams) App.S.stotrams = { ...App.S.stotrams, ...data.stotrams };
+      if (data.brahma) App.S.brahma = { ...App.S.brahma, ...data.brahma };
+      if (data.customSt) App.S.customSt = data.customSt;
+      if (data.sankalpas) App.S.sankalpas = data.sankalpas;
+      if (data.occasions) App.S.occasions = { ...App.S.occasions, ...data.occasions };
+      if (data.cfg) App.S.cfg = { ...App.S.cfg, ...data.cfg };
+
+      // ── Settings ──
+      if (data.japMode) App.S.japMode = data.japMode;
       if (data.gaudiyaMode !== undefined) App.S.gaudiyaMode = data.gaudiyaMode;
+      if (data.hkLang) App.S.hkLang = data.hkLang;
+
+      // ── Sadhana ──
+      if (data.brahmacharya_start_date) App.S.brahmacharya_start_date = data.brahmacharya_start_date;
+      if (data.sadhanaStart) {
+        App.S.sadhanaStart = data.sadhanaStart;
+        try { localStorage.setItem("rjap_sadhana_start", data.sadhanaStart); } catch (_) {}
+      }
+      if (data.milestones) {
+        const localReached = (App.S.milestones && App.S.milestones.reached) || {};
+        const remoteReached = data.milestones.reached || {};
+        App.S.milestones = {
+          reached: { ...remoteReached, ...localReached },
+          lastChecked: Math.max(
+            (App.S.milestones && App.S.milestones.lastChecked) || 0,
+            data.milestones.lastChecked || 0,
+          ),
+        };
+        try { localStorage.setItem("rjap_milestones", JSON.stringify(App.S.milestones)); } catch (_) {}
+      }
+
+      // ── Leaderboard ──
+      if (data.lbOptIn !== undefined) App.S.lbOptIn = data.lbOptIn;
+      if (data.lbDisplayName !== undefined) App.S.lbDisplayName = data.lbDisplayName;
+
+      // ── UI preferences ──
+      if (data.bgRadhaVallabh !== undefined) App.S.bgRadhaVallabh = data.bgRadhaVallabh;
+      if (data.bgHitju !== undefined) App.S.bgHitju = data.bgHitju;
+      if (data.bgGurudev !== undefined) App.S.bgGurudev = data.bgGurudev;
+      if (data.migrationV2Done !== undefined) App.S.migrationV2Done = data.migrationV2Done;
+
+      // ── Sync baselines ──
       App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history));
       App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28));
       App.S.syncBaselineTimer = JSON.parse(JSON.stringify(App.S.timerHistory));
-      App.S.syncBaselineTimer28 = JSON.parse(
-        JSON.stringify(App.S.timer28History),
-      );
-      App.save();
+      App.S.syncBaselineTimer28 = JSON.parse(JSON.stringify(App.S.timer28History));
+      App.S.syncBaselineRV = JSON.parse(JSON.stringify(App.S.historyRV || {}));
+      App.S.syncBaselineTimerRV = JSON.parse(JSON.stringify(App.S.timerHistoryRV || {}));
+      App.S.syncBaselineHK = JSON.parse(JSON.stringify(App.S.historyHK || {}));
+      App.S.syncBaselineTimerHK = JSON.parse(JSON.stringify(App.S.timerHistoryHK || {}));
+
+      await App.save();
       switchJapMode(App.S.japMode || "radha");
       renderSt();
       u28();
@@ -5409,7 +5593,7 @@ async function clearLocalUserData(uid) {
         tx.oncomplete = res; tx.onerror = res; tx.onabort = res;
       });
       // Clear shared per-date stores (not UID-scoped in IDB schema).
-      for (const store of ["history","h28","timerHistory","timer28History","malaLog","activityLogArchive"]) {
+      for (const store of ["history","h28","timerHistory","timer28History","malaLog","activityLogArchive","malaLogArchive"]) {
         try { await App.dbClearStore(store); } catch (_) {}
       }
     }
@@ -5486,6 +5670,59 @@ async function fbSignOut() {
 
   fbAuth.signOut().then(() => toast("Signed out 🙏"));
 }
+// ── Push today's rich mala logs to Firestore archive subcollection ───────────
+// Path: users/{uid}/malaArchive/{YYYY-MM-DD}
+// Document shape: { date, malas: [{startTs,endTs,sec,mode,n,manual?}], updatedAt }
+// Uses set-with-merge so concurrent pushes from multiple devices union safely.
+async function fbPushMalaArchive() {
+  if (!fbUser || !fbDb) return;
+  if (isGhostMode()) return;
+  const tk = App.S.tk;
+  if (!tk) return;
+
+  // Gather all today's malas across all modes
+  const allToday = [];
+  const _push = (arr, mode) => {
+    (arr || []).forEach((e, idx) => {
+      if (!e) return;
+      const s = _secOf(e);
+      if (!s || !isFinite(s)) return;
+      allToday.push({
+        startTs: (typeof e === 'object' && e.startTs) ? e.startTs : null,
+        endTs:   (typeof e === 'object' && e.endTs)   ? e.endTs   : null,
+        sec:     s,
+        mode:    (typeof e === 'object' && e.mode) ? e.mode : mode,
+        n:       (typeof e === 'object' && e.n)    ? e.n    : idx + 1,
+        manual:  (typeof e === 'object' && e.manual) ? true : false,
+      });
+    });
+  };
+  _push(App.S.malaLog,   "radha");
+  _push(App.S.malaLogRV, "rv");
+  _push(App.S.malaLogHK, "hk");
+
+  if (!allToday.length) return;
+
+  // Sort by endTs so the archive is always chronological
+  allToday.sort((a, b) => (a.endTs || 0) - (b.endTs || 0));
+
+  try {
+    await fbDb
+      .collection("users")
+      .doc(fbUser.uid)
+      .collection("malaArchive")
+      .doc(tk)
+      .set({
+        date:      tk,
+        malas:     allToday,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+  } catch (e) {
+    // Non-critical — main doc already saved
+    console.warn("malaArchive set failed:", e.message);
+  }
+}
+
 async function fbPushDelta() {
   if (isGhostMode()) return; // ghost mode: read-only
   return fbPushFull();
@@ -5527,12 +5764,12 @@ async function fbPushFull() {
     ltRV: App.S.ltRV || 0,
     nameJapDeductRV: App.S.nameJapDeductRV || 0,
     malaLogRV: App.S.malaLogRV || [],
-    brahmacharya_start_date: App.S.brahmacharya_start_date || "",
     activityLog: App.S.activityLog || [],
     sadhanaStart: App.S.sadhanaStart || "",
     historyHK: App.S.historyHK || {},
     timerHistoryHK: App.S.timerHistoryHK || {},
     dtHK: App.S.dtHK || 0,
+    ltHK: App.S.ltHK || 0,
     nameJapDeductHK: App.S.nameJapDeductHK || 0,
     malaLogHK: App.S.malaLogHK || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
@@ -5543,6 +5780,10 @@ async function fbPushFull() {
     bgRadhaVallabh: App.S.bgRadhaVallabh ?? 1,
     bgHitju: App.S.bgHitju ?? 1,
     bgGurudev: App.S.bgGurudev ?? 1,
+    hkLang: App.S.hkLang || "hi",
+    migrationV2Done: App.S.migrationV2Done || false,
+    lastLat: App.S.lastLat ?? null,
+    lastLng: App.S.lastLng ?? null,
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId,
   };
@@ -5555,6 +5796,9 @@ async function fbPushFull() {
       .set(payload);
     // ── Push leaderboard entry if opted in ──
     pushLeaderboard().catch(() => {});
+    // ── Push today's rich mala log to per-day archive subcollection ──
+    // users/{uid}/malaArchive/{YYYY-MM-DD} — cumulative, never overwritten
+    fbPushMalaArchive().catch(e => console.warn("malaArchive push failed:", e.message));
     App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history || {}));
     App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28 || {}));
     App.S.syncBaselineTimer = JSON.parse(
@@ -5707,6 +5951,11 @@ function fbApplyRemote(d) {
   if (d.bgRadhaVallabh !== undefined) App.S.bgRadhaVallabh = d.bgRadhaVallabh;
   if (d.bgHitju !== undefined) App.S.bgHitju = d.bgHitju;
   if (d.bgGurudev !== undefined) App.S.bgGurudev = d.bgGurudev;
+  if (d.hkLang !== undefined) App.S.hkLang = d.hkLang;
+  if (d.ltHK !== undefined) App.S.ltHK = d.ltHK;
+  if (d.migrationV2Done !== undefined) App.S.migrationV2Done = d.migrationV2Done;
+  if (d.lastLat !== undefined) App.S.lastLat = d.lastLat;
+  if (d.lastLng !== undefined) App.S.lastLng = d.lastLng;
 
   // Old saves wrote both startDate AND endDate to occasions. Remove the endDate entry
 
@@ -9350,7 +9599,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc"];
+const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb"];
 // ── IDs where prose sections need vertical-scroll mode
 const PROSE_IDS = ["nkc"];
 
@@ -9887,8 +10136,7 @@ var _hcjPlayerCleanup = null; // cleanup fn for window listeners added in _hcjRe
 // Audio clip path — works for any stotram that has audio clips
 var _AUDIO_STOTRAMS = {
   hcj: { prefix: "hcj" },
-  bss: { prefix: "bss" },
-  dkc: { prefix: "dkc" }
+  bss: { prefix: "bss" }
 };
 function _hcjAudioPath(i) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
@@ -12651,14 +12899,72 @@ async function checkAutoBackup() {
   }
   
   // Also only run if we have App.S initialized to prevent empty backups
-  if (lastBackup < mostRecentThreshold.getTime() && window.App && App.S) {
-    let backupData = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      let key = localStorage.key(i);
-      backupData[key] = localStorage.getItem(key);
-    }
-    
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], {type: 'application/json'});
+  if (lastBackup < mostRecentThreshold.getTime() && window.App && App.S && App.db) {
+    // Gather lifetime mala archive from IDB
+    let malaLogArchiveAll = {};
+    try {
+      const allKeys = await new Promise((res, rej) => {
+        const tx = App.db.transaction("malaLogArchive", "readonly");
+        const req = tx.objectStore("malaLogArchive").getAllKeys();
+        req.onsuccess = () => res(req.result);
+        req.onerror  = () => rej(req.error);
+      });
+      for (const k of allKeys) {
+        const val = await App.dbGet("malaLogArchive", k).catch(() => null);
+        if (val) malaLogArchiveAll[k] = val;
+      }
+    } catch (_) {}
+
+    const backup = {
+      _version: 4,
+      _exported: now.toISOString(),
+      _autoBackup: true,
+      history: App.S.history || {},
+      h28: App.S.h28 || {},
+      historyRV: App.S.historyRV || {},
+      historyHK: App.S.historyHK || {},
+      timerHistory: App.S.timerHistory || {},
+      timer28History: App.S.timer28History || {},
+      timerHistoryRV: App.S.timerHistoryRV || {},
+      timerHistoryHK: App.S.timerHistoryHK || {},
+      dt: App.S.dt || 0,
+      lt: App.S.lt || 0,
+      dtRV: App.S.dtRV || 0,
+      ltRV: App.S.ltRV || 0,
+      dtHK: App.S.dtHK || 0,
+      ltHK: App.S.ltHK || 0,
+      dt28Cycles: App.S.dt28Cycles || 0,
+      nameJapDeduct: App.S.nameJapDeduct || 0,
+      nameJapDeductRV: App.S.nameJapDeductRV || 0,
+      nameJapDeductHK: App.S.nameJapDeductHK || 0,
+      malaLog: App.S.malaLog || [],
+      malaLogRV: App.S.malaLogRV || [],
+      malaLogHK: App.S.malaLogHK || [],
+      malaLogDate: App.S.tk,
+      malaLogArchive: malaLogArchiveAll,
+      activityLog: App.S.activityLog || [],
+      ms: App.S.ms || 108,
+      japMode: App.S.japMode || "radha",
+      gaudiyaMode: App.S.gaudiyaMode || false,
+      hkLang: App.S.hkLang || "hi",
+      cfg: App.S.cfg || {},
+      stotrams: App.S.stotrams || {},
+      brahma: App.S.brahma || {},
+      customSt: App.S.customSt || [],
+      sankalpas: App.S.sankalpas || [],
+      occasions: App.S.occasions || {},
+      brahmacharya_start_date: App.S.brahmacharya_start_date || "",
+      sadhanaStart: App.S.sadhanaStart || "",
+      milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
+      lbOptIn: App.S.lbOptIn || false,
+      lbDisplayName: App.S.lbDisplayName || "",
+      bgRadhaVallabh: App.S.bgRadhaVallabh ?? 1,
+      bgHitju: App.S.bgHitju ?? 1,
+      bgGurudev: App.S.bgGurudev ?? 1,
+      migrationV2Done: App.S.migrationV2Done || false,
+    };
+
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

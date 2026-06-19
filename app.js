@@ -536,13 +536,9 @@ const App = {
 
   // ── Timer ──
   fmtTime(s) {
-    // Defensive guard: any corrupted/non-numeric input (NaN, undefined,
-    // negative, Infinity) must never reach the display as "NaN:NaN:NaN".
-    s = Number(s);
-    if (!isFinite(s) || s < 0) s = 0;
     const h = Math.floor(s / 3600),
       m = Math.floor((s % 3600) / 60),
-      sc = Math.floor(s % 60);
+      sc = s % 60;
     return (
       String(h).padStart(2, "0") +
       ":" +
@@ -666,26 +662,22 @@ const App = {
   //   + live in-progress deltas from whichever timer is currently running.
   getTotalJapSecondsToday() {
     const tk = this.S.tk;
-    const radhaSec = Number((this.S.timerHistory   || {})[tk]) || 0;
-    const rvSec    = Number((this.S.timerHistoryRV || {})[tk]) || 0;
-    const hkSec    = Number((this.S.timerHistoryHK || {})[tk]) || 0;
-    const n28Sec   = Number((this.S.timer28History || {})[tk]) || 0;
+    const radhaSec = (this.S.timerHistory   || {})[tk] || 0;
+    const rvSec    = (this.S.timerHistoryRV || {})[tk] || 0;
+    const hkSec    = (this.S.timerHistoryHK || {})[tk] || 0;
+    const n28Sec   = (this.S.timer28History || {})[tk] || 0;
     // Live delta for the IN-PROGRESS mala only. timerHistory[tk] already holds
     // the sum of COMPLETED mala durations (kept in sync by syncTimerFromMalaLog),
     // so adding currentMalaSeconds gives today's true running total without
     // double-counting completed malas.
-    const liveJap = Number(this.currentMalaSeconds) || 0;
+    const liveJap = this.currentMalaSeconds || 0;
     // live delta from the 28-Names timer (elapsed since session start − already flushed)
     let live28 = 0;
-    if (this._n28TotalStart && !this._n28Paused && isFinite(this._n28TotalStart)) {
+    if (this._n28TotalStart && !this._n28Paused) {
       const elapsed = Math.floor((Date.now() - this._n28TotalStart) / 1000);
-      if (isFinite(elapsed)) {
-        live28 = Math.max(0, elapsed - (Number(this._n28SavedSecs) || 0));
-      }
+      live28 = Math.max(0, elapsed - (this._n28SavedSecs || 0));
     }
-    const total = radhaSec + rvSec + hkSec + n28Sec + liveJap + live28;
-    // Final safety net: never let an unforeseen corruption surface as NaN.
-    return isFinite(total) ? total : 0;
+    return radhaSec + rvSec + hkSec + n28Sec + liveJap + live28;
   },
 
   updateTimerToday() {

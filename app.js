@@ -194,6 +194,8 @@ const App = {
   },
 
   async save() {
+    // GHOST MODE: never write to IDB while viewing another user's data.
+    if (isGhostMode()) return;
     // GUEST MODE: never persist to IDB or localStorage — guest jap is intentionally ephemeral.
     // Only signed-in users get local persistence (as an offline buffer for cloud sync).
     if (!this._uid) return;
@@ -988,6 +990,7 @@ const App = {
 
   // ── Main tap ──
   ht(e) {
+    if (isGhostMode()) return; // ghost mode: read-only, no jap
     // Suppress synthesized mousedown that follows a touchstart on the same tap
     if (e) {
       try { e.preventDefault(); } catch (_) {}
@@ -1056,6 +1059,7 @@ const App = {
   },
 
   undo1() {
+    if (isGhostMode()) return; // ghost mode: read-only
     const isRV = this.S.japMode === "rv";
     const isHK = this.S.japMode === "hk";
     const hist = isRV
@@ -1306,6 +1310,7 @@ const App = {
   // ── Silent Monk Auto Backup: triggered on every mala complete ──
   silentMonkBackup() {
     if (!fbUser) return;
+    if (isGhostMode()) return; // ghost mode: read-only
     // Delta push to Firebase (near-instant cross-device sync)
     clearTimeout(this.fbDebouncePush);
     fbPushDelta();
@@ -2464,6 +2469,7 @@ function toggleCs(bodyId, chevId) {
 
 // ── Manual Jap Entry ──
 function addManualJap() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const n = parseInt(document.getElementById("manualJapIn").value) || 0;
   if (n <= 0) {
     toast("Please enter a number > 0");
@@ -2627,6 +2633,7 @@ function addManualJap() {
 }
 
 function addPrevJap() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const n = parseInt(document.getElementById("prevJapIn").value) || 0;
   if (n <= 0) {
     toast("Please enter a number > 0");
@@ -2653,6 +2660,7 @@ function addPrevJap() {
 
 // ── Deduct Name Jap from Lifetime ──
 function addNameJapDeduct() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const n = parseInt(document.getElementById("nameJapDeductIn").value) || 0;
   if (n <= 0) {
     toast("Please enter a number > 0");
@@ -2675,6 +2683,7 @@ function addNameJapDeduct() {
 }
 
 function removeNameJapDeduct() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const n = parseInt(document.getElementById("nameJapRestoreIn").value) || 0;
   if (n <= 0) {
     toast("Please enter a number > 0");
@@ -2712,6 +2721,7 @@ function removeNameJapDeduct() {
 }
 
 function deductTodayJap() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const n = parseInt(document.getElementById("deductTodayIn").value) || 0;
   if (n <= 0) {
     toast("Please enter a number > 0");
@@ -2794,6 +2804,7 @@ function deductTodayJap() {
 }
 
 function deductOtherJap() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const date = (document.getElementById("deductOtherDate").value || "").trim();
   const n = parseInt(document.getElementById("deductOtherIn").value) || 0;
   if (!date) {
@@ -2859,6 +2870,7 @@ function deductOtherJap() {
 }
 
 function addOtherDayJap() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const date = (document.getElementById("addJapOtherDate").value || "").trim();
   const n = parseInt(document.getElementById("addJapOtherIn").value) || 0;
   if (!date) {
@@ -2927,6 +2939,7 @@ function _jtSecs(minId, secId) {
 }
 
 function addJapTimeToday() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const secs = _jtSecs("jtAddTodayMin", "jtAddTodaySec");
   if (secs <= 0) {
     toast("Please enter at least 1 minute");
@@ -2969,6 +2982,7 @@ function addJapTimeToday() {
 }
 
 function addJapTimeOther() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const date = (document.getElementById("jtAddOtherDate").value || "").trim();
   const secs = _jtSecs("jtAddOtherMin", "jtAddOtherSec");
   if (!date) {
@@ -3000,6 +3014,7 @@ function addJapTimeOther() {
 }
 
 function deductJapTimeToday() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const secs = _jtSecs("jtDedTodayMin", "jtDedTodaySec");
   if (secs <= 0) {
     toast("Please enter at least 1 minute");
@@ -3045,6 +3060,7 @@ function deductJapTimeToday() {
 }
 
 function deductJapTimeOther() {
+  if (isGhostMode()) return; // ghost mode: read-only
   const date = (document.getElementById("jtDedOtherDate").value || "").trim();
   const secs = _jtSecs("jtDedOtherMin", "jtDedOtherSec");
   if (!date) {
@@ -4689,6 +4705,7 @@ let fbSessionListener = null;
 // ── Single-device session enforcement ──
 async function fbClaimSession() {
   if (!fbUser || !fbDb) return;
+  if (isGhostMode()) return; // ghost mode: read-only
   const sessionRef = fbDb
     .collection("users")
     .doc(fbUser.uid)
@@ -5470,11 +5487,13 @@ async function fbSignOut() {
   fbAuth.signOut().then(() => toast("Signed out 🙏"));
 }
 async function fbPushDelta() {
+  if (isGhostMode()) return; // ghost mode: read-only
   return fbPushFull();
 }
 
 async function fbPushFull() {
   if (!fbUser) return;
+  if (isGhostMode()) return; // ghost mode: never write to Firestore
   // SAFETY: never push local state to cloud until we have successfully
   // pulled the authoritative cloud copy at least once this session.
   // Prevents wiping cloud data after "Clear app data" + re-login.
@@ -7068,6 +7087,242 @@ function isDeveloper() {
   const email = (fbUser.email || "").toLowerCase().trim();
   return DEV_IDS.map((e) => e.toLowerCase()).includes(email);
 }
+
+// ══════════════════════════════════════════════════════════════
+// ── GHOST MODE  (developer read-only view of any user's data) ──
+// ══════════════════════════════════════════════════════════════
+
+let _ghostViewingUid  = null;   // UID currently being viewed; null = not in ghost mode
+let _ghostOwnState    = null;   // deep-copy of dev's own App.S before entering ghost mode
+let _ghostAllUsers    = [];     // cached list of {uid, name, email, phone, source}
+
+/** True while developer is shadowing another user's account. */
+function isGhostMode() { return !!_ghostViewingUid; }
+
+// ── Open the user-selection modal ─────────────────────────────
+window.openGhostUserList = async function () {
+  if (!isDeveloper()) return;
+  const modal = document.getElementById('ghostModal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.getElementById('ghostSearchInput').value = '';
+  _renderGhostList([]);
+  _setGhostListHtml('<div style="text-align:center;color:rgba(255,215,0,0.45);padding:30px 0;font-size:13px;">Loading users…</div>');
+  _ghostAllUsers = await _fetchAllKnownUsers();
+  filterGhostList();
+};
+
+window.closeGhostModal = function () {
+  const modal = document.getElementById('ghostModal');
+  if (modal) modal.style.display = 'none';
+};
+
+// ── Collect users from every available Firestore source ───────
+async function _fetchAllKnownUsers() {
+  const byUid = {};
+
+  // Helper to merge a record
+  const add = (uid, patch) => {
+    if (!uid) return;
+    if (!byUid[uid]) byUid[uid] = { uid };
+    Object.assign(byUid[uid], patch);
+  };
+
+  try {
+    // 1. feedbacks collection — uid-keyed, has userName / userEmail / userPhone
+    const fbSnap = await fbDb.collection('feedbacks').get();
+    fbSnap.forEach(doc => {
+      const d = doc.data();
+      add(doc.id, {
+        name:  d.userName  || '',
+        email: d.userEmail || '',
+        phone: d.userPhone || '',
+        source: 'feedback',
+      });
+    });
+  } catch (_) {}
+
+  try {
+    // 2. leaderboard collection — uid-keyed, has displayName + totalJap
+    const lbSnap = await fbDb.collection('leaderboard').get();
+    lbSnap.forEach(doc => {
+      const d = doc.data();
+      add(doc.id, {
+        name:  byUid[doc.id]?.name  || d.displayName || '',
+        email: byUid[doc.id]?.email || d.email       || '',
+        jap:   d.totalJap || 0,
+        source: byUid[doc.id] ? byUid[doc.id].source : 'leaderboard',
+      });
+    });
+  } catch (_) {}
+
+  // Sort: users with names first, then by name alpha
+  return Object.values(byUid).sort((a, b) => {
+    const an = (a.name || a.email || '').toLowerCase();
+    const bn = (b.name || b.email || '').toLowerCase();
+    if (an && !bn) return -1;
+    if (!an && bn) return  1;
+    return an.localeCompare(bn);
+  });
+}
+
+// ── Filter + render the list ──────────────────────────────────
+window.filterGhostList = function () {
+  const q = (document.getElementById('ghostSearchInput')?.value || '').toLowerCase().trim();
+  const filtered = q
+    ? _ghostAllUsers.filter(u =>
+        (u.uid   || '').toLowerCase().includes(q) ||
+        (u.name  || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q) ||
+        (u.phone || '').toLowerCase().includes(q)
+      )
+    : _ghostAllUsers;
+  _renderGhostList(filtered);
+};
+
+function _setGhostListHtml(html) {
+  const el = document.getElementById('ghostUserList');
+  if (el) el.innerHTML = html;
+}
+
+function _renderGhostList(users) {
+  const el = document.getElementById('ghostUserList');
+  if (!el) return;
+  if (!users.length) {
+    el.innerHTML = '<div style="text-align:center;color:rgba(255,215,0,0.35);padding:30px 0;font-size:13px;">No matching users found.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  users.forEach(u => {
+    const label   = u.name  || u.email || '(no name)';
+    const sublabel = u.email && u.name ? u.email : (u.phone || '');
+    const japStr  = u.jap ? ' · ' + _lbFmtJap(u.jap) + ' jap' : '';
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1px solid rgba(255,215,0,0.18);background:rgba(255,215,0,0.03);cursor:pointer;transition:background 0.15s;';
+    row.onmouseenter = () => { row.style.background = 'rgba(255,215,0,0.09)'; };
+    row.onmouseleave = () => { row.style.background = 'rgba(255,215,0,0.03)'; };
+    row.innerHTML = `
+      <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,215,0,0.12);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">👤</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:#FFD700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_escHtmlG(label)}${japStr}</div>
+        ${sublabel ? `<div style="font-size:11px;color:rgba(255,255,255,0.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_escHtmlG(sublabel)}</div>` : ''}
+        <div style="font-size:10px;color:rgba(255,215,0,0.28);margin-top:1px;font-family:monospace;">${u.uid}</div>
+      </div>
+      <div style="font-size:20px;flex-shrink:0;color:rgba(255,215,0,0.5);">›</div>`;
+    row.onclick = () => devEnterGhostMode(u.uid, label);
+    el.appendChild(row);
+  });
+}
+
+function _escHtmlG(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Enter ghost mode for a given UID ─────────────────────────
+window.devEnterGhostMode = async function (uid, displayLabel) {
+  if (!isDeveloper()) return;
+
+  // 1. Close the selection modal
+  closeGhostModal();
+
+  // 2. Save the developer's own clean state
+  _ghostOwnState = JSON.parse(JSON.stringify(App.S));
+
+  // 3. Prevent ALL writes while in ghost mode
+  _ghostViewingUid = uid;
+
+  // 4. Kill the real-time listener so viewed user's live changes
+  //    don't trigger a push back to the dev's own account
+  if (typeof fbListener === 'function') { try { fbListener(); } catch(_){} fbListener = null; }
+
+  // 5. Pull the viewed user's data from Firestore (read-only)
+  let snap;
+  try {
+    snap = await fbDb.collection('users').doc(uid).collection('data').doc('main').get();
+  } catch (e) {
+    toast('⚠️ Cannot read that user\'s data: ' + (e.message || e));
+    _ghostViewingUid = null;
+    _ghostOwnState   = null;
+    return;
+  }
+
+  if (!snap || !snap.exists) {
+    toast('⚠️ No data document found for that user.');
+    _ghostViewingUid = null;
+    _ghostOwnState   = null;
+    return;
+  }
+
+  // 6. Stamp viewed data into App.S without touching IDB / cloud
+  App._cloudHydrated = false;          // block any accidental push trigger
+  fbApplyRemote(snap.data());
+  App._cloudHydrated = false;          // keep blocked
+
+  // 7. Re-render everything
+  if (typeof switchJapMode === 'function') switchJapMode(App.S.japMode || 'radha');
+  App.ua();
+  if (typeof renderSt       === 'function') renderSt();
+  if (typeof u28            === 'function') u28();
+  if (typeof renderBcal     === 'function') renderBcal();
+  if (typeof renderCal      === 'function') renderCal();
+  if (typeof uStats         === 'function') uStats();
+  if (typeof renderSankalpas=== 'function') renderSankalpas();
+  if (typeof renderMalaLog  === 'function') renderMalaLog();
+
+  // 8. Update the dev panel UI
+  const pill = document.getElementById('ghostActivePill');
+  const exitBtn = document.getElementById('ghostExitBtn');
+  if (pill)   pill.style.display   = 'inline-block';
+  if (exitBtn) exitBtn.style.display = '';
+
+  toast('👁 Ghost: ' + _escHtmlG(displayLabel || uid.slice(0,10) + '…'));
+};
+
+// ── Exit ghost mode — restore dev's own state ─────────────────
+window.devExitGhostMode = async function () {
+  if (!isDeveloper()) return;
+
+  // 1. Clear ghost flag immediately so write guards lift
+  _ghostViewingUid = null;
+
+  // 2. Restore the dev's own state snapshot (no cloud call needed)
+  if (_ghostOwnState) {
+    App.S = JSON.parse(JSON.stringify(_ghostOwnState));
+    _ghostOwnState = null;
+  }
+
+  // 3. Re-hydrate from cloud to get any fresh changes since we entered ghost mode
+  App._cloudHydrated = false;
+  try {
+    await fbAutoSync();   // pulls dev's own cloud doc and sets up real-time listener
+  } catch (e) {
+    // If offline, just render from the snapshot we restored
+    App._cloudHydrated = true;
+  }
+
+  // 4. Re-render with dev's own data
+  if (typeof switchJapMode === 'function') switchJapMode(App.S.japMode || 'radha');
+  App.ua();
+  if (typeof renderSt       === 'function') renderSt();
+  if (typeof u28            === 'function') u28();
+  if (typeof renderBcal     === 'function') renderBcal();
+  if (typeof renderCal      === 'function') renderCal();
+  if (typeof uStats         === 'function') uStats();
+  if (typeof renderSankalpas=== 'function') renderSankalpas();
+  if (typeof renderMalaLog  === 'function') renderMalaLog();
+
+  // 5. Reset panel UI
+  const pill   = document.getElementById('ghostActivePill');
+  const exitBtn = document.getElementById('ghostExitBtn');
+  if (pill)    pill.style.display   = 'none';
+  if (exitBtn) exitBtn.style.display = 'none';
+
+  toast('↩ Back to your own account');
+};
+
+// ══════════════════════════════════════════════════════════════
+// END GHOST MODE
+// ══════════════════════════════════════════════════════════════
 
 function getEffectiveLyrics(id) {
   return (
@@ -9095,7 +9350,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb"];
+const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc"];
 // ── IDs where prose sections need vertical-scroll mode
 const PROSE_IDS = ["nkc"];
 
@@ -9632,7 +9887,8 @@ var _hcjPlayerCleanup = null; // cleanup fn for window listeners added in _hcjRe
 // Audio clip path — works for any stotram that has audio clips
 var _AUDIO_STOTRAMS = {
   hcj: { prefix: "hcj" },
-  bss: { prefix: "bss" }
+  bss: { prefix: "bss" },
+  dkc: { prefix: "dkc" }
 };
 function _hcjAudioPath(i) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
@@ -11945,6 +12201,7 @@ function lbSwitchPeriod(period) {
 /** Push current user's data to the leaderboard collection */
 async function pushLeaderboard() {
   if (!fbUser || !fbDb) return;
+  if (isGhostMode()) return; // ghost mode: read-only
   if (!App.S.lbOptIn) {
     // If opted out, remove the entry
     try {

@@ -1224,28 +1224,34 @@ function init(){
 // init handled by vpTryInit above
 
 // ═══════════════════════════════════════════════════════════════
-// CALENDAR DATE PICKER — pick any date, see its 5 Panchanga Angas
+// CALENDAR DATE PICKER — pick any date (any year), see the FULL
+// Panchanga horoscope for that day: Vaar + Previous/Current/Next
+// Tithi, Nakshatra, Yoga and Karana, each with exact start/end times
+// and duration — i.e. a proper Vedic astrology lookup engine, not
+// just a single "now" snapshot.
 // ═══════════════════════════════════════════════════════════════
-// State: the month currently shown in the modal grid, and the date
-// the user has picked (null = no date selected, results panel hidden).
-let vpCalViewMonth = null; // Date — first of the visible month
-let vpCalSelectedDate = null; // Date — the picked date, or null
+// View state: which month-grid is showing, which date is picked,
+// and whether the year-picker sub-view is open instead of the day grid.
+let vpCalViewMonth = null;     // Date — first of the visible month
+let vpCalSelectedDate = null;  // Date — the picked date, or null
+let vpCalYearViewOpen = false; // toggled by tapping the month/year title
+let vpCalYearPageStart = null; // first year shown in the 12-year picker grid
 
 function vpCalOpen(){
   const overlay = document.getElementById('vp-cal-overlay');
   if(!overlay) return;
-  // Default the grid to the selected date's month, else today's month
   const base = vpCalSelectedDate || new Date();
   vpCalViewMonth = new Date(base.getFullYear(), base.getMonth(), 1);
+  vpCalYearViewOpen = false;
   vpCalRenderGrid();
   overlay.classList.add('open');
 }
 function vpCalClose(){
   const overlay = document.getElementById('vp-cal-overlay');
   if(overlay) overlay.classList.remove('open');
+  vpCalYearViewOpen = false;
 }
 function vpCalCloseBackdrop(e){
-  // Only close if the click landed on the dim backdrop itself, not the modal card
   if(e.target && e.target.id === 'vp-cal-overlay') vpCalClose();
 }
 function vpCalChangeMonth(delta){
@@ -1257,6 +1263,7 @@ function vpCalGoToday(){
   const t = new Date();
   vpCalSelectedDate = new Date(t.getFullYear(), t.getMonth(), t.getDate());
   vpCalViewMonth = new Date(t.getFullYear(), t.getMonth(), 1);
+  vpCalYearViewOpen = false;
   vpCalRenderGrid();
   vpRenderDateResult();
   vpCalClose();
@@ -1271,6 +1278,64 @@ function vpClearDateResult(){
   vpCalSelectedDate = null;
   const wrap = document.getElementById('vp-dateresult-wrap');
   if(wrap) wrap.style.display='none';
+}
+
+// ── Year picker ──────────────────────────────────────────────
+// Tapping the "Month Year" title swaps the day-grid for a 12-year
+// picker grid (3×4), paged 12 years at a time, so any year — past
+// or future — is reachable in a couple of taps instead of holding
+// the month arrow.
+function vpCalToggleYearGrid(){
+  vpCalYearViewOpen = !vpCalYearViewOpen;
+  if(vpCalYearViewOpen){
+    const baseYear = (vpCalViewMonth || new Date()).getFullYear();
+    vpCalYearPageStart = baseYear - (baseYear % 12);
+    vpCalRenderYearGrid();
+  }
+  vpCalSyncViewVisibility();
+}
+function vpCalChangeYearPage(delta){
+  if(vpCalYearPageStart===null) vpCalYearPageStart = (vpCalViewMonth||new Date()).getFullYear();
+  vpCalYearPageStart += delta*12;
+  vpCalRenderYearGrid();
+}
+function vpCalPickYear(y){
+  if(!vpCalViewMonth) vpCalViewMonth = new Date();
+  vpCalViewMonth = new Date(y, vpCalViewMonth.getMonth(), 1);
+  vpCalYearViewOpen = false;
+  vpCalRenderGrid();
+  vpCalSyncViewVisibility();
+}
+function vpCalSyncViewVisibility(){
+  const dayView = document.getElementById('vp-cal-day-view');
+  const yearView = document.getElementById('vp-cal-year-view');
+  const prevBtn = document.getElementById('vp-cal-prev-btn');
+  const nextBtn = document.getElementById('vp-cal-next-btn');
+  if(dayView) dayView.style.display = vpCalYearViewOpen ? 'none' : 'block';
+  if(yearView) yearView.style.display = vpCalYearViewOpen ? 'block' : 'none';
+  // Prev/next month arrows page YEARS instead while the year grid is open
+  if(prevBtn) prevBtn.setAttribute('onclick', vpCalYearViewOpen ? 'vpCalChangeYearPage(-1)' : 'vpCalChangeMonth(-1)');
+  if(nextBtn) nextBtn.setAttribute('onclick', vpCalYearViewOpen ? 'vpCalChangeYearPage(1)' : 'vpCalChangeMonth(1)');
+}
+function vpCalRenderYearGrid(){
+  if(vpCalYearPageStart===null) return;
+  const startY = vpCalYearPageStart;
+  const today = new Date();
+  const curMonthYear = vpCalViewMonth ? vpCalViewMonth.getFullYear() : today.getFullYear();
+
+  const rangeEl = document.getElementById('vp-cal-year-range');
+  if(rangeEl) rangeEl.textContent = `${startY} – ${startY+11}`;
+
+  let html = '';
+  for(let i=0;i<12;i++){
+    const y = startY + i;
+    let cls = 'vp-cal-year-cell';
+    if(y===today.getFullYear()) cls += ' vp-cal-year-current';
+    if(y===curMonthYear) cls += ' vp-cal-year-selected';
+    html += `<button class="${cls}" onclick="vpCalPickYear(${y})">${y}</button>`;
+  }
+  const grid = document.getElementById('vp-cal-year-grid');
+  if(grid) grid.innerHTML = html;
 }
 
 function vpCalRenderGrid(){
@@ -1298,14 +1363,78 @@ function vpCalRenderGrid(){
   }
   const grid = document.getElementById('vp-cal-grid');
   if(grid) grid.innerHTML = html;
+  vpCalSyncViewVisibility();
 }
 
-// Compute & render the 5 Panchanga Angas (Vaar, Tithi, Nakshatra, Yoga,
-// Karana) for whichever date the user picked. Uses noon of the selected
-// date as the reference instant — the same convention getVaarStrip() uses
-// — so the result reflects "the panchanga in effect during that day,"
-// not a razor-thin midnight snapshot that could land in a different
-// tithi/nakshatra than what's actually observed that day.
+// ── Anga timeline helper ─────────────────────────────────────
+// Given a period-fetcher function (getTithiPeriods / getNakshatraPeriods /
+// getYogaPeriods / getKaranaPeriods), a target jd, and an FX lookup,
+// returns {prev, current, next} — the full Previous → Current → Next
+// picture for that anga around the target instant. The fetchers already
+// search backward from jd to find the period in effect AT jd (that's
+// `periods[0]`), then walk forward for `count` more — so current = [0],
+// next = [1]. For previous, we ask again starting just before the
+// current period's start, which makes the fetcher resolve THAT earlier
+// instant's "current" period — i.e. our previous one.
+function vpAngaTimeline(fetchFn, jd, fxLookup, nameKey){
+  const periods = fetchFn(jd, 2); // [current, next]
+  const current = periods[0];
+  const next = periods[1];
+  // Step a hair before the current period's start to pull the previous one
+  const prevPeriods = fetchFn(current.startJD - 0.002, 1);
+  const prev = prevPeriods[0];
+
+  function fx(p){
+    if(typeof fxLookup === 'function') return fxLookup(p.name) || '';
+    if(Array.isArray(fxLookup)) return fxLookup[p.index] || '';
+    return '';
+  }
+  function decorate(p){
+    return {
+      ...p,
+      fxText: fx(p),
+      startDate: jdToDate(p.startJD),
+      endDate: jdToDate(p.endJD),
+      durText: dur(jdToDate(p.startJD), jdToDate(p.endJD)),
+    };
+  }
+  return { prev: decorate(prev), current: decorate(current), next: decorate(next) };
+}
+
+// Renders one anga's full Previous/Current/Next timeline card
+function vpAngaCardHTML(icon, label, tl, showPaksha){
+  function row(tag, tagLabel, p){
+    const pakshaHtml = showPaksha && p.paksha
+      ? `<span class="vp-dr-tl-paksha">${p.paksha} Paksha</span>` : '';
+    return `<div class="vp-dr-tl-row ${tag}">
+      <div class="vp-dr-tl-marker"><span class="vp-dr-tl-dot"></span></div>
+      <div class="vp-dr-tl-body">
+        <span class="vp-dr-tl-tag">${tagLabel}</span>
+        <span class="vp-dr-tl-name">${p.name}</span>${pakshaHtml}
+        ${p.fxText ? `<div class="vp-dr-tl-fx">${p.fxText}</div>` : ''}
+        <div class="vp-dr-tl-time">${fmtDT(p.startDate)} → ${fmtEnd(p.endDate, p.startDate)}</div>
+        <span class="vp-dr-tl-dur">⏱ ${p.durText}</span>
+      </div>
+    </div>`;
+  }
+  return `<div class="vp-dr-anga-card">
+    <div class="vp-dr-anga-head">
+      <span class="vp-dr-anga-head-icon">${icon}</span>
+      <span class="vp-dr-anga-head-label">${label}</span>
+    </div>
+    ${row('prev','Previous',tl.prev)}
+    ${row('current','Current',tl.current)}
+    ${row('next','Next',tl.next)}
+  </div>`;
+}
+
+// Compute & render the FULL Panchanga horoscope (Vaar + all 4 angas with
+// Previous/Current/Next + durations) for whichever date the user picked.
+// Uses noon of the selected date as the reference instant — the same
+// convention getVaarStrip() uses — so the result reflects "the panchanga
+// in effect during that day," not a razor-thin midnight snapshot that
+// could land in a different tithi/nakshatra than what's actually
+// observed that day.
 function vpRenderDateResult(){
   const wrap = document.getElementById('vp-dateresult-wrap');
   if(!wrap || !vpCalSelectedDate) return;
@@ -1314,73 +1443,56 @@ function vpRenderDateResult(){
   const noon = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
   const jd = dateToJD(noon);
 
-  // Vaar (weekday) — Vedic day boundary is sunrise-based, so resolve it
-  // properly rather than just using JS getDay() (which would be wrong
-  // for the pre-sunrise sliver of a civil day).
+  // Vaar (weekday) — resolved via the proper sunrise-based Vedic day
+  // boundary rather than plain JS getDay().
   const vaarIdx = getVedicVaarIdx(noon, LAT, LNG);
   const vaarName = VAAR[vaarIdx];
 
-  // Tithi, Nakshatra, Yoga, Karana — all current-at-noon on the picked date
-  const tithiPeriods = getTithiPeriods(jd, 1);
-  const curTithi = tithiPeriods.find(p=>p.startJD<=jd && jd<p.endJD) || tithiPeriods[0];
-
-  const nakPeriods = getNakshatraPeriods(jd, 1);
-  const curNak = nakPeriods.find(p=>p.startJD<=jd && jd<p.endJD) || nakPeriods[0];
-
-  const yogaPeriods = getYogaPeriods(jd, 1);
-  const curYoga = yogaPeriods.find(p=>p.startJD<=jd && jd<p.endJD) || yogaPeriods[0];
-
-  const karPeriods = getKaranaPeriods(jd, 1);
-  const curKar = karPeriods.find(p=>p.startJD<=jd && jd<p.endJD) || karPeriods[0];
-
-  const karFx = KARANA_FX_LOOKUP[curKar.name] || 'Half-tithi unit — governs the quality of the lunar half';
-
-  // Header date label
+  // Header
   const dateLabel = d.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const dateEl = document.getElementById('vp-dateresult-date');
   if(dateEl) dateEl.textContent = dateLabel;
+  const subEl = document.getElementById('vp-dateresult-sub');
+  if(subEl){
+    const today = new Date();
+    const diffDays = Math.round((+new Date(d.getFullYear(),d.getMonth(),d.getDate()) - +new Date(today.getFullYear(),today.getMonth(),today.getDate()))/86400000);
+    subEl.textContent = diffDays===0 ? 'Today' :
+      diffDays>0 ? `${diffDays} day${diffDays===1?'':'s'} from today` :
+      `${-diffDays} day${diffDays===-1?'':'s'} ago`;
+  }
 
+  // Vaar strip
   const planetImg = VAAR_PLANET_IMG[vaarIdx] || '';
   const planetTag = planetImg
     ? `<img class="vp-dr-vaar-planet" src="${planetImg}" alt="${vaarName}">`
     : `<span style="font-size:1.6rem">${VAAR_ICON[vaarIdx]}</span>`;
+  const vaarStripEl = document.getElementById('vp-dr-vaar-strip');
+  if(vaarStripEl){
+    vaarStripEl.innerHTML = `
+      ${planetTag}
+      <div class="vp-dr-vaar-body">
+        <div class="vp-dr-vaar-label">Vaar (Weekday)</div>
+        <div class="vp-dr-vaar-name">${vaarName} Vaar</div>
+      </div>`;
+  }
 
-  const grid = document.getElementById('vp-dateresult-grid');
-  if(grid){
-    grid.innerHTML = `
-      <div class="vp-dr-card vp-dr-vaar">
-        ${planetTag}
-        <div class="vp-dr-vaar-body">
-          <div class="vp-dr-label">Vaar (Weekday)</div>
-          <div class="vp-dr-name">${vaarName} Vaar</div>
-        </div>
-      </div>
-      <div class="vp-dr-card">
-        <div class="vp-dr-label">Tithi</div>
-        <div class="vp-dr-name">${curTithi.name}</div>
-        <div class="vp-dr-paksha">${curTithi.paksha} Paksha</div>
-        <div class="vp-dr-fx">${TITHI_FX[curTithi.index]}</div>
-      </div>
-      <div class="vp-dr-card">
-        <div class="vp-dr-label">Nakshatra</div>
-        <div class="vp-dr-name">${curNak.name}</div>
-        <div class="vp-dr-fx">${NAK_FX[curNak.index]}</div>
-      </div>
-      <div class="vp-dr-card">
-        <div class="vp-dr-label">Yoga</div>
-        <div class="vp-dr-name">${curYoga.name}</div>
-        <div class="vp-dr-fx">${YOGA_FX[curYoga.index]}</div>
-      </div>
-      <div class="vp-dr-card">
-        <div class="vp-dr-label">Karana</div>
-        <div class="vp-dr-name">${curKar.name}</div>
-        <div class="vp-dr-fx">${karFx}</div>
-      </div>
-    `;
+  // Build full Previous/Current/Next timelines for all 4 angas
+  const tithiTL = vpAngaTimeline(getTithiPeriods, jd, TITHI_FX, true);
+  const nakTL   = vpAngaTimeline(getNakshatraPeriods, jd, NAK_FX, false);
+  const yogaTL  = vpAngaTimeline(getYogaPeriods, jd, YOGA_FX, false);
+  const karTL   = vpAngaTimeline(getKaranaPeriods, jd,
+    (name)=>KARANA_FX_LOOKUP[name] || 'Half-tithi unit — governs the quality of the lunar half', false);
+
+  const listEl = document.getElementById('vp-dr-anga-list');
+  if(listEl){
+    listEl.innerHTML =
+      vpAngaCardHTML('🌙','Tithi', tithiTL, true) +
+      vpAngaCardHTML('⭐','Nakshatra', nakTL, false) +
+      vpAngaCardHTML('☯️','Yoga', yogaTL, false) +
+      vpAngaCardHTML('◐','Karana', karTL, false);
   }
 
   wrap.style.display = 'block';
-  // Scroll the result into view so the user immediately sees what they picked
   requestAnimationFrame(()=>{
     wrap.scrollIntoView({behavior:'smooth', block:'start'});
   });
@@ -1413,6 +1525,9 @@ window.vpCalChangeMonth = function(delta){ vpCalChangeMonth(delta); };
 window.vpCalGoToday = function(){ vpCalGoToday(); };
 window.vpCalPickDay = function(y,m,d){ vpCalPickDay(y,m,d); };
 window.vpClearDateResult = function(){ vpClearDateResult(); };
+window.vpCalToggleYearGrid = function(){ vpCalToggleYearGrid(); };
+window.vpCalChangeYearPage = function(delta){ vpCalChangeYearPage(delta); };
+window.vpCalPickYear = function(y){ vpCalPickYear(y); };
 
 // ── GPS-based location for the Panchanga engine ──────────────────────
 // Reads live globals first (freshest, set by the main app's GPS toggle),

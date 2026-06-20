@@ -969,6 +969,10 @@
 #vpanchanga-view .vp-dateresult-sub{
   font-size:.62rem;color:var(--vp-ink-faint);margin-top:2px;
 }
+#vpanchanga-view .vp-dateresult-hindu-month{
+  font-size:.66rem;color:var(--vp-sun);letter-spacing:.04em;
+  font-weight:700;margin-top:5px;line-height:1.5;
+}
 #vpanchanga-view .vp-dateresult-close{
   width:30px;height:30px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
@@ -1189,3 +1193,25 @@
   font-style:italic;
 }
 
+#vpanchanga-view .vp-personal-chip-sub{
+  display:block;font-size:.58rem;color:var(--vp-ink-faint);
+  margin-top:3px;line-height:1.4;
+}
+#vpanchanga-view .vp-personal-upcoming{
+  border-top:1px dashed var(--vp-card-edge);
+  padding-top:12px;margin-bottom:10px;
+}
+#vpanchanga-view .vp-personal-upcoming-title{
+  font-size:.6rem;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--vp-ink-faint);margin-bottom:8px;
+}
+#vpanchanga-view .vp-personal-upcoming-item{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  flex-wrap:wrap;padding:7px 0;font-size:.66rem;
+  border-bottom:1px solid var(--vp-card-edge);
+}
+#vpanchanga-view .vp-personal-upcoming-item:last-child{border-bottom:none}
+#vpanchanga-view .vp-personal-upcoming-label{color:var(--vp-ink-soft);flex:1;min-width:160px}
+#vpanchanga-view .vp-personal-upcoming-date{
+  font-weight:700;color:var(--vp-violet);white-space:nowrap;
+}

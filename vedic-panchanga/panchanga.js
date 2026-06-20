@@ -1491,6 +1491,19 @@ function vpRenderDateResult(){
       `${-diffDays} day${diffDays===-1?'':'s'} ago`;
   }
 
+  // Hindu month / Vaishnav month / Gaurabda — same info shown on the main
+  // page header, so the date-picker result is consistent with it.
+  const hmEl = document.getElementById('vp-dateresult-hindu-month');
+  if(hmEl){
+    const am = adhikMaas(jd);
+    const hm = hinduMonth(jd);
+    const paksha = tithiIdx(jd) < 15 ? 'Sukla' : 'Krishna';
+    hmEl.innerHTML =
+      (am.isAdhik ? `<span class="vp-adhik-badge">${am.isPurushottam?'Purushottam':'Adhik'}</span>${am.nextMonthName}` : hm.name) +
+      ' &nbsp;·&nbsp; ' + paksha + ' Paksha &nbsp;·&nbsp; Vaishnav Month of ' + hm.vaishnavName +
+      ' &nbsp;·&nbsp; Gaurabda ' + gaurabda(noon);
+  }
+
   // Vaar strip
   const planetImg = VAAR_PLANET_IMG[vaarIdx] || '';
   const planetTag = planetImg
@@ -1638,6 +1651,19 @@ function vpHoroCalculate(){
   const subEl = document.getElementById('vp-horo-result-sub');
   if(subEl) subEl.textContent = `${lat.toFixed(3)}°, ${lng.toFixed(3)}°`;
 
+  // Hindu month / Vaishnav month / Gaurabda for the birth date — same fix
+  // applied to the date-picker result above, for consistency.
+  const horoHmEl = document.getElementById('vp-horo-result-hindu-month');
+  if(horoHmEl){
+    const am = adhikMaas(jd);
+    const hm = hinduMonth(jd);
+    const paksha = tithiIdx(jd) < 15 ? 'Sukla' : 'Krishna';
+    horoHmEl.innerHTML =
+      (am.isAdhik ? `<span class="vp-adhik-badge">${am.isPurushottam?'Purushottam':'Adhik'}</span>${am.nextMonthName}` : hm.name) +
+      ' &nbsp;·&nbsp; ' + paksha + ' Paksha &nbsp;·&nbsp; Vaishnav Month of ' + hm.vaishnavName +
+      ' &nbsp;·&nbsp; Gaurabda ' + gaurabda(birthDate);
+  }
+
   // Vaar strip
   const planetImg = VAAR_PLANET_IMG[vaarIdx] || '';
   const planetTag = planetImg
@@ -1697,6 +1723,21 @@ const RASHI = ['Mesha','Vrishabha','Mithuna','Karka','Simha','Kanya',
   'Tula','Vrishchika','Dhanu','Makara','Kumbha','Meena'];
 const RASHI_LORD = ['Mars','Venus','Mercury','Moon','Sun','Mercury',
   'Venus','Mars','Jupiter','Saturn','Saturn','Jupiter'];
+// Classical ishta-devata commonly associated with each Rashi (Moon sign).
+const RASHI_DEITY = ['Hanuman','Lakshmi','Krishna (Radha-Krishna)','Chandra/Durga',
+  'Surya','Vishnu','Lakshmi','Durga/Kartikeya','Brihaspati (Guru)',
+  'Shani/Hanuman','Shani/Varuna','Vishnu/Brihaspati'];
+// 27-Nakshatra ruling deities (classical list).
+const NAKSHATRA_DEITY = ['Ashwini Kumaras','Yama','Agni','Brahma','Chandra',
+  'Rudra','Aditi','Brihaspati','Naga (Sarpa)','Pitru (Ancestors)','Bhaga',
+  'Aryaman','Savitar','Tvashtar','Vayu','Indra-Agni','Mitra','Indra',
+  'Nirriti','Apah (Water)','Vishvadevas','Vishnu','Vasu (8 Vasus)',
+  'Varuna','Aja Ekapada','Ahirbudhnya','Pushan'];
+// Vimshottari Dasha lord cycle, index-aligned to NAKSHATRA[] (27 entries,
+// repeating the classical 9-graha Ashwini-cycle three times).
+const NAK_LORD_CYCLE = ['Ketu','Venus','Sun','Moon','Mars','Rahu','Jupiter','Saturn','Mercury'];
+function nakLord(nakshatraIndex){ return NAK_LORD_CYCLE[nakshatraIndex % 9]; }
+
 // Index-aligned to VAAR = ['Rabi','Som','Mangol','Budh','Brihaspati','Sukro','Shani']
 const VAAR_LORD = ['Sun','Moon','Mars','Mercury','Jupiter','Venus','Saturn'];
 
@@ -1747,40 +1788,61 @@ function vpPersonalComputeProfile(dateStr, timeStr, lat, lng){
   const elong = norm(moonLong(jd)-sunLong(jd));
   const tithiIndex = Math.floor(elong/12);
 
+  // Birth Hindu (lunar) month — needed so the Vedic Janmotithi search below
+  // can require BOTH "same Tithi" AND "same lunar month" (e.g. Vaishakh
+  // Krishna Amavasya), which is what actually recurs once a year. Matching
+  // Tithi alone recurs roughly every 29.5 days, which is wrong for a
+  // birthday and was the bug reported — this field fixes that.
+  const birthAdhik = adhikMaas(jd);
+  const birthHM = hinduMonth(jd);
+  const birthMonthName = birthAdhik.isAdhik ? birthAdhik.nextMonthName : birthHM.name;
+
   return {
     dob: dateStr, tob: timeStr||'12:00', lat, lng,
     rashiIndex, rashiName: RASHI[rashiIndex], rashiLord: RASHI_LORD[rashiIndex],
     nakshatraIndex, nakshatraName: NAKSHATRA[nakshatraIndex], nakshatraPada,
     tithiIndex, tithiName: TITHI[tithiIndex],
+    birthMonthName, birthMonthWasAdhik: birthAdhik.isAdhik,
     enabled: false,
   };
 }
 
-// Next occurrence of the birth Tithi — the Vedic Janmotithi. Scans forward
-// from `fromJD` in ~one-lunar-month steps (29.4d) and uses the same
-// findElong() bisection the rest of this engine relies on for tithi-edge
-// detection, so the result is consistent with how tithi boundaries are
-// computed everywhere else in this file.
+// Next occurrence of the birth Tithi WITHIN THE SAME HINDU MONTH as birth —
+// e.g. "Vaishakh Krishna Amavasya" — the actual Vedic Janmotithi. This is
+// a once-a-year event, unlike matching Tithi alone (which recurs roughly
+// every 29.5 days and was the bug previously reported: the app was showing
+// next month's matching Tithi as if it were the birthday).
+//
+// Scans forward in ~one-lunar-month steps using the same findElong()
+// bisection the rest of this engine relies on, but only accepts a
+// candidate whose Hindu month name ALSO matches the birth month. Search
+// extends up to ~14 months ahead (vs. the previous 14 lunar-month-steps
+// used for the old monthly version) so it safely spans a year even when
+// an Adhik Maas (leap month) falls in between and shifts month names for
+// a few weeks.
 function vpPersonalNextJanmotithi(profile, fromJD){
-  if(!profile || typeof profile.tithiIndex !== 'number') return null;
+  if(!profile || typeof profile.tithiIndex !== 'number' || !profile.birthMonthName) return null;
   const startSearch = (fromJD || dateToJD(new Date())) + 1;
   const targetDeg = profile.tithiIndex*12;
   let windowStart = startSearch;
   for(let guard=0; guard<14; guard++){
     const windowEnd = windowStart + 31;
     const candidate = findElong(windowStart, windowEnd, targetDeg);
-    // NOTE: findElong's bisection can converge to a value a hair (~1e-8 JD)
-    // BELOW the true boundary due to floating-point precision — e.g. it may
-    // return elong=251.999999994 instead of exactly 252.0, which then
-    // floor-divides into the WRONG (previous) tithi index. The rest of this
-    // engine works around the identical class of bug elsewhere by nudging
-    // forward by a small epsilon before re-deriving an index from a
-    // boundary value (see the "+.0001" pattern in getTithiPeriods etc.);
-    // we do the same here rather than trusting the index at the boundary
-    // itself.
-    const idx = Math.floor(norm(moonLong(candidate+0.0001)-sunLong(candidate+0.0001))/12);
+    // findElong's bisection can converge a hair below the true boundary
+    // due to floating-point precision; nudge forward before reading any
+    // index off the candidate (see getTithiPeriods' own "+.0001" pattern
+    // elsewhere in this file for the same class of fix).
+    const checkJD = candidate + 0.0001;
+    const idx = Math.floor(norm(moonLong(checkJD)-sunLong(checkJD))/12);
     if(candidate > startSearch-1 && idx === profile.tithiIndex){
-      return { jd: candidate, date: jdToDate(candidate) };
+      const am = adhikMaas(checkJD);
+      const hm = hinduMonth(checkJD);
+      const monthName = am.isAdhik ? am.nextMonthName : hm.name;
+      if(monthName === profile.birthMonthName){
+        return { jd: candidate, date: jdToDate(candidate), monthName, wasAdhik: am.isAdhik };
+      }
+      // Tithi matched but wrong month (e.g. this month's matching Tithi,
+      // not the birth month's) — keep searching forward.
     }
     windowStart += 29.4;
   }
@@ -1790,6 +1852,26 @@ function vpPersonalNextJanmotithi(profile, fromJD){
 function vpPersonalTaraBala(profile, todayNakIndex){
   const diff = ((todayNakIndex - profile.nakshatraIndex)%27+27)%27;
   return TARA[diff%9];
+}
+
+// Scans forward day-by-day (using the Nakshatra active at local noon each
+// day, consistent with how getNakshatraPeriods reports "today's" Nakshatra
+// elsewhere in this file) to find the next `count` days whose Tara Bala
+// from the birth Nakshatra is 'good'. Bounded to `maxDays` so it can't
+// run away; returns whatever it found within that window (possibly fewer
+// than `count`).
+function vpPersonalUpcomingGoodTaraDays(profile, fromJD, count, maxDays){
+  const results = [];
+  const startDay = Math.floor(fromJD) + 1; // start tomorrow, at local noon
+  for(let d=0; d<maxDays && results.length<count; d++){
+    const noonJD = startDay + d + 0.5;
+    const nakIdx = Math.floor(moonLongSid(noonJD)/(360/27)) % 27;
+    const tara = vpPersonalTaraBala(profile, nakIdx);
+    if(tara.polarity==='good'){
+      results.push({ jd: noonJD, date: jdToDate(noonJD), tara });
+    }
+  }
+  return results;
 }
 
 function vpPersonalLordRelation(lordA, lordB){
@@ -1912,6 +1994,7 @@ async function vpPersonalRender(){
   const jdNow = dateToJD(new Date());
   const todayNak = getNakshatraPeriods(jdNow, 1)[0];
   const todayYoga = getYogaPeriods(jdNow, 1)[0];
+  const todayKarana = getKaranaPeriods(jdNow, 1)[0];
   const todayVaarIdx = getVedicVaarIdx(new Date(), (typeof LAT==='number'?LAT:profile.lat), (typeof LNG==='number'?LNG:profile.lng));
 
   const outlook = vpPersonalDailyOutlook(profile, {
@@ -1920,8 +2003,29 @@ async function vpPersonalRender(){
     vaarIdx: todayVaarIdx,
   });
 
+  // Yoga/Karana predictions reuse the SAME effect tables already shown
+  // elsewhere in today's general panchanga (YOGA_FX, KARANA_FX_LOOKUP) —
+  // no new astrological claims are introduced here, just surfaced again
+  // in the personalized card.
+  const yogaFx = YOGA_FX[todayYoga.index] || '';
+  const karanaFx = KARANA_FX_LOOKUP[todayKarana.name] || 'Half-tithi unit — governs the quality of the lunar half';
+
   const janmo = vpPersonalNextJanmotithi(profile, jdNow);
-  const janmoLabel = janmo ? vpPersonalFmtDate(janmo.date) : 'Could not be determined';
+  const paksha = profile.tithiIndex < 15 ? 'Sukla' : 'Krishna';
+  const janmoTithiLabel = `${profile.birthMonthWasAdhik ? 'Adhik ' : ''}${profile.birthMonthName} ${paksha} ${profile.tithiName}`;
+  const janmoLabel = janmo ? vpPersonalFmtDate(janmo.date) : 'Could not be determined this year — please check back';
+
+  const nakDeity = NAKSHATRA_DEITY[profile.nakshatraIndex];
+  const nakLordName = nakLord(profile.nakshatraIndex);
+  const rashiDeity = RASHI_DEITY[profile.rashiIndex];
+
+  // Upcoming personally-significant dates: the next Janmotithi, plus the
+  // next couple of favorable Tara Bala days (from the user's own birth
+  // Nakshatra) within the coming ~2 months — kept short and dated, not a
+  // long forecast.
+  const upcomingTara = vpPersonalUpcomingGoodTaraDays(profile, jdNow, 3, 60);
+  let upcomingHtml = `<div class="vp-personal-upcoming-item"><span class="vp-personal-upcoming-label">🎉 ${janmoTithiLabel} (your Janmotithi)</span><span class="vp-personal-upcoming-date">${janmoLabel}</span></div>`;
+  upcomingHtml += upcomingTara.map(u => `<div class="vp-personal-upcoming-item"><span class="vp-personal-upcoming-label">${u.tara.name} — ${u.tara.note}</span><span class="vp-personal-upcoming-date">${vpPersonalFmtDate(u.date)}</span></div>`).join('');
 
   mount.style.display = 'block';
   mount.innerHTML = `
@@ -1931,17 +2035,19 @@ async function vpPersonalRender(){
         <button class="vp-personal-toggle-btn vp-personal-toggle-on" onclick="vpPersonalToggle()">On</button>
       </div>
       <div class="vp-personal-rashi-row">
-        <div class="vp-personal-chip"><span class="vp-personal-chip-label">Rashi</span><span class="vp-personal-chip-val">${profile.rashiName}</span></div>
-        <div class="vp-personal-chip"><span class="vp-personal-chip-label">Nakshatra</span><span class="vp-personal-chip-val">${profile.nakshatraName} (Pada ${profile.nakshatraPada})</span></div>
+        <div class="vp-personal-chip"><span class="vp-personal-chip-label">Rashi</span><span class="vp-personal-chip-val">${profile.rashiName}</span><span class="vp-personal-chip-sub">Deity: ${rashiDeity}</span></div>
+        <div class="vp-personal-chip"><span class="vp-personal-chip-label">Nakshatra</span><span class="vp-personal-chip-val">${profile.nakshatraName} (Pada ${profile.nakshatraPada})</span><span class="vp-personal-chip-sub">Deity: ${nakDeity} · Lord: ${nakLordName}</span></div>
       </div>
       <div class="vp-personal-outlook vp-personal-outlook-${outlook.verdictClass}">
         <div class="vp-personal-outlook-verdict">${outlook.verdict}</div>
         <div class="vp-personal-outlook-detail">Today's Tara: <b>${outlook.tara.name}</b> — ${outlook.tara.note}</div>
         <div class="vp-personal-outlook-detail">${outlook.vaarLord} (today's lord) is a <b>${outlook.relation}</b> of your Rashi lord (${outlook.rashiLord})</div>
+        <div class="vp-personal-outlook-detail">Today's Yoga (${todayYoga.name}): ${yogaFx}</div>
+        <div class="vp-personal-outlook-detail">Today's Karana (${todayKarana.name}): ${karanaFx}</div>
       </div>
-      <div class="vp-personal-janmo">
-        <span class="vp-personal-janmo-label">🎉 Your next Vedic Janmotithi (${profile.tithiName})</span>
-        <span class="vp-personal-janmo-date">${janmoLabel}</span>
+      <div class="vp-personal-upcoming">
+        <div class="vp-personal-upcoming-title">Upcoming for you</div>
+        ${upcomingHtml}
       </div>
       <div class="vp-personal-disclaimer">For reflection only — not a substitute for a professional astrologer.</div>
     </div>`;

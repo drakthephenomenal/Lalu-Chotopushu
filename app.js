@@ -4827,6 +4827,44 @@ async function fbSyncServerTime() {
   }
 }
 
+// ── Narrow Firestore accessor for the opt-in personal-horoscope feature ──
+// (vedic-panchanga/panchanga.js runs as a separate <script>, scoped in its
+// own IIFE, so it cannot reach this file's private fbDb/fbUser/fbInit.
+// This object is the ONLY bridge — deliberately minimal.)
+window.vpFirestore = {
+  // Ensures Firebase is initialized; returns true/false like fbInit().
+  ensureInit() { return fbInit(); },
+  // Current signed-in uid, or null if signed out / not yet resolved.
+  currentUid() { return fbUser ? fbUser.uid : null; },
+  // Read users/{uid}/horoscope/profile — resolves to the data or null.
+  async getProfile() {
+    if (!fbInit() || !fbUser) return null;
+    try {
+      const snap = await fbDb.collection('users').doc(fbUser.uid)
+        .collection('horoscope').doc('profile').get();
+      return snap.exists ? snap.data() : null;
+    } catch (e) {
+      console.warn('[vpFirestore] getProfile failed:', e && e.message);
+      return null;
+    }
+  },
+  // Write/merge users/{uid}/horoscope/profile — returns true/false.
+  async saveProfile(data) {
+    if (!fbInit() || !fbUser) return false;
+    try {
+      await fbDb.collection('users').doc(fbUser.uid)
+        .collection('horoscope').doc('profile')
+        .set(Object.assign({}, data, {
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        }), { merge: true });
+      return true;
+    } catch (e) {
+      console.warn('[vpFirestore] saveProfile failed:', e && e.message);
+      return false;
+    }
+  },
+};
+
 function fbInit() {
   if (fbApp) return true;
   if (typeof firebase === "undefined") {

@@ -70,6 +70,12 @@
 }
 #vpanchanga-view .vp-cal-trigger:active{transform:translateY(0) scale(.97)}
 #vpanchanga-view .vp-cal-trigger-icon{font-size:.82rem;line-height:1}
+#vpanchanga-view .vp-horo-trigger{
+  margin-left:8px;
+  background:linear-gradient(135deg,#D89A1F,#F0BE4E);
+  box-shadow:0 6px 18px rgba(216,154,31,.32);
+}
+#vpanchanga-view .vp-horo-trigger:hover{box-shadow:0 8px 22px rgba(216,154,31,.42)}
 
 /* Clock */
 #vpanchanga-view .vp-clock-wrap{text-align:center;padding:10px 20px 0;position:relative}
@@ -865,6 +871,42 @@
   border:none;padding:8px 10px;cursor:pointer;
 }
 #vpanchanga-view .vp-cal-close-btn:hover{color:var(--vp-ink)}
+
+/* Horoscope Calculator — form fields inside the modal */
+#vpanchanga-view .vp-horo-modal{max-width:380px}
+#vpanchanga-view .vp-horo-modal-title{cursor:default}
+#vpanchanga-view .vp-horo-modal-title::after{content:''}
+#vpanchanga-view .vp-horo-field{margin-bottom:14px}
+#vpanchanga-view .vp-horo-label{
+  display:block;font-size:.62rem;font-weight:800;
+  letter-spacing:.07em;text-transform:uppercase;
+  color:var(--vp-ink-faint);margin-bottom:6px;
+}
+#vpanchanga-view .vp-horo-input{
+  width:100%;box-sizing:border-box;
+  font-family:inherit;font-size:.9rem;color:var(--vp-ink);
+  background:rgba(124,92,252,.06);
+  border:1.5px solid var(--vp-card-edge);
+  border-radius:12px;padding:10px 12px;
+  transition:border-color .2s ease;
+}
+#vpanchanga-view .vp-horo-input:focus{outline:none;border-color:var(--vp-violet)}
+#vpanchanga-view .vp-horo-latlng-row{display:flex;gap:8px;margin-bottom:8px}
+#vpanchanga-view .vp-horo-input-sm{flex:1;min-width:0}
+#vpanchanga-view .vp-horo-gps-btn{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
+  font-family:inherit;font-size:.72rem;font-weight:800;
+  letter-spacing:.04em;
+  color:var(--vp-violet);background:rgba(124,92,252,.1);
+  border:none;border-radius:12px;padding:10px 12px;
+  cursor:pointer;transition:background .2s ease;
+}
+#vpanchanga-view .vp-horo-gps-btn:hover{background:rgba(124,92,252,.18)}
+#vpanchanga-view .vp-horo-gps-btn:disabled{opacity:.6;cursor:default}
+#vpanchanga-view .vp-horo-note{
+  font-size:.66rem;line-height:1.45;color:var(--vp-ink-faint);
+  margin-top:8px;
+}
 
 /* Year-picker view */
 #vpanchanga-view .vp-cal-year-nav{

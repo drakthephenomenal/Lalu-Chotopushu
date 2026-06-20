@@ -1511,7 +1511,157 @@ function vpRenderDateResult(){
 }
 
 
-// ── Public API ───────────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════
+// HOROSCOPE CALCULATOR
+// Takes a birth date + time + place (lat/lng) and resolves the
+// exact Tithi / Nakshatra / Yoga / Karana / Vaar in effect at that
+// precise moment — reusing the same engine (getTithiPeriods,
+// getNakshatraPeriods, getYogaPeriods, getKaranaPeriods,
+// getVedicVaarIdx) and the same Previous/Current/Next card renderer
+// (vpAngaTimeline / vpAngaCardHTML) that powers "Pick a Date" above.
+//
+// NOTE ON TIMEZONES: birth date/time is read via native <input
+// type="date"/"time"> and turned into a JS Date the same way the
+// rest of this file does (new Date(y,m,d,h,mi) interpreted in the
+// device's current timezone) — so, exactly like the date-picker
+// above, results are only accurate if the device's timezone matches
+// the birth location's timezone at the time of birth. This is called
+// out in the modal's helper text rather than silently assumed.
+// ══════════════════════════════════════════════════════════════
+
+function vpHoroOpen(){
+  const overlay = document.getElementById('vp-horo-overlay');
+  if(!overlay) return;
+  const dateEl = document.getElementById('vp-horo-date');
+  const timeEl = document.getElementById('vp-horo-time');
+  const latEl = document.getElementById('vp-horo-lat');
+  const lngEl = document.getElementById('vp-horo-lng');
+  const now = new Date();
+  if(dateEl && !dateEl.value){
+    const pad=n=>String(n).padStart(2,'0');
+    dateEl.value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  }
+  if(timeEl && !timeEl.value){
+    const pad=n=>String(n).padStart(2,'0');
+    timeEl.value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  }
+  if(latEl && !latEl.value && typeof LAT==='number') latEl.value = LAT.toFixed(4);
+  if(lngEl && !lngEl.value && typeof LNG==='number') lngEl.value = LNG.toFixed(4);
+  overlay.classList.add('open');
+}
+function vpHoroClose(){
+  const overlay = document.getElementById('vp-horo-overlay');
+  if(overlay) overlay.classList.remove('open');
+}
+function vpHoroCloseBackdrop(e){
+  if(e.target && e.target.id === 'vp-horo-overlay') vpHoroClose();
+}
+function vpHoroUseGPS(){
+  const btn = document.getElementById('vp-horo-gps-btn');
+  const lbl = document.getElementById('vp-horo-gps-btn-label');
+  const latEl = document.getElementById('vp-horo-lat');
+  const lngEl = document.getElementById('vp-horo-lng');
+  if(!navigator.geolocation){
+    if(lbl) lbl.textContent = 'Location not supported on this device';
+    return;
+  }
+  if(btn) btn.disabled = true;
+  if(lbl) lbl.textContent = 'Locating…';
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      if(latEl) latEl.value = pos.coords.latitude.toFixed(4);
+      if(lngEl) lngEl.value = pos.coords.longitude.toFixed(4);
+      if(btn) btn.disabled = false;
+      if(lbl) lbl.textContent = 'Use My Current Location';
+    },
+    function(){
+      if(btn) btn.disabled = false;
+      if(lbl) lbl.textContent = 'Location unavailable — check permission';
+    },
+    { timeout: 10000, maximumAge: 60000 },
+  );
+}
+function vpHoroClearResult(){
+  const wrap = document.getElementById('vp-horo-result-wrap');
+  if(wrap) wrap.style.display = 'none';
+}
+
+function vpHoroCalculate(){
+  const dateEl = document.getElementById('vp-horo-date');
+  const timeEl = document.getElementById('vp-horo-time');
+  const latEl = document.getElementById('vp-horo-lat');
+  const lngEl = document.getElementById('vp-horo-lng');
+
+  const dateVal = dateEl && dateEl.value; // "YYYY-MM-DD"
+  const timeVal = (timeEl && timeEl.value) || '12:00'; // "HH:MM"
+  const lat = latEl && latEl.value !== '' ? parseFloat(latEl.value) : NaN;
+  const lng = lngEl && lngEl.value !== '' ? parseFloat(lngEl.value) : NaN;
+
+  if(!dateVal){ alert('Please enter a date of birth.'); return; }
+  if(isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180){
+    alert('Please enter a valid latitude (-90 to 90) and longitude (-180 to 180), or tap "Use My Current Location".');
+    return;
+  }
+
+  const [y, mo, da] = dateVal.split('-').map(Number);
+  const [hh, mi] = timeVal.split(':').map(Number);
+  const birthDate = new Date(y, mo-1, da, hh, mi, 0);
+  const jd = dateToJD(birthDate);
+
+  const vaarIdx = getVedicVaarIdx(birthDate, lat, lng);
+  const vaarName = VAAR[vaarIdx];
+
+  // Header
+  const dateLabel = birthDate.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
+    + ' · ' + fmt12(birthDate);
+  const dateLabelEl = document.getElementById('vp-horo-result-date');
+  if(dateLabelEl) dateLabelEl.textContent = dateLabel;
+  const subEl = document.getElementById('vp-horo-result-sub');
+  if(subEl) subEl.textContent = `${lat.toFixed(3)}°, ${lng.toFixed(3)}°`;
+
+  // Vaar strip
+  const planetImg = VAAR_PLANET_IMG[vaarIdx] || '';
+  const planetTag = planetImg
+    ? `<img class="vp-dr-vaar-planet" src="${planetImg}" alt="${vaarName}">`
+    : `<span style="font-size:1.6rem">${VAAR_ICON[vaarIdx]}</span>`;
+  const vaarStripEl = document.getElementById('vp-horo-vaar-strip');
+  if(vaarStripEl){
+    vaarStripEl.innerHTML = `
+      ${planetTag}
+      <div class="vp-dr-vaar-body">
+        <div class="vp-dr-vaar-label">Vaar (Weekday)</div>
+        <div class="vp-dr-vaar-name">${vaarName} Vaar</div>
+      </div>`;
+  }
+
+  // Build full Previous/Current/Next timelines for all 4 angas,
+  // anchored to the exact birth moment rather than noon
+  const tithiTL = vpAngaTimeline(getTithiPeriods, jd, TITHI_FX, true);
+  const nakTL   = vpAngaTimeline(getNakshatraPeriods, jd, NAK_FX, false);
+  const yogaTL  = vpAngaTimeline(getYogaPeriods, jd, YOGA_FX, false);
+  const karTL   = vpAngaTimeline(getKaranaPeriods, jd,
+    (name)=>KARANA_FX_LOOKUP[name] || 'Half-tithi unit — governs the quality of the lunar half', false);
+
+  const listEl = document.getElementById('vp-horo-anga-list');
+  if(listEl){
+    listEl.innerHTML =
+      vpAngaCardHTML('🌙','Tithi', tithiTL, true) +
+      vpAngaCardHTML('⭐','Nakshatra', nakTL, false) +
+      vpAngaCardHTML('☯️','Yoga', yogaTL, false) +
+      vpAngaCardHTML('◐','Karana', karTL, false);
+  }
+
+  vpHoroClose();
+  const wrap = document.getElementById('vp-horo-result-wrap');
+  if(wrap){
+    wrap.style.display = 'block';
+    requestAnimationFrame(()=>{
+      wrap.scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  }
+}
+
 window.vpSelectVaar = function(idx) { selectVaar(idx); };
 window.vpClearSelectedVaar = function() { clearSelectedVaar(); };
 window.vpSelectAnga = function(name) { selectedAnga = name; renderAll(); };
@@ -1530,6 +1680,13 @@ window.vpToggleDayBoundaries = function() {
 };
 
 // Calendar date-picker
+// ── Public API ───────────────────────────────────────────────
+window.vpHoroOpen = function(){ vpHoroOpen(); };
+window.vpHoroClose = function(){ vpHoroClose(); };
+window.vpHoroCloseBackdrop = function(e){ vpHoroCloseBackdrop(e); };
+window.vpHoroUseGPS = function(){ vpHoroUseGPS(); };
+window.vpHoroCalculate = function(){ vpHoroCalculate(); };
+window.vpHoroClearResult = function(){ vpHoroClearResult(); };
 window.vpOpenCalendar = function(){ vpCalOpen(); };
 window.vpCloseCalendar = function(){ vpCalClose(); };
 window.vpCloseCalendarBackdrop = function(e){ vpCalCloseBackdrop(e); };

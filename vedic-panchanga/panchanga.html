@@ -11,6 +11,10 @@
         <span class="vp-cal-trigger-icon">📅</span>
         <span>Pick a Date</span>
       </button>
+      <button class="vp-cal-trigger vp-horo-trigger" id="vp-horo-trigger" onclick="vpHoroOpen()" aria-label="Horoscope Calculator">
+        <span class="vp-cal-trigger-icon">🪐</span>
+        <span>Horoscope Calculator</span>
+      </button>
     </div>
 
     <!-- Clock -->
@@ -78,6 +82,48 @@
     </div>
 
     <!-- ══════════════════════════════════════════
+         HOROSCOPE CALCULATOR — modal overlay
+         Date + Time + Place of birth → birth-moment
+         Tithi / Nakshatra / Yoga / Karana / Vaar
+         ══════════════════════════════════════════ -->
+    <div class="vp-cal-overlay" id="vp-horo-overlay" onclick="vpHoroCloseBackdrop(event)">
+      <div class="vp-cal-modal vp-horo-modal" id="vp-horo-modal">
+        <div class="vp-cal-modal-head">
+          <span class="vp-cal-modal-title vp-horo-modal-title">🪐 Horoscope Calculator</span>
+          <button class="vp-cal-nav-btn" onclick="vpHoroClose()" aria-label="Close">✕</button>
+        </div>
+
+        <div class="vp-horo-field">
+          <label class="vp-horo-label" for="vp-horo-date">Date of Birth</label>
+          <input type="date" id="vp-horo-date" class="vp-horo-input">
+        </div>
+
+        <div class="vp-horo-field">
+          <label class="vp-horo-label" for="vp-horo-time">Time of Birth</label>
+          <input type="time" id="vp-horo-time" class="vp-horo-input">
+        </div>
+
+        <div class="vp-horo-field">
+          <label class="vp-horo-label">Place of Birth</label>
+          <div class="vp-horo-latlng-row">
+            <input type="number" id="vp-horo-lat" class="vp-horo-input vp-horo-input-sm" placeholder="Latitude" step="0.0001">
+            <input type="number" id="vp-horo-lng" class="vp-horo-input vp-horo-input-sm" placeholder="Longitude" step="0.0001">
+          </div>
+          <button class="vp-horo-gps-btn" id="vp-horo-gps-btn" onclick="vpHoroUseGPS()">
+            <span>📍</span><span id="vp-horo-gps-btn-label">Use My Current Location</span>
+          </button>
+          <div class="vp-horo-note">Birth time is read in your device's current timezone. If you were born in a different timezone, set your device's timezone to match before calculating for an accurate result.</div>
+        </div>
+
+        <div class="vp-cal-modal-foot">
+          <button class="vp-cal-close-btn" onclick="vpHoroClose()">Cancel</button>
+          <button class="vp-cal-today-btn" onclick="vpHoroCalculate()">Calculate</button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ══════════════════════════════════════════
          SELECTED DATE — Full Panchanga Horoscope
          ══════════════════════════════════════════ -->
     <div id="vp-dateresult-wrap" style="display:none">
@@ -100,6 +146,33 @@
         <!-- Anga timeline cards: Tithi, Nakshatra, Yoga, Karana —
              each with Previous / Current / Next + durations -->
         <div class="vp-dr-anga-list" id="vp-dr-anga-list"></div>
+      </section>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         HOROSCOPE RESULT — Birth-moment Panchanga
+         ══════════════════════════════════════════ -->
+    <div id="vp-horo-result-wrap" style="display:none">
+      <section class="vp-m-section vp-dateresult-section">
+        <div class="vp-dateresult-head">
+          <div class="vp-dateresult-title">
+            <span class="vp-dateresult-icon">🪐</span>
+            <div>
+              <div class="vp-dateresult-label">Horoscope for</div>
+              <div class="vp-dateresult-date" id="vp-horo-result-date"></div>
+              <div class="vp-dateresult-sub" id="vp-horo-result-sub"></div>
+            </div>
+          </div>
+          <button class="vp-dateresult-close" onclick="vpHoroClearResult()" aria-label="Close">✕</button>
+        </div>
+
+        <!-- Vaar summary strip -->
+        <div class="vp-dr-vaar-strip" id="vp-horo-vaar-strip"></div>
+
+        <!-- Anga timeline cards: Tithi, Nakshatra, Yoga, Karana —
+             each with Previous / Current / Next + durations,
+             anchored to the exact birth moment -->
+        <div class="vp-dr-anga-list" id="vp-horo-anga-list"></div>
       </section>
     </div>
 

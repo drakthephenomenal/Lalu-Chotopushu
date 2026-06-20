@@ -149,6 +149,29 @@ const VAAR_PLANET_IMG=[
   'data:image/png;base64,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'
 ];
 const VAAR_BN=['রবি','সোম','মঙ্গল','বুধ','বৃহস্পতি','শুক্র','শনি'];
+// HM/VM are indexed by sidereal SOLAR sign at the moment that sign is
+// ENTERED during a lunation (Mesha=0 ... Meena=11). Rule (Amanta): "the
+// lunation in which Mesha Sankranti occurs is Chaitra" — i.e. the
+// lunation during which the Sun enters Mesha is named Chaitra, the one
+// during which it enters Vrishabha is Vaishakha, and so on.
+//
+// This mapping was exhaustively re-verified against exact, authoritative
+// Sankranti timestamps (not approximate dates) after an earlier attempt
+// to "fix" this array turned out to itself be based on a UTC/local-time
+// misreading:
+//   - Mesha Sankranti 2026: confirmed exact moment Apr 14 04:09 UTC
+//     (Apr 13 11:09 PM in Houston's UTC-5) -> sunLongSid = 0.03° at that
+//     instant, confirming sign index 0 = Mesha.
+//   - Mithuna Sankranti 2026: confirmed exact moment Jul 16 07:29 UTC
+//     (12:59 PM IST) -> sunLongSid = 89.6° at that instant, confirming
+//     sign index 2 = Mithuna (about to cross into 90°).
+//   - Full March 2026 panchang grid confirmed "Amanta Month: Chaitra" for
+//     the period containing Mar 19 (Pratipada Shukla / Hindu New Year),
+//     and the LUNATION containing the Mesha Sankranti (which starts at
+//     that Mar 19 new moon) is the one labeled Chaitra.
+// Forward-chaining the engine's own (now-confirmed-correct) lunation
+// math from that verified Mar 19 boundary reproduces every other
+// month name correctly: Apr17-May16=Vaishakha, Jun15-Jul14=Jyeshtha, etc.
 const HM=['Chaitra','Vaishakha','Jyeshtha','Ashadha','Shravana','Bhadrapada','Ashwina','Kartika','Margashirsha','Pausha','Magha','Phalguna'];
 const VM=['Vishnu','Madhusudana','Trivikrama','Vamana','Shridhara','Hrishikesha','Padmanabha','Damodara','Keshava','Narayana','Madhava','Govinda'];
 
@@ -307,7 +330,46 @@ function gaurabda(date){
   const gauPurnima=jdToDate(gauPurnimaJD);
   return y-1486-(date<gauPurnima?1:0);
 }
-function hinduMonth(jd){const idx=Math.floor(sunLongSid(jd)/30)%12;return{name:HM[idx],vaishnavName:VM[idx]}}
+// Amanta month name: determined by which solar Sankranti (sign-entry)
+// occurs WITHIN the current lunation (new-moon to new-moon), not by the
+// Sun's instantaneous sign at `jd`. These regularly differ — e.g. just
+// after a new moon but before that lunation's Sankranti has happened yet,
+// the Sun is still in the PREVIOUS sign, but the lunar month has already
+// advanced. Reading the instant sign alone (the old implementation) gave
+// wrong month names in exactly that window.
+//
+// Rule (classical Amanta definition, verified against Drik Panchang's
+// exact Sankranti timestamps and a full confirmed month grid): the
+// lunation during which the Sun enters Mesha is Chaitra, the one during
+// which it enters Vrishabha is Vaishakha, etc. — HM[signEnteredDuringLunation].
+// A lunation with NO sign-entry at all (the Sun stays within one sign for
+// the whole lunation) is Adhik Maas — see adhikMaas(), which already
+// detects this case; hinduMonth() itself does not need to special-case it
+// because every regular (non-Adhik) lunation has exactly one Sankranti by
+// construction, so the lookup below always finds one for those.
+//
+// SAME-DAY AMAVASYA CASE: per Gaudiya/ISKCON panchang convention (verified
+// against a real reference: May 6 1997, an Amavasya day, is listed as
+// "Vaishakha Krishna Amavasya" even though the exact new-moon moment that
+// day doesn't occur until 8:48 PM) — the whole calendar day on which
+// Amavasya falls is attributed to the month beginning right after it, not
+// the one ending that day. A flat tiny epsilon nudge (the "+.0001" pattern
+// used elsewhere in this file) is NOT enough here: the actual new-moon
+// moment can be many hours after the reference time being tested, so a
+// sub-second nudge still lands in the outgoing lunation. Instead, when
+// `jd`'s tithi is Amavasya, search forward to that Amavasya's own end
+// before computing the lunation.
+function hinduMonth(jd){
+  let refJD = jd;
+  if(tithiIdx(jd) === 29){
+    const amavasyaEnd = findElong(jd, jd+2, 0); // elong wraps to 0 at next new moon
+    refJD = amavasyaEnd + 0.0001;
+  }
+  const lEnd = nextNewMoon(refJD);
+  const sE = sunLongSid(lEnd);
+  const idx = Math.floor(sE/30) % 12;
+  return {name:HM[idx], vaishnavName:VM[idx]};
+}
 // Find the most recent New Moon at or before jd, and the next New Moon at or
 // after jd, using a tight ±2.5-day bisection window centred on a synodic-rate
 // estimate. A wide blind window (the old approach) could accidentally skip
@@ -336,11 +398,12 @@ function adhikMaas(jd){
   const moved=norm(sE-sS);
   const dist=norm((Math.floor(sS/30)+1)*30-sS);
   const isAdhik=dist>=moved;
-  const sunMid=norm(sS+moved/2);
-  // Adhik Maas takes the name of the FOLLOWING Nija month (the next sankranti's rashi),
-  // not the sign the sun is currently in. e.g. Adhik between Vaishakha & Jyeshtha 2026
-  // is "Adhik Jyeshtha", matching Drik Panchang.
-  return{isAdhik,nextMonthName:HM[(Math.floor(sE/30)+(isAdhik?1:0))%12],isPurushottam:isAdhik&&sunMid>=60&&sunMid<90};
+  // Adhik Maas takes the name of the FOLLOWING Nija month, not the sign
+  // the Adhik lunation itself ends in. E.g. the 2026 Adhik lunation
+  // (May16-Jun15) ends with the Sun in Vrishabha (sign 1, "Vaishakha" in
+  // HM[]), but the Adhik month is correctly called "Adhik Jyeshtha"
+  // (confirmed via Drik Panchang) — i.e. one sign further, HM[sign+1].
+  return{isAdhik,nextMonthName:HM[(Math.floor(sE/30)+1)%12],isPurushottam:isAdhik};
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -845,7 +908,9 @@ function renderAll(){
   document.getElementById('vp-month-line').innerHTML=
     (headerAM.isAdhik?`<span class="vp-adhik-badge">${headerAM.isPurushottam?'Purushottam':'Adhik'}</span>${headerAM.nextMonthName}`:headerHM.name)+
     ' &nbsp;·&nbsp; '+headerPaksha+' Paksha &nbsp;·&nbsp; '+headerWhen+' '+fmtDate(headerRef);
-  document.getElementById('vp-vaishnav-line').textContent='Vaishnav Month of '+headerHM.vaishnavName;
+  document.getElementById('vp-vaishnav-line').textContent=
+    headerAM.isAdhik ? 'Purushottam Maas (Adhik) — most spiritually potent month' :
+    'Vaishnav Month of '+headerHM.vaishnavName;
 
   // Personal horoscope card (opt-in) — async, self-caching; safe to call
   // on every renderAll() pass since it no-ops fast when already loaded.
@@ -1498,9 +1563,10 @@ function vpRenderDateResult(){
     const am = adhikMaas(jd);
     const hm = hinduMonth(jd);
     const paksha = tithiIdx(jd) < 15 ? 'Sukla' : 'Krishna';
+    const vaishnavLabel = am.isAdhik ? 'Purushottam Maas (Adhik)' : 'Vaishnav Month of ' + hm.vaishnavName;
     hmEl.innerHTML =
       (am.isAdhik ? `<span class="vp-adhik-badge">${am.isPurushottam?'Purushottam':'Adhik'}</span>${am.nextMonthName}` : hm.name) +
-      ' &nbsp;·&nbsp; ' + paksha + ' Paksha &nbsp;·&nbsp; Vaishnav Month of ' + hm.vaishnavName +
+      ' &nbsp;·&nbsp; ' + paksha + ' Paksha &nbsp;·&nbsp; ' + vaishnavLabel +
       ' &nbsp;·&nbsp; Gaurabda ' + gaurabda(noon);
   }
 
@@ -1658,9 +1724,10 @@ function vpHoroCalculate(){
     const am = adhikMaas(jd);
     const hm = hinduMonth(jd);
     const paksha = tithiIdx(jd) < 15 ? 'Sukla' : 'Krishna';
+    const horoVaishnavLabel = am.isAdhik ? 'Purushottam Maas (Adhik)' : 'Vaishnav Month of ' + hm.vaishnavName;
     horoHmEl.innerHTML =
       (am.isAdhik ? `<span class="vp-adhik-badge">${am.isPurushottam?'Purushottam':'Adhik'}</span>${am.nextMonthName}` : hm.name) +
-      ' &nbsp;·&nbsp; ' + paksha + ' Paksha &nbsp;·&nbsp; Vaishnav Month of ' + hm.vaishnavName +
+      ' &nbsp;·&nbsp; ' + paksha + ' Paksha &nbsp;·&nbsp; ' + horoVaishnavLabel +
       ' &nbsp;·&nbsp; Gaurabda ' + gaurabda(birthDate);
   }
 

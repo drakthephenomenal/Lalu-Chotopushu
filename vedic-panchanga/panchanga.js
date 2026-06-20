@@ -1389,12 +1389,26 @@ function vpCalRenderGrid(){
 // current period's start, which makes the fetcher resolve THAT earlier
 // instant's "current" period — i.e. our previous one.
 function vpAngaTimeline(fetchFn, jd, fxLookup, nameKey){
-  const periods = fetchFn(jd, 2); // [current, next]
-  const current = periods[0];
-  const next = periods[1];
-  // Step a hair before the current period's start to pull the previous one
-  const prevPeriods = fetchFn(current.startJD - 0.002, 1);
-  const prev = prevPeriods[0];
+  // Some fetchers (e.g. getTithiPeriods) begin their search a few hours
+  // BEFORE jd to make sure the period currently in effect is included.
+  // That means periods[0] is NOT guaranteed to be the period containing
+  // jd — when jd falls in the first hours of a new tithi, periods[0]
+  // is the PREVIOUS tithi (the one that just ended). Walk forward to
+  // the first period whose endJD is strictly after jd — that is the
+  // period actually in effect at the birth moment.
+  const periods = fetchFn(jd, 4);
+  let ci = periods.findIndex(p => p.endJD > jd);
+  if(ci < 0) ci = 0;
+  const current = periods[ci];
+  const next = periods[ci + 1] || periods[periods.length - 1];
+  // Step a hair before the current period's start, then apply the same
+  // "first period whose endJD > reference" rule to pull the previous one
+  const prevRef = current.startJD - 0.01;
+  const prevPeriods = fetchFn(prevRef, 2);
+  let pi = prevPeriods.findIndex(p => p.endJD > prevRef);
+  if(pi < 0) pi = 0;
+  const prev = prevPeriods[pi];
+
 
   function fx(p){
     if(typeof fxLookup === 'function') return fxLookup(p.name) || '';

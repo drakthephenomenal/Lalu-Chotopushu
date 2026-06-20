@@ -1086,3 +1086,106 @@
 @media(prefers-reduced-motion:reduce){
   #vpanchanga-view .vp-cal-modal{animation:none}
 }
+
+/* ══════════════════════════════════════════
+   PERSONAL HOROSCOPE — opt-in CTA + card
+   ══════════════════════════════════════════ */
+#vpanchanga-view .vp-horo-personal-cta{
+  margin-top:14px;padding-top:14px;
+  border-top:1px dashed var(--vp-card-edge);
+}
+#vpanchanga-view .vp-horo-personal-cta-text{
+  font-size:.66rem;line-height:1.5;color:var(--vp-ink-faint);
+  margin-bottom:10px;
+}
+#vpanchanga-view .vp-horo-save-btn{
+  width:100%;font-family:inherit;font-size:.72rem;font-weight:800;
+  letter-spacing:.03em;color:#fff;
+  background:linear-gradient(135deg,var(--vp-violet),#9B7FFF);
+  border:none;border-radius:12px;padding:11px 12px;
+  cursor:pointer;box-shadow:0 6px 16px rgba(124,92,252,.3);
+  transition:transform .15s ease,box-shadow .15s ease;
+}
+#vpanchanga-view .vp-horo-save-btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(124,92,252,.4)}
+#vpanchanga-view .vp-horo-save-btn:active{transform:translateY(0)}
+
+#vpanchanga-view .vp-personal-offcard{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:var(--vp-card);border:1px solid var(--vp-card-edge);
+  border-radius:16px;padding:14px 16px;margin:14px 0;
+  box-shadow:var(--vp-shadow);font-size:.7rem;color:var(--vp-ink-soft);
+}
+#vpanchanga-view .vp-personal-toggle-btn{
+  flex-shrink:0;font-family:inherit;font-size:.62rem;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;
+  color:var(--vp-violet);background:rgba(124,92,252,.12);
+  border:none;border-radius:999px;padding:8px 16px;cursor:pointer;
+  transition:background .2s ease;
+}
+#vpanchanga-view .vp-personal-toggle-btn:hover{background:rgba(124,92,252,.2)}
+#vpanchanga-view .vp-personal-toggle-on{
+  color:var(--vp-jade);background:var(--vp-jade-bg);
+}
+
+#vpanchanga-view .vp-personal-card{
+  background:var(--vp-card);border:1px solid var(--vp-card-edge);
+  border-radius:18px;padding:18px;margin:14px 0;
+  box-shadow:var(--vp-shadow);
+}
+#vpanchanga-view .vp-personal-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:14px;
+}
+#vpanchanga-view .vp-personal-title{
+  font-family:'EB Garamond',serif;font-size:1.1rem;font-weight:700;
+  color:var(--vp-ink);
+}
+#vpanchanga-view .vp-personal-rashi-row{
+  display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;
+}
+#vpanchanga-view .vp-personal-chip{
+  flex:1;min-width:120px;background:rgba(124,92,252,.07);
+  border-radius:12px;padding:10px 12px;
+}
+#vpanchanga-view .vp-personal-chip-label{
+  display:block;font-size:.58rem;font-weight:800;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--vp-ink-faint);margin-bottom:3px;
+}
+#vpanchanga-view .vp-personal-chip-val{
+  display:block;font-family:'EB Garamond',serif;font-size:1.02rem;
+  font-weight:700;color:var(--vp-violet);
+}
+#vpanchanga-view .vp-personal-outlook{
+  border-radius:14px;padding:12px 14px;margin-bottom:14px;
+}
+#vpanchanga-view .vp-personal-outlook-good{background:var(--vp-jade-bg)}
+#vpanchanga-view .vp-personal-outlook-bad{background:var(--vp-rose-bg)}
+#vpanchanga-view .vp-personal-outlook-neutral{background:var(--vp-gold-bg)}
+#vpanchanga-view .vp-personal-outlook-verdict{
+  font-family:'EB Garamond',serif;font-size:1rem;font-weight:700;
+  margin-bottom:6px;
+}
+#vpanchanga-view .vp-personal-outlook-good .vp-personal-outlook-verdict{color:var(--vp-jade)}
+#vpanchanga-view .vp-personal-outlook-bad .vp-personal-outlook-verdict{color:var(--vp-rose)}
+#vpanchanga-view .vp-personal-outlook-neutral .vp-personal-outlook-verdict{color:var(--vp-gold)}
+#vpanchanga-view .vp-personal-outlook-detail{
+  font-size:.68rem;line-height:1.5;color:var(--vp-ink-soft);margin-top:3px;
+}
+#vpanchanga-view .vp-personal-janmo{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  flex-wrap:wrap;background:var(--vp-ausp-bg);
+  border:1px solid var(--vp-ausp-border);border-radius:14px;
+  padding:12px 14px;margin-bottom:10px;
+}
+#vpanchanga-view .vp-personal-janmo-label{
+  font-size:.68rem;font-weight:700;color:var(--vp-ausp-glow);
+}
+#vpanchanga-view .vp-personal-janmo-date{
+  font-family:'EB Garamond',serif;font-size:.95rem;font-weight:700;
+  color:var(--vp-ink);
+}
+#vpanchanga-view .vp-personal-disclaimer{
+  font-size:.6rem;color:var(--vp-ink-faint);text-align:center;
+  font-style:italic;
+}
+

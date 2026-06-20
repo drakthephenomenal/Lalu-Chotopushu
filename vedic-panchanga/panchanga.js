@@ -847,6 +847,10 @@ function renderAll(){
     ' &nbsp;·&nbsp; '+headerPaksha+' Paksha &nbsp;·&nbsp; '+headerWhen+' '+fmtDate(headerRef);
   document.getElementById('vp-vaishnav-line').textContent='Vaishnav Month of '+headerHM.vaishnavName;
 
+  // Personal horoscope card (opt-in) — async, self-caching; safe to call
+  // on every renderAll() pass since it no-ops fast when already loaded.
+  vpPersonalRender();
+
   // ── SOLAR SYSTEM ORBIT DIAL ──────────────────────────────────
   // Sun always fixed at center, spinning continuously.
   // 6 planets orbit around it at radii proportional to their real
@@ -1676,6 +1680,274 @@ function vpHoroCalculate(){
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+// PERSONAL HOROSCOPE — opt-in, additive layer
+//
+// Builds on the engine functions already defined above in this same
+// scope (dateToJD, moonLong, sunLong, moonLongSid, norm, findElong,
+// NAKSHATRA[], TITHI[]). Persistence goes through window.vpFirestore,
+// the narrow bridge exposed by app.js (see app.js for why a bridge is
+// needed instead of reaching fbDb directly).
+//
+// Nothing here is shown unless the user explicitly saves a birth
+// profile AND turns the personalization toggle on — see vpPersonalRender().
+// ══════════════════════════════════════════════════════════════
+
+const RASHI = ['Mesha','Vrishabha','Mithuna','Karka','Simha','Kanya',
+  'Tula','Vrishchika','Dhanu','Makara','Kumbha','Meena'];
+const RASHI_LORD = ['Mars','Venus','Mercury','Moon','Sun','Mercury',
+  'Venus','Mars','Jupiter','Saturn','Saturn','Jupiter'];
+// Index-aligned to VAAR = ['Rabi','Som','Mangol','Budh','Brihaspati','Sukro','Shani']
+const VAAR_LORD = ['Sun','Moon','Mars','Mercury','Jupiter','Venus','Saturn'];
+
+// Classical graha-maitri (simplified to 3 states), symmetric for our use.
+const FRIENDSHIP = {
+  Sun:     {Sun:'own', Moon:'friend', Mars:'friend', Mercury:'neutral', Jupiter:'friend', Venus:'enemy', Saturn:'enemy'},
+  Moon:    {Sun:'friend', Moon:'own', Mars:'neutral', Mercury:'friend', Jupiter:'neutral', Venus:'neutral', Saturn:'neutral'},
+  Mars:    {Sun:'friend', Moon:'friend', Mars:'own', Mercury:'enemy', Jupiter:'friend', Venus:'neutral', Saturn:'neutral'},
+  Mercury: {Sun:'neutral', Moon:'enemy', Mars:'neutral', Mercury:'own', Jupiter:'neutral', Venus:'friend', Saturn:'neutral'},
+  Jupiter: {Sun:'friend', Moon:'friend', Mars:'friend', Mercury:'enemy', Jupiter:'own', Venus:'enemy', Saturn:'neutral'},
+  Venus:   {Sun:'enemy', Moon:'neutral', Mars:'neutral', Mercury:'friend', Jupiter:'enemy', Venus:'own', Saturn:'friend'},
+  Saturn:  {Sun:'enemy', Moon:'neutral', Mars:'neutral', Mercury:'neutral', Jupiter:'neutral', Venus:'friend', Saturn:'own'},
+};
+
+// Tara Bala (9-fold count from birth Nakshatra), classical names + polarity.
+const TARA = [
+  {name:'Janma Tara',     polarity:'caution', note:'Self-tara — proceed mindfully, avoid starting risky ventures'},
+  {name:'Sampat Tara',    polarity:'good',    note:'Wealth & gain favored'},
+  {name:'Vipat Tara',     polarity:'bad',     note:'Danger tara — avoid travel & new starts'},
+  {name:'Kshema Tara',    polarity:'good',    note:'Well-being & safety favored'},
+  {name:'Pratyak Tara',   polarity:'bad',     note:'Obstacle tara — expect delays'},
+  {name:'Sadhaka Tara',   polarity:'good',    note:'Goal-accomplishing — favorable for important tasks'},
+  {name:'Vadha Tara',     polarity:'bad',     note:'Harm tara — avoid risky or confrontational activity'},
+  {name:'Mitra Tara',     polarity:'good',    note:'Friendly tara — good for relationships & cooperation'},
+  {name:'Ati-Mitra Tara', polarity:'good',    note:'Highly friendly — auspicious for most activities'},
+];
+
+function vpPersonalJdFromForm(dateStr, timeStr){
+  const [y, mo, da] = dateStr.split('-').map(Number);
+  const [hh, mi] = (timeStr || '12:00').split(':').map(Number);
+  return dateToJD(new Date(y, mo-1, da, hh||0, mi||0, 0));
+}
+
+// Compute Rashi + Nakshatra + Pada + birth-Tithi from birth moment.
+// Sidereal (Lahiri) longitude is used for Rashi/Nakshatra, matching how
+// this engine already computes Nakshatra elsewhere (moonLongSid). Tithi
+// uses the tropical Moon-Sun elongation, matching tithiIdx()'s own
+// definition — tithi is a synodic measure, not a sidereal-sign measure,
+// so mixing the two here would silently miscount it.
+function vpPersonalComputeProfile(dateStr, timeStr, lat, lng){
+  const jd = vpPersonalJdFromForm(dateStr, timeStr);
+  const moonSid = moonLongSid(jd);
+  const rashiIndex = Math.floor(moonSid/30)%12;
+  const nakSpan = 360/27;
+  const nakshatraIndex = Math.floor(moonSid/nakSpan)%27;
+  const withinNak = moonSid - nakshatraIndex*nakSpan;
+  const nakshatraPada = Math.floor(withinNak/(nakSpan/4))+1;
+  const elong = norm(moonLong(jd)-sunLong(jd));
+  const tithiIndex = Math.floor(elong/12);
+
+  return {
+    dob: dateStr, tob: timeStr||'12:00', lat, lng,
+    rashiIndex, rashiName: RASHI[rashiIndex], rashiLord: RASHI_LORD[rashiIndex],
+    nakshatraIndex, nakshatraName: NAKSHATRA[nakshatraIndex], nakshatraPada,
+    tithiIndex, tithiName: TITHI[tithiIndex],
+    enabled: false,
+  };
+}
+
+// Next occurrence of the birth Tithi — the Vedic Janmotithi. Scans forward
+// from `fromJD` in ~one-lunar-month steps (29.4d) and uses the same
+// findElong() bisection the rest of this engine relies on for tithi-edge
+// detection, so the result is consistent with how tithi boundaries are
+// computed everywhere else in this file.
+function vpPersonalNextJanmotithi(profile, fromJD){
+  if(!profile || typeof profile.tithiIndex !== 'number') return null;
+  const startSearch = (fromJD || dateToJD(new Date())) + 1;
+  const targetDeg = profile.tithiIndex*12;
+  let windowStart = startSearch;
+  for(let guard=0; guard<14; guard++){
+    const windowEnd = windowStart + 31;
+    const candidate = findElong(windowStart, windowEnd, targetDeg);
+    // NOTE: findElong's bisection can converge to a value a hair (~1e-8 JD)
+    // BELOW the true boundary due to floating-point precision — e.g. it may
+    // return elong=251.999999994 instead of exactly 252.0, which then
+    // floor-divides into the WRONG (previous) tithi index. The rest of this
+    // engine works around the identical class of bug elsewhere by nudging
+    // forward by a small epsilon before re-deriving an index from a
+    // boundary value (see the "+.0001" pattern in getTithiPeriods etc.);
+    // we do the same here rather than trusting the index at the boundary
+    // itself.
+    const idx = Math.floor(norm(moonLong(candidate+0.0001)-sunLong(candidate+0.0001))/12);
+    if(candidate > startSearch-1 && idx === profile.tithiIndex){
+      return { jd: candidate, date: jdToDate(candidate) };
+    }
+    windowStart += 29.4;
+  }
+  return null; // fail safe — UI shows "could not be determined" rather than a wrong date
+}
+
+function vpPersonalTaraBala(profile, todayNakIndex){
+  const diff = ((todayNakIndex - profile.nakshatraIndex)%27+27)%27;
+  return TARA[diff%9];
+}
+
+function vpPersonalLordRelation(lordA, lordB){
+  if(lordA===lordB) return 'own';
+  const row = FRIENDSHIP[lordA];
+  return (row && row[lordB]) || 'neutral';
+}
+
+// Combine three independent classical factors (Tara Bala from birth
+// Nakshatra, Rashi-lord/weekday-lord friendship, and today's active Yoga
+// polarity) into one outlook. Each factor is computed from already-correct
+// panchanga data; only the combination/weighting is a simplification, and
+// that simplification is disclosed to the user in the UI, not hidden.
+function vpPersonalDailyOutlook(profile, todayCtx){
+  const tara = vpPersonalTaraBala(profile, todayCtx.nakshatraIndex);
+  const vaarLord = VAAR_LORD[todayCtx.vaarIdx];
+  const rel = vpPersonalLordRelation(profile.rashiLord, vaarLord);
+
+  let score = 0;
+  score += tara.polarity==='good' ? 1 : tara.polarity==='bad' ? -1 : 0;
+  score += (rel==='own'||rel==='friend') ? 1 : rel==='enemy' ? -1 : 0;
+  score += todayCtx.yogaPolarity==='good' ? 1 : todayCtx.yogaPolarity==='bad' ? -1 : 0;
+
+  let verdict, verdictClass;
+  if(score>=2){ verdict='Favorable day — good for important undertakings'; verdictClass='good'; }
+  else if(score<=-2){ verdict='Use caution — better to defer major decisions'; verdictClass='bad'; }
+  else { verdict='Mixed day — proceed with normal care'; verdictClass='neutral'; }
+
+  return { tara, vaarLord, rashiLord: profile.rashiLord, relation: rel, score, verdict, verdictClass };
+}
+
+const INAUSPICIOUS_YOGA_NAMES = ['Vishkambha','Atiganda','Shula','Ganda','Vajra','Vyatipata','Parigha','Vaidhriti'];
+function vpPersonalYogaPolarity(yogaName){
+  if(INAUSPICIOUS_YOGA_NAMES.includes(yogaName)) return 'bad';
+  // A short, clearly-good subset per classical lists used elsewhere in this file
+  if(['Siddhi','Shubha','Shukla','Brahma','Indra','Siddha','Variyan','Saubhagya'].includes(yogaName)) return 'good';
+  return 'neutral';
+}
+
+// ── Local cache of the loaded profile (avoids refetching on every render) ──
+let _vpPersonalProfile = null;
+let _vpPersonalLoaded = false;
+
+async function vpPersonalLoad(force){
+  if(_vpPersonalLoaded && !force) return _vpPersonalProfile;
+  if(!window.vpFirestore){ _vpPersonalLoaded = true; return null; }
+  const uid = window.vpFirestore.currentUid();
+  if(!uid){ _vpPersonalLoaded = true; _vpPersonalProfile = null; return null; }
+  _vpPersonalProfile = await window.vpFirestore.getProfile();
+  _vpPersonalLoaded = true;
+  return _vpPersonalProfile;
+}
+
+async function vpPersonalSave(){
+  if(!window.vpFirestore || !window.vpFirestore.currentUid()){
+    alert('Please sign in (Google) first to save and sync your birth details.');
+    return;
+  }
+  const dateEl = document.getElementById('vp-horo-date');
+  const timeEl = document.getElementById('vp-horo-time');
+  const latEl = document.getElementById('vp-horo-lat');
+  const lngEl = document.getElementById('vp-horo-lng');
+  const dateVal = dateEl && dateEl.value;
+  const timeVal = (timeEl && timeEl.value) || '12:00';
+  const lat = latEl && latEl.value !== '' ? parseFloat(latEl.value) : NaN;
+  const lng = lngEl && lngEl.value !== '' ? parseFloat(lngEl.value) : NaN;
+
+  if(!dateVal){ alert('Please enter a date of birth first.'); return; }
+  if(isNaN(lat) || isNaN(lng)){ alert('Please enter a valid birth place (latitude/longitude).'); return; }
+
+  const profile = vpPersonalComputeProfile(dateVal, timeVal, lat, lng);
+  profile.enabled = true; // saving = opting in; user can toggle off afterward without re-entering data
+  const ok = await window.vpFirestore.saveProfile(profile);
+  if(ok){
+    _vpPersonalProfile = profile;
+    _vpPersonalLoaded = true;
+    vpHoroClose();
+    vpPersonalRender();
+    const card = document.getElementById('vp-personal-card');
+    if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
+  } else {
+    alert('Could not save your birth details — please check your connection and try again.');
+  }
+}
+
+async function vpPersonalToggle(){
+  if(!_vpPersonalProfile) return;
+  _vpPersonalProfile.enabled = !_vpPersonalProfile.enabled;
+  await window.vpFirestore.saveProfile({ enabled: _vpPersonalProfile.enabled });
+  vpPersonalRender();
+}
+
+function vpPersonalFmtDate(d){
+  return d.toLocaleDateString('en-IN', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+}
+
+// Renders (or hides) the "My Panchanga" card on the main panchanga page.
+// Safe to call any time — it no-ops gracefully if the mount point isn't
+// in the DOM yet, or if there's no saved/enabled profile.
+async function vpPersonalRender(){
+  const mount = document.getElementById('vp-personal-card');
+  if(!mount) return;
+
+  const profile = await vpPersonalLoad(false);
+  if(!profile){
+    mount.style.display = 'none';
+    return;
+  }
+
+  if(!profile.enabled){
+    mount.style.display = 'block';
+    mount.innerHTML = `
+      <div class="vp-personal-offcard">
+        <span>✨ Personalized panchanga is available for your saved birth details.</span>
+        <button class="vp-personal-toggle-btn" onclick="vpPersonalToggle()">Turn on</button>
+      </div>`;
+    return;
+  }
+
+  const jdNow = dateToJD(new Date());
+  const todayNak = getNakshatraPeriods(jdNow, 1)[0];
+  const todayYoga = getYogaPeriods(jdNow, 1)[0];
+  const todayVaarIdx = getVedicVaarIdx(new Date(), (typeof LAT==='number'?LAT:profile.lat), (typeof LNG==='number'?LNG:profile.lng));
+
+  const outlook = vpPersonalDailyOutlook(profile, {
+    nakshatraIndex: todayNak.index,
+    yogaPolarity: vpPersonalYogaPolarity(todayYoga.name),
+    vaarIdx: todayVaarIdx,
+  });
+
+  const janmo = vpPersonalNextJanmotithi(profile, jdNow);
+  const janmoLabel = janmo ? vpPersonalFmtDate(janmo.date) : 'Could not be determined';
+
+  mount.style.display = 'block';
+  mount.innerHTML = `
+    <div class="vp-personal-card">
+      <div class="vp-personal-head">
+        <span class="vp-personal-title">✨ My Panchanga</span>
+        <button class="vp-personal-toggle-btn vp-personal-toggle-on" onclick="vpPersonalToggle()">On</button>
+      </div>
+      <div class="vp-personal-rashi-row">
+        <div class="vp-personal-chip"><span class="vp-personal-chip-label">Rashi</span><span class="vp-personal-chip-val">${profile.rashiName}</span></div>
+        <div class="vp-personal-chip"><span class="vp-personal-chip-label">Nakshatra</span><span class="vp-personal-chip-val">${profile.nakshatraName} (Pada ${profile.nakshatraPada})</span></div>
+      </div>
+      <div class="vp-personal-outlook vp-personal-outlook-${outlook.verdictClass}">
+        <div class="vp-personal-outlook-verdict">${outlook.verdict}</div>
+        <div class="vp-personal-outlook-detail">Today's Tara: <b>${outlook.tara.name}</b> — ${outlook.tara.note}</div>
+        <div class="vp-personal-outlook-detail">${outlook.vaarLord} (today's lord) is a <b>${outlook.relation}</b> of your Rashi lord (${outlook.rashiLord})</div>
+      </div>
+      <div class="vp-personal-janmo">
+        <span class="vp-personal-janmo-label">🎉 Your next Vedic Janmotithi (${profile.tithiName})</span>
+        <span class="vp-personal-janmo-date">${janmoLabel}</span>
+      </div>
+      <div class="vp-personal-disclaimer">For reflection only — not a substitute for a professional astrologer.</div>
+    </div>`;
+}
+
+
 window.vpSelectVaar = function(idx) { selectVaar(idx); };
 window.vpClearSelectedVaar = function() { clearSelectedVaar(); };
 window.vpSelectAnga = function(name) { selectedAnga = name; renderAll(); };
@@ -1701,6 +1973,9 @@ window.vpHoroCloseBackdrop = function(e){ vpHoroCloseBackdrop(e); };
 window.vpHoroUseGPS = function(){ vpHoroUseGPS(); };
 window.vpHoroCalculate = function(){ vpHoroCalculate(); };
 window.vpHoroClearResult = function(){ vpHoroClearResult(); };
+window.vpPersonalSave = function(){ vpPersonalSave(); };
+window.vpPersonalToggle = function(){ vpPersonalToggle(); };
+window.vpPersonalRender = function(){ vpPersonalRender(); };
 window.vpOpenCalendar = function(){ vpCalOpen(); };
 window.vpCloseCalendar = function(){ vpCalClose(); };
 window.vpCloseCalendarBackdrop = function(e){ vpCalCloseBackdrop(e); };

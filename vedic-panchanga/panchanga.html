@@ -115,12 +115,24 @@
           <div class="vp-horo-note">Birth time is read in your device's current timezone. If you were born in a different timezone, set your device's timezone to match before calculating for an accurate result.</div>
         </div>
 
+        <div class="vp-horo-personal-cta">
+          <div class="vp-horo-personal-cta-text">Want your horoscope built into today's panchanga — personalized auspicious timing & your next Vedic Janmotithi? This is fully optional and only visible to you.</div>
+          <button class="vp-horo-save-btn" onclick="vpPersonalSave()">💾 Save my birth details &amp; enable personalization</button>
+        </div>
+
         <div class="vp-cal-modal-foot">
           <button class="vp-cal-close-btn" onclick="vpHoroClose()">Cancel</button>
           <button class="vp-cal-today-btn" onclick="vpHoroCalculate()">Calculate</button>
         </div>
       </div>
     </div>
+
+    <!-- ══════════════════════════════════════════
+         MY PANCHANGA — personalized card (opt-in)
+         Hidden by default; vpPersonalRender() fills it in
+         only when a saved & enabled profile exists.
+         ══════════════════════════════════════════ -->
+    <div id="vp-personal-card" style="display:none"></div>
 
 
     <!-- ══════════════════════════════════════════

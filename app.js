@@ -11924,7 +11924,7 @@ function _fmtDateDMY(dateStr) {
 // LEADERBOARD MODULE
 // ═══════════════════════════════════════════════════════
 
-window._lbPeriod = 'alltime';
+window._lbPeriod = 'today';
 window._lbUnsubscribe = null;
 
 /** Get the date key prefix for the current period filter */
@@ -11989,7 +11989,7 @@ function _lbFmtJap(n) {
 
 /** Load leaderboard from Firestore and render it */
 async function loadLeaderboard(period) {
-  window._lbPeriod = period || 'alltime';
+  window._lbPeriod = period || 'today';
 
   // Unsubscribe any previous listener
   if (window._lbUnsubscribe) { try { window._lbUnsubscribe(); } catch(_) {} }
@@ -12368,7 +12368,7 @@ async function toggleLbOptIn() {
   // Refresh if the leaderboard view is currently visible
   const vlb = document.getElementById('vlb');
   if (vlb && vlb.classList.contains('active')) {
-    loadLeaderboard(window._lbPeriod || 'alltime');
+    loadLeaderboard(window._lbPeriod || 'today');
   }
 }
 

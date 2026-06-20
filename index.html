@@ -190,7 +190,7 @@
     Stats
   </button>
 
-  <button class="nb" id="navLb" onclick="sv('vlb',this);loadLeaderboard(window._lbPeriod||'alltime')" style="position:relative;">
+  <button class="nb" id="navLb" onclick="sv('vlb',this);loadLeaderboard(window._lbPeriod||'today')" style="position:relative;">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     Community
 
@@ -1072,13 +1072,13 @@
   <!-- LEADERBOARD SETTINGS (Moved from Settings tab) -->
   <div class="sc" id="lbSettingCard" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.25);margin:16px 16px 8px 16px;padding-bottom:8px;">
     <!-- Opt-in toggle -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;margin-bottom:12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 10px;margin-bottom:12px;border-bottom:1px solid rgba(255,215,0,0.15);flex-wrap:nowrap;">
       <div style="font-size:14px;color:var(--gold);font-weight:600">🪷 Join Community Board</div>
       <div class="tg" id="tgLbOptIn" onclick="toggleLbOptIn()"></div>
     </div>
 
     <!-- Display name -->
-    <div id="lbNameRow" style="display:none;">
+    <div id="lbNameRow" style="display:none;margin-top:6px;padding-top:4px;">
       <div style="font-size:11px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;font-weight:600;margin-bottom:7px">Display Name</div>
       <div style="display:flex;gap:8px;align-items:center">
         <input type="text" id="lbNameIn" autocomplete="off" spellcheck="false" maxlength="30" placeholder="Keep original name or type custom name…" style="flex:1;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:13px;font-family:'Inter',sans-serif;outline:none">
@@ -1090,10 +1090,10 @@
 
   <!-- Period Tabs -->
   <div class="lb-tabs" id="lbTabs">
-    <button class="lb-tab" id="lbTabToday" onclick="lbSwitchPeriod('today')">Today</button>
+    <button class="lb-tab active" id="lbTabToday" onclick="lbSwitchPeriod('today')">Today</button>
     <button class="lb-tab" id="lbTabWeek" onclick="lbSwitchPeriod('week')">This week</button>
     <button class="lb-tab" id="lbTabMonth" onclick="lbSwitchPeriod('month')">This month</button>
-    <button class="lb-tab active" id="lbTabAlltime" onclick="lbSwitchPeriod('alltime')">Lifetime</button>
+    <button class="lb-tab" id="lbTabAlltime" onclick="lbSwitchPeriod('alltime')">Lifetime</button>
   </div>
 
   <!-- Your rank card (shown when opted in and ranked) -->
@@ -1127,7 +1127,7 @@
 
   <!-- Refresh button -->
   <div style="display:flex;justify-content:center;padding:10px 0 16px">
-    <button id="lbRefreshBtn" onclick="loadLeaderboard(window._lbPeriod||'alltime')" style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);border-radius:20px;color:var(--gold);font-size:12px;font-weight:600;padding:8px 22px;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:0.5px;transition:all 0.2s">↻ Refresh</button>
+    <button id="lbRefreshBtn" onclick="loadLeaderboard(window._lbPeriod||'today')" style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.3);border-radius:20px;color:var(--gold);font-size:12px;font-weight:600;padding:8px 22px;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:0.5px;transition:all 0.2s">↻ Refresh</button>
   </div>
 
 

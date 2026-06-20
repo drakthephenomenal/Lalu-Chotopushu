@@ -1,19 +1,16 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v154
+// Radha Naam Jap — Service Worker  v155
 // Push notifications & FCM removed.
 //
-// v154 fixes (vs v149/v153):
-//  • Promoted critical above-the-fold images to CORE_ASSETS so they are
-//    actually awaited during install (was the "images appear late" bug).
-//  • Navigation is now network-first with a 2s timeout → prevents the
-//    "old index.html + new app.js" version-mismatch flash on update.
-//  • Removed clients.claim() — new SW takes over on the NEXT navigation
-//    instead of mid-session. Combined with the app.js change (no auto-
-//    reload on SW_UPDATED), this eliminates the "loads twice" flicker.
-//  • SW_UPDATED message kept (so the page can show a soft "update ready"
-//    pill), but app.js no longer force-reloads on it.
+// v155 fixes (vs v154):
+//  • Promoted ./vedic-panchanga/panchanga.html, .css, .js to CORE_ASSETS so
+//    install BLOCKS on them. Fixes "Vedic Panchanga module failed to load"
+//    on first open / after update where the HTML fragment fetch failed
+//    before the lazy cache step had completed.
+//  • Bumped cache name to invalidate any stale v154 entry that may have
+//    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v154';
+const CACHE = 'radha-jap-v155';
 
 // Core assets — install BLOCKS on these. Anything the first paint needs
 // must live here, otherwise users see a network round-trip on first open.
@@ -33,6 +30,11 @@ const CORE_ASSETS = [
   './gurudev/1.png',
   './radha_vallabh/1.png',
   './hitju_maharaj/1.png',
+  // Promoted in v155 — Vedic Panchanga module (was failing to load on first
+  // open because the fragment fetch raced ahead of the lazy cache step).
+  './vedic-panchanga/panchanga.html',
+  './vedic-panchanga/panchanga.css',
+  './vedic-panchanga/panchanga.js',
 ];
 
 // Large / optional local assets — cached in background, not blocking install
@@ -42,9 +44,6 @@ const LAZY_LOCAL_ASSETS = [
   './panchangData.js',
   './gurudev/2.png',
   './Panchojanno%20Shankya.mp3',
-  './vedic-panchanga/panchanga.html',
-  './vedic-panchanga/panchanga.css',
-  './vedic-panchanga/panchanga.js',
 ];
 
 const EXTERNAL_ASSETS = [

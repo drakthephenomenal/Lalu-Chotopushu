@@ -251,7 +251,7 @@
 }
 
 /* Day label — kept upright by JS counter-rotation */
-#vpanchanga-view .vp-planet-day-label{
+#vpanchanga-view .vp-planet-day-label{display:none !important;
   position:absolute;bottom:-14px;left:50%;
   transform:translateX(-50%);
   font-size:.37rem;font-weight:900;letter-spacing:.07em;text-transform:uppercase;
@@ -1215,3 +1215,6 @@
 #vpanchanga-view .vp-personal-upcoming-date{
   font-weight:700;color:var(--vp-violet);white-space:nowrap;
 }
+
+#vpanchanga-view .vp-planet-node[data-vaar="7"]{--pc:90,160,235}
+#vpanchanga-view .vp-orbit-guide[data-vaar="7"]{border-color:rgba(90,160,235,.22)}

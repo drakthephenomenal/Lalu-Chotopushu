@@ -392,11 +392,20 @@
         </div>
         <div id="n28ProgressLabel" style="text-align:right;font-size:11px;color:#BD93F9;font-weight:700;white-space:nowrap;">0 cycles · 0/28</div>
       </div>
-            <div style="display:flex;align-items:center;justify-content:center;gap:10px;">
-        <div style="font-size:13px;color:var(--gold);font-family:'EB Garamond',serif;letter-spacing:0.5px;white-space:nowrap;">
-          Today’s Jap Time : <span id="n28TotalTimer">00:00:00</span>
+      <div class="timer-row" style="margin-top:6px;">
+        <div class="timer-box">
+          <div class="timer-box-lbl">Cycle Time</div>
+          <div class="timer-box-main">
+            <div class="timer-display" id="n28CycleTimerDisplay">0:00</div>
+            <button id="n28PauseBtn" class="tbtn start" onclick="App.toggle28Pause()" style="display:none;">⏸ Pause</button>
+          </div>
         </div>
-        <button id="n28PauseBtn" onclick="App.toggle28Pause()" style="display:none;">⏸ Pause</button>
+        <div class="timer-box">
+          <div class="timer-box-lbl">Today’s Jap Time</div>
+          <div class="timer-box-main timer-box-main--solo">
+            <div class="timer-display timer-display--today" id="n28TotalTimer">00:00:00</div>
+          </div>
+        </div>
       </div>
     </div>
 

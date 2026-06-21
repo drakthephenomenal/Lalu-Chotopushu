@@ -1136,8 +1136,8 @@ const App = {
     // Show frozen cycle value; n28TotalTimer shows unified Today's Jap Time
     const fmt = (s) =>
       Math.floor(s / 60) + ":" + (s % 60 < 10 ? "0" : "") + (s % 60);
-    const ce = document.getElementById("n28CycleTimer");
-    if (ce) ce.textContent = fmt(this._n28PausedCycleSec);
+    const ce = document.getElementById("n28CycleTimer"); const _ceVis = document.getElementById("n28CycleTimerDisplay");
+    if (ce) ce.textContent = fmt(this._n28PausedCycleSec); if (_ceVis) _ceVis.textContent = fmt(this._n28PausedCycleSec);
     this.updateTimerToday();
 
   },
@@ -1188,8 +1188,8 @@ const App = {
       const cycSec = this._n28CycleStart
         ? Math.floor((Date.now() - this._n28CycleStart) / 1000)
         : 0;
-      const ce = document.getElementById("n28CycleTimer");
-      if (ce) ce.textContent = fmt(cycSec);
+      const ce = document.getElementById("n28CycleTimer"); const _ceVis = document.getElementById("n28CycleTimerDisplay");
+      if (ce) ce.textContent = fmt(cycSec); if (_ceVis) _ceVis.textContent = fmt(cycSec);
       // Keep the unified "Total Jap Time" mirror in sync every second
       this.updateTimerToday();
     }, 1000);
@@ -1214,12 +1214,12 @@ const App = {
     // Reset cycle anchor — if paused, reset frozen cycle sec too
     if (this._n28Paused) {
       this._n28PausedCycleSec = 0;
-      const ce = document.getElementById("n28CycleTimer");
-      if (ce) ce.textContent = "0:00";
+      const ce = document.getElementById("n28CycleTimer"); const _ceVis = document.getElementById("n28CycleTimerDisplay");
+      if (ce) ce.textContent = "0:00"; if (_ceVis) _ceVis.textContent = "0:00";
     } else {
       this._n28CycleStart = Date.now();
-      const ce = document.getElementById("n28CycleTimer");
-      if (ce) ce.textContent = "0:00";
+      const ce = document.getElementById("n28CycleTimer"); const _ceVis = document.getElementById("n28CycleTimerDisplay");
+      if (ce) ce.textContent = "0:00"; if (_ceVis) _ceVis.textContent = "0:00";
     }
   },
 
@@ -1238,8 +1238,8 @@ const App = {
     this._n28Paused = false;
     this._n28PausedCycleSec = 0;
     this._n28PausedTotalSec = 0;
-    const ce = document.getElementById("n28CycleTimer");
-    if (ce) ce.textContent = "0:00";
+    const ce = document.getElementById("n28CycleTimer"); const _ceVis = document.getElementById("n28CycleTimerDisplay");
+    if (ce) ce.textContent = "0:00"; if (_ceVis) _ceVis.textContent = "0:00";
     // Show unified Today's Jap Time
     this.updateTimerToday();
 
@@ -1636,6 +1636,22 @@ setInterval(() => {
     App.S.malaLog = [];
     App.S.malaLogRV = [];
     App.S.malaLogHK = [];
+    // ── Fix: discard any incomplete in-progress mala at midnight ──
+    // Partial beads (< full mala) must not bleed into the new day or
+    // create a ghost mala entry. Completed mala data is already saved
+    // in history[previousTk] and is completely untouched.
+    App.S.ms = 0;
+    App.malaWallStart = 0;
+    App._currentMalaStartTs = null;
+    App.currentMalaSeconds = 0;
+    App.S.malaStartTk = "";
+    App.S.malaStartMode = "";
+    try {
+      localStorage.removeItem("rjap_currentMalaStartTs");
+      localStorage.setItem("rjap_malaWallStart", "0");
+      localStorage.setItem("rjap_currentMalaSeconds", "0");
+      localStorage.removeItem("rjap_malaStartTk");
+    } catch(_) {}
     if (!App.S.history[App.S.tk]) App.S.history[App.S.tk] = 0;
     if (!App.S.h28[App.S.tk]) App.S.h28[App.S.tk] = 0;
     if (!App.S.timerHistory[App.S.tk]) App.S.timerHistory[App.S.tk] = 0;
@@ -6364,9 +6380,10 @@ function cycleDone28() {
 
   // Show cycle time floating animation
   if (cycleTimeSec > 0) {
-    const te = document.getElementById("n28CycleTimer");
-    if (te) {
-      const rect = te.getBoundingClientRect();
+    const te = document.getElementById("n28CycleTimer"); const _teVis = document.getElementById("n28CycleTimerDisplay");
+    const _teAnchor = _teVis || te;
+    if (_teAnchor) {
+      const rect = _teAnchor.getBoundingClientRect();
       const el = document.createElement("div");
       el.className = "mala-time-float";
       el.textContent = "📿 " + fmtCyc(cycleTimeSec);
@@ -6390,8 +6407,8 @@ function cycleDone28() {
   App._n28Paused = false;
   App._n28PausedCycleSec = 0;
   App._n28PausedTotalSec = 0;
-  const ce = document.getElementById("n28CycleTimer");
-  if (ce) ce.textContent = "0:00";
+  const ce = document.getElementById("n28CycleTimer"); const _ceVis = document.getElementById("n28CycleTimerDisplay");
+  if (ce) ce.textContent = "0:00"; if (_ceVis) _ceVis.textContent = "0:00";
   // Show unified Jap timer (same as main Jap tab)
   const teDisp = document.getElementById("n28TotalTimer");
   if (teDisp) teDisp.textContent = App.fmtTime(App.timerSeconds);

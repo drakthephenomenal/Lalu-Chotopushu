@@ -690,6 +690,13 @@ const App = {
     // Mirror the SAME total on the 28 Names tab
     const te28 = document.getElementById("n28TotalTimer");
     if (te28) te28.textContent = this.fmtTime(combinedSec);
+    // Mirror the SESSION timer (identical to main jap Session display) on 28 Names tab
+    const se28 = document.getElementById("n28SessionDisplay");
+    if (se28) {
+      se28.textContent = this.fmtTime(this.timerSeconds);
+      if (this.timerSeconds > 0) se28.classList.add("running");
+      else se28.classList.remove("running");
+    }
   },
 
   // ── UNIFIED TIME: sync timerHistory[today] = sum of mala log entries ──
@@ -745,18 +752,46 @@ const App = {
     }
     const mtotEl = document.getElementById("mtot");
     if (mtotEl) mtotEl.textContent = md + " mala" + (md !== 1 ? "s" : "");
-    const dP = curDt > 0 ? Math.min(100, Math.round((tod / curDt) * 100)) : 0;
-    const lP = curLt > 0 ? Math.min(100, Math.round((tot / curLt) * 100)) : 0;
+    const dP = curDt > 0 ? Math.round((tod / curDt) * 100) : 0;
+    const lP = curLt > 0 ? Math.round((tot / curLt) * 100) : 0;
+    const dBarPct = Math.min(100, dP);
+    const lBarPct = Math.min(100, lP);
     // Daily bar (blue) — mode-specific
-    document.getElementById("dPct").textContent = dP + "%";
-    document.getElementById("dbarFill").style.width = dP + "%";
+    const dPctEl = document.getElementById("dPct");
+    const dFill  = document.getElementById("dbarFill");
+    dPctEl.textContent = dP + "%";
+    dFill.style.width = dBarPct + "%";
+    if (dP >= 100) {
+      dPctEl.style.color = "#FFD700";
+      dFill.style.background = "linear-gradient(90deg,var(--a2),#FFD700,var(--a2))";
+      dFill.style.backgroundSize = "200% 100%";
+      dFill.style.animation = "barOverflow 1.8s ease-in-out infinite";
+    } else {
+      dPctEl.style.color = "";
+      dFill.style.background = "linear-gradient(90deg,var(--a2),var(--a))";
+      dFill.style.backgroundSize = "";
+      dFill.style.animation = "none";
+    }
     document.getElementById("dbarDone").textContent = fmtIN(tod);
     document.getElementById("dbarTarget").textContent =
       "/ " + (curDt ? fmtIN(curDt) : "—");
     document.getElementById("dDet").textContent = md + " malas done";
     // Lifetime bar (gold) — COMBINED total, shared target
-    document.getElementById("lPct").textContent = lP + "%";
-    document.getElementById("lbarFill").style.width = lP + "%";
+    const lPctEl = document.getElementById("lPct");
+    const lFill  = document.getElementById("lbarFill");
+    lPctEl.textContent = lP + "%";
+    lFill.style.width = lBarPct + "%";
+    if (lP >= 100) {
+      lPctEl.style.color = "#FFD700";
+      lFill.style.background = "linear-gradient(90deg,var(--gold),#fff,var(--gold))";
+      lFill.style.backgroundSize = "200% 100%";
+      lFill.style.animation = "barOverflow 1.8s ease-in-out infinite";
+    } else {
+      lPctEl.style.color = "";
+      lFill.style.background = "linear-gradient(90deg,var(--gold),#FFB700)";
+      lFill.style.backgroundSize = "";
+      lFill.style.animation = "none";
+    }
     document.getElementById("lbarDone").textContent = fmtIN(tot);
     document.getElementById("lbarTarget").textContent =
       "/ " + (curLt ? fmtIN(curLt) : "—");
@@ -1185,12 +1220,7 @@ const App = {
       if (this._n28Paused) return;
       const fmt = (s) =>
         Math.floor(s / 60) + ":" + (s % 60 < 10 ? "0" : "") + (s % 60);
-      const cycSec = this._n28CycleStart
-        ? Math.floor((Date.now() - this._n28CycleStart) / 1000)
-        : 0;
-      const ce = document.getElementById("n28CycleTimer"); const _ceVis = document.getElementById("n28CycleTimerDisplay");
-      if (ce) ce.textContent = fmt(cycSec); if (_ceVis) _ceVis.textContent = fmt(cycSec);
-      // Keep the unified "Total Jap Time" mirror in sync every second
+      // Keep the unified "Total Jap Time" mirror and Session display in sync every second
       this.updateTimerToday();
     }, 1000);
     this._upd28PauseBtn();
@@ -6198,32 +6228,47 @@ function _update28ProgressBar(todJaps) {
   const bar  = document.getElementById("n28ProgressBar");
   const lbl  = document.getElementById("n28ProgressLabel");
   if (!wrap) return;
-  // Always show the bottom bar (it holds the unified Today's Jap Time + cycles label).
   wrap.style.display = "flex";
   const todCycles = Math.floor(todJaps / 28);
   const inCycle = todJaps % 28;
   if (target) {
-    const pct = Math.min(100, Math.round((todJaps / target) * 100));
+    const rawPct = Math.round((todJaps / target) * 100);
+    const barPct = Math.min(100, rawPct); // bar fill capped at 100% visually
     if (bar) {
-      bar.style.width = pct + "%";
-      bar.style.background = pct >= 100
-        ? "linear-gradient(90deg,rgba(46,204,113,0.8),rgba(0,200,100,0.95))"
-        : "linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9))";
-      bar.style.boxShadow = pct >= 100 ? "0 0 10px rgba(46,204,113,0.6)" : "0 0 8px rgba(189,147,249,0.5)";
+      bar.style.width = barPct + "%";
+      if (rawPct >= 100) {
+        bar.style.background = "linear-gradient(90deg,#FFD700,rgba(46,204,113,0.95),#FFD700)";
+        bar.style.backgroundSize = "200% 100%";
+        bar.style.boxShadow = "0 0 14px rgba(255,215,0,0.7), 0 0 6px rgba(46,204,113,0.5)";
+        bar.style.animation = "barOverflow 1.8s ease-in-out infinite";
+      } else {
+        bar.style.background = "linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9))";
+        bar.style.backgroundSize = "";
+        bar.style.boxShadow = "0 0 8px rgba(189,147,249,0.5)";
+        bar.style.animation = "none";
+      }
+    }
+    if (lbl) {
+      lbl.textContent = todCycles + " cycle" + (todCycles === 1 ? "" : "s") + " · " + inCycle + "/28 · " + rawPct + "%";
+      lbl.style.color = rawPct >= 100 ? "#FFD700" : "#BD93F9";
+      lbl.style.fontWeight = rawPct >= 100 ? "800" : "700";
     }
   } else {
-    // No daily target set — show current cycle progress (full bar when a cycle just completed).
     const num = inCycle === 0 && todCycles > 0 ? 28 : inCycle;
     const pct = Math.round((num / 28) * 100);
     if (bar) {
-      bar.style.width = pct + "%";
+      bar.style.width = Math.min(100, pct) + "%";
       bar.style.background = "linear-gradient(90deg,rgba(189,147,249,0.8),rgba(150,80,255,0.9))";
+      bar.style.backgroundSize = "";
       bar.style.boxShadow = "0 0 8px rgba(189,147,249,0.5)";
+      bar.style.animation = "none";
+    }
+    if (lbl) {
+      lbl.textContent = todCycles + " cycle" + (todCycles === 1 ? "" : "s") + " · " + inCycle + "/28";
+      lbl.style.color = "#BD93F9";
+      lbl.style.fontWeight = "700";
     }
   }
-
-  // Always render label as "{cycles} cycles · {N}/28"
-  if (lbl) lbl.textContent = todCycles + " cycle" + (todCycles === 1 ? "" : "s") + " · " + inCycle + "/28";
 }
 
 function u28() {
@@ -6260,6 +6305,20 @@ function u28() {
           nameEl.style.position = "relative";
         }
       }
+
+      // Auto-fit: shrink font until name fits on one line
+      function _fitN28FontSize(el) {
+        const containerW = el.parentNode ? el.parentNode.getBoundingClientRect().width - 20 : 300;
+        const baseSize = Math.min(52, Math.max(20, containerW * 0.065));
+        el.style.fontSize = baseSize + "px";
+        el.style.whiteSpace = "nowrap";
+        let sz = baseSize;
+        while (el.scrollWidth > containerW && sz > 13) {
+          sz -= 1;
+          el.style.fontSize = sz + "px";
+        }
+      }
+      requestAnimationFrame(() => _fitN28FontSize(nameEl));
 
       if (oldName && oldName !== newName && !window.__bbTakeover28) {
         // Ghost clone removed — coin pod carries the old name visually.
@@ -6675,8 +6734,10 @@ function renderSankalpas() {
         (pct >= 100 ? " full" : "") +
         '" style="width:' +
         Math.min(pct, 100) +
-        '%"></div></div>' +
-        '<div class="sk-prog-text">' +
+        '%;' +
+        (pct >= 100 ? 'background:linear-gradient(90deg,#FFD700,rgba(46,204,113,0.9),#FFD700);background-size:200% 100%;animation:barOverflow 1.8s ease-in-out infinite;box-shadow:0 0 10px rgba(255,215,0,0.6);' : '') +
+        '"></div></div>' +
+        '<div class="sk-prog-text" style="' + (pct >= 100 ? 'color:#FFD700;font-weight:700;' : '') + '">' +
         prog +
         " / " +
         sk.target +
@@ -6702,17 +6763,17 @@ function renderSankalpas() {
         '<input id="sk-adj-' +
         sk.id +
         '" type="number" min="1" placeholder="0" style="width:54px;background:rgba(0,0,0,0.35);border:1px solid rgba(232,51,109,0.3);border-radius:7px;padding:5px 8px;color:var(--tl);font-size:13px;text-align:center;font-family:Inter,sans-serif">' +
-        '<button class="sk-btn" style="color:#4f4;border-color:rgba(0,255,0,0.3);font-size:11px" onclick="adjustSankalpCycles(\'' +
+        '<button class="sk-btn" style="color:#4f4;border-color:rgba(0,255,0,0.4);font-size:11px;background:linear-gradient(180deg,rgba(46,204,113,0.22) 0%,rgba(30,160,80,0.08) 100%);box-shadow:0 2px 8px rgba(46,204,113,0.25)" onclick="adjustSankalpCycles(\'' +
         sk.id +
         "','add')\">＋</button>" +
-        '<button class="sk-btn" style="color:#f55;border-color:rgba(255,68,68,0.3);font-size:11px" onclick="adjustSankalpCycles(\'' +
+        '<button class="sk-btn" style="color:#f55;border-color:rgba(255,68,68,0.4);font-size:11px;background:linear-gradient(180deg,rgba(255,68,68,0.18) 0%,rgba(200,30,30,0.08) 100%);box-shadow:0 2px 8px rgba(255,68,68,0.2)" onclick="adjustSankalpCycles(\'' +
         sk.id +
         "','deduct')\">－</button>" +
         "</div>" +
         '<div class="sk-btns"><button class="sk-btn grn" onclick="fulfillSankalp(\'' +
         sk.id +
         "')\">✓ Fulfilled</button>" +
-        '<button class="sk-btn grey" style="color:#f55;border-color:rgba(255,68,68,0.45)" onclick="deleteSankalp(\'' +
+        '<button class="sk-btn" style="color:#f55;border-color:rgba(255,68,68,0.5);background:linear-gradient(180deg,rgba(255,68,68,0.18) 0%,rgba(200,30,30,0.08) 100%);box-shadow:0 2px 8px rgba(255,68,68,0.2)" onclick="deleteSankalp(\'' +
         sk.id +
         "')\">✕ Delete Wish</button></div>" +
         "</div>";
@@ -6733,7 +6794,9 @@ function renderSankalpas() {
         (qProg > 0
           ? '<div class="sk-bar-wrap"><div class="sk-bar" style="width:' +
             Math.min(qPct, 100) +
-            '%"></div></div><div class="sk-prog-text">' +
+            '%;' +
+            (qPct >= 100 ? 'background:linear-gradient(90deg,#FFD700,rgba(46,204,113,0.9),#FFD700);background-size:200% 100%;animation:barOverflow 1.8s ease-in-out infinite;box-shadow:0 0 10px rgba(255,215,0,0.6);' : '') +
+            '"></div></div><div class="sk-prog-text" style="' + (qPct >= 100 ? 'color:#FFD700;font-weight:700;' : '') + '">' +
             qProg +
             " / " +
             sk.target +
@@ -6758,10 +6821,10 @@ function renderSankalpas() {
         '<input id="sk-adj-' +
         sk.id +
         '" type="number" min="1" placeholder="0" style="width:54px;background:rgba(0,0,0,0.35);border:1px solid rgba(74,144,226,0.25);border-radius:7px;padding:5px 8px;color:var(--tl);font-size:13px;text-align:center;font-family:Inter,sans-serif">' +
-        '<button class="sk-btn" style="color:#4f4;border-color:rgba(0,255,0,0.3);font-size:11px" onclick="adjustSankalpCycles(\'' +
+        '<button class="sk-btn" style="color:#4f4;border-color:rgba(0,255,0,0.4);font-size:11px;background:linear-gradient(180deg,rgba(46,204,113,0.22) 0%,rgba(30,160,80,0.08) 100%);box-shadow:0 2px 8px rgba(46,204,113,0.25)" onclick="adjustSankalpCycles(\'' +
         sk.id +
         "','add')\">＋</button>" +
-        '<button class="sk-btn" style="color:#f55;border-color:rgba(255,68,68,0.3);font-size:11px" onclick="adjustSankalpCycles(\'' +
+        '<button class="sk-btn" style="color:#f55;border-color:rgba(255,68,68,0.4);font-size:11px;background:linear-gradient(180deg,rgba(255,68,68,0.18) 0%,rgba(200,30,30,0.08) 100%);box-shadow:0 2px 8px rgba(255,68,68,0.2)" onclick="adjustSankalpCycles(\'' +
         sk.id +
         "','deduct')\">－</button>" +
         "</div>" +
@@ -6771,7 +6834,7 @@ function renderSankalpas() {
             sk.id +
             "')\">⬆ Prioritize</button>"
           : "") +
-        '<button class="sk-btn grey" style="color:#f55;border-color:rgba(255,68,68,0.45)" onclick="deleteSankalp(\'' +
+        '<button class="sk-btn" style="color:#f55;border-color:rgba(255,68,68,0.5);background:linear-gradient(180deg,rgba(255,68,68,0.18) 0%,rgba(200,30,30,0.08) 100%);box-shadow:0 2px 8px rgba(255,68,68,0.2)" onclick="deleteSankalp(\'' +
         sk.id +
         "')\">✕ Delete Wish</button></div>" +
         "</div>";
@@ -6829,18 +6892,17 @@ function toggleSankalp() {
 // 28 NAMES STATS PANEL
 // ═══════════════════════════════════════════════════════
 function toggle28Stats() {
-  const panel = document.getElementById("n28StatsPanel");
+  const panel = document.getElementById("n28StatsCollapse");
   const chev = document.getElementById("n28StatsChev");
-  const open = panel.style.display === "block";
-  panel.style.display = open ? "none" : "block";
-  if (chev) chev.style.transform = open ? "rotate(0deg)" : "rotate(180deg)";
-  if (!open) render28StatsPanel();
+  const open = panel ? panel.classList.toggle("open") : false;
+  if (chev) chev.style.transform = open ? "rotate(180deg)" : "rotate(0deg)";
+  if (open) render28StatsPanel();
 }
 
 // Called from u28() to keep stats panel live when open
 function refresh28StatsIfOpen() {
-  const panel = document.getElementById("n28StatsPanel");
-  if (panel && panel.style.display === "block") render28StatsPanel();
+  const panel = document.getElementById("n28StatsCollapse");
+  if (panel && panel.classList.contains("open")) render28StatsPanel();
 }
 
 function fmt28Short(s) {

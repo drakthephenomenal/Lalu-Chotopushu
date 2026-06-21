@@ -6386,17 +6386,40 @@ function u28() {
         }
       }
 
-      // Auto-fit: shrink font until name fits on one line
+      // Auto-fit: size the name to match the CSS clamp(), only shrinking
+      // further if even the largest size would still overflow on one line.
+      // IMPORTANT: this must stay in sync with .n28name's CSS font-size —
+      // it previously used its own smaller hard-coded formula (max 52px)
+      // which silently overrode any CSS font-size change on every single
+      // tap, since inline styles always beat stylesheet rules. That's why
+      // a CSS-only font-size fix here didn't visibly take effect.
       function _fitN28FontSize(el) {
-        const containerW = el.parentNode ? el.parentNode.getBoundingClientRect().width - 20 : 300;
-        const baseSize = Math.min(52, Math.max(20, containerW * 0.065));
+        const containerW = el.parentNode ? el.parentNode.getBoundingClientRect().width - 28 : 300;
+        // Match .n28name's CSS clamp(28px, 9vw, 60px)
+        const vwSize = window.innerWidth * 0.09;
+        const baseSize = Math.min(60, Math.max(28, vwSize));
         el.style.fontSize = baseSize + "px";
-        el.style.whiteSpace = "nowrap";
+        el.style.whiteSpace = "normal"; // allow wrap to 2 lines, matches CSS
+        // Measure the name as if on a single line to estimate how many
+        // lines it will actually need at this size. Names up to ~2 line
+        // widths are fine (CSS wraps them); only shrink further for names
+        // so long they'd need a 3rd line.
+        const probe = el.cloneNode(true);
+        probe.style.position = "absolute";
+        probe.style.visibility = "hidden";
+        probe.style.whiteSpace = "nowrap";
+        probe.style.width = "auto";
+        probe.style.left = "-9999px";
+        document.body.appendChild(probe);
         let sz = baseSize;
-        while (el.scrollWidth > containerW && sz > 13) {
+        while (sz > 18) {
+          probe.style.fontSize = sz + "px";
+          const lineWidth = probe.scrollWidth;
+          if (lineWidth <= containerW * 2.1) break; // fits within ~2 wrapped lines
           sz -= 1;
-          el.style.fontSize = sz + "px";
         }
+        document.body.removeChild(probe);
+        el.style.fontSize = sz + "px";
       }
       requestAnimationFrame(() => _fitN28FontSize(nameEl));
 

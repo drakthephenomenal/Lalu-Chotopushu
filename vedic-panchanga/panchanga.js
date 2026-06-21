@@ -2281,6 +2281,7 @@ window.vpHoroClearResult = function(){ vpHoroClearResult(); };
 window.vpPersonalSave = function(){ vpPersonalSave(); };
 window.vpPersonalToggle = function(){ vpPersonalToggle(); };
 window.vpPersonalRender = function(){ vpPersonalRender(); };
+window.vpPersonalJanmoYearChange = function(){ vpPersonalJanmoYearChange(); };
 window.vpOpenCalendar = function(){ vpCalOpen(); };
 window.vpCloseCalendar = function(){ vpCalClose(); };
 window.vpCloseCalendarBackdrop = function(e){ vpCalCloseBackdrop(e); };

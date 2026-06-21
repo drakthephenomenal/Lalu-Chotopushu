@@ -932,18 +932,27 @@ function renderAll(){
     // Speeds are deliberately non-commensurate (no shared integer ratios)
     // so planets essentially never realign at the exact same angle twice —
     // any overlap is a passing moment, not a recurring collision.
-    // Rabi(0)=Sun(Surya), Som(1)=Moon(Chandra) -> treated as Earth-orbit proxy,
-    // Mangol(2)=Mars, Budh(3)=Mercury, Brihaspati(4)=Jupiter, Sukro(5)=Venus, Shani(6)=Saturn
-    // Distance order (closest→farthest from Sun): Mercury, Venus, Moon, Mars, Jupiter, Saturn
+    // Rabi(0)=Sun(Surya), Mangol(2)=Mars, Budh(3)=Mercury,
+    // Brihaspati(4)=Jupiter, Sukro(5)=Venus, Shani(6)=Saturn.
+    // Som(1)=Moon(Chandra) is handled separately below — it orbits EARTH,
+    // not the Sun, so it isn't part of this table.
+    // Distance order (closest→farthest from Sun): Mercury, Venus, Earth, Mars, Jupiter, Saturn
     const PLANET_INFO = {
       3: { au: 0.39,  spd: 26.3, self: 38.7 },  // Mercury — closest, fastest
       5: { au: 0.72,  spd: 18.9, self: 23.6 },  // Venus
-      1: { au: 0.95,  spd: 14.7, self: 21.3 },  // Moon (Earth proxy)
-      7: { au: 1.00,  spd: 13.4, self: 17.2 },  // Earth (decorative)
+      7: { au: 1.00,  spd: 13.4, self: 17.2 },  // Earth
       2: { au: 1.52,  spd: 11.2, self: 19.4 },  // Mars
       4: { au: 5.20,  spd: 6.1,  self: 15.8 },  // Jupiter
       6: { au: 9.58,  spd: 3.9,  self: 12.2 },  // Saturn — farthest, slowest
     };
+
+    // The Moon orbits the EARTH, not the Sun — small fixed radius around
+    // wherever Earth currently is, fast enough to visibly circle it within
+    // a few seconds (real life: ~13.4 lunar orbits per Earth solar orbit;
+    // moonSpd:earthSpd below is deliberately even faster than that ratio
+    // purely for visual legibility on a small dial).
+    const MOON_INFO = { r: 28, spd: 95, self: 30 };
+    const MOON_NODE_HALF = 12; // half of the 24px moon node (see CSS) — for centering offsets
 
     // ── Radius assignment: distinct, clearly-separated rings ─────
     // Sort planets by real distance from Sun (preserving correct
@@ -973,13 +982,15 @@ function renderAll(){
     });
 
     // Stable, spread starting angles (only used the FIRST time we build)
-    const START_ANG = { 1:0, 2:52, 3:104, 4:156, 5:208, 6:260 };
+    const START_ANG = { 2:52, 3:104, 4:156, 5:208, 6:260 };
+    const MOON_START_ANG = 15;
 
     // Persistent state survives across renderAll() calls
     if(!window._vpOrbit){
       window._vpOrbit = {
         built:false,
         planets:{}, // vaarIdx -> {orbitAng, selfAng}
+        moon: { orbitAng: MOON_START_ANG, selfAng: 0 }, // orbits Earth, not the Sun
         sunAng:0,
         lastT:null,
         rafId:null,
@@ -1016,7 +1027,23 @@ function renderAll(){
         const eNode = earthArm.querySelector('.vp-planet-node');
         if(eNode){ eNode.title='Earth'; eNode.style.cursor='default'; eNode.onclick=null; }
       }
-      // Orbit ring guides — one per radius, drawn once
+
+      // Moon — its own arm, NOT part of the PLANET_INFO build loop above,
+      // since it orbits Earth's live position rather than a fixed radius
+      // from the Sun (handled in the tick loop below).
+      const moonWrap = document.createElement('div');
+      moonWrap.className = 'vp-planet-arm';
+      moonWrap.setAttribute('data-vaar', '1');
+      moonWrap.innerHTML = `<div class="vp-planet-node vp-moon-node" data-vaar="1"
+          onclick="vpSelectVaar(1)">
+          <img class="vp-planet-img" src="" alt="" draggable="false">
+          <span class="vp-planet-day-label"></span>
+        </div>`;
+      centerEl2.insertAdjacentElement('beforebegin', moonWrap);
+
+      // Orbit ring guides — one per radius, drawn once. The Moon has no
+      // guide ring here since its orbit is centered on Earth, which itself
+      // moves — a static ring around the Sun wouldn't represent it.
       const ringGuides = document.createElement('div');
       ringGuides.className = 'vp-orbit-ring-guides';
       ringGuides.innerHTML = Object.keys(PLANET_INFO).map(k=>{
@@ -1032,7 +1059,7 @@ function renderAll(){
     // Safe to run every renderAll() — does not touch angles.
     vaarStrip.forEach(v=>{
       if(v.index===0) return; // Sun stays in center
-      const info = PLANET_INFO[v.index];
+      const info = PLANET_INFO[v.index] || (v.index===1 ? MOON_INFO : null);
       if(!info) return;
       const armEl = orbitWrap.querySelector(`.vp-planet-arm[data-vaar="${v.index}"]`);
       if(!armEl) return;
@@ -1040,7 +1067,7 @@ function renderAll(){
       const img  = armEl.querySelector('.vp-planet-img');
       const label= armEl.querySelector('.vp-planet-day-label');
 
-      let nodeCls = 'vp-planet-node';
+      let nodeCls = v.index===1 ? 'vp-planet-node vp-moon-node' : 'vp-planet-node';
       if(v.isActive) nodeCls += ' today';
       if(selectedVaarIdx!==null && v.index===selectedVaarIdx) nodeCls += ' selected';
       node.className = nodeCls;
@@ -1101,7 +1128,10 @@ function renderAll(){
       const sunImg = wrap.querySelector('.vp-orbit-center-planet');
       if(sunImg) sunImg.style.transform = `rotate(${S.sunAng}deg)`;
 
-      // Each planet
+      // Each planet orbiting the Sun directly (Mercury, Venus, Earth, Mars,
+      // Jupiter, Saturn). The Moon (data-vaar="1") is excluded here — it has
+      // no entry in S.planets — and handled separately right below, where
+      // it orbits Earth's just-computed position instead.
       wrap.querySelectorAll('.vp-planet-arm').forEach(armEl=>{
         const vi = parseInt(armEl.getAttribute('data-vaar'));
         const st = S.planets[vi];
@@ -1132,7 +1162,37 @@ function renderAll(){
         // Day label stays horizontal & upright — counter-rotate orbit only
         const label = armEl.querySelector('.vp-planet-day-label');
         if(label) label.style.transform = `translateX(-50%) rotate(${-st.orbitAng}deg)`;
+
+        if(vi === 7){ S.earthPx = px; S.earthPy = py; } // remember for the Moon, below
       });
+
+      // ── Moon — circles the EARTH, not the Sun ─────────────────────
+      // Centered on Earth's position computed just above (one rAF frame
+      // "stale" at most, which at 60fps is visually imperceptible).
+      const moonArm = wrap.querySelector('.vp-planet-arm[data-vaar="1"]');
+      if(moonArm && S.moon && typeof S.earthPx === 'number'){
+        const moonSpd  = moonArm._vpOrbitSpd || 90;
+        const moonSelf = moonArm._vpSelfSpd  || 30;
+        const moonR    = moonArm._vpRadius   || 28;
+
+        S.moon.orbitAng = (S.moon.orbitAng + moonSpd*dt) % 360;
+        S.moon.selfAng  = (S.moon.selfAng  + moonSelf*dt) % 360;
+
+        const mrad = S.moon.orbitAng * Math.PI/180;
+        const mpx = S.earthPx + Math.cos(mrad)*moonR;
+        const mpy = S.earthPy + Math.sin(mrad)*moonR;
+
+        const mnode = moonArm.querySelector('.vp-planet-node');
+        if(mnode){
+          mnode.style.left = (mpx - MOON_NODE_HALF) + 'px';
+          mnode.style.top  = (mpy - MOON_NODE_HALF) + 'px';
+        }
+        const mimg = moonArm.querySelector('.vp-planet-img');
+        if(mimg) mimg.style.transform = `rotate(${S.moon.selfAng}deg)`;
+
+        const mlabel = moonArm.querySelector('.vp-planet-day-label');
+        if(mlabel) mlabel.style.transform = `translateX(-50%) rotate(${-S.moon.orbitAng}deg)`;
+      }
 
       S.rafId = requestAnimationFrame(vpOrbitTick);
     }

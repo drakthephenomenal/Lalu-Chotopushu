@@ -1890,29 +1890,32 @@ function vpPersonalComputeProfile(dateStr, timeStr, lat, lng){
   };
 }
 
-// Next occurrence of the birth Tithi WITHIN THE SAME HINDU MONTH as birth —
-// e.g. "Vaishakh Krishna Amavasya" — the actual Vedic Janmotithi. This is
-// a once-a-year event, unlike matching Tithi alone (which recurs roughly
-// every 29.5 days and was the bug previously reported: the app was showing
-// next month's matching Tithi as if it were the birthday).
+// Shared scan: finds the first Janmotithi occurrence (birth Tithi WITHIN
+// THE SAME HINDU MONTH as birth — e.g. "Vaishakh Krishna Amavasya" — the
+// actual Vedic Janmotithi) at or after `searchStartJD`. This is a once-a-
+// year event, unlike matching Tithi alone (which recurs roughly every
+// 29.5 days and was the bug previously reported: the app was showing next
+// month's matching Tithi as if it were the birthday).
 //
 // Scans forward in ~one-lunar-month steps using the same findElong()
 // bisection the rest of this engine relies on, but only accepts a
-// candidate whose Hindu month name ALSO matches the birth month. Search
-// extends up to ~14 months ahead (vs. the previous 14 lunar-month-steps
-// used for the old monthly version) so it safely spans a year even when
-// an Adhik Maas (leap month) falls in between and shifts month names for
-// a few weeks.
-function vpPersonalNextJanmotithi(profile, fromJD){
-  if(!profile || typeof profile.tithiIndex !== 'number' || !profile.birthMonthName) return null;
-  const startSearch = (fromJD || dateToJD(new Date())) + 1;
+// candidate whose Hindu month name ALSO matches the birth month.
+// `guardLimit` bounds how many lunar months ahead to look (the caller
+// picks this based on how wide a span it needs to cover) so it safely
+// spans a year even when an Adhik Maas (leap month) falls in between and
+// shifts month names for a few weeks.
+//
+// Used both for "the next upcoming Janmotithi" (search starts today) and
+// for "the Janmotithi in a specific year" (search starts a little before
+// 1 Jan of that year) — same matching rules, different starting point.
+function vpPersonalScanJanmotithi(profile, searchStartJD, guardLimit){
   const targetDeg = profile.tithiIndex*12;
   // Use birth lat/lng for sunrise calculation if available, else fall back to
   // current display location (LAT/LNG).
   const obsLat = (profile && typeof profile.lat === 'number') ? profile.lat : LAT;
   const obsLng = (profile && typeof profile.lng === 'number') ? profile.lng : LNG;
-  let windowStart = startSearch;
-  for(let guard=0; guard<14; guard++){
+  let windowStart = searchStartJD;
+  for(let guard=0; guard<guardLimit; guard++){
     const windowEnd = windowStart + 31;
     const candidate = findElong(windowStart, windowEnd, targetDeg);
     // findElong's bisection can converge a hair below the true boundary
@@ -1921,7 +1924,7 @@ function vpPersonalNextJanmotithi(profile, fromJD){
     // elsewhere in this file for the same class of fix).
     const checkJD = candidate + 0.0001;
     const idx = Math.floor(norm(moonLong(checkJD)-sunLong(checkJD))/12);
-    if(candidate > startSearch-1 && idx === profile.tithiIndex){
+    if(candidate > windowStart-1 && idx === profile.tithiIndex){
       const am = adhikMaas(checkJD);
       const hm = hinduMonth(checkJD);
       const monthName = am.isAdhik ? am.nextMonthName : hm.name;
@@ -1970,7 +1973,40 @@ function vpPersonalNextJanmotithi(profile, fromJD){
     }
     windowStart += 29.4;
   }
-  return null; // fail safe — UI shows "could not be determined" rather than a wrong date
+  return null; // fail safe — caller shows "could not be determined" rather than a wrong date
+}
+
+// Next occurrence of the Vedic Janmotithi from today (or from `fromJD` if
+// given). Search extends up to ~14 lunar months ahead so it safely spans
+// a year even across an Adhik Maas shift.
+function vpPersonalNextJanmotithi(profile, fromJD){
+  if(!profile || typeof profile.tithiIndex !== 'number' || !profile.birthMonthName) return null;
+  const startSearch = (fromJD || dateToJD(new Date())) + 1;
+  return vpPersonalScanJanmotithi(profile, startSearch, 14);
+}
+
+// Janmotithi occurrence falling within a SPECIFIC Gregorian year — past,
+// current, or future — not just the next upcoming one. Starts the same
+// scan ~60 days before 1 Jan of the requested year (so an occurrence that
+// lands in Jan/Feb, before the birth-month's Tithi cycle "catches up", is
+// not missed) and runs it far enough forward to safely clear 31 Dec.
+//
+// Because an Adhik Maas can occasionally nudge the match a few days past
+// a year boundary, if the first match found isn't actually dated in the
+// requested year, the scan is resumed just past it (bounded retries) —
+// this keeps the result strictly "the Janmotithi dated in year Y", not
+// merely "the next one found after some date".
+function vpPersonalJanmotithiForYear(profile, year){
+  if(!profile || typeof profile.tithiIndex !== 'number' || !profile.birthMonthName) return null;
+  const yearStartJD = dateToJD(new Date(year, 0, 1));
+  let result = vpPersonalScanJanmotithi(profile, yearStartJD - 60, 18);
+  let retries = 0;
+  while(result && result.date.getFullYear() !== year && retries < 3){
+    result = vpPersonalScanJanmotithi(profile, result.jd + 1, 18);
+    retries++;
+  }
+  if(!result || result.date.getFullYear() !== year) return null;
+  return result;
 }
 
 function vpPersonalTaraBala(profile, todayNakIndex){
@@ -2151,6 +2187,24 @@ async function vpPersonalRender(){
   let upcomingHtml = `<div class="vp-personal-upcoming-item"><span class="vp-personal-upcoming-label">🎉 ${janmoTithiLabel} (your Janmotithi)</span><span class="vp-personal-upcoming-date">${janmoLabel}</span></div>`;
   upcomingHtml += upcomingTara.map(u => `<div class="vp-personal-upcoming-item"><span class="vp-personal-upcoming-label">${u.tara.name} — ${u.tara.note}</span><span class="vp-personal-upcoming-date">${vpPersonalFmtDate(u.date)}</span></div>`).join('');
 
+  // ── Janmotithi-by-year picker ───────────────────────────────────────
+  // Lets the user check their Janmotithi date for ANY year, not just the
+  // next upcoming one (which is all "Upcoming for you" above shows).
+  // Range: a few years back through a decade ahead, defaulting to
+  // whichever year the next upcoming Janmotithi already computed above
+  // falls in, so opening the card doesn't show a redundant lookup.
+  const nowYear = new Date().getFullYear();
+  const janmoYearDefault = janmo ? janmo.date.getFullYear() : nowYear;
+  const janmoYearRangeStart = Math.min(nowYear - 5, janmoYearDefault);
+  const janmoYearRangeEnd = Math.max(nowYear + 10, janmoYearDefault);
+  let janmoYearOptionsHtml = '';
+  for(let y=janmoYearRangeStart; y<=janmoYearRangeEnd; y++){
+    janmoYearOptionsHtml += `<option value="${y}"${y===janmoYearDefault?' selected':''}>${y}</option>`;
+  }
+  const janmoYearInitialResult = (janmo && janmo.date.getFullYear()===janmoYearDefault)
+    ? janmoLabel
+    : (() => { const r = vpPersonalJanmotithiForYear(profile, janmoYearDefault); return r ? vpPersonalFmtDate(r.date) : 'Could not be determined for this year'; })();
+
   mount.style.display = 'block';
   mount.innerHTML = `
     <div class="vp-personal-card">
@@ -2173,8 +2227,29 @@ async function vpPersonalRender(){
         <div class="vp-personal-upcoming-title">Upcoming for you</div>
         ${upcomingHtml}
       </div>
+      <div class="vp-personal-janmoyear">
+        <span class="vp-personal-janmoyear-label">📅 Janmotithi in</span>
+        <select id="vp-personal-janmo-year-select" class="vp-personal-janmoyear-select" onchange="vpPersonalJanmoYearChange()">
+          ${janmoYearOptionsHtml}
+        </select>
+        <span class="vp-personal-janmoyear-result" id="vp-personal-janmo-year-result">${janmoYearInitialResult}</span>
+      </div>
       <div class="vp-personal-disclaimer">For reflection only — not a substitute for a professional astrologer.</div>
     </div>`;
+}
+
+// Re-runs the Janmotithi-for-year lookup when the user picks a different
+// year in the "My Panchanga" card, updating just that result line (no
+// full card re-render, so the rest of the card — and the select's own
+// scroll position — stays put).
+function vpPersonalJanmoYearChange(){
+  const sel = document.getElementById('vp-personal-janmo-year-select');
+  const out = document.getElementById('vp-personal-janmo-year-result');
+  if(!sel || !out || !_vpPersonalProfile) return;
+  const year = parseInt(sel.value, 10);
+  if(isNaN(year)) return;
+  const result = vpPersonalJanmotithiForYear(_vpPersonalProfile, year);
+  out.textContent = result ? vpPersonalFmtDate(result.date) : 'Could not be determined for this year';
 }
 
 

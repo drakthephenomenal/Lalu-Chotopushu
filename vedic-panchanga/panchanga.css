@@ -1216,5 +1216,24 @@
   font-weight:700;color:var(--vp-violet);white-space:nowrap;
 }
 
+#vpanchanga-view .vp-personal-janmoyear{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:rgba(124,92,252,.07);border-radius:14px;
+  padding:10px 14px;margin-bottom:14px;
+}
+#vpanchanga-view .vp-personal-janmoyear-label{
+  font-size:.66rem;font-weight:700;color:var(--vp-ink-soft);flex-shrink:0;
+}
+#vpanchanga-view .vp-personal-janmoyear-select{
+  font-family:inherit;font-size:.7rem;font-weight:700;color:var(--vp-violet);
+  background:var(--vp-card);border:1px solid var(--vp-card-edge);
+  border-radius:10px;padding:6px 10px;cursor:pointer;
+}
+#vpanchanga-view .vp-personal-janmoyear-select:focus{outline:none;border-color:var(--vp-violet)}
+#vpanchanga-view .vp-personal-janmoyear-result{
+  font-family:'EB Garamond',serif;font-size:.85rem;font-weight:700;
+  color:var(--vp-ink);flex:1;min-width:140px;text-align:right;
+}
+
 #vpanchanga-view .vp-planet-node[data-vaar="7"]{--pc:90,160,235}
 #vpanchanga-view .vp-orbit-guide[data-vaar="7"]{border-color:rgba(90,160,235,.22)}

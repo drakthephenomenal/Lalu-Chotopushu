@@ -1907,6 +1907,10 @@ function vpPersonalNextJanmotithi(profile, fromJD){
   if(!profile || typeof profile.tithiIndex !== 'number' || !profile.birthMonthName) return null;
   const startSearch = (fromJD || dateToJD(new Date())) + 1;
   const targetDeg = profile.tithiIndex*12;
+  // Use birth lat/lng for sunrise calculation if available, else fall back to
+  // current display location (LAT/LNG).
+  const obsLat = (profile && typeof profile.lat === 'number') ? profile.lat : LAT;
+  const obsLng = (profile && typeof profile.lng === 'number') ? profile.lng : LNG;
   let windowStart = startSearch;
   for(let guard=0; guard<14; guard++){
     const windowEnd = windowStart + 31;
@@ -1922,7 +1926,44 @@ function vpPersonalNextJanmotithi(profile, fromJD){
       const hm = hinduMonth(checkJD);
       const monthName = am.isAdhik ? am.nextMonthName : hm.name;
       if(monthName === profile.birthMonthName){
-        return { jd: candidate, date: jdToDate(candidate), monthName, wasAdhik: am.isAdhik };
+        // ── SUNRISE RULE (Vaishnava/Smarta convention) ──────────────────
+        // The Janmotithi is observed on the civil day whose LOCAL SUNRISE
+        // falls within this tithi's span — NOT simply the calendar date on
+        // which the tithi begins.
+        //
+        // Example: Amavasya begins at 6:49 PM on 5 May 2027. Sunrise on
+        // 5 May is ~5:30 AM — BEFORE Amavasya starts, so 5 May is excluded.
+        // On 6 May, sunrise (~5:30 AM) falls inside Amavasya (active until
+        // 5:00 PM that day), so 6 May is the correct Janmotithi date.
+        //
+        // Algorithm: find the tithi's end JD, then walk candidate-day and
+        // candidate+1-day and pick the one whose sunrise is inside the
+        // [tithiStart, tithiEnd) window.
+        // ────────────────────────────────────────────────────────────────
+
+        // Tithi-end: next elongation crossing (targetDeg + 12 mod 360)
+        const nextDeg = (targetDeg + 12) % 360;
+        const tithiEndJD = findElong(checkJD, checkJD + 3, nextDeg);
+
+        // Check sunrise on the tithi-start civil day AND the following day.
+        // "Civil day" here = the UTC calendar date of the candidate instant.
+        let observanceDate = jdToDate(candidate); // fallback
+        let observanceJD   = candidate;
+        for(let offset = 0; offset <= 1; offset++){
+          const testDate = jdToDate(candidate + offset);
+          // Build a noon-ish Date on that calendar day to anchor SunCalc
+          const testNoon = new Date(testDate.getFullYear(), testDate.getMonth(), testDate.getDate(), 12, 0, 0);
+          const sunTimes = SunCalc.getTimes(testNoon, obsLat, obsLng);
+          const srJD = dateToJD(sunTimes.sunrise);
+          // Sunrise must fall on or after the tithi start AND before the tithi end
+          if(srJD >= candidate && srJD < tithiEndJD){
+            observanceDate = new Date(testDate.getFullYear(), testDate.getMonth(), testDate.getDate(), 6, 0, 0);
+            observanceJD   = srJD;
+            break;
+          }
+        }
+
+        return { jd: observanceJD, date: observanceDate, monthName, wasAdhik: am.isAdhik };
       }
       // Tithi matched but wrong month (e.g. this month's matching Tithi,
       // not the birth month's) — keep searching forward.

@@ -91,6 +91,13 @@ const App = {
   lmcHK: 0,
   lmc: 0,
   lm28: 0,
+  // ── Boot-race guard ──
+  // False until App.load() (IndexedDB) + the initial cloud merge (or a
+  // confirmed offline/guest fallback) have completed. ht()/h28() ignore
+  // taps while this is false, so an early tap can never write into the
+  // empty/partial in-memory state that exists during startup — see the
+  // boot-race comments in ht(), h28(), and the onAuthStateChanged handler.
+  _appReady: false,
   timerRunning: false,
   timerSeconds: 0,           // (A) sessionSeconds — cumulative chanting time since app open. Never resets on mala complete.
   timerInterval: null,
@@ -1028,6 +1035,17 @@ const App = {
   // ── Main tap ──
   ht(e) {
     if (isGhostMode()) return; // ghost mode: read-only, no jap
+    // BOOT-RACE GUARD: ignore taps that land before App.load() (IndexedDB
+    // read) and the initial cloud merge have finished. Without this, a tap
+    // on app open/resume can fire while App.S.history/historyRV are still
+    // their empty startup defaults ({}), writing "1" into local state and
+    // — once the cloud hydrate completes — that "1" can lose the merge
+    // race and overwrite a correctly-synced higher cloud count.
+    if (!App._appReady) {
+      if (e) { try { e.preventDefault(); } catch (_) {} }
+      if (typeof toast === "function") toast("⏳ Loading your data…");
+      return;
+    }
     // Suppress synthesized mousedown that follows a touchstart on the same tap
     if (e) {
       try { e.preventDefault(); } catch (_) {}
@@ -1287,6 +1305,13 @@ const App = {
     // own profile. Wish target cycle counts remain visible via renderSankalpas().
     if (isGhostMode()) {
       if (e) { try { e.preventDefault(); } catch (_) {} }
+      return;
+    }
+    // BOOT-RACE GUARD: see matching comment in ht() above — same risk
+    // applies to h28[] if a tap lands before load + cloud hydrate finish.
+    if (!App._appReady) {
+      if (e) { try { e.preventDefault(); } catch (_) {} }
+      if (typeof toast === "function") toast("⏳ Loading your data…");
       return;
     }
     if (e) {
@@ -5058,6 +5083,21 @@ function fbInit() {
         document.getElementById("fbUserEmail").textContent =
           user.phoneNumber || user.email || user.displayName || "Devotee";
         setSyncPill("syncing", "Loading from cloud…");
+        // ── Boot-race watchdog ──
+        // If the cloud chain below (fbClaimSession → fbSyncServerTime →
+        // fbAutoSync) hasn't released the tap guard within 8s — e.g. a
+        // hung request on a flaky connection — fall back to whatever
+        // App.load() already gave us from IndexedDB rather than leaving
+        // the tap zone frozen indefinitely. fbAutoSync's own offline path
+        // already does the right thing once it does resolve; this is only
+        // a backstop for it never resolving at all.
+        clearTimeout(App._appReadyWatchdog);
+        App._appReadyWatchdog = setTimeout(() => {
+          if (!App._appReady) {
+            console.warn("Cloud sync chain stalled — releasing tap guard on local data");
+            App._appReady = true;
+          }
+        }, 8000);
         // ── ALWAYS pull from Firebase first on every login/refresh ──
         // fbMigrate() does a direct .get() (not just onSnapshot) so it is
         // guaranteed to fetch the latest cloud data before anything is rendered.
@@ -5068,6 +5108,13 @@ function fbInit() {
           await fbSyncServerTime();
           // Direct cloud pull — overwrites local cache with authoritative Firebase data
           await fbAutoSync();
+          // ── Boot-race guard release ──
+          // Only now is App.S guaranteed to hold the merged (local ⊔ cloud)
+          // truth. Taps that landed before this point were blocked by the
+          // _appReady check in ht()/h28() instead of writing into whatever
+          // partial/empty state existed mid-load.
+          clearTimeout(App._appReadyWatchdog);
+          App._appReady = true;
 
           if (isDeveloper()) {
             const devOptionsPanel = document.getElementById("devOptionsPanel");
@@ -5082,6 +5129,9 @@ function fbInit() {
       } else {
         document.getElementById("fbLoggedOut").style.display = "block";
         document.getElementById("fbLoggedIn").style.display = "none";
+        // Guest/signed-out: no cloud merge to wait for — open the tap guard.
+        clearTimeout(App._appReadyWatchdog);
+        App._appReady = true;
         // Clean up session listener on sign out
         if (fbSessionListener) {
           fbSessionListener();

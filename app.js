@@ -973,6 +973,8 @@ const App = {
     // This keeps all time displays (timer, stats, mala log, B&C day view) in harmony.
     this.syncTimerFromMalaLog();
     this.save();
+    // NOTE: instant cloud/leaderboard push for this completed mala happens
+    // via App.silentMonkBackup(), called right after malaOk() in ht().
     // ── SESSION TIMER PERSISTS across malas (spec A) ─────────────────
     // sessionSeconds (timerSeconds) represents total active chanting time
     // since the app was opened. It MUST NOT reset on mala completion —
@@ -1316,7 +1318,16 @@ const App = {
     this.tapTimer();
     // Re-arm 6s auto-pause on every tap
     this._arm28AutoPause();
-    if (this.S.h28[this.S.tk] % 28 === 0) cycleDone28();
+    if (this.S.h28[this.S.tk] % 28 === 0) {
+      cycleDone28();
+      // ── 28-name cycle complete: push to cloud/leaderboard immediately ──
+      // Mirrors what ht() already does for Radha/RV/HK malas via
+      // silentMonkBackup() — without this, h28() only had the 3s idle
+      // debounce (_saveSoon → fbDebouncedPush), which keeps getting reset
+      // by rapid continuous taps and can starve indefinitely, leaving the
+      // leaderboard's "28N" count stuck far behind the devotee's real progress.
+      this.silentMonkBackup();
+    }
     u28();
   },
 
@@ -12422,9 +12433,42 @@ async function pushLeaderboard() {
   };
 
   try {
-    await fbDb.collection('leaderboard').doc(fbUser.uid).set(payload);
+    await _fbSetWithRetry(
+      fbDb.collection('leaderboard').doc(fbUser.uid),
+      payload
+    );
+    // Clear our own previously-shown leaderboard error, but never stomp on
+    // an unrelated pill state (e.g. main sync currently in progress).
+    if (App._lbPushFailing) {
+      App._lbPushFailing = false;
+      setSyncPill("", "☁️ Synced " + new Date().toLocaleTimeString());
+    }
   } catch(e) {
     console.warn('pushLeaderboard error:', e.message);
+    // Surface this — previously a failed leaderboard write was invisible:
+    // the main users/{uid}/data doc could keep saving fine (so ghost mode
+    // and the devotee's own Jap tab both look correct) while the public
+    // leaderboard entry silently froze at its last successful value with
+    // no indication to the devotee or the developer that anything was wrong.
+    App._lbPushFailing = true;
+    setSyncPill("error", "⚠️ Leaderboard sync failed — will retry");
+  }
+}
+
+// ── Retry a Firestore .set() with exponential backoff ──
+// Used for the leaderboard push specifically, since that write has no other
+// caller watching for failure (unlike the main data sync, which already
+// surfaces errors via setSyncPill). Retries transient errors (network
+// blips, momentary quota/contention) up to 3 times before giving up.
+async function _fbSetWithRetry(docRef, payload, attempt) {
+  attempt = attempt || 0;
+  try {
+    await docRef.set(payload);
+  } catch (e) {
+    if (attempt >= 2) throw e; // give up after 3 total attempts
+    const delayMs = 800 * Math.pow(2, attempt); // 800ms, 1600ms
+    await new Promise((res) => setTimeout(res, delayMs));
+    return _fbSetWithRetry(docRef, payload, attempt + 1);
   }
 }
 

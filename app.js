@@ -5733,13 +5733,36 @@ function fbApplyRemote(d) {
   if (App._resetInProgress) return;
   // Ensure UID is set before saving (prevents saving to wrong UID key)
   if (fbUser && App._uid !== fbUser.uid) App._uid = fbUser.uid;
-  if ("history" in d)
-    App.S.history = JSON.parse(JSON.stringify(d.history || {}));
-  if ("h28" in d) App.S.h28 = JSON.parse(JSON.stringify(d.h28 || {}));
-  if ("timerHistory" in d)
-    App.S.timerHistory = JSON.parse(JSON.stringify(d.timerHistory || {}));
-  if ("timer28History" in d)
-    App.S.timer28History = JSON.parse(JSON.stringify(d.timer28History || {}));
+  // ── REGRESSION GUARD for today's running counters ──
+  // The live onSnapshot listener (fbAutoSync) calls this on every cloud
+  // doc change, including echoes of this same device's own just-sent
+  // writes. If an older snapshot arrives after a newer write is already
+  // in flight (a real possibility — Firestore doesn't guarantee snapshot
+  // ordering relative to local writes still being committed), a blind
+  // overwrite here can roll today's count backwards even though the
+  // devotee has already chanted past that point. This silently happened
+  // to h28 specifically: activityLog is merged (never shrinks — see
+  // below), so the per-cycle history table kept all 40 cycles, while
+  // h28[today] itself got rolled back to 36 by a stale snapshot, which
+  // then dragged down every other display fed by h28 (today %, leaderboard,
+  // lifetime totals) without touching the history table at all.
+  // Fix: for *today's date key only*, never let an incoming value go
+  // below what's already in memory. Past dates still apply cloud data
+  // as-is (those are settled and won't be actively counting up locally).
+  const _tk = App.S.tk;
+  function _applyTodayGuarded(targetKey, remoteObj) {
+    const incoming = JSON.parse(JSON.stringify(remoteObj || {}));
+    const localTodayVal = (App.S[targetKey] || {})[_tk];
+    if (localTodayVal !== undefined && (incoming[_tk] || 0) < localTodayVal) {
+      incoming[_tk] = localTodayVal;
+    }
+    App.S[targetKey] = incoming;
+  }
+
+  if ("history" in d) _applyTodayGuarded("history", d.history);
+  if ("h28" in d) _applyTodayGuarded("h28", d.h28);
+  if ("timerHistory" in d) _applyTodayGuarded("timerHistory", d.timerHistory);
+  if ("timer28History" in d) _applyTodayGuarded("timer28History", d.timer28History);
   if ("stotrams" in d)
     App.S.stotrams = JSON.parse(JSON.stringify(d.stotrams || {}));
   if ("brahma" in d) App.S.brahma = JSON.parse(JSON.stringify(d.brahma || {}));
@@ -5766,10 +5789,8 @@ function fbApplyRemote(d) {
   if (d.lt !== undefined) App.S.lt = d.lt;
   if (d.nameJapDeduct !== undefined) App.S.nameJapDeduct = d.nameJapDeduct;
   if (d.cfg) App.S.cfg = JSON.parse(JSON.stringify(d.cfg || {}));
-  if ("historyRV" in d)
-    App.S.historyRV = JSON.parse(JSON.stringify(d.historyRV || {}));
-  if ("timerHistoryRV" in d)
-    App.S.timerHistoryRV = JSON.parse(JSON.stringify(d.timerHistoryRV || {}));
+  if ("historyRV" in d) _applyTodayGuarded("historyRV", d.historyRV);
+  if ("timerHistoryRV" in d) _applyTodayGuarded("timerHistoryRV", d.timerHistoryRV);
   if (d.japMode) App.S.japMode = d.japMode;
   if (d.dtRV !== undefined) App.S.dtRV = d.dtRV;
   if (d.ltRV !== undefined) App.S.ltRV = d.ltRV;
@@ -5804,10 +5825,8 @@ function fbApplyRemote(d) {
     }
   }
   // HK fields
-  if ("historyHK" in d)
-    App.S.historyHK = JSON.parse(JSON.stringify(d.historyHK || {}));
-  if ("timerHistoryHK" in d)
-    App.S.timerHistoryHK = JSON.parse(JSON.stringify(d.timerHistoryHK || {}));
+  if ("historyHK" in d) _applyTodayGuarded("historyHK", d.historyHK);
+  if ("timerHistoryHK" in d) _applyTodayGuarded("timerHistoryHK", d.timerHistoryHK);
   if (d.dtHK !== undefined) App.S.dtHK = d.dtHK;
   if (d.dt28Cycles !== undefined) {
     // Only apply remote dt28Cycles if it's actually set (>0), or if local is also 0.

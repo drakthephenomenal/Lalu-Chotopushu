@@ -91,13 +91,6 @@ const App = {
   lmcHK: 0,
   lmc: 0,
   lm28: 0,
-  // ── Boot-race guard ──
-  // False until App.load() (IndexedDB) + the initial cloud merge (or a
-  // confirmed offline/guest fallback) have completed. ht()/h28() ignore
-  // taps while this is false, so an early tap can never write into the
-  // empty/partial in-memory state that exists during startup — see the
-  // boot-race comments in ht(), h28(), and the onAuthStateChanged handler.
-  _appReady: false,
   timerRunning: false,
   timerSeconds: 0,           // (A) sessionSeconds — cumulative chanting time since app open. Never resets on mala complete.
   timerInterval: null,
@@ -980,8 +973,6 @@ const App = {
     // This keeps all time displays (timer, stats, mala log, B&C day view) in harmony.
     this.syncTimerFromMalaLog();
     this.save();
-    // NOTE: instant cloud/leaderboard push for this completed mala happens
-    // via App.silentMonkBackup(), called right after malaOk() in ht().
     // ── SESSION TIMER PERSISTS across malas (spec A) ─────────────────
     // sessionSeconds (timerSeconds) represents total active chanting time
     // since the app was opened. It MUST NOT reset on mala completion —
@@ -1035,17 +1026,6 @@ const App = {
   // ── Main tap ──
   ht(e) {
     if (isGhostMode()) return; // ghost mode: read-only, no jap
-    // BOOT-RACE GUARD: ignore taps that land before App.load() (IndexedDB
-    // read) and the initial cloud merge have finished. Without this, a tap
-    // on app open/resume can fire while App.S.history/historyRV are still
-    // their empty startup defaults ({}), writing "1" into local state and
-    // — once the cloud hydrate completes — that "1" can lose the merge
-    // race and overwrite a correctly-synced higher cloud count.
-    if (!App._appReady) {
-      if (e) { try { e.preventDefault(); } catch (_) {} }
-      if (typeof toast === "function") toast("⏳ Loading your data…");
-      return;
-    }
     // Suppress synthesized mousedown that follows a touchstart on the same tap
     if (e) {
       try { e.preventDefault(); } catch (_) {}
@@ -1307,13 +1287,6 @@ const App = {
       if (e) { try { e.preventDefault(); } catch (_) {} }
       return;
     }
-    // BOOT-RACE GUARD: see matching comment in ht() above — same risk
-    // applies to h28[] if a tap lands before load + cloud hydrate finish.
-    if (!App._appReady) {
-      if (e) { try { e.preventDefault(); } catch (_) {} }
-      if (typeof toast === "function") toast("⏳ Loading your data…");
-      return;
-    }
     if (e) {
       try { e.preventDefault(); } catch (_) {}
       const now = Date.now();
@@ -1343,16 +1316,7 @@ const App = {
     this.tapTimer();
     // Re-arm 6s auto-pause on every tap
     this._arm28AutoPause();
-    if (this.S.h28[this.S.tk] % 28 === 0) {
-      cycleDone28();
-      // ── 28-name cycle complete: push to cloud/leaderboard immediately ──
-      // Mirrors what ht() already does for Radha/RV/HK malas via
-      // silentMonkBackup() — without this, h28() only had the 3s idle
-      // debounce (_saveSoon → fbDebouncedPush), which keeps getting reset
-      // by rapid continuous taps and can starve indefinitely, leaving the
-      // leaderboard's "28N" count stuck far behind the devotee's real progress.
-      this.silentMonkBackup();
-    }
+    if (this.S.h28[this.S.tk] % 28 === 0) cycleDone28();
     u28();
   },
 
@@ -5083,21 +5047,6 @@ function fbInit() {
         document.getElementById("fbUserEmail").textContent =
           user.phoneNumber || user.email || user.displayName || "Devotee";
         setSyncPill("syncing", "Loading from cloud…");
-        // ── Boot-race watchdog ──
-        // If the cloud chain below (fbClaimSession → fbSyncServerTime →
-        // fbAutoSync) hasn't released the tap guard within 8s — e.g. a
-        // hung request on a flaky connection — fall back to whatever
-        // App.load() already gave us from IndexedDB rather than leaving
-        // the tap zone frozen indefinitely. fbAutoSync's own offline path
-        // already does the right thing once it does resolve; this is only
-        // a backstop for it never resolving at all.
-        clearTimeout(App._appReadyWatchdog);
-        App._appReadyWatchdog = setTimeout(() => {
-          if (!App._appReady) {
-            console.warn("Cloud sync chain stalled — releasing tap guard on local data");
-            App._appReady = true;
-          }
-        }, 8000);
         // ── ALWAYS pull from Firebase first on every login/refresh ──
         // fbMigrate() does a direct .get() (not just onSnapshot) so it is
         // guaranteed to fetch the latest cloud data before anything is rendered.
@@ -5108,13 +5057,6 @@ function fbInit() {
           await fbSyncServerTime();
           // Direct cloud pull — overwrites local cache with authoritative Firebase data
           await fbAutoSync();
-          // ── Boot-race guard release ──
-          // Only now is App.S guaranteed to hold the merged (local ⊔ cloud)
-          // truth. Taps that landed before this point were blocked by the
-          // _appReady check in ht()/h28() instead of writing into whatever
-          // partial/empty state existed mid-load.
-          clearTimeout(App._appReadyWatchdog);
-          App._appReady = true;
 
           if (isDeveloper()) {
             const devOptionsPanel = document.getElementById("devOptionsPanel");
@@ -5129,9 +5071,6 @@ function fbInit() {
       } else {
         document.getElementById("fbLoggedOut").style.display = "block";
         document.getElementById("fbLoggedIn").style.display = "none";
-        // Guest/signed-out: no cloud merge to wait for — open the tap guard.
-        clearTimeout(App._appReadyWatchdog);
-        App._appReady = true;
         // Clean up session listener on sign out
         if (fbSessionListener) {
           fbSessionListener();
@@ -5733,36 +5672,13 @@ function fbApplyRemote(d) {
   if (App._resetInProgress) return;
   // Ensure UID is set before saving (prevents saving to wrong UID key)
   if (fbUser && App._uid !== fbUser.uid) App._uid = fbUser.uid;
-  // ── REGRESSION GUARD for today's running counters ──
-  // The live onSnapshot listener (fbAutoSync) calls this on every cloud
-  // doc change, including echoes of this same device's own just-sent
-  // writes. If an older snapshot arrives after a newer write is already
-  // in flight (a real possibility — Firestore doesn't guarantee snapshot
-  // ordering relative to local writes still being committed), a blind
-  // overwrite here can roll today's count backwards even though the
-  // devotee has already chanted past that point. This silently happened
-  // to h28 specifically: activityLog is merged (never shrinks — see
-  // below), so the per-cycle history table kept all 40 cycles, while
-  // h28[today] itself got rolled back to 36 by a stale snapshot, which
-  // then dragged down every other display fed by h28 (today %, leaderboard,
-  // lifetime totals) without touching the history table at all.
-  // Fix: for *today's date key only*, never let an incoming value go
-  // below what's already in memory. Past dates still apply cloud data
-  // as-is (those are settled and won't be actively counting up locally).
-  const _tk = App.S.tk;
-  function _applyTodayGuarded(targetKey, remoteObj) {
-    const incoming = JSON.parse(JSON.stringify(remoteObj || {}));
-    const localTodayVal = (App.S[targetKey] || {})[_tk];
-    if (localTodayVal !== undefined && (incoming[_tk] || 0) < localTodayVal) {
-      incoming[_tk] = localTodayVal;
-    }
-    App.S[targetKey] = incoming;
-  }
-
-  if ("history" in d) _applyTodayGuarded("history", d.history);
-  if ("h28" in d) _applyTodayGuarded("h28", d.h28);
-  if ("timerHistory" in d) _applyTodayGuarded("timerHistory", d.timerHistory);
-  if ("timer28History" in d) _applyTodayGuarded("timer28History", d.timer28History);
+  if ("history" in d)
+    App.S.history = JSON.parse(JSON.stringify(d.history || {}));
+  if ("h28" in d) App.S.h28 = JSON.parse(JSON.stringify(d.h28 || {}));
+  if ("timerHistory" in d)
+    App.S.timerHistory = JSON.parse(JSON.stringify(d.timerHistory || {}));
+  if ("timer28History" in d)
+    App.S.timer28History = JSON.parse(JSON.stringify(d.timer28History || {}));
   if ("stotrams" in d)
     App.S.stotrams = JSON.parse(JSON.stringify(d.stotrams || {}));
   if ("brahma" in d) App.S.brahma = JSON.parse(JSON.stringify(d.brahma || {}));
@@ -5789,8 +5705,10 @@ function fbApplyRemote(d) {
   if (d.lt !== undefined) App.S.lt = d.lt;
   if (d.nameJapDeduct !== undefined) App.S.nameJapDeduct = d.nameJapDeduct;
   if (d.cfg) App.S.cfg = JSON.parse(JSON.stringify(d.cfg || {}));
-  if ("historyRV" in d) _applyTodayGuarded("historyRV", d.historyRV);
-  if ("timerHistoryRV" in d) _applyTodayGuarded("timerHistoryRV", d.timerHistoryRV);
+  if ("historyRV" in d)
+    App.S.historyRV = JSON.parse(JSON.stringify(d.historyRV || {}));
+  if ("timerHistoryRV" in d)
+    App.S.timerHistoryRV = JSON.parse(JSON.stringify(d.timerHistoryRV || {}));
   if (d.japMode) App.S.japMode = d.japMode;
   if (d.dtRV !== undefined) App.S.dtRV = d.dtRV;
   if (d.ltRV !== undefined) App.S.ltRV = d.ltRV;
@@ -5825,8 +5743,10 @@ function fbApplyRemote(d) {
     }
   }
   // HK fields
-  if ("historyHK" in d) _applyTodayGuarded("historyHK", d.historyHK);
-  if ("timerHistoryHK" in d) _applyTodayGuarded("timerHistoryHK", d.timerHistoryHK);
+  if ("historyHK" in d)
+    App.S.historyHK = JSON.parse(JSON.stringify(d.historyHK || {}));
+  if ("timerHistoryHK" in d)
+    App.S.timerHistoryHK = JSON.parse(JSON.stringify(d.timerHistoryHK || {}));
   if (d.dtHK !== undefined) App.S.dtHK = d.dtHK;
   if (d.dt28Cycles !== undefined) {
     // Only apply remote dt28Cycles if it's actually set (>0), or if local is also 0.
@@ -6386,40 +6306,17 @@ function u28() {
         }
       }
 
-      // Auto-fit: size the name to match the CSS clamp(), only shrinking
-      // further if even the largest size would still overflow on one line.
-      // IMPORTANT: this must stay in sync with .n28name's CSS font-size —
-      // it previously used its own smaller hard-coded formula (max 52px)
-      // which silently overrode any CSS font-size change on every single
-      // tap, since inline styles always beat stylesheet rules. That's why
-      // a CSS-only font-size fix here didn't visibly take effect.
+      // Auto-fit: shrink font until name fits on one line
       function _fitN28FontSize(el) {
-        const containerW = el.parentNode ? el.parentNode.getBoundingClientRect().width - 28 : 300;
-        // Match .n28name's CSS clamp(28px, 9vw, 60px)
-        const vwSize = window.innerWidth * 0.09;
-        const baseSize = Math.min(60, Math.max(28, vwSize));
+        const containerW = el.parentNode ? el.parentNode.getBoundingClientRect().width - 20 : 300;
+        const baseSize = Math.min(52, Math.max(20, containerW * 0.065));
         el.style.fontSize = baseSize + "px";
-        el.style.whiteSpace = "normal"; // allow wrap to 2 lines, matches CSS
-        // Measure the name as if on a single line to estimate how many
-        // lines it will actually need at this size. Names up to ~2 line
-        // widths are fine (CSS wraps them); only shrink further for names
-        // so long they'd need a 3rd line.
-        const probe = el.cloneNode(true);
-        probe.style.position = "absolute";
-        probe.style.visibility = "hidden";
-        probe.style.whiteSpace = "nowrap";
-        probe.style.width = "auto";
-        probe.style.left = "-9999px";
-        document.body.appendChild(probe);
+        el.style.whiteSpace = "nowrap";
         let sz = baseSize;
-        while (sz > 18) {
-          probe.style.fontSize = sz + "px";
-          const lineWidth = probe.scrollWidth;
-          if (lineWidth <= containerW * 2.1) break; // fits within ~2 wrapped lines
+        while (el.scrollWidth > containerW && sz > 13) {
           sz -= 1;
+          el.style.fontSize = sz + "px";
         }
-        document.body.removeChild(probe);
-        el.style.fontSize = sz + "px";
       }
       requestAnimationFrame(() => _fitN28FontSize(nameEl));
 
@@ -12525,42 +12422,9 @@ async function pushLeaderboard() {
   };
 
   try {
-    await _fbSetWithRetry(
-      fbDb.collection('leaderboard').doc(fbUser.uid),
-      payload
-    );
-    // Clear our own previously-shown leaderboard error, but never stomp on
-    // an unrelated pill state (e.g. main sync currently in progress).
-    if (App._lbPushFailing) {
-      App._lbPushFailing = false;
-      setSyncPill("", "☁️ Synced " + new Date().toLocaleTimeString());
-    }
+    await fbDb.collection('leaderboard').doc(fbUser.uid).set(payload);
   } catch(e) {
     console.warn('pushLeaderboard error:', e.message);
-    // Surface this — previously a failed leaderboard write was invisible:
-    // the main users/{uid}/data doc could keep saving fine (so ghost mode
-    // and the devotee's own Jap tab both look correct) while the public
-    // leaderboard entry silently froze at its last successful value with
-    // no indication to the devotee or the developer that anything was wrong.
-    App._lbPushFailing = true;
-    setSyncPill("error", "⚠️ Leaderboard sync failed — will retry");
-  }
-}
-
-// ── Retry a Firestore .set() with exponential backoff ──
-// Used for the leaderboard push specifically, since that write has no other
-// caller watching for failure (unlike the main data sync, which already
-// surfaces errors via setSyncPill). Retries transient errors (network
-// blips, momentary quota/contention) up to 3 times before giving up.
-async function _fbSetWithRetry(docRef, payload, attempt) {
-  attempt = attempt || 0;
-  try {
-    await docRef.set(payload);
-  } catch (e) {
-    if (attempt >= 2) throw e; // give up after 3 total attempts
-    const delayMs = 800 * Math.pow(2, attempt); // 800ms, 1600ms
-    await new Promise((res) => setTimeout(res, delayMs));
-    return _fbSetWithRetry(docRef, payload, attempt + 1);
   }
 }
 

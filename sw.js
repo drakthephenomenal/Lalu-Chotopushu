@@ -1,22 +1,6 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v156
+// Radha Naam Jap — Service Worker  v155
 // Push notifications & FCM removed.
-//
-// v156 fixes (vs v155):
-//  • Bumped cache to ship today's app.js fixes to all clients:
-//    - Boot-race guard (App._appReady): taps before IndexedDB load + cloud
-//      hydrate finish are now ignored instead of writing into empty state
-//      and overwriting good local/cloud data with near-zero counts.
-//    - fbApplyRemote() regression guard: the live cloud listener can no
-//      longer roll today's running counters (history/h28/historyRV/
-//      historyHK + their timers) backwards below what's already recorded
-//      locally, fixing the "cycle count rolls back mid-session" bug.
-//    - Leaderboard push now retries on failure (3x backoff) and surfaces
-//      a visible sync-error pill instead of failing silently.
-//    - 28-Names display: fixed JS auto-fit (_fitN28FontSize in u28()) that
-//      was overriding the CSS font-size with its own smaller hard-coded
-//      formula on every tap — names now render at the intended larger size
-//      and persist after the first tap.
 //
 // v155 fixes (vs v154):
 //  • Promoted ./vedic-panchanga/panchanga.html, .css, .js to CORE_ASSETS so
@@ -26,7 +10,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v156';
+const CACHE = 'radha-jap-v155';
 
 // Core assets — install BLOCKS on these. Anything the first paint needs
 // must live here, otherwise users see a network round-trip on first open.

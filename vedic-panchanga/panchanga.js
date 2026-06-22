@@ -2709,8 +2709,8 @@ async function vpPersonalRender(){
     : '';
 
   // ── Best windows HTML ─────────────────────────────────────────────
-  const dayRangeOptions = [3,5,7,10,14,21,30].map(d =>
-    `<option value="${d}"${d===bestWinDays?' selected':''}>${d} days</option>`).join('');
+  const dayRangeOptions = [3,5,7,10,14,21,30,45,60,90,120,180,270,365].map(d =>
+    `<option value="${d}"${d===bestWinDays?' selected':''}>${d>=365?'1 year':d+' days'}</option>`).join('');
 
   const bestWinHTML = `
     <div class="vp-best-windows">
@@ -2928,6 +2928,28 @@ window.vpToggleDayBoundaries = function() {
   const b = document.getElementById('vp-db-toggle');
   if(w) w.classList.toggle('open');
   if(b) b.classList.toggle('open');
+};
+
+window.vpToggleRightNow = function() {
+  const w = document.getElementById('vp-now-wrap');
+  const b = document.getElementById('vp-now-toggle');
+  if(w) w.classList.toggle('open');
+  if(b) b.classList.toggle('open');
+};
+
+window.vpToggleUpcoming = function() {
+  const w = document.getElementById('vp-upcoming-wrap');
+  const b = document.getElementById('vp-upcoming-toggle');
+  if(w) w.classList.toggle('open');
+  if(b) b.classList.toggle('open');
+};
+
+window.vpTogglePersonalSection = function(bodyId, chevronId) {
+  vpTogglePersonalSection(bodyId, chevronId);
+};
+
+window.vpPersonalBestWinDaysChange = function(val) {
+  vpPersonalBestWinDaysChange(val);
 };
 
 // Calendar date-picker

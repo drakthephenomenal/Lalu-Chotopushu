@@ -210,13 +210,15 @@
          ══════════════════════════════════════════ -->
     <div class="vp-live-banner">
       <div class="vp-now-panel" id="vp-now-panel">
-        <div class="vp-now-panel-head">
-          <div class="vp-pulse"></div>
-          <span id="vp-now-panel-title">Right Now &amp; Coming Soon</span>
-        </div>
+        <button class="vp-now-panel-head vp-collapsible-toggle open" id="vp-now-toggle" onclick="vpToggleRightNow()" type="button" style="width:100%;">
+          <span style="display:inline-flex;align-items:center;gap:8px;"><span class="vp-pulse"></span><span id="vp-now-panel-title">Right Now &amp; Coming Soon</span></span>
+          <span class="vp-chevron" id="vp-now-chevron">▾</span>
+        </button>
 
         <!-- 4 Anga Cards in a row -->
-        <div class="vp-anga-row-cards" id="vp-anga-row-cards"></div>
+        <div class="vp-collapsible-wrap open" id="vp-now-wrap">
+          <div class="vp-anga-row-cards" id="vp-anga-row-cards"></div>
+        </div>
       </div>
 
       <!-- MY PANCHANGA scorecard attaches here when a profile is active -->
@@ -229,11 +231,16 @@
     <div id="vp-current-muhurta-wrap"></div>
 
     <!-- ══════════════════════════════════════════
-         UPCOMING — serial order, color-coded
+         UPCOMING — serial order, color-coded, collapsible
          ══════════════════════════════════════════ -->
     <section class="vp-m-section" id="vp-upcoming-section">
-      <div class="vp-sec-head vp-sec-head-upcoming">Coming Up</div>
-      <div class="vp-upcoming-list" id="vp-upcoming-list"></div>
+      <button class="vp-collapsible-toggle open" id="vp-upcoming-toggle" onclick="vpToggleUpcoming()" type="button">
+        <span>🔮 &nbsp;Coming Up</span>
+        <span class="vp-chevron" id="vp-upcoming-chevron">▾</span>
+      </button>
+      <div class="vp-collapsible-wrap open" id="vp-upcoming-wrap">
+        <div class="vp-upcoming-list" id="vp-upcoming-list"></div>
+      </div>
     </section>
 
     <!-- Tithi grid toggle -->

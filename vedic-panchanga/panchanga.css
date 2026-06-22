@@ -436,21 +436,59 @@
    ══════════════════════════════════════════════════════════════ */
 #vpanchanga-view .vp-special-yoga-section{margin:18px 16px 0 !important}
 #vpanchanga-view .vp-yoga-card{
-  background:linear-gradient(135deg,#FFF9DC,#FFFFF5);
-  border:1px solid rgba(216,154,31,.45);
+  position:relative;
+  background:linear-gradient(135deg,#FFF4C2 0%,#FFFDF0 50%,#FFE89A 100%);
+  background-size:200% 200%;
+  border:1.5px solid rgba(216,154,31,.6);
   border-radius:16px;padding:16px 18px;
   display:flex;align-items:flex-start;gap:13px;
-  box-shadow:0 4px 20px rgba(216,154,31,.25),0 0 0 1px rgba(216,154,31,.15);
-  animation:vpYogaGlow 3s ease-in-out infinite;
+  box-shadow:
+    0 4px 20px rgba(216,154,31,.35),
+    0 0 0 1px rgba(216,154,31,.2),
+    inset 0 0 18px rgba(255,220,120,.35);
+  animation:vpYogaGlow 2.4s ease-in-out infinite, vpYogaShift 6s ease-in-out infinite;
+  overflow:hidden;
+  isolation:isolate;
+}
+#vpanchanga-view .vp-yoga-card::before{
+  content:"";position:absolute;inset:-2px;border-radius:18px;pointer-events:none;z-index:-1;
+  background:conic-gradient(from 0deg,rgba(255,200,60,0),rgba(255,200,60,.55),rgba(255,235,150,.7),rgba(255,200,60,.55),rgba(255,200,60,0));
+  filter:blur(8px);opacity:.7;
+  animation:vpYogaSpin 5s linear infinite;
+}
+#vpanchanga-view .vp-yoga-card::after{
+  content:"";position:absolute;top:0;left:-60%;width:50%;height:100%;pointer-events:none;
+  background:linear-gradient(110deg,transparent 0%,rgba(255,255,255,.55) 50%,transparent 100%);
+  transform:skewX(-20deg);
+  animation:vpYogaShine 3.2s ease-in-out infinite;
 }
 @keyframes vpYogaGlow{
-  0%,100%{box-shadow:0 4px 20px rgba(216,154,31,.2),0 0 0 1px rgba(216,154,31,.12)}
-  50%{box-shadow:0 6px 28px rgba(216,154,31,.38),0 0 0 1px rgba(216,154,31,.25)}
+  0%,100%{box-shadow:0 4px 20px rgba(216,154,31,.3),0 0 0 1px rgba(216,154,31,.18),inset 0 0 14px rgba(255,220,120,.3)}
+  50%{box-shadow:0 8px 36px rgba(255,180,40,.65),0 0 0 1px rgba(216,154,31,.45),inset 0 0 26px rgba(255,230,140,.55)}
 }
-#vpanchanga-view .vp-yoga-icon{font-size:1.6rem;flex-shrink:0;margin-top:2px}
-#vpanchanga-view .vp-yoga-name{font-family:'EB Garamond',serif;font-size:1.08rem;font-weight:700;color:var(--vp-gold)}
+@keyframes vpYogaShift{
+  0%,100%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+}
+@keyframes vpYogaSpin{
+  to{transform:rotate(360deg)}
+}
+@keyframes vpYogaShine{
+  0%{left:-60%}
+  60%,100%{left:120%}
+}
+#vpanchanga-view .vp-yoga-icon{
+  font-size:1.7rem;flex-shrink:0;margin-top:2px;
+  filter:drop-shadow(0 0 6px rgba(255,200,60,.85));
+  animation:vpYogaIconPulse 1.8s ease-in-out infinite;
+}
+@keyframes vpYogaIconPulse{
+  0%,100%{transform:scale(1) rotate(0deg);filter:drop-shadow(0 0 4px rgba(255,200,60,.6))}
+  50%{transform:scale(1.15) rotate(-4deg);filter:drop-shadow(0 0 12px rgba(255,220,100,1))}
+}
+#vpanchanga-view .vp-yoga-name{font-family:'EB Garamond',serif;font-size:1.12rem;font-weight:700;color:var(--vp-gold);text-shadow:0 0 10px rgba(255,200,60,.5)}
 #vpanchanga-view .vp-yoga-desc{font-size:.74rem;color:var(--vp-ink-soft);margin-top:4px;line-height:1.55}
-#vpanchanga-view .vp-yoga-time{font-size:.68rem;background:rgba(216,154,31,.12);color:var(--vp-gold);border:1px solid rgba(216,154,31,.28);padding:4px 11px;border-radius:8px;margin-top:8px;display:inline-block;font-weight:700}
+#vpanchanga-view .vp-yoga-time{font-size:.68rem;background:rgba(216,154,31,.18);color:var(--vp-gold);border:1px solid rgba(216,154,31,.4);padding:4px 11px;border-radius:8px;margin-top:8px;display:inline-block;font-weight:700;box-shadow:0 0 10px rgba(255,200,60,.3)}
 
 /* ══════════════════════════════════════════════════════════════
    NOW PANEL — 4 Angas in one horizontal row
@@ -1795,14 +1833,23 @@
   display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 2px;
 }
 #vpanchanga-view .vp-best-win-yoga-badge{
+  position:relative;
   font-size:.60rem;font-weight:800;letter-spacing:.02em;
   padding:2px 9px;border-radius:999px;
-  background:linear-gradient(135deg,#FFF3C4,#FFF9E0);
-  border:1px solid rgba(200,150,10,.4);
-  color:#8a6300;display:inline-flex;align-items:center;flex-wrap:wrap;gap:3px;
+  background:linear-gradient(135deg,#FFF3C4,#FFF9E0,#FFE89A);
+  background-size:200% 200%;
+  border:1px solid rgba(200,150,10,.55);
+  color:#0a3a8c;display:inline-flex;align-items:center;flex-wrap:wrap;gap:3px;
+  box-shadow:0 0 8px rgba(255,200,60,.45),inset 0 0 6px rgba(255,230,140,.5);
+  animation:vpBadgeGlow 2s ease-in-out infinite, vpYogaShift 5s ease-in-out infinite;
 }
+@keyframes vpBadgeGlow{
+  0%,100%{box-shadow:0 0 6px rgba(255,200,60,.35),inset 0 0 5px rgba(255,230,140,.4)}
+  50%{box-shadow:0 0 16px rgba(255,200,60,.85),inset 0 0 10px rgba(255,230,140,.7)}
+}
+#vpanchanga-view .vp-best-win-yoga-badge *{color:#0a3a8c !important;}
 #vpanchanga-view .vp-best-win-yoga-why{
-  font-size:.58rem;font-weight:600;opacity:.8;
+  font-size:.58rem;font-weight:600;opacity:.85;color:#0a3a8c;
 }
 
 /* "Now" badge in timeline */
@@ -2208,4 +2255,20 @@
   text-align:left;
   flex:1 1 auto;
   min-width:0;
+}
+
+/* Even-out the golden collapsible bar so it fills the card edges cleanly */
+#vpanchanga-view .vp-collapsible-section{
+  border-radius:14px !important;
+  overflow:hidden;
+}
+#vpanchanga-view .vp-collapsible-section > .vp-collapsible-toggle{
+  border-radius:14px 14px 0 0 !important;
+  border:none !important;
+  margin:0 !important;
+  width:100% !important;
+}
+#vpanchanga-view .vp-collapsible-section > .vp-collapsible-body:not(.open) + .vp-collapsible-toggle,
+#vpanchanga-view .vp-collapsible-section:has(> .vp-collapsible-body:not(.open)) > .vp-collapsible-toggle{
+  border-radius:14px !important;
 }

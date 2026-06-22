@@ -2122,3 +2122,90 @@
 #vpanchanga-view .vp-m-section .vp-collapsible-toggle > span:first-child{
   /* keep gold-on-dark on the OUTSIDE section toggle that we didn't restyle as a button */
 }
+
+/* ============== FIX PACK v2 ============== */
+
+/* 1) Vaishnav month — large & glowing gold */
+#vpanchanga-view #vp-vaishnav-line{
+  font-size:1.35rem !important;
+  font-style:italic;
+  font-family:'EB Garamond', serif;
+  text-align:center;
+  margin-top:10px !important;
+  font-weight:600;
+  background:linear-gradient(90deg,#FFE9A8,#F5C24A 55%,#FFD27A);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;
+  color:transparent;
+  text-shadow:0 0 22px rgba(245,194,74,.55);
+  filter:drop-shadow(0 0 14px rgba(245,194,74,.45));
+  letter-spacing:.02em;
+  animation: vpVaishnavGlow 3.2s ease-in-out infinite;
+}
+@keyframes vpVaishnavGlow{
+  0%,100%{filter:drop-shadow(0 0 10px rgba(245,194,74,.35));}
+  50%   {filter:drop-shadow(0 0 22px rgba(245,194,74,.75));}
+}
+
+/* 2) Do NOT turn the small "+2" anga card toggle into a giant gold button.
+      Keep it a compact violet pill. */
+#vpanchanga-view .vp-anga-card-toggle{
+  background:rgba(124,92,252,.18) !important;
+  color:#C7B3FF !important;
+  border:1px solid rgba(155,124,255,.45) !important;
+  border-radius:999px !important;
+  padding:4px 10px !important;
+  font-size:.78rem !important;
+  font-weight:700 !important;
+  letter-spacing:.04em;
+  text-transform:none !important;
+  box-shadow:none !important;
+  animation:none !important;
+}
+#vpanchanga-view .vp-anga-card-toggle::before{display:none !important;}
+#vpanchanga-view .vp-anga-card-toggle .vp-chevron-sm{color:#C7B3FF !important;}
+
+/* 3) Yoga icon — make sure emoji is readable on dark, not hidden by a violet
+      disk. Strip heavy background, keep a soft halo. */
+#vpanchanga-view .vp-anga-icon,
+#vpanchanga-view .vp-anga-card-icon,
+#vpanchanga-view .vp-anga-card .vp-anga-icon{
+  background:transparent !important;
+  box-shadow:0 0 14px rgba(155,124,255,.35);
+  filter:drop-shadow(0 0 6px rgba(245,194,74,.45));
+}
+
+/* 4) Collapsible bars overflowing the screen — constrain width and clip.
+      The big golden toggles were taking full padding + heavy box-shadow
+      and overflowing on narrow viewports. */
+#vpanchanga-view .vp-collapsible-toggle,
+#vpanchanga-view .vp-tithi-toggle,
+#vpanchanga-view .vp-cta,
+#vpanchanga-view button.vp-btn{
+  width:100% !important;
+  max-width:100% !important;
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:14px 16px !important;
+}
+#vpanchanga-view .vp-m-section,
+#vpanchanga-view .vp-collapsible-section,
+#vpanchanga-view #vp-upcoming-wrap,
+#vpanchanga-view #vp-now-wrap{
+  max-width:100%;
+  box-sizing:border-box;
+  overflow:hidden;
+}
+#vpanchanga-view{overflow-x:hidden;}
+
+/* Allow toggle text to wrap instead of pushing the bar wider */
+#vpanchanga-view .vp-collapsible-toggle > span:first-child,
+#vpanchanga-view .vp-tithi-toggle > span:first-child{
+  white-space:normal;
+  text-align:left;
+  flex:1 1 auto;
+  min-width:0;
+}

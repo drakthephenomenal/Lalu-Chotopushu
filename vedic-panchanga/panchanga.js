@@ -2151,8 +2151,7 @@ function vpPersonalTaraBala(profile, todayNakIndex){
 // run away; returns whatever it found within that window (possibly fewer
 // than `count`).
 function vpPersonalUpcomingGoodTaraDays(profile, fromJD, count, maxDays){
-  // Use exact nakshatra boundaries instead of noon-day approximation
-  // so this list matches the Upcoming Tara & Chandra timeline.
+  // Use exact nakshatra boundaries; also include Chandra Bala at the window start.
   const results = [];
   const limitJD  = fromJD + maxDays;
   const nakPeriods = getNakshatraPeriods(fromJD - 0.5, count * 8 + 6);
@@ -2162,9 +2161,12 @@ function vpPersonalUpcomingGoodTaraDays(profile, fromJD, count, maxDays){
     if(p.startJD >= limitJD) break;       // beyond scan window
     const tara = vpPersonalTaraBala(profile, p.index);
     if(tara.polarity === 'good'){
-      const isActive = p.startJD <= fromJD; // good period already running
+      const isActive  = p.startJD <= fromJD;
       const showDate  = isActive ? jdToDate(fromJD) : jdToDate(p.startJD);
-      results.push({ jd: p.startJD, date: showDate, endJD: p.endJD, tara, isActive });
+      const sampleJD  = isActive ? fromJD : p.startJD;
+      const rashiIdx  = Math.floor(moonLongSid(sampleJD) / 30) % 12;
+      const chandra   = vpPersonalChandraBala(profile, rashiIdx);
+      results.push({ jd: p.startJD, date: showDate, endJD: p.endJD, tara, chandra, isActive });
     }
   }
   return results;
@@ -2405,14 +2407,25 @@ function vpPersonalBestWindows(profile, fromJD, daysAhead, maxResults){
       const end   = Math.min(seg.endJD,   limitJD);
       if(end - start < 1/24) continue; // skip windows < 1 h
 
-      // Detect special yogas forming in this window (sample mid-point)
+      // Detect special yogas — scan every 6h across the full window
+      // (midpoint-only misses yogas that fall early or late in the window)
       let winSpecYogas = [];
       try {
-        const midJD = (start + end) / 2;
-        const midDate = jdToDate(midJD);
-        const midVaarIdx = getVedicVaarIdx(midDate, typeof LAT==='number'?LAT:profile.lat, typeof LNG==='number'?LNG:profile.lng);
-        const midNakIdx  = Math.floor(moonLongSid(midJD)/(360/27))%27;
-        winSpecYogas = specialYogas(midVaarIdx, midNakIdx, null, null);
+        const lat = typeof LAT==='number'?LAT:profile.lat;
+        const lng = typeof LNG==='number'?LNG:profile.lng;
+        const yogaMap = new Map();
+        const step = 0.25; // 6 hours in JD units
+        for(let jd = start; jd < end + step; jd += step){
+          const clamped = Math.min(jd, end);
+          const d = jdToDate(clamped);
+          const vIdx = getVedicVaarIdx(d, lat, lng);
+          const nIdx = Math.floor(moonLongSid(clamped)/(360/27))%27;
+          specialYogas(vIdx, nIdx, null, null).forEach(y => {
+            if(!yogaMap.has(y.name)) yogaMap.set(y.name, y);
+          });
+          if(clamped >= end) break;
+        }
+        winSpecYogas = [...yogaMap.values()];
       } catch(e){ /* no-op */ }
 
       windows.push({...seg, startJD:start, endJD:end, specialYogas:winSpecYogas});
@@ -2560,6 +2573,14 @@ function vpTogglePersonalSection(bodyId, chevronId){
   if(!body) return;
   const isOpen = body.classList.toggle('open');
   if(chev) chev.textContent = isOpen ? '▾' : '▸';
+  // Muhurta collapsible: live-sync from main panchanga's Coming Up list
+  if(bodyId === 'vp-muhurta-list-body' && isOpen){
+    const mainList = document.getElementById('vp-upcoming-list');
+    const listEl   = document.getElementById('vp-personal-muhurta-list');
+    if(mainList && listEl && mainList.innerHTML.trim()){
+      listEl.innerHTML = mainList.innerHTML;
+    }
+  }
 }
 
 // Change the "best windows" day-range selector and re-render
@@ -2745,8 +2766,13 @@ async function vpPersonalRender(){
     ...upcomingTara.map(u => {
       const endLabel = ` → ${fmtEnd(jdToDate(u.endJD), u.date)}`;
       const whenLabel = u.isActive ? `Active now${endLabel}` : fmtDT(u.date)+endLabel;
+      const chanClass = u.chandra ? (u.chandra.polarity==='good'?'good':u.chandra.polarity==='bad'?'bad':'neutral') : 'neutral';
+      const chanBadge = u.chandra
+        ? `<div class="vp-upcoming-tara-badges"><span class="vp-tl-badge vp-tara-good">Tara: ${u.tara.name}</span><span class="vp-tl-badge vp-tara-${chanClass}">Chandra: ${u.chandra.name}</span></div>`
+        : '';
       return `<div class="vp-personal-upcoming-item">
         <span class="vp-personal-upcoming-label">${u.tara.name}${u.isActive?' 🟢':''} — ${u.tara.note}</span>
+        ${chanBadge}
         <span class="vp-personal-upcoming-date">${whenLabel}</span>
       </div>`;
     })

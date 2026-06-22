@@ -137,14 +137,6 @@
     </div>
 
     <!-- ══════════════════════════════════════════
-         MY PANCHANGA — personalized card (opt-in)
-         Hidden by default; vpPersonalRender() fills it in
-         only when a saved & enabled profile exists.
-         ══════════════════════════════════════════ -->
-    <div id="vp-personal-card" style="display:none"></div>
-
-
-    <!-- ══════════════════════════════════════════
          SELECTED DATE — Full Panchanga Horoscope
          ══════════════════════════════════════════ -->
     <div id="vp-dateresult-wrap" style="display:none">
@@ -213,17 +205,22 @@
     </div>
 
     <!-- ══════════════════════════════════════════
-         PANCHANGA NOW — 4 Angas in one row
-         with collapsible upcoming rows under each
+         LIVE BANNER — Right Now + Personal Score
+         Wraps both panels so they share one card.
          ══════════════════════════════════════════ -->
-    <div class="vp-now-panel" id="vp-now-panel">
-      <div class="vp-now-panel-head">
-        <div class="vp-pulse"></div>
-        <span id="vp-now-panel-title">Right Now &amp; Coming Soon</span>
+    <div class="vp-live-banner">
+      <div class="vp-now-panel" id="vp-now-panel">
+        <div class="vp-now-panel-head">
+          <div class="vp-pulse"></div>
+          <span id="vp-now-panel-title">Right Now &amp; Coming Soon</span>
+        </div>
+
+        <!-- 4 Anga Cards in a row -->
+        <div class="vp-anga-row-cards" id="vp-anga-row-cards"></div>
       </div>
 
-      <!-- 4 Anga Cards in a row -->
-      <div class="vp-anga-row-cards" id="vp-anga-row-cards"></div>
+      <!-- MY PANCHANGA scorecard attaches here when a profile is active -->
+      <div id="vp-personal-card" style="display:none"></div>
     </div>
 
     <!-- ══════════════════════════════════════════

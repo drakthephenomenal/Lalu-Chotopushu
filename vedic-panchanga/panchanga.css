@@ -455,6 +455,11 @@
 /* ══════════════════════════════════════════════════════════════
    NOW PANEL — 4 Angas in one horizontal row
    ══════════════════════════════════════════════════════════════ */
+/* ── Live Banner — wraps Right Now + Personal Score as one card ── */
+#vpanchanga-view .vp-live-banner{margin:18px 16px 0;border-radius:20px;overflow:hidden;box-shadow:var(--vp-shadow);border:1px solid rgba(255,138,61,.22)}
+#vpanchanga-view .vp-live-banner .vp-now-panel{margin:0;border-radius:0;box-shadow:none;border:none}
+#vpanchanga-view .vp-live-banner #vp-personal-card:not([style*="display:none"]) .vp-personal-card{border-radius:0;box-shadow:none;border-top:1px solid rgba(0,0,0,.07);margin:0}
+
 #vpanchanga-view .vp-now-panel{margin:18px 16px 0;border-radius:20px;background:linear-gradient(150deg,#FFF3DF,#FFFFFF 60%);border:1px solid rgba(255,138,61,.22);box-shadow:var(--vp-shadow);overflow:hidden}
 #vpanchanga-view .vp-now-panel-head{padding:14px 16px 8px;display:flex;align-items:center;gap:7px}
 #vpanchanga-view .vp-pulse{width:7px;height:7px;background:var(--vp-sun);border-radius:50%;animation:vpPulse 1.8s ease-in-out infinite;flex-shrink:0;box-shadow:0 0 8px rgba(255,138,61,.6)}
@@ -1284,7 +1289,8 @@
   border-bottom:1px solid var(--vp-card-edge);
 }
 #vpanchanga-view .vp-personal-upcoming-item:last-child{border-bottom:none}
-#vpanchanga-view .vp-personal-upcoming-label{color:var(--vp-ink-soft);flex:1;min-width:160px}
+#vpanchanga-view .vp-personal-upcoming-label{color:var(--vp-ink-soft);flex:1;min-width:100%;margin-bottom:2px}
+#vpanchanga-view .vp-upcoming-tara-badges{display:flex;gap:4px;flex-wrap:wrap;flex:1;min-width:100%}
 #vpanchanga-view .vp-personal-upcoming-date{
   font-weight:700;color:var(--vp-violet);white-space:nowrap;
 }

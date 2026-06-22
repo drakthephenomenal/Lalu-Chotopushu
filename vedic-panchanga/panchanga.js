@@ -2140,14 +2140,20 @@ function vpPersonalTaraBala(profile, todayNakIndex){
 // run away; returns whatever it found within that window (possibly fewer
 // than `count`).
 function vpPersonalUpcomingGoodTaraDays(profile, fromJD, count, maxDays){
+  // Use exact nakshatra boundaries instead of noon-day approximation
+  // so this list matches the Upcoming Tara & Chandra timeline.
   const results = [];
-  const startDay = Math.floor(fromJD) + 1; // start tomorrow, at local noon
-  for(let d=0; d<maxDays && results.length<count; d++){
-    const noonJD = startDay + d + 0.5;
-    const nakIdx = Math.floor(moonLongSid(noonJD)/(360/27)) % 27;
-    const tara = vpPersonalTaraBala(profile, nakIdx);
-    if(tara.polarity==='good'){
-      results.push({ jd: noonJD, date: jdToDate(noonJD), tara });
+  const limitJD  = fromJD + maxDays;
+  const nakPeriods = getNakshatraPeriods(fromJD - 0.5, count * 8 + 6);
+  for(const p of nakPeriods){
+    if(results.length >= count) break;
+    if(p.endJD <= fromJD) continue;       // already ended
+    if(p.startJD >= limitJD) break;       // beyond scan window
+    const tara = vpPersonalTaraBala(profile, p.index);
+    if(tara.polarity === 'good'){
+      const isActive = p.startJD <= fromJD; // good period already running
+      const showDate  = isActive ? jdToDate(fromJD) : jdToDate(p.startJD);
+      results.push({ jd: p.startJD, date: showDate, endJD: p.endJD, tara, isActive });
     }
   }
   return results;
@@ -2262,11 +2268,17 @@ function vpPersonalKaranaPol(name){
 }
 
 // ══════════════════════════════════════════════════════════════
-// CONSOLIDATED SCORE — all 5 classical Muhurta factors combined
-// Weights: Tara ±2, Chandra ±2, Yoga ±1, Karana ±1, Vaar ±1
-// Range −7 → +7.  nextChangeJD = earliest factor boundary.
+// CONSOLIDATED SCORE — 6 Muhurta factors, −9 → +9
+//   Tara ±2, Chandra ±2, Yoga −2→+2, Karana ±1, Kala/Muhurta ±1, Vaar ±1
+//   Yoga is enhanced: Vyatipata/Vaidhriti/Vajra/Parigha = −2;
+//     Amrita/Sarvartha/Guru-Pushya/Ravi-Pushya special = +2
+//   Kala: Abhijit/Vijaya/Brahma/Amrita Kala = +1; bad Kala = −1
+//   nextChangeJD = earliest factor boundary (excluding Vaar which is daily)
 // ══════════════════════════════════════════════════════════════
+const YOGA_WORST = new Set(['Vyatipata','Vaidhriti','Vajra','Parigha']);
 function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
+  const nowDate = new Date();
+
   // ── Nakshatra (Tara Bala) ──
   const nakPs = getNakshatraPeriods(jdNow - 1, 4);
   let ni = nakPs.findIndex(p => p.endJD > jdNow); if(ni<0) ni=0;
@@ -2280,12 +2292,19 @@ function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
   const chandra  = vpPersonalChandraBala(profile, curRashi.index);
   const cScore   = chandra.polarity==='good'?2:chandra.polarity==='bad'?-2:0;
 
-  // ── Yoga ──
+  // ── Yoga (enhanced weights) ──
   const yogaPs = getYogaPeriods(jdNow - 0.5, 4);
   let yi = yogaPs.findIndex(p => p.endJD > jdNow); if(yi<0) yi=0;
   const curYoga = yogaPs[yi];
   const yogaPol = vpPersonalYogaPolarity(curYoga.name);
-  const yScore  = yogaPol==='good'?1:yogaPol==='bad'?-1:0;
+  let yScore = yogaPol==='good'?1:yogaPol==='bad'?-1:0;
+  if(YOGA_WORST.has(curYoga.name)) yScore = -2; // upgrade penalty for the worst yogas
+
+  // ── Special Yogas (Amrita Siddhi, Sarvartha Siddhi, Guru/Ravi Pushya) ──
+  const vaarIdx    = getVedicVaarIdx(nowDate, lat, lng);
+  const specYogas  = specialYogas(vaarIdx, curNak.index, null, null);
+  const specLabel  = specYogas.length ? specYogas.map(s=>s.name).join(' · ') : null;
+  if(specYogas.length > 0) yScore = Math.min(yScore + 1, 2); // boost by +1, cap at +2
 
   // ── Karana ──
   const karPs = getKaranaPeriods(jdNow - 0.25, 6);
@@ -2294,29 +2313,62 @@ function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
   const karPol = vpPersonalKaranaPol(curKar.name);
   const kScore = karPol==='good'?1:karPol==='bad'?-1:0;
 
-  // ── Vaar (weekday) lord vs birth Rashi lord ──
-  const vaarIdx = getVedicVaarIdx(new Date(), lat, lng);
+  // ── Kala / Muhurta now ──
+  let kalaScore = 0, kalaName = 'Ordinary time', kalaPol = 'neutral';
+  try {
+    const vaarStrip  = getVaarStrip(nowDate, lat, lng);
+    const activeVaar = vaarStrip.find(v => v.isActive);
+    if(activeVaar){
+      const md = getMuhurtaData(activeVaar, lat, lng);
+      const nm = +nowDate;
+      const dur = md.durMuhurtas && md.durMuhurtas.find(d => nm >= +d.start && nm < +d.end);
+      if(md.amritaKala && nm >= +md.amritaKala.start && nm < +md.amritaKala.end){
+        kalaScore = 1; kalaName = 'Amrita Kala ✨'; kalaPol = 'good';
+      } else if(nm >= +md.abhijit.start && nm < +md.abhijit.end){
+        kalaScore = 1; kalaName = 'Abhijit Muhurta 🏆'; kalaPol = 'good';
+      } else if(nm >= +md.vijaya.start && nm < +md.vijaya.end){
+        kalaScore = 1; kalaName = 'Vijaya Muhurta ⚔️'; kalaPol = 'good';
+      } else if(nm >= +md.brahmaMuhurta.start && nm < +md.brahmaMuhurta.end){
+        kalaScore = 1; kalaName = 'Brahma Muhurta 🌅'; kalaPol = 'good';
+      } else if(nm >= +md.rahuKalam.start && nm < +md.rahuKalam.end){
+        kalaScore = -1; kalaName = 'Rahu Kalam ☠️'; kalaPol = 'bad';
+      } else if(nm >= +md.yamaganda.start && nm < +md.yamaganda.end){
+        kalaScore = -1; kalaName = 'Yamaganda ⚰️'; kalaPol = 'bad';
+      } else if(nm >= +md.gulika.start && nm < +md.gulika.end){
+        kalaScore = -1; kalaName = 'Gulika (Mandi) 🐍'; kalaPol = 'bad';
+      } else if(md.varjyam && nm >= +md.varjyam.start && nm < +md.varjyam.end){
+        kalaScore = -1; kalaName = 'Varjyam 🚫'; kalaPol = 'bad';
+      } else if(dur){
+        kalaScore = -1; kalaName = 'Dur Muhurta ⚠️'; kalaPol = 'bad';
+      }
+    }
+  } catch(e){ /* no-op: kalaScore stays 0 */ }
+
+  // ── Vaar lord vs birth Rashi lord ──
   const vaarLord = VAAR_LORD[vaarIdx];
   const vaarRel  = vpPersonalLordRelation(profile.rashiLord, vaarLord);
   const vScore   = (vaarRel==='own'||vaarRel==='friend')?1:vaarRel==='enemy'?-1:0;
 
-  const total = tScore + cScore + yScore + kScore + vScore; // −7 to +7
+  // Total: max +9 (2+2+2+1+1+1), min −9
+  const total    = tScore + cScore + yScore + kScore + kalaScore + vScore;
+  const maxScore = 9;
 
   let verdict, verdictClass, verdictIcon;
-  if(total>=5)       {verdict='Excellent — Most Auspicious';    verdictClass='best';    verdictIcon='⭐'}
-  else if(total>=2)  {verdict='Favorable — Good for Action';    verdictClass='good';    verdictIcon='✅'}
-  else if(total>-2)  {verdict='Mixed — Use Discernment';        verdictClass='neutral'; verdictIcon='⚡'}
-  else if(total>=-4) {verdict='Unfavorable — Proceed Carefully';verdictClass='bad';     verdictIcon='⚠️'}
-  else               {verdict='Inauspicious — Rest & Reflect';  verdictClass='worst';   verdictIcon='⛔'}
+  if(total >= 6)       {verdict='Excellent — Most Auspicious';    verdictClass='best';    verdictIcon='⭐'}
+  else if(total >= 2)  {verdict='Favorable — Good for Action';    verdictClass='good';    verdictIcon='✅'}
+  else if(total > -2)  {verdict='Mixed — Use Discernment';        verdictClass='neutral'; verdictIcon='⚡'}
+  else if(total >= -5) {verdict='Unfavorable — Proceed Carefully';verdictClass='bad';     verdictIcon='⚠️'}
+  else                 {verdict='Inauspicious — Rest & Reflect';  verdictClass='worst';   verdictIcon='⛔'}
 
-  // Nearest factor boundary = when this consolidated score next changes
+  // Nearest factor boundary = when this score next changes (Vaar is daily so skip)
   const nextChangeJD = Math.min(curNak.endJD, curRashi.endJD, curYoga.endJD, curKar.endJD);
 
   return {
     tara, chandra, curNak, curRashi, curYoga, curKar,
-    yogaPol, karPol, vaarLord, vaarRel,
-    scores:{tara:tScore,chandra:cScore,yoga:yScore,karana:kScore,vaar:vScore},
-    total, verdict, verdictClass, verdictIcon, nextChangeJD,
+    yogaPol, karPol, vaarLord, vaarRel, specLabel,
+    kalaScore, kalaName, kalaPol,
+    scores:{tara:tScore, chandra:cScore, yoga:yScore, karana:kScore, kala:kalaScore, vaar:vScore},
+    total, maxScore, verdict, verdictClass, verdictIcon, nextChangeJD,
   };
 }
 
@@ -2502,37 +2554,38 @@ async function vpPersonalRender(){
   const lat    = typeof LAT === 'number' ? LAT : profile.lat;
   const lng    = typeof LNG === 'number' ? LNG : profile.lng;
 
-  // ── 1. 5-factor consolidated score (the big verdict) ─────────────
+  // ── 1. 6-factor consolidated score ───────────────────────────────
   const cs = vpPersonalConsolidatedNow(profile, jdNow, lat, lng);
-  const scorePct = Math.round(((cs.total + 7) / 14) * 100);
+  // Bar: map −9…+9 onto 0…100%
+  const scorePct = Math.round(((cs.total + cs.maxScore) / (cs.maxScore * 2)) * 100);
 
   // ── 2. Combined Tara+Chandra timeline ────────────────────────────
   const combinedTL = vpPersonalCombinedTimeline(profile, jdNow, 10);
-  const curSeg     = combinedTL[0];
-  const upcomingTL = combinedTL.slice(1);
+  const upcomingTL = combinedTL; // all entries shown (first = active now, rest = upcoming)
 
   // ── 3. Best windows — next 7 days ────────────────────────────────
   const bestWins = vpPersonalBestWindows(profile, jdNow, 7, 8);
-
-  // Header uses today's Anga names
-  const todayNak    = cs.curNak;
-  const todayYoga   = cs.curYoga;
-  const todayKarana = cs.curKar;
-  const dynamicTitle = `${todayNak.name} Nakshatra · ${todayYoga.name} Yoga · ${todayKarana.name} Karana`;
 
   const paksha = profile.tithiIndex < 15 ? 'Sukla' : 'Krishna';
   const janmoTithiLabel = `${profile.birthMonthWasAdhik ? 'Adhik ' : ''}${profile.birthMonthName} ${paksha} ${profile.tithiName}`;
   const janmo = vpPersonalNextJanmotithi(profile, jdNow);
   const janmoLabel = janmo ? vpPersonalFmtDate(janmo.date) : 'Could not be determined this year';
 
-  const nakDeity   = NAKSHATRA_DEITY[profile.nakshatraIndex];
+  const nakDeity    = NAKSHATRA_DEITY[profile.nakshatraIndex];
   const nakLordName = nakLord(profile.nakshatraIndex);
-  const rashiDeity = RASHI_DEITY[profile.rashiIndex];
+  const rashiDeity  = RASHI_DEITY[profile.rashiIndex];
 
-  // Upcoming Janmotithi + good Tara days
-  const upcomingTara = vpPersonalUpcomingGoodTaraDays(profile, jdNow, 3, 60);
+  // Upcoming good Tara days — now uses exact nakshatra boundaries (matches timeline)
+  const upcomingTara = vpPersonalUpcomingGoodTaraDays(profile, jdNow, 4, 60);
   let upcomingHtml = `<div class="vp-personal-upcoming-item"><span class="vp-personal-upcoming-label">🎉 ${janmoTithiLabel} (your Janmotithi)</span><span class="vp-personal-upcoming-date">${janmoLabel}</span></div>`;
-  upcomingHtml += upcomingTara.map(u => `<div class="vp-personal-upcoming-item"><span class="vp-personal-upcoming-label">${u.tara.name} — ${u.tara.note}</span><span class="vp-personal-upcoming-date">${vpPersonalFmtDate(u.date)}</span></div>`).join('');
+  upcomingHtml += upcomingTara.map(u => {
+    const endLabel = ` → ${fmtEnd(jdToDate(u.endJD), u.date)}`;
+    const whenLabel = u.isActive ? `Active now${endLabel}` : fmtDT(u.date) + endLabel;
+    return `<div class="vp-personal-upcoming-item">
+      <span class="vp-personal-upcoming-label">${u.tara.name}${u.isActive?' 🟢':''} — ${u.tara.note}</span>
+      <span class="vp-personal-upcoming-date">${whenLabel}</span>
+    </div>`;
+  }).join('');
 
   // Janmotithi-by-year picker
   const nowYear = now.getFullYear();
@@ -2550,7 +2603,7 @@ async function vpPersonalRender(){
   // Best-windows HTML
   const bestWinHTML = bestWins.length ? `
     <div class="vp-best-windows">
-      <div class="vp-best-windows-head">🌟 Best Windows Ahead — Next 7 Days</div>
+      <div class="vp-best-windows-head">🌟 Best Windows — Next 7 Days (Tara + Chandra both good)</div>
       ${bestWins.map(w => {
         const sd = jdToDate(w.startJD), ed = jdToDate(w.endJD);
         const duration = dur(sd, ed);
@@ -2565,15 +2618,14 @@ async function vpPersonalRender(){
           <div class="vp-best-win-dur">Duration: ${duration}</div>
         </div>`;
       }).join('')}
-    </div>` : `<div class="vp-best-windows-empty">No "Very Favorable" windows in the next 7 days — check the upcoming timeline below for the best available periods.</div>`;
+    </div>` : `<div class="vp-best-windows-empty">No "Tara + Chandra both good" windows in the next 7 days — see timeline below for the best available periods.</div>`;
 
   mount.style.display = 'block';
   mount.innerHTML = `
     <div class="vp-personal-card">
-      <!-- Header -->
+      <!-- Header: Janmo Tithi only (Nakshatra/Yoga/Karana shown in main panchanga below) -->
       <div class="vp-personal-head">
         <div>
-          <div class="vp-personal-dynamic-title">${dynamicTitle}</div>
           <div class="vp-personal-janmo-tithi">Janmo Tithi: <span>${janmoTithiLabel}</span></div>
         </div>
         <button class="vp-personal-toggle-btn vp-personal-toggle-on" onclick="vpPersonalToggle()">On</button>
@@ -2585,19 +2637,20 @@ async function vpPersonalRender(){
         <div class="vp-personal-chip"><span class="vp-personal-chip-label">Birth Nakshatra</span><span class="vp-personal-chip-val">${profile.nakshatraName} (Pada ${profile.nakshatraPada})</span><span class="vp-personal-chip-sub">Deity: ${nakDeity} · Lord: ${nakLordName}</span></div>
       </div>
 
-      <!-- ══ CONSOLIDATED SCORE — all 5 factors ══ -->
+      <!-- ══ CONSOLIDATED SCORE — all 6 factors ══ -->
       <div class="vp-cscore-card vp-cscore-${cs.verdictClass}">
-        <div class="vp-cscore-head">⚡ Right Now — All Factors Combined</div>
+        <div class="vp-cscore-head">⚡ Personal Muhurta — Right Now</div>
         <div class="vp-cscore-verdict">${cs.verdictIcon} ${cs.verdict}</div>
         <div class="vp-cscore-bar-row">
           <div class="vp-cscore-bar"><div class="vp-cscore-fill vp-cscore-fill-${cs.verdictClass}" style="width:${scorePct}%"></div></div>
-          <span class="vp-cscore-num">${cs.total > 0 ? '+' : ''}${cs.total} / 7</span>
+          <span class="vp-cscore-num">${cs.total > 0 ? '+' : ''}${cs.total} / ${cs.maxScore}</span>
         </div>
         <div class="vp-cscore-factors">
           ${vpConsolidatedFactorRow('⭐','Tara Bala',cs.tara.name,cs.scores.tara,cs.tara.polarity)}
           ${vpConsolidatedFactorRow('🌙','Chandra Bala',cs.chandra.name,cs.scores.chandra,cs.chandra.polarity)}
-          ${vpConsolidatedFactorRow('☯️','Yoga',cs.curYoga.name,cs.scores.yoga,cs.yogaPol)}
+          ${vpConsolidatedFactorRow('☯️','Yoga',cs.curYoga.name+(cs.specLabel?' · '+cs.specLabel:''),cs.scores.yoga,cs.yogaPol)}
           ${vpConsolidatedFactorRow('◐','Karana',cs.curKar.name,cs.scores.karana,cs.karPol)}
+          ${vpConsolidatedFactorRow('🔔','Kala / Muhurta',cs.kalaName,cs.scores.kala,cs.kalaPol)}
           ${vpConsolidatedFactorRow('⊕','Weekday Lord',cs.vaarLord,cs.scores.vaar,(cs.vaarRel==='own'||cs.vaarRel==='friend')?'good':cs.vaarRel==='enemy'?'bad':'neutral')}
         </div>
         <div class="vp-cscore-timer">⏱ Next change in ${dur(now, jdToDate(cs.nextChangeJD))} · at ${fmtEnd(jdToDate(cs.nextChangeJD), now)}</div>
@@ -2606,31 +2659,10 @@ async function vpPersonalRender(){
       <!-- ══ BEST WINDOWS — 7-day outlook ══ -->
       ${bestWinHTML}
 
-      <!-- ── Tara + Chandra detail: Active Now ── -->
-      ${curSeg ? `<div class="vp-combined-active vp-combined-${curSeg.combinedClass}">
-        <div class="vp-combined-active-head">🔴 ACTIVE — Tara &amp; Chandra Now</div>
-        <div class="vp-combined-active-row">
-          <div class="vp-combined-half vp-tara-${curSeg.tara.polarity==='good'?'good':curSeg.tara.polarity==='bad'?'bad':'neutral'}">
-            <div class="vp-combined-half-label">⭐ Tara Bala</div>
-            <div class="vp-combined-half-name">${curSeg.tara.name}</div>
-            <div class="vp-combined-half-sub">${curSeg.nak.name} Nakshatra</div>
-            <div class="vp-combined-half-note">${curSeg.tara.note}</div>
-          </div>
-          <div class="vp-combined-half vp-tara-${curSeg.chandra.polarity==='good'?'good':curSeg.chandra.polarity==='bad'?'bad':'neutral'}">
-            <div class="vp-combined-half-label">🌙 Chandra Bala</div>
-            <div class="vp-combined-half-name">${curSeg.chandra.name}</div>
-            <div class="vp-combined-half-sub">Moon in ${curSeg.rashi.name}</div>
-            <div class="vp-combined-half-note">${curSeg.chandra.note}</div>
-          </div>
-        </div>
-        <div class="vp-combined-verdict-bar">${curSeg.combined}</div>
-        <div class="vp-combined-active-time">⏱ ${dur(now, jdToDate(curSeg.endJD))} remaining · changes ${fmtEnd(jdToDate(curSeg.endJD), now)}</div>
-      </div>` : ''}
-
-      <!-- ── Upcoming Tara+Chandra timeline ── -->
+      <!-- ── Tara + Chandra upcoming changes ── -->
       ${upcomingTL.length ? `<div class="vp-combined-timeline">
-        <div class="vp-combined-tl-head">📅 UPCOMING — Tara &amp; Chandra changes</div>
-        ${upcomingTL.map(seg => vpPersonalSegHTML(seg)).join('')}
+        <div class="vp-combined-tl-head">📅 Tara &amp; Chandra — Active Now &amp; Upcoming Changes</div>
+        ${upcomingTL.map((seg, i) => vpPersonalSegHTML(seg)).join('')}
       </div>` : ''}
 
       <!-- Upcoming dates -->

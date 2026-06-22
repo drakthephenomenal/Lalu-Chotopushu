@@ -1685,3 +1685,125 @@
 #vpanchanga-view .vp-tl-dur{
   font-size:.58rem;color:var(--vp-ink-faint);font-style:italic;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   NEW UI IMPROVEMENTS — 6 features
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 4-box birth row ─────────────────────────────────────────── */
+#vpanchanga-view .vp-personal-rashi-row-4{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+/* ── Scorecard factor row with progress bar ──────────────────── */
+#vpanchanga-view .vp-cscore-row-rich{
+  display:flex;flex-direction:column;gap:0;
+  padding:8px 0;
+  border-bottom:1px solid var(--vp-card-edge);
+}
+#vpanchanga-view .vp-cscore-row-rich:last-child{border-bottom:none}
+#vpanchanga-view .vp-cscore-row-top{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+}
+#vpanchanga-view .vp-cscore-row-desc{
+  font-size:.60rem;color:var(--vp-ink-soft);font-style:italic;
+  line-height:1.45;margin:3px 0 4px 22px;
+}
+#vpanchanga-view .vp-cscore-row-timeline{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:.55rem;color:var(--vp-ink-faint);margin:3px 0 2px;
+  padding:0 2px;
+}
+#vpanchanga-view .vp-cscore-tl-left{
+  font-size:.55rem;color:var(--vp-violet);font-weight:700;
+}
+#vpanchanga-view .vp-cscore-row-bar{
+  height:4px;border-radius:4px;background:rgba(0,0,0,.07);overflow:hidden;
+  margin-bottom:2px;
+}
+#vpanchanga-view .vp-cscore-row-fill{
+  height:100%;border-radius:4px;transition:width .4s ease;
+}
+#vpanchanga-view .vp-cscore-fill-good   {background:var(--vp-jade)}
+#vpanchanga-view .vp-cscore-fill-bad    {background:var(--vp-rose)}
+#vpanchanga-view .vp-cscore-fill-neutral{background:var(--vp-gold)}
+
+/* Special yoga badge in scorecard */
+#vpanchanga-view .vp-cscore-special-yoga{
+  margin:6px 0 4px;padding:6px 10px;
+  background:linear-gradient(135deg,#FFF9E0,#FFFDF5);
+  border:1px solid rgba(200,150,10,.35);border-radius:10px;
+  font-size:.65rem;font-weight:700;color:var(--vp-gold);
+}
+
+/* ── Collapsible sections ────────────────────────────────────── */
+#vpanchanga-view .vp-collapsible-section{
+  margin-bottom:12px;
+  border-radius:14px;
+  border:1px solid var(--vp-card-edge);
+  overflow:hidden;
+  background:var(--vp-card);
+}
+#vpanchanga-view .vp-collapsible-toggle{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  background:none;border:none;font-family:inherit;
+  font-size:.68rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--vp-ink-soft);padding:12px 14px;cursor:pointer;
+  transition:background .18s;text-align:left;
+}
+#vpanchanga-view .vp-collapsible-toggle:hover{background:rgba(124,92,252,.06)}
+#vpanchanga-view .vp-chevron{
+  font-size:.85rem;transition:transform .22s ease;color:var(--vp-violet);
+}
+#vpanchanga-view .vp-collapsible-body{
+  max-height:0;overflow:hidden;transition:max-height .35s cubic-bezier(.4,0,.2,1);
+}
+#vpanchanga-view .vp-collapsible-body.open{
+  max-height:9999px;
+}
+
+/* ── Best windows range selector ─────────────────────────────── */
+#vpanchanga-view .vp-best-windows-head{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  font-size:.62rem;font-weight:900;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--vp-ink-faint);padding:9px 12px;
+  border-bottom:1px solid var(--vp-card-edge);
+}
+#vpanchanga-view .vp-best-win-range-wrap{
+  display:inline-flex;align-items:center;gap:5px;
+}
+#vpanchanga-view .vp-best-win-range-label{
+  font-size:.60rem;color:var(--vp-ink-faint);text-transform:none;font-weight:600;
+}
+#vpanchanga-view .vp-best-win-range-select{
+  font-family:inherit;font-size:.62rem;font-weight:700;
+  border:1px solid rgba(124,92,252,.30);border-radius:8px;
+  background:rgba(124,92,252,.06);color:var(--vp-violet);
+  padding:3px 8px;cursor:pointer;
+}
+
+/* Special yoga badges in best-windows */
+#vpanchanga-view .vp-best-win-special{
+  display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 2px;
+}
+#vpanchanga-view .vp-best-win-yoga-badge{
+  font-size:.60rem;font-weight:800;letter-spacing:.02em;
+  padding:2px 9px;border-radius:999px;
+  background:linear-gradient(135deg,#FFF3C4,#FFF9E0);
+  border:1px solid rgba(200,150,10,.4);
+  color:#8a6300;
+}
+
+/* "Now" badge in timeline */
+#vpanchanga-view .vp-now-badge{
+  display:inline-block;font-size:.52rem;font-weight:900;letter-spacing:.06em;
+  text-transform:uppercase;background:var(--vp-violet);color:#fff;
+  border-radius:999px;padding:1px 7px;margin-right:3px;vertical-align:middle;
+}
+
+/* Tara/Chandra rows tinted by combined score */
+#vpanchanga-view .vp-tl-row.vp-tara-good   {background:rgba(14,166,114,.05)}
+#vpanchanga-view .vp-tl-row.vp-tara-bad    {background:rgba(225,72,95,.05)}
+#vpanchanga-view .vp-tl-row.vp-tara-neutral{background:rgba(216,154,31,.04)}

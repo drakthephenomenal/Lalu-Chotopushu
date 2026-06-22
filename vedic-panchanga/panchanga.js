@@ -499,7 +499,7 @@ function specialYogas(vaarIdx,nakIdx,vaarStart,vaarEnd){
   const t=vaarStart?{start:vaarStart,end:vaarEnd}:{};
   if(vaarIdx===0&&nakIdx===7)r.push({name:'Ravi Pushya Yoga',symbol:'☀️',desc:'Sunday + Pushya — extremely auspicious',...t});
   if(vaarIdx===4&&nakIdx===7)r.push({name:'Guru Pushya Yoga',symbol:'🪔',desc:'Thursday + Pushya — highly auspicious',...t});
-  const sc=SARV.find(([d])=>d===vaarIdx);if(sc&&sc[1].includes(nakIdx))r.push({name:'Sarvartha Siddhi Yoga',symbol:'🌺',desc:'Favorable for accomplishing all goals',...t});
+  const sc=SARV.find(([d])=>d===vaarIdx);if(sc&&sc[1].includes(nakIdx)){const _vn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][vaarIdx]||'';const _nn=['Ashwini','Bharani','Krittika','Rohini','Mrigashira','Ardra','Punarvasu','Pushya','Ashlesha','Magha','Purva Phalguni','Uttara Phalguni','Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha','Mula','Purva Ashadha','Uttara Ashadha','Shravana','Dhanishtha','Shatabhisha','Purva Bhadrapada','Uttara Bhadrapada','Revati'][nakIdx]||'';r.push({name:'Sarvartha Siddhi Yoga',symbol:'🌺',desc:`Favorable for accomplishing all goals (${_vn}+${_nn})`,...t});}
   const ac=AMRT.find(([d])=>d===vaarIdx);if(ac&&ac[1].includes(nakIdx))r.push({name:'Amrita Siddhi Yoga',symbol:'🌼',desc:'Very auspicious — removes obstacles',...t});
   return r;
 }
@@ -2396,7 +2396,10 @@ function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
 // Uses the combined timeline; cap at maxResults entries.
 // ══════════════════════════════════════════════════════════════
 function vpPersonalBestWindows(profile, fromJD, daysAhead, maxResults){
-  const segs = vpPersonalCombinedTimeline(profile, fromJD, 80);
+  // Need enough segments: each nakshatra lasts ~1 day, so 30 days ≈ 30+ segments.
+  // Use daysAhead*4 to ensure we always have enough coverage regardless of range.
+  const segCount = Math.max(80, Math.ceil(daysAhead * 4));
+  const segs = vpPersonalCombinedTimeline(profile, fromJD, segCount);
   const limitJD = fromJD + daysAhead;
   const windows = [];
   for(const seg of segs){
@@ -2573,6 +2576,8 @@ function vpTogglePersonalSection(bodyId, chevronId){
   if(!body) return;
   const isOpen = body.classList.toggle('open');
   if(chev) chev.textContent = isOpen ? '▾' : '▸';
+  // Persist state so re-renders restore it
+  try { sessionStorage.setItem('vp-collapse-'+bodyId, isOpen?'open':'closed'); } catch(e){}
   // Muhurta collapsible: live-sync from main panchanga's Coming Up list
   if(bodyId === 'vp-muhurta-list-body' && isOpen){
     const mainList = document.getElementById('vp-upcoming-list');
@@ -2723,7 +2728,7 @@ async function vpPersonalRender(){
         const taraClass = w.tara.polarity==='good'?'good':'neutral';
         const chanClass  = w.chandra.polarity==='good'?'good':'neutral';
         const specHtml = w.specialYogas && w.specialYogas.length
-          ? `<div class="vp-best-win-special">${w.specialYogas.map(s=>`<span class="vp-best-win-yoga-badge">${s.symbol||'✨'} ${s.name}</span>`).join('')}</div>` : '';
+          ? `<div class="vp-best-win-special">${w.specialYogas.map(s=>`<span class="vp-best-win-yoga-badge" title="${s.desc||''}">${s.symbol||'✨'} ${s.name}${s.desc?` <span class="vp-best-win-yoga-why">(${s.desc})</span>`:''}</span>`).join('')}</div>` : '';
         return `<div class="vp-best-win-row">
           <div class="vp-best-win-when">${fmtDT(sd)} <span class="vp-best-win-arrow">→</span> ${fmtEnd(ed, sd)}</div>
           <div class="vp-best-win-badges">
@@ -2849,27 +2854,12 @@ async function vpPersonalRender(){
       <div class="vp-collapsible-section">
         <button class="vp-collapsible-toggle" onclick="vpTogglePersonalSection('vp-tarachandra-body','vp-tarachandra-chevron')">
           <span>📅 Tara &amp; Chandra — Active Now &amp; Upcoming for You</span>
-          <span class="vp-chevron" id="vp-tarachandra-chevron">▾</span>
+          <span class="vp-chevron" id="vp-tarachandra-chevron">${(()=>{try{return sessionStorage.getItem('vp-collapse-vp-tarachandra-body')==='closed'?'▸':'▾';}catch(e){return'▾';}})()}</span>
         </button>
-        <div id="vp-tarachandra-body" class="vp-collapsible-body open">
+        <div id="vp-tarachandra-body" class="vp-collapsible-body${(()=>{try{return sessionStorage.getItem('vp-collapse-vp-tarachandra-body')==='closed'?'':' open';}catch(e){return' open';}})()}">
           <div class="vp-combined-timeline">
             ${mergedTLHtml}
           </div>
-          <div class="vp-personal-upcoming">
-            <div class="vp-personal-upcoming-title">Upcoming Good Tara Windows</div>
-            ${upcomingItemsHtml}
-          </div>
-        </div>
-      </div>
-
-      <!-- ══ MUHURTA / KAL LIST (collapsible) ══ -->
-      <div class="vp-collapsible-section">
-        <button class="vp-collapsible-toggle" onclick="vpTogglePersonalSection('vp-muhurta-list-body','vp-muhurta-list-chevron')">
-          <span>🔔 Auspicious &amp; Inauspicious Muhurta / Kal Today</span>
-          <span class="vp-chevron" id="vp-muhurta-list-chevron">▸</span>
-        </button>
-        <div id="vp-muhurta-list-body" class="vp-collapsible-body">
-          <div id="vp-personal-muhurta-list"><div style="padding:12px;text-align:center;font-size:.76rem;color:var(--vp-ink-faint)">Loading…</div></div>
         </div>
       </div>
 

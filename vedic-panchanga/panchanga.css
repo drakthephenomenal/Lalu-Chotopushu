@@ -1799,7 +1799,10 @@
   padding:2px 9px;border-radius:999px;
   background:linear-gradient(135deg,#FFF3C4,#FFF9E0);
   border:1px solid rgba(200,150,10,.4);
-  color:#8a6300;
+  color:#8a6300;display:inline-flex;align-items:center;flex-wrap:wrap;gap:3px;
+}
+#vpanchanga-view .vp-best-win-yoga-why{
+  font-size:.58rem;font-weight:600;opacity:.8;
 }
 
 /* "Now" badge in timeline */

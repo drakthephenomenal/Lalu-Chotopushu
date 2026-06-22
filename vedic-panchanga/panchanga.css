@@ -1839,17 +1839,24 @@
   background:linear-gradient(135deg,#FFF3C4,#FFF9E0,#FFE89A);
   background-size:200% 200%;
   border:1px solid rgba(200,150,10,.55);
-  color:#0a3a8c;display:inline-flex;align-items:center;flex-wrap:wrap;gap:3px;
+  display:inline-flex;align-items:center;flex-wrap:wrap;gap:3px;
   box-shadow:0 0 8px rgba(255,200,60,.45),inset 0 0 6px rgba(255,230,140,.5);
   animation:vpBadgeGlow 2s ease-in-out infinite, vpYogaShift 5s ease-in-out infinite;
+}
+#vpanchanga-view .vp-best-win-yoga-badge,
+#vpanchanga-view .vp-best-win-yoga-badge *{
+  color:#0a3a8c !important;
+  -webkit-text-fill-color:#0a3a8c !important;
+  background-clip:initial !important;
+  -webkit-background-clip:initial !important;
+  text-shadow:none !important;
 }
 @keyframes vpBadgeGlow{
   0%,100%{box-shadow:0 0 6px rgba(255,200,60,.35),inset 0 0 5px rgba(255,230,140,.4)}
   50%{box-shadow:0 0 16px rgba(255,200,60,.85),inset 0 0 10px rgba(255,230,140,.7)}
 }
-#vpanchanga-view .vp-best-win-yoga-badge *{color:#0a3a8c !important;}
 #vpanchanga-view .vp-best-win-yoga-why{
-  font-size:.58rem;font-weight:600;opacity:.85;color:#0a3a8c;
+  font-size:.58rem;font-weight:600;opacity:.85;
 }
 
 /* "Now" badge in timeline */
@@ -1867,7 +1874,7 @@
 /* Coming Up & Right Now collapsibles — allow tall content */
 #vpanchanga-view #vp-upcoming-wrap.open,
 #vpanchanga-view #vp-now-wrap.open { max-height: 9999px; }
-#vpanchanga-view #vp-now-toggle{ background:none; }
+/* #vp-now-toggle uses the shared golden collapsible-toggle style */
 
 /* ══════════════════════════════════════════════════════════════
    PREMIUM DARK · v2 — Deep blue night sky + golden glow
@@ -2258,17 +2265,25 @@
 }
 
 /* Even-out the golden collapsible bar so it fills the card edges cleanly */
-#vpanchanga-view .vp-collapsible-section{
+#vpanchanga-view .vp-collapsible-section,
+#vpanchanga-view #vp-now-wrap,
+#vpanchanga-view #vp-upcoming-wrap{
   border-radius:14px !important;
   overflow:hidden;
 }
-#vpanchanga-view .vp-collapsible-section > .vp-collapsible-toggle{
-  border-radius:14px 14px 0 0 !important;
+#vpanchanga-view .vp-collapsible-section > .vp-collapsible-toggle,
+#vpanchanga-view #vp-now-toggle,
+#vpanchanga-view #vp-upcoming-toggle{
+  border-radius:14px !important;
   border:none !important;
   margin:0 !important;
   width:100% !important;
+  box-sizing:border-box !important;
 }
-#vpanchanga-view .vp-collapsible-section > .vp-collapsible-body:not(.open) + .vp-collapsible-toggle,
-#vpanchanga-view .vp-collapsible-section:has(> .vp-collapsible-body:not(.open)) > .vp-collapsible-toggle{
-  border-radius:14px !important;
+/* When body is open, square the bottom so the bar joins the body */
+#vpanchanga-view .vp-collapsible-section:has(> .vp-collapsible-body.open) > .vp-collapsible-toggle,
+#vpanchanga-view #vp-now-wrap.open ~ #vp-now-toggle,
+#vpanchanga-view #vp-now-toggle.open,
+#vpanchanga-view #vp-upcoming-toggle.open{
+  border-radius:14px 14px 0 0 !important;
 }

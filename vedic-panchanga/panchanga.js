@@ -497,9 +497,11 @@ function specialYogas(vaarIdx,nakIdx,vaarStart,vaarEnd){
   // vaarStart/vaarEnd = Brahma Muhurta start to next day BM — the full Vedic day span
   const r=[];
   const t=vaarStart?{start:vaarStart,end:vaarEnd}:{};
-  if(vaarIdx===0&&nakIdx===7)r.push({name:'Ravi Pushya Yoga',symbol:'☀️',desc:'Sunday + Pushya — extremely auspicious',...t});
-  if(vaarIdx===4&&nakIdx===7)r.push({name:'Guru Pushya Yoga',symbol:'🪔',desc:'Thursday + Pushya — highly auspicious',...t});
-  const sc=SARV.find(([d])=>d===vaarIdx);if(sc&&sc[1].includes(nakIdx)){const _vn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][vaarIdx]||'';const _nn=['Ashwini','Bharani','Krittika','Rohini','Mrigashira','Ardra','Punarvasu','Pushya','Ashlesha','Magha','Purva Phalguni','Uttara Phalguni','Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha','Mula','Purva Ashadha','Uttara Ashadha','Shravana','Dhanishtha','Shatabhisha','Purva Bhadrapada','Uttara Bhadrapada','Revati'][nakIdx]||'';r.push({name:'Sarvartha Siddhi Yoga',symbol:'🌺',desc:`Favorable for accomplishing all goals (${_vn}+${_nn})`,...t});}
+  const _VL=['Surya (Ravi)','Chandra (Soma)','Mangala (Bhauma)','Budha','Brihaspati (Guru)','Shukra','Shani'];
+  const _NL=['Ashwini','Bharani','Krittika','Rohini','Mrigashira','Ardra','Punarvasu','Pushya','Ashlesha','Magha','Purva Phalguni','Uttara Phalguni','Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha','Mula','Purva Ashadha','Uttara Ashadha','Shravana','Dhanishtha','Shatabhisha','Purva Bhadrapada','Uttara Bhadrapada','Revati'];
+  if(vaarIdx===0&&nakIdx===7)r.push({name:'Ravi Pushya Yoga',symbol:'☀️',desc:`${_VL[0]} + Pushya — extremely auspicious`,...t});
+  if(vaarIdx===4&&nakIdx===7)r.push({name:'Guru Pushya Yoga',symbol:'🪔',desc:`${_VL[4]} + Pushya — highly auspicious`,...t});
+  const sc=SARV.find(([d])=>d===vaarIdx);if(sc&&sc[1].includes(nakIdx)){r.push({name:'Sarvartha Siddhi Yoga',symbol:'🌺',desc:`Favorable for accomplishing all goals (${_VL[vaarIdx]||''} + ${_NL[nakIdx]||''})`,...t});}
   const ac=AMRT.find(([d])=>d===vaarIdx);if(ac&&ac[1].includes(nakIdx))r.push({name:'Amrita Siddhi Yoga',symbol:'🌼',desc:'Very auspicious — removes obstacles',...t});
   return r;
 }

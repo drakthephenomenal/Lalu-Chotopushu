@@ -1990,15 +1990,6 @@ function vpPersonalComputeProfile(dateStr, timeStr, lat, lng){
   const elong = norm(moonLong(jd)-sunLong(jd));
   const tithiIndex = Math.floor(elong/12);
 
-  // Birth Yoga (sum of sidereal moon + sun longitude divided into 27)
-  const birthYogaSum = norm(moonLongSid(jd) + sunLongSid(jd));
-  const birthYogaIndex = Math.floor(birthYogaSum / (360/27)) % 27;
-  const birthYogaName = YOGA_N[birthYogaIndex];
-
-  // Birth Karana (half-tithi)
-  const birthHalfTithi = Math.floor(elong / 6);
-  const birthKaranaName = karName(birthHalfTithi);
-
   // Birth Hindu (lunar) month — needed so the Vedic Janmotithi search below
   // can require BOTH "same Tithi" AND "same lunar month" (e.g. Vaishakh
   // Krishna Amavasya), which is what actually recurs once a year. Matching
@@ -2013,8 +2004,6 @@ function vpPersonalComputeProfile(dateStr, timeStr, lat, lng){
     rashiIndex, rashiName: RASHI[rashiIndex], rashiLord: RASHI_LORD[rashiIndex],
     nakshatraIndex, nakshatraName: NAKSHATRA[nakshatraIndex], nakshatraPada,
     tithiIndex, tithiName: TITHI[tithiIndex],
-    birthYogaIndex, birthYogaName,
-    birthKaranaName,
     birthMonthName, birthMonthWasAdhik: birthAdhik.isAdhik,
     enabled: false,
   };
@@ -2290,11 +2279,6 @@ const YOGA_WORST = new Set(['Vyatipata','Vaidhriti','Vajra','Parigha']);
 function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
   const nowDate = new Date();
 
-  // ── Tithi ──
-  const tithiPs = getTithiPeriods(jdNow - 1, 4);
-  let tii = tithiPs.findIndex(p => p.endJD > jdNow); if(tii<0) tii=0;
-  const curTithi = tithiPs[tii];
-
   // ── Nakshatra (Tara Bala) ──
   const nakPs = getNakshatraPeriods(jdNow - 1, 4);
   let ni = nakPs.findIndex(p => p.endJD > jdNow); if(ni<0) ni=0;
@@ -2380,8 +2364,8 @@ function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
   const nextChangeJD = Math.min(curNak.endJD, curRashi.endJD, curYoga.endJD, curKar.endJD);
 
   return {
-    tara, chandra, curTithi, curNak, curRashi, curYoga, curKar,
-    yogaPol, karPol, vaarLord, vaarRel, specLabel, specYogas,
+    tara, chandra, curNak, curRashi, curYoga, curKar,
+    yogaPol, karPol, vaarLord, vaarRel, specLabel,
     kalaScore, kalaName, kalaPol,
     scores:{tara:tScore, chandra:cScore, yoga:yScore, karana:kScore, kala:kalaScore, vaar:vScore},
     total, maxScore, verdict, verdictClass, verdictIcon, nextChangeJD,
@@ -2404,18 +2388,7 @@ function vpPersonalBestWindows(profile, fromJD, daysAhead, maxResults){
       const start = Math.max(seg.startJD, fromJD);
       const end   = Math.min(seg.endJD,   limitJD);
       if(end - start < 1/24) continue; // skip windows < 1 h
-
-      // Detect special yogas forming in this window (sample mid-point)
-      let winSpecYogas = [];
-      try {
-        const midJD = (start + end) / 2;
-        const midDate = jdToDate(midJD);
-        const midVaarIdx = getVedicVaarIdx(midDate, typeof LAT==='number'?LAT:profile.lat, typeof LNG==='number'?LNG:profile.lng);
-        const midNakIdx  = Math.floor(moonLongSid(midJD)/(360/27))%27;
-        winSpecYogas = specialYogas(midVaarIdx, midNakIdx, null, null);
-      } catch(e){ /* no-op */ }
-
-      windows.push({...seg, startJD:start, endJD:end, specialYogas:winSpecYogas});
+      windows.push({...seg, startJD:start, endJD:end});
       if(windows.length >= maxResults) break;
     }
   }
@@ -2553,21 +2526,6 @@ function vpPersonalFmtDate(d){
   return d.toLocaleDateString('en-IN', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 }
 
-// Toggle a named collapsible section (body element + chevron indicator)
-function vpTogglePersonalSection(bodyId, chevronId){
-  const body = document.getElementById(bodyId);
-  const chev = document.getElementById(chevronId);
-  if(!body) return;
-  const isOpen = body.classList.toggle('open');
-  if(chev) chev.textContent = isOpen ? '▾' : '▸';
-}
-
-// Change the "best windows" day-range selector and re-render
-function vpPersonalBestWinDaysChange(val){
-  window._vpBestWindowsDays = parseInt(val, 10) || 7;
-  vpPersonalRender();
-}
-
 // Renders (or hides) the "My Panchanga" card on the main panchanga page.
 // Safe to call any time — it no-ops gracefully if the mount point isn't
 // in the DOM yet, or if there's no saved/enabled profile.
@@ -2576,194 +2534,185 @@ async function vpPersonalRender(){
   if(!mount) return;
 
   const profile = await vpPersonalLoad(false);
-  if(!profile){
-    mount.style.display = 'none';
-    return;
-  }
+  if(!profile){ mount.style.display='none'; return; }
 
   if(!profile.enabled){
-    mount.style.display = 'block';
-    mount.innerHTML = `
-      <div class="vp-personal-offcard">
-        <span>✨ Personalized panchanga is available for your saved birth details.</span>
-        <button class="vp-personal-toggle-btn" onclick="vpPersonalToggle()">Turn on</button>
-      </div>`;
+    mount.style.display='block';
+    mount.innerHTML=`<div class="vp-personal-offcard">
+      <span>✨ Personalized panchanga is available for your saved birth details.</span>
+      <button class="vp-personal-toggle-btn" onclick="vpPersonalToggle()">Turn on</button>
+    </div>`;
     return;
   }
 
-  const now    = new Date();
-  const jdNow  = dateToJD(now);
-  const lat    = typeof LAT === 'number' ? LAT : profile.lat;
-  const lng    = typeof LNG === 'number' ? LNG : profile.lng;
+  const now=new Date(), jdNow=dateToJD(now);
+  const lat=typeof LAT==='number'?LAT:profile.lat;
+  const lng=typeof LNG==='number'?LNG:profile.lng;
 
-  // ── 1. 6-factor consolidated score ───────────────────────────────
-  const cs = vpPersonalConsolidatedNow(profile, jdNow, lat, lng);
-  const scorePct = Math.round(((cs.total + cs.maxScore) / (cs.maxScore * 2)) * 100);
+  // ── 1. Consolidated 6-factor score ────────────────────────────
+  const cs=vpPersonalConsolidatedNow(profile,jdNow,lat,lng);
+  const scorePct=Math.round(((cs.total+cs.maxScore)/(cs.maxScore*2))*100);
 
-  // ── 2. Combined Tara+Chandra timeline (10 segments) ──────────────
-  const combinedTL = vpPersonalCombinedTimeline(profile, jdNow, 10);
+  // ── 2. Period data for anga progress bars ─────────────────────
+  const tithiPs=getTithiPeriods(jdNow-0.5,4);
+  let ti=tithiPs.findIndex(p=>p.endJD>jdNow); if(ti<0)ti=0;
+  const curTithiP=tithiPs[ti];
 
-  // ── 3. Best windows — user-selectable day range ───────────────────
-  const bestWinDays = window._vpBestWindowsDays || 7;
-  const bestWins = vpPersonalBestWindows(profile, jdNow, bestWinDays, 8);
+  const nakPs2=getNakshatraPeriods(jdNow-1,4);
+  let ni2=nakPs2.findIndex(p=>p.endJD>jdNow); if(ni2<0)ni2=0;
+  const curNakP=nakPs2[ni2];
 
-  const paksha = profile.tithiIndex < 15 ? 'Sukla' : 'Krishna';
-  const janmoTithiLabel = `${profile.birthMonthWasAdhik ? 'Adhik ' : ''}${profile.birthMonthName} ${paksha} ${profile.tithiName}`;
-  const janmo = vpPersonalNextJanmotithi(profile, jdNow);
-  const janmoLabel = janmo ? vpPersonalFmtDate(janmo.date) : 'Could not be determined this year';
+  const yogaPs2=getYogaPeriods(jdNow-0.5,4);
+  let yi2=yogaPs2.findIndex(p=>p.endJD>jdNow); if(yi2<0)yi2=0;
+  const curYogaP=yogaPs2[yi2];
 
-  const nakDeity    = NAKSHATRA_DEITY[profile.nakshatraIndex];
-  const nakLordName = nakLord(profile.nakshatraIndex);
-  const rashiDeity  = RASHI_DEITY[profile.rashiIndex];
+  const karPs2=getKaranaPeriods(jdNow-0.25,6);
+  let ki2=karPs2.findIndex(p=>p.endJD>jdNow); if(ki2<0)ki2=0;
+  const curKarP=karPs2[ki2];
 
-  // Upcoming good Tara days
-  const upcomingTara = vpPersonalUpcomingGoodTaraDays(profile, jdNow, 4, 60);
+  const rashiPs2=getMoonRashiPeriods(jdNow,3);
+  const curRashiP=rashiPs2[0];
 
-  // Janmotithi year picker
-  const nowYear = now.getFullYear();
-  const janmoYearDefault = janmo ? janmo.date.getFullYear() : nowYear;
-  const janmoYearRangeStart = Math.min(nowYear - 5, janmoYearDefault);
-  const janmoYearRangeEnd   = Math.max(nowYear + 10, janmoYearDefault);
-  let janmoYearOptionsHtml = '';
-  for(let y=janmoYearRangeStart; y<=janmoYearRangeEnd; y++){
-    janmoYearOptionsHtml += `<option value="${y}"${y===janmoYearDefault?' selected':''}>${y}</option>`;
+  function progPct(sJD,eJD){
+    if(!sJD||!eJD)return 0;
+    return Math.min(100,Math.max(0,Math.round(((jdNow-sJD)/(eJD-sJD))*100)));
   }
-  const janmoYearInitialResult = (janmo && janmo.date.getFullYear()===janmoYearDefault)
-    ? janmoLabel
-    : (() => { const r = vpPersonalJanmotithiForYear(profile, janmoYearDefault); return r ? vpPersonalFmtDate(r.date) : 'Could not be determined for this year'; })();
+  function timeLeft(endJD){
+    const ed=jdToDate(endJD);
+    if(+ed<=+now)return'ended';
+    return dur(now,ed)+' left';
+  }
+  function periodStr(sJD,eJD){
+    const sd=jdToDate(sJD),ed=jdToDate(eJD);
+    return fmt12(sd)+' – '+fmtEnd(ed,sd)+' · '+timeLeft(eJD);
+  }
 
-  // ── Tithi / Nakshatra / Yoga / Karana descriptions ────────────────
-  const TITHI_DESC = ['New beginning, auspicious start','Prosperity & growth','Victory & success','Caution: avoid risky ventures','Auspicious for all good deeds','Good for social gatherings','Favours clearing enemies','Mixed — use discernment','Complete pending tasks','Excellent for all activities','Ekadashi — highly sacred fast','Breaking fast, gifts & charity','Avoid starting new ventures','Ancestral worship, sacred rites','Full Moon — very auspicious','New Moon — reflection & rest','Prosperity & growth (Krishna)','Victory (Krishna)','Caution (Krishna)','All good deeds (Krishna)','Social gatherings (Krishna)','Clear obstacles (Krishna)','Mixed (Krishna)','Complete tasks (Krishna)','Excellent (Krishna)','Sacred fast (Krishna)','Gifts & charity (Krishna)','Avoid new ventures (Krishna)','Ancestral rites (Krishna)','New Moon cycle begins'];
-  const YOGA_DESC  = {'Vishkumbha':'Obstruction — avoid new starts','Preeti':'Affection & love — excellent for unions','Ayushman':'Longevity & health benefits','Saubhagya':'Good fortune — auspicious for all','Shobhana':'Splendour — beauty & prosperity','Atiganda':'Obstacles — proceed carefully','Sukarma':'Good deeds bring double merit','Dhriti':'Steadiness — excellent for commitments','Shula':'Pain — avoid surgery or conflict','Ganda':'Hindrance — use caution','Vriddhi':'Growth & expansion — auspicious','Dhruva':'Permanence — good for long-term plans','Vyaghata':'Danger — avoid travel & new ventures','Harshana':'Joy & happiness — festive deeds','Vajra':'Thunderbolt — conflict, avoid','Siddhi':'Achievement — excellent for goals','Vyatipata':'Calamity — total avoidance','Variyan':'Comfort & leisure — rest well','Parigha':'Obstruction — avoid key actions','Shiva':'Auspicious — worship & spirituality','Siddha':'Achievement — perfect for success','Sadhya':'Attainable goals — moderate effort','Shubha':'Auspicious — good for all deeds','Shukla':'Bright & pure — excellent for rituals','Brahma':'Supreme — most auspicious yoga','Indra':'Royal power — leadership & victory','Vaidhriti':'No support — avoid all important work'};
-  const KARANA_DESC = {'Bava':'Auspicious for all activities','Balava':'Good for travel & new ventures','Kaulava':'Excellent for trade & commerce','Taitila':'Good for agriculture & service','Garaja':'Favourable for family matters','Vanija':'Merchant — excellent for business','Vishti':'Bhadra — avoid all key actions','Shakuni':'Mixed — use discrimination','Chatushpada':'Fixed — good for spiritual rites','Naga':'Fixed — reflection & caution','Kimstughna':'Fixed — good for worship'};
+  // ── 3. Birth Yoga & Karana ────────────────────────────────────
+  let birthYogaName='—', birthYogaFx='', birthKarName='—', birthKarFx='';
+  try{
+    const bDobStr=profile.dob+(profile.tob?'T'+profile.tob:'T12:00');
+    const bJD=dateToJD(new Date(bDobStr));
+    const bYIdx=Math.floor(norm(moonLong(bJD)+sunLong(bJD))/(360/27))%27;
+    birthYogaName=YOGA_N[bYIdx]||'—';
+    birthYogaFx=(YOGA_FX[bYIdx]||'').substring(0,46);
+    const bKIdx=Math.floor(norm(moonLong(bJD)-sunLong(bJD))/6);
+    birthKarName=karName(bKIdx)||'—';
+    birthKarFx=(KARANA_FX_LOOKUP[birthKarName]||'').substring(0,46);
+  }catch(e){}
 
-  const tithiFx = TITHI_DESC[cs.curTithi ? cs.curTithi.index % 30 : 0] || '';
-  const yogaFx  = YOGA_DESC[cs.curYoga.name]  || '';
-  const karFx   = KARANA_DESC[cs.curKar.name] || '';
+  // ── 4. Janmotithi ────────────────────────────────────────────
+  const paksha=profile.tithiIndex<15?'Sukla':'Krishna';
+  const janmoTithiLabel=`${profile.birthMonthWasAdhik?'Adhik ':''}${profile.birthMonthName} ${paksha} ${profile.tithiName}`;
+  const janmo=vpPersonalNextJanmotithi(profile,jdNow);
+  const janmoLabel=janmo?vpPersonalFmtDate(janmo.date):'Could not be determined this year';
+  const nowYear=now.getFullYear();
+  const janmoYD=janmo?janmo.date.getFullYear():nowYear;
+  const janmoYRS=Math.min(nowYear-5,janmoYD), janmoYRE=Math.max(nowYear+10,janmoYD);
+  let janmoYearOptHtml='';
+  for(let y=janmoYRS;y<=janmoYRE;y++) janmoYearOptHtml+=`<option value="${y}"${y===janmoYD?' selected':''}>${y}</option>`;
+  const janmoYearInitResult=(janmo&&janmo.date.getFullYear()===janmoYD)
+    ?janmoLabel
+    :(()=>{const r=vpPersonalJanmotithiForYear(profile,janmoYD);return r?vpPersonalFmtDate(r.date):'Could not be determined';})();
 
-  // ── Factor row builders ───────────────────────────────────────────
-  function makeFactorRowWithBar(icon, label, name, score, polarity, startJD, endJD, desc){
-    const polClass = polarity==='good'?'good':polarity==='bad'?'bad':'neutral';
-    const sign = score>0?'+':'';
-    const startDt = jdToDate(startJD), endDt = jdToDate(endJD);
-    const totalSec  = (endJD  - startJD) * 86400;
-    const elapsedSec= (jdNow  - startJD) * 86400;
-    const pct = Math.min(100, Math.max(0, Math.round(elapsedSec / totalSec * 100)));
-    const timeLeft  = dur(now, endDt);
-    return `<div class="vp-cscore-row vp-cscore-row-rich">
+  // ── 5. Natal deities ─────────────────────────────────────────
+  const nakDeity=NAKSHATRA_DEITY[profile.nakshatraIndex];
+  const nakLordName=nakLord(profile.nakshatraIndex);
+  const rashiDeity=RASHI_DEITY[profile.rashiIndex];
+
+  // ── 6. Best windows with range selector + special yoga detect ─
+  const bestDays=parseInt(localStorage.getItem('vp_best_win_days')||'7',10);
+  const bestWins=vpPersonalBestWindowsWithYogas(profile,jdNow,bestDays,8);
+  const dayOpts=[7,14,21,30];
+  const rangeBar=`<div class="vp-bestwin-range">${dayOpts.map(d=>`<button class="vp-bestwin-range-btn${d===bestDays?' active':''}" onclick="vpPersonalSetBestWinDays(${d})">${d}d</button>`).join('')}</div>`;
+  const bestWinHTML=bestWins.length?`
+    <div class="vp-best-windows">
+      <div class="vp-best-windows-head">🌟 Best Windows <span class="vp-bwhead-note">(Tara + Chandra both good)</span>${rangeBar}</div>
+      ${bestWins.map(w=>{
+        const sd=jdToDate(w.startJD),ed=jdToDate(w.endJD);
+        const taraC=w.tara.polarity==='good'?'good':'neutral';
+        const chandC=w.chandra.polarity==='good'?'good':'neutral';
+        const yogaBadge=w.specYogas&&w.specYogas.length?`<div class="vp-bestwin-yoga-badge">${w.specYogas.map(y=>`${y.symbol} ${y.name}`).join(' · ')}</div>`:'';
+        return`<div class="vp-best-win-row">
+          ${yogaBadge}
+          <div class="vp-best-win-when">${fmtDT(sd)} <span class="vp-best-win-arrow">→</span> ${fmtEnd(ed,sd)}</div>
+          <div class="vp-best-win-badges">
+            <span class="vp-tl-badge vp-tara-${taraC}">Tara: ${w.tara.name}</span>
+            <span class="vp-tl-badge vp-tara-${chandC}">Chandra: ${w.chandra.name}</span>
+          </div>
+          <div class="vp-best-win-dur">Duration: ${dur(sd,ed)}</div>
+        </div>`;
+      }).join('')}
+    </div>`
+  :`<div class="vp-best-windows"><div class="vp-best-windows-head">🌟 Best Windows <span class="vp-bwhead-note">(Tara + Chandra both good)</span>${rangeBar}</div><div class="vp-best-windows-empty">No strong windows in ${bestDays} days — see timeline for best available.</div></div>`;
+
+  // ── 7. Tara+Chandra timeline (merged + collapsible) ───────────
+  const combinedTL=vpPersonalCombinedTimeline(profile,jdNow,12);
+  const upcomingTara=vpPersonalUpcomingGoodTaraDays(profile,jdNow,4,60);
+  const upcomingTaraHtml=upcomingTara.map(u=>{
+    const endLabel=` → ${fmtEnd(jdToDate(u.endJD),u.date)}`;
+    const whenLabel=u.isActive?`Active now${endLabel}`:fmtDT(u.date)+endLabel;
+    return`<div class="vp-personal-upcoming-item">
+      <span class="vp-personal-upcoming-label">${u.tara.name}${u.isActive?' 🟢':''} — ${u.tara.note}</span>
+      <span class="vp-personal-upcoming-date">${whenLabel}</span>
+    </div>`;
+  }).join('');
+  const mergedTaraHTML=combinedTL.length?`
+    <div class="vp-collapsible-section">
+      <button class="vp-collapsible-toggle-btn" onclick="vpTogglePersonalSection('vp-tara-body','vp-tara-chev')">
+        <span>📅 Tara &amp; Chandra — Now &amp; Upcoming</span>
+        <span id="vp-tara-chev" class="vp-chevron">▾</span>
+      </button>
+      <div class="vp-personal-collapse-body" id="vp-tara-body">
+        <div class="vp-combined-timeline">${combinedTL.map(seg=>vpPersonalSegHTML(seg)).join('')}</div>
+        ${upcomingTaraHtml?`<div class="vp-personal-upcoming" style="margin-top:10px">
+          <div class="vp-personal-upcoming-title">🟢 Your Favorable Tara Windows</div>
+          ${upcomingTaraHtml}
+        </div>`:''}
+      </div>
+    </div>`:'';
+
+  // ── 8. Helper: factor row with desc + time + progress bar ─────
+  function factorRowEnh(icon,label,name,score,polarity,sJD,eJD,desc){
+    const polC=polarity==='good'?'good':polarity==='bad'?'bad':'neutral';
+    const sign=score>0?'+':'';
+    const hasTime=sJD&&eJD;
+    const pct=hasTime?progPct(sJD,eJD):0;
+    return`<div class="vp-cscore-row vp-cscore-row-exp">
       <div class="vp-cscore-row-top">
         <span class="vp-cscore-icon">${icon}</span>
         <span class="vp-cscore-label">${label}</span>
-        <span class="vp-cscore-name vp-tara-${polClass}">${name}</span>
-        ${score!==0?`<span class="vp-cscore-pts vp-cscore-pts-${polClass}">${sign}${score}</span>`:''}
+        <span class="vp-cscore-name vp-tara-${polC}">${name}</span>
+        <span class="vp-cscore-pts vp-cscore-pts-${polC}">${sign}${score}</span>
       </div>
-      ${desc?`<div class="vp-cscore-row-desc">${desc}</div>`:''}
-      <div class="vp-cscore-row-timeline">
-        <span class="vp-cscore-tl-start">${fmt12(startDt)}</span>
-        <span class="vp-cscore-tl-left">${timeLeft} left</span>
-        <span class="vp-cscore-tl-end">${fmtEnd(endDt, startDt)}</span>
-      </div>
-      <div class="vp-cscore-row-bar"><div class="vp-cscore-row-fill vp-cscore-fill-${polClass}" style="width:${pct}%"></div></div>
+      ${desc?`<div class="vp-factor-desc">${desc}</div>`:''}
+      ${hasTime?`<div class="vp-factor-time">${periodStr(sJD,eJD)}</div><div class="vp-factor-prog"><div class="vp-factor-prog-fill vp-factor-prog-${polC}" style="width:${pct}%"></div></div>`:''}
     </div>`;
   }
 
-  function makeFactorRowSimple(icon, label, name, score, polarity){
-    const polClass = polarity==='good'?'good':polarity==='bad'?'bad':'neutral';
-    const sign = score>0?'+':'';
-    return `<div class="vp-cscore-row">
-      <span class="vp-cscore-icon">${icon}</span>
-      <span class="vp-cscore-label">${label}</span>
-      <span class="vp-cscore-name vp-tara-${polClass}">${name}</span>
-      ${score!==0?`<span class="vp-cscore-pts vp-cscore-pts-${polClass}">${sign}${score}</span>`:''}
+  // ── 9. Helper: anga mini card (Tithi/Nak/Yoga/Karana) ─────────
+  function angaMini(label,name,sub,fx,sJD,eJD){
+    const pct=progPct(sJD,eJD);
+    return`<div class="vp-anga-mini">
+      <div class="vp-anga-mini-label">${label}</div>
+      <div class="vp-anga-mini-name">${name}${sub?`<span class="vp-anga-mini-sub"> · ${sub}</span>`:''}</div>
+      ${fx?`<div class="vp-anga-mini-fx">${fx}</div>`:''}
+      <div class="vp-anga-mini-prog"><div class="vp-anga-mini-prog-fill" style="width:${pct}%"></div></div>
+      <div class="vp-anga-mini-time">${periodStr(sJD,eJD)}</div>
     </div>`;
   }
 
-  const specYogaBadgeHtml = cs.specLabel
-    ? `<div class="vp-cscore-special-yoga">✨ Special Yoga active: <strong>${cs.specLabel}</strong></div>`
-    : '';
-
-  // ── Best windows HTML ─────────────────────────────────────────────
-  const dayRangeOptions = [3,5,7,10,14,21,30].map(d =>
-    `<option value="${d}"${d===bestWinDays?' selected':''}>${d} days</option>`).join('');
-
-  const bestWinHTML = `
-    <div class="vp-best-windows">
-      <div class="vp-best-windows-head">
-        <span>🌟 Best Windows</span>
-        <span class="vp-best-win-range-wrap">
-          <label class="vp-best-win-range-label">Next</label>
-          <select class="vp-best-win-range-select" onchange="vpPersonalBestWinDaysChange(this.value)">${dayRangeOptions}</select>
-          <span class="vp-best-win-range-label">(Tara + Chandra both good)</span>
-        </span>
-      </div>
-      ${bestWins.length ? bestWins.map(w => {
-        const sd = jdToDate(w.startJD), ed = jdToDate(w.endJD);
-        const winDur = dur(sd, ed);
-        const taraClass = w.tara.polarity==='good'?'good':'neutral';
-        const chanClass  = w.chandra.polarity==='good'?'good':'neutral';
-        const specHtml = w.specialYogas && w.specialYogas.length
-          ? `<div class="vp-best-win-special">${w.specialYogas.map(s=>`<span class="vp-best-win-yoga-badge">${s.symbol||'✨'} ${s.name}</span>`).join('')}</div>` : '';
-        return `<div class="vp-best-win-row">
-          <div class="vp-best-win-when">${fmtDT(sd)} <span class="vp-best-win-arrow">→</span> ${fmtEnd(ed, sd)}</div>
-          <div class="vp-best-win-badges">
-            <span class="vp-tl-badge vp-tara-${taraClass}">Tara: ${w.tara.name}</span>
-            <span class="vp-tl-badge vp-tara-${chanClass}">Chandra: ${w.chandra.name}</span>
-          </div>
-          ${specHtml}
-          <div class="vp-best-win-dur">Duration: ${winDur}</div>
-        </div>`;
-      }).join('') : `<div class="vp-best-windows-empty">No "Tara + Chandra both good" windows in the next ${bestWinDays} days — see timeline below for the best available periods.</div>`}
-    </div>`;
-
-  // ── Merged Tara & Chandra + Upcoming HTML ─────────────────────────
-  const mergedTLHtml = combinedTL.map((seg, i) => {
-    const sd = jdToDate(seg.startJD), ed = jdToDate(seg.endJD);
-    const segDur = dur(sd, ed);
-    const taraClass = seg.tara.polarity==='good'?'good':seg.tara.polarity==='bad'?'bad':'neutral';
-    const chanClass  = seg.chandra.polarity==='good'?'good':seg.chandra.polarity==='bad'?'bad':'neutral';
-    const isNow = i===0;
-    const whenLabel = isNow ? '<span class="vp-now-badge">Now</span>' : fmtDT(sd);
-    const changeLabel = i===0
-      ? seg.nak.name+' Nak · Moon in '+seg.rashi.name
-      : (seg.changeType==='both'
-          ? seg.nak.name+' Nak + '+seg.rashi.name+' Rashi'
-          : seg.changeType==='nakshatra' ? seg.nak.name+' Nakshatra' : 'Moon → '+seg.rashi.name);
-    return `<div class="vp-tl-row vp-tara-${seg.combinedClass||'neutral'}">
-      <div class="vp-tl-when">${whenLabel} <b>${isNow?fmt12(sd):''}</b> <span class="vp-tl-arrow">→</span> <span class="vp-tl-end">${fmtEnd(ed, sd)}</span></div>
-      <div class="vp-tl-change">${changeLabel}</div>
-      <div class="vp-tl-badges">
-        <span class="vp-tl-badge vp-tara-${taraClass}">Tara: ${seg.tara.name}</span>
-        <span class="vp-tl-badge vp-tara-${chanClass}">Chandra: ${seg.chandra.name}</span>
-      </div>
-      <div class="vp-tl-combined">${seg.combined}</div>
-      <div class="vp-tl-dur">for ${segDur}</div>
-    </div>`;
-  }).join('');
-
-  const upcomingItemsHtml = [
-    `<div class="vp-personal-upcoming-item"><span class="vp-personal-upcoming-label">🎉 ${janmoTithiLabel} (Janmotithi)</span><span class="vp-personal-upcoming-date">${janmoLabel}</span></div>`,
-    ...upcomingTara.map(u => {
-      const endLabel = ` → ${fmtEnd(jdToDate(u.endJD), u.date)}`;
-      const whenLabel = u.isActive ? `Active now${endLabel}` : fmtDT(u.date)+endLabel;
-      return `<div class="vp-personal-upcoming-item">
-        <span class="vp-personal-upcoming-label">${u.tara.name}${u.isActive?' 🟢':''} — ${u.tara.note}</span>
-        <span class="vp-personal-upcoming-date">${whenLabel}</span>
-      </div>`;
-    })
-  ].join('');
-
-  mount.style.display = 'block';
-  mount.innerHTML = `
+  mount.style.display='block';
+  mount.innerHTML=`
     <div class="vp-personal-card">
 
-      <!-- ── Header ── -->
+      <!-- ─ Header ─ -->
       <div class="vp-personal-head">
         <div><div class="vp-personal-janmo-tithi">Janmo Tithi: <span>${janmoTithiLabel}</span></div></div>
         <button class="vp-personal-toggle-btn vp-personal-toggle-on" onclick="vpPersonalToggle()">On</button>
       </div>
 
-      <!-- ── 4 Birth boxes: Rashi, Nakshatra, Yoga, Karana ── -->
-      <div class="vp-personal-rashi-row vp-personal-rashi-row-4">
+      <!-- ─ Birth chips — 4 boxes: Rashi, Nakshatra, Birth Yoga, Birth Karana ─ -->
+      <div class="vp-personal-rashi-row vp-personal-rashi-4">
         <div class="vp-personal-chip">
           <span class="vp-personal-chip-label">Birth Rashi</span>
           <span class="vp-personal-chip-val">${profile.rashiName}</span>
@@ -2776,110 +2725,63 @@ async function vpPersonalRender(){
         </div>
         <div class="vp-personal-chip">
           <span class="vp-personal-chip-label">Birth Yoga</span>
-          <span class="vp-personal-chip-val">${profile.birthYogaName||'—'}</span>
-          <span class="vp-personal-chip-sub">${profile.birthYogaName ? 'Moon+Sun yoga at birth' : ''}</span>
+          <span class="vp-personal-chip-val">${birthYogaName}</span>
+          <span class="vp-personal-chip-sub">${birthYogaFx||'—'}</span>
         </div>
         <div class="vp-personal-chip">
           <span class="vp-personal-chip-label">Birth Karana</span>
-          <span class="vp-personal-chip-val">${profile.birthKaranaName||'—'}</span>
-          <span class="vp-personal-chip-sub">${profile.birthKaranaName ? 'Half-tithi at birth' : ''}</span>
+          <span class="vp-personal-chip-val">${birthKarName}</span>
+          <span class="vp-personal-chip-sub">${birthKarFx||'—'}</span>
         </div>
       </div>
 
-      <!-- ── Janmotithi calculator — top with birth info ── -->
+      <!-- ─ Janmotithi year picker (near birth details) ─ -->
       <div class="vp-personal-janmoyear">
         <span class="vp-personal-janmoyear-label">📅 Janmotithi in</span>
         <select id="vp-personal-janmo-year-select" class="vp-personal-janmoyear-select" onchange="vpPersonalJanmoYearChange()">
-          ${janmoYearOptionsHtml}
+          ${janmoYearOptHtml}
         </select>
-        <span class="vp-personal-janmoyear-result" id="vp-personal-janmo-year-result">${janmoYearInitialResult}</span>
+        <span class="vp-personal-janmoyear-result" id="vp-personal-janmo-year-result">${janmoYearInitResult}</span>
       </div>
 
-      <!-- ══ CONSOLIDATED SCORE + Tithi/Nak/Yoga/Karana progress bars ══ -->
+      <!-- ─ Unified Panchanga Now + Personal Score Card ─ -->
       <div class="vp-cscore-card vp-cscore-${cs.verdictClass}">
         <div class="vp-cscore-head">⚡ Personal Muhurta — Right Now</div>
         <div class="vp-cscore-verdict">${cs.verdictIcon} ${cs.verdict}</div>
+        ${cs.specLabel?`<div class="vp-cscore-special">✨ Special Yoga Active: ${cs.specLabel}</div>`:''}
         <div class="vp-cscore-bar-row">
           <div class="vp-cscore-bar"><div class="vp-cscore-fill vp-cscore-fill-${cs.verdictClass}" style="width:${scorePct}%"></div></div>
           <span class="vp-cscore-num">${cs.total>0?'+':''}${cs.total} / ${cs.maxScore}</span>
         </div>
-        ${specYogaBadgeHtml}
-        <div class="vp-cscore-factors">
-          ${cs.curTithi ? makeFactorRowWithBar('🌕','Tithi',cs.curTithi.name+' ('+(cs.curTithi.index<15?'Śukla':'Kṛṣṇa')+' Paksha)',0,'neutral',cs.curTithi.startJD,cs.curTithi.endJD,tithiFx) : ''}
-          ${makeFactorRowWithBar('⭐','Tara Bala',cs.tara.name+' · '+cs.curNak.name+' Nak',cs.scores.tara,cs.tara.polarity,cs.curNak.startJD,cs.curNak.endJD,cs.tara.note||'')}
-          ${makeFactorRowWithBar('🌙','Chandra Bala',cs.chandra.name+' · Moon in '+cs.curRashi.name,cs.scores.chandra,cs.chandra.polarity,cs.curRashi.startJD,cs.curRashi.endJD,cs.chandra.note||'')}
-          ${makeFactorRowWithBar('☯️','Yoga',cs.curYoga.name+(cs.specLabel?' · '+cs.specLabel:''),cs.scores.yoga,cs.yogaPol,cs.curYoga.startJD,cs.curYoga.endJD,yogaFx)}
-          ${makeFactorRowWithBar('◐','Karana',cs.curKar.name,cs.scores.karana,cs.karPol,cs.curKar.startJD,cs.curKar.endJD,karFx)}
-          ${makeFactorRowSimple('🔔','Kala / Muhurta',cs.kalaName,cs.scores.kala,cs.kalaPol)}
-          ${makeFactorRowSimple('⊕','Weekday Lord',cs.vaarLord,cs.scores.vaar,(cs.vaarRel==='own'||cs.vaarRel==='friend')?'good':cs.vaarRel==='enemy'?'bad':'neutral')}
+
+        <!-- Anga mini row — Tithi, Nakshatra, Yoga, Karana with progress bars -->
+        <div class="vp-anga-mini-row">
+          ${angaMini('Tithi',curTithiP.name,curTithiP.paksha?curTithiP.paksha+' Paksha':'',TITHI_FX[curTithiP.index],curTithiP.startJD,curTithiP.endJD)}
+          ${angaMini('Nakshatra',cs.curNak.name,'Tara: '+cs.tara.name,NAK_FX[cs.curNak.index],curNakP.startJD,curNakP.endJD)}
+          ${angaMini('Yoga',cs.curYoga.name,cs.specLabel||'',YOGA_FX[cs.curYoga.index],curYogaP.startJD,curYogaP.endJD)}
+          ${angaMini('Karana',cs.curKar.name,'',KARANA_FX_LOOKUP[cs.curKar.name]||'',curKarP.startJD,curKarP.endJD)}
         </div>
-        <div class="vp-cscore-timer">⏱ Next change in ${dur(now, jdToDate(cs.nextChangeJD))} · at ${fmtEnd(jdToDate(cs.nextChangeJD), now)}</div>
+
+        <!-- Score factor rows — each with description, time window, progress bar -->
+        <div class="vp-cscore-factors">
+          ${factorRowEnh('⭐','Tara Bala',cs.tara.name,cs.scores.tara,cs.tara.polarity,curNakP.startJD,curNakP.endJD,cs.tara.note)}
+          ${factorRowEnh('🌙','Chandra Bala',cs.chandra.name,cs.scores.chandra,cs.chandra.polarity,curRashiP.startJD,curRashiP.endJD,cs.chandra.note)}
+          ${factorRowEnh('☯️','Yoga',cs.curYoga.name+(cs.specLabel?' · '+cs.specLabel:''),cs.scores.yoga,cs.yogaPol,curYogaP.startJD,curYogaP.endJD,YOGA_FX[cs.curYoga.index])}
+          ${factorRowEnh('◐','Karana',cs.curKar.name,cs.scores.karana,cs.karPol,curKarP.startJD,curKarP.endJD,KARANA_FX_LOOKUP[cs.curKar.name]||'')}
+          ${factorRowEnh('🔔','Kala / Muhurta',cs.kalaName,cs.scores.kala,cs.kalaPol,null,null,null)}
+          ${factorRowEnh('⊕','Weekday Lord',cs.vaarLord,cs.scores.vaar,(cs.vaarRel==='own'||cs.vaarRel==='friend')?'good':cs.vaarRel==='enemy'?'bad':'neutral',null,null,null)}
+        </div>
+        <div class="vp-cscore-timer">⏱ Next change in ${dur(now,jdToDate(cs.nextChangeJD))} · at ${fmtEnd(jdToDate(cs.nextChangeJD),now)}</div>
       </div>
 
-      <!-- ══ BEST WINDOWS — user-selectable range ══ -->
+      <!-- ─ Best Windows — user-selectable range + special yoga flags ─ -->
       ${bestWinHTML}
 
-      <!-- ══ TARA & CHANDRA + UPCOMING (merged, collapsible) ══ -->
-      <div class="vp-collapsible-section">
-        <button class="vp-collapsible-toggle" onclick="vpTogglePersonalSection('vp-tarachandra-body','vp-tarachandra-chevron')">
-          <span>📅 Tara &amp; Chandra — Active Now &amp; Upcoming for You</span>
-          <span class="vp-chevron" id="vp-tarachandra-chevron">▾</span>
-        </button>
-        <div id="vp-tarachandra-body" class="vp-collapsible-body open">
-          <div class="vp-combined-timeline">
-            ${mergedTLHtml}
-          </div>
-          <div class="vp-personal-upcoming">
-            <div class="vp-personal-upcoming-title">Upcoming Good Tara Windows</div>
-            ${upcomingItemsHtml}
-          </div>
-        </div>
-      </div>
-
-      <!-- ══ MUHURTA / KAL LIST (collapsible) ══ -->
-      <div class="vp-collapsible-section">
-        <button class="vp-collapsible-toggle" onclick="vpTogglePersonalSection('vp-muhurta-list-body','vp-muhurta-list-chevron')">
-          <span>🔔 Auspicious &amp; Inauspicious Muhurta / Kal Today</span>
-          <span class="vp-chevron" id="vp-muhurta-list-chevron">▸</span>
-        </button>
-        <div id="vp-muhurta-list-body" class="vp-collapsible-body">
-          <div id="vp-personal-muhurta-list"><div style="padding:12px;text-align:center;font-size:.76rem;color:var(--vp-ink-faint)">Loading…</div></div>
-        </div>
-      </div>
+      <!-- ─ Tara & Chandra merged & collapsible (Point 3 & 5) ─ -->
+      ${mergedTaraHTML}
 
       <div class="vp-personal-disclaimer">For reflection only — not a substitute for a professional astrologer.</div>
     </div>`;
-
-  // ── Populate muhurta list ──────────────────────────────────────────
-  try {
-    const vaarStrip  = getVaarStrip(now, lat, lng);
-    const activeVaar = vaarStrip.find(v => v.isActive);
-    if(activeVaar){
-      const md  = getMuhurtaData(activeVaar, lat, lng);
-      const allM = buildAllMuhurtas(md);
-      const listEl = document.getElementById('vp-personal-muhurta-list');
-      if(listEl && allM && allM.length){
-        const sorted = allM.slice().sort((a,b) => +a.s - +b.s);
-        listEl.innerHTML = sorted.map((m, idx) => {
-          const cls = m.type==='good'?'ausp':'inaup';
-          const status = +m.s > +now ? 'In '+dur(now, m.s) : (+m.e > +now ? 'Active now' : 'Done');
-          return `<div class="vp-upcoming-row ${cls}">
-            <div class="vp-upcoming-serial">${idx+1}</div>
-            <div class="vp-upcoming-icon">${m.icon||'⏰'}</div>
-            <div class="vp-upcoming-body">
-              <div class="vp-upcoming-label">${m.label}</div>
-              <div class="vp-upcoming-desc">${(typeof MEFF!=='undefined'&&MEFF[m.label])||''}</div>
-              <div class="vp-upcoming-timeblock">${fmt12(m.s)} – ${fmtEnd(m.e, m.s)}</div>
-              <div class="vp-upcoming-dur">${dur(m.s, m.e)} duration</div>
-            </div>
-            <div class="vp-upcoming-in">${status}</div>
-          </div>`;
-        }).join('');
-      } else if(listEl){
-        listEl.innerHTML = '<div style="padding:12px;text-align:center;font-size:.76rem;color:var(--vp-ink-faint)">No periods available</div>';
-      }
-    }
-  } catch(e){ /* no-op */ }
 }
 
 // Re-runs the Janmotithi-for-year lookup when the user picks a different
@@ -2896,6 +2798,59 @@ function vpPersonalJanmoYearChange(){
   out.textContent = result ? vpPersonalFmtDate(result.date) : 'Could not be determined for this year';
 }
 
+
+// ── Best Windows extended: includes special yoga detection ────────
+function vpPersonalBestWindowsWithYogas(profile, fromJD, daysAhead, maxResults){
+  const segs = vpPersonalCombinedTimeline(profile, fromJD, 80);
+  const limitJD = fromJD + daysAhead;
+  const windows = [];
+  for(const seg of segs){
+    if(seg.startJD >= limitJD) break;
+    if(seg.score >= 2 && seg.endJD > fromJD){
+      const start = Math.max(seg.startJD, fromJD);
+      const end   = Math.min(seg.endJD,   limitJD);
+      if(end - start < 1/24) continue;
+      // Detect special yogas during this window (sample at midpoint)
+      let specYogas = [];
+      try{
+        const midJD = (start + end) / 2;
+        const midDate = jdToDate(midJD);
+        const wVaarIdx = getVedicVaarIdx(midDate, typeof LAT==='number'?LAT:profile.lat, typeof LNG==='number'?LNG:profile.lng);
+        const wNakIdx  = Math.floor(moonLongSid(midJD) / (360/27)) % 27;
+        specYogas = specialYogas(wVaarIdx, wNakIdx, null, null);
+      }catch(e){}
+      windows.push({...seg, startJD:start, endJD:end, specYogas});
+      if(windows.length >= maxResults) break;
+    }
+  }
+  return windows;
+}
+
+// ── User-selected best-window range ──────────────────────────────
+function vpPersonalSetBestWinDays(days){
+  try{ localStorage.setItem('vp_best_win_days', String(days)); }catch(e){}
+  vpPersonalRender();
+}
+window.vpPersonalSetBestWinDays = function(days){ vpPersonalSetBestWinDays(days); };
+
+// ── Generic collapsible toggle for personal-card sections ────────
+function vpTogglePersonalSection(bodyId, chevId){
+  const body = document.getElementById(bodyId);
+  const chev = document.getElementById(chevId);
+  if(body){ body.classList.toggle('open'); }
+  if(chev){ chev.textContent = (body && body.classList.contains('open')) ? '▴' : '▾'; }
+}
+window.vpTogglePersonalSection = function(b,c){ vpTogglePersonalSection(b,c); };
+
+// ── Collapsible toggle for the Muhurta/Kala "Coming Up" section ──
+window.vpToggleUpcomingMuhurta = function(){
+  const w = document.getElementById('vp-upcoming-wrap');
+  const t = document.getElementById('vp-upcoming-toggle');
+  const c = document.getElementById('vp-upcoming-chevron');
+  if(w) w.classList.toggle('open');
+  if(t) t.classList.toggle('open');
+  if(c) c.textContent = (w && w.classList.contains('open')) ? '▴' : '▾';
+};
 
 window.vpSelectVaar = function(idx) { selectVaar(idx); };
 window.vpClearSelectedVaar = function() { clearSelectedVaar(); };

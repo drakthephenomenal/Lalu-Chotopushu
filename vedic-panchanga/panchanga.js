@@ -2702,19 +2702,34 @@ function vpRashiOf(longSid){ return Math.floor(norm(longSid)/30); }
 function vpComputeSaturnDoshaTimeline(profile, fromJd){
   if(!profile || typeof profile.rashiIndex !== 'number') return [];
   const moonR = profile.rashiIndex;
+  const houseAt = (jd) => ((vpRashiOf(vpSaturnLongSid(jd)) - moonR + 12) % 12) + 1;
+  // Bisect to find the exact JD (≈minute precision) where house changes
+  // between jdA (house=hA) and jdB (house!=hA).
+  const refine = (jdA, jdB, hA) => {
+    let lo = jdA, hi = jdB;
+    // ~1 minute precision = 1/1440 day
+    for(let i=0; i<40 && (hi-lo) > (1/1440); i++){
+      const mid = (lo+hi)/2;
+      if(houseAt(mid) === hA) lo = mid; else hi = mid;
+    }
+    return hi;
+  };
+
   const startJd = fromJd - 60*365.25;
   const endJd   = fromJd + 60*365.25;
   const step = 7;
   const raw = [];
-  let curHouse = null, curStart = null;
-  for(let jd=startJd; jd<=endJd; jd+=step){
-    const house = ((vpRashiOf(vpSaturnLongSid(jd)) - moonR + 12) % 12) + 1;
+  let curHouse = houseAt(startJd), curStart = startJd, prevJd = startJd;
+  for(let jd=startJd+step; jd<=endJd; jd+=step){
+    const house = houseAt(jd);
     if(house !== curHouse){
-      if(curHouse !== null) raw.push({house:curHouse, startJd:curStart, endJd:jd});
-      curHouse = house; curStart = jd;
+      const boundary = refine(prevJd, jd, curHouse);
+      raw.push({house:curHouse, startJd:curStart, endJd:boundary});
+      curHouse = house; curStart = boundary;
     }
+    prevJd = jd;
   }
-  if(curHouse !== null) raw.push({house:curHouse, startJd:curStart, endJd:endJd});
+  raw.push({house:curHouse, startJd:curStart, endJd:endJd});
 
   const classify = (h) => {
     if(h===12||h===1||h===2) return {kind:'sadesati', label:'Sade Sati', emoji:'🪐',
@@ -3127,7 +3142,7 @@ async function vpPersonalRender(){
         const yogas = vpComputeMahaYogas(profile) || [];
         const nowMs = +now;
         const activeIdx = dashas.findIndex(d => +d.start <= nowMs && nowMs < +d.end);
-        const fmtY = d => d.toLocaleDateString('en-IN',{year:'numeric',month:'short'});
+        const fmtY = d => d.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
         const dashaRows = dashas.map((d,i)=>{
           const isActive = i === activeIdx;
           const isPast = +d.end <= nowMs;
@@ -3200,19 +3215,39 @@ async function vpPersonalRender(){
         // ── Saturn cycles: Sade Sati, Ashtama, Kantaka ──
         const satCycles = vpComputeSaturnDoshaTimeline(profile, jdNow) || [];
         const fmtYM = d => d.toLocaleDateString('en-IN',{year:'numeric',month:'short'});
+        const fmtDT = d => d.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
+        const humanDur = (ms) => {
+          if(ms<=0) return '—';
+          const days = ms/86400000;
+          const y = Math.floor(days/365.25);
+          const m = Math.floor((days - y*365.25)/30.4375);
+          const d = Math.floor(days - y*365.25 - m*30.4375);
+          const parts=[]; if(y) parts.push(y+'y'); if(m) parts.push(m+'mo'); if(d && !y) parts.push(d+'d');
+          if(!parts.length) parts.push(Math.max(1,Math.floor(days*24))+'h');
+          return parts.join(' ');
+        };
         const satRows = satCycles.map(s => {
           const isActive = +s.start <= nowMs && nowMs < +s.end;
           const isPast = +s.end <= nowMs;
           const cls = `vp-sat-${s.kind} ` + (isActive ? 'vp-sat-active' : (isPast ? 'vp-sat-past' : 'vp-sat-future'));
-          const tag = isActive ? '🟢 Active' : (isPast ? 'Past' : 'Upcoming');
-          const partsHtml = s.parts.map(p =>
-            `<div>· ${fmtYM(p.start)} → ${fmtYM(p.end)} — ${p.sub}</div>`
-          ).join('');
+          let tag = isActive ? '🟢 Active' : (isPast ? 'Past' : 'Upcoming');
+          if(isActive){
+            const pct = Math.round(((nowMs - +s.start) / (+s.end - +s.start)) * 100);
+            tag = `🟢 Active · ${pct}% done · ends in ${humanDur(+s.end - nowMs)}`;
+          } else if(!isPast){
+            tag = `Upcoming · begins in ${humanDur(+s.start - nowMs)}`;
+          }
+          const totalDur = humanDur(+s.end - +s.start);
+          const partsHtml = s.parts.map(p => {
+            const pActive = +p.start <= nowMs && nowMs < +p.end;
+            const marker = pActive ? ' <b style="color:#16a34a">◀ now</b>' : '';
+            return `<div>· <b>${fmtDT(p.start)}</b> → <b>${fmtDT(p.end)}</b><br><span style="opacity:.85">${p.sub} (${humanDur(+p.end - +p.start)})${marker}</span></div>`;
+          }).join('');
           return `<div class="vp-saturncycle-row ${cls}">
             <div class="vp-saturncycle-emoji">${s.emoji}</div>
             <div class="vp-saturncycle-name">${s.label}</div>
             <div class="vp-saturncycle-tag">${tag}</div>
-            <div class="vp-saturncycle-when">${fmtYM(s.start)} → ${fmtYM(s.end)}</div>
+            <div class="vp-saturncycle-when"><b>Begins:</b> ${fmtDT(s.start)}<br><b>Ends:</b> ${fmtDT(s.end)}<br><span style="opacity:.8">Total: ${totalDur}</span></div>
             <div class="vp-saturncycle-desc">${partsHtml}</div>
           </div>`;
         }).join('');

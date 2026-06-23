@@ -2596,20 +2596,47 @@ function vpComputeMahaYogas(profile){
 // ══════════════════════════════════════════════════════════════
 const VP_RASHI_NAMES = ['Mesha','Vrishabha','Mithuna','Karka','Simha','Kanya','Tula','Vrishchika','Dhanu','Makara','Kumbha','Meena'];
 
-function vpSaturnLongSid(jd){
+// Geocentric apparent ecliptic longitude (tropical), planar Kepler
+// approximation. Accurate to ~0.5° for Saturn / Jupiter — good enough
+// to pin sign ingresses to within ~2 weeks (matches astro-seek tables).
+function _vpKeplerLong(jd, L0, Lrate, om0, omRate, ecc, a){
   const T = (jd-2451545)/36525;
-  const L = 50.0774443 + 1222.1137943*T;
+  const D2R = Math.PI/180;
+  // Earth heliocentric (tropical)
+  const Le = norm(100.46435 + 35999.37285*T);
+  const Me = norm(357.52911 + 35999.05029*T);
+  const ee = 0.0167086;
+  const Ce = (2*ee - ee*ee*ee/4)/D2R*Math.sin(Me*D2R)
+           + 1.25*ee*ee/D2R*Math.sin(2*Me*D2R);
+  const trueLe = norm(Le + Ce);
+  const Ee_deg = Me + Ce;
+  const re = 1.00014*(1 - ee*Math.cos(Ee_deg*D2R));
+  // Planet heliocentric
+  const Lp = norm(L0 + Lrate*T);
+  const omp = norm(om0 + omRate*T);
+  const Mp = norm(Lp - omp);
+  const Cp = (2*ecc - ecc*ecc*ecc/4)/D2R*Math.sin(Mp*D2R)
+           + 1.25*ecc*ecc/D2R*Math.sin(2*Mp*D2R);
+  const trueLp = norm(Lp + Cp);
+  const Ep_deg = Mp + Cp;
+  const rp = a*(1 - ecc*Math.cos(Ep_deg*D2R));
+  // Geocentric ecliptic longitude (ignore inclination, ≤0.5°)
+  const xs = rp*Math.cos(trueLp*D2R), ys = rp*Math.sin(trueLp*D2R);
+  const xe = re*Math.cos(trueLe*D2R), ye = re*Math.sin(trueLe*D2R);
+  return norm(Math.atan2(ys-ye, xs-xe)/D2R);
+}
+function vpSaturnLongSid(jd){
+  const L = _vpKeplerLong(jd, 50.07744, 1222.11379, 92.43194, 1.95766, 0.0541506, 9.53707);
+  return norm(L - lahiriAyanamsa(jd));
+}
+function vpJupiterLongSid(jd){
+  const L = _vpKeplerLong(jd, 34.35151, 3034.90567, 14.33120, 1.61262, 0.0484979, 5.20260);
   return norm(L - lahiriAyanamsa(jd));
 }
 function vpRahuLongSid(jd){
   const T = (jd-2451545)/36525;
   const Om = 125.04452 - 1934.136261*T;
   return norm(Om - lahiriAyanamsa(jd));
-}
-function vpJupiterLongSid(jd){
-  const T = (jd-2451545)/36525;
-  const L = 34.351519 + 3034.9056606*T;
-  return norm(L - lahiriAyanamsa(jd));
 }
 function vpRashiOf(longSid){ return Math.floor(norm(longSid)/30); }
 

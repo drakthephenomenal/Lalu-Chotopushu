@@ -2514,3 +2514,19 @@
   font-size:.82rem;color:#E9ECF7;line-height:1.5;
 }
 #vpanchanga-view .vp-kalsarpa-note b{color:#C7B3FF}
+
+/* ══════════════════════════════════════════════════════════════
+   FIX: Best-windows range selector (+7 days / +1 yr ...) — blue ink
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-best-win-range-select,
+#vpanchanga-view .vp-best-win-range-select *,
+#vpanchanga-view .vp-best-win-range-select option{
+  color:#0a3a8c !important;
+  -webkit-text-fill-color:#0a3a8c !important;
+  text-shadow:none !important;
+  background-clip:initial !important;
+  -webkit-background-clip:initial !important;
+}
+#vpanchanga-view .vp-best-win-range-select option{
+  background:#FFF3C4 !important;
+}

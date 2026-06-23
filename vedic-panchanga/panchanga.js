@@ -907,7 +907,7 @@ function renderAll(){
 
   // Header follows selected Vaar so the month/date context is clear
   document.getElementById('vp-gaurabda').textContent='Gaurabda '+gaurabda(headerRef);
-  document.getElementById('vp-vaar-name').textContent=displayVaar.name+' Vaar';
+  document.getElementById('vp-vaar-name').textContent=(VAAR_ICON[displayVaar.index]||'')+' '+displayVaar.name+' Vaar';
   document.getElementById('vp-month-line').innerHTML=
     (headerAM.isAdhik?`<span class="vp-adhik-badge">${headerAM.isPurushottam?'Purushottam':'Adhik'}</span>${headerAM.nextMonthName}`:headerHM.name)+
     ' &nbsp;·&nbsp; '+headerPaksha+' Paksha &nbsp;·&nbsp; '+headerWhen+' '+fmtDate(headerRef);
@@ -1709,7 +1709,7 @@ function vpRenderDateResult(){
           <span class="vp-dr-tara-label">Day Nakshatra</span>
           <span class="vp-dr-tara-val">${nakTL.current.name}</span>
         </div>
-        <div class="vp-dr-tara-name vp-tara-name-${taraClass}">${tara.name}</div>
+        <div class="vp-dr-tara-name vp-tara-name-${taraClass}">${tara.emoji||''} ${tara.name}</div>
         <div class="vp-dr-tara-note">${tara.note}</div>
       </div>`;
     } else {
@@ -1789,7 +1789,8 @@ function vpHoroClose(){
   if(overlay) overlay.classList.remove('open');
 }
 function vpHoroCloseBackdrop(e){
-  if(e.target && e.target.id === 'vp-horo-overlay') vpHoroClose();
+  // Full-screen page: only close via the explicit ✕ / Cancel buttons.
+  return;
 }
 function vpHoroUseGPS(){
   const btn = document.getElementById('vp-horo-gps-btn');
@@ -1958,16 +1959,17 @@ const FRIENDSHIP = {
 
 // Tara Bala (9-fold count from birth Nakshatra), classical names + polarity.
 const TARA = [
-  {name:'Janma Tara',     polarity:'caution', note:'Self-tara — proceed mindfully, avoid starting risky ventures'},
-  {name:'Sampat Tara',    polarity:'good',    note:'Wealth & gain favored'},
-  {name:'Vipat Tara',     polarity:'bad',     note:'Danger tara — avoid travel & new starts'},
-  {name:'Kshema Tara',    polarity:'good',    note:'Well-being & safety favored'},
-  {name:'Pratyak Tara',   polarity:'bad',     note:'Obstacle tara — expect delays'},
-  {name:'Sadhaka Tara',   polarity:'good',    note:'Goal-accomplishing — favorable for important tasks'},
-  {name:'Vadha Tara',     polarity:'bad',     note:'Harm tara — avoid risky or confrontational activity'},
-  {name:'Mitra Tara',     polarity:'good',    note:'Friendly tara — good for relationships & cooperation'},
-  {name:'Ati-Mitra Tara', polarity:'good',    note:'Highly friendly — auspicious for most activities'},
+  {name:'Janma Tara',     emoji:'🌟', polarity:'caution', note:'Self-tara — proceed mindfully, avoid starting risky ventures'},
+  {name:'Sampat Tara',    emoji:'💰', polarity:'good',    note:'Wealth & gain favored'},
+  {name:'Vipat Tara',     emoji:'⚠️', polarity:'bad',     note:'Danger tara — avoid travel & new starts'},
+  {name:'Kshema Tara',    emoji:'🛡️', polarity:'good',    note:'Well-being & safety favored'},
+  {name:'Pratyak Tara',   emoji:'🚧', polarity:'bad',     note:'Obstacle tara — expect delays'},
+  {name:'Sadhaka Tara',   emoji:'🎯', polarity:'good',    note:'Goal-accomplishing — favorable for important tasks'},
+  {name:'Vadha Tara',     emoji:'🗡️', polarity:'bad',     note:'Harm tara — avoid risky or confrontational activity'},
+  {name:'Mitra Tara',     emoji:'🤝', polarity:'good',    note:'Friendly tara — good for relationships & cooperation'},
+  {name:'Ati-Mitra Tara', emoji:'💞', polarity:'good',    note:'Highly friendly — auspicious for most activities'},
 ];
+
 
 function vpPersonalJdFromForm(dateStr, timeStr){
   const [y, mo, da] = dateStr.split('-').map(Number);
@@ -2181,18 +2183,18 @@ function vpPersonalUpcomingGoodTaraDays(profile, fromJD, count, maxDays){
 // ══════════════════════════════════════════════════════════════
 const CHANDRA_BALA_DATA = [
   null, // placeholder so index 1 = position 1
-  {pos:1,  name:'Janma (1st)',      polarity:'neutral', note:'Moon in birth sign — moderate, introspective energy'},
-  {pos:2,  name:'Vipat (2nd)',      polarity:'bad',     note:'Drains resources; strained expression'},
-  {pos:3,  name:'Kshema (3rd)',     polarity:'good',    note:'Courage & enterprise — good for effort and initiative'},
-  {pos:4,  name:'Pratyak (4th)',    polarity:'bad',     note:'Emotional restlessness; avoid domestic disputes'},
-  {pos:5,  name:'Sadhana (5th)',    polarity:'bad',     note:'Conflicts of intention; creative blocks'},
-  {pos:6,  name:'Naidhana (6th)',   polarity:'good',    note:'Overcoming obstacles; health & service supported'},
-  {pos:7,  name:'Mitra (7th)',      polarity:'good',    note:'Balanced energy — favors partnerships & agreements'},
-  {pos:8,  name:'Ashtama (8th)',    polarity:'bad',     note:'Ashtama Chandra — avoid major changes; transformation period'},
-  {pos:9,  name:'Param Mitra (9th)',polarity:'good',    note:'Fortune & dharma — auspicious for important undertakings'},
-  {pos:10, name:'Karma (10th)',     polarity:'good',    note:'Strong action energy — career & achievement favored'},
-  {pos:11, name:'Labha (11th)',     polarity:'good',    note:'Ekadasha — strongest Chandra Bala; gains & fulfillment'},
-  {pos:12, name:'Vyaya (12th)',     polarity:'bad',     note:'Rest & withdrawal — avoid expenditure and new starts'},
+  {pos:1,  name:'Janma (1st)',      emoji:'🌑', polarity:'neutral', note:'Moon in birth sign — moderate, introspective energy'},
+  {pos:2,  name:'Vipat (2nd)',      emoji:'🌪️', polarity:'bad',     note:'Drains resources; strained expression'},
+  {pos:3,  name:'Kshema (3rd)',     emoji:'🍀', polarity:'good',    note:'Courage & enterprise — good for effort and initiative'},
+  {pos:4,  name:'Pratyak (4th)',    emoji:'⛈️', polarity:'bad',     note:'Emotional restlessness; avoid domestic disputes'},
+  {pos:5,  name:'Sadhana (5th)',    emoji:'🌀', polarity:'bad',     note:'Conflicts of intention; creative blocks'},
+  {pos:6,  name:'Naidhana (6th)',   emoji:'🛠️', polarity:'good',    note:'Overcoming obstacles; health & service supported'},
+  {pos:7,  name:'Mitra (7th)',      emoji:'🤝', polarity:'good',    note:'Balanced energy — favors partnerships & agreements'},
+  {pos:8,  name:'Ashtama (8th)',    emoji:'💀', polarity:'bad',     note:'Ashtama Chandra — avoid major changes; transformation period'},
+  {pos:9,  name:'Param Mitra (9th)',emoji:'✨', polarity:'good',    note:'Fortune & dharma — auspicious for important undertakings'},
+  {pos:10, name:'Karma (10th)',     emoji:'🏆', polarity:'good',    note:'Strong action energy — career & achievement favored'},
+  {pos:11, name:'Labha (11th)',     emoji:'💎', polarity:'good',    note:'Ekadasha — strongest Chandra Bala; gains & fulfillment'},
+  {pos:12, name:'Vyaya (12th)',     emoji:'💸', polarity:'bad',     note:'Rest & withdrawal — avoid expenditure and new starts'},
 ];
 
 // Find the Moon's rashi (sidereal sign, 0-11) at `fromJD`, then track
@@ -2469,8 +2471,8 @@ function vpPersonalSegHTML(seg){
     <div class="vp-tl-when">${changeIcon} <b>${fmtDT(startDt)}</b></div>
     <div class="vp-tl-change">${changeLabel}</div>
     <div class="vp-tl-badges">
-      <span class="vp-tl-badge vp-tara-${taraClass}">Tara: ${seg.tara.name}</span>
-      <span class="vp-tl-badge vp-tara-${chandraClass}">Chandra: ${seg.chandra.name}</span>
+      <span class="vp-tl-badge vp-tara-${taraClass}">Tara: ${seg.tara.emoji||""} ${seg.tara.name}</span>
+      <span class="vp-tl-badge vp-tara-${chandraClass}">Chandra: ${seg.chandra.emoji||""} ${seg.chandra.name}</span>
     </div>
     <div class="vp-tl-combined">${seg.combined}</div>
     <div class="vp-tl-dur">for ${duration}</div>
@@ -2512,6 +2514,79 @@ function vpPersonalYogaPolarity(yogaName){
   // A short, clearly-good subset per classical lists used elsewhere in this file
   if(['Siddhi','Shubha','Shukla','Brahma','Indra','Siddha','Variyan','Saubhagya'].includes(yogaName)) return 'good';
   return 'neutral';
+}
+
+// ══════════════════════════════════════════════════════════════
+// VIMSHOTTARI MAHA DASHA + PANCHA-MAHA YOGAS (personalized)
+// ══════════════════════════════════════════════════════════════
+const VIMSH_SEQ = [
+  {lord:'Ketu',     emoji:'☄️', years:7},
+  {lord:'Venus',    emoji:'♀️', years:20},
+  {lord:'Sun',      emoji:'☀️', years:6},
+  {lord:'Moon',     emoji:'🌙', years:10},
+  {lord:'Mars',     emoji:'♂️', years:7},
+  {lord:'Rahu',     emoji:'🐉', years:18},
+  {lord:'Jupiter',  emoji:'♃', years:16},
+  {lord:'Saturn',   emoji:'♄', years:19},
+  {lord:'Mercury',  emoji:'☿️', years:17},
+];
+// Nakshatra → starting lord index in VIMSH_SEQ (Ashwini=Ketu, Bharani=Venus, Krittika=Sun, ...)
+const NAK_LORD_IDX = [0,1,2,3,4,5,6,7,8, 0,1,2,3,4,5,6,7,8, 0,1,2,3,4,5,6,7,8];
+
+function vpComputeMahaDasha(profile){
+  if(!profile || typeof profile.nakshatraIndex !== 'number' || !profile.dob) return null;
+  const jdBirth = vpPersonalJdFromForm(profile.dob, profile.tob || '12:00');
+  const nakSpan = 360/27;
+  const moonSid = moonLongSid(jdBirth);
+  const withinNak = (moonSid % nakSpan) / nakSpan; // 0..1 traversed
+  const startIdx = NAK_LORD_IDX[profile.nakshatraIndex];
+  const startLord = VIMSH_SEQ[startIdx];
+  const balanceYears = (1 - withinNak) * startLord.years;
+
+  const periods = [];
+  // First (balance) period: birth → birth + balanceYears
+  let cursor = new Date(jdToDate(jdBirth));
+  const addYears = (d, y) => new Date(d.getTime() + y * 365.2425 * 86400000);
+  let endDate = addYears(cursor, balanceYears);
+  periods.push({...startLord, start: new Date(cursor), end: endDate, years: balanceYears, isBalance:true});
+  cursor = endDate;
+  for(let i=1; i<=8; i++){
+    const lord = VIMSH_SEQ[(startIdx + i) % 9];
+    endDate = addYears(cursor, lord.years);
+    periods.push({...lord, start: new Date(cursor), end: new Date(endDate), years: lord.years});
+    cursor = endDate;
+  }
+  // Continue one more cycle for users with long lifespans
+  for(let i=0; i<9; i++){
+    const lord = VIMSH_SEQ[(startIdx + i) % 9];
+    endDate = addYears(cursor, lord.years);
+    periods.push({...lord, start: new Date(cursor), end: new Date(endDate), years: lord.years, cycle2:true});
+    cursor = endDate;
+  }
+  return periods;
+}
+
+function vpComputeMahaYogas(profile){
+  if(!profile || typeof profile.nakshatraIndex !== 'number') return [];
+  const out = [];
+  const tithiIdx0 = profile.tithiIndex; // 0..29
+  const nak = profile.nakshatraIndex;
+  const rashi = profile.rashiIndex;
+  // Tithi-based Yogas
+  if(tithiIdx0 === 4  || tithiIdx0 === 19) out.push({name:'Siddhi Yoga',    emoji:'🪷', desc:'Birth on Panchami — success in undertakings'});
+  if(tithiIdx0 === 9  || tithiIdx0 === 24) out.push({name:'Dasha-mukta Yoga',emoji:'🔱', desc:'Birth on Dashami — liberation from obstacles'});
+  if(tithiIdx0 === 14)                       out.push({name:'Purnima Yoga',   emoji:'🌕', desc:'Born on full-moon — fullness, fame & nourishment'});
+  if(tithiIdx0 === 29)                       out.push({name:'Amavasya Yoga',  emoji:'🌑', desc:'Born on new-moon — deep introspection & ancestral grace'});
+  // Nakshatra-based
+  if([7,17,21].includes(nak))               out.push({name:'Pushya/Anuradha/Shravana — Vipra Yoga', emoji:'🕉️', desc:'Wisdom, devotion & teaching naturally favored'});
+  if([3,12,20,25].includes(nak))            out.push({name:'Maha-Lakshmi Yoga', emoji:'💐', desc:'Rohini/Hasta/Uttara-group nakshatras — prosperity & abundance'});
+  if([6].includes(nak))                      out.push({name:'Punarvasu Yoga',    emoji:'🌿', desc:'Renewal & return of good fortune through effort'});
+  // Pancha-Maha-Purusha-Yoga proxies via Moon-rashi (approximate, Moon-based)
+  const ownExalt = {0:'Mars-Ruchaka', 2:'Mercury-Bhadra', 4:'Sun-Solar', 6:'Venus-Malavya', 8:'Jupiter-Hamsa', 9:'Saturn-Shasha', 11:'Jupiter-Hamsa'};
+  if(ownExalt[rashi]) out.push({name:ownExalt[rashi]+' Yoga (Moon-proxy)', emoji:'👑', desc:'Pancha-Maha-Purusha proxy via Moon — leadership & distinction'});
+  // Gajakesari (Moon-Jupiter): we don't have Jupiter pos; offer educational entry
+  out.push({name:'Gajakesari (educational)', emoji:'🐘', desc:'Strong Moon-Jupiter angle gives wisdom & influence — verify with full chart'});
+  return out;
 }
 
 // ── Local cache of the loaded profile (avoids refetching on every render) ──
@@ -2734,8 +2809,8 @@ async function vpPersonalRender(){
         return `<div class="vp-best-win-row">
           <div class="vp-best-win-when">${fmtDT(sd)} <span class="vp-best-win-arrow">→</span> ${fmtEnd(ed, sd)}</div>
           <div class="vp-best-win-badges">
-            <span class="vp-tl-badge vp-tara-${taraClass}">Tara: ${w.tara.name}</span>
-            <span class="vp-tl-badge vp-tara-${chanClass}">Chandra: ${w.chandra.name}</span>
+            <span class="vp-tl-badge vp-tara-${taraClass}">Tara: ${w.tara.emoji||""} ${w.tara.name}</span>
+            <span class="vp-tl-badge vp-tara-${chanClass}">Chandra: ${w.chandra.emoji||""} ${w.chandra.name}</span>
           </div>
           ${specHtml}
           <div class="vp-best-win-dur">Duration: ${winDur}</div>
@@ -2760,8 +2835,8 @@ async function vpPersonalRender(){
       <div class="vp-tl-when">${whenLabel} <b>${isNow?fmt12(sd):''}</b> <span class="vp-tl-arrow">→</span> <span class="vp-tl-end">${fmtEnd(ed, sd)}</span></div>
       <div class="vp-tl-change">${changeLabel}</div>
       <div class="vp-tl-badges">
-        <span class="vp-tl-badge vp-tara-${taraClass}">Tara: ${seg.tara.name}</span>
-        <span class="vp-tl-badge vp-tara-${chanClass}">Chandra: ${seg.chandra.name}</span>
+        <span class="vp-tl-badge vp-tara-${taraClass}">Tara: ${seg.tara.emoji||""} ${seg.tara.name}</span>
+        <span class="vp-tl-badge vp-tara-${chanClass}">Chandra: ${seg.chandra.emoji||""} ${seg.chandra.name}</span>
       </div>
       <div class="vp-tl-combined">${seg.combined}</div>
       <div class="vp-tl-dur">for ${segDur}</div>
@@ -2775,7 +2850,7 @@ async function vpPersonalRender(){
       const whenLabel = u.isActive ? `Active now${endLabel}` : fmtDT(u.date)+endLabel;
       const chanClass = u.chandra ? (u.chandra.polarity==='good'?'good':u.chandra.polarity==='bad'?'bad':'neutral') : 'neutral';
       const chanBadge = u.chandra
-        ? `<div class="vp-upcoming-tara-badges"><span class="vp-tl-badge vp-tara-good">Tara: ${u.tara.name}</span><span class="vp-tl-badge vp-tara-${chanClass}">Chandra: ${u.chandra.name}</span></div>`
+        ? `<div class="vp-upcoming-tara-badges"><span class="vp-tl-badge vp-tara-good">Tara: ${u.tara.emoji||""} ${u.tara.name}</span><span class="vp-tl-badge vp-tara-${chanClass}">Chandra: ${u.chandra.emoji||""} ${u.chandra.name}</span></div>`
         : '';
       return `<div class="vp-personal-upcoming-item">
         <span class="vp-personal-upcoming-label">${u.tara.name}${u.isActive?' 🟢':''} — ${u.tara.note}</span>
@@ -2839,8 +2914,8 @@ async function vpPersonalRender(){
         ${specYogaBadgeHtml}
         <div class="vp-cscore-factors">
           ${cs.curTithi ? makeFactorRowWithBar('🌕','Tithi',cs.curTithi.name+' ('+(cs.curTithi.index<15?'Śukla':'Kṛṣṇa')+' Paksha)',0,'neutral',cs.curTithi.startJD,cs.curTithi.endJD,tithiFx) : ''}
-          ${makeFactorRowWithBar('⭐','Tara Bala',cs.tara.name+' · '+cs.curNak.name+' Nak',cs.scores.tara,cs.tara.polarity,cs.curNak.startJD,cs.curNak.endJD,cs.tara.note||'')}
-          ${makeFactorRowWithBar('🌙','Chandra Bala',cs.chandra.name+' · Moon in '+cs.curRashi.name,cs.scores.chandra,cs.chandra.polarity,cs.curRashi.startJD,cs.curRashi.endJD,cs.chandra.note||'')}
+          ${makeFactorRowWithBar('⭐','Tara Bala',(cs.tara.emoji||'')+' '+cs.tara.name+' · '+cs.curNak.name+' Nak',cs.scores.tara,cs.tara.polarity,cs.curNak.startJD,cs.curNak.endJD,cs.tara.note||'')}
+          ${makeFactorRowWithBar('🌙','Chandra Bala',(cs.chandra.emoji||'')+' '+cs.chandra.name+' · Moon in '+cs.curRashi.name,cs.scores.chandra,cs.chandra.polarity,cs.curRashi.startJD,cs.curRashi.endJD,cs.chandra.note||'')}
           ${makeFactorRowWithBar('☯️','Yoga',cs.curYoga.name+(cs.specLabel?' · '+cs.specLabel:''),cs.scores.yoga,cs.yogaPol,cs.curYoga.startJD,cs.curYoga.endJD,yogaFx)}
           ${makeFactorRowWithBar('◐','Karana',cs.curKar.name,cs.scores.karana,cs.karPol,cs.curKar.startJD,cs.curKar.endJD,karFx)}
           ${makeFactorRowSimple('🔔','Kala / Muhurta',cs.kalaName,cs.scores.kala,cs.kalaPol)}
@@ -2865,8 +2940,47 @@ async function vpPersonalRender(){
         </div>
       </div>
 
+      <!-- ══ MAHA YOGA & MAHA DASHA — personalized ══ -->
+      ${(()=>{
+        const dashas = vpComputeMahaDasha(profile) || [];
+        const yogas = vpComputeMahaYogas(profile) || [];
+        const nowMs = +now;
+        const activeIdx = dashas.findIndex(d => +d.start <= nowMs && nowMs < +d.end);
+        const fmtY = d => d.toLocaleDateString('en-IN',{year:'numeric',month:'short'});
+        const dashaRows = dashas.map((d,i)=>{
+          const isActive = i === activeIdx;
+          const isPast = +d.end <= nowMs;
+          const cls = isActive ? 'vp-dasha-active' : (isPast ? 'vp-dasha-past' : 'vp-dasha-future');
+          const tag = isActive ? '🟢 Active' : (isPast ? 'Past' : 'Upcoming');
+          return `<div class="vp-dasha-row ${cls}">
+            <div class="vp-dasha-lord"><span class="vp-dasha-emoji">${d.emoji}</span><b>${d.lord}</b> Mahadasha</div>
+            <div class="vp-dasha-when">${fmtY(d.start)} → ${fmtY(d.end)} · ${d.years.toFixed(1)}y${d.isBalance?' (balance at birth)':''}</div>
+            <div class="vp-dasha-tag">${tag}</div>
+          </div>`;
+        }).join('');
+        const yogaCards = yogas.length ? yogas.map(y=>`
+          <div class="vp-mahayoga-card">
+            <div class="vp-mahayoga-name"><span>${y.emoji}</span> ${y.name}</div>
+            <div class="vp-mahayoga-desc">${y.desc}</div>
+          </div>`).join('') : `<div class="vp-mahayoga-empty">No major classical yogas detected from Moon-based factors. A full chart with all planets reveals more.</div>`;
+        return `<div class="vp-collapsible-section vp-mahasection">
+          <button class="vp-collapsible-toggle" onclick="vpTogglePersonalSection('vp-maha-body','vp-maha-chevron')">
+            <span>🕉️ Maha Yoga &amp; Maha Dasha — Your Life Cycles</span>
+            <span class="vp-chevron" id="vp-maha-chevron">${(()=>{try{return sessionStorage.getItem('vp-collapse-vp-maha-body')==='closed'?'▸':'▾';}catch(e){return'▾';}})()}</span>
+          </button>
+          <div id="vp-maha-body" class="vp-collapsible-body${(()=>{try{return sessionStorage.getItem('vp-collapse-vp-maha-body')==='closed'?'':' open';}catch(e){return' open';}})()}">
+            <div class="vp-maha-sub">✨ Personalized Maha Yogas (from your birth Moon)</div>
+            <div class="vp-mahayoga-list">${yogaCards}</div>
+            <div class="vp-maha-sub" style="margin-top:14px">🪐 Vimshottari Maha Dasha (120-year cycle)</div>
+            <div class="vp-dasha-list">${dashaRows || '<div class="vp-mahayoga-empty">Maha Dasha needs your birth nakshatra.</div>'}</div>
+            <div class="vp-maha-note">Calculated from your birth Moon's nakshatra. Each planet rules a span of years and colors that phase of life.</div>
+          </div>
+        </div>`;
+      })()}
+
       <div class="vp-personal-disclaimer">For reflection only — not a substitute for a professional astrologer.</div>
     </div>`;
+
 
   // ── Populate muhurta list ──────────────────────────────────────────
   try {

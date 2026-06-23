@@ -2111,21 +2111,9 @@
   filter:saturate(1.1) brightness(1.05);
 }
 
-/* Variant: violet primary CTA for "Lunar month" since it was already violet */
-#vpanchanga-view #vp-tithi-toggle{
-  background:linear-gradient(135deg,#9B7CFF 0%, #C7B3FF 50%, #6E47E8 100%) !important;
-  border-color:rgba(199,179,255,.7) !important;
-  color:#0a0820 !important;
-  box-shadow:
-    0 0 0 1px rgba(155,124,255,.45),
-    0 0 28px rgba(155,124,255,.55),
-    0 14px 30px rgba(0,0,0,.55),
-    inset 0 1px 0 rgba(255,255,255,.55) !important;
-}
-#vpanchanga-view #vp-tithi-toggle > span:first-child{
-  color:#0a0820 !important; -webkit-text-fill-color:#0a0820 !important;
-}
-#vpanchanga-view #vp-tithi-toggle .vp-chevron{color:#0a0820 !important;}
+/* Lunar month toggle uses the same golden bar as the other toggles
+   (violet override removed per user request — keep all bars consistent) */
+
 
 /* Selects/inputs inside cards */
 #vpanchanga-view select,
@@ -2286,4 +2274,172 @@
 #vpanchanga-view #vp-now-toggle.open,
 #vpanchanga-view #vp-upcoming-toggle.open{
   border-radius:14px 14px 0 0 !important;
+}
+
+/* Same golden-bar treatment for Lunar Month (Tithi grid) & Day Boundaries */
+#vpanchanga-view #vp-tithi-toggle,
+#vpanchanga-view #vp-db-toggle{
+  border-radius:14px !important;
+  border:none !important;
+  margin:0 !important;
+  width:100% !important;
+  box-sizing:border-box !important;
+}
+#vpanchanga-view #vp-month-grid-wrap,
+#vpanchanga-view #vp-db-wrap{
+  border-radius:0 0 14px 14px !important;
+  overflow:hidden;
+}
+#vpanchanga-view #vp-tithi-toggle.open,
+#vpanchanga-view #vp-db-toggle.open{
+  border-radius:14px 14px 0 0 !important;
+}
+
+/* ── Janmo / Rashi calculator becomes a full-screen page ── */
+#vpanchanga-view #vp-horo-overlay{padding:0 !important;background:rgba(15,10,35,.85) !important;backdrop-filter:blur(6px)}
+#vpanchanga-view #vp-horo-overlay .vp-horo-modal{
+  max-width:100% !important;
+  width:100% !important;
+  height:100% !important;
+  min-height:100vh;
+  border-radius:0 !important;
+  padding:18px 18px 28px !important;
+  overflow-y:auto;
+  display:flex;flex-direction:column;
+}
+#vpanchanga-view #vp-horo-overlay .vp-cal-modal-head{
+  position:sticky;top:0;background:var(--vp-card);
+  z-index:5;padding:6px 0 10px;
+  border-bottom:1px solid var(--vp-card-edge);
+  margin-bottom:18px;
+}
+#vpanchanga-view #vp-horo-overlay .vp-cal-nav-btn{
+  width:40px;height:40px;font-size:1.4rem;
+  background:rgba(124,92,252,.14);
+}
+
+
+/* ── Lunar Month toggle: force same golden gradient as Tara/Chandra ── */
+#vpanchanga-view #vp-tithi-toggle{
+  background:linear-gradient(135deg,#F5C24A 0%, #FFE08A 50%, #C9961A 100%) !important;
+  color:#1a1100 !important;
+  border:1px solid rgba(200,150,10,.55) !important;
+}
+#vpanchanga-view #vp-tithi-toggle > span:first-child,
+#vpanchanga-view #vp-tithi-toggle .vp-chevron{
+  color:#1a1100 !important; -webkit-text-fill-color:#1a1100 !important;
+}
+
+/* ── Favorable windows / days / periods: dark-blue card, gold border,
+       black text, larger font, dynamic glowing pulse ── */
+@keyframes vpFavPulse{
+  0%,100%{
+    box-shadow:
+      0 0 0 1px rgba(245,194,74,.55),
+      0 0 18px rgba(245,194,74,.45),
+      inset 0 0 12px rgba(255,224,138,.25);
+  }
+  50%{
+    box-shadow:
+      0 0 0 2px rgba(255,224,138,.85),
+      0 0 36px rgba(245,194,74,.85),
+      inset 0 0 18px rgba(255,224,138,.45);
+  }
+}
+#vpanchanga-view .vp-best-windows{
+  background:linear-gradient(160deg,#0a1a4a 0%, #0e2566 55%, #081538 100%) !important;
+  border:2px solid #F5C24A !important;
+  border-radius:16px !important;
+  padding:14px !important;
+  animation:vpFavPulse 2.4s ease-in-out infinite;
+}
+#vpanchanga-view .vp-best-windows-head,
+#vpanchanga-view .vp-best-windows-head *{
+  color:#FFE08A !important; -webkit-text-fill-color:#FFE08A !important;
+  font-size:1.05rem !important; font-weight:800 !important;
+}
+#vpanchanga-view .vp-best-win-row{
+  background:rgba(255,224,138,.92) !important;
+  border:2px solid #F5C24A !important;
+  border-radius:12px !important;
+  padding:12px 14px !important;
+  margin:10px 0 !important;
+  animation:vpFavPulse 2.6s ease-in-out infinite;
+}
+#vpanchanga-view .vp-best-win-row *{
+  color:#000 !important; -webkit-text-fill-color:#000 !important;
+}
+#vpanchanga-view .vp-best-win-when{
+  font-size:1.05rem !important; font-weight:800 !important;
+}
+#vpanchanga-view .vp-best-win-dur,
+#vpanchanga-view .vp-best-win-arrow{
+  font-size:.95rem !important; font-weight:700 !important;
+}
+#vpanchanga-view .vp-best-win-yoga-badge{
+  background:linear-gradient(135deg,#FFE08A,#F5C24A) !important;
+  border:1.5px solid #8a5a00 !important;
+  color:#0a3a8c !important; -webkit-text-fill-color:#0a3a8c !important;
+  font-size:.95rem !important; font-weight:800 !important;
+  padding:6px 10px !important;
+}
+#vpanchanga-view .vp-best-win-yoga-badge *{
+  color:#0a3a8c !important; -webkit-text-fill-color:#0a3a8c !important;
+}
+
+/* ── Maha Yoga & Maha Dasha section ─────────────────────────────── */
+#vpanchanga-view .vp-mahasection{margin-top:14px}
+#vpanchanga-view .vp-maha-sub{
+  font-size:.95rem;font-weight:800;color:#FFE08A;
+  padding:10px 14px 6px;letter-spacing:.02em;
+}
+#vpanchanga-view .vp-mahayoga-list{
+  display:grid;gap:8px;padding:4px 14px 8px;
+}
+#vpanchanga-view .vp-mahayoga-card{
+  background:linear-gradient(160deg,#0a1a4a 0%, #0e2566 60%, #081538 100%);
+  border:2px solid #F5C24A;border-radius:12px;
+  padding:10px 12px;
+  box-shadow:0 0 14px rgba(245,194,74,.35), inset 0 0 10px rgba(255,224,138,.18);
+  animation:vpFavPulse 3s ease-in-out infinite;
+}
+#vpanchanga-view .vp-mahayoga-name{
+  font-size:1rem;font-weight:800;color:#FFE08A;
+  display:flex;align-items:center;gap:8px;margin-bottom:4px;
+}
+#vpanchanga-view .vp-mahayoga-desc{
+  font-size:.86rem;color:#E9ECF7;line-height:1.4;
+}
+#vpanchanga-view .vp-mahayoga-empty{
+  font-size:.85rem;color:#cfd3e6;padding:6px 14px;font-style:italic;
+}
+#vpanchanga-view .vp-dasha-list{
+  display:flex;flex-direction:column;gap:6px;padding:4px 14px 8px;
+}
+#vpanchanga-view .vp-dasha-row{
+  display:grid;grid-template-columns:1fr auto;gap:4px 10px;
+  padding:9px 12px;border-radius:10px;border:1px solid rgba(245,194,74,.35);
+  background:rgba(10,18,48,.7);
+}
+#vpanchanga-view .vp-dasha-row .vp-dasha-lord{
+  font-size:.95rem;color:#FFE9A8;display:flex;align-items:center;gap:8px;
+}
+#vpanchanga-view .vp-dasha-row .vp-dasha-emoji{font-size:1.1rem}
+#vpanchanga-view .vp-dasha-row .vp-dasha-when{
+  font-size:.78rem;color:#cfd3e6;grid-column:1/-1;
+}
+#vpanchanga-view .vp-dasha-row .vp-dasha-tag{
+  font-size:.72rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:#cfd3e6;
+}
+#vpanchanga-view .vp-dasha-row.vp-dasha-active{
+  background:linear-gradient(135deg,#0a1a4a,#103380);
+  border:2px solid #FFE08A;
+  box-shadow:0 0 18px rgba(245,194,74,.6), inset 0 0 12px rgba(255,224,138,.25);
+  animation:vpFavPulse 2.4s ease-in-out infinite;
+}
+#vpanchanga-view .vp-dasha-row.vp-dasha-active .vp-dasha-tag{color:#34D6A4}
+#vpanchanga-view .vp-dasha-row.vp-dasha-past{opacity:.55}
+#vpanchanga-view .vp-maha-note{
+  font-size:.74rem;color:#a8acc0;padding:4px 14px 14px;font-style:italic;
 }

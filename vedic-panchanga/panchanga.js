@@ -2533,6 +2533,54 @@ const VIMSH_SEQ = [
 // Nakshatra → starting lord index in VIMSH_SEQ (Ashwini=Ketu, Bharani=Venus, Krittika=Sun, ...)
 const NAK_LORD_IDX = [0,1,2,3,4,5,6,7,8, 0,1,2,3,4,5,6,7,8, 0,1,2,3,4,5,6,7,8];
 
+// Phase narrative for each Mahadasha lord — used to give the user a sense
+// of what life-theme is active. Kept short, neutral, classical.
+const MAHADASHA_PHASE = {
+  Ketu:    {theme:'Detachment & inner search', desc:'Endings, spiritual turns, sudden shifts and quiet introspection. Material results unstable; favors meditation, healing & letting go.'},
+  Venus:   {theme:'Pleasure, relationships & artistry', desc:'Marriage, beauty, wealth, comforts, partnerships and creative work flourish. Best of the dashas for love, luxury & social life.'},
+  Sun:     {theme:'Authority, recognition & self-identity', desc:'Career visibility, leadership roles, dealings with government or father-figures. Health of heart & eyes need care; ego tested.'},
+  Moon:    {theme:'Emotion, home & nurturing', desc:'Mother, family, travel by water, public connection. Mood-sensitive — strong Moon = popularity & comfort; weak Moon = restlessness.'},
+  Mars:    {theme:'Action, courage & conflict', desc:'Energy, property, brothers, land, sports, surgery, disputes. Bold initiatives succeed but accidents and anger need watching.'},
+  Rahu:    {theme:'Ambition, foreign & unconventional gain', desc:'Sudden rise, foreign lands, technology, unusual paths. Can over-promise; illusions, addictions & shortcuts are the shadow side.'},
+  Jupiter: {theme:'Wisdom, dharma & expansion', desc:'Children, teachers, finance, higher learning, spirituality. Generally the most benefic 16 years — growth, ethics, gurus & guidance.'},
+  Saturn:  {theme:'Discipline, karma & maturity', desc:'Slow steady work, responsibility, service, hardship that builds character. Long-term structures get built; quick gains denied.'},
+  Mercury: {theme:'Intellect, communication & commerce', desc:'Business, writing, study, networking, short journeys. Mind sharpens; results depend on the company kept and choices made.'},
+};
+
+function _vpDashaSubperiods(startMs, endMs, lordIdx){
+  // Antardasha (Bhukti) sub-periods within a Mahadasha. Each of the 9 lords
+  // rules a sub-period proportional to (lord.years × parent.years / 120),
+  // starting from the Mahadasha lord itself, in Vimshottari order.
+  const totalMs = endMs - startMs;
+  const out = [];
+  let cur = startMs;
+  for(let k=0;k<9;k++){
+    const sub = VIMSH_SEQ[(lordIdx + k) % 9];
+    const frac = sub.years / 120;
+    const subEnd = (k===8) ? endMs : cur + totalMs*frac;
+    out.push({lord:sub.lord, emoji:sub.emoji, start:new Date(cur), end:new Date(subEnd),
+              years:(subEnd-cur)/(365.2425*86400000)});
+    cur = subEnd;
+  }
+  return out;
+}
+
+function _vpDashaPratyantar(startMs, endMs, antarLordIdx){
+  // Pratyantardasha within an Antardasha — same proportional rule starting
+  // from the Antardasha lord. Used for fine-grained "current phase" timing.
+  const totalMs = endMs - startMs;
+  const out = [];
+  let cur = startMs;
+  for(let k=0;k<9;k++){
+    const sub = VIMSH_SEQ[(antarLordIdx + k) % 9];
+    const frac = sub.years / 120;
+    const subEnd = (k===8) ? endMs : cur + totalMs*frac;
+    out.push({lord:sub.lord, emoji:sub.emoji, start:new Date(cur), end:new Date(subEnd)});
+    cur = subEnd;
+  }
+  return out;
+}
+
 function vpComputeMahaDasha(profile){
   if(!profile || typeof profile.nakshatraIndex !== 'number' || !profile.dob) return null;
   const jdBirth = vpPersonalJdFromForm(profile.dob, profile.tob || '12:00');
@@ -2544,23 +2592,34 @@ function vpComputeMahaDasha(profile){
   const balanceYears = (1 - withinNak) * startLord.years;
 
   const periods = [];
-  // First (balance) period: birth → birth + balanceYears
   let cursor = new Date(jdToDate(jdBirth));
   const addYears = (d, y) => new Date(d.getTime() + y * 365.2425 * 86400000);
+
+  // First (balance) period uses the balance fraction; antardashas are scaled
+  // proportionally by passing the actual start/end window.
   let endDate = addYears(cursor, balanceYears);
-  periods.push({...startLord, start: new Date(cursor), end: endDate, years: balanceYears, isBalance:true});
+  periods.push({...startLord, start: new Date(cursor), end: endDate,
+                years: balanceYears, isBalance:true, lordIdx:startIdx,
+                antar:_vpDashaSubperiods(+cursor, +endDate, startIdx)});
   cursor = endDate;
+
   for(let i=1; i<=8; i++){
-    const lord = VIMSH_SEQ[(startIdx + i) % 9];
+    const idx = (startIdx + i) % 9;
+    const lord = VIMSH_SEQ[idx];
     endDate = addYears(cursor, lord.years);
-    periods.push({...lord, start: new Date(cursor), end: new Date(endDate), years: lord.years});
+    periods.push({...lord, start: new Date(cursor), end: new Date(endDate),
+                  years: lord.years, lordIdx:idx,
+                  antar:_vpDashaSubperiods(+cursor, +endDate, idx)});
     cursor = endDate;
   }
-  // Continue one more cycle for users with long lifespans
+  // Second cycle for long lifespans
   for(let i=0; i<9; i++){
-    const lord = VIMSH_SEQ[(startIdx + i) % 9];
+    const idx = (startIdx + i) % 9;
+    const lord = VIMSH_SEQ[idx];
     endDate = addYears(cursor, lord.years);
-    periods.push({...lord, start: new Date(cursor), end: new Date(endDate), years: lord.years, cycle2:true});
+    periods.push({...lord, start: new Date(cursor), end: new Date(endDate),
+                  years: lord.years, cycle2:true, lordIdx:idx,
+                  antar:_vpDashaSubperiods(+cursor, +endDate, idx)});
     cursor = endDate;
   }
   return periods;
@@ -3068,16 +3127,68 @@ async function vpPersonalRender(){
         const yogas = vpComputeMahaYogas(profile) || [];
         const nowMs = +now;
         const activeIdx = dashas.findIndex(d => +d.start <= nowMs && nowMs < +d.end);
-        const fmtY = d => d.toLocaleString('en-IN',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+        const fmtY = d => d.toLocaleDateString('en-IN',{year:'numeric',month:'short'});
         const dashaRows = dashas.map((d,i)=>{
           const isActive = i === activeIdx;
           const isPast = +d.end <= nowMs;
           const cls = isActive ? 'vp-dasha-active' : (isPast ? 'vp-dasha-past' : 'vp-dasha-future');
           const tag = isActive ? '🟢 Active' : (isPast ? 'Past' : 'Upcoming');
+          const phase = MAHADASHA_PHASE[d.lord] || {};
+
+          // ── Active Mahadasha: progress, narrative, antardasha tree ──
+          let activeBlock = '';
+          if(isActive){
+            const pct = Math.max(0, Math.min(100, ((nowMs - +d.start)/(+d.end - +d.start))*100));
+            const antarIdx = (d.antar||[]).findIndex(a => +a.start <= nowMs && nowMs < +a.end);
+            const antar = d.antar || [];
+            const antarRows = antar.map((a,ai)=>{
+              const aActive = ai === antarIdx;
+              const aPast   = +a.end <= nowMs;
+              const aCls = aActive ? 'vp-antar-active' : (aPast ? 'vp-antar-past' : 'vp-antar-future');
+              let pratHtml = '';
+              if(aActive){
+                const lordIdx = VIMSH_SEQ.findIndex(v => v.lord === a.lord);
+                const prats = _vpDashaPratyantar(+a.start, +a.end, lordIdx);
+                const pIdx = prats.findIndex(p => +p.start <= nowMs && nowMs < +p.end);
+                pratHtml = `<div class="vp-prat-list">${prats.map((p,pi)=>{
+                  const pActive = pi === pIdx;
+                  const pPast = +p.end <= nowMs;
+                  const pCls = pActive ? 'vp-prat-active' : (pPast ? 'vp-prat-past' : 'vp-prat-future');
+                  return `<div class="vp-prat-row ${pCls}">
+                    <span class="vp-prat-emoji">${p.emoji}</span>
+                    <span class="vp-prat-lord">${p.lord}</span>
+                    <span class="vp-prat-when">${fmtY(p.start)} → ${fmtY(p.end)}</span>
+                    ${pActive?'<span class="vp-prat-tag">▶ now</span>':''}
+                  </div>`;
+                }).join('')}</div>`;
+              }
+              return `<div class="vp-antar-row ${aCls}">
+                <div class="vp-antar-head">
+                  <span class="vp-antar-emoji">${a.emoji}</span>
+                  <b>${a.lord}</b> Antardasha
+                  <span class="vp-antar-when">${fmtY(a.start)} → ${fmtY(a.end)} · ${a.years.toFixed(2)}y</span>
+                  ${aActive?'<span class="vp-antar-tag">🟢 now</span>':''}
+                </div>
+                ${pratHtml}
+              </div>`;
+            }).join('');
+
+            activeBlock = `
+              <div class="vp-dasha-active-detail">
+                <div class="vp-dasha-progress"><div class="vp-dasha-progress-bar" style="width:${pct.toFixed(1)}%"></div></div>
+                <div class="vp-dasha-progress-label">${pct.toFixed(1)}% through this Mahadasha</div>
+                ${phase.theme?`<div class="vp-dasha-phase"><b>Phase theme:</b> ${phase.theme}</div>`:''}
+                ${phase.desc?`<div class="vp-dasha-phase-desc">${phase.desc}</div>`:''}
+                <div class="vp-dasha-antar-title">Antardasha (sub-period) within ${d.lord} Mahadasha</div>
+                <div class="vp-antar-list">${antarRows}</div>
+              </div>`;
+          }
+
           return `<div class="vp-dasha-row ${cls}">
-            <div class="vp-dasha-lord"><span class="vp-dasha-emoji">${d.emoji}</span><b>${d.lord}</b> Mahadasha</div>
+            <div class="vp-dasha-lord"><span class="vp-dasha-emoji">${d.emoji}</span><b>${d.lord}</b> Mahadasha${phase.theme?` <span class="vp-dasha-theme">— ${phase.theme}</span>`:''}</div>
             <div class="vp-dasha-when">${fmtY(d.start)} → ${fmtY(d.end)} · ${d.years.toFixed(1)}y${d.isBalance?' (balance at birth)':''}</div>
             <div class="vp-dasha-tag">${tag}</div>
+            ${activeBlock}
           </div>`;
         }).join('');
         const yogaCards = yogas.length ? yogas.map(y=>`
@@ -3088,7 +3199,7 @@ async function vpPersonalRender(){
 
         // ── Saturn cycles: Sade Sati, Ashtama, Kantaka ──
         const satCycles = vpComputeSaturnDoshaTimeline(profile, jdNow) || [];
-        const fmtYM = d => d.toLocaleString('en-IN',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+        const fmtYM = d => d.toLocaleDateString('en-IN',{year:'numeric',month:'short'});
         const satRows = satCycles.map(s => {
           const isActive = +s.start <= nowMs && nowMs < +s.end;
           const isPast = +s.end <= nowMs;

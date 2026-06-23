@@ -2530,3 +2530,62 @@
 #vpanchanga-view .vp-best-win-range-select option{
   background:#FFF3C4 !important;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   MAHADASHA — phase narrative + Antardasha / Pratyantardasha tree
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-dasha-theme{
+  font-weight:400;color:#C9D0E8;font-size:.85em;font-style:italic;
+}
+#vpanchanga-view .vp-dasha-active-detail{
+  grid-column:1 / -1;
+  margin-top:10px;padding:12px;
+  background:linear-gradient(180deg,rgba(255,215,128,.10),rgba(255,215,128,.03));
+  border:1px solid rgba(255,215,128,.35);
+  border-radius:10px;
+}
+#vpanchanga-view .vp-dasha-progress{
+  height:8px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;
+}
+#vpanchanga-view .vp-dasha-progress-bar{
+  height:100%;background:linear-gradient(90deg,#FFD27A,#FF8E53);
+}
+#vpanchanga-view .vp-dasha-progress-label{
+  font-size:.78rem;color:#E9D7A8;margin:4px 0 10px;text-align:right;
+}
+#vpanchanga-view .vp-dasha-phase{
+  color:#FFE9B3;font-size:.92rem;margin-bottom:4px;
+}
+#vpanchanga-view .vp-dasha-phase-desc{
+  color:#D8DCEA;font-size:.85rem;line-height:1.55;margin-bottom:10px;
+}
+#vpanchanga-view .vp-dasha-antar-title{
+  font-size:.82rem;color:#FFD27A;text-transform:uppercase;letter-spacing:.05em;
+  margin:8px 0 6px;font-weight:600;
+}
+#vpanchanga-view .vp-antar-list{display:flex;flex-direction:column;gap:6px}
+#vpanchanga-view .vp-antar-row{
+  padding:8px 10px;border-radius:8px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  font-size:.85rem;
+}
+#vpanchanga-view .vp-antar-row.vp-antar-active{
+  background:rgba(120,200,140,.14);border-color:rgba(120,200,140,.5);
+}
+#vpanchanga-view .vp-antar-row.vp-antar-past{opacity:.55}
+#vpanchanga-view .vp-antar-head{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:#E9ECF7;
+}
+#vpanchanga-view .vp-antar-when{color:#A8B0C8;font-size:.78rem;margin-left:auto}
+#vpanchanga-view .vp-antar-tag{color:#7FE3A0;font-size:.75rem;font-weight:600}
+#vpanchanga-view .vp-prat-list{
+  margin-top:6px;padding-left:14px;border-left:2px solid rgba(255,215,128,.3);
+  display:flex;flex-direction:column;gap:3px;
+}
+#vpanchanga-view .vp-prat-row{
+  display:flex;align-items:center;gap:6px;font-size:.78rem;color:#C9D0E8;
+}
+#vpanchanga-view .vp-prat-row.vp-prat-active{color:#FFD27A;font-weight:600}
+#vpanchanga-view .vp-prat-row.vp-prat-past{opacity:.5}
+#vpanchanga-view .vp-prat-when{color:#A8B0C8;margin-left:auto;font-size:.72rem}
+#vpanchanga-view .vp-prat-tag{color:#7FE3A0;font-size:.7rem}

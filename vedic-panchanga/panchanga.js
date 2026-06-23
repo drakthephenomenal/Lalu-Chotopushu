@@ -919,6 +919,19 @@ function renderAll(){
   // on every renderAll() pass since it no-ops fast when already loaded.
   vpPersonalRender();
 
+  // Eclipses card — past + upcoming Surya/Chandra Grahan. Heavier
+  // computation, so memoise per-day (recomputing every 30s would be
+  // wasted work — eclipses don't shift on a sub-day timescale).
+  try {
+    const dayKey = new Date().toISOString().slice(0,10);
+    if(window._vpEclipseDayKey !== dayKey){
+      window._vpEclipseDayKey = dayKey;
+      vpRenderEclipses();
+    } else if(!document.getElementById('vp-eclipse-card')?.innerHTML){
+      vpRenderEclipses();
+    }
+  } catch(e){ /* fail silent — eclipse card is optional */ }
+
   // ── SOLAR SYSTEM ORBIT DIAL ──────────────────────────────────
   // Sun always fixed at center, spinning continuously.
   // 6 planets orbit around it at radii proportional to their real
@@ -2337,6 +2350,7 @@ function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
 
   // ── Kala / Muhurta now ──
   let kalaScore = 0, kalaName = 'Ordinary time', kalaPol = 'neutral';
+  let kalaStart = null, kalaEnd = null;
   try {
     const vaarStrip  = getVaarStrip(nowDate, lat, lng);
     const activeVaar = vaarStrip.find(v => v.isActive);
@@ -2346,22 +2360,31 @@ function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
       const dur = md.durMuhurtas && md.durMuhurtas.find(d => nm >= +d.start && nm < +d.end);
       if(md.amritaKala && nm >= +md.amritaKala.start && nm < +md.amritaKala.end){
         kalaScore = 1; kalaName = 'Amrita Kala ✨'; kalaPol = 'good';
+        kalaStart = md.amritaKala.start; kalaEnd = md.amritaKala.end;
       } else if(nm >= +md.abhijit.start && nm < +md.abhijit.end){
         kalaScore = 1; kalaName = 'Abhijit Muhurta 🏆'; kalaPol = 'good';
+        kalaStart = md.abhijit.start; kalaEnd = md.abhijit.end;
       } else if(nm >= +md.vijaya.start && nm < +md.vijaya.end){
         kalaScore = 1; kalaName = 'Vijaya Muhurta ⚔️'; kalaPol = 'good';
+        kalaStart = md.vijaya.start; kalaEnd = md.vijaya.end;
       } else if(nm >= +md.brahmaMuhurta.start && nm < +md.brahmaMuhurta.end){
         kalaScore = 1; kalaName = 'Brahma Muhurta 🌅'; kalaPol = 'good';
+        kalaStart = md.brahmaMuhurta.start; kalaEnd = md.brahmaMuhurta.end;
       } else if(nm >= +md.rahuKalam.start && nm < +md.rahuKalam.end){
         kalaScore = -1; kalaName = 'Rahu Kalam ☠️'; kalaPol = 'bad';
+        kalaStart = md.rahuKalam.start; kalaEnd = md.rahuKalam.end;
       } else if(nm >= +md.yamaganda.start && nm < +md.yamaganda.end){
         kalaScore = -1; kalaName = 'Yamaganda ⚰️'; kalaPol = 'bad';
+        kalaStart = md.yamaganda.start; kalaEnd = md.yamaganda.end;
       } else if(nm >= +md.gulika.start && nm < +md.gulika.end){
         kalaScore = -1; kalaName = 'Gulika (Mandi) 🐍'; kalaPol = 'bad';
+        kalaStart = md.gulika.start; kalaEnd = md.gulika.end;
       } else if(md.varjyam && nm >= +md.varjyam.start && nm < +md.varjyam.end){
         kalaScore = -1; kalaName = 'Varjyam 🚫'; kalaPol = 'bad';
+        kalaStart = md.varjyam.start; kalaEnd = md.varjyam.end;
       } else if(dur){
         kalaScore = -1; kalaName = 'Dur Muhurta ⚠️'; kalaPol = 'bad';
+        kalaStart = dur.start; kalaEnd = dur.end;
       }
     }
   } catch(e){ /* no-op: kalaScore stays 0 */ }
@@ -2388,7 +2411,7 @@ function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
   return {
     tara, chandra, curTithi, curNak, curRashi, curYoga, curKar,
     yogaPol, karPol, vaarLord, vaarRel, specLabel, specYogas,
-    kalaScore, kalaName, kalaPol,
+    kalaScore, kalaName, kalaPol, kalaStart, kalaEnd,
     scores:{tara:tScore, chandra:cScore, yoga:yScore, karana:kScore, kala:kalaScore, vaar:vScore},
     total, maxScore, verdict, verdictClass, verdictIcon, nextChangeJD,
   };
@@ -2697,6 +2720,209 @@ function vpRahuLongSid(jd){
   const Om = 125.04452 - 1934.136261*T;
   return norm(Om - lahiriAyanamsa(jd));
 }
+// Tropical (un-precessed) Rahu — needed for eclipse geometry, which
+// compares ecliptic longitudes in the SAME frame as sunLong/moonLong
+// (both tropical). The sidereal version above is for rashi houses.
+function vpRahuLongTrop(jd){
+  const T = (jd-2451545)/36525;
+  return norm(125.04452 - 1934.136261*T);
+}
+
+// ══════════════════════════════════════════════════════════════
+// ECLIPSES — Surya Grahan (solar) & Chandra Grahan (lunar)
+//
+// Mean-element predictor. At each New Moon (Amavasya) and Full Moon
+// (Purnima) in the requested window, measure how close the Moon is
+// to the lunar node axis (Rahu–Ketu). When |moon − node| is inside
+// the ecliptic limit, an eclipse is visible somewhere on Earth.
+//
+// Limits used (degrees from node):
+//   Solar — total/annular ≤ 9.5°, partial ≤ 18.5°
+//   Lunar — total ≤ 4°, partial ≤ 9.5°, penumbral ≤ 12.5°
+//
+// Accuracy: dates are good to ~1–2 hours (mean elements only — no
+// perturbations); eclipse classification is a coarse magnitude proxy.
+// Always cross-check with NASA/Indian Almanac for ritual timing.
+// ══════════════════════════════════════════════════════════════
+function vpComputeEclipses(fromJd, yearsAhead){
+  const endJd = fromJd + yearsAhead * 365.25;
+  const results = [];
+
+  // Refine to the moment where elongation (Moon − Sun) crosses `target`
+  // (0 for new moon, 180 for full moon). Bisection on signed delta.
+  const signedDelta = (a, target) => ((a - target + 540) % 360) - 180;
+  function refine(a, b, target){
+    for(let i=0; i<32; i++){
+      const m = (a+b)/2;
+      const em = norm(moonLong(m) - sunLong(m));
+      if(signedDelta(em, target) < 0) a = m; else b = m;
+    }
+    return (a+b)/2;
+  }
+
+  // Sweep day-by-day, catch elongation zero-crossings of (Moon−Sun) and
+  // (Moon−Sun−180), refine each to a precise instant.
+  let prev = norm(moonLong(fromJd) - sunLong(fromJd));
+  for(let jd = fromJd + 1; jd < endJd; jd += 1){
+    const cur = norm(moonLong(jd) - sunLong(jd));
+
+    // New-moon crossing: signedDelta(prev,0) > 0 and signedDelta(cur,0) < 0
+    // → Moon overtook Sun (elongation jumped from ~+170° via 180 wrap to ~-170°)
+    // Simpler: detect when prev was near 360 (or 0) and direction is forward.
+    const dNew_prev = signedDelta(prev, 0);
+    const dNew_cur  = signedDelta(cur, 0);
+    if(dNew_prev > 0 && dNew_cur < 0 && Math.abs(dNew_prev - dNew_cur) < 60){
+      const t = refine(jd-1, jd, 0);
+      const moon = norm(moonLong(t));
+      const node = vpRahuLongTrop(t);
+      const sep = Math.min(
+        Math.abs(signedDelta(moon, node)),
+        Math.abs(signedDelta(moon, norm(node+180))),
+      );
+      if(sep <= 18.5){
+        let kind = 'Partial Solar';
+        if(sep <= 4.5) kind = 'Total/Annular Solar';
+        else if(sep <= 9.5) kind = 'Deep Partial Solar';
+        results.push({type:'solar', kind, jd:t, date:jdToDate(t), sep});
+      }
+    }
+
+    // Full-moon crossing
+    const dFull_prev = signedDelta(prev, 180);
+    const dFull_cur  = signedDelta(cur, 180);
+    if(dFull_prev < 0 && dFull_cur > 0 && Math.abs(dFull_prev - dFull_cur) < 60){
+      const t = refine(jd-1, jd, 180);
+      const moon = norm(moonLong(t));
+      const node = vpRahuLongTrop(t);
+      // For lunar eclipse, the Earth's shadow is opposite the Sun ≈ Moon's
+      // direction; check Moon's distance to the node axis itself.
+      const sep = Math.min(
+        Math.abs(signedDelta(moon, node)),
+        Math.abs(signedDelta(moon, norm(node+180))),
+      );
+      if(sep <= 12.5){
+        let kind = 'Penumbral Lunar';
+        if(sep <= 4)   kind = 'Total Lunar';
+        else if(sep <= 9.5) kind = 'Partial Lunar';
+        results.push({type:'lunar', kind, jd:t, date:jdToDate(t), sep});
+      }
+    }
+
+    prev = cur;
+  }
+  return results.sort((a,b) => a.jd - b.jd);
+}
+
+// Friendly time-from-now string ("in 3mo 12d", "23d ago")
+function vpEclipseRelative(date, now){
+  const ms = +date - +now;
+  const abs = Math.abs(ms);
+  const fwd = ms >= 0;
+  const mins = Math.floor(abs/60000);
+  if(mins < 60) return fwd ? `in ${mins}m` : `${mins}m ago`;
+  const hrs = Math.floor(mins/60);
+  if(hrs < 24) return fwd ? `in ${hrs}h` : `${hrs}h ago`;
+  const days = Math.floor(hrs/24);
+  if(days < 30){
+    return fwd ? `in ${days}d` : `${days}d ago`;
+  }
+  const months = Math.floor(days/30.4375);
+  const remD   = Math.floor(days - months*30.4375);
+  if(months < 12){
+    return fwd ? `in ${months}mo ${remD}d` : `${months}mo ${remD}d ago`;
+  }
+  const years = Math.floor(months/12);
+  const remM  = months%12;
+  return fwd ? `in ${years}y ${remM}mo` : `${years}y ${remM}mo ago`;
+}
+
+// Render a "🌑 Eclipses (Grahan)" card into #vp-eclipse-card.
+// Shows the last past + next several upcoming eclipses, split by type.
+function vpRenderEclipses(){
+  const mount = document.getElementById('vp-eclipse-card');
+  if(!mount) return;
+  const now = new Date();
+  const jdNow = dateToJD(now);
+
+  // Pull a wide window: 2 yrs back, 5 yrs forward → enough context.
+  const all = vpComputeEclipses(jdNow - 2*365.25, 7);
+
+  const past   = all.filter(e => +e.date <  +now).slice(-3);   // last 3 past
+  const future = all.filter(e => +e.date >= +now).slice(0, 8); // next 8 upcoming
+
+  const isOpen = (() => { try { return sessionStorage.getItem('vp-collapse-vp-eclipse-body') !== 'closed'; } catch(e){ return true; } })();
+
+  const fmt = d => d.toLocaleString('en-IN', {
+    weekday:'short', day:'2-digit', month:'short', year:'numeric',
+    hour:'2-digit', minute:'2-digit', hour12:true,
+  });
+
+  const row = (e, isPast) => {
+    const cls = e.type === 'solar' ? 'vp-eclipse-solar' : 'vp-eclipse-lunar';
+    const icon = e.type === 'solar' ? '🌞' : '🌕';
+    const grahan = e.type === 'solar' ? 'Surya Grahan' : 'Chandra Grahan';
+    const rel = vpEclipseRelative(e.date, now);
+    return `<div class="vp-eclipse-row ${cls}${isPast?' is-past':''}">
+      <div class="vp-eclipse-icon">${icon}</div>
+      <div class="vp-eclipse-body">
+        <div class="vp-eclipse-title">${grahan} <span class="vp-eclipse-kind">· ${e.kind}</span></div>
+        <div class="vp-eclipse-when">${fmt(e.date)}</div>
+        <div class="vp-eclipse-sub">Moon ${e.sep.toFixed(1)}° from Rahu–Ketu axis</div>
+      </div>
+      <div class="vp-eclipse-rel">${rel}</div>
+    </div>`;
+  };
+
+  const upcomingHtml = future.length
+    ? future.map(e => row(e, false)).join('')
+    : '<div class="vp-eclipse-empty">No eclipses in the next 5 years window.</div>';
+
+  const pastHtml = past.length
+    ? past.map(e => row(e, true)).join('')
+    : '<div class="vp-eclipse-empty">No recent past eclipses in the window.</div>';
+
+  mount.style.display = 'block';
+  mount.innerHTML = `
+    <section class="vp-eclipse-section">
+      <button class="vp-collapsible-toggle ${isOpen?'open':''}"
+              onclick="vpToggleEclipses()" type="button">
+        <span>🌑 &nbsp;Eclipses — Chandra &amp; Surya Grahan</span>
+        <span class="vp-chevron" id="vp-eclipse-chevron">${isOpen?'▾':'▸'}</span>
+      </button>
+      <div class="vp-collapsible-wrap${isOpen?' open':''}" id="vp-eclipse-wrap">
+        <div class="vp-eclipse-inner">
+          <div class="vp-eclipse-sub-head">🔮 Upcoming</div>
+          ${upcomingHtml}
+          <div class="vp-eclipse-sub-head vp-eclipse-past-head">📜 Recent past</div>
+          ${pastHtml}
+          <div class="vp-eclipse-note">
+            Mean-element predictor — dates accurate to ~1–2 hours; the
+            classification (total / partial / penumbral) is a proxy based
+            on Moon's distance from the lunar node. For ritual or
+            scientific use cross-check with NASA / Indian Almanac.
+          </div>
+        </div>
+      </div>
+    </section>`;
+}
+
+function vpToggleEclipses(){
+  const wrap = document.getElementById('vp-eclipse-wrap');
+  const chev = document.getElementById('vp-eclipse-chevron');
+  const btn  = wrap && wrap.previousElementSibling;
+  if(!wrap) return;
+  const open = wrap.classList.toggle('open');
+  if(btn) btn.classList.toggle('open', open);
+  if(chev) chev.textContent = open ? '▾' : '▸';
+  try { sessionStorage.setItem('vp-collapse-vp-eclipse-body', open ? 'open' : 'closed'); } catch(e){}
+}
+
+// Expose for global onclick handlers.
+if(typeof window !== 'undefined'){
+  window.vpToggleEclipses = vpToggleEclipses;
+  window.vpRenderEclipses = vpRenderEclipses;
+}
+
 function vpRashiOf(longSid){ return Math.floor(norm(longSid)/30); }
 
 function vpComputeSaturnDoshaTimeline(profile, fromJd){
@@ -3118,6 +3344,114 @@ async function vpPersonalRender(){
           ${makeFactorRowSimple('⊕','Weekday Lord',cs.vaarLord,cs.scores.vaar,(cs.vaarRel==='own'||cs.vaarRel==='friend')?'good':cs.vaarRel==='enemy'?'bad':'neutral')}
         </div>
         <div class="vp-cscore-timer">⏱ Next change in ${dur(now, jdToDate(cs.nextChangeJD))} · at ${fmtEnd(jdToDate(cs.nextChangeJD), now)}</div>
+        ${(()=>{
+          // ── Planet-coloured daily detail rows: active Muhurta,
+          //    active Mahadasha, active Sade Sati / Saturn cycle.
+          //    Colors mirror the orbital-dial planet palette.
+          const PLANET_COLOR = {
+            Sun:'var(--vp-planet-sun)', Moon:'var(--vp-planet-moon)',
+            Mars:'var(--vp-planet-mars)', Mercury:'var(--vp-planet-mercury)',
+            Jupiter:'var(--vp-planet-jupiter)', Venus:'var(--vp-planet-venus)',
+            Saturn:'var(--vp-planet-saturn)', Rahu:'var(--vp-planet-rahu)',
+            Ketu:'var(--vp-planet-ketu)',
+          };
+          const PLANET_EMOJI = {
+            Sun:'☀️', Moon:'🌙', Mars:'🔥', Mercury:'🌿',
+            Jupiter:'🪐', Venus:'✨', Saturn:'⏳', Rahu:'🐉', Ketu:'☄️',
+          };
+          // How long until end (humanised: days / hours / minutes)
+          const humanLeft = (ms) => {
+            if(ms <= 0) return 'ended';
+            const mins = Math.floor(ms/60000);
+            if(mins < 60) return mins + 'm left';
+            const hrs = Math.floor(mins/60);
+            if(hrs < 24) return hrs + 'h ' + (mins%60) + 'm left';
+            const days = Math.floor(hrs/24);
+            if(days < 30) return days + 'd ' + (hrs%24) + 'h left';
+            const months = Math.floor(days/30.4375);
+            const remD = Math.floor(days - months*30.4375);
+            if(months < 12) return months + 'mo ' + remD + 'd left';
+            const years = Math.floor(months/12);
+            return years + 'y ' + (months%12) + 'mo left';
+          };
+          let rows = '';
+
+          // 1) Active Muhurta — duration + time left
+          if(cs.kalaStart && cs.kalaEnd){
+            const totalMs = +cs.kalaEnd - +cs.kalaStart;
+            const leftMs  = +cs.kalaEnd - +now;
+            const totalStr = dur(cs.kalaStart, cs.kalaEnd);
+            const polColor = cs.kalaPol==='good' ? 'var(--vp-jade)'
+                           : cs.kalaPol==='bad'  ? 'var(--vp-rose)'
+                           : 'var(--vp-violet)';
+            rows += `<div class="vp-pd-row" style="--vp-planet:${polColor}">
+              <span class="vp-pd-emoji">⏰</span>
+              <div class="vp-pd-body">
+                <div class="vp-pd-title">Active Muhurta · ${cs.kalaName}</div>
+                <div class="vp-pd-sub">Duration ${totalStr} · ${fmt12(cs.kalaStart)} → ${fmtEnd(cs.kalaEnd, cs.kalaStart)}</div>
+              </div>
+              <span class="vp-pd-left">${humanLeft(leftMs)}</span>
+            </div>`;
+          }
+
+          // 2) Active Mahadasha — planet-coloured, days left
+          try {
+            const dashas = vpComputeMahaDasha(profile) || [];
+            const nowMs2 = +now;
+            const active = dashas.find(d => +d.start <= nowMs2 && nowMs2 < +d.end);
+            if(active){
+              const phase = (typeof MAHADASHA_PHASE!=='undefined' && MAHADASHA_PHASE[active.lord]) || {};
+              const color = PLANET_COLOR[active.lord] || 'var(--vp-violet)';
+              const emoji = PLANET_EMOJI[active.lord] || active.emoji || '🪐';
+              const leftMs = +active.end - nowMs2;
+              rows += `<div class="vp-pd-row" style="--vp-planet:${color}">
+                <span class="vp-pd-emoji">${emoji}</span>
+                <div class="vp-pd-body">
+                  <div class="vp-pd-title">${active.lord} Mahadasha${phase.theme?` — ${phase.theme}`:''}</div>
+                  <div class="vp-pd-sub">${active.years.toFixed(1)}y total · ends ${active.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
+                </div>
+                <span class="vp-pd-left">${humanLeft(leftMs)}</span>
+              </div>`;
+            }
+          } catch(e){}
+
+          // 3) Active Sade Sati / Ashtama / Kantaka — Saturn-coloured, days left
+          try {
+            const satCycles = vpComputeSaturnDoshaTimeline(profile, jdNow) || [];
+            const nowMs2 = +now;
+            const activeSat = satCycles.find(s => +s.start <= nowMs2 && nowMs2 < +s.end);
+            const color = PLANET_COLOR.Saturn;
+            if(activeSat){
+              const leftMs = +activeSat.end - nowMs2;
+              const totalMs = +activeSat.end - +activeSat.start;
+              const pct = Math.round(((nowMs2 - +activeSat.start) / totalMs) * 100);
+              rows += `<div class="vp-pd-row" style="--vp-planet:${color}">
+                <span class="vp-pd-emoji">${activeSat.emoji || '⏳'}</span>
+                <div class="vp-pd-body">
+                  <div class="vp-pd-title">${activeSat.label} · Saturn cycle (${pct}% done)</div>
+                  <div class="vp-pd-sub">${activeSat.sub || ''} · ends ${activeSat.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
+                </div>
+                <span class="vp-pd-left">${humanLeft(leftMs)}</span>
+              </div>`;
+            } else {
+              // Show the NEXT upcoming Saturn cycle so user knows what's coming
+              const upcoming = satCycles.find(s => +s.start > nowMs2);
+              if(upcoming){
+                const startsIn = +upcoming.start - nowMs2;
+                rows += `<div class="vp-pd-row" style="--vp-planet:${color};opacity:.85">
+                  <span class="vp-pd-emoji">${upcoming.emoji || '⏳'}</span>
+                  <div class="vp-pd-body">
+                    <div class="vp-pd-title">Next: ${upcoming.label}</div>
+                    <div class="vp-pd-sub">${upcoming.sub || ''} · begins ${upcoming.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
+                  </div>
+                  <span class="vp-pd-left">in ${humanLeft(startsIn).replace(' left','')}</span>
+                </div>`;
+              }
+            }
+          } catch(e){}
+
+          return rows ? `<div class="vp-pd-extra">${rows}</div>` : '';
+        })()}
       </div>
 
       <!-- ══ BEST WINDOWS — user-selectable range ══ -->

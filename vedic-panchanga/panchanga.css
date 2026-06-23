@@ -2589,3 +2589,172 @@
 #vpanchanga-view .vp-prat-row.vp-prat-past{opacity:.5}
 #vpanchanga-view .vp-prat-when{color:#A8B0C8;margin-left:auto;font-size:.72rem}
 #vpanchanga-view .vp-prat-tag{color:#7FE3A0;font-size:.7rem}
+
+/* ══════════════════════════════════════════════════════════════
+   HOROSCOPE-FOR-A-DAY MODAL — readability fix
+   The cream/yellow card backgrounds were rendering pale yellow
+   text invisibly on some devices. Force all label/name/desc text
+   inside the date-horoscope cards to a bold readable blue.
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-dr-vaar-label,
+#vpanchanga-view .vp-dr-anga-head-label{
+  color:#0B2A6B !important;font-weight:900 !important;
+}
+#vpanchanga-view .vp-dr-vaar-name,
+#vpanchanga-view .vp-dr-tl-name{
+  color:#0B2A6B !important;font-weight:800 !important;
+  text-shadow:0 1px 0 rgba(255,255,255,.4);
+}
+#vpanchanga-view .vp-dr-tl-paksha{
+  color:#1E4FB8 !important;font-weight:800 !important;
+}
+#vpanchanga-view .vp-dr-tl-fx,
+#vpanchanga-view .vp-dr-tl-time{
+  color:#173B8A !important;font-weight:700 !important;
+}
+#vpanchanga-view .vp-dr-tl-tag{
+  font-weight:900 !important;letter-spacing:.12em !important;
+}
+#vpanchanga-view .vp-dr-tl-row.prev .vp-dr-tl-tag{color:#5170B5 !important}
+#vpanchanga-view .vp-dr-tl-row.current .vp-dr-tl-tag{color:#0B2A6B !important}
+#vpanchanga-view .vp-dr-tl-row.next .vp-dr-tl-tag{color:#1E4FB8 !important}
+#vpanchanga-view .vp-dr-tl-dur{
+  color:#fff !important;background:#1E4FB8 !important;
+  font-weight:900 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PERSONAL DAILY DETAILS — planet-coloured Dasha / Sade Sati /
+   active-Muhurta rows. Colors mirror the orbital-dial planet
+   palette so the user can mentally pair each row with the
+   planet they see spinning above.
+   ══════════════════════════════════════════════════════════════ */
+:root{
+  --vp-planet-sun:#FF8A3D;
+  --vp-planet-moon:#9FB4D8;
+  --vp-planet-mars:#E04D2A;
+  --vp-planet-mercury:#7A8A9A;
+  --vp-planet-jupiter:#E0A95F;
+  --vp-planet-venus:#F0C24A;
+  --vp-planet-saturn:#B58F5B;
+  --vp-planet-rahu:#5A3F8C;
+  --vp-planet-ketu:#6B5A85;
+}
+#vpanchanga-view .vp-pd-extra{
+  display:flex;flex-direction:column;gap:8px;margin-top:10px;
+  padding-top:10px;border-top:1px dashed rgba(36,27,69,.18);
+}
+#vpanchanga-view .vp-pd-row{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-radius:12px;
+  background:rgba(255,255,255,.65);
+  border-left:4px solid var(--vp-planet, #7C5CFC);
+  box-shadow:0 2px 8px rgba(76,58,150,.06);
+}
+#vpanchanga-view .vp-pd-row .vp-pd-emoji{
+  font-size:1.15rem;flex-shrink:0;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.15));
+}
+#vpanchanga-view .vp-pd-row .vp-pd-body{flex:1;min-width:0}
+#vpanchanga-view .vp-pd-row .vp-pd-title{
+  font-size:.72rem;font-weight:900;letter-spacing:.04em;
+  color:var(--vp-planet, #241B45);line-height:1.25;
+}
+#vpanchanga-view .vp-pd-row .vp-pd-sub{
+  font-size:.6rem;color:var(--vp-ink-soft);
+  margin-top:2px;line-height:1.35;font-weight:600;
+}
+#vpanchanga-view .vp-pd-row .vp-pd-left{
+  flex-shrink:0;font-size:.6rem;font-weight:900;
+  color:#fff;background:var(--vp-planet, #7C5CFC);
+  padding:5px 10px;border-radius:999px;letter-spacing:.04em;
+  box-shadow:0 2px 6px rgba(0,0,0,.15);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ECLIPSES (GRAHAN) — Surya & Chandra grahan card
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view #vp-eclipse-card{margin:18px 16px 0}
+#vpanchanga-view .vp-eclipse-section{
+  background:linear-gradient(150deg,#1B1238 0%, #2A1A52 55%, #160A30 100%);
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 8px 28px rgba(20,12,50,.35);
+  overflow:hidden;
+  color:#F5EAFF;
+}
+#vpanchanga-view .vp-eclipse-section > .vp-collapsible-toggle{
+  width:100%;
+  background:transparent;
+  border:none;
+  color:#FFE08A;
+  font-weight:800;letter-spacing:.04em;
+  font-size:.82rem;
+  padding:14px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;
+}
+#vpanchanga-view .vp-eclipse-section .vp-chevron{color:#FFE08A;font-size:.9rem}
+#vpanchanga-view .vp-eclipse-inner{
+  padding:6px 14px 16px;
+  display:flex;flex-direction:column;gap:8px;
+}
+#vpanchanga-view .vp-eclipse-sub-head{
+  font-size:.62rem;font-weight:900;letter-spacing:.12em;
+  text-transform:uppercase;color:#FFD96B;
+  margin:8px 4px 2px;
+}
+#vpanchanga-view .vp-eclipse-past-head{color:#A892D6;margin-top:14px}
+#vpanchanga-view .vp-eclipse-row{
+  display:flex;align-items:center;gap:11px;
+  padding:11px 12px;
+  border-radius:14px;
+  background:rgba(255,255,255,.06);
+  border-left:4px solid var(--vp-eclipse-accent, #FFD96B);
+}
+#vpanchanga-view .vp-eclipse-row.vp-eclipse-solar{
+  --vp-eclipse-accent:#FF8A3D;
+  background:linear-gradient(135deg,rgba(255,138,61,.18),rgba(255,255,255,.04));
+}
+#vpanchanga-view .vp-eclipse-row.vp-eclipse-lunar{
+  --vp-eclipse-accent:#9FB4D8;
+  background:linear-gradient(135deg,rgba(159,180,216,.18),rgba(255,255,255,.04));
+}
+#vpanchanga-view .vp-eclipse-row.is-past{opacity:.55}
+#vpanchanga-view .vp-eclipse-icon{
+  font-size:1.6rem;line-height:1;flex-shrink:0;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));
+}
+#vpanchanga-view .vp-eclipse-body{flex:1;min-width:0}
+#vpanchanga-view .vp-eclipse-title{
+  font-family:'EB Garamond',serif;
+  font-size:1.02rem;font-weight:800;color:#FFF;line-height:1.2;
+}
+#vpanchanga-view .vp-eclipse-kind{
+  font-size:.7rem;font-weight:700;color:var(--vp-eclipse-accent);
+  font-family:inherit;
+}
+#vpanchanga-view .vp-eclipse-when{
+  font-size:.66rem;font-weight:700;color:#E6D7FF;margin-top:3px;
+}
+#vpanchanga-view .vp-eclipse-sub{
+  font-size:.58rem;color:#A892D6;margin-top:2px;letter-spacing:.02em;
+}
+#vpanchanga-view .vp-eclipse-rel{
+  flex-shrink:0;
+  font-size:.6rem;font-weight:900;letter-spacing:.05em;
+  background:var(--vp-eclipse-accent, #FFD96B);
+  color:#1B1238;
+  padding:5px 11px;border-radius:999px;
+  box-shadow:0 2px 6px rgba(0,0,0,.3);
+}
+#vpanchanga-view .vp-eclipse-empty{
+  font-size:.7rem;color:#A892D6;font-style:italic;
+  padding:8px 4px;
+}
+#vpanchanga-view .vp-eclipse-note{
+  font-size:.55rem;color:#8E7AB5;line-height:1.5;
+  margin-top:10px;padding:8px 10px;
+  background:rgba(0,0,0,.2);border-radius:10px;
+  font-style:italic;
+}

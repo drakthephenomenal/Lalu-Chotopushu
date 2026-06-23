@@ -2443,3 +2443,74 @@
 #vpanchanga-view .vp-maha-note{
   font-size:.74rem;color:#a8acc0;padding:4px 14px 14px;font-style:italic;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   FIX: Date range on golden BEST WINDOWS rows — deep blue ink
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-best-win-row .vp-best-win-when,
+#vpanchanga-view .vp-best-win-row .vp-best-win-when *,
+#vpanchanga-view .vp-best-win-row .vp-best-win-arrow,
+#vpanchanga-view .vp-best-win-row .vp-best-win-dur{
+  color:#0a3a8c !important;
+  -webkit-text-fill-color:#0a3a8c !important;
+  text-shadow:none !important;
+  background:none !important;
+  -webkit-background-clip:initial !important;
+          background-clip:initial !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Sade Sati / Ashtama / Kantaka Shani cycles + Kal Sarpa note
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-saturncycle-list{
+  display:flex;flex-direction:column;gap:7px;padding:4px 14px 8px;
+}
+#vpanchanga-view .vp-saturncycle-row{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  column-gap:10px;row-gap:3px;align-items:center;
+  padding:10px 12px;border-radius:12px;
+  border:1px solid rgba(245,194,74,.35);
+  background:rgba(10,18,48,.7);
+}
+#vpanchanga-view .vp-saturncycle-row.vp-sat-sadesati{
+  border-color:#FFE08A;
+  background:linear-gradient(135deg,#1a1140 0%, #3a1b6b 100%);
+}
+#vpanchanga-view .vp-saturncycle-row.vp-sat-ashtama{
+  border-color:#e1485f;
+  background:linear-gradient(135deg,#2a0f1a 0%, #5a1e35 100%);
+}
+#vpanchanga-view .vp-saturncycle-row.vp-sat-kantaka{
+  border-color:#d89a1f;
+  background:linear-gradient(135deg,#2a1f08 0%, #5a3e10 100%);
+}
+#vpanchanga-view .vp-saturncycle-row.vp-sat-active{
+  box-shadow:0 0 18px rgba(245,194,74,.55), inset 0 0 12px rgba(255,224,138,.22);
+  animation:vpFavPulse 2.4s ease-in-out infinite;
+}
+#vpanchanga-view .vp-saturncycle-row.vp-sat-past{opacity:.55}
+#vpanchanga-view .vp-saturncycle-emoji{font-size:1.25rem;line-height:1}
+#vpanchanga-view .vp-saturncycle-name{
+  font-size:.95rem;font-weight:800;color:#FFE9A8;
+}
+#vpanchanga-view .vp-saturncycle-when{
+  grid-column:1 / 3;
+  font-size:.78rem;color:#cfd3e6;
+}
+#vpanchanga-view .vp-saturncycle-tag{
+  font-size:.7rem;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;color:#cfd3e6;justify-self:end;
+}
+#vpanchanga-view .vp-saturncycle-row.vp-sat-active .vp-saturncycle-tag{color:#34D6A4}
+#vpanchanga-view .vp-saturncycle-desc{
+  grid-column:1 / -1;
+  font-size:.76rem;color:#cfd3e6;margin-top:4px;line-height:1.5;
+}
+#vpanchanga-view .vp-kalsarpa-note{
+  margin:10px 14px 4px;padding:10px 12px;border-radius:12px;
+  background:linear-gradient(135deg,#0a1a4a 0%, #1a0e3f 100%);
+  border:1px solid rgba(155,124,255,.4);
+  font-size:.82rem;color:#E9ECF7;line-height:1.5;
+}
+#vpanchanga-view .vp-kalsarpa-note b{color:#C7B3FF}

@@ -2589,6 +2589,101 @@ function vpComputeMahaYogas(profile){
   return out;
 }
 
+// ══════════════════════════════════════════════════════════════
+// SATURN CYCLES (Sade Sati, Ashtama Shani, Kantaka Shani) + KAL SARPA
+// Uses mean longitudes — accurate to ~1° which is sufficient for
+// sign-based (rashi) transit windows.
+// ══════════════════════════════════════════════════════════════
+const VP_RASHI_NAMES = ['Mesha','Vrishabha','Mithuna','Karka','Simha','Kanya','Tula','Vrishchika','Dhanu','Makara','Kumbha','Meena'];
+
+function vpSaturnLongSid(jd){
+  const T = (jd-2451545)/36525;
+  const L = 50.0774443 + 1222.1137943*T;
+  return norm(L - lahiriAyanamsa(jd));
+}
+function vpRahuLongSid(jd){
+  const T = (jd-2451545)/36525;
+  const Om = 125.04452 - 1934.136261*T;
+  return norm(Om - lahiriAyanamsa(jd));
+}
+function vpJupiterLongSid(jd){
+  const T = (jd-2451545)/36525;
+  const L = 34.351519 + 3034.9056606*T;
+  return norm(L - lahiriAyanamsa(jd));
+}
+function vpRashiOf(longSid){ return Math.floor(norm(longSid)/30); }
+
+function vpComputeSaturnDoshaTimeline(profile, fromJd){
+  if(!profile || typeof profile.rashiIndex !== 'number') return [];
+  const moonR = profile.rashiIndex;
+  const startJd = fromJd - 60*365.25;
+  const endJd   = fromJd + 60*365.25;
+  const step = 7;
+  const raw = [];
+  let curHouse = null, curStart = null;
+  for(let jd=startJd; jd<=endJd; jd+=step){
+    const house = ((vpRashiOf(vpSaturnLongSid(jd)) - moonR + 12) % 12) + 1;
+    if(house !== curHouse){
+      if(curHouse !== null) raw.push({house:curHouse, startJd:curStart, endJd:jd});
+      curHouse = house; curStart = jd;
+    }
+  }
+  if(curHouse !== null) raw.push({house:curHouse, startJd:curStart, endJd:endJd});
+
+  const classify = (h) => {
+    if(h===12||h===1||h===2) return {kind:'sadesati', label:'Sade Sati', emoji:'🪐',
+      sub:{12:'Rising phase — Saturn in 12th from natal Moon',
+           1:'Peak phase — Saturn over natal Moon sign',
+           2:'Setting phase — Saturn in 2nd from natal Moon'}[h]};
+    if(h===4) return {kind:'kantaka', label:'Kantaka Shani', emoji:'⚔️',
+      sub:'Saturn in 4th from Moon — domestic, property & emotional pressure (~2.5 yrs)'};
+    if(h===8) return {kind:'ashtama', label:'Ashtama Shani', emoji:'☠️',
+      sub:'Saturn in 8th from Moon — transformation, health & finance caution (~2.5 yrs)'};
+    return null;
+  };
+
+  const out = [];
+  for(const s of raw){
+    const c = classify(s.house);
+    if(!c) continue;
+    const seg = {kind:c.kind, label:c.label, emoji:c.emoji,
+                 startJd:s.startJd, endJd:s.endJd,
+                 parts:[{house:s.house, startJd:s.startJd, endJd:s.endJd, sub:c.sub}]};
+    const last = out[out.length-1];
+    if(last && last.kind===c.kind && (seg.startJd - last.endJd) < 35){
+      last.endJd = seg.endJd;
+      last.parts.push(seg.parts[0]);
+    } else {
+      out.push(seg);
+    }
+  }
+  return out.map(s => ({...s, start:jdToDate(s.startJd), end:jdToDate(s.endJd),
+    parts:s.parts.map(p=>({...p, start:jdToDate(p.startJd), end:jdToDate(p.endJd)}))}));
+}
+
+function vpKalSarpaNote(profile){
+  if(!profile || !profile.dob) return null;
+  const jd = vpPersonalJdFromForm(profile.dob, profile.tob||'12:00');
+  const rahu = vpRahuLongSid(jd);
+  const ketu = norm(rahu+180);
+  const lngs = {
+    Sun: sunLongSid(jd), Moon: moonLongSid(jd),
+    Jupiter: vpJupiterLongSid(jd), Saturn: vpSaturnLongSid(jd),
+  };
+  const inForwardHalf = (lng) => norm(lng - rahu) < 180;
+  const sides = Object.fromEntries(Object.entries(lngs).map(([k,v])=>[k, inForwardHalf(v)]));
+  const sameSide = Object.values(sides).every(v => v === Object.values(sides)[0]);
+  const rahuR = VP_RASHI_NAMES[vpRashiOf(rahu)];
+  const ketuR = VP_RASHI_NAMES[vpRashiOf(ketu)];
+  return {
+    rahuR, ketuR, sameSide,
+    sides,
+    summary: sameSide
+      ? `Sun, Moon, Jupiter & Saturn all fall on the <b>same side</b> of the Rahu (${rahuR}) – Ketu (${ketuR}) axis at birth — <b>partial Kal Sarpa indication</b>. A complete chart with Mars, Mercury & Venus is needed to confirm full Kal Sarpa Yoga.`
+      : `Sun, Moon, Jupiter & Saturn are <b>split</b> across the Rahu (${rahuR}) – Ketu (${ketuR}) axis at birth — full Kal Sarpa Yoga is <b>unlikely</b>. Verify with a complete chart.`
+  };
+}
+
 // ── Local cache of the loaded profile (avoids refetching on every render) ──
 let _vpPersonalProfile = null;
 let _vpPersonalLoaded = false;
@@ -2963,6 +3058,34 @@ async function vpPersonalRender(){
             <div class="vp-mahayoga-name"><span>${y.emoji}</span> ${y.name}</div>
             <div class="vp-mahayoga-desc">${y.desc}</div>
           </div>`).join('') : `<div class="vp-mahayoga-empty">No major classical yogas detected from Moon-based factors. A full chart with all planets reveals more.</div>`;
+
+        // ── Saturn cycles: Sade Sati, Ashtama, Kantaka ──
+        const satCycles = vpComputeSaturnDoshaTimeline(profile, jdNow) || [];
+        const fmtYM = d => d.toLocaleDateString('en-IN',{year:'numeric',month:'short'});
+        const satRows = satCycles.map(s => {
+          const isActive = +s.start <= nowMs && nowMs < +s.end;
+          const isPast = +s.end <= nowMs;
+          const cls = `vp-sat-${s.kind} ` + (isActive ? 'vp-sat-active' : (isPast ? 'vp-sat-past' : 'vp-sat-future'));
+          const tag = isActive ? '🟢 Active' : (isPast ? 'Past' : 'Upcoming');
+          const partsHtml = s.parts.map(p =>
+            `<div>· ${fmtYM(p.start)} → ${fmtYM(p.end)} — ${p.sub}</div>`
+          ).join('');
+          return `<div class="vp-saturncycle-row ${cls}">
+            <div class="vp-saturncycle-emoji">${s.emoji}</div>
+            <div class="vp-saturncycle-name">${s.label}</div>
+            <div class="vp-saturncycle-tag">${tag}</div>
+            <div class="vp-saturncycle-when">${fmtYM(s.start)} → ${fmtYM(s.end)}</div>
+            <div class="vp-saturncycle-desc">${partsHtml}</div>
+          </div>`;
+        }).join('');
+        const satEmpty = '<div class="vp-mahayoga-empty">Saturn cycles need your birth Moon sign.</div>';
+
+        // ── Kal Sarpa note ──
+        const ks = vpKalSarpaNote(profile);
+        const ksHtml = ks ? `<div class="vp-kalsarpa-note">
+          <b>🐍 Kal Sarpa Yoga (educational):</b> ${ks.summary}
+        </div>` : '';
+
         return `<div class="vp-collapsible-section vp-mahasection">
           <button class="vp-collapsible-toggle" onclick="vpTogglePersonalSection('vp-maha-body','vp-maha-chevron')">
             <span>🕉️ Maha Yoga &amp; Maha Dasha — Your Life Cycles</span>
@@ -2973,9 +3096,13 @@ async function vpPersonalRender(){
             <div class="vp-mahayoga-list">${yogaCards}</div>
             <div class="vp-maha-sub" style="margin-top:14px">🪐 Vimshottari Maha Dasha (120-year cycle)</div>
             <div class="vp-dasha-list">${dashaRows || '<div class="vp-mahayoga-empty">Maha Dasha needs your birth nakshatra.</div>'}</div>
-            <div class="vp-maha-note">Calculated from your birth Moon's nakshatra. Each planet rules a span of years and colors that phase of life.</div>
+            <div class="vp-maha-sub" style="margin-top:14px">⚖️ Sade Sati &amp; Saturn Cycles (past &amp; upcoming)</div>
+            <div class="vp-saturncycle-list">${satRows || satEmpty}</div>
+            ${ksHtml}
+            <div class="vp-maha-note">Saturn windows use mean longitudes (≈1° accuracy — fine for sign-based transits). Kal Sarpa is shown based on Sun, Moon, Jupiter &amp; Saturn vs the Rahu–Ketu axis only; Mars, Mercury &amp; Venus need a full chart.</div>
           </div>
         </div>`;
+      })()}
       })()}
 
       <div class="vp-personal-disclaimer">For reflection only — not a substitute for a professional astrologer.</div>

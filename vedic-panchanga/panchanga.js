@@ -3068,7 +3068,7 @@ async function vpPersonalRender(){
         const yogas = vpComputeMahaYogas(profile) || [];
         const nowMs = +now;
         const activeIdx = dashas.findIndex(d => +d.start <= nowMs && nowMs < +d.end);
-        const fmtY = d => d.toLocaleDateString('en-IN',{year:'numeric',month:'short'});
+        const fmtY = d => d.toLocaleString('en-IN',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
         const dashaRows = dashas.map((d,i)=>{
           const isActive = i === activeIdx;
           const isPast = +d.end <= nowMs;
@@ -3088,7 +3088,7 @@ async function vpPersonalRender(){
 
         // ── Saturn cycles: Sade Sati, Ashtama, Kantaka ──
         const satCycles = vpComputeSaturnDoshaTimeline(profile, jdNow) || [];
-        const fmtYM = d => d.toLocaleDateString('en-IN',{year:'numeric',month:'short'});
+        const fmtYM = d => d.toLocaleString('en-IN',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
         const satRows = satCycles.map(s => {
           const isActive = +s.start <= nowMs && nowMs < +s.end;
           const isPast = +s.end <= nowMs;

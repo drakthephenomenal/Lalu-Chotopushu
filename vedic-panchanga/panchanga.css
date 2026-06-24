@@ -2758,3 +2758,92 @@
   background:rgba(0,0,0,.2);border-radius:10px;
   font-style:italic;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   MSD BAR — Mahadasha & Sade Sati mini-cards above Personal Muhurta
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-msd-bar{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;
+  margin:0 0 10px;padding:0;
+}
+#vpanchanga-view .vp-msd-card{
+  display:flex;align-items:flex-start;gap:9px;
+  padding:10px 12px;border-radius:14px;
+  background:linear-gradient(135deg,#e8f0fe 0%,#dbeafe 100%);
+  border-left:4px solid #1a56db;
+  box-shadow:0 2px 10px rgba(26,86,219,.12);
+}
+#vpanchanga-view .vp-msd-emoji{
+  font-size:1.3rem;flex-shrink:0;margin-top:1px;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.15));
+}
+#vpanchanga-view .vp-msd-body{flex:1;min-width:0}
+#vpanchanga-view .vp-msd-label{
+  font-size:.55rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  color:#1e40af;margin-bottom:2px;
+}
+#vpanchanga-view .vp-msd-name{
+  font-size:.75rem;font-weight:900;color:#1a56db;line-height:1.25;
+}
+#vpanchanga-view .vp-msd-theme{
+  font-size:.62rem;font-weight:600;color:#2563eb;
+}
+#vpanchanga-view .vp-msd-sub{
+  font-size:.6rem;color:#3b82f6;margin-top:2px;line-height:1.35;
+}
+#vpanchanga-view .vp-msd-left{
+  display:inline-block;margin-top:4px;
+  font-size:.58rem;font-weight:900;letter-spacing:.04em;
+  color:#fff;background:#1a56db;
+  padding:3px 8px;border-radius:999px;
+  box-shadow:0 1px 4px rgba(26,86,219,.3);
+}
+@media(max-width:360px){
+  #vpanchanga-view .vp-msd-bar{grid-template-columns:1fr}
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LIFE TAB BAR — Past / Current Active / Future tabs
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-life-tab-bar{
+  display:flex;gap:6px;padding:6px 14px 10px;flex-wrap:wrap;
+}
+#vpanchanga-view .vp-life-tab{
+  font-size:.68rem;font-weight:800;letter-spacing:.04em;
+  padding:5px 12px;border-radius:999px;border:none;cursor:pointer;
+  background:rgba(255,255,255,.12);color:#cfd3e6;
+  transition:background .18s,color .18s;
+}
+#vpanchanga-view .vp-life-tab:hover{
+  background:rgba(255,255,255,.22);color:#fff;
+}
+#vpanchanga-view .vp-life-tab.active{
+  background:#FFE08A;color:#1a1140;
+  box-shadow:0 2px 8px rgba(245,194,74,.5);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   HORO RASHI BANNER — Birth Moon Rashi in horoscope result
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-horo-rashi-banner{
+  display:flex;align-items:center;gap:12px;
+  margin:10px 0 4px;padding:12px 14px;
+  border-radius:14px;
+  background:linear-gradient(135deg,#dbeafe 0%,#ede9fe 100%);
+  border-left:4px solid #6366f1;
+  box-shadow:0 2px 10px rgba(99,102,241,.12);
+}
+#vpanchanga-view .vp-horo-rashi-icon{
+  font-size:1.6rem;flex-shrink:0;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.2));
+}
+#vpanchanga-view .vp-horo-rashi-label{
+  font-size:.58rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  color:#4f46e5;margin-bottom:3px;
+}
+#vpanchanga-view .vp-horo-rashi-name{
+  font-size:1.15rem;font-weight:900;color:#3730a3;line-height:1.2;
+}
+#vpanchanga-view .vp-horo-rashi-sub{
+  font-size:.7rem;color:#6366f1;margin-top:3px;line-height:1.4;
+}

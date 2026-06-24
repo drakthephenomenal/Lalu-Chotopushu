@@ -1914,6 +1914,25 @@ function vpHoroCalculate(){
       vpAngaCardHTML('◐','Karana', karTL, false);
   }
 
+  // ── Birth Moon Rashi card ──────────────────────────────────────
+  const rashiCardEl = document.getElementById('vp-horo-rashi-card');
+  if(rashiCardEl){
+    const moonSidBirth = moonLongSid(jd);
+    const rashiIdxBirth = Math.floor(moonSidBirth / 30) % 12;
+    const rashiNameBirth = RASHI[rashiIdxBirth];
+    const rashiLordBirth = RASHI_LORD[rashiIdxBirth];
+    const rashiDeityBirth = (typeof RASHI_DEITY !== 'undefined') ? RASHI_DEITY[rashiIdxBirth] : '';
+    rashiCardEl.innerHTML = `
+      <div class="vp-horo-rashi-banner">
+        <div class="vp-horo-rashi-icon">🌙</div>
+        <div class="vp-horo-rashi-info">
+          <div class="vp-horo-rashi-label">Birth Moon Rashi (Moon Sign)</div>
+          <div class="vp-horo-rashi-name">${rashiNameBirth}</div>
+          <div class="vp-horo-rashi-sub">Lord: ${rashiLordBirth}${rashiDeityBirth ? ' · Deity: ' + rashiDeityBirth : ''}</div>
+        </div>
+      </div>`;
+  }
+
   vpHoroClose();
   const wrap = document.getElementById('vp-horo-result-wrap');
   if(wrap){
@@ -3325,6 +3344,66 @@ async function vpPersonalRender(){
         <span class="vp-personal-janmoyear-result" id="vp-personal-janmo-year-result">${janmoYearInitialResult}</span>
       </div>
 
+      <!-- ══ MAHADASHA & SADE SATI MINI CARDS (above Personal Muhurta) ══ -->
+      ${(()=>{
+        const PLANET_COLOR2={Sun:'var(--vp-planet-sun)',Moon:'var(--vp-planet-moon)',Mars:'var(--vp-planet-mars)',Mercury:'var(--vp-planet-mercury)',Jupiter:'var(--vp-planet-jupiter)',Venus:'var(--vp-planet-venus)',Saturn:'var(--vp-planet-saturn)',Rahu:'var(--vp-planet-rahu)',Ketu:'var(--vp-planet-ketu)'};
+        const PLANET_EMOJI2={Sun:'☀️',Moon:'🌙',Mars:'🔥',Mercury:'🌿',Jupiter:'🪐',Venus:'✨',Saturn:'⏳',Rahu:'🐉',Ketu:'☄️'};
+        const humanLeft2=(ms)=>{if(ms<=0)return'ended';const mins=Math.floor(ms/60000);if(mins<60)return mins+'m left';const hrs=Math.floor(mins/60);if(hrs<24)return hrs+'h '+(mins%60)+'m left';const days=Math.floor(hrs/24);if(days<30)return days+'d '+(hrs%24)+'h left';const months=Math.floor(days/30.4375);const remD=Math.floor(days-months*30.4375);if(months<12)return months+'mo '+remD+'d left';const years=Math.floor(months/12);return years+'y '+(months%12)+'mo left';};
+        let dashaHtml='', satHtml='';
+        try{
+          const dashas2=vpComputeMahaDasha(profile)||[];
+          const nowMs3=+now;
+          const activeDasha=dashas2.find(d=>+d.start<=nowMs3&&nowMs3<+d.end);
+          if(activeDasha){
+            const phase2=(typeof MAHADASHA_PHASE!=='undefined'&&MAHADASHA_PHASE[activeDasha.lord])||{};
+            const col2=PLANET_COLOR2[activeDasha.lord]||'#1a56db';
+            const em2=PLANET_EMOJI2[activeDasha.lord]||activeDasha.emoji||'🪐';
+            const lft2=humanLeft2(+activeDasha.end-nowMs3);
+            dashaHtml=`<div class="vp-msd-card" style="border-left-color:${col2}">
+              <span class="vp-msd-emoji">${em2}</span>
+              <div class="vp-msd-body">
+                <div class="vp-msd-label">Mahadasha</div>
+                <div class="vp-msd-name" style="color:${col2}">${activeDasha.lord} Dasha${phase2.theme?` <span class="vp-msd-theme">· ${phase2.theme}</span>`:''}</div>
+                <div class="vp-msd-sub">${activeDasha.years.toFixed(1)}y total · ends ${activeDasha.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
+                <div class="vp-msd-left">${lft2}</div>
+              </div>
+            </div>`;
+          }
+        }catch(e){}
+        try{
+          const satC2=vpComputeSaturnDoshaTimeline(profile,jdNow)||[];
+          const nowMs3=+now;
+          const actSat=satC2.find(s=>+s.start<=nowMs3&&nowMs3<+s.end);
+          const satColor='var(--vp-planet-saturn)';
+          if(actSat){
+            const pct2=Math.round(((nowMs3 - +actSat.start)/(+actSat.end - +actSat.start))*100);
+            satHtml=`<div class="vp-msd-card vp-msd-saturn" style="border-left-color:#7c5cfc">
+              <span class="vp-msd-emoji">${actSat.emoji||'⏳'}</span>
+              <div class="vp-msd-body">
+                <div class="vp-msd-label">Saturn Cycle</div>
+                <div class="vp-msd-name" style="color:#1a56db">${actSat.label}</div>
+                <div class="vp-msd-sub">${pct2}% done · ends ${actSat.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
+                <div class="vp-msd-left">${humanLeft2(+actSat.end-nowMs3)}</div>
+              </div>
+            </div>`;
+          } else {
+            const upSat=satC2.find(s=>+s.start>nowMs3);
+            if(upSat){
+              satHtml=`<div class="vp-msd-card vp-msd-saturn" style="border-left-color:#7c5cfc;opacity:.9">
+                <span class="vp-msd-emoji">${upSat.emoji||'⏳'}</span>
+                <div class="vp-msd-body">
+                  <div class="vp-msd-label">Next Saturn Cycle</div>
+                  <div class="vp-msd-name" style="color:#1a56db">${upSat.label}</div>
+                  <div class="vp-msd-sub">begins ${upSat.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
+                  <div class="vp-msd-left">in ${humanLeft2(+upSat.start-nowMs3).replace(' left','')}</div>
+                </div>
+              </div>`;
+            }
+          }
+        }catch(e){}
+        return (dashaHtml||satHtml)?`<div class="vp-msd-bar">${dashaHtml}${satHtml}</div>`:'';
+      })()}
+
       <!-- ══ CONSOLIDATED SCORE + Tithi/Nak/Yoga/Karana progress bars ══ -->
       <div class="vp-cscore-card vp-cscore-${cs.verdictClass}">
         <div class="vp-cscore-head">⚡ Personal Muhurta — Right Now</div>
@@ -3340,7 +3419,63 @@ async function vpPersonalRender(){
           ${makeFactorRowWithBar('🌙','Chandra Bala',(cs.chandra.emoji||'')+' '+cs.chandra.name+' · Moon in '+cs.curRashi.name,cs.scores.chandra,cs.chandra.polarity,cs.curRashi.startJD,cs.curRashi.endJD,cs.chandra.note||'')}
           ${makeFactorRowWithBar('☯️','Yoga',cs.curYoga.name+(cs.specLabel?' · '+cs.specLabel:''),cs.scores.yoga,cs.yogaPol,cs.curYoga.startJD,cs.curYoga.endJD,yogaFx)}
           ${makeFactorRowWithBar('◐','Karana',cs.curKar.name,cs.scores.karana,cs.karPol,cs.curKar.startJD,cs.curKar.endJD,karFx)}
-          ${makeFactorRowSimple('🔔','Kala / Muhurta',cs.kalaName,cs.scores.kala,cs.kalaPol)}
+          ${(()=>{
+            const polClass = cs.kalaPol==='good'?'good':cs.kalaPol==='bad'?'bad':'neutral';
+            const sign = cs.scores.kala>0?'+':'';
+            if(cs.kalaStart && cs.kalaEnd){
+              const totalMs = +cs.kalaEnd - +cs.kalaStart;
+              const elapsedMs = +now - +cs.kalaStart;
+              const pct = Math.min(100,Math.max(0,Math.round(elapsedMs/totalMs*100)));
+              const timeLeft = dur(now, cs.kalaEnd);
+              return `<div class="vp-cscore-row vp-cscore-row-rich">
+                <div class="vp-cscore-row-top">
+                  <span class="vp-cscore-icon">🔔</span>
+                  <span class="vp-cscore-label">Kala / Muhurta</span>
+                  <span class="vp-cscore-name vp-tara-${polClass}">${cs.kalaName}</span>
+                  ${cs.scores.kala!==0?`<span class="vp-cscore-pts vp-cscore-pts-${polClass}">${sign}${cs.scores.kala}</span>`:''}
+                </div>
+                <div class="vp-cscore-row-timeline">
+                  <span class="vp-cscore-tl-start">${fmt12(cs.kalaStart)}</span>
+                  <span class="vp-cscore-tl-left">${timeLeft} left</span>
+                  <span class="vp-cscore-tl-end">${fmtEnd(cs.kalaEnd, cs.kalaStart)}</span>
+                </div>
+                <div class="vp-cscore-row-bar"><div class="vp-cscore-row-fill vp-cscore-fill-${polClass}" style="width:${pct}%"></div></div>
+              </div>`;
+            } else {
+              // Ordinary time: find gap between last ended and next named period
+              let nextName='', nextStart=null, prevEnd=null;
+              try{
+                const strip2=getVaarStrip(now,lat,lng);
+                const av2=strip2.find(v=>v.isActive);
+                if(av2){
+                  const md2=getMuhurtaData(av2,lat,lng);
+                  const allM2=buildAllMuhurtas(md2);
+                  const nm2=+now;
+                  const sorted2=allM2.slice().sort((a,b)=>+a.s - +b.s);
+                  const prev2=sorted2.filter(m=>+m.e<=nm2).pop();
+                  const next2=sorted2.find(m=>+m.s>nm2);
+                  prevEnd=prev2?prev2.e:null;
+                  if(next2){nextName=next2.label;nextStart=next2.s;}
+                }
+              }catch(e){}
+              const totalMs2=prevEnd&&nextStart?+nextStart - +prevEnd:0;
+              const elapsedMs2=prevEnd?+now - +prevEnd:0;
+              const pct2=totalMs2>0?Math.min(100,Math.max(0,Math.round(elapsedMs2/totalMs2*100))):0;
+              return `<div class="vp-cscore-row vp-cscore-row-rich">
+                <div class="vp-cscore-row-top">
+                  <span class="vp-cscore-icon">🔔</span>
+                  <span class="vp-cscore-label">Kala / Muhurta</span>
+                  <span class="vp-cscore-name vp-tara-neutral">Ordinary time${nextStart?` · Next: ${nextName} at ${fmt12(nextStart)}`:''}</span>
+                </div>
+                ${prevEnd&&nextStart?`<div class="vp-cscore-row-timeline">
+                  <span class="vp-cscore-tl-start">${fmt12(prevEnd)}</span>
+                  <span class="vp-cscore-tl-left">${dur(now,nextStart)} until ${nextName}</span>
+                  <span class="vp-cscore-tl-end">${fmtEnd(nextStart,prevEnd)}</span>
+                </div>
+                <div class="vp-cscore-row-bar"><div class="vp-cscore-row-fill vp-cscore-fill-neutral" style="width:${pct2}%"></div></div>`:''}
+              </div>`;
+            }
+          })()}
           ${makeFactorRowSimple('⊕','Weekday Lord',cs.vaarLord,cs.scores.vaar,(cs.vaarRel==='own'||cs.vaarRel==='friend')?'good':cs.vaarRel==='enemy'?'bad':'neutral')}
         </div>
         <div class="vp-cscore-timer">⏱ Next change in ${dur(now, jdToDate(cs.nextChangeJD))} · at ${fmtEnd(jdToDate(cs.nextChangeJD), now)}</div>
@@ -3375,8 +3510,7 @@ async function vpPersonalRender(){
             return years + 'y ' + (months%12) + 'mo left';
           };
           let rows = '';
-
-          // 1) Active Muhurta — duration + time left
+          // Active Muhurta — duration + time left
           if(cs.kalaStart && cs.kalaEnd){
             const totalMs = +cs.kalaEnd - +cs.kalaStart;
             const leftMs  = +cs.kalaEnd - +now;
@@ -3393,63 +3527,6 @@ async function vpPersonalRender(){
               <span class="vp-pd-left">${humanLeft(leftMs)}</span>
             </div>`;
           }
-
-          // 2) Active Mahadasha — planet-coloured, days left
-          try {
-            const dashas = vpComputeMahaDasha(profile) || [];
-            const nowMs2 = +now;
-            const active = dashas.find(d => +d.start <= nowMs2 && nowMs2 < +d.end);
-            if(active){
-              const phase = (typeof MAHADASHA_PHASE!=='undefined' && MAHADASHA_PHASE[active.lord]) || {};
-              const color = PLANET_COLOR[active.lord] || 'var(--vp-violet)';
-              const emoji = PLANET_EMOJI[active.lord] || active.emoji || '🪐';
-              const leftMs = +active.end - nowMs2;
-              rows += `<div class="vp-pd-row" style="--vp-planet:${color}">
-                <span class="vp-pd-emoji">${emoji}</span>
-                <div class="vp-pd-body">
-                  <div class="vp-pd-title">${active.lord} Mahadasha${phase.theme?` — ${phase.theme}`:''}</div>
-                  <div class="vp-pd-sub">${active.years.toFixed(1)}y total · ends ${active.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
-                </div>
-                <span class="vp-pd-left">${humanLeft(leftMs)}</span>
-              </div>`;
-            }
-          } catch(e){}
-
-          // 3) Active Sade Sati / Ashtama / Kantaka — Saturn-coloured, days left
-          try {
-            const satCycles = vpComputeSaturnDoshaTimeline(profile, jdNow) || [];
-            const nowMs2 = +now;
-            const activeSat = satCycles.find(s => +s.start <= nowMs2 && nowMs2 < +s.end);
-            const color = PLANET_COLOR.Saturn;
-            if(activeSat){
-              const leftMs = +activeSat.end - nowMs2;
-              const totalMs = +activeSat.end - +activeSat.start;
-              const pct = Math.round(((nowMs2 - +activeSat.start) / totalMs) * 100);
-              rows += `<div class="vp-pd-row" style="--vp-planet:${color}">
-                <span class="vp-pd-emoji">${activeSat.emoji || '⏳'}</span>
-                <div class="vp-pd-body">
-                  <div class="vp-pd-title">${activeSat.label} · Saturn cycle (${pct}% done)</div>
-                  <div class="vp-pd-sub">${activeSat.sub || ''} · ends ${activeSat.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
-                </div>
-                <span class="vp-pd-left">${humanLeft(leftMs)}</span>
-              </div>`;
-            } else {
-              // Show the NEXT upcoming Saturn cycle so user knows what's coming
-              const upcoming = satCycles.find(s => +s.start > nowMs2);
-              if(upcoming){
-                const startsIn = +upcoming.start - nowMs2;
-                rows += `<div class="vp-pd-row" style="--vp-planet:${color};opacity:.85">
-                  <span class="vp-pd-emoji">${upcoming.emoji || '⏳'}</span>
-                  <div class="vp-pd-body">
-                    <div class="vp-pd-title">Next: ${upcoming.label}</div>
-                    <div class="vp-pd-sub">${upcoming.sub || ''} · begins ${upcoming.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
-                  </div>
-                  <span class="vp-pd-left">in ${humanLeft(startsIn).replace(' left','')}</span>
-                </div>`;
-              }
-            }
-          } catch(e){}
-
           return rows ? `<div class="vp-pd-extra">${rows}</div>` : '';
         })()}
       </div>
@@ -3533,7 +3610,7 @@ async function vpPersonalRender(){
               </div>`;
           }
 
-          return `<div class="vp-dasha-row ${cls}">
+          return `<div class="vp-dasha-row ${cls}" data-lifecycle="${isActive?'current':isPast?'past':'future'}">
             <div class="vp-dasha-lord"><span class="vp-dasha-emoji">${d.emoji}</span><b>${d.lord}</b> Mahadasha${phase.theme?` <span class="vp-dasha-theme">— ${phase.theme}</span>`:''}</div>
             <div class="vp-dasha-when">${fmtY(d.start)} → ${fmtY(d.end)} · ${d.years.toFixed(1)}y${d.isBalance?' (balance at birth)':''}</div>
             <div class="vp-dasha-tag">${tag}</div>
@@ -3577,7 +3654,7 @@ async function vpPersonalRender(){
             const marker = pActive ? ' <b style="color:#16a34a">◀ now</b>' : '';
             return `<div>· <b>${fmtDT(p.start)}</b> → <b>${fmtDT(p.end)}</b><br><span style="opacity:.85">${p.sub} (${humanDur(+p.end - +p.start)})${marker}</span></div>`;
           }).join('');
-          return `<div class="vp-saturncycle-row ${cls}">
+          return `<div class="vp-saturncycle-row ${cls}" data-lifecycle="${isActive?'current':isPast?'past':'future'}">
             <div class="vp-saturncycle-emoji">${s.emoji}</div>
             <div class="vp-saturncycle-name">${s.label}</div>
             <div class="vp-saturncycle-tag">${tag}</div>
@@ -3593,6 +3670,20 @@ async function vpPersonalRender(){
           <b>🐍 Kal Sarpa Yoga (educational):</b> ${ks.summary}
         </div>` : '';
 
+        const tabBarDasha = `<div class="vp-life-tab-bar">
+          <button class="vp-life-tab active" onclick="vpFilterLifeTab(this,'vp-dasha-list-inner','all')">All</button>
+          <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-dasha-list-inner','past')">Past</button>
+          <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-dasha-list-inner','current')">Current Active</button>
+          <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-dasha-list-inner','future')">Future</button>
+        </div>`;
+
+        const tabBarSat = `<div class="vp-life-tab-bar">
+          <button class="vp-life-tab active" onclick="vpFilterLifeTab(this,'vp-sat-list-inner','all')">All</button>
+          <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-sat-list-inner','past')">Past</button>
+          <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-sat-list-inner','current')">Current Active</button>
+          <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-sat-list-inner','future')">Future</button>
+        </div>`;
+
         return `<div class="vp-collapsible-section vp-mahasection">
           <button class="vp-collapsible-toggle" onclick="vpTogglePersonalSection('vp-maha-body','vp-maha-chevron')">
             <span>🕉️ Maha Yoga &amp; Maha Dasha — Your Life Cycles</span>
@@ -3602,9 +3693,20 @@ async function vpPersonalRender(){
             <div class="vp-maha-sub">✨ Personalized Maha Yogas (from your birth Moon)</div>
             <div class="vp-mahayoga-list">${yogaCards}</div>
             <div class="vp-maha-sub" style="margin-top:14px">🪐 Vimshottari Maha Dasha (120-year cycle)</div>
-            <div class="vp-dasha-list">${dashaRows || '<div class="vp-mahayoga-empty">Maha Dasha needs your birth nakshatra.</div>'}</div>
-            <div class="vp-maha-sub" style="margin-top:14px">⚖️ Sade Sati &amp; Saturn Cycles (past &amp; upcoming)</div>
-            <div class="vp-saturncycle-list">${satRows || satEmpty}</div>
+            ${tabBarDasha}
+            <div class="vp-dasha-list" id="vp-dasha-list-inner">${dashaRows || '<div class="vp-mahayoga-empty">Maha Dasha needs your birth nakshatra.</div>'}</div>
+            <div class="vp-maha-note">Dasha periods use Vimshottari system anchored to birth Nakshatra.</div>
+          </div>
+        </div>
+        <div class="vp-collapsible-section vp-mahasection">
+          <button class="vp-collapsible-toggle" onclick="vpTogglePersonalSection('vp-sat-body','vp-sat-chevron')">
+            <span>⚖️ Sade Sati &amp; Saturn Cycles</span>
+            <span class="vp-chevron" id="vp-sat-chevron">${(()=>{try{return sessionStorage.getItem('vp-collapse-vp-sat-body')==='closed'?'▸':'▾';}catch(e){return'▾';}})()}</span>
+          </button>
+          <div id="vp-sat-body" class="vp-collapsible-body${(()=>{try{return sessionStorage.getItem('vp-collapse-vp-sat-body')==='closed'?'':' open';}catch(e){return' open';}})()}">
+            <div class="vp-maha-sub">⚖️ Sade Sati, Ashtama &amp; Kantaka Shani (past &amp; upcoming)</div>
+            ${tabBarSat}
+            <div class="vp-saturncycle-list" id="vp-sat-list-inner">${satRows || satEmpty}</div>
             ${ksHtml}
             <div class="vp-maha-note">Saturn windows use mean longitudes (≈1° accuracy — fine for sign-based transits). Kal Sarpa is shown based on Sun, Moon, Jupiter &amp; Saturn vs the Rahu–Ketu axis only; Mars, Mercury &amp; Venus need a full chart.</div>
           </div>
@@ -3696,6 +3798,23 @@ window.vpToggleUpcoming = function() {
 
 window.vpTogglePersonalSection = function(bodyId, chevronId) {
   vpTogglePersonalSection(bodyId, chevronId);
+};
+
+// Tab filter for Mahadasha and Sade Sati sections
+window.vpFilterLifeTab = function(tabEl, listId, filter) {
+  const bar = tabEl.closest('.vp-life-tab-bar');
+  if(bar) bar.querySelectorAll('.vp-life-tab').forEach(t => t.classList.remove('active'));
+  tabEl.classList.add('active');
+  const list = document.getElementById(listId);
+  if(!list) return;
+  const rows = list.querySelectorAll('[data-lifecycle]');
+  rows.forEach(row => {
+    const lc = row.getAttribute('data-lifecycle');
+    if(filter === 'all') row.style.display = '';
+    else if(filter === 'past') row.style.display = lc === 'past' ? '' : 'none';
+    else if(filter === 'current') row.style.display = lc === 'current' ? '' : 'none';
+    else if(filter === 'future') row.style.display = lc === 'future' ? '' : 'none';
+  });
 };
 
 window.vpPersonalBestWinDaysChange = function(val) {

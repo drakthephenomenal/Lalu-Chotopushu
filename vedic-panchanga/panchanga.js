@@ -3544,39 +3544,66 @@ async function vpPersonalRender(){
             const polClass = cs.kalaPol==='good'?'good':cs.kalaPol==='bad'?'bad':'neutral';
             const sign = cs.scores.kala>0?'+':'';
             if(cs.kalaStart && cs.kalaEnd){
+              const isMixedKala = !!(cs.kalaGoodPeriod && cs.kalaBadPeriod);
+
+              // ── MIXED: render TWO separate rows (good period + bad period) ──
+              if(isMixedKala){
+                const gp = cs.kalaGoodPeriod, bp = cs.kalaBadPeriod;
+                const gTotalMs = +gp.end - +gp.start;
+                const gElapsed = +now - +gp.start;
+                const gPct = Math.min(100,Math.max(0,Math.round(gElapsed/gTotalMs*100)));
+                const bTotalMs = +bp.end - +bp.start;
+                const bElapsed = +now - +bp.start;
+                const bPct = Math.min(100,Math.max(0,Math.round(bElapsed/bTotalMs*100)));
+                return `
+                <div class="vp-cscore-row vp-cscore-row-rich vp-cscore-row-conflict">
+                  <div class="vp-cscore-row-top">
+                    <span class="vp-cscore-icon">🔔</span>
+                    <span class="vp-cscore-label">Kala / Muhurta</span>
+                    <span class="vp-cscore-name vp-tara-good">${gp.name}</span>
+                    <span class="vp-cscore-pts vp-cscore-pts-good">+1</span>
+                  </div>
+                  <div class="vp-cscore-row-timeline">
+                    <span class="vp-cscore-tl-start">${fmt12(gp.start)}</span>
+                    <span class="vp-cscore-tl-left">${dur(now, gp.end)} left</span>
+                    <span class="vp-cscore-tl-end">${fmtEnd(gp.end, gp.start)}</span>
+                  </div>
+                  <div class="vp-cscore-row-bar"><div class="vp-cscore-row-fill vp-cscore-fill-good" style="width:${gPct}%"></div></div>
+                </div>
+                <div class="vp-cscore-row vp-cscore-row-rich vp-cscore-row-conflict">
+                  <div class="vp-cscore-row-top">
+                    <span class="vp-cscore-icon">🔔</span>
+                    <span class="vp-cscore-label">Kala / Muhurta</span>
+                    <span class="vp-cscore-name vp-tara-bad">${bp.name}</span>
+                    <span class="vp-cscore-pts vp-cscore-pts-bad">-1</span>
+                  </div>
+                  <div class="vp-cscore-conflict-note">⚖️ Both active — good for ongoing work &amp; prayer; avoid new starts</div>
+                  <div class="vp-cscore-row-timeline">
+                    <span class="vp-cscore-tl-start">${fmt12(bp.start)}</span>
+                    <span class="vp-cscore-tl-left">${dur(now, bp.end)} left</span>
+                    <span class="vp-cscore-tl-end">${fmtEnd(bp.end, bp.start)}</span>
+                  </div>
+                  <div class="vp-cscore-row-bar"><div class="vp-cscore-row-fill vp-cscore-fill-bad" style="width:${bPct}%"></div></div>
+                </div>`;
+              }
+
+              // ── SINGLE period (good or bad only) ──
               const totalMs = +cs.kalaEnd - +cs.kalaStart;
               const elapsedMs = +now - +cs.kalaStart;
               const pct = Math.min(100,Math.max(0,Math.round(elapsedMs/totalMs*100)));
-              const timeLeft = dur(now, cs.kalaEnd);
-              // When both good and bad periods overlap, show a clear conflict line
-              const isMixedKala = !!(cs.kalaGoodPeriod && cs.kalaBadPeriod);
-              const conflictNote = isMixedKala
-                ? `<div class="vp-cscore-conflict-note">⚖️ <b>${cs.kalaGoodPeriod.name}</b> overlaps with <b>${cs.kalaBadPeriod.name}</b> — good for ongoing work; avoid new starts</div>`
-                : '';
-              // For display: show the good period progress bar; bad period times shown in conflict note
-              const displayStart = isMixedKala ? cs.kalaGoodPeriod.start : cs.kalaStart;
-              const displayEnd   = isMixedKala ? cs.kalaGoodPeriod.end   : cs.kalaEnd;
-              const displayPct   = isMixedKala
-                ? Math.min(100,Math.max(0,Math.round((+now - +displayStart)/(+displayEnd - +displayStart)*100)))
-                : pct;
-              const badTimeNote = isMixedKala
-                ? `<div class="vp-cscore-conflict-times"><span>${cs.kalaBadPeriod.name}: ${fmt12(cs.kalaBadPeriod.start)} → ${fmtEnd(cs.kalaBadPeriod.end, cs.kalaBadPeriod.start)}</span></div>`
-                : '';
-              return `<div class="vp-cscore-row vp-cscore-row-rich${isMixedKala?' vp-cscore-row-conflict':''}">
+              return `<div class="vp-cscore-row vp-cscore-row-rich">
                 <div class="vp-cscore-row-top">
                   <span class="vp-cscore-icon">🔔</span>
                   <span class="vp-cscore-label">Kala / Muhurta</span>
-                  <span class="vp-cscore-name vp-tara-${polClass}">${isMixedKala ? cs.kalaGoodPeriod.name : cs.kalaName}</span>
+                  <span class="vp-cscore-name vp-tara-${polClass}">${cs.kalaName}</span>
                   ${cs.scores.kala!==0?`<span class="vp-cscore-pts vp-cscore-pts-${polClass}">${sign}${cs.scores.kala}</span>`:'<span class="vp-cscore-pts vp-cscore-pts-neutral">0</span>'}
                 </div>
-                ${conflictNote}
                 <div class="vp-cscore-row-timeline">
-                  <span class="vp-cscore-tl-start">${fmt12(displayStart)}</span>
-                  <span class="vp-cscore-tl-left">${dur(now, displayEnd)} left</span>
-                  <span class="vp-cscore-tl-end">${fmtEnd(displayEnd, displayStart)}</span>
+                  <span class="vp-cscore-tl-start">${fmt12(cs.kalaStart)}</span>
+                  <span class="vp-cscore-tl-left">${dur(now, cs.kalaEnd)} left</span>
+                  <span class="vp-cscore-tl-end">${fmtEnd(cs.kalaEnd, cs.kalaStart)}</span>
                 </div>
-                <div class="vp-cscore-row-bar"><div class="vp-cscore-row-fill vp-cscore-fill-${polClass}" style="width:${displayPct}%"></div></div>
-                ${badTimeNote}
+                <div class="vp-cscore-row-bar"><div class="vp-cscore-row-fill vp-cscore-fill-${polClass}" style="width:${pct}%"></div></div>
               </div>`;
             } else {
               // Ordinary time: find gap between last ended and next named period
@@ -3649,20 +3676,43 @@ async function vpPersonalRender(){
           let rows = '';
           // Active Muhurta — duration + time left
           if(cs.kalaStart && cs.kalaEnd){
-            const totalMs = +cs.kalaEnd - +cs.kalaStart;
-            const leftMs  = +cs.kalaEnd - +now;
-            const totalStr = dur(cs.kalaStart, cs.kalaEnd);
-            const polColor = cs.kalaPol==='good' ? 'var(--vp-jade)'
-                           : cs.kalaPol==='bad'  ? 'var(--vp-rose)'
-                           : 'var(--vp-violet)';
-            rows += `<div class="vp-pd-row" style="--vp-planet:${polColor}">
-              <span class="vp-pd-emoji">⏰</span>
-              <div class="vp-pd-body">
-                <div class="vp-pd-title">Active Muhurta · ${cs.kalaName}</div>
-                <div class="vp-pd-sub">Duration ${totalStr} · ${fmt12(cs.kalaStart)} → ${fmtEnd(cs.kalaEnd, cs.kalaStart)}</div>
+            if(cs.kalaGoodPeriod && cs.kalaBadPeriod){
+              // MIXED: show two separate active muhurta rows
+              const gp = cs.kalaGoodPeriod, bp = cs.kalaBadPeriod;
+              const gLeftMs = +gp.end - +now;
+              const bLeftMs = +bp.end - +now;
+              rows += `<div class="vp-pd-row" style="--vp-planet:var(--vp-jade)">
+                <span class="vp-pd-emoji">⏰</span>
+                <div class="vp-pd-body">
+                  <div class="vp-pd-title">Active Muhurta · ${gp.name}</div>
+                  <div class="vp-pd-sub">Duration ${dur(gp.start, gp.end)} · ${fmt12(gp.start)} → ${fmtEnd(gp.end, gp.start)}</div>
+                </div>
+                <span class="vp-pd-left">${humanLeft(gLeftMs)}</span>
               </div>
-              <span class="vp-pd-left">${humanLeft(leftMs)}</span>
-            </div>`;
+              <div class="vp-pd-row" style="--vp-planet:var(--vp-rose)">
+                <span class="vp-pd-emoji">⏰</span>
+                <div class="vp-pd-body">
+                  <div class="vp-pd-title">Active Muhurta · ${bp.name}</div>
+                  <div class="vp-pd-sub">Duration ${dur(bp.start, bp.end)} · ${fmt12(bp.start)} → ${fmtEnd(bp.end, bp.start)}</div>
+                </div>
+                <span class="vp-pd-left">${humanLeft(bLeftMs)}</span>
+              </div>`;
+            } else {
+              const totalMs = +cs.kalaEnd - +cs.kalaStart;
+              const leftMs  = +cs.kalaEnd - +now;
+              const totalStr = dur(cs.kalaStart, cs.kalaEnd);
+              const polColor = cs.kalaPol==='good' ? 'var(--vp-jade)'
+                             : cs.kalaPol==='bad'  ? 'var(--vp-rose)'
+                             : 'var(--vp-violet)';
+              rows += `<div class="vp-pd-row" style="--vp-planet:${polColor}">
+                <span class="vp-pd-emoji">⏰</span>
+                <div class="vp-pd-body">
+                  <div class="vp-pd-title">Active Muhurta · ${cs.kalaName}</div>
+                  <div class="vp-pd-sub">Duration ${totalStr} · ${fmt12(cs.kalaStart)} → ${fmtEnd(cs.kalaEnd, cs.kalaStart)}</div>
+                </div>
+                <span class="vp-pd-left">${humanLeft(leftMs)}</span>
+              </div>`;
+            }
           }
           return rows ? `<div class="vp-pd-extra">${rows}</div>` : '';
         })()}

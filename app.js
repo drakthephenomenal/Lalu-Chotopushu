@@ -13343,9 +13343,8 @@ function _showUserReplyPopup(text) {
     var tapCX  = tapX || (tzRect.left + tzRect.width * 0.5);  // tap centre X
     var tapCY  = tapY || (tzRect.top  + tzRect.height * 0.75); // tap centre Y
     var isIPad = window.innerWidth >= 768;
-    var isAndroid = /android/i.test(navigator.userAgent);
     var bankCX = tzRect.left + tzRect.width  * 0.5;
-    var bankCY = tzRect.top  + tzRect.height * (isIPad ? 0.44 : isAndroid ? 0.42 : 0.32);
+    var bankCY = tzRect.top  + tzRect.height * (isIPad ? 0.44 : 0.32);
     // Pod left is always set to the target centre X; translateX(-50%) centres it
     var startX = tapCX;
     var startY = tapCY - COIN_HALF;   // top of coin at tap point

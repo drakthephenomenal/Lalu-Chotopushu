@@ -2847,3 +2847,41 @@
 #vpanchanga-view .vp-horo-rashi-sub{
   font-size:.7rem;color:#6366f1;margin-top:3px;line-height:1.4;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   YOGA SECTION — Universal (For All) + Personal (For Me)
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-yoga-sub-for-all{
+  background:linear-gradient(90deg,rgba(99,102,241,.18) 0%,transparent 100%);
+  border-left:3px solid #6366f1;border-radius:0 8px 8px 0;
+  padding:5px 10px;color:#a5b4fc;font-weight:800;font-size:.65rem;
+  letter-spacing:.06em;text-transform:uppercase;margin:6px 14px 8px;
+}
+#vpanchanga-view .vp-yoga-sub-for-me{
+  background:linear-gradient(90deg,rgba(245,194,74,.15) 0%,transparent 100%);
+  border-left:3px solid #F5C24A;border-radius:0 8px 8px 0;
+  padding:5px 10px;color:#F5C24A;font-weight:800;font-size:.65rem;
+  letter-spacing:.06em;text-transform:uppercase;margin:14px 14px 8px;
+}
+#vpanchanga-view .vp-yoga-universal .vp-mahayoga-name{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+}
+#vpanchanga-view .vp-yoga-datetag{
+  font-size:.6rem;font-weight:900;letter-spacing:.04em;
+  background:#6366f1;color:#fff;
+  padding:2px 8px;border-radius:999px;margin-left:auto;
+  flex-shrink:0;
+}
+#vpanchanga-view .vp-yoga-active .vp-yoga-datetag{
+  background:#16a34a;
+}
+#vpanchanga-view .vp-yoga-dosha{
+  border-left-color:#ef4444 !important;
+  background:rgba(239,68,68,.07) !important;
+}
+#vpanchanga-view .vp-yoga-dosha .vp-yoga-datetag{
+  background:#ef4444;
+}
+#vpanchanga-view .vp-yoga-dosha .vp-mahayoga-name{
+  color:#fca5a5;
+}

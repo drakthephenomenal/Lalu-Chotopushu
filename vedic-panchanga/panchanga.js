@@ -2667,6 +2667,65 @@ function vpComputeMahaDasha(profile){
   return periods;
 }
 
+// ══════════════════════════════════════════════════════════════
+// UNIVERSAL DAILY YOGAS — good for all, based on live panchanga
+// Returns array of {name, emoji, desc, status:'active'|'upcoming', dateStr}
+// ══════════════════════════════════════════════════════════════
+function vpComputeUniversalYogas(jdNow, lat, lng){
+  const results = [];
+  const AMRITA = {0:[13],1:[22,23],2:[0],3:[16,17],4:[7,26],5:[23,26],6:[3,22]}; // wday→naks
+  const SARVARTHA = {0:[14,9,22,25],1:[7,22,23,26],2:[0,5,9,14],3:[4,7,11,16,25],4:[1,7,18,25,26],5:[8,14,15,26],6:[3,10,14,22]};
+  const RAVI_DOSHA = {0:[12,8,19,11,5,22,24],1:[0,6,14,24],2:[4,7,11,20,24],3:[8,13,24],4:[3,10,16,21],5:[2,8,11,19,24],6:[6,7,14,16]};
+  const NAK_NAMES = ['Ashwini','Bharani','Krittika','Rohini','Mrigashira','Ardra','Punarvasu','Pushya','Ashlesha','Magha','Purva Phalguni','Uttara Phalguni','Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha','Mula','Purva Ashadha','Uttara Ashadha','Shravana','Dhanishtha','Shatabhisha','Purva Bhadrapada','Uttara Bhadrapada','Revati'];
+  const VAAR = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+  function checkDay(jd){
+    const dt = jdToDate(jd);
+    const wday = dt.getDay();
+    const nakIdx = Math.floor(moonLongSid(jd) / (360/27)) % 27;
+    const tithiI = tithiIdx(jd);
+    const dayLabel = dt.toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short'});
+    const isToday = Math.floor(jd) === Math.floor(jdNow);
+    const status = isToday ? 'active' : 'upcoming';
+
+    // Amrita Siddhi Yoga
+    if((AMRITA[wday]||[]).includes(nakIdx)){
+      results.push({name:'Amrita Siddhi Yoga',emoji:'🪷',desc:`${VAAR[wday]} + ${NAK_NAMES[nakIdx]} — nectar of success; excellent for new work, travel, medicine`,status,dateStr:isToday?'Today':dayLabel});
+    }
+    // Sarvartha Siddhi Yoga
+    if((SARVARTHA[wday]||[]).includes(nakIdx)){
+      results.push({name:'Sarvartha Siddhi Yoga',emoji:'✅',desc:`${VAAR[wday]} + ${NAK_NAMES[nakIdx]} — fulfillment of all purposes; sign & buy, start ventures`,status,dateStr:isToday?'Today':dayLabel});
+    }
+    // Guru Pushya Yoga
+    if(wday===4 && nakIdx===7){
+      results.push({name:'Guru Pushya Yoga',emoji:'🙏',desc:'Thursday + Pushya — most auspicious for gold purchase, wealth, spiritual initiation & business launch',status,dateStr:isToday?'Today':dayLabel});
+    }
+    // Ravi Pushya Yoga
+    if(wday===0 && nakIdx===7){
+      results.push({name:'Ravi Pushya Yoga',emoji:'☀️',desc:'Sunday + Pushya — powerful for health, authority & all new beginnings',status,dateStr:isToday?'Today':dayLabel});
+    }
+    // Ravi Yoga (inauspicious dosha — warn)
+    if((RAVI_DOSHA[wday]||[]).includes(nakIdx)){
+      results.push({name:'Ravi Yoga (Dosha)',emoji:'⚠️',desc:`${VAAR[wday]} + ${NAK_NAMES[nakIdx]} — avoid ceremonies & new ventures; normal daily work fine`,status,dateStr:isToday?'Today':dayLabel,dosha:true});
+    }
+    // Purnima / Amavasya
+    if(tithiI===14){
+      results.push({name:'Purnima (Full Moon)',emoji:'🌕',desc:'Complete lunar energy — ideal for worship, meditation, charity & ancestral rites',status,dateStr:isToday?'Today':dayLabel});
+    }
+    if(tithiI===29){
+      results.push({name:'Amavasya (New Moon)',emoji:'🌑',desc:'Deep inner energy — ancestor worship (Shraddha), fasting & introspection',status,dateStr:isToday?'Today':dayLabel});
+    }
+    // Ekadashi
+    if(tithiI===10 || tithiI===25){
+      results.push({name:'Ekadashi',emoji:'🪷',desc:'11th tithi — fasting & Vishnu worship; cleansing & spiritual merit',status,dateStr:isToday?'Today':dayLabel});
+    }
+  }
+
+  // Check today and next 7 days
+  for(let i=0;i<8;i++) checkDay(jdNow + i);
+  return results;
+}
+
 function vpComputeMahaYogas(profile){
   if(!profile || typeof profile.nakshatraIndex !== 'number') return [];
   const out = [];
@@ -3550,7 +3609,8 @@ async function vpPersonalRender(){
       <!-- ══ MAHA YOGA & MAHA DASHA — personalized ══ -->
       ${(()=>{
         const dashas = vpComputeMahaDasha(profile) || [];
-        const yogas = vpComputeMahaYogas(profile) || [];
+        const myYogas = vpComputeMahaYogas(profile) || [];
+        const universalYogas = vpComputeUniversalYogas(jdNow, lat, lng);
         const nowMs = +now;
         const activeIdx = dashas.findIndex(d => +d.start <= nowMs && nowMs < +d.end);
         const fmtY = d => d.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
@@ -3617,11 +3677,22 @@ async function vpPersonalRender(){
             ${activeBlock}
           </div>`;
         }).join('');
-        const yogaCards = yogas.length ? yogas.map(y=>`
+        // ── Personal (birth) yoga cards ──
+        const myYogaCards = myYogas.length ? myYogas.map(y=>`
           <div class="vp-mahayoga-card">
             <div class="vp-mahayoga-name"><span>${y.emoji}</span> ${y.name}</div>
             <div class="vp-mahayoga-desc">${y.desc}</div>
           </div>`).join('') : `<div class="vp-mahayoga-empty">No major classical yogas detected from Moon-based factors. A full chart with all planets reveals more.</div>`;
+
+        // ── Universal yoga cards (today + next 7 days) ──
+        const uYogaCards = universalYogas.length ? universalYogas.map(y=>`
+          <div class="vp-mahayoga-card vp-yoga-universal${y.dosha?' vp-yoga-dosha':''} vp-yoga-${y.status}">
+            <div class="vp-mahayoga-name">
+              <span>${y.emoji}</span> ${y.name}
+              <span class="vp-yoga-datetag">${y.dateStr}</span>
+            </div>
+            <div class="vp-mahayoga-desc">${y.desc}</div>
+          </div>`).join('') : `<div class="vp-mahayoga-empty">No special universal yogas in the next 7 days.</div>`;
 
         // ── Saturn cycles: Sade Sati, Ashtama, Kantaka ──
         const satCycles = vpComputeSaturnDoshaTimeline(profile, jdNow) || [];
@@ -3670,45 +3741,56 @@ async function vpPersonalRender(){
           <b>🐍 Kal Sarpa Yoga (educational):</b> ${ks.summary}
         </div>` : '';
 
-        const tabBarDasha = `<div class="vp-life-tab-bar">
-          <button class="vp-life-tab active" onclick="vpFilterLifeTab(this,'vp-dasha-list-inner','all')">All</button>
-          <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-dasha-list-inner','past')">Past</button>
-          <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-dasha-list-inner','current')">Current Active</button>
-          <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-dasha-list-inner','future')">Future</button>
-        </div>`;
+        return `
+        <!-- ══ SECTION 1: MAHA YOGA ══ -->
+        <div class="vp-collapsible-section vp-mahasection">
+          <button class="vp-collapsible-toggle" onclick="vpTogglePersonalSection('vp-yoga-body','vp-yoga-chevron')">
+            <span>✨ Maha Yoga — Yoga Insights</span>
+            <span class="vp-chevron" id="vp-yoga-chevron">${(()=>{try{return sessionStorage.getItem('vp-collapse-vp-yoga-body')==='closed'?'▸':'▾';}catch(e){return'▾';}})()}</span>
+          </button>
+          <div id="vp-yoga-body" class="vp-collapsible-body${(()=>{try{return sessionStorage.getItem('vp-collapse-vp-yoga-body')==='closed'?'':' open';}catch(e){return' open';}})()}">
+            <div class="vp-maha-sub vp-yoga-sub-for-all">🌍 For Everyone — Active & Coming Soon (7 days)</div>
+            <div class="vp-mahayoga-list vp-yoga-universal-list">${uYogaCards}</div>
+            <div class="vp-maha-sub vp-yoga-sub-for-me">🙋 For Me — Yogas from My Birth Chart</div>
+            <div class="vp-mahayoga-list">${myYogaCards}</div>
+            <div class="vp-maha-note">Birth yogas use Moon-based factors only. Universal yogas are based on today's Tithi, Nakshatra &amp; Weekday.</div>
+          </div>
+        </div>
 
-        const tabBarSat = `<div class="vp-life-tab-bar">
-          <button class="vp-life-tab active" onclick="vpFilterLifeTab(this,'vp-sat-list-inner','all')">All</button>
-          <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-sat-list-inner','past')">Past</button>
-          <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-sat-list-inner','current')">Current Active</button>
-          <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-sat-list-inner','future')">Future</button>
-        </div>`;
-
-        return `<div class="vp-collapsible-section vp-mahasection">
+        <!-- ══ SECTION 2: MAHA DASHA ══ -->
+        <div class="vp-collapsible-section vp-mahasection">
           <button class="vp-collapsible-toggle" onclick="vpTogglePersonalSection('vp-maha-body','vp-maha-chevron')">
-            <span>🕉️ Maha Yoga &amp; Maha Dasha — Your Life Cycles</span>
+            <span>🪐 Maha Dasha — Vimshottari Life Periods</span>
             <span class="vp-chevron" id="vp-maha-chevron">${(()=>{try{return sessionStorage.getItem('vp-collapse-vp-maha-body')==='closed'?'▸':'▾';}catch(e){return'▾';}})()}</span>
           </button>
           <div id="vp-maha-body" class="vp-collapsible-body${(()=>{try{return sessionStorage.getItem('vp-collapse-vp-maha-body')==='closed'?'':' open';}catch(e){return' open';}})()}">
-            <div class="vp-maha-sub">✨ Personalized Maha Yogas (from your birth Moon)</div>
-            <div class="vp-mahayoga-list">${yogaCards}</div>
-            <div class="vp-maha-sub" style="margin-top:14px">🪐 Vimshottari Maha Dasha (120-year cycle)</div>
-            ${tabBarDasha}
+            <div class="vp-life-tab-bar">
+              <button class="vp-life-tab active" onclick="vpFilterLifeTab(this,'vp-dasha-list-inner','all')">All</button>
+              <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-dasha-list-inner','past')">Past</button>
+              <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-dasha-list-inner','current')">Current Active</button>
+              <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-dasha-list-inner','future')">Future</button>
+            </div>
             <div class="vp-dasha-list" id="vp-dasha-list-inner">${dashaRows || '<div class="vp-mahayoga-empty">Maha Dasha needs your birth nakshatra.</div>'}</div>
             <div class="vp-maha-note">Dasha periods use Vimshottari system anchored to birth Nakshatra.</div>
           </div>
         </div>
+
+        <!-- ══ SECTION 3: SADE SATI & SATURN CYCLES ══ -->
         <div class="vp-collapsible-section vp-mahasection">
           <button class="vp-collapsible-toggle" onclick="vpTogglePersonalSection('vp-sat-body','vp-sat-chevron')">
             <span>⚖️ Sade Sati &amp; Saturn Cycles</span>
             <span class="vp-chevron" id="vp-sat-chevron">${(()=>{try{return sessionStorage.getItem('vp-collapse-vp-sat-body')==='closed'?'▸':'▾';}catch(e){return'▾';}})()}</span>
           </button>
           <div id="vp-sat-body" class="vp-collapsible-body${(()=>{try{return sessionStorage.getItem('vp-collapse-vp-sat-body')==='closed'?'':' open';}catch(e){return' open';}})()}">
-            <div class="vp-maha-sub">⚖️ Sade Sati, Ashtama &amp; Kantaka Shani (past &amp; upcoming)</div>
-            ${tabBarSat}
+            <div class="vp-life-tab-bar">
+              <button class="vp-life-tab active" onclick="vpFilterLifeTab(this,'vp-sat-list-inner','all')">All</button>
+              <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-sat-list-inner','past')">Past</button>
+              <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-sat-list-inner','current')">Current Active</button>
+              <button class="vp-life-tab" onclick="vpFilterLifeTab(this,'vp-sat-list-inner','future')">Future</button>
+            </div>
             <div class="vp-saturncycle-list" id="vp-sat-list-inner">${satRows || satEmpty}</div>
             ${ksHtml}
-            <div class="vp-maha-note">Saturn windows use mean longitudes (≈1° accuracy — fine for sign-based transits). Kal Sarpa is shown based on Sun, Moon, Jupiter &amp; Saturn vs the Rahu–Ketu axis only; Mars, Mercury &amp; Venus need a full chart.</div>
+            <div class="vp-maha-note">Saturn windows use mean longitudes (≈1° accuracy). Kal Sarpa uses Sun, Moon, Jupiter &amp; Saturn vs Rahu–Ketu axis only.</div>
           </div>
         </div>`;
       })()}
@@ -3748,6 +3830,9 @@ async function vpPersonalRender(){
       }
     }
   } catch(e){ /* no-op */ }
+
+  // Restore tab selections that may have been set before this re-render
+  requestAnimationFrame(function(){ window._vpRestoreLifeTabs && window._vpRestoreLifeTabs(); });
 }
 
 // Re-runs the Janmotithi-for-year lookup when the user picks a different
@@ -3801,10 +3886,14 @@ window.vpTogglePersonalSection = function(bodyId, chevronId) {
 };
 
 // Tab filter for Mahadasha and Sade Sati sections
+window._vpLifeTabState = window._vpLifeTabState || {};
+
 window.vpFilterLifeTab = function(tabEl, listId, filter) {
   const bar = tabEl.closest('.vp-life-tab-bar');
   if(bar) bar.querySelectorAll('.vp-life-tab').forEach(t => t.classList.remove('active'));
   tabEl.classList.add('active');
+  // Persist selection so it survives the 30s re-render
+  window._vpLifeTabState[listId] = filter;
   const list = document.getElementById(listId);
   if(!list) return;
   const rows = list.querySelectorAll('[data-lifecycle]');
@@ -3814,6 +3903,30 @@ window.vpFilterLifeTab = function(tabEl, listId, filter) {
     else if(filter === 'past') row.style.display = lc === 'past' ? '' : 'none';
     else if(filter === 'current') row.style.display = lc === 'current' ? '' : 'none';
     else if(filter === 'future') row.style.display = lc === 'future' ? '' : 'none';
+  });
+};
+
+// Called after every re-render to restore the previously chosen tab
+window._vpRestoreLifeTabs = function() {
+  Object.keys(window._vpLifeTabState).forEach(listId => {
+    const filter = window._vpLifeTabState[listId];
+    if(!filter || filter === 'all') return;
+    const list = document.getElementById(listId);
+    if(!list) return;
+    // Re-apply row visibility
+    const rows = list.querySelectorAll('[data-lifecycle]');
+    rows.forEach(row => {
+      const lc = row.getAttribute('data-lifecycle');
+      row.style.display = lc === filter ? '' : 'none';
+    });
+    // Re-apply active tab highlight
+    const bar = list.closest('.vp-collapsible-body')?.querySelector('.vp-life-tab-bar');
+    if(bar) {
+      bar.querySelectorAll('.vp-life-tab').forEach(t => {
+        const onclick = t.getAttribute('onclick') || '';
+        t.classList.toggle('active', onclick.includes(`'${filter}'`));
+      });
+    }
   });
 };
 

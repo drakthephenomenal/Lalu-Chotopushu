@@ -1781,6 +1781,19 @@
   border:1px solid rgba(200,150,10,.35);border-radius:10px;
   font-size:.65rem;font-weight:700;color:var(--vp-gold);
 }
+/* Conflict kala row — Abhijit + Rahu Kalam overlap */
+#vpanchanga-view .vp-cscore-row-conflict{
+  background:rgba(255,180,0,.05);border-radius:8px;padding:6px 8px;
+}
+#vpanchanga-view .vp-cscore-conflict-note{
+  font-size:.60rem;font-weight:600;color:#b45309;
+  background:rgba(251,191,36,.15);border-radius:6px;
+  padding:3px 8px;margin:3px 0;line-height:1.4;
+}
+#vpanchanga-view .vp-cscore-conflict-times{
+  font-size:.55rem;color:var(--vp-rose);opacity:.85;
+  margin:2px 0 0;padding:0 2px;
+}
 
 /* ── Collapsible sections ────────────────────────────────────── */
 #vpanchanga-view .vp-collapsible-section{
@@ -1857,6 +1870,10 @@
 }
 #vpanchanga-view .vp-best-win-yoga-why{
   font-size:.58rem;font-weight:600;opacity:.85;
+}
+#vpanchanga-view .vp-best-win-yoga-from{
+  font-size:.56rem;font-weight:700;opacity:.75;
+  background:rgba(10,58,140,.10);border-radius:4px;padding:0 4px;
 }
 
 /* "Now" badge in timeline */

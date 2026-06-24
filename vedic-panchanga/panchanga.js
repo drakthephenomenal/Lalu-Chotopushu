@@ -2370,40 +2370,55 @@ function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
   // ── Kala / Muhurta now ──
   let kalaScore = 0, kalaName = 'Ordinary time', kalaPol = 'neutral';
   let kalaStart = null, kalaEnd = null;
+  // Track ALL active periods separately so overlaps (e.g. Abhijit + Rahu Kalam)
+  // are correctly reflected in both the score AND the displayed label.
+  let kalaGoodPeriod = null, kalaBadPeriod = null;
   try {
     const vaarStrip  = getVaarStrip(nowDate, lat, lng);
     const activeVaar = vaarStrip.find(v => v.isActive);
     if(activeVaar){
       const md = getMuhurtaData(activeVaar, lat, lng);
       const nm = +nowDate;
-      const dur = md.durMuhurtas && md.durMuhurtas.find(d => nm >= +d.start && nm < +d.end);
+      const durM = md.durMuhurtas && md.durMuhurtas.find(d => nm >= +d.start && nm < +d.end);
+
+      // ── Check ALL auspicious periods independently ──
       if(md.amritaKala && nm >= +md.amritaKala.start && nm < +md.amritaKala.end){
-        kalaScore = 1; kalaName = 'Amrita Kala ✨'; kalaPol = 'good';
-        kalaStart = md.amritaKala.start; kalaEnd = md.amritaKala.end;
+        kalaGoodPeriod = {name:'Amrita Kala ✨', start:md.amritaKala.start, end:md.amritaKala.end};
       } else if(nm >= +md.abhijit.start && nm < +md.abhijit.end){
-        kalaScore = 1; kalaName = 'Abhijit Muhurta 🏆'; kalaPol = 'good';
-        kalaStart = md.abhijit.start; kalaEnd = md.abhijit.end;
+        kalaGoodPeriod = {name:'Abhijit Muhurta 🏆', start:md.abhijit.start, end:md.abhijit.end};
       } else if(nm >= +md.vijaya.start && nm < +md.vijaya.end){
-        kalaScore = 1; kalaName = 'Vijaya Muhurta ⚔️'; kalaPol = 'good';
-        kalaStart = md.vijaya.start; kalaEnd = md.vijaya.end;
+        kalaGoodPeriod = {name:'Vijaya Muhurta ⚔️', start:md.vijaya.start, end:md.vijaya.end};
       } else if(nm >= +md.brahmaMuhurta.start && nm < +md.brahmaMuhurta.end){
-        kalaScore = 1; kalaName = 'Brahma Muhurta 🌅'; kalaPol = 'good';
-        kalaStart = md.brahmaMuhurta.start; kalaEnd = md.brahmaMuhurta.end;
-      } else if(nm >= +md.rahuKalam.start && nm < +md.rahuKalam.end){
-        kalaScore = -1; kalaName = 'Rahu Kalam ☠️'; kalaPol = 'bad';
-        kalaStart = md.rahuKalam.start; kalaEnd = md.rahuKalam.end;
+        kalaGoodPeriod = {name:'Brahma Muhurta 🌅', start:md.brahmaMuhurta.start, end:md.brahmaMuhurta.end};
+      }
+
+      // ── Check ALL inauspicious periods independently ──
+      if(nm >= +md.rahuKalam.start && nm < +md.rahuKalam.end){
+        kalaBadPeriod = {name:'Rahu Kalam ☠️', start:md.rahuKalam.start, end:md.rahuKalam.end};
       } else if(nm >= +md.yamaganda.start && nm < +md.yamaganda.end){
-        kalaScore = -1; kalaName = 'Yamaganda ⚰️'; kalaPol = 'bad';
-        kalaStart = md.yamaganda.start; kalaEnd = md.yamaganda.end;
+        kalaBadPeriod = {name:'Yamaganda ⚰️', start:md.yamaganda.start, end:md.yamaganda.end};
       } else if(nm >= +md.gulika.start && nm < +md.gulika.end){
-        kalaScore = -1; kalaName = 'Gulika (Mandi) 🐍'; kalaPol = 'bad';
-        kalaStart = md.gulika.start; kalaEnd = md.gulika.end;
+        kalaBadPeriod = {name:'Gulika (Mandi) 🐍', start:md.gulika.start, end:md.gulika.end};
       } else if(md.varjyam && nm >= +md.varjyam.start && nm < +md.varjyam.end){
-        kalaScore = -1; kalaName = 'Varjyam 🚫'; kalaPol = 'bad';
-        kalaStart = md.varjyam.start; kalaEnd = md.varjyam.end;
-      } else if(dur){
-        kalaScore = -1; kalaName = 'Dur Muhurta ⚠️'; kalaPol = 'bad';
-        kalaStart = dur.start; kalaEnd = dur.end;
+        kalaBadPeriod = {name:'Varjyam 🚫', start:md.varjyam.start, end:md.varjyam.end};
+      } else if(durM){
+        kalaBadPeriod = {name:'Dur Muhurta ⚠️', start:durM.start, end:durM.end};
+      }
+
+      // ── Combine: overlap = mixed (+1 -1 = net 0, label shows conflict) ──
+      if(kalaGoodPeriod && kalaBadPeriod){
+        // Both active simultaneously — inauspicious cancels auspicious for new acts
+        kalaScore = 0; // net zero: auspicious +1 cancelled by inauspicious -1
+        kalaName  = kalaGoodPeriod.name + ' + ' + kalaBadPeriod.name + ' (Mixed)';
+        kalaPol   = 'neutral'; // mixed
+        // For the progress bar, show the auspicious period (shorter, more specific)
+        kalaStart = kalaGoodPeriod.start; kalaEnd = kalaGoodPeriod.end;
+      } else if(kalaGoodPeriod){
+        kalaScore = 1; kalaName = kalaGoodPeriod.name; kalaPol = 'good';
+        kalaStart = kalaGoodPeriod.start; kalaEnd = kalaGoodPeriod.end;
+      } else if(kalaBadPeriod){
+        kalaScore = -1; kalaName = kalaBadPeriod.name; kalaPol = 'bad';
+        kalaStart = kalaBadPeriod.start; kalaEnd = kalaBadPeriod.end;
       }
     }
   } catch(e){ /* no-op: kalaScore stays 0 */ }
@@ -2431,6 +2446,7 @@ function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
     tara, chandra, curTithi, curNak, curRashi, curYoga, curKar,
     yogaPol, karPol, vaarLord, vaarRel, specLabel, specYogas,
     kalaScore, kalaName, kalaPol, kalaStart, kalaEnd,
+    kalaGoodPeriod, kalaBadPeriod,
     scores:{tara:tScore, chandra:cScore, yoga:yScore, karana:kScore, kala:kalaScore, vaar:vScore},
     total, maxScore, verdict, verdictClass, verdictIcon, nextChangeJD,
   };
@@ -2456,25 +2472,40 @@ function vpPersonalBestWindows(profile, fromJD, daysAhead, maxResults){
       const end   = Math.min(seg.endJD,   limitJD);
       if(end - start < 1/24) continue; // skip windows < 1 h
 
-      // Detect special yogas — scan every 6h across the full window
-      // (midpoint-only misses yogas that fall early or late in the window)
+      // Detect special yogas — scan every 1h so we find the EXACT moment
+      // each yoga begins within the window. We record yogaStartJD so the
+      // badge can show "from HH:MM" when the yoga kicks in mid-window
+      // (e.g. Vishakha starts Thursday partway through a Tue-Wed window).
       let winSpecYogas = [];
       try {
         const lat = typeof LAT==='number'?LAT:profile.lat;
         const lng = typeof LNG==='number'?LNG:profile.lng;
+        // name → {yoga, firstJD}
         const yogaMap = new Map();
-        const step = 0.25; // 6 hours in JD units
-        for(let jd = start; jd < end + step; jd += step){
+        const step = 1/24; // 1 hour in JD units
+        for(let jd = start; jd <= end + step/2; jd += step){
           const clamped = Math.min(jd, end);
           const d = jdToDate(clamped);
           const vIdx = getVedicVaarIdx(d, lat, lng);
           const nIdx = Math.floor(moonLongSid(clamped)/(360/27))%27;
           specialYogas(vIdx, nIdx, null, null).forEach(y => {
-            if(!yogaMap.has(y.name)) yogaMap.set(y.name, y);
+            if(!yogaMap.has(y.name)){
+              yogaMap.set(y.name, {yoga: y, firstJD: clamped});
+            }
           });
           if(clamped >= end) break;
         }
-        winSpecYogas = [...yogaMap.values()];
+        // Only include a yoga if it fires INSIDE the window (not just at the very
+        // end boundary). A yoga that triggers only at or after (end - 1h) belongs
+        // to the NEXT window — exclude it here to prevent false labelling.
+        winSpecYogas = [...yogaMap.values()]
+          .filter(({firstJD}) => firstJD < end - 1/24)
+          .map(({yoga, firstJD}) => ({
+            ...yoga,
+            yogaStartJD: firstJD,
+            // Flag if yoga starts more than 1h after window open (mid-window)
+            yogaStartsLater: firstJD > start + 1/24,
+          }));
       } catch(e){ /* no-op */ }
 
       windows.push({...seg, startJD:start, endJD:end, specialYogas:winSpecYogas});
@@ -3328,8 +3359,15 @@ async function vpPersonalRender(){
         const winDur = dur(sd, ed);
         const taraClass = w.tara.polarity==='good'?'good':'neutral';
         const chanClass  = w.chandra.polarity==='good'?'good':'neutral';
+        // Render yoga badges — if yoga only starts partway through the window,
+        // show "from HH:MM" so the user knows when it actually kicks in.
         const specHtml = w.specialYogas && w.specialYogas.length
-          ? `<div class="vp-best-win-special">${w.specialYogas.map(s=>`<span class="vp-best-win-yoga-badge" title="${s.desc||''}">${s.symbol||'✨'} ${s.name}${s.desc?` <span class="vp-best-win-yoga-why">(${s.desc})</span>`:''}</span>`).join('')}</div>` : '';
+          ? `<div class="vp-best-win-special">${w.specialYogas.map(s=>{
+              const fromStr = s.yogaStartsLater && s.yogaStartJD
+                ? ` <span class="vp-best-win-yoga-from">from ${fmt12(jdToDate(s.yogaStartJD))}</span>`
+                : '';
+              return `<span class="vp-best-win-yoga-badge" title="${s.desc||''}">${s.symbol||'✨'} ${s.name}${fromStr}${s.desc?` <span class="vp-best-win-yoga-why">(${s.desc})</span>`:''}</span>`;
+            }).join('')}</div>` : '';
         return `<div class="vp-best-win-row">
           <div class="vp-best-win-when">${fmtDT(sd)} <span class="vp-best-win-arrow">→</span> ${fmtEnd(ed, sd)}</div>
           <div class="vp-best-win-badges">
@@ -3510,19 +3548,35 @@ async function vpPersonalRender(){
               const elapsedMs = +now - +cs.kalaStart;
               const pct = Math.min(100,Math.max(0,Math.round(elapsedMs/totalMs*100)));
               const timeLeft = dur(now, cs.kalaEnd);
-              return `<div class="vp-cscore-row vp-cscore-row-rich">
+              // When both good and bad periods overlap, show a clear conflict line
+              const isMixedKala = !!(cs.kalaGoodPeriod && cs.kalaBadPeriod);
+              const conflictNote = isMixedKala
+                ? `<div class="vp-cscore-conflict-note">⚖️ <b>${cs.kalaGoodPeriod.name}</b> overlaps with <b>${cs.kalaBadPeriod.name}</b> — good for ongoing work; avoid new starts</div>`
+                : '';
+              // For display: show the good period progress bar; bad period times shown in conflict note
+              const displayStart = isMixedKala ? cs.kalaGoodPeriod.start : cs.kalaStart;
+              const displayEnd   = isMixedKala ? cs.kalaGoodPeriod.end   : cs.kalaEnd;
+              const displayPct   = isMixedKala
+                ? Math.min(100,Math.max(0,Math.round((+now - +displayStart)/(+displayEnd - +displayStart)*100)))
+                : pct;
+              const badTimeNote = isMixedKala
+                ? `<div class="vp-cscore-conflict-times"><span>${cs.kalaBadPeriod.name}: ${fmt12(cs.kalaBadPeriod.start)} → ${fmtEnd(cs.kalaBadPeriod.end, cs.kalaBadPeriod.start)}</span></div>`
+                : '';
+              return `<div class="vp-cscore-row vp-cscore-row-rich${isMixedKala?' vp-cscore-row-conflict':''}">
                 <div class="vp-cscore-row-top">
                   <span class="vp-cscore-icon">🔔</span>
                   <span class="vp-cscore-label">Kala / Muhurta</span>
-                  <span class="vp-cscore-name vp-tara-${polClass}">${cs.kalaName}</span>
-                  ${cs.scores.kala!==0?`<span class="vp-cscore-pts vp-cscore-pts-${polClass}">${sign}${cs.scores.kala}</span>`:''}
+                  <span class="vp-cscore-name vp-tara-${polClass}">${isMixedKala ? cs.kalaGoodPeriod.name : cs.kalaName}</span>
+                  ${cs.scores.kala!==0?`<span class="vp-cscore-pts vp-cscore-pts-${polClass}">${sign}${cs.scores.kala}</span>`:'<span class="vp-cscore-pts vp-cscore-pts-neutral">0</span>'}
                 </div>
+                ${conflictNote}
                 <div class="vp-cscore-row-timeline">
-                  <span class="vp-cscore-tl-start">${fmt12(cs.kalaStart)}</span>
-                  <span class="vp-cscore-tl-left">${timeLeft} left</span>
-                  <span class="vp-cscore-tl-end">${fmtEnd(cs.kalaEnd, cs.kalaStart)}</span>
+                  <span class="vp-cscore-tl-start">${fmt12(displayStart)}</span>
+                  <span class="vp-cscore-tl-left">${dur(now, displayEnd)} left</span>
+                  <span class="vp-cscore-tl-end">${fmtEnd(displayEnd, displayStart)}</span>
                 </div>
-                <div class="vp-cscore-row-bar"><div class="vp-cscore-row-fill vp-cscore-fill-${polClass}" style="width:${pct}%"></div></div>
+                <div class="vp-cscore-row-bar"><div class="vp-cscore-row-fill vp-cscore-fill-${polClass}" style="width:${displayPct}%"></div></div>
+                ${badTimeNote}
               </div>`;
             } else {
               // Ordinary time: find gap between last ended and next named period
@@ -3817,7 +3871,6 @@ async function vpPersonalRender(){
             <div class="vp-maha-note">Saturn windows use mean longitudes (≈1° accuracy). Kal Sarpa uses Sun, Moon, Jupiter &amp; Saturn vs Rahu–Ketu axis only.</div>
           </div>
         </div>`;
-      })()}
       })()}
 
       <div class="vp-personal-disclaimer">For reflection only — not a substitute for a professional astrologer.</div>

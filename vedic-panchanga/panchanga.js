@@ -2673,28 +2673,52 @@ function vpComputeMahaDasha(profile){
 // ══════════════════════════════════════════════════════════════
 function vpComputeUniversalYogas(jdNow, lat, lng){
   const results = [];
-  const AMRITA = {0:[13],1:[22,23],2:[0],3:[16,17],4:[7,26],5:[23,26],6:[3,22]}; // wday→naks
-  const SARVARTHA = {0:[14,9,22,25],1:[7,22,23,26],2:[0,5,9,14],3:[4,7,11,16,25],4:[1,7,18,25,26],5:[8,14,15,26],6:[3,10,14,22]};
+  // ── Single source of truth for special yoga combos ──────────────────────────
+  // SARV and AMRT are defined at module scope (line ~494); we convert them here
+  // to the same Object-keyed format used below for O(1) lookup.
+  // This ensures the Maha Yoga panel and the Best-Windows / Tara section always
+  // agree on which weekday+nakshatra pairs qualify.
+  const SARVARTHA_MAP = {};
+  SARV.forEach(([d, naks]) => { SARVARTHA_MAP[d] = naks; });
+  const AMRITA_MAP = {};
+  AMRT.forEach(([d, naks]) => { AMRITA_MAP[d] = naks; });
+
   const RAVI_DOSHA = {0:[12,8,19,11,5,22,24],1:[0,6,14,24],2:[4,7,11,20,24],3:[8,13,24],4:[3,10,16,21],5:[2,8,11,19,24],6:[6,7,14,16]};
   const NAK_NAMES = ['Ashwini','Bharani','Krittika','Rohini','Mrigashira','Ardra','Punarvasu','Pushya','Ashlesha','Magha','Purva Phalguni','Uttara Phalguni','Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha','Mula','Purva Ashadha','Uttara Ashadha','Shravana','Dhanishtha','Shatabhisha','Purva Bhadrapada','Uttara Bhadrapada','Revati'];
-  const VAAR = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const VAAR_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+  // Track which calendar dates we have already processed to avoid duplicates
+  // when a nakshatra spans midnight (same wday+nak appear in two consecutive
+  // JD offsets).
+  const seenDates = new Set();
 
   function checkDay(jd){
     const dt = jdToDate(jd);
+    // Deduplicate by calendar date string
+    const dateKey = dt.toISOString().slice(0,10);
+    if(seenDates.has(dateKey)) return;
+    seenDates.add(dateKey);
+
     const wday = dt.getDay();
-    const nakIdx = Math.floor(moonLongSid(jd) / (360/27)) % 27;
-    const tithiI = tithiIdx(jd);
+    // Sample nakshatra at solar noon of that calendar date to get the
+    // day's dominant nakshatra — avoids edge-cases at day boundaries.
+    const noonJD = jd - (jd % 1) + 0.5; // noon UTC of same JD integer
+    const nakIdx = Math.floor(moonLongSid(noonJD) / (360/27)) % 27;
+    const tithiI = tithiIdx(noonJD);
     const dayLabel = dt.toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short'});
-    const isToday = Math.floor(jd) === Math.floor(jdNow);
+    // "Today" = same calendar date as the moment vpComputeUniversalYogas was
+    // called (jdNow). Compare date-strings to avoid JD-floor ambiguity.
+    const todayKey = jdToDate(jdNow).toISOString().slice(0,10);
+    const isToday = dateKey === todayKey;
     const status = isToday ? 'active' : 'upcoming';
 
-    // Amrita Siddhi Yoga
-    if((AMRITA[wday]||[]).includes(nakIdx)){
-      results.push({name:'Amrita Siddhi Yoga',emoji:'🪷',desc:`${VAAR[wday]} + ${NAK_NAMES[nakIdx]} — nectar of success; excellent for new work, travel, medicine`,status,dateStr:isToday?'Today':dayLabel});
+    // Amrita Siddhi Yoga (unified table)
+    if((AMRITA_MAP[wday]||[]).includes(nakIdx)){
+      results.push({name:'Amrita Siddhi Yoga',emoji:'🪷',desc:`${VAAR_FULL[wday]} + ${NAK_NAMES[nakIdx]} — nectar of success; excellent for new work, travel, medicine`,status,dateStr:isToday?'Today':dayLabel});
     }
-    // Sarvartha Siddhi Yoga
-    if((SARVARTHA[wday]||[]).includes(nakIdx)){
-      results.push({name:'Sarvartha Siddhi Yoga',emoji:'✅',desc:`${VAAR[wday]} + ${NAK_NAMES[nakIdx]} — fulfillment of all purposes; sign & buy, start ventures`,status,dateStr:isToday?'Today':dayLabel});
+    // Sarvartha Siddhi Yoga (unified table — same as used in Best Windows)
+    if((SARVARTHA_MAP[wday]||[]).includes(nakIdx)){
+      results.push({name:'Sarvartha Siddhi Yoga',emoji:'✅',desc:`${VAAR_FULL[wday]} + ${NAK_NAMES[nakIdx]} — fulfillment of all purposes; sign & buy, start ventures`,status,dateStr:isToday?'Today':dayLabel});
     }
     // Guru Pushya Yoga
     if(wday===4 && nakIdx===7){
@@ -2706,7 +2730,7 @@ function vpComputeUniversalYogas(jdNow, lat, lng){
     }
     // Ravi Yoga (inauspicious dosha — warn)
     if((RAVI_DOSHA[wday]||[]).includes(nakIdx)){
-      results.push({name:'Ravi Yoga (Dosha)',emoji:'⚠️',desc:`${VAAR[wday]} + ${NAK_NAMES[nakIdx]} — avoid ceremonies & new ventures; normal daily work fine`,status,dateStr:isToday?'Today':dayLabel,dosha:true});
+      results.push({name:'Ravi Yoga (Dosha)',emoji:'⚠️',desc:`${VAAR_FULL[wday]} + ${NAK_NAMES[nakIdx]} — avoid ceremonies & new ventures; normal daily work fine`,status,dateStr:isToday?'Today':dayLabel,dosha:true});
     }
     // Purnima / Amavasya
     if(tithiI===14){
@@ -2715,13 +2739,13 @@ function vpComputeUniversalYogas(jdNow, lat, lng){
     if(tithiI===29){
       results.push({name:'Amavasya (New Moon)',emoji:'🌑',desc:'Deep inner energy — ancestor worship (Shraddha), fasting & introspection',status,dateStr:isToday?'Today':dayLabel});
     }
-    // Ekadashi
+    // Ekadashi (11th tithi — indices 10 for Shukla, 25 for Krishna)
     if(tithiI===10 || tithiI===25){
       results.push({name:'Ekadashi',emoji:'🪷',desc:'11th tithi — fasting & Vishnu worship; cleansing & spiritual merit',status,dateStr:isToday?'Today':dayLabel});
     }
   }
 
-  // Check today and next 7 days
+  // Check today + next 7 days (8 calendar dates total)
   for(let i=0;i<8;i++) checkDay(jdNow + i);
   return results;
 }

@@ -6309,11 +6309,12 @@ function u28() {
       // Auto-fit: shrink font until name fits on one line
       function _fitN28FontSize(el) {
         const containerW = el.parentNode ? el.parentNode.getBoundingClientRect().width - 20 : 300;
-        const baseSize = Math.min(52, Math.max(20, containerW * 0.065));
+        const baseSize = Math.min(156, Math.max(60, containerW * 0.195));
         el.style.fontSize = baseSize + "px";
-        el.style.whiteSpace = "nowrap";
+        el.style.whiteSpace = "normal";
+        el.style.wordBreak = "break-word";
         let sz = baseSize;
-        while (el.scrollWidth > containerW && sz > 13) {
+        while (el.scrollWidth > containerW && sz > 39) {
           sz -= 1;
           el.style.fontSize = sz + "px";
         }

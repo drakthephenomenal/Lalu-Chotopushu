@@ -1597,11 +1597,47 @@ function vpAngaTimeline(fetchFn, jd, fxLookup, nameKey){
   return { prev: decorate(prev), current: decorate(current), next: decorate(next) };
 }
 
+// Sunrise / Sunset / Brahma-Muhurta block for a given calendar date.
+// Returned as a small inline strip used inside each anga timeline row so
+// the user can see the day-boundaries of BOTH dates that a tithi / yoga /
+// karana spans.
+function vpDayTimesBlock(date, lat, lng, dateLabel){
+  if(!date || isNaN(+date)) return '';
+  // Use noon so SunCalc resolves a stable sunrise/sunset for that civil date.
+  const noon = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
+  let sr, ss;
+  try {
+    const t = SunCalc.getTimes(noon, lat, lng);
+    sr = t.sunrise; ss = t.sunset;
+  } catch(e){ return ''; }
+  if(!sr || isNaN(+sr) || !ss || isNaN(+ss)) return '';
+  const bmS = new Date(+sr - 96*60*1000);
+  const bmE = new Date(+bmS + 48*60*1000);
+  const head = dateLabel || date.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+  return `<div class="vp-dr-tl-daytimes">
+    <div class="vp-dr-tl-dt-head">${head}</div>
+    <div class="vp-dr-tl-dt-row"><span class="vp-dr-tl-dt-ico">🌄</span><span class="vp-dr-tl-dt-label">Brahma Muhurta</span><span class="vp-dr-tl-dt-val">${fmt12(bmS)} – ${fmt12(bmE)}</span></div>
+    <div class="vp-dr-tl-dt-row"><span class="vp-dr-tl-dt-ico">☀️</span><span class="vp-dr-tl-dt-label">Sunrise</span><span class="vp-dr-tl-dt-val">${fmt12(sr)}</span></div>
+    <div class="vp-dr-tl-dt-row"><span class="vp-dr-tl-dt-ico">🌇</span><span class="vp-dr-tl-dt-label">Sunset</span><span class="vp-dr-tl-dt-val">${fmt12(ss)}</span></div>
+  </div>`;
+}
+
 // Renders one anga's full Previous/Current/Next timeline card
-function vpAngaCardHTML(icon, label, tl, showPaksha){
+function vpAngaCardHTML(icon, label, tl, showPaksha, showDayTimes){
   function row(tag, tagLabel, p){
     const pakshaHtml = showPaksha && p.paksha
       ? `<span class="vp-dr-tl-paksha">${p.paksha} Paksha</span>` : '';
+    let dayTimesHtml = '';
+    if(showDayTimes && p.startDate && p.endDate){
+      const sd = p.startDate, ed = p.endDate;
+      const startLabel = sd.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+      const endLabel   = ed.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+      const startBlock = vpDayTimesBlock(sd, LAT, LNG, startLabel);
+      const endBlock   = sameDay(sd, ed) ? '' : vpDayTimesBlock(ed, LAT, LNG, endLabel);
+      if(startBlock || endBlock){
+        dayTimesHtml = `<div class="vp-dr-tl-daytimes-wrap">${startBlock}${endBlock}</div>`;
+      }
+    }
     return `<div class="vp-dr-tl-row ${tag}">
       <div class="vp-dr-tl-marker"><span class="vp-dr-tl-dot"></span></div>
       <div class="vp-dr-tl-body">
@@ -1610,6 +1646,7 @@ function vpAngaCardHTML(icon, label, tl, showPaksha){
         ${p.fxText ? `<div class="vp-dr-tl-fx">${p.fxText}</div>` : ''}
         <div class="vp-dr-tl-time">${fmtDT(p.startDate)} → ${fmtEnd(p.endDate, p.startDate)}</div>
         <span class="vp-dr-tl-dur">⏱ ${p.durText}</span>
+        ${dayTimesHtml}
       </div>
     </div>`;
   }
@@ -1696,10 +1733,10 @@ function vpRenderDateResult(){
   const listEl = document.getElementById('vp-dr-anga-list');
   if(listEl){
     listEl.innerHTML =
-      vpAngaCardHTML('🌙','Tithi', tithiTL, true) +
-      vpAngaCardHTML('⭐','Nakshatra', nakTL, false) +
-      vpAngaCardHTML('☯️','Yoga', yogaTL, false) +
-      vpAngaCardHTML('◐','Karana', karTL, false);
+      vpAngaCardHTML('🌙','Tithi', tithiTL, true, true) +
+      vpAngaCardHTML('⭐','Nakshatra', nakTL, false, false) +
+      vpAngaCardHTML('☯️','Yoga', yogaTL, false, true) +
+      vpAngaCardHTML('◐','Karana', karTL, false, true);
   }
 
   // Tara Bala for this date — only if user has a saved birth profile
@@ -1908,10 +1945,10 @@ function vpHoroCalculate(){
   const listEl = document.getElementById('vp-horo-anga-list');
   if(listEl){
     listEl.innerHTML =
-      vpAngaCardHTML('🌙','Tithi', tithiTL, true) +
-      vpAngaCardHTML('⭐','Nakshatra', nakTL, false) +
-      vpAngaCardHTML('☯️','Yoga', yogaTL, false) +
-      vpAngaCardHTML('◐','Karana', karTL, false);
+      vpAngaCardHTML('🌙','Tithi', tithiTL, true, true) +
+      vpAngaCardHTML('⭐','Nakshatra', nakTL, false, false) +
+      vpAngaCardHTML('☯️','Yoga', yogaTL, false, true) +
+      vpAngaCardHTML('◐','Karana', karTL, false, true);
   }
 
   // ── Birth Moon Rashi card ──────────────────────────────────────
@@ -2787,20 +2824,30 @@ function vpComputeMahaYogas(profile){
   const tithiIdx0 = profile.tithiIndex; // 0..29
   const nak = profile.nakshatraIndex;
   const rashi = profile.rashiIndex;
-  // Tithi-based Yogas
-  if(tithiIdx0 === 4  || tithiIdx0 === 19) out.push({name:'Siddhi Yoga',    emoji:'🪷', desc:'Birth on Panchami — success in undertakings'});
-  if(tithiIdx0 === 9  || tithiIdx0 === 24) out.push({name:'Dasha-mukta Yoga',emoji:'🔱', desc:'Birth on Dashami — liberation from obstacles'});
-  if(tithiIdx0 === 14)                       out.push({name:'Purnima Yoga',   emoji:'🌕', desc:'Born on full-moon — fullness, fame & nourishment'});
-  if(tithiIdx0 === 29)                       out.push({name:'Amavasya Yoga',  emoji:'🌑', desc:'Born on new-moon — deep introspection & ancestral grace'});
-  // Nakshatra-based
-  if([7,17,21].includes(nak))               out.push({name:'Pushya/Anuradha/Shravana — Vipra Yoga', emoji:'🕉️', desc:'Wisdom, devotion & teaching naturally favored'});
-  if([3,12,20,25].includes(nak))            out.push({name:'Maha-Lakshmi Yoga', emoji:'💐', desc:'Rohini/Hasta/Uttara-group nakshatras — prosperity & abundance'});
-  if([6].includes(nak))                      out.push({name:'Punarvasu Yoga',    emoji:'🌿', desc:'Renewal & return of good fortune through effort'});
+  // Planet-attribution lets the UI compute when each yoga activates
+  // (via the matching Mahadasha / Antardasha of its ruling planet).
+  // Tithi-based Yogas — Moon governs all tithi-born yogas.
+  if(tithiIdx0 === 4  || tithiIdx0 === 19) out.push({name:'Siddhi Yoga',    emoji:'🪷', desc:'Birth on Panchami — success in undertakings', planets:['Moon','Mercury']});
+  if(tithiIdx0 === 9  || tithiIdx0 === 24) out.push({name:'Dasha-mukta Yoga',emoji:'🔱', desc:'Birth on Dashami — liberation from obstacles', planets:['Moon','Saturn']});
+  if(tithiIdx0 === 14)                       out.push({name:'Purnima Yoga',   emoji:'🌕', desc:'Born on full-moon — fullness, fame & nourishment', planets:['Moon']});
+  if(tithiIdx0 === 29)                       out.push({name:'Amavasya Yoga',  emoji:'🌑', desc:'Born on new-moon — deep introspection & ancestral grace', planets:['Moon','Ketu']});
+  // Nakshatra-based — ruled by the nakshatra lord.
+  if([7,17,21].includes(nak))               out.push({name:'Pushya/Anuradha/Shravana — Vipra Yoga', emoji:'🕉️', desc:'Wisdom, devotion & teaching naturally favored', planets:['Jupiter','Saturn','Moon']});
+  if([3,12,20,25].includes(nak))            out.push({name:'Maha-Lakshmi Yoga', emoji:'💐', desc:'Rohini/Hasta/Uttara-group nakshatras — prosperity & abundance', planets:['Venus','Moon']});
+  if([6].includes(nak))                      out.push({name:'Punarvasu Yoga',    emoji:'🌿', desc:'Renewal & return of good fortune through effort', planets:['Jupiter']});
   // Pancha-Maha-Purusha-Yoga proxies via Moon-rashi (approximate, Moon-based)
-  const ownExalt = {0:'Mars-Ruchaka', 2:'Mercury-Bhadra', 4:'Sun-Solar', 6:'Venus-Malavya', 8:'Jupiter-Hamsa', 9:'Saturn-Shasha', 11:'Jupiter-Hamsa'};
-  if(ownExalt[rashi]) out.push({name:ownExalt[rashi]+' Yoga (Moon-proxy)', emoji:'👑', desc:'Pancha-Maha-Purusha proxy via Moon — leadership & distinction'});
-  // Gajakesari (Moon-Jupiter): we don't have Jupiter pos; offer educational entry
-  out.push({name:'Gajakesari (educational)', emoji:'🐘', desc:'Strong Moon-Jupiter angle gives wisdom & influence — verify with full chart'});
+  const ownExalt = {
+    0:{n:'Mars-Ruchaka',     p:'Mars'},
+    2:{n:'Mercury-Bhadra',   p:'Mercury'},
+    4:{n:'Sun-Solar',        p:'Sun'},
+    6:{n:'Venus-Malavya',    p:'Venus'},
+    8:{n:'Jupiter-Hamsa',    p:'Jupiter'},
+    9:{n:'Saturn-Shasha',    p:'Saturn'},
+    11:{n:'Jupiter-Hamsa',   p:'Jupiter'}
+  };
+  if(ownExalt[rashi]) out.push({name:ownExalt[rashi].n+' Yoga (Moon-proxy)', emoji:'👑', desc:'Pancha-Maha-Purusha proxy via Moon — leadership & distinction', planets:[ownExalt[rashi].p]});
+  // Gajakesari (Moon-Jupiter): activates in either Moon or Jupiter dasha/antardasha.
+  out.push({name:'Gajakesari (educational)', emoji:'🐘', desc:'Strong Moon-Jupiter angle gives wisdom & influence — verify with full chart', planets:['Moon','Jupiter']});
   return out;
 }
 
@@ -3966,11 +4013,52 @@ async function vpPersonalRender(){
             ${activeBlock}
           </div>`;
         }).join('');
-        // ── Personal (birth) yoga cards ──
+        // ── Personal (birth) yoga cards with activation windows ──
+        // A natal yoga "fructifies" during the Mahadasha / Antardasha of
+        // its ruling planet(s). We surface the currently-active window
+        // (if any) plus the next 2 upcoming Mahadasha windows and the
+        // very next Antardasha so the user can see WHEN in life this
+        // yoga is most likely to express its results.
+        const _fmtYogaWin = d => d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+        const _yogaActivations = (planets) => {
+          if(!planets || !planets.length || !dashas.length) return '';
+          const set = new Set(planets);
+          const mdHits = dashas.filter(d => set.has(d.lord));
+          const activeMd = mdHits.find(d => +d.start <= nowMs && nowMs < +d.end);
+          const upcomingMd = mdHits.filter(d => +d.start > nowMs).slice(0,2);
+          // Antardashas across ALL dashas where the antar lord matches.
+          const antarHits = [];
+          dashas.forEach(d => (d.antar||[]).forEach(a => {
+            if(set.has(a.lord)) antarHits.push({...a, parent:d.lord});
+          }));
+          const activeAntar = antarHits.find(a => +a.start <= nowMs && nowMs < +a.end);
+          const nextAntar = antarHits.find(a => +a.start > nowMs);
+          const rows = [];
+          if(activeMd){
+            rows.push(`<div class="vp-yoga-act-row vp-yoga-act-now">🟢 <b>Active now</b> · ${activeMd.lord} Mahadasha · until ${_fmtYogaWin(activeMd.end)}</div>`);
+          }
+          if(activeAntar && (!activeMd || activeAntar.lord !== activeMd.lord)){
+            rows.push(`<div class="vp-yoga-act-row vp-yoga-act-now">🟢 <b>Active sub-period</b> · ${activeAntar.lord} antardasha in ${activeAntar.parent} MD · until ${_fmtYogaWin(activeAntar.end)}</div>`);
+          }
+          upcomingMd.forEach(d => {
+            rows.push(`<div class="vp-yoga-act-row">🔮 <b>${d.lord} Mahadasha</b> · ${_fmtYogaWin(d.start)} → ${_fmtYogaWin(d.end)} <span class="vp-yoga-act-dur">(${d.years.toFixed(1)}y)</span></div>`);
+          });
+          if(nextAntar && !upcomingMd.some(d => +nextAntar.start >= +d.start && +nextAntar.end <= +d.end && d.lord===nextAntar.lord)){
+            rows.push(`<div class="vp-yoga-act-row">✨ <b>${nextAntar.lord} antardasha</b> (in ${nextAntar.parent} MD) · ${_fmtYogaWin(nextAntar.start)} → ${_fmtYogaWin(nextAntar.end)}</div>`);
+          }
+          if(!rows.length){
+            rows.push(`<div class="vp-yoga-act-row vp-yoga-act-empty">No upcoming ${planets.join(' / ')} dasha window in the computed lifespan.</div>`);
+          }
+          return `<div class="vp-yoga-act-block">
+            <div class="vp-yoga-act-head">⏳ When this activates in your life</div>
+            ${rows.join('')}
+          </div>`;
+        };
         const myYogaCards = myYogas.length ? myYogas.map(y=>`
           <div class="vp-mahayoga-card">
             <div class="vp-mahayoga-name"><span>${y.emoji}</span> ${y.name}</div>
             <div class="vp-mahayoga-desc">${y.desc}</div>
+            ${_yogaActivations(y.planets)}
           </div>`).join('') : `<div class="vp-mahayoga-empty">No major classical yogas detected from Moon-based factors. A full chart with all planets reveals more.</div>`;
 
         // ── Universal yoga cards (today + next 7 days) ──

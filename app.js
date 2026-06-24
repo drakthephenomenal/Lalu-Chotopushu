@@ -13428,11 +13428,27 @@ function _showUserReplyPopup(text) {
       "white-space:normal",
       "word-break:break-word",
       "text-align:center",
-      "width:" + Math.min(screenW - 32, 420) + "px",
       "max-width:" + Math.min(screenW - 32, 420) + "px",
+      "white-space:nowrap",
+      "overflow:visible",
       "text-shadow:0 0 25px rgba(255,217,61,0.85),0 0 50px rgba(255,200,40,0.4)"
     ].join(";");
     ghost.textContent = tappedName || nameEl.textContent;
+
+    // Auto-shrink font inside the pod so name stays on one line
+    (function fitGhostFont() {
+      var maxW = Math.min(screenW - 32, 420);
+      var baseFs = parseFloat(nameStyle.fontSize) || 120;
+      ghost.style.fontSize = baseFs + "px";
+      var sz = baseFs;
+      requestAnimationFrame(function check() {
+        if (ghost.scrollWidth > maxW && sz > 30) {
+          sz -= 3;
+          ghost.style.fontSize = sz + "px";
+          requestAnimationFrame(check);
+        }
+      });
+    })();
     pod.appendChild(ghost);
 
     // Bake the -COIN_SIZE/2 offset into left/top (margins ignored on position:fixed)

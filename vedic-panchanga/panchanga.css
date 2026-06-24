@@ -2902,3 +2902,475 @@
 #vpanchanga-view .vp-yoga-dosha .vp-mahayoga-name{
   color:#fca5a5;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   VISUAL POLISH v3 — Multi-improvement build
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 1. MSD BAR — Mahadasha & Sade Sati cards: match cosmic dark theme ── */
+#vpanchanga-view .vp-msd-bar {
+  gap: 10px;
+  margin: 0 0 12px;
+}
+#vpanchanga-view .vp-msd-card {
+  background: linear-gradient(135deg, rgba(18,28,70,.95) 0%, rgba(10,16,48,.95) 100%) !important;
+  border: 1px solid rgba(245,194,74,.38) !important;
+  border-left: none !important;
+  border-radius: 16px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.07),
+    0 6px 20px rgba(0,0,0,.5),
+    0 0 0 1px rgba(245,194,74,.15) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: relative;
+  overflow: hidden;
+  padding: 12px 14px !important;
+}
+/* Left accent glow bar */
+#vpanchanga-view .vp-msd-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, #FFE08A, #F5C24A, #C9881A);
+  border-radius: 16px 0 0 16px;
+}
+/* Sade Sati card — violet accent */
+#vpanchanga-view .vp-msd-card:nth-child(2)::before {
+  background: linear-gradient(180deg, #C7B3FF, #9B7CFF, #6B4FCC);
+}
+#vpanchanga-view .vp-msd-card:nth-child(2) {
+  border-color: rgba(155,124,255,.45) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    0 6px 20px rgba(0,0,0,.5),
+    0 0 0 1px rgba(155,124,255,.18) !important;
+}
+#vpanchanga-view .vp-msd-label {
+  font-size: .56rem !important;
+  color: rgba(245,194,74,.75) !important;
+  letter-spacing: .12em;
+}
+#vpanchanga-view .vp-msd-card:nth-child(2) .vp-msd-label {
+  color: rgba(199,179,255,.75) !important;
+}
+#vpanchanga-view .vp-msd-name {
+  font-size: .82rem !important;
+  font-weight: 900 !important;
+  color: #FFE9A8 !important;
+  line-height: 1.2;
+}
+#vpanchanga-view .vp-msd-theme {
+  font-size: .65rem !important;
+  color: #CFD3E8 !important;
+  font-style: italic;
+}
+#vpanchanga-view .vp-msd-sub {
+  font-size: .6rem !important;
+  color: #A0A8C0 !important;
+}
+#vpanchanga-view .vp-msd-left {
+  background: rgba(245,194,74,.18) !important;
+  color: #FFE08A !important;
+  border: 1px solid rgba(245,194,74,.45) !important;
+  box-shadow: none !important;
+  font-size: .56rem !important;
+}
+#vpanchanga-view .vp-msd-card:nth-child(2) .vp-msd-left {
+  background: rgba(155,124,255,.18) !important;
+  color: #C7B3FF !important;
+  border-color: rgba(155,124,255,.45) !important;
+}
+
+/* ── 2. PERSONAL MUHURTA SCORE CARD — richer glass + glow verdict ── */
+#vpanchanga-view .vp-cscore-card {
+  border-radius: 20px !important;
+  backdrop-filter: blur(16px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(130%) !important;
+  overflow: visible !important;
+}
+#vpanchanga-view .vp-cscore-best {
+  background: linear-gradient(150deg, rgba(52,214,164,.22), rgba(14,166,114,.08) 60%, rgba(10,18,48,.85)) !important;
+  border: 1px solid rgba(52,214,164,.55) !important;
+  box-shadow: 0 0 40px rgba(52,214,164,.20), 0 16px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08) !important;
+}
+#vpanchanga-view .vp-cscore-good {
+  background: linear-gradient(150deg, rgba(52,214,164,.14), rgba(14,166,114,.05) 60%, rgba(10,18,48,.85)) !important;
+  border: 1px solid rgba(52,214,164,.35) !important;
+  box-shadow: 0 0 28px rgba(52,214,164,.12), 0 14px 36px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06) !important;
+}
+#vpanchanga-view .vp-cscore-neutral {
+  background: linear-gradient(150deg, rgba(245,194,74,.14), rgba(200,150,10,.05) 60%, rgba(10,18,48,.85)) !important;
+  border: 1px solid rgba(245,194,74,.35) !important;
+  box-shadow: 0 0 28px rgba(245,194,74,.12), 0 14px 36px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06) !important;
+}
+#vpanchanga-view .vp-cscore-bad {
+  background: linear-gradient(150deg, rgba(255,107,134,.15), rgba(225,72,95,.06) 60%, rgba(10,18,48,.85)) !important;
+  border: 1px solid rgba(255,107,134,.38) !important;
+  box-shadow: 0 0 28px rgba(255,107,134,.12), 0 14px 36px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05) !important;
+}
+#vpanchanga-view .vp-cscore-worst {
+  background: linear-gradient(150deg, rgba(255,60,90,.20), rgba(180,20,50,.08) 60%, rgba(10,18,48,.88)) !important;
+  border: 1px solid rgba(255,60,90,.48) !important;
+  box-shadow: 0 0 36px rgba(255,60,90,.18), 0 16px 40px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.05) !important;
+}
+
+/* Verdict text — bigger & glowing */
+#vpanchanga-view .vp-cscore-verdict {
+  font-size: 1.35rem !important;
+  letter-spacing: .01em;
+  line-height: 1.25;
+  margin-bottom: 12px;
+}
+#vpanchanga-view .vp-cscore-best    .vp-cscore-verdict { color: #7FFFD4 !important; text-shadow: 0 0 18px rgba(52,214,164,.6); }
+#vpanchanga-view .vp-cscore-good    .vp-cscore-verdict { color: #34D6A4 !important; text-shadow: 0 0 14px rgba(52,214,164,.4); }
+#vpanchanga-view .vp-cscore-neutral .vp-cscore-verdict { color: #FFE08A !important; text-shadow: 0 0 14px rgba(245,194,74,.4); }
+#vpanchanga-view .vp-cscore-bad     .vp-cscore-verdict { color: #FF8FA3 !important; text-shadow: 0 0 14px rgba(255,107,134,.4); }
+#vpanchanga-view .vp-cscore-worst   .vp-cscore-verdict { color: #FF6B86 !important; text-shadow: 0 0 18px rgba(255,60,90,.5); }
+
+/* Section head inside score card */
+#vpanchanga-view .vp-cscore-head {
+  font-size: .60rem !important;
+  color: rgba(180,190,220,.65) !important;
+  letter-spacing: .18em;
+  margin-bottom: 6px;
+}
+
+/* Score bar — thicker, glowing fill */
+#vpanchanga-view .vp-cscore-bar {
+  height: 10px !important;
+  background: rgba(255,255,255,.06) !important;
+  border-radius: 999px !important;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.3) !important;
+}
+#vpanchanga-view .vp-cscore-fill {
+  box-shadow: 0 0 10px currentColor;
+}
+#vpanchanga-view .vp-cscore-fill-best    { background: linear-gradient(90deg,#34D6A4,#7FFFD4) !important; box-shadow: 0 0 12px rgba(52,214,164,.6) !important; }
+#vpanchanga-view .vp-cscore-fill-good    { background: linear-gradient(90deg,#1DB38A,#34D6A4) !important; box-shadow: 0 0 10px rgba(52,214,164,.4) !important; }
+#vpanchanga-view .vp-cscore-fill-neutral { background: linear-gradient(90deg,#C9881A,#FFE08A) !important; box-shadow: 0 0 10px rgba(245,194,74,.4) !important; }
+#vpanchanga-view .vp-cscore-fill-bad     { background: linear-gradient(90deg,#C83050,#FF8FA3) !important; box-shadow: 0 0 10px rgba(255,107,134,.4) !important; }
+#vpanchanga-view .vp-cscore-fill-worst   { background: linear-gradient(90deg,#8C1028,#FF6B86) !important; box-shadow: 0 0 12px rgba(255,60,90,.5) !important; }
+
+/* Score number */
+#vpanchanga-view .vp-cscore-num {
+  font-size: .75rem !important;
+  font-weight: 900 !important;
+  color: #CFD3E8 !important;
+  letter-spacing: .02em;
+}
+
+/* ── Factor rows — glass inset cards ── */
+#vpanchanga-view .vp-cscore-factors {
+  border-radius: 14px !important;
+  border: 1px solid rgba(255,255,255,.06) !important;
+  background: rgba(255,255,255,.03) !important;
+  overflow: hidden !important;
+  margin-bottom: 12px !important;
+}
+#vpanchanga-view .vp-cscore-row,
+#vpanchanga-view .vp-cscore-row-rich {
+  padding: 9px 12px !important;
+  border-bottom: 1px solid rgba(255,255,255,.05) !important;
+  background: rgba(255,255,255,.015) !important;
+  transition: background .15s ease;
+}
+#vpanchanga-view .vp-cscore-row:hover,
+#vpanchanga-view .vp-cscore-row-rich:hover {
+  background: rgba(255,255,255,.04) !important;
+}
+#vpanchanga-view .vp-cscore-row:last-child,
+#vpanchanga-view .vp-cscore-row-rich:last-child {
+  border-bottom: none !important;
+}
+#vpanchanga-view .vp-cscore-label {
+  font-size: .60rem !important;
+  color: rgba(180,190,220,.65) !important;
+  letter-spacing: .04em;
+  flex: 0 0 82px;
+}
+#vpanchanga-view .vp-cscore-pts {
+  font-size: .70rem !important;
+  font-weight: 900 !important;
+  padding: 2px 9px !important;
+  border-radius: 999px !important;
+  min-width: 28px;
+  text-align: center;
+}
+#vpanchanga-view .vp-cscore-pts-good    { background: rgba(52,214,164,.18) !important; color: #34D6A4 !important; border: 1px solid rgba(52,214,164,.4) !important; }
+#vpanchanga-view .vp-cscore-pts-bad     { background: rgba(255,107,134,.18) !important; color: #FF8FA3 !important; border: 1px solid rgba(255,107,134,.4) !important; }
+#vpanchanga-view .vp-cscore-pts-neutral { background: rgba(255,255,255,.06) !important; color: rgba(180,190,220,.65) !important; border: 1px solid rgba(255,255,255,.1) !important; }
+
+/* Progress bar inside factor rows */
+#vpanchanga-view .vp-cscore-row-bar {
+  height: 3px !important;
+  border-radius: 4px !important;
+  background: rgba(255,255,255,.05) !important;
+  margin-bottom: 1px !important;
+}
+
+/* Timer pill */
+#vpanchanga-view .vp-cscore-timer {
+  font-size: .60rem !important;
+  font-weight: 700 !important;
+  color: #C7B3FF !important;
+  background: rgba(155,124,255,.12) !important;
+  border: 1px solid rgba(155,124,255,.28) !important;
+  border-radius: 999px !important;
+  padding: 5px 14px !important;
+  text-align: center !important;
+  letter-spacing: .03em;
+}
+
+/* Conflict rows (Abhijit + Rahu Kalam overlap) */
+#vpanchanga-view .vp-cscore-row-conflict {
+  background: rgba(245,194,74,.07) !important;
+  border-radius: 10px !important;
+  padding: 8px 10px !important;
+}
+#vpanchanga-view .vp-cscore-conflict-note {
+  font-size: .60rem !important;
+  color: #FFD96B !important;
+  background: rgba(245,194,74,.12) !important;
+  border: 1px solid rgba(245,194,74,.3) !important;
+  border-radius: 8px !important;
+  padding: 4px 10px !important;
+  margin: 4px 0 !important;
+}
+
+/* ── 3. ACTIVE MUHURTA PD ROWS — dark glass, colored left accent ── */
+#vpanchanga-view .vp-pd-extra {
+  padding-top: 12px !important;
+  border-top: 1px solid rgba(255,255,255,.07) !important;
+  gap: 7px !important;
+}
+#vpanchanga-view .vp-pd-row {
+  background: linear-gradient(135deg, rgba(18,28,70,.92), rgba(10,16,48,.88)) !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  border-left: 3px solid var(--vp-planet, #9B7CFF) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05) !important;
+  padding: 10px 14px !important;
+}
+#vpanchanga-view .vp-pd-row .vp-pd-title {
+  font-size: .72rem !important;
+  font-weight: 900 !important;
+  color: #F5F1E4 !important;
+  letter-spacing: .03em;
+}
+#vpanchanga-view .vp-pd-row .vp-pd-sub {
+  font-size: .60rem !important;
+  color: #8C93B8 !important;
+  margin-top: 3px !important;
+}
+#vpanchanga-view .vp-pd-row .vp-pd-left {
+  font-size: .60rem !important;
+  font-weight: 900 !important;
+  color: #1a1100 !important;
+  background: var(--vp-planet, #9B7CFF) !important;
+  border-radius: 999px !important;
+  padding: 5px 11px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3) !important;
+  white-space: nowrap;
+}
+
+/* ── 4. SCORE CARD SPECIAL YOGA BADGE — richer gold ── */
+#vpanchanga-view .vp-cscore-special-yoga {
+  background: linear-gradient(135deg, rgba(245,194,74,.18), rgba(200,150,10,.06)) !important;
+  border: 1px solid rgba(245,194,74,.45) !important;
+  border-radius: 10px !important;
+  font-size: .66rem !important;
+  font-weight: 800 !important;
+  color: #FFE08A !important;
+  padding: 7px 12px !important;
+  margin: 8px 0 4px !important;
+  text-shadow: 0 0 12px rgba(245,194,74,.4);
+}
+
+/* ── 5. COLLAPSIBLE SECTION BODIES — subtle inner tint ── */
+#vpanchanga-view .vp-collapsible-body {
+  background: rgba(255,255,255,.015) !important;
+}
+
+/* ── 6. TARA/CHANDRA ACTIVE "NOW" BLOCK — more contrast ── */
+#vpanchanga-view .vp-combined-active {
+  border-radius: 18px !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+#vpanchanga-view .vp-combined-best   { background: linear-gradient(150deg, rgba(52,214,164,.20), rgba(10,18,48,.88)) !important; }
+#vpanchanga-view .vp-combined-good   { background: linear-gradient(150deg, rgba(52,214,164,.12), rgba(10,18,48,.85)) !important; }
+#vpanchanga-view .vp-combined-neutral{ background: linear-gradient(150deg, rgba(245,194,74,.12), rgba(10,18,48,.85)) !important; }
+#vpanchanga-view .vp-combined-bad    { background: linear-gradient(150deg, rgba(255,107,134,.14), rgba(10,18,48,.85)) !important; }
+#vpanchanga-view .vp-combined-worst  { background: linear-gradient(150deg, rgba(255,60,90,.18), rgba(10,18,48,.88)) !important; }
+
+/* ── 7. NAV BAR BOTTOM — crisper contrast ── */
+#vpanchanga-view .vp-nav {
+  background: rgba(4,8,31,.92) !important;
+  border-top: 1px solid rgba(245,194,74,.18) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+#vpanchanga-view .vp-nav-item {
+  color: #6B7299 !important;
+  transition: color .2s ease, filter .2s ease;
+}
+#vpanchanga-view .vp-nav-item:hover {
+  color: #CFD3E8 !important;
+}
+#vpanchanga-view .vp-nav-item.active,
+#vpanchanga-view .vp-nav-item[aria-selected="true"] {
+  color: #F5C24A !important;
+  filter: drop-shadow(0 0 8px rgba(245,194,74,.6)) !important;
+}
+
+/* ── 8. UPCOMING ROW CARDS — improved dark variants ── */
+#vpanchanga-view .vp-upcoming-row.ausp {
+  background: linear-gradient(135deg, rgba(245,194,74,.12), rgba(200,150,10,.04)) !important;
+  border-color: rgba(245,194,74,.45) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,.4), 0 0 0 1px rgba(245,194,74,.15) !important;
+}
+#vpanchanga-view .vp-upcoming-row.inaup {
+  background: linear-gradient(135deg, rgba(155,124,255,.12), rgba(107,63,160,.04)) !important;
+  border-color: rgba(155,124,255,.40) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,.4), 0 0 0 1px rgba(155,124,255,.14) !important;
+}
+#vpanchanga-view .vp-upcoming-row.ausp .vp-upcoming-label { color: #FFE08A !important; }
+#vpanchanga-view .vp-upcoming-row.inaup .vp-upcoming-label { color: #C7B3FF !important; }
+#vpanchanga-view .vp-upcoming-row.ausp::before { background: linear-gradient(180deg,#FFE08A,#F5C24A) !important; }
+#vpanchanga-view .vp-upcoming-row.inaup::before { background: linear-gradient(180deg,#C7B3FF,#9B7CFF) !important; }
+#vpanchanga-view .vp-upcoming-row.ausp .vp-in-pill {
+  background: rgba(245,194,74,.18) !important;
+  color: #FFE08A !important;
+  border-color: rgba(245,194,74,.4) !important;
+}
+#vpanchanga-view .vp-upcoming-row.inaup .vp-in-pill {
+  background: rgba(155,124,255,.18) !important;
+  color: #C7B3FF !important;
+  border-color: rgba(155,124,255,.4) !important;
+}
+
+/* ── 9. ANGA CARDS (Tithi / Nakshatra / Yoga / Karana) — dark glass ── */
+#vpanchanga-view .vp-anga-card {
+  background: linear-gradient(160deg, rgba(20,30,72,.92), rgba(10,18,52,.88)) !important;
+  border: 1px solid rgba(245,194,74,.22) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 6px 20px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05) !important;
+}
+#vpanchanga-view .vp-anga-card.warn {
+  border-color: rgba(255,107,134,.35) !important;
+  background: linear-gradient(160deg, rgba(40,10,22,.92), rgba(20,8,18,.88)) !important;
+}
+#vpanchanga-view .vp-anga-card.good {
+  border-color: rgba(245,194,74,.38) !important;
+  background: linear-gradient(160deg, rgba(32,24,8,.92), rgba(20,16,4,.88)) !important;
+}
+#vpanchanga-view .vp-anga-card-label { color: rgba(180,190,220,.55) !important; }
+#vpanchanga-view .vp-anga-card-name  { color: #F5F1E4 !important; }
+#vpanchanga-view .vp-anga-card.good .vp-anga-card-name  { color: #FFE08A !important; }
+#vpanchanga-view .vp-anga-card.warn .vp-anga-card-name  { color: #FF8FA3 !important; }
+#vpanchanga-view .vp-anga-card-fx    { color: #8C93B8 !important; }
+#vpanchanga-view .vp-anga-card-time  { color: #6B7299 !important; }
+#vpanchanga-view .vp-anga-card-left  { color: #FFE08A !important; }
+
+/* ── 10. ECLIPSE CARD, ASHTAMA/KANTAKA — refined pulse ── */
+#vpanchanga-view .vp-saturncycle-row.vp-sat-active {
+  animation: vpSatPulse 2.6s ease-in-out infinite !important;
+}
+@keyframes vpSatPulse {
+  0%,100% { box-shadow: 0 0 16px rgba(245,194,74,.45), inset 0 0 10px rgba(255,224,138,.18); }
+  50%      { box-shadow: 0 0 32px rgba(245,194,74,.80), inset 0 0 18px rgba(255,224,138,.35); }
+}
+
+/* ── 11. SECTION SEPARATOR HEAD — slightly larger, more presence ── */
+#vpanchanga-view .vp-sec-head {
+  font-size: .68rem !important;
+  letter-spacing: .20em !important;
+  margin-bottom: 16px !important;
+}
+
+/* ── 12. NOW-PANEL — richer glass card ── */
+#vpanchanga-view .vp-now-panel {
+  background: linear-gradient(150deg, rgba(22,32,74,.90), rgba(10,18,52,.88)) !important;
+  border: 1px solid rgba(245,194,74,.18) !important;
+  box-shadow: 0 12px 36px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+
+/* ── 13. PULSE DOT — brighter ── */
+#vpanchanga-view .vp-pulse {
+  width: 8px !important;
+  height: 8px !important;
+  box-shadow: 0 0 12px rgba(245,194,74,.8) !important;
+  background: #F5C24A !important;
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   PD ROW EXTENSIONS — score badges, conflict note, sub-row
+   ══════════════════════════════════════════════════════════════ */
+
+/* Inline score pill inside PD row title */
+#vpanchanga-view .vp-pd-score {
+  display: inline-block;
+  font-size: .56rem;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-left: 6px;
+  vertical-align: middle;
+  letter-spacing: .03em;
+}
+#vpanchanga-view .vp-pd-score-good {
+  background: rgba(52,214,164,.20);
+  color: #34D6A4;
+  border: 1px solid rgba(52,214,164,.45);
+}
+#vpanchanga-view .vp-pd-score-bad {
+  background: rgba(255,107,134,.20);
+  color: #FF8FA3;
+  border: 1px solid rgba(255,107,134,.45);
+}
+#vpanchanga-view .vp-pd-score-neutral {
+  background: rgba(245,194,74,.15);
+  color: #FFE08A;
+  border: 1px solid rgba(245,194,74,.38);
+}
+
+/* Conflict note line inside PD row body */
+#vpanchanga-view .vp-pd-conflict {
+  font-size: .58rem;
+  font-weight: 700;
+  color: #FFD96B;
+  background: rgba(245,194,74,.12);
+  border: 1px solid rgba(245,194,74,.28);
+  border-radius: 7px;
+  padding: 3px 8px;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* Pratyantardasha sub-row — slightly indented + smaller */
+#vpanchanga-view .vp-pd-row.vp-pd-row-sub {
+  margin-left: 16px;
+  border-left-width: 2px !important;
+  opacity: .92;
+}
+#vpanchanga-view .vp-pd-row.vp-pd-row-sub .vp-pd-title {
+  font-size: .66rem !important;
+}
+#vpanchanga-view .vp-pd-row.vp-pd-row-sub .vp-pd-sub {
+  font-size: .57rem !important;
+}
+#vpanchanga-view .vp-pd-row.vp-pd-row-sub .vp-pd-left {
+  font-size: .56rem !important;
+  padding: 4px 9px !important;
+}
+
+/* Section dividers inside PD extra */
+#vpanchanga-view .vp-pd-extra .vp-pd-row + .vp-pd-row {
+  /* gap already handled by flex gap on parent */
+}
+

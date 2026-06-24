@@ -2899,12 +2899,14 @@ function vpComputeEclipses(fromJd, yearsAhead){
   for(let jd = fromJd + 1; jd < endJd; jd += 1){
     const cur = norm(moonLong(jd) - sunLong(jd));
 
-    // New-moon crossing: signedDelta(prev,0) > 0 and signedDelta(cur,0) < 0
-    // → Moon overtook Sun (elongation jumped from ~+170° via 180 wrap to ~-170°)
-    // Simpler: detect when prev was near 360 (or 0) and direction is forward.
+    // New-moon crossing: elongation passes through 0°.
+    // signedDelta maps to [-180,+180]. As Moon catches Sun, elongation
+    // goes … 358° → 359° → 0° → 1° … so signedDelta: … -2 → -1 → 0 → +1 …
+    // Crossing fires when prev < 0 and cur ≥ 0 (rising through zero).
+    // Guard |prev - cur| < 60 to skip the 180°-wrap artefact.
     const dNew_prev = signedDelta(prev, 0);
     const dNew_cur  = signedDelta(cur, 0);
-    if(dNew_prev > 0 && dNew_cur < 0 && Math.abs(dNew_prev - dNew_cur) < 60){
+    if(dNew_prev < 0 && dNew_cur >= 0 && Math.abs(dNew_prev - dNew_cur) < 60){
       const t = refine(jd-1, jd, 0);
       const moon = norm(moonLong(t));
       const node = vpRahuLongTrop(t);
@@ -2990,17 +2992,77 @@ function vpRenderEclipses(){
     hour:'2-digit', minute:'2-digit', hour12:true,
   });
 
+  // ── Sutak Kaal helper ─────────────────────────────────────────────────
+  // Sutak (inauspicious period before a Grahan) rules per Dharma-shastra:
+  //   Surya Grahan  → 12 prahar (= 12 × 3h = 36 h) before first contact
+  //                   Short / laukika reckoning: 4 prahar = 12 h before
+  //   Chandra Grahan → 3 prahar (= 9 h) before first contact
+  //                   Short / laukika reckoning: 1 prahar = 3 h before
+  // "First contact" is approximated as 1 h before the peak (jd) for
+  // partial/penumbral and 1.5 h for total, using mean elements.
+  function sutakKaal(e){
+    const isSolar  = e.type === 'solar';
+    const isTotal  = e.kind.startsWith('Total');
+    // approx first contact before peak (hours)
+    const contactOffsetH = isTotal ? 1.5 : 1.0;
+    const firstContactMs = e.date.getTime() - contactOffsetH * 3600000;
+
+    const elaboratedHrs = isSolar ? 36 : 9;    // Shastriya / Dharma-shastra
+    const shortHrs      = isSolar ? 12 : 3;    // Laukika / popular reckoning
+
+    const elaboratedStart = new Date(firstContactMs - elaboratedHrs * 3600000);
+    const shortStart      = new Date(firstContactMs - shortHrs      * 3600000);
+
+    const fmtT = d => d.toLocaleString('en-IN',{
+      weekday:'short', day:'2-digit', month:'short',
+      hour:'2-digit', minute:'2-digit', hour12:true,
+    });
+
+    return {
+      elaboratedHrs, shortHrs,
+      elaboratedStart: fmtT(elaboratedStart),
+      shortStart:      fmtT(shortStart),
+      grahan:          fmtT(e.date),
+    };
+  }
+
   const row = (e, isPast) => {
-    const cls = e.type === 'solar' ? 'vp-eclipse-solar' : 'vp-eclipse-lunar';
-    const icon = e.type === 'solar' ? '🌞' : '🌕';
+    const cls    = e.type === 'solar' ? 'vp-eclipse-solar' : 'vp-eclipse-lunar';
+    const icon   = e.type === 'solar' ? '🌞' : '🌕';
     const grahan = e.type === 'solar' ? 'Surya Grahan' : 'Chandra Grahan';
-    const rel = vpEclipseRelative(e.date, now);
+    const rel    = vpEclipseRelative(e.date, now);
+    const sk     = sutakKaal(e);
+
+    const sutakBlock = `
+      <div class="vp-sutak-block">
+        <div class="vp-sutak-title">⏳ Sutak Kaal</div>
+        <div class="vp-sutak-row">
+          <span class="vp-sutak-label">Shastriya (Elaborated — ${sk.elaboratedHrs}h):</span>
+          <span class="vp-sutak-val">Begins ${sk.elaboratedStart}</span>
+        </div>
+        <div class="vp-sutak-row">
+          <span class="vp-sutak-label">Laukika (Short — ${sk.shortHrs}h):</span>
+          <span class="vp-sutak-val">Begins ${sk.shortStart}</span>
+        </div>
+        <div class="vp-sutak-row">
+          <span class="vp-sutak-label">Sutak ends:</span>
+          <span class="vp-sutak-val">At Grahan peak ~ ${sk.grahan}</span>
+        </div>
+        <div class="vp-sutak-note">
+          ${e.type==='solar'
+            ? 'Exceptions: children under 10, the elderly, pregnant women, and those with illness are exempt from the 36h rule; the 12h rule applies universally.'
+            : 'Children, elderly &amp; pregnant women observe the shorter 3h Sutak. The 9h rule applies to householders (grihastha).'
+          }
+        </div>
+      </div>`;
+
     return `<div class="vp-eclipse-row ${cls}${isPast?' is-past':''}">
       <div class="vp-eclipse-icon">${icon}</div>
       <div class="vp-eclipse-body">
         <div class="vp-eclipse-title">${grahan} <span class="vp-eclipse-kind">· ${e.kind}</span></div>
         <div class="vp-eclipse-when">${fmt(e.date)}</div>
         <div class="vp-eclipse-sub">Moon ${e.sep.toFixed(1)}° from Rahu–Ketu axis</div>
+        ${!isPast ? sutakBlock : ''}
       </div>
       <div class="vp-eclipse-rel">${rel}</div>
     </div>`;

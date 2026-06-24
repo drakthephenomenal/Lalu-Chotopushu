@@ -2776,6 +2776,32 @@
   font-style:italic;
 }
 
+/* ── Sutak Kaal block inside each eclipse row ── */
+#vpanchanga-view .vp-sutak-block{
+  margin-top:9px;padding:9px 11px;border-radius:10px;
+  background:rgba(255,200,80,.08);
+  border:1px solid rgba(255,185,50,.25);
+}
+#vpanchanga-view .vp-sutak-title{
+  font-size:.65rem;font-weight:700;letter-spacing:.04em;
+  color:#e0a020;margin-bottom:5px;
+}
+#vpanchanga-view .vp-sutak-row{
+  display:flex;flex-wrap:wrap;gap:3px 8px;
+  font-size:.6rem;line-height:1.55;color:#ccc;
+  margin-bottom:2px;
+}
+#vpanchanga-view .vp-sutak-label{
+  color:#f0c060;font-weight:600;white-space:nowrap;
+}
+#vpanchanga-view .vp-sutak-val{
+  color:#e8e8e8;
+}
+#vpanchanga-view .vp-sutak-note{
+  margin-top:5px;font-size:.55rem;color:#a89060;
+  line-height:1.5;font-style:italic;
+}
+
 /* ══════════════════════════════════════════════════════════════
    MSD BAR — Mahadasha & Sade Sati mini-cards above Personal Muhurta
    ══════════════════════════════════════════════════════════════ */

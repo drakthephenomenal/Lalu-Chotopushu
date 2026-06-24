@@ -6310,12 +6310,13 @@ function u28() {
       function _fitN28FontSize(el) {
         const containerW = el.parentNode ? el.parentNode.getBoundingClientRect().width - 20 : 300;
         const baseSize = Math.min(300, Math.max(120, containerW * 0.38));
+        el.style.whiteSpace = "nowrap";
+        el.style.wordBreak = "normal";
+        el.style.overflowX = "visible";
         el.style.fontSize = baseSize + "px";
-        el.style.whiteSpace = "normal";
-        el.style.wordBreak = "break-word";
         let sz = baseSize;
-        while (el.scrollWidth > containerW && sz > 80) {
-          sz -= 1;
+        while (el.scrollWidth > containerW && sz > 40) {
+          sz -= 2;
           el.style.fontSize = sz + "px";
         }
       }

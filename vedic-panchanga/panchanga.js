@@ -22,7 +22,7 @@
       _initEngine();
       return;
     }
-    fetch(_baseURL + 'panchanga.html', { cache: 'no-cache' })
+    fetch(_baseURL + 'panchanga.html')
       .then(r => r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)))
       .then(html => {
         mount.innerHTML = html;

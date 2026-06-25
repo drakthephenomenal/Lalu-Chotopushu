@@ -655,7 +655,7 @@
        Styles:  vedic-panchanga/panchanga.css   (linked in <head>)
        Engine:  vedic-panchanga/panchanga.js    (loaded near </body>)
        ═══════════════════════════════════════════ -->
-  <div id="vpanchanga-mount" style="display:none"></div>
+  <div id="vpanchanga-mount"></div>
 </div>
 
 <!-- MILESTONES VIEW — dedicated tab -->
@@ -1734,11 +1734,12 @@
 // ═══ B&C Sub-tab switcher ════════════════════════════════════
 function vpSwitchTab(tab) {
   const bnc = document.getElementById('vp-bnc-content');
-  const pan = document.getElementById('vpanchanga-mount'); // mount point — always present
   const btnBnC = document.getElementById('vpTabBnC');
   const btnPan = document.getElementById('vpTabPan');
   if (tab === 'bnc') {
-    if (bnc) bnc.style.display = '';
+    bnc.style.display = '';
+    // Guard: pan fragment may not be injected yet
+    const pan = document.getElementById('vpanchanga-view');
     if (pan) pan.style.display = 'none';
     btnBnC.style.background = 'rgba(245,209,122,0.12)';
     btnBnC.style.borderColor = 'rgba(245,209,122,0.4)';
@@ -1749,20 +1750,56 @@ function vpSwitchTab(tab) {
     window.vpStopClock && window.vpStopClock();
     window.vpStopRefresh && window.vpStopRefresh();
   } else {
-    if (bnc) bnc.style.display = 'none';
-    if (pan) pan.style.display = 'block';
-    btnPan.style.background = 'rgba(184,196,245,0.12)';
+    bnc.style.display = 'none';
+
+    // Active-state styling for the tab buttons
+    btnPan.style.background  = 'rgba(184,196,245,0.12)';
     btnPan.style.borderColor = 'rgba(184,196,245,0.4)';
-    btnPan.style.color = 'var(--a2)';
-    btnBnC.style.background = 'transparent';
+    btnPan.style.color       = 'var(--a2)';
+    btnBnC.style.background  = 'transparent';
     btnBnC.style.borderColor = 'rgba(245,209,122,0.3)';
-    btnBnC.style.color = 'var(--td)';
-    // Update location label + (re)try GPS fetch from the Panchanga engine itself
-    window.vpUpdateLocLabel && window.vpUpdateLocLabel();
-    window.vpEnsureGps && window.vpEnsureGps();
-    window.vpActivate && window.vpActivate();
-    window.vpStartClock && window.vpStartClock();
-    window.vpStartRefresh && window.vpStartRefresh();
+    btnBnC.style.color       = 'var(--td)';
+
+    let pan = document.getElementById('vpanchanga-view');
+    if (pan) {
+      // Fragment already in DOM — activate immediately
+      pan.style.display = 'block';
+      window.vpUpdateLocLabel && window.vpUpdateLocLabel();
+      window.vpEnsureGps      && window.vpEnsureGps();
+      window.vpActivate       && window.vpActivate();
+      window.vpStartClock     && window.vpStartClock();
+      window.vpStartRefresh   && window.vpStartRefresh();
+    } else {
+      // Fragment not injected yet (fetch in-flight or failed).
+      // Show a placeholder and poll until it appears.
+      const mount = document.getElementById('vpanchanga-mount');
+      if (mount && !mount.dataset.retry) {
+        mount.dataset.retry = '1';
+        mount.innerHTML =
+          '<div style="padding:24px;text-align:center;color:#b8c4f5">Loading Vedic Panchanga\u2026</div>';
+        // Re-trigger the loader if the engine exposed one
+        window.vpReload && window.vpReload();
+      }
+      let tries = 0;
+      const iv = setInterval(() => {
+        pan = document.getElementById('vpanchanga-view');
+        if (pan) {
+          clearInterval(iv);
+          pan.style.display = 'block';
+          window.vpUpdateLocLabel && window.vpUpdateLocLabel();
+          window.vpEnsureGps      && window.vpEnsureGps();
+          window.vpActivate       && window.vpActivate();
+          window.vpStartClock     && window.vpStartClock();
+          window.vpStartRefresh   && window.vpStartRefresh();
+        } else if (++tries > 40) {           // ~6 s timeout
+          clearInterval(iv);
+          const m = document.getElementById('vpanchanga-mount');
+          if (m) m.innerHTML =
+            '<div style="padding:24px;text-align:center;color:#f87171">' +
+            'Vedic Panchanga module failed to load. Pull down to refresh.</div>';
+        }
+      }, 150);
+    }
   }
 }
 </script>

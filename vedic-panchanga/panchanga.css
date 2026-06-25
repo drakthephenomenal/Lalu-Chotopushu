@@ -128,7 +128,7 @@
 #vpanchanga-view .vp-clock-wrap{text-align:center;padding:10px 20px 0;position:relative}
 #vpanchanga-view .vp-om-bg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:.05;font-size:96px;font-family:'Tiro Devanagari Hindi',serif;color:var(--vp-sun)}
 #vpanchanga-view #vp-clock{font-family:'EB Garamond',serif;font-size:2.9rem;font-weight:700;color:var(--vp-ink);letter-spacing:-.03em}
-#vpanchanga-view #vp-vaar-name{font-family:'EB Garamond',serif;font-size:1.32rem;font-weight:600;text-align:center;margin-top:2px;color:var(--vp-violet)}
+#vpanchanga-view #vp-vaar-name{font-family:'EB Garamond',serif;font-size:1.32rem;font-weight:700;text-align:center;margin-top:2px;color:#C9961A}
 #vpanchanga-view #vp-month-line{font-size:.72rem;color:var(--vp-sun);letter-spacing:.08em;text-transform:uppercase;text-align:center;margin-top:6px;font-weight:700}
 #vpanchanga-view #vp-vaishnav-line{font-size:.66rem;color:var(--vp-ink-faint);font-style:italic;font-family:'EB Garamond',serif;text-align:center;margin-top:2px}
 
@@ -3450,12 +3450,13 @@
 }
 #vpanchanga-view .vp-dr-tl-dt-ico{font-size:.85rem;width:18px;text-align:center}
 #vpanchanga-view .vp-dr-tl-dt-label{
-  color:var(--vp-ink-soft);
+  color:#1565C0;
+  font-weight:700;
   flex:1;min-width:0;
 }
 #vpanchanga-view .vp-dr-tl-dt-val{
   font-variant-numeric:tabular-nums;
-  font-weight:700;color:var(--vp-ink);
+  font-weight:700;color:#1565C0;
   white-space:nowrap;
 }
 

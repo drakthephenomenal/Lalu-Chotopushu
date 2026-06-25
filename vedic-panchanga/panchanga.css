@@ -3429,3 +3429,70 @@
   font-size:.62rem;line-height:1.55;color:var(--vp-ink-faint);
   padding:10px 16px 4px;margin-top:4px;border-top:1px solid var(--vp-card-edge);
 }
+
+/* ── v8.1 USER FIXES ─────────────────────────────────────────── */
+/* 1. Ekadashi list should not be height-clipped (was 1200px) */
+#vpanchanga-view #vp-ekadashi-wrap.vp-collapsible-wrap.open,
+#vpanchanga-view #vp-upcoming-wrap.vp-collapsible-wrap.open{
+  max-height:none !important;
+}
+/* 2. Anga cards (Tithi/Nakshatra/Yoga/Karana): black, legible text */
+#vpanchanga-view .vp-anga-card,
+#vpanchanga-view .vp-anga-card.good,
+#vpanchanga-view .vp-anga-card.warn{
+  background:#ffffff !important;
+  border:1px solid rgba(0,0,0,.12) !important;
+  box-shadow:0 4px 14px rgba(0,0,0,.08) !important;
+}
+#vpanchanga-view .vp-anga-card-label,
+#vpanchanga-view .vp-anga-card-name,
+#vpanchanga-view .vp-anga-card.good .vp-anga-card-name,
+#vpanchanga-view .vp-anga-card.warn .vp-anga-card-name,
+#vpanchanga-view .vp-anga-card-paksha,
+#vpanchanga-view .vp-anga-card-fx,
+#vpanchanga-view .vp-anga-card-time,
+#vpanchanga-view .vp-anga-card-date,
+#vpanchanga-view .vp-anga-card-left,
+#vpanchanga-view .vp-anga-card-ctx,
+#vpanchanga-view .vp-anga-card-ctx span{
+  color:#000 !important;
+}
+#vpanchanga-view .vp-anga-card-time{font-weight:700 !important;font-size:.66rem !important}
+#vpanchanga-view .vp-anga-card-date{font-size:.6rem !important;font-weight:600 !important;margin-top:1px}
+#vpanchanga-view .vp-anga-card-ctx{
+  display:flex;flex-wrap:wrap;gap:6px 10px;
+  font-size:.56rem;font-weight:600;
+  margin-top:6px;padding-top:6px;
+  border-top:1px dashed rgba(0,0,0,.18);
+}
+/* Make sure tablet (iPad) keeps the same legibility — both 2-col and
+   4-col anga grids inherit the black text rules above. */
+@media (min-width:768px){
+  #vpanchanga-view .vp-anga-row-cards{grid-template-columns:repeat(4,1fr)}
+}
+
+/* 3. Ekadashi Unmilini/Trisparsha inline flag */
+#vpanchanga-view .vp-ek-flag-line{
+  margin-top:6px;font-size:.62rem;line-height:1.5;
+  color:#000;background:rgba(245,194,74,.14);
+  border-left:3px solid #F5C24A;
+  padding:5px 8px;border-radius:6px;
+}
+#vpanchanga-view .vp-in-pill.vp-ek-flag{
+  margin-top:4px;display:inline-block;
+  background:rgba(245,194,74,.22) !important;
+  color:#7a5500 !important;
+  border:1px solid rgba(245,194,74,.55) !important;
+  font-weight:800;
+}
+
+/* Ekadashi explain: astro block shows fast-day BM + sunrise */
+#vpanchanga-view .vp-ek-astro{
+  margin:8px 0;padding:8px 10px;
+  background:rgba(245,194,74,.10);
+  border:1px solid rgba(245,194,74,.35);
+  border-radius:8px;
+  font-size:.66rem;line-height:1.6;color:#000;
+}
+#vpanchanga-view .vp-ek-astro b{color:#000;font-weight:700}
+#vpanchanga-view .vp-ekadashi-detail .explain{color:#000 !important}

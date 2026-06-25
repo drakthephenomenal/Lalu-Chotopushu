@@ -532,7 +532,6 @@ let LAT=22.5726,LNG=88.3639;
 let selectedVaarIdx=null;
 let selectedAnga='tithi'; // tithi | nakshatra | yoga | karana — option-driven anga view
 let DATA=null;
-let _vpEkadashiCache={key:null,data:null};
 
 // GPS
 // location handled by main app via window._appLat/_appLng
@@ -709,25 +708,9 @@ function buildAngaRowCards(now,tithiPeriods,nakshatraPeriods,yogaPeriods,karanaP
 
   function angaCard(label,cur,fx,periods,warn){
     const upcoming=periods.filter(p=>+jdToDate(p.startJD)>+now).slice(0,3);
-    const startDate=jdToDate(cur.startJD);
     const endDate=jdToDate(cur.endJD);
     const id='vpc-'+label.toLowerCase().replace(/\s/g,'');
     const leftTxt=durLeft(cur.endJD);
-    // Day-context info (sunrise / sunset / brahma muhurta) for this anga's day window
-    let ctxHtml='';
-    try{
-      const ref=(typeof LAT==='number'&&typeof LNG==='number')?{lat:LAT,lng:LNG}:null;
-      if(ref){
-        const t=SunCalc.getTimes(startDate,ref.lat,ref.lng);
-        const bmStart=new Date(+t.sunrise-96*60*1000);
-        const bmEnd=new Date(+bmStart+48*60*1000);
-        ctxHtml=`<div class="vp-anga-card-ctx">
-          <span>🌅 BM ${fmt12(bmStart)}–${fmt12(bmEnd)}</span>
-          <span>☀️ SR ${fmt12(t.sunrise)}</span>
-          <span>🌇 SS ${fmt12(t.sunset)}</span>
-        </div>`;
-      }
-    }catch(e){}
     const upcomingHtml=upcoming.map(p=>{
       const ps=jdToDate(p.startJD),pe=jdToDate(p.endJD);
       return`<div class="vp-anga-upcoming-item">
@@ -738,15 +721,12 @@ function buildAngaRowCards(now,tithiPeriods,nakshatraPeriods,yogaPeriods,karanaP
         </div>
       </div>`;
     }).join('');
-    const rangeDateStr=startDate.toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short'});
     return`<div class="vp-anga-card ${warn?'warn':'good'}">
       <div class="vp-anga-card-label">${label} Now</div>
       <div class="vp-anga-card-name">${cur.name}</div>
       ${cur.paksha?`<div class="vp-anga-card-paksha">${cur.paksha} Paksha</div>`:''}
       <div class="vp-anga-card-fx">${fx}</div>
-      <div class="vp-anga-card-time">${fmt12(startDate)} – ${fmtEnd(endDate,startDate)}</div>
-      <div class="vp-anga-card-date">${rangeDateStr}</div>
-      ${ctxHtml}
+      <div class="vp-anga-card-time">ends ${fmtEnd(endDate,now)}</div>
       ${leftTxt?`<div class="vp-anga-card-left">${leftTxt}</div>`:''}
       ${upcoming.length?`
       <button class="vp-anga-card-toggle" id="btn-${id}" onclick="vpToggleAngaCard('${id}')">
@@ -1326,18 +1306,6 @@ function renderAll(){
     }).join(''):'<div style="padding:12px;text-align:center;font-size:.76rem;color:var(--vp-ink-faint)">No upcoming periods</div>';
   }
 
-  // ── Ekadashi Fasting Dates — recomputed only when the day, GPS
-  //    coordinates, or the picked range actually changes ──
-  const ekCacheKey=(_vpEkadashiRange?('range:'+_vpEkadashiRange.fromJD+'-'+_vpEkadashiRange.toJD):jdToDate(jd).toISOString().slice(0,10))+'|'+LAT.toFixed(2)+'|'+LNG.toFixed(2);
-  if(_vpEkadashiCache.key!==ekCacheKey){
-    const ekData=_vpEkadashiRange
-      ?vpComputeEkadashiFasting(_vpEkadashiRange.fromJD,LAT,LNG,{jdEnd:_vpEkadashiRange.toJD,maxResults:60})
-      :vpComputeEkadashiFasting(jd,LAT,LNG);
-    _vpEkadashiCache={key:ekCacheKey,data:ekData};
-  }
-  const ekList=document.getElementById('vp-ekadashi-list');
-  if(ekList) ekList.innerHTML=buildEkadashiList(_vpEkadashiCache.data);
-
   // Viewing bar
   const vb=document.getElementById('vp-viewing-bar');
   if(!isActive){
@@ -1629,11 +1597,47 @@ function vpAngaTimeline(fetchFn, jd, fxLookup, nameKey){
   return { prev: decorate(prev), current: decorate(current), next: decorate(next) };
 }
 
+// Sunrise / Sunset / Brahma-Muhurta block for a given calendar date.
+// Returned as a small inline strip used inside each anga timeline row so
+// the user can see the day-boundaries of BOTH dates that a tithi / yoga /
+// karana spans.
+function vpDayTimesBlock(date, lat, lng, dateLabel){
+  if(!date || isNaN(+date)) return '';
+  // Use noon so SunCalc resolves a stable sunrise/sunset for that civil date.
+  const noon = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
+  let sr, ss;
+  try {
+    const t = SunCalc.getTimes(noon, lat, lng);
+    sr = t.sunrise; ss = t.sunset;
+  } catch(e){ return ''; }
+  if(!sr || isNaN(+sr) || !ss || isNaN(+ss)) return '';
+  const bmS = new Date(+sr - 96*60*1000);
+  const bmE = new Date(+bmS + 48*60*1000);
+  const head = dateLabel || date.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+  return `<div class="vp-dr-tl-daytimes">
+    <div class="vp-dr-tl-dt-head">${head}</div>
+    <div class="vp-dr-tl-dt-row"><span class="vp-dr-tl-dt-ico">🌄</span><span class="vp-dr-tl-dt-label">Brahma Muhurta</span><span class="vp-dr-tl-dt-val">${fmt12(bmS)} – ${fmt12(bmE)}</span></div>
+    <div class="vp-dr-tl-dt-row"><span class="vp-dr-tl-dt-ico">☀️</span><span class="vp-dr-tl-dt-label">Sunrise</span><span class="vp-dr-tl-dt-val">${fmt12(sr)}</span></div>
+    <div class="vp-dr-tl-dt-row"><span class="vp-dr-tl-dt-ico">🌇</span><span class="vp-dr-tl-dt-label">Sunset</span><span class="vp-dr-tl-dt-val">${fmt12(ss)}</span></div>
+  </div>`;
+}
+
 // Renders one anga's full Previous/Current/Next timeline card
-function vpAngaCardHTML(icon, label, tl, showPaksha){
+function vpAngaCardHTML(icon, label, tl, showPaksha, showDayTimes){
   function row(tag, tagLabel, p){
     const pakshaHtml = showPaksha && p.paksha
       ? `<span class="vp-dr-tl-paksha">${p.paksha} Paksha</span>` : '';
+    let dayTimesHtml = '';
+    if(showDayTimes && p.startDate && p.endDate){
+      const sd = p.startDate, ed = p.endDate;
+      const startLabel = sd.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+      const endLabel   = ed.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+      const startBlock = vpDayTimesBlock(sd, LAT, LNG, startLabel);
+      const endBlock   = sameDay(sd, ed) ? '' : vpDayTimesBlock(ed, LAT, LNG, endLabel);
+      if(startBlock || endBlock){
+        dayTimesHtml = `<div class="vp-dr-tl-daytimes-wrap">${startBlock}${endBlock}</div>`;
+      }
+    }
     return `<div class="vp-dr-tl-row ${tag}">
       <div class="vp-dr-tl-marker"><span class="vp-dr-tl-dot"></span></div>
       <div class="vp-dr-tl-body">
@@ -1642,6 +1646,7 @@ function vpAngaCardHTML(icon, label, tl, showPaksha){
         ${p.fxText ? `<div class="vp-dr-tl-fx">${p.fxText}</div>` : ''}
         <div class="vp-dr-tl-time">${fmtDT(p.startDate)} → ${fmtEnd(p.endDate, p.startDate)}</div>
         <span class="vp-dr-tl-dur">⏱ ${p.durText}</span>
+        ${dayTimesHtml}
       </div>
     </div>`;
   }
@@ -1728,10 +1733,10 @@ function vpRenderDateResult(){
   const listEl = document.getElementById('vp-dr-anga-list');
   if(listEl){
     listEl.innerHTML =
-      vpAngaCardHTML('🌙','Tithi', tithiTL, true) +
-      vpAngaCardHTML('⭐','Nakshatra', nakTL, false) +
-      vpAngaCardHTML('☯️','Yoga', yogaTL, false) +
-      vpAngaCardHTML('◐','Karana', karTL, false);
+      vpAngaCardHTML('🌙','Tithi', tithiTL, true, true) +
+      vpAngaCardHTML('⭐','Nakshatra', nakTL, false, false) +
+      vpAngaCardHTML('☯️','Yoga', yogaTL, false, true) +
+      vpAngaCardHTML('◐','Karana', karTL, false, true);
   }
 
   // Tara Bala for this date — only if user has a saved birth profile
@@ -1940,10 +1945,10 @@ function vpHoroCalculate(){
   const listEl = document.getElementById('vp-horo-anga-list');
   if(listEl){
     listEl.innerHTML =
-      vpAngaCardHTML('🌙','Tithi', tithiTL, true) +
-      vpAngaCardHTML('⭐','Nakshatra', nakTL, false) +
-      vpAngaCardHTML('☯️','Yoga', yogaTL, false) +
-      vpAngaCardHTML('◐','Karana', karTL, false);
+      vpAngaCardHTML('🌙','Tithi', tithiTL, true, true) +
+      vpAngaCardHTML('⭐','Nakshatra', nakTL, false, false) +
+      vpAngaCardHTML('☯️','Yoga', yogaTL, false, true) +
+      vpAngaCardHTML('◐','Karana', karTL, false, true);
   }
 
   // ── Birth Moon Rashi card ──────────────────────────────────────
@@ -2813,329 +2818,36 @@ function vpComputeUniversalYogas(jdNow, lat, lng){
   return results;
 }
 
-// ══════════════════════════════════════════════════════════════
-// EKADASHI FASTING DATES (Vaishnava convention) + Ashta-Mahadvadashi
-// ══════════════════════════════════════════════════════════════
-// For each upcoming Ekadashi tithi this determines the CALENDAR DAY the
-// Vaishnava fast actually falls on:
-//   1. BASE RULE — fast on the day whose Brahma Muhurta (96→48 min
-//      before sunrise) falls inside the Ekadashi tithi window. This is
-//      "Suddha Ekadashi" (a pure, unexceptional Ekadashi day).
-//   2. Six of the eight Ashta-Mahadvadashi conditions can override the
-//      base day, pulling the fast forward onto the following Dvadashi
-//      day instead:
-//        – Vanjuli          (Dvadashi tithi spans 2 consecutive sunrises)
-//        – Pakshavarddhini  (this paksha's closing Purnima/Amavasya
-//                            spans 2 consecutive sunrises)
-//        – Jaya / Vijaya / Jayanti / Papanashini (Punarvasu / Shravana /
-//          Rohini / Pushya Nakshatra active at the Dvadashi-day sunrise)
-//   Unmilini and Trisparsha (the other 2 of the 8) do NOT move the fast
-//   to a different calendar day in this scheme — they only affect
-//   naming/merit or Parana legality on a day the base rule already
-//   selects — so they are intentionally not surfaced as separate
-//   date-shifters here.
-//
-// PARANA is approximated as sunrise of the day after the fast, capped at
-// +4h or the end of whichever tithi governs that sunrise (whichever is
-// sooner). The classical rule also excludes Hari Vasara (~first 1/5 of
-// Dvadashi), which this approximation does not model — treat the window
-// shown as indicative and verify exact Parana timing against a local
-// Vaishnava panchang for anything observed strictly.
-const EKADASHI_NAMES=[
-  {sukla:'Kamada',                  krishna:'Papamochani'},  // Chaitra
-  {sukla:'Mohini',                  krishna:'Varuthini'},    // Vaishakha
-  {sukla:'Nirjala',                 krishna:'Apara'},        // Jyeshtha
-  {sukla:'Devshayani',              krishna:'Yogini'},        // Ashadha
-  {sukla:'Putrada (Pavitropana)',   krishna:'Kamika'},        // Shravana
-  {sukla:'Parivartini (Vamana)',    krishna:'Aja'},           // Bhadrapada
-  {sukla:'Papankusha',              krishna:'Indira'},        // Ashwina
-  {sukla:'Prabodhini (Devutthana)', krishna:'Rama'},          // Kartika
-  {sukla:'Mokshada',                krishna:'Utpanna'},       // Margashirsha
-  {sukla:'Putrada',                 krishna:'Saphala'},       // Pausha
-  {sukla:'Jaya',                    krishna:'Shattila'},      // Magha
-  {sukla:'Amalaki',                 krishna:'Vijaya'}         // Phalguna
-];
-// Nakshatra-index → which Category-B Mahadvadashi it triggers when active
-// at the Dvadashi-day sunrise.
-const MAHADVADASHI_NAK_MAP={6:'Jaya',21:'Vijaya',3:'Jayanti',7:'Papanashini'};
-
-// jdStart: JD to start scanning from (today, or the picked "From" date).
-// opts.jdEnd: when set, returns EVERY Ekadashi whose final fast date
-//   falls within [jdStart,jdEnd] (a user-picked range) instead of just
-//   the next few upcoming ones, and does not skip dates before "now".
-// opts.maxResults: safety cap (default 6 for the upcoming view, 60 for
-//   a picked range).
-function vpComputeEkadashiFasting(jdStart,lat,lng,opts){
-  opts=opts||{};
-  const jdEnd=opts.jdEnd||null;
-  const maxResults=opts.maxResults||(jdEnd?60:6);
-  const results=[];
-
-  // The Brahma-Muhurta day-fetch for a probe Date. Sunrise/BM are
-  // computed directly from the GPS lat/lng passed in — never from the
-  // device's local clock — so the fast-day DETERMINATION below is
-  // always location-correct regardless of the browser's timezone.
-  function bmJD(probeDate){
-    const t=SunCalc.getTimes(probeDate,lat,lng);
-    return {sunrise:t.sunrise, bmJD:dateToJD(new Date(+t.sunrise-96*60*1000))};
-  }
-  // Find the day whose Brahma Muhurta falls inside [tStart,tEnd]. Scans a
-  // handful of candidate sunrises starting just before tStart.
-  function bmDayWithinTithi(tStart,tEnd){
-    let probe=jdToDate(tStart-1.2);
-    for(let i=0;i<5;i++){
-      const b=bmJD(probe);
-      if(b.bmJD>=tStart&&b.bmJD<=tEnd) return b;
-      probe=new Date(+probe+86400000); // pure +24h, not setDate() — DST-safe
-    }
-    return null;
-  }
-  // Does [tStart,tEnd] contain TWO consecutive days' Brahma Muhurta
-  // moments? Returns the first such day if so.
-  function spansTwoSunrises(tStart,tEnd){
-    let probe=jdToDate(tStart-1.2),hits=0,first=null;
-    for(let i=0;i<6;i++){
-      const b=bmJD(probe);
-      if(b.bmJD>=tStart&&b.bmJD<=tEnd){hits++; if(!first) first=b;}
-      probe=new Date(+probe+86400000);
-    }
-    return {spans:hits>=2, first};
-  }
-
-  const lookback=20; // days of history before jdStart, so Navami/Dashami
-                      // are always available for the explain-panel chain
-  const forwardSpan=jdEnd?Math.ceil(jdEnd-jdStart)+30:130;
-  const tithiPeriods=getTithiPeriods(jdStart-lookback,forwardSpan+lookback);
-  const ekIdxList=[];
-  tithiPeriods.forEach((p,i)=>{if((p.index===10||p.index===25)&&i>=2) ekIdxList.push(i);});
-
-  for(const i of ekIdxList){
-    const ek=tithiPeriods[i];
-    let base=bmDayWithinTithi(ek.startJD,ek.endJD);
-    // Trisparsha fallback: Ekadashi tithi is so brief it contains no
-    // sunrise. Use the sunrise immediately AFTER ek.startJD as the fast
-    // anchor so the day is still surfaced and flagged.
-    if(!base){
-      base=bmJD(jdToDate(ek.startJD+0.5));
-    }
-    const baseJD=dateToJD(base.sunrise);
-    if(!jdEnd && baseJD<jdStart-1) continue; // upcoming-view: skip past
-
-    const dv=tithiPeriods[i+1]; // Dvadashi period right after this Ekadashi
-    let fastDate=base.sunrise, type='Suddha Ekadashi', note='';
-
-    // ── Unmilini: Ekadashi tithi itself spans 2 consecutive sunrises ──
-    const unmiliniCheck=spansTwoSunrises(ek.startJD,ek.endJD);
-    const isUnmilini=unmiliniCheck.spans;
-
-    // ── Trisparsha: Ekadashi tithi is so short that Dashami, Ekadashi
-    //    AND Dwadashi all "touch" the same civil day (no sunrise lies
-    //    inside the Ekadashi tithi window). ──
-    const isTrisparsha=(()=>{
-      let probe=jdToDate(ek.startJD-1);
-      for(let k=0;k<4;k++){
-        const b=bmJD(probe);
-        const srJD=dateToJD(b.sunrise);
-        if(srJD>=ek.startJD&&srJD<=ek.endJD) return false;
-        probe=new Date(+probe+86400000);
-      }
-      return true;
-    })();
-
-    if(dv){
-      const vanj=spansTwoSunrises(dv.startJD,dv.endJD);
-      if(vanj.spans){
-        fastDate=vanj.first.sunrise; type='Vanjuli Mahadvadashi';
-        note='Dvadashi tithi spans two sunrises';
-      } else {
-        const dvDay=bmDayWithinTithi(dv.startJD,dv.endJD);
-        if(dvDay){
-          const nakIdx=Math.floor(moonLongSid(dateToJD(dvDay.sunrise))/(360/27))%27;
-          if(MAHADVADASHI_NAK_MAP[nakIdx]){
-            fastDate=dvDay.sunrise; type=MAHADVADASHI_NAK_MAP[nakIdx]+' Mahadvadashi';
-            note=NAKSHATRA[nakIdx]+' Nakshatra at Dvadashi sunrise';
-          }
-        }
-      }
-    }
-
-    // Pakshavarddhini — only checked if no other override already fired
-    if(type==='Suddha Ekadashi' && dv){
-      const closingIdx=ek.index===10?14:29; // Purnima for Sukla, Amavasya for Krishna
-      const closing=tithiPeriods.find((p,j)=>j>i&&p.index===closingIdx);
-      if(closing){
-        const pv=spansTwoSunrises(closing.startJD,closing.endJD);
-        if(pv.spans){
-          const dvDay=bmDayWithinTithi(dv.startJD,dv.endJD);
-          if(dvDay){
-            fastDate=dvDay.sunrise; type='Pakshavarddhini Mahadvadashi';
-            note="This paksha's closing "+(ek.index===10?'Purnima':'Amavasya')+' spans two sunrises';
-          }
-        }
-      }
-    }
-
-    const fastJD=dateToJD(fastDate);
-    if(jdEnd && (fastJD<jdStart-0.5 || fastJD>jdEnd+0.5)) continue; // outside picked range
-
-    // Named Ekadashi — per Vaishnava month, with Adhik/Purushottam handling
-    const midJD=(ek.startJD+ek.endJD)/2;
-    const hm=hinduMonth(midJD);
-    const am=adhikMaas(midJD);
-    const isSukla=ek.index===10;
-    let ekName,monthLabel;
-    if(am.isAdhik){
-      ekName=isSukla?'Padmini (Kamala)':'Parama';
-      monthLabel='Purushottam Maas (Adhik)';
-    } else {
-      const mi=HM.indexOf(hm.name);
-      ekName=isSukla?EKADASHI_NAMES[mi].sukla:EKADASHI_NAMES[mi].krishna;
-      monthLabel='Vaishnav Month of '+hm.vaishnavName;
-    }
-
-    // Parana window — sunrise the day after the fast, capped at +4h or
-    // the end of whichever tithi governs that sunrise. Advanced by exact
-    // milliseconds (+86400000), NOT setDate(), so this stays correct even
-    // if the device's local timezone has a DST shift that day — the GPS
-    // location's sunrise is what actually matters here.
-    const paranaProbe=new Date(+fastDate+86400000);
-    const pT=SunCalc.getTimes(paranaProbe,lat,lng);
-    const paranaStart=pT.sunrise;
-    const paranaJD=dateToJD(paranaStart);
-    const govPeriod=tithiPeriods.find(p=>paranaJD>=p.startJD&&paranaJD<=p.endJD);
-    const fourHrCap=new Date(+paranaStart+4*3600*1000);
-    const govEnd=govPeriod?jdToDate(govPeriod.endJD):null;
-    const paranaEnd=(govEnd&&+govEnd<+fourHrCap)?govEnd:fourHrCap;
-
-    // Fast-day astro anchors — exposed so the "tap to see why" panel
-    // can quote the Brahma Muhurta window and sunrise the rule used.
-    const fastSunrise=fastDate; // bmJD/dvDay return their sunrise as fastDate
-    const fastBmStart=new Date(+fastSunrise-96*60*1000);
-    const fastBmEnd=new Date(+fastSunrise-48*60*1000);
-    const fastNakIdx=Math.floor(moonLongSid(dateToJD(fastSunrise))/(360/27))%27;
-    const fastNakName=NAKSHATRA[fastNakIdx];
-
-    // Chain captured for the "tap to see why" panel: Navami through the
-    // closing Purnima/Amavasya (i-2 .. i+4), the same span a person would
-    // sample by hand to fix this date.
-    const chain=tithiPeriods.slice(i-2,i+5).map(p=>({name:p.name,paksha:p.paksha,startJD:p.startJD,endJD:p.endJD}));
-
-    results.push({ekadashiName:ekName+' Ekadashi',monthLabel,
-      paksha:isSukla?'Sukla':'Krishna',type,note,fastDate,paranaStart,paranaEnd,chain,
-      isUnmilini,isTrisparsha,
-      fastBmStart,fastBmEnd,fastSunrise,fastNakName});
-
-    if(results.length>=maxResults) break;
-  }
-  return results;
-}
-
-// Builds the per-row "why this date" panel: a Navami→Purnima/Amavasya
-// tithi table (highlighting the row(s) that actually decided the date)
-// plus a one-line plain-English explanation.
-function vpEkadashiExplainHTML(r){
-  const NAK_OVERRIDES={'Jaya Mahadvadashi':'Punarvasu','Vijaya Mahadvadashi':'Shravana','Jayanti Mahadvadashi':'Rohini','Papanashini Mahadvadashi':'Pushya'};
-  const isNakOverride=!!NAK_OVERRIDES[r.type];
-  const rows=r.chain.map(p=>{
-    let hi=false;
-    if(p.name==='Ekadashi'&&r.type==='Suddha Ekadashi') hi=true;
-    if(p.name==='Dwadashi'&&r.type!=='Suddha Ekadashi') hi=true;
-    if((p.name==='Purnima'||p.name==='Amavasya')&&r.type==='Pakshavarddhini Mahadvadashi') hi=true;
-    if(p.name==='Ekadashi'&&(r.isUnmilini||r.isTrisparsha)) hi=true;
-    return`<tr class="${hi?'hi':''}"><td>${p.name} (${p.paksha})</td><td>${fmtDT(jdToDate(p.startJD))}</td><td>${fmtDT(jdToDate(p.endJD))}</td></tr>`;
-  }).join('');
-  const table=`<table><thead><tr><th>Tithi</th><th>Start</th><th>End</th></tr></thead><tbody>${rows}</tbody></table>`;
-
-  // Fast-day astro block — what every rule below actually anchors on.
-  const astro=`<div class="vp-ek-astro">
-    <div><b>Fast-day Sunrise:</b> ${fmtDT(r.fastSunrise)}</div>
-    <div><b>Fast-day Brahma Muhurta:</b> ${fmt12(r.fastBmStart)} – ${fmt12(r.fastBmEnd)} (96→48 min before sunrise)</div>
-    <div><b>Nakshatra at fast-day sunrise:</b> ${r.fastNakName||'—'}</div>
-    <div><b>Parana (next-day sunrise window):</b> ${fmt12(r.paranaStart)} – ${fmt12(r.paranaEnd)}</div>
-  </div>`;
-
-  let explain;
-  if(r.type==='Suddha Ekadashi' && !r.isUnmilini && !r.isTrisparsha){
-    explain=`Ekadashi tithi contains the fast-day Brahma Muhurta (${fmt12(r.fastBmStart)}–${fmt12(r.fastBmEnd)}) and that day's sunrise (${fmt12(r.fastSunrise)}) — untouched by Dashami beforehand, with no tithi-extension or special Nakshatra in play — so the base sunrise rule alone fixes this as a pure (Suddha) Ekadashi.`;
-  } else if(r.type==='Vanjuli Mahadvadashi'){
-    explain=`Dvadashi tithi spans two consecutive sunrises (Dvadashi row highlighted above), so per the Vanjuli rule the fast shifts off the pure-Ekadashi day onto the first Dvadashi-sunrise day. Fast anchors on the Brahma Muhurta ${fmt12(r.fastBmStart)}–${fmt12(r.fastBmEnd)} and sunrise ${fmt12(r.fastSunrise)} of ${fmtDT(r.fastDate)}.`;
-  } else if(r.type==='Pakshavarddhini Mahadvadashi'){
-    const closing=r.note.indexOf('Purnima')>-1?'Purnima':'Amavasya';
-    explain=`This paksha's closing ${closing} spans two consecutive sunrises, which elevates the following Dvadashi into Pakshavarddhini Mahadvadashi — the fast shifts to the Dvadashi-sunrise day. Brahma Muhurta ${fmt12(r.fastBmStart)}–${fmt12(r.fastBmEnd)}, sunrise ${fmt12(r.fastSunrise)} on ${fmtDT(r.fastDate)}.`;
-  } else if(isNakOverride){
-    const nakReq=NAK_OVERRIDES[r.type];
-    explain=`${nakReq} Nakshatra is active at the Dvadashi-day sunrise (${fmt12(r.fastSunrise)}), elevating that day into ${r.type}. The fast follows that Dvadashi sunrise — Brahma Muhurta ${fmt12(r.fastBmStart)}–${fmt12(r.fastBmEnd)}, sunrise ${fmt12(r.fastSunrise)} on ${fmtDT(r.fastDate)} — instead of the pure-Ekadashi day.`;
-  } else if(r.isTrisparsha){
-    explain=`Ekadashi tithi is so short it begins after one sunrise and ends before the next, so Dashami, Ekadashi and Dvadashi all touch the same civil day (Trisparsha). The Vaishnava fast is observed on the following Dvadashi sunrise — Brahma Muhurta ${fmt12(r.fastBmStart)}–${fmt12(r.fastBmEnd)}, sunrise ${fmt12(r.fastSunrise)} on ${fmtDT(r.fastDate)}.`;
-  } else if(r.isUnmilini){
-    explain=`Ekadashi tithi itself spans two consecutive sunrises (Unmilini Mahadvadashi). The fast still anchors on the FIRST of those sunrises — Brahma Muhurta ${fmt12(r.fastBmStart)}–${fmt12(r.fastBmEnd)}, sunrise ${fmt12(r.fastSunrise)} on ${fmtDT(r.fastDate)} — but the day carries Unmilini merit.`;
-  } else {
-    explain=`${r.note} (Dvadashi row highlighted above) — this elevates that day into ${r.type}, so the fast shifts to Brahma Muhurta ${fmt12(r.fastBmStart)}–${fmt12(r.fastBmEnd)}, sunrise ${fmt12(r.fastSunrise)} on ${fmtDT(r.fastDate)} instead of the pure-Ekadashi day.`;
-  }
-  return`<div class="vp-ekadashi-detail">${table}${astro}<div class="explain">${explain}</div></div>`;
-}
-
-function buildEkadashiList(results){
-  if(!results||!results.length) return'<div style="padding:12px;text-align:center;font-size:.76rem;color:var(--vp-ink-faint)">No Ekadashi found in this range</div>';
-  return results.map((r,i)=>{
-    const isSuddha=r.type==='Suddha Ekadashi';
-    const cls=isSuddha?'ausp':'inaup';
-    const dateStr=r.fastDate.toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short'});
-    const paranaDateStr=r.paranaStart.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
-    const pillTxt=isSuddha?'Suddha':r.type.replace(' Mahadvadashi','');
-    const extraPills=[];
-    if(r.isUnmilini) extraPills.push('<span class="vp-in-pill vp-ek-flag">Unmilini</span>');
-    if(r.isTrisparsha) extraPills.push('<span class="vp-in-pill vp-ek-flag">Trisparsha</span>');
-    const flagLine=(r.isUnmilini||r.isTrisparsha)
-      ?`<div class="vp-ek-flag-line">${r.isUnmilini?'Ekadashi tithi spans two consecutive sunrises — observed as <b>Unmilini Mahadvadashi</b>.':''}${(r.isUnmilini&&r.isTrisparsha)?'<br>':''}${r.isTrisparsha?'Ekadashi tithi is sandwiched between two sunrises within one civil day — observed as <b>Trisparsha Mahadvadashi</b>.':''}</div>`
-      :'';
-    return`<div class="vp-ekadashi-item">
-      <div class="vp-upcoming-row vp-ek-clickable ${cls}" onclick="vpToggleEkadashiDetail(${i})">
-        <div class="vp-upcoming-serial">${i+1}</div>
-        <div class="vp-upcoming-icon">🪷</div>
-        <div class="vp-upcoming-body">
-          <div class="vp-upcoming-label">${r.ekadashiName}</div>
-          <div class="vp-upcoming-desc">${r.monthLabel} &middot; ${r.paksha} Paksha${r.note?' &middot; '+r.note:''}</div>
-          <div class="vp-upcoming-timeblock">Fast: ${dateStr}</div>
-          <div class="vp-upcoming-dur">Parana: ${fmt12(r.paranaStart)}–${fmt12(r.paranaEnd)} on ${paranaDateStr}</div>
-          ${flagLine}
-          <div class="vp-ek-hint">Tap to see the tithi sampling ▾</div>
-        </div>
-        <div class="vp-upcoming-right">
-          <span class="vp-in-pill">${pillTxt}</span>
-          ${extraPills.join('')}
-        </div>
-      </div>
-      <div id="vp-ek-detail-${i}" style="display:none">${vpEkadashiExplainHTML(r)}</div>
-    </div>`;
-  }).join('');
-}
-window.vpToggleEkadashiDetail=function(i){
-  const el=document.getElementById('vp-ek-detail-'+i);
-  if(!el) return;
-  el.style.display=el.style.display==='none'?'block':'none';
-};
-
 function vpComputeMahaYogas(profile){
   if(!profile || typeof profile.nakshatraIndex !== 'number') return [];
   const out = [];
   const tithiIdx0 = profile.tithiIndex; // 0..29
   const nak = profile.nakshatraIndex;
   const rashi = profile.rashiIndex;
-  // Tithi-based Yogas
-  if(tithiIdx0 === 4  || tithiIdx0 === 19) out.push({name:'Siddhi Yoga',    emoji:'🪷', desc:'Birth on Panchami — success in undertakings'});
-  if(tithiIdx0 === 9  || tithiIdx0 === 24) out.push({name:'Dasha-mukta Yoga',emoji:'🔱', desc:'Birth on Dashami — liberation from obstacles'});
-  if(tithiIdx0 === 14)                       out.push({name:'Purnima Yoga',   emoji:'🌕', desc:'Born on full-moon — fullness, fame & nourishment'});
-  if(tithiIdx0 === 29)                       out.push({name:'Amavasya Yoga',  emoji:'🌑', desc:'Born on new-moon — deep introspection & ancestral grace'});
-  // Nakshatra-based
-  if([7,17,21].includes(nak))               out.push({name:'Pushya/Anuradha/Shravana — Vipra Yoga', emoji:'🕉️', desc:'Wisdom, devotion & teaching naturally favored'});
-  if([3,12,20,25].includes(nak))            out.push({name:'Maha-Lakshmi Yoga', emoji:'💐', desc:'Rohini/Hasta/Uttara-group nakshatras — prosperity & abundance'});
-  if([6].includes(nak))                      out.push({name:'Punarvasu Yoga',    emoji:'🌿', desc:'Renewal & return of good fortune through effort'});
+  // Planet-attribution lets the UI compute when each yoga activates
+  // (via the matching Mahadasha / Antardasha of its ruling planet).
+  // Tithi-based Yogas — Moon governs all tithi-born yogas.
+  if(tithiIdx0 === 4  || tithiIdx0 === 19) out.push({name:'Siddhi Yoga',    emoji:'🪷', desc:'Birth on Panchami — success in undertakings', planets:['Moon','Mercury']});
+  if(tithiIdx0 === 9  || tithiIdx0 === 24) out.push({name:'Dasha-mukta Yoga',emoji:'🔱', desc:'Birth on Dashami — liberation from obstacles', planets:['Moon','Saturn']});
+  if(tithiIdx0 === 14)                       out.push({name:'Purnima Yoga',   emoji:'🌕', desc:'Born on full-moon — fullness, fame & nourishment', planets:['Moon']});
+  if(tithiIdx0 === 29)                       out.push({name:'Amavasya Yoga',  emoji:'🌑', desc:'Born on new-moon — deep introspection & ancestral grace', planets:['Moon','Ketu']});
+  // Nakshatra-based — ruled by the nakshatra lord.
+  if([7,17,21].includes(nak))               out.push({name:'Pushya/Anuradha/Shravana — Vipra Yoga', emoji:'🕉️', desc:'Wisdom, devotion & teaching naturally favored', planets:['Jupiter','Saturn','Moon']});
+  if([3,12,20,25].includes(nak))            out.push({name:'Maha-Lakshmi Yoga', emoji:'💐', desc:'Rohini/Hasta/Uttara-group nakshatras — prosperity & abundance', planets:['Venus','Moon']});
+  if([6].includes(nak))                      out.push({name:'Punarvasu Yoga',    emoji:'🌿', desc:'Renewal & return of good fortune through effort', planets:['Jupiter']});
   // Pancha-Maha-Purusha-Yoga proxies via Moon-rashi (approximate, Moon-based)
-  const ownExalt = {0:'Mars-Ruchaka', 2:'Mercury-Bhadra', 4:'Sun-Solar', 6:'Venus-Malavya', 8:'Jupiter-Hamsa', 9:'Saturn-Shasha', 11:'Jupiter-Hamsa'};
-  if(ownExalt[rashi]) out.push({name:ownExalt[rashi]+' Yoga (Moon-proxy)', emoji:'👑', desc:'Pancha-Maha-Purusha proxy via Moon — leadership & distinction'});
-  // Gajakesari (Moon-Jupiter): we don't have Jupiter pos; offer educational entry
-  out.push({name:'Gajakesari (educational)', emoji:'🐘', desc:'Strong Moon-Jupiter angle gives wisdom & influence — verify with full chart'});
+  const ownExalt = {
+    0:{n:'Mars-Ruchaka',     p:'Mars'},
+    2:{n:'Mercury-Bhadra',   p:'Mercury'},
+    4:{n:'Sun-Solar',        p:'Sun'},
+    6:{n:'Venus-Malavya',    p:'Venus'},
+    8:{n:'Jupiter-Hamsa',    p:'Jupiter'},
+    9:{n:'Saturn-Shasha',    p:'Saturn'},
+    11:{n:'Jupiter-Hamsa',   p:'Jupiter'}
+  };
+  if(ownExalt[rashi]) out.push({name:ownExalt[rashi].n+' Yoga (Moon-proxy)', emoji:'👑', desc:'Pancha-Maha-Purusha proxy via Moon — leadership & distinction', planets:[ownExalt[rashi].p]});
+  // Gajakesari (Moon-Jupiter): activates in either Moon or Jupiter dasha/antardasha.
+  out.push({name:'Gajakesari (educational)', emoji:'🐘', desc:'Strong Moon-Jupiter angle gives wisdom & influence — verify with full chart', planets:['Moon','Jupiter']});
   return out;
 }
 
@@ -4301,11 +4013,52 @@ async function vpPersonalRender(){
             ${activeBlock}
           </div>`;
         }).join('');
-        // ── Personal (birth) yoga cards ──
+        // ── Personal (birth) yoga cards with activation windows ──
+        // A natal yoga "fructifies" during the Mahadasha / Antardasha of
+        // its ruling planet(s). We surface the currently-active window
+        // (if any) plus the next 2 upcoming Mahadasha windows and the
+        // very next Antardasha so the user can see WHEN in life this
+        // yoga is most likely to express its results.
+        const _fmtYogaWin = d => d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+        const _yogaActivations = (planets) => {
+          if(!planets || !planets.length || !dashas.length) return '';
+          const set = new Set(planets);
+          const mdHits = dashas.filter(d => set.has(d.lord));
+          const activeMd = mdHits.find(d => +d.start <= nowMs && nowMs < +d.end);
+          const upcomingMd = mdHits.filter(d => +d.start > nowMs).slice(0,2);
+          // Antardashas across ALL dashas where the antar lord matches.
+          const antarHits = [];
+          dashas.forEach(d => (d.antar||[]).forEach(a => {
+            if(set.has(a.lord)) antarHits.push({...a, parent:d.lord});
+          }));
+          const activeAntar = antarHits.find(a => +a.start <= nowMs && nowMs < +a.end);
+          const nextAntar = antarHits.find(a => +a.start > nowMs);
+          const rows = [];
+          if(activeMd){
+            rows.push(`<div class="vp-yoga-act-row vp-yoga-act-now">🟢 <b>Active now</b> · ${activeMd.lord} Mahadasha · until ${_fmtYogaWin(activeMd.end)}</div>`);
+          }
+          if(activeAntar && (!activeMd || activeAntar.lord !== activeMd.lord)){
+            rows.push(`<div class="vp-yoga-act-row vp-yoga-act-now">🟢 <b>Active sub-period</b> · ${activeAntar.lord} antardasha in ${activeAntar.parent} MD · until ${_fmtYogaWin(activeAntar.end)}</div>`);
+          }
+          upcomingMd.forEach(d => {
+            rows.push(`<div class="vp-yoga-act-row">🔮 <b>${d.lord} Mahadasha</b> · ${_fmtYogaWin(d.start)} → ${_fmtYogaWin(d.end)} <span class="vp-yoga-act-dur">(${d.years.toFixed(1)}y)</span></div>`);
+          });
+          if(nextAntar && !upcomingMd.some(d => +nextAntar.start >= +d.start && +nextAntar.end <= +d.end && d.lord===nextAntar.lord)){
+            rows.push(`<div class="vp-yoga-act-row">✨ <b>${nextAntar.lord} antardasha</b> (in ${nextAntar.parent} MD) · ${_fmtYogaWin(nextAntar.start)} → ${_fmtYogaWin(nextAntar.end)}</div>`);
+          }
+          if(!rows.length){
+            rows.push(`<div class="vp-yoga-act-row vp-yoga-act-empty">No upcoming ${planets.join(' / ')} dasha window in the computed lifespan.</div>`);
+          }
+          return `<div class="vp-yoga-act-block">
+            <div class="vp-yoga-act-head">⏳ When this activates in your life</div>
+            ${rows.join('')}
+          </div>`;
+        };
         const myYogaCards = myYogas.length ? myYogas.map(y=>`
           <div class="vp-mahayoga-card">
             <div class="vp-mahayoga-name"><span>${y.emoji}</span> ${y.name}</div>
             <div class="vp-mahayoga-desc">${y.desc}</div>
+            ${_yogaActivations(y.planets)}
           </div>`).join('') : `<div class="vp-mahayoga-empty">No major classical yogas detected from Moon-based factors. A full chart with all planets reveals more.</div>`;
 
         // ── Universal yoga cards (today + next 7 days) ──
@@ -4502,41 +4255,6 @@ window.vpToggleUpcoming = function() {
   const b = document.getElementById('vp-upcoming-toggle');
   if(w) w.classList.toggle('open');
   if(b) b.classList.toggle('open');
-};
-
-window.vpToggleEkadashi = function() {
-  const w = document.getElementById('vp-ekadashi-wrap');
-  const b = document.getElementById('vp-ekadashi-toggle');
-  if(w) w.classList.toggle('open');
-  if(b) b.classList.toggle('open');
-};
-
-// Date-range filter for the Ekadashi list — null means "show the next
-// few upcoming Ekadashis from today" (the default). Once a range is
-// applied, ALL Ekadashis whose fast date falls in [from,to] are shown.
-let _vpEkadashiRange=null;
-window.vpEkadashiApplyRange=function(){
-  const fromEl=document.getElementById('vp-ekadashi-from');
-  const toEl=document.getElementById('vp-ekadashi-to');
-  if(!fromEl||!fromEl.value||!toEl||!toEl.value) return;
-  const [fy,fm,fd]=fromEl.value.split('-').map(Number);
-  const [ty,tm,td]=toEl.value.split('-').map(Number);
-  // Noon anchor, same convention as the rest of this app's date-picker
-  // and Horoscope inputs — see the NOTE ON TIMEZONES comment above.
-  const fromDate=new Date(fy,fm-1,fd,12,0,0);
-  const toDate=new Date(ty,tm-1,td,12,0,0);
-  _vpEkadashiRange={fromJD:dateToJD(fromDate),toJD:dateToJD(toDate)};
-  _vpEkadashiCache.key=null;
-  if(typeof renderAll==='function') renderAll();
-};
-window.vpEkadashiResetRange=function(){
-  _vpEkadashiRange=null;
-  const fromEl=document.getElementById('vp-ekadashi-from');
-  const toEl=document.getElementById('vp-ekadashi-to');
-  if(fromEl) fromEl.value='';
-  if(toEl) toEl.value='';
-  _vpEkadashiCache.key=null;
-  if(typeof renderAll==='function') renderAll();
 };
 
 window.vpTogglePersonalSection = function(bodyId, chevronId) {

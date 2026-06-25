@@ -2691,27 +2691,44 @@
 /* ══════════════════════════════════════════════════════════════
    ECLIPSES (GRAHAN) — Surya & Chandra grahan card
    ══════════════════════════════════════════════════════════════ */
-#vpanchanga-view #vp-eclipse-card{margin:18px 16px 0}
+/* Eclipse card sits flush inside the live-banner so its golden bar lines
+   up with the other golden collapsibles instead of floating with random
+   margins. The dark eclipse panel only appears once the body is open. */
+#vpanchanga-view #vp-eclipse-card{
+  margin:0;
+  padding:0 18px 18px;
+  border-top:1px solid rgba(0,0,0,.07);
+  background:transparent;
+}
 #vpanchanga-view .vp-eclipse-section{
-  background:linear-gradient(150deg,#1B1238 0%, #2A1A52 55%, #160A30 100%);
-  border-radius:20px;
-  border:1px solid rgba(255,255,255,.08);
-  box-shadow:0 8px 28px rgba(20,12,50,.35);
+  margin-top:14px;
+  background:transparent;
+  border:none;
+  box-shadow:none;
+  border-radius:14px;
   overflow:hidden;
   color:#F5EAFF;
 }
+/* Let the eclipse toggle inherit the same golden-bar look as every other
+   .vp-collapsible-toggle — no more transparent dark override. */
 #vpanchanga-view .vp-eclipse-section > .vp-collapsible-toggle{
   width:100%;
-  background:transparent;
-  border:none;
-  color:#FFE08A;
+  border-radius:14px !important;
   font-weight:800;letter-spacing:.04em;
-  font-size:.82rem;
-  padding:14px 16px;
+  font-size:.74rem;
+  padding:14px 16px !important;
   display:flex;align-items:center;justify-content:space-between;
   cursor:pointer;
 }
-#vpanchanga-view .vp-eclipse-section .vp-chevron{color:#FFE08A;font-size:.9rem}
+#vpanchanga-view .vp-eclipse-section > .vp-collapsible-toggle.open{
+  border-radius:14px 14px 0 0 !important;
+}
+#vpanchanga-view .vp-eclipse-section .vp-chevron{font-size:.9rem}
+/* Dark panel only on the body, with matching rounded bottom. */
+#vpanchanga-view #vp-eclipse-wrap.open{
+  background:linear-gradient(150deg,#1B1238 0%, #2A1A52 55%, #160A30 100%);
+  border-radius:0 0 14px 14px;
+}
 #vpanchanga-view .vp-eclipse-inner{
   padding:6px 14px 16px;
   display:flex;flex-direction:column;gap:8px;
@@ -3401,98 +3418,73 @@
 }
 
 
-/* ── Ekadashi Fasting Dates section ──────────────────────────── */
-#vpanchanga-view .vp-ekadashi-range-row{
-  display:flex;gap:8px;padding:0 16px 12px;flex-wrap:wrap;align-items:flex-end;
+/* ══════════════════════════════════════════════════════════════
+   DAY TIMES STRIP — Brahma Muhurta / Sunrise / Sunset for the
+   two civil dates a Tithi / Yoga / Karana spans. Rendered inside
+   each .vp-dr-tl-row by vpAngaCardHTML.
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-dr-tl-daytimes-wrap{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+  margin-top:10px;
 }
-#vpanchanga-view .vp-ekadashi-range-field{flex:1;min-width:120px}
-#vpanchanga-view .vp-ekadashi-range-actions{display:flex;gap:6px;padding-bottom:1px}
-#vpanchanga-view .vp-ek-clickable{cursor:pointer}
-#vpanchanga-view .vp-ek-hint{
-  font-size:.58rem;color:var(--vp-violet);margin-top:4px;font-weight:700;
-  letter-spacing:.03em;text-transform:uppercase;
+@media (min-width:520px){
+  #vpanchanga-view .vp-dr-tl-daytimes-wrap{grid-template-columns:1fr 1fr;}
 }
-#vpanchanga-view .vp-ekadashi-detail{
-  background:rgba(124,92,252,.05);border:1px solid var(--vp-card-edge);
-  border-radius:12px;padding:10px 12px;margin:-2px 16px 12px;font-size:.7rem;
+#vpanchanga-view .vp-dr-tl-daytimes{
+  background:rgba(124,92,252,.06);
+  border:1px solid rgba(124,92,252,.14);
+  border-radius:10px;
+  padding:8px 10px;
+}
+#vpanchanga-view .vp-dr-tl-dt-head{
+  font-size:.62rem;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--vp-violet);
+  margin-bottom:6px;
+}
+#vpanchanga-view .vp-dr-tl-dt-row{
+  display:flex;align-items:center;gap:6px;
+  font-size:.7rem;line-height:1.4;
+  padding:2px 0;
+}
+#vpanchanga-view .vp-dr-tl-dt-ico{font-size:.85rem;width:18px;text-align:center}
+#vpanchanga-view .vp-dr-tl-dt-label{
   color:var(--vp-ink-soft);
+  flex:1;min-width:0;
 }
-#vpanchanga-view .vp-ekadashi-detail table{width:100%;border-collapse:collapse;font-size:.64rem;margin-bottom:8px}
-#vpanchanga-view .vp-ekadashi-detail th{
-  text-align:left;color:var(--vp-ink-faint);font-weight:700;text-transform:uppercase;
-  font-size:.56rem;padding:3px 4px;border-bottom:1px solid var(--vp-card-edge);
-}
-#vpanchanga-view .vp-ekadashi-detail td{padding:4px 4px;border-bottom:1px solid rgba(36,27,69,.06)}
-#vpanchanga-view .vp-ekadashi-detail tr.hi td{color:var(--vp-gold);font-weight:700}
-#vpanchanga-view .vp-ekadashi-detail .explain{line-height:1.5;color:var(--vp-ink-soft)}
-#vpanchanga-view .vp-ekadashi-footnote{
-  font-size:.62rem;line-height:1.55;color:var(--vp-ink-faint);
-  padding:10px 16px 4px;margin-top:4px;border-top:1px solid var(--vp-card-edge);
+#vpanchanga-view .vp-dr-tl-dt-val{
+  font-variant-numeric:tabular-nums;
+  font-weight:700;color:var(--vp-ink);
+  white-space:nowrap;
 }
 
-/* ── v8.1 USER FIXES ─────────────────────────────────────────── */
-/* 1. Ekadashi list should not be height-clipped (was 1200px) */
-#vpanchanga-view #vp-ekadashi-wrap.vp-collapsible-wrap.open,
-#vpanchanga-view #vp-upcoming-wrap.vp-collapsible-wrap.open{
-  max-height:none !important;
-}
-/* 2. Anga cards (Tithi/Nakshatra/Yoga/Karana): black, legible text */
-#vpanchanga-view .vp-anga-card,
-#vpanchanga-view .vp-anga-card.good,
-#vpanchanga-view .vp-anga-card.warn{
-  background:#ffffff !important;
-  border:1px solid rgba(0,0,0,.12) !important;
-  box-shadow:0 4px 14px rgba(0,0,0,.08) !important;
-}
-#vpanchanga-view .vp-anga-card-label,
-#vpanchanga-view .vp-anga-card-name,
-#vpanchanga-view .vp-anga-card.good .vp-anga-card-name,
-#vpanchanga-view .vp-anga-card.warn .vp-anga-card-name,
-#vpanchanga-view .vp-anga-card-paksha,
-#vpanchanga-view .vp-anga-card-fx,
-#vpanchanga-view .vp-anga-card-time,
-#vpanchanga-view .vp-anga-card-date,
-#vpanchanga-view .vp-anga-card-left,
-#vpanchanga-view .vp-anga-card-ctx,
-#vpanchanga-view .vp-anga-card-ctx span{
-  color:#000 !important;
-}
-#vpanchanga-view .vp-anga-card-time{font-weight:700 !important;font-size:.66rem !important}
-#vpanchanga-view .vp-anga-card-date{font-size:.6rem !important;font-weight:600 !important;margin-top:1px}
-#vpanchanga-view .vp-anga-card-ctx{
-  display:flex;flex-wrap:wrap;gap:6px 10px;
-  font-size:.56rem;font-weight:600;
-  margin-top:6px;padding-top:6px;
-  border-top:1px dashed rgba(0,0,0,.18);
-}
-/* Make sure tablet (iPad) keeps the same legibility — both 2-col and
-   4-col anga grids inherit the black text rules above. */
-@media (min-width:768px){
-  #vpanchanga-view .vp-anga-row-cards{grid-template-columns:repeat(4,1fr)}
-}
-
-/* 3. Ekadashi Unmilini/Trisparsha inline flag */
-#vpanchanga-view .vp-ek-flag-line{
-  margin-top:6px;font-size:.62rem;line-height:1.5;
-  color:#000;background:rgba(245,194,74,.14);
-  border-left:3px solid #F5C24A;
-  padding:5px 8px;border-radius:6px;
-}
-#vpanchanga-view .vp-in-pill.vp-ek-flag{
-  margin-top:4px;display:inline-block;
-  background:rgba(245,194,74,.22) !important;
-  color:#7a5500 !important;
-  border:1px solid rgba(245,194,74,.55) !important;
-  font-weight:800;
-}
-
-/* Ekadashi explain: astro block shows fast-day BM + sunrise */
-#vpanchanga-view .vp-ek-astro{
-  margin:8px 0;padding:8px 10px;
+/* ══════════════════════════════════════════════════════════════
+   YOGA ACTIVATION WINDOWS — when each natal yoga fructifies
+   via its planet's Mahadasha / Antardasha
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-yoga-act-block{
+  margin-top:10px;
+  padding:10px 12px;
   background:rgba(245,194,74,.10);
   border:1px solid rgba(245,194,74,.35);
-  border-radius:8px;
-  font-size:.66rem;line-height:1.6;color:#000;
+  border-radius:10px;
 }
-#vpanchanga-view .vp-ek-astro b{color:#000;font-weight:700}
-#vpanchanga-view .vp-ekadashi-detail .explain{color:#000 !important}
+#vpanchanga-view .vp-yoga-act-head{
+  font-size:.62rem;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;color:#C9961A;
+  margin-bottom:6px;
+}
+#vpanchanga-view .vp-yoga-act-row{
+  font-size:.72rem;line-height:1.45;color:#F5EAFF;
+  padding:3px 0;
+}
+#vpanchanga-view .vp-yoga-act-row b{color:#FFE08A;font-weight:700}
+#vpanchanga-view .vp-yoga-act-now{
+  color:#FFE08A;
+}
+#vpanchanga-view .vp-yoga-act-now b{color:#FFF}
+#vpanchanga-view .vp-yoga-act-dur{opacity:.7;font-weight:600}
+#vpanchanga-view .vp-yoga-act-empty{
+  font-style:italic;opacity:.7;
+}

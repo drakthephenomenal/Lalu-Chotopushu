@@ -2497,7 +2497,7 @@ function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
 function vpPersonalBestWindows(profile, fromJD, daysAhead, maxResults){
   // Need enough segments: each nakshatra lasts ~1 day, so 30 days ≈ 30+ segments.
   // Use daysAhead*4 to ensure we always have enough coverage regardless of range.
-  const segCount = Math.max(80, Math.ceil(daysAhead * 4));
+  const segCount = Math.max(200, Math.ceil(daysAhead * 6));
   const segs = vpPersonalCombinedTimeline(profile, fromJD, segCount);
   const limitJD = fromJD + daysAhead;
   const windows = [];
@@ -3372,7 +3372,7 @@ async function vpPersonalRender(){
 
   // ── 3. Best windows — user-selectable day range ───────────────────
   const bestWinDays = window._vpBestWindowsDays || 7;
-  const bestWins = vpPersonalBestWindows(profile, jdNow, bestWinDays, 8);
+  const bestWins = vpPersonalBestWindows(profile, jdNow, bestWinDays, 100);
 
   const paksha = profile.tithiIndex < 15 ? 'Sukla' : 'Krishna';
   const janmoTithiLabel = `${profile.birthMonthWasAdhik ? 'Adhik ' : ''}${profile.birthMonthName} ${paksha} ${profile.tithiName}`;
@@ -3453,16 +3453,22 @@ async function vpPersonalRender(){
   const dayRangeOptions = [3,5,7,10,14,21,30,45,60,90,120,180,270,365].map(d =>
     `<option value="${d}"${d===bestWinDays?' selected':''}>${d>=365?'1 year':d+' days'}</option>`).join('');
 
+  // Restore collapsed state from session
+  const _bwOpen = (()=>{try{return sessionStorage.getItem('vp-bestwin-open')!=='closed';}catch(e){return true;}})();
   const bestWinHTML = `
     <div class="vp-best-windows">
-      <div class="vp-best-windows-head">
-        <span>🌟 Best Windows</span>
-        <span class="vp-best-win-range-wrap">
-          <label class="vp-best-win-range-label">Next</label>
-          <select class="vp-best-win-range-select" onchange="vpPersonalBestWinDaysChange(this.value)">${dayRangeOptions}</select>
-          <span class="vp-best-win-range-label">(Tara + Chandra both good)</span>
+      <button class="vp-best-windows-head" onclick="(function(){var b=document.getElementById('vp-bestwin-body');var h=document.querySelector('.vp-best-windows-head');var isOpen=b.classList.toggle('open');h.classList.toggle('open',isOpen);try{sessionStorage.setItem('vp-bestwin-open',isOpen?'open':'closed');}catch(e){}})()" style="width:100%;cursor:pointer;display:flex;align-items:center;justify-content:space-between;text-align:left;border:none;background:none;padding:inherit;">
+        <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span>🌟 Best Windows</span>
+          <span class="vp-best-win-range-wrap" onclick="event.stopPropagation()">
+            <label class="vp-best-win-range-label">Next</label>
+            <select class="vp-best-win-range-select" onchange="vpPersonalBestWinDaysChange(this.value)">${dayRangeOptions}</select>
+            <span class="vp-best-win-range-label">(Tara + Chandra both good)</span>
+          </span>
         </span>
-      </div>
+        <span class="vp-bestwin-chevron" style="font-size:.9rem;transition:transform .25s;display:inline-block;transform:${_bwOpen?'rotate(180deg)':'rotate(0deg)'}">${_bwOpen?'▾':'▸'}</span>
+      </button>
+      <div id="vp-bestwin-body" class="vp-bestwin-body${_bwOpen?' open':''}" style="overflow-y:auto;max-height:${_bwOpen?'60vh':'0'};transition:max-height .35s ease;">
       ${bestWins.length ? bestWins.map(w => {
         const sd = jdToDate(w.startJD), ed = jdToDate(w.endJD);
         const winDur = dur(sd, ed);
@@ -3487,6 +3493,7 @@ async function vpPersonalRender(){
           <div class="vp-best-win-dur">Duration: ${winDur}</div>
         </div>`;
       }).join('') : `<div class="vp-best-windows-empty">No "Tara + Chandra both good" windows in the next ${bestWinDays} days — see timeline below for the best available periods.</div>`}
+      </div>
     </div>`;
 
   // ── Merged Tara & Chandra + Upcoming HTML ─────────────────────────

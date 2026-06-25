@@ -3545,3 +3545,29 @@
 #vpanchanga-view .vp-eclipse-section > .vp-collapsible-toggle.open{
   border-radius:14px 14px 0 0 !important;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   BEST WINDOWS — collapsible body + scrollable list
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-best-windows-head{
+  cursor:pointer;
+}
+#vpanchanga-view .vp-best-windows-head.open .vp-bestwin-chevron{
+  transform:rotate(180deg) !important;
+}
+#vpanchanga-view .vp-bestwin-body{
+  overflow-y:auto;
+  max-height:0;
+  transition:max-height .38s cubic-bezier(.4,0,.2,1);
+  /* Scrollbar styling */
+  scrollbar-width:thin;
+  scrollbar-color:rgba(245,194,74,.4) transparent;
+}
+#vpanchanga-view .vp-bestwin-body.open{
+  max-height:60vh !important;
+}
+#vpanchanga-view .vp-bestwin-body::-webkit-scrollbar{width:4px}
+#vpanchanga-view .vp-bestwin-body::-webkit-scrollbar-track{background:transparent}
+#vpanchanga-view .vp-bestwin-body::-webkit-scrollbar-thumb{
+  background:rgba(245,194,74,.45);border-radius:4px;
+}

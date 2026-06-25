@@ -1392,8 +1392,8 @@ function init(){
   }
   try{
     DATA=computeAll();
-    document.getElementById('loading').style.display='none';
-    document.getElementById('main').style.display='block';
+    const vpView=document.getElementById('vpanchanga-view');
+    if(vpView) vpView.style.display='block';
     renderAll();
   }catch(e){
     console.error('Panchanga init error:',e);
@@ -3660,7 +3660,7 @@ async function vpPersonalRender(){
   const _bwOpen = (()=>{try{return sessionStorage.getItem('vp-bestwin-open')!=='closed';}catch(e){return true;}})();
   const bestWinHTML = `
     <div class="vp-best-windows">
-      <button class="vp-best-windows-head" onclick="(function(){var b=document.getElementById('vp-bestwin-body');var h=document.querySelector('.vp-best-windows-head');var isOpen=b.classList.toggle('open');h.classList.toggle('open',isOpen);try{sessionStorage.setItem('vp-bestwin-open',isOpen?'open':'closed');}catch(e){}})()" style="width:100%;cursor:pointer;display:flex;align-items:center;justify-content:space-between;text-align:left;border:none;background:none;padding:inherit;">
+      <button class="vp-collapsible-toggle${_bwOpen?' open':''}" onclick="(function(){var b=document.getElementById('vp-bestwin-body');var h=this;var isOpen=b.classList.toggle('open');h.classList.toggle('open',isOpen);try{sessionStorage.setItem('vp-bestwin-open',isOpen?'open':'closed');}catch(e){}}).call(this)" type="button" style="width:100%;">
         <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span>🌟 Best Windows</span>
           <span class="vp-best-win-range-wrap" onclick="event.stopPropagation()">
@@ -3669,9 +3669,9 @@ async function vpPersonalRender(){
             <span class="vp-best-win-range-label">(Tara + Chandra both good)</span>
           </span>
         </span>
-        <span class="vp-bestwin-chevron" style="font-size:.9rem;transition:transform .25s;display:inline-block;transform:${_bwOpen?'rotate(180deg)':'rotate(0deg)'}">${_bwOpen?'▾':'▸'}</span>
+        <span class="vp-chevron">${_bwOpen?'▾':'▸'}</span>
       </button>
-      <div id="vp-bestwin-body" class="vp-bestwin-body${_bwOpen?' open':''}" style="overflow-y:auto;max-height:${_bwOpen?'60vh':'0'};transition:max-height .35s ease;">
+      <div id="vp-bestwin-body" class="vp-collapsible-wrap${_bwOpen?' open':''} vp-bestwin-body" style="overflow-y:auto;">
       ${bestWins.length ? bestWins.map(w => {
         const sd = jdToDate(w.startJD), ed = jdToDate(w.endJD);
         const winDur = dur(sd, ed);
@@ -4554,7 +4554,12 @@ function vpTryInit() {
   if(typeof SunCalc === 'undefined') { setTimeout(vpTryInit, 400); return; }
   window.vpUpdateLocLabel();
   window.vpEnsureGps();
-  try { DATA = computeAll(); } catch(e) { console.error('VP init error:', e); }
+  try {
+    DATA = computeAll();
+    const vpView = document.getElementById('vpanchanga-view');
+    if(vpView) vpView.style.display = 'block';
+    renderAll();
+  } catch(e) { console.error('VP init error:', e); }
 }
 vpTryInit();
 

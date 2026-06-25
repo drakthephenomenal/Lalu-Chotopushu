@@ -3607,11 +3607,10 @@ async function vpPersonalRender(){
                   const aCol2=PLANET_COLOR2[activeAntar2.lord]||'#7c5cfc';
                   const aEm2=PLANET_EMOJI2[activeAntar2.lord]||'🪐';
                   const aLft2=humanLeft2(+activeAntar2.end-nowMs3);
-                  antarHtml=`<div style="border-left:2px solid ${aCol2};margin-top:6px;padding-left:6px">`
-                    +`<div><span style="font-size:.54rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:${aCol2}">Antardasha</span>`
-                    +` <span style="font-size:.66rem;font-weight:700;color:${aCol2}">${aEm2} ${activeAntar2.lord}</span></div>`
-                    +`<div style="font-size:.57rem;color:var(--vp-ink-soft);margin-top:1px">${activeAntar2.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → ${activeAntar2.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>`
-                    +`<span class="vp-msd-left" style="background:${aCol2};margin-top:3px;display:inline-block">${aLft2}</span>`
+                  antarHtml=`<div class="vp-sub-period vp-sub-antar" style="--sp-color:${aCol2}">`
+                    +`<div class="vp-sp-header"><span class="vp-sp-tier">Antardasha</span><span class="vp-sp-lord">${aEm2} ${activeAntar2.lord}</span></div>`
+                    +`<div class="vp-sp-dates">${activeAntar2.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → ${activeAntar2.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>`
+                    +`<span class="vp-sp-badge">${aLft2}</span>`
                     +`</div>`;
                   // Pratyantardasha
                   const aLordIdx2=VIMSH_SEQ.findIndex(v=>v.lord===activeAntar2.lord);
@@ -3622,11 +3621,10 @@ async function vpPersonalRender(){
                       const pCol2=PLANET_COLOR2[activePrat2.lord]||'var(--vp-violet2)';
                       const pEm2=PLANET_EMOJI2[activePrat2.lord]||'🪐';
                       const pLft2=humanLeft2(+activePrat2.end-nowMs3);
-                      pratHtml=`<div style="border-left:2px solid ${pCol2};margin-top:4px;padding-left:6px">`
-                        +`<div><span style="font-size:.51rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:${pCol2};opacity:.85">Pratyantar</span>`
-                        +` <span style="font-size:.62rem;font-weight:700;color:${pCol2}">${pEm2} ${activePrat2.lord}</span></div>`
-                        +`<div style="font-size:.54rem;color:var(--vp-ink-soft);margin-top:1px">${activePrat2.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → ${activePrat2.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>`
-                        +`<span class="vp-msd-left" style="background:${pCol2};margin-top:3px;display:inline-block">${pLft2}</span>`
+                      pratHtml=`<div class="vp-sub-period vp-sub-prat" style="--sp-color:${pCol2}">`
+                        +`<div class="vp-sp-header"><span class="vp-sp-tier">Pratyantardasha</span><span class="vp-sp-lord">${pEm2} ${activePrat2.lord}</span></div>`
+                        +`<div class="vp-sp-dates">${activePrat2.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → ${activePrat2.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>`
+                        +`<span class="vp-sp-badge">${pLft2}</span>`
                         +`</div>`;
                     }
                   }
@@ -3659,14 +3657,17 @@ async function vpPersonalRender(){
               const activePart2=actSat.parts&&actSat.parts.find(p=>p.startJd<=nowSatJD2&&nowSatJD2<p.endJd);
               if(activePart2){
                 const phaseLabel=activePart2.sub||'';
+                // Extract short phase name (before the dash) e.g. "Rising phase"
+                const phaseName=phaseLabel.replace(/\s*[\u2014\-].*$/,'').trim()||phaseLabel;
+                const phaseSub=phaseLabel.includes('\u2014')?phaseLabel.split('\u2014').slice(1).join('\u2014').trim():'';
                 const phaseIcon=phaseLabel.includes('Rising')?'🌒':phaseLabel.includes('Peak')?'🔴':'🌘';
                 const phaseLeftMs=+activePart2.end-nowMs3;
                 const phaseLft2=humanLeft2(phaseLeftMs);
-                phaseHtml=`<div style="border-left:2px solid #7c5cfc;margin-top:6px;padding-left:6px">`
-                  +`<div><span style="font-size:.54rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#7c5cfc">Active Phase</span>`
-                  +` <span style="font-size:.65rem;font-weight:700;color:#a78bfa">${phaseIcon} ${phaseLabel.replace(/^.*?—\s*/,'')}</span></div>`
-                  +`<div style="font-size:.57rem;color:var(--vp-ink-soft);margin-top:1px">${activePart2.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → ${activePart2.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>`
-                  +`<span class="vp-msd-left" style="background:#7c5cfc;margin-top:3px;display:inline-block">${phaseLft2}</span>`
+                phaseHtml=`<div class="vp-sub-period vp-sub-phase" style="--sp-color:#9B7CFF">`
+                  +`<div class="vp-sp-header"><span class="vp-sp-tier">Active Phase</span><span class="vp-sp-lord">${phaseIcon} ${phaseName}</span></div>`
+                  +`${phaseSub?`<div style="font-size:.50rem;color:rgba(160,168,210,.6);margin-top:1px;padding-left:0">${phaseSub}</div>`:''}`
+                  +`<div class="vp-sp-dates">${activePart2.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → ${activePart2.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>`
+                  +`<span class="vp-sp-badge">${phaseLft2}</span>`
                   +`</div>`;
               }
             }catch(e){}
@@ -3708,10 +3709,11 @@ async function vpPersonalRender(){
         </div>
         ${specYogaBadgeHtml}
         <div class="vp-cscore-factors">
+          ${cs.specLabel ? `<div class="vp-cscore-maha-yoga-banner">🌟 <strong>${cs.specLabel}</strong> — Special Yoga active now</div>` : ''}
+          ${makeFactorRowWithBar('☯️','Yoga',cs.curYoga.name+(cs.specLabel?' · '+cs.specLabel:''),cs.scores.yoga,cs.yogaPol,cs.curYoga.startJD,cs.curYoga.endJD,yogaFx)}
           ${cs.curTithi ? makeFactorRowWithBar('🌕','Tithi',cs.curTithi.name+' ('+(cs.curTithi.index<15?'Śukla':'Kṛṣṇa')+' Paksha)',0,'neutral',cs.curTithi.startJD,cs.curTithi.endJD,tithiFx) : ''}
           ${makeFactorRowWithBar('⭐','Tara Bala',(cs.tara.emoji||'')+' '+cs.tara.name+' · '+cs.curNak.name+' Nak',cs.scores.tara,cs.tara.polarity,cs.curNak.startJD,cs.curNak.endJD,cs.tara.note||'')}
           ${makeFactorRowWithBar('🌙','Chandra Bala',(cs.chandra.emoji||'')+' '+cs.chandra.name+' · Moon in '+cs.curRashi.name,cs.scores.chandra,cs.chandra.polarity,cs.curRashi.startJD,cs.curRashi.endJD,cs.chandra.note||'')}
-          ${makeFactorRowWithBar('☯️','Yoga',cs.curYoga.name+(cs.specLabel?' · '+cs.specLabel:''),cs.scores.yoga,cs.yogaPol,cs.curYoga.startJD,cs.curYoga.endJD,yogaFx)}
           ${makeFactorRowWithBar('◐','Karana',cs.curKar.name,cs.scores.karana,cs.karPol,cs.curKar.startJD,cs.curKar.endJD,karFx)}
           ${(()=>{
             const polClass = cs.kalaPol==='good'?'good':cs.kalaPol==='bad'?'bad':'neutral';

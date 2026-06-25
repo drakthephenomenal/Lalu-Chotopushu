@@ -3400,3 +3400,32 @@
   /* gap already handled by flex gap on parent */
 }
 
+
+/* ── Ekadashi Fasting Dates section ──────────────────────────── */
+#vpanchanga-view .vp-ekadashi-range-row{
+  display:flex;gap:8px;padding:0 16px 12px;flex-wrap:wrap;align-items:flex-end;
+}
+#vpanchanga-view .vp-ekadashi-range-field{flex:1;min-width:120px}
+#vpanchanga-view .vp-ekadashi-range-actions{display:flex;gap:6px;padding-bottom:1px}
+#vpanchanga-view .vp-ek-clickable{cursor:pointer}
+#vpanchanga-view .vp-ek-hint{
+  font-size:.58rem;color:var(--vp-violet);margin-top:4px;font-weight:700;
+  letter-spacing:.03em;text-transform:uppercase;
+}
+#vpanchanga-view .vp-ekadashi-detail{
+  background:rgba(124,92,252,.05);border:1px solid var(--vp-card-edge);
+  border-radius:12px;padding:10px 12px;margin:-2px 16px 12px;font-size:.7rem;
+  color:var(--vp-ink-soft);
+}
+#vpanchanga-view .vp-ekadashi-detail table{width:100%;border-collapse:collapse;font-size:.64rem;margin-bottom:8px}
+#vpanchanga-view .vp-ekadashi-detail th{
+  text-align:left;color:var(--vp-ink-faint);font-weight:700;text-transform:uppercase;
+  font-size:.56rem;padding:3px 4px;border-bottom:1px solid var(--vp-card-edge);
+}
+#vpanchanga-view .vp-ekadashi-detail td{padding:4px 4px;border-bottom:1px solid rgba(36,27,69,.06)}
+#vpanchanga-view .vp-ekadashi-detail tr.hi td{color:var(--vp-gold);font-weight:700}
+#vpanchanga-view .vp-ekadashi-detail .explain{line-height:1.5;color:var(--vp-ink-soft)}
+#vpanchanga-view .vp-ekadashi-footnote{
+  font-size:.62rem;line-height:1.55;color:var(--vp-ink-faint);
+  padding:10px 16px 4px;margin-top:4px;border-top:1px solid var(--vp-card-edge);
+}

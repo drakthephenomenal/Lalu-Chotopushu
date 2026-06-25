@@ -259,7 +259,24 @@
         <span class="vp-chevron" id="vp-ekadashi-chevron">▾</span>
       </button>
       <div class="vp-collapsible-wrap open" id="vp-ekadashi-wrap">
+        <div class="vp-ekadashi-range-row">
+          <div class="vp-ekadashi-range-field">
+            <label class="vp-horo-label" for="vp-ekadashi-from">From</label>
+            <input type="date" id="vp-ekadashi-from" class="vp-horo-input">
+          </div>
+          <div class="vp-ekadashi-range-field">
+            <label class="vp-horo-label" for="vp-ekadashi-to">To</label>
+            <input type="date" id="vp-ekadashi-to" class="vp-horo-input">
+          </div>
+          <div class="vp-ekadashi-range-actions">
+            <button class="vp-cal-today-btn" type="button" onclick="vpEkadashiApplyRange()">Show</button>
+            <button class="vp-cal-close-btn" type="button" onclick="vpEkadashiResetRange()">Reset</button>
+          </div>
+        </div>
         <div class="vp-upcoming-list" id="vp-ekadashi-list"></div>
+        <div class="vp-ekadashi-footnote">
+          Fast dates use Brahma Muhurta computed from your GPS coordinates. Unmilini and Trisparsha (2 of the 8 Ashta-Mahadvadashi) are intentionally not shown as a separate status here — they don't move the fast to a different day, they only affect naming/merit or Parana legality on a day the base rule already selects. Calendar-date labels follow your device's local timezone (same convention as the rest of this app) — accuracy depends on that matching your GPS location's timezone.
+        </div>
       </div>
     </section>
 

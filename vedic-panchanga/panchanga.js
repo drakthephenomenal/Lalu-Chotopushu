@@ -1307,10 +1307,14 @@ function renderAll(){
     }).join(''):'<div style="padding:12px;text-align:center;font-size:.76rem;color:var(--vp-ink-faint)">No upcoming periods</div>';
   }
 
-  // ── Ekadashi Fasting Dates — recomputed only once per calendar day ──
-  const ekCacheKey=jdToDate(jd).toISOString().slice(0,10)+'|'+LAT.toFixed(2)+'|'+LNG.toFixed(2);
+  // ── Ekadashi Fasting Dates — recomputed only when the day, GPS
+  //    coordinates, or the picked range actually changes ──
+  const ekCacheKey=(_vpEkadashiRange?('range:'+_vpEkadashiRange.fromJD+'-'+_vpEkadashiRange.toJD):jdToDate(jd).toISOString().slice(0,10))+'|'+LAT.toFixed(2)+'|'+LNG.toFixed(2);
   if(_vpEkadashiCache.key!==ekCacheKey){
-    _vpEkadashiCache={key:ekCacheKey,data:vpComputeEkadashiFasting(jd,LAT,LNG)};
+    const ekData=_vpEkadashiRange
+      ?vpComputeEkadashiFasting(_vpEkadashiRange.fromJD,LAT,LNG,{jdEnd:_vpEkadashiRange.toJD,maxResults:60})
+      :vpComputeEkadashiFasting(jd,LAT,LNG);
+    _vpEkadashiCache={key:ekCacheKey,data:ekData};
   }
   const ekList=document.getElementById('vp-ekadashi-list');
   if(ekList) ekList.innerHTML=buildEkadashiList(_vpEkadashiCache.data);
@@ -2836,10 +2840,22 @@ const EKADASHI_NAMES=[
 // at the Dvadashi-day sunrise.
 const MAHADVADASHI_NAK_MAP={6:'Jaya',21:'Vijaya',3:'Jayanti',7:'Papanashini'};
 
-function vpComputeEkadashiFasting(jdNow,lat,lng){
+// jdStart: JD to start scanning from (today, or the picked "From" date).
+// opts.jdEnd: when set, returns EVERY Ekadashi whose final fast date
+//   falls within [jdStart,jdEnd] (a user-picked range) instead of just
+//   the next few upcoming ones, and does not skip dates before "now".
+// opts.maxResults: safety cap (default 6 for the upcoming view, 60 for
+//   a picked range).
+function vpComputeEkadashiFasting(jdStart,lat,lng,opts){
+  opts=opts||{};
+  const jdEnd=opts.jdEnd||null;
+  const maxResults=opts.maxResults||(jdEnd?60:6);
   const results=[];
 
-  // The Brahma-Muhurta day-fetch for a probe Date.
+  // The Brahma-Muhurta day-fetch for a probe Date. Sunrise/BM are
+  // computed directly from the GPS lat/lng passed in — never from the
+  // device's local clock — so the fast-day DETERMINATION below is
+  // always location-correct regardless of the browser's timezone.
   function bmJD(probeDate){
     const t=SunCalc.getTimes(probeDate,lat,lng);
     return {sunrise:t.sunrise, bmJD:dateToJD(new Date(+t.sunrise-96*60*1000))};
@@ -2851,7 +2867,7 @@ function vpComputeEkadashiFasting(jdNow,lat,lng){
     for(let i=0;i<5;i++){
       const b=bmJD(probe);
       if(b.bmJD>=tStart&&b.bmJD<=tEnd) return b;
-      probe=new Date(+probe+86400000);
+      probe=new Date(+probe+86400000); // pure +24h, not setDate() — DST-safe
     }
     return null;
   }
@@ -2867,15 +2883,19 @@ function vpComputeEkadashiFasting(jdNow,lat,lng){
     return {spans:hits>=2, first};
   }
 
-  const tithiPeriods=getTithiPeriods(jdNow,130); // ~130 days ahead — several months of Ekadashis
+  const lookback=20; // days of history before jdStart, so Navami/Dashami
+                      // are always available for the explain-panel chain
+  const forwardSpan=jdEnd?Math.ceil(jdEnd-jdStart)+30:130;
+  const tithiPeriods=getTithiPeriods(jdStart-lookback,forwardSpan+lookback);
   const ekIdxList=[];
-  tithiPeriods.forEach((p,i)=>{if(p.index===10||p.index===25) ekIdxList.push(i);});
+  tithiPeriods.forEach((p,i)=>{if((p.index===10||p.index===25)&&i>=2) ekIdxList.push(i);});
 
   for(const i of ekIdxList){
     const ek=tithiPeriods[i];
     const base=bmDayWithinTithi(ek.startJD,ek.endJD);
     if(!base) continue;
-    if(dateToJD(base.sunrise)<jdNow-1) continue; // already past
+    const baseJD=dateToJD(base.sunrise);
+    if(!jdEnd && baseJD<jdStart-1) continue; // upcoming-view: skip past
 
     const dv=tithiPeriods[i+1]; // Dvadashi period right after this Ekadashi
     let fastDate=base.sunrise, type='Suddha Ekadashi', note='';
@@ -2913,6 +2933,9 @@ function vpComputeEkadashiFasting(jdNow,lat,lng){
       }
     }
 
+    const fastJD=dateToJD(fastDate);
+    if(jdEnd && (fastJD<jdStart-0.5 || fastJD>jdEnd+0.5)) continue; // outside picked range
+
     // Named Ekadashi — per Vaishnava month, with Adhik/Purushottam handling
     const midJD=(ek.startJD+ek.endJD)/2;
     const hm=hinduMonth(midJD);
@@ -2929,8 +2952,11 @@ function vpComputeEkadashiFasting(jdNow,lat,lng){
     }
 
     // Parana window — sunrise the day after the fast, capped at +4h or
-    // the end of whichever tithi governs that sunrise.
-    const paranaProbe=new Date(+fastDate); paranaProbe.setDate(paranaProbe.getDate()+1);
+    // the end of whichever tithi governs that sunrise. Advanced by exact
+    // milliseconds (+86400000), NOT setDate(), so this stays correct even
+    // if the device's local timezone has a DST shift that day — the GPS
+    // location's sunrise is what actually matters here.
+    const paranaProbe=new Date(+fastDate+86400000);
     const pT=SunCalc.getTimes(paranaProbe,lat,lng);
     const paranaStart=pT.sunrise;
     const paranaJD=dateToJD(paranaStart);
@@ -2939,37 +2965,78 @@ function vpComputeEkadashiFasting(jdNow,lat,lng){
     const govEnd=govPeriod?jdToDate(govPeriod.endJD):null;
     const paranaEnd=(govEnd&&+govEnd<+fourHrCap)?govEnd:fourHrCap;
 
-    results.push({ekadashiName:ekName+' Ekadashi',monthLabel,
-      paksha:isSukla?'Sukla':'Krishna',type,note,fastDate,paranaStart,paranaEnd});
+    // Chain captured for the "tap to see why" panel: Navami through the
+    // closing Purnima/Amavasya (i-2 .. i+4), the same span a person would
+    // sample by hand to fix this date.
+    const chain=tithiPeriods.slice(i-2,i+5).map(p=>({name:p.name,paksha:p.paksha,startJD:p.startJD,endJD:p.endJD}));
 
-    if(results.length>=6) break;
+    results.push({ekadashiName:ekName+' Ekadashi',monthLabel,
+      paksha:isSukla?'Sukla':'Krishna',type,note,fastDate,paranaStart,paranaEnd,chain});
+
+    if(results.length>=maxResults) break;
   }
   return results;
 }
 
+// Builds the per-row "why this date" panel: a Navami→Purnima/Amavasya
+// tithi table (highlighting the row(s) that actually decided the date)
+// plus a one-line plain-English explanation.
+function vpEkadashiExplainHTML(r){
+  const rows=r.chain.map(p=>{
+    let hi=false;
+    if(p.name==='Ekadashi'&&r.type==='Suddha Ekadashi') hi=true;
+    if(p.name==='Dwadashi'&&r.type!=='Suddha Ekadashi') hi=true;
+    if((p.name==='Purnima'||p.name==='Amavasya')&&r.type==='Pakshavarddhini Mahadvadashi') hi=true;
+    return`<tr class="${hi?'hi':''}"><td>${p.name} (${p.paksha})</td><td>${fmtDT(jdToDate(p.startJD))}</td><td>${fmtDT(jdToDate(p.endJD))}</td></tr>`;
+  }).join('');
+  const table=`<table><thead><tr><th>Tithi</th><th>Start</th><th>End</th></tr></thead><tbody>${rows}</tbody></table>`;
+
+  let explain;
+  if(r.type==='Suddha Ekadashi'){
+    explain=`Ekadashi tithi governs Brahma Muhurta on ${fmtDT(r.fastDate)} — untouched by Dashami beforehand, with no tithi-extension or special Nakshatra in play — so the base sunrise rule alone fixes this as a pure (Suddha) Ekadashi.`;
+  } else if(r.type==='Vanjuli Mahadvadashi'){
+    explain=`Dvadashi tithi spans two consecutive sunrises (highlighted above), so per the Vanjuli rule the fast shifts off the pure-Ekadashi day onto the first Dvadashi-sunrise day — ${fmtDT(r.fastDate)}.`;
+  } else if(r.type==='Pakshavarddhini Mahadvadashi'){
+    const closing=r.note.indexOf('Purnima')>-1?'Purnima':'Amavasya';
+    explain=`This paksha's closing ${closing} spans two consecutive sunrises (highlighted above), which elevates the following Dvadashi into Pakshavarddhini Mahadvadashi — the fast shifts to ${fmtDT(r.fastDate)} instead of the pure-Ekadashi day.`;
+  } else {
+    explain=`${r.note} (Dvadashi row highlighted above) — this elevates that day into ${r.type}, so the fast shifts to ${fmtDT(r.fastDate)} instead of the pure-Ekadashi day.`;
+  }
+  return`<div class="vp-ekadashi-detail">${table}<div class="explain">${explain}</div></div>`;
+}
+
 function buildEkadashiList(results){
-  if(!results||!results.length) return'<div style="padding:12px;text-align:center;font-size:.76rem;color:var(--vp-ink-faint)">No upcoming Ekadashi found</div>';
+  if(!results||!results.length) return'<div style="padding:12px;text-align:center;font-size:.76rem;color:var(--vp-ink-faint)">No Ekadashi found in this range</div>';
   return results.map((r,i)=>{
     const isSuddha=r.type==='Suddha Ekadashi';
     const cls=isSuddha?'ausp':'inaup';
     const dateStr=r.fastDate.toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short'});
     const paranaDateStr=r.paranaStart.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
     const pillTxt=isSuddha?'Suddha':r.type.replace(' Mahadvadashi','');
-    return`<div class="vp-upcoming-row ${cls}">
-      <div class="vp-upcoming-serial">${i+1}</div>
-      <div class="vp-upcoming-icon">🪷</div>
-      <div class="vp-upcoming-body">
-        <div class="vp-upcoming-label">${r.ekadashiName}</div>
-        <div class="vp-upcoming-desc">${r.monthLabel} &middot; ${r.paksha} Paksha${r.note?' &middot; '+r.note:''}</div>
-        <div class="vp-upcoming-timeblock">Fast: ${dateStr}</div>
-        <div class="vp-upcoming-dur">Parana: ${fmt12(r.paranaStart)}–${fmt12(r.paranaEnd)} on ${paranaDateStr}</div>
+    return`<div class="vp-ekadashi-item">
+      <div class="vp-upcoming-row vp-ek-clickable ${cls}" onclick="vpToggleEkadashiDetail(${i})">
+        <div class="vp-upcoming-serial">${i+1}</div>
+        <div class="vp-upcoming-icon">🪷</div>
+        <div class="vp-upcoming-body">
+          <div class="vp-upcoming-label">${r.ekadashiName}</div>
+          <div class="vp-upcoming-desc">${r.monthLabel} &middot; ${r.paksha} Paksha${r.note?' &middot; '+r.note:''}</div>
+          <div class="vp-upcoming-timeblock">Fast: ${dateStr}</div>
+          <div class="vp-upcoming-dur">Parana: ${fmt12(r.paranaStart)}–${fmt12(r.paranaEnd)} on ${paranaDateStr}</div>
+          <div class="vp-ek-hint">Tap to see the tithi sampling ▾</div>
+        </div>
+        <div class="vp-upcoming-right">
+          <span class="vp-in-pill">${pillTxt}</span>
+        </div>
       </div>
-      <div class="vp-upcoming-right">
-        <span class="vp-in-pill">${pillTxt}</span>
-      </div>
+      <div id="vp-ek-detail-${i}" style="display:none">${vpEkadashiExplainHTML(r)}</div>
     </div>`;
   }).join('');
 }
+window.vpToggleEkadashiDetail=function(i){
+  const el=document.getElementById('vp-ek-detail-'+i);
+  if(!el) return;
+  el.style.display=el.style.display==='none'?'block':'none';
+};
 
 function vpComputeMahaYogas(profile){
   if(!profile || typeof profile.nakshatraIndex !== 'number') return [];
@@ -4364,6 +4431,34 @@ window.vpToggleEkadashi = function() {
   const b = document.getElementById('vp-ekadashi-toggle');
   if(w) w.classList.toggle('open');
   if(b) b.classList.toggle('open');
+};
+
+// Date-range filter for the Ekadashi list — null means "show the next
+// few upcoming Ekadashis from today" (the default). Once a range is
+// applied, ALL Ekadashis whose fast date falls in [from,to] are shown.
+let _vpEkadashiRange=null;
+window.vpEkadashiApplyRange=function(){
+  const fromEl=document.getElementById('vp-ekadashi-from');
+  const toEl=document.getElementById('vp-ekadashi-to');
+  if(!fromEl||!fromEl.value||!toEl||!toEl.value) return;
+  const [fy,fm,fd]=fromEl.value.split('-').map(Number);
+  const [ty,tm,td]=toEl.value.split('-').map(Number);
+  // Noon anchor, same convention as the rest of this app's date-picker
+  // and Horoscope inputs — see the NOTE ON TIMEZONES comment above.
+  const fromDate=new Date(fy,fm-1,fd,12,0,0);
+  const toDate=new Date(ty,tm-1,td,12,0,0);
+  _vpEkadashiRange={fromJD:dateToJD(fromDate),toJD:dateToJD(toDate)};
+  _vpEkadashiCache.key=null;
+  if(typeof renderAll==='function') renderAll();
+};
+window.vpEkadashiResetRange=function(){
+  _vpEkadashiRange=null;
+  const fromEl=document.getElementById('vp-ekadashi-from');
+  const toEl=document.getElementById('vp-ekadashi-to');
+  if(fromEl) fromEl.value='';
+  if(toEl) toEl.value='';
+  _vpEkadashiCache.key=null;
+  if(typeof renderAll==='function') renderAll();
 };
 
 window.vpTogglePersonalSection = function(bodyId, chevronId) {

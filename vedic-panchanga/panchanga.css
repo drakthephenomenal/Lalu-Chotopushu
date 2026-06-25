@@ -3803,3 +3803,34 @@
 }
 /* Remove the old specYoga badge (now replaced by the banner above) */
 #vpanchanga-view .vp-cscore-special-yoga { display: none; }
+
+/* ══════════════════════════════════════════════════════════════
+   EXPANDED YOGA PANEL — count badge + auspicious/dosha colors
+   ══════════════════════════════════════════════════════════════ */
+#vpanchanga-view .vp-yoga-count {
+  font-size: .52rem;
+  font-weight: 700;
+  background: rgba(245,194,74,.15);
+  color: #FFE08A;
+  border: 1px solid rgba(245,194,74,.3);
+  border-radius: 999px;
+  padding: 1px 7px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+/* Auspicious card — green tint */
+#vpanchanga-view .vp-mahayoga-card[data-auspicious="true"],
+#vpanchanga-view .vp-yoga-universal.vp-yoga-active {
+  border-left: 3px solid rgba(52,214,164,.7) !important;
+  background: linear-gradient(135deg,rgba(52,214,164,.07) 0%,rgba(10,18,48,.0) 100%) !important;
+}
+/* Dosha card — red/amber tint */
+#vpanchanga-view .vp-mahayoga-card[data-dosha="true"],
+#vpanchanga-view .vp-yoga-dosha {
+  border-left: 3px solid rgba(255,90,90,.6) !important;
+  background: linear-gradient(135deg,rgba(255,60,60,.06) 0%,rgba(10,18,48,.0) 100%) !important;
+}
+#vpanchanga-view .vp-mahayoga-card[data-dosha="true"] .vp-mahayoga-name,
+#vpanchanga-view .vp-yoga-dosha .vp-mahayoga-name {
+  color: #FFB3B3 !important;
+}

@@ -2741,79 +2741,203 @@ function vpComputeMahaDasha(profile){
 // ══════════════════════════════════════════════════════════════
 function vpComputeUniversalYogas(jdNow, lat, lng){
   const results = [];
-  // ── Single source of truth for special yoga combos ──────────────────────────
-  // SARV and AMRT are defined at module scope (line ~494); we convert them here
-  // to the same Object-keyed format used below for O(1) lookup.
-  // This ensures the Maha Yoga panel and the Best-Windows / Tara section always
-  // agree on which weekday+nakshatra pairs qualify.
   const SARVARTHA_MAP = {};
   SARV.forEach(([d, naks]) => { SARVARTHA_MAP[d] = naks; });
   const AMRITA_MAP = {};
   AMRT.forEach(([d, naks]) => { AMRITA_MAP[d] = naks; });
 
-  const RAVI_DOSHA = {0:[12,8,19,11,5,22,24],1:[0,6,14,24],2:[4,7,11,20,24],3:[8,13,24],4:[3,10,16,21],5:[2,8,11,19,24],6:[6,7,14,16]};
   const NAK_NAMES = ['Ashwini','Bharani','Krittika','Rohini','Mrigashira','Ardra','Punarvasu','Pushya','Ashlesha','Magha','Purva Phalguni','Uttara Phalguni','Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha','Mula','Purva Ashadha','Uttara Ashadha','Shravana','Dhanishtha','Shatabhisha','Purva Bhadrapada','Uttara Bhadrapada','Revati'];
   const VAAR_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
-  // Track which calendar dates we have already processed to avoid duplicates
-  // when a nakshatra spans midnight (same wday+nak appear in two consecutive
-  // JD offsets).
+  // ── Ravi Dosha (weekday+nakshatra inauspicious pairs) ────────────────────
+  const RAVI_DOSHA = {0:[12,8,19,11,5,22,24],1:[0,6,14,24],2:[4,7,11,20,24],3:[8,13,24],4:[3,10,16,21],5:[2,8,11,19,24],6:[6,7,14,16]};
+
+  // ── Dagdha Tithi (burned tithis — inauspicious pairs of weekday+tithi) ───
+  // Classical list: Sun+12, Mon+11, Tue+5, Wed+3, Thu+6, Fri+8, Sat+9
+  const DAGDHA = {0:[11],1:[10],2:[4],3:[2],4:[5],5:[7],6:[8]};
+
+  // ── Dwipushkar Yoga — double-fruition: actions done repeat twice ──────────
+  // Weekday: Tue(2), Sat(6), Sun(0) + Nakshatra: Pushya(7), Dhanishtha(22), Purva Bhadrapada(24)
+  // + Tithi: 2,7,12 (Dwitiya, Saptami, Dwadashi — Dwi-numbered tithis)
+  const DWI_WDAY = new Set([0,2,6]);
+  const DWI_NAK  = new Set([7,22,24]);
+  const DWI_TITH = new Set([1,6,11,16,21,26]); // 0-indexed: Dwitiya=1,7=6,12=11 (both paksha)
+
+  // ── Tripushkar Yoga — triple-fruition: actions repeat three times ─────────
+  // Weekday: Tue(2), Sat(6), Sun(0) + Nakshatra: Krittika(2), Punarvasu(6), Uttara Phalguni(11), 
+  //          Uttara Ashadha(20), Uttara Bhadrapada(25), Vishakha(15)
+  // + Tithi: 3,8,13 (Tritiya, Ashtami, Trayodashi — Tri-numbered tithis)
+  const TRI_WDAY = new Set([0,2,6]);
+  const TRI_NAK  = new Set([2,6,11,20,25,15]);
+  const TRI_TITH = new Set([2,7,12,17,22,27]); // 0-indexed Tritiya=2, Ashtami=7, Trayodashi=12
+
+  // ── Pushkara Navamsha — Moon in one of the 12 auspicious navamsha degrees ─
+  // The 12 Pushkara navamshas (tropical degree ranges of the Moon in sidereal coords):
+  // Each navamsha = 3°20'. Pushkara navamshas are at specific positions in each sign.
+  // Classical: Mesha 21°20'–24°40', Vrishabha 3°20'–6°40', Mithuna 20°–23°20',
+  // Karka 6°40'–10°, Simha 20°–23°20', Kanya 16°40'–20°, Tula 23°20'–26°40',
+  // Vrishchika 6°40'–10°, Dhanu 0°–3°20', Makara 13°20'–16°40', Kumbha 20°–23°20',
+  // Meena 10°–13°20'  (sidereal degrees within each sign)
+  const PUSHKARA_NAV = [
+    [21.333,24.667],[33.333,36.667],[80.0,83.333],[96.667,100.0],
+    [140.0,143.333],[136.667,140.0],[173.333,176.667],[186.667,190.0],
+    [240.0,243.333],[253.333,256.667],[290.0,293.333],[280.0,283.333]
+  ];
+
+  // ── Panchak — Moon in last 5 nakshatras (Dhanishtha 2nd half → Revati) ───
+  // Moon longitude sidereal 293°20' to 360° = nakshatras 22.5 to 27
+  // = Dhanishtha (2nd half), Shatabhisha, Purva Bhadrapada, Uttara Bhadrapada, Revati
+  const PANCHAK_NAK = new Set([22,23,24,25,26]); // indices 22-26
+
+  // ── Siddha Yoga — auspicious Tithi+Weekday+Nakshatra triple ──────────────
+  // Classical combos (0-indexed tithi, 0=Sun weekday, 0=Ashwini nak):
+  const SIDDHA_COMBOS = [
+    {t:0,w:0,n:0},{t:1,w:1,n:3},{t:2,w:2,n:6},{t:3,w:3,n:5},
+    {t:4,w:4,n:7},{t:5,w:5,n:12},{t:6,w:6,n:26},{t:7,w:0,n:8},
+    {t:9,w:1,n:12},{t:10,w:2,n:16},{t:11,w:3,n:7},{t:12,w:4,n:20},
+    {t:13,w:5,n:24},{t:14,w:6,n:0}
+  ];
+
+  // ── Amrita Yoga (Tithi+Nakshatra pairs — different from Amrita Siddhi) ────
+  // Moon in specific nakshatras on specific tithis creates nectar flow
+  const AMRITA_YOGA_MAP = {
+    0:[4,14,23],1:[7,11,22],2:[3,13,26],3:[9,18,25],4:[2,12,21],
+    5:[0,10,20],6:[5,15,24],7:[1,11,23],8:[4,14,22],9:[3,13,26],
+    10:[8,17,25],11:[2,12,21],12:[0,10,20],13:[5,15,24],14:[1,11,23]
+  };
+
+  // ── Mrityu Yoga — inauspicious (death/obstacle) Tithi+Weekday pairs ───────
+  // Classical: specific tithi+weekday combos to avoid for new work
+  const MRITYU = {0:[4,9,14],1:[5,10,0],2:[3,8,13],3:[1,6,11],4:[7,12,2],5:[0,5,10],6:[2,7,12]};
+
+  // ── Rohini Yoga — Monday + Rohini nakshatra (highly auspicious) ──────────
+  // (also: Thursday + Rohini = Guru Rohini — prosperity)
+
+  // ── Shiva Yoga — formed when Sun is in Taurus and Moon in Sagittarius (approx) ─
+  // More commonly: specific Tithi+Nakshatra+Weekday triples in some traditions
+  // We'll use the simpler: Shiva = Moon in Ardra, Mula, or Shatabhisha on any day
+  const SHIVA_NAK = new Set([5,18,23]); // Ardra, Mula, Shatabhisha
+
+  // ── Brahma Yoga — Moon in Rohini/Hasta/Pushya/Anuradha on Mon/Thu/Fri ─────
+  const BRAHMA_NAK = new Set([3,12,7,16]);
+  const BRAHMA_WDAY = new Set([1,4,5]);
+
+  // ── Indra Yoga — Moon in Jyeshtha nakshatra on Thursday ─────────────────
+  // ── Vishnu Yoga — Moon in Shravana nakshatra on any day (dev. to Vishnu) ─
+
   const seenDates = new Set();
 
   function checkDay(jd){
     const dt = jdToDate(jd);
-    // Deduplicate by calendar date string
     const dateKey = dt.toISOString().slice(0,10);
     if(seenDates.has(dateKey)) return;
     seenDates.add(dateKey);
 
     const wday = dt.getDay();
-    // Sample nakshatra at solar noon of that calendar date to get the
-    // day's dominant nakshatra — avoids edge-cases at day boundaries.
-    const noonJD = jd - (jd % 1) + 0.5; // noon UTC of same JD integer
-    const nakIdx = Math.floor(moonLongSid(noonJD) / (360/27)) % 27;
+    const noonJD = jd - (jd % 1) + 0.5;
+    const moonSid = moonLongSid(noonJD);
+    const nakIdx = Math.floor(moonSid / (360/27)) % 27;
     const tithiI = tithiIdx(noonJD);
     const dayLabel = dt.toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short'});
-    // "Today" = same calendar date as the moment vpComputeUniversalYogas was
-    // called (jdNow). Compare date-strings to avoid JD-floor ambiguity.
     const todayKey = jdToDate(jdNow).toISOString().slice(0,10);
     const isToday = dateKey === todayKey;
     const status = isToday ? 'active' : 'upcoming';
+    const nakName = NAK_NAMES[nakIdx] || '';
+    const wdayName = VAAR_FULL[wday];
 
-    // Amrita Siddhi Yoga (unified table)
+    // 1. Amrita Siddhi Yoga
     if((AMRITA_MAP[wday]||[]).includes(nakIdx)){
-      results.push({name:'Amrita Siddhi Yoga',emoji:'🪷',desc:`${VAAR_FULL[wday]} + ${NAK_NAMES[nakIdx]} — nectar of success; excellent for new work, travel, medicine`,status,dateStr:isToday?'Today':dayLabel});
+      results.push({name:'Amrita Siddhi Yoga',emoji:'🪷',desc:`${wdayName} + ${nakName} — nectar of success; excellent for new work, travel, medicine`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
-    // Sarvartha Siddhi Yoga (unified table — same as used in Best Windows)
+    // 2. Sarvartha Siddhi Yoga
     if((SARVARTHA_MAP[wday]||[]).includes(nakIdx)){
-      results.push({name:'Sarvartha Siddhi Yoga',emoji:'✅',desc:`${VAAR_FULL[wday]} + ${NAK_NAMES[nakIdx]} — fulfillment of all purposes; sign & buy, start ventures`,status,dateStr:isToday?'Today':dayLabel});
+      results.push({name:'Sarvartha Siddhi Yoga',emoji:'✅',desc:`${wdayName} + ${nakName} — fulfillment of all purposes; sign, buy, start ventures`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
-    // Guru Pushya Yoga
+    // 3. Guru Pushya Yoga
     if(wday===4 && nakIdx===7){
-      results.push({name:'Guru Pushya Yoga',emoji:'🙏',desc:'Thursday + Pushya — most auspicious for gold purchase, wealth, spiritual initiation & business launch',status,dateStr:isToday?'Today':dayLabel});
+      results.push({name:'Guru Pushya Yoga',emoji:'🙏',desc:'Thursday + Pushya — most auspicious for gold, wealth, spiritual initiation & business launch',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
-    // Ravi Pushya Yoga
+    // 4. Ravi Pushya Yoga
     if(wday===0 && nakIdx===7){
-      results.push({name:'Ravi Pushya Yoga',emoji:'☀️',desc:'Sunday + Pushya — powerful for health, authority & all new beginnings',status,dateStr:isToday?'Today':dayLabel});
+      results.push({name:'Ravi Pushya Yoga',emoji:'☀️',desc:'Sunday + Pushya — powerful for health, authority & all new beginnings',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
-    // Ravi Yoga (inauspicious dosha — warn)
-    if((RAVI_DOSHA[wday]||[]).includes(nakIdx)){
-      results.push({name:'Ravi Yoga (Dosha)',emoji:'⚠️',desc:`${VAAR_FULL[wday]} + ${NAK_NAMES[nakIdx]} — avoid ceremonies & new ventures; normal daily work fine`,status,dateStr:isToday?'Today':dayLabel,dosha:true});
+    // 5. Rohini Yoga (Monday + Rohini)
+    if(wday===1 && nakIdx===3){
+      results.push({name:'Rohini Yoga',emoji:'🌹',desc:'Monday + Rohini — Moon in own favourite nakshatra; excellent for wealth, beauty & all worldly success',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
-    // Purnima / Amavasya
+    // 6. Guru Rohini Yoga (Thursday + Rohini)
+    if(wday===4 && nakIdx===3){
+      results.push({name:'Guru Rohini Yoga',emoji:'💛',desc:'Thursday + Rohini — Jupiter-Moon combination; prosperity, wisdom & fulfilment of desires',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+    }
+    // 7. Brahma Yoga (Moon in Rohini/Hasta/Pushya/Anuradha on Mon/Thu/Fri)
+    if(BRAHMA_NAK.has(nakIdx) && BRAHMA_WDAY.has(wday)){
+      results.push({name:'Brahma Yoga',emoji:'🕉️',desc:`${wdayName} + ${nakName} — sacred creative energy; excellent for learning, spiritual practice & new study`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+    }
+    // 8. Indra Yoga (Thursday + Jyeshtha)
+    if(wday===4 && nakIdx===17){
+      results.push({name:'Indra Yoga',emoji:'⚡',desc:'Thursday + Jyeshtha — royal power and leadership energy; auspicious for authority, success in competition',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+    }
+    // 9. Vishnu Yoga (Shravana nakshatra — listening/devotion to Vishnu)
+    if(nakIdx===21){
+      results.push({name:'Vishnu Yoga',emoji:'🌀',desc:'Shravana nakshatra day — sacred to Vishnu; ideal for devotion, listening to scriptures & acts of dharma',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+    }
+    // 10. Shiva Yoga (Moon in Ardra/Mula/Shatabhisha — Shiva nakshatras)
+    if(SHIVA_NAK.has(nakIdx)){
+      results.push({name:'Shiva Yoga',emoji:'🔱',desc:`Moon in ${nakName} — sacred to Shiva; powerful for deep spiritual work, mantra, and transformation`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+    }
+    // 11. Pushkara Navamsha (Moon in one of the 12 auspicious navamsha spans)
+    const moonDeg = moonSid;
+    const inPushkara = PUSHKARA_NAV.some(([lo,hi]) => moonDeg>=lo && moonDeg<hi);
+    if(inPushkara){
+      results.push({name:'Pushkara Navamsha',emoji:'🌸',desc:'Moon in an auspicious navamsha division — highly beneficial; actions bear lasting fruit',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+    }
+    // 12. Siddha Yoga (Tithi+Weekday+Nakshatra triple)
+    const isSiddha = SIDDHA_COMBOS.some(c=>c.t===tithiI&&c.w===wday&&c.n===nakIdx);
+    if(isSiddha){
+      results.push({name:'Siddha Yoga',emoji:'🏆',desc:`${wdayName} + ${nakName} + Tithi ${tithiI+1} — triple alignment; auspicious for all new beginnings`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+    }
+    // 13. Dwipushkar Yoga
+    if(DWI_WDAY.has(wday) && DWI_NAK.has(nakIdx) && DWI_TITH.has(tithiI)){
+      results.push({name:'Dwipushkar Yoga',emoji:'✌️',desc:`${wdayName} + ${nakName} + Dwitiya/Saptami/Dwadashi — actions double; buy in pairs, invest, plant seeds`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+    }
+    // 14. Tripushkar Yoga
+    if(TRI_WDAY.has(wday) && TRI_NAK.has(nakIdx) && TRI_TITH.has(tithiI)){
+      results.push({name:'Tripushkar Yoga',emoji:'🔺',desc:`${wdayName} + ${nakName} + Tritiya/Ashtami/Trayodashi — actions triple; highly auspicious for wealth creation`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+    }
+    // 15. Panchak (Moon in last 5 nakshatras — caution period)
+    if(PANCHAK_NAK.has(nakIdx)){
+      results.push({name:'Panchak',emoji:'⚠️',desc:`Moon in ${nakName} — Panchak period active; avoid construction, funeral rites & cutting of wood. Normal activities fine.`,status,dateStr:isToday?'Today':dayLabel,dosha:true});
+    }
+    // 16. Purnima
     if(tithiI===14){
-      results.push({name:'Purnima (Full Moon)',emoji:'🌕',desc:'Complete lunar energy — ideal for worship, meditation, charity & ancestral rites',status,dateStr:isToday?'Today':dayLabel});
+      results.push({name:'Purnima (Full Moon)',emoji:'🌕',desc:'Complete lunar energy — ideal for worship, meditation, charity & ancestral rites',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
+    // 17. Amavasya
     if(tithiI===29){
       results.push({name:'Amavasya (New Moon)',emoji:'🌑',desc:'Deep inner energy — ancestor worship (Shraddha), fasting & introspection',status,dateStr:isToday?'Today':dayLabel});
     }
-    // Ekadashi (11th tithi — indices 10 for Shukla, 25 for Krishna)
+    // 18. Ekadashi
     if(tithiI===10 || tithiI===25){
-      results.push({name:'Ekadashi',emoji:'🪷',desc:'11th tithi — fasting & Vishnu worship; cleansing & spiritual merit',status,dateStr:isToday?'Today':dayLabel});
+      results.push({name:'Ekadashi',emoji:'🪷',desc:'11th tithi — fasting & Vishnu worship; cleansing & spiritual merit',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+    }
+    // 19. Ravi Yoga Dosha
+    if((RAVI_DOSHA[wday]||[]).includes(nakIdx)){
+      results.push({name:'Ravi Yoga (Dosha)',emoji:'☠️',desc:`${wdayName} + ${nakName} — solar affliction; avoid ceremonies & new ventures. Normal daily work fine.`,status,dateStr:isToday?'Today':dayLabel,dosha:true});
+    }
+    // 20. Dagdha Tithi (burned tithi)
+    if((DAGDHA[wday]||[]).includes(tithiI)){
+      results.push({name:'Dagdha Tithi',emoji:'🔥',desc:`Tithi ${tithiI+1} on ${wdayName} — burned tithi; avoid major ceremonies, surgery & new ventures`,status,dateStr:isToday?'Today':dayLabel,dosha:true});
+    }
+    // 21. Mrityu Yoga
+    if((MRITYU[wday]||[]).includes(tithiI)){
+      results.push({name:'Mrityu Yoga',emoji:'💀',desc:`${wdayName} + Tithi ${tithiI+1} — inauspicious combination; avoid travel, surgery & important new actions`,status,dateStr:isToday?'Today':dayLabel,dosha:true});
+    }
+    // 22. Amrita Yoga (Tithi+Nakshatra — distinct from Amrita Siddhi)
+    if((AMRITA_YOGA_MAP[tithiI]||[]).includes(nakIdx)){
+      results.push({name:'Amrita Yoga',emoji:'🍯',desc:`Tithi ${tithiI+1} + ${nakName} — nectar alignment; auspicious for medicine, healing & life-giving acts`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
   }
 
-  // Check today + next 7 days (8 calendar dates total)
   for(let i=0;i<8;i++) checkDay(jdNow + i);
   return results;
 }
@@ -2823,33 +2947,112 @@ function vpComputeMahaYogas(profile){
   const out = [];
   const tithiIdx0 = profile.tithiIndex; // 0..29
   const nak = profile.nakshatraIndex;
-  const rashi = profile.rashiIndex;
-  // Planet-attribution lets the UI compute when each yoga activates
-  // (via the matching Mahadasha / Antardasha of its ruling planet).
-  // Tithi-based Yogas — Moon governs all tithi-born yogas.
-  if(tithiIdx0 === 4  || tithiIdx0 === 19) out.push({name:'Siddhi Yoga',    emoji:'🪷', desc:'Birth on Panchami — success in undertakings', planets:['Moon','Mercury']});
-  if(tithiIdx0 === 9  || tithiIdx0 === 24) out.push({name:'Dasha-mukta Yoga',emoji:'🔱', desc:'Birth on Dashami — liberation from obstacles', planets:['Moon','Saturn']});
-  if(tithiIdx0 === 14)                       out.push({name:'Purnima Yoga',   emoji:'🌕', desc:'Born on full-moon — fullness, fame & nourishment', planets:['Moon']});
-  if(tithiIdx0 === 29)                       out.push({name:'Amavasya Yoga',  emoji:'🌑', desc:'Born on new-moon — deep introspection & ancestral grace', planets:['Moon','Ketu']});
-  // Nakshatra-based — ruled by the nakshatra lord.
-  if([7,17,21].includes(nak))               out.push({name:'Pushya/Anuradha/Shravana — Vipra Yoga', emoji:'🕉️', desc:'Wisdom, devotion & teaching naturally favored', planets:['Jupiter','Saturn','Moon']});
-  if([3,12,20,25].includes(nak))            out.push({name:'Maha-Lakshmi Yoga', emoji:'💐', desc:'Rohini/Hasta/Uttara-group nakshatras — prosperity & abundance', planets:['Venus','Moon']});
-  if([6].includes(nak))                      out.push({name:'Punarvasu Yoga',    emoji:'🌿', desc:'Renewal & return of good fortune through effort', planets:['Jupiter']});
-  // Pancha-Maha-Purusha-Yoga proxies via Moon-rashi (approximate, Moon-based)
+  const rashi = profile.rashiIndex; // 0=Mesha..11=Meena
+  const nakLord = ['Ketu','Venus','Sun','Moon','Mars','Rahu','Jupiter','Saturn','Mercury',
+                   'Ketu','Venus','Sun','Moon','Mars','Rahu','Jupiter','Saturn','Mercury',
+                   'Ketu','Venus','Sun','Moon','Mars','Rahu','Jupiter','Saturn','Mercury'][nak];
+
+  // ── 1. Tithi-based birth yogas ─────────────────────────────────────────────
+  if(tithiIdx0===4||tithiIdx0===19)
+    out.push({name:'Siddhi Yoga',emoji:'🪷',desc:'Born on Panchami — natural success in all undertaken works; goal-oriented nature',planets:['Moon','Mercury']});
+  if(tithiIdx0===9||tithiIdx0===24)
+    out.push({name:'Dasha-mukta Yoga',emoji:'🔱',desc:'Born on Dashami — liberation from obstacles; ability to overcome difficulties',planets:['Moon','Saturn']});
+  if(tithiIdx0===1||tithiIdx0===16)
+    out.push({name:'Chandra Yoga (Dwitiya)',emoji:'🌙',desc:'Born on Dwitiya — sensitive, intuitive, strong Moon energy; connection to mother & masses',planets:['Moon']});
+  if(tithiIdx0===4||tithiIdx0===19)
+    out.push({name:'Lakshmi Yoga (Panchami)',emoji:'💐',desc:'Born on Panchami — Lakshmi's tithi; prosperity, beauty & material abundance',planets:['Venus','Moon']});
+  if(tithiIdx0===14)
+    out.push({name:'Purnima Yoga',emoji:'🌕',desc:'Born on Full Moon — heightened intuition, fame & fullness of life; strong mind',planets:['Moon']});
+  if(tithiIdx0===29)
+    out.push({name:'Amavasya Yoga',emoji:'🌑',desc:'Born on New Moon — deep introspection, ancestral connection & inner strength',planets:['Moon','Ketu']});
+  // Ekadashi birth
+  if(tithiIdx0===10||tithiIdx0===25)
+    out.push({name:'Ekadashi Janma Yoga',emoji:'🙏',desc:'Born on Ekadashi — deep spiritual inclination; Vishnu's grace; ideal for renunciation & dharma',planets:['Jupiter','Saturn']});
+  // Dwadashi birth
+  if(tithiIdx0===11||tithiIdx0===26)
+    out.push({name:'Dwadashi Janma',emoji:'🌸',desc:'Born on Dwadashi — breaking of fasts; charitable, giving nature; blessed by Vishnu',planets:['Jupiter']});
+
+  // ── 2. Nakshatra-based birth yogas ────────────────────────────────────────
+  if([7,17,21].includes(nak))
+    out.push({name:'Vipra Yoga',emoji:'🕉️',desc:`Born in ${['Pushya','Anuradha','Shravana'][([7,17,21].indexOf(nak))]} — wisdom, devotion & teaching naturally favored; scholarly disposition`,planets:['Jupiter','Saturn','Moon']});
+  if([3,12,20,25].includes(nak))
+    out.push({name:'Maha-Lakshmi Yoga',emoji:'💐',desc:`Born in ${NAK_NAME_MINI[nak]||'this nakshatra'} — Rohini/Hasta/Uttara group; prosperity, beauty & abundance`,planets:['Venus','Moon']});
+  if(nak===6)
+    out.push({name:'Punarvasu Yoga',emoji:'🌿',desc:'Born in Punarvasu — renewal & return of good fortune; resilience and recovery from setbacks',planets:['Jupiter']});
+  if(nak===22)
+    out.push({name:'Shravana Yoga',emoji:'👂',desc:'Born in Shravana — sacred listening; Vishnu nakshatra; success through learning & communication',planets:['Moon']});
+  if(nak===7)
+    out.push({name:'Pushya Yoga',emoji:'🌼',desc:'Born in Pushya — most nourishing nakshatra; natural care-giver; blessed with sustenance & support',planets:['Saturn','Jupiter']});
+  if([2,11,20].includes(nak))
+    out.push({name:'Krittika-Uttara Yoga',emoji:'🔥',desc:`Born in ${NAK_NAME_MINI[nak]||'this nakshatra'} — Agni/Sun nakshatra; leadership, sharp intellect & determination`,planets:['Sun']});
+  if([5,18,23].includes(nak))
+    out.push({name:'Shiva Nakshatra Yoga',emoji:'🔱',desc:`Born in ${NAK_NAME_MINI[nak]||'this nakshatra'} — Rudra/Shiva nakshatra; transformative nature, deep spiritual power`,planets:['Rahu']});
+  if(nak===1)
+    out.push({name:'Bharani Yoga',emoji:'⚖️',desc:'Born in Bharani — Yama's nakshatra; strong sense of justice, endurance & connection to life cycles',planets:['Venus']});
+  if([0,9,18].includes(nak))
+    out.push({name:'Ketu Nakshatra Yoga',emoji:'☄️',desc:`Born in ${NAK_NAME_MINI[nak]||'this nakshatra'} — Ketu-ruled; past-life wisdom, spiritual liberation & detachment`,planets:['Ketu']});
+
+  // ── 3. Pancha-Maha-Purusha Yoga proxies (Moon rashi) ─────────────────────
   const ownExalt = {
-    0:{n:'Mars-Ruchaka',     p:'Mars'},
-    2:{n:'Mercury-Bhadra',   p:'Mercury'},
-    4:{n:'Sun-Solar',        p:'Sun'},
-    6:{n:'Venus-Malavya',    p:'Venus'},
-    8:{n:'Jupiter-Hamsa',    p:'Jupiter'},
-    9:{n:'Saturn-Shasha',    p:'Saturn'},
-    11:{n:'Jupiter-Hamsa',   p:'Jupiter'}
+    0:{n:'Ruchaka',lord:'Mars',note:'Mars own/exalt sign Moon; warrior spirit, courage & leadership'},
+    2:{n:'Bhadra',lord:'Mercury',note:'Mercury own/exalt sign Moon; sharp intellect, communication mastery'},
+    4:{n:'Solar Yoga',lord:'Sun',note:'Sun exalt sign Moon; radiant vitality, authority & dharma'},
+    6:{n:'Malavya',lord:'Venus',note:'Venus own/exalt sign Moon; beauty, arts, luxury & refined taste'},
+    8:{n:'Hamsa',lord:'Jupiter',note:'Jupiter own/exalt sign Moon; wisdom, dharma & spiritual grace'},
+    9:{n:'Shasha',lord:'Saturn',note:'Saturn own/exalt sign Moon; discipline, longevity & justice'},
+    11:{n:'Hamsa',lord:'Jupiter',note:'Jupiter exalt sign Moon; wisdom, dharma & expansion'}
   };
-  if(ownExalt[rashi]) out.push({name:ownExalt[rashi].n+' Yoga (Moon-proxy)', emoji:'👑', desc:'Pancha-Maha-Purusha proxy via Moon — leadership & distinction', planets:[ownExalt[rashi].p]});
-  // Gajakesari (Moon-Jupiter): activates in either Moon or Jupiter dasha/antardasha.
-  out.push({name:'Gajakesari (educational)', emoji:'🐘', desc:'Strong Moon-Jupiter angle gives wisdom & influence — verify with full chart', planets:['Moon','Jupiter']});
+  if(ownExalt[rashi])
+    out.push({name:ownExalt[rashi].n+' Maha Yoga',emoji:'👑',desc:'Pancha-Maha-Purusha proxy (Moon-based): '+ownExalt[rashi].note+'. Verify with full chart.',planets:[ownExalt[rashi].lord]});
+
+  // ── 4. Moon-sign based combinations ───────────────────────────────────────
+  // Gajakesari — Moon 1/4/7/10 from Jupiter (needs full chart; Moon-proxy shown)
+  out.push({name:'Gajakesari Yoga',emoji:'🐘',desc:'Moon-Jupiter combination (verify with full chart) — wisdom, influence, eloquence & lasting fame',planets:['Moon','Jupiter']});
+
+  // Sunafa Yoga — planet in 2nd from Moon (Moon-based; depends on birth chart)
+  // We compute a proxy: if Moon is in a sign whose 2nd sign lord is a benefic
+  const sunafaBeneficRashi2nd = [1,3,5,8,9,11]; // Vrishabha, Karka, Kanya, Vrishchika, Dhanu, Meena
+  if(sunafaBeneficRashi2nd.includes((rashi+1)%12))
+    out.push({name:'Sunafa Yoga (proxy)',emoji:'🌟',desc:'Benefic influence in 2nd from natal Moon sign — wealth, status & good family',planets:['Venus','Jupiter','Mercury']});
+
+  // Anafa Yoga — benefic in 12th from Moon
+  const anafaBeneficRashi12th = [0,2,4,6,7,10];
+  if(anafaBeneficRashi12th.includes((rashi+11)%12))
+    out.push({name:'Anafa Yoga (proxy)',emoji:'✨',desc:'Benefic influence in 12th from natal Moon sign — spiritual merit, pleasures & liberation',planets:['Venus','Jupiter','Mercury']});
+
+  // Kemdrum Yoga — Moon without planets in adjacent signs
+  // We approximate: if Moon is in a non-friendly sign (debilitation sign = Vrishchika for Moon)
+  if(rashi===7) // Vrishchika = Moon debilitated
+    out.push({name:'Neecha Chandra (caution)',emoji:'⚠️',desc:'Moon in debilitation sign Vrishchika — emotional sensitivity; Neecha Bhanga (cancellation) possible with benefics',planets:['Moon','Jupiter','Venus'],dosha:true});
+
+  // Chandra-Mangal Yoga — Moon+Mars mutual influence (rashi proxy)
+  // Proxy: if Moon is in Mars-ruled sign or Mars-owned nakshatra
+  if([0,7].includes(rashi))
+    out.push({name:'Chandra-Mangal Yoga',emoji:'⚔️',desc:'Moon in Mars sign — energy, enterprise & financial initiative; drive to achieve material success',planets:['Moon','Mars']});
+
+  // Adhi Yoga proxy — benefics in 6/7/8 from Moon
+  const adhiRashi = [(rashi+5)%12, (rashi+6)%12, (rashi+7)%12];
+  const beneficSigns = [1,2,3,4,5,8,9,10,11]; // Venus/Mercury/Jupiter-ruled signs (approx)
+  const adhiCount = adhiRashi.filter(r=>beneficSigns.includes(r)).length;
+  if(adhiCount>=2)
+    out.push({name:'Adhi Yoga (proxy)',emoji:'🌈',desc:'Benefic influence in 6th/7th/8th from Moon — leadership, health & success over enemies (verify with full chart)',planets:['Jupiter','Venus','Mercury']});
+
+  // Neecha Bhanga potential
+  const neechaRashi = {Sun:6, Moon:7, Mars:3, Mercury:11, Jupiter:9, Venus:5, Saturn:0};
+  const neechaLord = Object.keys(neechaRashi).find(p=>neechaRashi[p]===rashi);
+  if(neechaLord)
+    out.push({name:'Neecha Bhanga Potential',emoji:'🔄',desc:`Moon in ${['Mesha','Vrishabha','Mithuna','Karka','Simha','Kanya','Tula','Vrishchika','Dhanu','Makara','Kumbha','Meena'][rashi]} — sign of ${neechaLord} debilitation; Neecha Bhanga (cancellation) can create Raja Yoga — verify with full chart`,planets:[neechaLord,'Jupiter']});
+
+  // Shakata Yoga proxy — Moon in 6/8/12 from Jupiter (unfavorable position)
+  // Proxy: Moon in Saturn-ruled or Rahu signs
+  if([9,10].includes(rashi))
+    out.push({name:'Shakata Yoga (caution)',emoji:'🌊',desc:'Moon-Jupiter friction possible (Moon in Capricorn/Aquarius) — fluctuating fortune; spiritual focus recommended',planets:['Moon','Jupiter','Saturn'],dosha:true});
+
   return out;
 }
+
+// Nakshatra name mini-map for birth yogas
+const NAK_NAME_MINI = ['Ashwini','Bharani','Krittika','Rohini','Mrigashira','Ardra','Punarvasu','Pushya','Ashlesha','Magha','Purva Phalguni','Uttara Phalguni','Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha','Mula','Purva Ashadha','Uttara Ashadha','Shravana','Dhanishtha','Shatabhisha','Purva Bhadrapada','Uttara Bhadrapada','Revati'];
 
 // ══════════════════════════════════════════════════════════════
 // SATURN CYCLES (Sade Sati, Ashtama Shani, Kantaka Shani) + KAL SARPA
@@ -3965,8 +4168,8 @@ async function vpPersonalRender(){
           </div>`;
         };
         const myYogaCards = myYogas.length ? myYogas.map(y=>`
-          <div class="vp-mahayoga-card">
-            <div class="vp-mahayoga-name"><span>${y.emoji}</span> ${y.name}</div>
+          <div class="vp-mahayoga-card" data-auspicious="${!y.dosha?'true':'false'}" data-dosha="${y.dosha?'true':'false'}">
+            <div class="vp-mahayoga-name"><span>${y.emoji}</span> ${y.name}${y.dosha?'<span style="font-size:.48rem;margin-left:6px;color:#FFB3B3;font-weight:700;"> ⚠ caution</span>':''}</div>
             <div class="vp-mahayoga-desc">${y.desc}</div>
             ${_yogaActivations(y.planets)}
           </div>`).join('') : `<div class="vp-mahayoga-empty">No major classical yogas detected from Moon-based factors. A full chart with all planets reveals more.</div>`;
@@ -4036,11 +4239,11 @@ async function vpPersonalRender(){
             <span class="vp-chevron" id="vp-yoga-chevron">${(()=>{try{return sessionStorage.getItem('vp-collapse-vp-yoga-body')==='closed'?'▸':'▾';}catch(e){return'▾';}})()}</span>
           </button>
           <div id="vp-yoga-body" class="vp-collapsible-body${(()=>{try{return sessionStorage.getItem('vp-collapse-vp-yoga-body')==='closed'?'':' open';}catch(e){return' open';}})()}">
-            <div class="vp-maha-sub vp-yoga-sub-for-all">🌍 For Everyone — Active & Coming Soon (7 days)</div>
+            <div class="vp-maha-sub vp-yoga-sub-for-all">🌍 For Everyone — Active & Coming Soon (7 days) <span class="vp-yoga-count">${universalYogas.length} found</span></div>
             <div class="vp-mahayoga-list vp-yoga-universal-list">${uYogaCards}</div>
-            <div class="vp-maha-sub vp-yoga-sub-for-me">🙋 For Me — Yogas from My Birth Chart</div>
+            <div class="vp-maha-sub vp-yoga-sub-for-me">🙋 For Me — Yogas from My Birth Chart <span class="vp-yoga-count">${myYogas.length} detected</span></div>
             <div class="vp-mahayoga-list">${myYogaCards}</div>
-            <div class="vp-maha-note">Birth yogas use Moon-based factors only. Universal yogas are based on today's Tithi, Nakshatra &amp; Weekday.</div>
+            <div class="vp-maha-note">Universal yogas check 22 combinations (Tithi · Nakshatra · Weekday). Birth yogas check 26 natal patterns (Moon-based). Full chart reveals more.</div>
           </div>
         </div>
 

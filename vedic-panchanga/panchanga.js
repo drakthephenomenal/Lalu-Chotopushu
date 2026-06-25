@@ -3589,6 +3589,43 @@ async function vpPersonalRender(){
             const col2=PLANET_COLOR2[activeDasha.lord]||'#1a56db';
             const em2=PLANET_EMOJI2[activeDasha.lord]||activeDasha.emoji||'🪐';
             const lft2=humanLeft2(+activeDasha.end-nowMs3);
+            // Antardasha + Pratyantardasha sub-rows
+            let antarHtml='', pratHtml='';
+            try{
+              const lordIdx2=VIMSH_SEQ.findIndex(v=>v.lord===activeDasha.lord);
+              if(lordIdx2>=0){
+                const antars2=_vpDashaSubperiods(+activeDasha.start,+activeDasha.end,lordIdx2)||[];
+                const activeAntar2=antars2.find(a=>+a.start<=nowMs3&&nowMs3<+a.end);
+                if(activeAntar2){
+                  const aCol2=PLANET_COLOR2[activeAntar2.lord]||'#7c5cfc';
+                  const aEm2=PLANET_EMOJI2[activeAntar2.lord]||'🪐';
+                  const aLft2=humanLeft2(+activeAntar2.end-nowMs3);
+                  antarHtml=`<div style="border-left:2px solid ${aCol2};margin-top:6px;padding-left:6px">`
+                    +`<div><span style="font-size:.54rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:${aCol2}">Antardasha</span>`
+                    +` <span style="font-size:.66rem;font-weight:700;color:${aCol2}">${aEm2} ${activeAntar2.lord}</span></div>`
+                    +`<div style="font-size:.57rem;color:var(--vp-ink-soft);margin-top:1px">${activeAntar2.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → ${activeAntar2.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>`
+                    +`<span class="vp-msd-left" style="background:${aCol2};margin-top:3px;display:inline-block">${aLft2}</span>`
+                    +`</div>`;
+                  // Pratyantardasha
+                  const aLordIdx2=VIMSH_SEQ.findIndex(v=>v.lord===activeAntar2.lord);
+                  if(aLordIdx2>=0){
+                    const prats2=_vpDashaPratyantar(+activeAntar2.start,+activeAntar2.end,aLordIdx2)||[];
+                    const activePrat2=prats2.find(p=>+p.start<=nowMs3&&nowMs3<+p.end);
+                    if(activePrat2){
+                      const pCol2=PLANET_COLOR2[activePrat2.lord]||'var(--vp-violet2)';
+                      const pEm2=PLANET_EMOJI2[activePrat2.lord]||'🪐';
+                      const pLft2=humanLeft2(+activePrat2.end-nowMs3);
+                      pratHtml=`<div style="border-left:2px solid ${pCol2};margin-top:4px;padding-left:6px">`
+                        +`<div><span style="font-size:.51rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:${pCol2};opacity:.85">Pratyantar</span>`
+                        +` <span style="font-size:.62rem;font-weight:700;color:${pCol2}">${pEm2} ${activePrat2.lord}</span></div>`
+                        +`<div style="font-size:.54rem;color:var(--vp-ink-soft);margin-top:1px">${activePrat2.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → ${activePrat2.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>`
+                        +`<span class="vp-msd-left" style="background:${pCol2};margin-top:3px;display:inline-block">${pLft2}</span>`
+                        +`</div>`;
+                    }
+                  }
+                }
+              }
+            }catch(e){}
             dashaHtml=`<div class="vp-msd-card" style="border-left-color:${col2}">
               <span class="vp-msd-emoji">${em2}</span>
               <div class="vp-msd-body">
@@ -3596,6 +3633,7 @@ async function vpPersonalRender(){
                 <div class="vp-msd-name" style="color:${col2}">${activeDasha.lord} Dasha${phase2.theme?` <span class="vp-msd-theme">· ${phase2.theme}</span>`:''}</div>
                 <div class="vp-msd-sub">${activeDasha.years.toFixed(1)}y total · ends ${activeDasha.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
                 <div class="vp-msd-left">${lft2}</div>
+                ${antarHtml}${pratHtml}
               </div>
             </div>`;
           }
@@ -3607,6 +3645,24 @@ async function vpPersonalRender(){
           const satColor='var(--vp-planet-saturn)';
           if(actSat){
             const pct2=Math.round(((nowMs3 - +actSat.start)/(+actSat.end - +actSat.start))*100);
+            // Find active phase (Rising/Peak/Setting)
+            let phaseHtml='';
+            try{
+              const nowSatJD2=jdNow;
+              const activePart2=actSat.parts&&actSat.parts.find(p=>p.startJd<=nowSatJD2&&nowSatJD2<p.endJd);
+              if(activePart2){
+                const phaseLabel=activePart2.sub||'';
+                const phaseIcon=phaseLabel.includes('Rising')?'🌒':phaseLabel.includes('Peak')?'🔴':'🌘';
+                const phaseLeftMs=+activePart2.end-nowMs3;
+                const phaseLft2=humanLeft2(phaseLeftMs);
+                phaseHtml=`<div style="border-left:2px solid #7c5cfc;margin-top:6px;padding-left:6px">`
+                  +`<div><span style="font-size:.54rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#7c5cfc">Active Phase</span>`
+                  +` <span style="font-size:.65rem;font-weight:700;color:#a78bfa">${phaseIcon} ${phaseLabel.replace(/^.*?—\s*/,'')}</span></div>`
+                  +`<div style="font-size:.57rem;color:var(--vp-ink-soft);margin-top:1px">${activePart2.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → ${activePart2.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>`
+                  +`<span class="vp-msd-left" style="background:#7c5cfc;margin-top:3px;display:inline-block">${phaseLft2}</span>`
+                  +`</div>`;
+              }
+            }catch(e){}
             satHtml=`<div class="vp-msd-card vp-msd-saturn" style="border-left-color:#7c5cfc">
               <span class="vp-msd-emoji">${actSat.emoji||'⏳'}</span>
               <div class="vp-msd-body">
@@ -3614,6 +3670,7 @@ async function vpPersonalRender(){
                 <div class="vp-msd-name" style="color:#1a56db">${actSat.label}</div>
                 <div class="vp-msd-sub">${pct2}% done · ends ${actSat.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
                 <div class="vp-msd-left">${humanLeft2(+actSat.end-nowMs3)}</div>
+                ${phaseHtml}
               </div>
             </div>`;
           } else {

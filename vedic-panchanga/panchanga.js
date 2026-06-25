@@ -493,7 +493,16 @@ function getVaarStrip(now,lat,lng){
 // Special yogas
 const SARV=[[0,[0,7,20,21,22,23,26]],[1,[3,6,7,22,23,24,25,26]],[2,[0,3,15,16,17,26]],[3,[3,6,7,15,22,23,24,25,26]],[4,[3,6,7,15,22,23,24,25,26]],[5,[3,6,7,15,22,23,24,25,26]],[6,[7,15,26]]];
 const AMRT=[[0,[23]],[1,[3]],[2,[3]],[3,[6]],[4,[6]],[5,[7]],[6,[26]]];
-function specialYogas(vaarIdx,nakIdx,vaarStart,vaarEnd){
+// Tripushkar / Dwipushkar — Sun/Tue/Sat weekdays + Bhadra tithi (pos 2/7/12 in either paksha) + specific naks
+const _PUSHKAR_VAARS = new Set([0,2,6]);
+const _BHADRA_TITHI_IDX = new Set([1,6,11,16,21,26]);
+const _TRIPUSHKAR_NAKS = new Set([2,6,11,15,20,24]); // tri-pada
+const _DWIPUSHKAR_NAKS = new Set([4,13,22]);         // dvi-pada
+// Siddha / Amrita Yoga (weekday + tithi)
+const _SIDDHA_TITHI = {0:[0,5,10,15,20,25], 1:[1,6,11,16,21,26], 2:[2,7,12,17,22,27], 3:[3,8,13,18,23,28], 4:[4,9,14,19,24,29], 5:[0,5,10,15,20,25], 6:[3,8,13,18,23,28]};
+const _AMRIT_TITHI  = {0:[6,11,16,21,26,1], 1:[2,7,12,17,22,27], 2:[3,8,13,18,23,28], 3:[4,9,14,19,24,29], 4:[5,10,15,20,25,0], 5:[1,6,11,16,21,26], 6:[7,12,17,22,27,2]};
+// Dvi-Pushkar / Tri-Pushkar yogas need tithi; weekday-lord-based yogas use vaar+tithi too
+function specialYogas(vaarIdx,nakIdx,vaarStart,vaarEnd,tithiIdx){
   // vaarStart/vaarEnd = Brahma Muhurta start to next day BM — the full Vedic day span
   const r=[];
   const t=vaarStart?{start:vaarStart,end:vaarEnd}:{};
@@ -501,8 +510,21 @@ function specialYogas(vaarIdx,nakIdx,vaarStart,vaarEnd){
   const _NL=['Ashwini','Bharani','Krittika','Rohini','Mrigashira','Ardra','Punarvasu','Pushya','Ashlesha','Magha','Purva Phalguni','Uttara Phalguni','Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha','Mula','Purva Ashadha','Uttara Ashadha','Shravana','Dhanishtha','Shatabhisha','Purva Bhadrapada','Uttara Bhadrapada','Revati'];
   if(vaarIdx===0&&nakIdx===7)r.push({name:'Ravi Pushya Yoga',symbol:'☀️',desc:`${_VL[0]} + Pushya — extremely auspicious`,...t});
   if(vaarIdx===4&&nakIdx===7)r.push({name:'Guru Pushya Yoga',symbol:'🪔',desc:`${_VL[4]} + Pushya — highly auspicious`,...t});
-  const sc=SARV.find(([d])=>d===vaarIdx);if(sc&&sc[1].includes(nakIdx)){r.push({name:'Sarvartha Siddhi Yoga',symbol:'🌺',desc:`Favorable for accomplishing all goals (${_VL[vaarIdx]||''} + ${_NL[nakIdx]||''})`,...t});}
+  const sc=SARV.find(([d])=>d===vaarIdx);if(sc&&sc[1].includes(nakIdx)){r.push({name:'Sarvartha Siddhi Yoga',symbol:'⭐',desc:`Favorable for accomplishing all goals (${_VL[vaarIdx]||''} + ${_NL[nakIdx]||''})`,...t});}
   const ac=AMRT.find(([d])=>d===vaarIdx);if(ac&&ac[1].includes(nakIdx))r.push({name:'Amrita Siddhi Yoga',symbol:'🌼',desc:'Very auspicious — removes obstacles',...t});
+  // Tri-Pushkar & Dwi-Pushkar (need tithi)
+  if(typeof tithiIdx==='number' && _PUSHKAR_VAARS.has(vaarIdx) && _BHADRA_TITHI_IDX.has(tithiIdx)){
+    if(_TRIPUSHKAR_NAKS.has(nakIdx)) r.push({name:'Tripushkar Yoga',symbol:'🔱',desc:'Triples results — favors lasting acquisitions (gold, property)',...t});
+    else if(_DWIPUSHKAR_NAKS.has(nakIdx)) r.push({name:'Dwipushkar Yoga',symbol:'💫',desc:'Doubles results — repeats outcomes of actions begun now',...t});
+  }
+  // Siddha Yoga (weekday + tithi)
+  if(typeof tithiIdx==='number' && _SIDDHA_TITHI[vaarIdx] && _SIDDHA_TITHI[vaarIdx].includes(tithiIdx)){
+    r.push({name:'Siddha Yoga',symbol:'🏵️',desc:'All undertakings succeed — auspicious for achievement',...t});
+  }
+  // Amrita Yoga (weekday + tithi) — distinct from Amrita Siddhi (which is vaar+nak)
+  if(typeof tithiIdx==='number' && _AMRIT_TITHI[vaarIdx] && _AMRIT_TITHI[vaarIdx].includes(tithiIdx)){
+    r.push({name:'Amrita Yoga',symbol:'🍯',desc:'Nectar-like results — sacred & rewarding',...t});
+  }
   return r;
 }
 
@@ -650,7 +672,7 @@ function computeAll(){
   const am=adhikMaas(jd);
   const ga=gaurabda(now);
   const spVaarEnd=new Date(+activeVaar.sunrise+86400000-96*60*1000);
-  const sp=specialYogas(activeVaarIdx,nakshatraPeriods[0]?.index??0,activeVaar.brahmaMuhurtaStart,spVaarEnd);
+  const sp=specialYogas(activeVaarIdx,nakshatraPeriods[0]?.index??0,activeVaar.brahmaMuhurtaStart,spVaarEnd,currentTithiIdx);
   return{now,jd,vaarStrip,activeVaarIdx,activeVaar,tithiPeriods,currentTithiIdx,
     nakshatraPeriods,yogaPeriods,karanaPeriods,lunarMonthTithis,hm,am,ga,sp};
 }
@@ -1344,7 +1366,8 @@ function renderAll(){
   if(!isActive){
     const dispNakIdx=Math.floor(moonLongSid(dateToJD(displayVaar.sunrise))/(360/27))%27;
     const dispVaarEnd=new Date(+displayVaar.sunrise+86400000-96*60*1000);
-    spDisplay=specialYogas(displayVaar.index,dispNakIdx,displayVaar.brahmaMuhurtaStart,dispVaarEnd);
+    const dispTithiIdx=tithiIdx(dateToJD(displayVaar.sunrise));
+    spDisplay=specialYogas(displayVaar.index,dispNakIdx,displayVaar.brahmaMuhurtaStart,dispVaarEnd,dispTithiIdx);
   }
   const sec=document.getElementById('vp-special-yoga-sec');
   if(spDisplay.length){
@@ -2362,6 +2385,15 @@ function vpPersonalKaranaPol(name){
 //   nextChangeJD = earliest factor boundary (excluding Vaar which is daily)
 // ══════════════════════════════════════════════════════════════
 const YOGA_WORST = new Set(['Vyatipata','Vaidhriti','Vajra','Parigha']);
+// Tithi polarity — Rikta (4/9/14) & Amavasya = bad; Purnima/Ekadashi/Dwadashi/Panchami = good
+function vpPersonalTithiPol(idx){
+  if(idx===29) return 'bad';        // Amavasya
+  if(idx===14) return 'good';       // Purnima
+  const pos = (idx % 15) + 1;       // 1..15 within paksha
+  if(pos===4||pos===9||pos===14) return 'bad';   // Rikta
+  if(pos===5||pos===11||pos===12) return 'good'; // Purna / Ekadashi / Dwadashi
+  return 'neutral';
+}
 function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
   const nowDate = new Date();
 
@@ -2369,6 +2401,8 @@ function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
   const tithiPs = getTithiPeriods(jdNow - 1, 4);
   let tii = tithiPs.findIndex(p => p.endJD > jdNow); if(tii<0) tii=0;
   const curTithi = tithiPs[tii];
+  const tithiPol = vpPersonalTithiPol(curTithi.index);
+  const tiScore  = tithiPol==='good'?1:tithiPol==='bad'?-1:0;
 
   // ── Nakshatra (Tara Bala) ──
   const nakPs = getNakshatraPeriods(jdNow - 1, 4);
@@ -2393,7 +2427,7 @@ function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
 
   // ── Special Yogas (Amrita Siddhi, Sarvartha Siddhi, Guru/Ravi Pushya) ──
   const vaarIdx    = getVedicVaarIdx(nowDate, lat, lng);
-  const specYogas  = specialYogas(vaarIdx, curNak.index, null, null);
+  const specYogas  = specialYogas(vaarIdx, curNak.index, null, null, curTithi.index);
   const specLabel  = specYogas.length ? specYogas.map(s=>s.name).join(' · ') : null;
   if(specYogas.length > 0) yScore = Math.min(yScore + 1, 2); // boost by +1, cap at +2
 
@@ -2465,9 +2499,9 @@ function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
   const vaarRel  = vpPersonalLordRelation(profile.rashiLord, vaarLord);
   const vScore   = (vaarRel==='own'||vaarRel==='friend')?1:vaarRel==='enemy'?-1:0;
 
-  // Total: max +9 (2+2+2+1+1+1), min −9
-  const total    = tScore + cScore + yScore + kScore + kalaScore + vScore;
-  const maxScore = 9;
+  // Total: max +10 (1+2+2+2+1+1+1), min −10
+  const total    = tiScore + tScore + cScore + yScore + kScore + kalaScore + vScore;
+  const maxScore = 10;
 
   let verdict, verdictClass, verdictIcon;
   if(total >= 6)       {verdict='Excellent — Most Auspicious';    verdictClass='best';    verdictIcon='⭐'}
@@ -2481,10 +2515,10 @@ function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
 
   return {
     tara, chandra, curTithi, curNak, curRashi, curYoga, curKar,
-    yogaPol, karPol, vaarLord, vaarRel, specLabel, specYogas,
+    tithiPol, yogaPol, karPol, vaarLord, vaarRel, specLabel, specYogas,
     kalaScore, kalaName, kalaPol, kalaStart, kalaEnd,
     kalaGoodPeriod, kalaBadPeriod,
-    scores:{tara:tScore, chandra:cScore, yoga:yScore, karana:kScore, kala:kalaScore, vaar:vScore},
+    scores:{tithi:tiScore, tara:tScore, chandra:cScore, yoga:yScore, karana:kScore, kala:kalaScore, vaar:vScore},
     total, maxScore, verdict, verdictClass, verdictIcon, nextChangeJD,
   };
 }
@@ -2525,7 +2559,8 @@ function vpPersonalBestWindows(profile, fromJD, daysAhead, maxResults){
           const d = jdToDate(clamped);
           const vIdx = getVedicVaarIdx(d, lat, lng);
           const nIdx = Math.floor(moonLongSid(clamped)/(360/27))%27;
-          specialYogas(vIdx, nIdx, null, null).forEach(y => {
+          const tIdx = tithiIdx(clamped);
+          specialYogas(vIdx, nIdx, null, null, tIdx).forEach(y => {
             if(!yogaMap.has(y.name)){
               yogaMap.set(y.name, {yoga: y, firstJD: clamped});
             }
@@ -3914,7 +3949,7 @@ async function vpPersonalRender(){
         <div class="vp-cscore-factors">
           ${cs.specLabel ? `<div class="vp-cscore-maha-yoga-banner">🌟 <strong>${cs.specLabel}</strong> — Special Yoga active now</div>` : ''}
           ${makeFactorRowWithBar('☯️','Yoga',cs.curYoga.name+(cs.specLabel?' · '+cs.specLabel:''),cs.scores.yoga,cs.yogaPol,cs.curYoga.startJD,cs.curYoga.endJD,yogaFx)}
-          ${cs.curTithi ? makeFactorRowWithBar('🌕','Tithi',cs.curTithi.name+' ('+(cs.curTithi.index<15?'Śukla':'Kṛṣṇa')+' Paksha)',0,'neutral',cs.curTithi.startJD,cs.curTithi.endJD,tithiFx) : ''}
+         ${cs.curTithi ? makeFactorRowWithBar('🌕','Tithi',cs.curTithi.name+' ('+(cs.curTithi.index<15?'Śukla':'Kṛṣṇa')+' Paksha)',cs.scores.tithi,cs.tithiPol,cs.curTithi.startJD,cs.curTithi.endJD,tithiFx) : ''}
           ${makeFactorRowWithBar('⭐','Tara Bala',(cs.tara.emoji||'')+' '+cs.tara.name+' · '+cs.curNak.name+' Nak',cs.scores.tara,cs.tara.polarity,cs.curNak.startJD,cs.curNak.endJD,cs.tara.note||'')}
           ${makeFactorRowWithBar('🌙','Chandra Bala',(cs.chandra.emoji||'')+' '+cs.chandra.name+' · Moon in '+cs.curRashi.name,cs.scores.chandra,cs.chandra.polarity,cs.curRashi.startJD,cs.curRashi.endJD,cs.chandra.note||'')}
           ${makeFactorRowWithBar('◐','Karana',cs.curKar.name,cs.scores.karana,cs.karPol,cs.curKar.startJD,cs.curKar.endJD,karFx)}

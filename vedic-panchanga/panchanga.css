@@ -3489,3 +3489,59 @@
 #vpanchanga-view .vp-yoga-act-empty{
   font-style:italic;opacity:.7;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   FIX — Eclipse & Coming Up: standalone golden bars like
+   Lunar Month / Day Boundaries (not glass-card wrappers)
+   ══════════════════════════════════════════════════════════════ */
+
+/* 1. Coming Up — strip the glass-card wrapper, let only the button show */
+#vpanchanga-view #vp-upcoming-section{
+  background:transparent !important;
+  border:none !important;
+  box-shadow:none !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+  margin:20px 16px 0 !important;
+  padding:0 !important;
+  border-radius:0 !important;
+  overflow:visible !important;
+}
+#vpanchanga-view #vp-upcoming-section > #vp-upcoming-toggle{
+  margin:0 !important;
+  width:100% !important;
+  border-radius:14px !important;
+}
+#vpanchanga-view #vp-upcoming-section > #vp-upcoming-toggle.open{
+  border-radius:14px 14px 0 0 !important;
+}
+#vpanchanga-view #vp-upcoming-wrap{
+  border-radius:0 0 14px 14px !important;
+  background:linear-gradient(150deg,#1B1238 0%,#2A1A52 55%,#160A30 100%) !important;
+  border:1px solid rgba(245,194,74,.25) !important;
+  border-top:none !important;
+  box-sizing:border-box !important;
+}
+
+/* 2. Eclipse — move it outside the live-banner card visually */
+#vpanchanga-view #vp-eclipse-card{
+  margin:20px 16px 0 !important;
+  padding:0 !important;
+  border:none !important;
+  border-top:none !important;
+  background:transparent !important;
+  border-radius:0 !important;
+}
+#vpanchanga-view .vp-eclipse-section{
+  margin-top:0 !important;
+  border-radius:14px !important;
+  overflow:hidden !important;
+}
+#vpanchanga-view .vp-eclipse-section > .vp-collapsible-toggle{
+  margin:0 !important;
+  width:100% !important;
+  border-radius:14px !important;
+}
+#vpanchanga-view .vp-eclipse-section > .vp-collapsible-toggle.open{
+  border-radius:14px 14px 0 0 !important;
+}

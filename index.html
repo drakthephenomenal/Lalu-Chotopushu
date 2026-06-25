@@ -655,7 +655,7 @@
        Styles:  vedic-panchanga/panchanga.css   (linked in <head>)
        Engine:  vedic-panchanga/panchanga.js    (loaded near </body>)
        ═══════════════════════════════════════════ -->
-  <div id="vpanchanga-mount"></div>
+  <div id="vpanchanga-mount" style="display:none"></div>
 </div>
 
 <!-- MILESTONES VIEW — dedicated tab -->
@@ -1734,12 +1734,12 @@
 // ═══ B&C Sub-tab switcher ════════════════════════════════════
 function vpSwitchTab(tab) {
   const bnc = document.getElementById('vp-bnc-content');
-  const pan = document.getElementById('vpanchanga-view');
+  const pan = document.getElementById('vpanchanga-mount'); // mount point — always present
   const btnBnC = document.getElementById('vpTabBnC');
   const btnPan = document.getElementById('vpTabPan');
   if (tab === 'bnc') {
-    bnc.style.display = '';
-    pan.style.display = 'none';
+    if (bnc) bnc.style.display = '';
+    if (pan) pan.style.display = 'none';
     btnBnC.style.background = 'rgba(245,209,122,0.12)';
     btnBnC.style.borderColor = 'rgba(245,209,122,0.4)';
     btnBnC.style.color = 'var(--gold)';
@@ -1749,8 +1749,8 @@ function vpSwitchTab(tab) {
     window.vpStopClock && window.vpStopClock();
     window.vpStopRefresh && window.vpStopRefresh();
   } else {
-    bnc.style.display = 'none';
-    pan.style.display = 'block';
+    if (bnc) bnc.style.display = 'none';
+    if (pan) pan.style.display = 'block';
     btnPan.style.background = 'rgba(184,196,245,0.12)';
     btnPan.style.borderColor = 'rgba(184,196,245,0.4)';
     btnPan.style.color = 'var(--a2)';

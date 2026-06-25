@@ -15,7 +15,10 @@
   const _baseURL = _selfSrc ? _selfSrc.replace(/[^/]*$/, '') : './vedic-panchanga/';
 
   // ── Inject HTML fragment into the mount point, then boot the engine ──
+  let _booted = false;
   function _bootPanchanga() {
+    if (_booted) return;   // guard against double-call
+    _booted = true;
     const mount = document.getElementById('vpanchanga-mount');
     if (!mount) {
       console.warn('[panchanga] #vpanchanga-mount not found in DOM — skipping.');
@@ -30,10 +33,14 @@
       })
       .catch(err => {
         console.error('[panchanga] Failed to load panchanga.html:', err);
+        _booted = false;   // allow retry
         mount.innerHTML =
           '<div style="padding:20px;text-align:center;color:#f87171">Vedic Panchanga module failed to load.</div>';
       });
   }
+
+  // Exposed so vpSwitchTab can trigger the fetch if the tab was tapped before this script ran
+  window.vpReload = function() { _booted = false; _bootPanchanga(); };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', _bootPanchanga);
@@ -4556,9 +4563,8 @@ function vpTryInit() {
   window.vpEnsureGps();
   try {
     DATA = computeAll();
-    const vpView = document.getElementById('vpanchanga-view');
-    if(vpView) vpView.style.display = 'block';
     renderAll();
+    // Visibility is controlled by vpSwitchTab — do not force display here
   } catch(e) { console.error('VP init error:', e); }
 }
 vpTryInit();

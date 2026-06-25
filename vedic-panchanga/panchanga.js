@@ -15,17 +15,14 @@
   const _baseURL = _selfSrc ? _selfSrc.replace(/[^/]*$/, '') : './vedic-panchanga/';
 
   // ── Inject HTML fragment into the mount point, then boot the engine ──
-  let _booted = false;
   function _bootPanchanga() {
-    if (_booted) return;   // guard against double-call
-    _booted = true;
     const mount = document.getElementById('vpanchanga-mount');
     if (!mount) {
       console.warn('[panchanga] #vpanchanga-mount not found in DOM — skipping.');
       _initEngine();
       return;
     }
-    fetch(_baseURL + 'panchanga.html')
+    fetch(_baseURL + 'panchanga.html', { cache: 'no-cache' })
       .then(r => r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)))
       .then(html => {
         mount.innerHTML = html;
@@ -33,14 +30,10 @@
       })
       .catch(err => {
         console.error('[panchanga] Failed to load panchanga.html:', err);
-        _booted = false;   // allow retry
         mount.innerHTML =
           '<div style="padding:20px;text-align:center;color:#f87171">Vedic Panchanga module failed to load.</div>';
       });
   }
-
-  // Exposed so vpSwitchTab can trigger the fetch if the tab was tapped before this script ran
-  window.vpReload = function() { _booted = false; _bootPanchanga(); };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', _bootPanchanga);
@@ -2967,14 +2960,14 @@ function vpComputeMahaYogas(profile){
   if(tithiIdx0===1||tithiIdx0===16)
     out.push({name:'Chandra Yoga (Dwitiya)',emoji:'🌙',desc:'Born on Dwitiya — sensitive, intuitive, strong Moon energy; connection to mother & masses',planets:['Moon']});
   if(tithiIdx0===4||tithiIdx0===19)
-    out.push({name:'Lakshmi Yoga (Panchami)',emoji:'💐',desc:'Born on Panchami — Lakshmi's tithi; prosperity, beauty & material abundance',planets:['Venus','Moon']});
+    out.push({name:'Lakshmi Yoga (Panchami)',emoji:'💐',desc:"Born on Panchami — Lakshmi's tithi; prosperity, beauty & material abundance",planets:['Venus','Moon']});
   if(tithiIdx0===14)
     out.push({name:'Purnima Yoga',emoji:'🌕',desc:'Born on Full Moon — heightened intuition, fame & fullness of life; strong mind',planets:['Moon']});
   if(tithiIdx0===29)
     out.push({name:'Amavasya Yoga',emoji:'🌑',desc:'Born on New Moon — deep introspection, ancestral connection & inner strength',planets:['Moon','Ketu']});
   // Ekadashi birth
   if(tithiIdx0===10||tithiIdx0===25)
-    out.push({name:'Ekadashi Janma Yoga',emoji:'🙏',desc:'Born on Ekadashi — deep spiritual inclination; Vishnu's grace; ideal for renunciation & dharma',planets:['Jupiter','Saturn']});
+    out.push({name:'Ekadashi Janma Yoga',emoji:'🙏',desc:"Born on Ekadashi — deep spiritual inclination; Vishnu's grace; ideal for renunciation & dharma",planets:['Jupiter','Saturn']});
   // Dwadashi birth
   if(tithiIdx0===11||tithiIdx0===26)
     out.push({name:'Dwadashi Janma',emoji:'🌸',desc:'Born on Dwadashi — breaking of fasts; charitable, giving nature; blessed by Vishnu',planets:['Jupiter']});
@@ -2995,7 +2988,7 @@ function vpComputeMahaYogas(profile){
   if([5,18,23].includes(nak))
     out.push({name:'Shiva Nakshatra Yoga',emoji:'🔱',desc:`Born in ${NAK_NAME_MINI[nak]||'this nakshatra'} — Rudra/Shiva nakshatra; transformative nature, deep spiritual power`,planets:['Rahu']});
   if(nak===1)
-    out.push({name:'Bharani Yoga',emoji:'⚖️',desc:'Born in Bharani — Yama's nakshatra; strong sense of justice, endurance & connection to life cycles',planets:['Venus']});
+    out.push({name:'Bharani Yoga',emoji:'⚖️',desc:"Born in Bharani — Yama's nakshatra; strong sense of justice, endurance & connection to life cycles",planets:['Venus']});
   if([0,9,18].includes(nak))
     out.push({name:'Ketu Nakshatra Yoga',emoji:'☄️',desc:`Born in ${NAK_NAME_MINI[nak]||'this nakshatra'} — Ketu-ruled; past-life wisdom, spiritual liberation & detachment`,planets:['Ketu']});
 
@@ -4563,8 +4556,9 @@ function vpTryInit() {
   window.vpEnsureGps();
   try {
     DATA = computeAll();
+    const vpView = document.getElementById('vpanchanga-view');
+    if(vpView) vpView.style.display = 'block';
     renderAll();
-    // Visibility is controlled by vpSwitchTab — do not force display here
   } catch(e) { console.error('VP init error:', e); }
 }
 vpTryInit();

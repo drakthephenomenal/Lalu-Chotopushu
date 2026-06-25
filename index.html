@@ -1791,20 +1791,20 @@ function vpSwitchTab(tab) {
           window.vpActivate       && window.vpActivate();
           window.vpStartClock     && window.vpStartClock();
           window.vpStartRefresh   && window.vpStartRefresh();
-        } else if (++tries > 40) {           // ~6 s timeout
+        } else if (++tries > 100) {          // ~20s — allows for slow JS parse on mobile
           clearInterval(iv);
           const m = document.getElementById('vpanchanga-mount');
           if (m) m.innerHTML =
             '<div style="padding:24px;text-align:center;color:#f87171">' +
             'Vedic Panchanga module failed to load. Pull down to refresh.</div>';
         }
-      }, 150);
+      }, 200);
     }
   }
 }
 </script>
 
 <!-- Vedic Panchanga engine (moved to ./vedic-panchanga/panchanga.js) -->
-<script defer src="./vedic-panchanga/panchanga.js?v=155"></script>
+<script defer src="./vedic-panchanga/panchanga.js?v=159"></script>
 </body>
 </html>

@@ -3612,7 +3612,12 @@ function vpTogglePersonalSection(bodyId, chevronId){
   const chev = document.getElementById(chevronId);
   if(!body) return;
   const isOpen = body.classList.toggle('open');
-  if(chev) chev.textContent = isOpen ? '▾' : '▸';
+  // Also toggle open on the button so CSS .vp-collapsible-toggle.open .vp-chevron works
+  if(chev){
+    const btn = chev.closest('button');
+    if(btn) btn.classList.toggle('open', isOpen);
+    chev.textContent = isOpen ? '▾' : '▸';
+  }
   // Persist state so re-renders restore it
   try { sessionStorage.setItem('vp-collapse-'+bodyId, isOpen?'open':'closed'); } catch(e){}
   // Muhurta collapsible: live-sync from main panchanga's Coming Up list
@@ -3749,8 +3754,8 @@ async function vpPersonalRender(){
   const dayRangeOptions = [3,5,7,10,14,21,30,45,60,90,120,180,270,365].map(d =>
     `<option value="${d}"${d===bestWinDays?' selected':''}>${d>=365?'1 year':d+' days'}</option>`).join('');
 
-  // Restore collapsed state from session
-  const _bwOpen = (()=>{try{return sessionStorage.getItem('vp-bestwin-open')!=='closed';}catch(e){return true;}})();
+  // Restore collapsed state from session — same pattern as Tara & Chandra and other collapsibles
+  const _bwOpen = (()=>{try{return sessionStorage.getItem('vp-collapse-vp-bestwin-body')!=='closed';}catch(e){return true;}})();
   const bestWinHTML = `
     <div class="vp-collapsible-section vp-best-windows">
       <button class="vp-collapsible-toggle${_bwOpen?' open':''}" onclick="vpTogglePersonalSection('vp-bestwin-body','vp-bestwin-chevron')" type="button">

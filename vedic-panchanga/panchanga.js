@@ -3693,7 +3693,7 @@ async function vpPersonalRender(){
         <span class="vp-cscore-icon">${icon}</span>
         <span class="vp-cscore-label">${label}</span>
         <span class="vp-cscore-name vp-tara-${polClass}">${name}</span>
-        ${score!==0?`<span class="vp-cscore-pts vp-cscore-pts-${polClass}">${sign}${score}</span>`:''}
+        <span class="vp-cscore-pts vp-cscore-pts-${polClass}">${sign}${score}</span>
       </div>
       ${desc?`<div class="vp-cscore-row-desc">${desc}</div>`:''}
       <div class="vp-cscore-row-timeline">
@@ -3712,7 +3712,7 @@ async function vpPersonalRender(){
       <span class="vp-cscore-icon">${icon}</span>
       <span class="vp-cscore-label">${label}</span>
       <span class="vp-cscore-name vp-tara-${polClass}">${name}</span>
-      ${score!==0?`<span class="vp-cscore-pts vp-cscore-pts-${polClass}">${sign}${score}</span>`:''}
+      <span class="vp-cscore-pts vp-cscore-pts-${polClass}">${sign}${score}</span>
     </div>`;
   }
 

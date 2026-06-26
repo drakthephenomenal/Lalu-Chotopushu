@@ -543,8 +543,8 @@ function specialYogas(vaarIdx,nakIdx,vaarStart,vaarEnd,tithiIdx,jd){
   const _tName = i => TITHI[i] || `Tithi ${i+1}`;
   if(vaarIdx===0&&nakIdx===7)r.push({name:'Ravi Pushya Yoga',symbol:'☀️',desc:`Combination: Ravi (Surya) + Pushya — extremely auspicious`,...t});
   if(vaarIdx===4&&nakIdx===7)r.push({name:'Guru Pushya Yoga',symbol:'🪔',desc:`Combination: Guru (Brihaspati) + Pushya — highly auspicious`,...t});
-  const sc=SARV.find(([d])=>d===vaarIdx);if(sc&&sc[1].includes(nakIdx)){r.push({name:'Sarvartha Siddhi Yoga',symbol:'⭐',desc:`Combination: ${_VL[vaarIdx]||''} (weekday) + ${_NL[nakIdx]||''} (nakshatra) — 1 of ${sc[1].length} nakshatras that pair with ${_VL[vaarIdx]||''} for this BROAD all-purpose formula; good for starting ventures, travel, signing, any new undertaking`,...t});}
-  const ac=AMRT.find(([d])=>d===vaarIdx);if(ac&&ac[1].includes(nakIdx))r.push({name:'Amrita Siddhi Yoga',symbol:'🌼',desc:`Combination: ${_VL[vaarIdx]||''} (weekday) + ${_NL[nakIdx]||''} (nakshatra) — the ONLY nakshatra that pairs with ${_VL[vaarIdx]||''} for this RARE "nectar" formula; specifically for removing obstacles, healing & sacred initiations`,...t});
+  const sc=SARV.find(([d])=>d===vaarIdx);if(sc&&sc[1].includes(nakIdx)){r.push({name:'Sarvartha Siddhi Yoga',symbol:'⭐',desc:`Combination: ${_VL[vaarIdx]||''} + ${_NL[nakIdx]||''} — favorable for accomplishing all goals`,...t});}
+  const ac=AMRT.find(([d])=>d===vaarIdx);if(ac&&ac[1].includes(nakIdx))r.push({name:'Amrita Siddhi Yoga',symbol:'🌼',desc:`Combination: ${_VL[vaarIdx]||''} + ${_NL[nakIdx]||''} — very auspicious, removes obstacles`,...t});
   // Tri-Pushkar & Dwi-Pushkar (need tithi)
   if(typeof tithiIdx==='number' && _PUSHKAR_VAARS.has(vaarIdx) && _BHADRA_TITHI_IDX.has(tithiIdx)){
     if(_TRIPUSHKAR_NAKS.has(nakIdx)) r.push({name:'Tripushkar Yoga',symbol:'🔱',desc:`Combination: ${_VL[vaarIdx]||''} + ${_tName(tithiIdx)} + ${_NL[nakIdx]||''} — triples results, favors lasting acquisitions (gold, property)`,...t});
@@ -2909,12 +2909,11 @@ function vpComputeUniversalYogas(jdNow, lat, lng){
 
     // 1. Amrita Siddhi Yoga
     if((AMRITA_MAP[wday]||[]).includes(nakIdx)){
-      results.push({name:'Amrita Siddhi Yoga',emoji:'🪷',desc:`Combination: ${wdayName} (weekday) + ${nakName} (nakshatra) — the ONLY nakshatra that pairs with ${wdayName} for this RARE "nectar" formula; specifically for removing obstacles, healing & sacred initiations`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Amrita Siddhi Yoga',emoji:'🪷',desc:`Combination: ${wdayName} + ${nakName} — nectar of success; excellent for new work, travel, medicine`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 2. Sarvartha Siddhi Yoga
     if((SARVARTHA_MAP[wday]||[]).includes(nakIdx)){
-      const svCount = (SARVARTHA_MAP[wday]||[]).length;
-      results.push({name:'Sarvartha Siddhi Yoga',emoji:'✅',desc:`Combination: ${wdayName} (weekday) + ${nakName} (nakshatra) — 1 of ${svCount} nakshatras that pair with ${wdayName} for this BROAD all-purpose formula; good for starting ventures, travel, signing, any new undertaking`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Sarvartha Siddhi Yoga',emoji:'✅',desc:`Combination: ${wdayName} + ${nakName} — fulfillment of all purposes; sign, buy, start ventures`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 3. Guru Pushya Yoga
     if(wday===4 && nakIdx===7){

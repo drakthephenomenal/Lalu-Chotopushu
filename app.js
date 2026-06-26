@@ -13353,9 +13353,12 @@ function _showUserReplyPopup(text) {
     var tzRect = tz.getBoundingClientRect();
 
     // ── Coin and name travel as ONE unit ──
-    var COIN_SIZE = 180; // px — must be declared BEFORE COIN_HALF
+    // Android: scale the whole coin animation down by 20%
+    var isAndroid = /android/i.test(navigator.userAgent);
+    var COIN_SCALE = isAndroid ? 0.8 : 1.0;
+    var COIN_SIZE = Math.round(180 * COIN_SCALE); // px — must be declared BEFORE COIN_HALF
     var GAP = 8;         // px between coin bottom and name top
-    var COIN_HALF = COIN_SIZE / 2; // = 90
+    var COIN_HALF = COIN_SIZE / 2;
 
     // Use transform:translateX(-50%) so pod always centres regardless of its width
     var tapCX  = tapX || (tzRect.left + tzRect.width * 0.5);  // tap centre X
@@ -13408,6 +13411,7 @@ function _showUserReplyPopup(text) {
       "box-shadow:none"
     ].join(";");
 
+    var emojiFontSize = Math.round(72 * COIN_SCALE) + "px";
     if (coinImageOk) {
       var img = document.createElement("img");
       img.src = COIN_SRC;
@@ -13418,7 +13422,7 @@ function _showUserReplyPopup(text) {
         coinImageOk = false;
         coin.innerHTML = "";
         coin.textContent = "🪙";
-        coin.style.fontSize = "72px";
+        coin.style.fontSize = emojiFontSize;
         coin.style.lineHeight = "1";
         coin.style.background = "transparent";
         coin.style.boxShadow = "none";
@@ -13426,7 +13430,7 @@ function _showUserReplyPopup(text) {
       coin.appendChild(img);
     } else {
       coin.textContent = "🪙";
-      coin.style.fontSize = "72px";
+      coin.style.fontSize = emojiFontSize;
       coin.style.lineHeight = "1";
       coin.style.background = "transparent";
       coin.style.boxShadow = "none";
@@ -13477,12 +13481,12 @@ function _showUserReplyPopup(text) {
 
     requestAnimationFrame(function () {
       pod.style.opacity = "1";
-      pod.style.transform = "translateX(-50%) scale(1)";
+      pod.style.transform = "translateX(-50%) scale(" + COIN_SCALE + ")";
 
       requestAnimationFrame(function () {
         pod.style.left = endX + "px";
         pod.style.top  = endY + "px";
-        pod.style.transform = "translateX(-50%) scale(0.6)";
+        pod.style.transform = "translateX(-50%) scale(" + (0.6 * COIN_SCALE) + ")";
       });
     });
 

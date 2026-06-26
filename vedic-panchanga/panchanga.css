@@ -494,7 +494,7 @@
    NOW PANEL — 4 Angas in one horizontal row
    ══════════════════════════════════════════════════════════════ */
 /* ── Live Banner — wraps Right Now + Personal Score as one card ── */
-#vpanchanga-view .vp-live-banner{margin:18px 16px 0;border-radius:20px;overflow:hidden;box-shadow:var(--vp-shadow);border:1px solid rgba(255,138,61,.22)}
+#vpanchanga-view .vp-live-banner{margin:18px 0 0;border-radius:0;overflow:hidden;box-shadow:var(--vp-shadow);border:1px solid rgba(255,138,61,.22);border-left:none;border-right:none}
 #vpanchanga-view .vp-live-banner .vp-now-panel{margin:0;border-radius:0;box-shadow:none;border:none}
 #vpanchanga-view .vp-live-banner #vp-personal-card:not([style*="display:none"]) .vp-personal-card{border-radius:0;box-shadow:none;border-top:1px solid rgba(0,0,0,.07);margin:0}
 
@@ -4497,6 +4497,8 @@
 #vpanchanga-view .vp-bestwin-body,
 #vpanchanga-view #vp-bestwin-body {
   padding: 10px 12px 14px;
+}
+#vpanchanga-view #vp-bestwin-body.open {
   max-height: 9999px;
 }
 #vpanchanga-view .vp-best-win-row {

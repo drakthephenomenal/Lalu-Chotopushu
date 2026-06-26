@@ -10,7 +10,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v159';
+const CACHE = 'radha-jap-v160';
 
 // Core assets — install BLOCKS on these. Anything the first paint needs
 // must live here, otherwise users see a network round-trip on first open.

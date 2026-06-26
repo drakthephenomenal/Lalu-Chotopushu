@@ -3298,7 +3298,7 @@ body.gaudiya-mode .tz .cm-wm{
    ─────────────────────────────────────────────────────────── */
 .bb-float-counter{
   position:absolute;
-  top:16%; left:50%; transform:translateX(-50%);
+  top:2%; right:10px; left:auto; transform:none;
   z-index:26;
   display:flex; align-items:center; gap:5px;
   padding:4px 14px;
@@ -3311,8 +3311,8 @@ body.gaudiya-mode .tz .cm-wm{
   box-shadow: 0 0 18px rgba(255,215,0,0.25), 0 2px 8px rgba(0,0,0,0.4);
 }
 @keyframes bbFloatBob{
-  0%,100%{ transform:translateX(-50%) translateY(0); }
-  50%    { transform:translateX(-50%) translateY(-5px); }
+  0%,100%{ transform:translateY(0); }
+  50%    { transform:translateY(-5px); }
 }
 .bb-float-emoji{
   font-size:clamp(16px,4vw,22px);
@@ -3343,7 +3343,7 @@ body.gaudiya-mode .tz .cm-wm{
 @media (min-width: 768px) {
   /* Counter sits slightly lower on iPad because the tap zone is taller */
   .bb-float-counter {
-    top: 18% !important;
+    top: 3% !important;
   }
 }
 

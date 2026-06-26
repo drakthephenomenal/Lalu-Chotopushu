@@ -5058,6 +5058,17 @@ function fbInit() {
           // Direct cloud pull — overwrites local cache with authoritative Firebase data
           await fbAutoSync();
 
+          // ── Refresh Rashi / personal-horoscope card after sign-in ──
+          // vpPersonalLoad() caches a null result when it fires before auth
+          // resolves. Reset that cache now so the card re-fetches the saved
+          // birth profile from Firestore under the authenticated UID.
+          if (typeof window.vpPersonalResetCache === 'function') {
+            window.vpPersonalResetCache();
+          }
+          if (typeof window.vpPersonalRender === 'function') {
+            window.vpPersonalRender();
+          }
+
           if (isDeveloper()) {
             const devOptionsPanel = document.getElementById("devOptionsPanel");
             if (devOptionsPanel) devOptionsPanel.style.display = "block";
@@ -5079,6 +5090,13 @@ function fbInit() {
         if (fbListener) {
           fbListener();
           fbListener = null;
+        }
+        // ── Sign-out: clear Rashi / personal-horoscope card ──
+        if (typeof window.vpPersonalResetCache === 'function') {
+          window.vpPersonalResetCache();
+        }
+        if (typeof window.vpPersonalRender === 'function') {
+          window.vpPersonalRender();
         }
         // ── Sign-out: reset in-memory jap state so the device shows a clean
         // slate. Any jap done while signed out then accumulates in the

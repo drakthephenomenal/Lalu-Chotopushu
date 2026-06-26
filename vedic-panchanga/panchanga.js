@@ -4503,6 +4503,13 @@ window.vpHoroClearResult = function(){ vpHoroClearResult(); };
 window.vpPersonalSave = function(){ vpPersonalSave(); };
 window.vpPersonalToggle = function(){ vpPersonalToggle(); };
 window.vpPersonalRender = function(){ vpPersonalRender(); };
+// Called by app.js whenever auth state changes so the next vpPersonalRender()
+// re-fetches the profile from Firestore under the new (or null) UID instead
+// of returning the stale in-memory cache from before auth resolved.
+window.vpPersonalResetCache = function(){
+  _vpPersonalLoaded = false;
+  _vpPersonalProfile = null;
+};
 window.vpPersonalJanmoYearChange = function(){ vpPersonalJanmoYearChange(); };
 window.vpOpenCalendar = function(){ vpCalOpen(); };
 window.vpCloseCalendar = function(){ vpCalClose(); };

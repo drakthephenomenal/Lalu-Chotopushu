@@ -79,7 +79,7 @@ html:has(#vj.active),body:has(#vj.active){overflow:hidden;height:100vh;height:10
   background:radial-gradient(ellipse at top,#0A1F55 0%,var(--bd) 65%);
   padding-bottom:calc(56px + env(safe-area-inset-bottom));
 }
-.rh{display:flex;align-items:center;justify-content:space-between;padding:6px 8px 1px;gap:2px;flex-shrink:0;}
+.rh{display:flex;align-items:center;justify-content:space-between;padding:50px 8px 1px;gap:2px;flex-shrink:0;}
 .rh-center{flex:0 0 56px;display:flex;align-items:safe center;justify-content:safe center;}
 .rn{font-family:'Tiro Devanagari Hindi',serif;font-size:clamp(28px,8vw,44px);color:#FFD700;
   text-shadow:0 0 30px rgba(255,215,0,0.6),0 0 60px rgba(255,215,0,0.25);line-height:1.0;letter-spacing:3px;}

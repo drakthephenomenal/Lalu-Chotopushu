@@ -49,7 +49,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 @supports (-webkit-touch-callout: none) {
   .ls{height:-webkit-fill-available;}
   .view{height:-webkit-fill-available;max-height:-webkit-fill-available;overflow-y:auto;-webkit-overflow-scrolling:touch;}
-  #vj.active{height:-webkit-fill-available;overflow:hidden;}
+  #vj.active{top:env(safe-area-inset-top);height:-webkit-fill-available;overflow:hidden;}
   body{height:-webkit-fill-available;}
   #devFeedbackModal{height:-webkit-fill-available;}
   #devFeedbackModal>div{max-height:-webkit-fill-available;}
@@ -59,7 +59,7 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 
 .view{display:none;height:100vh;height:100dvh;position:relative;z-index:1;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .view.active{display:flex;}
-#vj.active{position:fixed;inset:0;min-height:unset;height:100vh;height:100dvh;overflow:hidden;}
+#vj.active{position:fixed;left:0;right:0;bottom:0;top:env(safe-area-inset-top);min-height:unset;height:calc(100vh - env(safe-area-inset-top));height:calc(100dvh - env(safe-area-inset-top));overflow:hidden;}
 /* Prevent the page itself from scrolling while the Jap view is active */
 html:has(#vj.active),body:has(#vj.active){overflow:hidden;height:100vh;height:100dvh;}
 
@@ -77,7 +77,6 @@ html:has(#vj.active),body:has(#vj.active){overflow:hidden;height:100vh;height:10
 /* JAP VIEW — fixed full-screen, no scroll */
 #vj{
   background:radial-gradient(ellipse at top,#0A1F55 0%,var(--bd) 65%);
-  padding-top:env(safe-area-inset-top);
   padding-bottom:calc(56px + env(safe-area-inset-bottom));
 }
 .rh{display:flex;align-items:center;justify-content:space-between;padding:6px 8px 1px;gap:2px;flex-shrink:0;}

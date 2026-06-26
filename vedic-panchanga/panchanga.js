@@ -3727,19 +3727,18 @@ async function vpPersonalRender(){
   // Restore collapsed state from session
   const _bwOpen = (()=>{try{return sessionStorage.getItem('vp-bestwin-open')!=='closed';}catch(e){return true;}})();
   const bestWinHTML = `
-    <div class="vp-best-windows">
-      <button class="vp-collapsible-toggle${_bwOpen?' open':''}" onclick="(function(){var b=document.getElementById('vp-bestwin-body');var h=this;var isOpen=b.classList.toggle('open');h.classList.toggle('open',isOpen);try{sessionStorage.setItem('vp-bestwin-open',isOpen?'open':'closed');}catch(e){}}).call(this)" type="button" style="width:100%;">
-        <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span>🌟 Best Windows</span>
-          <span class="vp-best-win-range-wrap" onclick="event.stopPropagation()">
-            <label class="vp-best-win-range-label">Next</label>
-            <select class="vp-best-win-range-select" onchange="vpPersonalBestWinDaysChange(this.value)">${dayRangeOptions}</select>
-            <span class="vp-best-win-range-label">(Tara + Chandra both good)</span>
-          </span>
-        </span>
-        <span class="vp-chevron">${_bwOpen?'▾':'▸'}</span>
+    <div class="vp-collapsible-section vp-best-windows">
+      <button class="vp-collapsible-toggle${_bwOpen?' open':''}" onclick="vpTogglePersonalSection('vp-bestwin-body','vp-bestwin-chevron')" type="button">
+        <span>🌟 Best Windows &nbsp;<span class="vp-bw-subtitle">Tara + Chandra both good</span></span>
+        <span class="vp-chevron" id="vp-bestwin-chevron">${_bwOpen?'▾':'▸'}</span>
       </button>
-      <div id="vp-bestwin-body" class="vp-collapsible-wrap${_bwOpen?' open':''} vp-bestwin-body" style="overflow-y:auto;">
+      <div id="vp-bestwin-body" class="vp-collapsible-body${_bwOpen?' open':''}">
+        <div class="vp-bw-range-bar">
+          <span class="vp-bw-range-label">Show next</span>
+          <select class="vp-bw-range-select" onchange="vpPersonalBestWinDaysChange(this.value)">${dayRangeOptions}</select>
+          <span class="vp-bw-range-label">days</span>
+        </div>
+        <div class="vp-bw-list">
       ${bestWins.length ? bestWins.map(w => {
         const sd = jdToDate(w.startJD), ed = jdToDate(w.endJD);
         const winDur = dur(sd, ed);
@@ -3763,7 +3762,8 @@ async function vpPersonalRender(){
           ${specHtml}
           <div class="vp-best-win-dur">Duration: ${winDur}</div>
         </div>`;
-      }).join('') : `<div class="vp-best-windows-empty">No "Tara + Chandra both good" windows in the next ${bestWinDays} days — see timeline below for the best available periods.</div>`}
+      }).join('') : `<div class="vp-best-windows-empty">No "Tara + Chandra both good" windows in the next ${bestWinDays} days — check the timeline below for best available periods.</div>`}
+        </div>
       </div>
     </div>`;
 

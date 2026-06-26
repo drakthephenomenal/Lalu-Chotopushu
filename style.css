@@ -3298,10 +3298,10 @@ body.gaudiya-mode .tz .cm-wm{
    ─────────────────────────────────────────────────────────── */
 .bb-float-counter{
   position:absolute;
-  top:13%; left:50%; transform:translateX(-50%);
+  top:16%; left:50%; transform:translateX(-50%);
   z-index:26;
-  display:flex; align-items:center; gap:8px;
-  padding:7px 20px;
+  display:flex; align-items:center; gap:5px;
+  padding:4px 14px;
   border-radius:999px;
   background:rgba(8,14,30,0.50);
   border:1.5px solid rgba(255,215,0,0.6);
@@ -3315,13 +3315,13 @@ body.gaudiya-mode .tz .cm-wm{
   50%    { transform:translateX(-50%) translateY(-5px); }
 }
 .bb-float-emoji{
-  font-size:clamp(22px,5.5vw,32px);
+  font-size:clamp(16px,4vw,22px);
   line-height:1;
   filter:drop-shadow(0 0 8px rgba(255,215,0,0.9));
 }
 .bb-float-n{
   font-family:'EB Garamond',serif;
-  font-size:clamp(22px,5.8vw,34px);
+  font-size:clamp(16px,4.2vw,24px);
   font-weight:700;
   color:#FFD93D;
   text-shadow:

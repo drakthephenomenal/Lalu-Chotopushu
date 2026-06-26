@@ -3166,6 +3166,20 @@ function vpJupiterLongSid(jd){
   const L = _vpKeplerLong(jd, 34.35151, 3034.90567, 14.33120, 1.61262, 0.0484979, 5.20260);
   return norm(L - lahiriAyanamsa(jd));
 }
+// Mars / Mercury / Venus — same planar Kepler approximation. Accuracy
+// ≈0.5–1° (sign-correct, fine for Kal Sarpa axis test and rashi placement).
+function vpMarsLongSid(jd){
+  const L = _vpKeplerLong(jd, 355.45332, 19140.30268, 336.04084, 0.4439, 0.0934006, 1.52371);
+  return norm(L - lahiriAyanamsa(jd));
+}
+function vpMercuryLongSid(jd){
+  const L = _vpKeplerLong(jd, 252.25166, 149472.67411, 77.45645, 0.5588, 0.205631, 0.387098);
+  return norm(L - lahiriAyanamsa(jd));
+}
+function vpVenusLongSid(jd){
+  const L = _vpKeplerLong(jd, 181.97973, 58517.81539, 131.56370, 0.0050, 0.006772, 0.723330);
+  return norm(L - lahiriAyanamsa(jd));
+}
 function vpRahuLongSid(jd){
   const T = (jd-2451545)/36525;
   const Om = 125.04452 - 1934.136261*T;
@@ -3506,21 +3520,32 @@ function vpKalSarpaNote(profile){
   const jd = vpPersonalJdFromForm(profile.dob, profile.tob||'12:00');
   const rahu = vpRahuLongSid(jd);
   const ketu = norm(rahu+180);
+  // Full 7-graha test (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn)
+  // vs Rahu–Ketu axis — the classical Kal Sarpa Yoga definition.
   const lngs = {
-    Sun: sunLongSid(jd), Moon: moonLongSid(jd),
-    Jupiter: vpJupiterLongSid(jd), Saturn: vpSaturnLongSid(jd),
+    Sun:     sunLongSid(jd),
+    Moon:    moonLongSid(jd),
+    Mars:    vpMarsLongSid(jd),
+    Mercury: vpMercuryLongSid(jd),
+    Jupiter: vpJupiterLongSid(jd),
+    Venus:   vpVenusLongSid(jd),
+    Saturn:  vpSaturnLongSid(jd),
   };
   const inForwardHalf = (lng) => norm(lng - rahu) < 180;
   const sides = Object.fromEntries(Object.entries(lngs).map(([k,v])=>[k, inForwardHalf(v)]));
-  const sameSide = Object.values(sides).every(v => v === Object.values(sides)[0]);
+  const vals = Object.values(sides);
+  const sameSide = vals.every(v => v === vals[0]);
+  const offenders = Object.entries(sides)
+    .filter(([,v]) => v !== vals[0])
+    .map(([k]) => k);
   const rahuR = VP_RASHI_NAMES[vpRashiOf(rahu)];
   const ketuR = VP_RASHI_NAMES[vpRashiOf(ketu)];
+  const grahaList = 'Sun, Moon, Mars, Mercury, Jupiter, Venus &amp; Saturn';
   return {
-    rahuR, ketuR, sameSide,
-    sides,
+    rahuR, ketuR, sameSide, sides, offenders,
     summary: sameSide
-      ? `Sun, Moon, Jupiter & Saturn all fall on the <b>same side</b> of the Rahu (${rahuR}) – Ketu (${ketuR}) axis at birth — <b>partial Kal Sarpa indication</b>. A complete chart with Mars, Mercury & Venus is needed to confirm full Kal Sarpa Yoga.`
-      : `Sun, Moon, Jupiter & Saturn are <b>split</b> across the Rahu (${rahuR}) – Ketu (${ketuR}) axis at birth — full Kal Sarpa Yoga is <b>unlikely</b>. Verify with a complete chart.`
+      ? `All seven grahas (${grahaList}) fall on the <b>same side</b> of the Rahu (${rahuR}) – Ketu (${ketuR}) axis at birth — <b>full Kal Sarpa Yoga</b> is indicated. Verify exact degrees with a precision ephemeris for ritual decisions.`
+      : `Seven-graha check: ${offenders.join(', ')} ${offenders.length===1?'sits':'sit'} on the opposite side of the Rahu (${rahuR}) – Ketu (${ketuR}) axis — full Kal Sarpa Yoga is <b>not formed</b> at birth.`
   };
 }
 
@@ -4348,7 +4373,7 @@ async function vpPersonalRender(){
             </div>
             <div class="vp-saturncycle-list" id="vp-sat-list-inner">${satRows || satEmpty}</div>
             ${ksHtml}
-            <div class="vp-maha-note">Saturn windows use mean longitudes (≈1° accuracy). Kal Sarpa uses Sun, Moon, Jupiter &amp; Saturn vs Rahu–Ketu axis only.</div>
+            <div class="vp-maha-note">Saturn windows use mean longitudes (≈1° accuracy). Kal Sarpa uses all 7 grahas (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn) vs Rahu–Ketu axis.</div>
           </div>
         </div>`;
       })()}

@@ -74,7 +74,7 @@
   border-radius:inherit;pointer-events:none;
 }
 #vpanchanga-view .vp-janmo-mine{
-  color:#1a0a00;
+  color:#1565C0;
   background:linear-gradient(135deg,#FFD700,#F0BE4E,#E8A820);
   box-shadow:0 6px 18px rgba(216,154,31,.40),0 0 0 1.5px rgba(255,215,0,.35);
 }
@@ -84,7 +84,7 @@
 }
 #vpanchanga-view .vp-janmo-mine:active{transform:translateY(0) scale(.96)}
 #vpanchanga-view .vp-janmo-others{
-  color:#fff;
+  color:#90CAF9;
   background:linear-gradient(135deg,var(--vp-violet),#9B7FFF);
   box-shadow:0 6px 18px rgba(124,92,252,.32);
 }
@@ -3930,6 +3930,7 @@
 
 /* ── Premium glowing buttons ─────────────────────────────────── */
 #vpanchanga-view .vp-janmo-mine {
+  color:#1565C0;
   background: linear-gradient(135deg, #F5C24A 0%, #E8A820 60%, #C98E14 100%);
   box-shadow:
     0 0 0 1px rgba(245,194,74,.45),
@@ -3944,6 +3945,7 @@
     0 0 50px rgba(245,194,74,.38);
 }
 #vpanchanga-view .vp-janmo-others {
+  color:#90CAF9;
   background: linear-gradient(135deg, #7C5CFC 0%, #9B7FFF 60%, #B8A0FF 100%);
   box-shadow:
     0 0 0 1px rgba(155,127,255,.45),

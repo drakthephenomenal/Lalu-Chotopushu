@@ -1856,7 +1856,7 @@ function vpHoroOpen(){
   const overlay = document.getElementById('vp-horo-overlay');
   if(!overlay) return;
   const titleEl = document.getElementById('vp-horo-modal-title');
-  if(titleEl) titleEl.textContent = '🪐 Janmo Tithin & Rashi Calculator';
+  if(titleEl) titleEl.textContent = '🪐 Janmo Tithi & Rashi Calculator';
   const dateEl = document.getElementById('vp-horo-date');
   const timeEl = document.getElementById('vp-horo-time');
   const latEl = document.getElementById('vp-horo-lat');
@@ -1880,7 +1880,7 @@ function vpHoroOpen(){
 function vpHoroOpenMine(){
   vpHoroOpen(); // sets defaults, opens overlay
   const titleEl = document.getElementById('vp-horo-modal-title');
-  if(titleEl) titleEl.textContent = '🌕 Your Janmo Tithin & Rashi';
+  if(titleEl) titleEl.textContent = '🌕 Your Janmo Tithi & Rashi';
   // Pre-fill from saved profile when available
   if(_vpPersonalProfile && _vpPersonalProfile.dob){
     const dateEl = document.getElementById('vp-horo-date');

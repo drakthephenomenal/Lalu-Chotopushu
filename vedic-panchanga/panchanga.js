@@ -498,33 +498,68 @@ const _PUSHKAR_VAARS = new Set([0,2,6]);
 const _BHADRA_TITHI_IDX = new Set([1,6,11,16,21,26]);
 const _TRIPUSHKAR_NAKS = new Set([2,6,11,15,20,24]); // tri-pada
 const _DWIPUSHKAR_NAKS = new Set([4,13,22]);         // dvi-pada
-// Siddha / Amrita Yoga (weekday + tithi)
-const _SIDDHA_TITHI = {0:[0,5,10,15,20,25], 1:[1,6,11,16,21,26], 2:[2,7,12,17,22,27], 3:[3,8,13,18,23,28], 4:[4,9,14,19,24,29], 5:[0,5,10,15,20,25], 6:[3,8,13,18,23,28]};
-const _AMRIT_TITHI  = {0:[6,11,16,21,26,1], 1:[2,7,12,17,22,27], 2:[3,8,13,18,23,28], 3:[4,9,14,19,24,29], 4:[5,10,15,20,25,0], 5:[1,6,11,16,21,26], 6:[7,12,17,22,27,2]};
+// ── CANONICAL Siddha Yoga / Amrita Yoga tables ──────────────────────────
+// SINGLE SOURCE OF TRUTH — used by BOTH specialYogas() (Now panel + Best
+// Windows) and vpComputeUniversalYogas() (Universal/Top yoga cards), so the
+// two sections can never disagree on whether a given day qualifies.
+// Siddha Yoga = classical Tithi+Weekday+Nakshatra triple alignment.
+const SIDDHA_COMBOS = [
+  {t:0,w:0,n:0},{t:1,w:1,n:3},{t:2,w:2,n:6},{t:3,w:3,n:5},
+  {t:4,w:4,n:7},{t:5,w:5,n:12},{t:6,w:6,n:26},{t:7,w:0,n:8},
+  {t:9,w:1,n:12},{t:10,w:2,n:16},{t:11,w:3,n:7},{t:12,w:4,n:20},
+  {t:13,w:5,n:24},{t:14,w:6,n:0}
+];
+// Amrita Yoga = Tithi+Nakshatra pairing (distinct from Amrita Siddhi, which is Weekday+Nakshatra).
+const AMRITA_YOGA_MAP = {
+  0:[4,14,23],1:[7,11,22],2:[3,13,26],3:[9,18,25],4:[2,12,21],
+  5:[0,10,20],6:[5,15,24],7:[1,11,23],8:[4,14,22],9:[3,13,26],
+  10:[8,17,25],11:[2,12,21],12:[0,10,20],13:[5,15,24],14:[1,11,23]
+};
+// ── Fixed-calendar auspicious days (Lunar Month + Tithi) ────────────────
+// SINGLE SOURCE OF TRUTH for festival-type muhurtas, shared by both engines.
+const FESTIVAL_DAYS = [
+  {month:'Vaishakha', tithi:2,  name:'Akshaya Tritiya', symbol:'🪙', emoji:'🪙',
+   desc:'Imperishable day — gold, gifts & new ventures begun now never decay in merit'},
+  {month:'Ashadha',   tithi:14, name:'Guru Purnima',    symbol:'🙏', emoji:'🙏',
+   desc:'Full moon honoring teachers — ideal for learning, gratitude & spiritual study'},
+  {month:'Ashwina',   tithi:9,  name:'Vijayadashami (Dussehra)', symbol:'🏹', emoji:'🏹',
+   desc:'Victory of good over evil — excellent for new starts, learning & journeys'}
+];
+function festivalYogas(jd, tithiI){
+  if(typeof jd!=='number' || typeof tithiI!=='number') return [];
+  let hm; try{ hm = hinduMonth(jd); }catch(e){ return []; }
+  if(!hm) return [];
+  return FESTIVAL_DAYS.filter(f=>f.month===hm.name && f.tithi===tithiI);
+}
 // Dvi-Pushkar / Tri-Pushkar yogas need tithi; weekday-lord-based yogas use vaar+tithi too
-function specialYogas(vaarIdx,nakIdx,vaarStart,vaarEnd,tithiIdx){
+function specialYogas(vaarIdx,nakIdx,vaarStart,vaarEnd,tithiIdx,jd){
   // vaarStart/vaarEnd = Brahma Muhurta start to next day BM — the full Vedic day span
+  // jd (optional) = Julian Day for this day, used only to detect fixed-calendar
+  // festival days (Akshaya Tritiya etc.) via the lunar month.
   const r=[];
   const t=vaarStart?{start:vaarStart,end:vaarEnd}:{};
   const _VL=['Surya (Ravi)','Chandra (Soma)','Mangala (Bhauma)','Budha','Brihaspati (Guru)','Shukra','Shani'];
   const _NL=['Ashwini','Bharani','Krittika','Rohini','Mrigashira','Ardra','Punarvasu','Pushya','Ashlesha','Magha','Purva Phalguni','Uttara Phalguni','Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha','Mula','Purva Ashadha','Uttara Ashadha','Shravana','Dhanishtha','Shatabhisha','Purva Bhadrapada','Uttara Bhadrapada','Revati'];
-  if(vaarIdx===0&&nakIdx===7)r.push({name:'Ravi Pushya Yoga',symbol:'☀️',desc:`${_VL[0]} + Pushya — extremely auspicious`,...t});
-  if(vaarIdx===4&&nakIdx===7)r.push({name:'Guru Pushya Yoga',symbol:'🪔',desc:`${_VL[4]} + Pushya — highly auspicious`,...t});
-  const sc=SARV.find(([d])=>d===vaarIdx);if(sc&&sc[1].includes(nakIdx)){r.push({name:'Sarvartha Siddhi Yoga',symbol:'⭐',desc:`Favorable for accomplishing all goals (${_VL[vaarIdx]||''} + ${_NL[nakIdx]||''})`,...t});}
-  const ac=AMRT.find(([d])=>d===vaarIdx);if(ac&&ac[1].includes(nakIdx))r.push({name:'Amrita Siddhi Yoga',symbol:'🌼',desc:'Very auspicious — removes obstacles',...t});
+  const _tName = i => TITHI[i] || `Tithi ${i+1}`;
+  if(vaarIdx===0&&nakIdx===7)r.push({name:'Ravi Pushya Yoga',symbol:'☀️',desc:`Combination: Ravi (Surya) + Pushya — extremely auspicious`,...t});
+  if(vaarIdx===4&&nakIdx===7)r.push({name:'Guru Pushya Yoga',symbol:'🪔',desc:`Combination: Guru (Brihaspati) + Pushya — highly auspicious`,...t});
+  const sc=SARV.find(([d])=>d===vaarIdx);if(sc&&sc[1].includes(nakIdx)){r.push({name:'Sarvartha Siddhi Yoga',symbol:'⭐',desc:`Combination: ${_VL[vaarIdx]||''} + ${_NL[nakIdx]||''} — favorable for accomplishing all goals`,...t});}
+  const ac=AMRT.find(([d])=>d===vaarIdx);if(ac&&ac[1].includes(nakIdx))r.push({name:'Amrita Siddhi Yoga',symbol:'🌼',desc:`Combination: ${_VL[vaarIdx]||''} + ${_NL[nakIdx]||''} — very auspicious, removes obstacles`,...t});
   // Tri-Pushkar & Dwi-Pushkar (need tithi)
   if(typeof tithiIdx==='number' && _PUSHKAR_VAARS.has(vaarIdx) && _BHADRA_TITHI_IDX.has(tithiIdx)){
-    if(_TRIPUSHKAR_NAKS.has(nakIdx)) r.push({name:'Tripushkar Yoga',symbol:'🔱',desc:'Triples results — favors lasting acquisitions (gold, property)',...t});
-    else if(_DWIPUSHKAR_NAKS.has(nakIdx)) r.push({name:'Dwipushkar Yoga',symbol:'💫',desc:'Doubles results — repeats outcomes of actions begun now',...t});
+    if(_TRIPUSHKAR_NAKS.has(nakIdx)) r.push({name:'Tripushkar Yoga',symbol:'🔱',desc:`Combination: ${_VL[vaarIdx]||''} + ${_tName(tithiIdx)} + ${_NL[nakIdx]||''} — triples results, favors lasting acquisitions (gold, property)`,...t});
+    else if(_DWIPUSHKAR_NAKS.has(nakIdx)) r.push({name:'Dwipushkar Yoga',symbol:'💫',desc:`Combination: ${_VL[vaarIdx]||''} + ${_tName(tithiIdx)} + ${_NL[nakIdx]||''} — doubles results, repeats outcomes of actions begun now`,...t});
   }
-  // Siddha Yoga (weekday + tithi)
-  if(typeof tithiIdx==='number' && _SIDDHA_TITHI[vaarIdx] && _SIDDHA_TITHI[vaarIdx].includes(tithiIdx)){
-    r.push({name:'Siddha Yoga',symbol:'🏵️',desc:'All undertakings succeed — auspicious for achievement',...t});
+  // Siddha Yoga — CANONICAL: Tithi+Weekday+Nakshatra triple (shared w/ vpComputeUniversalYogas)
+  if(typeof tithiIdx==='number' && SIDDHA_COMBOS.some(c=>c.t===tithiIdx && c.w===vaarIdx && c.n===nakIdx)){
+    r.push({name:'Siddha Yoga',symbol:'🏵️',desc:`Combination: ${_VL[vaarIdx]||''} + ${_tName(tithiIdx)} + ${_NL[nakIdx]||''} — all undertakings succeed, auspicious for achievement`,...t});
   }
-  // Amrita Yoga (weekday + tithi) — distinct from Amrita Siddhi (which is vaar+nak)
-  if(typeof tithiIdx==='number' && _AMRIT_TITHI[vaarIdx] && _AMRIT_TITHI[vaarIdx].includes(tithiIdx)){
-    r.push({name:'Amrita Yoga',symbol:'🍯',desc:'Nectar-like results — sacred & rewarding',...t});
+  // Amrita Yoga — CANONICAL: Tithi+Nakshatra (shared w/ vpComputeUniversalYogas), distinct from Amrita Siddhi (vaar+nak)
+  if(typeof tithiIdx==='number' && (AMRITA_YOGA_MAP[tithiIdx]||[]).includes(nakIdx)){
+    r.push({name:'Amrita Yoga',symbol:'🍯',desc:`Combination: ${_tName(tithiIdx)} + ${_NL[nakIdx]||''} — nectar-like results, sacred & rewarding`,...t});
   }
+  // Festival days (Akshaya Tritiya, Guru Purnima, Vijayadashami) — needs jd + tithi
+  festivalYogas(jd, tithiIdx).forEach(f=>r.push({name:f.name,symbol:f.symbol,desc:`Combination: ${f.month} + ${_tName(tithiIdx)} — ${f.desc}`,...t}));
   return r;
 }
 
@@ -672,7 +707,7 @@ function computeAll(){
   const am=adhikMaas(jd);
   const ga=gaurabda(now);
   const spVaarEnd=new Date(+activeVaar.sunrise+86400000-96*60*1000);
-  const sp=specialYogas(activeVaarIdx,nakshatraPeriods[0]?.index??0,activeVaar.brahmaMuhurtaStart,spVaarEnd,currentTithiIdx);
+  const sp=specialYogas(activeVaarIdx,nakshatraPeriods[0]?.index??0,activeVaar.brahmaMuhurtaStart,spVaarEnd,currentTithiIdx,jd);
   return{now,jd,vaarStrip,activeVaarIdx,activeVaar,tithiPeriods,currentTithiIdx,
     nakshatraPeriods,yogaPeriods,karanaPeriods,lunarMonthTithis,hm,am,ga,sp};
 }
@@ -1364,10 +1399,11 @@ function renderAll(){
   // Special yogas — recompute for displayVaar (may differ from activeVaar)
   let spDisplay=sp;
   if(!isActive){
-    const dispNakIdx=Math.floor(moonLongSid(dateToJD(displayVaar.sunrise))/(360/27))%27;
+    const dispJD=dateToJD(displayVaar.sunrise);
+    const dispNakIdx=Math.floor(moonLongSid(dispJD)/(360/27))%27;
     const dispVaarEnd=new Date(+displayVaar.sunrise+86400000-96*60*1000);
-    const dispTithiIdx=tithiIdx(dateToJD(displayVaar.sunrise));
-    spDisplay=specialYogas(displayVaar.index,dispNakIdx,displayVaar.brahmaMuhurtaStart,dispVaarEnd,dispTithiIdx);
+    const dispTithiIdx=tithiIdx(dispJD);
+    spDisplay=specialYogas(displayVaar.index,dispNakIdx,displayVaar.brahmaMuhurtaStart,dispVaarEnd,dispTithiIdx,dispJD);
   }
   const sec=document.getElementById('vp-special-yoga-sec');
   if(spDisplay.length){
@@ -2427,7 +2463,7 @@ function vpPersonalConsolidatedNow(profile, jdNow, lat, lng){
 
   // ── Special Yogas (Amrita Siddhi, Sarvartha Siddhi, Guru/Ravi Pushya) ──
   const vaarIdx    = getVedicVaarIdx(nowDate, lat, lng);
-  const specYogas  = specialYogas(vaarIdx, curNak.index, null, null, curTithi.index);
+  const specYogas  = specialYogas(vaarIdx, curNak.index, null, null, curTithi.index, jdNow);
   const specLabel  = specYogas.length ? specYogas.map(s=>s.name).join(' · ') : null;
   if(specYogas.length > 0) yScore = Math.min(yScore + 1, 2); // boost by +1, cap at +2
 
@@ -2560,7 +2596,7 @@ function vpPersonalBestWindows(profile, fromJD, daysAhead, maxResults){
           const vIdx = getVedicVaarIdx(d, lat, lng);
           const nIdx = Math.floor(moonLongSid(clamped)/(360/27))%27;
           const tIdx = tithiIdx(clamped);
-          specialYogas(vIdx, nIdx, null, null, tIdx).forEach(y => {
+          specialYogas(vIdx, nIdx, null, null, tIdx, clamped).forEach(y => {
             if(!yogaMap.has(y.name)){
               yogaMap.set(y.name, {yoga: y, firstJD: clamped});
             }
@@ -2825,21 +2861,11 @@ function vpComputeUniversalYogas(jdNow, lat, lng){
   const PANCHAK_NAK = new Set([22,23,24,25,26]); // indices 22-26
 
   // ── Siddha Yoga — auspicious Tithi+Weekday+Nakshatra triple ──────────────
-  // Classical combos (0-indexed tithi, 0=Sun weekday, 0=Ashwini nak):
-  const SIDDHA_COMBOS = [
-    {t:0,w:0,n:0},{t:1,w:1,n:3},{t:2,w:2,n:6},{t:3,w:3,n:5},
-    {t:4,w:4,n:7},{t:5,w:5,n:12},{t:6,w:6,n:26},{t:7,w:0,n:8},
-    {t:9,w:1,n:12},{t:10,w:2,n:16},{t:11,w:3,n:7},{t:12,w:4,n:20},
-    {t:13,w:5,n:24},{t:14,w:6,n:0}
-  ];
+  // Uses the SHARED SIDDHA_COMBOS table defined near the top of the file
+  // (single source of truth, also used by specialYogas()).
 
   // ── Amrita Yoga (Tithi+Nakshatra pairs — different from Amrita Siddhi) ────
-  // Moon in specific nakshatras on specific tithis creates nectar flow
-  const AMRITA_YOGA_MAP = {
-    0:[4,14,23],1:[7,11,22],2:[3,13,26],3:[9,18,25],4:[2,12,21],
-    5:[0,10,20],6:[5,15,24],7:[1,11,23],8:[4,14,22],9:[3,13,26],
-    10:[8,17,25],11:[2,12,21],12:[0,10,20],13:[5,15,24],14:[1,11,23]
-  };
+  // Uses the SHARED AMRITA_YOGA_MAP table defined near the top of the file.
 
   // ── Mrityu Yoga — inauspicious (death/obstacle) Tithi+Weekday pairs ───────
   // Classical: specific tithi+weekday combos to avoid for new work
@@ -2879,98 +2905,105 @@ function vpComputeUniversalYogas(jdNow, lat, lng){
     const status = isToday ? 'active' : 'upcoming';
     const nakName = NAK_NAMES[nakIdx] || '';
     const wdayName = VAAR_FULL[wday];
+    const tithiName = TITHI[tithiI] || `Tithi ${tithiI+1}`;
 
     // 1. Amrita Siddhi Yoga
     if((AMRITA_MAP[wday]||[]).includes(nakIdx)){
-      results.push({name:'Amrita Siddhi Yoga',emoji:'🪷',desc:`${wdayName} + ${nakName} — nectar of success; excellent for new work, travel, medicine`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Amrita Siddhi Yoga',emoji:'🪷',desc:`Combination: ${wdayName} + ${nakName} — nectar of success; excellent for new work, travel, medicine`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 2. Sarvartha Siddhi Yoga
     if((SARVARTHA_MAP[wday]||[]).includes(nakIdx)){
-      results.push({name:'Sarvartha Siddhi Yoga',emoji:'✅',desc:`${wdayName} + ${nakName} — fulfillment of all purposes; sign, buy, start ventures`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Sarvartha Siddhi Yoga',emoji:'✅',desc:`Combination: ${wdayName} + ${nakName} — fulfillment of all purposes; sign, buy, start ventures`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 3. Guru Pushya Yoga
     if(wday===4 && nakIdx===7){
-      results.push({name:'Guru Pushya Yoga',emoji:'🙏',desc:'Thursday + Pushya — most auspicious for gold, wealth, spiritual initiation & business launch',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Guru Pushya Yoga',emoji:'🙏',desc:'Combination: Thursday (Guru) + Pushya — most auspicious for gold, wealth, spiritual initiation & business launch',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 4. Ravi Pushya Yoga
     if(wday===0 && nakIdx===7){
-      results.push({name:'Ravi Pushya Yoga',emoji:'☀️',desc:'Sunday + Pushya — powerful for health, authority & all new beginnings',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Ravi Pushya Yoga',emoji:'☀️',desc:'Combination: Sunday (Ravi) + Pushya — powerful for health, authority & all new beginnings',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 5. Rohini Yoga (Monday + Rohini)
     if(wday===1 && nakIdx===3){
-      results.push({name:'Rohini Yoga',emoji:'🌹',desc:'Monday + Rohini — Moon in own favourite nakshatra; excellent for wealth, beauty & all worldly success',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Rohini Yoga',emoji:'🌹',desc:'Combination: Monday (Chandra) + Rohini — Moon in own favourite nakshatra; excellent for wealth, beauty & all worldly success',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 6. Guru Rohini Yoga (Thursday + Rohini)
     if(wday===4 && nakIdx===3){
-      results.push({name:'Guru Rohini Yoga',emoji:'💛',desc:'Thursday + Rohini — Jupiter-Moon combination; prosperity, wisdom & fulfilment of desires',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Guru Rohini Yoga',emoji:'💛',desc:'Combination: Thursday (Guru) + Rohini — Jupiter-Moon combination; prosperity, wisdom & fulfilment of desires',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 7. Brahma Yoga (Moon in Rohini/Hasta/Pushya/Anuradha on Mon/Thu/Fri)
     if(BRAHMA_NAK.has(nakIdx) && BRAHMA_WDAY.has(wday)){
-      results.push({name:'Brahma Yoga',emoji:'🕉️',desc:`${wdayName} + ${nakName} — sacred creative energy; excellent for learning, spiritual practice & new study`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Brahma Yoga',emoji:'🕉️',desc:`Combination: ${wdayName} + ${nakName} — sacred creative energy; excellent for learning, spiritual practice & new study`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 8. Indra Yoga (Thursday + Jyeshtha)
     if(wday===4 && nakIdx===17){
-      results.push({name:'Indra Yoga',emoji:'⚡',desc:'Thursday + Jyeshtha — royal power and leadership energy; auspicious for authority, success in competition',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Indra Yoga',emoji:'⚡',desc:'Combination: Thursday (Guru) + Jyeshtha — royal power and leadership energy; auspicious for authority, success in competition',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 9. Vishnu Yoga (Shravana nakshatra — listening/devotion to Vishnu)
     if(nakIdx===21){
-      results.push({name:'Vishnu Yoga',emoji:'🌀',desc:'Shravana nakshatra day — sacred to Vishnu; ideal for devotion, listening to scriptures & acts of dharma',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Vishnu Yoga',emoji:'🌀',desc:`Combination: Moon in Shravana — sacred to Vishnu; ideal for devotion, listening to scriptures & acts of dharma`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 10. Shiva Yoga (Moon in Ardra/Mula/Shatabhisha — Shiva nakshatras)
     if(SHIVA_NAK.has(nakIdx)){
-      results.push({name:'Shiva Yoga',emoji:'🔱',desc:`Moon in ${nakName} — sacred to Shiva; powerful for deep spiritual work, mantra, and transformation`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Shiva Yoga',emoji:'🔱',desc:`Combination: Moon in ${nakName} — sacred to Shiva; powerful for deep spiritual work, mantra, and transformation`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 11. Pushkara Navamsha (Moon in one of the 12 auspicious navamsha spans)
     const moonDeg = moonSid;
     const inPushkara = PUSHKARA_NAV.some(([lo,hi]) => moonDeg>=lo && moonDeg<hi);
     if(inPushkara){
-      results.push({name:'Pushkara Navamsha',emoji:'🌸',desc:'Moon in an auspicious navamsha division — highly beneficial; actions bear lasting fruit',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Pushkara Navamsha',emoji:'🌸',desc:`Combination: Moon at ${moonDeg.toFixed(1)}° (in ${nakName}) — auspicious navamsha division; actions bear lasting fruit`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 12. Siddha Yoga (Tithi+Weekday+Nakshatra triple)
     const isSiddha = SIDDHA_COMBOS.some(c=>c.t===tithiI&&c.w===wday&&c.n===nakIdx);
     if(isSiddha){
-      results.push({name:'Siddha Yoga',emoji:'🏆',desc:`${wdayName} + ${nakName} + Tithi ${tithiI+1} — triple alignment; auspicious for all new beginnings`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Siddha Yoga',emoji:'🏆',desc:`Combination: ${wdayName} + ${tithiName} + ${nakName} — triple alignment; auspicious for all new beginnings`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 13. Dwipushkar Yoga
     if(DWI_WDAY.has(wday) && DWI_NAK.has(nakIdx) && DWI_TITH.has(tithiI)){
-      results.push({name:'Dwipushkar Yoga',emoji:'✌️',desc:`${wdayName} + ${nakName} + Dwitiya/Saptami/Dwadashi — actions double; buy in pairs, invest, plant seeds`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Dwipushkar Yoga',emoji:'✌️',desc:`Combination: ${wdayName} + ${tithiName} + ${nakName} — actions double; buy in pairs, invest, plant seeds`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 14. Tripushkar Yoga
     if(TRI_WDAY.has(wday) && TRI_NAK.has(nakIdx) && TRI_TITH.has(tithiI)){
-      results.push({name:'Tripushkar Yoga',emoji:'🔺',desc:`${wdayName} + ${nakName} + Tritiya/Ashtami/Trayodashi — actions triple; highly auspicious for wealth creation`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Tripushkar Yoga',emoji:'🔺',desc:`Combination: ${wdayName} + ${tithiName} + ${nakName} — actions triple; highly auspicious for wealth creation`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 15. Panchak (Moon in last 5 nakshatras — caution period)
     if(PANCHAK_NAK.has(nakIdx)){
-      results.push({name:'Panchak',emoji:'⚠️',desc:`Moon in ${nakName} — Panchak period active; avoid construction, funeral rites & cutting of wood. Normal activities fine.`,status,dateStr:isToday?'Today':dayLabel,dosha:true});
+      results.push({name:'Panchak',emoji:'⚠️',desc:`Combination: Moon in ${nakName} — Panchak period active; avoid construction, funeral rites & cutting of wood. Normal activities fine.`,status,dateStr:isToday?'Today':dayLabel,dosha:true});
     }
     // 16. Purnima
     if(tithiI===14){
-      results.push({name:'Purnima (Full Moon)',emoji:'🌕',desc:'Complete lunar energy — ideal for worship, meditation, charity & ancestral rites',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Purnima (Full Moon)',emoji:'🌕',desc:`Combination: ${tithiName} (15th tithi) — complete lunar energy; ideal for worship, meditation, charity & ancestral rites`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 17. Amavasya
     if(tithiI===29){
-      results.push({name:'Amavasya (New Moon)',emoji:'🌑',desc:'Deep inner energy — ancestor worship (Shraddha), fasting & introspection',status,dateStr:isToday?'Today':dayLabel});
+      results.push({name:'Amavasya (New Moon)',emoji:'🌑',desc:`Combination: ${tithiName} (30th tithi) — deep inner energy; ancestor worship (Shraddha), fasting & introspection`,status,dateStr:isToday?'Today':dayLabel});
     }
     // 18. Ekadashi
     if(tithiI===10 || tithiI===25){
-      results.push({name:'Ekadashi',emoji:'🪷',desc:'11th tithi — fasting & Vishnu worship; cleansing & spiritual merit',status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Ekadashi',emoji:'🪷',desc:`Combination: ${tithiName} (11th tithi) — fasting & Vishnu worship; cleansing & spiritual merit`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
     // 19. Ravi Yoga Dosha
     if((RAVI_DOSHA[wday]||[]).includes(nakIdx)){
-      results.push({name:'Ravi Yoga (Dosha)',emoji:'☠️',desc:`${wdayName} + ${nakName} — solar affliction; avoid ceremonies & new ventures. Normal daily work fine.`,status,dateStr:isToday?'Today':dayLabel,dosha:true});
+      results.push({name:'Ravi Yoga (Dosha)',emoji:'☠️',desc:`Combination: ${wdayName} + ${nakName} — solar affliction; avoid ceremonies & new ventures. Normal daily work fine.`,status,dateStr:isToday?'Today':dayLabel,dosha:true});
     }
     // 20. Dagdha Tithi (burned tithi)
     if((DAGDHA[wday]||[]).includes(tithiI)){
-      results.push({name:'Dagdha Tithi',emoji:'🔥',desc:`Tithi ${tithiI+1} on ${wdayName} — burned tithi; avoid major ceremonies, surgery & new ventures`,status,dateStr:isToday?'Today':dayLabel,dosha:true});
+      results.push({name:'Dagdha Tithi',emoji:'🔥',desc:`Combination: ${wdayName} + ${tithiName} — burned tithi; avoid major ceremonies, surgery & new ventures`,status,dateStr:isToday?'Today':dayLabel,dosha:true});
     }
     // 21. Mrityu Yoga
     if((MRITYU[wday]||[]).includes(tithiI)){
-      results.push({name:'Mrityu Yoga',emoji:'💀',desc:`${wdayName} + Tithi ${tithiI+1} — inauspicious combination; avoid travel, surgery & important new actions`,status,dateStr:isToday?'Today':dayLabel,dosha:true});
+      results.push({name:'Mrityu Yoga',emoji:'💀',desc:`Combination: ${wdayName} + ${tithiName} — inauspicious combination; avoid travel, surgery & important new actions`,status,dateStr:isToday?'Today':dayLabel,dosha:true});
     }
     // 22. Amrita Yoga (Tithi+Nakshatra — distinct from Amrita Siddhi)
     if((AMRITA_YOGA_MAP[tithiI]||[]).includes(nakIdx)){
-      results.push({name:'Amrita Yoga',emoji:'🍯',desc:`Tithi ${tithiI+1} + ${nakName} — nectar alignment; auspicious for medicine, healing & life-giving acts`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+      results.push({name:'Amrita Yoga',emoji:'🍯',desc:`Combination: ${tithiName} + ${nakName} — nectar alignment; auspicious for medicine, healing & life-giving acts`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
     }
+    // 23. Fixed-calendar festival days (Akshaya Tritiya, Guru Purnima, Vijayadashami)
+    // — SHARED with specialYogas() via festivalYogas() helper, so Best Windows
+    // and this Universal/Top section always agree.
+    festivalYogas(jd, tithiI).forEach(f=>{
+      results.push({name:f.name,emoji:f.emoji,desc:`Combination: ${f.month} + ${tithiName} — ${f.desc}`,status,dateStr:isToday?'Today':dayLabel,auspicious:true});
+    });
   }
 
   for(let i=0;i<8;i++) checkDay(jdNow + i);

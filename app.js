@@ -9951,7 +9951,8 @@ function _initSwipeHandler() {
   // Remove any previous swipe listeners
   card._swipeCleanup && card._swipeCleanup();
 
-  if (_AUDIO_STOTRAMS[_currentStotramId]) return; // audio stotrams use their own player arrows
+  // audio stotrams use player arrows — but hcj also supports swipe
+  if (_AUDIO_STOTRAMS[_currentStotramId] && _currentStotramId !== 'hcj') return;
 
   let startX = 0,
     startY = 0,

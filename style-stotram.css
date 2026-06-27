@@ -956,3 +956,10 @@
   z-index: 20;
   font-family: "Hind Siliguri", sans-serif;
 }
+
+/* Back button inside picker (not absolute) */
+.sts-picker .sts-back-btn {
+  position: static;
+  margin-bottom: 8px;
+  align-self: flex-start;
+}

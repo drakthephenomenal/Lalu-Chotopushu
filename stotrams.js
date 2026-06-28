@@ -10189,12 +10189,16 @@ nkc:`নারায়ণ কবচম্
 
       var numSpan = document.createElement('span');
       numSpan.className = 'sts-btn-num';
-      numSpan.textContent = String(idx + 1);
+      if (sarga.title === 'পূর্বভূমিকা') {
+        numSpan.style.display = 'none';
+      } else {
+        var nm = sarga.title.match(/[০-৯]+/);
+        numSpan.textContent = nm ? nm[0] : String(idx + 1);
+      }
 
       var nameSpan = document.createElement('span');
       nameSpan.className = 'sts-btn-name';
-      // Show short title: strip "সর্গ ১ — " prefix
-      nameSpan.textContent = sarga.title.replace(/^সর্গ\s+[০-৯]+\s+[—-]\s*/, '');
+      nameSpan.textContent = sarga.title === 'পূর্বভূমিকা' ? 'পূর্বভূমিকা' : sarga.title;
 
       btn.appendChild(numSpan);
       btn.appendChild(nameSpan);
@@ -10249,9 +10253,6 @@ nkc:`নারায়ণ কবচম্
 
     // Preamble button (if sarga has preamble text)
     var items = [];
-    if (sarga.preamble && sarga.preamble.trim()) {
-      items.push({ label: 'পূর্বভূমিকা', subIdx: -1 });
-    }
     sarga.subs.forEach(function(g, i){ items.push({ label: g.title, subIdx: i }); });
 
     var grid = document.createElement('div');
@@ -10272,7 +10273,7 @@ nkc:`নারায়ণ কবচম্
 
       var numSpan = document.createElement('span');
       numSpan.className = 'sts-btn-num';
-      numSpan.textContent = item.subIdx === -1 ? '॥' : String(idx + (sarga.preamble && sarga.preamble.trim() ? 0 : 1));
+      numSpan.textContent = item.subIdx === -1 ? '॥' : String(idx + 1);
 
       var nameSpan = document.createElement('span');
       nameSpan.className = 'sts-btn-name';
@@ -10329,7 +10330,8 @@ nkc:`নারায়ণ কবচম্
     }
 
     if (typeof _verses !== 'undefined') {
-      _verses = content.split('\n\n').filter(function(v){ return v.trim(); });
+      // Each Geetam is shown as a single card (no internal splitting)
+      _verses = [content.trim()];
       if (typeof _renderVerse === 'function') _renderVerse(0, -1);
       if (typeof _initSwipeHandler === 'function') _initSwipeHandler();
     }

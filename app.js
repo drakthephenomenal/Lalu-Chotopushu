@@ -7223,10 +7223,11 @@ function renderSt() {
 
 // ─────────────────────────────────────────────────────────
 // DEVELOPER STOTRAM MANAGEMENT
-// Developer IDs: drakthephenomenal@gmail.com, akthephenomenal@zohomail.com, anupkumarpaulshuvo@gmail.com
+// Developer IDs: drakthephenomenal@gmail.com, drakthephenomenal@proton.me, akthephenomenal@zohomail.com, anupkumarpaulshuvo@gmail.com
 // ─────────────────────────────────────────────────────────
 const DEV_IDS = [
   "drakthephenomenal@gmail.com",
+  "drakthephenomenal@proton.me",
   "akthephenomenal@zohomail.com",
   "anupkumarpaulshuvo@gmail.com",
 ];

@@ -6024,6 +6024,23 @@ function fbDebouncedPush() {
   _fbDeb = setTimeout(() => fbPushDelta(), 3000);
 }
 
+// Force an immediate flush of any pending debounced push the moment the app
+// is backgrounded, tab-switched, or closed — otherwise a pending 3s timer
+// can get silently dropped by the OS, leaving Firestore (and therefore
+// ghost mode + the leaderboard) stuck on stale data until the next tap.
+function _fbFlushPendingPush() {
+  if (!_fbDeb) return;
+  clearTimeout(_fbDeb);
+  _fbDeb = null;
+  if (typeof isGhostMode === "function" && isGhostMode()) return;
+  if (fbUser) fbPushDelta().catch(() => {});
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") _fbFlushPendingPush();
+});
+window.addEventListener("pagehide", _fbFlushPendingPush);
+window.addEventListener("beforeunload", _fbFlushPendingPush);
+
 // ═══════════════════════════════════════════════════════
 // GOOGLE DRIVE — Silent Monk Auto Backup
 // Uses the access token from Google Sign-In (same login)

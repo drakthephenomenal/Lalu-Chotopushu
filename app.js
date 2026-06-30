@@ -12370,7 +12370,8 @@ async function pushLeaderboard() {
   const totalRadha = Object.values(hist).reduce((a,b)=>a+b,0);
   const totalRV    = Object.values(histRV).reduce((a,b)=>a+b,0);
   const totalHK    = Object.values(histHK).reduce((a,b)=>a+b,0);
-  const totalJap   = Math.max(0, totalRadha + totalRV + totalHK - (App.S.nameJapDeduct||0) - (App.S.nameJapDeductRV||0) - (App.S.nameJapDeductHK||0));
+  const total28    = Object.values(hist28).reduce((a,b)=>a+b,0);
+  const totalJap   = Math.max(0, totalRadha + totalRV + totalHK + total28 - (App.S.nameJapDeduct||0) - (App.S.nameJapDeductRV||0) - (App.S.nameJapDeductHK||0));
 
   // Build display name
   let displayName = (App.S.lbDisplayName || '').trim();

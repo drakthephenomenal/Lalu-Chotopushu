@@ -6014,26 +6014,49 @@ async function fbAutoSync() {
 }
 
 let _fbDeb = null;
+let _fbMaxWaitTimer = null;
+let _fbLastPushAt = 0;
+const FB_DEBOUNCE_MS = 3000;
+const FB_MAX_WAIT_MS = 5000; // force a push at least this often during continuous tapping
+
 function fbDebouncedPush() {
   if (!fbUser) return;
   // v154: hard belt-and-suspenders guard. Even if some future tap path forgets
   // its own isGhostMode() check, no ghost-mode write will ever reach Firestore
   // and imprint the viewed user's data onto the developer's own profile.
   if (typeof isGhostMode === "function" && isGhostMode()) return;
+
   clearTimeout(_fbDeb);
-  _fbDeb = setTimeout(() => fbPushDelta(), 3000);
+  _fbDeb = setTimeout(() => _fbDoPush(), FB_DEBOUNCE_MS);
+
+  // Max-wait guarantee: during a long burst of rapid taps (e.g. 108 taps in
+  // under a minute), the short debounce above keeps getting reset and may
+  // never fire. This separate timer ensures a push still happens at least
+  // every FB_MAX_WAIT_MS, so ghost mode / leaderboard never fall far behind
+  // a live, fast-tapping session.
+  if (!_fbMaxWaitTimer) {
+    _fbMaxWaitTimer = setTimeout(() => _fbDoPush(), FB_MAX_WAIT_MS);
+  }
+}
+
+function _fbDoPush() {
+  clearTimeout(_fbDeb);
+  _fbDeb = null;
+  clearTimeout(_fbMaxWaitTimer);
+  _fbMaxWaitTimer = null;
+  _fbLastPushAt = Date.now();
+  if (typeof isGhostMode === "function" && isGhostMode()) return;
+  if (!fbUser) return;
+  fbPushDelta().catch(() => {});
 }
 
 // Force an immediate flush of any pending debounced push the moment the app
-// is backgrounded, tab-switched, or closed — otherwise a pending 3s timer
+// is backgrounded, tab-switched, or closed — otherwise a pending timer
 // can get silently dropped by the OS, leaving Firestore (and therefore
 // ghost mode + the leaderboard) stuck on stale data until the next tap.
 function _fbFlushPendingPush() {
-  if (!_fbDeb) return;
-  clearTimeout(_fbDeb);
-  _fbDeb = null;
-  if (typeof isGhostMode === "function" && isGhostMode()) return;
-  if (fbUser) fbPushDelta().catch(() => {});
+  if (!_fbDeb && !_fbMaxWaitTimer) return;
+  _fbDoPush();
 }
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") _fbFlushPendingPush();

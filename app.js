@@ -6599,12 +6599,17 @@ function addSankalp() {
     return;
   }
   const hasActive = (App.S.sankalpas || []).some((s) => !s.done);
+  const isFirstEverWish = (App.S.sankalpas || []).length === 0;
   const sk = {
     id: "sk_" + Date.now(),
     wish,
     target,
     startDate: App.S.tk,
-    startCycles: hasActive ? null : getTotalCycles28(),
+    // v2: the very first sankalp ever created starts from 0, not from the
+    // current lifetime cycle count — otherwise jap done before the first
+    // wish existed would never be credited to any wish, leaving a permanent
+    // gap between lifetime total and sum-of-wishes progress.
+    startCycles: hasActive ? null : (isFirstEverWish ? 0 : getTotalCycles28()),
     done: false,
     doneDate: null,
     _savedProgress: 0,

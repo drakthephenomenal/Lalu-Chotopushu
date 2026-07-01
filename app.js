@@ -5052,6 +5052,21 @@ function fbInit() {
         // guaranteed to fetch the latest cloud data before anything is rendered.
         fbClaimSession().then(async () => {
           fbWatchSession();
+          // ── Presence heartbeat: every signed-in user writes their own
+          // /presence/{uid} doc so developers can list ALL signed-in
+          // accounts in Ghost Mode (not just leaderboard opt-ins).
+          try {
+            const _pName  = user.displayName || '';
+            const _pEmail = user.email || '';
+            const _pPhone = user.phoneNumber || '';
+            await fbDb.collection('presence').doc(user.uid).set({
+              uid: user.uid,
+              name: _pName,
+              email: _pEmail,
+              phone: _pPhone,
+              lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+          } catch (_e) {}
           // ── Sync device clock with Firebase server time ──
           // Corrects getTk() if local clock is wrong or in different timezone
           await fbSyncServerTime();
@@ -7347,6 +7362,22 @@ async function _fetchAllKnownUsers() {
         email: byUid[doc.id]?.email || d.email       || '',
         jap:   d.totalJap || 0,
         source: byUid[doc.id] ? byUid[doc.id].source : 'leaderboard',
+      });
+    });
+  } catch (_) {}
+
+  try {
+    // 3. presence collection — every signed-in user writes a heartbeat here,
+    //    so this captures accounts that never opted into the leaderboard
+    //    and never submitted feedback.
+    const prSnap = await fbDb.collection('presence').get();
+    prSnap.forEach(doc => {
+      const d = doc.data() || {};
+      add(doc.id, {
+        name:  byUid[doc.id]?.name  || d.name  || d.displayName || '',
+        email: byUid[doc.id]?.email || d.email || '',
+        phone: byUid[doc.id]?.phone || d.phone || d.phoneNumber || '',
+        source: byUid[doc.id] ? byUid[doc.id].source : 'presence',
       });
     });
   } catch (_) {}

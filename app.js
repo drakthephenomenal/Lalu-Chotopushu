@@ -81,6 +81,7 @@ const App = {
     nameJapDeductHK: 0,
     gaudiyaMode: false,  // single mode for all — Gaudiya/ISKCON
     hkLang: "hi",
+    naamLang: "sa",  // Radha / Radha Vallabh jap text script: "sa" (Sanskrit/Devanagari) or "bn" (Bangla)
     lbOptIn: false,        // leaderboard opt-in
     lbDisplayName: "",     // leaderboard display name
     bgRadhaVallabh: 1,
@@ -245,6 +246,7 @@ const App = {
       dt28Cycles: this.S.dt28Cycles || 0,
       milestones: this.S.milestones || { reached: {}, lastChecked: 0 },
       hkLang: this.S.hkLang || "hi",
+      naamLang: this.S.naamLang || "sa",
       lastLat: this.S.lastLat ?? null,
       lastLng: this.S.lastLng ?? null,
     });
@@ -377,6 +379,7 @@ const App = {
     if (this.S.nameJapDeductHK === undefined) this.S.nameJapDeductHK = 0;
     if (this.S.gaudiyaMode === undefined) this.S.gaudiyaMode = false;
     if (!this.S.hkLang) this.S.hkLang = "hi";
+    if (!this.S.naamLang) this.S.naamLang = "sa";
     if (!this.S.historyHK[this.S.tk]) this.S.historyHK[this.S.tk] = 0;
     if (!this.S.timerHistoryHK[this.S.tk]) this.S.timerHistoryHK[this.S.tk] = 0;
     // Load malaLogHK — only keep if today has HK jap
@@ -1465,7 +1468,7 @@ function spawn(e, zone) {
   }
   const el = document.createElement("div");
   el.className = "fn";
-  el.textContent = "राधा";
+  el.textContent = naamText().radha;
   const fs = 110 + Math.random() * 60;
   el.style.left = x - fs * 0.6 + "px";
   el.style.top = y - fs * 0.4 + "px";
@@ -1492,12 +1495,13 @@ function spawnRV(e, zone) {
   const el = document.createElement("div");
   el.className = "fn-rv";
   const fs = 55 + Math.random() * 25;
+  const _nt = naamText();
   el.innerHTML =
     '<span style="font-size:' +
     fs +
-    'px">राधावल्लभ</span><span style="font-size:' +
+    'px">' + _nt.rv1 + '</span><span style="font-size:' +
     fs * 0.85 +
-    'px">श्री हरिवंश</span>';
+    'px">' + _nt.rv2 + '</span>';
   el.style.left = x - fs * 1.2 + "px";
   el.style.top = y - fs * 0.5 + "px";
   acf = !acf;
@@ -1898,6 +1902,7 @@ function initJapModeUI() {
   if (lblH) lblH.textContent = App.S.hkLang === "bn" ? "Bangla" : "Hindi";
   // Apply all language-sensitive labels on load
   applyHKLangLabels(App.S.hkLang || "hi");
+  applyNaamLangLabels(App.S.naamLang || "sa");
   try { populateSettingsUI(); } catch (_e) {}
 }
 
@@ -1925,6 +1930,43 @@ function closeNaamSelOutside(e) {
     document.removeEventListener("touchstart", closeNaamSelOutside);
   }
 }
+// ── Radha / Radha Vallabh jap-text script lookup (Sanskrit/Devanagari vs Bangla) ──
+const NAAM_TEXT = {
+  sa: { radha: "राधा", rv1: "राधावल्लभ", rv2: "श्री हरिवंश" },
+  bn: { radha: "রাধা", rv1: "রাধাবল্লভ", rv2: "শ্রী হরিবংশ" },
+};
+function naamText() {
+  const lang = (App.S && App.S.naamLang === "bn") ? "bn" : "sa";
+  return NAAM_TEXT[lang];
+}
+
+// Apply naamLang-sensitive labels: settings picker UI + live title/toast refresh
+function applyNaamLangLabels(lang) {
+  const isBn = lang === "bn";
+  document.body.classList.toggle("naam-bn", isBn);
+  const lbl = document.getElementById("naamLangLabel");
+  if (lbl) lbl.textContent = isBn ? "Bangla" : "Sanskrit";
+  // Keep the naam dropdown option text in sync with the selected script
+  const _nt = NAAM_TEXT[isBn ? "bn" : "sa"];
+  const optRadhaLbl = document.getElementById("naamOptRadhaLabel");
+  if (optRadhaLbl) optRadhaLbl.textContent = _nt.radha;
+  const optRVLbl = document.getElementById("naamOptRVLabel");
+  if (optRVLbl) optRVLbl.textContent = _nt.rv1 + " " + _nt.rv2;
+}
+
+function setNaamLangDirect(lang) {
+  if (!App || !App.S) return;
+  if (App.S.naamLang === lang) return; // already selected
+  App.S.naamLang = lang;
+  applyNaamLangLabels(lang);
+  // Refresh the header title live if currently on Radha or RV mode
+  if (App.S.japMode === "radha" || App.S.japMode === "rv") {
+    switchJapMode(App.S.japMode);
+  }
+  App.save();
+  if (typeof fbDebouncedPush === "function") fbDebouncedPush();
+}
+
 function switchJapMode(mode) {
   App.S.japMode = mode;
   const dd = document.getElementById("naamSelDd");
@@ -1954,8 +1996,12 @@ function switchJapMode(mode) {
       optRV.classList.add("active");
       optRV.querySelector(".ns-check").textContent = "✓";
     }
-    titleEl.innerHTML =
-      '<span style="font-size:clamp(18px,5vw,28px);line-height:1.1">राधावल्लभ</span><br><span style="font-size:clamp(16px,4.5vw,24px);line-height:1.1">श्री हरिवंश</span>';
+    {
+      const _nt = naamText();
+      titleEl.innerHTML =
+        '<span style="font-size:clamp(18px,5vw,28px);line-height:1.1">' + _nt.rv1 +
+        '</span><br><span style="font-size:clamp(16px,4.5vw,24px);line-height:1.1">' + _nt.rv2 + '</span>';
+    }
     titleEl.style.textAlign = "center";
     if (hkEl) {
       hkEl.classList.remove("hk-visible");
@@ -1990,7 +2036,7 @@ function switchJapMode(mode) {
       optR.classList.add("active");
       optR.querySelector(".ns-check").textContent = "✓";
     }
-    titleEl.textContent = "राधा";
+    titleEl.textContent = naamText().radha;
     titleEl.style.textAlign = "";
     if (hkEl) {
       hkEl.classList.remove("hk-visible");
@@ -2009,12 +2055,13 @@ function switchJapMode(mode) {
   App.ua();
   uStats();
   renderMalaLog();
+  const _nt = naamText();
   const toastMap = {
-    rv: "राधावल्लभ श्री हरिवंश 🙏",
+    rv: _nt.rv1 + " " + _nt.rv2 + " 🙏",
     hk: "हरे कृष्ण महामंत्र 🪷",
-    radha: "राधा 🙏",
+    radha: _nt.radha + " 🙏",
   };
-  toast(toastMap[mode] || "राधा 🙏");
+  toast(toastMap[mode] || _nt.radha + " 🙏");
 }
 
 function escHtml(t) {

@@ -1499,6 +1499,7 @@ body.gaudiya-mode #naamOptRadha,
 body.gaudiya-mode #naamOptRV { display: none !important; }
 /* Settings: HK targets block visible only in Gaudiya mode */
 body:not(.gaudiya-mode) .hk-only-block { display: none !important; }
+body.gaudiya-mode .naam-only-block { display: none !important; }
 
 /* ── Option C: Lotus Petals — Mahamantra Stats ── */
 .hkc-wrap{
@@ -1624,6 +1625,21 @@ body.hk-bn #hkLangBtnBn{
 /* Inactive button dimmed */
 body:not(.hk-bn) #hkLangBtnBn{opacity:0.55;}
 body.hk-bn #hkLangBtnHi{opacity:0.55;}
+
+/* ── Jap Text (Radha / Radha Vallabh) script picker buttons ── */
+#naamLangBtnSa, #naamLangBtnBn{transition:all 0.3s ease;}
+body:not(.naam-bn) #naamLangBtnSa{
+  border-color:rgba(255,215,0,0.85)!important;
+  background:rgba(255,215,0,0.15)!important;
+  box-shadow:0 0 20px rgba(255,215,0,0.25),inset 0 0 12px rgba(255,215,0,0.08)!important;
+}
+body.naam-bn #naamLangBtnBn{
+  border-color:rgba(109,184,255,0.85)!important;
+  background:rgba(109,184,255,0.15)!important;
+  box-shadow:0 0 20px rgba(109,184,255,0.25),inset 0 0 12px rgba(109,184,255,0.08)!important;
+}
+body:not(.naam-bn) #naamLangBtnBn{opacity:0.55;}
+body.naam-bn #naamLangBtnSa{opacity:0.55;}
 
 /* ═══════════════════════════════════════════════
    HCJ AUDIO PLAYER

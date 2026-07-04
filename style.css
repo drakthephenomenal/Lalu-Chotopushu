@@ -421,6 +421,14 @@ button.hpb.active{
   border-bottom:3px solid var(--gold);
   box-shadow:inset 0 1px 0 rgba(255,255,255,0.10),0 0 8px rgba(255,215,0,0.22),0 1px 4px rgba(0,0,0,0.35);}
 .cc.today.hd .ccc,.cc.today.tm .ccc{color:#5a3f0a;}
+.cc.today.hd,.cc.today.tm{
+  border:2px solid #F5D17A;
+  color:#3a2a06;
+  background:linear-gradient(180deg,#FCEBB0 0%,#E9C468 45%,#C79A3E 100%);
+  box-shadow:inset 0 1px 1px rgba(255,255,255,0.85),inset 0 -2px 3px rgba(120,80,10,0.35),0 0 10px rgba(245,209,122,0.55),0 2px 6px rgba(0,0,0,0.4);}
+.cc.today.bc-m,.cc.today.bc-b{
+  border:2px solid #F5D17A;
+  box-shadow:inset 0 1px 1px rgba(255,255,255,0.85),inset 0 -2px 3px rgba(120,80,10,0.35),0 0 10px rgba(245,209,122,0.55),0 2px 6px rgba(0,0,0,0.4);}
 .ccc{font-size:8px;color:rgba(255,255,255,0.45);font-weight:700;letter-spacing:-0.2px;}
 
 /* Brahmacharya calendar cell coloring — no green for maintained; broken gets subtle red only */

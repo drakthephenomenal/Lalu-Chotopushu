@@ -5356,13 +5356,6 @@ function fbSignInEmail() {
   if (!email || !pass) { _fbEmailErr("Enter email and password"); return; }
   fbAuth.signInWithEmailAndPassword(email, pass)
     .then((cred) => {
-      const u = cred && cred.user;
-      if (u && !u.emailVerified) {
-        try { u.sendEmailVerification(); } catch (_e) {}
-        try { fbAuth.signOut(); } catch (_e) {}
-        _fbEmailErr("Please verify your email first. A new verification link has been sent to " + (u.email || email) + ".");
-        return;
-      }
       toast("Signed in! ☁️ Sync active 🙏"); _fbEmailErr("");
     })
     .catch((e) => _fbEmailErr(e.message || "Sign-in failed"));
@@ -5520,24 +5513,8 @@ function fbSignUpEmail() {
   if (pass.length < 6) { _fbEmailErr("Password must be at least 6 characters"); return; }
   fbAuth.createUserWithEmailAndPassword(email, pass)
     .then((cred) => {
-      const u = cred && cred.user;
-      const send = (u && u.sendEmailVerification)
-        ? u.sendEmailVerification()
-        : Promise.resolve();
-      return send.then(() => {
-        try { fbAuth.signOut(); } catch (_e) {}
-        _fbEmailErr("");
-        const addr = (u && u.email) ? u.email : email;
-        _fbInfoModal("📬 Verification email sent",
-          '<p style="margin:0 0 10px"><b>A verification link has been sent to:</b><br><span style="color:#ffd97a;word-break:break-all">' + addr + '</span></p>'
-          + '<ol style="margin:8px 0 10px 18px;padding:0">'
-          +   '<li>Open your inbox and tap the link to verify your email.</li>'
-          +   '<li><b>Can\'t find it?</b> Check your <b>Spam</b>, <b>Promotions</b>, or <b>Junk</b> folder.</li>'
-          +   '<li>Come back here and tap <b>Sign In</b> with the same email & password.</li>'
-          + '</ol>'
-          + '<p style="margin:10px 0 0;font-size:12.5px;opacity:.85">Once verified, future sign-ins on this or any other device will <u>not</u> need another confirmation email.</p>'
-        );
-      });
+      _fbEmailErr("");
+      toast("Account created! ☁️ Sync active 🙏");
     })
     .catch((e) => _fbEmailErr(e.message || "Sign-up failed"));
 }

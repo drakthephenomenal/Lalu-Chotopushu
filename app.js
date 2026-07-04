@@ -8394,8 +8394,8 @@ function renderCal() {
       String(d).padStart(2, "0");
     const _isG = App.S.gaudiyaMode || false;
     const cnt = _isG
-        ? App.S.historyHK[key] || 0
-        : (App.S.history[key] || 0) + (App.S.historyRV[key] || 0),
+        ? (App.S.historyHK[key] || 0) + (App.S.h28[key] || 0)
+        : (App.S.history[key] || 0) + (App.S.historyRV[key] || 0) + (App.S.h28[key] || 0),
       timeSec = _isG
         ? App.S.timerHistoryHK[key] || 0
         : (App.S.timerHistory[key] || 0) + (App.S.timerHistoryRV[key] || 0),

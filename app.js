@@ -4121,7 +4121,7 @@ function exportAllData() {
     cfg: App.S.cfg || {},
     malaLog: App.S.malaLog || [],
     malaLogDate: App.S.tk,
-    brahmacharya_start_date: App.S.brahmacharya_start_date || "",
+    brahmacharya_start_date: getBrahmaStart(),
     japMode: App.S.japMode || "radha",
     historyRV: App.S.historyRV || {},
     timerHistoryRV: App.S.timerHistoryRV || {},

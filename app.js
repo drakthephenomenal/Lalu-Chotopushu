@@ -8603,8 +8603,8 @@ function showDay(key, cnt, timeSec, time28Sec) {
   const n28Cycles = Math.floor(n28Count / 28);
   const radhaMalas = Math.floor(radhaCount / ms);
   const rvMalas = Math.floor(rvCount / ms);
-  const totalCount = radhaCount + rvCount;
-  const totalMalas = Math.floor(totalCount / ms);
+  const totalCount = radhaCount + rvCount + n28Count;
+  const totalMalas = Math.floor((radhaCount + rvCount) / ms);
   // HK / Mahamantra counts for Gaudiya mode
   const hkCount = App.S.historyHK[key] || 0;
   const hkTime = App.S.timerHistoryHK[key] || 0;

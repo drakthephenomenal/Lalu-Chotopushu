@@ -5751,7 +5751,16 @@ function fbApplyRemote(d) {
     const remoteMalaDate = d.malaLogDate || null;
     const localTodayJap = App.S.history[App.S.tk] || 0;
     if (remoteMalaDate === App.S.tk && localTodayJap > 0) {
-      App.S.malaLog = JSON.parse(JSON.stringify(remoteMalaLog));
+      // Guard against a stale/older remote snapshot (async save race) wiping
+      // out newer local mala entries and making Today's Jap Time jump backward.
+      // Only accept the remote log if it actually carries MORE total time
+      // than what's already local — otherwise keep the fuller local log.
+      const localSum = (App.S.malaLog || []).reduce((a, b) => a + b, 0);
+      const remoteSum = remoteMalaLog.reduce((a, b) => a + b, 0);
+      if (remoteSum >= localSum) {
+        App.S.malaLog = JSON.parse(JSON.stringify(remoteMalaLog));
+      }
+      // else: keep local malaLog as-is (it's more complete)
     } else {
       // Remote log is stale or no jap done today — clear it
       App.S.malaLog = [];
@@ -5794,7 +5803,11 @@ function fbApplyRemote(d) {
     const remoteMalaDate = d.malaLogDate || null;
     const localTodayRVJap = App.S.historyRV[App.S.tk] || 0;
     if (remoteMalaDate === App.S.tk && localTodayRVJap > 0) {
-      App.S.malaLogRV = JSON.parse(JSON.stringify(remoteMalaLogRV));
+      const localSum = (App.S.malaLogRV || []).reduce((a, b) => a + b, 0);
+      const remoteSum = remoteMalaLogRV.reduce((a, b) => a + b, 0);
+      if (remoteSum >= localSum) {
+        App.S.malaLogRV = JSON.parse(JSON.stringify(remoteMalaLogRV));
+      }
     } else {
       App.S.malaLogRV = [];
     }
@@ -5839,7 +5852,11 @@ function fbApplyRemote(d) {
     const remoteMalaDate2 = d.malaLogDate || null;
     const localTodayHKJap = (App.S.historyHK || {})[App.S.tk] || 0;
     if (remoteMalaDate2 === App.S.tk && localTodayHKJap > 0) {
-      App.S.malaLogHK = JSON.parse(JSON.stringify(remoteMalaLogHK));
+      const localSum = (App.S.malaLogHK || []).reduce((a, b) => a + b, 0);
+      const remoteSum = remoteMalaLogHK.reduce((a, b) => a + b, 0);
+      if (remoteSum >= localSum) {
+        App.S.malaLogHK = JSON.parse(JSON.stringify(remoteMalaLogHK));
+      }
     } else {
       App.S.malaLogHK = [];
     }

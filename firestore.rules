@@ -6,26 +6,26 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.email in [
         'drakthephenomenal@gmail.com',
         'akthephenomenal@zohomail.com',
+        'drakthephenomenal@proton.me',
         'anupkumarpaulshuvo@gmail.com'
       ];
     }
 
-    // ── USER DATA ──────────────────────────────────────────────
-    // Owner: full read/write. Developer: READ-ONLY (for Ghost Mode).
-    // Developers can NEVER write to a user's documents.
+    // User data: owner reads+writes, developer reads only (ghost mode)
     match /users/{userId}/{document=**} {
-      allow read:  if request.auth != null && (request.auth.uid == userId || isDeveloper());
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read:  if request.auth != null
+        && (request.auth.uid == userId || isDeveloper());
+      allow write: if request.auth != null
+        && request.auth.uid == userId;
     }
 
-    // ── PRESENCE (Ghost Mode user list) ────────────────────────
-    // Each signed-in user writes their own /presence/{uid} heartbeat.
-    // Only developers can list/read other users' presence docs.
-    match /presence/{userId} {
-      allow read:   if request.auth != null && (request.auth.uid == userId || isDeveloper());
-      allow list:   if isDeveloper();
-      allow create, update: if request.auth != null && request.auth.uid == userId;
-      allow delete: if request.auth != null && (request.auth.uid == userId || isDeveloper());
+    // Mala archive: one doc per day per user
+    // users/{uid}/malaArchive/{YYYY-MM-DD}
+    match /users/{userId}/malaArchive/{date} {
+      allow read:  if request.auth != null
+        && (request.auth.uid == userId || isDeveloper());
+      allow write: if request.auth != null
+        && request.auth.uid == userId;
     }
 
     match /_timesync/{doc} {
@@ -37,35 +37,30 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // ── FEEDBACKS ──────────────────────────────────────────────
     match /feedbacks/{userId} {
       allow create: if request.auth != null
         && request.auth.uid == userId
         && request.resource.data.uid == request.auth.uid;
-
-      allow read: if request.auth != null && (request.auth.uid == userId || isDeveloper());
-
+      allow read: if request.auth != null
+        && (request.auth.uid == userId || isDeveloper());
       allow update: if isDeveloper()
         || (request.auth != null
             && request.auth.uid == userId
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-                 'lastMessage','lastAt','devRead','userName','userPhone','userEmail','userRead'
-               ]));
-
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly([
+                   'lastMessage', 'lastAt', 'devRead',
+                   'userName', 'userPhone', 'userEmail',
+                   'userRead'
+                 ]));
       allow delete: if isDeveloper();
-
       match /messages/{msgId} {
-        allow read: if request.auth != null && (request.auth.uid == userId || isDeveloper());
-
-        // User sends 'user' messages in their own thread
+        allow read: if request.auth != null
+          && (request.auth.uid == userId || isDeveloper());
         allow create: if request.auth != null
           && request.auth.uid == userId
           && request.resource.data.sender == 'user';
-
-        // Developer sends 'developer' messages in any thread
         allow create: if isDeveloper()
           && request.resource.data.sender == 'developer';
-
         allow update, delete: if isDeveloper();
       }
     }

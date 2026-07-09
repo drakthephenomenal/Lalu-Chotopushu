@@ -4182,6 +4182,19 @@ function importAllData(input) {
       if (data.h28) App.S.h28 = { ...App.S.h28, ...data.h28 };
       if (data.timerHistory)
         App.S.timerHistory = { ...App.S.timerHistory, ...data.timerHistory };
+      // Restore today's per-mala breakdown (malaLog) for Radha mode too —
+      // previously only malaLogRV/malaLogHK were restored here, so importing
+      // a backup fixed the Jap Time total but left "Today's Mala Log" blank.
+      // Only apply if the backup's log is for today AND has at least as much
+      // data as what's already local, so a partial/older backup can't erase
+      // entries you've logged since it was taken.
+      if (data.malaLog && data.malaLogDate === App.S.tk) {
+        const localSum = (App.S.malaLog || []).reduce((a, b) => a + b, 0);
+        const importSum = (data.malaLog || []).reduce((a, b) => a + b, 0);
+        if (importSum >= localSum) {
+          App.S.malaLog = data.malaLog;
+        }
+      }
       if (data.timer28History)
         App.S.timer28History = {
           ...App.S.timer28History,
@@ -4212,7 +4225,11 @@ function importAllData(input) {
       if (data.ltRV !== undefined) App.S.ltRV = data.ltRV;
       if (data.nameJapDeductRV !== undefined)
         App.S.nameJapDeductRV = data.nameJapDeductRV;
-      if (data.malaLogRV) App.S.malaLogRV = data.malaLogRV;
+      if (data.malaLogRV && data.malaLogDate === App.S.tk) {
+        const localSumRV = (App.S.malaLogRV || []).reduce((a, b) => a + b, 0);
+        const importSumRV = (data.malaLogRV || []).reduce((a, b) => a + b, 0);
+        if (importSumRV >= localSumRV) App.S.malaLogRV = data.malaLogRV;
+      }
       if (data.historyHK)
         App.S.historyHK = { ...App.S.historyHK, ...data.historyHK };
       if (data.timerHistoryHK)
@@ -4223,7 +4240,11 @@ function importAllData(input) {
       if (data.dtHK !== undefined) App.S.dtHK = data.dtHK;
       if (data.nameJapDeductHK !== undefined)
         App.S.nameJapDeductHK = data.nameJapDeductHK;
-      if (data.malaLogHK) App.S.malaLogHK = data.malaLogHK;
+      if (data.malaLogHK && data.malaLogDate === App.S.tk) {
+        const localSumHK = (App.S.malaLogHK || []).reduce((a, b) => a + b, 0);
+        const importSumHK = (data.malaLogHK || []).reduce((a, b) => a + b, 0);
+        if (importSumHK >= localSumHK) App.S.malaLogHK = data.malaLogHK;
+      }
       if (data.gaudiyaMode !== undefined) App.S.gaudiyaMode = data.gaudiyaMode;
       App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history));
       App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28));
@@ -4958,8 +4979,44 @@ window.vpFirestore = {
   },
 };
 
+function fbShowAuthChecking() {
+  if (fbShowAuthChecking._done) return;
+  const loggedOutEl = document.getElementById("fbLoggedOut");
+  const loggedInEl = document.getElementById("fbLoggedIn");
+  if (!loggedOutEl || !loggedInEl) return; // DOM not ready yet — caller can retry
+  fbShowAuthChecking._done = true;
+  let cachedLabel = null;
+  try { cachedLabel = localStorage.getItem("rjap_lastAuthLabel"); } catch (_) {}
+  if (cachedLabel) {
+    // ── INSTANT LOAD: we've signed in on this device before. Render as
+    // signed-in immediately from cache instead of waiting for Firebase to
+    // confirm — no "checking…" flash. This is cosmetic only: actual data
+    // sync/load still waits for the real onAuthStateChanged confirmation
+    // below, so nothing is exposed before auth genuinely resolves. In the
+    // rare case the session actually expired, onAuthStateChanged(null)
+    // will correct the panel back to signed-out a moment later.
+    loggedOutEl.style.display = "none";
+    loggedInEl.style.display = "block";
+    const emailEl = document.getElementById("fbUserEmail");
+    if (emailEl) emailEl.textContent = cachedLabel;
+    setSyncPill("syncing", "Loading from cloud…");
+  } else {
+    loggedOutEl.style.display = "none";
+    const checkingEl = document.createElement("div");
+    checkingEl.id = "fbAuthChecking";
+    checkingEl.style.cssText =
+      "text-align:center;padding:14px 0;color:var(--td,#9fb3d9);font-size:13px;opacity:.85;";
+    checkingEl.textContent = "☁️ Checking sign-in status…";
+    loggedOutEl.parentNode.insertBefore(checkingEl, loggedOutEl);
+  }
+}
+function fbHideAuthChecking() {
+  const checkingEl = document.getElementById("fbAuthChecking");
+  if (checkingEl) checkingEl.remove();
+}
 function fbInit() {
   if (fbApp) return true;
+  fbShowAuthChecking();
   if (typeof firebase === "undefined") {
     if (!fbInit._r) fbInit._r = 0;
     if (fbInit._r++ < 10) {
@@ -5089,10 +5146,13 @@ function fbInit() {
           renderSankalpas();
           renderMalaLog();
         }
+        fbHideAuthChecking();
         document.getElementById("fbLoggedOut").style.display = "none";
         document.getElementById("fbLoggedIn").style.display = "block";
-        document.getElementById("fbUserEmail").textContent =
+        const _authLabel =
           user.phoneNumber || user.email || user.displayName || "Devotee";
+        document.getElementById("fbUserEmail").textContent = _authLabel;
+        try { localStorage.setItem("rjap_lastAuthLabel", _authLabel); } catch (_) {}
         setSyncPill("syncing", "Loading from cloud…");
         // ── ALWAYS pull from Firebase first on every login/refresh ──
         // fbMigrate() does a direct .get() (not just onSnapshot) so it is
@@ -5142,6 +5202,8 @@ function fbInit() {
           watchMyFeedback(); // All users: show developer replies + popup notification
         });
       } else {
+        fbHideAuthChecking();
+        try { localStorage.removeItem("rjap_lastAuthLabel"); } catch (_) {}
         document.getElementById("fbLoggedOut").style.display = "block";
         document.getElementById("fbLoggedIn").style.display = "none";
         // Clean up session listener on sign out
@@ -12146,6 +12208,19 @@ window._lbPeriod = 'today';
 window._lbUnsubscribe = null;
 
 /** Get the date key prefix for the current period filter */
+/** True if two YYYY-MM-DD date keys are the same day or adjacent days
+ *  (handles devotees whose device date differs from the viewer's due to
+ *  timezone/clock drift, without treating genuinely old data as "today"). */
+function _lbKeyWithinOneDay(keyA, keyB) {
+  if (!keyA || !keyB) return false;
+  if (keyA === keyB) return true;
+  const a = new Date(keyA + 'T00:00:00');
+  const b = new Date(keyB + 'T00:00:00');
+  if (isNaN(a) || isNaN(b)) return false;
+  const diffDays = Math.abs(a - b) / 86400000;
+  return diffDays <= 1;
+}
+
 function _lbGetPeriodKeys(period) {
   const now = new Date(Date.now() + (window._serverTimeOffsetMs || 0));
   const keys = [];
@@ -12310,7 +12385,22 @@ function renderLeaderboard(docs, period) {
       const tHistRV = d.timerHistoryRV || {};
       const tHistHK = d.timerHistoryHK || {};
       const tHist28 = d.timer28History || {};
-      if (period === 'today' && d.todayKey === periodKeys[0] && Number(d.todayJap || 0) > 0) {
+      // ── "Today" scoring ──────────────────────────────────────────
+      // d.todayKey is the OTHER devotee's own device date; periodKeys[0]
+      // is the VIEWER's own device date. These can legitimately differ
+      // (timezone, clock drift, a sync landing right at day-rollover)
+      // even though it's still "today" for both people in any reasonable
+      // sense. Previously an exact-string mismatch discarded the other
+      // person's correct self-reported total and fell back to indexing
+      // their raw history by the viewer's date key — which silently
+      // produced a false 0 whenever that key didn't exist for them yet.
+      // Now: trust their self-reported today total as long as it's
+      // within 1 day of the viewer's date (still "today" for someone
+      // near a boundary); only zero them out if it's genuinely stale
+      // (more than a day old — i.e., not today for anyone).
+      const _todayStale = period === 'today' &&
+        !_lbKeyWithinOneDay(d.todayKey, periodKeys[0]);
+      if (period === 'today' && !_todayStale && Number(d.todayJap || 0) > 0) {
         const bd = d.todayBreakdown || {};
         const tbd = d.todayTimeBreakdown || {};
         sr = bd.r || 0;
@@ -12321,7 +12411,7 @@ function renderLeaderboard(docs, period) {
         trv = tbd.rv || 0;
         thk = tbd.hk || 0;
         t28 = tbd.n28 || 0;
-      } else {
+      } else if (period !== 'today') {
         periodKeys.forEach(function(k) {
           sr += (hist[k] || 0);
           srv += (histRV[k] || 0);

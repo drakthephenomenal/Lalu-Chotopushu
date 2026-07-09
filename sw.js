@@ -1,5 +1,7 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v168
+// Radha Naam Jap — Service Worker  v169
+// v169: manifest.json updated — added display_override, real screenshots
+// (replaces placeholder icon-512.png screenshot entries)
 // Push notifications & FCM removed.
 //
 // v156 fixes (vs v154):
@@ -10,7 +12,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v168';
+const CACHE = 'radha-jap-v169';
 
 // Core assets — install BLOCKS on these. Anything the first paint needs
 // must live here, otherwise users see a network round-trip on first open.

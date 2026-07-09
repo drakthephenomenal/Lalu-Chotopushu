@@ -6,6 +6,7 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#060D1F",
   "theme_color": "#060D1F",
   "orientation": "portrait",
@@ -84,18 +85,60 @@
   ],
   "screenshots": [
     {
-      "src": "./icon-512.png",
-      "sizes": "512x512",
+      "src": "./screenshot-narrow-1.png",
+      "sizes": "1080x2230",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Radha Naam Jap — Daily jap counter with Brahma Muhurta timings"
+      "label": "Daily jap counter with Brahma Muhurta timings"
     },
     {
-      "src": "./icon-512.png",
-      "sizes": "512x512",
+      "src": "./screenshot-narrow-2.png",
+      "sizes": "1080x2230",
       "type": "image/png",
-      "form_factor": "wide",
-      "label": "Radha Naam Jap — Sadhana tracker and calendar"
+      "form_factor": "narrow",
+      "label": "28 Names of Radha"
+    },
+    {
+      "src": "./screenshot-narrow-3.png",
+      "sizes": "1080x2230",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Vedic Panchanga — tithi, nakshatra, yoga & karana"
+    },
+    {
+      "src": "./screenshot-narrow-4.png",
+      "sizes": "1080x2230",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Dasha and Sade Sati astrology tracking"
+    },
+    {
+      "src": "./screenshot-narrow-5.png",
+      "sizes": "1080x2230",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Milestones — 10K to 1 Crore sadhana journey"
+    },
+    {
+      "src": "./screenshot-narrow-6.png",
+      "sizes": "1080x2230",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Jap summary statistics"
+    },
+    {
+      "src": "./screenshot-narrow-7.png",
+      "sizes": "1080x2230",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Community leaderboard"
+    },
+    {
+      "src": "./screenshot-narrow-8.png",
+      "sizes": "1080x2230",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Settings — Gaudiya/ISKCON mode and customization"
     }
   ],
   "prefer_related_applications": false,

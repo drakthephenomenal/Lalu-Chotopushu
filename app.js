@@ -12208,19 +12208,6 @@ window._lbPeriod = 'today';
 window._lbUnsubscribe = null;
 
 /** Get the date key prefix for the current period filter */
-/** True if two YYYY-MM-DD date keys are the same day or adjacent days
- *  (handles devotees whose device date differs from the viewer's due to
- *  timezone/clock drift, without treating genuinely old data as "today"). */
-function _lbKeyWithinOneDay(keyA, keyB) {
-  if (!keyA || !keyB) return false;
-  if (keyA === keyB) return true;
-  const a = new Date(keyA + 'T00:00:00');
-  const b = new Date(keyB + 'T00:00:00');
-  if (isNaN(a) || isNaN(b)) return false;
-  const diffDays = Math.abs(a - b) / 86400000;
-  return diffDays <= 1;
-}
-
 function _lbGetPeriodKeys(period) {
   const now = new Date(Date.now() + (window._serverTimeOffsetMs || 0));
   const keys = [];
@@ -12385,22 +12372,7 @@ function renderLeaderboard(docs, period) {
       const tHistRV = d.timerHistoryRV || {};
       const tHistHK = d.timerHistoryHK || {};
       const tHist28 = d.timer28History || {};
-      // ── "Today" scoring ──────────────────────────────────────────
-      // d.todayKey is the OTHER devotee's own device date; periodKeys[0]
-      // is the VIEWER's own device date. These can legitimately differ
-      // (timezone, clock drift, a sync landing right at day-rollover)
-      // even though it's still "today" for both people in any reasonable
-      // sense. Previously an exact-string mismatch discarded the other
-      // person's correct self-reported total and fell back to indexing
-      // their raw history by the viewer's date key — which silently
-      // produced a false 0 whenever that key didn't exist for them yet.
-      // Now: trust their self-reported today total as long as it's
-      // within 1 day of the viewer's date (still "today" for someone
-      // near a boundary); only zero them out if it's genuinely stale
-      // (more than a day old — i.e., not today for anyone).
-      const _todayStale = period === 'today' &&
-        !_lbKeyWithinOneDay(d.todayKey, periodKeys[0]);
-      if (period === 'today' && !_todayStale && Number(d.todayJap || 0) > 0) {
+      if (period === 'today' && d.todayKey === periodKeys[0] && Number(d.todayJap || 0) > 0) {
         const bd = d.todayBreakdown || {};
         const tbd = d.todayTimeBreakdown || {};
         sr = bd.r || 0;
@@ -12411,7 +12383,7 @@ function renderLeaderboard(docs, period) {
         trv = tbd.rv || 0;
         thk = tbd.hk || 0;
         t28 = tbd.n28 || 0;
-      } else if (period !== 'today') {
+      } else {
         periodKeys.forEach(function(k) {
           sr += (hist[k] || 0);
           srv += (histRV[k] || 0);

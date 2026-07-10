@@ -4101,6 +4101,78 @@ function cm() {
 }
 
 // ── Backup / Restore ──
+
+// Shared save/share helper: works in Capacitor (native Android), PWA, and TWA.
+// On native, writes to the Documents folder via the Filesystem plugin and
+// offers a native Share sheet. On web (PWA/TWA), falls back to the original
+// Blob + <a download> approach, which works fine in real browsers.
+async function saveJsonFile(filename, jsonString) {
+  const isNative =
+    window.Capacitor &&
+    typeof window.Capacitor.isNativePlatform === "function" &&
+    window.Capacitor.isNativePlatform();
+
+  if (isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
+    try {
+      const { Filesystem, Directory, Encoding } = window.Capacitor.Plugins;
+      const writeResult = await Filesystem.writeFile({
+        path: filename,
+        data: jsonString,
+        directory: Directory.Documents,
+        encoding: Encoding.UTF8,
+      });
+      toast("Backup saved to Documents! 🙏 Jai Radhe!");
+      // Offer to share/export immediately (Drive, WhatsApp, email, etc.)
+      if (window.Capacitor.Plugins.Share) {
+        try {
+          await window.Capacitor.Plugins.Share.share({
+            title: filename,
+            text: "Radha Naam Jap backup",
+            url: writeResult.uri,
+            dialogTitle: "Save or share your backup",
+          });
+        } catch (shareErr) {
+          // Share can be cancelled by the user — not a real error, ignore.
+        }
+      }
+      return true;
+    } catch (e) {
+      console.error("Native saveJsonFile failed:", e);
+      toast("❌ Backup failed: " + (e && e.message ? e.message : e));
+      return false;
+    }
+  }
+
+  // ── Web (PWA / TWA) fallback: original Blob download approach ──
+  try {
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 1500);
+    // iOS Safari fallback — if download attribute is ignored, open in a new tab
+    setTimeout(() => {
+      if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream) {
+        try { window.open(url, "_blank"); } catch (_) {}
+      }
+    }, 50);
+    toast("Backup downloaded! 🙏 Jai Radhe!");
+    return true;
+  } catch (e) {
+    console.error("Web saveJsonFile failed:", e);
+    toast("❌ Backup failed: " + (e && e.message ? e.message : e));
+    return false;
+  }
+}
+
 function exportAllData() {
   const backup = {
     _version: 3,
@@ -4138,31 +4210,8 @@ function exportAllData() {
   };
   try {
     const json = JSON.stringify(backup, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const filename =
-      "radha-naam-jap-backup-" + App.getTk() + ".json";
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.rel = "noopener";
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-      a.remove();
-    }, 1500);
-    // iOS Safari fallback — if download attribute is ignored, open in a new tab
-    setTimeout(() => {
-      if (
-        /iPad|iPhone|iPod/.test(navigator.userAgent) &&
-        !window.MSStream
-      ) {
-        try { window.open(url, "_blank"); } catch (_) {}
-      }
-    }, 50);
-    toast("Backup downloaded! 🙏 Jai Radhe!");
+    const filename = "radha-naam-jap-backup-" + App.getTk() + ".json";
+    saveJsonFile(filename, json);
   } catch (e) {
     console.error("exportAllData failed:", e);
     toast("❌ Backup failed: " + (e && e.message ? e.message : e));
@@ -12985,24 +13034,12 @@ async function checkAutoBackup() {
       backupData[key] = localStorage.getItem(key);
     }
     
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], {type: 'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    
     const dStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
     const timeStr = now.getHours() >= 12 ? '12PM' : '12AM';
-    a.download = `RadhaNaamJap_Backup_${dStr}_${timeStr}.json`;
-    
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 1000);
-    
+    const filename = `RadhaNaamJap_Backup_${dStr}_${timeStr}.json`;
+
+    await saveJsonFile(filename, JSON.stringify(backupData, null, 2));
     localStorage.setItem('rjap_lastAutoBackup', Date.now().toString());
-    toast('Auto Backup Generated! 🙏');
   }
 }
 

@@ -5121,6 +5121,21 @@ function fbInit() {
       }
       const prevUid = App._uid;
       fbUser = user;
+      // Stage auth info for the native Background Runner (hourly sync while
+      // the app is fully closed). CapacitorKV is a separate, tiny key-value
+      // store accessible from both the WebView and the isolated background
+      // task — it has no access to this page's memory or Firestore SDK.
+      if (window.Capacitor?.Plugins?.CapacitorKV && user) {
+        try {
+          const refreshToken = user.refreshToken || "";
+          await window.Capacitor.Plugins.CapacitorKV.set({
+            key: "bgsync_uid", value: user.uid,
+          });
+          await window.Capacitor.Plugins.CapacitorKV.set({
+            key: "bgsync_refresh_token", value: refreshToken,
+          });
+        } catch (_) {}
+      }
       if (user) {
         // ── CRITICAL: if UID changed, reload data scoped to new user ──
         if (prevUid !== user.uid) {
@@ -5813,6 +5828,20 @@ async function fbPushFull() {
       .collection("data")
       .doc("main")
       .set(payload);
+    // Stage a plain-JSON copy (minus the serverTimestamp sentinel, which
+    // can't be serialized) for the native Background Runner. This is the
+    // "last known good" snapshot it will re-push if the app stays closed
+    // for a long stretch and this device never got a chance to sync.
+    if (window.Capacitor?.Plugins?.CapacitorKV) {
+      try {
+        const kvPayload = { ...payload };
+        delete kvPayload.lastSync; // FieldValue sentinel — not JSON-safe
+        await window.Capacitor.Plugins.CapacitorKV.set({
+          key: "bgsync_payload",
+          value: JSON.stringify(kvPayload),
+        });
+      } catch (_) {}
+    }
     // ── Push leaderboard entry if opted in ──
     pushLeaderboard().catch(() => {});
     App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history || {}));

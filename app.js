@@ -4890,9 +4890,15 @@ function _isNativeApp() {
 //                        intent-filter / Universal Link configured in the
 //                        Android project (see capacitor.config.json + README).
 const ZOHO_NATIVE_CONFIG = {
-  clientId: "YOUR_ZOHO_CLIENT_ID_HERE",
+  clientId: "1000.SI61HY6OEFKXFN1Z9H2KIUL69ZO2KO",
   redirectUri: "https://guru-kripahi-kevalam-108.firebaseapp.com/__/auth/handler",
   scope: "openid email profile",
+  // Cloud Function that exchanges Zoho's authorization `code` for a Firebase
+  // custom token (see /functions/index.js). Your Zoho app is a
+  // "Server-based Application" (Code flow), so a client secret is required
+  // to redeem the code — that secret must never ship inside the app, hence
+  // this small backend hop.
+  exchangeUrl: "https://us-central1-guru-kripahi-kevalam-108.cloudfunctions.net/zohoTokenExchange",
 };
 let _zohoAppUrlListenerAttached = false;
 
@@ -5597,11 +5603,24 @@ async function _zohoNativeSignIn() {
         if (code) {
           // Authorization-code flow needs a server-side token exchange
           // (Zoho requires a client secret, which must never live in the
-          // app). Point this at your own backend/Cloud Function that
-          // exchanges the code and returns a Firebase custom token, then:
-          //   const customToken = await fetch('https://YOUR_BACKEND/zoho-exchange?code=' + code)...
-          //   await fbAuth.signInWithCustomToken(customToken);
-          return reject(new Error("Received Zoho auth code but no server-side exchange is configured yet"));
+          // app). This calls the Cloud Function in /functions/index.js,
+          // which exchanges the code and returns a Firebase custom token.
+          if (!ZOHO_NATIVE_CONFIG.exchangeUrl) {
+            return reject(new Error("Zoho code exchange URL not configured (see ZOHO_NATIVE_CONFIG.exchangeUrl)"));
+          }
+          try {
+            const resp = await fetch(
+              ZOHO_NATIVE_CONFIG.exchangeUrl + "?code=" + encodeURIComponent(code)
+            );
+            const data = await resp.json();
+            if (!resp.ok || !data.customToken) {
+              throw new Error((data && data.error) || "Zoho token exchange failed");
+            }
+            await fbAuth.signInWithCustomToken(data.customToken);
+            return resolve();
+          } catch (exchangeErr) {
+            return reject(exchangeErr);
+          }
         }
         reject(new Error("Zoho redirect did not include id_token or code"));
       } catch (e) {

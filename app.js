@@ -5093,6 +5093,72 @@ function fbInit() {
         console.warn("getRedirectResult:", e.message);
       });
 
+    // ── Cloud hydration self-heal ──────────────────────────────────────
+    // The 'online' browser event only fires on a true offline→online
+    // transition. A device that stays technically "online" per the OS but
+    // can't actually complete the initial cloud pull (slow/flaky network,
+    // a request that times out, etc.) previously got stuck with
+    // App._cloudHydrated permanently false for the whole session — and
+    // fbPushFull() silently no-ops forever while that's true, with only a
+    // console.warn to show for it. This retries with backoff regardless of
+    // the 'online' event, and makes the failure/recovery visible.
+    App._hydrationRetryAttempts = 0;
+    App._hydrationRetryTimer = null;
+    App._hydrationFailureNotified = false;
+
+    window._scheduleHydrationRetry = function () {
+      if (App._cloudHydrated) return;
+      if (App._hydrationRetryTimer) return; // already scheduled
+      if (!fbUser || fbForcedSignout) return;
+      if (typeof isGhostMode === "function" && isGhostMode()) return; // never fight ghost mode
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return; // wait for 'online' instead
+
+      App._hydrationRetryAttempts++;
+      const delayMs = Math.min(120000, 5000 * Math.pow(2, App._hydrationRetryAttempts - 1));
+
+      if (!App._hydrationFailureNotified) {
+        App._hydrationFailureNotified = true;
+        setSyncPill("error", "Not synced — retrying…");
+        toast("⚠️ Could not sync with cloud yet — retrying automatically");
+      }
+
+      App._hydrationRetryTimer = setTimeout(async () => {
+        App._hydrationRetryTimer = null;
+        try {
+          await fbAutoSync();
+        } catch (e) {
+          console.warn("Hydration retry failed:", e && e.message);
+        }
+        window._markHydrationRecovered();
+        if (!App._cloudHydrated) window._scheduleHydrationRetry();
+      }, delayMs);
+    };
+
+    window._markHydrationRecovered = function () {
+      if (!App._cloudHydrated) return;
+      if (App._hydrationRetryTimer) {
+        clearTimeout(App._hydrationRetryTimer);
+        App._hydrationRetryTimer = null;
+      }
+      App._hydrationRetryAttempts = 0;
+      if (App._hydrationFailureNotified) {
+        App._hydrationFailureNotified = false;
+        toast("✅ Synced with cloud");
+      }
+    };
+
+    // Also retry whenever the app comes back to the foreground — catches
+    // cases where the device never fired a real 'online' transition.
+    document.addEventListener("visibilitychange", () => {
+      if (
+        document.visibilityState === "visible" &&
+        fbUser && !fbForcedSignout &&
+        !App._cloudHydrated
+      ) {
+        window._scheduleHydrationRetry();
+      }
+    });
+
     // ── When the device comes back online, push any local changes
     //    accumulated while offline. Firestore persistence also replays its
     //    own queued writes, but this ensures the latest in-memory state
@@ -5104,8 +5170,19 @@ function fbInit() {
         if (fbUser && !fbForcedSignout) {
           if (!App._cloudHydrated) {
             // App went offline before the initial cloud pull completed.
-            // Re-run the full sync cycle: pull from Firebase first, then push offline work.
-            fbAutoSync().catch((e) => console.warn("Online resync (full):", e && e.message));
+            // Reset backoff since network state just genuinely changed,
+            // then re-run the full sync cycle: pull first, push offline work.
+            App._hydrationRetryAttempts = 0;
+            if (App._hydrationRetryTimer) {
+              clearTimeout(App._hydrationRetryTimer);
+              App._hydrationRetryTimer = null;
+            }
+            fbAutoSync()
+              .catch((e) => console.warn("Online resync (full):", e && e.message))
+              .finally(() => {
+                window._markHydrationRecovered();
+                if (!App._cloudHydrated) window._scheduleHydrationRetry();
+              });
           } else {
             // Already hydrated — just push any offline jap accumulated since last sync.
             fbPushFull().catch((e) => console.warn("Online resync (push):", e && e.message));
@@ -5774,6 +5851,7 @@ async function fbPushFull() {
   // Prevents wiping cloud data after "Clear app data" + re-login.
   if (!App._cloudHydrated && !App._allowInitialPush) {
     console.warn("fbPushFull blocked: cloud not yet hydrated");
+    if (typeof window._scheduleHydrationRetry === "function") window._scheduleHydrationRetry();
     return;
   }
   setSyncPill("syncing", "Syncing…");
@@ -5843,7 +5921,7 @@ async function fbPushFull() {
       } catch (_) {}
     }
     // ── Push leaderboard entry if opted in ──
-    pushLeaderboard().catch(() => {});
+    pushLeaderboard().catch((e) => console.warn('pushLeaderboard (post-tap) error:', e && e.message));
     App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history || {}));
     App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28 || {}));
     App.S.syncBaselineTimer = JSON.parse(
@@ -5885,12 +5963,12 @@ function fbApplyRemote(d) {
     App.S.sankalpas = JSON.parse(JSON.stringify(d.sankalpas || []));
   if ("occasions" in d)
     App.S.occasions = JSON.parse(JSON.stringify(d.occasions || {}));
-  // Only apply malaLog from Firebase if it belongs to today AND local today has jap
+  // Only apply malaLog from Firebase if it belongs to today; if it doesn't,
+  // leave local untouched rather than clearing it.
   if ("malaLog" in d) {
     const remoteMalaLog = d.malaLog || [];
     const remoteMalaDate = d.malaLogDate || null;
-    const localTodayJap = App.S.history[App.S.tk] || 0;
-    if (remoteMalaDate === App.S.tk && localTodayJap > 0) {
+    if (remoteMalaDate === App.S.tk) {
       // Guard against a stale/older remote snapshot (async save race) wiping
       // out newer local mala entries and making Today's Jap Time jump backward.
       // Only accept the remote log if it actually carries MORE total time
@@ -5901,10 +5979,16 @@ function fbApplyRemote(d) {
         App.S.malaLog = JSON.parse(JSON.stringify(remoteMalaLog));
       }
       // else: keep local malaLog as-is (it's more complete)
-    } else {
-      // Remote log is stale or no jap done today — clear it
-      App.S.malaLog = [];
     }
+    // else: remote belongs to a different day than local's current "today"
+    // (a stale/out-of-order snapshot, or another device hasn't rolled over
+    // yet). NEVER clear local malaLog here — that was the bug: a
+    // date-mismatched snapshot arriving mid-session would wipe today's
+    // already-recorded malas from this widget while activityLog (which the
+    // "Per Mala" history table reads from) stayed intact, making the two
+    // views disagree on how many malas were done today. Clearing malaLog
+    // for a genuine new day is the midnight-rollover interval's job, not
+    // this remote-apply path.
   }
   if (d.ms) App.S.ms = d.ms;
   if (d.dt !== undefined) App.S.dt = d.dt;
@@ -5937,19 +6021,17 @@ function fbApplyRemote(d) {
     merged.sort((a, b) => a.ts - b.ts);
     App.S.activityLog = merged.slice(-2000);
   }
-  // Only apply malaLogRV from Firebase if it belongs to today AND local today has RV jap
+  // Only apply malaLogRV from Firebase if it belongs to today; never clear
+  // local on a date mismatch (see malaLog fix above for why).
   if ("malaLogRV" in d) {
     const remoteMalaLogRV = d.malaLogRV || [];
     const remoteMalaDate = d.malaLogDate || null;
-    const localTodayRVJap = App.S.historyRV[App.S.tk] || 0;
-    if (remoteMalaDate === App.S.tk && localTodayRVJap > 0) {
+    if (remoteMalaDate === App.S.tk) {
       const localSum = (App.S.malaLogRV || []).reduce((a, b) => a + b, 0);
       const remoteSum = remoteMalaLogRV.reduce((a, b) => a + b, 0);
       if (remoteSum >= localSum) {
         App.S.malaLogRV = JSON.parse(JSON.stringify(remoteMalaLogRV));
       }
-    } else {
-      App.S.malaLogRV = [];
     }
   }
   // HK fields
@@ -5987,18 +6069,17 @@ function fbApplyRemote(d) {
       ? document.body.classList.add("gaudiya-mode")
       : document.body.classList.remove("gaudiya-mode");
   }
+  // Only apply malaLogHK from Firebase if it belongs to today; never clear
+  // local on a date mismatch (see malaLog fix above for why).
   if ("malaLogHK" in d) {
     const remoteMalaLogHK = d.malaLogHK || [];
     const remoteMalaDate2 = d.malaLogDate || null;
-    const localTodayHKJap = (App.S.historyHK || {})[App.S.tk] || 0;
-    if (remoteMalaDate2 === App.S.tk && localTodayHKJap > 0) {
+    if (remoteMalaDate2 === App.S.tk) {
       const localSum = (App.S.malaLogHK || []).reduce((a, b) => a + b, 0);
       const remoteSum = remoteMalaLogHK.reduce((a, b) => a + b, 0);
       if (remoteSum >= localSum) {
         App.S.malaLogHK = JSON.parse(JSON.stringify(remoteMalaLogHK));
       }
-    } else {
-      App.S.malaLogHK = [];
     }
   }
   if (d.sadhanaStart) {
@@ -6080,9 +6161,12 @@ async function fbMigrate() {
       if (!snap || !snap.exists) {
         // Could not confirm cloud state — refuse to push so we never
         // overwrite real cloud data with empty local state.
-        // _cloudHydrated stays false — the "online" listener will retry fbAutoSync() automatically.
+        // _cloudHydrated stays false — schedule a backoff retry now (don't
+        // rely solely on the 'online' event, which may never fire if the
+        // device never truly drops offline per the OS).
         App._cloudHydrated = false;
         setSyncPill("error", "Offline — will sync when online");
+        if (typeof window._scheduleHydrationRetry === "function") window._scheduleHydrationRetry();
         return;
       }
     }
@@ -6190,6 +6274,7 @@ async function fbAutoSync() {
   // ── Always do an immediate direct pull from Firebase (no delay, no cache) ──
   // This ensures every login/refresh gets authoritative cloud data first.
   await fbMigrate();
+  if (typeof window._markHydrationRecovered === "function") window._markHydrationRecovered();
   // ── Then set up the real-time listener for subsequent changes ──
   try {
     const docRef = fbDb
@@ -9476,9 +9561,13 @@ window.addEventListener("load", async () => {
   setTimeout(checkAutoBackup, 2000);
 
   // Push leaderboard on fresh open so "Today" tab never shows stale yesterday data.
-  // Runs after cloud hydration completes (which happens inside fbInit → fbPull).
-  // A 6-second delay gives fbPull time to finish before we push.
-  setTimeout(() => {
+  // Waits for real cloud hydration to be CONFIRMED (up to 20s) instead of
+  // guessing a fixed delay — a slow network/device previously could push
+  // partial/default local state (e.g. lbOptIn still false) before the real
+  // cloud pull finished, silently deleting or corrupting the user's entry.
+  (async () => {
+    const hydrated = await _waitForCloudHydration(20000);
+    if (!hydrated) return; // never push based on unconfirmed state
     const lastLbPushDate = localStorage.getItem('rjap_lastLbPushDate') || '';
     const todayKey = App.S.tk || App.getTk();
     if (lastLbPushDate !== todayKey && typeof pushLeaderboard === 'function') {
@@ -9486,7 +9575,7 @@ window.addEventListener("load", async () => {
         localStorage.setItem('rjap_lastLbPushDate', todayKey);
       }).catch(() => {});
     }
-  }, 6000);
+  })();
 
   // Hide loading — guaranteed cleanup
   setTimeout(() => {
@@ -12602,10 +12691,32 @@ function lbSwitchPeriod(period) {
   loadLeaderboard(period);
 }
 
+/** Wait until App._cloudHydrated is confirmed true (or timeout). Replaces
+ *  blind fixed-delay guesses ("6 seconds should be enough") with an actual
+ *  check of the real hydration flag, so we never push stale/partial state. */
+function _waitForCloudHydration(maxWaitMs) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    (function check() {
+      if (App._cloudHydrated) return resolve(true);
+      if (Date.now() - start >= maxWaitMs) return resolve(false);
+      setTimeout(check, 300);
+    })();
+  });
+}
+
 /** Push current user's data to the leaderboard collection */
 async function pushLeaderboard() {
   if (!fbUser || !fbDb) return;
   if (isGhostMode()) return; // ghost mode: read-only
+  // CRITICAL: never read/write the leaderboard from a half-loaded App.S.
+  // Before the cloud pull (fbMigrate) finishes, App.S.lbOptIn/history/etc.
+  // may still hold defaults (e.g. lbOptIn:false) or a partial local cache,
+  // not the user's real data. Pushing at that point can wrongly DELETE a
+  // real opt-in entry, or overwrite it with an incomplete score. Bail out
+  // until App._cloudHydrated is confirmed true; callers that fire on a
+  // fixed timer should await _waitForCloudHydration() first (see below).
+  if (!App._cloudHydrated) return;
   if (!App.S.lbOptIn) {
     // If opted out, remove the entry
     try {

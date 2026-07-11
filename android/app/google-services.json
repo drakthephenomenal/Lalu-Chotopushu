@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "368485403238",
+    "project_id": "guru-kripahi-kevalam-108",
+    "storage_bucket": "guru-kripahi-kevalam-108.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:368485403238:android:6012edb183c21572fffba7",
+        "android_client_info": {
+          "package_name": "app.vercel.radharadharadha.capacitor"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "368485403238-lkqbkoeh06p7belp3i2ceq87lh163mbk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.vercel.radharadharadha.capacitor",
+            "certificate_hash": "bd56eca1ee1e5ac9914765cc1fc77f2e147a9f78"
+          }
+        },
+        {
+          "client_id": "368485403238-mhubbl1j1ua87t1829ovhc9v1e2nenkv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.vercel.radharadharadha.capacitor",
+            "certificate_hash": "83f93e86cdb261e54295f656326b582cbc188c98"
+          }
+        },
+        {
+          "client_id": "368485403238-i3jeru8uq0clb2dcgiu5jlrlb9lphe1j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCvskALRQ1saZKjXaT_3AP0arrIULoT7tM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "368485403238-i3jeru8uq0clb2dcgiu5jlrlb9lphe1j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

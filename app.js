@@ -31,6 +31,236 @@
   navigator.geolocation.__lcDeduped = true;
 })();
 
+/* === Native-aware GPS + vibration helpers (Capacitor APK support) ===
+   navigator.geolocation / navigator.vibrate work in a real browser (PWA)
+   but are unreliable-to-nonexistent inside the Capacitor Android WebView —
+   the OS never grants the runtime permission because nothing ever asks for
+   it through the native plugin bridge. These helpers transparently use the
+   native @capacitor/geolocation and @capacitor/haptics plugins when running
+   as the APK, and fall back to the plain web APIs everywhere else (PWA/TWA
+   browser tabs), so the rest of app.js doesn't need to know the difference. */
+function _lcIsNative() {
+  return !!(
+    window.Capacitor &&
+    typeof window.Capacitor.isNativePlatform === "function" &&
+    window.Capacitor.isNativePlatform()
+  );
+}
+
+async function lcGetPosition(options) {
+  options = options || { timeout: 10000, maximumAge: 0 };
+  if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation) {
+    const { Geolocation } = window.Capacitor.Plugins;
+    let perm;
+    try {
+      perm = await Geolocation.checkPermissions();
+    } catch (e) {
+      perm = {};
+    }
+    if (perm.location !== "granted" && perm.coarseLocation !== "granted") {
+      perm = await Geolocation.requestPermissions();
+    }
+    if (perm.location !== "granted" && perm.coarseLocation !== "granted") {
+      const err = new Error("Location permission denied");
+      err.code = 1;
+      throw err;
+    }
+    return Geolocation.getCurrentPosition({
+      enableHighAccuracy: true,
+      timeout: options.timeout || 10000,
+    });
+  }
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Geolocation not available"));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+  });
+}
+
+function lcVibrate(pattern) {
+  if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics) {
+    try {
+      const { Haptics } = window.Capacitor.Plugins;
+      const total = Array.isArray(pattern)
+        ? pattern.reduce((a, b) => a + b, 0)
+        : pattern;
+      Haptics.vibrate({ duration: Math.min(total, 5000) });
+      return;
+    } catch (e) {
+      /* fall through to web vibrate below */
+    }
+  }
+  if (navigator.vibrate) {
+    try {
+      navigator.vibrate(pattern);
+    } catch (e) {}
+  }
+}
+
+/* === Daily reminder notification (Capacitor APK + best-effort PWA) ===
+   Native: uses @capacitor/local-notifications, which schedules a real OS
+   alarm — fires even if the app/WorkManager background task isn't running.
+   Web/PWA: there is no reliable way to wake a closed browser tab at an exact
+   time without a push server, so this is best-effort only — it fires while
+   the tab (or its service worker) is alive. A server-push version (option 2
+   from earlier) can replace this later without changing the toggle UI. */
+const RJAP_REMINDER_NOTIF_ID = 9001;
+
+async function lcRequestNotifPermission() {
+  if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
+    const { LocalNotifications } = window.Capacitor.Plugins;
+    let perm = await LocalNotifications.checkPermissions();
+    if (perm.display !== "granted") perm = await LocalNotifications.requestPermissions();
+    return perm.display === "granted";
+  }
+  if ("Notification" in window) {
+    if (Notification.permission === "granted") return true;
+    if (Notification.permission === "denied") return false;
+    const res = await Notification.requestPermission();
+    return res === "granted";
+  }
+  return false;
+}
+
+async function lcScheduleDailyReminder(hour, minute) {
+  if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
+    const { LocalNotifications } = window.Capacitor.Plugins;
+    try { await LocalNotifications.cancel({ notifications: [{ id: RJAP_REMINDER_NOTIF_ID }] }); } catch (e) {}
+    await LocalNotifications.schedule({
+      notifications: [{
+        id: RJAP_REMINDER_NOTIF_ID,
+        title: "🙏 Radha Naam Jap",
+        body: "Time for your daily sadhana — chant with a peaceful heart.",
+        schedule: { on: { hour, minute }, allowWhileIdle: true },
+      }],
+    });
+    return;
+  }
+  localStorage.setItem("rjap_reminder_time", hour + ":" + minute);
+  _lcArmWebReminderTimer();
+}
+
+function lcCancelDailyReminder() {
+  if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
+    try {
+      window.Capacitor.Plugins.LocalNotifications.cancel({ notifications: [{ id: RJAP_REMINDER_NOTIF_ID }] });
+    } catch (e) {}
+  }
+  localStorage.removeItem("rjap_reminder_time");
+  localStorage.removeItem("rjap_reminder_lastFired");
+  if (window._lcReminderTimer) { clearInterval(window._lcReminderTimer); window._lcReminderTimer = null; }
+}
+
+function _lcArmWebReminderTimer() {
+  if (window._lcReminderTimer) clearInterval(window._lcReminderTimer);
+  window._lcReminderTimer = setInterval(() => {
+    const t = localStorage.getItem("rjap_reminder_time");
+    if (!t) return;
+    const parts = t.split(":");
+    const h = parseInt(parts[0], 10), m = parseInt(parts[1], 10);
+    const now = new Date();
+    const today = now.toDateString();
+    if (now.getHours() === h && now.getMinutes() === m && localStorage.getItem("rjap_reminder_lastFired") !== today) {
+      localStorage.setItem("rjap_reminder_lastFired", today);
+      if ("Notification" in window && Notification.permission === "granted") {
+        try {
+          new Notification("🙏 Radha Naam Jap", {
+            body: "Time for your daily sadhana — chant with a peaceful heart.",
+            icon: "./icon-192.png",
+          });
+        } catch (e) {}
+      }
+    }
+  }, 30000);
+}
+
+/* === Push notifications — server-triggered via Firebase Cloud Messaging ===
+   Native: @capacitor-firebase/messaging talks to FCM directly using
+   android/app/google-services.json (already in this repo).
+   Web/PWA: firebase-messaging-compat.js + a Web Push (VAPID) key from
+   Firebase Console → Project settings → Cloud Messaging → Web Push
+   certificates. Paste it into FCM_VAPID_KEY below — web push won't work
+   without it (native/APK doesn't need it).
+   Either path writes the resulting token onto the user's own Firestore doc
+   (users/{uid}/data/main.fcmToken), which the developer-only Cloud Function
+   sendBroadcastNotification (functions/index.js) reads to send pushes. */
+const FCM_VAPID_KEY = ""; // TODO: paste your Web Push certificate key here
+
+async function lcRegisterPush() {
+  if (!fbUser || !fbDb) return false; // tokens are stored per signed-in user
+  const granted = await lcRequestNotifPermission();
+  if (!granted) return false;
+
+  let token = null;
+  try {
+    if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseMessaging) {
+      const { FirebaseMessaging } = window.Capacitor.Plugins;
+      await FirebaseMessaging.requestPermissions();
+      const res = await FirebaseMessaging.getToken();
+      token = res && res.token;
+      FirebaseMessaging.addListener("notificationReceived", (event) => {
+        const n = event && event.notification;
+        if (n) toast("🔔 " + (n.title || "Notification"));
+      });
+    } else if (typeof firebase !== "undefined" && firebase.messaging && FCM_VAPID_KEY) {
+      const messaging = firebase.messaging();
+      const reg = await navigator.serviceWorker.ready;
+      token = await messaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: reg });
+      messaging.onMessage((payload) => {
+        const n = payload && payload.notification;
+        if (n) toast("🔔 " + (n.title || "Notification"));
+      });
+    }
+  } catch (e) {
+    console.error("Push registration failed:", e);
+  }
+
+  if (token) {
+    try {
+      localStorage.setItem("rjap_push_enabled", "1");
+      await fbDb.collection("users").doc(fbUser.uid).collection("data").doc("main").set(
+        { fcmToken: token, fcmTokenPlatform: _lcIsNative() ? "android" : "web", fcmTokenUpdatedAt: Date.now() },
+        { merge: true },
+      );
+    } catch (e) {
+      console.error("Saving FCM token failed:", e);
+    }
+  }
+  return !!token;
+}
+
+async function lcUnregisterPush() {
+  try { localStorage.removeItem("rjap_push_enabled"); } catch (e) {}
+  if (!fbUser || !fbDb) return;
+  try {
+    await fbDb.collection("users").doc(fbUser.uid).collection("data").doc("main").set(
+      { fcmToken: firebase.firestore.FieldValue.delete() },
+      { merge: true },
+    );
+  } catch (e) {}
+}
+
+// Developer-only: prompt for a title/body and push it to every user who has
+// Push Notifications enabled, via the sendBroadcastNotification Cloud
+// Function (server-side checks the same developer email list).
+window.sendDevBroadcast = async function () {
+  if (!isDeveloper()) return;
+  const title = prompt("Notification title:", "🙏 Radha Naam Jap");
+  if (title === null || !title.trim()) return;
+  const body = prompt("Notification message:");
+  if (body === null || !body.trim()) return;
+  try {
+    const callable = firebase.app().functions().httpsCallable("sendBroadcastNotification");
+    const res = await callable({ title: title.trim(), body: body.trim() });
+    toast("📣 Sent to " + ((res.data && res.data.sent) || 0) + " device(s)");
+  } catch (e) {
+    console.error("Broadcast failed:", e);
+    toast("⚠️ Broadcast failed — check console");
+  }
+};
+
 // ═══════════════════════════════════════
 // Radha Naam Jap — app.js
 // ═══════════════════════════════════════
@@ -525,9 +755,9 @@ const App = {
   // 10ms on every tap; triple long pulse (200-80-200-80-300ms) synced with mala complete
   vib(pat) {
     if (!this.S.cfg.vib) return;
-    if (navigator.vibrate) {
+    if (navigator.vibrate || _lcIsNative()) {
       try {
-        navigator.vibrate(pat);
+        lcVibrate(pat);
         return;
       } catch (e) {}
     }
@@ -2334,13 +2564,13 @@ function tgs(k) {
     const isCurrentlyOn = tgGps && tgGps.classList.contains("on");
     if (!isCurrentlyOn) {
       // User is turning ON — request location now
-      if (!navigator.geolocation) {
+      if (!_lcIsNative() && !navigator.geolocation) {
         toast("⚠️ GPS not available on this device");
         return;
       }
       const statusEl = document.getElementById("gpsLocationStatus");
       if (statusEl) statusEl.textContent = "📍 Detecting your location…";
-      navigator.geolocation.getCurrentPosition(
+      lcGetPosition({ timeout: 10000, maximumAge: 0 }).then(
         (pos) => {
           const lat = pos.coords.latitude, lng = pos.coords.longitude;
           window._appLat = lat; window._appLng = lng; // share with Vedic Panchanga engine
@@ -2360,10 +2590,9 @@ function tgs(k) {
           if (typeof renderCal === "function") renderCal();
         },
         () => {
-          if (statusEl) statusEl.textContent = "⚠️ Location access denied. Please allow GPS in browser settings.";
+          if (statusEl) statusEl.textContent = "⚠️ Location access denied. Please allow GPS in phone Settings → Apps → Radha Naam Jap → Permissions.";
           toast("⚠️ Could not get location. Please allow GPS access.");
         },
-        { timeout: 10000, maximumAge: 0 },
       );
     } else {
       // Turning OFF — clear saved location and reset everything that depended on GPS
@@ -2383,6 +2612,68 @@ function tgs(k) {
       });
       if (typeof renderCal === "function") renderCal();
       toast("📍 GPS location disabled — times reset to default");
+    }
+    return;
+  }
+
+  if (k === "dailyReminder") {
+    const tgRem = document.getElementById("tgDailyReminder");
+    const isOn = tgRem && tgRem.classList.contains("on");
+    const statusEl = document.getElementById("dailyReminderStatus");
+    const timeInput = document.getElementById("reminderTimeInput");
+    if (!isOn) {
+      lcRequestNotifPermission().then((granted) => {
+        if (!granted) {
+          toast("⚠️ Notification permission denied");
+          if (statusEl) statusEl.textContent = "⚠️ Notifications blocked — enable in phone Settings → Apps → Radha Naam Jap → Notifications.";
+          return;
+        }
+        const val = (timeInput && timeInput.value) || "05:00";
+        const [h, m] = val.split(":").map(Number);
+        lcScheduleDailyReminder(h, m).then(() => {
+          try {
+            localStorage.setItem("rjap_reminder_enabled", "1");
+            localStorage.setItem("rjap_reminder_time", h + ":" + m);
+          } catch (e) {}
+          if (tgRem) tgRem.classList.add("on");
+          if (statusEl) statusEl.textContent = "✅ Daily reminder set for " + val;
+          toast("🔔 Daily reminder set for " + val);
+        });
+      });
+    } else {
+      lcCancelDailyReminder();
+      try { localStorage.removeItem("rjap_reminder_enabled"); } catch (e) {}
+      if (tgRem) tgRem.classList.remove("on");
+      if (statusEl) statusEl.textContent = "— Tap toggle to enable your daily jap reminder 🔔";
+      toast("🔕 Daily reminder turned off");
+    }
+    return;
+  }
+
+  if (k === "pushNotifications") {
+    const tgPush = document.getElementById("tgPushNotifications");
+    const isOn = tgPush && tgPush.classList.contains("on");
+    const statusEl = document.getElementById("pushNotificationsStatus");
+    if (!isOn) {
+      if (!fbUser) {
+        toast("⚠️ Sign in first to enable push notifications");
+        return;
+      }
+      lcRegisterPush().then((ok) => {
+        if (ok) {
+          if (tgPush) tgPush.classList.add("on");
+          if (statusEl) statusEl.textContent = "✅ Push notifications enabled";
+          toast("🔔 Push notifications enabled");
+        } else {
+          if (statusEl) statusEl.textContent = "⚠️ Could not enable — check notification permission.";
+          toast("⚠️ Could not enable push notifications");
+        }
+      });
+    } else {
+      lcUnregisterPush();
+      if (tgPush) tgPush.classList.remove("on");
+      if (statusEl) statusEl.textContent = "— Tap to receive announcements from Radha Naam Jap 🔔 (requires sign-in)";
+      toast("🔕 Push notifications turned off");
     }
     return;
   }
@@ -4367,9 +4658,9 @@ function spawnDivineCelebration() {
   }
 
   // Sacred vibration pattern for milestone (only if vibration enabled)
-  if ((window.App && window.App.S && window.App.S.cfg && window.App.S.cfg.vib) && navigator.vibrate) {
+  if (window.App && window.App.S && window.App.S.cfg && window.App.S.cfg.vib) {
     try {
-      navigator.vibrate([100, 50, 100, 50, 200, 100, 300]);
+      lcVibrate([100, 50, 100, 50, 200, 100, 300]);
     } catch (e) {}
   }
 }
@@ -5246,6 +5537,22 @@ function fbInit() {
             key: "bgsync_refresh_token", value: refreshToken,
           });
         } catch (_) {}
+      }
+      // Re-register push (refresh the FCM token) if the user previously
+      // opted in — no permission re-prompt since it was already granted.
+      if (user) {
+        let pushOn = false;
+        try { pushOn = localStorage.getItem("rjap_push_enabled") === "1"; } catch (_) {}
+        const tgPushEl = document.getElementById("tgPushNotifications");
+        const pushStatusEl = document.getElementById("pushNotificationsStatus");
+        if (pushOn) {
+          lcRegisterPush().then((ok) => {
+            if (ok) {
+              if (tgPushEl) tgPushEl.classList.add("on");
+              if (pushStatusEl) pushStatusEl.textContent = "✅ Push notifications enabled";
+            }
+          });
+        }
       }
       if (user) {
         // ── CRITICAL: if UID changed, reload data scoped to new user ──
@@ -7007,7 +7314,7 @@ function cycleDone28() {
   } else {
     toast("🌸 Cycle complete! राधे राधे 🙏");
   }
-  if ((window.App && window.App.S && window.App.S.cfg && window.App.S.cfg.vib) && navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 200]);
+  if (window.App && window.App.S && window.App.S.cfg && window.App.S.cfg.vib) lcVibrate([80, 40, 80, 40, 200]);
 }
 
 // ── Sankalp ──
@@ -9687,6 +9994,40 @@ window.addEventListener("load", async () => {
         : (gpsOn ? "📍 GPS enabled — tap toggle to refresh location" : "— Tap toggle to detect your location 📍");
     }
     // Do NOT auto-request geolocation on app load — only when the user taps the GPS toggle.
+  }
+
+  // Daily Reminder toggle — restore on load. Re-arms the native/web schedule
+  // without re-prompting for notification permission (already granted).
+  const tgRemInit = document.getElementById("tgDailyReminder");
+  if (tgRemInit) {
+    let remOn = false, remTime = "05:00";
+    try {
+      remOn = localStorage.getItem("rjap_reminder_enabled") === "1";
+      remTime = localStorage.getItem("rjap_reminder_time") || "05:00";
+    } catch (e) {}
+    const timeInputInit = document.getElementById("reminderTimeInput");
+    if (timeInputInit) timeInputInit.value = remTime;
+    const remStatusEl = document.getElementById("dailyReminderStatus");
+    if (remOn) {
+      tgRemInit.classList.add("on");
+      if (remStatusEl) remStatusEl.textContent = "✅ Daily reminder set for " + remTime;
+      const [rh, rm] = remTime.split(":").map(Number);
+      lcScheduleDailyReminder(rh, rm).catch(() => {});
+    } else if (remStatusEl) {
+      remStatusEl.textContent = "— Tap toggle to enable your daily jap reminder 🔔";
+    }
+    if (timeInputInit) {
+      timeInputInit.addEventListener("change", () => {
+        if (!tgRemInit.classList.contains("on")) return;
+        const val = timeInputInit.value || "05:00";
+        const [h, m] = val.split(":").map(Number);
+        lcScheduleDailyReminder(h, m).then(() => {
+          try { localStorage.setItem("rjap_reminder_time", h + ":" + m); } catch (e) {}
+          if (remStatusEl) remStatusEl.textContent = "✅ Daily reminder set for " + val;
+          toast("🔔 Reminder time updated to " + val);
+        });
+      });
+    }
   }
 
   // Live previews for stats inputs

@@ -1,8 +1,11 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v169
+// Radha Naam Jap — Service Worker  v171
+// v171: re-added FCM background push handling (web/PWA) via
+// firebase-messaging-compat, using the same firebaseConfig as app.js.
+// Native (APK) push does NOT go through this file — that's handled by
+// @capacitor-firebase/messaging directly.
 // v169: manifest.json updated — added display_override, real screenshots
 // (replaces placeholder icon-512.png screenshot entries)
-// Push notifications & FCM removed.
 //
 // v156 fixes (vs v154):
 //  • Promoted ./vedic-panchanga/panchanga.html, .css, .js to CORE_ASSETS so
@@ -12,7 +15,35 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v170';
+const CACHE = 'radha-jap-v171';
+
+// ── FCM background push (web/PWA only — no effect inside the Capacitor
+// APK, which never registers this SW for messaging). Wrapped in try/catch
+// because importScripts throws on browsers with no network at SW-install
+// time; background push just won't be available there, nothing else breaks. ──
+try {
+  importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+  importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
+  firebase.initializeApp({
+    apiKey: "AIzaSyCvvXEdsJjXpTbITE2HuyYFnPZfZIkxVWA",
+    authDomain: "guru-kripahi-kevalam-108.firebaseapp.com",
+    projectId: "guru-kripahi-kevalam-108",
+    storageBucket: "guru-kripahi-kevalam-108.firebasestorage.app",
+    messagingSenderId: "368485403238",
+    appId: "1:368485403238:web:a3ab5c1427ad0c40fffba7",
+  });
+  const messaging = firebase.messaging();
+  messaging.onBackgroundMessage((payload) => {
+    const n = payload.notification || {};
+    self.registration.showNotification(n.title || "Radha Naam Jap", {
+      body: n.body || "",
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+    });
+  });
+} catch (e) {
+  console.warn('FCM background messaging not available in this SW context:', e);
+}
 
 // Core assets — install BLOCKS on these. Anything the first paint needs
 // must live here, otherwise users see a network round-trip on first open.

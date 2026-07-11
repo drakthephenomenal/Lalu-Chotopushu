@@ -4114,12 +4114,17 @@ async function saveJsonFile(filename, jsonString) {
 
   if (isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
     try {
-      const { Filesystem, Directory, Encoding } = window.Capacitor.Plugins;
+      const { Filesystem } = window.Capacitor.Plugins;
+      // Directory/Encoding are plain enums from @capacitor/filesystem, not
+      // registered plugins, so they aren't on window.Capacitor.Plugins.
+      // Hardcode the string values instead. Using Cache (not Documents) —
+      // it needs no storage permission on Android 10+, and the Share sheet
+      // right below lets the user save it wherever they actually want.
       const writeResult = await Filesystem.writeFile({
         path: filename,
         data: jsonString,
-        directory: Directory.Documents,
-        encoding: Encoding.UTF8,
+        directory: "CACHE",
+        encoding: "utf8",
       });
       toast("Backup saved to Documents! 🙏 Jai Radhe!");
       // Offer to share/export immediately (Drive, WhatsApp, email, etc.)

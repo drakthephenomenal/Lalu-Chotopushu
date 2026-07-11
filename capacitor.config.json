@@ -1,0 +1,19 @@
+{
+  "appId": "app.vercel.radharadharadha.capacitor",
+  "appName": "Radha Naam Jap",
+  "webDir": ".",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": false,
+      "providers": ["google.com"]
+    }
+  },
+  "_comments": {
+    "appId": "REPLACE if you want a different package name. NOTE: your repo already has a TWA build under package 'app.vercel.radharadharadha.twa' (see .well-known/assetlinks.json) — that TWA is a real Chrome context so Google/Zoho sign-in already works there. Use a DIFFERENT appId for this Capacitor build unless you intend to fully replace the TWA (in which case the signing key must match or Play Store will reject updates).",
+    "webDir": "Points at this repository root since index.html lives here with no build step. If you later add a bundler, change this to the build output folder."
+  }
+}

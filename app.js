@@ -4873,6 +4873,29 @@ let fbDeviceId = (function () {
 
 let fbSessionListener = null;
 
+// ── Native app detection (shared by sign-in + export/share) ──
+function _isNativeApp() {
+  return !!(
+    window.Capacitor &&
+    typeof window.Capacitor.isNativePlatform === "function" &&
+    window.Capacitor.isNativePlatform()
+  );
+}
+
+// ── Native Zoho OAuth config ──
+// Fill these in from your Zoho API Console (https://api-console.zoho.com):
+//   ZOHO_CLIENT_ID    → the Client ID of your "Server-based Applications" client
+//   ZOHO_REDIRECT_URI → must be registered EXACTLY in Zoho's console as an
+//                        authorized redirect URI, AND must match the
+//                        intent-filter / Universal Link configured in the
+//                        Android project (see capacitor.config.json + README).
+const ZOHO_NATIVE_CONFIG = {
+  clientId: "YOUR_ZOHO_CLIENT_ID_HERE",
+  redirectUri: "https://guru-kripahi-kevalam-108.firebaseapp.com/__/auth/handler",
+  scope: "openid email profile",
+};
+let _zohoAppUrlListenerAttached = false;
+
 // ── Single-device session enforcement ──
 async function fbClaimSession() {
   if (!fbUser || !fbDb) return;
@@ -5449,11 +5472,38 @@ function fbInit() {
 }
 
 // ── Single "Sign in with Google" button ──
-function fbSignInGoogle() {
+async function fbSignInGoogle() {
   if (!fbInit()) {
     toast("Firebase not ready. Check your connection.");
     return;
   }
+
+  // ── Native (Capacitor/Android): use the native Google Sign-In plugin ──
+  // signInWithPopup/signInWithRedirect never work inside a Capacitor WebView
+  // (Google blocks OAuth from embedded webviews), so on native we go through
+  // @capacitor-firebase/authentication instead, then hand the resulting
+  // credential to the Firebase Web SDK so fbAuth/fbDb see a signed-in user.
+  if (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+    try {
+      const { FirebaseAuthentication } = window.Capacitor.Plugins;
+      const result = await FirebaseAuthentication.signInWithGoogle();
+      const idToken = result && result.credential && result.credential.idToken;
+      const accessToken = result && result.credential && result.credential.accessToken;
+      if (!idToken) throw new Error("No ID token returned from native Google Sign-In");
+      const credential = firebase.auth.GoogleAuthProvider.credential(idToken, accessToken);
+      await fbAuth.signInWithCredential(credential);
+      toast("Signed in with Google! ☁️ Sync active 🙏");
+    } catch (e) {
+      console.error("Native Google sign-in failed:", e);
+      const el = document.getElementById("fbErr");
+      if (el) {
+        el.textContent = "Google sign-in failed: " + (e && e.message ? e.message : e);
+        setTimeout(() => (el.textContent = ""), 8000);
+      }
+    }
+    return;
+  }
+
   const provider = new firebase.auth.GoogleAuthProvider();
   // Try popup first; if it fails (in-app browsers, storage-partitioned envs), fall back to redirect
   fbAuth
@@ -5499,11 +5549,105 @@ function fbSignInGoogle() {
 }
 
 // ── Sign in with Zoho (OIDC provider) ──
-function fbSignInZoho() {
+// Native flow: open Zoho's login in the system browser (Chrome Custom Tabs),
+// then catch the redirect back into the app via a deep link and finish the
+// sign-in with the returned id_token. Requires:
+//   1. ZOHO_NATIVE_CONFIG.clientId filled in (from api-console.zoho.com)
+//   2. That same redirect URI registered in Zoho's console
+//   3. The Android app configured to open on that redirect URI (see README)
+async function _zohoNativeSignIn() {
+  const { Browser, App } = window.Capacitor.Plugins;
+  if (!Browser || !App) {
+    throw new Error("Browser/App Capacitor plugins not installed");
+  }
+  if (!ZOHO_NATIVE_CONFIG.clientId || ZOHO_NATIVE_CONFIG.clientId === "YOUR_ZOHO_CLIENT_ID_HERE") {
+    throw new Error("Zoho client ID not configured (see ZOHO_NATIVE_CONFIG in app.js)");
+  }
+
+  const authUrl =
+    "https://accounts.zoho.com/oauth/v2/auth" +
+    "?response_type=code" +
+    "&client_id=" + encodeURIComponent(ZOHO_NATIVE_CONFIG.clientId) +
+    "&scope=" + encodeURIComponent(ZOHO_NATIVE_CONFIG.scope) +
+    "&redirect_uri=" + encodeURIComponent(ZOHO_NATIVE_CONFIG.redirectUri) +
+    "&access_type=offline" +
+    "&prompt=consent";
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+
+    const finish = async (callbackUrl) => {
+      if (settled) return;
+      settled = true;
+      try {
+        await Browser.close();
+      } catch (_e) {}
+      try {
+        const parsed = new URL(callbackUrl.replace("#", "?").replace(/^.*?:\/\//, "https://dummy/"));
+        const idToken = parsed.searchParams.get("id_token");
+        const code = parsed.searchParams.get("code");
+        const error = parsed.searchParams.get("error");
+        if (error) return reject(new Error("Zoho returned error: " + error));
+        if (idToken) {
+          const provider = new firebase.auth.OAuthProvider("oidc.zoho");
+          const credential = provider.credential({ idToken });
+          await fbAuth.signInWithCredential(credential);
+          return resolve();
+        }
+        if (code) {
+          // Authorization-code flow needs a server-side token exchange
+          // (Zoho requires a client secret, which must never live in the
+          // app). Point this at your own backend/Cloud Function that
+          // exchanges the code and returns a Firebase custom token, then:
+          //   const customToken = await fetch('https://YOUR_BACKEND/zoho-exchange?code=' + code)...
+          //   await fbAuth.signInWithCustomToken(customToken);
+          return reject(new Error("Received Zoho auth code but no server-side exchange is configured yet"));
+        }
+        reject(new Error("Zoho redirect did not include id_token or code"));
+      } catch (e) {
+        reject(e);
+      }
+    };
+
+    App.addListener("appUrlOpen", (data) => {
+      if (data && data.url && data.url.indexOf(ZOHO_NATIVE_CONFIG.redirectUri.split("//")[1]) !== -1) {
+        finish(data.url);
+      }
+    });
+
+    Browser.open({ url: authUrl }).catch(reject);
+
+    // Also handle the case where the browser is dismissed without a redirect
+    Browser.addListener("browserFinished", () => {
+      if (!settled) {
+        settled = true;
+        reject(new Error("Sign-in cancelled"));
+      }
+    });
+  });
+}
+
+async function fbSignInZoho() {
   if (!fbInit()) {
     toast("Firebase not ready. Check your connection.");
     return;
   }
+
+  if (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser && window.Capacitor.Plugins.App) {
+    try {
+      await _zohoNativeSignIn();
+      toast("Signed in with Zoho! ☁️ Cloud sync active 🙏");
+    } catch (e) {
+      console.error("Native Zoho sign-in failed:", e);
+      const el = document.getElementById("fbErr");
+      if (el) {
+        el.textContent = "Zoho sign-in failed: " + (e && e.message ? e.message : e);
+        setTimeout(() => (el.textContent = ""), 8000);
+      }
+    }
+    return;
+  }
+
   const provider = new firebase.auth.OAuthProvider("oidc.zoho");
 
   fbAuth

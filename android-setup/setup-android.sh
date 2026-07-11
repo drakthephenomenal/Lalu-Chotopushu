@@ -51,6 +51,33 @@ else:
         print("  Added Zoho redirect intent-filter to MainActivity.")
 PYEOF
 
+echo "== 4b/6 Ensuring GPS + vibration permissions are in AndroidManifest.xml =="
+python3 - "$MANIFEST" << 'PYEOF'
+import sys
+path = sys.argv[1]
+with open(path) as f:
+    xml = f.read()
+
+needed = [
+    '<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />',
+    '<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />',
+    '<uses-permission android:name="android.permission.VIBRATE" />',
+]
+added = False
+for perm in needed:
+    name = perm.split('"')[1]
+    if name in xml:
+        continue
+    xml = xml.replace('<application', perm + '\n\n    <application', 1)
+    added = True
+    print(f"  Added {name}")
+if added:
+    with open(path, 'w') as f:
+        f.write(xml)
+else:
+    print("  All GPS/vibrate permissions already present (plugin manifest merge did it), skipping.")
+PYEOF
+
 echo "== 5/6 Adding the Google Services Gradle plugin (required for Firebase) =="
 if grep -q "com.google.gms:google-services" "$PROJECT_GRADLE"; then
   echo "  Classpath already present in $PROJECT_GRADLE, skipping."

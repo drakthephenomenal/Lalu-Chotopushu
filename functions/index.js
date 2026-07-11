@@ -84,3 +84,65 @@ exports.zohoTokenExchange = functions.https.onRequest(async (req, res) => {
     return res.status(500).json({ error: "Internal error", details: String(e) });
   }
 });
+
+// Same developer allow-list as firestore.rules' isDeveloper() — keep both
+// in sync manually, Cloud Functions can't read the rules file at runtime.
+const DEV_EMAILS = [
+  "drakthephenomenal@gmail.com",
+  "akthephenomenal@zohomail.com",
+  "drakthephenomenal@proton.me",
+  "anupkumarpaulshuvo@gmail.com",
+];
+
+// Called by app.js (window.sendDevBroadcast, in the Developer Settings
+// panel). Reads every user's stored fcmToken (written by lcRegisterPush()
+// in app.js, at users/{uid}/data/main.fcmToken) and pushes the same
+// notification to all of them via FCM. Any tokens FCM reports as
+// unregistered/invalid are cleaned up so future broadcasts don't keep
+// retrying them.
+exports.sendBroadcastNotification = functions.https.onCall(async (data, context) => {
+  const email = (context.auth && context.auth.token && context.auth.token.email || "").toLowerCase();
+  if (!context.auth || !DEV_EMAILS.map((e) => e.toLowerCase()).includes(email)) {
+    throw new functions.https.HttpsError("permission-denied", "Developer access only.");
+  }
+
+  const title = (data && data.title || "").trim();
+  const body = (data && data.body || "").trim();
+  if (!title || !body) {
+    throw new functions.https.HttpsError("invalid-argument", "title and body are required.");
+  }
+
+  // users/{uid}/data/main — collectionGroup query across every user's
+  // "data" subcollection, filtered down to just the "main" doc.
+  const snap = await admin.firestore().collectionGroup("data").get();
+  const tokens = [];
+  const docRefs = [];
+  snap.forEach((doc) => {
+    if (doc.id !== "main") return;
+    const t = doc.get("fcmToken");
+    if (t) { tokens.push(t); docRefs.push(doc.ref); }
+  });
+
+  if (tokens.length === 0) {
+    return { sent: 0, failed: 0 };
+  }
+
+  const res = await admin.messaging().sendEachForMulticast({
+    tokens,
+    notification: { title, body },
+  });
+
+  // Prune tokens FCM says are dead so they don't accumulate forever.
+  const cleanup = [];
+  res.responses.forEach((r, i) => {
+    if (!r.success && r.error && (
+      r.error.code === "messaging/registration-token-not-registered" ||
+      r.error.code === "messaging/invalid-registration-token"
+    )) {
+      cleanup.push(docRefs[i].set({ fcmToken: admin.firestore.FieldValue.delete() }, { merge: true }));
+    }
+  });
+  if (cleanup.length) await Promise.all(cleanup);
+
+  return { sent: res.successCount, failed: res.failureCount };
+});

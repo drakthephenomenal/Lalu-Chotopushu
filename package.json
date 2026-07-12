@@ -7,7 +7,8 @@
     "www": "bash setup-www.sh",
     "sync": "bash setup-www.sh && npx cap sync android",
     "open:android": "npx cap open android",
-    "build:apk": "bash setup-www.sh && npx cap sync android && cd android && ./gradlew assembleDebug",
+    "build:apk": "bash build-android.sh",
+    "build:apk:keep": "bash build-android.sh --keep",
     "build:apk:release": "bash setup-www.sh && npx cap sync android && cd android && ./gradlew assembleRelease"
   },
   "dependencies": {

@@ -2589,9 +2589,10 @@ function tgs(k) {
           toast("📍 GPS location saved! Brahma Muhurta times updated 🙏");
           if (typeof renderCal === "function") renderCal();
         },
-        () => {
-          if (statusEl) statusEl.textContent = "⚠️ Location access denied. Please allow GPS in phone Settings → Apps → Radha Naam Jap → Permissions.";
-          toast("⚠️ Could not get location. Please allow GPS access.");
+        (err) => {
+          console.error("GPS error:", err);
+          if (statusEl) statusEl.textContent = "⚠️ GPS error: " + (err && err.message ? err.message : JSON.stringify(err));
+          toast("⚠️ GPS error - check console");
         },
       );
     } else {

@@ -1,4 +1,11 @@
 {
+  "redirects": [
+    {
+      "source": "/download",
+      "destination": "https://github.com/drakthephenomenal/Lalu-Chotopushu/releases/latest",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

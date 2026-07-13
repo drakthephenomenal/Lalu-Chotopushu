@@ -2065,12 +2065,13 @@ setInterval(() => {
 // link. Always use these fixed URLs instead, in both native and web
 // contexts, so Share always produces something the recipient can open.
 const RJAP_PWA_URL = "https://radharadharadha.vercel.app/";
-// Direct download link for the installable Android APK. Point this at a
-// GitHub Release asset (Releases → Draft a new release → attach the built
-// app-release.apk / app-debug.apk as a binary asset → publish → copy the
-// asset's download URL here). Update this constant every time you publish
-// a new release so the shared link always serves the latest build.
-const RJAP_APK_URL = "https://github.com/drakthephenomenal/Lalu-Chotopushu/releases/latest";
+// Direct download link for the installable Android APK. This goes through
+// a branded redirect (see vercel.json → "/download") that forwards to the
+// GitHub Release's latest asset, so the shared link shows your own domain
+// instead of a raw github.com/.../releases/latest URL. Update the GitHub
+// side of that redirect in vercel.json if the repo/release path ever
+// changes — this constant itself shouldn't need to change.
+const RJAP_APK_URL = "https://radharadharadha.vercel.app/download";
 
 function _getAppUrl() {
   return RJAP_PWA_URL;

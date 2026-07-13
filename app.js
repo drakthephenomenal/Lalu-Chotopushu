@@ -2266,6 +2266,7 @@ function initJapModeUI() {
   if (tgG)
     App.S.gaudiyaMode ? tgG.classList.add("on") : tgG.classList.remove("on");
   if (App.S.gaudiyaMode) document.body.classList.add("gaudiya-mode");
+  if (typeof applyBgPhotos === "function") applyBgPhotos();
   // Init Horizon Mode toggle state
   // Init HK language toggle state
   const tgH = document.getElementById("tgHkLang");
@@ -13670,7 +13671,7 @@ const PHOTO_CONFIG = {
   // Top Gaudiya/ISKCON deity (Sri Chaitanya Mahaprabhu by default) — same slot
   // Radha Vallabh occupies in default mode. Built-in choices live in
   // /iskcon_chaitanya/1.jpg, etc. — drop numbered images there to add more.
-  cm:     { id: 'bgCM',           stateKey: 'bgCM',           folder: 'iskcon_chaitanya',    maxNum: 9, fallback: 'sri-chaitanya-mahaprabhu.png' },
+  cm:     { id: 'bgCM',           stateKey: 'bgCM',           folder: 'iskcon_chaitanya',    maxNum: 9, fallback: 'iskcon_chaitanya/1.png' },
   // Gaudiya/ISKCON Acharya (left) & Gurudev (right) — Jap screen images shown
   // just below Chaitanya Mahaprabhu, only while Gaudiya/ISKCON mode is on
   // (see applyBgPhotos below). Built-in choices live in /iskcon_acharya/1.jpg,

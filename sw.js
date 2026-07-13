@@ -1,5 +1,8 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v171
+// Radha Naam Jap — Service Worker  v172
+// v172: bumped cache to force-invalidate stale app.js/index.html/style.css
+// after adding Gaudiya/ISKCON top-deity + Acharya/Gurudev jap-display photos
+// and fixing the app-boot sequence to call applyBgPhotos() on load.
 // v171: re-added FCM background push handling (web/PWA) via
 // firebase-messaging-compat, using the same firebaseConfig as app.js.
 // Native (APK) push does NOT go through this file — that's handled by
@@ -15,7 +18,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v171';
+const CACHE = 'radha-jap-v172';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

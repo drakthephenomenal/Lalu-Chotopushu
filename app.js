@@ -108,11 +108,33 @@ function lcVibrate(pattern) {
    from earlier) can replace this later without changing the toggle UI. */
 const RJAP_REMINDER_NOTIF_ID = 9001;
 
+// Android notification channel used by every reminder below (custom/BM/SK).
+// Gives reminders a proper tone + vibration instead of a silent/default ping.
+// To ship a fully custom tone: drop a .wav/.mp3 into
+// android/app/src/main/res/raw/ (e.g. reminder_tone.wav) and set
+// sound: "reminder_tone" below (no extension, no "raw/" prefix). Left unset
+// for now, so Android uses its default notification sound + this channel's
+// vibration pattern.
+async function lcSetupNotifChannel() {
+  if (!(_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications)) return;
+  try {
+    await window.Capacitor.Plugins.LocalNotifications.createChannel({
+      id: "rjap_reminders",
+      name: "Jap Reminders",
+      description: "Brahma Muhurta, Sandhya Kal & custom daily jap reminders",
+      importance: 5,
+      visibility: 1,
+      vibration: true,
+    });
+  } catch (e) {}
+}
+
 async function lcRequestNotifPermission() {
   if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
     const { LocalNotifications } = window.Capacitor.Plugins;
     let perm = await LocalNotifications.checkPermissions();
     if (perm.display !== "granted") perm = await LocalNotifications.requestPermissions();
+    if (perm.display === "granted") await lcSetupNotifChannel();
     return perm.display === "granted";
   }
   if ("Notification" in window) {
@@ -134,6 +156,7 @@ async function lcScheduleDailyReminder(hour, minute) {
         title: "🙏 Radha Naam Jap",
         body: "Time for your daily sadhana — chant with a peaceful heart.",
         schedule: { on: { hour, minute }, allowWhileIdle: true },
+        channelId: "rjap_reminders",
       }],
     });
     return;
@@ -152,6 +175,87 @@ function lcCancelDailyReminder() {
   localStorage.removeItem("rjap_reminder_lastFired");
   if (window._lcReminderTimer) { clearInterval(window._lcReminderTimer); window._lcReminderTimer = null; }
 }
+
+// ── Brahma Muhurta / Sandhya Kal reminders (5 min before start) ──
+// Uses the same sun-time math as the Jap screen's BM/Sandhya cards
+// (calcSunTimes, defined further down this file — safe to call here due to
+// JS function-declaration hoisting). Scheduled as one-shot native alarms for
+// the next upcoming occurrence, then re-armed automatically every time
+// updateSunInfo() runs (app open + every 10 min while open), so any
+// day-to-day drift in sunrise/sunset self-corrects on next app open. If the
+// app stays fully closed for more than a day, the already-armed notification
+// still fires once as scheduled, but won't re-arm for the day after until
+// the app is reopened.
+const RJAP_BM_REMINDER_NOTIF_ID = 9002;
+const RJAP_SK_REMINDER_NOTIF_ID = 9003;
+
+function _lcNextOccurrence(hour, minute) {
+  const now = new Date();
+  const target = new Date(now);
+  target.setHours(hour, minute, 0, 0);
+  if (target.getTime() <= now.getTime()) target.setDate(target.getDate() + 1);
+  return target;
+}
+
+async function _lcScheduleOneShot(id, targetDate, title, body) {
+  if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
+    const { LocalNotifications } = window.Capacitor.Plugins;
+    try { await LocalNotifications.cancel({ notifications: [{ id }] }); } catch (e) {}
+    await LocalNotifications.schedule({
+      notifications: [{
+        id,
+        title,
+        body,
+        schedule: { at: targetDate, allowWhileIdle: true },
+        channelId: "rjap_reminders",
+      }],
+    });
+  }
+}
+
+function _lcCancelOneShot(id) {
+  if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
+    try { window.Capacitor.Plugins.LocalNotifications.cancel({ notifications: [{ id }] }); } catch (e) {}
+  }
+}
+
+async function lcArmBmReminder() {
+  if (typeof calcSunTimes !== "function") return;
+  const lat = (App.S && App.S.lastLat) || 23.8103;
+  const lng = (App.S && App.S.lastLng) || 90.4125;
+  const times = calcSunTimes(lat, lng, new Date());
+  if (!times) return;
+  let bmStartH = times.sunriseH - 96 / 60 - 5 / 60; // BM start minus 5 min
+  if (bmStartH < 0) bmStartH += 24;
+  const hh = Math.floor(bmStartH), mm = Math.round((bmStartH - hh) * 60);
+  const target = _lcNextOccurrence(hh, mm);
+  await _lcScheduleOneShot(
+    RJAP_BM_REMINDER_NOTIF_ID,
+    target,
+    "🌙 Brahma Muhurta in 5 minutes",
+    "The most auspicious time for jap is about to begin — get ready 🙏",
+  );
+}
+function lcCancelBmReminder() { _lcCancelOneShot(RJAP_BM_REMINDER_NOTIF_ID); }
+
+async function lcArmSkReminder() {
+  if (typeof calcSunTimes !== "function") return;
+  const lat = (App.S && App.S.lastLat) || 23.8103;
+  const lng = (App.S && App.S.lastLng) || 90.4125;
+  const times = calcSunTimes(lat, lng, new Date());
+  if (!times) return;
+  let skStartH = times.sunsetH - 24 / 60 - 5 / 60; // Sandhya Kal start minus 5 min
+  if (skStartH < 0) skStartH += 24;
+  const hh = Math.floor(skStartH), mm = Math.round((skStartH - hh) * 60);
+  const target = _lcNextOccurrence(hh, mm);
+  await _lcScheduleOneShot(
+    RJAP_SK_REMINDER_NOTIF_ID,
+    target,
+    "🔔 Sandhya Kal in 5 minutes",
+    "Sandhya Kal is about to begin — a sacred time for jap 🙏",
+  );
+}
+function lcCancelSkReminder() { _lcCancelOneShot(RJAP_SK_REMINDER_NOTIF_ID); }
 
 function _lcArmWebReminderTimer() {
   if (window._lcReminderTimer) clearInterval(window._lcReminderTimer);
@@ -2613,6 +2717,54 @@ function tgs(k) {
       });
       if (typeof renderCal === "function") renderCal();
       toast("📍 GPS location disabled — times reset to default");
+    }
+    return;
+  }
+
+  if (k === "bmReminder") {
+    const tg = document.getElementById("tgBmReminder");
+    const isOn = tg && tg.classList.contains("on");
+    if (!isOn) {
+      lcRequestNotifPermission().then((granted) => {
+        if (!granted) {
+          toast("⚠️ Notification permission denied");
+          return;
+        }
+        lcArmBmReminder().then(() => {
+          try { localStorage.setItem("rjap_reminder_bm", "1"); } catch (e) {}
+          if (tg) tg.classList.add("on");
+          toast("🌙 Brahma Muhurta reminder enabled");
+        });
+      });
+    } else {
+      lcCancelBmReminder();
+      try { localStorage.removeItem("rjap_reminder_bm"); } catch (e) {}
+      if (tg) tg.classList.remove("on");
+      toast("🔕 Brahma Muhurta reminder turned off");
+    }
+    return;
+  }
+
+  if (k === "skReminder") {
+    const tg = document.getElementById("tgSkReminder");
+    const isOn = tg && tg.classList.contains("on");
+    if (!isOn) {
+      lcRequestNotifPermission().then((granted) => {
+        if (!granted) {
+          toast("⚠️ Notification permission denied");
+          return;
+        }
+        lcArmSkReminder().then(() => {
+          try { localStorage.setItem("rjap_reminder_sk", "1"); } catch (e) {}
+          if (tg) tg.classList.add("on");
+          toast("🔔 Sandhya Kal reminder enabled");
+        });
+      });
+    } else {
+      lcCancelSkReminder();
+      try { localStorage.removeItem("rjap_reminder_sk"); } catch (e) {}
+      if (tg) tg.classList.remove("on");
+      toast("🔕 Sandhya Kal reminder turned off");
     }
     return;
   }
@@ -5188,7 +5340,7 @@ function _isNativeApp() {
 //                        Android project (see capacitor.config.json + README).
 const ZOHO_NATIVE_CONFIG = {
   clientId: "1000.SI61HY6OEFKXFN1Z9H2KIUL69ZO2KO",
-  redirectUri: "https://guru-kripahi-kevalam-108.firebaseapp.com/__/auth/handler",
+  redirectUri: "app.vercel.radharadharadha.capacitor://oauthredirect",
   scope: "openid email profile",
   // Cloud Function that exchanges Zoho's authorization `code` for a Firebase
   // custom token (see /functions/index.js). Your Zoho app is a
@@ -9766,6 +9918,10 @@ function updateSunInfo(lat, lng) {
     skEnd > 24 ? skEnd - 24 : skEnd,
   );
   document.getElementById("rh-sunset").textContent = times.sunset;
+  try {
+    if (localStorage.getItem("rjap_reminder_bm") === "1" && typeof lcArmBmReminder === "function") lcArmBmReminder();
+    if (localStorage.getItem("rjap_reminder_sk") === "1" && typeof lcArmSkReminder === "function") lcArmSkReminder();
+  } catch (e) {}
 }
 function initSunTimes() {
   // ARCHITECTURE: initSunTimes only reads coordinates saved by the GPS Location toggle.
@@ -10029,6 +10185,21 @@ window.addEventListener("load", async () => {
         });
       });
     }
+  }
+
+  // Brahma Muhurta / Sandhya Kal reminder toggles — restore on load and
+  // re-arm (fresh sun-time math). Also re-armed inside updateSunInfo().
+  const tgBmInit = document.getElementById("tgBmReminder");
+  if (tgBmInit) {
+    let bmOn = false;
+    try { bmOn = localStorage.getItem("rjap_reminder_bm") === "1"; } catch (e) {}
+    if (bmOn) { tgBmInit.classList.add("on"); lcArmBmReminder().catch(() => {}); }
+  }
+  const tgSkInit = document.getElementById("tgSkReminder");
+  if (tgSkInit) {
+    let skOn = false;
+    try { skOn = localStorage.getItem("rjap_reminder_sk") === "1"; } catch (e) {}
+    if (skOn) { tgSkInit.classList.add("on"); lcArmSkReminder().catch(() => {}); }
   }
 
   // Live previews for stats inputs

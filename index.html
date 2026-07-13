@@ -1163,31 +1163,6 @@
     </div>
   </div>
 
-  <!-- Daily Reminder — local notification (native on APK, best-effort on PWA) -->
-  <div class="sc" style="background:rgba(8,12,35,0.82);border:1px solid rgba(255,215,0,0.25);padding:14px 15px;">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <div style="font-size:20px;line-height:1;">🔔</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:700;color:#FFD700;line-height:1.2;">Daily Reminder</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;" id="dailyReminderStatus">— Tap toggle to enable your daily jap reminder 🔔</div>
-        <input type="time" id="reminderTimeInput" value="05:00" style="margin-top:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,215,0,0.3);border-radius:8px;color:#FFD700;font-size:12px;padding:4px 8px;font-family:'Inter',sans-serif;" />
-      </div>
-      <div class="tg" id="tgDailyReminder" onclick="tgs('dailyReminder')" style="flex-shrink:0;"></div>
-    </div>
-  </div>
-
-  <!-- Push Notifications — server-triggered (Firebase Cloud Messaging) -->
-  <div class="sc" style="background:rgba(8,12,35,0.82);border:1px solid rgba(255,215,0,0.25);padding:14px 15px;">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <div style="font-size:20px;line-height:1;">📣</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:700;color:#FFD700;line-height:1.2;">Push Notifications</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;" id="pushNotificationsStatus">— Tap to receive announcements from Radha Naam Jap 🔔 (requires sign-in)</div>
-      </div>
-      <div class="tg" id="tgPushNotifications" onclick="tgs('pushNotifications')" style="flex-shrink:0;"></div>
-    </div>
-  </div>
-
   <!-- GAUDIYA / ISKCON MODE — large aesthetic switch -->
   <div class="sc gaudiya-mode-card" id="gaudiyaModeCard">
     <div class="gmc-top">
@@ -1531,6 +1506,38 @@
     <!-- Mahamantra Language toggle moved to its own card below Gaudiya -->
     <span id="hkLangLabel" style="display:none">Hindi</span>
     <button onclick="testSound()" style="padding:7px 14px;border-radius:20px;border:1px solid rgba(74,144,226,0.3);background:rgba(74,144,226,0.12);color:var(--a2);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;margin-top:6px">🔔 Test Sound</button>
+
+    <!-- Daily Reminder group: Brahma Muhurta / Sandhya Kal / Custom -->
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,215,0,0.15)">
+      <div style="font-size:13px;font-weight:700;color:#FFD700;margin-bottom:8px;">🔔 Daily Reminder</div>
+
+      <div class="sr">
+        <div><label>Brahma Muhurta Reminder</label><div class="sub" id="bmReminderStatus">Notify 5 min before Brahma Muhurta begins</div></div>
+        <div class="tg" id="tgBmReminder" onclick="tgs('bmReminder')"></div>
+      </div>
+
+      <div class="sr">
+        <div><label>Sandhya Kal Reminder</label><div class="sub" id="skReminderStatus">Notify 5 min before Sandhya Kal begins</div></div>
+        <div class="tg" id="tgSkReminder" onclick="tgs('skReminder')"></div>
+      </div>
+
+      <div class="sr" style="align-items:flex-start;">
+        <div>
+          <label>Custom Reminder</label>
+          <div class="sub" id="dailyReminderStatus">— Tap toggle to enable your daily jap reminder 🔔</div>
+          <input type="time" id="reminderTimeInput" value="05:00" style="margin-top:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,215,0,0.3);border-radius:8px;color:#FFD700;font-size:12px;padding:4px 8px;font-family:'Inter',sans-serif;" />
+        </div>
+        <div class="tg" id="tgDailyReminder" onclick="tgs('dailyReminder')"></div>
+      </div>
+    </div>
+
+    <!-- Push Notifications — server-triggered (Firebase Cloud Messaging) -->
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,215,0,0.15)">
+      <div class="sr">
+        <div><label>Push Notifications</label><div class="sub" id="pushNotificationsStatus">— Tap to receive announcements from Radha Naam Jap 🔔 (requires sign-in)</div></div>
+        <div class="tg" id="tgPushNotifications" onclick="tgs('pushNotifications')"></div>
+      </div>
+    </div>
   </div>
 
 

@@ -7,7 +7,17 @@ admin.initializeApp();
 // Set these with:
 //   firebase functions:config:set zoho.client_id="YOUR_CLIENT_ID" \
 //     zoho.client_secret="YOUR_CLIENT_SECRET" \
-//     zoho.redirect_uri="https://guru-kripahi-kevalam-108.firebaseapp.com/__/auth/handler"
+//     zoho.redirect_uri="app.vercel.radharadharadha.capacitor://oauthredirect"
+//
+// IMPORTANT: this redirect_uri must match, character-for-character, both:
+//   1. ZOHO_NATIVE_CONFIG.redirectUri in app.js (native sign-in flow)
+//   2. The Authorized Redirect URI registered for this client in
+//      Zoho's API Console (https://api-console.zoho.com)
+// Zoho rejects the code exchange if this value doesn't exactly match what
+// was used in the original /oauth/v2/auth request. This is a DEPLOYED
+// config value on Firebase's servers — editing this file's comment does
+// NOT change it. Run the command above, then redeploy:
+//   firebase deploy --only functions:zohoTokenExchange
 const ZOHO_CLIENT_ID = functions.config().zoho.client_id;
 const ZOHO_CLIENT_SECRET = functions.config().zoho.client_secret;
 const ZOHO_REDIRECT_URI = functions.config().zoho.redirect_uri;

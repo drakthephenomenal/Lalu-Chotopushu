@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Redirecting… — Radha Naam Jap</title>
+<!-- Minimal SPA 404: redirect any unknown path back to the app root.
+     (Previously this file was a full stale copy of index.html.) -->
+<script>
+  (function () {
+    var seg = window.location.pathname.replace(/\/Lalu-Chotopushu-main\/?/, '/');
+    var qs = window.location.search ? '?path=' + encodeURIComponent(seg + window.location.search) : '';
+    var hash = window.location.hash || '';
+    window.location.replace('./' + qs + hash);
+  })();
+</script>
+</head>
+<body style="background:#060D1F;color:#fff;font-family:sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;">
+  <p>Redirecting… <a href="./" style="color:#BD93F9;">Go to app</a></p>
+</body>
+</html>

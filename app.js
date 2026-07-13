@@ -167,6 +167,8 @@ async function lcScheduleDailyReminder(hour, minute) {
         body: "Time for your daily sadhana — chant with a peaceful heart.",
         schedule: { on: { hour, minute }, allowWhileIdle: true },
         channelId: RJAP_NOTIF_CHANNEL_ID,
+        smallIcon: "ic_stat_notify",
+        iconColor: "#E56B1F",
       }],
     });
     return;
@@ -218,6 +220,8 @@ async function _lcScheduleOneShot(id, targetDate, title, body) {
         body,
         schedule: { at: targetDate, allowWhileIdle: true },
         channelId: RJAP_NOTIF_CHANNEL_ID,
+        smallIcon: "ic_stat_notify",
+        iconColor: "#E56B1F",
       }],
     });
   }

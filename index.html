@@ -307,6 +307,8 @@
       <img class="hitju-wm" id="bgHitju" src="./hitju-maharaj.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="gurudev-wm" id="bgGurudev" src="./gurudev.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="cm-wm" id="bgCM" src="./sri-chaitanya-mahaprabhu.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img class="iskcon-acharya-wm" id="bgIskconAcharya" src="./iskcon-acharya.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img class="iskcon-gurudev-wm" id="bgIskconGurudev" src="./iskcon-gurudev.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <div class="mf" id="mf">
         <div class="mf-line1">Radha Ballabh</div>
         <div class="mf-line2">Sri Harivansh</div>
@@ -1226,6 +1228,49 @@
           <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('bank', this)">
         </label>
         <button class="photo-reset-btn" onclick="resetPhoto('bank')">↩ Default</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Jap Display: Gaudiya/ISKCON top deity (default Chaitanya Mahaprabhu), Acharya (left) & Gurudev (right) — shown on the Jap screen while Gaudiya/ISKCON mode is on -->
+  <div class="hk-only-block photo-settings-card" style="margin-top:14px;">
+    <div class="photo-row" style="border-top:none;padding-top:0;margin-top:0;">
+      <div class="photo-row-label">🪷 Gaudiya/ISKCON Deity (top)</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.35);margin:-4px 0 8px;">Appears top-center on the Jap screen (default: Sri Chaitanya Mahaprabhu), in the same spot Radha Vallabh occupies in default mode.</div>
+      <div class="photo-thumb-strip" id="photoStripCM"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('cm', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('cm')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('cm', 0)">Blank</button>
+      </div>
+    </div>
+    <div class="photo-row" style="margin-top:14px;">
+      <div class="photo-row-label">🪷 Gaudiya/ISKCON Acharya (left)</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.35);margin:-4px 0 8px;">Appears bottom-left on the Jap screen, below Chaitanya Mahaprabhu, while Gaudiya/ISKCON mode is on.</div>
+      <div class="photo-thumb-strip" id="photoStripIskconAcharya"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('iskconAcharya', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('iskconAcharya')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('iskconAcharya', 0)">Blank</button>
+      </div>
+    </div>
+    <div class="photo-row" style="margin-top:14px;">
+      <div class="photo-row-label">🪷 Gaudiya/ISKCON Gurudev (right)</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.35);margin:-4px 0 8px;">Appears bottom-right on the Jap screen, below Chaitanya Mahaprabhu, while Gaudiya/ISKCON mode is on.</div>
+      <div class="photo-thumb-strip" id="photoStripIskconGurudev"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('iskconGurudev', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('iskconGurudev')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('iskconGurudev', 0)">Blank</button>
       </div>
     </div>
   </div>

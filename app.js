@@ -431,6 +431,9 @@ const App = {
     bgRadhaVallabh: 1,
     bgHitju: 1,
     bgGurudev: 1,
+    bgCM: 1,
+    bgIskconAcharya: 1,
+    bgIskconGurudev: 1,
   },
   lmcRV: 0,
   lmcHK: 0,
@@ -724,6 +727,9 @@ const App = {
     if (this.S.gaudiyaMode === undefined) this.S.gaudiyaMode = false;
     if (!this.S.hkLang) this.S.hkLang = "hi";
     if (!this.S.naamLang) this.S.naamLang = "sa";
+    if (this.S.bgIskconAcharya === undefined) this.S.bgIskconAcharya = 1;
+    if (this.S.bgIskconGurudev === undefined) this.S.bgIskconGurudev = 1;
+    if (this.S.bgCM === undefined) this.S.bgCM = 1;
     if (!this.S.historyHK[this.S.tk]) this.S.historyHK[this.S.tk] = 0;
     if (!this.S.timerHistoryHK[this.S.tk]) this.S.timerHistoryHK[this.S.tk] = 0;
     // Load malaLogHK — only keep if today has HK jap
@@ -6561,6 +6567,9 @@ async function fbPushFull() {
     bgRadhaVallabh: App.S.bgRadhaVallabh ?? 1,
     bgHitju: App.S.bgHitju ?? 1,
     bgGurudev: App.S.bgGurudev ?? 1,
+    bgIskconAcharya: App.S.bgIskconAcharya ?? 1,
+    bgIskconGurudev: App.S.bgIskconGurudev ?? 1,
+    bgCM: App.S.bgCM ?? 1,
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId,
   };
@@ -6759,6 +6768,9 @@ function fbApplyRemote(d) {
   if (d.bgRadhaVallabh !== undefined) App.S.bgRadhaVallabh = d.bgRadhaVallabh;
   if (d.bgHitju !== undefined) App.S.bgHitju = d.bgHitju;
   if (d.bgGurudev !== undefined) App.S.bgGurudev = d.bgGurudev;
+  if (d.bgIskconAcharya !== undefined) App.S.bgIskconAcharya = d.bgIskconAcharya;
+  if (d.bgIskconGurudev !== undefined) App.S.bgIskconGurudev = d.bgIskconGurudev;
+  if (d.bgCM !== undefined) App.S.bgCM = d.bgCM;
 
   // Old saves wrote both startDate AND endDate to occasions. Remove the endDate entry
 
@@ -13654,11 +13666,22 @@ const PHOTO_CONFIG = {
   // Bhagavadik Bank background — only applied while Gaudiya/ISKCON mode is on
   // (see applyBgPhotos below). Built-in choices live in /iskcon_gaudiya_bank/1.jpg,
   // 2.jpg, etc. — drop numbered images there to add more built-in options.
-  bank:   { id: 'bbImg',          stateKey: 'bgBank',         folder: 'iskcon_gaudiya_bank', maxNum: 5, fallback: 'bhagavadik-bank.png' }
+  bank:   { id: 'bbImg',          stateKey: 'bgBank',         folder: 'iskcon_gaudiya_bank', maxNum: 5, fallback: 'bhagavadik-bank.png' },
+  // Top Gaudiya/ISKCON deity (Sri Chaitanya Mahaprabhu by default) — same slot
+  // Radha Vallabh occupies in default mode. Built-in choices live in
+  // /iskcon_chaitanya/1.jpg, etc. — drop numbered images there to add more.
+  cm:     { id: 'bgCM',           stateKey: 'bgCM',           folder: 'iskcon_chaitanya',    maxNum: 9, fallback: 'sri-chaitanya-mahaprabhu.png' },
+  // Gaudiya/ISKCON Acharya (left) & Gurudev (right) — Jap screen images shown
+  // just below Chaitanya Mahaprabhu, only while Gaudiya/ISKCON mode is on
+  // (see applyBgPhotos below). Built-in choices live in /iskcon_acharya/1.jpg,
+  // /iskcon_gurudev/1.jpg, etc. — drop numbered images there to add more.
+  iskconAcharya: { id: 'bgIskconAcharya', stateKey: 'bgIskconAcharya', folder: 'iskcon_acharya', maxNum: 9, fallback: 'iskcon-acharya.png' },
+  iskconGurudev: { id: 'bgIskconGurudev', stateKey: 'bgIskconGurudev', folder: 'iskcon_gurudev', maxNum: 9, fallback: 'iskcon-gurudev.png' }
 };
 
 const PHOTO_STRIP_IDS = {
-  rv: 'photoStripRV', hitju: 'photoStripHitju', gurudev: 'photoStripGurudev', bank: 'photoStripBank'
+  rv: 'photoStripRV', hitju: 'photoStripHitju', gurudev: 'photoStripGurudev', bank: 'photoStripBank',
+  cm: 'photoStripCM', iskconAcharya: 'photoStripIskconAcharya', iskconGurudev: 'photoStripIskconGurudev'
 };
 
 window.renderPhotoPickers = async function() {
@@ -13809,6 +13832,14 @@ window.applyBgPhotos = async function() {
       continue;
     }
 
+    // Gaudiya/ISKCON deity (top), Acharya & Gurudev are Jap-screen images that
+    // only exist while Gaudiya/ISKCON mode is on — fully hidden otherwise
+    // (unlike Bank, there's no "default" image to fall back to when off).
+    if ((key === 'cm' || key === 'iskconAcharya' || key === 'iskconGurudev') && !(App.S && App.S.gaudiyaMode)) {
+      el.style.display = 'none';
+      continue;
+    }
+
     let val = App.S[conf.stateKey];
     if (val === undefined) val = 1;
     
@@ -13850,7 +13881,7 @@ window.applyBgPhotos = async function() {
 
 // ✨ MALA GLOW FLASH — all deity images briefly show fully with huge glow, synced
 window.triggerMalaGlowFlash = function() {
-  const ids = ['bgRadhaVallabh', 'bgHitju', 'bgGurudev'];
+  const ids = ['bgRadhaVallabh', 'bgHitju', 'bgGurudev', 'bgCM', 'bgIskconAcharya', 'bgIskconGurudev'];
   const els = ids.map(id => document.getElementById(id)).filter(el => el && el.style.display !== 'none');
   if (!els.length) return;
 

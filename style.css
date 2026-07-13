@@ -2813,19 +2813,46 @@ body.gaudiya-mode .tz .hitju-wm,
 body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !important;}
 
 
-/* Sri Chaitanya Mahaprabhu — Jap hero for Gaudiya / ISKCON mode */
+/* Sri Chaitanya Mahaprabhu (default) / user-chosen Gaudiya deity — Jap hero
+   for Gaudiya/ISKCON mode, top-center, same slot as Radha Vallabh in default
+   mode. Visibility is controlled from JS (applyBgPhotos), not CSS, since it
+   must also respect the per-photo Blank option — so no display:none!important here. */
 .tz .cm-wm{
   position:absolute; top:var(--rv-top); left:50%; transform:translateX(-50%);
-  width:var(--rv-w); height:auto;
-  opacity:0;
+  width:var(--rv-w); height:auto; max-height:78%;
+  opacity:.6;
   filter:drop-shadow(0 0 22px rgba(245,209,122,.45));
   pointer-events:none; user-select:none; z-index:1;
   display:none;
+  animation: divineBreathGlowStrong 10s ease-in-out infinite;
 }
-body.gaudiya-mode .tz .cm-wm{
-  display:block !important;
-  opacity:.6;
-  animation:tzGoldPulseStrong 4.5s ease-in-out infinite;
+
+/* Gaudiya/ISKCON Acharya — bottom-left, same plane as Hitju in default mode.
+   Visibility is controlled from JS (applyBgPhotos), not CSS, since it must
+   also respect the per-photo Blank option — so no display:none!important here. */
+.tz .iskcon-acharya-wm{
+  position:absolute;
+  top: min(var(--rv-bottom), calc(100% - var(--side-w) * var(--rv-aspect)));
+  left:8px;
+  width:var(--side-w); height:auto;
+  opacity:.45;
+  filter:none;
+  pointer-events:none; user-select:none; z-index:1;
+  display:none;
+  animation: divineBreathGlow 10s ease-in-out infinite;
+}
+
+/* Gaudiya/ISKCON Gurudev — bottom-right, same plane as Gurudev in default mode */
+.tz .iskcon-gurudev-wm{
+  position:absolute;
+  top: min(var(--rv-bottom), calc(100% - var(--side-w) * var(--rv-aspect)));
+  right:8px;
+  width:var(--side-w); height:auto;
+  opacity:.45;
+  filter:none;
+  pointer-events:none; user-select:none; z-index:1;
+  display:none;
+  animation: divineBreathGlow 10s ease-in-out infinite;
 }
 
 /* ═══════════════════════════════════════════════════════

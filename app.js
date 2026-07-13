@@ -2065,13 +2065,11 @@ setInterval(() => {
 // link. Always use these fixed URLs instead, in both native and web
 // contexts, so Share always produces something the recipient can open.
 const RJAP_PWA_URL = "https://radharadharadha.vercel.app/";
-// Direct download link for the installable Android APK. This goes through
-// a branded redirect (see vercel.json → "/download") that forwards to the
-// GitHub Release's latest asset, so the shared link shows your own domain
-// instead of a raw github.com/.../releases/latest URL. Update the GitHub
-// side of that redirect in vercel.json if the repo/release path ever
-// changes — this constant itself shouldn't need to change.
-const RJAP_APK_URL = "https://radharadharadha.vercel.app/download";
+// Direct download link for the installable Android APK — a Google Drive
+// folder that gets manually updated with the latest built app-*.apk each
+// time a new version is released. Update this constant if the Drive folder
+// URL itself ever changes (e.g. moved to a different Drive account/folder).
+const RJAP_APK_URL = "https://drive.google.com/drive/folders/1dU7BZqcY2lPzgonRm65C2Dz5gi71ab-7";
 
 function _getAppUrl() {
   return RJAP_PWA_URL;

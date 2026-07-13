@@ -2655,6 +2655,8 @@ function tgs(k) {
     uStats();
     renderHistory && typeof renderHistory === "function" && renderHistory();
     if (typeof renderCal === "function") renderCal();
+    if (typeof applyBgPhotos === "function") applyBgPhotos();
+    if (typeof renderPhotoPickers === "function") renderPhotoPickers();
     toast(App.S.gaudiyaMode ? "🪷 Gaudiya Mode ON" : "🪷 Gaudiya Mode OFF");
 
     // Ensure any leftover banner from a previous flow is hidden.
@@ -13613,12 +13615,20 @@ const PhotosDB = {
 const PHOTO_CONFIG = {
   rv:     { id: 'bgRadhaVallabh', stateKey: 'bgRadhaVallabh', folder: 'radha_vallabh',  maxNum: 9, fallback: 'Radha-Vallabh.png' },
   hitju:  { id: 'bgHitju',        stateKey: 'bgHitju',        folder: 'hitju_maharaj',  maxNum: 9, fallback: 'hitju-maharaj.png' },
-  gurudev:{ id: 'bgGurudev',      stateKey: 'bgGurudev',      folder: 'gurudev',        maxNum: 9, fallback: 'gurudev.png' }
+  gurudev:{ id: 'bgGurudev',      stateKey: 'bgGurudev',      folder: 'gurudev',        maxNum: 9, fallback: 'gurudev.png' },
+  // Bhagavadik Bank background — only applied while Gaudiya/ISKCON mode is on
+  // (see applyBgPhotos below). Built-in choices live in /iskcon_gaudiya_bank/1.jpg,
+  // 2.jpg, etc. — drop numbered images there to add more built-in options.
+  bank:   { id: 'bbImg',          stateKey: 'bgBank',         folder: 'iskcon_gaudiya_bank', maxNum: 5, fallback: 'bhagavadik-bank.png' }
+};
+
+const PHOTO_STRIP_IDS = {
+  rv: 'photoStripRV', hitju: 'photoStripHitju', gurudev: 'photoStripGurudev', bank: 'photoStripBank'
 };
 
 window.renderPhotoPickers = async function() {
   for (const [key, conf] of Object.entries(PHOTO_CONFIG)) {
-    const stripId = key === 'rv' ? 'photoStripRV' : key === 'hitju' ? 'photoStripHitju' : 'photoStripGurudev';
+    const stripId = PHOTO_STRIP_IDS[key];
     const strip = document.getElementById(stripId);
     if (!strip) continue;
     strip.innerHTML = '';
@@ -13752,7 +13762,18 @@ window.applyBgPhotos = async function() {
   for (const [key, conf] of Object.entries(PHOTO_CONFIG)) {
     const el = document.getElementById(conf.id);
     if (!el) continue;
-    
+
+    // Bhagavadik Bank is a Gaudiya/ISKCON-only feature — when the mode is
+    // off, always show the standard bank image regardless of any saved
+    // ISKCON-bank preference (the preference is remembered for next time
+    // Gaudiya mode is turned back on, not discarded).
+    if (key === 'bank' && !(App.S && App.S.gaudiyaMode)) {
+      el.src = './bhagavadik-bank.png';
+      el.classList.remove('custom-bg');
+      el.style.display = '';
+      continue;
+    }
+
     let val = App.S[conf.stateKey];
     if (val === undefined) val = 1;
     

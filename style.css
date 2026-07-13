@@ -1490,7 +1490,7 @@ body.gaudiya-mode .non-gaudiya-stat{display:none!important;}
 body.gaudiya-mode .hk-only-stat{display:flex!important;}
 body.gaudiya-mode .sb.hk-only-stat{display:block!important;}
 #nav28{transition:opacity 0.2s;}
-body.gaudiya-mode #nav28{display:none!important;}
+/* 28 Names tab stays visible in Gaudiya/ISKCON mode (Bhagavadik Bank switches its own background instead — see photo picker) */
 
 /* Gaudiya mode: plain stat rows (Total Count/Time) — no button look */
 body.gaudiya-mode .gaudiya-plain-stat{font-size:14px;color:var(--tl);padding:2px 0;}
@@ -1498,6 +1498,7 @@ body.gaudiya-mode .gaudiya-plain-stat .cdmo-stat-val{font-size:22px;}
 
 /* Hide RV settings section in Gaudiya mode */
 body.gaudiya-mode .non-gaudiya-setting{display:none!important;}
+body:not(.gaudiya-mode) .gaudiya-only-setting{display:none!important;}
 
 /* ── Gaudiya Mode: history table column visibility ── */
 .hist-hk-col{display:none;}

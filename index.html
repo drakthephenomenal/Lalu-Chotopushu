@@ -1544,14 +1544,14 @@
 
 
   <!-- PHOTO CUSTOMIZATION SETTINGS -->
-  <div class="sc photo-settings-card non-gaudiya-setting">
+  <div class="sc photo-settings-card">
     <div class="photo-settings-title">🖼️ Jap Display Photos</div>
     <div style="font-size:10px;color:rgba(255,255,255,0.4);line-height:1.4;margin-bottom:14px;">
       Choose which photos appear on the Jap screen. Pick from the repository collection or upload your own.
     </div>
 
     <!-- Radha Vallabh -->
-    <div class="photo-row">
+    <div class="photo-row non-gaudiya-setting">
       <div class="photo-row-label">🙏 Radha Vallabh</div>
       <div class="photo-thumb-strip" id="photoStripRV"></div>
       <div style="display:flex;gap:8px;margin-top:6px;">
@@ -1565,7 +1565,7 @@
     </div>
 
     <!-- Hitju Maharaj -->
-    <div class="photo-row">
+    <div class="photo-row non-gaudiya-setting">
       <div class="photo-row-label">🙏 Hitju Maharaj</div>
       <div class="photo-thumb-strip" id="photoStripHitju"></div>
       <div style="display:flex;gap:8px;margin-top:6px;">
@@ -1579,7 +1579,7 @@
     </div>
 
     <!-- Gurudev -->
-    <div class="photo-row">
+    <div class="photo-row non-gaudiya-setting">
       <div class="photo-row-label">🙏 Gurudev</div>
       <div class="photo-thumb-strip" id="photoStripGurudev"></div>
       <div style="display:flex;gap:8px;margin-top:6px;">
@@ -1589,6 +1589,20 @@
         </label>
         <button class="photo-reset-btn" onclick="resetPhoto('gurudev')">↩ Default</button>
         <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('gurudev', 0)">Blank</button>
+      </div>
+    </div>
+
+    <!-- Bhagavadik Bank — Gaudiya/ISKCON mode only -->
+    <div class="photo-row gaudiya-only-setting">
+      <div class="photo-row-label">🏦 Bhagavadik Bank (ISKCON)</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.35);margin:-4px 0 8px;">Background shown on the 28 Names screen while Gaudiya/ISKCON mode is on.</div>
+      <div class="photo-thumb-strip" id="photoStripBank"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('bank', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('bank')">↩ Default</button>
       </div>
     </div>
   </div>

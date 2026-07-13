@@ -110,21 +110,31 @@ const RJAP_REMINDER_NOTIF_ID = 9001;
 
 // Android notification channel used by every reminder below (custom/BM/SK).
 // Gives reminders a proper tone + vibration instead of a silent/default ping.
-// To ship a fully custom tone: drop a .wav/.mp3 into
-// android/app/src/main/res/raw/ (e.g. reminder_tone.wav) and set
-// sound: "reminder_tone" below (no extension, no "raw/" prefix). Left unset
-// for now, so Android uses its default notification sound + this channel's
-// vibration pattern.
+//
+// IMPORTANT: Android locks a channel's sound/vibration the moment it's first
+// created on a given device — calling createChannel again with the same id
+// later does NOT update it. That's why this is "rjap_reminders_v2" instead
+// of the original "rjap_reminders": anyone who already had the app installed
+// before the custom tone was added would otherwise be stuck with the old
+// default sound forever. If the tone/vibration ever need to change again in
+// the future, bump this id again (e.g. "_v3").
+//
+// The tone itself lives at android/app/src/main/res/raw/reminder_tone.mp3 —
+// referenced below by filename only, no extension, no "raw/" prefix
+// (that's how Android resource references work).
+const RJAP_NOTIF_CHANNEL_ID = "rjap_reminders_v2";
+
 async function lcSetupNotifChannel() {
   if (!(_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications)) return;
   try {
     await window.Capacitor.Plugins.LocalNotifications.createChannel({
-      id: "rjap_reminders",
+      id: RJAP_NOTIF_CHANNEL_ID,
       name: "Jap Reminders",
       description: "Brahma Muhurta, Sandhya Kal & custom daily jap reminders",
       importance: 5,
       visibility: 1,
       vibration: true,
+      sound: "reminder_tone",
     });
   } catch (e) {}
 }
@@ -156,7 +166,7 @@ async function lcScheduleDailyReminder(hour, minute) {
         title: "🙏 Radha Naam Jap",
         body: "Time for your daily sadhana — chant with a peaceful heart.",
         schedule: { on: { hour, minute }, allowWhileIdle: true },
-        channelId: "rjap_reminders",
+        channelId: RJAP_NOTIF_CHANNEL_ID,
       }],
     });
     return;
@@ -207,7 +217,7 @@ async function _lcScheduleOneShot(id, targetDate, title, body) {
         title,
         body,
         schedule: { at: targetDate, allowWhileIdle: true },
-        channelId: "rjap_reminders",
+        channelId: RJAP_NOTIF_CHANNEL_ID,
       }],
     });
   }
@@ -2049,18 +2059,24 @@ setInterval(() => {
 }, 60000);
 
 // ── Get canonical app URL (strips index.html, query, hash) ──
+// Canonical public URLs for sharing. window.location.href is NOT safe to
+// use for this — inside the installed Android app it points at the
+// WebView's internal address (localhost/asset path), not a real public
+// link. Always use these fixed URLs instead, in both native and web
+// contexts, so Share always produces something the recipient can open.
+const RJAP_PWA_URL = "https://radharadharadha.vercel.app/";
+// Direct download link for the installable Android APK. Point this at a
+// GitHub Release asset (Releases → Draft a new release → attach the built
+// app-release.apk / app-debug.apk as a binary asset → publish → copy the
+// asset's download URL here). Update this constant every time you publish
+// a new release so the shared link always serves the latest build.
+const RJAP_APK_URL = "https://github.com/drakthephenomenal/Lalu-Chotopushu/releases/latest";
+
 function _getAppUrl() {
-  let url = window.location.href;
-  // Remove index.html from the end if present
-  url = url.replace(/\/index\.html([?#].*)?$/, "/");
-  // Remove query string and hash
-  url = url.split("?")[0].split("#")[0];
-  // Ensure trailing slash
-  if (!url.endsWith("/")) url += "/";
-  return url;
+  return RJAP_PWA_URL;
 }
 
-// ── Share App ──
+// ── Share App (PWA link) ──
 function shareApp() {
   const url = _getAppUrl();
   const shareText =
@@ -2069,6 +2085,26 @@ function shareApp() {
     "track Brahmacharya daily Jap & lots of statistics \u2728 \uD83E\uDEB7\n\n" +
     "\uD83D\uDC49 " +
     url;
+  if (navigator.share) {
+    navigator
+      .share({ text: shareText })
+      .then(() => toast("Shared! \uD83D\uDE4F Jai Radhe!"))
+      .catch((err) => {
+        if (err.name !== "AbortError") _copyAppUrl(shareText);
+      });
+  } else {
+    _copyAppUrl(shareText);
+  }
+}
+
+// ── Share App (APK direct download) ──
+function shareApk() {
+  const shareText =
+    "Radha Vallabh Sri Harivangsa \uD83D\uDE4F\n\n" +
+    "Install the Radha Naam Jap Android app directly (APK) —\n" +
+    "track Brahmacharya daily Jap & lots of statistics \u2728 \uD83E\uDEB7\n\n" +
+    "\uD83D\uDC49 " +
+    RJAP_APK_URL;
   if (navigator.share) {
     navigator
       .share({ text: shareText })

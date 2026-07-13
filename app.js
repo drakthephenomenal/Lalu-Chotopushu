@@ -13849,7 +13849,11 @@ window.applyBgPhotos = async function() {
       el.style.display = 'none';
       continue;
     } else {
-      el.style.display = '';
+      // Explicit 'block' rather than '' — cm-wm/iskcon-acharya-wm/
+      // iskcon-gurudev-wm have display:none baked into their own base CSS
+      // class rule (not just the mode-hide rule), so clearing the inline
+      // style falls through to that stylesheet default instead of showing.
+      el.style.display = 'block';
     }
     
     if (val === 'custom') {

@@ -1610,6 +1610,23 @@
         <div class="tg" id="tgPushNotifications" onclick="tgs('pushNotifications')"></div>
       </div>
     </div>
+
+    <!-- Reliable Reminders — optional OS-level permissions, requested only
+         when the user taps them here, never automatically on app launch -->
+    <div id="powerPermsBlock" style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,215,0,0.15)">
+      <div style="font-size:13px;font-weight:700;color:#FFD700;margin-bottom:2px;">🔋 Reliable Reminders</div>
+      <div class="sub" style="margin-bottom:8px;">For reminders to fire at the exact time, allow both below</div>
+
+      <div class="sr">
+        <div><label>Exact Alarm Timing</label><div class="sub" id="exactAlarmStatus">— Tap, then choose "Allow" on the screen that opens</div></div>
+        <div class="tg" id="tgExactAlarm" onclick="tgs('exactAlarm')"></div>
+      </div>
+
+      <div class="sr">
+        <div><label>Unrestricted Battery Usage</label><div class="sub" id="batteryOptimStatus">— Tap, then choose "No restrictions" / "Allow"</div></div>
+        <div class="tg" id="tgBatteryOptim" onclick="tgs('batteryOptim')"></div>
+      </div>
+    </div>
   </div>
 
 

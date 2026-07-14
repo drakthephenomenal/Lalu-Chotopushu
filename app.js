@@ -2259,6 +2259,18 @@ function syncTargetCroreToJap() {
   if (croreDisp) croreDisp.textContent = crores > 0 ? crores.toFixed(2) : "0";
 }
 
+// ── 28 Names Daily Target: single card, moved between two slots ──
+// (RV Daily slot in default mode, HK Targets slot in Gaudiya mode) so
+// there's exactly one #target28Card node — no duplicate IDs, no sync bugs.
+function _placeTarget28Card() {
+  const card = document.getElementById("target28Card");
+  if (!card) return;
+  const slot = App.S.gaudiyaMode
+    ? document.getElementById("target28SlotGaudiya")
+    : document.getElementById("target28SlotDefault");
+  if (slot && card.parentElement !== slot) slot.appendChild(card);
+}
+
 // ── Init jap mode UI on page load ──
 function initJapModeUI() {
   // Normalize: in Gaudiya mode only HK is allowed; otherwise HK is not allowed
@@ -2283,6 +2295,7 @@ function initJapModeUI() {
   if (tgG)
     App.S.gaudiyaMode ? tgG.classList.add("on") : tgG.classList.remove("on");
   if (App.S.gaudiyaMode) document.body.classList.add("gaudiya-mode");
+  _placeTarget28Card();
   if (typeof applyBgPhotos === "function") applyBgPhotos();
   // Init Horizon Mode toggle state
   // Init HK language toggle state
@@ -2703,6 +2716,7 @@ function tgs(k) {
     App.S.gaudiyaMode
       ? document.body.classList.add("gaudiya-mode")
       : document.body.classList.remove("gaudiya-mode");
+    _placeTarget28Card();
     // Auto-switch jap mode so only valid options are visible at the top toggle
     if (App.S.gaudiyaMode) {
       if (App.S.japMode !== "hk") switchJapMode("hk");
@@ -4829,6 +4843,7 @@ function importAllData(input) {
       App.S.gaudiyaMode
         ? document.body.classList.add("gaudiya-mode")
         : document.body.classList.remove("gaudiya-mode");
+      _placeTarget28Card();
       if (st) {
         st.textContent = "✅ Data restored successfully! 🙏 Jai Radhe!";
         st.style.color = "var(--green)";

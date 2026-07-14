@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Signing you in…</title>
+</head>
+<body>
+<script>
+  var params = window.location.search + window.location.hash;
+  var target = "app.vercel.radharadharadha.capacitor://oauthredirect" + params;
+  window.location.replace(target);
+</script>
+<p style="font-family:sans-serif;text-align:center;margin-top:40px;">
+  Signing you in&hellip;<br>
+  <a href="app.vercel.radharadharadha.capacitor://oauthredirect{{PARAMS_PLACEHOLDER}}"
+     id="fallback" style="display:none">Tap here if you're not redirected automatically</a>
+</p>
+<script>
+  document.getElementById("fallback").href =
+    "app.vercel.radharadharadha.capacitor://oauthredirect" + params;
+  document.getElementById("fallback").style.display = "inline";
+</script>
+</body>
+</html>

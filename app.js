@@ -5482,7 +5482,7 @@ function _isNativeApp() {
 //                        Android project (see capacitor.config.json + README).
 const ZOHO_NATIVE_CONFIG = {
   clientId: "1000.SI61HY6OEFKXFN1Z9H2KIUL69ZO2KO",
-  redirectUri: "app.vercel.radharadharadha.capacitor://oauthredirect",
+  redirectUri: "https://radharadharadha.vercel.app/oauthredirect",
   scope: "openid email profile",
   // Cloud Function that exchanges Zoho's authorization `code` for a Firebase
   // custom token (see /functions/index.js). Your Zoho app is a

@@ -2546,6 +2546,46 @@ function sv(id, btn) {
 // ── Populate ALL Settings target/input fields from App.S ──
 // Safe to call anytime (no-ops when elements aren't present yet).
 // Called when navigating to Settings AND after every cloud pull / sign-in.
+// Reflects the *current* OS-level state of the two optional "reliable
+// reminders" permissions (exact alarms + battery-optimization exemption).
+// Never requests them — only requestExactAlarmPermission() /
+// requestIgnoreBatteryOptimizations() (called from tgs(), on user tap) do
+// that. Safe to call anytime; no-ops outside the installed Android app.
+async function refreshPowerPermissionStatus() {
+  const wrap = document.getElementById("powerPermsBlock");
+  if (!(_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.PowerPermissions)) {
+    if (wrap) wrap.style.display = "none"; // not the native Android app — nothing to show
+    return;
+  }
+  if (wrap) wrap.style.display = "";
+  const PP = window.Capacitor.Plugins.PowerPermissions;
+  try {
+    const alarm = await PP.canScheduleExactAlarms();
+    const tgA = document.getElementById("tgExactAlarm");
+    const stA = document.getElementById("exactAlarmStatus");
+    if (tgA) alarm.value ? tgA.classList.add("on") : tgA.classList.remove("on");
+    if (stA)
+      stA.textContent = alarm.value
+        ? "✅ Allowed — reminders fire at the exact minute"
+        : '— Tap, then choose "Allow" on the screen that opens';
+  } catch (e) { console.error("canScheduleExactAlarms failed:", e); }
+  try {
+    const batt = await PP.isBatteryOptimizationIgnored();
+    const tgB = document.getElementById("tgBatteryOptim");
+    const stB = document.getElementById("batteryOptimStatus");
+    if (tgB) batt.value ? tgB.classList.add("on") : tgB.classList.remove("on");
+    if (stB)
+      stB.textContent = batt.value
+        ? "✅ Allowed — app won't be slowed down by battery saving"
+        : '— Tap, then choose "No restrictions" / "Allow"';
+  } catch (e) { console.error("isBatteryOptimizationIgnored failed:", e); }
+}
+// Refresh whenever the app comes back to the foreground (e.g. returning
+// from the system Settings screen after granting/denying a permission).
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") refreshPowerPermissionStatus();
+});
+
 function populateSettingsUI() {
   if (typeof renderPhotoPickers === 'function') renderPhotoPickers();
   const ms = App.S.ms || 108;
@@ -2602,6 +2642,8 @@ function populateSettingsUI() {
   } catch (_e) {}
   // Leaderboard settings
   try { populateLbSettingsUI(); } catch (_e) {}
+  // Reliable Reminders (exact alarm + battery optimization) status
+  try { refreshPowerPermissionStatus(); } catch (_e) {}
   // Background Photos settings
   try {
     const inBgRV = document.getElementById("inBgRadhaVallabh");
@@ -2734,6 +2776,30 @@ function tgs(k) {
 
     // Ensure any leftover banner from a previous flow is hidden.
     if (_gBanner) _gBanner.style.display = "none";
+    return;
+  }
+
+  if (k === "exactAlarm") {
+    // User-initiated only — this is never called automatically on app launch.
+    if (!(_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.PowerPermissions)) {
+      toast("⚠️ Only available in the installed Android app");
+      return;
+    }
+    window.Capacitor.Plugins.PowerPermissions.requestExactAlarmPermission()
+      .catch((e) => console.error("requestExactAlarmPermission failed:", e));
+    toast('👉 Choose "Allow" on the next screen for exact-time reminders');
+    return;
+  }
+
+  if (k === "batteryOptim") {
+    // User-initiated only — this is never called automatically on app launch.
+    if (!(_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.PowerPermissions)) {
+      toast("⚠️ Only available in the installed Android app");
+      return;
+    }
+    window.Capacitor.Plugins.PowerPermissions.requestIgnoreBatteryOptimizations()
+      .catch((e) => console.error("requestIgnoreBatteryOptimizations failed:", e));
+    toast('👉 Choose "Allow" / "No restrictions" for reliable reminders');
     return;
   }
 

@@ -40,4 +40,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Required on Android 12+ (API 31+) for the Brahma Muhurta / Sandhya Kal
+         one-shot reminders to fire at their exact scheduled time. Without this,
+         setExactAndAllowWhileIdle() silently degrades to an inexact alarm that
+         Android defers until its next Doze maintenance window — which can be
+         hours late overnight, only firing once the device is woken/used. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 </manifest>

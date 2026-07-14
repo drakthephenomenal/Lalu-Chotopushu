@@ -5,7 +5,7 @@ set -e
 
 echo "Creating www/ with a clean copy of your web files..."
 mkdir -p www
-rsync -a \
+rsync -a --delete \
   --exclude='android' \
   --exclude='node_modules' \
   --exclude='www' \

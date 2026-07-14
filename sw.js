@@ -1,5 +1,9 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v172
+// Radha Naam Jap — Service Worker  v173
+// v173: bumped cache to force-invalidate stale app.js — picks up the
+// Firebase sync-hang fix, Brahma Muhurta reminder timing fix, and the
+// native Share sheet fix (APK was silently falling back to copy-link
+// because navigator.share doesn't exist in Capacitor's WebView).
 // v172: bumped cache to force-invalidate stale app.js/index.html/style.css
 // after adding Gaudiya/ISKCON top-deity + Acharya/Gurudev jap-display photos
 // and fixing the app-boot sequence to call applyBgPhotos() on load.
@@ -18,7 +22,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v172';
+const CACHE = 'radha-jap-v173';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

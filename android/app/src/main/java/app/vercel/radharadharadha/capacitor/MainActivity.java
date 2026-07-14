@@ -31,7 +31,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    protected void onResume() {
+    public void onResume() { // <-- Changed from "protected" to "public"
         super.onResume();
         requestBatteryOptimizationExemptionIfNeeded();
     }

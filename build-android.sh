@@ -69,9 +69,19 @@ else
   echo "  already present"
 fi
 
-echo "── 8/9  Patch MainActivity.java (fix native text zoom) ──────────"
+echo "── 8/9  Patch MainActivity.java (text zoom fix + register PowerPermissions plugin) ──────────"
 MAIN_ACTIVITY=$(find android/app/src/main/java -name "MainActivity.java")
+MAIN_ACTIVITY_DIR=$(dirname "$MAIN_ACTIVITY")
 PKG_LINE=$(head -1 "$MAIN_ACTIVITY")
+
+# `android/` is wiped and regenerated from scratch every run (see header),
+# so any hand-edited or hand-uploaded native files under android/ do NOT
+# survive a build. PowerPermissionsPlugin.java is kept as a permanent copy
+# at android-src/PowerPermissionsPlugin.java (tracked in git) and reinstalled
+# here on every build, right next to the fresh MainActivity.java.
+cp "android-src/PowerPermissionsPlugin.java" "$MAIN_ACTIVITY_DIR/PowerPermissionsPlugin.java"
+echo "  installed PowerPermissionsPlugin.java"
+
 cat > "$MAIN_ACTIVITY" << EOF
 $PKG_LINE
 
@@ -81,12 +91,14 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Plugins must be registered before super.onCreate().
+        registerPlugin(PowerPermissionsPlugin.class);
         super.onCreate(savedInstanceState);
         this.bridge.getWebView().getSettings().setTextZoom(100);
     }
 }
 EOF
-echo "  MainActivity.java rewritten with setTextZoom(100) fix"
+echo "  MainActivity.java rewritten with setTextZoom(100) fix + PowerPermissions plugin registered"
 
 echo "── 9/9  Patch native dependency fixes ───────────────────────────"
 # Google Sign-In needs play-services-auth explicitly (FirebaseAuthentication

@@ -29,6 +29,19 @@ else
 fi
 java -version
 
+echo "── Ensure Android SDK is installed ─────────────────────────────"
+export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$HOME/android-sdk}"
+export ANDROID_HOME="$ANDROID_SDK_ROOT"
+if [ ! -d "$ANDROID_SDK_ROOT/cmdline-tools/latest" ]; then
+  mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+  curl -sSL -o /tmp/cmdline-tools.zip "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+  unzip -q -o /tmp/cmdline-tools.zip -d "$ANDROID_SDK_ROOT/cmdline-tools"
+  mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+fi
+export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
+yes | sdkmanager --licenses > /dev/null 2>&1 || true
+sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+
 echo "── 3/9  (Re)generate native android/ project ───────────────────"
 if [ "$KEEP_ANDROID" = true ] && [ -d "android" ]; then
   echo "  --keep passed, leaving existing android/ folder as-is."
@@ -36,6 +49,8 @@ else
   rm -rf android
   npx cap add android
 fi
+
+echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
 echo "── 4/9  Copy web assets + sync plugins ──────────────────────────"
 bash setup-www.sh

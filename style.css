@@ -1505,6 +1505,11 @@ body:not(.gaudiya-mode) .gaudiya-only-setting{display:none!important;}
    automatically stretches to fill the full row width. */
 body.gaudiya-mode .lifetime-bar-block{display:none!important;}
 
+/* Gaudiya mode: 28 Names Daily Target stays visible (RV Daily hides next
+   to it), so let it expand across the full grid row instead of sitting
+   in a half-width column with empty space beside it. */
+body.gaudiya-mode .target28-card{grid-column:1/-1;}
+
 /* ── Gaudiya Mode: history table column visibility ── */
 .hist-hk-col{display:none;}
 body.gaudiya-mode .hist-hk-col{display:table-cell!important;}

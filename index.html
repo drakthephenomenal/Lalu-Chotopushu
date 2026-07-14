@@ -1491,7 +1491,7 @@
   </div>
 
   <!-- TARGETS -->
-  <div class="sc non-gaudiya-setting">
+  <div class="sc">
     <h3>🎯 Jap Targets</h3>
 
     <!-- ── Radha Naam Jap: Daily + Lifetime side-by-side ── -->
@@ -1519,19 +1519,19 @@
     </div>
 
     <!-- ── RV Daily + 28 Names Daily side-by-side ── -->
-    <div class="non-gaudiya-setting" style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,215,0,0.12)">
-      <div style="font-size:9px;color:rgba(255,215,0,0.55);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">📿 Radha Vallabh Sri Harivangsa Targets</div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,215,0,0.12)">
+      <div class="non-gaudiya-setting" style="font-size:9px;color:rgba(255,215,0,0.55);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">📿 Radha Vallabh Sri Harivangsa Targets</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <!-- RV Daily -->
-        <div style="background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));border:1.5px solid rgba(255,215,0,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(255,215,0,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
+        <div class="non-gaudiya-setting" style="background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));border:1.5px solid rgba(255,215,0,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(255,215,0,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
           <div style="font-size:9px;color:rgba(255,215,0,0.7);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">Daily</div>
           <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtRVIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtRV')"><span class="fu" style="font-size:10px;min-width:26px;">jap</span></div>
           <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtRVMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtRV')"><span class="fu" style="color:var(--gold);font-size:10px;min-width:26px;">malas</span></div>
           <div style="font-size:10px;color:var(--td);text-align:center;">= <span id="dtRVMala">0</span> malas/day</div>
           <button class="pb" style="padding:10px 8px;font-size:12px;" onclick="svtRV('d')">Save Daily</button>
         </div>
-        <!-- 28 Names Daily Target -->
-        <div style="background:linear-gradient(160deg,rgba(189,147,249,0.10),rgba(10,8,25,0.85));border:1.5px solid rgba(189,147,249,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(189,147,249,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
+        <!-- 28 Names Daily Target — visible in both default and Gaudiya/ISKCON modes -->
+        <div class="target28-card" style="background:linear-gradient(160deg,rgba(189,147,249,0.10),rgba(10,8,25,0.85));border:1.5px solid rgba(189,147,249,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(189,147,249,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
           <div style="font-size:9px;color:rgba(189,147,249,0.8);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">⭐ 28 Names Daily</div>
           <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dt28CycleIn" placeholder="Cycles/day" min="1" oninput="sync28CycleTarget()"><span class="fu" style="color:#BD93F9;font-size:10px;min-width:30px;">cycles</span></div>
           <div style="font-size:10px;color:var(--td);text-align:center;">= <span id="dt28JapDisp">0</span> japs/day</div>

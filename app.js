@@ -2085,15 +2085,25 @@ function _getAppUrl() {
   return RJAP_PWA_URL;
 }
 
-// ── Share App (PWA link) ──
-function shareApp() {
-  const url = _getAppUrl();
-  const shareText =
-    "Radha Vallabh Sri Harivangsa \uD83D\uDE4F\n\n" +
-    "Boost your Naam Jap experience with this little app —\n" +
-    "track Brahmacharya daily Jap & lots of statistics \u2728 \uD83E\uDEB7\n\n" +
-    "\uD83D\uDC49 " +
-    url;
+// Native Android (Capacitor WebView) does not implement the Web Share API —
+// navigator.share is simply undefined there, so these used to always fall
+// straight through to "copy the link" with no share sheet at all. Try the
+// Capacitor Share plugin first (real Android share sheet: WhatsApp,
+// Messenger, Telegram, etc.), then navigator.share for the PWA/browser,
+// then copy as the final fallback.
+async function _lcShareText(shareText) {
+  if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.Share) {
+    try {
+      await window.Capacitor.Plugins.Share.share({ text: shareText });
+      toast("Shared! \uD83D\uDE4F Jai Radhe!");
+      return;
+    } catch (err) {
+      // User cancelled the share sheet — not a real error, do nothing.
+      if (err && err.message && /cancel/i.test(err.message)) return;
+      _copyAppUrl(shareText);
+      return;
+    }
+  }
   if (navigator.share) {
     navigator
       .share({ text: shareText })
@@ -2106,6 +2116,18 @@ function shareApp() {
   }
 }
 
+// ── Share App (PWA link) ──
+function shareApp() {
+  const url = _getAppUrl();
+  const shareText =
+    "Radha Vallabh Sri Harivangsa \uD83D\uDE4F\n\n" +
+    "Boost your Naam Jap experience with this little app —\n" +
+    "track Brahmacharya daily Jap & lots of statistics \u2728 \uD83E\uDEB7\n\n" +
+    "\uD83D\uDC49 " +
+    url;
+  _lcShareText(shareText);
+}
+
 // ── Share App (APK direct download) ──
 function shareApk() {
   const shareText =
@@ -2114,16 +2136,7 @@ function shareApk() {
     "track Brahmacharya daily Jap & lots of statistics \u2728 \uD83E\uDEB7\n\n" +
     "\uD83D\uDC49 " +
     RJAP_APK_URL;
-  if (navigator.share) {
-    navigator
-      .share({ text: shareText })
-      .then(() => toast("Shared! \uD83D\uDE4F Jai Radhe!"))
-      .catch((err) => {
-        if (err.name !== "AbortError") _copyAppUrl(shareText);
-      });
-  } else {
-    _copyAppUrl(shareText);
-  }
+  _lcShareText(shareText);
 }
 
 function _copyAppUrl(url) {
@@ -5632,6 +5645,31 @@ function fbInit() {
     App._hydrationRetryTimer = null;
     App._hydrationFailureNotified = false;
 
+    // ── Local cache recovery ────────────────────────────────────────────
+    // A hung/failed cloud pull can sometimes mean Firestore's local
+    // offline cache (IndexedDB) itself got wedged — a stuck queued write,
+    // a lock left behind from an interrupted session, storage corruption.
+    // That fails every request *locally*, so reconnecting to a strong
+    // network afterward does NOT fix it — the retries above would just
+    // keep failing against the same broken cache forever. After a few
+    // failed attempts, wipe and rebuild the local cache before retrying —
+    // the standard recovery for a wedged Firestore cache.
+    window._fbRecoverPersistence = async function () {
+      try {
+        if (fbListener) { fbListener(); fbListener = null; }
+        await fbDb.terminate();
+        await fbDb.clearPersistence().catch(() => {});
+      } catch (e) {
+        console.warn("fbRecoverPersistence terminate/clear failed:", e && e.message);
+      }
+      try {
+        fbDb = firebase.firestore();
+        fbDb.enablePersistence({ synchronizeTabs: false }).catch(() => {});
+      } catch (e) {
+        console.warn("fbRecoverPersistence reinit failed:", e && e.message);
+      }
+    };
+
     window._scheduleHydrationRetry = function () {
       if (App._cloudHydrated) return;
       if (App._hydrationRetryTimer) return; // already scheduled
@@ -5650,6 +5688,13 @@ function fbInit() {
 
       App._hydrationRetryTimer = setTimeout(async () => {
         App._hydrationRetryTimer = null;
+        // After 3 straight failures, assume the local cache may be wedged
+        // (not just a slow network) and rebuild it before trying again.
+        if (App._hydrationRetryAttempts >= 3 && App._hydrationRetryAttempts % 3 === 0) {
+          console.warn("Hydration still failing after retries — rebuilding local Firestore cache");
+          toast("⚠️ Still not synced — resetting local cache and retrying…");
+          await window._fbRecoverPersistence();
+        }
         try {
           await fbAutoSync();
         } catch (e) {
@@ -6817,6 +6862,27 @@ function fbApplyRemote(d) {
   setSyncPill("", "🔄 Synced from cloud");
 }
 
+// A Firestore get() can hang indefinitely on some networks/devices —
+// neither resolving nor rejecting (bad wifi, captive portal, a stuck
+// offline-persistence lock, etc). Without a timeout, that leaves
+// App._cloudHydrated stuck false forever: the "Loading from cloud…" pill
+// never updates, and every push guard (fbPushFull, App.save's cloud
+// branch) silently no-ops for the rest of the session — even a manual
+// JSON restore can't reach Firebase. This forces a bounded wait so a
+// hang always surfaces as a normal failure and triggers the existing
+// retry/backoff (_scheduleHydrationRetry) instead of hanging forever.
+function fbWithTimeout(promise, ms, label) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => {
+      reject(new Error((label || "operation") + " timed out after " + ms + "ms"));
+    }, ms);
+    promise.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
+    );
+  });
+}
+
 async function fbMigrate() {
   // Always pull fresh from Firebase on every login/refresh.
   // migrationV2Done only guards the one-time data-format migration,
@@ -6834,12 +6900,12 @@ async function fbMigrate() {
     // the user's real cloud data. Force a server fetch on the initial pull.
     let snap;
     try {
-      snap = await docRef.get({ source: "server" });
+      snap = await fbWithTimeout(docRef.get({ source: "server" }), 15000, "Cloud pull");
     } catch (eServer) {
-      // Offline or server unreachable — fall back to cache, but DO NOT
-      // treat a cache miss as proof there's no cloud doc.
+      // Offline, server unreachable, or timed out — fall back to cache,
+      // but DO NOT treat a cache miss as proof there's no cloud doc.
       console.warn("Server pull failed, falling back to cache:", eServer.message);
-      snap = await docRef.get({ source: "cache" }).catch(() => null);
+      snap = await fbWithTimeout(docRef.get({ source: "cache" }), 8000, "Cache pull").catch(() => null);
       if (!snap || !snap.exists) {
         // Could not confirm cloud state — refuse to push so we never
         // overwrite real cloud data with empty local state.
@@ -6872,7 +6938,7 @@ async function fbMigrate() {
         // Do a second server fetch after a short delay to confirm truly no doc.
         await new Promise(r => setTimeout(r, 2000));
         let snap2 = null;
-        try { snap2 = await docRef.get({ source: "server" }); } catch (_) {}
+        try { snap2 = await fbWithTimeout(docRef.get({ source: "server" }), 15000, "Cloud pull retry"); } catch (_) {}
         if (snap2 && snap2.exists) {
           // Doc appeared on retry — browser reset scenario. Apply cloud data.
           fbApplyRemote({ ...snap2.data(), deviceId: null });

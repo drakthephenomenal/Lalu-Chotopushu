@@ -1216,6 +1216,22 @@
     </div>
   </div>
 
+  <!-- 28 Names Daily Target — lives here (next to HK Targets) only while Gaudiya
+       mode is ON. app.js moves the real #target28Card node between this slot and
+       #target28SlotDefault (next to RV Daily) so there's exactly one copy, always
+       in sync, just relocated depending on mode. -->
+  <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(189,147,249,0.15)">
+    <div id="target28SlotGaudiya" style="display:grid;grid-template-columns:1fr;gap:10px;">
+      <div id="target28Card" style="background:linear-gradient(160deg,rgba(189,147,249,0.10),rgba(10,8,25,0.85));border:1.5px solid rgba(189,147,249,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(189,147,249,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
+        <div style="font-size:9px;color:rgba(189,147,249,0.8);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">⭐ 28 Names Daily</div>
+        <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dt28CycleIn" placeholder="Cycles/day" min="1" oninput="sync28CycleTarget()"><span class="fu" style="color:#BD93F9;font-size:10px;min-width:30px;">cycles</span></div>
+        <div style="font-size:10px;color:var(--td);text-align:center;">= <span id="dt28JapDisp">0</span> japs/day</div>
+        <div style="font-size:9px;color:rgba(189,147,249,0.45);text-align:center;line-height:1.4;">1 cycle = 28 names</div>
+        <button class="pb" style="padding:10px 8px;font-size:12px;background:linear-gradient(135deg,rgba(189,147,249,0.45),rgba(120,60,200,0.35));color:#BD93F9;box-shadow:0 0 16px rgba(189,147,249,0.25);" onclick="svt28()">Save Daily</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Bhagavadik Bank — Gaudiya/ISKCON mode only, right below Targets/Language -->
   <div class="hk-only-block photo-settings-card" style="margin-top:14px;">
     <div class="photo-row" style="border-top:none;padding-top:0;margin-top:0;">
@@ -1518,7 +1534,7 @@
       </div>
     </div>
 
-    <!-- ── RV Daily + 28 Names Daily side-by-side ── -->
+    <!-- ── RV Daily + 28 Names Daily slot (default mode home) ── -->
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,215,0,0.12)">
       <div class="non-gaudiya-setting" style="font-size:9px;color:rgba(255,215,0,0.55);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">📿 Radha Vallabh Sri Harivangsa Targets</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -1530,14 +1546,8 @@
           <div style="font-size:10px;color:var(--td);text-align:center;">= <span id="dtRVMala">0</span> malas/day</div>
           <button class="pb" style="padding:10px 8px;font-size:12px;" onclick="svtRV('d')">Save Daily</button>
         </div>
-        <!-- 28 Names Daily Target — visible in both default and Gaudiya/ISKCON modes -->
-        <div class="target28-card" style="background:linear-gradient(160deg,rgba(189,147,249,0.10),rgba(10,8,25,0.85));border:1.5px solid rgba(189,147,249,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(189,147,249,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
-          <div style="font-size:9px;color:rgba(189,147,249,0.8);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">⭐ 28 Names Daily</div>
-          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dt28CycleIn" placeholder="Cycles/day" min="1" oninput="sync28CycleTarget()"><span class="fu" style="color:#BD93F9;font-size:10px;min-width:30px;">cycles</span></div>
-          <div style="font-size:10px;color:var(--td);text-align:center;">= <span id="dt28JapDisp">0</span> japs/day</div>
-          <div style="font-size:9px;color:rgba(189,147,249,0.45);text-align:center;line-height:1.4;">1 cycle = 28 names</div>
-          <button class="pb" style="padding:10px 8px;font-size:12px;background:linear-gradient(135deg,rgba(189,147,249,0.45),rgba(120,60,200,0.35));color:#BD93F9;box-shadow:0 0 16px rgba(189,147,249,0.25);" onclick="svt28()">Save Daily</button>
-        </div>
+        <!-- 28 Names Daily Target card gets moved in here by JS when Gaudiya mode is OFF -->
+        <div id="target28SlotDefault"></div>
       </div>
     </div>
 

@@ -1500,6 +1500,11 @@ body.gaudiya-mode .gaudiya-plain-stat .cdmo-stat-val{font-size:22px;}
 body.gaudiya-mode .non-gaudiya-setting{display:none!important;}
 body:not(.gaudiya-mode) .gaudiya-only-setting{display:none!important;}
 
+/* Gaudiya mode: no such thing as a "lifetime jap target" — hide the gold
+   Lifetime bar entirely; the Daily bar (flex:1, only child left in .ps)
+   automatically stretches to fill the full row width. */
+body.gaudiya-mode .lifetime-bar-block{display:none!important;}
+
 /* ── Gaudiya Mode: history table column visibility ── */
 .hist-hk-col{display:none;}
 body.gaudiya-mode .hist-hk-col{display:table-cell!important;}

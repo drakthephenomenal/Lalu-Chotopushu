@@ -304,7 +304,7 @@ function _lcArmWebReminderTimer() {
    Either path writes the resulting token onto the user's own Firestore doc
    (users/{uid}/data/main.fcmToken), which the developer-only Cloud Function
    sendBroadcastNotification (functions/index.js) reads to send pushes. */
-const FCM_VAPID_KEY = ""; // TODO: paste your Web Push certificate key here
+const FCM_VAPID_KEY = "BBgnbM2KTEB0yT9xOHK--eWm6MO93ihHSLwNpu-NieG59LwygSfRk9MF66_9zjrOrPe0Pff78RmPu68gJ3t-k3o";
 
 async function lcRegisterPush() {
   if (!fbUser || !fbDb) return false; // tokens are stored per signed-in user

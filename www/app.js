@@ -5490,7 +5490,7 @@ function _isNativeApp() {
 //                        Android project (see capacitor.config.json + README).
 const ZOHO_NATIVE_CONFIG = {
   clientId: "1000.SI61HY6OEFKXFN1Z9H2KIUL69ZO2KO",
-  redirectUri: "app.vercel.radharadharadha.capacitor://oauthredirect",
+  redirectUri: "https://radharadharadha.vercel.app/oauthredirect.html",
   scope: "openid email profile",
   // Cloud Function that exchanges Zoho's authorization `code` for a Firebase
   // custom token (see /functions/index.js). Your Zoho app is a
@@ -6364,6 +6364,22 @@ function _fbEmailErr(msg) {
     if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ""; }, 6000);
   }
 }
+// Phone-specific error display: shown directly under the Send OTP button
+// (not the shared #fbErr div, which sits below the whole email section and
+// was invisible without scrolling). Includes the raw Firebase error code so
+// failures can be diagnosed without opening DevTools. Stays up 20s / until
+// the next attempt, instead of clearing after 6s, so it can actually be read.
+function _fbPhoneErr(msg, code) {
+  const el = document.getElementById("fbPhoneErr");
+  const full = code ? (msg + "  [" + code + "]") : (msg || "");
+  console.warn("Phone OTP error:", code, msg);
+  if (el) {
+    el.textContent = full;
+    if (full) setTimeout(() => { if (el.textContent === full) el.textContent = ""; }, 20000);
+  } else {
+    _fbEmailErr(full); // fallback if the new div isn't present yet
+  }
+}
 function _fbReadEmailPass() {
   const e = (document.getElementById("fbEmailIn") || {}).value || "";
   const p = (document.getElementById("fbPassIn") || {}).value || "";
@@ -6480,11 +6496,11 @@ function fbSendPhoneOtp(isResend) {
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
   const phone = _fbReadPhone();
   if (!phone || !/^\+[1-9]\d{6,14}$/.test(phone)) {
-    _fbEmailErr("Enter phone number (e.g. 9876543210)");
+    _fbPhoneErr("Enter phone number (e.g. 9876543210)");
     return;
   }
   const verifier = _fbEnsureRecaptcha();
-  if (!verifier) { _fbEmailErr("Could not initialize verification. Please reload."); return; }
+  if (!verifier) { _fbPhoneErr("Could not initialize verification. Please reload."); return; }
 
   const btn = document.getElementById("fbPhoneSendBtn");
   if (btn) { btn.disabled = true; btn.textContent = isResend ? "Resending…" : "Sending…"; }
@@ -6502,7 +6518,7 @@ function fbSendPhoneOtp(isResend) {
     _otpSettled = true;
     if (btn) { btn.disabled = false; btn.textContent = "Send OTP"; }
     _fbClearRecaptcha();
-    _fbEmailErr("Verification timed out. Please check your connection and try again.");
+    _fbPhoneErr("Verification timed out. Please check your connection and try again.", "client/recaptcha-timeout");
   }, 20000);
 
   fbAuth.signInWithPhoneNumber(phone, verifier)
@@ -6511,6 +6527,7 @@ function fbSendPhoneOtp(isResend) {
       _otpSettled = true;
       clearTimeout(_otpTimeout);
       _fbConfirmation = confirmation;
+      _fbPhoneErr(""); // clear any prior error now that a send succeeded
       const otpRow = document.getElementById("fbOtpRow");
       if (otpRow) otpRow.style.display = "block";
       const otpIn = document.getElementById("fbOtpIn");
@@ -6532,7 +6549,7 @@ function fbSendPhoneOtp(isResend) {
       clearTimeout(_otpTimeout);
       if (btn) { btn.disabled = false; btn.textContent = "Send OTP"; }
       _fbClearRecaptcha();
-      _fbEmailErr((e && e.message) || "Could not send OTP");
+      _fbPhoneErr((e && e.message) || "Could not send OTP", e && e.code);
     });
 }
 
@@ -6540,8 +6557,8 @@ function fbVerifyPhoneOtp() {
   if (!_fbConfirmation) { _fbEmailErr("Please request an OTP first"); return; }
   const otpEl = document.getElementById("fbOtpIn");
   const code = (otpEl && otpEl.value || "").trim();
-  if (!/^\d{4,8}$/.test(code)) { _fbEmailErr("Enter the 6-digit OTP from your SMS"); return; }
-  _fbEmailErr("");
+  if (!/^\d{4,8}$/.test(code)) { _fbPhoneErr("Enter the 6-digit OTP from your SMS"); return; }
+  _fbPhoneErr("");
   _fbConfirmation.confirm(code)
     .then(function () {
       _fbConfirmation = null;
@@ -6551,7 +6568,7 @@ function fbVerifyPhoneOtp() {
       toast("Signed in! ☁️ Sync active 🙏");
     })
     .catch(function (e) {
-      _fbEmailErr((e && e.message) || "Invalid or expired OTP");
+      _fbPhoneErr((e && e.message) || "Invalid or expired OTP", e && e.code);
     });
 }
 
@@ -6591,9 +6608,13 @@ function fbSignUpEmail() {
             + '</ol>'
           );
         })
-        .catch(function () {
+        .catch(function (e) {
           // Do not block the newly-created account on this — the user can
-          // always resend from the "Sign in" screen's verify banner.
+          // always resend from the "Sign in" screen's verify banner. But
+          // don't swallow the error silently either; surface it so failures
+          // are visible instead of looking like "nothing happened".
+          console.warn("sendEmailVerification failed:", e && e.code, e && e.message);
+          _fbEmailErr("Account created, but verification email failed to send: " + ((e && e.code) || (e && e.message) || "unknown error"));
         });
     })
     .catch((e) => _fbEmailErr(e.message || "Sign-up failed"));

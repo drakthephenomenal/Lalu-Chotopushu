@@ -1994,10 +1994,18 @@ let lt2 = 0;
 document.addEventListener(
   "touchend",
   (e) => {
-    // Do not cancel touchend inside the lyrics modal. Repeated flick-scrolls
-    // can happen within 300ms; preventing them interrupts native momentum
-    // scrolling and makes the Stotram text feel stuck/shaky on mobile.
-    if (e.target && e.target.closest && e.target.closest("#lmo")) return;
+    // Only skip the guard inside the scrollable lyric text itself — repeated
+    // flick-scrolls there can land within 300ms of each other, and cancelling
+    // that touchend interrupts native momentum scrolling (feels stuck/shaky).
+    // Everywhere else inside the lyrics modal — importantly the Prev/Next
+    // buttons — must keep this guard. Without it, a quick double-tap on
+    // "Next" was both (a) triggering Android's native double-tap-zoom
+    // gesture (a visual flicker that looked like a "ghost"/duplicate of the
+    // button during the zoom animation) and (b) letting two click events
+    // reach verseNav() almost simultaneously, which skipped an extra verse
+    // (the "unpredictable jump" to next/previous).
+    if (e.target && e.target.closest && e.target.closest(".lm-card-inner"))
+      return;
     const n = Date.now();
     if (n - lt2 < 300) e.preventDefault();
     lt2 = n;
@@ -5962,6 +5970,12 @@ function fbInit() {
           user.phoneNumber || user.email || user.displayName || "Devotee";
         document.getElementById("fbUserEmail").textContent = _authLabel;
         try { localStorage.setItem("rjap_lastAuthLabel", _authLabel); } catch (_) {}
+        // Nudge (not block) email/password users who haven't verified yet.
+        var _vBanner = document.getElementById("fbVerifyBanner");
+        if (_vBanner) {
+          _vBanner.style.display =
+            user.email && !user.emailVerified ? "block" : "none";
+        }
         setSyncPill("syncing", "Loading from cloud…");
         // ── ALWAYS pull from Firebase first on every login/refresh ──
         // fbMigrate() does a direct .get() (not just onSnapshot) so it is
@@ -6455,8 +6469,27 @@ function fbSendPhoneOtp(isResend) {
   if (btn) { btn.disabled = true; btn.textContent = isResend ? "Resending…" : "Sending…"; }
   _fbEmailErr("");
 
+  // Guard against a silently-stalled invisible reCAPTCHA. Inside an Android
+  // WebView (Capacitor) the reCAPTCHA challenge can fail to complete without
+  // ever calling either the success or expired callback, which previously
+  // left signInWithPhoneNumber()'s promise pending forever — the button
+  // stayed on "Sending…", no error appeared, and no OTP ever arrived. This
+  // timeout forces a visible error and a reset so the user can retry.
+  let _otpSettled = false;
+  const _otpTimeout = setTimeout(function () {
+    if (_otpSettled) return;
+    _otpSettled = true;
+    if (btn) { btn.disabled = false; btn.textContent = "Send OTP"; }
+    try { if (_fbRecaptcha) { _fbRecaptcha.clear(); } } catch (_) {}
+    _fbRecaptcha = null;
+    _fbEmailErr("Verification timed out. Please check your connection and try again.");
+  }, 20000);
+
   fbAuth.signInWithPhoneNumber(phone, verifier)
     .then(function (confirmation) {
+      if (_otpSettled) return; // timeout already fired — ignore late resolve
+      _otpSettled = true;
+      clearTimeout(_otpTimeout);
       _fbConfirmation = confirmation;
       const otpRow = document.getElementById("fbOtpRow");
       if (otpRow) otpRow.style.display = "block";
@@ -6474,6 +6507,9 @@ function fbSendPhoneOtp(isResend) {
       );
     })
     .catch(function (e) {
+      if (_otpSettled) return;
+      _otpSettled = true;
+      clearTimeout(_otpTimeout);
       if (btn) { btn.disabled = false; btn.textContent = "Send OTP"; }
       try { if (_fbRecaptcha) { _fbRecaptcha.clear(); } } catch (_) {}
       _fbRecaptcha = null;
@@ -6520,8 +6556,43 @@ function fbSignUpEmail() {
     .then((cred) => {
       _fbEmailErr("");
       toast("Account created! ☁️ Sync active 🙏");
+      // Actually send the verification email. This call was missing before —
+      // the account was created and signed in, but no email ever went out,
+      // even though the sign-up instructions told the user to check their
+      // inbox for one. Sending it does not block sign-in/sync; it just
+      // gives the user a real link to confirm the address is theirs.
+      cred.user.sendEmailVerification()
+        .then(function () {
+          _fbInfoModal("📧 Verify your email",
+            '<p style="margin:0 0 10px">A verification link has been sent to:<br><span style="color:#ffd97a;word-break:break-all">' + email + '</span></p>'
+            + '<ol style="margin:8px 0 10px 18px;padding:0">'
+            +   '<li>Open your inbox and tap the verification link.</li>'
+            +   '<li><b>Can\'t find it?</b> Check your <b>Spam</b>, <b>Promotions</b>, or <b>Junk</b> folder.</li>'
+            +   '<li>You are already signed in and synced — this step just confirms the address is really yours.</li>'
+            + '</ol>'
+          );
+        })
+        .catch(function () {
+          // Do not block the newly-created account on this — the user can
+          // always resend from the "Sign in" screen's verify banner.
+        });
     })
     .catch((e) => _fbEmailErr(e.message || "Sign-up failed"));
+}
+
+// Resend the verification email for the currently signed-in user.
+// Surfaced via the "verify your email" banner shown after sign-in when
+// user.emailVerified is false.
+function fbResendVerificationEmail() {
+  if (!fbAuth || !fbAuth.currentUser) { toast("Please sign in first"); return; }
+  fbAuth.currentUser.sendEmailVerification()
+    .then(function () {
+      _fbInfoModal("📧 Verification email sent",
+        '<p style="margin:0 0 10px">A new verification link has been sent to:<br><span style="color:#ffd97a;word-break:break-all">' + (fbAuth.currentUser.email || "") + '</span></p>'
+        + '<p style="margin:0;font-size:12.5px;opacity:.85">Check Spam / Promotions / Junk if it does not appear within a minute.</p>'
+      );
+    })
+    .catch(function (e) { toast((e && e.message) || "Could not send verification email"); });
 }
 function fbResetEmail() {
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
@@ -10955,6 +11026,7 @@ function showLyrics(id) {
   }
   _verses = mergedVerses;
   _verseIdx = 0;
+  _verseNavLocked = false;
   _hcjStopAudio();
 
   const allSt = [
@@ -11163,9 +11235,24 @@ function _buildDots() {
   /* dots removed */
 }
 
+// Guards against a second tap/swipe landing while the previous verse's
+// slide-in animation (220ms, see .lyr-slide-enter-left/right in
+// style-stotram.css) is still running. Without this, a fast double-tap on
+// Next/Prev (very common on Android) could call _renderVerse() twice in
+// quick succession — the second call interrupted the first mid-animation,
+// which is what produced the flicker and made it land on an unpredictable
+// verse (sometimes +1, sometimes +2) instead of a clean single step.
+let _verseNavLocked = false;
+const _VERSE_NAV_LOCK_MS = 240; // slightly longer than the 220ms slide animation
+
 function verseNav(delta) {
+  if (_verseNavLocked) return;
   const newIdx = _verseIdx + delta;
   if (newIdx < 0 || newIdx >= _verses.length) return;
+  _verseNavLocked = true;
+  setTimeout(() => {
+    _verseNavLocked = false;
+  }, _VERSE_NAV_LOCK_MS);
   _verseIdx = newIdx;
   _renderVerse(_verseIdx, delta > 0 ? 1 : -1);
 }
@@ -11238,6 +11325,7 @@ function closeLyrics() {
   _hcjStopAudio();
   _verses = [];
   _verseIdx = 0;
+  _verseNavLocked = false;
   _currentStotramId = "";
   _translationVisible = false;
   if (window.StotramSections) window.StotramSections.reset();

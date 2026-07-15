@@ -5970,11 +5970,30 @@ function fbInit() {
           user.phoneNumber || user.email || user.displayName || "Devotee";
         document.getElementById("fbUserEmail").textContent = _authLabel;
         try { localStorage.setItem("rjap_lastAuthLabel", _authLabel); } catch (_) {}
-        // Nudge (not block) email/password users who haven't verified yet.
+        // Nudge (days 0-5) then hard-block (after 5 days) email/password users
+        // who haven't verified yet. Google/Zoho sign-ins arrive pre-verified
+        // so user.emailVerified is already true for them — this only ever
+        // engages for email+password accounts.
         var _vBanner = document.getElementById("fbVerifyBanner");
-        if (_vBanner) {
-          _vBanner.style.display =
-            user.email && !user.emailVerified ? "block" : "none";
+        if (user.email && !user.emailVerified) {
+          const _daysLeft = _emailVerifyDaysLeft(user);
+          if (_vBanner) {
+            _vBanner.style.display = "block";
+            var _cd = document.getElementById("fbVerifyBannerCountdown");
+            if (_cd && _daysLeft !== null) {
+              _cd.textContent = _daysLeft > 1
+                ? ("Verify within " + Math.ceil(_daysLeft) + " days to keep cloud sync active.")
+                : "Verify today — cloud sync will pause after today if unverified.";
+            }
+          }
+          if (_daysLeft !== null && _daysLeft <= 0) {
+            _fbShowVerifyBlock(user);
+          } else {
+            _fbHideVerifyBlock();
+          }
+        } else {
+          if (_vBanner) _vBanner.style.display = "none";
+          _fbHideVerifyBlock();
         }
         setSyncPill("syncing", "Loading from cloud…");
         // ── ALWAYS pull from Firebase first on every login/refresh ──
@@ -6357,6 +6376,86 @@ async function fbSignInZoho() {
 }
 
 // ── Email / Password sign-in helpers ──
+// ── Mandatory email verification within 5 days ─────────────────────
+// Days 0-5: soft banner nudge only (#fbVerifyBanner, unchanged UX).
+// Day 5+: hard, non-dismissable block overlay — cloud sync/app use is
+// gated until the user verifies or signs out. Grace period is measured
+// from Firebase Auth's own account-creation timestamp (user.metadata.
+// creationTime), not any local flag, so it can't be reset by clearing
+// local storage or reinstalling.
+const EMAIL_VERIFY_GRACE_DAYS = 5;
+
+function _emailVerifyDaysLeft(user) {
+  if (!user || !user.metadata || !user.metadata.creationTime) return null;
+  const created = new Date(user.metadata.creationTime).getTime();
+  if (isNaN(created)) return null;
+  const elapsedDays = (Date.now() - created) / 86400000;
+  return EMAIL_VERIFY_GRACE_DAYS - elapsedDays;
+}
+
+function _fbShowVerifyBlock(user) {
+  if (document.getElementById("fbVerifyBlockOverlay")) return; // already shown
+  var ov = document.createElement("div");
+  ov.id = "fbVerifyBlockOverlay";
+  ov.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.86);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:18px;font-family:Inter,sans-serif";
+  ov.innerHTML = ''
+    + '<div role="dialog" aria-modal="true" style="max-width:440px;width:100%;max-height:88vh;overflow-y:auto;background:linear-gradient(180deg,#1a2244,#0f1530);border:1px solid rgba(255,90,90,0.35);border-radius:18px;padding:22px 22px 18px;box-shadow:0 24px 60px rgba(0,0,0,0.6)">'
+    +   '<div style="font-size:17px;font-weight:700;color:#ff9a9a;margin-bottom:12px;text-align:center">📧 Please verify your email to continue</div>'
+    +   '<div style="font-size:13.5px;color:#e6e9f5;line-height:1.65;text-align:center">'
+    +     'It\'s been more than ' + EMAIL_VERIFY_GRACE_DAYS + ' days since you created this account, and <b style="color:#ffd97a">' + (user.email || '') + '</b> is still unverified.<br><br>'
+    +     'To keep your account and cloud data secure, verification is now required before you can continue.'
+    +   '</div>'
+    +   '<button id="fbVerifyBlockResend" style="margin-top:18px;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.12);color:#ffd97a;font-size:14px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">Resend verification email</button>'
+    +   '<button id="fbVerifyBlockRecheck" style="margin-top:10px;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(90,200,120,0.4);background:rgba(90,200,120,0.14);color:#9be6ac;font-size:14px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">I\'ve verified — Continue</button>'
+    +   '<button id="fbVerifyBlockSignOut" style="margin-top:10px;width:100%;padding:10px;border-radius:10px;border:none;background:transparent;color:var(--td);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">Sign out</button>'
+    + '</div>';
+  document.body.appendChild(ov);
+  ov.querySelector("#fbVerifyBlockResend").addEventListener("click", function () { fbResendVerificationEmail(); });
+  ov.querySelector("#fbVerifyBlockRecheck").addEventListener("click", async function () {
+    var btn = ov.querySelector("#fbVerifyBlockRecheck");
+    if (!btn) return;
+    btn.disabled = true; btn.textContent = "Checking…";
+    try {
+      await fbAuth.currentUser.reload();
+      if (fbAuth.currentUser.emailVerified) {
+        _fbHideVerifyBlock();
+        toast("✅ Email verified — welcome back! 🙏");
+      } else {
+        btn.disabled = false; btn.textContent = "Still not verified — tap link in email first";
+      }
+    } catch (e) {
+      btn.disabled = false; btn.textContent = "I've verified — Continue";
+    }
+  });
+  ov.querySelector("#fbVerifyBlockSignOut").addEventListener("click", function () {
+    _fbHideVerifyBlock();
+    fbSignOut();
+  });
+  // Intentionally no backdrop-click or Escape dismissal — this is a hard
+  // gate (days 0-5 already got the soft #fbVerifyBanner nudge instead).
+}
+
+function _fbHideVerifyBlock() {
+  var ov = document.getElementById("fbVerifyBlockOverlay");
+  if (ov) ov.remove();
+}
+
+// If the block overlay is showing and the user verifies via the emailed
+// link in another tab, silently re-check the moment they come back to
+// this tab — so they aren't stuck manually tapping "I've verified".
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState !== "visible") return;
+  if (!document.getElementById("fbVerifyBlockOverlay")) return;
+  if (!fbAuth || !fbAuth.currentUser) return;
+  try {
+    await fbAuth.currentUser.reload();
+    if (fbAuth.currentUser.emailVerified) {
+      _fbHideVerifyBlock();
+      toast("✅ Email verified — welcome back! 🙏");
+    }
+  } catch (_) {}
+});
+
 function _fbEmailErr(msg) {
   const el = document.getElementById("fbErr");
   if (el) {

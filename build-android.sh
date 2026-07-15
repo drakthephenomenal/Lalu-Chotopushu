@@ -59,9 +59,9 @@ npx cap sync android
 echo "── 4.5/9  Copy notification icon + reminder tone ────────────────"
 mkdir -p android/app/src/main/res/drawable
 mkdir -p android/app/src/main/res/raw
-cp ic_notification.png android/app/src/main/res/drawable/ic_stat_notify.png
+cp www/ic_notification.png android/app/src/main/res/drawable/ic_stat_notify.png
 echo "  copied ic_notification.png -> res/drawable/ic_stat_notify.png"
-cp reminder_tone.mp3 android/app/src/main/res/raw/reminder_tone.mp3
+cp www/reminder_tone.mp3 android/app/src/main/res/raw/reminder_tone.mp3
 echo "  copied reminder_tone.mp3 -> res/raw/reminder_tone.mp3"
 
 echo "── 5/9  Restore google-services.json ────────────────────────────"

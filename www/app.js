@@ -6410,6 +6410,22 @@ function _fbInfoModal(title, bodyHtml) {
 let _fbRecaptcha = null;
 let _fbConfirmation = null;
 
+function _fbClearRecaptcha() {
+  try { if (_fbRecaptcha) _fbRecaptcha.clear(); } catch (_) {}
+  _fbRecaptcha = null;
+  // grecaptcha.clear() removes the widget's own contents, but on some
+  // WebViews — especially after a render that failed or was interrupted —
+  // it leaves the container in a state grecaptcha still treats as
+  // "already rendered", which then throws that exact error on the next
+  // attempt (this was the actual cause of OTP never sending: every retry
+  // hit this error and never got as far as contacting Firebase at all).
+  // Forcibly emptying the container guarantees a clean slate.
+  try {
+    var c = document.getElementById("fbRecaptchaContainer");
+    if (c) c.innerHTML = "";
+  } catch (_) {}
+}
+
 function _fbEnsureRecaptcha() {
   if (!fbAuth) return null;
   if (_fbRecaptcha) return _fbRecaptcha;
@@ -6419,16 +6435,21 @@ function _fbEnsureRecaptcha() {
       size: "invisible",
       callback: function () { _fbHideRecaptchaBadge(); },
       "expired-callback": function () {
-        try { _fbRecaptcha.clear(); } catch (_) {}
-        _fbRecaptcha = null;
+        _fbClearRecaptcha();
       }
     });
     _fbRecaptcha.render()
       .then(function () { _fbHideRecaptchaBadge(); })
-      .catch(function (e) { console.warn("reCAPTCHA render:", e && e.message); });
+      .catch(function (e) {
+        // Previously this only logged a warning and left the broken
+        // widget in place, which is what produced "reCAPTCHA has already
+        // been rendered in this element" on every subsequent attempt.
+        console.warn("reCAPTCHA render:", e && e.message);
+        _fbClearRecaptcha();
+      });
   } catch (e) {
     console.warn("reCAPTCHA init:", e && e.message);
-    _fbRecaptcha = null;
+    _fbClearRecaptcha();
   }
   return _fbRecaptcha;
 }
@@ -6480,8 +6501,7 @@ function fbSendPhoneOtp(isResend) {
     if (_otpSettled) return;
     _otpSettled = true;
     if (btn) { btn.disabled = false; btn.textContent = "Send OTP"; }
-    try { if (_fbRecaptcha) { _fbRecaptcha.clear(); } } catch (_) {}
-    _fbRecaptcha = null;
+    _fbClearRecaptcha();
     _fbEmailErr("Verification timed out. Please check your connection and try again.");
   }, 20000);
 
@@ -6511,8 +6531,7 @@ function fbSendPhoneOtp(isResend) {
       _otpSettled = true;
       clearTimeout(_otpTimeout);
       if (btn) { btn.disabled = false; btn.textContent = "Send OTP"; }
-      try { if (_fbRecaptcha) { _fbRecaptcha.clear(); } } catch (_) {}
-      _fbRecaptcha = null;
+      _fbClearRecaptcha();
       _fbEmailErr((e && e.message) || "Could not send OTP");
     });
 }
@@ -6526,8 +6545,7 @@ function fbVerifyPhoneOtp() {
   _fbConfirmation.confirm(code)
     .then(function () {
       _fbConfirmation = null;
-      try { if (_fbRecaptcha) { _fbRecaptcha.clear(); } } catch (_) {}
-      _fbRecaptcha = null;
+      _fbClearRecaptcha();
       const otpRow = document.getElementById("fbOtpRow");
       if (otpRow) otpRow.style.display = "none";
       toast("Signed in! ☁️ Sync active 🙏");
@@ -6539,6 +6557,7 @@ function fbVerifyPhoneOtp() {
 
 function fbResetPhoneOtp() {
   _fbConfirmation = null;
+  _fbClearRecaptcha();
   const otpRow = document.getElementById("fbOtpRow");
   if (otpRow) otpRow.style.display = "none";
   const btn = document.getElementById("fbPhoneSendBtn");

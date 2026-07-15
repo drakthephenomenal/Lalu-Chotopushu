@@ -5970,29 +5970,22 @@ function fbInit() {
           user.phoneNumber || user.email || user.displayName || "Devotee";
         document.getElementById("fbUserEmail").textContent = _authLabel;
         try { localStorage.setItem("rjap_lastAuthLabel", _authLabel); } catch (_) {}
+        const _pwBtn = document.getElementById("fbChangePassBtn");
+        if (_pwBtn) _pwBtn.textContent = _fbHasPasswordProvider(user) ? "🔑 Change Password" : "🔑 Set Password";
         // Nudge (days 0-5) then hard-block (after 5 days) email/password users
         // who haven't verified yet. Google/Zoho sign-ins arrive pre-verified
         // so user.emailVerified is already true for them — this only ever
         // engages for email+password accounts.
-        var _vBanner = document.getElementById("fbVerifyBanner");
-        if (user.email && !user.emailVerified) {
-          const _daysLeft = _emailVerifyDaysLeft(user);
-          if (_vBanner) {
-            _vBanner.style.display = "block";
-            var _cd = document.getElementById("fbVerifyBannerCountdown");
-            if (_cd && _daysLeft !== null) {
-              _cd.textContent = _daysLeft > 1
-                ? ("Verify within " + Math.ceil(_daysLeft) + " days to keep cloud sync active.")
-                : "Verify today — cloud sync will pause after today if unverified.";
-            }
-          }
-          if (_daysLeft !== null && _daysLeft <= 0) {
-            _fbShowVerifyBlock(user);
-          } else {
-            _fbHideVerifyBlock();
-          }
+        // NOTE: linking a password credential to a phone account sets
+        // user.email to the internal placeholder address (see
+        // _fbPhoneSyntheticEmail) — that is NOT a real inbox, so it must
+        // never be subject to the verify-or-lose-sync grace period below;
+        // otherwise phone+password users would get permanently locked out
+        // trying to verify an address that was never meant to receive mail.
+        if (user.email && !_fbIsSyntheticPhoneEmail(user.email) && !user.emailVerified) {
+          _fbStartVerifyCountdownTimer(user);
         } else {
-          if (_vBanner) _vBanner.style.display = "none";
+          _fbStopVerifyCountdownTimer();
           _fbHideVerifyBlock();
         }
         setSyncPill("syncing", "Loading from cloud…");
@@ -6006,7 +5999,7 @@ function fbInit() {
           // accounts in Ghost Mode (not just leaderboard opt-ins).
           try {
             const _pName  = user.displayName || '';
-            const _pEmail = user.email || '';
+            const _pEmail = _fbIsSyntheticPhoneEmail(user.email) ? '' : (user.email || '');
             const _pPhone = user.phoneNumber || '';
             await fbDb.collection('presence').doc(user.uid).set({
               uid: user.uid,
@@ -6048,6 +6041,8 @@ function fbInit() {
         try { localStorage.removeItem("rjap_lastAuthLabel"); } catch (_) {}
         document.getElementById("fbLoggedOut").style.display = "block";
         document.getElementById("fbLoggedIn").style.display = "none";
+        _fbStopVerifyCountdownTimer();
+        _fbHideVerifyBlock();
         // Clean up session listener on sign out
         if (fbSessionListener) {
           fbSessionListener();
@@ -6393,6 +6388,62 @@ function _emailVerifyDaysLeft(user) {
   return EMAIL_VERIFY_GRACE_DAYS - elapsedDays;
 }
 
+// Formats the fractional-days-left value into a human "Xd Yh left" /
+// "Yh Zm left" style string for the live countdown shown in the banner
+// and the hard-block overlay.
+function _fbFormatVerifyCountdown(daysLeft) {
+  if (daysLeft === null) return "";
+  if (daysLeft <= 0) return "Grace period ended";
+  const totalMinutes = Math.max(1, Math.floor(daysLeft * 24 * 60));
+  const d = Math.floor(totalMinutes / 1440);
+  const h = Math.floor((totalMinutes % 1440) / 60);
+  const m = totalMinutes % 60;
+  if (d >= 1) return d + "d " + h + "h left to verify";
+  if (h >= 1) return h + "h " + m + "m left to verify";
+  return m + "m left to verify";
+}
+
+// ── Live countdown: banner ticks down in real time while Settings is
+// open, and the hard block fires the instant the grace period actually
+// expires (not just at the next sign-in/app-open event).
+let _fbVerifyCountdownTimer = null;
+
+function _fbUpdateVerifyCountdownUI(user) {
+  const u = user || (fbAuth && fbAuth.currentUser);
+  if (!u || !u.email || _fbIsSyntheticPhoneEmail(u.email) || u.emailVerified) { _fbStopVerifyCountdownTimer(); return; }
+  const _vBanner = document.getElementById("fbVerifyBanner");
+  const _daysLeft = _emailVerifyDaysLeft(u);
+  if (_vBanner) {
+    _vBanner.style.display = "block";
+    const _cd = document.getElementById("fbVerifyBannerCountdown");
+    if (_cd && _daysLeft !== null) {
+      _cd.textContent = "You have " + EMAIL_VERIFY_GRACE_DAYS + " days from signup to verify — "
+        + _fbFormatVerifyCountdown(_daysLeft) + " to keep cloud sync active.";
+    }
+  }
+  const _blockCd = document.getElementById("fbVerifyBlockCountdown");
+  if (_blockCd && _daysLeft !== null) {
+    _blockCd.textContent = _fbFormatVerifyCountdown(_daysLeft);
+  }
+  if (_daysLeft !== null && _daysLeft <= 0) {
+    _fbShowVerifyBlock(u);
+  } else {
+    _fbHideVerifyBlock();
+  }
+}
+
+function _fbStartVerifyCountdownTimer(user) {
+  _fbUpdateVerifyCountdownUI(user); // paint immediately, don't wait a minute
+  if (_fbVerifyCountdownTimer) return; // already ticking
+  _fbVerifyCountdownTimer = setInterval(function () { _fbUpdateVerifyCountdownUI(); }, 60000);
+}
+
+function _fbStopVerifyCountdownTimer() {
+  if (_fbVerifyCountdownTimer) { clearInterval(_fbVerifyCountdownTimer); _fbVerifyCountdownTimer = null; }
+  const _vBanner = document.getElementById("fbVerifyBanner");
+  if (_vBanner) _vBanner.style.display = "none";
+}
+
 function _fbShowVerifyBlock(user) {
   if (document.getElementById("fbVerifyBlockOverlay")) return; // already shown
   var ov = document.createElement("div");
@@ -6405,6 +6456,7 @@ function _fbShowVerifyBlock(user) {
     +     'It\'s been more than ' + EMAIL_VERIFY_GRACE_DAYS + ' days since you created this account, and <b style="color:#ffd97a">' + (user.email || '') + '</b> is still unverified.<br><br>'
     +     'To keep your account and cloud data secure, verification is now required before you can continue.'
     +   '</div>'
+    +   '<div id="fbVerifyBlockCountdown" style="margin-top:10px;font-size:11.5px;color:#ff9a9a;text-align:center;opacity:.85"></div>'
     +   '<button id="fbVerifyBlockResend" style="margin-top:18px;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.12);color:#ffd97a;font-size:14px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">Resend verification email</button>'
     +   '<button id="fbVerifyBlockRecheck" style="margin-top:10px;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(90,200,120,0.4);background:rgba(90,200,120,0.14);color:#9be6ac;font-size:14px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">I\'ve verified — Continue</button>'
     +   '<button id="fbVerifyBlockSignOut" style="margin-top:10px;width:100%;padding:10px;border-radius:10px;border:none;background:transparent;color:var(--td);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">Sign out</button>'
@@ -6665,6 +6717,33 @@ function fbVerifyPhoneOtp() {
       const otpRow = document.getElementById("fbOtpRow");
       if (otpRow) otpRow.style.display = "none";
       toast("Signed in! ☁️ Sync active 🙏");
+      // ── Password linking after OTP verification ──
+      // Two cases: (1) the user got here via "Forgot password" — they just
+      // re-proved phone ownership via OTP, so let them set a fresh password
+      // immediately; (2) first-time / no password set yet — offer it as an
+      // optional, skippable convenience so future sign-ins don't need OTP.
+      const _wasResetFlow = _fbPhonePasswordResetPending;
+      _fbPhonePasswordResetPending = false;
+      const _u = fbAuth.currentUser;
+      if (_wasResetFlow) {
+        _fbShowPasswordModal({
+          title: "🔑 Set a new password",
+          subtitle: "Your phone number is verified — choose a new password for signing in.",
+          requireCurrent: false,
+          submitLabel: "Save new password",
+          skippable: true,
+          onSubmit: function (np) { return _fbSetOrChangePassword(np, null); }
+        });
+      } else if (_u && !_fbHasPasswordProvider(_u)) {
+        _fbShowPasswordModal({
+          title: "🔑 Set a password? (optional)",
+          subtitle: "Skip OTP next time — sign in with your phone number + a password instead.",
+          requireCurrent: false,
+          submitLabel: "Set password",
+          skippable: true,
+          onSubmit: function (np) { return _fbSetOrChangePassword(np, null); }
+        });
+      }
     })
     .catch(function (e) {
       _fbPhoneErr((e && e.message) || "Invalid or expired OTP", e && e.code);
@@ -6674,11 +6753,178 @@ function fbVerifyPhoneOtp() {
 function fbResetPhoneOtp() {
   _fbConfirmation = null;
   _fbClearRecaptcha();
+  _fbPhonePasswordResetPending = false;
   const otpRow = document.getElementById("fbOtpRow");
   if (otpRow) otpRow.style.display = "none";
   const btn = document.getElementById("fbPhoneSendBtn");
   if (btn) { btn.disabled = false; btn.textContent = "Send OTP"; }
   _fbEmailErr("");
+}
+
+// ── Password login for phone accounts ──────────────────────────────
+// Firebase's phone auth has no native "password" concept, so a password
+// set for a phone account is stored as a linked email/password credential
+// under a deterministic, never-emailed placeholder address derived from
+// the phone number itself. It is only ever used as an internal Firebase
+// Auth identifier — nothing is sent to it, and it's regenerated the same
+// way every time from the phone number, so nothing needs to be stored.
+function _fbPhoneSyntheticEmail(phone) {
+  const digits = (phone || "").replace(/[^\d]/g, "");
+  return digits + "@phoneauth.radharadha.internal";
+}
+
+function _fbIsSyntheticPhoneEmail(email) {
+  return !!email && /@phoneauth\.radharadha\.internal$/.test(email);
+}
+
+function _fbHasPasswordProvider(user) {
+  if (!user || !user.providerData) return false;
+  return user.providerData.some(function (p) { return p && p.providerId === "password"; });
+}
+
+// Sets a password for the current user if none exists yet (links a
+// password credential to the existing account), or changes it if one
+// already exists (requires re-authenticating with the current password
+// first, per Firebase's security rules for updatePassword).
+function _fbSetOrChangePassword(newPassword, currentPassword) {
+  const user = fbAuth && fbAuth.currentUser;
+  if (!user) return Promise.reject(new Error("Please sign in first"));
+  const identifierEmail = user.email || _fbPhoneSyntheticEmail(user.phoneNumber);
+  if (!identifierEmail) return Promise.reject(new Error("Could not determine account identifier"));
+  if (_fbHasPasswordProvider(user)) {
+    const reauthCred = firebase.auth.EmailAuthProvider.credential(identifierEmail, currentPassword || "");
+    return user.reauthenticateWithCredential(reauthCred).then(function () {
+      return user.updatePassword(newPassword);
+    });
+  }
+  const linkCred = firebase.auth.EmailAuthProvider.credential(identifierEmail, newPassword);
+  return user.linkWithCredential(linkCred);
+}
+
+// Toggles the phone sign-in UI between "Send OTP" mode and "Sign in with
+// password" mode.
+function fbTogglePhonePasswordMode(showPassword) {
+  const sendRow = document.getElementById("fbPhoneSendRow");
+  const otpRow = document.getElementById("fbOtpRow");
+  const passRow = document.getElementById("fbPhonePassRow");
+  if (showPassword) {
+    if (sendRow) sendRow.style.display = "none";
+    if (otpRow) otpRow.style.display = "none";
+    if (passRow) passRow.style.display = "block";
+  } else {
+    if (sendRow) sendRow.style.display = "flex";
+    if (passRow) passRow.style.display = "none";
+  }
+  _fbPhoneErr("");
+}
+
+function fbSignInPhonePassword() {
+  if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
+  const phone = _fbReadPhone();
+  if (!phone || !/^\+[1-9]\d{6,14}$/.test(phone)) {
+    _fbPhoneErr("Enter phone number (e.g. 9876543210)");
+    return;
+  }
+  const passEl = document.getElementById("fbPhonePassIn");
+  const password = (passEl && passEl.value) || "";
+  if (!password) { _fbPhoneErr("Enter your password"); return; }
+  const identifierEmail = _fbPhoneSyntheticEmail(phone);
+  const btn = document.getElementById("fbPhonePassSendBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "Signing in…"; }
+  fbAuth.signInWithEmailAndPassword(identifierEmail, password)
+    .then(function () {
+      if (btn) { btn.disabled = false; btn.textContent = "Sign in with Password"; }
+      toast("Signed in! ☁️ Sync active 🙏");
+    })
+    .catch(function (e) {
+      if (btn) { btn.disabled = false; btn.textContent = "Sign in with Password"; }
+      if (e && (e.code === "auth/user-not-found" || e.code === "auth/wrong-password" || e.code === "auth/invalid-credential")) {
+        _fbPhoneErr("No password set for this number yet, or it's incorrect. Use OTP to sign in, then set a password from Settings.", e.code);
+      } else {
+        _fbPhoneErr((e && e.message) || "Could not sign in", e && e.code);
+      }
+    });
+}
+
+// "Forgot password" for a phone account: since the placeholder address
+// behind a phone password is never a real inbox, Firebase's email reset
+// link can't be used. Instead, re-proving phone ownership via a fresh OTP
+// stands in for that proof, and immediately prompts for a new password.
+let _fbPhonePasswordResetPending = false;
+function fbPhoneForgotPassword() {
+  const phone = _fbReadPhone();
+  if (!phone || !/^\+[1-9]\d{6,14}$/.test(phone)) {
+    _fbPhoneErr("Enter your phone number above first");
+    return;
+  }
+  _fbPhonePasswordResetPending = true;
+  fbTogglePhonePasswordMode(false);
+  toast("Verify with OTP to reset your password 🔑");
+  fbSendPhoneOtp();
+}
+
+// Generic password entry modal, used for: setting a first password,
+// changing an existing one, and completing a phone "forgot password" reset.
+function _fbShowPasswordModal(opts) {
+  const old = document.getElementById("fbPassModal");
+  if (old) old.remove();
+  const ov = document.createElement("div");
+  ov.id = "fbPassModal";
+  ov.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.72);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:18px;font-family:Inter,sans-serif";
+  const currentField = opts.requireCurrent
+    ? '<input type="password" id="fbPassModalCurrent" class="fb-email-input" placeholder="Current password" autocomplete="current-password">'
+    : '';
+  ov.innerHTML = ''
+    + '<div role="dialog" aria-modal="true" style="max-width:400px;width:100%;background:linear-gradient(180deg,#1a2244,#0f1530);border:1px solid rgba(74,144,226,0.35);border-radius:18px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,0.55)">'
+    +   '<div style="font-size:16px;font-weight:700;color:#ffd97a;margin-bottom:8px;text-align:center">' + opts.title + '</div>'
+    +   (opts.subtitle ? '<div style="font-size:12.5px;color:#c7cce0;margin-bottom:14px;text-align:center;line-height:1.5">' + opts.subtitle + '</div>' : '')
+    +   currentField
+    +   '<input type="password" id="fbPassModalNew" class="fb-email-input" placeholder="New password (min 6 chars)" autocomplete="new-password">'
+    +   '<input type="password" id="fbPassModalConfirm" class="fb-email-input" placeholder="Confirm new password" autocomplete="new-password" style="margin-bottom:4px">'
+    +   '<div id="fbPassModalErr" style="font-size:11.5px;color:var(--red);min-height:16px;margin-bottom:6px;text-align:center"></div>'
+    +   '<button id="fbPassModalSubmit" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(90,200,120,0.4);background:rgba(90,200,120,0.16);color:#9be6ac;font-size:14px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">' + (opts.submitLabel || "Save") + '</button>'
+    +   (opts.skippable ? '<button id="fbPassModalSkip" style="margin-top:8px;width:100%;padding:10px;border-radius:10px;border:none;background:transparent;color:var(--td);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">Skip for now</button>' : '')
+    + '</div>';
+  document.body.appendChild(ov);
+  const errEl = ov.querySelector("#fbPassModalErr");
+  const close = function () { try { ov.remove(); } catch (_) {} };
+  if (opts.skippable) ov.querySelector("#fbPassModalSkip").addEventListener("click", close);
+  ov.querySelector("#fbPassModalSubmit").addEventListener("click", function () {
+    const np = ov.querySelector("#fbPassModalNew").value;
+    const cp = ov.querySelector("#fbPassModalConfirm").value;
+    const curr = opts.requireCurrent ? ov.querySelector("#fbPassModalCurrent").value : null;
+    if (opts.requireCurrent && !curr) { errEl.textContent = "Enter your current password"; return; }
+    if (!np || np.length < 6) { errEl.textContent = "New password must be at least 6 characters"; return; }
+    if (np !== cp) { errEl.textContent = "Passwords do not match"; return; }
+    const btn = ov.querySelector("#fbPassModalSubmit");
+    btn.disabled = true; btn.textContent = "Saving…";
+    Promise.resolve(opts.onSubmit(np, curr))
+      .then(function () { close(); toast("🔑 Password saved"); })
+      .catch(function (e) {
+        btn.disabled = false; btn.textContent = opts.submitLabel || "Save";
+        errEl.textContent = (e && e.message) || "Could not save password";
+      });
+  });
+}
+
+// Entry point for the "Change / Set Password" button shown to signed-in
+// users in Settings — works the same for email accounts and phone
+// accounts (with or without a password already set).
+function fbChangePasswordFromSettings() {
+  if (!fbAuth || !fbAuth.currentUser) { toast("Please sign in first"); return; }
+  const user = fbAuth.currentUser;
+  const already = _fbHasPasswordProvider(user);
+  _fbShowPasswordModal({
+    title: already ? "🔑 Change password" : "🔑 Set a password",
+    subtitle: already
+      ? "Enter your current password, then choose a new one."
+      : (user.phoneNumber
+          ? "Set a password so you can sign in with your phone number + password (skip OTP)."
+          : "Set a password for this account."),
+    requireCurrent: already,
+    submitLabel: already ? "Change password" : "Set password",
+    onSubmit: function (np, cp) { return _fbSetOrChangePassword(np, cp); }
+  });
 }
 
 function fbSignUpEmail() {

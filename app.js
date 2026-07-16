@@ -6200,13 +6200,18 @@ async function fbSignInGoogle() {
       await fbAuth.signInWithCredential(credential);
       toast("Signed in with Google! ☁️ Sync active 🙏");
 
-      // Fire-and-forget: enable daily Drive backup if we got offline
-      // access. Non-fatal if it fails — backup just stays off until the
-      // next successful sign-in tries again.
+      // TEMPORARY DEBUG: awaited (not fire-and-forget) and shows its result,
+      // so we can see exactly why the token exchange succeeds or fails,
+      // instead of it happening invisibly in the background.
       if (serverAuthCode) {
-        fbEnableDriveBackup(serverAuthCode).catch((e) =>
-          console.warn("Drive backup setup failed (non-fatal):", e),
-        );
+        try {
+          const exchangeResult = await fbEnableDriveBackup(serverAuthCode);
+          alert("DEBUG driveTokenExchange result:\n" + JSON.stringify(exchangeResult, null, 2));
+        } catch (e) {
+          alert("DEBUG driveTokenExchange THREW:\n" + (e && e.message ? e.message : e));
+        }
+      } else {
+        alert("DEBUG: no serverAuthCode, skipping driveTokenExchange entirely.");
       }
     } catch (e) {
       console.error("Native Google sign-in failed:", e);
@@ -6268,7 +6273,7 @@ async function fbSignInGoogle() {
 // than once — driveTokenExchange just no-ops if Google doesn't return a
 // fresh refresh_token (e.g. consent already granted before).
 async function fbEnableDriveBackup(serverAuthCode) {
-  if (!fbInit() || !firebase.app().functions) return;
+  if (!fbInit() || !firebase.app().functions) return { skipped: "fbInit or functions unavailable" };
   try {
     const fn = firebase.app().functions().httpsCallable("driveTokenExchange");
     const res = await fn({ serverAuthCode });
@@ -6277,8 +6282,10 @@ async function fbEnableDriveBackup(serverAuthCode) {
     } else {
       console.log("Drive backup: nothing new to store (already enabled or no offline access).", res && res.data);
     }
+    return res && res.data;
   } catch (e) {
     console.warn("driveTokenExchange call failed:", e);
+    return { threw: true, message: e && e.message, code: e && e.code, details: e && e.details };
   }
 }
 

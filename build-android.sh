@@ -56,14 +56,6 @@ echo "── 4/9  Copy web assets + sync plugins ──────────�
 bash setup-www.sh
 npx cap sync android
 
-echo "── 4.5/9  Copy notification icon + reminder tone ────────────────"
-mkdir -p android/app/src/main/res/drawable
-mkdir -p android/app/src/main/res/raw
-cp www/ic_notification.png android/app/src/main/res/drawable/ic_stat_notify.png
-echo "  copied ic_notification.png -> res/drawable/ic_stat_notify.png"
-cp www/reminder_tone.mp3 android/app/src/main/res/raw/reminder_tone.mp3
-echo "  copied reminder_tone.mp3 -> res/raw/reminder_tone.mp3"
-
 echo "── 5/9  Restore google-services.json ────────────────────────────"
 if [ -f "google-services.json" ]; then
   cp google-services.json android/app/google-services.json
@@ -91,6 +83,43 @@ if ! grep -q "ACCESS_FINE_LOCATION" "$MANIFEST"; then
 else
   echo "  already present"
 fi
+
+echo "── 7.5/9  Patch AndroidManifest.xml (OAuth redirect deep link) ──"
+python3 - << 'PYEOF'
+path = "android/app/src/main/AndroidManifest.xml"
+with open(path) as f:
+    content = f.read()
+
+if "app.vercel.radharadharadha.capacitor\"" in content and "oauthredirect" in content:
+    print("  already present")
+else:
+    # This is the missing piece that made Zoho sign-in (and later, Google
+    # Drive backup) never actually complete in real builds: the JS side
+    # opens a browser and waits for an appUrlOpen event, but without this
+    # intent-filter Android has no registered claim on the redirect URL,
+    # so the OS never hands control back to the app at all — no error,
+    # it just silently never returns. oauthredirect.html (hosted on
+    # Vercel) forwards Zoho's/Google's callback to
+    # app.vercel.radharadharadha.capacitor://oauthredirect, which is what
+    # this intent-filter catches.
+    deep_link_filter = (
+        '        <intent-filter android:autoVerify="false">\n'
+        '            <action android:name="android.intent.action.VIEW" />\n'
+        '            <category android:name="android.intent.category.DEFAULT" />\n'
+        '            <category android:name="android.intent.category.BROWSABLE" />\n'
+        '            <data android:scheme="app.vercel.radharadharadha.capacitor" android:host="oauthredirect" />\n'
+        '        </intent-filter>\n'
+    )
+    marker = "</intent-filter>"
+    idx = content.find(marker)
+    if idx == -1:
+        raise SystemExit("Could not find </intent-filter> anchor in AndroidManifest.xml — manifest structure may have changed.")
+    insert_at = idx + len(marker)
+    content = content[:insert_at] + "\n" + deep_link_filter + content[insert_at:]
+    with open(path, "w") as f:
+        f.write(content)
+    print("  added custom-scheme deep link intent-filter (app.vercel.radharadharadha.capacitor://oauthredirect)")
+PYEOF
 
 echo "── 8/9  Patch MainActivity.java (text zoom fix + register PowerPermissions plugin) ──────────"
 MAIN_ACTIVITY=$(find android/app/src/main/java -name "MainActivity.java")

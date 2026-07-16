@@ -6183,6 +6183,18 @@ async function fbSignInGoogle() {
       const idToken = result && result.credential && result.credential.idToken;
       const accessToken = result && result.credential && result.credential.accessToken;
       const serverAuthCode = result && result.credential && result.credential.serverAuthCode;
+
+      // TEMPORARY DEBUG — remove once Drive backup auth is confirmed working.
+      // Shows exactly what the native sign-in returned, since there's no
+      // remote devtools access to check this directly on-device.
+      alert(
+        "DEBUG sign-in result:\n" +
+        "idToken: " + (idToken ? "present (" + idToken.length + " chars)" : "MISSING") + "\n" +
+        "accessToken: " + (accessToken ? "present" : "MISSING") + "\n" +
+        "serverAuthCode: " + (serverAuthCode ? "present (" + serverAuthCode.length + " chars)" : "MISSING") + "\n" +
+        "full credential keys: " + (result && result.credential ? Object.keys(result.credential).join(", ") : "none")
+      );
+
       if (!idToken) throw new Error("No ID token returned from native Google Sign-In");
       const credential = firebase.auth.GoogleAuthProvider.credential(idToken, accessToken);
       await fbAuth.signInWithCredential(credential);

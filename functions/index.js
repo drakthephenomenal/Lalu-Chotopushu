@@ -4,29 +4,29 @@ const fetch = require("node-fetch");
 
 admin.initializeApp();
 
-// Set these with:
-//   firebase functions:config:set zoho.client_id="YOUR_CLIENT_ID" \
-//     zoho.client_secret="YOUR_CLIENT_SECRET" \
-//     zoho.redirect_uri="app.vercel.radharadharadha.capacitor://oauthredirect"
-//
-// IMPORTANT: this redirect_uri must match, character-for-character, both:
-//   1. ZOHO_NATIVE_CONFIG.redirectUri in app.js (native sign-in flow)
-//   2. The Authorized Redirect URI registered for this client in
-//      Zoho's API Console (https://api-console.zoho.com)
-// Zoho rejects the code exchange if this value doesn't exactly match what
-// was used in the original /oauth/v2/auth request. This is a DEPLOYED
-// config value on Firebase's servers — editing this file's comment does
-// NOT change it. Run the command above, then redeploy:
-//   firebase deploy --only functions:zohoTokenExchange
-const ZOHO_CLIENT_ID = functions.config().zoho.client_id;
-const ZOHO_CLIENT_SECRET = functions.config().zoho.client_secret;
-const ZOHO_REDIRECT_URI = functions.config().zoho.redirect_uri;
+const { defineString, defineSecret } = require("firebase-functions/params");
+
+// Set at deploy time — Firebase will prompt for these interactively the
+// first time, since functions.config() (the old way) is no longer
+// returning values for this project.
+//   ZOHO_CLIENT_ID      — from https://api-console.zoho.com
+//   ZOHO_CLIENT_SECRET  — from https://api-console.zoho.com (kept in Secret Manager)
+//   ZOHO_REDIRECT_URI   — must match, character-for-character, both:
+//     1. ZOHO_NATIVE_CONFIG.redirectUri in app.js (native sign-in flow)
+//     2. The Authorized Redirect URI registered for this client in
+//        Zoho's API Console
+//   Typically: app.vercel.radharadharadha.capacitor://oauthredirect
+const ZOHO_CLIENT_ID = defineString("ZOHO_CLIENT_ID");
+const ZOHO_CLIENT_SECRET = defineSecret("ZOHO_CLIENT_SECRET");
+const ZOHO_REDIRECT_URI = defineString("ZOHO_REDIRECT_URI");
 
 // Called by app.js (_zohoNativeSignIn) with the authorization `code` Zoho
 // redirected back with. Exchanges it server-side (client secret never
 // leaves this function), looks up/creates a matching Firebase Auth user,
 // and returns a Firebase custom token the app signs in with.
-exports.zohoTokenExchange = functions.https.onRequest(async (req, res) => {
+exports.zohoTokenExchange = functions
+  .runWith({ secrets: [ZOHO_CLIENT_SECRET] })
+  .https.onRequest(async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
   if (req.method === "OPTIONS") {
     res.set("Access-Control-Allow-Methods", "GET, POST");
@@ -43,9 +43,9 @@ exports.zohoTokenExchange = functions.https.onRequest(async (req, res) => {
     // 1. Exchange the authorization code for a Zoho access token
     const params = new URLSearchParams({
       grant_type: "authorization_code",
-      client_id: ZOHO_CLIENT_ID,
-      client_secret: ZOHO_CLIENT_SECRET,
-      redirect_uri: ZOHO_REDIRECT_URI,
+      client_id: ZOHO_CLIENT_ID.value(),
+      client_secret: ZOHO_CLIENT_SECRET.value(),
+      redirect_uri: ZOHO_REDIRECT_URI.value(),
       code,
     });
 
@@ -93,6 +93,161 @@ exports.zohoTokenExchange = functions.https.onRequest(async (req, res) => {
     console.error("zohoTokenExchange error:", e);
     return res.status(500).json({ error: "Internal error", details: String(e) });
   }
+});
+
+// ═══════════════════════════════════════════════════════
+// GOOGLE DRIVE — Daily backup (like WhatsApp's Drive chat backup)
+// ═══════════════════════════════════════════════════════
+// Set these with:
+//   firebase functions:config:set drive.client_id="YOUR_CLIENT_ID" \
+//     drive.client_secret="YOUR_CLIENT_SECRET"
+// (Values come from the "Drive Backup Server Client" OAuth Web client
+// created in Google Cloud Console > APIs & Services > Credentials.)
+// Unlike functions.config() (deprecated, being shut down — see the Zoho
+// section above for the full explanation), these params are resolved
+// safely at deploy/runtime — no risk of the deploy-time crash we hit with
+// the old approach. DRIVE_CLIENT_SECRET is a real Secret Manager secret
+// (encrypted at rest); DRIVE_CLIENT_ID is a plain string param since
+// client IDs aren't sensitive. Both prompt interactively on first deploy
+// if not already set — no separate "config:set" command needed.
+const DRIVE_CLIENT_ID = defineString("DRIVE_CLIENT_ID");
+const DRIVE_CLIENT_SECRET = defineSecret("DRIVE_CLIENT_SECRET");
+const DRIVE_BACKUP_FILENAME = "radha-naam-jap-backup.json";
+
+// Called once by app.js right after Google sign-in, if the sign-in result
+// included a serverAuthCode (only present when the drive.file scope was
+// requested). Exchanges it for a refresh token — this exchange MUST happen
+// server-side, since it requires the client secret, which must never ship
+// in the app. The refresh token is stored in driveBackupTokens/{uid},
+// locked to Admin-SDK-only access by firestore.rules.
+exports.driveTokenExchange = functions
+  .runWith({ secrets: [DRIVE_CLIENT_SECRET] })
+  .https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Must be signed in.");
+  }
+  const serverAuthCode = (data && data.serverAuthCode || "").trim();
+  if (!serverAuthCode) {
+    throw new functions.https.HttpsError("invalid-argument", "Missing serverAuthCode.");
+  }
+
+  const params = new URLSearchParams({
+    grant_type: "authorization_code",
+    client_id: DRIVE_CLIENT_ID.value(),
+    client_secret: DRIVE_CLIENT_SECRET.value(),
+    code: serverAuthCode,
+    redirect_uri: "", // empty — matches the native offline-access code flow
+  });
+
+  const tokenResp = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: params.toString(),
+  });
+  const tokenData = await tokenResp.json();
+
+  if (!tokenResp.ok || !tokenData.refresh_token) {
+    console.error("driveTokenExchange failed:", tokenData);
+    // Not always an error — Google only returns a refresh_token on the
+    // FIRST consent for this scope+account+client combo. If the user
+    // already granted this before, there may be nothing new to store,
+    // and any previously stored refresh token is still valid and unaffected.
+    return { stored: false, reason: tokenData.error || "no_refresh_token" };
+  }
+
+  await admin.firestore().collection("driveBackupTokens").doc(context.auth.uid).set(
+    {
+      refreshToken: tokenData.refresh_token,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+  return { stored: true };
+});
+
+// Called by app.js (manual "Backup Now" button) or by background/runner.js
+// (daily auto-backup, if the user opted in) with the backup JSON already
+// built. Refreshes a Drive-scoped access token from the stored refresh
+// token, then creates a NEW file in the user's own Drive every time —
+// manual backups and daily auto-backups both keep their own dated file
+// rather than overwriting a single rolling one, so nothing is ever
+// silently lost. At real-world file sizes here (tens of KB, a couple
+// dozen users) this costs negligible Drive storage even accumulated over
+// years.
+exports.driveBackupUpload = functions
+  .runWith({ secrets: [DRIVE_CLIENT_SECRET] })
+  .https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Must be signed in.");
+  }
+  const backupJson = data && data.backupJson;
+  if (!backupJson || typeof backupJson !== "string") {
+    throw new functions.https.HttpsError("invalid-argument", "Missing backupJson.");
+  }
+  // Caller supplies the filename (so it can reflect the user's local time,
+  // not the server's) — sanitized here so it can't be used for path
+  // tricks or weird characters. Falls back to a server-generated name if
+  // the caller didn't provide one.
+  let filename = (data && data.filename || "").toString().replace(/[\/\\:*?"<>|]/g, "-").slice(0, 200);
+  if (!filename) {
+    filename = `${DRIVE_BACKUP_FILENAME.replace(/\.json$/, "")}-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+  }
+
+  const uid = context.auth.uid;
+  const tokenDocRef = admin.firestore().collection("driveBackupTokens").doc(uid);
+  const tokenDoc = await tokenDocRef.get();
+  if (!tokenDoc.exists || !tokenDoc.data().refreshToken) {
+    return { success: false, reason: "not_authorized" };
+  }
+
+  // 1. Refresh a Drive-scoped access token (short-lived, ~1hr).
+  const refreshParams = new URLSearchParams({
+    grant_type: "refresh_token",
+    client_id: DRIVE_CLIENT_ID.value(),
+    client_secret: DRIVE_CLIENT_SECRET.value(),
+    refresh_token: tokenDoc.data().refreshToken,
+  });
+  const refreshResp = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: refreshParams.toString(),
+  });
+  const refreshData = await refreshResp.json();
+  if (!refreshResp.ok || !refreshData.access_token) {
+    console.error("driveBackupUpload: token refresh failed:", refreshData);
+    return { success: false, reason: "refresh_failed", details: refreshData };
+  }
+  const accessToken = refreshData.access_token;
+
+  // 2. Create the file.
+  const boundary = "radhajapbackupboundary";
+  const metadata = JSON.stringify({ name: filename, mimeType: "application/json" });
+  const multipartBody =
+    `--${boundary}\r\n` +
+    `Content-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n` +
+    `--${boundary}\r\n` +
+    `Content-Type: application/json\r\n\r\n${backupJson}\r\n` +
+    `--${boundary}--`;
+
+  const createResp = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": `multipart/related; boundary=${boundary}`,
+    },
+    body: multipartBody,
+  });
+  const createData = await createResp.json();
+  if (!createResp.ok || !createData.id) {
+    console.error("driveBackupUpload: create failed:", createData);
+    return { success: false, reason: "create_failed", details: createData };
+  }
+
+  await tokenDocRef.set(
+    { lastBackupAt: admin.firestore.FieldValue.serverTimestamp() },
+    { merge: true },
+  );
+  return { success: true, fileId: createData.id, filename, mode: "created" };
 });
 
 // Same developer allow-list as firestore.rules' isDeveloper() — keep both

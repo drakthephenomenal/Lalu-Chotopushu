@@ -5971,7 +5971,11 @@ function fbInit() {
         document.getElementById("fbUserEmail").textContent = _authLabel;
         try { localStorage.setItem("rjap_lastAuthLabel", _authLabel); } catch (_) {}
         const _pwBtn = document.getElementById("fbChangePassBtn");
-        if (_pwBtn) _pwBtn.textContent = _fbHasPasswordProvider(user) ? "🔑 Change Password" : "🔑 Set Password";
+        if (_pwBtn) {
+          const _hasPw = _fbHasPasswordProvider(user);
+          _pwBtn.style.display = _hasPw ? "" : "none";
+          if (_hasPw) _pwBtn.textContent = "🔑 Change Password";
+        }
         // Nudge (days 0-5) then hard-block (after 5 days) email/password users
         // who haven't verified yet. Google/Zoho sign-ins arrive pre-verified
         // so user.emailVerified is already true for them — this only ever

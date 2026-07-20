@@ -807,7 +807,10 @@
 #vpanchanga-view .vp-tithi-toggle.open .vp-chevron{transform:rotate(180deg)}
 
 #vpanchanga-view .vp-month-grid-wrap{overflow:hidden;max-height:0;transition:max-height .35s ease}
-#vpanchanga-view .vp-month-grid-wrap.open{max-height:2600px}
+#vpanchanga-view .vp-month-grid-wrap.open{max-height:2700px}
+#vpanchanga-view .vp-monthsys-toggle{display:flex;gap:8px;padding:12px 16px 0}
+#vpanchanga-view .vp-monthsys-btn{flex:1;border:1px solid var(--vp-card-edge);background:#FFFFFF;border-radius:10px;padding:7px 10px;font-size:.72rem;font-weight:700;letter-spacing:.02em;color:var(--vp-ink-faint);cursor:pointer;transition:all .2s ease}
+#vpanchanga-view .vp-monthsys-btn.active{background:var(--vp-violet);border-color:var(--vp-violet);color:#fff}
 #vpanchanga-view .vp-month-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px 16px}
 @media(min-width:540px){#vpanchanga-view .vp-month-grid{grid-template-columns:repeat(3,1fr)}}
 #vpanchanga-view .vp-paksha-label{grid-column:1/-1;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;font-weight:800;display:flex;align-items:center;gap:8px;padding:8px 0 2px}

@@ -242,6 +242,29 @@ function getLunarMonthTithis(jd){
   return periods;
 }
 
+// Purnimanta month grid: unlike getLunarMonthTithis() (which is anchored on
+// the New Moon and therefore straddles TWO purnimanta months — Sukla of one,
+// Krishna of the next), this is anchored on the most recent PURNIMA (Full
+// Moon, elongation=180°) and walks forward 30 tithis: Krishna Pratipada
+// through the next Purnima. That whole block belongs to a single purnimanta
+// month by definition, so it never needs a "split" name — Krishna Paksha and
+// Shukla Paksha shown here are always the SAME month.
+function getPurnimantaMonthTithis(jd){
+  const elong=norm(moonLong(jd)-sunLong(jd));
+  const daysSincePurnima=norm(elong-180)/360*29.53;
+  const prevPurnima=findElong(jd-daysSincePurnima-3,jd,180);
+  const periods=[];let s=prevPurnima+.0001;
+  for(let i=0;i<30;i++){
+    const idx=tithiIdx(s);
+    const end=findElong(s,s+2,((idx+1)%30)*12);
+    periods.push({index:idx,name:TITHI[idx],paksha:idx<15?'Sukla':'Krishna',startJD:s,endJD:end});
+    s=end+.0001;
+  }
+  for(let i=1;i<periods.length;i++)periods[i].startJD=periods[i-1].endJD;
+  periods[0].startJD=prevPurnima;
+  return periods;
+}
+
 function getNakshatraPeriods(jd,count=3){
   const SPAN=360/27;const periods=[];
   // Search up to 3 days back; use jd+0.5 as upper bound so bisection
@@ -1397,29 +1420,41 @@ function renderAll(){
   }else{vb.style.display='none';}
 
   // Lunar month grid
-  const sukla=lunarMonthTithis.filter(t=>t.paksha==='Sukla');
-  const krishna=lunarMonthTithis.filter(t=>t.paksha==='Krishna');
-  // Sukla and Krishna Paksha here are the two halves of ONE Amanta lunation
-  // (new-moon to new-moon), so they always share the same Amanta name.
-  // Under Purnimanta reckoning, though, Krishna Paksha already belongs to
-  // the NEXT month (see purnimantaMonth()) — so the two halves can show
-  // different names there. Each name is computed from a JD that actually
-  // falls inside that half (not just "now"), so it's correct regardless of
-  // which paksha is currently active.
-  const amantaGridName = sukla.length ? hinduMonth(sukla[0].startJD).name : hm.name;
-  const suklaPName = sukla.length ? purnimantaMonth(sukla[0].startJD).name : hm.name;
-  const krishnaPName = krishna.length ? purnimantaMonth(krishna[0].startJD).name : hm.name;
-  const suklaLabelName = vpMonthSystem==='amanta' ? amantaGridName : suklaPName;
-  const krishnaLabelName = vpMonthSystem==='amanta' ? amantaGridName : krishnaPName;
+  // Amanta mode: Sukla Paksha then Krishna Paksha of ONE amanta lunation
+  // (New-Moon anchored) — lunarMonthTithis from DATA already gives this.
+  // Purnimanta mode: Krishna Paksha then Shukla Paksha of ONE purnimanta
+  // month (Purnima anchored) — built fresh here so the whole block is a
+  // single, unsplit month with one name, per the purnimanta convention.
+  const gridTithis = vpMonthSystem==='amanta' ? lunarMonthTithis : getPurnimantaMonthTithis(jd);
+  const gridSukla = gridTithis.filter(t=>t.paksha==='Sukla');
+  const gridKrishna = gridTithis.filter(t=>t.paksha==='Krishna');
+  const gridAnchorJD = vpMonthSystem==='amanta'
+    ? (gridSukla.length ? gridSukla[0].startJD : jd)
+    : (gridKrishna.length ? gridKrishna[0].startJD : jd);
+  const gridMonthObj = vpMonthSystem==='amanta' ? hinduMonth(gridAnchorJD) : purnimantaMonth(gridAnchorJD);
+  const gridMonthName = am.isAdhik ? `${am.isPurushottam?'Purushottam':'Adhik'} ${am.nextMonthName}` : gridMonthObj.name;
+
   const monthToggleBtnP=document.getElementById('vp-monthsys-purnimanta');
   const monthToggleBtnA=document.getElementById('vp-monthsys-amanta');
   if(monthToggleBtnP) monthToggleBtnP.classList.toggle('active', vpMonthSystem==='purnimanta');
   if(monthToggleBtnA) monthToggleBtnA.classList.toggle('active', vpMonthSystem==='amanta');
-  document.getElementById('vp-month-grid').innerHTML=
-    `<div class="vp-paksha-label s">Sukla Paksha — Waxing Moon &nbsp;·&nbsp; ${suklaLabelName}</div>`+
-    sukla.map((t,i)=>tCell(t,i+1,t.index===currentTithiIdx,'S')).join('')+
-    `<div class="vp-paksha-label k">Krishna Paksha — Waning Moon &nbsp;·&nbsp; ${krishnaLabelName}</div>`+
-    krishna.map((t,i)=>tCell(t,i+1,t.index===currentTithiIdx,'K')).join('');
+
+  const gridTitleEl = document.getElementById('vp-month-grid-title');
+  if(gridTitleEl){
+    gridTitleEl.innerHTML = `${gridMonthName} <span class="vp-month-grid-title-sys">(${vpMonthSystem==='amanta'?'Amanta':'Purnimanta'})</span>`;
+  }
+
+  const orderedHalves = vpMonthSystem==='amanta'
+    ? [{cls:'s',label:'Sukla Paksha — Waxing Moon',list:gridSukla,prefix:'S'},
+       {cls:'k',label:'Krishna Paksha — Waning Moon',list:gridKrishna,prefix:'K'}]
+    : [{cls:'k',label:'Krishna Paksha — Waning Moon',list:gridKrishna,prefix:'K'},
+       {cls:'s',label:'Sukla Paksha — Waxing Moon',list:gridSukla,prefix:'S'}];
+
+  document.getElementById('vp-month-grid').innerHTML = orderedHalves.map(h=>
+    `<div class="vp-paksha-label ${h.cls}">${h.label}</div>`+
+    h.list.map((t,i)=>tCell(t,i+1,t.index===currentTithiIdx,h.prefix)).join('')
+  ).join('');
+
 
   // Day boundaries — collapsible
   document.getElementById('vp-db-grid').innerHTML=[

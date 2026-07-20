@@ -371,6 +371,26 @@ function hinduMonth(jd){
   const idx = Math.floor(sE/30) % 12;
   return {name:HM[idx], vaishnavName:VM[idx]};
 }
+// Purnimanta month name — the convention used by ISKCON/Gaudiya Vaishnava
+// panchangs and throughout North India (UP, Bihar, MP, Rajasthan, etc.),
+// as opposed to the Amanta (new-moon-to-new-moon) reckoning hinduMonth()
+// above returns.
+//
+// Relationship between the two: an Amanta month = [Shukla Paksha of
+// Purnimanta month N] + [Krishna Paksha of Purnimanta month N+1]. So:
+//   - Shukla Paksha (Pratipada..Purnima): the two systems agree — the
+//     Purnimanta name equals the current Amanta name.
+//   - Krishna Paksha (Pratipada..Amavasya, i.e. AFTER that Purnima): the
+//     Purnimanta month has already advanced to the name of the Amanta
+//     month that begins at the NEXT new moon.
+// Verified against the ISKCON Mayapur panchang: 19 Aug 1998 (Krishna
+// Paksha Dwadashi) is Amanta "Shravana" but Purnimanta "Bhadra
+// (Hrishikesha masa)" — i.e. one month ahead, matching the rule below.
+function purnimantaMonth(jd){
+  if(tithiIdx(jd) < 15) return hinduMonth(jd); // Shukla Paksha: same as Amanta
+  const nnm = nextNewMoon(jd);
+  return hinduMonth(nnm + 0.0001); // Krishna Paksha: name of the NEXT lunation
+}
 // Find the most recent New Moon at or before jd, and the next New Moon at or
 // after jd, using a tight ±2.5-day bisection window centred on a synodic-rate
 // estimate. A wide blind window (the old approach) could accidentally skip
@@ -957,7 +977,8 @@ function renderAll(){
   const md=getMuhurtaData(displayVaar,LAT,LNG);
   const headerRef=isActive?now:displayVaar.sunrise;
   const headerJD=dateToJD(headerRef);
-  const headerHM=hinduMonth(headerJD);
+  const headerHM=purnimantaMonth(headerJD);
+  const headerAmantaHM=hinduMonth(headerJD);
   const headerAM=adhikMaas(headerJD);
   const headerPaksha=tithiIdx(headerJD)<15?'Sukla':'Krishna';
   const headerWhen=isActive?'Today':(displayVaar.dayOffset===1?'Tomorrow':displayVaar.dayOffset===-1?'Yesterday':displayVaar.dayOffset>0?'+'+displayVaar.dayOffset+' days':displayVaar.dayOffset+' days');
@@ -966,8 +987,10 @@ function renderAll(){
   document.getElementById('vp-gaurabda').textContent='Gaurabda '+gaurabda(headerRef);
   document.getElementById('vp-vaar-name').textContent=(VAAR_ICON[displayVaar.index]||'')+' '+displayVaar.name+' Vaar';
   document.getElementById('vp-month-line').innerHTML=
-    (headerAM.isAdhik?`<span class="vp-adhik-badge">${headerAM.isPurushottam?'Purushottam':'Adhik'}</span>${headerAM.nextMonthName}`:headerHM.name)+
-    ' &nbsp;·&nbsp; '+headerPaksha+' Paksha &nbsp;·&nbsp; '+headerWhen+' '+fmtDate(headerRef);
+    (headerAM.isAdhik?
+      `<span class="vp-adhik-badge">${headerAM.isPurushottam?'Purushottam':'Adhik'}</span>${headerAM.nextMonthName}`
+      :`Purnimanta system: ${headerHM.name}<br>Amanta system: ${headerAmantaHM.name}`)+
+    '<br>'+headerPaksha+' Paksha &nbsp;·&nbsp; '+headerWhen+' '+fmtDate(headerRef);
   document.getElementById('vp-vaishnav-line').textContent=
     headerAM.isAdhik ? 'Purushottam Maas (Adhik) — most spiritually potent month' :
     'Vaishnav Month of '+headerHM.vaishnavName;
@@ -1758,12 +1781,15 @@ function vpRenderDateResult(){
   const hmEl = document.getElementById('vp-dateresult-hindu-month');
   if(hmEl){
     const am = adhikMaas(jd);
-    const hm = hinduMonth(jd);
+    const hm = purnimantaMonth(jd);
+    const amantaHm = hinduMonth(jd);
     const paksha = tithiIdx(jd) < 15 ? 'Sukla' : 'Krishna';
     const vaishnavLabel = am.isAdhik ? 'Purushottam Maas (Adhik)' : 'Vaishnav Month of ' + hm.vaishnavName;
     hmEl.innerHTML =
-      (am.isAdhik ? `<span class="vp-adhik-badge">${am.isPurushottam?'Purushottam':'Adhik'}</span>${am.nextMonthName}` : hm.name) +
-      ' &nbsp;·&nbsp; ' + paksha + ' Paksha &nbsp;·&nbsp; ' + vaishnavLabel +
+      (am.isAdhik ?
+        `<span class="vp-adhik-badge">${am.isPurushottam?'Purushottam':'Adhik'}</span>${am.nextMonthName}`
+        : `Purnimanta system: ${hm.name}<br>Amanta system: ${amantaHm.name}`) +
+      '<br>' + paksha + ' Paksha &nbsp;·&nbsp; ' + vaishnavLabel +
       ' &nbsp;·&nbsp; Gaurabda ' + gaurabda(noon);
   }
 
@@ -1969,12 +1995,15 @@ function vpHoroCalculate(){
   const horoHmEl = document.getElementById('vp-horo-result-hindu-month');
   if(horoHmEl){
     const am = adhikMaas(jd);
-    const hm = hinduMonth(jd);
+    const hm = purnimantaMonth(jd);
+    const amantaHm = hinduMonth(jd);
     const paksha = tithiIdx(jd) < 15 ? 'Sukla' : 'Krishna';
     const horoVaishnavLabel = am.isAdhik ? 'Purushottam Maas (Adhik)' : 'Vaishnav Month of ' + hm.vaishnavName;
     horoHmEl.innerHTML =
-      (am.isAdhik ? `<span class="vp-adhik-badge">${am.isPurushottam?'Purushottam':'Adhik'}</span>${am.nextMonthName}` : hm.name) +
-      ' &nbsp;·&nbsp; ' + paksha + ' Paksha &nbsp;·&nbsp; ' + horoVaishnavLabel +
+      (am.isAdhik ?
+        `<span class="vp-adhik-badge">${am.isPurushottam?'Purushottam':'Adhik'}</span>${am.nextMonthName}`
+        : `Purnimanta system: ${hm.name}<br>Amanta system: ${amantaHm.name}`) +
+      '<br>' + paksha + ' Paksha &nbsp;·&nbsp; ' + horoVaishnavLabel +
       ' &nbsp;·&nbsp; Gaurabda ' + gaurabda(birthDate);
   }
 

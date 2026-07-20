@@ -608,6 +608,7 @@ function relHTML(s,e,now){const r=relStr(s,e,now);if(!r.txt)return'';return`<spa
 let LAT=22.5726,LNG=88.3639;
 let selectedVaarIdx=null;
 let selectedAnga='tithi'; // tithi | nakshatra | yoga | karana — option-driven anga view
+let vpMonthSystem='purnimanta'; // 'purnimanta' | 'amanta' — which naming convention labels the Lunar Month grid
 let DATA=null;
 
 // GPS
@@ -1398,10 +1399,26 @@ function renderAll(){
   // Lunar month grid
   const sukla=lunarMonthTithis.filter(t=>t.paksha==='Sukla');
   const krishna=lunarMonthTithis.filter(t=>t.paksha==='Krishna');
+  // Sukla and Krishna Paksha here are the two halves of ONE Amanta lunation
+  // (new-moon to new-moon), so they always share the same Amanta name.
+  // Under Purnimanta reckoning, though, Krishna Paksha already belongs to
+  // the NEXT month (see purnimantaMonth()) — so the two halves can show
+  // different names there. Each name is computed from a JD that actually
+  // falls inside that half (not just "now"), so it's correct regardless of
+  // which paksha is currently active.
+  const amantaGridName = sukla.length ? hinduMonth(sukla[0].startJD).name : hm.name;
+  const suklaPName = sukla.length ? purnimantaMonth(sukla[0].startJD).name : hm.name;
+  const krishnaPName = krishna.length ? purnimantaMonth(krishna[0].startJD).name : hm.name;
+  const suklaLabelName = vpMonthSystem==='amanta' ? amantaGridName : suklaPName;
+  const krishnaLabelName = vpMonthSystem==='amanta' ? amantaGridName : krishnaPName;
+  const monthToggleBtnP=document.getElementById('vp-monthsys-purnimanta');
+  const monthToggleBtnA=document.getElementById('vp-monthsys-amanta');
+  if(monthToggleBtnP) monthToggleBtnP.classList.toggle('active', vpMonthSystem==='purnimanta');
+  if(monthToggleBtnA) monthToggleBtnA.classList.toggle('active', vpMonthSystem==='amanta');
   document.getElementById('vp-month-grid').innerHTML=
-    `<div class="vp-paksha-label s">Sukla Paksha — Waxing Moon</div>`+
+    `<div class="vp-paksha-label s">Sukla Paksha — Waxing Moon &nbsp;·&nbsp; ${suklaLabelName}</div>`+
     sukla.map((t,i)=>tCell(t,i+1,t.index===currentTithiIdx,'S')).join('')+
-    `<div class="vp-paksha-label k">Krishna Paksha — Waning Moon</div>`+
+    `<div class="vp-paksha-label k">Krishna Paksha — Waning Moon &nbsp;·&nbsp; ${krishnaLabelName}</div>`+
     krishna.map((t,i)=>tCell(t,i+1,t.index===currentTithiIdx,'K')).join('');
 
   // Day boundaries — collapsible
@@ -4474,6 +4491,11 @@ window.vpToggleGrid = function() {
   const b = document.getElementById('vp-tithi-toggle');
   if(w) w.classList.toggle('open');
   if(b) b.classList.toggle('open');
+};
+
+window.vpSetMonthSystem = function(sys) {
+  vpMonthSystem = (sys==='amanta') ? 'amanta' : 'purnimanta';
+  renderAll();
 };
 
 window.vpToggleDayBoundaries = function() {

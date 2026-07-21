@@ -410,7 +410,14 @@ function hinduMonth(jd){
 // Paksha Dwadashi) is Amanta "Shravana" but Purnimanta "Bhadra
 // (Hrishikesha masa)" — i.e. one month ahead, matching the rule below.
 function purnimantaMonth(jd){
-  if(tithiIdx(jd) < 15) return hinduMonth(jd); // Shukla Paksha: same as Amanta
+  // Nudge a hair forward before checking which paksha we're in: this
+  // function is sometimes called with jd sitting exactly ON a tithi
+  // transition (e.g. the Purnima instant itself, as returned by
+  // getPurnimantaMonthTithis()'s periods[0].startJD), where tithiIdx()
+  // can land on either side of 14/15 due to floating-point precision.
+  // A ~1.4-minute nudge is negligible next to a ~1-day tithi but reliably
+  // resolves which paksha jd belongs to.
+  if(tithiIdx(jd+0.001) < 15) return hinduMonth(jd); // Shukla Paksha: same as Amanta
   const nnm = nextNewMoon(jd);
   return hinduMonth(nnm + 0.0001); // Krishna Paksha: name of the NEXT lunation
 }

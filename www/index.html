@@ -817,6 +817,39 @@
 <div class="view" id="vs">
   <div class="vt">Jap Summary</div>
 
+  <!-- Dedications — offer a portion of lifetime jap to a purpose/person -->
+  <div class="sg-wrap non-gaudiya-stat" style="background:rgba(255,105,180,0.05);border:1px solid rgba(255,105,180,0.18);">
+    <div class="sg-header" onclick="toggleCs('sgDedic','sgDedicChev')">
+      <span style="color:#FF8FC7">🙏 Offer Jap — Dedication</span>
+      <span class="sg-chevron" id="sgDedicChev" style="color:#FF8FC7">▾</span>
+    </div>
+    <div class="sg-body open" id="sgDedic">
+      <div style="padding:2px 4px 4px;">
+        <div style="font-size:11px;color:var(--td);margin-bottom:10px;line-height:1.5;">Dedicate a portion of your lifetime jap to someone or a purpose. This deducts the amount from that jap's lifetime total.</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+          <div class="ded-type-pill active" data-type="radha" onclick="selectDedicationType('radha', this)" style="border-color:rgba(245,200,66,0.45);background:rgba(245,200,66,0.08);">
+            <div style="font-size:11px;font-weight:700;color:#f5c842;">Radha</div>
+          </div>
+          <div class="ded-type-pill" data-type="rv" onclick="selectDedicationType('rv', this)" style="border-color:rgba(94,234,212,0.45);background:rgba(94,234,212,0.06);">
+            <div style="font-size:11px;font-weight:700;color:#5eead4;">RV</div>
+          </div>
+          <div class="ded-type-pill" data-type="kv" onclick="selectDedicationType('kv', this)" style="border-color:rgba(109,184,255,0.45);background:rgba(109,184,255,0.06);">
+            <div style="font-size:11px;font-weight:700;color:#6DB8FF;">KV</div>
+          </div>
+        </div>
+
+        <div class="fr"><input type="text" class="fi" id="dedPurposeIn" placeholder="Purpose / name (e.g. For Maa's health)" maxlength="60"></div>
+        <div class="fr"><input type="number" class="fi" id="dedAmountIn" placeholder="Amount" min="1"><span class="fu">jap</span></div>
+        <div class="fr"><input type="date" class="fi" id="dedDateIn"></div>
+        <div class="fr" style="align-items:flex-start;"><textarea class="fi" id="dedNoteIn" placeholder="Short note (optional)" maxlength="140" rows="2" style="resize:vertical;font-family:inherit;"></textarea></div>
+        <button class="pb deduct" style="background:linear-gradient(135deg,rgba(255,105,180,0.35),rgba(180,50,120,0.28));" onclick="addDedication()">🙏 Dedicate</button>
+
+        <div id="dedTotalsBar" style="margin-top:12px;font-size:11px;color:var(--td);"></div>
+        <div id="dedList" style="margin-top:8px;display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+    </div>
+  </div>
 
     <!-- Summary Stats Grid — collapsible -->
   <div class="sg-wrap">

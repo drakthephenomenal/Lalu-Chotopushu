@@ -374,6 +374,10 @@ button.hpb.active{
 .sg-body{max-height:0;overflow:hidden;transition:max-height 0.38s ease,padding 0.3s ease;padding:0 8px;}
 .sg-body.open{max-height:5000px;padding:0 8px 12px;}
 
+.ded-type-pill{padding:9px 6px;border-radius:11px;text-align:center;cursor:pointer;
+  border:1.5px solid rgba(255,255,255,0.12);transition:all 0.2s;box-sizing:border-box;}
+.ded-type-pill.active{border-width:2px;box-shadow:0 0 12px rgba(255,255,255,0.08);}
+
 /* CALENDAR */
 #vc{background:radial-gradient(ellipse at top,#061228 0%,var(--bd) 60%);padding:22px 12px 80px;overflow-y:auto;overflow-x:hidden;}
 .ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}

@@ -436,6 +436,7 @@ const App = {
     malaLogKV: [],
     syncBaselineKV: {},
     syncBaselineTimerKV: {},
+    dedications: [], // {id, type:'radha'|'rv'|'kv', amount, purpose, note, date, ts}
     gaudiyaMode: false,  // single mode for all — Gaudiya/ISKCON
     hkLang: "hi",
     naamLang: "sa",  // Radha / Radha Vallabh jap text script: "sa" (Sanskrit/Devanagari) or "bn" (Bangla)
@@ -613,6 +614,7 @@ const App = {
       syncBaselineKV: this.S.syncBaselineKV || {},
       syncBaselineTimerKV: this.S.syncBaselineTimerKV || {},
       nameJapDeductKV: this.S.nameJapDeductKV || 0,
+      dedications: this.S.dedications || [],
       gaudiyaMode: this.S.gaudiyaMode || false,
       dt28Cycles: this.S.dt28Cycles || 0,
       milestones: this.S.milestones || { reached: {}, lastChecked: 0 },
@@ -772,6 +774,7 @@ const App = {
     if (todayKVJap <= 0) {
       this.S.malaLogKV = [];
     }
+    if (!this.S.dedications) this.S.dedications = [];
     if (!this.S.syncBaselineKV) this.S.syncBaselineKV = {};
     if (!this.S.syncBaselineTimerKV) this.S.syncBaselineTimerKV = {};
     if (!this.S.historyKV[this.S.tk]) this.S.historyKV[this.S.tk] = 0;
@@ -3592,6 +3595,221 @@ function removeNameJapDeduct() {
   toast("Restored " + n.toLocaleString() + " jap to lifetime total 🙏");
 }
 
+// ── Dedications: offer a portion of lifetime jap to a purpose/person ──
+// Reuses the same nameJapDeduct/RV/KV counters as the manual "Deduct Name
+// Jap" tool above (so lifetime totals update immediately), and additionally
+// keeps a purpose/date/note log so past offerings can be reviewed or undone.
+window._dedType = "radha";
+
+function selectDedicationType(type, el) {
+  window._dedType = type;
+  document
+    .querySelectorAll(".ded-type-pill")
+    .forEach((p) => p.classList.remove("active"));
+  if (el) el.classList.add("active");
+}
+
+function _dedTypeMeta(type) {
+  if (type === "rv") return { label: "Radha Vallabh", color: "#5eead4" };
+  if (type === "kv") return { label: "Krishnay Vasudevay", color: "#6DB8FF" };
+  return { label: "Radha", color: "#f5c842" };
+}
+
+function addDedication() {
+  if (isGhostMode()) return; // ghost mode: read-only
+  const type = window._dedType || "radha";
+  const purposeEl = document.getElementById("dedPurposeIn");
+  const amountEl = document.getElementById("dedAmountIn");
+  const dateEl = document.getElementById("dedDateIn");
+  const noteEl = document.getElementById("dedNoteIn");
+  const purpose = (purposeEl.value || "").trim();
+  const amount = parseInt(amountEl.value) || 0;
+  const date = (dateEl && dateEl.value) || _ldk(new Date());
+  const note = (noteEl.value || "").trim();
+
+  if (!purpose) {
+    toast("Please enter a purpose or name");
+    return;
+  }
+  if (amount <= 0) {
+    toast("Please enter an amount > 0");
+    return;
+  }
+
+  if (!App.S.dedications) App.S.dedications = [];
+  App.S.dedications.unshift({
+    id: "ded_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+    type,
+    amount,
+    purpose,
+    note,
+    date,
+    ts: Date.now(),
+  });
+
+  // Deduct from the matching lifetime total — same mechanism as "Deduct Name Jap"
+  if (type === "rv") {
+    App.S.nameJapDeductRV = (App.S.nameJapDeductRV || 0) + amount;
+  } else if (type === "kv") {
+    App.S.nameJapDeductKV = (App.S.nameJapDeductKV || 0) + amount;
+  } else {
+    App.S.nameJapDeduct = (App.S.nameJapDeduct || 0) + amount;
+  }
+
+  App.save();
+  App.ua();
+  fbDebouncedPush();
+
+  purposeEl.value = "";
+  amountEl.value = "";
+  noteEl.value = "";
+  if (dateEl) dateEl.value = _ldk(new Date());
+
+  renderDedications();
+  uStats();
+  toast("🙏 Dedicated " + amount.toLocaleString() + " jap — Jai Radhe!");
+}
+
+function deleteDedication(id) {
+  if (isGhostMode()) return; // ghost mode: read-only
+  const list = App.S.dedications || [];
+  const entry = list.find((d) => d.id === id);
+  if (!entry) return;
+  if (
+    !confirm(
+      "Remove this dedication and restore " +
+        entry.amount.toLocaleString() +
+        " jap to the lifetime total?",
+    )
+  )
+    return;
+
+  if (entry.type === "rv") {
+    App.S.nameJapDeductRV = Math.max(
+      0,
+      (App.S.nameJapDeductRV || 0) - entry.amount,
+    );
+  } else if (entry.type === "kv") {
+    App.S.nameJapDeductKV = Math.max(
+      0,
+      (App.S.nameJapDeductKV || 0) - entry.amount,
+    );
+  } else {
+    App.S.nameJapDeduct = Math.max(0, (App.S.nameJapDeduct || 0) - entry.amount);
+  }
+  App.S.dedications = list.filter((d) => d.id !== id);
+
+  App.save();
+  App.ua();
+  fbDebouncedPush();
+  renderDedications();
+  uStats();
+  toast("Removed dedication & restored to lifetime total 🙏");
+}
+
+function _fmtDedDate(ds) {
+  try {
+    const parts = (ds || "").split("-");
+    if (parts.length !== 3) return ds || "";
+    const d = new Date(
+      parseInt(parts[0]),
+      parseInt(parts[1]) - 1,
+      parseInt(parts[2]),
+    );
+    return d.toLocaleDateString(undefined, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  } catch (e) {
+    return ds || "";
+  }
+}
+
+function renderDedications() {
+  const wrapList = document.getElementById("dedList");
+  const wrapTotals = document.getElementById("dedTotalsBar");
+  if (!wrapList) return;
+  const list = App.S.dedications || [];
+
+  if (!list.length) {
+    wrapList.innerHTML =
+      '<div style="font-size:12px;color:var(--td);text-align:center;padding:10px 0;">No dedications yet 🌸</div>';
+    if (wrapTotals) wrapTotals.innerHTML = "";
+    return;
+  }
+
+  let totRadha = 0,
+    totRV = 0,
+    totKV = 0;
+  list.forEach((d) => {
+    if (d.type === "rv") totRV += d.amount;
+    else if (d.type === "kv") totKV += d.amount;
+    else totRadha += d.amount;
+  });
+  if (wrapTotals) {
+    const parts = [];
+    if (totRadha)
+      parts.push(
+        '<span style="color:#f5c842;font-weight:600">' +
+          totRadha.toLocaleString() +
+          "</span> Radha",
+      );
+    if (totRV)
+      parts.push(
+        '<span style="color:#5eead4;font-weight:600">' +
+          totRV.toLocaleString() +
+          "</span> RV",
+      );
+    if (totKV)
+      parts.push(
+        '<span style="color:#6DB8FF;font-weight:600">' +
+          totKV.toLocaleString() +
+          "</span> KV",
+      );
+    wrapTotals.innerHTML = "🙏 Total dedicated: " + parts.join(" · ");
+  }
+
+  wrapList.innerHTML = list
+    .map((d) => {
+      const meta = _dedTypeMeta(d.type);
+      const dateDisp = d.date ? _fmtDedDate(d.date) : "";
+      return (
+        '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 12px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
+        '<div style="font-size:13px;color:var(--tl);font-weight:600;flex:1;">' +
+        escHtml(d.purpose) +
+        "</div>" +
+        '<div onclick="deleteDedication(\'' +
+        d.id +
+        '\')" style="cursor:pointer;font-size:14px;color:var(--td);padding:2px 4px;">🗑️</div>' +
+        "</div>" +
+        '<div style="display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap;">' +
+        '<span style="font-size:10px;font-weight:700;color:' +
+        meta.color +
+        ";border:1px solid " +
+        meta.color +
+        '55;border-radius:6px;padding:1px 6px;">' +
+        meta.label +
+        "</span>" +
+        '<span style="font-size:12px;color:var(--gold);font-weight:600;">' +
+        d.amount.toLocaleString() +
+        " jap</span>" +
+        '<span style="font-size:11px;color:var(--td);">' +
+        dateDisp +
+        "</span>" +
+        "</div>" +
+        (d.note
+          ? '<div style="font-size:11px;color:var(--td);margin-top:6px;line-height:1.4;">' +
+            escHtml(d.note) +
+            "</div>"
+          : "") +
+        "</div>"
+      );
+    })
+    .join("");
+}
+
 function deductTodayJap() {
   if (isGhostMode()) return; // ghost mode: read-only
   const n = parseInt(document.getElementById("deductTodayIn").value) || 0;
@@ -4609,6 +4827,9 @@ function uStats() {
       s > 0 ? _fmtSec(Math.max(0, curO2 - s)) : "—";
   }
   renderMalaLog();
+  renderDedications();
+  const dedDateEl = document.getElementById("dedDateIn");
+  if (dedDateEl && !dedDateEl.value) dedDateEl.value = _ldk(new Date());
 }
 
 function renderMalaLog() {
@@ -4890,6 +5111,7 @@ function doReset() {
     App.S.nameJapDeductRV = 0;
     App.S.nameJapDeductHK = 0;
     App.S.nameJapDeductKV = 0;
+    App.S.dedications = [];
     App.S.timerHistory = {};
     App.S.timerHistoryRV = {};
     App.S.timerHistoryHK = {};
@@ -5085,6 +5307,7 @@ function _buildBackupPayload() {
     ltKV: App.S.ltKV || 0,
     nameJapDeductKV: App.S.nameJapDeductKV || 0,
     malaLogKV: App.S.malaLogKV || [],
+    dedications: App.S.dedications || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
   };
 }
@@ -5195,6 +5418,16 @@ function importAllData(input) {
         const localSumKV = (App.S.malaLogKV || []).reduce((a, b) => a + b, 0);
         const importSumKV = (data.malaLogKV || []).reduce((a, b) => a + b, 0);
         if (importSumKV >= localSumKV) App.S.malaLogKV = data.malaLogKV;
+      }
+      if (data.dedications && Array.isArray(data.dedications)) {
+        const localDedIds = new Set(
+          (App.S.dedications || []).map((d) => d.id),
+        );
+        const mergedDed = (App.S.dedications || []).slice();
+        data.dedications.forEach((d) => {
+          if (d && d.id && !localDedIds.has(d.id)) mergedDed.push(d);
+        });
+        App.S.dedications = mergedDed;
       }
       App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history));
       App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28));
@@ -6224,6 +6457,7 @@ function fbInit() {
             timerHistory: {},
             timer28History: {},
             sankalpas: [],
+            dedications: [],
             occasions: {},
             syncBaseline: {},
             syncBaseline28: {},
@@ -6412,6 +6646,7 @@ function fbInit() {
             timerHistory: {},
             timer28History: {},
             sankalpas: [],
+            dedications: [],
             occasions: {},
             syncBaseline: {},
             syncBaseline28: {},
@@ -7526,7 +7761,7 @@ async function fbSignOut() {
     tk: App.getTk(), ms: 108, dt: 0, lt: 0,
     cfg: { vib: true, sound: true, soundType: "shankya" },
     history: {}, h28: {}, stotrams: {}, brahma: {}, customSt: [],
-    timerHistory: {}, timer28History: {}, sankalpas: [], occasions: {},
+    timerHistory: {}, timer28History: {}, sankalpas: [], dedications: [], occasions: {},
     syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {},
     migrationV2Done: false, japMode: "radha",
     historyRV: {}, timerHistoryRV: {}, dtRV: 0, ltRV: 0, nameJapDeductRV: 0,
@@ -7611,6 +7846,7 @@ async function fbPushFull() {
     ltKV: App.S.ltKV || 0,
     nameJapDeductKV: App.S.nameJapDeductKV || 0,
     malaLogKV: App.S.malaLogKV || [],
+    dedications: App.S.dedications || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
     dt28Cycles: App.S.dt28Cycles || 0,
     milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
@@ -7847,6 +8083,8 @@ function fbApplyRemote(d) {
       }
     }
   }
+  if ("dedications" in d)
+    App.S.dedications = JSON.parse(JSON.stringify(d.dedications || []));
   if (d.sadhanaStart) {
     App.S.sadhanaStart = d.sadhanaStart;
     localStorage.setItem("rjap_sadhana_start", d.sadhanaStart);

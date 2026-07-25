@@ -438,6 +438,7 @@ const App = {
     syncBaselineTimerKV: {},
     dedications: [], // {id, type:'radha'|'rv'|'kv', amount, purpose, note, date, ts}
     gaudiyaMode: false,  // single mode for all — Gaudiya/ISKCON
+    trahimamMode: false,  // single mode for all — Trahimam Trahimam (KV jap only)
     hkLang: "hi",
     naamLang: "sa",  // Radha / Radha Vallabh jap text script: "sa" (Sanskrit/Devanagari) or "bn" (Bangla)
     lbOptIn: false,        // leaderboard opt-in
@@ -616,6 +617,7 @@ const App = {
       nameJapDeductKV: this.S.nameJapDeductKV || 0,
       dedications: this.S.dedications || [],
       gaudiyaMode: this.S.gaudiyaMode || false,
+      trahimamMode: this.S.trahimamMode || false,
       dt28Cycles: this.S.dt28Cycles || 0,
       milestones: this.S.milestones || { reached: {}, lastChecked: 0 },
       hkLang: this.S.hkLang || "hi",
@@ -751,6 +753,7 @@ const App = {
     if (!this.S.syncBaselineTimerHK) this.S.syncBaselineTimerHK = {};
     if (this.S.nameJapDeductHK === undefined) this.S.nameJapDeductHK = 0;
     if (this.S.gaudiyaMode === undefined) this.S.gaudiyaMode = false;
+    if (this.S.trahimamMode === undefined) this.S.trahimamMode = false;
     if (!this.S.hkLang) this.S.hkLang = "hi";
     if (!this.S.naamLang) this.S.naamLang = "sa";
     if (this.S.bgIskconAcharya === undefined) this.S.bgIskconAcharya = 1;
@@ -821,22 +824,28 @@ const App = {
     if (this.S.japMode === "kv") return this.S.historyKV[this.S.tk] || 0;
     return this.S.history[this.S.tk] || 0;
   },
-  // Combined today: radha + RV + KV (or HK-only when gaudiyaMode)
+  // Combined today: radha + RV (or HK-only in gaudiyaMode, or KV-only in trahimamMode)
   gTodCombined() {
     if (this.S.gaudiyaMode) return this.S.historyHK[this.S.tk] || 0;
+    if (this.S.trahimamMode) return this.S.historyKV[this.S.tk] || 0;
     return (
-      (this.S.history[this.S.tk] || 0) +
-      (this.S.historyRV[this.S.tk] || 0) +
-      (this.S.historyKV[this.S.tk] || 0)
+      (this.S.history[this.S.tk] || 0) + (this.S.historyRV[this.S.tk] || 0)
     );
   },
   gTot() {
-    // COMBINED lifetime total from radha+RV+KV (or HK-only in gaudiyaMode)
+    // COMBINED lifetime total from radha+RV (or HK-only in gaudiyaMode, or KV-only in trahimamMode)
     if (this.S.gaudiyaMode) {
       return Math.max(
         0,
         Object.values(this.S.historyHK || {}).reduce((a, b) => a + b, 0) -
           (this.S.nameJapDeductHK || 0),
+      );
+    }
+    if (this.S.trahimamMode) {
+      return Math.max(
+        0,
+        Object.values(this.S.historyKV || {}).reduce((a, b) => a + b, 0) -
+          (this.S.nameJapDeductKV || 0),
       );
     }
     const radhaTotal = Math.max(
@@ -849,12 +858,7 @@ const App = {
       Object.values(this.S.historyRV).reduce((a, b) => a + b, 0) -
         (this.S.nameJapDeductRV || 0),
     );
-    const kvTotal = Math.max(
-      0,
-      Object.values(this.S.historyKV || {}).reduce((a, b) => a + b, 0) -
-        (this.S.nameJapDeductKV || 0),
-    );
-    return radhaTotal + rvTotal + kvTotal;
+    return radhaTotal + rvTotal;
   },
   // Mode-specific total (for daily bar only)
   gTotMode() {
@@ -894,31 +898,33 @@ const App = {
     if (this.S.japMode === "kv") return this.S.timerHistoryKV || {};
     return this.S.timerHistory;
   },
-  // Combined history: merge radha + RV + KV counts per day (or HK-only in gaudiyaMode)
+  // Combined history: merge radha + RV counts per day (or HK-only in gaudiyaMode, KV-only in trahimamMode)
   getCombinedHistory() {
     if (this.S.gaudiyaMode)
       return JSON.parse(JSON.stringify(this.S.historyHK || {}));
+    if (this.S.trahimamMode)
+      return JSON.parse(JSON.stringify(this.S.historyKV || {}));
     const combined = {};
     const h1 = this.S.history || {};
     const h2 = this.S.historyRV || {};
-    const h3 = this.S.historyKV || {};
-    const allKeys = new Set([...Object.keys(h1), ...Object.keys(h2), ...Object.keys(h3)]);
+    const allKeys = new Set([...Object.keys(h1), ...Object.keys(h2)]);
     allKeys.forEach((k) => {
-      combined[k] = (h1[k] || 0) + (h2[k] || 0) + (h3[k] || 0);
+      combined[k] = (h1[k] || 0) + (h2[k] || 0);
     });
     return combined;
   },
-  // Combined timer history: merge radha + RV + KV timer per day (or HK-only in gaudiyaMode)
+  // Combined timer history: merge radha + RV timer per day (or HK-only in gaudiyaMode, KV-only in trahimamMode)
   getCombinedTimerHistory() {
     if (this.S.gaudiyaMode)
       return JSON.parse(JSON.stringify(this.S.timerHistoryHK || {}));
+    if (this.S.trahimamMode)
+      return JSON.parse(JSON.stringify(this.S.timerHistoryKV || {}));
     const combined = {};
     const t1 = this.S.timerHistory || {};
     const t2 = this.S.timerHistoryRV || {};
-    const t3 = this.S.timerHistoryKV || {};
-    const allKeys = new Set([...Object.keys(t1), ...Object.keys(t2), ...Object.keys(t3)]);
+    const allKeys = new Set([...Object.keys(t1), ...Object.keys(t2)]);
     allKeys.forEach((k) => {
-      combined[k] = (t1[k] || 0) + (t2[k] || 0) + (t3[k] || 0);
+      combined[k] = (t1[k] || 0) + (t2[k] || 0);
     });
     return combined;
   },
@@ -2410,10 +2416,16 @@ function _placeTarget28Card() {
 
 // ── Init jap mode UI on page load ──
 function initJapModeUI() {
-  // Normalize: in Gaudiya mode only HK is allowed; otherwise HK is not allowed
+  // Normalize: in Gaudiya mode only HK is allowed; in Trahimam Trahimam
+  // mode only KV is allowed; otherwise neither HK nor KV is allowed.
   let initMode = App.S.japMode || "radha";
-  if (App.S.gaudiyaMode && initMode !== "hk") initMode = "hk";
-  if (!App.S.gaudiyaMode && initMode === "hk") initMode = "radha";
+  if (App.S.gaudiyaMode) {
+    initMode = "hk";
+  } else if (App.S.trahimamMode) {
+    initMode = "kv";
+  } else if (initMode === "hk" || initMode === "kv") {
+    initMode = "radha";
+  }
   switchJapMode(initMode);
 
   const ms = App.S.ms || 108;
@@ -2437,6 +2449,12 @@ function initJapModeUI() {
   if (tgG)
     App.S.gaudiyaMode ? tgG.classList.add("on") : tgG.classList.remove("on");
   if (App.S.gaudiyaMode) document.body.classList.add("gaudiya-mode");
+  // Init Trahimam Trahimam Mode toggle state
+  const tgT = document.getElementById("tgTrahimam");
+  if (tgT)
+    App.S.trahimamMode ? tgT.classList.add("on") : tgT.classList.remove("on");
+  if (App.S.trahimamMode) document.body.classList.add("trahimam-mode");
+  window._dedTypes = new Set([App.S.trahimamMode ? "kv" : "radha"]);
   _placeTarget28Card();
   if (typeof applyBgPhotos === "function") applyBgPhotos();
   // Init Horizon Mode toggle state
@@ -2925,6 +2943,13 @@ function tgs(k) {
   }
   if (k === "gaudiyaMode") {
     App.S.gaudiyaMode = !App.S.gaudiyaMode;
+    // Mutually exclusive with Trahimam Trahimam mode
+    if (App.S.gaudiyaMode && App.S.trahimamMode) {
+      App.S.trahimamMode = false;
+      document.body.classList.remove("trahimam-mode");
+      const tgT = document.getElementById("tgTrahimam");
+      if (tgT) tgT.classList.remove("on");
+    }
     const tgG = document.getElementById("tgGaudiya");
     if (tgG)
       App.S.gaudiyaMode ? tgG.classList.add("on") : tgG.classList.remove("on");
@@ -2949,6 +2974,47 @@ function tgs(k) {
 
     // Ensure any leftover banner from a previous flow is hidden.
     if (_gBanner) _gBanner.style.display = "none";
+    return;
+  }
+
+  if (k === "trahimamMode") {
+    App.S.trahimamMode = !App.S.trahimamMode;
+    // Mutually exclusive with Gaudiya/ISKCON mode
+    if (App.S.trahimamMode && App.S.gaudiyaMode) {
+      App.S.gaudiyaMode = false;
+      document.body.classList.remove("gaudiya-mode");
+      const tgG = document.getElementById("tgGaudiya");
+      if (tgG) tgG.classList.remove("on");
+    }
+    const tgT = document.getElementById("tgTrahimam");
+    if (tgT)
+      App.S.trahimamMode ? tgT.classList.add("on") : tgT.classList.remove("on");
+    App.S.trahimamMode
+      ? document.body.classList.add("trahimam-mode")
+      : document.body.classList.remove("trahimam-mode");
+    _placeTarget28Card();
+    // Auto-switch jap mode so only valid options are visible at the top toggle
+    if (App.S.trahimamMode) {
+      if (App.S.japMode !== "kv") switchJapMode("kv");
+      window._dedTypes = new Set(["kv"]);
+    } else {
+      if (App.S.japMode === "kv") switchJapMode("radha");
+      window._dedTypes = new Set(["radha"]);
+    }
+    window._dedAmounts = {};
+    if (typeof renderDedTypePanels === "function") renderDedTypePanels();
+    App.save();
+    fbDebouncedPush();
+    uStats();
+    renderHistory && typeof renderHistory === "function" && renderHistory();
+    if (typeof renderCal === "function") renderCal();
+    if (typeof applyBgPhotos === "function") applyBgPhotos();
+    if (typeof renderPhotoPickers === "function") renderPhotoPickers();
+    toast(
+      App.S.trahimamMode
+        ? "🪈 Trahimam Trahimam Mode ON"
+        : "🪈 Trahimam Trahimam Mode OFF",
+    );
     return;
   }
 
@@ -4581,26 +4647,26 @@ function uStats() {
   if (sHKM) sHKM.textContent = Math.floor(hkLifetime / ms) + " malas";
   const sHKF = document.getElementById("sHKTotF");
   if (sHKF) sHKF.textContent = fmtCount(hkLifetime) + " jap";
-  // Combined Lifetime Jap (Radha + RV + KV + 28 names)
-  const ltJapAll = radhaLifetime + rvLifetime + kvLifetime + n28Lifetime;
+  // Combined Lifetime Jap — Radha + RV + 28 names by default, or KV + 28 names in Trahimam mode
+  const ltJapAll = App.S.trahimamMode
+    ? kvLifetime + n28Lifetime
+    : radhaLifetime + rvLifetime + n28Lifetime;
   const sLtJA = document.getElementById("sLtJapAll");
   if (sLtJA) sLtJA.textContent = ltJapAll.toLocaleString("en-IN");
   const sLtJAF = document.getElementById("sLtJapAllF");
   if (sLtJAF) sLtJAF.textContent = fmtCount(ltJapAll) + " jap";
-  // Gaudiya Mode: toggle visibility of stat boxes
+  // Gaudiya / Trahimam Mode: toggle visibility of stat boxes
   const isGaudiya = App.S.gaudiyaMode || false;
-  [
-    "sbRadhaCount",
-    "sbRadhaTime",
-    "sbRVCount",
-    "sbRVTime",
-    "sbKVCount",
-    "sbKVTime",
-    "sb28Count",
-    "sb28Time",
-    "sbLtJapAll",
-    "sbLtTime",
-  ].forEach((id) => {
+  const isTrahimam = App.S.trahimamMode || false;
+  ["sbRadhaCount", "sbRadhaTime", "sbRVCount", "sbRVTime"].forEach((id) => {
+    const el2 = document.getElementById(id);
+    if (el2) el2.style.display = isGaudiya || isTrahimam ? "none" : "";
+  });
+  ["sbKVCount", "sbKVTime"].forEach((id) => {
+    const el2 = document.getElementById(id);
+    if (el2) el2.style.display = isTrahimam ? "" : "none";
+  });
+  ["sb28Count", "sb28Time", "sbLtJapAll", "sbLtTime"].forEach((id) => {
     const el2 = document.getElementById(id);
     if (el2) el2.style.display = isGaudiya ? "none" : "";
   });
@@ -5512,6 +5578,7 @@ function _buildBackupPayload() {
     malaLogKV: App.S.malaLogKV || [],
     dedications: App.S.dedications || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
+    trahimamMode: App.S.trahimamMode || false,
   };
 }
 
@@ -5606,6 +5673,8 @@ function importAllData(input) {
         if (importSumHK >= localSumHK) App.S.malaLogHK = data.malaLogHK;
       }
       if (data.gaudiyaMode !== undefined) App.S.gaudiyaMode = data.gaudiyaMode;
+      if (data.trahimamMode !== undefined)
+        App.S.trahimamMode = data.trahimamMode;
       if (data.historyKV)
         App.S.historyKV = { ...App.S.historyKV, ...data.historyKV };
       if (data.timerHistoryKV)
@@ -5659,6 +5728,9 @@ function importAllData(input) {
       App.S.gaudiyaMode
         ? document.body.classList.add("gaudiya-mode")
         : document.body.classList.remove("gaudiya-mode");
+      App.S.trahimamMode
+        ? document.body.classList.add("trahimam-mode")
+        : document.body.classList.remove("trahimam-mode");
       _placeTarget28Card();
       if (st) {
         st.textContent = "✅ Data restored successfully! 🙏 Jai Radhe!";
@@ -6693,6 +6765,7 @@ function fbInit() {
             syncBaselineKV: {},
             syncBaselineTimerKV: {},
             gaudiyaMode: false,
+            trahimamMode: false,
             milestones: { reached: {}, lastChecked: 0 },
             lastLat: _prevLat,
             lastLng: _prevLng,
@@ -6714,6 +6787,7 @@ function fbInit() {
           );
           App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));
           if (App.S.gaudiyaMode) document.body.classList.add("gaudiya-mode");
+          if (App.S.trahimamMode) document.body.classList.add("trahimam-mode");
           switchJapMode(App.S.japMode || "radha");
           App.ua();
           renderSt();
@@ -6882,6 +6956,7 @@ function fbInit() {
             syncBaselineKV: {},
             syncBaselineTimerKV: {},
             gaudiyaMode: false,
+            trahimamMode: false,
             dt28Cycles: 0,
             milestones: { reached: {}, lastChecked: 0 },
             lastLat: _prevLat2,
@@ -7973,7 +8048,7 @@ async function fbSignOut() {
     syncBaselineHK: {}, syncBaselineTimerHK: {}, nameJapDeductHK: 0,
     historyKV: {}, timerHistoryKV: {}, dtKV: 0, ltKV: 0, nameJapDeductKV: 0,
     malaLogKV: [], syncBaselineKV: {}, syncBaselineTimerKV: {},
-    gaudiyaMode: false, dt28Cycles: 0,
+    gaudiyaMode: false, trahimamMode: false, dt28Cycles: 0,
     milestones: { reached: {}, lastChecked: 0 },
     lastLat: _prevLat, lastLng: _prevLng,
   };
@@ -8051,6 +8126,7 @@ async function fbPushFull() {
     malaLogKV: App.S.malaLogKV || [],
     dedications: App.S.dedications || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
+    trahimamMode: App.S.trahimamMode || false,
     dt28Cycles: App.S.dt28Cycles || 0,
     milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
     lbOptIn: App.S.lbOptIn || false,
@@ -8251,6 +8327,12 @@ function fbApplyRemote(d) {
       ? document.body.classList.add("gaudiya-mode")
       : document.body.classList.remove("gaudiya-mode");
   }
+  if (d.trahimamMode !== undefined) {
+    App.S.trahimamMode = d.trahimamMode;
+    App.S.trahimamMode
+      ? document.body.classList.add("trahimam-mode")
+      : document.body.classList.remove("trahimam-mode");
+  }
   // Only apply malaLogHK from Firebase if it belongs to today; never clear
   // local on a date mismatch (see malaLog fix above for why).
   if ("malaLogHK" in d) {
@@ -8337,6 +8419,7 @@ function fbApplyRemote(d) {
     ((App.S.historyHK || {})[App.S.tk] || 0) / (App.S.ms || 108),
   );
   if (App.S.gaudiyaMode) document.body.classList.add("gaudiya-mode");
+  if (App.S.trahimamMode) document.body.classList.add("trahimam-mode");
   switchJapMode(App.S.japMode || "radha");
   renderSt();
   u28();
@@ -12028,6 +12111,7 @@ window.addEventListener("load", async () => {
     ((App.S.historyKV || {})[App.S.tk] || 0) / (App.S.ms || 108),
   );
   if (App.S.gaudiyaMode) document.body.classList.add("gaudiya-mode");
+  if (App.S.trahimamMode) document.body.classList.add("trahimam-mode");
 
   // (A) sessionSeconds resets on every app open (per spec).
   App.timerSeconds = 0;

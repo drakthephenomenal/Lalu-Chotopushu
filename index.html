@@ -840,11 +840,16 @@
           </div>
         </div>
 
+        <!-- Per-type lifetime amount + deduct input, rebuilt on selection change -->
+        <div id="dedTypePanels" style="margin-bottom:8px;"></div>
+
         <div class="fr"><input type="text" class="fi" id="dedPurposeIn" placeholder="Purpose / name (e.g. For Maa's health)" maxlength="60"></div>
-        <div class="fr"><input type="number" class="fi" id="dedAmountIn" placeholder="Amount" min="1"><span class="fu">jap</span></div>
-        <div style="font-size:10px;color:var(--td);margin:-4px 0 8px 2px;">Applied to each type selected above</div>
         <div class="fr"><input type="date" class="fi" id="dedDateIn"></div>
         <div class="fr" style="align-items:flex-start;"><textarea class="fi" id="dedNoteIn" placeholder="Short note (optional)" maxlength="140" rows="2" style="resize:vertical;font-family:inherit;"></textarea></div>
+
+        <!-- Preview of what's about to be gifted, shown before committing -->
+        <div id="dedSummaryBar" style="font-size:12px;color:var(--tl);line-height:1.7;margin-bottom:10px;"></div>
+
         <button class="pb deduct" style="background:linear-gradient(135deg,rgba(255,105,180,0.35),rgba(180,50,120,0.28));" onclick="addDedication()">🙏 Dedicate</button>
 
         <div id="dedTotalsBar" style="margin-top:12px;font-size:11px;color:var(--td);"></div>

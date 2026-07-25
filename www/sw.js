@@ -1,5 +1,13 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v173
+// Radha Naam Jap — Service Worker  v175
+// v175: bumped cache to force-invalidate stale app.js/index.html — adds
+// full Add/Deduct Jap Manually (Today / Other Day / Before This App /
+// Name Jap — Lifetime) to the 28 Names Statistics screen, matching the
+// main jap section's manual-entry feature.
+// v174: bumped cache to force-invalidate stale app.js/index.html/style.css —
+// adds the new "Krishnay Vasudevay Haraye Paramatmane" (KV) jap type
+// alongside Radha / Radha Vallabh / Hare Krishna, with its own history,
+// targets, stats, leaderboard and Firebase sync.
 // v173: bumped cache to force-invalidate stale app.js — picks up the
 // Firebase sync-hang fix, Brahma Muhurta reminder timing fix, and the
 // native Share sheet fix (APK was silently falling back to copy-link
@@ -22,7 +30,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v173';
+const CACHE = 'radha-jap-v175';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

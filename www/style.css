@@ -1210,6 +1210,10 @@ button.n28-gold-btn-danger,
 .fn-rv{position:absolute;pointer-events:none;z-index:10;animation:fu 2.4s ease-out forwards;
   display:flex;flex-direction:column;align-items:center;line-height:1.15;}
 .fn-rv span{font-family:'Tiro Devanagari Hindi',serif;display:block;}
+/* Two-line floating naam for KV mode */
+.fn-kv{position:absolute;pointer-events:none;z-index:10;animation:fu 2.4s ease-out forwards;
+  display:flex;flex-direction:column;align-items:center;line-height:1.15;text-align:center;max-width:280px;}
+.fn-kv span{font-family:'Tiro Devanagari Hindi',serif;display:block;}
 
 /* MILESTONES VIEW — dedicated tab */
 #vms{background:radial-gradient(ellipse at top,#0A1535 0%,var(--bd) 60%);padding:0;overflow:hidden;}
@@ -2202,6 +2206,7 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 /* Title colors — each deity keeps its identity colour */
 .dc-radha .dc-title { color:#f5c842; }
 .dc-rv    .dc-title { color:#5eead4; }
+.dc-kv    .dc-title { color:#6DB8FF; }
 .dc-28n   .dc-title { color:#a78bfa; }
 .dc-title--combo    { color:#f5c842 !important; }
 .dc-title--all      { color:#f5d060 !important; }
@@ -2210,6 +2215,7 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 }
 .dc-dot--radha { background:#f5c842; box-shadow:0 0 7px #f5c84299; }
 .dc-dot--rv    { background:#5eead4; box-shadow:0 0 7px #5eead499; }
+.dc-dot--kv    { background:#6DB8FF; box-shadow:0 0 7px #6DB8FF99; }
 .dc-dot--28n   { background:#a78bfa; box-shadow:0 0 7px #a78bfa99; }
 .dc-table { width:100%; border-collapse:collapse; }
 .dc-thead {
@@ -2235,8 +2241,10 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 }
 .dc-radha  .dc-row--life > div { color:#f5c842; }
 .dc-rv     .dc-row--life > div { color:#5eead4; }
+.dc-kv     .dc-row--life > div { color:#6DB8FF; }
 .dc-28n    .dc-row--life > div { color:#a78bfa; }
 .dc-row--rv    > div { color:#5eead4; }
+.dc-row--kv    > div { color:#6DB8FF; }
 .dc-row--28n   > div { color:#a78bfa; }
 .dc-row--combo > div { color:#f5c842; }
 .dc-row--all   > div { color:#f5d060; }
@@ -2290,6 +2298,7 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 .hist-dash{color:rgba(255,255,255,0.18);}
 .hist-c-gold{color:var(--gold);}
 .hist-c-rv{color:var(--a2);}
+.hist-c-kv{color:#6DB8FF;}
 .hist-c-green{color:var(--green);}
 .hist-c-hk{color:#6DB8FF;}
 .hist-c-time{color:var(--td);font-size:11.5px;}
@@ -2334,8 +2343,9 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
   background:rgba(245,209,122,0.12);border:1px solid rgba(245,209,122,0.25);border-radius:8px;padding:3px 8px;}
 .pt-grid{display:grid;gap:12px;position:relative;z-index:1;}
 .pt-grid-3{grid-template-columns:repeat(3,minmax(0,1fr));}
+.pt-grid-4{grid-template-columns:repeat(4,minmax(0,1fr));}
 .pt-grid-1{grid-template-columns:1fr;}
-@media (max-width:520px){.pt-grid-3{grid-template-columns:1fr;}}
+@media (max-width:520px){.pt-grid-3{grid-template-columns:1fr;} .pt-grid-4{grid-template-columns:1fr 1fr;}}
 .pt-card{
   position:relative;border-radius:16px;padding:14px 14px 12px;
   background:
@@ -2371,6 +2381,9 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 .pt-rv .pt-num{color:var(--a2);text-shadow:0 0 14px rgba(184,196,245,0.45);}
 .pt-rv{border-color:rgba(184,196,245,0.28);}
 .pt-rv .pt-card-icon{background:linear-gradient(160deg,rgba(184,196,245,0.20),rgba(184,196,245,0.04));border-color:rgba(184,196,245,0.45);box-shadow:0 0 16px rgba(184,196,245,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}
+.pt-kv .pt-num{color:#6DB8FF;text-shadow:0 0 14px rgba(109,184,255,0.45);}
+.pt-kv{border-color:rgba(109,184,255,0.28);}
+.pt-kv .pt-card-icon{background:linear-gradient(160deg,rgba(109,184,255,0.20),rgba(109,184,255,0.04));border-color:rgba(109,184,255,0.45);box-shadow:0 0 16px rgba(109,184,255,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}
 .pt-28 .pt-num{color:var(--green);text-shadow:0 0 14px rgba(57,201,151,0.45);}
 .pt-28{border-color:rgba(57,201,151,0.28);}
 .pt-28 .pt-card-icon{background:linear-gradient(160deg,rgba(57,201,151,0.20),rgba(57,201,151,0.04));border-color:rgba(57,201,151,0.50);box-shadow:0 0 16px rgba(57,201,151,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}

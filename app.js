@@ -3599,14 +3599,18 @@ function removeNameJapDeduct() {
 // Reuses the same nameJapDeduct/RV/KV counters as the manual "Deduct Name
 // Jap" tool above (so lifetime totals update immediately), and additionally
 // keeps a purpose/date/note log so past offerings can be reviewed or undone.
-window._dedType = "radha";
+// Supports selecting multiple types at once (e.g. Radha + RV together) —
+// the same amount is deducted from each selected type's lifetime total.
+window._dedTypes = new Set(["radha"]);
 
-function selectDedicationType(type, el) {
-  window._dedType = type;
-  document
-    .querySelectorAll(".ded-type-pill")
-    .forEach((p) => p.classList.remove("active"));
-  if (el) el.classList.add("active");
+function toggleDedicationType(type, el) {
+  if (window._dedTypes.has(type)) {
+    // Don't allow deselecting the last remaining type
+    if (window._dedTypes.size > 1) window._dedTypes.delete(type);
+  } else {
+    window._dedTypes.add(type);
+  }
+  if (el) el.classList.toggle("active", window._dedTypes.has(type));
 }
 
 function _dedTypeMeta(type) {
@@ -3615,9 +3619,26 @@ function _dedTypeMeta(type) {
   return { label: "Radha", color: "#f5c842" };
 }
 
+// Normalize an entry to a types array — supports old entries saved with a
+// single `type` string as well as new entries saved with `types: [...]`.
+function _dedEntryTypes(d) {
+  if (Array.isArray(d.types) && d.types.length) return d.types;
+  return [d.type || "radha"];
+}
+
+function _dedAdjustCounter(type, delta) {
+  if (type === "rv") {
+    App.S.nameJapDeductRV = Math.max(0, (App.S.nameJapDeductRV || 0) + delta);
+  } else if (type === "kv") {
+    App.S.nameJapDeductKV = Math.max(0, (App.S.nameJapDeductKV || 0) + delta);
+  } else {
+    App.S.nameJapDeduct = Math.max(0, (App.S.nameJapDeduct || 0) + delta);
+  }
+}
+
 function addDedication() {
   if (isGhostMode()) return; // ghost mode: read-only
-  const type = window._dedType || "radha";
+  const types = Array.from(window._dedTypes || []);
   const purposeEl = document.getElementById("dedPurposeIn");
   const amountEl = document.getElementById("dedAmountIn");
   const dateEl = document.getElementById("dedDateIn");
@@ -3627,6 +3648,10 @@ function addDedication() {
   const date = (dateEl && dateEl.value) || _ldk(new Date());
   const note = (noteEl.value || "").trim();
 
+  if (!types.length) {
+    toast("Please select at least one type (Radha / RV / KV)");
+    return;
+  }
   if (!purpose) {
     toast("Please enter a purpose or name");
     return;
@@ -3639,7 +3664,7 @@ function addDedication() {
   if (!App.S.dedications) App.S.dedications = [];
   App.S.dedications.unshift({
     id: "ded_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
-    type,
+    types,
     amount,
     purpose,
     note,
@@ -3647,14 +3672,9 @@ function addDedication() {
     ts: Date.now(),
   });
 
-  // Deduct from the matching lifetime total — same mechanism as "Deduct Name Jap"
-  if (type === "rv") {
-    App.S.nameJapDeductRV = (App.S.nameJapDeductRV || 0) + amount;
-  } else if (type === "kv") {
-    App.S.nameJapDeductKV = (App.S.nameJapDeductKV || 0) + amount;
-  } else {
-    App.S.nameJapDeduct = (App.S.nameJapDeduct || 0) + amount;
-  }
+  // Deduct from each selected type's lifetime total — same mechanism as
+  // "Deduct Name Jap". The full amount is applied to EACH selected type.
+  types.forEach((t) => _dedAdjustCounter(t, amount));
 
   App.save();
   App.ua();
@@ -3667,7 +3687,14 @@ function addDedication() {
 
   renderDedications();
   uStats();
-  toast("🙏 Dedicated " + amount.toLocaleString() + " jap — Jai Radhe!");
+  const typeLabels = types.map((t) => _dedTypeMeta(t).label).join(" + ");
+  toast(
+    "🙏 Dedicated " +
+      amount.toLocaleString() +
+      " jap (" +
+      typeLabels +
+      ") — Jai Radhe!",
+  );
 }
 
 function deleteDedication(id) {
@@ -3675,28 +3702,20 @@ function deleteDedication(id) {
   const list = App.S.dedications || [];
   const entry = list.find((d) => d.id === id);
   if (!entry) return;
+  const types = _dedEntryTypes(entry);
+  const totalRestore = entry.amount * types.length;
   if (
     !confirm(
       "Remove this dedication and restore " +
-        entry.amount.toLocaleString() +
-        " jap to the lifetime total?",
+        totalRestore.toLocaleString() +
+        " jap (" +
+        types.map((t) => _dedTypeMeta(t).label).join(" + ") +
+        ") to the lifetime total?",
     )
   )
     return;
 
-  if (entry.type === "rv") {
-    App.S.nameJapDeductRV = Math.max(
-      0,
-      (App.S.nameJapDeductRV || 0) - entry.amount,
-    );
-  } else if (entry.type === "kv") {
-    App.S.nameJapDeductKV = Math.max(
-      0,
-      (App.S.nameJapDeductKV || 0) - entry.amount,
-    );
-  } else {
-    App.S.nameJapDeduct = Math.max(0, (App.S.nameJapDeduct || 0) - entry.amount);
-  }
+  types.forEach((t) => _dedAdjustCounter(t, -entry.amount));
   App.S.dedications = list.filter((d) => d.id !== id);
 
   App.save();
@@ -3743,9 +3762,11 @@ function renderDedications() {
     totRV = 0,
     totKV = 0;
   list.forEach((d) => {
-    if (d.type === "rv") totRV += d.amount;
-    else if (d.type === "kv") totKV += d.amount;
-    else totRadha += d.amount;
+    _dedEntryTypes(d).forEach((t) => {
+      if (t === "rv") totRV += d.amount;
+      else if (t === "kv") totKV += d.amount;
+      else totRadha += d.amount;
+    });
   });
   if (wrapTotals) {
     const parts = [];
@@ -3772,7 +3793,21 @@ function renderDedications() {
 
   wrapList.innerHTML = list
     .map((d) => {
-      const meta = _dedTypeMeta(d.type);
+      const types = _dedEntryTypes(d);
+      const badges = types
+        .map((t) => {
+          const meta = _dedTypeMeta(t);
+          return (
+            '<span style="font-size:10px;font-weight:700;color:' +
+            meta.color +
+            ";border:1px solid " +
+            meta.color +
+            '55;border-radius:6px;padding:1px 6px;">' +
+            meta.label +
+            "</span>"
+          );
+        })
+        .join("");
       const dateDisp = d.date ? _fmtDedDate(d.date) : "";
       return (
         '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 12px;">' +
@@ -3785,16 +3820,12 @@ function renderDedications() {
         '\')" style="cursor:pointer;font-size:14px;color:var(--td);padding:2px 4px;">🗑️</div>' +
         "</div>" +
         '<div style="display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap;">' +
-        '<span style="font-size:10px;font-weight:700;color:' +
-        meta.color +
-        ";border:1px solid " +
-        meta.color +
-        '55;border-radius:6px;padding:1px 6px;">' +
-        meta.label +
-        "</span>" +
+        badges +
         '<span style="font-size:12px;color:var(--gold);font-weight:600;">' +
         d.amount.toLocaleString() +
-        " jap</span>" +
+        " jap" +
+        (types.length > 1 ? " each" : "") +
+        "</span>" +
         '<span style="font-size:11px;color:var(--td);">' +
         dateDisp +
         "</span>" +

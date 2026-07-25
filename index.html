@@ -827,20 +827,22 @@
       <div style="padding:2px 4px 4px;">
         <div style="font-size:11px;color:var(--td);margin-bottom:10px;line-height:1.5;">Dedicate a portion of your lifetime jap to someone or a purpose. This deducts the amount from that jap's lifetime total.</div>
 
+        <div style="font-size:9px;color:rgba(255,143,199,0.7);letter-spacing:1px;text-transform:uppercase;font-weight:700;margin-bottom:6px;">Give from (tap to select one or more)</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
-          <div class="ded-type-pill active" data-type="radha" onclick="selectDedicationType('radha', this)" style="border-color:rgba(245,200,66,0.45);background:rgba(245,200,66,0.08);">
+          <div class="ded-type-pill active" data-type="radha" onclick="toggleDedicationType('radha', this)" style="border-color:rgba(245,200,66,0.45);background:rgba(245,200,66,0.08);">
             <div style="font-size:11px;font-weight:700;color:#f5c842;">Radha</div>
           </div>
-          <div class="ded-type-pill" data-type="rv" onclick="selectDedicationType('rv', this)" style="border-color:rgba(94,234,212,0.45);background:rgba(94,234,212,0.06);">
+          <div class="ded-type-pill" data-type="rv" onclick="toggleDedicationType('rv', this)" style="border-color:rgba(94,234,212,0.45);background:rgba(94,234,212,0.06);">
             <div style="font-size:11px;font-weight:700;color:#5eead4;">RV</div>
           </div>
-          <div class="ded-type-pill" data-type="kv" onclick="selectDedicationType('kv', this)" style="border-color:rgba(109,184,255,0.45);background:rgba(109,184,255,0.06);">
+          <div class="ded-type-pill" data-type="kv" onclick="toggleDedicationType('kv', this)" style="border-color:rgba(109,184,255,0.45);background:rgba(109,184,255,0.06);">
             <div style="font-size:11px;font-weight:700;color:#6DB8FF;">KV</div>
           </div>
         </div>
 
         <div class="fr"><input type="text" class="fi" id="dedPurposeIn" placeholder="Purpose / name (e.g. For Maa's health)" maxlength="60"></div>
         <div class="fr"><input type="number" class="fi" id="dedAmountIn" placeholder="Amount" min="1"><span class="fu">jap</span></div>
+        <div style="font-size:10px;color:var(--td);margin:-4px 0 8px 2px;">Applied to each type selected above</div>
         <div class="fr"><input type="date" class="fi" id="dedDateIn"></div>
         <div class="fr" style="align-items:flex-start;"><textarea class="fi" id="dedNoteIn" placeholder="Short note (optional)" maxlength="140" rows="2" style="resize:vertical;font-family:inherit;"></textarea></div>
         <button class="pb deduct" style="background:linear-gradient(135deg,rgba(255,105,180,0.35),rgba(180,50,120,0.28));" onclick="addDedication()">🙏 Dedicate</button>

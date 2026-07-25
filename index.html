@@ -739,10 +739,10 @@
     <div class="cdmo-stat" id="cdmoStat">
       <div class="cdmo-stat-row non-gaudiya-stat">🕉️ Radha Jap <span class="cdmo-stat-val" id="cdmoRadhaJap">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">🌸 Radha Vallabh Sri Harivangsa Jap <span class="cdmo-stat-val" id="cdmoRvJap">—</span></div>
-      <div class="cdmo-stat-row non-gaudiya-stat">🪈 Krishnay Vasudevay Jap <span class="cdmo-stat-val" id="cdmoKvJap">—</span></div>
+      <div class="cdmo-stat-row kv-only-stat">🪈 Krishnay Vasudevay Jap <span class="cdmo-stat-val" id="cdmoKvJap">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ Radha Jap Time <span class="cdmo-stat-val" id="cdmoRadhaTime">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ Radha Vallabh Sri Harivangsa Jap Time <span class="cdmo-stat-val" id="cdmoRvTime">—</span></div>
-      <div class="cdmo-stat-row non-gaudiya-stat">⏱ Krishnay Vasudevay Jap Time <span class="cdmo-stat-val" id="cdmoKvTime">—</span></div>
+      <div class="cdmo-stat-row kv-only-stat">⏱ Krishnay Vasudevay Jap Time <span class="cdmo-stat-val" id="cdmoKvTime">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">✨ 28 Names <span class="cdmo-stat-val" id="cdmo28Names">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ 28 Names Time <span class="cdmo-stat-val" style="color:var(--a2)" id="cdmoTime28">—</span></div>
       <div class="cdmo-stat-row hk-only-stat">🪷 Hare Krishna Mahamantra <span class="cdmo-stat-val" style="color:#6DB8FF" id="cdmoHkJap">—</span></div>
@@ -818,7 +818,7 @@
   <div class="vt">Jap Summary</div>
 
   <!-- Dedications — offer a portion of lifetime jap to a purpose/person -->
-  <div class="sg-wrap non-gaudiya-stat" style="background:rgba(255,105,180,0.05);border:1px solid rgba(255,105,180,0.18);">
+  <div class="sg-wrap ded-card-hide-gaudiya" style="background:rgba(255,105,180,0.05);border:1px solid rgba(255,105,180,0.18);">
     <div class="sg-header" onclick="toggleCs('sgDedic','sgDedicChev')">
       <span style="color:#FF8FC7">🙏 Offer Jap — Dedication</span>
       <span class="sg-chevron" id="sgDedicChev" style="color:#FF8FC7">▾</span>
@@ -829,13 +829,13 @@
 
         <div style="font-size:9px;color:rgba(255,143,199,0.7);letter-spacing:1px;text-transform:uppercase;font-weight:700;margin-bottom:6px;">Give from (tap to select one or more)</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
-          <div class="ded-type-pill active" data-type="radha" onclick="toggleDedicationType('radha', this)" style="border-color:rgba(245,200,66,0.45);background:rgba(245,200,66,0.08);">
+          <div class="ded-type-pill active non-gaudiya-setting" data-type="radha" onclick="toggleDedicationType('radha', this)" style="border-color:rgba(245,200,66,0.45);background:rgba(245,200,66,0.08);">
             <div style="font-size:11px;font-weight:700;color:#f5c842;">Radha</div>
           </div>
-          <div class="ded-type-pill" data-type="rv" onclick="toggleDedicationType('rv', this)" style="border-color:rgba(94,234,212,0.45);background:rgba(94,234,212,0.06);">
+          <div class="ded-type-pill non-gaudiya-setting" data-type="rv" onclick="toggleDedicationType('rv', this)" style="border-color:rgba(94,234,212,0.45);background:rgba(94,234,212,0.06);">
             <div style="font-size:11px;font-weight:700;color:#5eead4;">RV</div>
           </div>
-          <div class="ded-type-pill" data-type="kv" onclick="toggleDedicationType('kv', this)" style="border-color:rgba(109,184,255,0.45);background:rgba(109,184,255,0.06);">
+          <div class="ded-type-pill kv-only-setting" data-type="kv" onclick="toggleDedicationType('kv', this)" style="border-color:rgba(109,184,255,0.45);background:rgba(109,184,255,0.06);">
             <div style="font-size:11px;font-weight:700;color:#6DB8FF;">KV</div>
           </div>
         </div>
@@ -892,7 +892,7 @@
             <span id="sRVTotF" style="display:none">0</span>
           </div>
           <!-- 2b. KV -->
-          <div class="dc-wrap dc-kv non-gaudiya-stat" style="grid-column:1/-1">
+          <div class="dc-wrap dc-kv kv-only-stat" style="grid-column:1/-1">
             <div class="dc-title"><span class="dc-dot dc-dot--kv"></span>Krishnay Vasudevay (KV)</div>
             <div class="dc-table">
               <div class="dc-thead"><div></div><div>Count</div><div>Malas</div><div>Time</div></div>
@@ -1369,6 +1369,25 @@
     </div>
   </div>
 
+  <div class="sc trahimam-mode-card" id="trahimamModeCard" style="margin-top:14px;">
+    <div class="gmc-top">
+      <div class="gmc-icon">🪈</div>
+      <div class="gmc-text">
+        <div class="gmc-title">Trahimam Trahimam</div>
+        <div class="gmc-desc">Krishnay Vasudevay (KV) mode — Stats &amp; History show KV data only, with its own Jap targets. Hides Radha / Radha Vallabh.</div>
+      </div>
+    </div>
+    <div class="tmc-switch-wrap" onclick="tgs('trahimamMode')">
+      <div class="tmc-switch" id="tgTrahimam">
+        <div class="tmc-switch-track" id="tmcTrack">
+          <div class="tmc-switch-thumb" id="tmcThumb"></div>
+          <div class="tmc-switch-label-off">OFF</div>
+          <div class="tmc-switch-label-on">ON</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 🪷 HK Daily + Language side-by-side 🪷 -->
   <div class="hk-only-block" style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(109,184,255,0.15)">
     <div id="hkDailyTargetLabel" style="font-size:9px;color:rgba(109,184,255,0.7);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">🪷 Hare Krishna Mahamantra Targets</div>
@@ -1765,7 +1784,7 @@
       <div class="non-gaudiya-setting" style="font-size:9px;color:rgba(255,215,0,0.55);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">📿 Radha Vallabh Sri Harivangsa Targets</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <!-- RV Daily -->
-        <div class="non-gaudiya-setting" style="background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));border:1.5px solid rgba(255,215,0,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(255,215,0,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
+        <div class="non-gaudiya-setting rv-daily-target-card" style="background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));border:1.5px solid rgba(255,215,0,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(255,215,0,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
           <div style="font-size:10px;color:rgba(255,215,0,0.85);font-weight:700;text-align:center;">🕉️ Radha Vallabh</div>
           <div style="font-size:9px;color:rgba(255,215,0,0.7);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">Daily</div>
           <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtRVIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtRV')"><span class="fu" style="font-size:10px;min-width:26px;">jap</span></div>
@@ -1774,7 +1793,7 @@
           <button class="pb" style="padding:10px 8px;font-size:12px;" onclick="svtRV('d')">Save Daily</button>
         </div>
         <!-- KV Daily -->
-        <div class="non-gaudiya-setting" style="background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));border:1.5px solid rgba(255,215,0,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(255,215,0,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
+        <div class="kv-only-setting" style="background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));border:1.5px solid rgba(255,215,0,0.38);border-radius:16px;padding:14px 10px;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(255,215,0,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
           <div style="font-size:10px;color:rgba(255,215,0,0.85);font-weight:700;text-align:center;">🪈 Krishnay Vasudevay</div>
           <div style="font-size:9px;color:rgba(255,215,0,0.7);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">Daily</div>
           <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtKVIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtKV')"><span class="fu" style="font-size:10px;min-width:26px;">jap</span></div>

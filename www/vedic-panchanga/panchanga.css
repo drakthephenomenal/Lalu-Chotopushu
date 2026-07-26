@@ -131,6 +131,10 @@
 #vpanchanga-view #vp-vaar-name{font-family:'EB Garamond',serif;font-size:1.32rem;font-weight:700;text-align:center;margin-top:2px;color:#C9961A}
 #vpanchanga-view #vp-month-line{font-size:.72rem;color:var(--vp-sun);letter-spacing:.08em;text-transform:uppercase;text-align:center;margin-top:6px;font-weight:700}
 #vpanchanga-view #vp-vaishnav-line{font-size:.66rem;color:var(--vp-ink-faint);font-style:italic;font-family:'EB Garamond',serif;text-align:center;margin-top:2px}
+#vpanchanga-view .vp-anga-summary-line{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 10px;text-align:center;margin-top:12px;padding:0 16px}
+#vpanchanga-view .vp-anga-summary-item{font-size:.68rem;color:var(--vp-ink);letter-spacing:.02em;white-space:nowrap}
+#vpanchanga-view .vp-anga-summary-item b{color:var(--vp-sun);font-weight:700;margin-right:4px;text-transform:uppercase;font-size:.6rem;letter-spacing:.06em}
+#vpanchanga-view .vp-anga-summary-sep{color:var(--vp-ink-faint);opacity:.5;font-size:.6rem}
 
 /* ══════════════════════════════════════════════════════════════
    SOLAR SYSTEM ORBIT DIAL

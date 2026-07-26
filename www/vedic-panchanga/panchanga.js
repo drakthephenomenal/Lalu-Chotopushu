@@ -1026,6 +1026,24 @@ function renderAll(){
     headerAM.isAdhik ? 'Purushottam Maas (Adhik) — most spiritually potent month' :
     'Vaishnav Month of '+headerHM.vaishnavName;
 
+  // Compact "right now" summary — same current-period lookup used by the
+  // Right Now & Coming Soon cards further down, shown right under the
+  // month/paksha line so it's visible without scrolling.
+  (function renderAngaSummaryLine(){
+    const el=document.getElementById('vp-anga-summary-line');
+    if(!el)return;
+    function curP(arr){return arr.find(p=>+jdToDate(p.startJD)<=+now&&+now<+jdToDate(p.endJD))||arr[0]}
+    const cT=curP(tithiPeriods),cN=curP(nakshatraPeriods),cY=curP(yogaPeriods),cK=curP(karanaPeriods);
+    el.innerHTML=
+      '<span class="vp-anga-summary-item"><b>Tithi</b>'+cT.name+(cT.paksha?' ('+cT.paksha+')':'')+'</span>'+
+      '<span class="vp-anga-summary-sep">•</span>'+
+      '<span class="vp-anga-summary-item"><b>Nakshatra</b>'+cN.name+'</span>'+
+      '<span class="vp-anga-summary-sep">•</span>'+
+      '<span class="vp-anga-summary-item"><b>Yoga</b>'+cY.name+'</span>'+
+      '<span class="vp-anga-summary-sep">•</span>'+
+      '<span class="vp-anga-summary-item"><b>Karana</b>'+cK.name+'</span>';
+  })();
+
   // Personal horoscope card (opt-in) — async, self-caching; safe to call
   // on every renderAll() pass since it no-ops fast when already loaded.
   vpPersonalRender();

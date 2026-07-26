@@ -2498,8 +2498,8 @@ function closeNaamSelOutside(e) {
 }
 // ── Radha / Radha Vallabh jap-text script lookup (Sanskrit/Devanagari vs Bangla) ──
 const NAAM_TEXT = {
-  sa: { radha: "राधा", rv1: "राधावल्लभ", rv2: "श्री हरिवंश", kv1: "कृष्णाय वासुदेवाय हरये परमात्मने", kv2: "प्रणतः क्लेशनाशाय गोविन्दाय नमो नमः" },
-  bn: { radha: "রাধা", rv1: "রাধাবল্লভ", rv2: "শ্রী হরিবংশ", kv1: "কৃষ্ণায় বাসুদেবায় হরয়ে পরমাত্মনে", kv2: "প্রণতঃ ক্লেশনাশায় গোবিন্দায় নমো নমঃ" },
+  sa: { radha: "राधा", rv1: "राधावल्लभ", rv2: "श्री हरिवंश", kv1: "कृष्णाय वासुदेवाय हरये परमात्मने", kv2: "प्रणतः क्लेशनाशाय गोविन्दाय नमो नमः", kvShort: "कृष्णाय वासुदेवाय" },
+  bn: { radha: "রাধা", rv1: "রাধাবল্লভ", rv2: "শ্রী হরিবংশ", kv1: "কৃষ্ণায় বাসুদেবায় হরয়ে পরমাত্মনে", kv2: "প্রণতঃ ক্লেশনাশায় গোবিন্দায় নমো নমঃ", kvShort: "কৃষ্ণায় বাসুদেবায়" },
 };
 function naamText() {
   const lang = (App.S && App.S.naamLang === "bn") ? "bn" : "sa";
@@ -2519,7 +2519,7 @@ function applyNaamLangLabels(lang) {
   const optRVLbl = document.getElementById("naamOptRVLabel");
   if (optRVLbl) optRVLbl.textContent = _nt.rv1 + " " + _nt.rv2;
   const optKVLbl = document.getElementById("naamOptKVLabel");
-  if (optKVLbl) optKVLbl.textContent = _nt.kv1;
+  if (optKVLbl) optKVLbl.textContent = _nt.kvShort;
 }
 
 function setNaamLangDirect(lang) {
@@ -2586,8 +2586,7 @@ function switchJapMode(mode) {
     {
       const _nt = naamText();
       titleEl.innerHTML =
-        '<span style="font-size:clamp(14px,4vw,20px);line-height:1.2">' + _nt.kv1 +
-        '</span><br><span style="font-size:clamp(13px,3.7vw,18px);line-height:1.2">' + _nt.kv2 + '</span>';
+        '<span style="font-size:clamp(18px,5vw,28px);line-height:1.1">' + _nt.kvShort + '</span>';
     }
     titleEl.style.textAlign = "center";
     if (hkEl) {
@@ -2648,7 +2647,7 @@ function switchJapMode(mode) {
   const toastMap = {
     rv: _nt.rv1 + " " + _nt.rv2 + " 🙏",
     hk: "हरे कृष्ण महामंत्र 🪷",
-    kv: _nt.kv1 + " 🙏",
+    kv: _nt.kvShort + " 🙏",
     radha: _nt.radha + " 🙏",
   };
   toast(toastMap[mode] || _nt.radha + " 🙏");

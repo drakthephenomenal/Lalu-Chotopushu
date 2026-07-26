@@ -358,28 +358,6 @@
           <div class="ns"><div class="nv" id="sp28TimeAll" style="font-size:18px">0m</div><div class="nl">All Time</div></div>
         </div>
 
-        <!-- Manual time adjust — new labelled layout -->
-        <div class="n28-adj">
-          <div class="n28-adj-head">
-            <div class="n28-adj-title">Adjust Today's 28 Names Time</div>
-            <div class="n28-adj-desc">Enter the minutes &amp; seconds you want to <b style="color:var(--green)">add</b> to or <b style="color:var(--rl)">deduct</b> from today's 28 Names timer. Useful if you chanted offline or want to correct a mistake.</div>
-          </div>
-          <div class="n28-adj-inputs">
-            <label class="n28-adj-field">
-              <span class="n28-adj-lbl">Minutes</span>
-              <input type="number" class="n28sp-in" id="sp28TimeMin" min="0" placeholder="0" oninput="prev28Time()">
-            </label>
-            <label class="n28-adj-field">
-              <span class="n28-adj-lbl">Seconds</span>
-              <input type="number" class="n28sp-in" id="sp28TimeSec" min="0" max="59" placeholder="0" oninput="prev28Time()">
-            </label>
-          </div>
-          <div class="n28-adj-actions">
-            <button class="n28sp-btn add" onclick="adj28Time(1)" title="Add the entered time to today's 28 Names timer">＋ Add Time</button>
-            <button class="n28sp-btn ded" onclick="adj28Time(-1)" title="Deduct the entered time from today's 28 Names timer">－ Deduct Time</button>
-          </div>
-          <div class="n28-adj-preview"><span id="sp28TimePreview"></span></div>
-        </div>
       </div>
 
       <!-- c) Add / Deduct Jap Manually -->

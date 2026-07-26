@@ -654,24 +654,6 @@ button.hpb.active{
 /* 28 NAMES STATS PANEL */
 .n28sp-section{background:rgba(74,144,226,0.05);border:1px solid rgba(74,144,226,0.15);border-radius:14px;padding:12px;margin-bottom:8px;width:100%;box-sizing:border-box;}
 .n28sp-title{font-size:10px;color:var(--a2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;font-weight:600;}
-.n28sp-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:center;}
-.n28sp-row .n28sp-btn{width:100%;}
-.n28sp-in{width:100%;box-sizing:border-box;background:rgba(0,0,0,0.3);border:1px solid rgba(74,144,226,0.25);border-radius:9px;padding:7px 10px;color:var(--tl);font-size:14px;font-family:'Inter',sans-serif;text-align:center;outline:none;}
-.n28sp-in:focus{border-color:var(--a2);}
-.n28sp-btn{border-radius:9px;border:none;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;box-sizing:border-box;}
-.n28sp-btn.add{background:linear-gradient(135deg,rgba(39,174,96,0.25),rgba(46,204,113,0.15));color:var(--green);border:1px solid rgba(46,204,113,0.35);}
-.n28sp-btn.ded{background:linear-gradient(135deg,rgba(232,51,109,0.15),rgba(192,57,43,0.1));color:var(--rl);border:1px solid rgba(232,51,109,0.3);}
-/* Manual 28-Names time adjust block */
-.n28-adj{background:linear-gradient(180deg,rgba(74,144,226,0.05),rgba(74,144,226,0.02));border:1px solid rgba(124,143,224,0.22);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;}
-.n28-adj-head{display:flex;flex-direction:column;gap:4px;}
-.n28-adj-title{font-size:12px;font-weight:700;color:var(--a2);letter-spacing:0.6px;}
-.n28-adj-desc{font-size:11px;line-height:1.5;color:var(--td);}
-.n28-adj-inputs{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.n28-adj-field{display:flex;flex-direction:column;gap:4px;}
-.n28-adj-lbl{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--td);font-weight:600;padding-left:2px;}
-.n28-adj-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.n28-adj-actions .n28sp-btn{padding:10px 12px;font-size:13px;}
-.n28-adj-preview{min-height:14px;font-size:11px;color:var(--a2);text-align:center;}
 
 /* Reset Options — golden plated buttons (force gold even if cached overrides exist) */
 .n28sp-reset{border-color:rgba(255,215,0,0.28) !important;background:linear-gradient(180deg,rgba(245,209,122,0.06),rgba(245,209,122,0.02)) !important;}

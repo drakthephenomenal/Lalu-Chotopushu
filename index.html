@@ -885,6 +885,17 @@
     </div>
   </div>
 
+  <!-- PERMANENT Gift Record — separate, append-only ledger. Every gift made
+       above is also written here immediately (not on the debounced cloud
+       push), so it survives even if the app is closed right after gifting. -->
+  <div class="sg-wrap" style="background:rgba(255,105,180,0.05);border:1px solid rgba(255,105,180,0.18);margin-top:10px;">
+    <div style="padding:10px 12px;">
+      <div style="font-size:11px;color:#FF8FC7;letter-spacing:1px;text-transform:uppercase;font-weight:700;margin-bottom:6px;">🎁 Permanent Gift Record</div>
+      <div style="font-size:10px;color:var(--td);margin-bottom:8px;">A durable, append-only log of every gift — kept separately so an entry can never be silently dropped by sync.</div>
+      <div id="permGiftList" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </div>
+
     <!-- Summary Stats Grid — collapsible -->
   <div class="sg-wrap">
     <div class="sg-header" onclick="toggleCs('sgStats','sgChev')">

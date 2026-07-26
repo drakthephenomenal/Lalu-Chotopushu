@@ -1,5 +1,10 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v176
+// Radha Naam Jap — Service Worker  v177
+// v177: bumped cache to force-invalidate stale app.js/index.html — adds
+//  the PERMANENT Gift Ledger: every gift is now also written to its own
+//  IndexedDB record + its own Firestore document immediately (no debounce),
+//  isolated from the state blob that gets reset on UID change/cold start,
+//  so a gift entry can no longer be silently dropped by the sync race.
 // v176: bumped cache to force-invalidate stale app.js — picks up:
 //  (1) Milestones total-jap fix — nets each jap type (Radha/RV/HK/KV)
 //      against its own gift/deduct counter instead of pooling all
@@ -43,7 +48,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v176';
+const CACHE = 'radha-jap-v177';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

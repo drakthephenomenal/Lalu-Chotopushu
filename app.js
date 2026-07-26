@@ -489,7 +489,7 @@ const App = {
 
   async initDB() {
     return new Promise((res, rej) => {
-      const req = indexedDB.open("RadhaJapDB", 4);
+      const req = indexedDB.open("RadhaJapDB", 5);
       req.onupgradeneeded = (e) => {
         const db = e.target.result;
         if (!db.objectStoreNames.contains("state"))
@@ -506,6 +506,15 @@ const App = {
         // v4: lifetime per-day activityLog archive — no entry limit
         if (!db.objectStoreNames.contains("activityLogArchive"))
           db.createObjectStore("activityLogArchive");
+        // v5: PERMANENT gift ledger — one record per gift, keyed by its own
+        // id. Deliberately isolated from the "state" blob: it is never part
+        // of the App.S = {...} reset that runs on every UID change/cold
+        // start, and it is never overwritten wholesale by a cloud pull.
+        // Each entry is written individually and only ever added to —
+        // this is what makes it survive the race that can drop an entry
+        // out of App.S.dedications (see addPermanentGift()/loadGiftLedger()).
+        if (!db.objectStoreNames.contains("giftLedger"))
+          db.createObjectStore("giftLedger");
       };
       req.onsuccess = (e) => {
         this.db = e.target.result;
@@ -686,6 +695,10 @@ const App = {
     this.S.h28 = await this.dbGetAll("h28");
     this.S.timerHistory = await this.dbGetAll("timerHistory");
     this.S.timer28History = await this.dbGetAll("timer28History");
+    // PERMANENT gift ledger — its own store, keyed by gift id. Never
+    // touched by the App.S = {...} reset on UID change, so it can't be
+    // wiped the way App.S.dedications can be.
+    this.S.giftLedger = await this.dbGetAll("giftLedger");
 
     // Merge full snapshots saved in main state so past/future edits also persist locally
     if (main?.history) this.S.history = { ...main.history, ...this.S.history };
@@ -3980,6 +3993,107 @@ function _dedEntryAmounts(d) {
   return out;
 }
 
+// ═══════════════════════════════════════════════════════
+// PERMANENT GIFT LEDGER — a durable record of every gift, kept separate
+// from App.S.dedications on purpose.
+//
+// Why: App.S.dedications lives inside the big "state" blob, which gets
+// (a) wiped to defaults on every UID change / cold start, (b) rebuilt from
+// whichever source (local IDB vs cloud) happens to win a race, and
+// (c) pushed to Firestore on a 3s DEBOUNCE — so an entry added right
+// before the app is closed/killed can miss that window and never reach
+// the cloud, and can then be dropped by a subsequent reset/reload.
+//
+// This ledger avoids all three: each gift is (1) written to its own IDB
+// record immediately — never bulk-overwritten, (2) pushed to its own
+// Firestore document immediately (no debounce, no dependency on
+// App._cloudHydrated), and (3) only ever added to, never replaced.
+// ═══════════════════════════════════════════════════════
+async function addPermanentGift(entry) {
+  const id = "gift_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+  const record = { id, ...entry, ts: Date.now() };
+
+  // 1. Local — its own IDB record, isolated from the state blob.
+  if (App._uid) {
+    await App.dbPut("giftLedger", id, record);
+  }
+  App.S.giftLedger = App.S.giftLedger || {};
+  App.S.giftLedger[id] = record;
+
+  // 2. Cloud — its own Firestore document, written immediately (no
+  // debounce, no _cloudHydrated gate) so it can't be lost to the same
+  // race that can drop a dedication.
+  if (fbUser && typeof fbDb !== "undefined") {
+    try {
+      await fbDb
+        .collection("users")
+        .doc(fbUser.uid)
+        .collection("gifts")
+        .doc(id)
+        .set(record);
+    } catch (e) {
+      console.warn("Permanent gift ledger: cloud write failed, kept locally:", e.message);
+    }
+  }
+
+  renderPermanentGiftLog();
+  return record;
+}
+
+// Pull any ledger entries added from other devices/sessions and merge them
+// in (union by id — never removes a locally-known entry).
+async function pullPermanentGiftLedger() {
+  if (!fbUser || typeof fbDb === "undefined") return;
+  try {
+    const snap = await fbDb
+      .collection("users")
+      .doc(fbUser.uid)
+      .collection("gifts")
+      .get();
+    App.S.giftLedger = App.S.giftLedger || {};
+    for (const doc of snap.docs) {
+      const remote = doc.data();
+      if (!remote || !remote.id) continue;
+      if (!App.S.giftLedger[remote.id]) {
+        App.S.giftLedger[remote.id] = remote;
+        if (App._uid) await App.dbPut("giftLedger", remote.id, remote);
+      }
+    }
+    renderPermanentGiftLog();
+  } catch (e) {
+    console.warn("Permanent gift ledger: cloud pull failed:", e.message);
+  }
+}
+
+function renderPermanentGiftLog() {
+  const el = document.getElementById("permGiftList");
+  if (!el) return;
+  const entries = Object.values(App.S.giftLedger || {}).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  if (!entries.length) {
+    el.innerHTML =
+      '<div style="font-size:12px;color:var(--td);text-align:center;padding:10px 0;">No gifts recorded yet 🌸</div>';
+    return;
+  }
+  el.innerHTML = entries
+    .map((g) => {
+      const parts = [];
+      if (g.amounts) {
+        for (const t of Object.keys(g.amounts)) {
+          parts.push((g.amounts[t] || 0).toLocaleString("en-IN") + " " + t.toUpperCase());
+        }
+      }
+      return (
+        '<div style="border:1px solid rgba(255,143,199,0.25);border-radius:10px;padding:8px 10px;font-size:12px;">' +
+        '<div style="font-weight:600;color:#FF8FC7;">' + (g.purpose || "Untitled gift") + "</div>" +
+        '<div style="color:var(--tl);margin-top:2px;">' + parts.join(" + ") + "</div>" +
+        (g.note ? '<div style="color:var(--td);margin-top:2px;font-size:11px;">' + g.note + "</div>" : "") +
+        '<div style="color:var(--td);margin-top:2px;font-size:10px;">' + (g.date || "") + "</div>" +
+        "</div>"
+      );
+    })
+    .join("");
+}
+
 function addDedication() {
   if (isGhostMode()) return; // ghost mode: read-only
   const purposeEl = document.getElementById("dedPurposeIn");
@@ -4030,6 +4144,11 @@ function addDedication() {
   // "Deduct Name Jap". Manual stotram gifts are a hand-entered log only and
   // are not deducted from anything.
   types.forEach((type) => _dedAdjustCounter(type, amounts[type]));
+
+  // PERMANENT record — written immediately, independent of App.save()'s
+  // debounced cloud push, so this entry can't be lost the way a plain
+  // dedication can be. Fire-and-forget so it doesn't block the UI.
+  addPermanentGift({ types, amounts, stotrams, purpose, note, date }).catch(() => {});
 
   App.save();
   App.ua();
@@ -4176,6 +4295,7 @@ function _fmtDedDate(ds) {
 }
 
 function renderDedications() {
+  renderPermanentGiftLog();
   const wrapList = document.getElementById("dedList");
   const wrapTotals = document.getElementById("dedTotalsBar");
   if (!wrapList) return;
@@ -5848,6 +5968,7 @@ function _buildBackupPayload() {
     nameJapDeductKV: App.S.nameJapDeductKV || 0,
     malaLogKV: App.S.malaLogKV || [],
     dedications: App.S.dedications || [],
+    giftLedger: App.S.giftLedger || {},
     gaudiyaMode: App.S.gaudiyaMode || false,
     trahimamMode: App.S.trahimamMode || false,
   };
@@ -5971,6 +6092,16 @@ function importAllData(input) {
           if (d && d.id && !localDedIds.has(d.id)) mergedDed.push(d);
         });
         App.S.dedications = mergedDed;
+      }
+      if (data.giftLedger && typeof data.giftLedger === "object") {
+        App.S.giftLedger = App.S.giftLedger || {};
+        Object.values(data.giftLedger).forEach((g) => {
+          if (g && g.id && !App.S.giftLedger[g.id]) {
+            App.S.giftLedger[g.id] = g;
+            if (App._uid) App.dbPut("giftLedger", g.id, g);
+          }
+        });
+        if (typeof renderPermanentGiftLog === "function") renderPermanentGiftLog();
       }
       App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history));
       App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28));
@@ -7267,6 +7398,8 @@ function fbInit() {
           await fbSyncServerTime();
           // Direct cloud pull — overwrites local cache with authoritative Firebase data
           await fbAutoSync();
+          // Merge in any permanent-ledger gifts recorded on other devices.
+          pullPermanentGiftLedger();
 
           // ── Refresh Rashi / personal-horoscope card after sign-in ──
           // vpPersonalLoad() caches a null result when it fires before auth

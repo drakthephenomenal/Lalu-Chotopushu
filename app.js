@@ -6069,11 +6069,15 @@ function renderMilestonesTab() {
   // mode — Radha + Radha Vallabh + 28 Names + KV + HK — regardless of which
   // mode/toggle (gaudiyaMode etc.) is currently active. Any name dedicated
   // as a gift (nameJapDeduct*) is subtracted here too, from every mode, so
-  // milestones always show what's actually left in hand.
+  // milestones always show what's actually left in hand. 28 Names cycles
+  // added via "Before This App (Lifetime)" (prev_ keys) are excluded here —
+  // milestones should only reflect jap actually done since starting the app.
   const rawTot =
     Object.values(hist).reduce((a, b) => a + b, 0) +
     Object.values(histRV).reduce((a, b) => a + b, 0) +
-    Object.values(hist28).reduce((a, b) => a + b, 0) +
+    Object.entries(hist28)
+      .filter(([k]) => !k.startsWith("prev_"))
+      .reduce((a, [, v]) => a + v, 0) +
     Object.values(histKV).reduce((a, b) => a + b, 0) +
     Object.values(histHK).reduce((a, b) => a + b, 0);
   const deduct =

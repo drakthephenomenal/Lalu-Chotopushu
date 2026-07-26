@@ -1293,26 +1293,6 @@
     </div>
   </div>
 
-  <!-- 🙏 Radha / Radha Vallabh Jap Text Language 🙏 -->
-  <div class="naam-only-block" style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,215,0,0.15)">
-    <div style="font-size:9px;color:rgba(255,215,0,0.7);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">🙏 Jap Text Language</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <div onclick="setNaamLangDirect('sa')" id="naamLangBtnSa"
-        style="padding:9px 6px;border-radius:11px;text-align:center;cursor:pointer;border:1.5px solid rgba(255,215,0,0.3);background:rgba(255,215,0,0.06);transition:all 0.25s;box-sizing:border-box;">
-        <div style="font-size:17px;margin-bottom:3px;">🕉️</div>
-        <div style="font-size:13px;color:#FFD700;font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif;font-weight:700;">संस्कृत</div>
-        <div style="font-size:9px;color:rgba(255,215,0,0.5);letter-spacing:1px;margin-top:2px;">SANSKRIT</div>
-      </div>
-      <div onclick="setNaamLangDirect('bn')" id="naamLangBtnBn"
-        style="padding:9px 6px;border-radius:11px;text-align:center;cursor:pointer;border:1.5px solid rgba(109,184,255,0.25);background:rgba(109,184,255,0.05);transition:all 0.25s;box-sizing:border-box;">
-        <div style="font-size:17px;margin-bottom:3px;">🪷</div>
-        <div style="font-size:14px;color:#6DB8FF;font-family:'Hind Siliguri',serif;font-weight:700;">বাংলা</div>
-        <div style="font-size:9px;color:rgba(109,184,255,0.5);letter-spacing:1px;margin-top:2px;">BANGLA</div>
-      </div>
-    </div>
-    <span id="naamLangLabel" style="display:none">Sanskrit</span>
-  </div>
-
   <!-- SINGLE SIGN-IN WITH GOOGLE -->
   <div class="sc" id="fbCard">
     <h3>☁️ Cloud Sync &amp; Backup</h3>
@@ -1533,6 +1513,40 @@
       <input type="file" id="restoreFileIn" accept=".json" style="display:none" onchange="importAllData(this)">
     </label>
     <div id="restoreStatus" style="font-size:12px;margin-top:8px;text-align:center;color:var(--green);min-height:18px"></div>
+  </div>
+
+  <!-- GOOGLE DRIVE BACKUP -->
+  <div class="sc">
+    <h3>🗂️ Google Drive Backup</h3>
+    <p style="font-size:12px;color:var(--td);margin-bottom:14px">Save a dated backup file directly to your own Google Drive. Requires Google sign-in.</p>
+    <button class="pb pb-export" id="driveBackupNowBtn" onclick="driveBackupNow()" style="margin-bottom:14px">📤 Backup Now to Google Drive</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 2px;border-top:1px solid rgba(255,215,0,0.15)">
+      <div>
+        <div style="font-size:14px;color:var(--gold);font-weight:600">Daily Auto-Backup</div>
+        <div style="font-size:11px;color:var(--td);margin-top:2px">Backs up automatically once a day, even if the app is closed.</div>
+      </div>
+      <div class="tg" id="tgDriveBackupDaily" onclick="toggleDriveBackupDaily()"></div>
+    </div>
+  </div>
+
+  <!-- 🙏 Radha / Radha Vallabh Jap Text Language 🙏 -->
+  <div class="naam-only-block" style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,215,0,0.15)">
+    <div style="font-size:9px;color:rgba(255,215,0,0.7);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">🙏 Jap Text Language</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div onclick="setNaamLangDirect('sa')" id="naamLangBtnSa"
+        style="padding:9px 6px;border-radius:11px;text-align:center;cursor:pointer;border:1.5px solid rgba(255,215,0,0.3);background:rgba(255,215,0,0.06);transition:all 0.25s;box-sizing:border-box;">
+        <div style="font-size:17px;margin-bottom:3px;">🕉️</div>
+        <div style="font-size:13px;color:#FFD700;font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif;font-weight:700;">संस्कृत</div>
+        <div style="font-size:9px;color:rgba(255,215,0,0.5);letter-spacing:1px;margin-top:2px;">SANSKRIT</div>
+      </div>
+      <div onclick="setNaamLangDirect('bn')" id="naamLangBtnBn"
+        style="padding:9px 6px;border-radius:11px;text-align:center;cursor:pointer;border:1.5px solid rgba(109,184,255,0.25);background:rgba(109,184,255,0.05);transition:all 0.25s;box-sizing:border-box;">
+        <div style="font-size:17px;margin-bottom:3px;">🪷</div>
+        <div style="font-size:14px;color:#6DB8FF;font-family:'Hind Siliguri',serif;font-weight:700;">বাংলা</div>
+        <div style="font-size:9px;color:rgba(109,184,255,0.5);letter-spacing:1px;margin-top:2px;">BANGLA</div>
+      </div>
+    </div>
+    <span id="naamLangLabel" style="display:none">Sanskrit</span>
   </div>
 
   <!-- TARGETS -->

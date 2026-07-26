@@ -432,6 +432,7 @@ const App = {
     naamLang: "sa",  // Radha / Radha Vallabh jap text script: "sa" (Sanskrit/Devanagari) or "bn" (Bangla)
     lbOptIn: false,        // leaderboard opt-in
     lbDisplayName: "",     // leaderboard display name
+    driveBackupDailyEnabled: false,  // opt-in daily auto-backup to Google Drive
     bgRadhaVallabh: 1,
     bgHitju: 1,
     bgGurudev: 1,
@@ -4771,8 +4772,12 @@ async function saveJsonFile(filename, jsonString) {
   }
 }
 
-function exportAllData() {
-  const backup = {
+// Shared by exportAllData() (manual local export) and the Drive daily
+// backup staging (fbPushFull) below — keeps both in the same shape so a
+// Drive backup can be restored with importAllData() exactly like a manual
+// export file can.
+function _buildBackupPayload() {
+  return {
     _version: 3,
     _exported: new Date().toISOString(),
     history: App.S.history || {},
@@ -4806,6 +4811,10 @@ function exportAllData() {
     malaLogHK: App.S.malaLogHK || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
   };
+}
+
+function exportAllData() {
+  const backup = _buildBackupPayload();
   try {
     const json = JSON.stringify(backup, null, 2);
     const filename = "radha-naam-jap-backup-" + App.getTk() + ".json";
@@ -5971,7 +5980,11 @@ function fbInit() {
         document.getElementById("fbUserEmail").textContent = _authLabel;
         try { localStorage.setItem("rjap_lastAuthLabel", _authLabel); } catch (_) {}
         const _pwBtn = document.getElementById("fbChangePassBtn");
-        if (_pwBtn) _pwBtn.textContent = _fbHasPasswordProvider(user) ? "🔑 Change Password" : "🔑 Set Password";
+        if (_pwBtn) {
+          const _hasPw = _fbHasPasswordProvider(user);
+          _pwBtn.style.display = _hasPw ? "" : "none";
+          if (_hasPw) _pwBtn.textContent = "🔑 Change Password";
+        }
         // Nudge (days 0-5) then hard-block (after 5 days) email/password users
         // who haven't verified yet. Google/Zoho sign-ins arrive pre-verified
         // so user.emailVerified is already true for them — this only ever
@@ -6159,13 +6172,47 @@ async function fbSignInGoogle() {
   if (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
     try {
       const { FirebaseAuthentication } = window.Capacitor.Plugins;
-      const result = await FirebaseAuthentication.signInWithGoogle();
+      // Requesting the drive.file scope here means Google may show one
+      // extra consent line ("...create and manage files you use with this
+      // app") the first time. serverAuthCode is only returned when a scope
+      // is requested — it's what lets the backend set up daily Drive
+      // backups without ever holding a live browser session.
+      const result = await FirebaseAuthentication.signInWithGoogle({
+        scopes: ["https://www.googleapis.com/auth/drive.file"],
+      });
       const idToken = result && result.credential && result.credential.idToken;
       const accessToken = result && result.credential && result.credential.accessToken;
+      const serverAuthCode = result && result.credential && result.credential.serverAuthCode;
+
+      // TEMPORARY DEBUG — remove once Drive backup auth is confirmed working.
+      // Shows exactly what the native sign-in returned, since there's no
+      // remote devtools access to check this directly on-device.
+      alert(
+        "DEBUG sign-in result:\n" +
+        "idToken: " + (idToken ? "present (" + idToken.length + " chars)" : "MISSING") + "\n" +
+        "accessToken: " + (accessToken ? "present" : "MISSING") + "\n" +
+        "serverAuthCode: " + (serverAuthCode ? "present (" + serverAuthCode.length + " chars)" : "MISSING") + "\n" +
+        "full credential keys: " + (result && result.credential ? Object.keys(result.credential).join(", ") : "none")
+      );
+
       if (!idToken) throw new Error("No ID token returned from native Google Sign-In");
       const credential = firebase.auth.GoogleAuthProvider.credential(idToken, accessToken);
       await fbAuth.signInWithCredential(credential);
       toast("Signed in with Google! ☁️ Sync active 🙏");
+
+      // TEMPORARY DEBUG: awaited (not fire-and-forget) and shows its result,
+      // so we can see exactly why the token exchange succeeds or fails,
+      // instead of it happening invisibly in the background.
+      if (serverAuthCode) {
+        try {
+          const exchangeResult = await fbEnableDriveBackup(serverAuthCode);
+          alert("DEBUG driveTokenExchange result:\n" + JSON.stringify(exchangeResult, null, 2));
+        } catch (e) {
+          alert("DEBUG driveTokenExchange THREW:\n" + (e && e.message ? e.message : e));
+        }
+      } else {
+        alert("DEBUG: no serverAuthCode, skipping driveTokenExchange entirely.");
+      }
     } catch (e) {
       console.error("Native Google sign-in failed:", e);
       const el = document.getElementById("fbErr");
@@ -6219,6 +6266,89 @@ async function fbSignInGoogle() {
         }
       }
     });
+}
+
+// Exchanges the one-time serverAuthCode (captured at Google sign-in, native
+// only) for a Drive refresh token, stored server-side. Safe to call more
+// than once — driveTokenExchange just no-ops if Google doesn't return a
+// fresh refresh_token (e.g. consent already granted before).
+async function fbEnableDriveBackup(serverAuthCode) {
+  if (!fbInit() || !firebase.app().functions) return { skipped: "fbInit or functions unavailable" };
+  try {
+    const fn = firebase.app().functions().httpsCallable("driveTokenExchange");
+    const res = await fn({ serverAuthCode });
+    if (res && res.data && res.data.stored) {
+      console.log("Drive daily backup enabled.");
+    } else {
+      console.log("Drive backup: nothing new to store (already enabled or no offline access).", res && res.data);
+    }
+    return res && res.data;
+  } catch (e) {
+    console.warn("driveTokenExchange call failed:", e);
+    return { threw: true, message: e && e.message, code: e && e.code, details: e && e.details };
+  }
+}
+
+// Builds a filename like "radha-naam-jap-backup-2026-07-16_2030.json" using
+// the DEVICE's local time (not UTC), so it matches what the person actually
+// sees on their clock when they open Drive later.
+function _driveBackupFilename() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const stamp =
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `_${pad(d.getHours())}${pad(d.getMinutes())}`;
+  return `radha-naam-jap-backup-${stamp}.json`;
+}
+
+// Manual "Backup Now" button (Settings > Cloud Sync & Backup). Always
+// creates a new dated file in the user's Drive — never overwrites a
+// previous backup. Requires the person to be signed in with Google AND to
+// have already granted Drive access (via a Google sign-in since this
+// feature was added). If not yet granted, prompts a fresh Google sign-in
+// to pick up the scope, then retries once automatically.
+async function driveBackupNow() {
+  if (!fbUser) {
+    toast("Sign in with Google first to back up to Drive.");
+    return;
+  }
+  const btn = document.getElementById("driveBackupNowBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Backing up…"; }
+  try {
+    const fn = firebase.app().functions().httpsCallable("driveBackupUpload");
+    const backupJson = JSON.stringify(_buildBackupPayload());
+    const filename = _driveBackupFilename();
+    let res = await fn({ backupJson, filename });
+
+    if (res && res.data && res.data.reason === "not_authorized") {
+      // Drive access was never granted (e.g. signed in before this feature
+      // existed, or via email/Zoho). Ask for it now via a fresh native
+      // Google sign-in that requests the drive.file scope, then retry once.
+      toast("Connecting Google Drive — approve access if asked…");
+      if (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+        const { FirebaseAuthentication } = window.Capacitor.Plugins;
+        const signInResult = await FirebaseAuthentication.signInWithGoogle({
+          scopes: ["https://www.googleapis.com/auth/drive.file"],
+        });
+        const serverAuthCode = signInResult && signInResult.credential && signInResult.credential.serverAuthCode;
+        if (serverAuthCode) {
+          await fbEnableDriveBackup(serverAuthCode);
+          res = await fn({ backupJson, filename });
+        }
+      }
+    }
+
+    if (res && res.data && res.data.success) {
+      toast("✅ Backed up to Google Drive: " + filename);
+    } else {
+      toast("❌ Drive backup failed: " + ((res && res.data && res.data.reason) || "unknown error"));
+    }
+  } catch (e) {
+    console.error("driveBackupNow failed:", e);
+    toast("❌ Drive backup failed: " + (e && e.message ? e.message : e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "📤 Backup Now to Google Drive"; }
+  }
 }
 
 // ── Sign in with Zoho (OIDC provider) ──
@@ -7150,6 +7280,7 @@ async function fbPushFull() {
     dt28Cycles: App.S.dt28Cycles || 0,
     milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
     lbOptIn: App.S.lbOptIn || false,
+    driveBackupDailyEnabled: App.S.driveBackupDailyEnabled || false,
     lbDisplayName: App.S.lbDisplayName || "",
     bgRadhaVallabh: App.S.bgRadhaVallabh ?? 1,
     bgHitju: App.S.bgHitju ?? 1,
@@ -7180,6 +7311,21 @@ async function fbPushFull() {
           value: JSON.stringify(kvPayload),
         });
       } catch (_) {}
+      // Also stage today's full backup JSON (same shape exportAllData()
+      // writes to a local file) for the daily Google Drive backup — only
+      // if the person has opted in via the Settings toggle. The
+      // Background Runner picks this up once a day (its periodicSync
+      // interval) and uploads it via the driveBackupUpload Cloud Function
+      // — no extra date-gating needed here, the OS-scheduled interval
+      // already provides the "once a day" cadence.
+      if (App.S.driveBackupDailyEnabled) {
+        try {
+          await window.Capacitor.Plugins.CapacitorKV.set({
+            key: "bgsync_drive_payload",
+            value: JSON.stringify(_buildBackupPayload()),
+          });
+        } catch (_) {}
+      }
     }
     // ── Push leaderboard entry if opted in ──
     pushLeaderboard().catch((e) => console.warn('pushLeaderboard (post-tap) error:', e && e.message));
@@ -7351,6 +7497,7 @@ function fbApplyRemote(d) {
   }
   // Leaderboard & Photo settings
   if (d.lbOptIn !== undefined) App.S.lbOptIn = d.lbOptIn;
+  if (d.driveBackupDailyEnabled !== undefined) App.S.driveBackupDailyEnabled = d.driveBackupDailyEnabled;
   if (d.lbDisplayName !== undefined) App.S.lbDisplayName = d.lbDisplayName;
   if (d.bgRadhaVallabh !== undefined) App.S.bgRadhaVallabh = d.bgRadhaVallabh;
   if (d.bgHitju !== undefined) App.S.bgHitju = d.bgHitju;
@@ -14228,6 +14375,41 @@ function populateLbSettingsUI() {
   if (tg)  tg.classList.toggle('on', !!App.S.lbOptIn);
   if (inp && !inp.value) inp.value = App.S.lbDisplayName || '';
   if (row) row.style.display = App.S.lbOptIn ? 'block' : 'none';
+  populateDriveBackupUI();
+}
+
+function populateDriveBackupUI() {
+  const tg = document.getElementById('tgDriveBackupDaily');
+  if (tg) tg.classList.toggle('on', !!App.S.driveBackupDailyEnabled);
+}
+
+// Daily Auto-Backup toggle (Settings > Google Drive Backup). When turned
+// on, fbPushFull() starts staging a fresh backup JSON into CapacitorKV
+// every sync — picked up once a day by background/runner.js. Turning it
+// off clears the staged payload so a stale/off backup can't sneak through
+// on the next scheduled run.
+async function toggleDriveBackupDaily() {
+  if (!fbUser) {
+    toast('Sign in with Google first to enable Drive auto-backup.');
+    return;
+  }
+  App.S.driveBackupDailyEnabled = !App.S.driveBackupDailyEnabled;
+  populateDriveBackupUI();
+  App.save();
+  if (App.S.driveBackupDailyEnabled) {
+    toast('☁️ Daily Drive auto-backup enabled');
+    fbPushFull().catch((e) => console.warn('fbPushFull after enabling drive backup:', e));
+  } else {
+    toast('Daily Drive auto-backup turned off');
+    if (window.Capacitor?.Plugins?.CapacitorKV) {
+      // .delete() was never confirmed to exist on this plugin anywhere
+      // else in the codebase — only .set()/.get() are. Setting the value
+      // to an empty string is just as effective here: runner.js's
+      // `if (driveBackupJson)` check already treats "" as falsy, so an
+      // empty staged payload is skipped exactly like a missing one.
+      try { await window.Capacitor.Plugins.CapacitorKV.set({ key: 'bgsync_drive_payload', value: '' }); } catch (_) {}
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════

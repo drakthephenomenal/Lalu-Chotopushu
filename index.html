@@ -409,6 +409,15 @@
                   <div class="cs-body" id="addJap28TodayBody">
                     <div class="fr"><input type="number" class="fi" id="sp28CycleVal" placeholder="Number of cycles" min="1" oninput="prev28Cycles(this.value)"><span class="fu" style="color:#BD93F9">cycles</span></div>
                     <div style="font-size:11px;color:var(--td);margin-bottom:8px"><span id="sp28CyclePreview"></span></div>
+                    <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(189,147,249,0.06);border:1px solid rgba(189,147,249,0.22);border-radius:9px">
+                      <div style="font-size:10px;color:#BD93F9;margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TAKEN (optional)</div>
+                      <div style="display:flex;gap:6px;align-items:center">
+                        <input type="number" class="fi" id="addJap28TodayMin" placeholder="Min" min="0" style="width:70px;font-size:13px">
+                        <span style="color:var(--td);font-size:11px">m</span>
+                        <input type="number" class="fi" id="addJap28TodaySec" placeholder="Sec" min="0" max="59" style="width:70px;font-size:13px">
+                        <span style="color:var(--td);font-size:11px">s</span>
+                      </div>
+                    </div>
                     <button class="pb" style="background:linear-gradient(135deg,#BD93F9,#9b6ef0);color:#fff" onclick="adj28Cycles(1)">➕ Add to Today</button>
                   </div>
                 </div>
@@ -423,6 +432,15 @@
                     <div class="fr"><input type="date" class="fi" id="addJapOther28Date" style="font-size:13px"></div>
                     <div class="fr"><input type="number" class="fi" id="addJapOther28In" placeholder="Number of cycles" min="1"><span class="fu" style="color:#BD93F9">cycles</span></div>
                     <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="addJapOther28Preview" style="color:#BD93F9">—</span></div>
+                    <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(189,147,249,0.06);border:1px solid rgba(189,147,249,0.22);border-radius:9px">
+                      <div style="font-size:10px;color:#BD93F9;margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TAKEN (optional)</div>
+                      <div style="display:flex;gap:6px;align-items:center">
+                        <input type="number" class="fi" id="addJapOther28Min" placeholder="Min" min="0" style="width:70px;font-size:13px">
+                        <span style="color:var(--td);font-size:11px">m</span>
+                        <input type="number" class="fi" id="addJapOther28Sec" placeholder="Sec" min="0" max="59" style="width:70px;font-size:13px">
+                        <span style="color:var(--td);font-size:11px">s</span>
+                      </div>
+                    </div>
                     <button class="pb" style="background:linear-gradient(135deg,#BD93F9,#9b6ef0);color:#fff" onclick="addOtherDayJap28()">➕ Add to Selected Day</button>
                   </div>
                 </div>
@@ -461,6 +479,15 @@
                   <div class="cs-body" id="deductJap28TodayBody">
                     <div class="fr"><input type="number" class="fi" id="sp28CycleDedVal" placeholder="Number of cycles to deduct" min="1" oninput="prev28CyclesDed(this.value)"><span class="fu" style="color:#BD93F9">cycles</span></div>
                     <div style="font-size:11px;color:var(--td);margin-bottom:8px"><span id="sp28CycleDedPreview"></span></div>
+                    <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(189,147,249,0.06);border:1px solid rgba(189,147,249,0.22);border-radius:9px">
+                      <div style="font-size:10px;color:#BD93F9;margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TO DEDUCT (optional)</div>
+                      <div style="display:flex;gap:6px;align-items:center">
+                        <input type="number" class="fi" id="deductJap28TodayMin" placeholder="Min" min="0" style="width:70px;font-size:13px">
+                        <span style="color:var(--td);font-size:11px">m</span>
+                        <input type="number" class="fi" id="deductJap28TodaySec" placeholder="Sec" min="0" max="59" style="width:70px;font-size:13px">
+                        <span style="color:var(--td);font-size:11px">s</span>
+                      </div>
+                    </div>
                     <button class="pb deduct" onclick="deduct28CyclesToday()">✂️ Deduct from Today</button>
                   </div>
                 </div>
@@ -474,6 +501,15 @@
                     <div class="fr"><input type="date" class="fi" id="deductOther28Date" style="font-size:13px"></div>
                     <div class="fr"><input type="number" class="fi" id="deductOther28In" placeholder="Number of cycles" min="1"><span class="fu" style="color:#BD93F9">cycles</span></div>
                     <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="deductOther28Preview" style="color:#BD93F9">—</span></div>
+                    <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(189,147,249,0.06);border:1px solid rgba(189,147,249,0.22);border-radius:9px">
+                      <div style="font-size:10px;color:#BD93F9;margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TO DEDUCT (optional)</div>
+                      <div style="display:flex;gap:6px;align-items:center">
+                        <input type="number" class="fi" id="deductOther28Min" placeholder="Min" min="0" style="width:70px;font-size:13px">
+                        <span style="color:var(--td);font-size:11px">m</span>
+                        <input type="number" class="fi" id="deductOther28Sec" placeholder="Sec" min="0" max="59" style="width:70px;font-size:13px">
+                        <span style="color:var(--td);font-size:11px">s</span>
+                      </div>
+                    </div>
                     <button class="pb deduct" onclick="deductOtherJap28()">✂️ Deduct from Selected Day</button>
                   </div>
                 </div>

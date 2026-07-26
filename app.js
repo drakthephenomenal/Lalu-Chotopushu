@@ -4086,6 +4086,74 @@ function deleteDedication(id) {
   toast("Removed dedication & restored to lifetime total 🙏");
 }
 
+// ── Edit an existing dedication: title (purpose), note, and each type's
+// jap entry amount. Toggled inline in the Gift/Dedications list (main
+// Statistics section — separate from the 28 Names stats panel). ──
+window._dedEditingId = null;
+
+function toggleEditDedication(id) {
+  if (isGhostMode()) return; // ghost mode: read-only
+  window._dedEditingId = window._dedEditingId === id ? null : id;
+  renderDedications();
+}
+
+function saveDedicationEdit(id) {
+  if (isGhostMode()) return; // ghost mode: read-only
+  const list = App.S.dedications || [];
+  const d = list.find((x) => x.id === id);
+  if (!d) return;
+
+  const purposeEl = document.getElementById("dedEditPurpose_" + id);
+  const noteEl = document.getElementById("dedEditNote_" + id);
+  const newPurpose = (purposeEl && purposeEl.value.trim()) || "";
+  const newNote = (noteEl && noteEl.value.trim()) || "";
+  if (!newPurpose) {
+    toast("Please enter a purpose or name");
+    return;
+  }
+
+  const oldAmounts = _dedEntryAmounts(d);
+  const newAmounts = {};
+  for (const type of Object.keys(oldAmounts)) {
+    const inEl = document.getElementById("dedEditAmt_" + type + "_" + id);
+    const n = parseInt(inEl && inEl.value) || 0;
+    if (n > 0) newAmounts[type] = n;
+  }
+
+  // Validate: each type's increase can't exceed what's currently available
+  // (its lifetime total already excludes this entry's OLD amount, so the
+  // room available for the NEW amount is old-lifetime + old-amount).
+  for (const type of Object.keys(newAmounts)) {
+    const delta = newAmounts[type] - (oldAmounts[type] || 0);
+    if (delta > 0 && delta > _dedLifetimeFor(type)) {
+      toast(
+        "New amount for " + _dedTypeMeta(type).label + " exceeds its available lifetime total",
+      );
+      return;
+    }
+  }
+
+  // Apply deltas to the lifetime deduction counters
+  const allTypes = new Set([...Object.keys(oldAmounts), ...Object.keys(newAmounts)]);
+  allTypes.forEach((type) => {
+    const delta = (newAmounts[type] || 0) - (oldAmounts[type] || 0);
+    if (delta !== 0) _dedAdjustCounter(type, delta);
+  });
+
+  d.purpose = newPurpose;
+  d.note = newNote;
+  d.amounts = newAmounts;
+  d.types = Object.keys(newAmounts);
+
+  window._dedEditingId = null;
+  App.save();
+  App.ua();
+  fbDebouncedPush();
+  renderDedications();
+  uStats();
+  toast("Dedication updated 🙏");
+}
+
 function _fmtDedDate(ds) {
   try {
     const parts = (ds || "").split("-");
@@ -4192,15 +4260,70 @@ function renderDedications() {
         )
         .join(" ");
       const dateDisp = d.date ? _fmtDedDate(d.date) : "";
+      if (window._dedEditingId === d.id) {
+        const amtFields = Object.keys(amounts)
+          .map((t) => {
+            const meta = _dedTypeMeta(t);
+            return (
+              '<div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">' +
+              '<span style="font-size:11px;color:' +
+              meta.color +
+              ";flex:1;font-weight:600;\">" +
+              meta.label +
+              "</span>" +
+              '<input id="dedEditAmt_' +
+              t +
+              "_" +
+              d.id +
+              '" type="number" min="0" value="' +
+              amounts[t] +
+              '" style="width:90px;background:rgba(0,0,0,0.35);border:1px solid ' +
+              meta.color +
+              '55;border-radius:7px;padding:5px 8px;color:var(--tl);font-size:13px;text-align:center;font-family:Inter,sans-serif">' +
+              '<span style="font-size:10px;color:var(--td)">jap</span>' +
+              "</div>"
+            );
+          })
+          .join("");
+        return (
+          '<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,143,199,0.35);border-radius:12px;padding:10px 12px;">' +
+          '<div style="font-size:10px;color:#FF8FC7;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;font-weight:600">✏ Editing Dedication</div>' +
+          '<input id="dedEditPurpose_' +
+          d.id +
+          '" type="text" value="' +
+          escHtml(d.purpose) +
+          '" placeholder="Purpose or name" style="width:100%;background:rgba(0,0,0,0.35);border:1px solid rgba(255,143,199,0.3);border-radius:8px;padding:7px 9px;color:var(--tl);font-size:13px;margin-bottom:8px;font-family:Inter,sans-serif">' +
+          '<textarea id="dedEditNote_' +
+          d.id +
+          '" class="sk-ta" style="min-height:44px;margin-bottom:8px" placeholder="Note (optional)">' +
+          escHtml(d.note || "") +
+          "</textarea>" +
+          (amtFields || "") +
+          '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">' +
+          '<button class="sk-btn" style="color:var(--td);border-color:rgba(255,255,255,0.2)" onclick="toggleEditDedication(\'' +
+          d.id +
+          "')\">Cancel</button>" +
+          '<button class="sk-btn grn" onclick="saveDedicationEdit(\'' +
+          d.id +
+          "')\">💾 Save Changes</button>" +
+          "</div>" +
+          "</div>"
+        );
+      }
       return (
         '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 12px;">' +
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">' +
         '<div style="font-size:13px;color:var(--tl);font-weight:600;flex:1;">' +
         escHtml(d.purpose) +
         "</div>" +
+        '<div style="display:flex;gap:10px;align-items:center;">' +
+        '<div onclick="toggleEditDedication(\'' +
+        d.id +
+        '\')" style="cursor:pointer;font-size:14px;color:var(--td);padding:2px 4px;">✏️</div>' +
         '<div onclick="deleteDedication(\'' +
         d.id +
         '\')" style="cursor:pointer;font-size:14px;color:var(--td);padding:2px 4px;">🗑️</div>' +
+        "</div>" +
         "</div>" +
         '<div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">' +
         badges +
@@ -5941,12 +6064,24 @@ function renderMilestonesTab() {
   const histRV = App.S.historyRV || {};
   const histHK = App.S.historyHK || {};
   const histKV = App.S.historyKV || {};
-  const rawTot = _isG
-    ? Object.values(histHK).reduce((a, b) => a + b, 0)
-    : Object.values(hist).reduce((a, b) => a + b, 0) +
-      Object.values(histRV).reduce((a, b) => a + b, 0) +
-      Object.values(histKV).reduce((a, b) => a + b, 0);
-  const deduct = _isG ? App.S.nameJapDeductHK || 0 : App.S.nameJapDeduct || 0;
+  const hist28 = App.S.h28 || {};
+  // Milestones always reflect the FULL combined lifetime jap across every
+  // mode — Radha + Radha Vallabh + 28 Names + KV + HK — regardless of which
+  // mode/toggle (gaudiyaMode etc.) is currently active. Any name dedicated
+  // as a gift (nameJapDeduct*) is subtracted here too, from every mode, so
+  // milestones always show what's actually left in hand.
+  const rawTot =
+    Object.values(hist).reduce((a, b) => a + b, 0) +
+    Object.values(histRV).reduce((a, b) => a + b, 0) +
+    Object.values(hist28).reduce((a, b) => a + b, 0) +
+    Object.values(histKV).reduce((a, b) => a + b, 0) +
+    Object.values(histHK).reduce((a, b) => a + b, 0);
+  const deduct =
+    (App.S.nameJapDeduct || 0) +
+    (App.S.nameJapDeductRV || 0) +
+    (App.S.nameJapDeduct28 || 0) +
+    (App.S.nameJapDeductKV || 0) +
+    (App.S.nameJapDeductHK || 0);
   const total = Math.max(0, rawTot - deduct);
   const lang = window._msLang || "hi";
 
@@ -5957,7 +6092,12 @@ function renderMilestonesTab() {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const k = _ldk(d);
-    sum7 += _isG ? histHK[k] || 0 : (hist[k] || 0) + (histRV[k] || 0) + (histKV[k] || 0);
+    sum7 +=
+      (hist[k] || 0) +
+      (histRV[k] || 0) +
+      (hist28[k] || 0) +
+      (histKV[k] || 0) +
+      (histHK[k] || 0);
   }
   const avg7 = sum7 / 7;
 
@@ -9409,7 +9549,10 @@ function getSankalpProgressById(id, list) {
   );
 }
 
-// ── Edit target: update cycle count for a wish ──
+// ── Edit target: update cycle count for a wish (works on active, queued,
+// AND already-fulfilled wishes). If a fulfilled wish's target is raised
+// above what was already achieved, the wish is automatically reopened
+// so chanting keeps counting toward the new, higher target. ──
 function editSankalpTarget(id) {
   const sk = (App.S.sankalpas || []).find((s) => s.id === id);
   if (!sk) return;
@@ -9425,11 +9568,61 @@ function editSankalpTarget(id) {
     toast("Target cannot be less than current progress (" + prog + ")");
     return;
   }
+  const wasDone = sk.done;
   sk.target = newTarget;
+  let reopened = false;
+  if (wasDone && newTarget > prog) {
+    // Raising the target past what was already achieved means the wish
+    // isn't actually fulfilled anymore — reopen it and lock in the
+    // progress already made as its new baseline.
+    sk.done = false;
+    sk.doneDate = null;
+    sk._savedProgress = prog;
+    const activeWish = getActiveSankalp();
+    sk.startCycles = activeWish ? null : getTotalCycles28();
+    reopened = true;
+  }
   App.save();
   fbDebouncedPush();
   renderSankalpas();
-  toast("Target updated to " + newTarget + " cycles 🙏");
+  toast(
+    reopened
+      ? "Target raised to " + newTarget + " — wish reopened 🙏"
+      : "Target updated to " + newTarget + " cycles 🙏",
+  );
+}
+
+// ── Edit wish text — works on active, queued, and fulfilled wishes ──
+function editSankalpWish(id) {
+  const sk = (App.S.sankalpas || []).find((s) => s.id === id);
+  if (!sk) return;
+  const el = document.getElementById("sk-wish-edit-" + id);
+  if (!el) return;
+  const newWish = (el.value || "").trim();
+  if (!newWish) {
+    toast("ইচ্ছা লিখুন 🙏");
+    return;
+  }
+  sk.wish = newWish;
+  App.save();
+  fbDebouncedPush();
+  renderSankalpas();
+  toast("Wish text updated 🙏");
+}
+
+// ── Reopen a fulfilled wish without changing its target — e.g. it was
+// marked fulfilled by mistake, or you simply want to keep chanting for it ──
+function reopenSankalp(id) {
+  const sk = (App.S.sankalpas || []).find((s) => s.id === id);
+  if (!sk || !sk.done) return;
+  sk.done = false;
+  sk.doneDate = null;
+  const activeWish = getActiveSankalp();
+  sk.startCycles = activeWish ? null : getTotalCycles28();
+  App.save();
+  fbDebouncedPush();
+  renderSankalpas();
+  toast("↺ Wish reopened 🙏");
 }
 
 function adjustSankalpCycles(id, sign) {
@@ -9656,6 +9849,7 @@ function renderSankalpas() {
   if (done.length) {
     html += '<div class="sk-divider">✨ Fulfilled Sankalpas ✨</div>';
     done.forEach((sk) => {
+      const finalProg = getSankalpProgressById(sk.id, null);
       html +=
         '<div class="sk-item done">' +
         '<div class="sk-done-badge">✓ Fulfilled · ' +
@@ -9664,7 +9858,42 @@ function renderSankalpas() {
         '<div class="sk-wish" style="color:var(--td)">' +
         escHtml(sk.wish) +
         "</div>" +
-        '<div class="sk-btns"><button class="sk-btn grey" onclick="deleteSankalp(\'' +
+        '<div class="sk-meta">Target: <strong style="color:var(--tl)">' +
+        sk.target +
+        "</strong> cycles</div>" +
+        // Edit wish text
+        '<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;padding:7px 9px;background:rgba(255,255,255,0.03);border-radius:8px">' +
+        '<span style="font-size:11px;color:var(--td);flex:1">✏ Edit wish text:</span>' +
+        "</div>" +
+        '<textarea id="sk-wish-edit-' +
+        sk.id +
+        '" class="sk-ta" style="min-height:44px;margin-bottom:6px">' +
+        escHtml(sk.wish) +
+        "</textarea>" +
+        '<div style="display:flex;justify-content:flex-end;margin-bottom:10px">' +
+        '<button class="sk-btn grn" onclick="editSankalpWish(\'' +
+        sk.id +
+        "')\">Save Text</button>" +
+        "</div>" +
+        // Edit target (raising it above what was achieved reopens the wish)
+        '<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;padding:7px 9px;background:rgba(255,255,255,0.03);border-radius:8px">' +
+        '<span style="font-size:11px;color:var(--td);flex:1">✏ Change target:</span>' +
+        '<input id="sk-edit-' +
+        sk.id +
+        '" type="number" min="' +
+        Math.max(1, finalProg) +
+        '" value="' +
+        sk.target +
+        '" style="width:64px;background:rgba(0,0,0,0.35);border:1px solid rgba(120,120,120,0.3);border-radius:7px;padding:5px 8px;color:var(--tl);font-size:13px;text-align:center;font-family:Inter,sans-serif">' +
+        '<button class="sk-btn grn" onclick="editSankalpTarget(\'' +
+        sk.id +
+        "')\">Save</button>" +
+        "</div>" +
+        '<div class="sk-btns">' +
+        '<button class="sk-btn" style="color:var(--a2);border-color:rgba(74,144,226,0.4)" onclick="reopenSankalp(\'' +
+        sk.id +
+        "')\">↺ Reopen Wish</button>" +
+        '<button class="sk-btn grey" onclick="deleteSankalp(\'' +
         sk.id +
         "')\">✕ Remove</button></div>" +
         "</div>";
@@ -9832,9 +10061,25 @@ function adj28Cycles(sign) {
       });
   }
 
+  // Optional time taken — only wired for the Add path (the Deduct path has
+  // its own dedicated button/function, deduct28CyclesToday(), below).
+  const minEl = document.getElementById("addJap28TodayMin");
+  const secEl = document.getElementById("addJap28TodaySec");
+  let timeSecs = 0;
+  if (sign > 0) {
+    timeSecs =
+      (parseInt(minEl?.value) || 0) * 60 +
+      Math.min(59, Math.max(0, parseInt(secEl?.value) || 0));
+    if (timeSecs > 0) {
+      App.S.timer28History[tk] = (App.S.timer28History[tk] || 0) + timeSecs;
+    }
+  }
+
   document.getElementById("sp28CycleVal").value = "";
   const pr = document.getElementById("sp28CyclePreview");
   if (pr) pr.textContent = "";
+  if (minEl) minEl.value = "";
+  if (secEl) secEl.value = "";
   render28StatsPanel();
   u28();
   uStats();
@@ -9846,6 +10091,9 @@ function adj28Cycles(sign) {
       n +
       " cycle" +
       (n > 1 ? "s" : "") +
+      (timeSecs > 0
+        ? " + " + Math.floor(timeSecs / 60) + "m " + (timeSecs % 60) + "s"
+        : "") +
       " 🙏",
   );
 }
@@ -9896,16 +10144,38 @@ function deduct28CyclesToday() {
       s.startCycles = getTotalCycles28();
     });
 
+  // Optional time to deduct — directly subtract from today's 28 Names timer
+  const minEl = document.getElementById("deductJap28TodayMin");
+  const secEl = document.getElementById("deductJap28TodaySec");
+  const timeSecs =
+    (parseInt(minEl?.value) || 0) * 60 +
+    Math.min(59, Math.max(0, parseInt(secEl?.value) || 0));
+  if (timeSecs > 0) {
+    const curTime = App.S.timer28History[tk] || 0;
+    App.S.timer28History[tk] = Math.max(0, curTime - timeSecs);
+  }
+
   document.getElementById("sp28CycleDedVal").value = "";
   const pr = document.getElementById("sp28CycleDedPreview");
   if (pr) pr.textContent = "";
+  if (minEl) minEl.value = "";
+  if (secEl) secEl.value = "";
   render28StatsPanel();
   u28();
   uStats();
   renderSankalpas();
   App.save();
   fbDebouncedPush();
-  toast("Deducted " + n + " cycle" + (n > 1 ? "s" : "") + " 🙏");
+  toast(
+    "Deducted " +
+      n +
+      " cycle" +
+      (n > 1 ? "s" : "") +
+      (timeSecs > 0
+        ? " + " + Math.floor(timeSecs / 60) + "m " + (timeSecs % 60) + "s"
+        : "") +
+      " 🙏",
+  );
 }
 
 // ── Add to a specific OTHER day (cycles) ──
@@ -9944,17 +10214,41 @@ function addOtherDayJap28() {
       s.startCycles = getTotalCycles28();
     });
 
+  // Optional estimated time — directly add to that day's 28 Names timer
+  const minEl = document.getElementById("addJapOther28Min");
+  const secEl = document.getElementById("addJapOther28Sec");
+  const timeSecs =
+    (parseInt(minEl?.value) || 0) * 60 +
+    Math.min(59, Math.max(0, parseInt(secEl?.value) || 0));
+  if (timeSecs > 0) {
+    if (!App.S.timer28History) App.S.timer28History = {};
+    App.S.timer28History[date] = (App.S.timer28History[date] || 0) + timeSecs;
+  }
+
   if (dateEl) dateEl.value = "";
   if (inEl) inEl.value = "";
   const pr = document.getElementById("addJapOther28Preview");
   if (pr) pr.textContent = "—";
+  if (minEl) minEl.value = "";
+  if (secEl) secEl.value = "";
   render28StatsPanel();
   u28();
   uStats();
   renderSankalpas();
   App.save();
   fbDebouncedPush();
-  toast("Added " + n + " cycle" + (n > 1 ? "s" : "") + " to " + date + " 🙏");
+  toast(
+    "Added " +
+      n +
+      " cycle" +
+      (n > 1 ? "s" : "") +
+      (timeSecs > 0
+        ? " + " + Math.floor(timeSecs / 60) + "m " + (timeSecs % 60) + "s"
+        : "") +
+      " to " +
+      date +
+      " 🙏",
+  );
 }
 
 // ── Deduct from a specific OTHER day (cycles) ──
@@ -9997,10 +10291,24 @@ function deductOtherJap28() {
       s.startCycles = getTotalCycles28();
     });
 
+  // Optional time to deduct — directly subtract from that day's 28 Names timer
+  const minEl = document.getElementById("deductOther28Min");
+  const secEl = document.getElementById("deductOther28Sec");
+  const timeSecs =
+    (parseInt(minEl?.value) || 0) * 60 +
+    Math.min(59, Math.max(0, parseInt(secEl?.value) || 0));
+  if (timeSecs > 0) {
+    if (!App.S.timer28History) App.S.timer28History = {};
+    const curTime = App.S.timer28History[date] || 0;
+    App.S.timer28History[date] = Math.max(0, curTime - timeSecs);
+  }
+
   if (dateEl) dateEl.value = "";
   if (inEl) inEl.value = "";
   const pr = document.getElementById("deductOther28Preview");
   if (pr) pr.textContent = "—";
+  if (minEl) minEl.value = "";
+  if (secEl) secEl.value = "";
   render28StatsPanel();
   u28();
   uStats();
@@ -10008,7 +10316,16 @@ function deductOtherJap28() {
   App.save();
   fbDebouncedPush();
   toast(
-    "Deducted " + n + " cycle" + (n > 1 ? "s" : "") + " from " + date + " 🙏",
+    "Deducted " +
+      n +
+      " cycle" +
+      (n > 1 ? "s" : "") +
+      (timeSecs > 0
+        ? " + " + Math.floor(timeSecs / 60) + "m " + (timeSecs % 60) + "s"
+        : "") +
+      " from " +
+      date +
+      " 🙏",
   );
 }
 

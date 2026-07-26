@@ -10044,12 +10044,11 @@ function adj28Cycles(sign) {
   if (sign > 0) {
     App.S.h28[tk] = (App.S.h28[tk] || 0) + taps;
     App.lm28 = Math.floor(App.S.h28[tk] / (App.S.ms || 108));
-    // Rebase all active wishes to the new global total — their bars stay put
-    (App.S.sankalpas || [])
-      .filter((s) => !s.done && s.startCycles !== null)
-      .forEach((s) => {
-        s.startCycles = getTotalCycles28();
-      });
+    // NOTE: no rebase here — today's added cycles are real practice done
+    // right now, so they must count toward the active wish's live progress
+    // (savedProgress + (getTotalCycles28() - startCycles)), exactly like
+    // organic taps do. Rebasing startCycles to the post-update total would
+    // silently erase the new cycles from ever reaching the wish.
     // Check fulfillment for active wish
     const active = getActiveSankalp();
     if (active) {
@@ -10070,12 +10069,9 @@ function adj28Cycles(sign) {
     }
     App.S.h28[tk] = cur - taps;
     App.lm28 = Math.floor(App.S.h28[tk] / (App.S.ms || 108));
-    // Rebase all active wishes to the new (lower) global total — bars stay put
-    (App.S.sankalpas || [])
-      .filter((s) => !s.done && s.startCycles !== null)
-      .forEach((s) => {
-        s.startCycles = getTotalCycles28();
-      });
+    // NOTE: no rebase here either — deducting today's cycles should reduce
+    // the active wish's live progress by the same amount, not leave it
+    // untouched (see note above).
   }
 
   // Optional time taken — only wired for the Add path (the Deduct path has
@@ -10154,12 +10150,8 @@ function deduct28CyclesToday() {
 
   App.S.h28[tk] = cur - taps;
   App.lm28 = Math.floor(App.S.h28[tk] / (App.S.ms || 108));
-
-  (App.S.sankalpas || [])
-    .filter((s) => !s.done && s.startCycles !== null)
-    .forEach((s) => {
-      s.startCycles = getTotalCycles28();
-    });
+  // NOTE: no rebase here — deducting today's cycles should reduce the
+  // active wish's live progress by the same amount (see adj28Cycles).
 
   // Optional time to deduct — directly subtract from today's 28 Names timer
   const minEl = document.getElementById("deductJap28TodayMin");

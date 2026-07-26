@@ -421,6 +421,10 @@ const App = {
     activityLog: [],
     sadhanaStart: "",
     milestones: { reached: {}, lastChecked: 0 },
+    // Which jap types count toward the Milestones (Bhagvat Prapti) total.
+    // Defaults to all types so existing users see no change until they
+    // customize it themselves in the Milestones tab.
+    msConsider: { radha: true, rv: true, hk: true, kv: true, n28: true },
     historyHK: {},
     timerHistoryHK: {},
     dtHK: 0,
@@ -620,6 +624,7 @@ const App = {
       trahimamMode: this.S.trahimamMode || false,
       dt28Cycles: this.S.dt28Cycles || 0,
       milestones: this.S.milestones || { reached: {}, lastChecked: 0 },
+      msConsider: this.S.msConsider || { radha: true, rv: true, hk: true, kv: true, n28: true },
       hkLang: this.S.hkLang || "hi",
       naamLang: this.S.naamLang || "sa",
       lastLat: this.S.lastLat ?? null,
@@ -778,6 +783,7 @@ const App = {
       this.S.malaLogKV = [];
     }
     if (!this.S.dedications) this.S.dedications = [];
+    if (!this.S.msConsider) this.S.msConsider = { radha: true, rv: true, hk: true, kv: true, n28: true };
     if (!this.S.syncBaselineKV) this.S.syncBaselineKV = {};
     if (!this.S.syncBaselineTimerKV) this.S.syncBaselineTimerKV = {};
     if (!this.S.historyKV[this.S.tk]) this.S.historyKV[this.S.tk] = 0;
@@ -6056,6 +6062,139 @@ function renderVelocityTracker() {
 // ═══════════════════════════════════════════════
 // RENDER MILESTONES TAB
 // ═══════════════════════════════════════════════
+// ── Milestones "Consideration" ──────────────────────────────────────────
+// Lets each user choose which jap types count toward their Milestones
+// (Bhagvat Prapti) total — any combination of Radha, Radha Vallabh, Hare
+// Krishna, KV, and 28 Names. Defaults to all types (unchanged behavior)
+// until the user customizes it.
+function _msConsiderDefaults() {
+  return { radha: true, rv: true, hk: true, kv: true, n28: true };
+}
+function getMsConsider() {
+  return { ..._msConsiderDefaults(), ...(App.S.msConsider || {}) };
+}
+function setMsConsider(type, on) {
+  if (isGhostMode()) return; // ghost mode: read-only
+  if (!App.S.msConsider) App.S.msConsider = _msConsiderDefaults();
+  App.S.msConsider[type] = !!on;
+  App.save();
+  App.ua && App.ua();
+  fbDebouncedPush();
+  renderMilestonesTab();
+}
+
+// 28 Names jap currently available toward Milestones — excludes whatever
+// portion is being tracked toward the ACTIVE wish (sankalp). That jap is
+// earmarked for a specific desire, not general Bhagvat Prapti, so it
+// shouldn't double-count here while the wish is still open. Once a wish
+// is fulfilled (no longer active) its jap is free to count again. If
+// there's no active wish at all, the full (deduct-netted) 28N total counts.
+function _msAvailable28() {
+  const hist28 = App.S.h28 || {};
+  const raw28 = Object.entries(hist28)
+    .filter(([k]) => !k.startsWith("prev_"))
+    .reduce((a, [, v]) => a + v, 0);
+  const net28 = Math.max(0, raw28 - (App.S.nameJapDeduct28 || 0));
+  const active =
+    typeof getActiveSankalp === "function" ? getActiveSankalp() : null;
+  if (active && active.startCycles !== null && active.startCycles !== undefined) {
+    const reserved =
+      Math.max(0, getTotalCycles28() - active.startCycles) * 28;
+    return Math.max(0, net28 - reserved);
+  }
+  return net28;
+}
+
+// Shared combined-total computation, used by both the Milestones tab and
+// the milestone detail modal so the two always agree. Respects the
+// user's msConsider choices; each type is netted against its own
+// deduct/gift counter before combining (never pool-then-subtract-one).
+function _msComputeTotal() {
+  const consider = getMsConsider();
+  const hist = App.S.history || {};
+  const histRV = App.S.historyRV || {};
+  const histHK = App.S.historyHK || {};
+  const histKV = App.S.historyKV || {};
+  const radhaTot = consider.radha
+    ? Math.max(
+        0,
+        Object.values(hist).reduce((a, b) => a + b, 0) -
+          (App.S.nameJapDeduct || 0),
+      )
+    : 0;
+  const rvTot = consider.rv
+    ? Math.max(
+        0,
+        Object.values(histRV).reduce((a, b) => a + b, 0) -
+          (App.S.nameJapDeductRV || 0),
+      )
+    : 0;
+  const hkTot = consider.hk
+    ? Math.max(
+        0,
+        Object.values(histHK).reduce((a, b) => a + b, 0) -
+          (App.S.nameJapDeductHK || 0),
+      )
+    : 0;
+  const kvTot = consider.kv
+    ? Math.max(
+        0,
+        Object.values(histKV).reduce((a, b) => a + b, 0) -
+          (App.S.nameJapDeductKV || 0),
+      )
+    : 0;
+  const n28Tot = consider.n28 ? _msAvailable28() : 0;
+  return {
+    total: radhaTot + rvTot + hkTot + kvTot + n28Tot,
+    radhaTot,
+    rvTot,
+    hkTot,
+    kvTot,
+    n28Tot,
+  };
+}
+
+// HTML for the Consideration toggle chips shown at the top of the
+// Milestones tab. Reuses the existing .ded-type-pill chip styling.
+function _msConsiderChipsHtml() {
+  const c = getMsConsider();
+  const types = [
+    { key: "radha", label: "Radha", color: "245,200,66" },
+    { key: "rv", label: "Radha Vallabh", color: "94,234,212" },
+    { key: "hk", label: "Hare Krishna", color: "201,167,255" },
+    { key: "kv", label: "Krishnay Vasudevay", color: "109,184,255" },
+    { key: "n28", label: "28 Names", color: "255,143,199" },
+  ];
+  let h =
+    '<div class="ms-consider-wrap" style="margin-bottom:14px;">' +
+    '<div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;font-weight:700;opacity:0.7;margin-bottom:6px;">🙏 Consider for Bhagvat Prapti Milestones</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+  types.forEach((t) => {
+    const on = !!c[t.key];
+    h +=
+      '<div class="ded-type-pill' +
+      (on ? " active" : "") +
+      '" style="padding:6px 10px;flex:none;border-color:rgba(' +
+      t.color +
+      "," +
+      (on ? "0.45" : "0.18") +
+      ');background:rgba(' +
+      t.color +
+      "," +
+      (on ? "0.1" : "0.03") +
+      ');" onclick="setMsConsider(\'' +
+      t.key +
+      "'," +
+      !on +
+      ')">' +
+      t.label +
+      "</div>";
+  });
+  h +=
+    '</div><div style="font-size:10px;opacity:0.55;margin-top:6px;">28 Names jap already going toward an active wish won\'t be counted here.</div></div>';
+  return h;
+}
+
 function renderMilestonesTab() {
   const el = document.getElementById("msContent");
   if (!el) return;
@@ -6065,31 +6204,18 @@ function renderMilestonesTab() {
   const histHK = App.S.historyHK || {};
   const histKV = App.S.historyKV || {};
   const hist28 = App.S.h28 || {};
-  // Milestones always reflect the FULL combined lifetime jap across every
-  // mode — Radha + Radha Vallabh + 28 Names + KV + HK — regardless of which
-  // mode/toggle (gaudiyaMode etc.) is currently active. Any name dedicated
-  // as a gift (nameJapDeduct*) is subtracted here too, from every mode, so
-  // milestones always show what's actually left in hand. 28 Names cycles
-  // added via "Before This App (Lifetime)" (prev_ keys) are excluded here —
-  // milestones should only reflect jap actually done since starting the app.
-  const rawTot =
-    Object.values(hist).reduce((a, b) => a + b, 0) +
-    Object.values(histRV).reduce((a, b) => a + b, 0) +
-    Object.entries(hist28)
-      .filter(([k]) => !k.startsWith("prev_"))
-      .reduce((a, [, v]) => a + v, 0) +
-    Object.values(histKV).reduce((a, b) => a + b, 0) +
-    Object.values(histHK).reduce((a, b) => a + b, 0);
-  const deduct =
-    (App.S.nameJapDeduct || 0) +
-    (App.S.nameJapDeductRV || 0) +
-    (App.S.nameJapDeduct28 || 0) +
-    (App.S.nameJapDeductKV || 0) +
-    (App.S.nameJapDeductHK || 0);
-  const total = Math.max(0, rawTot - deduct);
+  // Milestones reflect only the jap types the user has chosen to "consider"
+  // for Bhagvat Prapti (see _msComputeTotal / the Consideration chips
+  // below) — defaults to all types so existing users see no change until
+  // they customize it. Each type is netted against its own gift/deduct
+  // counter. 28 Names additionally excludes whatever's currently earmarked
+  // for an active wish (sankalp) — see _msAvailable28.
+  const consider = getMsConsider();
+  const total = _msComputeTotal().total;
   const lang = window._msLang || "hi";
 
-  // Calculate 7-day average
+  // Calculate 7-day average (same type filter as the total, for a
+  // consistent prediction pace)
   const today = new Date();
   let sum7 = 0;
   for (let i = 0; i < 7; i++) {
@@ -6097,13 +6223,14 @@ function renderMilestonesTab() {
     d.setDate(d.getDate() - i);
     const k = _ldk(d);
     sum7 +=
-      (hist[k] || 0) +
-      (histRV[k] || 0) +
-      (hist28[k] || 0) +
-      (histKV[k] || 0) +
-      (histHK[k] || 0);
+      (consider.radha ? hist[k] || 0 : 0) +
+      (consider.rv ? histRV[k] || 0 : 0) +
+      (consider.n28 ? hist28[k] || 0 : 0) +
+      (consider.kv ? histKV[k] || 0 : 0) +
+      (consider.hk ? histHK[k] || 0 : 0);
   }
   const avg7 = sum7 / 7;
+
 
   // Sadhana start date — read from App.S (persistent) with localStorage fallback
   const saved =
@@ -6161,6 +6288,7 @@ function renderMilestonesTab() {
   }
 
   let out = "";
+  out += _msConsiderChipsHtml();
 
   // ─── LAKH MILESTONES ───
   out += '<div class="ms-phase-title">📿 Lakh Milestones</div>';
@@ -6419,12 +6547,13 @@ function openMsDetail(type, count, pct, achieved) {
   const lang = window._msLang || "hi";
   const hist = App.S.history || {};
   const histRV = App.S.historyRV || {};
+  const histHK = App.S.historyHK || {};
   const histKV = App.S.historyKV || {};
-  const rawTot =
-    Object.values(hist).reduce((a, b) => a + b, 0) +
-    Object.values(histRV).reduce((a, b) => a + b, 0) +
-    Object.values(histKV).reduce((a, b) => a + b, 0);
-  const total = Math.max(0, rawTot - (App.S.nameJapDeduct || 0));
+  // Use the same shared, consideration-aware total as the main Milestones
+  // tab (_msComputeTotal) — respects the user's chosen jap types and nets
+  // each against its own gift/deduct counter, so this modal always agrees
+  // with the progress bar it was opened from.
+  const total = _msComputeTotal().total;
 
   let icon = "📿",
     title = "",
@@ -6462,6 +6591,9 @@ function openMsDetail(type, count, pct, achieved) {
   const allHist = { ...hist };
   Object.keys(histRV).forEach((k) => {
     allHist[k] = (allHist[k] || 0) + (histRV[k] || 0);
+  });
+  Object.keys(histHK).forEach((k) => {
+    allHist[k] = (allHist[k] || 0) + (histHK[k] || 0);
   });
   Object.keys(histKV).forEach((k) => {
     allHist[k] = (allHist[k] || 0) + (histKV[k] || 0);
@@ -8415,6 +8547,7 @@ async function fbPushFull() {
     trahimamMode: App.S.trahimamMode || false,
     dt28Cycles: App.S.dt28Cycles || 0,
     milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
+    msConsider: App.S.msConsider || { radha: true, rv: true, hk: true, kv: true, n28: true },
     lbOptIn: App.S.lbOptIn || false,
     driveBackupDailyEnabled: App.S.driveBackupDailyEnabled || false,
     lbDisplayName: App.S.lbDisplayName || "",
@@ -8604,6 +8737,9 @@ function fbApplyRemote(d) {
     };
     // Keep localStorage mirror in sync
     try { localStorage.setItem("rjap_milestones", JSON.stringify(App.S.milestones)); } catch (_) {}
+  }
+  if (d.msConsider) {
+    App.S.msConsider = { radha: true, rv: true, hk: true, kv: true, n28: true, ...d.msConsider };
   }
   if (d.nameJapDeductHK !== undefined)
     App.S.nameJapDeductHK = d.nameJapDeductHK;
@@ -15737,7 +15873,16 @@ function renderLeaderboard(docs, period) {
       const skv = Object.values(d.historyKV || {}).reduce((a,b)=>a+b,0);
       const shk = Object.values(d.historyHK || {}).reduce((a,b)=>a+b,0);
       const s28 = Object.values(d.history28 || {}).reduce((a,b)=>a+b,0);
-      d._breakdown = { r: sr, rv: srv, kv: skv, hk: shk, n28: s28 };
+      // Net each type against its own deduct counter (gifts/manual deducts) —
+      // matches how totalJap itself was computed in pushLeaderboard(), so the
+      // breakdown always adds up to the same Total shown alongside it.
+      d._breakdown = {
+        r:   Math.max(0, sr  - (d.nameJapDeduct   || 0)),
+        rv:  Math.max(0, srv - (d.nameJapDeductRV || 0)),
+        kv:  Math.max(0, skv - (d.nameJapDeductKV || 0)),
+        hk:  Math.max(0, shk - (d.nameJapDeductHK || 0)),
+        n28: Math.max(0, s28 - (d.nameJapDeduct28 || 0)),
+      };
       const tr2 = Object.values(d.timerHistory || {}).reduce((a,b)=>a+b,0);
       const trv2 = Object.values(d.timerHistoryRV || {}).reduce((a,b)=>a+b,0);
       const tkv2 = Object.values(d.timerHistoryKV || {}).reduce((a,b)=>a+b,0);
@@ -16034,6 +16179,16 @@ async function pushLeaderboard() {
     historyKV: histKV,
     historyHK: histHK,
     history28: hist28,
+    // Push each type's own deduct counter too, so the leaderboard breakdown
+    // (R/RV/KV/HK/28N) can be netted the same way totalJap is — otherwise
+    // the breakdown shows raw pre-gift totals while totalJap shows the net
+    // remaining amount, which can make Total look smaller than one of its
+    // own listed parts.
+    nameJapDeduct:   App.S.nameJapDeduct   || 0,
+    nameJapDeductRV: App.S.nameJapDeductRV || 0,
+    nameJapDeductKV: App.S.nameJapDeductKV || 0,
+    nameJapDeductHK: App.S.nameJapDeductHK || 0,
+    nameJapDeduct28: App.S.nameJapDeduct28 || 0,
     // Push total timer seconds for leaderboard display
     timerSeconds: Object.values(App.S.timerHistory || {}).reduce((a,b)=>a+b,0) +
                   Object.values(App.S.timerHistoryRV || {}).reduce((a,b)=>a+b,0) +

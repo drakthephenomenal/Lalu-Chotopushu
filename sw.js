@@ -1,5 +1,18 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v175
+// Radha Naam Jap — Service Worker  v176
+// v176: bumped cache to force-invalidate stale app.js — picks up:
+//  (1) Milestones total-jap fix — nets each jap type (Radha/RV/HK/KV)
+//      against its own gift/deduct counter instead of pooling all
+//      histories then subtracting only one counter.
+//  (2) New Milestones "Consideration" chips (msConsider) — choose which
+//      jap types count toward Bhagvat Prapti milestones, any combination.
+//  (3) 28 Names milestone rule — contributes 0 while ANY wish (sankalp)
+//      is active, since wishes chain continuously; only counts when no
+//      wish is active.
+//  (4) Community leaderboard breakdown fix — per-type totals now netted
+//      against gifts (matching totalJap), plus a "🎁 X gifted" note per
+//      type so a small netted count next to a long raw chanting time
+//      reads as "gifted most of it" instead of a mismatch.
 // v175: bumped cache to force-invalidate stale app.js/index.html — adds
 // full Add/Deduct Jap Manually (Today / Other Day / Before This App /
 // Name Jap — Lifetime) to the 28 Names Statistics screen, matching the
@@ -30,7 +43,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v175';
+const CACHE = 'radha-jap-v176';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

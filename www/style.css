@@ -1540,6 +1540,8 @@ body.trahimam-mode .dc-wrap.kv-only-stat{display:block!important;}
 .kv-only-setting{display:none!important;}
 body.trahimam-mode .kv-only-setting{display:flex!important;}
 body.trahimam-mode .lifetime-bar-block{display:none!important;}
+/* 28 Names Daily Target isn't relevant in Trahimam mode (KV-only) — hide it in Settings */
+body.trahimam-mode #target28Card{display:none!important;}
 
 /* Trahimam-mode dropdown filtering: only show Krishnay Vasudevay when ON; hide it when OFF */
 body:not(.trahimam-mode) #naamOptKV { display: none !important; }

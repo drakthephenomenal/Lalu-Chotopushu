@@ -96,6 +96,28 @@ async function pushToFirestore(uid, idToken, payloadObj) {
   }
 }
 
+// This sandbox has no Firebase SDK, so HTTPS Callable functions are invoked
+// by hand, following Firebase's callable wire protocol directly: POST
+// {"data": ...} with the user's ID token as a Bearer token, expect back
+// either {"result": ...} or {"error": {...}}.
+const FIREBASE_FUNCTIONS_REGION = "us-central1";
+async function callCloudFunction(name, idToken, data) {
+  const url = `https://${FIREBASE_FUNCTIONS_REGION}-${FIREBASE_PROJECT_ID}.cloudfunctions.net/${name}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ data }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || body.error) {
+    throw new Error(`${name} failed: ${res.status} ${JSON.stringify(body.error || body)}`);
+  }
+  return body.result;
+}
+
 addEventListener("periodicSync", async (resolve, reject) => {
   try {
     const uid = await kvGet("bgsync_uid");
@@ -114,6 +136,31 @@ addEventListener("periodicSync", async (resolve, reject) => {
     await pushToFirestore(uid, idToken, payload);
 
     console.log("Background sync: pushed staged data for", uid);
+
+    // Daily Google Drive backup — independent of the Firestore push above.
+    // Runs on the same periodicSync cycle (Android's WorkManager only
+    // wakes this task up roughly once every 24h per capacitor.config.json,
+    // so no extra date-gating is needed here). Wrapped in its own
+    // try/catch: a Drive failure (e.g. user never granted the drive.file
+    // scope, so nothing was staged, or a revoked/expired refresh token)
+    // must never break the Firestore fallback sync above.
+    try {
+      const driveBackupJson = await kvGet("bgsync_drive_payload");
+      if (driveBackupJson) {
+        // No filename passed here on purpose — the Cloud Function
+        // generates one from its own server clock (UTC). Device-local
+        // time doesn't matter for an unattended daily backup the way it
+        // does for the manual "Backup Now" button in app.js, which stamps
+        // the person's own local time instead.
+        const result = await callCloudFunction("driveBackupUpload", idToken, {
+          backupJson: driveBackupJson,
+        });
+        console.log("Background Drive backup:", result && result.success ? result.filename : result);
+      }
+    } catch (driveErr) {
+      console.warn("Background Drive backup failed (non-fatal):", driveErr && driveErr.message ? driveErr.message : driveErr);
+    }
+
     resolve();
   } catch (e) {
     console.error("Background sync failed:", e && e.message ? e.message : e);

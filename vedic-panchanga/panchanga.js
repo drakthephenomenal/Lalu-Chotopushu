@@ -242,6 +242,29 @@ function getLunarMonthTithis(jd){
   return periods;
 }
 
+// Purnimanta month grid: unlike getLunarMonthTithis() (which is anchored on
+// the New Moon and therefore straddles TWO purnimanta months — Sukla of one,
+// Krishna of the next), this is anchored on the most recent PURNIMA (Full
+// Moon, elongation=180°) and walks forward 30 tithis: Krishna Pratipada
+// through the next Purnima. That whole block belongs to a single purnimanta
+// month by definition, so it never needs a "split" name — Krishna Paksha and
+// Shukla Paksha shown here are always the SAME month.
+function getPurnimantaMonthTithis(jd){
+  const elong=norm(moonLong(jd)-sunLong(jd));
+  const daysSincePurnima=norm(elong-180)/360*29.53;
+  const prevPurnima=findElong(jd-daysSincePurnima-3,jd,180);
+  const periods=[];let s=prevPurnima+.0001;
+  for(let i=0;i<30;i++){
+    const idx=tithiIdx(s);
+    const end=findElong(s,s+2,((idx+1)%30)*12);
+    periods.push({index:idx,name:TITHI[idx],paksha:idx<15?'Sukla':'Krishna',startJD:s,endJD:end});
+    s=end+.0001;
+  }
+  for(let i=1;i<periods.length;i++)periods[i].startJD=periods[i-1].endJD;
+  periods[0].startJD=prevPurnima;
+  return periods;
+}
+
 function getNakshatraPeriods(jd,count=3){
   const SPAN=360/27;const periods=[];
   // Search up to 3 days back; use jd+0.5 as upper bound so bisection
@@ -370,6 +393,33 @@ function hinduMonth(jd){
   const sE = sunLongSid(lEnd);
   const idx = Math.floor(sE/30) % 12;
   return {name:HM[idx], vaishnavName:VM[idx]};
+}
+// Purnimanta month name — the convention used by ISKCON/Gaudiya Vaishnava
+// panchangs and throughout North India (UP, Bihar, MP, Rajasthan, etc.),
+// as opposed to the Amanta (new-moon-to-new-moon) reckoning hinduMonth()
+// above returns.
+//
+// Relationship between the two: an Amanta month = [Shukla Paksha of
+// Purnimanta month N] + [Krishna Paksha of Purnimanta month N+1]. So:
+//   - Shukla Paksha (Pratipada..Purnima): the two systems agree — the
+//     Purnimanta name equals the current Amanta name.
+//   - Krishna Paksha (Pratipada..Amavasya, i.e. AFTER that Purnima): the
+//     Purnimanta month has already advanced to the name of the Amanta
+//     month that begins at the NEXT new moon.
+// Verified against the ISKCON Mayapur panchang: 19 Aug 1998 (Krishna
+// Paksha Dwadashi) is Amanta "Shravana" but Purnimanta "Bhadra
+// (Hrishikesha masa)" — i.e. one month ahead, matching the rule below.
+function purnimantaMonth(jd){
+  // Nudge a hair forward before checking which paksha we're in: this
+  // function is sometimes called with jd sitting exactly ON a tithi
+  // transition (e.g. the Purnima instant itself, as returned by
+  // getPurnimantaMonthTithis()'s periods[0].startJD), where tithiIdx()
+  // can land on either side of 14/15 due to floating-point precision.
+  // A ~1.4-minute nudge is negligible next to a ~1-day tithi but reliably
+  // resolves which paksha jd belongs to.
+  if(tithiIdx(jd+0.001) < 15) return hinduMonth(jd); // Shukla Paksha: same as Amanta
+  const nnm = nextNewMoon(jd);
+  return hinduMonth(nnm + 0.0001); // Krishna Paksha: name of the NEXT lunation
 }
 // Find the most recent New Moon at or before jd, and the next New Moon at or
 // after jd, using a tight ±2.5-day bisection window centred on a synodic-rate
@@ -588,6 +638,7 @@ function relHTML(s,e,now){const r=relStr(s,e,now);if(!r.txt)return'';return`<spa
 let LAT=22.5726,LNG=88.3639;
 let selectedVaarIdx=null;
 let selectedAnga='tithi'; // tithi | nakshatra | yoga | karana — option-driven anga view
+let vpMonthSystem='purnimanta'; // 'purnimanta' | 'amanta' — which naming convention labels the Lunar Month grid
 let DATA=null;
 
 // GPS
@@ -957,7 +1008,8 @@ function renderAll(){
   const md=getMuhurtaData(displayVaar,LAT,LNG);
   const headerRef=isActive?now:displayVaar.sunrise;
   const headerJD=dateToJD(headerRef);
-  const headerHM=hinduMonth(headerJD);
+  const headerHM=purnimantaMonth(headerJD);
+  const headerAmantaHM=hinduMonth(headerJD);
   const headerAM=adhikMaas(headerJD);
   const headerPaksha=tithiIdx(headerJD)<15?'Sukla':'Krishna';
   const headerWhen=isActive?'Today':(displayVaar.dayOffset===1?'Tomorrow':displayVaar.dayOffset===-1?'Yesterday':displayVaar.dayOffset>0?'+'+displayVaar.dayOffset+' days':displayVaar.dayOffset+' days');
@@ -966,11 +1018,31 @@ function renderAll(){
   document.getElementById('vp-gaurabda').textContent='Gaurabda '+gaurabda(headerRef);
   document.getElementById('vp-vaar-name').textContent=(VAAR_ICON[displayVaar.index]||'')+' '+displayVaar.name+' Vaar';
   document.getElementById('vp-month-line').innerHTML=
-    (headerAM.isAdhik?`<span class="vp-adhik-badge">${headerAM.isPurushottam?'Purushottam':'Adhik'}</span>${headerAM.nextMonthName}`:headerHM.name)+
-    ' &nbsp;·&nbsp; '+headerPaksha+' Paksha &nbsp;·&nbsp; '+headerWhen+' '+fmtDate(headerRef);
+    (headerAM.isAdhik?
+      `<span class="vp-adhik-badge">${headerAM.isPurushottam?'Purushottam':'Adhik'}</span>${headerAM.nextMonthName}`
+      :`Purnimanta system: ${headerHM.name}<br>Amanta system: ${headerAmantaHM.name}`)+
+    '<br>'+headerPaksha+' Paksha &nbsp;·&nbsp; '+headerWhen+' '+fmtDate(headerRef);
   document.getElementById('vp-vaishnav-line').textContent=
     headerAM.isAdhik ? 'Purushottam Maas (Adhik) — most spiritually potent month' :
     'Vaishnav Month of '+headerHM.vaishnavName;
+
+  // Compact "right now" summary — same current-period lookup used by the
+  // Right Now & Coming Soon cards further down, shown right under the
+  // month/paksha line so it's visible without scrolling.
+  (function renderAngaSummaryLine(){
+    const el=document.getElementById('vp-anga-summary-line');
+    if(!el)return;
+    function curP(arr){return arr.find(p=>+jdToDate(p.startJD)<=+now&&+now<+jdToDate(p.endJD))||arr[0]}
+    const cT=curP(tithiPeriods),cN=curP(nakshatraPeriods),cY=curP(yogaPeriods),cK=curP(karanaPeriods);
+    el.innerHTML=
+      '<span class="vp-anga-summary-item"><b>Tithi</b>'+cT.name+(cT.paksha?' ('+cT.paksha+')':'')+'</span>'+
+      '<span class="vp-anga-summary-sep">•</span>'+
+      '<span class="vp-anga-summary-item"><b>Nakshatra</b>'+cN.name+'</span>'+
+      '<span class="vp-anga-summary-sep">•</span>'+
+      '<span class="vp-anga-summary-item"><b>Yoga</b>'+cY.name+'</span>'+
+      '<span class="vp-anga-summary-sep">•</span>'+
+      '<span class="vp-anga-summary-item"><b>Karana</b>'+cK.name+'</span>';
+  })();
 
   // Personal horoscope card (opt-in) — async, self-caching; safe to call
   // on every renderAll() pass since it no-ops fast when already loaded.
@@ -1373,13 +1445,41 @@ function renderAll(){
   }else{vb.style.display='none';}
 
   // Lunar month grid
-  const sukla=lunarMonthTithis.filter(t=>t.paksha==='Sukla');
-  const krishna=lunarMonthTithis.filter(t=>t.paksha==='Krishna');
-  document.getElementById('vp-month-grid').innerHTML=
-    `<div class="vp-paksha-label s">Sukla Paksha — Waxing Moon</div>`+
-    sukla.map((t,i)=>tCell(t,i+1,t.index===currentTithiIdx,'S')).join('')+
-    `<div class="vp-paksha-label k">Krishna Paksha — Waning Moon</div>`+
-    krishna.map((t,i)=>tCell(t,i+1,t.index===currentTithiIdx,'K')).join('');
+  // Amanta mode: Sukla Paksha then Krishna Paksha of ONE amanta lunation
+  // (New-Moon anchored) — lunarMonthTithis from DATA already gives this.
+  // Purnimanta mode: Krishna Paksha then Shukla Paksha of ONE purnimanta
+  // month (Purnima anchored) — built fresh here so the whole block is a
+  // single, unsplit month with one name, per the purnimanta convention.
+  const gridTithis = vpMonthSystem==='amanta' ? lunarMonthTithis : getPurnimantaMonthTithis(jd);
+  const gridSukla = gridTithis.filter(t=>t.paksha==='Sukla');
+  const gridKrishna = gridTithis.filter(t=>t.paksha==='Krishna');
+  const gridAnchorJD = vpMonthSystem==='amanta'
+    ? (gridSukla.length ? gridSukla[0].startJD : jd)
+    : (gridKrishna.length ? gridKrishna[0].startJD : jd);
+  const gridMonthObj = vpMonthSystem==='amanta' ? hinduMonth(gridAnchorJD) : purnimantaMonth(gridAnchorJD);
+  const gridMonthName = am.isAdhik ? `${am.isPurushottam?'Purushottam':'Adhik'} ${am.nextMonthName}` : gridMonthObj.name;
+
+  const monthToggleBtnP=document.getElementById('vp-monthsys-purnimanta');
+  const monthToggleBtnA=document.getElementById('vp-monthsys-amanta');
+  if(monthToggleBtnP) monthToggleBtnP.classList.toggle('active', vpMonthSystem==='purnimanta');
+  if(monthToggleBtnA) monthToggleBtnA.classList.toggle('active', vpMonthSystem==='amanta');
+
+  const gridTitleEl = document.getElementById('vp-month-grid-title');
+  if(gridTitleEl){
+    gridTitleEl.innerHTML = `${gridMonthName} <span class="vp-month-grid-title-sys">(${vpMonthSystem==='amanta'?'Amanta':'Purnimanta'})</span>`;
+  }
+
+  const orderedHalves = vpMonthSystem==='amanta'
+    ? [{cls:'s',label:'Sukla Paksha — Waxing Moon',list:gridSukla,prefix:'S'},
+       {cls:'k',label:'Krishna Paksha — Waning Moon',list:gridKrishna,prefix:'K'}]
+    : [{cls:'k',label:'Krishna Paksha — Waning Moon',list:gridKrishna,prefix:'K'},
+       {cls:'s',label:'Sukla Paksha — Waxing Moon',list:gridSukla,prefix:'S'}];
+
+  document.getElementById('vp-month-grid').innerHTML = orderedHalves.map(h=>
+    `<div class="vp-paksha-label ${h.cls}">${h.label}</div>`+
+    h.list.map((t,i)=>tCell(t,i+1,t.index===currentTithiIdx,h.prefix)).join('')
+  ).join('');
+
 
   // Day boundaries — collapsible
   document.getElementById('vp-db-grid').innerHTML=[
@@ -1758,12 +1858,15 @@ function vpRenderDateResult(){
   const hmEl = document.getElementById('vp-dateresult-hindu-month');
   if(hmEl){
     const am = adhikMaas(jd);
-    const hm = hinduMonth(jd);
+    const hm = purnimantaMonth(jd);
+    const amantaHm = hinduMonth(jd);
     const paksha = tithiIdx(jd) < 15 ? 'Sukla' : 'Krishna';
     const vaishnavLabel = am.isAdhik ? 'Purushottam Maas (Adhik)' : 'Vaishnav Month of ' + hm.vaishnavName;
     hmEl.innerHTML =
-      (am.isAdhik ? `<span class="vp-adhik-badge">${am.isPurushottam?'Purushottam':'Adhik'}</span>${am.nextMonthName}` : hm.name) +
-      ' &nbsp;·&nbsp; ' + paksha + ' Paksha &nbsp;·&nbsp; ' + vaishnavLabel +
+      (am.isAdhik ?
+        `<span class="vp-adhik-badge">${am.isPurushottam?'Purushottam':'Adhik'}</span>${am.nextMonthName}`
+        : `Purnimanta system: ${hm.name}<br>Amanta system: ${amantaHm.name}`) +
+      '<br>' + paksha + ' Paksha &nbsp;·&nbsp; ' + vaishnavLabel +
       ' &nbsp;·&nbsp; Gaurabda ' + gaurabda(noon);
   }
 
@@ -1969,12 +2072,15 @@ function vpHoroCalculate(){
   const horoHmEl = document.getElementById('vp-horo-result-hindu-month');
   if(horoHmEl){
     const am = adhikMaas(jd);
-    const hm = hinduMonth(jd);
+    const hm = purnimantaMonth(jd);
+    const amantaHm = hinduMonth(jd);
     const paksha = tithiIdx(jd) < 15 ? 'Sukla' : 'Krishna';
     const horoVaishnavLabel = am.isAdhik ? 'Purushottam Maas (Adhik)' : 'Vaishnav Month of ' + hm.vaishnavName;
     horoHmEl.innerHTML =
-      (am.isAdhik ? `<span class="vp-adhik-badge">${am.isPurushottam?'Purushottam':'Adhik'}</span>${am.nextMonthName}` : hm.name) +
-      ' &nbsp;·&nbsp; ' + paksha + ' Paksha &nbsp;·&nbsp; ' + horoVaishnavLabel +
+      (am.isAdhik ?
+        `<span class="vp-adhik-badge">${am.isPurushottam?'Purushottam':'Adhik'}</span>${am.nextMonthName}`
+        : `Purnimanta system: ${hm.name}<br>Amanta system: ${amantaHm.name}`) +
+      '<br>' + paksha + ' Paksha &nbsp;·&nbsp; ' + horoVaishnavLabel +
       ' &nbsp;·&nbsp; Gaurabda ' + gaurabda(birthDate);
   }
 
@@ -4445,6 +4551,11 @@ window.vpToggleGrid = function() {
   const b = document.getElementById('vp-tithi-toggle');
   if(w) w.classList.toggle('open');
   if(b) b.classList.toggle('open');
+};
+
+window.vpSetMonthSystem = function(sys) {
+  vpMonthSystem = (sys==='amanta') ? 'amanta' : 'purnimanta';
+  renderAll();
 };
 
 window.vpToggleDayBoundaries = function() {

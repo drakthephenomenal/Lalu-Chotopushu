@@ -374,6 +374,10 @@ button.hpb.active{
 .sg-body{max-height:0;overflow:hidden;transition:max-height 0.38s ease,padding 0.3s ease;padding:0 8px;}
 .sg-body.open{max-height:5000px;padding:0 8px 12px;}
 
+.ded-type-pill{padding:9px 6px;border-radius:11px;text-align:center;cursor:pointer;
+  border:1.5px solid rgba(255,255,255,0.12);transition:all 0.2s;box-sizing:border-box;}
+.ded-type-pill.active{border-width:2px;box-shadow:0 0 12px rgba(255,255,255,0.08);}
+
 /* CALENDAR */
 #vc{background:radial-gradient(ellipse at top,#061228 0%,var(--bd) 60%);padding:22px 12px 80px;overflow-y:auto;overflow-x:hidden;}
 .ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
@@ -650,24 +654,6 @@ button.hpb.active{
 /* 28 NAMES STATS PANEL */
 .n28sp-section{background:rgba(74,144,226,0.05);border:1px solid rgba(74,144,226,0.15);border-radius:14px;padding:12px;margin-bottom:8px;width:100%;box-sizing:border-box;}
 .n28sp-title{font-size:10px;color:var(--a2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;font-weight:600;}
-.n28sp-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:center;}
-.n28sp-row .n28sp-btn{width:100%;}
-.n28sp-in{width:100%;box-sizing:border-box;background:rgba(0,0,0,0.3);border:1px solid rgba(74,144,226,0.25);border-radius:9px;padding:7px 10px;color:var(--tl);font-size:14px;font-family:'Inter',sans-serif;text-align:center;outline:none;}
-.n28sp-in:focus{border-color:var(--a2);}
-.n28sp-btn{border-radius:9px;border:none;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;box-sizing:border-box;}
-.n28sp-btn.add{background:linear-gradient(135deg,rgba(39,174,96,0.25),rgba(46,204,113,0.15));color:var(--green);border:1px solid rgba(46,204,113,0.35);}
-.n28sp-btn.ded{background:linear-gradient(135deg,rgba(232,51,109,0.15),rgba(192,57,43,0.1));color:var(--rl);border:1px solid rgba(232,51,109,0.3);}
-/* Manual 28-Names time adjust block */
-.n28-adj{background:linear-gradient(180deg,rgba(74,144,226,0.05),rgba(74,144,226,0.02));border:1px solid rgba(124,143,224,0.22);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;}
-.n28-adj-head{display:flex;flex-direction:column;gap:4px;}
-.n28-adj-title{font-size:12px;font-weight:700;color:var(--a2);letter-spacing:0.6px;}
-.n28-adj-desc{font-size:11px;line-height:1.5;color:var(--td);}
-.n28-adj-inputs{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.n28-adj-field{display:flex;flex-direction:column;gap:4px;}
-.n28-adj-lbl{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--td);font-weight:600;padding-left:2px;}
-.n28-adj-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.n28-adj-actions .n28sp-btn{padding:10px 12px;font-size:13px;}
-.n28-adj-preview{min-height:14px;font-size:11px;color:var(--a2);text-align:center;}
 
 /* Reset Options — golden plated buttons (force gold even if cached overrides exist) */
 .n28sp-reset{border-color:rgba(255,215,0,0.28) !important;background:linear-gradient(180deg,rgba(245,209,122,0.06),rgba(245,209,122,0.02)) !important;}
@@ -1210,6 +1196,10 @@ button.n28-gold-btn-danger,
 .fn-rv{position:absolute;pointer-events:none;z-index:10;animation:fu 2.4s ease-out forwards;
   display:flex;flex-direction:column;align-items:center;line-height:1.15;}
 .fn-rv span{font-family:'Tiro Devanagari Hindi',serif;display:block;}
+/* Two-line floating naam for KV mode */
+.fn-kv{position:absolute;pointer-events:none;z-index:10;animation:fu 2.4s ease-out forwards;
+  display:flex;flex-direction:column;align-items:center;line-height:1.15;text-align:center;max-width:280px;}
+.fn-kv span{font-family:'Tiro Devanagari Hindi',serif;display:block;}
 
 /* MILESTONES VIEW — dedicated tab */
 #vms{background:radial-gradient(ellipse at top,#0A1535 0%,var(--bd) 60%);padding:0;overflow:hidden;}
@@ -1523,6 +1513,26 @@ body.gaudiya-mode #naamOptRV { display: none !important; }
 body:not(.gaudiya-mode) .hk-only-block { display: none !important; }
 body.gaudiya-mode .naam-only-block { display: none !important; }
 
+/* ── Trahimam Trahimam Mode: hide non-KV stat rows/settings, show KV-only ── */
+body.trahimam-mode .non-gaudiya-stat{display:none!important;}
+body.trahimam-mode .non-gaudiya-setting{display:none!important;}
+.kv-only-stat{display:none!important;}
+body.trahimam-mode .kv-only-stat{display:flex!important;}
+body.trahimam-mode .dc-wrap.kv-only-stat{display:block!important;}
+.kv-only-setting{display:none!important;}
+body.trahimam-mode .kv-only-setting{display:flex!important;}
+body.trahimam-mode .lifetime-bar-block{display:none!important;}
+/* 28 Names Daily Target isn't relevant in Trahimam mode (KV-only) — hide it in Settings */
+body.trahimam-mode #target28Card{display:none!important;}
+
+/* Trahimam-mode dropdown filtering: only show Krishnay Vasudevay when ON; hide it when OFF */
+body:not(.trahimam-mode) #naamOptKV { display: none !important; }
+body.trahimam-mode #naamOptRadha,
+body.trahimam-mode #naamOptRV,
+body.trahimam-mode #naamOptHK { display: none !important; }
+/* RV Daily target card spans full width when KV Daily card is hidden (i.e. outside Trahimam mode) */
+body:not(.trahimam-mode) .rv-daily-target-card { grid-column: 1/-1; }
+
 /* ── Option C: Lotus Petals — Mahamantra Stats ── */
 .hkc-wrap{
   position:relative;overflow:hidden;
@@ -1631,6 +1641,58 @@ body.gaudiya-mode .gmc-switch-thumb{
 .gmc-switch-label-on{left:60px;color:#6DB8FF;opacity:0;text-shadow:0 0 10px rgba(109,184,255,0.6);}
 body.gaudiya-mode .gmc-switch-label-off{opacity:0;}
 body.gaudiya-mode .gmc-switch-label-on{opacity:1;}
+
+/* ── Trahimam Trahimam (KV) large switch card ── */
+.trahimam-mode-card{
+  background:linear-gradient(135deg,rgba(6,13,31,0.95) 0%,rgba(10,22,40,0.98) 100%) !important;
+  border:1px solid rgba(109,184,255,0.25) !important;
+  border-radius:20px !important;
+  overflow:visible !important;
+  position:relative;
+  padding-top:20px !important;
+}
+.trahimam-mode-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:20px 20px 0 0;
+  background:linear-gradient(90deg,transparent,#6DB8FF,#5eead4,#6DB8FF,transparent);
+}
+.tmc-switch-wrap{cursor:pointer;width:100%;}
+.tmc-switch{width:100%;}
+.tmc-switch-track{
+  position:relative;height:56px;border-radius:28px;
+  background:rgba(255,255,255,0.06);
+  border:1.5px solid rgba(109,184,255,0.2);
+  display:flex;align-items:center;width:100%;box-sizing:border-box;
+  transition:background 0.4s ease,border-color 0.4s ease,box-shadow 0.4s ease;
+  cursor:pointer;overflow:hidden;
+}
+body.trahimam-mode .tmc-switch-track{
+  background:linear-gradient(135deg,rgba(109,184,255,0.18),rgba(94,234,212,0.12));
+  border-color:rgba(109,184,255,0.5);
+  box-shadow:0 0 28px rgba(109,184,255,0.25);
+}
+.tmc-switch-thumb{
+  position:absolute;left:7px;
+  width:42px;height:42px;border-radius:50%;
+  background:rgba(255,255,255,0.18);
+  border:1px solid rgba(255,255,255,0.2);
+  transition:left 0.38s cubic-bezier(.4,.0,.2,1),background 0.38s ease,box-shadow 0.38s ease;
+  z-index:2;display:flex;align-items:center;justify-content:center;font-size:20px;
+}
+.tmc-switch-thumb::after{content:'🪈';}
+body.trahimam-mode .tmc-switch-thumb{
+  left:calc(100% - 49px);
+  background:linear-gradient(135deg,#3a7bd5,#6DB8FF);
+  border-color:rgba(109,184,255,0.7);
+  box-shadow:0 0 18px rgba(109,184,255,0.6);
+}
+.tmc-switch-label-off,.tmc-switch-label-on{
+  position:absolute;font-size:12px;letter-spacing:2.5px;font-weight:700;
+  font-family:'Inter',sans-serif;transition:opacity 0.3s ease;pointer-events:none;
+}
+.tmc-switch-label-off{right:18px;color:rgba(255,255,255,0.2);}
+.tmc-switch-label-on{left:60px;color:#6DB8FF;opacity:0;text-shadow:0 0 10px rgba(109,184,255,0.6);}
+body.trahimam-mode .tmc-switch-label-off{opacity:0;}
+body.trahimam-mode .tmc-switch-label-on{opacity:1;}
 
 /* ── Mahamantra Language picker buttons ── */
 #hkLangBtnHi, #hkLangBtnBn{transition:all 0.3s ease;}
@@ -2202,6 +2264,7 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 /* Title colors — each deity keeps its identity colour */
 .dc-radha .dc-title { color:#f5c842; }
 .dc-rv    .dc-title { color:#5eead4; }
+.dc-kv    .dc-title { color:#6DB8FF; }
 .dc-28n   .dc-title { color:#a78bfa; }
 .dc-title--combo    { color:#f5c842 !important; }
 .dc-title--all      { color:#f5d060 !important; }
@@ -2210,6 +2273,7 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 }
 .dc-dot--radha { background:#f5c842; box-shadow:0 0 7px #f5c84299; }
 .dc-dot--rv    { background:#5eead4; box-shadow:0 0 7px #5eead499; }
+.dc-dot--kv    { background:#6DB8FF; box-shadow:0 0 7px #6DB8FF99; }
 .dc-dot--28n   { background:#a78bfa; box-shadow:0 0 7px #a78bfa99; }
 .dc-table { width:100%; border-collapse:collapse; }
 .dc-thead {
@@ -2235,8 +2299,10 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 }
 .dc-radha  .dc-row--life > div { color:#f5c842; }
 .dc-rv     .dc-row--life > div { color:#5eead4; }
+.dc-kv     .dc-row--life > div { color:#6DB8FF; }
 .dc-28n    .dc-row--life > div { color:#a78bfa; }
 .dc-row--rv    > div { color:#5eead4; }
+.dc-row--kv    > div { color:#6DB8FF; }
 .dc-row--28n   > div { color:#a78bfa; }
 .dc-row--combo > div { color:#f5c842; }
 .dc-row--all   > div { color:#f5d060; }
@@ -2290,6 +2356,7 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 .hist-dash{color:rgba(255,255,255,0.18);}
 .hist-c-gold{color:var(--gold);}
 .hist-c-rv{color:var(--a2);}
+.hist-c-kv{color:#6DB8FF;}
 .hist-c-green{color:var(--green);}
 .hist-c-hk{color:#6DB8FF;}
 .hist-c-time{color:var(--td);font-size:11.5px;}
@@ -2334,8 +2401,9 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
   background:rgba(245,209,122,0.12);border:1px solid rgba(245,209,122,0.25);border-radius:8px;padding:3px 8px;}
 .pt-grid{display:grid;gap:12px;position:relative;z-index:1;}
 .pt-grid-3{grid-template-columns:repeat(3,minmax(0,1fr));}
+.pt-grid-4{grid-template-columns:repeat(4,minmax(0,1fr));}
 .pt-grid-1{grid-template-columns:1fr;}
-@media (max-width:520px){.pt-grid-3{grid-template-columns:1fr;}}
+@media (max-width:520px){.pt-grid-3{grid-template-columns:1fr;} .pt-grid-4{grid-template-columns:1fr 1fr;}}
 .pt-card{
   position:relative;border-radius:16px;padding:14px 14px 12px;
   background:
@@ -2371,6 +2439,9 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 .pt-rv .pt-num{color:var(--a2);text-shadow:0 0 14px rgba(184,196,245,0.45);}
 .pt-rv{border-color:rgba(184,196,245,0.28);}
 .pt-rv .pt-card-icon{background:linear-gradient(160deg,rgba(184,196,245,0.20),rgba(184,196,245,0.04));border-color:rgba(184,196,245,0.45);box-shadow:0 0 16px rgba(184,196,245,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}
+.pt-kv .pt-num{color:#6DB8FF;text-shadow:0 0 14px rgba(109,184,255,0.45);}
+.pt-kv{border-color:rgba(109,184,255,0.28);}
+.pt-kv .pt-card-icon{background:linear-gradient(160deg,rgba(109,184,255,0.20),rgba(109,184,255,0.04));border-color:rgba(109,184,255,0.45);box-shadow:0 0 16px rgba(109,184,255,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}
 .pt-28 .pt-num{color:var(--green);text-shadow:0 0 14px rgba(57,201,151,0.45);}
 .pt-28{border-color:rgba(57,201,151,0.28);}
 .pt-28 .pt-card-icon{background:linear-gradient(160deg,rgba(57,201,151,0.20),rgba(57,201,151,0.04));border-color:rgba(57,201,151,0.50);box-shadow:0 0 16px rgba(57,201,151,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}

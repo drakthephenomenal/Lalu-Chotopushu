@@ -16,10 +16,10 @@ JAVA_VER="21.0.5-tem"
 KEEP_ANDROID=false
 [ "$1" = "--keep" ] && KEEP_ANDROID=true
 
-echo "── 1/10  npm install ────────────────────────────────────────────"
+echo "── 1/9  npm install ────────────────────────────────────────────"
 npm install
 
-echo "── 2/10  Ensure JDK $JAVA_VER is active ─────────────────────────"
+echo "── 2/9  Ensure JDK $JAVA_VER is active ─────────────────────────"
 if command -v sdk >/dev/null 2>&1 || [ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]; then
   source "$HOME/.sdkman/bin/sdkman-init.sh" 2>/dev/null || true
   sdk install java "$JAVA_VER" < /dev/null || true
@@ -42,7 +42,7 @@ export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platfo
 yes | sdkmanager --licenses > /dev/null 2>&1 || true
 sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" > /dev/null
 
-echo "── 3/10  (Re)generate native android/ project ───────────────────"
+echo "── 3/9  (Re)generate native android/ project ───────────────────"
 if [ "$KEEP_ANDROID" = true ] && [ -d "android" ]; then
   echo "  --keep passed, leaving existing android/ folder as-is."
 else
@@ -52,11 +52,11 @@ fi
 
 echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
-echo "── 4/10  Copy web assets + sync plugins ──────────────────────────"
+echo "── 4/9  Copy web assets + sync plugins ──────────────────────────"
 bash setup-www.sh
 npx cap sync android
 
-echo "── 5/10  Restore google-services.json ────────────────────────────"
+echo "── 5/9  Restore google-services.json ────────────────────────────"
 if [ -f "google-services.json" ]; then
   cp google-services.json android/app/google-services.json
 elif git show HEAD:android/app/google-services.json > /tmp/gsj 2>/dev/null; then
@@ -68,30 +68,14 @@ else
   exit 1
 fi
 
-echo "── 6/10  Generate app icon + splash from resources/icon.png ─────"
+echo "── 6/9  Generate app icon + splash from resources/icon.png ─────"
 if [ -f "resources/icon.png" ]; then
   npx capacitor-assets generate --android
 else
   echo "  (skipped — resources/icon.png not found)"
 fi
 
-echo "── 7/10  Install notification icon + reminder tone ─────────────"
-mkdir -p android/app/src/main/res/drawable
-mkdir -p android/app/src/main/res/raw
-if [ -f "ic_notification.png" ]; then
-  cp ic_notification.png android/app/src/main/res/drawable/ic_stat_notify.png
-  echo "  copied ic_notification.png -> res/drawable/ic_stat_notify.png"
-else
-  echo "  WARNING: ic_notification.png not found at repo root."
-fi
-if [ -f "reminder_tone.mp3" ]; then
-  cp reminder_tone.mp3 android/app/src/main/res/raw/reminder_tone.mp3
-  echo "  copied reminder_tone.mp3 -> res/raw/reminder_tone.mp3"
-else
-  echo "  WARNING: reminder_tone.mp3 not found at repo root."
-fi
-
-echo "── 8/10  Patch AndroidManifest.xml (location permissions) ───────"
+echo "── 7/9  Patch AndroidManifest.xml (location permissions) ───────"
 MANIFEST="android/app/src/main/AndroidManifest.xml"
 if ! grep -q "ACCESS_FINE_LOCATION" "$MANIFEST"; then
   sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />|' "$MANIFEST"
@@ -100,7 +84,44 @@ else
   echo "  already present"
 fi
 
-echo "── 9/10  Patch MainActivity.java (text zoom fix + register PowerPermissions plugin) ──────────"
+echo "── 7.5/9  Patch AndroidManifest.xml (OAuth redirect deep link) ──"
+python3 - << 'PYEOF'
+path = "android/app/src/main/AndroidManifest.xml"
+with open(path) as f:
+    content = f.read()
+
+if "app.vercel.radharadharadha.capacitor\"" in content and "oauthredirect" in content:
+    print("  already present")
+else:
+    # This is the missing piece that made Zoho sign-in (and later, Google
+    # Drive backup) never actually complete in real builds: the JS side
+    # opens a browser and waits for an appUrlOpen event, but without this
+    # intent-filter Android has no registered claim on the redirect URL,
+    # so the OS never hands control back to the app at all — no error,
+    # it just silently never returns. oauthredirect.html (hosted on
+    # Vercel) forwards Zoho's/Google's callback to
+    # app.vercel.radharadharadha.capacitor://oauthredirect, which is what
+    # this intent-filter catches.
+    deep_link_filter = (
+        '        <intent-filter android:autoVerify="false">\n'
+        '            <action android:name="android.intent.action.VIEW" />\n'
+        '            <category android:name="android.intent.category.DEFAULT" />\n'
+        '            <category android:name="android.intent.category.BROWSABLE" />\n'
+        '            <data android:scheme="app.vercel.radharadharadha.capacitor" android:host="oauthredirect" />\n'
+        '        </intent-filter>\n'
+    )
+    marker = "</intent-filter>"
+    idx = content.find(marker)
+    if idx == -1:
+        raise SystemExit("Could not find </intent-filter> anchor in AndroidManifest.xml — manifest structure may have changed.")
+    insert_at = idx + len(marker)
+    content = content[:insert_at] + "\n" + deep_link_filter + content[insert_at:]
+    with open(path, "w") as f:
+        f.write(content)
+    print("  added custom-scheme deep link intent-filter (app.vercel.radharadharadha.capacitor://oauthredirect)")
+PYEOF
+
+echo "── 8/9  Patch MainActivity.java (text zoom fix + register PowerPermissions plugin) ──────────"
 MAIN_ACTIVITY=$(find android/app/src/main/java -name "MainActivity.java")
 MAIN_ACTIVITY_DIR=$(dirname "$MAIN_ACTIVITY")
 PKG_LINE=$(head -1 "$MAIN_ACTIVITY")
@@ -131,7 +152,7 @@ public class MainActivity extends BridgeActivity {
 EOF
 echo "  MainActivity.java rewritten with setTextZoom(100) fix + PowerPermissions plugin registered"
 
-echo "── 10/10  Patch native dependency fixes ───────────────────────────"
+echo "── 9/9  Patch native dependency fixes ───────────────────────────"
 # Google Sign-In needs play-services-auth explicitly (FirebaseAuthentication
 # plugin's GoogleAuthProviderHandler references it but doesn't declare it).
 APP_GRADLE="android/app/build.gradle"

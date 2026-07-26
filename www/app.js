@@ -4144,6 +4144,7 @@ function saveDedicationEdit(id) {
   d.note = newNote;
   d.amounts = newAmounts;
   d.types = Object.keys(newAmounts);
+  d._editedTs = Date.now();
 
   window._dedEditingId = null;
   App.save();
@@ -8650,8 +8651,29 @@ function fbApplyRemote(d) {
       }
     }
   }
-  if ("dedications" in d)
-    App.S.dedications = JSON.parse(JSON.stringify(d.dedications || []));
+  if ("dedications" in d && Array.isArray(d.dedications)) {
+    // Union-merge by id (never raw-overwrite): a dedication that only
+    // exists locally (e.g. just added, push not yet landed in Firestore,
+    // or added on another device whose push we haven't seen yet) must
+    // never disappear just because this particular cloud snapshot
+    // doesn't contain it yet. Where both sides have the same id, prefer
+    // whichever copy was edited more recently (falls back to keeping the
+    // local copy if neither has a ts to compare).
+    const localList = App.S.dedications || [];
+    const byId = new Map(localList.map((x) => [x.id, x]));
+    d.dedications.forEach((remote) => {
+      if (!remote || !remote.id) return;
+      const local = byId.get(remote.id);
+      if (!local) {
+        byId.set(remote.id, remote);
+      } else {
+        const localTs = local._editedTs || local.ts || 0;
+        const remoteTs = remote._editedTs || remote.ts || 0;
+        if (remoteTs > localTs) byId.set(remote.id, remote);
+      }
+    });
+    App.S.dedications = JSON.parse(JSON.stringify(Array.from(byId.values())));
+  }
   if (d.sadhanaStart) {
     App.S.sadhanaStart = d.sadhanaStart;
     localStorage.setItem("rjap_sadhana_start", d.sadhanaStart);
@@ -9994,14 +10016,6 @@ function prev28Cycles(val) {
   el.textContent = n > 0 ? "= " + n * 28 + " taps" : "";
 }
 
-function prev28Time() {
-  const m = parseInt(document.getElementById("sp28TimeMin")?.value) || 0;
-  const s = parseInt(document.getElementById("sp28TimeSec")?.value) || 0;
-  const el = document.getElementById("sp28TimePreview");
-  if (!el) return;
-  el.textContent = m > 0 || s > 0 ? m + "m " + s + "s" : "";
-}
-
 function adj28Cycles(sign) {
   const n = parseInt(document.getElementById("sp28CycleVal").value) || 0;
   if (n < 1) {
@@ -10489,40 +10503,6 @@ document.addEventListener("DOMContentLoaded", function () {
     if (el) el.addEventListener("change", prevManual28);
   });
 });
-// Add/deduct time (minutes + seconds)
-function adj28Time(sign) {
-  const m = parseInt(document.getElementById("sp28TimeMin").value) || 0;
-  const s = parseInt(document.getElementById("sp28TimeSec").value) || 0;
-  const secs = m * 60 + Math.min(59, Math.max(0, s));
-  if (secs < 1) {
-    toast("Enter time to adjust");
-    return;
-  }
-  const tk = App.S.tk;
-  if (sign > 0) {
-    App.S.timer28History[tk] = (App.S.timer28History[tk] || 0) + secs;
-  } else {
-    const cur = App.S.timer28History[tk] || 0;
-    if (secs > cur) {
-      toast("Cannot deduct more than today's 28 Names time");
-      return;
-    }
-    App.S.timer28History[tk] = cur - secs;
-  }
-  // Clear inputs and preview instantly
-  document.getElementById("sp28TimeMin").value = "";
-  document.getElementById("sp28TimeSec").value = "";
-  const pv = document.getElementById("sp28TimePreview");
-  if (pv) pv.textContent = "";
-  // Update all displays immediately
-  render28StatsPanel();
-  uStats();
-  // Save and sync in background
-  App.save();
-  fbDebouncedPush();
-  toast((sign > 0 ? "Added " : "Deducted ") + m + "m " + s + "s 🙏");
-}
-
 // Reset 28 Names time
 function reset28Time(scope) {
   if (scope === "today") {

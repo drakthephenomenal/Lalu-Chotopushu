@@ -3671,10 +3671,12 @@ function removeNameJapDeduct() {
 // everything about to be gifted, shown before the Dedicate button.
 window._dedTypes = new Set(["radha"]);
 window._dedAmounts = {}; // type -> jap amount currently entered (unsaved, in-progress)
+window._dedStotrams = window._dedStotrams || []; // [{name, count}] manually entered stotram gifts (unsaved, in-progress)
 
 function _dedTypeMeta(type) {
   if (type === "rv") return { label: "Radha Vallabh", color: "#5eead4" };
   if (type === "kv") return { label: "Krishnay Vasudevay", color: "#6DB8FF" };
+  if (type === "hk") return { label: "Hare Krishna", color: "#c9a7ff" };
   return { label: "Radha", color: "#f5c842" };
 }
 
@@ -3695,6 +3697,13 @@ function _dedLifetimeFor(type) {
         (App.S.nameJapDeductKV || 0),
     );
   }
+  if (type === "hk") {
+    return Math.max(
+      0,
+      Object.values(App.S.historyHK || {}).reduce((a, b) => a + b, 0) -
+        (App.S.nameJapDeductHK || 0),
+    );
+  }
   return Math.max(
     0,
     Object.values(App.S.history || {}).reduce((a, b) => a + b, 0) -
@@ -3707,6 +3716,8 @@ function _dedAdjustCounter(type, delta) {
     App.S.nameJapDeductRV = Math.max(0, (App.S.nameJapDeductRV || 0) + delta);
   } else if (type === "kv") {
     App.S.nameJapDeductKV = Math.max(0, (App.S.nameJapDeductKV || 0) + delta);
+  } else if (type === "hk") {
+    App.S.nameJapDeductHK = Math.max(0, (App.S.nameJapDeductHK || 0) + delta);
   } else {
     App.S.nameJapDeduct = Math.max(0, (App.S.nameJapDeduct || 0) + delta);
   }
@@ -3732,7 +3743,7 @@ function renderDedTypePanels() {
   const wrap = document.getElementById("dedTypePanels");
   if (!wrap) return;
   const ms = App.S.ms || 108;
-  const order = ["radha", "rv", "kv"].filter((t) => window._dedTypes.has(t));
+  const order = ["radha", "rv", "kv", "hk"].filter((t) => window._dedTypes.has(t));
 
   wrap.innerHTML = order
     .map((type) => {
@@ -3845,9 +3856,11 @@ function _updateDedSummary() {
   if (!el) return;
   const ms = App.S.ms || 108;
   const parts = [];
-  ["radha", "rv", "kv"].forEach((type) => {
+  let japTotal = 0;
+  ["radha", "rv", "kv", "hk"].forEach((type) => {
     const amt = window._dedAmounts[type] || 0;
     if (amt > 0 && window._dedTypes.has(type)) {
+      japTotal += amt;
       const meta = _dedTypeMeta(type);
       parts.push(
         '<span style="color:' +
@@ -3862,13 +3875,91 @@ function _updateDedSummary() {
       );
     }
   });
-  if (!parts.length) {
+
+  const stotrams = window._dedStotrams || [];
+  const stotramTotal = stotrams.reduce((a, s) => a + (s.count || 0), 0);
+
+  if (!parts.length && !stotrams.length) {
     el.innerHTML = "";
     return;
   }
-  el.innerHTML =
-    '<div style="font-size:9px;color:rgba(255,143,199,0.75);letter-spacing:1px;text-transform:uppercase;font-weight:700;margin-bottom:4px;">🎁 You are gifting</div>' +
-    parts.join("<br>");
+
+  let html =
+    '<div style="font-size:9px;color:rgba(255,143,199,0.75);letter-spacing:1px;text-transform:uppercase;font-weight:700;margin-bottom:4px;">🎁 You are gifting</div>';
+  if (parts.length) {
+    html +=
+      '<div style="margin-bottom:4px;">Total Jap gifting: <b style="color:#FF8FC7">' +
+      japTotal.toLocaleString("en-IN") +
+      "</b></div>" +
+      parts.join("<br>");
+  }
+  if (stotrams.length) {
+    html +=
+      (parts.length ? '<div style="margin-top:6px;">' : "<div>") +
+      "+ Stotram: <b style=\"color:#FF8FC7\">" +
+      stotramTotal.toLocaleString("en-IN") +
+      "</b> (not counted with jap)</div>" +
+      stotrams
+        .map((s) => escHtml(s.name) + ": " + s.count.toLocaleString("en-IN"))
+        .join("<br>");
+  }
+  el.innerHTML = html;
+}
+
+// ── Manual Stotram gift entry — user types a stotram name + count by hand;
+// tracked as its own list on the dedication, separate from jap totals.
+function addDedStotram() {
+  if (isGhostMode()) return; // ghost mode: read-only
+  const nameEl = document.getElementById("dedStNameIn");
+  const countEl = document.getElementById("dedStCountIn");
+  const name = (nameEl.value || "").trim();
+  const count = parseInt(countEl.value) || 0;
+  if (!name) {
+    toast("Please enter a stotram name");
+    return;
+  }
+  if (count <= 0) {
+    toast("Please enter a count greater than 0");
+    return;
+  }
+  window._dedStotrams = window._dedStotrams || [];
+  window._dedStotrams.push({ name, count });
+  nameEl.value = "";
+  countEl.value = "";
+  renderDedStotramList();
+  _updateDedSummary();
+}
+
+function removeDedStotram(idx) {
+  if (isGhostMode()) return; // ghost mode: read-only
+  window._dedStotrams.splice(idx, 1);
+  renderDedStotramList();
+  _updateDedSummary();
+}
+
+function renderDedStotramList() {
+  const wrap = document.getElementById("dedStotramList");
+  if (!wrap) return;
+  const stotrams = window._dedStotrams || [];
+  if (!stotrams.length) {
+    wrap.innerHTML = "";
+    return;
+  }
+  wrap.innerHTML = stotrams
+    .map(
+      (s, i) =>
+        '<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:6px 10px;">' +
+        '<span style="font-size:12px;color:var(--tl);">' +
+        escHtml(s.name) +
+        ': <b style="color:#FF8FC7">' +
+        s.count.toLocaleString("en-IN") +
+        "</b></span>" +
+        '<span onclick="removeDedStotram(' +
+        i +
+        ')" style="cursor:pointer;color:var(--td);font-size:12px;padding:2px 4px;">✕</span>' +
+        "</div>",
+    )
+    .join("");
 }
 
 // Normalize an entry to a {type: amount} map — supports old entries saved
@@ -3899,9 +3990,10 @@ function addDedication() {
     if (amt > 0) amounts[type] = amt;
   });
   const types = Object.keys(amounts);
+  const stotrams = (window._dedStotrams || []).slice();
 
-  if (!types.length) {
-    toast("Please enter an amount (jap or malas) for at least one selected type");
+  if (!types.length && !stotrams.length) {
+    toast("Please enter a jap amount for at least one selected type, or add a stotram gift");
     return;
   }
   if (!purpose) {
@@ -3922,6 +4014,7 @@ function addDedication() {
     id: "ded_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
     types,
     amounts,
+    stotrams,
     purpose,
     note,
     date,
@@ -3929,7 +4022,8 @@ function addDedication() {
   });
 
   // Deduct from each selected type's lifetime total — same mechanism as
-  // "Deduct Name Jap".
+  // "Deduct Name Jap". Manual stotram gifts are a hand-entered log only and
+  // are not deducted from anything.
   types.forEach((type) => _dedAdjustCounter(type, amounts[type]));
 
   App.save();
@@ -3940,14 +4034,20 @@ function addDedication() {
   noteEl.value = "";
   if (dateEl) dateEl.value = _ldk(new Date());
   window._dedAmounts = {};
+  window._dedStotrams = [];
   renderDedTypePanels();
+  renderDedStotramList();
   renderDedications();
   uStats();
 
-  const summary = types
-    .map((t) => amounts[t].toLocaleString("en-IN") + " " + _dedTypeMeta(t).label)
-    .join(" + ");
-  toast("🙏 Dedicated " + summary + " — Jai Radhe!");
+  const summaryParts = types.map(
+    (t) => amounts[t].toLocaleString("en-IN") + " " + _dedTypeMeta(t).label,
+  );
+  if (stotrams.length) {
+    const stTotal = stotrams.reduce((a, s) => a + (s.count || 0), 0);
+    summaryParts.push(stTotal.toLocaleString("en-IN") + " Stotram");
+  }
+  toast("🙏 Dedicated " + summaryParts.join(" + ") + " — Jai Radhe!");
 }
 
 function deleteDedication(id) {
@@ -3959,7 +4059,20 @@ function deleteDedication(id) {
   const breakdown = Object.keys(amounts)
     .map((t) => amounts[t].toLocaleString("en-IN") + " " + _dedTypeMeta(t).label)
     .join(" + ");
-  if (!confirm("Remove this dedication and restore " + breakdown + " to the lifetime totals?"))
+  const stotrams = entry.stotrams || [];
+  const stotramNote = stotrams.length
+    ? " (its " +
+      stotrams.reduce((a, s) => a + (s.count || 0), 0).toLocaleString("en-IN") +
+      " Stotram gift will just be removed from the log)"
+    : "";
+  if (
+    !confirm(
+      "Remove this dedication" +
+        (breakdown ? " and restore " + breakdown + " to the lifetime totals" : "") +
+        stotramNote +
+        "?",
+    )
+  )
     return;
 
   Object.keys(amounts).forEach((t) => _dedAdjustCounter(t, -amounts[t]));
@@ -4004,13 +4117,18 @@ function renderDedications() {
 
   let totRadha = 0,
     totRV = 0,
-    totKV = 0;
+    totKV = 0,
+    totHK = 0,
+    totStotram = 0;
   list.forEach((d) => {
     const amounts = _dedEntryAmounts(d);
     totRadha += amounts.radha || 0;
     totRV += amounts.rv || 0;
     totKV += amounts.kv || 0;
+    totHK += amounts.hk || 0;
+    (d.stotrams || []).forEach((s) => (totStotram += s.count || 0));
   });
+  const totJap = totRadha + totRV + totKV + totHK;
   if (wrapTotals) {
     const parts = [];
     if (totRadha)
@@ -4025,7 +4143,21 @@ function renderDedications() {
       parts.push(
         '<span style="color:#6DB8FF;font-weight:600">' + totKV.toLocaleString() + "</span> KV",
       );
-    wrapTotals.innerHTML = "🙏 Total dedicated: " + parts.join(" · ");
+    if (totHK)
+      parts.push(
+        '<span style="color:#c9a7ff;font-weight:600">' + totHK.toLocaleString() + "</span> HK",
+      );
+    let html =
+      "🙏 Total Jap gifting: <b style=\"color:#FF8FC7\">" +
+      totJap.toLocaleString() +
+      "</b>" +
+      (parts.length ? " (" + parts.join(" · ") + ")" : "");
+    if (totStotram)
+      html +=
+        ' &nbsp;+&nbsp; <span style="color:#FF8FC7;font-weight:600">' +
+        totStotram.toLocaleString() +
+        "</span> Stotram <span style=\"opacity:0.7\">(not counted with jap)</span>";
+    wrapTotals.innerHTML = html;
   }
 
   wrapList.innerHTML = list
@@ -4048,6 +4180,16 @@ function renderDedications() {
             "m)</span>"
           );
         })
+        .concat(
+          (d.stotrams || []).map(
+            (s) =>
+              '<span style="font-size:10px;font-weight:700;color:#FF8FC7;border:1px solid rgba(255,143,199,0.4);border-radius:6px;padding:1px 6px;">' +
+              escHtml(s.name) +
+              ": " +
+              s.count.toLocaleString("en-IN") +
+              "</span>",
+          ),
+        )
         .join(" ");
       const dateDisp = d.date ? _fmtDedDate(d.date) : "";
       return (

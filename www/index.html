@@ -818,32 +818,45 @@
   <div class="vt">Jap Summary</div>
 
   <!-- Dedications — offer a portion of lifetime jap to a purpose/person -->
-  <div class="sg-wrap ded-card-hide-gaudiya" style="background:rgba(255,105,180,0.05);border:1px solid rgba(255,105,180,0.18);">
+  <div class="sg-wrap" style="background:rgba(255,105,180,0.05);border:1px solid rgba(255,105,180,0.18);">
     <div class="sg-header" onclick="toggleCs('sgDedic','sgDedicChev')">
-      <span style="color:#FF8FC7">🙏 Offer Jap — Dedication</span>
+      <span style="color:#FF8FC7">🙏 Gift Your Jap</span>
       <span class="sg-chevron" id="sgDedicChev" style="color:#FF8FC7">▾</span>
     </div>
     <div class="sg-body open" id="sgDedic">
       <div style="padding:2px 4px 4px;">
-        <div style="font-size:11px;color:var(--td);margin-bottom:10px;line-height:1.5;">Dedicate a portion of your lifetime jap to someone or a purpose. This deducts the amount from that jap's lifetime total.</div>
+        <div style="font-size:11px;color:var(--td);margin-bottom:6px;line-height:1.5;">Gift a portion of your lifetime jap (or a stotram) to someone or a purpose. Jap amounts are deducted from that jap's lifetime total.</div>
+        <div style="font-size:11px;color:#FF8FC7;background:rgba(255,143,199,0.08);border:1px solid rgba(255,143,199,0.25);border-radius:10px;padding:8px 10px;margin-bottom:10px;line-height:1.5;">Give your jap to your Gurudev and pray to Him so that Gurudev utilizes that properly for your desired things.</div>
 
         <div style="font-size:9px;color:rgba(255,143,199,0.7);letter-spacing:1px;text-transform:uppercase;font-weight:700;margin-bottom:6px;">Give from (tap to select one or more)</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
-          <div class="ded-type-pill active non-gaudiya-setting" data-type="radha" onclick="toggleDedicationType('radha', this)" style="border-color:rgba(245,200,66,0.45);background:rgba(245,200,66,0.08);">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+          <div class="ded-type-pill active" data-type="radha" onclick="toggleDedicationType('radha', this)" style="border-color:rgba(245,200,66,0.45);background:rgba(245,200,66,0.08);">
             <div style="font-size:11px;font-weight:700;color:#f5c842;">Radha</div>
           </div>
-          <div class="ded-type-pill non-gaudiya-setting" data-type="rv" onclick="toggleDedicationType('rv', this)" style="border-color:rgba(94,234,212,0.45);background:rgba(94,234,212,0.06);">
+          <div class="ded-type-pill" data-type="rv" onclick="toggleDedicationType('rv', this)" style="border-color:rgba(94,234,212,0.45);background:rgba(94,234,212,0.06);">
             <div style="font-size:11px;font-weight:700;color:#5eead4;">RV</div>
           </div>
-          <div class="ded-type-pill kv-only-setting" data-type="kv" onclick="toggleDedicationType('kv', this)" style="border-color:rgba(109,184,255,0.45);background:rgba(109,184,255,0.06);">
+          <div class="ded-type-pill" data-type="kv" onclick="toggleDedicationType('kv', this)" style="border-color:rgba(109,184,255,0.45);background:rgba(109,184,255,0.06);">
             <div style="font-size:11px;font-weight:700;color:#6DB8FF;">KV</div>
+          </div>
+          <div class="ded-type-pill" data-type="hk" onclick="toggleDedicationType('hk', this)" style="border-color:rgba(201,167,255,0.45);background:rgba(201,167,255,0.06);">
+            <div style="font-size:11px;font-weight:700;color:#c9a7ff;">HK</div>
           </div>
         </div>
 
         <!-- Per-type lifetime amount + deduct input, rebuilt on selection change -->
         <div id="dedTypePanels" style="margin-bottom:8px;"></div>
 
-        <div class="fr"><input type="text" class="fi" id="dedPurposeIn" placeholder="Purpose / name (e.g. For Maa's health)" maxlength="60"></div>
+        <!-- Manual Stotram gift — name + count entered by hand, tracked separately from jap -->
+        <div style="font-size:9px;color:rgba(255,143,199,0.7);letter-spacing:1px;text-transform:uppercase;font-weight:700;margin:14px 0 6px;">🌸 Gift a Stotram (optional — enter name &amp; count)</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input type="text" class="fi" id="dedStNameIn" placeholder="Stotram name" style="flex:2;">
+          <input type="number" class="fi" id="dedStCountIn" placeholder="Count" min="1" style="flex:1;">
+        </div>
+        <button class="pb" style="background:rgba(255,143,199,0.12);border:1px solid rgba(255,143,199,0.35);color:#FF8FC7;font-size:12px;padding:8px;margin-bottom:4px;" onclick="addDedStotram()">+ Add Stotram</button>
+        <div id="dedStotramList" style="margin-top:6px;display:flex;flex-direction:column;gap:6px;"></div>
+
+        <div class="fr" style="margin-top:12px;"><input type="text" class="fi" id="dedPurposeIn" placeholder="Purpose / name (e.g. For Maa's health)" maxlength="60"></div>
         <div class="fr"><input type="date" class="fi" id="dedDateIn"></div>
         <div class="fr" style="align-items:flex-start;"><textarea class="fi" id="dedNoteIn" placeholder="Short note (optional)" maxlength="140" rows="2" style="resize:vertical;font-family:inherit;"></textarea></div>
 

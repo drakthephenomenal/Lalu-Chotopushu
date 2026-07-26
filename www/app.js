@@ -6083,26 +6083,22 @@ function setMsConsider(type, on) {
   renderMilestonesTab();
 }
 
-// 28 Names jap currently available toward Milestones — excludes whatever
-// portion is being tracked toward the ACTIVE wish (sankalp). That jap is
-// earmarked for a specific desire, not general Bhagvat Prapti, so it
-// shouldn't double-count here while the wish is still open. Once a wish
-// is fulfilled (no longer active) its jap is free to count again. If
-// there's no active wish at all, the full (deduct-netted) 28N total counts.
+// 28 Names jap available toward Milestones. Sankalpas (wishes) chain
+// continuously — each new wish just keeps counting cycles from where the
+// last one left off — so while ANY wish is currently active, essentially
+// all of your 28N jap is mid-flow toward some wish, not toward general
+// Bhagvat Prapti. So: an active wish present → 0 available here, full
+// stop, regardless of the toggle. Only when there's no active wish at all
+// does the full (deduct-netted) 28N total become available to count.
 function _msAvailable28() {
+  const active =
+    typeof getActiveSankalp === "function" ? getActiveSankalp() : null;
+  if (active) return 0;
   const hist28 = App.S.h28 || {};
   const raw28 = Object.entries(hist28)
     .filter(([k]) => !k.startsWith("prev_"))
     .reduce((a, [, v]) => a + v, 0);
-  const net28 = Math.max(0, raw28 - (App.S.nameJapDeduct28 || 0));
-  const active =
-    typeof getActiveSankalp === "function" ? getActiveSankalp() : null;
-  if (active && active.startCycles !== null && active.startCycles !== undefined) {
-    const reserved =
-      Math.max(0, getTotalCycles28() - active.startCycles) * 28;
-    return Math.max(0, net28 - reserved);
-  }
-  return net28;
+  return Math.max(0, raw28 - (App.S.nameJapDeduct28 || 0));
 }
 
 // Shared combined-total computation, used by both the Milestones tab and
@@ -6191,7 +6187,7 @@ function _msConsiderChipsHtml() {
       "</div>";
   });
   h +=
-    '</div><div style="font-size:10px;opacity:0.55;margin-top:6px;">28 Names jap already going toward an active wish won\'t be counted here.</div></div>';
+    '</div><div style="font-size:10px;opacity:0.55;margin-top:6px;">If you have an active wish (sankalp) running, 28 Names won\'t count here at all — only when no wish is active.</div></div>';
   return h;
 }
 
@@ -15883,6 +15879,18 @@ function renderLeaderboard(docs, period) {
         hk:  Math.max(0, shk - (d.nameJapDeductHK || 0)),
         n28: Math.max(0, s28 - (d.nameJapDeduct28 || 0)),
       };
+      // How much of each type was gifted/manually deducted — shown next to
+      // the netted count so the numbers stay legible: the malas count is
+      // netted (post-gift) but the chanting TIME below is raw/lifetime, so
+      // without this note a small malas count next to a large time looks
+      // like a mismatch instead of "gifted most of it away".
+      d._giftedBreakdown = {
+        r:   Math.min(sr,  d.nameJapDeduct   || 0),
+        rv:  Math.min(srv, d.nameJapDeductRV || 0),
+        kv:  Math.min(skv, d.nameJapDeductKV || 0),
+        hk:  Math.min(shk, d.nameJapDeductHK || 0),
+        n28: Math.min(s28, d.nameJapDeduct28 || 0),
+      };
       const tr2 = Object.values(d.timerHistory || {}).reduce((a,b)=>a+b,0);
       const trv2 = Object.values(d.timerHistoryRV || {}).reduce((a,b)=>a+b,0);
       const tkv2 = Object.values(d.timerHistoryKV || {}).reduce((a,b)=>a+b,0);
@@ -15933,6 +15941,7 @@ function renderLeaderboard(docs, period) {
       score += sr + srv + skv + shk + s28;
       timeScore += tr + trv + tkv + thk + t28;
       d._breakdown = { r: sr, rv: srv, kv: skv, hk: shk, n28: s28 };
+      d._giftedBreakdown = { r: 0, rv: 0, kv: 0, hk: 0, n28: 0 };
       d._timeBreakdown = { r: tr, rv: trv, kv: tkv, hk: thk, n28: t28 };
     }
     return { ...d, score, timeScore };
@@ -15992,34 +16001,44 @@ function renderLeaderboard(docs, period) {
     const ms = App.S.ms || 108;
     
     let b = d._breakdown || { r:0, rv:0, kv:0, hk:0, n28:0 };
+    let g = d._giftedBreakdown || { r:0, rv:0, kv:0, hk:0, n28:0 };
     let tb = d._timeBreakdown || { r:0, rv:0, kv:0, hk:0, n28:0 };
-    
-    // Build per-type breakdown: R, RV, KV show malas (count/108), 28N shows cycles (count/28), HK shows malas
+
+    // Build per-type breakdown: R, RV, KV show malas (count/108), 28N shows
+    // cycles (count/28), HK shows malas. Each line is the NETTED (post-gift)
+    // amount — matching Total/ranking — with a "🎁 gifted" note appended
+    // when something was given away, so a small count next to a long
+    // chanting time reads as "gifted most of it" instead of a mismatch.
     let bdParts = [];
-    if (b.r > 0) {
+    if (b.r > 0 || g.r > 0) {
       const rM = Math.floor(b.r / ms);
       const rStr = _lbFmtJap(b.r) + (rM > 0 ? ' (' + rM + 'M)' : '');
-      bdParts.push('R: ' + rStr + (tb.r > 0 ? ' ⏱ ' + _histFmtSec(tb.r) : ''));
+      const giftNote = g.r > 0 ? ' · 🎁' + _lbFmtJap(g.r) + ' gifted' : '';
+      bdParts.push('R: ' + rStr + (tb.r > 0 ? ' ⏱ ' + _histFmtSec(tb.r) : '') + giftNote);
     }
-    if (b.rv > 0) {
+    if (b.rv > 0 || g.rv > 0) {
       const rvM = Math.floor(b.rv / ms);
       const rvStr = _lbFmtJap(b.rv) + (rvM > 0 ? ' (' + rvM + 'M)' : '');
-      bdParts.push('RV: ' + rvStr + (tb.rv > 0 ? ' ⏱ ' + _histFmtSec(tb.rv) : ''));
+      const giftNote = g.rv > 0 ? ' · 🎁' + _lbFmtJap(g.rv) + ' gifted' : '';
+      bdParts.push('RV: ' + rvStr + (tb.rv > 0 ? ' ⏱ ' + _histFmtSec(tb.rv) : '') + giftNote);
     }
-    if (b.kv > 0) {
+    if (b.kv > 0 || g.kv > 0) {
       const kvM = Math.floor(b.kv / ms);
       const kvStr = _lbFmtJap(b.kv) + (kvM > 0 ? ' (' + kvM + 'M)' : '');
-      bdParts.push('KV: ' + kvStr + (tb.kv > 0 ? ' ⏱ ' + _histFmtSec(tb.kv) : ''));
+      const giftNote = g.kv > 0 ? ' · 🎁' + _lbFmtJap(g.kv) + ' gifted' : '';
+      bdParts.push('KV: ' + kvStr + (tb.kv > 0 ? ' ⏱ ' + _histFmtSec(tb.kv) : '') + giftNote);
     }
-    if (b.n28 > 0) {
+    if (b.n28 > 0 || g.n28 > 0) {
       const cyc28 = Math.floor(b.n28 / 28);
       const cyc28Str = (cyc28 > 0 ? cyc28 + 'C ' : '') + '(' + _lbFmtJap(b.n28) + ')';
-      bdParts.push('28N: ' + cyc28Str + (tb.n28 > 0 ? ' ⏱ ' + _histFmtSec(tb.n28) : ''));
+      const giftNote = g.n28 > 0 ? ' · 🎁' + _lbFmtJap(g.n28) + ' gifted' : '';
+      bdParts.push('28N: ' + cyc28Str + (tb.n28 > 0 ? ' ⏱ ' + _histFmtSec(tb.n28) : '') + giftNote);
     }
-    if (b.hk > 0) {
+    if (b.hk > 0 || g.hk > 0) {
       const hkM = Math.floor(b.hk / ms);
       const hkStr = _lbFmtJap(b.hk) + (hkM > 0 ? ' (' + hkM + 'M)' : '');
-      bdParts.push('HK: ' + hkStr + (tb.hk > 0 ? ' ⏱ ' + _histFmtSec(tb.hk) : ''));
+      const giftNote = g.hk > 0 ? ' · 🎁' + _lbFmtJap(g.hk) + ' gifted' : '';
+      bdParts.push('HK: ' + hkStr + (tb.hk > 0 ? ' ⏱ ' + _histFmtSec(tb.hk) : '') + giftNote);
     }
     // Total: only count R+RV+HK malas (not 28N), 28N shown as cycles separately
     const japOnly = (b.r || 0) + (b.rv || 0) + (b.hk || 0);

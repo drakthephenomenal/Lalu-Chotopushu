@@ -98,11 +98,22 @@ exports.zohoTokenExchange = functions
 // ═══════════════════════════════════════════════════════
 // GOOGLE DRIVE — Daily backup (like WhatsApp's Drive chat backup)
 // ═══════════════════════════════════════════════════════
+// IMPORTANT: DRIVE_CLIENT_ID/SECRET must be the "Web client (Auto created
+// by Google Service)" OAuth client — the one embedded in google-services.json
+// as the client_type: 3 entry. That's the client Android's native Google
+// Sign-In actually uses to mint serverAuthCode, so it's the only one whose
+// client_id/secret pair can redeem it. A separately-created Web OAuth
+// client (e.g. one you make by hand in Cloud Console for this purpose)
+// will NOT match and the token exchange will fail with "invalid_client".
+// Find the correct one in Google Cloud Console > APIs & Services >
+// Credentials (or Google Auth Platform > Clients) — it won't have a
+// custom name unless you've renamed it, and its ID matches the
+// "other_platform_oauth_client" entry under your Android app's
+// oauth_client list in google-services.json.
 // Set these with:
-//   firebase functions:config:set drive.client_id="YOUR_CLIENT_ID" \
-//     drive.client_secret="YOUR_CLIENT_SECRET"
-// (Values come from the "Drive Backup Server Client" OAuth Web client
-// created in Google Cloud Console > APIs & Services > Credentials.)
+//   firebase functions:secrets:set DRIVE_CLIENT_SECRET
+// and DRIVE_CLIENT_ID in the functions/.env.<project-id> file (plain
+// string, not sensitive).
 // Unlike functions.config() (deprecated, being shut down — see the Zoho
 // section above for the full explanation), these params are resolved
 // safely at deploy/runtime — no risk of the deploy-time crash we hit with

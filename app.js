@@ -13809,15 +13809,33 @@ var _hcjRafId = null; // requestAnimationFrame id for progress bar
 var _hcjPlayerCleanup = null; // cleanup fn for window listeners added in _hcjRenderPlayer
 
 // Audio clip path — works for any stotram that has audio clips
+// A stotram with a single voice just has { prefix }.
+// A stotram with multiple reciter voices adds { voices: { key: filePrefix } }
+// — "default" is whichever voice should play first.
 var _AUDIO_STOTRAMS = {
-  hcj: { prefix: "hcj" },
+  hcj: { prefix: "hcj", voices: { default: "hcj", ankit: "hcj_ankit" } },
   bss: { prefix: "bss" },
   dkc: { prefix: "dkc" }
 };
+var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices
+
 function _hcjAudioPath(i) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
   var prefix = cfg ? cfg.prefix : "hcj";
+  if (cfg && cfg.voices && cfg.voices[_hcjVoice]) prefix = cfg.voices[_hcjVoice];
   return "audio/" + prefix + "_" + (i + 1) + ".mp3";
+}
+
+// Switch reciter voice for the current stotram. Reloads the clip for
+// whichever verse is currently loaded/playing so the new voice takes effect
+// immediately.
+function _hcjSetVoice(v) {
+  if (_hcjVoice === v) return;
+  _hcjVoice = v;
+  var wasPlaying = _hcjPlaying;
+  var idx = _hcjAudioIdx >= 0 ? _hcjAudioIdx : _verseIdx;
+  _hcjStopAudio();
+  if (wasPlaying) _hcjPlayVerse(idx);
 }
 
 // Format seconds → m:ss
@@ -14177,6 +14195,22 @@ function _hcjRenderPlayer(idx) {
     };
     row.appendChild(b);
   });
+
+  // Voice switch (only for stotrams with more than one reciter voice)
+  var _voiceCfg = _AUDIO_STOTRAMS[_currentStotramId];
+  if (_voiceCfg && _voiceCfg.voices) {
+    var voiceBtn = document.createElement("button");
+    voiceBtn.id = "hcj-voice-btn";
+    voiceBtn.className =
+      "hcj-mini-btn hcj-mode-btn" + (_hcjVoice !== "default" ? " hcj-mode-active" : "");
+    voiceBtn.textContent = _hcjVoice === "default" ? "Ankit" : "Orig";
+    voiceBtn.title = "কণ্ঠ পরিবর্তন করুন";
+    voiceBtn.onclick = function () {
+      _hcjSetVoice(_hcjVoice === "default" ? "ankit" : "default");
+      _hcjRenderPlayer(_verseIdx);
+    };
+    row.appendChild(voiceBtn);
+  }
 
   // Verse seek (compact)
   var si = document.createElement("input");

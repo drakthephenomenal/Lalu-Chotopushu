@@ -1,5 +1,17 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v177
+// Radha Naam Jap — Service Worker  v181
+// v181: bumped cache to force-invalidate stale app.js/index.html/style.css —
+// picks up: dedicated KV-only History section (table column, Period Totals
+// card, drill-down) mirroring the existing HK-only history view.
+// v180: bumped cache to force-invalidate stale app.js/index.html/style.css —
+// picks up: KV mode's persistent tap display (#kvPersist), matching HK's
+// stays-until-next-tap behavior instead of only a fading floating text.
+// v179: bumped cache to force-invalidate stale app.js/index.html/style.css —
+// picks up: 15s idle-pause grace for HK/KV modes, and the white-page
+// email-style notification inbox redesign.
+// v178: bumped cache to force-invalidate stale app.js/index.html/style.css —
+// picks up: notification history inbox + unread badges, the hcj-next-btn/
+// hcj-prev-btn visibility fix, and the notification bell in Settings.
 // v177: bumped cache to force-invalidate stale app.js/index.html — adds
 //  the PERMANENT Gift Ledger: every gift is now also written to its own
 //  IndexedDB record + its own Firestore document immediately (no debounce),
@@ -48,7 +60,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v177';
+const CACHE = 'radha-jap-v181';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

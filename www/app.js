@@ -391,7 +391,7 @@ function rjapOpenNotifHistory() {
   const history = _rjapGetNotifHistory();
   listEl.innerHTML = "";
   if (history.length === 0) {
-    listEl.innerHTML = '<div style="padding:24px 10px;text-align:center;color:rgba(255,255,255,0.4);font-size:13px;">No notifications yet 🙏</div>';
+    listEl.innerHTML = '<div class="notif-hist-empty">No notifications yet 🙏</div>';
   } else {
     for (const n of history) {
       const row = document.createElement("div");
@@ -1172,12 +1172,16 @@ const App = {
     this.startTimer();
     clearTimeout(this.autoStopTimeout);
     // Snapshot BOTH the session counter and the per-mala counter at the moment
-    // of the last tap. When auto-pause fires 6 s later we roll back to these
+    // of the last tap. When auto-pause fires later we roll back to these
     // snapshots so the idle gap is never counted as jap time.
     const secondsAtTap = this.timerSeconds;
     const malaSecondsAtTap = this.currentMalaSeconds;
+    // HK (gaudiyaMode) and KV (trahimamMode) chanting has longer natural
+    // pauses between repetitions than the default Radha Naam, so they get
+    // a longer idle grace period before auto-pausing.
+    const idleMs = (this.S.gaudiyaMode || this.S.trahimamMode) ? 15000 : 6000;
     // Token so malaOk() can invalidate this pending autoStop if a mala
-    // completes between now and the 6 s deadline (prevents leaking the
+    // completes between now and the deadline (prevents leaking the
     // previous mala's snapshot into the next mala — Bug #2 root cause).
     const token = ++this._autoStopToken;
     this.autoStopTimeout = setTimeout(() => {
@@ -1193,7 +1197,7 @@ const App = {
       if (td) td.textContent = this.fmtTime(this.timerSeconds);
       this.updateTimerToday();
       this.pauseTimer();
-    }, 6000);
+    }, idleMs);
   },
 
   toggleTimer() {
@@ -2113,10 +2117,27 @@ function spawnKV(e, zone) {
     x = e.clientX - r.left;
     y = e.clientY - r.top;
   }
+  const _nt = naamText();
+  const kvHtml =
+    '<div style="font-size:' + (40 + 18 * 0.5) + 'px">' + _nt.kv1 + "</div>" +
+    '<div style="font-size:' + (40 + 18 * 0.5) * 0.85 + 'px">' + _nt.kv2 + "</div>";
+
+  // CURRENT color → floats up from the tap point and fades (the "old" text leaving)
+  const currentColor = acf ? "#FFD700" : "#6DB8FF";
+  const currentShadow = acf
+    ? "0 0 30px rgba(255,215,0,0.9)"
+    : "0 0 30px rgba(109,184,255,0.9)";
+  acf = !acf;
+  // NEXT color → stays as the persistent display (the "new" text arriving),
+  // same behavior as HK's #hkPersist: visible until the next tap replaces it.
+  const nextColor = acf ? "#FFD700" : "#6DB8FF";
+  const nextShadow = acf
+    ? "0 0 30px rgba(255,215,0,0.9)"
+    : "0 0 30px rgba(109,184,255,0.9)";
+
   const el = document.createElement("div");
   el.className = "fn-kv";
   const fs = 40 + Math.random() * 18;
-  const _nt = naamText();
   el.innerHTML =
     '<span style="font-size:' +
     fs +
@@ -2125,13 +2146,20 @@ function spawnKV(e, zone) {
     'px">' + _nt.kv2 + '</span>';
   el.style.left = x - fs * 1.4 + "px";
   el.style.top = y - fs * 0.5 + "px";
-  acf = !acf;
-  el.style.color = acf ? "#FFD700" : "#6DB8FF";
-  el.style.textShadow = acf
-    ? "0 0 30px rgba(255,215,0,0.9)"
-    : "0 0 30px rgba(109,184,255,0.9)";
+  el.style.color = currentColor;
+  el.style.textShadow = currentShadow;
   zone.appendChild(el);
   setTimeout(() => el.remove(), 2400);
+
+  const persistEl = document.getElementById("kvPersist");
+  if (persistEl) {
+    persistEl.innerHTML = kvHtml;
+    persistEl.style.color = nextColor;
+    persistEl.style.textShadow = nextShadow;
+    if (!persistEl.classList.contains("kv-visible")) {
+      persistEl.classList.add("kv-visible");
+    }
+  }
 }
 
 // HK Mahamantra — appears centered, rises upward, 7 cycling colors
@@ -2695,6 +2723,12 @@ function switchJapMode(mode) {
   const optKV = document.getElementById("naamOptKV");
   const titleEl = document.getElementById("rnTitle");
   const hkEl = document.getElementById("hkPersist");
+  const kvEl = document.getElementById("kvPersist");
+  // Clear both persistent tap-displays up front on every mode switch — each
+  // mode's spawn function (spawnHK/spawnKV) repopulates its own on the next
+  // tap, so nothing should linger from whichever mode was active before.
+  if (hkEl) hkEl.classList.remove("hk-visible");
+  if (kvEl) kvEl.classList.remove("kv-visible");
   // Clear all active states first
   [optR, optRV, optHK, optKV].forEach((o) => {
     if (o) {
@@ -14953,8 +14987,7 @@ function renderHistory() {
   const dates = _histGetDates(from, to);
   const ms = App.S.ms || 108;
   const isGaudiya = App.S.gaudiyaMode || false;
-
-  const hist = App.S.history || {};
+  const isTrahimam = App.S.trahimamMode || false;
   const histRV = App.S.historyRV || {};
   const histKV = App.S.historyKV || {};
   const histHK = App.S.historyHK || {};
@@ -14989,13 +15022,15 @@ function renderHistory() {
     const tSecRV_row = tHistRV[tk] || 0;
     const tSecKV_row = tHistKV[tk] || 0;
     const tSecHK_row = tHistHK[tk] || 0;
-    const tSec = isGaudiya ? tSecHK_row : tSecR_row + tSecRV_row + tSecKV_row;
-    const t28Sec = isGaudiya ? 0 : t28Hist[tk] || 0;
+    const tSec = isGaudiya ? tSecHK_row : isTrahimam ? tSecKV_row : tSecR_row + tSecRV_row + tSecKV_row;
+    const t28Sec = (isGaudiya || isTrahimam) ? 0 : t28Hist[tk] || 0;
     const totalSec = tSec + t28Sec;
 
     // Skip empty days depending on mode
     if (isGaudiya) {
       if (hk === 0) return;
+    } else if (isTrahimam) {
+      if (kv === 0) return;
     } else {
       if (radha === 0 && rv === 0 && kv === 0 && taps28 === 0) return;
     }
@@ -15045,6 +15080,13 @@ function renderHistory() {
       tr.innerHTML = `
         ${dateCell}
         <td class="hist-hk-col hist-val hist-c-hk">${hkStr}</td>
+        <td class="hist-val hist-c-time">${_histFmtSec(totalSec)}</td>
+        ${chevCell}
+      `;
+    } else if (isTrahimam) {
+      tr.innerHTML = `
+        ${dateCell}
+        <td class="hist-kv-col hist-val hist-c-kv">${kvStr}</td>
         <td class="hist-val hist-c-time">${_histFmtSec(totalSec)}</td>
         ${chevCell}
       `;
@@ -15108,6 +15150,14 @@ function renderHistory() {
       <div class="pt-head"><span class="pt-head-icon">📊</span><span class="pt-head-title">Period Totals</span><span class="pt-head-range">(${rangeLbl})</span><span class="pt-head-tag">Gaudiya</span></div>
       <div class="pt-grid pt-grid-1">
         ${statCard("pt-hk", "🪈", _hkPTLabel, totHKM, totHKM === 1 ? "mala" : "malas", fmtN(totHK) + " names", _histFmtSec(window._ptHKSec || 0), "hk")}
+      </div>
+      <div class="pt-total"><span class="pt-total-label">Total Time</span><span class="pt-total-val">${_histFmtSec(grandTotal)}</span></div>
+    `;
+  } else if (isTrahimam) {
+    totDiv.innerHTML = `
+      <div class="pt-head"><span class="pt-head-icon">📊</span><span class="pt-head-title">Period Totals</span><span class="pt-head-range">(${rangeLbl})</span><span class="pt-head-tag">Trahimam</span></div>
+      <div class="pt-grid pt-grid-1">
+        ${statCard("pt-kv", "🪈", "Krishnay Vasudevay", totKVM, totKVM === 1 ? "mala" : "malas", fmtN(totKV) + " names", _histFmtSec(window._ptKVSec || 0), "kv")}
       </div>
       <div class="pt-total"><span class="pt-total-label">Total Time</span><span class="pt-total-val">${_histFmtSec(grandTotal)}</span></div>
     `;

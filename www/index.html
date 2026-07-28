@@ -26,7 +26,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
-<link rel="stylesheet" href="./style.css?v=124">
+<link rel="stylesheet" href="./style.css?v=128">
   <link rel="stylesheet" href="./style-stotram.css?v=124">
   <link rel="stylesheet" href="./vedic-panchanga/panchanga.css?v=155">
 <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
@@ -319,6 +319,7 @@
         <div class="mf-line2">Sri Harivansh</div>
       </div>
       <div id="hkPersist"></div>
+      <div id="kvPersist"></div>
       <div id="hkMalaComplete"></div>
     </div>
   </div>
@@ -1080,6 +1081,7 @@
                 <th class="hist-th hist-radha-col">KV</th>
                 <th class="hist-th hist-radha-col">28 Names</th>
                 <th class="hist-th hist-hk-col" id="histHKColHeader" style="display:none;color:#6DB8FF">हरे कृष्ण महामंत्र</th>
+                <th class="hist-th hist-kv-col" id="histKVColHeader" style="display:none;color:#6DB8FF">कृष्णाय वासुदेवाय</th>
                 <th class="hist-th">Total Time</th>
                 <th class="hist-th hist-th-chev" aria-hidden="true"></th>
               </tr>
@@ -2165,15 +2167,13 @@
 </div>
 
 <!-- NOTIFICATION HISTORY MODAL -->
-<div class="lmo" id="notifHistoryModal" onclick="if(event.target===this)rjapCloseNotifHistory()">
-  <div class="lmd" style="max-height:70vh;">
-    <button class="lmx" onclick="rjapCloseNotifHistory()">✕</button>
-    <div class="lmt">🔔 Notifications</div>
-    <div class="lm-card-wrap">
-      <div class="lm-water-card">
-        <div class="lm-card-inner" id="notifHistoryList" style="padding:14px;overflow-y:auto;"></div>
-      </div>
+<div class="notif-inbox-overlay" id="notifHistoryModal" onclick="if(event.target===this)rjapCloseNotifHistory()">
+  <div class="notif-inbox-page">
+    <div class="notif-inbox-header">
+      <span>🔔 Notifications</span>
+      <button class="notif-inbox-close" onclick="rjapCloseNotifHistory()">✕</button>
     </div>
+    <div class="notif-inbox-list" id="notifHistoryList"></div>
   </div>
 </div>
 
@@ -2198,7 +2198,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=115"></script>
-    <script src="./app.js?v=138"></script>
+    <script src="./app.js?v=142"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

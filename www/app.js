@@ -7570,34 +7570,17 @@ async function fbSignInGoogle() {
       const accessToken = result && result.credential && result.credential.accessToken;
       const serverAuthCode = result && result.credential && result.credential.serverAuthCode;
 
-      // TEMPORARY DEBUG — remove once Drive backup auth is confirmed working.
-      // Shows exactly what the native sign-in returned, since there's no
-      // remote devtools access to check this directly on-device.
-      alert(
-        "DEBUG sign-in result:\n" +
-        "idToken: " + (idToken ? "present (" + idToken.length + " chars)" : "MISSING") + "\n" +
-        "accessToken: " + (accessToken ? "present" : "MISSING") + "\n" +
-        "serverAuthCode: " + (serverAuthCode ? "present (" + serverAuthCode.length + " chars)" : "MISSING") + "\n" +
-        "full credential keys: " + (result && result.credential ? Object.keys(result.credential).join(", ") : "none")
-      );
-
       if (!idToken) throw new Error("No ID token returned from native Google Sign-In");
       const credential = firebase.auth.GoogleAuthProvider.credential(idToken, accessToken);
       await fbAuth.signInWithCredential(credential);
       toast("Signed in with Google! ☁️ Sync active 🙏");
 
-      // TEMPORARY DEBUG: awaited (not fire-and-forget) and shows its result,
-      // so we can see exactly why the token exchange succeeds or fails,
-      // instead of it happening invisibly in the background.
+      // Fire-and-forget: sets up Drive backup auth in the background without
+      // blocking or interrupting the sign-in flow the user is waiting on.
       if (serverAuthCode) {
-        try {
-          const exchangeResult = await fbEnableDriveBackup(serverAuthCode);
-          alert("DEBUG driveTokenExchange result:\n" + JSON.stringify(exchangeResult, null, 2));
-        } catch (e) {
-          alert("DEBUG driveTokenExchange THREW:\n" + (e && e.message ? e.message : e));
-        }
-      } else {
-        alert("DEBUG: no serverAuthCode, skipping driveTokenExchange entirely.");
+        fbEnableDriveBackup(serverAuthCode).catch((e) => {
+          console.error("Drive backup auth setup failed:", e);
+        });
       }
     } catch (e) {
       console.error("Native Google sign-in failed:", e);
@@ -13809,15 +13792,33 @@ var _hcjRafId = null; // requestAnimationFrame id for progress bar
 var _hcjPlayerCleanup = null; // cleanup fn for window listeners added in _hcjRenderPlayer
 
 // Audio clip path — works for any stotram that has audio clips
+// A stotram with a single voice just has { prefix }.
+// A stotram with multiple reciter voices adds { voices: { key: filePrefix } }
+// — "default" is whichever voice should play first.
 var _AUDIO_STOTRAMS = {
-  hcj: { prefix: "hcj" },
+  hcj: { prefix: "hcj", voices: { default: "hcj", ankit: "hcj_ankit" } },
   bss: { prefix: "bss" },
   dkc: { prefix: "dkc" }
 };
+var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices
+
 function _hcjAudioPath(i) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
   var prefix = cfg ? cfg.prefix : "hcj";
+  if (cfg && cfg.voices && cfg.voices[_hcjVoice]) prefix = cfg.voices[_hcjVoice];
   return "audio/" + prefix + "_" + (i + 1) + ".mp3";
+}
+
+// Switch reciter voice for the current stotram. Reloads the clip for
+// whichever verse is currently loaded/playing so the new voice takes effect
+// immediately.
+function _hcjSetVoice(v) {
+  if (_hcjVoice === v) return;
+  _hcjVoice = v;
+  var wasPlaying = _hcjPlaying;
+  var idx = _hcjAudioIdx >= 0 ? _hcjAudioIdx : _verseIdx;
+  _hcjStopAudio();
+  if (wasPlaying) _hcjPlayVerse(idx);
 }
 
 // Format seconds → m:ss
@@ -14177,6 +14178,22 @@ function _hcjRenderPlayer(idx) {
     };
     row.appendChild(b);
   });
+
+  // Voice switch (only for stotrams with more than one reciter voice)
+  var _voiceCfg = _AUDIO_STOTRAMS[_currentStotramId];
+  if (_voiceCfg && _voiceCfg.voices) {
+    var voiceBtn = document.createElement("button");
+    voiceBtn.id = "hcj-voice-btn";
+    voiceBtn.className =
+      "hcj-mini-btn hcj-mode-btn" + (_hcjVoice !== "default" ? " hcj-mode-active" : "");
+    voiceBtn.textContent = _hcjVoice === "default" ? "Ankit" : "Orig";
+    voiceBtn.title = "কণ্ঠ পরিবর্তন করুন";
+    voiceBtn.onclick = function () {
+      _hcjSetVoice(_hcjVoice === "default" ? "ankit" : "default");
+      _hcjRenderPlayer(_verseIdx);
+    };
+    row.appendChild(voiceBtn);
+  }
 
   // Verse seek (compact)
   var si = document.createElement("input");

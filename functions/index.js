@@ -230,9 +230,70 @@ exports.driveBackupUpload = functions
   }
   const accessToken = refreshData.access_token;
 
-  // 2. Create the file.
+  // 2. Find-or-create the "Radha Jap BackUp" folder, so every backup lands
+  // in one place instead of loose in Drive's root. The folder ID is cached
+  // on the user's token doc after the first backup, so later backups skip
+  // the search and go straight to a known folder — this only re-checks if
+  // that cached folder was itself deleted or trashed by the user.
+  const DRIVE_BACKUP_FOLDER_NAME = "Radha Jap BackUp";
+  let folderId = tokenDoc.data().driveFolderId || null;
+
+  if (folderId) {
+    // Confirm the cached folder still exists and isn't trashed.
+    const checkResp = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${folderId}?fields=id,trashed`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (!checkResp.ok) {
+      folderId = null;
+    } else {
+      const checkData = await checkResp.json();
+      if (checkData.trashed) folderId = null;
+    }
+  }
+
+  if (!folderId) {
+    // Search for an existing folder with this name (drive.file scope only
+    // ever shows folders/files this app itself created, so any match here
+    // is safely one of ours from a previous session).
+    const searchParams = new URLSearchParams({
+      q: `name = '${DRIVE_BACKUP_FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+      fields: "files(id,name)",
+      spaces: "drive",
+    });
+    const searchResp = await fetch(
+      `https://www.googleapis.com/drive/v3/files?${searchParams.toString()}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    const searchData = await searchResp.json();
+    if (searchResp.ok && searchData.files && searchData.files.length > 0) {
+      folderId = searchData.files[0].id;
+    } else {
+      // Not found — create it.
+      const folderCreateResp = await fetch("https://www.googleapis.com/drive/v3/files", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: DRIVE_BACKUP_FOLDER_NAME,
+          mimeType: "application/vnd.google-apps.folder",
+        }),
+      });
+      const folderCreateData = await folderCreateResp.json();
+      if (!folderCreateResp.ok || !folderCreateData.id) {
+        console.error("driveBackupUpload: folder create failed:", folderCreateData);
+        return { success: false, reason: "folder_create_failed", details: folderCreateData };
+      }
+      folderId = folderCreateData.id;
+    }
+    await tokenDocRef.set({ driveFolderId: folderId }, { merge: true });
+  }
+
+  // 3. Create the file inside that folder.
   const boundary = "radhajapbackupboundary";
-  const metadata = JSON.stringify({ name: filename, mimeType: "application/json" });
+  const metadata = JSON.stringify({ name: filename, mimeType: "application/json", parents: [folderId] });
   const multipartBody =
     `--${boundary}\r\n` +
     `Content-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n` +

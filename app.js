@@ -7570,34 +7570,17 @@ async function fbSignInGoogle() {
       const accessToken = result && result.credential && result.credential.accessToken;
       const serverAuthCode = result && result.credential && result.credential.serverAuthCode;
 
-      // TEMPORARY DEBUG — remove once Drive backup auth is confirmed working.
-      // Shows exactly what the native sign-in returned, since there's no
-      // remote devtools access to check this directly on-device.
-      alert(
-        "DEBUG sign-in result:\n" +
-        "idToken: " + (idToken ? "present (" + idToken.length + " chars)" : "MISSING") + "\n" +
-        "accessToken: " + (accessToken ? "present" : "MISSING") + "\n" +
-        "serverAuthCode: " + (serverAuthCode ? "present (" + serverAuthCode.length + " chars)" : "MISSING") + "\n" +
-        "full credential keys: " + (result && result.credential ? Object.keys(result.credential).join(", ") : "none")
-      );
-
       if (!idToken) throw new Error("No ID token returned from native Google Sign-In");
       const credential = firebase.auth.GoogleAuthProvider.credential(idToken, accessToken);
       await fbAuth.signInWithCredential(credential);
       toast("Signed in with Google! ☁️ Sync active 🙏");
 
-      // TEMPORARY DEBUG: awaited (not fire-and-forget) and shows its result,
-      // so we can see exactly why the token exchange succeeds or fails,
-      // instead of it happening invisibly in the background.
+      // Fire-and-forget: sets up Drive backup auth in the background without
+      // blocking or interrupting the sign-in flow the user is waiting on.
       if (serverAuthCode) {
-        try {
-          const exchangeResult = await fbEnableDriveBackup(serverAuthCode);
-          alert("DEBUG driveTokenExchange result:\n" + JSON.stringify(exchangeResult, null, 2));
-        } catch (e) {
-          alert("DEBUG driveTokenExchange THREW:\n" + (e && e.message ? e.message : e));
-        }
-      } else {
-        alert("DEBUG: no serverAuthCode, skipping driveTokenExchange entirely.");
+        fbEnableDriveBackup(serverAuthCode).catch((e) => {
+          console.error("Drive backup auth setup failed:", e);
+        });
       }
     } catch (e) {
       console.error("Native Google sign-in failed:", e);

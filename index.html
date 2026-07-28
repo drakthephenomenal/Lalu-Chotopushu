@@ -198,9 +198,10 @@
     Community
 
   </button>
-  <button class="nb" onclick="sv('vset',this)">
+  <button class="nb" onclick="sv('vset',this)" style="position:relative;">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     Settings
+    <span id="navSettingsBadge" class="rjap-nav-badge" style="display:none;"></span>
   </button>
 </nav>
 
@@ -1375,6 +1376,18 @@
 <div class="view" id="vset">
   <div class="vt">Settings</div>
 
+  <!-- Notification bell — inbox of past pushes, with an unread badge -->
+  <div class="sc" style="background:rgba(8,12,35,0.82);border:1px solid rgba(255,215,0,0.25);padding:14px 15px;cursor:pointer;" onclick="rjapOpenNotifHistory()">
+    <div style="display:flex;align-items:center;gap:12px;position:relative;">
+      <div style="font-size:20px;line-height:1;">🔔</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:#FFD700;line-height:1.2;">Notifications</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;">See announcements from the developer 🙏</div>
+      </div>
+      <span id="notifBellBadge" class="rjap-badge" style="display:none;"></span>
+    </div>
+  </div>
+
   <!-- GPS Location — at the top for quick access -->
   <div class="sc" style="background:rgba(8,12,35,0.82);border:1px solid rgba(255,215,0,0.25);padding:14px 15px;">
     <div style="display:flex;align-items:center;gap:12px;" id="solarCompassCard">
@@ -2147,6 +2160,19 @@
     <div class="lm-nav" id="lmNav">
       <button class="lm-nav-btn" id="lmPrev" onclick="verseNav(-1)">&#8592;</button>
       <button class="lm-nav-btn" id="lmNext" onclick="verseNav(1)">&#8594;</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATION HISTORY MODAL -->
+<div class="lmo" id="notifHistoryModal" onclick="if(event.target===this)rjapCloseNotifHistory()">
+  <div class="lmd" style="max-height:70vh;">
+    <button class="lmx" onclick="rjapCloseNotifHistory()">✕</button>
+    <div class="lmt">🔔 Notifications</div>
+    <div class="lm-card-wrap">
+      <div class="lm-water-card">
+        <div class="lm-card-inner" id="notifHistoryList" style="padding:14px;overflow-y:auto;"></div>
+      </div>
     </div>
   </div>
 </div>

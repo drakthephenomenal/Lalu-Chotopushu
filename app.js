@@ -306,6 +306,126 @@ function _lcArmWebReminderTimer() {
    sendBroadcastNotification (functions/index.js) reads to send pushes. */
 const FCM_VAPID_KEY = "BBgnbM2KTEB0yT9xOHK--eWm6MO93ihHSLwNpu-NieG59LwygSfRk9MF66_9zjrOrPe0Pff78RmPu68gJ3t-k3o";
 
+/* ── Notification history (inbox) ─────────────────────────────────────
+   Stores received pushes locally so the user can browse past
+   notifications from Settings, with unread-count badges both on the
+   bell button and on the bottom-nav Settings tab. Local-only by design —
+   this is a per-device inbox, not synced across the user's devices. */
+const RJAP_NOTIF_HISTORY_KEY = "rjap_notif_history";
+const RJAP_NOTIF_HISTORY_MAX = 100;
+
+function _rjapGetNotifHistory() {
+  try {
+    const raw = localStorage.getItem(RJAP_NOTIF_HISTORY_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function _rjapSaveNotifHistory(list) {
+  try {
+    localStorage.setItem(RJAP_NOTIF_HISTORY_KEY, JSON.stringify(list.slice(0, RJAP_NOTIF_HISTORY_MAX)));
+  } catch (e) {}
+}
+
+function _rjapAddNotifHistory(title, body) {
+  const list = _rjapGetNotifHistory();
+  list.unshift({
+    id: Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+    title: title || "Notification",
+    body: body || "",
+    ts: Date.now(),
+    read: false,
+  });
+  _rjapSaveNotifHistory(list);
+  _rjapUpdateNotifBadges();
+}
+
+function _rjapUnreadNotifCount() {
+  return _rjapGetNotifHistory().filter((n) => !n.read).length;
+}
+
+function _rjapMarkAllNotifRead() {
+  const list = _rjapGetNotifHistory();
+  let changed = false;
+  for (const n of list) {
+    if (!n.read) {
+      n.read = true;
+      changed = true;
+    }
+  }
+  if (changed) _rjapSaveNotifHistory(list);
+  _rjapUpdateNotifBadges();
+}
+
+function _rjapUpdateNotifBadges() {
+  const count = _rjapUnreadNotifCount();
+  const label = count > 99 ? "99+" : String(count);
+  for (const id of ["notifBellBadge", "navSettingsBadge"]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (count > 0) {
+      el.textContent = label;
+      el.style.display = "flex";
+    } else {
+      el.style.display = "none";
+    }
+  }
+}
+
+function _rjapFormatNotifTime(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (sameDay) return time;
+  return d.toLocaleDateString([], { day: "numeric", month: "short" }) + ", " + time;
+}
+
+function rjapOpenNotifHistory() {
+  const modal = document.getElementById("notifHistoryModal");
+  const listEl = document.getElementById("notifHistoryList");
+  if (!modal || !listEl) return;
+  const history = _rjapGetNotifHistory();
+  listEl.innerHTML = "";
+  if (history.length === 0) {
+    listEl.innerHTML = '<div style="padding:24px 10px;text-align:center;color:rgba(255,255,255,0.4);font-size:13px;">No notifications yet 🙏</div>';
+  } else {
+    for (const n of history) {
+      const row = document.createElement("div");
+      row.className = "notif-hist-row" + (n.read ? "" : " notif-hist-unread");
+      row.innerHTML =
+        '<div class="notif-hist-title">' + (n.read ? "" : '<span class="notif-hist-dot"></span>') +
+        _rjapEscapeHtml(n.title) + "</div>" +
+        (n.body ? '<div class="notif-hist-body">' + _rjapEscapeHtml(n.body) + "</div>" : "") +
+        '<div class="notif-hist-time">' + _rjapFormatNotifTime(n.ts) + "</div>";
+      listEl.appendChild(row);
+    }
+  }
+  modal.classList.add("show");
+  _rjapMarkAllNotifRead(); // opening the inbox counts as reading it
+}
+
+function rjapCloseNotifHistory() {
+  const modal = document.getElementById("notifHistoryModal");
+  if (modal) modal.classList.remove("show");
+}
+
+function _rjapEscapeHtml(s) {
+  const div = document.createElement("div");
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+// Sync badge counts as soon as the DOM is ready, independent of sign-in/push
+// registration timing — the history itself is local, so it's always
+// available immediately even before any network/auth activity finishes.
+document.addEventListener("DOMContentLoaded", () => {
+  _rjapUpdateNotifBadges();
+});
+
 async function lcRegisterPush() {
   if (!fbUser || !fbDb) return false; // tokens are stored per signed-in user
   const granted = await lcRequestNotifPermission();
@@ -320,7 +440,10 @@ async function lcRegisterPush() {
       token = res && res.token;
       FirebaseMessaging.addListener("notificationReceived", (event) => {
         const n = event && event.notification;
-        if (n) toast("🔔 " + (n.title || "Notification"));
+        if (n) {
+          toast("🔔 " + (n.title || "Notification"));
+          _rjapAddNotifHistory(n.title, n.body);
+        }
       });
     } else if (typeof firebase !== "undefined" && firebase.messaging && FCM_VAPID_KEY) {
       const messaging = firebase.messaging();
@@ -328,7 +451,10 @@ async function lcRegisterPush() {
       token = await messaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: reg });
       messaging.onMessage((payload) => {
         const n = payload && payload.notification;
-        if (n) toast("🔔 " + (n.title || "Notification"));
+        if (n) {
+          toast("🔔 " + (n.title || "Notification"));
+          _rjapAddNotifHistory(n.title, n.body);
+        }
       });
     }
   } catch (e) {

@@ -80,7 +80,7 @@ else
   echo "  Appended google-services plugin application to android/app/build.gradle."
 fi
 
-echo "== 6/6 Placing google-services.json =="
+echo "== 6/7  Placing google-services.json =="
 if [ -f "google-services.json" ] && [ ! -f "android/app/google-services.json" ]; then
   cp google-services.json android/app/google-services.json
   echo "  Copied google-services.json into android/app/."
@@ -90,6 +90,28 @@ if [ -f "google-services.json" ] && [ ! -f "android/app/google-services.json" ];
   echo "  freshly downloaded one. See README-ANDROID-SETUP.md step 2."
 else
   echo "  android/app/google-services.json already present, leaving as-is."
+fi
+
+echo "== 7/7  Installing notification icon + reminder tone =="
+# android/ is regenerated from the real Capacitor template by 'cap add
+# android' above, so it never contains these custom resources on its own —
+# they must be copied in from the repo root on every run, same as
+# google-services.json just above. Without this step, notification
+# scheduling silently falls back to Android's default icon/sound instead
+# of throwing an error (see app.js's lcSetupNotifChannel()).
+if [ -f "ic_notification.png" ]; then
+  mkdir -p android/app/src/main/res/drawable
+  cp ic_notification.png android/app/src/main/res/drawable/ic_stat_notify.png
+  echo "  Installed ic_stat_notify.png (notification small icon)."
+else
+  echo "  WARNING: ic_notification.png not found at repo root — notification icon will use the system default."
+fi
+if [ -f "reminder_tone.mp3" ]; then
+  mkdir -p android/app/src/main/res/raw
+  cp reminder_tone.mp3 android/app/src/main/res/raw/reminder_tone.mp3
+  echo "  Installed reminder_tone.mp3 (notification sound)."
+else
+  echo "  WARNING: reminder_tone.mp3 not found at repo root — notifications will use the default system sound."
 fi
 
 echo ""

@@ -75,6 +75,35 @@ else
   echo "  (skipped — resources/icon.png not found)"
 fi
 
+echo "── 6.5/9  Install notification icon + reminder tone ─────────────"
+# android/ is wiped and regenerated from scratch every run (see header), so
+# anything hand-copied straight into android/app/src/main/res/ does NOT
+# survive a rebuild — that's exactly what silently broke the notification
+# icon and custom tone before. Fixed the same way this script already
+# handles google-services.json and PowerPermissionsPlugin.java: keep the
+# real files tracked in git at the repo root, and re-copy them into the
+# fresh android/ project on every single build.
+#
+# ic_notification.png (drawable, referenced in code as "ic_stat_notify")
+# and reminder_tone.mp3 (raw, referenced as "reminder_tone") must stay
+# committed at the repo root for this to work — see app.js's
+# lcSetupNotifChannel()/lcScheduleDailyReminder() for where those names
+# are referenced.
+if [ -f "ic_notification.png" ]; then
+  mkdir -p android/app/src/main/res/drawable
+  cp ic_notification.png android/app/src/main/res/drawable/ic_stat_notify.png
+  echo "  installed ic_stat_notify.png (notification small icon)"
+else
+  echo "  ⚠ ic_notification.png not found at repo root — notification icon will fall back to system default."
+fi
+if [ -f "reminder_tone.mp3" ]; then
+  mkdir -p android/app/src/main/res/raw
+  cp reminder_tone.mp3 android/app/src/main/res/raw/reminder_tone.mp3
+  echo "  installed reminder_tone.mp3 (notification sound)"
+else
+  echo "  ⚠ reminder_tone.mp3 not found at repo root — notifications will fall back to the default system sound."
+fi
+
 echo "── 7/9  Patch AndroidManifest.xml (location permissions) ───────"
 MANIFEST="android/app/src/main/AndroidManifest.xml"
 if ! grep -q "ACCESS_FINE_LOCATION" "$MANIFEST"; then

@@ -3484,3 +3484,90 @@ body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !import
   }
 }
 
+
+/* ── Hit Chaurasi Ji player: prev/next arrows ────────────────────────────
+   Fix for invisible-but-clickable arrows: four separate .hcj-mini-btn
+   definitions exist above (added at different times), and depending on
+   which one wins the cascade on a given build, the arrow glyph can end up
+   low-contrast or blended into its own background. This rule is placed
+   last and targets the IDs directly (higher specificity than any of the
+   class-only rules above), so the arrows are always clearly visible
+   regardless of that older cascade. */
+#hcj-prev-btn,
+#hcj-next-btn {
+  background: rgba(255, 215, 0, 0.14) !important;
+  border: 1px solid rgba(255, 215, 0, 0.45) !important;
+  color: #FFD700 !important;
+  opacity: 1 !important;
+}
+#hcj-prev-btn:disabled,
+#hcj-next-btn:disabled {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: rgba(255, 255, 255, 0.25) !important;
+  opacity: 1 !important;
+}
+
+/* ── Notification bell + inbox ───────────────────────────────────────── */
+.rjap-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: #E74C3C;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+}
+.rjap-badge, .rjap-nav-badge { display: flex; }
+.rjap-nav-badge {
+  position: absolute;
+  top: 2px;
+  right: 14px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #E74C3C;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+  line-height: 1;
+}
+.notif-hist-row {
+  padding: 10px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.notif-hist-row:last-child { border-bottom: none; }
+.notif-hist-unread .notif-hist-title { color: #FFD700; }
+.notif-hist-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.85);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.notif-hist-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #E74C3C;
+  flex-shrink: 0;
+}
+.notif-hist-body {
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+.notif-hist-time {
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  margin-top: 4px;
+}

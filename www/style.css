@@ -3676,3 +3676,29 @@ body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !import
   color: #888888;
   font-size: 13px;
 }
+
+/* ── Update App card: glowing blue "update available" state ──
+   Default look stays the quiet gold-outline card. When a newer version
+   IS available, .update-available takes over: the whole card shifts to a
+   blue gradient and pulses with a soft glow, so it's unmistakable without
+   needing to read the status text. Nothing changes when no update is
+   available or the check hasn't run yet — no glow, no extra attention. */
+#appUpdateCard.update-available {
+  background: linear-gradient(135deg, rgba(28, 92, 224, 0.4), rgba(10, 40, 120, 0.6)) !important;
+  border: 1px solid rgba(90, 170, 255, 0.9) !important;
+  animation: appUpdateGlow 1.8s ease-in-out infinite;
+}
+#appUpdateCard.update-available #appUpdateTitle {
+  color: #bfe0ff !important;
+}
+#appUpdateCard.update-available #appUpdateStatus {
+  color: #dcecff !important;
+  font-weight: 600;
+}
+#appUpdateCard.update-available #appUpdateChev {
+  color: rgba(180, 215, 255, 0.9) !important;
+}
+@keyframes appUpdateGlow {
+  0%, 100% { box-shadow: 0 0 8px 0 rgba(70, 150, 255, 0.35); }
+  50% { box-shadow: 0 0 22px 5px rgba(70, 150, 255, 0.8); }
+}

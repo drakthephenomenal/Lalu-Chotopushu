@@ -17757,7 +17757,9 @@ function _showUserReplyPopup(text) {
 // automatically since this app doesn't use a JS bundler.
 //
 // SETUP REQUIRED (native side, one-time):
-//   1. npm install @capacitor-community/file-opener
+//   1. npm install @capacitor-community/file-opener@6 @capacitor/file-transfer
+//      (file-opener MUST be @6.x — the latest tag targets Capacitor 8 and
+//      will fail with an ERESOLVE error against this project's Capacitor 6)
 //   2. npx cap sync android
 //   3. In android/app/src/main/AndroidManifest.xml, add (as a sibling of
 //      your other <uses-permission> tags):
@@ -17766,6 +17768,15 @@ function _showUserReplyPopup(text) {
 //      (Capacitor's Share/Camera plugins normally add one) — only add one
 //      yourself if `cap sync` warns it's missing.
 //   4. Rebuild: ./gradlew assembleDebug (or your release build command)
+//
+// NOTE: this deliberately does NOT use window.fetch() to talk to GitHub.
+// The app's WebView runs on its own origin (e.g. https://localhost inside
+// Capacitor), and GitHub's release-asset host does not send back CORS
+// headers permitting that origin — fetch() gets blocked before the
+// request even leaves the device ("Failed to fetch", not a 404 or a
+// real network error). CapacitorHttp.request() and FileTransfer both
+// make the request at the native layer instead of through the WebView,
+// which sidesteps CORS entirely.
 //
 // TODO: replace <your-username>/<your-repo> below with your actual GitHub
 // path. This "latest" URL never needs to change again afterward — every
@@ -17808,17 +17819,20 @@ async function checkForUpdateAvailable() {
   const Cap = window.Capacitor;
   if (!Cap || !Cap.isNativePlatform || !Cap.isNativePlatform()) return;
   const AppInfoPlugin = Cap.Plugins && Cap.Plugins.App;
-  if (!AppInfoPlugin) return;
+  const Http = Cap.Plugins && Cap.Plugins.CapacitorHttp; // bundled in @capacitor/core — no extra install needed
+  if (!AppInfoPlugin || !Http) return;
 
   try {
     const info = await AppInfoPlugin.getInfo();
     const localVersion = info && info.version; // e.g. "1.0.0" (versionName)
 
-    const resp = await fetch(APP_UPDATE_RELEASE_API, {
+    const resp = await Http.request({
+      url: APP_UPDATE_RELEASE_API,
+      method: "GET",
       headers: { Accept: "application/vnd.github+json" },
     });
-    if (!resp.ok) return;
-    const data = await resp.json();
+    // CapacitorHttp auto-parses a JSON response body into resp.data.
+    const data = resp && resp.data;
     const remoteTag = data && data.tag_name; // e.g. "v1.0.1"
     if (!remoteTag || !localVersion) return;
 
@@ -17827,9 +17841,10 @@ async function checkForUpdateAvailable() {
     if (_isNewerVersion(remoteTag, localVersion)) {
       iconEl.textContent = "⬆️";
       statusEl.textContent = "Update available — " + remoteTag + " (you have v" + localVersion + ")";
-      if (cardEl) cardEl.style.borderColor = "rgba(255,215,0,0.7)";
+      if (cardEl) cardEl.classList.add("update-available");
     } else {
       statusEl.textContent = "You're up to date (v" + localVersion + ") 🙏";
+      if (cardEl) cardEl.classList.remove("update-available");
     }
   } catch (e) {
     console.warn("Update check failed (non-fatal):", e);
@@ -17849,52 +17864,47 @@ async function checkAppUpdate() {
   }
 
   const Filesystem = Cap.Plugins && Cap.Plugins.Filesystem;
+  const FileTransfer = Cap.Plugins && Cap.Plugins.FileTransfer;
   const FileOpener = Cap.Plugins && Cap.Plugins.FileOpener;
-  if (!Filesystem || !FileOpener) {
+  if (!Filesystem || !FileTransfer || !FileOpener) {
     statusEl.textContent =
-      "Update plugin missing — install @capacitor-community/file-opener and rebuild.";
+      "Update plugin missing — install @capacitor/file-transfer and @capacitor-community/file-opener@6, then rebuild.";
     return;
   }
 
+  let progressListener = null;
   try {
     iconEl.textContent = "⏳";
     statusEl.textContent = "Downloading update…";
     progWrap.style.display = "block";
     progBar.style.width = "0%";
 
-    const resp = await fetch(APP_UPDATE_APK_URL);
-    if (!resp.ok) throw new Error("Download failed (HTTP " + resp.status + ")");
-
-    const total = Number(resp.headers.get("content-length")) || 0;
-    const reader = resp.body.getReader();
-    const chunks = [];
-    let received = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      received += value.length;
-      if (total) progBar.style.width = Math.round((received / total) * 100) + "%";
-    }
-    const blob = new Blob(chunks, { type: "application/vnd.android.package-archive" });
-
-    const base64Data = await new Promise((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(String(fr.result).split(",")[1]);
-      fr.onerror = reject;
-      fr.readAsDataURL(blob);
+    // Resolve the on-device destination path first, then have
+    // FileTransfer download straight to it natively — the ~137MB APK
+    // never gets pulled through the JS bridge as base64, which would
+    // risk an out-of-memory crash at that size.
+    const fileInfo = await Filesystem.getUri({
+      directory: "CACHE",
+      path: "RadhaNaamJap.apk",
     });
 
-    statusEl.textContent = "Saving…";
-    const written = await Filesystem.writeFile({
-      path: "RadhaNaamJap.apk",
-      data: base64Data,
-      directory: "CACHE",
+    if (FileTransfer.addListener) {
+      progressListener = await FileTransfer.addListener("progress", (p) => {
+        if (p && p.contentLength) {
+          progBar.style.width = Math.round((p.bytes / p.contentLength) * 100) + "%";
+        }
+      });
+    }
+
+    await FileTransfer.downloadFile({
+      url: APP_UPDATE_APK_URL,
+      path: fileInfo.uri,
+      progress: true,
     });
 
     statusEl.textContent = "Opening installer…";
     await FileOpener.open({
-      filePath: written.uri,
+      filePath: fileInfo.uri,
       contentType: "application/vnd.android.package-archive",
     });
 
@@ -17903,9 +17913,12 @@ async function checkAppUpdate() {
   } catch (e) {
     console.error("App update failed:", e);
     iconEl.textContent = "⚠️";
-    statusEl.textContent =
-      "Update failed: " + (e && e.message ? e.message : "unknown error");
+    const msg = (e && (e.message || (e.data && e.data.body))) || "unknown error";
+    statusEl.textContent = "Update failed: " + msg;
   } finally {
+    if (progressListener && progressListener.remove) {
+      try { progressListener.remove(); } catch (_) {}
+    }
     setTimeout(() => {
       progWrap.style.display = "none";
     }, 1500);

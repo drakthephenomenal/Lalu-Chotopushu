@@ -1,5 +1,20 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v184
+// Radha Naam Jap — Service Worker  v186
+// v186: bumped cache to force-invalidate stale app.js/style.css/index.html —
+// the Update App card now turns blue and pulses with a soft glow whenever
+// a newer version is actually available (via .update-available class),
+// instead of just a thin gold border. Stays in its normal quiet state
+// when already up to date or before the check has run.
+// v185: bumped cache to force-invalidate stale app.js — fixes "Update
+// failed: Failed to fetch" when tapping Update App. Root cause: the app's
+// WebView origin isn't CORS-allowed by GitHub's release/API hosts, so
+// plain fetch() was blocked before the request left the device. Now uses
+// CapacitorHttp.request() for the small version-check JSON call, and the
+// dedicated @capacitor/file-transfer plugin for the actual ~137MB APK
+// download — both run at the native layer (no CORS), and file-transfer
+// writes straight to disk instead of pulling the whole APK through the
+// JS bridge as base64 (which risked an OOM crash at that file size).
+// Requires: npm install @capacitor-community/file-opener@6 @capacitor/file-transfer
 // v184: bumped cache to force-invalidate stale app.js —
 // adds automatic "Update available — vX.X.X" detection on app launch:
 // compares the installed app's version (Capacitor App.getInfo()) against
@@ -82,7 +97,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v184';
+const CACHE = 'radha-jap-v186';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

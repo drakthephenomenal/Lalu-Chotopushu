@@ -17870,27 +17870,47 @@ async function checkForUpdateAvailable() {
   const statusEl = document.getElementById("appUpdateStatus");
   const iconEl = document.getElementById("appUpdateIcon");
   const cardEl = document.getElementById("appUpdateCard");
+  const versionEl = document.getElementById("appInstalledVersion");
   if (!statusEl || !iconEl) return;
 
   const Cap = window.Capacitor;
   if (!Cap || !Cap.isNativePlatform || !Cap.isNativePlatform()) return;
   const AppInfoPlugin = Cap.Plugins && Cap.Plugins.App;
   const Http = Cap.Plugins && Cap.Plugins.CapacitorHttp; // bundled in @capacitor/core — no extra install needed
-  if (!AppInfoPlugin || !Http) return;
+  if (!AppInfoPlugin) return;
 
+  // Show the installed version immediately — this line is always visible
+  // regardless of whether the network check below succeeds, so it still
+  // works offline or if GitHub has no releases published at all.
+  let localVersion = null;
   try {
     const info = await AppInfoPlugin.getInfo();
-    const localVersion = info && info.version; // e.g. "1.0.0" (versionName)
+    localVersion = info && info.version; // e.g. "1.0.5" (versionName)
+    if (versionEl && localVersion) versionEl.textContent = "Installed version: v" + localVersion;
+  } catch (e) {
+    console.warn("Could not read installed app version:", e);
+    return;
+  }
 
+  if (!Http || !localVersion) return;
+
+  try {
     const resp = await Http.request({
       url: APP_UPDATE_RELEASE_API,
       method: "GET",
       headers: { Accept: "application/vnd.github+json" },
     });
     // CapacitorHttp auto-parses a JSON response body into resp.data.
+    // If no release has been published (or all were deleted), GitHub
+    // returns 404 with {"message":"Not Found"} — no tag_name, so this
+    // falls through to the friendly message below rather than erroring.
     const data = resp && resp.data;
-    const remoteTag = data && data.tag_name; // e.g. "v1.0.1"
-    if (!remoteTag || !localVersion) return;
+    const remoteTag = data && data.tag_name; // e.g. "v1.0.6"
+    if (!remoteTag) {
+      statusEl.textContent = "No release published yet on GitHub.";
+      if (cardEl) cardEl.classList.remove("update-available");
+      return;
+    }
 
     window._appUpdateRemoteTag = remoteTag; // stash for checkAppUpdate() below
 
@@ -17899,7 +17919,7 @@ async function checkForUpdateAvailable() {
       statusEl.textContent = "Update available — " + remoteTag + " (you have v" + localVersion + ")";
       if (cardEl) cardEl.classList.add("update-available");
     } else {
-      statusEl.textContent = "You're up to date (v" + localVersion + ") 🙏";
+      statusEl.textContent = "You're up to date 🙏";
       if (cardEl) cardEl.classList.remove("update-available");
     }
   } catch (e) {

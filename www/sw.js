@@ -1,5 +1,14 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v188
+// Radha Naam Jap — Service Worker  v189
+// v189: bumped cache to force-invalidate stale app.js/index.html —
+// Update App card now always shows "Installed version: vX.X.X" as a
+// persistent line, independent of whether the GitHub update check
+// succeeds — works offline or with zero releases published. Also adds a
+// friendly "No release published yet on GitHub" message instead of
+// silently doing nothing when GitHub returns 404 (e.g. after deleting
+// all releases). NOTE: the GitHub *tag* must stay numeric (v1.0.6 etc)
+// for the version comparison to keep working — the release *title* can
+// be anything (e.g. "MashuTheKingCat 1").
 // v188: bumped cache to force-invalidate stale app.js/index.html —
 // Settings > Google Drive Backup now has a time picker (device-local)
 // under the Daily Auto-Backup toggle. Chosen hour/minute is staged into
@@ -113,7 +122,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v188';
+const CACHE = 'radha-jap-v189';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

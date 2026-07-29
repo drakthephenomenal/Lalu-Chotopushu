@@ -1,5 +1,10 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v181
+// Radha Naam Jap — Service Worker  v182
+// v182: bumped cache to force-invalidate stale style.css — fixes the
+// Hit Chaurasi Ji player's prev/next arrows being pushed off-screen
+// (and clipped by body{overflow-x:hidden}) on narrow Android phones,
+// while showing fine on wider screens like iPad. .hcj-player row is
+// now compacted under 480px width, plus a hidden-scrollbar fallback.
 // v181: bumped cache to force-invalidate stale app.js/index.html/style.css —
 // picks up: dedicated KV-only History section (table column, Period Totals
 // card, drill-down) mirroring the existing HK-only history view.
@@ -60,7 +65,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v181';
+const CACHE = 'radha-jap-v182';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

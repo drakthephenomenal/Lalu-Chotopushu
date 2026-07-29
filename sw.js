@@ -1,5 +1,14 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v182
+// Radha Naam Jap — Service Worker  v183
+// v183: bumped cache to force-invalidate stale app.js/index.html —
+// adds an in-app "Update App" card at the top of Settings that downloads
+// the latest APK from a GitHub Release via Capacitor Filesystem and hands
+// it to the system installer (@capacitor-community/file-opener — see
+// setup notes above checkAppUpdate() in app.js). Also fixes autoLoadHistory
+// permanently disabling itself after one failed timing race, which could
+// leave the History section's From/To fields stuck blank for the rest of
+// the session ("Please select both From and To dates" even though a
+// preset button looked selected).
 // v182: bumped cache to force-invalidate stale style.css — fixes the
 // Hit Chaurasi Ji player's prev/next arrows being pushed off-screen
 // (and clipped by body{overflow-x:hidden}) on narrow Android phones,
@@ -65,7 +74,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v182';
+const CACHE = 'radha-jap-v183';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

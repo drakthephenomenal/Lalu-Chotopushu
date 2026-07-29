@@ -1378,6 +1378,25 @@
 <div class="view" id="vset">
   <div class="vt">Settings</div>
 
+  <!-- App Update — checks the latest GitHub Release, downloads the APK
+       via Capacitor Filesystem, then hands it to the system installer.
+       Kept at the very top so it's the first thing users see. -->
+  <div class="sc" id="appUpdateCard" style="background:rgba(8,12,35,0.82);border:1px solid rgba(255,215,0,0.25);padding:14px 15px;cursor:pointer;" onclick="checkAppUpdate()">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:20px;line-height:1;" id="appUpdateIcon">🔄</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:#FFD700;line-height:1.2;">Update App</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;" id="appUpdateStatus">Tap to check for the latest version 🙏</div>
+      </div>
+      <div style="color:rgba(255,215,0,0.5);font-size:16px;">›</div>
+    </div>
+    <div id="appUpdateProgWrap" style="display:none;margin-top:10px;">
+      <div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.08);overflow:hidden;">
+        <div id="appUpdateProgBar" style="height:100%;width:0%;background:linear-gradient(90deg,#FFD700,#ffb432);transition:width .2s;"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Notification bell — inbox of past pushes, with an unread badge -->
   <div class="sc" style="background:rgba(8,12,35,0.82);border:1px solid rgba(255,215,0,0.25);padding:14px 15px;cursor:pointer;" onclick="rjapOpenNotifHistory()">
     <div style="display:flex;align-items:center;gap:12px;position:relative;">

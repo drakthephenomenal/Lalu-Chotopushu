@@ -3535,18 +3535,31 @@ window.addEventListener("load", () => {
   setTimeout(() => renderBeadFrame(), 100);
 });
 
-// ── Auto-load today's view in History on first open ──
-let _historyAutoLoaded = false;
+// ── Auto-load today's view in History on open ──
+// Fills in From/To only when they're actually blank (never overwrites a
+// date range the user picked themselves), and — unlike before — this is
+// NOT a permanent one-shot: if the panel wasn't open yet at the 50ms mark
+// on a given tap (a timing race with the open/close transition), the next
+// tap will simply try again instead of being silently disabled forever.
 function autoLoadHistory() {
-  if (_historyAutoLoaded) return;
   const body = document.getElementById("historyBody");
   if (!body || !body.classList.contains("open")) return;
-  _historyAutoLoaded = true;
-  const today = _ldk(new Date());
   const f = document.getElementById("histFrom"),
     t = document.getElementById("histTo");
-  if (f && !f.value) f.value = today;
-  if (t && !t.value) t.value = today;
+  if (!f || !t) return;
+  if (f.value && t.value) {
+    // Already has a range (from an earlier auto-fill or the user's own
+    // pick) — just re-render, since the underlying jap mode may have
+    // changed (e.g. Trahimam/KV toggled) since the last render.
+    if (typeof renderHistory === "function")
+      try {
+        renderHistory();
+      } catch (e) {}
+    return;
+  }
+  const today = _ldk(new Date());
+  f.value = today;
+  t.value = today;
   const todayBtn = document.querySelector(
     '#histPresetRow .hpb[data-preset="1"]',
   );
@@ -17733,3 +17746,104 @@ function _showUserReplyPopup(text) {
     setup();
   }
 })();
+
+// ═══════════════════════════════════════════════════════
+// ── APP UPDATE (sideload latest APK from a GitHub Release) ──
+// ═══════════════════════════════════════════════════════
+// Uses Capacitor's Filesystem plugin (to save the download) and
+// @capacitor-community/file-opener (to hand the saved file to Android's
+// system package installer). Both are exposed on window.Capacitor.Plugins
+// automatically since this app doesn't use a JS bundler.
+//
+// SETUP REQUIRED (native side, one-time):
+//   1. npm install @capacitor-community/file-opener
+//   2. npx cap sync android
+//   3. In android/app/src/main/AndroidManifest.xml, add (as a sibling of
+//      your other <uses-permission> tags):
+//        <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+//      A FileProvider <provider> entry is very likely already present
+//      (Capacitor's Share/Camera plugins normally add one) — only add one
+//      yourself if `cap sync` warns it's missing.
+//   4. Rebuild: ./gradlew assembleDebug (or your release build command)
+//
+// TODO: replace <your-username>/<your-repo> below with your actual GitHub
+// path. This "latest" URL never needs to change again afterward — every
+// future Release just needs an asset with this exact filename attached.
+const APP_UPDATE_APK_URL =
+  "https://github.com/drakthephenomenal/Lalu-Chotopushu/releases/latest/download/RadhaNaamJap.apk";
+
+async function checkAppUpdate() {
+  const iconEl = document.getElementById("appUpdateIcon");
+  const statusEl = document.getElementById("appUpdateStatus");
+  const progWrap = document.getElementById("appUpdateProgWrap");
+  const progBar = document.getElementById("appUpdateProgBar");
+
+  const Cap = window.Capacitor;
+  if (!Cap || !Cap.isNativePlatform || !Cap.isNativePlatform()) {
+    statusEl.textContent = "Updates only work inside the installed app, not the browser.";
+    return;
+  }
+
+  const Filesystem = Cap.Plugins && Cap.Plugins.Filesystem;
+  const FileOpener = Cap.Plugins && Cap.Plugins.FileOpener;
+  if (!Filesystem || !FileOpener) {
+    statusEl.textContent =
+      "Update plugin missing — install @capacitor-community/file-opener and rebuild.";
+    return;
+  }
+
+  try {
+    iconEl.textContent = "⏳";
+    statusEl.textContent = "Downloading update…";
+    progWrap.style.display = "block";
+    progBar.style.width = "0%";
+
+    const resp = await fetch(APP_UPDATE_APK_URL);
+    if (!resp.ok) throw new Error("Download failed (HTTP " + resp.status + ")");
+
+    const total = Number(resp.headers.get("content-length")) || 0;
+    const reader = resp.body.getReader();
+    const chunks = [];
+    let received = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      if (total) progBar.style.width = Math.round((received / total) * 100) + "%";
+    }
+    const blob = new Blob(chunks, { type: "application/vnd.android.package-archive" });
+
+    const base64Data = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result).split(",")[1]);
+      fr.onerror = reject;
+      fr.readAsDataURL(blob);
+    });
+
+    statusEl.textContent = "Saving…";
+    const written = await Filesystem.writeFile({
+      path: "RadhaNaamJap.apk",
+      data: base64Data,
+      directory: "CACHE",
+    });
+
+    statusEl.textContent = "Opening installer…";
+    await FileOpener.open({
+      filePath: written.uri,
+      contentType: "application/vnd.android.package-archive",
+    });
+
+    iconEl.textContent = "✅";
+    statusEl.textContent = "Installer opened — follow the on-screen prompt to finish.";
+  } catch (e) {
+    console.error("App update failed:", e);
+    iconEl.textContent = "⚠️";
+    statusEl.textContent =
+      "Update failed: " + (e && e.message ? e.message : "unknown error");
+  } finally {
+    setTimeout(() => {
+      progWrap.style.display = "none";
+    }, 1500);
+  }
+}

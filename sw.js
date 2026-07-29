@@ -1,5 +1,13 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v187
+// Radha Naam Jap — Service Worker  v188
+// v188: bumped cache to force-invalidate stale app.js/index.html —
+// Settings > Google Drive Backup now has a time picker (device-local)
+// under the Daily Auto-Backup toggle. Chosen hour/minute is staged into
+// CapacitorKV so background/runner.js (patched separately via
+// patch_runner.py — not part of this www bundle) can check "am I within
+// ~35 min of the chosen time, and haven't already backed up today?"
+// before uploading, instead of just firing on whatever cycle WorkManager
+// happens to wake it.
 // v187: bumped cache to force-invalidate stale app.js — drops
 // @capacitor/file-transfer entirely (its native Android module needs a
 // newer Gradle/AGP toolchain than this project has and reliably fails
@@ -105,7 +113,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v187';
+const CACHE = 'radha-jap-v188';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

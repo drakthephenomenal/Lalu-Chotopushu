@@ -1797,9 +1797,14 @@
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 2px;border-top:1px solid rgba(255,215,0,0.15)">
       <div>
         <div style="font-size:14px;color:var(--gold);font-weight:600">Daily Auto-Backup</div>
-        <div style="font-size:11px;color:var(--td);margin-top:2px">Backs up automatically once a day, even if the app is closed.</div>
+        <div style="font-size:11px;color:var(--td);margin-top:2px">Backs up automatically once a day, even if the app is closed — at approximately the time you choose below (checked roughly hourly, so it may land within ~35 min of your target).</div>
       </div>
       <div class="tg" id="tgDriveBackupDaily" onclick="toggleDriveBackupDaily()"></div>
+    </div>
+    <div id="driveBackupTimeRow" style="display:none;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 2px;">
+      <div style="font-size:12px;color:var(--td)">Backup time (device local)</div>
+      <input type="time" id="driveBackupTimeIn" onchange="saveDriveBackupTime(this)"
+        style="padding:8px 10px;border-radius:8px;border:1px solid rgba(255,215,0,0.3);background:#1a1f3a;color:#fff;font-size:13px;font-family:Inter,sans-serif;color-scheme:dark">
     </div>
   </div>
 

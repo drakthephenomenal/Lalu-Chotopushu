@@ -574,6 +574,8 @@ const App = {
     lbOptIn: false,        // leaderboard opt-in
     lbDisplayName: "",     // leaderboard display name
     driveBackupDailyEnabled: false,  // opt-in daily auto-backup to Google Drive
+    driveBackupHour: 3,    // 0-23, device-local time — default 3 AM
+    driveBackupMinute: 0,  // 0-59
     bgRadhaVallabh: 1,
     bgHitju: 1,
     bgGurudev: 1,
@@ -8835,6 +8837,8 @@ async function fbPushFull() {
     msConsider: App.S.msConsider || { radha: true, rv: true, hk: true, kv: true, n28: true },
     lbOptIn: App.S.lbOptIn || false,
     driveBackupDailyEnabled: App.S.driveBackupDailyEnabled || false,
+    driveBackupHour: App.S.driveBackupHour ?? 3,
+    driveBackupMinute: App.S.driveBackupMinute ?? 0,
     lbDisplayName: App.S.lbDisplayName || "",
     bgRadhaVallabh: App.S.bgRadhaVallabh ?? 1,
     bgHitju: App.S.bgHitju ?? 1,
@@ -9107,6 +9111,8 @@ function fbApplyRemote(d) {
   // Leaderboard & Photo settings
   if (d.lbOptIn !== undefined) App.S.lbOptIn = d.lbOptIn;
   if (d.driveBackupDailyEnabled !== undefined) App.S.driveBackupDailyEnabled = d.driveBackupDailyEnabled;
+  if (d.driveBackupHour !== undefined) App.S.driveBackupHour = d.driveBackupHour;
+  if (d.driveBackupMinute !== undefined) App.S.driveBackupMinute = d.driveBackupMinute;
   if (d.lbDisplayName !== undefined) App.S.lbDisplayName = d.lbDisplayName;
   if (d.bgRadhaVallabh !== undefined) App.S.bgRadhaVallabh = d.bgRadhaVallabh;
   if (d.bgHitju !== undefined) App.S.bgHitju = d.bgHitju;
@@ -16628,11 +16634,54 @@ function populateLbSettingsUI() {
 function populateDriveBackupUI() {
   const tg = document.getElementById('tgDriveBackupDaily');
   if (tg) tg.classList.toggle('on', !!App.S.driveBackupDailyEnabled);
+  const timeIn = document.getElementById('driveBackupTimeIn');
+  const timeRow = document.getElementById('driveBackupTimeRow');
+  if (timeRow) timeRow.style.display = App.S.driveBackupDailyEnabled ? 'flex' : 'none';
+  if (timeIn) {
+    const hh = String(App.S.driveBackupHour ?? 3).padStart(2, '0');
+    const mm = String(App.S.driveBackupMinute ?? 0).padStart(2, '0');
+    timeIn.value = hh + ':' + mm;
+  }
+}
+
+// Stages the chosen backup hour/minute into CapacitorKV so background/
+// runner.js (which has no access to App.S or the WebView) can read them
+// on its next periodicSync wake. Device-local time — runner.js compares
+// against `new Date()` in its own JS context, which is the same device
+// clock/timezone, so no UTC conversion is needed here.
+async function _stageDriveBackupTime() {
+  if (!window.Capacitor?.Plugins?.CapacitorKV) return;
+  try {
+    await window.Capacitor.Plugins.CapacitorKV.set({
+      key: 'bgsync_drive_backup_hour',
+      value: String(App.S.driveBackupHour ?? 3),
+    });
+    await window.Capacitor.Plugins.CapacitorKV.set({
+      key: 'bgsync_drive_backup_minute',
+      value: String(App.S.driveBackupMinute ?? 0),
+    });
+  } catch (_) {}
+}
+
+// Called when the person changes the <input type="time"> in Settings.
+function saveDriveBackupTime(timeInputEl) {
+  const val = timeInputEl && timeInputEl.value; // "HH:MM"
+  if (!val) return;
+  const [hh, mm] = val.split(':').map((n) => parseInt(n, 10));
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return;
+  App.S.driveBackupHour = hh;
+  App.S.driveBackupMinute = mm;
+  App.save();
+  _stageDriveBackupTime();
+  const hh12 = ((hh % 12) || 12);
+  const ampm = hh < 12 ? 'AM' : 'PM';
+  toast('Daily backup time set to ' + hh12 + ':' + String(mm).padStart(2, '0') + ' ' + ampm);
 }
 
 // Daily Auto-Backup toggle (Settings > Google Drive Backup). When turned
 // on, fbPushFull() starts staging a fresh backup JSON into CapacitorKV
-// every sync — picked up once a day by background/runner.js. Turning it
+// every sync — picked up once a day by background/runner.js, at
+// (roughly) the time chosen via saveDriveBackupTime() above. Turning it
 // off clears the staged payload so a stale/off backup can't sneak through
 // on the next scheduled run.
 async function toggleDriveBackupDaily() {
@@ -16645,6 +16694,7 @@ async function toggleDriveBackupDaily() {
   App.save();
   if (App.S.driveBackupDailyEnabled) {
     toast('☁️ Daily Drive auto-backup enabled');
+    _stageDriveBackupTime();
     fbPushFull().catch((e) => console.warn('fbPushFull after enabling drive backup:', e));
   } else {
     toast('Daily Drive auto-backup turned off');

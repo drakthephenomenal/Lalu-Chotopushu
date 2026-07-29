@@ -50,6 +50,20 @@ else
   npx cap add android
 fi
 
+# -- Auto-bump versionName/versionCode on every build --
+# android/build.gradle gets regenerated from scratch above (rm -rf android),
+# so nothing set on it survives on its own. This counter file lives at the
+# repo ROOT (not inside android/) specifically so it survives that wipe and
+# keeps counting up across every build, without needing a manual sed first.
+VERSION_FILE=".app-version"
+if [ ! -f "$VERSION_FILE" ]; then echo 7 > "$VERSION_FILE"; fi
+NEXT_VERSION_CODE=$(( $(cat "$VERSION_FILE") + 1 ))
+echo "$NEXT_VERSION_CODE" > "$VERSION_FILE"
+NEXT_VERSION_NAME="1.0.$NEXT_VERSION_CODE"
+sed -i -E "s/versionCode [0-9]+/versionCode $NEXT_VERSION_CODE/" android/app/build.gradle
+sed -i -E "s/versionName \"[^\"]*\"/versionName \"$NEXT_VERSION_NAME\"/" android/app/build.gradle
+echo "  bumped to versionCode $NEXT_VERSION_CODE / versionName $NEXT_VERSION_NAME"
+
 echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
 echo "── 4/9  Copy web assets + sync plugins ──────────────────────────"
@@ -73,6 +87,35 @@ if [ -f "resources/icon.png" ]; then
   npx capacitor-assets generate --android
 else
   echo "  (skipped — resources/icon.png not found)"
+fi
+
+echo "── 6.5/9  Install notification icon + reminder tone ─────────────"
+# android/ is wiped and regenerated from scratch every run (see header), so
+# anything hand-copied straight into android/app/src/main/res/ does NOT
+# survive a rebuild — that's exactly what silently broke the notification
+# icon and custom tone before. Fixed the same way this script already
+# handles google-services.json and PowerPermissionsPlugin.java: keep the
+# real files tracked in git at the repo root, and re-copy them into the
+# fresh android/ project on every single build.
+#
+# ic_notification.png (drawable, referenced in code as "ic_stat_notify")
+# and reminder_tone.mp3 (raw, referenced as "reminder_tone") must stay
+# committed at the repo root for this to work — see app.js's
+# lcSetupNotifChannel()/lcScheduleDailyReminder() for where those names
+# are referenced.
+if [ -f "ic_notification.png" ]; then
+  mkdir -p android/app/src/main/res/drawable
+  cp ic_notification.png android/app/src/main/res/drawable/ic_stat_notify.png
+  echo "  installed ic_stat_notify.png (notification small icon)"
+else
+  echo "  ⚠ ic_notification.png not found at repo root — notification icon will fall back to system default."
+fi
+if [ -f "reminder_tone.mp3" ]; then
+  mkdir -p android/app/src/main/res/raw
+  cp reminder_tone.mp3 android/app/src/main/res/raw/reminder_tone.mp3
+  echo "  installed reminder_tone.mp3 (notification sound)"
+else
+  echo "  ⚠ reminder_tone.mp3 not found at repo root — notifications will fall back to the default system sound."
 fi
 
 echo "── 7/9  Patch AndroidManifest.xml (location permissions) ───────"

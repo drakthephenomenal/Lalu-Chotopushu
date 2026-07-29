@@ -12,6 +12,7 @@
     "build:apk:release": "bash setup-www.sh && npx cap sync android && cd android && ./gradlew assembleRelease"
   },
   "dependencies": {
+    "@capacitor-community/file-opener": "^6.0.1",
     "@capacitor-firebase/authentication": "^6.3.0",
     "@capacitor-firebase/messaging": "^6.3.0",
     "@capacitor/android": "^6.1.2",
@@ -28,5 +29,8 @@
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^6.1.2"
+  },
+  "allowScripts": {
+    "sharp@0.32.6": true
   }
 }

@@ -65,9 +65,15 @@ with your real client ID.
 
 ## Step 5 — build
 ```bash
-npx cap sync android
-npm run build:apk
+bash build-android.sh
 ```
+This re-generates `android/` from scratch and re-applies every native patch
+this project needs (manifest deep links, google-services.json, notification
+icon/sound, MainActivity fixes, dependency fixes) before compiling — safe
+and repeatable on every build. (Do **not** run `npm run build:apk` directly;
+it skips all of these patches, which is what caused the notification icon
+and custom sound to silently break in the past.)
+
 APK: `android/app/build/outputs/apk/debug/app-debug.apk`
 (right-click it in the Codespaces file explorer → Download).
 

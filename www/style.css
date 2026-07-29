@@ -3524,6 +3524,39 @@ body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !import
   opacity: 1 !important;
 }
 
+/* ── Hit Chaurasi Ji player: prev/next arrows pushed off-screen on narrow
+   phones ──────────────────────────────────────────────────────────────
+   The player row (.hcj-player) never resets flex-wrap back from the
+   original "nowrap" rule, and up to 9 buttons at ~46px + gaps need
+   ~520-600px of width. body{overflow-x:hidden;width:100vw} then clips
+   the row's overflowing edges — which, since the row is centered, are
+   exactly the prev/next arrows. On a wide screen (iPad) the row simply
+   never overflows, so nothing gets clipped and the arrows show fine.
+
+   Fix: shrink buttons/gaps under ~480px so the whole row fits, and add
+   a scroll fallback in case a voice-switch button (which adds one more
+   46px button only for some stotrams) still pushes it over budget. */
+@media (max-width: 480px) {
+  .hcj-player { gap: 4px; }
+  .hcj-mini-btn { width: 32px; height: 32px; font-size: 14px; border-radius: 9px; }
+  .hcj-play-btn,
+  .hcj-play-btn.hcj-playing { width: 36px; height: 36px; font-size: 15px; }
+  .hcj-arrow-btn { font-size: 16px; }
+  .hcj-seek-input { width: 32px; height: 30px; font-size: 11px; margin-left: 2px; }
+  .hcj-seek-total { font-size: 10px; margin-left: 1px; }
+}
+
+/* Safety net: if the row is still a few px too wide (extra-narrow device,
+   or the voice-switch button present), scroll instead of silently
+   clipping the edge buttons off-screen. Scrollbar hidden — this is only
+   a fallback, not meant to be a visible/expected interaction. */
+.hcj-player {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.hcj-player::-webkit-scrollbar { display: none; }
+
 /* ── Notification bell + inbox ───────────────────────────────────────── */
 .rjap-badge {
   min-width: 20px;

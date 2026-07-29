@@ -12956,6 +12956,7 @@ window.addEventListener("load", async () => {
 
 
   await App.load();
+  if (typeof checkForUpdateAvailable === "function") checkForUpdateAvailable();
   App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));
   App.lmcRV = Math.floor((App.S.historyRV[App.S.tk] || 0) / (App.S.ms || 108));
@@ -17771,6 +17772,69 @@ function _showUserReplyPopup(text) {
 // future Release just needs an asset with this exact filename attached.
 const APP_UPDATE_APK_URL =
   "https://github.com/drakthephenomenal/Lalu-Chotopushu/releases/latest/download/RadhaNaamJap.apk";
+
+// GitHub API endpoint for the latest published Release's metadata (tag
+// name, etc) — separate from the direct-download URL above.
+const APP_UPDATE_RELEASE_API =
+  "https://api.github.com/repos/drakthephenomenal/Lalu-Chotopushu/releases/latest";
+
+// Compares two "vX.Y.Z"-style version strings numerically, part by part
+// (so "1.10.0" correctly counts as newer than "1.9.0", unlike a plain
+// string compare). Returns true if `remote` is strictly newer than `local`.
+function _isNewerVersion(remote, local) {
+  const clean = (v) => String(v || "").replace(/^v/i, "").split(".").map((n) => parseInt(n, 10) || 0);
+  const r = clean(remote), l = clean(local);
+  const len = Math.max(r.length, l.length);
+  for (let i = 0; i < len; i++) {
+    const rv = r[i] || 0, lv = l[i] || 0;
+    if (rv > lv) return true;
+    if (rv < lv) return false;
+  }
+  return false;
+}
+
+// Checks the installed app's version (via Capacitor's App plugin) against
+// the tag name of the latest published GitHub Release, and updates the
+// Settings card to show "Update available" only when the remote version
+// is actually newer. Silently no-ops in the browser (no native App plugin)
+// or on any network failure — the button still works as a manual
+// download either way, this just adds the "is there something new" hint.
+async function checkForUpdateAvailable() {
+  const statusEl = document.getElementById("appUpdateStatus");
+  const iconEl = document.getElementById("appUpdateIcon");
+  const cardEl = document.getElementById("appUpdateCard");
+  if (!statusEl || !iconEl) return;
+
+  const Cap = window.Capacitor;
+  if (!Cap || !Cap.isNativePlatform || !Cap.isNativePlatform()) return;
+  const AppInfoPlugin = Cap.Plugins && Cap.Plugins.App;
+  if (!AppInfoPlugin) return;
+
+  try {
+    const info = await AppInfoPlugin.getInfo();
+    const localVersion = info && info.version; // e.g. "1.0.0" (versionName)
+
+    const resp = await fetch(APP_UPDATE_RELEASE_API, {
+      headers: { Accept: "application/vnd.github+json" },
+    });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const remoteTag = data && data.tag_name; // e.g. "v1.0.1"
+    if (!remoteTag || !localVersion) return;
+
+    window._appUpdateRemoteTag = remoteTag; // stash for checkAppUpdate() below
+
+    if (_isNewerVersion(remoteTag, localVersion)) {
+      iconEl.textContent = "⬆️";
+      statusEl.textContent = "Update available — " + remoteTag + " (you have v" + localVersion + ")";
+      if (cardEl) cardEl.style.borderColor = "rgba(255,215,0,0.7)";
+    } else {
+      statusEl.textContent = "You're up to date (v" + localVersion + ") 🙏";
+    }
+  } catch (e) {
+    console.warn("Update check failed (non-fatal):", e);
+  }
+}
 
 async function checkAppUpdate() {
   const iconEl = document.getElementById("appUpdateIcon");

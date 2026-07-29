@@ -1,5 +1,13 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v183
+// Radha Naam Jap — Service Worker  v184
+// v184: bumped cache to force-invalidate stale app.js —
+// adds automatic "Update available — vX.X.X" detection on app launch:
+// compares the installed app's version (Capacitor App.getInfo()) against
+// the latest GitHub Release's tag via the GitHub API, and updates the
+// Settings card's status line accordingly. Tapping the button still just
+// downloads+installs the latest release either way — this only adds the
+// "is there something new" indicator, and fails silently (no crash, no
+// user-facing error) if offline or run outside the installed app.
 // v183: bumped cache to force-invalidate stale app.js/index.html —
 // adds an in-app "Update App" card at the top of Settings that downloads
 // the latest APK from a GitHub Release via Capacitor Filesystem and hands
@@ -74,7 +82,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v183';
+const CACHE = 'radha-jap-v184';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

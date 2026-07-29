@@ -17757,9 +17757,9 @@ function _showUserReplyPopup(text) {
 // automatically since this app doesn't use a JS bundler.
 //
 // SETUP REQUIRED (native side, one-time):
-//   1. npm install @capacitor-community/file-opener@6 @capacitor/file-transfer
-//      (file-opener MUST be @6.x — the latest tag targets Capacitor 8 and
-//      will fail with an ERESOLVE error against this project's Capacitor 6)
+//   1. npm install @capacitor-community/file-opener@6
+//      (MUST be @6.x — the latest tag targets Capacitor 8 and will fail
+//      with an ERESOLVE error against this project's Capacitor 6)
 //   2. npx cap sync android
 //   3. In android/app/src/main/AndroidManifest.xml, add (as a sibling of
 //      your other <uses-permission> tags):
@@ -17768,6 +17768,12 @@ function _showUserReplyPopup(text) {
 //      (Capacitor's Share/Camera plugins normally add one) — only add one
 //      yourself if `cap sync` warns it's missing.
 //   4. Rebuild: ./gradlew assembleDebug (or your release build command)
+//
+// NOTE: does NOT use @capacitor/file-transfer — its native Android module
+// requires a newer Gradle/AGP toolchain than this project has and fails
+// to build. Uses @capacitor/filesystem's own downloadFile() instead
+// (already bundled, not yet deprecated on Capacitor 6 — that only
+// happened at Filesystem v7.1.0).
 //
 // NOTE: this deliberately does NOT use window.fetch() to talk to GitHub.
 // The app's WebView runs on its own origin (e.g. https://localhost inside
@@ -17863,12 +17869,20 @@ async function checkAppUpdate() {
     return;
   }
 
+  // Uses @capacitor/filesystem's own downloadFile() — bundled with the
+  // Filesystem plugin already in this project, native (bypasses CORS),
+  // and writes straight to disk (no JS-bridge memory risk for the ~137MB
+  // APK). NOTE: downloadFile() was deprecated on Filesystem starting at
+  // v7.1.0 in favor of a separate @capacitor/file-transfer plugin — but
+  // this project is on Capacitor 6, so it's still the primary supported
+  // method here. (file-transfer's native Android module needs a newer
+  // Gradle/AGP toolchain than this project has and fails to build —
+  // that's why we're using this instead.)
   const Filesystem = Cap.Plugins && Cap.Plugins.Filesystem;
-  const FileTransfer = Cap.Plugins && Cap.Plugins.FileTransfer;
   const FileOpener = Cap.Plugins && Cap.Plugins.FileOpener;
-  if (!Filesystem || !FileTransfer || !FileOpener) {
+  if (!Filesystem || !FileOpener) {
     statusEl.textContent =
-      "Update plugin missing — install @capacitor/file-transfer and @capacitor-community/file-opener@6, then rebuild.";
+      "Update plugin missing — install @capacitor-community/file-opener@6, then rebuild.";
     return;
   }
 
@@ -17879,32 +17893,25 @@ async function checkAppUpdate() {
     progWrap.style.display = "block";
     progBar.style.width = "0%";
 
-    // Resolve the on-device destination path first, then have
-    // FileTransfer download straight to it natively — the ~137MB APK
-    // never gets pulled through the JS bridge as base64, which would
-    // risk an out-of-memory crash at that size.
-    const fileInfo = await Filesystem.getUri({
-      directory: "CACHE",
-      path: "RadhaNaamJap.apk",
-    });
-
-    if (FileTransfer.addListener) {
-      progressListener = await FileTransfer.addListener("progress", (p) => {
+    if (Filesystem.addListener) {
+      progressListener = await Filesystem.addListener("progress", (p) => {
         if (p && p.contentLength) {
           progBar.style.width = Math.round((p.bytes / p.contentLength) * 100) + "%";
         }
       });
     }
 
-    await FileTransfer.downloadFile({
+    const result = await Filesystem.downloadFile({
       url: APP_UPDATE_APK_URL,
-      path: fileInfo.uri,
+      path: "RadhaNaamJap.apk",
+      directory: "CACHE",
       progress: true,
     });
+    const filePath = result && (result.path || result.uri);
 
     statusEl.textContent = "Opening installer…";
     await FileOpener.open({
-      filePath: fileInfo.uri,
+      filePath: filePath,
       contentType: "application/vnd.android.package-archive",
     });
 

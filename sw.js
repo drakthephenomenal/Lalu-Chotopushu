@@ -1,5 +1,13 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v186
+// Radha Naam Jap — Service Worker  v187
+// v187: bumped cache to force-invalidate stale app.js — drops
+// @capacitor/file-transfer entirely (its native Android module needs a
+// newer Gradle/AGP toolchain than this project has and reliably fails
+// to build, even after a full Gradle cache wipe — "Failed to create Jar
+// file ... bcprov-jdk18on-1.79.jar"). The Update App download now uses
+// @capacitor/filesystem's own downloadFile() instead — already bundled
+// in this project, not deprecated until Filesystem v7.1.0 (this project
+// is on Capacitor 6), and just as native/CORS-free/disk-direct.
 // v186: bumped cache to force-invalidate stale app.js/style.css/index.html —
 // the Update App card now turns blue and pulses with a soft glow whenever
 // a newer version is actually available (via .update-available class),
@@ -97,7 +105,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v186';
+const CACHE = 'radha-jap-v187';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

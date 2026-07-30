@@ -1,5 +1,13 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v190
+// Radha Naam Jap — Service Worker  v191
+// v191: bumped cache to force-invalidate stale app.js — adds a foreground
+// catch-up check for the daily Drive backup, run once on every app open.
+// If the chosen backup time already passed today and it hasn't run yet
+// (checked via the same bgsync_last_drive_backup_date marker runner.js
+// uses), it fires immediately using the live app's own connection —
+// covers the case where background/runner.js's periodic wake (Android
+// platform minimum ~15min, no exact-alarm option) missed the window
+// entirely because the phone was closed/offline at the time.
 // v190: bumped cache to force-invalidate stale app.js — fixes Update App
 // download failing with a bare "Error downloading file: <url>" message.
 // Root cause: a known Capacitor Filesystem bug (ionic-team/capacitor
@@ -131,7 +139,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v190';
+const CACHE = 'radha-jap-v191';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

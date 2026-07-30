@@ -7845,6 +7845,43 @@ function _driveBackupFilename() {
   return `radha-naam-jap-backup-${stamp}.json`;
 }
 
+// Foreground catch-up for the daily Google Drive backup — runs once each
+// time the app is opened. background/runner.js's periodic check can only
+// wake roughly every ~15-60 min (Android platform limit — no exact-alarm
+// option for background-runner, unlike the LocalNotifications reminders
+// elsewhere in this app), so if the phone was closed/offline right at the
+// chosen time, that day's backup could otherwise be missed entirely until
+// the *next* day's window. This catches it up the moment you next open
+// the app instead — reusing the SAME "already done today" marker
+// (bgsync_last_drive_backup_date in CapacitorKV) that runner.js writes,
+// so the background runner and this foreground check never double-upload
+// on the same day, whichever one gets there first.
+async function checkDailyDriveBackupCatchUp() {
+  if (!App.S.driveBackupDailyEnabled || !fbUser) return;
+  const Cap = window.Capacitor;
+  if (!Cap || !Cap.Plugins || !Cap.Plugins.CapacitorKV) return;
+  try {
+    const targetHour = App.S.driveBackupHour ?? 3;
+    const targetMinute = App.S.driveBackupMinute ?? 0;
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const targetMinutes = targetHour * 60 + targetMinute;
+    if (nowMinutes < targetMinutes) return; // chosen time hasn't arrived yet today
+
+    const today =
+      now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+    const r = await Cap.Plugins.CapacitorKV.get({ key: "bgsync_last_drive_backup_date" });
+    const lastRunDate = r && r.value != null ? r.value : null;
+    if (lastRunDate === today) return; // already done today, by either this check or runner.js
+
+    console.log("Catching up today's Drive backup on app open…");
+    await driveBackupNow();
+    await Cap.Plugins.CapacitorKV.set({ key: "bgsync_last_drive_backup_date", value: today });
+  } catch (e) {
+    console.warn("Drive backup catch-up check failed (non-fatal):", e);
+  }
+}
+
 // Manual "Backup Now" button (Settings > Cloud Sync & Backup). Always
 // creates a new dated file in the user's Drive — never overwrites a
 // previous backup. Requires the person to be signed in with Google AND to
@@ -12963,6 +13000,7 @@ window.addEventListener("load", async () => {
 
   await App.load();
   if (typeof checkForUpdateAvailable === "function") checkForUpdateAvailable();
+  if (typeof checkDailyDriveBackupCatchUp === "function") checkDailyDriveBackupCatchUp();
   App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));
   App.lmcRV = Math.floor((App.S.historyRV[App.S.tk] || 0) / (App.S.ms || 108));

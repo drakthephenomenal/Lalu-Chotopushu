@@ -17972,10 +17972,17 @@ async function checkAppUpdate() {
       });
     }
 
+    // recursive:true is required here — a known Capacitor Filesystem bug
+    // (ionic-team/capacitor #6896, #7108, #1835) throws a bare
+    // "Error downloading file: <path>" / ENOENT error when the target
+    // directory (here, the app's Cache dir) hasn't been created yet by
+    // Android, which is common on a fresh install before anything else
+    // has written to Cache. recursive:true creates it instead of failing.
     const result = await Filesystem.downloadFile({
       url: APP_UPDATE_APK_URL,
       path: "RadhaNaamJap.apk",
       directory: "CACHE",
+      recursive: true,
       progress: true,
     });
     const filePath = result && (result.path || result.uri);
@@ -17991,7 +17998,10 @@ async function checkAppUpdate() {
   } catch (e) {
     console.error("App update failed:", e);
     iconEl.textContent = "⚠️";
-    const msg = (e && (e.message || (e.data && e.data.body))) || "unknown error";
+    console.error("App update failed — full error object:", JSON.stringify(e, Object.getOwnPropertyNames(e || {})));
+    const msg =
+      (e && (e.message || (e.data && (e.data.message || e.data.body)) || e.errorMessage)) ||
+      "unknown error";
     statusEl.textContent = "Update failed: " + msg;
   } finally {
     if (progressListener && progressListener.remove) {

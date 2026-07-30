@@ -15008,6 +15008,7 @@ function renderHistory() {
   const ms = App.S.ms || 108;
   const isGaudiya = App.S.gaudiyaMode || false;
   const isTrahimam = App.S.trahimamMode || false;
+  const hist = App.S.history || {};
   const histRV = App.S.historyRV || {};
   const histKV = App.S.historyKV || {};
   const histHK = App.S.historyHK || {};

@@ -1,5 +1,14 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v189
+// Radha Naam Jap — Service Worker  v190
+// v190: bumped cache to force-invalidate stale app.js — fixes Update App
+// download failing with a bare "Error downloading file: <url>" message.
+// Root cause: a known Capacitor Filesystem bug (ionic-team/capacitor
+// #6896, #7108, #1835) where downloadFile() throws ENOENT if its target
+// directory (here, the app's own Cache dir) hasn't been created yet by
+// Android — common on a fresh install/update before anything else has
+// written to Cache. Added recursive:true so it creates the folder
+// instead of failing. Also logs the full underlying error object to
+// console for easier diagnosis if a future failure has a different cause.
 // v189: bumped cache to force-invalidate stale app.js/index.html —
 // Update App card now always shows "Installed version: vX.X.X" as a
 // persistent line, independent of whether the GitHub update check
@@ -122,7 +131,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v189';
+const CACHE = 'radha-jap-v190';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

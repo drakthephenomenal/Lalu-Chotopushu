@@ -20,7 +20,7 @@
       "src": "background/runner.js",
       "event": "periodicSync",
       "repeat": true,
-      "interval": 1440,
+      "interval": 15,
       "autoStart": true
     }
   }

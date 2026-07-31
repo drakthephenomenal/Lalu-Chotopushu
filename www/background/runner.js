@@ -34,6 +34,12 @@ async function kvGet(key) {
   }
 }
 
+async function kvSet(key, value) {
+  try {
+    await CapacitorKV.set({ key, value });
+  } catch (_) {}
+}
+
 async function refreshIdToken(refreshToken) {
   const url = `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`;
   const res = await fetch(url, {
@@ -147,15 +153,24 @@ addEventListener("periodicSync", async (resolve, reject) => {
     try {
       const driveBackupJson = await kvGet("bgsync_drive_payload");
       if (driveBackupJson) {
-        // No filename passed here on purpose — the Cloud Function
-        // generates one from its own server clock (UTC). Device-local
-        // time doesn't matter for an unattended daily backup the way it
-        // does for the manual "Backup Now" button in app.js, which stamps
-        // the person's own local time instead.
-        const result = await callCloudFunction("driveBackupUpload", idToken, {
-          backupJson: driveBackupJson,
-        });
-        console.log("Background Drive backup:", result && result.success ? result.filename : result);
+        // ── Custom time-of-day gating ──
+        const targetHour = parseInt((await kvGet("bgsync_drive_backup_hour")) ?? "3", 10);
+        const targetMinute = parseInt((await kvGet("bgsync_drive_backup_minute")) ?? "0", 10);
+        const now = new Date();
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+        const targetMinutes = targetHour * 60 + targetMinute;
+        const withinWindow = Math.abs(nowMinutes - targetMinutes) <= 35;
+
+        const today = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+        const lastRunDate = await kvGet("bgsync_last_drive_backup_date");
+
+        if (withinWindow && lastRunDate !== today) {
+          const result = await callCloudFunction("driveBackupUpload", idToken, {
+            backupJson: driveBackupJson,
+          });
+          console.log("Background Drive backup:", result && result.success ? result.filename : result);
+          await kvSet("bgsync_last_drive_backup_date", today);
+        }
       }
     } catch (driveErr) {
       console.warn("Background Drive backup failed (non-fatal):", driveErr && driveErr.message ? driveErr.message : driveErr);

@@ -9666,7 +9666,7 @@ let _n28ScriptHindi = false;
 function toggle28Script() {
   _n28ScriptHindi = !_n28ScriptHindi;
   const btn = document.getElementById("n28ScriptToggle");
-  if (btn) btn.textContent = _n28ScriptHindi ? "বাংলা" : "हिन्दी";
+  if (btn) btn.textContent = _n28ScriptHindi ? "বাংলা" : "Sanskrit";
   u28();
 }
 function get28Name(entry) {

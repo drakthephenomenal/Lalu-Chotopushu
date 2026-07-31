@@ -1,5 +1,21 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v191
+// Radha Naam Jap — Service Worker  v193
+// v193: bumped cache to force-invalidate stale app.js — Update App now
+// gives clear guidance (Settings → Apps → Radha Naam Jap → "Install
+// unknown apps" / MIUI's "Other permissions") when the download succeeds
+// but the installer can't be launched — this is almost always a missing
+// Android permission, not a bug, and some manufacturers (MIUI/Xiaomi)
+// silently block the launch instead of showing any error at all. Also:
+// tapping Update again after fixing the permission now reuses the
+// already-downloaded APK (tagged by target version) instead of
+// re-downloading the full ~137MB every time.
+// v192: bumped cache to force-invalidate stale app.js — fixes the Update
+// App check showing "No release published yet on GitHub" when it's
+// actually a GitHub API rate-limit hit (60 unauthenticated requests/hour,
+// shared per network — easy to exhaust during heavy testing). Now caches
+// the last known result for 30 min so it doesn't re-hit the API on every
+// app open, and falls back to that cached result on a rate-limit/network
+// failure instead of showing a misleading "no release" message.
 // v191: bumped cache to force-invalidate stale app.js — adds a foreground
 // catch-up check for the daily Drive backup, run once on every app open.
 // If the chosen backup time already passed today and it hasn't run yet
@@ -139,7 +155,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v191';
+const CACHE = 'radha-jap-v193';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

@@ -2711,7 +2711,60 @@ function setNaamLangDirect(lang) {
 }
 
 function switchJapMode(mode) {
+  // ── Per-mode mala-timing stash/restore ──
+  // malaWallStart / _currentMalaStartTs / currentMalaSeconds are shared,
+  // single (not per-type) fields. Without this, switching away mid-mala
+  // (e.g. 93/108 done in Radha, then some RV taps) and back would let the
+  // OTHER mode's own first-tap reset (or its mala-completion reset) wipe
+  // out the timestamp this mode's in-progress mala was relying on —
+  // History would then show that mala "starting" at whatever tap you
+  // resumed on, instead of its real start, understating its duration.
+  const _prevMode = App.S.japMode;
+  App._malaTimeStash = App._malaTimeStash || {};
+  const _outStash = {
+    malaWallStart: App.malaWallStart,
+    _currentMalaStartTs: App._currentMalaStartTs,
+    currentMalaSeconds: App.currentMalaSeconds,
+  };
+  App._malaTimeStash[_prevMode] = _outStash;
+  // Also persist per-mode so this survives closing and reopening the app —
+  // not just switching modes within the same session.
+  try {
+    localStorage.setItem("rjap_malaStash_" + _prevMode, JSON.stringify(_outStash));
+  } catch (_) {}
+
   App.S.japMode = mode;
+  let _stash = App._malaTimeStash[mode];
+  if (!_stash) {
+    // No in-memory stash (e.g. this is the first switch after a fresh app
+    // load) — check whether a stash for this mode survived from before the
+    // app was last closed.
+    try {
+      const _raw = localStorage.getItem("rjap_malaStash_" + mode);
+      if (_raw) _stash = JSON.parse(_raw);
+    } catch (_) {}
+  }
+  if (_stash) {
+    App.malaWallStart = _stash.malaWallStart;
+    App._currentMalaStartTs = _stash._currentMalaStartTs;
+    App.currentMalaSeconds = _stash.currentMalaSeconds;
+  } else {
+    // First time switching into this mode this session — nothing to
+    // restore, start clean so its next tap begins its own fresh mala.
+    App.malaWallStart = 0;
+    App._currentMalaStartTs = null;
+    App.currentMalaSeconds = 0;
+  }
+  try {
+    localStorage.setItem("rjap_malaWallStart", String(App.malaWallStart));
+    if (App._currentMalaStartTs) {
+      localStorage.setItem("rjap_currentMalaStartTs", String(App._currentMalaStartTs));
+    } else {
+      localStorage.removeItem("rjap_currentMalaStartTs");
+    }
+    localStorage.setItem("rjap_currentMalaSeconds", String(App.currentMalaSeconds));
+  } catch (_) {}
+
   const dd = document.getElementById("naamSelDd");
   const btn = document.getElementById("naamSelBtn");
   dd.classList.remove("show");
@@ -13022,14 +13075,28 @@ window.addEventListener("load", async () => {
   // full session into history.
   App.currentMalaSeconds = 0;
   App._currentMalaStartTs = null;
-  const savedMalaWall = localStorage.getItem("rjap_malaWallStart");
+  // Prefer the per-mode stash (survives closing the app while mid-mala in
+  // ANY of the 4 jap types, not just Radha) — fall back to the older
+  // generic keys only for state saved before this per-mode fix existed.
+  let _bootStash = null;
+  try {
+    const _raw = localStorage.getItem("rjap_malaStash_" + App.S.japMode);
+    if (_raw) _bootStash = JSON.parse(_raw);
+  } catch (_) {}
+  const savedMalaWall = _bootStash
+    ? _bootStash.malaWallStart
+    : localStorage.getItem("rjap_malaWallStart");
   const todayCount = App.gTod();
   const ms = App.S.ms || 108;
   const countInCurrentMala = todayCount % ms;
   if (savedMalaWall && countInCurrentMala > 0) {
     App.malaWallStart = parseInt(savedMalaWall);
-    const savedCMS = parseInt(localStorage.getItem("rjap_currentMalaSeconds") || "0");
-    const savedCMST = parseInt(localStorage.getItem("rjap_currentMalaStartTs") || "0");
+    const savedCMS = _bootStash
+      ? _bootStash.currentMalaSeconds
+      : parseInt(localStorage.getItem("rjap_currentMalaSeconds") || "0");
+    const savedCMST = _bootStash
+      ? _bootStash._currentMalaStartTs
+      : parseInt(localStorage.getItem("rjap_currentMalaStartTs") || "0");
     if (!isNaN(savedCMS) && savedCMS > 0) App.currentMalaSeconds = savedCMS;
     App._currentMalaStartTs = (!isNaN(savedCMST) && savedCMST > 0)
       ? savedCMST

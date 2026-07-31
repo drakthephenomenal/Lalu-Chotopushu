@@ -1,5 +1,26 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v193
+// Radha Naam Jap — Service Worker  v195
+// v195: bumped cache to force-invalidate stale app.js — extends the v194
+// mala start-time fix to survive fully closing and reopening the app, not
+// just switching modes within one session. Each jap type's in-progress
+// mala timing now persists to its own localStorage key
+// (rjap_malaStash_<mode>), checked both when switching modes and on app
+// boot (using whichever mode was active when the app was last closed) —
+// closes the one edge case v194's changelog flagged as still open.
+// v194: bumped cache to force-invalidate stale app.js — fixes History
+// showing a falsely-short duration for a mala interrupted by switching
+// jap types mid-way (e.g. 93/108 Radha taps, switch to RV, complete an
+// RV mala, switch back and finish Radha's last 15). Root cause:
+// malaWallStart/_currentMalaStartTs were shared globals instead of
+// per-mode, so the other mode's own first-tap reset (or its mala-
+// completion reset) wiped the original mode's in-progress start
+// timestamp. switchJapMode() now stashes the outgoing mode's timing
+// state and restores the incoming mode's, so each jap type keeps its
+// own undisturbed mala clock across switches. NOTE: this fix is
+// session-only — switching modes, then fully closing and reopening the
+// app before switching back, can still lose the stash (only the most-
+// recently-active mode's timing persists to localStorage across a
+// restart). Worth revisiting if that edge case comes up in practice.
 // v193: bumped cache to force-invalidate stale app.js — Update App now
 // gives clear guidance (Settings → Apps → Radha Naam Jap → "Install
 // unknown apps" / MIUI's "Other permissions") when the download succeeds
@@ -155,7 +176,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v193';
+const CACHE = 'radha-jap-v195';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

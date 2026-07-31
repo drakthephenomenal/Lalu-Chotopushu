@@ -66,6 +66,122 @@ echo "  bumped to versionCode $NEXT_VERSION_CODE / versionName $NEXT_VERSION_NAM
 
 echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
+# -- Patch AndroidManifest.xml: install-permission + FileProvider --
+MANIFEST_FILE="android/app/src/main/AndroidManifest.xml"
+if [ -f "$MANIFEST_FILE" ]; then
+  if ! grep -q "REQUEST_INSTALL_PACKAGES" "$MANIFEST_FILE"; then
+    sed -i "s|</manifest>|    <uses-permission android:name=\"android.permission.REQUEST_INSTALL_PACKAGES\" />\n</manifest>|" "$MANIFEST_FILE"
+    echo "  added REQUEST_INSTALL_PACKAGES permission"
+  else
+    echo "  REQUEST_INSTALL_PACKAGES already present"
+  fi
+
+  if ! grep -q "fileprovider" "$MANIFEST_FILE"; then
+    sed -i "s|</application>|    <provider\n        android:name=\"androidx.core.content.FileProvider\"\n        android:authorities=\"\${applicationId}.fileprovider\"\n        android:exported=\"false\"\n        android:grantUriPermissions=\"true\">\n        <meta-data android:name=\"android.support.FILE_PROVIDER_PATHS\" android:resource=\"@xml/file_paths\" />\n    </provider>\n</application>|" "$MANIFEST_FILE"
+    mkdir -p android/app/src/main/res/xml
+    if [ ! -f android/app/src/main/res/xml/file_paths.xml ]; then
+      cat > android/app/src/main/res/xml/file_paths.xml << 'XMLEOF'
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path name="cache" path="." />
+    <external-cache-path name="external_cache" path="." />
+    <files-path name="files" path="." />
+</paths>
+XMLEOF
+    fi
+    echo "  added FileProvider block + file_paths.xml"
+  else
+    echo "  FileProvider already present"
+  fi
+fi
+
+# -- Patch AndroidManifest.xml: install-permission + FileProvider --
+MANIFEST_FILE="android/app/src/main/AndroidManifest.xml"
+if [ -f "$MANIFEST_FILE" ]; then
+  if ! grep -q "REQUEST_INSTALL_PACKAGES" "$MANIFEST_FILE"; then
+    sed -i "s|</manifest>|    <uses-permission android:name=\"android.permission.REQUEST_INSTALL_PACKAGES\" />\n</manifest>|" "$MANIFEST_FILE"
+    echo "  added REQUEST_INSTALL_PACKAGES permission"
+  else
+    echo "  REQUEST_INSTALL_PACKAGES already present"
+  fi
+
+  if ! grep -q "fileprovider" "$MANIFEST_FILE"; then
+    sed -i "s|</application>|    <provider\n        android:name=\"androidx.core.content.FileProvider\"\n        android:authorities=\"\${applicationId}.fileprovider\"\n        android:exported=\"false\"\n        android:grantUriPermissions=\"true\">\n        <meta-data android:name=\"android.support.FILE_PROVIDER_PATHS\" android:resource=\"@xml/file_paths\" />\n    </provider>\n</application>|" "$MANIFEST_FILE"
+    mkdir -p android/app/src/main/res/xml
+    if [ ! -f android/app/src/main/res/xml/file_paths.xml ]; then
+      cat > android/app/src/main/res/xml/file_paths.xml << 'XMLEOF'
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path name="cache" path="." />
+    <external-cache-path name="external_cache" path="." />
+    <files-path name="files" path="." />
+</paths>
+XMLEOF
+    fi
+    echo "  added FileProvider block + file_paths.xml"
+  else
+    echo "  FileProvider already present"
+  fi
+fi
+
+# -- Patch AndroidManifest.xml: install-permission + FileProvider --
+MANIFEST_FILE="android/app/src/main/AndroidManifest.xml"
+if [ -f "$MANIFEST_FILE" ]; then
+  if ! grep -q "REQUEST_INSTALL_PACKAGES" "$MANIFEST_FILE"; then
+    sed -i "s|</manifest>|    <uses-permission android:name=\"android.permission.REQUEST_INSTALL_PACKAGES\" />\n</manifest>|" "$MANIFEST_FILE"
+    echo "  added REQUEST_INSTALL_PACKAGES permission"
+  else
+    echo "  REQUEST_INSTALL_PACKAGES already present"
+  fi
+
+  if ! grep -q "fileprovider" "$MANIFEST_FILE"; then
+    sed -i "s|</application>|    <provider\n        android:name=\"androidx.core.content.FileProvider\"\n        android:authorities=\"\${applicationId}.fileprovider\"\n        android:exported=\"false\"\n        android:grantUriPermissions=\"true\">\n        <meta-data android:name=\"android.support.FILE_PROVIDER_PATHS\" android:resource=\"@xml/file_paths\" />\n    </provider>\n</application>|" "$MANIFEST_FILE"
+    mkdir -p android/app/src/main/res/xml
+    if [ ! -f android/app/src/main/res/xml/file_paths.xml ]; then
+      cat > android/app/src/main/res/xml/file_paths.xml << 'XMLEOF'
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path name="cache" path="." />
+    <external-cache-path name="external_cache" path="." />
+    <files-path name="files" path="." />
+</paths>
+XMLEOF
+    fi
+    echo "  added FileProvider block + file_paths.xml"
+  else
+    echo "  FileProvider already present"
+  fi
+fi
+
+# -- Patch AndroidManifest.xml: install-permission + FileProvider --
+MANIFEST_FILE="android/app/src/main/AndroidManifest.xml"
+if [ -f "$MANIFEST_FILE" ]; then
+  if ! grep -q "REQUEST_INSTALL_PACKAGES" "$MANIFEST_FILE"; then
+    sed -i "s|</manifest>|    <uses-permission android:name=\"android.permission.REQUEST_INSTALL_PACKAGES\" />\n</manifest>|" "$MANIFEST_FILE"
+    echo "  added REQUEST_INSTALL_PACKAGES permission"
+  else
+    echo "  REQUEST_INSTALL_PACKAGES already present"
+  fi
+
+  if ! grep -q "fileprovider" "$MANIFEST_FILE"; then
+    sed -i "s|</application>|    <provider\n        android:name=\"androidx.core.content.FileProvider\"\n        android:authorities=\"\${applicationId}.fileprovider\"\n        android:exported=\"false\"\n        android:grantUriPermissions=\"true\">\n        <meta-data android:name=\"android.support.FILE_PROVIDER_PATHS\" android:resource=\"@xml/file_paths\" />\n    </provider>\n</application>|" "$MANIFEST_FILE"
+    mkdir -p android/app/src/main/res/xml
+    if [ ! -f android/app/src/main/res/xml/file_paths.xml ]; then
+      cat > android/app/src/main/res/xml/file_paths.xml << 'XMLEOF'
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path name="cache" path="." />
+    <external-cache-path name="external_cache" path="." />
+    <files-path name="files" path="." />
+</paths>
+XMLEOF
+    fi
+    echo "  added FileProvider block + file_paths.xml"
+  else
+    echo "  FileProvider already present"
+  fi
+fi
+
 echo "── 4/9  Copy web assets + sync plugins ──────────────────────────"
 bash setup-www.sh
 npx cap sync android

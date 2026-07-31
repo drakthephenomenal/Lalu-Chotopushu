@@ -92,4 +92,35 @@ public class PowerPermissionsPlugin extends Plugin {
         }
         call.resolve();
     }
+
+    @PluginMethod
+    public void canRequestPackageInstalls(PluginCall call) {
+        boolean can = true;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            can = getContext().getPackageManager().canRequestPackageInstalls();
+        }
+        JSObject ret = new JSObject();
+        ret.put("value", can);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void requestInstallPackagesPermission(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Activity activity = getActivity();
+            if (activity == null) {
+                call.reject("No activity available");
+                return;
+            }
+            try {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
+                intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+                activity.startActivity(intent);
+            } catch (Exception e) {
+                call.reject("Install-permission settings not available on this device", e);
+                return;
+            }
+        }
+        call.resolve();
+    }
 }

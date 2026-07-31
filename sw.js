@@ -1,5 +1,14 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v195
+// Radha Naam Jap — Service Worker  v196
+// v196: bumped cache to force-invalidate stale app.js/index.html — Update
+// App now shows an "Open permission settings →" link that jumps straight
+// to Android's install-permission screen for this app (via a new method
+// on the existing custom PowerPermissions native plugin), instead of just
+// describing where to find it in text. Shown after any install attempt
+// (success or failure) since MIUI/Xiaomi can silently swallow this
+// specific failure — tapping it is a harmless no-op if the install
+// actually did work. Requires the native side patch
+// (patch_power_permissions.py) applied to android-src/PowerPermissionsPlugin.java.
 // v195: bumped cache to force-invalidate stale app.js — extends the v194
 // mala start-time fix to survive fully closing and reopening the app, not
 // just switching modes within one session. Each jap type's in-progress
@@ -176,7 +185,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v195';
+const CACHE = 'radha-jap-v196';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

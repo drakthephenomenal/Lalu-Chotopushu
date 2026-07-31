@@ -17933,6 +17933,40 @@ async function checkForUpdateAvailable() {
 
   if (!Http || !localVersion) return;
 
+  // Cache the result for 30 min — GitHub's unauthenticated API is capped
+  // at 60 requests/hour PER NETWORK (shared across everyone on the same
+  // carrier/wifi IP, not just this app), so repeated app opens/testing
+  // can burn through that fast. If we checked recently, reuse that result
+  // instead of hitting the network again.
+  const CACHE_KEY = "appUpdateCheckCache";
+  const CACHE_MS = 30 * 60 * 1000;
+  let cached = null;
+  try {
+    cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+  } catch (_) {}
+
+  const applyResult = (remoteTag) => {
+    if (!remoteTag) {
+      statusEl.textContent = "No release published yet on GitHub.";
+      if (cardEl) cardEl.classList.remove("update-available");
+      return;
+    }
+    window._appUpdateRemoteTag = remoteTag; // stash for checkAppUpdate() below
+    if (_isNewerVersion(remoteTag, localVersion)) {
+      iconEl.textContent = "⬆️";
+      statusEl.textContent = "Update available — " + remoteTag + " (you have v" + localVersion + ")";
+      if (cardEl) cardEl.classList.add("update-available");
+    } else {
+      statusEl.textContent = "You're up to date 🙏";
+      if (cardEl) cardEl.classList.remove("update-available");
+    }
+  };
+
+  if (cached && Date.now() - cached.checkedAt < CACHE_MS) {
+    applyResult(cached.remoteTag);
+    return;
+  }
+
   try {
     const resp = await Http.request({
       url: APP_UPDATE_RELEASE_API,
@@ -17943,26 +17977,28 @@ async function checkForUpdateAvailable() {
     // If no release has been published (or all were deleted), GitHub
     // returns 404 with {"message":"Not Found"} — no tag_name, so this
     // falls through to the friendly message below rather than erroring.
+    // A rate-limit hit (403, "API rate limit exceeded") also has no
+    // tag_name and is handled the same way UNLESS we have a stale cached
+    // result to fall back on instead (see catch block below).
     const data = resp && resp.data;
     const remoteTag = data && data.tag_name; // e.g. "v1.0.6"
-    if (!remoteTag) {
-      statusEl.textContent = "No release published yet on GitHub.";
-      if (cardEl) cardEl.classList.remove("update-available");
+
+    if (remoteTag) {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ remoteTag, checkedAt: Date.now() }));
+      } catch (_) {}
+    } else if (cached) {
+      // Network call didn't give us a usable tag (404/rate-limit/etc) —
+      // fall back to the last known-good result rather than showing
+      // "No release published" when one clearly does exist.
+      applyResult(cached.remoteTag);
       return;
     }
 
-    window._appUpdateRemoteTag = remoteTag; // stash for checkAppUpdate() below
-
-    if (_isNewerVersion(remoteTag, localVersion)) {
-      iconEl.textContent = "⬆️";
-      statusEl.textContent = "Update available — " + remoteTag + " (you have v" + localVersion + ")";
-      if (cardEl) cardEl.classList.add("update-available");
-    } else {
-      statusEl.textContent = "You're up to date 🙏";
-      if (cardEl) cardEl.classList.remove("update-available");
-    }
+    applyResult(remoteTag);
   } catch (e) {
     console.warn("Update check failed (non-fatal):", e);
+    if (cached) applyResult(cached.remoteTag); // stale-but-useful beats nothing
   }
 }
 
@@ -17998,41 +18034,82 @@ async function checkAppUpdate() {
   let progressListener = null;
   try {
     iconEl.textContent = "⏳";
-    statusEl.textContent = "Downloading update…";
     progWrap.style.display = "block";
     progBar.style.width = "0%";
 
-    if (Filesystem.addListener) {
-      progressListener = await Filesystem.addListener("progress", (p) => {
-        if (p && p.contentLength) {
-          progBar.style.width = Math.round((p.bytes / p.contentLength) * 100) + "%";
-        }
-      });
+    // Skip re-downloading the ~137MB APK if we already fetched this exact
+    // version (e.g. the person tapped Update, got stuck at the installer
+    // permission step, fixed it in Settings, and came back to tap Update
+    // again). Tagged by the target version so a leftover download from a
+    // DIFFERENT release never gets mistakenly reused.
+    const targetTag = window._appUpdateRemoteTag || "unknown";
+    const DOWNLOADED_TAG_KEY = "appUpdateDownloadedTag";
+    let filePath = null;
+    try {
+      const stat = await Filesystem.stat({ path: "RadhaNaamJap.apk", directory: "CACHE" });
+      if (stat && localStorage.getItem(DOWNLOADED_TAG_KEY) === targetTag) {
+        const uriInfo = await Filesystem.getUri({ path: "RadhaNaamJap.apk", directory: "CACHE" });
+        filePath = uriInfo && uriInfo.uri;
+      }
+    } catch (_) {
+      // stat() throws if the file doesn't exist yet — normal, just means
+      // this is a fresh download, not an error worth logging.
     }
 
-    // recursive:true is required here — a known Capacitor Filesystem bug
-    // (ionic-team/capacitor #6896, #7108, #1835) throws a bare
-    // "Error downloading file: <path>" / ENOENT error when the target
-    // directory (here, the app's Cache dir) hasn't been created yet by
-    // Android, which is common on a fresh install before anything else
-    // has written to Cache. recursive:true creates it instead of failing.
-    const result = await Filesystem.downloadFile({
-      url: APP_UPDATE_APK_URL,
-      path: "RadhaNaamJap.apk",
-      directory: "CACHE",
-      recursive: true,
-      progress: true,
-    });
-    const filePath = result && (result.path || result.uri);
+    if (!filePath) {
+      statusEl.textContent = "Downloading update…";
+
+      if (Filesystem.addListener) {
+        progressListener = await Filesystem.addListener("progress", (p) => {
+          if (p && p.contentLength) {
+            progBar.style.width = Math.round((p.bytes / p.contentLength) * 100) + "%";
+          }
+        });
+      }
+
+      // recursive:true is required here — a known Capacitor Filesystem bug
+      // (ionic-team/capacitor #6896, #7108, #1835) throws a bare
+      // "Error downloading file: <path>" / ENOENT error when the target
+      // directory (here, the app's Cache dir) hasn't been created yet by
+      // Android, which is common on a fresh install before anything else
+      // has written to Cache. recursive:true creates it instead of failing.
+      const result = await Filesystem.downloadFile({
+        url: APP_UPDATE_APK_URL,
+        path: "RadhaNaamJap.apk",
+        directory: "CACHE",
+        recursive: true,
+        progress: true,
+      });
+      filePath = result && (result.path || result.uri);
+      try { localStorage.setItem(DOWNLOADED_TAG_KEY, targetTag); } catch (_) {}
+    } else {
+      statusEl.textContent = "Already downloaded — opening installer…";
+    }
 
     statusEl.textContent = "Opening installer…";
-    await FileOpener.open({
-      filePath: filePath,
-      contentType: "application/vnd.android.package-archive",
-    });
-
-    iconEl.textContent = "✅";
-    statusEl.textContent = "Installer opened — follow the on-screen prompt to finish.";
+    try {
+      await FileOpener.open({
+        filePath: filePath,
+        contentType: "application/vnd.android.package-archive",
+      });
+      iconEl.textContent = "✅";
+      statusEl.textContent = "Installer opened — follow the on-screen prompt to finish.";
+    } catch (openErr) {
+      // The download itself succeeded (we got this far) — this failure is
+      // specifically about LAUNCHING the installer, which on Android
+      // almost always means the "Install unknown apps" permission isn't
+      // granted for this app yet (some manufacturers, notably MIUI/Xiaomi,
+      // silently block the launch instead of showing an error dialog, so
+      // this catch may not even fire there — but when it does, or when
+      // nothing visibly happens, this is the fix either way).
+      console.error("Installer launch failed:", openErr);
+      iconEl.textContent = "⚠️";
+      statusEl.textContent =
+        "Downloaded, but couldn't open the installer. Go to Settings → Apps → " +
+        "Radha Naam Jap → look for \"Install unknown apps\" (on some phones: " +
+        "\"Other permissions\") and turn it on, then tap Update again. The file " +
+        "is already saved — you won't need to re-download.";
+    }
   } catch (e) {
     console.error("App update failed:", e);
     iconEl.textContent = "⚠️";

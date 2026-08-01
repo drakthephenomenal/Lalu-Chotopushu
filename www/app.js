@@ -550,7 +550,7 @@ const App = {
     // Which jap types count toward the Milestones (Bhagvat Prapti) total.
     // Defaults to all types so existing users see no change until they
     // customize it themselves in the Milestones tab.
-    msConsider: { radha: true, rv: true, hk: true, kv: true, n28: true },
+    msConsider: { radha: true, rv: true, hk: true, kv: true, ss: true, n28: true },
     historyHK: {},
     timerHistoryHK: {},
     dtHK: 0,
@@ -566,11 +566,19 @@ const App = {
     malaLogKV: [],
     syncBaselineKV: {},
     syncBaselineTimerKV: {},
-    dedications: [], // {id, type:'radha'|'rv'|'kv', amount, purpose, note, date, ts}
+    historySS: {},
+    timerHistorySS: {},
+    dtSS: 0,
+    ltSS: 0,
+    nameJapDeductSS: 0,
+    malaLogSS: [],
+    syncBaselineSS: {},
+    syncBaselineTimerSS: {},
+    dedications: [], // {id, type:'radha'|'rv'|'kv'|'ss', amount, purpose, note, date, ts}
     gaudiyaMode: false,  // single mode for all — Gaudiya/ISKCON
     trahimamMode: false,  // single mode for all — Trahimam Trahimam (KV jap only)
     hkLang: "hi",
-    naamLang: "sa",  // Radha / Radha Vallabh jap text script: "sa" (Sanskrit/Devanagari) or "bn" (Bangla)
+    naamLang: "sa",  // Radha / Radha Vallabh / Samba Sadashiv jap text script: "sa" (Sanskrit/Devanagari) or "bn" (Bangla)
     lbOptIn: false,        // leaderboard opt-in
     lbDisplayName: "",     // leaderboard display name
     driveBackupDailyEnabled: false,  // opt-in daily auto-backup to Google Drive
@@ -586,6 +594,7 @@ const App = {
   lmcRV: 0,
   lmcHK: 0,
   lmcKV: 0,
+  lmcSS: 0,
   lmc: 0,
   lm28: 0,
   timerRunning: false,
@@ -756,12 +765,20 @@ const App = {
       syncBaselineKV: this.S.syncBaselineKV || {},
       syncBaselineTimerKV: this.S.syncBaselineTimerKV || {},
       nameJapDeductKV: this.S.nameJapDeductKV || 0,
+      historySS: this.S.historySS || {},
+      timerHistorySS: this.S.timerHistorySS || {},
+      dtSS: this.S.dtSS || 0,
+      ltSS: this.S.ltSS || 0,
+      malaLogSS: this.S.malaLogSS || [],
+      syncBaselineSS: this.S.syncBaselineSS || {},
+      syncBaselineTimerSS: this.S.syncBaselineTimerSS || {},
+      nameJapDeductSS: this.S.nameJapDeductSS || 0,
       dedications: this.S.dedications || [],
       gaudiyaMode: this.S.gaudiyaMode || false,
       trahimamMode: this.S.trahimamMode || false,
       dt28Cycles: this.S.dt28Cycles || 0,
       milestones: this.S.milestones || { reached: {}, lastChecked: 0 },
-      msConsider: this.S.msConsider || { radha: true, rv: true, hk: true, kv: true, n28: true },
+      msConsider: this.S.msConsider || { radha: true, rv: true, hk: true, kv: true, ss: true, n28: true },
       hkLang: this.S.hkLang || "hi",
       naamLang: this.S.naamLang || "sa",
       lastLat: this.S.lastLat ?? null,
@@ -923,8 +940,23 @@ const App = {
     if (todayKVJap <= 0) {
       this.S.malaLogKV = [];
     }
+    if (!this.S.historySS) this.S.historySS = {};
+    if (!this.S.timerHistorySS) this.S.timerHistorySS = {};
+    if (!this.S.dtSS) this.S.dtSS = 0;
+    if (!this.S.ltSS) this.S.ltSS = 0;
+    if (!this.S.nameJapDeductSS) this.S.nameJapDeductSS = 0;
+    if (!this.S.malaLogSS) this.S.malaLogSS = [];
+    if (!this.S.historySS[this.S.tk]) this.S.historySS[this.S.tk] = 0;
+    if (!this.S.timerHistorySS[this.S.tk]) this.S.timerHistorySS[this.S.tk] = 0;
+    if (!this.S.syncBaselineSS) this.S.syncBaselineSS = {};
+    if (!this.S.syncBaselineTimerSS) this.S.syncBaselineTimerSS = {};
+    // Load malaLogSS — only keep if from today AND today has SS jap
+    const todaySSJap = this.S.historySS[this.S.tk] || 0;
+    if (todaySSJap <= 0) {
+      this.S.malaLogSS = [];
+    }
     if (!this.S.dedications) this.S.dedications = [];
-    if (!this.S.msConsider) this.S.msConsider = { radha: true, rv: true, hk: true, kv: true, n28: true };
+    if (!this.S.msConsider) this.S.msConsider = { radha: true, rv: true, hk: true, kv: true, ss: true, n28: true };
     if (!this.S.syncBaselineKV) this.S.syncBaselineKV = {};
     if (!this.S.syncBaselineTimerKV) this.S.syncBaselineTimerKV = {};
     if (!this.S.historyKV[this.S.tk]) this.S.historyKV[this.S.tk] = 0;
@@ -969,14 +1001,15 @@ const App = {
     if (this.S.japMode === "rv") return this.S.historyRV[this.S.tk] || 0;
     if (this.S.japMode === "hk") return this.S.historyHK[this.S.tk] || 0;
     if (this.S.japMode === "kv") return this.S.historyKV[this.S.tk] || 0;
+    if (this.S.japMode === "ss") return this.S.historySS[this.S.tk] || 0;
     return this.S.history[this.S.tk] || 0;
   },
-  // Combined today: radha + RV (or HK-only in gaudiyaMode, or KV-only in trahimamMode)
+  // Combined today: radha + RV + SS (or HK-only in gaudiyaMode, or KV-only in trahimamMode)
   gTodCombined() {
     if (this.S.gaudiyaMode) return this.S.historyHK[this.S.tk] || 0;
     if (this.S.trahimamMode) return this.S.historyKV[this.S.tk] || 0;
     return (
-      (this.S.history[this.S.tk] || 0) + (this.S.historyRV[this.S.tk] || 0)
+      (this.S.history[this.S.tk] || 0) + (this.S.historyRV[this.S.tk] || 0) + (this.S.historySS[this.S.tk] || 0)
     );
   },
   gTot() {
@@ -1005,7 +1038,12 @@ const App = {
       Object.values(this.S.historyRV).reduce((a, b) => a + b, 0) -
         (this.S.nameJapDeductRV || 0),
     );
-    return radhaTotal + rvTotal;
+    const ssTotal = Math.max(
+      0,
+      Object.values(this.S.historySS || {}).reduce((a, b) => a + b, 0) -
+        (this.S.nameJapDeductSS || 0),
+    );
+    return radhaTotal + rvTotal + ssTotal;
   },
   // Mode-specific total (for daily bar only)
   gTotMode() {
@@ -1027,6 +1065,12 @@ const App = {
         Object.values(this.S.historyKV || {}).reduce((a, b) => a + b, 0) -
           (this.S.nameJapDeductKV || 0),
       );
+    if (this.S.japMode === "ss")
+      return Math.max(
+        0,
+        Object.values(this.S.historySS || {}).reduce((a, b) => a + b, 0) -
+          (this.S.nameJapDeductSS || 0),
+      );
     return Math.max(
       0,
       Object.values(this.S.history).reduce((a, b) => a + b, 0) -
@@ -1037,12 +1081,14 @@ const App = {
     if (this.S.japMode === "rv") return this.S.historyRV;
     if (this.S.japMode === "hk") return this.S.historyHK || {};
     if (this.S.japMode === "kv") return this.S.historyKV || {};
+    if (this.S.japMode === "ss") return this.S.historySS || {};
     return this.S.history;
   },
   getCurTimerHistory() {
     if (this.S.japMode === "rv") return this.S.timerHistoryRV;
     if (this.S.japMode === "hk") return this.S.timerHistoryHK || {};
     if (this.S.japMode === "kv") return this.S.timerHistoryKV || {};
+    if (this.S.japMode === "ss") return this.S.timerHistorySS || {};
     return this.S.timerHistory;
   },
   // Combined history: merge radha + RV counts per day (or HK-only in gaudiyaMode, KV-only in trahimamMode)
@@ -1054,13 +1100,14 @@ const App = {
     const combined = {};
     const h1 = this.S.history || {};
     const h2 = this.S.historyRV || {};
-    const allKeys = new Set([...Object.keys(h1), ...Object.keys(h2)]);
+    const h3 = this.S.historySS || {};
+    const allKeys = new Set([...Object.keys(h1), ...Object.keys(h2), ...Object.keys(h3)]);
     allKeys.forEach((k) => {
-      combined[k] = (h1[k] || 0) + (h2[k] || 0);
+      combined[k] = (h1[k] || 0) + (h2[k] || 0) + (h3[k] || 0);
     });
     return combined;
   },
-  // Combined timer history: merge radha + RV timer per day (or HK-only in gaudiyaMode, KV-only in trahimamMode)
+  // Combined timer history: merge radha + RV + SS timer per day (or HK-only in gaudiyaMode, KV-only in trahimamMode)
   getCombinedTimerHistory() {
     if (this.S.gaudiyaMode)
       return JSON.parse(JSON.stringify(this.S.timerHistoryHK || {}));
@@ -1069,9 +1116,10 @@ const App = {
     const combined = {};
     const t1 = this.S.timerHistory || {};
     const t2 = this.S.timerHistoryRV || {};
-    const allKeys = new Set([...Object.keys(t1), ...Object.keys(t2)]);
+    const t3 = this.S.timerHistorySS || {};
+    const allKeys = new Set([...Object.keys(t1), ...Object.keys(t2), ...Object.keys(t3)]);
     allKeys.forEach((k) => {
-      combined[k] = (t1[k] || 0) + (t2[k] || 0);
+      combined[k] = (t1[k] || 0) + (t2[k] || 0) + (t3[k] || 0);
     });
     return combined;
   },
@@ -1079,6 +1127,7 @@ const App = {
     if (this.S.japMode === "rv") return this.S.dtRV;
     if (this.S.japMode === "hk") return this.S.dtHK || 0;
     if (this.S.japMode === "kv") return this.S.dtKV || 0;
+    if (this.S.japMode === "ss") return this.S.dtSS || 0;
     return this.S.dt;
   },
   getCurLt() {
@@ -1239,6 +1288,7 @@ const App = {
     const rvSec    = (this.S.timerHistoryRV || {})[tk] || 0;
     const hkSec    = (this.S.timerHistoryHK || {})[tk] || 0;
     const kvSec    = (this.S.timerHistoryKV || {})[tk] || 0;
+    const ssSec    = (this.S.timerHistorySS || {})[tk] || 0;
     const n28Sec   = (this.S.timer28History || {})[tk] || 0;
     // Live delta for the IN-PROGRESS mala only. timerHistory[tk] already holds
     // the sum of COMPLETED mala durations (kept in sync by syncTimerFromMalaLog),
@@ -1251,7 +1301,7 @@ const App = {
       const elapsed = Math.floor((Date.now() - this._n28TotalStart) / 1000);
       live28 = Math.max(0, elapsed - (this._n28SavedSecs || 0));
     }
-    return radhaSec + rvSec + hkSec + kvSec + n28Sec + liveJap + live28;
+    return radhaSec + rvSec + hkSec + kvSec + ssSec + n28Sec + liveJap + live28;
   },
 
   updateTimerToday() {
@@ -1279,10 +1329,12 @@ const App = {
     const rvSum = (this.S.malaLogRV || []).reduce((a, b) => a + b, 0);
     const hkSum = (this.S.malaLogHK || []).reduce((a, b) => a + b, 0);
     const kvSum = (this.S.malaLogKV || []).reduce((a, b) => a + b, 0);
+    const ssSum = (this.S.malaLogSS || []).reduce((a, b) => a + b, 0);
     if (!this.S.timerHistory) this.S.timerHistory = {};
     if (!this.S.timerHistoryRV) this.S.timerHistoryRV = {};
     if (!this.S.timerHistoryHK) this.S.timerHistoryHK = {};
     if (!this.S.timerHistoryKV) this.S.timerHistoryKV = {};
+    if (!this.S.timerHistorySS) this.S.timerHistorySS = {};
     if (radhaSum > 0 || (this.S.malaLog || []).length > 0)
       this.S.timerHistory[this.S.tk] = radhaSum;
     if (rvSum > 0 || (this.S.malaLogRV || []).length > 0)
@@ -1291,6 +1343,8 @@ const App = {
       this.S.timerHistoryHK[this.S.tk] = hkSum;
     if (kvSum > 0 || (this.S.malaLogKV || []).length > 0)
       this.S.timerHistoryKV[this.S.tk] = kvSum;
+    if (ssSum > 0 || (this.S.malaLogSS || []).length > 0)
+      this.S.timerHistorySS[this.S.tk] = ssSum;
     // Re-anchor timerSavedSeconds so live delta is measured from current position
     this.timerSavedSeconds = this.timerSeconds;
   },
@@ -1300,13 +1354,16 @@ const App = {
     const isRV = this.S.japMode === "rv";
     const isHK = this.S.japMode === "hk";
     const isKV = this.S.japMode === "kv";
+    const isSS = this.S.japMode === "ss";
     const log = isRV
       ? this.S.malaLogRV || []
       : isHK
         ? this.S.malaLogHK || []
         : isKV
           ? this.S.malaLogKV || []
-          : this.S.malaLog || [];
+          : isSS
+            ? this.S.malaLogSS || []
+            : this.S.malaLog || [];
     return log.reduce((a, b) => a + b, 0);
   },
   ua() {
@@ -1436,7 +1493,7 @@ const App = {
     // ── ARIA live region: announce mala completion to screen readers ──
     const _announcer = document.getElementById("japAnnounce");
     if (_announcer) {
-      const _malaNum = this[this.S.japMode === "rv" ? "lmcRV" : this.S.japMode === "hk" ? "lmcHK" : this.S.japMode === "kv" ? "lmcKV" : "lmc"];
+      const _malaNum = this[this.S.japMode === "rv" ? "lmcRV" : this.S.japMode === "hk" ? "lmcHK" : this.S.japMode === "kv" ? "lmcKV" : this.S.japMode === "ss" ? "lmcSS" : "lmc"];
       _announcer.textContent = "";
       setTimeout(() => {
         _announcer.textContent = "Mala " + _malaNum + " complete. Radha Radha.";
@@ -1484,6 +1541,7 @@ const App = {
     const isRVm = this.S.japMode === "rv";
     const isHKm = this.S.japMode === "hk";
     const isKVm = this.S.japMode === "kv";
+    const isSSm = this.S.japMode === "ss";
     if (isRVm) {
       if (!this.S.malaLogRV) this.S.malaLogRV = [];
       this.S.malaLogRV.push(malaDuration);
@@ -1493,6 +1551,9 @@ const App = {
     } else if (isKVm) {
       if (!this.S.malaLogKV) this.S.malaLogKV = [];
       this.S.malaLogKV.push(malaDuration);
+    } else if (isSSm) {
+      if (!this.S.malaLogSS) this.S.malaLogSS = [];
+      this.S.malaLogSS.push(malaDuration);
     } else {
       if (!this.S.malaLog) this.S.malaLog = [];
       this.S.malaLog.push(malaDuration);
@@ -1505,7 +1566,9 @@ const App = {
         ? (this.S.malaLogHK || []).length
         : isKVm
           ? (this.S.malaLogKV || []).length
-          : (this.S.malaLog || []).length;
+          : isSSm
+            ? (this.S.malaLogSS || []).length
+            : (this.S.malaLog || []).length;
     // Store wall-clock start so the history detail can show accurate start time
     // Real wall-clock start (e.g. 12:01) and real end (e.g. 12:21)
     const malaStartTs = _malaRealStart;
@@ -1531,6 +1594,7 @@ const App = {
           _mode === "rv" ? (this.S.historyRV = this.S.historyRV || {})
           : _mode === "hk" ? (this.S.historyHK = this.S.historyHK || {})
           : _mode === "kv" ? (this.S.historyKV = this.S.historyKV || {})
+          : _mode === "ss" ? (this.S.historySS = this.S.historySS || {})
           : (this.S.history = this.S.history || {});
         const _moveCount = Math.min(_ms, _hist[_endTk] || 0);
         if (_moveCount > 0) {
@@ -1542,6 +1606,7 @@ const App = {
           _mode === "rv" ? (this.S.timerHistoryRV = this.S.timerHistoryRV || {})
           : _mode === "hk" ? (this.S.timerHistoryHK = this.S.timerHistoryHK || {})
           : _mode === "kv" ? (this.S.timerHistoryKV = this.S.timerHistoryKV || {})
+          : _mode === "ss" ? (this.S.timerHistorySS = this.S.timerHistorySS || {})
           : (this.S.timerHistory = this.S.timerHistory || {});
         const _moveSec = Math.min(malaDuration, _th[_endTk] || 0);
         if (_moveSec > 0) {
@@ -1554,6 +1619,7 @@ const App = {
         this.lmcRV = Math.floor((this.S.historyRV [_endTk] || 0) / _ms);
         this.lmcHK = Math.floor(((this.S.historyHK||{})[_endTk] || 0) / _ms);
         this.lmcKV = Math.floor(((this.S.historyKV||{})[_endTk] || 0) / _ms);
+        this.lmcSS = Math.floor(((this.S.historySS||{})[_endTk] || 0) / _ms);
       }
     } catch (e) { console.warn("startTk credit:", e); }
     this.S.malaStartTk = "";
@@ -1634,6 +1700,7 @@ const App = {
     const isRV = this.S.japMode === "rv";
     const isHK = this.S.japMode === "hk";
     const isKV = this.S.japMode === "kv";
+    const isSS = this.S.japMode === "ss";
     if (isRV) {
       this.S.historyRV[this.S.tk] = (this.S.historyRV[this.S.tk] || 0) + 1;
     } else if (isHK) {
@@ -1642,6 +1709,9 @@ const App = {
     } else if (isKV) {
       if (!this.S.historyKV) this.S.historyKV = {};
       this.S.historyKV[this.S.tk] = (this.S.historyKV[this.S.tk] || 0) + 1;
+    } else if (isSS) {
+      if (!this.S.historySS) this.S.historySS = {};
+      this.S.historySS[this.S.tk] = (this.S.historySS[this.S.tk] || 0) + 1;
     } else {
       this.S.history[this.S.tk] = (this.S.history[this.S.tk] || 0) + 1;
     }
@@ -1657,11 +1727,13 @@ const App = {
       spawnHK();
     } else if (isKV) {
       spawnKV(e, document.getElementById("tz"));
+    } else if (isSS) {
+      spawnSS(e, document.getElementById("tz"));
     } else {
       spawn(e, document.getElementById("tz"));
     }
     const nm = Math.floor(this.gTod() / ms);
-    const lmcKey = isRV ? "lmcRV" : isHK ? "lmcHK" : isKV ? "lmcKV" : "lmc";
+    const lmcKey = isRV ? "lmcRV" : isHK ? "lmcHK" : isKV ? "lmcKV" : isSS ? "lmcSS" : "lmc";
     if (nm > this[lmcKey]) {
       this[lmcKey] = nm;
       this.malaOk();
@@ -1694,16 +1766,19 @@ const App = {
     const isRV = this.S.japMode === "rv";
     const isHK = this.S.japMode === "hk";
     const isKV = this.S.japMode === "kv";
+    const isSS = this.S.japMode === "ss";
     const hist = isRV
       ? this.S.historyRV
       : isHK
         ? this.S.historyHK || {}
         : isKV
           ? this.S.historyKV || {}
-          : this.S.history;
+          : isSS
+            ? this.S.historySS || {}
+            : this.S.history;
     if ((hist[this.S.tk] || 0) > 0) {
       hist[this.S.tk]--;
-      const lmcKey = isRV ? "lmcRV" : isHK ? "lmcHK" : isKV ? "lmcKV" : "lmc";
+      const lmcKey = isRV ? "lmcRV" : isHK ? "lmcHK" : isKV ? "lmcKV" : isSS ? "lmcSS" : "lmc";
       this[lmcKey] = Math.floor(this.gTod() / (this.S.ms || 108));
       this.save();
       fbDebouncedPush();
@@ -2098,6 +2173,37 @@ function spawnRV(e, zone) {
     'px">' + _nt.rv1 + '</span><span style="font-size:' +
     fs * 0.85 +
     'px">' + _nt.rv2 + '</span>';
+  el.style.left = x - fs * 1.2 + "px";
+  el.style.top = y - fs * 0.5 + "px";
+  acf = !acf;
+  el.style.color = acf ? "#FFD700" : "#6DB8FF";
+  el.style.textShadow = acf
+    ? "0 0 30px rgba(255,215,0,0.9)"
+    : "0 0 30px rgba(109,184,255,0.9)";
+  zone.appendChild(el);
+  setTimeout(() => el.remove(), 2400);
+}
+
+function spawnSS(e, zone) {
+  const r = zone.getBoundingClientRect();
+  let x, y;
+  if (e.touches && e.touches[0]) {
+    x = e.touches[0].clientX - r.left;
+    y = e.touches[0].clientY - r.top;
+  } else {
+    x = e.clientX - r.left;
+    y = e.clientY - r.top;
+  }
+  const el = document.createElement("div");
+  el.className = "fn-ss";
+  const fs = 55 + Math.random() * 25;
+  const _nt = naamText();
+  el.innerHTML =
+    '<span style="font-size:' +
+    fs +
+    'px">' + _nt.ss1 + '</span><span style="font-size:' +
+    fs * 0.85 +
+    'px">' + _nt.ss2 + '</span>';
   el.style.left = x - fs * 1.2 + "px";
   el.style.top = y - fs * 0.5 + "px";
   acf = !acf;
@@ -2512,6 +2618,18 @@ function svtKV(type) {
   toast("KV Daily Target saved! 🎯");
 }
 
+// ── SS Target Save ──
+function svtSS(type) {
+  if (type === "d") {
+    const v = parseInt(document.getElementById("dtSSIn").value) || 0;
+    App.S.dtSS = v;
+  }
+  App.save();
+  fbDebouncedPush();
+  App.ua();
+  toast("Samba Sadashiv Daily Target saved! 🎯");
+}
+
 // ── HK Target Save ──
 function svtHK(type) {
   if (type === "d") {
@@ -2614,6 +2732,11 @@ function initJapModeUI() {
   if (dtKVIn && App.S.dtKV) dtKVIn.value = App.S.dtKV;
   const dtKVM = document.getElementById("dtKVMala");
   if (dtKVM) dtKVM.textContent = Math.floor((App.S.dtKV || 0) / ms);
+  // Populate SS target inputs
+  const dtSSIn = document.getElementById("dtSSIn");
+  if (dtSSIn && App.S.dtSS) dtSSIn.value = App.S.dtSS;
+  const dtSSM = document.getElementById("dtSSMala");
+  if (dtSSM) dtSSM.textContent = Math.floor((App.S.dtSS || 0) / ms);
   // Populate HK target inputs
   const dtHKIn = document.getElementById("dtHKIn");
   if (dtHKIn && App.S.dtHK) dtHKIn.value = App.S.dtHK;
@@ -2673,8 +2796,8 @@ function closeNaamSelOutside(e) {
 }
 // ── Radha / Radha Vallabh jap-text script lookup (Sanskrit/Devanagari vs Bangla) ──
 const NAAM_TEXT = {
-  sa: { radha: "राधा", rv1: "राधावल्लभ", rv2: "श्री हरिवंश", kv1: "कृष्णाय वासुदेवाय हरये परमात्मने", kv2: "प्रणतः क्लेशनाशाय गोविन्दाय नमो नमः", kvShort: "कृष्णाय वासुदेवाय" },
-  bn: { radha: "রাধা", rv1: "রাধাবল্লভ", rv2: "শ্রী হরিবংশ", kv1: "কৃষ্ণায় বাসুদেবায় হরয়ে পরমাত্মনে", kv2: "প্রণতঃ ক্লেশনাশায় গোবিন্দায় নমো নমঃ", kvShort: "কৃষ্ণায় বাসুদেবায়" },
+  sa: { radha: "राधा", rv1: "राधावल्लभ", rv2: "श्री हरिवंश", kv1: "कृष्णाय वासुदेवाय हरये परमात्मने", kv2: "प्रणतः क्लेशनाशाय गोविन्दाय नमो नमः", kvShort: "कृष्णाय वासुदेवाय", ss1: "साम्ब", ss2: "सदाशिव" },
+  bn: { radha: "রাধা", rv1: "রাধাবল্লভ", rv2: "শ্রী হরিবংশ", kv1: "কৃষ্ণায় বাসুদেবায় হরয়ে পরমাত্মনে", kv2: "প্রণতঃ ক্লেশনাশায় গোবিন্দায় নমো নমঃ", kvShort: "কৃষ্ণায় বাসুদেবায়", ss1: "সাম্ব", ss2: "সদাশিব" },
 };
 function naamText() {
   const lang = (App.S && App.S.naamLang === "bn") ? "bn" : "sa";
@@ -2695,6 +2818,8 @@ function applyNaamLangLabels(lang) {
   if (optRVLbl) optRVLbl.textContent = _nt.rv1 + " " + _nt.rv2;
   const optKVLbl = document.getElementById("naamOptKVLabel");
   if (optKVLbl) optKVLbl.textContent = _nt.kvShort;
+  const optSSLbl = document.getElementById("naamOptSSLabel");
+  if (optSSLbl) optSSLbl.textContent = _nt.ss1 + " " + _nt.ss2;
 }
 
 function setNaamLangDirect(lang) {
@@ -2702,8 +2827,8 @@ function setNaamLangDirect(lang) {
   if (App.S.naamLang === lang) return; // already selected
   App.S.naamLang = lang;
   applyNaamLangLabels(lang);
-  // Refresh the header title live if currently on Radha, RV, or KV mode
-  if (App.S.japMode === "radha" || App.S.japMode === "rv" || App.S.japMode === "kv") {
+  // Refresh the header title live if currently on Radha, RV, KV, or SS mode
+  if (App.S.japMode === "radha" || App.S.japMode === "rv" || App.S.japMode === "kv" || App.S.japMode === "ss") {
     switchJapMode(App.S.japMode);
   }
   App.save();
@@ -2776,6 +2901,7 @@ function switchJapMode(mode) {
   const optRV = document.getElementById("naamOptRV");
   const optHK = document.getElementById("naamOptHK");
   const optKV = document.getElementById("naamOptKV");
+  const optSS = document.getElementById("naamOptSS");
   const titleEl = document.getElementById("rnTitle");
   const hkEl = document.getElementById("hkPersist");
   const kvEl = document.getElementById("kvPersist");
@@ -2785,7 +2911,7 @@ function switchJapMode(mode) {
   if (hkEl) hkEl.classList.remove("hk-visible");
   if (kvEl) kvEl.classList.remove("kv-visible");
   // Clear all active states first
-  [optR, optRV, optHK, optKV].forEach((o) => {
+  [optR, optRV, optHK, optKV, optSS].forEach((o) => {
     if (o) {
       o.classList.remove("active");
       o.querySelector(".ns-check").textContent = "";
@@ -2821,6 +2947,24 @@ function switchJapMode(mode) {
       const _nt = naamText();
       titleEl.innerHTML =
         '<span style="font-size:clamp(18px,5vw,28px);line-height:1.1">' + _nt.kvShort + '</span>';
+    }
+    titleEl.style.textAlign = "center";
+    if (hkEl) {
+      hkEl.classList.remove("hk-visible");
+    }
+  } else if (mode === "ss") {
+    _hkMalaBlocked = false;
+    const _mcClr = document.getElementById("hkMalaComplete");
+    if (_mcClr) _mcClr.classList.remove("hkmc-visible");
+    if (optSS) {
+      optSS.classList.add("active");
+      optSS.querySelector(".ns-check").textContent = "✓";
+    }
+    {
+      const _nt = naamText();
+      titleEl.innerHTML =
+        '<span style="font-size:clamp(18px,5vw,28px);line-height:1.1">' + _nt.ss1 +
+        '</span><br><span style="font-size:clamp(16px,4.5vw,24px);line-height:1.1">' + _nt.ss2 + '</span>';
     }
     titleEl.style.textAlign = "center";
     if (hkEl) {
@@ -2870,6 +3014,8 @@ function switchJapMode(mode) {
     App.lmcHK = Math.floor(((App.S.historyHK || {})[App.S.tk] || 0) / ms);
   } else if (mode === "kv") {
     App.lmcKV = Math.floor(((App.S.historyKV || {})[App.S.tk] || 0) / ms);
+  } else if (mode === "ss") {
+    App.lmcSS = Math.floor(((App.S.historySS || {})[App.S.tk] || 0) / ms);
   } else {
     App.lmc = Math.floor((App.S.history[App.S.tk] || 0) / ms);
   }
@@ -2882,6 +3028,7 @@ function switchJapMode(mode) {
     rv: _nt.rv1 + " " + _nt.rv2 + " 🙏",
     hk: "हरे कृष्ण महामंत्र 🪷",
     kv: _nt.kvShort + " 🙏",
+    ss: _nt.ss1 + " " + _nt.ss2 + " 🙏",
     radha: _nt.radha + " 🙏",
   };
   toast(toastMap[mode] || _nt.radha + " 🙏");
@@ -3041,6 +3188,13 @@ function populateSettingsUI() {
   if (dtKVMalaInEl) dtKVMalaInEl.value = (App.S.dtKV || 0) > 0 ? Math.round((App.S.dtKV || 0) / ms) : "";
   const dtKVMalaDisp = document.getElementById("dtKVMala");
   if (dtKVMalaDisp) dtKVMalaDisp.textContent = (App.S.dtKV || 0) > 0 ? Math.floor((App.S.dtKV || 0) / ms) : "0";
+  // SS Daily
+  const dtSSEl = document.getElementById("dtSSIn");
+  if (dtSSEl) dtSSEl.value = (App.S.dtSS || 0) > 0 ? App.S.dtSS : "";
+  const dtSSMalaInEl = document.getElementById("dtSSMalaIn");
+  if (dtSSMalaInEl) dtSSMalaInEl.value = (App.S.dtSS || 0) > 0 ? Math.round((App.S.dtSS || 0) / ms) : "";
+  const dtSSMalaDisp = document.getElementById("dtSSMala");
+  if (dtSSMalaDisp) dtSSMalaDisp.textContent = (App.S.dtSS || 0) > 0 ? Math.floor((App.S.dtSS || 0) / ms) : "0";
   // HK Daily
   const dtHKEl = document.getElementById("dtHKIn");
   if (dtHKEl) dtHKEl.value = (App.S.dtHK || 0) > 0 ? App.S.dtHK : "";
@@ -3655,15 +3809,19 @@ function addManualJap() {
   if (!App.S.historyRV) App.S.historyRV = {};
   if (!App.S.historyHK) App.S.historyHK = {};
   if (!App.S.historyKV) App.S.historyKV = {};
+  if (!App.S.historySS) App.S.historySS = {};
   const isRV = App.S.japMode === "rv";
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
+  const isSS = App.S.japMode === "ss";
   if (isRV) {
     App.S.historyRV[App.S.tk] = (App.S.historyRV[App.S.tk] || 0) + n;
   } else if (isHK) {
     App.S.historyHK[App.S.tk] = (App.S.historyHK[App.S.tk] || 0) + n;
   } else if (isKV) {
     App.S.historyKV[App.S.tk] = (App.S.historyKV[App.S.tk] || 0) + n;
+  } else if (isSS) {
+    App.S.historySS[App.S.tk] = (App.S.historySS[App.S.tk] || 0) + n;
   } else {
     App.S.history[App.S.tk] = (App.S.history[App.S.tk] || 0) + n;
   }
@@ -3688,9 +3846,11 @@ function addManualJap() {
         ? App.S.malaLogHK || (App.S.malaLogHK = [])
         : isKV
           ? App.S.malaLogKV || (App.S.malaLogKV = [])
-          : App.S.malaLog || (App.S.malaLog = []);
+          : isSS
+            ? App.S.malaLogSS || (App.S.malaLogSS = [])
+            : App.S.malaLog || (App.S.malaLog = []);
     const now = Date.now();
-    const modeStr = isRV ? "rv" : isHK ? "hk" : isKV ? "kv" : "radha";
+    const modeStr = isRV ? "rv" : isHK ? "hk" : isKV ? "kv" : isSS ? "ss" : "radha";
     for (let i = 0; i < malasAdded; i++) {
       log.push(avgPerMala);
       logActivity({
@@ -3707,7 +3867,7 @@ function addManualJap() {
   }
   App.ensureMalaWallStart();
   const nm = Math.floor(App.gTod() / (App.S.ms || 108));
-  const lmcKey = isRV ? "lmcRV" : isHK ? "lmcHK" : isKV ? "lmcKV" : "lmc";
+  const lmcKey = isRV ? "lmcRV" : isHK ? "lmcHK" : isKV ? "lmcKV" : isSS ? "lmcSS" : "lmc";
   if (nm > (App[lmcKey] || 0)) {
     App[lmcKey] = nm;
     // Celebrate the new mala milestone WITHOUT calling malaOk() —
@@ -3819,10 +3979,14 @@ function addPrevJap() {
   const prevKey = "prev_" + Date.now();
   const isRV = App.S.japMode === "rv";
   const isKV = App.S.japMode === "kv";
+  const isSS = App.S.japMode === "ss";
   if (isRV) {
     App.S.historyRV[prevKey] = n;
   } else if (isKV) {
     App.S.historyKV[prevKey] = n;
+  } else if (isSS) {
+    if (!App.S.historySS) App.S.historySS = {};
+    App.S.historySS[prevKey] = n;
   } else {
     App.S.history[prevKey] = n;
   }
@@ -3852,6 +4016,8 @@ function addNameJapDeduct() {
     App.S.nameJapDeductHK = (App.S.nameJapDeductHK || 0) + n;
   } else if (App.S.japMode === "kv") {
     App.S.nameJapDeductKV = (App.S.nameJapDeductKV || 0) + n;
+  } else if (App.S.japMode === "ss") {
+    App.S.nameJapDeductSS = (App.S.nameJapDeductSS || 0) + n;
   } else {
     App.S.nameJapDeduct = (App.S.nameJapDeduct || 0) + n;
   }
@@ -3874,13 +4040,16 @@ function removeNameJapDeduct() {
   const isRV = App.S.japMode === "rv";
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
+  const isSS = App.S.japMode === "ss";
   const cur = isRV
     ? App.S.nameJapDeductRV || 0
     : isHK
       ? App.S.nameJapDeductHK || 0
       : isKV
         ? App.S.nameJapDeductKV || 0
-        : App.S.nameJapDeduct || 0;
+        : isSS
+          ? App.S.nameJapDeductSS || 0
+          : App.S.nameJapDeduct || 0;
   if (n > cur) {
     toast(
       "Cannot restore more than currently deducted (" +
@@ -3895,6 +4064,8 @@ function removeNameJapDeduct() {
     App.S.nameJapDeductHK = cur - n;
   } else if (isKV) {
     App.S.nameJapDeductKV = cur - n;
+  } else if (isSS) {
+    App.S.nameJapDeductSS = cur - n;
   } else {
     App.S.nameJapDeduct = cur - n;
   }
@@ -3923,6 +4094,7 @@ function _dedTypeMeta(type) {
   if (type === "rv") return { label: "Radha Vallabh", color: "#5eead4" };
   if (type === "kv") return { label: "Krishnay Vasudevay", color: "#6DB8FF" };
   if (type === "hk") return { label: "Hare Krishna", color: "#c9a7ff" };
+  if (type === "ss") return { label: "Samba Sadashiv", color: "#ffb86c" };
   return { label: "Radha", color: "#f5c842" };
 }
 
@@ -3950,6 +4122,13 @@ function _dedLifetimeFor(type) {
         (App.S.nameJapDeductHK || 0),
     );
   }
+  if (type === "ss") {
+    return Math.max(
+      0,
+      Object.values(App.S.historySS || {}).reduce((a, b) => a + b, 0) -
+        (App.S.nameJapDeductSS || 0),
+    );
+  }
   return Math.max(
     0,
     Object.values(App.S.history || {}).reduce((a, b) => a + b, 0) -
@@ -3964,6 +4143,8 @@ function _dedAdjustCounter(type, delta) {
     App.S.nameJapDeductKV = Math.max(0, (App.S.nameJapDeductKV || 0) + delta);
   } else if (type === "hk") {
     App.S.nameJapDeductHK = Math.max(0, (App.S.nameJapDeductHK || 0) + delta);
+  } else if (type === "ss") {
+    App.S.nameJapDeductSS = Math.max(0, (App.S.nameJapDeductSS || 0) + delta);
   } else {
     App.S.nameJapDeduct = Math.max(0, (App.S.nameJapDeduct || 0) + delta);
   }
@@ -3989,7 +4170,7 @@ function renderDedTypePanels() {
   const wrap = document.getElementById("dedTypePanels");
   if (!wrap) return;
   const ms = App.S.ms || 108;
-  const order = ["radha", "rv", "kv", "hk"].filter((t) => window._dedTypes.has(t));
+  const order = ["radha", "rv", "kv", "hk", "ss"].filter((t) => window._dedTypes.has(t));
 
   wrap.innerHTML = order
     .map((type) => {
@@ -4103,7 +4284,7 @@ function _updateDedSummary() {
   const ms = App.S.ms || 108;
   const parts = [];
   let japTotal = 0;
-  ["radha", "rv", "kv", "hk"].forEach((type) => {
+  ["radha", "rv", "kv", "hk", "ss"].forEach((type) => {
     const amt = window._dedAmounts[type] || 0;
     if (amt > 0 && window._dedTypes.has(type)) {
       japTotal += amt;
@@ -4707,20 +4888,23 @@ function deductTodayJap() {
   const isRV = App.S.japMode === "rv";
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
+  const isSS = App.S.japMode === "ss";
   const hist = isRV
     ? App.S.historyRV
     : isHK
       ? App.S.historyHK || (App.S.historyHK = {})
       : isKV
         ? App.S.historyKV || (App.S.historyKV = {})
-        : App.S.history;
+        : isSS
+          ? App.S.historySS || (App.S.historySS = {})
+          : App.S.history;
   const cur = hist[App.S.tk] || 0;
   if (n > cur) {
     toast("Cannot deduct more than today's count (" + cur + ")");
     return;
   }
   hist[App.S.tk] = cur - n;
-  const lmcKey = isRV ? "lmcRV" : isHK ? "lmcHK" : isKV ? "lmcKV" : "lmc";
+  const lmcKey = isRV ? "lmcRV" : isHK ? "lmcHK" : isKV ? "lmcKV" : isSS ? "lmcSS" : "lmc";
   App[lmcKey] = Math.floor(App.gTod() / (App.S.ms || 108));
 
   // Explicit time input wins; otherwise fall back to proportional removal from mala log
@@ -4735,7 +4919,9 @@ function deductTodayJap() {
       ? App.S.malaLogHK || (App.S.malaLogHK = [])
       : isKV
         ? App.S.malaLogKV || (App.S.malaLogKV = [])
-        : App.S.malaLog || (App.S.malaLog = []);
+        : isSS
+          ? App.S.malaLogSS || (App.S.malaLogSS = [])
+          : App.S.malaLog || (App.S.malaLog = []);
 
   if (explicitTime > 0) {
     // Shrink the mala log entries proportionally so total drops by explicitTime,
@@ -4800,13 +4986,16 @@ function deductOtherJap() {
   const isRV = App.S.japMode === "rv";
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
+  const isSS = App.S.japMode === "ss";
   const hist = isRV
     ? App.S.historyRV
     : isHK
       ? App.S.historyHK || (App.S.historyHK = {})
       : isKV
         ? App.S.historyKV || (App.S.historyKV = {})
-        : App.S.history;
+        : isSS
+          ? App.S.historySS || (App.S.historySS = {})
+          : App.S.history;
   const cur = hist[date] || 0;
   if (n > cur) {
     toast("Cannot deduct more than that day's count (" + cur + ")");
@@ -4827,7 +5016,9 @@ function deductOtherJap() {
         ? App.S.timerHistoryHK || (App.S.timerHistoryHK = {})
         : isKV
           ? App.S.timerHistoryKV || (App.S.timerHistoryKV = {})
-          : App.S.timerHistory || (App.S.timerHistory = {});
+          : isSS
+            ? App.S.timerHistorySS || (App.S.timerHistorySS = {})
+            : App.S.timerHistory || (App.S.timerHistory = {});
     th[date] = Math.max(0, (th[date] || 0) - timeSecs);
   }
 
@@ -4871,13 +5062,16 @@ function addOtherDayJap() {
   const isRV = App.S.japMode === "rv";
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
+  const isSS = App.S.japMode === "ss";
   const hist = isRV
     ? App.S.historyRV
     : isHK
       ? App.S.historyHK || (App.S.historyHK = {})
       : isKV
         ? App.S.historyKV || (App.S.historyKV = {})
-        : App.S.history;
+        : isSS
+          ? App.S.historySS || (App.S.historySS = {})
+          : App.S.history;
   hist[date] = (hist[date] || 0) + n;
 
   // Optional estimated time — directly add to per-day timerHistory
@@ -4893,7 +5087,9 @@ function addOtherDayJap() {
         ? App.S.timerHistoryHK || (App.S.timerHistoryHK = {})
         : isKV
           ? App.S.timerHistoryKV || (App.S.timerHistoryKV = {})
-          : App.S.timerHistory || (App.S.timerHistory = {});
+          : isSS
+            ? App.S.timerHistorySS || (App.S.timerHistorySS = {})
+            : App.S.timerHistory || (App.S.timerHistory = {});
     th[date] = (th[date] || 0) + timeSecs;
   }
 
@@ -4944,13 +5140,16 @@ function addJapTimeToday() {
   const isRV = App.S.japMode === "rv";
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
+  const isSS = App.S.japMode === "ss";
   const log = isRV
     ? App.S.malaLogRV || (App.S.malaLogRV = [])
     : isHK
       ? App.S.malaLogHK || (App.S.malaLogHK = [])
       : isKV
         ? App.S.malaLogKV || (App.S.malaLogKV = [])
-        : App.S.malaLog || (App.S.malaLog = []);
+        : isSS
+          ? App.S.malaLogSS || (App.S.malaLogSS = [])
+          : App.S.malaLog || (App.S.malaLog = []);
   if (log.length > 0) {
     // Distribute proportionally: each mala entry gets its share
     const total = log.reduce((a, b) => a + b, 0);
@@ -5031,7 +5230,8 @@ function deductJapTimeToday() {
   // Keep mala log in harmony: reduce entries proportionally
   const isRV = App.S.japMode === "rv";
   const isKV = App.S.japMode === "kv";
-  const log = isRV ? App.S.malaLogRV || [] : isKV ? App.S.malaLogKV || [] : App.S.malaLog || [];
+  const isSS = App.S.japMode === "ss";
+  const log = isRV ? App.S.malaLogRV || [] : isKV ? App.S.malaLogKV || [] : isSS ? App.S.malaLogSS || [] : App.S.malaLog || [];
   if (log.length > 0) {
     const total = log.reduce((a, b) => a + b, 0);
     if (total > 0) {
@@ -5123,10 +5323,11 @@ function uStats() {
   const _rvTarget = App.S.dtRV || 0;
   const _hkTarget = App.S.dtHK || 0;
   const _kvTarget = App.S.dtKV || 0;
+  const _ssTarget = App.S.dtSS || 0;
   // A target is "active" if at least one target is configured for the current mode
   const _hasTarget = _isGaudiya
     ? _hkTarget > 0
-    : _radhaTarget > 0 || _rvTarget > 0 || _kvTarget > 0;
+    : _radhaTarget > 0 || _rvTarget > 0 || _kvTarget > 0 || _ssTarget > 0;
   // Returns true only when EVERY configured target for this mode is individually met on day k
   function _dayHitsTarget(k) {
     if (_isGaudiya) {
@@ -5136,7 +5337,8 @@ function uStats() {
       _radhaTarget <= 0 || (App.S.history[k] || 0) >= _radhaTarget;
     const rvOk = _rvTarget <= 0 || (App.S.historyRV[k] || 0) >= _rvTarget;
     const kvOk = _kvTarget <= 0 || ((App.S.historyKV || {})[k] || 0) >= _kvTarget;
-    return (_radhaTarget > 0 || _rvTarget > 0 || _kvTarget > 0) && radhaOk && rvOk && kvOk;
+    const ssOk = _ssTarget <= 0 || ((App.S.historySS || {})[k] || 0) >= _ssTarget;
+    return (_radhaTarget > 0 || _rvTarget > 0 || _kvTarget > 0 || _ssTarget > 0) && radhaOk && rvOk && kvOk && ssOk;
   }
   // Active Streak: consecutive days where ALL configured targets were individually hit.
   // If today hasn't hit every target yet, start from yesterday so an
@@ -5212,6 +5414,11 @@ function uStats() {
     Object.values(App.S.historyKV || {}).reduce((a, b) => a + b, 0) -
       (App.S.nameJapDeductKV || 0),
   );
+  const ssLifetime = Math.max(
+    0,
+    Object.values(App.S.historySS || {}).reduce((a, b) => a + b, 0) -
+      (App.S.nameJapDeductSS || 0),
+  );
   const n28Lifetime = Math.max(
     0,
     Object.values(App.S.h28 || {}).reduce((a, b) => a + b, 0) -
@@ -5248,6 +5455,12 @@ function uStats() {
   if (sKVM) sKVM.textContent = Math.floor(kvLifetime / ms) + " malas";
   const sKVF = document.getElementById("sKVTotF");
   if (sKVF) sKVF.textContent = fmtCount(kvLifetime) + " jap";
+  const sSS = document.getElementById("sSSTot");
+  if (sSS) sSS.textContent = ssLifetime.toLocaleString("en-IN");
+  const sSSM = document.getElementById("sSSTotM");
+  if (sSSM) sSSM.textContent = Math.floor(ssLifetime / ms) + " malas";
+  const sSSF = document.getElementById("sSSTotF");
+  if (sSSF) sSSF.textContent = fmtCount(ssLifetime) + " jap";
   const s28 = document.getElementById("s28Tot");
   if (s28) s28.textContent = n28Lifetime.toLocaleString("en-IN");
   const s28M = document.getElementById("s28TotM");
@@ -5359,6 +5572,11 @@ function uStats() {
   const kvPMo = Object.entries(App.S.historyKV || {})
     .filter(([k]) => k.startsWith(mp))
     .reduce((s, [, v]) => s + v, 0);
+  const ssPTod = (App.S.historySS || {})[App.S.tk] || 0;
+  const ssPWk = wk.reduce((s, k) => s + ((App.S.historySS || {})[k] || 0), 0);
+  const ssPMo = Object.entries(App.S.historySS || {})
+    .filter(([k]) => k.startsWith(mp))
+    .reduce((s, [, v]) => s + v, 0);
   const n28PTod = (App.S.h28 || {})[App.S.tk] || 0;
   const n28PWk = wk.reduce((s, k) => s + ((App.S.h28 || {})[k] || 0), 0);
   const n28PMo = Object.entries(App.S.h28 || {})
@@ -5394,6 +5612,12 @@ function uStats() {
   _sm("sKVPWkM", kvPWk);
   _sn("sKVPMo", kvPMo);
   _sm("sKVPMoM", kvPMo);
+  _sn("sSSPTod", ssPTod);
+  _sm("sSSPTodM", ssPTod);
+  _sn("sSSPWk", ssPWk);
+  _sm("sSSPWkM", ssPWk);
+  _sn("sSSPMo", ssPMo);
+  _sm("sSSPMoM", ssPMo);
   _sn("s28PTod", n28PTod);
   _sc("s28PTodM", n28PTod);
   _sn("s28PWk", n28PWk);
@@ -5492,14 +5716,16 @@ function uStats() {
   if (_tWk) _tWk.textContent = fmtShort(timeWk);
   const _tMo = document.getElementById("tMo");
   if (_tMo) _tMo.textContent = fmtShort(timeMo);
-  // Split Radha vs RV vs KV time per row
+  // Split Radha vs RV vs KV vs SS time per row
   const radhaTH = App.S.timerHistory || {};
   const rvTH = App.S.timerHistoryRV || {};
   const kvTH = App.S.timerHistoryKV || {};
+  const ssTH = App.S.timerHistorySS || {};
   const liveExtra = App.currentMalaSeconds || 0;
   const isRVMode = App.S.japMode === "rv";
   const isKVMode = App.S.japMode === "kv";
-  const isRadhaMode = !isRVMode && !isKVMode && App.S.japMode !== "hk";
+  const isSSMode = App.S.japMode === "ss";
+  const isRadhaMode = !isRVMode && !isKVMode && !isSSMode && App.S.japMode !== "hk";
   const rTod = (radhaTH[App.S.tk] || 0) + (isRadhaMode ? liveExtra : 0);
   const rWk =
     wk.reduce((s, k) => s + (radhaTH[k] || 0), 0) + (isRadhaMode ? liveExtra : 0);
@@ -5521,6 +5747,13 @@ function uStats() {
     Object.entries(kvTH)
       .filter(([k]) => k.startsWith(mp))
       .reduce((s, [, v]) => s + v, 0) + (isKVMode ? liveExtra : 0);
+  const sTod = (ssTH[App.S.tk] || 0) + (isSSMode ? liveExtra : 0);
+  const sWk =
+    wk.reduce((s, k) => s + (ssTH[k] || 0), 0) + (isSSMode ? liveExtra : 0);
+  const sMo =
+    Object.entries(ssTH)
+      .filter(([k]) => k.startsWith(mp))
+      .reduce((s, [, v]) => s + v, 0) + (isSSMode ? liveExtra : 0);
   const _set = (id, v) => {
     const el = document.getElementById(id);
     if (el) el.textContent = fmtShort(v);
@@ -5532,6 +5765,8 @@ function uStats() {
     Object.values(rvTH).reduce((s, v) => s + v, 0) + (isRVMode ? liveExtra : 0);
   const kLt =
     Object.values(kvTH).reduce((s, v) => s + v, 0) + (isKVMode ? liveExtra : 0);
+  const sLt =
+    Object.values(ssTH).reduce((s, v) => s + v, 0) + (isSSMode ? liveExtra : 0);
   _set("tRadhaTod", rTod);
   _set("tRadhaWk", rWk);
   _set("tRadhaMo", rMo);
@@ -5544,6 +5779,10 @@ function uStats() {
   _set("tKVWk", kWk);
   _set("tKVMo", kMo);
   _set("tKVLt", kLt);
+  _set("tSSTod", sTod);
+  _set("tSSWk", sWk);
+  _set("tSSMo", sMo);
+  _set("tSSLt", sLt);
   // 28 Names time — separate from main jap time
   const _28running = !!(App._n28TimerInterval && App._n28TotalStart);
   const _28liveExtra = _28running
@@ -5739,12 +5978,14 @@ function renderMalaLog() {
   const isRV = App.S.japMode === "rv";
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
+  const isSS = App.S.japMode === "ss";
 
   // FIX: Reset type label fresh each time — no global carryover
   if (typeEl) {
     if (isRV) typeEl.textContent = "(राधावल्लभ)";
     else if (isHK) typeEl.textContent = "(हरे कृष्ण)";
     else if (isKV) typeEl.textContent = "(कृष्णाय वासुदेवाय)";
+    else if (isSS) typeEl.textContent = "(साम्ब सदाशिव)";
     else typeEl.textContent = "(राधा)";
   }
 
@@ -5755,7 +5996,9 @@ function renderMalaLog() {
       ? App.S.malaLogHK || []
       : isKV
         ? App.S.malaLogKV || []
-        : App.S.malaLog || [];
+        : isSS
+          ? App.S.malaLogSS || []
+          : App.S.malaLog || [];
   // Filter out entries with 0 or invalid values
   const log = rawLog.filter(
     (sec) => typeof sec === "number" && sec > 0 && isFinite(sec),
@@ -5828,7 +6071,8 @@ function editMalaEntry(idx) {
   const isRV = App.S.japMode === "rv";
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
-  const log = isRV ? App.S.malaLogRV : isHK ? App.S.malaLogHK : isKV ? App.S.malaLogKV : App.S.malaLog;
+  const isSS = App.S.japMode === "ss";
+  const log = isRV ? App.S.malaLogRV : isHK ? App.S.malaLogHK : isKV ? App.S.malaLogKV : isSS ? App.S.malaLogSS : App.S.malaLog;
   if (!log || idx >= log.length) return;
   const cur = log[idx];
   const curM = Math.floor(cur / 60),
@@ -5858,7 +6102,8 @@ function deleteMalaEntry(idx) {
   const isRV = App.S.japMode === "rv";
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
-  const log = isRV ? App.S.malaLogRV : isHK ? App.S.malaLogHK : isKV ? App.S.malaLogKV : App.S.malaLog;
+  const isSS = App.S.japMode === "ss";
+  const log = isRV ? App.S.malaLogRV : isHK ? App.S.malaLogHK : isKV ? App.S.malaLogKV : isSS ? App.S.malaLogSS : App.S.malaLog;
   if (!log || idx >= log.length) return;
   if (!confirm("Delete Mala " + (idx + 1) + " entry?")) return;
   log.splice(idx, 1);
@@ -5988,6 +6233,7 @@ function doReset() {
     App.S.historyRV = {};
     App.S.historyHK = {};
     App.S.historyKV = {};
+    App.S.historySS = {};
     App.S.dt = 0;
     App.S.lt = 0;
     App.S.dtRV = 0;
@@ -5995,19 +6241,24 @@ function doReset() {
     App.S.dtHK = 0;
     App.S.dtKV = 0;
     App.S.ltKV = 0;
+    App.S.dtSS = 0;
+    App.S.ltSS = 0;
     App.S.nameJapDeduct = 0;
     App.S.nameJapDeductRV = 0;
     App.S.nameJapDeductHK = 0;
     App.S.nameJapDeductKV = 0;
+    App.S.nameJapDeductSS = 0;
     App.S.dedications = [];
     App.S.timerHistory = {};
     App.S.timerHistoryRV = {};
     App.S.timerHistoryHK = {};
     App.S.timerHistoryKV = {};
+    App.S.timerHistorySS = {};
     App.S.malaLog = [];
     App.S.malaLogRV = [];
     App.S.malaLogHK = [];
     App.S.malaLogKV = [];
+    App.S.malaLogSS = [];
     App.S.activityLog = [];
     App.S.syncBaseline = {};
     App.S.syncBaselineTimer = {};
@@ -6017,18 +6268,23 @@ function doReset() {
     App.S.syncBaselineTimerHK = {};
     App.S.syncBaselineKV = {};
     App.S.syncBaselineTimerKV = {};
+    App.S.syncBaselineSS = {};
+    App.S.syncBaselineTimerSS = {};
     App.lmc = 0;
     App.lmcRV = 0;
     App.lmcHK = 0;
     App.lmcKV = 0;
+    App.lmcSS = 0;
     App.dbClearStore("history");
     App.dbClearStore("historyRV").catch(() => {});
     App.dbClearStore("historyHK").catch(() => {});
     App.dbClearStore("historyKV").catch(() => {});
+    App.dbClearStore("historySS").catch(() => {});
     App.dbClearStore("timerHistory");
     App.dbClearStore("timerHistoryRV");
     App.dbClearStore("timerHistoryHK").catch(() => {});
     App.dbClearStore("timerHistoryKV").catch(() => {});
+    App.dbClearStore("timerHistorySS").catch(() => {});
     App.dbClearStore("activityLogArchive");
     App.dbClearStore("malaLog");
     App.resetTimer();
@@ -6195,6 +6451,12 @@ function _buildBackupPayload() {
     ltKV: App.S.ltKV || 0,
     nameJapDeductKV: App.S.nameJapDeductKV || 0,
     malaLogKV: App.S.malaLogKV || [],
+    historySS: App.S.historySS || {},
+    timerHistorySS: App.S.timerHistorySS || {},
+    dtSS: App.S.dtSS || 0,
+    ltSS: App.S.ltSS || 0,
+    nameJapDeductSS: App.S.nameJapDeductSS || 0,
+    malaLogSS: App.S.malaLogSS || [],
     dedications: App.S.dedications || [],
     giftLedger: App.S.giftLedger || {},
     gaudiyaMode: App.S.gaudiyaMode || false,
@@ -6311,6 +6573,22 @@ function importAllData(input) {
         const importSumKV = (data.malaLogKV || []).reduce((a, b) => a + b, 0);
         if (importSumKV >= localSumKV) App.S.malaLogKV = data.malaLogKV;
       }
+      if (data.historySS)
+        App.S.historySS = { ...App.S.historySS, ...data.historySS };
+      if (data.timerHistorySS)
+        App.S.timerHistorySS = {
+          ...App.S.timerHistorySS,
+          ...data.timerHistorySS,
+        };
+      if (data.dtSS !== undefined) App.S.dtSS = data.dtSS;
+      if (data.ltSS !== undefined) App.S.ltSS = data.ltSS;
+      if (data.nameJapDeductSS !== undefined)
+        App.S.nameJapDeductSS = data.nameJapDeductSS;
+      if (data.malaLogSS && data.malaLogDate === App.S.tk) {
+        const localSumSS = (App.S.malaLogSS || []).reduce((a, b) => a + b, 0);
+        const importSumSS = (data.malaLogSS || []).reduce((a, b) => a + b, 0);
+        if (importSumSS >= localSumSS) App.S.malaLogSS = data.malaLogSS;
+      }
       if (data.dedications && Array.isArray(data.dedications)) {
         const localDedIds = new Set(
           (App.S.dedications || []).map((d) => d.id),
@@ -6353,6 +6631,9 @@ function importAllData(input) {
       );
       App.lmcKV = Math.floor(
         ((App.S.historyKV || {})[App.S.tk] || 0) / (App.S.ms || 108),
+      );
+      App.lmcSS = Math.floor(
+        ((App.S.historySS || {})[App.S.tk] || 0) / (App.S.ms || 108),
       );
       // Re-apply gaudiyaMode body class after import
       App.S.gaudiyaMode
@@ -6427,7 +6708,7 @@ function renderVelocityTracker() {
 // Krishna, KV, and 28 Names. Defaults to all types (unchanged behavior)
 // until the user customizes it.
 function _msConsiderDefaults() {
-  return { radha: true, rv: true, hk: true, kv: true, n28: true };
+  return { radha: true, rv: true, hk: true, kv: true, ss: true, n28: true };
 }
 function getMsConsider() {
   return { ..._msConsiderDefaults(), ...(App.S.msConsider || {}) };
@@ -6470,6 +6751,7 @@ function _msComputeTotal() {
   const histRV = App.S.historyRV || {};
   const histHK = App.S.historyHK || {};
   const histKV = App.S.historyKV || {};
+  const histSS = App.S.historySS || {};
   const radhaTot = consider.radha
     ? Math.max(
         0,
@@ -6498,13 +6780,21 @@ function _msComputeTotal() {
           (App.S.nameJapDeductKV || 0),
       )
     : 0;
+  const ssTot = consider.ss
+    ? Math.max(
+        0,
+        Object.values(histSS).reduce((a, b) => a + b, 0) -
+          (App.S.nameJapDeductSS || 0),
+      )
+    : 0;
   const n28Tot = consider.n28 ? _msAvailable28() : 0;
   return {
-    total: radhaTot + rvTot + hkTot + kvTot + n28Tot,
+    total: radhaTot + rvTot + hkTot + kvTot + ssTot + n28Tot,
     radhaTot,
     rvTot,
     hkTot,
     kvTot,
+    ssTot,
     n28Tot,
   };
 }
@@ -6518,6 +6808,7 @@ function _msConsiderChipsHtml() {
     { key: "rv", label: "Radha Vallabh", color: "94,234,212" },
     { key: "hk", label: "Hare Krishna", color: "201,167,255" },
     { key: "kv", label: "Krishnay Vasudevay", color: "109,184,255" },
+    { key: "ss", label: "Samba Sadashiv", color: "255,184,108" },
     { key: "n28", label: "28 Names", color: "255,143,199" },
   ];
   let h =
@@ -6558,6 +6849,7 @@ function renderMilestonesTab() {
   const histRV = App.S.historyRV || {};
   const histHK = App.S.historyHK || {};
   const histKV = App.S.historyKV || {};
+  const histSS = App.S.historySS || {};
   const hist28 = App.S.h28 || {};
   // Milestones reflect only the jap types the user has chosen to "consider"
   // for Bhagvat Prapti (see _msComputeTotal / the Consideration chips
@@ -6582,6 +6874,7 @@ function renderMilestonesTab() {
       (consider.rv ? histRV[k] || 0 : 0) +
       (consider.n28 ? hist28[k] || 0 : 0) +
       (consider.kv ? histKV[k] || 0 : 0) +
+      (consider.ss ? histSS[k] || 0 : 0) +
       (consider.hk ? histHK[k] || 0 : 0);
   }
   const avg7 = sum7 / 7;
@@ -6904,6 +7197,7 @@ function openMsDetail(type, count, pct, achieved) {
   const histRV = App.S.historyRV || {};
   const histHK = App.S.historyHK || {};
   const histKV = App.S.historyKV || {};
+  const histSS = App.S.historySS || {};
   // Use the same shared, consideration-aware total as the main Milestones
   // tab (_msComputeTotal) — respects the user's chosen jap types and nets
   // each against its own gift/deduct counter, so this modal always agrees
@@ -6952,6 +7246,9 @@ function openMsDetail(type, count, pct, achieved) {
   });
   Object.keys(histKV).forEach((k) => {
     allHist[k] = (allHist[k] || 0) + (histKV[k] || 0);
+  });
+  Object.keys(histSS).forEach((k) => {
+    allHist[k] = (allHist[k] || 0) + (histSS[k] || 0);
   });
   const _pdMonths = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   let peakDay = "—",
@@ -7537,6 +7834,14 @@ function fbInit() {
             malaLogKV: [],
             syncBaselineKV: {},
             syncBaselineTimerKV: {},
+            historySS: {},
+            timerHistorySS: {},
+            dtSS: 0,
+            ltSS: 0,
+            nameJapDeductSS: 0,
+            malaLogSS: [],
+            syncBaselineSS: {},
+            syncBaselineTimerSS: {},
             gaudiyaMode: false,
             trahimamMode: false,
             milestones: { reached: {}, lastChecked: 0 },
@@ -7557,6 +7862,9 @@ function fbInit() {
           );
           App.lmcKV = Math.floor(
             ((App.S.historyKV || {})[App.S.tk] || 0) / (App.S.ms || 108),
+          );
+          App.lmcSS = Math.floor(
+            ((App.S.historySS || {})[App.S.tk] || 0) / (App.S.ms || 108),
           );
           App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));
           if (App.S.gaudiyaMode) document.body.classList.add("gaudiya-mode");
@@ -7730,6 +8038,14 @@ function fbInit() {
             malaLogKV: [],
             syncBaselineKV: {},
             syncBaselineTimerKV: {},
+            historySS: {},
+            timerHistorySS: {},
+            dtSS: 0,
+            ltSS: 0,
+            nameJapDeductSS: 0,
+            malaLogSS: [],
+            syncBaselineSS: {},
+            syncBaselineTimerSS: {},
             gaudiyaMode: false,
             trahimamMode: false,
             dt28Cycles: 0,
@@ -7748,6 +8064,9 @@ function fbInit() {
           );
           App.lmcKV = Math.floor(
             ((App.S.historyKV || {})[App.S.tk] || 0) / (App.S.ms || 108),
+          );
+          App.lmcSS = Math.floor(
+            ((App.S.historySS || {})[App.S.tk] || 0) / (App.S.ms || 108),
           );
           App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));
           document.body.classList.remove("gaudiya-mode");
@@ -8843,11 +9162,13 @@ async function fbSignOut() {
     syncBaselineHK: {}, syncBaselineTimerHK: {}, nameJapDeductHK: 0,
     historyKV: {}, timerHistoryKV: {}, dtKV: 0, ltKV: 0, nameJapDeductKV: 0,
     malaLogKV: [], syncBaselineKV: {}, syncBaselineTimerKV: {},
+    historySS: {}, timerHistorySS: {}, dtSS: 0, ltSS: 0, nameJapDeductSS: 0,
+    malaLogSS: [], syncBaselineSS: {}, syncBaselineTimerSS: {},
     gaudiyaMode: false, trahimamMode: false, dt28Cycles: 0,
     milestones: { reached: {}, lastChecked: 0 },
     lastLat: _prevLat, lastLng: _prevLng,
   };
-  App.lmc = 0; App.lmcRV = 0; App.lmcHK = 0; App.lmcKV = 0; App.lm28 = 0;
+  App.lmc = 0; App.lmcRV = 0; App.lmcHK = 0; App.lmcKV = 0; App.lmcSS = 0; App.lm28 = 0;
   document.body.classList.remove("gaudiya-mode");
   switchJapMode("radha");
   try { App.ua(); } catch (_e) {}
@@ -8919,12 +9240,18 @@ async function fbPushFull() {
     ltKV: App.S.ltKV || 0,
     nameJapDeductKV: App.S.nameJapDeductKV || 0,
     malaLogKV: App.S.malaLogKV || [],
+    historySS: App.S.historySS || {},
+    timerHistorySS: App.S.timerHistorySS || {},
+    dtSS: App.S.dtSS || 0,
+    ltSS: App.S.ltSS || 0,
+    nameJapDeductSS: App.S.nameJapDeductSS || 0,
+    malaLogSS: App.S.malaLogSS || [],
     dedications: App.S.dedications || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
     trahimamMode: App.S.trahimamMode || false,
     dt28Cycles: App.S.dt28Cycles || 0,
     milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
-    msConsider: App.S.msConsider || { radha: true, rv: true, hk: true, kv: true, n28: true },
+    msConsider: App.S.msConsider || { radha: true, rv: true, hk: true, kv: true, ss: true, n28: true },
     lbOptIn: App.S.lbOptIn || false,
     driveBackupDailyEnabled: App.S.driveBackupDailyEnabled || false,
     driveBackupHour: App.S.driveBackupHour ?? 3,
@@ -9169,6 +9496,28 @@ function fbApplyRemote(d) {
       }
     }
   }
+  // SS fields
+  if ("historySS" in d)
+    App.S.historySS = JSON.parse(JSON.stringify(d.historySS || {}));
+  if ("timerHistorySS" in d)
+    App.S.timerHistorySS = JSON.parse(JSON.stringify(d.timerHistorySS || {}));
+  if (d.dtSS !== undefined) App.S.dtSS = d.dtSS;
+  if (d.ltSS !== undefined) App.S.ltSS = d.ltSS;
+  if (d.nameJapDeductSS !== undefined)
+    App.S.nameJapDeductSS = d.nameJapDeductSS;
+  // Only apply malaLogSS from Firebase if it belongs to today; never clear
+  // local on a date mismatch (see malaLog fix above for why).
+  if ("malaLogSS" in d) {
+    const remoteMalaLogSS = d.malaLogSS || [];
+    const remoteMalaDate4 = d.malaLogDate || null;
+    if (remoteMalaDate4 === App.S.tk) {
+      const localSum = (App.S.malaLogSS || []).reduce((a, b) => a + b, 0);
+      const remoteSum = remoteMalaLogSS.reduce((a, b) => a + b, 0);
+      if (remoteSum >= localSum) {
+        App.S.malaLogSS = JSON.parse(JSON.stringify(remoteMalaLogSS));
+      }
+    }
+  }
   if ("dedications" in d && Array.isArray(d.dedications)) {
     // Union-merge by id (never raw-overwrite): a dedication that only
     // exists locally (e.g. just added, push not yet landed in Firestore,
@@ -9221,6 +9570,10 @@ function fbApplyRemote(d) {
   if (!App.S.timerHistoryKV) App.S.timerHistoryKV = {};
   if (!App.S.historyKV[App.S.tk]) App.S.historyKV[App.S.tk] = 0;
   if (!App.S.timerHistoryKV[App.S.tk]) App.S.timerHistoryKV[App.S.tk] = 0;
+  if (!App.S.historySS) App.S.historySS = {};
+  if (!App.S.timerHistorySS) App.S.timerHistorySS = {};
+  if (!App.S.historySS[App.S.tk]) App.S.historySS[App.S.tk] = 0;
+  if (!App.S.timerHistorySS[App.S.tk]) App.S.timerHistorySS[App.S.tk] = 0;
   if (!App.S.history[App.S.tk]) App.S.history[App.S.tk] = 0;
   if (!App.S.h28[App.S.tk]) App.S.h28[App.S.tk] = 0;
   if (!App.S.timerHistory[App.S.tk]) App.S.timerHistory[App.S.tk] = 0;
@@ -9322,7 +9675,8 @@ async function fbMigrate() {
         Object.values(App.S.historyRV || {}).some(v => v > 0) ||
         Object.values(App.S.historyHK || {}).some(v => v > 0) ||
         Object.values(App.S.historyKV || {}).some(v => v > 0) ||
-        (App.S.dt || 0) > 0 || (App.S.dtRV || 0) > 0 || (App.S.dtHK || 0) > 0 || (App.S.dtKV || 0) > 0;
+        Object.values(App.S.historySS || {}).some(v => v > 0) ||
+        (App.S.dt || 0) > 0 || (App.S.dtRV || 0) > 0 || (App.S.dtHK || 0) > 0 || (App.S.dtKV || 0) > 0 || (App.S.dtSS || 0) > 0;
       if (hasLocalData) {
         // Genuine first-time user with local data — seed Firebase
         App._allowInitialPush = true;
@@ -9356,13 +9710,16 @@ async function fbMigrate() {
       const localHistoryRV    = JSON.parse(JSON.stringify(App.S.historyRV    || {}));
       const localHistoryHK    = JSON.parse(JSON.stringify(App.S.historyHK    || {}));
       const localHistoryKV    = JSON.parse(JSON.stringify(App.S.historyKV    || {}));
+      const localHistorySS    = JSON.parse(JSON.stringify(App.S.historySS    || {}));
       const localTimerHistoryRV = JSON.parse(JSON.stringify(App.S.timerHistoryRV || {}));
       const localTimerHistoryHK = JSON.parse(JSON.stringify(App.S.timerHistoryHK || {}));
       const localTimerHistoryKV = JSON.parse(JSON.stringify(App.S.timerHistoryKV || {}));
+      const localTimerHistorySS = JSON.parse(JSON.stringify(App.S.timerHistorySS || {}));
       const localDt   = App.S.dt   || 0;
       const localDtRV = App.S.dtRV || 0;
       const localDtHK = App.S.dtHK || 0;
       const localDtKV = App.S.dtKV || 0;
+      const localDtSS = App.S.dtSS || 0;
 
       // Cloud data exists — apply it (overrides local cache)
       fbApplyRemote({ ...snap.data(), deviceId: null });
@@ -9384,14 +9741,17 @@ async function fbMigrate() {
       mergeMax(localHistoryRV,      App.S.historyRV);
       mergeMax(localHistoryHK,      App.S.historyHK);
       mergeMax(localHistoryKV,      App.S.historyKV);
+      mergeMax(localHistorySS,      App.S.historySS);
       mergeMax(localTimerHistoryRV, App.S.timerHistoryRV);
       mergeMax(localTimerHistoryHK, App.S.timerHistoryHK);
       mergeMax(localTimerHistoryKV, App.S.timerHistoryKV);
+      mergeMax(localTimerHistorySS, App.S.timerHistorySS);
       // Also preserve higher dt (lifetime jap seconds) if local is ahead
       if (localDt   > App.S.dt)   { App.S.dt   = localDt;   offlineWorkFound = true; }
       if (localDtRV > App.S.dtRV) { App.S.dtRV = localDtRV; offlineWorkFound = true; }
       if (localDtHK > App.S.dtHK) { App.S.dtHK = localDtHK; offlineWorkFound = true; }
       if (localDtKV > App.S.dtKV) { App.S.dtKV = localDtKV; offlineWorkFound = true; }
+      if (localDtSS > App.S.dtSS) { App.S.dtSS = localDtSS; offlineWorkFound = true; }
 
       if (offlineWorkFound) {
         // Local had offline jap ahead of cloud — push the merged state immediately
@@ -9666,7 +10026,7 @@ let _n28ScriptHindi = false;
 function toggle28Script() {
   _n28ScriptHindi = !_n28ScriptHindi;
   const btn = document.getElementById("n28ScriptToggle");
-  if (btn) btn.textContent = _n28ScriptHindi ? "বাংলা" : "Sanskrit";
+  if (btn) btn.textContent = _n28ScriptHindi ? "বাংলা" : "हिन्दी";
   u28();
 }
 function get28Name(entry) {
@@ -12214,10 +12574,10 @@ function renderCal() {
     const _isG = App.S.gaudiyaMode || false;
     const cnt = _isG
         ? (App.S.historyHK[key] || 0) + (App.S.h28[key] || 0)
-        : (App.S.history[key] || 0) + (App.S.historyRV[key] || 0) + ((App.S.historyKV || {})[key] || 0) + (App.S.h28[key] || 0),
+        : (App.S.history[key] || 0) + (App.S.historyRV[key] || 0) + ((App.S.historyKV || {})[key] || 0) + ((App.S.historySS || {})[key] || 0) + (App.S.h28[key] || 0),
       timeSec = _isG
         ? App.S.timerHistoryHK[key] || 0
-        : (App.S.timerHistory[key] || 0) + (App.S.timerHistoryRV[key] || 0) + ((App.S.timerHistoryKV || {})[key] || 0),
+        : (App.S.timerHistory[key] || 0) + (App.S.timerHistoryRV[key] || 0) + ((App.S.timerHistoryKV || {})[key] || 0) + ((App.S.timerHistorySS || {})[key] || 0),
       time28Sec = App.S.timer28History[key] || 0;
     const occ = App.S.occasions && App.S.occasions[key];
     const c = document.createElement("div");
@@ -12230,7 +12590,7 @@ function renderCal() {
     if (isBcActive) {
       c.classList.add(isBcBroken ? "bc-b" : "bc-m");
     }
-    const combinedDt = (App.S.dt || 0) + (App.S.dtRV || 0) + (App.S.dtKV || 0);
+    const combinedDt = (App.S.dt || 0) + (App.S.dtRV || 0) + (App.S.dtKV || 0) + (App.S.dtSS || 0);
     if (cnt > 0) {
       c.classList.add("hd");
       if (combinedDt > 0 && cnt >= combinedDt) c.classList.add("tm");
@@ -12416,17 +12776,20 @@ function showDay(key, cnt, timeSec, time28Sec) {
   const radhaCount = App.S.history[key] || 0;
   const rvCount = App.S.historyRV[key] || 0;
   const kvCount = (App.S.historyKV || {})[key] || 0;
+  const ssCount = (App.S.historySS || {})[key] || 0;
   const radhaTime = App.S.timerHistory[key] || 0;
   const rvTime = App.S.timerHistoryRV[key] || 0;
   const kvTime = (App.S.timerHistoryKV || {})[key] || 0;
+  const ssTime = (App.S.timerHistorySS || {})[key] || 0;
   const n28Count = App.S.h28[key] || 0;
   const n28TimeSec = App.S.timer28History[key] || 0;
   const n28Cycles = Math.floor(n28Count / 28);
   const radhaMalas = Math.floor(radhaCount / ms);
   const rvMalas = Math.floor(rvCount / ms);
   const kvMalas = Math.floor(kvCount / ms);
-  const totalCount = radhaCount + rvCount + kvCount + n28Count;
-  const totalMalas = Math.floor((radhaCount + rvCount + kvCount) / ms);
+  const ssMalas = Math.floor(ssCount / ms);
+  const totalCount = radhaCount + rvCount + kvCount + ssCount + n28Count;
+  const totalMalas = Math.floor((radhaCount + rvCount + kvCount + ssCount) / ms);
   // HK / Mahamantra counts for Gaudiya mode
   const hkCount = App.S.historyHK[key] || 0;
   const hkTime = App.S.timerHistoryHK[key] || 0;
@@ -12452,6 +12815,12 @@ function showDay(key, cnt, timeSec, time28Sec) {
       kvCount > 0 ? kvCount + " jap · " + kvMalas + " malas" : "—";
   const kvTimeEl = document.getElementById("cdmoKvTime");
   if (kvTimeEl) kvTimeEl.textContent = kvTime > 0 ? App.fmtTime(kvTime) : "—";
+  const ssJapEl = document.getElementById("cdmoSsJap");
+  if (ssJapEl)
+    ssJapEl.textContent =
+      ssCount > 0 ? ssCount + " jap · " + ssMalas + " malas" : "—";
+  const ssTimeEl = document.getElementById("cdmoSsTime");
+  if (ssTimeEl) ssTimeEl.textContent = ssTime > 0 ? App.fmtTime(ssTime) : "—";
   document.getElementById("cdmo28Names").textContent =
     n28Count > 0 ? n28Count + " jap · " + n28Cycles + " cycles" : "—";
   const el28 = document.getElementById("cdmoTime28");
@@ -12464,10 +12833,10 @@ function showDay(key, cnt, timeSec, time28Sec) {
   }
   document.getElementById("cdmoTotalCount").textContent =
     totalCount > 0 ? totalCount + " jap (" + totalMalas + " malas)" : "—";
-  const totalTimeSec = radhaTime + rvTime + kvTime + n28TimeSec;
+  const totalTimeSec = radhaTime + rvTime + kvTime + ssTime + n28TimeSec;
   document.getElementById("cdmoTotalTime").textContent =
     totalTimeSec > 0 ? App.fmtTime(totalTimeSec) : "—";
-  const combinedDt = (App.S.dt || 0) + (App.S.dtRV || 0) + (App.S.dtKV || 0);
+  const combinedDt = (App.S.dt || 0) + (App.S.dtRV || 0) + (App.S.dtKV || 0) + (App.S.dtSS || 0);
   const pct = combinedDt > 0 ? Math.round((cnt / combinedDt) * 100) + "%" : "—";
   document.getElementById("cdmoPct").textContent = pct;
 
@@ -12636,9 +13005,9 @@ function sheetMarkBc(action) {
   const _isG2 = App.S.gaudiyaMode || false;
   const cnt2 = _isG2
     ? App.S.historyHK[key] || 0
-    : (App.S.history[key] || 0) + (App.S.historyRV[key] || 0) + ((App.S.historyKV || {})[key] || 0);
+    : (App.S.history[key] || 0) + (App.S.historyRV[key] || 0) + ((App.S.historyKV || {})[key] || 0) + ((App.S.historySS || {})[key] || 0);
   const timeSec2 =
-    (App.S.timerHistory[key] || 0) + (App.S.timerHistoryRV[key] || 0) + ((App.S.timerHistoryKV || {})[key] || 0);
+    (App.S.timerHistory[key] || 0) + (App.S.timerHistoryRV[key] || 0) + ((App.S.timerHistoryKV || {})[key] || 0) + ((App.S.timerHistorySS || {})[key] || 0);
   const time28Sec2 = App.S.timer28History[key] || 0;
   showDay(key, cnt2, timeSec2, time28Sec2);
 }
@@ -13062,6 +13431,9 @@ window.addEventListener("load", async () => {
   );
   App.lmcKV = Math.floor(
     ((App.S.historyKV || {})[App.S.tk] || 0) / (App.S.ms || 108),
+  );
+  App.lmcSS = Math.floor(
+    ((App.S.historySS || {})[App.S.tk] || 0) / (App.S.ms || 108),
   );
   if (App.S.gaudiyaMode) document.body.classList.add("gaudiya-mode");
   if (App.S.trahimamMode) document.body.classList.add("trahimam-mode");
@@ -14944,7 +15316,7 @@ function showHistDay(tk, filterMode) {
   const _hkDayLabel = _hkDayLang === "bn" ? "হরে কৃষ্ণ মহামন্ত্র" : "हरे कृष्ण महामंत्र";
 
   // Map deityKey names to showHistSet set values
-  const deityToSet = { radha: 'radha', rv: 'rv', kv: 'kv', '28': '28', hk: 'hk' };
+  const deityToSet = { radha: 'radha', rv: 'rv', kv: 'kv', ss: 'ss', '28': '28', hk: 'hk' };
   const autoSet = filterMode ? deityToSet[filterMode] : null;
 
   // If we have a specific mode filter AND that mode has data, go straight to per-mala detail
@@ -14952,11 +15324,13 @@ function showHistDay(tk, filterMode) {
     const radha = App.S.history[tk] || 0;
     const rv = (App.S.historyRV || {})[tk] || 0;
     const kv = (App.S.historyKV || {})[tk] || 0;
+    const ss = (App.S.historySS || {})[tk] || 0;
     const hk = (App.S.historyHK || {})[tk] || 0;
     const taps28 = (App.S.h28 || {})[tk] || 0;
     const hasData = autoSet === 'radha' ? radha > 0
                   : autoSet === 'rv'    ? rv > 0
                   : autoSet === 'kv'    ? kv > 0
+                  : autoSet === 'ss'    ? ss > 0
                   : autoSet === 'hk'    ? hk > 0
                   : taps28 > 0;
 
@@ -14964,6 +15338,7 @@ function showHistDay(tk, filterMode) {
     const modeLabel = autoSet === 'radha' ? '🌸 Radha Jap'
                     : autoSet === 'rv'    ? '🌼 Radha Vallabh'
                     : autoSet === 'kv'    ? '🪈 Krishnay Vasudevay'
+                    : autoSet === 'ss'    ? '🕉️ Samba Sadashiv'
                     : autoSet === '28'   ? '🪷 28 Names'
                     : _hkDayLabel;
     title.textContent = _histFmtDate(tk) + ' — ' + modeLabel;
@@ -14993,20 +15368,23 @@ function showHistDay(tk, filterMode) {
   const radha = App.S.history[tk] || 0;
   const rv = App.S.historyRV[tk] || 0;
   const kv = (App.S.historyKV || {})[tk] || 0;
+  const ss = (App.S.historySS || {})[tk] || 0;
   const hk = App.S.historyHK[tk] || 0;
   const taps28 = App.S.h28[tk] || 0;
   const tSecR = App.S.timerHistory[tk] || 0;
   const tSecRV = App.S.timerHistoryRV[tk] || 0;
   const tSecKV = (App.S.timerHistoryKV || {})[tk] || 0;
+  const tSecSS = (App.S.timerHistorySS || {})[tk] || 0;
   const tSecHK = App.S.timerHistoryHK[tk] || 0;
   const t28Sec = App.S.timer28History[tk] || 0;
 
   const radhaM = Math.floor(radha / ms);
   const rvM = Math.floor(rv / ms);
   const kvM = Math.floor(kv / ms);
+  const ssM = Math.floor(ss / ms);
   const hkM = Math.floor(hk / ms);
   const cyc28 = Math.floor(taps28 / 28);
-  const grand = isGaudiya ? tSecHK : tSecR + tSecRV + tSecKV + t28Sec;
+  const grand = isGaudiya ? tSecHK : tSecR + tSecRV + tSecKV + tSecSS + t28Sec;
   const fmtN = (n) => n.toLocaleString();
 
   // Stash data for the per-set drill-down
@@ -15036,9 +15414,10 @@ function showHistDay(tk, filterMode) {
     );
     html += `</div>`;
   } else {
-    html += `<div class="pt-grid pt-grid-4">`;
+    html += `<div class="pt-grid pt-grid-5">`;
     html += card("pt-radha", "radha", "Radha Jap", radhaM, radhaM === 1 ? "mala" : "malas", fmtN(radha) + " names", _histFmtSec(tSecR), radha > 0);
     html += card("pt-rv",    "rv",    "RV Jap",    rvM,    rvM === 1    ? "mala" : "malas", fmtN(rv)    + " names", _histFmtSec(tSecRV), rv > 0);
+    html += card("pt-ss",    "ss",    "Samba Sadashiv", ssM, ssM === 1  ? "mala" : "malas", fmtN(ss)    + " names", _histFmtSec(tSecSS), ss > 0);
     html += card("pt-kv",    "kv",    "KV Jap",    kvM,    kvM === 1    ? "mala" : "malas", fmtN(kv)    + " names", _histFmtSec(tSecKV), kv > 0);
     html += card("pt-28",   "28",    "28 Names",  cyc28,  cyc28 === 1  ? "cycle" : "cycles", fmtN(taps28) + " taps", _histFmtSec(t28Sec), taps28 > 0);
     html += card("pt-hk",   "hk",    _hkDayLabel, hkM,    hkM === 1    ? "mala" : "malas", fmtN(hk)    + " names", _histFmtSec(tSecHK), hk > 0);
@@ -15116,17 +15495,20 @@ function renderHistory() {
   const hist = App.S.history || {};
   const histRV = App.S.historyRV || {};
   const histKV = App.S.historyKV || {};
+  const histSS = App.S.historySS || {};
   const histHK = App.S.historyHK || {};
   const h28 = App.S.h28 || {};
   const tHist = App.S.timerHistory || {};
   const tHistRV = App.S.timerHistoryRV || {};
   const tHistKV = App.S.timerHistoryKV || {};
+  const tHistSS = App.S.timerHistorySS || {};
   const tHistHK = App.S.timerHistoryHK || {};
   const t28Hist = App.S.timer28History || {};
 
   let totRadha = 0,
     totRV = 0,
     totKV = 0,
+    totSS = 0,
     totHK = 0,
     tot28taps = 0,
     totTimeSec = 0,
@@ -15134,6 +15516,7 @@ function renderHistory() {
   window._ptRadhaSec = 0;
   window._ptRVSec = 0;
   window._ptKVSec = 0;
+  window._ptSSSec = 0;
   window._ptHKSec = 0; // reset per-mode time accumulators
   let activeDays = 0;
   tbody.innerHTML = "";
@@ -15142,13 +15525,15 @@ function renderHistory() {
     const radha = hist[tk] || 0;
     const rv = histRV[tk] || 0;
     const kv = histKV[tk] || 0;
+    const ss = histSS[tk] || 0;
     const hk = histHK[tk] || 0;
     const taps28 = h28[tk] || 0;
     const tSecR_row = tHist[tk] || 0;
     const tSecRV_row = tHistRV[tk] || 0;
     const tSecKV_row = tHistKV[tk] || 0;
+    const tSecSS_row = tHistSS[tk] || 0;
     const tSecHK_row = tHistHK[tk] || 0;
-    const tSec = isGaudiya ? tSecHK_row : isTrahimam ? tSecKV_row : tSecR_row + tSecRV_row + tSecKV_row;
+    const tSec = isGaudiya ? tSecHK_row : isTrahimam ? tSecKV_row : tSecR_row + tSecRV_row + tSecKV_row + tSecSS_row;
     const t28Sec = (isGaudiya || isTrahimam) ? 0 : t28Hist[tk] || 0;
     const totalSec = tSec + t28Sec;
 
@@ -15158,13 +15543,14 @@ function renderHistory() {
     } else if (isTrahimam) {
       if (kv === 0) return;
     } else {
-      if (radha === 0 && rv === 0 && kv === 0 && taps28 === 0) return;
+      if (radha === 0 && rv === 0 && kv === 0 && ss === 0 && taps28 === 0) return;
     }
 
     activeDays++;
     totRadha += radha;
     totRV += rv;
     totKV += kv;
+    totSS += ss;
     totHK += hk;
     tot28taps += taps28;
     totTimeSec += tSec;
@@ -15172,11 +15558,13 @@ function renderHistory() {
     window._ptRadhaSec += tSecR_row;
     window._ptRVSec += tSecRV_row;
     window._ptKVSec += tSecKV_row;
+    window._ptSSSec += tSecSS_row;
     window._ptHKSec += tSecHK_row;
 
     const radhaM = Math.floor(radha / ms);
     const rvM = Math.floor(rv / ms);
     const kvM = Math.floor(kv / ms);
+    const ssM = Math.floor(ss / ms);
     const hkM = Math.floor(hk / ms);
     const cyc28 = Math.floor(taps28 / 28);
 
@@ -15196,6 +15584,7 @@ function renderHistory() {
     const radhaStr = cell(radhaM, radhaM === 1 ? "mala" : "malas");
     const rvStr = cell(rvM, rvM === 1 ? "mala" : "malas");
     const kvStr = cell(kvM, kvM === 1 ? "mala" : "malas");
+    const ssStr = cell(ssM, ssM === 1 ? "mala" : "malas");
     const hkStr = cell(hkM, hkM === 1 ? "mala" : "malas");
     const n28Str = cell(cyc28, cyc28 === 1 ? "cycle" : "cycles");
 
@@ -15221,6 +15610,7 @@ function renderHistory() {
         ${dateCell}
         <td class="hist-radha-col hist-val hist-c-gold">${radhaStr}</td>
         <td class="hist-radha-col hist-val hist-c-rv">${rvStr}</td>
+        <td class="hist-radha-col hist-val hist-c-ss">${ssStr}</td>
         <td class="hist-radha-col hist-val hist-c-kv">${kvStr}</td>
         <td class="hist-radha-col hist-val hist-c-green">${n28Str}</td>
         <td class="hist-val hist-c-time">${_histFmtSec(totalSec)}</td>
@@ -15251,6 +15641,7 @@ function renderHistory() {
   const totRadhaM = Math.floor(totRadha / ms);
   const totRVM = Math.floor(totRV / ms);
   const totKVM = Math.floor(totKV / ms);
+  const totSSM = Math.floor(totSS / ms);
   const totHKM = Math.floor(totHK / ms);
   const totCyc28 = Math.floor(tot28taps / 28);
   const grandTotal = totTimeSec + totTimeSec28;
@@ -15290,9 +15681,10 @@ function renderHistory() {
   } else {
     totDiv.innerHTML = `
       <div class="pt-head"><span class="pt-head-icon">📊</span><span class="pt-head-title">Period Totals</span><span class="pt-head-range">(${rangeLbl})</span></div>
-      <div class="pt-grid pt-grid-4">
+      <div class="pt-grid pt-grid-5">
         ${statCard("pt-radha", "📿", "Radha Jap", totRadhaM, totRadhaM === 1 ? "mala" : "malas", fmtN(totRadha) + " names", _histFmtSec(window._ptRadhaSec || 0), "radha")}
         ${statCard("pt-rv", "🕉️", "RV Jap", totRVM, totRVM === 1 ? "mala" : "malas", fmtN(totRV) + " names", _histFmtSec(window._ptRVSec || 0), "rv")}
+        ${statCard("pt-ss", "🕉️", "Samba Sadashiv", totSSM, totSSM === 1 ? "mala" : "malas", fmtN(totSS) + " names", _histFmtSec(window._ptSSSec || 0), "ss")}
         ${statCard("pt-kv", "🪈", "KV Jap", totKVM, totKVM === 1 ? "mala" : "malas", fmtN(totKV) + " names", _histFmtSec(window._ptKVSec || 0), "kv")}
         ${statCard("pt-28", "🪷", "28 Names", totCyc28, totCyc28 === 1 ? "cycle" : "cycles", fmtN(tot28taps) + " taps", _histFmtSec(totTimeSec28), "28")}
       </div>
@@ -15322,6 +15714,7 @@ function showHistDeityDates(deityKey) {
     radha: { label: "Radha Jap",    cls: "pt-radha", icon: "📿",  color: "var(--gold)",  histKey: "history",   timerKey: "timerHistory",   unit: (m) => m === 1 ? "mala" : "malas",  toMain: (v) => Math.floor(v / ms), toSub: (v) => fmtN(v) + " names" },
     rv:    { label: "RV Jap",       cls: "pt-rv",    icon: "🕉️",  color: "var(--a2)",    histKey: "historyRV", timerKey: "timerHistoryRV", unit: (m) => m === 1 ? "mala" : "malas",  toMain: (v) => Math.floor(v / ms), toSub: (v) => fmtN(v) + " names" },
     kv:    { label: "KV Jap",       cls: "pt-kv",    icon: "🪈",  color: "#6DB8FF",      histKey: "historyKV", timerKey: "timerHistoryKV", unit: (m) => m === 1 ? "mala" : "malas",  toMain: (v) => Math.floor(v / ms), toSub: (v) => fmtN(v) + " names" },
+    ss:    { label: "Samba Sadashiv", cls: "pt-ss",  icon: "🕉️",  color: "#ffb86c",      histKey: "historySS", timerKey: "timerHistorySS", unit: (m) => m === 1 ? "mala" : "malas",  toMain: (v) => Math.floor(v / ms), toSub: (v) => fmtN(v) + " names" },
     "28":  { label: "28 Names",     cls: "pt-28",    icon: "🪷",  color: "var(--green)", histKey: "h28",       timerKey: "timer28History", unit: (c) => c === 1 ? "cycle" : "cycles", toMain: (v) => Math.floor(v / 28), toSub: (v) => fmtN(v) + " taps"  },
     hk:    { label: "हरे कृष्ण",   cls: "pt-hk",    icon: "🪈",  color: "#6DB8FF",      histKey: "historyHK", timerKey: "timerHistoryHK", unit: (m) => m === 1 ? "mala" : "malas",  toMain: (v) => Math.floor(v / ms), toSub: (v) => fmtN(v) + " names" },
   };
@@ -15450,7 +15843,7 @@ function _renderHistSetInner(set, tk, isToday, log, slot) {
 
   if (set === "radha") {
     const radhaEntries = log.filter(
-      (e) => e.t === "mala" && e.mode !== "rv" && e.mode !== "hk" && e.mode !== "kv",
+      (e) => e.t === "mala" && e.mode !== "rv" && e.mode !== "hk" && e.mode !== "kv" && e.mode !== "ss",
     );
     inner += backBtn;
     if (radhaEntries.length > 0) {
@@ -15492,6 +15885,20 @@ function _renderHistSetInner(set, tk, isToday, log, slot) {
         "🪈 KV Jap — Today's Malas",
         App.S.malaLogKV,
         "#6DB8FF",
+      );
+    } else {
+      inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-mala detail not available for this date</div>`;
+    }
+  } else if (set === "ss") {
+    const ssEntries = log.filter((e) => e.t === "mala" && e.mode === "ss");
+    inner += backBtn;
+    if (ssEntries.length > 0) {
+      inner += _histMalaTable("🕉️ Samba Sadashiv — Per Mala", ssEntries, "#ffb86c");
+    } else if (isToday && (App.S.malaLogSS || []).length > 0) {
+      inner += _histTodayMalaLogTable(
+        "🕉️ Samba Sadashiv — Today's Malas",
+        App.S.malaLogSS,
+        "#ffb86c",
       );
     } else {
       inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-mala detail not available for this date</div>`;
@@ -15629,10 +16036,12 @@ function copyHistoryText() {
   const hist = App.S.history || {};
   const histRV = App.S.historyRV || {};
   const histKV = App.S.historyKV || {};
+  const histSS = App.S.historySS || {};
   const h28 = App.S.h28 || {};
   const tHist = App.S.timerHistory || {};
   const tHistRV = App.S.timerHistoryRV || {};
   const tHistKV = App.S.timerHistoryKV || {};
+  const tHistSS = App.S.timerHistorySS || {};
   const t28Hist = App.S.timer28History || {};
 
   let lines = ["📿 Radha Naam Jap — History Report"];
@@ -15642,6 +16051,7 @@ function copyHistoryText() {
   let totR = 0,
     totRV = 0,
     totKV = 0,
+    totSS = 0,
     tot28 = 0,
     totT = 0,
     totT28 = 0;
@@ -15651,18 +16061,21 @@ function copyHistoryText() {
     const r = hist[tk] || 0,
       rv = histRV[tk] || 0,
       kv = histKV[tk] || 0,
+      ss = histSS[tk] || 0,
       t28 = h28[tk] || 0;
     const tR = tHist[tk] || 0,
       tRV = tHistRV[tk] || 0,
       tKV = tHistKV[tk] || 0,
+      tSS = tHistSS[tk] || 0,
       t28s = t28Hist[tk] || 0;
-    if (r === 0 && rv === 0 && kv === 0 && t28 === 0) return;
+    if (r === 0 && rv === 0 && kv === 0 && ss === 0 && t28 === 0) return;
     days++;
     totR += r;
     totRV += rv;
     totKV += kv;
+    totSS += ss;
     tot28 += t28;
-    totT += tR + tRV + tKV;
+    totT += tR + tRV + tKV + tSS;
     totT28 += t28s;
 
     const parts = [];
@@ -15673,6 +16086,10 @@ function copyHistoryText() {
     if (rv > 0)
       parts.push(
         "RV: " + Math.floor(rv / ms) + "m (" + rv + ") " + _histFmtSec(tRV),
+      );
+    if (ss > 0)
+      parts.push(
+        "SS: " + Math.floor(ss / ms) + "m (" + ss + ") " + _histFmtSec(tSS),
       );
     if (kv > 0)
       parts.push(
@@ -15687,7 +16104,7 @@ function copyHistoryText() {
           ") " +
           _histFmtSec(t28s),
       );
-    const total = tR + tRV + tKV + t28s;
+    const total = tR + tRV + tKV + tSS + t28s;
     if (total > 0) parts.push("Total: " + _histFmtSec(total));
 
     lines.push(_histFmtDate(tk) + " — " + parts.join(" | "));
@@ -15704,6 +16121,10 @@ function copyHistoryText() {
       Math.floor(totRV / ms) +
       " malas (" +
       totRV +
+      ") | SS: " +
+      Math.floor(totSS / ms) +
+      " malas (" +
+      totSS +
       ") | KV: " +
       Math.floor(totKV / ms) +
       " malas (" +
@@ -16319,6 +16740,7 @@ function renderLeaderboard(docs, period) {
       const sr = Object.values(d.history || {}).reduce((a,b)=>a+b,0);
       const srv = Object.values(d.historyRV || {}).reduce((a,b)=>a+b,0);
       const skv = Object.values(d.historyKV || {}).reduce((a,b)=>a+b,0);
+      const sss = Object.values(d.historySS || {}).reduce((a,b)=>a+b,0);
       const shk = Object.values(d.historyHK || {}).reduce((a,b)=>a+b,0);
       const s28 = Object.values(d.history28 || {}).reduce((a,b)=>a+b,0);
       // Net each type against its own deduct counter (gifts/manual deducts) —
@@ -16328,6 +16750,7 @@ function renderLeaderboard(docs, period) {
         r:   Math.max(0, sr  - (d.nameJapDeduct   || 0)),
         rv:  Math.max(0, srv - (d.nameJapDeductRV || 0)),
         kv:  Math.max(0, skv - (d.nameJapDeductKV || 0)),
+        ss:  Math.max(0, sss - (d.nameJapDeductSS || 0)),
         hk:  Math.max(0, shk - (d.nameJapDeductHK || 0)),
         n28: Math.max(0, s28 - (d.nameJapDeduct28 || 0)),
       };
@@ -16340,27 +16763,31 @@ function renderLeaderboard(docs, period) {
         r:   Math.min(sr,  d.nameJapDeduct   || 0),
         rv:  Math.min(srv, d.nameJapDeductRV || 0),
         kv:  Math.min(skv, d.nameJapDeductKV || 0),
+        ss:  Math.min(sss, d.nameJapDeductSS || 0),
         hk:  Math.min(shk, d.nameJapDeductHK || 0),
         n28: Math.min(s28, d.nameJapDeduct28 || 0),
       };
       const tr2 = Object.values(d.timerHistory || {}).reduce((a,b)=>a+b,0);
       const trv2 = Object.values(d.timerHistoryRV || {}).reduce((a,b)=>a+b,0);
       const tkv2 = Object.values(d.timerHistoryKV || {}).reduce((a,b)=>a+b,0);
+      const tss2 = Object.values(d.timerHistorySS || {}).reduce((a,b)=>a+b,0);
       const thk2 = Object.values(d.timerHistoryHK || {}).reduce((a,b)=>a+b,0);
       const t282 = Object.values(d.timer28History || {}).reduce((a,b)=>a+b,0);
-      d._timeBreakdown = { r: tr2, rv: trv2, kv: tkv2, hk: thk2, n28: t282 };
+      d._timeBreakdown = { r: tr2, rv: trv2, kv: tkv2, ss: tss2, hk: thk2, n28: t282 };
     } else {
       // Sum history for this period
       const hist   = d.history || {};
       const histRV = d.historyRV || {};
       const histKV = d.historyKV || {};
+      const histSS = d.historySS || {};
       const histHK = d.historyHK || {};
       const hist28 = d.history28 || {};
-      let sr = 0, srv = 0, skv = 0, shk = 0, s28 = 0;
-      let tr = 0, trv = 0, tkv = 0, thk = 0, t28 = 0;
+      let sr = 0, srv = 0, skv = 0, sss = 0, shk = 0, s28 = 0;
+      let tr = 0, trv = 0, tkv = 0, tss = 0, thk = 0, t28 = 0;
       const tHist = d.timerHistory || {};
       const tHistRV = d.timerHistoryRV || {};
       const tHistKV = d.timerHistoryKV || {};
+      const tHistSS = d.timerHistorySS || {};
       const tHistHK = d.timerHistoryHK || {};
       const tHist28 = d.timer28History || {};
       if (period === 'today' && d.todayKey === periodKeys[0] && Number(d.todayJap || 0) > 0) {
@@ -16369,11 +16796,13 @@ function renderLeaderboard(docs, period) {
         sr = bd.r || 0;
         srv = bd.rv || 0;
         skv = bd.kv || 0;
+        sss = bd.ss || 0;
         shk = bd.hk || 0;
         s28 = bd.n28 || 0;
         tr = tbd.r || 0;
         trv = tbd.rv || 0;
         tkv = tbd.kv || 0;
+        tss = tbd.ss || 0;
         thk = tbd.hk || 0;
         t28 = tbd.n28 || 0;
       } else {
@@ -16381,20 +16810,22 @@ function renderLeaderboard(docs, period) {
           sr += (hist[k] || 0);
           srv += (histRV[k] || 0);
           skv += (histKV[k] || 0);
+          sss += (histSS[k] || 0);
           shk += (histHK[k] || 0);
           s28 += (hist28[k] || 0);
           tr += (tHist[k] || 0);
           trv += (tHistRV[k] || 0);
           tkv += (tHistKV[k] || 0);
+          tss += (tHistSS[k] || 0);
           thk += (tHistHK[k] || 0);
           t28 += (tHist28[k] || 0);
         });
       }
-      score += sr + srv + skv + shk + s28;
-      timeScore += tr + trv + tkv + thk + t28;
-      d._breakdown = { r: sr, rv: srv, kv: skv, hk: shk, n28: s28 };
+      score += sr + srv + skv + sss + shk + s28;
+      timeScore += tr + trv + tkv + tss + thk + t28;
+      d._breakdown = { r: sr, rv: srv, kv: skv, ss: sss, hk: shk, n28: s28 };
       d._giftedBreakdown = { r: 0, rv: 0, kv: 0, hk: 0, n28: 0 };
-      d._timeBreakdown = { r: tr, rv: trv, kv: tkv, hk: thk, n28: t28 };
+      d._timeBreakdown = { r: tr, rv: trv, kv: tkv, ss: tss, hk: thk, n28: t28 };
     }
     return { ...d, score, timeScore };
   });
@@ -16452,9 +16883,9 @@ function renderLeaderboard(docs, period) {
     const name = (d.displayName || 'Anonymous Devotee').replace(/</g,'&lt;').replace(/>/g,'&gt;') + onlineDot;
     const ms = App.S.ms || 108;
     
-    let b = d._breakdown || { r:0, rv:0, kv:0, hk:0, n28:0 };
-    let g = d._giftedBreakdown || { r:0, rv:0, kv:0, hk:0, n28:0 };
-    let tb = d._timeBreakdown || { r:0, rv:0, kv:0, hk:0, n28:0 };
+    let b = d._breakdown || { r:0, rv:0, kv:0, ss:0, hk:0, n28:0 };
+    let g = d._giftedBreakdown || { r:0, rv:0, kv:0, ss:0, hk:0, n28:0 };
+    let tb = d._timeBreakdown || { r:0, rv:0, kv:0, ss:0, hk:0, n28:0 };
 
     // Build per-type breakdown: R, RV, KV show malas (count/108), 28N shows
     // cycles (count/28), HK shows malas. Each line is the NETTED (post-gift)
@@ -16480,6 +16911,12 @@ function renderLeaderboard(docs, period) {
       const giftNote = g.kv > 0 ? ' · 🎁' + _lbFmtJap(g.kv) + ' gifted' : '';
       bdParts.push('KV: ' + kvStr + (tb.kv > 0 ? ' ⏱ ' + _histFmtSec(tb.kv) : '') + giftNote);
     }
+    if (b.ss > 0 || g.ss > 0) {
+      const ssM = Math.floor(b.ss / ms);
+      const ssStr = _lbFmtJap(b.ss) + (ssM > 0 ? ' (' + ssM + 'M)' : '');
+      const giftNote = g.ss > 0 ? ' · 🎁' + _lbFmtJap(g.ss) + ' gifted' : '';
+      bdParts.push('SS: ' + ssStr + (tb.ss > 0 ? ' ⏱ ' + _histFmtSec(tb.ss) : '') + giftNote);
+    }
     if (b.n28 > 0 || g.n28 > 0) {
       const cyc28 = Math.floor(b.n28 / 28);
       const cyc28Str = (cyc28 > 0 ? cyc28 + 'C ' : '') + '(' + _lbFmtJap(b.n28) + ')';
@@ -16492,8 +16929,8 @@ function renderLeaderboard(docs, period) {
       const giftNote = g.hk > 0 ? ' · 🎁' + _lbFmtJap(g.hk) + ' gifted' : '';
       bdParts.push('HK: ' + hkStr + (tb.hk > 0 ? ' ⏱ ' + _histFmtSec(tb.hk) : '') + giftNote);
     }
-    // Total: only count R+RV+HK malas (not 28N), 28N shown as cycles separately
-    const japOnly = (b.r || 0) + (b.rv || 0) + (b.hk || 0);
+    // Total: only count R+RV+SS+HK malas (not 28N), 28N shown as cycles separately
+    const japOnly = (b.r || 0) + (b.rv || 0) + (b.ss || 0) + (b.hk || 0);
     const totalMalas = Math.floor(japOnly / ms);
     const total28Cyc = Math.floor((b.n28 || 0) / 28);
     let totalStr = _lbFmtJap(d.score) + ' jap';
@@ -16578,14 +17015,16 @@ async function pushLeaderboard() {
   const hist   = App.S.history   || {};
   const histRV = App.S.historyRV || {};
   const histKV = App.S.historyKV || {};
+  const histSS = App.S.historySS || {};
   const histHK = App.S.historyHK || {};
   const hist28 = App.S.h28 || {};
   const totalRadha = Object.values(hist).reduce((a,b)=>a+b,0);
   const totalRV    = Object.values(histRV).reduce((a,b)=>a+b,0);
   const totalKV    = Object.values(histKV).reduce((a,b)=>a+b,0);
+  const totalSS    = Object.values(histSS).reduce((a,b)=>a+b,0);
   const totalHK    = Object.values(histHK).reduce((a,b)=>a+b,0);
   const total28    = Object.values(hist28).reduce((a,b)=>a+b,0);
-  const totalJap   = Math.max(0, totalRadha + totalRV + totalKV + totalHK + total28 - (App.S.nameJapDeduct||0) - (App.S.nameJapDeductRV||0) - (App.S.nameJapDeductKV||0) - (App.S.nameJapDeductHK||0) - (App.S.nameJapDeduct28||0));
+  const totalJap   = Math.max(0, totalRadha + totalRV + totalKV + totalSS + totalHK + total28 - (App.S.nameJapDeduct||0) - (App.S.nameJapDeductRV||0) - (App.S.nameJapDeductKV||0) - (App.S.nameJapDeductSS||0) - (App.S.nameJapDeductHK||0) - (App.S.nameJapDeduct28||0));
 
   // Build display name
   let displayName = (App.S.lbDisplayName || '').trim();
@@ -16599,8 +17038,8 @@ async function pushLeaderboard() {
   try {
     const tk = liveTk || App.S.tk;
     const allHist = {};
-    Object.keys({...hist,...histRV,...histKV,...histHK}).forEach(function(k) {
-      allHist[k] = (hist[k]||0)+(histRV[k]||0)+(histKV[k]||0)+(histHK[k]||0);
+    Object.keys({...hist,...histRV,...histKV,...histSS,...histHK}).forEach(function(k) {
+      allHist[k] = (hist[k]||0)+(histRV[k]||0)+(histKV[k]||0)+(histSS[k]||0)+(histHK[k]||0);
     });
     const today = new Date(tk+'T00:00:00');
     let d = new Date(today);
@@ -16619,6 +17058,7 @@ async function pushLeaderboard() {
     r: hist[liveTk] || 0,
     rv: histRV[liveTk] || 0,
     kv: histKV[liveTk] || 0,
+    ss: histSS[liveTk] || 0,
     hk: histHK[liveTk] || 0,
     n28: hist28[liveTk] || 0,
   };
@@ -16626,11 +17066,12 @@ async function pushLeaderboard() {
     r: (App.S.timerHistory || {})[liveTk] || 0,
     rv: (App.S.timerHistoryRV || {})[liveTk] || 0,
     kv: (App.S.timerHistoryKV || {})[liveTk] || 0,
+    ss: (App.S.timerHistorySS || {})[liveTk] || 0,
     hk: (App.S.timerHistoryHK || {})[liveTk] || 0,
     n28: (App.S.timer28History || {})[liveTk] || 0,
   };
-  const todayJap = todayBreakdown.r + todayBreakdown.rv + todayBreakdown.kv + todayBreakdown.hk + todayBreakdown.n28;
-  const todayTimerSeconds = todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kv + todayTimeBreakdown.hk + todayTimeBreakdown.n28;
+  const todayJap = todayBreakdown.r + todayBreakdown.rv + todayBreakdown.kv + todayBreakdown.ss + todayBreakdown.hk + todayBreakdown.n28;
+  const todayTimerSeconds = todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kv + todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.n28;
 
   const payload = {
     displayName,
@@ -16648,27 +17089,31 @@ async function pushLeaderboard() {
     history:   hist,
     historyRV: histRV,
     historyKV: histKV,
+    historySS: histSS,
     historyHK: histHK,
     history28: hist28,
     // Push each type's own deduct counter too, so the leaderboard breakdown
-    // (R/RV/KV/HK/28N) can be netted the same way totalJap is — otherwise
+    // (R/RV/KV/SS/HK/28N) can be netted the same way totalJap is — otherwise
     // the breakdown shows raw pre-gift totals while totalJap shows the net
     // remaining amount, which can make Total look smaller than one of its
     // own listed parts.
     nameJapDeduct:   App.S.nameJapDeduct   || 0,
     nameJapDeductRV: App.S.nameJapDeductRV || 0,
     nameJapDeductKV: App.S.nameJapDeductKV || 0,
+    nameJapDeductSS: App.S.nameJapDeductSS || 0,
     nameJapDeductHK: App.S.nameJapDeductHK || 0,
     nameJapDeduct28: App.S.nameJapDeduct28 || 0,
     // Push total timer seconds for leaderboard display
     timerSeconds: Object.values(App.S.timerHistory || {}).reduce((a,b)=>a+b,0) +
                   Object.values(App.S.timerHistoryRV || {}).reduce((a,b)=>a+b,0) +
                   Object.values(App.S.timerHistoryKV || {}).reduce((a,b)=>a+b,0) +
+                  Object.values(App.S.timerHistorySS || {}).reduce((a,b)=>a+b,0) +
                   Object.values(App.S.timerHistoryHK || {}).reduce((a,b)=>a+b,0) +
                   Object.values(App.S.timer28History || {}).reduce((a,b)=>a+b,0),
     timerHistory:   App.S.timerHistory || {},
     timerHistoryRV: App.S.timerHistoryRV || {},
     timerHistoryKV: App.S.timerHistoryKV || {},
+    timerHistorySS: App.S.timerHistorySS || {},
     timerHistoryHK: App.S.timerHistoryHK || {},
     timer28History: App.S.timer28History || {},
   };

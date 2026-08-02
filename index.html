@@ -1897,73 +1897,74 @@
   <div class="sc">
     <h3>🎯 Jap Targets</h3>
 
-    <!-- ── Radha Naam Jap: Daily + Lifetime side-by-side ── -->
-    <div class="non-gaudiya-setting">
-      <div style="font-size:9px;color:rgba(255,215,0,0.55);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">📿 Radha Naam Jap Targets</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <!-- Daily -->
-        <div style="background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));border:1.5px solid rgba(255,215,0,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(255,215,0,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
-          <div style="font-size:9px;color:rgba(255,215,0,0.7);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">Daily</div>
-          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dt')"><span class="fu" style="font-size:10px;min-width:26px;">jap</span></div>
-          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dt')"><span class="fu" style="color:var(--gold);font-size:10px;min-width:26px;">malas</span></div>
-          <div style="font-size:10px;color:var(--td);text-align:center;">= <span id="dtMala">0</span> malas/day</div>
-          <button class="pb" style="padding:10px 8px;font-size:12px;" onclick="svt('d')">Save Daily</button>
-        </div>
-        <!-- Lifetime -->
-        <div style="background:linear-gradient(160deg,rgba(255,152,0,0.09),rgba(10,8,25,0.85));border:1.5px solid rgba(255,152,0,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(255,152,0,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
-          <div style="font-size:9px;color:rgba(255,152,0,0.8);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">Lifetime</div>
-          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="ltIn" placeholder="Jap total" oninput="syncTargetJapToMala('lt')"><span class="fu" style="font-size:10px;min-width:26px;">jap</span></div>
-          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="ltMalaIn" placeholder="Malas total" oninput="syncTargetMalaToJap('lt')"><span class="fu" style="color:var(--gold);font-size:10px;min-width:26px;">malas</span></div>
-          <div style="display:flex;align-items:center;gap:4px;"><input type="number" step="0.5" min="0" class="fi" style="font-size:12px;padding:7px 8px;" id="ltCroreIn" placeholder="Crore" oninput="syncTargetCroreToJap()"><span class="fu" style="color:#ff9933;font-size:10px;font-weight:700;min-width:26px;">crore</span></div>
-          <div style="font-size:10px;color:var(--td);text-align:center;"><span id="ltMala">0</span>m · <span id="ltCroreDisp" style="color:#ff9933;font-weight:600;">0</span> cr</div>
-          <button class="pb" style="padding:10px 8px;font-size:12px;background:linear-gradient(135deg,rgba(255,152,0,0.5),rgba(200,90,0,0.35));box-shadow:0 0 16px rgba(255,152,0,0.25);" onclick="svt('l')">Save Lifetime</button>
-        </div>
+    <!-- Radha Naam Jap Daily Target -->
+    <div class="non-gaudiya-setting target-row-card" style="border-color:rgba(255,215,0,0.38);background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));">
+      <div class="target-row-title" style="color:rgba(255,215,0,0.9);">📿 Radha Naam Jap Daily Target</div>
+      <div class="target-row-inputs">
+        <div class="target-input-group"><input type="number" class="fi" id="dtIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dt')"><span class="fu">jap</span></div>
+        <div class="target-input-group"><input type="number" class="fi" id="dtMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dt')"><span class="fu" style="color:var(--gold);">malas</span></div>
+        <div class="target-row-sum">= <span id="dtMala">0</span> malas/day</div>
+        <button class="pb target-row-btn" onclick="svt('d')">Save Daily</button>
       </div>
     </div>
 
-    <!-- ── RV Daily + KV Daily + 28 Names Daily slot (default mode home) ── -->
-    <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,215,0,0.12)">
-      <div class="non-gaudiya-setting" style="font-size:9px;color:rgba(255,215,0,0.55);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">📿 Radha Vallabh Sri Harivangsa Targets</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;">
-        <!-- RV Daily -->
-        <div class="non-gaudiya-setting rv-daily-target-card" style="background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));border:1.5px solid rgba(255,215,0,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(255,215,0,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
-          <div style="font-size:10px;color:rgba(255,215,0,0.85);font-weight:700;text-align:center;">🕉️ Radha Vallabh</div>
-          <div style="font-size:9px;color:rgba(255,215,0,0.7);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">Daily</div>
-          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtRVIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtRV')"><span class="fu" style="font-size:10px;min-width:26px;">jap</span></div>
-          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtRVMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtRV')"><span class="fu" style="color:var(--gold);font-size:10px;min-width:26px;">malas</span></div>
-          <div style="font-size:10px;color:var(--td);text-align:center;">= <span id="dtRVMala">0</span> malas/day</div>
-          <button class="pb" style="padding:10px 8px;font-size:12px;" onclick="svtRV('d')">Save Daily</button>
-        </div>
-        <!-- SS Daily -->
-        <div class="non-gaudiya-setting" style="background:linear-gradient(160deg,rgba(255,184,108,0.09),rgba(10,8,25,0.85));border:1.5px solid rgba(255,184,108,0.38);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(255,184,108,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
-          <div style="font-size:10px;color:rgba(255,184,108,0.85);font-weight:700;text-align:center;">🕉️ Samba Sadashiv</div>
-          <div style="font-size:9px;color:rgba(255,184,108,0.7);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">Daily</div>
-          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtSSIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtSS')"><span class="fu" style="font-size:10px;min-width:26px;">jap</span></div>
-          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtSSMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtSS')"><span class="fu" style="color:#ffb86c;font-size:10px;min-width:26px;">malas</span></div>
-          <div style="font-size:10px;color:var(--td);text-align:center;">= <span id="dtSSMala">0</span> malas/day</div>
-          <button class="pb" style="padding:10px 8px;font-size:12px;" onclick="svtSS('d')">Save Daily</button>
-        </div>
-        <!-- KV Daily -->
-        <div class="kv-only-setting" style="background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));border:1.5px solid rgba(255,215,0,0.38);border-radius:16px;padding:14px 10px;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(255,215,0,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
-          <div style="font-size:10px;color:rgba(255,215,0,0.85);font-weight:700;text-align:center;">🪈 Krishnay Vasudevay</div>
-          <div style="font-size:9px;color:rgba(255,215,0,0.7);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">Daily</div>
-          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtKVIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtKV')"><span class="fu" style="font-size:10px;min-width:26px;">jap</span></div>
-          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtKVMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtKV')"><span class="fu" style="color:var(--gold);font-size:10px;min-width:26px;">malas</span></div>
-          <div style="font-size:10px;color:var(--td);text-align:center;">= <span id="dtKVMala">0</span> malas/day</div>
-          <button class="pb" style="padding:10px 8px;font-size:12px;" onclick="svtKV('d')">Save Daily</button>
-        </div>
-        <!-- Ram Daily -->
-        <div class="ram-only-setting" style="background:linear-gradient(160deg,rgba(255,153,51,0.09),rgba(10,8,25,0.85));border:1.5px solid rgba(255,153,51,0.38);border-radius:16px;padding:14px 10px;flex-direction:column;gap:7px;box-shadow:0 4px 18px rgba(255,153,51,0.12),inset 0 1px 0 rgba(255,255,255,0.07);box-sizing:border-box;">
-          <div style="font-size:10px;color:rgba(255,153,51,0.85);font-weight:700;text-align:center;">🚩 Raam Vijay Mantra</div>
-          <div style="font-size:9px;color:rgba(255,153,51,0.7);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;text-align:center;">Daily</div>
-          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtRamIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtRam')"><span class="fu" style="font-size:10px;min-width:26px;">jap</span></div>
-          <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtRamMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtRam')"><span class="fu" style="color:#FF9933;font-size:10px;min-width:26px;">malas</span></div>
-          <div style="font-size:10px;color:var(--td);text-align:center;">= <span id="dtRamMala">0</span> malas/day</div>
-          <button class="pb" style="padding:10px 8px;font-size:12px;" onclick="svtRam('d')">Save Daily</button>
-        </div>
+    <!-- Radha Vallabh Daily Target -->
+    <div class="non-gaudiya-setting target-row-card" style="border-color:rgba(255,215,0,0.38);background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));">
+      <div class="target-row-title" style="color:rgba(255,215,0,0.9);">🕉️ Radha Vallabh Daily Target</div>
+      <div class="target-row-inputs">
+        <div class="target-input-group"><input type="number" class="fi" id="dtRVIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtRV')"><span class="fu">jap</span></div>
+        <div class="target-input-group"><input type="number" class="fi" id="dtRVMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtRV')"><span class="fu" style="color:var(--gold);">malas</span></div>
+        <div class="target-row-sum">= <span id="dtRVMala">0</span> malas/day</div>
+        <button class="pb target-row-btn" onclick="svtRV('d')">Save Daily</button>
       </div>
-      <div style="margin-top:10px;" id="target28SlotDefault"></div>
     </div>
+
+    <!-- Samba Sadashiv Daily Target -->
+    <div class="non-gaudiya-setting target-row-card" style="border-color:rgba(255,184,108,0.38);background:linear-gradient(160deg,rgba(255,184,108,0.09),rgba(10,8,25,0.85));">
+      <div class="target-row-title" style="color:rgba(255,184,108,0.9);">🕉️ Samba Sadashiv Daily Target</div>
+      <div class="target-row-inputs">
+        <div class="target-input-group"><input type="number" class="fi" id="dtSSIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtSS')"><span class="fu">jap</span></div>
+        <div class="target-input-group"><input type="number" class="fi" id="dtSSMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtSS')"><span class="fu" style="color:#ffb86c;">malas</span></div>
+        <div class="target-row-sum">= <span id="dtSSMala">0</span> malas/day</div>
+        <button class="pb target-row-btn" onclick="svtSS('d')">Save Daily</button>
+      </div>
+    </div>
+
+    <!-- Krishnay Vasudevay Daily Target -->
+    <div class="kv-only-setting target-row-card" style="border-color:rgba(255,215,0,0.38);background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));">
+      <div class="target-row-title" style="color:rgba(255,215,0,0.9);">🪈 Krishnay Vasudevay Daily Target</div>
+      <div class="target-row-inputs">
+        <div class="target-input-group"><input type="number" class="fi" id="dtKVIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtKV')"><span class="fu">jap</span></div>
+        <div class="target-input-group"><input type="number" class="fi" id="dtKVMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtKV')"><span class="fu" style="color:var(--gold);">malas</span></div>
+        <div class="target-row-sum">= <span id="dtKVMala">0</span> malas/day</div>
+        <button class="pb target-row-btn" onclick="svtKV('d')">Save Daily</button>
+      </div>
+    </div>
+
+    <!-- Raam Vijay Mantra Daily Target -->
+    <div class="ram-only-setting target-row-card" style="border-color:rgba(255,153,51,0.38);background:linear-gradient(160deg,rgba(255,153,51,0.09),rgba(10,8,25,0.85));">
+      <div class="target-row-title" style="color:rgba(255,153,51,0.9);">🚩 Raam Vijay Mantra Daily Target</div>
+      <div class="target-row-inputs">
+        <div class="target-input-group"><input type="number" class="fi" id="dtRamIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtRam')"><span class="fu">jap</span></div>
+        <div class="target-input-group"><input type="number" class="fi" id="dtRamMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtRam')"><span class="fu" style="color:#FF9933;">malas</span></div>
+        <div class="target-row-sum">= <span id="dtRamMala">0</span> malas/day</div>
+        <button class="pb target-row-btn" onclick="svtRam('d')">Save Daily</button>
+      </div>
+    </div>
+
+    <!-- Radha Naam Jap Lifetime Target (always last) -->
+    <div class="non-gaudiya-setting target-row-card" style="border-color:rgba(255,152,0,0.38);background:linear-gradient(160deg,rgba(255,152,0,0.09),rgba(10,8,25,0.85));margin-top:18px;padding-top:16px;border-top-width:1.5px;">
+      <div class="target-row-title" style="color:rgba(255,152,0,0.95);">📿 Radha Naam Jap Lifetime Target</div>
+      <div class="target-row-inputs">
+        <div class="target-input-group"><input type="number" class="fi" id="ltIn" placeholder="Jap total" oninput="syncTargetJapToMala('lt')"><span class="fu">jap</span></div>
+        <div class="target-input-group"><input type="number" class="fi" id="ltMalaIn" placeholder="Malas total" oninput="syncTargetMalaToJap('lt')"><span class="fu" style="color:var(--gold);">malas</span></div>
+        <div class="target-input-group"><input type="number" step="0.5" min="0" class="fi" id="ltCroreIn" placeholder="Crore" oninput="syncTargetCroreToJap()"><span class="fu" style="color:#ff9933;font-weight:700;">crore</span></div>
+        <div class="target-row-sum"><span id="ltMala">0</span>m · <span id="ltCroreDisp" style="color:#ff9933;font-weight:600;">0</span> cr</div>
+        <button class="pb target-row-btn" style="background:linear-gradient(135deg,rgba(255,152,0,0.5),rgba(200,90,0,0.35));box-shadow:0 0 16px rgba(255,152,0,0.25);" onclick="svt('l')">Save Lifetime</button>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;" id="target28SlotDefault"></div>
 
     <!-- ── HK Daily + Language side-by-side ── -->
 

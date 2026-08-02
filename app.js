@@ -2475,8 +2475,6 @@ function showHKMalaComplete(line1, line2) {
 
 // ── Ramanandi Mode (Raam Vijay Mantra) — persistent display, same animation
 // style as Gaudiya/ISKCON (HK) mode ──
-const RAM_TITLE = "राम विजय मंत्र";
-const RAM_TEXT = "श्री राम, जय राम,\nजय जय राम।";
 let _ramColorIdx = 0;
 let _ramMalaBlocked = false; // blocks taps until user taps after mala complete
 
@@ -2490,7 +2488,8 @@ function spawnRam() {
   }
   const el = document.getElementById("ramPersist");
   if (!el) return;
-  const text = RAM_TEXT;
+  const _nt = naamText();
+  const text = _nt.ram1 + "\n" + _nt.ram2;
   // CURRENT color → float rises up and disappears (the "old" text leaving)
   const currentColor = HK_COLORS[_ramColorIdx % 7];
   const currentShadow = HK_SHADOWS_MAP[_ramColorIdx % 7];
@@ -2970,8 +2969,8 @@ function closeNaamSelOutside(e) {
 }
 // ── Radha / Radha Vallabh jap-text script lookup (Sanskrit/Devanagari vs Bangla) ──
 const NAAM_TEXT = {
-  sa: { radha: "राधा", rv1: "राधावल्लभ", rv2: "श्री हरिवंश", kv1: "कृष्णाय वासुदेवाय हरये परमात्मने", kv2: "प्रणतः क्लेशनाशाय गोविन्दाय नमो नमः", kvShort: "कृष्णाय वासुदेवाय", ss1: "साम्ब", ss2: "सदाशिव" },
-  bn: { radha: "রাধা", rv1: "রাধাবল্লভ", rv2: "শ্রী হরিবংশ", kv1: "কৃষ্ণায় বাসুদেবায় হরয়ে পরমাত্মনে", kv2: "প্রণতঃ ক্লেশনাশায় গোবিন্দায় নমো নমঃ", kvShort: "কৃষ্ণায় বাসুদেবায়", ss1: "সাম্ব", ss2: "সদাশিব" },
+  sa: { radha: "राधा", rv1: "राधावल्लभ", rv2: "श्री हरिवंश", kv1: "कृष्णाय वासुदेवाय हरये परमात्मने", kv2: "प्रणतः क्लेशनाशाय गोविन्दाय नमो नमः", kvShort: "कृष्णाय वासुदेवाय", ss1: "साम्ब", ss2: "सदाशिव", ramTitle: "राम विजय मंत्र", ram1: "श्री राम, जय राम,", ram2: "जय जय राम।" },
+  bn: { radha: "রাধা", rv1: "রাধাবল্লভ", rv2: "শ্রী হরিবংশ", kv1: "কৃষ্ণায় বাসুদেবায় হরয়ে পরমাত্মনে", kv2: "প্রণতঃ ক্লেশনাশায় গোবিন্দায় নমো নমঃ", kvShort: "কৃষ্ণায় বাসুদেবায়", ss1: "সাম্ব", ss2: "সদাশিব", ramTitle: "রাম বিজয় মন্ত্র", ram1: "শ্রী রাম, জয় রাম,", ram2: "জয় জয় রাম।" },
 };
 function naamText() {
   const lang = (App.S && App.S.naamLang === "bn") ? "bn" : "sa";
@@ -2994,6 +2993,8 @@ function applyNaamLangLabels(lang) {
   if (optKVLbl) optKVLbl.textContent = _nt.kvShort;
   const optSSLbl = document.getElementById("naamOptSSLabel");
   if (optSSLbl) optSSLbl.textContent = _nt.ss1 + " " + _nt.ss2;
+  const optRamLbl = document.getElementById("naamOptRamLabel");
+  if (optRamLbl) optRamLbl.textContent = _nt.ramTitle;
 }
 
 function setNaamLangDirect(lang) {
@@ -3001,8 +3002,8 @@ function setNaamLangDirect(lang) {
   if (App.S.naamLang === lang) return; // already selected
   App.S.naamLang = lang;
   applyNaamLangLabels(lang);
-  // Refresh the header title live if currently on Radha, RV, KV, or SS mode
-  if (App.S.japMode === "radha" || App.S.japMode === "rv" || App.S.japMode === "kv" || App.S.japMode === "ss") {
+  // Refresh the header title live if currently on Radha, RV, KV, SS, or Ram mode
+  if (App.S.japMode === "radha" || App.S.japMode === "rv" || App.S.japMode === "kv" || App.S.japMode === "ss" || App.S.japMode === "ram") {
     switchJapMode(App.S.japMode);
   }
   App.save();
@@ -3160,7 +3161,7 @@ function switchJapMode(mode) {
     }
     titleEl.innerHTML =
       "<span style=\"font-size:clamp(22px,6vw,34px);line-height:1.1;color:#FF8C42;font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif\">" +
-      RAM_TITLE +
+      naamText().ramTitle +
       "</span>";
     titleEl.style.textAlign = "center";
     if (ramEl) {
@@ -3228,7 +3229,7 @@ function switchJapMode(mode) {
     hk: "हरे कृष्ण महामंत्र 🪷",
     kv: _nt.kvShort + " 🙏",
     ss: _nt.ss1 + " " + _nt.ss2 + " 🙏",
-    ram: "श्री राम जय राम जय जय राम 🚩",
+    ram: _nt.ram1 + " " + _nt.ram2 + " 🚩",
     radha: _nt.radha + " 🙏",
   };
   toast(toastMap[mode] || _nt.radha + " 🙏");

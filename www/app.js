@@ -18069,6 +18069,24 @@ async function checkForUpdateAvailable() {
   }
 }
 
+// Jumps straight to Android's "install unknown apps" permission screen for
+// this app, via the same custom PowerPermissions native plugin already
+// used for exact-alarm/battery-optimization permissions elsewhere in
+// Settings. Saves hunting through manufacturer-specific menus (stock
+// Android vs MIUI's "Other permissions" screen use different paths).
+async function openInstallPermissionSettings() {
+  if (!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PowerPermissions)) {
+    toast("Only available inside the installed app.");
+    return;
+  }
+  try {
+    await window.Capacitor.Plugins.PowerPermissions.requestInstallPackagesPermission();
+  } catch (e) {
+    console.error("requestInstallPackagesPermission failed:", e);
+    toast("Couldn't open that settings screen on this device.");
+  }
+}
+
 async function checkAppUpdate() {
   const iconEl = document.getElementById("appUpdateIcon");
   const statusEl = document.getElementById("appUpdateStatus");
@@ -18102,6 +18120,8 @@ async function checkAppUpdate() {
   try {
     iconEl.textContent = "⏳";
     progWrap.style.display = "block";
+    const _linkElReset = document.getElementById("appUpdateSettingsLink");
+    if (_linkElReset) _linkElReset.style.display = "none";
     progBar.style.width = "0%";
 
     // Skip re-downloading the ~137MB APK if we already fetched this exact
@@ -18161,6 +18181,14 @@ async function checkAppUpdate() {
       });
       iconEl.textContent = "✅";
       statusEl.textContent = "Installer opened — follow the on-screen prompt to finish.";
+      // Some manufacturers (notably MIUI/Xiaomi) silently swallow this
+      // failure instead of throwing — the call above can report success
+      // even when nothing visibly happens because the install-permission
+      // isn't granted. Since JS can't reliably tell those two cases apart,
+      // show this link either way as a low-cost fallback: if the installer
+      // really did open, tapping it is just a harmless no-op detour.
+      const linkEl = document.getElementById("appUpdateSettingsLink");
+      if (linkEl) linkEl.style.display = "block";
     } catch (openErr) {
       // The download itself succeeded (we got this far) — this failure is
       // specifically about LAUNCHING the installer, which on Android
@@ -18172,10 +18200,11 @@ async function checkAppUpdate() {
       console.error("Installer launch failed:", openErr);
       iconEl.textContent = "⚠️";
       statusEl.textContent =
-        "Downloaded, but couldn't open the installer. Go to Settings → Apps → " +
-        "Radha Naam Jap → look for \"Install unknown apps\" (on some phones: " +
-        "\"Other permissions\") and turn it on, then tap Update again. The file " +
-        "is already saved — you won't need to re-download.";
+        "Downloaded, but couldn't open the installer. Tap below to jump " +
+        "straight to the right permission screen, turn it on, then tap " +
+        "Update again — the file is already saved, no need to re-download.";
+      const linkEl = document.getElementById("appUpdateSettingsLink");
+      if (linkEl) linkEl.style.display = "block";
     }
   } catch (e) {
     console.error("App update failed:", e);

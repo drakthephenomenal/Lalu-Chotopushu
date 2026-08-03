@@ -1573,7 +1573,7 @@ body.gaudiya-mode #naamOptKV { display: none !important; }
 body:not(.gaudiya-mode) .hk-only-block { display: none !important; }
 body.gaudiya-mode .naam-only-block { display: none !important; }
 
-/* ── Trahimam Trahimam Mode: hide non-KV stat rows/settings, show KV-only ── */
+/* ── Gopeshwar Mahadev Mode (reuses Trahimam scaffolding): hide non-SS stat rows/settings, show SS-only ── */
 body.trahimam-mode .non-gaudiya-stat{display:none!important;}
 body.trahimam-mode .non-gaudiya-setting{display:none!important;}
 .kv-only-stat{display:none!important;}
@@ -1582,16 +1582,16 @@ body.trahimam-mode .dc-wrap.kv-only-stat{display:block!important;}
 .kv-only-setting{display:none!important;}
 body.trahimam-mode .kv-only-setting{display:flex!important;}
 body.trahimam-mode .lifetime-bar-block{display:none!important;}
-/* 28 Names Daily Target isn't relevant in Trahimam mode (KV-only) — hide it in Settings */
+/* 28 Names Daily Target isn't relevant in Gopeshwar Mahadev mode (SS-only) — hide it in Settings */
 body.trahimam-mode #target28Card{display:none!important;}
 
-/* Trahimam-mode dropdown filtering: only show Krishnay Vasudevay when ON; hide it when OFF */
-body:not(.trahimam-mode) #naamOptKV { display: none !important; }
+/* Gopeshwar Mahadev-mode dropdown filtering: only show Samba Sadashiv when ON; hide it when OFF */
+body:not(.trahimam-mode) #naamOptSS { display: none !important; }
 body.trahimam-mode #naamOptRadha,
 body.trahimam-mode #naamOptRV,
-body.trahimam-mode #naamOptSS,
+body.trahimam-mode #naamOptKV,
 body.trahimam-mode #naamOptHK { display: none !important; }
-/* RV Daily target card spans full width when KV Daily card is hidden (i.e. outside Trahimam mode) */
+/* RV Daily target card spans full width when Samba Sadashiv Daily card is hidden (i.e. outside Gopeshwar Mahadev mode) */
 body:not(.trahimam-mode) .rv-daily-target-card { grid-column: 1/-1; }
 
 /* ── Option C: Lotus Petals — Mahamantra Stats ── */

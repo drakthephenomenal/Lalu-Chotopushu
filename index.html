@@ -763,13 +763,13 @@
     <div class="cdmo-stat" id="cdmoStat">
       <div class="cdmo-stat-row non-gaudiya-stat">🕉️ Radha Jap <span class="cdmo-stat-val" id="cdmoRadhaJap">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">🌸 Radha Vallabh Sri Harivangsa Jap <span class="cdmo-stat-val" id="cdmoRvJap">—</span></div>
-      <div class="cdmo-stat-row non-gaudiya-stat">🕉️ Samba Sadashiv Jap <span class="cdmo-stat-val" id="cdmoSsJap">—</span></div>
-      <div class="cdmo-stat-row kv-only-stat">🪈 Krishnay Vasudevay Jap <span class="cdmo-stat-val" id="cdmoKvJap">—</span></div>
+      <div class="cdmo-stat-row kv-only-stat">🕉️ Samba Sadashiv Jap <span class="cdmo-stat-val" id="cdmoSsJap">—</span></div>
+      <div class="cdmo-stat-row non-gaudiya-stat">🪈 Krishnay Vasudevay Jap <span class="cdmo-stat-val" id="cdmoKvJap">—</span></div>
       <div class="cdmo-stat-row ram-only-stat">🚩 राम विजय मंत्र Jap <span class="cdmo-stat-val" style="color:#FF9933" id="cdmoRamJap">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ Radha Jap Time <span class="cdmo-stat-val" id="cdmoRadhaTime">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ Radha Vallabh Sri Harivangsa Jap Time <span class="cdmo-stat-val" id="cdmoRvTime">—</span></div>
-      <div class="cdmo-stat-row non-gaudiya-stat">⏱ Samba Sadashiv Jap Time <span class="cdmo-stat-val" id="cdmoSsTime">—</span></div>
-      <div class="cdmo-stat-row kv-only-stat">⏱ Krishnay Vasudevay Jap Time <span class="cdmo-stat-val" id="cdmoKvTime">—</span></div>
+      <div class="cdmo-stat-row kv-only-stat">⏱ Samba Sadashiv Jap Time <span class="cdmo-stat-val" id="cdmoSsTime">—</span></div>
+      <div class="cdmo-stat-row non-gaudiya-stat">⏱ Krishnay Vasudevay Jap Time <span class="cdmo-stat-val" id="cdmoKvTime">—</span></div>
       <div class="cdmo-stat-row ram-only-stat">⏱ राम विजय मंत्र Jap Time <span class="cdmo-stat-val" style="color:#FF9933" id="cdmoRamTime">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">✨ 28 Names <span class="cdmo-stat-val" id="cdmo28Names">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ 28 Names Time <span class="cdmo-stat-val" style="color:var(--a2)" id="cdmoTime28">—</span></div>
@@ -950,7 +950,7 @@
             <span id="sRVTotF" style="display:none">0</span>
           </div>
           <!-- 2a. Samba Sadashiv (SS) -->
-          <div class="dc-wrap dc-ss non-gaudiya-stat" style="grid-column:1/-1">
+          <div class="dc-wrap dc-ss kv-only-stat" style="grid-column:1/-1">
             <div class="dc-title"><span class="dc-dot dc-dot--ss"></span>Samba Sadashiv (SS)</div>
             <div class="dc-table">
               <div class="dc-thead"><div></div><div>Count</div><div>Malas</div><div>Time</div></div>
@@ -962,7 +962,7 @@
             <span id="sSSTotF" style="display:none">0</span>
           </div>
           <!-- 2b. KV -->
-          <div class="dc-wrap dc-kv kv-only-stat" style="grid-column:1/-1">
+          <div class="dc-wrap dc-kv non-gaudiya-stat" style="grid-column:1/-1">
             <div class="dc-title"><span class="dc-dot dc-dot--kv"></span>Krishnay Vasudevay (KV)</div>
             <div class="dc-table">
               <div class="dc-thead"><div></div><div>Count</div><div>Malas</div><div>Time</div></div>
@@ -1120,11 +1120,10 @@
                 <th class="hist-th hist-th-date">Date</th>
                 <th class="hist-th hist-radha-col">Radha</th>
                 <th class="hist-th hist-radha-col">RV</th>
-                <th class="hist-th hist-radha-col">SS</th>
                 <th class="hist-th hist-radha-col">KV</th>
                 <th class="hist-th hist-radha-col">28 Names</th>
                 <th class="hist-th hist-hk-col" id="histHKColHeader" style="display:none;color:#6DB8FF">हरे कृष्ण महामंत्र</th>
-                <th class="hist-th hist-kv-col" id="histKVColHeader" style="display:none;color:#6DB8FF">कृष्णाय वासुदेवाय</th>
+                <th class="hist-th hist-kv-col" id="histKVColHeader" style="display:none;color:#ffb86c">साम्ब सदाशिव</th>
                 <th class="hist-th hist-ram-col" id="histRamColHeader" style="display:none;color:#FF9933">राम विजय मंत्र</th>
                 <th class="hist-th">Total Time</th>
                 <th class="hist-th hist-th-chev" aria-hidden="true"></th>
@@ -1489,10 +1488,10 @@
 
   <div class="sc trahimam-mode-card" id="trahimamModeCard" style="margin-top:14px;">
     <div class="gmc-top">
-      <div class="gmc-icon">🪈</div>
+      <div class="gmc-icon">🕉️</div>
       <div class="gmc-text">
-        <div class="gmc-title">Trahimam Trahimam</div>
-        <div class="gmc-desc">Krishnay Vasudevay (KV) mode — Stats &amp; History show KV data only, with its own Jap targets. Hides Radha / Radha Vallabh.</div>
+        <div class="gmc-title">Gopeshwar Mahadev</div>
+        <div class="gmc-desc">Samba Sadashiv (SS) mode — Stats &amp; History show SS data only, with its own Jap targets. Hides Radha / Radha Vallabh / Krishnay Vasudevay.</div>
       </div>
     </div>
     <div class="tmc-switch-wrap" onclick="tgs('trahimamMode')">
@@ -1920,7 +1919,7 @@
     </div>
 
     <!-- Samba Sadashiv Daily Target -->
-    <div class="non-gaudiya-setting target-row-card" style="border-color:rgba(255,184,108,0.38);background:linear-gradient(160deg,rgba(255,184,108,0.09),rgba(10,8,25,0.85));">
+    <div class="kv-only-setting target-row-card" style="border-color:rgba(255,184,108,0.38);background:linear-gradient(160deg,rgba(255,184,108,0.09),rgba(10,8,25,0.85));">
       <div class="target-row-title" style="color:rgba(255,184,108,0.9);">🕉️ Samba Sadashiv Daily Target</div>
       <div class="target-row-inputs">
         <div class="target-input-group"><input type="number" class="fi" id="dtSSIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtSS')"><span class="fu">jap</span></div>
@@ -1931,7 +1930,7 @@
     </div>
 
     <!-- Krishnay Vasudevay Daily Target -->
-    <div class="kv-only-setting target-row-card" style="border-color:rgba(255,215,0,0.38);background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));">
+    <div class="non-gaudiya-setting target-row-card" style="border-color:rgba(255,215,0,0.38);background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));">
       <div class="target-row-title" style="color:rgba(255,215,0,0.9);">🪈 Krishnay Vasudevay Daily Target</div>
       <div class="target-row-inputs">
         <div class="target-input-group"><input type="number" class="fi" id="dtKVIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtKV')"><span class="fu">jap</span></div>
@@ -1952,9 +1951,11 @@
       </div>
     </div>
 
-    <!-- Radha Naam Jap Lifetime Target (always last) -->
+    <div style="margin-top:10px;" id="target28SlotDefault"></div>
+
+    <!-- Lifetime Target: Radha + Radha Vallabh + Krishnay Vasudevay combined (always last) -->
     <div class="non-gaudiya-setting target-row-card" style="border-color:rgba(255,152,0,0.38);background:linear-gradient(160deg,rgba(255,152,0,0.09),rgba(10,8,25,0.85));margin-top:18px;padding-top:16px;border-top-width:1.5px;">
-      <div class="target-row-title" style="color:rgba(255,152,0,0.95);">📿 Radha Naam Jap Lifetime Target</div>
+      <div class="target-row-title" style="color:rgba(255,152,0,0.95);">📿 Lifetime Target (Radha + Radha Vallabh + Krishnay Vasudevay)</div>
       <div class="target-row-inputs">
         <div class="target-input-group"><input type="number" class="fi" id="ltIn" placeholder="Jap total" oninput="syncTargetJapToMala('lt')"><span class="fu">jap</span></div>
         <div class="target-input-group"><input type="number" class="fi" id="ltMalaIn" placeholder="Malas total" oninput="syncTargetMalaToJap('lt')"><span class="fu" style="color:var(--gold);">malas</span></div>
@@ -1963,8 +1964,6 @@
         <button class="pb target-row-btn" style="background:linear-gradient(135deg,rgba(255,152,0,0.5),rgba(200,90,0,0.35));box-shadow:0 0 16px rgba(255,152,0,0.25);" onclick="svt('l')">Save Lifetime</button>
       </div>
     </div>
-
-    <div style="margin-top:10px;" id="target28SlotDefault"></div>
 
     <!-- ── HK Daily + Language side-by-side ── -->
 

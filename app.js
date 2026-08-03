@@ -1035,22 +1035,22 @@ const App = {
   gTod() {
     if (this.S.japMode === "rv") return this.S.historyRV[this.S.tk] || 0;
     if (this.S.japMode === "hk") return this.S.historyHK[this.S.tk] || 0;
-    if (this.S.japMode === "kv") return this.S.historyKV[this.S.tk] || 0;
+    if (this.S.japMode === "kv") return (this.S.historyKV || {})[this.S.tk] || 0;
     if (this.S.japMode === "ss") return this.S.historySS[this.S.tk] || 0;
     if (this.S.japMode === "ram") return (this.S.historyRam || {})[this.S.tk] || 0;
     return this.S.history[this.S.tk] || 0;
   },
-  // Combined today: radha + RV + SS (or HK-only in gaudiyaMode, KV-only in trahimamMode, Ram-only in ramanandiMode)
+  // Combined today: radha + RV + KV (or HK-only in gaudiyaMode, SS-only in trahimamMode [Gopeshwar Mahadev], Ram-only in ramanandiMode)
   gTodCombined() {
     if (this.S.gaudiyaMode) return this.S.historyHK[this.S.tk] || 0;
-    if (this.S.trahimamMode) return this.S.historyKV[this.S.tk] || 0;
+    if (this.S.trahimamMode) return this.S.historySS[this.S.tk] || 0;
     if (this.S.ramanandiMode) return (this.S.historyRam || {})[this.S.tk] || 0;
     return (
-      (this.S.history[this.S.tk] || 0) + (this.S.historyRV[this.S.tk] || 0) + (this.S.historySS[this.S.tk] || 0)
+      (this.S.history[this.S.tk] || 0) + (this.S.historyRV[this.S.tk] || 0) + ((this.S.historyKV || {})[this.S.tk] || 0)
     );
   },
   gTot() {
-    // COMBINED lifetime total from radha+RV (or HK-only in gaudiyaMode, KV-only in trahimamMode, Ram-only in ramanandiMode)
+    // COMBINED lifetime total from radha+RV+KV (or HK-only in gaudiyaMode, SS-only in trahimamMode [Gopeshwar Mahadev], Ram-only in ramanandiMode)
     if (this.S.gaudiyaMode) {
       return Math.max(
         0,
@@ -1061,8 +1061,8 @@ const App = {
     if (this.S.trahimamMode) {
       return Math.max(
         0,
-        Object.values(this.S.historyKV || {}).reduce((a, b) => a + b, 0) -
-          (this.S.nameJapDeductKV || 0),
+        Object.values(this.S.historySS || {}).reduce((a, b) => a + b, 0) -
+          (this.S.nameJapDeductSS || 0),
       );
     }
     if (this.S.ramanandiMode) {
@@ -1082,12 +1082,12 @@ const App = {
       Object.values(this.S.historyRV).reduce((a, b) => a + b, 0) -
         (this.S.nameJapDeductRV || 0),
     );
-    const ssTotal = Math.max(
+    const kvTotal = Math.max(
       0,
-      Object.values(this.S.historySS || {}).reduce((a, b) => a + b, 0) -
-        (this.S.nameJapDeductSS || 0),
+      Object.values(this.S.historyKV || {}).reduce((a, b) => a + b, 0) -
+        (this.S.nameJapDeductKV || 0),
     );
-    return radhaTotal + rvTotal + ssTotal;
+    return radhaTotal + rvTotal + kvTotal;
   },
   // Mode-specific total (for daily bar only)
   gTotMode() {
@@ -1143,36 +1143,36 @@ const App = {
     if (this.S.japMode === "ram") return this.S.timerHistoryRam || {};
     return this.S.timerHistory;
   },
-  // Combined history: merge radha + RV + SS counts per day (or HK-only in gaudiyaMode, KV-only in trahimamMode, Ram-only in ramanandiMode)
+  // Combined history: merge radha + RV + KV counts per day (or HK-only in gaudiyaMode, SS-only in trahimamMode [Gopeshwar Mahadev], Ram-only in ramanandiMode)
   getCombinedHistory() {
     if (this.S.gaudiyaMode)
       return JSON.parse(JSON.stringify(this.S.historyHK || {}));
     if (this.S.trahimamMode)
-      return JSON.parse(JSON.stringify(this.S.historyKV || {}));
+      return JSON.parse(JSON.stringify(this.S.historySS || {}));
     if (this.S.ramanandiMode)
       return JSON.parse(JSON.stringify(this.S.historyRam || {}));
     const combined = {};
     const h1 = this.S.history || {};
     const h2 = this.S.historyRV || {};
-    const h3 = this.S.historySS || {};
+    const h3 = this.S.historyKV || {};
     const allKeys = new Set([...Object.keys(h1), ...Object.keys(h2), ...Object.keys(h3)]);
     allKeys.forEach((k) => {
       combined[k] = (h1[k] || 0) + (h2[k] || 0) + (h3[k] || 0);
     });
     return combined;
   },
-  // Combined timer history: merge radha + RV + SS timer per day (or HK-only in gaudiyaMode, KV-only in trahimamMode, Ram-only in ramanandiMode)
+  // Combined timer history: merge radha + RV + KV timer per day (or HK-only in gaudiyaMode, SS-only in trahimamMode [Gopeshwar Mahadev], Ram-only in ramanandiMode)
   getCombinedTimerHistory() {
     if (this.S.gaudiyaMode)
       return JSON.parse(JSON.stringify(this.S.timerHistoryHK || {}));
     if (this.S.trahimamMode)
-      return JSON.parse(JSON.stringify(this.S.timerHistoryKV || {}));
+      return JSON.parse(JSON.stringify(this.S.timerHistorySS || {}));
     if (this.S.ramanandiMode)
       return JSON.parse(JSON.stringify(this.S.timerHistoryRam || {}));
     const combined = {};
     const t1 = this.S.timerHistory || {};
     const t2 = this.S.timerHistoryRV || {};
-    const t3 = this.S.timerHistorySS || {};
+    const t3 = this.S.timerHistoryKV || {};
     const allKeys = new Set([...Object.keys(t1), ...Object.keys(t2), ...Object.keys(t3)]);
     allKeys.forEach((k) => {
       combined[k] = (t1[k] || 0) + (t2[k] || 0) + (t3[k] || 0);
@@ -1189,6 +1189,28 @@ const App = {
   },
   getCurLt() {
     return this.S.lt;
+  },
+  // Combined Lifetime Target total: Radha + Radha Vallabh + Krishnay Vasudevay,
+  // always summed together regardless of which mode is currently active (so
+  // KV jap done during Trahimam Mode still counts toward this figure even
+  // after switching back to Radha/RV).
+  getLifetimeTargetTotal() {
+    const radhaTotal = Math.max(
+      0,
+      Object.values(this.S.history || {}).reduce((a, b) => a + b, 0) -
+        (this.S.nameJapDeduct || 0),
+    );
+    const rvTotal = Math.max(
+      0,
+      Object.values(this.S.historyRV || {}).reduce((a, b) => a + b, 0) -
+        (this.S.nameJapDeductRV || 0),
+    );
+    const kvTotal = Math.max(
+      0,
+      Object.values(this.S.historyKV || {}).reduce((a, b) => a + b, 0) -
+        (this.S.nameJapDeductKV || 0),
+    );
+    return radhaTotal + rvTotal + kvTotal;
   },
 
   // ── Haptic Heartbeat ──
@@ -1429,7 +1451,7 @@ const App = {
   ua() {
     const tod = this.gTod(),
       ms = this.S.ms || 108;
-    const tot = this.gTot(); // COMBINED lifetime total
+    const tot = this.getLifetimeTargetTotal(); // COMBINED Radha+RV+KV lifetime total
     const curDt = this.getCurDt(),
       curLt = this.getCurLt(); // shared lifetime target
     const md = Math.floor(tod / ms);
@@ -2867,17 +2889,18 @@ function _placeTarget28Card() {
 
 // ── Init jap mode UI on page load ──
 function initJapModeUI() {
-  // Normalize: in Gaudiya mode only HK is allowed; in Trahimam Trahimam
-  // mode only KV is allowed; in Ramanandi mode only Ram is allowed;
-  // otherwise none of HK/KV/Ram is allowed.
+  // Normalize: in Gaudiya mode only HK is allowed; in Gopeshwar Mahadev
+  // mode only SS (Samba Sadashiv) is allowed; in Ramanandi mode only Ram is
+  // allowed; otherwise none of HK/SS/Ram is allowed (KV is a normal default
+  // mode option alongside Radha/RV, no toggle needed).
   let initMode = App.S.japMode || "radha";
   if (App.S.gaudiyaMode) {
     initMode = "hk";
   } else if (App.S.trahimamMode) {
-    initMode = "kv";
+    initMode = "ss";
   } else if (App.S.ramanandiMode) {
     initMode = "ram";
-  } else if (initMode === "hk" || initMode === "kv" || initMode === "ram") {
+  } else if (initMode === "hk" || initMode === "ss" || initMode === "ram") {
     initMode = "radha";
   }
   switchJapMode(initMode);
@@ -2925,7 +2948,7 @@ function initJapModeUI() {
   if (tgR)
     App.S.ramanandiMode ? tgR.classList.add("on") : tgR.classList.remove("on");
   if (App.S.ramanandiMode) document.body.classList.add("ramanandi-mode");
-  window._dedTypes = new Set([App.S.trahimamMode ? "kv" : App.S.ramanandiMode ? "ram" : "radha"]);
+  window._dedTypes = new Set([App.S.trahimamMode ? "ss" : App.S.ramanandiMode ? "ram" : "radha"]);
   _placeTarget28Card();
   if (typeof applyBgPhotos === "function") applyBgPhotos();
   // Init Horizon Mode toggle state
@@ -3598,10 +3621,10 @@ function tgs(k) {
     _placeTarget28Card();
     // Auto-switch jap mode so only valid options are visible at the top toggle
     if (App.S.trahimamMode) {
-      if (App.S.japMode !== "kv") switchJapMode("kv");
-      window._dedTypes = new Set(["kv"]);
+      if (App.S.japMode !== "ss") switchJapMode("ss");
+      window._dedTypes = new Set(["ss"]);
     } else {
-      if (App.S.japMode === "kv") switchJapMode("radha");
+      if (App.S.japMode === "ss") switchJapMode("radha");
       window._dedTypes = new Set(["radha"]);
     }
     window._dedAmounts = {};
@@ -3615,8 +3638,8 @@ function tgs(k) {
     if (typeof renderPhotoPickers === "function") renderPhotoPickers();
     toast(
       App.S.trahimamMode
-        ? "🪈 Trahimam Trahimam Mode ON"
-        : "🪈 Trahimam Trahimam Mode OFF",
+        ? "🕉️ Gopeshwar Mahadev Mode ON"
+        : "🕉️ Gopeshwar Mahadev Mode OFF",
     );
     return;
   }
@@ -5766,22 +5789,22 @@ function uStats() {
   if (sHKM) sHKM.textContent = Math.floor(hkLifetime / ms) + " malas";
   const sHKF = document.getElementById("sHKTotF");
   if (sHKF) sHKF.textContent = fmtCount(hkLifetime) + " jap";
-  // Combined Lifetime Jap — Radha + RV + 28 names by default, or KV + 28 names in Trahimam mode
+  // Combined Lifetime Jap — Radha + RV + KV + 28 names by default, or SS + 28 names in Gopeshwar Mahadev mode
   const ltJapAll = App.S.trahimamMode
-    ? kvLifetime + n28Lifetime
-    : radhaLifetime + rvLifetime + n28Lifetime;
+    ? ssLifetime + n28Lifetime
+    : radhaLifetime + rvLifetime + kvLifetime + n28Lifetime;
   const sLtJA = document.getElementById("sLtJapAll");
   if (sLtJA) sLtJA.textContent = ltJapAll.toLocaleString("en-IN");
   const sLtJAF = document.getElementById("sLtJapAllF");
   if (sLtJAF) sLtJAF.textContent = fmtCount(ltJapAll) + " jap";
-  // Gaudiya / Trahimam Mode: toggle visibility of stat boxes
+  // Gaudiya / Gopeshwar Mahadev Mode: toggle visibility of stat boxes
   const isGaudiya = App.S.gaudiyaMode || false;
   const isTrahimam = App.S.trahimamMode || false;
-  ["sbRadhaCount", "sbRadhaTime", "sbRVCount", "sbRVTime"].forEach((id) => {
+  ["sbRadhaCount", "sbRadhaTime", "sbRVCount", "sbRVTime", "sbKVCount", "sbKVTime"].forEach((id) => {
     const el2 = document.getElementById(id);
     if (el2) el2.style.display = isGaudiya || isTrahimam ? "none" : "";
   });
-  ["sbKVCount", "sbKVTime"].forEach((id) => {
+  ["sbSSCount", "sbSSTime"].forEach((id) => {
     const el2 = document.getElementById(id);
     if (el2) el2.style.display = isTrahimam ? "" : "none";
   });
@@ -15960,7 +15983,7 @@ function renderHistory() {
     const tSecSS_row = tHistSS[tk] || 0;
     const tSecHK_row = tHistHK[tk] || 0;
     const tSecRam_row = tHistRam[tk] || 0;
-    const tSec = isGaudiya ? tSecHK_row : isTrahimam ? tSecKV_row : isRamanandi ? tSecRam_row : tSecR_row + tSecRV_row + tSecKV_row + tSecSS_row;
+    const tSec = isGaudiya ? tSecHK_row : isTrahimam ? tSecSS_row : isRamanandi ? tSecRam_row : tSecR_row + tSecRV_row + tSecKV_row;
     const t28Sec = (isGaudiya || isTrahimam || isRamanandi) ? 0 : t28Hist[tk] || 0;
     const totalSec = tSec + t28Sec;
 
@@ -15968,11 +15991,11 @@ function renderHistory() {
     if (isGaudiya) {
       if (hk === 0) return;
     } else if (isTrahimam) {
-      if (kv === 0) return;
+      if (ss === 0) return;
     } else if (isRamanandi) {
       if (ram === 0) return;
     } else {
-      if (radha === 0 && rv === 0 && kv === 0 && ss === 0 && taps28 === 0) return;
+      if (radha === 0 && rv === 0 && kv === 0 && taps28 === 0) return;
     }
 
     activeDays++;
@@ -16034,7 +16057,7 @@ function renderHistory() {
     } else if (isTrahimam) {
       tr.innerHTML = `
         ${dateCell}
-        <td class="hist-kv-col hist-val hist-c-kv">${kvStr}</td>
+        <td class="hist-kv-col hist-val hist-c-ss">${ssStr}</td>
         <td class="hist-val hist-c-time">${_histFmtSec(totalSec)}</td>
         ${chevCell}
       `;
@@ -16050,7 +16073,6 @@ function renderHistory() {
         ${dateCell}
         <td class="hist-radha-col hist-val hist-c-gold">${radhaStr}</td>
         <td class="hist-radha-col hist-val hist-c-rv">${rvStr}</td>
-        <td class="hist-radha-col hist-val hist-c-ss">${ssStr}</td>
         <td class="hist-radha-col hist-val hist-c-kv">${kvStr}</td>
         <td class="hist-radha-col hist-val hist-c-green">${n28Str}</td>
         <td class="hist-val hist-c-time">${_histFmtSec(totalSec)}</td>
@@ -16113,9 +16135,9 @@ function renderHistory() {
     `;
   } else if (isTrahimam) {
     totDiv.innerHTML = `
-      <div class="pt-head"><span class="pt-head-icon">📊</span><span class="pt-head-title">Period Totals</span><span class="pt-head-range">(${rangeLbl})</span><span class="pt-head-tag">Trahimam</span></div>
+      <div class="pt-head"><span class="pt-head-icon">📊</span><span class="pt-head-title">Period Totals</span><span class="pt-head-range">(${rangeLbl})</span><span class="pt-head-tag">Gopeshwar Mahadev</span></div>
       <div class="pt-grid pt-grid-1">
-        ${statCard("pt-kv", "🪈", "Krishnay Vasudevay", totKVM, totKVM === 1 ? "mala" : "malas", fmtN(totKV) + " names", _histFmtSec(window._ptKVSec || 0), "kv")}
+        ${statCard("pt-ss", "🕉️", "Samba Sadashiv", totSSM, totSSM === 1 ? "mala" : "malas", fmtN(totSS) + " names", _histFmtSec(window._ptSSSec || 0), "ss")}
       </div>
       <div class="pt-total"><span class="pt-total-label">Total Time</span><span class="pt-total-val">${_histFmtSec(grandTotal)}</span></div>
     `;
@@ -16130,10 +16152,9 @@ function renderHistory() {
   } else {
     totDiv.innerHTML = `
       <div class="pt-head"><span class="pt-head-icon">📊</span><span class="pt-head-title">Period Totals</span><span class="pt-head-range">(${rangeLbl})</span></div>
-      <div class="pt-grid pt-grid-5">
+      <div class="pt-grid pt-grid-4">
         ${statCard("pt-radha", "📿", "Radha Jap", totRadhaM, totRadhaM === 1 ? "mala" : "malas", fmtN(totRadha) + " names", _histFmtSec(window._ptRadhaSec || 0), "radha")}
         ${statCard("pt-rv", "🕉️", "RV Jap", totRVM, totRVM === 1 ? "mala" : "malas", fmtN(totRV) + " names", _histFmtSec(window._ptRVSec || 0), "rv")}
-        ${statCard("pt-ss", "🕉️", "Samba Sadashiv", totSSM, totSSM === 1 ? "mala" : "malas", fmtN(totSS) + " names", _histFmtSec(window._ptSSSec || 0), "ss")}
         ${statCard("pt-kv", "🪈", "KV Jap", totKVM, totKVM === 1 ? "mala" : "malas", fmtN(totKV) + " names", _histFmtSec(window._ptKVSec || 0), "kv")}
         ${statCard("pt-28", "🪷", "28 Names", totCyc28, totCyc28 === 1 ? "cycle" : "cycles", fmtN(tot28taps) + " taps", _histFmtSec(totTimeSec28), "28")}
       </div>

@@ -9695,12 +9695,31 @@ async function fbPushFull() {
     deviceId: fbDeviceId,
   };
   try {
-    await fbDb
-      .collection("users")
-      .doc(fbUser.uid)
-      .collection("data")
-      .doc("main")
-      .set(payload);
+    // A Firestore write can hang indefinitely on a bad connection, just
+    // like a read (see fbWithTimeout usage in fbMigrate above) — without a
+    // bound here, a stuck write leaves the sync pill on "Syncing…" forever
+    // and NEVER reaches the catch block below, so the pending markers never
+    // get a chance to trigger a retry either. Bounding it turns a silent
+    // hang into a normal, retryable failure.
+    await fbWithTimeout(
+      fbDb
+        .collection("users")
+        .doc(fbUser.uid)
+        .collection("data")
+        .doc("main")
+        .set(payload),
+      20000,
+      "Cloud push",
+    );
+    // Write CONFIRMED by Firestore — safe to clear both the foreground-only
+    // marker and the one shared with the Background Runner, so neither
+    // retries something that already landed.
+    try { localStorage.removeItem("rjap_sync_pending"); } catch (_e) {}
+    try {
+      if (window.Capacitor?.Plugins?.CapacitorKV) {
+        await window.Capacitor.Plugins.CapacitorKV.set({ key: "bgsync_pending_since", value: "" });
+      }
+    } catch (_e) {}
     // Stage a plain-JSON copy (minus the serverTimestamp sentinel, which
     // can't be serialized) for the native Background Runner. This is the
     // "last known good" snapshot it will re-push if the app stays closed
@@ -9731,6 +9750,12 @@ async function fbPushFull() {
       }
     }
     // ── Push leaderboard entry if opted in ──
+    // Only announce this device as "present" on the community board AFTER
+    // the authoritative history doc above was actually confirmed — a
+    // separate, smaller leaderboard write must never succeed on its own
+    // and imply the full sync did too. That mismatch (leaderboard fine,
+    // real history doc silently behind) is exactly what made missing days
+    // invisible until a device switch.
     pushLeaderboard().catch((e) => console.warn('pushLeaderboard (post-tap) error:', e && e.message));
     App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history || {}));
     App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28 || {}));
@@ -9747,7 +9772,11 @@ async function fbPushFull() {
   } catch (e) {
     App._suspendCloudSync = false;
     console.warn("Full sync failed:", e.message);
-    setSyncPill("error", "Sync failed");
+    // Both pending markers are deliberately left set here — the next
+    // successful cloud hydration (_rjapMaybeRetryPendingSync, see
+    // fbApplyRemote) and the Background Runner will both keep trying
+    // until a push actually succeeds.
+    setSyncPill("error", "⚠️ Sync incomplete — will retry");
   }
 }
 
@@ -10068,6 +10097,31 @@ function fbApplyRemote(d) {
   renderMalaLog();
   try { populateSettingsUI(); } catch (_e) {}
   setSyncPill("", "🔄 Synced from cloud");
+  _rjapMaybeRetryPendingSync();
+}
+
+// If a previous session ended (app killed by the OS, connection dropped,
+// battery-optimizer suspended the WebView, etc.) before its last change was
+// CONFIRMED written to Firestore, a pending marker is still set from that
+// session — either in localStorage (this device's own foreground marker)
+// or in CapacitorKV (the store shared with the Background Runner, which
+// can catch a case even the localStorage marker missed, e.g. the process
+// dying before that synchronous line ever ran). Once we're freshly
+// connected and cloud-hydrated again, retry immediately instead of
+// silently waiting for the next tap — that silent wait is exactly how
+// days went missing before.
+function _rjapMaybeRetryPendingSync() {
+  if (!fbUser || !App._cloudHydrated || App._suspendCloudSync) return;
+  if (typeof isGhostMode === "function" && isGhostMode()) return;
+  const retry = () => { if (typeof fbPushFull === "function") fbPushFull().catch(() => {}); };
+  let localPending = false;
+  try { localPending = !!localStorage.getItem("rjap_sync_pending"); } catch (_e) {}
+  if (localPending) { retry(); return; }
+  if (window.Capacitor?.Plugins?.CapacitorKV) {
+    window.Capacitor.Plugins.CapacitorKV.get({ key: "bgsync_pending_since" })
+      .then((r) => { if (r && r.value) retry(); })
+      .catch(() => {});
+  }
 }
 
 // A Firestore get() can hang indefinitely on some networks/devices —
@@ -10273,6 +10327,7 @@ async function fbAutoSync() {
 let _fbDeb = null;
 let _fbMaxWaitTimer = null;
 let _fbLastPushAt = 0;
+let _bgStageLastAt = 0;
 const FB_DEBOUNCE_MS = 3000;
 const FB_MAX_WAIT_MS = 5000; // force a push at least this often during continuous tapping
 
@@ -10282,6 +10337,33 @@ function fbDebouncedPush() {
   // its own isGhostMode() check, no ghost-mode write will ever reach Firestore
   // and imprint the viewed user's data onto the developer's own profile.
   if (typeof isGhostMode === "function" && isGhostMode()) return;
+
+  // ── Durability against an instant app-kill ──
+  // Mark that this device has changes not yet CONFIRMED in Firestore right
+  // NOW, at the moment a push is first scheduled — not 3 seconds from now
+  // when the debounce timer below actually fires. If the OS kills the
+  // process in that 3s window (aggressive battery-optimizer OEMs do this
+  // routinely), the debounce timer never runs and NOTHING would otherwise
+  // have been staged for the Background Runner to find on its next wake.
+  try { localStorage.setItem("rjap_sync_pending", String(Date.now())); } catch (_e) {}
+  // Also refresh the Background Runner's fallback snapshot, in the ONE
+  // store both this WebView and the Runner's isolated sandbox actually
+  // share (CapacitorKV) — throttled to roughly once/second so a fast
+  // tapping burst doesn't hammer the native bridge, while still shrinking
+  // the "died before anything was staged" window from ~3s down to ~1s.
+  const _bgNow = Date.now();
+  if (_bgNow - _bgStageLastAt > 1000) {
+    _bgStageLastAt = _bgNow;
+    try {
+      if (window.Capacitor?.Plugins?.CapacitorKV && typeof _buildBackupPayload === "function") {
+        const kv = _buildBackupPayload();
+        delete kv._version;
+        delete kv._exported;
+        window.Capacitor.Plugins.CapacitorKV.set({ key: "bgsync_payload", value: JSON.stringify(kv) }).catch(() => {});
+        window.Capacitor.Plugins.CapacitorKV.set({ key: "bgsync_pending_since", value: String(_bgNow) }).catch(() => {});
+      }
+    } catch (_e) {}
+  }
 
   clearTimeout(_fbDeb);
   _fbDeb = setTimeout(() => _fbDoPush(), FB_DEBOUNCE_MS);

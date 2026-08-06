@@ -6803,154 +6803,81 @@ function exportAllData() {
 function importAllData(input) {
   const file = input.files[0];
   if (!file) return;
+  // Restoring is a full account takeover — everything currently on this
+  // account is replaced with whatever is in the backup file. Confirm first
+  // since this can't be undone (except by restoring a different backup).
+  const _confirmMsg = isGhostMode()
+    ? "This will COMPLETELY REPLACE all data on the viewed user's account with this backup file. Anything not in the backup will be lost. This cannot be undone. Continue?"
+    : "This will COMPLETELY REPLACE all data on this account with this backup file. Anything not in the backup will be lost. This cannot be undone. Continue?";
+  if (!window.confirm(_confirmMsg)) {
+    input.value = "";
+    return;
+  }
   const st = document.getElementById("restoreStatus");
   if (st) st.textContent = "Reading file…";
   const reader = new FileReader();
   reader.onload = function (e) {
     try {
       const data = JSON.parse(e.target.result);
-      if (data.history) App.S.history = { ...App.S.history, ...data.history };
-      if (data.h28) App.S.h28 = { ...App.S.h28, ...data.h28 };
-      if (data.nameJapDeduct28 !== undefined)
-        App.S.nameJapDeduct28 = data.nameJapDeduct28;
-      if (data.timerHistory)
-        App.S.timerHistory = { ...App.S.timerHistory, ...data.timerHistory };
-      // Restore today's per-mala breakdown (malaLog) for Radha mode too —
-      // previously only malaLogRV/malaLogHK were restored here, so importing
-      // a backup fixed the Jap Time total but left "Today's Mala Log" blank.
-      // Only apply if the backup's log is for today AND has at least as much
-      // data as what's already local, so a partial/older backup can't erase
-      // entries you've logged since it was taken.
-      if (data.malaLog && data.malaLogDate === App.S.tk) {
-        const localSum = (App.S.malaLog || []).reduce((a, b) => a + b, 0);
-        const importSum = (data.malaLog || []).reduce((a, b) => a + b, 0);
-        if (importSum >= localSum) {
-          App.S.malaLog = data.malaLog;
-        }
-      }
-      if (data.timer28History)
-        App.S.timer28History = {
-          ...App.S.timer28History,
-          ...data.timer28History,
-        };
-      if (data.stotrams)
-        App.S.stotrams = { ...App.S.stotrams, ...data.stotrams };
-      if (data.brahma) App.S.brahma = { ...App.S.brahma, ...data.brahma };
-      if (data.customSt) App.S.customSt = data.customSt;
-      if (data.sankalpas) App.S.sankalpas = data.sankalpas;
-      if (data.occasions)
-        App.S.occasions = { ...App.S.occasions, ...data.occasions };
-      if (data.ms) App.S.ms = data.ms;
-      if (data.dt !== undefined) App.S.dt = data.dt;
-      if (data.lt !== undefined) App.S.lt = data.lt;
-      if (data.nameJapDeduct !== undefined)
-        App.S.nameJapDeduct = data.nameJapDeduct;
-      if (data.cfg) App.S.cfg = { ...App.S.cfg, ...data.cfg };
-      if (data.historyRV)
-        App.S.historyRV = { ...App.S.historyRV, ...data.historyRV };
-      if (data.timerHistoryRV)
-        App.S.timerHistoryRV = {
-          ...App.S.timerHistoryRV,
-          ...data.timerHistoryRV,
-        };
-      if (data.japMode) App.S.japMode = data.japMode;
-      if (data.dtRV !== undefined) App.S.dtRV = data.dtRV;
-      if (data.ltRV !== undefined) App.S.ltRV = data.ltRV;
-      if (data.nameJapDeductRV !== undefined)
-        App.S.nameJapDeductRV = data.nameJapDeductRV;
-      if (data.malaLogRV && data.malaLogDate === App.S.tk) {
-        const localSumRV = (App.S.malaLogRV || []).reduce((a, b) => a + b, 0);
-        const importSumRV = (data.malaLogRV || []).reduce((a, b) => a + b, 0);
-        if (importSumRV >= localSumRV) App.S.malaLogRV = data.malaLogRV;
-      }
-      if (data.historyHK)
-        App.S.historyHK = { ...App.S.historyHK, ...data.historyHK };
-      if (data.timerHistoryHK)
-        App.S.timerHistoryHK = {
-          ...App.S.timerHistoryHK,
-          ...data.timerHistoryHK,
-        };
-      if (data.dtHK !== undefined) App.S.dtHK = data.dtHK;
-      if (data.nameJapDeductHK !== undefined)
-        App.S.nameJapDeductHK = data.nameJapDeductHK;
-      if (data.malaLogHK && data.malaLogDate === App.S.tk) {
-        const localSumHK = (App.S.malaLogHK || []).reduce((a, b) => a + b, 0);
-        const importSumHK = (data.malaLogHK || []).reduce((a, b) => a + b, 0);
-        if (importSumHK >= localSumHK) App.S.malaLogHK = data.malaLogHK;
-      }
-      if (data.gaudiyaMode !== undefined) App.S.gaudiyaMode = data.gaudiyaMode;
-      if (data.trahimamMode !== undefined)
-        App.S.trahimamMode = data.trahimamMode;
-      if (data.ramanandiMode !== undefined)
-        App.S.ramanandiMode = data.ramanandiMode;
-      if (data.historyKV)
-        App.S.historyKV = { ...App.S.historyKV, ...data.historyKV };
-      if (data.timerHistoryKV)
-        App.S.timerHistoryKV = {
-          ...App.S.timerHistoryKV,
-          ...data.timerHistoryKV,
-        };
-      if (data.dtKV !== undefined) App.S.dtKV = data.dtKV;
-      if (data.ltKV !== undefined) App.S.ltKV = data.ltKV;
-      if (data.nameJapDeductKV !== undefined)
-        App.S.nameJapDeductKV = data.nameJapDeductKV;
-      if (data.malaLogKV && data.malaLogDate === App.S.tk) {
-        const localSumKV = (App.S.malaLogKV || []).reduce((a, b) => a + b, 0);
-        const importSumKV = (data.malaLogKV || []).reduce((a, b) => a + b, 0);
-        if (importSumKV >= localSumKV) App.S.malaLogKV = data.malaLogKV;
-      }
-      if (data.historySS)
-        App.S.historySS = { ...App.S.historySS, ...data.historySS };
-      if (data.timerHistorySS)
-        App.S.timerHistorySS = {
-          ...App.S.timerHistorySS,
-          ...data.timerHistorySS,
-        };
-      if (data.dtSS !== undefined) App.S.dtSS = data.dtSS;
-      if (data.ltSS !== undefined) App.S.ltSS = data.ltSS;
-      if (data.nameJapDeductSS !== undefined)
-        App.S.nameJapDeductSS = data.nameJapDeductSS;
-      if (data.malaLogSS && data.malaLogDate === App.S.tk) {
-        const localSumSS = (App.S.malaLogSS || []).reduce((a, b) => a + b, 0);
-        const importSumSS = (data.malaLogSS || []).reduce((a, b) => a + b, 0);
-        if (importSumSS >= localSumSS) App.S.malaLogSS = data.malaLogSS;
-      }
-      if (data.historyRam)
-        App.S.historyRam = { ...App.S.historyRam, ...data.historyRam };
-      if (data.timerHistoryRam)
-        App.S.timerHistoryRam = {
-          ...App.S.timerHistoryRam,
-          ...data.timerHistoryRam,
-        };
-      if (data.dtRam !== undefined) App.S.dtRam = data.dtRam;
-      if (data.ltRam !== undefined) App.S.ltRam = data.ltRam;
-      if (data.nameJapDeductRam !== undefined)
-        App.S.nameJapDeductRam = data.nameJapDeductRam;
-      if (data.malaLogRam && data.malaLogDate === App.S.tk) {
-        const localSumRam = (App.S.malaLogRam || []).reduce((a, b) => a + b, 0);
-        const importSumRam = (data.malaLogRam || []).reduce((a, b) => a + b, 0);
-        if (importSumRam >= localSumRam) App.S.malaLogRam = data.malaLogRam;
-      }
-      if (data.dedications && Array.isArray(data.dedications)) {
-        const localDedIds = new Set(
-          (App.S.dedications || []).map((d) => d.id),
-        );
-        const mergedDed = (App.S.dedications || []).slice();
-        data.dedications.forEach((d) => {
-          if (d && d.id && !localDedIds.has(d.id)) mergedDed.push(d);
-        });
-        App.S.dedications = mergedDed;
-      }
-      if (data.giftLedger && typeof data.giftLedger === "object") {
-        App.S.giftLedger = App.S.giftLedger || {};
-        Object.values(data.giftLedger).forEach((g) => {
-          if (g && g.id && !App.S.giftLedger[g.id]) {
-            App.S.giftLedger[g.id] = g;
-            if (App._uid) App.dbPut("giftLedger", g.id, g);
-          }
-        });
-        if (typeof renderPermanentGiftLog === "function") renderPermanentGiftLog();
-      }
+      // ── FULL TAKEOVER: every field is set directly from the backup file,
+      // defaulting to empty/zero when the backup doesn't have it. Nothing
+      // from the account's current state is preserved or merged in — the
+      // account becomes exactly what the backup file describes.
+      App.S.history = data.history || {};
+      App.S.h28 = data.h28 || {};
+      App.S.nameJapDeduct28 = data.nameJapDeduct28 || 0;
+      App.S.timerHistory = data.timerHistory || {};
+      App.S.malaLog = data.malaLog || [];
+      App.S.timer28History = data.timer28History || {};
+      App.S.stotrams = data.stotrams || {};
+      App.S.brahma = data.brahma || {};
+      App.S.customSt = data.customSt || [];
+      App.S.sankalpas = data.sankalpas || [];
+      App.S.occasions = data.occasions || {};
+      App.S.ms = data.ms || 108;
+      App.S.dt = data.dt || 0;
+      App.S.lt = data.lt || 0;
+      App.S.nameJapDeduct = data.nameJapDeduct || 0;
+      App.S.cfg = data.cfg || {};
+      App.S.historyRV = data.historyRV || {};
+      App.S.timerHistoryRV = data.timerHistoryRV || {};
+      App.S.japMode = data.japMode || "radha";
+      App.S.dtRV = data.dtRV || 0;
+      App.S.ltRV = data.ltRV || 0;
+      App.S.nameJapDeductRV = data.nameJapDeductRV || 0;
+      App.S.malaLogRV = data.malaLogRV || [];
+      App.S.historyHK = data.historyHK || {};
+      App.S.timerHistoryHK = data.timerHistoryHK || {};
+      App.S.dtHK = data.dtHK || 0;
+      App.S.nameJapDeductHK = data.nameJapDeductHK || 0;
+      App.S.malaLogHK = data.malaLogHK || [];
+      App.S.gaudiyaMode = data.gaudiyaMode || false;
+      App.S.trahimamMode = data.trahimamMode || false;
+      App.S.ramanandiMode = data.ramanandiMode || false;
+      App.S.historyKV = data.historyKV || {};
+      App.S.timerHistoryKV = data.timerHistoryKV || {};
+      App.S.dtKV = data.dtKV || 0;
+      App.S.ltKV = data.ltKV || 0;
+      App.S.nameJapDeductKV = data.nameJapDeductKV || 0;
+      App.S.malaLogKV = data.malaLogKV || [];
+      App.S.historySS = data.historySS || {};
+      App.S.timerHistorySS = data.timerHistorySS || {};
+      App.S.dtSS = data.dtSS || 0;
+      App.S.ltSS = data.ltSS || 0;
+      App.S.nameJapDeductSS = data.nameJapDeductSS || 0;
+      App.S.malaLogSS = data.malaLogSS || [];
+      App.S.historyRam = data.historyRam || {};
+      App.S.timerHistoryRam = data.timerHistoryRam || {};
+      App.S.dtRam = data.dtRam || 0;
+      App.S.ltRam = data.ltRam || 0;
+      App.S.nameJapDeductRam = data.nameJapDeductRam || 0;
+      App.S.malaLogRam = data.malaLogRam || [];
+      App.S.dedications = Array.isArray(data.dedications) ? data.dedications : [];
+      App.S.giftLedger = (data.giftLedger && typeof data.giftLedger === "object") ? data.giftLedger : {};
+      if (typeof renderPermanentGiftLog === "function") renderPermanentGiftLog();
+      App.S.milestones = data.milestones || { reached: {}, lastChecked: 0 };
+      App.S.msConsider = data.msConsider || { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, n28: true };
+      App.S.dt28Cycles = data.dt28Cycles || 0;
       App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history));
       App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28));
       App.S.syncBaselineTimer = JSON.parse(JSON.stringify(App.S.timerHistory));
@@ -6988,23 +6915,23 @@ function importAllData(input) {
         ? document.body.classList.add("ramanandi-mode")
         : document.body.classList.remove("ramanandi-mode");
       _placeTarget28Card();
-      // Push the restored data to Firestore immediately — restoring a backup
-      // should overwrite the LIVE cloud data for whichever account is
-      // currently active, not just sit in local memory until some unrelated
-      // action happens to trigger a save. While a developer is Ghost
-      // Mode-viewing another user, this correctly writes to THAT user's
-      // Firestore doc instead of the developer's own account.
-      ghostAwareSave();
+      // Push the restored data to Firestore immediately, REPLACING the live
+      // cloud document entirely (not merging) — restoring a backup should
+      // make the account exactly match the file, for whichever account is
+      // currently active. While a developer is Ghost Mode-viewing another
+      // user, this correctly overwrites THAT user's Firestore doc instead
+      // of the developer's own account.
+      ghostAwareSave(true);
       if (st) {
         st.textContent = isGhostMode()
-          ? "✅ Data restored to the viewed user's account! 🙏"
-          : "✅ Data restored successfully! 🙏 Jai Radhe!";
+          ? "✅ Viewed user's account fully replaced with backup! 🙏"
+          : "✅ Account fully replaced with backup! 🙏 Jai Radhe!";
         st.style.color = "var(--green)";
       }
       toast(
         isGhostMode()
-          ? "Restored to viewed user's account! 🙏"
-          : "All data restored! 🙏 Jai Radhe!",
+          ? "Viewed user's account fully replaced! 🙏"
+          : "Account fully replaced with backup! 🙏 Jai Radhe!",
       );
       input.value = "";
     } catch (err) {
@@ -9597,9 +9524,9 @@ async function fbPushDelta() {
 // makes a manual jap correction or restores a backup — the change must land
 // on the VIEWED user's document, never the developer's own. Requires the
 // Firestore rule allowing isDeveloper() to write under /users/{userId}.
-async function fbPushToUid(targetUid) {
+async function fbPushToUid(targetUid, fullReplace) {
   if (!fbUser || !fbDb || !targetUid) return;
-  setSyncPill("syncing", "Saving to viewed user's account…");
+  setSyncPill("syncing", fullReplace ? "Replacing viewed user's account…" : "Saving to viewed user's account…");
   const payload = {
     history: App.S.history || {},
     h28: App.S.h28 || {},
@@ -9667,9 +9594,14 @@ async function fbPushToUid(targetUid) {
       .doc(targetUid)
       .collection("data")
       .doc("main")
-      .set(payload, { merge: true });
+      // fullReplace = true (restoring a backup): overwrite the ENTIRE
+      // Firestore doc with no merge, so any old fields not in this payload
+      // are dropped too — the account becomes exactly the backup file.
+      // Otherwise (a normal manual jap correction): merge, touching only
+      // the fields in this payload.
+      .set(payload, fullReplace ? {} : { merge: true });
     setSyncPill("", "☁️ Saved to viewed user's account " + new Date().toLocaleTimeString());
-    toast("✅ Saved to the viewed user's account 🙏");
+    toast(fullReplace ? "✅ Viewed user's account fully replaced 🙏" : "✅ Saved to the viewed user's account 🙏");
   } catch (e) {
     console.warn("fbPushToUid failed:", e && e.message);
     setSyncPill("error", "Save failed");
@@ -9763,12 +9695,31 @@ async function fbPushFull() {
     deviceId: fbDeviceId,
   };
   try {
-    await fbDb
-      .collection("users")
-      .doc(fbUser.uid)
-      .collection("data")
-      .doc("main")
-      .set(payload);
+    // A Firestore write can hang indefinitely on a bad connection, just
+    // like a read (see fbWithTimeout usage in fbMigrate above) — without a
+    // bound here, a stuck write leaves the sync pill on "Syncing…" forever
+    // and NEVER reaches the catch block below, so the pending markers never
+    // get a chance to trigger a retry either. Bounding it turns a silent
+    // hang into a normal, retryable failure.
+    await fbWithTimeout(
+      fbDb
+        .collection("users")
+        .doc(fbUser.uid)
+        .collection("data")
+        .doc("main")
+        .set(payload),
+      20000,
+      "Cloud push",
+    );
+    // Write CONFIRMED by Firestore — safe to clear both the foreground-only
+    // marker and the one shared with the Background Runner, so neither
+    // retries something that already landed.
+    try { localStorage.removeItem("rjap_sync_pending"); } catch (_e) {}
+    try {
+      if (window.Capacitor?.Plugins?.CapacitorKV) {
+        await window.Capacitor.Plugins.CapacitorKV.set({ key: "bgsync_pending_since", value: "" });
+      }
+    } catch (_e) {}
     // Stage a plain-JSON copy (minus the serverTimestamp sentinel, which
     // can't be serialized) for the native Background Runner. This is the
     // "last known good" snapshot it will re-push if the app stays closed
@@ -9799,6 +9750,12 @@ async function fbPushFull() {
       }
     }
     // ── Push leaderboard entry if opted in ──
+    // Only announce this device as "present" on the community board AFTER
+    // the authoritative history doc above was actually confirmed — a
+    // separate, smaller leaderboard write must never succeed on its own
+    // and imply the full sync did too. That mismatch (leaderboard fine,
+    // real history doc silently behind) is exactly what made missing days
+    // invisible until a device switch.
     pushLeaderboard().catch((e) => console.warn('pushLeaderboard (post-tap) error:', e && e.message));
     App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history || {}));
     App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28 || {}));
@@ -9815,7 +9772,11 @@ async function fbPushFull() {
   } catch (e) {
     App._suspendCloudSync = false;
     console.warn("Full sync failed:", e.message);
-    setSyncPill("error", "Sync failed");
+    // Both pending markers are deliberately left set here — the next
+    // successful cloud hydration (_rjapMaybeRetryPendingSync, see
+    // fbApplyRemote) and the Background Runner will both keep trying
+    // until a push actually succeeds.
+    setSyncPill("error", "⚠️ Sync incomplete — will retry");
   }
 }
 
@@ -10136,6 +10097,31 @@ function fbApplyRemote(d) {
   renderMalaLog();
   try { populateSettingsUI(); } catch (_e) {}
   setSyncPill("", "🔄 Synced from cloud");
+  _rjapMaybeRetryPendingSync();
+}
+
+// If a previous session ended (app killed by the OS, connection dropped,
+// battery-optimizer suspended the WebView, etc.) before its last change was
+// CONFIRMED written to Firestore, a pending marker is still set from that
+// session — either in localStorage (this device's own foreground marker)
+// or in CapacitorKV (the store shared with the Background Runner, which
+// can catch a case even the localStorage marker missed, e.g. the process
+// dying before that synchronous line ever ran). Once we're freshly
+// connected and cloud-hydrated again, retry immediately instead of
+// silently waiting for the next tap — that silent wait is exactly how
+// days went missing before.
+function _rjapMaybeRetryPendingSync() {
+  if (!fbUser || !App._cloudHydrated || App._suspendCloudSync) return;
+  if (typeof isGhostMode === "function" && isGhostMode()) return;
+  const retry = () => { if (typeof fbPushFull === "function") fbPushFull().catch(() => {}); };
+  let localPending = false;
+  try { localPending = !!localStorage.getItem("rjap_sync_pending"); } catch (_e) {}
+  if (localPending) { retry(); return; }
+  if (window.Capacitor?.Plugins?.CapacitorKV) {
+    window.Capacitor.Plugins.CapacitorKV.get({ key: "bgsync_pending_since" })
+      .then((r) => { if (r && r.value) retry(); })
+      .catch(() => {});
+  }
 }
 
 // A Firestore get() can hang indefinitely on some networks/devices —
@@ -10341,6 +10327,7 @@ async function fbAutoSync() {
 let _fbDeb = null;
 let _fbMaxWaitTimer = null;
 let _fbLastPushAt = 0;
+let _bgStageLastAt = 0;
 const FB_DEBOUNCE_MS = 3000;
 const FB_MAX_WAIT_MS = 5000; // force a push at least this often during continuous tapping
 
@@ -10350,6 +10337,33 @@ function fbDebouncedPush() {
   // its own isGhostMode() check, no ghost-mode write will ever reach Firestore
   // and imprint the viewed user's data onto the developer's own profile.
   if (typeof isGhostMode === "function" && isGhostMode()) return;
+
+  // ── Durability against an instant app-kill ──
+  // Mark that this device has changes not yet CONFIRMED in Firestore right
+  // NOW, at the moment a push is first scheduled — not 3 seconds from now
+  // when the debounce timer below actually fires. If the OS kills the
+  // process in that 3s window (aggressive battery-optimizer OEMs do this
+  // routinely), the debounce timer never runs and NOTHING would otherwise
+  // have been staged for the Background Runner to find on its next wake.
+  try { localStorage.setItem("rjap_sync_pending", String(Date.now())); } catch (_e) {}
+  // Also refresh the Background Runner's fallback snapshot, in the ONE
+  // store both this WebView and the Runner's isolated sandbox actually
+  // share (CapacitorKV) — throttled to roughly once/second so a fast
+  // tapping burst doesn't hammer the native bridge, while still shrinking
+  // the "died before anything was staged" window from ~3s down to ~1s.
+  const _bgNow = Date.now();
+  if (_bgNow - _bgStageLastAt > 1000) {
+    _bgStageLastAt = _bgNow;
+    try {
+      if (window.Capacitor?.Plugins?.CapacitorKV && typeof _buildBackupPayload === "function") {
+        const kv = _buildBackupPayload();
+        delete kv._version;
+        delete kv._exported;
+        window.Capacitor.Plugins.CapacitorKV.set({ key: "bgsync_payload", value: JSON.stringify(kv) }).catch(() => {});
+        window.Capacitor.Plugins.CapacitorKV.set({ key: "bgsync_pending_since", value: String(_bgNow) }).catch(() => {});
+      }
+    } catch (_e) {}
+  }
 
   clearTimeout(_fbDeb);
   _fbDeb = setTimeout(() => _fbDoPush(), FB_DEBOUNCE_MS);
@@ -12076,9 +12090,15 @@ function isGhostMode() { return !!_ghostViewingUid; }
 // instead of App.save()+fbDebouncedPush() directly. While ghosting, it
 // writes straight to the VIEWED user's Firestore doc (never local IndexedDB,
 // never the developer's own account); otherwise it's the normal save path.
-function ghostAwareSave() {
+function ghostAwareSave(fullReplace) {
   if (isGhostMode() && _ghostViewingUid) {
-    fbPushToUid(_ghostViewingUid).catch(() => {});
+    fbPushToUid(_ghostViewingUid, !!fullReplace).catch(() => {});
+  } else if (fullReplace) {
+    // Restoring a backup on your own account: fbPushFull() already writes
+    // with .set(payload) (no merge), so this replaces the live Firestore
+    // doc entirely — nothing from before the restore survives.
+    App.save();
+    fbPushFull().catch(() => {});
   } else {
     App.save();
     if (typeof fbDebouncedPush === "function") fbDebouncedPush();

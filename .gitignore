@@ -2,3 +2,5 @@ node_modules/
 *.apk
 .DS_Store
 /android/
+*.bak
+*.bak-syncfix*

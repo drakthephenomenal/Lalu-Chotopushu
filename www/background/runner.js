@@ -139,9 +139,24 @@ addEventListener("periodicSync", async (resolve, reject) => {
 
     const payload = JSON.parse(payloadStr);
     const idToken = await refreshIdToken(refreshToken);
-    await pushToFirestore(uid, idToken, payload);
+    // One quick retry within the same wake cycle. WorkManager only wakes
+    // this task up roughly every 15 minutes (the Android platform minimum
+    // for periodic work), so it's worth spending a few extra seconds here
+    // to beat a transient blip rather than losing a full cycle to it.
+    try {
+      await pushToFirestore(uid, idToken, payload);
+    } catch (firstErr) {
+      console.warn("Background sync: first attempt failed, retrying once:", firstErr && firstErr.message ? firstErr.message : firstErr);
+      await new Promise((r) => setTimeout(r, 3000));
+      await pushToFirestore(uid, idToken, payload);
+    }
 
     console.log("Background sync: pushed staged data for", uid);
+    // Clear the marker shared with the live app — its next cloud
+    // hydration checks this (in addition to its own localStorage marker)
+    // so it doesn't fire a redundant duplicate push for data the
+    // Background Runner already got safely into Firestore.
+    await kvSet("bgsync_pending_since", "");
 
     // Daily Google Drive backup — independent of the Firestore push above.
     // Runs on the same periodicSync cycle (Android's WorkManager only

@@ -4076,7 +4076,9 @@ function toggleCs(bodyId, chevId) {
 
 // ── Manual Jap Entry ──
 function addManualJap() {
-  if (isGhostMode()) return; // ghost mode: read-only
+  // Developers may manually correct jap counts while Ghost Mode-viewing
+  // another user's account (writes go to ghostAwareSave(), never live-tap
+  // simulation). Regular users always edit only their own account.
   const n = parseInt(document.getElementById("manualJapIn").value) || 0;
   if (n <= 0) {
     toast("Please enter a number > 0");
@@ -4205,10 +4207,8 @@ function addManualJap() {
     App.vib([200, 80, 200, 80, 300]);
     App.flashMalaDuration(avgPerMala);
   }
-  App.save();
   App.ua();
-  fbDebouncedPush();
-  // ── DAILY-TARGET FIX: force every dependent view to re-read from state now,
+  ghostAwareSave();
   // not just the home progress bar. This eliminates the lag where the Daily
   // bar/Stats stayed at the old value until a later sync triggered a redraw. ──
   try {
@@ -4252,7 +4252,6 @@ function addManualJap() {
 }
 
 function addPrevJap() {
-  if (isGhostMode()) return; // ghost mode: read-only
   const n = parseInt(document.getElementById("prevJapIn").value) || 0;
   if (n <= 0) {
     toast("Please enter a number > 0");
@@ -4278,15 +4277,13 @@ function addPrevJap() {
   if (_pml) _pml.textContent = "0";
   const _plp = document.getElementById("prevLifetimePreview");
   if (_plp) _plp.textContent = "—";
-  App.save();
   App.ua();
-  fbDebouncedPush();
+  ghostAwareSave();
   toast("Added " + n.toLocaleString() + " jap to lifetime! 🙏 Jai Radhe!");
 }
 
 // ── Deduct Name Jap from Lifetime ──
 function addNameJapDeduct() {
-  if (isGhostMode()) return; // ghost mode: read-only
   const n = parseInt(document.getElementById("nameJapDeductIn").value) || 0;
   if (n <= 0) {
     toast("Please enter a number > 0");
@@ -4313,7 +4310,6 @@ function addNameJapDeduct() {
 }
 
 function removeNameJapDeduct() {
-  if (isGhostMode()) return; // ghost mode: read-only
   const n = parseInt(document.getElementById("nameJapRestoreIn").value) || 0;
   if (n <= 0) {
     toast("Please enter a number > 0");
@@ -4351,9 +4347,8 @@ function removeNameJapDeduct() {
   } else {
     App.S.nameJapDeduct = cur - n;
   }
-  App.save();
   App.ua();
-  fbDebouncedPush();
+  ghostAwareSave();
   document.getElementById("nameJapRestoreIn").value = "";
   document.getElementById("nameJapRestorePreview").textContent = "—";
   uStats();
@@ -5171,7 +5166,6 @@ function renderDedications() {
 
 
 function deductTodayJap() {
-  if (isGhostMode()) return; // ghost mode: read-only
   const n = parseInt(document.getElementById("deductTodayIn").value) || 0;
   if (n <= 0) {
     toast("Please enter a number > 0");
@@ -5241,9 +5235,8 @@ function deductTodayJap() {
     }
   }
 
-  App.save();
   App.ua();
-  fbDebouncedPush();
+  ghostAwareSave();
   document.getElementById("deductTodayIn").value = "";
   if (minEl) minEl.value = "";
   if (secEl) secEl.value = "";
@@ -5264,7 +5257,6 @@ function deductTodayJap() {
 }
 
 function deductOtherJap() {
-  if (isGhostMode()) return; // ghost mode: read-only
   const date = (document.getElementById("deductOtherDate").value || "").trim();
   const n = parseInt(document.getElementById("deductOtherIn").value) || 0;
   if (!date) {
@@ -5314,9 +5306,8 @@ function deductOtherJap() {
     th[date] = Math.max(0, (th[date] || 0) - timeSecs);
   }
 
-  App.save();
   App.ua();
-  fbDebouncedPush();
+  ghostAwareSave();
   renderCal();
   // ── HISTORY FIX: re-render history table so the change appears immediately ──
   if (typeof renderHistory === "function") {
@@ -5340,7 +5331,6 @@ function deductOtherJap() {
 }
 
 function addOtherDayJap() {
-  if (isGhostMode()) return; // ghost mode: read-only
   const date = (document.getElementById("addJapOtherDate").value || "").trim();
   const n = parseInt(document.getElementById("addJapOtherIn").value) || 0;
   if (!date) {
@@ -5385,9 +5375,8 @@ function addOtherDayJap() {
     th[date] = (th[date] || 0) + timeSecs;
   }
 
-  App.save();
   App.ua();
-  fbDebouncedPush();
+  ghostAwareSave();
   renderCal();
   // ── HISTORY FIX: re-render history table so the new entry appears immediately ──
   if (typeof renderHistory === "function") {
@@ -5419,7 +5408,6 @@ function _jtSecs(minId, secId) {
 }
 
 function addJapTimeToday() {
-  if (isGhostMode()) return; // ghost mode: read-only
   const secs = _jtSecs("jtAddTodayMin", "jtAddTodaySec");
   if (secs <= 0) {
     toast("Please enter at least 1 minute");
@@ -5456,9 +5444,8 @@ function addJapTimeToday() {
     // No malas done yet — add as a single time-adjustment entry
     log.push(secs);
   }
-  App.save();
   App.ua();
-  fbDebouncedPush();
+  ghostAwareSave();
   document.getElementById("jtAddTodayMin").value = "";
   document.getElementById("jtAddTodaySec").value = "";
   document.getElementById("jtAddTodayPreview").textContent = "—";
@@ -5468,7 +5455,6 @@ function addJapTimeToday() {
 }
 
 function addJapTimeOther() {
-  if (isGhostMode()) return; // ghost mode: read-only
   const date = (document.getElementById("jtAddOtherDate").value || "").trim();
   const secs = _jtSecs("jtAddOtherMin", "jtAddOtherSec");
   if (!date) {
@@ -5481,9 +5467,8 @@ function addJapTimeOther() {
   }
   const th2 = App.getCurTimerHistory();
   th2[date] = (th2[date] || 0) + secs;
-  App.save();
   App.ua();
-  fbDebouncedPush();
+  ghostAwareSave();
   // ── HISTORY FIX: re-render history table so the new time appears immediately ──
   if (typeof renderHistory === "function") {
     try {
@@ -5500,7 +5485,6 @@ function addJapTimeOther() {
 }
 
 function deductJapTimeToday() {
-  if (isGhostMode()) return; // ghost mode: read-only
   const secs = _jtSecs("jtDedTodayMin", "jtDedTodaySec");
   if (secs <= 0) {
     toast("Please enter at least 1 minute");
@@ -5536,9 +5520,8 @@ function deductJapTimeToday() {
       log[log.length - 1] = Math.max(1, log[log.length - 1] - remaining);
     }
   }
-  App.save();
   App.ua();
-  fbDebouncedPush();
+  ghostAwareSave();
   document.getElementById("jtDedTodayMin").value = "";
   document.getElementById("jtDedTodaySec").value = "";
   document.getElementById("jtDedTodayPreview").textContent = "—";
@@ -5548,7 +5531,6 @@ function deductJapTimeToday() {
 }
 
 function deductJapTimeOther() {
-  if (isGhostMode()) return; // ghost mode: read-only
   const date = (document.getElementById("jtDedOtherDate").value || "").trim();
   const secs = _jtSecs("jtDedOtherMin", "jtDedOtherSec");
   if (!date) {
@@ -5568,9 +5550,8 @@ function deductJapTimeOther() {
     return;
   }
   th4[date] = cur - secs;
-  App.save();
   App.ua();
-  fbDebouncedPush();
+  ghostAwareSave();
   // ── HISTORY FIX: re-render history table so the change appears immediately ──
   if (typeof renderHistory === "function") {
     try {
@@ -7007,11 +6988,24 @@ function importAllData(input) {
         ? document.body.classList.add("ramanandi-mode")
         : document.body.classList.remove("ramanandi-mode");
       _placeTarget28Card();
+      // Push the restored data to Firestore immediately — restoring a backup
+      // should overwrite the LIVE cloud data for whichever account is
+      // currently active, not just sit in local memory until some unrelated
+      // action happens to trigger a save. While a developer is Ghost
+      // Mode-viewing another user, this correctly writes to THAT user's
+      // Firestore doc instead of the developer's own account.
+      ghostAwareSave();
       if (st) {
-        st.textContent = "✅ Data restored successfully! 🙏 Jai Radhe!";
+        st.textContent = isGhostMode()
+          ? "✅ Data restored to the viewed user's account! 🙏"
+          : "✅ Data restored successfully! 🙏 Jai Radhe!";
         st.style.color = "var(--green)";
       }
-      toast("All data restored! 🙏 Jai Radhe!");
+      toast(
+        isGhostMode()
+          ? "Restored to viewed user's account! 🙏"
+          : "All data restored! 🙏 Jai Radhe!",
+      );
       input.value = "";
     } catch (err) {
       if (st) {
@@ -8297,19 +8291,38 @@ function fbInit() {
           fbWatchSession();
           // ── Presence heartbeat: every signed-in user writes their own
           // /presence/{uid} doc so developers can list ALL signed-in
-          // accounts in Ghost Mode (not just leaderboard opt-ins).
-          try {
-            const _pName  = user.displayName || '';
-            const _pEmail = _fbIsSyntheticPhoneEmail(user.email) ? '' : (user.email || '');
-            const _pPhone = user.phoneNumber || '';
-            await fbDb.collection('presence').doc(user.uid).set({
-              uid: user.uid,
-              name: _pName,
-              email: _pEmail,
-              phone: _pPhone,
-              lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
-            }, { merge: true });
-          } catch (_e) {}
+          // accounts in Ghost Mode (not just leaderboard opt-ins), and so
+          // the Community leaderboard's green "online" dot reflects whether
+          // the app is actually open right now — not just last jap activity.
+          const _writePresenceHeartbeat = async () => {
+            try {
+              const _pName  = user.displayName || '';
+              const _pEmail = _fbIsSyntheticPhoneEmail(user.email) ? '' : (user.email || '');
+              const _pPhone = user.phoneNumber || '';
+              await fbDb.collection('presence').doc(user.uid).set({
+                uid: user.uid,
+                name: _pName,
+                email: _pEmail,
+                phone: _pPhone,
+                lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+              }, { merge: true });
+            } catch (_e) {}
+          };
+          await _writePresenceHeartbeat();
+          // Repeat every 60s while the tab/app stays open
+          if (window._presenceHeartbeatInterval) clearInterval(window._presenceHeartbeatInterval);
+          window._presenceHeartbeatInterval = setInterval(_writePresenceHeartbeat, 60000);
+          // Also fire immediately whenever the app comes back to the foreground
+          // (covers "just opened the app" reliably, without waiting up to 60s)
+          if (!window._presenceVisibilityBound) {
+            window._presenceVisibilityBound = true;
+            document.addEventListener('visibilitychange', () => {
+              if (document.visibilityState === 'visible' && typeof window._presenceHeartbeatFn === 'function') {
+                window._presenceHeartbeatFn();
+              }
+            });
+          }
+          window._presenceHeartbeatFn = _writePresenceHeartbeat;
           // ── Sync device clock with Firebase server time ──
           // Corrects getTk() if local clock is wrong or in different timezone
           await fbSyncServerTime();
@@ -9499,6 +9512,10 @@ async function clearLocalUserData(uid) {
 
 async function fbSignOut() {
   if (!fbAuth) return;
+  if (window._presenceHeartbeatInterval) {
+    clearInterval(window._presenceHeartbeatInterval);
+    window._presenceHeartbeatInterval = null;
+  }
   const outgoingUid = (fbUser && fbUser.uid) || App._uid || null;
   // ── STEP 1: Push current state to Firebase BEFORE signing out so the
   //    user's "last state" is preserved as the next-login baseline.
@@ -9573,6 +9590,91 @@ async function fbSignOut() {
 async function fbPushDelta() {
   if (isGhostMode()) return; // ghost mode: read-only
   return fbPushFull();
+}
+
+// ── Developer write-back: push current App.S to a SPECIFIC user's Firestore
+// doc. Used when a developer, while Ghost Mode-viewing another user's data,
+// makes a manual jap correction or restores a backup — the change must land
+// on the VIEWED user's document, never the developer's own. Requires the
+// Firestore rule allowing isDeveloper() to write under /users/{userId}.
+async function fbPushToUid(targetUid) {
+  if (!fbUser || !fbDb || !targetUid) return;
+  setSyncPill("syncing", "Saving to viewed user's account…");
+  const payload = {
+    history: App.S.history || {},
+    h28: App.S.h28 || {},
+    nameJapDeduct28: App.S.nameJapDeduct28 || 0,
+    stotrams: App.S.stotrams || {},
+    brahma: App.S.brahma || {},
+    customSt: App.S.customSt || [],
+    timerHistory: App.S.timerHistory || {},
+    timer28History: App.S.timer28History || {},
+    sankalpas: App.S.sankalpas || [],
+    occasions: App.S.occasions || {},
+    ms: App.S.ms || 108,
+    dt: App.S.dt || 0,
+    lt: App.S.lt || 0,
+    nameJapDeduct: App.S.nameJapDeduct || 0,
+    cfg: App.S.cfg || {},
+    malaLog: App.S.malaLog || [],
+    malaLogDate: App.S.tk,
+    brahmacharya_start_date: App.S.brahmacharya_start_date || "",
+    japMode: App.S.japMode || "radha",
+    historyRV: App.S.historyRV || {},
+    timerHistoryRV: App.S.timerHistoryRV || {},
+    dtRV: App.S.dtRV || 0,
+    ltRV: App.S.ltRV || 0,
+    nameJapDeductRV: App.S.nameJapDeductRV || 0,
+    malaLogRV: App.S.malaLogRV || [],
+    activityLog: App.S.activityLog || [],
+    sadhanaStart: App.S.sadhanaStart || "",
+    historyHK: App.S.historyHK || {},
+    timerHistoryHK: App.S.timerHistoryHK || {},
+    dtHK: App.S.dtHK || 0,
+    nameJapDeductHK: App.S.nameJapDeductHK || 0,
+    malaLogHK: App.S.malaLogHK || [],
+    historyKV: App.S.historyKV || {},
+    timerHistoryKV: App.S.timerHistoryKV || {},
+    dtKV: App.S.dtKV || 0,
+    ltKV: App.S.ltKV || 0,
+    nameJapDeductKV: App.S.nameJapDeductKV || 0,
+    malaLogKV: App.S.malaLogKV || [],
+    historySS: App.S.historySS || {},
+    timerHistorySS: App.S.timerHistorySS || {},
+    dtSS: App.S.dtSS || 0,
+    ltSS: App.S.ltSS || 0,
+    nameJapDeductSS: App.S.nameJapDeductSS || 0,
+    malaLogSS: App.S.malaLogSS || [],
+    historyRam: App.S.historyRam || {},
+    timerHistoryRam: App.S.timerHistoryRam || {},
+    dtRam: App.S.dtRam || 0,
+    ltRam: App.S.ltRam || 0,
+    nameJapDeductRam: App.S.nameJapDeductRam || 0,
+    malaLogRam: App.S.malaLogRam || [],
+    dedications: App.S.dedications || [],
+    gaudiyaMode: App.S.gaudiyaMode || false,
+    trahimamMode: App.S.trahimamMode || false,
+    ramanandiMode: App.S.ramanandiMode || false,
+    dt28Cycles: App.S.dt28Cycles || 0,
+    milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
+    msConsider: App.S.msConsider || { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, n28: true },
+    lastDevEdit: firebase.firestore.FieldValue.serverTimestamp(),
+    lastDevEditBy: (fbUser && fbUser.email) || "developer",
+  };
+  try {
+    await fbDb
+      .collection("users")
+      .doc(targetUid)
+      .collection("data")
+      .doc("main")
+      .set(payload, { merge: true });
+    setSyncPill("", "☁️ Saved to viewed user's account " + new Date().toLocaleTimeString());
+    toast("✅ Saved to the viewed user's account 🙏");
+  } catch (e) {
+    console.warn("fbPushToUid failed:", e && e.message);
+    setSyncPill("error", "Save failed");
+    toast("❌ Could not save: " + (e && e.message ? e.message : e));
+  }
 }
 
 async function fbPushFull() {
@@ -11554,8 +11656,7 @@ function addOtherDayJap28() {
   u28();
   uStats();
   renderSankalpas();
-  App.save();
-  fbDebouncedPush();
+  ghostAwareSave();
   toast(
     "Added " +
       n +
@@ -11632,8 +11733,7 @@ function deductOtherJap28() {
   u28();
   uStats();
   renderSankalpas();
-  App.save();
-  fbDebouncedPush();
+  ghostAwareSave();
   toast(
     "Deducted " +
       n +
@@ -11684,8 +11784,7 @@ function addPrevJap28() {
   u28();
   uStats();
   renderSankalpas();
-  App.save();
-  fbDebouncedPush();
+  ghostAwareSave();
   toast(
     "Added " + n + " cycle" + (n > 1 ? "s" : "") + " to lifetime total 🙏",
   );
@@ -11705,8 +11804,7 @@ function addNameJapDeduct28() {
   if (pr) pr.textContent = "—";
   render28StatsPanel();
   uStats();
-  App.save();
-  fbDebouncedPush();
+  ghostAwareSave();
   toast("Deducted " + n + " cycle" + (n > 1 ? "s" : "") + " from lifetime 🙏");
 }
 
@@ -11728,8 +11826,7 @@ function removeNameJapDeduct28() {
   if (pr) pr.textContent = "—";
   render28StatsPanel();
   uStats();
-  App.save();
-  fbDebouncedPush();
+  ghostAwareSave();
   toast("Restored " + n + " cycle" + (n > 1 ? "s" : "") + " to lifetime 🙏");
 }
 
@@ -11942,13 +12039,15 @@ function renderSt() {
 
 // ─────────────────────────────────────────────────────────
 // DEVELOPER STOTRAM MANAGEMENT
-// Developer IDs: drakthephenomenal@gmail.com, drakthephenomenal@proton.me, akthephenomenal@zohomail.com, anupkumarpaulshuvo@gmail.com
+// Developer IDs: drakthephenomenal@gmail.com, drakthephenomenal@proton.me, akthephenomenal@zohomail.com, anupkumarpaulshuvo@gmail.com, radhanamejapcounter@gmail.com, drakthephenomenal@icloud.com
 // ─────────────────────────────────────────────────────────
 const DEV_IDS = [
   "drakthephenomenal@gmail.com",
   "drakthephenomenal@proton.me",
   "akthephenomenal@zohomail.com",
   "anupkumarpaulshuvo@gmail.com",
+  "radhanamejapcounter@gmail.com",
+  "drakthephenomenal@icloud.com",
 ];
 
 function isDeveloper() {
@@ -11958,7 +12057,12 @@ function isDeveloper() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// ── GHOST MODE  (developer read-only view of any user's data) ──
+// ── GHOST MODE (developer view of any user's data). Live tap counting,
+//    undo, dedications, and account/session actions stay strictly blocked
+//    (isGhostMode() guards below) — but the manual jap/time correction
+//    tools (Statistics + 28 Names sections) and Local Backup & Restore ARE
+//    permitted here, writing straight to the VIEWED user's Firestore doc
+//    via ghostAwareSave()/fbPushToUid(), never the developer's own account.
 // ══════════════════════════════════════════════════════════════
 
 let _ghostViewingUid  = null;   // UID currently being viewed; null = not in ghost mode
@@ -11967,6 +12071,19 @@ let _ghostAllUsers    = [];     // cached list of {uid, name, email, phone, sour
 
 /** True while developer is shadowing another user's account. */
 function isGhostMode() { return !!_ghostViewingUid; }
+
+// ── Ghost-mode-aware save: manual jap/time correction tools call this
+// instead of App.save()+fbDebouncedPush() directly. While ghosting, it
+// writes straight to the VIEWED user's Firestore doc (never local IndexedDB,
+// never the developer's own account); otherwise it's the normal save path.
+function ghostAwareSave() {
+  if (isGhostMode() && _ghostViewingUid) {
+    fbPushToUid(_ghostViewingUid).catch(() => {});
+  } else {
+    App.save();
+    if (typeof fbDebouncedPush === "function") fbDebouncedPush();
+  }
+}
 
 // ── Open the user-selection modal ─────────────────────────────
 window.openGhostUserList = async function () {
@@ -17183,6 +17300,21 @@ async function loadLeaderboard(period) {
   populateLbSettingsUI();
 
   try {
+    // Real-time snapshot of the presence collection — used to compute the
+    // green "online" dot from actual app-open heartbeats (see
+    // _writePresenceHeartbeat), not just last jap-save activity.
+    if (!window._presenceLbUnsubscribe) {
+      window._presenceCache = window._presenceCache || {};
+      window._presenceLbUnsubscribe = fbDb.collection('presence').onSnapshot(function(snap) {
+        const cache = {};
+        snap.forEach(function(doc) {
+          cache[doc.id] = doc.data();
+        });
+        window._presenceCache = cache;
+        // Re-render with fresh presence data if we already have leaderboard docs cached
+        if (window._lbLastDocs) renderLeaderboard(window._lbLastDocs, window._lbPeriod);
+      }, function(_err) {});
+    }
     // Real-time snapshot of leaderboard collection
     window._lbUnsubscribe = fbDb.collection('leaderboard')
       .where('optIn', '==', true)
@@ -17194,6 +17326,7 @@ async function loadLeaderboard(period) {
           d._uid = doc.id;
           docs.push(d);
         });
+        window._lbLastDocs = docs;
         renderLeaderboard(docs, window._lbPeriod);
       }, function(err) {
         console.warn('Leaderboard snapshot error:', err.message);
@@ -17361,7 +17494,12 @@ function renderLeaderboard(docs, period) {
     
     const nowMs = Date.now();
     let isOnline = false;
-    if (d.lastActive) isOnline = (nowMs - d.lastActive.toDate().getTime()) < 5 * 60 * 1000;
+    const _presenceEntry = (window._presenceCache || {})[d._uid];
+    if (_presenceEntry && _presenceEntry.lastSeen) {
+      // Heartbeat writes every 60s while the app is open — a 2 min window
+      // comfortably covers one missed beat (e.g. brief connectivity blip)
+      isOnline = (nowMs - _presenceEntry.lastSeen.toDate().getTime()) < 2 * 60 * 1000;
+    } else if (d.lastActive) isOnline = (nowMs - d.lastActive.toDate().getTime()) < 5 * 60 * 1000;
     else if (d.updatedAt) isOnline = (nowMs - d.updatedAt.toDate().getTime()) < 5 * 60 * 1000;
     const onlineDot = isOnline ? '<span style="display:inline-block;width:8px;height:8px;background:#4ade80;border-radius:50%;margin-left:6px;box-shadow:0 0 6px rgba(74,222,128,0.6)" title="Online"></span>' : '';
     

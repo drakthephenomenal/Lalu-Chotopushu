@@ -9701,15 +9701,20 @@ async function fbPushFull() {
     // and NEVER reaches the catch block below, so the pending markers never
     // get a chance to trigger a retry either. Bounding it turns a silent
     // hang into a normal, retryable failure.
-    await fbWithTimeout(
-      fbDb
-        .collection("users")
-        .doc(fbUser.uid)
-        .collection("data")
-        .doc("main")
-        .set(payload),
-      20000,
+    await fbCloudPushWithRetryLadder(
+      () =>
+        fbDb
+          .collection("users")
+          .doc(fbUser.uid)
+          .collection("data")
+          .doc("main")
+          .set(payload),
       "Cloud push",
+      (attemptNum, totalAttempts) => {
+        if (totalAttempts > 1) {
+          setSyncPill("syncing", "☁️ Syncing… (attempt " + attemptNum + " of " + totalAttempts + ")");
+        }
+      },
     );
     // Write CONFIRMED by Firestore — safe to clear both the foreground-only
     // marker and the one shared with the Background Runner, so neither
@@ -9776,7 +9781,12 @@ async function fbPushFull() {
     // successful cloud hydration (_rjapMaybeRetryPendingSync, see
     // fbApplyRemote) and the Background Runner will both keep trying
     // until a push actually succeeds.
-    setSyncPill("error", "⚠️ Sync incomplete — will retry");
+    // The write may still land in the background — fbWithTimeout only
+    // abandons waiting on it, it doesn't cancel the underlying Firestore
+    // request. The pending markers below (already set elsewhere in this
+    // function's surrounding scope) mean the existing Background Runner /
+    // _rjapMaybeRetryPendingSync retry system will keep trying regardless.
+    setSyncPill("error", "☁️ Still syncing in background…");
   }
 }
 
@@ -10143,6 +10153,52 @@ function fbWithTimeout(promise, ms, label) {
       (e) => { clearTimeout(t); reject(e); },
     );
   });
+}
+
+// ── Connection-aware retry ladder for the Firestore cloud push ──
+// navigator.connection.effectiveType reports MEASURED round-trip time
+// and throughput (Chromium-based browsers only), not raw radio type — so
+// a congested/poor wifi connection correctly lands in the same bucket as
+// 2G here. Safari/iOS has no navigator.connection at all and falls back
+// to the middle tier.
+function _fbSyncLadderForConnection() {
+  let effectiveType = null;
+  try {
+    effectiveType = (navigator.connection && navigator.connection.effectiveType) || null;
+  } catch (_e) {}
+
+  if (effectiveType === "2g" || effectiveType === "slow-2g") {
+    return { attempts: [15000, 25000, 40000], waits: [3000, 5000] };
+  }
+  if (effectiveType === "4g") {
+    return { attempts: [20000], waits: [] };
+  }
+  // "3g", unknown effectiveType, or no navigator.connection support (iOS).
+  return { attempts: [20000, 35000], waits: [3000] };
+}
+
+// Runs the given push operation (a zero-arg function returning a promise,
+// so a fresh Firestore write is issued per attempt) through the ladder
+// above. Resolves as soon as one attempt confirms; rejects only after
+// every attempt in the ladder has been exhausted. onAttempt(n, total) is
+// called before each attempt so the caller can update the sync pill.
+async function fbCloudPushWithRetryLadder(makeWritePromise, label, onAttempt) {
+  const { attempts, waits } = _fbSyncLadderForConnection();
+  let lastErr = null;
+  for (let i = 0; i < attempts.length; i++) {
+    if (typeof onAttempt === "function") {
+      try { onAttempt(i + 1, attempts.length); } catch (_e) {}
+    }
+    try {
+      return await fbWithTimeout(makeWritePromise(), attempts[i], label);
+    } catch (e) {
+      lastErr = e;
+      if (i < waits.length) {
+        await new Promise((r) => setTimeout(r, waits[i]));
+      }
+    }
+  }
+  throw lastErr || new Error((label || "operation") + " failed after retries");
 }
 
 async function fbMigrate() {

@@ -47,6 +47,44 @@ function _lcIsNative() {
   );
 }
 
+// ── Turn a raw Geolocation error into a clear, actionable message ──
+// Android's system Location toggle (device-wide) is a completely separate
+// setting from the app's own location permission — a very common source
+// of confusion, since the app permission popup can be "Allowed" while the
+// phone's actual GPS/Location service is still switched off entirely.
+function _lcGpsErrorMessage(err) {
+  const code = err && err.code;
+  const msg = (err && err.message) || String(err || "");
+  const msgLower = msg.toLowerCase();
+
+  // Web Geolocation API: code 1 = PERMISSION_DENIED
+  // Capacitor Geolocation plugin: throws "Location permission denied" (see lcGetPosition)
+  if (code === 1 || msgLower.includes("permission")) {
+    return "⚠️ Location permission not granted. Please allow location access for this app in your phone's Settings → Apps → Radha Naam Jap → Permissions.";
+  }
+
+  // Web Geolocation API: code 2 = POSITION_UNAVAILABLE (often means GPS/Location
+  // service is off device-wide). Capacitor/Android often surfaces this as a
+  // message mentioning "location" being disabled/unavailable.
+  if (
+    code === 2 ||
+    msgLower.includes("unavailable") ||
+    msgLower.includes("disabled") ||
+    msgLower.includes("not enabled") ||
+    msgLower.includes("location service")
+  ) {
+    return "📍 Your phone's Location service appears to be turned off. Please turn on Location (swipe down from the top → tap Location, or Settings → Location) and try again.";
+  }
+
+  // Web Geolocation API: code 3 = TIMEOUT
+  if (code === 3 || msgLower.includes("timeout") || msgLower.includes("timed out")) {
+    return "⏱️ Couldn't get a GPS fix in time. Try again outdoors or near a window for a clearer signal.";
+  }
+
+  // Fallback — still show something useful rather than a bare error object.
+  return "⚠️ GPS error: " + (msg || "Unknown error");
+}
+
 async function lcGetPosition(options) {
   options = options || { timeout: 10000, maximumAge: 0 };
   if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation) {
@@ -3761,8 +3799,9 @@ function tgs(k) {
         },
         (err) => {
           console.error("GPS error:", err);
-          if (statusEl) statusEl.textContent = "⚠️ GPS error: " + (err && err.message ? err.message : JSON.stringify(err));
-          toast("⚠️ GPS error - check console");
+          const _gpsMsg = _lcGpsErrorMessage(err);
+          if (statusEl) statusEl.textContent = _gpsMsg;
+          toast(_gpsMsg);
         },
       );
     } else {

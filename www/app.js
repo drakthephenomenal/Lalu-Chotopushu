@@ -2697,6 +2697,23 @@ async function _lcShareText(shareText) {
 }
 
 // ── Share App (PWA link) ──
+// ── Open an external link (community/social) in the system/in-app browser ──
+async function openExternalLink(url) {
+  try {
+    if (
+      window.Capacitor &&
+      typeof window.Capacitor.isNativePlatform === "function" &&
+      window.Capacitor.isNativePlatform() &&
+      window.Capacitor.Plugins &&
+      window.Capacitor.Plugins.Browser
+    ) {
+      await window.Capacitor.Plugins.Browser.open({ url });
+      return;
+    }
+  } catch (_e) {}
+  try { window.open(url, "_blank"); } catch (_e) {}
+}
+
 function shareApp() {
   const url = _getAppUrl();
   const shareText =

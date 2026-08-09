@@ -10168,13 +10168,13 @@ function _fbSyncLadderForConnection() {
   } catch (_e) {}
 
   if (effectiveType === "2g" || effectiveType === "slow-2g") {
-    return { attempts: [15000, 25000, 40000], waits: [3000, 5000] };
+    return { attempts: [20000, 35000, 60000, 90000], waits: [3000, 5000, 8000] };
   }
   if (effectiveType === "4g") {
-    return { attempts: [20000], waits: [] };
+    return { attempts: [25000], waits: [] };
   }
   // "3g", unknown effectiveType, or no navigator.connection support (iOS).
-  return { attempts: [20000, 35000], waits: [3000] };
+  return { attempts: [25000, 45000, 70000], waits: [3000, 5000] };
 }
 
 // Runs the given push operation (a zero-arg function returning a promise,

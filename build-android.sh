@@ -337,12 +337,81 @@ if [ -f "$BR_GRADLE" ]; then
   echo "  copied android-js-engine-release.aar"
 fi
 
+echo "── 9.5/9  Install persistent release signing ────────────────────"
+# -- Install persistent release signing --
+# android/ is wiped and regenerated from scratch every run (see header), so
+# the keystore + signing config must be re-installed into it every time,
+# same pattern as google-services.json and PowerPermissionsPlugin.java above.
+# release.keystore and keystore.properties live at the repo ROOT and are
+# committed to git specifically so every Codespace/build reuses the SAME
+# signing key — without this, every fresh container would sign with a
+# different debug key and Android would refuse to install over the
+# previous version ("package conflicts with an existing package").
+if [ ! -f "release.keystore" ] || [ ! -f "keystore.properties" ]; then
+  echo "  ⚠ release.keystore / keystore.properties not found at repo root."
+  echo "    Run: python3 apply_persistent_signing_fix.py"
+  exit 1
+fi
+cp release.keystore android/app/release.keystore
+
+python3 - << 'PYEOF'
+path = "android/app/build.gradle"
+with open(path) as f:
+    content = f.read()
+
+if "signingConfigs {" in content:
+    print("  signingConfigs already present in build.gradle")
+else:
+    props_loader = (
+        "def keystorePropertiesFile = rootProject.file(\"../keystore.properties\")\n"
+        "def keystoreProperties = new Properties()\n"
+        "if (keystorePropertiesFile.exists()) {\n"
+        "    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n"
+        "}\n\n"
+    )
+    idx = content.find("android {")
+    if idx == -1:
+        raise SystemExit("Could not find 'android {' anchor in build.gradle")
+    content = content[:idx] + props_loader + content[idx:]
+
+    signing_block = (
+        "    signingConfigs {\n"
+        "        release {\n"
+        "            storeFile file(\"release.keystore\")\n"
+        "            storePassword keystoreProperties[\"storePassword\"]\n"
+        "            keyAlias keystoreProperties[\"keyAlias\"]\n"
+        "            keyPassword keystoreProperties[\"keyPassword\"]\n"
+        "        }\n"
+        "    }\n"
+    )
+    marker = "    buildTypes {"
+    idx2 = content.find(marker)
+    if idx2 == -1:
+        raise SystemExit("Could not find 'buildTypes {' anchor in build.gradle")
+    content = content[:idx2] + signing_block + content[idx2:]
+
+    content = content.replace(
+        "        release {\n            minifyEnabled false",
+        "        release {\n            signingConfig signingConfigs.release\n            minifyEnabled false",
+        1,
+    )
+
+    with open(path, "w") as f:
+        f.write(content)
+    print("  added signingConfigs + wired buildTypes.release to it")
+PYEOF
+
 echo ""
-echo "── Building APK ──────────────────────────────────────────────"
+echo "── Building APK (release, persistently signed) ──────────────────"
 cd android
-./gradlew assembleDebug --no-daemon
+./gradlew assembleRelease --no-daemon
 cd ..
 
 echo ""
-echo "✅ Done. APK at: android/app/build/outputs/apk/debug/app-debug.apk"
-echo "   To download it: cd android/app/build/outputs/apk/debug && python3 -m http.server 8080"
+echo "✅ Done. APK at: android/app/build/outputs/apk/release/app-release.apk"
+echo "   To download it: cd android/app/build/outputs/apk/release && python3 -m http.server 8080"
+echo ""
+echo "   ⚠ First install after this fix: UNINSTALL any previously debug-signed"
+echo "     copy of the app from your phone first — a release-signed build can"
+echo "     never update over a debug-signed one. After that first uninstall,"
+echo "     every future build with this same keystore will update normally."

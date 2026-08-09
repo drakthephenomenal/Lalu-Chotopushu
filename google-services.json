@@ -14,6 +14,30 @@
       },
       "oauth_client": [
         {
+          "client_id": "368485403238-4t5hvu8ob2n9h1crubv410aesvs5q4jc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.vercel.radharadharadha.capacitor",
+            "certificate_hash": "13efd76f5305802b70625c7ee54d222d88ba1a60"
+          }
+        },
+        {
+          "client_id": "368485403238-gpvnu3gncgv1l3cri9tteam1i0o3v9dp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.vercel.radharadharadha.capacitor",
+            "certificate_hash": "85474ba9419c80fe408d47f9522f735212b80bd3"
+          }
+        },
+        {
+          "client_id": "368485403238-k448jd5qebanm9udmcpfd5f5ekrp75qs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.vercel.radharadharadha.capacitor",
+            "certificate_hash": "6a902f7d80e9dd28e56eaf4bf9773071eb751f55"
+          }
+        },
+        {
           "client_id": "368485403238-lkqbkoeh06p7belp3i2ceq87lh163mbk.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
@@ -30,6 +54,14 @@
           }
         },
         {
+          "client_id": "368485403238-rrrm8pv4bfc14a5opdh7bn52tp7vqerp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.vercel.radharadharadha.capacitor",
+            "certificate_hash": "4831a30413dd8057f11c8da07e7824ab9e0c2b34"
+          }
+        },
+        {
           "client_id": "368485403238-i3jeru8uq0clb2dcgiu5jlrlb9lphe1j.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -43,7 +75,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "368485403238-i3jeru8uq0clb2dcgiu5jlrlb9lphe1j.apps.googleusercontent.com",
+              "client_id": "368485403238-bv2t8rg7nr0ek8igfqg0li4haqbv6q4p.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

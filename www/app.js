@@ -1603,12 +1603,14 @@ const App = {
       lFill.style.backgroundSize = "";
       lFill.style.animation = "none";
     }
-    document.getElementById("lbarDone").textContent =
-      fmtIN(tot) + " (" + this.formatLifetimeBreakdown(false) + ")";
+    document.getElementById("lbarDone").textContent = fmtIN(tot);
     document.getElementById("lbarTarget").textContent =
       "/ " + (curLt ? fmtIN(curLt) : "—");
-    document.getElementById("lDet").textContent =
-      Math.floor(tot / ms) + " (" + this.formatLifetimeBreakdown(true) + ") Done";
+    const lBreakdownTotalEl = document.getElementById("lBreakdownTotal");
+    if (lBreakdownTotalEl) lBreakdownTotalEl.textContent = this.formatLifetimeBreakdown(false).replace(/\+/g, " · ");
+    document.getElementById("lDet").textContent = Math.floor(tot / ms) + " malas Done";
+    const lBreakdownDetailEl = document.getElementById("lBreakdownDetail");
+    if (lBreakdownDetailEl) lBreakdownDetailEl.textContent = this.formatLifetimeBreakdown(true).replace(/\+/g, " · ");
     this.updateTimerToday();
     if (typeof renderBeadFrame === "function") renderBeadFrame(tod, curDt);
     uStats();

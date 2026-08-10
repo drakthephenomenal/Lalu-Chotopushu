@@ -103,6 +103,25 @@ async function lcGetPosition(options) {
       err.code = 1;
       throw err;
     }
+    // EXPERIMENT: also try the WebView's own navigator.geolocation, on the
+    // chance it triggers the same automatic system "Turn on Location"
+    // dialog seen in a regular browser (Android's System WebView is also
+    // Chromium-based). Whichever resolves first is used; if the native
+    // plugin call above already resolved, this is simply unused.
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
+      try {
+        return await Promise.race([
+          Geolocation.getCurrentPosition({
+            enableHighAccuracy: true,
+            timeout: options.timeout || 10000,
+          }),
+          _lcTryWebViewGeolocation(options),
+        ]);
+      } catch (_e) {
+        // both attempts failed — fall through to native-only call below,
+        // which will surface the real error via the normal catch path.
+      }
+    }
     return Geolocation.getCurrentPosition({
       enableHighAccuracy: true,
       timeout: options.timeout || 10000,
@@ -113,6 +132,12 @@ async function lcGetPosition(options) {
       reject(new Error("Geolocation not available"));
       return;
     }
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+  });
+}
+
+function _lcTryWebViewGeolocation(options) {
+  return new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(resolve, reject, options);
   });
 }
@@ -1233,6 +1258,13 @@ const App = {
   // KV jap done during Trahimam Mode still counts toward this figure even
   // after switching back to Radha/RV).
   getLifetimeTargetTotal() {
+    return this.getLifetimeTargetBreakdown().total;
+  },
+
+  // -- Per-category breakdown of the combined R+RV+KV lifetime total --
+  // (HK/SS/Ram track separately and are intentionally not part of this
+  // combined total, same as before this method existed.)
+  getLifetimeTargetBreakdown() {
     const radhaTotal = Math.max(
       0,
       Object.values(this.S.history || {}).reduce((a, b) => a + b, 0) -
@@ -1248,7 +1280,30 @@ const App = {
       Object.values(this.S.historyKV || {}).reduce((a, b) => a + b, 0) -
         (this.S.nameJapDeductKV || 0),
     );
-    return radhaTotal + rvTotal + kvTotal;
+    return {
+      radha: radhaTotal,
+      rv: rvTotal,
+      kv: kvTotal,
+      total: radhaTotal + rvTotal + kvTotal,
+    };
+  },
+
+  // -- Format the breakdown as "R:324+RV:432+KV:20"-style text, with the
+  // currently active jap mode's category listed first. `perMala` divides
+  // each category's count by mala size and shows up to 2 decimals (for
+  // the "malas done" row); otherwise shows the raw counts (total row).
+  formatLifetimeBreakdown(perMala) {
+    const b = this.getLifetimeTargetBreakdown();
+    const ms = this.S.ms || 108;
+    const parts = {
+      R: perMala ? (b.radha / ms).toFixed(2).replace(/\.00$/, "") + "m" : fmtIN(b.radha),
+      RV: perMala ? (b.rv / ms).toFixed(2).replace(/\.00$/, "") + "m" : fmtIN(b.rv),
+      KV: perMala ? (b.kv / ms).toFixed(2).replace(/\.00$/, "") + "m" : fmtIN(b.kv),
+    };
+    let order = ["R", "RV", "KV"];
+    if (this.S.japMode === "rv") order = ["RV", "R", "KV"];
+    else if (this.S.japMode === "kv") order = ["KV", "R", "RV"];
+    return order.map((k) => k + ":" + parts[k]).join("+");
   },
 
   // ── Haptic Heartbeat ──
@@ -1548,11 +1603,12 @@ const App = {
       lFill.style.backgroundSize = "";
       lFill.style.animation = "none";
     }
-    document.getElementById("lbarDone").textContent = fmtIN(tot);
+    document.getElementById("lbarDone").textContent =
+      fmtIN(tot) + " (" + this.formatLifetimeBreakdown(false) + ")";
     document.getElementById("lbarTarget").textContent =
       "/ " + (curLt ? fmtIN(curLt) : "—");
     document.getElementById("lDet").textContent =
-      Math.floor(tot / ms) + " malas done";
+      Math.floor(tot / ms) + " (" + this.formatLifetimeBreakdown(true) + ") Done";
     this.updateTimerToday();
     if (typeof renderBeadFrame === "function") renderBeadFrame(tod, curDt);
     uStats();

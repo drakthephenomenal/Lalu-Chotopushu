@@ -2867,12 +2867,16 @@ function toast(msg) {
     t = document.createElement("div");
     t.id = "toast";
     t.style.cssText =
-      "position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:rgba(74,144,226,0.2);border:1px solid rgba(109,184,255,0.4);backdrop-filter:blur(10px);color:var(--a2);padding:9px 18px;border-radius:18px;font-size:13px;z-index:500;transition:opacity 0.3s;pointer-events:none;white-space:nowrap;font-family:Inter,sans-serif";
+      "position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:rgba(74,144,226,0.2);border:1px solid rgba(109,184,255,0.4);backdrop-filter:blur(10px);color:var(--a2);padding:9px 18px;border-radius:18px;font-size:13px;z-index:500;transition:opacity 0.3s;pointer-events:none;white-space:normal;text-align:center;max-width:85vw;line-height:1.4;font-family:Inter,sans-serif";
     document.body.appendChild(t);
   }
   t.textContent = msg;
   t.style.opacity = "1";
-  setTimeout(() => (t.style.opacity = "0"), 2000);
+  if (t._toastTimer) clearTimeout(t._toastTimer);
+  // Longer messages get more time to read (base 2s + ~30ms per character,
+  // capped at 6s) instead of the same fixed 2s for every message length.
+  const duration = Math.min(2000 + (msg ? msg.length : 0) * 30, 6000);
+  t._toastTimer = setTimeout(() => (t.style.opacity = "0"), duration);
 }
 
 // ── RV Target Save ──

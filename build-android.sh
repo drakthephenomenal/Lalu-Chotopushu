@@ -402,6 +402,24 @@ else:
 PYEOF
 
 echo ""
+echo "── 9.6/9  Gradle heap space fix ──────────────────────────────────"
+# -- Gradle heap space fix --
+# This project's asset folder (audio recordings, images) is large enough
+# that Gradle's default JVM heap can run out of memory while compressing
+# everything into the release APK ("Java heap space" during
+# :app:compressReleaseAssets). android/ is wiped and regenerated from
+# scratch every run (see header), so this must be re-written every time,
+# same pattern as the signing config and permission plugin registration
+# above - a one-off manual edit to gradle.properties would otherwise
+# silently disappear on the next build.
+if ! grep -q "org.gradle.jvmargs" android/gradle.properties 2>/dev/null; then
+  echo "org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=1024m" >> android/gradle.properties
+  echo "  added increased Gradle heap size (3GB) to gradle.properties"
+else
+  echo "  gradle.properties already has jvmargs set - leaving as-is"
+fi
+
+echo ""
 echo "── Building APK (release, persistently signed) ──────────────────"
 cd android
 ./gradlew assembleRelease --no-daemon

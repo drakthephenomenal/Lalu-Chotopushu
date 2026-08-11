@@ -39,28 +39,21 @@
   }
   .lmx:active { background: rgba(255,215,0,0.20); }
 
-  /* ── Title — immediately below Krishna's flute ── */
+  /* ── Title — fixed top-left, in the blank space beside the ✕ button ── */
   .lmt {
     position: absolute;
-    left: 50%; transform: translateX(-50%);
-    white-space: nowrap;
+    top: max(env(safe-area-inset-top), 10px);
+    left: 12px;
+    right: 54px; /* keeps clear of the 34px ✕ button + gap */
+    height: 34px;
+    display: flex; align-items: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     font-family: 'Hind Siliguri','Tiro Devanagari Hindi',serif;
     font-size: 14px; font-weight: 700;
     color: rgba(255,215,0,0.97);
     letter-spacing: 1.5px; text-transform: uppercase;
     text-shadow: 0 2px 10px rgba(0,0,0,1);
     z-index: 20;
-  }
-  /* Portrait phones (aspect < 2/3): cover → image fills HEIGHT (100dvh)
-     Flute is at ~10% from top → title below it at 10dvh               */
-  @media (max-aspect-ratio: 2/3) {
-    .lmt { top: 10dvh; }
-  }
-  /* iPad / wider (aspect > 2/3): cover → image fills WIDTH (100vw)
-     image_height = 150.25vw, image_top = 50dvh - 75.125vw
-     10% from image top = 50dvh - 75.125vw + 0.10×150.25vw = 50dvh - 60.1vw */
-  @media (min-aspect-ratio: 2/3) {
-    .lmt { top: calc(50dvh - 60.1vw); }
   }
 
   /* ── Verse counter — hidden to maximise frame space ── */
@@ -481,7 +474,6 @@
 
 /* Portrait phones (aspect < 2/3) */
 @media (max-aspect-ratio: 2/3) {
-  .lmt { top: calc(50dvh - 60vw); }
   .lm-card-inner {
     top:    calc(50dvh - 58.5vw);
     bottom: calc(50dvh - 57vw);
@@ -503,7 +495,6 @@
 
 /* iPad / desktop (aspect >= 2/3) */
 @media (min-aspect-ratio: 2/3) {
-  .lmt { top: 10dvh; }
   .lm-card-inner {
     top:    11dvh;
     bottom: 12dvh;
@@ -715,17 +706,16 @@
   transform: scale(0.96) !important;
 }
 
-/* ── Text-size pill  #lyr-fs-ctrl  (right edge of stotram modal, vertical) ── */
+/* ── Text-size pill  #lyr-fs-ctrl  (top-left, below the title, horizontal) ── */
 #lyr-fs-ctrl {
   position:  absolute;
-  top:       50%;
-  right:     max(env(safe-area-inset-right, 0px) + 6px, 8px);
-  transform: translateY(-50%);
+  top:       calc(max(env(safe-area-inset-top), 10px) + 40px);
+  left:      12px;
   z-index:   30;
   display:   flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap:       2px;
+  gap:       6px;
 
   background:          transparent;
   backdrop-filter:     none;
@@ -794,15 +784,6 @@
   font-size:   13px !important;
   font-weight: 400 !important;
 }
-/* On wide screens (iPad/desktop, aspect ≥ 2/3) the card inner has
-   right: calc(50vw − 27.33dvh). Shift the control inward so it sits
-   on the golden parchment rather than the dark frame border. */
-@media (min-aspect-ratio: 2/3) {
-  #lyr-fs-ctrl {
-    right: calc(50vw - 27.33dvh + 4px);
-  }
-}
-
 /* ═══════════════════════════════════════════════════════════
    SECTIONED-STOTRAM PICKER (svb, blv, …)
    Styles for the section-picker grid shown when opening a

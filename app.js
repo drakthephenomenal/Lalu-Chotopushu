@@ -15100,16 +15100,36 @@ function _buildDots() {
 let _verseNavLocked = false;
 const _VERSE_NAV_LOCK_MS = 240; // slightly longer than the 220ms slide animation
 
+// Visible "glow" flash on the tapped Next/Prev button, plus a hard safety
+// net: the lock is ALWAYS released (via try/finally) even if rendering the
+// verse throws for a particular stotram, so one bad stotram's data can't
+// leave the button permanently unresponsive for the rest of the session.
 function verseNav(delta) {
+  const btn = document.getElementById(delta > 0 ? "lmNext" : "lmPrev");
+  if (btn) {
+    btn.classList.remove("lm-nav-glow");
+    void btn.offsetWidth; // restart the animation even on rapid re-taps
+    btn.classList.add("lm-nav-glow");
+  }
+
   if (_verseNavLocked) return;
   const newIdx = _verseIdx + delta;
   if (newIdx < 0 || newIdx >= _verses.length) return;
+
   _verseNavLocked = true;
   setTimeout(() => {
     _verseNavLocked = false;
   }, _VERSE_NAV_LOCK_MS);
+
   _verseIdx = newIdx;
-  _renderVerse(_verseIdx, delta > 0 ? 1 : -1);
+  try {
+    _renderVerse(_verseIdx, delta > 0 ? 1 : -1);
+  } catch (e) {
+    // Never let a rendering error strand the reader on a dead button —
+    // force the lock open immediately and surface the problem quietly.
+    _verseNavLocked = false;
+    console.warn("verseNav render error:", e);
+  }
 }
 
 function _initSwipeHandler() {

@@ -1001,3 +1001,50 @@
   0%   { box-shadow: 0 0 0 0 rgba(255,180,0,0.55); }
   100% { box-shadow: 0 0 0 14px rgba(255,180,0,0); }
 }
+
+/* v89 — Nav arrows: proper fixed footer strip, not floating in lyrics */
+.lm-nav {
+  position: fixed !important;
+  bottom: 0 !important; left: 0 !important; right: 0 !important;
+  top: auto !important; transform: none !important;
+  width: 100%;
+  justify-content: center;
+  gap: 60px;
+  padding: 12px 0 max(env(safe-area-inset-bottom), 14px);
+  background: linear-gradient(to top, rgba(255,255,255,0.97), rgba(255,255,255,0.85) 70%, transparent);
+  z-index: 25;
+}
+.lm-card-inner {
+  bottom: max(env(safe-area-inset-bottom) + 78px, 92px) !important;
+}
+
+/* Title — back to top-center, slightly larger */
+.lmt {
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  max-width: calc(100% - 110px);
+  font-size: 16px !important;
+}
+
+/* v90 — Root fix: translation toggle row separation */
+.lm-translate-wrap {
+}
+
+/* v90 - Root fix: translation toggle row separation */
+.lm-translate-wrap {
+  top: calc(max(env(safe-area-inset-top), 10px) + 40px) !important;
+  right: 12px !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+}
+
+/* v91 - Root fix: back-to-sections button was sharing the title's
+   row (left:10px) and colliding with the centered title's wide
+   box. Give it its own row, clear of the title, close button,
+   size control, and translation toggle. */
+.sts-back-btn {
+  top: calc(max(env(safe-area-inset-top), 10px) + 78px) !important;
+  left: 12px !important;
+}

@@ -202,6 +202,54 @@ async function lcSetupNotifChannel() {
   } catch (e) {}
 }
 
+// ── Backup-saved notification (Export All Data) ──
+// Writing a file with Filesystem.writeFile does NOT trigger Android's media
+// scanner or show any "Download complete"-style banner the way a browser
+// download does, so without this the user has no confirmation in the
+// notification shade that the export actually happened. This posts a real
+// (immediate, non-scheduled) local notification once the backup file is
+// written, on its own low-key channel so it doesn't inherit the reminder
+// tone/vibration.
+const RJAP_BACKUP_NOTIF_CHANNEL_ID = "rjap_backups_v1";
+const RJAP_BACKUP_NOTIF_ID = 9010;
+
+async function lcSetupBackupNotifChannel() {
+  if (!(_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications)) return;
+  try {
+    await window.Capacitor.Plugins.LocalNotifications.createChannel({
+      id: RJAP_BACKUP_NOTIF_CHANNEL_ID,
+      name: "Backup Confirmations",
+      description: "Confirms when a local data backup has been saved",
+      importance: 3, // default importance — shows in shade, no intrusive sound
+      visibility: 1,
+    });
+  } catch (e) {}
+}
+
+// Fires a one-off notification right away (no `schedule` field = immediate).
+// Best-effort only: if notification permission was never granted this
+// silently does nothing rather than nagging the user with a permission
+// prompt in the middle of an export — the toast already confirms success.
+async function lcNotifyBackupSaved(body) {
+  if (!(_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications)) return;
+  try {
+    const { LocalNotifications } = window.Capacitor.Plugins;
+    const perm = await LocalNotifications.checkPermissions();
+    if (perm.display !== "granted") return;
+    await lcSetupBackupNotifChannel();
+    await LocalNotifications.schedule({
+      notifications: [{
+        id: RJAP_BACKUP_NOTIF_ID,
+        title: "📥 Radha Naam Jap Backup Saved",
+        body,
+        channelId: RJAP_BACKUP_NOTIF_CHANNEL_ID,
+        smallIcon: "ic_stat_notify",
+        iconColor: "#E56B1F",
+      }],
+    });
+  } catch (e) {}
+}
+
 async function lcRequestNotifPermission() {
   if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
     const { LocalNotifications } = window.Capacitor.Plugins;
@@ -6910,15 +6958,88 @@ function _buildBackupPayload() {
   };
 }
 
-function exportAllData() {
+async function exportAllData() {
   const backup = _buildBackupPayload();
   try {
     const json = JSON.stringify(backup, null, 2);
     const filename = "radha-naam-jap-backup-" + App.getTk() + ".json";
-    saveJsonFile(filename, json);
+    const ok = await saveJsonFile(filename, json);
+    if (ok) {
+      lcNotifyBackupSaved("Saved as " + filename + " in Documents/Radha Jap Backup 🙏");
+    }
   } catch (e) {
     console.error("exportAllData failed:", e);
     toast("❌ Backup failed: " + (e && e.message ? e.message : e));
+  }
+}
+
+// ── Share Backup (send the exported JSON file directly, like "Share App
+// Link") ──
+// Native: writes the backup into the app's private cache dir (always
+// covered by Capacitor's built-in FileProvider, unlike the public Documents
+// folder used by exportAllData/saveJsonFile) and opens the real Android
+// share sheet with the file attached.
+// Web/PWA: uses the Web Share API's file-sharing (navigator.canShare with
+// `files`) where supported; otherwise falls back to a normal download,
+// since most desktop browsers can't "share" a file at all.
+async function shareBackup() {
+  const backup = _buildBackupPayload();
+  let json, filename;
+  try {
+    json = JSON.stringify(backup, null, 2);
+    filename = "radha-naam-jap-backup-" + App.getTk() + ".json";
+  } catch (e) {
+    console.error("shareBackup build failed:", e);
+    toast("❌ Backup failed: " + (e && e.message ? e.message : e));
+    return;
+  }
+
+  if (
+    _lcIsNative() &&
+    window.Capacitor.Plugins &&
+    window.Capacitor.Plugins.Filesystem &&
+    window.Capacitor.Plugins.Share
+  ) {
+    try {
+      const { Filesystem, Share } = window.Capacitor.Plugins;
+      await Filesystem.writeFile({
+        path: filename,
+        data: json,
+        directory: "CACHE",
+        encoding: "utf8",
+      });
+      const { uri } = await Filesystem.getUri({ directory: "CACHE", path: filename });
+      await Share.share({
+        title: "Radha Naam Jap Backup",
+        text: "My Radha Naam Jap backup file \uD83D\uDE4F Jai Radhe!",
+        url: uri,
+      });
+      return;
+    } catch (e) {
+      if (e && e.message && /cancel/i.test(e.message)) return; // user dismissed share sheet
+      console.error("Native shareBackup failed:", e);
+      toast("❌ Share failed: " + (e && e.message ? e.message : e));
+      return;
+    }
+  }
+
+  // ── Web fallback ──
+  try {
+    const file = new File([json], filename, { type: "application/json" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: "Radha Naam Jap Backup",
+        text: "My Radha Naam Jap backup file \uD83D\uDE4F Jai Radhe!",
+      });
+    } else {
+      // Browser can't share files — fall back to a normal download.
+      await saveJsonFile(filename, json);
+    }
+  } catch (e) {
+    if (e && e.name === "AbortError") return; // user dismissed share sheet
+    console.error("Web shareBackup failed:", e);
+    toast("❌ Share failed: " + (e && e.message ? e.message : e));
   }
 }
 

@@ -10286,13 +10286,19 @@ function _fbSyncLadderForConnection() {
   } catch (_e) {}
 
   if (effectiveType === "2g" || effectiveType === "slow-2g") {
-    return { attempts: [20000, 35000, 60000, 90000], waits: [3000, 5000, 8000] };
+    // Also covers congested/poor wifi — effectiveType measures actual
+    // round-trip time and throughput, not radio type, so a bad wifi
+    // connection lands here too, not just real 2G.
+    return { attempts: [45000, 80000, 120000, 170000, 220000], waits: [8000, 12000, 15000, 20000] };
   }
   if (effectiveType === "4g") {
-    return { attempts: [25000], waits: [] };
+    // A fast connection can still hit a transient blip (tower handoff,
+    // brief backend hiccup) — it's actually MORE likely to succeed on a
+    // quick retry than a slow one, not less, so it gets multiple tries too.
+    return { attempts: [30000, 55000, 90000], waits: [5000, 8000] };
   }
   // "3g", unknown effectiveType, or no navigator.connection support (iOS).
-  return { attempts: [25000, 45000, 70000], waits: [3000, 5000] };
+  return { attempts: [50000, 85000, 130000, 180000], waits: [8000, 12000, 15000] };
 }
 
 // Runs the given push operation (a zero-arg function returning a promise,

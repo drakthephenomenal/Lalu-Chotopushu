@@ -6779,35 +6779,39 @@ async function saveJsonFile(filename, jsonString) {
   if (isNative && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
     try {
       const { Filesystem } = window.Capacitor.Plugins;
-      // Directory/Encoding are plain enums from @capacitor/filesystem, not
-      // registered plugins, so they aren't on window.Capacitor.Plugins.
-      // Hardcode the string values instead. Using Cache (not Documents) —
-      // it needs no storage permission on Android 10+, and the Share sheet
-      // right below lets the user save it wherever they actually want.
-      const writeResult = await Filesystem.writeFile({
-        path: filename,
-        data: jsonString,
-        directory: "CACHE",
-        encoding: "utf8",
-      });
-      toast("Backup saved to Documents! 🙏 Jai Radhe!");
-      // Offer to share/export immediately (Drive, WhatsApp, email, etc.)
-      if (window.Capacitor.Plugins.Share) {
-        try {
-          await window.Capacitor.Plugins.Share.share({
-            title: filename,
-            text: "Radha Naam Jap backup",
-            url: writeResult.uri,
-            dialogTitle: "Save or share your backup",
-          });
-        } catch (shareErr) {
-          // Share can be cancelled by the user — not a real error, ignore.
+      const subPath = "Radha Jap Backup/" + filename;
+
+      // Android below 10 (API 29) needs the legacy WRITE_EXTERNAL_STORAGE
+      // permission granted before writing to the public Documents folder.
+      // Android 10+ (scoped storage) needs no permission for this at all --
+      // checkPermissions/requestPermissions are safe to call on every
+      // version; on 10+ they resolve immediately with no prompt shown.
+      // NOTE: this permission-request path has NOT been verified on a real
+      // pre-Android-10 device -- test an actual export on a low API level
+      // device/emulator before relying on it for those users.
+      try {
+        const perm = await Filesystem.checkPermissions();
+        if (perm && perm.publicStorage && perm.publicStorage !== "granted") {
+          await Filesystem.requestPermissions();
         }
+      } catch (_permErr) {
+        // Older/newer plugin builds may not expose this API the same way --
+        // fall through and let writeFile itself surface any real permission
+        // error below, rather than blocking the whole export.
       }
+
+      const writeResult = await Filesystem.writeFile({
+        path: subPath,
+        data: jsonString,
+        directory: "Documents",
+        encoding: "utf8",
+        recursive: true, // create the "Radha Jap Backup" folder if missing
+      });
+      toast("\ud83d\udce5 Saved to Documents/Radha Jap Backup \ud83d\ude4f Jai Radhe!");
       return true;
     } catch (e) {
       console.error("Native saveJsonFile failed:", e);
-      toast("❌ Backup failed: " + (e && e.message ? e.message : e));
+      toast("\u274c Backup failed: " + (e && e.message ? e.message : e));
       return false;
     }
   }

@@ -8142,6 +8142,10 @@ function fbInit() {
       : firebase.initializeApp(firebaseConfig);
     fbAuth = firebase.auth();
     fbDb = firebase.firestore();
+    // Firestore's default streaming connection (WebChannel) is unreliable
+    // inside Android WebViews — this detects that and falls back to plain
+    // HTTP long-polling automatically. Must be the first call on fbDb.
+    fbDb.settings({ experimentalAutoDetectLongPolling: true });
     fbDb.enablePersistence({ synchronizeTabs: false }).catch(() => {});
     // Handle redirect sign-in result (for in-app browsers that used signInWithRedirect)
     fbAuth
@@ -8188,6 +8192,11 @@ function fbInit() {
       }
       try {
         fbDb = firebase.firestore();
+        // Same long-polling fallback as the main init above — a rebuilt
+        // fbDb instance needs it too, or a recovered cache would still hit
+        // the same WebView streaming problem this whole recovery exists to
+        // work around.
+        fbDb.settings({ experimentalAutoDetectLongPolling: true });
         fbDb.enablePersistence({ synchronizeTabs: false }).catch(() => {});
       } catch (e) {
         console.warn("fbRecoverPersistence reinit failed:", e && e.message);

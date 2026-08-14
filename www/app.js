@@ -6874,6 +6874,37 @@ async function saveJsonFile(filename, jsonString) {
       toast("\ud83d\udce5 Saved to Documents/Radha Jap Backup \ud83d\ude4f Jai Radhe!");
       return true;
     } catch (e) {
+      // share-sheet fallback (scoped storage unreliable across OEMs) —
+      // writing arbitrary files into the public Documents folder is known
+      // to silently fail on some manufacturer ROMs (MIUI/Xiaomi in
+      // particular) regardless of folder-creation workarounds, because the
+      // OS itself restricts or mishandles it. Rather than dead-ending with
+      // an error, fall back to the same mechanism Share Backup already
+      // uses reliably: write to the app's private cache (no scoped-storage
+      // restrictions apply there) and hand it to the native Share sheet so
+      // the user can still save it wherever they like via the OS picker.
+      console.warn("Direct Documents write failed, falling back to share sheet:", e && e.message ? e.message : e);
+      try {
+        const { Filesystem: FS2, Share } = window.Capacitor.Plugins;
+        if (FS2 && Share) {
+          await FS2.writeFile({
+            path: filename,
+            data: jsonString,
+            directory: "CACHE",
+            encoding: "utf8",
+          });
+          const { uri } = await FS2.getUri({ directory: "CACHE", path: filename });
+          await Share.share({
+            title: "Radha Naam Jap Backup",
+            text: "My Radha Naam Jap backup file \ud83d\ude4f Jai Radhe!",
+            url: uri,
+          });
+          return true;
+        }
+      } catch (shareErr) {
+        if (shareErr && shareErr.message && /cancel/i.test(shareErr.message)) return false; // user dismissed share sheet, not a real failure
+        console.error("Share-sheet fallback also failed:", shareErr);
+      }
       console.error("Native saveJsonFile failed:", e);
       toast("\u274c Backup failed: " + (e && e.message ? e.message : e));
       return false;

@@ -18127,17 +18127,10 @@ async function pushLeaderboard() {
     timer28History: App.S.timer28History || {},
   };
 
-  // Leaderboard push retry ladder — same reliability treatment as the
-  // main sync write (fbPushFull), instead of one unbounded, unretried
-  // attempt. A slow/flaky connection used to just fail this silently;
-  // now it gets the same bounded timeout + backoff retries.
   try {
-    await fbCloudPushWithRetryLadder(
-      () => fbDb.collection('leaderboard').doc(fbUser.uid).set(payload),
-      "Leaderboard push",
-    );
+    await fbDb.collection('leaderboard').doc(fbUser.uid).set(payload);
   } catch(e) {
-    console.warn('pushLeaderboard error:', e && e.message ? e.message : e);
+    console.warn('pushLeaderboard error:', e.message);
   }
 }
 

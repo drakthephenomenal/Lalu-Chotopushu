@@ -9938,6 +9938,10 @@ async function fbPushFull() {
     deviceId: fbDeviceId,
   };
   try {
+    try {
+      const _payloadBytes = JSON.stringify(payload).length;
+      _syncDiagRecord({ t: new Date().toISOString(), label: "Cloud push", payloadBytes: _payloadBytes, outcome: "payload-measured" });
+    } catch (_e) {}
     // A Firestore write can hang indefinitely on a bad connection, just
     // like a read (see fbWithTimeout usage in fbMigrate above) — without a
     // bound here, a stuck write leaves the sync pill on "Syncing…" forever
@@ -10431,17 +10435,54 @@ function _fbSyncLadderForConnection() {
 // above. Resolves as soon as one attempt confirms; rejects only after
 // every attempt in the ladder has been exhausted. onAttempt(n, total) is
 // called before each attempt so the caller can update the sync pill.
+function _syncDiagRecord(entry) {
+  // Fire-and-forget diagnostic trail. Never allowed to affect the real
+  // sync path — every step here is wrapped so a failure here is silent.
+  try {
+    console.log("[SYNC-DIAG]", JSON.stringify(entry));
+  } catch (_e) {}
+  try {
+    if (!window._syncDiagBuffer) window._syncDiagBuffer = [];
+    window._syncDiagBuffer.push(entry);
+    if (window._syncDiagBuffer.length > 10) window._syncDiagBuffer.shift();
+    if (fbUser && fbDb) {
+      fbDb
+        .collection("users")
+        .doc(fbUser.uid)
+        .collection("data")
+        .doc("syncDiag")
+        .set({ recent: window._syncDiagBuffer, updatedAt: firebase.firestore.FieldValue.serverTimestamp() })
+        .catch(() => {});
+    }
+  } catch (_e) {}
+}
+
 async function fbCloudPushWithRetryLadder(makeWritePromise, label, onAttempt) {
   const { attempts, waits } = _fbSyncLadderForConnection();
+  let effectiveType = null;
+  try { effectiveType = (navigator.connection && navigator.connection.effectiveType) || "unreported"; } catch (_e) { effectiveType = "unreported"; }
   let lastErr = null;
   for (let i = 0; i < attempts.length; i++) {
     if (typeof onAttempt === "function") {
       try { onAttempt(i + 1, attempts.length); } catch (_e) {}
     }
+    const _diagStart = Date.now();
     try {
-      return await fbWithTimeout(makeWritePromise(), attempts[i], label);
+      const result = await fbWithTimeout(makeWritePromise(), attempts[i], label);
+      _syncDiagRecord({
+        t: new Date().toISOString(), label, effectiveType,
+        attempt: i + 1, of: attempts.length,
+        elapsedMs: Date.now() - _diagStart, outcome: "ok",
+      });
+      return result;
     } catch (e) {
       lastErr = e;
+      _syncDiagRecord({
+        t: new Date().toISOString(), label, effectiveType,
+        attempt: i + 1, of: attempts.length,
+        elapsedMs: Date.now() - _diagStart, outcome: "failed",
+        error: (e && e.message) ? String(e.message).slice(0, 200) : String(e).slice(0, 200),
+      });
       if (i < waits.length) {
         await new Promise((r) => setTimeout(r, waits[i]));
       }
@@ -18086,10 +18127,17 @@ async function pushLeaderboard() {
     timer28History: App.S.timer28History || {},
   };
 
+  // Leaderboard push retry ladder — same reliability treatment as the
+  // main sync write (fbPushFull), instead of one unbounded, unretried
+  // attempt. A slow/flaky connection used to just fail this silently;
+  // now it gets the same bounded timeout + backoff retries.
   try {
-    await fbDb.collection('leaderboard').doc(fbUser.uid).set(payload);
+    await fbCloudPushWithRetryLadder(
+      () => fbDb.collection('leaderboard').doc(fbUser.uid).set(payload),
+      "Leaderboard push",
+    );
   } catch(e) {
-    console.warn('pushLeaderboard error:', e.message);
+    console.warn('pushLeaderboard error:', e && e.message ? e.message : e);
   }
 }
 

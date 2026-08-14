@@ -6848,6 +6848,22 @@ async function saveJsonFile(filename, jsonString) {
         // error below, rather than blocking the whole export.
       }
 
+      // FILE_NOTCREATED workaround — writeFile's own `recursive: true` is
+      // documented to auto-create missing parent folders, but is known to
+      // silently fail to do so for Directory.Documents specifically on
+      // Android 10+ scoped storage. Creating the folder explicitly first
+      // is the standard workaround; "already exists" errors are expected
+      // and harmless on every export after the first.
+      try {
+        await Filesystem.mkdir({
+          path: "Radha Jap Backup",
+          directory: "DOCUMENTS",
+          recursive: true,
+        });
+      } catch (_mkdirErr) {
+        // Already exists (or plugin doesn't need it) — fall through and
+        // let writeFile itself surface any real problem below.
+      }
       const writeResult = await Filesystem.writeFile({
         path: subPath,
         data: jsonString,
@@ -6965,6 +6981,13 @@ async function exportAllData() {
     const filename = "radha-naam-jap-backup-" + App.getTk() + ".json";
     const ok = await saveJsonFile(filename, json);
     if (ok) {
+      // The confirmation notification only shows if permission is already
+      // granted, but nothing else in this flow ever asks for it — a user
+      // who never touched jap reminders (the only other place permission
+      // gets requested) would never see this notification at all.
+      // lcRequestNotifPermission() is already idempotent/safe to call
+      // repeatedly: no prompt if already decided either way.
+      await lcRequestNotifPermission();
       lcNotifyBackupSaved("Saved as " + filename + " in Documents/Radha Jap Backup 🙏");
     }
   } catch (e) {

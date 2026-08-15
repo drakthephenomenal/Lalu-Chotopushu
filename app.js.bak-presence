@@ -8199,7 +8199,7 @@ function fbInit() {
     // Firestore's default streaming connection (WebChannel) is unreliable
     // inside Android WebViews — this detects that and falls back to plain
     // HTTP long-polling automatically. Must be the first call on fbDb.
-    fbDb.settings({ experimentalForceLongPolling: true }); // forced, not auto-detected — see apply_force_long_polling_fix.py
+    fbDb.settings({ experimentalAutoDetectLongPolling: true });
     fbDb.enablePersistence({ synchronizeTabs: false }).catch(() => {});
     // Handle redirect sign-in result (for in-app browsers that used signInWithRedirect)
     fbAuth
@@ -8250,7 +8250,7 @@ function fbInit() {
         // fbDb instance needs it too, or a recovered cache would still hit
         // the same WebView streaming problem this whole recovery exists to
         // work around.
-        fbDb.settings({ experimentalForceLongPolling: true }); // forced, not auto-detected — see apply_force_long_polling_fix.py
+        fbDb.settings({ experimentalAutoDetectLongPolling: true });
         fbDb.enablePersistence({ synchronizeTabs: false }).catch(() => {});
       } catch (e) {
         console.warn("fbRecoverPersistence reinit failed:", e && e.message);
@@ -8532,23 +8532,13 @@ function fbInit() {
               const _pName  = user.displayName || '';
               const _pEmail = _fbIsSyntheticPhoneEmail(user.email) ? '' : (user.email || '');
               const _pPhone = user.phoneNumber || '';
-              // presence heartbeat retry ladder — was a bare .set() with all
-              // errors silently swallowed, same unprotected pattern the
-              // leaderboard write had before its own retry fix. A single
-              // failed heartbeat on a flaky connection used to just let the
-              // green "online" dot go stale with no retry; now it gets the
-              // same bounded timeout + backoff retries as leaderboard/main
-              // sync writes.
-              await fbCloudPushWithRetryLadder(
-                () => fbDb.collection('presence').doc(user.uid).set({
-                  uid: user.uid,
-                  name: _pName,
-                  email: _pEmail,
-                  phone: _pPhone,
-                  lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
-                }, { merge: true }),
-                "Presence heartbeat",
-              );
+              await fbDb.collection('presence').doc(user.uid).set({
+                uid: user.uid,
+                name: _pName,
+                email: _pEmail,
+                phone: _pPhone,
+                lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+              }, { merge: true });
             } catch (_e) {}
           };
           await _writePresenceHeartbeat();

@@ -19757,3 +19757,27 @@ async function checkAppUpdate() {
     }, 1500);
   }
 }
+
+
+// ============================================================
+// fast sync + retire client leaderboard push override block
+// Appended 2026-08-15. See apply_fast_sync_and_retire_client_leaderboard.py
+// for full rationale. Overrides by reassignment — the original
+// _fbSyncLadderForConnection and pushLeaderboard function bodies above
+// are left completely untouched; only their runtime behavior changes.
+// ============================================================
+
+// Simple, fast, universal retry ladder — no connection-type detection.
+// One 10s attempt, 3s wait, one 15s retry, then fail. Worst case ~28s,
+// instead of up to ~11 minutes with the old connection-aware ladder.
+_fbSyncLadderForConnection = function () {
+  return { attempts: [10000, 15000], waits: [3000] };
+};
+
+// Client no longer pushes the leaderboard directly — the
+// syncLeaderboardOnMainDataWrite Cloud Function does it automatically
+// and reliably whenever users/{uid}/data/main is written. All existing
+// call sites are left as-is; they now just harmlessly do nothing.
+pushLeaderboard = async function () {
+  return;
+};

@@ -8522,50 +8522,6 @@ function fbInit() {
         // guaranteed to fetch the latest cloud data before anything is rendered.
         fbClaimSession().then(async () => {
           fbWatchSession();
-          // ── Presence heartbeat: every signed-in user writes their own
-          // /presence/{uid} doc so developers can list ALL signed-in
-          // accounts in Ghost Mode (not just leaderboard opt-ins), and so
-          // the Community leaderboard's green "online" dot reflects whether
-          // the app is actually open right now — not just last jap activity.
-          const _writePresenceHeartbeat = async () => {
-            try {
-              const _pName  = user.displayName || '';
-              const _pEmail = _fbIsSyntheticPhoneEmail(user.email) ? '' : (user.email || '');
-              const _pPhone = user.phoneNumber || '';
-              // presence heartbeat retry ladder — was a bare .set() with all
-              // errors silently swallowed, same unprotected pattern the
-              // leaderboard write had before its own retry fix. A single
-              // failed heartbeat on a flaky connection used to just let the
-              // green "online" dot go stale with no retry; now it gets the
-              // same bounded timeout + backoff retries as leaderboard/main
-              // sync writes.
-              await fbCloudPushWithRetryLadder(
-                () => fbDb.collection('presence').doc(user.uid).set({
-                  uid: user.uid,
-                  name: _pName,
-                  email: _pEmail,
-                  phone: _pPhone,
-                  lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
-                }, { merge: true }),
-                "Presence heartbeat",
-              );
-            } catch (_e) {}
-          };
-          await _writePresenceHeartbeat();
-          // Repeat every 60s while the tab/app stays open
-          if (window._presenceHeartbeatInterval) clearInterval(window._presenceHeartbeatInterval);
-          window._presenceHeartbeatInterval = setInterval(_writePresenceHeartbeat, 60000);
-          // Also fire immediately whenever the app comes back to the foreground
-          // (covers "just opened the app" reliably, without waiting up to 60s)
-          if (!window._presenceVisibilityBound) {
-            window._presenceVisibilityBound = true;
-            document.addEventListener('visibilitychange', () => {
-              if (document.visibilityState === 'visible' && typeof window._presenceHeartbeatFn === 'function') {
-                window._presenceHeartbeatFn();
-              }
-            });
-          }
-          window._presenceHeartbeatFn = _writePresenceHeartbeat;
           // ── Sync device clock with Firebase server time ──
           // Corrects getTk() if local clock is wrong or in different timezone
           await fbSyncServerTime();
@@ -9755,10 +9711,6 @@ async function clearLocalUserData(uid) {
 
 async function fbSignOut() {
   if (!fbAuth) return;
-  if (window._presenceHeartbeatInterval) {
-    clearInterval(window._presenceHeartbeatInterval);
-    window._presenceHeartbeatInterval = null;
-  }
   const outgoingUid = (fbUser && fbUser.uid) || App._uid || null;
   // ── STEP 1: Push current state to Firebase BEFORE signing out so the
   //    user's "last state" is preserved as the next-login baseline.
@@ -9842,6 +9794,14 @@ async function fbPushDelta() {
 // Firestore rule allowing isDeveloper() to write under /users/{userId}.
 async function fbPushToUid(targetUid, fullReplace) {
   if (!fbUser || !fbDb || !targetUid) return;
+  // HARD STOP: this function must only ever write to the account being
+  // ghosted, never the developer's own. If targetUid somehow matches the
+  // signed-in dev's own uid (stale call, future bug), refuse rather than
+  // risk imprinting a manual-correction payload onto their real profile.
+  if (targetUid === fbUser.uid) {
+    console.warn("fbPushToUid blocked: targetUid matches own uid");
+    return;
+  }
   setSyncPill("syncing", fullReplace ? "Replacing viewed user's account…" : "Saving to viewed user's account…");
   const payload = {
     history: App.S.history || {},
@@ -10011,31 +9971,12 @@ async function fbPushFull() {
     deviceId: fbDeviceId,
   };
   try {
-    try {
-      const _payloadBytes = JSON.stringify(payload).length;
-      _syncDiagRecord({ t: new Date().toISOString(), label: "Cloud push", payloadBytes: _payloadBytes, outcome: "payload-measured" });
-    } catch (_e) {}
-    // A Firestore write can hang indefinitely on a bad connection, just
-    // like a read (see fbWithTimeout usage in fbMigrate above) — without a
-    // bound here, a stuck write leaves the sync pill on "Syncing…" forever
-    // and NEVER reaches the catch block below, so the pending markers never
-    // get a chance to trigger a retry either. Bounding it turns a silent
-    // hang into a normal, retryable failure.
-    await fbCloudPushWithRetryLadder(
-      () =>
-        fbDb
-          .collection("users")
-          .doc(fbUser.uid)
-          .collection("data")
-          .doc("main")
-          .set(payload),
-      "Cloud push",
-      (attemptNum, totalAttempts) => {
-        if (totalAttempts > 1) {
-          setSyncPill("syncing", "☁️ Syncing… (attempt " + attemptNum + " of " + totalAttempts + ")");
-        }
-      },
-    );
+    await fbDb
+      .collection("users")
+      .doc(fbUser.uid)
+      .collection("data")
+      .doc("main")
+      .set(payload);
     // Write CONFIRMED by Firestore — safe to clear both the foreground-only
     // marker and the one shared with the Background Runner, so neither
     // retries something that already landed.
@@ -10475,95 +10416,6 @@ function fbWithTimeout(promise, ms, label) {
   });
 }
 
-// ── Connection-aware retry ladder for the Firestore cloud push ──
-// navigator.connection.effectiveType reports MEASURED round-trip time
-// and throughput (Chromium-based browsers only), not raw radio type — so
-// a congested/poor wifi connection correctly lands in the same bucket as
-// 2G here. Safari/iOS has no navigator.connection at all and falls back
-// to the middle tier.
-function _fbSyncLadderForConnection() {
-  let effectiveType = null;
-  try {
-    effectiveType = (navigator.connection && navigator.connection.effectiveType) || null;
-  } catch (_e) {}
-
-  if (effectiveType === "2g" || effectiveType === "slow-2g") {
-    // Also covers congested/poor wifi — effectiveType measures actual
-    // round-trip time and throughput, not radio type, so a bad wifi
-    // connection lands here too, not just real 2G.
-    return { attempts: [45000, 80000, 120000, 170000, 220000], waits: [8000, 12000, 15000, 20000] };
-  }
-  if (effectiveType === "4g") {
-    // A fast connection can still hit a transient blip (tower handoff,
-    // brief backend hiccup) — it's actually MORE likely to succeed on a
-    // quick retry than a slow one, not less, so it gets multiple tries too.
-    return { attempts: [30000, 55000, 90000], waits: [5000, 8000] };
-  }
-  // "3g", unknown effectiveType, or no navigator.connection support (iOS).
-  return { attempts: [50000, 85000, 130000, 180000], waits: [8000, 12000, 15000] };
-}
-
-// Runs the given push operation (a zero-arg function returning a promise,
-// so a fresh Firestore write is issued per attempt) through the ladder
-// above. Resolves as soon as one attempt confirms; rejects only after
-// every attempt in the ladder has been exhausted. onAttempt(n, total) is
-// called before each attempt so the caller can update the sync pill.
-function _syncDiagRecord(entry) {
-  // Fire-and-forget diagnostic trail. Never allowed to affect the real
-  // sync path — every step here is wrapped so a failure here is silent.
-  try {
-    console.log("[SYNC-DIAG]", JSON.stringify(entry));
-  } catch (_e) {}
-  try {
-    if (!window._syncDiagBuffer) window._syncDiagBuffer = [];
-    window._syncDiagBuffer.push(entry);
-    if (window._syncDiagBuffer.length > 10) window._syncDiagBuffer.shift();
-    if (fbUser && fbDb) {
-      fbDb
-        .collection("users")
-        .doc(fbUser.uid)
-        .collection("data")
-        .doc("syncDiag")
-        .set({ recent: window._syncDiagBuffer, updatedAt: firebase.firestore.FieldValue.serverTimestamp() })
-        .catch(() => {});
-    }
-  } catch (_e) {}
-}
-
-async function fbCloudPushWithRetryLadder(makeWritePromise, label, onAttempt) {
-  const { attempts, waits } = _fbSyncLadderForConnection();
-  let effectiveType = null;
-  try { effectiveType = (navigator.connection && navigator.connection.effectiveType) || "unreported"; } catch (_e) { effectiveType = "unreported"; }
-  let lastErr = null;
-  for (let i = 0; i < attempts.length; i++) {
-    if (typeof onAttempt === "function") {
-      try { onAttempt(i + 1, attempts.length); } catch (_e) {}
-    }
-    const _diagStart = Date.now();
-    try {
-      const result = await fbWithTimeout(makeWritePromise(), attempts[i], label);
-      _syncDiagRecord({
-        t: new Date().toISOString(), label, effectiveType,
-        attempt: i + 1, of: attempts.length,
-        elapsedMs: Date.now() - _diagStart, outcome: "ok",
-      });
-      return result;
-    } catch (e) {
-      lastErr = e;
-      _syncDiagRecord({
-        t: new Date().toISOString(), label, effectiveType,
-        attempt: i + 1, of: attempts.length,
-        elapsedMs: Date.now() - _diagStart, outcome: "failed",
-        error: (e && e.message) ? String(e.message).slice(0, 200) : String(e).slice(0, 200),
-      });
-      if (i < waits.length) {
-        await new Promise((r) => setTimeout(r, waits[i]));
-      }
-    }
-  }
-  throw lastErr || new Error((label || "operation") + " failed after retries");
-}
-
 async function fbMigrate() {
   // Always pull fresh from Firebase on every login/refresh.
   // migrationV2Done only guards the one-time data-format migration,
@@ -10581,21 +10433,18 @@ async function fbMigrate() {
     // the user's real cloud data. Force a server fetch on the initial pull.
     let snap;
     try {
-      snap = await /* hydration retry-ladder fix — was a single fixed 15s attempt; now gets the same connection-aware retries fbPushFull uses, so App._cloudHydrated is far less likely to stay unset on a slow/flaky connection, which was silently blocking pushLeaderboard() and other hydration-gated pushes from ever running that session. */ fbCloudPushWithRetryLadder(() => docRef.get({ source: "server" }), "Cloud pull");
+      snap = await docRef.get({ source: "server" });
     } catch (eServer) {
-      // Offline, server unreachable, or timed out — fall back to cache,
-      // but DO NOT treat a cache miss as proof there's no cloud doc.
+      // Offline or server unreachable — fall back to cache, but DO NOT
+      // treat a cache miss as proof there's no cloud doc.
       console.warn("Server pull failed, falling back to cache:", eServer.message);
-      snap = await fbWithTimeout(docRef.get({ source: "cache" }), 8000, "Cache pull").catch(() => null);
+      snap = await docRef.get({ source: "cache" }).catch(() => null);
       if (!snap || !snap.exists) {
         // Could not confirm cloud state — refuse to push so we never
         // overwrite real cloud data with empty local state.
-        // _cloudHydrated stays false — schedule a backoff retry now (don't
-        // rely solely on the 'online' event, which may never fire if the
-        // device never truly drops offline per the OS).
+        // _cloudHydrated stays false — the "online" listener will retry fbAutoSync() automatically.
         App._cloudHydrated = false;
         setSyncPill("error", "Offline — will sync when online");
-        if (typeof window._scheduleHydrationRetry === "function") window._scheduleHydrationRetry();
         return;
       }
     }
@@ -12577,22 +12426,6 @@ async function _fetchAllKnownUsers() {
         email: byUid[doc.id]?.email || d.email       || '',
         jap:   d.totalJap || 0,
         source: byUid[doc.id] ? byUid[doc.id].source : 'leaderboard',
-      });
-    });
-  } catch (_) {}
-
-  try {
-    // 3. presence collection — every signed-in user writes a heartbeat here,
-    //    so this captures accounts that never opted into the leaderboard
-    //    and never submitted feedback.
-    const prSnap = await fbDb.collection('presence').get();
-    prSnap.forEach(doc => {
-      const d = doc.data() || {};
-      add(doc.id, {
-        name:  byUid[doc.id]?.name  || d.name  || d.displayName || '',
-        email: byUid[doc.id]?.email || d.email || '',
-        phone: byUid[doc.id]?.phone || d.phone || d.phoneNumber || '',
-        source: byUid[doc.id] ? byUid[doc.id].source : 'presence',
       });
     });
   } catch (_) {}
@@ -17759,21 +17592,6 @@ async function loadLeaderboard(period) {
   populateLbSettingsUI();
 
   try {
-    // Real-time snapshot of the presence collection — used to compute the
-    // green "online" dot from actual app-open heartbeats (see
-    // _writePresenceHeartbeat), not just last jap-save activity.
-    if (!window._presenceLbUnsubscribe) {
-      window._presenceCache = window._presenceCache || {};
-      window._presenceLbUnsubscribe = fbDb.collection('presence').onSnapshot(function(snap) {
-        const cache = {};
-        snap.forEach(function(doc) {
-          cache[doc.id] = doc.data();
-        });
-        window._presenceCache = cache;
-        // Re-render with fresh presence data if we already have leaderboard docs cached
-        if (window._lbLastDocs) renderLeaderboard(window._lbLastDocs, window._lbPeriod);
-      }, function(_err) {});
-    }
     // Real-time snapshot of leaderboard collection
     window._lbUnsubscribe = fbDb.collection('leaderboard')
       .where('optIn', '==', true)
@@ -17953,12 +17771,7 @@ function renderLeaderboard(docs, period) {
     
     const nowMs = Date.now();
     let isOnline = false;
-    const _presenceEntry = (window._presenceCache || {})[d._uid];
-    if (_presenceEntry && _presenceEntry.lastSeen) {
-      // Heartbeat writes every 60s while the app is open — a 2 min window
-      // comfortably covers one missed beat (e.g. brief connectivity blip)
-      isOnline = (nowMs - _presenceEntry.lastSeen.toDate().getTime()) < 2 * 60 * 1000;
-    } else if (d.lastActive) isOnline = (nowMs - d.lastActive.toDate().getTime()) < 5 * 60 * 1000;
+    if (d.lastActive) isOnline = (nowMs - d.lastActive.toDate().getTime()) < 5 * 60 * 1000;
     else if (d.updatedAt) isOnline = (nowMs - d.updatedAt.toDate().getTime()) < 5 * 60 * 1000;
     const onlineDot = isOnline ? '<span style="display:inline-block;width:8px;height:8px;background:#4ade80;border-radius:50%;margin-left:6px;box-shadow:0 0 6px rgba(74,222,128,0.6)" title="Online"></span>' : '';
     
@@ -18200,15 +18013,8 @@ async function pushLeaderboard() {
     timer28History: App.S.timer28History || {},
   };
 
-  // Leaderboard push retry ladder — same reliability treatment as the
-  // main sync write (fbPushFull), instead of one unbounded, unretried
-  // attempt. A slow/flaky connection used to just fail this silently;
-  // now it gets the same bounded timeout + backoff retries.
   try {
-    await fbCloudPushWithRetryLadder(
-      () => fbDb.collection('leaderboard').doc(fbUser.uid).set(payload),
-      "Leaderboard push",
-    );
+    await fbDb.collection('leaderboard').doc(fbUser.uid).set(payload);
   } catch(e) {
     console.warn('pushLeaderboard error:', e && e.message ? e.message : e);
   }
@@ -19758,26 +19564,3 @@ async function checkAppUpdate() {
   }
 }
 
-
-// ============================================================
-// fast sync + retire client leaderboard push override block
-// Appended 2026-08-15. See apply_fast_sync_and_retire_client_leaderboard.py
-// for full rationale. Overrides by reassignment — the original
-// _fbSyncLadderForConnection and pushLeaderboard function bodies above
-// are left completely untouched; only their runtime behavior changes.
-// ============================================================
-
-// Simple, fast, universal retry ladder — no connection-type detection.
-// One 10s attempt, 3s wait, one 15s retry, then fail. Worst case ~28s,
-// instead of up to ~11 minutes with the old connection-aware ladder.
-_fbSyncLadderForConnection = function () {
-  return { attempts: [10000, 15000], waits: [3000] };
-};
-
-// Client no longer pushes the leaderboard directly — the
-// syncLeaderboardOnMainDataWrite Cloud Function does it automatically
-// and reliably whenever users/{uid}/data/main is written. All existing
-// call sites are left as-is; they now just harmlessly do nothing.
-pushLeaderboard = async function () {
-  return;
-};

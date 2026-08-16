@@ -9864,14 +9864,6 @@ async function fbPushToUid(targetUid, fullReplace) {
     lastDevEdit: firebase.firestore.FieldValue.serverTimestamp(),
     lastDevEditBy: (fbUser && fbUser.email) || "developer",
   };
-  // ghost mode fixes: force-restore signal — on a full restore, stamp a
-  // timestamp the TARGET device's fbMigrate will recognize and use to
-  // skip its own offline-preservation merge for one hydration, so the
-  // restore actually takes effect instead of being silently overridden
-  // by that device's own (by-design) "keep higher local value" logic.
-  if (fullReplace) {
-    payload.devForceRestoreAt = Date.now();
-  }
   try {
     await fbDb
       .collection("users")
@@ -10519,19 +10511,6 @@ async function fbMigrate() {
       fbApplyRemote({ ...snap.data(), deviceId: null });
       App._cloudHydrated = true; // cloud copy applied, future saves may push
 
-      // ghost mode fixes: own-state capture guard + force-restore signal — if a developer force-
-      // restored this account (via Ghost Mode) more recently than this
-      // device has already acknowledged, skip the offline-preservation
-      // merge below for this ONE hydration so the restore actually
-      // takes effect. Self-expiring: normal protective merge behavior
-      // resumes on every hydration after this one.
-      const _forceRestoreAt = App.S.devForceRestoreAt || 0;
-      const _alreadyAckedRestore = App.S._lastAckedRestoreAt || 0;
-      const _skipOfflineMerge = _forceRestoreAt > _alreadyAckedRestore;
-      if (_skipOfflineMerge) {
-        App.S._lastAckedRestoreAt = _forceRestoreAt;
-      }
-
       // ── MERGE: for each date key, keep whichever is higher (local offline wins) ──
       let offlineWorkFound = false;
       function mergeMax(local, applied) {
@@ -10542,28 +10521,26 @@ async function fbMigrate() {
           }
         }
       }
-      if (!_skipOfflineMerge) {
-        mergeMax(localHistory,        App.S.history);
-        mergeMax(localH28,            App.S.h28);
-        mergeMax(localTimerHistory,   App.S.timerHistory);
-        mergeMax(localHistoryRV,      App.S.historyRV);
-        mergeMax(localHistoryHK,      App.S.historyHK);
-        mergeMax(localHistoryKV,      App.S.historyKV);
-        mergeMax(localHistorySS,      App.S.historySS);
-        mergeMax(localHistoryRam,     App.S.historyRam);
-        mergeMax(localTimerHistoryRV, App.S.timerHistoryRV);
-        mergeMax(localTimerHistoryHK, App.S.timerHistoryHK);
-        mergeMax(localTimerHistoryKV, App.S.timerHistoryKV);
-        mergeMax(localTimerHistorySS, App.S.timerHistorySS);
-        mergeMax(localTimerHistoryRam, App.S.timerHistoryRam);
-        // Also preserve higher dt (lifetime jap seconds) if local is ahead
-        if (localDt   > App.S.dt)   { App.S.dt   = localDt;   offlineWorkFound = true; }
-        if (localDtRV > App.S.dtRV) { App.S.dtRV = localDtRV; offlineWorkFound = true; }
-        if (localDtHK > App.S.dtHK) { App.S.dtHK = localDtHK; offlineWorkFound = true; }
-        if (localDtKV > App.S.dtKV) { App.S.dtKV = localDtKV; offlineWorkFound = true; }
-        if (localDtSS > App.S.dtSS) { App.S.dtSS = localDtSS; offlineWorkFound = true; }
-        if (localDtRam > App.S.dtRam) { App.S.dtRam = localDtRam; offlineWorkFound = true; }
-      }
+      mergeMax(localHistory,        App.S.history);
+      mergeMax(localH28,            App.S.h28);
+      mergeMax(localTimerHistory,   App.S.timerHistory);
+      mergeMax(localHistoryRV,      App.S.historyRV);
+      mergeMax(localHistoryHK,      App.S.historyHK);
+      mergeMax(localHistoryKV,      App.S.historyKV);
+      mergeMax(localHistorySS,      App.S.historySS);
+      mergeMax(localHistoryRam,     App.S.historyRam);
+      mergeMax(localTimerHistoryRV, App.S.timerHistoryRV);
+      mergeMax(localTimerHistoryHK, App.S.timerHistoryHK);
+      mergeMax(localTimerHistoryKV, App.S.timerHistoryKV);
+      mergeMax(localTimerHistorySS, App.S.timerHistorySS);
+      mergeMax(localTimerHistoryRam, App.S.timerHistoryRam);
+      // Also preserve higher dt (lifetime jap seconds) if local is ahead
+      if (localDt   > App.S.dt)   { App.S.dt   = localDt;   offlineWorkFound = true; }
+      if (localDtRV > App.S.dtRV) { App.S.dtRV = localDtRV; offlineWorkFound = true; }
+      if (localDtHK > App.S.dtHK) { App.S.dtHK = localDtHK; offlineWorkFound = true; }
+      if (localDtKV > App.S.dtKV) { App.S.dtKV = localDtKV; offlineWorkFound = true; }
+      if (localDtSS > App.S.dtSS) { App.S.dtSS = localDtSS; offlineWorkFound = true; }
+      if (localDtRam > App.S.dtRam) { App.S.dtRam = localDtRam; offlineWorkFound = true; }
 
       if (offlineWorkFound) {
         // Local had offline jap ahead of cloud — push the merged state immediately
@@ -12522,15 +12499,8 @@ window.devEnterGhostMode = async function (uid, displayLabel) {
   // 1. Close the selection modal
   closeGhostModal();
 
-  // 2. Save the developer's own clean state — ONLY if not already
-  // ghosting someone else. ghost mode fixes: own-state capture guard +
-  // force-restore signal — switching directly between two viewed users
-  // without exiting in between used to overwrite this snapshot with
-  // the FIRST viewed user's data instead of the developer's real data,
-  // which then got merged into the developer's own profile on exit.
-  if (!isGhostMode()) {
-    _ghostOwnState = JSON.parse(JSON.stringify(App.S));
-  }
+  // 2. Save the developer's own clean state
+  _ghostOwnState = JSON.parse(JSON.stringify(App.S));
 
   // 3. Prevent ALL writes while in ghost mode
   _ghostViewingUid = uid;

@@ -12461,6 +12461,24 @@ async function _fetchAllKnownUsers() {
     });
   } catch (_) {}
 
+  try {
+    // 3. presence collection as third ghost-list source — written by every
+    // signed-in user's heartbeat, INDEPENDENT of Community Board opt-in.
+    // Fixes users who've opted out of the leaderboard (or never opted in)
+    // and never submitted feedback becoming completely invisible to Ghost
+    // Mode, which is a support tool and should find any real user.
+    const presSnap = await fbDb.collection('presence').get();
+    presSnap.forEach(doc => {
+      const d = doc.data();
+      add(doc.id, {
+        name:  byUid[doc.id]?.name  || d.name  || '',
+        email: byUid[doc.id]?.email || d.email || '',
+        phone: byUid[doc.id]?.phone || d.phone || '',
+        source: byUid[doc.id] ? byUid[doc.id].source : 'presence',
+      });
+    });
+  } catch (_) {}
+
   // Sort: users with names first, then by name alpha
   return Object.values(byUid).sort((a, b) => {
     const an = (a.name || a.email || '').toLowerCase();

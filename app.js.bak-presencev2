@@ -187,36 +187,6 @@ const RJAP_REMINDER_NOTIF_ID = 9001;
 // (that's how Android resource references work).
 const RJAP_NOTIF_CHANNEL_ID = "rjap_reminders_v2";
 
-// presence heartbeat rebuild + version stamp — cached once per session.
-// Read at runtime via @capacitor/app (already installed) rather than
-// hardcoded, so it always reflects the actual running build instead of
-// drifting out of sync with build-android.sh's auto-bumped version.
-let _rjapAppVersion = "web";
-async function _rjapDetectAppVersion() {
-  try {
-    if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-      const info = await window.Capacitor.Plugins.App.getInfo();
-      _rjapAppVersion = (info && info.version) ? "1.0." + (info.build || info.version) : "native";
-    }
-  } catch (e) {}
-}
-
-async function _writePresenceHeartbeat(user) {
-  if (!user || !fbDb) return;
-  try {
-    await fbDb.collection("presence").doc(user.uid).set({
-      uid: user.uid,
-      name: user.displayName || "",
-      email: user.email || "",
-      phone: user.phoneNumber || "",
-      appVersion: _rjapAppVersion,
-      lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-  } catch (e) {
-    console.warn("Presence heartbeat failed:", e && e.message ? e.message : e);
-  }
-}
-
 async function lcSetupNotifChannel() {
   if (!(_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications)) return;
   try {
@@ -8565,12 +8535,6 @@ function fbInit() {
           await fbSyncServerTime();
           // Direct cloud pull — overwrites local cache with authoritative Firebase data
           await fbAutoSync();
-          // presence heartbeat rebuild + version stamp — fires on every
-          // login/refresh, independent of Community Board opt-in, so the
-          // developer can see who's active (and on what version) in Ghost
-          // Mode even for users who've opted out of the leaderboard.
-          await _rjapDetectAppVersion();
-          _writePresenceHeartbeat(user);
           // Merge in any permanent-ledger gifts recorded on other devices.
           pullPermanentGiftLedger();
 
@@ -12510,8 +12474,6 @@ async function _fetchAllKnownUsers() {
         name:  byUid[doc.id]?.name  || d.name  || '',
         email: byUid[doc.id]?.email || d.email || '',
         phone: byUid[doc.id]?.phone || d.phone || '',
-        appVersion: d.appVersion || '',
-        lastSeen: d.lastSeen || null,
         source: byUid[doc.id] ? byUid[doc.id].source : 'presence',
       });
     });
@@ -12558,20 +12520,6 @@ function _renderGhostList(users) {
     const label   = u.name  || u.email || '(no name)';
     const sublabel = u.email && u.name ? u.email : (u.phone || '');
     const japStr  = u.jap ? ' · ' + _lbFmtJap(u.jap) + ' jap' : '';
-    // per-user version + last-synced display — relative time so it stays
-    // readable without needing a live clock ("2h ago" instead of a raw
-    // timestamp that goes stale-looking the moment you glance away).
-    let metaStr = '';
-    if (u.appVersion) metaStr += 'v' + _escHtmlG(u.appVersion);
-    if (u.lastSeen && typeof u.lastSeen.toDate === 'function') {
-      const ms = Date.now() - u.lastSeen.toDate().getTime();
-      const mins = Math.floor(ms / 60000);
-      const rel = mins < 1 ? 'just now'
-        : mins < 60 ? mins + 'm ago'
-        : mins < 1440 ? Math.floor(mins / 60) + 'h ago'
-        : Math.floor(mins / 1440) + 'd ago';
-      metaStr += (metaStr ? ' · ' : '') + rel;
-    }
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1px solid rgba(255,215,0,0.18);background:rgba(255,215,0,0.03);cursor:pointer;transition:background 0.15s;';
     row.onmouseenter = () => { row.style.background = 'rgba(255,215,0,0.09)'; };
@@ -12582,7 +12530,6 @@ function _renderGhostList(users) {
         <div style="font-size:13px;font-weight:700;color:#FFD700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_escHtmlG(label)}${japStr}</div>
         ${sublabel ? `<div style="font-size:11px;color:rgba(255,255,255,0.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_escHtmlG(sublabel)}</div>` : ''}
         <div style="font-size:10px;color:rgba(255,215,0,0.28);margin-top:1px;font-family:monospace;">${u.uid}</div>
-        ${metaStr ? `<div style="font-size:10px;color:rgba(150,200,255,0.55);margin-top:2px;">${metaStr}</div>` : ''}
       </div>
       <div style="font-size:20px;flex-shrink:0;color:rgba(255,215,0,0.5);">›</div>`;
     row.onclick = () => devEnterGhostMode(u.uid, label);

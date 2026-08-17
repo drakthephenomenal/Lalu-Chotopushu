@@ -422,21 +422,9 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
 
     const data = after.data() || {};
 
-    // missing lbOptIn treated as unknown, not opted-out — only an EXPLICIT
-    // lbOptIn === false deletes the leaderboard entry. A missing/undefined
-    // field (e.g. an older backup restored via Ghost Mode that predates
-    // this field) used to be silently treated as an opt-out and delete
-    // the user's entry even though they never actually opted out.
-    if (data.lbOptIn === false) {
+    if (!data.lbOptIn) {
       await admin.firestore().collection("leaderboard").doc(uid).delete().catch(() => {});
       return null;
-    }
-    // If lbOptIn is missing/undefined entirely and no leaderboard entry
-    // exists yet, there's nothing meaningful to compute — skip silently
-    // rather than creating an entry for someone who never opted in.
-    if (!data.lbOptIn) {
-      const existing = await admin.firestore().collection("leaderboard").doc(uid).get();
-      if (!existing.exists) return null;
     }
 
     const hist = data.history || {};

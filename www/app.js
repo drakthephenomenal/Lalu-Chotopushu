@@ -1447,10 +1447,18 @@ const App = {
     // snapshots so the idle gap is never counted as jap time.
     const secondsAtTap = this.timerSeconds;
     const malaSecondsAtTap = this.currentMalaSeconds;
-    // HK (gaudiyaMode) and KV (trahimamMode) chanting has longer natural
-    // pauses between repetitions than the default Radha Naam, so they get
-    // a longer idle grace period before auto-pausing.
-    const idleMs = (this.S.gaudiyaMode || this.S.trahimamMode) ? 15000 : 6000;
+    // per-mode idle timeout fix — checks japMode directly (the single
+    // source of truth for what's actively being tapped) rather than the
+    // exclusive Settings-toggle booleans. This matters specifically for
+    // KV, which has NO exclusive toggle at all — it's only ever reached
+    // via japMode === "kv" — so checking trahimamMode (which is actually
+    // SS, not KV, despite its name) never covered KV. HK and Ram Vijay
+    // Mantra are checked the same way for consistency, since their
+    // exclusive toggles already keep japMode in sync via switchJapMode().
+    const idleMs = this.S.japMode === "kv" ? 20000
+      : this.S.japMode === "hk" ? 25000
+      : this.S.japMode === "ram" ? 10000
+      : 6000;                                    // Radha, RV, SS, 28 Names (unchanged)
     // Token so malaOk() can invalidate this pending autoStop if a mala
     // completes between now and the deadline (prevents leaking the
     // previous mala's snapshot into the next mala — Bug #2 root cause).

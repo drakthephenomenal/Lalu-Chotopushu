@@ -329,6 +329,8 @@ const DEV_EMAILS = [
   "akthephenomenal@zohomail.com",
   "drakthephenomenal@proton.me",
   "anupkumarpaulshuvo@gmail.com",
+  "radhanamejapcounter@gmail.com",
+  "drakthephenomenal@icloud.com",
 ];
 
 // Called by app.js (window.sendDevBroadcast, in the Developer Settings

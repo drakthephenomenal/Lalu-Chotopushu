@@ -4065,6 +4065,7 @@ function tgs(k) {
         toast("⚠️ Sign in first to enable push notifications");
         return;
       }
+      try { localStorage.setItem("rjap_push_asked", "1"); } catch (_) {}
       lcRegisterPush().then((ok) => {
         if (ok) {
           if (tgPush) tgPush.classList.add("on");
@@ -4076,6 +4077,7 @@ function tgs(k) {
         }
       });
     } else {
+      try { localStorage.setItem("rjap_push_asked", "1"); } catch (_) {}
       lcUnregisterPush();
       if (tgPush) tgPush.classList.remove("on");
       if (statusEl) statusEl.textContent = "— Tap to receive announcements from Radha Naam Jap 🔔 (requires sign-in)";
@@ -8411,9 +8413,18 @@ function fbInit() {
       }
       // Re-register push (refresh the FCM token) if the user previously
       // opted in — no permission re-prompt since it was already granted.
+      // auto notification prompt — first-ever login/sync for a user who has
+      // never been asked triggers the SAME permission request the manual
+      // "pushNotifications" toggle uses (no need to find it in Settings).
+      // rjap_push_asked is set before the request resolves, so a grant AND
+      // a denial are both remembered — this only ever asks once — and the
+      // toggle's own UI (#tgPushNotifications / #pushNotificationsStatus)
+      // is kept in sync either way.
       if (user) {
         let pushOn = false;
+        let pushAsked = false;
         try { pushOn = localStorage.getItem("rjap_push_enabled") === "1"; } catch (_) {}
+        try { pushAsked = localStorage.getItem("rjap_push_asked") === "1"; } catch (_) {}
         const tgPushEl = document.getElementById("tgPushNotifications");
         const pushStatusEl = document.getElementById("pushNotificationsStatus");
         if (pushOn) {
@@ -8421,6 +8432,17 @@ function fbInit() {
             if (ok) {
               if (tgPushEl) tgPushEl.classList.add("on");
               if (pushStatusEl) pushStatusEl.textContent = "✅ Push notifications enabled";
+            }
+          });
+        } else if (!pushAsked) {
+          try { localStorage.setItem("rjap_push_asked", "1"); } catch (_) {}
+          lcRegisterPush().then((ok) => {
+            if (ok) {
+              if (tgPushEl) tgPushEl.classList.add("on");
+              if (pushStatusEl) pushStatusEl.textContent = "✅ Push notifications enabled";
+            } else {
+              if (tgPushEl) tgPushEl.classList.remove("on");
+              if (pushStatusEl) pushStatusEl.textContent = "— Tap toggle to enable push notifications 🔔";
             }
           });
         }

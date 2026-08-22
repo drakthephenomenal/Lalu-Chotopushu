@@ -15444,7 +15444,9 @@ var _hcjPlayerCleanup = null; // cleanup fn for window listeners added in _hcjRe
 // Audio clip path — works for any stotram that has audio clips
 // A stotram with a single voice just has { prefix }.
 // A stotram with multiple reciter voices adds { voices: { key: filePrefix } }
-// — "default" is whichever voice should play first.
+// — "default" is whichever voice should play first. voicesByVerse limits
+// alternate voices to specific verses only (e.g. a guest reciter for one
+// Shlok) — the voice button only appears when the current verse has one.
 var _AUDIO_STOTRAMS = {
   hcj: {
     prefix: "hcj",
@@ -15460,7 +15462,15 @@ var _AUDIO_STOTRAMS = {
   // numbered Shlok 1 starts (audio track 1) — labelOffset shifts the
   // seek-input's displayed/typed number and the actual audio file loaded
   // so they always match the printed Shlok number.
-  rsn: { prefix: "rsn", labelOffset: 1, closingSuffix: "c" }
+  rsn: {
+    prefix: "rsn",
+    labelOffset: 1,
+    closingSuffix: "c",
+    // Shlok 150 only — Harindu's variation, available alongside the usual
+    // rsn_150.mp3, not selected by default. Every other verse has no
+    // voices entry at all, so the voice button stays hidden there.
+    voicesByVerse: { 150: { default: "rsn", harindu: "rsn_harindu" } }
+  }
 };
 var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices
 // True once the user has manually picked a voice via the button this
@@ -15468,10 +15478,23 @@ var _hcjVoice = "default"; // currently selected voice key for stotrams that sup
 // auto-switching the voice out from under their choice.
 var _hcjVoiceUserOverridden = false;
 
+// Resolve which voices map (if any) applies to a given displayed verse
+// number — a per-verse override (voicesByVerse) takes priority over the
+// stotram-wide one (voices); returns null if neither applies.
+function _hcjVoicesFor(cfg, verseNum) {
+  if (!cfg) return null;
+  if (cfg.voicesByVerse && cfg.voicesByVerse[verseNum]) return cfg.voicesByVerse[verseNum];
+  return cfg.voices || null;
+}
+
 function _hcjAudioPath(i) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
   var prefix = cfg ? cfg.prefix : "hcj";
-  if (cfg && cfg.voices && cfg.voices[_hcjVoice]) prefix = cfg.voices[_hcjVoice];
+  if (cfg) {
+    var _voiceOffset = cfg.labelOffset || 0;
+    var _voicesHere = _hcjVoicesFor(cfg, i + 1 - _voiceOffset);
+    if (_voicesHere && _voicesHere[_hcjVoice]) prefix = _voicesHere[_hcjVoice];
+  }
   // rsn's closing/colophon verse (the last block) isn't a numbered Shlok —
   // it uses a fixed "c" suffix instead of continuing the numeric sequence.
   if (cfg && cfg.closingSuffix && i === _verses.length - 1) {
@@ -15513,14 +15536,24 @@ function _hcjSetVoice(v, isUserAction) {
 
 // Apply a verse's default voice (defaultVoiceByVerse) unless the user has
 // already picked a voice manually this session — called whenever the
-// displayed verse changes, before any audio for that verse loads.
+// displayed verse changes, before any audio for that verse loads. Also
+// falls back to "default" if the currently selected voice isn't offered
+// at all for the new verse (e.g. leaving Shlok 150 after picking Harindu,
+// which only exists there) — an unavailable voice can't stay selected.
 function _hcjApplyDefaultVoiceForVerse(idx) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
-  if (!cfg || !cfg.voices || _hcjVoiceUserOverridden) return;
+  if (!cfg) return;
   var offset = cfg.labelOffset || 0;
   var verseNum = idx + 1 - offset;
+  var voicesHere = _hcjVoicesFor(cfg, verseNum);
+  if (!voicesHere) {
+    _hcjVoice = "default";
+    return;
+  }
+  if (!voicesHere[_hcjVoice]) _hcjVoice = "default";
+  if (_hcjVoiceUserOverridden) return;
   var wanted = (cfg.defaultVoiceByVerse && cfg.defaultVoiceByVerse[verseNum]) || "default";
-  if (_hcjVoice !== wanted) _hcjVoice = wanted;
+  if (voicesHere[wanted] && _hcjVoice !== wanted) _hcjVoice = wanted;
 }
 
 // Format seconds → m:ss
@@ -15889,15 +15922,18 @@ function _hcjRenderPlayer(idx) {
     row.appendChild(b);
   });
 
-  // Voice switch (only for stotrams with more than one reciter voice) —
-  // cycles through every key in cfg.voices, in insertion order. Button
-  // shows the label of whichever voice is CURRENTLY selected (not the one
-  // tapping would switch to), since with 3 voices "current" is clearer
-  // than "next".
+  // Voice switch — only shown when the verse currently being rendered has
+  // a voices map available (either stotram-wide, or a per-verse one like
+  // rsn's Shlok 150). Cycles through every key in that map, in insertion
+  // order. Button shows the label of whichever voice is CURRENTLY selected
+  // (not the one tapping would switch to), since with 3+ voices "current"
+  // is clearer than "next".
   var _voiceCfg = _AUDIO_STOTRAMS[_currentStotramId];
-  var _voiceLabels = { default: "Original", ankit: "Ankit", shuvam: "Shuvam" };
-  if (_voiceCfg && _voiceCfg.voices) {
-    var _voiceKeys = Object.keys(_voiceCfg.voices);
+  var _voiceLabels = { default: "Original", ankit: "Ankit", shuvam: "Shuvam", harindu: "Harindu" };
+  var _voiceOffsetHere = (_voiceCfg && _voiceCfg.labelOffset) || 0;
+  var _voicesHereForBtn = _voiceCfg ? _hcjVoicesFor(_voiceCfg, idx + 1 - _voiceOffsetHere) : null;
+  if (_voicesHereForBtn) {
+    var _voiceKeys = Object.keys(_voicesHereForBtn);
     var voiceBtn = document.createElement("button");
     voiceBtn.id = "hcj-voice-btn";
     voiceBtn.className =

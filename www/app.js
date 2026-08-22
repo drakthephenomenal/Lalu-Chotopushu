@@ -602,18 +602,27 @@ async function lcRegisterPush() {
     console.error("Push registration failed:", e);
   }
 
+  // A token alone isn't "enabled" — it only counts once it's actually
+  // saved server-side, since that's the only copy the broadcast function
+  // ever reads. Previously this returned true (and the UI showed
+  // "✅ Push notifications enabled") as soon as a token was obtained,
+  // even if the Firestore save below silently failed — so the toggle
+  // could show ON while the server had 0 registered devices.
+  let saved = false;
   if (token) {
     try {
-      localStorage.setItem("rjap_push_enabled", "1");
       await fbDb.collection("users").doc(fbUser.uid).collection("data").doc("main").set(
         { fcmToken: token, fcmTokenPlatform: _lcIsNative() ? "android" : "web", fcmTokenUpdatedAt: Date.now() },
         { merge: true },
       );
+      saved = true;
+      localStorage.setItem("rjap_push_enabled", "1");
     } catch (e) {
-      console.error("Saving FCM token failed:", e);
+      console.error("Saving FCM token failed — device will NOT receive broadcasts until this succeeds:", e);
+      try { localStorage.removeItem("rjap_push_enabled"); } catch (_) {}
     }
   }
-  return !!token;
+  return saved;
 }
 
 async function lcUnregisterPush() {
@@ -4065,6 +4074,7 @@ function tgs(k) {
         toast("⚠️ Sign in first to enable push notifications");
         return;
       }
+      try { localStorage.setItem("rjap_push_asked", "1"); } catch (_) {}
       lcRegisterPush().then((ok) => {
         if (ok) {
           if (tgPush) tgPush.classList.add("on");
@@ -4076,6 +4086,7 @@ function tgs(k) {
         }
       });
     } else {
+      try { localStorage.setItem("rjap_push_asked", "1"); } catch (_) {}
       lcUnregisterPush();
       if (tgPush) tgPush.classList.remove("on");
       if (statusEl) statusEl.textContent = "— Tap to receive announcements from Radha Naam Jap 🔔 (requires sign-in)";
@@ -8411,9 +8422,18 @@ function fbInit() {
       }
       // Re-register push (refresh the FCM token) if the user previously
       // opted in — no permission re-prompt since it was already granted.
+      // auto notification prompt — first-ever login/sync for a user who has
+      // never been asked triggers the SAME permission request the manual
+      // "pushNotifications" toggle uses (no need to find it in Settings).
+      // rjap_push_asked is set before the request resolves, so a grant AND
+      // a denial are both remembered — this only ever asks once — and the
+      // toggle's own UI (#tgPushNotifications / #pushNotificationsStatus)
+      // is kept in sync either way.
       if (user) {
         let pushOn = false;
+        let pushAsked = false;
         try { pushOn = localStorage.getItem("rjap_push_enabled") === "1"; } catch (_) {}
+        try { pushAsked = localStorage.getItem("rjap_push_asked") === "1"; } catch (_) {}
         const tgPushEl = document.getElementById("tgPushNotifications");
         const pushStatusEl = document.getElementById("pushNotificationsStatus");
         if (pushOn) {
@@ -8421,6 +8441,17 @@ function fbInit() {
             if (ok) {
               if (tgPushEl) tgPushEl.classList.add("on");
               if (pushStatusEl) pushStatusEl.textContent = "✅ Push notifications enabled";
+            }
+          });
+        } else if (!pushAsked) {
+          try { localStorage.setItem("rjap_push_asked", "1"); } catch (_) {}
+          lcRegisterPush().then((ok) => {
+            if (ok) {
+              if (tgPushEl) tgPushEl.classList.add("on");
+              if (pushStatusEl) pushStatusEl.textContent = "✅ Push notifications enabled";
+            } else {
+              if (tgPushEl) tgPushEl.classList.remove("on");
+              if (pushStatusEl) pushStatusEl.textContent = "— Tap toggle to enable push notifications 🔔";
             }
           });
         }

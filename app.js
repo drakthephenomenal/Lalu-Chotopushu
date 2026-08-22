@@ -602,18 +602,27 @@ async function lcRegisterPush() {
     console.error("Push registration failed:", e);
   }
 
+  // A token alone isn't "enabled" — it only counts once it's actually
+  // saved server-side, since that's the only copy the broadcast function
+  // ever reads. Previously this returned true (and the UI showed
+  // "✅ Push notifications enabled") as soon as a token was obtained,
+  // even if the Firestore save below silently failed — so the toggle
+  // could show ON while the server had 0 registered devices.
+  let saved = false;
   if (token) {
     try {
-      localStorage.setItem("rjap_push_enabled", "1");
       await fbDb.collection("users").doc(fbUser.uid).collection("data").doc("main").set(
         { fcmToken: token, fcmTokenPlatform: _lcIsNative() ? "android" : "web", fcmTokenUpdatedAt: Date.now() },
         { merge: true },
       );
+      saved = true;
+      localStorage.setItem("rjap_push_enabled", "1");
     } catch (e) {
-      console.error("Saving FCM token failed:", e);
+      console.error("Saving FCM token failed — device will NOT receive broadcasts until this succeeds:", e);
+      try { localStorage.removeItem("rjap_push_enabled"); } catch (_) {}
     }
   }
-  return !!token;
+  return saved;
 }
 
 async function lcUnregisterPush() {

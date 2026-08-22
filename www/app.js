@@ -15198,6 +15198,7 @@ function _renderVerse(idx, dir) {
       inner.scrollTop = 0;
     });
   }
+  _hcjApplyDefaultVoiceForVerse(idx);
   _hcjRenderPlayer(idx);
   _hcjOnVerseChange(idx);
 }
@@ -15445,44 +15446,81 @@ var _hcjPlayerCleanup = null; // cleanup fn for window listeners added in _hcjRe
 // A stotram with multiple reciter voices adds { voices: { key: filePrefix } }
 // — "default" is whichever voice should play first.
 var _AUDIO_STOTRAMS = {
-  hcj: { prefix: "hcj", voices: { default: "hcj", ankit: "hcj_ankit" } },
+  hcj: {
+    prefix: "hcj",
+    voices: { default: "hcj", ankit: "hcj_ankit", shuvam: "hcj_shuvam" },
+    // Verse 52 defaults to Shuvam Srivastav's recitation instead of the
+    // usual original — original and Ankit stay available via the voice
+    // button like any other verse. Keyed by displayed verse number.
+    defaultVoiceByVerse: { 52: "shuvam" }
+  },
   bss: { prefix: "bss" },
   dkc: { prefix: "dkc" },
-  // rsn has one extra, unlabeled preamble block (audio track 1) before the
-  // numbered Shlok 1 starts (audio track 2) — labelOffset shifts the
-  // seek-input's displayed/typed number back onto the real Shlok number,
-  // so typing "150" lands on Shlok 150 (array index 150) instead of
-  // Shlok 149 (what a naive index+1 mapping would give).
-  rsn: { prefix: "rsn", labelOffset: 1 }
+  // rsn has one extra, unlabeled preamble block (audio track 0) before the
+  // numbered Shlok 1 starts (audio track 1) — labelOffset shifts the
+  // seek-input's displayed/typed number and the actual audio file loaded
+  // so they always match the printed Shlok number.
+  rsn: { prefix: "rsn", labelOffset: 1, closingSuffix: "c" }
 };
 var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices
+// True once the user has manually picked a voice via the button this
+// session — once set, per-verse defaults (defaultVoiceByVerse) stop
+// auto-switching the voice out from under their choice.
+var _hcjVoiceUserOverridden = false;
 
 function _hcjAudioPath(i) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
   var prefix = cfg ? cfg.prefix : "hcj";
   if (cfg && cfg.voices && cfg.voices[_hcjVoice]) prefix = cfg.voices[_hcjVoice];
-  return "audio/" + prefix + "_" + (i + 1) + ".mp3";
+  // rsn's closing/colophon verse (the last block) isn't a numbered Shlok —
+  // it uses a fixed "c" suffix instead of continuing the numeric sequence.
+  if (cfg && cfg.closingSuffix && i === _verses.length - 1) {
+    return "audio/" + prefix + "_" + cfg.closingSuffix + ".mp3";
+  }
+  // Same labelOffset used by the seek input (see _hcjSeekLabel) — keeps the
+  // actual audio file loaded in sync with the displayed/typed verse number,
+  // so rsn_1.mp3 is Shlok 1's clip, not the unlabeled preamble's.
+  var offset = (cfg && cfg.labelOffset) || 0;
+  return "audio/" + prefix + "_" + (i + 1 - offset) + ".mp3";
 }
 
 // Convert an internal 0-based verse array index to the number shown/typed
 // in the seek input — matches the printed Shlok number for stotrams with
 // a labelOffset (see _AUDIO_STOTRAMS), and is a no-op (idx+1) otherwise.
+// Returns "" for a closing/colophon verse (closingSuffix), since it has no
+// real Shlok number to show.
 function _hcjSeekLabel(idx) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  if (cfg && cfg.closingSuffix && idx === _verses.length - 1) return "";
   var offset = (cfg && cfg.labelOffset) || 0;
   return idx + 1 - offset;
 }
 
 // Switch reciter voice for the current stotram. Reloads the clip for
 // whichever verse is currently loaded/playing so the new voice takes effect
-// immediately.
-function _hcjSetVoice(v) {
+// immediately. isUserAction=true (the voice button) marks this as an
+// explicit user choice, which then takes priority over defaultVoiceByVerse
+// for the rest of the session.
+function _hcjSetVoice(v, isUserAction) {
+  if (isUserAction) _hcjVoiceUserOverridden = true;
   if (_hcjVoice === v) return;
   _hcjVoice = v;
   var wasPlaying = _hcjPlaying;
   var idx = _hcjAudioIdx >= 0 ? _hcjAudioIdx : _verseIdx;
   _hcjStopAudio();
   if (wasPlaying) _hcjPlayVerse(idx);
+}
+
+// Apply a verse's default voice (defaultVoiceByVerse) unless the user has
+// already picked a voice manually this session — called whenever the
+// displayed verse changes, before any audio for that verse loads.
+function _hcjApplyDefaultVoiceForVerse(idx) {
+  var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  if (!cfg || !cfg.voices || _hcjVoiceUserOverridden) return;
+  var offset = cfg.labelOffset || 0;
+  var verseNum = idx + 1 - offset;
+  var wanted = (cfg.defaultVoiceByVerse && cfg.defaultVoiceByVerse[verseNum]) || "default";
+  if (_hcjVoice !== wanted) _hcjVoice = wanted;
 }
 
 // Format seconds → m:ss
@@ -15628,6 +15666,7 @@ function _hcjSetMode(mode) {
 // Called whenever the displayed verse changes — keep audio in sync.
 function _hcjOnVerseChange(idx) {
   if (!_AUDIO_STOTRAMS[_currentStotramId]) return;
+  _hcjApplyDefaultVoiceForVerse(idx);
   if (_hcjPlaying && _hcjAudioIdx !== idx) {
     _hcjPlayVerse(idx);
   }
@@ -15639,6 +15678,11 @@ function _hcjGoToVerse(n) {
   var offset = (cfg && cfg.labelOffset) || 0;
   var i = parseInt(n) - 1 + offset;
   if (isNaN(i) || i < 0 || i >= _verses.length) return;
+  // The closing/colophon verse (rsn's last block) has no Shlok number of
+  // its own — don't let typing a number land on it. Reach it only via the
+  // next arrow after the last numbered verse, same as the preamble is only
+  // reached by going back to the very start.
+  if (cfg && cfg.closingSuffix && i === _verses.length - 1) return;
   _verseIdx = i;
   _renderVerse(i, 0);
 }
@@ -15845,17 +15889,25 @@ function _hcjRenderPlayer(idx) {
     row.appendChild(b);
   });
 
-  // Voice switch (only for stotrams with more than one reciter voice)
+  // Voice switch (only for stotrams with more than one reciter voice) —
+  // cycles through every key in cfg.voices, in insertion order. Button
+  // shows the label of whichever voice is CURRENTLY selected (not the one
+  // tapping would switch to), since with 3 voices "current" is clearer
+  // than "next".
   var _voiceCfg = _AUDIO_STOTRAMS[_currentStotramId];
+  var _voiceLabels = { default: "Original", ankit: "Ankit", shuvam: "Shuvam" };
   if (_voiceCfg && _voiceCfg.voices) {
+    var _voiceKeys = Object.keys(_voiceCfg.voices);
     var voiceBtn = document.createElement("button");
     voiceBtn.id = "hcj-voice-btn";
     voiceBtn.className =
       "hcj-mini-btn hcj-mode-btn" + (_hcjVoice !== "default" ? " hcj-mode-active" : "");
-    voiceBtn.textContent = _hcjVoice === "default" ? "Ankit" : "Orig";
-    voiceBtn.title = "কণ্ঠ পরিবর্তন করুন";
+    voiceBtn.textContent = _voiceLabels[_hcjVoice] || _hcjVoice;
+    voiceBtn.title = "কণ্ঠ পরিবর্তন করুন (" + _voiceKeys.map(function (k) { return _voiceLabels[k] || k; }).join(" / ") + ")";
     voiceBtn.onclick = function () {
-      _hcjSetVoice(_hcjVoice === "default" ? "ankit" : "default");
+      var curIdx = _voiceKeys.indexOf(_hcjVoice);
+      var nextVoice = _voiceKeys[(curIdx + 1) % _voiceKeys.length];
+      _hcjSetVoice(nextVoice, true);
       _hcjRenderPlayer(_verseIdx);
     };
     row.appendChild(voiceBtn);
@@ -15866,8 +15918,13 @@ function _hcjRenderPlayer(idx) {
   si.id = "hcj-seek-input";
   si.type = "number";
   var _seekOffset = (_voiceCfg && _voiceCfg.labelOffset) || 0;
+  // If the last block is a closing/colophon verse with no Shlok number
+  // (closingSuffix set), exclude it from the typeable/displayed max —
+  // it's only reachable via the next arrow, not by typing a number.
+  var _seekClosingExcl = _voiceCfg && _voiceCfg.closingSuffix ? 1 : 0;
+  var _seekMax = _verses.length - _seekOffset - _seekClosingExcl;
   si.min = 1 - _seekOffset;
-  si.max = _verses.length - _seekOffset;
+  si.max = _seekMax;
   si.value = _hcjSeekLabel(idx);
   si.className = "hcj-seek-input";
   si.title = "পদ নং";
@@ -15881,7 +15938,7 @@ function _hcjRenderPlayer(idx) {
 
   var tot = document.createElement("span");
   tot.className = "hcj-seek-total";
-  tot.textContent = "/" + (_verses.length - _seekOffset);
+  tot.textContent = "/" + _seekMax;
   row.appendChild(tot);
 
   // Next arrow (right of player)

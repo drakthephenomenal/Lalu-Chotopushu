@@ -1911,6 +1911,20 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
   border-color: #ffb432;
   color: #ffe08a;
 }
+/* Voice button shows a word ("Original"/"Ankit"/"Shuvam"), not an icon —
+   override the fixed 30px circle every other .hcj-mini-btn uses (across
+   every responsive breakpoint below) with a pill that fits its text.
+   #hcj-voice-btn's ID specificity wins over the repeated .hcj-mini-btn
+   class rules regardless of media query, so this one rule is enough. */
+#hcj-voice-btn {
+  width: auto;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 15px;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
 .hcj-play-btn {
   background: linear-gradient(135deg, #e8952a, #c4601a);
   color: #fff;

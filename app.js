@@ -15019,7 +15019,7 @@ function showLyrics(id) {
     var card = document.querySelector(".lm-water-card");
     if (!card) return;
     var shiv = ["bss", "ans", "rds", "sps"];
-    var radha = ["hcj", "rks", "gms", "nkc", "vs2"];
+    var radha = ["hcj", "rsn", "rks", "gms", "nkc", "vs2"];
     var lmo = document.getElementById("lmo");
     // Remove any previous decoration elements
     ["lm-deco-top", "lm-deco-bottom"].forEach(function (cid) {
@@ -15447,7 +15447,8 @@ var _hcjPlayerCleanup = null; // cleanup fn for window listeners added in _hcjRe
 var _AUDIO_STOTRAMS = {
   hcj: { prefix: "hcj", voices: { default: "hcj", ankit: "hcj_ankit" } },
   bss: { prefix: "bss" },
-  dkc: { prefix: "dkc" }
+  dkc: { prefix: "dkc" },
+  rsn: { prefix: "rsn" }
 };
 var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices
 

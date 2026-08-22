@@ -15448,7 +15448,12 @@ var _AUDIO_STOTRAMS = {
   hcj: { prefix: "hcj", voices: { default: "hcj", ankit: "hcj_ankit" } },
   bss: { prefix: "bss" },
   dkc: { prefix: "dkc" },
-  rsn: { prefix: "rsn" }
+  // rsn has one extra, unlabeled preamble block (audio track 1) before the
+  // numbered Shlok 1 starts (audio track 2) — labelOffset shifts the
+  // seek-input's displayed/typed number back onto the real Shlok number,
+  // so typing "150" lands on Shlok 150 (array index 150) instead of
+  // Shlok 149 (what a naive index+1 mapping would give).
+  rsn: { prefix: "rsn", labelOffset: 1 }
 };
 var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices
 
@@ -15457,6 +15462,15 @@ function _hcjAudioPath(i) {
   var prefix = cfg ? cfg.prefix : "hcj";
   if (cfg && cfg.voices && cfg.voices[_hcjVoice]) prefix = cfg.voices[_hcjVoice];
   return "audio/" + prefix + "_" + (i + 1) + ".mp3";
+}
+
+// Convert an internal 0-based verse array index to the number shown/typed
+// in the seek input — matches the printed Shlok number for stotrams with
+// a labelOffset (see _AUDIO_STOTRAMS), and is a no-op (idx+1) otherwise.
+function _hcjSeekLabel(idx) {
+  var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  var offset = (cfg && cfg.labelOffset) || 0;
+  return idx + 1 - offset;
 }
 
 // Switch reciter voice for the current stotram. Reloads the clip for
@@ -15618,10 +15632,12 @@ function _hcjOnVerseChange(idx) {
     _hcjPlayVerse(idx);
   }
   var si = document.getElementById("hcj-seek-input");
-  if (si) si.value = idx + 1;
+  if (si) si.value = _hcjSeekLabel(idx);
 }
 function _hcjGoToVerse(n) {
-  var i = parseInt(n) - 1;
+  var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  var offset = (cfg && cfg.labelOffset) || 0;
+  var i = parseInt(n) - 1 + offset;
   if (isNaN(i) || i < 0 || i >= _verses.length) return;
   _verseIdx = i;
   _renderVerse(i, 0);
@@ -15849,9 +15865,10 @@ function _hcjRenderPlayer(idx) {
   var si = document.createElement("input");
   si.id = "hcj-seek-input";
   si.type = "number";
-  si.min = 1;
-  si.max = _verses.length;
-  si.value = idx + 1;
+  var _seekOffset = (_voiceCfg && _voiceCfg.labelOffset) || 0;
+  si.min = 1 - _seekOffset;
+  si.max = _verses.length - _seekOffset;
+  si.value = _hcjSeekLabel(idx);
   si.className = "hcj-seek-input";
   si.title = "পদ নং";
   si.onchange = function () {
@@ -15864,7 +15881,7 @@ function _hcjRenderPlayer(idx) {
 
   var tot = document.createElement("span");
   tot.className = "hcj-seek-total";
-  tot.textContent = "/" + _verses.length;
+  tot.textContent = "/" + (_verses.length - _seekOffset);
   row.appendChild(tot);
 
   // Next arrow (right of player)

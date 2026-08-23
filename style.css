@@ -3301,9 +3301,9 @@ body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !import
 
 
 /* ═══════════════════════════════════════════════════════
-   COMMUNITY nav tab update — people icon fits 8-tab nav
+   FAMILY nav tab update — people icon fits 8-tab nav
    ═══════════════════════════════════════════════════════ */
-/* Ensure community tab icon matches the others */
+/* Ensure family tab icon matches the others */
 #navLb svg{
   width:18px;height:18px;
 }

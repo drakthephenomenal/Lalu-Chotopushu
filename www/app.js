@@ -14868,7 +14868,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc"];
+const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms"];
 // ── IDs where prose sections need vertical-scroll mode
 const PROSE_IDS = ["nkc"];
 
@@ -15470,7 +15470,8 @@ var _AUDIO_STOTRAMS = {
     // rsn_150.mp3, not selected by default. Every other verse has no
     // voices entry at all, so the voice button stays hidden there.
     voicesByVerse: { 150: { default: "rsn", harindu: "rsn_harindu" } }
-  }
+  },
+  yms: { prefix: "yms" }
 };
 var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices
 // True once the user has manually picked a voice via the button this

@@ -15486,7 +15486,58 @@ var _AUDIO_STOTRAMS = {
   vs2: { prefix: "vs2" },
   rds: { prefix: "rds" },
   sps: { prefix: "sps" },
-  hnc: { prefix: "hnc", voices: { default: "hnc", alt: "hnc_alt" } }
+  hnc: {
+    prefix: "hnc",
+    voices: { default: "hnc", alt: "hnc_alt" },
+    // idx0 = opening doha ("0"), idx1..40 = chaupai 1..40,
+    // idx41 = closing doha ("40.c") — matches the 42 recorded
+    // clips exactly. Aarti/final line (idx 42+) have no entry:
+    // no audio, no numeric label, plain text pages.
+    verseMap: [
+      { track: 1, label: "0" },
+      { track: 2, label: "1" },
+      { track: 3, label: "2" },
+      { track: 4, label: "3" },
+      { track: 5, label: "4" },
+      { track: 6, label: "5" },
+      { track: 7, label: "6" },
+      { track: 8, label: "7" },
+      { track: 9, label: "8" },
+      { track: 10, label: "9" },
+      { track: 11, label: "10" },
+      { track: 12, label: "11" },
+      { track: 13, label: "12" },
+      { track: 14, label: "13" },
+      { track: 15, label: "14" },
+      { track: 16, label: "15" },
+      { track: 17, label: "16" },
+      { track: 18, label: "17" },
+      { track: 19, label: "18" },
+      { track: 20, label: "19" },
+      { track: 21, label: "20" },
+      { track: 22, label: "21" },
+      { track: 23, label: "22" },
+      { track: 24, label: "23" },
+      { track: 25, label: "24" },
+      { track: 26, label: "25" },
+      { track: 27, label: "26" },
+      { track: 28, label: "27" },
+      { track: 29, label: "28" },
+      { track: 30, label: "29" },
+      { track: 31, label: "30" },
+      { track: 32, label: "31" },
+      { track: 33, label: "32" },
+      { track: 34, label: "33" },
+      { track: 35, label: "34" },
+      { track: 36, label: "35" },
+      { track: 37, label: "36" },
+      { track: 38, label: "37" },
+      { track: 39, label: "38" },
+      { track: 40, label: "39" },
+      { track: 41, label: "40" },
+      { track: 42, label: "40.c" }
+    ]
+  }
 };
 var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices
 // True once the user has manually picked a voice via the button this
@@ -15509,6 +15560,7 @@ function _hcjVoicesFor(cfg, verseNum) {
 // slokaRange defined.
 function _hcjHasAudioForIdx(cfg, i) {
   if (!cfg) return false;
+  if (cfg.verseMap) return !!cfg.verseMap[i];
   if (!cfg.slokaRange) return true;
   return i >= cfg.slokaRange[0] && i <= cfg.slokaRange[1];
 }
@@ -15516,6 +15568,13 @@ function _hcjHasAudioForIdx(cfg, i) {
 function _hcjAudioPath(i) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
   var prefix = cfg ? cfg.prefix : "hcj";
+  if (cfg && cfg.verseMap) {
+    var _vm = cfg.verseMap[i];
+    if (!_vm) return "";
+    var _voicesHereVM = _hcjVoicesFor(cfg, _vm.track);
+    var _prefixVM = (_voicesHereVM && _voicesHereVM[_hcjVoice]) || prefix;
+    return "audio/" + _prefixVM + "_" + _vm.track + ".mp3";
+  }
   if (cfg) {
     var _voiceOffset = cfg.labelOffset || 0;
     var _voicesHere = _hcjVoicesFor(cfg, i + 1 - _voiceOffset);
@@ -15545,6 +15604,10 @@ function _hcjAudioPath(i) {
 // outside a slokaRange (no real Shlok number to show there either).
 function _hcjSeekLabel(idx) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  if (cfg && cfg.verseMap) {
+    var _vm = cfg.verseMap[idx];
+    return _vm ? _vm.label : "";
+  }
   if (cfg && cfg.closingSuffix && idx === _verses.length - 1) return "";
   if (cfg && cfg.slokaRange) {
     if (!_hcjHasAudioForIdx(cfg, idx)) return "";
@@ -15752,7 +15815,11 @@ function _hcjOnVerseChange(idx) {
 function _hcjGoToVerse(n) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
   var i;
-  if (cfg && cfg.slokaRange) {
+  if (cfg && cfg.verseMap) {
+    var _target = String(n).trim();
+    i = cfg.verseMap.findIndex(function (e) { return e && e.label === _target; });
+    if (i === -1) return;
+  } else if (cfg && cfg.slokaRange) {
     i = cfg.slokaRange[0] + (parseInt(n) - 1);
     if (isNaN(i) || i < cfg.slokaRange[0] || i > cfg.slokaRange[1]) return;
   } else {
@@ -16001,7 +16068,7 @@ function _hcjRenderPlayer(idx) {
   // Verse seek (compact)
   var si = document.createElement("input");
   si.id = "hcj-seek-input";
-  si.type = "number";
+  si.type = _voiceCfg && _voiceCfg.verseMap ? "text" : "number";
   var _seekOffset = (_voiceCfg && _voiceCfg.labelOffset) || 0;
   // If the last block is a closing/colophon verse with no Shlok number
   // (closingSuffix set), exclude it from the typeable/displayed max —
@@ -16009,11 +16076,23 @@ function _hcjRenderPlayer(idx) {
   var _seekClosingExcl = _voiceCfg && _voiceCfg.closingSuffix ? 1 : 0;
   // slokaRange stotrams (e.g. nkc) number 1..N over just the sloka portion,
   // not the whole _verses array (which also includes narrative prose).
+  // verseMap stotrams (e.g. hnc) have non-numeric labels ("40.c") — max
+  // is the highest purely-numeric label (the chaupai count).
   var _seekMax = _voiceCfg && _voiceCfg.slokaRange
     ? _voiceCfg.slokaRange[1] - _voiceCfg.slokaRange[0] + 1
+    : _voiceCfg && _voiceCfg.verseMap
+    ? _voiceCfg.verseMap.reduce(function (m, e) {
+        var num = e && parseInt(e.label, 10);
+        return !isNaN(num) && num > m ? num : m;
+      }, 0)
     : _verses.length - _seekOffset - _seekClosingExcl;
-  si.min = 1 - _seekOffset;
-  si.max = _seekMax;
+  if (_voiceCfg && _voiceCfg.verseMap) {
+    si.removeAttribute("min");
+    si.removeAttribute("max");
+  } else {
+    si.min = 1 - _seekOffset;
+    si.max = _seekMax;
+  }
   si.value = _hcjSeekLabel(idx);
   si.className = "hcj-seek-input";
   si.title = "পদ নং";

@@ -8597,7 +8597,7 @@ function fbInit() {
           // Direct cloud pull — overwrites local cache with authoritative Firebase data
           await fbAutoSync();
           // presence heartbeat rebuild + version stamp — fires on every
-          // login/refresh, independent of Community Board opt-in, so the
+          // login/refresh, independent of Family Board opt-in, so the
           // developer can see who's active (and on what version) in Ghost
           // Mode even for users who've opted out of the leaderboard.
           await _rjapDetectAppVersion();
@@ -10099,7 +10099,7 @@ async function fbPushFull() {
       }
     }
     // ── Push leaderboard entry if opted in ──
-    // Only announce this device as "present" on the community board AFTER
+    // Only announce this device as "present" on the Family Board AFTER
     // the authoritative history doc above was actually confirmed — a
     // separate, smaller leaderboard write must never succeed on its own
     // and imply the full sync did too. That mismatch (leaderboard fine,
@@ -12530,7 +12530,7 @@ async function _fetchAllKnownUsers() {
 
   try {
     // 3. presence collection as third ghost-list source — written by every
-    // signed-in user's heartbeat, INDEPENDENT of Community Board opt-in.
+    // signed-in user's heartbeat, INDEPENDENT of Family Board opt-in.
     // Fixes users who've opted out of the leaderboard (or never opted in)
     // and never submitted feedback becoming completely invisible to Ghost
     // Mode, which is a support tool and should find any real user.
@@ -17792,6 +17792,29 @@ function _fmtDateDMY(dateStr) {
 window._lbPeriod = 'today';
 window._lbUnsubscribe = null;
 
+// Developer-only "Ghost Leaderboard": mirrors Ghost Mode's dev-only
+// visibility. When on, the optIn filter is dropped so opted-out
+// devotees still show (faded) with a live presence dot. Enforcement is
+// server-side via the firestore.rules read rule on leaderboard/{userId}.
+window._lbGhostMode = false;
+
+function lbToggleGhostView() {
+  if (typeof isDeveloper !== 'function' || !isDeveloper()) return;
+  window._lbGhostMode = !window._lbGhostMode;
+  const tg = document.getElementById('tgLbGhost');
+  if (tg) tg.classList.toggle('on', window._lbGhostMode);
+  loadLeaderboard(window._lbPeriod || 'today');
+}
+
+function _lbSyncGhostToggleVisibility() {
+  const tg = document.getElementById('tgLbGhost');
+  if (!tg) return;
+  const dev = typeof isDeveloper === 'function' && isDeveloper();
+  tg.style.display = dev ? 'block' : 'none';
+  if (!dev) window._lbGhostMode = false;
+  tg.classList.toggle('on', !!window._lbGhostMode);
+}
+
 /** Get the date key prefix for the current period filter */
 function _lbGetPeriodKeys(period) {
   const now = new Date(Date.now() + (window._serverTimeOffsetMs || 0));
@@ -17895,11 +17918,16 @@ async function loadLeaderboard(period) {
   // Populate settings UI
   populateLbSettingsUI();
 
+  _lbSyncGhostToggleVisibility();
+
   try {
-    // Real-time snapshot of leaderboard collection
-    window._lbUnsubscribe = fbDb.collection('leaderboard')
-      .where('optIn', '==', true)
-      .limit(100)
+    // Real-time snapshot of leaderboard collection. Developer accounts
+    // with the Ghost Leaderboard toggle on drop the optIn filter, so
+    // devotees who opted out still appear (faded, see renderLeaderboard).
+    const _lbUseGhost = window._lbGhostMode && typeof isDeveloper === 'function' && isDeveloper();
+    let _lbQuery = fbDb.collection('leaderboard');
+    _lbQuery = _lbUseGhost ? _lbQuery.limit(200) : _lbQuery.where('optIn', '==', true).limit(100);
+    window._lbUnsubscribe = _lbQuery
       .onSnapshot(function(snap) {
         const docs = [];
         snap.forEach(function(doc) {
@@ -18066,10 +18094,11 @@ function renderLeaderboard(docs, period) {
     const rank = idx + 1;
         const isMe = (d._uid === myUid);
     const isTop3 = rank <= 3;
+    const isOptedOut = d.optIn !== true; // only ever true in Ghost Leaderboard view
     const medal = rank <= 3 ? medals[rank-1] : null;
     const badgeClass = rank === 1 ? 'lb-badge-1' : rank === 2 ? 'lb-badge-2' : rank === 3 ? 'lb-badge-3' : 'lb-badge-n';
     const badgeContent = medal ? medal : rank;
-    const rowClass = 'lb-row' + (isMe ? ' lb-row-me' : '') + (isTop3 ? ' lb-row-top3' : '');
+    const rowClass = 'lb-row' + (isMe ? ' lb-row-me' : '') + (isTop3 ? ' lb-row-top3' : '') + (isOptedOut ? ' lb-row-ghost' : '');
     const nameClass = 'lb-name' + (isMe ? ' lb-name-me' : '');
     const meMark = isMe ? ' ✦ You' : '';
     
@@ -18197,13 +18226,13 @@ async function pushLeaderboard() {
   // until App._cloudHydrated is confirmed true; callers that fire on a
   // fixed timer should await _waitForCloudHydration() first (see below).
   if (!App._cloudHydrated) return;
-  if (!App.S.lbOptIn) {
-    // If opted out, remove the entry
-    try {
-      await fbDb.collection('leaderboard').doc(fbUser.uid).delete();
-    } catch(_) {}
-    return;
-  }
+  // NOTE: previously deleted the leaderboard doc entirely on opt-out.
+  // Now we keep pushing full data regardless of opt-in state, just
+  // flipping the optIn flag below — the public query stays filtered to
+  // optIn:true so opted-out devotees still vanish from the normal Family
+  // view, but their data survives for the developer-only Ghost
+  // Leaderboard toggle. firestore.rules restricts reads of optIn:false
+  // docs to the owner/developers.
 
   // Use a live date key when publishing leaderboard data; App.S.tk can be
   // stale on devices left open across midnight or restored from cache.
@@ -18277,7 +18306,7 @@ async function pushLeaderboard() {
     totalJap,
     totalMalas: Math.floor(totalJap / (App.S.ms || 108)),
     streak,
-    optIn: true,
+    optIn: !!App.S.lbOptIn,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     todayKey: liveTk,
     todayJap,

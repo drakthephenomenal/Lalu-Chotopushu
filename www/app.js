@@ -15471,7 +15471,22 @@ var _AUDIO_STOTRAMS = {
     // voices entry at all, so the voice button stays hidden there.
     voicesByVerse: { 150: { default: "rsn", harindu: "rsn_harindu" } }
   },
-  yms: { prefix: "yms" }
+  yms: { prefix: "yms" },
+  hmg: { prefix: "hmg" },
+  rks: { prefix: "rks" },
+  // 2 versions — "alt" is a placeholder key/filename until you tell me what
+  // to actually call the second recitation (like Shuvam/Harindu elsewhere).
+  gms: { prefix: "gms", voices: { default: "gms", alt: "gms_alt" } },
+  // nkc's opening story (11 blocks) and closing story (4 blocks) are prose
+  // with no audio — only the 22 verses in between (with translations) are
+  // numbered/playable. slokaRange is 0-based, inclusive, in _verses index
+  // terms (after the title itself is auto-stripped): the 22 verses sit at
+  // indices 11–32 — everything outside that range has no player at all.
+  nkc: { prefix: "nkc", slokaRange: [11, 32] },
+  vs2: { prefix: "vs2" },
+  rds: { prefix: "rds" },
+  sps: { prefix: "sps" },
+  hnc: { prefix: "hnc", voices: { default: "hnc", alt: "hnc_alt" } }
 };
 var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices
 // True once the user has manually picked a voice via the button this
@@ -15488,6 +15503,16 @@ function _hcjVoicesFor(cfg, verseNum) {
   return cfg.voices || null;
 }
 
+// True if verse array-index i has audio at all — false outside a
+// stotram's slokaRange (narrative prose with no translation/audio, e.g.
+// nkc's opening and closing story), true everywhere for stotrams with no
+// slokaRange defined.
+function _hcjHasAudioForIdx(cfg, i) {
+  if (!cfg) return false;
+  if (!cfg.slokaRange) return true;
+  return i >= cfg.slokaRange[0] && i <= cfg.slokaRange[1];
+}
+
 function _hcjAudioPath(i) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
   var prefix = cfg ? cfg.prefix : "hcj";
@@ -15501,6 +15526,11 @@ function _hcjAudioPath(i) {
   if (cfg && cfg.closingSuffix && i === _verses.length - 1) {
     return "audio/" + prefix + "_" + cfg.closingSuffix + ".mp3";
   }
+  // slokaRange stotrams (e.g. nkc) number audio from 1 at the start of the
+  // range, not from the verse's absolute array position.
+  if (cfg && cfg.slokaRange) {
+    return "audio/" + prefix + "_" + (i - cfg.slokaRange[0] + 1) + ".mp3";
+  }
   // Same labelOffset used by the seek input (see _hcjSeekLabel) — keeps the
   // actual audio file loaded in sync with the displayed/typed verse number,
   // so rsn_1.mp3 is Shlok 1's clip, not the unlabeled preamble's.
@@ -15511,11 +15541,15 @@ function _hcjAudioPath(i) {
 // Convert an internal 0-based verse array index to the number shown/typed
 // in the seek input — matches the printed Shlok number for stotrams with
 // a labelOffset (see _AUDIO_STOTRAMS), and is a no-op (idx+1) otherwise.
-// Returns "" for a closing/colophon verse (closingSuffix), since it has no
-// real Shlok number to show.
+// Returns "" for a closing/colophon verse (closingSuffix) or any verse
+// outside a slokaRange (no real Shlok number to show there either).
 function _hcjSeekLabel(idx) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
   if (cfg && cfg.closingSuffix && idx === _verses.length - 1) return "";
+  if (cfg && cfg.slokaRange) {
+    if (!_hcjHasAudioForIdx(cfg, idx)) return "";
+    return idx - cfg.slokaRange[0] + 1;
+  }
   var offset = (cfg && cfg.labelOffset) || 0;
   return idx + 1 - offset;
 }
@@ -15699,24 +15733,38 @@ function _hcjSetMode(mode) {
 }
 // Called whenever the displayed verse changes — keep audio in sync.
 function _hcjOnVerseChange(idx) {
-  if (!_AUDIO_STOTRAMS[_currentStotramId]) return;
+  var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  if (!cfg) return;
   _hcjApplyDefaultVoiceForVerse(idx);
   if (_hcjPlaying && _hcjAudioIdx !== idx) {
-    _hcjPlayVerse(idx);
+    // Don't try to auto-continue playback into a verse with no audio at
+    // all (e.g. swiping past the last sloka into nkc's closing narrative)
+    // — just stop instead of attempting to load a nonexistent file.
+    if (_hcjHasAudioForIdx(cfg, idx)) {
+      _hcjPlayVerse(idx);
+    } else {
+      _hcjStopAudio();
+    }
   }
   var si = document.getElementById("hcj-seek-input");
   if (si) si.value = _hcjSeekLabel(idx);
 }
 function _hcjGoToVerse(n) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
-  var offset = (cfg && cfg.labelOffset) || 0;
-  var i = parseInt(n) - 1 + offset;
-  if (isNaN(i) || i < 0 || i >= _verses.length) return;
-  // The closing/colophon verse (rsn's last block) has no Shlok number of
-  // its own — don't let typing a number land on it. Reach it only via the
-  // next arrow after the last numbered verse, same as the preamble is only
-  // reached by going back to the very start.
-  if (cfg && cfg.closingSuffix && i === _verses.length - 1) return;
+  var i;
+  if (cfg && cfg.slokaRange) {
+    i = cfg.slokaRange[0] + (parseInt(n) - 1);
+    if (isNaN(i) || i < cfg.slokaRange[0] || i > cfg.slokaRange[1]) return;
+  } else {
+    var offset = (cfg && cfg.labelOffset) || 0;
+    i = parseInt(n) - 1 + offset;
+    if (isNaN(i) || i < 0 || i >= _verses.length) return;
+    // The closing/colophon verse (rsn's last block) has no Shlok number of
+    // its own — don't let typing a number land on it. Reach it only via the
+    // next arrow after the last numbered verse, same as the preamble is
+    // only reached by going back to the very start.
+    if (cfg && cfg.closingSuffix && i === _verses.length - 1) return;
+  }
   _verseIdx = i;
   _renderVerse(i, 0);
 }
@@ -15742,7 +15790,7 @@ function _hcjRenderPlayer(idx) {
     _hcjPlayerCleanup = null;
   }
   var navBar = document.getElementById("lmNav");
-  var _hasAudioPlayer = !!_AUDIO_STOTRAMS[_currentStotramId];
+  var _hasAudioPlayer = _hcjHasAudioForIdx(_AUDIO_STOTRAMS[_currentStotramId], idx);
   if (!_hasAudioPlayer) {
     if (navBar) navBar.style.display = "";
     var _ci = document.querySelector("#lmo .lm-card-inner");
@@ -15930,7 +15978,7 @@ function _hcjRenderPlayer(idx) {
   // (not the one tapping would switch to), since with 3+ voices "current"
   // is clearer than "next".
   var _voiceCfg = _AUDIO_STOTRAMS[_currentStotramId];
-  var _voiceLabels = { default: "Original", ankit: "Ankit", shuvam: "Shuvam", harindu: "Harindu" };
+  var _voiceLabels = { default: "Original", ankit: "Ankit", shuvam: "Shuvam", harindu: "Harindu", alt: "Version 2" };
   var _voiceOffsetHere = (_voiceCfg && _voiceCfg.labelOffset) || 0;
   var _voicesHereForBtn = _voiceCfg ? _hcjVoicesFor(_voiceCfg, idx + 1 - _voiceOffsetHere) : null;
   if (_voicesHereForBtn) {
@@ -15959,7 +16007,11 @@ function _hcjRenderPlayer(idx) {
   // (closingSuffix set), exclude it from the typeable/displayed max —
   // it's only reachable via the next arrow, not by typing a number.
   var _seekClosingExcl = _voiceCfg && _voiceCfg.closingSuffix ? 1 : 0;
-  var _seekMax = _verses.length - _seekOffset - _seekClosingExcl;
+  // slokaRange stotrams (e.g. nkc) number 1..N over just the sloka portion,
+  // not the whole _verses array (which also includes narrative prose).
+  var _seekMax = _voiceCfg && _voiceCfg.slokaRange
+    ? _voiceCfg.slokaRange[1] - _voiceCfg.slokaRange[0] + 1
+    : _verses.length - _seekOffset - _seekClosingExcl;
   si.min = 1 - _seekOffset;
   si.max = _seekMax;
   si.value = _hcjSeekLabel(idx);

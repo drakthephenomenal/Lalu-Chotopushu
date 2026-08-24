@@ -1,5 +1,12 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v196
+// Radha Naam Jap — Service Worker  v199
+// v197: bumped cache to force-invalidate stale app.js/index.html — ships
+// the leaderboard/Ghost Mode fixes (unconditional presence + leaderboard
+// doc creation on login, hardened login chain, users/*/data collection-
+// group scan in Ghost Mode search, one-click leaderboard backfill). Web/
+// PWA clients that were still running a cached pre-fix app.js — and could
+// therefore still be hitting old opt-out-deletes-the-doc behavior — now
+// pick up the current build on next load.
 // v196: bumped cache to force-invalidate stale app.js/index.html — Update
 // App now shows an "Open permission settings →" link that jumps straight
 // to Android's install-permission screen for this app (via a new method
@@ -185,7 +192,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v196';
+const CACHE = 'radha-jap-v197';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

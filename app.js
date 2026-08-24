@@ -6443,7 +6443,11 @@ function uStats() {
     }
     const _effLiveExtra = _effLiveMain + _effLive28;
     const japWkSec = wk.reduce(
-      (s, k) => s + (_rTH[k]||0) + (_rvTH[k]||0) + (App.S.timerHistoryHK||{})[k]||0 + (App.S.timerHistoryKV||{})[k]||0 + (App.S.timerHistorySS||{})[k]||0 + (_n28TH[k]||0),
+      (s, k) => s + (_rTH[k]||0) + (_rvTH[k]||0)
+        + ((App.S.timerHistoryHK||{})[k]||0)
+        + ((App.S.timerHistoryKV||{})[k]||0)
+        + ((App.S.timerHistorySS||{})[k]||0)
+        + (_n28TH[k]||0),
       0,
     ) + _effLiveExtra;
     const scrWkSec = wk.reduce((s, k) => s + (scrHist[k] || 0), 0);
@@ -6453,7 +6457,11 @@ function uStats() {
       ...Object.keys(App.S.timerHistorySS || {}), ...Object.keys(_n28TH),
     ]);
     const japMoSec = [..._allTimerKeys].filter((k) => k.startsWith(mp)).reduce(
-      (s, k) => s + (_rTH[k]||0) + (_rvTH[k]||0) + (App.S.timerHistoryHK||{})[k]||0 + (App.S.timerHistoryKV||{})[k]||0 + (App.S.timerHistorySS||{})[k]||0 + (_n28TH[k]||0),
+      (s, k) => s + (_rTH[k]||0) + (_rvTH[k]||0)
+        + ((App.S.timerHistoryHK||{})[k]||0)
+        + ((App.S.timerHistoryKV||{})[k]||0)
+        + ((App.S.timerHistorySS||{})[k]||0)
+        + (_n28TH[k]||0),
       0,
     ) + _effLiveExtra;
     const scrMoSec = Object.entries(scrHist).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0);

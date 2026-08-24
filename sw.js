@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v197
+// Radha Naam Jap — Service Worker  v198
 // v196: bumped cache to force-invalidate stale app.js/index.html — Update
 // App now shows an "Open permission settings →" link that jumps straight
 // to Android's install-permission screen for this app (via a new method

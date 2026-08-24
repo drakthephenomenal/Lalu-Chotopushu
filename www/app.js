@@ -1467,8 +1467,13 @@ const App = {
     this.timerInterval = setInterval(() => {
       this.timerSeconds++;
       // Tick the per-mala counter in lockstep — but only while a mala is actually
-      // in progress (start anchor is set). Never advances between malas.
-      if (this._currentMalaStartTs !== null) this.currentMalaSeconds++;
+      // in progress (start anchor is set) AND main Jap is the mode actually
+      // being tapped right now. If a main-jap mala was left incomplete and the
+      // devotee switched over to actively tap 28 Names, this must NOT keep
+      // ticking in the background — otherwise it silently overlaps with the
+      // 28 Names live delta and double-counts the same real seconds in
+      // Today's Jap Time (see getTotalJapSecondsToday()).
+      if (this._currentMalaStartTs !== null && this._activeJapMode !== "n28") this.currentMalaSeconds++;
       // Persist so per-mala duration survives app close / reopen
       try {
         localStorage.setItem("rjap_timerSeconds", String(this.timerSeconds));
@@ -1596,10 +1601,13 @@ const App = {
     // the sum of COMPLETED mala durations (kept in sync by syncTimerFromMalaLog),
     // so adding currentMalaSeconds gives today's true running total without
     // double-counting completed malas.
-    const liveJap = this.currentMalaSeconds || 0;
+    // Only count this live delta while main Jap is the actively-tapped mode —
+    // otherwise (e.g. a main mala left incomplete while actively tapping 28
+    // Names) it would double-count the same real seconds alongside live28.
+    const liveJap = this._activeJapMode === "n28" ? 0 : (this.currentMalaSeconds || 0);
     // live delta from the 28-Names timer (elapsed since session start − already flushed)
     let live28 = 0;
-    if (this._n28TotalStart && !this._n28Paused) {
+    if (this._activeJapMode !== "main" && this._n28TotalStart && !this._n28Paused) {
       const elapsed = Math.floor((Date.now() - this._n28TotalStart) / 1000);
       live28 = Math.max(0, elapsed - (this._n28SavedSecs || 0));
     }
@@ -2082,6 +2090,8 @@ const App = {
   // ── Main tap ──
   ht(e) {
     if (isGhostMode()) return; // ghost mode: read-only, no jap
+    // Mark main Jap as the actively-tapped mode (see _activeJapMode below).
+    this._activeJapMode = "main";
     // Suppress synthesized mousedown that follows a touchstart on the same tap
     if (e) {
       try { e.preventDefault(); } catch (_) {}
@@ -2408,6 +2418,8 @@ const App = {
       if (e) { try { e.preventDefault(); } catch (_) {} }
       return;
     }
+    // Mark 28 Names as the actively-tapped mode (see _activeJapMode below).
+    this._activeJapMode = "n28";
     if (e) {
       try { e.preventDefault(); } catch (_) {}
       const now = Date.now();
@@ -11443,9 +11455,16 @@ function cycleDone28() {
   App._n28PausedTotalSec = 0;
   const ce = document.getElementById("n28CycleTimer"); const _ceVis = document.getElementById("n28CycleTimerDisplay");
   if (ce) ce.textContent = "0:00"; if (_ceVis) _ceVis.textContent = "0:00";
-  // Show unified Jap timer (same as main Jap tab)
-  const teDisp = document.getElementById("n28TotalTimer");
-  if (teDisp) teDisp.textContent = App.fmtTime(App.timerSeconds);
+  // Show unified "Today's Jap Time" (same combined total as main Jap tab).
+  // NOTE: this used to write App.timerSeconds (the Session timer, active
+  // chanting time since app open) directly into the Today's-Jap-Time
+  // element. That's a different, much smaller number than the true
+  // cumulative total-for-today across all modes, so on every cycle
+  // completion the 28 Names "Actual Jap Today" reading would visibly snap
+  // to the wrong value for a moment. Route through updateTimerToday() so
+  // it gets the correct combined figure (and stays in sync with the main
+  // Jap tab), exactly like every other place that updates this display.
+  App.updateTimerToday();
   App._upd28PauseBtn();
 
   const zone = document.getElementById("tz28");

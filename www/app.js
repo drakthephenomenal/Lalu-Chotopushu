@@ -2125,6 +2125,21 @@ const App = {
     // Haptic heartbeat — 10ms bead feeling
     this.vib([10]);
     this.tapTimer();
+    // ── Keep the 28 Names timer's idle-window alive too ─────────────────
+    // h28() already extends the main Session timer on every 28-Names tap
+    // (via tapTimer()), so switching from 28 Names → main Jap and tapping
+    // here never lets the main timer auto-pause early. This is the mirror
+    // for the other direction: if a 28 Names session is already running
+    // (not paused), a main-Jap tap re-arms its 10s auto-pause and refreshes
+    // its "last real tap" cutoff, so switching from main Jap → 28 Names
+    // and tapping here doesn't let the 28 Names timer pause prematurely
+    // either. It does NOT start a fresh 28 session from main taps — only
+    // keeps an already-running one alive — so main-Jap time is never
+    // mis-credited into timer28History.
+    if (this._n28TotalStart && !this._n28Paused) {
+      this._n28LastTapTs = Date.now();
+      this._arm28AutoPause();
+    }
     if (isRV) {
       spawnRV(e, document.getElementById("tz"));
     } else if (isHK) {
@@ -18217,11 +18232,8 @@ async function loadLeaderboard(period) {
     // with the Ghost Leaderboard toggle on drop the optIn filter, so
     // devotees who opted out still appear (faded, see renderLeaderboard).
     const _lbUseGhost = window._lbGhostMode && typeof isDeveloper === 'function' && isDeveloper();
-    // Ghost mode: fetch the WHOLE collection (no optIn filter, no
-    // meaningful cap) so nobody who has ever pushed a leaderboard doc is
-    // silently excluded. 5000 is just a safety ceiling, not a real cap.
     let _lbQuery = fbDb.collection('leaderboard');
-    _lbQuery = _lbUseGhost ? _lbQuery.limit(5000) : _lbQuery.where('optIn', '==', true).limit(100);
+    _lbQuery = _lbUseGhost ? _lbQuery.limit(200) : _lbQuery.where('optIn', '==', true).limit(100);
     window._lbUnsubscribe = _lbQuery
       .onSnapshot(function(snap) {
         const docs = [];
@@ -18365,12 +18377,7 @@ function renderLeaderboard(docs, period) {
   const filtered = scored
     .filter(function(d) { return _lbUseGhostRender || d.score > 0; })
     .sort(function(a, b) { return b.score - a.score; })
-    // Ghost mode: show every fetched user (including 0-score-this-period
-    // ones), not just the top 50 by the currently selected period's score —
-    // otherwise devotees who were only active on other days/periods get
-    // crowded out by everyone else's zero scores and cut off. Normal
-    // (non-ghost) view keeps the top-50 cap.
-    .slice(0, _lbUseGhostRender ? scored.length : 50);
+    .slice(0, 50);
 
   if (!filtered.length) {
     list.innerHTML = '';

@@ -18342,9 +18342,12 @@ function renderLeaderboard(docs, period) {
     return { ...d, score, timeScore };
   });
 
-  // Sort descending, filter out zero scores
+  // Sort descending, filter out zero scores — but in Ghost Leaderboard view
+  // (developer-only) keep everyone regardless of score so all family
+  // members show up ranked by position for every period, not just "today".
+  const _lbUseGhostRender = window._lbGhostMode && typeof isDeveloper === 'function' && isDeveloper();
   const filtered = scored
-    .filter(function(d) { return d.score > 0; })
+    .filter(function(d) { return _lbUseGhostRender || d.score > 0; })
     .sort(function(a, b) { return b.score - a.score; })
     .slice(0, 50);
 

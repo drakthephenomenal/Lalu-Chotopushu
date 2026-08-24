@@ -18378,7 +18378,15 @@ async function pushLeaderboard() {
     n28: (App.S.timer28History || {})[liveTk] || 0,
   };
   const todayJap = todayBreakdown.r + todayBreakdown.rv + todayBreakdown.kv + todayBreakdown.ss + todayBreakdown.hk + todayBreakdown.n28;
-  const todayTimerSeconds = todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kv + todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.n28;
+  // Use the SAME live-inclusive total the on-screen "Today's Jap Time" uses
+  // (App.getTotalJapSecondsToday), not just the sum of already-flushed
+  // history. timerHistory*/timer28History only update on pause/mala-complete/
+  // idle-timeout, so summing them alone under-reports whatever time is
+  // currently running but not yet flushed — which is exactly why the
+  // leaderboard's time used to lag behind the real total shown on-device.
+  const todayTimerSeconds = (typeof App.getTotalJapSecondsToday === 'function')
+    ? App.getTotalJapSecondsToday()
+    : todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kv + todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.n28;
 
   const payload = {
     displayName,

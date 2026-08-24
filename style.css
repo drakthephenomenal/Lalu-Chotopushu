@@ -89,12 +89,12 @@ html:has(#vj.active),body:has(#vj.active){overflow:hidden;height:100vh;height:10
 .rh-lbl{font-size:8px;color:var(--gold);opacity:0.8;white-space:nowrap;}
 .rh-val{font-family:'EB Garamond',serif;font-size:13px;color:var(--a2);letter-spacing:0.5px;filter:drop-shadow(0 0 6px rgba(109,184,255,0.4));line-height:1.15;white-space:nowrap;}
 
-.timer-row{display:flex;gap:8px;padding:3px 10px;flex-shrink:0;}
-.timer-box{flex:1;background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:10px;padding:3px 6px;display:flex;flex-direction:column;align-items:center;min-width:0;}
-.timer-box-lbl{font-size:8px;color:var(--td);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:1px;}
+.timer-row{display:flex;gap:6px;padding:3px 10px;flex-shrink:0;}
+.timer-box{flex:1;background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:10px;padding:3px 4px;display:flex;flex-direction:column;align-items:center;min-width:0;}
+.timer-box-lbl{font-size:7.5px;color:var(--td);letter-spacing:1px;text-transform:uppercase;font-weight:700;margin-bottom:1px;white-space:nowrap;}
 .timer-box-main{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;}
 .timer-box-main--solo{justify-content:center;}
-.timer-display{font-family:'EB Garamond',serif;font-size:18px;color:var(--a2);
+.timer-display{font-family:'EB Garamond',serif;font-size:16px;color:var(--a2);
   letter-spacing:1.5px;filter:drop-shadow(0 0 8px rgba(109,184,255,0.5));min-width:0;text-align:center;}
 .timer-display.running{color:var(--gold);filter:drop-shadow(0 0 10px rgba(255,215,0,0.6));}
 .timer-display--today{color:var(--gold);}

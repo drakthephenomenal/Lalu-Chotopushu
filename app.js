@@ -6426,15 +6426,26 @@ function uStats() {
     const stotHist = App.S.stotramTimeHistory || {};
     const japTodSec = App.getTotalJapSecondsToday();
     const scrTodSec = scrHist[App.S.tk] || 0;
-    // Live in-progress deltas — same components getTotalJapSecondsToday()
-    // uses for "Today" — must also be added to Week/Month/Lifetime, since
-    // those periods always include today's still-accumulating activity.
-    // Without this, Today jumps ahead of Week/Month/Lifetime while a
-    // mala/cycle is still in progress (the reported mismatch).
+    // Live in-progress delta — MUST use the exact same inclusion rule as
+    // getTotalJapSecondsToday() (Today), not the isMainLiveInCombinedGroup()
+    // gate used elsewhere. That gate excludes hk/ss/ram submodes outside
+    // their dedicated toggle contexts, while getTotalJapSecondsToday()
+    // includes the live delta for ANY active mode except n28. Using the
+    // mismatched gate here let Today include in-progress mala/cycle time
+    // that Week/Month/Lifetime silently dropped — producing the impossible
+    // "Week/Month smaller than Today" result, since today is always part
+    // of both. Recomputing locally with the same rule keeps them in sync.
+    const _effLiveMain = App._activeJapMode !== "n28" ? (App.currentMalaSeconds || 0) : 0;
+    let _effLive28 = 0;
+    if (App._activeJapMode !== "main" && App._n28TotalStart && !App._n28Paused) {
+      const _el = Math.floor((Date.now() - App._n28TotalStart) / 1000);
+      _effLive28 = Math.max(0, _el - (App._n28SavedSecs || 0));
+    }
+    const _effLiveExtra = _effLiveMain + _effLive28;
     const japWkSec = wk.reduce(
       (s, k) => s + (_rTH[k]||0) + (_rvTH[k]||0) + (App.S.timerHistoryHK||{})[k]||0 + (App.S.timerHistoryKV||{})[k]||0 + (App.S.timerHistorySS||{})[k]||0 + (_n28TH[k]||0),
       0,
-    ) + _allLiveExtra;
+    ) + _effLiveExtra;
     const scrWkSec = wk.reduce((s, k) => s + (scrHist[k] || 0), 0);
     const _allTimerKeys = new Set([
       ...Object.keys(_rTH), ...Object.keys(_rvTH),
@@ -6444,9 +6455,19 @@ function uStats() {
     const japMoSec = [..._allTimerKeys].filter((k) => k.startsWith(mp)).reduce(
       (s, k) => s + (_rTH[k]||0) + (_rvTH[k]||0) + (App.S.timerHistoryHK||{})[k]||0 + (App.S.timerHistoryKV||{})[k]||0 + (App.S.timerHistorySS||{})[k]||0 + (_n28TH[k]||0),
       0,
-    ) + _allLiveExtra;
+    ) + _effLiveExtra;
     const scrMoSec = Object.entries(scrHist).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0);
-    const japLtSec = _allLtTime + Object.values(App.S.timerHistoryHK || {}).reduce((a,b)=>a+b,0) + Object.values(App.S.timerHistorySS || {}).reduce((a,b)=>a+b,0);
+    // Lifetime committed total computed the same way (all six history
+    // objects, all dates) rather than reusing the shared _allLtTime, which
+    // embeds the same mismatched gate and only covers R+RV+KV+28.
+    const _committedLtTime =
+      Object.values(_rTH).reduce((a, b) => a + b, 0) +
+      Object.values(_rvTH).reduce((a, b) => a + b, 0) +
+      Object.values(App.S.timerHistoryKV || {}).reduce((a, b) => a + b, 0) +
+      Object.values(_n28TH).reduce((a, b) => a + b, 0) +
+      Object.values(App.S.timerHistoryHK || {}).reduce((a, b) => a + b, 0) +
+      Object.values(App.S.timerHistorySS || {}).reduce((a, b) => a + b, 0);
+    const japLtSec = _committedLtTime + _effLiveExtra;
     const scrLtSec = Object.values(scrHist).reduce((a, b) => a + b, 0);
     const _pct = (jap, scr) => (scr > 0 ? Math.min(100, Math.round((jap / scr) * 1000) / 10) : 0);
     _st("effJapTod", japTodSec); _st("effScrTod", scrTodSec);
@@ -11504,6 +11525,15 @@ function cycleDone28() {
   App._n28Paused = false;
   App._n28PausedCycleSec = 0;
   App._n28PausedTotalSec = 0;
+  // ── PAUSE THE SHARED SESSION TIMER TOO ──────────────────────────────
+  // Mirrors malaOk()'s behavior on main-Jap mala completion: the Session
+  // timer must stop immediately on cycle completion, not keep ticking
+  // until the separate idle auto-pause timeout fires. Invalidate any
+  // pending autoStop first (its stale secondsAtTap snapshot must not
+  // roll timerSeconds back after we've already paused), then pause.
+  clearTimeout(App.autoStopTimeout);
+  App._autoStopToken++;
+  if (App.timerRunning) App.pauseTimer();
   const ce = document.getElementById("n28CycleTimer"); const _ceVis = document.getElementById("n28CycleTimerDisplay");
   if (ce) ce.textContent = "0:00"; if (_ceVis) _ceVis.textContent = "0:00";
   // Show unified "Today's Jap Time" (same combined total as main Jap tab).

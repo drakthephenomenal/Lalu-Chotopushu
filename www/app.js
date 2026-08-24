@@ -18209,50 +18209,17 @@ function lbToggleGhostView() {
   if (typeof isDeveloper !== 'function' || !isDeveloper()) return;
   window._lbGhostMode = !window._lbGhostMode;
   const tg = document.getElementById('tgLbGhost');
-  if (tg) {
-    tg.classList.toggle('on', window._lbGhostMode);
-    // Inline styling too (not just the 'on' class) so the toggle reads
-    // clearly even if the page has no CSS rule for '.on' defined for it.
-    tg.style.background = window._lbGhostMode ? 'rgba(255,215,0,0.25)' : 'rgba(255,255,255,0.06)';
-    tg.style.borderColor = window._lbGhostMode ? 'rgba(255,215,0,0.6)' : 'rgba(255,255,255,0.18)';
-    tg.style.color = window._lbGhostMode ? '#ffd700' : 'inherit';
-    tg.textContent = window._lbGhostMode ? '👻 Ghost Leaderboard: ON' : '👻 Ghost Leaderboard';
-  }
+  if (tg) tg.classList.toggle('on', window._lbGhostMode);
   loadLeaderboard(window._lbPeriod || 'today');
 }
 
 function _lbSyncGhostToggleVisibility() {
-  const dev = typeof isDeveloper === 'function' && isDeveloper();
-  let tg = document.getElementById('tgLbGhost');
-  // Auto-create the toggle if the page markup doesn't already have one.
-  // The show-everyone logic in loadLeaderboard()/renderLeaderboard() has
-  // always been fully wired up — it was only ever reachable through a
-  // button that had to exist in the HTML. Building it here means the
-  // feature works without any HTML changes, for developer accounts only.
-  if (!tg && dev) {
-    const anchor = document.getElementById('lbOptinBanner') || document.getElementById('lbList');
-    if (anchor && anchor.parentNode) {
-      tg = document.createElement('button');
-      tg.id = 'tgLbGhost';
-      tg.type = 'button';
-      tg.textContent = '👻 Ghost Leaderboard';
-      tg.style.cssText =
-        'display:block;width:100%;box-sizing:border-box;margin:0 0 10px;' +
-        'padding:8px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);' +
-        'background:rgba(255,255,255,0.06);color:inherit;font-size:13px;' +
-        'font-weight:600;cursor:pointer;';
-      tg.addEventListener('click', lbToggleGhostView);
-      anchor.parentNode.insertBefore(tg, anchor);
-    }
-  }
+  const tg = document.getElementById('tgLbGhost');
   if (!tg) return;
+  const dev = typeof isDeveloper === 'function' && isDeveloper();
   tg.style.display = dev ? 'block' : 'none';
   if (!dev) window._lbGhostMode = false;
   tg.classList.toggle('on', !!window._lbGhostMode);
-  tg.style.background = window._lbGhostMode ? 'rgba(255,215,0,0.25)' : 'rgba(255,255,255,0.06)';
-  tg.style.borderColor = window._lbGhostMode ? 'rgba(255,215,0,0.6)' : 'rgba(255,255,255,0.18)';
-  tg.style.color = window._lbGhostMode ? '#ffd700' : 'inherit';
-  tg.textContent = window._lbGhostMode ? '👻 Ghost Leaderboard: ON' : '👻 Ghost Leaderboard';
 }
 
 /** Get the date key prefix for the current period filter */

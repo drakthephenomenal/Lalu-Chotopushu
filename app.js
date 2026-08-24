@@ -2207,6 +2207,8 @@ const App = {
   _n28AutoPauseTimeout: null,
   _n28CompletionAnimating: false,
   _n28CompletionTimer: null,
+  _n28LastTapTs: null, // wall-clock time of the last actual name tap — used to
+  // exclude idle time from flushed duration, same as the main Session timer does.
 
   // ── Update pause button appearance ──
   _upd28PauseBtn() {
@@ -2228,18 +2230,22 @@ const App = {
   },
 
   // ── Pause the 28 Names timers ──
-  pause28() {
+  pause28(cutoffTs) {
     if (this._n28Paused || !this._n28TotalStart) return;
+    // cutoffTs (optional): when the pause was triggered by idle auto-pause,
+    // this is the timestamp of the last real tap — freezing/flushing use
+    // this instead of "now" so the idle gap is excluded, not counted.
+    const _now = (cutoffTs && cutoffTs >= this._n28TotalStart) ? cutoffTs : Date.now();
     // Freeze current values
     this._n28PausedCycleSec = this._n28CycleStart
-      ? Math.floor((Date.now() - this._n28CycleStart) / 1000)
+      ? Math.floor((_now - this._n28CycleStart) / 1000)
       : 0;
-    const sessionSec = Math.floor((Date.now() - this._n28TotalStart) / 1000);
+    const sessionSec = Math.floor((_now - this._n28TotalStart) / 1000);
     const savedSec = this.S.timer28History[this.S.tk] || 0;
     this._n28PausedTotalSec =
       savedSec + (sessionSec - (this._n28SavedSecs || 0));
     // Flush elapsed time to history
-    this.flush28TimeToHistory();
+    this.flush28TimeToHistory(cutoffTs);
     // Stop interval
     clearInterval(this._n28TimerInterval);
     this._n28TimerInterval = null;
@@ -2287,7 +2293,9 @@ const App = {
   _arm28AutoPause() {
     clearTimeout(this._n28AutoPauseTimeout);
     this._n28AutoPauseTimeout = setTimeout(() => {
-      if (!this._n28Paused) this.pause28();
+      // Idle-triggered pause: flush only up to the last real tap, not up to
+      // right now, so the idle gap itself is never counted as jap time.
+      if (!this._n28Paused) this.pause28(this._n28LastTapTs);
     }, 10000);
   },
 
@@ -2322,9 +2330,10 @@ const App = {
     this._upd28PauseBtn();
   },
 
-  flush28TimeToHistory() {
+  flush28TimeToHistory(cutoffTs) {
     if (!this._n28TotalStart) return;
-    const elapsed = Math.floor((Date.now() - this._n28TotalStart) / 1000);
+    const _now = (cutoffTs && cutoffTs >= this._n28TotalStart) ? cutoffTs : Date.now();
+    const elapsed = Math.floor((_now - this._n28TotalStart) / 1000);
     const newSecs = elapsed - this._n28SavedSecs;
     if (newSecs > 0) {
       this.S.timer28History[this.S.tk] =
@@ -2364,6 +2373,7 @@ const App = {
     this._n28Paused = false;
     this._n28PausedCycleSec = 0;
     this._n28PausedTotalSec = 0;
+    this._n28LastTapTs = null;
     const ce = document.getElementById("n28CycleTimer"); const _ceVis = document.getElementById("n28CycleTimerDisplay");
     if (ce) ce.textContent = "0:00"; if (_ceVis) _ceVis.textContent = "0:00";
     // Show unified Today's Jap Time
@@ -2410,6 +2420,9 @@ const App = {
     this.start28Timers();
     // Also drive the unified Jap timer so both tabs share the same clock
     this.tapTimer();
+    // Snapshot the moment of this tap so an idle-triggered pause can flush
+    // only up to here, excluding the idle gap (mirrors tapTimer's rollback).
+    this._n28LastTapTs = Date.now();
     // Re-arm 6s auto-pause on every tap
     this._arm28AutoPause();
     if (this.S.h28[this.S.tk] % 28 === 0) cycleDone28();
@@ -18671,7 +18684,7 @@ async function toggleLbOptIn() {
     await pushLeaderboard();
   } else {
     toast('Removed from leaderboard');
-    await pushLeaderboard(); // will delete the doc
+    await pushLeaderboard(); // flips optIn:false only — entry is kept, never deleted
   }
   // Refresh if the leaderboard view is currently visible
   const vlb = document.getElementById('vlb');

@@ -424,22 +424,19 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
 
     const data = after.data() || {};
 
-    // missing lbOptIn treated as unknown, not opted-out — only an EXPLICIT
-    // lbOptIn === false deletes the leaderboard entry. A missing/undefined
-    // field (e.g. an older backup restored via Ghost Mode that predates
-    // this field) used to be silently treated as an opt-out and delete
-    // the user's entry even though they never actually opted out.
-    if (data.lbOptIn === false) {
-      await admin.firestore().collection("leaderboard").doc(uid).delete().catch(() => {});
-      return null;
-    }
-    // If lbOptIn is missing/undefined entirely and no leaderboard entry
-    // exists yet, there's nothing meaningful to compute — skip silently
-    // rather than creating an entry for someone who never opted in.
-    if (!data.lbOptIn) {
-      const existing = await admin.firestore().collection("leaderboard").doc(uid).get();
-      if (!existing.exists) return null;
-    }
+    // NOTE: this used to delete the leaderboard doc entirely whenever
+    // lbOptIn === false. That directly contradicted the rest of the system
+    // (client pushLeaderboard() and the Firestore rules' stated intent:
+    // "deletion is intentionally never allowed... a devotee's leaderboard
+    // history is permanent once written") — and because this function runs
+    // via the Admin SDK, it bypasses Firestore rules entirely, so it was
+    // silently undoing that guarantee on every single tap/save an opted-out
+    // user made. Now it always computes and writes the full payload; only
+    // the optIn flag differs. The public, non-ghost leaderboard query still
+    // filters to optIn:true, so opted-out devotees still correctly vanish
+    // from the normal Family view — they just aren't erased anymore, so the
+    // developer-only Ghost Leaderboard toggle keeps seeing real, current data.
+    const optIn = data.lbOptIn !== false;
 
     const hist = data.history || {};
     const histRV = data.historyRV || {};
@@ -544,7 +541,7 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       totalJap,
       totalMalas: Math.floor(totalJap / (data.ms || 108)),
       streak,
-      optIn: true,
+      optIn,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       todayKey: liveTk,
       todayJap,

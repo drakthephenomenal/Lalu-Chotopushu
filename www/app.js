@@ -1462,8 +1462,8 @@ const App = {
     if (!this._sessionStart) this._sessionStart = Date.now();
     this.timerRunning = true;
     document.getElementById("timerDisplay").classList.add("running");
-    document.getElementById("timerBtn").textContent = "⏸ Pause";
-    document.getElementById("timerBtn").className = "tbtn pause";
+    const _tb1 = document.getElementById("timerBtn");
+    if (_tb1) { _tb1.textContent = "⏸ Pause"; _tb1.className = "tbtn pause"; }
     this.timerInterval = setInterval(() => {
       this.timerSeconds++;
       // Tick the per-mala counter in lockstep — but only while a mala is actually
@@ -1487,8 +1487,8 @@ const App = {
     this.timerInterval = null;
     this.timerRunning = false;
     document.getElementById("timerDisplay").classList.remove("running");
-    document.getElementById("timerBtn").textContent = "▶ Resume";
-    document.getElementById("timerBtn").className = "tbtn start";
+    const _tb2 = document.getElementById("timerBtn");
+    if (_tb2) { _tb2.textContent = "▶ Resume"; _tb2.className = "tbtn start"; }
     // Do NOT commit an unfinished mala into timerHistory here.
     // timerHistory is the sum of completed malas only; Today's Jap Time already
     // adds currentMalaSeconds live. Writing the delta on pause/resume causes the
@@ -1576,8 +1576,8 @@ const App = {
     } catch(_){}
     document.getElementById("timerDisplay").textContent = App.fmtTime(App.timerSeconds);
     document.getElementById("timerDisplay").classList.remove("running");
-    document.getElementById("timerBtn").textContent = "▶ Start";
-    document.getElementById("timerBtn").className = "tbtn start";
+    const _tb3 = document.getElementById("timerBtn");
+    if (_tb3) { _tb3.textContent = "▶ Start"; _tb3.className = "tbtn start"; }
     this.updateTimerToday();
   },
 
@@ -2303,6 +2303,19 @@ const App = {
       if (this._n28Paused) return;
       const fmt = (s) =>
         Math.floor(s / 60) + ":" + (s % 60 < 10 ? "0" : "") + (s % 60);
+      // ── Feed the unified Session Timer too ──────────────────────────
+      // timerSeconds is meant to be "active chanting time since app open"
+      // across ALL modes, not just main Jap. Only tick it here if the main
+      // Jap timer isn't already the one driving it this second (guards
+      // against double-counting if both were ever running at once).
+      if (!this.timerRunning) {
+        this.timerSeconds++;
+        try {
+          localStorage.setItem("rjap_timerSeconds", String(this.timerSeconds));
+        } catch (e) {}
+        const _td = document.getElementById("timerDisplay");
+        if (_td) _td.textContent = this.fmtTime(this.timerSeconds);
+      }
       // Keep the unified "Total Jap Time" mirror and Session display in sync every second
       this.updateTimerToday();
     }, 1000);

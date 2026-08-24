@@ -2125,6 +2125,21 @@ const App = {
     // Haptic heartbeat — 10ms bead feeling
     this.vib([10]);
     this.tapTimer();
+    // ── Keep the 28 Names timer's idle-window alive too ─────────────────
+    // h28() already extends the main Session timer on every 28-Names tap
+    // (via tapTimer()), so switching from 28 Names → main Jap and tapping
+    // here never lets the main timer auto-pause early. This is the mirror
+    // for the other direction: if a 28 Names session is already running
+    // (not paused), a main-Jap tap re-arms its 10s auto-pause and refreshes
+    // its "last real tap" cutoff, so switching from main Jap → 28 Names
+    // and tapping here doesn't let the 28 Names timer pause prematurely
+    // either. It does NOT start a fresh 28 session from main taps — only
+    // keeps an already-running one alive — so main-Jap time is never
+    // mis-credited into timer28History.
+    if (this._n28TotalStart && !this._n28Paused) {
+      this._n28LastTapTs = Date.now();
+      this._arm28AutoPause();
+    }
     if (isRV) {
       spawnRV(e, document.getElementById("tz"));
     } else if (isHK) {

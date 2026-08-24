@@ -1638,7 +1638,12 @@ const App = {
     const se28 = document.getElementById("n28SessionDisplay");
     if (se28) {
       se28.textContent = this.fmtTime(this.timerSeconds);
-      if (this.timerSeconds > 0) se28.classList.add("running");
+      // Reflect the ACTUAL running state (this.timerRunning), not just
+      // "timerSeconds is nonzero" — timerSeconds stays positive forever
+      // once chanting starts (it never resets on pause or mala/cycle
+      // completion), so the old check kept the "running" look on even
+      // after the session timer had genuinely stopped/paused.
+      if (this.timerRunning) se28.classList.add("running");
       else se28.classList.remove("running");
     }
   },

@@ -749,6 +749,13 @@ const App = {
     bgCM: 1,
     bgIskconAcharya: 1,
     bgIskconGurudev: 1,
+    // ── Screen Time / Stotram Time (per-day, seconds) ──
+    // screenTimeHistory: time on jap displays (main Jap tab + 28 Names tab)
+    // while the app is in the foreground. Pauses on backgrounding/tab-away;
+    // does NOT pause on idle. stotramTimeHistory is tracked separately and
+    // never counts toward Screen Time.
+    screenTimeHistory: {},
+    stotramTimeHistory: {},
   },
   lmcRV: 0,
   lmcHK: 0,
@@ -952,6 +959,8 @@ const App = {
       naamLang: this.S.naamLang || "sa",
       lastLat: this.S.lastLat ?? null,
       lastLng: this.S.lastLng ?? null,
+      screenTimeHistory: this.S.screenTimeHistory || {},
+      stotramTimeHistory: this.S.stotramTimeHistory || {},
     });
     // Keep per-day stores updated for compatibility with existing offline data
     const tk = this.S.tk;
@@ -1049,6 +1058,27 @@ const App = {
               this.S.timer28History[k] = d.timer28History[k];
         }
       }
+      // Screen Time / Stotram Time tick every second to localStorage directly
+      // (lighter than a full IDB save each second) — merge in anything newer
+      // than what the "state" IDB record captured at last pause/save.
+      if (!this.S.screenTimeHistory) this.S.screenTimeHistory = {};
+      if (!this.S.stotramTimeHistory) this.S.stotramTimeHistory = {};
+      const stRaw = localStorage.getItem("rjap_screenTimeHistory");
+      if (stRaw) {
+        const st = JSON.parse(stRaw);
+        for (const k in st) {
+          if ((st[k] || 0) > (this.S.screenTimeHistory[k] || 0))
+            this.S.screenTimeHistory[k] = st[k];
+        }
+      }
+      const sttRaw = localStorage.getItem("rjap_stotramTimeHistory");
+      if (sttRaw) {
+        const stt = JSON.parse(sttRaw);
+        for (const k in stt) {
+          if ((stt[k] || 0) > (this.S.stotramTimeHistory[k] || 0))
+            this.S.stotramTimeHistory[k] = stt[k];
+        }
+      }
     } catch (e) {}
 
     if (!this.S.history[this.S.tk]) this.S.history[this.S.tk] = 0;
@@ -1141,6 +1171,8 @@ const App = {
       this.S.malaLogSS = [];
     }
     if (!this.S.dedications) this.S.dedications = [];
+    if (!this.S.screenTimeHistory) this.S.screenTimeHistory = {};
+    if (!this.S.stotramTimeHistory) this.S.stotramTimeHistory = {};
     if (!this.S.msConsider) this.S.msConsider = { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, n28: true };
     if (!this.S.syncBaselineKV) this.S.syncBaselineKV = {};
     if (!this.S.syncBaselineTimerKV) this.S.syncBaselineTimerKV = {};
@@ -1494,10 +1526,13 @@ const App = {
     // SS, not KV, despite its name) never covered KV. HK and Ram Vijay
     // Mantra are checked the same way for consistency, since their
     // exclusive toggles already keep japMode in sync via switchJapMode().
-    const idleMs = this.S.japMode === "kv" ? 20000
-      : this.S.japMode === "hk" ? 25000
-      : this.S.japMode === "ram" ? 10000
-      : 6000;                                    // Radha, RV, SS, 28 Names (unchanged)
+    // Base idle timeout raised 6s -> 10s; the modes that already ran longer
+    // than the base (KV, HK, Raam Vijay Mantra) keep their extra +5s on
+    // top of the new 10s base.
+    const idleMs = this.S.japMode === "kv" ? 25000
+      : this.S.japMode === "hk" ? 30000
+      : this.S.japMode === "ram" ? 15000
+      : 10000;                                   // Radha, RV, SS, 28 Names
     // Token so malaOk() can invalidate this pending autoStop if a mala
     // completes between now and the deadline (prevents leaking the
     // previous mala's snapshot into the next mala — Bug #2 root cause).
@@ -1585,6 +1620,86 @@ const App = {
       se28.textContent = this.fmtTime(this.timerSeconds);
       if (this.timerSeconds > 0) se28.classList.add("running");
       else se28.classList.remove("running");
+    }
+  },
+
+  // ── Screen Time (how long the devotee is actually on a jap display) ──
+  // Runs only while the app is foreground/visible AND the active view is
+  // the main Jap screen (vj) or the 28 Names screen (v28). Never runs for
+  // Stotram or any other tab. Unlike the jap idle-timer (autoStop), Screen
+  // Time is NEVER paused for inactivity — only by backgrounding/leaving
+  // the jap screen. Stotram usage is tracked separately (stotramTimeHistory)
+  // and never counts toward Screen Time.
+  _screenTimeRunning: false,
+  _screenTimeInterval: null,
+  startScreenTime() {
+    if (this._screenTimeRunning) return;
+    if (document.visibilityState === "hidden") return; // never start while backgrounded
+    this._screenTimeRunning = true;
+    this._screenTimeInterval = setInterval(() => {
+      if (!this.S.screenTimeHistory) this.S.screenTimeHistory = {};
+      const tk = this.S.tk;
+      this.S.screenTimeHistory[tk] = (this.S.screenTimeHistory[tk] || 0) + 1;
+      try {
+        localStorage.setItem("rjap_screenTimeHistory", JSON.stringify(this.S.screenTimeHistory));
+      } catch (e) {}
+      this.updateScreenTimeDisplay();
+    }, 1000);
+  },
+  pauseScreenTime() {
+    if (!this._screenTimeRunning) return;
+    clearInterval(this._screenTimeInterval);
+    this._screenTimeInterval = null;
+    this._screenTimeRunning = false;
+    this.save();
+  },
+  updateScreenTimeDisplay() {
+    const sec = (this.S.screenTimeHistory && this.S.screenTimeHistory[this.S.tk]) || 0;
+    const e1 = document.getElementById("screenTimeDisplay");
+    if (e1) e1.textContent = this.fmtTime(sec);
+    const e2 = document.getElementById("n28ScreenTimeDisplay");
+    if (e2) e2.textContent = this.fmtTime(sec);
+  },
+
+  // ── Stotram Time — separate from Screen Time. Only ticks while the
+  // Stotram tab is the active, visible view. Shown in Statistics only. ──
+  _stotramTimeRunning: false,
+  _stotramTimeInterval: null,
+  startStotramTime() {
+    if (this._stotramTimeRunning) return;
+    if (document.visibilityState === "hidden") return;
+    this._stotramTimeRunning = true;
+    this._stotramTimeInterval = setInterval(() => {
+      if (!this.S.stotramTimeHistory) this.S.stotramTimeHistory = {};
+      const tk = this.S.tk;
+      this.S.stotramTimeHistory[tk] = (this.S.stotramTimeHistory[tk] || 0) + 1;
+      try {
+        localStorage.setItem("rjap_stotramTimeHistory", JSON.stringify(this.S.stotramTimeHistory));
+      } catch (e) {}
+    }, 1000);
+  },
+  pauseStotramTime() {
+    if (!this._stotramTimeRunning) return;
+    clearInterval(this._stotramTimeInterval);
+    this._stotramTimeInterval = null;
+    this._stotramTimeRunning = false;
+    this.save();
+  },
+
+  // Resume whichever of Screen Time / Stotram Time matches the view that's
+  // currently active in the DOM — used on app foreground / init.
+  resumeTimeForActiveView() {
+    const activeView = document.querySelector(".view.active");
+    const id = activeView && activeView.id;
+    if (id === "vj" || id === "v28") {
+      this.pauseStotramTime();
+      this.startScreenTime();
+    } else if (id === "vst") {
+      this.pauseScreenTime();
+      this.startStotramTime();
+    } else {
+      this.pauseScreenTime();
+      this.pauseStotramTime();
     }
   },
 
@@ -2168,12 +2283,12 @@ const App = {
     else this.pause28();
   },
 
-  // ── Arm 6-second auto-pause ──
+  // ── Arm 10-second auto-pause ──
   _arm28AutoPause() {
     clearTimeout(this._n28AutoPauseTimeout);
     this._n28AutoPauseTimeout = setTimeout(() => {
       if (!this._n28Paused) this.pause28();
-    }, 6000);
+    }, 10000);
   },
 
   start28Timers() {
@@ -3517,6 +3632,17 @@ function sv(id, btn) {
   document.querySelectorAll(".nb").forEach((b) => b.classList.remove("active"));
   document.getElementById(id).classList.add("active");
   if (btn) btn.classList.add("active");
+  // ── Screen Time / Stotram Time: start/stop based on which view is now active ──
+  if (id === "vj" || id === "v28") {
+    App.pauseStotramTime();
+    App.startScreenTime();
+  } else if (id === "vst") {
+    App.pauseScreenTime();
+    App.startStotramTime();
+  } else {
+    App.pauseScreenTime();
+    App.pauseStotramTime();
+  }
   if (id === "vs") {
     uStats();
     _historyAutoLoaded = false;
@@ -6190,6 +6316,49 @@ function uStats() {
   _st("tAllWk", _allWkTime);
   _st("tAllMo", _allMoTime);
   _st("tAllLt", _allLtTime);
+
+  // ── Efficiency: Actual Jap Time ÷ Screen Time × 100, per period ──
+  // Actual Jap Time reuses the SAME unified total shown as "Today Actual
+  // Jap" (today) and the combined timerHistory* sums (week/month/lifetime).
+  // Screen Time comes from App.S.screenTimeHistory (ticks only while a jap
+  // display — Jap or 28 Names — is visible & foregrounded).
+  (function () {
+    const scrHist = App.S.screenTimeHistory || {};
+    const stotHist = App.S.stotramTimeHistory || {};
+    const japTodSec = App.getTotalJapSecondsToday();
+    const scrTodSec = scrHist[App.S.tk] || 0;
+    const japWkSec = wk.reduce(
+      (s, k) => s + (_rTH[k]||0) + (_rvTH[k]||0) + (App.S.timerHistoryHK||{})[k]||0 + (App.S.timerHistoryKV||{})[k]||0 + (App.S.timerHistorySS||{})[k]||0 + (_n28TH[k]||0),
+      0,
+    );
+    const scrWkSec = wk.reduce((s, k) => s + (scrHist[k] || 0), 0);
+    const _allTimerKeys = new Set([
+      ...Object.keys(_rTH), ...Object.keys(_rvTH),
+      ...Object.keys(App.S.timerHistoryHK || {}), ...Object.keys(App.S.timerHistoryKV || {}),
+      ...Object.keys(App.S.timerHistorySS || {}), ...Object.keys(_n28TH),
+    ]);
+    const japMoSec = [..._allTimerKeys].filter((k) => k.startsWith(mp)).reduce(
+      (s, k) => s + (_rTH[k]||0) + (_rvTH[k]||0) + (App.S.timerHistoryHK||{})[k]||0 + (App.S.timerHistoryKV||{})[k]||0 + (App.S.timerHistorySS||{})[k]||0 + (_n28TH[k]||0),
+      0,
+    );
+    const scrMoSec = Object.entries(scrHist).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0);
+    const japLtSec = _allLtTime + Object.values(App.S.timerHistoryHK || {}).reduce((a,b)=>a+b,0) + Object.values(App.S.timerHistorySS || {}).reduce((a,b)=>a+b,0);
+    const scrLtSec = Object.values(scrHist).reduce((a, b) => a + b, 0);
+    const _pct = (jap, scr) => (scr > 0 ? Math.min(100, Math.round((jap / scr) * 1000) / 10) : 0);
+    _st("effJapTod", japTodSec); _st("effScrTod", scrTodSec);
+    _setEl("effPctTod", _pct(japTodSec, scrTodSec) + "%");
+    _st("effJapWk", japWkSec); _st("effScrWk", scrWkSec);
+    _setEl("effPctWk", _pct(japWkSec, scrWkSec) + "%");
+    _st("effJapMo", japMoSec); _st("effScrMo", scrMoSec);
+    _setEl("effPctMo", _pct(japMoSec, scrMoSec) + "%");
+    _st("effJapLt", japLtSec); _st("effScrLt", scrLtSec);
+    _setEl("effPctLt", _pct(japLtSec, scrLtSec) + "%");
+    // Stotram Time — statistics only, never part of Screen Time
+    _st("stTimeTod", stotHist[App.S.tk] || 0);
+    _st("stTimeWk", wk.reduce((s, k) => s + (stotHist[k] || 0), 0));
+    _st("stTimeMo", Object.entries(stotHist).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0));
+    _st("stTimeLt", Object.values(stotHist).reduce((a, b) => a + b, 0));
+  })();
 
   document.getElementById("sBest").textContent = best;
   const bars = document.getElementById("cbrs");
@@ -14583,6 +14752,11 @@ window.addEventListener("load", async () => {
   App.save();
   fbDebouncedPush();
 
+  // ── Screen Time / Stotram Time: start ticking for whichever view is
+  // active by default (the Jap view, "vj") now that the DOM is ready ──
+  App.updateScreenTimeDisplay();
+  if (document.visibilityState !== "hidden") App.resumeTimeForActiveView();
+
   // Trigger auto-backup check
   setTimeout(checkAutoBackup, 2000);
 
@@ -14614,6 +14788,19 @@ window.addEventListener("load", async () => {
     }
   }, 5000);
 });
+
+// ── Screen Time / Stotram Time: pause on backgrounding/tab-away, resume
+// whichever matches the currently active view when foregrounded again.
+// Idle (no taps) never pauses these — only visibility/leaving the view does. ──
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    App.pauseScreenTime();
+    App.pauseStotramTime();
+  } else if (document.visibilityState === "visible") {
+    App.resumeTimeForActiveView();
+  }
+});
+
 
 // ═══════════════════════════════════════════════════════
 // PWA ONE-CLICK INSTALL MODAL — stable, single-fire
@@ -18080,6 +18267,9 @@ function renderLeaderboard(docs, period) {
       const thk2 = Object.values(d.timerHistoryHK || {}).reduce((a,b)=>a+b,0);
       const t282 = Object.values(d.timer28History || {}).reduce((a,b)=>a+b,0);
       d._timeBreakdown = { r: tr2, rv: trv2, kv: tkv2, ss: tss2, hk: thk2, n28: t282 };
+      // Screen Time (alltime) — stored total, or summed from the per-day history
+      d._screenTimeSec = Number(d.screenTimeSeconds || 0) ||
+        Object.values(d.screenTimeHistory || {}).reduce((a,b)=>a+b,0);
     } else {
       // Sum history for this period
       const hist   = d.history || {};
@@ -18132,6 +18322,9 @@ function renderLeaderboard(docs, period) {
       d._breakdown = { r: sr, rv: srv, kv: skv, ss: sss, hk: shk, n28: s28 };
       d._giftedBreakdown = { r: 0, rv: 0, kv: 0, hk: 0, n28: 0 };
       d._timeBreakdown = { r: tr, rv: trv, kv: tkv, ss: tss, hk: thk, n28: t28 };
+      // Screen Time for this period — flat per-day map, sum across periodKeys
+      const tScr = d.screenTimeHistory || {};
+      d._screenTimeSec = periodKeys.reduce((s, k) => s + (tScr[k] || 0), 0);
     }
     return { ...d, score, timeScore };
   });
@@ -18194,6 +18387,10 @@ function renderLeaderboard(docs, period) {
     let g = d._giftedBreakdown || { r:0, rv:0, kv:0, ss:0, hk:0, n28:0 };
     let tb = d._timeBreakdown || { r:0, rv:0, kv:0, ss:0, hk:0, n28:0 };
 
+    // Quality of Jap (Q) — raw average seconds-per-jap for this type, no
+    // comparison against any target: slower (bigger number) = more nectar.
+    const _lbQ = (sec, cnt) => (cnt > 0 && sec > 0) ? ' · Q:' + (sec / cnt).toFixed(1) + 's' : '';
+
     // Build per-type breakdown: R, RV, KV show malas (count/108), 28N shows
     // cycles (count/28), HK shows malas. Each line is the NETTED (post-gift)
     // amount — matching Total/ranking — with a "🎁 gifted" note appended
@@ -18204,37 +18401,37 @@ function renderLeaderboard(docs, period) {
       const rM = Math.floor(b.r / ms);
       const rStr = _lbFmtJap(b.r) + (rM > 0 ? ' (' + rM + 'M)' : '');
       const giftNote = g.r > 0 ? ' · 🎁' + _lbFmtJap(g.r) + ' gifted' : '';
-      bdParts.push('R: ' + rStr + (tb.r > 0 ? ' ⏱ ' + _histFmtSec(tb.r) : '') + giftNote);
+      bdParts.push('R: ' + rStr + (tb.r > 0 ? ' ⏱ ' + _histFmtSec(tb.r) : '') + giftNote + _lbQ(tb.r, b.r));
     }
     if (b.rv > 0 || g.rv > 0) {
       const rvM = Math.floor(b.rv / ms);
       const rvStr = _lbFmtJap(b.rv) + (rvM > 0 ? ' (' + rvM + 'M)' : '');
       const giftNote = g.rv > 0 ? ' · 🎁' + _lbFmtJap(g.rv) + ' gifted' : '';
-      bdParts.push('RV: ' + rvStr + (tb.rv > 0 ? ' ⏱ ' + _histFmtSec(tb.rv) : '') + giftNote);
+      bdParts.push('RV: ' + rvStr + (tb.rv > 0 ? ' ⏱ ' + _histFmtSec(tb.rv) : '') + giftNote + _lbQ(tb.rv, b.rv));
     }
     if (b.kv > 0 || g.kv > 0) {
       const kvM = Math.floor(b.kv / ms);
       const kvStr = _lbFmtJap(b.kv) + (kvM > 0 ? ' (' + kvM + 'M)' : '');
       const giftNote = g.kv > 0 ? ' · 🎁' + _lbFmtJap(g.kv) + ' gifted' : '';
-      bdParts.push('KV: ' + kvStr + (tb.kv > 0 ? ' ⏱ ' + _histFmtSec(tb.kv) : '') + giftNote);
+      bdParts.push('KV: ' + kvStr + (tb.kv > 0 ? ' ⏱ ' + _histFmtSec(tb.kv) : '') + giftNote + _lbQ(tb.kv, b.kv));
     }
     if (b.ss > 0 || g.ss > 0) {
       const ssM = Math.floor(b.ss / ms);
       const ssStr = _lbFmtJap(b.ss) + (ssM > 0 ? ' (' + ssM + 'M)' : '');
       const giftNote = g.ss > 0 ? ' · 🎁' + _lbFmtJap(g.ss) + ' gifted' : '';
-      bdParts.push('SS: ' + ssStr + (tb.ss > 0 ? ' ⏱ ' + _histFmtSec(tb.ss) : '') + giftNote);
+      bdParts.push('SS: ' + ssStr + (tb.ss > 0 ? ' ⏱ ' + _histFmtSec(tb.ss) : '') + giftNote + _lbQ(tb.ss, b.ss));
     }
     if (b.n28 > 0 || g.n28 > 0) {
       const cyc28 = Math.floor(b.n28 / 28);
       const cyc28Str = (cyc28 > 0 ? cyc28 + 'C ' : '') + '(' + _lbFmtJap(b.n28) + ')';
       const giftNote = g.n28 > 0 ? ' · 🎁' + _lbFmtJap(g.n28) + ' gifted' : '';
-      bdParts.push('28N: ' + cyc28Str + (tb.n28 > 0 ? ' ⏱ ' + _histFmtSec(tb.n28) : '') + giftNote);
+      bdParts.push('28N: ' + cyc28Str + (tb.n28 > 0 ? ' ⏱ ' + _histFmtSec(tb.n28) : '') + giftNote + _lbQ(tb.n28, b.n28));
     }
     if (b.hk > 0 || g.hk > 0) {
       const hkM = Math.floor(b.hk / ms);
       const hkStr = _lbFmtJap(b.hk) + (hkM > 0 ? ' (' + hkM + 'M)' : '');
       const giftNote = g.hk > 0 ? ' · 🎁' + _lbFmtJap(g.hk) + ' gifted' : '';
-      bdParts.push('HK: ' + hkStr + (tb.hk > 0 ? ' ⏱ ' + _histFmtSec(tb.hk) : '') + giftNote);
+      bdParts.push('HK: ' + hkStr + (tb.hk > 0 ? ' ⏱ ' + _histFmtSec(tb.hk) : '') + giftNote + _lbQ(tb.hk, b.hk));
     }
     // Total: only count R+RV+SS+HK malas (not 28N), 28N shown as cycles separately
     const japOnly = (b.r || 0) + (b.rv || 0) + (b.ss || 0) + (b.hk || 0);
@@ -18249,6 +18446,13 @@ function renderLeaderboard(docs, period) {
     }
     if (d.timeScore > 0) totalStr += ' ⏱ ' + _histFmtSec(d.timeScore);
     if (d.streak > 0) totalStr += ' 🔥' + d.streak + 'd';
+    // Screen Time + Efficiency (E) — E = Actual Jap Time ÷ Screen Time × 100
+    const scrSec = d._screenTimeSec || 0;
+    if (scrSec > 0) totalStr += ' · 📱' + _histFmtSec(scrSec);
+    if (scrSec > 0 && d.timeScore > 0) {
+      const effPct = Math.min(100, Math.round((d.timeScore / scrSec) * 1000) / 10);
+      totalStr += ' · E:' + effPct + '%';
+    }
     const breakdown = bdParts.length > 0 ? bdParts.join(' · ') : '';
     const meta = (breakdown ? breakdown + '<br>' : '') + 'Total: ' + totalStr;
     return `<div class="${rowClass}">
@@ -18378,15 +18582,7 @@ async function pushLeaderboard() {
     n28: (App.S.timer28History || {})[liveTk] || 0,
   };
   const todayJap = todayBreakdown.r + todayBreakdown.rv + todayBreakdown.kv + todayBreakdown.ss + todayBreakdown.hk + todayBreakdown.n28;
-  // Use the SAME live-inclusive total the on-screen "Today's Jap Time" uses
-  // (App.getTotalJapSecondsToday), not just the sum of already-flushed
-  // history. timerHistory*/timer28History only update on pause/mala-complete/
-  // idle-timeout, so summing them alone under-reports whatever time is
-  // currently running but not yet flushed — which is exactly why the
-  // leaderboard's time used to lag behind the real total shown on-device.
-  const todayTimerSeconds = (typeof App.getTotalJapSecondsToday === 'function')
-    ? App.getTotalJapSecondsToday()
-    : todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kv + todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.n28;
+  const todayTimerSeconds = todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kv + todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.n28;
 
   const payload = {
     displayName,
@@ -18431,6 +18627,11 @@ async function pushLeaderboard() {
     timerHistorySS: App.S.timerHistorySS || {},
     timerHistoryHK: App.S.timerHistoryHK || {},
     timer28History: App.S.timer28History || {},
+    // Screen Time — per-day history so period filtering (today/week/month)
+    // works the same way as the jap-time histories above. Used to compute
+    // Efficiency (E) on the leaderboard: Actual Jap Time ÷ Screen Time.
+    screenTimeHistory: App.S.screenTimeHistory || {},
+    screenTimeSeconds: Object.values(App.S.screenTimeHistory || {}).reduce((a,b)=>a+b,0),
   };
 
   try {

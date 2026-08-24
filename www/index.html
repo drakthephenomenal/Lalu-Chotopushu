@@ -259,9 +259,15 @@
       </div>
     </div>
     <div class="timer-box">
-      <div class="timer-box-lbl">Today's Jap Time</div>
+      <div class="timer-box-lbl">Today Actual Jap</div>
       <div class="timer-box-main timer-box-main--solo">
         <div class="timer-display timer-display--today" id="timerToday2">00:00:00</div>
+      </div>
+    </div>
+    <div class="timer-box">
+      <div class="timer-box-lbl">Screen Time</div>
+      <div class="timer-box-main timer-box-main--solo">
+        <div class="timer-display timer-display--today" id="screenTimeDisplay">00:00:00</div>
       </div>
     </div>
   </div>
@@ -615,9 +621,15 @@
           </div>
         </div>
         <div class="timer-box">
-          <div class="timer-box-lbl">Today's Jap Time</div>
+          <div class="timer-box-lbl">Today Actual Jap</div>
           <div class="timer-box-main timer-box-main--solo">
             <div class="timer-display timer-display--today" id="n28TotalTimer">00:00:00</div>
+          </div>
+        </div>
+        <div class="timer-box">
+          <div class="timer-box-lbl">Screen Time</div>
+          <div class="timer-box-main timer-box-main--solo">
+            <div class="timer-display timer-display--today" id="n28ScreenTimeDisplay">00:00:00</div>
           </div>
         </div>
       </div>
@@ -1022,6 +1034,19 @@
               <div class="dc-row"><div class="dc-period">Month</div><div id="sAllMo">0</div><div></div><div id="tAllMo">0s</div></div>
               <div class="dc-row dc-row--life dc-row--all"><div class="dc-period">Lifetime</div><div id="sLtJapAll">0</div><div id="sLtJapAllF" style="display:none">0</div><div id="sLtTime">0m 0s</div></div>
             </div>
+          </div>
+          <!-- 5b. Efficiency: Today Actual Jap ÷ Screen Time -->
+          <div class="dc-wrap dc-efficiency non-gaudiya-stat" style="grid-column:1/-1">
+            <div class="dc-title">⚡ Efficiency</div>
+            <div style="font-size:10px;color:var(--td);margin:-2px 0 6px;">Actual Jap Time ÷ Screen Time × 100 — how much of your app time is spent actually chanting.</div>
+            <div class="dc-table">
+              <div class="dc-thead"><div></div><div>Actual Jap</div><div>Screen Time</div><div>Efficiency</div></div>
+              <div class="dc-row"><div class="dc-period">Today</div><div id="effJapTod">0s</div><div id="effScrTod">0s</div><div id="effPctTod">0%</div></div>
+              <div class="dc-row"><div class="dc-period">Week</div><div id="effJapWk">0s</div><div id="effScrWk">0s</div><div id="effPctWk">0%</div></div>
+              <div class="dc-row"><div class="dc-period">Month</div><div id="effJapMo">0s</div><div id="effScrMo">0s</div><div id="effPctMo">0%</div></div>
+              <div class="dc-row dc-row--life"><div class="dc-period">Lifetime</div><div id="effJapLt">0s</div><div id="effScrLt">0s</div><div id="effPctLt">0%</div></div>
+            </div>
+            <div style="font-size:10px;color:var(--td);margin-top:8px;">🎵 Stotram Time (not counted in Screen Time) — Today: <span id="stTimeTod">0s</span> · Week: <span id="stTimeWk">0s</span> · Month: <span id="stTimeMo">0s</span> · Lifetime: <span id="stTimeLt">0s</span></div>
           </div>
           <!-- Row 5b: HK Mahamantra stats — Option C Lotus Petals layout (visible only in Gaudiya Mode) -->
         <div class="hk-only-stat" id="sbHKCount" style="grid-column:1/-1;display:none"><!-- legacy compat --></div>

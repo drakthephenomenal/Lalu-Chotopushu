@@ -18217,11 +18217,8 @@ async function loadLeaderboard(period) {
     // with the Ghost Leaderboard toggle on drop the optIn filter, so
     // devotees who opted out still appear (faded, see renderLeaderboard).
     const _lbUseGhost = window._lbGhostMode && typeof isDeveloper === 'function' && isDeveloper();
-    // Ghost mode: fetch the WHOLE collection (no optIn filter, no
-    // meaningful cap) so nobody who has ever pushed a leaderboard doc is
-    // silently excluded. 5000 is just a safety ceiling, not a real cap.
     let _lbQuery = fbDb.collection('leaderboard');
-    _lbQuery = _lbUseGhost ? _lbQuery.limit(5000) : _lbQuery.where('optIn', '==', true).limit(100);
+    _lbQuery = _lbUseGhost ? _lbQuery.limit(200) : _lbQuery.where('optIn', '==', true).limit(100);
     window._lbUnsubscribe = _lbQuery
       .onSnapshot(function(snap) {
         const docs = [];
@@ -18365,12 +18362,7 @@ function renderLeaderboard(docs, period) {
   const filtered = scored
     .filter(function(d) { return _lbUseGhostRender || d.score > 0; })
     .sort(function(a, b) { return b.score - a.score; })
-    // Ghost mode: show every fetched user (including 0-score-this-period
-    // ones), not just the top 50 by the currently selected period's score —
-    // otherwise devotees who were only active on other days/periods get
-    // crowded out by everyone else's zero scores and cut off. Normal
-    // (non-ghost) view keeps the top-50 cap.
-    .slice(0, _lbUseGhostRender ? scored.length : 50);
+    .slice(0, 50);
 
   if (!filtered.length) {
     list.innerHTML = '';

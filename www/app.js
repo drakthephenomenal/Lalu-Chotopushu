@@ -8894,16 +8894,34 @@ function fbInit() {
         fbClaimSession().then(async () => {
           fbWatchSession();
           // ── Sync device clock with Firebase server time ──
-          // Corrects getTk() if local clock is wrong or in different timezone
-          await fbSyncServerTime();
-          // Direct cloud pull — overwrites local cache with authoritative Firebase data
-          await fbAutoSync();
+          // Corrects getTk() if local clock is wrong or in different timezone.
+          // Wrapped so a failure here (offline mid-login, etc.) can never
+          // prevent the presence/leaderboard doc creation below — those must
+          // always get a chance to run once a user is signed in, or that
+          // user becomes permanently invisible to Ghost Mode (see Jhara
+          // Barman case: signed in, real data, but no presence/leaderboard
+          // doc because an earlier step in this chain never completed).
+          try { await fbSyncServerTime(); } catch (e) { console.warn('fbSyncServerTime failed (non-fatal):', e && e.message); }
+          // Direct cloud pull — overwrites local cache with authoritative Firebase data.
+          // Also wrapped for the same reason as above.
+          try { await fbAutoSync(); } catch (e) { console.warn('fbAutoSync failed (non-fatal):', e && e.message); }
           // presence heartbeat rebuild + version stamp — fires on every
           // login/refresh, independent of Family Board opt-in, so the
           // developer can see who's active (and on what version) in Ghost
           // Mode even for users who've opted out of the leaderboard.
-          await _rjapDetectAppVersion();
-          _writePresenceHeartbeat(user);
+          // Never gated behind the steps above succeeding.
+          try {
+            await _rjapDetectAppVersion();
+            await _writePresenceHeartbeat(user);
+          } catch (e) { console.warn('Presence heartbeat failed (non-fatal):', e && e.message); }
+          // Unconditionally ensure a leaderboard doc exists for every signed-in
+          // user — regardless of opt-in state and regardless of whether they've
+          // ever tapped. pushLeaderboard() already writes optIn:false safely
+          // and never deletes an existing doc; calling it here on every login
+          // guarantees every real user has a permanent, discoverable footprint
+          // in both `presence` and `leaderboard`, so the Ghost Leaderboard
+          // toggle and Ghost Mode search always find them from day one.
+          try { await pushLeaderboard(); } catch (e) { console.warn('pushLeaderboard (login) failed (non-fatal):', e && e.message); }
           // Merge in any permanent-ledger gifts recorded on other devices.
           pullPermanentGiftLedger();
 
@@ -12862,6 +12880,33 @@ async function _fetchAllKnownUsers() {
         appVersion: d.appVersion || '',
         lastSeen: d.lastSeen || null,
         source: byUid[doc.id] ? byUid[doc.id].source : 'presence',
+      });
+    });
+  } catch (_) {}
+
+  try {
+    // 4. users/*/data collection-group scan — the ultimate safety net.
+    // feedbacks/leaderboard/presence are all *side-effect* writes that can
+    // fail to fire (interrupted login, old app build predating one of them,
+    // a step earlier in the login chain throwing, etc.) — see the Jhara
+    // Barman case: real signed-in user, real chanted data, but zero rows in
+    // all three other collections because none of those side-effects ever
+    // completed for her. The users/{uid}/data/main doc, by contrast, is the
+    // actual save target of every jap tap — if this doc exists, that UID is
+    // a real user, full stop. A collection-group query across every
+    // users/*/data doc finds every such UID even when the other three
+    // sources have nothing, so nobody with real data is ever invisible here.
+    // (Requires the `data` collection-group to be queryable — Firestore
+    // auto-enables this for simple unfiltered scans; if the console prompts
+    // to build a collection-group index, accept it once.)
+    const dataSnap = await fbDb.collectionGroup('data').get();
+    dataSnap.forEach(doc => {
+      const uid = doc.ref.parent.parent ? doc.ref.parent.parent.id : null;
+      if (!uid) return;
+      const d = doc.data();
+      add(uid, {
+        name:  byUid[uid]?.name  || d.lbDisplayName || '',
+        source: byUid[uid] ? byUid[uid].source : 'data',
       });
     });
   } catch (_) {}
@@ -18669,37 +18714,62 @@ async function pushLeaderboard() {
   // Leaderboard toggle. firestore.rules restricts reads of optIn:false
   // docs to the owner/developers.
 
-  // Use a live date key when publishing leaderboard data; App.S.tk can be
-  // stale on devices left open across midnight or restored from cache.
-  const liveTk = (window.App && typeof App.getTk === 'function') ? App.getTk() : (App.S.tk || '');
-  if (liveTk && App.S.tk !== liveTk) App.S.tk = liveTk;
+  const payload = _buildLeaderboardPayload(App.S, fbUser);
+  try {
+    await fbDb.collection('leaderboard').doc(fbUser.uid).set(payload);
+  } catch(e) {
+    console.warn('pushLeaderboard error:', e && e.message ? e.message : e);
+  }
+}
+
+// ── Shared leaderboard-payload builder ─────────────────────────
+// Extracted out of pushLeaderboard() so the exact same scoring/streak/
+// breakdown math can be reused by devBackfillMissingLeaderboardDocs()
+// against a UID that isn't the currently signed-in user — one formula,
+// never two copies that can drift apart.
+//   S        — a state object shaped like App.S (history/historyRV/.../
+//              timerHistory/.../screenTimeHistory, etc.) — either the
+//              live App.S, or a plain snapshot read from another user's
+//              users/{uid}/data/main doc.
+//   userInfo — { displayName, email } fallback for the name field when
+//              S.lbDisplayName isn't set (pass fbUser for self-push, or
+//              whatever name/email Ghost Mode already knows for a backfill).
+//   forceOptIn — when set, overrides S.lbOptIn (used by backfill so a
+//              never-before-seen doc always defaults to opted OUT, never
+//              silently opting someone into the public board on their behalf).
+function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
+  S = S || {};
+  // Use a live date key when publishing leaderboard data; a stale S.tk
+  // (device left open across midnight, or a snapshot read cold) shouldn't
+  // be trusted as "today".
+  const liveTk = (window.App && typeof App.getTk === 'function') ? App.getTk() : (S.tk || '');
 
   // Compute lifetime totals
-  const hist   = App.S.history   || {};
-  const histRV = App.S.historyRV || {};
-  const histKV = App.S.historyKV || {};
-  const histSS = App.S.historySS || {};
-  const histHK = App.S.historyHK || {};
-  const hist28 = App.S.h28 || {};
+  const hist   = S.history   || {};
+  const histRV = S.historyRV || {};
+  const histKV = S.historyKV || {};
+  const histSS = S.historySS || {};
+  const histHK = S.historyHK || {};
+  const hist28 = S.h28 || {};
   const totalRadha = Object.values(hist).reduce((a,b)=>a+b,0);
   const totalRV    = Object.values(histRV).reduce((a,b)=>a+b,0);
   const totalKV    = Object.values(histKV).reduce((a,b)=>a+b,0);
   const totalSS    = Object.values(histSS).reduce((a,b)=>a+b,0);
   const totalHK    = Object.values(histHK).reduce((a,b)=>a+b,0);
   const total28    = Object.values(hist28).reduce((a,b)=>a+b,0);
-  const totalJap   = Math.max(0, totalRadha + totalRV + totalKV + totalSS + totalHK + total28 - (App.S.nameJapDeduct||0) - (App.S.nameJapDeductRV||0) - (App.S.nameJapDeductKV||0) - (App.S.nameJapDeductSS||0) - (App.S.nameJapDeductHK||0) - (App.S.nameJapDeduct28||0));
+  const totalJap   = Math.max(0, totalRadha + totalRV + totalKV + totalSS + totalHK + total28 - (S.nameJapDeduct||0) - (S.nameJapDeductRV||0) - (S.nameJapDeductKV||0) - (S.nameJapDeductSS||0) - (S.nameJapDeductHK||0) - (S.nameJapDeduct28||0));
 
   // Build display name
-  let displayName = (App.S.lbDisplayName || '').trim();
-  if (!displayName && fbUser) {
-    displayName = (fbUser.displayName || (fbUser.email || '').split('@')[0] || 'Anonymous Devotee').slice(0,30);
+  let displayName = (S.lbDisplayName || '').trim();
+  if (!displayName && userInfo) {
+    displayName = (userInfo.displayName || (userInfo.email || '').split('@')[0] || 'Anonymous Devotee').slice(0,30);
   }
   if (!displayName) displayName = 'Anonymous Devotee';
 
-  // Compute streak from App.S (reuse existing streak logic)
+  // Compute streak from S (reuse existing streak logic)
   let streak = 0;
   try {
-    const tk = liveTk || App.S.tk;
+    const tk = liveTk || S.tk;
     const allHist = {};
     Object.keys({...hist,...histRV,...histKV,...histSS,...histHK}).forEach(function(k) {
       allHist[k] = (hist[k]||0)+(histRV[k]||0)+(histKV[k]||0)+(histSS[k]||0)+(histHK[k]||0);
@@ -18709,7 +18779,7 @@ async function pushLeaderboard() {
     while(true) {
       const key = App.tkFromDate(d);
       const dayJap = allHist[key] || 0;
-      const target = App.S.dt || App.S.dtRV || App.S.dtKV || App.S.dtHK || 0;
+      const target = S.dt || S.dtRV || S.dtKV || S.dtHK || 0;
       if (dayJap <= 0 || (target > 0 && dayJap < target)) break;
       streak++;
       d.setDate(d.getDate()-1);
@@ -18726,22 +18796,22 @@ async function pushLeaderboard() {
     n28: hist28[liveTk] || 0,
   };
   const todayTimeBreakdown = {
-    r: (App.S.timerHistory || {})[liveTk] || 0,
-    rv: (App.S.timerHistoryRV || {})[liveTk] || 0,
-    kv: (App.S.timerHistoryKV || {})[liveTk] || 0,
-    ss: (App.S.timerHistorySS || {})[liveTk] || 0,
-    hk: (App.S.timerHistoryHK || {})[liveTk] || 0,
-    n28: (App.S.timer28History || {})[liveTk] || 0,
+    r: (S.timerHistory || {})[liveTk] || 0,
+    rv: (S.timerHistoryRV || {})[liveTk] || 0,
+    kv: (S.timerHistoryKV || {})[liveTk] || 0,
+    ss: (S.timerHistorySS || {})[liveTk] || 0,
+    hk: (S.timerHistoryHK || {})[liveTk] || 0,
+    n28: (S.timer28History || {})[liveTk] || 0,
   };
   const todayJap = todayBreakdown.r + todayBreakdown.rv + todayBreakdown.kv + todayBreakdown.ss + todayBreakdown.hk + todayBreakdown.n28;
   const todayTimerSeconds = todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kv + todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.n28;
 
-  const payload = {
+  return {
     displayName,
     totalJap,
-    totalMalas: Math.floor(totalJap / (App.S.ms || 108)),
+    totalMalas: Math.floor(totalJap / (S.ms || 108)),
     streak,
-    optIn: !!App.S.lbOptIn,
+    optIn: typeof forceOptIn === 'boolean' ? forceOptIn : !!S.lbOptIn,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     todayKey: liveTk,
     todayJap,
@@ -18760,38 +18830,89 @@ async function pushLeaderboard() {
     // the breakdown shows raw pre-gift totals while totalJap shows the net
     // remaining amount, which can make Total look smaller than one of its
     // own listed parts.
-    nameJapDeduct:   App.S.nameJapDeduct   || 0,
-    nameJapDeductRV: App.S.nameJapDeductRV || 0,
-    nameJapDeductKV: App.S.nameJapDeductKV || 0,
-    nameJapDeductSS: App.S.nameJapDeductSS || 0,
-    nameJapDeductHK: App.S.nameJapDeductHK || 0,
-    nameJapDeduct28: App.S.nameJapDeduct28 || 0,
+    nameJapDeduct:   S.nameJapDeduct   || 0,
+    nameJapDeductRV: S.nameJapDeductRV || 0,
+    nameJapDeductKV: S.nameJapDeductKV || 0,
+    nameJapDeductSS: S.nameJapDeductSS || 0,
+    nameJapDeductHK: S.nameJapDeductHK || 0,
+    nameJapDeduct28: S.nameJapDeduct28 || 0,
     // Push total timer seconds for leaderboard display
-    timerSeconds: Object.values(App.S.timerHistory || {}).reduce((a,b)=>a+b,0) +
-                  Object.values(App.S.timerHistoryRV || {}).reduce((a,b)=>a+b,0) +
-                  Object.values(App.S.timerHistoryKV || {}).reduce((a,b)=>a+b,0) +
-                  Object.values(App.S.timerHistorySS || {}).reduce((a,b)=>a+b,0) +
-                  Object.values(App.S.timerHistoryHK || {}).reduce((a,b)=>a+b,0) +
-                  Object.values(App.S.timer28History || {}).reduce((a,b)=>a+b,0),
-    timerHistory:   App.S.timerHistory || {},
-    timerHistoryRV: App.S.timerHistoryRV || {},
-    timerHistoryKV: App.S.timerHistoryKV || {},
-    timerHistorySS: App.S.timerHistorySS || {},
-    timerHistoryHK: App.S.timerHistoryHK || {},
-    timer28History: App.S.timer28History || {},
+    timerSeconds: Object.values(S.timerHistory || {}).reduce((a,b)=>a+b,0) +
+                  Object.values(S.timerHistoryRV || {}).reduce((a,b)=>a+b,0) +
+                  Object.values(S.timerHistoryKV || {}).reduce((a,b)=>a+b,0) +
+                  Object.values(S.timerHistorySS || {}).reduce((a,b)=>a+b,0) +
+                  Object.values(S.timerHistoryHK || {}).reduce((a,b)=>a+b,0) +
+                  Object.values(S.timer28History || {}).reduce((a,b)=>a+b,0),
+    timerHistory:   S.timerHistory || {},
+    timerHistoryRV: S.timerHistoryRV || {},
+    timerHistoryKV: S.timerHistoryKV || {},
+    timerHistorySS: S.timerHistorySS || {},
+    timerHistoryHK: S.timerHistoryHK || {},
+    timer28History: S.timer28History || {},
     // Screen Time — per-day history so period filtering (today/week/month)
     // works the same way as the jap-time histories above. Used to compute
     // Efficiency (E) on the leaderboard: Actual Jap Time ÷ Screen Time.
-    screenTimeHistory: App.S.screenTimeHistory || {},
-    screenTimeSeconds: Object.values(App.S.screenTimeHistory || {}).reduce((a,b)=>a+b,0),
+    screenTimeHistory: S.screenTimeHistory || {},
+    screenTimeSeconds: Object.values(S.screenTimeHistory || {}).reduce((a,b)=>a+b,0),
+    // Marks this doc as machine-generated from a raw data snapshot rather
+    // than pushed live by the owner's own device — lets the UI/support flag
+    // it distinctly from a normal opt-in if that's ever useful later.
+    _backfilled: forceOptIn !== undefined ? true : false,
   };
-
-  try {
-    await fbDb.collection('leaderboard').doc(fbUser.uid).set(payload);
-  } catch(e) {
-    console.warn('pushLeaderboard error:', e && e.message ? e.message : e);
-  }
 }
+
+// ── One-click admin backfill: create a leaderboard doc for any real user
+// (found via the users/*/data collection-group scan) who doesn't have one
+// yet — e.g. Jhara Barman: real signed-in account, real chanted data, but
+// no leaderboard doc because the old app build she's on never created one.
+// Always opts them out (optIn:false) by default — this never publishes
+// someone to the public Family view without their own action; it only
+// makes their entry exist so the developer-only Ghost Leaderboard toggle
+// can reveal it. Never overwrites an existing doc.
+window.devBackfillMissingLeaderboardDocs = async function () {
+  if (!isDeveloper()) return;
+  if (!fbDb) return;
+  toast('🔧 Scanning for users missing a leaderboard entry…');
+  let created = 0, scanned = 0, failed = 0;
+  try {
+    const existingSnap = await fbDb.collection('leaderboard').get();
+    const haveLb = new Set();
+    existingSnap.forEach(doc => haveLb.add(doc.id));
+
+    const dataSnap = await fbDb.collectionGroup('data').get();
+    const uidsToCheck = [];
+    dataSnap.forEach(doc => {
+      const uid = doc.ref.parent.parent ? doc.ref.parent.parent.id : null;
+      if (uid && !haveLb.has(uid)) uidsToCheck.push({ uid, data: doc.data() });
+    });
+
+    for (const { uid, data } of uidsToCheck) {
+      scanned++;
+      try {
+        // Re-check per-uid right before writing — belt-and-braces against a
+        // doc that appeared mid-scan (e.g. that user logged in just now and
+        // the new unconditional login-time pushLeaderboard() beat us to it).
+        const already = await fbDb.collection('leaderboard').doc(uid).get();
+        if (already.exists) continue;
+        const payload = _buildLeaderboardPayload(data, { displayName: data.lbDisplayName || '' }, false);
+        await fbDb.collection('leaderboard').doc(uid).set(payload);
+        created++;
+      } catch (e) {
+        failed++;
+        console.warn('Backfill failed for', uid, e && e.message);
+      }
+    }
+  } catch (e) {
+    toast('⚠️ Backfill scan failed: ' + (e.message || e));
+    return;
+  }
+  toast(`✅ Backfill done — ${created} new leaderboard entr${created === 1 ? 'y' : 'ies'} created (${scanned} scanned${failed ? ', ' + failed + ' failed' : ''})`);
+  // Refresh the leaderboard view if currently visible
+  const vlb = document.getElementById('vlb');
+  if (vlb && vlb.classList.contains('active')) {
+    loadLeaderboard(window._lbPeriod || 'today');
+  }
+};
 
 /** Toggle leaderboard opt-in from Settings */
 async function toggleLbOptIn() {

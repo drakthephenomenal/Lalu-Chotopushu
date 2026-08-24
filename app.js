@@ -775,6 +775,7 @@ const App = {
   // Resets to 0 when a mala completes AND when a new mala starts. Never leaks across malas.
   currentMalaSeconds: 0,
   _currentMalaStartTs: null, // Date.now() captured when the current mala's first bead was tapped
+  _activeJapMode: null, // "main" | "n28" — which jap flow was tapped most recently
   fbDebouncePush: null,
 
   // ── IndexedDB ──
@@ -1360,6 +1361,17 @@ const App = {
       combined[k] = (t1[k] || 0) + (t2[k] || 0) + (t3[k] || 0);
     });
     return combined;
+  },
+  // Whether the CURRENTLY selected main-jap sub-mode belongs to the same
+  // group getCombinedTimerHistory() returns (R+RV+KV, or HK/SS/Ram-only in
+  // their respective special modes) — used to decide whether the live
+  // in-progress mala delta (currentMalaSeconds) should be added to a
+  // Combined/Lifetime figure built from that group.
+  isMainLiveInCombinedGroup() {
+    if (this.S.gaudiyaMode) return this.S.japMode === "hk";
+    if (this.S.trahimamMode) return this.S.japMode === "ss";
+    if (this.S.ramanandiMode) return this.S.japMode === "ram";
+    return this.S.japMode !== "hk" && this.S.japMode !== "ss" && this.S.japMode !== "ram";
   },
   getCurDt() {
     if (this.S.japMode === "rv") return this.S.dtRV;
@@ -6230,9 +6242,20 @@ function uStats() {
   _setEl("sMoM2", Math.floor(hkMoCount / ms) + "m");
 
   // Lifetime Jap Time (all jap time + all 28 names time)
+  // Includes live in-progress deltas — same components getTotalJapSecondsToday()
+  // uses — since Lifetime always includes today's still-accumulating activity.
+  // Without this it silently under-reports vs. Today while a mala/cycle is
+  // still in progress.
+  const _ltLiveMain = App.isMainLiveInCombinedGroup() ? (App.currentMalaSeconds || 0) : 0;
+  let _ltLive28 = 0;
+  if (App._n28TotalStart && !App._n28Paused) {
+    const _ltEl = Math.floor((Date.now() - App._n28TotalStart) / 1000);
+    _ltLive28 = Math.max(0, _ltEl - (App._n28SavedSecs || 0));
+  }
   const ltTimeSec =
     Object.values(App.getCombinedTimerHistory()).reduce((a, b) => a + b, 0) +
-    Object.values(App.S.timer28History || {}).reduce((a, b) => a + b, 0);
+    Object.values(App.S.timer28History || {}).reduce((a, b) => a + b, 0) +
+    _ltLiveMain + _ltLive28;
   const ltH = Math.floor(ltTimeSec / 3600),
     ltM = Math.floor((ltTimeSec % 3600) / 60),
     ltS = ltTimeSec % 60;
@@ -6323,10 +6346,15 @@ function uStats() {
   // Combined Radha+RV+KV lifetime time
   const _eCombLt = document.getElementById("tCombLt");
   if (_eCombLt) {
+    // Include the live in-progress mala delta, matching the Today/Week/Month
+    // siblings (timeTod/timeWk/timeMo below) which already add it — without
+    // this, Lifetime silently trailed Today while a mala was still in progress.
+    const _combLiveExtra = App.isMainLiveInCombinedGroup() ? (App.currentMalaSeconds || 0) : 0;
     const _combLtSec =
       Object.values(App.S.timerHistory || {}).reduce((a, b) => a + b, 0) +
       Object.values(App.S.timerHistoryRV || {}).reduce((a, b) => a + b, 0) +
-      Object.values(App.S.timerHistoryKV || {}).reduce((a, b) => a + b, 0);
+      Object.values(App.S.timerHistoryKV || {}).reduce((a, b) => a + b, 0) +
+      _combLiveExtra;
     _eCombLt.textContent = fmtShort(_combLtSec);
   }
   // All combined period counts
@@ -6338,12 +6366,24 @@ function uStats() {
     _rvTH = App.S.timerHistoryRV || {},
     _kvTH = App.S.timerHistoryKV || {},
     _n28TH = App.S.timer28History || {};
+  // Live in-progress deltas for the R+RV+KV+28 group — Radha/RV/KV share
+  // currentMalaSeconds (only one is ever the selected sub-mode at a time);
+  // 28 Names has its own independent live clock. Added to every period
+  // below (all of them include "today"), so Today never runs ahead of
+  // Week/Month/Lifetime while a mala/cycle is still in progress.
+  const _allLiveMain = App.isMainLiveInCombinedGroup() ? (App.currentMalaSeconds || 0) : 0;
+  let _allLive28 = 0;
+  if (App._n28TotalStart && !App._n28Paused) {
+    const _allEl = Math.floor((Date.now() - App._n28TotalStart) / 1000);
+    _allLive28 = Math.max(0, _allEl - (App._n28SavedSecs || 0));
+  }
+  const _allLiveExtra = _allLiveMain + _allLive28;
   const _allTodTime =
-    (_rTH[App.S.tk] || 0) + (_rvTH[App.S.tk] || 0) + (_kvTH[App.S.tk] || 0) + (_n28TH[App.S.tk] || 0);
+    (_rTH[App.S.tk] || 0) + (_rvTH[App.S.tk] || 0) + (_kvTH[App.S.tk] || 0) + (_n28TH[App.S.tk] || 0) + _allLiveExtra;
   const _allWkTime = wk.reduce(
     (s, k) => s + (_rTH[k] || 0) + (_rvTH[k] || 0) + (_kvTH[k] || 0) + (_n28TH[k] || 0),
     0,
-  );
+  ) + _allLiveExtra;
   const _allMoKeys = new Set([
     ...Object.keys(_rTH),
     ...Object.keys(_rvTH),
@@ -6355,12 +6395,13 @@ function uStats() {
     .reduce(
       (s, k) => s + (_rTH[k] || 0) + (_rvTH[k] || 0) + (_kvTH[k] || 0) + (_n28TH[k] || 0),
       0,
-    );
+    ) + _allLiveExtra;
   const _allLtTime =
     Object.values(_rTH).reduce((a, b) => a + b, 0) +
     Object.values(_rvTH).reduce((a, b) => a + b, 0) +
     Object.values(_kvTH).reduce((a, b) => a + b, 0) +
-    Object.values(_n28TH).reduce((a, b) => a + b, 0);
+    Object.values(_n28TH).reduce((a, b) => a + b, 0) +
+    _allLiveExtra;
   const _st = (id, v) => {
     const e = document.getElementById(id);
     if (e) e.textContent = fmtShort(v);
@@ -6380,10 +6421,15 @@ function uStats() {
     const stotHist = App.S.stotramTimeHistory || {};
     const japTodSec = App.getTotalJapSecondsToday();
     const scrTodSec = scrHist[App.S.tk] || 0;
+    // Live in-progress deltas — same components getTotalJapSecondsToday()
+    // uses for "Today" — must also be added to Week/Month/Lifetime, since
+    // those periods always include today's still-accumulating activity.
+    // Without this, Today jumps ahead of Week/Month/Lifetime while a
+    // mala/cycle is still in progress (the reported mismatch).
     const japWkSec = wk.reduce(
       (s, k) => s + (_rTH[k]||0) + (_rvTH[k]||0) + (App.S.timerHistoryHK||{})[k]||0 + (App.S.timerHistoryKV||{})[k]||0 + (App.S.timerHistorySS||{})[k]||0 + (_n28TH[k]||0),
       0,
-    );
+    ) + _allLiveExtra;
     const scrWkSec = wk.reduce((s, k) => s + (scrHist[k] || 0), 0);
     const _allTimerKeys = new Set([
       ...Object.keys(_rTH), ...Object.keys(_rvTH),
@@ -6393,7 +6439,7 @@ function uStats() {
     const japMoSec = [..._allTimerKeys].filter((k) => k.startsWith(mp)).reduce(
       (s, k) => s + (_rTH[k]||0) + (_rvTH[k]||0) + (App.S.timerHistoryHK||{})[k]||0 + (App.S.timerHistoryKV||{})[k]||0 + (App.S.timerHistorySS||{})[k]||0 + (_n28TH[k]||0),
       0,
-    );
+    ) + _allLiveExtra;
     const scrMoSec = Object.entries(scrHist).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0);
     const japLtSec = _allLtTime + Object.values(App.S.timerHistoryHK || {}).reduce((a,b)=>a+b,0) + Object.values(App.S.timerHistorySS || {}).reduce((a,b)=>a+b,0);
     const scrLtSec = Object.values(scrHist).reduce((a, b) => a + b, 0);

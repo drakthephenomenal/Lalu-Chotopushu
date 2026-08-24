@@ -2237,6 +2237,16 @@
         oninput="filterGhostList()"
         style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:12px;border:1px solid rgba(255,215,0,0.3);background:rgba(0,0,0,0.4);color:#fff;font-size:13px;font-family:Inter,sans-serif;margin-bottom:12px;outline:none;" />
 
+      <!-- Backfill: creates a leaderboard doc (optIn:false) for any real user
+           found in users/*/data who doesn't have one yet — e.g. accounts on
+           an old app build, or an interrupted first login — so they show up
+           in Ghost Mode search AND on the Family Board once the developer-
+           only Ghost Leaderboard toggle is on. Never touches an existing doc. -->
+      <button onclick="devBackfillMissingLeaderboardDocs()"
+        style="width:100%;box-sizing:border-box;padding:9px 14px;border-radius:12px;border:1px solid rgba(255,215,0,0.25);background:rgba(255,215,0,0.06);color:#FFD700;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:12px;">
+        🔧 Backfill missing leaderboard entries
+      </button>
+
       <!-- User list -->
       <div id="ghostUserList" style="display:flex;flex-direction:column;gap:8px;padding-bottom:40px;">
         <div style="text-align:center;color:rgba(255,215,0,0.45);padding:30px 0;font-size:13px;">Loading users…</div>

@@ -2719,49 +2719,28 @@ function spawnKV(e, zone) {
     x = e.clientX - r.left;
     y = e.clientY - r.top;
   }
-  const _nt = naamText();
-  const kvHtml =
-    '<div style="font-size:' + (40 + 18 * 0.5) + 'px">' + _nt.kv1 + "</div>" +
-    '<div style="font-size:' + (40 + 18 * 0.5) * 0.85 + 'px">' + _nt.kv2 + "</div>";
-
-  // CURRENT color → floats up from the tap point and fades (the "old" text leaving)
-  const currentColor = acf ? "#FFD700" : "#6DB8FF";
-  const currentShadow = acf
-    ? "0 0 30px rgba(255,215,0,0.9)"
-    : "0 0 30px rgba(109,184,255,0.9)";
-  acf = !acf;
-  // NEXT color → stays as the persistent display (the "new" text arriving),
-  // same behavior as HK's #hkPersist: visible until the next tap replaces it.
-  const nextColor = acf ? "#FFD700" : "#6DB8FF";
-  const nextShadow = acf
-    ? "0 0 30px rgba(255,215,0,0.9)"
-    : "0 0 30px rgba(109,184,255,0.9)";
-
   const el = document.createElement("div");
   el.className = "fn-kv";
-  const fs = 40 + Math.random() * 18;
+  const fs = 55 + Math.random() * 25;
+  const _nt = naamText();
   el.innerHTML =
     '<span style="font-size:' +
     fs +
     'px">' + _nt.kv1 + '</span><span style="font-size:' +
     fs * 0.85 +
     'px">' + _nt.kv2 + '</span>';
-  el.style.left = x - fs * 1.4 + "px";
+  el.style.left = x - fs * 1.2 + "px";
   el.style.top = y - fs * 0.5 + "px";
-  el.style.color = currentColor;
-  el.style.textShadow = currentShadow;
+  acf = !acf;
+  el.style.color = acf ? "#FFD700" : "#6DB8FF";
+  el.style.textShadow = acf
+    ? "0 0 30px rgba(255,215,0,0.9)"
+    : "0 0 30px rgba(109,184,255,0.9)";
   zone.appendChild(el);
-  setTimeout(() => el.remove(), 2400);
-
-  const persistEl = document.getElementById("kvPersist");
-  if (persistEl) {
-    persistEl.innerHTML = kvHtml;
-    persistEl.style.color = nextColor;
-    persistEl.style.textShadow = nextShadow;
-    if (!persistEl.classList.contains("kv-visible")) {
-      persistEl.classList.add("kv-visible");
-    }
-  }
+  // Deliberately slower removal than RV/SS (2400ms) to match the slower
+  // fuKV fade/rise animation — gives time to recite the name before it
+  // disappears, per request.
+  setTimeout(() => el.remove(), 5500);
 }
 
 // HK Mahamantra — appears centered, rises upward, 7 cycling colors
@@ -18704,12 +18683,16 @@ function renderLeaderboard(docs, period) {
     return { ...d, score, timeScore };
   });
 
-  // Sort descending, filter out zero scores — but in Ghost Leaderboard view
-  // (developer-only) keep everyone regardless of score so all family
-  // members show up ranked by position for every period, not just "today".
+  // Sort descending. In Ghost Leaderboard view (developer-only) keep everyone
+  // regardless of score so all family members show up ranked by position for
+  // every period. Otherwise: Lifetime keeps everyone (even devotees who
+  // haven't logged jap yet — the leaderboard is also a roster for that
+  // view), but Today/Week/Month drop anyone with zero jap in that window so
+  // the list only shows who's actually active for the period being viewed.
   const _lbUseGhostRender = window._lbGhostMode && typeof isDeveloper === 'function' && isDeveloper();
+  const _lbIsLifetime = !periodKeys; // null periodKeys = alltime
   const filtered = scored
-    .filter(function(d) { return _lbUseGhostRender || d.score > 0; })
+    .filter(function(d) { return _lbUseGhostRender || _lbIsLifetime || d.score > 0; })
     .sort(function(a, b) { return b.score - a.score; })
     .slice(0, 50);
 

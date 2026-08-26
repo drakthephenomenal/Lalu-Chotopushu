@@ -1221,8 +1221,16 @@ button.n28-gold-btn-danger,
 .fn-rv{position:absolute;pointer-events:none;z-index:10;animation:fu 2.4s ease-out forwards;
   display:flex;flex-direction:column;align-items:center;line-height:1.15;}
 .fn-rv span{font-family:'Tiro Devanagari Hindi',serif;display:block;}
-/* Two-line floating naam for KV mode */
-.fn-kv{position:absolute;pointer-events:none;z-index:10;animation:fu 2.4s ease-out forwards;
+/* Two-line floating naam for KV mode — deliberately slower fade/rise than
+   RV/SS/Radha (fu, 2.4s) so there's time to recite the name before it
+   disappears, per request. */
+@keyframes fuKV{
+  0%{opacity:0.9;transform:translateY(0) scale(1);}
+  15%{opacity:1;transform:translateY(-40px) scale(1.12);}
+  70%{opacity:1;transform:translateY(-170px) scale(1.05);}
+  100%{opacity:0;transform:translateY(-280px) scale(0.9);}
+}
+.fn-kv{position:absolute;pointer-events:none;z-index:10;animation:fuKV 5.5s ease-out forwards;
   display:flex;flex-direction:column;align-items:center;line-height:1.15;text-align:center;max-width:280px;}
 .fn-kv span{font-family:'Tiro Devanagari Hindi',serif;display:block;}
 /* Two-line floating naam for Samba Sadashiv (SS) mode */

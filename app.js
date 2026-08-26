@@ -18683,16 +18683,15 @@ function renderLeaderboard(docs, period) {
     return { ...d, score, timeScore };
   });
 
-  // Sort descending. In Ghost Leaderboard view (developer-only) keep everyone
-  // regardless of score so all family members show up ranked by position for
-  // every period. Otherwise: Lifetime keeps everyone (even devotees who
-  // haven't logged jap yet — the leaderboard is also a roster for that
-  // view), but Today/Week/Month drop anyone with zero jap in that window so
-  // the list only shows who's actually active for the period being viewed.
-  const _lbUseGhostRender = window._lbGhostMode && typeof isDeveloper === 'function' && isDeveloper();
+  // Sort descending. Lifetime keeps everyone (even devotees who haven't
+  // logged jap yet — the leaderboard is also a roster for that view), for
+  // BOTH normal and Ghost Leaderboard (developer-only) view. Today/Week/Month
+  // drop anyone with zero jap in that window in both views too, so the list
+  // only shows who's actually active for the period being viewed — Ghost
+  // mode no longer bypasses this, it only changes which docs are queried.
   const _lbIsLifetime = !periodKeys; // null periodKeys = alltime
   const filtered = scored
-    .filter(function(d) { return _lbUseGhostRender || _lbIsLifetime || d.score > 0; })
+    .filter(function(d) { return _lbIsLifetime || d.score > 0; })
     .sort(function(a, b) { return b.score - a.score; })
     .slice(0, 50);
 

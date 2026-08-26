@@ -756,6 +756,18 @@ const App = {
     // never counts toward Screen Time.
     screenTimeHistory: {},
     stotramTimeHistory: {},
+    // ── Manual jap tracking (per-day, per jap type) ──
+    // When jap is entered by hand via "Add/Deduct Jap Manually" or the
+    // 28 Names cycle add (i.e. chanted at a real mala/off-screen and
+    // reported after the fact), it correctly still counts toward total
+    // name jap and Actual Jap Time — but must NOT count toward Efficiency
+    // or Quality, since neither the screen-time nor the pace of that jap
+    // was actually observed by the app. manualJapCount/manualJapTime hold
+    // the portion of each day's name-jap count / timer seconds that came
+    // from manual entry, per type key (radha/rv/kv/ss/hk/n28), so the
+    // Efficiency and Quality calculations can subtract it back out.
+    manualJapCount: { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} },
+    manualJapTime:  { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} },
   },
   lmcRV: 0,
   lmcHK: 0,
@@ -962,6 +974,9 @@ const App = {
       lastLng: this.S.lastLng ?? null,
       screenTimeHistory: this.S.screenTimeHistory || {},
       stotramTimeHistory: this.S.stotramTimeHistory || {},
+      manualJapCount: this.S.manualJapCount || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} },
+      manualJapTime: this.S.manualJapTime || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} },
+      lbDisplayName: this.S.lbDisplayName || "",
     });
     // Keep per-day stores updated for compatibility with existing offline data
     const tk = this.S.tk;
@@ -4505,10 +4520,12 @@ function addManualJap() {
   if (!App.S.historyHK) App.S.historyHK = {};
   if (!App.S.historyKV) App.S.historyKV = {};
   if (!App.S.historySS) App.S.historySS = {};
+  if (!App.S.historyRam) App.S.historyRam = {};
   const isRV = App.S.japMode === "rv";
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
+  const isRam = App.S.japMode === "ram";
   if (isRV) {
     App.S.historyRV[App.S.tk] = (App.S.historyRV[App.S.tk] || 0) + n;
   } else if (isHK) {
@@ -4517,6 +4534,8 @@ function addManualJap() {
     App.S.historyKV[App.S.tk] = (App.S.historyKV[App.S.tk] || 0) + n;
   } else if (isSS) {
     App.S.historySS[App.S.tk] = (App.S.historySS[App.S.tk] || 0) + n;
+  } else if (isRam) {
+    App.S.historyRam[App.S.tk] = (App.S.historyRam[App.S.tk] || 0) + n;
   } else {
     App.S.history[App.S.tk] = (App.S.history[App.S.tk] || 0) + n;
   }
@@ -4543,9 +4562,11 @@ function addManualJap() {
           ? App.S.malaLogKV || (App.S.malaLogKV = [])
           : isSS
             ? App.S.malaLogSS || (App.S.malaLogSS = [])
-            : App.S.malaLog || (App.S.malaLog = []);
+            : isRam
+              ? App.S.malaLogRam || (App.S.malaLogRam = [])
+              : App.S.malaLog || (App.S.malaLog = []);
     const now = Date.now();
-    const modeStr = isRV ? "rv" : isHK ? "hk" : isKV ? "kv" : isSS ? "ss" : "radha";
+    const modeStr = isRV ? "rv" : isHK ? "hk" : isKV ? "kv" : isSS ? "ss" : isRam ? "ram" : "radha";
     for (let i = 0; i < malasAdded; i++) {
       log.push(avgPerMala);
       logActivity({
@@ -4557,9 +4578,19 @@ function addManualJap() {
         manual: true,
       });
     }
-    // Sync timerHistory from updated mala log sum
-    App.syncTimerFromMalaLog();
+    if (isRam) {
+      // syncTimerFromMalaLog() doesn't cover the Ram (Raam Vijay Mantra)
+      // timer bucket — add the time directly instead.
+      if (!App.S.timerHistoryRam) App.S.timerHistoryRam = {};
+      App.S.timerHistoryRam[App.S.tk] = (App.S.timerHistoryRam[App.S.tk] || 0) + timeSecs;
+    } else {
+      // Sync timerHistory from updated mala log sum
+      App.syncTimerFromMalaLog();
+    }
   }
+  // This entry was reported after the fact (e.g. chanted at a real mala,
+  // off-screen) — mark it so Efficiency/Quality exclude it.
+  _recordManualJap(isRV ? "rv" : isHK ? "hk" : isKV ? "kv" : isSS ? "ss" : isRam ? "ram" : "radha", App.S.tk, n, timeSecs);
   App.ensureMalaWallStart();
   const nm = Math.floor(App.gTod() / (App.S.ms || 108));
   const lmcKey = isRV ? "lmcRV" : isHK ? "lmcHK" : isKV ? "lmcKV" : isSS ? "lmcSS" : "lmc";
@@ -5756,6 +5787,7 @@ function addOtherDayJap() {
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
+  const isRam = App.S.japMode === "ram";
   const hist = isRV
     ? App.S.historyRV
     : isHK
@@ -5764,7 +5796,9 @@ function addOtherDayJap() {
         ? App.S.historyKV || (App.S.historyKV = {})
         : isSS
           ? App.S.historySS || (App.S.historySS = {})
-          : App.S.history;
+          : isRam
+            ? App.S.historyRam || (App.S.historyRam = {})
+            : App.S.history;
   hist[date] = (hist[date] || 0) + n;
 
   // Optional estimated time — directly add to per-day timerHistory
@@ -5782,9 +5816,12 @@ function addOtherDayJap() {
           ? App.S.timerHistoryKV || (App.S.timerHistoryKV = {})
           : isSS
             ? App.S.timerHistorySS || (App.S.timerHistorySS = {})
-            : App.S.timerHistory || (App.S.timerHistory = {});
+            : isRam
+              ? App.S.timerHistoryRam || (App.S.timerHistoryRam = {})
+              : App.S.timerHistory || (App.S.timerHistory = {});
     th[date] = (th[date] || 0) + timeSecs;
   }
+  _recordManualJap(isRV ? "rv" : isHK ? "hk" : isKV ? "kv" : isSS ? "ss" : isRam ? "ram" : "radha", date, n, timeSecs);
 
   App.ua();
   ghostAwareSave();
@@ -6424,7 +6461,15 @@ function uStats() {
   (function () {
     const scrHist = App.S.screenTimeHistory || {};
     const stotHist = App.S.stotramTimeHistory || {};
-    const japTodSec = App.getTotalJapSecondsToday();
+    // Jap entered manually (chanted off-screen at a real mala, reported
+    // after the fact) still counts toward Total Name Jap / Actual Jap Time
+    // everywhere else, but must be excluded here — neither its pace nor
+    // any screen time was actually observed by the app.
+    const _manTod = _MANUAL_TYPE_KEYS.reduce((s, t) => s + _manualSecondsFor(t, [App.S.tk]), 0);
+    const _manWk = _MANUAL_TYPE_KEYS.reduce((s, t) => s + _manualSecondsFor(t, wk), 0);
+    const _manMo = _MANUAL_TYPE_KEYS.reduce((s, t) => s + _manualSecondsFor(t, undefined, mp), 0);
+    const _manLt = _MANUAL_TYPE_KEYS.reduce((s, t) => s + _manualSecondsFor(t), 0);
+    const japTodSec = Math.max(0, App.getTotalJapSecondsToday() - _manTod);
     const scrTodSec = scrHist[App.S.tk] || 0;
     // Live in-progress delta — MUST use the exact same inclusion rule as
     // getTotalJapSecondsToday() (Today), not the isMainLiveInCombinedGroup()
@@ -6442,28 +6487,28 @@ function uStats() {
       _effLive28 = Math.max(0, _el - (App._n28SavedSecs || 0));
     }
     const _effLiveExtra = _effLiveMain + _effLive28;
-    const japWkSec = wk.reduce(
+    const japWkSec = Math.max(0, wk.reduce(
       (s, k) => s + (_rTH[k]||0) + (_rvTH[k]||0)
         + ((App.S.timerHistoryHK||{})[k]||0)
         + ((App.S.timerHistoryKV||{})[k]||0)
         + ((App.S.timerHistorySS||{})[k]||0)
         + (_n28TH[k]||0),
       0,
-    ) + _effLiveExtra;
+    ) - _manWk) + _effLiveExtra;
     const scrWkSec = wk.reduce((s, k) => s + (scrHist[k] || 0), 0);
     const _allTimerKeys = new Set([
       ...Object.keys(_rTH), ...Object.keys(_rvTH),
       ...Object.keys(App.S.timerHistoryHK || {}), ...Object.keys(App.S.timerHistoryKV || {}),
       ...Object.keys(App.S.timerHistorySS || {}), ...Object.keys(_n28TH),
     ]);
-    const japMoSec = [..._allTimerKeys].filter((k) => k.startsWith(mp)).reduce(
+    const japMoSec = Math.max(0, [..._allTimerKeys].filter((k) => k.startsWith(mp)).reduce(
       (s, k) => s + (_rTH[k]||0) + (_rvTH[k]||0)
         + ((App.S.timerHistoryHK||{})[k]||0)
         + ((App.S.timerHistoryKV||{})[k]||0)
         + ((App.S.timerHistorySS||{})[k]||0)
         + (_n28TH[k]||0),
       0,
-    ) + _effLiveExtra;
+    ) - _manMo) + _effLiveExtra;
     const scrMoSec = Object.entries(scrHist).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0);
     // Lifetime committed total computed the same way (all six history
     // objects, all dates) rather than reusing the shared _allLtTime, which
@@ -6475,7 +6520,7 @@ function uStats() {
       Object.values(_n28TH).reduce((a, b) => a + b, 0) +
       Object.values(App.S.timerHistoryHK || {}).reduce((a, b) => a + b, 0) +
       Object.values(App.S.timerHistorySS || {}).reduce((a, b) => a + b, 0);
-    const japLtSec = _committedLtTime + _effLiveExtra;
+    const japLtSec = Math.max(0, _committedLtTime - _manLt) + _effLiveExtra;
     const scrLtSec = Object.values(scrHist).reduce((a, b) => a + b, 0);
     const _pct = (jap, scr) => (scr > 0 ? Math.min(100, Math.round((jap / scr) * 1000) / 10) : 0);
     _st("effJapTod", japTodSec); _st("effScrTod", scrTodSec);
@@ -6491,6 +6536,38 @@ function uStats() {
     _st("stTimeWk", wk.reduce((s, k) => s + (stotHist[k] || 0), 0));
     _st("stTimeMo", Object.entries(stotHist).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0));
     _st("stTimeLt", Object.values(stotHist).reduce((a, b) => a + b, 0));
+  })();
+
+  // ── Quality (Q): Actual Jap Time (sec) ÷ Total Name Jap, per jap type ──
+  // Same manual-entry exclusion as Efficiency above, applied per type.
+  (function () {
+    const _qTypes = [
+      { key: "radha", th: _rTH,                      cnt: App.S.history || {},   tod: "qRadhaTod", wk: "qRadhaWk", mo: "qRadhaMo", lt: "qRadhaLt" },
+      { key: "rv",    th: _rvTH,                      cnt: App.S.historyRV || {}, tod: "qRVTod",    wk: "qRVWk",    mo: "qRVMo",    lt: "qRVLt" },
+      { key: "kv",    th: App.S.timerHistoryKV || {}, cnt: App.S.historyKV || {}, tod: "qKVTod",    wk: "qKVWk",    mo: "qKVMo",    lt: "qKVLt" },
+      { key: "ss",    th: App.S.timerHistorySS || {}, cnt: App.S.historySS || {}, tod: "qSSTod",    wk: "qSSWk",    mo: "qSSMo",    lt: "qSSLt" },
+      { key: "hk",    th: App.S.timerHistoryHK || {}, cnt: App.S.historyHK || {}, tod: "qHKTod",    wk: "qHKWk",    mo: "qHKMo",    lt: "qHKLt" },
+      { key: "ram",   th: App.S.timerHistoryRam || {},cnt: App.S.historyRam || {},tod: "qRamTod",   wk: "qRamWk",   mo: "qRamMo",   lt: "qRamLt" },
+      { key: "n28",   th: _n28TH,                     cnt: App.S.h28 || {},       tod: "q28Tod",    wk: "q28Wk",    mo: "q28Mo",    lt: "q28Lt" },
+    ];
+    const _q = (sec, cnt) => (cnt > 0 ? (sec / cnt).toFixed(2) : "—");
+    _qTypes.forEach((t) => {
+      const secTod = Math.max(0, (t.th[App.S.tk] || 0) - _manualSecondsFor(t.key, [App.S.tk]));
+      const cntTod = Math.max(0, (t.cnt[App.S.tk] || 0) - _manualCountFor(t.key, [App.S.tk]));
+      _setEl(t.tod, _q(secTod, cntTod));
+
+      const secWk = Math.max(0, wk.reduce((s, k) => s + (t.th[k] || 0), 0) - _manualSecondsFor(t.key, wk));
+      const cntWk = Math.max(0, wk.reduce((s, k) => s + (t.cnt[k] || 0), 0) - _manualCountFor(t.key, wk));
+      _setEl(t.wk, _q(secWk, cntWk));
+
+      const secMo = Math.max(0, Object.entries(t.th).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0) - _manualSecondsFor(t.key, undefined, mp));
+      const cntMo = Math.max(0, Object.entries(t.cnt).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0) - _manualCountFor(t.key, undefined, mp));
+      _setEl(t.mo, _q(secMo, cntMo));
+
+      const secLt = Math.max(0, Object.values(t.th).reduce((a, b) => a + b, 0) - _manualSecondsFor(t.key));
+      const cntLt = Math.max(0, Object.values(t.cnt).reduce((a, b) => a + b, 0) - _manualCountFor(t.key));
+      _setEl(t.lt, _q(secLt, cntLt));
+    });
   })();
 
   document.getElementById("sBest").textContent = best;
@@ -7296,6 +7373,43 @@ async function saveJsonFile(filename, jsonString) {
 // backup staging (fbPushFull) below — keeps both in the same shape so a
 // Drive backup can be restored with importAllData() exactly like a manual
 // export file can.
+// Record a manual (off-screen / after-the-fact) jap entry so Efficiency and
+// Quality can exclude it later. typeKey is one of radha/rv/kv/ss/hk/n28.
+// count = name-jap count added; seconds = time-taken added (0 if none given).
+function _recordManualJap(typeKey, dateKey, count, seconds) {
+  if (!App.S.manualJapCount) App.S.manualJapCount = { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} };
+  if (!App.S.manualJapTime)  App.S.manualJapTime  = { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} };
+  if (!App.S.manualJapCount[typeKey]) App.S.manualJapCount[typeKey] = {};
+  if (!App.S.manualJapTime[typeKey])  App.S.manualJapTime[typeKey]  = {};
+  App.S.manualJapCount[typeKey][dateKey] = (App.S.manualJapCount[typeKey][dateKey] || 0) + (count || 0);
+  if (seconds > 0) {
+    App.S.manualJapTime[typeKey][dateKey] = (App.S.manualJapTime[typeKey][dateKey] || 0) + seconds;
+  }
+}
+
+// Sum manual seconds/count for one jap type over a period. Pass either
+// dateKeys (array of "YYYY-MM-DD" strings, e.g. the week array) or
+// monthPrefix (e.g. "2026-08") — pass neither for all-time (lifetime).
+function _manualSecondsFor(typeKey, dateKeys, monthPrefix) {
+  const obj = (App.S.manualJapTime && App.S.manualJapTime[typeKey]) || {};
+  if (monthPrefix !== undefined) {
+    let s = 0; for (const k in obj) if (k.startsWith(monthPrefix)) s += obj[k] || 0;
+    return s;
+  }
+  if (dateKeys) return dateKeys.reduce((s, k) => s + (obj[k] || 0), 0);
+  return Object.values(obj).reduce((a, b) => a + b, 0);
+}
+function _manualCountFor(typeKey, dateKeys, monthPrefix) {
+  const obj = (App.S.manualJapCount && App.S.manualJapCount[typeKey]) || {};
+  if (monthPrefix !== undefined) {
+    let s = 0; for (const k in obj) if (k.startsWith(monthPrefix)) s += obj[k] || 0;
+    return s;
+  }
+  if (dateKeys) return dateKeys.reduce((s, k) => s + (obj[k] || 0), 0);
+  return Object.values(obj).reduce((a, b) => a + b, 0);
+}
+const _MANUAL_TYPE_KEYS = ["radha", "rv", "kv", "ss", "hk", "ram", "n28"];
+
 function _buildBackupPayload() {
   return {
     _version: 3,
@@ -7353,6 +7467,17 @@ function _buildBackupPayload() {
     gaudiyaMode: App.S.gaudiyaMode || false,
     trahimamMode: App.S.trahimamMode || false,
     ramanandiMode: App.S.ramanandiMode || false,
+    // ── Previously missing from this backup payload (bug fix) ──
+    // These were saved fine to Firestore but silently dropped from
+    // Export All Data / local backup, so restoring from a local backup
+    // alone lost them.
+    dt28Cycles: App.S.dt28Cycles || 0,
+    lbDisplayName: App.S.lbDisplayName || "",
+    screenTimeHistory: App.S.screenTimeHistory || {},
+    stotramTimeHistory: App.S.stotramTimeHistory || {},
+    activityLog: App.S.activityLog || [],
+    manualJapCount: App.S.manualJapCount || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} },
+    manualJapTime: App.S.manualJapTime || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} },
   };
 }
 
@@ -7526,6 +7651,12 @@ function importAllData(input) {
       App.S.milestones = data.milestones || { reached: {}, lastChecked: 0 };
       App.S.msConsider = data.msConsider || { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, n28: true };
       App.S.dt28Cycles = data.dt28Cycles || 0;
+      App.S.lbDisplayName = data.lbDisplayName || "";
+      App.S.screenTimeHistory = data.screenTimeHistory || {};
+      App.S.stotramTimeHistory = data.stotramTimeHistory || {};
+      App.S.activityLog = Array.isArray(data.activityLog) ? data.activityLog : [];
+      App.S.manualJapCount = data.manualJapCount || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} };
+      App.S.manualJapTime = data.manualJapTime || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} };
       App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history));
       App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28));
       App.S.syncBaselineTimer = JSON.parse(JSON.stringify(App.S.timerHistory));
@@ -10370,6 +10501,13 @@ async function fbPushFull() {
     bgIskconAcharya: App.S.bgIskconAcharya ?? 1,
     bgIskconGurudev: App.S.bgIskconGurudev ?? 1,
     bgCM: App.S.bgCM ?? 1,
+    // Screen Time was previously never pushed here — it survived on-device
+    // (IndexedDB) but reset to 0 on a fresh install / other device, making
+    // Efficiency look inverted (Actual Jap Time synced, Screen Time didn't).
+    screenTimeHistory: App.S.screenTimeHistory || {},
+    stotramTimeHistory: App.S.stotramTimeHistory || {},
+    manualJapCount: App.S.manualJapCount || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} },
+    manualJapTime: App.S.manualJapTime || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} },
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId,
   };
@@ -10749,6 +10887,47 @@ function fbApplyRemote(d) {
   App.S.syncBaselineTimer28 = JSON.parse(
     JSON.stringify(App.S.timer28History || {}),
   );
+  // Screen Time / manual-jap tracking — per-day-key values only ever grow,
+  // so merge remote+local by taking the max per key (same rule used for the
+  // local IDB/localStorage merge in App.load()) rather than overwriting.
+  (function _mergeMaxByDate(remoteObj, localKeyGetter, localKeySetter) {
+    const remote = remoteObj || {};
+    const local = localKeyGetter() || {};
+    const merged = { ...local };
+    for (const k in remote) {
+      merged[k] = Math.max(remote[k] || 0, merged[k] || 0);
+    }
+    localKeySetter(merged);
+  })(d.screenTimeHistory, () => App.S.screenTimeHistory, (v) => (App.S.screenTimeHistory = v));
+  (function _mergeMaxByDate(remoteObj, localKeyGetter, localKeySetter) {
+    const remote = remoteObj || {};
+    const local = localKeyGetter() || {};
+    const merged = { ...local };
+    for (const k in remote) {
+      merged[k] = Math.max(remote[k] || 0, merged[k] || 0);
+    }
+    localKeySetter(merged);
+  })(d.stotramTimeHistory, () => App.S.stotramTimeHistory, (v) => (App.S.stotramTimeHistory = v));
+  if (d.manualJapCount) {
+    if (!App.S.manualJapCount) App.S.manualJapCount = { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} };
+    for (const typeKey of Object.keys(d.manualJapCount)) {
+      const remote = d.manualJapCount[typeKey] || {};
+      const local = App.S.manualJapCount[typeKey] || {};
+      const merged = { ...local };
+      for (const k in remote) merged[k] = Math.max(remote[k] || 0, merged[k] || 0);
+      App.S.manualJapCount[typeKey] = merged;
+    }
+  }
+  if (d.manualJapTime) {
+    if (!App.S.manualJapTime) App.S.manualJapTime = { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} };
+    for (const typeKey of Object.keys(d.manualJapTime)) {
+      const remote = d.manualJapTime[typeKey] || {};
+      const local = App.S.manualJapTime[typeKey] || {};
+      const merged = { ...local };
+      for (const k in remote) merged[k] = Math.max(remote[k] || 0, merged[k] || 0);
+      App.S.manualJapTime[typeKey] = merged;
+    }
+  }
   App._suspendCloudSync = true;
   App.save().finally(() => {
     App._suspendCloudSync = false;
@@ -12214,6 +12393,7 @@ function adj28Cycles(sign) {
     if (timeSecs > 0) {
       App.S.timer28History[tk] = (App.S.timer28History[tk] || 0) + timeSecs;
     }
+    _recordManualJap("n28", tk, taps, timeSecs);
   }
 
   document.getElementById("sp28CycleVal").value = "";
@@ -12361,6 +12541,7 @@ function addOtherDayJap28() {
     if (!App.S.timer28History) App.S.timer28History = {};
     App.S.timer28History[date] = (App.S.timer28History[date] || 0) + timeSecs;
   }
+  _recordManualJap("n28", date, taps, timeSecs);
 
   if (dateEl) dateEl.value = "";
   if (inEl) inEl.value = "";

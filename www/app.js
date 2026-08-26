@@ -2740,7 +2740,7 @@ function spawnKV(e, zone) {
   // Deliberately slower removal than RV/SS (2400ms) to match the slower
   // fuKV fade/rise animation — gives time to recite the name before it
   // disappears, per request.
-  setTimeout(() => el.remove(), 5500);
+  setTimeout(() => el.remove(), 8000);
 }
 
 // HK Mahamantra — appears centered, rises upward, 7 cycling colors
@@ -6438,6 +6438,10 @@ function uStats() {
   // Screen Time comes from App.S.screenTimeHistory (ticks only while a jap
   // display — Jap or 28 Names — is visible & foregrounded).
   (function () {
+    // Efficiency is now Today-only, per request — Week/Month/Lifetime
+    // efficiency isn't shown (their numbers could look impossible anyway
+    // whenever Screen Time wasn't tracked for older days before this
+    // feature existed). Quality (below) still covers all four periods.
     const scrHist = App.S.screenTimeHistory || {};
     const stotHist = App.S.stotramTimeHistory || {};
     // Jap entered manually (chanted off-screen at a real mala, reported
@@ -6445,76 +6449,13 @@ function uStats() {
     // everywhere else, but must be excluded here — neither its pace nor
     // any screen time was actually observed by the app.
     const _manTod = _MANUAL_TYPE_KEYS.reduce((s, t) => s + _manualSecondsFor(t, [App.S.tk]), 0);
-    const _manWk = _MANUAL_TYPE_KEYS.reduce((s, t) => s + _manualSecondsFor(t, wk), 0);
-    const _manMo = _MANUAL_TYPE_KEYS.reduce((s, t) => s + _manualSecondsFor(t, undefined, mp), 0);
-    const _manLt = _MANUAL_TYPE_KEYS.reduce((s, t) => s + _manualSecondsFor(t), 0);
     const japTodSec = Math.max(0, App.getTotalJapSecondsToday() - _manTod);
     const scrTodSec = scrHist[App.S.tk] || 0;
-    // Live in-progress delta — MUST use the exact same inclusion rule as
-    // getTotalJapSecondsToday() (Today), not the isMainLiveInCombinedGroup()
-    // gate used elsewhere. That gate excludes hk/ss/ram submodes outside
-    // their dedicated toggle contexts, while getTotalJapSecondsToday()
-    // includes the live delta for ANY active mode except n28. Using the
-    // mismatched gate here let Today include in-progress mala/cycle time
-    // that Week/Month/Lifetime silently dropped — producing the impossible
-    // "Week/Month smaller than Today" result, since today is always part
-    // of both. Recomputing locally with the same rule keeps them in sync.
-    const _effLiveMain = App._activeJapMode !== "n28" ? (App.currentMalaSeconds || 0) : 0;
-    let _effLive28 = 0;
-    if (App._activeJapMode !== "main" && App._n28TotalStart && !App._n28Paused) {
-      const _el = Math.floor((Date.now() - App._n28TotalStart) / 1000);
-      _effLive28 = Math.max(0, _el - (App._n28SavedSecs || 0));
-    }
-    const _effLiveExtra = _effLiveMain + _effLive28;
-    const japWkSec = Math.max(0, wk.reduce(
-      (s, k) => s + (_rTH[k]||0) + (_rvTH[k]||0)
-        + ((App.S.timerHistoryHK||{})[k]||0)
-        + ((App.S.timerHistoryKV||{})[k]||0)
-        + ((App.S.timerHistorySS||{})[k]||0)
-        + (_n28TH[k]||0),
-      0,
-    ) - _manWk) + _effLiveExtra;
-    const scrWkSec = wk.reduce((s, k) => s + (scrHist[k] || 0), 0);
-    const _allTimerKeys = new Set([
-      ...Object.keys(_rTH), ...Object.keys(_rvTH),
-      ...Object.keys(App.S.timerHistoryHK || {}), ...Object.keys(App.S.timerHistoryKV || {}),
-      ...Object.keys(App.S.timerHistorySS || {}), ...Object.keys(_n28TH),
-    ]);
-    const japMoSec = Math.max(0, [..._allTimerKeys].filter((k) => k.startsWith(mp)).reduce(
-      (s, k) => s + (_rTH[k]||0) + (_rvTH[k]||0)
-        + ((App.S.timerHistoryHK||{})[k]||0)
-        + ((App.S.timerHistoryKV||{})[k]||0)
-        + ((App.S.timerHistorySS||{})[k]||0)
-        + (_n28TH[k]||0),
-      0,
-    ) - _manMo) + _effLiveExtra;
-    const scrMoSec = Object.entries(scrHist).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0);
-    // Lifetime committed total computed the same way (all six history
-    // objects, all dates) rather than reusing the shared _allLtTime, which
-    // embeds the same mismatched gate and only covers R+RV+KV+28.
-    const _committedLtTime =
-      Object.values(_rTH).reduce((a, b) => a + b, 0) +
-      Object.values(_rvTH).reduce((a, b) => a + b, 0) +
-      Object.values(App.S.timerHistoryKV || {}).reduce((a, b) => a + b, 0) +
-      Object.values(_n28TH).reduce((a, b) => a + b, 0) +
-      Object.values(App.S.timerHistoryHK || {}).reduce((a, b) => a + b, 0) +
-      Object.values(App.S.timerHistorySS || {}).reduce((a, b) => a + b, 0);
-    const japLtSec = Math.max(0, _committedLtTime - _manLt) + _effLiveExtra;
-    const scrLtSec = Object.values(scrHist).reduce((a, b) => a + b, 0);
     const _pct = (jap, scr) => (scr > 0 ? Math.min(100, Math.round((jap / scr) * 1000) / 10) : 0);
     _st("effJapTod", japTodSec); _st("effScrTod", scrTodSec);
     _setEl("effPctTod", _pct(japTodSec, scrTodSec) + "%");
-    _st("effJapWk", japWkSec); _st("effScrWk", scrWkSec);
-    _setEl("effPctWk", _pct(japWkSec, scrWkSec) + "%");
-    _st("effJapMo", japMoSec); _st("effScrMo", scrMoSec);
-    _setEl("effPctMo", _pct(japMoSec, scrMoSec) + "%");
-    _st("effJapLt", japLtSec); _st("effScrLt", scrLtSec);
-    _setEl("effPctLt", _pct(japLtSec, scrLtSec) + "%");
     // Stotram Time — statistics only, never part of Screen Time
     _st("stTimeTod", stotHist[App.S.tk] || 0);
-    _st("stTimeWk", wk.reduce((s, k) => s + (stotHist[k] || 0), 0));
-    _st("stTimeMo", Object.entries(stotHist).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0));
-    _st("stTimeLt", Object.values(stotHist).reduce((a, b) => a + b, 0));
   })();
 
   // ── Quality (Q): Actual Jap Time (sec) ÷ Total Name Jap, per jap type ──
@@ -18577,6 +18518,32 @@ function renderLeaderboard(docs, period) {
 
   // Compute score for each doc based on period
   const periodKeys = _lbGetPeriodKeys(period);
+  // Efficiency shown on the leaderboard is always TODAY's efficiency
+  // (Actual Jap Time ÷ Screen Time, today only) regardless of which period
+  // tab is selected — same Today-only scope as the Stats screen. Uses the
+  // real current device date (not a possibly-stale d.todayKey from whenever
+  // that devotee last pushed) against their per-day timer/screen maps,
+  // which are always present in the payload no matter the selected period.
+  const _lbTodayKey = _lbGetPeriodKeys('today')[0];
+  const _lbTodayEff = function (d) {
+    const tHist = d.timerHistory || {}, tHistRV = d.timerHistoryRV || {},
+      tHistKV = d.timerHistoryKV || {}, tHistSS = d.timerHistorySS || {},
+      tHistHK = d.timerHistoryHK || {}, tHist28 = d.timer28History || {};
+    const rawSec = (tHist[_lbTodayKey]||0) + (tHistRV[_lbTodayKey]||0) + (tHistKV[_lbTodayKey]||0)
+      + (tHistSS[_lbTodayKey]||0) + (tHistHK[_lbTodayKey]||0) + (tHist28[_lbTodayKey]||0);
+    // Manual (off-screen, reported-after-the-fact) jap doesn't belong in
+    // Efficiency's numerator — same exclusion rule as the Stats screen.
+    // (Ram mode isn't part of the leaderboard's timer breakdown at all yet,
+    // so it's excluded here too — subtracting it would double-discount
+    // seconds that were never added to rawSec in the first place.)
+    const manualSec = ["radha","rv","kv","ss","hk","n28"].reduce(function (s, t) {
+      const m = d.manualJapTime && d.manualJapTime[t];
+      return s + (m ? (m[_lbTodayKey] || 0) : 0);
+    }, 0);
+    const japSec = Math.max(0, rawSec - manualSec);
+    const scrSec = (d.screenTimeHistory || {})[_lbTodayKey] || 0;
+    return { japSec: japSec, scrSec: scrSec };
+  };
   const scored = docs.map(function(d) {
     let score = 0;
     let timeScore = 0;
@@ -18592,6 +18559,7 @@ function renderLeaderboard(docs, period) {
       const s28 = Object.values(d.history28 || {}).reduce((a,b)=>a+b,0);
       // Net each type against its own deduct counter (gifts/manual deducts) —
       // matches how totalJap itself was computed in pushLeaderboard(), so the
+
       // breakdown always adds up to the same Total shown alongside it.
       d._breakdown = {
         r:   Math.max(0, sr  - (d.nameJapDeduct   || 0)),
@@ -18680,7 +18648,8 @@ function renderLeaderboard(docs, period) {
       const tScr = d.screenTimeHistory || {};
       d._screenTimeSec = periodKeys.reduce((s, k) => s + (tScr[k] || 0), 0);
     }
-    return { ...d, score, timeScore };
+    const _todayEff = _lbTodayEff(d);
+    return { ...d, score, timeScore, _effTodaySec: _todayEff.japSec, _effTodayScrSec: _todayEff.scrSec };
   });
 
   // Sort descending. Lifetime keeps everyone (even devotees who haven't
@@ -18806,11 +18775,14 @@ function renderLeaderboard(docs, period) {
     }
     if (d.timeScore > 0) totalStr += ' ⏱ ' + _histFmtSec(d.timeScore);
     if (d.streak > 0) totalStr += ' 🔥' + d.streak + 'd';
-    // Screen Time + Efficiency (E) — E = Actual Jap Time ÷ Screen Time × 100
-    const scrSec = d._screenTimeSec || 0;
-    if (scrSec > 0) totalStr += ' · 📱' + _histFmtSec(scrSec);
-    if (scrSec > 0 && d.timeScore > 0) {
-      const effPct = Math.min(100, Math.round((d.timeScore / scrSec) * 1000) / 10);
+    // Screen Time + Efficiency (E) — always TODAY's efficiency regardless of
+    // which period tab is selected (Actual Jap Time ÷ Screen Time × 100,
+    // today only), same scope as the Stats screen's Efficiency panel.
+    const effJapSec = d._effTodaySec || 0;
+    const effScrSec = d._effTodayScrSec || 0;
+    if (effScrSec > 0) totalStr += ' · 📱' + _histFmtSec(effScrSec);
+    if (effScrSec > 0 && effJapSec > 0) {
+      const effPct = Math.min(100, Math.round((effJapSec / effScrSec) * 1000) / 10);
       totalStr += ' · E:' + effPct + '%';
     }
     const breakdown = bdParts.length > 0 ? bdParts.join(' · ') : '';
@@ -19017,6 +18989,10 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     // Efficiency (E) on the leaderboard: Actual Jap Time ÷ Screen Time.
     screenTimeHistory: S.screenTimeHistory || {},
     screenTimeSeconds: Object.values(S.screenTimeHistory || {}).reduce((a,b)=>a+b,0),
+    // Manual (off-screen, reported-after-the-fact) jap seconds per type/date —
+    // pushed so the leaderboard's Efficiency figure can exclude them the same
+    // way the Stats screen does, instead of crediting untracked screen usage.
+    manualJapTime: S.manualJapTime || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} },
     // Marks this doc as machine-generated from a raw data snapshot rather
     // than pushed live by the owner's own device — lets the UI/support flag
     // it distinctly from a normal opt-in if that's ever useful later.

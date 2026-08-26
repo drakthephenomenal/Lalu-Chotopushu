@@ -8758,6 +8758,16 @@ function fbInit() {
       }
       const prevUid = App._uid;
       fbUser = user;
+      // Foreground catch-up for the daily Google Drive backup. Moved here
+      // (instead of the "load" handler) because fbUser is only ever set
+      // inside this callback — calling checkDailyDriveBackupCatchUp() from
+      // "load" ran before fbInit() had registered this listener, so fbUser
+      // was always still null and the check silently no-opped on every
+      // app open. Firing it here, now that fbUser is actually populated,
+      // is what makes the catch-up run at all.
+      if (user && typeof checkDailyDriveBackupCatchUp === "function") {
+        checkDailyDriveBackupCatchUp();
+      }
       // Stage auth info for the native Background Runner (hourly sync while
       // the app is fully closed). CapacitorKV is a separate, tiny key-value
       // store accessible from both the WebView and the isolated background
@@ -14857,7 +14867,6 @@ window.addEventListener("load", async () => {
 
   await App.load();
   if (typeof checkForUpdateAvailable === "function") checkForUpdateAvailable();
-  if (typeof checkDailyDriveBackupCatchUp === "function") checkDailyDriveBackupCatchUp();
   App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));
   App.lmcRV = Math.floor((App.S.historyRV[App.S.tk] || 0) / (App.S.ms || 108));

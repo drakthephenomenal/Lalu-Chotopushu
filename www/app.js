@@ -13020,7 +13020,15 @@ async function _fetchAllKnownUsers() {
         source: byUid[uid] ? byUid[uid].source : 'data',
       });
     });
-  } catch (_) {}
+  } catch (dataScanErr) {
+    // TEMP DIAGNOSTIC: source 4 (the collection-group safety net) was
+    // silently swallowing its own failure here, so there was no way to
+    // tell whether it ever actually ran. Surface the real error once so
+    // we can see permission-denied vs failed-precondition (missing
+    // index) vs something else, then remove this block.
+    console.error('[GhostMode] collectionGroup(data) scan failed:', dataScanErr);
+    try { toast('Ghost list: data-scan failed — ' + (dataScanErr && dataScanErr.message ? dataScanErr.message : dataScanErr)); } catch (_) {}
+  }
 
   // Sort: users with names first, then by name alpha
   return Object.values(byUid).sort((a, b) => {

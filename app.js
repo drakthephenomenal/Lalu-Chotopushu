@@ -19051,6 +19051,16 @@ window.devBackfillMissingLeaderboardDocs = async function () {
         const already = await fbDb.collection('leaderboard').doc(uid).get();
         if (already.exists) continue;
         const payload = _buildLeaderboardPayload(data, { displayName: data.lbDisplayName || '' }, false);
+        // _buildLeaderboardPayload() always stamps updatedAt to "right now"
+        // (it's designed for a live user actually chanting), which makes
+        // the leaderboard's green "online" dot light up (isOnline checks
+        // updatedAt within the last 5 minutes). For a backfilled legacy
+        // account that hasn't opened the app in weeks, that's a false
+        // "online now" signal — and since a batch of these all get written
+        // within the same few seconds, they'd all light up together, which
+        // is exactly what was seen. Drop it so backfilled entries show no
+        // online status instead of a fake one.
+        delete payload.updatedAt;
         await fbDb.collection('leaderboard').doc(uid).set(payload);
         created++;
       } catch (e) {

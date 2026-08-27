@@ -19070,6 +19070,77 @@ window.devBackfillMissingLeaderboardDocs = async function () {
   }
 };
 
+// ── Backfill missing presence docs for real users on old app builds ────
+// Same rationale as devBackfillMissingLeaderboardDocs(): a user whose data
+// exists (users/{uid}/data/main is real) but who never got a presence doc
+// written (old app build predates _writePresenceHeartbeat, or a heartbeat
+// write got interrupted) is invisible to the "presence" ghost-list source
+// and to any Family/online-status view keyed off presence. This creates a
+// best-effort doc so they at least show up — never touches an existing doc.
+//
+// Caveat: unlike the live heartbeat (which has a real signed-in `user`
+// object with displayName/email/phoneNumber from Firebase Auth), the
+// client SDK has no access to OTHER users' Auth profiles — only Admin SDK
+// can call admin.auth().getUser(uid). So name/email here are best-effort,
+// pulled from whatever this user's own feedbacks/leaderboard docs already
+// contain. If none exist, the row still gets created (uid-only, blank
+// name) — good enough to be found and ghost-mode-viewed, not a substitute
+// for the real profile.
+window.devBackfillMissingPresenceDocs = async function () {
+  if (!isDeveloper()) return;
+  if (!fbDb) return;
+  toast('🔧 Scanning for users missing a presence entry…');
+  let created = 0, scanned = 0, failed = 0;
+  try {
+    const presSnap = await fbDb.collection('presence').get();
+    const havePres = new Set();
+    presSnap.forEach(doc => havePres.add(doc.id));
+
+    const dataSnap = await fbDb.collectionGroup('data').get();
+    const uidsToCheck = [];
+    dataSnap.forEach(doc => {
+      const uid = doc.ref.parent.parent ? doc.ref.parent.parent.id : null;
+      if (uid && !havePres.has(uid)) uidsToCheck.push({ uid, data: doc.data() });
+    });
+
+    const fbSnap = await fbDb.collection('feedbacks').get();
+    const feedbackByUid = {};
+    fbSnap.forEach(doc => { feedbackByUid[doc.id] = doc.data(); });
+    const lbSnap = await fbDb.collection('leaderboard').get();
+    const lbByUid = {};
+    lbSnap.forEach(doc => { lbByUid[doc.id] = doc.data(); });
+
+    for (const { uid, data } of uidsToCheck) {
+      scanned++;
+      try {
+        // Re-check per-uid right before writing — belt-and-braces against a
+        // doc that appeared mid-scan (matches the leaderboard backfill).
+        const already = await fbDb.collection('presence').doc(uid).get();
+        if (already.exists) continue;
+        const fb = feedbackByUid[uid] || {};
+        const lb = lbByUid[uid] || {};
+        const payload = {
+          uid,
+          name:  fb.userName  || lb.displayName || data.lbDisplayName || '',
+          email: fb.userEmail || lb.email || '',
+          phone: fb.userPhone || '',
+          appVersion: lb.appVersion || 'unknown (backfilled)',
+          lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+        };
+        await fbDb.collection('presence').doc(uid).set(payload, { merge: true });
+        created++;
+      } catch (e) {
+        failed++;
+        console.warn('Presence backfill failed for', uid, e && e.message);
+      }
+    }
+  } catch (e) {
+    toast('⚠️ Presence backfill scan failed: ' + (e.message || e));
+    return;
+  }
+  toast(`✅ Presence backfill done — ${created} new entr${created === 1 ? 'y' : 'ies'} created (${scanned} scanned${failed ? ', ' + failed + ' failed' : ''})`);
+};
+
 /** Toggle leaderboard opt-in from Settings */
 async function toggleLbOptIn() {
   if (!fbUser) {

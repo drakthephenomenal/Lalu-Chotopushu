@@ -15,6 +15,18 @@ service cloud.firestore {
       allow read:  if request.auth != null && (request.auth.uid == userId || isDeveloper());
       allow write: if request.auth != null && (request.auth.uid == userId || isDeveloper());
     }
+    // Enables the developer-only Ghost Mode collection-group scan
+    // (fbDb.collectionGroup('data').get()) and devBackfillMissingLeaderboardDocs().
+    // A recursive wildcard anchored after a fixed segment, like
+    // /users/{userId}/{document=**} above, authorizes direct reads and
+    // per-parent subcollection listings — but NOT a collection-group query
+    // across every user's "data" subcollection at once. That requires its
+    // own rule with the wildcard positioned before the literal collection
+    // name. Without this, the collection-group query fails outright with
+    // "Missing or insufficient permissions" for every user, every time.
+    match /{path=**}/data/{docId} {
+      allow read: if request.auth != null && isDeveloper();
+    }
     match /users/{userId}/malaArchive/{date} {
       allow read:  if request.auth != null && (request.auth.uid == userId || isDeveloper());
       allow write: if request.auth != null && (request.auth.uid == userId || isDeveloper());

@@ -15985,6 +15985,28 @@ var _AUDIO_STOTRAMS = {
   vs2: { prefix: "vs2" },
   rds: { prefix: "rds" },
   sps: { prefix: "sps" },
+  // Geet Govindam: sectioned (two-level Sarga/Geetam) stotram — every
+  // geetam renders as a single verse card, so idx is always 0 and can't
+  // tell songs apart. `sectioned: true` switches audio lookup over to
+  // window._ggAudioKey ("gg_<sarga#>_<geetam#>", set by stotrams.js's
+  // openGeetam) instead of the verse index. Only the 8 keys listed in
+  // `tracks` actually have a player — every other geetam has none.
+  // gg_5_2 has two recorded versions ("alt" is a placeholder key/filename
+  // until you tell me what to actually call the second version).
+  gg: {
+    prefix: "gg",
+    sectioned: true,
+    tracks: {
+      gg_1_2: "gg_1_2",
+      gg_1_3: "gg_1_3",
+      gg_2_1: "gg_2_1",
+      gg_4_2: "gg_4_2",
+      gg_5_2: { default: "gg_5_2", alt: "gg_5_2_alt" },
+      gg_7_4: "gg_7_4",
+      gg_10_1: "gg_10_1",
+      gg_12_1: "gg_12_1"
+    }
+  },
   hnc: {
     prefix: "hnc",
     voices: { default: "hnc", alt: "hnc_alt" },
@@ -16049,6 +16071,11 @@ var _hcjVoiceUserOverridden = false;
 // stotram-wide one (voices); returns null if neither applies.
 function _hcjVoicesFor(cfg, verseNum) {
   if (!cfg) return null;
+  if (cfg.sectioned) {
+    var _key = window._ggAudioKey;
+    var _entry = _key && cfg.tracks && cfg.tracks[_key];
+    return (_entry && typeof _entry === "object") ? _entry : null;
+  }
   if (cfg.voicesByVerse && cfg.voicesByVerse[verseNum]) return cfg.voicesByVerse[verseNum];
   return cfg.voices || null;
 }
@@ -16059,6 +16086,7 @@ function _hcjVoicesFor(cfg, verseNum) {
 // slokaRange defined.
 function _hcjHasAudioForIdx(cfg, i) {
   if (!cfg) return false;
+  if (cfg.sectioned) return !!(window._ggAudioKey && cfg.tracks && cfg.tracks[window._ggAudioKey]);
   if (cfg.verseMap) return !!cfg.verseMap[i];
   if (!cfg.slokaRange) return true;
   return i >= cfg.slokaRange[0] && i <= cfg.slokaRange[1];
@@ -16066,6 +16094,13 @@ function _hcjHasAudioForIdx(cfg, i) {
 
 function _hcjAudioPath(i) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  if (cfg && cfg.sectioned) {
+    var _key = window._ggAudioKey;
+    var _entry = _key && cfg.tracks && cfg.tracks[_key];
+    if (!_entry) return "";
+    var _base = (typeof _entry === "object") ? (_entry[_hcjVoice] || _entry.default) : _entry;
+    return "audio/" + _base + ".mp3";
+  }
   var prefix = cfg ? cfg.prefix : "hcj";
   if (cfg && cfg.verseMap) {
     var _vm = cfg.verseMap[i];
@@ -16356,7 +16391,12 @@ function _hcjRenderPlayer(idx) {
     _hcjPlayerCleanup = null;
   }
   var navBar = document.getElementById("lmNav");
-  var _hasAudioPlayer = _hcjHasAudioForIdx(_AUDIO_STOTRAMS[_currentStotramId], idx);
+  var _playerCfg = _AUDIO_STOTRAMS[_currentStotramId];
+  var _hasAudioPlayer = _hcjHasAudioForIdx(_playerCfg, idx);
+  // Sectioned stotrams (gg) show one geetam per card — there's no
+  // "verse number" to page through within a song, so the prev/next
+  // arrows and the seek box are hidden for them below.
+  var _isSectionedAudio = !!(_playerCfg && _playerCfg.sectioned);
   if (!_hasAudioPlayer) {
     if (navBar) navBar.style.display = "";
     var _ci = document.querySelector("#lmo .lm-card-inner");
@@ -16465,17 +16505,19 @@ function _hcjRenderPlayer(idx) {
   var row = document.createElement("div");
   row.className = "hcj-player";
 
-  // Prev arrow (left of player)
-  var prevBtn = document.createElement("button");
-  prevBtn.id = "hcj-prev-btn";
-  prevBtn.className = "hcj-mini-btn hcj-arrow-btn";
-  prevBtn.innerHTML = "&#8592;";
-  prevBtn.title = "পূর্ববর্তী পদ";
-  prevBtn.disabled = idx === 0;
-  prevBtn.onclick = function () {
-    verseNav(-1);
-  };
-  row.appendChild(prevBtn);
+  // Prev arrow (left of player) — hidden for sectioned audio (gg)
+  if (!_isSectionedAudio) {
+    var prevBtn = document.createElement("button");
+    prevBtn.id = "hcj-prev-btn";
+    prevBtn.className = "hcj-mini-btn hcj-arrow-btn";
+    prevBtn.innerHTML = "&#8592;";
+    prevBtn.title = "পূর্ববর্তী পদ";
+    prevBtn.disabled = idx === 0;
+    prevBtn.onclick = function () {
+      verseNav(-1);
+    };
+    row.appendChild(prevBtn);
+  }
 
   // ▶ Play button — always shows ▶, dims while already playing
   var plb = document.createElement("button");
@@ -16564,61 +16606,66 @@ function _hcjRenderPlayer(idx) {
     row.appendChild(voiceBtn);
   }
 
-  // Verse seek (compact)
-  var si = document.createElement("input");
-  si.id = "hcj-seek-input";
-  si.type = _voiceCfg && _voiceCfg.verseMap ? "text" : "number";
-  var _seekOffset = (_voiceCfg && _voiceCfg.labelOffset) || 0;
-  // If the last block is a closing/colophon verse with no Shlok number
-  // (closingSuffix set), exclude it from the typeable/displayed max —
-  // it's only reachable via the next arrow, not by typing a number.
-  var _seekClosingExcl = _voiceCfg && _voiceCfg.closingSuffix ? 1 : 0;
-  // slokaRange stotrams (e.g. nkc) number 1..N over just the sloka portion,
-  // not the whole _verses array (which also includes narrative prose).
-  // verseMap stotrams (e.g. hnc) have non-numeric labels ("40.c") — max
-  // is the highest purely-numeric label (the chaupai count).
-  var _seekMax = _voiceCfg && _voiceCfg.slokaRange
-    ? _voiceCfg.slokaRange[1] - _voiceCfg.slokaRange[0] + 1
-    : _voiceCfg && _voiceCfg.verseMap
-    ? _voiceCfg.verseMap.reduce(function (m, e) {
-        var num = e && parseInt(e.label, 10);
-        return !isNaN(num) && num > m ? num : m;
-      }, 0)
-    : _verses.length - _seekOffset - _seekClosingExcl;
-  if (_voiceCfg && _voiceCfg.verseMap) {
-    si.removeAttribute("min");
-    si.removeAttribute("max");
-  } else {
-    si.min = 1 - _seekOffset;
-    si.max = _seekMax;
+  // Verse seek (compact) — hidden for sectioned audio (gg): a geetam is a
+  // single card, so there's no verse number within it to seek to.
+  if (!_isSectionedAudio) {
+    var si = document.createElement("input");
+    si.id = "hcj-seek-input";
+    si.type = _voiceCfg && _voiceCfg.verseMap ? "text" : "number";
+    var _seekOffset = (_voiceCfg && _voiceCfg.labelOffset) || 0;
+    // If the last block is a closing/colophon verse with no Shlok number
+    // (closingSuffix set), exclude it from the typeable/displayed max —
+    // it's only reachable via the next arrow, not by typing a number.
+    var _seekClosingExcl = _voiceCfg && _voiceCfg.closingSuffix ? 1 : 0;
+    // slokaRange stotrams (e.g. nkc) number 1..N over just the sloka portion,
+    // not the whole _verses array (which also includes narrative prose).
+    // verseMap stotrams (e.g. hnc) have non-numeric labels ("40.c") — max
+    // is the highest purely-numeric label (the chaupai count).
+    var _seekMax = _voiceCfg && _voiceCfg.slokaRange
+      ? _voiceCfg.slokaRange[1] - _voiceCfg.slokaRange[0] + 1
+      : _voiceCfg && _voiceCfg.verseMap
+      ? _voiceCfg.verseMap.reduce(function (m, e) {
+          var num = e && parseInt(e.label, 10);
+          return !isNaN(num) && num > m ? num : m;
+        }, 0)
+      : _verses.length - _seekOffset - _seekClosingExcl;
+    if (_voiceCfg && _voiceCfg.verseMap) {
+      si.removeAttribute("min");
+      si.removeAttribute("max");
+    } else {
+      si.min = 1 - _seekOffset;
+      si.max = _seekMax;
+    }
+    si.value = _hcjSeekLabel(idx);
+    si.className = "hcj-seek-input";
+    si.title = "পদ নং";
+    si.onchange = function () {
+      _hcjGoToVerse(this.value);
+    };
+    si.onkeydown = function (e) {
+      if (e.key === "Enter") _hcjGoToVerse(this.value);
+    };
+    row.appendChild(si);
+
+    var tot = document.createElement("span");
+    tot.className = "hcj-seek-total";
+    tot.textContent = "/" + _seekMax;
+    row.appendChild(tot);
   }
-  si.value = _hcjSeekLabel(idx);
-  si.className = "hcj-seek-input";
-  si.title = "পদ নং";
-  si.onchange = function () {
-    _hcjGoToVerse(this.value);
-  };
-  si.onkeydown = function (e) {
-    if (e.key === "Enter") _hcjGoToVerse(this.value);
-  };
-  row.appendChild(si);
 
-  var tot = document.createElement("span");
-  tot.className = "hcj-seek-total";
-  tot.textContent = "/" + _seekMax;
-  row.appendChild(tot);
-
-  // Next arrow (right of player)
-  var nextBtn = document.createElement("button");
-  nextBtn.id = "hcj-next-btn";
-  nextBtn.className = "hcj-mini-btn hcj-arrow-btn";
-  nextBtn.innerHTML = "&#8594;";
-  nextBtn.title = "পরবর্তী পদ";
-  nextBtn.disabled = idx === _verses.length - 1;
-  nextBtn.onclick = function () {
-    verseNav(1);
-  };
-  row.appendChild(nextBtn);
+  // Next arrow (right of player) — hidden for sectioned audio (gg)
+  if (!_isSectionedAudio) {
+    var nextBtn = document.createElement("button");
+    nextBtn.id = "hcj-next-btn";
+    nextBtn.className = "hcj-mini-btn hcj-arrow-btn";
+    nextBtn.innerHTML = "&#8594;";
+    nextBtn.title = "পরবর্তী পদ";
+    nextBtn.disabled = idx === _verses.length - 1;
+    nextBtn.onclick = function () {
+      verseNav(1);
+    };
+    row.appendChild(nextBtn);
+  }
 
   wrap.appendChild(row);
   lmd.appendChild(wrap);

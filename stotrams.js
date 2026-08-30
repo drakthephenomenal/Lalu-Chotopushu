@@ -9772,6 +9772,17 @@ nkc:`নারায়ণ কবচম্
   // Stotrams using two-level §§ / § hierarchy
   var TWO_LEVEL = { gg: true };
 
+  // Convert a Bengali-numeral string (e.g. "১২") to a JS number.
+  var _bnDigits = '০১২৩৪৫৬৭৮৯';
+  function _bnToNum(s) {
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var di = _bnDigits.indexOf(s[i]);
+      out += di === -1 ? s[i] : String(di);
+    }
+    return parseInt(out, 10);
+  }
+
   var _sections = [];          // [{title, content}]
   var _activeId = null;        // current sectioned-stotram id
   var _inSectionView = false;
@@ -9965,6 +9976,13 @@ nkc:`নারায়ণ কবচম্
     var items = [];
     sarga.subs.forEach(function(g, i){ items.push({ label: g.title, subIdx: i }); });
 
+    // Sarga number (for building the same "gg_<sarga#>_<geetam#>" audio
+    // key openGeetam uses) — lets the picker show a 🎶 badge on any
+    // geetam that actually has a recorded clip in _AUDIO_STOTRAMS.gg.tracks.
+    var _sNumMatch = sarga.title.match(/[০-৯]+/);
+    var _sNum = _sNumMatch ? _bnToNum(_sNumMatch[0]) : (sargaIdx + 1);
+    var _ggTracks = (typeof _AUDIO_STOTRAMS !== 'undefined' && _AUDIO_STOTRAMS.gg && _AUDIO_STOTRAMS.gg.tracks) || {};
+
     var grid = document.createElement('div');
     grid.className = 'sts-picker-grid';
     var rows = Math.max(1, Math.ceil(items.length / 2));
@@ -9990,7 +10008,8 @@ nkc:`নারায়ণ কবচম্
       // Truncate long geetam titles
       var t = item.label;
       if (t.length > 40) t = t.slice(0, 38) + '…';
-      nameSpan.textContent = t;
+      var _hasAudio = item.subIdx !== -1 && !!_ggTracks['gg_' + _sNum + '_' + (item.subIdx + 1)];
+      nameSpan.textContent = t + (_hasAudio ? ' 🎶' : '');
 
       btn.appendChild(numSpan);
       btn.appendChild(nameSpan);
@@ -10019,6 +10038,21 @@ nkc:`নারায়ণ কবচম্
       content = geetam.content;
       title = geetam.title;
     }
+
+    // Audio key for gg (Geet Govindam): "gg_<sarga#>_<geetam#>" — read by
+    // app.js's audio player (_AUDIO_STOTRAMS.gg.tracks). Every geetam here
+    // renders as a single verse card (idx is always 0), so the player can't
+    // tell songs apart by verse index the way other stotrams do — this key
+    // is how it knows which song (if any) has a clip. Stop any audio that
+    // was playing for the previous geetam before switching.
+    if (_activeId === 'gg' && subIdx !== -1) {
+      var _sNumMatch = sarga.title.match(/[০-৯]+/);
+      var _sNum = _sNumMatch ? _bnToNum(_sNumMatch[0]) : (sargaIdx + 1);
+      window._ggAudioKey = 'gg_' + _sNum + '_' + (subIdx + 1);
+    } else {
+      window._ggAudioKey = null;
+    }
+    if (typeof _hcjStopAudio === 'function') _hcjStopAudio();
 
     _inSectionView = true;
     var picker = document.getElementById('sts-picker');
@@ -10054,6 +10088,8 @@ nkc:`নারায়ণ কবচম্
     backBtn.className = 'sts-back-btn';
     backBtn.textContent = '← গীতম্ তালিকা';
     backBtn.onclick = function() {
+      if (typeof _hcjStopAudio === 'function') _hcjStopAudio();
+      window._ggAudioKey = null;
       backBtn.remove();
       showGeetamPicker(sargaIdx);
       _inSectionView = false;
@@ -10304,6 +10340,7 @@ nkc:`নারায়ণ কবচম্
     _activeId = null;
     _ggSargas = [];
     _curSargaIdx = -1;
+    window._ggAudioKey = null;
     var p  = document.getElementById('sts-picker');      if (p)  p.remove();
     var p2 = document.getElementById('sts-sub-picker');  if (p2) p2.remove();
     var b  = document.getElementById('sts-verse-back');  if (b)  b.remove();

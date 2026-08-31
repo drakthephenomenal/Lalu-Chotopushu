@@ -15700,6 +15700,10 @@ function _renderVerse(idx, dir) {
   _hcjApplyDefaultVoiceForVerse(idx);
   _hcjRenderPlayer(idx);
   _hcjOnVerseChange(idx);
+  // Re-apply the reader's chosen (or auto) text size to this verse's
+  // freshly-rendered lines right away, rather than waiting on the
+  // MutationObserver's ~120ms detection window.
+  if (typeof window.fitLyrLines === "function") window.fitLyrLines();
 }
 
 // Render translation toggle — shown ONLY when current verse has অর্থ: lines.
@@ -18115,8 +18119,21 @@ function _fmtDateDMY(dateStr) {
     var lyrs = modal.querySelectorAll(".lyr");
     for (var i = 0; i < lyrs.length; i++) {
       lyrs[i].style.setProperty("--lyr-fs", value);
-      var lines = lyrs[i].querySelectorAll(".lyr-line");
-      for (var j = 0; j < lines.length; j++) lines[j].style.fontSize = value;
+    }
+    // Set directly on every currently-rendered line too, with priority
+    // "important" — plain `lines[j].style.fontSize = value` (the old code)
+    // is silently beaten by style-stotram.css's own
+    // `.lyr-line { font-size: var(--lyr-fs) !important; }` rule, since a
+    // non-important inline style always loses to an !important stylesheet
+    // rule. That's why a chosen size never stuck once you moved to the
+    // next verse: the CSS var route only carries over if `.lyr` itself is
+    // never recreated, and the inline fallback wasn't actually applying.
+    // Using setProperty's "important" priority makes the inline style win
+    // for real, and this call also gets fired for every fresh verse
+    // (_renderVerse calls fitLyrLines()), so it reliably persists now.
+    var allLines = modal.querySelectorAll(".lyr-line, .lyr-prose");
+    for (var k = 0; k < allLines.length; k++) {
+      allLines[k].style.setProperty("font-size", value, "important");
     }
     updateLabel("T " + (step + 1) + "/" + STEPS.length);
   }

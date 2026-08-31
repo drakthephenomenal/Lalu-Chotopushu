@@ -15558,11 +15558,18 @@ function showLyrics(id) {
     }
   })();
 
+  // Single-view stotrams: shown as one continuous page, no verse-by-verse
+  // split/swipe (still just one card, so the existing audio-index logic
+  // naturally looks for a single "<prefix>_1.mp3" track).
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc"];
+
   // Split by blank lines into verses
-  let allVerses = ly
-    .split(/\n{2,}/)
-    .map((b) => b.trim())
-    .filter((b) => b.length > 0);
+  let allVerses = SINGLE_VIEW_IDS.includes(id)
+    ? [ly.trim()]
+    : ly
+        .split(/\n{2,}/)
+        .map((b) => b.trim())
+        .filter((b) => b.length > 0);
 
   // Remove first verse if it's just the stotram title (for all except hcj)
   if (id !== "hcj" && allVerses.length > 0) {
@@ -15700,6 +15707,10 @@ function _renderVerse(idx, dir) {
   _hcjApplyDefaultVoiceForVerse(idx);
   _hcjRenderPlayer(idx);
   _hcjOnVerseChange(idx);
+  // Re-apply the reader's chosen (or auto) text size to this verse's
+  // freshly-rendered lines right away, rather than waiting on the
+  // MutationObserver's ~120ms detection window.
+  if (typeof window.fitLyrLines === "function") window.fitLyrLines();
 }
 
 // Render translation toggle — shown ONLY when current verse has অর্থ: lines.
@@ -15956,6 +15967,7 @@ var _AUDIO_STOTRAMS = {
     defaultVoiceByVerse: { 52: "shuvam" }
   },
   bss: { prefix: "bss" },
+  ach: { prefix: "ach" },
   dkc: { prefix: "dkc" },
   // rsn has one extra, unlabeled preamble block (audio track 0) before the
   // numbered Shlok 1 starts (audio track 1) — labelOffset shifts the
@@ -15984,59 +15996,35 @@ var _AUDIO_STOTRAMS = {
   nkc: { prefix: "nkc", slokaRange: [11, 32] },
   vs2: { prefix: "vs2" },
   rds: { prefix: "rds" },
+  ans: { prefix: "ans" },
   sps: { prefix: "sps" },
-  hnc: {
-    prefix: "hnc",
-    voices: { default: "hnc", alt: "hnc_alt" },
-    // idx0 = opening doha ("0"), idx1..40 = chaupai 1..40,
-    // idx41 = closing doha ("40.c") — matches the 42 recorded
-    // clips exactly. Aarti/final line (idx 42+) have no entry:
-    // no audio, no numeric label, plain text pages.
-    verseMap: [
-      { track: 1, label: "0" },
-      { track: 2, label: "1" },
-      { track: 3, label: "2" },
-      { track: 4, label: "3" },
-      { track: 5, label: "4" },
-      { track: 6, label: "5" },
-      { track: 7, label: "6" },
-      { track: 8, label: "7" },
-      { track: 9, label: "8" },
-      { track: 10, label: "9" },
-      { track: 11, label: "10" },
-      { track: 12, label: "11" },
-      { track: 13, label: "12" },
-      { track: 14, label: "13" },
-      { track: 15, label: "14" },
-      { track: 16, label: "15" },
-      { track: 17, label: "16" },
-      { track: 18, label: "17" },
-      { track: 19, label: "18" },
-      { track: 20, label: "19" },
-      { track: 21, label: "20" },
-      { track: 22, label: "21" },
-      { track: 23, label: "22" },
-      { track: 24, label: "23" },
-      { track: 25, label: "24" },
-      { track: 26, label: "25" },
-      { track: 27, label: "26" },
-      { track: 28, label: "27" },
-      { track: 29, label: "28" },
-      { track: 30, label: "29" },
-      { track: 31, label: "30" },
-      { track: 32, label: "31" },
-      { track: 33, label: "32" },
-      { track: 34, label: "33" },
-      { track: 35, label: "34" },
-      { track: 36, label: "35" },
-      { track: 37, label: "36" },
-      { track: 38, label: "37" },
-      { track: 39, label: "38" },
-      { track: 40, label: "39" },
-      { track: 41, label: "40" },
-      { track: 42, label: "40.c" }
-    ]
-  }
+  // Geet Govindam: sectioned (two-level Sarga/Geetam) stotram — every
+  // geetam renders as a single verse card, so idx is always 0 and can't
+  // tell songs apart. `sectioned: true` switches audio lookup over to
+  // window._ggAudioKey ("gg_<sarga#>_<geetam#>", set by stotrams.js's
+  // openGeetam) instead of the verse index. Only the 8 keys listed in
+  // `tracks` actually have a player — every other geetam has none.
+  // gg_5_2 has two recorded versions ("alt" is a placeholder key/filename
+  // until you tell me what to actually call the second version).
+  gg: {
+    prefix: "gg",
+    sectioned: true,
+    tracks: {
+      gg_1_2: "gg_1_2",
+      gg_1_3: "gg_1_3",
+      gg_2_1: "gg_2_1",
+      gg_4_2: "gg_4_2",
+      gg_5_2: { default: "gg_5_2", alt: "gg_5_2_alt" },
+      gg_7_4: "gg_7_4",
+      gg_10_1: "gg_10_1",
+      gg_12_1: "gg_12_1"
+    }
+  },
+  // Single-view page now (see SINGLE_VIEW_IDS) — only one card, so the
+  // old per-chaupai verseMap (42 tracks + alt voice) can never advance
+  // past track 1. Simplified to expect one full-recitation clip,
+  // hnc_1.mp3, same as the other single-view stotrams.
+  hnc: { prefix: "hnc", voices: { default: "hnc", alt: "hnc_alt" } }
 };
 var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices
 // True once the user has manually picked a voice via the button this
@@ -16049,6 +16037,11 @@ var _hcjVoiceUserOverridden = false;
 // stotram-wide one (voices); returns null if neither applies.
 function _hcjVoicesFor(cfg, verseNum) {
   if (!cfg) return null;
+  if (cfg.sectioned) {
+    var _key = window._ggAudioKey;
+    var _entry = _key && cfg.tracks && cfg.tracks[_key];
+    return (_entry && typeof _entry === "object") ? _entry : null;
+  }
   if (cfg.voicesByVerse && cfg.voicesByVerse[verseNum]) return cfg.voicesByVerse[verseNum];
   return cfg.voices || null;
 }
@@ -16059,6 +16052,7 @@ function _hcjVoicesFor(cfg, verseNum) {
 // slokaRange defined.
 function _hcjHasAudioForIdx(cfg, i) {
   if (!cfg) return false;
+  if (cfg.sectioned) return !!(window._ggAudioKey && cfg.tracks && cfg.tracks[window._ggAudioKey]);
   if (cfg.verseMap) return !!cfg.verseMap[i];
   if (!cfg.slokaRange) return true;
   return i >= cfg.slokaRange[0] && i <= cfg.slokaRange[1];
@@ -16066,6 +16060,13 @@ function _hcjHasAudioForIdx(cfg, i) {
 
 function _hcjAudioPath(i) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  if (cfg && cfg.sectioned) {
+    var _key = window._ggAudioKey;
+    var _entry = _key && cfg.tracks && cfg.tracks[_key];
+    if (!_entry) return "";
+    var _base = (typeof _entry === "object") ? (_entry[_hcjVoice] || _entry.default) : _entry;
+    return "audio/" + _base + ".mp3";
+  }
   var prefix = cfg ? cfg.prefix : "hcj";
   if (cfg && cfg.verseMap) {
     var _vm = cfg.verseMap[i];
@@ -16356,7 +16357,12 @@ function _hcjRenderPlayer(idx) {
     _hcjPlayerCleanup = null;
   }
   var navBar = document.getElementById("lmNav");
-  var _hasAudioPlayer = _hcjHasAudioForIdx(_AUDIO_STOTRAMS[_currentStotramId], idx);
+  var _playerCfg = _AUDIO_STOTRAMS[_currentStotramId];
+  var _hasAudioPlayer = _hcjHasAudioForIdx(_playerCfg, idx);
+  // Sectioned stotrams (gg) show one geetam per card — there's no
+  // "verse number" to page through within a song, so the prev/next
+  // arrows and the seek box are hidden for them below.
+  var _isSectionedAudio = !!(_playerCfg && _playerCfg.sectioned);
   if (!_hasAudioPlayer) {
     if (navBar) navBar.style.display = "";
     var _ci = document.querySelector("#lmo .lm-card-inner");
@@ -16465,17 +16471,19 @@ function _hcjRenderPlayer(idx) {
   var row = document.createElement("div");
   row.className = "hcj-player";
 
-  // Prev arrow (left of player)
-  var prevBtn = document.createElement("button");
-  prevBtn.id = "hcj-prev-btn";
-  prevBtn.className = "hcj-mini-btn hcj-arrow-btn";
-  prevBtn.innerHTML = "&#8592;";
-  prevBtn.title = "পূর্ববর্তী পদ";
-  prevBtn.disabled = idx === 0;
-  prevBtn.onclick = function () {
-    verseNav(-1);
-  };
-  row.appendChild(prevBtn);
+  // Prev arrow (left of player) — hidden for sectioned audio (gg)
+  if (!_isSectionedAudio) {
+    var prevBtn = document.createElement("button");
+    prevBtn.id = "hcj-prev-btn";
+    prevBtn.className = "hcj-mini-btn hcj-arrow-btn";
+    prevBtn.innerHTML = "&#8592;";
+    prevBtn.title = "পূর্ববর্তী পদ";
+    prevBtn.disabled = idx === 0;
+    prevBtn.onclick = function () {
+      verseNav(-1);
+    };
+    row.appendChild(prevBtn);
+  }
 
   // ▶ Play button — always shows ▶, dims while already playing
   var plb = document.createElement("button");
@@ -16564,61 +16572,66 @@ function _hcjRenderPlayer(idx) {
     row.appendChild(voiceBtn);
   }
 
-  // Verse seek (compact)
-  var si = document.createElement("input");
-  si.id = "hcj-seek-input";
-  si.type = _voiceCfg && _voiceCfg.verseMap ? "text" : "number";
-  var _seekOffset = (_voiceCfg && _voiceCfg.labelOffset) || 0;
-  // If the last block is a closing/colophon verse with no Shlok number
-  // (closingSuffix set), exclude it from the typeable/displayed max —
-  // it's only reachable via the next arrow, not by typing a number.
-  var _seekClosingExcl = _voiceCfg && _voiceCfg.closingSuffix ? 1 : 0;
-  // slokaRange stotrams (e.g. nkc) number 1..N over just the sloka portion,
-  // not the whole _verses array (which also includes narrative prose).
-  // verseMap stotrams (e.g. hnc) have non-numeric labels ("40.c") — max
-  // is the highest purely-numeric label (the chaupai count).
-  var _seekMax = _voiceCfg && _voiceCfg.slokaRange
-    ? _voiceCfg.slokaRange[1] - _voiceCfg.slokaRange[0] + 1
-    : _voiceCfg && _voiceCfg.verseMap
-    ? _voiceCfg.verseMap.reduce(function (m, e) {
-        var num = e && parseInt(e.label, 10);
-        return !isNaN(num) && num > m ? num : m;
-      }, 0)
-    : _verses.length - _seekOffset - _seekClosingExcl;
-  if (_voiceCfg && _voiceCfg.verseMap) {
-    si.removeAttribute("min");
-    si.removeAttribute("max");
-  } else {
-    si.min = 1 - _seekOffset;
-    si.max = _seekMax;
+  // Verse seek (compact) — hidden for sectioned audio (gg): a geetam is a
+  // single card, so there's no verse number within it to seek to.
+  if (!_isSectionedAudio) {
+    var si = document.createElement("input");
+    si.id = "hcj-seek-input";
+    si.type = _voiceCfg && _voiceCfg.verseMap ? "text" : "number";
+    var _seekOffset = (_voiceCfg && _voiceCfg.labelOffset) || 0;
+    // If the last block is a closing/colophon verse with no Shlok number
+    // (closingSuffix set), exclude it from the typeable/displayed max —
+    // it's only reachable via the next arrow, not by typing a number.
+    var _seekClosingExcl = _voiceCfg && _voiceCfg.closingSuffix ? 1 : 0;
+    // slokaRange stotrams (e.g. nkc) number 1..N over just the sloka portion,
+    // not the whole _verses array (which also includes narrative prose).
+    // verseMap stotrams (e.g. hnc) have non-numeric labels ("40.c") — max
+    // is the highest purely-numeric label (the chaupai count).
+    var _seekMax = _voiceCfg && _voiceCfg.slokaRange
+      ? _voiceCfg.slokaRange[1] - _voiceCfg.slokaRange[0] + 1
+      : _voiceCfg && _voiceCfg.verseMap
+      ? _voiceCfg.verseMap.reduce(function (m, e) {
+          var num = e && parseInt(e.label, 10);
+          return !isNaN(num) && num > m ? num : m;
+        }, 0)
+      : _verses.length - _seekOffset - _seekClosingExcl;
+    if (_voiceCfg && _voiceCfg.verseMap) {
+      si.removeAttribute("min");
+      si.removeAttribute("max");
+    } else {
+      si.min = 1 - _seekOffset;
+      si.max = _seekMax;
+    }
+    si.value = _hcjSeekLabel(idx);
+    si.className = "hcj-seek-input";
+    si.title = "পদ নং";
+    si.onchange = function () {
+      _hcjGoToVerse(this.value);
+    };
+    si.onkeydown = function (e) {
+      if (e.key === "Enter") _hcjGoToVerse(this.value);
+    };
+    row.appendChild(si);
+
+    var tot = document.createElement("span");
+    tot.className = "hcj-seek-total";
+    tot.textContent = "/" + _seekMax;
+    row.appendChild(tot);
   }
-  si.value = _hcjSeekLabel(idx);
-  si.className = "hcj-seek-input";
-  si.title = "পদ নং";
-  si.onchange = function () {
-    _hcjGoToVerse(this.value);
-  };
-  si.onkeydown = function (e) {
-    if (e.key === "Enter") _hcjGoToVerse(this.value);
-  };
-  row.appendChild(si);
 
-  var tot = document.createElement("span");
-  tot.className = "hcj-seek-total";
-  tot.textContent = "/" + _seekMax;
-  row.appendChild(tot);
-
-  // Next arrow (right of player)
-  var nextBtn = document.createElement("button");
-  nextBtn.id = "hcj-next-btn";
-  nextBtn.className = "hcj-mini-btn hcj-arrow-btn";
-  nextBtn.innerHTML = "&#8594;";
-  nextBtn.title = "পরবর্তী পদ";
-  nextBtn.disabled = idx === _verses.length - 1;
-  nextBtn.onclick = function () {
-    verseNav(1);
-  };
-  row.appendChild(nextBtn);
+  // Next arrow (right of player) — hidden for sectioned audio (gg)
+  if (!_isSectionedAudio) {
+    var nextBtn = document.createElement("button");
+    nextBtn.id = "hcj-next-btn";
+    nextBtn.className = "hcj-mini-btn hcj-arrow-btn";
+    nextBtn.innerHTML = "&#8594;";
+    nextBtn.title = "পরবর্তী পদ";
+    nextBtn.disabled = idx === _verses.length - 1;
+    nextBtn.onclick = function () {
+      verseNav(1);
+    };
+    row.appendChild(nextBtn);
+  }
 
   wrap.appendChild(row);
   lmd.appendChild(wrap);
@@ -18068,8 +18081,21 @@ function _fmtDateDMY(dateStr) {
     var lyrs = modal.querySelectorAll(".lyr");
     for (var i = 0; i < lyrs.length; i++) {
       lyrs[i].style.setProperty("--lyr-fs", value);
-      var lines = lyrs[i].querySelectorAll(".lyr-line");
-      for (var j = 0; j < lines.length; j++) lines[j].style.fontSize = value;
+    }
+    // Set directly on every currently-rendered line too, with priority
+    // "important" — plain `lines[j].style.fontSize = value` (the old code)
+    // is silently beaten by style-stotram.css's own
+    // `.lyr-line { font-size: var(--lyr-fs) !important; }` rule, since a
+    // non-important inline style always loses to an !important stylesheet
+    // rule. That's why a chosen size never stuck once you moved to the
+    // next verse: the CSS var route only carries over if `.lyr` itself is
+    // never recreated, and the inline fallback wasn't actually applying.
+    // Using setProperty's "important" priority makes the inline style win
+    // for real, and this call also gets fired for every fresh verse
+    // (_renderVerse calls fitLyrLines()), so it reliably persists now.
+    var allLines = modal.querySelectorAll(".lyr-line, .lyr-prose");
+    for (var k = 0; k < allLines.length; k++) {
+      allLines[k].style.setProperty("font-size", value, "important");
     }
     updateLabel("T " + (step + 1) + "/" + STEPS.length);
   }

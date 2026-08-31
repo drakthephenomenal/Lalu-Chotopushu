@@ -22,14 +22,16 @@ const STLIST = [
   {id:'bss',name:'বেদসার শিব স্তব',sub:'মহাদেবের স্তুতি'},
   {id:'ans',name:'অর্ধনারীশ্বরস্তোত্রম্',sub:'শিব-পার্বতীর স্তোত্র'},
   {id:'rds',name:'রুদ্রাষ্টকম্',sub:'রুদ্রের অষ্টক স্তোত্র'},
-  {id:'sps',name:'শ্রী শিব পঞ্চাক্ষর স্তোত্রম্',sub:'পঞ্চাক্ষর মন্ত্রের স্তোত্র'},
+  {id:'sps',name:'শিব স্তোত্র সমূহ (প্রাতঃকালীন)',sub:'প্রাতঃকালে পাঠের স্তোত্র'},
   {id:'hnc',name:'শ্রী হনুমান চালীসা',sub:'গোস্বামী তুলসীদাস বিরচিত'},
-  {id:'gg',name:'গীতগোবিন্দম্',sub:'শ্রীজয়দেবকৃত'}
+  {id:'gg',name:'গীতগোবিন্দম্',sub:'শ্রীজয়দেবকৃত'},
+  {id:'ach',name:'অচ্যুতাষ্টকম্',sub:'শ্রীমদ্‌ শঙ্করাচার্য বিরচিত'}
 ];
 
 // STOTRAM LYRICS
 // ═══════════════════════════════════════════════════════
 const LYRICS = {
+  ach:`অচ্যুতং কেশবং রামনারায়ণং কৃষ্ণদামোদরং বাসুদেবং হরিম্ ।\nশ্রীধরং মাধবং গোপিকাবল্লভং জানকীনায়কং রামচন্দ্রং ভজে ॥ ১॥\n\nঅচ্যুতং কেশবং সত্যভামাধবং মাধবং শ্রীধরং রাধিকারাধিতম্ ।\nইন্দিরামন্দিরং চেতসা সুন্দরং দেবকীনন্দনং নন্দনং সন্দধে ॥ ২॥\n\nবিষ্ণবে জিষ্ণবে শঙ্খিনে চক্রিণে রুক্মিণির়াগিণে জানকীজানয়ে ।\nবল্লবীবল্লভায়াঽর্চিতায়াত্মনে কংসবিধ্বংসিনে বংশিনে তে নমঃ ॥ ৩॥\n\nকৃষ্ণ গোবিন্দ হে রাম নারায়ণ শ্রীপতে বাসুদেবাজিত শ্রীনিধে ।\nঅচ্যুতানন্ত হে মাধবাধোক্ষজ দ্বারকানায়ক দ্রৌপদীরক্ষক ॥ ৪॥\n\nরাক্ষসক্ষোভিতঃ সীতয়া শোভিতো দণ্ডকারণ্যভূপুণ্যতাকারণঃ ।\nলক্ষ্মণেনান্বিতো বানরৈঃ সেবিতোঽগস্ত্যসম্পূজিতো রাঘবঃ পাতু মাম্ ॥ ৫॥\n\nধেনুকারিষ্টকোঽনিষ্টকৃদ্দ্বেষিণাং কেশিহা কংসহৃদ্বংশিকাবাদকঃ । (পাঠান্তর: দ্বেষিহা)\nপূতনাকোপকঃ সূরজাখেলনো বালগোপালকঃ পাতু মাম্ সর্বদা ॥ ৬॥\n\nবিদ্যুদুদ্যোতবৎপ্রস্ফুরদ্বাসসং প্রাবৃডম্ভোদবৎপ্রোল্লসদ্বিগ্রহম্ । (পাঠান্তর: বিদ্যুদুদ্যোতবান্)\nবন্যযা মালয়া শোভিতোরঃস্থলং লোহিতাঙ্ঘ্রিদ্বয়ং বারিজাক্ষং ভজে ॥ ৭॥\n\nকুঞ্চিতৈঃ কুন্তলৈর্ভ্রাজমানাননং রত্নমৌলিং লসৎকুণ্ডলং গণ্ডয়োঃ ।\nহারকেয়ূরকং কঙ্কণপ্রোজ্জ্বলং কিঙ্কিণীমঞ্জুলং শ্যামলং তং ভজে ॥ ৮॥\n\nঅচ্যুতস্যাষ্টকং যঃ পঠেদিষ্টদং প্রেমতঃ প্রত্যহং পূরুষঃ সস্পৃহম্ ।\nবৃত্ততঃ সুন্দরং কর্তৃ বিশ্বম্ভরস্তস্য বশ্যো হরির্জায়তে সত্বরম্ ॥ ৯॥`,
   yms:`ব্রজাধিরাজ – নন্দনাম্বুদাভ গাত্র চন্দনা-
 নুলেপ গন্ধ বাহিনীং ভবাব্ধি বীজ দাহিনীম্।
 জগত্ত্রয়ে যশস্বিনীম্ লসৎসুধা পয়স্বিনীম্-
@@ -2290,9 +2292,32 @@ nkc:`নারায়ণ কবচম্
 
 ॥ ইতি শ্রীরামচরিতমানসে উত্তরকাণ্ডে গোস্বামীতুলসীদাসকৃতং শ্রীরুদ্রাষ্টকং সম্পূর্ণম্ ॥`,
 
-  sps:`শ্রী শিব পঞ্চাক্ষর স্তোত্রম্
-(শ্রীমৎ শঙ্করাচার্যবিরচিত)
+  sps:`শিব স্তোত্র সমূহ
 
+বন্দে দেবমুমাপতিং সুরগুরুং 
+বন্দে জগৎকারণম্।
+বন্দে পন্নগভূষণং মৃগধরং 
+বন্দে পশূনাং পতিম্॥
+বন্দে সূর্যশশাঙ্কবহ্নিনয়নং 
+বন্দে মুকুন্দপ্রিয়ম্।
+বন্দে ভক্তজনাশ্রয়ং চ বরদং 
+বন্দে শিবং শঙ্করম্॥
+
+মৃত্যুঞ্জয়ায় রুদ্রায় নীলকণ্ঠায় শম্ভবে । অমৃতেশায় সর্বায় মহাদেবায় তে নমঃ ॥
+
+নমস্তে অস্তু ভগবান বিশ্বেশ্বরায় মহাদেবায়
+ত্র্যম্বকায় ত্রিপুরান্তকায় ত্রিকালাগ্নি-রুদ্রায় নীলকণ্ঠায় মৃত্যুঞ্জয়ায়
+সর্বেশ্বরায় সদাবিয়ায় শ্রীমান মহাদেবায় নমঃ
+
+নমঃ শম্ভবায় চ ময়োভবায় চ
+নমঃ শংকরায় চ ময়স্করায় চ
+নমঃ শিবায় চ শিবতরায় চ
+
+ত্র্যম্বকং যজামহে সুগন্ধিং পুষ্টিবর্ধনম্
+উর্বারুকমিব বন্ধনান্ মৃত্যোর্মুক্ষীয় মাঽমৃতাৎ.
+
+॥ শ্রী শিব পঞ্চাক্ষর স্তোত্রম্ ॥
+(শ্রীমৎ শঙ্করাচার্যবিরচিত)
 নাগেন্দ্রহারায় ত্রিলোচনায়
 ভস্মাঙ্গরাগায় মহেশ্বরায় ।
 নিত্যায় শুদ্ধায় দিগম্বরায়
@@ -9749,6 +9774,32 @@ nkc:`নারায়ণ কবচম্
   // Stotrams using two-level §§ / § hierarchy
   var TWO_LEVEL = { gg: true };
 
+  // Safely remove a #sts-picker (or similar) overlay. Plain el.remove() can
+  // leave a visual "ghost" of the element on screen in iOS Safari, because
+  // .sts-picker uses -webkit-overflow-scrolling:touch, which puts it on its
+  // own GPU compositing layer — WebKit sometimes fails to repaint that
+  // screen region when the layer is torn down mid-navigation, so the last
+  // frame it painted (e.g. the geetam list) stays visible, overlapping
+  // whatever renders next (e.g. the opened song's lyrics). Hiding the
+  // element and forcing a reflow *before* removing it reliably avoids this.
+  function _killPicker(el) {
+    if (!el) return;
+    el.style.display = 'none';
+    void el.offsetHeight; // force a reflow/repaint before removal
+    el.remove();
+  }
+
+  // Convert a Bengali-numeral string (e.g. "১২") to a JS number.
+  var _bnDigits = '০১২৩৪৫৬৭৮৯';
+  function _bnToNum(s) {
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var di = _bnDigits.indexOf(s[i]);
+      out += di === -1 ? s[i] : String(di);
+    }
+    return parseInt(out, 10);
+  }
+
   var _sections = [];          // [{title, content}]
   var _activeId = null;        // current sectioned-stotram id
   var _inSectionView = false;
@@ -9838,7 +9889,7 @@ nkc:`নারায়ণ কবচম্
     if (lmTitle){ lmTitle.textContent = ''; lmTitle.style.display = 'none'; }
     if (fsCtrl) fsCtrl.style.display = 'none';
     ['sts-picker','sts-sub-picker'].forEach(function(pid){
-      var el = document.getElementById(pid); if(el) el.remove();
+      _killPicker(document.getElementById(pid));
     });
 
     var picker = document.createElement('div');
@@ -9906,9 +9957,7 @@ nkc:`নারায়ণ কবচম্
     if (!sarga) return;
 
     var oldPicker = document.getElementById('sts-picker');
-    if (oldPicker) oldPicker.remove();
-
-    // If this is the preamble section, open it directly
+    _killPicker(oldPicker);
     if (sarga.title === 'পূর্বভূমিকা') {
       openGeetam(sargaIdx, -1);
       return;
@@ -9942,6 +9991,13 @@ nkc:`নারায়ণ কবচম্
     var items = [];
     sarga.subs.forEach(function(g, i){ items.push({ label: g.title, subIdx: i }); });
 
+    // Sarga number (for building the same "gg_<sarga#>_<geetam#>" audio
+    // key openGeetam uses) — lets the picker show a 🎶 badge on any
+    // geetam that actually has a recorded clip in _AUDIO_STOTRAMS.gg.tracks.
+    var _sNumMatch = sarga.title.match(/[০-৯]+/);
+    var _sNum = _sNumMatch ? _bnToNum(_sNumMatch[0]) : (sargaIdx + 1);
+    var _ggTracks = (typeof _AUDIO_STOTRAMS !== 'undefined' && _AUDIO_STOTRAMS.gg && _AUDIO_STOTRAMS.gg.tracks) || {};
+
     var grid = document.createElement('div');
     grid.className = 'sts-picker-grid';
     var rows = Math.max(1, Math.ceil(items.length / 2));
@@ -9967,7 +10023,8 @@ nkc:`নারায়ণ কবচম্
       // Truncate long geetam titles
       var t = item.label;
       if (t.length > 40) t = t.slice(0, 38) + '…';
-      nameSpan.textContent = t;
+      var _hasAudio = item.subIdx !== -1 && !!_ggTracks['gg_' + _sNum + '_' + (item.subIdx + 1)];
+      nameSpan.textContent = t + (_hasAudio ? ' 🎶' : '');
 
       btn.appendChild(numSpan);
       btn.appendChild(nameSpan);
@@ -9997,9 +10054,24 @@ nkc:`নারায়ণ কবচম্
       title = geetam.title;
     }
 
+    // Audio key for gg (Geet Govindam): "gg_<sarga#>_<geetam#>" — read by
+    // app.js's audio player (_AUDIO_STOTRAMS.gg.tracks). Every geetam here
+    // renders as a single verse card (idx is always 0), so the player can't
+    // tell songs apart by verse index the way other stotrams do — this key
+    // is how it knows which song (if any) has a clip. Stop any audio that
+    // was playing for the previous geetam before switching.
+    if (_activeId === 'gg' && subIdx !== -1) {
+      var _sNumMatch = sarga.title.match(/[০-৯]+/);
+      var _sNum = _sNumMatch ? _bnToNum(_sNumMatch[0]) : (sargaIdx + 1);
+      window._ggAudioKey = 'gg_' + _sNum + '_' + (subIdx + 1);
+    } else {
+      window._ggAudioKey = null;
+    }
+    if (typeof _hcjStopAudio === 'function') _hcjStopAudio();
+
     _inSectionView = true;
     var picker = document.getElementById('sts-picker');
-    if (picker) picker.remove();
+    _killPicker(picker);
 
     var lmb   = document.getElementById('lmb');
     var lmNav = document.getElementById('lmNav');
@@ -10031,11 +10103,17 @@ nkc:`নারায়ণ কবচম্
     backBtn.className = 'sts-back-btn';
     backBtn.textContent = '← গীতম্ তালিকা';
     backBtn.onclick = function() {
+      if (typeof _hcjStopAudio === 'function') _hcjStopAudio();
+      window._ggAudioKey = null;
       backBtn.remove();
+      var lmoBack = document.getElementById('lmo');
+      if (lmoBack) lmoBack.classList.remove('has-sts-back');
       showGeetamPicker(sargaIdx);
       _inSectionView = false;
     };
     if (lmTitle) lmTitle.parentNode.insertBefore(backBtn, lmTitle);
+    var lmoFwd = document.getElementById('lmo');
+    if (lmoFwd) lmoFwd.classList.add('has-sts-back');
   }
 
   // ── Parse lyrics into sections by Bengali-numeral headings ────────────
@@ -10099,7 +10177,7 @@ nkc:`নারায়ণ কবচম্
     if (oldWrap) oldWrap.remove();
 
     var oldPicker = document.getElementById('sts-picker');
-    if (oldPicker) oldPicker.remove();
+    _killPicker(oldPicker);
 
     var fsCtrl = document.getElementById('lyr-fs-ctrl');
     if (fsCtrl) fsCtrl.style.display = 'none';
@@ -10180,7 +10258,7 @@ nkc:`নারায়ণ কবচম্
     _inSectionView = true;
 
     var picker = document.getElementById('sts-picker');
-    if (picker) picker.remove();
+    _killPicker(picker);
 
     var lmb   = document.getElementById('lmb');
     var lmNav = document.getElementById('lmNav');
@@ -10281,10 +10359,13 @@ nkc:`নারায়ণ কবচম্
     _activeId = null;
     _ggSargas = [];
     _curSargaIdx = -1;
-    var p  = document.getElementById('sts-picker');      if (p)  p.remove();
-    var p2 = document.getElementById('sts-sub-picker');  if (p2) p2.remove();
+    window._ggAudioKey = null;
+    _killPicker(document.getElementById('sts-picker'));
+    _killPicker(document.getElementById('sts-sub-picker'));
     var b  = document.getElementById('sts-verse-back');  if (b)  b.remove();
     var b2 = document.getElementById('sts-back-btn');    if (b2) b2.remove();
+    var lmoReset = document.getElementById('lmo');
+    if (lmoReset) lmoReset.classList.remove('has-sts-back');
   }
 
   global.StotramSections = {

@@ -10018,9 +10018,7 @@ nkc:`নারায়ণ কবচম্
 
       var nameSpan = document.createElement('span');
       nameSpan.className = 'sts-btn-name';
-      // Truncate long geetam titles
       var t = item.label;
-      if (t.length > 40) t = t.slice(0, 38) + '…';
       var _hasAudio = item.subIdx !== -1 && !!_ggTracks['gg_' + _sNum + '_' + (item.subIdx + 1)];
       nameSpan.textContent = t + (_hasAudio ? ' 🎶' : '');
 

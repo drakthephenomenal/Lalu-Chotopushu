@@ -15996,6 +15996,7 @@ var _AUDIO_STOTRAMS = {
   nkc: { prefix: "nkc", slokaRange: [11, 32] },
   vs2: { prefix: "vs2" },
   rds: { prefix: "rds" },
+  ans: { prefix: "ans" },
   sps: { prefix: "sps" },
   // Geet Govindam: sectioned (two-level Sarga/Geetam) stotram — every
   // geetam renders as a single verse card, so idx is always 0 and can't
@@ -16023,7 +16024,7 @@ var _AUDIO_STOTRAMS = {
   // old per-chaupai verseMap (42 tracks + alt voice) can never advance
   // past track 1. Simplified to expect one full-recitation clip,
   // hnc_1.mp3, same as the other single-view stotrams.
-  hnc: { prefix: "hnc" }
+  hnc: { prefix: "hnc", voices: { default: "hnc", alt: "hnc_alt" } }
 };
 var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices
 // True once the user has manually picked a voice via the button this

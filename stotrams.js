@@ -9772,6 +9772,21 @@ nkc:`নারায়ণ কবচম্
   // Stotrams using two-level §§ / § hierarchy
   var TWO_LEVEL = { gg: true };
 
+  // Safely remove a #sts-picker (or similar) overlay. Plain el.remove() can
+  // leave a visual "ghost" of the element on screen in iOS Safari, because
+  // .sts-picker uses -webkit-overflow-scrolling:touch, which puts it on its
+  // own GPU compositing layer — WebKit sometimes fails to repaint that
+  // screen region when the layer is torn down mid-navigation, so the last
+  // frame it painted (e.g. the geetam list) stays visible, overlapping
+  // whatever renders next (e.g. the opened song's lyrics). Hiding the
+  // element and forcing a reflow *before* removing it reliably avoids this.
+  function _killPicker(el) {
+    if (!el) return;
+    el.style.display = 'none';
+    void el.offsetHeight; // force a reflow/repaint before removal
+    el.remove();
+  }
+
   // Convert a Bengali-numeral string (e.g. "১২") to a JS number.
   var _bnDigits = '০১২৩৪৫৬৭৮৯';
   function _bnToNum(s) {
@@ -9872,7 +9887,7 @@ nkc:`নারায়ণ কবচম্
     if (lmTitle){ lmTitle.textContent = ''; lmTitle.style.display = 'none'; }
     if (fsCtrl) fsCtrl.style.display = 'none';
     ['sts-picker','sts-sub-picker'].forEach(function(pid){
-      var el = document.getElementById(pid); if(el) el.remove();
+      _killPicker(document.getElementById(pid));
     });
 
     var picker = document.createElement('div');
@@ -9940,9 +9955,7 @@ nkc:`নারায়ণ কবচম্
     if (!sarga) return;
 
     var oldPicker = document.getElementById('sts-picker');
-    if (oldPicker) oldPicker.remove();
-
-    // If this is the preamble section, open it directly
+    _killPicker(oldPicker);
     if (sarga.title === 'পূর্বভূমিকা') {
       openGeetam(sargaIdx, -1);
       return;
@@ -10056,7 +10069,7 @@ nkc:`নারায়ণ কবচম্
 
     _inSectionView = true;
     var picker = document.getElementById('sts-picker');
-    if (picker) picker.remove();
+    _killPicker(picker);
 
     var lmb   = document.getElementById('lmb');
     var lmNav = document.getElementById('lmNav');
@@ -10091,10 +10104,14 @@ nkc:`নারায়ণ কবচম্
       if (typeof _hcjStopAudio === 'function') _hcjStopAudio();
       window._ggAudioKey = null;
       backBtn.remove();
+      var lmoBack = document.getElementById('lmo');
+      if (lmoBack) lmoBack.classList.remove('has-sts-back');
       showGeetamPicker(sargaIdx);
       _inSectionView = false;
     };
     if (lmTitle) lmTitle.parentNode.insertBefore(backBtn, lmTitle);
+    var lmoFwd = document.getElementById('lmo');
+    if (lmoFwd) lmoFwd.classList.add('has-sts-back');
   }
 
   // ── Parse lyrics into sections by Bengali-numeral headings ────────────
@@ -10158,7 +10175,7 @@ nkc:`নারায়ণ কবচম্
     if (oldWrap) oldWrap.remove();
 
     var oldPicker = document.getElementById('sts-picker');
-    if (oldPicker) oldPicker.remove();
+    _killPicker(oldPicker);
 
     var fsCtrl = document.getElementById('lyr-fs-ctrl');
     if (fsCtrl) fsCtrl.style.display = 'none';
@@ -10239,7 +10256,7 @@ nkc:`নারায়ণ কবচম্
     _inSectionView = true;
 
     var picker = document.getElementById('sts-picker');
-    if (picker) picker.remove();
+    _killPicker(picker);
 
     var lmb   = document.getElementById('lmb');
     var lmNav = document.getElementById('lmNav');
@@ -10341,10 +10358,12 @@ nkc:`নারায়ণ কবচম্
     _ggSargas = [];
     _curSargaIdx = -1;
     window._ggAudioKey = null;
-    var p  = document.getElementById('sts-picker');      if (p)  p.remove();
-    var p2 = document.getElementById('sts-sub-picker');  if (p2) p2.remove();
+    _killPicker(document.getElementById('sts-picker'));
+    _killPicker(document.getElementById('sts-sub-picker'));
     var b  = document.getElementById('sts-verse-back');  if (b)  b.remove();
     var b2 = document.getElementById('sts-back-btn');    if (b2) b2.remove();
+    var lmoReset = document.getElementById('lmo');
+    if (lmoReset) lmoReset.classList.remove('has-sts-back');
   }
 
   global.StotramSections = {

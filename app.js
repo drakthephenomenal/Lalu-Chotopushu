@@ -15558,11 +15558,18 @@ function showLyrics(id) {
     }
   })();
 
+  // Single-view stotrams: shown as one continuous page, no verse-by-verse
+  // split/swipe (still just one card, so the existing audio-index logic
+  // naturally looks for a single "<prefix>_1.mp3" track).
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc"];
+
   // Split by blank lines into verses
-  let allVerses = ly
-    .split(/\n{2,}/)
-    .map((b) => b.trim())
-    .filter((b) => b.length > 0);
+  let allVerses = SINGLE_VIEW_IDS.includes(id)
+    ? [ly.trim()]
+    : ly
+        .split(/\n{2,}/)
+        .map((b) => b.trim())
+        .filter((b) => b.length > 0);
 
   // Remove first verse if it's just the stotram title (for all except hcj)
   if (id !== "hcj" && allVerses.length > 0) {
@@ -15960,6 +15967,7 @@ var _AUDIO_STOTRAMS = {
     defaultVoiceByVerse: { 52: "shuvam" }
   },
   bss: { prefix: "bss" },
+  ach: { prefix: "ach" },
   dkc: { prefix: "dkc" },
   // rsn has one extra, unlabeled preamble block (audio track 0) before the
   // numbered Shlok 1 starts (audio track 1) — labelOffset shifts the
@@ -16011,58 +16019,11 @@ var _AUDIO_STOTRAMS = {
       gg_12_1: "gg_12_1"
     }
   },
-  hnc: {
-    prefix: "hnc",
-    voices: { default: "hnc", alt: "hnc_alt" },
-    // idx0 = opening doha ("0"), idx1..40 = chaupai 1..40,
-    // idx41 = closing doha ("40.c") — matches the 42 recorded
-    // clips exactly. Aarti/final line (idx 42+) have no entry:
-    // no audio, no numeric label, plain text pages.
-    verseMap: [
-      { track: 1, label: "0" },
-      { track: 2, label: "1" },
-      { track: 3, label: "2" },
-      { track: 4, label: "3" },
-      { track: 5, label: "4" },
-      { track: 6, label: "5" },
-      { track: 7, label: "6" },
-      { track: 8, label: "7" },
-      { track: 9, label: "8" },
-      { track: 10, label: "9" },
-      { track: 11, label: "10" },
-      { track: 12, label: "11" },
-      { track: 13, label: "12" },
-      { track: 14, label: "13" },
-      { track: 15, label: "14" },
-      { track: 16, label: "15" },
-      { track: 17, label: "16" },
-      { track: 18, label: "17" },
-      { track: 19, label: "18" },
-      { track: 20, label: "19" },
-      { track: 21, label: "20" },
-      { track: 22, label: "21" },
-      { track: 23, label: "22" },
-      { track: 24, label: "23" },
-      { track: 25, label: "24" },
-      { track: 26, label: "25" },
-      { track: 27, label: "26" },
-      { track: 28, label: "27" },
-      { track: 29, label: "28" },
-      { track: 30, label: "29" },
-      { track: 31, label: "30" },
-      { track: 32, label: "31" },
-      { track: 33, label: "32" },
-      { track: 34, label: "33" },
-      { track: 35, label: "34" },
-      { track: 36, label: "35" },
-      { track: 37, label: "36" },
-      { track: 38, label: "37" },
-      { track: 39, label: "38" },
-      { track: 40, label: "39" },
-      { track: 41, label: "40" },
-      { track: 42, label: "40.c" }
-    ]
-  }
+  // Single-view page now (see SINGLE_VIEW_IDS) — only one card, so the
+  // old per-chaupai verseMap (42 tracks + alt voice) can never advance
+  // past track 1. Simplified to expect one full-recitation clip,
+  // hnc_1.mp3, same as the other single-view stotrams.
+  hnc: { prefix: "hnc" }
 };
 var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices
 // True once the user has manually picked a voice via the button this

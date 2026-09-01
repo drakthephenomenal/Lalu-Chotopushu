@@ -15561,7 +15561,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc"];
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc"];
 
   // Split by blank lines into verses
   let allVerses = SINGLE_VIEW_IDS.includes(id)
@@ -15968,6 +15968,7 @@ var _AUDIO_STOTRAMS = {
   },
   bss: { prefix: "bss" },
   ach: { prefix: "ach" },
+  rdc: { prefix: "rdc" },
   dkc: { prefix: "dkc" },
   // rsn has one extra, unlabeled preamble block (audio track 0) before the
   // numbered Shlok 1 starts (audio track 1) — labelOffset shifts the

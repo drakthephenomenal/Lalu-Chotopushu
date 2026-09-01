@@ -15652,16 +15652,25 @@ function _renderVerse(idx, dir) {
     linesHtml = rawLines
       .map((line) => {
         if (line.trim() === "") return '<span class="lyr-line-empty"></span>';
-        const esc = line
+        // ⟦RED⟧ prefix in LYRICS source text flags a single manually-highlighted
+        // line (e.g. the inserted Bhagavatam verse in Ardhanarishwar Stotram) —
+        // stripped before display, adds .lyr-line-red for the red styling.
+        let content = line;
+        let extraClass = "";
+        if (content.startsWith("⟦RED⟧")) {
+          content = content.slice(5);
+          extraClass = " lyr-line-red";
+        }
+        const esc = content
           .replace(/&/g, "&amp;")
           .replace(/</g, "&lt;")
           .replace(/>/g, "&gt;");
-        if (/^অর্থ\s*:/.test(line.trim())) {
+        if (/^অর্থ\s*:/.test(content.trim())) {
           // Only inject অর্থ: line when translation is ON
           if (!hasTranslation || !_translationVisible) return "";
-          return '<span class="lyr-line lyr-artha">' + esc + "</span>";
+          return '<span class="lyr-line lyr-artha' + extraClass + '">' + esc + "</span>";
         }
-        return '<span class="lyr-line">' + esc + "</span>";
+        return '<span class="lyr-line' + extraClass + '">' + esc + "</span>";
       })
       .join("");
   }

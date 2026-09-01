@@ -250,6 +250,14 @@
   .lm-water-card[data-theme] .lyr-footer { color: #5a2800 !important; }
   .lm-water-card[data-theme] .lyr-prose  { color: #1a0800 !important; }
 
+  /* Single manually-highlighted verse line (⟦RED⟧ marker in LYRICS source —
+     e.g. the inserted Bhagavatam verse in Ardhanarishwar Stotram). Placed
+     after the theme override above so it always wins regardless of theme. */
+  .lyr-line-red,
+  .lm-water-card[data-theme] .lyr-line-red {
+    color: #c0132b !important;
+  }
+
   /* ── Translation toggle — pinned top-right of reader, clear of close X & Sudarshan Chakra ── */
   .lm-translate-wrap {
     position: absolute;

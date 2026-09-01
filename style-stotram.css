@@ -387,6 +387,14 @@
     opacity: 0.35;
   }
 
+  /* Seek total ("/15") — left out of the button/input gold-text fix above,
+     so it kept its default near-white color, invisible on this view's
+     white background. Same gold + shadow treatment as the seek input. */
+  #hcj-player-wrap .hcj-seek-total {
+    color: rgba(255,215,0,0.85) !important;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+  }
+
   /* ── Even sizing: stop the verse-entry input from being giant
        while the other buttons stay congested ── */
   #hcj-player-wrap .hcj-player > * {

@@ -1502,7 +1502,16 @@ button.n28-gold-btn-danger,
   transition:opacity 0.22s ease;
 }
 #ramPersist.hk-visible{opacity:1;}
-#ramPersist > div{display:block;width:100%;}
+#ramPersist > div{display:flex;flex-wrap:wrap;justify-content:center;gap:0.3em;width:100%;}
+/* Each word of the Raam Vijay mantra spins in from a random margin of
+   the jap display and settles into place, instead of the whole line
+   popping in at once. --wx/--wy/--wr are set per word in JS. */
+.ram-word{display:inline-block;opacity:0;animation:ramWordIn 0.6s cubic-bezier(0.16,1,0.3,1) forwards;}
+@keyframes ramWordIn{
+  0%{opacity:0;transform:translate(var(--wx,0px),var(--wy,0px)) rotate(var(--wr,0deg)) scale(0.5);}
+  70%{opacity:1;}
+  100%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1);}
+}
 
 /* ── Krishnay Vasudevay persistent tap display (mirrors #hkPersist) ── */
 #kvPersist{

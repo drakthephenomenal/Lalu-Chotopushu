@@ -15516,7 +15516,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms"];
+const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg"];
 // ── IDs where prose sections need vertical-scroll mode
 const PROSE_IDS = ["nkc"];
 
@@ -15640,6 +15640,17 @@ const SVG_SHIV_BOTTOM = `<svg width="160" height="36" viewBox="0 0 160 36" fill=
 // ──────────────────────────────────────────────────────────────
 
 function showLyrics(id) {
+  // The Gita is kept out of the initial bundle. Load and validate all
+  // 700 Bengali shlokas the first time the reader is opened.
+  if (id === "bg" && window.isGitaReady && !window.isGitaReady()) {
+    toast("গীতার ৭০০ শ্লোক লোড হচ্ছে… 🙏");
+    if (window.loadGitaLyrics) {
+      window.loadGitaLyrics()
+        .then(() => showLyrics(id))
+        .catch(() => toast("গীতার পাঠ লোড করা যায়নি। আবার চেষ্টা করুন 🙏"));
+    }
+    return;
+  }
   const ly = getEffectiveLyrics(id);
   if (!ly) {
     toast("পাঠ্য পাওয়া যায়নি 🙏");

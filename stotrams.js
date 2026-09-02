@@ -17,6 +17,7 @@ const STLIST = [
   {id:'dkc',cat:'rv',name:'দেখত ছবীলী জূ কী ছবি',sub:'শ্রী ধ্রুব দাস – শৃঙ্গার শত ১ (২৩)'},
   {id:'rks',cat:'rv',name:'শ্রীরাধাকৃপাকটাক্ষস্তবরাজঃ',sub:'রাধার কৃপাদৃষ্টির প্রার্থনা'},
   {id:'rdc',cat:'rv',name:'শ্রী রাধা চালীসা',sub:'রাধা রানীর চালীসা'},
+  {id:'bg',cat:'krishna',name:'শ্রীমদ্ভগবদ্গীতা',sub:'অষ্টাদশ অধ্যায় · ৭০০ শ্লোক'},
   {id:'gg',cat:'krishna',name:'গীতগোবিন্দম্',sub:'শ্রীজয়দেবকৃত'},
   {id:'nkc',cat:'krishna',name:'নারায়ণ কবচম',sub:'নারায়ণের দিব্য কবচ'},
   {id:'gms',cat:'krishna',name:'গজেন্দ্র মোক্ষ স্তোত্রম্',sub:'মুক্তির প্রার্থনা'},
@@ -9755,6 +9756,165 @@ nkc:`নারায়ণ কবচম্
 র্ব্যাপারাঃ পুরুষোত্তমস্য দদতু   স্ফীতাং মুদং সম্পদম্ ॥`
 
 };
+
+// ── Srimad Bhagavad Gita (18 chapters / 700 shlokas) ────────────────
+// The Bengali verse text and Bengali meaning are loaded once, on demand,
+// from the maintained open-source data file below and then cached locally.
+// Keeping the large scripture outside this already-large bundle makes the
+// first screen fast while still making all 700 shlokas available offline
+// after the first successful load.
+const GITA_ID = 'bg';
+const GITA_DATA_URL =
+  'https://raw.githubusercontent.com/saikardas2026-ui/srimad-bhagavad-gita-app/main/src/data.ts';
+const GITA_CACHE_KEY = 'rjap_gita_bengali_v1';
+const GITA_CHAPTER_NAMES = [
+  'অর্জুনবিষাদ যোগ',
+  'সাংখ্য যোগ',
+  'কর্মযোগ',
+  'জ্ঞানযোগ',
+  'কর্মসংন্যাস যোগ',
+  'আত্মসংযম যোগ',
+  'জ্ঞানবিজ্ঞান যোগ',
+  'অক্ষরব্রহ্ম যোগ',
+  'রাজবিদ্যারাজগুহ্য যোগ',
+  'বিভূতি যোগ',
+  'বিশ্বরূপদর্শন যোগ',
+  'ভক্তি যোগ',
+  'ক্ষেত্রক্ষেত্রজ্ঞবিভাগ যোগ',
+  'গুণত্রয়বিভাগ যোগ',
+  'পুরুষোত্তম যোগ',
+  'দৈবাসুরসম্পদ্বিভাগ যোগ',
+  'শ্রদ্ধাত্রয়বিভাগ যোগ',
+  'মোক্ষসংন্যাস যোগ'
+];
+const GITA_CHAPTER_COUNTS = [46,72,43,42,29,47,30,28,34,42,55,20,35,27,20,24,28,78];
+let _gitaLoadPromise = null;
+let _gitaReady = false;
+
+// A non-empty placeholder keeps the scripture's 📖 button visible in the
+// Krishna folder before the on-demand request has completed.
+LYRICS[GITA_ID] =
+  '§§ অধ্যায়ঃ ১ - অর্জুনবিষাদ যোগ\n§ শ্লোক ১\nগীতার পাঠ লোড হচ্ছে…';
+
+function _gitaBnNum(n) {
+  return String(n).replace(/[0-9]/g, function (d) {
+    return '০১২৩৪৫৬৭৮৯'[Number(d)];
+  });
+}
+
+function _gitaReadField(body, key) {
+  // The source is a TypeScript data file whose verse values are ordinary
+  // double-quoted strings. Parse only the fields we need; do not evaluate
+  // the downloaded source as JavaScript.
+  var match = body.match(
+    new RegExp('(?:^|\\n)\\s*' + key + ':\\s*"((?:\\\\.|[^"\\\\])*)"', 'm')
+  );
+  return match ? JSON.parse('"' + match[1] + '"') : '';
+}
+
+function _gitaSourceToLyrics(source) {
+  var chapters = [];
+  var total = 0;
+
+  for (var ch = 1; ch <= 18; ch++) {
+    var start = source.indexOf(
+      'const CH' + ch + ': Record<number, VerseContent> = {'
+    );
+    var end = start < 0 ? -1 : source.indexOf('\n};', start);
+    if (start < 0 || end < 0) {
+      throw new Error('Gita chapter ' + ch + ' is missing');
+    }
+
+    var block = source.slice(start, end + 3);
+    var entries = [];
+    var entryRe = /^\s*(\d+):\s*\{([\s\S]*?)^\s*\},?\s*$/gm;
+    var entry;
+    while ((entry = entryRe.exec(block))) {
+      var verseNumber = Number(entry[1]);
+      var body = entry[2];
+      var sanskrit = _gitaReadField(body, 'sanskrit');
+      var bengali = _gitaReadField(body, 'bengali');
+      if (!sanskrit || !bengali) {
+        throw new Error('Gita verse ' + ch + '.' + verseNumber + ' is incomplete');
+      }
+      entries.push({
+        number: verseNumber,
+        speaker: _gitaReadField(body, 'speaker'),
+        sanskrit: sanskrit,
+        bengali: bengali
+      });
+    }
+
+    entries.sort(function (a, b) { return a.number - b.number; });
+    if (entries.length !== GITA_CHAPTER_COUNTS[ch - 1]) {
+      throw new Error(
+        'Gita chapter ' + ch + ' has ' + entries.length + ' verses'
+      );
+    }
+    total += entries.length;
+    chapters.push(entries);
+  }
+
+  if (total !== 700) throw new Error('Gita contains ' + total + ' verses');
+
+  var output = [];
+  chapters.forEach(function (entries, chapterIndex) {
+    var chapterNumber = chapterIndex + 1;
+    output.push(
+      '§§ অধ্যায়ঃ ' + _gitaBnNum(chapterNumber) + ' - ' +
+      GITA_CHAPTER_NAMES[chapterIndex]
+    );
+    entries.forEach(function (verse) {
+      output.push(
+        '§ শ্লোক ' + _gitaBnNum(verse.number) + '\n' +
+        (verse.speaker ? verse.speaker + '\n' : '') +
+        verse.sanskrit + '\nঅর্থ: ' + verse.bengali
+      );
+    });
+  });
+  return output.join('\n');
+}
+
+function _gitaLooksComplete(text) {
+  return typeof text === 'string' &&
+    (text.match(/^§ শ্লোক /gm) || []).length === 700;
+}
+
+// Restore a successful previous load without blocking startup.
+try {
+  var _gitaCached = localStorage.getItem(GITA_CACHE_KEY);
+  if (_gitaLooksComplete(_gitaCached)) {
+    LYRICS[GITA_ID] = _gitaCached;
+    _gitaReady = true;
+  }
+} catch (_) {}
+
+function loadGitaLyrics() {
+  if (_gitaReady) return Promise.resolve(LYRICS[GITA_ID]);
+  if (_gitaLoadPromise) return _gitaLoadPromise;
+
+  _gitaLoadPromise = fetch(GITA_DATA_URL)
+    .then(function (response) {
+      if (!response.ok) throw new Error('Gita data request failed');
+      return response.text();
+    })
+    .then(function (source) {
+      var lyrics = _gitaSourceToLyrics(source);
+      LYRICS[GITA_ID] = lyrics;
+      _gitaReady = true;
+      try { localStorage.setItem(GITA_CACHE_KEY, lyrics); } catch (_) {}
+      return lyrics;
+    })
+    .catch(function (error) {
+      _gitaLoadPromise = null;
+      throw error;
+    });
+  return _gitaLoadPromise;
+}
+
+window.loadGitaLyrics = loadGitaLyrics;
+window.isGitaReady = function () { return _gitaReady; };
+
 // ═══════════════════════════════════════════════════════
 // SECTIONED-STOTRAM PICKER (svb, blv, …)
 // All UI/logic for stotrams that have numbered sub-sections
@@ -9770,11 +9930,12 @@ nkc:`নারায়ণ কবচম্
   var SECTIONED = {
     svb: 'শ্রী হিত সেবক বাণী',
     blv: 'বয়ালীস লীলা',
-    gg:  'গীতগোবিন্দম্'
+    gg:  'গীতগোবিন্দম্',
+    bg:  'শ্রীমদ্ভগবদ্গীতা'
   };
 
   // Stotrams using two-level §§ / § hierarchy
-  var TWO_LEVEL = { gg: true };
+  var TWO_LEVEL = { gg: true, bg: true };
 
   // Safely remove a #sts-picker (or similar) overlay. Plain el.remove() can
   // leave a visual "ghost" of the element on screen in iOS Safari, because
@@ -9805,6 +9966,7 @@ nkc:`নারায়ণ কবচম্
   var _sections = [];          // [{title, content}]
   var _activeId = null;        // current sectioned-stotram id
   var _inSectionView = false;
+  function _isGitaMode() { return _activeId === 'bg'; }
 
   // ── Parse GG two-level: §§ = sarga, § = geetam ───────────────────────
   // Returns [{title, subs:[{title,content}], preamble}]
@@ -9905,7 +10067,7 @@ nkc:`নারায়ণ কবচম্
 
     var subtitle = document.createElement('div');
     subtitle.className = 'sts-picker-subtitle';
-    subtitle.textContent = 'সর্গ নির্বাচন করুন';
+    subtitle.textContent = _isGitaMode() ? 'অধ্যায় নির্বাচন করুন' : 'সর্গ নির্বাচন করুন';
     picker.appendChild(subtitle);
 
     var glowColors = ['#ffd700','#ffaa00','#ff6bff','#00e5ff','#7dff6b',
@@ -9972,7 +10134,7 @@ nkc:`নারায়ণ কবচম্
     // Back button
     var backBtn = document.createElement('button');
     backBtn.className = 'sts-back-btn';
-    backBtn.textContent = '← সর্গ তালিকা';
+    backBtn.textContent = _isGitaMode() ? '← অধ্যায় তালিকা' : '← সর্গ তালিকা';
     backBtn.onclick = function() { showSargaPicker(_activeId); };
     picker.appendChild(backBtn);
 
@@ -9983,7 +10145,7 @@ nkc:`নারায়ণ কবচম্
 
     var subtitle = document.createElement('div');
     subtitle.className = 'sts-picker-subtitle';
-    subtitle.textContent = 'গীতম্ নির্বাচন করুন';
+    subtitle.textContent = _isGitaMode() ? 'শ্লোক নির্বাচন করুন' : 'গীতম্ নির্বাচন করুন';
     picker.appendChild(subtitle);
 
     var glowColors = ['#ffd700','#ffaa00','#ff6bff','#00e5ff','#7dff6b',
@@ -10103,7 +10265,7 @@ nkc:`নারায়ণ কবচম্
     var backBtn = document.createElement('button');
     backBtn.id = 'sts-verse-back';
     backBtn.className = 'sts-back-btn';
-    backBtn.textContent = '← গীতম্ তালিকা';
+    backBtn.textContent = _isGitaMode() ? '← শ্লোক তালিকা' : '← গীতম্ তালিকা';
     backBtn.onclick = function() {
       if (typeof _hcjStopAudio === 'function') _hcjStopAudio();
       window._ggAudioKey = null;

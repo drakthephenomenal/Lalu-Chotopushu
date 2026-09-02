@@ -15787,6 +15787,9 @@ function _renderVerse(idx, dir) {
   const next = document.getElementById("lmNext");
 
   const verseText = _verses[idx] || "";
+  if (_currentStotramId === "bg" && window.setGitaVerseTitle) {
+    window.setGitaVerseTitle(idx);
+  }
   const isProse =
     PROSE_IDS.includes(_currentStotramId) && _isProseBlock(verseText);
   const hasTranslation = TRANSLATION_IDS.includes(_currentStotramId);

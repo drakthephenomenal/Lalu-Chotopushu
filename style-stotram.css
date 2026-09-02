@@ -940,25 +940,29 @@
   position: absolute;
   top: max(env(safe-area-inset-top), 10px);
   left: 10px;
+  width: 36px;
+  height: 36px;
   background: rgba(4,10,30,0.70);
   border: 1px solid rgba(255,215,0,0.50);
-  border-radius: 999px;
-  padding: 6px 12px;
+  border-radius: 50%;
+  padding: 0;
   color: #ffd700;
-  font-size: 12px;
+  font-size: 22px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
   z-index: 20;
   font-family: "Hind Siliguri", sans-serif;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Back button inside picker (not absolute) */
+/* Keep the chapter/sloka back arrow at the same top-left position inside
+   the picker instead of putting a text pill into the scrolling list. */
 .sts-picker .sts-back-btn {
-  position: static;
-  margin-bottom: 8px;
-  align-self: flex-start;
+  position: absolute;
+  margin: 0;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -1056,23 +1060,17 @@
   transform: none !important;
 }
 
-/* v91 - Root fix: back-to-sections button was sharing the title's
-   row (left:10px) and colliding with the centered title's wide
-   box. Give it its own row, clear of the title, close button,
-   size control, and translation toggle. */
+/* v91 - Back arrow: keep it opposite the close button in the top-left
+   corner instead of adding a text row below the reader controls. */
 .sts-back-btn {
-  top: calc(max(env(safe-area-inset-top), 10px) + 78px) !important;
-  left: 12px !important;
+  top: max(env(safe-area-inset-top), 10px) !important;
+  left: 10px !important;
 }
 
-/* v92 — When the "← গীতম্ তালিকা" (sectioned song) back button is showing,
-   it occupies its own row below the title, size-control and translation
-   rows. .lm-card-inner's top wasn't pushed down for that extra row, so
-   the first line(s) of a song — especially at larger text sizes — could
-   render underneath/behind the back button. JS toggles "has-sts-back" on
-   #lmo exactly while that button is present (see stotrams.js openGeetam). */
+/* The arrow occupies the existing top chrome; do not push the verse text
+   down as if a second control row had been added. */
 #lmo.has-sts-back .lm-card-inner {
-  top: calc(max(env(safe-area-inset-top), 54px) + 64px) !important;
+  top: max(env(safe-area-inset-top), 54px) !important;
 }
 
 

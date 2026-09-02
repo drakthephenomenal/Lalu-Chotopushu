@@ -9967,6 +9967,14 @@ window.isGitaReady = function () { return _gitaReady; };
   var _activeId = null;        // current sectioned-stotram id
   var _inSectionView = false;
   function _isGitaMode() { return _activeId === 'bg'; }
+  global.setGitaVerseTitle = function (idx) {
+    if (_activeId !== 'bg') return;
+    var title = document.getElementById('lmTitle');
+    if (!title) return;
+    title.textContent = 'শ্লোক ' + String(idx + 1).replace(/[0-9]/g, function (d) {
+      return '০১২৩৪৫৬৭৮৯'[Number(d)];
+    });
+  };
 
   // ── Parse GG two-level: §§ = sarga, § = geetam ───────────────────────
   // Returns [{title, subs:[{title,content}], preamble}]
@@ -10134,7 +10142,8 @@ window.isGitaReady = function () { return _gitaReady; };
     // Back button
     var backBtn = document.createElement('button');
     backBtn.className = 'sts-back-btn';
-    backBtn.textContent = _isGitaMode() ? '← অধ্যায় তালিকা' : '← সর্গ তালিকা';
+    backBtn.textContent = '←';
+    backBtn.setAttribute('aria-label', _isGitaMode() ? 'অধ্যায় তালিকা' : 'সর্গ তালিকা');
     backBtn.onclick = function() { showSargaPicker(_activeId); };
     picker.appendChild(backBtn);
 
@@ -10253,9 +10262,21 @@ window.isGitaReady = function () { return _gitaReady; };
     }
 
     if (typeof _verses !== 'undefined') {
-      // Each Geetam is shown as a single card (no internal splitting)
-      _verses = [content.trim()];
-      if (typeof _renderVerse === 'function') _renderVerse(0, -1);
+      if (_activeId === 'bg' && subIdx !== -1) {
+        // Gita chapters are a real verse sequence: keep the whole chapter
+        // in the reader so the bottom previous/next arrows can move through
+        // every shloka instead of rendering only the tapped one.
+        _verses = sarga.subs.map(function (verse) {
+          return verse.content.trim();
+        });
+        _verseIdx = subIdx;
+        if (typeof _verseNavLocked !== 'undefined') _verseNavLocked = false;
+      } else {
+        // Geetam entries remain single-card readers.
+        _verses = [content.trim()];
+        _verseIdx = 0;
+      }
+      if (typeof _renderVerse === 'function') _renderVerse(_verseIdx, null);
       if (typeof _initSwipeHandler === 'function') _initSwipeHandler();
     }
 
@@ -10265,7 +10286,8 @@ window.isGitaReady = function () { return _gitaReady; };
     var backBtn = document.createElement('button');
     backBtn.id = 'sts-verse-back';
     backBtn.className = 'sts-back-btn';
-    backBtn.textContent = _isGitaMode() ? '← শ্লোক তালিকা' : '← গীতম্ তালিকা';
+    backBtn.textContent = '←';
+    backBtn.setAttribute('aria-label', _isGitaMode() ? 'শ্লোক তালিকা' : 'গীতম্ তালিকা');
     backBtn.onclick = function() {
       if (typeof _hcjStopAudio === 'function') _hcjStopAudio();
       window._ggAudioKey = null;
@@ -10444,7 +10466,8 @@ window.isGitaReady = function () { return _gitaReady; };
       var backBtn = document.createElement('button');
       backBtn.id  = 'sts-back-btn';
       backBtn.className = 'sts-back-btn';
-      backBtn.innerHTML = '&#8592; বিভাগ';
+      backBtn.textContent = '←';
+      backBtn.setAttribute('aria-label', 'বিভাগ তালিকা');
       backBtn.onclick = function () {
         _inSectionView = false;
         var old = document.getElementById('sts-back-btn');

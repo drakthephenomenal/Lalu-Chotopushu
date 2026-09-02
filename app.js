@@ -15657,6 +15657,19 @@ function showLyrics(id) {
     return;
   }
 
+  // Selecting another reader is a new audio context. Stop any minimized
+  // track from the previous reader so its mini-player cannot sit above the
+  // newly opened chapter/lyrics picker.
+  if (
+    _currentStotramId &&
+    _currentStotramId !== id &&
+    typeof _hcjStopAudio === "function"
+  ) {
+    _hcjStopAudio();
+  }
+  if (typeof _hcjRemoveMiniPlayer === "function") _hcjRemoveMiniPlayer();
+  var existingLmo = document.getElementById("lmo");
+  if (existingLmo) existingLmo.removeAttribute("data-minimized");
   _currentStotramId = id;
   // Inherit the global translation preference set on the list screen
   _translationVisible = TRANSLATION_IDS.includes(id)
@@ -16086,6 +16099,7 @@ function closeLyrics() {
   var lmo = document.getElementById("lmo");
   lmo.classList.remove("show");
   lmo.removeAttribute("data-bg");
+  lmo.removeAttribute("data-minimized");
   var card = document.querySelector(".lm-water-card");
   if (card) card.removeAttribute("data-theme");
   /* Clean up HCJ player window listeners before destroying audio */
@@ -16107,6 +16121,10 @@ function closeLyrics() {
   if (window.StotramSections) window.StotramSections.reset();
   var oldWrap = document.getElementById("lm-translate-wrap");
   if (oldWrap) oldWrap.remove();
+  var mini = document.getElementById("hcj-mini-player");
+  if (mini) mini.remove();
+  var minimizeBtn = document.getElementById("lm-minimize");
+  if (minimizeBtn) minimizeBtn.remove();
   var navBar = document.getElementById("lmNav");
   if (navBar) navBar.style.display = "";
   var lmb = document.getElementById("lmb");
@@ -16122,6 +16140,135 @@ var _hcjAudio = null,
   _hcjAudioIdx = -1;
 var _hcjRafId = null; // requestAnimationFrame id for progress bar
 var _hcjPlayerCleanup = null; // cleanup fn for window listeners added in _hcjRenderPlayer
+var _hcjMiniVisible = false;
+
+// The mini-player lives outside #lmo. Hiding the lyrics modal therefore
+// leaves the same HTMLAudioElement alive while the user browses the rest of
+// the app. The normal close button still calls closeLyrics() and stops audio.
+function _hcjMiniLabel() {
+  var title = document.getElementById("lmTitle");
+  var text = title && title.textContent ? title.textContent.trim() : "";
+  return text || "Audio";
+}
+
+function _hcjSyncMiniPlayer() {
+  var mini = document.getElementById("hcj-mini-player");
+  if (!mini) return;
+  var label = document.getElementById("hcj-mini-label");
+  var play = document.getElementById("hcj-mini-play");
+  var fill = document.getElementById("hcj-mini-progress-fill");
+  if (label) label.textContent = _hcjMiniLabel();
+  if (play) {
+    play.textContent = _hcjPlaying ? "\u23f8" : "\u25b6";
+    play.title = _hcjPlaying ? "বিরতি" : "বাজাও";
+    play.setAttribute("aria-label", play.title);
+  }
+  if (fill && _hcjAudio && _hcjAudio.duration > 0) {
+    fill.style.width = ((_hcjAudio.currentTime / _hcjAudio.duration) * 100) + "%";
+  } else if (fill) {
+    fill.style.width = "0%";
+  }
+}
+
+function _hcjRemoveMiniPlayer() {
+  var mini = document.getElementById("hcj-mini-player");
+  if (mini) mini.remove();
+  _hcjMiniVisible = false;
+}
+
+function _hcjShowMiniPlayer() {
+  var mini = document.getElementById("hcj-mini-player");
+  if (!mini) {
+    mini = document.createElement("div");
+    mini.id = "hcj-mini-player";
+    mini.setAttribute("role", "region");
+    mini.setAttribute("aria-label", "Audio player");
+
+    var progress = document.createElement("div");
+    progress.className = "hcj-mini-progress";
+    var fill = document.createElement("div");
+    fill.id = "hcj-mini-progress-fill";
+    fill.className = "hcj-mini-progress-fill";
+    progress.appendChild(fill);
+    mini.appendChild(progress);
+
+    var label = document.createElement("span");
+    label.id = "hcj-mini-label";
+    label.className = "hcj-mini-label";
+    mini.appendChild(label);
+
+    var play = document.createElement("button");
+    play.id = "hcj-mini-play";
+    play.className = "hcj-mini-action";
+    play.onclick = function (e) {
+      e.stopPropagation();
+      _hcjTogglePlay();
+    };
+    mini.appendChild(play);
+
+    var expand = document.createElement("button");
+    expand.className = "hcj-mini-action";
+    expand.textContent = "\u2197";
+    expand.title = "অডিও প্লেয়ার খুলুন";
+    expand.setAttribute("aria-label", expand.title);
+    expand.onclick = function (e) {
+      e.stopPropagation();
+      _hcjRestoreLyrics();
+    };
+    mini.appendChild(expand);
+
+    var stop = document.createElement("button");
+    stop.className = "hcj-mini-action hcj-mini-stop";
+    stop.textContent = "\u00d7";
+    stop.title = "অডিও বন্ধ করুন";
+    stop.setAttribute("aria-label", stop.title);
+    stop.onclick = function (e) {
+      e.stopPropagation();
+      closeLyrics();
+    };
+    mini.appendChild(stop);
+
+    mini.onclick = function () {
+      _hcjRestoreLyrics();
+    };
+    document.body.appendChild(mini);
+  }
+  _hcjMiniVisible = true;
+  _hcjSyncMiniPlayer();
+}
+
+function _hcjMinimizeLyrics() {
+  var lmo = document.getElementById("lmo");
+  if (!lmo) return;
+  lmo.classList.remove("show");
+  lmo.setAttribute("data-minimized", "true");
+  _hcjShowMiniPlayer();
+}
+
+function _hcjRestoreLyrics() {
+  var lmo = document.getElementById("lmo");
+  if (!lmo) return;
+  _hcjRemoveMiniPlayer();
+  lmo.removeAttribute("data-minimized");
+  lmo.classList.add("show");
+}
+
+function _hcjEnsureMinimizeButton() {
+  var lmd = document.querySelector("#lmo .lmd");
+  if (!lmd) return;
+  var button = document.getElementById("lm-minimize");
+  if (!button) {
+    button = document.createElement("button");
+    button.id = "lm-minimize";
+    button.className = "lm-minimize-btn";
+    button.textContent = "\u2304";
+    button.title = "অডিও ছোট করুন";
+    button.setAttribute("aria-label", button.title);
+    button.onclick = _hcjMinimizeLyrics;
+    lmd.appendChild(button);
+  }
+  button.style.display = "flex";
+}
 
 // Audio clip path — works for any stotram that has audio clips
 // A stotram with a single voice just has { prefix }.
@@ -16375,6 +16522,7 @@ function _hcjUpdateProgress() {
     if (cur) cur.textContent = "0:00";
     if (tot) tot.textContent = "0:00";
   }
+  _hcjSyncMiniPlayer();
 }
 
 function _hcjStopAudio() {
@@ -16388,6 +16536,9 @@ function _hcjStopAudio() {
   _hcjAudioIdx = -1;
   _hcjSyncUI();
   _hcjUpdateProgress();
+  _hcjRemoveMiniPlayer();
+  var minimizeBtn = document.getElementById("lm-minimize");
+  if (minimizeBtn) minimizeBtn.remove();
   if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(null, false);
 }
 function _hcjPauseAudio() {
@@ -16396,6 +16547,7 @@ function _hcjPauseAudio() {
   if (_hcjAudio) _hcjAudio.pause();
   _hcjPlaying = false;
   _hcjSyncUI();
+  _hcjSyncMiniPlayer();
   if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(_hcjAudio, false);
 }
 function _hcjPlayVerse(idx) {
@@ -16520,6 +16672,7 @@ function _hcjSyncUI() {
     var b = document.getElementById("hcj-mode-" + m);
     if (b) b.classList.toggle("hcj-mode-active", _hcjMode === m);
   });
+  _hcjSyncMiniPlayer();
 }
 function _hcjRenderPlayer(idx) {
   var ow = document.getElementById("hcj-player-wrap");
@@ -16537,6 +16690,8 @@ function _hcjRenderPlayer(idx) {
   // arrows and the seek box are hidden for them below.
   var _isSectionedAudio = !!(_playerCfg && _playerCfg.sectioned);
   if (!_hasAudioPlayer) {
+    var oldMinimize = document.getElementById("lm-minimize");
+    if (oldMinimize) oldMinimize.remove();
     if (navBar) navBar.style.display = "";
     var _ci = document.querySelector("#lmo .lm-card-inner");
     if (_ci) _ci.style.bottom = "";
@@ -16808,6 +16963,7 @@ function _hcjRenderPlayer(idx) {
 
   wrap.appendChild(row);
   lmd.appendChild(wrap);
+  _hcjEnsureMinimizeButton();
 
   /* Shrink the scroll area so it never slides under the player.
      The player is now position:absolute at the bottom of .lmd.

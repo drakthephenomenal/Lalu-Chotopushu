@@ -1073,6 +1073,116 @@
   top: max(env(safe-area-inset-top), 54px) !important;
 }
 
+/* Audio reader can be collapsed without stopping the HTMLAudioElement. */
+.lm-minimize-btn {
+  position: absolute;
+  top: max(env(safe-area-inset-top), 10px);
+  right: 52px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(255,215,0,0.50);
+  border-radius: 50%;
+  background: rgba(4,10,30,0.70);
+  color: #ffd700;
+  font-size: 20px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 20;
+  -webkit-tap-highlight-color: transparent;
+}
+.lm-minimize-btn:active {
+  background: rgba(255,215,0,0.20);
+  transform: scale(0.94);
+}
+
+/* Persistent in-app player shown after the reader is minimized. */
+#hcj-mini-player {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  bottom: max(calc(env(safe-area-inset-bottom) + 70px), 70px);
+  z-index: 550;
+  min-height: 48px;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 10px 10px 8px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(139,94,0,0.38);
+  border-radius: 15px;
+  background: rgba(255,252,244,0.97);
+  box-shadow: 0 5px 22px rgba(55,32,0,0.24);
+  color: #5b3108;
+  font-family: "Hind Siliguri", sans-serif;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+#hcj-mini-player::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 0;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(139,94,0,0.13);
+}
+.hcj-mini-progress {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 0;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  pointer-events: none;
+}
+.hcj-mini-progress-fill {
+  width: 0;
+  height: 100%;
+  background: #b97816;
+  transition: width 0.15s linear;
+}
+.hcj-mini-label {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  font-weight: 600;
+}
+.hcj-mini-action {
+  flex: 0 0 auto;
+  width: 31px;
+  height: 31px;
+  padding: 0;
+  border: 1px solid rgba(139,94,0,0.30);
+  border-radius: 50%;
+  background: rgba(139,94,0,0.08);
+  color: #70400b;
+  font: 600 17px/1 Inter, sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.hcj-mini-action:active {
+  background: rgba(139,94,0,0.20);
+  transform: scale(0.94);
+}
+.hcj-mini-stop {
+  color: #8b3500;
+}
+
 
 /* ── Stotram folders (5 categories) ── */
 .st-folder-tile{display:flex;align-items:center;gap:12px;padding:16px 14px;margin-bottom:10px;background:rgba(0,0,0,0.42);border:1px solid rgba(255,215,0,0.25);border-radius:14px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.15s,border-color 0.15s;}

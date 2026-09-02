@@ -1077,12 +1077,14 @@
 
 
 /* ── Stotram folders (5 categories) ── */
-.st-folder-header{display:flex;align-items:center;gap:8px;padding:12px 6px 8px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
-.st-folder-header:first-child{padding-top:2px;}
-.st-folder-arrow{font-size:12px;color:#ffd700;transition:transform 0.2s ease;display:inline-block;}
-.st-folder-arrow.collapsed{transform:rotate(-90deg);}
-.st-folder-title{font-family:"Hind Siliguri",serif;font-size:15px;font-weight:700;color:#ffd700;letter-spacing:0.3px;flex:1;}
-.st-folder-count{font-size:11px;color:rgba(255,215,0,0.55);background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);border-radius:999px;padding:1px 9px;}
-.st-folder-section{display:block;overflow:hidden;}
-.st-folder-section.collapsed{display:none;}
+.st-folder-tile{display:flex;align-items:center;gap:12px;padding:16px 14px;margin-bottom:10px;background:rgba(0,0,0,0.42);border:1px solid rgba(255,215,0,0.25);border-radius:14px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform 0.15s,border-color 0.15s;}
+.st-folder-tile:active{transform:scale(0.98);border-color:rgba(255,215,0,0.55);}
+.st-folder-tile-icon{font-size:22px;flex-shrink:0;}
+.st-folder-tile-title{font-family:"Hind Siliguri",serif;font-size:15px;font-weight:700;color:#ffd700;letter-spacing:0.3px;flex:1;line-height:1.35;}
+.st-folder-tile-count{font-size:11px;color:rgba(255,215,0,0.55);background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);border-radius:999px;padding:2px 9px;flex-shrink:0;}
+.st-folder-tile-arrow{font-size:20px;color:rgba(255,215,0,0.45);flex-shrink:0;}
+.st-back-row{display:flex;align-items:center;gap:10px;padding:2px 2px 14px;}
+.st-back-btn{background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.30);color:#ffd700;font-family:"Hind Siliguri",serif;font-size:13px;font-weight:600;border-radius:10px;padding:8px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;flex-shrink:0;}
+.st-back-btn:active{background:rgba(255,215,0,0.20);}
+.st-back-title{font-family:"Hind Siliguri",serif;font-size:15px;font-weight:700;color:#ffd700;letter-spacing:0.3px;flex:1;text-align:right;}
 .st-folder-empty{font-family:"Hind Siliguri",serif;font-size:13px;color:rgba(255,215,0,0.45);text-align:center;padding:14px 0 18px;}

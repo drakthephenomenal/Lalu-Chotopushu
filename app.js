@@ -12832,13 +12832,12 @@ function renderSt() {
   }
 
   const FOLDERS = [
-    { key: 'rv',      title: 'রাধা বল্লভ সম্প্রদায়' },
-    { key: 'krishna', title: 'কৃষ্ণ' },
-    { key: 'shiv',    title: 'ভগবান শিব' },
-    { key: 'bmg',     title: 'ব্রহ্মা মাধ্ব গৌড়ীয় সম্প্রদায়' },
-    { key: 'hanuman', title: 'হনুমান জী মহারাজ' },
+    { key: 'rv',      title: 'রাধা বল্লভ সম্প্রদায়', icon: '🪷' },
+    { key: 'krishna', title: 'কৃষ্ণ', icon: '🦚' },
+    { key: 'shiv',    title: 'ভগবান শিব', icon: '🔱' },
+    { key: 'bmg',     title: 'ব্রহ্মা মাধ্ব গৌড়ীয় সম্প্রদায়', icon: '🕉️' },
+    { key: 'hanuman', title: 'হনুমান জী মহারাজ', icon: '🚩' },
   ];
-  window._stFolderCollapsed = window._stFolderCollapsed || {};
 
   const customItems = (App.S.customSt || []).map((x) => ({ ...x, custom: true }));
   const groups = FOLDERS.map((f) => ({
@@ -12846,39 +12845,61 @@ function renderSt() {
     items: STLIST.filter((s) => s.cat === f.key),
   }));
   if (customItems.length) {
-    groups.push({ key: '__custom', title: 'আমার স্তোত্র', items: customItems });
+    groups.push({ key: '__custom', title: 'আমার স্তোত্র', icon: '📝', items: customItems });
+  }
+
+  const activeKey = window._stActiveFolder || null;
+
+  // ── Level 1: folder menu (no active folder selected) ──
+  if (!activeKey) {
+    groups.forEach((group) => {
+      const tile = document.createElement('div');
+      tile.className = 'st-folder-tile';
+      tile.innerHTML =
+        '<span class="st-folder-tile-icon">' + group.icon + '</span>' +
+        '<span class="st-folder-tile-title">' + escHtml(group.title) + '</span>' +
+        '<span class="st-folder-tile-count">' + group.items.length + '</span>' +
+        '<span class="st-folder-tile-arrow">›</span>';
+      tile.addEventListener('click', () => {
+        window._stActiveFolder = group.key;
+        renderSt();
+      });
+      list.appendChild(tile);
+    });
+    return;
+  }
+
+  // ── Level 2: inside a folder — back button + its stotrams ──
+  const group = groups.find((g) => g.key === activeKey);
+  if (!group) {
+    // Folder no longer exists (shouldn't happen) — bail back to menu.
+    window._stActiveFolder = null;
+    renderSt();
+    return;
+  }
+
+  const backRow = document.createElement('div');
+  backRow.className = 'st-back-row';
+  backRow.innerHTML =
+    '<button class="st-back-btn">← ফোল্ডার তালিকা</button>' +
+    '<span class="st-back-title">' + escHtml(group.title) + '</span>';
+  backRow.querySelector('.st-back-btn').addEventListener('click', () => {
+    window._stActiveFolder = null;
+    renderSt();
+  });
+  list.appendChild(backRow);
+
+  if (!group.items.length) {
+    const empty = document.createElement('div');
+    empty.className = 'st-folder-empty';
+    empty.textContent = 'শীঘ্রই আসছে 🙏';
+    list.appendChild(empty);
+    return;
   }
 
   const glowColors = ['#ffd700','#ffaa00','#ff6bff','#00e5ff','#7dff6b','#ff6b6b','#b388ff','#00ffcc','#ffd700','#ff9d00'];
 
   let idx = 0;
-  groups.forEach((group) => {
-    const folderHeader = document.createElement('div');
-    folderHeader.className = 'st-folder-header';
-    const collapsed = !!window._stFolderCollapsed[group.key];
-    folderHeader.innerHTML =
-      '<span class="st-folder-arrow' + (collapsed ? ' collapsed' : '') + '">▾</span>' +
-      '<span class="st-folder-title">' + escHtml(group.title) + '</span>' +
-      '<span class="st-folder-count">' + group.items.length + '</span>';
-    const sectionEl = document.createElement('div');
-    sectionEl.className = 'st-folder-section' + (collapsed ? ' collapsed' : '');
-    folderHeader.addEventListener('click', () => {
-      const nowCollapsed = !sectionEl.classList.contains('collapsed');
-      sectionEl.classList.toggle('collapsed', nowCollapsed);
-      folderHeader.querySelector('.st-folder-arrow').classList.toggle('collapsed', nowCollapsed);
-      window._stFolderCollapsed[group.key] = nowCollapsed;
-    });
-    list.appendChild(folderHeader);
-    list.appendChild(sectionEl);
-
-    if (!group.items.length) {
-      const empty = document.createElement('div');
-      empty.className = 'st-folder-empty';
-      empty.textContent = 'শীঘ্রই আসছে 🙏';
-      sectionEl.appendChild(empty);
-      return;
-    }
-
   group.items.forEach((st) => {
     const tc = (App.S.stotrams[st.id] || {})[App.S.tk] || 0;
     const tot = Object.values(App.S.stotrams[st.id] || {}).reduce((a,b)=>a+b, 0);
@@ -12946,9 +12967,8 @@ function renderSt() {
       });
     });
 
-    sectionEl.appendChild(c);
+    list.appendChild(c);
     idx++;
-  });
   });
 }
 

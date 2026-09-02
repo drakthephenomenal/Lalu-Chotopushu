@@ -4363,6 +4363,7 @@ function ensureBeadFrame() {
   return { wrap, svg };
 }
 let _beadState = { tod: 0, target: 0, lastFilled: -1 };
+let _beadRetries = 0;
 
 // ── Convert a perimeter distance (0..perim) to x,y on the rectangle ──
 function _perimToXY(d, x0, y0, x1, y1) {
@@ -4390,7 +4391,24 @@ function renderBeadFrame(tod, target) {
   const rect = wrap.getBoundingClientRect();
   const W = rect.width,
     H = rect.height;
-  if (!W || !H) return;
+  if (!W || !H) {
+    // wrap is mid-transition / still display:none-ish (e.g. right after a
+    // mode switch reparents #target28Card or toggles a body class) and
+    // measured 0×0 this frame. Previously this just silently gave up,
+    // leaving the SVG's old viewBox + bead cx/cy from BEFORE the mode
+    // switch in place — the ring stayed collapsed into whatever shape it
+    // last had until something else (a manual toggle, a window resize)
+    // happened to call renderBeadFrame() again while the layout had
+    // settled. Retry on the next few frames instead of giving up, so the
+    // ring self-heals as soon as the wrap actually has a size — no need
+    // to rely on the caller's timing being exactly right.
+    _beadRetries = (_beadRetries || 0) + 1;
+    if (_beadRetries <= 10) {
+      requestAnimationFrame(() => renderBeadFrame());
+    }
+    return;
+  }
+  _beadRetries = 0;
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   const inset = 4;
   const x0 = inset,
@@ -4475,6 +4493,29 @@ window.addEventListener("resize", () => renderBeadFrame());
 window.addEventListener("load", () => {
   setTimeout(() => renderBeadFrame(), 100);
 });
+
+// ── Self-healing resize watch for the bead ring ──
+// The mode-switch code paths (Gaudiya/Trahimam/Ramanandi toggles,
+// switchJapMode, _placeTarget28Card) each try to re-trigger
+// renderBeadFrame() after their own layout change via nested rAFs, but
+// that's guessing at timing — any mode switch whose layout settles later
+// than 2 frames (e.g. a slower device, or a CSS transition) left the ring
+// collapsed until the next window resize or manual re-toggle. A
+// ResizeObserver watches the wrap's actual measured box directly, so the
+// ring redraws itself the moment its size truly changes, no matter what
+// caused it or how long the layout took to settle.
+(function watchBeadFrameWrapSize() {
+  const wrap = document.getElementById("beadFrameWrap");
+  if (!wrap || typeof ResizeObserver === "undefined") return;
+  let raf = null;
+  const ro = new ResizeObserver(() => {
+    // Coalesce bursts of resize notifications (reparenting + class toggles
+    // can fire several in one mode switch) into a single re-render.
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => renderBeadFrame());
+  });
+  ro.observe(wrap);
+})();
 
 // ── Auto-load today's view in History on open ──
 // Fills in From/To only when they're actually blank (never overwrites a
@@ -18689,15 +18730,15 @@ function renderLeaderboard(docs, period) {
   const _lbTodayEff = function (d) {
     const tHist = d.timerHistory || {}, tHistRV = d.timerHistoryRV || {},
       tHistKV = d.timerHistoryKV || {}, tHistSS = d.timerHistorySS || {},
-      tHistHK = d.timerHistoryHK || {}, tHist28 = d.timer28History || {};
+      tHistHK = d.timerHistoryHK || {}, tHistRam = d.timerHistoryRam || {},
+      tHist28 = d.timer28History || {};
     const rawSec = (tHist[_lbTodayKey]||0) + (tHistRV[_lbTodayKey]||0) + (tHistKV[_lbTodayKey]||0)
-      + (tHistSS[_lbTodayKey]||0) + (tHistHK[_lbTodayKey]||0) + (tHist28[_lbTodayKey]||0);
+      + (tHistSS[_lbTodayKey]||0) + (tHistHK[_lbTodayKey]||0) + (tHistRam[_lbTodayKey]||0) + (tHist28[_lbTodayKey]||0);
     // Manual (off-screen, reported-after-the-fact) jap doesn't belong in
     // Efficiency's numerator — same exclusion rule as the Stats screen.
-    // (Ram mode isn't part of the leaderboard's timer breakdown at all yet,
-    // so it's excluded here too — subtracting it would double-discount
-    // seconds that were never added to rawSec in the first place.)
-    const manualSec = ["radha","rv","kv","ss","hk","n28"].reduce(function (s, t) {
+    // Ram (Ramanandi/Ram Vijay Mantra) is now part of rawSec above, so its
+    // manual seconds must be subtracted here too, same as every other type.
+    const manualSec = ["radha","rv","kv","ss","hk","ram","n28"].reduce(function (s, t) {
       const m = d.manualJapTime && d.manualJapTime[t];
       return s + (m ? (m[_lbTodayKey] || 0) : 0);
     }, 0);
@@ -18717,6 +18758,7 @@ function renderLeaderboard(docs, period) {
       const skv = Object.values(d.historyKV || {}).reduce((a,b)=>a+b,0);
       const sss = Object.values(d.historySS || {}).reduce((a,b)=>a+b,0);
       const shk = Object.values(d.historyHK || {}).reduce((a,b)=>a+b,0);
+      const sram = Object.values(d.historyRam || {}).reduce((a,b)=>a+b,0);
       const s28 = Object.values(d.history28 || {}).reduce((a,b)=>a+b,0);
       // Net each type against its own deduct counter (gifts/manual deducts) —
       // matches how totalJap itself was computed in pushLeaderboard(), so the
@@ -18728,19 +18770,21 @@ function renderLeaderboard(docs, period) {
         kv:  Math.max(0, skv - (d.nameJapDeductKV || 0)),
         ss:  Math.max(0, sss - (d.nameJapDeductSS || 0)),
         hk:  Math.max(0, shk - (d.nameJapDeductHK || 0)),
+        ram: Math.max(0, sram - (d.nameJapDeductRam || 0)),
         n28: Math.max(0, s28 - (d.nameJapDeduct28 || 0)),
       };
       // How much of each type was gifted/manually deducted — shown next to
       // the netted count so the numbers stay legible: the malas count is
       // netted (post-gift) but the chanting TIME below is raw/lifetime, so
-      // without this note a small malas count next to a large time looks
-      // like a mismatch instead of "gifted most of it away".
+      // without this note a small malas count next to a long chanting time
+      // looks like a mismatch instead of "gifted most of it away".
       d._giftedBreakdown = {
         r:   Math.min(sr,  d.nameJapDeduct   || 0),
         rv:  Math.min(srv, d.nameJapDeductRV || 0),
         kv:  Math.min(skv, d.nameJapDeductKV || 0),
         ss:  Math.min(sss, d.nameJapDeductSS || 0),
         hk:  Math.min(shk, d.nameJapDeductHK || 0),
+        ram: Math.min(sram, d.nameJapDeductRam || 0),
         n28: Math.min(s28, d.nameJapDeduct28 || 0),
       };
       const tr2 = Object.values(d.timerHistory || {}).reduce((a,b)=>a+b,0);
@@ -18748,8 +18792,9 @@ function renderLeaderboard(docs, period) {
       const tkv2 = Object.values(d.timerHistoryKV || {}).reduce((a,b)=>a+b,0);
       const tss2 = Object.values(d.timerHistorySS || {}).reduce((a,b)=>a+b,0);
       const thk2 = Object.values(d.timerHistoryHK || {}).reduce((a,b)=>a+b,0);
+      const tram2 = Object.values(d.timerHistoryRam || {}).reduce((a,b)=>a+b,0);
       const t282 = Object.values(d.timer28History || {}).reduce((a,b)=>a+b,0);
-      d._timeBreakdown = { r: tr2, rv: trv2, kv: tkv2, ss: tss2, hk: thk2, n28: t282 };
+      d._timeBreakdown = { r: tr2, rv: trv2, kv: tkv2, ss: tss2, hk: thk2, ram: tram2, n28: t282 };
       // Screen Time (alltime) — stored total, or summed from the per-day history
       d._screenTimeSec = Number(d.screenTimeSeconds || 0) ||
         Object.values(d.screenTimeHistory || {}).reduce((a,b)=>a+b,0);
@@ -18760,14 +18805,16 @@ function renderLeaderboard(docs, period) {
       const histKV = d.historyKV || {};
       const histSS = d.historySS || {};
       const histHK = d.historyHK || {};
+      const histRam = d.historyRam || {};
       const hist28 = d.history28 || {};
-      let sr = 0, srv = 0, skv = 0, sss = 0, shk = 0, s28 = 0;
-      let tr = 0, trv = 0, tkv = 0, tss = 0, thk = 0, t28 = 0;
+      let sr = 0, srv = 0, skv = 0, sss = 0, shk = 0, sram = 0, s28 = 0;
+      let tr = 0, trv = 0, tkv = 0, tss = 0, thk = 0, tram = 0, t28 = 0;
       const tHist = d.timerHistory || {};
       const tHistRV = d.timerHistoryRV || {};
       const tHistKV = d.timerHistoryKV || {};
       const tHistSS = d.timerHistorySS || {};
       const tHistHK = d.timerHistoryHK || {};
+      const tHistRam = d.timerHistoryRam || {};
       const tHist28 = d.timer28History || {};
       if (period === 'today' && d.todayKey === periodKeys[0] && Number(d.todayJap || 0) > 0) {
         const bd = d.todayBreakdown || {};
@@ -18777,12 +18824,14 @@ function renderLeaderboard(docs, period) {
         skv = bd.kv || 0;
         sss = bd.ss || 0;
         shk = bd.hk || 0;
+        sram = bd.ram || 0;
         s28 = bd.n28 || 0;
         tr = tbd.r || 0;
         trv = tbd.rv || 0;
         tkv = tbd.kv || 0;
         tss = tbd.ss || 0;
         thk = tbd.hk || 0;
+        tram = tbd.ram || 0;
         t28 = tbd.n28 || 0;
       } else {
         periodKeys.forEach(function(k) {
@@ -18791,20 +18840,22 @@ function renderLeaderboard(docs, period) {
           skv += (histKV[k] || 0);
           sss += (histSS[k] || 0);
           shk += (histHK[k] || 0);
+          sram += (histRam[k] || 0);
           s28 += (hist28[k] || 0);
           tr += (tHist[k] || 0);
           trv += (tHistRV[k] || 0);
           tkv += (tHistKV[k] || 0);
           tss += (tHistSS[k] || 0);
           thk += (tHistHK[k] || 0);
+          tram += (tHistRam[k] || 0);
           t28 += (tHist28[k] || 0);
         });
       }
-      score += sr + srv + skv + sss + shk + s28;
-      timeScore += tr + trv + tkv + tss + thk + t28;
-      d._breakdown = { r: sr, rv: srv, kv: skv, ss: sss, hk: shk, n28: s28 };
-      d._giftedBreakdown = { r: 0, rv: 0, kv: 0, hk: 0, n28: 0 };
-      d._timeBreakdown = { r: tr, rv: trv, kv: tkv, ss: tss, hk: thk, n28: t28 };
+      score += sr + srv + skv + sss + shk + sram + s28;
+      timeScore += tr + trv + tkv + tss + thk + tram + t28;
+      d._breakdown = { r: sr, rv: srv, kv: skv, ss: sss, hk: shk, ram: sram, n28: s28 };
+      d._giftedBreakdown = { r: 0, rv: 0, kv: 0, ss: 0, hk: 0, ram: 0, n28: 0 };
+      d._timeBreakdown = { r: tr, rv: trv, kv: tkv, ss: tss, hk: thk, ram: tram, n28: t28 };
       // Screen Time for this period — flat per-day map, sum across periodKeys
       const tScr = d.screenTimeHistory || {};
       d._screenTimeSec = periodKeys.reduce((s, k) => s + (tScr[k] || 0), 0);
@@ -18873,9 +18924,9 @@ function renderLeaderboard(docs, period) {
     const name = (d.displayName || 'Anonymous Devotee').replace(/</g,'&lt;').replace(/>/g,'&gt;') + onlineDot;
     const ms = App.S.ms || 108;
     
-    let b = d._breakdown || { r:0, rv:0, kv:0, ss:0, hk:0, n28:0 };
-    let g = d._giftedBreakdown || { r:0, rv:0, kv:0, ss:0, hk:0, n28:0 };
-    let tb = d._timeBreakdown || { r:0, rv:0, kv:0, ss:0, hk:0, n28:0 };
+    let b = d._breakdown || { r:0, rv:0, kv:0, ss:0, hk:0, ram:0, n28:0 };
+    let g = d._giftedBreakdown || { r:0, rv:0, kv:0, ss:0, hk:0, ram:0, n28:0 };
+    let tb = d._timeBreakdown || { r:0, rv:0, kv:0, ss:0, hk:0, ram:0, n28:0 };
 
     // Quality of Jap (Q) — raw average seconds-per-jap for this type, no
     // comparison against any target: slower (bigger number) = more nectar.
@@ -18923,8 +18974,14 @@ function renderLeaderboard(docs, period) {
       const giftNote = g.hk > 0 ? ' · 🎁' + _lbFmtJap(g.hk) + ' gifted' : '';
       bdParts.push('HK: ' + hkStr + (tb.hk > 0 ? ' ⏱ ' + _histFmtSec(tb.hk) : '') + giftNote + _lbQ(tb.hk, b.hk));
     }
-    // Total: only count R+RV+SS+HK malas (not 28N), 28N shown as cycles separately
-    const japOnly = (b.r || 0) + (b.rv || 0) + (b.ss || 0) + (b.hk || 0);
+    if (b.ram > 0 || g.ram > 0) {
+      const ramM = Math.floor(b.ram / ms);
+      const ramStr = _lbFmtJap(b.ram) + (ramM > 0 ? ' (' + ramM + 'M)' : '');
+      const giftNote = g.ram > 0 ? ' · 🎁' + _lbFmtJap(g.ram) + ' gifted' : '';
+      bdParts.push('RAM: ' + ramStr + (tb.ram > 0 ? ' ⏱ ' + _histFmtSec(tb.ram) : '') + giftNote + _lbQ(tb.ram, b.ram));
+    }
+    // Total: only count R+RV+SS+HK+RAM malas (not 28N), 28N shown as cycles separately
+    const japOnly = (b.r || 0) + (b.rv || 0) + (b.ss || 0) + (b.hk || 0) + (b.ram || 0);
     const totalMalas = Math.floor(japOnly / ms);
     const total28Cyc = Math.floor((b.n28 || 0) / 28);
     let totalStr = _lbFmtJap(d.score) + ' jap';

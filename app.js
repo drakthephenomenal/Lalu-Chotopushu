@@ -3684,6 +3684,14 @@ function switchJapMode(mode) {
     radha: _nt.radha + " 🙏",
   };
   toast(toastMap[mode] || _nt.radha + " 🙏");
+
+  // Title/target-box text just changed (can resize beadFrameWrap, e.g.
+  // going into Ramanandi/Gaudiya/Trahimam mode). Re-sync the 108-bead
+  // ring once the browser has reflowed the new layout, instead of
+  // relying on an accidental resize event to fix it later.
+  if (typeof renderBeadFrame === "function") {
+    requestAnimationFrame(() => requestAnimationFrame(() => renderBeadFrame()));
+  }
 }
 
 function escHtml(t) {
@@ -19018,14 +19026,16 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
   const histKV = S.historyKV || {};
   const histSS = S.historySS || {};
   const histHK = S.historyHK || {};
+  const histRam = S.historyRam || {};
   const hist28 = S.h28 || {};
   const totalRadha = Object.values(hist).reduce((a,b)=>a+b,0);
   const totalRV    = Object.values(histRV).reduce((a,b)=>a+b,0);
   const totalKV    = Object.values(histKV).reduce((a,b)=>a+b,0);
   const totalSS    = Object.values(histSS).reduce((a,b)=>a+b,0);
   const totalHK    = Object.values(histHK).reduce((a,b)=>a+b,0);
+  const totalRam   = Object.values(histRam).reduce((a,b)=>a+b,0);
   const total28    = Object.values(hist28).reduce((a,b)=>a+b,0);
-  const totalJap   = Math.max(0, totalRadha + totalRV + totalKV + totalSS + totalHK + total28 - (S.nameJapDeduct||0) - (S.nameJapDeductRV||0) - (S.nameJapDeductKV||0) - (S.nameJapDeductSS||0) - (S.nameJapDeductHK||0) - (S.nameJapDeduct28||0));
+  const totalJap   = Math.max(0, totalRadha + totalRV + totalKV + totalSS + totalHK + totalRam + total28 - (S.nameJapDeduct||0) - (S.nameJapDeductRV||0) - (S.nameJapDeductKV||0) - (S.nameJapDeductSS||0) - (S.nameJapDeductHK||0) - (S.nameJapDeductRam||0) - (S.nameJapDeduct28||0));
 
   // Build display name
   let displayName = (S.lbDisplayName || '').trim();
@@ -19039,8 +19049,8 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
   try {
     const tk = liveTk || S.tk;
     const allHist = {};
-    Object.keys({...hist,...histRV,...histKV,...histSS,...histHK}).forEach(function(k) {
-      allHist[k] = (hist[k]||0)+(histRV[k]||0)+(histKV[k]||0)+(histSS[k]||0)+(histHK[k]||0);
+    Object.keys({...hist,...histRV,...histKV,...histSS,...histHK,...histRam}).forEach(function(k) {
+      allHist[k] = (hist[k]||0)+(histRV[k]||0)+(histKV[k]||0)+(histSS[k]||0)+(histHK[k]||0)+(histRam[k]||0);
     });
     const today = new Date(tk+'T00:00:00');
     let d = new Date(today);
@@ -19061,6 +19071,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     kv: histKV[liveTk] || 0,
     ss: histSS[liveTk] || 0,
     hk: histHK[liveTk] || 0,
+    ram: histRam[liveTk] || 0,
     n28: hist28[liveTk] || 0,
   };
   const todayTimeBreakdown = {
@@ -19069,10 +19080,11 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     kv: (S.timerHistoryKV || {})[liveTk] || 0,
     ss: (S.timerHistorySS || {})[liveTk] || 0,
     hk: (S.timerHistoryHK || {})[liveTk] || 0,
+    ram: (S.timerHistoryRam || {})[liveTk] || 0,
     n28: (S.timer28History || {})[liveTk] || 0,
   };
-  const todayJap = todayBreakdown.r + todayBreakdown.rv + todayBreakdown.kv + todayBreakdown.ss + todayBreakdown.hk + todayBreakdown.n28;
-  const todayTimerSeconds = todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kv + todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.n28;
+  const todayJap = todayBreakdown.r + todayBreakdown.rv + todayBreakdown.kv + todayBreakdown.ss + todayBreakdown.hk + todayBreakdown.ram + todayBreakdown.n28;
+  const todayTimerSeconds = todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kv + todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.ram + todayTimeBreakdown.n28;
 
   return {
     displayName,
@@ -19092,6 +19104,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     historyKV: histKV,
     historySS: histSS,
     historyHK: histHK,
+    historyRam: histRam,
     history28: hist28,
     // Push each type's own deduct counter too, so the leaderboard breakdown
     // (R/RV/KV/SS/HK/28N) can be netted the same way totalJap is — otherwise
@@ -19103,6 +19116,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     nameJapDeductKV: S.nameJapDeductKV || 0,
     nameJapDeductSS: S.nameJapDeductSS || 0,
     nameJapDeductHK: S.nameJapDeductHK || 0,
+    nameJapDeductRam: S.nameJapDeductRam || 0,
     nameJapDeduct28: S.nameJapDeduct28 || 0,
     // Push total timer seconds for leaderboard display
     timerSeconds: Object.values(S.timerHistory || {}).reduce((a,b)=>a+b,0) +
@@ -19110,12 +19124,14 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
                   Object.values(S.timerHistoryKV || {}).reduce((a,b)=>a+b,0) +
                   Object.values(S.timerHistorySS || {}).reduce((a,b)=>a+b,0) +
                   Object.values(S.timerHistoryHK || {}).reduce((a,b)=>a+b,0) +
+                  Object.values(S.timerHistoryRam || {}).reduce((a,b)=>a+b,0) +
                   Object.values(S.timer28History || {}).reduce((a,b)=>a+b,0),
     timerHistory:   S.timerHistory || {},
     timerHistoryRV: S.timerHistoryRV || {},
     timerHistoryKV: S.timerHistoryKV || {},
     timerHistorySS: S.timerHistorySS || {},
     timerHistoryHK: S.timerHistoryHK || {},
+    timerHistoryRam: S.timerHistoryRam || {},
     timer28History: S.timer28History || {},
     // Screen Time — per-day history so period filtering (today/week/month)
     // works the same way as the jap-time histories above. Used to compute

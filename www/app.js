@@ -2850,6 +2850,11 @@ function spawnHK() {
   if (!el.classList.contains("hk-visible")) {
     el.classList.add("hk-visible");
   }
+  // Retrigger the "new color arriving" pop-in on every tap, not just
+  // the first reveal (removing + forcing reflow restarts the CSS animation)
+  el.classList.remove("hk-pulse");
+  void el.offsetWidth;
+  el.classList.add("hk-pulse");
 }
 
 function showHKMalaComplete(line1, line2) {
@@ -2905,13 +2910,33 @@ function spawnRam() {
     setTimeout(() => floatEl.remove(), 2200);
   }
 
-  // Persistent display immediately shows NEXT color (arriving text)
-  el.innerHTML = text
-    .split("\n")
-    .map((l) => "<div>" + l + "</div>")
-    .join("");
+  // Persistent display: each word spins in from a random margin of the
+  // jap display and converges into place (instead of the whole line
+  // appearing at once).
+  el.innerHTML = "";
   el.style.color = nextColor;
   el.style.textShadow = nextShadow;
+  let _ramWordIdx = 0;
+  text.split("\n").forEach((line) => {
+    const lineDiv = document.createElement("div");
+    line.split(" ").forEach((word) => {
+      if (!word) return;
+      const span = document.createElement("span");
+      span.className = "ram-word";
+      span.textContent = word;
+      // Random point around the display to fly in from, plus a random spin
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 90 + Math.random() * 90;
+      const spin = (Math.random() < 0.5 ? -1 : 1) * (360 + Math.random() * 360);
+      span.style.setProperty("--wx", Math.cos(angle) * dist + "px");
+      span.style.setProperty("--wy", Math.sin(angle) * dist + "px");
+      span.style.setProperty("--wr", spin + "deg");
+      span.style.animationDelay = (_ramWordIdx * 0.06) + "s";
+      _ramWordIdx++;
+      lineDiv.appendChild(span);
+    });
+    el.appendChild(lineDiv);
+  });
   if (!el.classList.contains("hk-visible")) {
     el.classList.add("hk-visible");
   }
@@ -3275,7 +3300,16 @@ function _placeTarget28Card() {
   const slot = App.S.gaudiyaMode
     ? document.getElementById("target28SlotGaudiya")
     : document.getElementById("target28SlotDefault");
-  if (slot && card.parentElement !== slot) slot.appendChild(card);
+  const moved = slot && card.parentElement !== slot;
+  if (moved) slot.appendChild(card);
+  // The bead ring (renderBeadFrame) sizes itself off beadFrameWrap's
+  // measured rect. Moving the target card can resize that wrap (e.g.
+  // Gaudiya mode makes it grid-column:1/-1), so re-render the ring
+  // once the browser has reflowed the new layout, or it stays
+  // distorted until the next window resize.
+  if (moved && typeof renderBeadFrame === "function") {
+    requestAnimationFrame(() => requestAnimationFrame(() => renderBeadFrame()));
+  }
 }
 
 // ── Init jap mode UI on page load ──

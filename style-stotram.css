@@ -727,7 +727,7 @@
   position:  absolute;
   top:       calc(max(env(safe-area-inset-top), 10px) + 40px);
   left:      12px;
-  z-index:   30;
+  z-index:   60;
   display:   flex;
   flex-direction: row;
   align-items: center;
@@ -933,7 +933,7 @@
   font-weight: 600;
   letter-spacing: 0.5px;
 }
-.sts-btn-name { display: inline-block; }
+.sts-btn-name { display: inline-block; overflow-wrap: break-word; word-break: break-word; }
 
 /* Back-to-sections button */
 .sts-back-btn {
@@ -1074,3 +1074,15 @@
 #lmo.has-sts-back .lm-card-inner {
   top: calc(max(env(safe-area-inset-top), 54px) + 64px) !important;
 }
+
+
+/* ── Stotram folders (5 categories) ── */
+.st-folder-header{display:flex;align-items:center;gap:8px;padding:12px 6px 8px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.st-folder-header:first-child{padding-top:2px;}
+.st-folder-arrow{font-size:12px;color:#ffd700;transition:transform 0.2s ease;display:inline-block;}
+.st-folder-arrow.collapsed{transform:rotate(-90deg);}
+.st-folder-title{font-family:"Hind Siliguri",serif;font-size:15px;font-weight:700;color:#ffd700;letter-spacing:0.3px;flex:1;}
+.st-folder-count{font-size:11px;color:rgba(255,215,0,0.55);background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);border-radius:999px;padding:1px 9px;}
+.st-folder-section{display:block;overflow:hidden;}
+.st-folder-section.collapsed{display:none;}
+.st-folder-empty{font-family:"Hind Siliguri",serif;font-size:13px;color:rgba(255,215,0,0.45);text-align:center;padding:14px 0 18px;}

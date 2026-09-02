@@ -79,6 +79,7 @@ EXCLUDES=(
 
   # Dev-only test page
   --exclude='testlink.html'
+  --exclude='*.apk'
 )
 
 rsync -a --delete "${EXCLUDES[@]}" ./ www/

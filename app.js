@@ -3303,11 +3303,14 @@ function _placeTarget28Card() {
   const moved = slot && card.parentElement !== slot;
   if (moved) slot.appendChild(card);
   // The bead ring (renderBeadFrame) sizes itself off beadFrameWrap's
-  // measured rect. Moving the target card can resize that wrap (e.g.
-  // Gaudiya mode makes it grid-column:1/-1), so re-render the ring
-  // once the browser has reflowed the new layout, or it stays
-  // distorted until the next window resize.
-  if (moved && typeof renderBeadFrame === "function") {
+  // measured rect. ANY mode switch (Gaudiya/Trahimam/Ramanandi) can
+  // resize that wrap — not only when the 28-Names card actually moves
+  // slot (e.g. box text/width can change even when the card stays put) —
+  // so always re-render the ring once the browser has reflowed the new
+  // layout, or it can stay distorted/misaligned until the next window
+  // resize. (Previously gated on `moved`, which missed some mode
+  // switches and caused the ring to not properly encircle the boxes.)
+  if (typeof renderBeadFrame === "function") {
     requestAnimationFrame(() => requestAnimationFrame(() => renderBeadFrame()));
   }
 }
@@ -12820,14 +12823,55 @@ function renderSt() {
     document.head.appendChild(styleEl);
   }
 
-  const all = [
-    ...STLIST,
-    ...(App.S.customSt || []).map((x) => ({ ...x, custom: true })),
+  const FOLDERS = [
+    { key: 'rv',      title: 'রাধা বল্লভ সম্প্রদায়' },
+    { key: 'krishna', title: 'কৃষ্ণ' },
+    { key: 'shiv',    title: 'ভগবান শিব' },
+    { key: 'bmg',     title: 'ব্রহ্মা মাধ্ব গৌড়ীয় সম্প্রদায়' },
+    { key: 'hanuman', title: 'হনুমান জী মহারাজ' },
   ];
+  window._stFolderCollapsed = window._stFolderCollapsed || {};
+
+  const customItems = (App.S.customSt || []).map((x) => ({ ...x, custom: true }));
+  const groups = FOLDERS.map((f) => ({
+    ...f,
+    items: STLIST.filter((s) => s.cat === f.key),
+  }));
+  if (customItems.length) {
+    groups.push({ key: '__custom', title: 'আমার স্তোত্র', items: customItems });
+  }
 
   const glowColors = ['#ffd700','#ffaa00','#ff6bff','#00e5ff','#7dff6b','#ff6b6b','#b388ff','#00ffcc','#ffd700','#ff9d00'];
 
-  all.forEach((st, idx) => {
+  let idx = 0;
+  groups.forEach((group) => {
+    const folderHeader = document.createElement('div');
+    folderHeader.className = 'st-folder-header';
+    const collapsed = !!window._stFolderCollapsed[group.key];
+    folderHeader.innerHTML =
+      '<span class="st-folder-arrow' + (collapsed ? ' collapsed' : '') + '">▾</span>' +
+      '<span class="st-folder-title">' + escHtml(group.title) + '</span>' +
+      '<span class="st-folder-count">' + group.items.length + '</span>';
+    const sectionEl = document.createElement('div');
+    sectionEl.className = 'st-folder-section' + (collapsed ? ' collapsed' : '');
+    folderHeader.addEventListener('click', () => {
+      const nowCollapsed = !sectionEl.classList.contains('collapsed');
+      sectionEl.classList.toggle('collapsed', nowCollapsed);
+      folderHeader.querySelector('.st-folder-arrow').classList.toggle('collapsed', nowCollapsed);
+      window._stFolderCollapsed[group.key] = nowCollapsed;
+    });
+    list.appendChild(folderHeader);
+    list.appendChild(sectionEl);
+
+    if (!group.items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'st-folder-empty';
+      empty.textContent = 'শীঘ্রই আসছে 🙏';
+      sectionEl.appendChild(empty);
+      return;
+    }
+
+  group.items.forEach((st) => {
     const tc = (App.S.stotrams[st.id] || {})[App.S.tk] || 0;
     const tot = Object.values(App.S.stotrams[st.id] || {}).reduce((a,b)=>a+b, 0);
     const effLyrics = getEffectiveLyrics(st.id);
@@ -12894,7 +12938,9 @@ function renderSt() {
       });
     });
 
-    list.appendChild(c);
+    sectionEl.appendChild(c);
+    idx++;
+  });
   });
 }
 

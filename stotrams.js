@@ -10292,6 +10292,22 @@ window.isGitaReady = function () { return _gitaReady; };
       if (typeof _hcjStopAudio === 'function') _hcjStopAudio();
       window._ggAudioKey = null;
       backBtn.remove();
+      // Leave the reader completely before rebuilding the sloka picker.
+      // Keeping lmb/lmNav visible makes the new picker render over the old
+      // verse card, which is especially noticeable on mobile browsers.
+      var lmbBack = document.getElementById('lmb');
+      var lmNavBack = document.getElementById('lmNav');
+      var fsCtrlBack = document.getElementById('lyr-fs-ctrl');
+      var translateBack = document.getElementById('lm-translate-wrap');
+      var titleBack = document.getElementById('lmTitle');
+      if (lmbBack) lmbBack.style.display = 'none';
+      if (lmNavBack) lmNavBack.style.display = 'none';
+      if (fsCtrlBack) fsCtrlBack.style.display = 'none';
+      if (translateBack) translateBack.remove();
+      if (titleBack) {
+        titleBack.textContent = '';
+        titleBack.style.display = 'none';
+      }
       var lmoBack = document.getElementById('lmo');
       if (lmoBack) lmoBack.classList.remove('has-sts-back');
       showGeetamPicker(sargaIdx);

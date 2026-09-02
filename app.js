@@ -2850,6 +2850,11 @@ function spawnHK() {
   if (!el.classList.contains("hk-visible")) {
     el.classList.add("hk-visible");
   }
+  // Retrigger the "new color arriving" pop-in on every tap, not just
+  // the first reveal (removing + forcing reflow restarts the CSS animation)
+  el.classList.remove("hk-pulse");
+  void el.offsetWidth;
+  el.classList.add("hk-pulse");
 }
 
 function showHKMalaComplete(line1, line2) {
@@ -3275,7 +3280,16 @@ function _placeTarget28Card() {
   const slot = App.S.gaudiyaMode
     ? document.getElementById("target28SlotGaudiya")
     : document.getElementById("target28SlotDefault");
-  if (slot && card.parentElement !== slot) slot.appendChild(card);
+  const moved = slot && card.parentElement !== slot;
+  if (moved) slot.appendChild(card);
+  // The bead ring (renderBeadFrame) sizes itself off beadFrameWrap's
+  // measured rect. Moving the target card can resize that wrap (e.g.
+  // Gaudiya mode makes it grid-column:1/-1), so re-render the ring
+  // once the browser has reflowed the new layout, or it stays
+  // distorted until the next window resize.
+  if (moved && typeof renderBeadFrame === "function") {
+    requestAnimationFrame(() => requestAnimationFrame(() => renderBeadFrame()));
+  }
 }
 
 // ── Init jap mode UI on page load ──

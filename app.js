@@ -3003,6 +3003,8 @@ setInterval(() => {
     App.S.malaLogRV = [];
     App.S.malaLogHK = [];
     App.S.malaLogKV = [];
+    App.S.malaLogSS = [];
+    App.S.malaLogRam = [];
     // ── Fix: discard any incomplete in-progress mala at midnight ──
     // Partial beads (< full mala) must not bleed into the new day or
     // create a ghost mala entry. Completed mala data is already saved
@@ -7198,6 +7200,7 @@ function doReset() {
     App.S.historyHK = {};
     App.S.historyKV = {};
     App.S.historySS = {};
+    App.S.historyRam = {};
     App.S.dt = 0;
     App.S.lt = 0;
     App.S.dtRV = 0;
@@ -7207,22 +7210,27 @@ function doReset() {
     App.S.ltKV = 0;
     App.S.dtSS = 0;
     App.S.ltSS = 0;
+    App.S.dtRam = 0;
+    App.S.ltRam = 0;
     App.S.nameJapDeduct = 0;
     App.S.nameJapDeductRV = 0;
     App.S.nameJapDeductHK = 0;
     App.S.nameJapDeductKV = 0;
     App.S.nameJapDeductSS = 0;
+    App.S.nameJapDeductRam = 0;
     App.S.dedications = [];
     App.S.timerHistory = {};
     App.S.timerHistoryRV = {};
     App.S.timerHistoryHK = {};
     App.S.timerHistoryKV = {};
     App.S.timerHistorySS = {};
+    App.S.timerHistoryRam = {};
     App.S.malaLog = [];
     App.S.malaLogRV = [];
     App.S.malaLogHK = [];
     App.S.malaLogKV = [];
     App.S.malaLogSS = [];
+    App.S.malaLogRam = [];
     App.S.activityLog = [];
     App.S.syncBaseline = {};
     App.S.syncBaselineTimer = {};
@@ -7234,21 +7242,26 @@ function doReset() {
     App.S.syncBaselineTimerKV = {};
     App.S.syncBaselineSS = {};
     App.S.syncBaselineTimerSS = {};
+    App.S.syncBaselineRam = {};
+    App.S.syncBaselineTimerRam = {};
     App.lmc = 0;
     App.lmcRV = 0;
     App.lmcHK = 0;
     App.lmcKV = 0;
     App.lmcSS = 0;
+    App.lmcRam = 0;
     App.dbClearStore("history");
     App.dbClearStore("historyRV").catch(() => {});
     App.dbClearStore("historyHK").catch(() => {});
     App.dbClearStore("historyKV").catch(() => {});
     App.dbClearStore("historySS").catch(() => {});
+    App.dbClearStore("historyRam").catch(() => {});
     App.dbClearStore("timerHistory");
     App.dbClearStore("timerHistoryRV");
     App.dbClearStore("timerHistoryHK").catch(() => {});
     App.dbClearStore("timerHistoryKV").catch(() => {});
     App.dbClearStore("timerHistorySS").catch(() => {});
+    App.dbClearStore("timerHistoryRam").catch(() => {});
     App.dbClearStore("activityLogArchive");
     App.dbClearStore("malaLog");
     App.resetTimer();
@@ -17485,7 +17498,7 @@ function showHistDay(tk, filterMode) {
   const _hkDayLabel = _hkDayLang === "bn" ? "হরে কৃষ্ণ মহামন্ত্র" : "हरे कृष्ण महामंत्र";
 
   // Map deityKey names to showHistSet set values
-  const deityToSet = { radha: 'radha', rv: 'rv', kv: 'kv', ss: 'ss', '28': '28', hk: 'hk' };
+  const deityToSet = { radha: 'radha', rv: 'rv', kv: 'kv', ss: 'ss', ram: 'ram', '28': '28', hk: 'hk' };
   const autoSet = filterMode ? deityToSet[filterMode] : null;
 
   // If we have a specific mode filter AND that mode has data, go straight to per-mala detail
@@ -17495,11 +17508,13 @@ function showHistDay(tk, filterMode) {
     const kv = (App.S.historyKV || {})[tk] || 0;
     const ss = (App.S.historySS || {})[tk] || 0;
     const hk = (App.S.historyHK || {})[tk] || 0;
+    const ram = (App.S.historyRam || {})[tk] || 0;
     const taps28 = (App.S.h28 || {})[tk] || 0;
     const hasData = autoSet === 'radha' ? radha > 0
                   : autoSet === 'rv'    ? rv > 0
                   : autoSet === 'kv'    ? kv > 0
                   : autoSet === 'ss'    ? ss > 0
+                  : autoSet === 'ram'   ? ram > 0
                   : autoSet === 'hk'    ? hk > 0
                   : taps28 > 0;
 
@@ -17508,6 +17523,7 @@ function showHistDay(tk, filterMode) {
                     : autoSet === 'rv'    ? '🌼 Radha Vallabh'
                     : autoSet === 'kv'    ? '🪈 Krishnay Vasudevay'
                     : autoSet === 'ss'    ? '🕉️ Samba Sadashiv'
+                    : autoSet === 'ram'   ? '🚩 Raam Vijay Mantra'
                     : autoSet === '28'   ? '🪷 28 Names'
                     : _hkDayLabel;
     title.textContent = _histFmtDate(tk) + ' — ' + modeLabel;
@@ -17539,12 +17555,14 @@ function showHistDay(tk, filterMode) {
   const kv = (App.S.historyKV || {})[tk] || 0;
   const ss = (App.S.historySS || {})[tk] || 0;
   const hk = App.S.historyHK[tk] || 0;
+  const ram = (App.S.historyRam || {})[tk] || 0;
   const taps28 = App.S.h28[tk] || 0;
   const tSecR = App.S.timerHistory[tk] || 0;
   const tSecRV = App.S.timerHistoryRV[tk] || 0;
   const tSecKV = (App.S.timerHistoryKV || {})[tk] || 0;
   const tSecSS = (App.S.timerHistorySS || {})[tk] || 0;
   const tSecHK = App.S.timerHistoryHK[tk] || 0;
+  const tSecRam = (App.S.timerHistoryRam || {})[tk] || 0;
   const t28Sec = App.S.timer28History[tk] || 0;
 
   const radhaM = Math.floor(radha / ms);
@@ -17552,8 +17570,9 @@ function showHistDay(tk, filterMode) {
   const kvM = Math.floor(kv / ms);
   const ssM = Math.floor(ss / ms);
   const hkM = Math.floor(hk / ms);
+  const ramM = Math.floor(ram / ms);
   const cyc28 = Math.floor(taps28 / 28);
-  const grand = isGaudiya ? tSecHK : tSecR + tSecRV + tSecKV + tSecSS + t28Sec;
+  const grand = isGaudiya ? tSecHK : tSecR + tSecRV + tSecKV + tSecSS + tSecRam + t28Sec;
   const fmtN = (n) => n.toLocaleString();
 
   // Stash data for the per-set drill-down
@@ -17588,6 +17607,7 @@ function showHistDay(tk, filterMode) {
     html += card("pt-rv",    "rv",    "RV Jap",    rvM,    rvM === 1    ? "mala" : "malas", fmtN(rv)    + " names", _histFmtSec(tSecRV), rv > 0);
     html += card("pt-ss",    "ss",    "Samba Sadashiv", ssM, ssM === 1  ? "mala" : "malas", fmtN(ss)    + " names", _histFmtSec(tSecSS), ss > 0);
     html += card("pt-kv",    "kv",    "KV Jap",    kvM,    kvM === 1    ? "mala" : "malas", fmtN(kv)    + " names", _histFmtSec(tSecKV), kv > 0);
+    html += card("pt-ram",  "ram",   "Raam Vijay Mantra", ramM, ramM === 1 ? "mala" : "malas", fmtN(ram) + " names", _histFmtSec(tSecRam), ram > 0);
     html += card("pt-28",   "28",    "28 Names",  cyc28,  cyc28 === 1  ? "cycle" : "cycles", fmtN(taps28) + " taps", _histFmtSec(t28Sec), taps28 > 0);
     html += card("pt-hk",   "hk",    _hkDayLabel, hkM,    hkM === 1    ? "mala" : "malas", fmtN(hk)    + " names", _histFmtSec(tSecHK), hk > 0);
     html += `</div>`;

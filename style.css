@@ -1678,6 +1678,7 @@ body:not(.trahimam-mode) .rv-daily-target-card { grid-column: 1/-1; }
 }
 .gmc-top{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
 .gmc-icon{font-size:30px;line-height:1;flex-shrink:0;}
+.gmc-icon-img{width:34px;height:34px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(255,215,0,0.35));}
 .gmc-text{flex:1;min-width:0;}
 .gmc-title{
   font-size:19px;font-weight:bold;letter-spacing:1px;

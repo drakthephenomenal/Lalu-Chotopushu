@@ -16391,7 +16391,16 @@ var _AUDIO_STOTRAMS = {
   // old per-chaupai verseMap (42 tracks + alt voice) can never advance
   // past track 1. Simplified to expect one full-recitation clip,
   // hnc_1.mp3, same as the other single-view stotrams.
-  hnc: { prefix: "hnc", voices: { default: "hnc", alt: "hnc_alt" } }
+  hnc: { prefix: "hnc", voices: { default: "hnc", alt: "hnc_alt" } },
+  // Srimad Bhagavad Gita: every one of the 700 shlokas has its own clip,
+  // one per chapter+verse — "bg_<chapter#>_<shlok#>.mp3". Unlike gg, each
+  // chapter opens as a real multi-verse reader (see stotrams.js's
+  // openGeetam), so idx is the shlok's position within the open chapter,
+  // not a single-card lookup key. `chapterAudio: true` tells the audio
+  // path/availability helpers below to build the filename from idx plus
+  // window._bgChapterNum (set by stotrams.js when a chapter is opened,
+  // cleared when leaving it) instead of the usual flat "<prefix>_<n>".
+  bg: { prefix: "bg", chapterAudio: true }
 };
 var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices
 // True once the user has manually picked a voice via the button this
@@ -16420,6 +16429,10 @@ function _hcjVoicesFor(cfg, verseNum) {
 function _hcjHasAudioForIdx(cfg, i) {
   if (!cfg) return false;
   if (cfg.sectioned) return !!(window._ggAudioKey && cfg.tracks && cfg.tracks[window._ggAudioKey]);
+  // Every shlok has a clip once a Gita chapter is actually open — before
+  // that (chapter picker screen) window._bgChapterNum is null, so no
+  // player renders there.
+  if (cfg.chapterAudio) return !!window._bgChapterNum;
   if (cfg.verseMap) return !!cfg.verseMap[i];
   if (!cfg.slokaRange) return true;
   return i >= cfg.slokaRange[0] && i <= cfg.slokaRange[1];
@@ -16433,6 +16446,14 @@ function _hcjAudioPath(i) {
     if (!_entry) return "";
     var _base = (typeof _entry === "object") ? (_entry[_hcjVoice] || _entry.default) : _entry;
     return "audio/" + _base + ".mp3";
+  }
+  // Gita: filename is "bg_<chapter#>_<shlok#-within-chapter>.mp3" — the
+  // chapter number comes from window._bgChapterNum (set when the chapter
+  // was opened), the shlok number from i, the verse's position within
+  // that chapter's own _verses array.
+  if (cfg && cfg.chapterAudio) {
+    if (!window._bgChapterNum) return "";
+    return "audio/" + cfg.prefix + "_" + window._bgChapterNum + "_" + (i + 1) + ".mp3";
   }
   var prefix = cfg ? cfg.prefix : "hcj";
   if (cfg && cfg.verseMap) {

@@ -10237,8 +10237,18 @@ window.isGitaReady = function () { return _gitaReady; };
       var _sNumMatch = sarga.title.match(/[০-৯]+/);
       var _sNum = _sNumMatch ? _bnToNum(_sNumMatch[0]) : (sargaIdx + 1);
       window._ggAudioKey = 'gg_' + _sNum + '_' + (subIdx + 1);
+      window._bgChapterNum = null;
+    } else if (_activeId === 'bg' && subIdx !== -1) {
+      // Gita audio path is "bg_<chapter#>_<shlok#>.mp3" (see app.js's
+      // _AUDIO_STOTRAMS.bg / _hcjAudioPath) — chapter number comes from
+      // the sarga's own Bengali numeral, same extraction gg uses for its
+      // sarga number.
+      var _chNumMatch = sarga.title.match(/[০-৯]+/);
+      window._bgChapterNum = _chNumMatch ? _bnToNum(_chNumMatch[0]) : (sargaIdx + 1);
+      window._ggAudioKey = null;
     } else {
       window._ggAudioKey = null;
+      window._bgChapterNum = null;
     }
     if (typeof _hcjStopAudio === 'function') _hcjStopAudio();
 
@@ -10291,6 +10301,7 @@ window.isGitaReady = function () { return _gitaReady; };
     backBtn.onclick = function() {
       if (typeof _hcjStopAudio === 'function') _hcjStopAudio();
       window._ggAudioKey = null;
+      window._bgChapterNum = null;
       backBtn.remove();
       // Leave the reader completely before rebuilding the sloka picker.
       // Keeping lmb/lmNav visible makes the new picker render over the old
@@ -10563,6 +10574,7 @@ window.isGitaReady = function () { return _gitaReady; };
     _ggSargas = [];
     _curSargaIdx = -1;
     window._ggAudioKey = null;
+    window._bgChapterNum = null;
     _killPicker(document.getElementById('sts-picker'));
     _killPicker(document.getElementById('sts-sub-picker'));
     var b  = document.getElementById('sts-verse-back');  if (b)  b.remove();

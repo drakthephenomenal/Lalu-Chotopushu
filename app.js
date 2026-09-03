@@ -1752,11 +1752,13 @@ const App = {
     const hkSum = (this.S.malaLogHK || []).reduce((a, b) => a + b, 0);
     const kvSum = (this.S.malaLogKV || []).reduce((a, b) => a + b, 0);
     const ssSum = (this.S.malaLogSS || []).reduce((a, b) => a + b, 0);
+    const ramSum = (this.S.malaLogRam || []).reduce((a, b) => a + b, 0);
     if (!this.S.timerHistory) this.S.timerHistory = {};
     if (!this.S.timerHistoryRV) this.S.timerHistoryRV = {};
     if (!this.S.timerHistoryHK) this.S.timerHistoryHK = {};
     if (!this.S.timerHistoryKV) this.S.timerHistoryKV = {};
     if (!this.S.timerHistorySS) this.S.timerHistorySS = {};
+    if (!this.S.timerHistoryRam) this.S.timerHistoryRam = {};
     if (radhaSum > 0 || (this.S.malaLog || []).length > 0)
       this.S.timerHistory[this.S.tk] = radhaSum;
     if (rvSum > 0 || (this.S.malaLogRV || []).length > 0)
@@ -1767,6 +1769,8 @@ const App = {
       this.S.timerHistoryKV[this.S.tk] = kvSum;
     if (ssSum > 0 || (this.S.malaLogSS || []).length > 0)
       this.S.timerHistorySS[this.S.tk] = ssSum;
+    if (ramSum > 0 || (this.S.malaLogRam || []).length > 0)
+      this.S.timerHistoryRam[this.S.tk] = ramSum;
     // Re-anchor timerSavedSeconds so live delta is measured from current position
     this.timerSavedSeconds = this.timerSeconds;
   },
@@ -4766,15 +4770,23 @@ function addPrevJap() {
   }
   const prevKey = "prev_" + Date.now();
   const isRV = App.S.japMode === "rv";
+  const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
+  const isRam = App.S.japMode === "ram";
   if (isRV) {
     App.S.historyRV[prevKey] = n;
+  } else if (isHK) {
+    if (!App.S.historyHK) App.S.historyHK = {};
+    App.S.historyHK[prevKey] = n;
   } else if (isKV) {
     App.S.historyKV[prevKey] = n;
   } else if (isSS) {
     if (!App.S.historySS) App.S.historySS = {};
     App.S.historySS[prevKey] = n;
+  } else if (isRam) {
+    if (!App.S.historyRam) App.S.historyRam = {};
+    App.S.historyRam[prevKey] = n;
   } else {
     App.S.history[prevKey] = n;
   }
@@ -5951,6 +5963,7 @@ function addJapTimeToday() {
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
+  const isRam = App.S.japMode === "ram";
   const log = isRV
     ? App.S.malaLogRV || (App.S.malaLogRV = [])
     : isHK
@@ -5959,7 +5972,9 @@ function addJapTimeToday() {
         ? App.S.malaLogKV || (App.S.malaLogKV = [])
         : isSS
           ? App.S.malaLogSS || (App.S.malaLogSS = [])
-          : App.S.malaLog || (App.S.malaLog = []);
+          : isRam
+            ? App.S.malaLogRam || (App.S.malaLogRam = [])
+            : App.S.malaLog || (App.S.malaLog = []);
   if (log.length > 0) {
     // Distribute proportionally: each mala entry gets its share
     const total = log.reduce((a, b) => a + b, 0);
@@ -6301,24 +6316,32 @@ function uStats() {
   if (sHKM) sHKM.textContent = Math.floor(hkLifetime / ms) + " malas";
   const sHKF = document.getElementById("sHKTotF");
   if (sHKF) sHKF.textContent = fmtCount(hkLifetime) + " jap";
-  // Combined Lifetime Jap — Radha + RV + KV + 28 names by default, or SS + 28 names in Gopeshwar Mahadev mode
+  // Combined Lifetime Jap — Radha + RV + KV + 28 names by default, SS + 28 names
+  // in Gopeshwar Mahadev mode, or Ram + 28 names in Ramanandi mode
   const ltJapAll = App.S.trahimamMode
     ? ssLifetime + n28Lifetime
-    : radhaLifetime + rvLifetime + kvLifetime + n28Lifetime;
+    : App.S.ramanandiMode
+      ? ramLifetime + n28Lifetime
+      : radhaLifetime + rvLifetime + kvLifetime + n28Lifetime;
   const sLtJA = document.getElementById("sLtJapAll");
   if (sLtJA) sLtJA.textContent = ltJapAll.toLocaleString("en-IN");
   const sLtJAF = document.getElementById("sLtJapAllF");
   if (sLtJAF) sLtJAF.textContent = fmtCount(ltJapAll) + " jap";
-  // Gaudiya / Gopeshwar Mahadev Mode: toggle visibility of stat boxes
+  // Gaudiya / Gopeshwar Mahadev / Ramanandi Mode: toggle visibility of stat boxes
   const isGaudiya = App.S.gaudiyaMode || false;
   const isTrahimam = App.S.trahimamMode || false;
+  const isRamanandiUi = App.S.ramanandiMode || false;
   ["sbRadhaCount", "sbRadhaTime", "sbRVCount", "sbRVTime", "sbKVCount", "sbKVTime"].forEach((id) => {
     const el2 = document.getElementById(id);
-    if (el2) el2.style.display = isGaudiya || isTrahimam ? "none" : "";
+    if (el2) el2.style.display = isGaudiya || isTrahimam || isRamanandiUi ? "none" : "";
   });
   ["sbSSCount", "sbSSTime"].forEach((id) => {
     const el2 = document.getElementById(id);
     if (el2) el2.style.display = isTrahimam ? "" : "none";
+  });
+  ["sbRamCount", "sbRamTime"].forEach((id) => {
+    const el2 = document.getElementById(id);
+    if (el2) el2.style.display = isRamanandiUi ? "" : "none";
   });
   ["sb28Count", "sb28Time", "sbLtJapAll", "sbLtTime"].forEach((id) => {
     const el2 = document.getElementById(id);
@@ -6914,6 +6937,7 @@ function renderMalaLog() {
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
+  const isRam = App.S.japMode === "ram";
 
   // FIX: Reset type label fresh each time — no global carryover
   if (typeEl) {
@@ -6921,6 +6945,7 @@ function renderMalaLog() {
     else if (isHK) typeEl.textContent = "(हरे कृष्ण)";
     else if (isKV) typeEl.textContent = "(कृष्णाय वासुदेवाय)";
     else if (isSS) typeEl.textContent = "(साम्ब सदाशिव)";
+    else if (isRam) typeEl.textContent = "(राम विजय मंत्र)";
     else typeEl.textContent = "(राधा)";
   }
 
@@ -6933,7 +6958,9 @@ function renderMalaLog() {
         ? App.S.malaLogKV || []
         : isSS
           ? App.S.malaLogSS || []
-          : App.S.malaLog || [];
+          : isRam
+            ? App.S.malaLogRam || []
+            : App.S.malaLog || [];
   // Filter out entries with 0 or invalid values
   const log = rawLog.filter(
     (sec) => typeof sec === "number" && sec > 0 && isFinite(sec),
@@ -7007,7 +7034,8 @@ function editMalaEntry(idx) {
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
-  const log = isRV ? App.S.malaLogRV : isHK ? App.S.malaLogHK : isKV ? App.S.malaLogKV : isSS ? App.S.malaLogSS : App.S.malaLog;
+  const isRam = App.S.japMode === "ram";
+  const log = isRV ? App.S.malaLogRV : isHK ? App.S.malaLogHK : isKV ? App.S.malaLogKV : isSS ? App.S.malaLogSS : isRam ? App.S.malaLogRam : App.S.malaLog;
   if (!log || idx >= log.length) return;
   const cur = log[idx];
   const curM = Math.floor(cur / 60),
@@ -7038,7 +7066,8 @@ function deleteMalaEntry(idx) {
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
-  const log = isRV ? App.S.malaLogRV : isHK ? App.S.malaLogHK : isKV ? App.S.malaLogKV : isSS ? App.S.malaLogSS : App.S.malaLog;
+  const isRam = App.S.japMode === "ram";
+  const log = isRV ? App.S.malaLogRV : isHK ? App.S.malaLogHK : isKV ? App.S.malaLogKV : isSS ? App.S.malaLogSS : isRam ? App.S.malaLogRam : App.S.malaLog;
   if (!log || idx >= log.length) return;
   if (!confirm("Delete Mala " + (idx + 1) + " entry?")) return;
   log.splice(idx, 1);

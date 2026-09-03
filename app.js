@@ -4804,6 +4804,8 @@ function addNameJapDeduct() {
     App.S.nameJapDeductKV = (App.S.nameJapDeductKV || 0) + n;
   } else if (App.S.japMode === "ss") {
     App.S.nameJapDeductSS = (App.S.nameJapDeductSS || 0) + n;
+  } else if (App.S.japMode === "ram") {
+    App.S.nameJapDeductRam = (App.S.nameJapDeductRam || 0) + n;
   } else {
     App.S.nameJapDeduct = (App.S.nameJapDeduct || 0) + n;
   }
@@ -4826,6 +4828,7 @@ function removeNameJapDeduct() {
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
+  const isRam = App.S.japMode === "ram";
   const cur = isRV
     ? App.S.nameJapDeductRV || 0
     : isHK
@@ -4834,7 +4837,9 @@ function removeNameJapDeduct() {
         ? App.S.nameJapDeductKV || 0
         : isSS
           ? App.S.nameJapDeductSS || 0
-          : App.S.nameJapDeduct || 0;
+          : isRam
+            ? App.S.nameJapDeductRam || 0
+            : App.S.nameJapDeduct || 0;
   if (n > cur) {
     toast(
       "Cannot restore more than currently deducted (" +
@@ -4851,6 +4856,8 @@ function removeNameJapDeduct() {
     App.S.nameJapDeductKV = cur - n;
   } else if (isSS) {
     App.S.nameJapDeductSS = cur - n;
+  } else if (isRam) {
+    App.S.nameJapDeductRam = cur - n;
   } else {
     App.S.nameJapDeduct = cur - n;
   }
@@ -5682,6 +5689,7 @@ function deductTodayJap() {
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
+  const isRam = App.S.japMode === "ram";
   const hist = isRV
     ? App.S.historyRV
     : isHK
@@ -5690,14 +5698,16 @@ function deductTodayJap() {
         ? App.S.historyKV || (App.S.historyKV = {})
         : isSS
           ? App.S.historySS || (App.S.historySS = {})
-          : App.S.history;
+          : isRam
+            ? App.S.historyRam || (App.S.historyRam = {})
+            : App.S.history;
   const cur = hist[App.S.tk] || 0;
   if (n > cur) {
     toast("Cannot deduct more than today's count (" + cur + ")");
     return;
   }
   hist[App.S.tk] = cur - n;
-  const lmcKey = isRV ? "lmcRV" : isHK ? "lmcHK" : isKV ? "lmcKV" : isSS ? "lmcSS" : "lmc";
+  const lmcKey = isRV ? "lmcRV" : isHK ? "lmcHK" : isKV ? "lmcKV" : isSS ? "lmcSS" : isRam ? "lmcRam" : "lmc";
   App[lmcKey] = Math.floor(App.gTod() / (App.S.ms || 108));
 
   // Explicit time input wins; otherwise fall back to proportional removal from mala log
@@ -5714,7 +5724,9 @@ function deductTodayJap() {
         ? App.S.malaLogKV || (App.S.malaLogKV = [])
         : isSS
           ? App.S.malaLogSS || (App.S.malaLogSS = [])
-          : App.S.malaLog || (App.S.malaLog = []);
+          : isRam
+            ? App.S.malaLogRam || (App.S.malaLogRam = [])
+            : App.S.malaLog || (App.S.malaLog = []);
 
   if (explicitTime > 0) {
     // Shrink the mala log entries proportionally so total drops by explicitTime,
@@ -5778,6 +5790,7 @@ function deductOtherJap() {
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
+  const isRam = App.S.japMode === "ram";
   const hist = isRV
     ? App.S.historyRV
     : isHK
@@ -5786,7 +5799,9 @@ function deductOtherJap() {
         ? App.S.historyKV || (App.S.historyKV = {})
         : isSS
           ? App.S.historySS || (App.S.historySS = {})
-          : App.S.history;
+          : isRam
+            ? App.S.historyRam || (App.S.historyRam = {})
+            : App.S.history;
   const cur = hist[date] || 0;
   if (n > cur) {
     toast("Cannot deduct more than that day's count (" + cur + ")");
@@ -5809,7 +5824,9 @@ function deductOtherJap() {
           ? App.S.timerHistoryKV || (App.S.timerHistoryKV = {})
           : isSS
             ? App.S.timerHistorySS || (App.S.timerHistorySS = {})
-            : App.S.timerHistory || (App.S.timerHistory = {});
+            : isRam
+              ? App.S.timerHistoryRam || (App.S.timerHistoryRam = {})
+              : App.S.timerHistory || (App.S.timerHistory = {});
     th[date] = Math.max(0, (th[date] || 0) - timeSecs);
   }
 
@@ -6020,7 +6037,8 @@ function deductJapTimeToday() {
   const isRV = App.S.japMode === "rv";
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
-  const log = isRV ? App.S.malaLogRV || [] : isKV ? App.S.malaLogKV || [] : isSS ? App.S.malaLogSS || [] : App.S.malaLog || [];
+  const isRam = App.S.japMode === "ram";
+  const log = isRV ? App.S.malaLogRV || [] : isKV ? App.S.malaLogKV || [] : isSS ? App.S.malaLogSS || [] : isRam ? App.S.malaLogRam || [] : App.S.malaLog || [];
   if (log.length > 0) {
     const total = log.reduce((a, b) => a + b, 0);
     if (total > 0) {

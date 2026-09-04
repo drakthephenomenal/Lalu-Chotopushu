@@ -1538,7 +1538,15 @@ button.n28-gold-btn-danger,
 }
 #kaamPersist.kaam-visible{opacity:1;}
 #kaamPersist > div{display:block;width:100%;}
-#kaamPersist.kaam-pulse{animation:hkPulseIn 0.32s cubic-bezier(0.34,1.56,0.64,1);}
+/* Each new jap rises from the bottom of the screen up into the centered
+   position, rather than popping in already in place — the old (departing)
+   verse still floats away upward via .kaam-float-name/hkRise as before. */
+@keyframes kaamRiseIn{
+  0%{opacity:0;transform:translateY(38vh) scale(0.92);filter:brightness(1.4) saturate(1.2);}
+  55%{opacity:1;transform:translateY(-6px) scale(1.05);}
+  100%{opacity:1;transform:translateY(0) scale(1);filter:brightness(1) saturate(1);}
+}
+#kaamPersist.kaam-pulse{animation:kaamRiseIn 0.6s cubic-bezier(0.22,1,0.36,1);}
 /* Higher-specificity combined selector so this always wins over the plain
    .hk-float-name rule below regardless of stylesheet order — previously
    both had equal (single-class) specificity, so .hk-float-name's
@@ -1786,7 +1794,7 @@ body.trahimam-mode .tmc-switch-track{
   transition:left 0.38s cubic-bezier(.4,.0,.2,1),background 0.38s ease,box-shadow 0.38s ease;
   z-index:2;display:flex;align-items:center;justify-content:center;font-size:20px;
 }
-.tmc-switch-thumb::after{content:'🪈';}
+.tmc-switch-thumb::after{content:'🔱';}
 body.trahimam-mode .tmc-switch-thumb{
   left:calc(100% - 49px);
   background:linear-gradient(135deg,#3a7bd5,#6DB8FF);

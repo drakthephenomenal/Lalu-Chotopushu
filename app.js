@@ -1617,10 +1617,11 @@ const App = {
     // exclusive toggles already keep japMode in sync via switchJapMode().
     // Base idle timeout raised 6s -> 10s; the modes that already ran longer
     // than the base (KV, HK, Raam Vijay Mantra) keep their extra +5s on
-    // top of the new 10s base.
+    // top of the new 10s base. Kaam Vijay raised 10s -> 30s per request.
     const idleMs = this.S.japMode === "kv" ? 25000
       : this.S.japMode === "hk" ? 30000
       : this.S.japMode === "ram" ? 15000
+      : this.S.japMode === "kaam" ? 30000
       : 10000;                                   // Radha, RV, SS, 28 Names
     // Token so malaOk() can invalidate this pending autoStop if a mala
     // completes between now and the deadline (prevents leaking the
@@ -2809,12 +2810,18 @@ function spawnKV(e, zone) {
   el.className = "fn-kv";
   const fs = 55 + Math.random() * 25;
   const _nt = naamText();
+  // KV mantra renders as 4 separate lines (2 lines per half-verse) rather
+  // than 2 combined lines, per request:
+  //   Krishnay Vashudevay / Haraye Paromatmane / Pranata kleshnashay / Govinday Namo Namoh
+  const kv1Lines = _nt.kv1.split("\n");
+  const kv2Lines = _nt.kv2.split("\n");
   el.innerHTML =
-    '<span style="font-size:' +
-    fs +
-    'px">' + _nt.kv1 + '</span><span style="font-size:' +
-    fs * 0.85 +
-    'px">' + _nt.kv2 + '</span>';
+    kv1Lines
+      .map((l) => '<span style="font-size:' + fs + 'px">' + l + "</span>")
+      .join("") +
+    kv2Lines
+      .map((l) => '<span style="font-size:' + fs * 0.85 + 'px">' + l + "</span>")
+      .join("");
   el.style.left = x - fs * 1.2 + "px";
   el.style.top = y - fs * 0.5 + "px";
   acf = !acf;
@@ -3581,8 +3588,8 @@ function closeNaamSelOutside(e) {
 }
 // ── Radha / Radha Vallabh jap-text script lookup (Sanskrit/Devanagari vs Bangla) ──
 const NAAM_TEXT = {
-  sa: { radha: "राधा", rv1: "राधावल्लभ", rv2: "श्री हरिवंश", kv1: "कृष्णाय वासुदेवाय हरये परमात्मने", kv2: "प्रणतः क्लेशनाशाय गोविन्दाय नमो नमः", kvShort: "कृष्णाय वासुदेवाय", ss1: "साम्ब", ss2: "सदाशिव", ramTitle: "राम विजय मंत्र", ram1: "श्री राम, जय राम,", ram2: "जय जय राम।", kaamTitle: "काम विजय", kaamToast: "काम विजय" },
-  bn: { radha: "রাধা", rv1: "রাধাবল্লভ", rv2: "শ্রী হরিবংশ", kv1: "কৃষ্ণায় বাসুদেবায় হরয়ে পরমাত্মনে", kv2: "প্রণতঃ ক্লেশনাশায় গোবিন্দায় নমো নমঃ", kvShort: "কৃষ্ণায় বাসুদেবায়", ss1: "সাম্ব", ss2: "সদাশিব", ramTitle: "রাম বিজয় মন্ত্র", ram1: "শ্রী রাম, জয় রাম,", ram2: "জয় জয় রাম।", kaamTitle: "কাম বিজয়", kaamToast: "কাম বিজয়" },
+  sa: { radha: "राधा", rv1: "राधावल्लभ", rv2: "श्री हरिवंश", kv1: "कृष्णाय वासुदेवाय\nहरये परमात्मने", kv2: "प्रणतः क्लेशनाशाय\nगोविन्दाय नमो नमः", kvShort: "कृष्णाय वासुदेवाय", ss1: "साम्ब", ss2: "सदाशिव", ramTitle: "राम विजय मंत्र", ram1: "श्री राम, जय राम,", ram2: "जय जय राम।", kaamTitle: "काम विजय", kaamToast: "काम विजय" },
+  bn: { radha: "রাধা", rv1: "রাধাবল্লভ", rv2: "শ্রী হরিবংশ", kv1: "কৃষ্ণায় বাসুদেবায়\nহরয়ে পরমাত্মনে", kv2: "প্রণতঃ ক্লেশনাশায়\nগোবিন্দায় নমো নমঃ", kvShort: "কৃষ্ণায় বাসুদেবায়", ss1: "সাম্ব", ss2: "সদাশিব", ramTitle: "রাম বিজয় মন্ত্র", ram1: "শ্রী রাম, জয় রাম,", ram2: "জয় জয় রাম।", kaamTitle: "কাম বিজয়", kaamToast: "কাম বিজয়" },
 };
 function naamText() {
   const lang = (App.S && App.S.naamLang === "bn") ? "bn" : "sa";

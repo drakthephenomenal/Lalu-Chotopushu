@@ -1546,9 +1546,10 @@ button.n28-gold-btn-danger,
   55%{opacity:1;transform:translateY(-6px) scale(1.05);}
   100%{opacity:1;transform:translateY(0) scale(1);filter:brightness(1) saturate(1);}
 }
-/* Slowed from 0.6s -> 1.3s per request, so the new verse drifts up from the
-   bottom noticeably more gently instead of snapping into place. */
-#kaamPersist.kaam-pulse{animation:kaamRiseIn 1.3s cubic-bezier(0.22,1,0.36,1);}
+/* Slowed from 0.6s -> 1.3s, then doubled again to 2.6s per request, so the
+   new verse drifts up from the bottom much more gently instead of snapping
+   into place. */
+#kaamPersist.kaam-pulse{animation:kaamRiseIn 2.6s cubic-bezier(0.22,1,0.36,1);}
 /* Higher-specificity combined selector so this always wins over the plain
    .hk-float-name rule below regardless of stylesheet order — previously
    both had equal (single-class) specificity, so .hk-float-name's

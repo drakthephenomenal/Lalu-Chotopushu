@@ -2804,10 +2804,20 @@ let _kvMeasureCanvas = null;
 function _kvFitFontSize(text, maxWidthPx, maxFs, minFs) {
   if (!_kvMeasureCanvas) _kvMeasureCanvas = document.createElement("canvas");
   const ctx = _kvMeasureCanvas.getContext("2d");
+  // If the custom Devanagari webfont hasn't finished loading yet, the canvas
+  // measures against a narrower fallback serif than what actually renders on
+  // screen — that under-measurement is what let text overflow past the box
+  // edges on phones. Pad the measured width in that case so we never
+  // overshoot.
+  const fontReady =
+    document.fonts && document.fonts.check
+      ? document.fonts.check("700 32px 'Tiro Devanagari Hindi'")
+      : false;
+  const safety = fontReady ? 1.0 : 1.18;
   let fs = maxFs;
   while (fs > minFs) {
     ctx.font = "700 " + fs + "px 'Tiro Devanagari Hindi', 'Hind Siliguri', serif";
-    if (ctx.measureText(text).width <= maxWidthPx) break;
+    if (ctx.measureText(text).width * safety <= maxWidthPx) break;
     fs -= 1;
   }
   return fs;
@@ -2833,10 +2843,15 @@ function spawnKV(e, zone) {
   const kv1Lines = _nt.kv1.split("\n");
   const kv2Lines = _nt.kv2.split("\n");
   const allLines = kv1Lines.concat(kv2Lines);
-  const maxBoxW = Math.min(r.width - 24, 340);
-  const baseMax = 55 + Math.random() * 25; // keep the original size flavor/randomness
+  // Phones (Android/iPhone) get a noticeably smaller max font than tablets
+  // and desktop (iPad/Windows), which keep the original larger size —
+  // narrow phone screens were overflowing off both edges at the old size.
+  const isPhone = Math.min(window.innerWidth, window.innerHeight) < 600;
+  const maxBoxW = Math.min(r.width - (isPhone ? 32 : 24), isPhone ? 300 : 340);
+  const baseMax = isPhone ? 34 + Math.random() * 14 : 55 + Math.random() * 25; // keep the original size flavor/randomness
+  const minFs = isPhone ? 14 : 20;
   const sizes = allLines.map((line, i) =>
-    _kvFitFontSize(line, maxBoxW, i < kv1Lines.length ? baseMax : baseMax * 0.85, 20)
+    _kvFitFontSize(line, maxBoxW, i < kv1Lines.length ? baseMax : baseMax * 0.85, minFs)
   );
   el.innerHTML = allLines
     .map((l, i) => '<span style="font-size:' + sizes[i] + 'px">' + l + "</span>")

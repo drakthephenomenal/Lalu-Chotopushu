@@ -2796,6 +2796,23 @@ function spawnSS(e, zone) {
   setTimeout(() => el.remove(), 2400);
 }
 
+// Reused canvas for measuring Devanagari/Bangla text width so each KV
+// mantra line can be auto-sized to fit on a single line — guarantees the
+// mantra always renders as exactly 4 lines (2 per half-verse) with no
+// internal wrapping, regardless of device width.
+let _kvMeasureCanvas = null;
+function _kvFitFontSize(text, maxWidthPx, maxFs, minFs) {
+  if (!_kvMeasureCanvas) _kvMeasureCanvas = document.createElement("canvas");
+  const ctx = _kvMeasureCanvas.getContext("2d");
+  let fs = maxFs;
+  while (fs > minFs) {
+    ctx.font = "700 " + fs + "px 'Tiro Devanagari Hindi', 'Hind Siliguri', serif";
+    if (ctx.measureText(text).width <= maxWidthPx) break;
+    fs -= 1;
+  }
+  return fs;
+}
+
 function spawnKV(e, zone) {
   const r = zone.getBoundingClientRect();
   let x, y;
@@ -2808,22 +2825,25 @@ function spawnKV(e, zone) {
   }
   const el = document.createElement("div");
   el.className = "fn-kv";
-  const fs = 55 + Math.random() * 25;
   const _nt = naamText();
-  // KV mantra renders as 4 separate lines (2 lines per half-verse) rather
-  // than 2 combined lines, per request:
+  // KV mantra renders as 4 separate lines (2 lines per half-verse):
   //   Krishnay Vashudevay / Haraye Paromatmane / Pranata kleshnashay / Govinday Namo Namoh
+  // Each line's font-size is auto-fit to the available width so it never
+  // wraps onto an extra line — always exactly 4 lines total.
   const kv1Lines = _nt.kv1.split("\n");
   const kv2Lines = _nt.kv2.split("\n");
-  el.innerHTML =
-    kv1Lines
-      .map((l) => '<span style="font-size:' + fs + 'px">' + l + "</span>")
-      .join("") +
-    kv2Lines
-      .map((l) => '<span style="font-size:' + fs * 0.85 + 'px">' + l + "</span>")
-      .join("");
-  el.style.left = x - fs * 1.2 + "px";
-  el.style.top = y - fs * 0.5 + "px";
+  const allLines = kv1Lines.concat(kv2Lines);
+  const maxBoxW = Math.min(r.width - 24, 340);
+  const baseMax = 55 + Math.random() * 25; // keep the original size flavor/randomness
+  const sizes = allLines.map((line, i) =>
+    _kvFitFontSize(line, maxBoxW, i < kv1Lines.length ? baseMax : baseMax * 0.85, 20)
+  );
+  el.innerHTML = allLines
+    .map((l, i) => '<span style="font-size:' + sizes[i] + 'px">' + l + "</span>")
+    .join("");
+  el.style.maxWidth = maxBoxW + "px";
+  el.style.left = x - maxBoxW / 2 + "px";
+  el.style.top = y - sizes[0] * 0.5 + "px";
   acf = !acf;
   el.style.color = acf ? "#FFD700" : "#6DB8FF";
   el.style.textShadow = acf

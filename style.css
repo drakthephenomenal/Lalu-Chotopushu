@@ -1231,8 +1231,8 @@ button.n28-gold-btn-danger,
   100%{opacity:0;transform:translateY(-280px) scale(0.9);}
 }
 .fn-kv{position:absolute;pointer-events:none;z-index:10;animation:fuKV 8s ease-out forwards;
-  display:flex;flex-direction:column;align-items:center;line-height:1.15;text-align:center;max-width:280px;}
-.fn-kv span{font-family:'Tiro Devanagari Hindi',serif;display:block;}
+  display:flex;flex-direction:column;align-items:center;line-height:1.15;text-align:center;}
+.fn-kv span{font-family:'Tiro Devanagari Hindi',serif;display:block;white-space:nowrap;}
 /* Two-line floating naam for Samba Sadashiv (SS) mode */
 .fn-ss{position:absolute;pointer-events:none;z-index:10;animation:fu 2.4s ease-out forwards;
   display:flex;flex-direction:column;align-items:center;line-height:1.15;}
@@ -1546,7 +1546,9 @@ button.n28-gold-btn-danger,
   55%{opacity:1;transform:translateY(-6px) scale(1.05);}
   100%{opacity:1;transform:translateY(0) scale(1);filter:brightness(1) saturate(1);}
 }
-#kaamPersist.kaam-pulse{animation:kaamRiseIn 0.6s cubic-bezier(0.22,1,0.36,1);}
+/* Slowed from 0.6s -> 1.3s per request, so the new verse drifts up from the
+   bottom noticeably more gently instead of snapping into place. */
+#kaamPersist.kaam-pulse{animation:kaamRiseIn 1.3s cubic-bezier(0.22,1,0.36,1);}
 /* Higher-specificity combined selector so this always wins over the plain
    .hk-float-name rule below regardless of stylesheet order — previously
    both had equal (single-class) specificity, so .hk-float-name's

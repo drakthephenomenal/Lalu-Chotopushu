@@ -2314,6 +2314,14 @@
       </button>
     </div>
 
+    <!-- ── DELETE USER ACCOUNT (irreversible) ── -->
+    <div style="margin-top:15px;border-top:1px solid rgba(255,80,80,0.18);padding-top:15px;">
+      <div style="font-size:12px;color:#ff6060;margin-bottom:5px;">Delete User Account</div>
+      <button class="pb" onclick="openDeleteUserList()" style="background:rgba(255,80,80,0.10);color:#ff6060;border:1px solid rgba(255,80,80,0.35);">
+        🗑️ Delete User Account
+      </button>
+    </div>
+
     <!-- ── GHOST MODE ── -->
     <div style="margin-top:15px;border-top:1px solid rgba(255,170,0,0.18);padding-top:15px;">
       <div style="font-size:12px;color:#FFD700;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
@@ -2371,6 +2379,34 @@
       <!-- User list -->
       <div id="ghostUserList" style="display:flex;flex-direction:column;gap:8px;padding-bottom:40px;">
         <div style="text-align:center;color:rgba(255,215,0,0.45);padding:30px 0;font-size:13px;">Loading users…</div>
+      </div>
+    </div>
+   </div>
+  </div>
+
+  <!-- DELETE USER ACCOUNT MODAL (developer-only, irreversible) -->
+  <div id="deleteUserModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(6,13,31,0.97);backdrop-filter:blur(14px);">
+   <div id="deleteUserModalScroll" style="position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:16px;box-sizing:border-box;">
+    <div style="width:100%;max-width:560px;margin-top:12px;">
+      <!-- Header -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <button onclick="closeDeleteUserModal()" style="background:rgba(255,80,80,0.1);color:#ff6060;border:1px solid rgba(255,80,80,0.35);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">✕ Close</button>
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:20px;line-height:1;">🗑️</div>
+          <div style="color:#ff6060;font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:2px;">Delete User Account</div>
+          <div style="font-size:11px;color:rgba(255,80,80,0.55);margin-top:2px;">Irreversible. Removes login, jap history, leaderboard &amp; feedback.</div>
+        </div>
+        <div style="width:70px;"></div>
+      </div>
+
+      <!-- Search -->
+      <input id="deleteUserSearchInput" type="text" placeholder="🔍  Search by name, email, UID…"
+        oninput="filterDeleteUserList()"
+        style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:12px;border:1px solid rgba(255,80,80,0.3);background:rgba(0,0,0,0.4);color:#fff;font-size:13px;font-family:Inter,sans-serif;margin-bottom:12px;outline:none;" />
+
+      <!-- User list -->
+      <div id="deleteUserList" style="display:flex;flex-direction:column;gap:8px;padding-bottom:40px;">
+        <div style="text-align:center;color:rgba(255,80,80,0.45);padding:30px 0;font-size:13px;">Loading users…</div>
       </div>
     </div>
    </div>

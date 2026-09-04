@@ -13531,6 +13531,7 @@ function isDeveloper() {
 let _ghostViewingUid  = null;   // UID currently being viewed; null = not in ghost mode
 let _ghostOwnState    = null;   // deep-copy of dev's own App.S before entering ghost mode
 let _ghostAllUsers    = [];     // cached list of {uid, name, email, phone, source}
+let _deleteUserAllUsers = [];   // cached list for the Delete User Account picker (same shape)
 
 /** True while developer is shadowing another user's account. */
 function isGhostMode() { return !!_ghostViewingUid; }
@@ -13742,6 +13743,102 @@ function _renderGhostList(users) {
 function _escHtmlG(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+
+// ── DELETE USER ACCOUNT (developer-only, irreversible) ────────
+// Reuses the same _fetchAllKnownUsers() picker as Ghost Mode, but ends in
+// a destructive callable instead of a shadow session. Two confirms:
+// tap the row, then retype the UID in a prompt() before anything fires,
+// since there is no undo once deleteUserAccount runs server-side.
+window.openDeleteUserList = async function () {
+  if (!isDeveloper()) return;
+  const modal = document.getElementById('deleteUserModal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.getElementById('deleteUserSearchInput').value = '';
+  _deleteUserAllUsers = [];
+  _setDeleteUserListHtml('<div style="text-align:center;color:rgba(255,80,80,0.45);padding:30px 0;font-size:13px;">Loading users…</div>');
+  _deleteUserAllUsers = await _fetchAllKnownUsers();
+  filterDeleteUserList();
+};
+
+window.closeDeleteUserModal = function () {
+  const modal = document.getElementById('deleteUserModal');
+  if (modal) modal.style.display = 'none';
+};
+
+window.filterDeleteUserList = function () {
+  const q = (document.getElementById('deleteUserSearchInput')?.value || '').toLowerCase().trim();
+  const filtered = q
+    ? _deleteUserAllUsers.filter(u =>
+        (u.uid   || '').toLowerCase().includes(q) ||
+        (u.name  || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q) ||
+        (u.phone || '').toLowerCase().includes(q)
+      )
+    : _deleteUserAllUsers;
+  _renderDeleteUserList(filtered);
+};
+
+function _setDeleteUserListHtml(html) {
+  const el = document.getElementById('deleteUserList');
+  if (el) el.innerHTML = html;
+}
+
+function _renderDeleteUserList(users) {
+  const el = document.getElementById('deleteUserList');
+  if (!el) return;
+  if (!users.length) {
+    el.innerHTML = '<div style="text-align:center;color:rgba(255,80,80,0.35);padding:30px 0;font-size:13px;">No matching users found.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  users.forEach(u => {
+    const label = u.name || u.email || '(no name)';
+    const sublabel = u.email && u.name ? u.email : (u.phone || '');
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1px solid rgba(255,80,80,0.18);background:rgba(255,80,80,0.03);cursor:pointer;transition:background 0.15s;';
+    row.onmouseenter = () => { row.style.background = 'rgba(255,80,80,0.09)'; };
+    row.onmouseleave = () => { row.style.background = 'rgba(255,80,80,0.03)'; };
+    row.innerHTML = `
+      <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,80,80,0.12);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🗑️</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:#ff6060;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_escHtmlG(label)}</div>
+        ${sublabel ? `<div style="font-size:11px;color:rgba(255,255,255,0.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_escHtmlG(sublabel)}</div>` : ''}
+        <div style="font-size:10px;color:rgba(255,80,80,0.28);margin-top:1px;font-family:monospace;">${u.uid}</div>
+      </div>
+      <div style="font-size:20px;flex-shrink:0;color:rgba(255,80,80,0.5);">›</div>`;
+    row.onclick = () => devConfirmDeleteUser(u.uid, label, u.email || '');
+    el.appendChild(row);
+  });
+}
+
+// ── Confirm + execute permanent deletion for a given UID ──────
+// Single confirm() showing name + email so the developer can visually
+// recognize the account (no UID retyping) — still a deliberate second
+// tap, not a bare row-click, since this is irreversible.
+window.devConfirmDeleteUser = async function (uid, displayLabel, email) {
+  if (!isDeveloper()) return;
+
+  const identity = email ? `${displayLabel} (${email})` : displayLabel;
+  const ok = confirm(
+    `Permanently delete this account?\n\n${identity}\n\n` +
+    `This removes their login, all chanting/jap history, leaderboard entry, ` +
+    `and feedback. This cannot be undone.`
+  );
+  if (!ok) return;
+
+  closeDeleteUserModal();
+  toast('⏳ Deleting account…');
+  try {
+    const callable = firebase.app().functions().httpsCallable('deleteUserAccount');
+    const res = await callable({ uid });
+    const r = res.data || {};
+    toast('🗑️ Deleted: auth=' + r.auth + ', users=' + (r.firestore && r.firestore.users));
+  } catch (e) {
+    console.error('Delete user failed:', e);
+    toast('⚠️ Delete failed — ' + (e && e.message ? e.message : 'check console'));
+  }
+};
 
 // ── Enter ghost mode for a given UID ─────────────────────────
 window.devEnterGhostMode = async function (uid, displayLabel) {

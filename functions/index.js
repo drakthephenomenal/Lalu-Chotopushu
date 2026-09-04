@@ -387,6 +387,85 @@ exports.sendBroadcastNotification = functions.https.onCall(async (data, context)
 });
 
 // ============================================================
+// Developer-only: permanently delete a user account.
+// Called by app.js (window.devDeleteUser, in the Developer Settings
+// panel's "Delete User Account" flow). Removes the user from every
+// place they exist:
+//   - Firebase Auth (admin.auth().deleteUser)
+//   - users/{uid} + all subcollections (recursiveDelete)
+//   - leaderboard/{uid}
+//   - presence/{uid}
+//   - feedbacks/{uid}
+//   - driveBackupTokens/{uid}
+// This is irreversible. The client is required to have the target
+// user re-type the UID as a confirmation string before calling this,
+// but that's a UX safeguard only — the real authorization check is
+// the developer-email allow-list below, same as sendBroadcastNotification.
+exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
+  const email = (context.auth && context.auth.token && context.auth.token.email || "").toLowerCase();
+  if (!context.auth || !DEV_EMAILS.map((e) => e.toLowerCase()).includes(email)) {
+    throw new functions.https.HttpsError("permission-denied", "Developer access only.");
+  }
+
+  const uid = (data && data.uid || "").trim();
+  if (!uid) {
+    throw new functions.https.HttpsError("invalid-argument", "uid is required.");
+  }
+
+  // Refuse to let a developer delete another developer account (including
+  // their own) through this tool — guards against a mis-clicked row in the
+  // picker locking everyone out. Developer accounts must be removed by
+  // editing DEV_EMAILS / firestore.rules directly, not through this path.
+  try {
+    const targetRecord = await admin.auth().getUser(uid);
+    const targetEmail = (targetRecord.email || "").toLowerCase();
+    if (DEV_EMAILS.map((e) => e.toLowerCase()).includes(targetEmail)) {
+      throw new functions.https.HttpsError("permission-denied", "Refusing to delete a developer account.");
+    }
+  } catch (e) {
+    if (e instanceof functions.https.HttpsError) throw e;
+    // getUser throws auth/user-not-found if they're already gone from Auth
+    // (e.g. deleted previously, or a Firestore-only ghost row) — that's
+    // fine, just means we skip the Auth-delete step below and still clean
+    // up any leftover Firestore data for that uid.
+  }
+
+  const db = admin.firestore();
+  const results = { uid, auth: "skipped", firestore: {} };
+
+  // 1. Firestore — users/{uid} and every subcollection under it.
+  try {
+    await db.recursiveDelete(db.collection("users").doc(uid));
+    results.firestore.users = "deleted";
+  } catch (e) {
+    results.firestore.users = "error: " + e.message;
+  }
+
+  // 2. Sibling uid-keyed collections.
+  const siblingCollections = ["leaderboard", "presence", "feedbacks", "driveBackupTokens"];
+  for (const col of siblingCollections) {
+    try {
+      await db.collection(col).doc(uid).delete();
+      results.firestore[col] = "deleted";
+    } catch (e) {
+      results.firestore[col] = "error: " + e.message;
+    }
+  }
+
+  // 3. Firebase Auth account itself — last, so a failure above still
+  // leaves the account reachable/retriable rather than orphaning data
+  // under a uid nobody can look up anymore.
+  try {
+    await admin.auth().deleteUser(uid);
+    results.auth = "deleted";
+  } catch (e) {
+    results.auth = e.code === "auth/user-not-found" ? "already-absent" : "error: " + e.message;
+  }
+
+  return results;
+});
+
+// ============================================================
 // Leaderboard sync — appended, does not touch anything above.
 // Triggers on every write to users/{uid}/data/main and computes
 // the leaderboard entry server-side. See project notes for why:

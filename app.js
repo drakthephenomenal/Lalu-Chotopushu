@@ -2945,8 +2945,13 @@ function spawnHK() {
 
 // Kaam Vijay mantra — uses the same persistent, colour-cycling arrival and
 // rising-away animation as the Hare Krishna display, but restricted to just
-// two colors (yellow/blue) instead of HK's full 7-color cycle.
-const KAAM_TEXT =
+// two colors (yellow/blue) instead of HK's full 7-color cycle. Text follows
+// the same global naamLang toggle ("sa"=Devanagari, "bn"=Bangla script) that
+// already drives Radha/RV/KV/SS/Ram's title text, so this mode's body verse
+// stays consistent with the rest of the app's script switching.
+const KAAM_TEXT_SA =
+  "सदानन्दं वृन्दावन नवलता मन्दिरवरे\nष्वमन्दैः कन्दर्पोन्मद रतिकला कौतुक रसम्।\nकिशोरं तज्ज्योतिर्युगल मतिघोरं मम भवं\nज्वलज्ज्वालं शीतैः स्वपद मकरन्दैः शमयतु।।";
+const KAAM_TEXT_BN =
   "সদানন্দং বৃন্দাবন নবলতা মন্দিরবরে\nষ্বমন্দৈঃ কন্দর্পোন্মদ রতিকলা কৌতুক রসম্।\nকিশোরং তজ্জ্যোতির্যুগল মতিঘোরং মম ভবং\nজ্বলজ্জ্বালং শীতৈঃ স্বপদ মকরন্দৈঃ শময়তু।।";
 const KAAM_COLORS = [
   "#FFD700", // yellow/gold
@@ -2961,6 +2966,7 @@ let _kaamColorIdx = 0;
 function spawnKaam() {
   const el = document.getElementById("kaamPersist");
   if (!el) return;
+  const kaamText = App.S.naamLang === "bn" ? KAAM_TEXT_BN : KAAM_TEXT_SA;
   const currentColor = KAAM_COLORS[_kaamColorIdx % KAAM_COLORS.length];
   const currentShadow = KAAM_SHADOWS_MAP[_kaamColorIdx % KAAM_SHADOWS_MAP.length];
   const nextColor = KAAM_COLORS[(_kaamColorIdx + 1) % KAAM_COLORS.length];
@@ -2971,7 +2977,7 @@ function spawnKaam() {
   if (zone) {
     const floatEl = document.createElement("div");
     floatEl.className = "hk-float-name kaam-float-name";
-    floatEl.innerHTML = KAAM_TEXT
+    floatEl.innerHTML = kaamText
       .split("\n")
       .map((line) => "<div>" + line + "</div>")
       .join("");
@@ -2981,7 +2987,7 @@ function spawnKaam() {
     setTimeout(() => floatEl.remove(), 2200);
   }
 
-  el.innerHTML = KAAM_TEXT
+  el.innerHTML = kaamText
     .split("\n")
     .map((line) => "<div>" + line + "</div>")
     .join("");
@@ -3610,6 +3616,16 @@ function setNaamLangDirect(lang) {
   if (App.S.naamLang === lang) return; // already selected
   App.S.naamLang = lang;
   applyNaamLangLabels(lang);
+  // If Kaam Vijay's persistent verse is currently on screen, refresh its
+  // text in-place immediately rather than waiting for the next tap.
+  const kaamEl = document.getElementById("kaamPersist");
+  if (kaamEl && kaamEl.classList.contains("kaam-visible")) {
+    const newKaamText = lang === "bn" ? KAAM_TEXT_BN : KAAM_TEXT_SA;
+    kaamEl.innerHTML = newKaamText
+      .split("\n")
+      .map((l) => "<div>" + l + "</div>")
+      .join("");
+  }
   // Refresh the header title live if currently on Radha, RV, KV, SS, or Ram mode
   if (App.S.japMode === "radha" || App.S.japMode === "rv" || App.S.japMode === "kv" || App.S.japMode === "ss" || App.S.japMode === "ram" || App.S.japMode === "kaam") {
     switchJapMode(App.S.japMode);
@@ -4782,11 +4798,13 @@ function addManualJap() {
   if (!App.S.historyKV) App.S.historyKV = {};
   if (!App.S.historySS) App.S.historySS = {};
   if (!App.S.historyRam) App.S.historyRam = {};
+  if (!App.S.historyKaam) App.S.historyKaam = {};
   const isRV = App.S.japMode === "rv";
   const isHK = App.S.japMode === "hk";
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
   const isRam = App.S.japMode === "ram";
+  const isKaam = App.S.japMode === "kaam";
   if (isRV) {
     App.S.historyRV[App.S.tk] = (App.S.historyRV[App.S.tk] || 0) + n;
   } else if (isHK) {
@@ -4797,6 +4815,8 @@ function addManualJap() {
     App.S.historySS[App.S.tk] = (App.S.historySS[App.S.tk] || 0) + n;
   } else if (isRam) {
     App.S.historyRam[App.S.tk] = (App.S.historyRam[App.S.tk] || 0) + n;
+  } else if (isKaam) {
+    App.S.historyKaam[App.S.tk] = (App.S.historyKaam[App.S.tk] || 0) + n;
   } else {
     App.S.history[App.S.tk] = (App.S.history[App.S.tk] || 0) + n;
   }
@@ -4825,9 +4845,11 @@ function addManualJap() {
             ? App.S.malaLogSS || (App.S.malaLogSS = [])
             : isRam
               ? App.S.malaLogRam || (App.S.malaLogRam = [])
-              : App.S.malaLog || (App.S.malaLog = []);
+              : isKaam
+                ? App.S.malaLogKaam || (App.S.malaLogKaam = [])
+                : App.S.malaLog || (App.S.malaLog = []);
     const now = Date.now();
-    const modeStr = isRV ? "rv" : isHK ? "hk" : isKV ? "kv" : isSS ? "ss" : isRam ? "ram" : "radha";
+    const modeStr = isRV ? "rv" : isHK ? "hk" : isKV ? "kv" : isSS ? "ss" : isRam ? "ram" : isKaam ? "kaam" : "radha";
     for (let i = 0; i < malasAdded; i++) {
       log.push(avgPerMala);
       logActivity({
@@ -4851,10 +4873,10 @@ function addManualJap() {
   }
   // This entry was reported after the fact (e.g. chanted at a real mala,
   // off-screen) — mark it so Efficiency/Quality exclude it.
-  _recordManualJap(isRV ? "rv" : isHK ? "hk" : isKV ? "kv" : isSS ? "ss" : isRam ? "ram" : "radha", App.S.tk, n, timeSecs);
+  _recordManualJap(isRV ? "rv" : isHK ? "hk" : isKV ? "kv" : isSS ? "ss" : isRam ? "ram" : isKaam ? "kaam" : "radha", App.S.tk, n, timeSecs);
   App.ensureMalaWallStart();
   const nm = Math.floor(App.gTod() / (App.S.ms || 108));
-  const lmcKey = isRV ? "lmcRV" : isHK ? "lmcHK" : isKV ? "lmcKV" : isSS ? "lmcSS" : "lmc";
+  const lmcKey = isRV ? "lmcRV" : isHK ? "lmcHK" : isKV ? "lmcKV" : isSS ? "lmcSS" : isRam ? "lmcRam" : isKaam ? "lmcKaam" : "lmc";
   if (nm > (App[lmcKey] || 0)) {
     App[lmcKey] = nm;
     // Celebrate the new mala milestone WITHOUT calling malaOk() —
@@ -4966,6 +4988,7 @@ function addPrevJap() {
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
   const isRam = App.S.japMode === "ram";
+  const isKaam = App.S.japMode === "kaam";
   if (isRV) {
     App.S.historyRV[prevKey] = n;
   } else if (isHK) {
@@ -4979,6 +5002,9 @@ function addPrevJap() {
   } else if (isRam) {
     if (!App.S.historyRam) App.S.historyRam = {};
     App.S.historyRam[prevKey] = n;
+  } else if (isKaam) {
+    if (!App.S.historyKaam) App.S.historyKaam = {};
+    App.S.historyKaam[prevKey] = n;
   } else {
     App.S.history[prevKey] = n;
   }
@@ -5010,6 +5036,8 @@ function addNameJapDeduct() {
     App.S.nameJapDeductSS = (App.S.nameJapDeductSS || 0) + n;
   } else if (App.S.japMode === "ram") {
     App.S.nameJapDeductRam = (App.S.nameJapDeductRam || 0) + n;
+  } else if (App.S.japMode === "kaam") {
+    App.S.nameJapDeductKaam = (App.S.nameJapDeductKaam || 0) + n;
   } else {
     App.S.nameJapDeduct = (App.S.nameJapDeduct || 0) + n;
   }
@@ -5033,6 +5061,7 @@ function removeNameJapDeduct() {
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
   const isRam = App.S.japMode === "ram";
+  const isKaam = App.S.japMode === "kaam";
   const cur = isRV
     ? App.S.nameJapDeductRV || 0
     : isHK
@@ -5043,7 +5072,9 @@ function removeNameJapDeduct() {
           ? App.S.nameJapDeductSS || 0
           : isRam
             ? App.S.nameJapDeductRam || 0
-            : App.S.nameJapDeduct || 0;
+            : isKaam
+              ? App.S.nameJapDeductKaam || 0
+              : App.S.nameJapDeduct || 0;
   if (n > cur) {
     toast(
       "Cannot restore more than currently deducted (" +
@@ -5062,6 +5093,8 @@ function removeNameJapDeduct() {
     App.S.nameJapDeductSS = cur - n;
   } else if (isRam) {
     App.S.nameJapDeductRam = cur - n;
+  } else if (isKaam) {
+    App.S.nameJapDeductKaam = cur - n;
   } else {
     App.S.nameJapDeduct = cur - n;
   }
@@ -5904,6 +5937,7 @@ function deductTodayJap() {
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
   const isRam = App.S.japMode === "ram";
+  const isKaam = App.S.japMode === "kaam";
   const hist = isRV
     ? App.S.historyRV
     : isHK
@@ -5914,14 +5948,16 @@ function deductTodayJap() {
           ? App.S.historySS || (App.S.historySS = {})
           : isRam
             ? App.S.historyRam || (App.S.historyRam = {})
-            : App.S.history;
+            : isKaam
+              ? App.S.historyKaam || (App.S.historyKaam = {})
+              : App.S.history;
   const cur = hist[App.S.tk] || 0;
   if (n > cur) {
     toast("Cannot deduct more than today's count (" + cur + ")");
     return;
   }
   hist[App.S.tk] = cur - n;
-  const lmcKey = isRV ? "lmcRV" : isHK ? "lmcHK" : isKV ? "lmcKV" : isSS ? "lmcSS" : isRam ? "lmcRam" : "lmc";
+  const lmcKey = isRV ? "lmcRV" : isHK ? "lmcHK" : isKV ? "lmcKV" : isSS ? "lmcSS" : isRam ? "lmcRam" : isKaam ? "lmcKaam" : "lmc";
   App[lmcKey] = Math.floor(App.gTod() / (App.S.ms || 108));
 
   // Explicit time input wins; otherwise fall back to proportional removal from mala log
@@ -5940,7 +5976,9 @@ function deductTodayJap() {
           ? App.S.malaLogSS || (App.S.malaLogSS = [])
           : isRam
             ? App.S.malaLogRam || (App.S.malaLogRam = [])
-            : App.S.malaLog || (App.S.malaLog = []);
+            : isKaam
+              ? App.S.malaLogKaam || (App.S.malaLogKaam = [])
+              : App.S.malaLog || (App.S.malaLog = []);
 
   if (explicitTime > 0) {
     // Shrink the mala log entries proportionally so total drops by explicitTime,
@@ -6005,6 +6043,7 @@ function deductOtherJap() {
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
   const isRam = App.S.japMode === "ram";
+  const isKaam = App.S.japMode === "kaam";
   const hist = isRV
     ? App.S.historyRV
     : isHK
@@ -6015,7 +6054,9 @@ function deductOtherJap() {
           ? App.S.historySS || (App.S.historySS = {})
           : isRam
             ? App.S.historyRam || (App.S.historyRam = {})
-            : App.S.history;
+            : isKaam
+              ? App.S.historyKaam || (App.S.historyKaam = {})
+              : App.S.history;
   const cur = hist[date] || 0;
   if (n > cur) {
     toast("Cannot deduct more than that day's count (" + cur + ")");
@@ -6040,7 +6081,9 @@ function deductOtherJap() {
             ? App.S.timerHistorySS || (App.S.timerHistorySS = {})
             : isRam
               ? App.S.timerHistoryRam || (App.S.timerHistoryRam = {})
-              : App.S.timerHistory || (App.S.timerHistory = {});
+              : isKaam
+                ? App.S.timerHistoryKaam || (App.S.timerHistoryKaam = {})
+                : App.S.timerHistory || (App.S.timerHistory = {});
     th[date] = Math.max(0, (th[date] || 0) - timeSecs);
   }
 
@@ -6084,6 +6127,7 @@ function addOtherDayJap() {
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
   const isRam = App.S.japMode === "ram";
+  const isKaam = App.S.japMode === "kaam";
   const hist = isRV
     ? App.S.historyRV
     : isHK
@@ -6094,7 +6138,9 @@ function addOtherDayJap() {
           ? App.S.historySS || (App.S.historySS = {})
           : isRam
             ? App.S.historyRam || (App.S.historyRam = {})
-            : App.S.history;
+            : isKaam
+              ? App.S.historyKaam || (App.S.historyKaam = {})
+              : App.S.history;
   hist[date] = (hist[date] || 0) + n;
 
   // Optional estimated time — directly add to per-day timerHistory
@@ -6114,10 +6160,12 @@ function addOtherDayJap() {
             ? App.S.timerHistorySS || (App.S.timerHistorySS = {})
             : isRam
               ? App.S.timerHistoryRam || (App.S.timerHistoryRam = {})
-              : App.S.timerHistory || (App.S.timerHistory = {});
+              : isKaam
+                ? App.S.timerHistoryKaam || (App.S.timerHistoryKaam = {})
+                : App.S.timerHistory || (App.S.timerHistory = {});
     th[date] = (th[date] || 0) + timeSecs;
   }
-  _recordManualJap(isRV ? "rv" : isHK ? "hk" : isKV ? "kv" : isSS ? "ss" : isRam ? "ram" : "radha", date, n, timeSecs);
+  _recordManualJap(isRV ? "rv" : isHK ? "hk" : isKV ? "kv" : isSS ? "ss" : isRam ? "ram" : isKaam ? "kaam" : "radha", date, n, timeSecs);
 
   App.ua();
   ghostAwareSave();
@@ -6166,6 +6214,7 @@ function addJapTimeToday() {
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
   const isRam = App.S.japMode === "ram";
+  const isKaam = App.S.japMode === "kaam";
   const log = isRV
     ? App.S.malaLogRV || (App.S.malaLogRV = [])
     : isHK
@@ -6176,7 +6225,9 @@ function addJapTimeToday() {
           ? App.S.malaLogSS || (App.S.malaLogSS = [])
           : isRam
             ? App.S.malaLogRam || (App.S.malaLogRam = [])
-            : App.S.malaLog || (App.S.malaLog = []);
+            : isKaam
+              ? App.S.malaLogKaam || (App.S.malaLogKaam = [])
+              : App.S.malaLog || (App.S.malaLog = []);
   if (log.length > 0) {
     // Distribute proportionally: each mala entry gets its share
     const total = log.reduce((a, b) => a + b, 0);
@@ -6255,7 +6306,8 @@ function deductJapTimeToday() {
   const isKV = App.S.japMode === "kv";
   const isSS = App.S.japMode === "ss";
   const isRam = App.S.japMode === "ram";
-  const log = isRV ? App.S.malaLogRV || [] : isKV ? App.S.malaLogKV || [] : isSS ? App.S.malaLogSS || [] : isRam ? App.S.malaLogRam || [] : App.S.malaLog || [];
+  const isKaam = App.S.japMode === "kaam";
+  const log = isRV ? App.S.malaLogRV || [] : isKV ? App.S.malaLogKV || [] : isSS ? App.S.malaLogSS || [] : isRam ? App.S.malaLogRam || [] : isKaam ? App.S.malaLogKaam || [] : App.S.malaLog || [];
   if (log.length > 0) {
     const total = log.reduce((a, b) => a + b, 0);
     if (total > 0) {

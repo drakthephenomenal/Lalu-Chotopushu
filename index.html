@@ -232,6 +232,9 @@
           <div class="naam-sel-opt" id="naamOptKV" onclick="switchJapMode('kv')">
             <span class="ns-check"></span> <span id="naamOptKVLabel">कृष्णाय वासुदेवाय</span>
           </div>
+          <div class="naam-sel-opt" id="naamOptKaam" onclick="switchJapMode('kaam')">
+            <span class="ns-check"></span> <span id="naamOptKaamLabel">Kaam Vijay</span>
+          </div>
           <div class="naam-sel-opt" id="naamOptHK" onclick="switchJapMode('hk')">
             <span class="ns-check"></span> <span id="naamHKLabel">हरे कृष्ण महामंत्र</span>
           </div>
@@ -333,6 +336,7 @@
       </div>
       <div id="hkPersist"></div>
       <div id="kvPersist"></div>
+      <div id="kaamPersist"></div>
       <div id="ramPersist"></div>
       <div id="hkMalaComplete"></div>
       <div id="ramMalaComplete"></div>
@@ -888,6 +892,9 @@
           <div class="ded-type-pill" data-type="ram" onclick="toggleDedicationType('ram', this)" style="border-color:rgba(255,153,51,0.45);background:rgba(255,153,51,0.06);">
             <div style="font-size:11px;font-weight:700;color:#FF9933;">Ram</div>
           </div>
+          <div class="ded-type-pill" data-type="kaam" onclick="toggleDedicationType('kaam', this)" style="border-color:rgba(255,107,157,0.45);background:rgba(255,107,157,0.06);">
+            <div style="font-size:11px;font-weight:700;color:#FF6B9D;">Kaam</div>
+          </div>
         </div>
 
         <!-- Per-type lifetime amount + deduct input, rebuilt on selection change -->
@@ -984,6 +991,18 @@
               <div class="dc-row dc-row--life dc-row--kv"><div class="dc-period">Lifetime</div><div id="sKVTot">0</div><div id="sKVTotM">0m</div><div id="tKVLt">0s</div></div>
             </div>
             <span id="sKVTotF" style="display:none">0</span>
+          </div>
+          <!-- 2b-i. Kaam Vijay -->
+          <div class="dc-wrap dc-kaam non-gaudiya-stat" style="grid-column:1/-1">
+            <div class="dc-title"><span class="dc-dot dc-dot--kaam" style="background:#FF6B9D"></span>Kaam Vijay</div>
+            <div class="dc-table">
+              <div class="dc-thead"><div></div><div>Count</div><div>Malas</div><div>Time</div></div>
+              <div class="dc-row"><div class="dc-period">Today</div><div id="sKaamPTod">0</div><div id="sKaamPTodM">0m</div><div id="tKaamTod">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Week</div><div id="sKaamPWk">0</div><div id="sKaamPWkM">0m</div><div id="tKaamWk">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Month</div><div id="sKaamPMo">0</div><div id="sKaamPMoM">0m</div><div id="tKaamMo">0s</div></div>
+              <div class="dc-row dc-row--life" style="border-color:#FF6B9D"><div class="dc-period">Lifetime</div><div id="sKaamTot">0</div><div id="sKaamTotM">0m</div><div id="tKaamLt">0s</div></div>
+            </div>
+            <span id="sKaamTotF" style="display:none">0</span>
           </div>
           <!-- 2c. Ramanandi (Raam Vijay Mantra) -->
           <div class="dc-wrap dc-ram ram-only-stat" style="grid-column:1/-1">
@@ -1228,6 +1247,7 @@
                 <th class="hist-th hist-radha-col">Radha</th>
                 <th class="hist-th hist-radha-col">RV</th>
                 <th class="hist-th hist-radha-col">KV</th>
+                <th class="hist-th hist-radha-col">Kaam</th>
                 <th class="hist-th hist-radha-col">28 Names</th>
                 <th class="hist-th hist-hk-col" id="histHKColHeader" style="display:none;color:#6DB8FF">हरे कृष्ण महामंत्र</th>
                 <th class="hist-th hist-kv-col" id="histKVColHeader" style="display:none;color:#ffb86c">साम्ब सदाशिव</th>
@@ -2045,6 +2065,17 @@
         <div class="target-input-group"><input type="number" class="fi" id="dtKVMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtKV')"><span class="fu" style="color:var(--gold);">malas</span></div>
         <div class="target-row-sum">= <span id="dtKVMala">0</span> malas/day</div>
         <button class="pb target-row-btn" onclick="svtKV('d')">Save Daily</button>
+      </div>
+    </div>
+
+    <!-- Kaam Vijay Daily Target -->
+    <div class="non-gaudiya-setting target-row-card" style="border-color:rgba(255,107,157,0.38);background:linear-gradient(160deg,rgba(255,107,157,0.09),rgba(10,8,25,0.85));">
+      <div class="target-row-title" style="color:rgba(255,107,157,0.9);">🕉️ Kaam Vijay Daily Target</div>
+      <div class="target-row-inputs">
+        <div class="target-input-group"><input type="number" class="fi" id="dtKaamIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtKaam')"><span class="fu">jap</span></div>
+        <div class="target-input-group"><input type="number" class="fi" id="dtKaamMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtKaam')"><span class="fu" style="color:#FF6B9D;">malas</span></div>
+        <div class="target-row-sum">= <span id="dtKaamMala">0</span> malas/day</div>
+        <button class="pb target-row-btn" onclick="svtKaam('d')">Save Daily</button>
       </div>
     </div>
 

@@ -1526,6 +1526,28 @@ button.n28-gold-btn-danger,
 #kvPersist.kv-visible{opacity:1;}
 #kvPersist > div{display:block;width:100%;}
 
+/* ── Kaam Vijay persistent tap display (same arriving/rising animation as HK) ── */
+#kaamPersist{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  pointer-events:none;z-index:10;
+  font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif;
+  font-size:clamp(17px,4.7vw,30px);font-weight:700;line-height:1.55;text-align:center;
+  padding:16px;letter-spacing:0.5px;
+  opacity:0;
+  transition:opacity 0.22s ease;
+}
+#kaamPersist.kaam-visible{opacity:1;}
+#kaamPersist > div{display:block;width:100%;}
+#kaamPersist.kaam-pulse{animation:hkPulseIn 0.32s cubic-bezier(0.34,1.56,0.64,1);}
+/* Higher-specificity combined selector so this always wins over the plain
+   .hk-float-name rule below regardless of stylesheet order — previously
+   both had equal (single-class) specificity, so .hk-float-name's
+   white-space:nowrap and larger font-size were silently overriding these,
+   which is what caused the Kaam Vijay floating verse text to overflow off
+   both edges of the screen instead of wrapping, and to render at a
+   different size than the persistent (settled) text underneath it. */
+.hk-float-name.kaam-float-name{white-space:normal;width:calc(100% - 24px);font-size:clamp(17px,4.7vw,30px);line-height:1.55;}
+
 /* HK floating name animation — rises upward from center */
 .hk-float-name{position:absolute;pointer-events:none;z-index:11;animation:hkRise 2.2s ease-out forwards;
   font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif;
@@ -2552,6 +2574,7 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 .hist-c-gold{color:var(--gold);}
 .hist-c-rv{color:var(--a2);}
 .hist-c-kv{color:#6DB8FF;}
+.hist-c-kaam{color:#FF6B9D;}
 .hist-c-ss{color:#ffb86c;}
 .hist-c-ram{color:#FF9933;}
 .hist-c-green{color:var(--green);}
@@ -2640,6 +2663,9 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 .pt-kv .pt-num{color:#6DB8FF;text-shadow:0 0 14px rgba(109,184,255,0.45);}
 .pt-kv{border-color:rgba(109,184,255,0.28);}
 .pt-kv .pt-card-icon{background:linear-gradient(160deg,rgba(109,184,255,0.20),rgba(109,184,255,0.04));border-color:rgba(109,184,255,0.45);box-shadow:0 0 16px rgba(109,184,255,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}
+.pt-kaam .pt-num{color:#FF6B9D;text-shadow:0 0 14px rgba(255,107,157,0.45);}
+.pt-kaam{border-color:rgba(255,107,157,0.28);}
+.pt-kaam .pt-card-icon{background:linear-gradient(160deg,rgba(255,107,157,0.20),rgba(255,107,157,0.04));border-color:rgba(255,107,157,0.45);box-shadow:0 0 16px rgba(255,107,157,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}
 .pt-ss .pt-num{color:#ffb86c;text-shadow:0 0 14px rgba(255,184,108,0.45);}
 .pt-ss{border-color:rgba(255,184,108,0.28);}
 .pt-ss .pt-card-icon{background:linear-gradient(160deg,rgba(255,184,108,0.20),rgba(255,184,108,0.04));border-color:rgba(255,184,108,0.45);box-shadow:0 0 16px rgba(255,184,108,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}

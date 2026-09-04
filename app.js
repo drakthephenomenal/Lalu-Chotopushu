@@ -2823,18 +2823,18 @@ function _kvFitFontSize(text, maxWidthPx, maxFs, minFs) {
   return fs;
 }
 
-function spawnKV(e, zone) {
-  const r = zone.getBoundingClientRect();
-  let x, y;
-  if (e.touches && e.touches[0]) {
-    x = e.touches[0].clientX - r.left;
-    y = e.touches[0].clientY - r.top;
-  } else {
-    x = e.clientX - r.left;
-    y = e.clientY - r.top;
-  }
-  const el = document.createElement("div");
-  el.className = "fn-kv";
+// Krishnay Vasudevay — uses the same persistent, colour-cycling arrival and
+// rising-away display style as Kaam Vijay/HK: a centered box that stays on
+// screen (instead of popping up at the tap point and vanishing after a fixed
+// delay), with the outgoing verse floating up and fading while the new one
+// rises into place. The per-line auto-fit sizing (always exactly 4 lines,
+// never wrapping) is unchanged.
+let _kvColorIdx = 0;
+function spawnKV() {
+  const el = document.getElementById("kvPersist");
+  if (!el) return;
+  const zone = document.getElementById("tz");
+  const r = zone ? zone.getBoundingClientRect() : { width: window.innerWidth };
   const _nt = naamText();
   // KV mantra renders as 4 separate lines (2 lines per half-verse):
   //   Krishnay Vashudevay / Haraye Paromatmane / Pranata kleshnashay / Govinday Namo Namoh
@@ -2853,22 +2853,42 @@ function spawnKV(e, zone) {
   const sizes = allLines.map((line, i) =>
     _kvFitFontSize(line, maxBoxW, i < kv1Lines.length ? baseMax : baseMax * 0.85, minFs)
   );
-  el.innerHTML = allLines
-    .map((l, i) => '<span style="font-size:' + sizes[i] + 'px">' + l + "</span>")
+  const html = allLines
+    .map((l, i) => '<div style="font-size:' + sizes[i] + 'px">' + l + "</div>")
     .join("");
-  el.style.maxWidth = maxBoxW + "px";
-  el.style.left = x - maxBoxW / 2 + "px";
-  el.style.top = y - sizes[0] * 0.5 + "px";
-  acf = !acf;
-  el.style.color = acf ? "#FFD700" : "#6DB8FF";
-  el.style.textShadow = acf
-    ? "0 0 30px rgba(255,215,0,0.9)"
-    : "0 0 30px rgba(109,184,255,0.9)";
-  zone.appendChild(el);
-  // Deliberately slower removal than RV/SS (2400ms) to match the slower
-  // fuKV fade/rise animation — gives time to recite the name before it
-  // disappears, per request.
-  setTimeout(() => el.remove(), 8000);
+
+  // CURRENT color → float rises up and disappears (the "old" text leaving)
+  const currentColor = KAAM_COLORS[_kvColorIdx % KAAM_COLORS.length];
+  const currentShadow = KAAM_SHADOWS_MAP[_kvColorIdx % KAAM_SHADOWS_MAP.length];
+  // NEXT color → stays as persistent display (the "new" text arriving)
+  const nextColor = KAAM_COLORS[(_kvColorIdx + 1) % KAAM_COLORS.length];
+  const nextShadow = KAAM_SHADOWS_MAP[(_kvColorIdx + 1) % KAAM_SHADOWS_MAP.length];
+  _kvColorIdx++;
+
+  // Float carries the CURRENT (departing) color — rises and fades away
+  if (zone) {
+    const floatEl = document.createElement("div");
+    floatEl.className = "hk-float-name";
+    floatEl.innerHTML = html;
+    floatEl.style.maxWidth = maxBoxW + "px";
+    floatEl.style.color = currentColor;
+    floatEl.style.textShadow = currentShadow;
+    zone.appendChild(floatEl);
+    setTimeout(() => floatEl.remove(), 2200);
+  }
+
+  // Persistent display immediately shows NEXT color (arriving text)
+  el.innerHTML = html;
+  el.style.color = nextColor;
+  el.style.textShadow = nextShadow;
+  if (!el.classList.contains("kv-visible")) {
+    el.classList.add("kv-visible");
+  }
+  // Retrigger the "new verse rising in" animation on every tap, not just
+  // the first reveal (removing + forcing reflow restarts the CSS animation)
+  el.classList.remove("kv-pulse");
+  void el.offsetWidth;
+  el.classList.add("kv-pulse");
 }
 
 // HK Mahamantra — appears centered, rises upward, 7 cycling colors
@@ -3094,36 +3114,23 @@ function spawnRam() {
     setTimeout(() => floatEl.remove(), 2200);
   }
 
-  // Persistent display: each word spins in from a random margin of the
-  // jap display and converges into place (instead of the whole line
-  // appearing at once).
-  el.innerHTML = "";
+  // Persistent display immediately shows NEXT color (arriving text) — same
+  // rising-in-from-below animation as Kaam Vijay/HK/KV, replacing the old
+  // per-word spin-in.
+  el.innerHTML = text
+    .split("\n")
+    .map((l) => "<div>" + l + "</div>")
+    .join("");
   el.style.color = nextColor;
   el.style.textShadow = nextShadow;
-  let _ramWordIdx = 0;
-  text.split("\n").forEach((line) => {
-    const lineDiv = document.createElement("div");
-    line.split(" ").forEach((word) => {
-      if (!word) return;
-      const span = document.createElement("span");
-      span.className = "ram-word";
-      span.textContent = word;
-      // Random point around the display to fly in from, plus a random spin
-      const angle = Math.random() * Math.PI * 2;
-      const dist = 90 + Math.random() * 90;
-      const spin = (Math.random() < 0.5 ? -1 : 1) * (360 + Math.random() * 360);
-      span.style.setProperty("--wx", Math.cos(angle) * dist + "px");
-      span.style.setProperty("--wy", Math.sin(angle) * dist + "px");
-      span.style.setProperty("--wr", spin + "deg");
-      span.style.animationDelay = (_ramWordIdx * 0.06) + "s";
-      _ramWordIdx++;
-      lineDiv.appendChild(span);
-    });
-    el.appendChild(lineDiv);
-  });
   if (!el.classList.contains("hk-visible")) {
     el.classList.add("hk-visible");
   }
+  // Retrigger the "new verse rising in" animation on every tap, not just
+  // the first reveal (removing + forcing reflow restarts the CSS animation)
+  el.classList.remove("ram-pulse");
+  void el.offsetWidth;
+  el.classList.add("ram-pulse");
 }
 
 function showRamMalaComplete(line1, line2) {

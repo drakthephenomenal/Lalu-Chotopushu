@@ -1489,7 +1489,9 @@ button.n28-gold-btn-danger,
   55%{transform:scale(1.06);}
   100%{transform:scale(1);filter:brightness(1) saturate(1);}
 }
-#hkPersist.hk-pulse{animation:hkPulseIn 0.32s cubic-bezier(0.34,1.56,0.64,1);}
+/* Now uses the same slow rise-from-bottom arrival as Kaam Vijay/KV/Ram
+   (kaamRiseIn below) instead of the old quick scale-pop-in. */
+#hkPersist.hk-pulse{animation:kaamRiseIn 2.6s cubic-bezier(0.22,1,0.36,1);}
 
 /* ── Ramanandi (Raam Vijay Mantra) persistent tap display (mirrors #hkPersist) ── */
 #ramPersist{
@@ -1502,16 +1504,10 @@ button.n28-gold-btn-danger,
   transition:opacity 0.22s ease;
 }
 #ramPersist.hk-visible{opacity:1;}
-#ramPersist > div{display:flex;flex-wrap:wrap;justify-content:center;gap:0.3em;width:100%;}
-/* Each word of the Raam Vijay mantra spins in from a random margin of
-   the jap display and settles into place, instead of the whole line
-   popping in at once. --wx/--wy/--wr are set per word in JS. */
-.ram-word{display:inline-block;opacity:0;animation:ramWordIn 0.6s cubic-bezier(0.16,1,0.3,1) forwards;}
-@keyframes ramWordIn{
-  0%{opacity:0;transform:translate(var(--wx,0px),var(--wy,0px)) rotate(var(--wr,0deg)) scale(0.5);}
-  70%{opacity:1;}
-  100%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1);}
-}
+#ramPersist > div{display:block;width:100%;}
+/* Now rises in from the bottom of the screen, same as Kaam Vijay/HK/KV
+   (kaamRiseIn below), replacing the old per-word spin-in. */
+#ramPersist.ram-pulse{animation:kaamRiseIn 2.6s cubic-bezier(0.22,1,0.36,1);}
 
 /* ── Krishnay Vasudevay persistent tap display (mirrors #hkPersist) ── */
 #kvPersist{
@@ -1525,6 +1521,8 @@ button.n28-gold-btn-danger,
 }
 #kvPersist.kv-visible{opacity:1;}
 #kvPersist > div{display:block;width:100%;}
+/* Same rise-from-bottom arrival as Kaam Vijay/HK/Ram (kaamRiseIn below). */
+#kvPersist.kv-pulse{animation:kaamRiseIn 2.6s cubic-bezier(0.22,1,0.36,1);}
 
 /* ── Kaam Vijay persistent tap display (same arriving/rising animation as HK) ── */
 #kaamPersist{

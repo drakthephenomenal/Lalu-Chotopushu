@@ -1563,6 +1563,23 @@
       </div>
     </div>
   </div>
+
+  <!-- Sign-out warning — same in-DOM modal pattern as the native cache
+       refresh warning above, since fbSignOut() also wipes local data
+       (clearLocalUserData) as part of its normal flow. -->
+  <div id="signOutWarningModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.72);align-items:center;justify-content:center;padding:20px;">
+    <div style="max-width:340px;width:100%;background:#0b1030;border:1px solid rgba(255,215,0,0.35);border-radius:14px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+      <div style="font-size:15px;font-weight:700;color:#FFD700;margin-bottom:10px;">⚠️ Save your data first</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.5;margin-bottom:16px;">
+        Please tap <b>📥 Export All Data</b> under <b>Local Backup &amp; Restore</b> (further down in Settings) to save a safety copy first.<br><br>
+        Signing out clears this device's local data.
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="button" onclick="_dismissSignOutWarning()" style="flex:1;padding:10px 12px;border-radius:9px;background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.2);font-size:13px;font-weight:700;cursor:pointer;">Cancel</button>
+        <button type="button" onclick="_confirmSignOutProceed()" style="flex:1;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,107,107,0.35),rgba(220,60,60,0.25));color:#ff9d9d;border:1px solid rgba(255,107,107,0.5);font-size:13px;font-weight:700;cursor:pointer;">Sign Out Anyway</button>
+      </div>
+    </div>
+  </div>
   <div class="vt">Settings</div>
 
   <!-- App Update — checks the latest GitHub Release, downloads the APK
@@ -2007,7 +2024,7 @@
         <span class="sync-pill" id="syncPill"><span class="sync-dot"></span><span id="syncPillText">Ready</span></span>
       </div>
       <button id="fbChangePassBtn" onclick="fbChangePasswordFromSettings()" class="premium-btn" style="margin-bottom:10px">🔑 Change Password</button>
-      <button onclick="fbSignOut()" class="premium-btn red">Sign Out</button>
+      <button onclick="confirmSignOutWithBackupWarning()" class="premium-btn red">Sign Out</button>
     </div>
   </div>
 

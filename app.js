@@ -10771,6 +10771,32 @@ async function clearLocalUserData(uid) {
   try { localStorage.removeItem("rjap_sadhana_start"); } catch (_) {}
 }
 
+// ── Sign-out warning gate ──
+// fbSignOut() wipes local data (clearLocalUserData) as part of its normal
+// flow, so — same as the native cache-refresh warning — ask the user to
+// export a safety copy first via an in-DOM modal (not window.confirm).
+function confirmSignOutWithBackupWarning() {
+  const modal = document.getElementById("signOutWarningModal");
+  if (modal) {
+    modal.style.display = "flex";
+  } else {
+    // Fallback only if the modal markup is somehow missing from this build.
+    if (window.confirm("Signing out clears this device's local data. Continue?")) {
+      fbSignOut();
+    }
+  }
+}
+
+function _dismissSignOutWarning() {
+  const modal = document.getElementById("signOutWarningModal");
+  if (modal) modal.style.display = "none";
+}
+
+function _confirmSignOutProceed() {
+  _dismissSignOutWarning();
+  fbSignOut();
+}
+
 async function fbSignOut() {
   if (!fbAuth) return;
   const outgoingUid = (fbUser && fbUser.uid) || App._uid || null;

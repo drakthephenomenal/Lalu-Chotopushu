@@ -2981,6 +2981,49 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 .hdd-row:hover .hdd-chev{color:var(--gold);}
 
 
+/* ── Jap Display Photo settings (gear) icon + drag/resize edit mode ── */
+.jap-photo-settings-btn{
+  position:absolute; top:8px; right:8px; z-index:40;
+  width:26px; height:26px; border-radius:50%;
+  background:rgba(6,13,31,0.55); border:1px solid rgba(255,215,0,0.35);
+  color:#FFD700; font-size:13px; line-height:1;
+  display:flex; align-items:center; justify-content:center; padding:0;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  box-shadow:0 2px 8px rgba(0,0,0,0.35);
+}
+.jap-photo-settings-btn.active{
+  background:rgba(255,215,0,0.28); border-color:#FFD700;
+  box-shadow:0 0 10px rgba(255,215,0,0.5);
+}
+
+/* While editing: make each photo draggable and outline it so it reads as
+   "selected"; the images are normally pointer-events:none (decorative). */
+.tz.photo-edit-mode .rv-wm,
+.tz.photo-edit-mode .hitju-wm,
+.tz.photo-edit-mode .gurudev-wm,
+.tz.photo-edit-mode .cm-wm,
+.tz.photo-edit-mode .iskcon-acharya-wm,
+.tz.photo-edit-mode .iskcon-gurudev-wm{
+  pointer-events:auto !important; cursor:move; touch-action:none;
+  outline:1.5px dashed rgba(255,215,0,0.75); outline-offset:3px;
+  animation:none !important; opacity:.9 !important; filter:none !important;
+}
+
+.photo-edit-handle{
+  position:absolute; width:16px; height:16px; z-index:41;
+  background:#4A90E2; border:2px solid #fff; border-radius:50%;
+  touch-action:none; cursor:nwse-resize;
+  box-shadow:0 1px 5px rgba(0,0,0,0.55);
+}
+.photo-edit-reset{
+  position:absolute; width:24px; height:24px; z-index:41;
+  background:rgba(6,13,31,0.7); border:1.5px solid #4A90E2; border-radius:50%;
+  color:#fff; font-size:14px; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; touch-action:manipulation;
+  box-shadow:0 1px 5px rgba(0,0,0,0.55);
+}
+
 /* Watermarks inside Jap tap area */
 .tz {
   position: relative;

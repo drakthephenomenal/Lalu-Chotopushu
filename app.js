@@ -2200,6 +2200,7 @@ const App = {
   // ── Main tap ──
   ht(e) {
     if (isGhostMode()) return; // ghost mode: read-only, no jap
+    if (window.japPhotoEditMode) return; // photo edit mode: dragging/resizing photos, not counting
     // Mark main Jap as the actively-tapped mode (see _activeJapMode below).
     this._activeJapMode = "main";
     // Suppress synthesized mousedown that follows a touchstart on the same tap
@@ -7902,6 +7903,7 @@ function _buildBackupPayload() {
     // alone lost them.
     dt28Cycles: App.S.dt28Cycles || 0,
     lbDisplayName: App.S.lbDisplayName || "",
+    lbOptIn: App.S.lbOptIn || false,
     screenTimeHistory: App.S.screenTimeHistory || {},
     stotramTimeHistory: App.S.stotramTimeHistory || {},
     activityLog: App.S.activityLog || [],
@@ -8087,6 +8089,7 @@ function importAllData(input) {
        App.S.msConsider = data.msConsider || { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, n28: true };
       App.S.dt28Cycles = data.dt28Cycles || 0;
       App.S.lbDisplayName = data.lbDisplayName || "";
+      App.S.lbOptIn = !!data.lbOptIn;
       App.S.screenTimeHistory = data.screenTimeHistory || {};
       App.S.stotramTimeHistory = data.stotramTimeHistory || {};
       App.S.activityLog = Array.isArray(data.activityLog) ? data.activityLog : [];
@@ -8136,6 +8139,16 @@ function importAllData(input) {
       // user, this correctly overwrites THAT user's Firestore doc instead
       // of the developer's own account.
       ghostAwareSave(true);
+      // Restoring a backup can bring in a different Jap display name (or
+      // opt-in status) than what's currently sitting in the cloud Family
+      // Leaderboard doc — that's a SEPARATE document from the account's own
+      // sync doc above, so it needs its own explicit push, otherwise the
+      // leaderboard silently keeps showing the old name until some other
+      // action (a jap tap, next login, or the once-a-day auto-push) happens
+      // to trigger pushLeaderboard() on its own.
+      if (typeof pushLeaderboard === "function") {
+        pushLeaderboard().catch((e) => console.warn("pushLeaderboard (post-restore) error:", e && e.message));
+      }
       if (st) {
         st.textContent = isGhostMode()
           ? "✅ Viewed user's account fully replaced with backup! 🙏"
@@ -20611,6 +20624,171 @@ window.applyBgPhotos = async function() {
       };
       temp.src = jpgSrc;
     }
+  }
+  if (typeof applyAllPhotoTransforms === 'function') applyAllPhotoTransforms();
+};
+
+// ==========================================
+// JAP DISPLAY PHOTO POSITION / SIZE CUSTOMIZATION
+// Lets the user drag each visible Jap-screen photo to reposition it, and
+// drag a corner handle to resize it (aspect ratio always preserved since
+// resizing is a single uniform scale). Toggled via the small gear icon in
+// the top-right corner of the Jap tap area (#tz): tap once to enter edit
+// mode, tap again to save the layout and exit.
+// ==========================================
+const JAP_PHOTO_KEYS = ['rv', 'hitju', 'gurudev', 'cm', 'iskconAcharya', 'iskconGurudev'];
+const JAP_PHOTO_TRANSFORM_STORE_KEY = 'japPhotoTransforms';
+
+function loadPhotoTransforms() {
+  try {
+    return JSON.parse(localStorage.getItem(JAP_PHOTO_TRANSFORM_STORE_KEY) || '{}');
+  } catch (e) { return {}; }
+}
+function savePhotoTransformsToStorage() {
+  try { localStorage.setItem(JAP_PHOTO_TRANSFORM_STORE_KEY, JSON.stringify(window._japPhotoTransforms || {})); } catch (e) {}
+}
+window._japPhotoTransforms = loadPhotoTransforms();
+window.japPhotoEditMode = false;
+
+// Re-apply a single photo's saved scale/x/y on top of its base CSS transform
+// (rv-wm and cm-wm are horizontally centered via translateX(-50%) in CSS,
+// so that base transform must be kept and the custom part appended after it).
+window.applyPhotoTransform = function(key) {
+  const conf = PHOTO_CONFIG[key];
+  if (!conf) return;
+  const el = document.getElementById(conf.id);
+  if (!el) return;
+  const t = Object.assign({ x: 0, y: 0, scale: 1 }, window._japPhotoTransforms[key]);
+  const base = (key === 'rv' || key === 'cm') ? 'translateX(-50%) ' : '';
+  el.style.transform = `${base}translate(${t.x}px, ${t.y}px) scale(${t.scale})`;
+};
+window.applyAllPhotoTransforms = function() {
+  JAP_PHOTO_KEYS.forEach(applyPhotoTransform);
+};
+
+window.clearPhotoEditHandles = function() {
+  document.querySelectorAll('.photo-edit-handle, .photo-edit-reset').forEach(h => h.remove());
+};
+
+function _attachPhotoMoveHandlers(el, key) {
+  let dragging = false, startX = 0, startY = 0, startT = null;
+  el.onpointerdown = (e) => {
+    if (!window.japPhotoEditMode) return;
+    e.preventDefault(); e.stopPropagation();
+    dragging = true;
+    startX = e.clientX; startY = e.clientY;
+    startT = Object.assign({ x: 0, y: 0, scale: 1 }, window._japPhotoTransforms[key]);
+    try { el.setPointerCapture(e.pointerId); } catch (err) {}
+  };
+  el.onpointermove = (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX, dy = e.clientY - startY;
+    window._japPhotoTransforms[key] = Object.assign({}, startT, { x: startT.x + dx, y: startT.y + dy });
+    applyPhotoTransform(key);
+  };
+  const end = () => {
+    if (!dragging) return;
+    dragging = false;
+    if (window.japPhotoEditMode) renderPhotoEditHandles();
+  };
+  el.onpointerup = end;
+  el.onpointercancel = end;
+}
+
+function _attachPhotoResizeHandlers(handleEl, key) {
+  let centerX = 0, centerY = 0, startDist = 1, startScale = 1;
+  handleEl.onpointerdown = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const conf = PHOTO_CONFIG[key];
+    const el = document.getElementById(conf.id);
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    centerX = r.left + r.width / 2;
+    centerY = r.top + r.height / 2;
+    startDist = Math.max(1, Math.hypot(e.clientX - centerX, e.clientY - centerY));
+    startScale = (window._japPhotoTransforms[key] && window._japPhotoTransforms[key].scale) || 1;
+    try { handleEl.setPointerCapture(e.pointerId); } catch (err) {}
+    handleEl.onpointermove = (ev) => {
+      const dist = Math.hypot(ev.clientX - centerX, ev.clientY - centerY);
+      let scale = startScale * (dist / startDist);
+      scale = Math.max(0.3, Math.min(3, scale));
+      const t = Object.assign({ x: 0, y: 0, scale: 1 }, window._japPhotoTransforms[key]);
+      window._japPhotoTransforms[key] = Object.assign({}, t, { scale });
+      applyPhotoTransform(key);
+    };
+    handleEl.onpointerup = handleEl.onpointercancel = () => {
+      handleEl.onpointermove = null;
+      renderPhotoEditHandles();
+    };
+  };
+}
+
+// Draws 4 corner resize handles + a small reset icon around every currently
+// visible Jap photo. Positions are recomputed each call so they stay glued
+// to the image after every drag/resize.
+window.renderPhotoEditHandles = function() {
+  clearPhotoEditHandles();
+  const tz = document.getElementById('tz');
+  if (!tz) return;
+  const tzRect = tz.getBoundingClientRect();
+  JAP_PHOTO_KEYS.forEach(key => {
+    const conf = PHOTO_CONFIG[key];
+    const el = document.getElementById(conf.id);
+    if (!el || getComputedStyle(el).display === 'none') return;
+    _attachPhotoMoveHandlers(el, key);
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const corners = [
+      { cls: 'nw', x: r.left - tzRect.left, y: r.top - tzRect.top },
+      { cls: 'ne', x: r.right - tzRect.left, y: r.top - tzRect.top },
+      { cls: 'sw', x: r.left - tzRect.left, y: r.bottom - tzRect.top },
+      { cls: 'se', x: r.right - tzRect.left, y: r.bottom - tzRect.top }
+    ];
+    corners.forEach(c => {
+      const h = document.createElement('div');
+      h.className = `photo-edit-handle handle-${c.cls}`;
+      h.style.left = `${c.x - 8}px`;
+      h.style.top = `${c.y - 8}px`;
+      _attachPhotoResizeHandlers(h, key);
+      tz.appendChild(h);
+    });
+    const reset = document.createElement('div');
+    reset.className = 'photo-edit-reset';
+    reset.textContent = '↺';
+    reset.title = 'Reset this photo';
+    reset.style.left = `${(r.left + r.right) / 2 - tzRect.left - 12}px`;
+    reset.style.top = `${Math.min(r.bottom - tzRect.top + 6, tzRect.height - 26)}px`;
+    reset.onpointerdown = (e) => e.stopPropagation();
+    reset.onclick = (e) => {
+      e.stopPropagation();
+      window._japPhotoTransforms[key] = { x: 0, y: 0, scale: 1 };
+      applyPhotoTransform(key);
+      renderPhotoEditHandles();
+    };
+    tz.appendChild(reset);
+  });
+};
+
+// Tap the gear icon: first tap enters edit mode (drag to move, corner-drag
+// to resize, ↺ to reset one photo); second tap saves the layout and exits.
+window.togglePhotoEditMode = function(e) {
+  if (e) e.stopPropagation();
+  const tz = document.getElementById('tz');
+  const btn = document.getElementById('japPhotoSettingsBtn');
+  if (!tz) return;
+  if (!window.japPhotoEditMode) {
+    window.japPhotoEditMode = true;
+    tz.classList.add('photo-edit-mode');
+    if (btn) btn.classList.add('active');
+    renderPhotoEditHandles();
+    if (typeof toast === 'function') toast('Drag a photo to move it, drag a corner to resize 🖼️');
+  } else {
+    window.japPhotoEditMode = false;
+    tz.classList.remove('photo-edit-mode');
+    if (btn) btn.classList.remove('active');
+    clearPhotoEditHandles();
+    savePhotoTransformsToStorage();
+    if (typeof toast === 'function') toast('Photo layout saved 🙏');
   }
 };
 

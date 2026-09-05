@@ -3248,7 +3248,7 @@ const RJAP_PWA_URL = "https://radharadharadha.vercel.app/";
 // folder that gets manually updated with the latest built app-*.apk each
 // time a new version is released. Update this constant if the Drive folder
 // URL itself ever changes (e.g. moved to a different Drive account/folder).
-const RJAP_APK_URL = "https://drive.google.com/drive/folders/1dU7BZqcY2lPzgonRm65C2Dz5gi71ab-7";
+const RJAP_APK_URL = "https://drive.google.com/drive/folders/1f5LsU7nL0KycW1_KkTu6lWivrEnd8l48";
 
 function _getAppUrl() {
   return RJAP_PWA_URL;
@@ -3312,6 +3312,21 @@ function shareApp() {
     "\uD83D\uDC49 " +
     url;
   _lcShareText(shareText);
+}
+
+// ── Manual APK link (developer-provided, independent of GitHub Releases) ──
+// TODO: paste the direct-download Google Drive FILE link here once ready —
+// use the "uc?export=download&id=FILE_ID" format (not the "/file/d/.../view"
+// share link), so tapping it goes straight into Drive's download flow
+// instead of opening the file-preview page first.
+const MANUAL_APK_DRIVE_LINK = "PASTE_YOUR_DIRECT_DRIVE_FILE_LINK_HERE";
+
+function shareManualApkLink() {
+  if (!MANUAL_APK_DRIVE_LINK || MANUAL_APK_DRIVE_LINK.indexOf("PASTE_YOUR_") === 0) {
+    toast("Developer link not set yet 🙏");
+    return;
+  }
+  openExternalLink(MANUAL_APK_DRIVE_LINK);
 }
 
 // ── Share App (APK direct download) ──
@@ -21703,7 +21718,42 @@ async function checkForUpdateAvailable() {
   if (!statusEl || !iconEl) return;
 
   const Cap = window.Capacitor;
-  if (!Cap || !Cap.isNativePlatform || !Cap.isNativePlatform()) return;
+  const isNative = Cap && Cap.isNativePlatform && Cap.isNativePlatform();
+
+  // PWA/TWA path — there's no native App plugin here to read a real
+  // versionName, so we fall back to the <meta name="app-version"> tag baked
+  // into this exact index.html as a pseudo-version. Optionally compares
+  // against /version.json (same-origin, cache:no-store) if one is hosted —
+  // if that number differs, the currently loaded page is stale.
+  if (!isNative) {
+    const metaTag = document.querySelector('meta[name="app-version"]');
+    const localPseudoVersion = metaTag ? metaTag.content : null;
+    if (versionEl && localPseudoVersion) versionEl.textContent = "Loaded version: " + localPseudoVersion + " (web)";
+    if (!localPseudoVersion) {
+      statusEl.textContent = "Tap to refresh and fetch the latest version 🙏";
+      return;
+    }
+    try {
+      const resp = await fetch("/version.json", { cache: "no-store" });
+      if (!resp.ok) throw new Error("no version.json");
+      const data = await resp.json();
+      const remotePseudoVersion = data && data.version;
+      if (remotePseudoVersion && String(remotePseudoVersion) !== String(localPseudoVersion)) {
+        iconEl.textContent = "⬆️";
+        statusEl.textContent = "New version available (" + remotePseudoVersion + ") — tap to refresh";
+        if (cardEl) cardEl.classList.add("update-available");
+      } else {
+        statusEl.textContent = "You're on the latest loaded version 🙏";
+        if (cardEl) cardEl.classList.remove("update-available");
+      }
+    } catch (_e) {
+      // No version.json hosted yet — not an error, just no way to compare.
+      // Still give the user a way to force-fetch the newest build.
+      statusEl.textContent = "Tap to force-refresh and fetch the latest version 🙏";
+    }
+    return;
+  }
+
   const AppInfoPlugin = Cap.Plugins && Cap.Plugins.App;
   const Http = Cap.Plugins && Cap.Plugins.CapacitorHttp; // bundled in @capacitor/core — no extra install needed
   if (!AppInfoPlugin) return;
@@ -21810,6 +21860,27 @@ async function openInstallPermissionSettings() {
   }
 }
 
+// Forces a PWA/TWA to drop any cached Service-Worker assets and reload from
+// the network, so users stuck on an old cached build can get the new one
+// with a single tap instead of hunting through browser site-data settings.
+async function _forceRefreshWebApp() {
+  const statusEl = document.getElementById("appUpdateStatus");
+  if (statusEl) statusEl.textContent = "Refreshing… 🔄";
+  try {
+    if (window.caches && caches.keys) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch (_e) {}
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+  } catch (_e) {}
+  window.location.reload();
+}
+
 async function checkAppUpdate() {
   const iconEl = document.getElementById("appUpdateIcon");
   const statusEl = document.getElementById("appUpdateStatus");
@@ -21818,8 +21889,7 @@ async function checkAppUpdate() {
 
   const Cap = window.Capacitor;
   if (!Cap || !Cap.isNativePlatform || !Cap.isNativePlatform()) {
-    statusEl.textContent = "Updates only work inside the installed app, not the browser.";
-    return;
+    return _forceRefreshWebApp();
   }
 
   // Uses @capacitor/filesystem's own downloadFile() — bundled with the

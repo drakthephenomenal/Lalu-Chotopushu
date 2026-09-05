@@ -21968,11 +21968,24 @@ async function _forceRefreshWebApp() {
 // local Firestore cache issues can occasionally coincide with unsynced
 // writes, so we ask the user to export a safety-net backup before wiping it.
 function confirmNativeCacheRefresh() {
-  const ok = window.confirm(
-    "Before continuing, please tap \u201c\ud83d\udce5 Export All Data\u201d under Local Backup & Restore (further down in Settings) to save a safety copy of your data.\n\n" +
-    "Pressing OK will clear the app's local cached data and reload. Press Cancel to go export your data first."
-  );
-  if (!ok) return;
+  const modal = document.getElementById("nativeCacheWarningModal");
+  if (modal) {
+    modal.style.display = "flex";
+  } else {
+    // Fallback only if the modal markup is somehow missing from this build.
+    if (window.confirm("This will clear the app's local cached data and reload. Continue?")) {
+      _performNativeCacheRefresh();
+    }
+  }
+}
+
+function _dismissNativeCacheWarning() {
+  const modal = document.getElementById("nativeCacheWarningModal");
+  if (modal) modal.style.display = "none";
+}
+
+function _confirmNativeCacheRefreshProceed() {
+  _dismissNativeCacheWarning();
   _performNativeCacheRefresh();
 }
 

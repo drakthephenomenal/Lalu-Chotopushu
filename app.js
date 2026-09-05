@@ -3314,19 +3314,88 @@ function shareApp() {
   _lcShareText(shareText);
 }
 
-// ── Manual APK link (developer-provided, independent of GitHub Releases) ──
-// TODO: paste the direct-download Google Drive FILE link here once ready —
-// use the "uc?export=download&id=FILE_ID" format (not the "/file/d/.../view"
-// share link), so tapping it goes straight into Drive's download flow
-// instead of opening the file-preview page first.
-const MANUAL_APK_DRIVE_LINK = "PASTE_YOUR_DIRECT_DRIVE_FILE_LINK_HERE";
+// ── Manual APK link (developer-provided, stored in Firestore under
+// config/manualApkLink so a new link reaches every user immediately with
+// no code deploy needed). Regular users get a plain tap-to-download row;
+// isDeveloper() sees an editable input + Save button instead. ──
+let _manualApkLinkCache = null; // last-known link string, or null if none set yet
 
-function shareManualApkLink() {
-  if (!MANUAL_APK_DRIVE_LINK || MANUAL_APK_DRIVE_LINK.indexOf("PASTE_YOUR_") === 0) {
-    toast("Developer link not set yet 🙏");
+async function _loadManualApkLink() {
+  // No signed-in user yet — Firestore rules require auth, so fall back to
+  // whatever we last cached locally (works offline / before sign-in resolves).
+  if (!fbUser || !fbDb) {
+    try {
+      _manualApkLinkCache = localStorage.getItem("manualApkLinkCache") || null;
+    } catch (_e) {}
+    _renderManualApkCard();
     return;
   }
-  openExternalLink(MANUAL_APK_DRIVE_LINK);
+  try {
+    const snap = await fbDb.collection("config").doc("manualApkLink").get();
+    _manualApkLinkCache = (snap.exists && snap.data().url) || null;
+    try {
+      if (_manualApkLinkCache) localStorage.setItem("manualApkLinkCache", _manualApkLinkCache);
+    } catch (_e) {}
+  } catch (e) {
+    console.warn("Could not load manual APK link (using local cache):", e);
+    try {
+      _manualApkLinkCache = _manualApkLinkCache || localStorage.getItem("manualApkLinkCache") || null;
+    } catch (_e) {}
+  }
+  _renderManualApkCard();
+}
+
+function _renderManualApkCard() {
+  const titleEl = document.getElementById("manualApkTitle");
+  const statusEl = document.getElementById("manualApkStatus");
+  const rowEl = document.getElementById("manualApkRow");
+  const editWrap = document.getElementById("manualApkEditWrap");
+  if (!titleEl || !statusEl) return;
+
+  if (isDeveloper()) {
+    titleEl.textContent = "🛠️ Manual APK Link (Developer)";
+    statusEl.textContent = "Paste a Google Drive link below and tap Save — every user sees it instantly.";
+    if (editWrap) editWrap.style.display = "block";
+    const input = document.getElementById("manualApkInput");
+    if (input && !input.value) input.value = _manualApkLinkCache || "";
+    if (rowEl) rowEl.onclick = null; // whole-row tap disabled for the developer; Save drives this now
+  } else {
+    if (editWrap) editWrap.style.display = "none";
+    if (_manualApkLinkCache) {
+      titleEl.textContent = "Download APK (developer link)";
+      statusEl.textContent = "Tap to download the APK from a developer-shared link";
+      if (rowEl) rowEl.onclick = () => openExternalLink(_manualApkLinkCache);
+    } else {
+      titleEl.textContent = "Manual APK Link";
+      statusEl.textContent = "Developer hasn't shared a link yet";
+      if (rowEl) rowEl.onclick = () => toast("Developer hasn't shared a link yet 🙏");
+    }
+  }
+}
+
+async function saveManualApkLink() {
+  if (!isDeveloper()) return;
+  const input = document.getElementById("manualApkInput");
+  const url = input && input.value.trim();
+  if (!url) {
+    toast("Paste a link first.");
+    return;
+  }
+  try {
+    await fbDb.collection("config").doc("manualApkLink").set(
+      { url, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: fbUser.email },
+      { merge: true }
+    );
+    _manualApkLinkCache = url;
+    try {
+      localStorage.setItem("manualApkLinkCache", url);
+    } catch (_e) {}
+    toast("✅ Saved! All users will now see this link.");
+    _renderManualApkCard();
+  } catch (e) {
+    console.error("Failed to save manual APK link:", e);
+    toast("Could not save — check connection.");
+  }
 }
 
 // ── Share App (APK direct download) ──
@@ -9539,6 +9608,7 @@ function fbInit() {
             const devOptionsPanel = document.getElementById("devOptionsPanel");
             if (devOptionsPanel) devOptionsPanel.style.display = "none";
           }
+          _loadManualApkLink(); // re-render developer-edit vs plain-download row for this account
           watchNewFeedback(); // Dev-only: real-time badge for new user feedback
           watchMyFeedback(); // All users: show developer replies + popup notification
         });
@@ -9549,6 +9619,7 @@ function fbInit() {
         document.getElementById("fbLoggedIn").style.display = "none";
         _fbStopVerifyCountdownTimer();
         _fbHideVerifyBlock();
+        _loadManualApkLink(); // signed out — falls back to local cache instead of Firestore
         // Clean up session listener on sign out
         if (fbSessionListener) {
           fbSessionListener();
@@ -15633,6 +15704,7 @@ window.addEventListener("load", async () => {
 
   await App.load();
   if (typeof checkForUpdateAvailable === "function") checkForUpdateAvailable();
+  if (typeof _loadManualApkLink === "function") _loadManualApkLink();
   App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));
   App.lmcRV = Math.floor((App.S.historyRV[App.S.tk] || 0) / (App.S.ms || 108));
@@ -21726,6 +21798,8 @@ async function checkForUpdateAvailable() {
   // against /version.json (same-origin, cache:no-store) if one is hosted —
   // if that number differs, the currently loaded page is stale.
   if (!isNative) {
+    const webRefreshBtn = document.getElementById("appUpdateWebRefreshBtn");
+    if (webRefreshBtn) webRefreshBtn.style.display = "block";
     const metaTag = document.querySelector('meta[name="app-version"]');
     const localPseudoVersion = metaTag ? metaTag.content : null;
     if (versionEl && localPseudoVersion) versionEl.textContent = "Loaded version: " + localPseudoVersion + " (web)";
@@ -21757,6 +21831,9 @@ async function checkForUpdateAvailable() {
   const AppInfoPlugin = Cap.Plugins && Cap.Plugins.App;
   const Http = Cap.Plugins && Cap.Plugins.CapacitorHttp; // bundled in @capacitor/core — no extra install needed
   if (!AppInfoPlugin) return;
+
+  const nativeRefreshBtn = document.getElementById("appUpdateNativeRefreshBtn");
+  if (nativeRefreshBtn) nativeRefreshBtn.style.display = "block";
 
   // Show the installed version immediately — this line is always visible
   // regardless of whether the network check below succeeds, so it still
@@ -21878,6 +21955,37 @@ async function _forceRefreshWebApp() {
       await Promise.all(regs.map((r) => r.unregister()));
     }
   } catch (_e) {}
+  window.location.reload();
+}
+
+// ── Native (Capacitor) local-cache refresh ──
+// Unlike the PWA/TWA path, the installed app's HTML/JS is bundled inside
+// the APK itself — there's no live network cache of index.html/app.js to
+// clear here. What CAN get stale/wedged on native is Firestore's own local
+// offline cache (IndexedDB), which is exactly what window._fbRecoverPersistence
+// (defined near fbInit()) already exists to wipe and rebuild. This just adds
+// a user-facing button for that, gated behind an explicit warning first —
+// local Firestore cache issues can occasionally coincide with unsynced
+// writes, so we ask the user to export a safety-net backup before wiping it.
+function confirmNativeCacheRefresh() {
+  const ok = window.confirm(
+    "Before continuing, please tap \u201c\ud83d\udce5 Export All Data\u201d under Local Backup & Restore (further down in Settings) to save a safety copy of your data.\n\n" +
+    "Pressing OK will clear the app's local cached data and reload. Press Cancel to go export your data first."
+  );
+  if (!ok) return;
+  _performNativeCacheRefresh();
+}
+
+async function _performNativeCacheRefresh() {
+  const statusEl = document.getElementById("appUpdateStatus");
+  if (statusEl) statusEl.textContent = "Refreshing local cache… \ud83d\udd04";
+  try {
+    if (typeof window._fbRecoverPersistence === "function") {
+      await window._fbRecoverPersistence();
+    }
+  } catch (e) {
+    console.warn("Native cache refresh failed (reloading anyway):", e && e.message);
+  }
   window.location.reload();
 }
 

@@ -22028,6 +22028,31 @@ async function _performNativeCacheRefresh() {
   window.location.reload();
 }
 
+// ── PWA/TWA refresh warning gate ──
+// Mirrors the native cache-refresh and sign-out warnings above, for
+// consistency across all three destructive-ish actions in Settings.
+function confirmWebCacheRefresh() {
+  const modal = document.getElementById("webCacheWarningModal");
+  if (modal) {
+    modal.style.display = "flex";
+  } else {
+    // Fallback only if the modal markup is somehow missing from this build.
+    if (window.confirm("This will clear the app's cached files and reload. Continue?")) {
+      _forceRefreshWebApp();
+    }
+  }
+}
+
+function _dismissWebCacheWarning() {
+  const modal = document.getElementById("webCacheWarningModal");
+  if (modal) modal.style.display = "none";
+}
+
+function _confirmWebCacheRefreshProceed() {
+  _dismissWebCacheWarning();
+  _forceRefreshWebApp();
+}
+
 async function checkAppUpdate() {
   const iconEl = document.getElementById("appUpdateIcon");
   const statusEl = document.getElementById("appUpdateStatus");
@@ -22036,7 +22061,7 @@ async function checkAppUpdate() {
 
   const Cap = window.Capacitor;
   if (!Cap || !Cap.isNativePlatform || !Cap.isNativePlatform()) {
-    return _forceRefreshWebApp();
+    return confirmWebCacheRefresh();
   }
 
   // Uses @capacitor/filesystem's own downloadFile() — bundled with the

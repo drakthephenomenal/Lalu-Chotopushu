@@ -1580,6 +1580,24 @@
       </div>
     </div>
   </div>
+
+  <!-- PWA/TWA refresh warning — same in-DOM modal pattern as the native
+       cache refresh and sign-out warnings above, for consistency: both the
+       whole Update card AND the dedicated "Refresh Now" button route web
+       users through checkAppUpdate() → confirmWebCacheRefresh() now. -->
+  <div id="webCacheWarningModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.72);align-items:center;justify-content:center;padding:20px;">
+    <div style="max-width:340px;width:100%;background:#0b1030;border:1px solid rgba(255,215,0,0.35);border-radius:14px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+      <div style="font-size:15px;font-weight:700;color:#FFD700;margin-bottom:10px;">⚠️ Save your data first</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.5;margin-bottom:16px;">
+        Please tap <b>📥 Export All Data</b> under <b>Local Backup &amp; Restore</b> (further down in Settings) to save a safety copy first, just in case.<br><br>
+        Continuing will clear the app's cached files and reload.
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="button" onclick="_dismissWebCacheWarning()" style="flex:1;padding:10px 12px;border-radius:9px;background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.2);font-size:13px;font-weight:700;cursor:pointer;">Cancel</button>
+        <button type="button" onclick="_confirmWebCacheRefreshProceed()" style="flex:1;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,180,0,0.25));color:#FFD700;border:1px solid rgba(255,215,0,0.5);font-size:13px;font-weight:700;cursor:pointer;">Refresh Anyway</button>
+      </div>
+    </div>
+  </div>
   <div class="vt">Settings</div>
 
   <!-- App Update — checks the latest GitHub Release, downloads the APK

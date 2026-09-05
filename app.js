@@ -3378,8 +3378,7 @@ function svtRV(type) {
     const v = parseInt(document.getElementById("dtRVIn").value) || 0;
     App.S.dtRV = v;
   }
-  App.save();
-  fbDebouncedPush();
+  ghostAwareSave();
   App.ua();
   toast("RV Daily Target saved! 🎯");
 }
@@ -3390,8 +3389,7 @@ function svtKV(type) {
     const v = parseInt(document.getElementById("dtKVIn").value) || 0;
     App.S.dtKV = v;
   }
-  App.save();
-  fbDebouncedPush();
+  ghostAwareSave();
   App.ua();
   toast("KV Daily Target saved! 🎯");
 }
@@ -3402,8 +3400,7 @@ function svtSS(type) {
     const v = parseInt(document.getElementById("dtSSIn").value) || 0;
     App.S.dtSS = v;
   }
-  App.save();
-  fbDebouncedPush();
+  ghostAwareSave();
   App.ua();
   toast("Samba Sadashiv Daily Target saved! 🎯");
 }
@@ -3414,8 +3411,7 @@ function svtRam(type) {
     const v = parseInt(document.getElementById("dtRamIn").value) || 0;
     App.S.dtRam = v;
   }
-  App.save();
-  fbDebouncedPush();
+  ghostAwareSave();
   App.ua();
   toast("Raam Vijay Mantra Daily Target saved! 🎯");
 }
@@ -3426,8 +3422,7 @@ function svtKaam(type) {
     const v = parseInt(document.getElementById("dtKaamIn").value) || 0;
     App.S.dtKaam = v;
   }
-  App.save();
-  fbDebouncedPush();
+  ghostAwareSave();
   App.ua();
   toast("Kaam Vijay Daily Target saved! 🎯");
 }
@@ -3438,8 +3433,7 @@ function svtHK(type) {
     const v = parseInt(document.getElementById("dtHKIn").value) || 0;
     App.S.dtHK = v;
   }
-  App.save();
-  fbDebouncedPush();
+  ghostAwareSave();
   App.ua();
   toast("HK Daily Target saved! 🎯");
 }
@@ -4219,16 +4213,14 @@ function svt(tp) {
   if (tp === "d")
     App.S.dt = parseInt(document.getElementById("dtIn").value) || 0;
   else App.S.lt = parseInt(document.getElementById("ltIn").value) || 0;
-  App.save();
-  fbDebouncedPush();
+  ghostAwareSave();
   App.ua();
   toast("Target saved! 🎯");
 }
 function svm() {
   App.S.ms = parseInt(document.getElementById("msIn").value) || 108;
-  App.save();
+  ghostAwareSave();
   App.ua();
-  fbDebouncedPush();
   toast("Mala size saved! 📿");
 }
 function tgs(k) {
@@ -10853,6 +10845,13 @@ async function fbPushToUid(targetUid, fullReplace) {
     dt28Cycles: App.S.dt28Cycles || 0,
     milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
     msConsider: App.S.msConsider || { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, n28: true },
+    // Jap display name & Family Leaderboard opt-in — developer-editable via
+    // Settings while Ghost Mode-viewing (saveLbName()/toggleLbOptIn()
+    // route here through ghostAwareSave() instead of the developer's own
+    // account). Also separately mirrored to /leaderboard/{targetUid} by
+    // pushLeaderboardForGhostedUser(), since that's a different document.
+    lbDisplayName: App.S.lbDisplayName || "",
+    lbOptIn: App.S.lbOptIn || false,
     lastDevEdit: firebase.firestore.FieldValue.serverTimestamp(),
     lastDevEditBy: (fbUser && fbUser.email) || "developer",
   };
@@ -11962,14 +11961,12 @@ function sync28CycleTarget() {
 function svt28() {
   const v = parseInt(document.getElementById("dt28CycleIn")?.value) || 0;
   App.S.dt28Cycles = v;
-  App.save();
   // Push immediately (not debounced) so the value reaches Firebase before
   // the realtime listener can fire back with a stale dt28Cycles value.
-  if (typeof fbPushFull === "function" && App._cloudHydrated) {
-    fbPushFull().catch(e => console.warn("svt28 push:", e && e.message));
-  } else if (typeof fbDebouncedPush === "function") {
-    fbDebouncedPush();
-  }
+  // ghostAwareSave(true) does exactly that on the non-ghost path
+  // (App.save() + fbPushFull()), and correctly redirects to the VIEWED
+  // user's doc via fbPushToUid() while a developer is Ghost Mode-viewing.
+  ghostAwareSave(true);
   App.ua();
   u28();
   toast("✅ 28 Names daily target saved: " + v + " cycle" + (v !== 1 ? "s" : "") + " (" + (v * 28) + " japs/day)");
@@ -19921,6 +19918,26 @@ async function pushLeaderboard() {
   }
 }
 
+// ── Ghost-mode counterpart to pushLeaderboard() ─────────────────
+// pushLeaderboard() always targets fbUser.uid (the signed-in developer's
+// OWN leaderboard doc) and bails out entirely under isGhostMode() — by
+// design, since accidentally writing the viewed user's stats onto the
+// developer's own public row would be worse than not writing at all.
+// This is the explicit, deliberate counterpart: called only from the
+// Settings actions a developer takes while Ghost Mode-viewing someone
+// (saveLbName(), toggleLbOptIn()) — writes straight to
+// /leaderboard/{_ghostViewingUid} using the same payload builder, never
+// touching the developer's own doc.
+async function pushLeaderboardForGhostedUser() {
+  if (!isGhostMode() || !_ghostViewingUid || !fbDb) return;
+  try {
+    const payload = _buildLeaderboardPayload(App.S, { displayName: App.S.lbDisplayName || '', email: '' });
+    await fbDb.collection('leaderboard').doc(_ghostViewingUid).set(payload);
+  } catch (e) {
+    console.warn('pushLeaderboardForGhostedUser error:', e && e.message ? e.message : e);
+  }
+}
+
 // ── Shared leaderboard-payload builder ─────────────────────────
 // Extracted out of pushLeaderboard() so the exact same scoring/streak/
 // breakdown math can be reused by devBackfillMissingLeaderboardDocs()
@@ -20222,8 +20239,11 @@ async function toggleLbOptIn() {
   }
   App.S.lbOptIn = !App.S.lbOptIn;
   populateLbSettingsUI();
-  App.save();
-  if (App.S.lbOptIn) {
+  ghostAwareSave();
+  if (isGhostMode()) {
+    toast(App.S.lbOptIn ? "🏆 Viewed user joined the leaderboard!" : "Viewed user removed from leaderboard");
+    await pushLeaderboardForGhostedUser();
+  } else if (App.S.lbOptIn) {
     toast('🏆 Joined the leaderboard!');
     await pushLeaderboard();
   } else {
@@ -20248,16 +20268,20 @@ async function saveLbName() {
     return;
   }
   App.S.lbDisplayName = name;
-  App.save();
+  ghostAwareSave();
   if (fb) {
     fb.textContent = '✓ Saved!';
     fb.style.color = 'var(--green)';
     setTimeout(function() { if(fb) fb.textContent = ''; }, 2500);
   }
   if (App.S.lbOptIn) {
-    await pushLeaderboard();
+    if (isGhostMode()) {
+      await pushLeaderboardForGhostedUser();
+    } else {
+      await pushLeaderboard();
+    }
   }
-  toast('Display name saved 🙏');
+  toast(isGhostMode() ? "Viewed user's display name saved 🙏" : 'Display name saved 🙏');
 }
 
 /** Sync Settings UI with current App.S leaderboard state */

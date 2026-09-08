@@ -3366,11 +3366,11 @@ function _renderManualApkCard() {
   } else {
     if (editWrap) editWrap.style.display = "none";
     if (_manualApkLinkCache) {
-      titleEl.textContent = "Download APK (developer link)";
+      titleEl.textContent = "Download APK file";
       statusEl.textContent = "Tap to download the APK from a developer-shared link";
       if (rowEl) rowEl.onclick = () => openExternalLink(_manualApkLinkCache);
     } else {
-      titleEl.textContent = "Manual APK Link";
+      titleEl.textContent = "Download APK file";
       statusEl.textContent = "Developer hasn't shared a link yet";
       if (rowEl) rowEl.onclick = () => toast("Developer hasn't shared a link yet 🙏");
     }
@@ -4368,6 +4368,16 @@ function toggleSriExpand() {
   if (card) card.classList.toggle("expanded");
 }
 
+// After a Sampraday is selected in Settings, jump the user straight down to
+// the Jap Text Language + Jap Targets areas so they can finish setup without
+// hunting for it further down the page.
+function scrollToJapSetup() {
+  setTimeout(() => {
+    const el = document.getElementById("japLangAnchor") || document.getElementById("japTargetsAnchor");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 400);
+}
+
 function tgs(k) {
   if (k === "hkLang") {
     App.S.hkLang = App.S.hkLang === "bn" ? "hi" : "bn";
@@ -4439,6 +4449,7 @@ function tgs(k) {
     App.S.sampraday = App.S.gaudiyaMode ? "gaudiya" : "harivangshi";
     if (typeof renderSampradaySelector === "function") renderSampradaySelector();
     toast(App.S.gaudiyaMode ? "🪷 Gaudiya Mode ON" : "🪷 Gaudiya Mode OFF");
+    if (App.S.gaudiyaMode) scrollToJapSetup();
 
     // Ensure any leftover banner from a previous flow is hidden.
     if (_gBanner) _gBanner.style.display = "none";
@@ -4490,6 +4501,7 @@ function tgs(k) {
         ? "🕉️ Gopeshwar Mahadev Mode ON"
         : "🕉️ Gopeshwar Mahadev Mode OFF",
     );
+    if (App.S.trahimamMode) scrollToJapSetup();
     return;
   }
 
@@ -4540,6 +4552,7 @@ function tgs(k) {
     }
     if (typeof renderSampradaySelector === "function") renderSampradaySelector();
     toast(App.S.ramanandiMode ? "🚩 Ramanandi Mode ON" : "🚩 Ramanandi Mode OFF");
+    if (App.S.ramanandiMode) scrollToJapSetup();
     return;
   }
 
@@ -4563,6 +4576,7 @@ function tgs(k) {
     if (typeof renderPhotoPickers === "function") renderPhotoPickers();
     if (typeof renderSampradaySelector === "function") renderSampradaySelector();
     toast(which === "harivangshi" ? "🪷 Harivangshi Sampraday selected" : "🪷 Haridashi Sampraday selected");
+    scrollToJapSetup();
     return;
   }
 
@@ -4585,6 +4599,7 @@ function tgs(k) {
     if (typeof renderPhotoPickers === "function") renderPhotoPickers();
     if (typeof renderSampradaySelector === "function") renderSampradaySelector();
     toast(which === "nimbark" ? "🪷 Nimbark Sampraday selected" : "🪷 Vallabh Sampraday selected");
+    scrollToJapSetup();
     return;
   }
 
@@ -4607,6 +4622,7 @@ function tgs(k) {
     if (typeof renderPhotoPickers === "function") renderPhotoPickers();
     if (typeof renderSampradaySelector === "function") renderSampradaySelector();
     toast("🪷 Ramanuj (Shree) Sampraday selected");
+    scrollToJapSetup();
     return;
   }
 

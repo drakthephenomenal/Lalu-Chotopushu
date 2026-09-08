@@ -753,9 +753,9 @@ const App = {
     driveBackupDailyEnabled: false,  // opt-in daily auto-backup to Google Drive
     driveBackupHour: 3,    // 0-23, device-local time — default 3 AM
     driveBackupMinute: 0,  // 0-59
-    bgRadhaVallabh: 0,
-    bgHitju: 0,
-    bgGurudev: 0,
+    bgRadhaVallabh: 1,
+    bgHitju: 1,
+    bgGurudev: 1,
     bgCM: 1,
     bgIskconAcharya: 1,
     bgIskconGurudev: 1,
@@ -9354,7 +9354,6 @@ function fbInit() {
       .then((result) => {
         if (result && result.credential && result.credential.accessToken) {
           toast("Signed in with Google! ☁️ Sync active 🙏");
-          _captureWebDriveCredential(result);
         }
       })
       .catch((e) => {
@@ -9668,7 +9667,6 @@ function fbInit() {
         fbHideAuthChecking();
         document.getElementById("fbLoggedOut").style.display = "none";
         document.getElementById("fbLoggedIn").style.display = "block";
-        if (typeof updateDriveConnectUI === "function") updateDriveConnectUI();
         const _authLabel =
           user.phoneNumber || user.email || user.displayName || "Devotee";
         document.getElementById("fbUserEmail").textContent = _authLabel;
@@ -9925,23 +9923,9 @@ async function fbSignInGoogle() {
       // Fire-and-forget: sets up Drive backup auth in the background without
       // blocking or interrupting the sign-in flow the user is waiting on.
       if (serverAuthCode) {
-        fbEnableDriveBackup(serverAuthCode)
-          .then((r) => {
-            try { localStorage.setItem("rjap_drive_access", (r && !r.threw) ? "granted" : "declined"); } catch (_) {}
-            if (typeof updateDriveConnectUI === "function") updateDriveConnectUI();
-          })
-          .catch((e) => {
-            console.error("Drive backup auth setup failed:", e);
-            try { localStorage.setItem("rjap_drive_access", "declined"); } catch (_) {}
-            if (typeof updateDriveConnectUI === "function") updateDriveConnectUI();
-          });
-      } else {
-        // No serverAuthCode means the person declined the Drive permission
-        // line on Google's own consent screen (sign-in itself still went
-        // through fine) — leave the visible "Connect Google Drive" button
-        // in Settings as the second chance to grant it later.
-        try { localStorage.setItem("rjap_drive_access", "declined"); } catch (_) {}
-        if (typeof updateDriveConnectUI === "function") updateDriveConnectUI();
+        fbEnableDriveBackup(serverAuthCode).catch((e) => {
+          console.error("Drive backup auth setup failed:", e);
+        });
       }
     } catch (e) {
       console.error("Native Google sign-in failed:", e);
@@ -9955,19 +9939,12 @@ async function fbSignInGoogle() {
   }
 
   const provider = new firebase.auth.GoogleAuthProvider();
-  // Request Drive access as part of the SAME sign-in step (bundled into the
-  // one consent screen) so there's no separate manual "connect Drive" click
-  // needed afterward on the happy path. If the person declines just this
-  // extra permission, sign-in still succeeds — they just won't have Drive
-  // backup yet, and can grant it anytime later via the "Connect Google
-  // Drive" button in Settings (see toggleDriveConnect()).
-  provider.addScope("https://www.googleapis.com/auth/drive.file");
   // Try popup first; if it fails (in-app browsers, storage-partitioned envs), fall back to redirect
   fbAuth
     .signInWithPopup(provider)
     .then((result) => {
+      const credential = result.credential;
       toast("Signed in with Google! ☁️ Sync active 🙏");
-      _captureWebDriveCredential(result);
     })
     .catch((e) => {
       // Popup blocked or storage partitioned (e.g. Facebook in-app browser)
@@ -10003,28 +9980,6 @@ async function fbSignInGoogle() {
         }
       }
     });
-}
-
-// Pulls the Google OAuth access token (with Drive scope, if it was granted)
-// out of a Firebase sign-in result and stashes it in memory for direct
-// browser→Google-Drive uploads. Web sessions never get a refresh token the
-// way native's serverAuthCode does, so this token is session-only (~1hr) —
-// fine for the manual "Upload Now" button, which is the only Drive action
-// available in a browser tab anyway (no background execution on web).
-function _captureWebDriveCredential(result) {
-  try {
-    const cred = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
-    if (cred && cred.accessToken) {
-      window._webDriveAccessToken = cred.accessToken;
-      window._webDriveAccessTokenExpiry = Date.now() + 55 * 60 * 1000;
-      try { localStorage.setItem("rjap_drive_access", "granted"); } catch (_) {}
-    } else {
-      try { localStorage.setItem("rjap_drive_access", "declined"); } catch (_) {}
-    }
-  } catch (e) {
-    console.warn("_captureWebDriveCredential failed:", e && e.message);
-  }
-  if (typeof updateDriveConnectUI === "function") updateDriveConnectUI();
 }
 
 // Exchanges the one-time serverAuthCode (captured at Google sign-in, native
@@ -10097,158 +10052,6 @@ async function checkDailyDriveBackupCatchUp() {
   }
 }
 
-// Returns a valid Google OAuth access token with Drive scope for the
-// signed-in browser session, re-prompting via a popup only if we don't
-// already have one cached (or forcePrompt is true — used by the manual
-// "Connect Google Drive" button). Native app never calls this — it uses
-// the server-side serverAuthCode/Cloud-Function path instead.
-async function ensureWebDriveAccessToken(forcePrompt) {
-  const now = Date.now();
-  if (!forcePrompt && window._webDriveAccessToken && window._webDriveAccessTokenExpiry > now) {
-    return window._webDriveAccessToken;
-  }
-  if (!fbAuth || !fbAuth.currentUser) return null;
-  const provider = new firebase.auth.GoogleAuthProvider();
-  provider.addScope("https://www.googleapis.com/auth/drive.file");
-  try {
-    const result = await fbAuth.currentUser.reauthenticateWithPopup(provider);
-    const cred = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
-    if (cred && cred.accessToken) {
-      window._webDriveAccessToken = cred.accessToken;
-      window._webDriveAccessTokenExpiry = Date.now() + 55 * 60 * 1000;
-      try { localStorage.setItem("rjap_drive_access", "granted"); } catch (_) {}
-      return cred.accessToken;
-    }
-  } catch (e) {
-    console.warn("Drive re-auth (web) failed:", e && e.message);
-  }
-  try { localStorage.setItem("rjap_drive_access", "declined"); } catch (_) {}
-  return null;
-}
-
-// Uploads the backup JSON straight from the browser to the signed-in
-// person's own Google Drive using the REST API directly — no Cloud
-// Function needed for this path, since a browser tab already holds a live
-// OAuth access token once Drive scope has been granted (see
-// ensureWebDriveAccessToken above). This is what makes the Upload button
-// work on the web without ever hitting "not_authorized".
-async function _webDriveUpload(filename, jsonString) {
-  const token = await ensureWebDriveAccessToken(false);
-  if (!token) throw new Error("Google Drive access isn't connected yet");
-  const metadata = { name: filename, mimeType: "application/json" };
-  const boundary = "-------rjapbackup" + Date.now();
-  const body =
-    "\r\n--" + boundary + "\r\n" +
-    "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
-    JSON.stringify(metadata) +
-    "\r\n--" + boundary + "\r\n" +
-    "Content-Type: application/json\r\n\r\n" +
-    jsonString +
-    "\r\n--" + boundary + "--";
-  const res = await fetch(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
-    {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + token,
-        "Content-Type": "multipart/related; boundary=" + boundary,
-      },
-      body,
-    }
-  );
-  if (!res.ok) {
-    if (res.status === 401 || res.status === 403) {
-      // Token expired/insufficient — clear it and let the person retry via
-      // the button (which will re-prompt) rather than looping silently.
-      window._webDriveAccessToken = null;
-      window._webDriveAccessTokenExpiry = 0;
-    }
-    const errBody = await res.text().catch(() => "");
-    throw new Error("Drive upload failed (" + res.status + "): " + errBody.slice(0, 200));
-  }
-  return res.json();
-}
-
-// Reflects current Drive-connection status on the "Connect Google Drive"
-// button in Settings (Cloud Sync & Backup card). Safe to call anytime —
-// no-ops if the button isn't in the DOM (e.g. before Settings is opened).
-function updateDriveConnectUI() {
-  const btn = document.getElementById("driveConnectBtn");
-  if (!btn) return;
-  let status = null;
-  try { status = localStorage.getItem("rjap_drive_access"); } catch (_) {}
-  if (status === "granted") {
-    btn.textContent = "✅ Google Drive Connected — Tap to Disconnect";
-    btn.style.background = "linear-gradient(135deg,rgba(52,199,89,0.28),rgba(52,199,89,0.10))";
-    btn.style.borderColor = "rgba(52,199,89,0.45)";
-    btn.style.color = "#8CFFB0";
-  } else {
-    btn.textContent = "🔗 Connect Google Drive Access";
-    btn.style.background = "linear-gradient(135deg,rgba(74,144,226,0.22),rgba(74,144,226,0.08))";
-    btn.style.borderColor = "rgba(74,144,226,0.45)";
-    btn.style.color = "var(--a2)";
-  }
-}
-
-// Manual "Connect Google Drive" / "Disconnect" button — the second chance
-// for anyone who declined (or never got asked) the Drive permission during
-// sign-in, and the opt-out for anyone who no longer wants Drive backups.
-async function toggleDriveConnect() {
-  if (!fbUser) {
-    toast("Sign in with Google first.");
-    return;
-  }
-  let status = null;
-  try { status = localStorage.getItem("rjap_drive_access"); } catch (_) {}
-
-  if (status === "granted") {
-    // Disconnect locally — stops this app from uploading to Drive. Doesn't
-    // reach into the person's Google Account to revoke the grant itself;
-    // they can do that anytime from myaccount.google.com/permissions if
-    // they want it fully removed there too.
-    window._webDriveAccessToken = null;
-    window._webDriveAccessTokenExpiry = 0;
-    try { localStorage.setItem("rjap_drive_access", "declined"); } catch (_) {}
-    updateDriveConnectUI();
-    toast("Disconnected. Backups won't upload to Drive until you reconnect.");
-    return;
-  }
-
-  const btn = document.getElementById("driveConnectBtn");
-  if (btn) { btn.disabled = true; btn.textContent = "⏳ Connecting…"; }
-  try {
-    if (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
-      const { FirebaseAuthentication } = window.Capacitor.Plugins;
-      const signInResult = await FirebaseAuthentication.signInWithGoogle({
-        scopes: ["https://www.googleapis.com/auth/drive.file"],
-      });
-      const serverAuthCode = signInResult && signInResult.credential && signInResult.credential.serverAuthCode;
-      if (serverAuthCode) {
-        const r = await fbEnableDriveBackup(serverAuthCode);
-        if (r && !r.threw) {
-          try { localStorage.setItem("rjap_drive_access", "granted"); } catch (_) {}
-          toast("✅ Google Drive connected");
-        } else {
-          try { localStorage.setItem("rjap_drive_access", "declined"); } catch (_) {}
-          toast("Could not connect Google Drive — try again.");
-        }
-      } else {
-        try { localStorage.setItem("rjap_drive_access", "declined"); } catch (_) {}
-        toast("Google Drive access wasn't granted.");
-      }
-    } else {
-      const token = await ensureWebDriveAccessToken(true);
-      toast(token ? "✅ Google Drive connected" : "Google Drive access wasn't granted.");
-    }
-  } catch (e) {
-    console.error("toggleDriveConnect failed:", e);
-    toast("Could not connect Google Drive: " + (e && e.message ? e.message : e));
-  } finally {
-    if (btn) btn.disabled = false;
-    updateDriveConnectUI();
-  }
-}
-
 // Manual "Backup Now" button (Settings > Cloud Sync & Backup). Always
 // creates a new dated file in the user's Drive — never overwrites a
 // previous backup. Requires the person to be signed in with Google AND to
@@ -10263,31 +10066,17 @@ async function driveBackupNow() {
   const btn = document.getElementById("driveBackupNowBtn");
   if (btn) { btn.disabled = true; btn.textContent = "⏳ Backing up…"; }
   try {
+    const fn = firebase.app().functions().httpsCallable("driveBackupUpload");
     const backupJson = JSON.stringify(_buildBackupPayload());
     const filename = _driveBackupFilename();
-
-    if (!_isNativeApp()) {
-      // Browser: upload directly to Drive with the browser's own OAuth
-      // token (see _webDriveUpload) — no server round-trip needed for this
-      // one-off manual button, so it works without ever hitting
-      // "not_authorized" the way the old server-only path did.
-      await _webDriveUpload(filename, backupJson);
-      toast("✅ Backed up to Google Drive: " + filename);
-      return;
-    }
-
-    const fn = firebase.app().functions().httpsCallable("driveBackupUpload");
     let res = await fn({ backupJson, filename });
 
     if (res && res.data && res.data.reason === "not_authorized") {
       // Drive access was never granted (e.g. signed in before this feature
-      // existed, or declined it originally). Ask for it now via a fresh
-      // native Google sign-in that requests the drive.file scope, then
-      // retry once. The "Connect Google Drive" button in Settings offers
-      // this same recovery path anytime, without needing a failed backup
-      // attempt first.
+      // existed, or via email/Zoho). Ask for it now via a fresh native
+      // Google sign-in that requests the drive.file scope, then retry once.
       toast("Connecting Google Drive — approve access if asked…");
-      if (window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+      if (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
         const { FirebaseAuthentication } = window.Capacitor.Plugins;
         const signInResult = await FirebaseAuthentication.signInWithGoogle({
           scopes: ["https://www.googleapis.com/auth/drive.file"],
@@ -10301,10 +10090,8 @@ async function driveBackupNow() {
     }
 
     if (res && res.data && res.data.success) {
-      try { localStorage.setItem("rjap_drive_access", "granted"); } catch (_) {}
       toast("✅ Backed up to Google Drive: " + filename);
     } else {
-      try { localStorage.setItem("rjap_drive_access", "declined"); } catch (_) {}
       toast("❌ Drive backup failed: " + ((res && res.data && res.data.reason) || "unknown error"));
     }
   } catch (e) {
@@ -10312,7 +10099,6 @@ async function driveBackupNow() {
     toast("❌ Drive backup failed: " + (e && e.message ? e.message : e));
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = "🗂️ Upload the json file to Google drive with Single tap"; }
-    updateDriveConnectUI();
   }
 }
 
@@ -11173,12 +10959,6 @@ async function fbSignOut() {
   // Stop sync listeners so cloud changes cannot resurrect local state mid-wipe.
   if (fbSessionListener) { fbSessionListener(); fbSessionListener = null; }
   if (fbListener) { fbListener(); fbListener = null; }
-  // Drop the browser's in-memory Drive token and local connect-status flag —
-  // they're tied to this specific Google account/session, and should not
-  // silently carry over to whoever signs in next on this device.
-  window._webDriveAccessToken = null;
-  window._webDriveAccessTokenExpiry = 0;
-  try { localStorage.removeItem("rjap_drive_access"); } catch (_) {}
   // Block any further writes until the next sign-in completes its cloud pull.
   App._cloudHydrated = false;
   App._allowInitialPush = false;
@@ -11439,9 +11219,9 @@ async function fbPushFull() {
     driveBackupHour: App.S.driveBackupHour ?? 3,
     driveBackupMinute: App.S.driveBackupMinute ?? 0,
     lbDisplayName: App.S.lbDisplayName || "",
-    bgRadhaVallabh: App.S.bgRadhaVallabh ?? 0,
-    bgHitju: App.S.bgHitju ?? 0,
-    bgGurudev: App.S.bgGurudev ?? 0,
+    bgRadhaVallabh: App.S.bgRadhaVallabh ?? 1,
+    bgHitju: App.S.bgHitju ?? 1,
+    bgGurudev: App.S.bgGurudev ?? 1,
     bgIskconAcharya: App.S.bgIskconAcharya ?? 1,
     bgIskconGurudev: App.S.bgIskconGurudev ?? 1,
     bgCM: App.S.bgCM ?? 1,

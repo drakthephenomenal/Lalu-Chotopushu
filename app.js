@@ -744,6 +744,8 @@ const App = {
     gaudiyaMode: false,  // single mode for all — Gaudiya/ISKCON
     trahimamMode: false,  // single mode for all — Trahimam Trahimam (KV jap only)
     ramanandiMode: false,  // single mode for all — Ramanandi (Raam Vijay Mantra jap only)
+    sampraday: "harivangshi",  // display/branding selection — "harivangshi" | "haridashi" | "sri" | "gaudiya" | "nimbark" | "vallabh"
+    sriBranch: "ramananda",  // when sampraday === "sri" — "ramanuj" | "ramananda"
     hkLang: "hi",
     naamLang: "sa",  // Radha / Radha Vallabh / Samba Sadashiv jap text script: "sa" (Sanskrit/Devanagari) or "bn" (Bangla)
     lbOptIn: false,        // leaderboard opt-in
@@ -1150,6 +1152,8 @@ const App = {
     if (this.S.gaudiyaMode === undefined) this.S.gaudiyaMode = false;
     if (this.S.trahimamMode === undefined) this.S.trahimamMode = false;
     if (this.S.ramanandiMode === undefined) this.S.ramanandiMode = false;
+    if (!this.S.sampraday) this.S.sampraday = "harivangshi";
+    if (!this.S.sriBranch) this.S.sriBranch = "ramananda";
     if (!this.S.historyRam) this.S.historyRam = {};
     if (!this.S.timerHistoryRam) this.S.timerHistoryRam = {};
     if (this.S.dtRam === undefined) this.S.dtRam = 0;
@@ -3665,6 +3669,7 @@ function initJapModeUI() {
   if (tgR)
     App.S.ramanandiMode ? tgR.classList.add("on") : tgR.classList.remove("on");
   if (App.S.ramanandiMode) document.body.classList.add("ramanandi-mode");
+  if (typeof renderSampradaySelector === "function") renderSampradaySelector();
   window._dedTypes = new Set([App.S.trahimamMode ? "ss" : App.S.ramanandiMode ? "ram" : "radha"]);
   _placeTarget28Card();
   if (typeof applyBgPhotos === "function") applyBgPhotos();
@@ -4307,6 +4312,62 @@ function svm() {
   App.ua();
   toast("Mala size saved! 📿");
 }
+// Sync the "Select Your Sampraday" card UI (Rashik + Vaishnav sections) with current App.S state.
+// Safe to call anytime — no-ops if the markup isn't on the current screen.
+function renderSampradaySelector() {
+  const ids = ["Harivangshi", "Haridashi", "Sri", "Gaudiya", "Nimbark", "Vallabh"];
+  ids.forEach((id) => {
+    const card = document.getElementById("samp" + id);
+    if (card) card.classList.remove("on");
+    const lbl = document.getElementById("samp-lbl-" + id.toLowerCase());
+    if (lbl) lbl.textContent = "OFF";
+  });
+  const gCard = document.getElementById("sampGopeshwar");
+  const gLbl = document.getElementById("samp-lbl-gopeshwar");
+  if (gCard) gCard.classList.toggle("on", !!App.S.trahimamMode);
+  if (gLbl) gLbl.textContent = App.S.trahimamMode ? "ON" : "OFF";
+
+  if (App.S.trahimamMode) {
+    // Gopeshwar Mahadev is an independent mode — none of the Sampraday cards are "on" while it's active.
+    const subRj0 = document.getElementById("sampSubRamanuj");
+    const subRd0 = document.getElementById("sampSubRamananda");
+    if (subRj0) subRj0.classList.remove("on");
+    if (subRd0) subRd0.classList.remove("on");
+    return;
+  }
+
+  let activeId = null;
+  if (App.S.gaudiyaMode) activeId = "Gaudiya";
+  else if (App.S.ramanandiMode) activeId = "Sri";
+  else if (App.S.sampraday === "haridashi") activeId = "Haridashi";
+  else if (App.S.sampraday === "sri") activeId = "Sri";
+  else if (App.S.sampraday === "nimbark") activeId = "Nimbark";
+  else if (App.S.sampraday === "vallabh") activeId = "Vallabh";
+  else activeId = "Harivangshi";
+
+  const activeCard = document.getElementById("samp" + activeId);
+  if (activeCard) activeCard.classList.add("on");
+  const activeLbl = document.getElementById("samp-lbl-" + activeId.toLowerCase());
+  if (activeLbl) activeLbl.textContent = "ON";
+
+  const subRj = document.getElementById("sampSubRamanuj");
+  const subRd = document.getElementById("sampSubRamananda");
+  if (subRj) subRj.classList.remove("on");
+  if (subRd) subRd.classList.remove("on");
+  if (activeId === "Sri") {
+    const sub = App.S.sriBranch === "ramanuj" ? subRj : subRd;
+    if (sub) sub.classList.add("on");
+    const sriCard = document.getElementById("sampSri");
+    if (sriCard) sriCard.classList.add("expanded");
+  }
+}
+
+// Pure UI: expand/collapse the Shree sub-panel (Ramanuj / Ramananda) without changing any mode.
+function toggleSriExpand() {
+  const card = document.getElementById("sampSri");
+  if (card) card.classList.toggle("expanded");
+}
+
 function tgs(k) {
   if (k === "hkLang") {
     App.S.hkLang = App.S.hkLang === "bn" ? "hi" : "bn";
@@ -4375,6 +4436,8 @@ function tgs(k) {
     if (typeof renderCal === "function") renderCal();
     if (typeof applyBgPhotos === "function") applyBgPhotos();
     if (typeof renderPhotoPickers === "function") renderPhotoPickers();
+    App.S.sampraday = App.S.gaudiyaMode ? "gaudiya" : "harivangshi";
+    if (typeof renderSampradaySelector === "function") renderSampradaySelector();
     toast(App.S.gaudiyaMode ? "🪷 Gaudiya Mode ON" : "🪷 Gaudiya Mode OFF");
 
     // Ensure any leftover banner from a previous flow is hidden.
@@ -4421,6 +4484,7 @@ function tgs(k) {
     if (typeof renderCal === "function") renderCal();
     if (typeof applyBgPhotos === "function") applyBgPhotos();
     if (typeof renderPhotoPickers === "function") renderPhotoPickers();
+    if (typeof renderSampradaySelector === "function") renderSampradaySelector();
     toast(
       App.S.trahimamMode
         ? "🕉️ Gopeshwar Mahadev Mode ON"
@@ -4468,7 +4532,81 @@ function tgs(k) {
     if (typeof renderCal === "function") renderCal();
     if (typeof applyBgPhotos === "function") applyBgPhotos();
     if (typeof renderPhotoPickers === "function") renderPhotoPickers();
+    if (App.S.ramanandiMode) {
+      App.S.sampraday = "sri";
+      App.S.sriBranch = "ramananda";
+    } else if (App.S.sampraday === "sri" && App.S.sriBranch === "ramananda") {
+      App.S.sampraday = "harivangshi";
+    }
+    if (typeof renderSampradaySelector === "function") renderSampradaySelector();
     toast(App.S.ramanandiMode ? "🚩 Ramanandi Mode ON" : "🚩 Ramanandi Mode OFF");
+    return;
+  }
+
+  // --- Rashik Sampraday (display/branding only — base Radha + Radha Vallabh jap, same counting engine) ---
+  if (k === "harivangshiMode" || k === "haridashiMode") {
+    const which = k === "harivangshiMode" ? "harivangshi" : "haridashi";
+    // Selecting either of these means "no special jap-mode" — fall back to base counting
+    if (App.S.gaudiyaMode) { App.S.gaudiyaMode = false; document.body.classList.remove("gaudiya-mode"); const tgG = document.getElementById("tgGaudiya"); if (tgG) tgG.classList.remove("on"); if (App.S.japMode === "hk") switchJapMode("radha"); }
+    if (App.S.trahimamMode) { App.S.trahimamMode = false; document.body.classList.remove("trahimam-mode"); const tgT = document.getElementById("tgTrahimam"); if (tgT) tgT.classList.remove("on"); if (App.S.japMode === "ss") switchJapMode("radha"); }
+    if (App.S.ramanandiMode) { App.S.ramanandiMode = false; document.body.classList.remove("ramanandi-mode"); const tgR = document.getElementById("tgRamanandi"); if (tgR) tgR.classList.remove("on"); if (App.S.japMode === "ram") switchJapMode("radha"); }
+    App.S.sampraday = which;
+    window._dedTypes = new Set(["radha"]);
+    window._dedAmounts = {};
+    if (typeof renderDedTypePanels === "function") renderDedTypePanels();
+    App.save();
+    fbDebouncedPush();
+    uStats();
+    renderHistory && typeof renderHistory === "function" && renderHistory();
+    if (typeof renderCal === "function") renderCal();
+    if (typeof applyBgPhotos === "function") applyBgPhotos();
+    if (typeof renderPhotoPickers === "function") renderPhotoPickers();
+    if (typeof renderSampradaySelector === "function") renderSampradaySelector();
+    toast(which === "harivangshi" ? "🪷 Harivangshi Sampraday selected" : "🪷 Haridashi Sampraday selected");
+    return;
+  }
+
+  // --- Vaishnav Sampraday: Nimbark / Vallabh (display/branding only — base counting engine for now) ---
+  if (k === "nimbarkMode" || k === "vallabhMode") {
+    const which = k === "nimbarkMode" ? "nimbark" : "vallabh";
+    if (App.S.gaudiyaMode) { App.S.gaudiyaMode = false; document.body.classList.remove("gaudiya-mode"); const tgG = document.getElementById("tgGaudiya"); if (tgG) tgG.classList.remove("on"); if (App.S.japMode === "hk") switchJapMode("radha"); }
+    if (App.S.trahimamMode) { App.S.trahimamMode = false; document.body.classList.remove("trahimam-mode"); const tgT = document.getElementById("tgTrahimam"); if (tgT) tgT.classList.remove("on"); if (App.S.japMode === "ss") switchJapMode("radha"); }
+    if (App.S.ramanandiMode) { App.S.ramanandiMode = false; document.body.classList.remove("ramanandi-mode"); const tgR = document.getElementById("tgRamanandi"); if (tgR) tgR.classList.remove("on"); if (App.S.japMode === "ram") switchJapMode("radha"); }
+    App.S.sampraday = which;
+    window._dedTypes = new Set(["radha"]);
+    window._dedAmounts = {};
+    if (typeof renderDedTypePanels === "function") renderDedTypePanels();
+    App.save();
+    fbDebouncedPush();
+    uStats();
+    renderHistory && typeof renderHistory === "function" && renderHistory();
+    if (typeof renderCal === "function") renderCal();
+    if (typeof applyBgPhotos === "function") applyBgPhotos();
+    if (typeof renderPhotoPickers === "function") renderPhotoPickers();
+    if (typeof renderSampradaySelector === "function") renderSampradaySelector();
+    toast(which === "nimbark" ? "🪷 Nimbark Sampraday selected" : "🪷 Vallabh Sampraday selected");
+    return;
+  }
+
+  // --- Sri Sampraday: Ramanuj sub-branch (Ramananda sub-branch reuses the existing ramanandiMode toggle above) ---
+  if (k === "sriRamanuj") {
+    if (App.S.gaudiyaMode) { App.S.gaudiyaMode = false; document.body.classList.remove("gaudiya-mode"); const tgG = document.getElementById("tgGaudiya"); if (tgG) tgG.classList.remove("on"); if (App.S.japMode === "hk") switchJapMode("radha"); }
+    if (App.S.trahimamMode) { App.S.trahimamMode = false; document.body.classList.remove("trahimam-mode"); const tgT = document.getElementById("tgTrahimam"); if (tgT) tgT.classList.remove("on"); if (App.S.japMode === "ss") switchJapMode("radha"); }
+    if (App.S.ramanandiMode) { App.S.ramanandiMode = false; document.body.classList.remove("ramanandi-mode"); const tgR = document.getElementById("tgRamanandi"); if (tgR) tgR.classList.remove("on"); if (App.S.japMode === "ram") switchJapMode("radha"); }
+    App.S.sampraday = "sri";
+    App.S.sriBranch = "ramanuj";
+    window._dedTypes = new Set(["radha"]);
+    window._dedAmounts = {};
+    if (typeof renderDedTypePanels === "function") renderDedTypePanels();
+    App.save();
+    fbDebouncedPush();
+    uStats();
+    renderHistory && typeof renderHistory === "function" && renderHistory();
+    if (typeof renderCal === "function") renderCal();
+    if (typeof applyBgPhotos === "function") applyBgPhotos();
+    if (typeof renderPhotoPickers === "function") renderPhotoPickers();
+    if (typeof renderSampradaySelector === "function") renderSampradaySelector();
+    toast("🪷 Ramanuj (Shree) Sampraday selected");
     return;
   }
 
@@ -13443,6 +13581,10 @@ const ST_FOLDER_ICON_IMG = {
   if (gi) gi.src = ST_FOLDER_ICON_IMG.bmg;
   var ti = document.getElementById("trahimamModeIcon");
   if (ti) ti.src = ST_FOLDER_ICON_IMG.shiv;
+  var sgi = document.getElementById("sampGopeshwarIcon");
+  if (sgi) sgi.src = ST_FOLDER_ICON_IMG.shiv;
+  var sgt = document.getElementById("sampGopeshwarTilak");
+  if (sgt) sgt.src = ST_FOLDER_ICON_IMG.shiv;
 })();
 
 function renderSt() {

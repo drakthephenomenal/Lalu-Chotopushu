@@ -1671,6 +1671,131 @@
     </div>
   </div>
 
+  <!-- SELECT YOUR SAMPRADAY -->
+  <div class="sc samp-wrap">
+    <div class="samp-heading">Select Your Sampraday</div>
+    <div class="samp-sub">Jai Sri Radhe</div>
+
+    <div class="samp-section-label"><span>Rashik Sampraday</span></div>
+    <div class="samp-row">
+      <div class="samp-card on" id="sampHarivangshi">
+        <div class="samp-row-top">
+          <div class="samp-thumb"><img src="sampraday/harivangshi/1.jpg" alt="Sri Hit Harivansh Mahaprabhu with Radha Vallabh Lal" loading="lazy"></div>
+          <div class="samp-name">Harivangshi</div>
+        </div>
+        <div class="samp-toggle-wrap">
+          <div class="samp-toggle-pill" onclick="tgs('harivangshiMode')">
+            <div class="samp-toggle-knob"><img src="sampraday/tilaks/harivangshi.png" alt="Harivangshi tilak" loading="lazy"></div>
+          </div>
+          <span class="samp-toggle-label" id="samp-lbl-harivangshi">ON</span>
+        </div>
+      </div>
+
+      <div class="samp-card" id="sampHaridashi">
+        <div class="samp-row-top">
+          <div class="samp-thumb"><img src="sampraday/haridashi/1.jpg" alt="Swami Haridas ji with Banke Bihari ji" loading="lazy"></div>
+          <div class="samp-name">Haridashi</div>
+        </div>
+        <div class="samp-toggle-wrap">
+          <div class="samp-toggle-pill" onclick="tgs('haridashiMode')">
+            <div class="samp-toggle-knob"><img src="sampraday/tilaks/haridashi.png" alt="Haridashi tilak" loading="lazy"></div>
+          </div>
+          <span class="samp-toggle-label" id="samp-lbl-haridashi">OFF</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="samp-section-label"><span>Vaishnav Sampraday</span></div>
+    <div class="samp-grid2">
+
+      <div class="samp-card" id="sampSri">
+        <div class="samp-row-top">
+          <div class="samp-thumb"><img src="sampraday/sri/1.jpg" alt="Sri Devi Lakshmi" loading="lazy"></div>
+          <div class="samp-name">Shree</div>
+        </div>
+        <div class="samp-toggle-wrap">
+          <div class="samp-toggle-pill" onclick="toggleSriExpand()">
+            <div class="samp-toggle-knob"><img src="sampraday/tilaks/sri.png" alt="Shree tilak" loading="lazy"></div>
+          </div>
+          <span class="samp-toggle-label" id="samp-lbl-sri">OFF</span>
+        </div>
+        <div class="samp-expand-hint">tap to choose Ramanuj / Ramananda</div>
+        <div class="samp-sub-panel">
+          <div class="samp-sub-row" id="sampSubRamanuj">
+            <span class="samp-sub-name">Ramanuj</span>
+            <div class="samp-sub-toggle" onclick="tgs('sriRamanuj')">
+              <div class="samp-sub-knob"><img src="sampraday/tilaks/sri.png" alt="Ramanuj tilak" loading="lazy"></div>
+            </div>
+          </div>
+          <div class="samp-sub-row" id="sampSubRamananda">
+            <span class="samp-sub-name">Ramananda</span>
+            <div class="samp-sub-toggle" onclick="tgs('ramanandiMode')">
+              <div class="samp-sub-knob"><img src="sampraday/tilaks/sri.png" alt="Ramananda tilak" loading="lazy"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="samp-card" id="sampGaudiya">
+        <div class="samp-row-top">
+          <div class="samp-thumb"><img src="sampraday/gaudiya/1.jpg" alt="Lord Brahma" loading="lazy"></div>
+          <div class="samp-name">Gaudiya / ISKCON</div>
+        </div>
+        <div class="samp-toggle-wrap">
+          <div class="samp-toggle-pill" onclick="tgs('gaudiyaMode')">
+            <div class="samp-toggle-knob"><img src="sampraday/tilaks/gaudiya.png" alt="Gaudiya tilak" loading="lazy"></div>
+          </div>
+          <span class="samp-toggle-label" id="samp-lbl-gaudiya">OFF</span>
+        </div>
+      </div>
+
+      <div class="samp-card" id="sampNimbark">
+        <div class="samp-row-top">
+          <div class="samp-thumb"><img src="sampraday/nimbark/1.jpg" alt="The four Kumaras" loading="lazy"></div>
+          <div class="samp-name">Nimbark</div>
+        </div>
+        <div class="samp-toggle-wrap">
+          <div class="samp-toggle-pill" onclick="tgs('nimbarkMode')">
+            <div class="samp-toggle-knob"><img src="sampraday/tilaks/nimbark.png" alt="Nimbark tilak" loading="lazy"></div>
+          </div>
+          <span class="samp-toggle-label" id="samp-lbl-nimbark">OFF</span>
+        </div>
+      </div>
+
+      <div class="samp-card" id="sampVallabh">
+        <div class="samp-row-top">
+          <div class="samp-thumb"><img src="sampraday/vallabh/1.jpg" alt="Lord Shiva with tanpura" loading="lazy"></div>
+          <div class="samp-name">Vallabh</div>
+        </div>
+        <div class="samp-toggle-wrap">
+          <div class="samp-toggle-pill" onclick="tgs('vallabhMode')">
+            <div class="samp-toggle-knob"><img src="sampraday/tilaks/vallabh.png" alt="Vallabh tilak" loading="lazy"></div>
+          </div>
+          <span class="samp-toggle-label" id="samp-lbl-vallabh">OFF</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="samp-section-label"><span>Independent Mode</span></div>
+    <div class="samp-row">
+      <div class="samp-card" id="sampGopeshwar" style="flex:1;">
+        <div class="samp-row-top">
+          <div class="samp-thumb"><img id="sampGopeshwarIcon" src="" alt="Gopeshwar Mahadev" loading="lazy" style="object-fit:contain;background:var(--bd);padding:6px;"></div>
+          <div class="samp-name">Gopeshwar Mahadev</div>
+        </div>
+        <div class="samp-toggle-wrap">
+          <div class="samp-toggle-pill" onclick="tgs('trahimamMode')">
+            <div class="samp-toggle-knob"><img id="sampGopeshwarTilak" src="" alt="Gopeshwar Mahadev icon" loading="lazy"></div>
+          </div>
+          <span class="samp-toggle-label" id="samp-lbl-gopeshwar">OFF</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="samp-footer">|| Hari Bol ||</div>
+  </div>
+
   <!-- GAUDIYA / ISKCON MODE — large aesthetic switch -->
   <div class="sc gaudiya-mode-card" id="gaudiyaModeCard">
     <div class="gmc-top">

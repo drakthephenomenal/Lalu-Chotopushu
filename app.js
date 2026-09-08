@@ -4373,7 +4373,12 @@ function toggleSriExpand() {
 // hunting for it further down the page.
 function scrollToJapSetup() {
   setTimeout(() => {
-    const el = document.getElementById("japLangAnchor") || document.getElementById("japTargetsAnchor");
+    const isVisible = (e) => e && e.offsetParent !== null;
+    const langEl = document.getElementById("japLangAnchor");
+    const targetsEl = document.getElementById("japTargetsAnchor");
+    // Prefer the language anchor, but skip it if it's hidden (e.g. Gaudiya
+    // mode hides the naam-language picker via CSS) and fall back to Targets.
+    const el = isVisible(langEl) ? langEl : (isVisible(targetsEl) ? targetsEl : (langEl || targetsEl));
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }, 400);
 }

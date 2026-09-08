@@ -753,9 +753,9 @@ const App = {
     driveBackupDailyEnabled: false,  // opt-in daily auto-backup to Google Drive
     driveBackupHour: 3,    // 0-23, device-local time — default 3 AM
     driveBackupMinute: 0,  // 0-59
-    bgRadhaVallabh: 1,
-    bgHitju: 1,
-    bgGurudev: 1,
+    bgRadhaVallabh: 0,
+    bgHitju: 0,
+    bgGurudev: 0,
     bgCM: 1,
     bgIskconAcharya: 1,
     bgIskconGurudev: 1,
@@ -4374,6 +4374,16 @@ function toggleSriExpand() {
 function scrollToJapSetup() {
   setTimeout(() => {
     const isVisible = (e) => e && e.offsetParent !== null;
+    // Gaudiya/ISKCON has its own Language+Targets area (Mahamantra Language,
+    // right after the Sampraday selector) — the non-Gaudiya anchors below are
+    // hidden while Gaudiya mode is on, so target the Gaudiya one directly.
+    if (App.S && App.S.gaudiyaMode) {
+      const gEl = document.getElementById("gaudiyaLangTargetAnchor");
+      if (isVisible(gEl)) {
+        gEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+    }
     const langEl = document.getElementById("japLangAnchor");
     const targetsEl = document.getElementById("japTargetsAnchor");
     // Prefer the language anchor, but skip it if it's hidden (e.g. Gaudiya
@@ -11209,9 +11219,9 @@ async function fbPushFull() {
     driveBackupHour: App.S.driveBackupHour ?? 3,
     driveBackupMinute: App.S.driveBackupMinute ?? 0,
     lbDisplayName: App.S.lbDisplayName || "",
-    bgRadhaVallabh: App.S.bgRadhaVallabh ?? 1,
-    bgHitju: App.S.bgHitju ?? 1,
-    bgGurudev: App.S.bgGurudev ?? 1,
+    bgRadhaVallabh: App.S.bgRadhaVallabh ?? 0,
+    bgHitju: App.S.bgHitju ?? 0,
+    bgGurudev: App.S.bgGurudev ?? 0,
     bgIskconAcharya: App.S.bgIskconAcharya ?? 1,
     bgIskconGurudev: App.S.bgIskconGurudev ?? 1,
     bgCM: App.S.bgCM ?? 1,
@@ -20830,9 +20840,10 @@ window.uploadCustomPhoto = function(key, inputElement) {
 };
 
 window.resetPhoto = async function(key) {
-  // We no longer delete the custom photo from IDB, just switch away from it
-  selectRepoPhoto(key, 1);
-  if(typeof toast === 'function') toast("Reset to default photo");
+  // We no longer delete the custom photo from IDB, just switch away from it.
+  // Default is now blank (0) — matches the initial state for new users.
+  selectRepoPhoto(key, 0);
+  if(typeof toast === 'function') toast("Reset to default (blank)");
 };
 
 window.applyBgPhotos = async function() {

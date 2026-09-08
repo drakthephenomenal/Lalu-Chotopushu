@@ -26,7 +26,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
-<link rel="stylesheet" href="./style.css?v=129">
+<link rel="stylesheet" href="./style.css?v=130">
   <link rel="stylesheet" href="./style-stotram.css?v=125">
   <link rel="stylesheet" href="./vedic-panchanga/panchanga.css?v=155">
 <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
@@ -1796,64 +1796,6 @@
     <div class="samp-footer">|| Hari Bol ||</div>
   </div>
 
-  <!-- GAUDIYA / ISKCON MODE — large aesthetic switch -->
-  <div class="sc gaudiya-mode-card" id="gaudiyaModeCard">
-    <div class="gmc-top">
-      <img class="gmc-icon gmc-icon-img" id="gaudiyaModeIcon" alt="" draggable="false" loading="lazy">
-      <div class="gmc-text">
-        <div class="gmc-title">Gaudiya / ISKCON</div>
-        <div class="gmc-desc">Mahamantra (Hare Krishna) mode — Stats &amp; History show HK data only. Hides Radha / RV / 28 Names.</div>
-      </div>
-    </div>
-    <div class="gmc-switch-wrap" onclick="tgs('gaudiyaMode')">
-      <div class="gmc-switch" id="gmcSwitch">
-        <div class="gmc-switch-track" id="gmcTrack">
-          <div class="gmc-switch-thumb" id="gmcThumb"></div>
-          <div class="gmc-switch-label-off">OFF</div>
-          <div class="gmc-switch-label-on">ON</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="sc trahimam-mode-card" id="trahimamModeCard" style="margin-top:14px;">
-    <div class="gmc-top">
-      <img class="gmc-icon gmc-icon-img" id="trahimamModeIcon" alt="" draggable="false" loading="lazy">
-      <div class="gmc-text">
-        <div class="gmc-title">Gopeshwar Mahadev</div>
-        <div class="gmc-desc">Samba Sadashiv (SS) mode — Stats &amp; History show SS data only, with its own Jap targets. Hides Radha / Radha Vallabh / Krishnay Vasudevay.</div>
-      </div>
-    </div>
-    <div class="tmc-switch-wrap" onclick="tgs('trahimamMode')">
-      <div class="tmc-switch" id="tgTrahimam">
-        <div class="tmc-switch-track" id="tmcTrack">
-          <div class="tmc-switch-thumb" id="tmcThumb"></div>
-          <div class="tmc-switch-label-off">OFF</div>
-          <div class="tmc-switch-label-on">ON</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="sc ramanandi-mode-card" id="ramanandiModeCard" style="margin-top:14px;">
-    <div class="gmc-top">
-      <div class="gmc-icon">🚩</div>
-      <div class="gmc-text">
-        <div class="gmc-title">Ramanandi</div>
-        <div class="gmc-desc">Raam Vijay Mantra mode — Stats &amp; History show Ramanandi data only, with its own Jap targets. Hides Radha / Radha Vallabh / Samba Sadashiv.</div>
-      </div>
-    </div>
-    <div class="rmc-switch-wrap" onclick="tgs('ramanandiMode')">
-      <div class="rmc-switch" id="tgRamanandi">
-        <div class="rmc-switch-track" id="rmcTrack">
-          <div class="rmc-switch-thumb" id="rmcThumb"></div>
-          <div class="rmc-switch-label-off">OFF</div>
-          <div class="rmc-switch-label-on">ON</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- 🪷 HK Daily + Language side-by-side 🪷 -->
   <div class="hk-only-block" style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(109,184,255,0.15)">
     <div id="hkDailyTargetLabel" style="font-size:9px;color:rgba(109,184,255,0.7);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">🪷 Hare Krishna Mahamantra Targets</div>
@@ -2749,7 +2691,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=115"></script>
-    <script src="./app.js?v=144"></script>
+    <script src="./app.js?v=145"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

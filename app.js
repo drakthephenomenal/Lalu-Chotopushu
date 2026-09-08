@@ -13584,10 +13584,6 @@ const INDEPENDENT_MODE_IMG = {
 // need to wait for DOMContentLoaded. Ramanandi keeps its 🚩 emoji — no
 // sign image supplied for it.
 (function () {
-  var gi = document.getElementById("gaudiyaModeIcon");
-  if (gi) gi.src = ST_FOLDER_ICON_IMG.bmg;
-  var ti = document.getElementById("trahimamModeIcon");
-  if (ti) ti.src = ST_FOLDER_ICON_IMG.shiv;
   var sgi = document.getElementById("sampGopeshwarIcon");
   if (sgi) sgi.src = INDEPENDENT_MODE_IMG.icon;
   var sgt = document.getElementById("sampGopeshwarTilak");

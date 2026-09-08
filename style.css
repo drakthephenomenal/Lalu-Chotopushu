@@ -1704,7 +1704,7 @@ body:not(.trahimam-mode) .rv-daily-target-card { grid-column: 1/-1; }
 .samp-section-label span{background:var(--bm);border:1px solid var(--gg);border-radius:16px;padding:4px 12px;font-weight:700;color:var(--gold);font-size:12px;white-space:nowrap;}
 .samp-row{display:flex;gap:10px;}
 .samp-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.samp-card{flex:1;min-width:0;background:var(--bc);border:1px solid rgba(245,209,122,0.18);border-radius:14px;padding:10px 10px 11px;position:relative;overflow:hidden;transition:border-color .2s,box-shadow .2s;}
+.samp-card{flex:1;min-width:0;background:var(--bc);border:1px solid rgba(245,209,122,0.18);border-radius:14px;padding:10px 10px 11px;position:relative;overflow:hidden;transition:border-color .2s,box-shadow .2s;display:flex;flex-direction:column;}
 .samp-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.6;}
 .samp-card.on{border-color:var(--gold);box-shadow:0 0 14px rgba(245,209,122,0.18);}
 .samp-row-top{display:flex;flex-direction:column;align-items:stretch;gap:6px;margin-bottom:8px;}
@@ -1716,7 +1716,7 @@ body:not(.trahimam-mode) .rv-daily-target-card { grid-column: 1/-1; }
 #sampGopeshwar .samp-thumb{width:150px;max-width:45%;margin:0 auto;}
 .samp-name{color:var(--gold);font-weight:700;font-size:14px;line-height:1.15;text-align:center;}
 .samp-note{color:var(--td);font-size:10.5px;line-height:1.2;text-align:center;margin-top:2px;opacity:.75;}
-.samp-toggle-wrap{display:flex;align-items:center;gap:6px;}
+.samp-toggle-wrap{display:flex;align-items:center;gap:6px;margin-top:auto;padding-top:8px;}
 .samp-toggle-pill{position:relative;flex:1;height:36px;border-radius:20px;background:var(--bd);border:1px solid rgba(245,209,122,0.25);cursor:pointer;transition:border-color .25s;}
 .samp-card.on .samp-toggle-pill{border-color:var(--gold);}
 .samp-toggle-knob{position:absolute;top:2px;left:2px;width:32px;height:32px;border-radius:50%;background:var(--bd);border:1px solid rgba(245,209,122,0.35);display:flex;align-items:center;justify-content:center;transition:left .28s ease,background .25s;}

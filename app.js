@@ -10083,7 +10083,7 @@ async function driveBackupNow() {
     console.error("driveBackupNow failed:", e);
     toast("❌ Drive backup failed: " + (e && e.message ? e.message : e));
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = "📤 Backup Now to Google Drive"; }
+    if (btn) { btn.disabled = false; btn.textContent = "🗂️ Upload the json file to Google drive with Single tap"; }
   }
 }
 

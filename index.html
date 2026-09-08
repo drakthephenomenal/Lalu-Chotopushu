@@ -1712,6 +1712,7 @@
         <div class="samp-row-top">
           <div class="samp-thumb"><img src="sampraday/sri/1.jpg" alt="Sri Devi Lakshmi" loading="lazy"></div>
           <div class="samp-name">Shree</div>
+          <div class="samp-note">Most ancient</div>
         </div>
         <div class="samp-toggle-wrap">
           <div class="samp-toggle-pill" onclick="toggleSriExpand()">
@@ -1736,23 +1737,11 @@
         </div>
       </div>
 
-      <div class="samp-card" id="sampGaudiya">
-        <div class="samp-row-top">
-          <div class="samp-thumb"><img src="sampraday/gaudiya/1.jpg" alt="Lord Brahma" loading="lazy"></div>
-          <div class="samp-name">Gaudiya / ISKCON</div>
-        </div>
-        <div class="samp-toggle-wrap">
-          <div class="samp-toggle-pill" onclick="tgs('gaudiyaMode')">
-            <div class="samp-toggle-knob"><img src="sampraday/tilaks/gaudiya.png" alt="Gaudiya tilak" loading="lazy"></div>
-          </div>
-          <span class="samp-toggle-label" id="samp-lbl-gaudiya">OFF</span>
-        </div>
-      </div>
-
       <div class="samp-card" id="sampNimbark">
         <div class="samp-row-top">
           <div class="samp-thumb"><img src="sampraday/nimbark/1.jpg" alt="The four Kumaras" loading="lazy"></div>
           <div class="samp-name">Nimbark</div>
+          <div class="samp-note">Kumar Sampraday</div>
         </div>
         <div class="samp-toggle-wrap">
           <div class="samp-toggle-pill" onclick="tgs('nimbarkMode')">
@@ -1762,10 +1751,25 @@
         </div>
       </div>
 
+      <div class="samp-card" id="sampGaudiya">
+        <div class="samp-row-top">
+          <div class="samp-thumb"><img src="sampraday/gaudiya/1.jpg" alt="Lord Brahma" loading="lazy"></div>
+          <div class="samp-name">Gaudiya / ISKCON</div>
+          <div class="samp-note">Brahma Madhva Gaudiya</div>
+        </div>
+        <div class="samp-toggle-wrap">
+          <div class="samp-toggle-pill" onclick="tgs('gaudiyaMode')">
+            <div class="samp-toggle-knob"><img src="sampraday/tilaks/gaudiya.png" alt="Gaudiya tilak" loading="lazy"></div>
+          </div>
+          <span class="samp-toggle-label" id="samp-lbl-gaudiya">OFF</span>
+        </div>
+      </div>
+
       <div class="samp-card" id="sampVallabh">
         <div class="samp-row-top">
           <div class="samp-thumb"><img src="sampraday/vallabh/1.jpg" alt="Lord Shiva with tanpura" loading="lazy"></div>
           <div class="samp-name">Vallabh</div>
+          <div class="samp-note">Pushtimarg/Rudra sampraday</div>
         </div>
         <div class="samp-toggle-wrap">
           <div class="samp-toggle-pill" onclick="tgs('vallabhMode')">
@@ -1781,7 +1785,7 @@
     <div class="samp-row">
       <div class="samp-card" id="sampGopeshwar" style="flex:1;">
         <div class="samp-row-top">
-          <div class="samp-thumb"><img id="sampGopeshwarIcon" src="" alt="Gopeshwar Mahadev" loading="lazy" style="object-fit:contain;background:var(--bd);padding:6px;"></div>
+          <div class="samp-thumb"><img id="sampGopeshwarIcon" src="" alt="Gopeshwar Mahadev" loading="lazy" style="object-fit:contain;background:#ffffff;padding:6px;"></div>
           <div class="samp-name">Gopeshwar Mahadev</div>
         </div>
         <div class="samp-toggle-wrap">
@@ -2117,8 +2121,9 @@
   <div class="sc">
     <h3>💾 Local Backup &amp; Restore</h3>
     <p style="font-size:12px;color:var(--td);margin-bottom:14px">Export all your data as a JSON file. Use to transfer to a new device.</p>
-    <button class="pb pb-export" onclick="exportAllData()" style="margin-bottom:10px">📥 Export All Data</button>
-    <button class="pb" onclick="shareBackup()" style="margin-bottom:10px;background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,180,0,0.25));color:var(--gold);border:1px solid rgba(255,215,0,0.4)">📤 Share Backup</button>
+    <button class="pb pb-export" onclick="exportAllData()" style="margin-bottom:10px">📥 Download All Jap Data to local Drive as json file</button>
+    <button class="pb pb-export" id="driveBackupNowBtn" onclick="driveBackupNow()" style="margin-bottom:10px">🗂️ Upload Jap Data json file to Google Drive</button>
+    <button class="pb" onclick="shareBackup()" style="margin-bottom:10px;background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,180,0,0.25));color:var(--gold);border:1px solid rgba(255,215,0,0.4)">📤 Share Json File</button>
     <label class="pb pb-restore" style="display:flex;align-items:center;justify-content:center;width:100%;cursor:pointer;box-sizing:border-box;background:linear-gradient(135deg,rgba(74,144,226,0.22),rgba(74,144,226,0.08));border:1px solid rgba(74,144,226,0.45);color:var(--a2);box-shadow:0 4px 14px rgba(74,144,226,0.15),inset 0 1px 0 rgba(255,255,255,0.06);letter-spacing:0.3px">
       📤 Restore from Backup
       <input type="file" id="restoreFileIn" accept=".json" style="display:none" onchange="importAllData(this)">
@@ -2130,18 +2135,19 @@
   <div class="sc">
     <h3>🗂️ Google Drive Backup</h3>
     <p style="font-size:12px;color:var(--td);margin-bottom:14px">Save a dated backup file directly to your own Google Drive. Requires Google sign-in.</p>
-    <button class="pb pb-export" id="driveBackupNowBtn" onclick="driveBackupNow()" style="margin-bottom:14px">📤 Backup Now to Google Drive</button>
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 2px;border-top:1px solid rgba(255,215,0,0.15)">
-      <div>
-        <div style="font-size:14px;color:var(--gold);font-weight:600">Daily Auto-Backup</div>
-        <div style="font-size:11px;color:var(--td);margin-top:2px">Backs up automatically once a day, even if the app is closed — at approximately the time you choose below (checked roughly hourly, so it may land within ~35 min of your target).</div>
+    <div style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 2px;border-top:1px solid rgba(255,215,0,0.15)">
+        <div>
+          <div style="font-size:14px;color:var(--gold);font-weight:600">Daily Auto-Backup</div>
+          <div style="font-size:11px;color:var(--td);margin-top:2px">Backs up automatically once a day, even if the app is closed — at approximately the time you choose below (checked roughly hourly, so it may land within ~35 min of your target).</div>
+        </div>
+        <div class="tg" id="tgDriveBackupDaily" onclick="toggleDriveBackupDaily()"></div>
       </div>
-      <div class="tg" id="tgDriveBackupDaily" onclick="toggleDriveBackupDaily()"></div>
-    </div>
-    <div id="driveBackupTimeRow" style="display:none;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 2px;">
-      <div style="font-size:12px;color:var(--td)">Backup time (device local)</div>
-      <input type="time" id="driveBackupTimeIn" onchange="saveDriveBackupTime(this)"
-        style="padding:8px 10px;border-radius:8px;border:1px solid rgba(255,215,0,0.3);background:#1a1f3a;color:#fff;font-size:13px;font-family:Inter,sans-serif;color-scheme:dark">
+      <div id="driveBackupTimeRow" style="display:none;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 2px;">
+        <div style="font-size:12px;color:var(--td)">Backup time (device local)</div>
+        <input type="time" id="driveBackupTimeIn" onchange="saveDriveBackupTime(this)"
+          style="padding:8px 10px;border-radius:8px;border:1px solid rgba(255,215,0,0.3);background:#1a1f3a;color:#fff;font-size:13px;font-family:Inter,sans-serif;color-scheme:dark">
+      </div>
     </div>
   </div>
 

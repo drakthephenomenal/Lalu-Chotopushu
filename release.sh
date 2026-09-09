@@ -31,7 +31,7 @@ cp android/app/build/outputs/apk/release/app-release.apk RadhaNaamJap.apk
 
 echo "▶ Committing version bump to repo..."
 git add -f android/app/build.gradle
-git add .app-version sw.js
+git add .app-version sw.js index.html
 git commit -m "Bump to v1.0.$NEW_CODE — $NOTES"
 git push origin main
 

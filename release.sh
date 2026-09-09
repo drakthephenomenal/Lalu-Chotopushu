@@ -30,7 +30,8 @@ echo "▶ Renaming APK for release..."
 cp android/app/build/outputs/apk/release/app-release.apk RadhaNaamJap.apk
 
 echo "▶ Committing version bump to repo..."
-git add android/app/build.gradle .app-version sw.js
+git add -f android/app/build.gradle
+git add .app-version sw.js
 git commit -m "Bump to v1.0.$NEW_CODE — $NOTES"
 git push origin main
 

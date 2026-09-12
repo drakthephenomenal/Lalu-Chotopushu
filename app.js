@@ -13784,7 +13784,16 @@ function favvidTelegramEmbed(url) {
 function favvidDriveEmbed(url) {
   const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (!m) return null;
-  return 'https://drive.google.com/file/d/' + m[1] + '/preview';
+  // Direct-download URL, played through the same plain <video> tag as
+  // GitHub-hosted videos (kind:'file') — avoids the /preview iframe,
+  // which Android's WebView sometimes renders using native video chrome
+  // that ignores the page's own layout entirely.
+  // Caveat: Google shows an HTML "can't scan for viruses" interstitial
+  // instead of the raw video for files above roughly ~25MB, so this
+  // works reliably for shorter clips but may fail on longer ones — if
+  // a specific video doesn't play, re-upload it as a GitHub video
+  // instead of a Drive link.
+  return 'https://drive.google.com/uc?export=download&id=' + m[1];
 }
 // Facebook's official video plugin — works for public videos without
 // needing their SDK/embed.js, but private or restricted videos show a
@@ -13824,10 +13833,6 @@ function openFavVideoPlayer(title, kind, urlOrId, originalUrl) {
         '<div style="color:rgba(255,215,0,0.7);font-size:13px;margin-bottom:8px">এই ভিডিওটি এখানে দেখানো যাচ্ছে না</div>' +
         '<a href="' + urlOrId + '" target="_blank" rel="noopener" style="display:inline-block;padding:10px 18px;border-radius:10px;background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.35);color:#ffd700;text-decoration:none;font-family:Inter,sans-serif;font-size:13px">Instagram-এ খুলুন ↗</a>' +
       '</div>';
-  } else if (kind === 'drive') {
-    mediaHtml =
-      '<iframe src="' + urlOrId + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;max-width:640px;aspect-ratio:16/9;border:none;border-radius:10px;background:#000"></iframe>' +
-      '<div style="margin-top:8px;text-align:center;color:rgba(255,215,0,0.55);font-size:12px">প্লে না হলে, ফাইলের শেয়ারিং "Anyone with the link" করা আছে কিনা দেখুন</div>';
   } else if (kind === 'facebook') {
     mediaHtml =
       '<iframe src="' + urlOrId + '" allow="autoplay" allowfullscreen style="width:100%;max-width:640px;aspect-ratio:16/9;border:none;border-radius:10px;background:#000"></iframe>' +
@@ -14073,8 +14078,8 @@ function renderFavVideoLinksList(list) {
         } else if (platform === 'instagram') {
           openFavVideoPlayer(v.title, 'instagram', v.url);
         } else if (platform === 'drive') {
-          const embed = favvidDriveEmbed(v.url);
-          if (embed) openFavVideoPlayer(v.title, 'drive', embed, v.url); else window.open(v.url, '_blank');
+          const directUrl = favvidDriveEmbed(v.url);
+          if (directUrl) openFavVideoPlayer(v.title, 'file', directUrl); else window.open(v.url, '_blank');
         } else if (platform === 'facebook') {
           openFavVideoPlayer(v.title, 'facebook', favvidFacebookEmbed(v.url), v.url);
         } else {

@@ -18,6 +18,10 @@ EXCLUDES=(
   --exclude='CAPACITOR_SETUP.md'
   --exclude='setup-www.sh'
 
+  # Favourite Videos: streamed from raw.githubusercontent.com at runtime,
+  # never bundled into the APK/PWA build — see app.js's FAVVID_* comments.
+  --exclude='videos'
+
   # SECRETS: never allow these to ship in the app bundle, no matter what
   --exclude='release.keystore'
   --exclude='*.keystore'

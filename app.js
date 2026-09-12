@@ -13620,7 +13620,8 @@ const FAVVID_GH_BRANCH = 'main';
 //    (dashes/underscores become spaces) — no separate title needed.
 const FAVVID_FILES = {
   motivation: [
-    "No Defeat in Devotee's life💛💙.mp4",
+    "No Defeat in Devotee\u2019s life\ud83d\udc9b\ud83d\udc99.mp4",
+    "Heart Melting Satsang.MP4",
   ],
   naamjap: [
     // 'Power-Of-Radha-Naam.mp4',

@@ -13826,7 +13826,7 @@ function openFavVideoPlayer(title, kind, urlOrId, originalUrl) {
       '</div>';
   } else if (kind === 'drive') {
     mediaHtml =
-      '<iframe src="' + urlOrId + '" allow="autoplay" allowfullscreen style="width:100%;max-width:640px;aspect-ratio:16/9;border:none;border-radius:10px;background:#000"></iframe>' +
+      '<iframe src="' + urlOrId + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;max-width:640px;aspect-ratio:16/9;border:none;border-radius:10px;background:#000"></iframe>' +
       '<div style="margin-top:8px;text-align:center;color:rgba(255,215,0,0.55);font-size:12px">প্লে না হলে, ফাইলের শেয়ারিং "Anyone with the link" করা আছে কিনা দেখুন</div>';
   } else if (kind === 'facebook') {
     mediaHtml =

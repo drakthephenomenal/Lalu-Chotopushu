@@ -13620,7 +13620,7 @@ const FAVVID_GH_BRANCH = 'main';
 //    (dashes/underscores become spaces) — no separate title needed.
 const FAVVID_FILES = {
   motivation: [
-    // 'Why-Karma-Never-Forgets.mp4',
+    "No Defeat in Devotee's life💛💙.mp4",
   ],
   naamjap: [
     // 'Power-Of-Radha-Naam.mp4',
@@ -13649,7 +13649,7 @@ function getFavVideoFiles(sub) {
   return names.map((name) => ({
     name: name,
     title: favvidTitleFromFilename(name),
-    url: 'https://raw.githubusercontent.com/' + FAVVID_GH_OWNER + '/' + FAVVID_GH_REPO + '/' + FAVVID_GH_BRANCH + '/' + sub.path + '/' + name,
+    url: 'https://raw.githubusercontent.com/' + FAVVID_GH_OWNER + '/' + FAVVID_GH_REPO + '/' + FAVVID_GH_BRANCH + '/' + sub.path + '/' + encodeURIComponent(name),
   }));
 }
 
@@ -13903,6 +13903,14 @@ function renderFavVideoLinksList(list) {
 function renderSt() {
   const list = document.getElementById("stList");
   list.innerHTML = "";
+
+  // "Stotram Tracker" title + "Add Your Stotram" box don't apply inside
+  // Favourite Videos — hide them there, restore for every other folder.
+  const trackerTitle = document.getElementById('stTrackerTitle');
+  const addForm = document.getElementById('stAddForm');
+  const inVideos = window._stActiveFolder === 'videos';
+  if (trackerTitle) trackerTitle.style.display = inVideos ? 'none' : '';
+  if (addForm) addForm.style.display = inVideos ? 'none' : '';
 
   // Inject premium glow animations once
   if (!document.getElementById('st-card-styles')) {

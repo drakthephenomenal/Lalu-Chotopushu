@@ -13781,20 +13781,10 @@ function favvidTelegramEmbed(url) {
 // Google Drive: works only if the file's sharing is set to "Anyone with
 // the link" — Drive's own /preview page shows a "request access" screen
 // otherwise, which we can't detect from a cross-origin iframe.
-function favvidDriveEmbed(url) {
-  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (!m) return null;
-  // Direct-content URL, played through the same plain <video> tag as
-  // GitHub-hosted videos (kind:'file') — avoids the /preview iframe,
-  // which Android's WebView sometimes renders using native video chrome
-  // that ignores the page's own layout entirely.
-  // NOTE: Drive has no officially-supported anonymous video-streaming
-  // endpoint — this uses a widely-relied-on but unofficial URL shape
-  // that can change or fail without warning (Google isn't guaranteeing
-  // it for this use). If a specific video doesn't play here, that's why
-  // — re-upload it as a GitHub video instead of a Drive link.
-  return 'https://drive.usercontent.google.com/download?id=' + m[1] + '&export=download&confirm=t';
-}
+// Drive links open externally (see the click handler below) rather than
+// embedding inline — two attempts at inline playback (an iframe /preview,
+// then a direct-content <video> URL) both proved unreliable, since Drive
+// has no officially-supported anonymous video-streaming endpoint.
 // Facebook's official video plugin — works for public videos without
 // needing their SDK/embed.js, but private or restricted videos show a
 // blank/greyed box with no detectable failure signal, so we always show
@@ -14078,8 +14068,10 @@ function renderFavVideoLinksList(list) {
         } else if (platform === 'instagram') {
           openFavVideoPlayer(v.title, 'instagram', v.url);
         } else if (platform === 'drive') {
-          const directUrl = favvidDriveEmbed(v.url);
-          if (directUrl) openFavVideoPlayer(v.title, 'file', directUrl); else window.open(v.url, '_blank');
+          // Inline embedding proved unreliable (no officially-supported
+          // anonymous streaming endpoint) — open in the Drive app/
+          // browser instead, where Google's own playback just works.
+          window.open(v.url, '_blank');
         } else if (platform === 'facebook') {
           openFavVideoPlayer(v.title, 'facebook', favvidFacebookEmbed(v.url), v.url);
         } else {

@@ -13598,12 +13598,15 @@ const INDEPENDENT_MODE_IMG = {
 // Three sources:
 //  - GitHub-hosted videos (Motivation / Naam Jap Mahima / Law of Karma):
 //    dev uploads an .mp4 straight into the matching /videos/<slug>/ repo
-//    folder AND adds its filename to FAVVID_FILES below — same pattern
-//    as the audio files (a known, hand-maintained filename, not a
-//    live directory listing). No GitHub API call at runtime: the
-//    video itself still streams from raw.githubusercontent.com only
-//    when a user taps it, and is never bundled into the APK/PWA build
-//    (setup-www.sh's rsync into www/ never touches /videos/).
+//    folder — that's the ONLY step. A GitHub Action
+//    (.github/workflows/video-manifest.yml) watches that folder and
+//    auto-regenerates videos/manifest.json with whatever's actually
+//    there; the app just fetches that one small JSON file (a plain
+//    static file, not a live GitHub API directory listing, so no
+//    rate limit) and lists whatever it says. The video itself still
+//    streams from raw.githubusercontent.com only when a user taps it,
+//    and is never bundled into the APK/PWA build (setup-www.sh's
+//    rsync into www/ never touches /videos/).
 //  - Links (YouTube / Instagram / Telegram): developer-only, added via
 //    an in-app form, stored in Firestore /config/favouriteVideoLinks
 //    (reuses the existing "config" collection — read: any signed-in
@@ -13613,23 +13616,7 @@ const INDEPENDENT_MODE_IMG = {
 const FAVVID_GH_OWNER = 'drakthephenomenal';
 const FAVVID_GH_REPO = 'Lalu-Chotopushu';
 const FAVVID_GH_BRANCH = 'main';
-
-// ── To add a video: upload the .mp4 into the matching /videos/<slug>/
-//    repo folder, then add its exact filename to the array below.
-//    The display title is generated from the filename automatically
-//    (dashes/underscores become spaces) — no separate title needed.
-const FAVVID_FILES = {
-  motivation: [
-    "No Defeat in Devotee\u2019s life\ud83d\udc9b\ud83d\udc99.mp4",
-    "Heart Melting Satsang.MP4",
-  ],
-  naamjap: [
-    // 'Power-Of-Radha-Naam.mp4',
-  ],
-  karma: [
-    // 'You-Reap-What-You-Sow.mp4',
-  ],
-};
+const FAVVID_MANIFEST_URL = 'https://raw.githubusercontent.com/' + FAVVID_GH_OWNER + '/' + FAVVID_GH_REPO + '/' + FAVVID_GH_BRANCH + '/videos/manifest.json';
 
 const VIDEO_SUBFOLDERS = [
   { key: 'motivation', title: 'Motivation',     icon: '🔥', type: 'github', path: 'videos/motivation' },
@@ -13643,10 +13630,35 @@ function favvidTitleFromFilename(name) {
   return name.replace(/\.[a-zA-Z0-9]+$/, '').replace(/[-_]+/g, ' ').trim();
 }
 
-// Builds the video list for one subfolder straight from FAVVID_FILES —
-// no network call, no GitHub API, purely local to app.js.
-function getFavVideoFiles(sub) {
-  const names = FAVVID_FILES[sub.key] || [];
+// Fetches videos/manifest.json once per 5 minutes (cached in between so
+// re-opening a subfolder doesn't re-fetch every time). The manifest is
+// keyed by the repo folder name (e.g. "motivation",
+// "naam-jap-mahima") — see the workflow file for how it's built.
+let _favvidManifestCache = null;
+let _favvidManifestFetchedAt = 0;
+async function fetchFavVideoManifest(force) {
+  const fresh = _favvidManifestCache && (Date.now() - _favvidManifestFetchedAt) < 5 * 60 * 1000;
+  if (fresh && !force) return _favvidManifestCache;
+  try {
+    const res = await fetch(FAVVID_MANIFEST_URL, { cache: 'no-store' });
+    if (!res.ok) {
+      if (res.status === 404) { _favvidManifestCache = {}; _favvidManifestFetchedAt = Date.now(); return {}; }
+      throw new Error('manifest fetch error ' + res.status);
+    }
+    _favvidManifestCache = await res.json();
+    _favvidManifestFetchedAt = Date.now();
+    return _favvidManifestCache;
+  } catch (e) {
+    if (_favvidManifestCache) return _favvidManifestCache; // stale-but-usable on a transient network error
+    throw e;
+  }
+}
+
+// Builds the video list for one subfolder from the fetched manifest.
+async function getFavVideoFiles(sub) {
+  const folderSlug = sub.path.split('/').pop(); // "videos/naam-jap-mahima" -> "naam-jap-mahima"
+  const manifest = await fetchFavVideoManifest();
+  const names = manifest[folderSlug] || [];
   return names.map((name) => ({
     name: name,
     title: favvidTitleFromFilename(name),
@@ -13800,25 +13812,36 @@ function renderFavVideoFolder(list) {
 }
 
 function renderGithubVideoList(list, sub) {
-  const items = getFavVideoFiles(sub);
-  if (!items.length) {
-    const empty = document.createElement('div');
-    empty.className = 'st-folder-empty';
-    empty.textContent = 'শীঘ্রই আসছে 🙏';
-    list.appendChild(empty);
-    return;
-  }
-  items.forEach((v) => {
-    const card = document.createElement('div');
-    card.className = 'st-card';
-    card.style.cursor = 'pointer';
-    card.innerHTML =
-      '<div style="display:flex;align-items:center;gap:10px">' +
-        '<span style="font-size:22px">▶️</span>' +
-        '<div class="st-name" style="font-size:15px">' + escHtml(v.title) + '</div>' +
-      '</div>';
-    card.addEventListener('click', () => openFavVideoPlayer(v.title, 'file', v.url));
-    list.appendChild(card);
+  const loading = document.createElement('div');
+  loading.className = 'st-folder-empty';
+  loading.textContent = 'লোড হচ্ছে…';
+  list.appendChild(loading);
+
+  getFavVideoFiles(sub).then((items) => {
+    if (window._stActiveFolder !== 'videos' || window._stActiveVideoFolder !== sub.key) return; // navigated away meanwhile
+    loading.remove();
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'st-folder-empty';
+      empty.textContent = 'শীঘ্রই আসছে 🙏';
+      list.appendChild(empty);
+      return;
+    }
+    items.forEach((v) => {
+      const card = document.createElement('div');
+      card.className = 'st-card';
+      card.style.cursor = 'pointer';
+      card.innerHTML =
+        '<div style="display:flex;align-items:center;gap:10px">' +
+          '<span style="font-size:22px">▶️</span>' +
+          '<div class="st-name" style="font-size:15px">' + escHtml(v.title) + '</div>' +
+        '</div>';
+      card.addEventListener('click', () => openFavVideoPlayer(v.title, 'file', v.url));
+      list.appendChild(card);
+    });
+  }).catch(() => {
+    if (window._stActiveFolder !== 'videos' || window._stActiveVideoFolder !== sub.key) return;
+    loading.textContent = 'ভিডিও তালিকা লোড করা যায়নি — ইন্টারনেট সংযোগ পরীক্ষা করুন';
   });
 }
 

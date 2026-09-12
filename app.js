@@ -13784,16 +13784,16 @@ function favvidTelegramEmbed(url) {
 function favvidDriveEmbed(url) {
   const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (!m) return null;
-  // Direct-download URL, played through the same plain <video> tag as
+  // Direct-content URL, played through the same plain <video> tag as
   // GitHub-hosted videos (kind:'file') — avoids the /preview iframe,
   // which Android's WebView sometimes renders using native video chrome
   // that ignores the page's own layout entirely.
-  // Caveat: Google shows an HTML "can't scan for viruses" interstitial
-  // instead of the raw video for files above roughly ~25MB, so this
-  // works reliably for shorter clips but may fail on longer ones — if
-  // a specific video doesn't play, re-upload it as a GitHub video
-  // instead of a Drive link.
-  return 'https://drive.google.com/uc?export=download&id=' + m[1];
+  // NOTE: Drive has no officially-supported anonymous video-streaming
+  // endpoint — this uses a widely-relied-on but unofficial URL shape
+  // that can change or fail without warning (Google isn't guaranteeing
+  // it for this use). If a specific video doesn't play here, that's why
+  // — re-upload it as a GitHub video instead of a Drive link.
+  return 'https://drive.usercontent.google.com/download?id=' + m[1] + '&export=download&confirm=t';
 }
 // Facebook's official video plugin — works for public videos without
 // needing their SDK/embed.js, but private or restricted videos show a

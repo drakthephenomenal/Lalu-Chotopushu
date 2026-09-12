@@ -13661,6 +13661,7 @@ async function getFavVideoFiles(sub) {
   const names = manifest[folderSlug] || [];
   return names.map((name) => ({
     name: name,
+    key: name,
     title: favvidTitleFromFilename(name),
     url: 'https://raw.githubusercontent.com/' + FAVVID_GH_OWNER + '/' + FAVVID_GH_REPO + '/' + FAVVID_GH_BRANCH + '/' + sub.path + '/' + encodeURIComponent(name),
   }));
@@ -13683,11 +13684,85 @@ async function saveFavVideoLinks(items) {
   await fbDb.collection('config').doc('favouriteVideoLinks').set({ items: items, updatedAt: Date.now() });
   _favvidLinksCache = items;
 }
+
+// ── Manual ordering (developer-only) ──
+// One Firestore doc holds the developer's chosen order for each
+// subfolder — keyed by filename for GitHub videos, by link id for
+// Links. Anything not yet in the order list keeps its natural order,
+// appended after the explicitly-ordered items. Reuses the existing
+// "config" collection (read: any signed-in user, write: isDeveloper()
+// only) — no rules change needed.
+let _favvidOrderCache = null;
+async function loadFavVideoOrder(force) {
+  if (_favvidOrderCache && !force) return _favvidOrderCache;
+  try {
+    const snap = await fbDb.collection('config').doc('favouriteVideoOrder').get();
+    _favvidOrderCache = snap.exists ? (snap.data() || {}) : {};
+  } catch (e) {
+    _favvidOrderCache = _favvidOrderCache || {};
+  }
+  return _favvidOrderCache;
+}
+async function saveFavVideoOrderFor(bucketKey, orderArr) {
+  const cur = Object.assign({}, await loadFavVideoOrder(true));
+  cur[bucketKey] = orderArr;
+  await fbDb.collection('config').doc('favouriteVideoOrder').set(cur);
+  _favvidOrderCache = cur;
+}
+// Sorts `items` (each must have a `.key` string) by orderArr; anything
+// missing from orderArr keeps its original relative order at the end.
+function favvidApplyOrder(items, orderArr) {
+  if (!orderArr || !orderArr.length) return items.slice();
+  const pos = {};
+  orderArr.forEach((k, i) => { pos[k] = i; });
+  return items.slice().sort((a, b) => {
+    const pa = pos.hasOwnProperty(a.key) ? pos[a.key] : Infinity;
+    const pb = pos.hasOwnProperty(b.key) ? pos[b.key] : Infinity;
+    if (pa !== pb) return pa - pb;
+    return 0; // stable: keeps original relative order for ties
+  });
+}
+// Swaps items[i] and items[i+dir], persists the new full order for
+// bucketKey, then re-renders. Used by the developer-only ↑/↓ buttons.
+async function favvidReorder(bucketKey, items, i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= items.length) return;
+  const copy = items.slice();
+  const tmp = copy[i];
+  copy[i] = copy[j];
+  copy[j] = tmp;
+  await saveFavVideoOrderFor(bucketKey, copy.map((x) => x.key));
+  renderSt();
+}
+
+// ── "New/unseen" tracking (per device, not synced) ──
+// A video or link stays marked unseen — and shows a small badge — until
+// the user actually opens it once on this device.
+function favvidSeenSet() {
+  try {
+    return JSON.parse(localStorage.getItem('favVidSeen') || '{}');
+  } catch (e) {
+    return {};
+  }
+}
+function favvidIsSeen(key) {
+  return !!favvidSeenSet()[key];
+}
+function favvidMarkSeen(key) {
+  try {
+    const seen = favvidSeenSet();
+    if (seen[key]) return;
+    seen[key] = true;
+    localStorage.setItem('favVidSeen', JSON.stringify(seen));
+  } catch (e) { /* storage unavailable — badge just won't persist, harmless */ }
+}
 function favvidDetectPlatform(url) {
   const u = (url || '').toLowerCase();
   if (u.indexOf('youtube.com') !== -1 || u.indexOf('youtu.be') !== -1) return 'youtube';
   if (u.indexOf('instagram.com') !== -1) return 'instagram';
   if (u.indexOf('t.me') !== -1 || u.indexOf('telegram.me') !== -1) return 'telegram';
+  if (u.indexOf('drive.google.com') !== -1) return 'drive';
+  if (u.indexOf('facebook.com') !== -1 || u.indexOf('fb.watch') !== -1) return 'facebook';
   return 'other';
 }
 function favvidYoutubeId(url) {
@@ -13699,12 +13774,32 @@ function favvidTelegramEmbed(url) {
   if (!m) return null;
   return 'https://t.me/' + m[1] + '/' + m[2] + '?embed=1';
 }
+// Google Drive: works only if the file's sharing is set to "Anyone with
+// the link" — Drive's own /preview page shows a "request access" screen
+// otherwise, which we can't detect from a cross-origin iframe.
+function favvidDriveEmbed(url) {
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (!m) return null;
+  return 'https://drive.google.com/file/d/' + m[1] + '/preview';
+}
+// Facebook's official video plugin — works for public videos without
+// needing their SDK/embed.js, but private or restricted videos show a
+// blank/greyed box with no detectable failure signal, so we always show
+// an "Open in Facebook" link alongside it rather than trying to detect
+// success like the Instagram embed does.
+function favvidFacebookEmbed(url) {
+  return 'https://www.facebook.com/plugins/video.php?href=' + encodeURIComponent(url) + '&show_text=false';
+}
 
 // Inline modal player. kind: 'file' (GitHub mp4, native <video>),
 // 'youtube' (iframe embed), 'telegram' (official public-post iframe
 // embed), 'instagram' (official embed.js widget with a fallback
-// "open externally" link if it fails to render within a few seconds).
-function openFavVideoPlayer(title, kind, urlOrId) {
+// "open externally" link if it fails to render within a few seconds),
+// 'drive' (Google Drive /preview iframe — needs "Anyone with the link"
+// sharing), 'facebook' (official video plugin iframe). originalUrl is
+// only needed for drive/facebook, to build their fallback "open
+// externally" link.
+function openFavVideoPlayer(title, kind, urlOrId, originalUrl) {
   var old = document.getElementById('favVidOverlay');
   if (old) old.remove();
   var overlay = document.createElement('div');
@@ -13724,6 +13819,16 @@ function openFavVideoPlayer(title, kind, urlOrId) {
       '<div id="favVidIgFallback" style="display:none;margin-top:10px;text-align:center">' +
         '<div style="color:rgba(255,215,0,0.7);font-size:13px;margin-bottom:8px">এই ভিডিওটি এখানে দেখানো যাচ্ছে না</div>' +
         '<a href="' + urlOrId + '" target="_blank" rel="noopener" style="display:inline-block;padding:10px 18px;border-radius:10px;background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.35);color:#ffd700;text-decoration:none;font-family:Inter,sans-serif;font-size:13px">Instagram-এ খুলুন ↗</a>' +
+      '</div>';
+  } else if (kind === 'drive') {
+    mediaHtml =
+      '<iframe src="' + urlOrId + '" allow="autoplay" allowfullscreen style="width:100%;max-width:640px;aspect-ratio:16/9;border:none;border-radius:10px;background:#000"></iframe>' +
+      '<div style="margin-top:8px;text-align:center;color:rgba(255,215,0,0.55);font-size:12px">প্লে না হলে, ফাইলের শেয়ারিং "Anyone with the link" করা আছে কিনা দেখুন</div>';
+  } else if (kind === 'facebook') {
+    mediaHtml =
+      '<iframe src="' + urlOrId + '" allow="autoplay" allowfullscreen style="width:100%;max-width:640px;aspect-ratio:16/9;border:none;border-radius:10px;background:#000"></iframe>' +
+      '<div style="margin-top:8px;text-align:center">' +
+        '<a href="' + (originalUrl || urlOrId) + '" target="_blank" rel="noopener" style="color:rgba(255,215,0,0.7);font-size:12px;text-decoration:none">প্লে না হলে, Facebook-এ খুলুন ↗</a>' +
       '</div>';
   }
 
@@ -13811,15 +13916,28 @@ function renderFavVideoFolder(list) {
   }
 }
 
+function favvidNewBadgeHtml(key) {
+  return favvidIsSeen(key) ? '' : '<span class="favvid-new-badge" style="background:#ff4d4d;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;margin-left:6px;letter-spacing:0.5px;flex-shrink:0">NEW</span>';
+}
+function favvidReorderButtonsHtml() {
+  return (
+    '<div class="favvid-reorder" style="display:flex;flex-direction:column;gap:2px;margin-left:6px;flex-shrink:0">' +
+      '<button class="favvid-up" style="width:26px;height:22px;border-radius:6px;border:1px solid rgba(255,215,0,0.25);background:rgba(255,215,0,0.06);color:#ffd700;font-size:11px;cursor:pointer;line-height:1;padding:0">▲</button>' +
+      '<button class="favvid-down" style="width:26px;height:22px;border-radius:6px;border:1px solid rgba(255,215,0,0.25);background:rgba(255,215,0,0.06);color:#ffd700;font-size:11px;cursor:pointer;line-height:1;padding:0">▼</button>' +
+    '</div>'
+  );
+}
+
 function renderGithubVideoList(list, sub) {
   const loading = document.createElement('div');
   loading.className = 'st-folder-empty';
   loading.textContent = 'লোড হচ্ছে…';
   list.appendChild(loading);
 
-  getFavVideoFiles(sub).then((items) => {
+  Promise.all([getFavVideoFiles(sub), loadFavVideoOrder()]).then(([rawItems, orderDoc]) => {
     if (window._stActiveFolder !== 'videos' || window._stActiveVideoFolder !== sub.key) return; // navigated away meanwhile
     loading.remove();
+    const items = favvidApplyOrder(rawItems, orderDoc[sub.key]);
     if (!items.length) {
       const empty = document.createElement('div');
       empty.className = 'st-folder-empty';
@@ -13827,22 +13945,56 @@ function renderGithubVideoList(list, sub) {
       list.appendChild(empty);
       return;
     }
-    items.forEach((v) => {
+    items.forEach((v, i) => {
+      const seenKey = 'video:' + sub.key + ':' + v.key;
       const card = document.createElement('div');
       card.className = 'st-card';
-      card.style.cursor = 'pointer';
       card.innerHTML =
-        '<div style="display:flex;align-items:center;gap:10px">' +
-          '<span style="font-size:22px">▶️</span>' +
-          '<div class="st-name" style="font-size:15px">' + escHtml(v.title) + '</div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
+          '<div class="favvid-open" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer">' +
+            '<span style="font-size:22px">▶️</span>' +
+            '<div class="st-name" style="font-size:15px">' + escHtml(v.title) + '</div>' +
+            favvidNewBadgeHtml(seenKey) +
+          '</div>' +
+          (isDeveloper() ? favvidReorderButtonsHtml() : '') +
         '</div>';
-      card.addEventListener('click', () => openFavVideoPlayer(v.title, 'file', v.url));
+      card.querySelector('.favvid-open').addEventListener('click', () => {
+        favvidMarkSeen(seenKey);
+        openFavVideoPlayer(v.title, 'file', v.url);
+      });
+      if (isDeveloper()) {
+        card.querySelector('.favvid-up').addEventListener('click', (e) => { e.stopPropagation(); favvidReorder(sub.key, items, i, -1); });
+        card.querySelector('.favvid-down').addEventListener('click', (e) => { e.stopPropagation(); favvidReorder(sub.key, items, i, 1); });
+      }
       list.appendChild(card);
     });
   }).catch(() => {
     if (window._stActiveFolder !== 'videos' || window._stActiveVideoFolder !== sub.key) return;
     loading.textContent = 'ভিডিও তালিকা লোড করা যায়নি — ইন্টারনেট সংযোগ পরীক্ষা করুন';
   });
+}
+
+// Real brand icons via Simple Icons' free CDN (cdn.simpleicons.org) —
+// CC0-licensed SVG recreations made specifically for this kind of use,
+// not the platforms' own proprietary app-icon artwork. Falls back to an
+// emoji if the icon fails to load (e.g. no internet yet).
+function favvidIconFallback(img) {
+  const span = document.createElement('span');
+  span.style.fontSize = '22px';
+  span.textContent = img.getAttribute('data-fallback') || '🔗';
+  img.replaceWith(span);
+}
+function favvidPlatformIconHtml(platform) {
+  const map = {
+    youtube: ['youtube', '▶️'],
+    instagram: ['instagram', '📷'],
+    telegram: ['telegram', '✈️'],
+    drive: ['googledrive', '📁'],
+    facebook: ['facebook', '📘'],
+  };
+  const entry = map[platform];
+  if (!entry) return '<span style="font-size:22px">🔗</span>';
+  return '<img src="https://cdn.simpleicons.org/' + entry[0] + '" alt="" width="22" height="22" data-fallback="' + entry[1] + '" onerror="favvidIconFallback(this)" style="display:block;border-radius:5px;flex-shrink:0">';
 }
 
 function renderFavVideoLinksList(list) {
@@ -13852,7 +14004,7 @@ function renderFavVideoLinksList(list) {
     form.innerHTML =
       '<div style="font-size:11px;color:rgba(255,215,0,0.8);margin-bottom:6px;letter-spacing:1px">➕ Add Video Link</div>' +
       '<input id="favVidNewTitle" placeholder="Title" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
-      '<input id="favVidNewUrl" placeholder="YouTube / Instagram / Telegram link" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
+      '<input id="favVidNewUrl" placeholder="YouTube / Instagram / Telegram / Google Drive / Facebook link" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
       '<button id="favVidAddBtn" style="padding:9px 20px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">💾 Save</button>';
     list.appendChild(form);
     form.querySelector('#favVidAddBtn').addEventListener('click', async () => {
@@ -13872,8 +14024,10 @@ function renderFavVideoLinksList(list) {
   loading.textContent = 'লোড হচ্ছে…';
   list.appendChild(loading);
 
-  loadFavVideoLinks(true).then((items) => {
+  Promise.all([loadFavVideoLinks(true), loadFavVideoOrder()]).then(([rawItems, orderDoc]) => {
     loading.remove();
+    const keyed = rawItems.map((v) => Object.assign({}, v, { key: v.id }));
+    const items = favvidApplyOrder(keyed, orderDoc.links);
     if (!items.length) {
       const empty = document.createElement('div');
       empty.className = 'st-folder-empty';
@@ -13881,23 +14035,26 @@ function renderFavVideoLinksList(list) {
       list.appendChild(empty);
       return;
     }
-    items.forEach((v) => {
+    items.forEach((v, i) => {
+      const seenKey = 'link:' + v.id;
       const card = document.createElement('div');
       card.className = 'st-card';
-      const platformIcon = v.platform === 'youtube' ? '▶️' : v.platform === 'instagram' ? '📷' : v.platform === 'telegram' ? '✈️' : '🔗';
+      const platformIconHtml = favvidPlatformIconHtml(v.platform);
       let headerRight = '';
       if (isDeveloper()) {
-        headerRight = '<button class="st-edit-btn favvid-del" style="border-color:rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08)">✕</button>';
+        headerRight = favvidReorderButtonsHtml() + '<button class="st-edit-btn favvid-del" style="border-color:rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08);margin-left:4px">✕</button>';
       }
       card.innerHTML =
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
           '<div class="favvid-open" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer">' +
-            '<span style="font-size:22px">' + platformIcon + '</span>' +
+            platformIconHtml +
             '<div class="st-name" style="font-size:15px">' + escHtml(v.title) + '</div>' +
+            favvidNewBadgeHtml(seenKey) +
           '</div>' +
           headerRight +
         '</div>';
       card.querySelector('.favvid-open').addEventListener('click', () => {
+        favvidMarkSeen(seenKey);
         if (v.platform === 'youtube') {
           const id = favvidYoutubeId(v.url);
           if (id) openFavVideoPlayer(v.title, 'youtube', id); else window.open(v.url, '_blank');
@@ -13906,10 +14063,19 @@ function renderFavVideoLinksList(list) {
           if (embed) openFavVideoPlayer(v.title, 'telegram', embed); else window.open(v.url, '_blank');
         } else if (v.platform === 'instagram') {
           openFavVideoPlayer(v.title, 'instagram', v.url);
+        } else if (v.platform === 'drive') {
+          const embed = favvidDriveEmbed(v.url);
+          if (embed) openFavVideoPlayer(v.title, 'drive', embed, v.url); else window.open(v.url, '_blank');
+        } else if (v.platform === 'facebook') {
+          openFavVideoPlayer(v.title, 'facebook', favvidFacebookEmbed(v.url), v.url);
         } else {
           window.open(v.url, '_blank');
         }
       });
+      if (isDeveloper()) {
+        card.querySelector('.favvid-up').addEventListener('click', (e) => { e.stopPropagation(); favvidReorder('links', items, i, -1); });
+        card.querySelector('.favvid-down').addEventListener('click', (e) => { e.stopPropagation(); favvidReorder('links', items, i, 1); });
+      }
       const delBtn = card.querySelector('.favvid-del');
       if (delBtn) {
         delBtn.addEventListener('click', async (e) => {

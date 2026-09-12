@@ -14251,6 +14251,27 @@ function renderFavVideoLinksFolderView(list, folderId) {
 
     if (!folder) { window._stActiveLinkFolder = null; renderSt(); return; }
 
+    if (isDeveloper()) {
+      const form = document.createElement('div');
+      form.className = 'st-card';
+      form.innerHTML =
+        '<div style="font-size:11px;color:rgba(255,215,0,0.8);margin-bottom:6px;letter-spacing:1px">➕ Add Video Link to "' + escHtml(folder.name) + '"</div>' +
+        '<input id="favVidNewTitle" placeholder="Title" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
+        '<input id="favVidNewUrl" placeholder="YouTube / Instagram / Telegram / Google Drive / Facebook link" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
+        '<button id="favVidAddBtn" style="padding:9px 20px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">💾 Save</button>';
+      list.appendChild(form);
+      form.querySelector('#favVidAddBtn').addEventListener('click', async () => {
+        const title = form.querySelector('#favVidNewTitle').value.trim();
+        const url = form.querySelector('#favVidNewUrl').value.trim();
+        if (!title || !url) return;
+        const platform = favvidDetectPlatform(url);
+        const items2 = (await loadFavVideoLinks(true)).slice();
+        items2.push({ id: 'v' + Date.now(), title: title, url: url, platform: platform, folderId: folderId, addedAt: Date.now() });
+        await saveFavVideoLinks(items2);
+        renderSt();
+      });
+    }
+
     const items = favvidApplyOrder(
       rawLinks.filter((l) => l.folderId === folderId).map((l) => Object.assign({}, l, { key: l.id })),
       orderDoc['links:' + folderId]

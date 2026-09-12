@@ -13593,6 +13593,313 @@ const INDEPENDENT_MODE_IMG = {
   if (sgt) sgt.src = INDEPENDENT_MODE_IMG.tilak;
 })();
 
+// ─────────────────────────────────────────────────────────
+// FAVOURITE VIDEOS (4th-level folder inside Stotram section)
+// Three sources:
+//  - GitHub-hosted videos (Motivation / Naam Jap Mahima / Law of Karma):
+//    dev uploads an .mp4 straight into the matching /videos/<slug>/ repo
+//    folder AND adds its filename to FAVVID_FILES below — same pattern
+//    as the audio files (a known, hand-maintained filename, not a
+//    live directory listing). No GitHub API call at runtime: the
+//    video itself still streams from raw.githubusercontent.com only
+//    when a user taps it, and is never bundled into the APK/PWA build
+//    (setup-www.sh's rsync into www/ never touches /videos/).
+//  - Links (YouTube / Instagram / Telegram): developer-only, added via
+//    an in-app form, stored in Firestore /config/favouriteVideoLinks
+//    (reuses the existing "config" collection — read: any signed-in
+//    user, write: isDeveloper() only — see firestore.rules, no rule
+//    change needed).
+// ─────────────────────────────────────────────────────────
+const FAVVID_GH_OWNER = 'drakthephenomenal';
+const FAVVID_GH_REPO = 'Lalu-Chotopushu';
+const FAVVID_GH_BRANCH = 'main';
+
+// ── To add a video: upload the .mp4 into the matching /videos/<slug>/
+//    repo folder, then add its exact filename to the array below.
+//    The display title is generated from the filename automatically
+//    (dashes/underscores become spaces) — no separate title needed.
+const FAVVID_FILES = {
+  motivation: [
+    // 'Why-Karma-Never-Forgets.mp4',
+  ],
+  naamjap: [
+    // 'Power-Of-Radha-Naam.mp4',
+  ],
+  karma: [
+    // 'You-Reap-What-You-Sow.mp4',
+  ],
+};
+
+const VIDEO_SUBFOLDERS = [
+  { key: 'motivation', title: 'Motivation',     icon: '🔥', type: 'github', path: 'videos/motivation' },
+  { key: 'naamjap',    title: 'Naam Jap Mahima', icon: '📿', type: 'github', path: 'videos/naam-jap-mahima' },
+  { key: 'karma',      title: 'Law of Karma',    icon: '⚖️', type: 'github', path: 'videos/law-of-karma' },
+  { key: 'links',      title: 'Links',           icon: '🔗', type: 'links' },
+];
+
+// "Why-Karma-Never-Forgets.mp4" -> "Why Karma Never Forgets"
+function favvidTitleFromFilename(name) {
+  return name.replace(/\.[a-zA-Z0-9]+$/, '').replace(/[-_]+/g, ' ').trim();
+}
+
+// Builds the video list for one subfolder straight from FAVVID_FILES —
+// no network call, no GitHub API, purely local to app.js.
+function getFavVideoFiles(sub) {
+  const names = FAVVID_FILES[sub.key] || [];
+  return names.map((name) => ({
+    name: name,
+    title: favvidTitleFromFilename(name),
+    url: 'https://raw.githubusercontent.com/' + FAVVID_GH_OWNER + '/' + FAVVID_GH_REPO + '/' + FAVVID_GH_BRANCH + '/' + sub.path + '/' + name,
+  }));
+}
+
+// Firestore-backed link list (YouTube / Instagram / Telegram).
+let _favvidLinksCache = null;
+async function loadFavVideoLinks(force) {
+  if (_favvidLinksCache && !force) return _favvidLinksCache;
+  try {
+    const snap = await fbDb.collection('config').doc('favouriteVideoLinks').get();
+    const data = snap.exists ? snap.data() : {};
+    _favvidLinksCache = Array.isArray(data.items) ? data.items : [];
+  } catch (e) {
+    _favvidLinksCache = _favvidLinksCache || [];
+  }
+  return _favvidLinksCache;
+}
+async function saveFavVideoLinks(items) {
+  await fbDb.collection('config').doc('favouriteVideoLinks').set({ items: items, updatedAt: Date.now() });
+  _favvidLinksCache = items;
+}
+function favvidDetectPlatform(url) {
+  const u = (url || '').toLowerCase();
+  if (u.indexOf('youtube.com') !== -1 || u.indexOf('youtu.be') !== -1) return 'youtube';
+  if (u.indexOf('instagram.com') !== -1) return 'instagram';
+  if (u.indexOf('t.me') !== -1 || u.indexOf('telegram.me') !== -1) return 'telegram';
+  return 'other';
+}
+function favvidYoutubeId(url) {
+  const m = url.match(/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{6,})/);
+  return m ? m[1] : null;
+}
+function favvidTelegramEmbed(url) {
+  const m = url.match(/t\.me\/([^/?]+)\/(\d+)/);
+  if (!m) return null;
+  return 'https://t.me/' + m[1] + '/' + m[2] + '?embed=1';
+}
+
+// Inline modal player. kind: 'file' (GitHub mp4, native <video>),
+// 'youtube' (iframe embed), 'telegram' (official public-post iframe
+// embed), 'instagram' (official embed.js widget with a fallback
+// "open externally" link if it fails to render within a few seconds).
+function openFavVideoPlayer(title, kind, urlOrId) {
+  var old = document.getElementById('favVidOverlay');
+  if (old) old.remove();
+  var overlay = document.createElement('div');
+  overlay.id = 'favVidOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px;box-sizing:border-box';
+
+  var mediaHtml = '';
+  if (kind === 'file') {
+    mediaHtml = '<video src="' + urlOrId + '" controls autoplay playsinline style="width:100%;max-width:640px;max-height:70vh;border-radius:10px;background:#000"></video>';
+  } else if (kind === 'youtube') {
+    mediaHtml = '<iframe src="https://www.youtube.com/embed/' + urlOrId + '?autoplay=1&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen style="width:100%;max-width:640px;aspect-ratio:16/9;border:none;border-radius:10px"></iframe>';
+  } else if (kind === 'telegram') {
+    mediaHtml = '<iframe src="' + urlOrId + '" allow="autoplay" style="width:100%;max-width:420px;height:70vh;border:none;border-radius:10px;background:#000"></iframe>';
+  } else if (kind === 'instagram') {
+    mediaHtml =
+      '<blockquote class="instagram-media" data-instgrm-permalink="' + urlOrId + '" data-instgrm-version="14" style="width:100%;max-width:420px;margin:0;border-radius:10px;overflow:hidden;background:#000"></blockquote>' +
+      '<div id="favVidIgFallback" style="display:none;margin-top:10px;text-align:center">' +
+        '<div style="color:rgba(255,215,0,0.7);font-size:13px;margin-bottom:8px">এই ভিডিওটি এখানে দেখানো যাচ্ছে না</div>' +
+        '<a href="' + urlOrId + '" target="_blank" rel="noopener" style="display:inline-block;padding:10px 18px;border-radius:10px;background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.35);color:#ffd700;text-decoration:none;font-family:Inter,sans-serif;font-size:13px">Instagram-এ খুলুন ↗</a>' +
+      '</div>';
+  }
+
+  overlay.innerHTML =
+    '<div style="width:100%;max-width:640px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
+      '<div style="color:#ffd700;font-family:\'Hind Siliguri\',serif;font-size:15px;font-weight:600;flex:1;margin-right:10px">' + escHtml(title) + '</div>' +
+      '<button id="favVidCloseBtn" style="width:38px;height:38px;border-radius:10px;border:1px solid rgba(255,215,0,0.3);background:rgba(255,215,0,0.08);color:#ffd700;font-size:18px;cursor:pointer;flex-shrink:0">✕</button>' +
+    '</div>' +
+    mediaHtml;
+
+  document.body.appendChild(overlay);
+  overlay.querySelector('#favVidCloseBtn').addEventListener('click', function () { overlay.remove(); });
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
+
+  if (kind === 'instagram') {
+    var processIg = function () {
+      if (window.instgrm && window.instgrm.Embeds) window.instgrm.Embeds.process();
+    };
+    if (window.instgrm) {
+      processIg();
+    } else if (!document.getElementById('favVidIgScript')) {
+      var s = document.createElement('script');
+      s.id = 'favVidIgScript';
+      s.async = true;
+      s.src = 'https://www.instagram.com/embed.js';
+      s.onload = processIg;
+      document.body.appendChild(s);
+    }
+    setTimeout(function () {
+      var bq = overlay.querySelector('blockquote.instagram-media');
+      var fb = document.getElementById('favVidIgFallback');
+      if (bq && !bq.querySelector('iframe') && fb) fb.style.display = 'block';
+    }, 4000);
+  }
+}
+
+function renderFavVideoFolder(list) {
+  const backRow = document.createElement('div');
+  backRow.className = 'st-back-row';
+  const subKey = window._stActiveVideoFolder || null;
+
+  if (!subKey) {
+    backRow.innerHTML =
+      '<button class="st-back-btn">← ফোল্ডার তালিকা</button>' +
+      '<span class="st-back-title">Favourite Videos</span>';
+    backRow.querySelector('.st-back-btn').addEventListener('click', () => {
+      window._stActiveFolder = null;
+      window._stActiveVideoFolder = null;
+      renderSt();
+    });
+    list.appendChild(backRow);
+
+    VIDEO_SUBFOLDERS.forEach((sub) => {
+      const tile = document.createElement('div');
+      tile.className = 'st-folder-tile';
+      tile.innerHTML =
+        '<span class="st-folder-tile-icon">' + sub.icon + '</span>' +
+        '<span class="st-folder-tile-title">' + escHtml(sub.title) + '</span>' +
+        '<span class="st-folder-tile-arrow">›</span>';
+      tile.addEventListener('click', () => {
+        window._stActiveVideoFolder = sub.key;
+        renderSt();
+      });
+      list.appendChild(tile);
+    });
+    return;
+  }
+
+  const sub = VIDEO_SUBFOLDERS.find((s) => s.key === subKey);
+  backRow.innerHTML =
+    '<button class="st-back-btn">← Favourite Videos</button>' +
+    '<span class="st-back-title">' + escHtml(sub ? sub.title : '') + '</span>';
+  backRow.querySelector('.st-back-btn').addEventListener('click', () => {
+    window._stActiveVideoFolder = null;
+    renderSt();
+  });
+  list.appendChild(backRow);
+
+  if (!sub) { window._stActiveVideoFolder = null; renderSt(); return; }
+
+  if (sub.type === 'github') {
+    renderGithubVideoList(list, sub);
+  } else if (sub.type === 'links') {
+    renderFavVideoLinksList(list);
+  }
+}
+
+function renderGithubVideoList(list, sub) {
+  const items = getFavVideoFiles(sub);
+  if (!items.length) {
+    const empty = document.createElement('div');
+    empty.className = 'st-folder-empty';
+    empty.textContent = 'শীঘ্রই আসছে 🙏';
+    list.appendChild(empty);
+    return;
+  }
+  items.forEach((v) => {
+    const card = document.createElement('div');
+    card.className = 'st-card';
+    card.style.cursor = 'pointer';
+    card.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px">' +
+        '<span style="font-size:22px">▶️</span>' +
+        '<div class="st-name" style="font-size:15px">' + escHtml(v.title) + '</div>' +
+      '</div>';
+    card.addEventListener('click', () => openFavVideoPlayer(v.title, 'file', v.url));
+    list.appendChild(card);
+  });
+}
+
+function renderFavVideoLinksList(list) {
+  if (isDeveloper()) {
+    const form = document.createElement('div');
+    form.className = 'st-card';
+    form.innerHTML =
+      '<div style="font-size:11px;color:rgba(255,215,0,0.8);margin-bottom:6px;letter-spacing:1px">➕ Add Video Link</div>' +
+      '<input id="favVidNewTitle" placeholder="Title" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
+      '<input id="favVidNewUrl" placeholder="YouTube / Instagram / Telegram link" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
+      '<button id="favVidAddBtn" style="padding:9px 20px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">💾 Save</button>';
+    list.appendChild(form);
+    form.querySelector('#favVidAddBtn').addEventListener('click', async () => {
+      const title = form.querySelector('#favVidNewTitle').value.trim();
+      const url = form.querySelector('#favVidNewUrl').value.trim();
+      if (!title || !url) return;
+      const platform = favvidDetectPlatform(url);
+      const items = (await loadFavVideoLinks(true)).slice();
+      items.push({ id: 'v' + Date.now(), title: title, url: url, platform: platform, addedAt: Date.now() });
+      await saveFavVideoLinks(items);
+      renderSt();
+    });
+  }
+
+  const loading = document.createElement('div');
+  loading.className = 'st-folder-empty';
+  loading.textContent = 'লোড হচ্ছে…';
+  list.appendChild(loading);
+
+  loadFavVideoLinks(true).then((items) => {
+    loading.remove();
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'st-folder-empty';
+      empty.textContent = 'শীঘ্রই আসছে 🙏';
+      list.appendChild(empty);
+      return;
+    }
+    items.forEach((v) => {
+      const card = document.createElement('div');
+      card.className = 'st-card';
+      const platformIcon = v.platform === 'youtube' ? '▶️' : v.platform === 'instagram' ? '📷' : v.platform === 'telegram' ? '✈️' : '🔗';
+      let headerRight = '';
+      if (isDeveloper()) {
+        headerRight = '<button class="st-edit-btn favvid-del" style="border-color:rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08)">✕</button>';
+      }
+      card.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
+          '<div class="favvid-open" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer">' +
+            '<span style="font-size:22px">' + platformIcon + '</span>' +
+            '<div class="st-name" style="font-size:15px">' + escHtml(v.title) + '</div>' +
+          '</div>' +
+          headerRight +
+        '</div>';
+      card.querySelector('.favvid-open').addEventListener('click', () => {
+        if (v.platform === 'youtube') {
+          const id = favvidYoutubeId(v.url);
+          if (id) openFavVideoPlayer(v.title, 'youtube', id); else window.open(v.url, '_blank');
+        } else if (v.platform === 'telegram') {
+          const embed = favvidTelegramEmbed(v.url);
+          if (embed) openFavVideoPlayer(v.title, 'telegram', embed); else window.open(v.url, '_blank');
+        } else if (v.platform === 'instagram') {
+          openFavVideoPlayer(v.title, 'instagram', v.url);
+        } else {
+          window.open(v.url, '_blank');
+        }
+      });
+      const delBtn = card.querySelector('.favvid-del');
+      if (delBtn) {
+        delBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const cur = (await loadFavVideoLinks(true)).filter((x) => x.id !== v.id);
+          await saveFavVideoLinks(cur);
+          renderSt();
+        });
+      }
+      list.appendChild(card);
+    });
+  });
+}
+
 function renderSt() {
   const list = document.getElementById("stList");
   list.innerHTML = "";
@@ -13631,6 +13938,7 @@ function renderSt() {
     { key: 'shiv',    title: 'ভগবান শিব', icon: '🔱', img: ST_FOLDER_ICON_IMG.shiv },
     { key: 'bmg',     title: 'ব্রহ্মা মাধ্ব গৌড়ীয় সম্প্রদায়', icon: '🕉️', img: ST_FOLDER_ICON_IMG.bmg },
     { key: 'hanuman', title: 'হনুমান জী মহারাজ', icon: '🚩' },
+    { key: 'videos',  title: 'Favourite Videos', icon: '🎬' },
   ];
 
   const customItems = (App.S.customSt || []).map((x) => ({ ...x, custom: true }));
@@ -13656,10 +13964,11 @@ function renderSt() {
       tile.innerHTML =
         iconHtml +
         '<span class="st-folder-tile-title">' + escHtml(group.title) + '</span>' +
-        '<span class="st-folder-tile-count">' + group.items.length + '</span>' +
+        (group.key === 'videos' ? '' : '<span class="st-folder-tile-count">' + group.items.length + '</span>') +
         '<span class="st-folder-tile-arrow">›</span>';
       tile.addEventListener('click', () => {
         window._stActiveFolder = group.key;
+        window._stActiveVideoFolder = null;
         renderSt();
       });
       list.appendChild(tile);
@@ -13673,6 +13982,13 @@ function renderSt() {
     // Folder no longer exists (shouldn't happen) — bail back to menu.
     window._stActiveFolder = null;
     renderSt();
+    return;
+  }
+
+  // Favourite Videos is a different kind of folder (video subfolders,
+  // not jap-counter stotram cards) — hand off to its own renderer.
+  if (activeKey === 'videos') {
+    renderFavVideoFolder(list);
     return;
   }
 
@@ -17152,10 +17468,18 @@ var _AUDIO_STOTRAMS = {
     prefix: "rsn",
     labelOffset: 1,
     closingSuffix: "c",
+    // Second full reciter for the whole stotram (preamble + all 150 Shloks
+    // + closing verse) — "alt" is a placeholder key/filename until you
+    // tell me what to actually call the second recitation (same
+    // convention as gms/hnc/gg_5_2 above). Expected files, uploaded
+    // alongside the existing rsn_*.mp3 set: rsn_alt_0.mp3 (preamble),
+    // rsn_alt_1.mp3 ... rsn_alt_150.mp3, rsn_alt_c.mp3 (closing).
+    voices: { default: "rsn", alt: "rsn_alt" },
     // Shlok 150 only — Harindu's variation, available alongside the usual
-    // rsn_150.mp3, not selected by default. Every other verse has no
-    // voices entry at all, so the voice button stays hidden there.
-    voicesByVerse: { 150: { default: "rsn", harindu: "rsn_harindu" } }
+    // rsn_150.mp3 and the new rsn_alt_150.mp3. Every other verse has no
+    // per-verse entry, so it falls back to the stotram-wide `voices`
+    // above and the voice button just offers default/alt there.
+    voicesByVerse: { 150: { default: "rsn", harindu: "rsn_harindu", alt: "rsn_alt" } }
   },
   yms: { prefix: "yms" },
   hmg: { prefix: "hmg" },

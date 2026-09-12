@@ -13685,6 +13685,27 @@ async function saveFavVideoLinks(items) {
   _favvidLinksCache = items;
 }
 
+// ── Link folders (developer-only) ──
+// Links can optionally be grouped into folders the developer creates.
+// A link with no folderId (or one whose folder was deleted) shows in
+// the "orphan" section instead of inside any folder.
+let _favvidLinkFoldersCache = null;
+async function loadFavVideoLinkFolders(force) {
+  if (_favvidLinkFoldersCache && !force) return _favvidLinkFoldersCache;
+  try {
+    const snap = await fbDb.collection('config').doc('favouriteVideoLinkFolders').get();
+    const data = snap.exists ? snap.data() : {};
+    _favvidLinkFoldersCache = Array.isArray(data.folders) ? data.folders : [];
+  } catch (e) {
+    _favvidLinkFoldersCache = _favvidLinkFoldersCache || [];
+  }
+  return _favvidLinkFoldersCache;
+}
+async function saveFavVideoLinkFolders(folders) {
+  await fbDb.collection('config').doc('favouriteVideoLinkFolders').set({ folders: folders, updatedAt: Date.now() });
+  _favvidLinkFoldersCache = folders;
+}
+
 // ── Manual ordering (developer-only) ──
 // One Firestore doc holds the developer's chosen order for each
 // subfolder — keyed by filename for GitHub videos, by link id for
@@ -13722,9 +13743,14 @@ function favvidApplyOrder(items, orderArr) {
     return 0; // stable: keeps original relative order for ties
   });
 }
-// Swaps items[i] and items[i+dir], persists the new full order for
+// Swaps the item identified by `key` with its neighbor within the FULL
+// (unfiltered) `items` array — looked up by key rather than a display
+// position, so this stays correct even when the visible list is
+// currently narrowed by a search filter. Persists the new order for
 // bucketKey, then re-renders. Used by the developer-only ↑/↓ buttons.
-async function favvidReorder(bucketKey, items, i, dir) {
+async function favvidReorder(bucketKey, items, key, dir) {
+  const i = items.findIndex((x) => x.key === key);
+  if (i === -1) return;
   const j = i + dir;
   if (j < 0 || j >= items.length) return;
   const copy = items.slice();
@@ -13756,6 +13782,39 @@ function favvidMarkSeen(key) {
     localStorage.setItem('favVidSeen', JSON.stringify(seen));
   } catch (e) { /* storage unavailable — badge just won't persist, harmless */ }
 }
+
+// ── Shared search-bar harness ──
+// Renders a text input plus a cards container below it, and re-filters
+// on every keystroke by matching each item's .title (case-insensitive,
+// substring match). Only the cards container is rebuilt on input — the
+// search input itself is never re-rendered, so it keeps focus and
+// cursor position while typing. opts: { placeholder, allItems,
+// renderCards(filteredItems, container) }.
+function favvidSearchableSection(list, opts) {
+  const searchWrap = document.createElement('div');
+  searchWrap.innerHTML = '<input type="text" placeholder="' + escHtml(opts.placeholder) + '" style="width:100%;margin-bottom:10px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">';
+  list.appendChild(searchWrap);
+  const input = searchWrap.querySelector('input');
+
+  const cardsDiv = document.createElement('div');
+  list.appendChild(cardsDiv);
+
+  function renderFiltered() {
+    const q = input.value.trim().toLowerCase();
+    const filtered = q ? opts.allItems.filter((v) => v.title.toLowerCase().indexOf(q) !== -1) : opts.allItems;
+    cardsDiv.innerHTML = '';
+    if (!filtered.length) {
+      const empty = document.createElement('div');
+      empty.className = 'st-folder-empty';
+      empty.textContent = q ? 'কিছু পাওয়া যায়নি' : 'শীঘ্রই আসছে 🙏';
+      cardsDiv.appendChild(empty);
+      return;
+    }
+    opts.renderCards(filtered, cardsDiv);
+  }
+  input.addEventListener('input', renderFiltered);
+  renderFiltered();
+}
 function favvidDetectPlatform(url) {
   const u = (url || '').toLowerCase();
   if (u.indexOf('youtube.com') !== -1 || u.indexOf('youtu.be') !== -1) return 'youtube';
@@ -13785,23 +13844,16 @@ function favvidTelegramEmbed(url) {
 // embedding inline — two attempts at inline playback (an iframe /preview,
 // then a direct-content <video> URL) both proved unreliable, since Drive
 // has no officially-supported anonymous video-streaming endpoint.
-// Facebook's official video plugin — works for public videos without
-// needing their SDK/embed.js, but private or restricted videos show a
-// blank/greyed box with no detectable failure signal, so we always show
-// an "Open in Facebook" link alongside it rather than trying to detect
-// success like the Instagram embed does.
-function favvidFacebookEmbed(url) {
-  return 'https://www.facebook.com/plugins/video.php?href=' + encodeURIComponent(url) + '&show_text=false';
-}
+// Facebook and Drive links open externally (see click handlers below)
+// rather than embedding inline — both platforms' inline-embed options
+// proved unreliable in practice (Drive has no official anonymous
+// streaming endpoint; Facebook's plugin only works for Page-published
+// videos, not personal posts or Reels).
 
 // Inline modal player. kind: 'file' (GitHub mp4, native <video>),
 // 'youtube' (iframe embed), 'telegram' (official public-post iframe
 // embed), 'instagram' (official embed.js widget with a fallback
-// "open externally" link if it fails to render within a few seconds),
-// 'drive' (Google Drive /preview iframe — needs "Anyone with the link"
-// sharing), 'facebook' (official video plugin iframe). originalUrl is
-// only needed for drive/facebook, to build their fallback "open
-// externally" link.
+// "open externally" link if it fails to render within a few seconds).
 function openFavVideoPlayer(title, kind, urlOrId, originalUrl) {
   var old = document.getElementById('favVidOverlay');
   if (old) old.remove();
@@ -13822,12 +13874,6 @@ function openFavVideoPlayer(title, kind, urlOrId, originalUrl) {
       '<div id="favVidIgFallback" style="display:none;margin-top:10px;text-align:center">' +
         '<div style="color:rgba(255,215,0,0.7);font-size:13px;margin-bottom:8px">এই ভিডিওটি এখানে দেখানো যাচ্ছে না</div>' +
         '<a href="' + urlOrId + '" target="_blank" rel="noopener" style="display:inline-block;padding:10px 18px;border-radius:10px;background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.35);color:#ffd700;text-decoration:none;font-family:Inter,sans-serif;font-size:13px">Instagram-এ খুলুন ↗</a>' +
-      '</div>';
-  } else if (kind === 'facebook') {
-    mediaHtml =
-      '<iframe src="' + urlOrId + '" allow="autoplay" allowfullscreen style="width:100%;max-width:640px;aspect-ratio:16/9;border:none;border-radius:10px;background:#000"></iframe>' +
-      '<div style="margin-top:8px;text-align:center">' +
-        '<a href="' + (originalUrl || urlOrId) + '" target="_blank" rel="noopener" style="color:rgba(255,215,0,0.7);font-size:12px;text-decoration:none">প্লে না হলে, Facebook-এ খুলুন ↗</a>' +
       '</div>';
   }
 
@@ -13876,6 +13922,7 @@ function renderFavVideoFolder(list) {
     backRow.querySelector('.st-back-btn').addEventListener('click', () => {
       window._stActiveFolder = null;
       window._stActiveVideoFolder = null;
+      window._stActiveLinkFolder = null;
       renderSt();
     });
     list.appendChild(backRow);
@@ -13889,10 +13936,19 @@ function renderFavVideoFolder(list) {
         '<span class="st-folder-tile-arrow">›</span>';
       tile.addEventListener('click', () => {
         window._stActiveVideoFolder = sub.key;
+        window._stActiveLinkFolder = null;
         renderSt();
       });
       list.appendChild(tile);
     });
+    return;
+  }
+
+  // Inside a specific Links folder — it builds its own back row (needs
+  // the folder's name, which is only known after an async fetch) rather
+  // than the generic one below.
+  if (subKey === 'links' && window._stActiveLinkFolder) {
+    renderFavVideoLinksFolderView(list, window._stActiveLinkFolder);
     return;
   }
 
@@ -13902,6 +13958,7 @@ function renderFavVideoFolder(list) {
     '<span class="st-back-title">' + escHtml(sub ? sub.title : '') + '</span>';
   backRow.querySelector('.st-back-btn').addEventListener('click', () => {
     window._stActiveVideoFolder = null;
+    window._stActiveLinkFolder = null;
     renderSt();
   });
   list.appendChild(backRow);
@@ -13911,7 +13968,7 @@ function renderFavVideoFolder(list) {
   if (sub.type === 'github') {
     renderGithubVideoList(list, sub);
   } else if (sub.type === 'links') {
-    renderFavVideoLinksList(list);
+    renderFavVideoLinksTop(list);
   }
 }
 
@@ -13944,30 +14001,36 @@ function renderGithubVideoList(list, sub) {
       list.appendChild(empty);
       return;
     }
-    items.forEach((v, i) => {
-      const seenKey = 'video:' + sub.key + ':' + v.key;
-      const card = document.createElement('div');
-      card.className = 'st-card';
-      card.innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
-          '<div class="favvid-open" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer">' +
-            '<span style="font-size:22px">▶️</span>' +
-            '<div class="st-name" style="font-size:15px">' + escHtml(v.title) + '</div>' +
-            favvidNewBadgeHtml(seenKey) +
-          '</div>' +
-          (isDeveloper() ? favvidReorderButtonsHtml() : '') +
-        '</div>';
-      card.querySelector('.favvid-open').addEventListener('click', () => {
-        favvidMarkSeen(seenKey);
-        const badge = card.querySelector('.favvid-new-badge');
-        if (badge) badge.remove();
-        openFavVideoPlayer(v.title, 'file', v.url);
-      });
-      if (isDeveloper()) {
-        card.querySelector('.favvid-up').addEventListener('click', (e) => { e.stopPropagation(); favvidReorder(sub.key, items, i, -1); });
-        card.querySelector('.favvid-down').addEventListener('click', (e) => { e.stopPropagation(); favvidReorder(sub.key, items, i, 1); });
-      }
-      list.appendChild(card);
+    favvidSearchableSection(list, {
+      placeholder: 'ভিডিও খুঁজুন…',
+      allItems: items,
+      renderCards: (filtered, container) => {
+        filtered.forEach((v) => {
+          const seenKey = 'video:' + sub.key + ':' + v.key;
+          const card = document.createElement('div');
+          card.className = 'st-card';
+          card.innerHTML =
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
+              '<div class="favvid-open" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer">' +
+                '<span style="font-size:22px">▶️</span>' +
+                '<div class="st-name" style="font-size:15px">' + escHtml(v.title) + '</div>' +
+                favvidNewBadgeHtml(seenKey) +
+              '</div>' +
+              (isDeveloper() ? favvidReorderButtonsHtml() : '') +
+            '</div>';
+          card.querySelector('.favvid-open').addEventListener('click', () => {
+            favvidMarkSeen(seenKey);
+            const badge = card.querySelector('.favvid-new-badge');
+            if (badge) badge.remove();
+            openFavVideoPlayer(v.title, 'file', v.url);
+          });
+          if (isDeveloper()) {
+            card.querySelector('.favvid-up').addEventListener('click', (e) => { e.stopPropagation(); favvidReorder(sub.key, items, v.key, -1); });
+            card.querySelector('.favvid-down').addEventListener('click', (e) => { e.stopPropagation(); favvidReorder(sub.key, items, v.key, 1); });
+          }
+          container.appendChild(card);
+        });
+      },
     });
   }).catch(() => {
     if (window._stActiveFolder !== 'videos' || window._stActiveVideoFolder !== sub.key) return;
@@ -13998,103 +14061,210 @@ function favvidPlatformIconHtml(platform) {
   return '<img src="https://cdn.simpleicons.org/' + entry[0] + '" alt="" width="22" height="22" data-fallback="' + entry[1] + '" onerror="favvidIconFallback(this)" style="display:block;border-radius:5px;flex-shrink:0">';
 }
 
-function renderFavVideoLinksList(list) {
+// Builds one link card (icon, title, NEW badge, dev-only reorder/delete)
+// and wires up its click-to-play routing. `items` must be the FULL
+// (unfiltered) array for this bucket, so reorder stays correct even
+// under an active search filter.
+function favvidRenderLinkCard(v, items, bucketKey, container) {
+  const seenKey = 'link:' + v.id;
+  const platform = favvidDetectPlatform(v.url); // re-detect live so a detection fix auto-heals older saved links
+  const card = document.createElement('div');
+  card.className = 'st-card';
+  const platformIconHtml = favvidPlatformIconHtml(platform);
+  let headerRight = '';
   if (isDeveloper()) {
-    const form = document.createElement('div');
-    form.className = 'st-card';
-    form.innerHTML =
-      '<div style="font-size:11px;color:rgba(255,215,0,0.8);margin-bottom:6px;letter-spacing:1px">➕ Add Video Link</div>' +
-      '<input id="favVidNewTitle" placeholder="Title" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
-      '<input id="favVidNewUrl" placeholder="YouTube / Instagram / Telegram / Google Drive / Facebook link" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
-      '<button id="favVidAddBtn" style="padding:9px 20px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">💾 Save</button>';
-    list.appendChild(form);
-    form.querySelector('#favVidAddBtn').addEventListener('click', async () => {
-      const title = form.querySelector('#favVidNewTitle').value.trim();
-      const url = form.querySelector('#favVidNewUrl').value.trim();
-      if (!title || !url) return;
-      const platform = favvidDetectPlatform(url);
-      const items = (await loadFavVideoLinks(true)).slice();
-      items.push({ id: 'v' + Date.now(), title: title, url: url, platform: platform, addedAt: Date.now() });
-      await saveFavVideoLinks(items);
+    headerRight = favvidReorderButtonsHtml() + '<button class="st-edit-btn favvid-del" style="border-color:rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08);margin-left:4px">✕</button>';
+  }
+  card.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
+      '<div class="favvid-open" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer">' +
+        platformIconHtml +
+        '<div class="st-name" style="font-size:15px">' + escHtml(v.title) + '</div>' +
+        favvidNewBadgeHtml(seenKey) +
+      '</div>' +
+      headerRight +
+    '</div>';
+  card.querySelector('.favvid-open').addEventListener('click', () => {
+    favvidMarkSeen(seenKey);
+    const badge = card.querySelector('.favvid-new-badge');
+    if (badge) badge.remove();
+    if (platform === 'youtube') {
+      const id = favvidYoutubeId(v.url);
+      if (id) openFavVideoPlayer(v.title, 'youtube', id); else openExternalLink(v.url);
+    } else if (platform === 'telegram') {
+      const embed = favvidTelegramEmbed(v.url);
+      if (embed) openFavVideoPlayer(v.title, 'telegram', embed); else openExternalLink(v.url);
+    } else if (platform === 'instagram') {
+      openFavVideoPlayer(v.title, 'instagram', v.url);
+    } else {
+      // drive/facebook/other: open externally — see the fixed platforms'
+      // history above for why inline embedding was dropped for these.
+      openExternalLink(v.url);
+    }
+  });
+  if (isDeveloper()) {
+    card.querySelector('.favvid-up').addEventListener('click', (e) => { e.stopPropagation(); favvidReorder(bucketKey, items, v.key, -1); });
+    card.querySelector('.favvid-down').addEventListener('click', (e) => { e.stopPropagation(); favvidReorder(bucketKey, items, v.key, 1); });
+    card.querySelector('.favvid-del').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const cur = (await loadFavVideoLinks(true)).filter((x) => x.id !== v.id);
+      await saveFavVideoLinks(cur);
       renderSt();
     });
   }
+  container.appendChild(card);
+}
 
+// Top-level Links view: add-link form (with a folder picker), a
+// new-folder form, the folder tiles themselves, and — below those — an
+// "orphan" section (search + list) for links not filed into any folder.
+function renderFavVideoLinksTop(list) {
   const loading = document.createElement('div');
   loading.className = 'st-folder-empty';
   loading.textContent = 'লোড হচ্ছে…';
   list.appendChild(loading);
 
-  Promise.all([loadFavVideoLinks(true), loadFavVideoOrder()]).then(([rawItems, orderDoc]) => {
+  Promise.all([loadFavVideoLinks(true), loadFavVideoLinkFolders(true), loadFavVideoOrder()]).then(([rawLinks, folders, orderDoc]) => {
+    if (window._stActiveFolder !== 'videos' || window._stActiveVideoFolder !== 'links' || window._stActiveLinkFolder) return;
     loading.remove();
-    const keyed = rawItems.map((v) => Object.assign({}, v, { key: v.id }));
-    const items = favvidApplyOrder(keyed, orderDoc.links);
-    if (!items.length) {
-      const empty = document.createElement('div');
-      empty.className = 'st-folder-empty';
-      empty.textContent = 'শীঘ্রই আসছে 🙏';
-      list.appendChild(empty);
-      return;
-    }
-    items.forEach((v, i) => {
-      const seenKey = 'link:' + v.id;
-      const platform = favvidDetectPlatform(v.url); // re-detect live so a detection fix auto-heals older saved links
-      const card = document.createElement('div');
-      card.className = 'st-card';
-      const platformIconHtml = favvidPlatformIconHtml(platform);
-      let headerRight = '';
-      if (isDeveloper()) {
-        headerRight = favvidReorderButtonsHtml() + '<button class="st-edit-btn favvid-del" style="border-color:rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08);margin-left:4px">✕</button>';
-      }
-      card.innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
-          '<div class="favvid-open" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer">' +
-            platformIconHtml +
-            '<div class="st-name" style="font-size:15px">' + escHtml(v.title) + '</div>' +
-            favvidNewBadgeHtml(seenKey) +
-          '</div>' +
-          headerRight +
-        '</div>';
-      card.querySelector('.favvid-open').addEventListener('click', () => {
-        favvidMarkSeen(seenKey);
-        const badge = card.querySelector('.favvid-new-badge');
-        if (badge) badge.remove();
-        if (platform === 'youtube') {
-          const id = favvidYoutubeId(v.url);
-          if (id) openFavVideoPlayer(v.title, 'youtube', id); else window.open(v.url, '_blank');
-        } else if (platform === 'telegram') {
-          const embed = favvidTelegramEmbed(v.url);
-          if (embed) openFavVideoPlayer(v.title, 'telegram', embed); else window.open(v.url, '_blank');
-        } else if (platform === 'instagram') {
-          openFavVideoPlayer(v.title, 'instagram', v.url);
-        } else if (platform === 'drive') {
-          // Inline embedding proved unreliable (no officially-supported
-          // anonymous streaming endpoint) — open in the Drive app/
-          // browser instead, where Google's own playback just works.
-          window.open(v.url, '_blank');
-        } else if (platform === 'facebook') {
-          openFavVideoPlayer(v.title, 'facebook', favvidFacebookEmbed(v.url), v.url);
-        } else {
-          window.open(v.url, '_blank');
-        }
+
+    if (isDeveloper()) {
+      const folderOptionsHtml = '<option value="">(কোনো ফোল্ডার নয়)</option>' +
+        folders.map((f) => '<option value="' + f.id + '">' + escHtml(f.name) + '</option>').join('');
+      const form = document.createElement('div');
+      form.className = 'st-card';
+      form.innerHTML =
+        '<div style="font-size:11px;color:rgba(255,215,0,0.8);margin-bottom:6px;letter-spacing:1px">➕ Add Video Link</div>' +
+        '<input id="favVidNewTitle" placeholder="Title" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
+        '<input id="favVidNewUrl" placeholder="YouTube / Instagram / Telegram / Google Drive / Facebook link" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
+        '<select id="favVidNewFolder" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' + folderOptionsHtml + '</select>' +
+        '<button id="favVidAddBtn" style="padding:9px 20px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">💾 Save</button>';
+      list.appendChild(form);
+      form.querySelector('#favVidAddBtn').addEventListener('click', async () => {
+        const title = form.querySelector('#favVidNewTitle').value.trim();
+        const url = form.querySelector('#favVidNewUrl').value.trim();
+        const folderId = form.querySelector('#favVidNewFolder').value || null;
+        if (!title || !url) return;
+        const platform = favvidDetectPlatform(url);
+        const items = (await loadFavVideoLinks(true)).slice();
+        items.push({ id: 'v' + Date.now(), title: title, url: url, platform: platform, folderId: folderId, addedAt: Date.now() });
+        await saveFavVideoLinks(items);
+        renderSt();
       });
-      if (isDeveloper()) {
-        card.querySelector('.favvid-up').addEventListener('click', (e) => { e.stopPropagation(); favvidReorder('links', items, i, -1); });
-        card.querySelector('.favvid-down').addEventListener('click', (e) => { e.stopPropagation(); favvidReorder('links', items, i, 1); });
-      }
-      const delBtn = card.querySelector('.favvid-del');
+
+      const folderForm = document.createElement('div');
+      folderForm.className = 'st-card';
+      folderForm.innerHTML =
+        '<div style="font-size:11px;color:rgba(255,215,0,0.8);margin-bottom:6px;letter-spacing:1px">📁 New Folder</div>' +
+        '<div style="display:flex;gap:8px">' +
+          '<input id="favVidNewFolderName" placeholder="Folder name" style="flex:1;min-width:0;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
+          '<button id="favVidAddFolderBtn" style="padding:9px 16px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30);white-space:nowrap;flex-shrink:0">+ Create</button>' +
+        '</div>';
+      list.appendChild(folderForm);
+      folderForm.querySelector('#favVidAddFolderBtn').addEventListener('click', async () => {
+        const name = folderForm.querySelector('#favVidNewFolderName').value.trim();
+        if (!name) return;
+        const cur = (await loadFavVideoLinkFolders(true)).slice();
+        cur.push({ id: 'lf' + Date.now(), name: name });
+        await saveFavVideoLinkFolders(cur);
+        renderSt();
+      });
+    }
+
+    folders.forEach((f) => {
+      const count = rawLinks.filter((l) => l.folderId === f.id).length;
+      const tile = document.createElement('div');
+      tile.className = 'st-folder-tile';
+      tile.innerHTML =
+        '<span class="st-folder-tile-icon">📁</span>' +
+        '<span class="st-folder-tile-title">' + escHtml(f.name) + '</span>' +
+        '<span class="st-folder-tile-count">' + count + '</span>' +
+        (isDeveloper() ? '<button class="favvid-folder-del" style="margin-left:8px;width:26px;height:26px;border-radius:8px;border:1px solid rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08);font-size:13px;cursor:pointer;flex-shrink:0">✕</button>' : '') +
+        '<span class="st-folder-tile-arrow">›</span>';
+      tile.addEventListener('click', (e) => {
+        if (e.target.closest('.favvid-folder-del')) return;
+        window._stActiveLinkFolder = f.id;
+        renderSt();
+      });
+      const delBtn = tile.querySelector('.favvid-folder-del');
       if (delBtn) {
         delBtn.addEventListener('click', async (e) => {
           e.stopPropagation();
-          const cur = (await loadFavVideoLinks(true)).filter((x) => x.id !== v.id);
-          await saveFavVideoLinks(cur);
+          // Deleting a folder only un-files its links (back to orphan) —
+          // never deletes the links themselves.
+          const links = (await loadFavVideoLinks(true)).map((l) => (l.folderId === f.id ? Object.assign({}, l, { folderId: null }) : l));
+          await saveFavVideoLinks(links);
+          const remaining = (await loadFavVideoLinkFolders(true)).filter((x) => x.id !== f.id);
+          await saveFavVideoLinkFolders(remaining);
           renderSt();
         });
       }
-      list.appendChild(card);
+      list.appendChild(tile);
+    });
+
+    if (folders.length) {
+      const header = document.createElement('div');
+      header.style.cssText = 'margin:14px 0 8px;color:rgba(255,215,0,0.55);font-size:12px;letter-spacing:1px';
+      header.textContent = '— অন্যান্য লিংক (কোনো ফোল্ডারে নেই) —';
+      list.appendChild(header);
+    }
+
+    const orphanItems = favvidApplyOrder(
+      rawLinks.filter((l) => !l.folderId).map((l) => Object.assign({}, l, { key: l.id })),
+      orderDoc['links:_orphan']
+    );
+    favvidSearchableSection(list, {
+      placeholder: 'লিংক খুঁজুন…',
+      allItems: orphanItems,
+      renderCards: (filtered, container) => {
+        filtered.forEach((v) => favvidRenderLinkCard(v, orphanItems, 'links:_orphan', container));
+      },
     });
   });
 }
+
+// Inside one specific link folder — its own back row (needs the
+// folder's name, only known after the fetch resolves) plus a search bar
+// scoped to just this folder's links.
+function renderFavVideoLinksFolderView(list, folderId) {
+  const loading = document.createElement('div');
+  loading.className = 'st-folder-empty';
+  loading.textContent = 'লোড হচ্ছে…';
+  list.appendChild(loading);
+
+  Promise.all([loadFavVideoLinks(true), loadFavVideoLinkFolders(true), loadFavVideoOrder()]).then(([rawLinks, folders, orderDoc]) => {
+    if (window._stActiveFolder !== 'videos' || window._stActiveVideoFolder !== 'links' || window._stActiveLinkFolder !== folderId) return;
+    loading.remove();
+
+    const folder = folders.find((f) => f.id === folderId);
+
+    const backRow = document.createElement('div');
+    backRow.className = 'st-back-row';
+    backRow.innerHTML =
+      '<button class="st-back-btn">← Links</button>' +
+      '<span class="st-back-title">' + escHtml(folder ? folder.name : '') + '</span>';
+    backRow.querySelector('.st-back-btn').addEventListener('click', () => {
+      window._stActiveLinkFolder = null;
+      renderSt();
+    });
+    list.appendChild(backRow);
+
+    if (!folder) { window._stActiveLinkFolder = null; renderSt(); return; }
+
+    const items = favvidApplyOrder(
+      rawLinks.filter((l) => l.folderId === folderId).map((l) => Object.assign({}, l, { key: l.id })),
+      orderDoc['links:' + folderId]
+    );
+    favvidSearchableSection(list, {
+      placeholder: 'লিংক খুঁজুন…',
+      allItems: items,
+      renderCards: (filtered, container) => {
+        filtered.forEach((v) => favvidRenderLinkCard(v, items, 'links:' + folderId, container));
+      },
+    });
+  });
+}
+
 
 function renderSt() {
   const list = document.getElementById("stList");

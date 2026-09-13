@@ -13622,7 +13622,7 @@ const VIDEO_SUBFOLDERS = [
   { key: 'motivation', title: 'Motivation',     icon: '🔥', type: 'github', path: 'videos/motivation' },
   { key: 'naamjap',    title: 'Naam Jap Mahima', icon: '📿', type: 'github', path: 'videos/naam-jap-mahima' },
   { key: 'karma',      title: 'Law of Karma',    icon: '⚖️', type: 'github', path: 'videos/law-of-karma' },
-  { key: 'links',      title: 'Links',           icon: '🔗', type: 'links' },
+  { key: 'links',      title: 'Random Links',     icon: '🔗', type: 'links' },
 ];
 
 // "Why-Karma-Never-Forgets.mp4" -> "Why Karma Never Forgets"
@@ -13944,11 +13944,11 @@ function renderFavVideoFolder(list) {
     return;
   }
 
-  // Inside a specific Links folder — it builds its own back row (needs
-  // the folder's name, which is only known after an async fetch) rather
-  // than the generic one below.
-  if (subKey === 'links' && window._stActiveLinkFolder) {
-    renderFavVideoLinksFolderView(list, window._stActiveLinkFolder);
+  // Inside a specific folder (created within any of the 4 subfolders) —
+  // it builds its own back row (needs the folder's name, which is only
+  // known after an async fetch) rather than the generic one below.
+  if (window._stActiveLinkFolder) {
+    renderFavVideoLinksFolderView(list, window._stActiveLinkFolder, subKey);
     return;
   }
 
@@ -13968,7 +13968,7 @@ function renderFavVideoFolder(list) {
   if (sub.type === 'github') {
     renderGithubVideoList(list, sub);
   } else if (sub.type === 'links') {
-    renderFavVideoLinksTop(list);
+    renderFavVideoLinksTop(list, sub.key);
   }
 }
 
@@ -13984,7 +13984,23 @@ function favvidReorderButtonsHtml() {
   );
 }
 
+// Top-level entry for a GitHub-backed subfolder (Motivation/Naam Jap
+// Mahima/Law of Karma): the auto-listed repo files, then — below —
+// the same folders/links system as Random Links, scoped to this
+// subfolder. Two containers appended up front (in order) so the file
+// list and the links section each render into a fixed slot regardless
+// of which async fetch resolves first.
 function renderGithubVideoList(list, sub) {
+  const fileSectionContainer = document.createElement('div');
+  list.appendChild(fileSectionContainer);
+  renderGithubFileSection(fileSectionContainer, sub);
+
+  const linksSectionContainer = document.createElement('div');
+  list.appendChild(linksSectionContainer);
+  renderFavVideoLinksTop(linksSectionContainer, sub.key);
+}
+
+function renderGithubFileSection(list, sub) {
   const loading = document.createElement('div');
   loading.className = 'st-folder-empty';
   loading.textContent = 'লোড হচ্ছে…';
@@ -14061,72 +14077,109 @@ function favvidPlatformIconHtml(platform) {
   return '<img src="https://cdn.simpleicons.org/' + entry[0] + '" alt="" width="22" height="22" data-fallback="' + entry[1] + '" onerror="favvidIconFallback(this)" style="display:block;border-radius:5px;flex-shrink:0">';
 }
 
-// Builds one link card (icon, title, NEW badge, dev-only reorder/delete)
-// and wires up its click-to-play routing. `items` must be the FULL
-// (unfiltered) array for this bucket, so reorder stays correct even
-// under an active search filter.
+// Builds one link card (icon, title, NEW badge, dev-only edit/reorder/
+// delete) and wires up its click-to-play routing. `items` must be the
+// FULL (unfiltered) array for this bucket, so reorder stays correct
+// even under an active search filter.
 function favvidRenderLinkCard(v, items, bucketKey, container) {
   const seenKey = 'link:' + v.id;
   const platform = favvidDetectPlatform(v.url); // re-detect live so a detection fix auto-heals older saved links
   const card = document.createElement('div');
   card.className = 'st-card';
-  const platformIconHtml = favvidPlatformIconHtml(platform);
-  let headerRight = '';
-  if (isDeveloper()) {
-    headerRight = favvidReorderButtonsHtml() + '<button class="st-edit-btn favvid-del" style="border-color:rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08);margin-left:4px">✕</button>';
-  }
-  card.innerHTML =
-    '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
-      '<div class="favvid-open" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer">' +
-        platformIconHtml +
-        '<div class="st-name" style="font-size:15px">' + escHtml(v.title) + '</div>' +
-        favvidNewBadgeHtml(seenKey) +
-      '</div>' +
-      headerRight +
-    '</div>';
-  card.querySelector('.favvid-open').addEventListener('click', () => {
-    favvidMarkSeen(seenKey);
-    const badge = card.querySelector('.favvid-new-badge');
-    if (badge) badge.remove();
-    if (platform === 'youtube') {
-      const id = favvidYoutubeId(v.url);
-      if (id) openFavVideoPlayer(v.title, 'youtube', id); else openExternalLink(v.url);
-    } else if (platform === 'telegram') {
-      const embed = favvidTelegramEmbed(v.url);
-      if (embed) openFavVideoPlayer(v.title, 'telegram', embed); else openExternalLink(v.url);
-    } else if (platform === 'instagram') {
-      openFavVideoPlayer(v.title, 'instagram', v.url);
-    } else {
-      // drive/facebook/other: open externally — see the fixed platforms'
-      // history above for why inline embedding was dropped for these.
-      openExternalLink(v.url);
+
+  function renderDisplayMode() {
+    const platformIconHtml = favvidPlatformIconHtml(platform);
+    let headerRight = '';
+    if (isDeveloper()) {
+      headerRight =
+        '<button class="st-edit-btn favvid-edit" style="margin-right:4px">✎</button>' +
+        favvidReorderButtonsHtml() +
+        '<button class="st-edit-btn favvid-del" style="border-color:rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08);margin-left:4px">✕</button>';
     }
-  });
-  if (isDeveloper()) {
-    card.querySelector('.favvid-up').addEventListener('click', (e) => { e.stopPropagation(); favvidReorder(bucketKey, items, v.key, -1); });
-    card.querySelector('.favvid-down').addEventListener('click', (e) => { e.stopPropagation(); favvidReorder(bucketKey, items, v.key, 1); });
-    card.querySelector('.favvid-del').addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const cur = (await loadFavVideoLinks(true)).filter((x) => x.id !== v.id);
+    card.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
+        '<div class="favvid-open" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer">' +
+          platformIconHtml +
+          '<div class="st-name" style="font-size:15px">' + escHtml(v.title) + '</div>' +
+          favvidNewBadgeHtml(seenKey) +
+        '</div>' +
+        headerRight +
+      '</div>';
+    card.querySelector('.favvid-open').addEventListener('click', () => {
+      favvidMarkSeen(seenKey);
+      const badge = card.querySelector('.favvid-new-badge');
+      if (badge) badge.remove();
+      if (platform === 'youtube') {
+        const id = favvidYoutubeId(v.url);
+        if (id) openFavVideoPlayer(v.title, 'youtube', id); else openExternalLink(v.url);
+      } else if (platform === 'telegram') {
+        const embed = favvidTelegramEmbed(v.url);
+        if (embed) openFavVideoPlayer(v.title, 'telegram', embed); else openExternalLink(v.url);
+      } else if (platform === 'instagram') {
+        openFavVideoPlayer(v.title, 'instagram', v.url);
+      } else {
+        // drive/facebook/other: open externally — see the fixed platforms'
+        // history above for why inline embedding was dropped for these.
+        openExternalLink(v.url);
+      }
+    });
+    if (isDeveloper()) {
+      card.querySelector('.favvid-edit').addEventListener('click', (e) => { e.stopPropagation(); renderEditMode(); });
+      card.querySelector('.favvid-up').addEventListener('click', (e) => { e.stopPropagation(); favvidReorder(bucketKey, items, v.key, -1); });
+      card.querySelector('.favvid-down').addEventListener('click', (e) => { e.stopPropagation(); favvidReorder(bucketKey, items, v.key, 1); });
+      card.querySelector('.favvid-del').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const cur = (await loadFavVideoLinks(true)).filter((x) => x.id !== v.id);
+        await saveFavVideoLinks(cur);
+        renderSt();
+      });
+    }
+  }
+
+  function renderEditMode() {
+    card.innerHTML =
+      '<div style="font-size:11px;color:rgba(255,215,0,0.8);margin-bottom:6px;letter-spacing:1px">✎ Edit Link</div>' +
+      '<input class="favvid-edit-title" value="' + escHtml(v.title) + '" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
+      '<input class="favvid-edit-url" value="' + escHtml(v.url) + '" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
+      '<div style="display:flex;gap:8px">' +
+        '<button class="favvid-edit-save" style="padding:9px 18px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">💾 Save</button>' +
+        '<button class="favvid-edit-cancel" style="padding:9px 18px;border-radius:10px;background:rgba(255,255,255,0.06);color:var(--tl);font-size:13px;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,255,255,0.15)">Cancel</button>' +
+      '</div>';
+    card.querySelector('.favvid-edit-cancel').addEventListener('click', () => renderSt());
+    card.querySelector('.favvid-edit-save').addEventListener('click', async () => {
+      const newTitle = card.querySelector('.favvid-edit-title').value.trim();
+      const newUrl = card.querySelector('.favvid-edit-url').value.trim();
+      if (!newTitle || !newUrl) return;
+      const cur = (await loadFavVideoLinks(true)).map((x) =>
+        x.id === v.id ? Object.assign({}, x, { title: newTitle, url: newUrl, platform: favvidDetectPlatform(newUrl) }) : x
+      );
       await saveFavVideoLinks(cur);
       renderSt();
     });
   }
+
+  renderDisplayMode();
   container.appendChild(card);
 }
 
 // Top-level Links view: add-link form (with a folder picker), a
 // new-folder form, the folder tiles themselves, and — below those — an
 // "orphan" section (search + list) for links not filed into any folder.
-function renderFavVideoLinksTop(list) {
+function renderFavVideoLinksTop(list, subfolderKey) {
   const loading = document.createElement('div');
   loading.className = 'st-folder-empty';
   loading.textContent = 'লোড হচ্ছে…';
   list.appendChild(loading);
 
-  Promise.all([loadFavVideoLinks(true), loadFavVideoLinkFolders(true), loadFavVideoOrder()]).then(([rawLinks, folders, orderDoc]) => {
-    if (window._stActiveFolder !== 'videos' || window._stActiveVideoFolder !== 'links' || window._stActiveLinkFolder) return;
+  Promise.all([loadFavVideoLinks(true), loadFavVideoLinkFolders(true), loadFavVideoOrder()]).then(([rawLinksAll, foldersAll, orderDoc]) => {
+    if (window._stActiveFolder !== 'videos' || window._stActiveVideoFolder !== subfolderKey || window._stActiveLinkFolder) return;
     loading.remove();
+
+    // Pre-existing links/folders saved before this feature had a
+    // subfolder field default to 'links' (the original Random Links
+    // folder), so nothing already saved disappears.
+    const rawLinks = rawLinksAll.filter((l) => (l.subfolder || 'links') === subfolderKey);
+    const folders = foldersAll.filter((f) => (f.subfolder || 'links') === subfolderKey);
 
     // ── Search bar, first thing shown ── filters folder names AND
     // orphan link titles together, live.
@@ -14137,9 +14190,10 @@ function renderFavVideoLinksTop(list) {
 
     if (isDeveloper()) {
       // ── Add Video Link — collapsed by default, tap header to expand.
-      // window._favVidShowAddForm remembers the open/closed state across
-      // saves within this session, so it doesn't re-collapse after every
-      // add if you're adding several links in a row.
+      // window._favVidShowForm is keyed per subfolder so each of the
+      // 4 folders remembers its own open/closed state independently,
+      // and doesn't re-collapse after every add within a session.
+      const addFormKey = 'add:' + subfolderKey;
       const folderOptionsHtml = '<option value="">(কোনো ফোল্ডার নয়)</option>' +
         folders.map((f) => '<option value="' + f.id + '">' + escHtml(f.name) + '</option>').join('');
       const form = document.createElement('div');
@@ -14147,9 +14201,9 @@ function renderFavVideoLinksTop(list) {
       form.innerHTML =
         '<div id="favVidAddFormHeader" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer">' +
           '<div style="color:rgba(255,215,0,0.85);font-size:13px;font-weight:600;letter-spacing:0.5px">➕ Add Video Link</div>' +
-          '<span id="favVidAddFormChevron" style="color:#ffd700;font-size:13px">' + (window._favVidShowAddForm ? '▾' : '▸') + '</span>' +
+          '<span id="favVidAddFormChevron" style="color:#ffd700;font-size:13px">' + (window._favVidShowForm && window._favVidShowForm[addFormKey] ? '▾' : '▸') + '</span>' +
         '</div>' +
-        '<div id="favVidAddFormBody" style="display:' + (window._favVidShowAddForm ? 'block' : 'none') + ';margin-top:10px">' +
+        '<div id="favVidAddFormBody" style="display:' + (window._favVidShowForm && window._favVidShowForm[addFormKey] ? 'block' : 'none') + ';margin-top:10px">' +
           '<input id="favVidNewTitle" placeholder="Title" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
           '<input id="favVidNewUrl" placeholder="YouTube / Instagram / Telegram / Google Drive / Facebook link" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
           '<select id="favVidNewFolder" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' + folderOptionsHtml + '</select>' +
@@ -14157,9 +14211,10 @@ function renderFavVideoLinksTop(list) {
         '</div>';
       list.appendChild(form);
       form.querySelector('#favVidAddFormHeader').addEventListener('click', () => {
-        window._favVidShowAddForm = !window._favVidShowAddForm;
-        form.querySelector('#favVidAddFormBody').style.display = window._favVidShowAddForm ? 'block' : 'none';
-        form.querySelector('#favVidAddFormChevron').textContent = window._favVidShowAddForm ? '▾' : '▸';
+        window._favVidShowForm = window._favVidShowForm || {};
+        window._favVidShowForm[addFormKey] = !window._favVidShowForm[addFormKey];
+        form.querySelector('#favVidAddFormBody').style.display = window._favVidShowForm[addFormKey] ? 'block' : 'none';
+        form.querySelector('#favVidAddFormChevron').textContent = window._favVidShowForm[addFormKey] ? '▾' : '▸';
       });
       form.querySelector('#favVidAddBtn').addEventListener('click', async () => {
         const title = form.querySelector('#favVidNewTitle').value.trim();
@@ -14168,34 +14223,36 @@ function renderFavVideoLinksTop(list) {
         if (!title || !url) return;
         const platform = favvidDetectPlatform(url);
         const items = (await loadFavVideoLinks(true)).slice();
-        items.push({ id: 'v' + Date.now(), title: title, url: url, platform: platform, folderId: folderId, addedAt: Date.now() });
+        items.push({ id: 'v' + Date.now(), title: title, url: url, platform: platform, folderId: folderId, subfolder: subfolderKey, addedAt: Date.now() });
         await saveFavVideoLinks(items);
         renderSt();
       });
 
       // ── New Folder — same collapsed-by-default pattern.
+      const folderFormKey = 'folder:' + subfolderKey;
       const folderForm = document.createElement('div');
       folderForm.className = 'st-card';
       folderForm.innerHTML =
         '<div id="favVidNewFolderHeader" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer">' +
           '<div style="color:rgba(255,215,0,0.85);font-size:13px;font-weight:600;letter-spacing:0.5px">📁 New Folder</div>' +
-          '<span id="favVidNewFolderChevron" style="color:#ffd700;font-size:13px">' + (window._favVidShowNewFolderForm ? '▾' : '▸') + '</span>' +
+          '<span id="favVidNewFolderChevron" style="color:#ffd700;font-size:13px">' + (window._favVidShowForm && window._favVidShowForm[folderFormKey] ? '▾' : '▸') + '</span>' +
         '</div>' +
-        '<div id="favVidNewFolderBody" style="display:' + (window._favVidShowNewFolderForm ? 'flex' : 'none') + ';gap:8px;margin-top:10px">' +
+        '<div id="favVidNewFolderBody" style="display:' + (window._favVidShowForm && window._favVidShowForm[folderFormKey] ? 'flex' : 'none') + ';gap:8px;margin-top:10px">' +
           '<input id="favVidNewFolderName" placeholder="Folder name" style="flex:1;min-width:0;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
           '<button id="favVidAddFolderBtn" style="padding:9px 16px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30);white-space:nowrap;flex-shrink:0">+ Create</button>' +
         '</div>';
       list.appendChild(folderForm);
       folderForm.querySelector('#favVidNewFolderHeader').addEventListener('click', () => {
-        window._favVidShowNewFolderForm = !window._favVidShowNewFolderForm;
-        folderForm.querySelector('#favVidNewFolderBody').style.display = window._favVidShowNewFolderForm ? 'flex' : 'none';
-        folderForm.querySelector('#favVidNewFolderChevron').textContent = window._favVidShowNewFolderForm ? '▾' : '▸';
+        window._favVidShowForm = window._favVidShowForm || {};
+        window._favVidShowForm[folderFormKey] = !window._favVidShowForm[folderFormKey];
+        folderForm.querySelector('#favVidNewFolderBody').style.display = window._favVidShowForm[folderFormKey] ? 'flex' : 'none';
+        folderForm.querySelector('#favVidNewFolderChevron').textContent = window._favVidShowForm[folderFormKey] ? '▾' : '▸';
       });
       folderForm.querySelector('#favVidAddFolderBtn').addEventListener('click', async () => {
         const name = folderForm.querySelector('#favVidNewFolderName').value.trim();
         if (!name) return;
         const cur = (await loadFavVideoLinkFolders(true)).slice();
-        cur.push({ id: 'lf' + Date.now(), name: name });
+        cur.push({ id: 'lf' + Date.now(), name: name, subfolder: subfolderKey });
         await saveFavVideoLinkFolders(cur);
         renderSt();
       });
@@ -14208,7 +14265,7 @@ function renderFavVideoLinksTop(list) {
 
     const orphanItemsFull = favvidApplyOrder(
       rawLinks.filter((l) => !l.folderId).map((l) => Object.assign({}, l, { key: l.id })),
-      orderDoc['links:_orphan']
+      orderDoc[subfolderKey + ':_orphan']
     );
 
     function renderBody() {
@@ -14221,30 +14278,54 @@ function renderFavVideoLinksTop(list) {
         const count = rawLinks.filter((l) => l.folderId === f.id).length;
         const tile = document.createElement('div');
         tile.className = 'st-folder-tile';
-        tile.innerHTML =
-          '<span class="st-folder-tile-icon">📁</span>' +
-          '<span class="st-folder-tile-title">' + escHtml(f.name) + '</span>' +
-          '<span class="st-folder-tile-count">' + count + '</span>' +
-          (isDeveloper() ? '<button class="favvid-folder-del" style="margin-left:8px;width:26px;height:26px;border-radius:8px;border:1px solid rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08);font-size:13px;cursor:pointer;flex-shrink:0">✕</button>' : '') +
-          '<span class="st-folder-tile-arrow">›</span>';
-        tile.addEventListener('click', (e) => {
-          if (e.target.closest('.favvid-folder-del')) return;
-          window._stActiveLinkFolder = f.id;
-          renderSt();
-        });
-        const delBtn = tile.querySelector('.favvid-folder-del');
-        if (delBtn) {
-          delBtn.addEventListener('click', async (e) => {
+
+        function renderTileDisplay() {
+          tile.innerHTML =
+            '<span class="st-folder-tile-icon">📁</span>' +
+            '<span class="st-folder-tile-title">' + escHtml(f.name) + '</span>' +
+            '<span class="st-folder-tile-count">' + count + '</span>' +
+            (isDeveloper() ? '<button class="favvid-folder-edit" style="margin-left:8px;width:26px;height:26px;border-radius:8px;border:1px solid rgba(255,215,0,0.3);color:#ffd700;background:rgba(255,215,0,0.08);font-size:13px;cursor:pointer;flex-shrink:0">✎</button><button class="favvid-folder-del" style="margin-left:6px;width:26px;height:26px;border-radius:8px;border:1px solid rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08);font-size:13px;cursor:pointer;flex-shrink:0">✕</button>' : '') +
+            '<span class="st-folder-tile-arrow">›</span>';
+          tile.onclick = (e) => {
+            if (e.target.closest('.favvid-folder-del') || e.target.closest('.favvid-folder-edit')) return;
+            window._stActiveLinkFolder = f.id;
+            renderSt();
+          };
+          const editBtn = tile.querySelector('.favvid-folder-edit');
+          if (editBtn) editBtn.addEventListener('click', (e) => { e.stopPropagation(); renderTileEdit(); });
+          const delBtn = tile.querySelector('.favvid-folder-del');
+          if (delBtn) {
+            delBtn.addEventListener('click', async (e) => {
+              e.stopPropagation();
+              // Deleting a folder only un-files its links (back to orphan) —
+              // never deletes the links themselves.
+              const links = (await loadFavVideoLinks(true)).map((l) => (l.folderId === f.id ? Object.assign({}, l, { folderId: null }) : l));
+              await saveFavVideoLinks(links);
+              const remaining = (await loadFavVideoLinkFolders(true)).filter((x) => x.id !== f.id);
+              await saveFavVideoLinkFolders(remaining);
+              renderSt();
+            });
+          }
+        }
+
+        function renderTileEdit() {
+          tile.innerHTML =
+            '<input class="favvid-folder-edit-name" value="' + escHtml(f.name) + '" style="flex:1;min-width:0;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:8px 10px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif;margin-right:8px">' +
+            '<button class="favvid-folder-edit-save" style="padding:8px 14px;border-radius:8px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:12px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30);white-space:nowrap;margin-right:6px">💾</button>' +
+            '<button class="favvid-folder-edit-cancel" style="padding:8px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--tl);font-size:12px;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,255,255,0.15);white-space:nowrap">✕</button>';
+          tile.onclick = null;
+          tile.querySelector('.favvid-folder-edit-cancel').addEventListener('click', (e) => { e.stopPropagation(); renderSt(); });
+          tile.querySelector('.favvid-folder-edit-save').addEventListener('click', async (e) => {
             e.stopPropagation();
-            // Deleting a folder only un-files its links (back to orphan) —
-            // never deletes the links themselves.
-            const links = (await loadFavVideoLinks(true)).map((l) => (l.folderId === f.id ? Object.assign({}, l, { folderId: null }) : l));
-            await saveFavVideoLinks(links);
-            const remaining = (await loadFavVideoLinkFolders(true)).filter((x) => x.id !== f.id);
-            await saveFavVideoLinkFolders(remaining);
+            const newName = tile.querySelector('.favvid-folder-edit-name').value.trim();
+            if (!newName) return;
+            const cur = (await loadFavVideoLinkFolders(true)).map((x) => (x.id === f.id ? Object.assign({}, x, { name: newName }) : x));
+            await saveFavVideoLinkFolders(cur);
             renderSt();
           });
         }
+
+        renderTileDisplay();
         bodyContainer.appendChild(tile);
       });
 
@@ -14261,7 +14342,7 @@ function renderFavVideoLinksTop(list) {
         empty.textContent = q ? 'কিছু পাওয়া যায়নি' : 'শীঘ্রই আসছে 🙏';
         bodyContainer.appendChild(empty);
       } else {
-        filteredOrphans.forEach((v) => favvidRenderLinkCard(v, orphanItemsFull, 'links:_orphan', bodyContainer));
+        filteredOrphans.forEach((v) => favvidRenderLinkCard(v, orphanItemsFull, subfolderKey + ':_orphan', bodyContainer));
       }
     }
     searchInput.addEventListener('input', renderBody);
@@ -14272,22 +14353,23 @@ function renderFavVideoLinksTop(list) {
 // Inside one specific link folder — its own back row (needs the
 // folder's name, only known after the fetch resolves) plus a search bar
 // scoped to just this folder's links.
-function renderFavVideoLinksFolderView(list, folderId) {
+function renderFavVideoLinksFolderView(list, folderId, subfolderKey) {
   const loading = document.createElement('div');
   loading.className = 'st-folder-empty';
   loading.textContent = 'লোড হচ্ছে…';
   list.appendChild(loading);
 
   Promise.all([loadFavVideoLinks(true), loadFavVideoLinkFolders(true), loadFavVideoOrder()]).then(([rawLinks, folders, orderDoc]) => {
-    if (window._stActiveFolder !== 'videos' || window._stActiveVideoFolder !== 'links' || window._stActiveLinkFolder !== folderId) return;
+    if (window._stActiveFolder !== 'videos' || window._stActiveVideoFolder !== subfolderKey || window._stActiveLinkFolder !== folderId) return;
     loading.remove();
 
     const folder = folders.find((f) => f.id === folderId);
+    const parentSub = VIDEO_SUBFOLDERS.find((s) => s.key === subfolderKey);
 
     const backRow = document.createElement('div');
     backRow.className = 'st-back-row';
     backRow.innerHTML =
-      '<button class="st-back-btn">← Links</button>' +
+      '<button class="st-back-btn">← ' + escHtml(parentSub ? parentSub.title : '') + '</button>' +
       '<span class="st-back-title">' + escHtml(folder ? folder.name : '') + '</span>';
     backRow.querySelector('.st-back-btn').addEventListener('click', () => {
       window._stActiveLinkFolder = null;
@@ -14312,7 +14394,7 @@ function renderFavVideoLinksFolderView(list, folderId) {
         if (!title || !url) return;
         const platform = favvidDetectPlatform(url);
         const items2 = (await loadFavVideoLinks(true)).slice();
-        items2.push({ id: 'v' + Date.now(), title: title, url: url, platform: platform, folderId: folderId, addedAt: Date.now() });
+        items2.push({ id: 'v' + Date.now(), title: title, url: url, platform: platform, folderId: folderId, subfolder: subfolderKey, addedAt: Date.now() });
         await saveFavVideoLinks(items2);
         renderSt();
       });
@@ -14320,13 +14402,13 @@ function renderFavVideoLinksFolderView(list, folderId) {
 
     const items = favvidApplyOrder(
       rawLinks.filter((l) => l.folderId === folderId).map((l) => Object.assign({}, l, { key: l.id })),
-      orderDoc['links:' + folderId]
+      orderDoc['folder:' + folderId]
     );
     favvidSearchableSection(list, {
       placeholder: 'লিংক খুঁজুন…',
       allItems: items,
       renderCards: (filtered, container) => {
-        filtered.forEach((v) => favvidRenderLinkCard(v, items, 'links:' + folderId, container));
+        filtered.forEach((v) => favvidRenderLinkCard(v, items, 'folder:' + folderId, container));
       },
     });
   });

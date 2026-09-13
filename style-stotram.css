@@ -274,6 +274,14 @@
     -webkit-backdrop-filter: blur(6px);
     z-index: 60;
   }
+  /* বাংলা/हिंदी picker — sits just below the Translation toggle above */
+  .lm-translate-lang-wrap {
+    position: absolute;
+    top: calc(max(env(safe-area-inset-top) + 14px, 18px) + 42px);
+    right: 72px;
+    left: auto; bottom: auto; transform: none;
+    z-index: 60;
+  }
   .lm-toggle-label {
     font-family: 'Hind Siliguri','Inter',sans-serif;
     font-size: 13px; color: rgba(255,255,255,0.80);
@@ -504,6 +512,10 @@
     right: 60px;
     bottom: auto; left: auto; transform: none;
   }
+  .lm-translate-lang-wrap {
+    top: calc(max(env(safe-area-inset-top) + 10px, 14px) + 38px);
+    right: 60px;
+  }
   .lm-nav {
     bottom: max(calc(50dvh - 75vw), env(safe-area-inset-bottom));
   }
@@ -524,6 +536,10 @@
     top: max(env(safe-area-inset-top) + 14px, 18px);
     right: 80px;
     bottom: auto; left: auto; transform: none;
+  }
+  .lm-translate-lang-wrap {
+    top: calc(max(env(safe-area-inset-top) + 14px, 18px) + 42px);
+    right: 80px;
   }
   .lm-nav {
     bottom: max(env(safe-area-inset-bottom), 10px);
@@ -1054,6 +1070,18 @@
 /* v90 - Root fix: translation toggle row separation */
 .lm-translate-wrap {
   top: calc(max(env(safe-area-inset-top), 10px) + 40px) !important;
+  right: 12px !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+}
+
+/* v92 - বাংলা/हिंदी picker was never positioned, so it rendered in normal
+   document flow inside the overflow:hidden .lm-water-card and was hidden
+   behind the frame/text area. Anchor it just below the toggle above,
+   matching its final (v90) position exactly. */
+.lm-translate-lang-wrap {
+  top: calc(max(env(safe-area-inset-top), 10px) + 40px + 42px) !important;
   right: 12px !important;
   left: auto !important;
   bottom: auto !important;

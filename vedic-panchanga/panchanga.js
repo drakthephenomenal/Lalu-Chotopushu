@@ -421,6 +421,18 @@ function purnimantaMonth(jd){
   const nnm = nextNewMoon(jd);
   return hinduMonth(nnm + 0.0001); // Krishna Paksha: name of the NEXT lunation
 }
+// Purnimanta-consistent Adhik Maas (leap month) detection — mirrors
+// purnimantaMonth()'s Shukla/Krishna shift exactly: in Shukla Paksha the
+// Purnimanta and Amanta lunation are the same one, so Adhik-ness and the
+// resulting month name agree with plain adhikMaas(jd). In Krishna Paksha,
+// Purnimanta has already advanced to the NEXT lunation, so whether THIS
+// birth's Purnimanta month is Adhik (and what it's named) depends on
+// that next lunation, not the current one.
+function purnimantaAdhikMaas(jd){
+  if(tithiIdx(jd+0.001) < 15) return adhikMaas(jd); // Shukla Paksha: same lunation as Amanta
+  const nnm = nextNewMoon(jd);
+  return adhikMaas(nnm + 0.0001); // Krishna Paksha: check the NEXT lunation
+}
 // Find the most recent New Moon at or before jd, and the next New Moon at or
 // after jd, using a tight ±2.5-day bisection window centred on a synodic-rate
 // estimate. A wide blind window (the old approach) could accidentally skip
@@ -1010,7 +1022,7 @@ function renderAll(){
   const headerJD=dateToJD(headerRef);
   const headerHM=purnimantaMonth(headerJD);
   const headerAmantaHM=hinduMonth(headerJD);
-  const headerAM=adhikMaas(headerJD);
+  const headerAM=purnimantaAdhikMaas(headerJD);
   const headerPaksha=tithiIdx(headerJD)<15?'Sukla':'Krishna';
   const headerWhen=isActive?'Today':(displayVaar.dayOffset===1?'Tomorrow':displayVaar.dayOffset===-1?'Yesterday':displayVaar.dayOffset>0?'+'+displayVaar.dayOffset+' days':displayVaar.dayOffset+' days');
 
@@ -1857,7 +1869,7 @@ function vpRenderDateResult(){
   // page header, so the date-picker result is consistent with it.
   const hmEl = document.getElementById('vp-dateresult-hindu-month');
   if(hmEl){
-    const am = adhikMaas(jd);
+    const am = purnimantaAdhikMaas(jd);
     const hm = purnimantaMonth(jd);
     const amantaHm = hinduMonth(jd);
     const paksha = tithiIdx(jd) < 15 ? 'Sukla' : 'Krishna';
@@ -2071,7 +2083,7 @@ function vpHoroCalculate(){
   // applied to the date-picker result above, for consistency.
   const horoHmEl = document.getElementById('vp-horo-result-hindu-month');
   if(horoHmEl){
-    const am = adhikMaas(jd);
+    const am = purnimantaAdhikMaas(jd);
     const hm = purnimantaMonth(jd);
     const amantaHm = hinduMonth(jd);
     const paksha = tithiIdx(jd) < 15 ? 'Sukla' : 'Krishna';
@@ -2242,8 +2254,8 @@ function vpPersonalComputeProfile(dateStr, timeStr, lat, lng){
   // Krishna Amavasya), which is what actually recurs once a year. Matching
   // Tithi alone recurs roughly every 29.5 days, which is wrong for a
   // birthday and was the bug reported — this field fixes that.
-  const birthAdhik = adhikMaas(jd);
-  const birthHM = hinduMonth(jd);
+  const birthAdhik = purnimantaAdhikMaas(jd); // Purnimanta-consistent — was adhikMaas(jd), which is Amanta
+  const birthHM = purnimantaMonth(jd); // Purnimanta (ISKCON/Gaudiya) — was hinduMonth(jd), which is Amanta
   const birthMonthName = birthAdhik.isAdhik ? birthAdhik.nextMonthName : birthHM.name;
 
   return {
@@ -2293,8 +2305,8 @@ function vpPersonalScanJanmotithi(profile, searchStartJD, guardLimit){
     const checkJD = candidate + 0.0001;
     const idx = Math.floor(norm(moonLong(checkJD)-sunLong(checkJD))/12);
     if(candidate > windowStart-1 && idx === profile.tithiIndex){
-      const am = adhikMaas(checkJD);
-      const hm = hinduMonth(checkJD);
+      const am = purnimantaAdhikMaas(checkJD); // must match the system birthMonthName was saved in (Purnimanta)
+      const hm = purnimantaMonth(checkJD);
       const monthName = am.isAdhik ? am.nextMonthName : hm.name;
       if(monthName === profile.birthMonthName){
         // ── SUNRISE RULE (Vaishnava/Smarta convention) ──────────────────

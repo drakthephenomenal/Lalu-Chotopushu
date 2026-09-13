@@ -13954,7 +13954,7 @@ function renderFavVideoFolder(list) {
 
   const sub = VIDEO_SUBFOLDERS.find((s) => s.key === subKey);
   backRow.innerHTML =
-    '<button class="st-back-btn">← Favourite Videos</button>' +
+    '<button class="st-back-btn">←</button>' +
     '<span class="st-back-title">' + escHtml(sub ? sub.title : '') + '</span>';
   backRow.querySelector('.st-back-btn').addEventListener('click', () => {
     window._stActiveVideoFolder = null;
@@ -14128,18 +14128,39 @@ function renderFavVideoLinksTop(list) {
     if (window._stActiveFolder !== 'videos' || window._stActiveVideoFolder !== 'links' || window._stActiveLinkFolder) return;
     loading.remove();
 
+    // ── Search bar, first thing shown ── filters folder names AND
+    // orphan link titles together, live.
+    const searchWrap = document.createElement('div');
+    searchWrap.innerHTML = '<input type="text" placeholder="ফোল্ডার বা লিংক খুঁজুন…" style="width:100%;margin-bottom:10px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">';
+    list.appendChild(searchWrap);
+    const searchInput = searchWrap.querySelector('input');
+
     if (isDeveloper()) {
+      // ── Add Video Link — collapsed by default, tap header to expand.
+      // window._favVidShowAddForm remembers the open/closed state across
+      // saves within this session, so it doesn't re-collapse after every
+      // add if you're adding several links in a row.
       const folderOptionsHtml = '<option value="">(কোনো ফোল্ডার নয়)</option>' +
         folders.map((f) => '<option value="' + f.id + '">' + escHtml(f.name) + '</option>').join('');
       const form = document.createElement('div');
       form.className = 'st-card';
       form.innerHTML =
-        '<div style="font-size:11px;color:rgba(255,215,0,0.8);margin-bottom:6px;letter-spacing:1px">➕ Add Video Link</div>' +
-        '<input id="favVidNewTitle" placeholder="Title" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
-        '<input id="favVidNewUrl" placeholder="YouTube / Instagram / Telegram / Google Drive / Facebook link" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
-        '<select id="favVidNewFolder" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' + folderOptionsHtml + '</select>' +
-        '<button id="favVidAddBtn" style="padding:9px 20px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">💾 Save</button>';
+        '<div id="favVidAddFormHeader" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer">' +
+          '<div style="color:rgba(255,215,0,0.85);font-size:13px;font-weight:600;letter-spacing:0.5px">➕ Add Video Link</div>' +
+          '<span id="favVidAddFormChevron" style="color:#ffd700;font-size:13px">' + (window._favVidShowAddForm ? '▾' : '▸') + '</span>' +
+        '</div>' +
+        '<div id="favVidAddFormBody" style="display:' + (window._favVidShowAddForm ? 'block' : 'none') + ';margin-top:10px">' +
+          '<input id="favVidNewTitle" placeholder="Title" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
+          '<input id="favVidNewUrl" placeholder="YouTube / Instagram / Telegram / Google Drive / Facebook link" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
+          '<select id="favVidNewFolder" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' + folderOptionsHtml + '</select>' +
+          '<button id="favVidAddBtn" style="padding:9px 20px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">💾 Save</button>' +
+        '</div>';
       list.appendChild(form);
+      form.querySelector('#favVidAddFormHeader').addEventListener('click', () => {
+        window._favVidShowAddForm = !window._favVidShowAddForm;
+        form.querySelector('#favVidAddFormBody').style.display = window._favVidShowAddForm ? 'block' : 'none';
+        form.querySelector('#favVidAddFormChevron').textContent = window._favVidShowAddForm ? '▾' : '▸';
+      });
       form.querySelector('#favVidAddBtn').addEventListener('click', async () => {
         const title = form.querySelector('#favVidNewTitle').value.trim();
         const url = form.querySelector('#favVidNewUrl').value.trim();
@@ -14152,15 +14173,24 @@ function renderFavVideoLinksTop(list) {
         renderSt();
       });
 
+      // ── New Folder — same collapsed-by-default pattern.
       const folderForm = document.createElement('div');
       folderForm.className = 'st-card';
       folderForm.innerHTML =
-        '<div style="font-size:11px;color:rgba(255,215,0,0.8);margin-bottom:6px;letter-spacing:1px">📁 New Folder</div>' +
-        '<div style="display:flex;gap:8px">' +
+        '<div id="favVidNewFolderHeader" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer">' +
+          '<div style="color:rgba(255,215,0,0.85);font-size:13px;font-weight:600;letter-spacing:0.5px">📁 New Folder</div>' +
+          '<span id="favVidNewFolderChevron" style="color:#ffd700;font-size:13px">' + (window._favVidShowNewFolderForm ? '▾' : '▸') + '</span>' +
+        '</div>' +
+        '<div id="favVidNewFolderBody" style="display:' + (window._favVidShowNewFolderForm ? 'flex' : 'none') + ';gap:8px;margin-top:10px">' +
           '<input id="favVidNewFolderName" placeholder="Folder name" style="flex:1;min-width:0;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
           '<button id="favVidAddFolderBtn" style="padding:9px 16px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30);white-space:nowrap;flex-shrink:0">+ Create</button>' +
         '</div>';
       list.appendChild(folderForm);
+      folderForm.querySelector('#favVidNewFolderHeader').addEventListener('click', () => {
+        window._favVidShowNewFolderForm = !window._favVidShowNewFolderForm;
+        folderForm.querySelector('#favVidNewFolderBody').style.display = window._favVidShowNewFolderForm ? 'flex' : 'none';
+        folderForm.querySelector('#favVidNewFolderChevron').textContent = window._favVidShowNewFolderForm ? '▾' : '▸';
+      });
       folderForm.querySelector('#favVidAddFolderBtn').addEventListener('click', async () => {
         const name = folderForm.querySelector('#favVidNewFolderName').value.trim();
         if (!name) return;
@@ -14171,55 +14201,71 @@ function renderFavVideoLinksTop(list) {
       });
     }
 
-    folders.forEach((f) => {
-      const count = rawLinks.filter((l) => l.folderId === f.id).length;
-      const tile = document.createElement('div');
-      tile.className = 'st-folder-tile';
-      tile.innerHTML =
-        '<span class="st-folder-tile-icon">📁</span>' +
-        '<span class="st-folder-tile-title">' + escHtml(f.name) + '</span>' +
-        '<span class="st-folder-tile-count">' + count + '</span>' +
-        (isDeveloper() ? '<button class="favvid-folder-del" style="margin-left:8px;width:26px;height:26px;border-radius:8px;border:1px solid rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08);font-size:13px;cursor:pointer;flex-shrink:0">✕</button>' : '') +
-        '<span class="st-folder-tile-arrow">›</span>';
-      tile.addEventListener('click', (e) => {
-        if (e.target.closest('.favvid-folder-del')) return;
-        window._stActiveLinkFolder = f.id;
-        renderSt();
-      });
-      const delBtn = tile.querySelector('.favvid-folder-del');
-      if (delBtn) {
-        delBtn.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          // Deleting a folder only un-files its links (back to orphan) —
-          // never deletes the links themselves.
-          const links = (await loadFavVideoLinks(true)).map((l) => (l.folderId === f.id ? Object.assign({}, l, { folderId: null }) : l));
-          await saveFavVideoLinks(links);
-          const remaining = (await loadFavVideoLinkFolders(true)).filter((x) => x.id !== f.id);
-          await saveFavVideoLinkFolders(remaining);
-          renderSt();
-        });
-      }
-      list.appendChild(tile);
-    });
+    // ── Folders, then orphan links below — both filtered live by the
+    // search bar above.
+    const bodyContainer = document.createElement('div');
+    list.appendChild(bodyContainer);
 
-    if (folders.length) {
-      const header = document.createElement('div');
-      header.style.cssText = 'margin:14px 0 8px;color:rgba(255,215,0,0.55);font-size:12px;letter-spacing:1px';
-      header.textContent = '— অন্যান্য লিংক (কোনো ফোল্ডারে নেই) —';
-      list.appendChild(header);
-    }
-
-    const orphanItems = favvidApplyOrder(
+    const orphanItemsFull = favvidApplyOrder(
       rawLinks.filter((l) => !l.folderId).map((l) => Object.assign({}, l, { key: l.id })),
       orderDoc['links:_orphan']
     );
-    favvidSearchableSection(list, {
-      placeholder: 'লিংক খুঁজুন…',
-      allItems: orphanItems,
-      renderCards: (filtered, container) => {
-        filtered.forEach((v) => favvidRenderLinkCard(v, orphanItems, 'links:_orphan', container));
-      },
-    });
+
+    function renderBody() {
+      const q = searchInput.value.trim().toLowerCase();
+      bodyContainer.innerHTML = '';
+      const filteredFolders = q ? folders.filter((f) => f.name.toLowerCase().indexOf(q) !== -1) : folders;
+      const filteredOrphans = q ? orphanItemsFull.filter((v) => v.title.toLowerCase().indexOf(q) !== -1) : orphanItemsFull;
+
+      filteredFolders.forEach((f) => {
+        const count = rawLinks.filter((l) => l.folderId === f.id).length;
+        const tile = document.createElement('div');
+        tile.className = 'st-folder-tile';
+        tile.innerHTML =
+          '<span class="st-folder-tile-icon">📁</span>' +
+          '<span class="st-folder-tile-title">' + escHtml(f.name) + '</span>' +
+          '<span class="st-folder-tile-count">' + count + '</span>' +
+          (isDeveloper() ? '<button class="favvid-folder-del" style="margin-left:8px;width:26px;height:26px;border-radius:8px;border:1px solid rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08);font-size:13px;cursor:pointer;flex-shrink:0">✕</button>' : '') +
+          '<span class="st-folder-tile-arrow">›</span>';
+        tile.addEventListener('click', (e) => {
+          if (e.target.closest('.favvid-folder-del')) return;
+          window._stActiveLinkFolder = f.id;
+          renderSt();
+        });
+        const delBtn = tile.querySelector('.favvid-folder-del');
+        if (delBtn) {
+          delBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            // Deleting a folder only un-files its links (back to orphan) —
+            // never deletes the links themselves.
+            const links = (await loadFavVideoLinks(true)).map((l) => (l.folderId === f.id ? Object.assign({}, l, { folderId: null }) : l));
+            await saveFavVideoLinks(links);
+            const remaining = (await loadFavVideoLinkFolders(true)).filter((x) => x.id !== f.id);
+            await saveFavVideoLinkFolders(remaining);
+            renderSt();
+          });
+        }
+        bodyContainer.appendChild(tile);
+      });
+
+      if (folders.length) {
+        const header = document.createElement('div');
+        header.style.cssText = 'margin:14px 0 8px;color:rgba(255,215,0,0.55);font-size:12px;letter-spacing:1px';
+        header.textContent = '— অন্যান্য লিংক (কোনো ফোল্ডারে নেই) —';
+        bodyContainer.appendChild(header);
+      }
+
+      if (!filteredOrphans.length) {
+        const empty = document.createElement('div');
+        empty.className = 'st-folder-empty';
+        empty.textContent = q ? 'কিছু পাওয়া যায়নি' : 'শীঘ্রই আসছে 🙏';
+        bodyContainer.appendChild(empty);
+      } else {
+        filteredOrphans.forEach((v) => favvidRenderLinkCard(v, orphanItemsFull, 'links:_orphan', bodyContainer));
+      }
+    }
+    searchInput.addEventListener('input', renderBody);
+    renderBody();
   });
 }
 
@@ -17082,7 +17128,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg"];
+const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks"];
 // ── IDs where prose sections need vertical-scroll mode
 const PROSE_IDS = ["nkc"];
 

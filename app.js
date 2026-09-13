@@ -9290,6 +9290,51 @@ window.vpFirestore = {
       return false;
     }
   },
+
+  // ── Saved profiles for OTHER people (spouse, child, friend, etc.) ──
+  // Separate subcollection from the single users/{uid}/horoscope/profile
+  // doc above — each saved person is one document under
+  // users/{uid}/horoscopeProfiles/{profileId}.
+  async getOtherProfiles() {
+    if (!fbInit() || !fbUser) return [];
+    try {
+      const snap = await fbDb.collection('users').doc(fbUser.uid)
+        .collection('horoscopeProfiles').get();
+      const list = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+      list.sort((a, b) => (a.id < b.id ? -1 : 1)); // ids are Date.now()-based -> oldest first
+      return list;
+    } catch (e) {
+      console.warn('[vpFirestore] getOtherProfiles failed:', e && e.message);
+      return [];
+    }
+  },
+  // profileId: pass an existing id to update that profile, or null to
+  // create a new one. Returns the profile's id on success, false on failure.
+  async saveOtherProfile(profileId, data) {
+    if (!fbInit() || !fbUser) return false;
+    try {
+      const col = fbDb.collection('users').doc(fbUser.uid).collection('horoscopeProfiles');
+      const id = profileId || col.doc().id;
+      await col.doc(id).set(Object.assign({}, data, {
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      }), { merge: true });
+      return id;
+    } catch (e) {
+      console.warn('[vpFirestore] saveOtherProfile failed:', e && e.message);
+      return false;
+    }
+  },
+  async deleteOtherProfile(profileId) {
+    if (!fbInit() || !fbUser) return false;
+    try {
+      await fbDb.collection('users').doc(fbUser.uid)
+        .collection('horoscopeProfiles').doc(profileId).delete();
+      return true;
+    } catch (e) {
+      console.warn('[vpFirestore] deleteOtherProfile failed:', e && e.message);
+      return false;
+    }
+  },
 };
 
 function fbShowAuthChecking() {
@@ -14456,12 +14501,12 @@ function renderSt() {
   }
 
   const FOLDERS = [
-    { key: 'rv',      title: 'রাধা বল্লভ সম্প্রদায়', icon: '🪷', img: ST_FOLDER_ICON_IMG.rv },
-    { key: 'krishna', title: 'কৃষ্ণ', icon: '🦚' },
-    { key: 'shiv',    title: 'ভগবান শিব', icon: '🔱', img: ST_FOLDER_ICON_IMG.shiv },
-    { key: 'bmg',     title: 'ব্রহ্মা মাধ্ব গৌড়ীয় সম্প্রদায়', icon: '🕉️', img: ST_FOLDER_ICON_IMG.bmg },
-    { key: 'hanuman', title: 'হনুমান জী মহারাজ', icon: '🚩' },
     { key: 'videos',  title: 'Favourite Videos', icon: '🎬' },
+    { key: 'rv',      title: 'রাধা বল্লভ সম্প্রদায়', icon: '🪷', img: ST_FOLDER_ICON_IMG.rv },
+    { key: 'bmg',     title: 'ব্রাহ্ম মাধ্ব গৌড়ীয় সম্প্রদায়', icon: '🕉️', img: ST_FOLDER_ICON_IMG.bmg },
+    { key: 'krishna', title: 'শ্রীকৃষ্ণ', icon: '🦚' },
+    { key: 'shiv',    title: 'ভগবান শিব', icon: '🔱', img: ST_FOLDER_ICON_IMG.shiv },
+    { key: 'hanuman', title: 'হনুমান জী মহারাজ', icon: '🚩' },
   ];
 
   const customItems = (App.S.customSt || []).map((x) => ({ ...x, custom: true }));
@@ -17221,6 +17266,10 @@ let _verses = [],
   _verseIdx = 0,
   _currentStotramId = "";
 let _translationVisible = false;
+// Which meaning to show when a stotram has more than one translation
+// (currently only 'bn' Bengali অর্থ: and 'hi' Hindi-in-Bengali-script
+// অর্থ২:). Resets to 'bn' whenever a new stotram opens.
+let _translationLang = "bn";
 // Global preference set from the Stotram list screen toggle
 let _globalTranslationPref = false;
 
@@ -17369,6 +17418,7 @@ function showLyrics(id) {
   _translationVisible = TRANSLATION_IDS.includes(id)
     ? _globalTranslationPref
     : false;
+  _translationLang = "bn";
 
   // ── Sectioned stotrams (svb, blv, …): show section picker ──
   if (window.StotramSections && window.StotramSections.isSectioned(id)) {
@@ -17455,7 +17505,7 @@ function showLyrics(id) {
     const linesOnly = v.split("\n").filter((l) => l.trim().length > 0);
     const allArtha =
       linesOnly.length > 0 &&
-      linesOnly.every((l) => /^অর্থ\s*:/.test(l.trim()));
+      linesOnly.every((l) => /^অর্থ২?\s*:/.test(l.trim()));
     if (allArtha && mergedVerses.length > 0) {
       // Append to previous verse with a blank line separator
       mergedVerses[mergedVerses.length - 1] += "\n\n" + v;
@@ -17500,14 +17550,23 @@ function _renderVerse(idx, dir) {
   const isProse =
     PROSE_IDS.includes(_currentStotramId) && _isProseBlock(verseText);
   const hasTranslation = TRANSLATION_IDS.includes(_currentStotramId);
+  // The Translation toggle pill is a floating overlay (position:absolute,
+  // pinned top-right — see .lm-translate-wrap in style-stotram.css), so it
+  // can sit on top of the first line(s) of verse text. Reserve clearance
+  // for it here — applied for the whole stotram (not per-verse) so text
+  // doesn't jump up/down as you swipe between verses that do/don't have
+  // their own অর্থ: line.
+  if (body) body.style.paddingTop = hasTranslation ? "48px" : "";
 
-  // Does this verse have any অর্থ: lines at all?
-  const verseHasArtha = /^অর্থ\s*:/m.test(verseText);
+  // Does this verse have any অর্থ: or অর্থ২: lines at all?
+  const verseHasArtha = /^অর্থ২?\s*:/m.test(verseText);
+  // Does this verse specifically have a second-language (অর্থ২:) line?
+  const verseHasSecondLang = /^অর্থ২\s*:/m.test(verseText);
 
   // Does this verse have any non-artha, non-empty content lines?
   const verseHasContent = verseText.split("\n").some((l) => {
     const t = l.trim();
-    return t.length > 0 && !/^অর্থ\s*:/.test(t);
+    return t.length > 0 && !/^অর্থ২?\s*:/.test(t);
   });
 
   let linesHtml = "";
@@ -17535,9 +17594,16 @@ function _renderVerse(idx, dir) {
           .replace(/&/g, "&amp;")
           .replace(/</g, "&lt;")
           .replace(/>/g, "&gt;");
+        if (/^অর্থ২\s*:/.test(content.trim())) {
+          // Hindi (second) meaning — only when translation ON and this
+          // language is the one currently selected.
+          if (!hasTranslation || !_translationVisible || _translationLang !== "hi") return "";
+          return '<span class="lyr-line lyr-artha' + extraClass + '">' + esc + "</span>";
+        }
         if (/^অর্থ\s*:/.test(content.trim())) {
-          // Only inject অর্থ: line when translation is ON
-          if (!hasTranslation || !_translationVisible) return "";
+          // Only inject অর্থ: line when translation is ON and Bengali
+          // (the default/original language) is selected.
+          if (!hasTranslation || !_translationVisible || _translationLang !== "bn") return "";
           return '<span class="lyr-line lyr-artha' + extraClass + '">' + esc + "</span>";
         }
         return '<span class="lyr-line' + extraClass + '">' + esc + "</span>";
@@ -17559,7 +17625,7 @@ function _renderVerse(idx, dir) {
   _reinjectThemeDecos();
 
   // Toggle: only show when this verse actually has অর্থ: lines
-  _renderTranslationToggle(verseHasArtha);
+  _renderTranslationToggle(verseHasArtha, verseHasSecondLang);
 
   body.classList.remove("lyr-slide-enter-left", "lyr-slide-enter-right");
   if (dir === 1) {
@@ -17594,11 +17660,14 @@ function _renderVerse(idx, dir) {
 
 // Render translation toggle — shown ONLY when current verse has অর্থ: lines.
 // verseHasArtha: boolean passed from _renderVerse
-function _renderTranslationToggle(verseHasArtha) {
+// verseHasSecondLang: boolean — does this verse have an অর্থ২: line too?
+function _renderTranslationToggle(verseHasArtha, verseHasSecondLang) {
   // Not a translatable stotram → always remove
   if (!TRANSLATION_IDS.includes(_currentStotramId)) {
     var old = document.getElementById("lm-translate-wrap");
     if (old) old.remove();
+    var oldLang = document.getElementById("lm-translate-lang-wrap");
+    if (oldLang) oldLang.remove();
     return;
   }
 
@@ -17607,6 +17676,8 @@ function _renderTranslationToggle(verseHasArtha) {
   // This verse has no অর্থ: → hide toggle (and reset translation state)
   if (!verseHasArtha) {
     if (existing) existing.style.display = "none";
+    var langWrapHide = document.getElementById("lm-translate-lang-wrap");
+    if (langWrapHide) langWrapHide.style.display = "none";
     return;
   }
 
@@ -17614,35 +17685,97 @@ function _renderTranslationToggle(verseHasArtha) {
   if (existing) {
     existing.style.display = "";
     _syncToggleUI();
+  } else {
+    // First time — build the toggle
+    const nav = document.getElementById("lmNav");
+    if (!nav) return;
+
+    var wrap = document.createElement("div");
+    wrap.id = "lm-translate-wrap";
+    wrap.className = "lm-translate-wrap";
+
+    var label = document.createElement("span");
+    label.className = "lm-toggle-label";
+    label.textContent = "Translation";
+
+    var sw = document.createElement("button");
+    sw.id = "lm-toggle-sw";
+    sw.className = "lm-toggle-sw" + (_translationVisible ? " on" : "");
+    sw.setAttribute("role", "switch");
+    sw.setAttribute("aria-checked", _translationVisible ? "true" : "false");
+    sw.innerHTML = '<span class="lm-toggle-thumb"></span>';
+    sw.onclick = function () {
+      _translationVisible = !_translationVisible;
+      _renderVerse(_verseIdx, null);
+    };
+
+    wrap.appendChild(label);
+    wrap.appendChild(sw);
+    nav.parentNode.insertBefore(wrap, nav);
+  }
+
+  // Bengali/Hindi language picker — only relevant for stotrams (like
+  // Radha Kripa Kataksha) that actually have a second translation, and
+  // only worth showing once Translation is switched on.
+  _renderTranslationLangPicker(verseHasSecondLang);
+}
+
+function _renderTranslationLangPicker(verseHasSecondLang) {
+  var existing = document.getElementById("lm-translate-lang-wrap");
+  var shouldShow = verseHasSecondLang && _translationVisible;
+
+  if (!shouldShow) {
+    if (existing) existing.style.display = "none";
     return;
   }
 
-  // First time — build the toggle
-  const nav = document.getElementById("lmNav");
-  if (!nav) return;
+  if (existing) {
+    existing.style.display = "";
+    _syncLangPickerUI();
+    return;
+  }
+
+  const translateWrap = document.getElementById("lm-translate-wrap");
+  if (!translateWrap) return;
 
   var wrap = document.createElement("div");
-  wrap.id = "lm-translate-wrap";
-  wrap.className = "lm-translate-wrap";
+  wrap.id = "lm-translate-lang-wrap";
+  wrap.className = "lm-translate-lang-wrap";
+  wrap.style.cssText = "display:flex;gap:6px;justify-content:center;margin-top:6px";
 
-  var label = document.createElement("span");
-  label.className = "lm-toggle-label";
-  label.textContent = "Translation";
+  ["bn", "hi"].forEach(function (code) {
+    var btn = document.createElement("button");
+    btn.className = "lm-lang-btn" + (_translationLang === code ? " active" : "");
+    btn.dataset.lang = code;
+    btn.textContent = code === "bn" ? "বাংলা" : "हिंदी";
+    btn.style.cssText =
+      "padding:4px 14px;border-radius:14px;font-size:11px;font-family:Inter,sans-serif;cursor:pointer;" +
+      (code === _translationLang
+        ? "background:rgba(255,215,0,0.18);color:#ffd700;border:1px solid rgba(255,215,0,0.4);font-weight:600"
+        : "background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12)");
+    btn.onclick = function () {
+      if (_translationLang === code) return;
+      _translationLang = code;
+      _renderVerse(_verseIdx, null);
+    };
+    wrap.appendChild(btn);
+  });
 
-  var sw = document.createElement("button");
-  sw.id = "lm-toggle-sw";
-  sw.className = "lm-toggle-sw" + (_translationVisible ? " on" : "");
-  sw.setAttribute("role", "switch");
-  sw.setAttribute("aria-checked", _translationVisible ? "true" : "false");
-  sw.innerHTML = '<span class="lm-toggle-thumb"></span>';
-  sw.onclick = function () {
-    _translationVisible = !_translationVisible;
-    _renderVerse(_verseIdx, null);
-  };
+  translateWrap.parentNode.insertBefore(wrap, translateWrap.nextSibling);
+}
 
-  wrap.appendChild(label);
-  wrap.appendChild(sw);
-  nav.parentNode.insertBefore(wrap, nav);
+function _syncLangPickerUI() {
+  var wrap = document.getElementById("lm-translate-lang-wrap");
+  if (!wrap) return;
+  wrap.querySelectorAll(".lm-lang-btn").forEach(function (btn) {
+    var active = btn.dataset.lang === _translationLang;
+    btn.className = "lm-lang-btn" + (active ? " active" : "");
+    btn.style.cssText =
+      "padding:4px 14px;border-radius:14px;font-size:11px;font-family:Inter,sans-serif;cursor:pointer;" +
+      (active
+        ? "background:rgba(255,215,0,0.18);color:#ffd700;border:1px solid rgba(255,215,0,0.4);font-weight:600"
+        : "background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.12)");
+  });
 }
 
 function _reinjectThemeDecos() {
@@ -17812,9 +17945,12 @@ function closeLyrics() {
   _verseNavLocked = false;
   _currentStotramId = "";
   _translationVisible = false;
+  _translationLang = "bn";
   if (window.StotramSections) window.StotramSections.reset();
   var oldWrap = document.getElementById("lm-translate-wrap");
   if (oldWrap) oldWrap.remove();
+  var oldLangWrap = document.getElementById("lm-translate-lang-wrap");
+  if (oldLangWrap) oldLangWrap.remove();
   var mini = document.getElementById("hcj-mini-player");
   if (mini) mini.remove();
   var minimizeBtn = document.getElementById("lm-minimize");

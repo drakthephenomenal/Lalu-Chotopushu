@@ -1,5 +1,27 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v204
+// Radha Naam Jap — Service Worker  v206
+// v206: bumped cache to force-invalidate stale panchanga.html/js/css —
+// fixes the REAL cause of "Save as Their Profile" doing nothing: the
+// button's onclick="vpOthersSave(_vpHoroEditingOtherId)" referenced a
+// variable that only exists inside panchanga.js's own IIFE closure —
+// inline onclick attributes resolve against the global scope, so that
+// lookup threw a ReferenceError before vpOthersSave() ever ran, every
+// time, for every user. The button now calls vpOthersSave() with no
+// argument, and the function reads its own closure variable internally
+// instead. This also means the "Others" folder popup — already built
+// in v201/v203 — can finally hold anything, since nothing could ever
+// actually get saved into it before now. Web/PWA clients still running
+// the old cached panchanga.js/html now pick up the current build on
+// next load.
+// v205: bumped cache to force-invalidate stale panchanga.html/js/css —
+// "Calculate Rashi" inside the Add/Edit Profile popup (Your Rashi or
+// Others) now shows the FULL breakdown right there — Vaar strip, Birth
+// Moon Rashi card (with lord/deity), Mahadasha & Sade Sati bar, and the
+// complete Tithi/Nakshatra/Yoga/Karana anga list — instead of just the
+// Rashi name. Fixes report that calculating an Other profile's rashi
+// showed only the Moon sign with no other detail. Web/PWA clients still
+// running the old cached panchanga.js — where the inline result was
+// Rashi-name-only — now pick up the current build on next load.
 // v204: bumped cache to force-invalidate stale panchanga.html/js/css —
 // "Calculate Rashi" inside the Add/Edit Profile popup (Your Rashi or
 // Others) no longer closes that popup and jumps to the main page's
@@ -234,7 +256,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v204';
+const CACHE = 'radha-jap-v206';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

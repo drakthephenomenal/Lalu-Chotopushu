@@ -1,5 +1,17 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v199
+// Radha Naam Jap — Service Worker  v201
+// v201: bumped cache to force-invalidate stale vedic-panchanga module
+// files (panchanga.html/css/js) — ships the "Others" Janmo Tithi & Rashi
+// fixes: the header Others button now goes to a saved-profiles list
+// instead of opening the calculator directly, each mode (Your Rashi vs
+// Others) only shows its own Save CTA, and the button is now
+// error-hardened end-to-end (vpOthersButtonClick → vpOthersGoToList →
+// vpHoroOpenOther, each catching failures from the one before) so it can
+// never silently do nothing even if a Firestore/auth check throws. Web/
+// PWA clients that were still running a cached pre-fix panchanga.js —
+// which is exactly why the button could appear "unresponsive" even after
+// the source files were updated — now pick up the current build on next
+// load.
 // v197: bumped cache to force-invalidate stale app.js/index.html — ships
 // the leaderboard/Ghost Mode fixes (unconditional presence + leaderboard
 // doc creation on login, hardened login chain, users/*/data collection-
@@ -192,7 +204,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v200';
+const CACHE = 'radha-jap-v201';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

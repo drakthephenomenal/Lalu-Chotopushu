@@ -1059,6 +1059,7 @@ function renderAll(){
   // Personal horoscope card (opt-in) — async, self-caching; safe to call
   // on every renderAll() pass since it no-ops fast when already loaded.
   vpPersonalRender();
+  vpOthersRenderList();
 
   // Eclipses card — past + upcoming Surya/Chandra Grahan. Heavier
   // computation, so memoise per-day (recomputing every 30s would be
@@ -3671,6 +3672,23 @@ function vpKalSarpaNote(profile){
 let _vpPersonalProfile = null;
 let _vpPersonalLoaded = false;
 
+// ── Saved profiles for OTHER people (spouse, child, friend, etc.) ──
+// When set, vpPersonalRender() shows THIS profile's full breakdown
+// (Rashi/Nakshatra/Mahadasha/Sade Sati/Janmo Tithi — same rendering as
+// the user's own profile) instead of the user's own, reusing the exact
+// same #vp-personal-card mount. Only one profile is ever shown there at
+// a time, so there's no risk of the card's internal element ids
+// colliding with themselves.
+let _vpViewingOtherProfile = null;
+let _vpOtherProfilesCache = null;
+
+// Whichever profile is currently displayed in #vp-personal-card — used
+// by interactive controls inside that card (e.g. the Janmotithi year
+// picker) so they operate on the right profile.
+function vpCurrentProfile(){
+  return _vpViewingOtherProfile || _vpPersonalProfile;
+}
+
 async function vpPersonalLoad(force){
   if(_vpPersonalLoaded && !force) return _vpPersonalProfile;
   if(!window.vpFirestore){ _vpPersonalLoaded = true; return null; }
@@ -3720,6 +3738,128 @@ async function vpPersonalToggle(){
   vpPersonalRender();
 }
 
+// ══════════════════════════════════════════════════════════
+// SAVED PROFILES FOR OTHER PEOPLE (spouse, child, friend, …)
+// Reuses the same horoscope-calculator form (#vp-horo-date etc.) and
+// the same #vp-personal-card rendering as the user's own profile —
+// see vpPersonalRender()'s _vpViewingOtherProfile branch.
+// ══════════════════════════════════════════════════════════
+
+async function vpOthersLoad(force){
+  if(_vpOtherProfilesCache && !force) return _vpOtherProfilesCache;
+  if(!window.vpFirestore || !window.vpFirestore.currentUid()){
+    _vpOtherProfilesCache = [];
+    return _vpOtherProfilesCache;
+  }
+  _vpOtherProfilesCache = await window.vpFirestore.getOtherProfiles();
+  return _vpOtherProfilesCache;
+}
+
+// Reads the SAME horoscope-calculator fields vpPersonalSave() uses,
+// plus a name field, and saves as a new (or updated, if editing)
+// other-person profile.
+async function vpOthersSave(editingId){
+  if(!window.vpFirestore || !window.vpFirestore.currentUid()){
+    alert('Please sign in (Google) first to save and sync profiles.');
+    return;
+  }
+  const nameEl = document.getElementById('vp-horo-other-name');
+  const dateEl = document.getElementById('vp-horo-date');
+  const timeEl = document.getElementById('vp-horo-time');
+  const latEl = document.getElementById('vp-horo-lat');
+  const lngEl = document.getElementById('vp-horo-lng');
+  const label = (nameEl && nameEl.value || '').trim();
+  const dateVal = dateEl && dateEl.value;
+  const timeVal = (timeEl && timeEl.value) || '12:00';
+  const lat = latEl && latEl.value !== '' ? parseFloat(latEl.value) : NaN;
+  const lng = lngEl && lngEl.value !== '' ? parseFloat(lngEl.value) : NaN;
+
+  if(!label){ alert('Please enter a name for this profile (e.g. Wife, Amit).'); return; }
+  if(!dateVal){ alert('Please enter a date of birth first.'); return; }
+  if(isNaN(lat) || isNaN(lng)){ alert('Please enter a valid birth place (latitude/longitude).'); return; }
+
+  const profile = vpPersonalComputeProfile(dateVal, timeVal, lat, lng);
+  profile.label = label;
+  const id = await window.vpFirestore.saveOtherProfile(editingId || null, profile);
+  if(id){
+    _vpOtherProfilesCache = null; // force refresh on next load
+    vpHoroClose();
+    if(nameEl) nameEl.value = '';
+    await vpOthersRenderList();
+  } else {
+    alert('Could not save this profile — please check your connection and try again.');
+  }
+}
+
+async function vpOthersDelete(id, label){
+  if(!confirm(`Delete "${label || 'this profile'}"? This cannot be undone.`)) return;
+  const ok = await window.vpFirestore.deleteOtherProfile(id);
+  if(ok){
+    if(_vpViewingOtherProfile && _vpViewingOtherProfile.id === id) vpOthersBackToMine();
+    _vpOtherProfilesCache = null;
+    await vpOthersRenderList();
+  }
+}
+
+async function vpOthersView(id){
+  const list = await vpOthersLoad(false);
+  const found = list.find((p) => p.id === id);
+  if(!found) return;
+  _vpViewingOtherProfile = found;
+  await vpPersonalRender();
+  const card = document.getElementById('vp-personal-card');
+  if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function vpOthersBackToMine(){
+  _vpViewingOtherProfile = null;
+  vpPersonalRender();
+}
+
+// Renders the "Others' Profiles" list (add-affordance + tappable rows)
+// into #vp-others-card. Always visible when signed in, even with zero
+// saved profiles yet, so the entry point to add one is discoverable.
+async function vpOthersRenderList(){
+  const mount = document.getElementById('vp-others-card');
+  if(!mount) return;
+  if(!window.vpFirestore || !window.vpFirestore.currentUid()){
+    mount.style.display = 'none';
+    return;
+  }
+
+  const list = await vpOthersLoad(false);
+  mount.style.display = 'block';
+
+  const rowsHtml = list.length
+    ? list.map((p) => `
+        <div class="vp-others-row" onclick="vpOthersView('${p.id}')">
+          <span class="vp-others-row-name">${escHtml(p.label || 'Saved Profile')}</span>
+          <button class="vp-others-row-del" onclick="event.stopPropagation(); vpOthersDelete('${p.id}','${escHtml(p.label||'').replace(/'/g,"&#39;")}')">✕</button>
+          <span class="vp-others-row-arrow">›</span>
+        </div>`).join('')
+    : `<div class="vp-others-empty">No saved profiles yet — add one below.</div>`;
+
+  mount.innerHTML = `
+    <div class="vp-personal-card">
+      <div class="vp-personal-head">
+        <div class="vp-personal-janmo-tithi">👥 Others' Rashi Profiles</div>
+        <button class="vp-personal-toggle-btn" onclick="vpHoroOpenOther()">➕ Add</button>
+      </div>
+      <div class="vp-others-list">${rowsHtml}</div>
+    </div>`;
+}
+
+// Opens the shared horoscope calculator, pre-cleared, in "save as
+// someone else" mode (unlike vpHoroOpenMine, this never pre-fills the
+// user's own saved birth details).
+function vpHoroOpenOther(){
+  vpHoroOpen();
+  const titleEl = document.getElementById('vp-horo-modal-title');
+  if(titleEl) titleEl.textContent = '👥 Add Someone Else\u2019s Rashi Profile';
+  const nameEl = document.getElementById('vp-horo-other-name');
+  if(nameEl) nameEl.value = '';
+}
+
 function vpPersonalFmtDate(d){
   return d.toLocaleDateString('en-IN', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 }
@@ -3761,13 +3901,13 @@ async function vpPersonalRender(){
   const mount = document.getElementById('vp-personal-card');
   if(!mount) return;
 
-  const profile = await vpPersonalLoad(false);
+  const profile = _vpViewingOtherProfile || await vpPersonalLoad(false);
   if(!profile){
     mount.style.display = 'none';
     return;
   }
 
-  if(!profile.enabled){
+  if(!_vpViewingOtherProfile && !profile.enabled){
     mount.style.display = 'block';
     mount.innerHTML = `
       <div class="vp-personal-offcard">
@@ -3963,8 +4103,10 @@ async function vpPersonalRender(){
 
       <!-- ── Header ── -->
       <div class="vp-personal-head">
-        <div><div class="vp-personal-janmo-tithi">Janmo Tithi: <span>${janmoTithiLabel}</span></div></div>
-        <button class="vp-personal-toggle-btn vp-personal-toggle-on" onclick="vpPersonalToggle()">On</button>
+        <div><div class="vp-personal-janmo-tithi">${_vpViewingOtherProfile ? escHtml(_vpViewingOtherProfile.label || 'Saved Profile') + ' — Janmo Tithi' : 'Janmo Tithi'}: <span>${janmoTithiLabel}</span></div></div>
+        ${_vpViewingOtherProfile
+          ? '<button class="vp-personal-toggle-btn" onclick="vpOthersBackToMine()">← Back</button>'
+          : '<button class="vp-personal-toggle-btn vp-personal-toggle-on" onclick="vpPersonalToggle()">On</button>'}
       </div>
 
       <!-- ── 4 Birth boxes: Rashi, Nakshatra, Yoga, Karana ── -->
@@ -4547,10 +4689,11 @@ async function vpPersonalRender(){
 function vpPersonalJanmoYearChange(){
   const sel = document.getElementById('vp-personal-janmo-year-select');
   const out = document.getElementById('vp-personal-janmo-year-result');
-  if(!sel || !out || !_vpPersonalProfile) return;
+  const profile = vpCurrentProfile();
+  if(!sel || !out || !profile) return;
   const year = parseInt(sel.value, 10);
   if(isNaN(year)) return;
-  const result = vpPersonalJanmotithiForYear(_vpPersonalProfile, year);
+  const result = vpPersonalJanmotithiForYear(profile, year);
   out.textContent = result ? vpPersonalFmtDate(result.date) : 'Could not be determined for this year';
 }
 
@@ -4655,15 +4798,22 @@ window.vpHoroCalculate = function(){ vpHoroCalculate(); };
 window.vpHoroClearResult = function(){ vpHoroClearResult(); };
 window.vpPersonalSave = function(){ vpPersonalSave(); };
 window.vpPersonalToggle = function(){ vpPersonalToggle(); };
-window.vpPersonalRender = function(){ vpPersonalRender(); };
+window.vpPersonalRender = function(){ vpPersonalRender(); vpOthersRenderList(); };
 // Called by app.js whenever auth state changes so the next vpPersonalRender()
 // re-fetches the profile from Firestore under the new (or null) UID instead
 // of returning the stale in-memory cache from before auth resolved.
 window.vpPersonalResetCache = function(){
   _vpPersonalLoaded = false;
   _vpPersonalProfile = null;
+  _vpViewingOtherProfile = null;
+  _vpOtherProfilesCache = null;
 };
 window.vpPersonalJanmoYearChange = function(){ vpPersonalJanmoYearChange(); };
+window.vpHoroOpenOther = function(){ vpHoroOpenOther(); };
+window.vpOthersSave = function(editingId){ vpOthersSave(editingId); };
+window.vpOthersDelete = function(id, label){ vpOthersDelete(id, label); };
+window.vpOthersView = function(id){ vpOthersView(id); };
+window.vpOthersBackToMine = function(){ vpOthersBackToMine(); };
 window.vpOpenCalendar = function(){ vpCalOpen(); };
 window.vpCloseCalendar = function(){ vpCalClose(); };
 window.vpCloseCalendarBackdrop = function(e){ vpCalCloseBackdrop(e); };

@@ -1265,6 +1265,26 @@
   display:flex;align-items:center;justify-content:space-between;
   margin-bottom:14px;
 }
+#vpanchanga-view .vp-others-list{display:flex;flex-direction:column;gap:8px}
+#vpanchanga-view .vp-others-row{
+  display:flex;align-items:center;gap:10px;cursor:pointer;
+  background:rgba(124,92,252,.07);border-radius:12px;padding:10px 12px;
+  transition:background .15s ease;
+}
+#vpanchanga-view .vp-others-row:hover{background:rgba(124,92,252,.13)}
+#vpanchanga-view .vp-others-row-name{
+  flex:1;font-family:'EB Garamond',serif;font-size:.98rem;font-weight:700;
+  color:var(--vp-ink);
+}
+#vpanchanga-view .vp-others-row-del{
+  flex-shrink:0;font-family:inherit;font-size:.68rem;font-weight:700;
+  color:#e0554f;background:rgba(224,85,79,.1);border:none;
+  border-radius:999px;width:26px;height:26px;cursor:pointer;
+}
+#vpanchanga-view .vp-others-row-arrow{flex-shrink:0;color:var(--vp-ink-faint);font-size:1rem}
+#vpanchanga-view .vp-others-empty{
+  font-size:.72rem;color:var(--vp-ink-faint);text-align:center;padding:10px 0;
+}
 #vpanchanga-view .vp-personal-title{
   font-family:'EB Garamond',serif;font-size:1.1rem;font-weight:700;
   color:var(--vp-ink);

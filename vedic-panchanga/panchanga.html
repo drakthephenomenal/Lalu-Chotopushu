@@ -134,6 +134,12 @@
           <div class="vp-horo-personal-cta-text">Save your birth details to unlock <b>My Panchanga</b> — see your Janmo Tithi, personalized Tara Bala timing &amp; daily outlook. Fully optional &amp; only visible to you.</div>
           <button class="vp-horo-save-btn" onclick="vpPersonalSave()">💾 Save &amp; Enable My Panchanga</button>
         </div>
+
+        <div class="vp-horo-personal-cta" style="margin-top:10px">
+          <div class="vp-horo-personal-cta-text">Or save this as <b>someone else's</b> chart (spouse, child, friend) — view their Rashi, Dasha &amp; Sade Sati anytime, kept separate from your own.</div>
+          <input type="text" id="vp-horo-other-name" class="vp-horo-input" placeholder="Their name (e.g. Wife, Amit)" style="margin-bottom:10px">
+          <button class="vp-horo-save-btn" onclick="vpOthersSave()">➕ Save as Their Profile</button>
+        </div>
       </div>
     </div>
 
@@ -227,6 +233,11 @@
 
       <!-- MY PANCHANGA scorecard attaches here when a profile is active -->
       <div id="vp-personal-card" style="display:none"></div>
+
+      <!-- Saved profiles for other people (spouse, child, friend, etc.) —
+           add form + list attaches here; tapping a saved profile re-uses
+           #vp-personal-card above to show its full breakdown. -->
+      <div id="vp-others-card" style="display:none"></div>
     </div>
 
     <!-- Tithi grid toggle — Lunar Month calendar, right below Right Now & Coming Soon -->

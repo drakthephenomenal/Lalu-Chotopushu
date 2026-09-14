@@ -4061,6 +4061,13 @@ function fmtIN(n) {
 }
 
 // setSyncPill
+// ── Stuck-sync watchdog (fix #4) ───────────────────────────────────
+// If the pill has been showing "syncing" for 60s straight, the user is
+// currently just stuck staring at a spinner with no way out. Give them
+// a manual "Tap to retry" button instead. This doesn't fix WHY a push
+// might hang — it just stops the user from being stranded by it.
+let _syncStuckTimer = null;
+
 function setSyncPill(state, text) {
   const p = document.getElementById("syncPill");
   const tx = document.getElementById("syncPillText");
@@ -4069,6 +4076,53 @@ function setSyncPill(state, text) {
     "sync-pill" +
     (state === "syncing" ? " syncing" : state === "error" ? " error" : "");
   tx.textContent = text;
+
+  if (state === "syncing") {
+    if (!_syncStuckTimer) {
+      _syncStuckTimer = setTimeout(() => {
+        _syncStuckTimer = null;
+        _fbSyncLog("Sync stuck 60s+ — showing manual retry button");
+        _showSyncRetryButton(p);
+      }, 60000);
+    }
+  } else {
+    if (_syncStuckTimer) { clearTimeout(_syncStuckTimer); _syncStuckTimer = null; }
+    _hideSyncRetryButton();
+  }
+}
+
+function _showSyncRetryButton(pillEl) {
+  if (!pillEl || document.getElementById("syncRetryBtn")) return; // already shown
+  const btn = document.createElement("button");
+  btn.id = "syncRetryBtn";
+  btn.type = "button";
+  btn.textContent = "Tap to retry";
+  btn.style.cssText =
+    "margin-left:8px;padding:2px 10px;font-size:12px;border-radius:12px;" +
+    "border:1px solid currentColor;background:transparent;cursor:pointer;";
+  btn.onclick = () => {
+    if (btn.disabled) return;
+    // Disable briefly so a double-tap can't fire two pushes at once —
+    // the underlying hung attempt (if any) is still out there; JS can't
+    // cancel it, this just avoids stacking a second one on top of a
+    // third, fourth, etc. from repeated taps.
+    btn.disabled = true;
+    btn.textContent = "Retrying…";
+    _fbSyncLog("Manual retry tapped");
+    (typeof fbPushDelta === "function" ? fbPushDelta() : Promise.resolve())
+      .catch((e) => console.warn("Manual retry failed:", e && e.message))
+      .finally(() => {
+        setTimeout(() => {
+          if (btn.isConnected) { btn.disabled = false; btn.textContent = "Tap to retry"; }
+        }, 2000);
+      });
+  };
+  pillEl.parentNode && pillEl.parentNode.insertBefore(btn, pillEl.nextSibling);
+}
+
+function _hideSyncRetryButton() {
+  const btn = document.getElementById("syncRetryBtn");
+  if (btn) btn.remove();
 }
 
 // ── View Switcher ──
@@ -11058,9 +11112,133 @@ async function fbSignOut() {
 
   fbAuth.signOut().then(() => toast("Signed out 🙏"));
 }
+// ── Lightweight debug log for sync attempts (fix #5) ──────────────────
+// Keeps the last 50 sync events in localStorage so a "it got stuck"
+// report can actually be diagnosed later, instead of guessing. Safe to
+// read from a support/debug screen: JSON.parse(localStorage.getItem(
+// "rjap_sync_debug_log")).
+function _fbSyncLog(msg) {
+  try {
+    const key = "rjap_sync_debug_log";
+    let log = [];
+    try { log = JSON.parse(localStorage.getItem(key) || "[]"); } catch (_e) {}
+    log.push(new Date().toISOString() + " — " + msg);
+    if (log.length > 50) log = log.slice(-50);
+    localStorage.setItem(key, JSON.stringify(log));
+  } catch (_e) {}
+  console.log("[sync]", msg);
+}
+
+// The last payload we know for certain landed in Firestore (either via
+// fbPushFull or a prior fbPushDelta). Used purely to figure out what
+// changed since then — never treated as authoritative on its own.
+App._lastPushedSnapshotObj = null;
+function _fbRecordPushedSnapshot(payload) {
+  // Deep-clone via JSON so later local mutations to App.S can't leak
+  // into this baseline (it must reflect what the cloud has, frozen).
+  const clone = { ...payload };
+  delete clone.lastSync; // FieldValue sentinel — not comparable/cloneable
+  App._lastPushedSnapshotObj = JSON.parse(JSON.stringify(clone));
+}
+
+// Grow-only log arrays: entries only ever get appended, never edited or
+// reordered, so a "new array = old array + some extra entries at the
+// end" pattern here can be safely sent as an arrayUnion of just the new
+// entries, instead of resending the whole list (fix #3).
+const FB_LOG_ARRAY_FIELDS = [
+  "malaLog", "malaLogRV", "malaLogHK", "malaLogKV",
+  "malaLogKaam", "malaLogSS", "malaLogRam", "activityLog",
+];
+
+// ── Real delta sync (fixes #1 skip-if-unchanged, #2 partial update,
+// #3 arrayUnion for logs) ──────────────────────────────────────────
+// This used to just call fbPushFull() — i.e. it always sent the WHOLE
+// app state, same as a full sync, despite the name. This version
+// actually only sends what changed since the last confirmed push.
+//
+// Scope, deliberately conservative: this is used ONLY for the routine,
+// high-frequency "user tapped a bead" path (fbDebouncedPush → _fbDoPush,
+// and silentMonkBackup). Every other caller — restore-from-backup,
+// initial push after sign-in, online-resync, pending-retry — still
+// calls fbPushFull() directly and gets the full, authoritative
+// overwrite it relies on. This function is purely an optimization for
+// the common case; it is never the only path data can reach the cloud.
 async function fbPushDelta() {
   if (isGhostMode()) return; // ghost mode: read-only
-  return fbPushFull();
+  if (!fbUser || !fbDb) return;
+  if (!App._cloudHydrated && !App._allowInitialPush) {
+    console.warn("fbPushDelta blocked: cloud not yet hydrated");
+    if (typeof window._scheduleHydrationRetry === "function") window._scheduleHydrationRetry();
+    return;
+  }
+
+  const payload = _fbBuildPushPayload();
+  const prev = App._lastPushedSnapshotObj;
+
+  // No baseline yet this session (e.g. straight after sign-in, before
+  // any full push has confirmed) — we have nothing to diff against, so
+  // fall back to the authoritative full push rather than guess.
+  if (!prev) {
+    return fbPushFull();
+  }
+
+  const updateFields = {};
+  for (const key of Object.keys(payload)) {
+    if (key === "lastSync" || key === "deviceId") { updateFields[key] = payload[key]; continue; }
+    const oldVal = prev[key];
+    const newVal = payload[key];
+    const oldJSON = JSON.stringify(oldVal);
+    const newJSON = JSON.stringify(newVal);
+    if (oldJSON === newJSON) continue; // unchanged — don't send it (fix #1/#2)
+
+    if (
+      FB_LOG_ARRAY_FIELDS.includes(key) &&
+      Array.isArray(oldVal) && Array.isArray(newVal) &&
+      newVal.length > oldVal.length &&
+      JSON.stringify(newVal.slice(0, oldVal.length)) === JSON.stringify(oldVal)
+    ) {
+      // Pure append (the normal case for a log) — send only the new
+      // tail entries via arrayUnion instead of the whole array.
+      updateFields[key] = firebase.firestore.FieldValue.arrayUnion(...newVal.slice(oldVal.length));
+    } else {
+      // Anything else that changed (edited/reordered/shrunk array, or a
+      // plain field) — send its new value in full. Still far cheaper
+      // than resending every other untouched field too.
+      updateFields[key] = newVal;
+    }
+  }
+
+  if (!Object.keys(updateFields).length) {
+    _fbSyncLog("Delta push skipped — nothing changed");
+    return;
+  }
+
+  setSyncPill("syncing", "Syncing…");
+  _fbSyncLog("Delta push started (" + Object.keys(updateFields).length + " fields): " + Object.keys(updateFields).join(", "));
+  try {
+    const docRef = fbDb.collection("users").doc(fbUser.uid).collection("data").doc("main");
+    try {
+      await docRef.update(updateFields);
+    } catch (e) {
+      // update() fails if the doc doesn't exist yet (shouldn't normally
+      // happen here since a baseline implies a prior successful push,
+      // but be defensive) — fall back to a full authoritative push.
+      if (e && (e.code === "not-found" || /No document to update/i.test(e.message || ""))) {
+        _fbSyncLog("Delta push fallback to full — doc missing");
+        return fbPushFull();
+      }
+      throw e;
+    }
+    try { localStorage.removeItem("rjap_sync_pending"); } catch (_e) {}
+    _fbRecordPushedSnapshot(payload);
+    setSyncPill("", "☁️ Synced " + new Date().toLocaleTimeString());
+    _fbSyncLog("Delta push succeeded");
+  } catch (e) {
+    console.warn("fbPushDelta failed:", e && e.message);
+    setSyncPill("error", "☁️ Still syncing in background…");
+    _fbSyncLog("Delta push failed: " + (e && e.message));
+    if (typeof window._scheduleHydrationRetry === "function") window._scheduleHydrationRetry();
+  }
 }
 
 // ── Developer write-back: push current App.S to a SPECIFIC user's Firestore
@@ -11182,19 +11360,13 @@ async function fbPushToUid(targetUid, fullReplace) {
   }
 }
 
-async function fbPushFull() {
-  if (!fbUser) return;
-  if (isGhostMode()) return; // ghost mode: never write to Firestore
-  // SAFETY: never push local state to cloud until we have successfully
-  // pulled the authoritative cloud copy at least once this session.
-  // Prevents wiping cloud data after "Clear app data" + re-login.
-  if (!App._cloudHydrated && !App._allowInitialPush) {
-    console.warn("fbPushFull blocked: cloud not yet hydrated");
-    if (typeof window._scheduleHydrationRetry === "function") window._scheduleHydrationRetry();
-    return;
-  }
-  setSyncPill("syncing", "Syncing…");
-  const payload = {
+// ── Shared payload builder ──────────────────────────────────────────
+// Extracted so fbPushFull() (full authoritative overwrite) and
+// fbPushDelta() (routine partial sync) always agree on exactly what
+// fields exist — one source of truth instead of two payload objects
+// that could silently drift apart as fields get added later.
+function _fbBuildPushPayload() {
+  return {
     history: App.S.history || {},
     h28: App.S.h28 || {},
     nameJapDeduct28: App.S.nameJapDeduct28 || 0,
@@ -11280,6 +11452,22 @@ async function fbPushFull() {
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId,
   };
+}
+
+async function fbPushFull() {
+  if (!fbUser) return;
+  if (isGhostMode()) return; // ghost mode: never write to Firestore
+  // SAFETY: never push local state to cloud until we have successfully
+  // pulled the authoritative cloud copy at least once this session.
+  // Prevents wiping cloud data after "Clear app data" + re-login.
+  if (!App._cloudHydrated && !App._allowInitialPush) {
+    console.warn("fbPushFull blocked: cloud not yet hydrated");
+    if (typeof window._scheduleHydrationRetry === "function") window._scheduleHydrationRetry();
+    return;
+  }
+  setSyncPill("syncing", "Syncing…");
+  _fbSyncLog("Full push started");
+  const payload = _fbBuildPushPayload();
   try {
     await fbDb
       .collection("users")
@@ -11345,8 +11533,14 @@ async function fbPushFull() {
     await App.save();
     App._suspendCloudSync = false;
     setSyncPill("", "☁️ Synced " + new Date().toLocaleTimeString());
+    // Record what the cloud now authoritatively has, so the next
+    // fbPushDelta() call has an accurate baseline to diff against
+    // instead of assuming nothing or re-sending everything.
+    _fbRecordPushedSnapshot(payload);
+    _fbSyncLog("Full push succeeded");
   } catch (e) {
     App._suspendCloudSync = false;
+    _fbSyncLog("Full push failed: " + (e && e.message));
     console.warn("Full sync failed:", e.message);
     // Both pending markers are deliberately left set here — the next
     // successful cloud hydration (_rjapMaybeRetryPendingSync, see

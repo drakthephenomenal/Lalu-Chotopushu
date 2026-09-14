@@ -684,6 +684,7 @@ const App = {
     syncBaseline28: {},
     syncBaselineTimer: {},
     syncBaselineTimer28: {},
+    syncBaselineDt: {},
     migrationV2Done: false,
     japMode: "radha",
     historyRV: {},
@@ -928,6 +929,12 @@ const App = {
       syncBaseline28: this.S.syncBaseline28,
       syncBaselineTimer: this.S.syncBaselineTimer,
       syncBaselineTimer28: this.S.syncBaselineTimer28,
+      // Lifetime jap-seconds baseline (per-tradition), used by the
+      // additive multi-device merge in fbMigrate. Must be persisted like
+      // the other syncBaseline* fields — without this, an app restart
+      // (the exact case the merge exists for) would lose it and the next
+      // hydration's dt merge would fall back to raw max() instead.
+      syncBaselineDt: this.S.syncBaselineDt || {},
       migrationV2Done: this.S.migrationV2Done,
       japMode: this.S.japMode,
       historyRV: this.S.historyRV,
@@ -8372,6 +8379,11 @@ function importAllData(input) {
       App.S.syncBaselineTimer28 = JSON.parse(
         JSON.stringify(App.S.timer28History),
       );
+      // Full restore replaces every tradition's history, not just Radha +
+      // 28-Names — refresh ALL of syncBaseline* to match (previously the
+      // other traditions' baselines were left stale here, same gap as in
+      // fbApplyRemote/fbPushFull — see _fbRefreshSyncBaselines).
+      _fbRefreshSyncBaselines();
       App.save();
       switchJapMode(App.S.japMode || "radha");
       renderSt();
@@ -9265,6 +9277,37 @@ function fbWatchSession() {
   );
 }
 
+// Direct, synchronous-as-possible check of session ownership — used
+// specifically before a reconnect push (see the "online" handler below),
+// to close a race that the session-lock LISTENER alone can't: if this
+// device was offline when another device signed in and claimed the
+// session, fbWatchSession's listener has no way to know that until this
+// device is back online AND that snapshot event happens to arrive before
+// this device's own reconnect-push does — an unordered race between two
+// independent callbacks both triggered by the same 'online' event. This
+// does one direct read of the session doc first and refuses to push at
+// all if it's already been claimed by someone else, rather than trusting
+// timing. Not airtight (the doc could theoretically change in the instant
+// between this read and the push), but closes the common case where a
+// device was offline for a while and only just reconnected.
+// Fails OPEN (returns true) on a read error — a network hiccup here must
+// not permanently block a legitimate device's own sync.
+async function _fbSessionStillMine() {
+  if (!fbUser || !fbDb) return true;
+  try {
+    const snap = await fbWithTimeout(
+      fbDb.collection("users").doc(fbUser.uid).collection("session").doc("active").get({ source: "server" }),
+      8000, "Session ownership check",
+    );
+    if (!snap.exists) return true; // no claim on record — nothing to conflict with
+    const data = snap.data();
+    return !data.deviceId || data.deviceId === fbDeviceId;
+  } catch (e) {
+    console.warn("_fbSessionStillMine check failed, proceeding anyway:", e && e.message);
+    return true;
+  }
+}
+
 // ── SERVER TIME SYNC ──
 // Measures offset between local clock and Firebase server clock.
 // Stored in window._serverTimeOffsetMs so getTk() uses corrected time.
@@ -9588,8 +9631,34 @@ function fbInit() {
                 if (!App._cloudHydrated) window._scheduleHydrationRetry();
               });
           } else {
-            // Already hydrated — just push any offline jap accumulated since last sync.
-            fbPushFull().catch((e) => console.warn("Online resync (push):", e && e.message));
+            // Already hydrated, reconnecting after some time offline.
+            //
+            // Previously this called fbPushFull() directly — a blind
+            // overwrite of whatever the cloud currently holds with this
+            // device's local state. That's the exact shape of the
+            // multi-device race: if another device signed in and pushed
+            // its own progress while THIS device was offline (and this
+            // device's session-lock listener hasn't caught up yet, since
+            // it also needs to be online to hear about it), this device
+            // could stomp that other device's newer data with its own
+            // stale-relative-to-cloud local state.
+            //
+            // Fixed by, in order: (1) a direct check of session
+            // ownership, refusing to sync at all if another device has
+            // since claimed it — the session-lock listener will finish
+            // the job (lockSignedOutScreen) shortly; (2) routing through
+            // fbMigrate() instead of a raw push — it re-pulls the
+            // authoritative cloud state first and additively merges this
+            // device's own offline progress on top (see fbMigrate's
+            // mergeAdditive), so a second device's independent progress
+            // is combined instead of overwritten.
+            _fbSessionStillMine().then((stillMine) => {
+              if (!stillMine) {
+                console.log("Online resync skipped — session claimed by another device.");
+                return;
+              }
+              fbMigrate().catch((e) => console.warn("Online resync (migrate):", e && e.message));
+            });
           }
         }
       });
@@ -9691,6 +9760,7 @@ function fbInit() {
             syncBaseline28: {},
             syncBaselineTimer: {},
             syncBaselineTimer28: {},
+            syncBaselineDt: {},
             migrationV2Done: false,
             japMode: "radha",
             historyRV: {},
@@ -9907,6 +9977,7 @@ function fbInit() {
             syncBaseline28: {},
             syncBaselineTimer: {},
             syncBaselineTimer28: {},
+            syncBaselineDt: {},
             migrationV2Done: false,
             japMode: "radha",
             historyRV: {},
@@ -11077,7 +11148,7 @@ async function fbSignOut() {
     cfg: { vib: true, sound: true, soundType: "shankya" },
     history: {}, h28: {}, stotrams: {}, brahma: {}, customSt: [],
     timerHistory: {}, timer28History: {}, sankalpas: [], dedications: [], occasions: {},
-    syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {},
+    syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {}, syncBaselineDt: {},
     migrationV2Done: false, japMode: "radha",
     historyRV: {}, timerHistoryRV: {}, dtRV: 0, ltRV: 0, nameJapDeductRV: 0,
     malaLogRV: [], activityLog: [], syncBaselineRV: {}, syncBaselineTimerRV: {},
@@ -11150,6 +11221,65 @@ const FB_LOG_ARRAY_FIELDS = [
   "malaLogKaam", "malaLogSS", "malaLogRam", "activityLog",
 ];
 
+// Per-date-keyed counter maps (history + per-tradition timer history). Each
+// one only ever grows one date-key at a time in routine use ("tapped a
+// bead today"), so on a change we only need to diff and send the date keys
+// that actually moved — not the whole map — the same way FB_LOG_ARRAY_FIELDS
+// avoids resending whole log arrays. This also doubles as the field list the
+// multi-device additive merge (see mergeAdditiveByDate in fbMigrate) needs a
+// syncBaseline* counterpart for.
+const FB_DATE_MAP_FIELDS = [
+  "history", "h28", "timerHistory", "timer28History",
+  "historyRV", "timerHistoryRV", "historyHK", "timerHistoryHK",
+  "historyKV", "timerHistoryKV", "historySS", "timerHistorySS",
+  "historyRam", "timerHistoryRam", "historyKaam", "timerHistoryKaam",
+];
+
+// Maps each FB_DATE_MAP_FIELDS key to the App.S.syncBaseline* field that
+// tracks "this device's own value as of its last CONFIRMED push" — the
+// baseline the multi-device additive merge diffs against. Kept as an
+// explicit table (rather than a naming-convention guess) since a couple of
+// the real field names don't follow one consistent pattern (h28 ↔
+// syncBaseline28, timer28History ↔ syncBaselineTimer28).
+const FB_DATE_MAP_BASELINE_KEY = {
+  history: "syncBaseline", h28: "syncBaseline28",
+  timerHistory: "syncBaselineTimer", timer28History: "syncBaselineTimer28",
+  historyRV: "syncBaselineRV", timerHistoryRV: "syncBaselineTimerRV",
+  historyHK: "syncBaselineHK", timerHistoryHK: "syncBaselineTimerHK",
+  historyKV: "syncBaselineKV", timerHistoryKV: "syncBaselineTimerKV",
+  historySS: "syncBaselineSS", timerHistorySS: "syncBaselineTimerSS",
+  historyRam: "syncBaselineRam", timerHistoryRam: "syncBaselineTimerRam",
+  historyKaam: "syncBaselineKaam", timerHistoryKaam: "syncBaselineTimerKaam",
+};
+
+// Refreshes every syncBaseline* field to the current local value, for every
+// tradition — call this right after ANY successful cloud write (full OR
+// delta), so it always reflects "what this device's own data looked like
+// as of the last confirmed sync." Previously this was only done for the
+// main Radha + 28-Names fields, and only inside fbPushFull() — never for
+// the other traditions (RV/HK/KV/SS/Ram/Kaam), and never after a routine
+// fbPushDelta() push (the path almost all real-world taps go through).
+// That meant these baselines were usually stale by hours, which silently
+// broke the multi-device merge below: it would treat taps that were
+// already safely synced earlier in the session as "new local progress"
+// and could double-count them, or fail to isolate genuinely-new progress
+// from a second device's contribution.
+function _fbRefreshSyncBaselines() {
+  for (const field of FB_DATE_MAP_FIELDS) {
+    const baselineKey = FB_DATE_MAP_BASELINE_KEY[field];
+    App.S[baselineKey] = JSON.parse(JSON.stringify(App.S[field] || {}));
+  }
+  // Scalar lifetime totals (seconds of jap per tradition) get the same
+  // treatment via one small object, added specifically for the additive
+  // dt-merge in fbMigrate — these previously had no baseline at all and
+  // were merged with plain max(), same limitation as the date maps had.
+  App.S.syncBaselineDt = {
+    dt: App.S.dt || 0, dtRV: App.S.dtRV || 0, dtHK: App.S.dtHK || 0,
+    dtKV: App.S.dtKV || 0, dtSS: App.S.dtSS || 0, dtRam: App.S.dtRam || 0,
+    dtKaam: App.S.dtKaam || 0,
+  };
+}
+
 // ── Real delta sync (fixes #1 skip-if-unchanged, #2 partial update,
 // #3 arrayUnion for logs) ──────────────────────────────────────────
 // This used to just call fbPushFull() — i.e. it always sent the WHOLE
@@ -11200,6 +11330,24 @@ async function fbPushDelta() {
       // Pure append (the normal case for a log) — send only the new
       // tail entries via arrayUnion instead of the whole array.
       updateFields[key] = firebase.firestore.FieldValue.arrayUnion(...newVal.slice(oldVal.length));
+    } else if (
+      FB_DATE_MAP_FIELDS.includes(key) &&
+      oldVal && newVal && typeof oldVal === "object" && typeof newVal === "object" &&
+      !Array.isArray(oldVal) && !Array.isArray(newVal)
+    ) {
+      // history/timer-history maps: the overwhelmingly common change here
+      // is "today's date key went up by one tap" — but the old code sent
+      // the ENTIRE map (every date ever logged) the moment ANY key
+      // differed. Diff per date-key instead and send only the keys that
+      // actually changed, via Firestore's dotted-path field update —
+      // this is what keeps a years-old history from getting re-uploaded
+      // on every single bead.
+      const changedKeys = new Set([...Object.keys(oldVal), ...Object.keys(newVal)]);
+      for (const dk of changedKeys) {
+        if ((oldVal[dk] ?? null) === (newVal[dk] ?? null)) continue;
+        if (newVal[dk] === undefined) continue; // key removal: not a real case for these maps, skip rather than guess
+        updateFields[`${key}.${dk}`] = newVal[dk];
+      }
     } else {
       // Anything else that changed (edited/reordered/shrunk array, or a
       // plain field) — send its new value in full. Still far cheaper
@@ -11231,6 +11379,7 @@ async function fbPushDelta() {
     }
     try { localStorage.removeItem("rjap_sync_pending"); } catch (_e) {}
     _fbRecordPushedSnapshot(payload);
+    _fbRefreshSyncBaselines();
     setSyncPill("", "☁️ Synced " + new Date().toLocaleTimeString());
     _fbSyncLog("Delta push succeeded");
   } catch (e) {
@@ -11521,14 +11670,9 @@ async function fbPushFull() {
     // real history doc silently behind) is exactly what made missing days
     // invisible until a device switch.
     pushLeaderboard().catch((e) => console.warn('pushLeaderboard (post-tap) error:', e && e.message));
-    App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history || {}));
-    App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28 || {}));
-    App.S.syncBaselineTimer = JSON.parse(
-      JSON.stringify(App.S.timerHistory || {}),
-    );
-    App.S.syncBaselineTimer28 = JSON.parse(
-      JSON.stringify(App.S.timer28History || {}),
-    );
+    // Refreshes syncBaseline* for EVERY tradition (previously only Radha +
+    // 28-Names were updated here) — see _fbRefreshSyncBaselines for why.
+    _fbRefreshSyncBaselines();
     App._suspendCloudSync = true;
     await App.save();
     App._suspendCloudSync = false;
@@ -11861,14 +12005,16 @@ function fbApplyRemote(d) {
   if (!App.S.h28[App.S.tk]) App.S.h28[App.S.tk] = 0;
   if (!App.S.timerHistory[App.S.tk]) App.S.timerHistory[App.S.tk] = 0;
   if (!App.S.timer28History[App.S.tk]) App.S.timer28History[App.S.tk] = 0;
-  App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history || {}));
-  App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28 || {}));
-  App.S.syncBaselineTimer = JSON.parse(
-    JSON.stringify(App.S.timerHistory || {}),
-  );
-  App.S.syncBaselineTimer28 = JSON.parse(
-    JSON.stringify(App.S.timer28History || {}),
-  );
+  // Refresh syncBaseline* for EVERY tradition (previously only Radha +
+  // 28-Names were reset here, and RV/HK/KV/SS/Ram/Kaam baselines were
+  // never touched by this function at all). This runs every time remote
+  // data is applied — both during fbMigrate's initial pull (where
+  // fbMigrate captures the PRE-reset baseline into its own local
+  // variables first, specifically so this reset doesn't corrupt its
+  // upcoming multi-device merge calculation) and on every later realtime
+  // onSnapshot update (where "local now matches what was just applied"
+  // is exactly the correct new baseline going forward).
+  _fbRefreshSyncBaselines();
   // Screen Time / manual-jap tracking — per-day-key values only ever grow,
   // so merge remote+local by taking the max per key (same rule used for the
   // local IDB/localStorage merge in App.load()) rather than overwriting.
@@ -12071,6 +12217,33 @@ async function fbMigrate() {
       const localDtSS = App.S.dtSS || 0;
       const localDtRam = App.S.dtRam || 0;
 
+      // Also snapshot this device's own syncBaseline* — "what my own data
+      // looked like as of MY last confirmed push" — BEFORE fbApplyRemote
+      // resets those baselines to match whatever we're about to apply.
+      // This is what makes the merge below additive instead of max-based:
+      // without it there is no way to distinguish "this device's own
+      // progress since it last synced" (which should ADD on top of
+      // whatever the cloud now holds, since the cloud may already
+      // include a second device's own independent offline progress) from
+      // "the raw total right now" (comparing raw totals is exactly what
+      // silently drops one device's taps when two devices go offline from
+      // the same starting point and each add their own — see the app.js
+      // firebase-sync study, "concurrent multi-device merge").
+      const baseline        = JSON.parse(JSON.stringify(App.S.syncBaseline        || {}));
+      const baseline28      = JSON.parse(JSON.stringify(App.S.syncBaseline28      || {}));
+      const baselineTimer   = JSON.parse(JSON.stringify(App.S.syncBaselineTimer   || {}));
+      const baselineRV      = JSON.parse(JSON.stringify(App.S.syncBaselineRV      || {}));
+      const baselineHK      = JSON.parse(JSON.stringify(App.S.syncBaselineHK      || {}));
+      const baselineKV      = JSON.parse(JSON.stringify(App.S.syncBaselineKV      || {}));
+      const baselineSS      = JSON.parse(JSON.stringify(App.S.syncBaselineSS      || {}));
+      const baselineRam     = JSON.parse(JSON.stringify(App.S.syncBaselineRam     || {}));
+      const baselineTimerRV  = JSON.parse(JSON.stringify(App.S.syncBaselineTimerRV  || {}));
+      const baselineTimerHK  = JSON.parse(JSON.stringify(App.S.syncBaselineTimerHK  || {}));
+      const baselineTimerKV  = JSON.parse(JSON.stringify(App.S.syncBaselineTimerKV  || {}));
+      const baselineTimerSS  = JSON.parse(JSON.stringify(App.S.syncBaselineTimerSS  || {}));
+      const baselineTimerRam = JSON.parse(JSON.stringify(App.S.syncBaselineTimerRam || {}));
+      const baselineDt = App.S.syncBaselineDt || {};
+
       // Cloud data exists — apply it (overrides local cache)
       fbApplyRemote({ ...snap.data(), deviceId: null });
       App._cloudHydrated = true; // cloud copy applied, future saves may push
@@ -12088,37 +12261,74 @@ async function fbMigrate() {
         App.S._lastAckedRestoreAt = _forceRestoreAt;
       }
 
-      // ── MERGE: for each date key, keep whichever is higher (local offline wins) ──
+      // ── MERGE: additive per date key, not max ──
+      // Old behavior: keep whichever of (local, cloud) was numerically
+      // higher. That's wrong whenever the cloud's value ALREADY reflects
+      // a different device's own independent offline progress — e.g. both
+      // phones start at 500, each does its own +1 offline, phone B syncs
+      // first (cloud now 501), phone A reconnects with local=501 too and
+      // max(501, 501) keeps 501 — phone A's +1 is silently gone, real
+      // total should have been 502.
+      //
+      // Fix: for THIS device, compute how much ITS OWN value moved since
+      // ITS OWN last confirmed sync (local - baseline, captured above,
+      // before fbApplyRemote reset the baseline to match cloud) — that
+      // delta is this device's genuinely new, not-yet-reflected-anywhere
+      // contribution, and gets ADDED on top of whatever the cloud
+      // currently holds (which may already carry another device's own
+      // contribution). A negative delta (a manual correction/deduction
+      // lowered the local count since baseline) is not added — instead we
+      // fall back to keeping whichever of local/cloud is higher for that
+      // key, same as the old behavior, since "subtract cloud's total
+      // because I corrected MY copy" isn't safe if cloud's total also
+      // includes another device's separate progress.
       let offlineWorkFound = false;
-      function mergeMax(local, applied) {
+      function mergeAdditive(local, applied, baseline) {
+        const base = baseline || {};
         for (const k in local) {
-          if ((local[k] || 0) > (applied[k] || 0)) {
-            applied[k] = local[k];
+          const localVal = local[k] || 0;
+          const baseVal = base[k] || 0;
+          const delta = localVal - baseVal;
+          if (delta > 0) {
+            applied[k] = (applied[k] || 0) + delta;
+            offlineWorkFound = true;
+          } else if (localVal > (applied[k] || 0)) {
+            applied[k] = localVal;
             offlineWorkFound = true;
           }
         }
       }
+      function mergeAdditiveScalar(localVal, appliedKey, baseVal) {
+        const delta = (localVal || 0) - (baseVal || 0);
+        if (delta > 0) {
+          App.S[appliedKey] = (App.S[appliedKey] || 0) + delta;
+          offlineWorkFound = true;
+        } else if ((localVal || 0) > (App.S[appliedKey] || 0)) {
+          App.S[appliedKey] = localVal || 0;
+          offlineWorkFound = true;
+        }
+      }
       if (!_skipOfflineMerge) {
-        mergeMax(localHistory,        App.S.history);
-        mergeMax(localH28,            App.S.h28);
-        mergeMax(localTimerHistory,   App.S.timerHistory);
-        mergeMax(localHistoryRV,      App.S.historyRV);
-        mergeMax(localHistoryHK,      App.S.historyHK);
-        mergeMax(localHistoryKV,      App.S.historyKV);
-        mergeMax(localHistorySS,      App.S.historySS);
-        mergeMax(localHistoryRam,     App.S.historyRam);
-        mergeMax(localTimerHistoryRV, App.S.timerHistoryRV);
-        mergeMax(localTimerHistoryHK, App.S.timerHistoryHK);
-        mergeMax(localTimerHistoryKV, App.S.timerHistoryKV);
-        mergeMax(localTimerHistorySS, App.S.timerHistorySS);
-        mergeMax(localTimerHistoryRam, App.S.timerHistoryRam);
-        // Also preserve higher dt (lifetime jap seconds) if local is ahead
-        if (localDt   > App.S.dt)   { App.S.dt   = localDt;   offlineWorkFound = true; }
-        if (localDtRV > App.S.dtRV) { App.S.dtRV = localDtRV; offlineWorkFound = true; }
-        if (localDtHK > App.S.dtHK) { App.S.dtHK = localDtHK; offlineWorkFound = true; }
-        if (localDtKV > App.S.dtKV) { App.S.dtKV = localDtKV; offlineWorkFound = true; }
-        if (localDtSS > App.S.dtSS) { App.S.dtSS = localDtSS; offlineWorkFound = true; }
-        if (localDtRam > App.S.dtRam) { App.S.dtRam = localDtRam; offlineWorkFound = true; }
+        mergeAdditive(localHistory,        App.S.history,        baseline);
+        mergeAdditive(localH28,            App.S.h28,             baseline28);
+        mergeAdditive(localTimerHistory,   App.S.timerHistory,    baselineTimer);
+        mergeAdditive(localHistoryRV,      App.S.historyRV,       baselineRV);
+        mergeAdditive(localHistoryHK,      App.S.historyHK,       baselineHK);
+        mergeAdditive(localHistoryKV,      App.S.historyKV,       baselineKV);
+        mergeAdditive(localHistorySS,      App.S.historySS,       baselineSS);
+        mergeAdditive(localHistoryRam,     App.S.historyRam,      baselineRam);
+        mergeAdditive(localTimerHistoryRV, App.S.timerHistoryRV,  baselineTimerRV);
+        mergeAdditive(localTimerHistoryHK, App.S.timerHistoryHK,  baselineTimerHK);
+        mergeAdditive(localTimerHistoryKV, App.S.timerHistoryKV,  baselineTimerKV);
+        mergeAdditive(localTimerHistorySS, App.S.timerHistorySS,  baselineTimerSS);
+        mergeAdditive(localTimerHistoryRam, App.S.timerHistoryRam, baselineTimerRam);
+        // Lifetime jap-seconds totals get the same additive treatment.
+        mergeAdditiveScalar(localDt,   "dt",   baselineDt.dt);
+        mergeAdditiveScalar(localDtRV, "dtRV", baselineDt.dtRV);
+        mergeAdditiveScalar(localDtHK, "dtHK", baselineDt.dtHK);
+        mergeAdditiveScalar(localDtKV, "dtKV", baselineDt.dtKV);
+        mergeAdditiveScalar(localDtSS, "dtSS", baselineDt.dtSS);
+        mergeAdditiveScalar(localDtRam, "dtRam", baselineDt.dtRam);
       }
 
       if (offlineWorkFound) {

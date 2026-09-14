@@ -3925,12 +3925,18 @@ async function vpOthersDelete(id, label){
   if(!confirm(`Delete "${label || 'this profile'}"? This cannot be undone.`)) return;
   const ok = await window.vpFirestore.deleteOtherProfile(id);
   if(ok){
-    if(_vpViewingOtherProfile && _vpViewingOtherProfile.id === id) vpOthersBackToMine();
+    if(_vpViewingOtherProfile && _vpViewingOtherProfile.id === id) _vpViewingOtherProfile = null;
     _vpOtherProfilesCache = null;
     await vpOthersRenderList();
   }
 }
 
+// Renders the tapped profile's full breakdown AS A PAGE INSIDE the same
+// #vp-others-overlay folder popup — the popup stays open, #vp-others-card
+// swaps from the list to the detail view. Previously this closed the
+// folder popup entirely and rendered into the main page's
+// #vp-personal-card instead, which meant tapping a saved profile took
+// you away from the folder rather than opening within it.
 async function vpOthersView(id){
   try{
     const list = await vpOthersLoad(false);
@@ -3940,11 +3946,10 @@ async function vpOthersView(id){
       alert('Could not find that saved profile — please close and reopen the Others list and try again.');
       return;
     }
-    vpOthersOverlayClose(); // close the list popup — we're navigating away from it
     _vpViewingOtherProfile = found;
-    await vpPersonalRender();
-    const card = document.getElementById('vp-personal-card');
-    if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
+    await vpPersonalRender('vp-others-card');
+    const modal = document.getElementById('vp-others-modal');
+    if(modal) modal.scrollTop = 0;
   }catch(e){
     // Previously this failure was silent — nothing appeared and no error
     // was visible anywhere. Surface it now so a broken profile card can
@@ -3954,9 +3959,11 @@ async function vpOthersView(id){
   }
 }
 
-function vpOthersBackToMine(){
+// Returns from a saved profile's detail page back to the list of saved
+// profiles — both inside the same #vp-others-overlay folder popup.
+function vpOthersDetailBack(){
   _vpViewingOtherProfile = null;
-  vpPersonalRender();
+  vpOthersRenderList();
 }
 
 // Renders the "Others' Profiles" list (add-affordance + tappable rows)
@@ -4228,17 +4235,29 @@ function vpBuildDashaSatBarHTML(profile, now, jdNow){
   return (dashaHtml||satHtml)?`<div class="vp-msd-bar">${dashaHtml}${satHtml}</div>`:'';
 }
 
-async function vpPersonalRender(){
-  const mount = document.getElementById('vp-personal-card');
+// mountId lets a caller target a different container than the default
+// main-page #vp-personal-card — used so a saved Other profile's full
+// breakdown can render as a "page" INSIDE the #vp-others-overlay folder
+// popup (mountId 'vp-others-card') instead of closing that popup and
+// jumping to the main page. _vpViewingOtherProfile is only honored when
+// rendering into that folder mount — otherwise a stale flag (e.g. left
+// set if the user navigated away mid-view) could leak an other person's
+// data onto the user's own main-page card on the next background
+// refresh.
+async function vpPersonalRender(mountId){
+  const targetMountId = mountId || 'vp-personal-card';
+  const mount = document.getElementById(targetMountId);
   if(!mount) return;
+  const viewingWithinOthersFolder = (targetMountId === 'vp-others-card');
+  const otherProfile = viewingWithinOthersFolder ? _vpViewingOtherProfile : null;
 
-  const profile = _vpViewingOtherProfile || await vpPersonalLoad(false);
+  const profile = otherProfile || await vpPersonalLoad(false);
   if(!profile){
     mount.style.display = 'none';
     return;
   }
 
-  if(!_vpViewingOtherProfile && !profile.enabled){
+  if(!otherProfile && !profile.enabled){
     mount.style.display = 'block';
     mount.innerHTML = `
       <div class="vp-personal-offcard">
@@ -4434,9 +4453,9 @@ async function vpPersonalRender(){
 
       <!-- ── Header ── -->
       <div class="vp-personal-head">
-        <div><div class="vp-personal-janmo-tithi">${_vpViewingOtherProfile ? escHtml(_vpViewingOtherProfile.label || 'Saved Profile') + ' — Janmo Tithi' : 'Janmo Tithi'}: <span>${janmoTithiLabel}</span></div></div>
-        ${_vpViewingOtherProfile
-          ? '<button class="vp-personal-toggle-btn" onclick="vpOthersBackToMine()">← Back</button>'
+        <div><div class="vp-personal-janmo-tithi">${otherProfile ? escHtml(otherProfile.label || 'Saved Profile') + ' — Janmo Tithi' : 'Janmo Tithi'}: <span>${janmoTithiLabel}</span></div></div>
+        ${otherProfile
+          ? '<button class="vp-personal-toggle-btn" onclick="vpOthersDetailBack()">← Back to Profiles</button>'
           : '<button class="vp-personal-toggle-btn vp-personal-toggle-on" onclick="vpPersonalToggle()">On</button>'}
       </div>
 
@@ -5032,7 +5051,7 @@ window.vpOthersView = function(id){ vpOthersView(id); };
 window.vpOthersEdit = function(id){ vpOthersEdit(id); };
 window.vpOthersGoToList = function(){ vpOthersGoToList(); };
 window.vpOthersButtonClick = function(){ vpOthersButtonClick(); };
-window.vpOthersBackToMine = function(){ vpOthersBackToMine(); };
+window.vpOthersDetailBack = function(){ vpOthersDetailBack(); };
 window.vpOthersOverlayOpen = function(){ vpOthersOverlayOpen(); };
 window.vpOthersOverlayClose = function(){ vpOthersOverlayClose(); };
 window.vpOthersOverlayCloseBackdrop = function(e){ vpOthersOverlayCloseBackdrop(e); };

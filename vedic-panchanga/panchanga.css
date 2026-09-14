@@ -2394,6 +2394,30 @@
   background:rgba(124,92,252,.14);
 }
 
+/* ── "Others" folder becomes a full-screen page too, same as the
+   calculator above — it used to only ever hold a short list of saved
+   profiles (fine at a small 360px popup width), but now also renders a
+   saved profile's FULL breakdown as a page inside it, which needs the
+   same page-width room the calculator gets, not a cramped 360px popup. ── */
+#vpanchanga-view #vp-others-overlay{padding:0 !important;background:rgba(15,10,35,.85) !important;backdrop-filter:blur(6px)}
+#vpanchanga-view #vp-others-overlay .vp-others-modal{
+  max-width:100% !important;
+  width:100% !important;
+  height:100% !important;
+  min-height:100vh;
+  max-height:100vh !important;
+  border-radius:0 !important;
+  padding:18px 18px 28px !important;
+  overflow-y:auto;
+  display:flex;flex-direction:column;
+}
+#vpanchanga-view #vp-others-overlay .vp-cal-modal-head{
+  position:sticky;top:0;background:var(--vp-card);
+  z-index:5;padding:6px 0 10px;
+  border-bottom:1px solid var(--vp-card-edge);
+  margin-bottom:18px;
+}
+
 
 /* ── Lunar Month toggle: force same golden gradient as Tara/Chandra ── */
 #vpanchanga-view #vp-tithi-toggle{

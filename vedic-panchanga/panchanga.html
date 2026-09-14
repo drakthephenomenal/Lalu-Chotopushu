@@ -144,6 +144,24 @@
     </div>
 
     <!-- ══════════════════════════════════════════
+         OTHERS' RASHI PROFILES — dedicated list popup
+         Opened directly by the header "Others" button. Lists saved
+         other-person profiles; "+ Add" opens the calculator above
+         (vp-horo-overlay) on top of this. Tapping a saved profile
+         closes this popup and shows their full breakdown further
+         down the page via #vp-personal-card.
+         ══════════════════════════════════════════ -->
+    <div class="vp-cal-overlay vp-others-overlay" id="vp-others-overlay" onclick="vpOthersOverlayCloseBackdrop(event)">
+      <div class="vp-cal-modal vp-others-modal" id="vp-others-modal" onclick="event.stopPropagation()">
+        <div class="vp-cal-modal-head">
+          <span class="vp-cal-modal-title">👥 Others' Rashi Profiles</span>
+          <button class="vp-cal-nav-btn" onclick="vpOthersOverlayClose()" aria-label="Close">✕</button>
+        </div>
+        <div id="vp-others-card"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
          SELECTED DATE — Full Panchanga Horoscope
          ══════════════════════════════════════════ -->
     <div id="vp-dateresult-wrap" style="display:none">
@@ -239,10 +257,10 @@
       <!-- MY PANCHANGA scorecard attaches here when a profile is active -->
       <div id="vp-personal-card" style="display:none"></div>
 
-      <!-- Saved profiles for other people (spouse, child, friend, etc.) —
-           add form + list attaches here; tapping a saved profile re-uses
-           #vp-personal-card above to show its full breakdown. -->
-      <div id="vp-others-card" style="display:none"></div>
+      <!-- Saved profiles for other people now live in the dedicated
+           #vp-others-overlay popup (opened via the header "Others"
+           button) instead of inline here — this used to be buried
+           below the whole "Your Rashi" breakdown. -->
     </div>
 
     <!-- Tithi grid toggle — Lunar Month calendar, right below Right Now & Coming Soon -->

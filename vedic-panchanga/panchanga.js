@@ -2035,6 +2035,24 @@ function vpHoroClose(){
   const overlay = document.getElementById('vp-horo-overlay');
   if(overlay) overlay.classList.remove('open');
 }
+
+// ── Others' list popup open/close ───────────────────────────────────
+// Opened directly by the header "Others" button (see vpOthersButtonClick
+// below) instead of scrolling to a section buried inside the page.
+function vpOthersOverlayOpen(){
+  const overlay = document.getElementById('vp-others-overlay');
+  if(!overlay) return;
+  overlay.classList.add('open');
+  vpOthersRenderList();
+}
+function vpOthersOverlayClose(){
+  const overlay = document.getElementById('vp-others-overlay');
+  if(overlay) overlay.classList.remove('open');
+}
+function vpOthersOverlayCloseBackdrop(e){
+  if(e && e.target && e.target.id === 'vp-others-overlay') vpOthersOverlayClose();
+}
+
 function vpHoroCloseBackdrop(e){
   // Full-screen page: only close via the explicit ✕ / Cancel buttons.
   return;
@@ -3846,6 +3864,7 @@ async function vpOthersView(id){
   const list = await vpOthersLoad(false);
   const found = list.find((p) => p.id === id);
   if(!found) return;
+  vpOthersOverlayClose(); // close the list popup — we're navigating away from it
   _vpViewingOtherProfile = found;
   await vpPersonalRender();
   const card = document.getElementById('vp-personal-card');
@@ -3858,18 +3877,20 @@ function vpOthersBackToMine(){
 }
 
 // Renders the "Others' Profiles" list (add-affordance + tappable rows)
-// into #vp-others-card. Always visible when signed in, even with zero
-// saved profiles yet, so the entry point to add one is discoverable.
+// into #vp-others-card, which now lives inside the dedicated
+// #vp-others-overlay popup (see vpOthersOverlayOpen) rather than
+// inline in the page — the popup itself already supplies the "👥
+// Others' Rashi Profiles" title, so this only renders the Add button
+// + rows.
 async function vpOthersRenderList(){
   const mount = document.getElementById('vp-others-card');
   if(!mount) return;
   if(!window.vpFirestore || !window.vpFirestore.currentUid()){
-    mount.style.display = 'none';
+    mount.innerHTML = `<div class="vp-others-empty">Please sign in (Google) first to save and view other people's profiles.</div>`;
     return;
   }
 
   const list = await vpOthersLoad(false);
-  mount.style.display = 'block';
 
   const rowsHtml = list.length
     ? list.map((p) => `
@@ -3882,13 +3903,8 @@ async function vpOthersRenderList(){
     : `<div class="vp-others-empty">No saved profiles yet — add one below.</div>`;
 
   mount.innerHTML = `
-    <div class="vp-personal-card">
-      <div class="vp-personal-head">
-        <div class="vp-personal-janmo-tithi">👥 Others' Rashi Profiles</div>
-        <button class="vp-personal-toggle-btn" onclick="vpHoroOpenOther()">➕ Add</button>
-      </div>
-      <div class="vp-others-list">${rowsHtml}</div>
-    </div>`;
+    <button class="vp-horo-save-btn vp-others-add-btn" onclick="vpHoroOpenOther()">➕ Add Profile</button>
+    <div class="vp-others-list">${rowsHtml}</div>`;
 }
 
 // Opens the shared horoscope calculator, pre-cleared, in "save as
@@ -3935,25 +3951,18 @@ async function vpOthersEdit(id){
 
 // "Others" quick-access entry point in the header: this is a *list* of
 // separately-saved profiles, never the user's own main deck, so it never
-// opens the calculator directly — it takes you to the saved-profiles list
-// (adding a new one from there opens the calculator in "other" mode).
-// Falls back to the add-profile form whenever the list itself can't be
-// shown (not signed in, or the list failed to load) — so the button always
-// does something visible instead of silently no-oping on error.
+// opens the calculator directly — it opens the dedicated #vp-others-overlay
+// popup showing that list (adding a new one from there opens the
+// calculator in "other" mode, on top of this popup). Falls back to the
+// add-profile form directly if the popup itself can't be opened for any
+// reason — so the button always does something visible instead of
+// silently no-oping on error.
 async function vpOthersGoToList(){
   try{
-    await vpOthersRenderList();
+    vpOthersOverlayOpen();
+    return;
   }catch(e){
-    console.error('vpOthersGoToList: failed to render others list', e);
-  }
-  try{
-    const mount = document.getElementById('vp-others-card');
-    if(mount && mount.style.display !== 'none' && mount.innerHTML.trim()){
-      mount.scrollIntoView({behavior:'smooth', block:'start'});
-      return;
-    }
-  }catch(e){
-    console.error('vpOthersGoToList: failed to check/scroll to others list', e);
+    console.error('vpOthersGoToList: failed to open others popup', e);
   }
   vpHoroOpenOther();
 }
@@ -4941,6 +4950,9 @@ window.vpOthersEdit = function(id){ vpOthersEdit(id); };
 window.vpOthersGoToList = function(){ vpOthersGoToList(); };
 window.vpOthersButtonClick = function(){ vpOthersButtonClick(); };
 window.vpOthersBackToMine = function(){ vpOthersBackToMine(); };
+window.vpOthersOverlayOpen = function(){ vpOthersOverlayOpen(); };
+window.vpOthersOverlayClose = function(){ vpOthersOverlayClose(); };
+window.vpOthersOverlayCloseBackdrop = function(e){ vpOthersOverlayCloseBackdrop(e); };
 window.vpOpenCalendar = function(){ vpCalOpen(); };
 window.vpCloseCalendar = function(){ vpCalClose(); };
 window.vpCloseCalendarBackdrop = function(e){ vpCalCloseBackdrop(e); };

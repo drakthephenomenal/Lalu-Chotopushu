@@ -898,6 +898,15 @@
 }
 #vpanchanga-view .vp-cal-overlay.open{display:flex}
 
+/* Others' list popup: same overlay styling as the calculator, but a
+   slightly lower z-index so tapping "Add" opens the calculator ON TOP
+   of this list instead of behind it. Also capped height + scroll,
+   since a long list of saved profiles (unlike the fixed-size
+   calculator form) can outgrow the screen. */
+#vpanchanga-view .vp-others-overlay{z-index:1990}
+#vpanchanga-view .vp-others-modal{max-height:80vh;overflow-y:auto}
+#vpanchanga-view .vp-others-add-btn{margin-bottom:14px}
+
 #vpanchanga-view .vp-cal-modal{
   width:100%;max-width:360px;
   background:var(--vp-card);

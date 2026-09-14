@@ -3946,11 +3946,34 @@ async function vpOthersGoToList(){
   }catch(e){
     console.error('vpOthersGoToList: failed to render others list', e);
   }
-  const mount = document.getElementById('vp-others-card');
-  if(mount && mount.style.display !== 'none' && mount.innerHTML.trim()){
-    mount.scrollIntoView({behavior:'smooth', block:'start'});
-  } else {
-    vpHoroOpenOther();
+  try{
+    const mount = document.getElementById('vp-others-card');
+    if(mount && mount.style.display !== 'none' && mount.innerHTML.trim()){
+      mount.scrollIntoView({behavior:'smooth', block:'start'});
+      return;
+    }
+  }catch(e){
+    console.error('vpOthersGoToList: failed to check/scroll to others list', e);
+  }
+  vpHoroOpenOther();
+}
+
+// Outermost safety net for the header "Others" button: guarantees SOME
+// visible response even if anything above throws unexpectedly (e.g. a
+// missing DOM element, or an auth/Firestore call failing mid-check) —
+// falls all the way back to forcing the calculator overlay open directly,
+// bypassing every helper, so the button can never appear to do nothing.
+function vpOthersButtonClick(){
+  try{
+    vpOthersGoToList();
+  }catch(e){
+    console.error('vpOthersButtonClick: vpOthersGoToList threw synchronously', e);
+    try{ vpHoroOpenOther(); }
+    catch(e2){
+      console.error('vpOthersButtonClick: vpHoroOpenOther also threw — forcing overlay open', e2);
+      const overlay = document.getElementById('vp-horo-overlay');
+      if(overlay) overlay.classList.add('open');
+    }
   }
 }
 
@@ -4916,6 +4939,7 @@ window.vpOthersDelete = function(id, label){ vpOthersDelete(id, label); };
 window.vpOthersView = function(id){ vpOthersView(id); };
 window.vpOthersEdit = function(id){ vpOthersEdit(id); };
 window.vpOthersGoToList = function(){ vpOthersGoToList(); };
+window.vpOthersButtonClick = function(){ vpOthersButtonClick(); };
 window.vpOthersBackToMine = function(){ vpOthersBackToMine(); };
 window.vpOpenCalendar = function(){ vpCalOpen(); };
 window.vpCloseCalendar = function(){ vpCalClose(); };

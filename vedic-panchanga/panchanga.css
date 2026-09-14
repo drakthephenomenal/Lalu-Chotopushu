@@ -990,6 +990,25 @@
   margin-top:14px;padding-top:12px;
   border-top:1px solid var(--vp-card-edge);
 }
+
+/* Compact inline "Calculate Rashi" result, shown inside the Add/Edit
+   profile popup itself instead of navigating to the main page. */
+#vpanchanga-view .vp-horo-inline-preview{
+  margin-top:12px;padding:12px 14px;border-radius:14px;
+  background:rgba(124,92,252,.08);border:1px solid var(--vp-card-edge);
+  text-align:center;
+}
+#vpanchanga-view .vp-horo-inline-preview-rashi{
+  font-family:'EB Garamond',serif;font-size:1.05rem;font-weight:700;
+  color:var(--vp-ink);
+}
+#vpanchanga-view .vp-horo-inline-preview-sub{
+  font-size:.68rem;color:var(--vp-ink-soft);margin-top:2px;
+}
+#vpanchanga-view .vp-horo-inline-preview-hint{
+  font-size:.64rem;color:var(--vp-ink-faint);margin-top:6px;
+}
+
 #vpanchanga-view .vp-cal-today-btn{
   font-family:inherit;font-size:.66rem;font-weight:800;
   letter-spacing:.06em;text-transform:uppercase;

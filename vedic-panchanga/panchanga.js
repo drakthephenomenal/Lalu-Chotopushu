@@ -1992,6 +1992,11 @@ function vpHoroOpen(){
   const titleEl = document.getElementById('vp-horo-modal-title');
   if(titleEl) titleEl.textContent = '🪐 Janmo Tithi & Rashi Calculator';
   vpHoroSetMode(null);
+  // Clear any leftover result from a previous calculation this session —
+  // otherwise reopening for a new/different profile could briefly show
+  // the last person's Rashi before a fresh Calculate.
+  const inlinePreview = document.getElementById('vp-horo-inline-preview');
+  if(inlinePreview){ inlinePreview.style.display = 'none'; inlinePreview.innerHTML = ''; }
   const dateEl = document.getElementById('vp-horo-date');
   const timeEl = document.getElementById('vp-horo-time');
   const latEl = document.getElementById('vp-horo-lat');
@@ -2199,6 +2204,33 @@ function vpHoroCalculate(){
       const jdNowForPreview = dateToJD(nowForPreview);
       dashaSatCardEl.innerHTML = vpBuildDashaSatBarHTML(previewProfile, nowForPreview, jdNowForPreview);
     }catch(e){ dashaSatCardEl.innerHTML = ''; }
+  }
+
+  // ── Show the result, without leaving this popup ──────────────────
+  // Previously this always closed the calculator and scrolled to
+  // #vp-horo-result-wrap on the main page — jarring when calculating
+  // is really just step 1 of "Add/Edit a profile" (the Save button is
+  // right here in this same modal). Now: whenever this calculator was
+  // opened in Save mode ('mine' or 'other' — i.e. every real entry
+  // point in the app today), show a compact summary right inside the
+  // modal instead, directly above the Save button. The old full-page
+  // result view is kept only as a fallback for a bare calculator with
+  // no save option (mode === null), which no current button reaches.
+  if(_vpHoroMode){
+    const inline = document.getElementById('vp-horo-inline-preview');
+    if(inline){
+      const moonSidBirthP = moonLongSid(jd);
+      const rashiIdxP = Math.floor(moonSidBirthP / 30) % 12;
+      inline.style.display = 'block';
+      inline.innerHTML = `
+        <div class="vp-horo-inline-preview-rashi">🌙 ${RASHI[rashiIdxP]}</div>
+        <div class="vp-horo-inline-preview-sub">${dateLabel}</div>
+        <div class="vp-horo-inline-preview-hint">Looks right? Save below to keep it.</div>`;
+      requestAnimationFrame(()=>{
+        inline.scrollIntoView({behavior:'smooth', block:'nearest'});
+      });
+    }
+    return;
   }
 
   vpHoroClose();
@@ -3861,14 +3893,26 @@ async function vpOthersDelete(id, label){
 }
 
 async function vpOthersView(id){
-  const list = await vpOthersLoad(false);
-  const found = list.find((p) => p.id === id);
-  if(!found) return;
-  vpOthersOverlayClose(); // close the list popup — we're navigating away from it
-  _vpViewingOtherProfile = found;
-  await vpPersonalRender();
-  const card = document.getElementById('vp-personal-card');
-  if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
+  try{
+    const list = await vpOthersLoad(false);
+    const found = list.find((p) => p.id === id);
+    if(!found){
+      console.error('vpOthersView: profile not found in loaded list for id', id);
+      alert('Could not find that saved profile — please close and reopen the Others list and try again.');
+      return;
+    }
+    vpOthersOverlayClose(); // close the list popup — we're navigating away from it
+    _vpViewingOtherProfile = found;
+    await vpPersonalRender();
+    const card = document.getElementById('vp-personal-card');
+    if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
+  }catch(e){
+    // Previously this failure was silent — nothing appeared and no error
+    // was visible anywhere. Surface it now so a broken profile card can
+    // actually be diagnosed instead of just looking like "nothing happens".
+    console.error('vpOthersView: failed to render profile', e);
+    alert('Something went wrong opening this profile: ' + (e && e.message ? e.message : e));
+  }
 }
 
 function vpOthersBackToMine(){

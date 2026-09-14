@@ -130,6 +130,12 @@
           <button class="vp-horo-calc-btn" onclick="vpHoroCalculate()">✨ Calculate Rashi</button>
         </div>
 
+        <!-- Compact inline result shown right here after "Calculate Rashi",
+             instead of closing this popup and jumping to the main page's
+             result section — keeps the flow in one place, with the Save
+             button (below) right underneath the result it's saving. -->
+        <div class="vp-horo-inline-preview" id="vp-horo-inline-preview" style="display:none"></div>
+
         <div class="vp-horo-personal-cta" id="vp-horo-cta-mine" style="display:none">
           <div class="vp-horo-personal-cta-text">Save your birth details to unlock <b>My Panchanga</b> — see your Janmo Tithi, personalized Tara Bala timing &amp; daily outlook. Fully optional &amp; only visible to you.</div>
           <button class="vp-horo-save-btn" onclick="vpPersonalSave()">💾 Save &amp; Enable My Panchanga</button>

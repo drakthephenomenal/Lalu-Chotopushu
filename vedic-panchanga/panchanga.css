@@ -991,22 +991,19 @@
   border-top:1px solid var(--vp-card-edge);
 }
 
-/* Compact inline "Calculate Rashi" result, shown inside the Add/Edit
-   profile popup itself instead of navigating to the main page. */
+/* Full inline "Calculate Rashi" result, shown inside the Add/Edit
+   profile popup itself instead of navigating to the main page. Holds
+   a reused .vp-dateresult-section (Vaar strip, Rashi card, Dasha/Sade
+   Sati bar, full anga list) — that section supplies its own card
+   background/padding, so this wrapper stays a plain spacer. */
 #vpanchanga-view .vp-horo-inline-preview{
-  margin-top:12px;padding:12px 14px;border-radius:14px;
-  background:rgba(124,92,252,.08);border:1px solid var(--vp-card-edge);
-  text-align:center;
+  margin-top:12px;
 }
-#vpanchanga-view .vp-horo-inline-preview-rashi{
-  font-family:'EB Garamond',serif;font-size:1.05rem;font-weight:700;
-  color:var(--vp-ink);
-}
-#vpanchanga-view .vp-horo-inline-preview-sub{
-  font-size:.68rem;color:var(--vp-ink-soft);margin-top:2px;
+#vpanchanga-view .vp-horo-inline-preview .vp-dateresult-section{
+  margin-top:0;
 }
 #vpanchanga-view .vp-horo-inline-preview-hint{
-  font-size:.64rem;color:var(--vp-ink-faint);margin-top:6px;
+  font-size:.64rem;color:var(--vp-ink-faint);text-align:center;margin-top:10px;
 }
 
 #vpanchanga-view .vp-cal-today-btn{

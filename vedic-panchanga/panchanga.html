@@ -144,7 +144,13 @@
         <div class="vp-horo-personal-cta" id="vp-horo-cta-other" style="display:none">
           <div class="vp-horo-personal-cta-text" id="vp-horo-cta-other-text">Save this as <b>someone else's</b> chart (spouse, child, friend) — view their Rashi, Dasha &amp; Sade Sati anytime, kept separate from your own.</div>
           <input type="text" id="vp-horo-other-name" class="vp-horo-input" placeholder="Their name (e.g. Wife, Amit)" style="margin-bottom:10px">
-          <button class="vp-horo-save-btn" id="vp-horo-other-save-btn" onclick="vpOthersSave(_vpHoroEditingOtherId)">➕ Save as Their Profile</button>
+          <!-- No argument passed here on purpose: this attribute runs in the
+               global scope, but _vpHoroEditingOtherId only exists inside
+               panchanga.js's own closure — passing it here throws a
+               ReferenceError before vpOthersSave() ever runs, which is why
+               Save previously did nothing. vpOthersSave() now reads that
+               variable itself from inside its own closure instead. -->
+          <button class="vp-horo-save-btn" id="vp-horo-other-save-btn" onclick="vpOthersSave()">➕ Save as Their Profile</button>
         </div>
       </div>
     </div>

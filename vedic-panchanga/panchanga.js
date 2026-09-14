@@ -2212,19 +2212,44 @@ function vpHoroCalculate(){
   // is really just step 1 of "Add/Edit a profile" (the Save button is
   // right here in this same modal). Now: whenever this calculator was
   // opened in Save mode ('mine' or 'other' — i.e. every real entry
-  // point in the app today), show a compact summary right inside the
-  // modal instead, directly above the Save button. The old full-page
-  // result view is kept only as a fallback for a bare calculator with
-  // no save option (mode === null), which no current button reaches.
+  // point in the app today), show the FULL breakdown right inside the
+  // modal instead, directly above the Save button — the same Vaar
+  // strip, Birth Moon Rashi card (with lord/deity), Mahadasha/Sade
+  // Sati bar, and full Tithi/Nakshatra/Yoga/Karana anga list that
+  // #vp-horo-result-wrap builds below, just reused here since that
+  // wrap itself never gets shown in Save mode. Previously this was
+  // a 3-line "Rashi name only" summary, which meant "Calculate Rashi"
+  // for a saved (own or someone else's) profile never showed anything
+  // beyond the Moon sign until AFTER saving. The old full-page result
+  // view is kept only as a fallback for a bare calculator with no
+  // save option (mode === null), which no current button reaches.
   if(_vpHoroMode){
     const inline = document.getElementById('vp-horo-inline-preview');
     if(inline){
-      const moonSidBirthP = moonLongSid(jd);
-      const rashiIdxP = Math.floor(moonSidBirthP / 30) % 12;
+      const vaarStripHtml  = vaarStripEl    ? vaarStripEl.innerHTML    : '';
+      const rashiCardHtml  = rashiCardEl    ? rashiCardEl.innerHTML    : '';
+      const dashaSatHtml   = dashaSatCardEl ? dashaSatCardEl.innerHTML : '';
+      const angaListHtml   = listEl         ? listEl.innerHTML         : '';
+      const hinduMonthHtml = horoHmEl       ? horoHmEl.innerHTML       : '';
       inline.style.display = 'block';
       inline.innerHTML = `
-        <div class="vp-horo-inline-preview-rashi">🌙 ${RASHI[rashiIdxP]}</div>
-        <div class="vp-horo-inline-preview-sub">${dateLabel}</div>
+        <section class="vp-dateresult-section vp-horo-inline-full">
+          <div class="vp-dateresult-head">
+            <div class="vp-dateresult-title">
+              <span class="vp-dateresult-icon">🪐</span>
+              <div>
+                <div class="vp-dateresult-label">Horoscope for</div>
+                <div class="vp-dateresult-date">${dateLabel}</div>
+                <div class="vp-dateresult-sub">${lat.toFixed(3)}°, ${lng.toFixed(3)}°</div>
+                <div class="vp-dateresult-hindu-month">${hinduMonthHtml}</div>
+              </div>
+            </div>
+          </div>
+          <div class="vp-dr-vaar-strip">${vaarStripHtml}</div>
+          ${rashiCardHtml}
+          ${dashaSatHtml}
+          <div class="vp-dr-anga-list">${angaListHtml}</div>
+        </section>
         <div class="vp-horo-inline-preview-hint">Looks right? Save below to keep it.</div>`;
       requestAnimationFrame(()=>{
         inline.scrollIntoView({behavior:'smooth', block:'nearest'});
@@ -3848,7 +3873,21 @@ async function vpOthersLoad(force){
 // Reads the SAME horoscope-calculator fields vpPersonalSave() uses,
 // plus a name field, and saves as a new (or updated, if editing)
 // other-person profile.
+//
+// editingId defaults to the internal _vpHoroEditingOtherId when not
+// passed in. This matters because the "Save as Their Profile" button
+// lives in panchanga.html and is wired with a plain inline
+// onclick="vpOthersSave()" — this whole file runs inside an IIFE, so
+// _vpHoroEditingOtherId (declared with `let` above) is only visible in
+// this closure, never on `window`. The button previously called
+// onclick="vpOthersSave(_vpHoroEditingOtherId)" directly, which an
+// inline handler resolves against the GLOBAL scope — where that
+// variable doesn't exist — throwing a ReferenceError before this
+// function ever ran. That's why Save silently did nothing. Reading the
+// closure variable from in here, instead of passing it in from the
+// global-scoped attribute, is what actually fixes it.
 async function vpOthersSave(editingId){
+  if(editingId === undefined) editingId = _vpHoroEditingOtherId;
   if(!window.vpFirestore || !window.vpFirestore.currentUid()){
     alert('Please sign in (Google) first to save and sync profiles.');
     return;

@@ -3786,7 +3786,12 @@ async function vpOthersLoad(force){
     _vpOtherProfilesCache = [];
     return _vpOtherProfilesCache;
   }
-  _vpOtherProfilesCache = await window.vpFirestore.getOtherProfiles();
+  try{
+    _vpOtherProfilesCache = await window.vpFirestore.getOtherProfiles();
+  }catch(e){
+    console.error('vpOthersLoad: getOtherProfiles failed', e);
+    _vpOtherProfilesCache = [];
+  }
   return _vpOtherProfilesCache;
 }
 
@@ -3932,12 +3937,17 @@ async function vpOthersEdit(id){
 // separately-saved profiles, never the user's own main deck, so it never
 // opens the calculator directly — it takes you to the saved-profiles list
 // (adding a new one from there opens the calculator in "other" mode).
-// Falls back to the add-profile form only when the list itself can't be
-// shown yet (e.g. not signed in).
+// Falls back to the add-profile form whenever the list itself can't be
+// shown (not signed in, or the list failed to load) — so the button always
+// does something visible instead of silently no-oping on error.
 async function vpOthersGoToList(){
-  await vpOthersRenderList();
+  try{
+    await vpOthersRenderList();
+  }catch(e){
+    console.error('vpOthersGoToList: failed to render others list', e);
+  }
   const mount = document.getElementById('vp-others-card');
-  if(mount && mount.style.display !== 'none'){
+  if(mount && mount.style.display !== 'none' && mount.innerHTML.trim()){
     mount.scrollIntoView({behavior:'smooth', block:'start'});
   } else {
     vpHoroOpenOther();

@@ -1,5 +1,15 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v202
+// Radha Naam Jap — Service Worker  v203
+// v203: bumped cache to force-invalidate stale panchanga.html/js/css —
+// the header "Others" button now opens a dedicated list popup
+// (#vp-others-overlay) showing saved other-person profiles directly,
+// instead of scrolling down to a section buried below the whole
+// "Your Rashi" breakdown. Adding a profile opens the existing
+// calculator on top of this popup as before; tapping a saved profile
+// closes the popup and shows that profile's full breakdown further
+// down the page, unchanged. Web/PWA clients still running the old
+// cached panchanga.js — where "Others" scrolled into the buried
+// section instead — now pick up the current build on next load.
 // v202: bumped cache to force-invalidate stale app.js — ships the real
 // delta-sync rework: fbPushDelta() now actually sends only changed
 // fields (arrayUnion for grow-only logs like malaLog/activityLog)
@@ -216,7 +226,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v202';
+const CACHE = 'radha-jap-v203';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

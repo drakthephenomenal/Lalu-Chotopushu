@@ -59,6 +59,17 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 
 .view{display:none;height:100vh;height:100dvh;position:relative;z-index:1;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .view.active{display:flex;}
+/* A view's own stacking context normally sits at z-index:1, well below
+   .bnav (z-index:100) — fine, since .bnav should float over ordinary
+   page content. But full-screen modals opened INSIDE a view (e.g. the
+   Vedic Panchanga "Add Someone Else's Rashi Profile" calculator) use
+   position:fixed with a high z-index of their own (2000+); that z-index
+   only competes with siblings INSIDE this view's stacking context, so
+   .bnav still rendered on top of the whole view and clipped the bottom
+   of the modal (e.g. the "Save as Their Profile" button). Escalate the
+   view's stacking context above .bnav only while such a modal is open.*/
+.view:has(.vp-cal-overlay.open),
+.view:has(.vp-others-overlay.open){z-index:101;}
 #vj.active{position:fixed;inset:0;min-height:unset;height:100vh;height:100dvh;overflow:hidden;}
 /* Prevent the page itself from scrolling while the Jap view is active */
 html:has(#vj.active),body:has(#vj.active){overflow:hidden;height:100vh;height:100dvh;}

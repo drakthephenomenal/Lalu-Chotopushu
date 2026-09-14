@@ -1968,11 +1968,30 @@ function vpRenderDateResult(){
 // out in the modal's helper text rather than silently assumed.
 // ══════════════════════════════════════════════════════════════
 
+// Which single CTA the horoscope modal should offer this time it's open:
+// 'mine'  → only "Save & Enable My Panchanga" (the signed-in user's own chart)
+// 'other' → only "Save as Their Profile" (a separate saved profile, never
+//           the user's own main deck)
+// null    → neither (bare calculator, no save option)
+let _vpHoroMode = null;
+// Set when editing an existing other-profile via vpOthersEdit(); passed
+// through to vpOthersSave() so saving updates it instead of creating a new one.
+let _vpHoroEditingOtherId = null;
+
+function vpHoroSetMode(mode){
+  _vpHoroMode = mode;
+  const mineCta  = document.getElementById('vp-horo-cta-mine');
+  const otherCta = document.getElementById('vp-horo-cta-other');
+  if(mineCta)  mineCta.style.display  = (mode === 'mine')  ? '' : 'none';
+  if(otherCta) otherCta.style.display = (mode === 'other') ? '' : 'none';
+}
+
 function vpHoroOpen(){
   const overlay = document.getElementById('vp-horo-overlay');
   if(!overlay) return;
   const titleEl = document.getElementById('vp-horo-modal-title');
   if(titleEl) titleEl.textContent = '🪐 Janmo Tithi & Rashi Calculator';
+  vpHoroSetMode(null);
   const dateEl = document.getElementById('vp-horo-date');
   const timeEl = document.getElementById('vp-horo-time');
   const latEl = document.getElementById('vp-horo-lat');
@@ -1993,10 +2012,13 @@ function vpHoroOpen(){
 
 // "Your Rashi" entry point — pre-fills the horoscope modal from the
 // saved birth profile (if one exists) and relabels it for personal use.
+// Only the "Save & Enable My Panchanga" CTA is offered here; this can
+// never be used to save someone else's chart.
 function vpHoroOpenMine(){
   vpHoroOpen(); // sets defaults, opens overlay
   const titleEl = document.getElementById('vp-horo-modal-title');
   if(titleEl) titleEl.textContent = '🌕 Your Janmo Tithi & Rashi';
+  vpHoroSetMode('mine');
   // Pre-fill from saved profile when available
   if(_vpPersonalProfile && _vpPersonalProfile.dob){
     const dateEl = document.getElementById('vp-horo-date');
@@ -2146,6 +2168,19 @@ function vpHoroCalculate(){
           <div class="vp-horo-rashi-sub">Lord: ${rashiLordBirth}${rashiDeityBirth ? ' · Deity: ' + rashiDeityBirth : ''}</div>
         </div>
       </div>`;
+  }
+
+  // ── Mahadasha & Saturn Cycle (Sade Sati / Ashtama / Kantaka) ──────
+  // Same detail a saved profile gets — a quick, unsaved preview (own
+  // or someone else's) should not be limited to Rashi/Nakshatra/Yoga/Karana.
+  const dashaSatCardEl = document.getElementById('vp-horo-dasha-sat-card');
+  if(dashaSatCardEl){
+    try{
+      const previewProfile = vpPersonalComputeProfile(dateVal, timeVal, lat, lng);
+      const nowForPreview = new Date();
+      const jdNowForPreview = dateToJD(nowForPreview);
+      dashaSatCardEl.innerHTML = vpBuildDashaSatBarHTML(previewProfile, nowForPreview, jdNowForPreview);
+    }catch(e){ dashaSatCardEl.innerHTML = ''; }
   }
 
   vpHoroClose();
@@ -3783,6 +3818,7 @@ async function vpOthersSave(editingId){
   const id = await window.vpFirestore.saveOtherProfile(editingId || null, profile);
   if(id){
     _vpOtherProfilesCache = null; // force refresh on next load
+    _vpHoroEditingOtherId = null;
     vpHoroClose();
     if(nameEl) nameEl.value = '';
     await vpOthersRenderList();
@@ -3834,6 +3870,7 @@ async function vpOthersRenderList(){
     ? list.map((p) => `
         <div class="vp-others-row" onclick="vpOthersView('${p.id}')">
           <span class="vp-others-row-name">${escHtml(p.label || 'Saved Profile')}</span>
+          <button class="vp-others-row-edit" onclick="event.stopPropagation(); vpOthersEdit('${p.id}')">✎</button>
           <button class="vp-others-row-del" onclick="event.stopPropagation(); vpOthersDelete('${p.id}','${escHtml(p.label||'').replace(/'/g,"&#39;")}')">✕</button>
           <span class="vp-others-row-arrow">›</span>
         </div>`).join('')
@@ -3851,13 +3888,60 @@ async function vpOthersRenderList(){
 
 // Opens the shared horoscope calculator, pre-cleared, in "save as
 // someone else" mode (unlike vpHoroOpenMine, this never pre-fills the
-// user's own saved birth details).
+// user's own saved birth details, and only offers the "Save as Their
+// Profile" CTA — never "Save & Enable My Panchanga").
 function vpHoroOpenOther(){
   vpHoroOpen();
   const titleEl = document.getElementById('vp-horo-modal-title');
   if(titleEl) titleEl.textContent = '👥 Add Someone Else\u2019s Rashi Profile';
+  vpHoroSetMode('other');
+  _vpHoroEditingOtherId = null;
   const nameEl = document.getElementById('vp-horo-other-name');
   if(nameEl) nameEl.value = '';
+  const btnEl = document.getElementById('vp-horo-other-save-btn');
+  if(btnEl) btnEl.textContent = '➕ Save as Their Profile';
+  const textEl = document.getElementById('vp-horo-cta-other-text');
+  if(textEl) textEl.innerHTML = "Save this as <b>someone else's</b> chart (spouse, child, friend) — view their Rashi, Dasha &amp; Sade Sati anytime, kept separate from your own.";
+}
+
+// Edit an existing other-person profile: reopens the calculator pre-filled
+// with their saved birth details, still in "other" mode.
+async function vpOthersEdit(id){
+  const list = await vpOthersLoad(false);
+  const found = list.find((p) => p.id === id);
+  if(!found) return;
+  vpHoroOpenOther();
+  _vpHoroEditingOtherId = id;
+  const titleEl = document.getElementById('vp-horo-modal-title');
+  if(titleEl) titleEl.textContent = `👥 Edit ${escHtml(found.label || 'Profile')}\u2019s Rashi`;
+  const nameEl = document.getElementById('vp-horo-other-name');
+  const dateEl = document.getElementById('vp-horo-date');
+  const timeEl = document.getElementById('vp-horo-time');
+  const latEl  = document.getElementById('vp-horo-lat');
+  const lngEl  = document.getElementById('vp-horo-lng');
+  if(nameEl) nameEl.value = found.label || '';
+  if(dateEl && found.dob) dateEl.value = found.dob;
+  if(timeEl && found.tob) timeEl.value = found.tob;
+  if(latEl && typeof found.lat === 'number') latEl.value = found.lat.toFixed(4);
+  if(lngEl && typeof found.lng === 'number') lngEl.value = found.lng.toFixed(4);
+  const btnEl = document.getElementById('vp-horo-other-save-btn');
+  if(btnEl) btnEl.textContent = '💾 Update Their Profile';
+}
+
+// "Others" quick-access entry point in the header: this is a *list* of
+// separately-saved profiles, never the user's own main deck, so it never
+// opens the calculator directly — it takes you to the saved-profiles list
+// (adding a new one from there opens the calculator in "other" mode).
+// Falls back to the add-profile form only when the list itself can't be
+// shown yet (e.g. not signed in).
+async function vpOthersGoToList(){
+  await vpOthersRenderList();
+  const mount = document.getElementById('vp-others-card');
+  if(mount && mount.style.display !== 'none'){
+    mount.scrollIntoView({behavior:'smooth', block:'start'});
+  } else {
+    vpHoroOpenOther();
+  }
 }
 
 function vpPersonalFmtDate(d){
@@ -3897,6 +3981,128 @@ function vpPersonalBestWinDaysChange(val){
 // Renders (or hides) the "My Panchanga" card on the main panchanga page.
 // Safe to call any time — it no-ops gracefully if the mount point isn't
 // in the DOM yet, or if there's no saved/enabled profile.
+// Builds the Mahadasha + Saturn-cycle (Sade Sati / Ashtama / Kantaka) mini
+// card HTML for a given profile at a given moment. Shared by the full
+// My-Panchanga / Other-profile render AND the one-off "Calculate Rashi"
+// quick preview, so a quick unsaved calculation shows the same Dasha &
+// Sade Sati detail as a saved profile — not just Rashi/Nakshatra/Yoga/Karana.
+function vpBuildDashaSatBarHTML(profile, now, jdNow){
+        const PLANET_COLOR2={Sun:'var(--vp-planet-sun)',Moon:'var(--vp-planet-moon)',Mars:'var(--vp-planet-mars)',Mercury:'var(--vp-planet-mercury)',Jupiter:'var(--vp-planet-jupiter)',Venus:'var(--vp-planet-venus)',Saturn:'var(--vp-planet-saturn)',Rahu:'var(--vp-planet-rahu)',Ketu:'var(--vp-planet-ketu)'};
+        const PLANET_EMOJI2={Sun:'☀️',Moon:'🌙',Mars:'🔥',Mercury:'🌿',Jupiter:'🪐',Venus:'✨',Saturn:'⏳',Rahu:'🐉',Ketu:'☄️'};
+        const humanLeft2=(ms)=>{if(ms<=0)return'ended';const mins=Math.floor(ms/60000);if(mins<60)return mins+'m left';const hrs=Math.floor(mins/60);if(hrs<24)return hrs+'h '+(mins%60)+'m left';const days=Math.floor(hrs/24);if(days<30)return days+'d '+(hrs%24)+'h left';const months=Math.floor(days/30.4375);const remD=Math.floor(days-months*30.4375);if(months<12)return months+'mo '+remD+'d left';const years=Math.floor(months/12);return years+'y '+(months%12)+'mo left';};
+        let dashaHtml='', satHtml='';
+        try{
+          const dashas2=vpComputeMahaDasha(profile)||[];
+          const nowMs3=+now;
+          const activeDasha=dashas2.find(d=>+d.start<=nowMs3&&nowMs3<+d.end);
+          if(activeDasha){
+            const phase2=(typeof MAHADASHA_PHASE!=='undefined'&&MAHADASHA_PHASE[activeDasha.lord])||{};
+            const col2=PLANET_COLOR2[activeDasha.lord]||'#1a56db';
+            const em2=PLANET_EMOJI2[activeDasha.lord]||activeDasha.emoji||'🪐';
+            const lft2=humanLeft2(+activeDasha.end-nowMs3);
+            // Antardasha + Pratyantardasha sub-rows
+            let antarHtml='', pratHtml='';
+            try{
+              const lordIdx2=VIMSH_SEQ.findIndex(v=>v.lord===activeDasha.lord);
+              if(lordIdx2>=0){
+                const antars2=_vpDashaSubperiods(+activeDasha.start,+activeDasha.end,lordIdx2)||[];
+                const activeAntar2=antars2.find(a=>+a.start<=nowMs3&&nowMs3<+a.end);
+                if(activeAntar2){
+                  const aCol2=PLANET_COLOR2[activeAntar2.lord]||'#7c5cfc';
+                  const aEm2=PLANET_EMOJI2[activeAntar2.lord]||'🪐';
+                  const aLft2=humanLeft2(+activeAntar2.end-nowMs3);
+                  antarHtml=`<div class="vp-sub-period vp-sub-antar" style="--sp-color:${aCol2}">`
+                    +`<div class="vp-sp-header"><span class="vp-sp-tier">Antardasha</span><span class="vp-sp-lord">${aEm2} ${activeAntar2.lord}</span></div>`
+                    +`<div class="vp-sp-dates">${activeAntar2.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → ${activeAntar2.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>`
+                    +`<span class="vp-sp-badge">${aLft2}</span>`
+                    +`</div>`;
+                  // Pratyantardasha
+                  const aLordIdx2=VIMSH_SEQ.findIndex(v=>v.lord===activeAntar2.lord);
+                  if(aLordIdx2>=0){
+                    const prats2=_vpDashaPratyantar(+activeAntar2.start,+activeAntar2.end,aLordIdx2)||[];
+                    const activePrat2=prats2.find(p=>+p.start<=nowMs3&&nowMs3<+p.end);
+                    if(activePrat2){
+                      const pCol2=PLANET_COLOR2[activePrat2.lord]||'var(--vp-violet2)';
+                      const pEm2=PLANET_EMOJI2[activePrat2.lord]||'🪐';
+                      const pLft2=humanLeft2(+activePrat2.end-nowMs3);
+                      pratHtml=`<div class="vp-sub-period vp-sub-prat" style="--sp-color:${pCol2}">`
+                        +`<div class="vp-sp-header"><span class="vp-sp-tier">Pratyantardasha</span><span class="vp-sp-lord">${pEm2} ${activePrat2.lord}</span></div>`
+                        +`<div class="vp-sp-dates">${activePrat2.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → ${activePrat2.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>`
+                        +`<span class="vp-sp-badge">${pLft2}</span>`
+                        +`</div>`;
+                    }
+                  }
+                }
+              }
+            }catch(e){}
+            dashaHtml=`<div class="vp-msd-card" style="border-left-color:${col2}">
+              <span class="vp-msd-emoji">${em2}</span>
+              <div class="vp-msd-body">
+                <div class="vp-msd-label">Mahadasha</div>
+                <div class="vp-msd-name" style="color:${col2}">${activeDasha.lord} Dasha${phase2.theme?` <span class="vp-msd-theme">· ${phase2.theme}</span>`:''}</div>
+                <div class="vp-msd-sub">${activeDasha.years.toFixed(1)}y total · ends ${activeDasha.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
+                <div class="vp-msd-left">${lft2}</div>
+                ${antarHtml}${pratHtml}
+              </div>
+            </div>`;
+          }
+        }catch(e){}
+        try{
+          const satC2=vpComputeSaturnDoshaTimeline(profile,jdNow)||[];
+          const nowMs3=+now;
+          const actSat=satC2.find(s=>+s.start<=nowMs3&&nowMs3<+s.end);
+          const satColor='var(--vp-planet-saturn)';
+          if(actSat){
+            const pct2=Math.round(((nowMs3 - +actSat.start)/(+actSat.end - +actSat.start))*100);
+            // Find active phase (Rising/Peak/Setting)
+            let phaseHtml='';
+            try{
+              const nowSatJD2=jdNow;
+              const activePart2=actSat.parts&&actSat.parts.find(p=>p.startJd<=nowSatJD2&&nowSatJD2<p.endJd);
+              if(activePart2){
+                const phaseLabel=activePart2.sub||'';
+                // Extract short phase name (before the dash) e.g. "Rising phase"
+                const phaseName=phaseLabel.replace(/\s*[\u2014\-].*$/,'').trim()||phaseLabel;
+                const phaseSub=phaseLabel.includes('\u2014')?phaseLabel.split('\u2014').slice(1).join('\u2014').trim():'';
+                const phaseIcon=phaseLabel.includes('Rising')?'🌒':phaseLabel.includes('Peak')?'🔴':'🌘';
+                const phaseLeftMs=+activePart2.end-nowMs3;
+                const phaseLft2=humanLeft2(phaseLeftMs);
+                phaseHtml=`<div class="vp-sub-period vp-sub-phase" style="--sp-color:#9B7CFF">`
+                  +`<div class="vp-sp-header"><span class="vp-sp-tier">Active Phase</span><span class="vp-sp-lord">${phaseIcon} ${phaseName}</span></div>`
+                  +`${phaseSub?`<div style="font-size:.50rem;color:rgba(160,168,210,.6);margin-top:1px;padding-left:0">${phaseSub}</div>`:''}`
+                  +`<div class="vp-sp-dates">${activePart2.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → ${activePart2.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>`
+                  +`<span class="vp-sp-badge">${phaseLft2}</span>`
+                  +`</div>`;
+              }
+            }catch(e){}
+            satHtml=`<div class="vp-msd-card vp-msd-saturn" style="border-left-color:#7c5cfc">
+              <span class="vp-msd-emoji">${actSat.emoji||'⏳'}</span>
+              <div class="vp-msd-body">
+                <div class="vp-msd-label">Saturn Cycle</div>
+                <div class="vp-msd-name" style="color:#1a56db">${actSat.label}</div>
+                <div class="vp-msd-sub">${pct2}% done · ends ${actSat.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
+                <div class="vp-msd-left">${humanLeft2(+actSat.end-nowMs3)}</div>
+                ${phaseHtml}
+              </div>
+            </div>`;
+          } else {
+            const upSat=satC2.find(s=>+s.start>nowMs3);
+            if(upSat){
+              satHtml=`<div class="vp-msd-card vp-msd-saturn" style="border-left-color:#7c5cfc;opacity:.9">
+                <span class="vp-msd-emoji">${upSat.emoji||'⏳'}</span>
+                <div class="vp-msd-body">
+                  <div class="vp-msd-label">Next Saturn Cycle</div>
+                  <div class="vp-msd-name" style="color:#1a56db">${upSat.label}</div>
+                  <div class="vp-msd-sub">begins ${upSat.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
+                  <div class="vp-msd-left">in ${humanLeft2(+upSat.start-nowMs3).replace(' left','')}</div>
+                </div>
+              </div>`;
+            }
+          }
+        }catch(e){}
+  return (dashaHtml||satHtml)?`<div class="vp-msd-bar">${dashaHtml}${satHtml}</div>`:'';
+}
+
 async function vpPersonalRender(){
   const mount = document.getElementById('vp-personal-card');
   if(!mount) return;
@@ -4143,122 +4349,7 @@ async function vpPersonalRender(){
       </div>
 
       <!-- ══ MAHADASHA & SADE SATI MINI CARDS (above Personal Muhurta) ══ -->
-      ${(()=>{
-        const PLANET_COLOR2={Sun:'var(--vp-planet-sun)',Moon:'var(--vp-planet-moon)',Mars:'var(--vp-planet-mars)',Mercury:'var(--vp-planet-mercury)',Jupiter:'var(--vp-planet-jupiter)',Venus:'var(--vp-planet-venus)',Saturn:'var(--vp-planet-saturn)',Rahu:'var(--vp-planet-rahu)',Ketu:'var(--vp-planet-ketu)'};
-        const PLANET_EMOJI2={Sun:'☀️',Moon:'🌙',Mars:'🔥',Mercury:'🌿',Jupiter:'🪐',Venus:'✨',Saturn:'⏳',Rahu:'🐉',Ketu:'☄️'};
-        const humanLeft2=(ms)=>{if(ms<=0)return'ended';const mins=Math.floor(ms/60000);if(mins<60)return mins+'m left';const hrs=Math.floor(mins/60);if(hrs<24)return hrs+'h '+(mins%60)+'m left';const days=Math.floor(hrs/24);if(days<30)return days+'d '+(hrs%24)+'h left';const months=Math.floor(days/30.4375);const remD=Math.floor(days-months*30.4375);if(months<12)return months+'mo '+remD+'d left';const years=Math.floor(months/12);return years+'y '+(months%12)+'mo left';};
-        let dashaHtml='', satHtml='';
-        try{
-          const dashas2=vpComputeMahaDasha(profile)||[];
-          const nowMs3=+now;
-          const activeDasha=dashas2.find(d=>+d.start<=nowMs3&&nowMs3<+d.end);
-          if(activeDasha){
-            const phase2=(typeof MAHADASHA_PHASE!=='undefined'&&MAHADASHA_PHASE[activeDasha.lord])||{};
-            const col2=PLANET_COLOR2[activeDasha.lord]||'#1a56db';
-            const em2=PLANET_EMOJI2[activeDasha.lord]||activeDasha.emoji||'🪐';
-            const lft2=humanLeft2(+activeDasha.end-nowMs3);
-            // Antardasha + Pratyantardasha sub-rows
-            let antarHtml='', pratHtml='';
-            try{
-              const lordIdx2=VIMSH_SEQ.findIndex(v=>v.lord===activeDasha.lord);
-              if(lordIdx2>=0){
-                const antars2=_vpDashaSubperiods(+activeDasha.start,+activeDasha.end,lordIdx2)||[];
-                const activeAntar2=antars2.find(a=>+a.start<=nowMs3&&nowMs3<+a.end);
-                if(activeAntar2){
-                  const aCol2=PLANET_COLOR2[activeAntar2.lord]||'#7c5cfc';
-                  const aEm2=PLANET_EMOJI2[activeAntar2.lord]||'🪐';
-                  const aLft2=humanLeft2(+activeAntar2.end-nowMs3);
-                  antarHtml=`<div class="vp-sub-period vp-sub-antar" style="--sp-color:${aCol2}">`
-                    +`<div class="vp-sp-header"><span class="vp-sp-tier">Antardasha</span><span class="vp-sp-lord">${aEm2} ${activeAntar2.lord}</span></div>`
-                    +`<div class="vp-sp-dates">${activeAntar2.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → ${activeAntar2.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>`
-                    +`<span class="vp-sp-badge">${aLft2}</span>`
-                    +`</div>`;
-                  // Pratyantardasha
-                  const aLordIdx2=VIMSH_SEQ.findIndex(v=>v.lord===activeAntar2.lord);
-                  if(aLordIdx2>=0){
-                    const prats2=_vpDashaPratyantar(+activeAntar2.start,+activeAntar2.end,aLordIdx2)||[];
-                    const activePrat2=prats2.find(p=>+p.start<=nowMs3&&nowMs3<+p.end);
-                    if(activePrat2){
-                      const pCol2=PLANET_COLOR2[activePrat2.lord]||'var(--vp-violet2)';
-                      const pEm2=PLANET_EMOJI2[activePrat2.lord]||'🪐';
-                      const pLft2=humanLeft2(+activePrat2.end-nowMs3);
-                      pratHtml=`<div class="vp-sub-period vp-sub-prat" style="--sp-color:${pCol2}">`
-                        +`<div class="vp-sp-header"><span class="vp-sp-tier">Pratyantardasha</span><span class="vp-sp-lord">${pEm2} ${activePrat2.lord}</span></div>`
-                        +`<div class="vp-sp-dates">${activePrat2.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → ${activePrat2.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>`
-                        +`<span class="vp-sp-badge">${pLft2}</span>`
-                        +`</div>`;
-                    }
-                  }
-                }
-              }
-            }catch(e){}
-            dashaHtml=`<div class="vp-msd-card" style="border-left-color:${col2}">
-              <span class="vp-msd-emoji">${em2}</span>
-              <div class="vp-msd-body">
-                <div class="vp-msd-label">Mahadasha</div>
-                <div class="vp-msd-name" style="color:${col2}">${activeDasha.lord} Dasha${phase2.theme?` <span class="vp-msd-theme">· ${phase2.theme}</span>`:''}</div>
-                <div class="vp-msd-sub">${activeDasha.years.toFixed(1)}y total · ends ${activeDasha.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
-                <div class="vp-msd-left">${lft2}</div>
-                ${antarHtml}${pratHtml}
-              </div>
-            </div>`;
-          }
-        }catch(e){}
-        try{
-          const satC2=vpComputeSaturnDoshaTimeline(profile,jdNow)||[];
-          const nowMs3=+now;
-          const actSat=satC2.find(s=>+s.start<=nowMs3&&nowMs3<+s.end);
-          const satColor='var(--vp-planet-saturn)';
-          if(actSat){
-            const pct2=Math.round(((nowMs3 - +actSat.start)/(+actSat.end - +actSat.start))*100);
-            // Find active phase (Rising/Peak/Setting)
-            let phaseHtml='';
-            try{
-              const nowSatJD2=jdNow;
-              const activePart2=actSat.parts&&actSat.parts.find(p=>p.startJd<=nowSatJD2&&nowSatJD2<p.endJd);
-              if(activePart2){
-                const phaseLabel=activePart2.sub||'';
-                // Extract short phase name (before the dash) e.g. "Rising phase"
-                const phaseName=phaseLabel.replace(/\s*[\u2014\-].*$/,'').trim()||phaseLabel;
-                const phaseSub=phaseLabel.includes('\u2014')?phaseLabel.split('\u2014').slice(1).join('\u2014').trim():'';
-                const phaseIcon=phaseLabel.includes('Rising')?'🌒':phaseLabel.includes('Peak')?'🔴':'🌘';
-                const phaseLeftMs=+activePart2.end-nowMs3;
-                const phaseLft2=humanLeft2(phaseLeftMs);
-                phaseHtml=`<div class="vp-sub-period vp-sub-phase" style="--sp-color:#9B7CFF">`
-                  +`<div class="vp-sp-header"><span class="vp-sp-tier">Active Phase</span><span class="vp-sp-lord">${phaseIcon} ${phaseName}</span></div>`
-                  +`${phaseSub?`<div style="font-size:.50rem;color:rgba(160,168,210,.6);margin-top:1px;padding-left:0">${phaseSub}</div>`:''}`
-                  +`<div class="vp-sp-dates">${activePart2.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})} → ${activePart2.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>`
-                  +`<span class="vp-sp-badge">${phaseLft2}</span>`
-                  +`</div>`;
-              }
-            }catch(e){}
-            satHtml=`<div class="vp-msd-card vp-msd-saturn" style="border-left-color:#7c5cfc">
-              <span class="vp-msd-emoji">${actSat.emoji||'⏳'}</span>
-              <div class="vp-msd-body">
-                <div class="vp-msd-label">Saturn Cycle</div>
-                <div class="vp-msd-name" style="color:#1a56db">${actSat.label}</div>
-                <div class="vp-msd-sub">${pct2}% done · ends ${actSat.end.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
-                <div class="vp-msd-left">${humanLeft2(+actSat.end-nowMs3)}</div>
-                ${phaseHtml}
-              </div>
-            </div>`;
-          } else {
-            const upSat=satC2.find(s=>+s.start>nowMs3);
-            if(upSat){
-              satHtml=`<div class="vp-msd-card vp-msd-saturn" style="border-left-color:#7c5cfc;opacity:.9">
-                <span class="vp-msd-emoji">${upSat.emoji||'⏳'}</span>
-                <div class="vp-msd-body">
-                  <div class="vp-msd-label">Next Saturn Cycle</div>
-                  <div class="vp-msd-name" style="color:#1a56db">${upSat.label}</div>
-                  <div class="vp-msd-sub">begins ${upSat.start.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
-                  <div class="vp-msd-left">in ${humanLeft2(+upSat.start-nowMs3).replace(' left','')}</div>
-                </div>
-              </div>`;
-            }
-          }
-        }catch(e){}
-        return (dashaHtml||satHtml)?`<div class="vp-msd-bar">${dashaHtml}${satHtml}</div>`:'';
-      })()}
+      ${vpBuildDashaSatBarHTML(profile, now, jdNow)}
 
       <!-- ══ CONSOLIDATED SCORE + Tithi/Nak/Yoga/Karana progress bars ══ -->
       <div class="vp-cscore-card vp-cscore-${cs.verdictClass}">
@@ -4813,6 +4904,8 @@ window.vpHoroOpenOther = function(){ vpHoroOpenOther(); };
 window.vpOthersSave = function(editingId){ vpOthersSave(editingId); };
 window.vpOthersDelete = function(id, label){ vpOthersDelete(id, label); };
 window.vpOthersView = function(id){ vpOthersView(id); };
+window.vpOthersEdit = function(id){ vpOthersEdit(id); };
+window.vpOthersGoToList = function(){ vpOthersGoToList(); };
 window.vpOthersBackToMine = function(){ vpOthersBackToMine(); };
 window.vpOpenCalendar = function(){ vpCalOpen(); };
 window.vpCloseCalendar = function(){ vpCalClose(); };

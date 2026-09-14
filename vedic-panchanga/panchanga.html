@@ -19,7 +19,7 @@
           <button class="vp-janmo-btn vp-janmo-mine" onclick="vpHoroOpenMine()" aria-label="Your Rashi">
             <span>🌕</span><span>Your Rashi</span>
           </button>
-          <button class="vp-janmo-btn vp-janmo-others" onclick="vpHoroOpen()" aria-label="Others Rashi">
+          <button class="vp-janmo-btn vp-janmo-others" onclick="vpOthersGoToList()" aria-label="Others Rashi">
             <span>👥</span><span>Others</span>
           </button>
         </div>
@@ -130,15 +130,15 @@
           <button class="vp-horo-calc-btn" onclick="vpHoroCalculate()">✨ Calculate Rashi</button>
         </div>
 
-        <div class="vp-horo-personal-cta">
+        <div class="vp-horo-personal-cta" id="vp-horo-cta-mine" style="display:none">
           <div class="vp-horo-personal-cta-text">Save your birth details to unlock <b>My Panchanga</b> — see your Janmo Tithi, personalized Tara Bala timing &amp; daily outlook. Fully optional &amp; only visible to you.</div>
           <button class="vp-horo-save-btn" onclick="vpPersonalSave()">💾 Save &amp; Enable My Panchanga</button>
         </div>
 
-        <div class="vp-horo-personal-cta" style="margin-top:10px">
-          <div class="vp-horo-personal-cta-text">Or save this as <b>someone else's</b> chart (spouse, child, friend) — view their Rashi, Dasha &amp; Sade Sati anytime, kept separate from your own.</div>
+        <div class="vp-horo-personal-cta" id="vp-horo-cta-other" style="display:none">
+          <div class="vp-horo-personal-cta-text" id="vp-horo-cta-other-text">Save this as <b>someone else's</b> chart (spouse, child, friend) — view their Rashi, Dasha &amp; Sade Sati anytime, kept separate from your own.</div>
           <input type="text" id="vp-horo-other-name" class="vp-horo-input" placeholder="Their name (e.g. Wife, Amit)" style="margin-bottom:10px">
-          <button class="vp-horo-save-btn" onclick="vpOthersSave()">➕ Save as Their Profile</button>
+          <button class="vp-horo-save-btn" id="vp-horo-other-save-btn" onclick="vpOthersSave(_vpHoroEditingOtherId)">➕ Save as Their Profile</button>
         </div>
       </div>
     </div>
@@ -196,6 +196,11 @@
 
         <!-- Birth Moon Rashi card -->
         <div id="vp-horo-rashi-card"></div>
+
+        <!-- Mahadasha & Saturn Cycle (Sade Sati / Ashtama / Kantaka) —
+             same detail shown for a saved profile, so a quick unsaved
+             calculation (own or someone else's) isn't Rashi-only. -->
+        <div id="vp-horo-dasha-sat-card"></div>
 
         <!-- Anga timeline cards: Tithi, Nakshatra, Yoga, Karana —
              each with Previous / Current / Next + durations,

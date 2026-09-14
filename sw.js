@@ -1,5 +1,17 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v201
+// Radha Naam Jap — Service Worker  v202
+// v202: bumped cache to force-invalidate stale app.js — ships the real
+// delta-sync rework: fbPushDelta() now actually sends only changed
+// fields (arrayUnion for grow-only logs like malaLog/activityLog)
+// instead of silently aliasing to a full-state push; skips the write
+// entirely when nothing changed since the last confirmed sync; adds a
+// "Tap to retry" button that appears if the sync pill sits on
+// "Syncing…" for 60s straight; adds a rolling sync debug log
+// (localStorage: rjap_sync_debug_log) for diagnosing future stuck-sync
+// reports. fbPushFull() (restore/initial-push/full-overwrite paths) is
+// unchanged. Web/PWA clients still running the old always-full-push
+// app.js — the original cause of the "stuck syncing forever" report —
+// now pick up the current build on next load.
 // v201: bumped cache to force-invalidate stale vedic-panchanga module
 // files (panchanga.html/css/js) — ships the "Others" Janmo Tithi & Rashi
 // fixes: the header Others button now goes to a saved-profiles list
@@ -204,7 +216,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v201';
+const CACHE = 'radha-jap-v202';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

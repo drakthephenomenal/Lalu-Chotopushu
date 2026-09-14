@@ -1,5 +1,13 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v203
+// Radha Naam Jap — Service Worker  v204
+// v204: bumped cache to force-invalidate stale panchanga.html/js/css —
+// "Calculate Rashi" inside the Add/Edit Profile popup (Your Rashi or
+// Others) no longer closes that popup and jumps to the main page's
+// result section. It now shows a compact inline result right there,
+// directly above the existing Save button, so calculating and saving
+// happen in one place instead of the flow appearing to "leave" the
+// popup. The old full-page result view is kept only for a bare
+// calculator with no save option, which no current button reaches.
 // v203: bumped cache to force-invalidate stale panchanga.html/js/css —
 // the header "Others" button now opens a dedicated list popup
 // (#vp-others-overlay) showing saved other-person profiles directly,
@@ -226,7 +234,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v203';
+const CACHE = 'radha-jap-v204';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

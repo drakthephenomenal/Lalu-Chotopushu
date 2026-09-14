@@ -1,5 +1,16 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v206
+// Radha Naam Jap — Service Worker  v207
+// v207: bumped cache to force-invalidate stale panchanga.html/js/css —
+// tapping a saved profile in the "Others" folder popup no longer closes
+// that popup and jumps to the main page's card. Its full breakdown
+// (Vaar strip, Rashi card, Dasha/Sade Sati bar, full anga list) now
+// renders as a page INSIDE the same #vp-others-overlay folder, with a
+// "← Back to Profiles" button that returns to the saved-profiles list
+// without leaving the folder. The folder popup itself is now full-screen
+// (like the calculator) instead of a small 360px popup, since it needs
+// the same room to show that detail. Web/PWA clients still running the
+// old cached panchanga.js/html/css now pick up the current build on
+// next load.
 // v206: bumped cache to force-invalidate stale panchanga.html/js/css —
 // fixes the REAL cause of "Save as Their Profile" doing nothing: the
 // button's onclick="vpOthersSave(_vpHoroEditingOtherId)" referenced a
@@ -256,7 +267,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v206';
+const CACHE = 'radha-jap-v207';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

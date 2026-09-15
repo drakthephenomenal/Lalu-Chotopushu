@@ -67,9 +67,24 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
    only competes with siblings INSIDE this view's stacking context, so
    .bnav still rendered on top of the whole view and clipped the bottom
    of the modal (e.g. the "Save as Their Profile" button). Escalate the
-   view's stacking context above .bnav only while such a modal is open.*/
+   view's stacking context above .bnav only while such a modal is open.
+   The same problem exists for every OTHER bottom-sheet-style modal in
+   the app (they all use align-items:flex-end, so their most important
+   content — usually a save/confirm button — sits right at the sheet's
+   bottom edge, exactly where .bnav would cover it): the generic photo
+   upload/crop modal (#mo, in Settings), the Brahmacharya break-confirm
+   sheet (#bcmo, in Settings), the B&C calendar's day-detail sheet
+   (#cdmo, in the B&C view — the same calendar this landscape pass
+   started from), and the Milestone detail sheet (#msDetailOverlay, in
+   Milestones). All of these are worse in landscape specifically, since
+   a short viewport leaves a bottom sheet's content little room to sit
+   anywhere BUT right against the bottom edge. */
 .view:has(.vp-cal-overlay.open),
-.view:has(.vp-others-overlay.open){z-index:101;}
+.view:has(.vp-others-overlay.open),
+.view:has(.mo.show),
+.view:has(.bcmo.show),
+.view:has(.cdmo.show),
+.view:has(.ms-detail-overlay.show){z-index:101;}
 #vj.active{position:fixed;inset:0;min-height:unset;height:100vh;height:100dvh;overflow:hidden;}
 /* Prevent the page itself from scrolling while the Jap view is active */
 html:has(#vj.active),body:has(#vj.active){overflow:hidden;height:100vh;height:100dvh;}
@@ -418,7 +433,24 @@ button.hpb.active{
 #vc{background:radial-gradient(ellipse at top,#061228 0%,var(--bd) 60%);padding:22px 12px 80px;overflow-y:auto;overflow-x:hidden;}
 .ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 .cmy{font-family:'Cinzel Decorative',serif;font-size:13px;color:var(--a2);text-shadow:0 0 12px rgba(109,184,255,0.3);}
-.cg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;width:100%;box-sizing:border-box;}
+.cg{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:4px;width:100%;box-sizing:border-box;
+  /* Each cell below is a square (aspect-ratio:1), sized off this grid's
+     column WIDTH only. In portrait that's fine — width is the scarce
+     dimension, height is plentiful. In landscape the container is much
+     wider (near-full screen width) while height is short, so every
+     square cell balloons in both directions right when vertical space
+     is tightest — a 6-row month ends up needing far more height than
+     the screen has, and only the first row (plus a sliver of the
+     second) is visible before the bottom nav. Same fix pattern already
+     used for the hero deity image (--rv-w): bound the grid's width by
+     viewport HEIGHT too, so cell size shrinks to fit when height is the
+     scarce dimension instead of growing to match a wide-but-short
+     screen. Has no visible effect in normal portrait use, where 100%
+     width is already the smaller/binding constraint. */
+  max-width:min(100%, 58vh);
+  margin:0 auto;
+}
 .cdl{text-align:center;font-size:10px;color:var(--td);padding:4px 0;letter-spacing:0.5px;}
 
 /* Calendar nav buttons — premium */
@@ -573,7 +605,12 @@ button.hpb.active{
 .bsb.g .bv{color:#4DED9A;text-shadow:0 0 16px rgba(46,204,113,0.6),0 0 32px rgba(46,204,113,0.25);}
 .bsb.r .bv{color:#FF7068;text-shadow:0 0 16px rgba(231,76,60,0.6),0 0 32px rgba(231,76,60,0.25);}
 .bsb .bl{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;margin-top:4px;color:rgba(255,255,255,0.45);font-weight:600;}
-.bcal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:12px;width:100%;box-sizing:border-box;}
+.bcal{
+  display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:12px;width:100%;box-sizing:border-box;
+  /* Same landscape-oversize issue and fix as .cg above. */
+  max-width:min(100%, 58vh);
+  margin-left:auto;margin-right:auto;
+}
 .bcl{aspect-ratio:1;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;
   font-size:11px;cursor:pointer;border:1px solid transparent;min-width:0;overflow:hidden;}
 .bcl.m{background:rgba(46,204,113,0.2);border-color:rgba(46,204,113,0.4);color:var(--green);}

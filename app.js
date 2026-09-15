@@ -14440,7 +14440,7 @@ function favvidSearchableSection(list, opts) {
     if (!filtered.length) {
       const empty = document.createElement('div');
       empty.className = 'st-folder-empty';
-      empty.textContent = q ? 'কিছু পাওয়া যায়নি' : 'শীঘ্রই আসছে 🙏';
+      empty.textContent = q ? 'কিছু পাওয়া যায়নি' : (!fbUser ? '🔒 লিংক দেখতে প্রথমে সাইন ইন করুন' : 'শীঘ্রই আসছে 🙏');
       cardsDiv.appendChild(empty);
       return;
     }
@@ -14647,7 +14647,7 @@ function renderGithubFileSection(list, sub) {
     if (!items.length) {
       const empty = document.createElement('div');
       empty.className = 'st-folder-empty';
-      empty.textContent = 'শীঘ্রই আসছে 🙏';
+      empty.textContent = !fbUser ? '🔒 ভিডিও দেখতে প্রথমে সাইন ইন করুন' : 'শীঘ্রই আসছে 🙏';
       list.appendChild(empty);
       return;
     }
@@ -14973,7 +14973,7 @@ function renderFavVideoLinksTop(list, subfolderKey) {
       if (!filteredOrphans.length) {
         const empty = document.createElement('div');
         empty.className = 'st-folder-empty';
-        empty.textContent = q ? 'কিছু পাওয়া যায়নি' : 'শীঘ্রই আসছে 🙏';
+        empty.textContent = q ? 'কিছু পাওয়া যায়নি' : (!fbUser ? '🔒 লিংক দেখতে প্রথমে সাইন ইন করুন' : 'শীঘ্রই আসছে 🙏');
         bodyContainer.appendChild(empty);
       } else {
         filteredOrphans.forEach((v) => favvidRenderLinkCard(v, orphanItemsFull, subfolderKey + ':_orphan', bodyContainer));
@@ -17355,6 +17355,10 @@ window.addEventListener("load", async () => {
   const tutorialIconEl = document.getElementById("tutorialVideoIcon");
   if (tutorialIconEl && typeof favvidPlatformIconHtml === "function") {
     tutorialIconEl.innerHTML = favvidPlatformIconHtml("youtube");
+  }
+  const driveUploadIconEl = document.getElementById("driveUploadIcon");
+  if (driveUploadIconEl && typeof favvidPlatformIconHtml === "function") {
+    driveUploadIconEl.innerHTML = favvidPlatformIconHtml("drive");
   }
   if (typeof _loadCroreMilestoneLinks === "function") _loadCroreMilestoneLinks();
   App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));

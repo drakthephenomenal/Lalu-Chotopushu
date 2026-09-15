@@ -1629,15 +1629,241 @@
     <button id="appUpdateWebRefreshBtn" type="button" style="display:none;margin-top:10px;width:100%;padding:9px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:12px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation(); checkAppUpdate();">🔄 Refresh Now</button>
   </div>
 
-  <!-- Only shown inside the installed (native/Capacitor) app — a standalone
-       button just below the Update App card rather than nested inside its
-       border, per request. Clears Firestore's local offline cache after an
-       explicit export-first warning. -->
-  <button id="appUpdateNativeRefreshBtn" type="button" style="display:none;width:100%;margin:-6px 0 18px;padding:11px 12px;border-radius:12px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:13px;font-weight:700;cursor:pointer;" onclick="confirmNativeCacheRefresh();">🔄 Refresh Now (clears local cache)</button>
+  <!-- SINGLE SIGN-IN WITH GOOGLE / CLOUD SYNC & BACKUP — moved here, right
+       below the Update App card, so it's the first thing users see in
+       Settings. -->
+  <div class="sc" id="fbCard">
+    <h3>☁️ Cloud Sync &amp; Backup</h3>
+    <!-- Native/Capacitor apk only — shown via JS (checkForUpdateAvailable)
+         when running inside the installed app. Hidden by default so
+         PWA/TWA never shows this button here. -->
+    <button id="fbCardRefreshBtn" type="button" onclick="refreshAppFromBackupArea()" style="display:none;width:100%;margin-bottom:14px;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:12px;font-weight:700;cursor:pointer;">🔄 Refresh Now</button>
+    <div id="fbLoggedOut">
+      <p style="font-size:12px;color:var(--td);margin-bottom:14px">One sign-in handles real-time sync across all your devices.</p>
+      <button class="google-btn" onclick="fbSignInGoogle()">
+        <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Sign in with Google
+      </button>
+      <!-- Zoho sign-in — hidden for now per request. To re-enable, remove
+           the two wrapper lines around this button (or change display:none
+           to display:block). -->
+      <div id="zohoSignInWrap" style="display:none">
+      <button class="zoho-btn" onclick="fbSignInZoho()">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#F7A81B" stroke-width="2"/><text x="12" y="16" text-anchor="middle" fill="#F7A81B" font-size="12" font-weight="bold" font-family="sans-serif">Z</text></svg>
+        Sign in with Zoho
+      </button>
+      </div>
+
+      <!-- PHONE / OTP SIGN-IN — hidden for now per request. To re-enable,
+           remove the two wrapper lines around this block (or change
+           display:none to display:block). -->
+      <div id="phoneSignInWrap" style="display:none">
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08)">
+        <div style="font-size:11px;color:var(--td);text-align:center;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">or use Phone number</div>
+        <div style="font-size:11px;color:var(--gold);text-align:left;margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.18);line-height:1.55">
+          Enter your number with country code (e.g. <b>+919876543210</b>). OTP comes by SMS; on Android it may also appear above your keyboard—tap that code or check your Messages/SMS inbox.
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <select id="fbPhoneCountry" class="fb-email-input" style="flex:0 0 80px;padding:10px 6px;margin-bottom:0">
+            <option value="+1">🇺🇸/🇨🇦 +1</option>
+            <option value="+44">🇬🇧 +44</option>
+            <option value="+91">🇮🇳 +91</option>
+            <option value="+61">🇦🇺 +61</option>
+            <option value="+971">🇦🇪 +971</option>
+            <option value="+880">🇧🇩 +880</option>
+            <option value="+977">🇳🇵 +977</option>
+            <option value="+92">🇵🇰 +92</option>
+            <option value="+65">🇸🇬 +65</option>
+            <option value="+60">🇲🇾 +60</option>
+            <option value="+94">🇱🇰 +94</option>
+            <option value="+27">🇿🇦 +27</option>
+            <option value="+254">🇰🇪 +254</option>
+            <option value="+234">🇳🇬 +234</option>
+            <option value="+20">🇪🇬 +20</option>
+            <option value="+33">🇫🇷 +33</option>
+            <option value="+49">🇩🇪 +49</option>
+            <option value="+39">🇮🇹 +39</option>
+            <option value="+34">🇪🇸 +34</option>
+            <option value="+7">🇷🇺/🇰🇿 +7</option>
+            <option value="+81">🇯🇵 +81</option>
+            <option value="+82">🇰🇷 +82</option>
+            <option value="+86">🇨🇳 +86</option>
+            <option value="+62">🇮🇩 +62</option>
+            <option value="+63">🇵🇭 +63</option>
+            <option value="+66">🇹🇭 +66</option>
+            <option value="+84">🇻🇳 +84</option>
+            <option value="+55">🇧🇷 +55</option>
+            <option value="+52">🇲🇽 +52</option>
+            <option value="+54">🇦🇷 +54</option>
+            <option value="+56">🇨🇱 +56</option>
+            <option value="+57">🇨🇴 +57</option>
+            <option value="+51">🇵🇪 +51</option>
+            <option value="+58">🇻🇪 +58</option>
+            <option value="+31">🇳🇱 +31</option>
+            <option value="+32">🇧🇪 +32</option>
+            <option value="+41">🇨🇭 +41</option>
+            <option value="+43">🇦🇹 +43</option>
+            <option value="+46">🇸🇪 +46</option>
+            <option value="+47">🇳🇴 +47</option>
+            <option value="+45">🇩🇰 +45</option>
+            <option value="+358">🇫🇮 +358</option>
+            <option value="+48">🇵🇱 +48</option>
+            <option value="+420">🇨🇿 +420</option>
+            <option value="+36">🇭🇺 +36</option>
+            <option value="+40">🇷🇴 +40</option>
+            <option value="+30">🇬🇷 +30</option>
+            <option value="+351">🇵🇹 +351</option>
+            <option value="+353">🇮🇪 +353</option>
+            <option value="+64">🇳🇿 +64</option>
+            <option value="+966">🇸🇦 +966</option>
+            <option value="+974">🇶🇦 +974</option>
+            <option value="+965">🇰🇼 +965</option>
+            <option value="+968">🇴🇲 +968</option>
+            <option value="+973">🇧🇭 +973</option>
+            <option value="+962">🇯🇴 +962</option>
+            <option value="+961">🇱🇧 +961</option>
+            <option value="+98">🇮🇷 +98</option>
+            <option value="+90">🇹🇷 +90</option>
+            <option value="+972">🇮🇱 +972</option>
+            <option value="+212">🇲🇦 +212</option>
+            <option value="+213">🇩🇿 +213</option>
+            <option value="+216">🇹🇳 +216</option>
+            <option value="+233">🇬🇭 +233</option>
+            <option value="+255">🇹🇿 +255</option>
+            <option value="+256">🇺🇬 +256</option>
+            <option value="+260">🇿🇲 +260</option>
+            <option value="+263">🇿🇼 +263</option>
+            <option value="+225">🇨🇮 +225</option>
+            <option value="+221">🇸🇳 +221</option>
+            <option value="+237">🇨🇲 +237</option>
+            <option value="+244">🇦🇴 +244</option>
+            <option value="+258">🇲🇿 +258</option>
+            <option value="+261">🇲🇬 +261</option>
+            <option value="+230">🇲🇺 +230</option>
+            <option value="+248">🇸🇨 +248</option>
+            <option value="+852">🇭🇰 +852</option>
+            <option value="+886">🇹🇼 +886</option>
+            <option value="+853">🇲🇴 +853</option>
+            <option value="+976">🇲🇳 +976</option>
+            <option value="+995">🇬🇪 +995</option>
+            <option value="+374">🇦🇲 +374</option>
+            <option value="+357">🇨🇾 +357</option>
+            <option value="+356">🇲🇹 +356</option>
+            <option value="+354">🇮🇸 +354</option>
+          </select>
+          <input type="tel" id="fbPhoneIn" class="fb-email-input" placeholder="" autocomplete="tel" style="flex:1;margin-bottom:0">
+        </div>
+        <div id="fbPhoneSendRow" style="display:flex;gap:8px">
+          <button id="fbPhoneSendBtn" onclick="fbSendPhoneOtp()" class="premium-btn">Send OTP</button>
+        </div>
+        <div style="text-align:center;margin-top:6px">
+          <button onclick="fbTogglePhonePasswordMode(true)" style="padding:4px;border:none;background:transparent;color:var(--a2);font-size:11px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">Have a password? Sign in with it instead</button>
+        </div>
+        <div id="fbPhonePassRow" style="display:none;margin-top:8px">
+          <input type="password" id="fbPhonePassIn" class="fb-email-input" placeholder="Password" autocomplete="current-password">
+          <div style="display:flex;gap:8px">
+            <button id="fbPhonePassSendBtn" onclick="fbSignInPhonePassword()" class="premium-btn">Sign in with Password</button>
+            <button onclick="fbTogglePhonePasswordMode(false)" style="padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:var(--td);font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif">Use OTP</button>
+          </div>
+          <button onclick="fbPhoneForgotPassword()" style="width:100%;margin-top:6px;padding:6px;border-radius:8px;border:none;background:transparent;color:var(--td);font-size:11px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">Forgot password? Verify via OTP</button>
+        </div>
+        <div id="fbPhoneErr" style="font-size:11.5px;color:var(--red);margin-top:6px;text-align:center;word-break:break-word"></div>
+        <div id="fbOtpRow" style="display:none;margin-top:10px">
+          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="fbOtpIn" class="fb-email-input" placeholder="Enter 6-digit OTP" autocomplete="one-time-code">
+          <div style="display:flex;gap:8px">
+            <button onclick="fbVerifyPhoneOtp()" class="premium-btn green">Verify & Sign In</button>
+            <button onclick="fbResetPhoneOtp()" style="padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:var(--td);font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif">Cancel</button>
+          </div>
+          <button onclick="fbSendPhoneOtp(true)" style="width:100%;margin-top:6px;padding:6px;border-radius:8px;border:none;background:transparent;color:var(--td);font-size:11px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">Resend OTP</button>
+        </div>
+        <div style="font-size:9.5px;color:var(--td);opacity:.65;text-align:center;margin-top:6px;line-height:1.4">This site is protected by reCAPTCHA and the Google <a href="https://policies.google.com/privacy" target="_blank" style="color:inherit;text-decoration:underline">Privacy Policy</a> and <a href="https://policies.google.com/terms" target="_blank" style="color:inherit;text-decoration:underline">Terms of Service</a> apply.</div>
+        <!-- Firebase phone verification runs invisibly; keep the badge from covering bottom navigation. -->
+        <style>#fbRecaptchaContainer{position:absolute!important;left:-9999px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important}.grecaptcha-badge{visibility:hidden!important;pointer-events:none!important}
+</style>
+        <div id="fbRecaptchaContainer" aria-hidden="true"></div>
+      </div>
+      </div>
+
+
+
+      <!-- EMAIL / PASSWORD SIGN-IN -->
+      <style>
+        .fb-email-input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:#1a1f3a !important;color:#fff !important;font-size:13px;font-family:Inter,sans-serif;margin-bottom:8px;box-sizing:border-box;color-scheme:dark;-webkit-text-fill-color:#fff;outline:none;height:auto;backdrop-filter:none}
+        .fb-email-input::placeholder{color:rgba(255,255,255,0.45)}
+        .fb-email-input:focus{border-color:rgba(74,144,226,0.6)}
+        .fb-email-input:-webkit-autofill,.fb-email-input:-webkit-autofill:hover,.fb-email-input:-webkit-autofill:focus{-webkit-text-fill-color:#fff !important;-webkit-box-shadow:0 0 0 1000px #1a1f3a inset !important;box-shadow:0 0 0 1000px #1a1f3a inset !important;caret-color:#fff;transition:background-color 9999s ease-in-out 0s}
+      </style>
+      <style>
+        .fb-email-section{margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08);background:transparent}
+        .fb-email-section summary{cursor:pointer;list-style:none;text-align:center;font-size:11px;color:var(--td);letter-spacing:1px;text-transform:uppercase}
+        .fb-email-section summary::-webkit-details-marker{display:none}
+        .fb-email-section summary::after{content:"▾";margin-left:6px;opacity:.7}
+        .fb-email-section[open] summary::after{content:"▴"}
+        .fb-email-tips{margin:10px 0;border-radius:10px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.18);overflow:hidden}
+        .fb-email-tips summary{cursor:pointer;list-style:none;padding:9px 12px;font-size:11.5px;font-weight:600;color:#ffd97a;text-align:center}
+        .fb-email-tips summary::-webkit-details-marker{display:none}
+        .fb-email-tips summary::after{content:"▾";float:right;opacity:.7}
+        .fb-email-tips[open] summary::after{content:"▴"}
+      </style>
+      <details class="fb-email-section">
+        <summary>or use Email</summary>
+        <div style="margin-top:10px">
+          <details class="fb-email-tips">
+            <summary>💡 Tips: using any email provider</summary>
+            <div style="padding:0 12px 10px;font-size:11.5px;color:var(--gold);text-align:left;line-height:1.6">
+              <div style="font-size:10.5px;color:var(--tl);opacity:.9;margin-bottom:8px;text-align:center">
+                Gmail, Outlook / Hotmail, Yahoo Mail, AOL Mail, Apple iCloud Mail,
+                Proton Mail, Tuta Mail, Mailfence, StartMail, Microsoft 365, Fastmail,
+                Zoho Mail — any working address works.
+              </div>
+              <div style="border-top:1px dashed rgba(255,215,0,0.2);padding-top:8px;margin-top:6px">
+                <b>🆕 New here? Create an account:</b>
+                <ol style="margin:4px 0 6px 18px;padding:0;font-size:11px;color:var(--tl);line-height:1.55">
+                  <li>Type your <b>email</b> and <b>any password</b> (min 6 characters — it does <b>not</b> have to be your real email password).</li>
+                  <li>Tap <b>Create Account</b>.</li>
+                  <li>Open your inbox and tap the <b>verification link</b> we send. <i>If you don't see it within a minute, check your Spam / Promotions / Junk folder.</i></li>
+                  <li>Come back here and tap <b>Sign In</b>.</li>
+                </ol>
+                <b>🔁 Already have an account?</b> Just enter your email + password and tap <b>Sign In</b>. After your first verification, future sign-ins <u>do not</u> require another confirmation email.
+              </div>
+            </div>
+          </details>
+          <input type="email" id="fbEmailIn" class="fb-email-input" placeholder="Email address" autocomplete="email">
+          <input type="password" id="fbPassIn" class="fb-email-input" placeholder="Password (min 6 chars)" autocomplete="current-password" style="margin-bottom:10px">
+          <div style="display:flex;gap:8px">
+            <button onclick="fbSignInEmail()" class="premium-btn">Sign In</button>
+            <button onclick="fbSignUpEmail()" class="premium-btn green">Create Account</button>
+          </div>
+          <button onclick="fbResetEmail()" style="width:100%;margin-top:8px;padding:6px;border-radius:8px;border:none;background:transparent;color:var(--td);font-size:11px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">Forgot password?</button>
+        </div>
+      </details>
+
+      <div id="fbErr" style="font-size:12px;color:var(--red);margin-top:6px;text-align:center"></div>
+    </div>
+    <div id="fbLoggedIn" style="display:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--bg),var(--a));display:flex;align-items:center;justify-content:center;font-size:16px">🙏</div>
+        <div>
+          <div style="font-size:13px;color:var(--tl);font-weight:500" id="fbUserEmail"></div>
+          <div style="font-size:11px;color:var(--green)">✓ Signed in · Sync active</div>
+        </div>
+      </div>
+      <div id="fbVerifyBanner" style="display:none;margin-bottom:12px;padding:10px 12px;border-radius:10px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);font-size:11.5px;color:var(--gold);line-height:1.5;text-align:center">
+        📧 Please verify your email — check your inbox (and Spam/Promotions folder).
+        <div id="fbVerifyBannerCountdown" style="margin-top:4px;font-size:10.5px;opacity:.85;font-weight:600"></div>
+        <button onclick="fbResendVerificationEmail()" style="display:block;margin:8px auto 0;padding:6px 14px;border-radius:8px;border:1px solid rgba(255,215,0,0.35);background:rgba(255,215,0,0.12);color:#ffd97a;font-size:11px;cursor:pointer;font-family:Inter,sans-serif">Resend verification email</button>
+      </div>
+      <div style="text-align:center;margin-bottom:12px">
+        <span class="sync-pill" id="syncPill"><span class="sync-dot"></span><span id="syncPillText">Ready</span></span>
+      </div>
+      <button id="fbChangePassBtn" onclick="fbChangePasswordFromSettings()" class="premium-btn" style="margin-bottom:10px">🔑 Change Password</button>
+      <button onclick="confirmSignOutWithBackupWarning()" class="premium-btn red">Sign Out</button>
+    </div>
+  </div>
 
   <!-- Tutorial video — a single developer-provided link (icon-only, no raw
        URL shown on screen); tapping opens it on YouTube. Shown on every
-       platform, right below the refresh button(s) above. -->
+       platform, right below Cloud Sync & Backup above. -->
   <div class="sc" style="background:rgba(8,12,35,0.82);border:1px solid rgba(255,80,80,0.25);padding:14px 15px;cursor:pointer;" onclick="openExternalLink('https://youtu.be/IsrueqcsHL4?si=Nqn9io_MJCsrNi4Z')">
     <div style="display:flex;align-items:center;gap:12px;">
       <span id="tutorialVideoIcon" style="width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;"></span>
@@ -1926,226 +2152,6 @@
         <button class="photo-reset-btn" onclick="resetPhoto('iskconGurudev')">↩ Default</button>
         <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('iskconGurudev', 0)">Blank</button>
       </div>
-    </div>
-  </div>
-
-  <!-- SINGLE SIGN-IN WITH GOOGLE -->
-  <div class="sc" id="fbCard">
-    <h3>☁️ Cloud Sync &amp; Backup</h3>
-    <button type="button" onclick="refreshAppFromBackupArea()" style="width:100%;margin-bottom:14px;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:12px;font-weight:700;cursor:pointer;">🔄 Refresh Now</button>
-    <div id="fbLoggedOut">
-      <p style="font-size:12px;color:var(--td);margin-bottom:14px">One sign-in handles real-time sync across all your devices.</p>
-      <button class="google-btn" onclick="fbSignInGoogle()">
-        <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-        Sign in with Google
-      </button>
-      <!-- Zoho sign-in — hidden for now per request. To re-enable, remove
-           the two wrapper lines around this button (or change display:none
-           to display:block). -->
-      <div id="zohoSignInWrap" style="display:none">
-      <button class="zoho-btn" onclick="fbSignInZoho()">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#F7A81B" stroke-width="2"/><text x="12" y="16" text-anchor="middle" fill="#F7A81B" font-size="12" font-weight="bold" font-family="sans-serif">Z</text></svg>
-        Sign in with Zoho
-      </button>
-      </div>
-
-      <!-- PHONE / OTP SIGN-IN — hidden for now per request. To re-enable,
-           remove the two wrapper lines around this block (or change
-           display:none to display:block). -->
-      <div id="phoneSignInWrap" style="display:none">
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08)">
-        <div style="font-size:11px;color:var(--td);text-align:center;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">or use Phone number</div>
-        <div style="font-size:11px;color:var(--gold);text-align:left;margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.18);line-height:1.55">
-          Enter your number with country code (e.g. <b>+919876543210</b>). OTP comes by SMS; on Android it may also appear above your keyboard—tap that code or check your Messages/SMS inbox.
-        </div>
-        <div style="display:flex;gap:6px;margin-bottom:8px">
-          <select id="fbPhoneCountry" class="fb-email-input" style="flex:0 0 80px;padding:10px 6px;margin-bottom:0">
-            <option value="+1">🇺🇸/🇨🇦 +1</option>
-            <option value="+44">🇬🇧 +44</option>
-            <option value="+91">🇮🇳 +91</option>
-            <option value="+61">🇦🇺 +61</option>
-            <option value="+971">🇦🇪 +971</option>
-            <option value="+880">🇧🇩 +880</option>
-            <option value="+977">🇳🇵 +977</option>
-            <option value="+92">🇵🇰 +92</option>
-            <option value="+65">🇸🇬 +65</option>
-            <option value="+60">🇲🇾 +60</option>
-            <option value="+94">🇱🇰 +94</option>
-            <option value="+27">🇿🇦 +27</option>
-            <option value="+254">🇰🇪 +254</option>
-            <option value="+234">🇳🇬 +234</option>
-            <option value="+20">🇪🇬 +20</option>
-            <option value="+33">🇫🇷 +33</option>
-            <option value="+49">🇩🇪 +49</option>
-            <option value="+39">🇮🇹 +39</option>
-            <option value="+34">🇪🇸 +34</option>
-            <option value="+7">🇷🇺/🇰🇿 +7</option>
-            <option value="+81">🇯🇵 +81</option>
-            <option value="+82">🇰🇷 +82</option>
-            <option value="+86">🇨🇳 +86</option>
-            <option value="+62">🇮🇩 +62</option>
-            <option value="+63">🇵🇭 +63</option>
-            <option value="+66">🇹🇭 +66</option>
-            <option value="+84">🇻🇳 +84</option>
-            <option value="+55">🇧🇷 +55</option>
-            <option value="+52">🇲🇽 +52</option>
-            <option value="+54">🇦🇷 +54</option>
-            <option value="+56">🇨🇱 +56</option>
-            <option value="+57">🇨🇴 +57</option>
-            <option value="+51">🇵🇪 +51</option>
-            <option value="+58">🇻🇪 +58</option>
-            <option value="+31">🇳🇱 +31</option>
-            <option value="+32">🇧🇪 +32</option>
-            <option value="+41">🇨🇭 +41</option>
-            <option value="+43">🇦🇹 +43</option>
-            <option value="+46">🇸🇪 +46</option>
-            <option value="+47">🇳🇴 +47</option>
-            <option value="+45">🇩🇰 +45</option>
-            <option value="+358">🇫🇮 +358</option>
-            <option value="+48">🇵🇱 +48</option>
-            <option value="+420">🇨🇿 +420</option>
-            <option value="+36">🇭🇺 +36</option>
-            <option value="+40">🇷🇴 +40</option>
-            <option value="+30">🇬🇷 +30</option>
-            <option value="+351">🇵🇹 +351</option>
-            <option value="+353">🇮🇪 +353</option>
-            <option value="+64">🇳🇿 +64</option>
-            <option value="+966">🇸🇦 +966</option>
-            <option value="+974">🇶🇦 +974</option>
-            <option value="+965">🇰🇼 +965</option>
-            <option value="+968">🇴🇲 +968</option>
-            <option value="+973">🇧🇭 +973</option>
-            <option value="+962">🇯🇴 +962</option>
-            <option value="+961">🇱🇧 +961</option>
-            <option value="+98">🇮🇷 +98</option>
-            <option value="+90">🇹🇷 +90</option>
-            <option value="+972">🇮🇱 +972</option>
-            <option value="+212">🇲🇦 +212</option>
-            <option value="+213">🇩🇿 +213</option>
-            <option value="+216">🇹🇳 +216</option>
-            <option value="+233">🇬🇭 +233</option>
-            <option value="+255">🇹🇿 +255</option>
-            <option value="+256">🇺🇬 +256</option>
-            <option value="+260">🇿🇲 +260</option>
-            <option value="+263">🇿🇼 +263</option>
-            <option value="+225">🇨🇮 +225</option>
-            <option value="+221">🇸🇳 +221</option>
-            <option value="+237">🇨🇲 +237</option>
-            <option value="+244">🇦🇴 +244</option>
-            <option value="+258">🇲🇿 +258</option>
-            <option value="+261">🇲🇬 +261</option>
-            <option value="+230">🇲🇺 +230</option>
-            <option value="+248">🇸🇨 +248</option>
-            <option value="+852">🇭🇰 +852</option>
-            <option value="+886">🇹🇼 +886</option>
-            <option value="+853">🇲🇴 +853</option>
-            <option value="+976">🇲🇳 +976</option>
-            <option value="+995">🇬🇪 +995</option>
-            <option value="+374">🇦🇲 +374</option>
-            <option value="+357">🇨🇾 +357</option>
-            <option value="+356">🇲🇹 +356</option>
-            <option value="+354">🇮🇸 +354</option>
-          </select>
-          <input type="tel" id="fbPhoneIn" class="fb-email-input" placeholder="" autocomplete="tel" style="flex:1;margin-bottom:0">
-        </div>
-        <div id="fbPhoneSendRow" style="display:flex;gap:8px">
-          <button id="fbPhoneSendBtn" onclick="fbSendPhoneOtp()" class="premium-btn">Send OTP</button>
-        </div>
-        <div style="text-align:center;margin-top:6px">
-          <button onclick="fbTogglePhonePasswordMode(true)" style="padding:4px;border:none;background:transparent;color:var(--a2);font-size:11px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">Have a password? Sign in with it instead</button>
-        </div>
-        <div id="fbPhonePassRow" style="display:none;margin-top:8px">
-          <input type="password" id="fbPhonePassIn" class="fb-email-input" placeholder="Password" autocomplete="current-password">
-          <div style="display:flex;gap:8px">
-            <button id="fbPhonePassSendBtn" onclick="fbSignInPhonePassword()" class="premium-btn">Sign in with Password</button>
-            <button onclick="fbTogglePhonePasswordMode(false)" style="padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:var(--td);font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif">Use OTP</button>
-          </div>
-          <button onclick="fbPhoneForgotPassword()" style="width:100%;margin-top:6px;padding:6px;border-radius:8px;border:none;background:transparent;color:var(--td);font-size:11px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">Forgot password? Verify via OTP</button>
-        </div>
-        <div id="fbPhoneErr" style="font-size:11.5px;color:var(--red);margin-top:6px;text-align:center;word-break:break-word"></div>
-        <div id="fbOtpRow" style="display:none;margin-top:10px">
-          <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="fbOtpIn" class="fb-email-input" placeholder="Enter 6-digit OTP" autocomplete="one-time-code">
-          <div style="display:flex;gap:8px">
-            <button onclick="fbVerifyPhoneOtp()" class="premium-btn green">Verify & Sign In</button>
-            <button onclick="fbResetPhoneOtp()" style="padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:var(--td);font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif">Cancel</button>
-          </div>
-          <button onclick="fbSendPhoneOtp(true)" style="width:100%;margin-top:6px;padding:6px;border-radius:8px;border:none;background:transparent;color:var(--td);font-size:11px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">Resend OTP</button>
-        </div>
-        <div style="font-size:9.5px;color:var(--td);opacity:.65;text-align:center;margin-top:6px;line-height:1.4">This site is protected by reCAPTCHA and the Google <a href="https://policies.google.com/privacy" target="_blank" style="color:inherit;text-decoration:underline">Privacy Policy</a> and <a href="https://policies.google.com/terms" target="_blank" style="color:inherit;text-decoration:underline">Terms of Service</a> apply.</div>
-        <!-- Firebase phone verification runs invisibly; keep the badge from covering bottom navigation. -->
-        <style>#fbRecaptchaContainer{position:absolute!important;left:-9999px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important}.grecaptcha-badge{visibility:hidden!important;pointer-events:none!important}
-</style>
-        <div id="fbRecaptchaContainer" aria-hidden="true"></div>
-      </div>
-      </div>
-
-
-
-      <!-- EMAIL / PASSWORD SIGN-IN -->
-      <style>
-        .fb-email-input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:#1a1f3a !important;color:#fff !important;font-size:13px;font-family:Inter,sans-serif;margin-bottom:8px;box-sizing:border-box;color-scheme:dark;-webkit-text-fill-color:#fff;outline:none;height:auto;backdrop-filter:none}
-        .fb-email-input::placeholder{color:rgba(255,255,255,0.45)}
-        .fb-email-input:focus{border-color:rgba(74,144,226,0.6)}
-        .fb-email-input:-webkit-autofill,.fb-email-input:-webkit-autofill:hover,.fb-email-input:-webkit-autofill:focus{-webkit-text-fill-color:#fff !important;-webkit-box-shadow:0 0 0 1000px #1a1f3a inset !important;box-shadow:0 0 0 1000px #1a1f3a inset !important;caret-color:#fff;transition:background-color 9999s ease-in-out 0s}
-      </style>
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08);background:transparent;height:auto">
-        <div style="font-size:11px;color:var(--td);text-align:center;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">or use Email</div>
-        <style>
-          .fb-email-tips{margin-bottom:10px;border-radius:10px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.18);overflow:hidden}
-          .fb-email-tips summary{cursor:pointer;list-style:none;padding:9px 12px;font-size:11.5px;font-weight:600;color:#ffd97a;text-align:center}
-          .fb-email-tips summary::-webkit-details-marker{display:none}
-          .fb-email-tips summary::after{content:"▾";float:right;opacity:.7}
-          .fb-email-tips[open] summary::after{content:"▴"}
-        </style>
-        <details class="fb-email-tips">
-          <summary>💡 Tips: using any email provider</summary>
-          <div style="padding:0 12px 10px;font-size:11.5px;color:var(--gold);text-align:left;line-height:1.6">
-            <div style="font-size:10.5px;color:var(--tl);opacity:.9;margin-bottom:8px;text-align:center">
-              Gmail, Outlook / Hotmail, Yahoo Mail, AOL Mail, Apple iCloud Mail,
-              Proton Mail, Tuta Mail, Mailfence, StartMail, Microsoft 365, Fastmail,
-              Zoho Mail — any working address works.
-            </div>
-            <div style="border-top:1px dashed rgba(255,215,0,0.2);padding-top:8px;margin-top:6px">
-              <b>🆕 New here? Create an account:</b>
-              <ol style="margin:4px 0 6px 18px;padding:0;font-size:11px;color:var(--tl);line-height:1.55">
-                <li>Type your <b>email</b> and <b>any password</b> (min 6 characters — it does <b>not</b> have to be your real email password).</li>
-                <li>Tap <b>Create Account</b>.</li>
-                <li>Open your inbox and tap the <b>verification link</b> we send. <i>If you don't see it within a minute, check your Spam / Promotions / Junk folder.</i></li>
-                <li>Come back here and tap <b>Sign In</b>.</li>
-              </ol>
-              <b>🔁 Already have an account?</b> Just enter your email + password and tap <b>Sign In</b>. After your first verification, future sign-ins <u>do not</u> require another confirmation email.
-            </div>
-          </div>
-        </details>
-        <input type="email" id="fbEmailIn" class="fb-email-input" placeholder="Email address" autocomplete="email">
-        <input type="password" id="fbPassIn" class="fb-email-input" placeholder="Password (min 6 chars)" autocomplete="current-password" style="margin-bottom:10px">
-        <div style="display:flex;gap:8px">
-          <button onclick="fbSignInEmail()" class="premium-btn">Sign In</button>
-          <button onclick="fbSignUpEmail()" class="premium-btn green">Create Account</button>
-        </div>
-        <button onclick="fbResetEmail()" style="width:100%;margin-top:8px;padding:6px;border-radius:8px;border:none;background:transparent;color:var(--td);font-size:11px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">Forgot password?</button>
-      </div>
-
-      <div id="fbErr" style="font-size:12px;color:var(--red);margin-top:6px;text-align:center"></div>
-    </div>
-    <div id="fbLoggedIn" style="display:none">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-        <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--bg),var(--a));display:flex;align-items:center;justify-content:center;font-size:16px">🙏</div>
-        <div>
-          <div style="font-size:13px;color:var(--tl);font-weight:500" id="fbUserEmail"></div>
-          <div style="font-size:11px;color:var(--green)">✓ Signed in · Sync active</div>
-        </div>
-      </div>
-      <div id="fbVerifyBanner" style="display:none;margin-bottom:12px;padding:10px 12px;border-radius:10px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);font-size:11.5px;color:var(--gold);line-height:1.5;text-align:center">
-        📧 Please verify your email — check your inbox (and Spam/Promotions folder).
-        <div id="fbVerifyBannerCountdown" style="margin-top:4px;font-size:10.5px;opacity:.85;font-weight:600"></div>
-        <button onclick="fbResendVerificationEmail()" style="display:block;margin:8px auto 0;padding:6px 14px;border-radius:8px;border:1px solid rgba(255,215,0,0.35);background:rgba(255,215,0,0.12);color:#ffd97a;font-size:11px;cursor:pointer;font-family:Inter,sans-serif">Resend verification email</button>
-      </div>
-      <div style="text-align:center;margin-bottom:12px">
-        <span class="sync-pill" id="syncPill"><span class="sync-dot"></span><span id="syncPillText">Ready</span></span>
-      </div>
-      <button id="fbChangePassBtn" onclick="fbChangePasswordFromSettings()" class="premium-btn" style="margin-bottom:10px">🔑 Change Password</button>
-      <button onclick="confirmSignOutWithBackupWarning()" class="premium-btn red">Sign Out</button>
     </div>
   </div>
 

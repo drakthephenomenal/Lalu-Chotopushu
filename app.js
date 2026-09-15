@@ -3326,35 +3326,33 @@ function shareApp() {
   _lcShareText(shareText);
 }
 
-// ── Manual APK link (developer-provided, stored in Firestore under
-// config/manualApkLink so a new link reaches every user immediately with
-// no code deploy needed). Regular users get a plain tap-to-download row;
-// isDeveloper() sees an editable input + Save button instead. ──
-let _manualApkLinkCache = null; // last-known link string, or null if none set yet
+// ── Manual APK link. Embedded directly in the app (not sign-in dependent) so
+// every user — signed in or not — sees a working download link immediately.
+// A signed-in developer can still push an override via Firestore
+// (config/manualApkLink), which replaces the embedded default for everyone
+// once it loads, but the embedded link is always the instant fallback. ──
+const EMBEDDED_MANUAL_APK_LINK =
+  "https://drive.google.com/file/d/1jWe6oKxiZ2OFYs72moF2aN6QLAUHEdYc/view?usp=drivesdk";
+let _manualApkLinkCache = EMBEDDED_MANUAL_APK_LINK; // last-known link string — always has a value now
 
 async function _loadManualApkLink() {
-  // No signed-in user yet — Firestore rules require auth, so fall back to
-  // whatever we last cached locally (works offline / before sign-in resolves).
-  if (!fbUser || !fbDb) {
-    try {
-      _manualApkLinkCache = localStorage.getItem("manualApkLinkCache") || null;
-    } catch (_e) {}
-    _renderManualApkCard();
-    return;
-  }
+  // Render immediately with the embedded default — no waiting on auth/network.
+  _renderManualApkCard();
+
+  // No signed-in user yet — Firestore rules require auth, so there's no
+  // override to check for; the embedded default above already covers this.
+  if (!fbUser || !fbDb) return;
+
   try {
     const snap = await fbDb.collection("config").doc("manualApkLink").get();
-    _manualApkLinkCache = (snap.exists && snap.data().url) || null;
-    try {
-      if (_manualApkLinkCache) localStorage.setItem("manualApkLinkCache", _manualApkLinkCache);
-    } catch (_e) {}
+    const override = snap.exists && snap.data().url;
+    if (override) {
+      _manualApkLinkCache = override;
+      _renderManualApkCard();
+    }
   } catch (e) {
-    console.warn("Could not load manual APK link (using local cache):", e);
-    try {
-      _manualApkLinkCache = _manualApkLinkCache || localStorage.getItem("manualApkLinkCache") || null;
-    } catch (_e) {}
+    console.warn("Could not load manual APK link override (using embedded default):", e);
   }
-  _renderManualApkCard();
 }
 
 function _renderManualApkCard() {
@@ -3373,15 +3371,9 @@ function _renderManualApkCard() {
     if (rowEl) rowEl.onclick = null; // whole-row tap disabled for the developer; Save drives this now
   } else {
     if (editWrap) editWrap.style.display = "none";
-    if (_manualApkLinkCache) {
-      titleEl.textContent = "Download APK file";
-      statusEl.textContent = "Tap to download the APK from a developer-shared link";
-      if (rowEl) rowEl.onclick = () => openExternalLink(_manualApkLinkCache);
-    } else {
-      titleEl.textContent = "Download APK file";
-      statusEl.textContent = "Developer hasn't shared a link yet";
-      if (rowEl) rowEl.onclick = () => toast("Developer hasn't shared a link yet 🙏");
-    }
+    titleEl.textContent = "Download APK file";
+    statusEl.textContent = "Tap to download the APK";
+    if (rowEl) rowEl.onclick = () => openExternalLink(_manualApkLinkCache);
   }
 }
 
@@ -3431,9 +3423,6 @@ async function saveManualApkLink() {
       { merge: true }
     );
     _manualApkLinkCache = url;
-    try {
-      localStorage.setItem("manualApkLinkCache", url);
-    } catch (_e) {}
     toast("✅ Saved! All users will now see this link.");
     _renderManualApkCard();
   } catch (e) {
@@ -23558,6 +23547,8 @@ async function checkForUpdateAvailable() {
   if (!isNative) {
     const webRefreshBtn = document.getElementById("appUpdateWebRefreshBtn");
     if (webRefreshBtn) webRefreshBtn.style.display = "block";
+    // Cloud Sync & Backup's own "Refresh Now" button is Capacitor-apk-only —
+    // stays hidden (its HTML default) on PWA/TWA.
     const metaTag = document.querySelector('meta[name="app-version"]');
     const localPseudoVersion = metaTag ? metaTag.content : null;
     if (versionEl && localPseudoVersion) versionEl.textContent = "Loaded version: " + localPseudoVersion + " (web)";
@@ -23590,8 +23581,11 @@ async function checkForUpdateAvailable() {
   const Http = Cap.Plugins && Cap.Plugins.CapacitorHttp; // bundled in @capacitor/core — no extra install needed
   if (!AppInfoPlugin) return;
 
-  const nativeRefreshBtn = document.getElementById("appUpdateNativeRefreshBtn");
-  if (nativeRefreshBtn) nativeRefreshBtn.style.display = "block";
+  // The standalone "Refresh Now" button under the Update App card was
+  // removed for Capacitor per request — the only remaining native refresh
+  // button now lives in the Cloud Sync & Backup card, shown here.
+  const fbCardRefreshBtn = document.getElementById("fbCardRefreshBtn");
+  if (fbCardRefreshBtn) fbCardRefreshBtn.style.display = "block";
 
   // Show the installed version immediately — this line is always visible
   // regardless of whether the network check below succeeds, so it still
@@ -23737,10 +23731,9 @@ function confirmNativeCacheRefresh() {
   }
 }
 
-// Single "Refresh Now" entry point placed in Cloud Sync & Backup (in
-// addition to the one at the top of Settings) — routes to whichever
-// refresh flow is correct for this platform, same as the dedicated
-// buttons in the Update App card above.
+// Single "Refresh Now" entry point placed in Cloud Sync & Backup — only
+// shown (via fbCardRefreshBtn) on Capacitor apk, so this always resolves
+// to the native cache-refresh flow in practice.
 function refreshAppFromBackupArea() {
   const Cap = window.Capacitor;
   const isNative = Cap && Cap.isNativePlatform && Cap.isNativePlatform();

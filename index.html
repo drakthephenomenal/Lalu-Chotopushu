@@ -327,7 +327,9 @@
        redirect or a blocking modal: it sits quietly above the tap zone,
        doesn't interrupt counting, and is dismissible either way. -->
   <div id="firstTapTutorialHint" style="display:none;margin:0 14px 10px;padding:9px 12px;border-radius:10px;background:rgba(255,80,80,0.1);border:1px solid rgba(255,80,80,0.3);align-items:center;gap:10px;cursor:pointer;" onclick="_firstTapHintWatch()">
-    <span id="firstTapHintIcon" style="width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;">🎥</span>
+    <span id="firstTapHintIcon" style="width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+      <img src="https://cdn.simpleicons.org/youtube" alt="" width="20" height="20" data-fallback="▶️" onerror="favvidIconFallback(this)" style="display:block;border-radius:4px;flex-shrink:0">
+    </span>
     <div style="flex:1;font-size:11.5px;color:#ff9d9d;line-height:1.35;">New here? Tap to watch a quick App Tutorial 🙏</div>
     <span onclick="event.stopPropagation();_firstTapHintDismiss()" style="font-size:17px;color:rgba(255,255,255,0.45);padding:2px 6px;line-height:1;">✕</span>
   </div>

@@ -684,7 +684,6 @@ const App = {
     syncBaseline28: {},
     syncBaselineTimer: {},
     syncBaselineTimer28: {},
-    syncBaselineDt: {},
     migrationV2Done: false,
     japMode: "radha",
     historyRV: {},
@@ -929,12 +928,6 @@ const App = {
       syncBaseline28: this.S.syncBaseline28,
       syncBaselineTimer: this.S.syncBaselineTimer,
       syncBaselineTimer28: this.S.syncBaselineTimer28,
-      // Lifetime jap-seconds baseline (per-tradition), used by the
-      // additive multi-device merge in fbMigrate. Must be persisted like
-      // the other syncBaseline* fields — without this, an app restart
-      // (the exact case the merge exists for) would lose it and the next
-      // hydration's dt merge would fall back to raw max() instead.
-      syncBaselineDt: this.S.syncBaselineDt || {},
       migrationV2Done: this.S.migrationV2Done,
       japMode: this.S.japMode,
       historyRV: this.S.historyRV,
@@ -2212,7 +2205,6 @@ const App = {
   ht(e) {
     if (isGhostMode()) return; // ghost mode: read-only, no jap
     if (window.japPhotoEditMode) return; // photo edit mode: dragging/resizing photos, not counting
-    if (typeof _maybeShowFirstTapTutorialHint === "function") _maybeShowFirstTapTutorialHint();
     // Mark main Jap as the actively-tapped mode (see _activeJapMode below).
     this._activeJapMode = "main";
     // Suppress synthesized mousedown that follows a touchstart on the same tap
@@ -3326,96 +3318,63 @@ function shareApp() {
   _lcShareText(shareText);
 }
 
-// ── Manual APK link. Embedded directly in the app (not sign-in dependent) so
-// every user — signed in or not — sees a working download link immediately.
-// A signed-in developer can still push an override via Firestore
-// (config/manualApkLink), which replaces the embedded default for everyone
-// once it loads, but the embedded link is always the instant fallback. ──
-const EMBEDDED_MANUAL_APK_LINK =
-  "https://drive.google.com/file/d/1rQWjpqcX5vQ1Kk_OBOd6vjEKwHi_1_bO/view?usp=drivesdk";
-let _manualApkLinkCache = EMBEDDED_MANUAL_APK_LINK; // last-known link string — always has a value now
+// ── Manual APK link (developer-provided, stored in Firestore under
+// config/manualApkLink so a new link reaches every user immediately with
+// no code deploy needed). Regular users get a plain tap-to-download row;
+// isDeveloper() sees an editable input + Save button instead. ──
+let _manualApkLinkCache = null; // last-known link string, or null if none set yet
 
 async function _loadManualApkLink() {
-  // Render immediately with the embedded default — no waiting on auth/network.
-  _renderManualApkCard();
-
-  // No signed-in user yet — Firestore rules require auth, so there's no
-  // override to check for; the embedded default above already covers this.
-  if (!fbUser || !fbDb) return;
-
+  // No signed-in user yet — Firestore rules require auth, so fall back to
+  // whatever we last cached locally (works offline / before sign-in resolves).
+  if (!fbUser || !fbDb) {
+    try {
+      _manualApkLinkCache = localStorage.getItem("manualApkLinkCache") || null;
+    } catch (_e) {}
+    _renderManualApkCard();
+    return;
+  }
   try {
     const snap = await fbDb.collection("config").doc("manualApkLink").get();
-    const override = snap.exists && snap.data().url;
-    if (override) {
-      _manualApkLinkCache = override;
-      _renderManualApkCard();
-    }
+    _manualApkLinkCache = (snap.exists && snap.data().url) || null;
+    try {
+      if (_manualApkLinkCache) localStorage.setItem("manualApkLinkCache", _manualApkLinkCache);
+    } catch (_e) {}
   } catch (e) {
-    console.warn("Could not load manual APK link override (using embedded default):", e);
+    console.warn("Could not load manual APK link (using local cache):", e);
+    try {
+      _manualApkLinkCache = _manualApkLinkCache || localStorage.getItem("manualApkLinkCache") || null;
+    } catch (_e) {}
   }
+  _renderManualApkCard();
 }
 
-// Same collapsed tap-to-download row for everyone, developer included — the
-// only difference for a developer is the ✏️ edit icon, which toggles the
-// (collapsed-by-default) edit panel below without triggering the row's
-// download tap. See toggleManualApkEdit() just below.
 function _renderManualApkCard() {
   const titleEl = document.getElementById("manualApkTitle");
   const statusEl = document.getElementById("manualApkStatus");
   const rowEl = document.getElementById("manualApkRow");
-  const editIcon = document.getElementById("manualApkEditIcon");
+  const editWrap = document.getElementById("manualApkEditWrap");
   if (!titleEl || !statusEl) return;
 
-  titleEl.textContent = "Download APK file";
-  statusEl.textContent = "Tap to download the APK";
-  if (rowEl) rowEl.onclick = () => openExternalLink(_manualApkLinkCache);
-  if (editIcon) editIcon.style.display = isDeveloper() ? "flex" : "none";
-}
-
-// Developer-only: toggles the edit panel open/closed, pre-filling it with
-// the current link each time it opens.
-function toggleManualApkEdit() {
-  if (!isDeveloper()) return;
-  const editWrap = document.getElementById("manualApkEditWrap");
-  if (!editWrap) return;
-  const opening = editWrap.style.display === "none";
-  editWrap.style.display = opening ? "block" : "none";
-  if (opening) {
+  if (isDeveloper()) {
+    titleEl.textContent = "🛠️ Manual APK Link (Developer)";
+    statusEl.textContent = "Paste a Google Drive link below and tap Save — every user sees it instantly.";
+    if (editWrap) editWrap.style.display = "block";
     const input = document.getElementById("manualApkInput");
-    if (input) input.value = _manualApkLinkCache || "";
+    if (input && !input.value) input.value = _manualApkLinkCache || "";
+    if (rowEl) rowEl.onclick = null; // whole-row tap disabled for the developer; Save drives this now
+  } else {
+    if (editWrap) editWrap.style.display = "none";
+    if (_manualApkLinkCache) {
+      titleEl.textContent = "Download APK file";
+      statusEl.textContent = "Tap to download the APK from a developer-shared link";
+      if (rowEl) rowEl.onclick = () => openExternalLink(_manualApkLinkCache);
+    } else {
+      titleEl.textContent = "Download APK file";
+      statusEl.textContent = "Developer hasn't shared a link yet";
+      if (rowEl) rowEl.onclick = () => toast("Developer hasn't shared a link yet 🙏");
+    }
   }
-}
-
-// First-tap tutorial hint — see the banner markup in index.html, and the
-// call site in App.ht() below, for context. Uses localStorage (not
-// Firestore) since this is purely a per-device "have they seen this"
-// flag, not app data that needs to sync across devices.
-function _maybeShowFirstTapTutorialHint() {
-  try {
-    if (localStorage.getItem("tutorialHintSeen")) return;
-  } catch (_e) {
-    return; // storage unavailable — safer to skip than to nag every tap
-  }
-  const banner = document.getElementById("firstTapTutorialHint");
-  if (!banner) return;
-  banner.style.display = "flex";
-  const iconEl = document.getElementById("firstTapHintIcon");
-  if (iconEl && !iconEl.innerHTML && typeof favvidPlatformIconHtml === "function") {
-    iconEl.innerHTML = favvidPlatformIconHtml("youtube");
-  }
-}
-
-function _firstTapHintDismiss() {
-  try {
-    localStorage.setItem("tutorialHintSeen", "1");
-  } catch (_e) {}
-  const banner = document.getElementById("firstTapTutorialHint");
-  if (banner) banner.style.display = "none";
-}
-
-function _firstTapHintWatch() {
-  _firstTapHintDismiss();
-  openExternalLink("https://youtu.be/IsrueqcsHL4?si=Nqn9io_MJCsrNi4Z");
 }
 
 async function saveManualApkLink() {
@@ -3432,97 +3391,15 @@ async function saveManualApkLink() {
       { merge: true }
     );
     _manualApkLinkCache = url;
+    try {
+      localStorage.setItem("manualApkLinkCache", url);
+    } catch (_e) {}
     toast("✅ Saved! All users will now see this link.");
-    const editWrap = document.getElementById("manualApkEditWrap");
-    if (editWrap) editWrap.style.display = "none";
     _renderManualApkCard();
   } catch (e) {
     console.error("Failed to save manual APK link:", e);
     toast("Could not save — check connection.");
   }
-}
-
-// ── Crore Milestone video links (developer-provided, stored in Firestore
-// under config/croreMilestoneLinks so a new/edited link reaches every user
-// immediately with no code deploy needed — same pattern as the manual APK
-// link above). Regular users see a small platform icon next to each crore
-// title that plays the video when tapped; isDeveloper() additionally sees
-// a pencil icon to add/change/remove it. ──
-let _croreLinksCache = {}; // { "1": url, "2": url, ... 13 } — crore number -> link
-
-async function _loadCroreMilestoneLinks() {
-  if (!fbUser || !fbDb) {
-    try {
-      const raw = localStorage.getItem("croreLinksCache");
-      _croreLinksCache = raw ? JSON.parse(raw) : _croreLinksCache || {};
-    } catch (_e) {}
-    if (typeof renderMilestonesTab === "function") renderMilestonesTab();
-    return;
-  }
-  try {
-    const snap = await fbDb.collection("config").doc("croreMilestoneLinks").get();
-    _croreLinksCache = (snap.exists && snap.data().links) || {};
-    try {
-      localStorage.setItem("croreLinksCache", JSON.stringify(_croreLinksCache));
-    } catch (_e) {}
-  } catch (e) {
-    console.warn("Could not load crore milestone links (using local cache):", e);
-    try {
-      _croreLinksCache =
-        (_croreLinksCache && Object.keys(_croreLinksCache).length && _croreLinksCache) ||
-        JSON.parse(localStorage.getItem("croreLinksCache") || "{}");
-    } catch (_e) {}
-  }
-  if (typeof renderMilestonesTab === "function") renderMilestonesTab();
-}
-
-async function saveCroreMilestoneLink(crNum) {
-  if (!isDeveloper()) return;
-  const current = _croreLinksCache[crNum] || "";
-  const input = prompt("Paste YouTube or Instagram link for " + crNum + " Crore (leave blank to remove):", current);
-  if (input === null) return; // cancelled
-  const url = input.trim();
-  try {
-    const updated = Object.assign({}, _croreLinksCache);
-    if (url) updated[crNum] = url;
-    else delete updated[crNum];
-    await fbDb.collection("config").doc("croreMilestoneLinks").set(
-      { links: updated, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: fbUser.email },
-      { merge: true }
-    );
-    _croreLinksCache = updated;
-    try {
-      localStorage.setItem("croreLinksCache", JSON.stringify(_croreLinksCache));
-    } catch (_e) {}
-    toast(url ? "🔗 " + crNum + " Crore link saved" : "🗑️ " + crNum + " Crore link removed");
-    if (typeof renderMilestonesTab === "function") renderMilestonesTab();
-  } catch (e) {
-    console.error("Failed to save crore milestone link:", e);
-    toast("Could not save — check connection.");
-  }
-}
-
-// Tapping the platform icon plays the video inline where the platform
-// supports it (YouTube/Telegram embed, Instagram official widget) — same
-// player overlay the Favourite Videos folder uses — and otherwise opens
-// the link externally (Drive/Facebook/anything else with no reliable
-// inline embed).
-function playCroreMilestoneVideo(crNum) {
-  const url = _croreLinksCache[crNum];
-  if (!url) return;
-  const title = crNum + " Crore";
-  const platform = typeof favvidDetectPlatform === "function" ? favvidDetectPlatform(url) : "other";
-  if (platform === "youtube") {
-    const id = typeof favvidYoutubeId === "function" ? favvidYoutubeId(url) : null;
-    if (id) return openFavVideoPlayer(title, "youtube", id, url);
-  } else if (platform === "telegram") {
-    const embed = typeof favvidTelegramEmbed === "function" ? favvidTelegramEmbed(url) : null;
-    if (embed) return openFavVideoPlayer(title, "telegram", embed, url);
-  } else if (platform === "instagram") {
-    return openFavVideoPlayer(title, "instagram", url, url);
-  }
-  // Drive / Facebook / anything else without a reliable inline embed.
-  openExternalLink(url);
 }
 
 // ── Share App (APK direct download) ──
@@ -4184,13 +4061,6 @@ function fmtIN(n) {
 }
 
 // setSyncPill
-// ── Stuck-sync watchdog (fix #4) ───────────────────────────────────
-// If the pill has been showing "syncing" for 60s straight, the user is
-// currently just stuck staring at a spinner with no way out. Give them
-// a manual "Tap to retry" button instead. This doesn't fix WHY a push
-// might hang — it just stops the user from being stranded by it.
-let _syncStuckTimer = null;
-
 function setSyncPill(state, text) {
   const p = document.getElementById("syncPill");
   const tx = document.getElementById("syncPillText");
@@ -4199,53 +4069,6 @@ function setSyncPill(state, text) {
     "sync-pill" +
     (state === "syncing" ? " syncing" : state === "error" ? " error" : "");
   tx.textContent = text;
-
-  if (state === "syncing") {
-    if (!_syncStuckTimer) {
-      _syncStuckTimer = setTimeout(() => {
-        _syncStuckTimer = null;
-        _fbSyncLog("Sync stuck 60s+ — showing manual retry button");
-        _showSyncRetryButton(p);
-      }, 60000);
-    }
-  } else {
-    if (_syncStuckTimer) { clearTimeout(_syncStuckTimer); _syncStuckTimer = null; }
-    _hideSyncRetryButton();
-  }
-}
-
-function _showSyncRetryButton(pillEl) {
-  if (!pillEl || document.getElementById("syncRetryBtn")) return; // already shown
-  const btn = document.createElement("button");
-  btn.id = "syncRetryBtn";
-  btn.type = "button";
-  btn.textContent = "Tap to retry";
-  btn.style.cssText =
-    "margin-left:8px;padding:2px 10px;font-size:12px;border-radius:12px;" +
-    "border:1px solid currentColor;background:transparent;cursor:pointer;";
-  btn.onclick = () => {
-    if (btn.disabled) return;
-    // Disable briefly so a double-tap can't fire two pushes at once —
-    // the underlying hung attempt (if any) is still out there; JS can't
-    // cancel it, this just avoids stacking a second one on top of a
-    // third, fourth, etc. from repeated taps.
-    btn.disabled = true;
-    btn.textContent = "Retrying…";
-    _fbSyncLog("Manual retry tapped");
-    (typeof fbPushDelta === "function" ? fbPushDelta() : Promise.resolve())
-      .catch((e) => console.warn("Manual retry failed:", e && e.message))
-      .finally(() => {
-        setTimeout(() => {
-          if (btn.isConnected) { btn.disabled = false; btn.textContent = "Tap to retry"; }
-        }, 2000);
-      });
-  };
-  pillEl.parentNode && pillEl.parentNode.insertBefore(btn, pillEl.nextSibling);
-}
-
-function _hideSyncRetryButton() {
-  const btn = document.getElementById("syncRetryBtn");
-  if (btn) btn.remove();
 }
 
 // ── View Switcher ──
@@ -8495,11 +8318,6 @@ function importAllData(input) {
       App.S.syncBaselineTimer28 = JSON.parse(
         JSON.stringify(App.S.timer28History),
       );
-      // Full restore replaces every tradition's history, not just Radha +
-      // 28-Names — refresh ALL of syncBaseline* to match (previously the
-      // other traditions' baselines were left stale here, same gap as in
-      // fbApplyRemote/fbPushFull — see _fbRefreshSyncBaselines).
-      _fbRefreshSyncBaselines();
       App.save();
       switchJapMode(App.S.japMode || "radha");
       renderSt();
@@ -8781,7 +8599,7 @@ function renderMilestonesTab() {
   // for an active wish (sankalp) — see _msAvailable28.
   const consider = getMsConsider();
   const total = _msComputeTotal().total;
-  const lang = window._msLang || "bn";
+  const lang = window._msLang || "hi";
 
   // Calculate 7-day average (same type filter as the total, for a
   // consistent prediction pace)
@@ -8860,99 +8678,6 @@ function renderMilestonesTab() {
 
   let out = "";
   out += _msConsiderChipsHtml();
-
-  // ─── SPIRITUAL CRORE MILESTONES ───
-  PHASES.forEach((phase) => {
-    out += '<div class="ms-phase-title">' + phase.name + "</div>";
-    out += '<div class="ms-phase-sub">' + phase.sub + "</div>";
-    SPIRITUAL_MILESTONES.filter((sm) => {
-      const crNum = sm.count / CRORE;
-      return crNum >= phase.range[0] && crNum <= phase.range[1];
-    }).forEach((sm) => {
-      const pct = Math.min(100, (total / sm.count) * 100);
-      const achieved = total >= sm.count;
-      const remaining = Math.max(0, sm.count - total);
-      const pred = !achieved ? predictDate(remaining) : null;
-      const crNum = sm.count / CRORE;
-      const isBig = crNum >= 10;
-      const descHi = CRORE_DESCS_HI[crNum] || sm.desc;
-      const descBn = CRORE_DESCS_BN[crNum] || "";
-      const desc = lang === "bn" && descBn ? descBn : descHi;
-      out +=
-        '<div class="ms-card tier-saffron' +
-        (achieved ? " achieved" : " locked") +
-        (isBig ? " million" : "") +
-        (sm.special ? " ms-special-glow" : "") +
-        "\" onclick=\"openMsDetail('crore'," +
-        sm.count +
-        "," +
-        pct.toFixed(1) +
-        "," +
-        achieved +
-        ')">';
-      if (sm.special) {
-        out += '<div class="ms-special-badge">✨</div>';
-      }
-      out += '<div class="ms-card-header">';
-      out += '<span class="ms-icon">' + sm.icon + "</span>";
-      out += '<div><div class="ms-label">' + crNum + " Crore</div>";
-      out += '<div class="ms-eng">' + sm.eng + "</div></div>";
-      out += '<span class="ms-link-icons">';
-      const crLink = _croreLinksCache[crNum] || "";
-      if (crLink) {
-        const crPlatform = typeof favvidDetectPlatform === "function" ? favvidDetectPlatform(crLink) : "other";
-        out +=
-          '<span class="ms-link-btn play" title="Play video" onclick="event.stopPropagation();playCroreMilestoneVideo(' +
-          crNum +
-          ')">' +
-          favvidPlatformIconHtml(crPlatform) +
-          "</span>";
-      }
-      if (typeof isDeveloper === "function" && isDeveloper()) {
-        out +=
-          '<span class="ms-link-btn edit" title="Edit link" onclick="event.stopPropagation();saveCroreMilestoneLink(' +
-          crNum +
-          ')">✏️</span>';
-      }
-      out += "</span>";
-      out += '<span class="ms-count-label">' + sm.tag + "</span>";
-      out += "</div>";
-      const descId = "msDesc" + sm.count;
-      out +=
-        '<div class="ms-desc' +
-        (lang === "bn" ? " bangla" : "") +
-        '" id="' +
-        descId +
-        '">' +
-        desc +
-        "</div>";
-      if (achieved) {
-        out += '<div class="ms-badge achieved">✓ ACHIEVED</div>';
-      } else if (pred) {
-        out +=
-          '<div class="ms-badge prediction">⏳ Estimated: ' + pred + "</div>";
-      } else {
-        out +=
-          '<div class="ms-badge locked">🙏 Keep chanting to see prediction</div>';
-      }
-      out +=
-        '<div class="ms-pct">' +
-        pct.toFixed(1) +
-        "% — " +
-        formatMsCount(total) +
-        " / " +
-        formatMsCount(sm.count) +
-        "</div>";
-      out +=
-        '<div class="ms-progress-wrap"><div class="ms-progress-fill saffron" style="width:' +
-        pct +
-        '%"></div></div>';
-      out += "</div>";
-    });
-  });
-
-
-  out += '<div class="ms-section-sep"></div>';
 
   // ─── LAKH MILESTONES ───
   out += '<div class="ms-phase-title">📿 Lakh Milestones</div>';
@@ -9047,6 +8772,80 @@ function renderMilestonesTab() {
     out += "</div>";
   }
 
+  out += '<div class="ms-section-sep"></div>';
+
+  // ─── SPIRITUAL CRORE MILESTONES ───
+  PHASES.forEach((phase) => {
+    out += '<div class="ms-phase-title">' + phase.name + "</div>";
+    out += '<div class="ms-phase-sub">' + phase.sub + "</div>";
+    SPIRITUAL_MILESTONES.filter((sm) => {
+      const crNum = sm.count / CRORE;
+      return crNum >= phase.range[0] && crNum <= phase.range[1];
+    }).forEach((sm) => {
+      const pct = Math.min(100, (total / sm.count) * 100);
+      const achieved = total >= sm.count;
+      const remaining = Math.max(0, sm.count - total);
+      const pred = !achieved ? predictDate(remaining) : null;
+      const crNum = sm.count / CRORE;
+      const isBig = crNum >= 10;
+      const descHi = CRORE_DESCS_HI[crNum] || sm.desc;
+      const descBn = CRORE_DESCS_BN[crNum] || "";
+      const desc = lang === "bn" && descBn ? descBn : descHi;
+      out +=
+        '<div class="ms-card tier-saffron' +
+        (achieved ? " achieved" : " locked") +
+        (isBig ? " million" : "") +
+        "\" onclick=\"openMsDetail('crore'," +
+        sm.count +
+        "," +
+        pct.toFixed(1) +
+        "," +
+        achieved +
+        ')">';
+      out += '<div class="ms-card-header">';
+      out += '<span class="ms-icon">' + sm.icon + "</span>";
+      out += '<div><div class="ms-label">' + crNum + " Crore</div>";
+      out += '<div class="ms-eng">' + sm.eng + "</div></div>";
+      out += '<span class="ms-count-label">' + sm.tag + "</span>";
+      out += "</div>";
+      const descId = "msDesc" + sm.count;
+      out +=
+        '<div class="ms-desc' +
+        (lang === "bn" ? " bangla" : "") +
+        '" id="' +
+        descId +
+        '">' +
+        desc +
+        "</div>";
+      out +=
+        '<span class="ms-read-more" onclick="event.stopPropagation();toggleMsDesc(\'' +
+        descId +
+        "',this)\">Read more ▾</span>";
+      if (achieved) {
+        out += '<div class="ms-badge achieved">✓ ACHIEVED</div>';
+      } else if (pred) {
+        out +=
+          '<div class="ms-badge prediction">⏳ Estimated: ' + pred + "</div>";
+      } else {
+        out +=
+          '<div class="ms-badge locked">🙏 Keep chanting to see prediction</div>';
+      }
+      out +=
+        '<div class="ms-pct">' +
+        pct.toFixed(1) +
+        "% — " +
+        formatMsCount(total) +
+        " / " +
+        formatMsCount(sm.count) +
+        "</div>";
+      out +=
+        '<div class="ms-progress-wrap"><div class="ms-progress-fill saffron" style="width:' +
+        pct +
+        '%"></div></div>';
+      out += "</div>";
+    });
+  });
+
   el.innerHTML = out;
 }
 
@@ -9068,7 +8867,7 @@ const CRORE_DESCS_HI = {
 };
 
 const CRORE_DESCS_BN = {
-  1: "তনু শুদ্ধি: শরীর পুরোপুরি নিষ্পাপ ও পবিত্র হয়ে যায়। রজোগুণ ও তমোগুণ নাশ হয় এবং সর্বদা শুদ্ধ সত্যগুণ বজায় থাকে। সব সময় ভগবানের ভজন হতে থাকে। রোগের 'পাপ বীজ' (মূল কারণ) খতম হয়ে যায়। যদি কোনো রোগ থাকেও, তবে তা সহ্য করার শক্তি পাওয়া যায়। স্বপ্নে দেবতা, ঋষি-মুনি এবং সন্ত-ভক্তরা এসে কথা বলেন।",
+  1: "তনু শুদ্ধি: শরীর পুরোপুরি নিষ্পাপ ও পবিত্র হয়ে যায়। রজোগুণ ও তমোগুণ নাশ হয় এবং সর্বদা শুদ্ধ সত্যগুণ বজায় থাকে। সব সময় ভগবানের ভজন হতে থাকে। রোগের 'পাপ বীজ' (মূল কারণ) খতম হয়ে যায়। যদি কোনো রোগ থাকেও, তবে তা সহ্য করার শক্তি পাওয়া যায়। স্বপ.S�নে দেবতা, ঋষি-মুনি এবং সন্ত-ভক্তরা এসে কথা বলেন।",
   2: "ধন (সম্পদ): ধনের অভাব খতম হয়ে যায়। সবচেয়ে বড় কথা হলো মানুষের ভিতর থেকে ধনী হওয়ার তৃষ্ণা (ইচ্ছা) মিটে যায়। ভগবান দুইভাবে সাহায্য করেন—হয় ইচ্ছা সরিয়ে দেন, না হয় না চাইতেই এত ধন দেন যে ইচ্ছা শেষ হয়ে যায়। যেমন নদী নিজে থেকেই সমুদ্রে গিয়ে মেশে, তেমনই সমস্ত বৈভব সাধককে ঘিরে ধরে। বিদেশ থেকে স্বদেশে প্রত্যাবর্তন।",
   3: "মানসিক পবিত্রতা: অন্তঃকরণ পরম পবিত্র হয়। যে খারাপ অভ্যাসগুলো (কাম, ক্রোধ) আগে 'অসাধ্য' (অসম্ভব) মনে হতো, তা সহজ হয়ে যায়। সারা পৃথিবী সাধককে নিজের আপন ভাইয়ের মতো ভালোবাসতে শুরু করে।",
   4: "সুখ স্থান: হৃদয়ে ভগবদানন্দ (দিব্য আনন্দ) প্রকট হয়। স্থায়িত্ব: মান-অপমান বা সুখ-দুঃখের হৃদয়ের ওপর কোনো প্রভাব পড়ে না। আত্ম-উপলব্ধি: শাস্ত্র না পড়েই 'নিত্যত্ব বোধ' হয়ে যায় যে 'আমি নিত্য, এই শরীর অনিত্য'।",
@@ -9083,7 +8882,7 @@ const CRORE_DESCS_BN = {
   13: "১৩ কোটি: সাধক যেকোনো পাপী মানুষকেও 'মোক্ষ' পাইয়ে দিতে পারেন।",
 };
 
-window._msLang = "bn";
+window._msLang = "hi";
 function setMsLang(lang) {
   window._msLang = lang;
   document.getElementById("msLangHi").classList.toggle("active", lang === "hi");
@@ -9134,7 +8933,7 @@ function openMsDetail(type, count, pct, achieved) {
   const sheet = document.getElementById("msDetailSheet");
   const overlay = document.getElementById("msDetailOverlay");
   if (!sheet || !overlay) return;
-  const lang = window._msLang || "bn";
+  const lang = window._msLang || "hi";
   const hist = App.S.history || {};
   const histRV = App.S.historyRV || {};
   const histHK = App.S.historyHK || {};
@@ -9410,37 +9209,6 @@ function fbWatchSession() {
     },
     (err) => console.warn("Session listener error:", err.message),
   );
-}
-
-// Direct, synchronous-as-possible check of session ownership — used
-// specifically before a reconnect push (see the "online" handler below),
-// to close a race that the session-lock LISTENER alone can't: if this
-// device was offline when another device signed in and claimed the
-// session, fbWatchSession's listener has no way to know that until this
-// device is back online AND that snapshot event happens to arrive before
-// this device's own reconnect-push does — an unordered race between two
-// independent callbacks both triggered by the same 'online' event. This
-// does one direct read of the session doc first and refuses to push at
-// all if it's already been claimed by someone else, rather than trusting
-// timing. Not airtight (the doc could theoretically change in the instant
-// between this read and the push), but closes the common case where a
-// device was offline for a while and only just reconnected.
-// Fails OPEN (returns true) on a read error — a network hiccup here must
-// not permanently block a legitimate device's own sync.
-async function _fbSessionStillMine() {
-  if (!fbUser || !fbDb) return true;
-  try {
-    const snap = await fbWithTimeout(
-      fbDb.collection("users").doc(fbUser.uid).collection("session").doc("active").get({ source: "server" }),
-      8000, "Session ownership check",
-    );
-    if (!snap.exists) return true; // no claim on record — nothing to conflict with
-    const data = snap.data();
-    return !data.deviceId || data.deviceId === fbDeviceId;
-  } catch (e) {
-    console.warn("_fbSessionStillMine check failed, proceeding anyway:", e && e.message);
-    return true;
-  }
 }
 
 // ── SERVER TIME SYNC ──
@@ -9766,34 +9534,8 @@ function fbInit() {
                 if (!App._cloudHydrated) window._scheduleHydrationRetry();
               });
           } else {
-            // Already hydrated, reconnecting after some time offline.
-            //
-            // Previously this called fbPushFull() directly — a blind
-            // overwrite of whatever the cloud currently holds with this
-            // device's local state. That's the exact shape of the
-            // multi-device race: if another device signed in and pushed
-            // its own progress while THIS device was offline (and this
-            // device's session-lock listener hasn't caught up yet, since
-            // it also needs to be online to hear about it), this device
-            // could stomp that other device's newer data with its own
-            // stale-relative-to-cloud local state.
-            //
-            // Fixed by, in order: (1) a direct check of session
-            // ownership, refusing to sync at all if another device has
-            // since claimed it — the session-lock listener will finish
-            // the job (lockSignedOutScreen) shortly; (2) routing through
-            // fbMigrate() instead of a raw push — it re-pulls the
-            // authoritative cloud state first and additively merges this
-            // device's own offline progress on top (see fbMigrate's
-            // mergeAdditive), so a second device's independent progress
-            // is combined instead of overwritten.
-            _fbSessionStillMine().then((stillMine) => {
-              if (!stillMine) {
-                console.log("Online resync skipped — session claimed by another device.");
-                return;
-              }
-              fbMigrate().catch((e) => console.warn("Online resync (migrate):", e && e.message));
-            });
+            // Already hydrated — just push any offline jap accumulated since last sync.
+            fbPushFull().catch((e) => console.warn("Online resync (push):", e && e.message));
           }
         }
       });
@@ -9895,7 +9637,6 @@ function fbInit() {
             syncBaseline28: {},
             syncBaselineTimer: {},
             syncBaselineTimer28: {},
-            syncBaselineDt: {},
             migrationV2Done: false,
             japMode: "radha",
             historyRV: {},
@@ -10054,7 +9795,6 @@ function fbInit() {
             if (devOptionsPanel) devOptionsPanel.style.display = "none";
           }
           _loadManualApkLink(); // re-render developer-edit vs plain-download row for this account
-          if (typeof _loadCroreMilestoneLinks === "function") _loadCroreMilestoneLinks(); // re-render crore edit icons for this account
           watchNewFeedback(); // Dev-only: real-time badge for new user feedback
           watchMyFeedback(); // All users: show developer replies + popup notification
         });
@@ -10066,7 +9806,6 @@ function fbInit() {
         _fbStopVerifyCountdownTimer();
         _fbHideVerifyBlock();
         _loadManualApkLink(); // signed out — falls back to local cache instead of Firestore
-        if (typeof _loadCroreMilestoneLinks === "function") _loadCroreMilestoneLinks(); // signed out — local cache too
         // Clean up session listener on sign out
         if (fbSessionListener) {
           fbSessionListener();
@@ -10114,7 +9853,6 @@ function fbInit() {
             syncBaseline28: {},
             syncBaselineTimer: {},
             syncBaselineTimer28: {},
-            syncBaselineDt: {},
             migrationV2Done: false,
             japMode: "radha",
             historyRV: {},
@@ -11285,7 +11023,7 @@ async function fbSignOut() {
     cfg: { vib: true, sound: true, soundType: "shankya" },
     history: {}, h28: {}, stotrams: {}, brahma: {}, customSt: [],
     timerHistory: {}, timer28History: {}, sankalpas: [], dedications: [], occasions: {},
-    syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {}, syncBaselineDt: {},
+    syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {},
     migrationV2Done: false, japMode: "radha",
     historyRV: {}, timerHistoryRV: {}, dtRV: 0, ltRV: 0, nameJapDeductRV: 0,
     malaLogRV: [], activityLog: [], syncBaselineRV: {}, syncBaselineTimerRV: {},
@@ -11320,211 +11058,9 @@ async function fbSignOut() {
 
   fbAuth.signOut().then(() => toast("Signed out 🙏"));
 }
-// ── Lightweight debug log for sync attempts (fix #5) ──────────────────
-// Keeps the last 50 sync events in localStorage so a "it got stuck"
-// report can actually be diagnosed later, instead of guessing. Safe to
-// read from a support/debug screen: JSON.parse(localStorage.getItem(
-// "rjap_sync_debug_log")).
-function _fbSyncLog(msg) {
-  try {
-    const key = "rjap_sync_debug_log";
-    let log = [];
-    try { log = JSON.parse(localStorage.getItem(key) || "[]"); } catch (_e) {}
-    log.push(new Date().toISOString() + " — " + msg);
-    if (log.length > 50) log = log.slice(-50);
-    localStorage.setItem(key, JSON.stringify(log));
-  } catch (_e) {}
-  console.log("[sync]", msg);
-}
-
-// The last payload we know for certain landed in Firestore (either via
-// fbPushFull or a prior fbPushDelta). Used purely to figure out what
-// changed since then — never treated as authoritative on its own.
-App._lastPushedSnapshotObj = null;
-function _fbRecordPushedSnapshot(payload) {
-  // Deep-clone via JSON so later local mutations to App.S can't leak
-  // into this baseline (it must reflect what the cloud has, frozen).
-  const clone = { ...payload };
-  delete clone.lastSync; // FieldValue sentinel — not comparable/cloneable
-  App._lastPushedSnapshotObj = JSON.parse(JSON.stringify(clone));
-}
-
-// Grow-only log arrays: entries only ever get appended, never edited or
-// reordered, so a "new array = old array + some extra entries at the
-// end" pattern here can be safely sent as an arrayUnion of just the new
-// entries, instead of resending the whole list (fix #3).
-const FB_LOG_ARRAY_FIELDS = [
-  "malaLog", "malaLogRV", "malaLogHK", "malaLogKV",
-  "malaLogKaam", "malaLogSS", "malaLogRam", "activityLog",
-];
-
-// Per-date-keyed counter maps (history + per-tradition timer history). Each
-// one only ever grows one date-key at a time in routine use ("tapped a
-// bead today"), so on a change we only need to diff and send the date keys
-// that actually moved — not the whole map — the same way FB_LOG_ARRAY_FIELDS
-// avoids resending whole log arrays. This also doubles as the field list the
-// multi-device additive merge (see mergeAdditiveByDate in fbMigrate) needs a
-// syncBaseline* counterpart for.
-const FB_DATE_MAP_FIELDS = [
-  "history", "h28", "timerHistory", "timer28History",
-  "historyRV", "timerHistoryRV", "historyHK", "timerHistoryHK",
-  "historyKV", "timerHistoryKV", "historySS", "timerHistorySS",
-  "historyRam", "timerHistoryRam", "historyKaam", "timerHistoryKaam",
-];
-
-// Maps each FB_DATE_MAP_FIELDS key to the App.S.syncBaseline* field that
-// tracks "this device's own value as of its last CONFIRMED push" — the
-// baseline the multi-device additive merge diffs against. Kept as an
-// explicit table (rather than a naming-convention guess) since a couple of
-// the real field names don't follow one consistent pattern (h28 ↔
-// syncBaseline28, timer28History ↔ syncBaselineTimer28).
-const FB_DATE_MAP_BASELINE_KEY = {
-  history: "syncBaseline", h28: "syncBaseline28",
-  timerHistory: "syncBaselineTimer", timer28History: "syncBaselineTimer28",
-  historyRV: "syncBaselineRV", timerHistoryRV: "syncBaselineTimerRV",
-  historyHK: "syncBaselineHK", timerHistoryHK: "syncBaselineTimerHK",
-  historyKV: "syncBaselineKV", timerHistoryKV: "syncBaselineTimerKV",
-  historySS: "syncBaselineSS", timerHistorySS: "syncBaselineTimerSS",
-  historyRam: "syncBaselineRam", timerHistoryRam: "syncBaselineTimerRam",
-  historyKaam: "syncBaselineKaam", timerHistoryKaam: "syncBaselineTimerKaam",
-};
-
-// Refreshes every syncBaseline* field to the current local value, for every
-// tradition — call this right after ANY successful cloud write (full OR
-// delta), so it always reflects "what this device's own data looked like
-// as of the last confirmed sync." Previously this was only done for the
-// main Radha + 28-Names fields, and only inside fbPushFull() — never for
-// the other traditions (RV/HK/KV/SS/Ram/Kaam), and never after a routine
-// fbPushDelta() push (the path almost all real-world taps go through).
-// That meant these baselines were usually stale by hours, which silently
-// broke the multi-device merge below: it would treat taps that were
-// already safely synced earlier in the session as "new local progress"
-// and could double-count them, or fail to isolate genuinely-new progress
-// from a second device's contribution.
-function _fbRefreshSyncBaselines() {
-  for (const field of FB_DATE_MAP_FIELDS) {
-    const baselineKey = FB_DATE_MAP_BASELINE_KEY[field];
-    App.S[baselineKey] = JSON.parse(JSON.stringify(App.S[field] || {}));
-  }
-  // Scalar lifetime totals (seconds of jap per tradition) get the same
-  // treatment via one small object, added specifically for the additive
-  // dt-merge in fbMigrate — these previously had no baseline at all and
-  // were merged with plain max(), same limitation as the date maps had.
-  App.S.syncBaselineDt = {
-    dt: App.S.dt || 0, dtRV: App.S.dtRV || 0, dtHK: App.S.dtHK || 0,
-    dtKV: App.S.dtKV || 0, dtSS: App.S.dtSS || 0, dtRam: App.S.dtRam || 0,
-    dtKaam: App.S.dtKaam || 0,
-  };
-}
-
-// ── Real delta sync (fixes #1 skip-if-unchanged, #2 partial update,
-// #3 arrayUnion for logs) ──────────────────────────────────────────
-// This used to just call fbPushFull() — i.e. it always sent the WHOLE
-// app state, same as a full sync, despite the name. This version
-// actually only sends what changed since the last confirmed push.
-//
-// Scope, deliberately conservative: this is used ONLY for the routine,
-// high-frequency "user tapped a bead" path (fbDebouncedPush → _fbDoPush,
-// and silentMonkBackup). Every other caller — restore-from-backup,
-// initial push after sign-in, online-resync, pending-retry — still
-// calls fbPushFull() directly and gets the full, authoritative
-// overwrite it relies on. This function is purely an optimization for
-// the common case; it is never the only path data can reach the cloud.
 async function fbPushDelta() {
   if (isGhostMode()) return; // ghost mode: read-only
-  if (!fbUser || !fbDb) return;
-  if (!App._cloudHydrated && !App._allowInitialPush) {
-    console.warn("fbPushDelta blocked: cloud not yet hydrated");
-    if (typeof window._scheduleHydrationRetry === "function") window._scheduleHydrationRetry();
-    return;
-  }
-
-  const payload = _fbBuildPushPayload();
-  const prev = App._lastPushedSnapshotObj;
-
-  // No baseline yet this session (e.g. straight after sign-in, before
-  // any full push has confirmed) — we have nothing to diff against, so
-  // fall back to the authoritative full push rather than guess.
-  if (!prev) {
-    return fbPushFull();
-  }
-
-  const updateFields = {};
-  for (const key of Object.keys(payload)) {
-    if (key === "lastSync" || key === "deviceId") { updateFields[key] = payload[key]; continue; }
-    const oldVal = prev[key];
-    const newVal = payload[key];
-    const oldJSON = JSON.stringify(oldVal);
-    const newJSON = JSON.stringify(newVal);
-    if (oldJSON === newJSON) continue; // unchanged — don't send it (fix #1/#2)
-
-    if (
-      FB_LOG_ARRAY_FIELDS.includes(key) &&
-      Array.isArray(oldVal) && Array.isArray(newVal) &&
-      newVal.length > oldVal.length &&
-      JSON.stringify(newVal.slice(0, oldVal.length)) === JSON.stringify(oldVal)
-    ) {
-      // Pure append (the normal case for a log) — send only the new
-      // tail entries via arrayUnion instead of the whole array.
-      updateFields[key] = firebase.firestore.FieldValue.arrayUnion(...newVal.slice(oldVal.length));
-    } else if (
-      FB_DATE_MAP_FIELDS.includes(key) &&
-      oldVal && newVal && typeof oldVal === "object" && typeof newVal === "object" &&
-      !Array.isArray(oldVal) && !Array.isArray(newVal)
-    ) {
-      // history/timer-history maps: the overwhelmingly common change here
-      // is "today's date key went up by one tap" — but the old code sent
-      // the ENTIRE map (every date ever logged) the moment ANY key
-      // differed. Diff per date-key instead and send only the keys that
-      // actually changed, via Firestore's dotted-path field update —
-      // this is what keeps a years-old history from getting re-uploaded
-      // on every single bead.
-      const changedKeys = new Set([...Object.keys(oldVal), ...Object.keys(newVal)]);
-      for (const dk of changedKeys) {
-        if ((oldVal[dk] ?? null) === (newVal[dk] ?? null)) continue;
-        if (newVal[dk] === undefined) continue; // key removal: not a real case for these maps, skip rather than guess
-        updateFields[`${key}.${dk}`] = newVal[dk];
-      }
-    } else {
-      // Anything else that changed (edited/reordered/shrunk array, or a
-      // plain field) — send its new value in full. Still far cheaper
-      // than resending every other untouched field too.
-      updateFields[key] = newVal;
-    }
-  }
-
-  if (!Object.keys(updateFields).length) {
-    _fbSyncLog("Delta push skipped — nothing changed");
-    return;
-  }
-
-  setSyncPill("syncing", "Syncing…");
-  _fbSyncLog("Delta push started (" + Object.keys(updateFields).length + " fields): " + Object.keys(updateFields).join(", "));
-  try {
-    const docRef = fbDb.collection("users").doc(fbUser.uid).collection("data").doc("main");
-    try {
-      await docRef.update(updateFields);
-    } catch (e) {
-      // update() fails if the doc doesn't exist yet (shouldn't normally
-      // happen here since a baseline implies a prior successful push,
-      // but be defensive) — fall back to a full authoritative push.
-      if (e && (e.code === "not-found" || /No document to update/i.test(e.message || ""))) {
-        _fbSyncLog("Delta push fallback to full — doc missing");
-        return fbPushFull();
-      }
-      throw e;
-    }
-    try { localStorage.removeItem("rjap_sync_pending"); } catch (_e) {}
-    _fbRecordPushedSnapshot(payload);
-    _fbRefreshSyncBaselines();
-    setSyncPill("", "☁️ Synced " + new Date().toLocaleTimeString());
-    _fbSyncLog("Delta push succeeded");
-  } catch (e) {
-    console.warn("fbPushDelta failed:", e && e.message);
-    setSyncPill("error", "☁️ Still syncing in background…");
-    _fbSyncLog("Delta push failed: " + (e && e.message));
-    if (typeof window._scheduleHydrationRetry === "function") window._scheduleHydrationRetry();
-  }
+  return fbPushFull();
 }
 
 // ── Developer write-back: push current App.S to a SPECIFIC user's Firestore
@@ -11646,13 +11182,19 @@ async function fbPushToUid(targetUid, fullReplace) {
   }
 }
 
-// ── Shared payload builder ──────────────────────────────────────────
-// Extracted so fbPushFull() (full authoritative overwrite) and
-// fbPushDelta() (routine partial sync) always agree on exactly what
-// fields exist — one source of truth instead of two payload objects
-// that could silently drift apart as fields get added later.
-function _fbBuildPushPayload() {
-  return {
+async function fbPushFull() {
+  if (!fbUser) return;
+  if (isGhostMode()) return; // ghost mode: never write to Firestore
+  // SAFETY: never push local state to cloud until we have successfully
+  // pulled the authoritative cloud copy at least once this session.
+  // Prevents wiping cloud data after "Clear app data" + re-login.
+  if (!App._cloudHydrated && !App._allowInitialPush) {
+    console.warn("fbPushFull blocked: cloud not yet hydrated");
+    if (typeof window._scheduleHydrationRetry === "function") window._scheduleHydrationRetry();
+    return;
+  }
+  setSyncPill("syncing", "Syncing…");
+  const payload = {
     history: App.S.history || {},
     h28: App.S.h28 || {},
     nameJapDeduct28: App.S.nameJapDeduct28 || 0,
@@ -11738,22 +11280,6 @@ function _fbBuildPushPayload() {
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId,
   };
-}
-
-async function fbPushFull() {
-  if (!fbUser) return;
-  if (isGhostMode()) return; // ghost mode: never write to Firestore
-  // SAFETY: never push local state to cloud until we have successfully
-  // pulled the authoritative cloud copy at least once this session.
-  // Prevents wiping cloud data after "Clear app data" + re-login.
-  if (!App._cloudHydrated && !App._allowInitialPush) {
-    console.warn("fbPushFull blocked: cloud not yet hydrated");
-    if (typeof window._scheduleHydrationRetry === "function") window._scheduleHydrationRetry();
-    return;
-  }
-  setSyncPill("syncing", "Syncing…");
-  _fbSyncLog("Full push started");
-  const payload = _fbBuildPushPayload();
   try {
     await fbDb
       .collection("users")
@@ -11807,21 +11333,20 @@ async function fbPushFull() {
     // real history doc silently behind) is exactly what made missing days
     // invisible until a device switch.
     pushLeaderboard().catch((e) => console.warn('pushLeaderboard (post-tap) error:', e && e.message));
-    // Refreshes syncBaseline* for EVERY tradition (previously only Radha +
-    // 28-Names were updated here) — see _fbRefreshSyncBaselines for why.
-    _fbRefreshSyncBaselines();
+    App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history || {}));
+    App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28 || {}));
+    App.S.syncBaselineTimer = JSON.parse(
+      JSON.stringify(App.S.timerHistory || {}),
+    );
+    App.S.syncBaselineTimer28 = JSON.parse(
+      JSON.stringify(App.S.timer28History || {}),
+    );
     App._suspendCloudSync = true;
     await App.save();
     App._suspendCloudSync = false;
     setSyncPill("", "☁️ Synced " + new Date().toLocaleTimeString());
-    // Record what the cloud now authoritatively has, so the next
-    // fbPushDelta() call has an accurate baseline to diff against
-    // instead of assuming nothing or re-sending everything.
-    _fbRecordPushedSnapshot(payload);
-    _fbSyncLog("Full push succeeded");
   } catch (e) {
     App._suspendCloudSync = false;
-    _fbSyncLog("Full push failed: " + (e && e.message));
     console.warn("Full sync failed:", e.message);
     // Both pending markers are deliberately left set here — the next
     // successful cloud hydration (_rjapMaybeRetryPendingSync, see
@@ -12142,16 +11667,14 @@ function fbApplyRemote(d) {
   if (!App.S.h28[App.S.tk]) App.S.h28[App.S.tk] = 0;
   if (!App.S.timerHistory[App.S.tk]) App.S.timerHistory[App.S.tk] = 0;
   if (!App.S.timer28History[App.S.tk]) App.S.timer28History[App.S.tk] = 0;
-  // Refresh syncBaseline* for EVERY tradition (previously only Radha +
-  // 28-Names were reset here, and RV/HK/KV/SS/Ram/Kaam baselines were
-  // never touched by this function at all). This runs every time remote
-  // data is applied — both during fbMigrate's initial pull (where
-  // fbMigrate captures the PRE-reset baseline into its own local
-  // variables first, specifically so this reset doesn't corrupt its
-  // upcoming multi-device merge calculation) and on every later realtime
-  // onSnapshot update (where "local now matches what was just applied"
-  // is exactly the correct new baseline going forward).
-  _fbRefreshSyncBaselines();
+  App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history || {}));
+  App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28 || {}));
+  App.S.syncBaselineTimer = JSON.parse(
+    JSON.stringify(App.S.timerHistory || {}),
+  );
+  App.S.syncBaselineTimer28 = JSON.parse(
+    JSON.stringify(App.S.timer28History || {}),
+  );
   // Screen Time / manual-jap tracking — per-day-key values only ever grow,
   // so merge remote+local by taking the max per key (same rule used for the
   // local IDB/localStorage merge in App.load()) rather than overwriting.
@@ -12354,33 +11877,6 @@ async function fbMigrate() {
       const localDtSS = App.S.dtSS || 0;
       const localDtRam = App.S.dtRam || 0;
 
-      // Also snapshot this device's own syncBaseline* — "what my own data
-      // looked like as of MY last confirmed push" — BEFORE fbApplyRemote
-      // resets those baselines to match whatever we're about to apply.
-      // This is what makes the merge below additive instead of max-based:
-      // without it there is no way to distinguish "this device's own
-      // progress since it last synced" (which should ADD on top of
-      // whatever the cloud now holds, since the cloud may already
-      // include a second device's own independent offline progress) from
-      // "the raw total right now" (comparing raw totals is exactly what
-      // silently drops one device's taps when two devices go offline from
-      // the same starting point and each add their own — see the app.js
-      // firebase-sync study, "concurrent multi-device merge").
-      const baseline        = JSON.parse(JSON.stringify(App.S.syncBaseline        || {}));
-      const baseline28      = JSON.parse(JSON.stringify(App.S.syncBaseline28      || {}));
-      const baselineTimer   = JSON.parse(JSON.stringify(App.S.syncBaselineTimer   || {}));
-      const baselineRV      = JSON.parse(JSON.stringify(App.S.syncBaselineRV      || {}));
-      const baselineHK      = JSON.parse(JSON.stringify(App.S.syncBaselineHK      || {}));
-      const baselineKV      = JSON.parse(JSON.stringify(App.S.syncBaselineKV      || {}));
-      const baselineSS      = JSON.parse(JSON.stringify(App.S.syncBaselineSS      || {}));
-      const baselineRam     = JSON.parse(JSON.stringify(App.S.syncBaselineRam     || {}));
-      const baselineTimerRV  = JSON.parse(JSON.stringify(App.S.syncBaselineTimerRV  || {}));
-      const baselineTimerHK  = JSON.parse(JSON.stringify(App.S.syncBaselineTimerHK  || {}));
-      const baselineTimerKV  = JSON.parse(JSON.stringify(App.S.syncBaselineTimerKV  || {}));
-      const baselineTimerSS  = JSON.parse(JSON.stringify(App.S.syncBaselineTimerSS  || {}));
-      const baselineTimerRam = JSON.parse(JSON.stringify(App.S.syncBaselineTimerRam || {}));
-      const baselineDt = App.S.syncBaselineDt || {};
-
       // Cloud data exists — apply it (overrides local cache)
       fbApplyRemote({ ...snap.data(), deviceId: null });
       App._cloudHydrated = true; // cloud copy applied, future saves may push
@@ -12398,74 +11894,37 @@ async function fbMigrate() {
         App.S._lastAckedRestoreAt = _forceRestoreAt;
       }
 
-      // ── MERGE: additive per date key, not max ──
-      // Old behavior: keep whichever of (local, cloud) was numerically
-      // higher. That's wrong whenever the cloud's value ALREADY reflects
-      // a different device's own independent offline progress — e.g. both
-      // phones start at 500, each does its own +1 offline, phone B syncs
-      // first (cloud now 501), phone A reconnects with local=501 too and
-      // max(501, 501) keeps 501 — phone A's +1 is silently gone, real
-      // total should have been 502.
-      //
-      // Fix: for THIS device, compute how much ITS OWN value moved since
-      // ITS OWN last confirmed sync (local - baseline, captured above,
-      // before fbApplyRemote reset the baseline to match cloud) — that
-      // delta is this device's genuinely new, not-yet-reflected-anywhere
-      // contribution, and gets ADDED on top of whatever the cloud
-      // currently holds (which may already carry another device's own
-      // contribution). A negative delta (a manual correction/deduction
-      // lowered the local count since baseline) is not added — instead we
-      // fall back to keeping whichever of local/cloud is higher for that
-      // key, same as the old behavior, since "subtract cloud's total
-      // because I corrected MY copy" isn't safe if cloud's total also
-      // includes another device's separate progress.
+      // ── MERGE: for each date key, keep whichever is higher (local offline wins) ──
       let offlineWorkFound = false;
-      function mergeAdditive(local, applied, baseline) {
-        const base = baseline || {};
+      function mergeMax(local, applied) {
         for (const k in local) {
-          const localVal = local[k] || 0;
-          const baseVal = base[k] || 0;
-          const delta = localVal - baseVal;
-          if (delta > 0) {
-            applied[k] = (applied[k] || 0) + delta;
-            offlineWorkFound = true;
-          } else if (localVal > (applied[k] || 0)) {
-            applied[k] = localVal;
+          if ((local[k] || 0) > (applied[k] || 0)) {
+            applied[k] = local[k];
             offlineWorkFound = true;
           }
         }
       }
-      function mergeAdditiveScalar(localVal, appliedKey, baseVal) {
-        const delta = (localVal || 0) - (baseVal || 0);
-        if (delta > 0) {
-          App.S[appliedKey] = (App.S[appliedKey] || 0) + delta;
-          offlineWorkFound = true;
-        } else if ((localVal || 0) > (App.S[appliedKey] || 0)) {
-          App.S[appliedKey] = localVal || 0;
-          offlineWorkFound = true;
-        }
-      }
       if (!_skipOfflineMerge) {
-        mergeAdditive(localHistory,        App.S.history,        baseline);
-        mergeAdditive(localH28,            App.S.h28,             baseline28);
-        mergeAdditive(localTimerHistory,   App.S.timerHistory,    baselineTimer);
-        mergeAdditive(localHistoryRV,      App.S.historyRV,       baselineRV);
-        mergeAdditive(localHistoryHK,      App.S.historyHK,       baselineHK);
-        mergeAdditive(localHistoryKV,      App.S.historyKV,       baselineKV);
-        mergeAdditive(localHistorySS,      App.S.historySS,       baselineSS);
-        mergeAdditive(localHistoryRam,     App.S.historyRam,      baselineRam);
-        mergeAdditive(localTimerHistoryRV, App.S.timerHistoryRV,  baselineTimerRV);
-        mergeAdditive(localTimerHistoryHK, App.S.timerHistoryHK,  baselineTimerHK);
-        mergeAdditive(localTimerHistoryKV, App.S.timerHistoryKV,  baselineTimerKV);
-        mergeAdditive(localTimerHistorySS, App.S.timerHistorySS,  baselineTimerSS);
-        mergeAdditive(localTimerHistoryRam, App.S.timerHistoryRam, baselineTimerRam);
-        // Lifetime jap-seconds totals get the same additive treatment.
-        mergeAdditiveScalar(localDt,   "dt",   baselineDt.dt);
-        mergeAdditiveScalar(localDtRV, "dtRV", baselineDt.dtRV);
-        mergeAdditiveScalar(localDtHK, "dtHK", baselineDt.dtHK);
-        mergeAdditiveScalar(localDtKV, "dtKV", baselineDt.dtKV);
-        mergeAdditiveScalar(localDtSS, "dtSS", baselineDt.dtSS);
-        mergeAdditiveScalar(localDtRam, "dtRam", baselineDt.dtRam);
+        mergeMax(localHistory,        App.S.history);
+        mergeMax(localH28,            App.S.h28);
+        mergeMax(localTimerHistory,   App.S.timerHistory);
+        mergeMax(localHistoryRV,      App.S.historyRV);
+        mergeMax(localHistoryHK,      App.S.historyHK);
+        mergeMax(localHistoryKV,      App.S.historyKV);
+        mergeMax(localHistorySS,      App.S.historySS);
+        mergeMax(localHistoryRam,     App.S.historyRam);
+        mergeMax(localTimerHistoryRV, App.S.timerHistoryRV);
+        mergeMax(localTimerHistoryHK, App.S.timerHistoryHK);
+        mergeMax(localTimerHistoryKV, App.S.timerHistoryKV);
+        mergeMax(localTimerHistorySS, App.S.timerHistorySS);
+        mergeMax(localTimerHistoryRam, App.S.timerHistoryRam);
+        // Also preserve higher dt (lifetime jap seconds) if local is ahead
+        if (localDt   > App.S.dt)   { App.S.dt   = localDt;   offlineWorkFound = true; }
+        if (localDtRV > App.S.dtRV) { App.S.dtRV = localDtRV; offlineWorkFound = true; }
+        if (localDtHK > App.S.dtHK) { App.S.dtHK = localDtHK; offlineWorkFound = true; }
+        if (localDtKV > App.S.dtKV) { App.S.dtKV = localDtKV; offlineWorkFound = true; }
+        if (localDtSS > App.S.dtSS) { App.S.dtSS = localDtSS; offlineWorkFound = true; }
+        if (localDtRam > App.S.dtRam) { App.S.dtRam = localDtRam; offlineWorkFound = true; }
       }
 
       if (offlineWorkFound) {
@@ -14392,7 +13851,7 @@ function favvidSearchableSection(list, opts) {
     if (!filtered.length) {
       const empty = document.createElement('div');
       empty.className = 'st-folder-empty';
-      empty.textContent = q ? 'কিছু পাওয়া যায়নি' : (!fbUser ? '🔒 লিংক দেখতে প্রথমে সাইন ইন করুন' : 'শীঘ্রই আসছে 🙏');
+      empty.textContent = q ? 'কিছু পাওয়া যায়নি' : 'শীঘ্রই আসছে 🙏';
       cardsDiv.appendChild(empty);
       return;
     }
@@ -14599,7 +14058,7 @@ function renderGithubFileSection(list, sub) {
     if (!items.length) {
       const empty = document.createElement('div');
       empty.className = 'st-folder-empty';
-      empty.textContent = !fbUser ? '🔒 ভিডিও দেখতে প্রথমে সাইন ইন করুন' : 'শীঘ্রই আসছে 🙏';
+      empty.textContent = 'শীঘ্রই আসছে 🙏';
       list.appendChild(empty);
       return;
     }
@@ -14925,7 +14384,7 @@ function renderFavVideoLinksTop(list, subfolderKey) {
       if (!filteredOrphans.length) {
         const empty = document.createElement('div');
         empty.className = 'st-folder-empty';
-        empty.textContent = q ? 'কিছু পাওয়া যায়নি' : (!fbUser ? '🔒 লিংক দেখতে প্রথমে সাইন ইন করুন' : 'শীঘ্রই আসছে 🙏');
+        empty.textContent = q ? 'কিছু পাওয়া যায়নি' : 'শীঘ্রই আসছে 🙏';
         bodyContainer.appendChild(empty);
       } else {
         filteredOrphans.forEach((v) => favvidRenderLinkCard(v, orphanItemsFull, subfolderKey + ':_orphan', bodyContainer));
@@ -17304,15 +16763,6 @@ window.addEventListener("load", async () => {
   await App.load();
   if (typeof checkForUpdateAvailable === "function") checkForUpdateAvailable();
   if (typeof _loadManualApkLink === "function") _loadManualApkLink();
-  const tutorialIconEl = document.getElementById("tutorialVideoIcon");
-  if (tutorialIconEl && typeof favvidPlatformIconHtml === "function") {
-    tutorialIconEl.innerHTML = favvidPlatformIconHtml("youtube");
-  }
-  const driveUploadIconEl = document.getElementById("driveUploadIcon");
-  if (driveUploadIconEl && typeof favvidPlatformIconHtml === "function") {
-    driveUploadIconEl.innerHTML = favvidPlatformIconHtml("drive");
-  }
-  if (typeof _loadCroreMilestoneLinks === "function") _loadCroreMilestoneLinks();
   App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));
   App.lmcRV = Math.floor((App.S.historyRV[App.S.tk] || 0) / (App.S.ms || 108));
@@ -17659,7 +17109,6 @@ function _closeInstallModal() {
   if (card) card.style.transform = "scale(0.93) translateY(18px)";
   setTimeout(() => { if (m.parentNode) m.parentNode.removeChild(m); }, 380);
 }
-
 
 function triggerInstall() {
   if (!deferredPrompt) {
@@ -19473,7 +18922,6 @@ const SPIRITUAL_MILESTONES = [
     tag: "Dharam Sthan",
     eng: "Direct Divine Vision",
     phase: "bhagwat",
-    special: true, // Saakshaatkaar — direct divine vision of one's Ishta: gets an extra glow/pulse treatment in the card render below, distinct from the ordinary saffron tier.
     desc: "Aap jiska naam jap rahe hain (Ram, Krishna, Shiva, ya Radha), unka Saakshaatkaar (Direct Vision) hota hai. Sadhak ki vani Satya ho jati hai — jo bologe wo ho jayega.",
   },
   {
@@ -23510,8 +22958,6 @@ async function checkForUpdateAvailable() {
   if (!isNative) {
     const webRefreshBtn = document.getElementById("appUpdateWebRefreshBtn");
     if (webRefreshBtn) webRefreshBtn.style.display = "block";
-    // Cloud Sync & Backup's own "Refresh Now" button is Capacitor-apk-only —
-    // stays hidden (its HTML default) on PWA/TWA.
     const metaTag = document.querySelector('meta[name="app-version"]');
     const localPseudoVersion = metaTag ? metaTag.content : null;
     if (versionEl && localPseudoVersion) versionEl.textContent = "Loaded version: " + localPseudoVersion + " (web)";
@@ -23544,11 +22990,8 @@ async function checkForUpdateAvailable() {
   const Http = Cap.Plugins && Cap.Plugins.CapacitorHttp; // bundled in @capacitor/core — no extra install needed
   if (!AppInfoPlugin) return;
 
-  // The standalone "Refresh Now" button under the Update App card was
-  // removed for Capacitor per request — the only remaining native refresh
-  // button now lives in the Cloud Sync & Backup card, shown here.
-  const fbCardRefreshBtn = document.getElementById("fbCardRefreshBtn");
-  if (fbCardRefreshBtn) fbCardRefreshBtn.style.display = "block";
+  const nativeRefreshBtn = document.getElementById("appUpdateNativeRefreshBtn");
+  if (nativeRefreshBtn) nativeRefreshBtn.style.display = "block";
 
   // Show the installed version immediately — this line is always visible
   // regardless of whether the network check below succeeds, so it still
@@ -23691,19 +23134,6 @@ function confirmNativeCacheRefresh() {
     if (window.confirm("This will clear the app's local cached data and reload. Continue?")) {
       _performNativeCacheRefresh();
     }
-  }
-}
-
-// Single "Refresh Now" entry point placed in Cloud Sync & Backup — only
-// shown (via fbCardRefreshBtn) on Capacitor apk, so this always resolves
-// to the native cache-refresh flow in practice.
-function refreshAppFromBackupArea() {
-  const Cap = window.Capacitor;
-  const isNative = Cap && Cap.isNativePlatform && Cap.isNativePlatform();
-  if (isNative) {
-    if (typeof confirmNativeCacheRefresh === "function") confirmNativeCacheRefresh();
-  } else {
-    if (typeof checkAppUpdate === "function") checkAppUpdate();
   }
 }
 

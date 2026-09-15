@@ -8694,8 +8694,81 @@ function renderMilestonesTab() {
     return d.getDate() + " " + months[d.getMonth()] + ", " + d.getFullYear();
   }
 
+  _msEnsureVideoLinks();
+
   let out = "";
   out += _msConsiderChipsHtml();
+
+  // ─── SPIRITUAL CRORE MILESTONES ───
+  PHASES.forEach((phase) => {
+    out += '<div class="ms-phase-title">' + phase.name + "</div>";
+    out += '<div class="ms-phase-sub">' + phase.sub + "</div>";
+    SPIRITUAL_MILESTONES.filter((sm) => {
+      const crNum = sm.count / CRORE;
+      return crNum >= phase.range[0] && crNum <= phase.range[1];
+    }).forEach((sm) => {
+      const pct = Math.min(100, (total / sm.count) * 100);
+      const achieved = total >= sm.count;
+      const remaining = Math.max(0, sm.count - total);
+      const pred = !achieved ? predictDate(remaining) : null;
+      const crNum = sm.count / CRORE;
+      const isBig = crNum >= 10;
+      const descHi = CRORE_DESCS_HI[crNum] || sm.desc;
+      const descBn = CRORE_DESCS_BN[crNum] || "";
+      const desc = lang === "bn" && descBn ? descBn : descHi;
+      out +=
+        '<div class="ms-card tier-saffron' +
+        (achieved ? " achieved" : " locked") +
+        (isBig ? " million" : "") +
+        "\" onclick=\"openMsDetail('crore'," +
+        sm.count +
+        "," +
+        pct.toFixed(1) +
+        "," +
+        achieved +
+        ')">';
+      out += '<div class="ms-card-header">';
+      out += '<span class="ms-icon">' + sm.icon + "</span>";
+      out += '<div><div class="ms-label">' + crNum + " Crore</div>";
+      out += '<div class="ms-eng">' + sm.eng + "</div></div>";
+      out += msVideoBtnsHtml(String(crNum));
+      out += '<span class="ms-count-label">' + sm.tag + "</span>";
+      out += "</div>";
+      const descId = "msDesc" + sm.count;
+      out +=
+        '<div class="ms-desc' +
+        (lang === "bn" ? " bangla" : "") +
+        '" id="' +
+        descId +
+        '">' +
+        desc +
+        "</div>";
+      if (achieved) {
+        out += '<div class="ms-badge achieved">✓ ACHIEVED</div>';
+      } else if (pred) {
+        out +=
+          '<div class="ms-badge prediction">⏳ Estimated: ' + pred + "</div>";
+      } else {
+        out +=
+          '<div class="ms-badge locked">🙏 Keep chanting to see prediction</div>';
+      }
+      out +=
+        '<div class="ms-pct">' +
+        pct.toFixed(1) +
+        "% — " +
+        formatMsCount(total) +
+        " / " +
+        formatMsCount(sm.count) +
+        "</div>";
+      out +=
+        '<div class="ms-progress-wrap"><div class="ms-progress-fill saffron" style="width:' +
+        pct +
+        '%"></div></div>';
+      out += "</div>";
+    });
+  });
+
+  out += '<div class="ms-section-sep"></div>';
 
   // ─── LAKH MILESTONES ───
   out += '<div class="ms-phase-title">📿 Lakh Milestones</div>';
@@ -8790,86 +8863,85 @@ function renderMilestonesTab() {
     out += "</div>";
   }
 
-  out += '<div class="ms-section-sep"></div>';
-
-  // ─── SPIRITUAL CRORE MILESTONES ───
-  PHASES.forEach((phase) => {
-    out += '<div class="ms-phase-title">' + phase.name + "</div>";
-    out += '<div class="ms-phase-sub">' + phase.sub + "</div>";
-    SPIRITUAL_MILESTONES.filter((sm) => {
-      const crNum = sm.count / CRORE;
-      return crNum >= phase.range[0] && crNum <= phase.range[1];
-    }).forEach((sm) => {
-      const pct = Math.min(100, (total / sm.count) * 100);
-      const achieved = total >= sm.count;
-      const remaining = Math.max(0, sm.count - total);
-      const pred = !achieved ? predictDate(remaining) : null;
-      const crNum = sm.count / CRORE;
-      const isBig = crNum >= 10;
-      const descHi = CRORE_DESCS_HI[crNum] || sm.desc;
-      const descBn = CRORE_DESCS_BN[crNum] || "";
-      const desc = lang === "bn" && descBn ? descBn : descHi;
-      out +=
-        '<div class="ms-card tier-saffron' +
-        (achieved ? " achieved" : " locked") +
-        (isBig ? " million" : "") +
-        "\" onclick=\"openMsDetail('crore'," +
-        sm.count +
-        "," +
-        pct.toFixed(1) +
-        "," +
-        achieved +
-        ')">';
-      out += '<div class="ms-card-header">';
-      out += '<span class="ms-icon">' + sm.icon + "</span>";
-      out += '<div><div class="ms-label">' + crNum + " Crore</div>";
-      out += '<div class="ms-eng">' + sm.eng + "</div></div>";
-      out += '<span class="ms-count-label">' + sm.tag + "</span>";
-      out += "</div>";
-      const descId = "msDesc" + sm.count;
-      out +=
-        '<div class="ms-desc' +
-        (lang === "bn" ? " bangla" : "") +
-        '" id="' +
-        descId +
-        '">' +
-        desc +
-        "</div>";
-      out +=
-        '<span class="ms-read-more" onclick="event.stopPropagation();toggleMsDesc(\'' +
-        descId +
-        "',this)\">Read more ▾</span>";
-      if (achieved) {
-        out += '<div class="ms-badge achieved">✓ ACHIEVED</div>';
-      } else if (pred) {
-        out +=
-          '<div class="ms-badge prediction">⏳ Estimated: ' + pred + "</div>";
-      } else {
-        out +=
-          '<div class="ms-badge locked">🙏 Keep chanting to see prediction</div>';
-      }
-      out +=
-        '<div class="ms-pct">' +
-        pct.toFixed(1) +
-        "% — " +
-        formatMsCount(total) +
-        " / " +
-        formatMsCount(sm.count) +
-        "</div>";
-      out +=
-        '<div class="ms-progress-wrap"><div class="ms-progress-fill saffron" style="width:' +
-        pct +
-        '%"></div></div>';
-      out += "</div>";
-    });
-  });
-
   el.innerHTML = out;
+}
+
+// ── MILESTONE VIDEO LINKS (developer-editable) ──────────────────
+// One Firestore doc in the existing "config" collection (read: any
+// signed-in user, write: isDeveloper() only) holds a map of milestone
+// key -> video URL. Any link works: YouTube, Google Drive, Instagram.
+let _msVidCache = null;
+let _msVidLoading = false;
+async function loadMsVideoLinks(force) {
+  if (_msVidCache && !force) return _msVidCache;
+  try {
+    const snap = await fbDb.collection("config").doc("milestoneVideoLinks").get();
+    _msVidCache = snap.exists ? (snap.data() || {}) : {};
+  } catch (e) {
+    _msVidCache = _msVidCache || {};
+  }
+  return _msVidCache;
+}
+// Kicks off a one-time load, then re-renders so the buttons appear.
+function _msEnsureVideoLinks() {
+  if (_msVidCache || _msVidLoading) return;
+  if (typeof fbDb === "undefined" || !fbDb) return;
+  _msVidLoading = true;
+  loadMsVideoLinks(true)
+    .then(() => { _msVidLoading = false; renderMilestonesTab(); })
+    .catch(() => { _msVidLoading = false; });
+}
+function msVideoLink(key) {
+  return (_msVidCache && _msVidCache[key]) || "";
+}
+function msOpenVideo(key) {
+  const url = msVideoLink(key);
+  if (!url) return;
+  window.open(url, "_blank", "noopener");
+}
+async function msEditVideo(key) {
+  if (!isDeveloper()) return;
+  const cur = msVideoLink(key);
+  const val = prompt(
+    "Video link for " + key + " Crore\n(YouTube / Drive / Instagram — leave empty to remove)",
+    cur
+  );
+  if (val === null) return;
+  const url = val.trim();
+  const next = Object.assign({}, await loadMsVideoLinks(true));
+  if (url) next[key] = url;
+  else delete next[key];
+  try {
+    await fbDb.collection("config").doc("milestoneVideoLinks").set(
+      Object.assign({}, next, { updatedAt: Date.now() })
+    );
+    _msVidCache = next;
+    if (typeof toast === "function") toast(url ? "Video link saved \ud83c\udfa5" : "Video link removed");
+    renderMilestonesTab();
+  } catch (e) {
+    if (typeof toast === "function") toast("Could not save the link \ud83d\ude4f");
+  }
+}
+// ▶ button for everyone when a link exists + ✎ button for developers.
+function msVideoBtnsHtml(key) {
+  let h = "";
+  const url = msVideoLink(key);
+  if (url) {
+    h +=
+      '<button class="ms-vid-btn" title="Watch video" onclick="event.stopPropagation();msOpenVideo(\'' +
+      key + '\')">\u25b6</button>';
+  }
+  if (typeof isDeveloper === "function" && isDeveloper()) {
+    h +=
+      '<button class="ms-vid-edit" title="Edit video link" onclick="event.stopPropagation();msEditVideo(\'' +
+      key + '\')">\u270e</button>';
+  }
+  return h ? '<span class="ms-vid-wrap">' + h + "</span>" : "";
 }
 
 // ─── CRORE DESCRIPTIONS ───
 const CRORE_DESCS_HI = {
-  1: "Tanu Shuddhi: Sharir puri tarah nishpaap aur pavitra ho jata hai. Rajogun aur Tamogun ka nash hota hai, aur har samay Shuddh Satogun bana rehta hai. Har samay Bhagwan ka bhajan hota he. Bimariyon ke 'paap beej' (root causes) khatam ho jate hain. Agar koi rog hai bhi, toh use sehne ki taqat mil jati hai. Sapne mein devta, rishi-muni aur sant, bhakta aakar baatein karte hain.",
+  1: "Tanu Shuddhi: Sharir puri tarah nishpaap aur pavitra ho jata hai. Rajogun aur Tamogun ka nash hota hai, aur har samay Shuddh Satogun bana rehta hai. Har samay Bhagwan ka bhajan hota he. Bimariyon ke 'paap beej' (root causes) khatam ho jate hain. Agar koi rog hai bhi, toh use sehne ki taqat mil jati hai. Swapne mein devta, rishi-muni aur sant-bhakt aakar baatein karte hain.",
   2: "Dhan (Wealth): Dhan ka abhaav (lack of money) khatam ho jata hai. Sabse badi baat ye hai ki insan ke andar se ameer banne ki chah (desire) hi mit jati hai. Bhagwan do tarah se madad karte hain—ya toh desire hata dete hain, ya fir bina maange itna dhan dete hain ki chah khatam ho jaye. Jaise nadiyaan apne aap samundar mein milti hain, saara vaibhav sadhak ko gher leta hai. Return to home from abroad.",
   3: "Mental Purity: Antahkaran param pavitra hota hai. Jo buri aadatein (kaam, krodh) pehle 'asadhy' (impossible) lagti thi, wo aasaan ho jati hain. Pura sansaar sadhak ko sage bhai ki tarah pyar karne lagta hai.",
   4: "Sukha Sthan: Hriday mein Bhagvadanand (Divine Bliss) prakat hota hai. Stability: Maan-apmaan ya dukh-sukh ka hriday par koi asar nahi padta. Self-Realization: Bina shastra padhe hi 'Nityatva Bodh' ho jata hai ki 'Main nitya hoon, ye sharir anitya hai'.",
@@ -8900,7 +8972,7 @@ const CRORE_DESCS_BN = {
   13: "১৩ কোটি: সাধক যেকোনো পাপী মানুষকেও 'মোক্ষ' পাইয়ে দিতে পারেন।",
 };
 
-window._msLang = "hi";
+window._msLang = "bn";
 function setMsLang(lang) {
   window._msLang = lang;
   document.getElementById("msLangHi").classList.toggle("active", lang === "hi");

@@ -3922,3 +3922,11 @@ body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !import
   0%, 100% { box-shadow: 0 0 8px 0 rgba(70, 150, 255, 0.35); }
   50% { box-shadow: 0 0 22px 5px rgba(70, 150, 255, 0.8); }
 }
+
+/* ── Milestone video link buttons (N&M) ── */
+.ms-vid-wrap{display:inline-flex;align-items:center;gap:6px;margin-left:8px;}
+.ms-vid-btn,.ms-vid-edit{width:30px;height:24px;border-radius:7px;display:inline-flex;
+  align-items:center;justify-content:center;font-size:12px;cursor:pointer;line-height:1;flex-shrink:0;}
+.ms-vid-btn{border:1px solid rgba(225,90,107,0.45);color:#fff;background:rgba(225,90,107,0.85);}
+.ms-vid-edit{border:1px solid rgba(245,209,122,0.35);color:var(--gold);background:rgba(245,209,122,0.10);}
+.ms-vid-btn:active,.ms-vid-edit:active{transform:scale(0.94);}

@@ -959,6 +959,16 @@
 #vpanchanga-view .vp-cal-grid{
   display:grid;grid-template-columns:repeat(7,1fr);
   gap:3px;
+  /* Same fix as the main app's B&C calendar (.cg in style.css): each day
+     cell below is a square (aspect-ratio:1) sized off this grid's WIDTH
+     only. In landscape the container is much wider than tall, so square
+     cells balloon in both directions right when vertical space is
+     scarcest. Bounding the grid's width by viewport height too keeps
+     cells a sane size when height, not width, is the limited dimension —
+     invisible in normal portrait use, where width is already the
+     smaller/binding constraint. */
+  max-width:min(100%, 58vh);
+  margin-left:auto;margin-right:auto;
 }
 #vpanchanga-view .vp-cal-day{
   aspect-ratio:1;

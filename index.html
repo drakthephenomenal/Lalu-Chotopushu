@@ -186,9 +186,7 @@
 
   <button class="nb" onclick="sv('vms',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3c-1.5 2-4 4-6 4.5C7 10 9.5 12 12 12c2.5 0 5-2 6-4.5C16 8 13.5 5 12 3z"/><path d="M12 12c-2 2.5-5 4-7 4.5C6.5 19 9 21 12 21s5.5-2 7-4.5C17 16 14 14.5 12 12z"/><path d="M12 3v18"/><path d="M8 21c0-2 1.5-3.5 4-5"/><path d="M16 21c0-2-1.5-3.5-4-5"/></svg>
-    Milestones
-  </button>
-  <button class="nb" onclick="sv('vs',this)">
+    N&M
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
     Stats
   </button>
@@ -840,10 +838,10 @@
 
 <!-- MILESTONES VIEW — dedicated tab -->
 <div class="view" id="vms">
-  <div class="vt">🪷 Milestones</div>
+  <div class="vt">🪷 Naam Jap Mahima and Milestones</div>
   <div class="ms-toggle-wrap">
-    <button class="ms-toggle-btn active" id="msLangHi" onclick="setMsLang('hi')">हिंग्लिश</button>
-    <button class="ms-toggle-btn" id="msLangBn" onclick="setMsLang('bn')">বাংলা</button>
+    <button class="ms-toggle-btn" id="msLangHi" onclick="setMsLang('hi')">हिंग्लिश</button>
+    <button class="ms-toggle-btn active" id="msLangBn" onclick="setMsLang('bn')">বাংলা</button>
   </div>
   <div class="ms-sadhana-bar">
     <label>🙏 Journey Start:</label>
@@ -851,6 +849,7 @@
     <span id="msSadhanaStartDisp" style="font-size:13px;color:var(--gold);font-weight:600;margin-left:4px;"></span>
   </div>
   <div class="ms-sadhana-since" id="msSadhanaSince"></div>
+  <div class="ms-crore-index" id="msCroreIndex"></div>
   <div id="msContent"></div>
   <!-- Detail bottom sheet -->
   <div class="ms-detail-overlay" id="msDetailOverlay" onclick="if(event.target===this)closeMsDetail()">

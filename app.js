@@ -8665,7 +8665,7 @@ function renderMilestonesTab() {
   // for an active wish (sankalp) — see _msAvailable28.
   const consider = getMsConsider();
   const total = _msComputeTotal().total;
-  const lang = window._msLang || "hi";
+  const lang = window._msLang || "bn";
 
   // Calculate 7-day average (same type filter as the total, for a
   // consistent prediction pace)
@@ -8740,6 +8740,30 @@ function renderMilestonesTab() {
     d.setDate(d.getDate() + daysNeeded);
     const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
     return d.getDate() + " " + months[d.getMonth()] + ", " + d.getFullYear();
+  }
+
+  // ─── QUICK CRORE INDEX — a compact strip of all 13 crore milestones,
+  // shown right under the header (title/language/journey-start) and
+  // above the full milestone list below, so the whole ladder is visible
+  // at a glance instead of only after scrolling past the Lakh section.
+  const croreIdxEl = document.getElementById("msCroreIndex");
+  if (croreIdxEl) {
+    let idxHtml = '<div class="ms-crore-index-title">🕉️ ' +
+      (lang === "bn" ? "১৩ কোটি নাম জপ" : "13 Crore Naam Jap") +
+      '</div><div class="ms-crore-index-row">';
+    SPIRITUAL_MILESTONES.forEach((sm) => {
+      const crNum = sm.count / CRORE;
+      const pct = Math.min(100, (total / sm.count) * 100);
+      const achieved = total >= sm.count;
+      idxHtml +=
+        '<div class="ms-crore-chip' + (achieved ? " achieved" : "") +
+        '" onclick="openMsDetail(\'crore\',' + sm.count + ',' + pct.toFixed(1) + ',' + achieved + ')">' +
+        '<span class="ms-crore-chip-icon">' + sm.icon + '</span>' +
+        '<span class="ms-crore-chip-num">' + crNum + '</span>' +
+        '</div>';
+    });
+    idxHtml += "</div>";
+    croreIdxEl.innerHTML = idxHtml;
   }
 
   let out = "";
@@ -8948,7 +8972,7 @@ const CRORE_DESCS_BN = {
   13: "১৩ কোটি: সাধক যেকোনো পাপী মানুষকেও 'মোক্ষ' পাইয়ে দিতে পারেন।",
 };
 
-window._msLang = "hi";
+window._msLang = "bn";
 function setMsLang(lang) {
   window._msLang = lang;
   document.getElementById("msLangHi").classList.toggle("active", lang === "hi");
@@ -8999,7 +9023,7 @@ function openMsDetail(type, count, pct, achieved) {
   const sheet = document.getElementById("msDetailSheet");
   const overlay = document.getElementById("msDetailOverlay");
   if (!sheet || !overlay) return;
-  const lang = window._msLang || "hi";
+  const lang = window._msLang || "bn";
   const hist = App.S.history || {};
   const histRV = App.S.historyRV || {};
   const histHK = App.S.historyHK || {};

@@ -1367,18 +1367,6 @@ button.n28-gold-btn-danger,
 .ms-sadhana-bar input::-webkit-calendar-picker-indicator{filter:invert(0.6);}
 .ms-sadhana-since{font-size:11px;color:var(--td);text-align:center;margin-bottom:14px;letter-spacing:1px;}
 
-/* Quick crore-milestone index strip — sits above the full milestone list */
-.ms-crore-index{margin:0 0 18px;}
-.ms-crore-index-title{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--td);text-align:center;margin-bottom:10px;}
-.ms-crore-index-row{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:none;}
-.ms-crore-index-row::-webkit-scrollbar{display:none;}
-.ms-crore-chip{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:48px;height:48px;border-radius:14px;background:rgba(255,153,51,0.06);border:1px solid rgba(255,153,51,0.2);cursor:pointer;transition:transform 0.2s ease,box-shadow 0.3s ease;}
-.ms-crore-chip:active{transform:scale(0.94);}
-.ms-crore-chip-icon{font-size:15px;line-height:1;color:#FF9933;}
-.ms-crore-chip-num{font-size:9px;font-weight:700;color:var(--td);letter-spacing:0.5px;}
-.ms-crore-chip.achieved{background:rgba(255,215,0,0.14);border-color:rgba(255,215,0,0.5);box-shadow:0 0 12px rgba(255,215,0,0.3);}
-.ms-crore-chip.achieved .ms-crore-chip-num{color:var(--gold);}
-
 /* Divine celebration particles in jap area */
 .divine-particle{position:absolute;pointer-events:none;z-index:60;opacity:0;}
 .divine-particle.feather{font-size:20px;animation:divine-float 3s ease-out forwards;}

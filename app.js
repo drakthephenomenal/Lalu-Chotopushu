@@ -8742,32 +8742,83 @@ function renderMilestonesTab() {
     return d.getDate() + " " + months[d.getMonth()] + ", " + d.getFullYear();
   }
 
-  // ─── QUICK CRORE INDEX — a compact strip of all 13 crore milestones,
-  // shown right under the header (title/language/journey-start) and
-  // above the full milestone list below, so the whole ladder is visible
-  // at a glance instead of only after scrolling past the Lakh section.
-  const croreIdxEl = document.getElementById("msCroreIndex");
-  if (croreIdxEl) {
-    let idxHtml = '<div class="ms-crore-index-title">🕉️ ' +
-      (lang === "bn" ? "১৩ কোটি নাম জপ" : "13 Crore Naam Jap") +
-      '</div><div class="ms-crore-index-row">';
-    SPIRITUAL_MILESTONES.forEach((sm) => {
-      const crNum = sm.count / CRORE;
-      const pct = Math.min(100, (total / sm.count) * 100);
-      const achieved = total >= sm.count;
-      idxHtml +=
-        '<div class="ms-crore-chip' + (achieved ? " achieved" : "") +
-        '" onclick="openMsDetail(\'crore\',' + sm.count + ',' + pct.toFixed(1) + ',' + achieved + ')">' +
-        '<span class="ms-crore-chip-icon">' + sm.icon + '</span>' +
-        '<span class="ms-crore-chip-num">' + crNum + '</span>' +
-        '</div>';
-    });
-    idxHtml += "</div>";
-    croreIdxEl.innerHTML = idxHtml;
-  }
-
   let out = "";
   out += _msConsiderChipsHtml();
+
+  // ─── SPIRITUAL CRORE MILESTONES ───
+  PHASES.forEach((phase) => {
+    out += '<div class="ms-phase-title">' + phase.name + "</div>";
+    out += '<div class="ms-phase-sub">' + phase.sub + "</div>";
+    SPIRITUAL_MILESTONES.filter((sm) => {
+      const crNum = sm.count / CRORE;
+      return crNum >= phase.range[0] && crNum <= phase.range[1];
+    }).forEach((sm) => {
+      const pct = Math.min(100, (total / sm.count) * 100);
+      const achieved = total >= sm.count;
+      const remaining = Math.max(0, sm.count - total);
+      const pred = !achieved ? predictDate(remaining) : null;
+      const crNum = sm.count / CRORE;
+      const isBig = crNum >= 10;
+      const descHi = CRORE_DESCS_HI[crNum] || sm.desc;
+      const descBn = CRORE_DESCS_BN[crNum] || "";
+      const desc = lang === "bn" && descBn ? descBn : descHi;
+      out +=
+        '<div class="ms-card tier-saffron' +
+        (achieved ? " achieved" : " locked") +
+        (isBig ? " million" : "") +
+        "\" onclick=\"openMsDetail('crore'," +
+        sm.count +
+        "," +
+        pct.toFixed(1) +
+        "," +
+        achieved +
+        ')">';
+      out += '<div class="ms-card-header">';
+      out += '<span class="ms-icon">' + sm.icon + "</span>";
+      out += '<div><div class="ms-label">' + crNum + " Crore</div>";
+      out += '<div class="ms-eng">' + sm.eng + "</div></div>";
+      out += '<span class="ms-count-label">' + sm.tag + "</span>";
+      out += "</div>";
+      const descId = "msDesc" + sm.count;
+      out +=
+        '<div class="ms-desc' +
+        (lang === "bn" ? " bangla" : "") +
+        '" id="' +
+        descId +
+        '">' +
+        desc +
+        "</div>";
+      out +=
+        '<span class="ms-read-more" onclick="event.stopPropagation();toggleMsDesc(\'' +
+        descId +
+        "',this)\">Read more ▾</span>";
+      if (achieved) {
+        out += '<div class="ms-badge achieved">✓ ACHIEVED</div>';
+      } else if (pred) {
+        out +=
+          '<div class="ms-badge prediction">⏳ Estimated: ' + pred + "</div>";
+      } else {
+        out +=
+          '<div class="ms-badge locked">🙏 Keep chanting to see prediction</div>';
+      }
+      out +=
+        '<div class="ms-pct">' +
+        pct.toFixed(1) +
+        "% — " +
+        formatMsCount(total) +
+        " / " +
+        formatMsCount(sm.count) +
+        "</div>";
+      out +=
+        '<div class="ms-progress-wrap"><div class="ms-progress-fill saffron" style="width:' +
+        pct +
+        '%"></div></div>';
+      out += "</div>";
+    });
+  });
+
+
+  out += '<div class="ms-section-sep"></div>';
 
   // ─── LAKH MILESTONES ───
   out += '<div class="ms-phase-title">📿 Lakh Milestones</div>';
@@ -8861,80 +8912,6 @@ function renderMilestonesTab() {
     });
     out += "</div>";
   }
-
-  out += '<div class="ms-section-sep"></div>';
-
-  // ─── SPIRITUAL CRORE MILESTONES ───
-  PHASES.forEach((phase) => {
-    out += '<div class="ms-phase-title">' + phase.name + "</div>";
-    out += '<div class="ms-phase-sub">' + phase.sub + "</div>";
-    SPIRITUAL_MILESTONES.filter((sm) => {
-      const crNum = sm.count / CRORE;
-      return crNum >= phase.range[0] && crNum <= phase.range[1];
-    }).forEach((sm) => {
-      const pct = Math.min(100, (total / sm.count) * 100);
-      const achieved = total >= sm.count;
-      const remaining = Math.max(0, sm.count - total);
-      const pred = !achieved ? predictDate(remaining) : null;
-      const crNum = sm.count / CRORE;
-      const isBig = crNum >= 10;
-      const descHi = CRORE_DESCS_HI[crNum] || sm.desc;
-      const descBn = CRORE_DESCS_BN[crNum] || "";
-      const desc = lang === "bn" && descBn ? descBn : descHi;
-      out +=
-        '<div class="ms-card tier-saffron' +
-        (achieved ? " achieved" : " locked") +
-        (isBig ? " million" : "") +
-        "\" onclick=\"openMsDetail('crore'," +
-        sm.count +
-        "," +
-        pct.toFixed(1) +
-        "," +
-        achieved +
-        ')">';
-      out += '<div class="ms-card-header">';
-      out += '<span class="ms-icon">' + sm.icon + "</span>";
-      out += '<div><div class="ms-label">' + crNum + " Crore</div>";
-      out += '<div class="ms-eng">' + sm.eng + "</div></div>";
-      out += '<span class="ms-count-label">' + sm.tag + "</span>";
-      out += "</div>";
-      const descId = "msDesc" + sm.count;
-      out +=
-        '<div class="ms-desc' +
-        (lang === "bn" ? " bangla" : "") +
-        '" id="' +
-        descId +
-        '">' +
-        desc +
-        "</div>";
-      out +=
-        '<span class="ms-read-more" onclick="event.stopPropagation();toggleMsDesc(\'' +
-        descId +
-        "',this)\">Read more ▾</span>";
-      if (achieved) {
-        out += '<div class="ms-badge achieved">✓ ACHIEVED</div>';
-      } else if (pred) {
-        out +=
-          '<div class="ms-badge prediction">⏳ Estimated: ' + pred + "</div>";
-      } else {
-        out +=
-          '<div class="ms-badge locked">🙏 Keep chanting to see prediction</div>';
-      }
-      out +=
-        '<div class="ms-pct">' +
-        pct.toFixed(1) +
-        "% — " +
-        formatMsCount(total) +
-        " / " +
-        formatMsCount(sm.count) +
-        "</div>";
-      out +=
-        '<div class="ms-progress-wrap"><div class="ms-progress-fill saffron" style="width:' +
-        pct +
-        '%"></div></div>';
-      out += "</div>";
-    });
-  });
 
   el.innerHTML = out;
 }

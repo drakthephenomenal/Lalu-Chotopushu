@@ -2212,6 +2212,7 @@ const App = {
   ht(e) {
     if (isGhostMode()) return; // ghost mode: read-only, no jap
     if (window.japPhotoEditMode) return; // photo edit mode: dragging/resizing photos, not counting
+    if (typeof _maybeShowFirstTapTutorialHint === "function") _maybeShowFirstTapTutorialHint();
     // Mark main Jap as the actively-tapped mode (see _activeJapMode below).
     this._activeJapMode = "main";
     // Suppress synthesized mousedown that follows a touchstart on the same tap
@@ -3384,6 +3385,38 @@ function _renderManualApkCard() {
   }
 }
 
+// First-tap tutorial hint — see the banner markup in index.html, and the
+// call site in App.ht() below, for context. Uses localStorage (not
+// Firestore) since this is purely a per-device "have they seen this"
+// flag, not app data that needs to sync across devices.
+function _maybeShowFirstTapTutorialHint() {
+  try {
+    if (localStorage.getItem("tutorialHintSeen")) return;
+  } catch (_e) {
+    return; // storage unavailable — safer to skip than to nag every tap
+  }
+  const banner = document.getElementById("firstTapTutorialHint");
+  if (!banner) return;
+  banner.style.display = "flex";
+  const iconEl = document.getElementById("firstTapHintIcon");
+  if (iconEl && !iconEl.innerHTML && typeof favvidPlatformIconHtml === "function") {
+    iconEl.innerHTML = favvidPlatformIconHtml("youtube");
+  }
+}
+
+function _firstTapHintDismiss() {
+  try {
+    localStorage.setItem("tutorialHintSeen", "1");
+  } catch (_e) {}
+  const banner = document.getElementById("firstTapTutorialHint");
+  if (banner) banner.style.display = "none";
+}
+
+function _firstTapHintWatch() {
+  _firstTapHintDismiss();
+  openExternalLink("https://youtu.be/IsrueqcsHL4?si=Nqn9io_MJCsrNi4Z");
+}
+
 async function saveManualApkLink() {
   if (!isDeveloper()) return;
   const input = document.getElementById("manualApkInput");
@@ -3407,29 +3440,6 @@ async function saveManualApkLink() {
     console.error("Failed to save manual APK link:", e);
     toast("Could not save — check connection.");
   }
-}
-
-// First-launch tutorial prompt — see the modal markup in index.html for
-// context. Uses localStorage (not Firestore) since this is purely a
-// per-device "have they seen this popup" flag, not app data that needs
-// to sync across devices.
-function _maybeShowFirstTutorialPrompt() {
-  try {
-    if (localStorage.getItem("tutorialPromptSeen")) return;
-  } catch (_e) {
-    return; // storage unavailable — safer to skip than to nag every load
-  }
-  const modal = document.getElementById("firstTutorialModal");
-  if (modal) modal.style.display = "flex";
-}
-
-function _dismissFirstTutorialPrompt(watched) {
-  try {
-    localStorage.setItem("tutorialPromptSeen", "1");
-  } catch (_e) {}
-  const modal = document.getElementById("firstTutorialModal");
-  if (modal) modal.style.display = "none";
-  if (watched) openExternalLink("https://youtu.be/IsrueqcsHL4?si=Nqn9io_MJCsrNi4Z");
 }
 
 // ── Crore Milestone video links (developer-provided, stored in Firestore
@@ -17346,14 +17356,6 @@ window.addEventListener("load", async () => {
   if (tutorialIconEl && typeof favvidPlatformIconHtml === "function") {
     tutorialIconEl.innerHTML = favvidPlatformIconHtml("youtube");
   }
-  // Fallback path for the first-launch tutorial prompt — only fires if the
-  // install-modal flow (see _onInstallFlowSettled) never happens at all,
-  // e.g. native Capacitor app, iOS Safari, or already installed/standalone.
-  // Deliberately well past the install modal's own ~3s trigger delay so
-  // the two can never show at the same time.
-  setTimeout(() => {
-    if (typeof _onInstallFlowSettled === "function") _onInstallFlowSettled();
-  }, 4500);
   if (typeof _loadCroreMilestoneLinks === "function") _loadCroreMilestoneLinks();
   App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));
@@ -17700,26 +17702,6 @@ function _closeInstallModal() {
   const card = document.getElementById("installModalCard");
   if (card) card.style.transform = "scale(0.93) translateY(18px)";
   setTimeout(() => { if (m.parentNode) m.parentNode.removeChild(m); }, 380);
-  _onInstallFlowSettled(); // let the (possibly waiting) tutorial prompt know it's clear to show
-}
-
-// The first-launch tutorial prompt must never stack with/on top of the PWA
-// install modal above. Rather than guessing at independent timers, we wait
-// for a single definitive signal that the install flow is done: either
-// _closeInstallModal() actually ran (install accepted, dismissed, or the
-// OS reports appinstalled — all three already funnel through it), or, if
-// beforeinstallprompt never fires at all (native Capacitor app, iOS
-// Safari, or already installed/standalone — none of which ever show the
-// install modal), a fallback timeout well past its own ~3s trigger delay.
-// Whichever happens first wins; the _installFlowDone guard stops the
-// other from double-firing.
-let _installFlowDone = false;
-function _onInstallFlowSettled() {
-  if (_installFlowDone) return;
-  _installFlowDone = true;
-  setTimeout(() => {
-    if (typeof _maybeShowFirstTutorialPrompt === "function") _maybeShowFirstTutorialPrompt();
-  }, 500);
 }
 
 

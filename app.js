@@ -3332,7 +3332,7 @@ function shareApp() {
 // (config/manualApkLink), which replaces the embedded default for everyone
 // once it loads, but the embedded link is always the instant fallback. ──
 const EMBEDDED_MANUAL_APK_LINK =
-  "https://github.com/drakthephenomenal/Lalu-Chotopushu/releases/download/v1.0.104/RadhaNaamJap.apk";
+  "https://drive.google.com/file/d/1rQWjpqcX5vQ1Kk_OBOd6vjEKwHi_1_bO/view?usp=drivesdk";
 let _manualApkLinkCache = EMBEDDED_MANUAL_APK_LINK; // last-known link string — always has a value now
 
 async function _loadManualApkLink() {

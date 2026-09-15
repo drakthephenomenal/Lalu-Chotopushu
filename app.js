@@ -3409,6 +3409,89 @@ async function saveManualApkLink() {
   }
 }
 
+// ── Crore Milestone video links (developer-provided, stored in Firestore
+// under config/croreMilestoneLinks so a new/edited link reaches every user
+// immediately with no code deploy needed — same pattern as the manual APK
+// link above). Regular users see a small platform icon next to each crore
+// title that plays the video when tapped; isDeveloper() additionally sees
+// a pencil icon to add/change/remove it. ──
+let _croreLinksCache = {}; // { "1": url, "2": url, ... 13 } — crore number -> link
+
+async function _loadCroreMilestoneLinks() {
+  if (!fbUser || !fbDb) {
+    try {
+      const raw = localStorage.getItem("croreLinksCache");
+      _croreLinksCache = raw ? JSON.parse(raw) : _croreLinksCache || {};
+    } catch (_e) {}
+    if (typeof renderMilestonesTab === "function") renderMilestonesTab();
+    return;
+  }
+  try {
+    const snap = await fbDb.collection("config").doc("croreMilestoneLinks").get();
+    _croreLinksCache = (snap.exists && snap.data().links) || {};
+    try {
+      localStorage.setItem("croreLinksCache", JSON.stringify(_croreLinksCache));
+    } catch (_e) {}
+  } catch (e) {
+    console.warn("Could not load crore milestone links (using local cache):", e);
+    try {
+      _croreLinksCache =
+        (_croreLinksCache && Object.keys(_croreLinksCache).length && _croreLinksCache) ||
+        JSON.parse(localStorage.getItem("croreLinksCache") || "{}");
+    } catch (_e) {}
+  }
+  if (typeof renderMilestonesTab === "function") renderMilestonesTab();
+}
+
+async function saveCroreMilestoneLink(crNum) {
+  if (!isDeveloper()) return;
+  const current = _croreLinksCache[crNum] || "";
+  const input = prompt("Paste YouTube or Instagram link for " + crNum + " Crore (leave blank to remove):", current);
+  if (input === null) return; // cancelled
+  const url = input.trim();
+  try {
+    const updated = Object.assign({}, _croreLinksCache);
+    if (url) updated[crNum] = url;
+    else delete updated[crNum];
+    await fbDb.collection("config").doc("croreMilestoneLinks").set(
+      { links: updated, updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: fbUser.email },
+      { merge: true }
+    );
+    _croreLinksCache = updated;
+    try {
+      localStorage.setItem("croreLinksCache", JSON.stringify(_croreLinksCache));
+    } catch (_e) {}
+    toast(url ? "🔗 " + crNum + " Crore link saved" : "🗑️ " + crNum + " Crore link removed");
+    if (typeof renderMilestonesTab === "function") renderMilestonesTab();
+  } catch (e) {
+    console.error("Failed to save crore milestone link:", e);
+    toast("Could not save — check connection.");
+  }
+}
+
+// Tapping the platform icon plays the video inline where the platform
+// supports it (YouTube/Telegram embed, Instagram official widget) — same
+// player overlay the Favourite Videos folder uses — and otherwise opens
+// the link externally (Drive/Facebook/anything else with no reliable
+// inline embed).
+function playCroreMilestoneVideo(crNum) {
+  const url = _croreLinksCache[crNum];
+  if (!url) return;
+  const title = crNum + " Crore";
+  const platform = typeof favvidDetectPlatform === "function" ? favvidDetectPlatform(url) : "other";
+  if (platform === "youtube") {
+    const id = typeof favvidYoutubeId === "function" ? favvidYoutubeId(url) : null;
+    if (id) return openFavVideoPlayer(title, "youtube", id, url);
+  } else if (platform === "telegram") {
+    const embed = typeof favvidTelegramEmbed === "function" ? favvidTelegramEmbed(url) : null;
+    if (embed) return openFavVideoPlayer(title, "telegram", embed, url);
+  } else if (platform === "instagram") {
+    return openFavVideoPlayer(title, "instagram", url, url);
+  }
+  // Drive / Facebook / anything else without a reliable inline embed.
+  openExternalLink(url);
+}
+
 // ── Share App (APK direct download) ──
 function shareApk() {
   const shareText =
@@ -8777,6 +8860,24 @@ function renderMilestonesTab() {
       out += '<span class="ms-icon">' + sm.icon + "</span>";
       out += '<div><div class="ms-label">' + crNum + " Crore</div>";
       out += '<div class="ms-eng">' + sm.eng + "</div></div>";
+      out += '<span class="ms-link-icons">';
+      const crLink = _croreLinksCache[crNum] || "";
+      if (crLink) {
+        const crPlatform = typeof favvidDetectPlatform === "function" ? favvidDetectPlatform(crLink) : "other";
+        out +=
+          '<span class="ms-link-btn play" title="Play video" onclick="event.stopPropagation();playCroreMilestoneVideo(' +
+          crNum +
+          ')">' +
+          favvidPlatformIconHtml(crPlatform) +
+          "</span>";
+      }
+      if (typeof isDeveloper === "function" && isDeveloper()) {
+        out +=
+          '<span class="ms-link-btn edit" title="Edit link" onclick="event.stopPropagation();saveCroreMilestoneLink(' +
+          crNum +
+          ')">✏️</span>';
+      }
+      out += "</span>";
       out += '<span class="ms-count-label">' + sm.tag + "</span>";
       out += "</div>";
       const descId = "msDesc" + sm.count;
@@ -8788,10 +8889,6 @@ function renderMilestonesTab() {
         '">' +
         desc +
         "</div>";
-      out +=
-        '<span class="ms-read-more" onclick="event.stopPropagation();toggleMsDesc(\'' +
-        descId +
-        "',this)\">Read more ▾</span>";
       if (achieved) {
         out += '<div class="ms-badge achieved">✓ ACHIEVED</div>';
       } else if (pred) {
@@ -9920,6 +10017,7 @@ function fbInit() {
             if (devOptionsPanel) devOptionsPanel.style.display = "none";
           }
           _loadManualApkLink(); // re-render developer-edit vs plain-download row for this account
+          if (typeof _loadCroreMilestoneLinks === "function") _loadCroreMilestoneLinks(); // re-render crore edit icons for this account
           watchNewFeedback(); // Dev-only: real-time badge for new user feedback
           watchMyFeedback(); // All users: show developer replies + popup notification
         });
@@ -9931,6 +10029,7 @@ function fbInit() {
         _fbStopVerifyCountdownTimer();
         _fbHideVerifyBlock();
         _loadManualApkLink(); // signed out — falls back to local cache instead of Firestore
+        if (typeof _loadCroreMilestoneLinks === "function") _loadCroreMilestoneLinks(); // signed out — local cache too
         // Clean up session listener on sign out
         if (fbSessionListener) {
           fbSessionListener();
@@ -17216,6 +17315,7 @@ window.addEventListener("load", async () => {
   await App.load();
   if (typeof checkForUpdateAvailable === "function") checkForUpdateAvailable();
   if (typeof _loadManualApkLink === "function") _loadManualApkLink();
+  if (typeof _loadCroreMilestoneLinks === "function") _loadCroreMilestoneLinks();
   App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));
   App.lmcRV = Math.floor((App.S.historyRV[App.S.tk] || 0) / (App.S.ms || 108));

@@ -3354,23 +3354,41 @@ function _renderManualApkCard() {
   const statusEl = document.getElementById("manualApkStatus");
   const rowEl = document.getElementById("manualApkRow");
   const editWrap = document.getElementById("manualApkEditWrap");
+  const chevronEl = document.getElementById("manualApkChevron");
   if (!titleEl || !statusEl) return;
 
   if (isDeveloper()) {
+    // Collapsed by default — tap the row to expand/collapse the
+    // paste-a-link editor, same pattern as the "Add Video Link" /
+    // "New Folder" cards elsewhere in Favourite Videos.
+    const isOpen = !!window._manualApkEditOpen;
     titleEl.textContent = "🛠️ Manual APK Link (Developer)";
-    statusEl.textContent = "Paste a Google Drive link below and tap Save — every user sees it instantly.";
-    if (editWrap) editWrap.style.display = "block";
+    statusEl.textContent = _manualApkLinkCache
+      ? "Link saved. Tap to edit."
+      : "No link set yet. Tap to add one.";
+    if (editWrap) editWrap.style.display = isOpen ? "block" : "none";
+    if (chevronEl) chevronEl.style.transform = isOpen ? "rotate(90deg)" : "rotate(0deg)";
     const input = document.getElementById("manualApkInput");
     if (input && !input.value) input.value = _manualApkLinkCache || "";
-    if (rowEl) rowEl.onclick = null; // whole-row tap disabled for the developer; Save drives this now
+    if (rowEl) {
+      rowEl.onclick = () => {
+        window._manualApkEditOpen = !window._manualApkEditOpen;
+        _renderManualApkCard();
+      };
+    }
   } else {
     if (editWrap) editWrap.style.display = "none";
-    if (_manualApkLinkCache) {
-      titleEl.textContent = "Download APK file";
+    titleEl.textContent = "Download APK file";
+    if (!fbUser) {
+      // Not signed in yet — Firestore reads require auth, so we can't
+      // tell a casual visitor apart from "no link yet"; be honest
+      // about needing sign-in instead of implying nothing's been shared.
+      statusEl.textContent = "Sign in to get the developer's link";
+      if (rowEl) rowEl.onclick = () => toast("Sign in first to get the developer's link 🙏");
+    } else if (_manualApkLinkCache) {
       statusEl.textContent = "Tap to download the APK from a developer-shared link";
       if (rowEl) rowEl.onclick = () => openExternalLink(_manualApkLinkCache);
     } else {
-      titleEl.textContent = "Download APK file";
       statusEl.textContent = "Developer hasn't shared a link yet";
       if (rowEl) rowEl.onclick = () => toast("Developer hasn't shared a link yet 🙏");
     }
@@ -14211,6 +14229,19 @@ function favvidRenderLinkCard(v, items, bucketKey, container) {
 // new-folder form, the folder tiles themselves, and — below those — an
 // "orphan" section (search + list) for links not filed into any folder.
 function renderFavVideoLinksTop(list, subfolderKey) {
+  // Links live in Firestore behind an auth-required read, so a casual
+  // visitor who hasn't signed in yet would otherwise always get an
+  // empty list back and see the generic "coming soon" empty state —
+  // even when the developer has already added links. Tell them to
+  // sign in instead of implying nothing's there.
+  if (!fbUser) {
+    const signInMsg = document.createElement('div');
+    signInMsg.className = 'st-folder-empty';
+    signInMsg.textContent = 'Sign in to get links 🙏';
+    list.appendChild(signInMsg);
+    return;
+  }
+
   const loading = document.createElement('div');
   loading.className = 'st-folder-empty';
   loading.textContent = 'লোড হচ্ছে…';
@@ -14399,6 +14430,14 @@ function renderFavVideoLinksTop(list, subfolderKey) {
 // folder's name, only known after the fetch resolves) plus a search bar
 // scoped to just this folder's links.
 function renderFavVideoLinksFolderView(list, folderId, subfolderKey) {
+  if (!fbUser) {
+    const signInMsg = document.createElement('div');
+    signInMsg.className = 'st-folder-empty';
+    signInMsg.textContent = 'Sign in to get links 🙏';
+    list.appendChild(signInMsg);
+    return;
+  }
+
   const loading = document.createElement('div');
   loading.className = 'st-folder-empty';
   loading.textContent = 'লোড হচ্ছে…';

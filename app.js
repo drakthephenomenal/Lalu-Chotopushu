@@ -8849,6 +8849,7 @@ function renderMilestonesTab() {
         '<div class="ms-card tier-saffron' +
         (achieved ? " achieved" : " locked") +
         (isBig ? " million" : "") +
+        (sm.special ? " ms-special-glow" : "") +
         "\" onclick=\"openMsDetail('crore'," +
         sm.count +
         "," +
@@ -8856,6 +8857,9 @@ function renderMilestonesTab() {
         "," +
         achieved +
         ')">';
+      if (sm.special) {
+        out += '<div class="ms-special-badge">✨ ' + (lang === "bn" ? "বিশেষ" : "Special") + '</div>';
+      }
       out += '<div class="ms-card-header">';
       out += '<span class="ms-icon">' + sm.icon + "</span>";
       out += '<div><div class="ms-label">' + crNum + " Crore</div>";
@@ -9031,7 +9035,7 @@ const CRORE_DESCS_HI = {
 };
 
 const CRORE_DESCS_BN = {
-  1: "তনু শুদ্ধি: শরীর পুরোপুরি নিষ্পাপ ও পবিত্র হয়ে যায়। রজোগুণ ও তমোগুণ নাশ হয় এবং সর্বদা শুদ্ধ সত্যগুণ বজায় থাকে। সব সময় ভগবানের ভজন হতে থাকে। রোগের 'পাপ বীজ' (মূল কারণ) খতম হয়ে যায়। যদি কোনো রোগ থাকেও, তবে তা সহ্য করার শক্তি পাওয়া যায়। স্বপ.S�নে দেবতা, ঋষি-মুনি এবং সন্ত-ভক্তরা এসে কথা বলেন।",
+  1: "তনু শুদ্ধি: শরীর পুরোপুরি নিষ্পাপ ও পবিত্র হয়ে যায়। রজোগুণ ও তমোগুণ নাশ হয় এবং সর্বদা শুদ্ধ সত্যগুণ বজায় থাকে। সব সময় ভগবানের ভজন হতে থাকে। রোগের 'পাপ বীজ' (মূল কারণ) খতম হয়ে যায়। যদি কোনো রোগ থাকেও, তবে তা সহ্য করার শক্তি পাওয়া যায়। স্বপ্নে দেবতা, ঋষি-মুনি এবং সন্ত-ভক্তরা এসে কথা বলেন।",
   2: "ধন (সম্পদ): ধনের অভাব খতম হয়ে যায়। সবচেয়ে বড় কথা হলো মানুষের ভিতর থেকে ধনী হওয়ার তৃষ্ণা (ইচ্ছা) মিটে যায়। ভগবান দুইভাবে সাহায্য করেন—হয় ইচ্ছা সরিয়ে দেন, না হয় না চাইতেই এত ধন দেন যে ইচ্ছা শেষ হয়ে যায়। যেমন নদী নিজে থেকেই সমুদ্রে গিয়ে মেশে, তেমনই সমস্ত বৈভব সাধককে ঘিরে ধরে। বিদেশ থেকে স্বদেশে প্রত্যাবর্তন।",
   3: "মানসিক পবিত্রতা: অন্তঃকরণ পরম পবিত্র হয়। যে খারাপ অভ্যাসগুলো (কাম, ক্রোধ) আগে 'অসাধ্য' (অসম্ভব) মনে হতো, তা সহজ হয়ে যায়। সারা পৃথিবী সাধককে নিজের আপন ভাইয়ের মতো ভালোবাসতে শুরু করে।",
   4: "সুখ স্থান: হৃদয়ে ভগবদানন্দ (দিব্য আনন্দ) প্রকট হয়। স্থায়িত্ব: মান-অপমান বা সুখ-দুঃখের হৃদয়ের ওপর কোনো প্রভাব পড়ে না। আত্ম-উপলব্ধি: শাস্ত্র না পড়েই 'নিত্যত্ব বোধ' হয়ে যায় যে 'আমি নিত্য, এই শরীর অনিত্য'।",
@@ -19475,6 +19479,7 @@ const SPIRITUAL_MILESTONES = [
     tag: "Dharam Sthan",
     eng: "Direct Divine Vision",
     phase: "bhagwat",
+    special: true, // Saakshaatkaar — direct divine vision of one's Ishta: gets an extra glow/pulse treatment in the card render below, distinct from the ordinary saffron tier.
     desc: "Aap jiska naam jap rahe hain (Ram, Krishna, Shiva, ya Radha), unka Saakshaatkaar (Direct Vision) hota hai. Sadhak ki vani Satya ho jati hai — jo bologe wo ho jayega.",
   },
   {

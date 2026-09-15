@@ -1316,6 +1316,16 @@ button.n28-gold-btn-danger,
 .ms-card.million .ms-icon{font-size:28px;}
 @keyframes ms-shimmer{0%{background-position:-200% center;}100%{background-position:200% center;}}
 .ms-card.million::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 30%,rgba(255,215,0,0.08) 50%,transparent 70%);background-size:200% 100%;animation:ms-shimmer 3s linear infinite;border-radius:18px;pointer-events:none;}
+
+/* 9 Crore — Saakshaatkaar (direct divine vision): a distinct glowing,
+   pulsing treatment so this milestone stands out from the rest of the
+   saffron tier. */
+@keyframes ms-special-pulse{
+  0%,100%{box-shadow:0 0 22px rgba(255,153,51,0.45),inset 0 0 30px rgba(255,153,51,0.08);border-color:rgba(255,153,51,0.5);}
+  50%{box-shadow:0 0 42px rgba(255,215,0,0.85),inset 0 0 46px rgba(255,215,0,0.18);border-color:rgba(255,215,0,0.9);}
+}
+.ms-card.ms-special-glow{border-width:2px;animation:ms-special-pulse 2.2s ease-in-out infinite;}
+.ms-special-badge{position:absolute;top:12px;right:14px;font-size:10px;font-weight:700;letter-spacing:1px;color:#1a1200;background:linear-gradient(135deg,#FFE38A,#FFB700);padding:3px 10px;border-radius:20px;box-shadow:0 0 10px rgba(255,215,0,0.6);z-index:2;}
 .ms-card-header{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
 .ms-icon{font-size:22px;flex-shrink:0;}
 .ms-label{font-family:'Cinzel Decorative',serif;font-size:13px;color:var(--tl);letter-spacing:1px;}

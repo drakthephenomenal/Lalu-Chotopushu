@@ -177,9 +177,7 @@
   </button>
   <button class="nb" onclick="sv('vst',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-    Stotram
-  </button>
-  <button class="nb" onclick="sv('vb',this)">
+    S&V
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
     B&C
   </button>
@@ -645,7 +643,7 @@
 
 <!-- STOTRAM VIEW -->
 <div class="view" id="vst">
-  <div class="vt" id="stTrackerTitle">Stotram Tracker</div>
+  <div class="vt" id="stTrackerTitle">Stotram and Videos</div>
   <div class="asf" id="stAddForm">
     <!-- Header — always visible, tap to toggle -->
     <div class="asf-header" onclick="toggleAsfForm()">
@@ -666,7 +664,7 @@
 
 <!-- BRAHMACHARYA VIEW -->
 <div class="view" id="vb">
-  <div class="vt">📅 B&C · Vedic Panchanga</div>
+  <div class="vt">📅 Brahmacharya and Calendar</div>
 
   <!-- B&C Sub-tabs: Calendar | Panchanga -->
   <div id="vp-subtab-bar" style="display:flex;gap:8px;padding:0 14px 12px;justify-content:center">
@@ -1599,9 +1597,24 @@
     </div>
   </div>
   <div class="vt">Settings</div>
+  <!-- First-launch tutorial prompt — shown exactly once, ever, tracked via
+       localStorage so it never reappears once dismissed either way (watch
+       or skip). Same modal styling as the warning modals above so it feels
+       native to the app. -->
+  <div id="firstTutorialModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.72);align-items:center;justify-content:center;padding:20px;">
+    <div style="max-width:340px;width:100%;background:#0b1030;border:1px solid rgba(255,215,0,0.35);border-radius:14px;padding:22px 20px;box-shadow:0 10px 40px rgba(0,0,0,0.5);text-align:center;">
+      <div style="font-size:34px;line-height:1;margin-bottom:10px;">🎬</div>
+      <div style="font-size:16px;font-weight:700;color:#FFD700;margin-bottom:8px;">Naya App? Jai Sri Radhe! 🙏</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.55;margin-bottom:18px;">
+        A quick 2-minute tutorial will help you get set up — Sampraday, Jap targets, and everything else in one short video.
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="button" onclick="_dismissFirstTutorialPrompt(false)" style="flex:1;padding:10px 12px;border-radius:9px;background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.2);font-size:13px;font-weight:700;cursor:pointer;">Skip</button>
+        <button type="button" onclick="_dismissFirstTutorialPrompt(true)" style="flex:1;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,180,0,0.25));color:#FFD700;border:1px solid rgba(255,215,0,0.5);font-size:13px;font-weight:700;cursor:pointer;">▶️ Watch Tutorial</button>
+      </div>
+    </div>
+  </div>
 
-  <!-- App Update — checks the latest GitHub Release, downloads the APK
-       via Capacitor Filesystem, then hands it to the system installer.
        Kept at the very top so it's the first thing users see. -->
   <div class="sc" id="appUpdateCard" style="background:rgba(8,12,35,0.82);border:1px solid rgba(255,215,0,0.25);padding:14px 15px;cursor:pointer;transition:background .4s,border-color .4s;" onclick="checkAppUpdate()">
     <div style="display:flex;align-items:center;gap:12px;">
@@ -1622,9 +1635,26 @@
     <!-- Only shown for PWA/TWA (web) — a clearly-labeled button in addition
          to the whole-card tap, so the refresh action isn't easy to miss. -->
     <button id="appUpdateWebRefreshBtn" type="button" style="display:none;margin-top:10px;width:100%;padding:9px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:12px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation(); checkAppUpdate();">🔄 Refresh Now</button>
-    <!-- Only shown inside the installed (native) app — clears Firestore's
-         local offline cache after an explicit export-first warning. -->
-    <button id="appUpdateNativeRefreshBtn" type="button" style="display:none;margin-top:10px;width:100%;padding:9px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:12px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation(); confirmNativeCacheRefresh();">🔄 Refresh Now (clears local cache)</button>
+  </div>
+
+  <!-- Only shown inside the installed (native/Capacitor) app — a standalone
+       button just below the Update App card rather than nested inside its
+       border, per request. Clears Firestore's local offline cache after an
+       explicit export-first warning. -->
+  <button id="appUpdateNativeRefreshBtn" type="button" style="display:none;width:100%;margin:-6px 0 18px;padding:11px 12px;border-radius:12px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:13px;font-weight:700;cursor:pointer;" onclick="confirmNativeCacheRefresh();">🔄 Refresh Now (clears local cache)</button>
+
+  <!-- Tutorial video — a single developer-provided link (icon-only, no raw
+       URL shown on screen); tapping opens it on YouTube. Shown on every
+       platform, right below the refresh button(s) above. -->
+  <div class="sc" style="background:rgba(8,12,35,0.82);border:1px solid rgba(255,80,80,0.25);padding:14px 15px;cursor:pointer;" onclick="openExternalLink('https://youtu.be/IsrueqcsHL4?si=Nqn9io_MJCsrNi4Z')">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span id="tutorialVideoIcon" style="width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:#ff6b6b;line-height:1.2;">App Tutorial Video</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;">Tap to watch on YouTube</div>
+      </div>
+      <div style="color:rgba(255,107,107,0.5);font-size:16px;">›</div>
+    </div>
   </div>
 
   <!-- Manual APK link — developer-provided fallback download, stored in
@@ -1910,6 +1940,7 @@
   <!-- SINGLE SIGN-IN WITH GOOGLE -->
   <div class="sc" id="fbCard">
     <h3>☁️ Cloud Sync &amp; Backup</h3>
+    <button type="button" onclick="refreshAppFromBackupArea()" style="width:100%;margin-bottom:14px;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:12px;font-weight:700;cursor:pointer;">🔄 Refresh Now</button>
     <div id="fbLoggedOut">
       <p style="font-size:12px;color:var(--td);margin-bottom:14px">One sign-in handles real-time sync across all your devices.</p>
       <button class="google-btn" onclick="fbSignInGoogle()">

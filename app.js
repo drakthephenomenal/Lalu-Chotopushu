@@ -3254,6 +3254,15 @@ const RJAP_PWA_URL = "https://radharadharadha.vercel.app/";
 // URL itself ever changes (e.g. moved to a different Drive account/folder).
 const RJAP_APK_URL = "https://drive.google.com/drive/folders/1f5LsU7nL0KycW1_KkTu6lWivrEnd8l48";
 
+// Fallback direct-download link for the "Manual APK Link" card, used
+// whenever no developer-set link has been loaded from Firestore yet —
+// most notably for signed-out visitors, since Firestore reads require
+// auth and we can't fetch config/manualApkLink for them. This keeps the
+// card always tappable instead of dead-ending on "sign in first". Once
+// the developer saves a link (see saveManualApkLink below), that link
+// takes over as soon as it's loaded (i.e. once the user signs in).
+const RJAP_APK_FALLBACK_URL = "https://drive.google.com/file/d/1vwxtEaMRf6WIG8DHQC3ZWSpGX_mpGmro/view?usp=share_link";
+
 function _getAppUrl() {
   return RJAP_PWA_URL;
 }
@@ -3349,50 +3358,64 @@ async function _loadManualApkLink() {
   _renderManualApkCard();
 }
 
+// Effective link the card should download from: the developer's
+// Firestore-saved link if one has been loaded, otherwise the hardcoded
+// fallback — so there is always something to tap, signed in or not.
+function _effectiveManualApkUrl() {
+  return _manualApkLinkCache || RJAP_APK_FALLBACK_URL;
+}
+
 function _renderManualApkCard() {
   const titleEl = document.getElementById("manualApkTitle");
   const statusEl = document.getElementById("manualApkStatus");
   const rowEl = document.getElementById("manualApkRow");
   const editWrap = document.getElementById("manualApkEditWrap");
+  const editIconEl = document.getElementById("manualApkEditIcon");
   const chevronEl = document.getElementById("manualApkChevron");
   if (!titleEl || !statusEl) return;
 
+  const effectiveUrl = _effectiveManualApkUrl();
+
   if (isDeveloper()) {
-    // Collapsed by default — tap the row to expand/collapse the
-    // paste-a-link editor, same pattern as the "Add Video Link" /
-    // "New Folder" cards elsewhere in Favourite Videos.
+    // The row itself now always downloads, same as for regular users —
+    // the pencil icon is the only thing that opens the paste-a-link
+    // editor, so developers don't lose the ability to just grab the APK.
     const isOpen = !!window._manualApkEditOpen;
-    titleEl.textContent = "🛠️ Manual APK Link (Developer)";
+    titleEl.textContent = "📥 Download APK file";
     statusEl.textContent = _manualApkLinkCache
-      ? "Link saved. Tap to edit."
-      : "No link set yet. Tap to add one.";
+      ? "Tap to download. Tap ✏️ to replace the link."
+      : "Tap to download (default link). Tap ✏️ to set your own.";
+    if (editIconEl) editIconEl.style.display = "flex";
     if (editWrap) editWrap.style.display = isOpen ? "block" : "none";
     if (chevronEl) chevronEl.style.transform = isOpen ? "rotate(90deg)" : "rotate(0deg)";
     const input = document.getElementById("manualApkInput");
     if (input && !input.value) input.value = _manualApkLinkCache || "";
-    if (rowEl) {
-      rowEl.onclick = () => {
-        window._manualApkEditOpen = !window._manualApkEditOpen;
-        _renderManualApkCard();
-      };
-    }
+    if (rowEl) rowEl.onclick = () => openExternalLink(effectiveUrl);
   } else {
+    if (editIconEl) editIconEl.style.display = "none";
     if (editWrap) editWrap.style.display = "none";
     titleEl.textContent = "Download APK file";
     if (!fbUser) {
-      // Not signed in yet — Firestore reads require auth, so we can't
-      // tell a casual visitor apart from "no link yet"; be honest
-      // about needing sign-in instead of implying nothing's been shared.
-      statusEl.textContent = "Sign in to get the developer's link";
-      if (rowEl) rowEl.onclick = () => toast("Sign in first to get the developer's link 🙏");
+      // Not signed in — Firestore reads require auth, so we can't fetch
+      // the developer's link yet. Give the fallback link instead of
+      // dead-ending on "sign in first"; signing in will swap in the
+      // developer's own link automatically once it loads.
+      statusEl.textContent = "Tap to download the APK";
     } else if (_manualApkLinkCache) {
       statusEl.textContent = "Tap to download the APK from a developer-shared link";
-      if (rowEl) rowEl.onclick = () => openExternalLink(_manualApkLinkCache);
     } else {
-      statusEl.textContent = "Developer hasn't shared a link yet";
-      if (rowEl) rowEl.onclick = () => toast("Developer hasn't shared a link yet 🙏");
+      statusEl.textContent = "Tap to download the APK";
     }
+    if (rowEl) rowEl.onclick = () => openExternalLink(effectiveUrl);
   }
+}
+
+// Developer-only: toggles the paste-a-link editor open/closed. Wired to
+// the pencil icon in index.html (manualApkEditIcon), kept separate from
+// the row's own onclick so tapping the row always downloads instead.
+function toggleManualApkEdit() {
+  window._manualApkEditOpen = !window._manualApkEditOpen;
+  _renderManualApkCard();
 }
 
 async function saveManualApkLink() {

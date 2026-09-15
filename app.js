@@ -2205,6 +2205,10 @@ const App = {
   ht(e) {
     if (isGhostMode()) return; // ghost mode: read-only, no jap
     if (window.japPhotoEditMode) return; // photo edit mode: dragging/resizing photos, not counting
+    // First-ever tap on the counter: surface the tutorial hint (see
+    // _firstTapHintWatch/_firstTapHintDismiss below). Purely a UI nudge —
+    // never blocks or delays the tap itself.
+    _maybeShowFirstTapHint();
     // Mark main Jap as the actively-tapped mode (see _activeJapMode below).
     this._activeJapMode = "main";
     // Suppress synthesized mousedown that follows a touchstart on the same tap
@@ -3314,6 +3318,38 @@ async function openExternalLink(url) {
     }
   } catch (_e) {}
   try { window.open(url, "_blank"); } catch (_e) {}
+}
+
+// ── First-tap tutorial hint ──────────────────────────────────────
+// Shown once, inline above the tap zone, the first time the person
+// ever taps the Jap counter. Same tutorial link as the Settings ›
+// "App Tutorial Video" row. Never blocks counting; dismissible via
+// either the bar itself (watch) or the ✕ (dismiss) — either one
+// marks it seen for good.
+const FIRST_TAP_HINT_SEEN_KEY = "firstTapTutorialSeen";
+const APP_TUTORIAL_VIDEO_URL = "https://youtu.be/IsrueqcsHL4?si=Nqn9io_MJCsrNi4Z";
+
+function _maybeShowFirstTapHint() {
+  try {
+    if (localStorage.getItem(FIRST_TAP_HINT_SEEN_KEY)) return;
+  } catch (_e) {}
+  const el = document.getElementById("firstTapTutorialHint");
+  if (el) el.style.display = "flex";
+}
+
+function _markFirstTapHintSeen() {
+  const el = document.getElementById("firstTapTutorialHint");
+  if (el) el.style.display = "none";
+  try { localStorage.setItem(FIRST_TAP_HINT_SEEN_KEY, "1"); } catch (_e) {}
+}
+
+function _firstTapHintWatch() {
+  _markFirstTapHintSeen();
+  openExternalLink(APP_TUTORIAL_VIDEO_URL);
+}
+
+function _firstTapHintDismiss() {
+  _markFirstTapHintSeen();
 }
 
 function shareApp() {

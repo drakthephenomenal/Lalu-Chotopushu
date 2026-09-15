@@ -11252,6 +11252,28 @@ const FB_DATE_MAP_BASELINE_KEY = {
   historyKaam: "syncBaselineKaam", timerHistoryKaam: "syncBaselineTimerKaam",
 };
 
+// Top-level scalar counters that only ever accumulate from the user's own
+// actions (lifetime jap-seconds, deduction counts, completed 28-cycle
+// count). Unlike settings/config fields (ms, cfg, japMode, bg*, ...) these
+// are safe — and worth — sending as a server-side atomic increment instead
+// of an absolute value: two devices online at the same moment, each
+// pushing their own +1 within the same few seconds, then correctly SUM at
+// the server regardless of write order, instead of whichever push lands
+// last simply overwriting the other's. This is what closes the
+// still-open "two devices truly simultaneous" gap that the fbMigrate
+// offline-merge (mergeAdditive) doesn't cover, since that only runs on
+// reconnect/hydration, not on every routine live tap.
+const FB_SCALAR_COUNTER_FIELDS = [
+  "dt", "lt", "nameJapDeduct", "nameJapDeduct28",
+  "dtRV", "ltRV", "nameJapDeductRV",
+  "dtHK", "nameJapDeductHK",
+  "dtKV", "ltKV", "nameJapDeductKV",
+  "dtKaam", "ltKaam", "nameJapDeductKaam",
+  "dtSS", "ltSS", "nameJapDeductSS",
+  "dtRam", "ltRam", "nameJapDeductRam",
+  "dt28Cycles",
+];
+
 // Refreshes every syncBaseline* field to the current local value, for every
 // tradition — call this right after ANY successful cloud write (full OR
 // delta), so it always reflects "what this device's own data looked like
@@ -11342,12 +11364,38 @@ async function fbPushDelta() {
       // actually changed, via Firestore's dotted-path field update —
       // this is what keeps a years-old history from getting re-uploaded
       // on every single bead.
+      //
+      // Send each changed key as FieldValue.increment(delta) rather than
+      // its absolute new value, whenever both sides are numbers — this
+      // makes the write commutative: two devices online at the same
+      // moment, each independently bumping today's count, correctly sum
+      // at the server no matter which write lands first, instead of one
+      // silently overwriting the other. Anything non-numeric (shouldn't
+      // normally occur in these maps, but don't assume) falls back to a
+      // plain absolute write.
       const changedKeys = new Set([...Object.keys(oldVal), ...Object.keys(newVal)]);
       for (const dk of changedKeys) {
-        if ((oldVal[dk] ?? null) === (newVal[dk] ?? null)) continue;
-        if (newVal[dk] === undefined) continue; // key removal: not a real case for these maps, skip rather than guess
-        updateFields[`${key}.${dk}`] = newVal[dk];
+        const oldNum = oldVal[dk];
+        const newNum = newVal[dk];
+        if ((oldNum ?? null) === (newNum ?? null)) continue;
+        if (newNum === undefined) continue; // key removal: not a real case for these maps, skip rather than guess
+        if (typeof newNum === "number" && (oldNum === undefined || typeof oldNum === "number")) {
+          const delta = newNum - (oldNum || 0);
+          if (delta !== 0) updateFields[`${key}.${dk}`] = firebase.firestore.FieldValue.increment(delta);
+        } else {
+          updateFields[`${key}.${dk}`] = newNum;
+        }
       }
+    } else if (
+      FB_SCALAR_COUNTER_FIELDS.includes(key) &&
+      typeof oldVal === "number" && typeof newVal === "number"
+    ) {
+      // Lifetime totals (dt/lt/nameJapDeduct/dt28Cycles) — same reasoning
+      // as the per-date maps above: send the delta as an atomic
+      // increment so two devices' simultaneous contributions sum instead
+      // of racing to overwrite each other.
+      const delta = newVal - oldVal;
+      if (delta !== 0) updateFields[key] = firebase.firestore.FieldValue.increment(delta);
     } else {
       // Anything else that changed (edited/reordered/shrunk array, or a
       // plain field) — send its new value in full. Still far cheaper

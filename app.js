@@ -8894,10 +8894,54 @@ function _msEnsureVideoLinks() {
 function msVideoLink(key) {
   return (_msVidCache && _msVidCache[key]) || "";
 }
+// Sends a not-signed-in user to the app's sign-in area. The sign-in
+// controls live in index.html, so we find them by the handler they call
+// rather than hard-coding an element id, activate the .view they sit in
+// (plus its bottom-nav button) and scroll them into sight.
+function msGoToSignIn() {
+  if (typeof toast === "function") toast("ভিডিওটি দেখতে সাইন ইন করুন 🙏 (Sign in to see the video)");
+  try {
+    const target =
+      document.querySelector('[onclick*="fbSignInGoogle"]') ||
+      document.querySelector('[onclick*="fbSignInEmail"]') ||
+      document.getElementById("fbEmail") ||
+      document.getElementById("fbPass");
+    if (!target) return;
+    const view = target.closest(".view");
+    if (view) {
+      const navBtn = document.querySelector('.nb[onclick*="' + view.id + '"]');
+      if (typeof sv === "function") sv(view.id, navBtn || null);
+    }
+    setTimeout(function () {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 120);
+  } catch (e) {}
+}
+// Plays a milestone video with the same handling as Favourite Videos:
+// YouTube / Telegram / Instagram play inside the app, Drive / Facebook /
+// other links open externally.
 function msOpenVideo(key) {
+  if (typeof fbUser === "undefined" || !fbUser) { msGoToSignIn(); return; }
   const url = msVideoLink(key);
-  if (!url) return;
-  window.open(url, "_blank", "noopener");
+  if (!url) { if (typeof toast === "function") toast("এই মাইলস্টোনে এখনো কোনো ভিডিও নেই"); return; }
+  const title = key + " Crore";
+  const platform = typeof favvidDetectPlatform === "function" ? favvidDetectPlatform(url) : "other";
+  const ext = function () {
+    if (typeof openExternalLink === "function") openExternalLink(url);
+    else window.open(url, "_blank", "noopener");
+  };
+  if (typeof openFavVideoPlayer !== "function") { ext(); return; }
+  if (platform === "youtube") {
+    const id = favvidYoutubeId(url);
+    if (id) openFavVideoPlayer(title, "youtube", id); else ext();
+  } else if (platform === "telegram") {
+    const embed = favvidTelegramEmbed(url);
+    if (embed) openFavVideoPlayer(title, "telegram", embed); else ext();
+  } else if (platform === "instagram") {
+    openFavVideoPlayer(title, "instagram", url);
+  } else {
+    ext();
+  }
 }
 async function msEditVideo(key) {
   if (!isDeveloper()) return;
@@ -8926,10 +8970,23 @@ async function msEditVideo(key) {
 function msVideoBtnsHtml(key) {
   let h = "";
   const url = msVideoLink(key);
-  if (url) {
+  const signedIn = !(typeof fbUser === "undefined" || !fbUser);
+  if (!signedIn) {
+    // Not signed in: links live behind an auth-required read, so we can't
+    // know which milestones have one. Show the logo on every milestone —
+    // tapping it explains and takes them to the sign-in area.
     h +=
-      '<button class="ms-vid-btn" title="Watch video" onclick="event.stopPropagation();msOpenVideo(\'' +
-      key + '\')">\u25b6</button>';
+      '<button class="ms-vid-btn ms-vid-locked" title="Sign in to see the video" onclick="event.stopPropagation();msOpenVideo(\'' +
+      key + '\')">' +
+      (typeof favvidPlatformIconHtml === "function" ? favvidPlatformIconHtml("youtube") : "\u25b6") +
+      "</button>";
+  } else if (url) {
+    const platform = typeof favvidDetectPlatform === "function" ? favvidDetectPlatform(url) : "other";
+    h +=
+      '<button class="ms-vid-btn ms-vid-brand" title="Watch video" onclick="event.stopPropagation();msOpenVideo(\'' +
+      key + '\')">' +
+      (typeof favvidPlatformIconHtml === "function" ? favvidPlatformIconHtml(platform) : "\u25b6") +
+      "</button>";
   }
   if (typeof isDeveloper === "function" && isDeveloper()) {
     h +=
@@ -8957,7 +9014,7 @@ const CRORE_DESCS_HI = {
 };
 
 const CRORE_DESCS_BN = {
-  1: "তনু শুদ্ধি: শরীর পুরোপুরি নিষ্পাপ ও পবিত্র হয়ে যায়। রজোগুণ ও তমোগুণ নাশ হয় এবং সর্বদা শুদ্ধ সত্যগুণ বজায় থাকে। সব সময় ভগবানের ভজন হতে থাকে। রোগের 'পাপ বীজ' (মূল কারণ) খতম হয়ে যায়। যদি কোনো রোগ থাকেও, তবে তা সহ্য করার শক্তি পাওয়া যায়। স্বপ.S�নে দেবতা, ঋষি-মুনি এবং সন্ত-ভক্তরা এসে কথা বলেন।",
+  1: "তনু শুদ্ধি: শরীর পুরোপুরি নিষ্পাপ ও পবিত্র হয়ে যায়। রজোগুণ ও তমোগুণ নাশ হয় এবং সর্বদা শুদ্ধ সত্যগুণ বজায় থাকে। সব সময় ভগবানের ভজন হতে থাকে। রোগের 'পাপ বীজ' (মূল কারণ) খতম হয়ে যায়। যদি কোনো রোগ থাকেও, তবে তা সহ্য করার শক্তি পাওয়া যায়। স্বপ্নে দেবতা, ঋষি-মুনি এবং সন্ত-ভক্তরা এসে কথা বলেন।",
   2: "ধন (সম্পদ): ধনের অভাব খতম হয়ে যায়। সবচেয়ে বড় কথা হলো মানুষের ভিতর থেকে ধনী হওয়ার তৃষ্ণা (ইচ্ছা) মিটে যায়। ভগবান দুইভাবে সাহায্য করেন—হয় ইচ্ছা সরিয়ে দেন, না হয় না চাইতেই এত ধন দেন যে ইচ্ছা শেষ হয়ে যায়। যেমন নদী নিজে থেকেই সমুদ্রে গিয়ে মেশে, তেমনই সমস্ত বৈভব সাধককে ঘিরে ধরে। বিদেশ থেকে স্বদেশে প্রত্যাবর্তন।",
   3: "মানসিক পবিত্রতা: অন্তঃকরণ পরম পবিত্র হয়। যে খারাপ অভ্যাসগুলো (কাম, ক্রোধ) আগে 'অসাধ্য' (অসম্ভব) মনে হতো, তা সহজ হয়ে যায়। সারা পৃথিবী সাধককে নিজের আপন ভাইয়ের মতো ভালোবাসতে শুরু করে।",
   4: "সুখ স্থান: হৃদয়ে ভগবদানন্দ (দিব্য আনন্দ) প্রকট হয়। স্থায়িত্ব: মান-অপমান বা সুখ-দুঃখের হৃদয়ের ওপর কোনো প্রভাব পড়ে না। আত্ম-উপলব্ধি: শাস্ত্র না পড়েই 'নিত্যত্ব বোধ' হয়ে যায় যে 'আমি নিত্য, এই শরীর অনিত্য'।",
@@ -9638,6 +9695,11 @@ function fbInit() {
       }
       const prevUid = App._uid;
       fbUser = user;
+      // Milestone video buttons differ for signed-in vs signed-out users
+      // (real platform logos vs a locked "sign in" logo), so re-render the
+      // N&M tab and drop the cached links whenever auth state flips.
+      _msVidCache = null;
+      if (typeof renderMilestonesTab === "function") renderMilestonesTab();
       // Foreground catch-up for the daily Google Drive backup. Moved here
       // (instead of the "load" handler) because fbUser is only ever set
       // inside this callback — calling checkDailyDriveBackupCatchUp() from

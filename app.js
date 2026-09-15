@@ -3332,7 +3332,7 @@ function shareApp() {
 // (config/manualApkLink), which replaces the embedded default for everyone
 // once it loads, but the embedded link is always the instant fallback. ──
 const EMBEDDED_MANUAL_APK_LINK =
-  "https://drive.google.com/file/d/1jWe6oKxiZ2OFYs72moF2aN6QLAUHEdYc/view?usp=drivesdk";
+  "https://drive.google.com/file/d/1bdWEIkkSmYumnYemv2fpTIdTkQdjZTnc/view?usp=share_link";
 let _manualApkLinkCache = EMBEDDED_MANUAL_APK_LINK; // last-known link string — always has a value now
 
 async function _loadManualApkLink() {
@@ -3355,25 +3355,34 @@ async function _loadManualApkLink() {
   }
 }
 
+// Same collapsed tap-to-download row for everyone, developer included — the
+// only difference for a developer is the ✏️ edit icon, which toggles the
+// (collapsed-by-default) edit panel below without triggering the row's
+// download tap. See toggleManualApkEdit() just below.
 function _renderManualApkCard() {
   const titleEl = document.getElementById("manualApkTitle");
   const statusEl = document.getElementById("manualApkStatus");
   const rowEl = document.getElementById("manualApkRow");
-  const editWrap = document.getElementById("manualApkEditWrap");
+  const editIcon = document.getElementById("manualApkEditIcon");
   if (!titleEl || !statusEl) return;
 
-  if (isDeveloper()) {
-    titleEl.textContent = "🛠️ Manual APK Link (Developer)";
-    statusEl.textContent = "Paste a Google Drive link below and tap Save — every user sees it instantly.";
-    if (editWrap) editWrap.style.display = "block";
+  titleEl.textContent = "Download APK file";
+  statusEl.textContent = "Tap to download the APK";
+  if (rowEl) rowEl.onclick = () => openExternalLink(_manualApkLinkCache);
+  if (editIcon) editIcon.style.display = isDeveloper() ? "flex" : "none";
+}
+
+// Developer-only: toggles the edit panel open/closed, pre-filling it with
+// the current link each time it opens.
+function toggleManualApkEdit() {
+  if (!isDeveloper()) return;
+  const editWrap = document.getElementById("manualApkEditWrap");
+  if (!editWrap) return;
+  const opening = editWrap.style.display === "none";
+  editWrap.style.display = opening ? "block" : "none";
+  if (opening) {
     const input = document.getElementById("manualApkInput");
-    if (input && !input.value) input.value = _manualApkLinkCache || "";
-    if (rowEl) rowEl.onclick = null; // whole-row tap disabled for the developer; Save drives this now
-  } else {
-    if (editWrap) editWrap.style.display = "none";
-    titleEl.textContent = "Download APK file";
-    statusEl.textContent = "Tap to download the APK";
-    if (rowEl) rowEl.onclick = () => openExternalLink(_manualApkLinkCache);
+    if (input) input.value = _manualApkLinkCache || "";
   }
 }
 
@@ -3424,6 +3433,8 @@ async function saveManualApkLink() {
     );
     _manualApkLinkCache = url;
     toast("✅ Saved! All users will now see this link.");
+    const editWrap = document.getElementById("manualApkEditWrap");
+    if (editWrap) editWrap.style.display = "none";
     _renderManualApkCard();
   } catch (e) {
     console.error("Failed to save manual APK link:", e);

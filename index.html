@@ -1882,11 +1882,15 @@
        developer sees an editable field + Save button instead. -->
   <div class="sc" id="manualApkCard" style="background:rgba(8,12,35,0.82);border:1px solid rgba(126,200,255,0.25);padding:14px 15px;">
     <div id="manualApkRow" style="display:flex;align-items:center;gap:12px;cursor:pointer;">
-      <div style="font-size:20px;line-height:1;">📎</div>
+      <div style="font-size:20px;line-height:1;">📥</div>
       <div style="flex:1;min-width:0;">
         <div id="manualApkTitle" style="font-size:13px;font-weight:700;color:#7ec8ff;line-height:1.2;">Download APK file</div>
         <div id="manualApkStatus" style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;">Checking…</div>
       </div>
+      <!-- Developer-only edit affordance — toggles the edit panel below
+           without triggering the row's own download tap. Everyone else
+           sees the exact same collapsed row as a plain download link. -->
+      <div id="manualApkEditIcon" style="display:none;align-items:center;justify-content:center;color:rgba(126,200,255,0.7);font-size:15px;cursor:pointer;padding:4px;flex-shrink:0;" onclick="event.stopPropagation(); toggleManualApkEdit();">✏️</div>
       <div style="color:rgba(126,200,255,0.5);font-size:16px;">›</div>
     </div>
     <div id="manualApkEditWrap" style="display:none;margin-top:10px;">

@@ -2935,6 +2935,17 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 .tz .rv-wm{
   position:absolute; top:var(--rv-top); left:50%; transform:translateX(-50%);
   width:var(--rv-w); height:auto; max-height:78%;
+  /* On short/wide (landscape) screens, --rv-w is driven mostly by vw and
+     can compute an aspect-correct height taller than the 78% cap above.
+     Without object-fit, a plain <img> defaults to object-fit:fill, so the
+     browser squashes the image content to fit the shrunk box instead of
+     scaling it proportionally — the image looks fine in portrait (where
+     the cap rarely binds) and stretched in landscape (where it does).
+     The side images (.hitju-wm/.gurudev-wm below) never had this problem
+     because they only set width + height:auto with no competing
+     max-height to conflict with. contain scales to fit within the box
+     while preserving aspect ratio, same as those already do implicitly. */
+  object-fit:contain;
   opacity:.50;
   filter:none;
   pointer-events:none; user-select:none; z-index:1;
@@ -3072,6 +3083,8 @@ body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !import
 .tz .cm-wm{
   position:absolute; top:var(--rv-top); left:50%; transform:translateX(-50%);
   width:var(--rv-w); height:auto; max-height:78%;
+  /* Same landscape-squash issue and fix as .rv-wm above — see its comment. */
+  object-fit:contain;
   opacity:.6;
   filter:drop-shadow(0 0 22px rgba(245,209,122,.45));
   pointer-events:none; user-select:none; z-index:1;

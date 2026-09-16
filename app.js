@@ -9657,39 +9657,24 @@ function fbInit() {
       }
     };
 
+    // Automatic retrying has been removed — cloud sync no longer retries
+    // itself on a timer after a hydration failure (no exponential backoff,
+    // no scheduled retries). It only notifies once that syncing failed;
+    // from here on, resyncing happens only when the user taps the manual
+    // "Sync failed? Press here to manually Sync" button (Cloud Sync &
+    // Backup card → forceManualSyncNow()). Kept as a function (rather than
+    // deleted outright) since several call sites elsewhere still call it —
+    // they just no longer get an automatic retry out of it.
     window._scheduleHydrationRetry = function () {
       if (App._cloudHydrated) return;
-      if (App._hydrationRetryTimer) return; // already scheduled
       if (!fbUser || fbForcedSignout) return;
       if (typeof isGhostMode === "function" && isGhostMode()) return; // never fight ghost mode
-      if (typeof navigator !== "undefined" && navigator.onLine === false) return; // wait for 'online' instead
-
-      App._hydrationRetryAttempts++;
-      const delayMs = Math.min(120000, 5000 * Math.pow(2, App._hydrationRetryAttempts - 1));
 
       if (!App._hydrationFailureNotified) {
         App._hydrationFailureNotified = true;
-        setSyncPill("error", "Not synced — retrying…");
-        toast("⚠️ Could not sync with cloud yet — retrying automatically");
+        setSyncPill("error", "Sync failed — tap Sync Now to retry");
+        toast("⚠️ Could not sync with cloud — tap \"Sync failed? Press here to manually Sync\" to retry");
       }
-
-      App._hydrationRetryTimer = setTimeout(async () => {
-        App._hydrationRetryTimer = null;
-        // After 3 straight failures, assume the local cache may be wedged
-        // (not just a slow network) and rebuild it before trying again.
-        if (App._hydrationRetryAttempts >= 3 && App._hydrationRetryAttempts % 3 === 0) {
-          console.warn("Hydration still failing after retries — rebuilding local Firestore cache");
-          toast("⚠️ Still not synced — resetting local cache and retrying…");
-          await window._fbRecoverPersistence();
-        }
-        try {
-          await fbAutoSync();
-        } catch (e) {
-          console.warn("Hydration retry failed:", e && e.message);
-        }
-        window._markHydrationRecovered();
-        if (!App._cloudHydrated) window._scheduleHydrationRetry();
-      }, delayMs);
     };
 
     window._markHydrationRecovered = function () {

@@ -1861,6 +1861,16 @@
       <div style="text-align:center;margin-bottom:12px">
         <span class="sync-pill" id="syncPill"><span class="sync-dot"></span><span id="syncPillText">Ready</span></span>
       </div>
+      <!-- Shown only while signed in — sync has nothing to do without an
+           account. Manual "Sync Now" for when a sync gets stacked/stuck
+           (dropped listener, a backoff timer still counting down from an
+           earlier failure, etc.) and doesn't resume on its own even with
+           good internet. Shown on every platform (unlike Refresh Now
+           above, which is native-only) since this can happen on web too.
+           Does not change any sync logic — it just clears whatever local
+           timers are currently stacked and re-runs the existing sync
+           functions right now. See forceManualSyncNow() in app.js. -->
+      <button id="fbManualSyncBtn" type="button" onclick="forceManualSyncNow()" style="width:100%;margin-bottom:10px;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:12px;font-weight:700;cursor:pointer;">Sync failed? Press here to manually Sync</button>
       <button id="fbChangePassBtn" onclick="fbChangePasswordFromSettings()" class="premium-btn" style="margin-bottom:10px">🔑 Change Password</button>
       <button onclick="confirmSignOutWithBackupWarning()" class="premium-btn red">Sign Out</button>
     </div>

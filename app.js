@@ -11209,6 +11209,83 @@ async function refreshAppFromBackupArea() {
   }
 }
 
+// ── Manual "Sync failed? Press here to manually Sync" (Cloud Sync & Backup
+//    card, signed-in users, any platform) ──
+// Sometimes a sync gets stacked/stuck for a long stretch even on a good
+// connection — e.g. a dropped real-time listener, or the hydration-retry
+// backoff (_scheduleHydrationRetry) sitting mid-countdown from an earlier
+// failure — and it doesn't resume on its own until something else (a tap,
+// a foreground event) happens to nudge it. This button changes NO sync
+// logic of its own: it only clears whatever local timers/backoff are
+// currently stacked, then calls the existing fbAutoSync() (pull + re-
+// subscribe listener) and fbPushFull() (flush anything not yet confirmed
+// in Firestore) — the same functions the app already runs on its own,
+// just triggered immediately instead of waiting.
+const FB_MANUAL_SYNC_LABEL = "Sync failed? Press here to manually Sync";
+// Display-only cap: if the sync is still going after 2 minutes, the
+// button/pill switch to "Sync failed" so the screen doesn't just sit on
+// "Syncing…" forever. This does NOT cancel the underlying fbAutoSync()/
+// fbPushFull() calls (they keep running and will still complete/save on
+// their own if they eventually finish) and it does NOT trigger any
+// automatic retry — it only changes what's shown on screen.
+const FB_MANUAL_SYNC_DISPLAY_TIMEOUT_MS = 120000;
+let _fbManualSyncInFlight = false;
+async function forceManualSyncNow() {
+  if (!fbUser) return; // button only shows while signed in, but guard anyway
+  if (_fbManualSyncInFlight) return; // ignore double-taps mid-sync
+  const btn = document.getElementById("fbManualSyncBtn");
+  _fbManualSyncInFlight = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Syncing…";
+  }
+  setSyncPill("syncing", "Syncing…");
+
+  // Clear any stacked/stuck timers so this runs right now instead of
+  // waiting for whatever debounce or backoff is currently in flight.
+  try { clearTimeout(_fbDeb); _fbDeb = null; } catch (_e) {}
+  try { clearTimeout(_fbMaxWaitTimer); _fbMaxWaitTimer = null; } catch (_e) {}
+  try {
+    if (App._hydrationRetryTimer) {
+      clearTimeout(App._hydrationRetryTimer);
+      App._hydrationRetryTimer = null;
+    }
+    App._hydrationRetryAttempts = 0;
+  } catch (_e) {}
+
+  try {
+    const doSync = (async () => {
+      await fbAutoSync(); // direct pull + re-subscribes the real-time listener
+      if (typeof window._markHydrationRecovered === "function") window._markHydrationRecovered();
+      await fbPushFull(); // flush any local changes not yet confirmed in Firestore (sets its own pill text)
+    })();
+    // fbWithTimeout only stops US from waiting past 2 minutes — it does
+    // not cancel doSync, and nothing here re-calls sync afterward.
+    await fbWithTimeout(doSync, FB_MANUAL_SYNC_DISPLAY_TIMEOUT_MS, "Manual sync");
+    if (!App._cloudHydrated) {
+      // fbAutoSync couldn't confirm cloud state (offline, etc.) — let the
+      // existing hydration-retry system take back over rather than
+      // reporting success.
+      if (typeof window._scheduleHydrationRetry === "function") window._scheduleHydrationRetry();
+    } else {
+      setSyncPill("", "✅ Synced");
+      toast("✅ Synced with cloud 🙏");
+      if (btn) btn.textContent = FB_MANUAL_SYNC_LABEL;
+    }
+  } catch (e) {
+    // Covers both a real (quick) failure and the 2-minute display cap
+    // above — either way, nothing confirmed as synced, so it's shown as
+    // failed. No retry is scheduled from here.
+    console.warn("forceManualSyncNow failed:", e && e.message);
+    setSyncPill("error", "Sync failed");
+    toast("❌ Sync failed: " + (e && e.message ? e.message : e));
+    if (btn) btn.textContent = "❌ Sync failed — tap to retry";
+  } finally {
+    _fbManualSyncInFlight = false;
+    if (btn) btn.disabled = false;
+  }
+}
+
 // ── Sign-out warning gate ──
 // fbSignOut() wipes local data (clearLocalUserData) as part of its normal
 // flow, so — same as the native cache-refresh warning — ask the user to

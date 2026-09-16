@@ -3265,7 +3265,7 @@ const RJAP_APK_URL = "https://drive.google.com/drive/folders/1f5LsU7nL0KycW1_KkT
 // card always tappable instead of dead-ending on "sign in first". Once
 // the developer saves a link (see saveManualApkLink below), that link
 // takes over as soon as it's loaded (i.e. once the user signs in).
-const RJAP_APK_FALLBACK_URL = "https://drive.google.com/file/d/1NLog3Infct_ooFt-MqZf9g8YZiM6dbKn/view?usp=share_link";
+const RJAP_APK_FALLBACK_URL = "https://drive.google.com/file/d/1FfS0LR_a9NiKErFtwuYJlbpkgTSc2D63/view?usp=share_link";
 
 function _getAppUrl() {
   return RJAP_PWA_URL;
@@ -9561,6 +9561,8 @@ function fbShowAuthChecking() {
     // will correct the panel back to signed-out a moment later.
     loggedOutEl.style.display = "none";
     loggedInEl.style.display = "block";
+    const _fbCardRefreshBtnEarly = document.getElementById("fbCardRefreshBtn");
+    if (_fbCardRefreshBtnEarly) _fbCardRefreshBtnEarly.style.display = _lcIsNative() ? "block" : "none";
     const emailEl = document.getElementById("fbUserEmail");
     if (emailEl) emailEl.textContent = cachedLabel;
     setSyncPill("syncing", "Loading from cloud…");
@@ -9923,6 +9925,11 @@ function fbInit() {
         fbHideAuthChecking();
         document.getElementById("fbLoggedOut").style.display = "none";
         document.getElementById("fbLoggedIn").style.display = "block";
+        // Manual "Refresh Now" button — Capacitor/native apk only (the web
+        // PWA already re-syncs on every page load/reload, so it would be
+        // redundant there). See refreshAppFromBackupArea() below.
+        const _fbCardRefreshBtn = document.getElementById("fbCardRefreshBtn");
+        if (_fbCardRefreshBtn) _fbCardRefreshBtn.style.display = _lcIsNative() ? "block" : "none";
         const _authLabel =
           user.phoneNumber || user.email || user.displayName || "Devotee";
         document.getElementById("fbUserEmail").textContent = _authLabel;
@@ -10014,6 +10021,8 @@ function fbInit() {
         try { localStorage.removeItem("rjap_lastAuthLabel"); } catch (_) {}
         document.getElementById("fbLoggedOut").style.display = "block";
         document.getElementById("fbLoggedIn").style.display = "none";
+        const _fbCardRefreshBtnOff = document.getElementById("fbCardRefreshBtn");
+        if (_fbCardRefreshBtnOff) _fbCardRefreshBtnOff.style.display = "none";
         _fbStopVerifyCountdownTimer();
         _fbHideVerifyBlock();
         _loadManualApkLink(); // signed out — falls back to local cache instead of Firestore
@@ -11166,6 +11175,38 @@ async function clearLocalUserData(uid) {
   try { localStorage.removeItem("rjap5_guest"); } catch (_) {}
   try { localStorage.removeItem("rjap5"); } catch (_) {}
   try { localStorage.removeItem("rjap_sadhana_start"); } catch (_) {}
+}
+
+// ── Manual "Refresh Now" (Cloud Sync & Backup card, native apk only) ──
+// The web PWA re-syncs on every reload for free; the installed Capacitor
+// app can sit open for a long time (or resume from background with a
+// stale/dropped Firestore listener), so this gives native users a
+// visible way to force a fresh pull + re-subscribe right now, instead of
+// only ever finding out something didn't sync when data looks off later.
+let _fbCardRefreshInFlight = false;
+async function refreshAppFromBackupArea() {
+  if (!fbUser) return; // button only shows while signed in, but guard anyway
+  if (_fbCardRefreshInFlight) return; // ignore double-taps mid-refresh
+  const btn = document.getElementById("fbCardRefreshBtn");
+  _fbCardRefreshInFlight = true;
+  const _origLabel = btn ? btn.textContent : null;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "🔄 Refreshing…";
+  }
+  setSyncPill("syncing", "Refreshing…");
+  try {
+    await fbAutoSync(); // direct pull + re-subscribes the real-time listener; sets its own pill text on success/failure
+  } catch (e) {
+    console.warn("refreshAppFromBackupArea failed:", e && e.message);
+    setSyncPill("error", "Refresh failed — tap to retry");
+  } finally {
+    _fbCardRefreshInFlight = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = _origLabel || "🔄 Refresh Now";
+    }
+  }
 }
 
 // ── Sign-out warning gate ──

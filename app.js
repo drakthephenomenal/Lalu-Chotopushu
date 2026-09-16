@@ -3265,7 +3265,7 @@ const RJAP_APK_URL = "https://drive.google.com/drive/folders/1f5LsU7nL0KycW1_KkT
 // card always tappable instead of dead-ending on "sign in first". Once
 // the developer saves a link (see saveManualApkLink below), that link
 // takes over as soon as it's loaded (i.e. once the user signs in).
-const RJAP_APK_FALLBACK_URL = "https://drive.google.com/file/d/1FfS0LR_a9NiKErFtwuYJlbpkgTSc2D63/view?usp=share_link";
+const RJAP_APK_FALLBACK_URL = "https://drive.google.com/file/d/1FfS0LR_a9NiKErFtwuYJlbpkgTSc2D63/view?usp=drivesdk";
 
 function _getAppUrl() {
   return RJAP_PWA_URL;
@@ -8968,6 +8968,27 @@ function renderMilestonesTab() {
 // One Firestore doc in the existing "config" collection (read: any
 // signed-in user, write: isDeveloper() only) holds a map of milestone
 // key -> video URL. Any link works: YouTube, Google Drive, Instagram.
+// Not-signed-in users can't read that Firestore doc, so they fall back to
+// this hardcoded default map instead — same videos, baked into the app
+// itself so everyone can watch regardless of sign-in status. A developer
+// override in Firestore (via the ✎ edit button below) takes priority for
+// signed-in users; guests always see these defaults, since editing them
+// only ever happens through the developer-only Firestore write.
+const CRORE_DEFAULT_VIDEO_LINKS = {
+  1: "https://www.instagram.com/reel/DdT3x1ZSIlX/?stkn=MWlpcDdnempyOXRicg==",
+  2: "https://www.instagram.com/reel/DdVssWsSmfq/?stkn=YmllZnN5OXJ0ZHN2",
+  3: "https://www.instagram.com/reel/DdV_bZ0SEF7/?stkn=d2FiN3gyY2xsdHc1",
+  4: "https://www.instagram.com/reel/DdV_7K3yxJp/?stkn=bmF6Y2xqaWtueGgz",
+  5: "https://www.instagram.com/reel/DdWANPfStpp/?stkn=MW50c3YzenllaWlvMg==",
+  6: "https://www.instagram.com/reel/DdWAXXPSvw_/?stkn=dTU1bWlpMm8zYW12",
+  7: "https://www.instagram.com/reel/DdWBBNAymX5/?stkn=dXZoMmpvbWxhcW5p",
+  8: "https://www.instagram.com/reel/DdWBD5oSxO0/?stkn=MWU1Z3h2cHBmZHlteA==",
+  9: "https://www.instagram.com/reel/DdWBKsqyTBh/?stkn=MWhwZnE3dWVheDNscQ==",
+  10: "https://www.instagram.com/reel/DdWBWu1yR1v/?stkn=N3FobTV4dnJoYWli",
+  11: "https://www.instagram.com/reel/DdWCIpjSc8X/?stkn=dzdqazBxdjUzZG51",
+  12: "https://www.instagram.com/reel/DdWDoF2SINt/?stkn=MXI4OWY5YWlwZnFxcg==",
+  13: "https://www.instagram.com/reel/DdWELC_y-WZ/?stkn=NmpucmNhbGc2ZGtl",
+};
 let _msVidCache = null;
 let _msVidLoading = false;
 async function loadMsVideoLinks(force) {
@@ -8990,7 +9011,8 @@ function _msEnsureVideoLinks() {
     .catch(() => { _msVidLoading = false; });
 }
 function msVideoLink(key) {
-  return (_msVidCache && _msVidCache[key]) || "";
+  const override = _msVidCache && _msVidCache[key];
+  return override || CRORE_DEFAULT_VIDEO_LINKS[key] || "";
 }
 // Sends a not-signed-in user to the app's sign-in area. The sign-in
 // controls live in index.html, so we find them by the handler they call
@@ -9017,9 +9039,9 @@ function msGoToSignIn() {
 }
 // Plays a milestone video with the same handling as Favourite Videos:
 // YouTube / Telegram / Instagram play inside the app, Drive / Facebook /
-// other links open externally.
+// other links open externally. Available to signed-in users AND guests —
+// the video itself doesn't require an account, only editing its link does.
 function msOpenVideo(key) {
-  if (typeof fbUser === "undefined" || !fbUser) { msGoToSignIn(); return; }
   const url = msVideoLink(key);
   if (!url) { if (typeof toast === "function") toast("এই মাইলস্টোনে এখনো কোনো ভিডিও নেই"); return; }
   const title = key + " Crore";
@@ -9064,21 +9086,13 @@ async function msEditVideo(key) {
     if (typeof toast === "function") toast("Could not save the link \ud83d\ude4f");
   }
 }
-// ▶ button for everyone when a link exists + ✎ button for developers.
+// ▶ button for everyone (guests get the same default-map video as signed-in
+// users, unless a developer has set a Firestore override) + ✎ edit button
+// for developers only.
 function msVideoBtnsHtml(key) {
   let h = "";
   const url = msVideoLink(key);
-  const signedIn = !(typeof fbUser === "undefined" || !fbUser);
-  if (!signedIn) {
-    // Not signed in: links live behind an auth-required read, so we can't
-    // know which milestones have one. Show the logo on every milestone —
-    // tapping it explains and takes them to the sign-in area.
-    h +=
-      '<button class="ms-vid-btn ms-vid-locked" title="Sign in to see the video" onclick="event.stopPropagation();msOpenVideo(\'' +
-      key + '\')">' +
-      (typeof favvidPlatformIconHtml === "function" ? favvidPlatformIconHtml("youtube") : "\u25b6") +
-      "</button>";
-  } else if (url) {
+  if (url) {
     const platform = typeof favvidDetectPlatform === "function" ? favvidDetectPlatform(url) : "other";
     h +=
       '<button class="ms-vid-btn ms-vid-brand" title="Watch video" onclick="event.stopPropagation();msOpenVideo(\'' +

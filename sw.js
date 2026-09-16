@@ -1,5 +1,20 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v207
+// Radha Naam Jap — Service Worker  v208
+// v208: local JS/CSS/HTML assets (app.js, style.css, panchanga module,
+// etc.) now use the SAME network-first strategy the navigate handler has
+// used since v154, instead of cache-first/stale-while-revalidate. Root
+// cause of "new version doesn't show up until the SECOND app open":
+// even once an updated SW has installed and activated in the background,
+// the old cache-first strategy for these files would still serve
+// whatever was already cached instantly and only refresh it in the
+// background for the load AFTER that — so a real code change always
+// needed two cold opens to actually appear on screen, not one. Now, with
+// a working connection, every local asset is fetched fresh (2.5s
+// timeout) on each load and the cache is only a fallback for a slow/
+// offline connection — so PWA users see the latest deployed version the
+// very next time they open the app, not the time after. Bumped cache to
+// force this change to take effect (existing behavior for external CDN
+// assets and Firestore/FCM messaging is unchanged).
 // v207: bumped cache to force-invalidate stale panchanga.html/js/css —
 // tapping a saved profile in the "Others" folder popup no longer closes
 // that popup and jumps to the main page's card. Its full breakdown
@@ -267,7 +282,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v207';
+const CACHE = 'radha-jap-v208';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch
@@ -459,18 +474,25 @@ self.addEventListener('fetch', (event) => {
 
   const localCacheKey = toLocalCacheKey(event.request);
   if (localCacheKey) {
-    // Local assets: cache-first, stale-while-revalidate
+    // Local assets: NETWORK-FIRST with a 2.5s timeout — same pattern as
+    // navigation above. On a normal open with a working connection this
+    // always fetches the current deployed file, so a code change shows up
+    // the very next time the app is opened. Falls back to whatever's
+    // cached only if the network is slow/unavailable, so offline use is
+    // unaffected.
     event.respondWith((async () => {
-      const cached = await caches.match(localCacheKey);
-      const networkPromise = fetchWithTimeout(event.request, { cache: 'reload' }, 6000)
-        .then(async (response) => {
-          if (response && response.ok) await storeResponse(localCacheKey, response);
+      try {
+        const response = await fetchWithTimeout(event.request, { cache: 'no-cache' }, 2500);
+        if (response && response.ok) {
+          storeResponse(localCacheKey, response.clone()).catch(() => {});
           return response;
-        })
-        .catch(() => null);
-      if (cached) return cached;
-      const response = await networkPromise;
-      return response || new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+        }
+        const cached = await caches.match(localCacheKey);
+        return cached || response;
+      } catch (_) {
+        const cached = await caches.match(localCacheKey);
+        return cached || new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+      }
     })());
     return;
   }

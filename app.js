@@ -3265,7 +3265,7 @@ const RJAP_APK_URL = "https://drive.google.com/drive/folders/1f5LsU7nL0KycW1_KkT
 // card always tappable instead of dead-ending on "sign in first". Once
 // the developer saves a link (see saveManualApkLink below), that link
 // takes over as soon as it's loaded (i.e. once the user signs in).
-const RJAP_APK_FALLBACK_URL = "https://drive.google.com/file/d/1vwxtEaMRf6WIG8DHQC3ZWSpGX_mpGmro/view?usp=share_link";
+const RJAP_APK_FALLBACK_URL = "https://drive.google.com/file/d/1NLog3Infct_ooFt-MqZf9g8YZiM6dbKn/view?usp=share_link";
 
 function _getAppUrl() {
   return RJAP_PWA_URL;
@@ -3417,7 +3417,7 @@ function _renderManualApkCard() {
     // the pencil icon is the only thing that opens the paste-a-link
     // editor, so developers don't lose the ability to just grab the APK.
     const isOpen = !!window._manualApkEditOpen;
-    titleEl.textContent = "📥 Download APK file";
+    titleEl.textContent = "Download APK file";
     statusEl.textContent = _manualApkLinkCache
       ? "Tap to download. Tap ✏️ to replace the link."
       : "Tap to download (default link). Tap ✏️ to set your own.";

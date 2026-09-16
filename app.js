@@ -4138,6 +4138,16 @@ function fmtIN(n) {
 }
 
 // setSyncPill
+// Display-only watchdog: if the pill is still showing "syncing" 2 minutes
+// after being set (from ANY caller — fbAutoSync, fbPushFull, the manual
+// Sync button, etc.), flip what's SHOWN to "Sync failed". This never
+// touches any actual sync call — fbAutoSync()/fbPushFull()/etc keep
+// running exactly as before in the background and will still land
+// normally if/when they finish; this only stops the pill from silently
+// sitting on "Syncing…" forever. Any other pill update (success, error,
+// or a fresh "syncing" call) clears and restarts this timer.
+let _syncPillWatchdogTimer = null;
+const SYNC_PILL_WATCHDOG_MS = 120000;
 function setSyncPill(state, text) {
   const p = document.getElementById("syncPill");
   const tx = document.getElementById("syncPillText");
@@ -4146,6 +4156,35 @@ function setSyncPill(state, text) {
     "sync-pill" +
     (state === "syncing" ? " syncing" : state === "error" ? " error" : "");
   tx.textContent = text;
+
+  if (_syncPillWatchdogTimer) {
+    clearTimeout(_syncPillWatchdogTimer);
+    _syncPillWatchdogTimer = null;
+  }
+  if (state === "syncing") {
+    _syncPillWatchdogTimer = setTimeout(() => {
+      _syncPillWatchdogTimer = null;
+      const p2 = document.getElementById("syncPill");
+      const tx2 = document.getElementById("syncPillText");
+      // Only overwrite if nothing else has already updated the pill —
+      // classList still says "syncing" means no real outcome has landed yet.
+      if (p2 && tx2 && p2.classList.contains("syncing")) {
+        p2.className = "sync-pill error";
+        tx2.textContent = "Sync failed";
+      }
+      // If the manual Sync button caused this, free it up so it can be
+      // pressed again right away — it's meant to be usable as a backup
+      // at any time, even while the earlier attempt is still pending.
+      if (typeof _fbManualSyncInFlight !== "undefined" && _fbManualSyncInFlight) {
+        _fbManualSyncInFlight = false;
+        const btn = document.getElementById("fbManualSyncBtn");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "❌ Sync failed — tap to retry";
+        }
+      }
+    }, SYNC_PILL_WATCHDOG_MS);
+  }
 }
 
 // ── View Switcher ──
@@ -11207,13 +11246,6 @@ async function refreshAppFromBackupArea() {
 // in Firestore) — the same functions the app already runs on its own,
 // just triggered immediately instead of waiting.
 const FB_MANUAL_SYNC_LABEL = "Sync failed? Press here to manually Sync";
-// Display-only cap: if the sync is still going after 2 minutes, the
-// button/pill switch to "Sync failed" so the screen doesn't just sit on
-// "Syncing…" forever. This does NOT cancel the underlying fbAutoSync()/
-// fbPushFull() calls (they keep running and will still complete/save on
-// their own if they eventually finish) and it does NOT trigger any
-// automatic retry — it only changes what's shown on screen.
-const FB_MANUAL_SYNC_DISPLAY_TIMEOUT_MS = 120000;
 let _fbManualSyncInFlight = false;
 async function forceManualSyncNow() {
   if (!fbUser) return; // button only shows while signed in, but guard anyway
@@ -11224,6 +11256,11 @@ async function forceManualSyncNow() {
     btn.disabled = true;
     btn.textContent = "Syncing…";
   }
+  // setSyncPill("syncing", …) below also arms the global 2-minute display
+  // watchdog (see setSyncPill) — if this is still going after 2 minutes,
+  // that watchdog flips the pill AND this button to "Sync failed" and
+  // frees the button back up on its own, even if the calls below never
+  // settle. It does not cancel or otherwise touch fbAutoSync()/fbPushFull().
   setSyncPill("syncing", "Syncing…");
 
   // Clear any stacked/stuck timers so this runs right now instead of
@@ -11239,14 +11276,9 @@ async function forceManualSyncNow() {
   } catch (_e) {}
 
   try {
-    const doSync = (async () => {
-      await fbAutoSync(); // direct pull + re-subscribes the real-time listener
-      if (typeof window._markHydrationRecovered === "function") window._markHydrationRecovered();
-      await fbPushFull(); // flush any local changes not yet confirmed in Firestore (sets its own pill text)
-    })();
-    // fbWithTimeout only stops US from waiting past 2 minutes — it does
-    // not cancel doSync, and nothing here re-calls sync afterward.
-    await fbWithTimeout(doSync, FB_MANUAL_SYNC_DISPLAY_TIMEOUT_MS, "Manual sync");
+    await fbAutoSync(); // direct pull + re-subscribes the real-time listener
+    if (typeof window._markHydrationRecovered === "function") window._markHydrationRecovered();
+    await fbPushFull(); // flush any local changes not yet confirmed in Firestore (sets its own pill text)
     if (!App._cloudHydrated) {
       // fbAutoSync couldn't confirm cloud state (offline, etc.) — let the
       // existing hydration-retry system take back over rather than
@@ -11258,9 +11290,6 @@ async function forceManualSyncNow() {
       if (btn) btn.textContent = FB_MANUAL_SYNC_LABEL;
     }
   } catch (e) {
-    // Covers both a real (quick) failure and the 2-minute display cap
-    // above — either way, nothing confirmed as synced, so it's shown as
-    // failed. No retry is scheduled from here.
     console.warn("forceManualSyncNow failed:", e && e.message);
     setSyncPill("error", "Sync failed");
     toast("❌ Sync failed: " + (e && e.message ? e.message : e));

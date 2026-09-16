@@ -18508,6 +18508,17 @@ function _hcjAudioPath(i) {
   return "audio/" + prefix + "_" + (i + 1 - offset) + ".mp3";
 }
 
+// Absolute fallback for a relative audio path (e.g. "audio/gms_5.mp3"),
+// pointing at the live deployed site instead of the app's own bundled
+// copy. Native builds (Capacitor) ship whatever was in /audio at build
+// time — a stotram's clips added to the repo afterward simply aren't in
+// that package until the next rebuild. Used by _hcjPlayVerse's onerror
+// fallback below; never touched on the web PWA, where the relative path
+// already resolves to the live site and always has the latest files.
+function _hcjRemoteAudioUrl(path) {
+  return RJAP_PWA_URL.replace(/\/$/, "") + "/" + path;
+}
+
 // Convert an internal 0-based verse array index to the number shown/typed
 // in the seek input — matches the printed Shlok number for stotrams with
 // a labelOffset (see _AUDIO_STOTRAMS), and is a no-op (idx+1) otherwise.
@@ -18665,20 +18676,32 @@ function _hcjPlayVerse(idx) {
       if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(null, false);
     }
   };
-  _hcjAudio
-    .play()
-    .then(function () {
-      _hcjPlaying = true;
-      _hcjSyncUI();
-      _hcjStartProgressLoop();
-      if (window._lyrHcjAudioChanged)
-        window._lyrHcjAudioChanged(_hcjAudio, true);
-    })
-    .catch(function () {
-      _hcjPlaying = false;
-      _hcjAudioIdx = -1;
-      _hcjSyncUI();
-    });
+  function _hcjOnPlayStarted() {
+    _hcjPlaying = true;
+    _hcjSyncUI();
+    _hcjStartProgressLoop();
+    if (window._lyrHcjAudioChanged)
+      window._lyrHcjAudioChanged(_hcjAudio, true);
+  }
+  function _hcjOnPlayFailed() {
+    _hcjPlaying = false;
+    _hcjAudioIdx = -1;
+    _hcjSyncUI();
+  }
+  // If the locally bundled copy 404s — e.g. this clip was added to the
+  // repo after this APK build, so it never got packaged into www/audio —
+  // retry once from the live deployed site instead of silently failing.
+  // No-op on the web PWA, where the local path already works and "error"
+  // never fires here.
+  _hcjAudio.onerror = function () {
+    var a = _hcjAudio;
+    if (!a || a._triedRemoteFallback) return;
+    a._triedRemoteFallback = true;
+    a.onerror = null; // don't retry again if the remote copy fails too
+    a.src = _hcjRemoteAudioUrl(_hcjAudioPath(idx));
+    a.play().then(_hcjOnPlayStarted).catch(_hcjOnPlayFailed);
+  };
+  _hcjAudio.play().then(_hcjOnPlayStarted).catch(_hcjOnPlayFailed);
 }
 function _hcjTogglePlay() {
   if (_hcjPlaying) {

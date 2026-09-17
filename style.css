@@ -1460,7 +1460,7 @@ button.n28-gold-btn-danger,
 }
 @keyframes beadPulse{
   0%{transform:scale(1);}
-  40%{transform:scale(1.9); filter:drop-shadow(0 0 8px rgba(255,215,0,1));}
+  40%{transform:scale(1.9); filter:drop-shadow(0 0 5px rgba(255,215,0,1)) drop-shadow(0 0 14px rgba(255,215,0,0.65)) drop-shadow(0 0 28px rgba(255,215,0,0.4));}
   100%{transform:scale(1);}
 }
 .bead-frame .bead-pulse{animation:beadPulse 0.5s ease-out;}

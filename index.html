@@ -1632,6 +1632,13 @@
     <!-- Only shown for PWA/TWA (web) — a clearly-labeled button in addition
          to the whole-card tap, so the refresh action isn't easy to miss. -->
     <button id="appUpdateWebRefreshBtn" type="button" style="display:none;margin-top:10px;width:100%;padding:9px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:12px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation(); checkAppUpdate();">🔄 Refresh Now</button>
+    <!-- Native (Capacitor) only — shown via the same checkForUpdateAvailable()
+         JS that already toggled this id visible; the element itself was
+         missing until now. Separate from the whole-card tap (which checks
+         GitHub for a new APK release) — this clears/rebuilds Firestore's
+         local offline cache instead, behind the same "Save your data
+         first" warning (nativeCacheWarningModal) the web version uses. -->
+    <button id="appUpdateNativeRefreshBtn" type="button" style="display:none;margin-top:10px;width:100%;padding:9px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:12px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation(); confirmNativeCacheRefresh();">🔄 Refresh Now</button>
   </div>
 
   <!-- SINGLE SIGN-IN WITH GOOGLE / CLOUD SYNC & BACKUP — moved here, right

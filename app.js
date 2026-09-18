@@ -9349,14 +9349,89 @@ function setStotramLang(lang) {
   try {
     const lmo = document.getElementById("lmo");
     const lmTitle = document.getElementById("lmTitle");
-    if (lmo && lmo.classList.contains("show") && lmTitle && window._currentStotramId) {
+    if (lmo && lmo.classList.contains("show") && lmTitle && _currentStotramId) {
+      if (_currentStotramId === "hcj" && lang === "hi" && !_hcjHindiLyrics) {
+        loadHcjHindiLyrics()
+          .then(() => showLyrics("hcj"))
+          .catch(() => toast("हिंदी चौरासी पाठ लोड नहीं हो पाया 🙏"));
+        return;
+      }
+      if (_currentStotramId === "hcj") {
+        showLyrics("hcj");
+        return;
+      }
       const allSt = [...STLIST, ...(App.S.customSt || [])];
-      const nm = allSt.find((x) => x.id === window._currentStotramId);
+      const nm = allSt.find((x) => x.id === _currentStotramId);
       if (nm) {
         lmTitle.textContent = (lang === "hi" && nm.nameHi) ? nm.nameHi : nm.name;
       }
     }
   } catch (_e) {}
+}
+
+// Hindi श्री हित चौरासी is kept in a small companion text file so the
+// existing Bangla stotram bundle does not become unnecessarily larger.
+// The source contains one blank-line-separated block per पद (all 84).
+let _hcjHindiLyrics = "";
+let _hcjHindiLoadPromise = null;
+const HCJ_HINDI_DATA_URLS = [
+  "./Hit_Caturashi_Ji_clean_lyrics.txt",
+  "../Hit_Caturashi_Ji_clean_lyrics.txt",
+  "./attached_assets/Hit_Caturashi_Ji_clean_lyrics.txt",
+];
+
+function _cleanHcjHindiSource(source) {
+  const lines = source
+    .replace(/\r/g, "")
+    .split("\n");
+  const colophonIndex = lines.findIndex((line) =>
+    line.trim().startsWith("॥ जय जय श्रीगोस्वामी")
+  );
+  return lines
+    .slice(0, colophonIndex === -1 ? lines.length : colophonIndex)
+    .filter((line) => {
+      const trimmed = line.trim();
+      return (
+        trimmed !== "श्री हित चतुरासी जी" &&
+        !/^पद\s+\d+[-–]\d+$/.test(trimmed)
+      );
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function loadHcjHindiLyrics() {
+  if (_hcjHindiLyrics) return Promise.resolve(_hcjHindiLyrics);
+  if (_hcjHindiLoadPromise) return _hcjHindiLoadPromise;
+
+  _hcjHindiLoadPromise = HCJ_HINDI_DATA_URLS.reduce(
+    (promise, url) =>
+      promise.catch(() =>
+        fetch(url).then((response) => {
+          if (!response.ok) throw new Error("Hindi HCJ data request failed");
+          return response.text();
+        })
+      ),
+    Promise.reject(new Error("Hindi HCJ data not attempted"))
+  )
+    .then((source) => {
+      const lyrics = _cleanHcjHindiSource(source);
+      const verseCount = lyrics
+        .split(/\n{2,}/)
+        .filter((verse) => verse.trim().length > 0).length;
+      if (verseCount !== 84) {
+        throw new Error("Hindi HCJ contains " + verseCount + " verses");
+      }
+      _hcjHindiLyrics = lyrics;
+      return lyrics;
+    })
+    .catch((error) => {
+      _hcjHindiLoadPromise = null;
+      throw error;
+    });
+
+  return _hcjHindiLoadPromise;
 }
 
 // Small helper: pick the language-appropriate name/sub for a STLIST/customSt
@@ -15680,6 +15755,9 @@ window.devExitGhostMode = async function () {
 // ══════════════════════════════════════════════════════════════
 
 function getEffectiveLyrics(id) {
+  if (id === "hcj" && App.S.stotramLang === "hi" && _hcjHindiLyrics) {
+    return _hcjHindiLyrics;
+  }
   return (
     LYRICS[id] ||
     ((App.S.customSt || []).find((x) => x.id === id) || {}).lyrics ||
@@ -17961,6 +18039,15 @@ const SVG_SHIV_BOTTOM = `<svg width="160" height="36" viewBox="0 0 160 36" fill=
 // ──────────────────────────────────────────────────────────────
 
 function showLyrics(id) {
+  // Hindi HCJ is loaded only when it is actually opened. This keeps the
+  // initial stotram bundle fast while preserving one verse per reader page.
+  if (id === "hcj" && App.S.stotramLang === "hi" && !_hcjHindiLyrics) {
+    toast("हिंदी श्री हित चौरासी पाठ लोड हो रहा है… 🙏");
+    loadHcjHindiLyrics()
+      .then(() => showLyrics(id))
+      .catch(() => toast("हिंदी चौरासी पाठ लोड नहीं हो पाया 🙏"));
+    return;
+  }
   // The Gita is kept out of the initial bundle. Load and validate all
   // 700 Bengali shlokas the first time the reader is opened.
   if (id === "bg" && window.isGitaReady && !window.isGitaReady()) {

@@ -1274,7 +1274,7 @@ button.n28-gold-btn-danger,
 /* Two-line floating naam for RV mode */
 .fn-rv{position:absolute;pointer-events:none;z-index:10;animation:fu 2.4s ease-out forwards;
   display:flex;flex-direction:column;align-items:center;line-height:1.15;}
-.fn-rv span{font-family:'Tiro Devanagari Hindi',serif;display:block;}
+.fn-rv span{font-family:'Tiro Devanagari Hindi',serif;display:block;white-space:nowrap;}
 /* Two-line floating naam for KV mode — deliberately slower fade/rise than
    RV/SS/Radha (fu, 2.4s) so there's time to recite the name before it
    disappears, per request. */
@@ -1290,7 +1290,7 @@ button.n28-gold-btn-danger,
 /* Two-line floating naam for Samba Sadashiv (SS) mode */
 .fn-ss{position:absolute;pointer-events:none;z-index:10;animation:fu 2.4s ease-out forwards;
   display:flex;flex-direction:column;align-items:center;line-height:1.15;}
-.fn-ss span{font-family:'Tiro Devanagari Hindi',serif;display:block;}
+.fn-ss span{font-family:'Tiro Devanagari Hindi',serif;display:block;white-space:nowrap;}
 
 /* MILESTONES VIEW — dedicated tab */
 #vms{background:radial-gradient(ellipse at top,#0A1535 0%,var(--bd) 60%);padding:0;overflow:hidden;}
@@ -3003,9 +3003,9 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 /* Radha Vallabh / Saamb Sadashiv — matches spawnRV/spawnSS (55–80px first
    line, ×0.85 second line random, so midpoints 67px/57px times scale). */
 .jtd-line1{font-size:calc(67px * var(--jap-text-scale,1));color:#FFD700;
-  text-shadow:0 0 30px rgba(255,215,0,0.9);}
+  text-shadow:0 0 30px rgba(255,215,0,0.9);white-space:nowrap;}
 .jtd-line2{font-size:calc(57px * var(--jap-text-scale,1));color:#6DB8FF;
-  text-shadow:0 0 30px rgba(109,184,255,0.9);}
+  text-shadow:0 0 30px rgba(109,184,255,0.9);white-space:nowrap;}
 /* Hare Krishna Mahamantra / Ram Vijay Mantra — matches #hkPersist/#ramPersist. */
 .jtd-hk{font-size:calc(clamp(26px,7.5vw,44px) * var(--jap-text-scale,1));
   line-height:1.6;color:#FFD700;text-shadow:0 0 20px rgba(255,215,0,0.85);letter-spacing:1.5px;}

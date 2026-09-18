@@ -5135,8 +5135,13 @@ function renderBeadFrame(tod, target) {
     // ring self-heals as soon as the wrap actually has a size — no need
     // to rely on the caller's timing being exactly right.
     _beadRetries = (_beadRetries || 0) + 1;
-    if (_beadRetries <= 10) {
+    const maxRaf = _lcIsNative() ? 10 : 20; // native Android is already fine — leave its budget untouched
+    if (_beadRetries <= maxRaf) {
       requestAnimationFrame(() => renderBeadFrame());
+    } else if (!_lcIsNative() && _beadRetries <= 25) {
+      // Web/iPad only — still 0×0 after ~20 frames (very slow cold start),
+      // fall back to timed retries instead of giving up.
+      setTimeout(() => renderBeadFrame(), 250);
     }
     return;
   }
@@ -5222,8 +5227,36 @@ function renderBeadFrame(tod, target) {
   _beadState.lastFilled = filled;
 }
 window.addEventListener("resize", () => renderBeadFrame());
+// ── Cold-start hardening — WEB/iPad ONLY ──
+// Android (native Capacitor APK) already renders the bead ring correctly
+// on cold start, so its original single-shot redraw is left untouched
+// below. On iPad/browser, the ring can end up drawn before the real jap
+// counts have finished loading from storage, and/or before the
+// Devanagari webfont has swapped in and settled the surrounding layout —
+// either one leaves the frame looking "unfinished" (bottom edge
+// squashed) until something else forces a redraw. Re-run the full
+// stats+frame refresh (App.ua(), not just renderBeadFrame() with stale
+// cached numbers) at a few staggered points to self-correct.
+function _rjapReviveBeadFrame() {
+  try {
+    if (typeof App !== "undefined" && App && typeof App.ua === "function")
+      App.ua();
+    else renderBeadFrame();
+  } catch (_e) {
+    try { renderBeadFrame(); } catch (_e2) {}
+  }
+}
 window.addEventListener("load", () => {
-  setTimeout(() => renderBeadFrame(), 100);
+  if (_lcIsNative()) {
+    // Android — unchanged original behaviour.
+    setTimeout(() => renderBeadFrame(), 100);
+  } else {
+    // iPad / web only.
+    [100, 400, 900, 1800].forEach((ms) => setTimeout(_rjapReviveBeadFrame, ms));
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => _rjapReviveBeadFrame());
+    }
+  }
 });
 
 // ── Self-healing resize watch for the bead ring ──

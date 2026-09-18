@@ -2715,6 +2715,96 @@ function setSoundType(v) {
   playMalaSound();
 }
 
+// ==========================================
+// JAP TEXT SIZE & LINE-SPACING PREFERENCES
+// ------------------------------------------
+// A small gear icon on the LEFT of the Jap tap area (#tz) opens a panel
+// where the user can bump the chanting text (राधा / mantras) bigger or
+// smaller, and spread its lines further apart or tighter. Mirrors the
+// existing photo-settings gear on the right in storage style (device-only
+// localStorage, applied instantly via CSS custom properties) so both
+// gears behave consistently.
+// ==========================================
+const JAP_TEXT_PREF_STORE_KEY = 'japTextPrefs';
+const JAP_TEXT_SCALE_MIN = 0.7, JAP_TEXT_SCALE_MAX = 1.8, JAP_TEXT_SCALE_STEP = 0.1;
+const JAP_LINE_SPACING_MIN = 0.7, JAP_LINE_SPACING_MAX = 2.0, JAP_LINE_SPACING_STEP = 0.1;
+
+function loadJapTextPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem(JAP_TEXT_PREF_STORE_KEY) || '{}');
+    return {
+      scale: (typeof p.scale === 'number' && p.scale > 0) ? p.scale : 1,
+      spacing: (typeof p.spacing === 'number' && p.spacing > 0) ? p.spacing : 1
+    };
+  } catch (e) { return { scale: 1, spacing: 1 }; }
+}
+function saveJapTextPrefsToStorage() {
+  try { localStorage.setItem(JAP_TEXT_PREF_STORE_KEY, JSON.stringify(window._japTextPrefs || {})); } catch (e) {}
+}
+window._japTextPrefs = loadJapTextPrefs();
+
+// Pushes the current scale/spacing onto :root as CSS vars (so every jap
+// text element — hkPersist, kvPersist, kaamPersist, ramPersist, the
+// floating राधा burst, etc — picks them up live) and refreshes the panel's
+// percentage labels if it's open.
+window.applyJapTextPrefs = function() {
+  const p = window._japTextPrefs || { scale: 1, spacing: 1 };
+  document.documentElement.style.setProperty('--jap-text-scale', p.scale);
+  document.documentElement.style.setProperty('--jap-line-spacing', p.spacing);
+  const scaleVal = document.getElementById('japTextScaleVal');
+  if (scaleVal) scaleVal.textContent = Math.round(p.scale * 100) + '%';
+  const spacingVal = document.getElementById('japLineSpacingVal');
+  if (spacingVal) spacingVal.textContent = Math.round(p.spacing * 100) + '%';
+};
+window.applyJapTextPrefs();
+
+// Reads the current text-size multiplier for use in JS-computed font sizes
+// (the flying राधा burst and the RV/SS two-line bursts set font-size
+// directly in JS rather than via CSS, so they can't pick up the CSS var).
+window.getJapTextScale = function() {
+  return (window._japTextPrefs && window._japTextPrefs.scale) || 1;
+};
+
+window.toggleJapTextSettingsPanel = function(e) {
+  if (e) e.stopPropagation();
+  const panel = document.getElementById('japTextSettingsPanel');
+  const btn = document.getElementById('japTextSettingsBtn');
+  if (!panel) return;
+  const opening = !panel.classList.contains('open');
+  panel.classList.toggle('open', opening);
+  if (btn) btn.classList.toggle('active', opening);
+  if (opening) window.applyJapTextPrefs();
+};
+
+window.adjustJapTextPref = function(kind, dir) {
+  const p = window._japTextPrefs || (window._japTextPrefs = { scale: 1, spacing: 1 });
+  if (kind === 'scale') {
+    p.scale = Math.max(JAP_TEXT_SCALE_MIN, Math.min(JAP_TEXT_SCALE_MAX, Math.round((p.scale + dir * JAP_TEXT_SCALE_STEP) * 100) / 100));
+  } else {
+    p.spacing = Math.max(JAP_LINE_SPACING_MIN, Math.min(JAP_LINE_SPACING_MAX, Math.round((p.spacing + dir * JAP_LINE_SPACING_STEP) * 100) / 100));
+  }
+  window.applyJapTextPrefs();
+  saveJapTextPrefsToStorage();
+};
+
+window.resetJapTextPrefs = function() {
+  window._japTextPrefs = { scale: 1, spacing: 1 };
+  window.applyJapTextPrefs();
+  saveJapTextPrefsToStorage();
+  if (typeof toast === 'function') toast('Jap text size & spacing reset 🙏');
+};
+
+// Tapping anywhere outside the panel/gear closes it (the panel itself and
+// the gear button both stopPropagation, so this only fires on outside taps).
+document.addEventListener('click', function() {
+  const panel = document.getElementById('japTextSettingsPanel');
+  const btn = document.getElementById('japTextSettingsBtn');
+  if (panel && panel.classList.contains('open')) {
+    panel.classList.remove('open');
+    if (btn) btn.classList.remove('active');
+  }
+});
+
 // Floating राधा spawn
 let acf = false;
 function spawn(e, zone) {
@@ -2730,7 +2820,7 @@ function spawn(e, zone) {
   const el = document.createElement("div");
   el.className = "fn";
   el.textContent = naamText().radha;
-  const fs = 110 + Math.random() * 60;
+  const fs = (110 + Math.random() * 60) * getJapTextScale();
   el.style.left = x - fs * 0.6 + "px";
   el.style.top = y - fs * 0.4 + "px";
   el.style.fontSize = fs + "px";
@@ -2755,7 +2845,7 @@ function spawnRV(e, zone) {
   }
   const el = document.createElement("div");
   el.className = "fn-rv";
-  const fs = 55 + Math.random() * 25;
+  const fs = (55 + Math.random() * 25) * getJapTextScale();
   const _nt = naamText();
   el.innerHTML =
     '<span style="font-size:' +
@@ -2786,7 +2876,7 @@ function spawnSS(e, zone) {
   }
   const el = document.createElement("div");
   el.className = "fn-ss";
-  const fs = 55 + Math.random() * 25;
+  const fs = (55 + Math.random() * 25) * getJapTextScale();
   const _nt = naamText();
   el.innerHTML =
     '<span style="font-size:' +
@@ -2856,9 +2946,13 @@ function spawnKV() {
   // and desktop (iPad/Windows), which keep the original larger size —
   // narrow phone screens were overflowing off both edges at the old size.
   const isPhone = Math.min(window.innerWidth, window.innerHeight) < 600;
-  const maxBoxW = Math.min(r.width - (isPhone ? 32 : 24), isPhone ? 300 : 340);
-  const baseMax = isPhone ? 34 + Math.random() * 14 : 55 + Math.random() * 25; // keep the original size flavor/randomness
-  const minFs = isPhone ? 14 : 20;
+  const _japScale = getJapTextScale();
+  // A bit of extra box width is granted alongside the scale bump (capped)
+  // so a larger Text Size setting can actually grow the KV lines instead
+  // of just re-hitting the same width-fit ceiling every time.
+  const maxBoxW = Math.min(r.width - (isPhone ? 32 : 24), isPhone ? 300 : 340) * Math.min(_japScale, 1.3);
+  const baseMax = (isPhone ? 34 + Math.random() * 14 : 55 + Math.random() * 25) * _japScale; // keep the original size flavor/randomness
+  const minFs = (isPhone ? 14 : 20) * _japScale;
   const sizes = allLines.map((line, i) =>
     _kvFitFontSize(line, maxBoxW, i < kv1Lines.length ? baseMax : baseMax * 0.85, minFs)
   );

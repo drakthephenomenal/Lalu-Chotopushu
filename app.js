@@ -4349,10 +4349,7 @@ function sv(id, btn) {
     initBrahmaStartInput();
     renderCal();
     renderRkkOccList();
-    const btnHi = document.getElementById("rkkLangHi");
-    const btnBn = document.getElementById("rkkLangBn");
-    if (btnHi) btnHi.classList.toggle("active", getRkkOccLang() === "hi");
-    if (btnBn) btnBn.classList.toggle("active", getRkkOccLang() === "bn");
+    syncRkkOccLangButtons();
     requestAnimationFrame(function () {
       setTimeout(renderBcGraph, 50);
     });
@@ -9350,6 +9347,9 @@ function setStotramLang(lang) {
   if (btnBn) btnBn.classList.toggle("active", lang === "bn");
   App.save();
   try { renderSt(); } catch (_e) {}
+  try { if (typeof syncRkkOccLangButtons === "function") syncRkkOccLangButtons(); } catch (_e) {}
+  try { if (typeof renderRkkOccList === "function") renderRkkOccList(); } catch (_e) {}
+  try { if (typeof renderCal === "function") renderCal(); } catch (_e) {}
   // If the lyrics-reader modal is currently open, refresh its title too.
   try {
     const lmo = document.getElementById("lmo");
@@ -16615,9 +16615,11 @@ const RKK_OCCASIONS = {
   "2027-04-07": { hi: "नव संवत्सर 2084 – प्रेमानन्द जी महाराज जन्मोत्सव", bn: "নব সংবৎসর ২০৮৪ – প্রেমানন্দ জী মহারাজের জন্মোৎসব" },
 };
 
-// ── RKK occasion language toggle (independent of hkLang/naamLang/stotramLang) ──
+// ── RKK occasion language — follows the same हिंदी/বাংলা Settings
+// toggle (App.S.stotramLang) used for stotram lyrics, so switching
+// language there also switches the occasion list/tags. ──
 function getRkkOccLang() {
-  return (App.S && App.S.rkkOccLang) === "bn" ? "bn" : "hi";
+  return (App.S && App.S.stotramLang) === "hi" ? "hi" : "bn";
 }
 function rkkOccName(key) {
   const e = RKK_OCCASIONS[key];
@@ -16625,14 +16627,39 @@ function rkkOccName(key) {
   return e[getRkkOccLang()] || e.hi;
 }
 function setRkkOccLang(lang) {
-  App.S.rkkOccLang = lang === "bn" ? "bn" : "hi";
-  App.save();
-  renderRkkOccList();
-  renderCal();
+  // Delegate to the app-wide toggle so both the Settings pill and this
+  // card's own buttons stay in sync with a single source of truth.
+  setStotramLang(lang === "hi" ? "hi" : "bn");
+  syncRkkOccLangButtons();
+}
+function syncRkkOccLangButtons() {
+  const lang = getRkkOccLang();
   const btnHi = document.getElementById("rkkLangHi");
   const btnBn = document.getElementById("rkkLangBn");
-  if (btnHi) btnHi.classList.toggle("active", App.S.rkkOccLang === "hi");
-  if (btnBn) btnBn.classList.toggle("active", App.S.rkkOccLang === "bn");
+  if (btnHi) btnHi.classList.toggle("active", lang === "hi");
+  if (btnBn) btnBn.classList.toggle("active", lang === "bn");
+  const titleEl = document.getElementById("rkkOccTitle");
+  if (titleEl) {
+    titleEl.textContent =
+      lang === "bn"
+        ? "🪔 অনুষ্ঠান তালিকা — রাধা কেলি কুঞ্জ কর্তৃক প্রদত্ত"
+        : "🪔 उत्सव सूची — राधा केलि कुंज द्वारा प्रदत्त";
+  }
+}
+function toggleRkkOccList() {
+  const body = document.getElementById("rkkOccBody");
+  const chevron = document.getElementById("rkkOccChevron");
+  if (!body) return;
+  const isOpen = body.style.maxHeight && body.style.maxHeight !== "0px";
+  if (isOpen) {
+    body.style.maxHeight = "0px";
+    if (chevron) chevron.style.transform = "rotate(0deg)";
+  } else {
+    renderRkkOccList();
+    syncRkkOccLangButtons();
+    body.style.maxHeight = "420px";
+    if (chevron) chevron.style.transform = "rotate(180deg)";
+  }
 }
 function renderRkkOccList() {
   const el = document.getElementById("rkkOccListBody");
@@ -17160,7 +17187,9 @@ function _renderSheetOcc(key) {
     curEl.innerHTML =
       '<span style="color:var(--gold)">🪔 ' +
       escHtml(rkk) +
-      '</span><span style="color:var(--td);font-size:10px;margin-left:6px">— राधा केलि कुंज</span>';
+      '</span><span style="color:var(--td);font-size:10px;margin-left:6px">— ' +
+      (getRkkOccLang() === "bn" ? "রাধা কেলি কুঞ্জ" : "राधा केलि कुंज") +
+      "</span>";
   } else {
     curEl.innerHTML =
       '<span style="color:var(--td);font-style:italic">None added</span>';

@@ -9356,14 +9356,14 @@ function setStotramLang(lang) {
           .catch(() => toast("हिंदी चौरासी पाठ लोड नहीं हो पाया 🙏"));
         return;
       }
-      if (_currentStotramId === "hcj") {
-        showLyrics("hcj");
-        return;
-      }
       if (_currentStotramId === "rsn" && lang === "hi" && !_rsnHindiLyrics) {
         loadRsnHindiLyrics()
           .then(() => showLyrics("rsn"))
           .catch(() => toast("हिंदी राधा सुधा निधि पाठ लोड नहीं हो पाया 🙏"));
+        return;
+      }
+      if (_currentStotramId === "hcj") {
+        showLyrics("hcj");
         return;
       }
       if (_currentStotramId === "rsn") {
@@ -9444,37 +9444,22 @@ function loadHcjHindiLyrics() {
   return _hcjHindiLoadPromise;
 }
 
-// Hindi श्री राधा सुधा निधि is kept in its own companion text file for the
-// same reason as HCJ above (See notes there). The source contains one
-// blank-line-separated block per श्लोक (all 270), each block starting with
-// a "श्लोक N" label line — matching the "শ্লোক N:" label already used by
-// the existing Bangla rsn text in stotrams.js.
+// Hindi श्री राधा सुधा निधि is kept in its own companion file because it
+// includes the complete Devanagari text plus the Hindi व्याख्या for all
+// 270 shlokas. It is loaded only when the user selects Hindi and opens it.
 let _rsnHindiLyrics = "";
 let _rsnHindiLoadPromise = null;
 const RSN_HINDI_DATA_URLS = [
-  "./Radha_Sudha_Nidhi_Hindi_clean_lyrics.txt",
-  "../Radha_Sudha_Nidhi_Hindi_clean_lyrics.txt",
-  "./attached_assets/Radha_Sudha_Nidhi_Hindi_clean_lyrics.txt",
+  "./Radha_Sudha_Nidhi_Hindi.txt",
+  "../Radha_Sudha_Nidhi_Hindi.txt",
+  "./attached_assets/Radha_Sudha_Nidhi_Hindi.txt",
 ];
 
 function _cleanRsnHindiSource(source) {
-  const lines = source
+  return source
     .replace(/\r/g, "")
-    .split("\n");
-  const colophonIndex = lines.findIndex((line) =>
-    line.trim().startsWith("स्रोत:")
-  );
-  return lines
-    .slice(0, colophonIndex === -1 ? lines.length : colophonIndex)
-    .filter((line) => {
-      const trimmed = line.trim();
-      return (
-        trimmed !== "श्री राधा सुधा निधि" &&
-        trimmed !== "श्री राधा सुधा निधि स्तोत्रम्" &&
-        trimmed !== "हिंदी (देवनागरी) पाठ" &&
-        !/^कुल\s+श्लोक\s*:\s*\d+$/.test(trimmed)
-      );
-    })
+    .split("\n")
+    .filter((line) => line.trim() !== "श्री राधा सुधा निधि")
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -9499,8 +9484,8 @@ function loadRsnHindiLyrics() {
       const verseCount = lyrics
         .split(/\n{2,}/)
         .filter((verse) => verse.trim().length > 0).length;
-      if (verseCount !== 270) {
-        throw new Error("Hindi RSN contains " + verseCount + " verses");
+      if (verseCount !== 271) {
+        throw new Error("Hindi RSN contains " + verseCount + " blocks");
       }
       _rsnHindiLyrics = lyrics;
       return lyrics;
@@ -18130,8 +18115,10 @@ function showLyrics(id) {
       .catch(() => toast("हिंदी चौरासी पाठ लोड नहीं हो पाया 🙏"));
     return;
   }
+  // Hindi श्री राधा सुधा निधि is also loaded on demand so the main bundle
+  // continues to serve the existing Bengali reader quickly.
   if (id === "rsn" && App.S.stotramLang === "hi" && !_rsnHindiLyrics) {
-    toast("हिंदी श्री राधा सुधा निधि पाठ लोड हो रहा है… 🙏");
+    toast("हिंदी राधा सुधा निधि पाठ लोड हो रहा है… 🙏");
     loadRsnHindiLyrics()
       .then(() => showLyrics(id))
       .catch(() => toast("हिंदी राधा सुधा निधि पाठ लोड नहीं हो पाया 🙏"));
@@ -18312,15 +18299,25 @@ function _renderVerse(idx, dir) {
   // their own অর্থ: line.
   if (body) body.style.paddingTop = hasTranslation ? "48px" : "";
 
-  // Does this verse have any অর্থ: or অর্থ২: lines at all?
-  const verseHasArtha = /^অর্থ২?\s*:/m.test(verseText);
+  const isHindiRsn =
+    _currentStotramId === "rsn" && App.S.stotramLang === "hi";
+  // Hindi RSN uses व्याख्या: for its inline Hindi meaning. The Bengali
+  // source keeps its existing অর্থ:/অর্থ২: markers and behavior.
+  const verseHasHindiMeaning = isHindiRsn && /^(?:अर्थ|व्याख्या)\s*:/m.test(verseText);
+  // Does this verse have any অর্থ: / অর্থ২: / Hindi meaning lines?
+  const verseHasArtha =
+    /^অর্থ২?\s*:/m.test(verseText) || verseHasHindiMeaning;
   // Does this verse specifically have a second-language (অর্থ২:) line?
   const verseHasSecondLang = /^অর্থ২\s*:/m.test(verseText);
 
   // Does this verse have any non-artha, non-empty content lines?
   const verseHasContent = verseText.split("\n").some((l) => {
     const t = l.trim();
-    return t.length > 0 && !/^অর্থ২?\s*:/.test(t);
+    return (
+      t.length > 0 &&
+      !/^অর্থ২?\s*:/.test(t) &&
+      !(isHindiRsn && /^(?:अर्थ|व्याख्या)\s*:/.test(t))
+    );
   });
 
   let linesHtml = "";
@@ -18358,6 +18355,10 @@ function _renderVerse(idx, dir) {
           // Only inject অর্থ: line when translation is ON and Bengali
           // (the default/original language) is selected.
           if (!hasTranslation || !_translationVisible || _translationLang !== "bn") return "";
+          return '<span class="lyr-line lyr-artha' + extraClass + '">' + esc + "</span>";
+        }
+        if (isHindiRsn && /^(?:अर्थ|व्याख्या)\s*:/.test(content.trim())) {
+          if (!hasTranslation || !_translationVisible) return "";
           return '<span class="lyr-line lyr-artha' + extraClass + '">' + esc + "</span>";
         }
         return '<span class="lyr-line' + extraClass + '">' + esc + "</span>";

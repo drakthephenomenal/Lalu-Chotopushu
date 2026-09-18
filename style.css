@@ -2983,16 +2983,41 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 
 /* Live preview shown in the Jap display itself while the Text Size panel
    is open — grows/shrinks immediately as +/- is tapped, so the person can
-   see the actual size before it's applied to real chanting text. */
+   see the actual size before it's applied to real chanting text. Sized per
+   currently-selected jap mode (radha/RV/SS/HK/KV/Kaam/Ram) to match what
+   that mode actually renders at while chanting — see buildJapTextDemo in
+   app.js, which fills this container and picks the right jtd-* classes. */
 .jap-text-demo{
-  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(var(--jap-text-scale,1));
-  transform-origin:center center;
-  font-family:'Tiro Devanagari Hindi',serif; font-weight:700;
-  font-size:44px; color:#FFD700; letter-spacing:2px;
-  text-shadow:0 0 20px rgba(255,215,0,0.9),0 0 40px rgba(255,215,0,0.5);
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:calc(100% - 24px); max-width:340px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  font-family:'Tiro Devanagari Hindi',serif; font-weight:700; text-align:center;
   pointer-events:none; z-index:41; opacity:0; transition:opacity 0.18s ease;
 }
 .jap-text-demo.show{opacity:1;}
+.jap-text-demo div,.jap-text-demo span{display:block;}
+/* राधा — matches the flying-burst size in spawn() (110–170px random, so
+   this uses the midpoint, 140px, times the same scale var). */
+.jtd-radha{font-size:calc(140px * var(--jap-text-scale,1));color:#FFD700;
+  text-shadow:0 0 30px rgba(255,215,0,0.9);letter-spacing:1px;}
+/* Radha Vallabh / Saamb Sadashiv — matches spawnRV/spawnSS (55–80px first
+   line, ×0.85 second line random, so midpoints 67px/57px times scale). */
+.jtd-line1{font-size:calc(67px * var(--jap-text-scale,1));color:#FFD700;
+  text-shadow:0 0 30px rgba(255,215,0,0.9);}
+.jtd-line2{font-size:calc(57px * var(--jap-text-scale,1));color:#6DB8FF;
+  text-shadow:0 0 30px rgba(109,184,255,0.9);}
+/* Hare Krishna Mahamantra / Ram Vijay Mantra — matches #hkPersist/#ramPersist. */
+.jtd-hk{font-size:calc(clamp(26px,7.5vw,44px) * var(--jap-text-scale,1));
+  line-height:1.6;color:#FFD700;text-shadow:0 0 20px rgba(255,215,0,0.85);letter-spacing:1.5px;}
+/* Krishnay Vasudevay — approximates spawnKV's auto-fit sizing (first
+   half-verse slightly larger than the second, like its baseMax/×0.85). */
+.jtd-kv-1{font-size:calc(45px * var(--jap-text-scale,1));color:#FFD700;
+  text-shadow:0 0 20px rgba(255,215,0,0.85);letter-spacing:1px;}
+.jtd-kv-2{font-size:calc(38px * var(--jap-text-scale,1));color:#FFD700;
+  text-shadow:0 0 20px rgba(255,215,0,0.85);letter-spacing:1px;}
+/* Kaam Vijay — matches #kaamPersist. */
+.jtd-kaam{font-size:calc(clamp(17px,4.7vw,30px) * var(--jap-text-scale,1));
+  line-height:1.55;color:#FFD700;text-shadow:0 0 20px rgba(255,215,0,0.85);letter-spacing:0.5px;}
 
 /* While editing: make each photo draggable and outline it so it reads as
    "selected"; the images are normally pointer-events:none (decorative). */

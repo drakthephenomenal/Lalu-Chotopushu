@@ -2759,6 +2759,42 @@ window.getJapTextScale = function() {
   return (window._japTextPrefs && window._japTextPrefs.scale) || 1;
 };
 
+// Builds the Jap Text Size panel's live preview to match whichever jap
+// mode (राधा / RV / SS / HK / KV / Kaam / Ram) is currently selected —
+// each mode renders its chanting text at a different size on screen, so
+// the demo mirrors that mode's actual text and font-size classes instead
+// of always showing राधा (see .jtd-* rules in style.css).
+window.buildJapTextDemo = function() {
+  const mode = (App.S && App.S.japMode) || 'radha';
+  const _nt = (typeof naamText === 'function') ? naamText() : null;
+  if (mode === 'rv' && _nt) {
+    return '<div class="jtd-line1">' + _nt.rv1 + '</div><div class="jtd-line2">' + _nt.rv2 + '</div>';
+  }
+  if (mode === 'ss' && _nt) {
+    return '<div class="jtd-line1">' + _nt.ss1 + '</div><div class="jtd-line2">' + _nt.ss2 + '</div>';
+  }
+  if (mode === 'hk') {
+    const lang = (App.S && App.S.hkLang) || 'hi';
+    const text = lang === 'bn' ? HK_TEXT_BN : HK_TEXT;
+    return text.split('\n').map((l) => '<div class="jtd-hk">' + l + '</div>').join('');
+  }
+  if (mode === 'ram' && _nt) {
+    return '<div class="jtd-hk">' + _nt.ram1 + '</div><div class="jtd-hk">' + _nt.ram2 + '</div>';
+  }
+  if (mode === 'kv' && _nt) {
+    const kv1Lines = _nt.kv1.split('\n');
+    const kv2Lines = _nt.kv2.split('\n');
+    return kv1Lines.map((l) => '<div class="jtd-kv-1">' + l + '</div>').join('') +
+      kv2Lines.map((l) => '<div class="jtd-kv-2">' + l + '</div>').join('');
+  }
+  if (mode === 'kaam') {
+    const kaamText = (App.S && App.S.naamLang === 'bn') ? KAAM_TEXT_BN : KAAM_TEXT_SA;
+    return kaamText.split('\n').map((l) => '<div class="jtd-kaam">' + l + '</div>').join('');
+  }
+  // Default: राधा
+  return '<div class="jtd-radha">' + (_nt ? _nt.radha : 'राधा') + '</div>';
+};
+
 window.toggleJapTextSettingsPanel = function(e) {
   if (e) e.stopPropagation();
   const panel = document.getElementById('japTextSettingsPanel');
@@ -2770,7 +2806,7 @@ window.toggleJapTextSettingsPanel = function(e) {
   if (btn) btn.classList.toggle('active', opening);
   if (demo) {
     demo.classList.toggle('show', opening);
-    if (opening && typeof naamText === 'function') demo.textContent = naamText().radha;
+    if (opening) demo.innerHTML = window.buildJapTextDemo();
   }
   if (opening) window.applyJapTextPrefs();
 };

@@ -3747,7 +3747,7 @@ function initJapModeUI() {
     App.S.ramanandiMode ? tgR.classList.add("on") : tgR.classList.remove("on");
   if (App.S.ramanandiMode) document.body.classList.add("ramanandi-mode");
   if (typeof renderSampradaySelector === "function") renderSampradaySelector();
-  window._dedTypes = new Set([App.S.trahimamMode ? "ss" : App.S.ramanandiMode ? "ram" : "radha"]);
+  window._dedTypes = new Set(); // Gift section: unselected by default
   _placeTarget28Card();
   if (typeof applyBgPhotos === "function") applyBgPhotos();
   // Init Horizon Mode toggle state
@@ -4612,10 +4612,10 @@ function tgs(k) {
     // Auto-switch jap mode so only valid options are visible at the top toggle
     if (App.S.trahimamMode) {
       if (App.S.japMode !== "ss") switchJapMode("ss");
-      window._dedTypes = new Set(["ss"]);
+      window._dedTypes = new Set();
     } else {
       if (App.S.japMode === "ss") switchJapMode("radha");
-      window._dedTypes = new Set(["radha"]);
+      window._dedTypes = new Set();
     }
     window._dedAmounts = {};
     if (typeof renderDedTypePanels === "function") renderDedTypePanels();
@@ -4661,10 +4661,10 @@ function tgs(k) {
     // Auto-switch jap mode so only valid options are visible at the top toggle
     if (App.S.ramanandiMode) {
       if (App.S.japMode !== "ram") switchJapMode("ram");
-      window._dedTypes = new Set(["ram"]);
+      window._dedTypes = new Set();
     } else {
       if (App.S.japMode === "ram") switchJapMode("radha");
-      window._dedTypes = new Set(["radha"]);
+      window._dedTypes = new Set();
     }
     window._dedAmounts = {};
     if (typeof renderDedTypePanels === "function") renderDedTypePanels();
@@ -4701,7 +4701,7 @@ function tgs(k) {
     if (App.S.trahimamMode) { App.S.trahimamMode = false; document.body.classList.remove("trahimam-mode"); const tgT = document.getElementById("tgTrahimam"); if (tgT) tgT.classList.remove("on"); if (App.S.japMode === "ss") switchJapMode("radha"); }
     if (App.S.ramanandiMode) { App.S.ramanandiMode = false; document.body.classList.remove("ramanandi-mode"); const tgR = document.getElementById("tgRamanandi"); if (tgR) tgR.classList.remove("on"); if (App.S.japMode === "ram") switchJapMode("radha"); }
     App.S.sampraday = which;
-    window._dedTypes = new Set(["radha"]);
+    window._dedTypes = new Set();
     window._dedAmounts = {};
     if (typeof renderDedTypePanels === "function") renderDedTypePanels();
     App.save();
@@ -5497,7 +5497,7 @@ function removeNameJapDeduct() {
 // each with its own lifetime total, its own jap/mala input, and its own
 // live "remaining after gift" preview — plus a combined preview of
 // everything about to be gifted, shown before the Dedicate button.
-window._dedTypes = new Set(["radha"]);
+window._dedTypes = new Set();
 window._dedAmounts = {}; // type -> jap amount currently entered (unsaved, in-progress)
 window._dedStotrams = window._dedStotrams || []; // [{name, count}] manually entered stotram gifts (unsaved, in-progress)
 
@@ -5507,7 +5507,7 @@ function _dedTypeMeta(type) {
   if (type === "hk") return { label: "Hare Krishna", color: "#c9a7ff" };
   if (type === "ss") return { label: "Samba Sadashiv", color: "#ffb86c" };
   if (type === "ram") return { label: "Raam Vijay Mantra", color: "#FF9933" };
-  if (type === "kaam") return { label: "Kaam Vijay", color: "#FF6B9D" };
+  if (type === "kaam") return { label: "Kaam Vijay", color: "#B8C4F5" };
   return { label: "Radha", color: "#f5c842" };
 }
 
@@ -5583,11 +5583,8 @@ function _dedAdjustCounter(type, delta) {
 
 function toggleDedicationType(type, el) {
   if (window._dedTypes.has(type)) {
-    // Don't allow deselecting the last remaining type
-    if (window._dedTypes.size > 1) {
-      window._dedTypes.delete(type);
-      delete window._dedAmounts[type];
-    }
+    window._dedTypes.delete(type);
+    delete window._dedAmounts[type];
   } else {
     window._dedTypes.add(type);
   }
@@ -8696,7 +8693,7 @@ function _msConsiderChipsHtml() {
       (on ? " active" : "") +
       '" style="padding:6px 10px;flex:none;' +
       (on
-        ? "border-color:rgba(245,209,122,0.7);background:rgba(245,209,122,0.16);color:var(--gold);box-shadow:0 0 6px rgba(245,209,122,0.25);"
+        ? "border-color:rgba(255,224,130,0.95);background:linear-gradient(145deg,#FFE9B0,#E8B94D);color:#4a2f06;text-shadow:0 1px 0 rgba(255,255,255,0.3);box-shadow:0 0 10px rgba(245,209,122,0.6),0 0 2px rgba(255,255,255,0.5),inset 0 1px 2px rgba(255,255,255,0.5);"
         : "border-color:rgba(" +
           t.color +
           ',0.18);background:rgba(' +
@@ -17539,49 +17536,55 @@ window.addEventListener("appinstalled", () => { _closeInstallModal(); });
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Service Worker
+// v211 offline fix: register immediately instead of waiting for the
+// window "load" event. app.js sits at the bottom of <body> with no
+// defer/async, so by the time this line runs the DOM (and this script)
+// is already parsed — "load" was needlessly waiting on every image/font/
+// external script to finish too, which meant on a slow first connection
+// the SW might not even start registering (let alone finish caching
+// CORE_ASSETS) before the person backgrounded/closed the app. Registering
+// here shrinks that window substantially.
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("./sw.js", { scope: "./" })
-      .then((r) => {
-        console.log("SW registered:", r.scope);
+  navigator.serviceWorker
+    .register("./sw.js", { scope: "./" })
+    .then((r) => {
+      console.log("SW registered:", r.scope);
 
-        // ── SW update path ──────────────────────────────────────────────────
-        // We listen for SW_UPDATED message (sent by the new SW on activate).
-        // We do NOT also listen on updatefound/statechange — that would fire a
-        // second reload on the same page load, causing the install popup flicker.
-        // One reload path only: the SW_UPDATED message below.
-        // ────────────────────────────────────────────────────────────────────
-      })
-      .catch((e) => console.warn("SW registration failed:", e.message));
+      // ── SW update path ──────────────────────────────────────────────────
+      // We listen for SW_UPDATED message (sent by the new SW on activate).
+      // We do NOT also listen on updatefound/statechange — that would fire a
+      // second reload on the same page load, causing the install popup flicker.
+      // One reload path only: the SW_UPDATED message below.
+      // ────────────────────────────────────────────────────────────────────
+    })
+    .catch((e) => console.warn("SW registration failed:", e.message));
 
-    navigator.serviceWorker.addEventListener("message", (e) => {
-      // ── SW_UPDATED (v154): NO auto-reload. ──
-      // Previous versions did window.location.reload() ~800ms after this
-      // message, which was the root cause of the "app loads twice / loading
-      // bar disappears then comes back" complaint on slow networks.
-      // The new SW (v154) no longer calls clients.claim(), so the current
-      // page keeps running on the old SW until the user navigates or
-      // manually refreshes — guaranteed clean, no flicker.
-      if (e.data && e.data.type === "SW_UPDATED") {
-        console.log("[SW] update ready (" + e.data.version + ") — will apply on next navigation");
-        // Optional: surface a soft toast / pill here if desired.
-        try { if (typeof toast === "function") toast("✨ Update ready — refresh anytime"); } catch (_) {}
-      }
-    });
+  navigator.serviceWorker.addEventListener("message", (e) => {
+    // ── SW_UPDATED (v154): NO auto-reload. ──
+    // Previous versions did window.location.reload() ~800ms after this
+    // message, which was the root cause of the "app loads twice / loading
+    // bar disappears then comes back" complaint on slow networks.
+    // The new SW (v154) no longer calls clients.claim(), so the current
+    // page keeps running on the old SW until the user navigates or
+    // manually refreshes — guaranteed clean, no flicker.
+    if (e.data && e.data.type === "SW_UPDATED") {
+      console.log("[SW] update ready (" + e.data.version + ") — will apply on next navigation");
+      // Optional: surface a soft toast / pill here if desired.
+      try { if (typeof toast === "function") toast("✨ Update ready — refresh anytime"); } catch (_) {}
+    }
+  });
 
-    // ── SW_READY path: SW was already controlling when this page loaded ──────
-    // This fires when the page is a fresh load under an already-active SW
-    // (not a reload triggered by SW_UPDATED). Safe to show install modal here
-    // because beforeinstallprompt's own 3s timer is the primary trigger; this
-    // is only a fallback for cases where beforeinstallprompt already fired
-    // before the SW registration promise resolved.
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
-      // controllerchange fires when a new SW claims this client.
-      // This is the correct signal that a new SW is now in control.
-      // The SW_UPDATED message handles the reload; nothing extra needed here.
-      console.log("[SW] controllerchange — new SW is now controlling");
-    });
+  // ── SW_READY path: SW was already controlling when this page loaded ──────
+  // This fires when the page is a fresh load under an already-active SW
+  // (not a reload triggered by SW_UPDATED). Safe to show install modal here
+  // because beforeinstallprompt's own 3s timer is the primary trigger; this
+  // is only a fallback for cases where beforeinstallprompt already fired
+  // before the SW registration promise resolved.
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    // controllerchange fires when a new SW claims this client.
+    // This is the correct signal that a new SW is now in control.
+    // The SW_UPDATED message handles the reload; nothing extra needed here.
+    console.log("[SW] controllerchange — new SW is now controlling");
   });
 }
 

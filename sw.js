@@ -282,7 +282,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v210';
+const CACHE = 'radha-jap-v212';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch
@@ -426,17 +426,43 @@ self.addEventListener('install', (event) => {
   })());
 });
 
-// ── ACTIVATE: delete old caches. Do NOT claim clients (avoids mid-session takeover). ──
+// ── ACTIVATE: delete old caches, then claim open clients and self-heal an
+// empty/partial cache (see below). ──
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
     const oldKeys = keys.filter((key) => key !== CACHE);
     await Promise.all(oldKeys.map((key) => caches.delete(key)));
-    // v154: removed self.clients.claim().
-    // The new SW now takes over on the next navigation, not mid-session.
-    // This eliminates the controllerchange→reload double-load.
-    // Still notify open tabs so they CAN show a soft "Update available" pill
-    // (app.js v154 no longer auto-reloads on this message).
+
+    // v212 offline fix: claim currently-open clients immediately instead of
+    // waiting for the next navigation. The old comment here said this was
+    // removed to avoid a mid-session "takeover flicker" — but that flicker
+    // was actually caused by app.js's old location.reload() on
+    // controllerchange (removed back in v154), not by claim() itself.
+    // Claiming now means: if this is the very FIRST activation (fresh
+    // install, no prior SW), the current session is covered by an active
+    // SW right away instead of only from the next cold app-open onward —
+    // closing the exact gap where "open once online, immediately go
+    // offline and relaunch" could still hit the browser's native offline
+    // page instead of this SW's own cached shell.
+    await self.clients.claim();
+
+    // Self-heal: if CORE_ASSETS somehow failed to cache during install
+    // (e.g. install ran on a flaky connection — cacheLocalAsset() swallows
+    // its own errors so install() always "succeeds" even with an empty
+    // cache), retry them now. Cheap no-op if everything's already cached.
+    try {
+      const cache = await caches.open(CACHE);
+      const missing = [];
+      for (const asset of CORE_ASSETS) {
+        if (!(await cache.match(asset))) missing.push(asset);
+      }
+      if (missing.length) {
+        console.warn('[SW] self-heal: re-caching', missing.length, 'missing core asset(s)');
+        await Promise.allSettled(missing.map((asset) => cacheLocalAsset(cache, asset)));
+      }
+    } catch (_) {}
+
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED', version: CACHE }));
   })());

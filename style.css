@@ -3173,11 +3173,13 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 .tzr{margin:3px 10px 1px !important;}
 
 @media (min-width: 768px) {
+  /* The bottom navigation is fixed and already owns the iPad safe area.
+     Reserving another 56px on #vj created a visible empty strip above it. */
   #vj {
-    padding-bottom: 56px !important;
+    padding-bottom: 0 !important;
   }
   .tzr {
-    margin: 0 14px 2px !important;
+    margin: 0 14px !important;
   }
 }
 

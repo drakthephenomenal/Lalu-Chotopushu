@@ -1336,7 +1336,7 @@ button.n28-gold-btn-danger,
 .ms-link-btn:active{transform:scale(0.9);}
 .ms-link-btn.play{background:transparent;border:none;}
 .ms-link-btn.edit{background:rgba(255,215,0,0.08);border-color:rgba(255,215,0,0.3);font-size:12px;}
-.ms-desc{font-size:12px;line-height:1.7;color:var(--td);margin:8px 0;font-family:'Hind Siliguri',sans-serif;}
+.ms-desc{font-size:12px;line-height:1.7;color:var(--td);margin:8px 0;font-family:'Hind Siliguri',sans-serif;max-width:none;text-align:left;}
 .ms-desc.bangla{font-family:'Noto Sans Bengali','Hind Siliguri',sans-serif;}
 .ms-progress-wrap{position:relative;height:3px;background:rgba(255,255,255,0.06);border-radius:3px;margin-top:10px;overflow:hidden;}
 .ms-progress-fill{height:100%;border-radius:3px;transition:width 0.6s ease;}

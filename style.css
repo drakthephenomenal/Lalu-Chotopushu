@@ -3173,10 +3173,11 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 .tzr{margin:3px 10px 1px !important;}
 
 @media (min-width: 768px) {
-  /* The bottom navigation is fixed and already owns the iPad safe area.
-     Reserving another 56px on #vj created a visible empty strip above it. */
+  /* Reserve only the navigation controls' 40px height plus the iPad safe
+     area. This keeps the Jap display flush with the navigation while leaving
+     its lower border visible instead of hidden underneath the fixed bar. */
   #vj {
-    padding-bottom: 0 !important;
+    padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px)) !important;
   }
   .tzr {
     margin: 0 14px !important;

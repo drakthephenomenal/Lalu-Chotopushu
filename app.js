@@ -8668,22 +8668,22 @@ function _msConsiderChipsHtml() {
   ];
   let h =
     '<div class="ms-consider-wrap" style="margin-bottom:14px;">' +
-    '<div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;font-weight:700;opacity:0.7;margin-bottom:6px;">🙏 Consider for Bhagvat Prapti Milestones</div>' +
+    '<div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;font-weight:700;opacity:0.7;margin-bottom:6px;">🙏 Select Your Naam Jap Sections for Bhagvat Prapti</div>' +
     '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
   types.forEach((t) => {
     const on = !!c[t.key];
     h +=
       '<div class="ded-type-pill' +
       (on ? " active" : "") +
-      '" style="padding:6px 10px;flex:none;border-color:rgba(' +
-      t.color +
-      "," +
-      (on ? "0.45" : "0.18") +
-      ');background:rgba(' +
-      t.color +
-      "," +
-      (on ? "0.1" : "0.03") +
-      ');" onclick="setMsConsider(\'' +
+      '" style="padding:6px 10px;flex:none;' +
+      (on
+        ? "border-color:rgba(245,209,122,0.7);background:rgba(245,209,122,0.16);color:var(--gold);box-shadow:0 0 6px rgba(245,209,122,0.25);"
+        : "border-color:rgba(" +
+          t.color +
+          ',0.18);background:rgba(' +
+          t.color +
+          ',0.03);') +
+      '" onclick="setMsConsider(\'' +
       t.key +
       "'," +
       !on +

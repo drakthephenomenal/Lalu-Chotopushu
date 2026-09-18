@@ -9360,6 +9360,16 @@ function setStotramLang(lang) {
         showLyrics("hcj");
         return;
       }
+      if (_currentStotramId === "rsn" && lang === "hi" && !_rsnHindiLyrics) {
+        loadRsnHindiLyrics()
+          .then(() => showLyrics("rsn"))
+          .catch(() => toast("हिंदी राधा सुधा निधि पाठ लोड नहीं हो पाया 🙏"));
+        return;
+      }
+      if (_currentStotramId === "rsn") {
+        showLyrics("rsn");
+        return;
+      }
       const allSt = [...STLIST, ...(App.S.customSt || [])];
       const nm = allSt.find((x) => x.id === _currentStotramId);
       if (nm) {
@@ -9432,6 +9442,75 @@ function loadHcjHindiLyrics() {
     });
 
   return _hcjHindiLoadPromise;
+}
+
+// Hindi श्री राधा सुधा निधि is kept in its own companion text file for the
+// same reason as HCJ above (See notes there). The source contains one
+// blank-line-separated block per श्लोक (all 270), each block starting with
+// a "श्लोक N" label line — matching the "শ্লোক N:" label already used by
+// the existing Bangla rsn text in stotrams.js.
+let _rsnHindiLyrics = "";
+let _rsnHindiLoadPromise = null;
+const RSN_HINDI_DATA_URLS = [
+  "./Radha_Sudha_Nidhi_Hindi_clean_lyrics.txt",
+  "../Radha_Sudha_Nidhi_Hindi_clean_lyrics.txt",
+  "./attached_assets/Radha_Sudha_Nidhi_Hindi_clean_lyrics.txt",
+];
+
+function _cleanRsnHindiSource(source) {
+  const lines = source
+    .replace(/\r/g, "")
+    .split("\n");
+  const colophonIndex = lines.findIndex((line) =>
+    line.trim().startsWith("स्रोत:")
+  );
+  return lines
+    .slice(0, colophonIndex === -1 ? lines.length : colophonIndex)
+    .filter((line) => {
+      const trimmed = line.trim();
+      return (
+        trimmed !== "श्री राधा सुधा निधि" &&
+        trimmed !== "श्री राधा सुधा निधि स्तोत्रम्" &&
+        trimmed !== "हिंदी (देवनागरी) पाठ" &&
+        !/^कुल\s+श्लोक\s*:\s*\d+$/.test(trimmed)
+      );
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function loadRsnHindiLyrics() {
+  if (_rsnHindiLyrics) return Promise.resolve(_rsnHindiLyrics);
+  if (_rsnHindiLoadPromise) return _rsnHindiLoadPromise;
+
+  _rsnHindiLoadPromise = RSN_HINDI_DATA_URLS.reduce(
+    (promise, url) =>
+      promise.catch(() =>
+        fetch(url).then((response) => {
+          if (!response.ok) throw new Error("Hindi RSN data request failed");
+          return response.text();
+        })
+      ),
+    Promise.reject(new Error("Hindi RSN data not attempted"))
+  )
+    .then((source) => {
+      const lyrics = _cleanRsnHindiSource(source);
+      const verseCount = lyrics
+        .split(/\n{2,}/)
+        .filter((verse) => verse.trim().length > 0).length;
+      if (verseCount !== 270) {
+        throw new Error("Hindi RSN contains " + verseCount + " verses");
+      }
+      _rsnHindiLyrics = lyrics;
+      return lyrics;
+    })
+    .catch((error) => {
+      _rsnHindiLoadPromise = null;
+      throw error;
+    });
+
+  return _rsnHindiLoadPromise;
 }
 
 // Small helper: pick the language-appropriate name/sub for a STLIST/customSt
@@ -15758,6 +15837,9 @@ function getEffectiveLyrics(id) {
   if (id === "hcj" && App.S.stotramLang === "hi" && _hcjHindiLyrics) {
     return _hcjHindiLyrics;
   }
+  if (id === "rsn" && App.S.stotramLang === "hi" && _rsnHindiLyrics) {
+    return _rsnHindiLyrics;
+  }
   return (
     LYRICS[id] ||
     ((App.S.customSt || []).find((x) => x.id === id) || {}).lyrics ||
@@ -18046,6 +18128,13 @@ function showLyrics(id) {
     loadHcjHindiLyrics()
       .then(() => showLyrics(id))
       .catch(() => toast("हिंदी चौरासी पाठ लोड नहीं हो पाया 🙏"));
+    return;
+  }
+  if (id === "rsn" && App.S.stotramLang === "hi" && !_rsnHindiLyrics) {
+    toast("हिंदी श्री राधा सुधा निधि पाठ लोड हो रहा है… 🙏");
+    loadRsnHindiLyrics()
+      .then(() => showLyrics(id))
+      .catch(() => toast("हिंदी राधा सुधा निधि पाठ लोड नहीं हो पाया 🙏"));
     return;
   }
   // The Gita is kept out of the initial bundle. Load and validate all

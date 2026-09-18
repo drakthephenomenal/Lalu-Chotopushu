@@ -21077,6 +21077,18 @@ function _lbGetPeriodKeys(period) {
     }
     return [key];
   }
+  if (period === 'yesterday') {
+    // Same live-clock approach as 'today' above, just one day back — a
+    // single-day key, so it falls through to the generic per-day summing
+    // path in renderLeaderboard() below (only 'today' has its own
+    // precomputed-breakdown fast path).
+    const d = new Date(now);
+    d.setDate(d.getDate() - 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    return [`${y}-${m}-${dd}`];
+  }
   if (period === 'month') {
     const y = now.getFullYear(), m = now.getMonth();
     const days = new Date(y, m + 1, 0).getDate();
@@ -21512,7 +21524,7 @@ function renderLeaderboard(docs, period) {
 /** Switch leaderboard period tab */
 function lbSwitchPeriod(period) {
   window._lbPeriod = period;
-  ['alltime','month','week','today'].forEach(function(p) {
+  ['alltime','month','week','yesterday','today'].forEach(function(p) {
     const btn = document.getElementById('lbTab' + p.charAt(0).toUpperCase() + p.slice(1));
     if (btn) btn.classList.toggle('active', p === period);
   });

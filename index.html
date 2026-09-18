@@ -1627,7 +1627,11 @@
       </div>
     </div>
   </div>
-  <div class="vt">Settings</div>
+  <div class="vt-row-settings">
+    <button class="ms-toggle-btn" id="setLangHi" onclick="setStotramLang('hi')">हिंदी</button>
+    <span class="vt" style="margin-bottom:0;">Settings</span>
+    <button class="ms-toggle-btn active" id="setLangBn" onclick="setStotramLang('bn')">বাংলা</button>
+  </div>
   <div class="sc" id="appUpdateCard" style="background:rgba(8,12,35,0.82);border:1px solid rgba(255,215,0,0.25);padding:14px 15px;cursor:pointer;transition:background .4s,border-color .4s;" onclick="checkAppUpdate()">
     <div style="display:flex;align-items:center;gap:12px;">
       <div style="font-size:20px;line-height:1;" id="appUpdateIcon">🔄</div>

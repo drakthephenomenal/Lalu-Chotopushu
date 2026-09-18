@@ -1317,6 +1317,8 @@ button.n28-gold-btn-danger,
 .ms-phase-title{font-family:'Cinzel Decorative',serif;font-size:13px;color:var(--a2);letter-spacing:3px;text-transform:uppercase;margin:24px 0 12px;text-align:center;text-shadow:0 0 12px rgba(109,184,255,0.4);}
 .ms-phase-sub{font-size:10px;color:var(--td);letter-spacing:2px;text-align:center;margin-top:-8px;margin-bottom:14px;}
 .ms-toggle-wrap{display:flex;justify-content:center;gap:8px;margin-bottom:18px;}
+.vt-row-settings{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:18px;}
+.vt-row-settings .vt{margin-bottom:0;}
 .ms-toggle-btn{padding:6px 16px;border-radius:20px;border:1px solid rgba(74,144,226,0.25);background:rgba(74,144,226,0.08);color:var(--td);font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.3s;}
 .ms-toggle-btn.active{background:rgba(255,215,0,0.15);border-color:rgba(255,215,0,0.4);color:var(--gold);}
 .ms-card{position:relative;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:16px;margin-bottom:14px;-webkit-cursor:pointer;transition:transform 0.25s ease,box-shadow 0.3s ease;overflow:hidden;}

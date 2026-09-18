@@ -748,6 +748,7 @@ const App = {
     sriBranch: "ramananda",  // when sampraday === "sri" — "ramanuj" | "ramananda"
     hkLang: "hi",
     naamLang: "sa",  // Radha / Radha Vallabh / Samba Sadashiv jap text script: "sa" (Sanskrit/Devanagari) or "bn" (Bangla)
+    stotramLang: "bn",  // Stotram list names + lyrics script: "hi" (Hindi/Devanagari) or "bn" (Bangla)
     lbOptIn: false,        // leaderboard opt-in
     lbDisplayName: "",     // leaderboard display name
     driveBackupDailyEnabled: false,  // opt-in daily auto-backup to Google Drive
@@ -1171,6 +1172,7 @@ const App = {
     }
     if (!this.S.hkLang) this.S.hkLang = "hi";
     if (!this.S.naamLang) this.S.naamLang = "sa";
+    if (!this.S.stotramLang) this.S.stotramLang = "bn";
     if (this.S.bgIskconAcharya === undefined) this.S.bgIskconAcharya = 1;
     if (this.S.bgIskconGurudev === undefined) this.S.bgIskconGurudev = 1;
     if (this.S.bgCM === undefined) this.S.bgCM = 1;
@@ -3889,6 +3891,12 @@ function initJapModeUI() {
   // Apply all language-sensitive labels on load
   applyHKLangLabels(App.S.hkLang || "hi");
   applyNaamLangLabels(App.S.naamLang || "sa");
+  // Init Settings-header Stotram language toggle (Hindi/Bangla) state
+  const setLangHiBtn = document.getElementById("setLangHi");
+  const setLangBnBtn = document.getElementById("setLangBn");
+  const curStLang = App.S.stotramLang || "bn";
+  if (setLangHiBtn) setLangHiBtn.classList.toggle("active", curStLang === "hi");
+  if (setLangBnBtn) setLangBnBtn.classList.toggle("active", curStLang === "bn");
   try { populateSettingsUI(); } catch (_e) {}
 }
 
@@ -9320,6 +9328,45 @@ function setMsLang(lang) {
     if (App.S.japMode === "hk") switchJapMode("hk");
     App.save();
   }
+}
+
+// ── Stotram list language toggle (Hindi/Devanagari vs Bangla) ──
+// Controls: (1) which script the Settings-header toggle shows as active,
+// (2) which STLIST name/sub fields render in the Stotram folder cards,
+// (3) which title shows atop the lyrics-reader modal.
+// Falls back to the Bangla fields whenever a Hindi field is missing on a
+// given STLIST/customSt entry, so nothing goes blank mid-rollout.
+function setStotramLang(lang) {
+  if (!App || !App.S || App.S.stotramLang === lang) return;
+  App.S.stotramLang = lang;
+  const btnHi = document.getElementById("setLangHi");
+  const btnBn = document.getElementById("setLangBn");
+  if (btnHi) btnHi.classList.toggle("active", lang === "hi");
+  if (btnBn) btnBn.classList.toggle("active", lang === "bn");
+  App.save();
+  try { renderSt(); } catch (_e) {}
+  // If the lyrics-reader modal is currently open, refresh its title too.
+  try {
+    const lmo = document.getElementById("lmo");
+    const lmTitle = document.getElementById("lmTitle");
+    if (lmo && lmo.classList.contains("show") && lmTitle && window._currentStotramId) {
+      const allSt = [...STLIST, ...(App.S.customSt || [])];
+      const nm = allSt.find((x) => x.id === window._currentStotramId);
+      if (nm) {
+        lmTitle.textContent = (lang === "hi" && nm.nameHi) ? nm.nameHi : nm.name;
+      }
+    }
+  } catch (_e) {}
+}
+
+// Small helper: pick the language-appropriate name/sub for a STLIST/customSt
+// entry, falling back to the Bangla (default) fields when a Hindi one isn't
+// present yet.
+function stName(st) {
+  return (App.S.stotramLang === "hi" && st.nameHi) ? st.nameHi : st.name;
+}
+function stSub(st) {
+  return (App.S.stotramLang === "hi" && st.subHi) ? st.subHi : (st.sub || "");
 }
 
 function toggleMsDesc(id, btn) {
@@ -15134,8 +15181,8 @@ function renderSt() {
     let inner =
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">' +
         '<div style="flex:1;min-width:0">' +
-          '<div class="st-name">' + escHtml(st.name) + globalTag + '</div>' +
-          (st.sub ? '<div class="st-sub">' + escHtml(st.sub) + '</div>' : '') +
+          '<div class="st-name">' + escHtml(stName(st)) + globalTag + '</div>' +
+          (stSub(st) ? '<div class="st-sub">' + escHtml(stSub(st)) + '</div>' : '') +
         '</div>' +
         headerRight +
       '</div>' +
@@ -18057,7 +18104,7 @@ function showLyrics(id) {
     ...(App.S.customSt || []),
   ];
   const nm = allSt.find((x) => x.id === id);
-  document.getElementById("lmTitle").textContent = nm ? nm.name : id;
+  document.getElementById("lmTitle").textContent = nm ? stName(nm) : id;
 
   _renderVerse(0, null);
   document.getElementById("lmo").classList.add("show");

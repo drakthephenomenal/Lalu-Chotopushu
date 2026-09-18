@@ -5,9 +5,9 @@
   --rose:#D94B7E;--rl:#F58AB0;
   --green:#39C997;--red:#E15A6B;
   --tl:#ECEEFB;--td:#8089B8;
-  /* Jap chanting text size / line-spacing multipliers — overridden live by
-     the left-side gear on the Jap tap screen (see applyJapTextPrefs in app.js). */
-  --jap-text-scale:1;--jap-line-spacing:1;
+  /* Jap chanting text size multiplier — overridden live by the left-side
+     gear on the Jap tap screen (see applyJapTextPrefs in app.js). */
+  --jap-text-scale:1;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
@@ -1539,10 +1539,10 @@ button.n28-gold-btn-danger,
 
 /* ── Hare Krishna Mahamantra persistent tap display ── */
 #hkPersist{
-  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(8px * var(--jap-line-spacing,1));
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
   pointer-events:none;z-index:10;
   font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif;
-  font-size:calc(clamp(26px,7.5vw,44px) * var(--jap-text-scale,1));font-weight:700;line-height:calc(1.6 * var(--jap-line-spacing,1));text-align:center;
+  font-size:calc(clamp(26px,7.5vw,44px) * var(--jap-text-scale,1));font-weight:700;line-height:1.6;text-align:center;
   padding:16px;letter-spacing:1.5px;
   opacity:0;
   transition:opacity 0.22s ease;
@@ -1561,10 +1561,10 @@ button.n28-gold-btn-danger,
 
 /* ── Ramanandi (Raam Vijay Mantra) persistent tap display (mirrors #hkPersist) ── */
 #ramPersist{
-  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(8px * var(--jap-line-spacing,1));
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
   pointer-events:none;z-index:10;
   font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif;
-  font-size:calc(clamp(26px,7.5vw,44px) * var(--jap-text-scale,1));font-weight:700;line-height:calc(1.6 * var(--jap-line-spacing,1));text-align:center;
+  font-size:calc(clamp(26px,7.5vw,44px) * var(--jap-text-scale,1));font-weight:700;line-height:1.6;text-align:center;
   padding:16px;letter-spacing:1.5px;
   opacity:0;
   transition:opacity 0.22s ease;
@@ -1577,10 +1577,10 @@ button.n28-gold-btn-danger,
 
 /* ── Krishnay Vasudevay persistent tap display (mirrors #hkPersist) ── */
 #kvPersist{
-  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(6px * var(--jap-line-spacing,1));
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
   pointer-events:none;z-index:10;
   font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif;
-  font-weight:700;line-height:calc(1.3 * var(--jap-line-spacing,1));text-align:center;
+  font-weight:700;line-height:1.3;text-align:center;
   padding:16px;letter-spacing:1px;
   opacity:0;
   transition:opacity 0.22s ease;
@@ -1592,10 +1592,10 @@ button.n28-gold-btn-danger,
 
 /* ── Kaam Vijay persistent tap display (same arriving/rising animation as HK) ── */
 #kaamPersist{
-  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(8px * var(--jap-line-spacing,1));
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
   pointer-events:none;z-index:10;
   font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif;
-  font-size:calc(clamp(17px,4.7vw,30px) * var(--jap-text-scale,1));font-weight:700;line-height:calc(1.55 * var(--jap-line-spacing,1));text-align:center;
+  font-size:calc(clamp(17px,4.7vw,30px) * var(--jap-text-scale,1));font-weight:700;line-height:1.55;text-align:center;
   padding:16px;letter-spacing:0.5px;
   opacity:0;
   transition:opacity 0.22s ease;
@@ -1621,12 +1621,12 @@ button.n28-gold-btn-danger,
    which is what caused the Kaam Vijay floating verse text to overflow off
    both edges of the screen instead of wrapping, and to render at a
    different size than the persistent (settled) text underneath it. */
-.hk-float-name.kaam-float-name{white-space:normal;width:calc(100% - 24px);font-size:calc(clamp(17px,4.7vw,30px) * var(--jap-text-scale,1));line-height:calc(1.55 * var(--jap-line-spacing,1));}
+.hk-float-name.kaam-float-name{white-space:normal;width:calc(100% - 24px);font-size:calc(clamp(17px,4.7vw,30px) * var(--jap-text-scale,1));line-height:1.55;}
 
 /* HK floating name animation — rises upward from center */
 .hk-float-name{position:absolute;pointer-events:none;z-index:11;animation:hkRise 2.2s ease-out forwards;
   font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif;
-  font-size:calc(clamp(26px,7.5vw,44px) * var(--jap-text-scale,1));font-weight:700;line-height:calc(1.6 * var(--jap-line-spacing,1));text-align:center;
+  font-size:calc(clamp(26px,7.5vw,44px) * var(--jap-text-scale,1));font-weight:700;line-height:1.6;text-align:center;
   left:50%;transform:translateX(-50%);top:50%;margin-top:-80px;letter-spacing:1.5px;white-space:nowrap;}
 .hk-float-name div{display:block;}
 
@@ -2941,8 +2941,8 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 }
 
 /* ── Jap Display Text settings (gear) icon — mirrors the photo settings
-   gear above but sits on the LEFT and opens a small panel with Text Size
-   and Line Spacing controls for the jap chanting text (राधा / mantras). ── */
+   gear above but sits on the LEFT and opens a small panel to adjust the
+   size of the jap chanting text (राधा / mantras). ── */
 .jap-text-settings-btn{
   position:absolute; top:8px; left:8px; z-index:40;
   width:26px; height:26px; border-radius:50%;
@@ -2958,7 +2958,7 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 }
 .jap-text-settings-panel{
   position:absolute; top:40px; left:8px; z-index:42;
-  width:180px; padding:10px 12px 12px;
+  width:170px; padding:10px 12px 12px;
   background:rgba(6,13,31,0.92); border:1px solid rgba(255,215,0,0.35);
   border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,0.5);
   display:none; flex-direction:column; gap:8px;
@@ -2980,6 +2980,19 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
   color:var(--rl);font-size:11px;border-radius:8px;padding:6px 8px;cursor:pointer;
   font-family:Inter,sans-serif;
 }
+
+/* Live preview shown in the Jap display itself while the Text Size panel
+   is open — grows/shrinks immediately as +/- is tapped, so the person can
+   see the actual size before it's applied to real chanting text. */
+.jap-text-demo{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(var(--jap-text-scale,1));
+  transform-origin:center center;
+  font-family:'Tiro Devanagari Hindi',serif; font-weight:700;
+  font-size:44px; color:#FFD700; letter-spacing:2px;
+  text-shadow:0 0 20px rgba(255,215,0,0.9),0 0 40px rgba(255,215,0,0.5);
+  pointer-events:none; z-index:41; opacity:0; transition:opacity 0.18s ease;
+}
+.jap-text-demo.show{opacity:1;}
 
 /* While editing: make each photo draggable and outline it so it reads as
    "selected"; the images are normally pointer-events:none (decorative). */

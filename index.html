@@ -336,7 +336,7 @@
   <div class="tzr">
     <div class="tz" id="tz" style="border-radius:18px;" aria-label="Tap to chant Radha Naam" role="button" tabindex="0" ontouchstart="App.ht(event)" onmousedown="App.ht(event)">
       <button id="japPhotoSettingsBtn" class="jap-photo-settings-btn" type="button" aria-label="Adjust photo size &amp; position" title="Adjust photo size &amp; position" onclick="togglePhotoEditMode(event)" ontouchstart="event.stopPropagation()" onmousedown="event.stopPropagation()">⚙️</button>
-      <button id="japTextSettingsBtn" class="jap-text-settings-btn" type="button" aria-label="Adjust jap text size &amp; line spacing" title="Adjust jap text size &amp; line spacing" onclick="toggleJapTextSettingsPanel(event)" ontouchstart="event.stopPropagation()" onmousedown="event.stopPropagation()">⚙️</button>
+      <button id="japTextSettingsBtn" class="jap-text-settings-btn" type="button" aria-label="Adjust jap text size" title="Adjust jap text size" onclick="toggleJapTextSettingsPanel(event)" ontouchstart="event.stopPropagation()" onmousedown="event.stopPropagation()">⚙️</button>
       <div class="jap-text-settings-panel" id="japTextSettingsPanel" onclick="event.stopPropagation()" ontouchstart="event.stopPropagation()" onmousedown="event.stopPropagation()">
         <div class="jtsp-title">Jap Text</div>
         <div class="jtsp-row">
@@ -347,16 +347,9 @@
             <button type="button" onclick="adjustJapTextPref('scale',1)">+</button>
           </div>
         </div>
-        <div class="jtsp-row">
-          <span class="jtsp-lbl">Line Spacing</span>
-          <div class="jtsp-ctrl">
-            <button type="button" onclick="adjustJapTextPref('spacing',-1)">−</button>
-            <span class="jtsp-val" id="japLineSpacingVal">100%</span>
-            <button type="button" onclick="adjustJapTextPref('spacing',1)">+</button>
-          </div>
-        </div>
         <button type="button" class="jtsp-reset" onclick="resetJapTextPrefs()">Reset to Default</button>
       </div>
+      <div class="jap-text-demo" id="japTextDemo">राधा</div>
       <img class="rv-wm" id="bgRadhaVallabh" src="./radha-vallabh.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="hitju-wm" id="bgHitju" src="./hitju-maharaj.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="gurudev-wm" id="bgGurudev" src="./gurudev.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">

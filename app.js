@@ -2716,45 +2716,39 @@ function setSoundType(v) {
 }
 
 // ==========================================
-// JAP TEXT SIZE & LINE-SPACING PREFERENCES
+// JAP TEXT SIZE PREFERENCE
 // ------------------------------------------
 // A small gear icon on the LEFT of the Jap tap area (#tz) opens a panel
 // where the user can bump the chanting text (राधा / mantras) bigger or
-// smaller, and spread its lines further apart or tighter. Mirrors the
-// existing photo-settings gear on the right in storage style (device-only
-// localStorage, applied instantly via CSS custom properties) so both
-// gears behave consistently.
+// smaller. Mirrors the existing photo-settings gear on the right in
+// storage style (device-only localStorage, applied instantly via a CSS
+// custom property) so both gears behave consistently. While the panel is
+// open, a live "राधा" demo text sits in the Jap display itself and grows
+// or shrinks with every +/- tap, so the size is seen before it's applied.
 // ==========================================
 const JAP_TEXT_PREF_STORE_KEY = 'japTextPrefs';
-const JAP_TEXT_SCALE_MIN = 0.7, JAP_TEXT_SCALE_MAX = 1.8, JAP_TEXT_SCALE_STEP = 0.1;
-const JAP_LINE_SPACING_MIN = 0.7, JAP_LINE_SPACING_MAX = 2.0, JAP_LINE_SPACING_STEP = 0.1;
+const JAP_TEXT_SCALE_MIN = 0.7, JAP_TEXT_SCALE_MAX = 3.0, JAP_TEXT_SCALE_STEP = 0.1;
 
 function loadJapTextPrefs() {
   try {
     const p = JSON.parse(localStorage.getItem(JAP_TEXT_PREF_STORE_KEY) || '{}');
-    return {
-      scale: (typeof p.scale === 'number' && p.scale > 0) ? p.scale : 1,
-      spacing: (typeof p.spacing === 'number' && p.spacing > 0) ? p.spacing : 1
-    };
-  } catch (e) { return { scale: 1, spacing: 1 }; }
+    return { scale: (typeof p.scale === 'number' && p.scale > 0) ? p.scale : 1 };
+  } catch (e) { return { scale: 1 }; }
 }
 function saveJapTextPrefsToStorage() {
   try { localStorage.setItem(JAP_TEXT_PREF_STORE_KEY, JSON.stringify(window._japTextPrefs || {})); } catch (e) {}
 }
 window._japTextPrefs = loadJapTextPrefs();
 
-// Pushes the current scale/spacing onto :root as CSS vars (so every jap
-// text element — hkPersist, kvPersist, kaamPersist, ramPersist, the
-// floating राधा burst, etc — picks them up live) and refreshes the panel's
-// percentage labels if it's open.
+// Pushes the current scale onto :root as a CSS var (so every jap text
+// element — hkPersist, kvPersist, kaamPersist, ramPersist, the floating
+// राधा burst, the demo preview, etc — picks it up live) and refreshes the
+// panel's percentage label + the demo preview if either is on screen.
 window.applyJapTextPrefs = function() {
-  const p = window._japTextPrefs || { scale: 1, spacing: 1 };
+  const p = window._japTextPrefs || { scale: 1 };
   document.documentElement.style.setProperty('--jap-text-scale', p.scale);
-  document.documentElement.style.setProperty('--jap-line-spacing', p.spacing);
   const scaleVal = document.getElementById('japTextScaleVal');
   if (scaleVal) scaleVal.textContent = Math.round(p.scale * 100) + '%';
-  const spacingVal = document.getElementById('japLineSpacingVal');
-  if (spacingVal) spacingVal.textContent = Math.round(p.spacing * 100) + '%';
 };
 window.applyJapTextPrefs();
 
@@ -2769,29 +2763,30 @@ window.toggleJapTextSettingsPanel = function(e) {
   if (e) e.stopPropagation();
   const panel = document.getElementById('japTextSettingsPanel');
   const btn = document.getElementById('japTextSettingsBtn');
+  const demo = document.getElementById('japTextDemo');
   if (!panel) return;
   const opening = !panel.classList.contains('open');
   panel.classList.toggle('open', opening);
   if (btn) btn.classList.toggle('active', opening);
+  if (demo) {
+    demo.classList.toggle('show', opening);
+    if (opening && typeof naamText === 'function') demo.textContent = naamText().radha;
+  }
   if (opening) window.applyJapTextPrefs();
 };
 
 window.adjustJapTextPref = function(kind, dir) {
-  const p = window._japTextPrefs || (window._japTextPrefs = { scale: 1, spacing: 1 });
-  if (kind === 'scale') {
-    p.scale = Math.max(JAP_TEXT_SCALE_MIN, Math.min(JAP_TEXT_SCALE_MAX, Math.round((p.scale + dir * JAP_TEXT_SCALE_STEP) * 100) / 100));
-  } else {
-    p.spacing = Math.max(JAP_LINE_SPACING_MIN, Math.min(JAP_LINE_SPACING_MAX, Math.round((p.spacing + dir * JAP_LINE_SPACING_STEP) * 100) / 100));
-  }
+  const p = window._japTextPrefs || (window._japTextPrefs = { scale: 1 });
+  p.scale = Math.max(JAP_TEXT_SCALE_MIN, Math.min(JAP_TEXT_SCALE_MAX, Math.round((p.scale + dir * JAP_TEXT_SCALE_STEP) * 100) / 100));
   window.applyJapTextPrefs();
   saveJapTextPrefsToStorage();
 };
 
 window.resetJapTextPrefs = function() {
-  window._japTextPrefs = { scale: 1, spacing: 1 };
+  window._japTextPrefs = { scale: 1 };
   window.applyJapTextPrefs();
   saveJapTextPrefsToStorage();
-  if (typeof toast === 'function') toast('Jap text size & spacing reset 🙏');
+  if (typeof toast === 'function') toast('Jap text size reset 🙏');
 };
 
 // Tapping anywhere outside the panel/gear closes it (the panel itself and
@@ -2799,9 +2794,11 @@ window.resetJapTextPrefs = function() {
 document.addEventListener('click', function() {
   const panel = document.getElementById('japTextSettingsPanel');
   const btn = document.getElementById('japTextSettingsBtn');
+  const demo = document.getElementById('japTextDemo');
   if (panel && panel.classList.contains('open')) {
     panel.classList.remove('open');
     if (btn) btn.classList.remove('active');
+    if (demo) demo.classList.remove('show');
   }
 });
 

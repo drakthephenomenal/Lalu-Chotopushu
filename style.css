@@ -4042,3 +4042,31 @@ body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !import
 .ms-vid-locked{border-style:dashed;}
 .ms-vid-edit{border:1px solid rgba(245,209,122,0.35);color:var(--gold);background:rgba(245,209,122,0.10);}
 .ms-vid-btn:active,.ms-vid-edit:active{transform:scale(0.94);}
+
+/* ── Radha Keli Kunj Occasion List (B&C tab) ── */
+.rkk-lang-btn.active {
+  background: rgba(245, 209, 122, 0.15) !important;
+  border-color: rgba(245, 209, 122, 0.4) !important;
+  color: var(--gold) !important;
+}
+.rkk-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-family: 'Inter', sans-serif;
+}
+.rkk-item:last-child { border-bottom: none; }
+.rkk-date {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  color: var(--td);
+  min-width: 66px;
+  letter-spacing: 0.02em;
+}
+.rkk-name {
+  font-size: 12.5px;
+  color: var(--tl);
+  line-height: 1.4;
+}

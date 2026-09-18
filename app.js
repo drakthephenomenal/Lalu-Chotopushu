@@ -8550,10 +8550,29 @@ function renderVelocityTracker() {
 // ── Milestones "Consideration" ──────────────────────────────────────────
 // Lets each user choose which jap types count toward their Milestones
 // (Bhagvat Prapti) total — any combination of Radha, Radha Vallabh, Hare
-// Krishna, KV, and 28 Names. Defaults to all types (unchanged behavior)
-// until the user customizes it.
+// Krishna, KV, Samba Sadashiv, Ram Vijay Mantra, and 28 Names. Defaults
+// to only the type(s) that match the user's active sampraday/mode — NOT
+// all types — so the Consideration chips start already lined up with
+// however they're currently chanting. 28 Names is independent of any
+// sampraday and defaults on regardless. The user can still freely
+// customize from there; any manual choice is preserved in
+// App.S.msConsider and overrides these mode-based defaults.
 function _msConsiderDefaults() {
-  return { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, n28: true };
+  if (App.S.gaudiyaMode) {
+    // Gaudiya/ISKCON: Hare Krishna only
+    return { radha: false, rv: false, hk: true, kv: false, ss: false, ram: false, n28: true };
+  }
+  if (App.S.trahimamMode) {
+    // Gopeshwar Mahadev: Samba Sadashiv only
+    return { radha: false, rv: false, hk: false, kv: false, ss: true, ram: false, n28: true };
+  }
+  if (App.S.ramanandiMode) {
+    // Ramanandi: Raam Vijay Mantra only
+    return { radha: false, rv: false, hk: false, kv: false, ss: false, ram: true, n28: true };
+  }
+  // Default (Rashik/Harivangshi/Haridashi/Sri-Ramanuj etc.): the combined
+  // Radha + Radha Vallabh + Krishnay Vasudevay engine
+  return { radha: true, rv: true, hk: false, kv: true, ss: false, ram: false, n28: true };
 }
 function getMsConsider() {
   return { ..._msConsiderDefaults(), ...(App.S.msConsider || {}) };

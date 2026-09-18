@@ -15069,13 +15069,17 @@ function renderSt() {
   }
 
   const FOLDERS = [
-    { key: 'videos',  title: 'Favourite Videos', icon: '🎬' },
-    { key: 'rv',      title: 'রাধা বল্লভ সম্প্রদায়', icon: '🪷', img: ST_FOLDER_ICON_IMG.rv },
-    { key: 'bmg',     title: 'ব্রাহ্ম মাধ্ব গৌড়ীয় সম্প্রদায়', icon: '🕉️', img: ST_FOLDER_ICON_IMG.bmg },
-    { key: 'krishna', title: 'শ্রীকৃষ্ণ', icon: '🦚' },
-    { key: 'shiv',    title: 'ভগবান শিব', icon: '🔱', img: ST_FOLDER_ICON_IMG.shiv },
-    { key: 'hanuman', title: 'হনুমান জী মহারাজ', icon: '🚩' },
+    { key: 'videos',  title: 'Favourite Videos', titleHi: 'पसंदीदा वीडियो', icon: '🎬' },
+    { key: 'rv',      title: 'রাধা বল্লভ সম্প্রদায়', titleHi: 'राधावल्लभ सम्प्रदाय', icon: '🪷', img: ST_FOLDER_ICON_IMG.rv },
+    { key: 'bmg',     title: 'ব্রাহ্ম মাধ্ব গৌড়ীয় সম্প্রদায়', titleHi: 'ब्रह्म माध्व गौड़ीय सम्प्रदाय', icon: '🕉️', img: ST_FOLDER_ICON_IMG.bmg },
+    { key: 'krishna', title: 'শ্রীকৃষ্ণ', titleHi: 'श्रीकृष्ण', icon: '🦚' },
+    { key: 'shiv',    title: 'ভগবান শিব', titleHi: 'भगवान शिव', icon: '🔱', img: ST_FOLDER_ICON_IMG.shiv },
+    { key: 'hanuman', title: 'হনুমান জী মহারাজ', titleHi: 'हनुमान जी महाराज', icon: '🚩' },
   ];
+  // Pick the language-appropriate folder title, falling back to the
+  // Bangla (default) one whenever a Hindi title isn't set (e.g. custom
+  // group added later).
+  const folderTitle = (f) => (App.S.stotramLang === 'hi' && f.titleHi) ? f.titleHi : f.title;
 
   const customItems = (App.S.customSt || []).map((x) => ({ ...x, custom: true }));
   const groups = FOLDERS.map((f) => ({
@@ -15083,7 +15087,7 @@ function renderSt() {
     items: STLIST.filter((s) => s.cat === f.key),
   }));
   if (customItems.length) {
-    groups.push({ key: '__custom', title: 'আমার স্তোত্র', icon: '📝', items: customItems });
+    groups.push({ key: '__custom', title: 'আমার স্তোত্র', titleHi: 'मेरे स्तोत्र', icon: '📝', items: customItems });
   }
 
   const activeKey = window._stActiveFolder || null;
@@ -15099,7 +15103,7 @@ function renderSt() {
         : '<span class="st-folder-tile-icon">' + group.icon + '</span>';
       tile.innerHTML =
         iconHtml +
-        '<span class="st-folder-tile-title">' + escHtml(group.title) + '</span>' +
+        '<span class="st-folder-tile-title">' + escHtml(folderTitle(group)) + '</span>' +
         (group.key === 'videos' ? '' : '<span class="st-folder-tile-count">' + group.items.length + '</span>') +
         '<span class="st-folder-tile-arrow">›</span>';
       tile.addEventListener('click', () => {
@@ -15131,8 +15135,8 @@ function renderSt() {
   const backRow = document.createElement('div');
   backRow.className = 'st-back-row';
   backRow.innerHTML =
-    '<button class="st-back-btn">← ফোল্ডার তালিকা</button>' +
-    '<span class="st-back-title">' + escHtml(group.title) + '</span>';
+    '<button class="st-back-btn">← ' + (App.S.stotramLang === 'hi' ? 'फ़ोल्डर सूची' : 'ফোল্ডার তালিকা') + '</button>' +
+    '<span class="st-back-title">' + escHtml(folderTitle(group)) + '</span>';
   backRow.querySelector('.st-back-btn').addEventListener('click', () => {
     window._stActiveFolder = null;
     renderSt();
@@ -15142,7 +15146,7 @@ function renderSt() {
   if (!group.items.length) {
     const empty = document.createElement('div');
     empty.className = 'st-folder-empty';
-    empty.textContent = 'শীঘ্রই আসছে 🙏';
+    empty.textContent = App.S.stotramLang === 'hi' ? 'जल्द ही आ रहा है 🙏' : 'শীঘ্রই আসছে 🙏';
     list.appendChild(empty);
     return;
   }

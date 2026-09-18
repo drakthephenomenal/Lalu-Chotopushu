@@ -69,7 +69,16 @@ body::before{content:'';position:fixed;top:50%;left:50%;transform:translate(-50%
 
 
 
-.view{display:none;height:100vh;height:100dvh;position:relative;z-index:1;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.view{display:none;height:100vh;height:100dvh;position:relative;z-index:1;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  /* Reserve room for the device status bar (notch, Dynamic Island, and —
+     crucially — the iPad status bar, which sits at a different height than
+     iPhone's and was previously getting overlapped by in-app header rows
+     like .v28-header's Stats/Hindi/Wishes buttons). Mirrors the bottom
+     safe-area handling already done for .bnav below. Needs
+     viewport-fit=cover on the <meta name="viewport"> tag (already set) for
+     env(safe-area-inset-top) to return a non-zero value. */
+  padding-top:env(safe-area-inset-top,0px);
+}
 .view.active{display:flex;}
 /* A view's own stacking context normally sits at z-index:1, well below
    .bnav (z-index:100) — fine, since .bnav should float over ordinary

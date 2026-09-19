@@ -5416,10 +5416,24 @@ if (!_lcIsNative() && window.visualViewport) {
 // underlying WebKit quirk is actually responsible this time.
 if (!_lcIsNative()) {
   window.addEventListener("load", () => {
-    let _ticks = 0;
+    const wrap = document.getElementById("beadFrameWrap");
+    let _lastH = -1;
+    let _stableTicks = 0;
+    let _totalTicks = 0;
     const _net = setInterval(() => {
       renderBeadFrame();
-      if (++_ticks >= 12) clearInterval(_net); // ~3.6s at 300ms, then stop
+      _totalTicks++;
+      const h = wrap ? wrap.getBoundingClientRect().height : -1;
+      if (h === _lastH) {
+        _stableTicks++;
+      } else {
+        _stableTicks = 0;
+        _lastH = h;
+      }
+      // Stop once the height hasn't moved for 3 consecutive checks (900ms) —
+      // that's "settled", not just "ran out of guesses" — or after a hard
+      // cap of ~8s so a pathological case still can't loop forever.
+      if (_stableTicks >= 3 || _totalTicks >= 26) clearInterval(_net);
     }, 300);
   });
 }

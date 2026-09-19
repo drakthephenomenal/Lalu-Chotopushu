@@ -1,5 +1,17 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v213
+// Radha Naam Jap — Service Worker  v214
+// v214: bumped cache to force-invalidate stale app.js — v213's bead-ring
+// fix (pageshow/visibilitychange) turned out to not be the whole story:
+// on iPad the ring's bottom edge can still drift after Safari's
+// collapsible toolbar auto-hides a moment after load, growing the
+// 100dvh viewport AFTER the ring already measured/drew at the smaller,
+// toolbar-still-visible height — a resize that iOS doesn't reliably
+// surface as a plain window "resize" event. Added a window.visualViewport
+// resize listener plus a blunt ~3.6s post-load re-measure timer (both
+// web/iPad only) so the ring converges on the right geometry regardless
+// of which exact event does or doesn't fire on a given iPad. Android
+// untouched. Web/PWA clients still running old app.js now pick up this
+// build on next load.
 // v213: bumped cache to force-invalidate stale app.js — the bead-ring
 // cold-start revival (added for iPad's "lower border missing" bug) only
 // ever ran on the "load" event, which does NOT fire when iOS Safari
@@ -291,7 +303,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v213';
+const CACHE = 'radha-jap-v214';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

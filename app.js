@@ -5379,6 +5379,51 @@ document.addEventListener("visibilitychange", () => {
   ro.observe(wrap);
 })();
 
+// ── iOS Safari dynamic toolbar — WEB/iPad ONLY ──
+// .view is sized with 100dvh (dynamic viewport height) specifically so it
+// tracks Safari's collapsible address/toolbar. That toolbar typically
+// starts the load EXPANDED and then auto-collapses a moment later once
+// the page settles — which grows the viewport (and so .view's actual
+// height) AFTER the bead ring already measured and drew itself at the
+// smaller, toolbar-still-expanded height. This is a genuinely different
+// resize than a plain window resize: iOS doesn't reliably fire "resize"
+// on <window> for a pure toolbar collapse/expand, only on
+// window.visualViewport — which the ResizeObserver above, watching the
+// wrap element itself, can also miss on some WebKit versions for this
+// specific trigger. This is very likely why the ring's bottom edge looks
+// right for a moment then silently drifts out of place (or never
+// corrects) rather than being missing outright. Android's native
+// WebView doesn't have a collapsible toolbar to begin with, so this is
+// left out of its code path entirely.
+if (!_lcIsNative() && window.visualViewport) {
+  let _vvRaf = null;
+  window.visualViewport.addEventListener("resize", () => {
+    if (_vvRaf) cancelAnimationFrame(_vvRaf);
+    _vvRaf = requestAnimationFrame(() => renderBeadFrame());
+  });
+}
+
+// ── Brute-force safety net — WEB/iPad ONLY ──
+// Every fix above targets one specific event that's *supposed* to fire
+// when the ring's container changes size after cold load. This bug has
+// persisted across several of those targeted fixes on real iPads, which
+// means something about exactly which event actually fires (or doesn't)
+// on a given iPad/iOS/Safari combination isn't fully pinned down yet.
+// Rather than keep guessing at the one true event, just re-measure and
+// redraw on a plain timer for the first few seconds after every load —
+// cheap (a lightweight SVG re-layout, only while this window is open)
+// and guaranteed to converge on the correct size regardless of which
+// underlying WebKit quirk is actually responsible this time.
+if (!_lcIsNative()) {
+  window.addEventListener("load", () => {
+    let _ticks = 0;
+    const _net = setInterval(() => {
+      renderBeadFrame();
+      if (++_ticks >= 12) clearInterval(_net); // ~3.6s at 300ms, then stop
+    }, 300);
+  });
+}
+
 // ── Auto-load today's view in History on open ──
 // Fills in From/To only when they're actually blank (never overwrites a
 // date range the user picked themselves), and — unlike before — this is

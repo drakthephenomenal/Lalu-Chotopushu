@@ -47,6 +47,22 @@ function _lcIsNative() {
   );
 }
 
+// ── iOS/iPad fix: position:fixed modals stop reliably tracking the real
+// viewport once they're descendants of a scrolling container (#vb /
+// .view scrolls its own content via overflow-y:auto +
+// -webkit-overflow-scrolling:touch) — WebKit can leave them visually
+// clipped to that ancestor's scrolled bounds instead of the screen
+// (backdrop only covering part of the screen, bottom controls
+// unreachable/unscrollable). #cdmo's CSS is a plain, unscoped class
+// selector, so moving it to be a direct child of <body> is a pure
+// relocation — no styling depends on its original position in the DOM.
+document.addEventListener("DOMContentLoaded", () => {
+  const cdmo = document.getElementById("cdmo");
+  if (cdmo && cdmo.parentElement !== document.body) {
+    document.body.appendChild(cdmo);
+  }
+});
+
 // ── Turn a raw Geolocation error into a clear, actionable message ──
 // Android's system Location toggle (device-wide) is a completely separate
 // setting from the app's own location permission — a very common source
@@ -8049,19 +8065,12 @@ function doReset() {
     App.S.historySS = {};
     App.S.historyRam = {};
     App.S.historyKaam = {};
-    App.S.dt = 0;
-    App.S.lt = 0;
-    App.S.dtRV = 0;
-    App.S.ltRV = 0;
-    App.S.dtHK = 0;
-    App.S.dtKV = 0;
-    App.S.ltKV = 0;
-    App.S.dtSS = 0;
-    App.S.ltSS = 0;
-    App.S.dtRam = 0;
-    App.S.ltRam = 0;
-    App.S.dtKaam = 0;
-    App.S.ltKaam = 0;
+    // Daily/lifetime jap TARGETS (dt/lt and per-mantra siblings) are
+    // intentionally left untouched here — once a target is set it should
+    // survive a "Names & Time" reset, not get zeroed back to blank along
+    // with the counts. They already sync to Firebase on every normal
+    // save/push, so leaving them alone here is all that's needed for the
+    // preserved value to also stick in the cloud.
     App.S.nameJapDeduct = 0;
     App.S.nameJapDeductRV = 0;
     App.S.nameJapDeductHK = 0;
@@ -8123,10 +8132,9 @@ function doReset() {
     App.dbClearStore("activityLogArchive");
     App.dbClearStore("malaLog");
     App.resetTimer();
-    ["dtIn", "ltIn"].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) el.value = "";
-    });
+    // dtIn/ltIn inputs are left showing whatever they already display —
+    // the underlying target (App.S.dt/lt) is preserved above, so blanking
+    // the visible field would just misrepresent it as cleared.
     renderMalaLog();
     u28();
     render28StatsPanel();

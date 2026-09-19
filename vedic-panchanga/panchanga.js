@@ -26,7 +26,6 @@
       .then(r => r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)))
       .then(html => {
         mount.innerHTML = html;
-        _reparentFixedOverlays();
         _initEngine();
       })
       .catch(err => {
@@ -34,27 +33,6 @@
         mount.innerHTML =
           '<div style="padding:20px;text-align:center;color:#f87171">Vedic Panchanga module failed to load.</div>';
       });
-  }
-
-  // ── iOS/iPad fix: position:fixed modals stop reliably tracking the
-  // real viewport once they're descendants of a scrolling container
-  // (#vb / .view uses overflow-y:auto + -webkit-overflow-scrolling:
-  // touch to scroll the tab's own content) — WebKit can leave them
-  // visually clipped to that ancestor's scrolled bounds instead of the
-  // screen, which is what showed up as "backdrop only covers part of
-  // the screen" / bottom controls unreachable. Moving these overlay
-  // roots to be direct children of <body> makes position:fixed behave
-  // correctly again. Their CSS (panchanga.css) was updated to match on
-  // these selectors unscoped from #vpanchanga-view for exactly this —
-  // the elements keep working identically wherever they live in the
-  // DOM, this just relocates them once, right after they're created.
-  function _reparentFixedOverlays() {
-    ['vp-cal-overlay', 'vp-horo-overlay', 'vp-others-overlay'].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el && el.parentElement !== document.body) {
-        document.body.appendChild(el);
-      }
-    });
   }
 
   if (document.readyState === 'loading') {
@@ -1081,7 +1059,16 @@ function renderAll(){
   // Personal horoscope card (opt-in) — async, self-caching; safe to call
   // on every renderAll() pass since it no-ops fast when already loaded.
   vpPersonalRender();
-  vpOthersRenderList();
+  // Don't blindly re-render the Others list on every 30s refresh tick —
+  // if the user is currently viewing a saved profile's detail page inside
+  // #vp-others-card (_vpViewingOtherProfile set by vpOthersView), calling
+  // vpOthersRenderList() here would overwrite that detail view back to
+  // the plain list out from under them every 30s, which looked like the
+  // page randomly "going back" on its own. Refresh the detail view's own
+  // data instead when one is open; only fall back to the list render when
+  // the folder is showing the list.
+  if (!_vpViewingOtherProfile) vpOthersRenderList();
+  else vpPersonalRender('vp-others-card');
 
   // Eclipses card — past + upcoming Surya/Chandra Grahan. Heavier
   // computation, so memoise per-day (recomputing every 30s would be

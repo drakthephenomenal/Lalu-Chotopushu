@@ -1,5 +1,24 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v214
+// Radha Naam Jap — Service Worker  v215
+// v215: bumped cache to force-invalidate stale panchanga.html/js/css —
+// fixes two "Others' Rashi Profiles" bugs: (1) the 30s background refresh
+// was unconditionally re-rendering #vp-others-card back to the saved-
+// profiles LIST even while a user was viewing one profile's detail page,
+// making the screen appear to randomly "go back" every 30 seconds;
+// vpOthersRenderList() is now skipped (and the open detail re-rendered
+// instead) while _vpViewingOtherProfile is set. (2) the premium MSD
+// (Mahadasha/Saturn) cards relied entirely on background + box-shadow for
+// their visible edge (border: none) — any client still on a cached
+// pre-redesign panchanga.css (or any environment where the gradient/glow
+// failed to paint) rendered them as flat unstyled text with no visible
+// card at all. Added a plain fallback border. index.html's panchanga.css/
+// .js cache-busting query bumped from ?v=160 to ?v=161 alongside this —
+// that's the change that actually forces every cache layer (browser HTTP
+// cache, this SW's cache, any CDN) to treat these as new URLs, since this
+// SW's own local-asset cache key strips query strings and a bare CACHE
+// bump here doesn't by itself invalidate anything upstream of it. Web/PWA
+// clients still running the old cached panchanga.js/html/css now pick up
+// the current build on next load.
 // v214: bumped cache to force-invalidate stale app.js — v213's bead-ring
 // fix (pageshow/visibilitychange) turned out to not be the whole story:
 // on iPad the ring's bottom edge can still drift after Safari's
@@ -303,7 +322,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v214';
+const CACHE = 'radha-jap-v215';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

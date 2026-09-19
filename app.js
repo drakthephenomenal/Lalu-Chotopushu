@@ -5416,25 +5416,32 @@ if (!_lcIsNative() && window.visualViewport) {
 // underlying WebKit quirk is actually responsible this time.
 if (!_lcIsNative()) {
   window.addEventListener("load", () => {
-    const wrap = document.getElementById("beadFrameWrap");
-    let _lastH = -1;
-    let _stableTicks = 0;
-    let _totalTicks = 0;
+    // #beadFrameWrap has no explicit height — it sizes itself to its
+    // content (the Daily/Lifetime stat card), which is why this isn't
+    // really a viewport/dvh timing issue: it's a webfont race. The stat
+    // card's text is set in Tiro Devanagari Hindi / EB Garamond, loaded
+    // from Google Fonts with display=swap, so the browser paints it in a
+    // fallback font first and swaps once the real font downloads — and
+    // that swap changes the text's line-height, which changes the wrap's
+    // measured height out from under an already-drawn ring. A "stop once
+    // the height looks stable" check can't tell "settled" apart from
+    // "hasn't swapped yet" and will lock in the wrong, pre-swap height on
+    // a slow connection — so this just keeps redrawing unconditionally
+    // for a window comfortably longer than a slow Google Fonts fetch
+    // should ever take, rather than guessing when it's "done".
+    let _ticks = 0;
     const _net = setInterval(() => {
       renderBeadFrame();
-      _totalTicks++;
-      const h = wrap ? wrap.getBoundingClientRect().height : -1;
-      if (h === _lastH) {
-        _stableTicks++;
-      } else {
-        _stableTicks = 0;
-        _lastH = h;
-      }
-      // Stop once the height hasn't moved for 3 consecutive checks (900ms) —
-      // that's "settled", not just "ran out of guesses" — or after a hard
-      // cap of ~8s so a pathological case still can't loop forever.
-      if (_stableTicks >= 3 || _totalTicks >= 26) clearInterval(_net);
+      if (++_ticks >= 30) clearInterval(_net); // ~9s at 300ms, then stop
     }, 300);
+    // Force one more redraw right when the browser confirms every font
+    // actually in use has finished loading — the deterministic signal,
+    // used alongside (not instead of) the timer above since fonts.ready
+    // can resolve early for text that isn't visible/painted yet (e.g.
+    // this view isn't the active one at load time).
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => renderBeadFrame());
+    }
   });
 }
 

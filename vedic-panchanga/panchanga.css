@@ -98,7 +98,7 @@
 #vpanchanga-view .vp-loc-dot{width:5px;height:5px;background:var(--vp-violet);border-radius:50%;display:inline-block;box-shadow:0 0 8px rgba(124,92,252,.6)}
 
 /* Calendar trigger button */
-#vpanchanga-view .vp-cal-trigger{
+.vp-cal-trigger{
   display:inline-flex;align-items:center;gap:6px;
   margin-top:10px;
   font-family:inherit;font-size:.66rem;font-weight:800;
@@ -111,18 +111,18 @@
   box-shadow:0 6px 18px rgba(124,92,252,.32);
   transition:transform .2s ease,box-shadow .2s ease;
 }
-#vpanchanga-view .vp-cal-trigger:hover{
+.vp-cal-trigger:hover{
   transform:translateY(-1px);
   box-shadow:0 8px 22px rgba(124,92,252,.42);
 }
-#vpanchanga-view .vp-cal-trigger:active{transform:translateY(0) scale(.97)}
-#vpanchanga-view .vp-cal-trigger-icon{font-size:.82rem;line-height:1}
-#vpanchanga-view .vp-horo-trigger{
+.vp-cal-trigger:active{transform:translateY(0) scale(.97)}
+.vp-cal-trigger-icon{font-size:.82rem;line-height:1}
+.vp-horo-trigger{
   margin-left:8px;
   background:linear-gradient(135deg,#D89A1F,#F0BE4E);
   box-shadow:0 6px 18px rgba(216,154,31,.32);
 }
-#vpanchanga-view .vp-horo-trigger:hover{box-shadow:0 8px 22px rgba(216,154,31,.42)}
+.vp-horo-trigger:hover{box-shadow:0 8px 22px rgba(216,154,31,.42)}
 
 /* Clock */
 #vpanchanga-view .vp-clock-wrap{text-align:center;padding:10px 20px 0;position:relative}
@@ -888,7 +888,7 @@
 /* ══════════════════════════════════════════════════════════════
    CALENDAR DATE PICKER — modal overlay
    ══════════════════════════════════════════════════════════════ */
-#vpanchanga-view .vp-cal-overlay{
+.vp-cal-overlay{
   position:fixed;inset:0;z-index:2000;
   background:rgba(20,12,40,.55);
   backdrop-filter:blur(3px);
@@ -896,18 +896,18 @@
   align-items:center;justify-content:center;
   padding:20px;
 }
-#vpanchanga-view .vp-cal-overlay.open{display:flex}
+.vp-cal-overlay.open{display:flex}
 
 /* Others' list popup: same overlay styling as the calculator, but a
    slightly lower z-index so tapping "Add" opens the calculator ON TOP
    of this list instead of behind it. Also capped height + scroll,
    since a long list of saved profiles (unlike the fixed-size
    calculator form) can outgrow the screen. */
-#vpanchanga-view .vp-others-overlay{z-index:1990}
-#vpanchanga-view .vp-others-modal{max-height:80vh;overflow-y:auto}
-#vpanchanga-view .vp-others-add-btn{margin-bottom:14px}
+.vp-others-overlay{z-index:1990}
+.vp-others-modal{max-height:80vh;overflow-y:auto}
+.vp-others-add-btn{margin-bottom:14px}
 
-#vpanchanga-view .vp-cal-modal{
+.vp-cal-modal{
   width:100%;max-width:360px;
   background:var(--vp-card);
   border-radius:22px;
@@ -920,22 +920,22 @@
   to{opacity:1;transform:scale(1) translateY(0)}
 }
 
-#vpanchanga-view .vp-cal-modal-head{
+.vp-cal-modal-head{
   display:flex;align-items:center;justify-content:space-between;
   margin-bottom:12px;
 }
-#vpanchanga-view .vp-cal-modal-title{
+.vp-cal-modal-title{
   font-family:'EB Garamond',serif;font-size:1.18rem;font-weight:700;
   color:var(--vp-ink);
   background:none;border:none;cursor:pointer;
   padding:4px 10px;border-radius:10px;
   transition:background .2s ease;
 }
-#vpanchanga-view .vp-cal-modal-title:hover{background:rgba(124,92,252,.08)}
-#vpanchanga-view .vp-cal-modal-title::after{
+.vp-cal-modal-title:hover{background:rgba(124,92,252,.08)}
+.vp-cal-modal-title::after{
   content:' ▾';font-size:.7rem;color:var(--vp-violet);
 }
-#vpanchanga-view .vp-cal-nav-btn{
+.vp-cal-nav-btn{
   width:34px;height:34px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   background:rgba(124,92,252,.1);
@@ -944,19 +944,19 @@
   cursor:pointer;
   transition:background .2s ease;
 }
-#vpanchanga-view .vp-cal-nav-btn:hover{background:rgba(124,92,252,.2)}
+.vp-cal-nav-btn:hover{background:rgba(124,92,252,.2)}
 
-#vpanchanga-view .vp-cal-weekdays{
+.vp-cal-weekdays{
   display:grid;grid-template-columns:repeat(7,1fr);
   margin-bottom:4px;
 }
-#vpanchanga-view .vp-cal-weekdays span{
+.vp-cal-weekdays span{
   text-align:center;font-size:.6rem;font-weight:800;
   letter-spacing:.06em;text-transform:uppercase;
   color:var(--vp-ink-faint);padding:6px 0;
 }
 
-#vpanchanga-view .vp-cal-grid{
+.vp-cal-grid{
   display:grid;grid-template-columns:repeat(7,1fr);
   gap:3px;
   /* Same fix as the main app's B&C calendar (.cg in style.css): each day
@@ -970,7 +970,7 @@
   max-width:min(100%, 58vh);
   margin-left:auto;margin-right:auto;
 }
-#vpanchanga-view .vp-cal-day{
+.vp-cal-day{
   aspect-ratio:1;
   display:flex;align-items:center;justify-content:center;
   border-radius:11px;
@@ -981,21 +981,21 @@
   position:relative;
   font-family:inherit;
 }
-#vpanchanga-view .vp-cal-day:hover{background:rgba(124,92,252,.1)}
-#vpanchanga-view .vp-cal-day:active{transform:scale(.92)}
-#vpanchanga-view .vp-cal-day.vp-cal-day-empty{cursor:default;pointer-events:none}
-#vpanchanga-view .vp-cal-day.vp-cal-day-today{
+.vp-cal-day:hover{background:rgba(124,92,252,.1)}
+.vp-cal-day:active{transform:scale(.92)}
+.vp-cal-day.vp-cal-day-empty{cursor:default;pointer-events:none}
+.vp-cal-day.vp-cal-day-today{
   color:var(--vp-sun);font-weight:800;
   box-shadow:inset 0 0 0 1.5px var(--vp-sun);
 }
-#vpanchanga-view .vp-cal-day.vp-cal-day-selected{
+.vp-cal-day.vp-cal-day-selected{
   background:linear-gradient(135deg,var(--vp-violet),#9B7FFF);
   color:#fff;font-weight:800;
   box-shadow:0 4px 14px rgba(124,92,252,.4);
 }
-#vpanchanga-view .vp-cal-day.vp-cal-day-selected:hover{background:linear-gradient(135deg,var(--vp-violet),#9B7FFF)}
+.vp-cal-day.vp-cal-day-selected:hover{background:linear-gradient(135deg,var(--vp-violet),#9B7FFF)}
 
-#vpanchanga-view .vp-cal-modal-foot{
+.vp-cal-modal-foot{
   display:flex;align-items:center;justify-content:space-between;
   margin-top:14px;padding-top:12px;
   border-top:1px solid var(--vp-card-edge);
@@ -1006,43 +1006,43 @@
    a reused .vp-dateresult-section (Vaar strip, Rashi card, Dasha/Sade
    Sati bar, full anga list) — that section supplies its own card
    background/padding, so this wrapper stays a plain spacer. */
-#vpanchanga-view .vp-horo-inline-preview{
+.vp-horo-inline-preview{
   margin-top:12px;
 }
-#vpanchanga-view .vp-horo-inline-preview .vp-dateresult-section{
+.vp-horo-inline-preview .vp-dateresult-section{
   margin-top:0;
 }
-#vpanchanga-view .vp-horo-inline-preview-hint{
+.vp-horo-inline-preview-hint{
   font-size:.64rem;color:var(--vp-ink-faint);text-align:center;margin-top:10px;
 }
 
-#vpanchanga-view .vp-cal-today-btn{
+.vp-cal-today-btn{
   font-family:inherit;font-size:.66rem;font-weight:800;
   letter-spacing:.06em;text-transform:uppercase;
   color:var(--vp-violet);background:rgba(124,92,252,.1);
   border:none;border-radius:999px;padding:8px 16px;
   cursor:pointer;transition:background .2s ease;
 }
-#vpanchanga-view .vp-cal-today-btn:hover{background:rgba(124,92,252,.18)}
-#vpanchanga-view .vp-cal-close-btn{
+.vp-cal-today-btn:hover{background:rgba(124,92,252,.18)}
+.vp-cal-close-btn{
   font-family:inherit;font-size:.66rem;font-weight:800;
   letter-spacing:.06em;text-transform:uppercase;
   color:var(--vp-ink-faint);background:none;
   border:none;padding:8px 10px;cursor:pointer;
 }
-#vpanchanga-view .vp-cal-close-btn:hover{color:var(--vp-ink)}
+.vp-cal-close-btn:hover{color:var(--vp-ink)}
 
 /* Horoscope Calculator — form fields inside the modal */
-#vpanchanga-view .vp-horo-modal{max-width:380px}
-#vpanchanga-view .vp-horo-modal-title{cursor:default}
-#vpanchanga-view .vp-horo-modal-title::after{content:''}
-#vpanchanga-view .vp-horo-field{margin-bottom:14px}
-#vpanchanga-view .vp-horo-label{
+.vp-horo-modal{max-width:380px}
+.vp-horo-modal-title{cursor:default}
+.vp-horo-modal-title::after{content:''}
+.vp-horo-field{margin-bottom:14px}
+.vp-horo-label{
   display:block;font-size:.62rem;font-weight:800;
   letter-spacing:.07em;text-transform:uppercase;
   color:var(--vp-ink-faint);margin-bottom:6px;
 }
-#vpanchanga-view .vp-horo-input{
+.vp-horo-input{
   width:100%;box-sizing:border-box;
   font-family:inherit;font-size:.9rem;color:var(--vp-ink);
   background:rgba(124,92,252,.06);
@@ -1050,10 +1050,10 @@
   border-radius:12px;padding:10px 12px;
   transition:border-color .2s ease;
 }
-#vpanchanga-view .vp-horo-input:focus{outline:none;border-color:var(--vp-violet)}
-#vpanchanga-view .vp-horo-latlng-row{display:flex;gap:8px;margin-bottom:8px}
-#vpanchanga-view .vp-horo-input-sm{flex:1;min-width:0}
-#vpanchanga-view .vp-horo-gps-btn{
+.vp-horo-input:focus{outline:none;border-color:var(--vp-violet)}
+.vp-horo-latlng-row{display:flex;gap:8px;margin-bottom:8px}
+.vp-horo-input-sm{flex:1;min-width:0}
+.vp-horo-gps-btn{
   width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
   font-family:inherit;font-size:.72rem;font-weight:800;
   letter-spacing:.04em;
@@ -1061,40 +1061,40 @@
   border:none;border-radius:12px;padding:10px 12px;
   cursor:pointer;transition:background .2s ease;
 }
-#vpanchanga-view .vp-horo-gps-btn:hover{background:rgba(124,92,252,.18)}
-#vpanchanga-view .vp-horo-gps-btn:disabled{opacity:.6;cursor:default}
-#vpanchanga-view .vp-horo-note{
+.vp-horo-gps-btn:hover{background:rgba(124,92,252,.18)}
+.vp-horo-gps-btn:disabled{opacity:.6;cursor:default}
+.vp-horo-note{
   font-size:.66rem;line-height:1.45;color:var(--vp-ink-faint);
   margin-top:8px;
 }
 
 /* Year-picker view */
-#vpanchanga-view .vp-cal-year-nav{
+.vp-cal-year-nav{
   display:flex;align-items:center;justify-content:space-between;
   margin-bottom:10px;
 }
-#vpanchanga-view .vp-cal-year-range{
+.vp-cal-year-range{
   font-size:.7rem;font-weight:800;letter-spacing:.06em;
   color:var(--vp-ink-soft);text-transform:uppercase;
 }
-#vpanchanga-view .vp-cal-year-grid{
+.vp-cal-year-grid{
   display:grid;grid-template-columns:repeat(4,1fr);
   gap:6px;
   padding-bottom:4px;
 }
-#vpanchanga-view .vp-cal-year-cell{
+.vp-cal-year-cell{
   padding:12px 4px;border-radius:11px;
   text-align:center;font-size:.82rem;font-weight:700;
   color:var(--vp-ink);background:rgba(124,92,252,.05);
   border:none;cursor:pointer;font-family:inherit;
   transition:background .15s ease,transform .15s ease;
 }
-#vpanchanga-view .vp-cal-year-cell:hover{background:rgba(124,92,252,.14)}
-#vpanchanga-view .vp-cal-year-cell:active{transform:scale(.94)}
-#vpanchanga-view .vp-cal-year-cell.vp-cal-year-current{
+.vp-cal-year-cell:hover{background:rgba(124,92,252,.14)}
+.vp-cal-year-cell:active{transform:scale(.94)}
+.vp-cal-year-cell.vp-cal-year-current{
   box-shadow:inset 0 0 0 1.5px var(--vp-sun);color:var(--vp-sun);
 }
-#vpanchanga-view .vp-cal-year-cell.vp-cal-year-selected{
+.vp-cal-year-cell.vp-cal-year-selected{
   background:linear-gradient(135deg,var(--vp-violet),#9B7FFF);
   color:#fff;box-shadow:0 4px 14px rgba(124,92,252,.4);
 }
@@ -1254,15 +1254,15 @@
 /* ══════════════════════════════════════════
    PERSONAL HOROSCOPE — opt-in CTA + card
    ══════════════════════════════════════════ */
-#vpanchanga-view .vp-horo-personal-cta{
+.vp-horo-personal-cta{
   margin-top:14px;padding-top:14px;
   border-top:1px dashed var(--vp-card-edge);
 }
-#vpanchanga-view .vp-horo-personal-cta-text{
+.vp-horo-personal-cta-text{
   font-size:.66rem;line-height:1.5;color:var(--vp-ink-faint);
   margin-bottom:10px;
 }
-#vpanchanga-view .vp-horo-save-btn{
+.vp-horo-save-btn{
   width:100%;font-family:inherit;font-size:.72rem;font-weight:800;
   letter-spacing:.03em;color:#fff;
   background:linear-gradient(135deg,var(--vp-violet),#9B7FFF);
@@ -1270,8 +1270,8 @@
   cursor:pointer;box-shadow:0 6px 16px rgba(124,92,252,.3);
   transition:transform .15s ease,box-shadow .15s ease;
 }
-#vpanchanga-view .vp-horo-save-btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(124,92,252,.4)}
-#vpanchanga-view .vp-horo-save-btn:active{transform:translateY(0)}
+.vp-horo-save-btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(124,92,252,.4)}
+.vp-horo-save-btn:active{transform:translateY(0)}
 
 #vpanchanga-view .vp-personal-offcard{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -1300,29 +1300,29 @@
   display:flex;align-items:center;justify-content:space-between;
   margin-bottom:14px;
 }
-#vpanchanga-view .vp-others-list{display:flex;flex-direction:column;gap:8px}
-#vpanchanga-view .vp-others-row{
+.vp-others-list{display:flex;flex-direction:column;gap:8px}
+.vp-others-row{
   display:flex;align-items:center;gap:10px;cursor:pointer;
   background:rgba(124,92,252,.07);border-radius:12px;padding:10px 12px;
   transition:background .15s ease;
 }
-#vpanchanga-view .vp-others-row:hover{background:rgba(124,92,252,.13)}
-#vpanchanga-view .vp-others-row-name{
+.vp-others-row:hover{background:rgba(124,92,252,.13)}
+.vp-others-row-name{
   flex:1;font-family:'EB Garamond',serif;font-size:.98rem;font-weight:700;
   color:var(--vp-ink);
 }
-#vpanchanga-view .vp-others-row-edit{
+.vp-others-row-edit{
   flex-shrink:0;font-family:inherit;font-size:.72rem;font-weight:700;
   color:var(--vp-accent,#7c5cfc);background:rgba(124,92,252,.1);border:none;
   border-radius:999px;width:26px;height:26px;cursor:pointer;
 }
-#vpanchanga-view .vp-others-row-del{
+.vp-others-row-del{
   flex-shrink:0;font-family:inherit;font-size:.68rem;font-weight:700;
   color:#e0554f;background:rgba(224,85,79,.1);border:none;
   border-radius:999px;width:26px;height:26px;cursor:pointer;
 }
-#vpanchanga-view .vp-others-row-arrow{flex-shrink:0;color:var(--vp-ink-faint);font-size:1rem}
-#vpanchanga-view .vp-others-empty{
+.vp-others-row-arrow{flex-shrink:0;color:var(--vp-ink-faint);font-size:1rem}
+.vp-others-empty{
   font-size:.72rem;color:var(--vp-ink-faint);text-align:center;padding:10px 0;
 }
 #vpanchanga-view .vp-personal-title{
@@ -1427,7 +1427,7 @@
 /* ══════════════════════════════════════════════════════════════
    PREMIUM HOROSCOPE CALC BUTTON
    ══════════════════════════════════════════════════════════════ */
-#vpanchanga-view .vp-horo-calc-btn{
+.vp-horo-calc-btn{
   font-family:inherit;font-size:.74rem;font-weight:900;
   letter-spacing:.05em;text-transform:uppercase;
   color:#1a0a00;
@@ -1441,22 +1441,22 @@
     inset 0 1px 0 rgba(255,255,255,.35);
   transition:transform .18s ease,box-shadow .18s ease;
 }
-#vpanchanga-view .vp-horo-calc-btn::after{
+.vp-horo-calc-btn::after{
   content:'';position:absolute;inset:0;
   background:linear-gradient(to bottom,rgba(255,255,255,.22),transparent 55%);
   border-radius:inherit;pointer-events:none;
 }
-#vpanchanga-view .vp-horo-calc-btn:hover{
+.vp-horo-calc-btn:hover{
   transform:translateY(-2px);
   box-shadow:
     0 10px 28px rgba(216,154,31,.58),
     0 0 0 2px rgba(255,215,0,.55),
     inset 0 1px 0 rgba(255,255,255,.35);
 }
-#vpanchanga-view .vp-horo-calc-btn:active{transform:translateY(0) scale(.96)}
+.vp-horo-calc-btn:active{transform:translateY(0) scale(.96)}
 
 /* Premium SAVE button update */
-#vpanchanga-view .vp-horo-save-btn{
+.vp-horo-save-btn{
   width:100%;font-family:inherit;font-size:.72rem;font-weight:800;
   letter-spacing:.04em;color:#1a0a00;
   background:linear-gradient(135deg,#56d98b 0%,#2bc670 50%,#16a855 100%);
@@ -1466,16 +1466,16 @@
   box-shadow:0 6px 18px rgba(22,168,85,.38),0 0 0 1.5px rgba(86,217,139,.35),inset 0 1px 0 rgba(255,255,255,.30);
   transition:transform .15s ease,box-shadow .15s ease;
 }
-#vpanchanga-view .vp-horo-save-btn::after{
+.vp-horo-save-btn::after{
   content:'';position:absolute;inset:0;
   background:linear-gradient(to bottom,rgba(255,255,255,.20),transparent 55%);
   border-radius:inherit;pointer-events:none;
 }
-#vpanchanga-view .vp-horo-save-btn:hover{
+.vp-horo-save-btn:hover{
   transform:translateY(-2px);
   box-shadow:0 10px 26px rgba(22,168,85,.50),0 0 0 2px rgba(86,217,139,.55),inset 0 1px 0 rgba(255,255,255,.30);
 }
-#vpanchanga-view .vp-horo-save-btn:active{transform:translateY(0) scale(.96)}
+.vp-horo-save-btn:active{transform:translateY(0) scale(.96)}
 
 /* ══════════════════════════════════════════════════════════════
    TARA BALA — date-result card
@@ -2382,8 +2382,8 @@
 }
 
 /* ── Janmo / Rashi calculator becomes a full-screen page ── */
-#vpanchanga-view #vp-horo-overlay{padding:0 !important;background:rgba(15,10,35,.85) !important;backdrop-filter:blur(6px)}
-#vpanchanga-view #vp-horo-overlay .vp-horo-modal{
+#vp-horo-overlay{padding:0 !important;background:rgba(15,10,35,.85) !important;backdrop-filter:blur(6px)}
+#vp-horo-overlay .vp-horo-modal{
   max-width:100% !important;
   width:100% !important;
   height:100% !important;
@@ -2393,13 +2393,13 @@
   overflow-y:auto;
   display:flex;flex-direction:column;
 }
-#vpanchanga-view #vp-horo-overlay .vp-cal-modal-head{
+#vp-horo-overlay .vp-cal-modal-head{
   position:sticky;top:0;background:var(--vp-card);
   z-index:5;padding:6px 0 10px;
   border-bottom:1px solid var(--vp-card-edge);
   margin-bottom:18px;
 }
-#vpanchanga-view #vp-horo-overlay .vp-cal-nav-btn{
+#vp-horo-overlay .vp-cal-nav-btn{
   width:40px;height:40px;font-size:1.4rem;
   background:rgba(124,92,252,.14);
 }
@@ -2409,8 +2409,8 @@
    profiles (fine at a small 360px popup width), but now also renders a
    saved profile's FULL breakdown as a page inside it, which needs the
    same page-width room the calculator gets, not a cramped 360px popup. ── */
-#vpanchanga-view #vp-others-overlay{padding:0 !important;background:rgba(15,10,35,.85) !important;backdrop-filter:blur(6px)}
-#vpanchanga-view #vp-others-overlay .vp-others-modal{
+#vp-others-overlay{padding:0 !important;background:rgba(15,10,35,.85) !important;backdrop-filter:blur(6px)}
+#vp-others-overlay .vp-others-modal{
   max-width:100% !important;
   width:100% !important;
   height:100% !important;
@@ -2421,7 +2421,7 @@
   overflow-y:auto;
   display:flex;flex-direction:column;
 }
-#vpanchanga-view #vp-others-overlay .vp-cal-modal-head{
+#vp-others-overlay .vp-cal-modal-head{
   position:sticky;top:0;background:var(--vp-card);
   z-index:5;padding:6px 0 10px;
   border-bottom:1px solid var(--vp-card-edge);
@@ -2978,7 +2978,7 @@
 /* ══════════════════════════════════════════════════════════════
    HORO RASHI BANNER — Birth Moon Rashi in horoscope result
    ══════════════════════════════════════════════════════════════ */
-#vpanchanga-view .vp-horo-rashi-banner{
+.vp-horo-rashi-banner{
   display:flex;align-items:center;gap:12px;
   margin:10px 0 4px;padding:12px 14px;
   border-radius:14px;
@@ -2986,18 +2986,18 @@
   border-left:4px solid #6366f1;
   box-shadow:0 2px 10px rgba(99,102,241,.12);
 }
-#vpanchanga-view .vp-horo-rashi-icon{
+.vp-horo-rashi-icon{
   font-size:1.6rem;flex-shrink:0;
   filter:drop-shadow(0 2px 4px rgba(0,0,0,.2));
 }
-#vpanchanga-view .vp-horo-rashi-label{
+.vp-horo-rashi-label{
   font-size:.58rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
   color:#4f46e5;margin-bottom:3px;
 }
-#vpanchanga-view .vp-horo-rashi-name{
+.vp-horo-rashi-name{
   font-size:1.15rem;font-weight:900;color:#3730a3;line-height:1.2;
 }
-#vpanchanga-view .vp-horo-rashi-sub{
+.vp-horo-rashi-sub{
   font-size:.7rem;color:#6366f1;margin-top:3px;line-height:1.4;
 }
 
@@ -4052,7 +4052,7 @@
     0 8px 28px rgba(124,92,252,.70),
     0 0 50px rgba(155,127,255,.35);
 }
-#vpanchanga-view .vp-cal-trigger {
+.vp-cal-trigger {
   background: linear-gradient(135deg, #6B48F0, #9B7FFF);
   box-shadow:
     0 0 0 1px rgba(155,127,255,.40),
@@ -4060,7 +4060,7 @@
     0 0 28px rgba(155,127,255,.18),
     inset 0 1px 0 rgba(255,255,255,.20);
 }
-#vpanchanga-view .vp-cal-trigger:hover {
+.vp-cal-trigger:hover {
   box-shadow:
     0 0 0 1px rgba(155,127,255,.65),
     0 10px 28px rgba(100,70,240,.65),
@@ -4389,49 +4389,49 @@
 }
 
 /* ── Calendar modal — dark glass ────────────────────────────── */
-#vpanchanga-view .vp-cal-overlay {
+.vp-cal-overlay {
   background: rgba(4, 5, 18, 0.72);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
-#vpanchanga-view .vp-cal-modal {
+.vp-cal-modal {
   background: rgba(12, 14, 42, 0.96);
   border: 1px solid rgba(155,127,255,.28);
   box-shadow: 0 32px 80px rgba(0,0,0,.75), 0 0 60px rgba(120,90,255,.20), inset 0 1px 0 rgba(255,255,255,.08);
   color: var(--vp-ink);
 }
-#vpanchanga-view .vp-cal-modal-title { color: var(--vp-ink); }
-#vpanchanga-view .vp-cal-modal-title:hover { background: rgba(155,127,255,.10); }
-#vpanchanga-view .vp-cal-modal-title::after { color: var(--vp-violet); }
-#vpanchanga-view .vp-cal-nav-btn {
+.vp-cal-modal-title { color: var(--vp-ink); }
+.vp-cal-modal-title:hover { background: rgba(155,127,255,.10); }
+.vp-cal-modal-title::after { color: var(--vp-violet); }
+.vp-cal-nav-btn {
   background: rgba(155,127,255,.12);
   color: var(--vp-violet2);
   border: 1px solid rgba(155,127,255,.22);
 }
-#vpanchanga-view .vp-cal-nav-btn:hover { background: rgba(155,127,255,.22); }
-#vpanchanga-view .vp-cal-weekdays span { color: var(--vp-ink-faint); }
-#vpanchanga-view .vp-cal-day { color: var(--vp-ink); }
-#vpanchanga-view .vp-cal-day:hover { background: rgba(155,127,255,.14); }
-#vpanchanga-view .vp-cal-day.vp-cal-day-today {
+.vp-cal-nav-btn:hover { background: rgba(155,127,255,.22); }
+.vp-cal-weekdays span { color: var(--vp-ink-faint); }
+.vp-cal-day { color: var(--vp-ink); }
+.vp-cal-day:hover { background: rgba(155,127,255,.14); }
+.vp-cal-day.vp-cal-day-today {
   color: var(--vp-sun);
   box-shadow: inset 0 0 0 1.5px var(--vp-sun), 0 0 10px rgba(255,138,61,.30);
 }
-#vpanchanga-view .vp-cal-day.vp-cal-day-selected {
+.vp-cal-day.vp-cal-day-selected {
   background: linear-gradient(135deg, #6B48F0, #9B7FFF);
   box-shadow: 0 4px 18px rgba(107,72,240,.55), 0 0 20px rgba(155,127,255,.35);
 }
-#vpanchanga-view .vp-cal-modal-foot { border-top: 1px solid rgba(255,255,255,.08); }
-#vpanchanga-view .vp-cal-today-btn {
+.vp-cal-modal-foot { border-top: 1px solid rgba(255,255,255,.08); }
+.vp-cal-today-btn {
   background: rgba(155,127,255,.12); color: var(--vp-violet2);
   border: 1px solid rgba(155,127,255,.22);
 }
-#vpanchanga-view .vp-cal-today-btn:hover { background: rgba(155,127,255,.22); }
-#vpanchanga-view .vp-cal-close-btn { color: var(--vp-ink-faint); }
-#vpanchanga-view .vp-cal-close-btn:hover { color: var(--vp-ink); }
+.vp-cal-today-btn:hover { background: rgba(155,127,255,.22); }
+.vp-cal-close-btn { color: var(--vp-ink-faint); }
+.vp-cal-close-btn:hover { color: var(--vp-ink); }
 
 /* Horoscope form fields */
-#vpanchanga-view .vp-horo-label { color: var(--vp-ink-faint); }
-#vpanchanga-view .vp-horo-input {
+.vp-horo-label { color: var(--vp-ink-faint); }
+.vp-horo-input {
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(155,127,255,.22);
   color: var(--vp-ink);
@@ -4443,27 +4443,27 @@
   box-sizing: border-box;
   transition: border-color .2s, box-shadow .2s;
 }
-#vpanchanga-view .vp-horo-input:focus {
+.vp-horo-input:focus {
   outline: none;
   border-color: rgba(155,127,255,.55);
   box-shadow: 0 0 0 3px rgba(155,127,255,.14), 0 0 18px rgba(155,127,255,.20);
 }
-#vpanchanga-view .vp-horo-gps-btn {
+.vp-horo-gps-btn {
   background: rgba(52,214,164,.12);
   border: 1px solid rgba(52,214,164,.28);
   color: var(--vp-jade);
 }
-#vpanchanga-view .vp-horo-gps-btn:hover {
+.vp-horo-gps-btn:hover {
   background: rgba(52,214,164,.20);
   box-shadow: 0 0 18px rgba(52,214,164,.25);
 }
-#vpanchanga-view .vp-horo-note { color: var(--vp-ink-faint); }
-#vpanchanga-view .vp-horo-calc-btn {
+.vp-horo-note { color: var(--vp-ink-faint); }
+.vp-horo-calc-btn {
   background: linear-gradient(135deg, #5B38E0, #9B7FFF);
   border: none; color: #fff;
   box-shadow: 0 6px 20px rgba(91,56,224,.55), inset 0 1px 0 rgba(255,255,255,.20);
 }
-#vpanchanga-view .vp-horo-calc-btn:hover {
+.vp-horo-calc-btn:hover {
   box-shadow: 0 10px 30px rgba(91,56,224,.75), 0 0 40px rgba(155,127,255,.30);
 }
 

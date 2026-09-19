@@ -26,6 +26,7 @@
       .then(r => r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)))
       .then(html => {
         mount.innerHTML = html;
+        _reparentFixedOverlays();
         _initEngine();
       })
       .catch(err => {
@@ -33,6 +34,27 @@
         mount.innerHTML =
           '<div style="padding:20px;text-align:center;color:#f87171">Vedic Panchanga module failed to load.</div>';
       });
+  }
+
+  // ── iOS/iPad fix: position:fixed modals stop reliably tracking the
+  // real viewport once they're descendants of a scrolling container
+  // (#vb / .view uses overflow-y:auto + -webkit-overflow-scrolling:
+  // touch to scroll the tab's own content) — WebKit can leave them
+  // visually clipped to that ancestor's scrolled bounds instead of the
+  // screen, which is what showed up as "backdrop only covers part of
+  // the screen" / bottom controls unreachable. Moving these overlay
+  // roots to be direct children of <body> makes position:fixed behave
+  // correctly again. Their CSS (panchanga.css) was updated to match on
+  // these selectors unscoped from #vpanchanga-view for exactly this —
+  // the elements keep working identically wherever they live in the
+  // DOM, this just relocates them once, right after they're created.
+  function _reparentFixedOverlays() {
+    ['vp-cal-overlay', 'vp-horo-overlay', 'vp-others-overlay'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el && el.parentElement !== document.body) {
+        document.body.appendChild(el);
+      }
+    });
   }
 
   if (document.readyState === 'loading') {

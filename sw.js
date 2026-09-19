@@ -1,5 +1,14 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v208
+// Radha Naam Jap — Service Worker  v213
+// v213: bumped cache to force-invalidate stale app.js — the bead-ring
+// cold-start revival (added for iPad's "lower border missing" bug) only
+// ever ran on the "load" event, which does NOT fire when iOS Safari
+// restores the page from its back-forward cache (bfcache) — the actual
+// common case of switching away from the app and back, not a true
+// relaunch. Added pageshow (event.persisted) and visibilitychange
+// listeners so the ring self-corrects on those paths too, not just a
+// genuine cold load. Web/PWA clients still running the old app.js now
+// pick up this build on next load.
 // v208: local JS/CSS/HTML assets (app.js, style.css, panchanga module,
 // etc.) now use the SAME network-first strategy the navigate handler has
 // used since v154, instead of cache-first/stale-while-revalidate. Root
@@ -282,7 +291,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v212';
+const CACHE = 'radha-jap-v213';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

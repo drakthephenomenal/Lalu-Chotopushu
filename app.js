@@ -47,6 +47,52 @@ function _lcIsNative() {
   );
 }
 
+// ── Stable per-device key for the Jap display layout (text size + photo
+// position/size) — keyed by PLATFORM, not a random per-install id, so
+// reinstalling on the same physical device (iPad vs Android phone) finds
+// its own saved layout again in Firebase instead of starting blank. ──
+function _deviceLayoutKey() {
+  try {
+    if (_lcIsNative()) {
+      const plat =
+        window.Capacitor &&
+        typeof window.Capacitor.getPlatform === "function" &&
+        window.Capacitor.getPlatform();
+      if (plat) return plat; // "android" or "ios"
+    }
+  } catch (_e) {}
+  const ua = (navigator.userAgent || "");
+  const isIPad =
+    /iPad/.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isIPad || /iPhone|iPod/.test(ua)) return "ios-web";
+  if (/Android/.test(ua)) return "android-web";
+  return "web";
+}
+
+// Pushes the current in-memory text/photo layout into App.S.deviceLayouts
+// under this device's key, saves locally, and syncs to Firebase (debounced
+// so rapid drag/resize edits don't spam pushes — only the settled result
+// after the user stops adjusting actually goes out).
+let _deviceLayoutPushTimer = null;
+function _persistDeviceLayout() {
+  try {
+    if (!App.S.deviceLayouts) App.S.deviceLayouts = {};
+    const key = _deviceLayoutKey();
+    const entry = Object.assign({}, App.S.deviceLayouts[key] || {});
+    entry.textScale = (window._japTextPrefs && window._japTextPrefs.scale) || 1;
+    entry.photos = Object.assign({}, window._japPhotoTransforms || {});
+    App.S.deviceLayouts[key] = entry;
+    App.save();
+  } catch (_e) {}
+  clearTimeout(_deviceLayoutPushTimer);
+  _deviceLayoutPushTimer = setTimeout(() => {
+    if (fbUser && typeof fbPushDelta === "function" && App._cloudHydrated) {
+      fbPushDelta().catch(() => {});
+    }
+  }, 1200);
+}
+
 // ── iOS/iPad fix: position:fixed modals stop reliably tracking the real
 // viewport once they're descendants of a scrolling container (#vb /
 // .view scrolls its own content via overflow-y:auto +
@@ -776,6 +822,13 @@ const App = {
     bgCM: 1,
     bgIskconAcharya: 1,
     bgIskconGurudev: 1,
+    // ── Per-device Jap display layout (text size + per-photo position/size) ──
+    // Keyed by platform ("android" | "ios-web" | "android-web" | "web"),
+    // NOT by a random per-install id, so the same physical iPad/phone gets
+    // its own saved layout back automatically even after a reinstall or
+    // "clear app data" — see _deviceLayoutKey(). Each entry:
+    // { textScale: number, photos: { rv:{x,y,scale}, hitju:{...}, ... } }
+    deviceLayouts: {},
     // ── Screen Time / Stotram Time (per-day, seconds) ──
     // screenTimeHistory: time on jap displays (main Jap tab + 28 Names tab)
     // while the app is in the foreground. Pauses on backgrounding/tab-away;
@@ -2755,6 +2808,7 @@ function loadJapTextPrefs() {
 }
 function saveJapTextPrefsToStorage() {
   try { localStorage.setItem(JAP_TEXT_PREF_STORE_KEY, JSON.stringify(window._japTextPrefs || {})); } catch (e) {}
+  if (typeof _persistDeviceLayout === "function") _persistDeviceLayout();
 }
 window._japTextPrefs = loadJapTextPrefs();
 
@@ -5272,6 +5326,33 @@ window.addEventListener("load", () => {
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(() => _rjapReviveBeadFrame());
     }
+  }
+});
+// "load" only fires once, on a genuine fresh navigation — it does NOT
+// fire when iOS Safari restores the tab from its back-forward cache
+// (bfcache), which is what actually happens most of the time someone
+// just switches away from the app and back (swipes to another app/tab,
+// then returns) rather than truly force-quitting and relaunching. That
+// restore path was never covered above, so the ring could stay stuck in
+// whatever broken state it was last in indefinitely on iPad, since the
+// one event this whole revival chain listened for never fired again.
+// pageshow with event.persisted===true is what actually fires for a
+// bfcache restore; re-run the same revival there too (web/iPad only —
+// Android's native WebView doesn't bfcache the same way and already
+// works, so leave it on its original single-shot behaviour).
+window.addEventListener("pageshow", (event) => {
+  if (_lcIsNative()) return;
+  if (event.persisted) {
+    [50, 300, 800].forEach((ms) => setTimeout(_rjapReviveBeadFrame, ms));
+  }
+});
+// Also cover plain foreground/background switching (multitasking,
+// Split View, the tab losing and regaining visibility without a full
+// reload or bfcache restore) — belt-and-braces alongside pageshow.
+document.addEventListener("visibilitychange", () => {
+  if (_lcIsNative()) return;
+  if (document.visibilityState === "visible") {
+    setTimeout(_rjapReviveBeadFrame, 150);
   }
 });
 
@@ -12011,6 +12092,7 @@ async function fbPushFull() {
     manualJapTime: App.S.manualJapTime || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} },
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId,
+    deviceLayouts: App.S.deviceLayouts || {},
   };
   try {
     await fbDb
@@ -12148,6 +12230,34 @@ function fbApplyRemote(d) {
   if (d.lt !== undefined) App.S.lt = d.lt;
   if (d.nameJapDeduct !== undefined) App.S.nameJapDeduct = d.nameJapDeduct;
   if (d.cfg) App.S.cfg = JSON.parse(JSON.stringify(d.cfg || {}));
+  if (d.deviceLayouts) {
+    // Merge: cloud is authoritative for every OTHER device's entry, but
+    // never let a pull stomp THIS device's own entry if it already has one
+    // in memory this session (e.g. the user just dragged a photo and the
+    // debounced push hasn't landed yet) — that in-progress edit wins until
+    // it's the one that gets pushed.
+    const myKey = _deviceLayoutKey();
+    const mine = App.S.deviceLayouts && App.S.deviceLayouts[myKey];
+    App.S.deviceLayouts = JSON.parse(JSON.stringify(d.deviceLayouts || {}));
+    if (mine) {
+      App.S.deviceLayouts[myKey] = mine;
+    } else if (App.S.deviceLayouts[myKey]) {
+      // First time this device is hydrating and the cloud already has a
+      // saved layout for it (e.g. reinstall) — apply it now so the jap
+      // screen picks up the right size/photo positions immediately.
+      const restored = App.S.deviceLayouts[myKey];
+      if (restored.textScale) {
+        window._japTextPrefs = { scale: restored.textScale };
+        try { localStorage.setItem(JAP_TEXT_PREF_STORE_KEY, JSON.stringify(window._japTextPrefs)); } catch (_e) {}
+        if (typeof applyJapTextPrefs === "function") applyJapTextPrefs();
+      }
+      if (restored.photos) {
+        window._japPhotoTransforms = restored.photos;
+        try { localStorage.setItem(JAP_PHOTO_TRANSFORM_STORE_KEY, JSON.stringify(window._japPhotoTransforms)); } catch (_e) {}
+        if (typeof applyAllPhotoTransforms === "function") applyAllPhotoTransforms();
+      }
+    }
+  }
   if ("historyRV" in d)
     App.S.historyRV = JSON.parse(JSON.stringify(d.historyRV || {}));
   if ("timerHistoryRV" in d)
@@ -22947,6 +23057,7 @@ function loadPhotoTransforms() {
 }
 function savePhotoTransformsToStorage() {
   try { localStorage.setItem(JAP_PHOTO_TRANSFORM_STORE_KEY, JSON.stringify(window._japPhotoTransforms || {})); } catch (e) {}
+  if (typeof _persistDeviceLayout === "function") _persistDeviceLayout();
 }
 window._japPhotoTransforms = loadPhotoTransforms();
 window.japPhotoEditMode = false;

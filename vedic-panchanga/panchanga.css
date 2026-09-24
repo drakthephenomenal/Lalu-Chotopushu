@@ -895,6 +895,11 @@
   display:none;
   align-items:center;justify-content:center;
   padding:20px;
+  /* Contains scroll/rubber-band gestures that start on the overlay
+     itself to the overlay, instead of letting them chain through to
+     (and drag/bounce) the page underneath. */
+  overscroll-behavior:contain;
+  touch-action:pan-y;
 }
 #vpanchanga-view .vp-cal-overlay.open{display:flex}
 
@@ -904,7 +909,11 @@
    since a long list of saved profiles (unlike the fixed-size
    calculator form) can outgrow the screen. */
 #vpanchanga-view .vp-others-overlay{z-index:1990}
-#vpanchanga-view .vp-others-modal{max-height:80vh;overflow-y:auto}
+#vpanchanga-view .vp-others-modal{
+  max-height:80vh;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+}
 #vpanchanga-view .vp-others-add-btn{margin-bottom:14px}
 
 #vpanchanga-view .vp-cal-modal{
@@ -2388,9 +2397,23 @@
   width:100% !important;
   height:100% !important;
   min-height:100vh;
+  /* dvh accounts for iOS Safari's collapsing address bar; ignored by
+     browsers that don't support it, in which case the vh value above
+     still applies. Without this the modal can be sized against a
+     100vh that's taller than what's actually visible, pushing the
+     Save button below the reachable area. */
+  min-height:100dvh;
   border-radius:0 !important;
   padding:18px 18px 28px !important;
   overflow-y:auto;
+  /* Smooth, contained internal scrolling: momentum-scrolls on iOS
+     instead of feeling stuck/unstable, and stops a scroll gesture
+     that reaches the top/bottom of this modal from "chaining" into
+     dragging the page behind it (the source of the side-to-side
+     wobble). */
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
   display:flex;flex-direction:column;
 }
 #vpanchanga-view #vp-horo-overlay .vp-cal-modal-head{
@@ -2415,10 +2438,15 @@
   width:100% !important;
   height:100% !important;
   min-height:100vh;
+  min-height:100dvh;
   max-height:100vh !important;
+  max-height:100dvh !important;
   border-radius:0 !important;
   padding:18px 18px 28px !important;
   overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
   display:flex;flex-direction:column;
 }
 #vpanchanga-view #vp-others-overlay .vp-cal-modal-head{

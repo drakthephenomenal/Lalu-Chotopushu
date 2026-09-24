@@ -1600,6 +1600,41 @@ let vpCalSelectedDate = null;  // Date — the picked date, or null
 let vpCalYearViewOpen = false; // toggled by tapping the month/year title
 let vpCalYearPageStart = null; // first year shown in the 12-year picker grid
 
+// ── Body scroll lock for full-screen / modal overlays ───────────────
+// The calendar popup, the Rashi calculator and the "Others" list can
+// all be open as fixed-position overlays, and the calculator can even
+// open on top of the "Others" list (see vpOthersGoToList below), so
+// track how many are stacked open and only release the lock once none
+// remain. Without this, the page underneath a fixed overlay is still
+// draggable on iOS — a scroll/swipe gesture ends up fighting between
+// the overlay's own internal scroll and the background page's, which
+// is what produces an unstable, sideways "wobble" and content (like
+// the Save button at the bottom) that never settles into view.
+let _vpScrollLockCount = 0;
+let _vpScrollLockY = 0;
+function vpLockBodyScroll(){
+  if(_vpScrollLockCount === 0){
+    _vpScrollLockY = window.scrollY || window.pageYOffset || 0;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${_vpScrollLockY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+  }
+  _vpScrollLockCount++;
+}
+function vpUnlockBodyScroll(){
+  _vpScrollLockCount = Math.max(0, _vpScrollLockCount - 1);
+  if(_vpScrollLockCount === 0){
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    window.scrollTo(0, _vpScrollLockY);
+  }
+}
+
 function vpCalOpen(){
   const overlay = document.getElementById('vp-cal-overlay');
   if(!overlay) return;
@@ -1608,11 +1643,13 @@ function vpCalOpen(){
   vpCalYearViewOpen = false;
   vpCalRenderGrid();
   overlay.classList.add('open');
+  vpLockBodyScroll();
 }
 function vpCalClose(){
   const overlay = document.getElementById('vp-cal-overlay');
   if(overlay) overlay.classList.remove('open');
   vpCalYearViewOpen = false;
+  vpUnlockBodyScroll();
 }
 function vpCalCloseBackdrop(e){
   if(e.target && e.target.id === 'vp-cal-overlay') vpCalClose();
@@ -2022,6 +2059,7 @@ function vpHoroOpen(){
   if(latEl && !latEl.value && typeof LAT==='number') latEl.value = LAT.toFixed(4);
   if(lngEl && !lngEl.value && typeof LNG==='number') lngEl.value = LNG.toFixed(4);
   overlay.classList.add('open');
+  vpLockBodyScroll();
 }
 
 // "Your Rashi" entry point — pre-fills the horoscope modal from the
@@ -2048,6 +2086,7 @@ function vpHoroOpenMine(){
 function vpHoroClose(){
   const overlay = document.getElementById('vp-horo-overlay');
   if(overlay) overlay.classList.remove('open');
+  vpUnlockBodyScroll();
 }
 
 // ── Others' list popup open/close ───────────────────────────────────
@@ -2057,11 +2096,13 @@ function vpOthersOverlayOpen(){
   const overlay = document.getElementById('vp-others-overlay');
   if(!overlay) return;
   overlay.classList.add('open');
+  vpLockBodyScroll();
   vpOthersRenderList();
 }
 function vpOthersOverlayClose(){
   const overlay = document.getElementById('vp-others-overlay');
   if(overlay) overlay.classList.remove('open');
+  vpUnlockBodyScroll();
 }
 function vpOthersOverlayCloseBackdrop(e){
   if(e && e.target && e.target.id === 'vp-others-overlay') vpOthersOverlayClose();
@@ -4080,7 +4121,7 @@ function vpOthersButtonClick(){
     catch(e2){
       console.error('vpOthersButtonClick: vpHoroOpenOther also threw — forcing overlay open', e2);
       const overlay = document.getElementById('vp-horo-overlay');
-      if(overlay) overlay.classList.add('open');
+      if(overlay){ overlay.classList.add('open'); vpLockBodyScroll(); }
     }
   }
 }

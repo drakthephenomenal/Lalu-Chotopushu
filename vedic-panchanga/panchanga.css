@@ -895,6 +895,11 @@
   display:none;
   align-items:center;justify-content:center;
   padding:20px;
+  /* Contains scroll/rubber-band gestures that start on the overlay
+     itself to the overlay, instead of letting them chain through to
+     (and drag/bounce) the page underneath. */
+  overscroll-behavior:contain;
+  touch-action:pan-y;
 }
 #vpanchanga-view .vp-cal-overlay.open{display:flex}
 
@@ -907,6 +912,7 @@
 #vpanchanga-view .vp-others-modal{
   max-height:80vh;overflow-y:auto;
   -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
 }
 #vpanchanga-view .vp-others-add-btn{margin-bottom:14px}
 
@@ -2400,16 +2406,14 @@
   border-radius:0 !important;
   padding:18px 18px 28px !important;
   overflow-y:auto;
-  /* Momentum-scrolls on iOS instead of feeling stuck/unstable. (An
-     earlier attempt also added overscroll-behavior:contain and
-     touch-action:pan-y here — on iPad that combination fought with
-     Safari's native rubber-band physics and caused a scroll release
-     to snap back to an earlier position instead of settling where
-     you let go, which is worse than the original issue. The body
-     lock in vpLockBodyScroll()/vpUnlockBodyScroll() already stops
-     the page behind this modal from moving, so those extra
-     properties aren't needed.) */
+  /* Smooth, contained internal scrolling: momentum-scrolls on iOS
+     instead of feeling stuck/unstable, and stops a scroll gesture
+     that reaches the top/bottom of this modal from "chaining" into
+     dragging the page behind it (the source of the side-to-side
+     wobble). */
   -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
   display:flex;flex-direction:column;
 }
 #vpanchanga-view #vp-horo-overlay .vp-cal-modal-head{
@@ -2441,6 +2445,8 @@
   padding:18px 18px 28px !important;
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
   display:flex;flex-direction:column;
 }
 #vpanchanga-view #vp-others-overlay .vp-cal-modal-head{

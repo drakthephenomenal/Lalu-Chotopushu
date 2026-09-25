@@ -5395,7 +5395,20 @@ document.addEventListener("visibilitychange", () => {
 // corrects) rather than being missing outright. Android's native
 // WebView doesn't have a collapsible toolbar to begin with, so this is
 // left out of its code path entirely.
-if (!_lcIsNative() && window.visualViewport) {
+// This whole hack fixes ONE specific iPhone bug: Safari's collapsing
+// bottom toolbar not repainting a 100dvh layer fast enough. iPad's
+// toolbar doesn't collapse the same way, so there's nothing here for it
+// to fix — and forcing an explicit pixel height from visualViewport
+// actively HURTS iPad, especially in a windowed/Stage-Manager pane:
+// visualViewport.height can itself misreport a value larger than the
+// pane's true visible size right after a resize, and Math.max always
+// picks the bigger (wrong) one, locking #vj taller than the window and
+// causing the deity images to get cropped ("porthole" effect) instead of
+// shrinking with it. Restricting this to small/phone-sized viewports lets
+// iPad fall through to plain CSS 100dvh, which already tracks the real
+// window size — including proportional shrinking when the window itself
+// is resized.
+if (!_lcIsNative() && window.visualViewport && Math.min(window.innerWidth, window.innerHeight) < 768) {
   let _vvRaf = null;
   // ── Force the WHOLE jap display to the true height, not just the ring ──
   // Everything above this point only re-draws the small bead-ring SVG once
@@ -5445,6 +5458,13 @@ if (!_lcIsNative() && window.visualViewport) {
       setTimeout(_syncJapViewHeightToViewport, 150);
     }
   });
+} else {
+  // iPad/wide screens: make sure no leftover inline pixel height from an
+  // earlier session (set before this fix shipped) is still pinning #vj —
+  // clear it so plain CSS 100dvh governs and the view resizes
+  // proportionally with the actual window/pane size.
+  const _vjWide = document.getElementById("vj");
+  if (_vjWide) _vjWide.style.height = "";
 }
 
 // ── Brute-force safety net — WEB/iPad ONLY ──

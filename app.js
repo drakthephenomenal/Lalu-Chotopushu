@@ -5397,9 +5397,44 @@ document.addEventListener("visibilitychange", () => {
 // left out of its code path entirely.
 if (!_lcIsNative() && window.visualViewport) {
   let _vvRaf = null;
+  // ── Force the WHOLE jap display to the true height, not just the ring ──
+  // Everything above this point only re-draws the small bead-ring SVG once
+  // Safari's toolbar settles. But the actual "Jap display looks short on
+  // iPhone" symptom is the outer container itself: #vj/.view are sized
+  // with 100dvh in CSS, which is *supposed* to live-track the toolbar
+  // collapsing on its own — but on several iOS/WebKit versions the engine
+  // computes dvh correctly yet doesn't reliably repaint the already-
+  // composited layer to the new value, so the tap area (deity images,
+  // counter, tap zone) stays stuck at the shorter "toolbar still expanded"
+  // height even after the toolbar has actually collapsed and more space
+  // is available. Setting an explicit inline pixel height from
+  // visualViewport.height forces a real repaint instead of waiting on a
+  // dvh recompute that may not visually apply. Only touches the *active*
+  // Jap view, and only on web — native has no collapsible toolbar at all.
+  function _syncJapViewHeightToViewport() {
+    const vj = document.getElementById("vj");
+    if (!vj || !vj.classList.contains("active")) return;
+    const h = window.visualViewport.height;
+    vj.style.height = h + "px";
+  }
   window.visualViewport.addEventListener("resize", () => {
     if (_vvRaf) cancelAnimationFrame(_vvRaf);
-    _vvRaf = requestAnimationFrame(() => renderBeadFrame());
+    _vvRaf = requestAnimationFrame(() => {
+      _syncJapViewHeightToViewport();
+      renderBeadFrame();
+    });
+  });
+  // Also run once right away — the toolbar's initial expanded→collapsed
+  // settle happens on cold load too, before any resize event has fired,
+  // which is exactly when the display first looks short.
+  [50, 300, 800, 1500].forEach((ms) => setTimeout(_syncJapViewHeightToViewport, ms));
+  // And every time the Jap view becomes the active screen (switching tabs
+  // back to it), since the toolbar may have changed state while a
+  // different tab was showing.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      setTimeout(_syncJapViewHeightToViewport, 150);
+    }
   });
 }
 
@@ -11771,16 +11806,18 @@ async function refreshAppFromBackupArea() {
 
 // ── Manual "Sync failed? Press here to manually Sync" (Cloud Sync & Backup
 //    card, signed-in users, any platform) ──
-// Sometimes a sync gets stacked/stuck for a long stretch even on a good
-// connection — e.g. a dropped real-time listener, or the hydration-retry
-// backoff (_scheduleHydrationRetry) sitting mid-countdown from an earlier
-// failure — and it doesn't resume on its own until something else (a tap,
-// a foreground event) happens to nudge it. This button changes NO sync
-// logic of its own: it only clears whatever local timers/backoff are
-// currently stacked, then calls the existing fbAutoSync() (pull + re-
-// subscribe listener) and fbPushFull() (flush anything not yet confirmed
-// in Firestore) — the same functions the app already runs on its own,
-// just triggered immediately instead of waiting.
+// This is the same recovery as "clear app data and reinstall" that fixes a
+// wedged sync — WITHOUT losing local jap counts. Order matters here: (1)
+// push local data up FIRST, before touching anything, because a pull
+// applies the cloud's value with NO comparison to local (fbApplyRemote does
+// a blind overwrite) — pulling before pushing would let a stale cloud
+// value stomp jap counts that only exist locally so far; (2) THEN wipe and
+// rebuild Firestore's own local IndexedDB cache via
+// window._fbRecoverPersistence() — the same helper the native/web "refresh
+// local cache" Settings buttons already use — giving a clean-slate pull
+// just like a reinstall would, now that the cloud is caught up; (3) pull
+// fresh against that clean cache; (4) push once more to catch anything
+// that changed in between or failed in step 1.
 const FB_MANUAL_SYNC_LABEL = "Sync failed? Press here to manually Sync";
 let _fbManualSyncInFlight = false;
 async function forceManualSyncNow() {
@@ -11797,7 +11834,7 @@ async function forceManualSyncNow() {
   // that watchdog flips the pill AND this button to "Sync failed" and
   // frees the button back up on its own, even if the calls below never
   // settle. It does not cancel or otherwise touch fbAutoSync()/fbPushFull().
-  setSyncPill("syncing", "Syncing…");
+  setSyncPill("syncing", "Rebuilding cloud cache…");
 
   // Clear any stacked/stuck timers so this runs right now instead of
   // waiting for whatever debounce or backoff is currently in flight.
@@ -11812,8 +11849,48 @@ async function forceManualSyncNow() {
   } catch (_e) {}
 
   try {
+    // Step 1 — push whatever's local FIRST, while the current Firestore
+    // connection is still alive, before anything below touches the cache.
+    // This has to go first: fbApplyRemote() (what a pull triggers) does a
+    // blind overwrite of counts/history from the cloud value — it does not
+    // compare against local. If we pulled fresh before pushing, any jap
+    // counts sitting locally-only (not yet confirmed in Firestore — exactly
+    // the situation this button exists for) would get stomped by the
+    // older cloud value before they ever got a chance to go up. Best-effort:
+    // if this fails (e.g. the connection itself is what's wedged), we still
+    // proceed to rebuild the cache and try again below.
+    // fbPushFull() normally REFUSES to run until App._cloudHydrated is
+    // true (a safety guard so a fresh/never-synced session can't blast
+    // empty or partial local state over real cloud data). But that's
+    // exactly the state this button is usually pressed in — a session
+    // that never successfully hydrated this time around — so without
+    // this override, this push would silently no-op every time it's
+    // actually needed. The user tapping this button IS the informed
+    // consent to push current local state regardless; same override
+    // pattern the "reset" flow already uses elsewhere in this file.
+    const _prevAllowInitialPush = App._allowInitialPush;
+    App._allowInitialPush = true;
+    try { await fbPushFull(); }
+    catch (e) { console.warn("Pre-rebuild push failed (continuing):", e && e.message); }
+    finally { App._allowInitialPush = _prevAllowInitialPush; }
+
+    // Step 2 — now safe to wipe + rebuild Firestore's own local cache (the
+    // "reinstall" part). Local jap data already reached the cloud in step 1
+    // (or, if that push failed, is still intact locally regardless — this
+    // step never touches it either way, only Firestore's own IndexedDB).
+    if (typeof window._fbRecoverPersistence === "function") {
+      await window._fbRecoverPersistence();
+    }
+    setSyncPill("syncing", "Syncing…");
+    // Step 3 — fresh pull from the cloud against the now-clean cache, and
+    // re-subscribe the real-time listener. Safe now: the cloud already has
+    // your latest counts from step 1, so this pull just confirms them
+    // rather than overwriting anything newer.
     await fbAutoSync(); // direct pull + re-subscribes the real-time listener
     if (typeof window._markHydrationRecovered === "function") window._markHydrationRecovered();
+    // Step 4 — push again in case anything changed locally during steps
+    // 1–3, or step 1's push failed and needs a retry now that the
+    // connection has been rebuilt.
     await fbPushFull(); // flush any local changes not yet confirmed in Firestore (sets its own pill text)
     if (!App._cloudHydrated) {
       // fbAutoSync couldn't confirm cloud state (offline, etc.) — let the

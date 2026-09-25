@@ -5415,7 +5415,16 @@ if (!_lcIsNative() && window.visualViewport) {
     const vj = document.getElementById("vj");
     if (!vj || !vj.classList.contains("active")) return;
     const h = window.visualViewport.height;
-    vj.style.height = h + "px";
+    // Only ever GROW the view, never shrink it below whatever CSS's own
+    // 100dvh already computed. This hack exists to fix cases where the
+    // toolbar-collapse repaint lags and the view looks too SHORT — not to
+    // lock in a smaller height when visualViewport briefly under-reports
+    // right after the app resumes from background or a windowed/Stage-
+    // Manager resize (which was squishing the tap area and clipping the
+    // deity images on reopen).
+    vj.style.height = "";
+    const natural = vj.getBoundingClientRect().height;
+    vj.style.height = Math.max(h, natural) + "px";
   }
   window.visualViewport.addEventListener("resize", () => {
     if (_vvRaf) cancelAnimationFrame(_vvRaf);

@@ -15504,8 +15504,11 @@ function renderSt() {
   const trackerTitle = document.getElementById('stTrackerTitle');
   const addForm = document.getElementById('stAddForm');
   const inVideos = window._stActiveFolder === 'videos';
-  if (trackerTitle) trackerTitle.style.display = inVideos ? 'none' : '';
-  if (addForm) addForm.style.display = inVideos ? 'none' : '';
+  // Ashtayam Seva Paddhati (inside the Radha Vallabh folder) is a reading
+  // view too — no jap-counter tracker / add-stotram box there either.
+  const inSeva = window._stActiveFolder === 'rv' && !!window._stSevaOpen;
+  if (trackerTitle) trackerTitle.style.display = (inVideos || inSeva) ? 'none' : '';
+  if (addForm) addForm.style.display = (inVideos || inSeva) ? 'none' : '';
 
   // Inject premium glow animations once
   if (!document.getElementById('st-card-styles')) {
@@ -15576,6 +15579,8 @@ function renderSt() {
       tile.addEventListener('click', () => {
         window._stActiveFolder = group.key;
         window._stActiveVideoFolder = null;
+        window._stSevaOpen = false;
+        window._stSevaSection = null;
         renderSt();
       });
       list.appendChild(tile);
@@ -15599,6 +15604,12 @@ function renderSt() {
     return;
   }
 
+  // Ashtayam Seva Paddhati: its 9 section folders / reader (Radha Vallabh).
+  if (activeKey === 'rv' && window._stSevaOpen) {
+    renderSevaPaddhati(list);
+    return;
+  }
+
   const backRow = document.createElement('div');
   backRow.className = 'st-back-row';
   backRow.innerHTML =
@@ -15606,6 +15617,8 @@ function renderSt() {
     '<span class="st-back-title">' + escHtml(folderTitle(group)) + '</span>';
   backRow.querySelector('.st-back-btn').addEventListener('click', () => {
     window._stActiveFolder = null;
+    window._stSevaOpen = false;
+    window._stSevaSection = null;
     renderSt();
   });
   list.appendChild(backRow);
@@ -15622,6 +15635,26 @@ function renderSt() {
 
   let idx = 0;
   group.items.forEach((st) => {
+    // Ashtayam Seva Paddhati: a folder-style card (no jap counter) that
+    // opens the 9 section folders.
+    if (st.sevaFolder) {
+      const tile = document.createElement('div');
+      tile.className = 'st-folder-tile';
+      tile.innerHTML =
+        '<span class="st-folder-tile-icon">🪔</span>' +
+        '<span class="st-folder-tile-title">' + escHtml(stName(st)) +
+          (stSub(st) ? '<span class="asp-sub">' + escHtml(stSub(st)) + '</span>' : '') +
+        '</span>' +
+        '<span class="st-folder-tile-count">9</span>' +
+        '<span class="st-folder-tile-arrow">›</span>';
+      tile.addEventListener('click', () => {
+        window._stSevaOpen = true;
+        window._stSevaSection = null;
+        renderSt();
+      });
+      list.appendChild(tile);
+      return;
+    }
     const tc = (App.S.stotrams[st.id] || {})[App.S.tk] || 0;
     const tot = Object.values(App.S.stotrams[st.id] || {}).reduce((a,b)=>a+b, 0);
     const effLyrics = getEffectiveLyrics(st.id);
@@ -15691,6 +15724,167 @@ function renderSt() {
     list.appendChild(c);
     idx++;
   });
+}
+
+// ─────────────────────────────────────────────────────────
+// ASHTAYAM SEVA PADDHATI (Radha Vallabh Sampraday › first item, before
+// Sri Hit Chaurasi Ji). 9 sections, one folder each:
+//   ./ashtayam_seva_hi.html   (Hindi, all 9 sections)
+//   ./ashtayam_seva_bn.html   (Bangla, all 9 sections)
+// The language follows Settings (App.S.stotramLang: "hi" | "bn"), same as
+// the rest of the Stotram section; switching it re-renders via renderSt().
+// Each file is a set of <section data-n="N"> HTML fragments (h2/h3/p +
+// .video-link blocks), fetched on demand and cached in memory. YouTube links open through openExternalLink.
+// ─────────────────────────────────────────────────────────
+const SEVA_SECTIONS = [
+  { n: 1, hi: 'भूमिका',                        bn: 'ভূমিকা' },
+  { n: 2, hi: 'मंगला सेवा',                    bn: 'মঙ্গলা সেবা' },
+  { n: 3, hi: 'प्रातःकालीन वन विहार सेवा',     bn: 'প্রাতঃকালীন বনবিহার সেবা' },
+  { n: 4, hi: 'श्रृंगार सेवा',                  bn: 'শৃঙ্গার সেবা' },
+  { n: 5, hi: 'राजभोग सेवा',                   bn: 'রাজভোগ সেবা' },
+  { n: 6, hi: 'उत्थापन सेवा',                  bn: 'উত্থাপন সেবা' },
+  { n: 7, hi: 'संध्या भोग एवं आरती सेवा',      bn: 'সন্ধ্যা ভোগ ও আরতি সেবা' },
+  { n: 8, hi: 'संध्या पश्चात् रास के पद',       bn: 'সন্ধ্যার পর রাসের পদ' },
+  { n: 9, hi: 'शयन सेवा',                      bn: 'শয়ন সেবা' },
+];
+const _sevaCache = {};      // "<lang><n>" -> section html
+const _sevaFilePromise = {}; // lang -> in-flight/finished fetch of the whole file
+
+function _sevaNum(n, hi) {
+  const d = hi ? '०१२३४५६७८९' : '০১২৩৪৫৬৭৮৯';
+  return String(n).split('').map((c) => d[+c]).join('');
+}
+
+// One file per language (./ashtayam_seva_hi.html / ./ashtayam_seva_bn.html),
+// holding all 9 sections as <section data-n="1..9"> blocks. Fetched once,
+// split, and cached per section.
+function loadSevaSection(n, lang) {
+  const key = lang + n;
+  if (_sevaCache[key]) return Promise.resolve(_sevaCache[key]);
+  if (!_sevaFilePromise[lang]) {
+    _sevaFilePromise[lang] = fetch('./ashtayam_seva_' + lang + '.html')
+      .then((r) => {
+        if (!r.ok) throw new Error('Seva file request failed: ' + r.status);
+        return r.text();
+      })
+      .then((txt) => {
+        const re = /<section data-n="(\d)">([\s\S]*?)<\/section>/g;
+        let m, count = 0;
+        while ((m = re.exec(txt))) {
+          _sevaCache[lang + m[1]] = m[2].trim();
+          count++;
+        }
+        if (!count) throw new Error('Seva file has no sections');
+      })
+      .catch((e) => { delete _sevaFilePromise[lang]; throw e; });
+  }
+  return _sevaFilePromise[lang].then(() => {
+    if (!_sevaCache[key]) throw new Error('Seva section missing: ' + key);
+    return _sevaCache[key];
+  });
+}
+
+function renderSevaPaddhati(list) {
+  const hi = App.S.stotramLang === 'hi';
+  const lang = hi ? 'hi' : 'bn';
+  const asp = STLIST.find((s) => s.id === 'asp');
+  const sevaName = asp ? stName(asp) : (hi ? 'अष्टयाम सेवा पद्धति' : 'অষ্টযাম সেবা পদ্ধতি');
+  const rvTitle = hi ? 'राधावल्लभ सम्प्रदाय' : 'রাধা বল্লভ সম্প্রদায়';
+  const secN = window._stSevaSection || null;
+  const sec = secN ? SEVA_SECTIONS.find((x) => x.n === secN) : null;
+
+  const scrollTop = () => {
+    try { list.scrollIntoView({ block: 'start' }); } catch (_e) {}
+  };
+  const mkBack = (label, title, onBack) => {
+    const row = document.createElement('div');
+    row.className = 'st-back-row';
+    row.innerHTML =
+      '<button class="st-back-btn">← ' + escHtml(label) + '</button>' +
+      '<span class="st-back-title">' + escHtml(title) + '</span>';
+    row.querySelector('.st-back-btn').addEventListener('click', onBack);
+    return row;
+  };
+
+  // ── Level 3: the 9 section folders ──
+  if (!sec) {
+    list.appendChild(mkBack(rvTitle, sevaName, () => {
+      window._stSevaOpen = false;
+      window._stSevaSection = null;
+      renderSt();
+      scrollTop();
+    }));
+    SEVA_SECTIONS.forEach((x) => {
+      const tile = document.createElement('div');
+      tile.className = 'st-folder-tile';
+      tile.innerHTML =
+        '<span class="asp-num">' + _sevaNum(x.n, hi) + '</span>' +
+        '<span class="st-folder-tile-title">' + escHtml(hi ? x.hi : x.bn) + '</span>' +
+        '<span class="st-folder-tile-arrow">›</span>';
+      tile.addEventListener('click', () => {
+        window._stSevaSection = x.n;
+        renderSt();
+        scrollTop();
+      });
+      list.appendChild(tile);
+    });
+    return;
+  }
+
+  // ── Level 4: one section, in the Settings language ──
+  list.appendChild(mkBack(hi ? 'अनुभाग सूची' : 'বিভাগ তালিকা', hi ? sec.hi : sec.bn, () => {
+    window._stSevaSection = null;
+    renderSt();
+    scrollTop();
+  }));
+
+  const body = document.createElement('div');
+  body.className = 'asp-reader ' + (hi ? 'asp-hi' : 'asp-bn');
+  body.innerHTML = '<div class="asp-loading">' + (hi ? 'लोड हो रहा है… 🙏' : 'লোড হচ্ছে… 🙏') + '</div>';
+  // YouTube links inside the text open via the app's external-link helper.
+  body.addEventListener('click', (e) => {
+    const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a) return;
+    e.preventDefault();
+    openExternalLink(a.href);
+  });
+  list.appendChild(body);
+
+  const nav = document.createElement('div');
+  nav.className = 'asp-nav';
+  const goTo = (n) => {
+    window._stSevaSection = n;
+    renderSt();
+    scrollTop();
+  };
+  if (sec.n > 1) {
+    const prev = SEVA_SECTIONS[sec.n - 2];
+    const b = document.createElement('button');
+    b.className = 'st-back-btn';
+    b.textContent = '← ' + (hi ? prev.hi : prev.bn);
+    b.addEventListener('click', () => goTo(prev.n));
+    nav.appendChild(b);
+  }
+  if (sec.n < SEVA_SECTIONS.length) {
+    const next = SEVA_SECTIONS[sec.n];
+    const b = document.createElement('button');
+    b.className = 'st-back-btn';
+    b.textContent = (hi ? next.hi : next.bn) + ' →';
+    b.addEventListener('click', () => goTo(next.n));
+    nav.appendChild(b);
+  }
+  if (nav.childNodes.length) list.appendChild(nav);
+
+  loadSevaSection(sec.n, lang)
+    .then((html) => {
+      // Ignore a late response if the person navigated / switched language.
+      if (!body.isConnected || window._stSevaSection !== sec.n || (App.S.stotramLang === 'hi' ? 'hi' : 'bn') !== lang) return;
+      body.innerHTML = html;
+    })
+    .catch(() => {
+      if (!body.isConnected) return;
+      body.innerHTML = '<div class="asp-loading">' + (hi ? 'पाठ लोड नहीं हो पाया 🙏' : 'পাঠ লোড করা যায়নি 🙏') + '</div>';
+    });
 }
 
 // ─────────────────────────────────────────────────────────

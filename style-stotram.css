@@ -1225,3 +1225,19 @@
 .st-back-btn:active{background:rgba(255,215,0,0.20);}
 .st-back-title{font-family:"Hind Siliguri",serif;font-size:15px;font-weight:700;color:#ffd700;letter-spacing:0.3px;flex:1;text-align:right;}
 .st-folder-empty{font-family:"Hind Siliguri",serif;font-size:13px;color:rgba(255,215,0,0.45);text-align:center;padding:14px 0 18px;}
+
+/* ── Ashtayam Seva Paddhati (Radha Vallabh folder) ── */
+.asp-sub{display:block;font-size:11px;font-weight:400;color:rgba(255,215,0,0.45);margin-top:2px;letter-spacing:0.2px;}
+.asp-num{width:30px;height:30px;border-radius:50%;background:rgba(255,215,0,0.10);border:1px solid rgba(255,215,0,0.35);color:#ffd700;font-family:"Hind Siliguri",serif;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.asp-reader{padding:4px 2px 18px;color:rgba(255,248,220,0.92);font-size:16px;line-height:1.9;}
+.asp-reader.asp-hi{font-family:"Tiro Devanagari Hindi","Hind Siliguri",serif;}
+.asp-reader.asp-bn{font-family:"Hind Siliguri",serif;}
+.asp-reader h2{font-size:17px;color:#ffd700;margin:22px 0 8px;line-height:1.45;}
+.asp-reader h3{font-size:16px;color:#ffd700;margin:22px 0 8px;padding-bottom:5px;border-bottom:1px solid rgba(255,215,0,0.22);line-height:1.45;}
+.asp-reader p{margin:0 0 12px;}
+.asp-reader .video-link{margin:12px 0 16px;padding:10px 12px;border-left:3px solid rgba(255,215,0,0.6);background:rgba(255,215,0,0.07);border-radius:0 10px 10px 0;}
+.asp-reader .video-link a{color:#ffd700;font-weight:700;text-decoration:none;word-break:break-word;}
+.asp-reader .video-link small{display:block;color:rgba(255,215,0,0.45);font-size:11px;margin-top:3px;}
+.asp-loading{text-align:center;padding:26px 0;color:rgba(255,215,0,0.55);font-family:"Hind Siliguri",serif;font-size:13px;}
+.asp-nav{display:flex;gap:10px;justify-content:space-between;padding:4px 2px 24px;}
+.asp-nav .st-back-btn{flex:1;min-width:0;}

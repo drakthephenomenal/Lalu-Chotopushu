@@ -15734,7 +15734,7 @@ function renderSt() {
 // The language follows Settings (App.S.stotramLang: "hi" | "bn"), same as
 // the rest of the Stotram section; switching it re-renders via renderSt().
 // Each file is a set of <section data-n="N"> HTML fragments (h2/h3/p +
-// .video-link blocks), fetched on demand and cached in memory. YouTube links open through openExternalLink.
+// .video-link blocks), fetched on demand and cached in memory. Each .video-link becomes an inline audio player.
 // ─────────────────────────────────────────────────────────
 const SEVA_SECTIONS = [
   { n: 1, hi: 'भूमिका',                        bn: 'ভূমিকা' },
@@ -15841,23 +15841,13 @@ function renderSevaPaddhati(list) {
   const body = document.createElement('div');
   body.className = 'asp-reader ' + (hi ? 'asp-hi' : 'asp-bn');
   body.innerHTML = '<div class="asp-loading">' + (hi ? 'लोड हो रहा है… 🙏' : 'লোড হচ্ছে… 🙏') + '</div>';
-  // YouTube links play in-app as audio (video hidden) — see
-  // openSevaAudioPlayer(). Any other link opens externally.
+  // Pads with a YouTube link get a permanent inline audio player under the
+  // verse (see initSevaInlinePlayers). Any other link opens externally.
   body.addEventListener('click', (e) => {
     const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
     if (!a) return;
     e.preventDefault();
-    if (favvidDetectPlatform(a.href) === 'youtube' && favvidYoutubeId(a.href)) {
-      const anchors = Array.from(body.querySelectorAll('a[href]'))
-        .filter((x) => favvidDetectPlatform(x.href) === 'youtube' && favvidYoutubeId(x.href));
-      const tracks = anchors.map((x) => ({
-        id: favvidYoutubeId(x.href),
-        title: (x.textContent || '').replace(/^\s*▶\s*(YouTube:)?\s*/i, '').trim(),
-      }));
-      openSevaAudioPlayer(tracks, Math.max(0, anchors.indexOf(a)));
-    } else {
-      openExternalLink(a.href);
-    }
+    openExternalLink(a.href);
   });
   list.appendChild(body);
 
@@ -15891,6 +15881,7 @@ function renderSevaPaddhati(list) {
       // Ignore a late response if the person navigated / switched language.
       if (!body.isConnected || window._stSevaSection !== sec.n || (App.S.stotramLang === 'hi' ? 'hi' : 'bn') !== lang) return;
       body.innerHTML = html;
+      initSevaInlinePlayers(body);
     })
     .catch(() => {
       if (!body.isConnected) return;
@@ -15899,19 +15890,39 @@ function renderSevaPaddhati(list) {
 }
 
 // ─────────────────────────────────────────────────────────
-// SEVA AUDIO PLAYER — plays the YouTube links of the current Seva section
-// in-app, audio-style: a bottom bar (play/pause, seek, prev/next, close)
-// with the video itself kept out of sight. Uses YouTube's embedded player
-// (same as Favourite Videos) driven through its postMessage API, so no
-// extra script is loaded. The bar lives on <body>, so it keeps playing
-// while the person moves between sections. The 🎬 button reveals the video.
-// Continues to the next pad automatically when one ends.
+// SEVA INLINE AUDIO PLAYERS — every pad (verse) that has a YouTube link gets
+// its own permanent player right below the verse: play/pause, prev/next pad,
+// seek bar, time, pad counter and a 🎬 button to reveal the video. Audio-only by
+// default: one hidden YouTube embedded player (same as Favourite Videos, driven
+// through its postMessage API — no extra script) is shared by all the players
+// of the section and is created on the first tap. Continues to the next pad
+// automatically. Needs internet: with no connection a warning is shown.
 // ─────────────────────────────────────────────────────────
 let _sap = null;
 
 function _sapFmt(sec) {
   sec = Math.max(0, Math.floor(sec || 0));
   return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+}
+function _sapHi() { return App.S.stotramLang === 'hi'; }
+function _sapOnline() { return navigator.onLine !== false; }
+function _sapOfflineText() {
+  return _sapHi()
+    ? 'ऑडियो चलाने के लिए कृपया इंटरनेट से जुड़ें 🙏'
+    : 'অডিও চালাতে অনুগ্রহ করে ইন্টারনেটের সাথে সংযুক্ত হন 🙏';
+}
+function _sapFailText() {
+  return _sapHi() ? 'यह ऑडियो नहीं चल पाया 🙏' : 'এই অডিও চালানো যায়নি 🙏';
+}
+function _sapWarn(i, text) {
+  const msg = text || _sapOfflineText();
+  const p = _sap && _sap.tracks[i];
+  if (p) { p.ui.msg.textContent = msg; p.ui.msg.style.display = 'block'; }
+  try { toast(msg); } catch (_e) {}
+}
+function _sapClearMsg(i) {
+  const p = _sap && _sap.tracks[i];
+  if (p) { p.ui.msg.textContent = ''; p.ui.msg.style.display = 'none'; }
 }
 
 function _sapCmd(func, args) {
@@ -15922,27 +15933,90 @@ function _sapCmd(func, args) {
   } catch (_e) {}
 }
 
+// Paint the live state (icon, time, seek) onto the active pad's player.
 function _sapSync() {
-  if (!_sap) return;
+  if (!_sap || _sap.idx < 0) return;
+  const p = _sap.tracks[_sap.idx];
+  if (!p) return;
+  const u = p.ui;
   const playing = _sap.state === 1 || _sap.state === 3;
-  _sap.btnPlay.textContent = playing ? '⏸' : '▶';
-  _sap.label.textContent = (_sap.tracks[_sap.idx] || {}).title || '';
-  _sap.count.textContent = (_sap.idx + 1) + '/' + _sap.tracks.length;
-  _sap.cur.textContent = _sapFmt(_sap.time);
-  _sap.tot.textContent = _sapFmt(_sap.dur);
-  if (!_sap.scrubbing) _sap.seek.value = _sap.dur > 0 ? Math.round((_sap.time / _sap.dur) * 1000) : 0;
-  _sap.btnPrev.style.opacity = _sap.idx > 0 ? '1' : '0.35';
-  _sap.btnNext.style.opacity = _sap.idx < _sap.tracks.length - 1 ? '1' : '0.35';
+  u.play.textContent = playing ? '⏸' : '▶';
+  u.el.classList.add('sap-active');
+  u.seek.disabled = false;
+  u.cur.textContent = _sapFmt(_sap.time);
+  u.tot.textContent = _sapFmt(_sap.dur);
+  if (!_sap.scrubbing) u.seek.value = _sap.dur > 0 ? Math.round((_sap.time / _sap.dur) * 1000) : 0;
 }
 
-function _sapLoad(idx) {
-  if (!_sap || !_sap.tracks[idx]) return;
-  _sap.idx = idx;
+// Put a pad's player back to its idle look (when another pad takes over).
+function _sapResetUi(i) {
+  const p = _sap && _sap.tracks[i];
+  if (!p) return;
+  const u = p.ui;
+  u.play.textContent = '▶';
+  u.el.classList.remove('sap-active');
+  u.cur.textContent = '0:00';
+  u.tot.textContent = '0:00';
+  u.seek.value = 0;
+  u.seek.disabled = true;
+}
+
+function _sapEnsureFrame() {
+  if (!_sap || _sap.frame) return;
+  const vwrap = document.createElement('div');
+  vwrap.id = 'sevaVideoWrap';
+  const frame = document.createElement('iframe');
+  frame.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
+  frame.setAttribute('allowfullscreen', '');
+  vwrap.appendChild(frame);
+  document.body.appendChild(vwrap);
+  _sap.frame = frame;
+  _sap.vwrap = vwrap;
+  window.addEventListener('message', _sap.onMsg);
+  // Handshake: after each load, ask the player to start sending state/time.
+  frame.addEventListener('load', () => {
+    try {
+      if (frame.src === 'about:blank') return;
+      frame.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*');
+      ['onStateChange', 'onError'].forEach((n) =>
+        frame.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: [n] }), '*'));
+    } catch (_e) {}
+  });
+}
+
+// Start pad i from the beginning (audio-only; the video stays hidden).
+function _sapPlay(i, scroll) {
+  if (!_sap || !_sap.tracks[i]) return;
+  if (!_sapOnline()) { _sapWarn(i); return; }
+  _sapEnsureFrame();
+  clearTimeout(_sap.loadT);
+  if (_sap.idx >= 0 && _sap.idx !== i) _sapResetUi(_sap.idx);
+  _sapClearMsg(i);
+  _sap.idx = i;
   _sap.time = 0;
   _sap.dur = 0;
-  _sap.state = -1;
-  _sap.frame.src = 'https://www.youtube.com/embed/' + _sap.tracks[idx].id +
+  _sap.state = 3;   // shows ⏸ straight away; real state events overwrite it
+  _sap.frame.src = 'https://www.youtube.com/embed/' + _sap.tracks[i].id +
     '?autoplay=1&playsinline=1&enablejsapi=1&rel=0&origin=' + encodeURIComponent(location.origin);
+  _sap.loadT = setTimeout(() => {
+    // Nothing started within 15 s → say why instead of hanging on ⏸.
+    if (_sap && _sap.idx === i && _sap.state !== 1 && _sap.time === 0) {
+      _sap.state = -1;
+      _sapSync();
+      _sapWarn(i, _sapOnline() ? _sapFailText() : _sapOfflineText());
+    }
+  }, 15000);
+  _sapSync();
+  if (scroll) {
+    try { _sap.tracks[i].ui.el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_e) {}
+  }
+}
+
+function _sapToggle(i) {
+  if (!_sap) return;
+  if (_sap.idx !== i || _sap.state === 0 || _sap.state === -1) { _sapPlay(i); return; }
+  if (_sap.state === 1 || _sap.state === 3) { _sapCmd('pauseVideo'); _sap.state = 2; }
+  else { _sapCmd('playVideo'); _sap.state = 1; }
   _sapSync();
 }
 
@@ -15951,145 +16025,146 @@ function _sapOnMessage(ev) {
   let d = ev.data;
   if (typeof d === 'string') { try { d = JSON.parse(d); } catch (_e) { return; } }
   if (!d || typeof d !== 'object') return;
+  const last = _sap.tracks.length - 1;
+  const onState = (st) => {
+    _sap.state = st;
+    if (st === 1) { clearTimeout(_sap.loadT); _sapClearMsg(_sap.idx); }
+    if (st === 0 && _sap.idx < last) { _sapPlay(_sap.idx + 1, true); return true; }
+    return false;
+  };
   if (d.event === 'onStateChange' && typeof d.info === 'number') {
-    _sap.state = d.info;
-    if (d.info === 0 && _sap.idx < _sap.tracks.length - 1) { _sapLoad(_sap.idx + 1); return; }
+    if (onState(d.info)) return;
   } else if (d.event === 'infoDelivery' && d.info) {
-    if (typeof d.info.playerState === 'number') {
-      _sap.state = d.info.playerState;
-      if (d.info.playerState === 0 && _sap.idx < _sap.tracks.length - 1) { _sapLoad(_sap.idx + 1); return; }
-    }
+    if (typeof d.info.playerState === 'number' && onState(d.info.playerState)) return;
     if (typeof d.info.currentTime === 'number') _sap.time = d.info.currentTime;
     if (typeof d.info.duration === 'number' && d.info.duration > 0) _sap.dur = d.info.duration;
   } else if (d.event === 'onError') {
-    // Video can't be embedded/played — skip on to the next pad, or say so.
-    if (_sap.idx < _sap.tracks.length - 1) { _sapLoad(_sap.idx + 1); return; }
+    clearTimeout(_sap.loadT);
     _sap.state = -1;
-    try { toast(App.S.stotramLang === 'hi' ? 'यह ऑडियो नहीं चल पाया 🙏' : 'এই অডিও চালানো যায়নি 🙏'); } catch (_e) {}
+    _sapSync();
+    _sapWarn(_sap.idx, _sapOnline() ? _sapFailText() : _sapOfflineText());
+    return;
   }
   _sapSync();
 }
 
 function closeSevaAudioPlayer() {
   if (!_sap) return;
-  try { window.removeEventListener('message', _sap.onMsg); } catch (_e) {}
-  try { _sap.frame.src = 'about:blank'; } catch (_e) {}
-  try { _sap.bar.remove(); } catch (_e) {}
-  try { _sap.vwrap.remove(); } catch (_e) {}
+  const s = _sap;
   _sap = null;
+  try { clearInterval(s.watchT); clearTimeout(s.loadT); } catch (_e) {}
+  try { window.removeEventListener('message', s.onMsg); } catch (_e) {}
+  try { window.removeEventListener('offline', s.onOffline); window.removeEventListener('online', s.onOnline); } catch (_e) {}
+  try { if (s.frame) s.frame.src = 'about:blank'; } catch (_e) {}
+  try { if (s.vwrap) s.vwrap.remove(); } catch (_e) {}
 }
 
-function openSevaAudioPlayer(tracks, idx) {
-  if (!tracks || !tracks.length) return;
-  const hi = App.S.stotramLang === 'hi';
+// Called each time a Seva section is drawn: swaps every .video-link block for a
+// permanent inline player. The previous section's audio is stopped.
+function initSevaInlinePlayers(body) {
+  closeSevaAudioPlayer();
+  const hi = _sapHi();
+  const found = [];
+  Array.from(body.querySelectorAll('.video-link')).forEach((blk) => {
+    const a = blk.querySelector('a[href]');
+    const id = a && favvidDetectPlatform(a.href) === 'youtube' ? favvidYoutubeId(a.href) : '';
+    if (!id) { blk.remove(); return; }
+    found.push({
+      blk: blk, id: id,
+      title: (a.textContent || '').replace(/^\s*▶\s*(YouTube:)?\s*/i, '').trim(),
+    });
+  });
+  if (!found.length) return;
 
-  // Already open: just switch track.
-  if (_sap) { _sap.tracks = tracks; _sapLoad(idx); return; }
+  const banner = document.createElement('div');
+  banner.className = 'sap-offline-banner';
+  banner.textContent = _sapOfflineText();
+  body.insertBefore(banner, body.firstChild);
+  body.classList.toggle('sap-offline', !_sapOnline());
 
-  if (!document.getElementById('sap-styles')) {
-    const st = document.createElement('style');
-    st.id = 'sap-styles';
-    st.textContent = [
-      '#sevaAudioBar{position:fixed;left:10px;right:10px;bottom:max(calc(env(safe-area-inset-bottom) + 70px),70px);z-index:560;max-width:620px;margin:0 auto;padding:10px 12px 8px;box-sizing:border-box;border:1px solid rgba(255,215,0,0.35);border-radius:15px;background:rgba(20,14,6,0.96);box-shadow:0 5px 22px rgba(0,0,0,0.5);color:#ffd700;font-family:"Hind Siliguri",sans-serif;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}',
-      '#sevaAudioBar .sap-top{display:flex;align-items:center;gap:8px}',
-      '#sevaAudioBar .sap-label{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:14px;font-weight:600}',
-      '#sevaAudioBar .sap-count{font-size:11px;color:rgba(255,215,0,0.55);flex-shrink:0}',
-      '#sevaAudioBar .sap-btn{flex:0 0 auto;width:34px;height:34px;padding:0;border:1px solid rgba(255,215,0,0.32);border-radius:50%;background:rgba(255,215,0,0.09);color:#ffd700;font:600 16px/1 Inter,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}',
-      '#sevaAudioBar .sap-btn:active{background:rgba(255,215,0,0.24);transform:scale(0.94)}',
-      '#sevaAudioBar .sap-main{width:40px;height:40px;font-size:18px}',
-      '#sevaAudioBar .sap-row{display:flex;align-items:center;gap:8px;margin-top:6px}',
-      '#sevaAudioBar .sap-time{font:11px/1 Inter,sans-serif;color:rgba(255,215,0,0.6);min-width:32px;text-align:center}',
-      '#sevaAudioBar input[type=range]{flex:1;min-width:0;height:22px;accent-color:#ffd700;background:transparent}',
-      '#sevaVideoWrap{position:fixed;left:-10000px;top:0;width:280px;height:158px;z-index:559;border-radius:12px;overflow:hidden;background:#000}',
-      '#sevaVideoWrap.show{left:50%;top:auto;bottom:max(calc(env(safe-area-inset-bottom) + 190px),190px);transform:translateX(-50%);width:min(92vw,420px);height:calc(min(92vw,420px) * 9 / 16);box-shadow:0 6px 26px rgba(0,0,0,0.6)}',
-      '#sevaVideoWrap iframe{width:100%;height:100%;border:0;display:block}',
-    ].join('');
-    document.head.appendChild(st);
-  }
+  const n = found.length;
+  const tracks = found.map((f, i) => {
+    const el = document.createElement('div');
+    el.className = 'sap-inline';
+    el.innerHTML =
+      '<div class="sap-top">' +
+        '<button class="sap-btn" data-a="prev" aria-label="prev">⏮</button>' +
+        '<button class="sap-btn sap-main" data-a="play" aria-label="play/pause">▶</button>' +
+        '<button class="sap-btn" data-a="next" aria-label="next">⏭</button>' +
+        '<div class="sap-label"></div>' +
+        '<span class="sap-count"></span>' +
+        '<button class="sap-btn" data-a="video" aria-label="video" title="' + (hi ? 'वीडियो दिखाएँ' : 'ভিডিও দেখান') + '">🎬</button>' +
+      '</div>' +
+      '<div class="sap-row">' +
+        '<span class="sap-time" data-r="cur">0:00</span>' +
+        '<input type="range" min="0" max="1000" value="0" data-r="seek" disabled>' +
+        '<span class="sap-time" data-r="tot">0:00</span>' +
+      '</div>' +
+      '<div class="sap-msg"></div>';
+    el.querySelector('.sap-label').textContent = f.title;
+    el.querySelector('.sap-count').textContent = (i + 1) + '/' + n;
+    const ui = {
+      el: el,
+      play: el.querySelector('[data-a=play]'),
+      cur: el.querySelector('[data-r=cur]'),
+      tot: el.querySelector('[data-r=tot]'),
+      seek: el.querySelector('[data-r=seek]'),
+      msg: el.querySelector('.sap-msg'),
+    };
+    el.querySelector('[data-a=prev]').style.opacity = i > 0 ? '1' : '0.35';
+    el.querySelector('[data-a=next]').style.opacity = i < n - 1 ? '1' : '0.35';
 
-  const vwrap = document.createElement('div');
-  vwrap.id = 'sevaVideoWrap';
-  const frame = document.createElement('iframe');
-  frame.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
-  frame.setAttribute('allowfullscreen', '');
-  vwrap.appendChild(frame);
-  document.body.appendChild(vwrap);
-
-  const bar = document.createElement('div');
-  bar.id = 'sevaAudioBar';
-  bar.innerHTML =
-    '<div class="sap-top">' +
-      '<button class="sap-btn" data-a="prev" aria-label="prev">⏮</button>' +
-      '<button class="sap-btn sap-main" data-a="play" aria-label="play/pause">⏸</button>' +
-      '<button class="sap-btn" data-a="next" aria-label="next">⏭</button>' +
-      '<div class="sap-label"></div>' +
-      '<span class="sap-count"></span>' +
-      '<button class="sap-btn" data-a="video" aria-label="video" title="' + (hi ? 'वीडियो दिखाएँ' : 'ভিডিও দেখান') + '">🎬</button>' +
-      '<button class="sap-btn" data-a="close" aria-label="close">✕</button>' +
-    '</div>' +
-    '<div class="sap-row">' +
-      '<span class="sap-time" data-r="cur">0:00</span>' +
-      '<input type="range" min="0" max="1000" value="0" data-r="seek">' +
-      '<span class="sap-time" data-r="tot">0:00</span>' +
-    '</div>';
-  document.body.appendChild(bar);
+    el.addEventListener('click', (e) => {
+      const b = e.target && e.target.closest ? e.target.closest('[data-a]') : null;
+      if (!b || !_sap) return;
+      const a = b.getAttribute('data-a');
+      if (a === 'play') {
+        _sapToggle(i);
+      } else if (a === 'prev') {
+        if (_sap.idx === i && _sap.time > 4) { _sapCmd('seekTo', [0, true]); _sap.time = 0; _sapSync(); }
+        else if (i > 0) _sapPlay(i - 1, true);
+      } else if (a === 'next') {
+        if (i < n - 1) _sapPlay(i + 1, true);
+      } else if (a === 'video') {
+        if (_sap.idx !== i) _sapPlay(i);
+        if (_sap.vwrap) _sap.vwrap.classList.toggle('show');
+      }
+    });
+    ui.seek.addEventListener('input', () => { if (_sap && _sap.idx === i) _sap.scrubbing = true; });
+    ui.seek.addEventListener('change', () => {
+      if (!_sap || _sap.idx !== i) return;
+      if (_sap.dur > 0) {
+        const t = (ui.seek.value / 1000) * _sap.dur;
+        _sapCmd('seekTo', [t, true]);
+        _sap.time = t;
+      }
+      _sap.scrubbing = false;
+      _sapSync();
+    });
+    f.blk.replaceWith(el);
+    return { id: f.id, title: f.title, ui: ui };
+  });
 
   _sap = {
-    tracks: tracks, idx: idx, state: -1, time: 0, dur: 0, scrubbing: false,
-    frame: frame, vwrap: vwrap, bar: bar,
-    label: bar.querySelector('.sap-label'), count: bar.querySelector('.sap-count'),
-    btnPlay: bar.querySelector('[data-a=play]'), btnPrev: bar.querySelector('[data-a=prev]'),
-    btnNext: bar.querySelector('[data-a=next]'),
-    cur: bar.querySelector('[data-r=cur]'), tot: bar.querySelector('[data-r=tot]'),
-    seek: bar.querySelector('[data-r=seek]'),
+    tracks: tracks, idx: -1, state: -1, time: 0, dur: 0, scrubbing: false,
+    root: body, frame: null, vwrap: null, loadT: null,
     onMsg: _sapOnMessage,
+    onOffline: () => {
+      body.classList.add('sap-offline');
+      if (_sap && _sap.idx >= 0 && (_sap.state === 1 || _sap.state === 3)) _sapWarn(_sap.idx);
+    },
+    onOnline: () => {
+      body.classList.remove('sap-offline');
+      if (_sap) _sap.tracks.forEach((_t, k) => _sapClearMsg(k));
+    },
   };
-  window.addEventListener('message', _sap.onMsg);
-
-  // Handshake: after each load, ask the player to start sending state/time.
-  frame.addEventListener('load', () => {
-    try {
-      frame.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*');
-      ['onStateChange', 'onError'].forEach((n) =>
-        frame.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: [n] }), '*'));
-    } catch (_e) {}
-  });
-
-  bar.addEventListener('click', (e) => {
-    const b = e.target && e.target.closest ? e.target.closest('[data-a]') : null;
-    if (!b || !_sap) return;
-    const a = b.getAttribute('data-a');
-    if (a === 'play') {
-      if (_sap.state === 1 || _sap.state === 3) { _sapCmd('pauseVideo'); _sap.state = 2; }
-      else { _sapCmd('playVideo'); _sap.state = 1; }
-      _sapSync();
-    } else if (a === 'prev') {
-      if (_sap.time > 4) { _sapCmd('seekTo', [0, true]); _sap.time = 0; _sapSync(); }
-      else if (_sap.idx > 0) _sapLoad(_sap.idx - 1);
-    } else if (a === 'next') {
-      if (_sap.idx < _sap.tracks.length - 1) _sapLoad(_sap.idx + 1);
-    } else if (a === 'video') {
-      _sap.vwrap.classList.toggle('show');
-    } else if (a === 'close') {
-      closeSevaAudioPlayer();
-    }
-  });
-
-  const seek = _sap.seek;
-  seek.addEventListener('input', () => { _sap.scrubbing = true; });
-  seek.addEventListener('change', () => {
-    if (!_sap) return;
-    if (_sap.dur > 0) {
-      const t = (seek.value / 1000) * _sap.dur;
-      _sapCmd('seekTo', [t, true]);
-      _sap.time = t;
-    }
-    _sap.scrubbing = false;
-    _sapSync();
-  });
-
-  _sapLoad(idx);
-  _sapSync();
+  window.addEventListener('offline', _sap.onOffline);
+  window.addEventListener('online', _sap.onOnline);
+  // Stop the audio once this section is no longer in the page (person moved
+  // to another section / folder / language).
+  _sap.watchT = setInterval(() => {
+    if (_sap && !_sap.root.isConnected) closeSevaAudioPlayer();
+  }, 1000);
 }
 
 // ─────────────────────────────────────────────────────────

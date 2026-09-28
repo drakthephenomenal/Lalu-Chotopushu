@@ -1,5 +1,10 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker  v215
+// v218: bumped cache to force-invalidate stale app.js / style-stotram.css /
+// ashtayam_seva_{hi,bn}.html — Ashtayam Seva pads are now shown verse-by-verse
+// (line per line, as on bhajanmarg.com) and every pad has a permanent inline
+// audio player below it instead of the YouTube button + bottom bar. index.html's
+// style-stotram.css cache-busting query bumped ?v=126 -> ?v=127 alongside this.
 // v217: bumped cache to force-invalidate stale app.js — Ashtayam Seva pads play
 // in-app as audio (video hidden) via the YouTube embedded player.
 // v216: bumped cache to force-invalidate stale app.js/stotrams.js/style-stotram.css —
@@ -327,7 +332,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v217';
+const CACHE = 'radha-jap-v218';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

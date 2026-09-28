@@ -1241,3 +1241,29 @@
 .asp-loading{text-align:center;padding:26px 0;color:rgba(255,215,0,0.55);font-family:"Hind Siliguri",serif;font-size:13px;}
 .asp-nav{display:flex;gap:10px;justify-content:space-between;padding:4px 2px 24px;}
 .asp-nav .st-back-btn{flex:1;min-width:0;}
+
+/* ── Ashtayam Seva: verses shown line by line ── */
+.asp-reader p.verse{margin:14px 0 6px;padding:2px 0 2px 12px;border-left:2px solid rgba(255,215,0,0.28);color:#fff3c4;line-height:1.95;}
+.asp-reader p.verse .vl{display:block;}
+.asp-reader p.verse .vl.ve{margin-bottom:0.7em;}
+.asp-reader p.verse .vl.ve:last-child{margin-bottom:0;}
+
+/* ── Ashtayam Seva: permanent inline audio player under each verse ── */
+.asp-reader .sap-inline{margin:4px 0 22px;padding:10px 12px 8px;border:1px solid rgba(255,215,0,0.28);border-radius:14px;background:rgba(255,215,0,0.06);font-family:"Hind Siliguri",sans-serif;color:#ffd700;}
+.asp-reader .sap-inline.sap-active{border-color:rgba(255,215,0,0.65);background:rgba(255,215,0,0.12);}
+.sap-inline .sap-top{display:flex;align-items:center;gap:8px;}
+.sap-inline .sap-label{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:14px;font-weight:600;}
+.sap-inline .sap-count{font-size:11px;color:rgba(255,215,0,0.55);flex-shrink:0;}
+.sap-inline .sap-btn{flex:0 0 auto;width:34px;height:34px;padding:0;border:1px solid rgba(255,215,0,0.32);border-radius:50%;background:rgba(255,215,0,0.09);color:#ffd700;font:600 16px/1 Inter,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;}
+.sap-inline .sap-btn:active{background:rgba(255,215,0,0.24);transform:scale(0.94);}
+.sap-inline .sap-main{width:40px;height:40px;font-size:18px;}
+.sap-inline .sap-row{display:flex;align-items:center;gap:8px;margin-top:6px;}
+.sap-inline .sap-time{font:11px/1 Inter,sans-serif;color:rgba(255,215,0,0.6);min-width:32px;text-align:center;}
+.sap-inline input[type=range]{flex:1;min-width:0;height:22px;accent-color:#ffd700;background:transparent;}
+.sap-inline input[type=range]:disabled{opacity:0.45;}
+.sap-inline .sap-msg{display:none;margin-top:6px;padding:6px 10px;border-radius:8px;background:rgba(255,120,60,0.14);border:1px solid rgba(255,140,80,0.45);color:#ffb488;font-size:12.5px;line-height:1.5;}
+.asp-reader .sap-offline-banner{display:none;margin:0 0 12px;padding:8px 12px;border-radius:10px;background:rgba(255,120,60,0.14);border:1px solid rgba(255,140,80,0.45);color:#ffb488;font-size:13px;line-height:1.5;text-align:center;}
+.asp-reader.sap-offline .sap-offline-banner{display:block;}
+#sevaVideoWrap{position:fixed;left:-10000px;top:0;width:280px;height:158px;z-index:559;border-radius:12px;overflow:hidden;background:#000;}
+#sevaVideoWrap.show{left:50%;top:auto;bottom:max(calc(env(safe-area-inset-bottom) + 90px),90px);transform:translateX(-50%);width:min(92vw,420px);height:calc(min(92vw,420px) * 9 / 16);box-shadow:0 6px 26px rgba(0,0,0,0.6);}
+#sevaVideoWrap iframe{width:100%;height:100%;border:0;display:block;}

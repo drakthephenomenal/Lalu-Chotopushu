@@ -15993,6 +15993,7 @@ function _sapPlay(i, scroll) {
   if (_sap.idx >= 0 && _sap.idx !== i) _sapResetUi(_sap.idx);
   _sapClearMsg(i);
   _sap.idx = i;
+  _sap.played = false;   // becomes true once THIS pad really plays (guards auto-advance)
   _sap.time = 0;
   _sap.dur = 0;
   _sap.state = 3;   // shows ⏸ straight away; real state events overwrite it
@@ -16028,8 +16029,15 @@ function _sapOnMessage(ev) {
   const last = _sap.tracks.length - 1;
   const onState = (st) => {
     _sap.state = st;
-    if (st === 1) { clearTimeout(_sap.loadT); _sapClearMsg(_sap.idx); }
-    if (st === 0 && _sap.idx < last) { _sapPlay(_sap.idx + 1, true); return true; }
+    if (st === 1) { _sap.played = true; clearTimeout(_sap.loadT); _sapClearMsg(_sap.idx); }
+    // YouTube reports "ended" twice (onStateChange + infoDelivery) and stale events
+    // from the previous pad can still arrive after switching. Advance only once,
+    // and only if the current pad actually played — otherwise pads get skipped.
+    if (st === 0) {
+      if (!_sap.played) return true;   // duplicate / stale ended event → ignore
+      _sap.played = false;
+      if (_sap.idx < last) { _sapPlay(_sap.idx + 1, true); return true; }
+    }
     return false;
   };
   if (d.event === 'onStateChange' && typeof d.info === 'number') {

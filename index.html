@@ -27,7 +27,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <link rel="stylesheet" href="./style.css?v=131">
-  <link rel="stylesheet" href="./style-stotram.css?v=127">
+  <link rel="stylesheet" href="./style-stotram.css?v=128">
   <link rel="stylesheet" href="./vedic-panchanga/panchanga.css?v=161">
 <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
 </head>
@@ -2464,6 +2464,52 @@
           <input type="time" id="reminderTimeInput" value="05:00" style="margin-top:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,215,0,0.3);border-radius:8px;color:#FFD700;font-size:12px;padding:4px 8px;font-family:'Inter',sans-serif;" />
         </div>
         <div class="tg" id="tgDailyReminder" onclick="tgs('dailyReminder')"></div>
+      </div>
+
+      <!-- Ashtayam Seva reminders (times follow your GPS sunrise / sunset) -->
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,215,0,0.12);">
+        <div style="font-size:12px;font-weight:700;color:#FFD700;">🪔 Ashtayam Seva Reminders</div>
+        <div class="sub" style="margin-bottom:6px;">Times follow your GPS location's sunrise &amp; sunset</div>
+      </div>
+
+      <div class="sr">
+        <div><label>Mangala Seva Reminder</label><div class="sub">Notify 5 min before Mangala Seva begins</div></div>
+        <div class="tg" id="tgSevaRem2" onclick="tgs('sevaRem2')"></div>
+      </div>
+
+      <div class="sr">
+        <div><label>Vana Vihar Seva Reminder</label><div class="sub">Notify 5 min before Vana Vihar Seva begins</div></div>
+        <div class="tg" id="tgSevaRem3" onclick="tgs('sevaRem3')"></div>
+      </div>
+
+      <div class="sr">
+        <div><label>Shringar Seva Reminder</label><div class="sub">Notify 5 min before Shringar Seva begins</div></div>
+        <div class="tg" id="tgSevaRem4" onclick="tgs('sevaRem4')"></div>
+      </div>
+
+      <div class="sr">
+        <div><label>Rajbhog Seva Reminder</label><div class="sub">Notify 5 min before Rajbhog Seva begins</div></div>
+        <div class="tg" id="tgSevaRem5" onclick="tgs('sevaRem5')"></div>
+      </div>
+
+      <div class="sr">
+        <div><label>Utthapan Seva Reminder</label><div class="sub">Notify 5 min before Utthapan Seva begins</div></div>
+        <div class="tg" id="tgSevaRem6" onclick="tgs('sevaRem6')"></div>
+      </div>
+
+      <div class="sr">
+        <div><label>Sandhya Bhog & Aarti Reminder</label><div class="sub">Notify 5 min before Sandhya Bhog & Aarti begins</div></div>
+        <div class="tg" id="tgSevaRem7" onclick="tgs('sevaRem7')"></div>
+      </div>
+
+      <div class="sr">
+        <div><label>Sandhya Raas Pad Reminder</label><div class="sub">Notify 5 min before Sandhya Raas Pad begins</div></div>
+        <div class="tg" id="tgSevaRem8" onclick="tgs('sevaRem8')"></div>
+      </div>
+
+      <div class="sr">
+        <div><label>Shayan Seva Reminder</label><div class="sub">Notify 5 min before Shayan Seva begins</div></div>
+        <div class="tg" id="tgSevaRem9" onclick="tgs('sevaRem9')"></div>
       </div>
     </div>
 

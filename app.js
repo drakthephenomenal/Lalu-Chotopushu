@@ -285,7 +285,7 @@ async function lcSetupNotifChannel() {
     await window.Capacitor.Plugins.LocalNotifications.createChannel({
       id: RJAP_NOTIF_CHANNEL_ID,
       name: "Jap Reminders",
-      description: "Brahma Muhurta, Sandhya Kal & custom daily jap reminders",
+      description: "Brahma Muhurta, Sandhya Kal, Ashtayam Seva & custom daily jap reminders",
       importance: 5,
       visibility: 1,
       vibration: true,
@@ -4717,6 +4717,7 @@ function scrollToJapSetup() {
 }
 
 function tgs(k) {
+  { const _sm = /^sevaRem(\d)$/.exec(k); if (_sm) { tgSevaReminder(+_sm[1]); return; } }
   if (k === "hkLang") {
     App.S.hkLang = App.S.hkLang === "bn" ? "hi" : "bn";
     const tgH = document.getElementById("tgHkLang");
@@ -15819,7 +15820,10 @@ function renderSevaPaddhati(list) {
       tile.className = 'st-folder-tile';
       tile.innerHTML =
         '<span class="asp-num">' + _sevaNum(x.n, hi) + '</span>' +
-        '<span class="st-folder-tile-title">' + escHtml(hi ? x.hi : x.bn) + '</span>' +
+        '<span class="asp-tile-main">' +
+          '<span class="st-folder-tile-title">' + escHtml(hi ? x.hi : x.bn) + '</span>' +
+          (x.n >= 2 ? '<span class="asp-timer" data-n="' + x.n + '"></span>' : '') +
+        '</span>' +
         '<span class="st-folder-tile-arrow">›</span>';
       tile.addEventListener('click', () => {
         window._stSevaSection = x.n;
@@ -15828,6 +15832,8 @@ function renderSevaPaddhati(list) {
       });
       list.appendChild(tile);
     });
+    // Live per-seva timers (starts at / starts in / time left) from GPS sun times.
+    _sevaStartTimers(list, list.querySelector('.st-folder-tile'));
     return;
   }
 
@@ -15887,6 +15893,183 @@ function renderSevaPaddhati(list) {
       if (!body.isConnected) return;
       body.innerHTML = '<div class="asp-loading">' + (hi ? 'पाठ लोड नहीं हो पाया 🙏' : 'পাঠ লোড করা যায়নি 🙏') + '</div>';
     });
+}
+
+// ─────────────────────────────────────────────────────────
+// ASHTAYAM SEVA TIMERS & REMINDERS
+// Each of the 8 sevas (section folders 2–9; 1 = introduction, no timer) starts
+// at a time worked out from the SUNRISE / SUNSET of the person's saved GPS
+// location (calcSunTimes — same engine as the Brahma Muhurta / Sandhya Kal
+// cards) and runs until the next seva begins, so exactly one seva is "active"
+// at any moment. Offsets are hours from sunrise (sr) or sunset (ss) and follow
+// the timetable of bhajanmarg.com/ashtayam-seva-paddhati for a 6:00 / 18:00
+// sun (Mangala ~5, Vana Vihar ~6:30, Shringar ~8, Rajbhog ~11, Utthapan ~3:30 pm,
+// Sandhya bhog & aarti ~6, Sandhya Raas ~7, Shayan ~8:30). Edit here to tune.
+// ─────────────────────────────────────────────────────────
+const SEVA_SCHEDULE = [
+  { n: 2, a: 'sr', off: -1.0 },   // Mangala
+  { n: 3, a: 'sr', off:  0.5 },   // Vana Vihar
+  { n: 4, a: 'sr', off:  2.0 },   // Shringar
+  { n: 5, a: 'sr', off:  5.0 },   // Rajbhog
+  { n: 6, a: 'sr', off:  9.5 },   // Utthapan
+  { n: 7, a: 'ss', off: -0.4 },   // Sandhya bhog & aarti (starts with Sandhya Kal)
+  { n: 8, a: 'ss', off:  1.0 },   // Sandhya Raas pads
+  { n: 9, a: 'ss', off:  2.5 },   // Shayan (till next Mangala)
+];
+const SEVA_EN = {
+  2: 'Mangala Seva', 3: 'Vana Vihar Seva', 4: 'Shringar Seva', 5: 'Rajbhog Seva',
+  6: 'Utthapan Seva', 7: 'Sandhya Bhog & Aarti', 8: 'Sandhya Raas Pad', 9: 'Shayan Seva',
+};
+
+// Saved GPS coordinates (same sources the rest of the app uses). Falls back to
+// the app's default point when GPS has never been switched on.
+function _sevaCoords() {
+  let lat = App.S && App.S.lastLat, lng = App.S && App.S.lastLng;
+  if (lat == null || lng == null) {
+    try { lat = parseFloat(localStorage.getItem('rjap_lastLat')); lng = parseFloat(localStorage.getItem('rjap_lastLng')); } catch (_e) {}
+  }
+  if (typeof lat !== 'number' || typeof lng !== 'number' || !isFinite(lat) || !isFinite(lng)) {
+    return { lat: 23.8103, lng: 90.4125, gps: false };
+  }
+  return { lat: lat, lng: lng, gps: true };
+}
+
+// Every seva start from yesterday to +3 days, sorted by time.
+function _sevaTimeline(now) {
+  const c = _sevaCoords();
+  const list = [];
+  for (let d = -1; d <= 3; d++) {
+    const base = new Date(now.getFullYear(), now.getMonth(), now.getDate() + d, 0, 0, 0, 0);
+    const noon = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 12, 0, 0, 0);
+    let t = null;
+    try { t = calcSunTimes(c.lat, c.lng, noon); } catch (_e) {}
+    const sr = t ? t.sunriseH : 6, ss = t ? t.sunsetH : 18;
+    SEVA_SCHEDULE.forEach((s) => {
+      list.push({ n: s.n, t: base.getTime() + ((s.a === 'sr' ? sr : ss) + s.off) * 3600000 });
+    });
+  }
+  list.sort((a, b) => a.t - b.t);
+  return { list: list, gps: c.gps };
+}
+
+// { map: { n: {active, start, end?} }, gps }
+function _sevaState(now) {
+  const tl = _sevaTimeline(now);
+  const ms = now.getTime();
+  let i = -1;
+  for (let k = 0; k < tl.list.length; k++) { if (tl.list[k].t <= ms) i = k; else break; }
+  const map = {};
+  if (i >= 0 && i + 1 < tl.list.length) map[tl.list[i].n] = { active: true, start: tl.list[i].t, end: tl.list[i + 1].t };
+  for (let k = i + 1; k < tl.list.length; k++) {
+    if (!map[tl.list[k].n]) map[tl.list[k].n] = { active: false, start: tl.list[k].t };
+  }
+  return { map: map, gps: tl.gps };
+}
+
+function _sevaClock(ms) {
+  const d = new Date(ms);
+  const h = d.getHours(), m = d.getMinutes();
+  return String(h % 12 || 12).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
+}
+function _sevaHMS(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return String(Math.floor(s / 3600)).padStart(2, '0') + ':' +
+    String(Math.floor((s % 3600) / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}
+
+const _SEVA_TXT = {
+  hi: { at: 'शुरू', since: 'शुरू हुई', inn: 'शुरू होने में', live: 'चल रही है', left: 'शेष समय', tomorrow: 'कल',
+        gps: 'GPS बंद है — अनुमानित समय। सटीक समय के लिए सेटिंग्स में GPS लोकेशन चालू करें 📍' },
+  bn: { at: 'শুরু', since: 'শুরু হয়েছে', inn: 'শুরু হতে বাকি', live: 'চলছে', left: 'বাকি সময়', tomorrow: 'আগামীকাল',
+        gps: 'GPS বন্ধ — আনুমানিক সময়। সঠিক সময়ের জন্য সেটিংসে GPS লোকেশন চালু করুন 📍' },
+};
+
+function _sevaTick(list) {
+  const T = _SEVA_TXT[App.S.stotramLang === 'hi' ? 'hi' : 'bn'];
+  const now = new Date();
+  const st = _sevaState(now);
+  const today = now.toDateString();
+  list.querySelectorAll('.asp-timer[data-n]').forEach((el) => {
+    const s = st.map[+el.getAttribute('data-n')];
+    const tile = el.closest('.st-folder-tile');
+    if (!s) { el.innerHTML = ''; return; }
+    const day = new Date(s.start).toDateString() === today ? '' : ' (' + T.tomorrow + ')';
+    if (s.active) {
+      el.innerHTML =
+        '<span class="asp-tm-line">' + T.since + ': ' + _sevaClock(s.start) + '</span>' +
+        '<span class="asp-tm-line asp-tm-live">● ' + T.live + ' · ' + T.left + ': <b>' + _sevaHMS(s.end - now.getTime()) + '</b></span>';
+    } else {
+      el.innerHTML =
+        '<span class="asp-tm-line">' + T.at + ': ' + _sevaClock(s.start) + day + '</span>' +
+        '<span class="asp-tm-line">' + T.inn + ': <b>' + _sevaHMS(s.start - now.getTime()) + '</b></span>';
+    }
+    if (tile) tile.classList.toggle('asp-tile-live', !!s.active);
+  });
+}
+
+function _sevaStartTimers(list, noteBefore) {
+  if (window._sevaTimerT) { clearInterval(window._sevaTimerT); window._sevaTimerT = null; }
+  const T = _SEVA_TXT[App.S.stotramLang === 'hi' ? 'hi' : 'bn'];
+  if (noteBefore && !_sevaCoords().gps) {
+    const note = document.createElement('div');
+    note.className = 'asp-gps-note';
+    note.textContent = T.gps;
+    list.insertBefore(note, noteBefore);
+  }
+  _sevaTick(list);
+  window._sevaTimerT = setInterval(() => {
+    if (!list.isConnected) { clearInterval(window._sevaTimerT); window._sevaTimerT = null; return; }
+    _sevaTick(list);
+  }, 1000);
+}
+
+// ── Reminders: one toggle per seva (Settings → Daily Reminder). Notifies 5 min
+// before the seva starts, for the next 3 days, from the GPS-based times above.
+// Re-armed on app open and every time updateSunInfo() runs. ──
+function _sevaRemId(n, d) { return 9100 + n * 10 + d; }   // 9120 … 9192
+function _sevaRemOn(n) { try { return localStorage.getItem('rjap_seva_rem_' + n) === '1'; } catch (_e) { return false; } }
+
+async function lcArmSevaReminder(n) {
+  if (typeof calcSunTimes !== 'function') return;
+  const nowMs = Date.now();
+  const ups = _sevaTimeline(new Date()).list.filter((e) => e.n === n && e.t - 5 * 60000 > nowMs).slice(0, 3);
+  const hi = App.S && App.S.stotramLang === 'hi';
+  const sec = SEVA_SECTIONS.find((x) => x.n === n);
+  for (let d = 0; d < 3; d++) {
+    const e = ups[d];
+    if (!e) { _lcCancelOneShot(_sevaRemId(n, d)); continue; }
+    await _lcScheduleOneShot(
+      _sevaRemId(n, d),
+      new Date(e.t - 5 * 60000),
+      '🕉️ ' + SEVA_EN[n] + ' in 5 minutes',
+      (sec ? (hi ? sec.hi : sec.bn) + ' — ' : '') +
+        (hi ? 'श्री प्रिया-प्रियतम की सेवा का समय होने वाला है 🙏' : 'শ্রী প্রিয়া-প্রিয়তমের সেবার সময় হতে চলেছে 🙏'),
+    );
+  }
+}
+function lcCancelSevaReminder(n) { for (let d = 0; d < 3; d++) _lcCancelOneShot(_sevaRemId(n, d)); }
+function lcArmAllSevaReminders() {
+  SEVA_SCHEDULE.forEach((s) => { if (_sevaRemOn(s.n)) lcArmSevaReminder(s.n).catch(() => {}); });
+}
+
+function tgSevaReminder(n) {
+  const tg = document.getElementById('tgSevaRem' + n);
+  const isOn = tg && tg.classList.contains('on');
+  if (!isOn) {
+    lcRequestNotifPermission().then((granted) => {
+      if (!granted) { toast('⚠️ Notification permission denied'); return; }
+      lcArmSevaReminder(n).then(() => {
+        try { localStorage.setItem('rjap_seva_rem_' + n, '1'); } catch (_e) {}
+        if (tg) tg.classList.add('on');
+        toast('🕉️ ' + SEVA_EN[n] + ' reminder enabled');
+      });
+    });
+  } else {
+    lcCancelSevaReminder(n);
+    try { localStorage.removeItem('rjap_seva_rem_' + n); } catch (_e) {}
+    if (tg) tg.classList.remove('on');
+    toast('🔕 ' + SEVA_EN[n] + ' reminder turned off');
+  }
 }
 
 // ─────────────────────────────────────────────────────────
@@ -18334,6 +18517,7 @@ function updateSunInfo(lat, lng) {
   try {
     if (localStorage.getItem("rjap_reminder_bm") === "1" && typeof lcArmBmReminder === "function") lcArmBmReminder();
     if (localStorage.getItem("rjap_reminder_sk") === "1" && typeof lcArmSkReminder === "function") lcArmSkReminder();
+    if (typeof lcArmAllSevaReminders === "function") lcArmAllSevaReminders();
   } catch (e) {}
 }
 function initSunTimes() {
@@ -18638,6 +18822,12 @@ window.addEventListener("load", async () => {
     try { skOn = localStorage.getItem("rjap_reminder_sk") === "1"; } catch (e) {}
     if (skOn) { tgSkInit.classList.add("on"); lcArmSkReminder().catch(() => {}); }
   }
+  // Ashtayam Seva reminders (8 toggles) — restore + re-arm.
+  [2, 3, 4, 5, 6, 7, 8, 9].forEach((n) => {
+    const tgSv = document.getElementById("tgSevaRem" + n);
+    if (tgSv && _sevaRemOn(n)) tgSv.classList.add("on");
+  });
+  try { lcArmAllSevaReminders(); } catch (e) {}
 
   // Live previews for stats inputs
   [

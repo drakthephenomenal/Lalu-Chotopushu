@@ -1267,3 +1267,14 @@
 #sevaVideoWrap{position:fixed;left:-10000px;top:0;width:280px;height:158px;z-index:559;border-radius:12px;overflow:hidden;background:#000;}
 #sevaVideoWrap.show{left:50%;top:auto;bottom:max(calc(env(safe-area-inset-bottom) + 90px),90px);transform:translateX(-50%);width:min(92vw,420px);height:calc(min(92vw,420px) * 9 / 16);box-shadow:0 6px 26px rgba(0,0,0,0.6);}
 #sevaVideoWrap iframe{width:100%;height:100%;border:0;display:block;}
+
+/* ── Ashtayam Seva: live timers under each seva tile ── */
+.asp-tile-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;}
+.asp-tile-main .st-folder-tile-title{flex:none;}
+.asp-timer{display:flex;flex-direction:column;gap:1px;font-family:Inter,"Hind Siliguri",sans-serif;font-size:11.5px;line-height:1.45;color:rgba(255,215,0,0.6);}
+.asp-timer:empty{display:none;}
+.asp-timer b{font-weight:700;color:#ffd700;font-variant-numeric:tabular-nums;letter-spacing:0.3px;}
+.asp-tm-live{color:#7dffa8;}
+.asp-tm-live b{color:#9dffbd;}
+.st-folder-tile.asp-tile-live{border-color:rgba(125,255,168,0.55);box-shadow:0 0 14px rgba(125,255,168,0.14);}
+.asp-gps-note{margin:0 2px 12px;padding:8px 12px;border-radius:10px;background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.25);color:rgba(255,215,0,0.75);font-family:"Hind Siliguri",sans-serif;font-size:12px;line-height:1.5;text-align:center;}

@@ -15546,6 +15546,7 @@ function renderSt() {
     { key: 'krishna', title: 'শ্রীকৃষ্ণ', titleHi: 'श्रीकृष्ण', icon: '🦚' },
     { key: 'shiv',    title: 'ভগবান শিব', titleHi: 'भगवान शिव', icon: '🔱', img: ST_FOLDER_ICON_IMG.shiv },
     { key: 'hanuman', title: 'হনুমান জী মহারাজ', titleHi: 'हनुमान जी महाराज', icon: '🚩' },
+    { key: 'rjbj', title: 'রসিক জন ও ভক্তজন', titleHi: 'रसिक जन एवं भक्तजन', icon: '🙏' },
   ];
   // Pick the language-appropriate folder title, falling back to the
   // Bangla (default) one whenever a Hindi title isn't set (e.g. custom
@@ -15575,7 +15576,7 @@ function renderSt() {
       tile.innerHTML =
         iconHtml +
         '<span class="st-folder-tile-title">' + escHtml(folderTitle(group)) + '</span>' +
-        (group.key === 'videos' ? '' : '<span class="st-folder-tile-count">' + group.items.length + '</span>') +
+        (group.key === 'videos' || group.key === 'rjbj' ? '' : '<span class="st-folder-tile-count">' + group.items.length + '</span>') +
         '<span class="st-folder-tile-arrow">›</span>';
       tile.addEventListener('click', () => {
         window._stActiveFolder = group.key;
@@ -15608,6 +15609,12 @@ function renderSt() {
   // Ashtayam Seva Paddhati: its 9 section folders / reader (Radha Vallabh).
   if (activeKey === 'rv' && window._stSevaOpen) {
     renderSevaPaddhati(list);
+    return;
+  }
+
+  // Rasik Jan o Bhakta Jan: standalone auto-advancing photo carousel.
+  if (activeKey === 'rjbj') {
+    renderRashikJan(list);
     return;
   }
 
@@ -16070,6 +16077,191 @@ function tgSevaReminder(n) {
     if (tg) tg.classList.remove('on');
     toast('🔕 ' + SEVA_EN[n] + ' reminder turned off');
   }
+}
+
+// ─────────────────────────────────────────────────────────
+// RASHIK JAN O BHAKTA JAN — bilingual gallery of 79 rasik-sant and
+// bhakta portraits (Hindi names transcribed to Bangla too). Files at
+// ./rashikan/pNNN.jpg, cropped from the source screenshots.
+// ─────────────────────────────────────────────────────────
+const RASHIKJAN_ITEMS = [
+  { file: './rashikan/p000.jpg', hi: 'श्री परमानंद दास जी', bn: 'শ্রী পরমানন্দ দাস জী' },
+  { file: './rashikan/p001.jpg', hi: 'गो. श्री तुलसी दास जी', bn: 'গো. শ্রী তুলসী দাস জী' },
+  { file: './rashikan/p002.jpg', hi: 'चाचा श्रीहित वृंदावन दास जी', bn: 'চাচা শ্রীহিত বৃন্দাবন দাস জী' },
+  { file: './rashikan/p003.jpg', hi: 'संत आनंदमयी माँ', bn: 'সন্ত আনন্দময়ী মা' },
+  { file: './rashikan/p004.jpg', hi: 'श्री विट्ठलनाथ जी (गुसाईंजी)', bn: 'শ্রী বিঠ্ঠলনাথ জী (গুসাঁইজী)' },
+  { file: './rashikan/p005.jpg', hi: 'श्री गोविन्द स्वामी जी', bn: 'শ্রী গোবিন্দ স্বামী জী' },
+  { file: './rashikan/p006.jpg', hi: 'संत शारदा माँ', bn: 'সন্ত শারদা মা' },
+  { file: './rashikan/p007.jpg', hi: 'पूज्य श्री हित गौरांगी शरण जी महाराज (पूज्य महाराज जी के गुरुदेव)', bn: 'পূজ্য শ্রী হিত গৌরাঙ্গী শরণ জী মহারাজ (পূজ্য মহারাজ জীর গুরুদেব)' },
+  { file: './rashikan/p008.jpg', hi: 'श्री छीत स्वामी जी', bn: 'শ্রী ছীত স্বামী জী' },
+  { file: './rashikan/p009.jpg', hi: 'श्री हित सेवक जी महाराज', bn: 'শ্রী হিত সেবক জী মহারাজ' },
+  { file: './rashikan/p010.jpg', hi: 'श्री तुकाराम जी', bn: 'শ্রী তুকারাম জী' },
+  { file: './rashikan/p011.jpg', hi: 'श्री नरसी मेहता जी', bn: 'শ্রী নরসী মেহতা জী' },
+  { file: './rashikan/p012.jpg', hi: 'श्री रसिक देव जू', bn: 'শ্রী রসিক দেব জূ' },
+  { file: './rashikan/p013.jpg', hi: 'गो. श्रीहित श्रीमोहनचन्द्र महाप्रभु जी महाराज', bn: 'গো. শ্রীহিত শ্রীমোহনচন্দ্র মহাপ্রভু জী মহারাজ' },
+  { file: './rashikan/p014.jpg', hi: 'श्री चैतन्य महाप्रभु जी', bn: 'শ্রী চৈতন্য মহাপ্রভু জী' },
+  { file: './rashikan/p015.jpg', hi: 'श्री रविदास जी महाराज', bn: 'শ্রী রবিদাস জী মহারাজ' },
+  { file: './rashikan/p016.jpg', hi: 'श्री रामानन्दाचार्य जी', bn: 'শ্রী রামানন্দাচার্য জী' },
+  { file: './rashikan/p017.jpg', hi: 'गो. श्रीहित श्रीगोपीनाथ महाप्रभु जी महाराज', bn: 'গো. শ্রীহিত শ্রীগোপীনাথ মহাপ্রভু জী মহারাজ' },
+  { file: './rashikan/p018.jpg', hi: 'श्री ललित मोहिनी देव जू', bn: 'শ্রী ললিত মোহিনী দেব জূ' },
+  { file: './rashikan/p019.jpg', hi: 'श्री नंददास जी', bn: 'শ্রী নন্দদাস জী' },
+  { file: './rashikan/p020.jpg', hi: 'श्री नारायण स्वामी जी', bn: 'শ্রী নারায়ণ স্বামী জী' },
+  { file: './rashikan/p021.jpg', hi: 'पूज्य पण्डित श्रीगयाप्रसादजी महाराज', bn: 'পূজ্য পণ্ডিত শ্রীগয়াপ্রসাদজী মহারাজ' },
+  { file: './rashikan/p022.jpg', hi: 'श्री नरोत्तम दास जी', bn: 'শ্রী নরোত্তম দাস জী' },
+  { file: './rashikan/p023.jpg', hi: 'बालभक्त ओमप्रकाश जी', bn: 'বালভক্ত ওমপ্রকাশ জী' },
+  { file: './rashikan/p024.jpg', hi: 'श्री भगवत रसिक देव जू', bn: 'শ্রী ভগবত রসিক দেব জূ' },
+  { file: './rashikan/p025.jpg', hi: 'श्री ललित किशोरी देव जी', bn: 'শ্রী ললিত কিশোরী দেব জী' },
+  { file: './rashikan/p026.jpg', hi: 'श्री सनातन गोस्वामी जी', bn: 'শ্রী সনাতন গোস্বামী জী' },
+  { file: './rashikan/p027.jpg', hi: 'श्री विट्ठल विपुल देव जी महाराज', bn: 'শ্রী বিঠ্ঠল বিপুল দেব জী মহারাজ' },
+  { file: './rashikan/p028.jpg', hi: 'संत मुक्ताबाई जी', bn: 'সন্ত মুক্তাবাঈ জী' },
+  { file: './rashikan/p029.jpg', hi: 'संत श्री एकनाथ जी महाराज', bn: 'সন্ত শ্রী একনাথ জী মহারাজ' },
+  { file: './rashikan/p030.jpg', hi: 'श्री चतुर्भुज दास जी', bn: 'শ্রী চতুর্ভুজ দাস জী' },
+  { file: './rashikan/p031.jpg', hi: 'श्री रामानुजाचार्य जी', bn: 'শ্রী রামানুজাচার্য জী' },
+  { file: './rashikan/p032.jpg', hi: 'श्री वंशी अली जी', bn: 'শ্রী বংশী অলী জী' },
+  { file: './rashikan/p033.jpg', hi: 'श्री कृष्णदास जी', bn: 'শ্রী কৃষ্ণদাস জী' },
+  { file: './rashikan/p034.jpg', hi: 'श्री हरिराम व्यास जी', bn: 'শ্রী হরিরাম ব্যাস জী' },
+  { file: './rashikan/p035.jpg', hi: 'सम्प्रदायाचार्य वंशी अवतार श्री हित हरिवंश चन्द्र महाप्रभु जी', bn: 'সম্প্রদায়াচার্য বংশী অবতার শ্রী হিত হরিবংশ চন্দ্র মহাপ্রভু জী' },
+  { file: './rashikan/p036.jpg', hi: 'श्री सरस देव जी', bn: 'শ্রী সরস দেব জী' },
+  { file: './rashikan/p037.jpg', hi: 'संत कबीर दास जी', bn: 'সন্ত কবীর দাস জী' },
+  { file: './rashikan/p038.jpg', hi: 'श्री जीव गोस्वामी जी', bn: 'শ্রী জীব গোস্বামী জী' },
+  { file: './rashikan/p039.jpg', hi: 'श्री कुंभनदास जी', bn: 'শ্রী কুম্ভনদাস জী' },
+  { file: './rashikan/p040.jpg', hi: 'श्री श्रीधर दास बाबा जी', bn: 'শ্রী শ্রীধর দাস বাবা জী' },
+  { file: './rashikan/p041.jpg', hi: 'पूज्य श्री हित प्रेमानंद गोविंद शरण जी महाराज', bn: 'পূজ্য শ্রী হিত প্রেমানন্দ গোবিন্দ শরণ জী মহারাজ' },
+  { file: './rashikan/p042.jpg', hi: 'श्री हित स्वामिनी शरण जी', bn: 'শ্রী হিত স্বামিনী শরণ জী' },
+  { file: './rashikan/p043.jpg', hi: 'श्री रूप गोस्वामी जी', bn: 'শ্রী রূপ গোস্বামী জী' },
+  { file: './rashikan/p044.jpg', hi: 'परम पूज्य भाईजी श्रीहनुमानप्रसादजी पोद्दार जी', bn: 'পরম পূজ্য ভাইজী শ্রীহনুমানপ্রসাদজী পোদ্দার জী' },
+  { file: './rashikan/p045.jpg', hi: 'श्री जयदेव गोस्वामी जी', bn: 'শ্রী জয়দেব গোস্বামী জী' },
+  { file: './rashikan/p046.jpg', hi: 'संत श्री ज्ञानेश्वर जी महाराज', bn: 'সন্ত শ্রী জ্ঞানেশ্বর জী মহারাজ' },
+  { file: './rashikan/p047.jpg', hi: 'श्री हित ध्रुवदास जी', bn: 'শ্রী হিত ধ্রুবদাস জী' },
+  { file: './rashikan/p048.jpg', hi: 'भक्तिमती मीरा बाई जी', bn: 'ভক্তিমতী মীরা বাঈ জী' },
+  { file: './rashikan/p049.jpg', hi: 'श्री नेही नागरी दास जी', bn: 'শ্রী নেহী নাগরী দাস জী' },
+  { file: './rashikan/p050.jpg', hi: 'भक्त रसखान जी', bn: 'ভক্ত রসখান জী' },
+  { file: './rashikan/p051.jpg', hi: 'श्री भट्टु देवाचार्य जी', bn: 'শ্রী ভট্টু দেবাচার্য জী' },
+  { file: './rashikan/p052.jpg', hi: 'श्री रघुनाथ दास गोस्वामी जी', bn: 'শ্রী রঘুনাথ দাস গোস্বামী জী' },
+  { file: './rashikan/p053.jpg', hi: 'श्री शंकराचार्य जी', bn: 'শ্রী শংকরাচার্য জী' },
+  { file: './rashikan/p054.jpg', hi: 'श्री विहारिन देव जू', bn: 'শ্রী বিহারিন দেব জূ' },
+  { file: './rashikan/p055.jpg', hi: 'श्री नामदेव जी महाराज', bn: 'শ্রী নামদেব জী মহারাজ' },
+  { file: './rashikan/p056.jpg', hi: 'भक्त सखुबाई जी', bn: 'ভক্ত সখুবাঈ জী' },
+  { file: './rashikan/p057.jpg', hi: 'श्री गोपाल भट्टू गोस्वामी जी', bn: 'শ্রী গোপাল ভট্টু গোস্বামী জী' },
+  { file: './rashikan/p058.jpg', hi: 'श्री राधा बाबा जी', bn: 'শ্রী রাধা বাবা জী' },
+  { file: './rashikan/p059.jpg', hi: 'भक्त करमैती बाई जी', bn: 'ভক্ত করমৈতী বাঈ জী' },
+  { file: './rashikan/p060.jpg', hi: 'निम्बार्क सम्प्रदाय संस्थापक श्री निम्बार्काचार्य जी', bn: 'নিম্বার্ক সম্প্রদায় সংস্থাপক শ্রী নিম্বার্কাচার্য জী' },
+  { file: './rashikan/p061.jpg', hi: 'गो. श्रीहित श्रीकृष्णचन्द्र महाप्रभु जी महाराज', bn: 'গো. শ্রীহিত শ্রীকৃষ্ণচন্দ্র মহাপ্রভু জী মহারাজ' },
+  { file: './rashikan/p062.jpg', hi: 'श्री नरहरि देव जू', bn: 'শ্রী নরহরি দেব জূ' },
+  { file: './rashikan/p063.jpg', hi: 'संत जनाबाई जी', bn: 'সন্ত জনাবাঈ জী' },
+  { file: './rashikan/p064.jpg', hi: 'श्री कवि बिहारी जी', bn: 'শ্রী কবি বিহারী জী' },
+  { file: './rashikan/p065.jpg', hi: 'गो. श्री वनचन्द्र महाप्रभु जी', bn: 'গো. শ্রী বনচন্দ্র মহাপ্রভু জী' },
+  { file: './rashikan/p066.jpg', hi: 'श्री नागरी देव जू', bn: 'শ্রী নাগরী দেব জূ' },
+  { file: './rashikan/p067.jpg', hi: 'श्री स्वामी हरिदास जू महाराज', bn: 'শ্রী স্বামী হরিদাস জূ মহারাজ' },
+  { file: './rashikan/p068.jpg', hi: 'श्री नित्यानंद महाप्रभु जी', bn: 'শ্রী নিত্যানন্দ মহাপ্রভু জী' },
+  { file: './rashikan/p069.jpg', hi: 'रसिक सन्त श्रीहित प्रेमदास जी', bn: 'রসিক সন্ত শ্রীহিত প্রেমদাস জী' },
+  { file: './rashikan/p070.jpg', hi: 'भक्त रानी रत्नावती जी', bn: 'ভক্ত রানী রত্নাবতী জী' },
+  { file: './rashikan/p071.jpg', hi: 'श्री सूरदास जी', bn: 'শ্রী সূরদাস জী' },
+  { file: './rashikan/p072.jpg', hi: 'श्री हरिव्यास देवाचार्य जी', bn: 'শ্রী হরিব্যাস দেবাচার্য জী' },
+  { file: './rashikan/p073.jpg', hi: 'गो. श्री हित रूपलालजी', bn: 'গো. শ্রী হিত রূপলালজী' },
+  { file: './rashikan/p074.jpg', hi: 'श्री नाभादास जी', bn: 'শ্রী নাভাদাস জী' },
+  { file: './rashikan/p075.jpg', hi: 'श्री मध्वाचार्य जी', bn: 'শ্রী মধ্বাচার্য জী' },
+  { file: './rashikan/p076.jpg', hi: 'श्री रघुनाथ भट्टू गोस्वामी जी', bn: 'শ্রী রঘুনাথ ভট্টু গোস্বামী জী' },
+  { file: './rashikan/p077.jpg', hi: 'पुष्टि मार्ग संस्थापक महाप्रभु वल्लभाचार्य जी', bn: 'পুষ্টি মার্গ সংস্থাপক মহাপ্রভু বল্লভাচার্য জী' },
+  { file: './rashikan/p078.jpg', hi: 'श्री पूर्णानंद तीर्थ जी महाराज (श्री उड़िया बाबा जी)', bn: 'শ্রী পূর্ণানন্দ তীর্থ জী মহারাজ (শ্রী উড়িয়া বাবা জী)' },
+];
+// Permanent carousel: one full-bleed portrait at a time, autoplay every 3s,
+// swipe left/right (or tap the arrows) to move manually — manual moves pause
+// autoplay for a while so it doesn't fight the person's swipe. Caption below
+// follows the Settings language (Hindi / Bangla).
+function renderRashikJan(list) {
+  const hi = App.S.stotramLang === 'hi';
+  const rvTitle = hi ? 'राधावल्लभ सम्प्रदाय' : 'রাধা বল্লভ সম্প্রদায়';
+  const title = hi ? 'रसिक जन एवं भक्तजन' : 'রসিক জন ও ভক্তজন';
+
+  const back = document.createElement('div');
+  back.className = 'st-back-row';
+  back.innerHTML =
+    '<button class="st-back-btn">← ' + escHtml(rvTitle) + '</button>' +
+    '<span class="st-back-title">' + escHtml(title) + '</span>';
+  back.querySelector('.st-back-btn').addEventListener('click', () => {
+    window._stActiveFolder = 'rv';
+    _rjClose();
+    renderSt();
+    try { list.scrollIntoView({ block: 'start' }); } catch (_e) {}
+  });
+  list.appendChild(back);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'rj-wrap';
+  wrap.innerHTML =
+    '<div class="rj-stage">' +
+      '<img class="rj-img" alt="" draggable="false">' +
+      '<button class="rj-arrow rj-prev" aria-label="prev">‹</button>' +
+      '<button class="rj-arrow rj-next" aria-label="next">›</button>' +
+    '</div>' +
+    '<div class="rj-caption"></div>' +
+    '<div class="rj-count"></div>';
+  list.appendChild(wrap);
+
+  const n = RASHIKJAN_ITEMS.length;
+  let idx = (window._rjIdx >= 0 && window._rjIdx < n) ? window._rjIdx : 0;
+  const img = wrap.querySelector('.rj-img');
+  const cap = wrap.querySelector('.rj-caption');
+  const cnt = wrap.querySelector('.rj-count');
+
+  const paint = () => {
+    const it = RASHIKJAN_ITEMS[idx];
+    img.src = it.file;
+    cap.textContent = hi ? it.hi : it.bn;
+    cnt.textContent = (idx + 1) + ' / ' + n;
+    window._rjIdx = idx;
+  };
+  paint();
+
+  const go = (delta, manual) => {
+    idx = (idx + delta + n) % n;
+    paint();
+    if (manual) _rjArmAutoplay(wrap, go);
+  };
+  wrap.querySelector('.rj-prev').addEventListener('click', () => go(-1, true));
+  wrap.querySelector('.rj-next').addEventListener('click', () => go(1, true));
+
+  // Swipe left/right on the image itself.
+  let touchX = null, touchY = null;
+  const stage = wrap.querySelector('.rj-stage');
+  stage.addEventListener('touchstart', (e) => {
+    const t = e.changedTouches[0];
+    touchX = t.clientX; touchY = t.clientY;
+  }, { passive: true });
+  stage.addEventListener('touchend', (e) => {
+    if (touchX == null) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchX, dy = t.clientY - touchY;
+    touchX = null;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.3) go(dx < 0 ? 1 : -1, true);
+  }, { passive: true });
+
+  wrap._rjGo = go;
+  _rjArmAutoplay(wrap, go, true);
+
+  // Stop the carousel (autoplay + listeners) once it's no longer on screen.
+  const watchT = setInterval(() => {
+    if (!wrap.isConnected) { clearInterval(watchT); _rjClose(); }
+  }, 1000);
+}
+
+function _rjArmAutoplay(wrap, go, immediate) {
+  clearInterval(window._rjTimer);
+  clearTimeout(window._rjPauseT);
+  const start = () => {
+    window._rjTimer = setInterval(() => go(1, false), 3000);
+  };
+  if (immediate) start();
+  else {
+    // Manual move: pause autoplay briefly, then resume.
+    window._rjPauseT = setTimeout(start, 4000);
+  }
+}
+function _rjClose() {
+  clearInterval(window._rjTimer);
+  clearTimeout(window._rjPauseT);
+  window._rjTimer = null;
 }
 
 // ─────────────────────────────────────────────────────────

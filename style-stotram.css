@@ -1278,3 +1278,14 @@
 .asp-tm-live b{color:#9dffbd;}
 .st-folder-tile.asp-tile-live{border-color:rgba(125,255,168,0.55);box-shadow:0 0 14px rgba(125,255,168,0.14);}
 .asp-gps-note{margin:0 2px 12px;padding:8px 12px;border-radius:10px;background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.25);color:rgba(255,215,0,0.75);font-family:"Hind Siliguri",sans-serif;font-size:12px;line-height:1.5;text-align:center;}
+
+/* ── Rasik Jan o Bhakta Jan: full-bleed autoplaying photo carousel ── */
+.rj-wrap{display:flex;flex-direction:column;align-items:center;margin-top:6px;}
+.rj-stage{position:relative;width:100%;max-width:420px;aspect-ratio:3/4;border-radius:16px;overflow:hidden;background:#000;border:1px solid rgba(255,215,0,0.30);box-shadow:0 4px 22px rgba(0,0,0,0.5);touch-action:pan-y;}
+.rj-img{width:100%;height:100%;object-fit:cover;display:block;user-select:none;-webkit-user-drag:none;}
+.rj-arrow{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,215,0,0.35);background:rgba(0,0,0,0.45);color:#ffd700;font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.rj-arrow:active{background:rgba(255,215,0,0.28);}
+.rj-prev{left:8px;}
+.rj-next{right:8px;}
+.rj-caption{margin-top:12px;font-family:"Hind Siliguri",serif;font-size:16px;font-weight:700;color:#ffd700;text-align:center;line-height:1.4;max-width:420px;padding:0 8px;}
+.rj-count{margin-top:4px;font:12px/1 Inter,sans-serif;color:rgba(255,215,0,0.5);}

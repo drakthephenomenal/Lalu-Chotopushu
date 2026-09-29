@@ -1,21 +1,18 @@
-VRINDAVAN RASIK SANT SERIAL — 70 PERSON UPDATE
+VRINDAVAN RASIK SANT SERIAL — COMPLETE 79-PORTRAIT VERSION
 
-Updated order:
-1. Haritraya of Vrindavan: Sri Hit Harivansh Mahaprabhu, Swami Sri Haridas Ju Maharaj, Sri Hariram Vyas Ji
-2. Major Vaishnava Sampradaya Acharyas: Ramanandacharya, Ramanujacharya, Nimbarkacharya, Vallabhacharya, Madhvacharya
-3. Gaudiya: Sri Chaitanya Mahaprabhu, Sri Nityananda Mahaprabhu
+All 79 original portraits are included in the serial.
+
+Requested sequence:
+1. Haritraya: Hit Harivansh Mahaprabhu, Swami Haridas Ji, Hariram Vyas Ji
+2. Major Vaishnava Acharyas, with Madhvacharya last in that acharya group
+3. Chaitanya Mahaprabhu, Nityananda Mahaprabhu
 4. Six Goswamis
-5. Associated Gaudiya figures
-6. Radha Vallabh rasik lineage
-7. Other rasik saints/bhaktas/sadhus
-8. Sri Hit Gaurangi Sharan Ji Maharaj
-9. Sri Hit Premanand Govind Sharan Ji Maharaj
+5. Associated Gaudiya lineage
+6. Radha Vallabh / Hit lineage rasiks
+7. Other Vrindavan/Braj rasiks and saints
+8. Wider bhakti saints
+9. Later/modern figures
+10. Hit Gaurangi Sharan Ji Maharaj
+11. Hit Premanand Govind Sharan Ji Maharaj (final)
 
-Total serial entries: 70
-All original 79 portrait files are retained in rashikan/; 9 are simply not included in this 70-entry sequence.
-
-Files to replace/add in the existing repo:
-- app.js
-- sw.js
-- style-stotram.css
-- rashikan/ (keep all portrait files)
+The previously omitted portraits are restored and placed in the sequence.

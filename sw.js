@@ -1,5 +1,8 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v215
+// Radha Naam Jap — Service Worker  v220
+// v220: bumped cache to force-invalidate stale style.css — bead ring glow
+// filters restored to single lightweight drop-shadows (3 stacked large
+// blurs per filled bead made the Jap tap screen laggy as the mala filled).
 // v219: bumped cache to force-invalidate stale app.js / style-stotram.css /
 // index.html, and precache 79 new portrait photos under ./rashikan/ — adds a
 // "Rasik Jan o Bhakta Jan" folder (Stotram section) with an autoplaying photo
@@ -342,7 +345,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v219';
+const CACHE = 'radha-jap-v220';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

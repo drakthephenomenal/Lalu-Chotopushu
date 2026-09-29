@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker  v215
-// v219: bumped cache to force-invalidate stale app.js / style-stotram.css /
+// v220: bumped cache to force-invalidate stale app.js / style-stotram.css /
 // index.html, and precache 79 new portrait photos under ./rashikan/ — adds a
 // "Rasik Jan o Bhakta Jan" folder (Stotram section) with an autoplaying photo
 // carousel (swipe or arrows to move manually, 3s autoplay), captioned in
@@ -342,6 +342,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
+// Vrindavan Rasik 70 serial update: 70-person ordered sequence.
 const CACHE = 'radha-jap-v219';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor

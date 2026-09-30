@@ -4070,3 +4070,8 @@ body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !import
   color: var(--tl);
   line-height: 1.4;
 }
+
+/* Rasik Jan carousel — group tag + short note under the caption */
+.rj-group{margin:8px 12px 0;text-align:center;font-size:.72rem;letter-spacing:.04em;opacity:.7;}
+.rj-note{margin:6px 14px 0;padding:8px 10px;text-align:center;font-size:.86rem;line-height:1.5;opacity:.92;max-height:9.5em;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.rj-note:empty,.rj-group:empty{display:none;}

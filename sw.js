@@ -1,5 +1,8 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v220
+// Radha Naam Jap — Service Worker  v221
+// v221: bumped cache to force-invalidate stale app.js/style.css — Rasik Jan
+// carousel now follows the serial (Hari-Trayi → Rasik Jan → Acharyas → ...)
+// with a short note per saint.
 // v220: bumped cache to force-invalidate stale style.css — bead ring glow
 // filters restored to single lightweight drop-shadows (3 stacked large
 // blurs per filled bead made the Jap tap screen laggy as the mala filled).
@@ -345,7 +348,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v220';
+const CACHE = 'radha-jap-v221';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch

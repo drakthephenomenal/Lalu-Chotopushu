@@ -16865,7 +16865,11 @@ function ddPump() {
 }
 
 // ── List thumbnails: made once on this phone from the first photo, then kept ──
+window._ddMemTh = window._ddMemTh || {};
+window._ddTFail = window._ddTFail || {};
 function ddThumbGet(slug, name) {
+  const mm = window._ddMemTh[slug];
+  if (mm && mm.n === name) return mm.d;
   try {
     const o = JSON.parse(localStorage.getItem('dd_th_v1_' + slug) || 'null');
     return o && o.n === name ? o.d : '';
@@ -16903,7 +16907,9 @@ async function ddBuildThumb(slug, name) {
   cv.getContext('2d').drawImage(src, 0, 0, tw, th);
   if (url) URL.revokeObjectURL(url);
   try { if (src.close) src.close(); } catch (_e) {}
-  localStorage.setItem('dd_th_v1_' + slug, JSON.stringify({ n: name, d: cv.toDataURL('image/jpeg', 0.75) }));
+  const dataUrl = cv.toDataURL('image/jpeg', 0.75);
+  window._ddMemTh[slug] = { n: name, d: dataUrl };   // always usable this session, even if storage is full
+  try { localStorage.setItem('dd_th_v1_' + slug, JSON.stringify({ n: name, d: dataUrl })); } catch (_e) {}
   return true;
 }
 window._ddTQ = window._ddTQ || [];
@@ -16924,6 +16930,7 @@ async function ddThumbPump() {
     const slug = window._ddTQ.shift();
     const ph = ddMan(slug).photos;
     try { if (ph.length && !ddThumbGet(slug, ph[0])) await ddBuildThumb(slug, ph[0]); } catch (_e) {}
+    if (ph.length && !ddThumbGet(slug, ph[0])) window._ddTFail[slug] = 1;   // preview could not be made → card shows the photo itself
     const card = window._ddCards[slug];
     const d = DD_DEITIES.find((x) => x.s === slug);
     if (card && d && card.isConnected) card.innerHTML = ddCardHtml(d);
@@ -17028,7 +17035,8 @@ function ddCardHtml(d) {
   const th = ph.length ? ddThumbGet(d.s, ph[0]) : '';
   const b = ddBadge(d);
   return '<div class="dd-thumb">' +
-      (th ? '<img alt="" draggable="false" src="' + th + '">' : '<span class="dd-ph">🪷</span>') +
+      (th ? '<img alt="" draggable="false" src="' + th + '">'
+        : (ph.length && window._ddTFail[d.s] ? '<img alt="" draggable="false" loading="lazy" src="' + ddPath(d.s, ph[0]) + '">' : '<span class="dd-ph">🪷</span>')) +
       (ph.length ? '<span class="dd-count">📷 ' + ph.length + '</span>' : '') +
     '</div>' +
     '<div class="dd-cname">' + escHtml(ddT(d.n)) + '</div>' +
@@ -17047,7 +17055,7 @@ function renderDeityDarshan(list) {
   back.querySelector('.st-back-btn').addEventListener('click', () => { window._stActiveFolder = null; renderSt(); });
   list.appendChild(back);
 
-  const filt = window._ddFilter || 'vrn';
+  const filt = window._ddFilter || 'all';
   const cnt = { vrn: 0, moved: 0, all: DD_DEITIES.length };
   DD_DEITIES.forEach((d) => { cnt[d.st] += 1; });
   const chips = document.createElement('div');

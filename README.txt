@@ -10,7 +10,7 @@ DIVINE DARSHAN - no npm, no build step
 3. Bhajan: upload audio.mp3 into the deity's folder. It plays when that deity is opened.
 
 4. The app finds new photos/audio by itself. Open the deity page once and it shows.
-   If the old version still appears: open the app, close it fully, open again (sw.js is v228).
+   If the old version still appears: open the app, close it fully, open again (sw.js is v229).
 
 Folder names:
  radha-vallabh  radhika-vallabh  radha-navrangi-lal  yugal-kishor

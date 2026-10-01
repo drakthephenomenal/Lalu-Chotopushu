@@ -10,7 +10,7 @@ DIVINE DARSHAN - no npm, no build step
 3. Bhajan: upload audio.mp3 into the deity's folder. It plays when that deity is opened.
 
 4. The app finds new photos/audio by itself. Open the deity page once and it shows.
-   If the old version still appears: open the app, close it fully, open again (sw.js is v223).
+   If the old version still appears: open the app, close it fully, open again (sw.js is v225).
 
 Folder names:
  radha-vallabh  radhika-vallabh  yugal-kishor
@@ -20,3 +20,6 @@ Folder names:
  radha-gopinath  radha-damodar  radha-vinoda  radha-vrindavan-chandra  sakshi-gopal
  shrinathji  dwarkadheesh  gokulnath-ji  navnit-priya
  ranganath-ji  lakshmi-narayan
+
+RASIK JAN o BHAKTA JAN: 61 of the 79 saints now have a '📖 विस्तार से पढ़ें' button with a full biography.
+The other 18 have only the short note until more reliable information is found.

@@ -1,5 +1,7 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v223
+// Radha Naam Jap — Service Worker  v225
+// v225: Divine Darshan list cards now build their preview image automatically (no need to open the deity first).
+// v224: Rasik Jan o Bhakta Jan — 'विस्तार से पढ़ें' detailed biography sheet (61 of 79 saints).
 // v223: Divine Darshan of Vrindavan Deities (S&V). Deity photos (deities/<name>/N.jpg|png|webp)
 // are served stale-while-revalidate from a persistent cache (radha-jap-deities-v1) that is NOT
 // wiped on app updates; audio and list.txt are left to the browser (Range streaming / always fresh).
@@ -351,7 +353,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v223';
+const CACHE = 'radha-jap-v225';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

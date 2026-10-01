@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v232
+// Radha Naam Jap — Service Worker  v233
 // v231: Rashikan carousel now opens with the Vrindavan Hari-Traya group photo; Bangla spelling fixed to হরিত্রয়.
 // v230: Android app reads Divine Darshan photos live from the site (deities/ no longer bundled in the APK).
 // v229: Divine Darshan opens on "All" by default; list preview falls back to the real photo if a thumbnail cannot be saved.
@@ -359,7 +359,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v232';
+const CACHE = 'radha-jap-v233';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

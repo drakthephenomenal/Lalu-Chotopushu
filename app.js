@@ -15535,6 +15535,15 @@ function renderSt() {
       '.st-btn{width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,215,0,0.30);background:rgba(255,215,0,0.08);color:#ffd700;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s,box-shadow 0.15s;-webkit-tap-highlight-color:transparent}',
       '.st-btn:active{background:rgba(255,215,0,0.22);box-shadow:0 0 10px 2px rgba(255,215,0,0.4)}',
       '.st-btn.read{font-size:18px}',
+      '.st-btns{align-items:flex-end;gap:12px}',
+      '.st-btn.st-mini{width:32px;height:32px;border-radius:9px;font-size:17px}',
+      '.st-pm{display:flex;flex-direction:column;align-items:center;gap:4px}',
+      '.st-pm-lab{font-size:10px;color:rgba(255,215,0,0.55);letter-spacing:0.3px}',
+      '.st-pm-row{display:flex;gap:8px}',
+      '.st-pm-col{display:flex;flex-direction:column;align-items:center;gap:2px}',
+      '.st-pm-cap{font-size:9px;color:rgba(255,215,0,0.45)}',
+      '.st-open-btn{height:40px;padding:0 20px;border:none;border-radius:12px;background:linear-gradient(135deg,#ffe27a 0%,#ffc107 45%,#e69500 100%);color:#2a1a00;font-weight:700;font-size:15px;font-family:"Hind Siliguri",sans-serif;cursor:pointer;box-shadow:0 0 12px rgba(255,200,0,0.45),inset 0 1px 0 rgba(255,255,255,0.5);-webkit-tap-highlight-color:transparent}',
+      '.st-open-btn:active{transform:scale(0.96);box-shadow:0 0 18px rgba(255,200,0,0.7)}',
       '.st-edit-btn{font-size:13px;width:32px;height:32px;border-radius:8px;border:1px solid rgba(74,144,226,0.35);background:rgba(74,144,226,0.10);color:#7ab8ff;cursor:pointer;display:flex;align-items:center;justify-content:center}',
     ].join('');
     document.head.appendChild(styleEl);
@@ -15722,6 +15731,7 @@ function renderSt() {
         '</div>';
     }
 
+    const _stHi = App.S.stotramLang === 'hi';
     let inner =
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">' +
         '<div style="flex:1;min-width:0">' +
@@ -15733,12 +15743,17 @@ function renderSt() {
       '<div class="st-row">' +
         '<div>' +
           '<div class="st-count" id="sc' + st.id + '">' + tc + '</div>' +
-          '<div class="st-meta">Today · Total: <strong>' + tot + '</strong></div>' +
+          '<div class="st-meta">' + (_stHi ? 'आज · कुल: ' : 'আজ · মোট: ') + '<strong>' + tot + '</strong></div>' +
         '</div>' +
         '<div class="st-btns">' +
-          '<button class="st-btn" onclick="adjSt(\'' + st.id + '\',-1)">−</button>' +
-          '<button class="st-btn" onclick="adjSt(\'' + st.id + '\',1)">+</button>' +
-          (hasLyrics ? '<button class="st-btn read" onclick="showLyrics(\'' + st.id + '\')">📖</button>' : '') +
+          '<div class="st-pm">' +
+            '<div class="st-pm-lab">' + (_stHi ? 'पाठ गणना' : 'পাঠ গণনা') + '</div>' +
+            '<div class="st-pm-row">' +
+              '<div class="st-pm-col"><button class="st-btn st-mini" title="' + (_stHi ? 'एक पाठ घटाएँ' : 'একটি পাঠ কমান') + '" aria-label="' + (_stHi ? 'एक पाठ घटाएँ' : 'একটি পাঠ কমান') + '" onclick="adjSt(\'' + st.id + '\',-1)">\u2212</button><span class="st-pm-cap">' + (_stHi ? 'घटाएँ' : 'কমান') + '</span></div>' +
+              '<div class="st-pm-col"><button class="st-btn st-mini" title="' + (_stHi ? 'एक पाठ जोड़ें' : 'একটি পাঠ যোগ করুন') + '" aria-label="' + (_stHi ? 'एक पाठ जोड़ें' : 'একটি পাঠ যোগ করুন') + '" onclick="adjSt(\'' + st.id + '\',1)">+</button><span class="st-pm-cap">' + (_stHi ? 'जोड़ें' : 'যোগ') + '</span></div>' +
+            '</div>' +
+          '</div>' +
+          (hasLyrics ? '<button class="st-open-btn" onclick="showLyrics(\'' + st.id + '\')">' + (_stHi ? 'खोलें' : 'খুলুন') + '</button>' : '') +
         '</div>' +
       '</div>';
 

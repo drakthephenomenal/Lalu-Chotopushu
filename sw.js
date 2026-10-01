@@ -1,5 +1,8 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v225
+// Radha Naam Jap — Service Worker  v228
+// v228: Navrangi Lal Ji history (found in well by Hit Harivansh), placed under Deoband.
+// v227: Hindi "samaj-gayan" changed to "pad gayan".
+// v226: Added Radha Navrangi Lal Ji; renamed Laal ju deities; Bengali "pad gaowa" wording.
 // v225: Divine Darshan list cards now build their preview image automatically (no need to open the deity first).
 // v224: Rasik Jan o Bhakta Jan — 'विस्तार से पढ़ें' detailed biography sheet (61 of 79 saints).
 // v223: Divine Darshan of Vrindavan Deities (S&V). Deity photos (deities/<name>/N.jpg|png|webp)
@@ -353,7 +356,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v225';
+const CACHE = 'radha-jap-v228';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

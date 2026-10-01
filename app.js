@@ -20851,6 +20851,10 @@ function showLyrics(id) {
   _renderVerse(0, null);
   document.getElementById("lmo").classList.add("show");
   _initSwipeHandler();
+  // Autoplay on open (stotram audio): start verse 1 if this stotram has audio.
+  try {
+    if (_AUDIO_STOTRAMS[id] && _hcjHasAudioForIdx(_AUDIO_STOTRAMS[id], 0) && _hcjAudioPath(0)) _hcjPlayVerse(0);
+  } catch (_e) {}
 }
 
 function _renderVerse(idx, dir) {
@@ -21295,7 +21299,7 @@ function closeLyrics() {
 
 // HCJ AUDIO ENGINE
 var _hcjAudio = null,
-  _hcjMode = "manual",
+  _hcjMode = "continue",
   _hcjPlaying = false,
   _hcjAudioIdx = -1;
 var _hcjRafId = null; // requestAnimationFrame id for progress bar

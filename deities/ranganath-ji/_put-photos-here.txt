@@ -1,0 +1,11 @@
+PUT THIS DEITY'S PHOTOS HERE  /  ছবি এই ফোল্ডারে রাখুন
+
+Name them:  1.jpg  2.jpg  3.jpg ...   (jpg, jpeg, png, webp - small or CAPITAL letters both work)
+Numbers must go 1, 2, 3 with no gap - the app stops at the first missing number.
+
+OR create a text file named  list.txt  here and write one photo file name per line
+(then the photos can have any names).
+
+Bhajan:  a file named  audio.mp3  here plays automatically when this deity is opened.
+
+You may delete this note file after uploading photos.

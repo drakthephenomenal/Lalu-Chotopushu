@@ -15547,6 +15547,7 @@ function renderSt() {
     { key: 'shiv',    title: 'ভগবান শিব', titleHi: 'भगवान शिव', icon: '🔱', img: ST_FOLDER_ICON_IMG.shiv },
     { key: 'hanuman', title: 'হনুমান জী মহারাজ', titleHi: 'हनुमान जी महाराज', icon: '🚩' },
     { key: 'rjbj', title: 'রসিক জন ও ভক্তজন', titleHi: 'रसिक जन एवं भक्तजन', icon: '🙏' },
+    { key: 'dd', title: 'দিব্য দর্শন — বৃন্দাবনের শ্রীবিগ্রহ', titleHi: 'दिव्य दर्शन — वृन्दावन के श्रीविग्रह', icon: '🛕' },
   ];
   // Pick the language-appropriate folder title, falling back to the
   // Bangla (default) one whenever a Hindi title isn't set (e.g. custom
@@ -15576,13 +15577,14 @@ function renderSt() {
       tile.innerHTML =
         iconHtml +
         '<span class="st-folder-tile-title">' + escHtml(folderTitle(group)) + '</span>' +
-        (group.key === 'videos' || group.key === 'rjbj' ? '' : '<span class="st-folder-tile-count">' + group.items.length + '</span>') +
+        (group.key === 'videos' || group.key === 'rjbj' || group.key === 'dd' ? '' : '<span class="st-folder-tile-count">' + group.items.length + '</span>') +
         '<span class="st-folder-tile-arrow">›</span>';
       tile.addEventListener('click', () => {
         window._stActiveFolder = group.key;
         window._stActiveVideoFolder = null;
         window._stSevaOpen = false;
         window._stSevaSection = null;
+        window._ddSel = null;
         renderSt();
       });
       list.appendChild(tile);
@@ -15609,6 +15611,12 @@ function renderSt() {
   // Ashtayam Seva Paddhati: its 9 section folders / reader (Radha Vallabh).
   if (activeKey === 'rv' && window._stSevaOpen) {
     renderSevaPaddhati(list);
+    return;
+  }
+
+  // Divine Darshan of Vrindavan Deities: photos + aavirbhav katha + bhajan.
+  if (activeKey === 'dd') {
+    renderDeityDarshan(list);
     return;
   }
 
@@ -16182,6 +16190,943 @@ const RASHIKJAN_ITEMS = [
 // swipe left/right (or tap the arrows) to move manually — manual moves pause
 // autoplay for a while so it doesn't fight the person's swipe. Caption below
 // follows the Settings language (Hindi / Bangla).
+
+// ═══════════════════════════════════════════════════════════════════════
+// DIVINE DARSHAN — वृन्दावन के श्रीविग्रह  (S&V folder key: 'dd')
+// Nothing here animates a filter/glow, so it can never slow down the jap screen.
+// ═══════════════════════════════════════════════════════════════════════
+
+
+// Photos: put them in  deities/<deity-folder>/  named 1.jpg, 2.jpg, 3.jpg ...
+// (jpg / jpeg / png / webp, upper- or lower-case). Or create list.txt in the folder with one
+// file name per line (any names). audio.mp3 in the folder = bhajan that plays on opening.
+// The app finds them by itself — no build step, no manifest.
+
+const DD_SAMP = [
+ {
+  "k": "rv",
+  "t": {
+   "hi": "राधावल्लभ सम्प्रदाय",
+   "bn": "রাধাবল্লভ সম্প্রদায়"
+  }
+ },
+ {
+  "k": "hd",
+  "t": {
+   "hi": "हरिदासी सम्प्रदाय",
+   "bn": "হরিদাসী সম্প্রদায়"
+  }
+ },
+ {
+  "k": "nb",
+  "t": {
+   "hi": "निम्बार्क सम्प्रदाय",
+   "bn": "নিম্বার্ক সম্প্রদায়"
+  }
+ },
+ {
+  "k": "gd",
+  "t": {
+   "hi": "गौड़ीय सम्प्रदाय",
+   "bn": "গৌড়ীয় সম্প্রদায়"
+  }
+ },
+ {
+  "k": "pm",
+  "t": {
+   "hi": "पुष्टिमार्ग (वल्लभ सम्प्रदाय)",
+   "bn": "পুষ্টিমার্গ (বল্লভ সম্প্রদায়)"
+  }
+ },
+ {
+  "k": "sr",
+  "t": {
+   "hi": "श्री सम्प्रदाय (रामानुज)",
+   "bn": "শ্রী সম্প্রদায় (রামানুজ)"
+  }
+ }
+];
+const DD_DEITIES = [
+ {
+  "s": "radha-vallabh",
+  "k": "rv",
+  "st": "vrn",
+  "n": {
+   "hi": "श्रीराधावल्लभ लाल जी",
+   "bn": "শ্রীরাধাবল্লভ লাল জী"
+  },
+  "ac": {
+   "hi": "श्रीहित हरिवंश महाप्रभु (राधावल्लभ सम्प्रदाय के संस्थापक)",
+   "bn": "শ্রীহিত হরিবংশ মহাপ্রভু (রাধাবল্লভ সম্প্রদায়ের প্রতিষ্ঠাতা)"
+  },
+  "vd": {
+   "hi": "अष्टयाम सेवा और समाज-गायन (हित चौरासी); श्रीराधा की प्रधानता — राधा-दास्य भाव की उपासना। सेवा हित हरिवंश जी के वंशज गोस्वामी करते हैं।",
+   "bn": "অষ্টযাম সেবা ও সমাজ-গান (হিত চৌরাশী); শ্রীরাধার প্রাধান্য — রাধা-দাস্য ভাবের উপাসনা। সেবা হিত হরিবংশজির বংশধর গোস্বামীরা করেন।"
+  },
+  "kt": {
+   "hi": "परम्परा के अनुसार आत्मदेव ब्राह्मण के पूर्वज ने कैलास पर शिव की तपस्या की, तब शिव ने अपने हृदय से श्रीराधावल्लभ जी का विग्रह दिया और सेवा-विधि बताई।\n\nबत्तीस वर्ष की आयु में हित हरिवंश जी वृन्दावन के लिए चले तो स्वप्न में श्रीराधा जी ने आज्ञा दी — आत्मदेव की दो कन्याओं से विवाह करो और उनके पास जो मेरा विग्रह है, उसे वृन्दावन ले जाओ। विवाह के समय आत्मदेव ने श्रीराधावल्लभ जी को हित हरिवंश जी को सौंप दिया।\n\nवृन्दावन पहुँचकर विग्रह को यमुना-तट की ऊँची ठौर 'मदनटेर' पर विराजमान किया गया। कार्तिक शुक्ल त्रयोदशी को सेवा का शुभारम्भ हुआ। बाद में सेवाकुंज और फिर मन्दिर में विराजे। औरंगज़ेब-काल में विग्रह को कामवन ले जाया गया और बाद में वृन्दावन लौटे (परम्परा में संवत् 1727 और 1800 के आसपास)।",
+   "bn": "ঐতিহ্য অনুসারে আত্মদেব ব্রাহ্মণের পূর্বপুরুষ কৈলাসে শিবের তপস্যা করলে শিব নিজের হৃদয় থেকে শ্রীরাধাবল্লভজির বিগ্রহ দান করেন এবং সেবা-বিধি জানান।\n\nবত্রিশ বছর বয়সে হিত হরিবংশজি বৃন্দাবনের পথে রওনা হলে স্বপ্নে শ্রীরাধারানি আদেশ দেন — আত্মদেবের দুই কন্যাকে বিবাহ করো এবং তাঁর কাছে থাকা আমার বিগ্রহ বৃন্দাবনে নিয়ে যাও। বিবাহের সময় আত্মদেব শ্রীরাধাবল্লভজিকে হিত হরিবংশজির হাতে সমর্পণ করেন।\n\nবৃন্দাবনে পৌঁছে বিগ্রহকে যমুনার তীরে উঁচু জায়গা 'মদনটের'-এ প্রতিষ্ঠা করা হয়। কার্তিক শুক্ল ত্রয়োদশীতে সেবার শুভারম্ভ হয়। পরে সেবাকুঞ্জ এবং তারপর মন্দিরে বিরাজ করেন। ঔরঙ্গজেবের সময়ে বিগ্রহকে কামবনে নিয়ে যাওয়া হয় এবং পরে বৃন্দাবনে ফিরে আসেন (ঐতিহ্যে সংবৎ ১৭২৭ ও ১৮০০-র কাছাকাছি)।"
+  },
+  "fm": {
+   "hi": "'श्रीराधावल्लभ दर्शन दुर्लभ' — इनके दर्शन दुर्लभ माने जाते हैं। यहाँ श्रीराधा का अलग विग्रह नहीं है; बगल में उनका मुकुट (और लम्बी चोटी) श्रीराधा-रूप में पूजित है — राधावल्लभ में राधा-कृष्ण दोनों एक साथ माने जाते हैं।",
+   "bn": "'শ্রীরাধাবল্লভ দর্শন দুর্লভ' — এঁর দর্শন দুর্লভ বলে মান্য। এখানে শ্রীরাধার আলাদা বিগ্রহ নেই; পাশে তাঁর মুকুট (ও লম্বা বেণী) শ্রীরাধা-রূপে পূজিত — রাধাবল্লভে রাধা-কৃষ্ণ একসঙ্গে বলে মান্য।"
+  },
+  "sth": {
+   "hi": "श्रीराधावल्लभ मन्दिर, वृन्दावन (श्रीबाँकेबिहारी मन्दिर के समीप)",
+   "bn": "শ্রীরাধাবল্লভ মন্দির, বৃন্দাবন (শ্রীবাঁকেবিহারী মন্দিরের কাছে)"
+  },
+  "q": "Shri Radha Vallabh Temple Vrindavan",
+  "src": "Braj Rasik, Wikipedia (Radha Vallabh Temple), Gaudiya Treasures of Bengal"
+ },
+ {
+  "s": "radhika-vallabh",
+  "k": "rv",
+  "st": "vrn",
+  "n": {
+   "hi": "श्रीराधिका वल्लभ जी",
+   "bn": "শ্রীরাধিকা বল্লভ জী"
+  },
+  "ac": {
+   "hi": "राधावल्लभ परम्परा",
+   "bn": "রাধাবল্লভ পরম্পরা"
+  },
+  "q": "Radhika Vallabh Ji Vrindavan"
+ },
+ {
+  "s": "yugal-kishor",
+  "k": "rv",
+  "st": "moved",
+  "n": {
+   "hi": "श्रीयुगलकिशोर जी",
+   "bn": "শ্রীযুগলকিশোর জী"
+  },
+  "to": {
+   "hi": "पन्ना (म.प्र.)",
+   "bn": "পান্না (ম.প্র.)"
+  },
+  "pr": true,
+  "ac": {
+   "hi": "श्रीहरिराम व्यास जी (राधावल्लभ परम्परा)",
+   "bn": "শ্রীহরিরাম ব্যাস জী (রাধাবল্লভ পরম্পরা)"
+  },
+  "vd": {
+   "hi": "राधावल्लभीय रसिक परम्परा की युगल-उपासना।",
+   "bn": "রাধাবল্লভীয় রসিক পরম্পরার যুগল-উপাসনা।"
+  },
+  "kt": {
+   "hi": "परम्परा के अनुसार हरिराम व्यास जी ने वृन्दावन के किशोरवन से श्रीयुगलकिशोर जी का विग्रह प्रकट किया। ओरछा के राजा मधुकर शाह उनके शिष्य थे।\n\nकालान्तर में मूल विग्रह बुन्देलखण्ड के पन्ना में विराजित हुआ (राजा हिन्दूपत सिंह द्वारा प्रतिष्ठा — परम्परा के अनुसार), और वृन्दावन में प्रतिभू-स्वरूप की सेवा होती है।",
+   "bn": "ঐতিহ্য অনুসারে হরিরাম ব্যাসজি বৃন্দাবনের কিশোরবন থেকে শ্রীযুগলকিশোরজির বিগ্রহ প্রকট করেন। ওরছার রাজা মধুকর শাহ তাঁর শিষ্য ছিলেন।\n\nপরে মূল বিগ্রহ বুন্দেলখণ্ডের পান্নায় বিরাজিত হন (রাজা হিন্দুপত সিংহ প্রতিষ্ঠা করেন — ঐতিহ্য অনুসারে), আর বৃন্দাবনে প্রতিভূ-স্বরূপের সেবা হয়।"
+  },
+  "fm": {
+   "hi": "मूल विग्रह पन्ना में, वृन्दावन में प्रतिभू-विग्रह; ओरछा-राजपरिवार की श्रद्धा से जुड़ा।",
+   "bn": "মূল বিগ্রহ পান্নায়, বৃন্দাবনে প্রতিভূ-বিগ্রহ; ওরছা-রাজপরিবারের শ্রদ্ধার সঙ্গে যুক্ত।"
+  },
+  "sth": {
+   "hi": "मूल: पन्ना (म.प्र.) · वृन्दावन: श्रीयुगलकिशोर मन्दिर (केशीघाट)",
+   "bn": "মূল: পান্না (ম.প্র.) · বৃন্দাবন: শ্রীযুগলকিশোর মন্দির (কেশীঘাট)"
+  },
+  "q": "Jugal Kishore Temple Kesi Ghat Vrindavan",
+  "src": "Braj Rasik, परम्परा — समीक्षा शेष"
+ },
+ {
+  "s": "banke-bihari",
+  "k": "hd",
+  "st": "vrn",
+  "n": {
+   "hi": "श्रीबाँकेबिहारी जी",
+   "bn": "শ্রীবাঁকেবিহারী জী"
+  },
+  "ac": {
+   "hi": "स्वामी श्रीहरिदास जी महाराज (हरिदासी / सखी सम्प्रदाय के प्रवर्तक)",
+   "bn": "স্বামী শ্রীহরিদাস জী মহারাজ (হরিদাসী / সখী সম্প্রদায়ের প্রবর্তক)"
+  },
+  "vd": {
+   "hi": "बाल-भाव की सेवा: ठाकुर जी को आठ वर्ष के बालक की तरह माना जाता है — इसलिए मंगला दर्शन नहीं होता और घण्टा-घड़ियाल नहीं बजते। बाँसुरी वर्ष में एक बार शरद पूर्णिमा को, चरण-दर्शन अक्षय तृतीया को, और श्रावण में झूलन-दर्शन होते हैं।",
+   "bn": "বাল-ভাবের সেবা: ঠাকুরজিকে আট বছরের শিশুর মতো মানা হয় — তাই মঙ্গলা দর্শন হয় না, ঘণ্টা-ঘড়িও বাজে না। বাঁশি বছরে একবার শরৎ পূর্ণিমায়, চরণ-দর্শন অক্ষয় তৃতীয়ায়, আর শ্রাবণে ঝুলন-দর্শন হয়।"
+  },
+  "kt": {
+   "hi": "स्वामी हरिदास जी निधिवन में एकान्त साधना करते थे। एक दिन शिष्यों की इच्छा पर वे उस कुंज में गए तो केवल तेज प्रकाश दिखा; स्वामी जी के गान से श्यामा-श्याम प्रकट हुए।\n\nउनकी शोभा इतनी अपार थी कि साधारण जन सह न पाते। स्वामी जी ने प्रार्थना की कि दोनों घन और दामिनी की तरह एक ही स्वरूप में समा जाएँ और सदा उनके सामने रहें। युगल एक श्याम विग्रह छोड़कर अन्तर्ध्यान हो गए — यह दिन मार्गशीर्ष शुक्ल पंचमी (विहार पंचमी) है।\n\nपहले 'कुंजबिहारी' नाम से निधिवन में सेवा हुई; त्रिभंग मुद्रा के कारण शिष्यों ने 'बाँकेबिहारी' कहा। 19वीं शताब्दी (लगभग 1862–64) में गोस्वामियों द्वारा बनवाए गए वर्तमान मन्दिर में विग्रह पधारे।",
+   "bn": "স্বামী হরিদাসজি নিধিবনে একান্তে সাধনা করতেন। একদিন শিষ্যদের ইচ্ছায় তিনি সেই কুঞ্জে গেলে কেবল তীব্র আলো দেখা গেল; স্বামীজির গানে শ্যামা-শ্যাম প্রকট হলেন।\n\nতাঁদের শোভা এতই অপার যে সাধারণ মানুষ সইতে পারত না। স্বামীজি প্রার্থনা করলেন — দুজনে মেঘ ও বিদ্যুতের মতো এক স্বরূপে মিলে যান এবং সর্বদা তাঁর সামনে থাকেন। যুগল এক শ্যাম বিগ্রহ রেখে অন্তর্হিত হলেন — এটি মার্গশীর্ষ শুক্ল পঞ্চমী (বিহার পঞ্চমী)।\n\nপ্রথমে 'কুঞ্জবিহারী' নামে নিধিবনে সেবা হয়; ত্রিভঙ্গ মুদ্রার জন্য শিষ্যরা 'বাঁকেবিহারী' বললেন। ঊনবিংশ শতাব্দীতে (প্রায় ১৮৬২–৬৪) গোস্বামীদের নির্মিত বর্তমান মন্দিরে বিগ্রহ আসেন।"
+  },
+  "fm": {
+   "hi": "झाँकी दर्शन — पर्दा हर कुछ क्षण में डाला-हटाया जाता है, क्योंकि मान्यता है कि देर तक नेत्र मिलाने पर भक्त अपनी सुध खो बैठता है। श्यामा-श्याम का संयुक्त स्वरूप।",
+   "bn": "ঝাঁকি দর্শন — পর্দা কিছুক্ষণ পরপর টানা-সরানো হয়, কারণ বিশ্বাস, বেশিক্ষণ চোখে চোখ রাখলে ভক্ত বাহ্যজ্ঞান হারায়। শ্যামা-শ্যামের মিলিত স্বরূপ।"
+  },
+  "sth": {
+   "hi": "श्रीबाँकेबिहारी मन्दिर, बिहारी पुरा, वृन्दावन (प्राकट्य-स्थल: निधिवन)",
+   "bn": "শ্রীবাঁকেবিহারী মন্দির, বিহারী পুরা, বৃন্দাবন (প্রাকট্য-স্থল: নিধিবন)"
+  },
+  "q": "Banke Bihari Temple Vrindavan",
+  "src": "बिहारीजी.org (मन्दिर), Wikipedia (Banke Bihari Temple), Gaudiya Treasures of Bengal"
+ },
+ {
+  "s": "radha-snehi-bihari",
+  "k": "hd",
+  "st": "vrn",
+  "n": {
+   "hi": "श्रीराधा स्नेही बिहारी जी",
+   "bn": "শ্রীরাধা স্নেহী বিহারী জী"
+  },
+  "ac": {
+   "hi": "स्वामी हरिदास परम्परा",
+   "bn": "স্বামী হরিদাস পরম্পরা"
+  },
+  "q": "Snehi Bihari Ji Vrindavan"
+ },
+ {
+  "s": "gorelal",
+  "k": "hd",
+  "st": "vrn",
+  "n": {
+   "hi": "श्रीगोरेलाल जी",
+   "bn": "শ্রীগোরেলাল জী"
+  },
+  "ac": {
+   "hi": "श्री ललित किशोरी जी / हरिदासी परम्परा",
+   "bn": "শ্রী ললিত কিশোরী জী / হরিদাসী পরম্পরা"
+  },
+  "q": "Gorelal Ji Vrindavan"
+ },
+ {
+  "s": "radha-madhav",
+  "k": "nb",
+  "st": "moved",
+  "n": {
+   "hi": "श्रीराधा माधव जी",
+   "bn": "শ্রীরাধা মাধব জী"
+  },
+  "to": {
+   "hi": "जयपुर",
+   "bn": "জয়পুর"
+  },
+  "ac": {
+   "hi": "श्रील जयदेव गोस्वामी (निम्बार्क परम्परा)",
+   "bn": "শ্রীল জয়দেব গোস্বামী (নিম্বার্ক পরম্পরা)"
+  },
+  "q": "Radha Madhav Ji Temple Jaipur"
+ },
+ {
+  "s": "radha-sarveshwar",
+  "k": "nb",
+  "st": "moved",
+  "n": {
+   "hi": "श्रीराधा सर्वेश्वर जी",
+   "bn": "শ্রীরাধা সর্বেশ্বর জী"
+  },
+  "to": {
+   "hi": "सलेमाबाद (अजमेर)",
+   "bn": "সালেমাবাদ (আজমের)"
+  },
+  "ac": {
+   "hi": "श्री निम्बार्काचार्य जी की परम्परा",
+   "bn": "শ্রী নিম্বার্কাচার্যজির পরম্পরা"
+  },
+  "q": "Nimbarka Peeth Salemabad"
+ },
+ {
+  "s": "radha-raman",
+  "k": "gd",
+  "st": "vrn",
+  "n": {
+   "hi": "श्रीराधारमण जी",
+   "bn": "শ্রীরাধারমণ জী"
+  },
+  "ac": {
+   "hi": "श्रीगोपाल भट्ट गोस्वामी (षड्गोस्वामी) — गौड़ीय सम्प्रदाय",
+   "bn": "শ্রীগোপাল ভট্ট গোস্বামী (ষড়্গোস্বামী) — গৌড়ীয় সম্প্রদায়"
+  },
+  "vd": {
+   "hi": "गोपाल भट्ट जी के वंशज सेवायत ही सेवा और भोग-रसोई करते हैं। रसोई की अग्नि प्राचीन अग्नि से चलती है — मन्दिर में माचिस का प्रयोग नहीं होता; पवित्रता के कठोर नियम हैं।",
+   "bn": "গোপাল ভট্টজির বংশধর সেবায়েতরাই সেবা ও ভোগ-রান্না করেন। রান্নাঘরের আগুন প্রাচীন আগুন থেকেই চলে — মন্দিরে দেশলাই ব্যবহার হয় না; পবিত্রতার কঠোর নিয়ম আছে।"
+  },
+  "kt": {
+   "hi": "चैतन्य महाप्रभु के अप्रकट होने के बाद गोपाल भट्ट जी को गहरा विरह हुआ। स्वप्न-आज्ञा से वे नेपाल गए; काली गण्डकी में स्नान करते समय उनके कमण्डल में कई शालग्राम शिलाएँ आ गईं, और बारह शिलाएँ लेकर वे वृन्दावन आए।\n\nएक धनी सेठ ने वस्त्र-आभूषण भेंट किए, पर शालग्राम पर वे सज न सके — इससे गोपाल भट्ट जी को खेद हुआ। वैशाख पूर्णिमा की रात शिलाओं को टोकरी से ढँककर उन्होंने विश्राम किया। प्रातः यमुना-स्नान करके लौटे और टोकरी खोली तो एक शिला से वंशी बजाते श्रीकृष्ण का श्रीविग्रह प्रकट था — यही श्रीराधारमण जी हैं (1542)।",
+   "bn": "চৈতন্য মহাপ্রভুর অপ্রকটের পর গোপাল ভট্টজি গভীর বিরহ অনুভব করেন। স্বপ্নাদেশে তিনি নেপালে যান; কালী গণ্ডকীতে স্নানের সময় তাঁর কমণ্ডলুতে বহু শালগ্রাম শিলা এসে পড়ে, আর বারোটি শিলা নিয়ে তিনি বৃন্দাবনে আসেন।\n\nএক ধনী শেঠ বস্ত্র-অলঙ্কার দিয়েছিলেন, কিন্তু শালগ্রামে তা পরানো গেল না — এতে গোপাল ভট্টজি দুঃখিত হন। বৈশাখী পূর্ণিমার রাতে শিলাগুলি ঝুড়ি দিয়ে ঢেকে তিনি বিশ্রাম নেন। ভোরে যমুনায় স্নান সেরে ফিরে ঝুড়ি খুলে দেখেন একটি শিলা থেকে বংশীবাদনরত শ্রীকৃষ্ণের বিগ্রহ প্রকট — ইনিই শ্রীরাধারমণজি (১৫৪২)।"
+  },
+  "fm": {
+   "hi": "स्वयंप्रकट शालग्राम-स्वरूप; श्रीराधा का पृथक् विग्रह नहीं — उनके स्थान पर मुकुट/गोमती-चक्र पूजित है। रसोई की जो अग्नि 1542 में जली थी, मान्यतानुसार आज तक नहीं बुझी। वृन्दावन के उन मूल गौड़ीय विग्रहों में से हैं जो कभी वृन्दावन से बाहर नहीं गए।",
+   "bn": "স্বয়ম্ভূ শালগ্রাম-স্বরূপ; শ্রীরাধার আলাদা বিগ্রহ নেই — তাঁর স্থানে মুকুট/গোমতী-চক্র পূজিত। ১৫৪২-এ যে আগুন জ্বলেছিল, বিশ্বাস অনুযায়ী তা আজও নেভেনি। বৃন্দাবনের সেই মূল গৌড়ীয় বিগ্রহগুলির অন্যতম যাঁরা কখনও বৃন্দাবন ছেড়ে যাননি।"
+  },
+  "sth": {
+   "hi": "श्रीराधारमण मन्दिर, वृन्दावन (गोपाल भट्ट जी की समाधि और प्राकट्य-स्थल इसी परिसर में)",
+   "bn": "শ্রীরাধারমণ মন্দির, বৃন্দাবন (গোপাল ভট্টজির সমাধি ও প্রাকট্য-স্থল এই চত্বরেই)"
+  },
+  "q": "Radha Raman Temple Vrindavan",
+  "src": "Wikipedia (Radha Raman Temple), Braj Rasik, ISKCON Desire Tree"
+ },
+ {
+  "s": "radha-shyamsundar",
+  "k": "gd",
+  "st": "vrn",
+  "n": {
+   "hi": "श्रीराधाश्यामसुन्दर जी",
+   "bn": "শ্রীরাধাশ্যামসুন্দর জী"
+  },
+  "ac": {
+   "hi": "श्री श्यामानन्द प्रभु (पण्डित) — जीव गोस्वामी के शिष्य",
+   "bn": "শ্রী শ্যামানন্দ প্রভু (পণ্ডিত) — জীব গোস্বামীর শিষ্য"
+  },
+  "vd": {
+   "hi": "श्यामानन्दी परम्परा की सेवा; इस वंश के अनुयायी ललाट पर श्रीराधा के नूपुर के आकार का 'नूपुर-तिलक' धारण करते हैं।",
+   "bn": "শ্যামানন্দী পরম্পরার সেবা; এই বংশের অনুগামীরা কপালে শ্রীরাধার নূপুরের আকারের 'নূপুর-তিলক' ধারণ করেন।"
+  },
+  "kt": {
+   "hi": "जीव गोस्वामी ने श्यामानन्द जी को वृन्दावन के झाड़ूमण्डल (रास-स्थली) की झाड़ू-सेवा दी थी। एक भोर झाड़ू लगाते हुए उन्हें एक स्वर्ण-नूपुर मिला। उन्होंने उसे अपने वस्त्र में सँभालकर रखा और कहा कि जिसका है, वही स्वयं आकर ले।\n\nतब ब्रज-बालाओं के रूप में श्रीराधा जी अपनी सखियों (ललिता-विशाखा) के साथ आईं; श्यामानन्द जी ने प्रेम से काँपते हाथों से नूपुर उनके चरण में पहनाया। इसी कृपा से उनके ललाट पर नूपुर का चिह्न अंकित हुआ — यही 'नूपुर-तिलक' है।\n\nपरम्परा में इसी कृपा से श्रीश्यामसुन्दर जी का विग्रह प्राप्त हुआ, जिसे श्रीराधा के हृदय से प्रकट माना जाता है। मन्दिर के बड़े श्रीविग्रह बाद में बलदेव विद्याभूषण जी ने बनवाकर प्रतिष्ठित किए।",
+   "bn": "জীব গোস্বামী শ্যামানন্দজিকে বৃন্দাবনের ঝাড়ুমণ্ডল (রাসস্থলী) ঝাড়ু দেওয়ার সেবা দিয়েছিলেন। এক ভোরে ঝাড়ু দিতে গিয়ে তিনি একটি সোনার নূপুর পান। সেটি কাপড়ে যত্নে বেঁধে রাখলেন এবং বললেন, যার নূপুর সে নিজে এসে নিক।\n\nতখন ব্রজবালিকার বেশে শ্রীরাধারানি সখীদের (ললিতা-বিশাখা) সঙ্গে এলেন; শ্যামানন্দজি প্রেমে কাঁপা হাতে নূপুর তাঁর চরণে পরিয়ে দিলেন। এই কৃপাতেই তাঁর কপালে নূপুরের চিহ্ন অঙ্কিত হয় — এটিই 'নূপুর-তিলক'।\n\nঐতিহ্যে এই কৃপাতেই শ্রীশ্যামসুন্দরজির বিগ্রহ লাভ হয়, যাঁকে শ্রীরাধার হৃদয় থেকে প্রকট বলে মানা হয়। মন্দিরের বড় শ্রীবিগ্রহ পরে বলদেব বিদ্যাভূষণ নির্মাণ করিয়ে প্রতিষ্ঠা করেন।"
+  },
+  "fm": {
+   "hi": "परम्परा में एकमात्र विग्रह जो श्रीराधा के हृदय से प्रकट माना जाता है; वृन्दावन के सप्त देवालयों में से एक। श्यामानन्दी नूपुर-तिलक के लिए प्रसिद्ध।",
+   "bn": "ঐতিহ্যে একমাত্র বিগ্রহ যাঁকে শ্রীরাধার হৃদয় থেকে প্রকট বলে মানা হয়; বৃন্দাবনের সপ্ত দেবালয়ের অন্যতম। শ্যামানন্দী নূপুর-তিলকের জন্য প্রসিদ্ধ।"
+  },
+  "sth": {
+   "hi": "श्रीराधाश्यामसुन्दर मन्दिर, सेवाकुंज / लोई बाज़ार क्षेत्र, वृन्दावन",
+   "bn": "শ্রীরাধাশ্যামসুন্দর মন্দির, সেবাকুঞ্জ / লোই বাজার এলাকা, বৃন্দাবন"
+  },
+  "q": "Radha Shyamsundar Temple Vrindavan",
+  "src": "Braj Rasik (Jhadu Mandal), ISKCON Desire Tree, Shubh Panchang"
+ },
+ {
+  "s": "radha-gokulananda",
+  "k": "gd",
+  "st": "vrn",
+  "n": {
+   "hi": "श्रीराधा गोकुलानन्द जी",
+   "bn": "শ্রীরাধা গোকুলানন্দ জী"
+  },
+  "ac": {
+   "hi": "श्रील लोकनाथ गोस्वामी एवं विश्वनाथ चक्रवर्ती ठाकुर",
+   "bn": "শ্রীল লোকনাথ গোস্বামী ও বিশ্বনাথ চক্রবর্তী ঠাকুর"
+  },
+  "q": "Gokulananda Temple Vrindavan"
+ },
+ {
+  "s": "radha-govind-dev",
+  "k": "gd",
+  "st": "moved",
+  "n": {
+   "hi": "श्रीराधा गोविन्ददेव जी",
+   "bn": "শ্রীরাধা গোবিন্দদেব জী"
+  },
+  "to": {
+   "hi": "जयपुर",
+   "bn": "জয়পুর"
+  },
+  "pr": true,
+  "ac": {
+   "hi": "श्रील रूप गोस्वामी",
+   "bn": "শ্রীল রূপ গোস্বামী"
+  },
+  "q": "Govind Dev Ji Temple Vrindavan"
+ },
+ {
+  "s": "radha-madan-mohan",
+  "k": "gd",
+  "st": "moved",
+  "n": {
+   "hi": "श्रीराधा मदनमोहन जी",
+   "bn": "শ্রীরাধা মদনমোহন জী"
+  },
+  "to": {
+   "hi": "करौली",
+   "bn": "করৌলি"
+  },
+  "pr": true,
+  "ac": {
+   "hi": "श्रील सनातन गोस्वामी",
+   "bn": "শ্রীল সনাতন গোস্বামী"
+  },
+  "q": "Madan Mohan Temple Vrindavan"
+ },
+ {
+  "s": "radha-gopinath",
+  "k": "gd",
+  "st": "moved",
+  "n": {
+   "hi": "श्रीराधा गोपीनाथ जी",
+   "bn": "শ্রীরাধা গোপীনাথ জী"
+  },
+  "to": {
+   "hi": "जयपुर",
+   "bn": "জয়পুর"
+  },
+  "pr": true,
+  "ac": {
+   "hi": "मधु पण्डित गोस्वामी",
+   "bn": "মধু পণ্ডিত গোস্বামী"
+  },
+  "q": "Gopinath Temple Vrindavan"
+ },
+ {
+  "s": "radha-damodar",
+  "k": "gd",
+  "st": "moved",
+  "n": {
+   "hi": "श्रीराधा दामोदर जी",
+   "bn": "শ্রীরাধা দামোদর জী"
+  },
+  "to": {
+   "hi": "जयपुर (मूल)",
+   "bn": "জয়পুর (মূল)"
+  },
+  "pr": true,
+  "ac": {
+   "hi": "श्रील जीव गोस्वामी",
+   "bn": "শ্রীল জীব গোস্বামী"
+  },
+  "q": "Radha Damodar Temple Vrindavan"
+ },
+ {
+  "s": "radha-vinoda",
+  "k": "gd",
+  "st": "moved",
+  "n": {
+   "hi": "श्रीराधा विनोद जी",
+   "bn": "শ্রীরাধা বিনোদ জী"
+  },
+  "to": {
+   "hi": "जयपुर",
+   "bn": "জয়পুর"
+  },
+  "ac": {
+   "hi": "श्रील लोकनाथ गोस्वामी",
+   "bn": "শ্রীল লোকনাথ গোস্বামী"
+  },
+  "q": "Radha Vinod Ji Temple Jaipur"
+ },
+ {
+  "s": "radha-vrindavan-chandra",
+  "k": "gd",
+  "st": "moved",
+  "n": {
+   "hi": "श्रीराधा वृन्दावनचन्द्र जी",
+   "bn": "শ্রীরাধা বৃন্দাবনচন্দ্র জী"
+  },
+  "to": {
+   "hi": "जयपुर",
+   "bn": "জয়পুর"
+  },
+  "q": "Vrindavan Chandra Ji Temple Jaipur"
+ },
+ {
+  "s": "sakshi-gopal",
+  "k": "gd",
+  "st": "moved",
+  "n": {
+   "hi": "श्रीसाक्षी गोपाल जी",
+   "bn": "শ্রীসাক্ষী গোপাল জী"
+  },
+  "to": {
+   "hi": "साक्षीगोपाल (पुरी), ओडिशा",
+   "bn": "সাক্ষীগোপাল (পুরী), ওডিশা"
+  },
+  "q": "Sakhigopal Temple Odisha"
+ },
+ {
+  "s": "shrinathji",
+  "k": "pm",
+  "st": "moved",
+  "n": {
+   "hi": "श्रीनाथ जी",
+   "bn": "শ্রীনাথজী"
+  },
+  "to": {
+   "hi": "नाथद्वारा",
+   "bn": "নাথদ্বারা"
+  },
+  "ac": {
+   "hi": "श्रीवल्लभाचार्य जी",
+   "bn": "শ্রীবল্লভাচার্য জী"
+  },
+  "q": "Shrinathji Temple Nathdwara"
+ },
+ {
+  "s": "dwarkadheesh",
+  "k": "pm",
+  "st": "moved",
+  "n": {
+   "hi": "श्रीद्वारकाधीश जी",
+   "bn": "শ্রীদ্বারকাধীশ জী"
+  },
+  "to": {
+   "hi": "काँकरोली",
+   "bn": "কাঁকরোলি"
+  },
+  "q": "Dwarkadhish Temple Kankroli"
+ },
+ {
+  "s": "gokulnath-ji",
+  "k": "pm",
+  "st": "moved",
+  "n": {
+   "hi": "श्रीगोकुलनाथ जी",
+   "bn": "শ্রীগোকুলনাথ জী"
+  },
+  "to": {
+   "hi": "गोकुल",
+   "bn": "গোকুল"
+  },
+  "ac": {
+   "hi": "गुसाईं श्रीविट्ठलनाथ जी की परम्परा",
+   "bn": "গুসাঁই শ্রীবিট্ঠলনাথজির পরম্পরা"
+  },
+  "q": "Gokulnath Ji Temple Gokul"
+ },
+ {
+  "s": "navnit-priya",
+  "k": "pm",
+  "st": "moved",
+  "n": {
+   "hi": "श्रीनवनीत प्रिय जी",
+   "bn": "শ্রীনবনীত প্রিয় জী"
+  },
+  "to": {
+   "hi": "नाथद्वारा",
+   "bn": "নাথদ্বারা"
+  },
+  "ac": {
+   "hi": "श्रीवल्लभाचार्य जी",
+   "bn": "শ্রীবল্লভাচার্য জী"
+  },
+  "q": "Navneet Priya Nathdwara"
+ },
+ {
+  "s": "ranganath-ji",
+  "k": "sr",
+  "st": "vrn",
+  "n": {
+   "hi": "श्रीरंगनाथ जी (श्रीरंगजी)",
+   "bn": "শ্রীরঙ্গনাথ জী (শ্রীরঙ্গজী)"
+  },
+  "ac": {
+   "hi": "स्वामी श्रीरंगदेशिकाचार्य जी (श्रीवैष्णव) — सेठ गोविन्ददास व सेठ राधाकृष्ण के सहयोग से",
+   "bn": "স্বামী শ্রীরঙ্গদেশিকাচার্য জী (শ্রীবৈষ্ণব) — শেঠ গোবিন্দদাস ও শেঠ রাধাকৃষ্ণের সহযোগিতায়"
+  },
+  "vd": {
+   "hi": "श्रीवैष्णव (रामानुज) पद्धति — दक्षिण भारतीय पुजारी-परम्परा; दिव्य आराधन, ब्रह्मोत्सव और वैकुण्ठ उत्सव।",
+   "bn": "শ্রীবৈষ্ণব (রামানুজ) পদ্ধতি — দক্ষিণ ভারতীয় পূজারী-পরম্পরা; দিব্য আরাধন, ব্রহ্মোৎসব ও বৈকুণ্ঠ উৎসব।"
+  },
+  "kt": {
+   "hi": "श्रीगोदा (आण्डाल) ने तीन इच्छाएँ की थीं — पहली, वृन्दावन में श्रीकृष्ण के चरणों में जीवन बिताना। परम्परा में इसे रंगदेशिक स्वामी जी ने मन्दिर बनवाकर पूर्ण किया।\n\nमन्दिर का निर्माण 1845 में आरम्भ हुआ और 1851 में पूर्ण हुआ। मुख्य विग्रह श्रीगोदा-रंगमन्नार (शेषशायी श्रीरंगनाथ) हैं; दाहिने आण्डाल और बाएँ गरुड़ विराजते हैं।",
+   "bn": "শ্রীগোদা (আন্দাল)-র তিনটি ইচ্ছা ছিল — প্রথমটি, বৃন্দাবনে শ্রীকৃষ্ণের চরণে জীবন কাটানো। ঐতিহ্যে রঙ্গদেশিক স্বামীজি মন্দির নির্মাণ করিয়ে তা পূর্ণ করেন।\n\nমন্দিরের নির্মাণ ১৮৪৫-এ শুরু হয়ে ১৮৫১-এ সম্পন্ন হয়। মূল বিগ্রহ শ্রীগোদা-রঙ্গমন্নার (শেষশায়ী শ্রীরঙ্গনাথ); ডানে আন্দাল ও বামে গরুড় বিরাজ করেন।"
+  },
+  "fm": {
+   "hi": "वृन्दावन के सबसे बड़े मन्दिरों में से एक; द्रविड़ शैली का गोपुरम और सोने का ध्वज-स्तम्भ; 10 दिवसीय ब्रह्मोत्सव; वर्ष में केवल वैकुण्ठ एकादशी को वैकुण्ठ द्वार खुलता है।",
+   "bn": "বৃন্দাবনের সবচেয়ে বড় মন্দিরগুলির অন্যতম; দ্রাবিড় শৈলীর গোপুরম ও সোনার ধ্বজ-স্তম্ভ; ১০ দিনের ব্রহ্মোৎসব; বছরে কেবল বৈকুণ্ঠ একাদশীতে বৈকুণ্ঠ দ্বার খোলে।"
+  },
+  "sth": {
+   "hi": "श्रीरंगजी मन्दिर, गोदा विहार, वृन्दावन",
+   "bn": "শ্রীরঙ্গজী মন্দির, গোদা বিহার, বৃন্দাবন"
+  },
+  "q": "Rangji Mandir Vrindavan",
+  "src": "Braj Rasik, Drik Panchang, Shubh Panchang"
+ },
+ {
+  "s": "lakshmi-narayan",
+  "k": "sr",
+  "st": "vrn",
+  "n": {
+   "hi": "श्रीलक्ष्मी नारायण जी",
+   "bn": "শ্রীলক্ষ্মী নারায়ণ জী"
+  },
+  "q": "Lakshmi Narayan Temple Vrindavan"
+ }
+];
+
+
+function ddHi() { return App.S.stotramLang === 'hi'; }
+function ddT(o) { return o ? (ddHi() ? (o.hi || o.bn || '') : (o.bn || o.hi || '')) : ''; }
+function ddL(hi, bn) { return ddHi() ? hi : bn; }
+function ddPath(slug, file) { return './deities/' + slug + '/' + encodeURIComponent(file).replace(/%2F/g, '/'); }
+
+// ── Discovery (what photos / audio does this deity folder have?) ──
+const DD_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'JPG', 'JPEG', 'PNG', 'WEBP'];
+const DD_MAX_PHOTOS = 40;
+const DD_INFO_KEY = 'dd_info_v1';
+function ddInfoAll() {
+  if (!window._ddInfo) {
+    try { window._ddInfo = JSON.parse(localStorage.getItem(DD_INFO_KEY) || '{}') || {}; } catch (_e) { window._ddInfo = {}; }
+  }
+  return window._ddInfo;
+}
+function ddInfoSave() { try { localStorage.setItem(DD_INFO_KEY, JSON.stringify(window._ddInfo || {})); } catch (_e) {} }
+function ddMan(slug) { const i = ddInfoAll()[slug]; return { photos: (i && i.p) || [], audio: (i && i.a) || null }; }
+
+// true = file exists, false = not there, null = could not tell (offline / network error)
+async function ddExists(url, kind) {
+  const typeOk = (r) => {
+    const ct = (r.headers.get('content-type') || '').toLowerCase();
+    return kind === 'audio' ? (ct.indexOf('audio') === 0 || ct.indexOf('octet-stream') >= 0) : ct.indexOf('image') === 0;
+  };
+  try {
+    const r = await fetch(url, { method: 'HEAD', cache: 'no-cache' });
+    if (r.status === 404) return false;
+    if (r.ok) return typeOk(r);
+  } catch (_e) { return null; }
+  try {   // host refused HEAD → GET, but drop the body as soon as the headers arrive
+    const ac = new AbortController();
+    const r = await fetch(url, { cache: 'no-cache', signal: ac.signal });
+    const ok = r.ok && typeOk(r);
+    ac.abort();
+    return ok;
+  } catch (_e) { return null; }
+}
+
+async function ddDiscover(slug, full) {
+  const all = ddInfoAll();
+  const prev = all[slug] || { p: [], a: null };
+  let photos = null, netFail = false;
+
+  // 1) optional list.txt — any file names, one per line
+  try {
+    const r = await fetch(ddPath(slug, 'list.txt'), { cache: 'no-cache' });
+    if (r.ok && (r.headers.get('content-type') || '').toLowerCase().indexOf('text/html') < 0) {
+      const names = (await r.text()).split(/\r?\n/).map((x) => x.trim())
+        .filter((x) => x && x[0] !== '#' && !/[\\/]/.test(x)).slice(0, DD_MAX_PHOTOS);
+      if (names.length) photos = names;
+    }
+  } catch (_e) { netFail = true; }
+
+  // 2) otherwise 1.jpg, 2.jpg, 3.jpg ... until the first number that is missing
+  if (!photos && !netFail) {
+    photos = [];
+    const m0 = prev.p[0] ? /\.([A-Za-z0-9]+)$/.exec(prev.p[0]) : null;
+    let pref = m0 ? m0[1] : null;
+    for (let n = 1; n <= DD_MAX_PHOTOS; n += 1) {
+      const order = pref ? [pref].concat(DD_EXTS.filter((e) => e !== pref)) : DD_EXTS.slice();
+      let hit = null, unknown = false;
+      const first = await ddExists(ddPath(slug, n + '.' + order[0]), 'image');
+      if (first === null) unknown = true;
+      else if (first) hit = order[0];
+      else {
+        const rest = await Promise.all(order.slice(1).map((e) => ddExists(ddPath(slug, n + '.' + e), 'image')));
+        const i = rest.indexOf(true);
+        if (i >= 0) hit = order[i + 1];
+        else if (rest.indexOf(null) >= 0) unknown = true;
+      }
+      if (unknown) { netFail = true; break; }
+      if (!hit) break;
+      photos.push(n + '.' + hit);
+      pref = hit;
+    }
+  }
+  if (netFail) return { changed: false, photos: prev.p, audio: prev.a };   // offline: keep what we knew
+
+  // 3) audio.mp3 (only checked when a deity page is opened)
+  let audio = prev.a || null;
+  if (full) {
+    const ax = await ddExists(ddPath(slug, 'audio.mp3'), 'audio');
+    if (ax !== null) audio = ax ? 'audio.mp3' : null;
+  }
+  const changed = JSON.stringify(prev.p) !== JSON.stringify(photos) || (prev.a || null) !== audio;
+  all[slug] = { p: photos, a: audio };
+  if (changed) ddInfoSave();
+  return { changed: changed, photos: photos, audio: audio };
+}
+
+// small work-queue so the list never fires dozens of probes at once
+window._ddQ = window._ddQ || [];
+window._ddRun = window._ddRun || 0;
+window._ddSeen = window._ddSeen || {};
+function ddQueue(slug, full, cb) { window._ddQ.push([slug, full, cb]); ddPump(); }
+function ddPump() {
+  while (window._ddRun < 2 && window._ddQ.length) {
+    const job = window._ddQ.shift();
+    window._ddRun += 1;
+    ddDiscover(job[0], job[1]).then((r) => { try { job[2](r); } catch (_e) {} }).catch(() => {})
+      .then(() => { window._ddRun -= 1; ddPump(); });
+  }
+}
+
+// ── List thumbnails: made once on this phone from the first photo, then kept ──
+function ddThumbGet(slug, name) {
+  try {
+    const o = JSON.parse(localStorage.getItem('dd_th_v1_' + slug) || 'null');
+    return o && o.n === name ? o.d : '';
+  } catch (_e) { return ''; }
+}
+function ddThumbMake(slug, name, img) {
+  try {
+    if (ddThumbGet(slug, name) || !img.naturalWidth) return;
+    const w = 320, h = Math.round(w * img.naturalHeight / img.naturalWidth);
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    cv.getContext('2d').drawImage(img, 0, 0, w, h);
+    localStorage.setItem('dd_th_v1_' + slug, JSON.stringify({ n: name, d: cv.toDataURL('image/jpeg', 0.72) }));
+  } catch (_e) {}
+}
+
+function ddBadge(d) {
+  if (d.st === 'vrn') return { cls: 'vrn', text: ddL('वृन्दावन में विराजमान', 'বৃন্দাবনে বিরাজমান') };
+  const to = ddT(d.to);
+  if (d.pr) return { cls: 'moved', text: ddL('स्वरूप ' + to + ' में · प्रतिभू वृन्दावन में', 'স্বরূপ ' + to + '-এ · প্রতিভূ বৃন্দাবনে') };
+  return { cls: 'moved', text: ddL('ब्रज से पधारे → ' + to, 'ব্রজ থেকে গিয়েছেন → ' + to) };
+}
+
+function ddOpenExternal(url) {
+  try {
+    const B = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
+    if (B && B.open) { B.open({ url: url }); return; }
+  } catch (_e) {}
+  window.open(url, '_blank');
+}
+
+// ── Audio: audio.mp3 from the deity folder (plays on opening; ▶/⏸ button as backup) ──
+let _dda = null;
+function ddAudioStop() {
+  const a = _dda;
+  _dda = null;
+  if (!a) return;
+  try { clearInterval(a.watch); } catch (_e) {}
+  try { a.el.pause(); a.el.removeAttribute('src'); a.el.load(); } catch (_e) {}
+}
+function ddAudioAttach(bar, slug, url) {
+  const ui = { bar: bar, btn: bar.querySelector('.dd-a-play') };
+  if (_dda && _dda.slug === slug && _dda.url === url) {          // page re-drawn: keep playing, just re-bind
+    _dda.ui = ui; ui.btn.onclick = _dda.toggle; _dda.paint(); return;
+  }
+  ddAudioStop();
+  const el = new Audio(url);
+  el.loop = true;
+  el.preload = 'auto';
+  const a = { slug: slug, url: url, el: el, ui: ui, watch: null };
+  a.paint = () => { a.ui.btn.textContent = el.paused ? '▶' : '⏸'; };
+  a.toggle = () => { if (el.paused) el.play().catch(() => {}); else el.pause(); };
+  el.addEventListener('play', a.paint);
+  el.addEventListener('pause', a.paint);
+  a.watch = setInterval(() => {                                   // stop when the page is left
+    if (!a.ui.bar.isConnected || a.ui.bar.offsetParent === null) ddAudioStop();
+  }, 1000);
+  _dda = a;
+  ui.btn.onclick = a.toggle;
+  a.paint();
+  el.play().catch(() => a.paint());                               // phone may block autoplay → user taps ▶
+}
+
+// ── Full-screen HD viewer (pinch / double-tap to zoom, drag to pan) ──
+function ddOpenHD(src) {
+  const ov = document.createElement('div');
+  ov.className = 'dd-hd';
+  ov.innerHTML = '<img alt="" draggable="false"><div class="dd-hd-load">…</div><button class="dd-hd-x" aria-label="close">✕</button>';
+  const im = ov.querySelector('img');
+  const ld = ov.querySelector('.dd-hd-load');
+  im.addEventListener('load', () => { ld.style.display = 'none'; });
+  im.addEventListener('error', () => { ld.textContent = ddL('फ़ोटो नहीं खुल पाई', 'ছবি খোলা যায়নি'); });
+  im.src = src;
+  let sc = 1, tx = 0, ty = 0, lastD = 0, sx = 0, sy = 0, stx = 0, sty = 0, lastTap = 0;
+  const apply = () => { im.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + sc + ')'; };
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  ov.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) { lastD = dist(e.touches); }
+    else if (e.touches.length === 1) {
+      sx = e.touches[0].clientX; sy = e.touches[0].clientY; stx = tx; sty = ty;
+      const now = Date.now();
+      if (now - lastTap < 300) { if (sc > 1) { sc = 1; tx = ty = 0; } else { sc = 2.5; } apply(); }
+      lastTap = now;
+    }
+  }, { passive: true });
+  ov.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2) {
+      const d = dist(e.touches);
+      if (lastD) sc = Math.min(6, Math.max(1, sc * d / lastD));
+      lastD = d;
+      if (sc === 1) { tx = ty = 0; }
+      apply(); e.preventDefault();
+    } else if (e.touches.length === 1 && sc > 1) {
+      tx = stx + (e.touches[0].clientX - sx); ty = sty + (e.touches[0].clientY - sy);
+      apply(); e.preventDefault();
+    }
+  }, { passive: false });
+  ov.addEventListener('touchend', (e) => { if (e.touches.length < 2) lastD = 0; if (sc === 1) { tx = ty = 0; apply(); } }, { passive: true });
+  ov.addEventListener('wheel', (e) => {
+    sc = Math.min(6, Math.max(1, sc * (e.deltaY < 0 ? 1.15 : 0.87)));
+    if (sc === 1) { tx = ty = 0; }
+    apply(); e.preventDefault();
+  }, { passive: false });
+  ov.querySelector('.dd-hd-x').addEventListener('click', () => ov.remove());
+  document.body.appendChild(ov);
+}
+
+// ── Screen: list of deities, grouped by sampradaya ──
+function ddCardHtml(d) {
+  const ph = ddMan(d.s).photos;
+  const th = ph.length ? ddThumbGet(d.s, ph[0]) : '';
+  const b = ddBadge(d);
+  return '<div class="dd-thumb">' +
+      (th ? '<img alt="" draggable="false" src="' + th + '">' : '<span class="dd-ph">🪷</span>') +
+      (ph.length ? '<span class="dd-count">📷 ' + ph.length + '</span>' : '') +
+    '</div>' +
+    '<div class="dd-cname">' + escHtml(ddT(d.n)) + '</div>' +
+    '<div class="dd-cbadge ' + b.cls + '">' + escHtml(b.text) + '</div>';
+}
+
+function renderDeityDarshan(list) {
+  if (window._ddSel) { renderDeityPage(list, window._ddSel); return; }
+  ddAudioStop();
+
+  const title = ddL('दिव्य दर्शन — वृन्दावन के श्रीविग्रह', 'দিব্য দর্শন — বৃন্দাবনের শ্রীবিগ্রহ');
+  const back = document.createElement('div');
+  back.className = 'st-back-row';
+  back.innerHTML = '<button class="st-back-btn">← ' + escHtml(ddL('फ़ोल्डर सूची', 'ফোল্ডার তালিকা')) + '</button>' +
+    '<span class="st-back-title">' + escHtml(title) + '</span>';
+  back.querySelector('.st-back-btn').addEventListener('click', () => { window._stActiveFolder = null; renderSt(); });
+  list.appendChild(back);
+
+  const filt = window._ddFilter || 'vrn';
+  const cnt = { vrn: 0, moved: 0, all: DD_DEITIES.length };
+  DD_DEITIES.forEach((d) => { cnt[d.st] += 1; });
+  const chips = document.createElement('div');
+  chips.className = 'dd-chips';
+  [['vrn', ddL('वृन्दावन में', 'বৃন্দাবনে')], ['moved', ddL('ब्रज से पधारे', 'ব্রজ থেকে গিয়েছেন')], ['all', ddL('सभी', 'সব')]].forEach((ch) => {
+    const b = document.createElement('button');
+    b.className = 'dd-chip' + (filt === ch[0] ? ' on' : '');
+    b.textContent = ch[1] + ' (' + cnt[ch[0]] + ')';
+    b.addEventListener('click', () => { window._ddFilter = ch[0]; renderSt(); });
+    chips.appendChild(b);
+  });
+  list.appendChild(chips);
+
+  // Cards look for their photos only when they scroll into view.
+  const probe = (card, d) => {
+    if (window._ddSeen[d.s]) return;
+    window._ddSeen[d.s] = 1;
+    ddQueue(d.s, false, (r) => { if (r && r.changed && card.isConnected) card.innerHTML = ddCardHtml(d); });
+  };
+  const io = ('IntersectionObserver' in window)
+    ? new IntersectionObserver((entries) => {
+        entries.forEach((en) => { if (en.isIntersecting) { io.unobserve(en.target); probe(en.target, en.target._dd); } });
+      }, { rootMargin: '250px' })
+    : null;
+
+  let shown = 0;
+  DD_SAMP.forEach((sp) => {
+    const items = DD_DEITIES.filter((d) => d.k === sp.k && (filt === 'all' || d.st === filt));
+    if (!items.length) return;
+    shown += items.length;
+    const h = document.createElement('div');
+    h.className = 'dd-samp';
+    h.textContent = ddT(sp.t);
+    list.appendChild(h);
+    const grid = document.createElement('div');
+    grid.className = 'dd-grid';
+    items.forEach((d) => {
+      const card = document.createElement('div');
+      card.className = 'dd-card';
+      card._dd = d;
+      card.innerHTML = ddCardHtml(d);
+      card.addEventListener('click', () => { window._ddSel = d.s; window._ddIdx = 0; renderSt(); try { window.scrollTo(0, 0); } catch (_e) {} });
+      grid.appendChild(card);
+      if (io) io.observe(card); else probe(card, d);
+    });
+    list.appendChild(grid);
+  });
+  if (!shown) {
+    const e = document.createElement('div');
+    e.className = 'st-folder-empty';
+    e.textContent = ddL('जल्द ही आ रहा है 🙏', 'শীঘ্রই আসছে 🙏');
+    list.appendChild(e);
+  }
+}
+
+// ── Screen: one deity ──
+function renderDeityPage(list, slug) {
+  const d = DD_DEITIES.find((x) => x.s === slug);
+  if (!d) { window._ddSel = null; renderSt(); return; }
+  const sp = DD_SAMP.find((x) => x.k === d.k);
+
+  const back = document.createElement('div');
+  back.className = 'st-back-row';
+  back.innerHTML = '<button class="st-back-btn">← ' + escHtml(ddL('दिव्य दर्शन', 'দিব্য দর্শন')) + '</button>' +
+    '<span class="st-back-title">' + escHtml(ddT(d.n)) + '</span>';
+  back.querySelector('.st-back-btn').addEventListener('click', () => { ddAudioStop(); window._ddSel = null; renderSt(); });
+  list.appendChild(back);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'dd-page';
+  const man = ddMan(slug);
+  const photos = man.photos;
+  const b = ddBadge(d);
+
+  let html = '<div class="dd-stage">';
+  if (photos.length) {
+    html += '<img class="dd-img" alt="" draggable="false" decoding="async">' +
+      (photos.length > 1 ? '<button class="dd-arrow dd-prev" aria-label="prev">‹</button><button class="dd-arrow dd-next" aria-label="next">›</button>' : '') +
+      '<span class="dd-hdhint">HD ⤢</span>';
+  } else {
+    html += '<div class="dd-noimg"><span class="dd-ph big">🪷</span><div>' + escHtml(ddL('श्रीविग्रह का चित्र जल्द जुड़ेगा', 'শ্রীবিগ্রহের ছবি শীঘ্রই যুক্ত হবে')) + '</div></div>';
+  }
+  html += '</div><div class="dd-dots"></div>' +
+    '<div class="dd-name">' + escHtml(ddT(d.n)) + '</div>' +
+    '<div class="dd-cbadge ' + b.cls + ' dd-pbadge">' + escHtml(b.text) + '</div>' +
+    '<div class="dd-audio-slot"></div>';
+
+  const block = (label, text, cls) => (text
+    ? '<div class="dd-block ' + (cls || '') + '"><div class="dd-label">' + escHtml(label) + '</div><div class="dd-text">' + escHtml(text).replace(/\n/g, '<br>') + '</div></div>'
+    : '');
+  html += block(ddL('प्रकटकर्ता आचार्य', 'প্রকটকর্তা আচার্য'), ddT(d.ac));
+  html += (sp ? block(ddL('सम्प्रदाय एवं सेवा-विधि', 'সম্প্রদায় ও সেবা-বিধি'), ddT(sp.t) + (d.vd ? '\n' + ddT(d.vd) : '')) : '');
+  html += d.kt
+    ? '<details class="dd-block dd-kt" open><summary class="dd-label">' + escHtml(ddL('आविर्भाव कथा', 'আবির্ভাব কথা')) + '</summary><div class="dd-text">' +
+      escHtml(ddT(d.kt)).replace(/\n/g, '<br>') + '</div><div class="dd-note">' + escHtml(ddL('परम्परा के अनुसार', 'ঐতিহ্য অনুসারে')) + '</div></details>'
+    : block(ddL('आविर्भाव कथा', 'আবির্ভাব কথা'), ddL('कथा शीघ्र जोड़ी जाएगी 🙏', 'কথা শীঘ্রই যোগ করা হবে 🙏'), 'dd-soon');
+  html += block(ddL('विशेष — क्यों प्रसिद्ध', 'বিশেষ — কেন প্রসিদ্ধ'), ddT(d.fm));
+  if (d.sth || d.q) {
+    html += '<div class="dd-block"><div class="dd-label">' + escHtml(ddL('स्थान', 'স্থান')) + '</div>' +
+      (d.sth ? '<div class="dd-text">' + escHtml(ddT(d.sth)) + '</div>' : '') +
+      '<button class="dd-maps">📍 ' + escHtml(ddL('मानचित्र में खोलें', 'ম্যাপে খুলুন')) + '</button>' +
+      '<div class="dd-note">' + escHtml(ddL('दर्शन-समय बदलते रहते हैं — जाने से पहले मन्दिर से पूछ लें।', 'দর্শনের সময় বদলায় — যাওয়ার আগে মন্দিরে জেনে নিন।')) + '</div></div>';
+  }
+  if (d.src) html += '<div class="dd-src">' + escHtml(ddL('स्रोत: ', 'সূত্র: ') + d.src) + '</div>';
+  wrap.innerHTML = html;
+  list.appendChild(wrap);
+
+  // photos
+  if (photos.length) {
+    const img = wrap.querySelector('.dd-img');
+    const dots = wrap.querySelector('.dd-dots');
+    let idx = (window._ddIdx >= 0 && window._ddIdx < photos.length) ? window._ddIdx : 0;
+    const paint = () => {
+      img.src = ddPath(slug, photos[idx]);
+      dots.innerHTML = photos.length > 1 ? photos.map((_, i) => '<i class="' + (i === idx ? 'on' : '') + '"></i>').join('') : '';
+      window._ddIdx = idx;
+      if (photos.length > 1) { const pre = new Image(); pre.src = ddPath(slug, photos[(idx + 1) % photos.length]); }
+    };
+    const go = (dl) => { idx = (idx + dl + photos.length) % photos.length; paint(); };
+    paint();
+    img.addEventListener('load', () => { if (idx === 0) ddThumbMake(slug, photos[0], img); });
+    const pv = wrap.querySelector('.dd-prev'), nxb = wrap.querySelector('.dd-next');
+    if (pv) pv.addEventListener('click', (e) => { e.stopPropagation(); go(-1); });
+    if (nxb) nxb.addEventListener('click', (e) => { e.stopPropagation(); go(1); });
+    const stage = wrap.querySelector('.dd-stage');
+    let tX = null, tY = null, moved = false;
+    stage.addEventListener('touchstart', (e) => { tX = e.changedTouches[0].clientX; tY = e.changedTouches[0].clientY; moved = false; }, { passive: true });
+    stage.addEventListener('touchend', (e) => {
+      if (tX == null) return;
+      const dx = e.changedTouches[0].clientX - tX, dy = e.changedTouches[0].clientY - tY;
+      tX = null;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.3) { moved = true; go(dx < 0 ? 1 : -1); }
+    }, { passive: true });
+    img.addEventListener('click', () => { if (moved) { moved = false; return; } ddOpenHD(ddPath(slug, photos[idx])); });
+    img.addEventListener('error', () => { img.style.display = 'none'; });
+  }
+
+  // bhajan (only when the folder has audio.mp3)
+  if (man.audio) {
+    const bar = document.createElement('div');
+    bar.className = 'dd-audio';
+    bar.innerHTML = '<button class="dd-a-play">▶</button><span class="dd-a-title">🎵 ' + escHtml(ddL('दिव्य भजन', 'দিব্য ভজন')) + '</span>';
+    wrap.querySelector('.dd-audio-slot').appendChild(bar);
+    ddAudioAttach(bar, slug, ddPath(slug, man.audio));
+  } else { ddAudioStop(); }
+
+  const mp = wrap.querySelector('.dd-maps');
+  if (mp) mp.addEventListener('click', () => ddOpenExternal('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(d.q || ddT(d.n) + ' Vrindavan')));
+
+  // look for new photos / audio in the folder; redraw only if something changed
+  ddQueue(slug, true, (r) => {
+    if (r && r.changed && window._ddSel === slug && list.isConnected) renderSt();
+  });
+}
+
 function renderRashikJan(list) {
   const hi = App.S.stotramLang === 'hi';
   const rvTitle = hi ? 'राधावल्लभ सम्प्रदाय' : 'রাধা বল্লভ সম্প্রদায়';

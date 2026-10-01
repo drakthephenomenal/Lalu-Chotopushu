@@ -1,5 +1,8 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v221
+// Radha Naam Jap — Service Worker  v223
+// v223: Divine Darshan of Vrindavan Deities (S&V). Deity photos (deities/<name>/N.jpg|png|webp)
+// are served stale-while-revalidate from a persistent cache (radha-jap-deities-v1) that is NOT
+// wiped on app updates; audio and list.txt are left to the browser (Range streaming / always fresh).
 // v221: bumped cache to force-invalidate stale app.js/style.css — Rasik Jan
 // carousel now follows the serial (Hari-Trayi → Rasik Jan → Acharyas → ...)
 // with a short note per saint.
@@ -348,7 +351,9 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v221';
+const CACHE = 'radha-jap-v223';
+// Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
+const DEITY_CACHE = 'radha-jap-deities-v1';
 
 // ── FCM background push (web/PWA only — no effect inside the Capacitor
 // APK, which never registers this SW for messaging). Wrapped in try/catch
@@ -577,7 +582,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    const oldKeys = keys.filter((key) => key !== CACHE);
+    const oldKeys = keys.filter((key) => key !== CACHE && key !== DEITY_CACHE);
     await Promise.all(oldKeys.map((key) => caches.delete(key)));
 
     // v212 offline fix: claim currently-open clients immediately instead of
@@ -640,6 +645,25 @@ self.addEventListener('fetch', (event) => {
         const cached = await caches.match('./index.html');
         return cached || new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
       }
+    })());
+    return;
+  }
+
+  // -- Divine Darshan deity files --
+  // Photos: stale-while-revalidate into DEITY_CACHE (big files, so no 2.5s network timeout).
+  // Anything else under /deities/ (audio.mp3, list.txt) goes straight to the network/browser.
+  if (url.origin === self.location.origin && url.pathname.indexOf('/deities/') >= 0) {
+    if (!/\.(jpe?g|png|webp|gif|avif)$/i.test(url.pathname)) return;
+    event.respondWith((async () => {
+      const cache = await caches.open(DEITY_CACHE);
+      const cached = await cache.match(event.request);
+      const net = fetch(event.request).then((res) => {
+        if (res && res.ok && res.status === 200) cache.put(event.request, res.clone()).catch(() => {});
+        return res;
+      }).catch(() => null);
+      if (cached) { event.waitUntil(net); return cached; }
+      const res = await net;
+      return res || new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
     })());
     return;
   }

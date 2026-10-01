@@ -1,20 +1,22 @@
-LEADERBOARD TIME FIX — manual upload
+DIVINE DARSHAN - no npm, no build step
+======================================
+1. Upload app.js, style.css, sw.js (replace the old ones) and the whole  deities  folder.
+   The 24 deity folders are already created inside it.
 
-root/app.js -> your repo root (overwrite existing)
-www/app.js  -> your www/ folder (overwrite existing)
+2. Photos: upload into deities/<deity-name>/ named 1.jpg, 2.jpg, 3.jpg ...
+   (jpg / jpeg / png / webp, small or CAPITAL letters). Numbers must have no gap.
+   Different names? Create list.txt in that folder, one file name per line.
 
-WHAT CHANGED
-pushLeaderboard()'s todayTimerSeconds now calls App.getTotalJapSecondsToday()
-— the same function that drives the on-screen "Today's Jap Time" — instead
-of summing only the already-flushed timerHistory*/timer28History values.
+3. Bhajan: upload audio.mp3 into the deity's folder. It plays when that deity is opened.
 
-Those history buckets only update when a session pauses, a mala completes,
-or the 6-second idle auto-pause fires — not continuously while you're
-actively chanting. Summing them alone meant the leaderboard's time always
-lagged behind whatever you'd chanted since the last flush. Your jap COUNT
-never had this problem (it saves instantly on every tap), which is why the
-count matched everywhere but the time didn't.
+4. The app finds new photos/audio by itself. Open the deity page once and it shows.
+   If the old version still appears: open the app, close it fully, open again (sw.js is v223).
 
-No change needed to "Session" resetting on app open — that's intentional
-(app.js line ~14414, spec A), representing time chanted in the current
-app-open episode specifically, separate from the full-day total.
+Folder names:
+ radha-vallabh  radhika-vallabh  yugal-kishor
+ banke-bihari  radha-snehi-bihari  gorelal
+ radha-madhav  radha-sarveshwar
+ radha-raman  radha-shyamsundar  radha-gokulananda  radha-govind-dev  radha-madan-mohan
+ radha-gopinath  radha-damodar  radha-vinoda  radha-vrindavan-chandra  sakshi-gopal
+ shrinathji  dwarkadheesh  gokulnath-ji  navnit-priya
+ ranganath-ji  lakshmi-narayan

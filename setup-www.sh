@@ -22,6 +22,10 @@ EXCLUDES=(
   # never bundled into the APK/PWA build — see app.js's FAVVID_* comments.
   --exclude='videos'
 
+  # Divine Darshan photos/audio: NOT bundled in the APK. The app reads them live from the
+  # deployed site (see ddPath in app.js), so new photos need no rebuild.
+  --exclude='deities'
+
   # SECRETS: never allow these to ship in the app bundle, no matter what
   --exclude='release.keystore'
   --exclude='*.keystore'
@@ -87,6 +91,7 @@ EXCLUDES=(
 )
 
 rsync -a --delete "${EXCLUDES[@]}" ./ www/
+rm -rf www/deities   # rsync --delete leaves excluded folders from older builds in place
 
 echo "Done. www/ now contains a copy of your web app."
 echo "Next: npx cap sync android"

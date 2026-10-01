@@ -16763,7 +16763,26 @@ const DD_DEITIES = [
 function ddHi() { return App.S.stotramLang === 'hi'; }
 function ddT(o) { return o ? (ddHi() ? (o.hi || o.bn || '') : (o.bn || o.hi || '')) : ''; }
 function ddL(hi, bn) { return ddHi() ? hi : bn; }
-function ddPath(slug, file) { return './deities/' + slug + '/' + encodeURIComponent(file).replace(/%2F/g, '/'); }
+// In the Android app (Capacitor) the deities folder is NOT bundled: photos / list.txt / audio are
+// read live from the deployed site, so new photos need no APK rebuild. On the web they stay relative.
+function ddNative() { try { return typeof _isNativeApp === 'function' && _isNativeApp(); } catch (_e) { return false; } }
+function ddBase() { return ddNative() ? RJAP_PWA_URL.replace(/\/$/, '') + '/deities/' : './deities/'; }
+function ddPath(slug, file) { return ddBase() + slug + '/' + encodeURIComponent(file).replace(/%2F/g, '/'); }
+function ddBust(url) { return ddNative() ? url + '?r=' + Math.floor(Date.now() / 60000) : url; }   // fresh answer at most once a minute
+function ddFetchOpts(o) { if (!ddNative()) return o; const c = Object.assign({}, o); delete c.cache; return c; }
+// Fallback existence check that needs no CORS permission: try to load it as an <img>/<audio>.
+function ddProbeEl(url, kind) {
+  return new Promise((ok) => {
+    if (navigator.onLine === false) { ok(null); return; }
+    const el = kind === 'audio' ? new Audio() : new Image();
+    let t = null;
+    const done = (v) => { clearTimeout(t); el.onload = el.onerror = el.onloadedmetadata = null; ok(v); };
+    el.onerror = () => done(false);
+    if (kind === 'audio') { el.preload = 'metadata'; el.onloadedmetadata = () => done(true); } else { el.onload = () => done(true); }
+    t = setTimeout(() => done(null), 15000);
+    el.src = ddBust(url);
+  });
+}
 
 // ── Discovery (what photos / audio does this deity folder have?) ──
 const DD_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'JPG', 'JPEG', 'PNG', 'WEBP'];
@@ -16785,17 +16804,17 @@ async function ddExists(url, kind) {
     return kind === 'audio' ? (ct.indexOf('audio') === 0 || ct.indexOf('octet-stream') >= 0) : ct.indexOf('image') === 0;
   };
   try {
-    const r = await fetch(url, { method: 'HEAD', cache: 'no-cache' });
+    const r = await fetch(ddBust(url), ddFetchOpts({ method: 'HEAD', cache: 'no-cache' }));
     if (r.status === 404) return false;
     if (r.ok) return typeOk(r);
-  } catch (_e) { return null; }
+  } catch (_e) { return ddNative() ? ddProbeEl(url, kind) : null; }
   try {   // host refused HEAD → GET, but drop the body as soon as the headers arrive
     const ac = new AbortController();
-    const r = await fetch(url, { cache: 'no-cache', signal: ac.signal });
+    const r = await fetch(ddBust(url), ddFetchOpts({ cache: 'no-cache', signal: ac.signal }));
     const ok = r.ok && typeOk(r);
     ac.abort();
     return ok;
-  } catch (_e) { return null; }
+  } catch (_e) { return ddNative() ? ddProbeEl(url, kind) : null; }
 }
 
 async function ddDiscover(slug, full) {
@@ -16805,13 +16824,13 @@ async function ddDiscover(slug, full) {
 
   // 1) optional list.txt — any file names, one per line
   try {
-    const r = await fetch(ddPath(slug, 'list.txt'), { cache: 'no-cache' });
+    const r = await fetch(ddBust(ddPath(slug, 'list.txt')), ddFetchOpts({ cache: 'no-cache' }));
     if (r.ok && (r.headers.get('content-type') || '').toLowerCase().indexOf('text/html') < 0) {
       const names = (await r.text()).split(/\r?\n/).map((x) => x.trim())
         .filter((x) => x && x[0] !== '#' && !/[\\/]/.test(x)).slice(0, DD_MAX_PHOTOS);
       if (names.length) photos = names;
     }
-  } catch (_e) { netFail = true; }
+  } catch (_e) { if (!ddNative() || navigator.onLine === false) netFail = true; }   // app: a failed list.txt while online just means "no list.txt"
 
   // 2) otherwise 1.jpg, 2.jpg, 3.jpg ... until the first number that is missing
   if (!photos && !netFail) {

@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v229
+// Radha Naam Jap — Service Worker  v230
+// v230: Android app reads Divine Darshan photos live from the site (deities/ no longer bundled in the APK).
 // v229: Divine Darshan opens on "All" by default; list preview falls back to the real photo if a thumbnail cannot be saved.
 // v228: Navrangi Lal Ji history (found in well by Hit Harivansh), placed under Deoband.
 // v227: Hindi "samaj-gayan" changed to "pad gayan".
@@ -357,7 +358,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v229';
+const CACHE = 'radha-jap-v230';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 
@@ -651,6 +652,26 @@ self.addEventListener('fetch', (event) => {
         const cached = await caches.match('./index.html');
         return cached || new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
       }
+    })());
+    return;
+  }
+
+  // -- Divine Darshan deity photos read live from the deployed site (Android app) --
+  // Keeps viewed photos for offline use. Falls back to a plain network load if the CORS fetch fails.
+  if (url.origin === 'https://radharadharadha.vercel.app' && url.origin !== self.location.origin &&
+      url.pathname.indexOf('/deities/') >= 0 && !url.search && /\.(jpe?g|png|webp|gif|avif)$/i.test(url.pathname)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(DEITY_CACHE);
+      const cached = await cache.match(url.href);
+      const net = fetch(url.href, { mode: 'cors' }).then((res) => {
+        if (res && res.ok && res.status === 200) cache.put(url.href, res.clone()).catch(() => {});
+        return res;
+      }).catch(() => null);
+      if (cached) { event.waitUntil(net); return cached; }
+      const res = await net;
+      if (res) return res;
+      try { return await fetch(event.request); } catch (_e) {}
+      return new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
     })());
     return;
   }

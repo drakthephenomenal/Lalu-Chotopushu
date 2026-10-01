@@ -2,6 +2,10 @@
   "appId": "app.vercel.radharadharadha.capacitor",
   "appName": "Radha Naam Jap",
   "webDir": "www",
+  "server": {
+    "url": "https://radharadharadha.vercel.app",
+    "cleartext": false
+  },
   "bundledWebRuntime": false,
   "android": {
     "allowMixedContent": false
@@ -13,7 +17,9 @@
     },
     "FirebaseAuthentication": {
       "skipNativeAuth": false,
-      "providers": ["google.com"]
+      "providers": [
+        "google.com"
+      ]
     },
     "BackgroundRunner": {
       "label": "app.vercel.radharadharadha.capacitor.bgsync",

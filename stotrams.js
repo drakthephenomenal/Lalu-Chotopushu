@@ -6,6 +6,7 @@
 
 // ── STOTRAM LIST (lyrics removed to keep file size manageable — same IDs as original) ──
 const STLIST = [
+  {id:'ved4',cat:'rv',vedFolder:true,name:'রাধাবল্লভী / হরিবংশীদের জন্য ৪ বেদ',sub:'শ্রী হিত হরিবংশ মহাপ্রভু রচিত ৪টি সিদ্ধান্ত পদ',nameHi:'राधावल्लभी / हरिवंशियों के लिए ४ वेद',subHi:'श्री हित हरिवंश महाप्रभु रचित ४ सिद्धान्त पद'},
   {id:'asp',cat:'rv',sevaFolder:true,name:'অষ্টযাম সেবা পদ্ধতি',sub:'অষ্টযাম সেবা · ৯টি বিভাগ',nameHi:'अष्टयाम सेवा पद्धति',subHi:'अष्टयाम सेवा · ९ अनुभाग'},
   {id:'hcj',cat:'rv',name:'শ্রী হিত চৌরাশি জি',sub:'শ্রী হিত হরিবংশের রচনা',nameHi:'श्री हित चौरासी जी',subHi:'श्री हित हरिवंश जी की रचना'},
   {id:'rsn',cat:'rv',name:'শ্রী রাধা সুধা নিধি',sub:'শ্রীহিত হরিবংশের রচনা',nameHi:'श्री राधा सुधा निधि',subHi:'श्रीहित हरिवंश जी की रचना'},

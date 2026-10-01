@@ -1289,3 +1289,7 @@
 .rj-next{right:8px;}
 .rj-caption{margin-top:12px;font-family:"Hind Siliguri",serif;font-size:16px;font-weight:700;color:#ffd700;text-align:center;line-height:1.4;max-width:420px;padding:0 8px;}
 .rj-count{margin-top:4px;font:12px/1 Inter,sans-serif;color:rgba(255,215,0,0.5);}
+
+/* 4 Veda reader */
+.ved-reader .ved-lab{margin:10px 0 2px;font-size:12px;letter-spacing:.3px;color:rgba(255,215,0,.55);}
+.ved-reader audio.ved-audio{display:block;width:100%;margin:8px 0 20px;border-radius:12px;}

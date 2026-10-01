@@ -15508,8 +15508,9 @@ function renderSt() {
   // Ashtayam Seva Paddhati (inside the Radha Vallabh folder) is a reading
   // view too — no jap-counter tracker / add-stotram box there either.
   const inSeva = window._stActiveFolder === 'rv' && !!window._stSevaOpen;
-  if (trackerTitle) trackerTitle.style.display = (inVideos || inSeva) ? 'none' : '';
-  if (addForm) addForm.style.display = (inVideos || inSeva) ? 'none' : '';
+  const inVed = window._stActiveFolder === 'rv' && !!window._stVedOpen;
+  if (trackerTitle) trackerTitle.style.display = (inVideos || inSeva || inVed) ? 'none' : '';
+  if (addForm) addForm.style.display = (inVideos || inSeva || inVed) ? 'none' : '';
 
   // Inject premium glow animations once
   if (!document.getElementById('st-card-styles')) {
@@ -15582,7 +15583,7 @@ function renderSt() {
       tile.addEventListener('click', () => {
         window._stActiveFolder = group.key;
         window._stActiveVideoFolder = null;
-        window._stSevaOpen = false;
+        window._stSevaOpen = false; window._stVedOpen = false;
         window._stSevaSection = null;
         window._ddSel = null;
         renderSt();
@@ -15609,6 +15610,11 @@ function renderSt() {
   }
 
   // Ashtayam Seva Paddhati: its 9 section folders / reader (Radha Vallabh).
+  if (activeKey === 'rv' && window._stVedOpen) {
+    renderVed4(list);
+    return;
+  }
+
   if (activeKey === 'rv' && window._stSevaOpen) {
     renderSevaPaddhati(list);
     return;
@@ -15633,7 +15639,7 @@ function renderSt() {
     '<span class="st-back-title">' + escHtml(folderTitle(group)) + '</span>';
   backRow.querySelector('.st-back-btn').addEventListener('click', () => {
     window._stActiveFolder = null;
-    window._stSevaOpen = false;
+    window._stSevaOpen = false; window._stVedOpen = false;
     window._stSevaSection = null;
     renderSt();
   });
@@ -15653,6 +15659,24 @@ function renderSt() {
   group.items.forEach((st) => {
     // Ashtayam Seva Paddhati: a folder-style card (no jap counter) that
     // opens the 9 section folders.
+    if (st.vedFolder) {
+      const tile = document.createElement('div');
+      tile.className = 'st-folder-tile';
+      tile.innerHTML =
+        '<span class="st-folder-tile-icon">🪔</span>' +
+        '<span class="st-folder-tile-title">' + escHtml(stName(st)) +
+          (stSub(st) ? '<span class="asp-sub">' + escHtml(stSub(st)) + '</span>' : '') +
+        '</span>' +
+        '<span class="st-folder-tile-count">4</span>' +
+        '<span class="st-folder-tile-arrow">›</span>';
+      tile.addEventListener('click', () => {
+        window._stVedOpen = true;
+        window._stSevaSection = null;
+        renderSt();
+      });
+      list.appendChild(tile);
+      return;
+    }
     if (st.sevaFolder) {
       const tile = document.createElement('div');
       tile.className = 'st-folder-tile';
@@ -15800,6 +15824,47 @@ function loadSevaSection(n, lang) {
   });
 }
 
+// ─────────────────────────────────────────────────────────
+// 4 VEDA for Radha Vallabhi / Harivanshi (Radha Vallabh Sampraday, above
+// Ashtayam Seva). A reading page: Bangla text (shown in both languages)
+// plus 4 audio clips at ./4veda/4veda_1..4.mp3.
+// ─────────────────────────────────────────────────────────
+function renderVed4(list) {
+  const hi = App.S.stotramLang === 'hi';
+  const ved = STLIST.find((s) => s.id === 'ved4');
+  const vedName = ved ? stName(ved) : '৪ বেদ';
+  const rvTitle = hi ? 'राधावल्लभ सम्प्रदाय' : 'রাধা বল্লভ সম্প্রদায়';
+  const scrollTop = () => {
+    try { list.scrollIntoView({ block: 'start' }); } catch (_e) {}
+  };
+  const mkBack = (label, title, onBack) => {
+    const row = document.createElement('div');
+    row.className = 'st-back-row';
+    row.innerHTML =
+      '<button class="st-back-btn">← ' + escHtml(label) + '</button>' +
+      '<span class="st-back-title">' + escHtml(title) + '</span>';
+    row.querySelector('.st-back-btn').addEventListener('click', onBack);
+    return row;
+  };
+
+  list.appendChild(mkBack(rvTitle, vedName, () => {
+    window._stVedOpen = false;
+    renderSt();
+    scrollTop();
+  }));
+  const body = document.createElement('div');
+  body.className = 'asp-reader asp-bn ved-reader';
+  body.innerHTML = "<p>প্রতিটি সাধকের জন্য শ্রী হিত হরিবংশ মহাপ্রভু রচিত এই ৪টি সিদ্ধান্ত পদ প্রতিদিন পাঠ করা একান্ত আবশ্যক।</p><h3>রসিকদের চার বেদ</h3><p>রসিক সন্তরা এই ৪টি পদকে কেবল সাধারণ পদ বা কবিতা হিসেবে দেখেন না; তাঁরা একে রসিক সাধকদের \"চার বেদ\" বলে গণ্য করেন।</p><h3>প্রকৃত শরণাগত হওয়ার শর্ত</h3><p>যে সাধক এই চার বেদের উপদেশ নিজের মনে ধারণ করেন এবং এই ৪টি পদের ভাব অনুযায়ী নিজের জীবন পরিচালনা করেন, তিনিই পরম পূজ্য হিত জী মহারাজের প্রকৃত শরণাগত (আশ্রয়প্রাপ্ত) ভক্ত।</p><h2>শ্রী হিত হরিবংশ মহাপ্রভু রচিত ৪টি সিদ্ধান্ত</h2><h3>১. প্রথম পদ</h3><p class=\"ved-lab\">বাংলা প্রতিবর্ণায়ন:</p><p class=\"verse\"><span class=\"vl\">রসনা কটো জো অনরঠো, নিরখি অন ফুটো নৈন।</span><span class=\"vl\">শ্রবণ ফুটো জো অন শুনো, বিনু রাধা-জসু বৈন॥</span></p><p class=\"ved-lab\">বাংলা অনুবাদ:</p><p>আমার জিহ্বা কেটে যাক যদি তা শ্রীরাধার নাম ব্যতিরেকে অন্য কিছু উচ্চারণ করে; আমার চোখ অন্ধ হয়ে যাক যদি তা শ্রীরাধার রূপ ছাড়া অন্য কিছু দর্শন করে; এবং আমার কান বধির হয়ে যাক যদি তা শ্রীরাধার নাম ও যশোগাথা ছাড়া অন্য কোনো কথা শ্রবণ করে।</p><audio class=\"ved-audio\" controls preload=\"none\" controlsList=\"nodownload\" src=\"./4veda/4veda_1.mp3\"></audio><h3>২. দ্বিতীয় পদ</h3><p class=\"ved-lab\">বাংলা প্রতিবর্ণায়ন:</p><p class=\"verse\"><span class=\"vl\">সবসো হিত নিষ্কাম মতি, শ্রী বৃন্দাবন বিশ্রাম।</span><span class=\"vl\">শ্রী রাধাবল্লভ লাল কো, হৃদয় ধ্যান মুখ নাম॥</span></p><p class=\"ved-lab\">বাংলা অনুবাদ:</p><p>সবার প্রতি নিষ্কাম ও হিতৈষী মনোভাব রাখা, শ্রী বৃন্দাবনে আশ্রয় গ্রহণ করা, হৃদয়ে শ্রী রাধাবল্লভ জীর রূপ ধ্যান করা এবং সর্বদা মুখে তাঁর পবিত্র নাম জপ করাই জীবনের পরম সাধন।</p><audio class=\"ved-audio\" controls preload=\"none\" controlsList=\"nodownload\" src=\"./4veda/4veda_2.mp3\"></audio><h3>৩. তৃতীয় পদ</h3><p class=\"ved-lab\">বাংলা প্রতিবর্ণায়ন:</p><p class=\"verse\"><span class=\"vl\">তান হি রাখ সৎসঙ্গ মেঁ, মনহ প্রেম রস ভেভ।</span><span class=\"vl\">সুখ চাহত হরিবংশ হিত, কৃষ্ণ কল্পতরু সেভ॥</span></p><p class=\"ved-lab\">বাংলা অনুবাদ:</p><p>শরীরকে সর্বদা সাধু ও ভক্তদের সৎসঙ্গে যুক্ত রাখুন এবং মনকে রাধা-কৃষ্ণের প্রেমরসে নিমগ্ন রাখুন। শ্রী হরিবংশ মহাপ্রভু বলছেন—যদি প্রকৃত সুখ লাভ করতে চান, তবে কল্পতরু স্বরূপ শ্রীকৃষ্ণের সেবা ও ভজনায় নিজেকে নিয়োজিত করুন।</p><audio class=\"ved-audio\" controls preload=\"none\" controlsList=\"nodownload\" src=\"./4veda/4veda_3.mp3\"></audio><h3>৪. চতুর্থ পদ</h3><p class=\"ved-lab\">বাংলা প্রতিবর্ণায়ন:</p><p class=\"verse\"><span class=\"vl\">নিকস কুঞ্জ ঠাঢ়ে ভয়, ভূজা পরস্পর অংস।</span><span class=\"vl\">শ্রী রাধাবল্লভ মুখ কমল, নিরখ নৈন হরিবংশ॥</span></p><p class=\"ved-lab\">বাংলা অনুবাদ:</p><p>শ্রী রাধা ও শ্রী কৃষ্ণ কুঞ্জ থেকে নিষ্ক্রান্ত হয়ে একে অপরের কাঁধে বাহু রেখে দাঁড়িয়ে আছেন। শ্রী হরিবংশ মহাপ্রভু অত্যন্ত আনন্দের সাথে তাঁদের শ্রীমুখ-কমলের অলৌকিক রূপ দর্শন করছেন।</p><p>সম্পূর্ণ পদগুলির কাব্যিক ভাবার্থ বুঝতে আপনি শ্রী হিত হরিবংশ স্ফুট বাণী বা ব্রজরস সাহিত্য অনুসন্ধান করতে পারেন।</p><audio class=\"ved-audio\" controls preload=\"none\" controlsList=\"nodownload\" src=\"./4veda/4veda_4.mp3\"></audio><h3>চিন্তন, মনন এবং জীবনযাত্রায় প্রতিফলন</h3><p>কেবল মুখে পাঠ করাই যথেষ্ট নয়—বক্তার নির্দেশ হলো:</p><p><strong>চিন্তন ও মনন:</strong> পদগুলির অন্তর্নিহিত ভাব প্রতিনিয়ত মনে গভীরভাবে উপলব্ধি ও চিন্তা করতে হবে।</p><p><strong>জীবনশৈলী:</strong> পদগুলির শিক্ষা ও ভাবধারাকে নিজের দৈনন্দিন জীবনযাত্রা, মানসিকতা ও আচরণের মধ্যে সম্পূর্ণরূপে প্রয়োগ করতে হবে।</p>";
+  list.appendChild(body);
+  if (typeof closeSevaAudioPlayer === 'function') { try { closeSevaAudioPlayer(); } catch (_e) {} }
+  const audios = Array.from(body.querySelectorAll('audio.ved-audio'));
+  audios.forEach((a) => a.addEventListener('play', () => audios.forEach((o) => { if (o !== a) o.pause(); })));
+  // Stop playback when the person leaves this page (a detached <audio> keeps playing otherwise).
+  const t = setInterval(() => {
+    if (!body.isConnected) { audios.forEach((a) => { try { a.pause(); } catch (_e) {} }); clearInterval(t); }
+  }, 500);
+}
+
 function renderSevaPaddhati(list) {
   const hi = App.S.stotramLang === 'hi';
   const lang = hi ? 'hi' : 'bn';
@@ -15825,7 +15890,7 @@ function renderSevaPaddhati(list) {
   // ── Level 3: the 9 section folders ──
   if (!sec) {
     list.appendChild(mkBack(rvTitle, sevaName, () => {
-      window._stSevaOpen = false;
+      window._stSevaOpen = false; window._stVedOpen = false;
       window._stSevaSection = null;
       renderSt();
       scrollTop();

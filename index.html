@@ -1598,13 +1598,31 @@
     <div style="max-width:340px;width:100%;background:#0b1030;border:1px solid rgba(255,215,0,0.35);border-radius:14px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,0.5);">
       <div style="font-size:15px;font-weight:700;color:#FFD700;margin-bottom:10px;">⚠️ Save your data first</div>
       <div style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.5;margin-bottom:16px;">
-        Please tap <b>📥 Export All Data</b> below (or under <b>Local Backup &amp; Restore</b> further down in Settings) to save a safety copy first.<br><br>
+        Please tap <b>📥 Export All Data</b> below to save a safety copy first.<br><br>
         Continuing will clear the app's local cached data and reload.
       </div>
       <button type="button" onclick="exportAllData()" style="width:100%;margin-bottom:12px;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(126,200,255,0.28),rgba(126,200,255,0.14));color:#7ec8ff;border:1px solid rgba(126,200,255,0.45);font-size:13px;font-weight:700;cursor:pointer;">📥 Export All Data (JSON)</button>
       <div style="display:flex;gap:10px;">
         <button type="button" onclick="_dismissNativeCacheWarning()" style="flex:1;padding:10px 12px;border-radius:9px;background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.2);font-size:13px;font-weight:700;cursor:pointer;">Cancel</button>
         <button type="button" onclick="_confirmNativeCacheRefreshProceed()" style="flex:1;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,180,0,0.25));color:#FFD700;border:1px solid rgba(255,215,0,0.5);font-size:13px;font-weight:700;cursor:pointer;">Refresh Anyway</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual-sync warning — asks the user to save a JSON backup first,
+       because a server-side failure can occasionally wipe cloud data.
+       "Sync Anyway" still runs the normal forceManualSyncNow(). -->
+  <div id="manualSyncWarningModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.72);align-items:center;justify-content:center;padding:20px;">
+    <div style="max-width:340px;width:100%;background:#0b1030;border:1px solid rgba(255,215,0,0.35);border-radius:14px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+      <div style="font-size:15px;font-weight:700;color:#FFD700;margin-bottom:10px;">⚠️ Save a backup first</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.5;margin-bottom:16px;">
+        Please save a backup JSON file before manual sync.<br><br>
+        Sometimes a server failure can erase all data — so safety first. 🙏
+      </div>
+      <button type="button" onclick="exportAllData()" style="width:100%;margin-bottom:12px;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(126,200,255,0.28),rgba(126,200,255,0.14));color:#7ec8ff;border:1px solid rgba(126,200,255,0.45);font-size:13px;font-weight:700;cursor:pointer;">📥 Save Backup (JSON)</button>
+      <div style="display:flex;gap:10px;">
+        <button type="button" onclick="_dismissManualSyncWarning()" style="flex:1;padding:10px 12px;border-radius:9px;background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.2);font-size:13px;font-weight:700;cursor:pointer;">Cancel</button>
+        <button type="button" onclick="_confirmManualSyncProceed()" style="flex:1;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:13px;font-weight:700;cursor:pointer;">Sync Anyway</button>
       </div>
     </div>
   </div>
@@ -1616,7 +1634,7 @@
     <div style="max-width:340px;width:100%;background:#0b1030;border:1px solid rgba(255,215,0,0.35);border-radius:14px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,0.5);">
       <div style="font-size:15px;font-weight:700;color:#FFD700;margin-bottom:10px;">⚠️ Save your data first</div>
       <div style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.5;margin-bottom:16px;">
-        Please tap <b>📥 Export All Data</b> below (or under <b>Local Backup &amp; Restore</b> further down in Settings) to save a safety copy first.<br><br>
+        Please tap <b>📥 Export All Data</b> below to save a safety copy first.<br><br>
         Signing out clears this device's local data.
       </div>
       <button type="button" onclick="exportAllData()" style="width:100%;margin-bottom:12px;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(126,200,255,0.28),rgba(126,200,255,0.14));color:#7ec8ff;border:1px solid rgba(126,200,255,0.45);font-size:13px;font-weight:700;cursor:pointer;">📥 Export All Data (JSON)</button>
@@ -1635,7 +1653,7 @@
     <div style="max-width:340px;width:100%;background:#0b1030;border:1px solid rgba(255,215,0,0.35);border-radius:14px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,0.5);">
       <div style="font-size:15px;font-weight:700;color:#FFD700;margin-bottom:10px;">⚠️ Save your data first</div>
       <div style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.5;margin-bottom:16px;">
-        Please tap <b>📥 Export All Data</b> below (or under <b>Local Backup &amp; Restore</b> further down in Settings) to save a safety copy first, just in case.<br><br>
+        Please tap <b>📥 Export All Data</b> below to save a safety copy first, just in case.<br><br>
         Continuing will clear the app's cached files and reload.
       </div>
       <button type="button" onclick="exportAllData()" style="width:100%;margin-bottom:12px;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(126,200,255,0.28),rgba(126,200,255,0.14));color:#7ec8ff;border:1px solid rgba(126,200,255,0.45);font-size:13px;font-weight:700;cursor:pointer;">📥 Export All Data (JSON)</button>
@@ -1914,9 +1932,30 @@
            Does not change any sync logic — it just clears whatever local
            timers are currently stacked and re-runs the existing sync
            functions right now. See forceManualSyncNow() in app.js. -->
-      <button id="fbManualSyncBtn" type="button" onclick="forceManualSyncNow()" style="width:100%;margin-bottom:10px;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:12px;font-weight:700;cursor:pointer;">Sync failed? Press here to manually Sync</button>
+      <button id="fbManualSyncBtn" type="button" onclick="confirmManualSyncWithBackupWarning()" style="width:100%;margin-bottom:10px;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:12px;font-weight:700;cursor:pointer;">Sync failed? Press here to manually Sync</button>
       <button id="fbChangePassBtn" onclick="fbChangePasswordFromSettings()" class="premium-btn" style="margin-bottom:10px">🔑 Change Password</button>
-      <button onclick="confirmSignOutWithBackupWarning()" class="premium-btn red">Sign Out</button>
+      <!-- Backup actions: 3 equal compact buttons (Download / Google Drive / Share),
+           then Sign Out (left) + Upload Backup (right, restore from a JSON file).
+           All buttons share the same height/size. -->
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button type="button" onclick="exportAllData()" class="premium-btn" style="flex:1;min-width:0;padding:10px 4px;font-size:11.5px;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;line-height:1.15">
+          <span style="font-size:17px;line-height:1">📥</span><span>Download Backup</span>
+        </button>
+        <button type="button" onclick="driveBackupNow()" class="premium-btn" style="flex:1;min-width:0;padding:10px 4px;font-size:11.5px;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;line-height:1.15">
+          <img src="https://cdn.simpleicons.org/googledrive" alt="" width="18" height="18" data-fallback="📁" onerror="favvidIconFallback(this)" style="display:block">
+          <span>Download in Drive</span>
+        </button>
+        <button type="button" onclick="shareBackup()" class="premium-btn" style="flex:1;min-width:0;padding:10px 4px;font-size:11.5px;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;line-height:1.15">
+          <span style="font-size:17px;line-height:1">📤</span><span>Share Backup</span>
+        </button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:stretch">
+        <button onclick="confirmSignOutWithBackupWarning()" class="premium-btn red" style="flex:1;min-width:0;padding:10px 4px;font-size:11.5px;min-height:56px">Sign Out</button>
+        <label id="fbUploadBackupBtn" class="premium-btn green" style="flex:1;min-width:0;padding:10px 4px;font-size:11.5px;min-height:56px;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;box-sizing:border-box">
+          ⬆️ Upload Backup
+          <input type="file" accept=".json" style="display:none" onchange="importAllData(this)">
+        </label>
+      </div>
     </div>
   </div>
 
@@ -2376,28 +2415,8 @@
     </div>
   </div>
 
-  <!-- BACKUP & RESTORE -->
-  <div class="sc">
-    <h3>💾 Local Backup &amp; Restore</h3>
-    <p style="font-size:12px;color:var(--td);margin-bottom:14px">Export all your data as a JSON file. Use to transfer to a new device.</p>
-    <button class="pb pb-export" onclick="exportAllData()" style="margin-bottom:10px">📥 Download All Jap Data to local Drive as json file</button>
-    <button class="pb pb-export" id="driveBackupNowBtn" onclick="driveBackupNow()" style="margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:8px;">
-      <span id="driveUploadIcon" style="width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-        <img src="https://cdn.simpleicons.org/googledrive" alt="" width="20" height="20" data-fallback="📁" onerror="favvidIconFallback(this)" style="display:block;flex-shrink:0">
-      </span>
-      Upload the json file to Google drive with Single tap
-    </button>
-    <div style="font-size:10.5px;color:var(--td);text-align:center;margin:0 0 10px;opacity:.85;line-height:1.4">💡 Tip: saves a dated backup file directly to your own Google Drive. Requires Google sign-in.</div>
-    <button class="pb" onclick="shareBackup()" style="margin-bottom:10px;background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,180,0,0.25));color:var(--gold);border:1px solid rgba(255,215,0,0.4)">📤 Share Json File</button>
-    <label class="pb pb-restore" style="display:flex;align-items:center;justify-content:center;width:100%;cursor:pointer;box-sizing:border-box;background:linear-gradient(135deg,rgba(74,144,226,0.22),rgba(74,144,226,0.08));border:1px solid rgba(74,144,226,0.45);color:var(--a2);box-shadow:0 4px 14px rgba(74,144,226,0.15),inset 0 1px 0 rgba(255,255,255,0.06);letter-spacing:0.3px">
-      📤 Restore/ Upload a previously saved Backup Json file
-      <input type="file" id="restoreFileIn" accept=".json" style="display:none" onchange="importAllData(this)">
-    </label>
-    <div id="restoreStatus" style="font-size:12px;margin-top:8px;text-align:center;color:var(--green);min-height:18px"></div>
-  </div>
-
   <!-- GOOGLE DRIVE BACKUP: header card no longer shown here — its description now
-       lives as a tip under the Upload button in Local Backup & Restore above.
+       is no longer shown in Settings.
        This whole section stays in the DOM (display:none) purely so the hidden
        Daily Auto-Backup toggle/time-input elements below keep their ids for JS. -->
   <div class="sc" style="display:none">

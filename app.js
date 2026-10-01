@@ -11943,6 +11943,32 @@ async function forceManualSyncNow() {
   }
 }
 
+// ── Manual-sync warning gate ──
+// Ask the user to save a JSON backup first (a server failure can rarely
+// wipe cloud data), then run the normal manual sync on "Sync Anyway".
+function confirmManualSyncWithBackupWarning() {
+  if (_fbManualSyncInFlight) return;
+  const modal = document.getElementById("manualSyncWarningModal");
+  if (modal) {
+    modal.style.display = "flex";
+  } else {
+    // Fallback only if the modal markup is somehow missing from this build.
+    if (window.confirm("Please save a backup JSON file before manual sync. Sometimes a server failure erases all data. Sync anyway?")) {
+      forceManualSyncNow();
+    }
+  }
+}
+
+function _dismissManualSyncWarning() {
+  const modal = document.getElementById("manualSyncWarningModal");
+  if (modal) modal.style.display = "none";
+}
+
+function _confirmManualSyncProceed() {
+  _dismissManualSyncWarning();
+  forceManualSyncNow();
+}
+
 // ── Sign-out warning gate ──
 // fbSignOut() wipes local data (clearLocalUserData) as part of its normal
 // flow, so — same as the native cache-refresh warning — ask the user to

@@ -359,7 +359,7 @@
 //  • Bumped cache name to invalidate any stale v154 entry that may have
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
-const CACHE = 'radha-jap-v240';
+const CACHE = 'radha-jap-v241';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 
@@ -504,6 +504,10 @@ const LAZY_LOCAL_ASSETS = [
   './rashikan/p077.jpg',
   './rashikan/p078.jpg',
   './rashikan/p080.JPG',
+  './rashikan/p081.jpg',
+  './rashikan/p082.jpg',
+  './rashikan/p083.jpg',
+  './rashikan/p084.jpg',
 ];
 
 const EXTERNAL_ASSETS = [

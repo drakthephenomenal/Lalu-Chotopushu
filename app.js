@@ -8675,6 +8675,18 @@ async function shareBackup() {
     return;
   }
 
+  // If the share sheet itself is blocked (Android/Chrome can throw
+  // "Permission denied" / NotAllowedError for .json files or when the
+  // tap's user-activation has expired), don't just fail — save the file
+  // to the device instead so the user still ends up with a backup.
+  const _saveInstead = async (why) => {
+    console.warn("shareBackup fallback to save:", why);
+    toast("⚠️ Sharing is blocked here — saving the backup file instead…");
+    try { await saveJsonFile(filename, json); } catch (e2) {
+      toast("❌ Backup failed: " + (e2 && e2.message ? e2.message : e2));
+    }
+  };
+
   if (
     _lcIsNative() &&
     window.Capacitor.Plugins &&
@@ -8699,7 +8711,7 @@ async function shareBackup() {
     } catch (e) {
       if (e && e.message && /cancel/i.test(e.message)) return; // user dismissed share sheet
       console.error("Native shareBackup failed:", e);
-      toast("❌ Share failed: " + (e && e.message ? e.message : e));
+      await _saveInstead(e && e.message);
       return;
     }
   }
@@ -8711,7 +8723,6 @@ async function shareBackup() {
       await navigator.share({
         files: [file],
         title: "Radha Naam Jap Backup",
-        text: "My Radha Naam Jap backup file \uD83D\uDE4F Jai Radhe!",
       });
     } else {
       // Browser can't share files — fall back to a normal download.
@@ -8720,7 +8731,7 @@ async function shareBackup() {
   } catch (e) {
     if (e && e.name === "AbortError") return; // user dismissed share sheet
     console.error("Web shareBackup failed:", e);
-    toast("❌ Share failed: " + (e && e.message ? e.message : e));
+    await _saveInstead(e && e.message);
   }
 }
 

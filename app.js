@@ -15612,7 +15612,7 @@ function renderSt() {
     { key: 'krishna', title: 'শ্রীকৃষ্ণ', titleHi: 'श्रीकृष्ण', icon: '🦚' },
     { key: 'shiv',    title: 'ভগবান শিব', titleHi: 'भगवान शिव', icon: '🔱', img: ST_FOLDER_ICON_IMG.shiv },
     { key: 'hanuman', title: 'হনুমান জী মহারাজ', titleHi: 'हनुमान जी महाराज', icon: '🚩' },
-    { key: 'rjbj', title: 'রসিক জন ও ভক্তজন', titleHi: 'रसिक जन एवं भक्तजन', icon: '🙏' },
+    { key: 'rjbj', title: 'রসিক, বৈষ্ণব ও অন্যান্য ভক্ত এবং সন্তজন দর্শন ও পরিচিতি', titleHi: 'रसिक, वैष्णव एवं अन्य भक्त तथा संतजन दर्शन एवं परिचय', icon: '🙏' },
     { key: 'dd', title: 'দিব্য দর্শন — বৃন্দাবনের শ্রীবিগ্রহ', titleHi: 'दिव्य दर्शन — वृन्दावन के श्रीविग्रह', icon: '🛕' },
   ];
   // Pick the language-appropriate folder title, falling back to the
@@ -17381,7 +17381,7 @@ function renderDeityPage(list, slug) {
 function renderRashikJan(list) {
   const hi = App.S.stotramLang === 'hi';
   const rvTitle = hi ? 'राधावल्लभ सम्प्रदाय' : 'রাধা বল্লভ সম্প্রদায়';
-  const title = hi ? 'रसिक जन एवं भक्तजन' : 'রসিক জন ও ভক্তজন';
+  const title = hi ? 'रसिक, वैष्णव एवं अन्य भक्त तथा संतजन दर्शन एवं परिचय' : 'রসিক, বৈষ্ণব ও অন্যান্য ভক্ত এবং সন্তজন দর্শন ও পরিচিতি';
 
   const back = document.createElement('div');
   back.className = 'st-back-row';

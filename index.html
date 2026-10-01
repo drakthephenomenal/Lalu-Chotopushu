@@ -671,6 +671,11 @@
 <!-- STOTRAM VIEW -->
 <div class="view" id="vst">
   <div class="vt" id="stTrackerTitle">Stotram and Videos</div>
+  <div class="ms-toggle-wrap sec-lang-bar" data-sec="sv" style="margin-bottom:12px;">
+    <button type="button" class="ms-toggle-btn" data-l="hi" onclick="setSecLang('sv','hi')">हिंदी</button>
+    <button type="button" class="ms-toggle-btn" data-l="bn" onclick="setSecLang('sv','bn')">বাংলা</button>
+    <button type="button" class="ms-toggle-btn" data-l="" onclick="setSecLang('sv',null)" title="Follow Settings language" aria-label="Follow Settings language" style="display:none">↺</button>
+  </div>
   <div class="asf" id="stAddForm">
     <!-- Header — always visible, tap to toggle -->
     <div class="asf-header" onclick="toggleAsfForm()">
@@ -692,6 +697,11 @@
 <!-- BRAHMACHARYA VIEW -->
 <div class="view" id="vb">
   <div class="vt">📅 Brahmacharya and Calendar</div>
+  <div class="ms-toggle-wrap sec-lang-bar" data-sec="bc" style="margin-bottom:12px;">
+    <button type="button" class="ms-toggle-btn" data-l="hi" onclick="setSecLang('bc','hi')">हिंदी</button>
+    <button type="button" class="ms-toggle-btn" data-l="bn" onclick="setSecLang('bc','bn')">বাংলা</button>
+    <button type="button" class="ms-toggle-btn" data-l="" onclick="setSecLang('bc',null)" title="Follow Settings language" aria-label="Follow Settings language" style="display:none">↺</button>
+  </div>
 
   <!-- B&C Sub-tabs: Calendar | Panchanga -->
   <div id="vp-subtab-bar" style="display:flex;gap:8px;padding:0 14px 12px;justify-content:center">
@@ -884,9 +894,10 @@
 <!-- MILESTONES VIEW — dedicated tab -->
 <div class="view" id="vms">
   <div class="vt">🪷 Naam Jap Mahima and Milestones</div>
-  <div class="ms-toggle-wrap">
+  <div class="ms-toggle-wrap sec-lang-bar" data-sec="nm">
     <button class="ms-toggle-btn" id="msLangHi" onclick="setMsLang('hi')">हिंग्लिश</button>
     <button class="ms-toggle-btn active" id="msLangBn" onclick="setMsLang('bn')">বাংলা</button>
+    <button type="button" class="ms-toggle-btn" data-l="" onclick="setSecLang('nm',null)" title="Follow Settings language" aria-label="Follow Settings language" style="display:none">↺</button>
   </div>
   <div class="ms-sadhana-bar">
     <label>🙏 Journey Start:</label>
@@ -1967,7 +1978,7 @@
       <div style="font-size:20px;line-height:1;">📍</div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:700;color:#FFD700;line-height:1.2;">GPS Location</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;" id="gpsLocationStatus">Auto-detect for accurate Brahma Muhurta &amp; Sandhya times 🙏</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;" id="gpsLocationStatus">Kindly turn on the GPS location to get Brahma Muhurta, Sunrise, Sandhyakal, Sunset and other time related data according to your location. 📍</div>
       </div>
       <div class="tg" id="tgGpsLocation" onclick="tgs('gpsLocation')" style="flex-shrink:0;"></div>
     </div>
@@ -2859,7 +2870,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=116"></script>
-    <script src="./app.js?v=150"></script>
+    <script src="./app.js?v=151"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

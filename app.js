@@ -810,6 +810,8 @@ const App = {
     sriBranch: "ramananda",  // when sampraday === "sri" — "ramanuj" | "ramananda"
     hkLang: "hi",
     naamLang: "sa",  // Radha / Radha Vallabh / Samba Sadashiv jap text script: "sa" (Sanskrit/Devanagari) or "bn" (Bangla)
+    secLang: {},  // per-section language overrides: {sv,bc,nm} = "hi"|"bn" (absent = follow Settings language)
+    langOnboarded: false,
     stotramLang: "bn",  // Stotram list names + lyrics script: "hi" (Hindi/Devanagari) or "bn" (Bangla)
     lbOptIn: false,        // leaderboard opt-in
     lbDisplayName: "",     // leaderboard display name
@@ -1059,6 +1061,9 @@ const App = {
       msConsider: this.S.msConsider || { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, n28: true },
       hkLang: this.S.hkLang || "hi",
       naamLang: this.S.naamLang || "sa",
+      stotramLang: this.S.stotramLang || "bn",
+      secLang: this.S.secLang || {},
+      langOnboarded: this.S.langOnboarded || false,
       lastLat: this.S.lastLat ?? null,
       lastLng: this.S.lastLng ?? null,
       screenTimeHistory: this.S.screenTimeHistory || {},
@@ -1241,7 +1246,14 @@ const App = {
     }
     if (!this.S.hkLang) this.S.hkLang = "hi";
     if (!this.S.naamLang) this.S.naamLang = "sa";
-    if (!this.S.stotramLang) this.S.stotramLang = "bn";
+    if (!this.S.stotramLang) {
+      let _lp = ""; try { _lp = localStorage.getItem("rjap_lang_pref") || ""; } catch (_e) {}
+      this.S.stotramLang = (_lp === "hi" || _lp === "bn") ? _lp : "bn";
+    }
+    if (!this.S.secLang || typeof this.S.secLang !== "object") {
+      let _sl = {}; try { _sl = JSON.parse(localStorage.getItem("rjap_sec_lang") || "{}") || {}; } catch (_e) {}
+      this.S.secLang = _sl;
+    }
     if (this.S.bgIskconAcharya === undefined) this.S.bgIskconAcharya = 1;
     if (this.S.bgIskconGurudev === undefined) this.S.bgIskconGurudev = 1;
     if (this.S.bgCM === undefined) this.S.bgCM = 1;
@@ -3968,6 +3980,7 @@ function initJapModeUI() {
   if (setLangHiBtn) setLangHiBtn.classList.toggle("active", curStLang === "hi");
   if (setLangBnBtn) setLangBnBtn.classList.toggle("active", curStLang === "bn");
   try { populateSettingsUI(); } catch (_e) {}
+  try { secLangSyncButtons(); } catch (_e) {}
 }
 
 // ── Naam Selector Toggle ──
@@ -4400,6 +4413,7 @@ function sv(id, btn) {
   document.querySelectorAll(".nb").forEach((b) => b.classList.remove("active"));
   document.getElementById(id).classList.add("active");
   if (btn) btn.classList.add("active");
+  try { secLangSyncButtons(); } catch (_e) {}
   // ── Screen Time / Stotram Time: start/stop based on which view is now active ──
   if (id === "vj" || id === "v28") {
     App.pauseStotramTime();
@@ -5009,7 +5023,7 @@ function tgs(k) {
       } catch(e) {}
       if (tgGps) tgGps.classList.remove("on");
       const statusEl = document.getElementById("gpsLocationStatus");
-      if (statusEl) statusEl.textContent = "— Tap toggle to detect your location 📍";
+      if (statusEl) statusEl.textContent = GPS_HELP_TEXT;
       // GPS is OFF — clear all time displays rather than show fake-coord times
       ["bm-start","bm-end","rh-sunrise","sk-start","sk-end","rh-sunset"].forEach(id => {
         const el = document.getElementById(id);
@@ -8617,6 +8631,12 @@ function _buildBackupPayload() {
     gaudiyaMode: App.S.gaudiyaMode || false,
     trahimamMode: App.S.trahimamMode || false,
     ramanandiMode: App.S.ramanandiMode || false,
+    // Language settings (global + per-section overrides + jap text language)
+    stotramLang: App.S.stotramLang || "bn",
+    secLang: App.S.secLang || {},
+    langOnboarded: App.S.langOnboarded || false,
+    hkLang: App.S.hkLang || "hi",
+    naamLang: App.S.naamLang || "sa",
     // ── Previously missing from this backup payload (bug fix) ──
     // These were saved fine to Firestore but silently dropped from
     // Export All Data / local backup, so restoring from a local backup
@@ -8808,6 +8828,12 @@ function importAllData(input) {
       App.S.gaudiyaMode = data.gaudiyaMode || false;
       App.S.trahimamMode = data.trahimamMode || false;
       App.S.ramanandiMode = data.ramanandiMode || false;
+      if (data.stotramLang === "hi" || data.stotramLang === "bn") App.S.stotramLang = data.stotramLang;
+      if (data.secLang && typeof data.secLang === "object") App.S.secLang = data.secLang;
+      if (data.langOnboarded) App.S.langOnboarded = true;
+      if (data.hkLang) App.S.hkLang = data.hkLang;
+      if (data.naamLang) App.S.naamLang = data.naamLang;
+      try { secLangPersistLocal(); } catch (_e) {}
        App.S.historyKV = data.historyKV || {};
       App.S.timerHistoryKV = data.timerHistoryKV || {};
       App.S.dtKV = data.dtKV || 0;
@@ -9151,7 +9177,7 @@ function renderMilestonesTab() {
   // for an active wish (sankalp) — see _msAvailable28.
   const consider = getMsConsider();
   const total = _msComputeTotal().total;
-  const lang = window._msLang || "hi";
+  const lang = secLang("nm");
 
   // Calculate 7-day average (same type filter as the total, for a
   // consistent prediction pace)
@@ -9578,12 +9604,16 @@ const CRORE_DESCS_BN = {
 };
 
 window._msLang = "bn";
-function setMsLang(lang) {
+// N&M language is now a persisted per-section override (see secLang()).
+function setMsLang(lang) { setSecLang("nm", lang); }
+function _msApplyLang(explicit) {
+  const lang = secLang("nm");
   window._msLang = lang;
-  document.getElementById("msLangHi").classList.toggle("active", lang === "hi");
-  document.getElementById("msLangBn").classList.toggle("active", lang === "bn");
+  secLangSyncButtons();
   renderMilestonesTab();
-  // Auto-sync Mahamantra language toggle when Bengali is selected
+  // Auto-sync Mahamantra language toggle only when the user explicitly
+  // picks a language in N&M (not on Settings-language / reset changes).
+  if (!explicit) return;
   if (lang === "bn" && App && App.S && App.S.hkLang !== "bn") {
     App.S.hkLang = "bn";
     const tgH = document.getElementById("tgHkLang");
@@ -9615,6 +9645,184 @@ function setMsLang(lang) {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════
+// PER-SECTION LANGUAGE + FIRST-LOGIN ONBOARDING
+// App.S.stotramLang  = global language (Settings pills / first-login choice)
+// App.S.secLang      = { sv, bc, nm } overrides ("hi"|"bn"); absent = follow global
+//   sv = Stotram & Videos, bc = Brahmacharya & Calendar,
+//   nm = Naam Jap Mahima & Milestones ("hi" shows Hinglish there).
+// Jap text language stays separate (App.S.hkLang / App.S.naamLang).
+// ═════════════════════════════════════════════════════════════════
+const GPS_HELP_TEXT = "Kindly turn on the GPS location to get Brahma Muhurta, Sunrise, Sandhyakal, Sunset and other time related data according to your location. 📍";
+
+function secLang(k) {
+  const o = App && App.S && App.S.secLang && App.S.secLang[k];
+  if (o === "hi" || o === "bn") return o;
+  return (App && App.S && App.S.stotramLang) === "hi" ? "hi" : "bn";
+}
+function secLangPersistLocal() {
+  try {
+    localStorage.setItem("rjap_lang_pref", (App.S && App.S.stotramLang) === "hi" ? "hi" : "bn");
+    localStorage.setItem("rjap_sec_lang", JSON.stringify((App.S && App.S.secLang) || {}));
+  } catch (_e) {}
+}
+// lang: "hi" | "bn" sets the override; null/"" clears it (follow Settings)
+function setSecLang(k, lang) {
+  if (!App || !App.S) return;
+  if (!App.S.secLang || typeof App.S.secLang !== "object") App.S.secLang = {};
+  const explicit = lang === "hi" || lang === "bn";
+  if (explicit) App.S.secLang[k] = lang; else delete App.S.secLang[k];
+  App.save();
+  secLangPersistLocal();
+  secLangSyncButtons();
+  if (k === "sv") {
+    try { renderSt(); } catch (_e) {}
+    try { _lcRefreshOpenLyrics(); } catch (_e) {}
+  } else if (k === "bc") {
+    try { syncRkkOccLangButtons(); } catch (_e) {}
+    try { renderRkkOccList(); } catch (_e) {}
+    try { renderCal(); } catch (_e) {}
+  } else if (k === "nm") {
+    try { _msApplyLang(explicit); } catch (_e) {}
+  }
+}
+function secLangSyncButtons() {
+  if (!App || !App.S) return;
+  document.querySelectorAll(".sec-lang-bar[data-sec]").forEach((bar) => {
+    const k = bar.getAttribute("data-sec");
+    const cur = secLang(k);
+    const ovr = !!(App.S.secLang && App.S.secLang[k]);
+    bar.querySelectorAll("button[data-l]").forEach((b) => {
+      const l = b.getAttribute("data-l");
+      if (l === "") b.style.display = ovr ? "" : "none";
+      else b.classList.toggle("active", l === cur);
+    });
+  });
+  const nmHi = document.getElementById("msLangHi"), nmBn = document.getElementById("msLangBn");
+  if (nmHi) nmHi.classList.toggle("active", secLang("nm") === "hi");
+  if (nmBn) nmBn.classList.toggle("active", secLang("nm") === "bn");
+}
+// Settings language changed: sections WITHOUT an override follow it.
+function secLangOnGlobalChange() {
+  secLangSyncButtons();
+  if (!(App.S.secLang && App.S.secLang.nm)) {
+    try { _msApplyLang(false); } catch (_e) {}
+  }
+}
+
+// ── First-login onboarding modals ──
+function _lcOnbModal(o) {
+  return new Promise((resolve) => {
+    const ov = document.createElement("div");
+    ov.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(3,6,20,.82);display:flex;align-items:center;justify-content:center;padding:22px;";
+    const box = document.createElement("div");
+    box.style.cssText = "max-width:380px;width:100%;background:linear-gradient(160deg,#0d1535,#080c23);border:1px solid rgba(255,215,0,.35);border-radius:18px;padding:22px 20px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.6);";
+    box.innerHTML = '<div style="font-size:34px;line-height:1;margin-bottom:10px;">' + o.icon + '</div>' +
+      '<div style="font-size:16px;font-weight:700;color:#FFD700;margin-bottom:10px;">' + o.title + '</div>' +
+      '<div style="font-size:13px;color:rgba(255,255,255,.82);line-height:1.55;margin-bottom:16px;">' + o.body + '</div>';
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;flex-direction:column;gap:9px;";
+    o.buttons.forEach((b) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = b.label;
+      btn.style.cssText = b.primary
+        ? "padding:12px;border-radius:12px;border:1px solid rgba(255,215,0,.6);background:linear-gradient(135deg,#FFD700,#E5A800);color:#201400;font-size:14px;font-weight:700;cursor:pointer;"
+        : "padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:rgba(255,255,255,.75);font-size:12px;cursor:pointer;";
+      btn.onclick = () => { ov.remove(); resolve(b.value); };
+      row.appendChild(btn);
+    });
+    box.appendChild(row);
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+  });
+}
+
+async function lcOnbEnableGps() {
+  try {
+    const pos = await lcGetPosition({ timeout: 15000, maximumAge: 0 });
+    const lat = pos.coords.latitude, lng = pos.coords.longitude;
+    window._appLat = lat; window._appLng = lng;
+    if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; App.save(); }
+    try {
+      localStorage.setItem("rjap_gps_enabled", "1");
+      localStorage.setItem("rjap_lastLat", String(lat));
+      localStorage.setItem("rjap_lastLng", String(lng));
+    } catch (_e) {}
+    try { updateSunInfo(lat, lng); } catch (_e) {}
+    const tg = document.getElementById("tgGpsLocation");
+    if (tg) tg.classList.add("on");
+    const st = document.getElementById("gpsLocationStatus");
+    if (st) st.textContent = "✅ Location detected · " + lat.toFixed(3) + ", " + lng.toFixed(3);
+    toast("📍 GPS location saved! Brahma Muhurta times updated 🙏");
+    try { renderCal(); } catch (_e) {}
+    return true;
+  } catch (err) {
+    try { toast(_lcGpsErrorMessage(err)); } catch (_e) {}
+    return false;
+  }
+}
+
+let _lcOnbRunning = false;
+async function lcOnboardingRun(user) {
+  if (_lcOnbRunning) return;
+  _lcOnbRunning = true;
+  try {
+    // 1) Notification — the system prompt was already triggered by the
+    //    sign-in handler; wait for it to be answered before the next step.
+    if (window._lcPushAskPromise) { try { await window._lcPushAskPromise; } catch (_e) {} window._lcPushAskPromise = null; }
+    // Let cloud data for this user finish loading so saved choices are known.
+    await new Promise((r) => setTimeout(r, 1800));
+    if (!user || (App._uid && App._uid !== user.uid)) return;
+
+    // 2) GPS location
+    let gpsOn = false, gpsAsked = false;
+    try { gpsOn = localStorage.getItem("rjap_gps_enabled") === "1"; } catch (_e) {}
+    try { gpsAsked = localStorage.getItem("rjap_gps_asked") === "1"; } catch (_e) {}
+    if (!gpsOn && !gpsAsked && !(App.S && App.S.lastLat != null)) {
+      try { localStorage.setItem("rjap_gps_asked", "1"); } catch (_e) {}
+      const go = await _lcOnbModal({
+        icon: "📍",
+        title: "Turn on GPS location",
+        body: GPS_HELP_TEXT,
+        buttons: [
+          { label: "📍 Turn on GPS", primary: true, value: true },
+          { label: "Not now", value: false },
+        ],
+      });
+      if (go) await lcOnbEnableGps();
+    }
+
+    // 3) Language — sets the Settings language (global)
+    let langDone = false;
+    try { langDone = localStorage.getItem("rjap_lang_asked") === "1"; } catch (_e) {}
+    if (!langDone && !(App.S && App.S.langOnboarded)) {
+      try { localStorage.setItem("rjap_lang_asked", "1"); } catch (_e) {}
+      const pick = await _lcOnbModal({
+        icon: "🌐",
+        title: "भाषा चुनें · ভাষা নির্বাচন করুন",
+        body: "Choose your app language. You can change it any time in Settings, or separately for S&amp;V, B&amp;C and N&amp;M.",
+        buttons: [
+          { label: "हिंदी", primary: true, value: "hi" },
+          { label: "বাংলা", primary: true, value: "bn" },
+          { label: "Skip", value: "" },
+        ],
+      });
+      if (App.S) { App.S.langOnboarded = true; }
+      if (pick === "hi" || pick === "bn") {
+        if (App.S.stotramLang === pick) { App.save(); secLangPersistLocal(); secLangOnGlobalChange(); }
+        else setStotramLang(pick);   // same path as the Settings language button
+      } else {
+        App.save();
+      }
+    }
+  } catch (e) {
+    console.error("onboarding failed:", e);
+  } finally {
+    _lcOnbRunning = false;
+  }
+}
+
 // ── Stotram list language toggle (Hindi/Devanagari vs Bangla) ──
 // Controls: (1) which script the Settings-header toggle shows as active,
 // (2) which STLIST name/sub fields render in the Stotram folder cards,
@@ -9629,11 +9837,16 @@ function setStotramLang(lang) {
   if (btnHi) btnHi.classList.toggle("active", lang === "hi");
   if (btnBn) btnBn.classList.toggle("active", lang === "bn");
   App.save();
+  try { secLangPersistLocal(); secLangOnGlobalChange(); } catch (_e) {}
   try { renderSt(); } catch (_e) {}
   try { if (typeof syncRkkOccLangButtons === "function") syncRkkOccLangButtons(); } catch (_e) {}
   try { if (typeof renderRkkOccList === "function") renderRkkOccList(); } catch (_e) {}
   try { if (typeof renderCal === "function") renderCal(); } catch (_e) {}
-  // If the lyrics-reader modal is currently open, refresh its title too.
+  _lcRefreshOpenLyrics();
+}
+// If the lyrics-reader modal is currently open, refresh it for the S&V language.
+function _lcRefreshOpenLyrics() {
+  const lang = secLang("sv");
   try {
     const lmo = document.getElementById("lmo");
     const lmTitle = document.getElementById("lmTitle");
@@ -9790,10 +10003,10 @@ function loadRsnHindiLyrics() {
 // entry, falling back to the Bangla (default) fields when a Hindi one isn't
 // present yet.
 function stName(st) {
-  return (App.S.stotramLang === "hi" && st.nameHi) ? st.nameHi : st.name;
+  return (secLang('sv') === "hi" && st.nameHi) ? st.nameHi : st.name;
 }
 function stSub(st) {
-  return (App.S.stotramLang === "hi" && st.subHi) ? st.subHi : (st.sub || "");
+  return (secLang('sv') === "hi" && st.subHi) ? st.subHi : (st.sub || "");
 }
 
 function toggleMsDesc(id, btn) {
@@ -9809,7 +10022,7 @@ function openMsDetail(type, count, pct, achieved) {
   const sheet = document.getElementById("msDetailSheet");
   const overlay = document.getElementById("msDetailOverlay");
   if (!sheet || !overlay) return;
-  const lang = window._msLang || "hi";
+  const lang = secLang("nm");
   const hist = App.S.history || {};
   const histRV = App.S.historyRV || {};
   const histHK = App.S.historyHK || {};
@@ -10466,7 +10679,7 @@ function fbInit() {
           });
         } else if (!pushAsked) {
           try { localStorage.setItem("rjap_push_asked", "1"); } catch (_) {}
-          lcRegisterPush().then((ok) => {
+          window._lcPushAskPromise = lcRegisterPush().then((ok) => {
             if (ok) {
               if (tgPushEl) tgPushEl.classList.add("on");
               if (pushStatusEl) pushStatusEl.textContent = "✅ Push notifications enabled";
@@ -10474,8 +10687,10 @@ function fbInit() {
               if (tgPushEl) tgPushEl.classList.remove("on");
               if (pushStatusEl) pushStatusEl.textContent = "— Tap toggle to enable push notifications 🔔";
             }
-          });
+          }).catch(() => {});
         }
+        // First-login onboarding, in order: notification → GPS → language.
+        lcOnboardingRun(user);
       }
       if (user) {
         // ── CRITICAL: if UID changed, reload data scoped to new user ──
@@ -15618,7 +15833,7 @@ function renderSt() {
   // Pick the language-appropriate folder title, falling back to the
   // Bangla (default) one whenever a Hindi title isn't set (e.g. custom
   // group added later).
-  const folderTitle = (f) => (App.S.stotramLang === 'hi' && f.titleHi) ? f.titleHi : f.title;
+  const folderTitle = (f) => (secLang('sv') === 'hi' && f.titleHi) ? f.titleHi : f.title;
 
   const customItems = (App.S.customSt || []).map((x) => ({ ...x, custom: true }));
   const groups = FOLDERS.map((f) => ({
@@ -15700,7 +15915,7 @@ function renderSt() {
   const backRow = document.createElement('div');
   backRow.className = 'st-back-row';
   backRow.innerHTML =
-    '<button class="st-back-btn">← ' + (App.S.stotramLang === 'hi' ? 'फ़ोल्डर सूची' : 'ফোল্ডার তালিকা') + '</button>' +
+    '<button class="st-back-btn">← ' + (secLang('sv') === 'hi' ? 'फ़ोल्डर सूची' : 'ফোল্ডার তালিকা') + '</button>' +
     '<span class="st-back-title">' + escHtml(folderTitle(group)) + '</span>';
   backRow.querySelector('.st-back-btn').addEventListener('click', () => {
     window._stActiveFolder = null;
@@ -15713,7 +15928,7 @@ function renderSt() {
   if (!group.items.length) {
     const empty = document.createElement('div');
     empty.className = 'st-folder-empty';
-    empty.textContent = App.S.stotramLang === 'hi' ? 'जल्द ही आ रहा है 🙏' : 'শীঘ্রই আসছে 🙏';
+    empty.textContent = secLang('sv') === 'hi' ? 'जल्द ही आ रहा है 🙏' : 'শীঘ্রই আসছে 🙏';
     list.appendChild(empty);
     return;
   }
@@ -15787,7 +16002,7 @@ function renderSt() {
         '</div>';
     }
 
-    const _stHi = App.S.stotramLang === 'hi';
+    const _stHi = secLang('sv') === 'hi';
     let inner =
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">' +
         '<div style="flex:1;min-width:0">' +
@@ -15903,7 +16118,7 @@ const VED_HI_HTML = "<p>प्रत्येक साधक के लिए �
 // (Bangla or Hindi per Settings) plus 4 audio clips at ./4veda/4veda_1..4.mp3.
 // ─────────────────────────────────────────────────────────
 function renderVed4(list) {
-  const hi = App.S.stotramLang === 'hi';
+  const hi = secLang('sv') === 'hi';
   const ved = STLIST.find((s) => s.id === 'ved4');
   const vedName = ved ? stName(ved) : '৪ বেদ';
   const rvTitle = hi ? 'राधावल्लभ सम्प्रदाय' : 'রাধা বল্লভ সম্প্রদায়';
@@ -15942,7 +16157,7 @@ function renderVed4(list) {
 }
 
 function renderSevaPaddhati(list) {
-  const hi = App.S.stotramLang === 'hi';
+  const hi = secLang('sv') === 'hi';
   const lang = hi ? 'hi' : 'bn';
   const asp = STLIST.find((s) => s.id === 'asp');
   const sevaName = asp ? stName(asp) : (hi ? 'अष्टयाम सेवा पद्धति' : 'অষ্টযাম সেবা পদ্ধতি');
@@ -16041,7 +16256,7 @@ function renderSevaPaddhati(list) {
   loadSevaSection(sec.n, lang)
     .then((html) => {
       // Ignore a late response if the person navigated / switched language.
-      if (!body.isConnected || window._stSevaSection !== sec.n || (App.S.stotramLang === 'hi' ? 'hi' : 'bn') !== lang) return;
+      if (!body.isConnected || window._stSevaSection !== sec.n || (secLang('sv') === 'hi' ? 'hi' : 'bn') !== lang) return;
       body.innerHTML = html;
       initSevaInlinePlayers(body);
     })
@@ -16141,7 +16356,7 @@ const _SEVA_TXT = {
 };
 
 function _sevaTick(list) {
-  const T = _SEVA_TXT[App.S.stotramLang === 'hi' ? 'hi' : 'bn'];
+  const T = _SEVA_TXT[secLang('sv') === 'hi' ? 'hi' : 'bn'];
   const now = new Date();
   const st = _sevaState(now);
   const today = now.toDateString();
@@ -16165,7 +16380,7 @@ function _sevaTick(list) {
 
 function _sevaStartTimers(list, noteBefore) {
   if (window._sevaTimerT) { clearInterval(window._sevaTimerT); window._sevaTimerT = null; }
-  const T = _SEVA_TXT[App.S.stotramLang === 'hi' ? 'hi' : 'bn'];
+  const T = _SEVA_TXT[secLang('sv') === 'hi' ? 'hi' : 'bn'];
   if (noteBefore && !_sevaCoords().gps) {
     const note = document.createElement('div');
     note.className = 'asp-gps-note';
@@ -16189,7 +16404,7 @@ async function lcArmSevaReminder(n) {
   if (typeof calcSunTimes !== 'function') return;
   const nowMs = Date.now();
   const ups = _sevaTimeline(new Date()).list.filter((e) => e.n === n && e.t - 5 * 60000 > nowMs).slice(0, 3);
-  const hi = App.S && App.S.stotramLang === 'hi';
+  const hi = App.S && secLang('sv') === 'hi';
   const sec = SEVA_SECTIONS.find((x) => x.n === n);
   for (let d = 0; d < 3; d++) {
     const e = ups[d];
@@ -16906,7 +17121,7 @@ const DD_DEITIES = [
 ];
 
 
-function ddHi() { return App.S.stotramLang === 'hi'; }
+function ddHi() { return secLang('sv') === 'hi'; }
 function ddT(o) { return o ? (ddHi() ? (o.hi || o.bn || '') : (o.bn || o.hi || '')) : ''; }
 function ddL(hi, bn) { return ddHi() ? hi : bn; }
 // In the Android app (Capacitor) the deities folder is NOT bundled: photos / list.txt / audio are
@@ -17383,7 +17598,7 @@ function renderDeityPage(list, slug) {
 }
 
 function renderRashikJan(list) {
-  const hi = App.S.stotramLang === 'hi';
+  const hi = secLang('sv') === 'hi';
   const rvTitle = hi ? 'राधावल्लभ सम्प्रदाय' : 'রাধা বল্লভ সম্প্রদায়';
   const title = hi ? 'रसिक, वैष्णव एवं अन्य भक्त तथा संतजन दर्शन एवं परिचय' : 'রসিক, বৈষ্ণব ও অন্যান্য ভক্ত এবং সন্তজন দর্শন ও পরিচিতি';
 
@@ -17541,7 +17756,7 @@ function _sapFmt(sec) {
   sec = Math.max(0, Math.floor(sec || 0));
   return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
 }
-function _sapHi() { return App.S.stotramLang === 'hi'; }
+function _sapHi() { return secLang('sv') === 'hi'; }
 function _sapOnline() { return navigator.onLine !== false; }
 function _sapOfflineText() {
   return _sapHi()
@@ -18266,10 +18481,10 @@ window.devExitGhostMode = async function () {
 // ══════════════════════════════════════════════════════════════
 
 function getEffectiveLyrics(id) {
-  if (id === "hcj" && App.S.stotramLang === "hi" && _hcjHindiLyrics) {
+  if (id === "hcj" && secLang('sv') === "hi" && _hcjHindiLyrics) {
     return _hcjHindiLyrics;
   }
-  if (id === "rsn" && App.S.stotramLang === "hi" && _rsnHindiLyrics) {
+  if (id === "rsn" && secLang('sv') === "hi" && _rsnHindiLyrics) {
     return _rsnHindiLyrics;
   }
   return (
@@ -19061,7 +19276,7 @@ const RKK_OCCASIONS = {
 // toggle (App.S.stotramLang) used for stotram lyrics, so switching
 // language there also switches the occasion list/tags. ──
 function getRkkOccLang() {
-  return (App.S && App.S.stotramLang) === "hi" ? "hi" : "bn";
+  return secLang('bc') === "hi" ? "hi" : "bn";
 }
 function rkkOccName(key) {
   const e = RKK_OCCASIONS[key];
@@ -19069,9 +19284,8 @@ function rkkOccName(key) {
   return e[getRkkOccLang()] || e.hi;
 }
 function setRkkOccLang(lang) {
-  // Delegate to the app-wide toggle so both the Settings pill and this
-  // card's own buttons stay in sync with a single source of truth.
-  setStotramLang(lang === "hi" ? "hi" : "bn");
+  // This card's buttons set the B&C section language override.
+  setSecLang("bc", lang === "hi" ? "hi" : "bn");
   syncRkkOccLangButtons();
 }
 function syncRkkOccLangButtons() {
@@ -20223,7 +20437,7 @@ window.addEventListener("load", async () => {
     if (gpsStatusEl) {
       gpsStatusEl.textContent = hasCoords
         ? "✅ Location saved · " + Number(App.S.lastLat).toFixed(3) + ", " + Number(App.S.lastLng).toFixed(3)
-        : (gpsOn ? "📍 GPS enabled — tap toggle to refresh location" : "— Tap toggle to detect your location 📍");
+        : (gpsOn ? "📍 GPS enabled — tap toggle to refresh location" : GPS_HELP_TEXT);
     }
     // Do NOT auto-request geolocation on app load — only when the user taps the GPS toggle.
   }
@@ -20758,7 +20972,7 @@ const SVG_SHIV_BOTTOM = `<svg width="160" height="36" viewBox="0 0 160 36" fill=
 function showLyrics(id) {
   // Hindi HCJ is loaded only when it is actually opened. This keeps the
   // initial stotram bundle fast while preserving one verse per reader page.
-  if (id === "hcj" && App.S.stotramLang === "hi" && !_hcjHindiLyrics) {
+  if (id === "hcj" && secLang('sv') === "hi" && !_hcjHindiLyrics) {
     toast("हिंदी श्री हित चौरासी पाठ लोड हो रहा है… 🙏");
     loadHcjHindiLyrics()
       .then(() => showLyrics(id))
@@ -20767,7 +20981,7 @@ function showLyrics(id) {
   }
   // Hindi श्री राधा सुधा निधि is also loaded on demand so the main bundle
   // continues to serve the existing Bengali reader quickly.
-  if (id === "rsn" && App.S.stotramLang === "hi" && !_rsnHindiLyrics) {
+  if (id === "rsn" && secLang('sv') === "hi" && !_rsnHindiLyrics) {
     toast("हिंदी राधा सुधा निधि पाठ लोड हो रहा है… 🙏");
     loadRsnHindiLyrics()
       .then(() => showLyrics(id))
@@ -20954,7 +21168,7 @@ function _renderVerse(idx, dir) {
   if (body) body.style.paddingTop = hasTranslation ? "48px" : "";
 
   const isHindiRsn =
-    _currentStotramId === "rsn" && App.S.stotramLang === "hi";
+    _currentStotramId === "rsn" && secLang('sv') === "hi";
   // Hindi RSN uses व्याख्या: for its inline Hindi meaning. The Bengali
   // source keeps its existing অর্থ:/অর্থ২: markers and behavior.
   const verseHasHindiMeaning = isHindiRsn && /^(?:अर्थ|व्याख्या)\s*:/m.test(verseText);

@@ -15861,6 +15861,9 @@ function renderVed4(list) {
   if (typeof closeSevaAudioPlayer === 'function') { try { closeSevaAudioPlayer(); } catch (_e) {} }
   const audios = Array.from(body.querySelectorAll('audio.ved-audio'));
   audios.forEach((a) => a.addEventListener('play', () => audios.forEach((o) => { if (o !== a) o.pause(); })));
+  // Autoplay: start pad 1 on open, then roll on to the next pad when one ends.
+  audios.forEach((a, i) => a.addEventListener('ended', () => { const nx = audios[i + 1]; if (nx) { nx.currentTime = 0; nx.play().catch(() => {}); } }));
+  if (audios[0]) { const p = audios[0].play(); if (p && p.catch) p.catch(() => {}); }
   // Stop playback when the person leaves this page (a detached <audio> keeps playing otherwise).
   const t = setInterval(() => {
     if (!body.isConnected) { audios.forEach((a) => { try { a.pause(); } catch (_e) {} }); clearInterval(t); }

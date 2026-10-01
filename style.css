@@ -4137,3 +4137,18 @@ details.dd-kt>summary::after{content:' ▾';}
 .vt-row-settings{position:relative;}
 .settings-bell-btn{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,215,0,0.3);background:rgba(8,12,35,0.82);color:#FFD700;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
 .settings-bell-btn .rjap-badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;font-size:10px;}
+
+
+/* ── Always-on pulsing glow: backup tip + Download Backup button ── */
+@keyframes rjapGoldPulse{
+  0%,100%{box-shadow:0 0 6px rgba(255,215,0,0.30),0 0 14px rgba(255,215,0,0.15);}
+  50%{box-shadow:0 0 16px rgba(255,215,0,0.85),0 0 32px rgba(255,215,0,0.45);}
+}
+@keyframes rjapTextPulse{
+  0%,100%{text-shadow:0 0 3px rgba(255,215,0,0.25);}
+  50%{text-shadow:0 0 10px rgba(255,215,0,0.95),0 0 18px rgba(255,215,0,0.5);}
+}
+.rjap-dl-glow{animation:rjapGoldPulse 1.8s ease-in-out infinite !important;
+  border-color:rgba(255,215,0,0.75) !important;}
+.rjap-tip-glow{border:1px solid rgba(255,215,0,0.45);border-radius:12px;
+  animation:rjapGoldPulse 1.8s ease-in-out infinite,rjapTextPulse 1.8s ease-in-out infinite;}

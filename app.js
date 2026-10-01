@@ -8725,6 +8725,7 @@ async function shareBackup() {
     const _variants = [
       new File([json], filename, { type: "application/json" }),
       new File([json], filename, { type: "text/plain" }),
+      new File([json], filename.replace(/\.json$/, "") + ".txt", { type: "text/plain" }),
     ];
     let _shared = false;
     if (navigator.canShare && navigator.share) {

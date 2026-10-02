@@ -1,5 +1,8 @@
 name: Build APK
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  push:
+    branches: [apk-build]
 permissions:
   contents: write
 jobs:

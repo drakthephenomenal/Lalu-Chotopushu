@@ -4097,7 +4097,11 @@ body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !import
 .dd-img{display:block;width:100%;max-height:72vh;object-fit:contain;}
 .dd-noimg{padding:44px 16px;text-align:center;font-size:.85rem;opacity:.75;}
 .dd-arrow{position:absolute;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:1.4rem;line-height:1;cursor:pointer;}
-.dd-prev{left:8px;}.dd-next{right:8px;}
+.dd-namebar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 2px;}
+.dd-namebar .dd-name{flex:1;min-width:0;margin:0;}
+.dd-nav,.dd-nav-sp{flex:0 0 40px;width:40px;height:40px;}
+.dd-nav{border-radius:50%;border:1px solid rgba(255,215,0,.35);background:rgba(255,215,0,.10);color:#ffd700;font-size:1.6rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0 0 3px;-webkit-tap-highlight-color:transparent;}
+.dd-nav:active{background:rgba(255,215,0,.25);}
 .dd-hdhint{position:absolute;right:8px;top:8px;font-size:.68rem;background:rgba(0,0,0,.55);border-radius:8px;padding:2px 7px;pointer-events:none;}
 .dd-dots{display:flex;justify-content:center;gap:6px;margin:8px 0 2px;}
 .dd-dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3);}

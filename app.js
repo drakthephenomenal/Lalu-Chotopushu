@@ -17620,13 +17620,16 @@ function renderDeityPage(list, slug) {
   let html = '<div class="dd-stage">';
   if (photos.length) {
     html += '<img class="dd-img" alt="" draggable="false" decoding="async">' +
-      (photos.length > 1 ? '<button class="dd-arrow dd-prev" aria-label="prev">‹</button><button class="dd-arrow dd-next" aria-label="next">›</button>' : '') +
       '<span class="dd-hdhint">HD ⤢</span>';
   } else {
     html += '<div class="dd-noimg"><span class="dd-ph big">🪷</span><div>' + escHtml(ddL('श्रीविग्रह का चित्र जल्द जुड़ेगा', 'শ্রীবিগ্রহের ছবি শীঘ্রই যুক্ত হবে')) + '</div></div>';
   }
   html += '</div><div class="dd-dots"></div>' +
-    '<div class="dd-name">' + escHtml(ddT(d.n)) + '</div>' +
+    '<div class="dd-namebar">' +
+      (photos.length > 1 ? '<button class="dd-nav dd-prev" aria-label="prev">‹</button>' : '<span class="dd-nav-sp"></span>') +
+      '<div class="dd-name">' + escHtml(ddT(d.n)) + '</div>' +
+      (photos.length > 1 ? '<button class="dd-nav dd-next" aria-label="next">›</button>' : '<span class="dd-nav-sp"></span>') +
+    '</div>' +
     '<div class="dd-cbadge ' + b.cls + ' dd-pbadge">' + escHtml(b.text) + '</div>' +
     '<div class="dd-audio-slot"></div>';
 

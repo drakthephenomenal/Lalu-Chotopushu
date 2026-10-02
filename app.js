@@ -812,6 +812,7 @@ const App = {
     naamLang: "sa",  // Radha / Radha Vallabh / Samba Sadashiv jap text script: "sa" (Sanskrit/Devanagari) or "bn" (Bangla)
     secLang: {},  // per-section language overrides: {sv,bc,nm} = "hi"|"bn" (absent = follow Settings language)
     langOnboarded: false,
+    japLangChosen: false,  // true once the user picks a jap text language themselves
     stotramLang: "bn",  // Stotram list names + lyrics script: "hi" (Hindi/Devanagari) or "bn" (Bangla)
     lbOptIn: false,        // leaderboard opt-in
     lbDisplayName: "",     // leaderboard display name
@@ -1064,6 +1065,7 @@ const App = {
       stotramLang: this.S.stotramLang || "bn",
       secLang: this.S.secLang || {},
       langOnboarded: this.S.langOnboarded || false,
+      japLangChosen: this.S.japLangChosen || false,
       lastLat: this.S.lastLat ?? null,
       lastLng: this.S.lastLng ?? null,
       screenTimeHistory: this.S.screenTimeHistory || {},
@@ -1244,8 +1246,9 @@ const App = {
     if (todayRamJap <= 0) {
       this.S.malaLogRam = [];
     }
-    if (!this.S.hkLang) this.S.hkLang = "hi";
-    if (!this.S.naamLang) this.S.naamLang = "sa";
+    let _jd = ""; try { _jd = localStorage.getItem("rjap_jap_default") || ""; } catch (_e) {}
+    if (!this.S.hkLang) this.S.hkLang = (_jd === "bn" && !this.S.japLangChosen) ? "bn" : "hi";
+    if (!this.S.naamLang) this.S.naamLang = (_jd === "bn" && !this.S.japLangChosen) ? "bn" : "sa";
     if (!this.S.stotramLang) {
       let _lp = ""; try { _lp = localStorage.getItem("rjap_lang_pref") || ""; } catch (_e) {}
       this.S.stotramLang = (_lp === "hi" || _lp === "bn") ? _lp : "bn";
@@ -4043,6 +4046,7 @@ function setNaamLangDirect(lang) {
   if (!App || !App.S) return;
   if (App.S.naamLang === lang) return; // already selected
   App.S.naamLang = lang;
+  App.S.japLangChosen = true;  // user picked a jap text language themselves
   applyNaamLangLabels(lang);
   // If Kaam Vijay's persistent verse is currently on screen, refresh its
   // text in-place immediately rather than waiting for the next tap.
@@ -4734,6 +4738,7 @@ function tgs(k) {
   { const _sm = /^sevaRem(\d)$/.exec(k); if (_sm) { tgSevaReminder(+_sm[1]); return; } }
   if (k === "hkLang") {
     App.S.hkLang = App.S.hkLang === "bn" ? "hi" : "bn";
+    App.S.japLangChosen = true;  // user picked a jap text language themselves
     const tgH = document.getElementById("tgHkLang");
     if (tgH)
       App.S.hkLang === "bn"
@@ -8635,6 +8640,7 @@ function _buildBackupPayload() {
     stotramLang: App.S.stotramLang || "bn",
     secLang: App.S.secLang || {},
     langOnboarded: App.S.langOnboarded || false,
+    japLangChosen: App.S.japLangChosen || false,
     hkLang: App.S.hkLang || "hi",
     naamLang: App.S.naamLang || "sa",
     // ── Previously missing from this backup payload (bug fix) ──
@@ -8831,6 +8837,7 @@ function importAllData(input) {
       if (data.stotramLang === "hi" || data.stotramLang === "bn") App.S.stotramLang = data.stotramLang;
       if (data.secLang && typeof data.secLang === "object") App.S.secLang = data.secLang;
       if (data.langOnboarded) App.S.langOnboarded = true;
+      if (data.japLangChosen) App.S.japLangChosen = true;
       if (data.hkLang) App.S.hkLang = data.hkLang;
       if (data.naamLang) App.S.naamLang = data.naamLang;
       try { secLangPersistLocal(); } catch (_e) {}
@@ -9710,6 +9717,59 @@ function secLangOnGlobalChange() {
   }
 }
 
+// ── First-launch language gate: blocks the app on a fresh install until the
+// user picks Hindi or Bangla. Skipped for existing users and for anyone who
+// has already chosen. Sign-in is NOT required for this step. ──
+function _lcIsExistingInstall() {
+  try {
+    if (App.S && App.S.langOnboarded) return true;
+    if (localStorage.getItem("rjap_lang_asked") === "1" || localStorage.getItem("rjap_lang_pref")) return true;
+    const S = App.S || {};
+    if ((S.lt || 0) > 0 || (S.dt || 0) > 0) return true;
+    if (S.history && Object.keys(S.history).length) return true;
+    if (S.historyHK && Object.keys(S.historyHK).length) return true;
+    const keys = ["rjap_push_asked", "rjap_gps_enabled", "rjap_gps_asked", "rjap_reminder_time", "rjap_push_enabled"];
+    for (const k of keys) if (localStorage.getItem(k)) return true;
+  } catch (_e) {}
+  return false;
+}
+async function lcLangGate() {
+  if (_lcIsExistingInstall()) return;
+  const pick = await new Promise((resolve) => {
+    const ov = document.createElement("div");
+    ov.id = "lcLangGate";
+    ov.style.cssText = "position:fixed;inset:0;z-index:100001;background:linear-gradient(160deg,#0d1535,#050818);display:flex;align-items:center;justify-content:center;padding:26px;";
+    ov.innerHTML = '<div style="max-width:380px;width:100%;text-align:center;">' +
+      '<div style="font-size:42px;line-height:1;margin-bottom:12px;">🙏</div>' +
+      '<div style="font-size:19px;font-weight:700;color:#FFD700;margin-bottom:6px;">भाषा चुनें</div>' +
+      '<div style="font-size:19px;font-weight:700;color:#FFD700;margin-bottom:14px;">ভাষা নির্বাচন করুন</div>' +
+      '<div style="font-size:12px;color:rgba(255,255,255,.65);line-height:1.5;margin-bottom:22px;">Choose your language to continue.<br>You can change it later in Settings.</div>' +
+      '<div style="display:flex;flex-direction:column;gap:12px;">' +
+      '<button type="button" data-l="hi" style="padding:15px;border-radius:14px;border:1px solid rgba(255,215,0,.6);background:linear-gradient(135deg,#FFD700,#E5A800);color:#201400;font-size:17px;font-weight:700;cursor:pointer;">हिंदी</button>' +
+      '<button type="button" data-l="bn" style="padding:15px;border-radius:14px;border:1px solid rgba(255,215,0,.6);background:linear-gradient(135deg,#FFD700,#E5A800);color:#201400;font-size:17px;font-weight:700;cursor:pointer;">বাংলা</button>' +
+      '</div></div>';
+    ov.querySelectorAll("button[data-l]").forEach((b) => {
+      b.onclick = () => { ov.remove(); resolve(b.getAttribute("data-l")); };
+    });
+    document.body.appendChild(ov);
+  });
+  // Set state directly (the UI has not been initialised yet); init picks it up.
+  try { localStorage.setItem("rjap_lang_asked", "1"); } catch (_e) {}
+  App.S.stotramLang = pick;
+  App.S.langOnboarded = true;
+  // Hindi = Sanskrit script for jap text; Bangla = Bangla, until the user
+  // picks a jap text language themselves.
+  if (pick === "bn" && !App.S.japLangChosen) {
+    App.S.hkLang = "bn";
+    App.S.naamLang = "bn";
+    try { localStorage.setItem("rjap_jap_default", "bn"); } catch (_e) {}
+  } else {
+    try { localStorage.removeItem("rjap_jap_default"); } catch (_e) {}
+  }
+  secLangPersistLocal();
+  try { App.save(); } catch (_e) {}
+}
+
 // ── First-login onboarding modals ──
 function _lcOnbModal(o) {
   return new Promise((resolve) => {
@@ -9736,6 +9796,19 @@ function _lcOnbModal(o) {
     ov.appendChild(box);
     document.body.appendChild(ov);
   });
+}
+
+// Popup language → jap text language (Hindi = Sanskrit script, Bangla = Bangla),
+// only while the user has not chosen a jap text language themselves AND both
+// jap languages are still at their defaults (so an existing choice is never overwritten).
+function lcApplyJapLangDefaults(pick) {
+  if (!App || !App.S || App.S.japLangChosen) return;
+  if ((App.S.hkLang || "hi") !== "hi" || (App.S.naamLang || "sa") !== "sa") return;
+  if (pick !== "bn") return;  // Hindi/Sanskrit are already the defaults
+  try { setHKLangDirect("bn"); } catch (_e) {}
+  try { setNaamLangDirect("bn"); } catch (_e) {}
+  App.S.japLangChosen = false;  // this was automatic, not the user's own jap choice
+  App.save();
 }
 
 async function lcOnbEnableGps() {
@@ -9793,28 +9866,14 @@ async function lcOnboardingRun(user) {
       if (go) await lcOnbEnableGps();
     }
 
-    // 3) Language — sets the Settings language (global)
-    let langDone = false;
-    try { langDone = localStorage.getItem("rjap_lang_asked") === "1"; } catch (_e) {}
-    if (!langDone && !(App.S && App.S.langOnboarded)) {
-      try { localStorage.setItem("rjap_lang_asked", "1"); } catch (_e) {}
-      const pick = await _lcOnbModal({
-        icon: "🌐",
-        title: "भाषा चुनें · ভাষা নির্বাচন করুন",
-        body: "Choose your app language. You can change it any time in Settings, or separately for S&amp;V, B&amp;C and N&amp;M.",
-        buttons: [
-          { label: "हिंदी", primary: true, value: "hi" },
-          { label: "বাংলা", primary: true, value: "bn" },
-          { label: "Skip", value: "" },
-        ],
-      });
-      if (App.S) { App.S.langOnboarded = true; }
-      if (pick === "hi" || pick === "bn") {
-        if (App.S.stotramLang === pick) { App.save(); secLangPersistLocal(); secLangOnGlobalChange(); }
-        else setStotramLang(pick);   // same path as the Settings language button
-      } else {
-        App.save();
-      }
+    // 3) Language was already chosen on the first-launch screen. A brand-new
+    //    account (no saved language yet) adopts that choice; an account that
+    //    already has saved language settings keeps its own.
+    let pref = ""; try { pref = localStorage.getItem("rjap_lang_pref") || ""; } catch (_e) {}
+    if (App.S && !App.S.langOnboarded && (pref === "hi" || pref === "bn")) {
+      App.S.langOnboarded = true;
+      if (App.S.stotramLang !== pref) setStotramLang(pref); else { App.save(); secLangOnGlobalChange(); }
+      lcApplyJapLangDefaults(pref);
     }
   } catch (e) {
     console.error("onboarding failed:", e);
@@ -18595,6 +18654,7 @@ function setHKLangDirect(lang) {
   if (!App || !App.S) return;
   if (App.S.hkLang === lang) return; // already selected
   App.S.hkLang = lang;
+  App.S.japLangChosen = true;  // user picked a jap text language themselves
   // applyHKLangLabels handles: body.hk-bn class (CSS active states), all labels, toggle UI
   applyHKLangLabels(lang);
   // Update hkPersist if visible
@@ -20336,6 +20396,7 @@ window.addEventListener("load", async () => {
 
 
   await App.load();
+  try { await lcLangGate(); } catch (e) { console.error("lang gate failed:", e); }
   if (typeof checkForUpdateAvailable === "function") checkForUpdateAvailable();
   if (typeof _loadManualApkLink === "function") _loadManualApkLink();
   App.lmc = Math.floor(App.gTod() / (App.S.ms || 108));

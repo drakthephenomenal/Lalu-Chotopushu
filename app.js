@@ -4444,6 +4444,7 @@ function sv(id, btn) {
   }
   if (id === "vst") renderSt();
   if (id === "v28") {
+    sync28ScriptBtn();
     u28();
     render28Dots(get28Pos());
   } else {
@@ -9712,6 +9713,7 @@ function secLangSyncButtons() {
 // Settings language changed: sections WITHOUT an override follow it.
 function secLangOnGlobalChange() {
   secLangSyncButtons();
+  try { sync28ScriptBtn(); u28(); } catch (_e) {}
   if (!(App.S.secLang && App.S.secLang.nm)) {
     try { _msApplyLang(false); } catch (_e) {}
   }
@@ -9768,6 +9770,9 @@ async function lcLangGate() {
   }
   secLangPersistLocal();
   try { App.save(); } catch (_e) {}
+  try { localStorage.removeItem("rjap_n28_script"); } catch (_e) {}
+  _n28ScriptHindi = null;
+  try { sync28ScriptBtn(); u28(); } catch (_e) {}
 }
 
 // ── First-login onboarding modals ──
@@ -13568,16 +13573,32 @@ const NAMES28 = [
   },
 ];
 
-// Hindi/Bengali script toggle for 28 Names (default: Bengali)
-let _n28ScriptHindi = false;
-function toggle28Script() {
-  _n28ScriptHindi = !_n28ScriptHindi;
+// Hindi/Bengali script toggle for 28 Names.
+// Default follows the app language (first-open popup / Settings); a manual tap on
+// the toggle is remembered and then wins over the default.
+let _n28ScriptHindi = null;   // null = follow app language
+function _n28IsHindi() {
+  if (_n28ScriptHindi === null) {
+    try {
+      const m = localStorage.getItem("rjap_n28_script");
+      if (m === "hi") _n28ScriptHindi = true; else if (m === "bn") _n28ScriptHindi = false;
+    } catch (_e) {}
+  }
+  if (_n28ScriptHindi === null) return !!(App && App.S && App.S.stotramLang === "hi");
+  return _n28ScriptHindi;
+}
+function sync28ScriptBtn() {
   const btn = document.getElementById("n28ScriptToggle");
-  if (btn) btn.textContent = _n28ScriptHindi ? "বাংলা" : "हिन्दी";
+  if (btn) btn.textContent = _n28IsHindi() ? "বাংলা" : "हिन्दी";
+}
+function toggle28Script() {
+  _n28ScriptHindi = !_n28IsHindi();
+  try { localStorage.setItem("rjap_n28_script", _n28ScriptHindi ? "hi" : "bn"); } catch (_e) {}
+  sync28ScriptBtn();
   u28();
 }
 function get28Name(entry) {
-  return _n28ScriptHindi && entry.nameHindi ? entry.nameHindi : entry.name;
+  return _n28IsHindi() && entry.nameHindi ? entry.nameHindi : entry.name;
 }
 
 function get28Pos() {

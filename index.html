@@ -2024,6 +2024,8 @@
       <div id="manualApkEditIcon" style="display:none;align-items:center;justify-content:center;color:rgba(126,200,255,0.7);font-size:15px;cursor:pointer;padding:4px;flex-shrink:0;" onclick="event.stopPropagation(); toggleManualApkEdit();">✏️</div>
       <div style="color:rgba(126,200,255,0.5);font-size:16px;">›</div>
     </div>
+    <!-- Size / benefit heads-up, shown to everyone (text set in _renderManualApkCard, follows app language) -->
+    <div id="manualApkNote" style="margin-top:9px;padding:8px 10px;border-radius:9px;background:rgba(126,200,255,0.07);border:1px solid rgba(126,200,255,0.18);font-size:11px;line-height:1.5;color:rgba(255,255,255,0.7);"></div>
     <div id="manualApkEditWrap" style="display:none;margin-top:10px;">
       <input id="manualApkInput" type="url" placeholder="Paste Google Drive direct-download link…" style="width:100%;box-sizing:border-box;padding:9px 11px;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid rgba(126,200,255,0.3);color:#fff;font-size:12px;margin-bottom:8px;">
       <button type="button" onclick="saveManualApkLink()" style="width:100%;padding:9px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(126,200,255,0.3),rgba(126,200,255,0.18));color:#7ec8ff;border:1px solid rgba(126,200,255,0.45);font-size:12px;font-weight:700;cursor:pointer;">💾 Save (updates for all users)</button>
@@ -2878,7 +2880,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=116"></script>
-    <script src="./app.js?v=157"></script>
+    <script src="./app.js?v=158"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

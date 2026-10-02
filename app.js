@@ -3624,6 +3624,15 @@ function _renderManualApkCard() {
   const chevronEl = document.getElementById("manualApkChevron");
   if (!titleEl || !statusEl) return;
 
+  // Size / benefit heads-up (everyone sees it; follows the app language).
+  const noteEl = document.getElementById("manualApkNote");
+  if (noteEl) {
+    const _l = (App && App.S && App.S.stotramLang) || "bn";
+    noteEl.textContent = _l === "hi"
+      ? "\uD83D\uDCE6 \u0932\u0917\u092D\u0917 500 MB \u2014 \u0921\u093E\u0909\u0928\u0932\u094B\u0921 \u092E\u0947\u0902 \u0915\u0941\u091B \u0938\u092E\u092F \u0932\u0917 \u0938\u0915\u0924\u093E \u0939\u0948\u0964 \u0930\u093F\u092E\u093E\u0907\u0902\u0921\u0930 \u0914\u0930 \u0911\u092B\u093C\u0932\u093E\u0907\u0928 \u0909\u092A\u092F\u094B\u0917 \u0915\u0947 \u0932\u093F\u090F \u092F\u0939 \u090F\u092A \u092C\u0939\u0941\u0924 \u0938\u0941\u0935\u093F\u0927\u093E\u091C\u0928\u0915 \u0939\u0948\u0964"
+      : "\uD83D\uDCE6 \u09AA\u09CD\u09B0\u09BE\u09DF \u09EB\u09E6\u09E6 MB \u2014 \u09A1\u09BE\u0989\u09A8\u09B2\u09CB\u09A1 \u09B9\u09A4\u09C7 \u0995\u09BF\u099B\u09C1\u099F\u09BE \u09B8\u09AE\u09DF \u09B2\u09BE\u0997\u09A4\u09C7 \u09AA\u09BE\u09B0\u09C7\u0964 \u09B0\u09BF\u09AE\u09BE\u0987\u09A8\u09CD\u09A1\u09BE\u09B0 \u0993 \u0985\u09AB\u09B2\u09BE\u0987\u09A8\u09C7 \u09AC\u09CD\u09AF\u09AC\u09B9\u09BE\u09B0\u09C7\u09B0 \u099C\u09A8\u09CD\u09AF \u098F\u099F\u09BF \u0996\u09C1\u09AC\u0987 \u09B8\u09C1\u09AC\u09BF\u09A7\u09BE\u099C\u09A8\u0995\u0964";
+  }
+
   const effectiveUrl = _effectiveManualApkUrl();
 
   if (isDeveloper()) {
@@ -9713,6 +9722,7 @@ function secLangSyncButtons() {
 // Settings language changed: sections WITHOUT an override follow it.
 function secLangOnGlobalChange() {
   secLangSyncButtons();
+  try { _renderManualApkCard(); } catch (_e) {}
   try { sync28ScriptBtn(); u28(); } catch (_e) {}
   if (!(App.S.secLang && App.S.secLang.nm)) {
     try { _msApplyLang(false); } catch (_e) {}

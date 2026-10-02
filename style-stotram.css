@@ -1293,3 +1293,31 @@
 /* 4 Veda reader */
 .ved-reader .ved-lab{margin:10px 0 2px;font-size:12px;letter-spacing:.3px;color:rgba(255,215,0,.55);}
 .ved-reader audio.ved-audio{display:block;width:100%;margin:8px 0 20px;border-radius:12px;}
+
+/* ── Geet Govindam translation lines (শব্দার্থ / অনুবাদ) ──────────────────
+   Verse = black (existing .lyr-line). Word-wise: Sanskrit = brown,
+   Bangla meaning = blue. Total meaning (অনুবাদ) = green.
+   Deliberately NOT .lyr-line, so the auto font-fit (which measures every
+   .lyr-line) is never shrunk by these long wrapping lines. */
+.lyr-sw, .lyr-anuvad {
+  display: block;
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  font-size: clamp(12px, 3.3vw, 16px);
+  line-height: 1.75;
+  margin: 2px 0;
+}
+.lyr-sw-sk       { color: #8b4513 !important; font-weight: 600; }
+.lyr-sw-bn       { color: #0b4fc2 !important; }
+.lyr-sw-eq, .lyr-sw-dot, .lyr-sw-label { color: #6b5a4a !important; }
+.lyr-sw-label    { font-weight: 700; }
+.lyr-anuvad,
+.lyr-anuvad-label { color: #1b7a2f !important; }
+.lyr-anuvad-label { font-weight: 700; }
+.lm-water-card[data-theme] .lyr-sw-sk { color: #8b4513 !important; }
+.lm-water-card[data-theme] .lyr-sw-bn { color: #0b4fc2 !important; }
+.lm-water-card[data-theme] .lyr-anuvad,
+.lm-water-card[data-theme] .lyr-anuvad-label { color: #1b7a2f !important; }

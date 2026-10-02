@@ -20959,7 +20959,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks"];
+const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg"];
 // ── IDs where prose sections need vertical-scroll mode
 const PROSE_IDS = ["nkc"];
 
@@ -21263,6 +21263,39 @@ function showLyrics(id) {
   } catch (_e) {}
 }
 
+// ── Geet Govindam word-wise meaning / total meaning lines ──────────────
+// শব্দার্থ: Sanskrit = বাংলা · Sanskrit = বাংলা …   → Sanskrit brown, Bangla blue
+// অনুবাদ: …                                          → green
+const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ)\s*:/;
+function _ggEsc(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function _ggMeaningLineHtml(line) {
+  const t = line.trim();
+  const ci = t.indexOf(":");
+  const label = _ggEsc(t.slice(0, ci + 1));
+  const rest = t.slice(ci + 1).trim();
+  if (/^শব্দার্থ/.test(t)) {
+    const items = rest.split(" · ").map(function (it) {
+      const ei = it.indexOf(" = ");
+      if (ei === -1) return '<span class="lyr-sw-bn">' + _ggEsc(it) + "</span>";
+      return (
+        '<span class="lyr-sw-sk">' + _ggEsc(it.slice(0, ei).trim()) + "</span>" +
+        '<span class="lyr-sw-eq"> = </span>' +
+        '<span class="lyr-sw-bn">' + _ggEsc(it.slice(ei + 3).trim()) + "</span>"
+      );
+    });
+    return (
+      '<span class="lyr-sw"><span class="lyr-sw-label">' + label + "</span> " +
+      items.join('<span class="lyr-sw-dot"> · </span>') + "</span>"
+    );
+  }
+  return (
+    '<span class="lyr-anuvad"><span class="lyr-anuvad-label">' + label + "</span> " +
+    _ggEsc(rest) + "</span>"
+  );
+}
+
 function _renderVerse(idx, dir) {
   const body = document.getElementById("lyrBody");
   const ctr = null;
@@ -21291,7 +21324,9 @@ function _renderVerse(idx, dir) {
   const verseHasHindiMeaning = isHindiRsn && /^(?:अर्थ|व्याख्या)\s*:/m.test(verseText);
   // Does this verse have any অর্থ: / অর্থ২: / Hindi meaning lines?
   const verseHasArtha =
-    /^অর্থ২?\s*:/m.test(verseText) || verseHasHindiMeaning;
+    /^অর্থ২?\s*:/m.test(verseText) ||
+    verseHasHindiMeaning ||
+    (_currentStotramId === "gg" && /^(?:শব্দার্থ|অনুবাদ)\s*:/m.test(verseText));
   // Does this verse specifically have a second-language (অর্থ২:) line?
   const verseHasSecondLang = /^অর্থ২\s*:/m.test(verseText);
 
@@ -21301,6 +21336,7 @@ function _renderVerse(idx, dir) {
     return (
       t.length > 0 &&
       !/^অর্থ২?\s*:/.test(t) &&
+      !(_currentStotramId === "gg" && _GG_MEANING_RE.test(t)) &&
       !(isHindiRsn && /^(?:अर्थ|व्याख्या)\s*:/.test(t))
     );
   });
@@ -21313,7 +21349,16 @@ function _renderVerse(idx, dir) {
       .replace(/>/g, "&gt;");
     linesHtml = '<span class="lyr-prose">' + escaped + "</span>";
   } else {
-    const rawLines = verseText.split("\n");
+    let rawLines = verseText.split("\n");
+    if (_currentStotramId === "gg" && !_translationVisible) {
+      // Translation OFF: drop শব্দার্থ/অনুবাদ lines and the blank spacers
+      // that surrounded them, so the verse spacing is exactly as before.
+      rawLines = rawLines
+        .filter(function (l) { return !_GG_MEANING_RE.test(l.trim()); })
+        .filter(function (l, i, arr) {
+          return !(l.trim() === "" && i > 0 && arr[i - 1].trim() === "");
+        });
+    }
     linesHtml = rawLines
       .map((line) => {
         if (line.trim() === "") return '<span class="lyr-line-empty"></span>';
@@ -21330,6 +21375,11 @@ function _renderVerse(idx, dir) {
           .replace(/&/g, "&amp;")
           .replace(/</g, "&lt;")
           .replace(/>/g, "&gt;");
+        if (_currentStotramId === "gg" && _GG_MEANING_RE.test(content.trim())) {
+          // Geet Govindam শব্দার্থ / অনুবাদ — only when Translation is ON.
+          if (!_translationVisible) return "";
+          return _ggMeaningLineHtml(content);
+        }
         if (/^অর্থ২\s*:/.test(content.trim())) {
           // Hindi (second) meaning — only when translation ON and this
           // language is the one currently selected.

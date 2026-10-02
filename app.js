@@ -15828,6 +15828,10 @@ function renderFavVideoLinksFolderView(list, folderId, subfolderKey) {
 
 function renderSt() {
   const list = document.getElementById("stList");
+  // The "Add Your Stotram" box may have been moved under the Stotrams headline
+  // (folder menu) — put it back above the list before clearing so it isn't destroyed.
+  const _af = document.getElementById('stAddForm');
+  if (_af && _af.parentNode === list) list.parentNode.insertBefore(_af, list);
   list.innerHTML = "";
 
   // "Stotram Tracker" title + "Add Your Stotram" box don't apply inside
@@ -15907,7 +15911,20 @@ function renderSt() {
 
   // ── Level 1: folder menu (no active folder selected) ──
   if (!activeKey) {
-    groups.forEach((group) => {
+    // S&V order: 1) Rasik/Vaishnav/Bhakta & Sant Darshan  2) Divya Darshan
+    // 3) Favourite Videos  — then a "Stotrams" headline with all stotram folders under it.
+    const TOP_ORDER = ['rjbj', 'dd', 'videos'];
+    const topGroups = TOP_ORDER.map((k) => groups.find((g) => g.key === k)).filter(Boolean);
+    const stotramGroups = groups.filter((g) => TOP_ORDER.indexOf(g.key) === -1);
+    const _svHi = secLang('sv') === 'hi';
+    const addHead = (txt) => {
+      const h = document.createElement('div');
+      h.className = 'st-section-head';
+      h.style.cssText = 'margin:18px 4px 10px;padding:0 0 6px;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold,#ffd700);border-bottom:1px solid rgba(245,209,122,0.28);font-family:"Hind Siliguri",serif;';
+      h.textContent = txt;
+      list.appendChild(h);
+    };
+    const addTile = (group) => {
       const tile = document.createElement('div');
       tile.className = 'st-folder-tile';
       // Sampraday-sign image (rv/shiv/bmg) when we have one, else the emoji.
@@ -15928,7 +15945,11 @@ function renderSt() {
         renderSt();
       });
       list.appendChild(tile);
-    });
+    };
+    topGroups.forEach(addTile);
+    addHead(_svHi ? '🪔 स्तोत्र' : '🪔 স্তোত্র');
+    if (_af) list.appendChild(_af);   // "Add Your Stotram" lives under the Stotrams headline
+    stotramGroups.forEach(addTile);
     return;
   }
 
@@ -17411,7 +17432,7 @@ function ddAudioAttach(bar, slug, url) {
   el.loop = true;
   el.preload = 'auto';
   const a = { slug: slug, url: url, el: el, ui: ui, watch: null };
-  a.paint = () => { a.ui.btn.textContent = el.paused ? '▶' : '⏸'; };
+  a.paint = () => { const b = a.ui.btn; b.textContent = '🎵'; b.style.cssText = 'width:30px;height:30px;min-width:0;padding:0;border-radius:50%;font-size:15px;line-height:1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(255,215,0,0.35);background:rgba(255,215,0,0.10);opacity:' + (el.paused ? '0.45' : '1') + ';'; };
   a.toggle = () => { if (el.paused) el.play().catch(() => {}); else el.pause(); };
   el.addEventListener('play', a.paint);
   el.addEventListener('pause', a.paint);
@@ -17642,7 +17663,8 @@ function renderDeityPage(list, slug) {
   if (man.audio) {
     const bar = document.createElement('div');
     bar.className = 'dd-audio';
-    bar.innerHTML = '<button class="dd-a-play">▶</button><span class="dd-a-title">🎵 ' + escHtml(ddL('दिव्य भजन', 'দিব্য ভজন')) + '</span>';
+    bar.innerHTML = '<button class="dd-a-play" aria-label="' + escHtml(ddL('दिव्य भजन', 'দিব্য ভজন')) + '">🎵</button>';
+    bar.style.cssText = 'display:inline-flex;width:auto;min-width:0;padding:0;margin:6px 0;background:none;border:none;box-shadow:none;';
     wrap.querySelector('.dd-audio-slot').appendChild(bar);
     ddAudioAttach(bar, slug, ddPath(slug, man.audio));
   } else { ddAudioStop(); }

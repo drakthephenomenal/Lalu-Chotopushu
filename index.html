@@ -670,11 +670,19 @@
 
 <!-- STOTRAM VIEW -->
 <div class="view" id="vst">
+  <style>
+    #vst .sv-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 12px;}
+    #vst .sv-head .vt{flex:1 1 auto;min-width:0;margin:0;text-align:left;font-size:15px;letter-spacing:.06em;line-height:1.25;}
+    #vst .sv-head .sec-lang-bar{flex:0 0 auto;margin-left:auto !important;margin-top:0 !important;margin-bottom:0 !important;margin-right:0 !important;gap:5px;}
+    #vst .sv-head .ms-toggle-btn{padding:5px 11px;font-size:12px;min-width:0;}
+  </style>
+  <div class="sv-head">
   <div class="vt" id="stTrackerTitle">Stotram and Videos</div>
-  <div class="ms-toggle-wrap sec-lang-bar" data-sec="sv" style="margin-bottom:12px;">
+  <div class="ms-toggle-wrap sec-lang-bar" data-sec="sv">
     <button type="button" class="ms-toggle-btn" data-l="hi" onclick="setSecLang('sv','hi')">हिंदी</button>
     <button type="button" class="ms-toggle-btn" data-l="bn" onclick="setSecLang('sv','bn')">বাংলা</button>
     <button type="button" class="ms-toggle-btn" data-l="" onclick="setSecLang('sv',null)" title="Follow Settings language" aria-label="Follow Settings language" style="display:none">↺</button>
+  </div>
   </div>
   <div class="asf" id="stAddForm">
     <!-- Header — always visible, tap to toggle -->
@@ -2870,7 +2878,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=116"></script>
-    <script src="./app.js?v=155"></script>
+    <script src="./app.js?v=156"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

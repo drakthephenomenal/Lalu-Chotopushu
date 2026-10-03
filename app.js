@@ -6318,9 +6318,12 @@ async function pullPermanentGiftLedger() {
     for (const doc of snap.docs) {
       const remote = doc.data();
       if (!remote || !remote.id) continue;
-      if (!App.S.giftLedger[remote.id]) {
+      const loc = App.S.giftLedger[remote.id];
+      if (!loc || (remote.editedTs || 0) > (loc.editedTs || 0)) {
         App.S.giftLedger[remote.id] = remote;
         if (App._uid) await App.dbPut("giftLedger", remote.id, remote);
+      } else if ((loc.editedTs || 0) > (remote.editedTs || 0)) {
+        _persistGift(loc).catch(() => {});
       }
     }
     renderPermanentGiftLog();
@@ -6329,7 +6332,73 @@ async function pullPermanentGiftLedger() {
   }
 }
 
+// ── Keep the permanent gift record in step with edited dedications ─────────────
+// Each ledger record is linked to its dedication (dedId). When a dedication is
+// edited, the SAME ledger record is updated in place (same id, never duplicated)
+// and the old values are kept inside it under "revisions".
+function _giftSig(o) {
+  const am = o.amounts || {};
+  return JSON.stringify([
+    o.purpose || "", o.note || "", o.date || "",
+    Object.keys(am).sort().map(function (k) { return [k, am[k]]; }),
+    (o.stotrams || []).map(function (s) { return [s.name, s.count]; }),
+  ]);
+}
+async function _persistGift(g) {
+  try { if (App._uid) await App.dbPut("giftLedger", g.id, g); } catch (e) {}
+  if (fbUser && typeof fbDb !== "undefined") {
+    try {
+      await fbDb.collection("users").doc(fbUser.uid).collection("gifts").doc(g.id).set(g);
+    } catch (e) {
+      console.warn("Permanent gift ledger: cloud update failed, kept locally:", e.message);
+    }
+  }
+}
+function _reconcileGiftLedger() {
+  if (typeof isGhostMode === "function" && isGhostMode()) return;
+  const ledger = App.S.giftLedger || {};
+  const records = Object.values(ledger);
+  if (!records.length) return;
+  (App.S.dedications || []).forEach(function (d) {
+    let g = records.find(function (r) { return r.dedId === d.id; });
+    let linked = false;
+    if (!g) {
+      // older gifts: match by creation time (ledger entry is written right after the dedication)
+      g = records.find(function (r) { return !r.dedId && Math.abs((r.ts || 0) - (d.ts || 0)) < 5000; });
+      if (g) { g.dedId = d.id; linked = true; }
+    }
+    if (!g) return;
+    const want = {
+      purpose: d.purpose || "",
+      note: d.note || "",
+      date: d.date || "",
+      amounts: _dedEntryAmounts(d),
+      stotrams: (d.stotrams || []).map(function (s) { return { name: s.name || "", count: s.count || 0 }; }),
+    };
+    const changed = _giftSig(g) !== _giftSig(want);
+    if (!changed && !linked) return;
+    if (changed) {
+      g.revisions = (g.revisions || []).concat([{
+        ts: Date.now(),
+        purpose: g.purpose || "",
+        note: g.note || "",
+        amounts: g.amounts || {},
+        stotrams: g.stotrams || [],
+      }]);
+      g.purpose = want.purpose;
+      g.note = want.note;
+      g.date = want.date;
+      g.amounts = want.amounts;
+      g.types = Object.keys(want.amounts);
+      g.stotrams = want.stotrams;
+      g.editedTs = Date.now();
+    }
+    _persistGift(g).catch(function () {});
+  });
+}
+
 function renderPermanentGiftLog() {
+  try { _reconcileGiftLedger(); } catch (_e) {}
   const el = document.getElementById("permGiftList");
   if (!el) return;
   const entries = Object.values(App.S.giftLedger || {}).sort((a, b) => (b.ts || 0) - (a.ts || 0));
@@ -6351,7 +6420,7 @@ function renderPermanentGiftLog() {
         '<div style="font-weight:600;color:#FF8FC7;">' + (g.purpose || "Untitled gift") + "</div>" +
         '<div style="color:var(--tl);margin-top:2px;">' + parts.join(" + ") + "</div>" +
         (g.note ? '<div style="color:var(--td);margin-top:2px;font-size:11px;">' + g.note + "</div>" : "") +
-        '<div style="color:var(--td);margin-top:2px;font-size:10px;">' + (g.date || "") + "</div>" +
+        '<div style="color:var(--td);margin-top:2px;font-size:10px;">' + (g.date || "") + (g.editedTs ? " · ✏ edited" : "") + "</div>" +
         "</div>"
       );
     })
@@ -6412,7 +6481,7 @@ function addDedication() {
   // PERMANENT record — written immediately, independent of App.save()'s
   // debounced cloud push, so this entry can't be lost the way a plain
   // dedication can be. Fire-and-forget so it doesn't block the UI.
-  addPermanentGift({ types, amounts, stotrams, purpose, note, date }).catch(() => {});
+  addPermanentGift({ types, amounts, stotrams, purpose, note, date, dedId: (App.S.dedications[0] || {}).id }).catch(() => {});
 
   App.save();
   App.ua();

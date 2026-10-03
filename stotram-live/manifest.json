@@ -1,3 +1,19 @@
 {
-  "stotrams": []
+  "stotrams": [
+    {
+      "id": "L_krishna_gopal_sahastranaam_stotram",
+      "cat": "krishna",
+      "dir": "krishna/gopal-sahastranaam-stotram",
+      "name": "gopal sahastranaam stotram",
+      "sub": "",
+      "nameHi": "gopal sahastranaam stotram",
+      "subHi": "",
+      "flat": false,
+      "paged": false,
+      "hi": true,
+      "audio": false,
+      "pages": [],
+      "v": "ec20c3d1"
+    }
+  ]
 }

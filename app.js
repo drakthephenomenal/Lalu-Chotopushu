@@ -15859,6 +15859,11 @@ function renderFavVideoLinksFolderView(list, folderId, subfolderKey) {
 
 function renderSt() {
   const list = document.getElementById("stList");
+  // First render: pull uploaded custom-stotram audio state, then redraw once.
+  if (!_stAudioLoaded && !window._stAudioLoading && (App.S.customSt || []).length) {
+    window._stAudioLoading = true;
+    stAudioLoadAll().then(() => { window._stAudioLoading = false; renderSt(); });
+  }
   // The "Add Your Stotram" box may have been moved under the Stotrams headline
   // (folder menu) — put it back above the list before clearing so it isn't destroyed.
   const _af = document.getElementById('stAddForm');
@@ -16108,6 +16113,8 @@ function renderSt() {
     let headerRight = '';
     if (st.custom) {
       headerRight = '<div style="display:flex;gap:5px;flex-shrink:0">' +
+        '<button class="st-edit-btn" title="Upload audio" aria-label="Upload audio" onclick="stPickAudio(\'' + st.id + '\')">' + (window._stAudioUrls[st.id] ? '🎵✓' : '🎵') + '</button>' +
+        (window._stAudioUrls[st.id] ? '<button class="st-edit-btn" title="Remove audio" aria-label="Remove audio" onclick="stRemoveAudio(\'' + st.id + '\')">🔇</button>' : '') +
         '<button class="st-edit-btn" onclick="toggleStEdit(\'' + st.id + '\')">✏</button>' +
         '<button class="st-edit-btn" style="border-color:rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08)" onclick="delSt(\'' + st.id + '\')">✕</button>' +
         '</div>';
@@ -18674,6 +18681,7 @@ function toggleStEdit(id) {
   }
 }
 function delSt(id) {
+  if (_isCustomStId(id)) { stRemoveAudio(id).catch(() => {}); }
   App.S.customSt = (App.S.customSt || []).filter((x) => x.id !== id);
   delete App.S.stotrams[id];
   App.save();
@@ -21086,7 +21094,121 @@ const SVG_SHIV_BOTTOM = `<svg width="160" height="36" viewBox="0 0 160 36" fill=
 </svg>`;
 // ──────────────────────────────────────────────────────────────
 
+
+// ── Custom (user-added) stotrams: flat single-page view + own audio upload ──
+// A stotram added by the user (id "c_<timestamp>") always opens as ONE flat
+// page (like gdm / ach) and can have ONE full-recitation audio file uploaded
+// for it. The file lives in this device's IndexedDB (nothing is bundled in
+// the app / repo). It is not synced to the cloud, so it exists per device.
+function _isCustomStId(id) { return typeof id === "string" && id.indexOf("c_") === 0; }
+const StAudioDB = {
+  db: null,
+  async init() {
+    if (this.db) return;
+    return new Promise((res, rej) => {
+      const req = indexedDB.open("RadhaJapStotramAudioDB", 1);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains("audio")) db.createObjectStore("audio");
+      };
+      req.onsuccess = (e) => { this.db = e.target.result; res(); };
+      req.onerror = () => rej(req.error);
+    });
+  },
+  async get(id) {
+    await this.init();
+    return new Promise((res, rej) => {
+      const r = this.db.transaction("audio", "readonly").objectStore("audio").get(id);
+      r.onsuccess = () => res(r.result || null);
+      r.onerror = () => rej(r.error);
+    });
+  },
+  async put(id, blob) {
+    await this.init();
+    return new Promise((res, rej) => {
+      const tx = this.db.transaction("audio", "readwrite");
+      tx.objectStore("audio").put(blob, id);
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+  },
+  async del(id) {
+    await this.init();
+    return new Promise((res, rej) => {
+      const tx = this.db.transaction("audio", "readwrite");
+      tx.objectStore("audio").delete(id);
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+  },
+};
+window._stAudioUrls = window._stAudioUrls || {}; // id -> blob: URL (only if audio exists)
+let _stAudioLoaded = false;
+
+// Make _AUDIO_STOTRAMS reflect whether this custom stotram has an upload.
+function _stSyncAudioCfg(id) {
+  if (!_isCustomStId(id)) return;
+  if (window._stAudioUrls[id]) _AUDIO_STOTRAMS[id] = { prefix: id, custom: true };
+  else delete _AUDIO_STOTRAMS[id];
+}
+async function stAudioLoadAll() {
+  try {
+    for (const st of App.S.customSt || []) {
+      if (window._stAudioUrls[st.id]) continue;
+      const blob = await StAudioDB.get(st.id);
+      if (blob) window._stAudioUrls[st.id] = URL.createObjectURL(blob);
+      _stSyncAudioCfg(st.id);
+    }
+  } catch (e) { /* IndexedDB unavailable: custom stotrams simply have no audio */ }
+  _stAudioLoaded = true;
+}
+function stPickAudio(id) {
+  let inp = document.getElementById("stAudioInput");
+  if (!inp) {
+    inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = "audio/*,.mp3,.m4a,.aac,.wav,.ogg";
+    inp.id = "stAudioInput";
+    inp.style.display = "none";
+    document.body.appendChild(inp);
+  }
+  inp.value = "";
+  inp.onchange = async () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    if (f.type && f.type.indexOf("audio") !== 0 && !/\.(mp3|m4a|aac|wav|ogg)$/i.test(f.name)) {
+      toast("Please choose an audio file");
+      return;
+    }
+    try {
+      await StAudioDB.put(id, f);
+      if (window._stAudioUrls[id]) URL.revokeObjectURL(window._stAudioUrls[id]);
+      window._stAudioUrls[id] = URL.createObjectURL(f);
+      _stSyncAudioCfg(id);
+      renderSt();
+      toast("Audio added 🎵");
+    } catch (e) {
+      toast("Could not save audio on this device");
+    }
+  };
+  inp.click();
+}
+async function stRemoveAudio(id) {
+  try { await StAudioDB.del(id); } catch (e) {}
+  if (window._stAudioUrls[id]) URL.revokeObjectURL(window._stAudioUrls[id]);
+  delete window._stAudioUrls[id];
+  _stSyncAudioCfg(id);
+  renderSt();
+  toast("Audio removed");
+}
+
 function showLyrics(id) {
+  // Custom stotram: make sure its uploaded audio (if any) is known first.
+  if (_isCustomStId(id) && !_stAudioLoaded) {
+    stAudioLoadAll().then(() => showLyrics(id));
+    return;
+  }
+  _stSyncAudioCfg(id);
   // Hindi HCJ is loaded only when it is actually opened. This keeps the
   // initial stotram bundle fast while preserving one verse per reader page.
   if (id === "hcj" && secLang('sv') === "hi" && !_hcjHindiLyrics) {
@@ -21200,10 +21322,11 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc"];
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm"];
+  const _isFlatCustom = _isCustomStId(id); // user-added stotrams: always one flat page
 
   // Split by blank lines into verses
-  let allVerses = SINGLE_VIEW_IDS.includes(id)
+  let allVerses = (SINGLE_VIEW_IDS.includes(id) || _isFlatCustom)
     ? [ly.trim()]
     : ly
         .split(/\n{2,}/)
@@ -21211,7 +21334,7 @@ function showLyrics(id) {
         .filter((b) => b.length > 0);
 
   // Remove first verse if it's just the stotram title (for all except hcj)
-  if (id !== "hcj" && allVerses.length > 0) {
+  if (id !== "hcj" && !_isFlatCustom && allVerses.length > 0) {
     const firstV = allVerses[0];
     // Title verse: short (< 100 chars), no ।॥ markers, no numbered shloka
     const isTitle =
@@ -21237,7 +21360,7 @@ function showLyrics(id) {
   }
   // Strip colophon final verse (e.g. ॥ ইতি ... সম্পূর্ণম্ ॥) for audio stotrams
   // so clip count matches exactly
-  if (_AUDIO_STOTRAMS[id] && mergedVerses.length > 0) {
+  if (_AUDIO_STOTRAMS[id] && !_isFlatCustom && mergedVerses.length > 0) {
     const last = mergedVerses[mergedVerses.length - 1];
     const isColophon = last.trim().startsWith('॥') && last.trim().endsWith('॥') && last.split('\n').length <= 2;
     if (isColophon) mergedVerses.pop();
@@ -21907,6 +22030,9 @@ var _AUDIO_STOTRAMS = {
   },
   bss: { prefix: "bss" },
   ach: { prefix: "ach" },
+  // Govinda Damodara Stotram (Laghu) — flat single-page view, one full-recitation
+  // clip: audio/gdm_1.mp3 (same convention as ach_1.mp3).
+  gdm: { prefix: "gdm" },
   rdc: { prefix: "rdc" },
   dkc: { prefix: "dkc" },
   // rsn has one extra, unlabeled preamble block (audio track 0) before the
@@ -22021,6 +22147,8 @@ function _hcjHasAudioForIdx(cfg, i) {
 
 function _hcjAudioPath(i) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  // User-uploaded audio for a custom stotram: single flat page, one clip.
+  if (cfg && cfg.custom) return window._stAudioUrls[_currentStotramId] || "";
   if (cfg && cfg.sectioned) {
     var _key = window._ggAudioKey;
     var _entry = _key && cfg.tracks && cfg.tracks[_key];
@@ -22254,6 +22382,7 @@ function _hcjPlayVerse(idx) {
   _hcjAudio.onerror = function () {
     var a = _hcjAudio;
     if (!a || a._triedRemoteFallback) return;
+    if (String(a.src).indexOf("blob:") === 0) return; // uploaded file, no remote copy
     a._triedRemoteFallback = true;
     a.onerror = null; // don't retry again if the remote copy fails too
     a.src = _hcjRemoteAudioUrl(_hcjAudioPath(idx));

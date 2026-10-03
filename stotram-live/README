@@ -1,0 +1,17 @@
+# Live stotrams (no APK rebuild needed)
+
+Add a folder  `stotram-live/<cat>/<slug>/`  and push.
+`<cat>` = `rv` | `krishna` | `shiv` | `hanuman`  (section it appears in)
+`<slug>` = letters, digits, `-` or `_` only
+
+Files inside:
+- `lyrics.txt`     (required) Bengali text. First paragraph = title. Blank line = new page.
+- `lyrics.hi.txt`  (optional) Hindi text, same structure. Shown when the app is in Hindi.
+- `meta.json`      (optional) `{"name":"","sub":"","nameHi":"","subHi":"","paged":true,"order":10}`
+- `audio.mp3`      (optional, flat stotram) one full clip.
+- `audio_1.mp3`, `audio_2.mp3` ... (optional, paged) clip for verse page 1, 2, ...
+
+Without `"paged": true` the stotram opens as one flat page.
+With `"paged": true` each blank-line block is a swipe page, `⟦RED⟧` at the start of a
+line makes it red, and a line starting `অনুবাদ:` (Hindi: `अनुवाद:`) is the green
+meaning, shown with the Translation toggle.

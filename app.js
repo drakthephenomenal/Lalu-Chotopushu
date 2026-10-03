@@ -21472,7 +21472,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm"];
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr"];
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id); // user-added (and repo flat/audio) stotrams: one flat page
 
   // Split by blank lines into verses
@@ -22190,6 +22190,8 @@ var _AUDIO_STOTRAMS = {
   // Govinda Damodara Stotram (Laghu) — flat single-page view, one full-recitation
   // clip: audio/gdm_1.mp3 (same convention as ach_1.mp3).
   gdm: { prefix: "gdm" },
+  // Hamare Mayi Shyama Ju Ko Raj - flat single page, one clip: audio/hsr_1.mp3
+  hsr: { prefix: "hsr" },
   rdc: { prefix: "rdc" },
   dkc: { prefix: "dkc" },
   // rsn has one extra, unlabeled preamble block (audio track 0) before the

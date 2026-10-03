@@ -3,5 +3,6 @@
   "nameHi": "श्री गोपाल सहस्रनाम स्तोत्रम्",
   "sub": "সহস্রনাম",
   "subHi": "सहस्रनाम",
-  "paged": true
+  "paged": true,
+  "highlight": true
 }

@@ -9945,7 +9945,7 @@ function _lcRefreshOpenLyrics() {
         showLyrics("rsn");
         return;
       }
-      if (typeof LYRICS_HI !== "undefined" && LYRICS_HI[_currentStotramId]) {
+      if (_isLiveStId(_currentStotramId) || (typeof LYRICS_HI !== "undefined" && LYRICS_HI[_currentStotramId])) {
         showLyrics(_currentStotramId);
         return;
       }
@@ -20978,6 +20978,12 @@ function _isProseBlock(verse) {
 
 // ── IDs that support translation (অনুবাদ) button
 const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr"];
+// Built-in translatable stotrams + live (repo-added) stotrams marked "paged".
+function _hasTranslationSt(id) {
+  if (TRANSLATION_IDS.includes(id)) return true;
+  const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
+  return !!(e && e.paged);
+}
 // ── IDs where prose sections need vertical-scroll mode
 const PROSE_IDS = ["nkc"];
 
@@ -21228,7 +21234,7 @@ function _liveStBase() {
 }
 function _liveStEntry(id) { return (window._liveStList || []).find((x) => x.id === id); }
 function _isLiveStId(id) { return typeof id === "string" && id.indexOf("L_") === 0 && !!_liveStEntry(id); }
-function _liveStIsFlat(id) { const e = _liveStEntry(id); return !!(e && (e.flat || e.audio)); }
+function _liveStIsFlat(id) { const e = _liveStEntry(id); return !!(e && !e.paged && (e.flat || e.audio)); }
 function _liveStMerge(list) {
   window._liveStList = list;
   const ids = {};
@@ -21243,10 +21249,20 @@ function _liveStMerge(list) {
   }
   list.forEach((e) => {
     const item = { id: e.id, cat: e.cat, name: e.name, sub: e.sub || "", nameHi: e.nameHi || "", subHi: e.subHi || "", live: true, v: e.v || "" };
+    if (e.paged && window._stAudioUrls) delete window._stAudioUrls[e.id];
     const at = STLIST.findIndex((x) => x.id === e.id);
     if (at >= 0) STLIST[at] = item; else STLIST.push(item);
     if (App.S && App.S.stotrams && !App.S.stotrams[e.id]) App.S.stotrams[e.id] = {};
-    if (e.audio) {
+    if (e.paged) {
+      // Paged: one clip per verse page — audio_1.mp3 = first page, audio_2.mp3 = second, …
+      const pg = {};
+      (e.pages || []).forEach((n) => { pg[n] = 1; });
+      if ((e.pages || []).length) {
+        _AUDIO_STOTRAMS[e.id] = { prefix: e.id, custom: true, live: true, pages: pg, base: _liveStBase() + e.dir + "/", v: e.v || "" };
+      } else {
+        delete _AUDIO_STOTRAMS[e.id];
+      }
+    } else if (e.audio) {
       window._stAudioUrls = window._stAudioUrls || {};
       window._stAudioUrls[e.id] = _liveStBase() + e.dir + "/audio.mp3" + (e.v ? "?v=" + e.v : "");
       _AUDIO_STOTRAMS[e.id] = { prefix: e.id, custom: true };
@@ -21285,38 +21301,54 @@ async function liveStRefresh(force) {
   } catch (e) { /* offline / no manifest yet: keep what we have */ }
   _liveStBusy = false;
 }
-// Fetch (and cache) the lyrics of a live stotram into LYRICS[id].
-async function liveStEnsureLyrics(id) {
-  if (LYRICS[id]) return true;
-  const e = _liveStEntry(id);
-  if (!e) return false;
-  const key = "rjap_live_ly_" + id;
+// Fetch one live text file (with per-file cache + offline fallback). Returns the text or "".
+async function _liveStGetText(e, file, key) {
   try {
     const cached = JSON.parse(localStorage.getItem(key) || "null");
-    if (cached && cached.v === (e.v || "") && cached.t) { LYRICS[id] = cached.t; return true; }
+    if (cached && cached.v === (e.v || "") && cached.t) return cached.t;
   } catch (er) {}
   try {
-    const res = await fetch(_liveStBase() + e.dir + "/lyrics.txt?v=" + (e.v || ""), { cache: "no-store" });
-    if (!res.ok) throw new Error("lyrics " + res.status);
+    const res = await fetch(_liveStBase() + e.dir + "/" + file + "?v=" + (e.v || ""), { cache: "no-store" });
+    if (!res.ok) throw new Error(file + " " + res.status);
     const t = (await res.text()).replace(/\r\n/g, "\n").trim();
     if (!t) throw new Error("empty");
-    LYRICS[id] = t;
     try { localStorage.setItem(key, JSON.stringify({ v: e.v || "", t })); } catch (er) {}
-    return true;
+    return t;
   } catch (er) {
     // offline and never opened before: fall back to any older cached copy
     try {
       const old = JSON.parse(localStorage.getItem(key) || "null");
-      if (old && old.t) { LYRICS[id] = old.t; return true; }
+      if (old && old.t) return old.t;
     } catch (er2) {}
-    return false;
+    return "";
   }
+}
+// True when the reader is in Hindi, this live stotram has lyrics.hi.txt, and it isn't loaded yet.
+function _liveStNeedsHi(id) {
+  const e = _liveStEntry(id);
+  return !!(e && e.hi && !e._hiTried && secLang("sv") === "hi" &&
+    !(typeof LYRICS_HI !== "undefined" && LYRICS_HI[id]));
+}
+// Fetch (and cache) the lyrics of a live stotram into LYRICS[id] (+ LYRICS_HI[id] when it has Hindi).
+async function liveStEnsureLyrics(id) {
+  const e = _liveStEntry(id);
+  if (!e) return false;
+  if (!LYRICS[id]) {
+    const t = await _liveStGetText(e, "lyrics.txt", "rjap_live_ly_" + id);
+    if (t) LYRICS[id] = t;
+  }
+  if (e.hi && typeof LYRICS_HI !== "undefined" && !LYRICS_HI[id]) {
+    const th = await _liveStGetText(e, "lyrics.hi.txt", "rjap_live_lyhi_" + id);
+    if (th) LYRICS_HI[id] = th;
+    e._hiTried = true; // never loop if the Hindi file is unavailable
+  }
+  return !!LYRICS[id] || (typeof LYRICS_HI !== "undefined" && !!LYRICS_HI[id]);
 }
 window.addEventListener("online", () => liveStRefresh(true));
 
 function showLyrics(id) {
   // Live (repo-added) stotram: fetch its lyrics on first open, then continue.
-  if (_isLiveStId(id) && !LYRICS[id]) {
+  if (_isLiveStId(id) && (!LYRICS[id] || _liveStNeedsHi(id))) {
     toast("পাঠ লোড হচ্ছে… 🙏");
     liveStEnsureLyrics(id).then((ok) => { if (ok) showLyrics(id); else toast("পাঠ্য পাওয়া যায়নি 🙏"); });
     return;
@@ -21377,7 +21409,7 @@ function showLyrics(id) {
   if (existingLmo) existingLmo.removeAttribute("data-minimized");
   _currentStotramId = id;
   // Inherit the global translation preference set on the list screen
-  _translationVisible = TRANSLATION_IDS.includes(id)
+  _translationVisible = _hasTranslationSt(id)
     ? _globalTranslationPref
     : false;
   _translationLang = "bn";
@@ -21510,7 +21542,11 @@ function showLyrics(id) {
 const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|अनुवाद)\s*:/;
 // Stotrams that use the green অনুবাদ:/अनुवाद: meaning lines (gg also has শব্দার্থ:).
 const _ANUVAD_IDS = ["gg", "hsr"];
-function _isAnuvadSt(id) { return _ANUVAD_IDS.indexOf(id) !== -1; }
+function _isAnuvadSt(id) {
+  if (_ANUVAD_IDS.indexOf(id) !== -1) return true;
+  const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
+  return !!(e && e.paged);
+}
 function _ggEsc(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -21552,7 +21588,7 @@ function _renderVerse(idx, dir) {
   }
   const isProse =
     PROSE_IDS.includes(_currentStotramId) && _isProseBlock(verseText);
-  const hasTranslation = TRANSLATION_IDS.includes(_currentStotramId);
+  const hasTranslation = _hasTranslationSt(_currentStotramId);
   // The Translation toggle pill is a floating overlay (position:absolute,
   // pinned top-right — see .lm-translate-wrap in style-stotram.css), so it
   // can sit on top of the first line(s) of verse text. Reserve clearance
@@ -21697,7 +21733,7 @@ function _renderVerse(idx, dir) {
 // verseHasSecondLang: boolean — does this verse have an অর্থ২: line too?
 function _renderTranslationToggle(verseHasArtha, verseHasSecondLang) {
   // Not a translatable stotram → always remove
-  if (!TRANSLATION_IDS.includes(_currentStotramId)) {
+  if (!_hasTranslationSt(_currentStotramId)) {
     var old = document.getElementById("lm-translate-wrap");
     if (old) old.remove();
     var oldLang = document.getElementById("lm-translate-lang-wrap");
@@ -22256,6 +22292,7 @@ function _hcjVoicesFor(cfg, verseNum) {
 // slokaRange defined.
 function _hcjHasAudioForIdx(cfg, i) {
   if (!cfg) return false;
+  if (cfg.live && cfg.pages) return !!cfg.pages[i + 1];
   if (cfg.sectioned) return !!(window._ggAudioKey && cfg.tracks && cfg.tracks[window._ggAudioKey]);
   // Every shlok has a clip once a Gita chapter is actually open — before
   // that (chapter picker screen) window._bgChapterNum is null, so no
@@ -22269,6 +22306,9 @@ function _hcjHasAudioForIdx(cfg, i) {
 function _hcjAudioPath(i) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
   // User-uploaded audio for a custom stotram: single flat page, one clip.
+  if (cfg && cfg.custom && cfg.live && cfg.pages) {
+    return cfg.pages[i + 1] ? cfg.base + "audio_" + (i + 1) + ".mp3" + (cfg.v ? "?v=" + cfg.v : "") : "";
+  }
   if (cfg && cfg.custom) return window._stAudioUrls[_currentStotramId] || "";
   if (cfg && cfg.sectioned) {
     var _key = window._ggAudioKey;

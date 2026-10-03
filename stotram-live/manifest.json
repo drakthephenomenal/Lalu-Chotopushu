@@ -10,10 +10,11 @@
       "subHi": "सहस्रनाम",
       "flat": false,
       "paged": true,
+      "hl": true,
       "hi": true,
       "audio": false,
       "pages": [],
-      "v": "52c9547f"
+      "v": "52a6d8be"
     }
   ]
 }

@@ -4,16 +4,16 @@
       "id": "L_krishna_gopal_sahastranaam_stotram",
       "cat": "krishna",
       "dir": "krishna/gopal-sahastranaam-stotram",
-      "name": "gopal sahastranaam stotram",
-      "sub": "",
-      "nameHi": "gopal sahastranaam stotram",
-      "subHi": "",
+      "name": "শ্রী গোপাল সহস্রনাম স্তোত্রম্",
+      "sub": "সহস্রনাম",
+      "nameHi": "श्री गोपाल सहस्रनाम स्तोत्रम्",
+      "subHi": "सहस्रनाम",
       "flat": false,
-      "paged": false,
+      "paged": true,
       "hi": true,
       "audio": false,
       "pages": [],
-      "v": "ec20c3d1"
+      "v": "c2e16ab9"
     }
   ]
 }

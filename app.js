@@ -9945,6 +9945,10 @@ function _lcRefreshOpenLyrics() {
         showLyrics("rsn");
         return;
       }
+      if (typeof LYRICS_HI !== "undefined" && LYRICS_HI[_currentStotramId]) {
+        showLyrics(_currentStotramId);
+        return;
+      }
       const allSt = [...STLIST, ...(App.S.customSt || [])];
       const nm = allSt.find((x) => x.id === _currentStotramId);
       if (nm) {
@@ -18606,6 +18610,9 @@ window.devExitGhostMode = async function () {
 // ══════════════════════════════════════════════════════════════
 
 function getEffectiveLyrics(id) {
+  if (secLang('sv') === "hi" && typeof LYRICS_HI !== "undefined" && LYRICS_HI[id]) {
+    return LYRICS_HI[id];
+  }
   if (id === "hcj" && secLang('sv') === "hi" && _hcjHindiLyrics) {
     return _hcjHindiLyrics;
   }
@@ -20970,7 +20977,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg"];
+const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr"];
 // ── IDs where prose sections need vertical-scroll mode
 const PROSE_IDS = ["nkc"];
 
@@ -21500,7 +21507,10 @@ function showLyrics(id) {
 // ── Geet Govindam word-wise meaning / total meaning lines ──────────────
 // শব্দার্থ: Sanskrit = বাংলা · Sanskrit = বাংলা …   → Sanskrit brown, Bangla blue
 // অনুবাদ: …                                          → green
-const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ)\s*:/;
+const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|अनुवाद)\s*:/;
+// Stotrams that use the green অনুবাদ:/अनुवाद: meaning lines (gg also has শব্দার্থ:).
+const _ANUVAD_IDS = ["gg", "hsr"];
+function _isAnuvadSt(id) { return _ANUVAD_IDS.indexOf(id) !== -1; }
 function _ggEsc(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -21560,7 +21570,7 @@ function _renderVerse(idx, dir) {
   const verseHasArtha =
     /^অর্থ২?\s*:/m.test(verseText) ||
     verseHasHindiMeaning ||
-    (_currentStotramId === "gg" && /^(?:শব্দার্থ|অনুবাদ)\s*:/m.test(verseText));
+    (_isAnuvadSt(_currentStotramId) && /^(?:শব্দার্থ|অনুবাদ|अनुवाद)\s*:/m.test(verseText));
   // Does this verse specifically have a second-language (অর্থ২:) line?
   const verseHasSecondLang = /^অর্থ২\s*:/m.test(verseText);
 
@@ -21570,7 +21580,7 @@ function _renderVerse(idx, dir) {
     return (
       t.length > 0 &&
       !/^অর্থ২?\s*:/.test(t) &&
-      !(_currentStotramId === "gg" && _GG_MEANING_RE.test(t)) &&
+      !(_isAnuvadSt(_currentStotramId) && _GG_MEANING_RE.test(t)) &&
       !(isHindiRsn && /^(?:अर्थ|व्याख्या)\s*:/.test(t))
     );
   });
@@ -21584,7 +21594,7 @@ function _renderVerse(idx, dir) {
     linesHtml = '<span class="lyr-prose">' + escaped + "</span>";
   } else {
     let rawLines = verseText.split("\n");
-    if (_currentStotramId === "gg" && !_translationVisible) {
+    if (_isAnuvadSt(_currentStotramId) && !_translationVisible) {
       // Translation OFF: drop শব্দার্থ/অনুবাদ lines and the blank spacers
       // that surrounded them, so the verse spacing is exactly as before.
       rawLines = rawLines
@@ -21609,7 +21619,7 @@ function _renderVerse(idx, dir) {
           .replace(/&/g, "&amp;")
           .replace(/</g, "&lt;")
           .replace(/>/g, "&gt;");
-        if (_currentStotramId === "gg" && _GG_MEANING_RE.test(content.trim())) {
+        if (_isAnuvadSt(_currentStotramId) && _GG_MEANING_RE.test(content.trim())) {
           // Geet Govindam শব্দার্থ / অনুবাদ — only when Translation is ON.
           if (!_translationVisible) return "";
           return _ggMeaningLineHtml(content);

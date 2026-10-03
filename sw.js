@@ -360,7 +360,7 @@
 //    cached a failed/empty panchanga.html response.
 // ═══════════════════════════════════════════════════════
 // v264: added Govinda Damodara Stotram (Laghu) under Shree Krishna (flat view + audio gdm_1.mp3).
-const CACHE = 'radha-jap-v264';
+const CACHE = 'radha-jap-v265';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

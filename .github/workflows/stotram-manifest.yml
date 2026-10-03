@@ -1,0 +1,22 @@
+name: Update live stotram manifest
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'stotram-live/**'
+      - '!stotram-live/manifest.json'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 build_stotram_manifest.py
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add stotram-live/manifest.json
+          git diff --cached --quiet || git commit -m "Auto-update stotram-live/manifest.json"
+          git push

@@ -640,6 +640,7 @@ self.addEventListener('fetch', (event) => {
 
   if (BYPASS.some((host) => url.href.includes(host))) return;
   if (BYPASS_PREFIXES.some((prefix) => url.href.startsWith(prefix))) return;
+  if (url.pathname.indexOf('/stotram-live/') >= 0) return;
 
   // ── Navigation requests (page load) ──
   // v154: NETWORK-FIRST with 2s timeout. Fixes "old HTML + new app.js" mismatch.

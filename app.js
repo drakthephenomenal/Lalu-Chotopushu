@@ -15859,6 +15859,9 @@ function renderFavVideoLinksFolderView(list, folderId, subfolderKey) {
 
 function renderSt() {
   const list = document.getElementById("stList");
+  // Pick up stotrams newly added to the repo (throttled; redraws only if changed).
+  if (!window._liveStCacheLoaded) { window._liveStCacheLoaded = true; _liveStLoadCache(); }
+  liveStRefresh(false);
   // First render: pull uploaded custom-stotram audio state, then redraw once.
   if (!_stAudioLoaded && !window._stAudioLoading && (App.S.customSt || []).length) {
     window._stAudioLoading = true;
@@ -21202,7 +21205,115 @@ async function stRemoveAudio(id) {
   toast("Audio removed");
 }
 
+
+// ── LIVE STOTRAMS: stotrams added to the repo appear without an app rebuild ──
+// Repo layout:  stotram-live/<cat>/<slug>/{lyrics.txt, meta.json?, audio.mp3?}
+//   <cat> = folder key (rv, krishna, shiv, hanuman) = where it shows up.
+// A GitHub Action (build_stotram_manifest.py) writes stotram-live/manifest.json
+// on every push. The app reads that manifest from the deployed site (Android
+// app) or same-origin (web), caches it for offline use, and merges the entries
+// into STLIST. Lyrics are fetched when a stotram is first opened, then cached.
+// Audio (optional, one full-recitation clip) streams from the site.
+function _liveStBase() {
+  return (typeof _isNativeApp === "function" && _isNativeApp())
+    ? RJAP_PWA_URL.replace(/\/$/, "") + "/stotram-live/"
+    : "./stotram-live/";
+}
+function _liveStEntry(id) { return (window._liveStList || []).find((x) => x.id === id); }
+function _isLiveStId(id) { return typeof id === "string" && id.indexOf("L_") === 0 && !!_liveStEntry(id); }
+function _liveStIsFlat(id) { const e = _liveStEntry(id); return !!(e && (e.flat || e.audio)); }
+function _liveStMerge(list) {
+  window._liveStList = list;
+  const ids = {};
+  list.forEach((e) => { ids[e.id] = 1; });
+  // drop live entries that were removed from the repo
+  for (let i = STLIST.length - 1; i >= 0; i--) {
+    if (STLIST[i].live && !ids[STLIST[i].id]) {
+      delete _AUDIO_STOTRAMS[STLIST[i].id];
+      if (window._stAudioUrls) delete window._stAudioUrls[STLIST[i].id];
+      STLIST.splice(i, 1);
+    }
+  }
+  list.forEach((e) => {
+    const item = { id: e.id, cat: e.cat, name: e.name, sub: e.sub || "", nameHi: e.nameHi || "", subHi: e.subHi || "", live: true, v: e.v || "" };
+    const at = STLIST.findIndex((x) => x.id === e.id);
+    if (at >= 0) STLIST[at] = item; else STLIST.push(item);
+    if (App.S && App.S.stotrams && !App.S.stotrams[e.id]) App.S.stotrams[e.id] = {};
+    if (e.audio) {
+      window._stAudioUrls = window._stAudioUrls || {};
+      window._stAudioUrls[e.id] = _liveStBase() + e.dir + "/audio.mp3" + (e.v ? "?v=" + e.v : "");
+      _AUDIO_STOTRAMS[e.id] = { prefix: e.id, custom: true };
+    } else {
+      delete _AUDIO_STOTRAMS[e.id];
+    }
+  });
+}
+function _liveStLoadCache() {
+  try {
+    const raw = localStorage.getItem("rjap_live_st");
+    if (raw) _liveStMerge(JSON.parse(raw));
+  } catch (e) {}
+}
+let _liveStBusy = false, _liveStLast = 0;
+async function liveStRefresh(force) {
+  if (_liveStBusy) return;
+  if (!force && Date.now() - _liveStLast < 60000) return;
+  if (navigator.onLine === false) return;
+  _liveStBusy = true;
+  try {
+    const url = _liveStBase() + "manifest.json?r=" + Math.floor(Date.now() / 60000);
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error("manifest " + res.status);
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : (data.stotrams || []);
+    _liveStLast = Date.now();
+    const before = localStorage.getItem("rjap_live_st") || "";
+    const now = JSON.stringify(list);
+    if (now !== before) {
+      try { localStorage.setItem("rjap_live_st", now); } catch (e) {}
+      _liveStMerge(list);
+      if (typeof App !== "undefined" && App.save) { try { App.save(); } catch (e) {} }
+      if (document.getElementById("stList") && !document.getElementById("lmo")?.classList.contains("show")) renderSt();
+    }
+  } catch (e) { /* offline / no manifest yet: keep what we have */ }
+  _liveStBusy = false;
+}
+// Fetch (and cache) the lyrics of a live stotram into LYRICS[id].
+async function liveStEnsureLyrics(id) {
+  if (LYRICS[id]) return true;
+  const e = _liveStEntry(id);
+  if (!e) return false;
+  const key = "rjap_live_ly_" + id;
+  try {
+    const cached = JSON.parse(localStorage.getItem(key) || "null");
+    if (cached && cached.v === (e.v || "") && cached.t) { LYRICS[id] = cached.t; return true; }
+  } catch (er) {}
+  try {
+    const res = await fetch(_liveStBase() + e.dir + "/lyrics.txt?v=" + (e.v || ""), { cache: "no-store" });
+    if (!res.ok) throw new Error("lyrics " + res.status);
+    const t = (await res.text()).replace(/\r\n/g, "\n").trim();
+    if (!t) throw new Error("empty");
+    LYRICS[id] = t;
+    try { localStorage.setItem(key, JSON.stringify({ v: e.v || "", t })); } catch (er) {}
+    return true;
+  } catch (er) {
+    // offline and never opened before: fall back to any older cached copy
+    try {
+      const old = JSON.parse(localStorage.getItem(key) || "null");
+      if (old && old.t) { LYRICS[id] = old.t; return true; }
+    } catch (er2) {}
+    return false;
+  }
+}
+window.addEventListener("online", () => liveStRefresh(true));
+
 function showLyrics(id) {
+  // Live (repo-added) stotram: fetch its lyrics on first open, then continue.
+  if (_isLiveStId(id) && !LYRICS[id]) {
+    toast("পাঠ লোড হচ্ছে… 🙏");
+    liveStEnsureLyrics(id).then((ok) => { if (ok) showLyrics(id); else toast("পাঠ্য পাওয়া যায়নি 🙏"); });
+    return;
+  }
   // Custom stotram: make sure its uploaded audio (if any) is known first.
   if (_isCustomStId(id) && !_stAudioLoaded) {
     stAudioLoadAll().then(() => showLyrics(id));
@@ -21323,7 +21434,7 @@ function showLyrics(id) {
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
   const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm"];
-  const _isFlatCustom = _isCustomStId(id); // user-added stotrams: always one flat page
+  const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id); // user-added (and repo flat/audio) stotrams: one flat page
 
   // Split by blank lines into verses
   let allVerses = (SINGLE_VIEW_IDS.includes(id) || _isFlatCustom)
@@ -22382,7 +22493,8 @@ function _hcjPlayVerse(idx) {
   _hcjAudio.onerror = function () {
     var a = _hcjAudio;
     if (!a || a._triedRemoteFallback) return;
-    if (String(a.src).indexOf("blob:") === 0) return; // uploaded file, no remote copy
+    var _cfgE = _AUDIO_STOTRAMS[_currentStotramId];
+    if (_cfgE && _cfgE.custom) return; // uploaded / live audio already uses its own URL
     a._triedRemoteFallback = true;
     a.onerror = null; // don't retry again if the remote copy fails too
     a.src = _hcjRemoteAudioUrl(_hcjAudioPath(idx));

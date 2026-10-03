@@ -907,15 +907,6 @@ const App = {
         // v4: lifetime per-day activityLog archive — no entry limit
         if (!db.objectStoreNames.contains("activityLogArchive"))
           db.createObjectStore("activityLogArchive");
-        // v5: PERMANENT gift ledger — one record per gift, keyed by its own
-        // id. Deliberately isolated from the "state" blob: it is never part
-        // of the App.S = {...} reset that runs on every UID change/cold
-        // start, and it is never overwritten wholesale by a cloud pull.
-        // Each entry is written individually and only ever added to —
-        // this is what makes it survive the race that can drop an entry
-        // out of App.S.dedications (see addPermanentGift()/loadGiftLedger()).
-        if (!db.objectStoreNames.contains("giftLedger"))
-          db.createObjectStore("giftLedger");
       };
       req.onsuccess = (e) => {
         this.db = e.target.result;
@@ -1130,10 +1121,6 @@ const App = {
     this.S.h28 = await this.dbGetAll("h28");
     this.S.timerHistory = await this.dbGetAll("timerHistory");
     this.S.timer28History = await this.dbGetAll("timer28History");
-    // PERMANENT gift ledger — its own store, keyed by gift id. Never
-    // touched by the App.S = {...} reset on UID change, so it can't be
-    // wiped the way App.S.dedications can be.
-    this.S.giftLedger = await this.dbGetAll("giftLedger");
 
     // Merge full snapshots saved in main state so past/future edits also persist locally
     if (main?.history) this.S.history = { ...main.history, ...this.S.history };
@@ -6257,176 +6244,6 @@ function _dedEntryAmounts(d) {
   return out;
 }
 
-// ═══════════════════════════════════════════════════════
-// PERMANENT GIFT LEDGER — a durable record of every gift, kept separate
-// from App.S.dedications on purpose.
-//
-// Why: App.S.dedications lives inside the big "state" blob, which gets
-// (a) wiped to defaults on every UID change / cold start, (b) rebuilt from
-// whichever source (local IDB vs cloud) happens to win a race, and
-// (c) pushed to Firestore on a 3s DEBOUNCE — so an entry added right
-// before the app is closed/killed can miss that window and never reach
-// the cloud, and can then be dropped by a subsequent reset/reload.
-//
-// This ledger avoids all three: each gift is (1) written to its own IDB
-// record immediately — never bulk-overwritten, (2) pushed to its own
-// Firestore document immediately (no debounce, no dependency on
-// App._cloudHydrated), and (3) only ever added to, never replaced.
-// ═══════════════════════════════════════════════════════
-async function addPermanentGift(entry) {
-  const id = "gift_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
-  const record = { id, ...entry, ts: Date.now() };
-
-  // 1. Local — its own IDB record, isolated from the state blob.
-  if (App._uid) {
-    await App.dbPut("giftLedger", id, record);
-  }
-  App.S.giftLedger = App.S.giftLedger || {};
-  App.S.giftLedger[id] = record;
-
-  // 2. Cloud — its own Firestore document, written immediately (no
-  // debounce, no _cloudHydrated gate) so it can't be lost to the same
-  // race that can drop a dedication.
-  if (fbUser && typeof fbDb !== "undefined") {
-    try {
-      await fbDb
-        .collection("users")
-        .doc(fbUser.uid)
-        .collection("gifts")
-        .doc(id)
-        .set(record);
-    } catch (e) {
-      console.warn("Permanent gift ledger: cloud write failed, kept locally:", e.message);
-    }
-  }
-
-  renderPermanentGiftLog();
-  return record;
-}
-
-// Pull any ledger entries added from other devices/sessions and merge them
-// in (union by id — never removes a locally-known entry).
-async function pullPermanentGiftLedger() {
-  if (!fbUser || typeof fbDb === "undefined") return;
-  try {
-    const snap = await fbDb
-      .collection("users")
-      .doc(fbUser.uid)
-      .collection("gifts")
-      .get();
-    App.S.giftLedger = App.S.giftLedger || {};
-    for (const doc of snap.docs) {
-      const remote = doc.data();
-      if (!remote || !remote.id) continue;
-      const loc = App.S.giftLedger[remote.id];
-      if (!loc || (remote.editedTs || 0) > (loc.editedTs || 0)) {
-        App.S.giftLedger[remote.id] = remote;
-        if (App._uid) await App.dbPut("giftLedger", remote.id, remote);
-      } else if ((loc.editedTs || 0) > (remote.editedTs || 0)) {
-        _persistGift(loc).catch(() => {});
-      }
-    }
-    renderPermanentGiftLog();
-  } catch (e) {
-    console.warn("Permanent gift ledger: cloud pull failed:", e.message);
-  }
-}
-
-// ── Keep the permanent gift record in step with edited dedications ─────────────
-// Each ledger record is linked to its dedication (dedId). When a dedication is
-// edited, the SAME ledger record is updated in place (same id, never duplicated)
-// and the old values are kept inside it under "revisions".
-function _giftSig(o) {
-  const am = o.amounts || {};
-  return JSON.stringify([
-    o.purpose || "", o.note || "", o.date || "",
-    Object.keys(am).sort().map(function (k) { return [k, am[k]]; }),
-    (o.stotrams || []).map(function (s) { return [s.name, s.count]; }),
-  ]);
-}
-async function _persistGift(g) {
-  try { if (App._uid) await App.dbPut("giftLedger", g.id, g); } catch (e) {}
-  if (fbUser && typeof fbDb !== "undefined") {
-    try {
-      await fbDb.collection("users").doc(fbUser.uid).collection("gifts").doc(g.id).set(g);
-    } catch (e) {
-      console.warn("Permanent gift ledger: cloud update failed, kept locally:", e.message);
-    }
-  }
-}
-function _reconcileGiftLedger() {
-  if (typeof isGhostMode === "function" && isGhostMode()) return;
-  const ledger = App.S.giftLedger || {};
-  const records = Object.values(ledger);
-  if (!records.length) return;
-  (App.S.dedications || []).forEach(function (d) {
-    let g = records.find(function (r) { return r.dedId === d.id; });
-    let linked = false;
-    if (!g) {
-      // older gifts: match by creation time (ledger entry is written right after the dedication)
-      g = records.find(function (r) { return !r.dedId && Math.abs((r.ts || 0) - (d.ts || 0)) < 5000; });
-      if (g) { g.dedId = d.id; linked = true; }
-    }
-    if (!g) return;
-    const want = {
-      purpose: d.purpose || "",
-      note: d.note || "",
-      date: d.date || "",
-      amounts: _dedEntryAmounts(d),
-      stotrams: (d.stotrams || []).map(function (s) { return { name: s.name || "", count: s.count || 0 }; }),
-    };
-    const changed = _giftSig(g) !== _giftSig(want);
-    if (!changed && !linked) return;
-    if (changed) {
-      g.revisions = (g.revisions || []).concat([{
-        ts: Date.now(),
-        purpose: g.purpose || "",
-        note: g.note || "",
-        amounts: g.amounts || {},
-        stotrams: g.stotrams || [],
-      }]);
-      g.purpose = want.purpose;
-      g.note = want.note;
-      g.date = want.date;
-      g.amounts = want.amounts;
-      g.types = Object.keys(want.amounts);
-      g.stotrams = want.stotrams;
-      g.editedTs = Date.now();
-    }
-    _persistGift(g).catch(function () {});
-  });
-}
-
-function renderPermanentGiftLog() {
-  try { _reconcileGiftLedger(); } catch (_e) {}
-  const el = document.getElementById("permGiftList");
-  if (!el) return;
-  const entries = Object.values(App.S.giftLedger || {}).sort((a, b) => (b.ts || 0) - (a.ts || 0));
-  if (!entries.length) {
-    el.innerHTML =
-      '<div style="font-size:12px;color:var(--td);text-align:center;padding:10px 0;">No gifts recorded yet 🌸</div>';
-    return;
-  }
-  el.innerHTML = entries
-    .map((g) => {
-      const parts = [];
-      if (g.amounts) {
-        for (const t of Object.keys(g.amounts)) {
-          parts.push((g.amounts[t] || 0).toLocaleString("en-IN") + " " + t.toUpperCase());
-        }
-      }
-      return (
-        '<div style="border:1px solid rgba(255,143,199,0.25);border-radius:10px;padding:8px 10px;font-size:12px;">' +
-        '<div style="font-weight:600;color:#FF8FC7;">' + (g.purpose || "Untitled gift") + "</div>" +
-        '<div style="color:var(--tl);margin-top:2px;">' + parts.join(" + ") + "</div>" +
-        (g.note ? '<div style="color:var(--td);margin-top:2px;font-size:11px;">' + g.note + "</div>" : "") +
-        '<div style="color:var(--td);margin-top:2px;font-size:10px;">' + (g.date || "") + (g.editedTs ? " · ✏ edited" : "") + "</div>" +
-        "</div>"
-      );
-    })
-    .join("");
-}
-
 function addDedication() {
   if (isGhostMode()) return; // ghost mode: read-only
   const purposeEl = document.getElementById("dedPurposeIn");
@@ -6477,11 +6294,6 @@ function addDedication() {
   // "Deduct Name Jap". Manual stotram gifts are a hand-entered log only and
   // are not deducted from anything.
   types.forEach((type) => _dedAdjustCounter(type, amounts[type]));
-
-  // PERMANENT record — written immediately, independent of App.save()'s
-  // debounced cloud push, so this entry can't be lost the way a plain
-  // dedication can be. Fire-and-forget so it doesn't block the UI.
-  addPermanentGift({ types, amounts, stotrams, purpose, note, date, dedId: (App.S.dedications[0] || {}).id }).catch(() => {});
 
   App.save();
   App.ua();
@@ -6628,7 +6440,6 @@ function _fmtDedDate(ds) {
 }
 
 function renderDedications() {
-  renderPermanentGiftLog();
   const wrapList = document.getElementById("dedList");
   const wrapTotals = document.getElementById("dedTotalsBar");
   if (!wrapList) return;
@@ -8711,7 +8522,6 @@ function _buildBackupPayload() {
     nameJapDeductRam: App.S.nameJapDeductRam || 0,
     malaLogRam: App.S.malaLogRam || [],
     dedications: App.S.dedications || [],
-    giftLedger: App.S.giftLedger || {},
     gaudiyaMode: App.S.gaudiyaMode || false,
     trahimamMode: App.S.trahimamMode || false,
     ramanandiMode: App.S.ramanandiMode || false,
@@ -8945,8 +8755,6 @@ function importAllData(input) {
       App.S.nameJapDeductRam = data.nameJapDeductRam || 0;
       App.S.malaLogRam = data.malaLogRam || [];
       App.S.dedications = Array.isArray(data.dedications) ? data.dedications : [];
-      App.S.giftLedger = (data.giftLedger && typeof data.giftLedger === "object") ? data.giftLedger : {};
-      if (typeof renderPermanentGiftLog === "function") renderPermanentGiftLog();
       App.S.milestones = data.milestones || { reached: {}, lastChecked: 0 };
        App.S.msConsider = data.msConsider || { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, n28: true };
       App.S.dt28Cycles = data.dt28Cycles || 0;
@@ -11008,8 +10816,6 @@ function fbInit() {
           // in both `presence` and `leaderboard`, so the Ghost Leaderboard
           // toggle and Ghost Mode search always find them from day one.
           try { await pushLeaderboard(); } catch (e) { console.warn('pushLeaderboard (login) failed (non-fatal):', e && e.message); }
-          // Merge in any permanent-ledger gifts recorded on other devices.
-          pullPermanentGiftLedger();
 
           // ── Refresh Rashi / personal-horoscope card after sign-in ──
           // vpPersonalLoad() caches a null result when it fires before auth

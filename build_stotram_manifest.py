@@ -74,6 +74,7 @@ if os.path.isdir(R):
                 "subHi": m.get("subHi", ""),
                 "flat": bool(m.get("flat", False)),
                 "paged": bool(m.get("paged", False)),
+                "hl": bool(m.get("highlight", False)),
                 "hi": has_hi,
                 "audio": os.path.isfile(os.path.join(d, "audio.mp3")),
                 "pages": pages,

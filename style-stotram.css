@@ -1321,3 +1321,9 @@
 .lm-water-card[data-theme] .lyr-sw-bn { color: #0b4fc2 !important; }
 .lm-water-card[data-theme] .lyr-anuvad,
 .lm-water-card[data-theme] .lyr-anuvad-label { color: #1b7a2f !important; }
+
+/* ── Highlight-while-playing page (live stotrams, meta.json "highlight": true) ── */
+.lyr-hl-verse{margin:0 0 12px;padding:10px 12px;border-radius:14px;border:1px solid transparent;transition:background .25s,border-color .25s,box-shadow .25s;cursor:pointer;}
+.lyr-hl-verse.lyr-hl-on{background:rgba(59,142,255,0.20);border-color:rgba(90,170,255,0.75);box-shadow:0 0 16px rgba(59,142,255,0.35);}
+.lyr-hl-verse.lyr-hl-on .lyr-line,
+.lm-water-card[data-theme] .lyr-hl-verse.lyr-hl-on .lyr-line{color:#7fc0ff !important;}

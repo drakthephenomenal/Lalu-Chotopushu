@@ -21527,6 +21527,7 @@ function showLyrics(id) {
   const nm = allSt.find((x) => x.id === id);
   document.getElementById("lmTitle").textContent = nm ? stName(nm) : id;
 
+  { const _hb = document.getElementById("lyrBody"); if (_hb && _hb.dataset) delete _hb.dataset.hlFor; }
   _renderVerse(0, null);
   document.getElementById("lmo").classList.add("show");
   _initSwipeHandler();
@@ -21576,11 +21577,68 @@ function _ggMeaningLineHtml(line) {
   );
 }
 
+// ── Highlight-while-playing page (live stotrams with "highlight": true + "paged": true in meta.json) ──
+// Shows ALL verses on one scrolling page; the verse that is playing turns blue and scrolls into view.
+// Audio is the usual per-verse clips: audio_1.mp3, audio_2.mp3 ...
+function _hlMode(id) {
+  const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
+  return !!(e && e.hl && e.paged);
+}
+function _hlEsc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function _hlTap(i) {
+  _verseIdx = i;
+  _renderVerse(i, null);
+  try {
+    const cfg = _AUDIO_STOTRAMS[_currentStotramId];
+    if (cfg && _hcjHasAudioForIdx(cfg, i) && _hcjAudioPath(i)) _hcjPlayVerse(i);
+  } catch (_e) {}
+}
+function _renderHlVerse(idx) {
+  const body = document.getElementById("lyrBody");
+  const prev = document.getElementById("lmPrev");
+  const next = document.getElementById("lmNext");
+  if (!body) return;
+  if (body.dataset.hlFor !== _currentStotramId) {
+    body.style.paddingTop = "";
+    body.innerHTML = _verses.map(function (v, i) {
+      const lines = v.split("\n").map(function (line) {
+        if (line.trim() === "") return '<span class="lyr-line-empty"></span>';
+        return '<span class="lyr-line">' + _hlEsc(line.replace(/^⟦RED⟧/, "")) + "</span>";
+      }).join("");
+      return '<div class="lyr-hl-verse" data-i="' + i + '" onclick="_hlTap(' + i + ')">' + lines + "</div>";
+    }).join("") + '<div class="lyr-footer">❧ &nbsp; 🌸 &nbsp; ❧</div>';
+    body.dataset.hlFor = _currentStotramId;
+    _reinjectThemeDecos();
+  }
+  const cardWrap = document.getElementById("lmb");
+  if (cardWrap) cardWrap.style.visibility = "";
+  let active = null;
+  body.querySelectorAll(".lyr-hl-verse").forEach(function (el) {
+    const on = Number(el.getAttribute("data-i")) === idx;
+    el.classList.toggle("lyr-hl-on", on);
+    if (on) active = el;
+  });
+  if (active && active.scrollIntoView) {
+    try { active.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (_e) { active.scrollIntoView(); }
+  }
+  if (prev) prev.disabled = idx === 0;
+  if (next) next.disabled = idx === _verses.length - 1;
+  _renderTranslationToggle(false, false);
+  _hcjApplyDefaultVoiceForVerse(idx);
+  _hcjRenderPlayer(idx);
+  _hcjOnVerseChange(idx);
+  if (typeof window.fitLyrLines === "function") window.fitLyrLines();
+}
+
 function _renderVerse(idx, dir) {
   const body = document.getElementById("lyrBody");
   const ctr = null;
   const prev = document.getElementById("lmPrev");
   const next = document.getElementById("lmNext");
+  if (_hlMode(_currentStotramId)) { _renderHlVerse(idx); return; }
+  if (body && body.dataset) delete body.dataset.hlFor;
 
   const verseText = _verses[idx] || "";
   if (_currentStotramId === "bg" && window.setGitaVerseTitle) {

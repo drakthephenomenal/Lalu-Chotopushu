@@ -16101,7 +16101,7 @@ function renderSt() {
     const tc = (App.S.stotrams[st.id] || {})[App.S.tk] || 0;
     const tot = Object.values(App.S.stotrams[st.id] || {}).reduce((a,b)=>a+b, 0);
     const effLyrics = getEffectiveLyrics(st.id);
-    const hasLyrics = !!(effLyrics && effLyrics.trim().length > 0);
+    const hasLyrics = !!(effLyrics && effLyrics.trim().length > 0) || !!st.live;
 
     const gc = glowColors[idx % glowColors.length];
     const pulseDur = (2.8 + (idx % 5) * 0.45).toFixed(1) + 's';

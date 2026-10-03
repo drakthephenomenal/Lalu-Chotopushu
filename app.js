@@ -27498,3 +27498,127 @@ async function checkAppUpdate() {
   }
 }
 
+
+// ── Stats ▸ Add / Deduct Jap Manually: choose WHICH jap to change ──────────────
+// Radha, Radha Vallabh, Krishnay Vasudevay, Hare Krishna, Samba Sadashiv,
+// Raam Vijay Mantra, Kaam Vijay. Defaults to the jap open on the Jap tab.
+(function () {
+  const MJ_TYPES = ["radha", "rv", "kv", "hk", "ss", "ram", "kaam"];
+  const HIST = { radha: "history", rv: "historyRV", kv: "historyKV", hk: "historyHK", ss: "historySS", ram: "historyRam", kaam: "historyKaam" };
+  const DED = { radha: "nameJapDeduct", rv: "nameJapDeductRV", kv: "nameJapDeductKV", hk: "nameJapDeductHK", ss: "nameJapDeductSS", ram: "nameJapDeductRam", kaam: "nameJapDeductKaam" };
+  const INPUT_IDS = ["manualJapIn", "prevJapIn", "addJapOtherIn", "addJapOtherDate", "deductTodayIn", "deductOtherIn", "deductOtherDate", "nameJapDeductIn", "nameJapRestoreIn"];
+  window._mjType = null; // null = follow the jap selected on the Jap tab
+  let _lastMode = null;
+
+  function curMode() {
+    const m = (App.S && App.S.japMode) || "radha";
+    return MJ_TYPES.indexOf(m) >= 0 ? m : "radha";
+  }
+  function selType() {
+    return window._mjType && MJ_TYPES.indexOf(window._mjType) >= 0 ? window._mjType : curMode();
+  }
+  function hist(t) { return (App.S && App.S[HIST[t]]) || {}; }
+  function ded(t) { return (App.S && App.S[DED[t]]) || 0; }
+  function lifetime(t) {
+    return Math.max(0, Object.values(hist(t)).reduce(function (a, b) { return a + b; }, 0) - ded(t));
+  }
+  function $(id) { return document.getElementById(id); }
+  function setTxt(id, v) { const e = $(id); if (e) e.textContent = v; }
+  function num(id) { const e = $(id); return e ? parseInt(e.value) || 0 : 0; }
+
+  function renderChips() {
+    const box = $("mjTypeChips");
+    if (!box) return;
+    const sel = selType();
+    box.innerHTML = MJ_TYPES.map(function (t) {
+      const meta = (typeof _dedTypeMeta === "function") ? _dedTypeMeta(t) : { label: t, color: "#f5c842" };
+      const on = t === sel;
+      return '<button type="button" onclick="mjPick(\'' + t + '\')" style="cursor:pointer;font-size:12px;font-weight:700;' +
+        'border-radius:999px;padding:6px 11px;font-family:inherit;color:' + (on ? "#0b0b14" : meta.color) + ';' +
+        'background:' + (on ? meta.color : "transparent") + ';border:1px solid ' + meta.color + (on ? "" : "88") + '">' +
+        meta.label + "</button>";
+    }).join("");
+  }
+
+  function previews() {
+    const t = selType();
+    const h = hist(t);
+    const tk = App.S.tk;
+    const ms = (App.S && App.S.ms) || 108;
+    const cur = h[tk] || 0;
+    let n = num("manualJapIn");
+    setTxt("manualTodayPreview", n > 0 ? cur + n : "—");
+    n = num("prevJapIn");
+    setTxt("prevLifetimePreview", n > 0 ? (lifetime(t) + n).toLocaleString() : "—");
+    n = num("addJapOtherIn");
+    let d = $("addJapOtherDate") ? $("addJapOtherDate").value : "";
+    setTxt("addJapOtherPreview", n > 0 && d ? (h[d] || 0) + n : "—");
+    n = num("deductTodayIn");
+    setTxt("deductTodayPreview", n > 0 ? Math.max(0, cur - n) : "—");
+    n = num("deductOtherIn");
+    d = $("deductOtherDate") ? $("deductOtherDate").value : "";
+    setTxt("deductOtherPreview", n > 0 && d ? Math.max(0, (h[d] || 0) - n) : "—");
+    setTxt("nameJapDeductCur", ded(t).toLocaleString());
+    setTxt("nameJapDeductMalas", Math.floor(ded(t) / ms).toLocaleString());
+    n = num("nameJapDeductIn");
+    setTxt("nameJapDeductPreview", n > 0 ? Math.max(0, lifetime(t) - n).toLocaleString() : "—");
+    n = num("nameJapRestoreIn");
+    const rawTot = Object.values(h).reduce(function (a, b) { return a + b; }, 0);
+    setTxt("nameJapRestorePreview", n > 0 ? Math.min(rawTot, lifetime(t) + Math.min(n, ded(t))).toLocaleString() : "—");
+  }
+
+  function refresh() {
+    const m = curMode();
+    if (_lastMode !== null && m !== _lastMode) window._mjType = null; // Jap tab changed → follow it again
+    _lastMode = m;
+    renderChips();
+    previews();
+  }
+
+  window.mjPick = function (t) {
+    window._mjType = t;
+    renderChips();
+    previews();
+  };
+
+  // Run one of the existing add / deduct functions against the chosen jap.
+  window.mjAct = function (fnName) {
+    const fn = window[fnName];
+    if (typeof fn !== "function") return;
+    const t = selType();
+    const orig = App.S.japMode;
+    if (t === orig) { fn(); return; }
+    App.S.japMode = t;
+    try {
+      fn();
+    } finally {
+      App.S.japMode = orig;
+      try { App.ua(); } catch (_e) {}
+      try { ghostAwareSave(); } catch (_e) {}
+      try { uStats(); } catch (_e) {}
+      refresh();
+    }
+  };
+
+  const _origUStats = window.uStats;
+  if (typeof _origUStats === "function") {
+    window.uStats = function () {
+      const r = _origUStats.apply(this, arguments);
+      try { refresh(); } catch (_e) {}
+      return r;
+    };
+  }
+
+  function wireInputs() {
+    INPUT_IDS.forEach(function (id) {
+      const el = $(id);
+      if (el) {
+        el.addEventListener("input", function () { setTimeout(previews, 0); });
+        el.addEventListener("change", function () { setTimeout(previews, 0); });
+      }
+    });
+    refresh();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wireInputs);
+  else wireInputs();
+})();

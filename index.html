@@ -1357,6 +1357,13 @@
     </div>
     <div class="cs-body" id="addDeductBody">
 
+      <!-- WHICH JAP? — applies to every Add / Deduct box below -->
+      <div style="margin-bottom:14px;padding:10px 12px;background:rgba(255,215,0,0.05);border:1px solid rgba(255,215,0,0.20);border-radius:12px">
+        <div style="font-size:10px;color:var(--gold);letter-spacing:1px;font-weight:600;margin-bottom:6px">🕉️ WHICH JAP?</div>
+        <div id="mjTypeChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        <div style="font-size:11px;color:var(--td);margin-top:7px">Everything below (add, deduct, lifetime) changes only the jap you select here.</div>
+      </div>
+
       <!-- ADD JAP sub-section -->
       <div class="cs-wrap" style="background:rgba(196,120,46,0.06);border:1px solid rgba(196,120,46,0.28);margin-bottom:10px">
         <div class="cs-header" onclick="toggleCs('addJapManuallyBody','addJapManuallyChev')">
@@ -1384,7 +1391,7 @@
                   <span style="color:var(--td);font-size:11px">s</span>
                 </div>
               </div>
-              <button class="pb add" onclick="addManualJap()">➕ Add to Today</button>
+              <button class="pb add" onclick="mjAct('addManualJap')">➕ Add to Today</button>
             </div>
           </div>
 
@@ -1407,7 +1414,7 @@
                   <span style="color:var(--td);font-size:11px">s</span>
                 </div>
               </div>
-              <button class="pb add" onclick="addOtherDayJap()">➕ Add to Selected Day</button>
+              <button class="pb add" onclick="mjAct('addOtherDayJap')">➕ Add to Selected Day</button>
             </div>
           </div>
 
@@ -1421,7 +1428,7 @@
               <p style="font-size:12px;color:var(--td);margin-bottom:10px">Jap done before using this app? Add to lifetime total.</p>
               <div class="fr"><input type="number" class="fi" id="prevJapIn" placeholder="e.g. 50000" min="1"><span class="fu">jap</span></div>
               <div style="font-size:11px;color:var(--td);margin-bottom:8px">= <span id="prevMalaPreview">0</span> malas · Lifetime: <span id="prevLifetimePreview" style="color:var(--gold)">—</span></div>
-              <button class="pb deep" onclick="addPrevJap()">📿 Add to Lifetime</button>
+              <button class="pb deep" onclick="mjAct('addPrevJap')">📿 Add to Lifetime</button>
             </div>
           </div>
 
@@ -1454,7 +1461,7 @@
                   <span style="color:var(--td);font-size:11px">s</span>
                 </div>
               </div>
-              <button class="pb deduct" onclick="deductTodayJap()">✂️ Deduct from Today</button>
+              <button class="pb deduct" onclick="mjAct('deductTodayJap')">✂️ Deduct from Today</button>
             </div>
           </div>
 
@@ -1476,7 +1483,7 @@
                   <span style="color:var(--td);font-size:11px">s</span>
                 </div>
               </div>
-              <button class="pb deduct" onclick="deductOtherJap()">✂️ Deduct from Selected Day</button>
+              <button class="pb deduct" onclick="mjAct('deductOtherJap')">✂️ Deduct from Selected Day</button>
             </div>
           </div>
 
@@ -1491,13 +1498,13 @@
                 <div style="font-size:10px;color:#C87534;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">➕ Add to Deduction</div>
                 <div class="fr"><input type="number" class="fi" id="nameJapDeductIn" placeholder="e.g. 5000" min="1" style="border-color:rgba(196,120,46,0.40)"><span class="fu" style="color:#C87534">jap</span></div>
                 <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapDeductPreview" style="color:#C87534">—</span></div>
-                <button class="pb deduct" onclick="addNameJapDeduct()">✂️ Apply Deduction</button>
+                <button class="pb deduct" onclick="mjAct('addNameJapDeduct')">✂️ Apply Deduction</button>
               </div>
               <div style="background:rgba(196,120,46,0.03);border:1px solid rgba(196,120,46,0.14);border-radius:12px;padding:11px">
                 <div style="font-size:10px;color:#C87534;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">↩ Remove Deduction</div>
                 <div class="fr"><input type="number" class="fi" id="nameJapRestoreIn" placeholder="Amount to restore" min="1" style="border-color:rgba(196,120,46,0.35)"><span class="fu" style="color:#C87534">jap</span></div>
                 <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapRestorePreview" style="color:var(--a2)">—</span></div>
-                <button class="pb add" onclick="removeNameJapDeduct()">↩ Restore to Lifetime</button>
+                <button class="pb add" onclick="mjAct('removeNameJapDeduct')">↩ Restore to Lifetime</button>
               </div>
             </div>
           </div>

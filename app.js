@@ -21474,6 +21474,16 @@ function _hlTap(i) {
     if (cfg && _hcjHasAudioForIdx(cfg, i) && _hcjAudioPath(i)) _hcjPlayVerse(i);
   } catch (_e) {}
 }
+function _hlCenter(el, smooth) {
+  var inner = document.querySelector(".lm-card-inner");
+  if (!inner || !el) return;
+  var ir = inner.getBoundingClientRect(), r = el.getBoundingClientRect();
+  var delta = r.height >= ir.height - 40
+    ? r.top - ir.top - 24
+    : (r.top - ir.top) - (ir.height / 2 - r.height / 2);
+  var top = Math.max(0, inner.scrollTop + delta);
+  try { inner.scrollTo({ top: top, behavior: smooth ? "smooth" : "auto" }); } catch (_e) { inner.scrollTop = top; }
+}
 function _renderHlVerse(idx) {
   const body = document.getElementById("lyrBody");
   const prev = document.getElementById("lmPrev");
@@ -21499,8 +21509,10 @@ function _renderHlVerse(idx) {
     el.classList.toggle("lyr-hl-on", on);
     if (on) active = el;
   });
-  if (active && active.scrollIntoView) {
-    try { active.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (_e) { active.scrollIntoView(); }
+  if (active) {
+    _hlCenter(active, true);
+    // font re-fit runs in rAF and can shift layout: re-center once it has settled
+    setTimeout(function () { if (active.classList.contains("lyr-hl-on")) _hlCenter(active, false); }, 160);
   }
   if (prev) prev.disabled = idx === 0;
   if (next) next.disabled = idx === _verses.length - 1;
@@ -24467,6 +24479,9 @@ function _fmtDateDMY(dateStr) {
     lyrEl.style.setProperty("--lyr-fs", STEPS[0] + "px");
     var i;
     for (i = 0; i < lines.length; i++) {
+      /* HL_STABLE_FIX: inline !important size from applyStep() beats the CSS var,
+         so force the measuring size explicitly or the result drifts every refit */
+      lines[i].style.setProperty("font-size", STEPS[0] + "px", "important");
       lines[i].style.display = "inline-block";
       lines[i].style.width = "auto";
       lines[i].style.whiteSpace = "nowrap";

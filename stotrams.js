@@ -12575,6 +12575,16 @@ window.isGitaReady = function () { return _gitaReady; };
       var nameSpan = document.createElement('span');
       nameSpan.className = 'sts-btn-name';
       nameSpan.textContent = sarga.title === 'পূর্বভূমিকা' ? 'পূর্বভূমিকা' : sarga.title;
+      // Geet Govindam: mark every sarga that has at least one song with music
+      // (same rule as the 🎶 badge on the geetam list inside the sarga).
+      if (id === 'gg' && sarga.title !== 'পূর্বভূমিকা' && typeof _AUDIO_STOTRAMS !== 'undefined' && _AUDIO_STOTRAMS.gg) {
+        var _smN = sarga.title.match(/[০-৯]+/);
+        var _smNum = _smN ? _bnToNum(_smN[0]) : (idx + 1);
+        var _smPre = 'gg_' + _smNum + '_';
+        var _smT = _AUDIO_STOTRAMS.gg.tracks || {}, _smY = _AUDIO_STOTRAMS.gg.ytTracks || {};
+        var _smHas = Object.keys(_smT).concat(Object.keys(_smY)).some(function (k) { return k.indexOf(_smPre) === 0; });
+        if (_smHas) nameSpan.textContent += ' 🎶';
+      }
 
       btn.appendChild(numSpan);
       btn.appendChild(nameSpan);

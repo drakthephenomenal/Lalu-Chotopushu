@@ -21107,10 +21107,14 @@ function _liveStBase() {
     ? RJAP_PWA_URL.replace(/\/$/, "") + "/stotram-live/"
     : "./stotram-live/";
 }
-function _liveStEntry(id) { return (window._liveStList || []).find((x) => x.id === id); }
+// Stotrams moved from stotram-live/ into stotrams.js (built-in now). They keep the paged + highlight behaviour.
+var _STATIC_ST = {emr:{id:"emr",paged:true,hl:true},gsn:{id:"gsn",paged:true,hl:true},nsh:{id:"nsh",paged:true,hl:true}};
+var _LIVE_MOVED_IDS = {L_krishna_ehi_murare:1,L_krishna_gopal_sahastranaam_stotram:1,L_shiv_nirvana_shatkam:1};
+function _liveStEntry(id) { return (window._liveStList || []).find((x) => x.id === id) || _STATIC_ST[id]; }
 function _isLiveStId(id) { return typeof id === "string" && id.indexOf("L_") === 0 && !!_liveStEntry(id); }
 function _liveStIsFlat(id) { const e = _liveStEntry(id); return !!(e && !e.paged && (e.flat || e.audio)); }
 function _liveStMerge(list) {
+  list = (list || []).filter((e) => !_LIVE_MOVED_IDS[e.id]); // already built-in now
   window._liveStList = list;
   const ids = {};
   list.forEach((e) => { ids[e.id] = 1; });
@@ -22143,6 +22147,9 @@ var _AUDIO_STOTRAMS = {
   hsr: { prefix: "hsr" },
   // Geet Govindam - Sakhi He Keshimathanam (Ashtapadi): flat single page, YouTube audio (no mp3 bundled)
   gsk: { prefix: "gsk", timed: true, marks: [0], yt: "sEz1bVnXWhM", url: "" },
+  emr: { prefix: "emr", timed: true, marks: [0.0, 83.0, 166.0, 279.0], yt: "9NmTZbbWqdI", url: "" },
+  gsn: { prefix: "gsn", timed: true, marks: [0.0, 14.257, 23.518, 31.633, 40.515, 49.962, 57.997, 66.368, 74.513, 82.529, 90.779, 98.579, 106.694, 114.76, 122.66, 130.677, 138.826, 147.194, 154.524, 162.542, 170.292, 178.055, 185.842, 193.721, 201.538, 210.721, 218.674, 226.512, 234.244, 242.391, 249.838, 258.055, 266.371, 273.737, 281.591, 289.841, 297.823, 305.952, 313.938, 321.505, 329.682, 337.198, 345.079, 352.765, 360.955, 368.611, 375.822, 383.588, 390.978, 399.089, 406.586, 413.987, 421.917, 429.869, 437.534, 445.516, 452.999, 461.419, 468.88, 476.466, 484.13, 492.032, 499.68, 507.1, 514.696, 522.13, 529.647, 536.91, 544.247, 551.46, 559.354, 566.725, 574.11, 581.708, 589.056, 596.339, 603.839, 611.492, 618.905, 626.374, 633.554, 640.938, 648.721, 656.106, 663.277, 670.907, 678.406, 686.056, 694.176, 701.554, 708.889, 716.353, 723.602, 730.752, 738.132, 745.332, 752.847, 760.114, 767.495, 775.633, 783.345, 790.794, 798.077, 805.712, 812.328, 819.809, 826.158, 833.045, 840.025, 847.757, 855.956, 862.876, 870.289, 878.255, 885.306, 893.103, 900.921, 908.468, 916.02, 923.035, 930.653, 938.436, 946.284, 954.236, 961.899, 969.551, 976.833, 983.85, 991.867, 999.233, 1007.112, 1014.596, 1022.042, 1028.862, 1037.227, 1044.644, 1052.311, 1059.762, 1067.195, 1074.808, 1092.459, 1110.237, 1130.552, 1135.851], yt: "", url: "./audio/gsn_full.mp3" },
+  nsh: { prefix: "nsh", timed: true, marks: [0.0, 39.0, 78.0, 117.0, 156.0, 195.0, 234.0], yt: "yq9WPkuLdbc", url: "" },
   rdc: { prefix: "rdc" },
   dkc: { prefix: "dkc" },
   // rsn has one extra, unlabeled preamble block (audio track 0) before the

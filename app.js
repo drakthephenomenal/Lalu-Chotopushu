@@ -21319,6 +21319,7 @@ function showLyrics(id) {
   var existingLmo = document.getElementById("lmo");
   if (existingLmo) existingLmo.removeAttribute("data-minimized");
   _currentStotramId = id;
+  if (window._lyrDriveFallback !== id) window._lyrDriveFallback = null;
   // Inherit the global translation preference set on the list screen
   _translationVisible = _hasTranslationSt(id)
     ? _globalTranslationPref
@@ -21672,7 +21673,8 @@ function _renderVerse(idx, dir) {
 
   const footerHtml = '<div class="lyr-footer">❧ &nbsp; 🌸 &nbsp; ❧</div>';
   body.innerHTML = (cardVisible ? linesHtml : "") + footerHtml;
-  if (typeof _DRIVE_AUDIO !== "undefined" && _DRIVE_AUDIO[_currentStotramId]) _lyrDriveShow(_currentStotramId);
+  // Drive embed is only a fallback now (shown if direct playback fails).
+  if (typeof _DRIVE_AUDIO !== "undefined" && _DRIVE_AUDIO[_currentStotramId] && window._lyrDriveFallback === _currentStotramId) _lyrDriveShow(_currentStotramId);
 
   // Re-inject SVG theme decorations (lost when innerHTML was rebuilt)
   _reinjectThemeDecos();
@@ -22261,6 +22263,22 @@ var _AUDIO_STOTRAMS = {
   // cleared when leaving it) instead of the usual flat "<prefix>_<n>".
   bg: { prefix: "bg", chapterAudio: true }
 };
+// Kazi Najrul songs: audio hosted on Google Drive, played through the same
+// standard player (seek bar, play/pause, loop) as every other stotram, and
+// autoplayed when the lyrics open. If Drive refuses direct playback the
+// Drive embed is shown instead (see _lyrDriveShow / onerror in _hcjPlayTimed).
+(function () {
+  if (typeof _DRIVE_AUDIO === "undefined") return;
+  Object.keys(_DRIVE_AUDIO).forEach(function (k) {
+    _AUDIO_STOTRAMS[k] = {
+      prefix: k,
+      timed: true,
+      marks: [0],
+      yt: "",
+      url: "https://drive.google.com/uc?export=download&id=" + _DRIVE_AUDIO[k]
+    };
+  });
+})();
 var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices
 // True once the user has manually picked a voice via the button this
 // session — once set, per-verse defaults (defaultVoiceByVerse) stop
@@ -22688,6 +22706,10 @@ function _hcjPlayTimed(idx) {
       var _wa = _hcjAudio;
       _wa.onerror = function () {
         if (_hcjAudio !== _wa) return;
+        if (typeof _DRIVE_AUDIO !== "undefined" && _DRIVE_AUDIO[_currentStotramId]) {
+          window._lyrDriveFallback = _currentStotramId;
+          _lyrDriveShow(_currentStotramId);
+        }
         toast("অডিও চালানো যায়নি — ইন্টারনেট দেখুন 🙏");
         _hcjPlaying = false;
         _hcjSyncUI();

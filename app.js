@@ -15819,7 +15819,7 @@ function renderSt() {
   const customItems = (App.S.customSt || []).map((x) => ({ ...x, custom: true }));
   const groups = FOLDERS.map((f) => ({
     ...f,
-    items: STLIST.filter((s) => s.cat === f.key),
+    items: STLIST.filter((s) => s.cat === f.key && !s.parent),
   }));
   if (customItems.length) {
     groups.push({ key: '__custom', title: 'আমার স্তোত্র', titleHi: 'मेरे स्तोत्र', icon: '📝', items: customItems });
@@ -21417,6 +21417,7 @@ function showLyrics(id) {
   // Autoplay on open (stotram audio): start verse 1 if this stotram has audio.
   try {
     if (_AUDIO_STOTRAMS[id] && !_AUDIO_STOTRAMS[id].yt && _hcjHasAudioForIdx(_AUDIO_STOTRAMS[id], 0) && _hcjAudioPath(0)) _hcjPlayVerse(0);
+    else if (_AUDIO_STOTRAMS[id] && _AUDIO_STOTRAMS[id].yt) _hcjPrimeYt();
   } catch (_e) {}
 }
 
@@ -22209,7 +22210,10 @@ var _AUDIO_STOTRAMS = {
       gg_7_4: "gg_7_4",
       gg_10_1: "gg_10_1",
       gg_12_1: "gg_12_1"
-    }
+    },
+    // YouTube-backed songs (no mp3): same hidden-player engine as the timed
+    // stotrams. Sarga 2 / Geetam 2 = সখি হে কেশিমথনমুদারম্.
+    ytTracks: { gg_2_2: "sEz1bVnXWhM" }
   },
   // Single-view page now (see SINGLE_VIEW_IDS) — only one card, so the
   // old per-chaupai verseMap (42 tracks + alt voice) can never advance
@@ -22254,7 +22258,7 @@ function _hcjHasAudioForIdx(cfg, i) {
   if (!cfg) return false;
   if (cfg.timed) return true;
   if (cfg.live && cfg.pages) return !!cfg.pages[i + 1];
-  if (cfg.sectioned) return !!(window._ggAudioKey && cfg.tracks && cfg.tracks[window._ggAudioKey]);
+  if (cfg.sectioned) return !!(window._ggAudioKey && ((cfg.tracks && cfg.tracks[window._ggAudioKey]) || (cfg.ytTracks && cfg.ytTracks[window._ggAudioKey])));
   // Every shlok has a clip once a Gita chapter is actually open — before
   // that (chapter picker screen) window._bgChapterNum is null, so no
   // player renders there.
@@ -22469,8 +22473,22 @@ function _hcjTimedIdx(cfg, t) {
   for (var j = 0; j < m.length; j++) { if (t + 0.05 >= m[j]) k = j; else break; }
   return Math.min(k, _verses.length - 1);
 }
-function _hcjTimedSync() {
+// Config for the "timed" (single clip, YouTube or mp3) engine. For the
+// sectioned Geet Govindam a YouTube song is wrapped as a one-mark timed clip.
+function _hcjTimedCfg() {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  if (cfg && cfg.sectioned) {
+    var k = window._ggAudioKey, y = cfg.ytTracks && k && cfg.ytTracks[k];
+    return y ? { timed: true, marks: [0], yt: y, url: "" } : null;
+  }
+  return cfg;
+}
+function _hcjTimedKey() {
+  var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  return (cfg && cfg.sectioned) ? _currentStotramId + ":" + (window._ggAudioKey || "") : _currentStotramId;
+}
+function _hcjTimedSync() {
+  var cfg = _hcjTimedCfg();
   if (!cfg || !cfg.timed || !_hcjAudio) return;
   var k = _hcjTimedIdx(cfg, _hcjAudio.currentTime);
   if (k !== _hcjAudioIdx) {
@@ -22481,7 +22499,7 @@ function _hcjTimedSync() {
 }
 // YouTube (audio-only) stand-in that looks like an HTMLAudioElement to the engine.
 // The video sits in a hidden iframe; time/state come in through postMessage.
-function _hcjMakeYtAudio(videoId, startSec) {
+function _hcjMakeYtAudio(videoId, startSec, noAutoplay) {
   var wrap = document.createElement("div");
   wrap.id = "hcjYtWrap";
   wrap.style.cssText = "position:fixed;left:-10000px;top:0;width:280px;height:158px;overflow:hidden;pointer-events:none;";
@@ -22491,7 +22509,7 @@ function _hcjMakeYtAudio(videoId, startSec) {
   wrap.appendChild(frame);
   document.body.appendChild(wrap);
   var a = {
-    _yt: true, _t: startSec || 0, _dur: 0, _state: 3, loop: false, onended: null, ontimeupdate: null,
+    _yt: true, _t: startSec || 0, _dur: 0, _state: noAutoplay ? -1 : 3, loop: false, onended: null, ontimeupdate: null,
     get currentTime() { return this._t; },
     set currentTime(v) { this._t = v; cmd("seekTo", [v, true]); },
     get duration() { return this._dur; },
@@ -22505,14 +22523,27 @@ function _hcjMakeYtAudio(videoId, startSec) {
       try { wrap.remove(); } catch (_e) {}
     },
   };
-  function cmd(func, args) {
+  // Commands sent before the YouTube player has answered the handshake are
+  // silently dropped by the iframe, so queue them until it is ready.
+  var ready = false, pending = [];
+  function rawCmd(func, args) {
     try { frame.contentWindow.postMessage(JSON.stringify({ event: "command", func: func, args: args || [] }), "*"); } catch (_e) {}
   }
+  function cmd(func, args) {
+    if (!ready) { pending.push([func, args]); return; }
+    rawCmd(func, args);
+  }
+  a._isReady = function () { return ready; };
   function onMsg(ev) {
     if (ev.source !== frame.contentWindow) return;
     var d = ev.data;
     if (typeof d === "string") { try { d = JSON.parse(d); } catch (_e) { return; } }
     if (!d || typeof d !== "object") return;
+    if (!ready && (d.event === "onReady" || d.event === "initialDelivery" || d.event === "infoDelivery" || d.event === "onStateChange")) {
+      ready = true;
+      var q = pending; pending = [];
+      q.forEach(function (c) { rawCmd(c[0], c[1]); });
+    }
     var st = null;
     if (d.event === "onStateChange" && typeof d.info === "number") st = d.info;
     else if (d.event === "infoDelivery" && d.info) {
@@ -22544,20 +22575,51 @@ function _hcjMakeYtAudio(videoId, startSec) {
     } catch (_e) {}
   });
   frame.src = "https://www.youtube.com/embed/" + videoId +
-    "?autoplay=1&playsinline=1&enablejsapi=1&rel=0&controls=0&start=" + Math.floor(startSec || 0) +
+    "?autoplay=" + (noAutoplay ? "0" : "1") + "&playsinline=1&enablejsapi=1&rel=0&controls=0&start=" + Math.floor(startSec || 0) +
     "&origin=" + encodeURIComponent(location.origin);
   return a;
 }
+function _hcjBindTimed() {
+  _hcjAudio.ontimeupdate = _hcjTimedSync;
+  _hcjAudio.onended = function () {
+    _hcjStopProgressLoop();
+    _hcjPlaying = false;
+    _hcjAudioIdx = -1;
+    _hcjSyncUI();
+    _hcjUpdateProgress();
+    if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(null, false);
+  };
+}
+// Pre-load the (hidden, paused) YouTube player as soon as a YouTube-backed
+// stotram opens. Browsers only allow audio to start from a real tap, and the
+// iframe takes a moment to load, so creating it on the Play tap meant the tap's
+// permission had expired and the first Play did nothing. With the player
+// already loaded, the first Play tap just sends "play" straight away.
+function _hcjPrimeYt() {
+  var cfg = _hcjTimedCfg(), id = _hcjTimedKey();
+  if (!cfg || !cfg.timed || !cfg.yt) return;
+  if (!window.navigator.onLine) return;
+  if (_hcjAudio) {
+    if (_hcjAudio._timedFor === id) return;
+    try { _hcjAudio.pause(); } catch (_e) {}
+    if (_hcjAudio._destroy) _hcjAudio._destroy();
+    _hcjAudio = null;
+  }
+  _hcjAudio = _hcjMakeYtAudio(cfg.yt, Math.max(0, +cfg.marks[0] || 0), true);
+  _hcjAudio._timedFor = id;
+  _hcjAudio._fresh = false; // always seek explicitly on Play
+  _hcjBindTimed();
+}
 function _hcjPlayTimed(idx) {
-  var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  var cfg = _hcjTimedCfg();
   var start = Math.max(0, +cfg.marks[idx] || 0);
   _hcjStopProgressLoop();
-  if (!_hcjAudio || _hcjAudio._timedFor !== _currentStotramId) {
+  if (!_hcjAudio || _hcjAudio._timedFor !== _hcjTimedKey()) {
     if (_hcjAudio) { _hcjAudio.pause(); _hcjAudio.onended = null; _hcjAudio.ontimeupdate = null; if (_hcjAudio._destroy) _hcjAudio._destroy(); }
     if (!cfg.url && !cfg.yt) return;
     if (!window.navigator.onLine && cfg.yt) { toast("YouTube অডিওর জন্য ইন্টারনেট দরকার 🙏"); return; }
     _hcjAudio = cfg.yt ? _hcjMakeYtAudio(cfg.yt, start) : new Audio(cfg.url);
-    _hcjAudio._timedFor = _currentStotramId;
+    _hcjAudio._timedFor = _hcjTimedKey();
     if (cfg.yt) {
       var _wd = _hcjAudio;
       setTimeout(function () {
@@ -22567,15 +22629,7 @@ function _hcjPlayTimed(idx) {
         }
       }, 8000);
     }
-    _hcjAudio.ontimeupdate = _hcjTimedSync;
-    _hcjAudio.onended = function () {
-      _hcjStopProgressLoop();
-      _hcjPlaying = false;
-      _hcjAudioIdx = -1;
-      _hcjSyncUI();
-      _hcjUpdateProgress();
-      if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(null, false);
-    };
+    _hcjBindTimed();
   }
   _hcjAudio.loop = _hcjMode === "loop";
   _hcjAudioIdx = idx;
@@ -22589,6 +22643,16 @@ function _hcjPlayTimed(idx) {
     _hcjSyncUI();
     _hcjStartProgressLoop();
     if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(_hcjAudio, true);
+    if (_hcjAudio && _hcjAudio._yt) {
+      // If the browser still refused to start it, don't leave the button
+      // showing "playing" — flip back to ▶ so a single tap starts it.
+      var _wd2 = _hcjAudio;
+      setTimeout(function () {
+        if (_hcjAudio === _wd2 && _hcjPlaying && _wd2._state !== 1 && _wd2._isReady && _wd2._isReady()) {
+          _hcjPauseAudio();
+        }
+      }, 3500);
+    }
   }).catch(function () {
     _hcjPlaying = false;
     _hcjAudioIdx = -1;
@@ -22596,7 +22660,7 @@ function _hcjPlayTimed(idx) {
   });
 }
 function _hcjPlayVerse(idx) {
-  var _tcfg = _AUDIO_STOTRAMS[_currentStotramId];
+  var _tcfg = _hcjTimedCfg();
   if (_tcfg && _tcfg.timed) { _hcjPlayTimed(idx); return; }
   _hcjStopProgressLoop();
   if (_hcjAudio) {

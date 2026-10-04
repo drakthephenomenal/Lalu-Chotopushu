@@ -22,7 +22,7 @@ const STLIST = [
   {id:'rdc',cat:'rv',name:'শ্রী রাধা চালীসা',sub:'রাধা রানীর চালীসা',nameHi:'श्री राधा चालीसा',subHi:'राधा रानी की चालीसा'},
   {id:'bg',cat:'krishna',name:'শ্রীমদ্ভগবদ্গীতা',sub:'অষ্টাদশ অধ্যায় · ৭০০ শ্লোক',nameHi:'श्रीमद्भगवद्गीता',subHi:'अठारह अध्याय · ७०० श्लोक'},
   {id:'gg',cat:'krishna',name:'গীতগোবিন্দম্',sub:'শ্রীজয়দেবকৃত',nameHi:'गीतगोविन्दम्',subHi:'श्रीजयदेवकृत'},
-  {id:'gsk',cat:'krishna',name:'সখি হে কেশিমথনমুদারম্',sub:'গীতগোবিন্দ · শ্রীজয়দেবকৃত',nameHi:'सखि हे केशिमथनमुदारम्',subHi:'गीतगोविन्द · श्रीजयदेवकृत'},
+  {id:'gsk',cat:'krishna',parent:'gg',name:'সখি হে কেশিমথনমুদারম্',sub:'গীতগোবিন্দ · শ্রীজয়দেবকৃত',nameHi:'सखि हे केशिमथनमुदारम्',subHi:'गीतगोविन्द · श्रीजयदेवकृत'},
   {id:'emr',cat:'krishna',name:'এহি মুরারে',sub:'শ্রীল জয়দেবের রচনা',nameHi:'एहि मुरारे',subHi:'श्रील जयदेव की रचना'},
   {id:'gsn',cat:'krishna',name:'শ্রী গোপাল সহস্রনাম স্তোত্রম্',sub:'সহস্রনাম',nameHi:'श्री गोपाल सहस्रनाम स्तोत्रम्',subHi:'सहस्रनाम'},
   {id:'nkc',cat:'krishna',name:'নারায়ণ কবচম',sub:'নারায়ণের দিব্য কবচ',nameHi:'नारायण कवचम्',subHi:'नारायण का दिव्य कवच'},
@@ -12426,6 +12426,7 @@ window.isGitaReady = function () { return _gitaReady; };
     var _sNum = _sNumMatch ? _bnToNum(_sNumMatch[0]) : (sargaIdx + 1);
     var _ggTracks = (typeof _AUDIO_STOTRAMS !== 'undefined' && _AUDIO_STOTRAMS.gg && _AUDIO_STOTRAMS.gg.tracks) || {};
 
+    var _ggYt = (typeof _AUDIO_STOTRAMS !== 'undefined' && _AUDIO_STOTRAMS.gg && _AUDIO_STOTRAMS.gg.ytTracks) || {};
     var grid = document.createElement('div');
     grid.className = 'sts-picker-grid';
     var rows = Math.max(1, Math.ceil(items.length / 2));
@@ -12451,7 +12452,8 @@ window.isGitaReady = function () { return _gitaReady; };
       // Truncate long geetam titles
       var t = item.label;
       if (t.length > 40) t = t.slice(0, 38) + '…';
-      var _hasAudio = item.subIdx !== -1 && !!_ggTracks['gg_' + _sNum + '_' + (item.subIdx + 1)];
+      var _gk = 'gg_' + _sNum + '_' + (item.subIdx + 1);
+      var _hasAudio = item.subIdx !== -1 && (!!_ggTracks[_gk] || !!_ggYt[_gk]);
       nameSpan.textContent = t + (_hasAudio ? ' 🎶' : '');
 
       btn.appendChild(numSpan);
@@ -12543,6 +12545,10 @@ window.isGitaReady = function () { return _gitaReady; };
       }
       if (typeof _renderVerse === 'function') _renderVerse(_verseIdx, null);
       if (typeof _initSwipeHandler === 'function') _initSwipeHandler();
+      // YouTube-backed geetam: load the hidden player now so the first ▶ tap plays.
+      if (_activeId === 'gg' && subIdx !== -1 && typeof _hcjPrimeYt === 'function') {
+        try { _hcjPrimeYt(); } catch (_e) {}
+      }
     }
 
     // Back button in verse title bar

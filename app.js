@@ -21128,7 +21128,11 @@ function _liveStMerge(list) {
     const at = STLIST.findIndex((x) => x.id === e.id);
     if (at >= 0) STLIST[at] = item; else STLIST.push(item);
     if (App.S && App.S.stotrams && !App.S.stotrams[e.id]) App.S.stotrams[e.id] = {};
-    if (e.paged) {
+    if (e.paged && e.audio && e.marks && e.marks.length) {
+      // Timed: ONE audio.mp3 for the whole stotram; meta.json "marks" = start second of each verse.
+      // The blue highlight follows the playback position (see _hcjTimedSync).
+      _AUDIO_STOTRAMS[e.id] = { prefix: e.id, custom: true, live: true, timed: true, marks: e.marks.slice(), url: _liveStBase() + e.dir + "/audio.mp3" + (e.v ? "?v=" + e.v : "") };
+    } else if (e.paged) {
       // Paged: one clip per verse page — audio_1.mp3 = first page, audio_2.mp3 = second, …
       const pg = {};
       (e.pages || []).forEach((n) => { pg[n] = 1; });
@@ -22227,6 +22231,7 @@ function _hcjVoicesFor(cfg, verseNum) {
 // slokaRange defined.
 function _hcjHasAudioForIdx(cfg, i) {
   if (!cfg) return false;
+  if (cfg.timed) return true;
   if (cfg.live && cfg.pages) return !!cfg.pages[i + 1];
   if (cfg.sectioned) return !!(window._ggAudioKey && cfg.tracks && cfg.tracks[window._ggAudioKey]);
   // Every shlok has a clip once a Gita chapter is actually open — before
@@ -22240,6 +22245,7 @@ function _hcjHasAudioForIdx(cfg, i) {
 
 function _hcjAudioPath(i) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  if (cfg && cfg.timed) return cfg.url;
   // User-uploaded audio for a custom stotram: single flat page, one clip.
   if (cfg && cfg.custom && cfg.live && cfg.pages) {
     return cfg.pages[i + 1] ? cfg.base + "audio_" + (i + 1) + ".mp3" + (cfg.v ? "?v=" + cfg.v : "") : "";
@@ -22369,6 +22375,7 @@ function _hcjFmtTime(s) {
 // RAF loop — updates progress bar & timestamps every frame while playing
 function _hcjProgressLoop() {
   _hcjUpdateProgress();
+  _hcjTimedSync();
   if (_hcjAudio && !_hcjAudio.paused) {
     _hcjRafId = requestAnimationFrame(_hcjProgressLoop);
   } else {
@@ -22434,7 +22441,59 @@ function _hcjPauseAudio() {
   _hcjSyncMiniPlayer();
   if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(_hcjAudio, false);
 }
+// ── Timed (single-clip) stotrams: highlight follows the playback position ──
+function _hcjTimedIdx(cfg, t) {
+  var m = cfg.marks, k = 0;
+  for (var j = 0; j < m.length; j++) { if (t + 0.05 >= m[j]) k = j; else break; }
+  return Math.min(k, _verses.length - 1);
+}
+function _hcjTimedSync() {
+  var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  if (!cfg || !cfg.timed || !_hcjAudio) return;
+  var k = _hcjTimedIdx(cfg, _hcjAudio.currentTime);
+  if (k !== _hcjAudioIdx) {
+    _hcjAudioIdx = k; // set first so _hcjOnVerseChange does not restart the clip
+    _verseIdx = k;
+    _renderVerse(k, null);
+  }
+}
+function _hcjPlayTimed(idx) {
+  var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  var start = Math.max(0, +cfg.marks[idx] || 0);
+  _hcjStopProgressLoop();
+  if (!_hcjAudio || _hcjAudio._timedFor !== _currentStotramId) {
+    if (_hcjAudio) { _hcjAudio.pause(); _hcjAudio.onended = null; _hcjAudio.ontimeupdate = null; }
+    _hcjAudio = new Audio(cfg.url);
+    _hcjAudio._timedFor = _currentStotramId;
+    _hcjAudio.ontimeupdate = _hcjTimedSync;
+    _hcjAudio.onended = function () {
+      _hcjStopProgressLoop();
+      _hcjPlaying = false;
+      _hcjAudioIdx = -1;
+      _hcjSyncUI();
+      _hcjUpdateProgress();
+      if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(null, false);
+    };
+  }
+  _hcjAudio.loop = _hcjMode === "loop";
+  _hcjAudioIdx = idx;
+  try { _hcjAudio.currentTime = start; } catch (_e) {
+    _hcjAudio.addEventListener("loadedmetadata", function () { try { _hcjAudio.currentTime = start; } catch (_e2) {} }, { once: true });
+  }
+  _hcjAudio.play().then(function () {
+    _hcjPlaying = true;
+    _hcjSyncUI();
+    _hcjStartProgressLoop();
+    if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(_hcjAudio, true);
+  }).catch(function () {
+    _hcjPlaying = false;
+    _hcjAudioIdx = -1;
+    _hcjSyncUI();
+  });
+}
 function _hcjPlayVerse(idx) {
+  var _tcfg = _AUDIO_STOTRAMS[_currentStotramId];
+  if (_tcfg && _tcfg.timed) { _hcjPlayTimed(idx); return; }
   _hcjStopProgressLoop();
   if (_hcjAudio) {
     _hcjAudio.pause();

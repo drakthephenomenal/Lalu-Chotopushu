@@ -35,18 +35,11 @@
       "paged": true,
       "hl": true,
       "hi": true,
-      "audio": false,
-      "pages": [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ],
+      "audio": true,
+      "pages": [],
       "marks": [],
       "yt": "",
-      "v": "df09f6c4"
+      "v": "e273ed3a"
     },
     {
       "id": "L_shiv_nirvana_shatkam",

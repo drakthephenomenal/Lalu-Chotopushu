@@ -20852,7 +20852,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr"];
+const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk"];
 // Built-in translatable stotrams + live (repo-added) stotrams marked "paged".
 function _hasTranslationSt(id) {
   if (TRANSLATION_IDS.includes(id)) return true;
@@ -21351,7 +21351,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr"];
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk"];
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id); // user-added (and repo flat/audio) stotrams: one flat page
 
   // Split by blank lines into verses
@@ -21421,7 +21421,7 @@ function showLyrics(id) {
 // অনুবাদ: …                                          → green
 const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|अनुवाद)\s*:/;
 // Stotrams that use the green অনুবাদ:/अनुवाद: meaning lines (gg also has শব্দার্থ:).
-const _ANUVAD_IDS = ["gg", "hsr"];
+const _ANUVAD_IDS = ["gg", "hsr", "gsk"];
 function _isAnuvadSt(id) {
   if (_ANUVAD_IDS.indexOf(id) !== -1) return true;
   const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
@@ -22141,6 +22141,8 @@ var _AUDIO_STOTRAMS = {
   gdm: { prefix: "gdm" },
   // Hamare Mayi Shyama Ju Ko Raj - flat single page, one clip: audio/hsr_1.mp3
   hsr: { prefix: "hsr" },
+  // Geet Govindam - Sakhi He Keshimathanam (Ashtapadi): flat single page, YouTube audio (no mp3 bundled)
+  gsk: { prefix: "gsk", timed: true, marks: [0], yt: "sEz1bVnXWhM", url: "" },
   rdc: { prefix: "rdc" },
   dkc: { prefix: "dkc" },
   // rsn has one extra, unlabeled preamble block (audio track 0) before the

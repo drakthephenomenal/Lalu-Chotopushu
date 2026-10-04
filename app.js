@@ -22272,21 +22272,30 @@ var _AUDIO_STOTRAMS = {
 // Drive embed is shown instead (see _lyrDriveShow / onerror in _hcjPlayTimed).
 (function () {
   if (typeof _DRIVE_AUDIO === "undefined") return;
+  // File names exactly as downloaded from Drive (the numbers in the names are
+  // NOT the lyric numbers). Put them in the audio/ folder.
+  var _NZ_FILES = {
+    nz1: ["08. Alo NondherNondhon.mp3"],
+    nz2: ["05. Ridpidhe Choron.mp3"],
+    nz3: ["02. Rum jhum  nupur o baze_.mp3"],
+    nz4: ["10. Shokhi She Heri.mp3"],
+    nz5: ["09. He Gobindho Rakho.mp3"],
+    nz6: ["04. Khelecho a bisso.mp3"],
+    nz7: ["03. Arun Kanti Ke Go.mp3"],
+    nz8: ["01. Mon Job Nam.mp3"],
+    nz9: ["11. Azi Mone Mone Lage.mp3"],
+    nz10: ["12. Timir Bidari.mp3"],
+    nz11: ["06. Payea Abohela .mp3"]
+  };
   Object.keys(_DRIVE_AUDIO).forEach(function (k) {
-    _AUDIO_STOTRAMS[k] = {
-      prefix: k,
-      timed: true,
-      marks: [0],
-      yt: "",
-      // 1st choice: mp3 bundled in the app (audio/nz1_1.mp3 …) like every other
-      // stotram. If it is missing, try Drive's direct-download links, and only
-      // then fall back to the Drive embed.
-      url: "audio/" + k + "_1.mp3",
-      alts: [
-        "https://drive.usercontent.google.com/download?id=" + _DRIVE_AUDIO[k] + "&export=download&confirm=t",
-        "https://drive.google.com/uc?export=download&confirm=t&id=" + _DRIVE_AUDIO[k]
-      ]
-    };
+    var local = (_NZ_FILES[k] || []).map(function (f) { return "audio/" + encodeURIComponent(f); });
+    local.push("audio/" + k + "_1.mp3");
+    var id = _DRIVE_AUDIO[k];
+    var alts = local.slice(1).concat([
+      "https://drive.usercontent.google.com/download?id=" + id + "&export=download&confirm=t",
+      "https://drive.google.com/uc?export=download&confirm=t&id=" + id
+    ]);
+    _AUDIO_STOTRAMS[k] = { prefix: k, timed: true, marks: [0], yt: "", url: local[0], alts: alts };
   });
 })();
 var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices

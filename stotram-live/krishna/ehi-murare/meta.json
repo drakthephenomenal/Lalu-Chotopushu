@@ -4,5 +4,6 @@
   "sub": "শ্রীল জয়দেবের রচনা",
   "subHi": "श्रील जयदेव की रचना",
   "paged": true,
-  "highlight": true
+  "highlight": true,
+  "marks": ["0:00", "1:23", "2:46", "4:39"]
 }

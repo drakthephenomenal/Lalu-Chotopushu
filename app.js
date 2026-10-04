@@ -21412,7 +21412,7 @@ function showLyrics(id) {
   _initSwipeHandler();
   // Autoplay on open (stotram audio): start verse 1 if this stotram has audio.
   try {
-    if (_AUDIO_STOTRAMS[id] && _hcjHasAudioForIdx(_AUDIO_STOTRAMS[id], 0) && _hcjAudioPath(0)) _hcjPlayVerse(0);
+    if (_AUDIO_STOTRAMS[id] && !_AUDIO_STOTRAMS[id].yt && _hcjHasAudioForIdx(_AUDIO_STOTRAMS[id], 0) && _hcjAudioPath(0)) _hcjPlayVerse(0);
   } catch (_e) {}
 }
 
@@ -22245,7 +22245,7 @@ function _hcjHasAudioForIdx(cfg, i) {
 
 function _hcjAudioPath(i) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
-  if (cfg && cfg.timed) return cfg.url;
+  if (cfg && cfg.timed) return cfg.url || cfg.yt || "";
   // User-uploaded audio for a custom stotram: single flat page, one clip.
   if (cfg && cfg.custom && cfg.live && cfg.pages) {
     return cfg.pages[i + 1] ? cfg.base + "audio_" + (i + 1) + ".mp3" + (cfg.v ? "?v=" + cfg.v : "") : "";
@@ -22499,7 +22499,7 @@ function _hcjMakeYtAudio(videoId, startSec) {
       if (typeof d.info.duration === "number" && d.info.duration > 0) a._dur = d.info.duration;
       if (typeof d.info.playerState === "number") st = d.info.playerState;
     } else if (d.event === "onError") {
-      toast("YouTube অডিও চালানো যায়নি 🙏");
+      toast("YouTube অডিও চালানো যায়নি 🙏 (code " + (d.info !== undefined ? d.info : "?") + ")");
       if (typeof _hcjStopAudio === "function") _hcjStopAudio();
       return;
     }
@@ -22537,6 +22537,15 @@ function _hcjPlayTimed(idx) {
     if (!window.navigator.onLine && cfg.yt) { toast("YouTube অডিওর জন্য ইন্টারনেট দরকার 🙏"); return; }
     _hcjAudio = cfg.yt ? _hcjMakeYtAudio(cfg.yt, start) : new Audio(cfg.url);
     _hcjAudio._timedFor = _currentStotramId;
+    if (cfg.yt) {
+      var _wd = _hcjAudio;
+      setTimeout(function () {
+        if (_hcjAudio === _wd && _wd._state !== 1 && _wd._state !== 2) {
+          toast("YouTube শুরু হয়নি — আবার ▶ চাপুন 🙏");
+          _hcjStopAudio();
+        }
+      }, 8000);
+    }
     _hcjAudio.ontimeupdate = _hcjTimedSync;
     _hcjAudio.onended = function () {
       _hcjStopProgressLoop();

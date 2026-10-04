@@ -20,16 +20,16 @@ const STLIST = [
   {id:'dkc',cat:'rv',name:'দেখত ছবীলী জূ কী ছবি',sub:'শ্রী ধ্রুব দাস – শৃঙ্গার শত ১ (২৩)',nameHi:'देखत छबीली जू की छबि',subHi:'श्री ध्रुवदास – शृंगार शत १ (२३)'},
   {id:'rks',cat:'rv',name:'শ্রীরাধাকৃপাকটাক্ষস্তবরাজঃ',sub:'রাধার কৃপাদৃষ্টির প্রার্থনা',nameHi:'श्रीराधाकृपाकटाक्षस्तवराजः',subHi:'राधा जी की कृपादृष्टि की प्रार्थना'},
   {id:'rdc',cat:'rv',name:'শ্রী রাধা চালীসা',sub:'রাধা রানীর চালীসা',nameHi:'श्री राधा चालीसा',subHi:'राधा रानी की चालीसा'},
-  {id:'bg',cat:'krishna',name:'শ্রীমদ্ভগবদ্গীতা',sub:'অষ্টাদশ অধ্যায় · ৭০০ শ্লোক',nameHi:'श्रीमद्भगवद्गीता',subHi:'अठारह अध्याय · ७०० श्लोक'},
+  {id:'bg',cat:'gita',name:'শ্রীমদ্ভগবদ্গীতা',sub:'অষ্টাদশ অধ্যায় · ৭০০ শ্লোক',nameHi:'श्रीमद्भगवद्गीता',subHi:'अठारह अध्याय · ७०० श्लोक'},
+  {id:'gsn',cat:'krishna',name:'শ্রী গোপাল সহস্রনাম স্তোত্রম্',sub:'শিব-পার্বতী সংবাদ',nameHi:'श्री गोपाल सहस्रनाम स्तोत्रम्',subHi:'शिव-पार्वती संवाद'},
+  {id:'vs2',cat:'krishna',name:'শ্রী বিষ্ণু শতনাম স্তোত্রম্',sub:'বিষ্ণু পুরাণ · বিষ্ণুর শতনাম',nameHi:'श्री विष्णु शतनाम स्तोत्रम्',subHi:'विष्णु पुराण · विष्णु के सौ नाम'},
+  {id:'ach',cat:'krishna',name:'অচ্যুতাষ্টকম্',sub:'শ্রীমদ্‌ শঙ্করাচার্য বিরচিত',nameHi:'अच्युताष्टकम्',subHi:'श्रीमद् शंकराचार्य विरचित'},
+  {id:'gdm',cat:'krishna',name:'গোবিন্দ দামোদর স্তোত্রম্ (লঘু)',sub:'গোবিন্দ দামোদর মাধব নাম',nameHi:'गोविन्द दामोदर स्तोत्रम् (लघु)',subHi:'गोविन्द दामोदर माधव नाम'},
   {id:'gg',cat:'krishna',name:'গীতগোবিন্দম্',sub:'শ্রীজয়দেবকৃত',nameHi:'गीतगोविन्दम्',subHi:'श्रीजयदेवकृत'},
   {id:'gsk',cat:'krishna',parent:'gg',name:'সখি হে কেশিমথনমুদারম্',sub:'গীতগোবিন্দ · শ্রীজয়দেবকৃত',nameHi:'सखि हे केशिमथनमुदारम्',subHi:'गीतगोविन्द · श्रीजयदेवकृत'},
   {id:'emr',cat:'krishna',name:'এহি মুরারে',sub:'শ্রীল জয়দেবের রচনা',nameHi:'एहि मुरारे',subHi:'श्रील जयदेव की रचना'},
-  {id:'gsn',cat:'krishna',name:'শ্রী গোপাল সহস্রনাম স্তোত্রম্',sub:'সহস্রনাম',nameHi:'श्री गोपाल सहस्रनाम स्तोत्रम्',subHi:'सहस्रनाम'},
-  {id:'nkc',cat:'krishna',name:'নারায়ণ কবচম',sub:'নারায়ণের দিব্য কবচ',nameHi:'नारायण कवचम्',subHi:'नारायण का दिव्य कवच'},
-  {id:'gms',cat:'krishna',name:'গজেন্দ্র মোক্ষ স্তোত্রম্',sub:'মুক্তির প্রার্থনা',nameHi:'गजेन्द्र मोक्ष स्तोत्रम्',subHi:'मुक्ति की प्रार्थना'},
-  {id:'vs2',cat:'krishna',name:'শ্রী বিষ্ণু শতনাম স্তোত্রম্',sub:'বিষ্ণুর শতনাম',nameHi:'श्री विष्णु शतनाम स्तोत्रम्',subHi:'विष्णु के सौ नाम'},
-  {id:'ach',cat:'krishna',name:'অচ্যুতাষ্টকম্',sub:'শ্রীমদ্‌ শঙ্করাচার্য বিরচিত',nameHi:'अच्युताष्टकम्',subHi:'श्रीमद् शंकराचार्य विरचित'},
-  {id:'gdm',cat:'krishna',name:'গোবিন্দ দামোদর স্তোত্রম্ (লঘু)',sub:'গোবিন্দ দামোদর মাধব নাম',nameHi:'गोविन्द दामोदर स्तोत्रम् (लघु)',subHi:'गोविन्द दामोदर माधव नाम'},
+  {id:'nkc',cat:'krishna',name:'নারায়ণ কবচম',sub:'শ্রীমদ্ভাগবত · ষষ্ঠ স্কন্ধ, অষ্টম অধ্যায় · নারায়ণের দিব্য কবচ',nameHi:'नारायण कवचम्',subHi:'श्रीमद्भागवत · षष्ठ स्कन्ध, अष्टम अध्याय · नारायण का दिव्य कवच'},
+  {id:'gms',cat:'krishna',name:'গজেন্দ্র মোক্ষ স্তোত্রম্',sub:'শ্রীমদ্ভাগবত · অষ্টম স্কন্ধ, অধ্যায় ২–৪ · মুক্তির প্রার্থনা',nameHi:'गजेन्द्र मोक्ष स्तोत्रम्',subHi:'श्रीमद्भागवत · अष्टम स्कन्ध, अध्याय २–४ · मुक्ति की प्रार्थना'},
   {id:'sps',cat:'shiv',name:'শিব স্তোত্র সমূহ (প্রাতঃকালীন)',sub:'প্রাতঃকালে পাঠের স্তোত্র',nameHi:'शिव स्तोत्र समूह (प्रातःकालीन)',subHi:'प्रातःकाल पाठ हेतु स्तोत्र'},
   {id:'nsh',cat:'shiv',name:'নির্বাণষট্কম্',sub:'শিবোঽহম্ — শ্রী আদি শঙ্করাচার্য রচিত',nameHi:'निर्वाणषट्कम्',subHi:'शिवोऽहम् — श्री आदि शंकराचार्य रचित'},
   {id:'bss',cat:'shiv',name:'বেদসার শিব স্তব',sub:'মহাদেবের স্তুতি',nameHi:'वेदसार शिव स्तव',subHi:'महादेव की स्तुति'},
@@ -12463,6 +12463,16 @@ window.isGitaReady = function () { return _gitaReady; };
     });
     picker.appendChild(grid);
 
+    // Pre-load the hidden YouTube player(s) of this sarga's YouTube songs so
+    // the song starts the instant it is opened.
+    try {
+      var _wl = [];
+      Object.keys(_ggYt).forEach(function (k) {
+        if (k.indexOf('gg_' + _sNum + '_') === 0) _wl.push({ key: 'gg:' + k, vid: _ggYt[k], start: 0 });
+      });
+      if (typeof _hcjWarmSet === 'function') _hcjWarmSet(_wl);
+    } catch (_e) {}
+
     var lmd = document.querySelector('.lmd');
     if (lmd) lmd.appendChild(picker);
   }
@@ -12545,9 +12555,9 @@ window.isGitaReady = function () { return _gitaReady; };
       }
       if (typeof _renderVerse === 'function') _renderVerse(_verseIdx, null);
       if (typeof _initSwipeHandler === 'function') _initSwipeHandler();
-      // YouTube-backed geetam: load the hidden player now so the first ▶ tap plays.
-      if (_activeId === 'gg' && subIdx !== -1 && typeof _hcjPrimeYt === 'function') {
-        try { _hcjPrimeYt(); } catch (_e) {}
+      // YouTube-backed geetam: use the pre-loaded player and start playing right away (same tap).
+      if (_activeId === 'gg' && subIdx !== -1 && typeof _hcjAdoptWarm === 'function') {
+        try { _hcjAdoptWarm(true); } catch (_e) {}
       }
     }
 

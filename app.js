@@ -15806,6 +15806,7 @@ function renderSt() {
     { key: 'rv',      title: 'রাধা বল্লভ সম্প্রদায়', titleHi: 'राधावल्लभ सम्प्रदाय', icon: '🪷', img: ST_FOLDER_ICON_IMG.rv },
     { key: 'bmg',     title: 'ব্রাহ্ম মাধ্ব গৌড়ীয় সম্প্রদায়', titleHi: 'ब्रह्म माध्व गौड़ीय सम्प्रदाय', icon: '🕉️', img: ST_FOLDER_ICON_IMG.bmg },
     { key: 'krishna', title: 'শ্রীকৃষ্ণ', titleHi: 'श्रीकृष्ण', icon: '🦚' },
+    { key: 'gita',    title: 'শ্রীমদ্ভগবদ্গীতা', titleHi: 'श्रीमद्भगवद्गीता', icon: '📖' },
     { key: 'shiv',    title: 'ভগবান শিব', titleHi: 'भगवान शिव', icon: '🔱', img: ST_FOLDER_ICON_IMG.shiv },
     { key: 'hanuman', title: 'হনুমান জী মহারাজ', titleHi: 'हनुमान जी महाराज', icon: '🚩' },
     { key: 'rjbj', title: 'রসিক, বৈষ্ণব ও অন্যান্য ভক্ত এবং সন্তজন দর্শন ও পরিচিতি', titleHi: 'रसिक, वैष्णव एवं अन्य भक्त तथा संतजन दर्शन एवं परिचय', icon: '🙏' },
@@ -15864,6 +15865,7 @@ function renderSt() {
       });
       list.appendChild(tile);
     };
+    try { _hcjWarmSet([]); } catch (_e) {}
     topGroups.forEach(addTile);
     addHead(_svHi ? '🪔 स्तोत्र' : '🪔 স্তোত্র');
     if (_af) list.appendChild(_af);   // "Add Your Stotram" lives under the Stotrams headline
@@ -15873,6 +15875,7 @@ function renderSt() {
 
   // ── Level 2: inside a folder — back button + its stotrams ──
   const group = groups.find((g) => g.key === activeKey);
+  try { _hcjWarmForFolder(activeKey); } catch (_e) {}
   if (!group) {
     // Folder no longer exists (shouldn't happen) — bail back to menu.
     window._stActiveFolder = null;
@@ -21417,7 +21420,7 @@ function showLyrics(id) {
   // Autoplay on open (stotram audio): start verse 1 if this stotram has audio.
   try {
     if (_AUDIO_STOTRAMS[id] && !_AUDIO_STOTRAMS[id].yt && _hcjHasAudioForIdx(_AUDIO_STOTRAMS[id], 0) && _hcjAudioPath(0)) _hcjPlayVerse(0);
-    else if (_AUDIO_STOTRAMS[id] && _AUDIO_STOTRAMS[id].yt) _hcjPrimeYt();
+    else if (_AUDIO_STOTRAMS[id] && _AUDIO_STOTRAMS[id].yt) _hcjAdoptWarm(true);
   } catch (_e) {}
 }
 
@@ -21964,6 +21967,7 @@ function closeLyrics() {
   var _lci = document.querySelector("#lmo .lm-card-inner");
   if (_lci) _lci.style.bottom = "";
   _hcjStopAudio();
+  try { _hcjWarmForFolder(window._stActiveFolder); } catch (_e) {}
   _verses = [];
   _verseIdx = 0;
   _verseNavLocked = false;
@@ -22501,7 +22505,7 @@ function _hcjTimedSync() {
 // The video sits in a hidden iframe; time/state come in through postMessage.
 function _hcjMakeYtAudio(videoId, startSec, noAutoplay) {
   var wrap = document.createElement("div");
-  wrap.id = "hcjYtWrap";
+  wrap.className = "hcjYtWrap";
   wrap.style.cssText = "position:fixed;left:-10000px;top:0;width:280px;height:158px;overflow:hidden;pointer-events:none;";
   var frame = document.createElement("iframe");
   frame.setAttribute("allow", "autoplay; encrypted-media");
@@ -22590,25 +22594,59 @@ function _hcjBindTimed() {
     if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(null, false);
   };
 }
-// Pre-load the (hidden, paused) YouTube player as soon as a YouTube-backed
-// stotram opens. Browsers only allow audio to start from a real tap, and the
-// iframe takes a moment to load, so creating it on the Play tap meant the tap's
-// permission had expired and the first Play did nothing. With the player
-// already loaded, the first Play tap just sends "play" straight away.
-function _hcjPrimeYt() {
-  var cfg = _hcjTimedCfg(), id = _hcjTimedKey();
-  if (!cfg || !cfg.timed || !cfg.yt) return;
+// ── Warm YouTube players ─────────────────────────────────────────────────
+// iOS/Safari only lets audio start inside the tap that asked for it, and a
+// YouTube iframe takes a second or two to load. So the hidden (paused) player
+// is loaded EARLY — while the song list / song picker is on screen — and when
+// the person taps Open the player is already there: "play" is sent in the very
+// same tap, and the song starts by itself.
+var _hcjWarm = {};
+function _hcjWarmForFolder(folderKey) {
+  var wl = [];
+  if (folderKey) STLIST.forEach(function (st) {
+    if (st.cat !== folderKey || st.parent) return;
+    var c = _AUDIO_STOTRAMS[st.id];
+    if (c && c.timed && c.yt) wl.push({ key: st.id, vid: c.yt, start: +c.marks[0] || 0 });
+  });
+  _hcjWarmSet(wl);
+}
+function _hcjWarmSet(items) {
+  var keep = {};
+  (items || []).forEach(function (it) { keep[it.key] = 1; });
+  Object.keys(_hcjWarm).forEach(function (k) {
+    if (!keep[k]) { try { _hcjWarm[k]._destroy(); } catch (_e) {} delete _hcjWarm[k]; }
+  });
   if (!window.navigator.onLine) return;
-  if (_hcjAudio) {
-    if (_hcjAudio._timedFor === id) return;
-    try { _hcjAudio.pause(); } catch (_e) {}
-    if (_hcjAudio._destroy) _hcjAudio._destroy();
-    _hcjAudio = null;
+  (items || []).forEach(function (it) {
+    if (_hcjWarm[it.key] || (_hcjAudio && _hcjAudio._timedFor === it.key)) return;
+    var w = _hcjMakeYtAudio(it.vid, it.start || 0, true);
+    w._timedFor = it.key;
+    w._fresh = false; // always seek explicitly on Play
+    _hcjWarm[it.key] = w;
+  });
+}
+// Take the pre-loaded player for the song that is now open and (optionally)
+// start it right away. Must run synchronously inside the user's tap.
+function _hcjAdoptWarm(autoplay) {
+  var cfg = _hcjTimedCfg(), key = _hcjTimedKey();
+  if (!cfg || !cfg.timed || !cfg.yt) return false;
+  if (!_hcjAudio || _hcjAudio._timedFor !== key) {
+    if (_hcjAudio) {
+      try { _hcjAudio.pause(); } catch (_e) {}
+      if (_hcjAudio._destroy) _hcjAudio._destroy();
+      _hcjAudio = null;
+    }
+    var w = _hcjWarm[key];
+    if (w) { delete _hcjWarm[key]; _hcjAudio = w; }
+    else if (window.navigator.onLine) {
+      _hcjAudio = _hcjMakeYtAudio(cfg.yt, Math.max(0, +cfg.marks[0] || 0), true);
+      _hcjAudio._timedFor = key;
+      _hcjAudio._fresh = false;
+    } else return false;
+    _hcjBindTimed();
   }
-  _hcjAudio = _hcjMakeYtAudio(cfg.yt, Math.max(0, +cfg.marks[0] || 0), true);
-  _hcjAudio._timedFor = id;
-  _hcjAudio._fresh = false; // always seek explicitly on Play
-  _hcjBindTimed();
+  if (autoplay) _hcjPlayTimed(0);
+  return true;
 }
 function _hcjPlayTimed(idx) {
   var cfg = _hcjTimedCfg();

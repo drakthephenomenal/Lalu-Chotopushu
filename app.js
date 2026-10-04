@@ -21234,7 +21234,7 @@ async function liveStEnsureLyrics(id) {
 }
 window.addEventListener("online", () => liveStRefresh(true));
 
-var _DRIVE_AUDIO = {nz1: "184BNmKv_xqcgOEb3a3PX8BbtShNETO43", nz2: "16xQiokmIEdWfby1z0AilOdkVFKvfEoL7", nz3: "17fLuEQEK00ssOahaZZSY6mJpXemyyN4I", nz4: "18AFIr6vNuqN06RqXleLMVdJrLyYHWFX2", nz5: "185_AGAov_eU3Y8H3X12uS5FuXNUo8_S0"};
+var _DRIVE_AUDIO = {nz1: "184BNmKv_xqcgOEb3a3PX8BbtShNETO43", nz2: "16xQiokmIEdWfby1z0AilOdkVFKvfEoL7", nz3: "17fLuEQEK00ssOahaZZSY6mJpXemyyN4I", nz4: "18AFIr6vNuqN06RqXleLMVdJrLyYHWFX2", nz5: "185_AGAov_eU3Y8H3X12uS5FuXNUo8_S0", nz6: "18wMHMF6PhJ-qrKNAP1bErIkhy3L-wPgE", nz7: "17ypuxfK1LRDk7Yu8cucXv5ko03Pna1HS", nz8: "19T37zJc5d8pQTJ0D2msnKPbeOmeFrqkd", nz9: "18UGKVas7MC1DOLpAb2L9Oj7BD91jS8mG", nz10: "17iQt1yUDZbGuLnMK9S3WVnniti7f-FnU", nz11: "19HGZUZ1mezB0vOSbI6FbZRN1glS010V3"};
 // Songs whose audio lives on Google Drive: show Google's own embedded player
 // above the lyrics (Drive does not allow direct audio streaming into the app).
 function _lyrDriveRemove() {
@@ -21383,7 +21383,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "nz1", "nz2", "nz3", "nz4", "nz5"];
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id); // user-added (and repo flat/audio) stotrams: one flat page
 
   // Split by blank lines into verses

@@ -15804,6 +15804,7 @@ function renderSt() {
   const FOLDERS = [
     { key: 'videos',  title: 'Favourite Videos', titleHi: 'पसंदीदा वीडियो', icon: '🎬' },
     { key: 'rv',      title: 'রাধা বল্লভ সম্প্রদায়', titleHi: 'राधावल्लभ सम्प्रदाय', icon: '🪷', img: ST_FOLDER_ICON_IMG.rv },
+    { key: 'jayadeva', title: 'গীতগোবিন্দ ও জয়দেবের অন্যান্য রচনা', titleHi: 'गीतगोविन्द एवं जयदेव की अन्य रचनाएँ', icon: '🎶' },
     { key: 'bmg',     title: 'ব্রাহ্ম মাধ্ব গৌড়ীয় সম্প্রদায়', titleHi: 'ब्रह्म माध्व गौड़ीय सम्प्रदाय', icon: '🕉️', img: ST_FOLDER_ICON_IMG.bmg },
     { key: 'krishna', title: 'শ্রীকৃষ্ণ', titleHi: 'श्रीकृष्ण', icon: '🦚' },
     { key: 'gita',    title: 'শ্রীমদ্ভগবদ্গীতা', titleHi: 'श्रीमद्भगवद्गीता', icon: '📖' },

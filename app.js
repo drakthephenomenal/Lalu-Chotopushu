@@ -15805,6 +15805,7 @@ function renderSt() {
     { key: 'videos',  title: 'Favourite Videos', titleHi: 'पसंदीदा वीडियो', icon: '🎬' },
     { key: 'rv',      title: 'রাধা বল্লভ সম্প্রদায়', titleHi: 'राधावल्लभ सम्प्रदाय', icon: '🪷', img: ST_FOLDER_ICON_IMG.rv },
     { key: 'jayadeva', title: 'গীতগোবিন্দ ও জয়দেবের অন্যান্য রচনা', titleHi: 'गीतगोविन्द एवं जयदेव की अन्य रचनाएँ', icon: '🎶' },
+    { key: 'najrul', title: 'Kazi Najrul Islam is a real modern-day Saint Poet', titleHi: 'Kazi Najrul Islam is a real modern-day Saint Poet', icon: '🌙' },
     { key: 'bmg',     title: 'ব্রাহ্ম মাধ্ব গৌড়ীয় সম্প্রদায়', titleHi: 'ब्रह्म माध्व गौड़ीय सम्प्रदाय', icon: '🕉️', img: ST_FOLDER_ICON_IMG.bmg },
     { key: 'krishna', title: 'শ্রীকৃষ্ণ', titleHi: 'श्रीकृष्ण', icon: '🦚' },
     { key: 'gita',    title: 'শ্রীমদ্ভগবদ্গীতা', titleHi: 'श्रीमद्भगवद्गीता', icon: '📖' },
@@ -21359,7 +21360,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk"];
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "nz1", "nz2", "nz3", "nz4", "nz5"];
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id); // user-added (and repo flat/audio) stotrams: one flat page
 
   // Split by blank lines into verses
@@ -22153,6 +22154,11 @@ var _AUDIO_STOTRAMS = {
   hsr: { prefix: "hsr" },
   // Geet Govindam - Sakhi He Keshimathanam (Ashtapadi): flat single page, YouTube audio (no mp3 bundled)
   gsk: { prefix: "gsk", timed: true, marks: [0], yt: "sEz1bVnXWhM", url: "" },
+  nz1: { prefix: "nz1", timed: true, marks: [0], yt: "", url: "https://drive.google.com/uc?export=download&id=184BNmKv_xqcgOEb3a3PX8BbtShNETO43" },
+  nz2: { prefix: "nz2", timed: true, marks: [0], yt: "", url: "https://drive.google.com/uc?export=download&id=16xQiokmIEdWfby1z0AilOdkVFKvfEoL7" },
+  nz3: { prefix: "nz3", timed: true, marks: [0], yt: "", url: "https://drive.google.com/uc?export=download&id=17fLuEQEK00ssOahaZZSY6mJpXemyyN4I" },
+  nz4: { prefix: "nz4", timed: true, marks: [0], yt: "", url: "https://drive.google.com/uc?export=download&id=18AFIr6vNuqN06RqXleLMVdJrLyYHWFX2" },
+  nz5: { prefix: "nz5", timed: true, marks: [0], yt: "", url: "https://drive.google.com/uc?export=download&id=185_AGAov_eU3Y8H3X12uS5FuXNUo8_S0" },
   emr: { prefix: "emr", timed: true, marks: [0.0, 83.0, 166.0, 279.0], yt: "9NmTZbbWqdI", url: "" },
   gsn: { prefix: "gsn", timed: true, marks: [0.0, 14.257, 23.518, 31.633, 40.515, 49.962, 57.997, 66.368, 74.513, 82.529, 90.779, 98.579, 106.694, 114.76, 122.66, 130.677, 138.826, 147.194, 154.524, 162.542, 170.292, 178.055, 185.842, 193.721, 201.538, 210.721, 218.674, 226.512, 234.244, 242.391, 249.838, 258.055, 266.371, 273.737, 281.591, 289.841, 297.823, 305.952, 313.938, 321.505, 329.682, 337.198, 345.079, 352.765, 360.955, 368.611, 375.822, 383.588, 390.978, 399.089, 406.586, 413.987, 421.917, 429.869, 437.534, 445.516, 452.999, 461.419, 468.88, 476.466, 484.13, 492.032, 499.68, 507.1, 514.696, 522.13, 529.647, 536.91, 544.247, 551.46, 559.354, 566.725, 574.11, 581.708, 589.056, 596.339, 603.839, 611.492, 618.905, 626.374, 633.554, 640.938, 648.721, 656.106, 663.277, 670.907, 678.406, 686.056, 694.176, 701.554, 708.889, 716.353, 723.602, 730.752, 738.132, 745.332, 752.847, 760.114, 767.495, 775.633, 783.345, 790.794, 798.077, 805.712, 812.328, 819.809, 826.158, 833.045, 840.025, 847.757, 855.956, 862.876, 870.289, 878.255, 885.306, 893.103, 900.921, 908.468, 916.02, 923.035, 930.653, 938.436, 946.284, 954.236, 961.899, 969.551, 976.833, 983.85, 991.867, 999.233, 1007.112, 1014.596, 1022.042, 1028.862, 1037.227, 1044.644, 1052.311, 1059.762, 1067.195, 1074.808, 1092.459, 1110.237, 1130.552, 1135.851], yt: "", url: "./audio/gsn_full.mp3" },
   nsh: { prefix: "nsh", timed: true, marks: [0.0, 39.0, 78.0, 117.0, 156.0, 195.0, 234.0], yt: "yq9WPkuLdbc", url: "" },
@@ -22658,6 +22664,15 @@ function _hcjPlayTimed(idx) {
     if (!cfg.url && !cfg.yt) return;
     if (!window.navigator.onLine && cfg.yt) { toast("YouTube অডিওর জন্য ইন্টারনেট দরকার 🙏"); return; }
     _hcjAudio = cfg.yt ? _hcjMakeYtAudio(cfg.yt, start) : new Audio(cfg.url);
+    if (!cfg.yt) {
+      var _wa = _hcjAudio;
+      _wa.onerror = function () {
+        if (_hcjAudio !== _wa) return;
+        toast("অডিও চালানো যায়নি — ইন্টারনেট দেখুন 🙏");
+        _hcjPlaying = false;
+        _hcjSyncUI();
+      };
+    }
     _hcjAudio._timedFor = _hcjTimedKey();
     if (cfg.yt) {
       var _wd = _hcjAudio;

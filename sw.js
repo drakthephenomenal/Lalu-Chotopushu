@@ -364,7 +364,7 @@
 // v272: bumped cache to force-invalidate stale app.js — live stotrams can use ONE audio.mp3 with per-verse start times (meta.json "marks"); the blue highlight follows the audio.
 // v273: bumped cache to force-invalidate stale app.js — timed live stotrams can also play audio-only from a YouTube link (meta.json "youtube").
 // v274: bumped cache to force-invalidate stale app.js — fixes YouTube-audio live stotrams not starting (play was gated on an mp3 path).
-const CACHE = 'radha-jap-v282';
+const CACHE = 'radha-jap-v283';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

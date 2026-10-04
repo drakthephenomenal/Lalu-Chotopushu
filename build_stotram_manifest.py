@@ -10,6 +10,8 @@ Layout:  stotram-live/<cat>/<slug>/
   TIMED single clip: put ONE audio.mp3 and in meta.json add
     "paged": true, "highlight": true, "marks": [0, "0:14", "0:29.5", 45]
     = start time of each verse (seconds, or "m:ss"). The blue box follows the audio.
+  Instead of audio.mp3 you can add  "youtube": "<link or video id>"  to meta.json
+    (audio-only playback of that video; needs internet).
 <cat> = rv | krishna | shiv | hanuman  (the section it appears in)
 <slug> = letters, digits, - or _ only
 """
@@ -40,6 +42,15 @@ def parse_marks(raw):
     except Exception:
         return []
     return out
+
+
+def parse_yt(raw):
+    """YouTube link or 11-char id -> video id ('' if not recognised)"""
+    t = str(raw or "").strip()
+    if re.fullmatch(r"[A-Za-z0-9_-]{11}", t):
+        return t
+    mm = re.search(r"(?:youtu\.be/|[?&]v=|/embed/|/shorts/|/live/)([A-Za-z0-9_-]{11})", t)
+    return mm.group(1) if mm else ""
 
 
 def count_verses(text):
@@ -84,7 +95,10 @@ if os.path.isdir(R):
             hp = os.path.join(d, "lyrics.hi.txt")
             has_hi = os.path.isfile(hp)
             pages = sorted(int(mm.group(1)) for f in files for mm in [re.fullmatch(r"audio_(\d+)\.mp3", f)] if mm)
-            marks = parse_marks(m.get("marks", [])) if os.path.isfile(os.path.join(d, "audio.mp3")) else []
+            yt = parse_yt(m.get("youtube", ""))
+            if m.get("youtube") and not yt:
+                print("warning: %s/%s has a youtube value I could not read" % (c, s))
+            marks = parse_marks(m.get("marks", [])) if (yt or os.path.isfile(os.path.join(d, "audio.mp3"))) else []
             if marks:
                 nv = count_verses(read(lp))
                 if len(marks) != nv:
@@ -114,6 +128,7 @@ if os.path.isdir(R):
                 "audio": os.path.isfile(os.path.join(d, "audio.mp3")),
                 "pages": pages,
                 "marks": marks,
+                "yt": yt,
                 "v": h.hexdigest()[:8],
             })
 

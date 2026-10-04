@@ -21128,10 +21128,10 @@ function _liveStMerge(list) {
     const at = STLIST.findIndex((x) => x.id === e.id);
     if (at >= 0) STLIST[at] = item; else STLIST.push(item);
     if (App.S && App.S.stotrams && !App.S.stotrams[e.id]) App.S.stotrams[e.id] = {};
-    if (e.paged && e.audio && e.marks && e.marks.length) {
+    if (e.paged && (e.audio || e.yt) && e.marks && e.marks.length) {
       // Timed: ONE audio.mp3 for the whole stotram; meta.json "marks" = start second of each verse.
       // The blue highlight follows the playback position (see _hcjTimedSync).
-      _AUDIO_STOTRAMS[e.id] = { prefix: e.id, custom: true, live: true, timed: true, marks: e.marks.slice(), url: _liveStBase() + e.dir + "/audio.mp3" + (e.v ? "?v=" + e.v : "") };
+      _AUDIO_STOTRAMS[e.id] = { prefix: e.id, custom: true, live: true, timed: true, marks: e.marks.slice(), yt: e.yt || "", url: e.yt ? "" : _liveStBase() + e.dir + "/audio.mp3" + (e.v ? "?v=" + e.v : "") };
     } else if (e.paged) {
       // Paged: one clip per verse page — audio_1.mp3 = first page, audio_2.mp3 = second, …
       const pg = {};
@@ -22421,6 +22421,7 @@ function _hcjStopAudio() {
   if (_hcjAudio) {
     _hcjAudio.pause();
     _hcjAudio.onended = null;
+    if (_hcjAudio._destroy) _hcjAudio._destroy();
     _hcjAudio = null;
   }
   _hcjPlaying = false;
@@ -22457,13 +22458,84 @@ function _hcjTimedSync() {
     _renderVerse(k, null);
   }
 }
+// YouTube (audio-only) stand-in that looks like an HTMLAudioElement to the engine.
+// The video sits in a hidden iframe; time/state come in through postMessage.
+function _hcjMakeYtAudio(videoId, startSec) {
+  var wrap = document.createElement("div");
+  wrap.id = "hcjYtWrap";
+  wrap.style.cssText = "position:fixed;left:-10000px;top:0;width:280px;height:158px;overflow:hidden;pointer-events:none;";
+  var frame = document.createElement("iframe");
+  frame.setAttribute("allow", "autoplay; encrypted-media");
+  frame.style.cssText = "width:100%;height:100%;border:0;";
+  wrap.appendChild(frame);
+  document.body.appendChild(wrap);
+  var a = {
+    _yt: true, _t: startSec || 0, _dur: 0, _state: 3, loop: false, onended: null, ontimeupdate: null,
+    get currentTime() { return this._t; },
+    set currentTime(v) { this._t = v; cmd("seekTo", [v, true]); },
+    get duration() { return this._dur; },
+    get paused() { return !(this._state === 1 || this._state === 3); },
+    play: function () { this._state = 3; cmd("playVideo"); return Promise.resolve(); },
+    pause: function () { this._state = 2; cmd("pauseVideo"); },
+    addEventListener: function () {},
+    _destroy: function () {
+      window.removeEventListener("message", onMsg);
+      try { frame.src = "about:blank"; } catch (_e) {}
+      try { wrap.remove(); } catch (_e) {}
+    },
+  };
+  function cmd(func, args) {
+    try { frame.contentWindow.postMessage(JSON.stringify({ event: "command", func: func, args: args || [] }), "*"); } catch (_e) {}
+  }
+  function onMsg(ev) {
+    if (ev.source !== frame.contentWindow) return;
+    var d = ev.data;
+    if (typeof d === "string") { try { d = JSON.parse(d); } catch (_e) { return; } }
+    if (!d || typeof d !== "object") return;
+    var st = null;
+    if (d.event === "onStateChange" && typeof d.info === "number") st = d.info;
+    else if (d.event === "infoDelivery" && d.info) {
+      if (typeof d.info.currentTime === "number") a._t = d.info.currentTime;
+      if (typeof d.info.duration === "number" && d.info.duration > 0) a._dur = d.info.duration;
+      if (typeof d.info.playerState === "number") st = d.info.playerState;
+    } else if (d.event === "onError") {
+      toast("YouTube অডিও চালানো যায়নি 🙏");
+      if (typeof _hcjStopAudio === "function") _hcjStopAudio();
+      return;
+    }
+    if (st !== null) {
+      a._state = st;
+      if (st === 0) {
+        if (a.loop) { a._t = 0; cmd("seekTo", [0, true]); cmd("playVideo"); a._state = 3; }
+        else if (a.onended) a.onended();
+      }
+    }
+    if (a.ontimeupdate) a.ontimeupdate();
+  }
+  window.addEventListener("message", onMsg);
+  frame.addEventListener("load", function () {
+    try {
+      if (frame.src === "about:blank") return;
+      frame.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), "*");
+      ["onStateChange", "onError"].forEach(function (n) {
+        frame.contentWindow.postMessage(JSON.stringify({ event: "command", func: "addEventListener", args: [n] }), "*");
+      });
+    } catch (_e) {}
+  });
+  frame.src = "https://www.youtube.com/embed/" + videoId +
+    "?autoplay=1&playsinline=1&enablejsapi=1&rel=0&controls=0&start=" + Math.floor(startSec || 0) +
+    "&origin=" + encodeURIComponent(location.origin);
+  return a;
+}
 function _hcjPlayTimed(idx) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
   var start = Math.max(0, +cfg.marks[idx] || 0);
   _hcjStopProgressLoop();
   if (!_hcjAudio || _hcjAudio._timedFor !== _currentStotramId) {
-    if (_hcjAudio) { _hcjAudio.pause(); _hcjAudio.onended = null; _hcjAudio.ontimeupdate = null; }
-    _hcjAudio = new Audio(cfg.url);
+    if (_hcjAudio) { _hcjAudio.pause(); _hcjAudio.onended = null; _hcjAudio.ontimeupdate = null; if (_hcjAudio._destroy) _hcjAudio._destroy(); }
+    if (!cfg.url && !cfg.yt) return;
+    if (!window.navigator.onLine && cfg.yt) { toast("YouTube অডিওর জন্য ইন্টারনেট দরকার 🙏"); return; }
+    _hcjAudio = cfg.yt ? _hcjMakeYtAudio(cfg.yt, start) : new Audio(cfg.url);
     _hcjAudio._timedFor = _currentStotramId;
     _hcjAudio.ontimeupdate = _hcjTimedSync;
     _hcjAudio.onended = function () {
@@ -22477,7 +22549,9 @@ function _hcjPlayTimed(idx) {
   }
   _hcjAudio.loop = _hcjMode === "loop";
   _hcjAudioIdx = idx;
-  try { _hcjAudio.currentTime = start; } catch (_e) {
+  if (_hcjAudio._yt && _hcjAudio._fresh !== false) {
+    _hcjAudio._fresh = false; // iframe already starts at this verse via ?start=
+  } else try { _hcjAudio.currentTime = start; } catch (_e) {
     _hcjAudio.addEventListener("loadedmetadata", function () { try { _hcjAudio.currentTime = start; } catch (_e2) {} }, { once: true });
   }
   _hcjAudio.play().then(function () {

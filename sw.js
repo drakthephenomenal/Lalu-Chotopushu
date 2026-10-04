@@ -362,7 +362,8 @@
 // v271: bumped cache to force-invalidate stale app.js / index.html — removed the Permanent Gift Record card and its ledger code.
 // v264: added Govinda Damodara Stotram (Laghu) under Shree Krishna (flat view + audio gdm_1.mp3).
 // v272: bumped cache to force-invalidate stale app.js — live stotrams can use ONE audio.mp3 with per-verse start times (meta.json "marks"); the blue highlight follows the audio.
-const CACHE = 'radha-jap-v272';
+// v273: bumped cache to force-invalidate stale app.js — timed live stotrams can also play audio-only from a YouTube link (meta.json "youtube").
+const CACHE = 'radha-jap-v273';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

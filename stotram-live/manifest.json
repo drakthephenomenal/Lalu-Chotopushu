@@ -47,6 +47,32 @@
       "marks": [],
       "yt": "",
       "v": "df09f6c4"
+    },
+    {
+      "id": "L_shiv_nirvana_shatkam",
+      "cat": "shiv",
+      "dir": "shiv/nirvana-shatkam",
+      "name": "নির্বাণষট্কম্",
+      "sub": "শিবোঽহম্ — শ্রী আদি শঙ্করাচার্য রচিত",
+      "nameHi": "निर्वाणषट्कम्",
+      "subHi": "शिवोऽहम् — श्री आदि शंकराचार्य रचित",
+      "flat": false,
+      "paged": true,
+      "hl": true,
+      "hi": true,
+      "audio": false,
+      "pages": [],
+      "marks": [
+        0.0,
+        39.0,
+        78.0,
+        117.0,
+        156.0,
+        195.0,
+        234.0
+      ],
+      "yt": "yq9WPkuLdbc",
+      "v": "fba3016c"
     }
   ]
 }

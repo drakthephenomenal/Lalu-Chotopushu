@@ -374,7 +374,9 @@
 // v287: bumped cache to force-invalidate stale stotrams.js — compulsory badge for Radha Sudha Nidhi & Sevak Vani is now 5 pads daily (with meaning).
 // v293: bumped cache to force-invalidate stale app.js / stotrams.js / index.html — pad tracing for Hit Chaurasi, Radha Sudha Nidhi and Sevak Vani (resume on last-read pad, reading time synced to Firebase + leaderboard, included in Export All Data); 'Favourite Stotra, Pads' renamed to Priyo Stotram & Pad Samuh (Hindi/Bangla).
 // v294: added Rasik Namavali (Radha Vallabh Sampraday, above Bayalis Leela) with Bengali + Hindi lyrics and YouTube audio
-const CACHE = 'radha-jap-v294';
+// v295: Rasik Namavali audio link changed
+// v296: added Bhakta Namavali (Rasik Dev Ju) below Rasik Namavali; tappable red names with notes
+const CACHE = 'radha-jap-v296';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

@@ -14905,7 +14905,7 @@ const RV_POET_ICON = {
   ved4: "hh",
   hcj: "hh", rsn: "hh", yms: "hh", sfv: "hh",
   svb: "sv", hmg: "sv",
-  blv: "dh", nmb: "dh", dkc: "dh", shs: "dh", pjj: "dh",
+  blv: "dh", nmb: "dh", bnm: "rd", dkc: "dh", shs: "dh", pjj: "dh",
   hsr: "vv",
   jdh: "sd",                                     // Saras Dev ji (rashikan p036)
   kcr: "hv", hkb: "hv",                          // Hariram Vyas (rashikan p034)
@@ -21661,7 +21661,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id); // user-added (and repo flat/audio) stotrams: one flat page
 
   // Split by blank lines into verses
@@ -21726,6 +21726,41 @@ function showLyrics(id) {
     if (_AUDIO_STOTRAMS[id] && !_hcjEffYt(id) && _hcjHasAudioForIdx(_AUDIO_STOTRAMS[id], _verseIdx) && _hcjAudioPath(_verseIdx)) _hcjPlayVerse(_verseIdx);
     else if (_AUDIO_STOTRAMS[id] && _hcjEffYt(id)) _hcjAdoptWarm(true);
   } catch (_e) {}
+}
+
+
+// ── Tappable red names inside lyrics (Bhakta Namavali) ──────────────────
+// In lyrics text, ⟦R:key|word⟧ shows "word" in red; tapping it opens a small note.
+// Edit the notes here (bn = Bangla UI, hi = Hindi UI).
+const _RED_NOTES = {
+  tansen:   { bn: "তানসেন — বিখ্যাত সংগীতসম্রাট; স্বামী হরিদাস জূ-র শিষ্য বলে প্রসিদ্ধ।",
+              hi: "तानसेन — प्रसिद्ध संगीतसम्राट; स्वामी हरिदास जी के शिष्य माने जाते हैं।" },
+  akbar:    { bn: "আকবর — মুঘল সম্রাট; পরম্পরা অনুযায়ী তানসেনের সঙ্গে বৃন্দাবনে স্বামী হরিদাস জূ-র দর্শনে এসেছিলেন।",
+              hi: "अकबर — मुग़ल बादशाह; परम्परा के अनुसार तानसेन के साथ वृन्दावन में स्वामी हरिदास जी के दर्शन करने आए थे।" },
+  raskhan:  { bn: "রসখান (সৈয়দ ইব্রাহিম) — কৃষ্ণভক্ত কবি; গোস্বামী বিঠ্ঠলনাথ জূ-র কৃপাপ্রাপ্ত বলে প্রসিদ্ধ, ব্রজভাষায় কৃষ্ণলীলার পদ রচনা করেছেন।",
+              hi: "रसखान (सैयद इब्राहीम) — कृष्णभक्त कवि; गोस्वामी विट्ठलनाथ जी के कृपापात्र माने जाते हैं, ब्रजभाषा में कृष्णलीला के पद रचे।" },
+  mirmadho: { bn: "মীর মাধো — এই নামাবলীতে উল্লিখিত ভক্ত।",
+              hi: "मीर माधो — इस नामावली में उल्लिखित भक्त।" }
+};
+function _redWords(html) {
+  if (html.indexOf("⟦R:") === -1) return html;
+  return html.replace(/⟦R:([a-z0-9_]+)\|([^⟧]*)⟧/g, function (m, key, word) {
+    return '<span class="lyr-red-word" style="color:#e53935;font-weight:700;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px" onclick="_redWordTap(event,\'' + key + '\')">' + word + "</span>";
+  });
+}
+function _redWordTap(ev, key) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  var n = _RED_NOTES[key]; if (!n) return;
+  var hi = false; try { hi = secLang("sv") === "hi"; } catch (_e) {}
+  var old = document.getElementById("red-note-pop"); if (old) old.remove();
+  var pop = document.createElement("div");
+  pop.id = "red-note-pop";
+  pop.textContent = hi ? n.hi : n.bn;
+  pop.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:90px;max-width:86vw;z-index:2147483000;background:#fff8e1;color:#4e342e;border:1.5px solid #e53935;border-radius:12px;padding:10px 14px;font-size:15px;line-height:1.5;box-shadow:0 4px 16px rgba(0,0,0,.35)";
+  document.body.appendChild(pop);
+  var close = function () { if (pop.parentNode) pop.remove(); document.removeEventListener("click", close, true); };
+  setTimeout(function () { document.addEventListener("click", close, true); }, 0);
+  setTimeout(close, 7000);
 }
 
 // ── Geet Govindam word-wise meaning / total meaning lines ──────────────
@@ -21939,7 +21974,7 @@ function _renderVerse(idx, dir) {
           if (!hasTranslation || !_translationVisible) return "";
           return '<span class="lyr-line lyr-artha' + extraClass + '">' + esc + "</span>";
         }
-        return '<span class="lyr-line' + extraClass + '">' + esc + "</span>";
+        return '<span class="lyr-line' + extraClass + '">' + _redWords(esc) + "</span>";
       })
       .join("");
   }
@@ -22493,7 +22528,9 @@ var _AUDIO_STOTRAMS = {
   kcr: { prefix: "kcr", timed: true, marks: [0], yt: "", get url() { return ddPath("yugal-kishor", "audio.mp3"); } },
   rdc: { prefix: "rdc" },
   // Rasik Namavali (no author) — flat single page, YouTube audio
-  rnm: { prefix: "rnm", timed: true, marks: [0], yt: "ff9-2ELOC9w", url: "" },
+  rnm: { prefix: "rnm", timed: true, marks: [0], yt: "bI275kBoIv8", url: "" },
+  // Bhakta Namavali (Shri Rasik Dev Ju) — flat single page, YouTube audio
+  bnm: { prefix: "bnm", timed: true, marks: [0], yt: "KeSizBdOwO4", url: "" },
   dkc: { prefix: "dkc" },
   // Sahaj Subhav Paryo Naval Kishori Ju Ko (Dhruvdas) — flat single page, two
   // YouTube versions. ytVoices feeds the usual voice button (Original / Version 2).

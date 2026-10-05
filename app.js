@@ -14892,7 +14892,7 @@ const RV_POET_ICON = {
   ved4: "hh",
   hcj: "hh", rsn: "hh", yms: "hh", sfv: "hh",
   svb: "sv", hmg: "sv",
-  blv: "dh", nmb: "dh", dkc: "dh",
+  blv: "dh", nmb: "dh", dkc: "dh", shs: "dh",
   hsr: "vv",
   // Other authors — portraits from the rashikan gallery
   ach: "sh", nsh: "sh", ans: "sh", bss: "sh",   // Adi Shankaracharya (p053)
@@ -20894,7 +20894,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk"];
+const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs"];
 // Built-in translatable stotrams + live (repo-added) stotrams marked "paged".
 function _hasTranslationSt(id) {
   if (TRANSLATION_IDS.includes(id)) return true;
@@ -21421,7 +21421,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id); // user-added (and repo flat/audio) stotrams: one flat page
 
   // Split by blank lines into verses
@@ -21492,7 +21492,7 @@ function showLyrics(id) {
 // অনুবাদ: …                                          → green
 const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|अनुवाद)\s*:/;
 // Stotrams that use the green অনুবাদ:/अनुवाद: meaning lines (gg also has শব্দার্থ:).
-const _ANUVAD_IDS = ["gg", "hsr", "gsk"];
+const _ANUVAD_IDS = ["gg", "hsr", "gsk", "shs"];
 function _isAnuvadSt(id) {
   if (_ANUVAD_IDS.indexOf(id) !== -1) return true;
   const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
@@ -22223,6 +22223,11 @@ var _AUDIO_STOTRAMS = {
   nsh: { prefix: "nsh", timed: true, marks: [0.0, 39.0, 78.0, 117.0, 156.0, 195.0, 234.0], yt: "yq9WPkuLdbc", url: "" },
   rdc: { prefix: "rdc" },
   dkc: { prefix: "dkc" },
+  // Sahaj Subhav Paryo Naval Kishori Ju Ko (Dhruvdas) — flat single page, two
+  // YouTube versions. ytVoices feeds the usual voice button (Original / Version 2).
+  shs: { prefix: "shs", timed: true, marks: [0], yt: "ZW2KQE-KlB8", url: "",
+         voices: { default: "shs", alt: "shs_alt" },
+         ytVoices: { default: "ZW2KQE-KlB8", alt: "ZCIa8McdJdo" } },
   // rsn has one extra, unlabeled preamble block (audio track 0) before the
   // numbered Shlok 1 starts (audio track 1) — labelOffset shifts the
   // seek-input's displayed/typed number and the actual audio file loaded
@@ -22583,10 +22588,15 @@ function _hcjTimedCfg() {
     var k = window._ggAudioKey, y = cfg.ytTracks && k && cfg.ytTracks[k];
     return y ? { timed: true, marks: [0], yt: y, url: "" } : null;
   }
+  // Stotrams with two YouTube versions: pick the one for the selected voice.
+  if (cfg && cfg.ytVoices) {
+    return Object.assign({}, cfg, { yt: cfg.ytVoices[_hcjVoice] || cfg.ytVoices.default });
+  }
   return cfg;
 }
 function _hcjTimedKey() {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  if (cfg && cfg.ytVoices && _hcjVoice !== "default") return _currentStotramId + ":" + _hcjVoice;
   return (cfg && cfg.sectioned) ? _currentStotramId + ":" + (window._ggAudioKey || "") : _currentStotramId;
 }
 function _hcjTimedSync() {

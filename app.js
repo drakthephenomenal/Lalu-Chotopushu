@@ -21427,7 +21427,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id); // user-added (and repo flat/audio) stotrams: one flat page
 
   // Split by blank lines into verses
@@ -21474,6 +21474,7 @@ function showLyrics(id) {
   _verseIdx = 0;
   _verseNavLocked = false;
   _hcjStopAudio();
+  if (_hcjVoiceAutoOffline) { _hcjVoice = "default"; _hcjVoiceAutoOffline = false; }
 
   const allSt = [
     ...STLIST,
@@ -21488,8 +21489,8 @@ function showLyrics(id) {
   _initSwipeHandler();
   // Autoplay on open (stotram audio): start verse 1 if this stotram has audio.
   try {
-    if (_AUDIO_STOTRAMS[id] && !_AUDIO_STOTRAMS[id].yt && _hcjHasAudioForIdx(_AUDIO_STOTRAMS[id], 0) && _hcjAudioPath(0)) _hcjPlayVerse(0);
-    else if (_AUDIO_STOTRAMS[id] && _AUDIO_STOTRAMS[id].yt) _hcjAdoptWarm(true);
+    if (_AUDIO_STOTRAMS[id] && !_hcjEffYt(id) && _hcjHasAudioForIdx(_AUDIO_STOTRAMS[id], 0) && _hcjAudioPath(0)) _hcjPlayVerse(0);
+    else if (_AUDIO_STOTRAMS[id] && _hcjEffYt(id)) _hcjAdoptWarm(true);
   } catch (_e) {}
 }
 
@@ -22222,6 +22223,15 @@ var _AUDIO_STOTRAMS = {
   gdm: { prefix: "gdm" },
   // Hamare Mayi Shyama Ju Ko Raj - flat single page, one clip: audio/hsr_1.mp3
   hsr: { prefix: "hsr" },
+  // Shri Priya Ju & Laal Ju ki Namavali (Dhruvdas): FLAT single page (in SINGLE_VIEW_IDS), two full
+  // recordings on the voice button. DEFAULT = Shree Record (YouTube etSKEzZTRw8); Maharaj Ji = offline
+  // audio/nmb_1.mp3 (covers only the Priya Ju namavali). offlineVoice: if there is no internet (or YouTube
+  // fails to start) the engine switches itself to the Maharaj Ji voice (see _hcjOfflineSwitch).
+  nmb: { prefix: "nmb", timed: true, marks: [0], yt: "etSKEzZTRw8", url: "audio/nmb_1.mp3",
+         voices: { default: "nmb_record", maharaj: "nmb" },
+         ytVoices: { default: "etSKEzZTRw8", maharaj: "" },
+         offlineVoice: "maharaj",
+         voiceLabels: { default: "Shree Record", maharaj: "Maharaj Ji" } },
   // Shri Hit Sfut Vani (Premanand Ji Maharaj pad-gayan): NOT a flat page — normal verse-by-verse
   // reader like Hit Chaurasi. One full recording (audio/sfv_1.mp3), marks = start second of each
   // verse (23 pads + 4 dohas = 27). Closing "jay jay" colophon is popped for audio stotrams,
@@ -22483,7 +22493,7 @@ function _hcjSeekLabel(idx) {
 // explicit user choice, which then takes priority over defaultVoiceByVerse
 // for the rest of the session.
 function _hcjSetVoice(v, isUserAction) {
-  if (isUserAction) _hcjVoiceUserOverridden = true;
+  if (isUserAction) { _hcjVoiceUserOverridden = true; _hcjVoiceAutoOffline = false; }
   if (_hcjVoice === v) return;
   _hcjVoice = v;
   var wasPlaying = _hcjPlaying;
@@ -22608,7 +22618,7 @@ function _hcjTimedCfg() {
   }
   // Stotrams with two YouTube versions: pick the one for the selected voice.
   if (cfg && cfg.ytVoices) {
-    return Object.assign({}, cfg, { yt: cfg.ytVoices[_hcjVoice] || cfg.ytVoices.default });
+    return Object.assign({}, cfg, { yt: (_hcjVoice in cfg.ytVoices) ? cfg.ytVoices[_hcjVoice] : cfg.ytVoices.default });
   }
   return cfg;
 }
@@ -22681,8 +22691,9 @@ function _hcjMakeYtAudio(videoId, startSec, noAutoplay) {
       if (typeof d.info.duration === "number" && d.info.duration > 0) a._dur = d.info.duration;
       if (typeof d.info.playerState === "number") st = d.info.playerState;
     } else if (d.event === "onError") {
-      toast("YouTube অডিও চালানো যায়নি 🙏 (code " + (d.info !== undefined ? d.info : "?") + ")");
       if (typeof _hcjStopAudio === "function") _hcjStopAudio();
+      if (typeof _hcjOfflineSwitch === "function" && _hcjOfflineSwitch(true)) { _hcjPlayTimed(0); return; }
+      toast("YouTube অডিও চালানো যায়নি 🙏 (code " + (d.info !== undefined ? d.info : "?") + ")");
       return;
     }
     if (st !== null) {
@@ -22753,6 +22764,27 @@ function _hcjWarmSet(items) {
 }
 // Take the pre-loaded player for the song that is now open and (optionally)
 // start it right away. Must run synchronously inside the user's tap.
+// Offline fallback (cfg.offlineVoice): a stotram whose default voice is YouTube can name a local
+// voice to use when there is no internet / YouTube fails. Auto-switch is temporary: it is undone
+// the next time the lyrics are opened (_hcjVoiceAutoOffline), so YouTube stays the default.
+var _hcjVoiceAutoOffline = false;
+function _hcjOfflineSwitch(force) {
+  var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  if (!cfg || !cfg.offlineVoice || _hcjVoice === cfg.offlineVoice) return false;
+  if (_hcjVoice !== "default") return false; // user picked another voice on purpose
+  if (!force && window.navigator.onLine) return false;
+  _hcjVoice = cfg.offlineVoice;
+  _hcjVoiceAutoOffline = true;
+  try { toast("ইন্টারনেট নেই — অফলাইন অডিও চলছে 🙏"); } catch (_e) {}
+  try { _hcjRenderPlayer(_verseIdx); } catch (_e) {}
+  return true;
+}
+function _hcjEffYt(id) {
+  var c = _AUDIO_STOTRAMS[id];
+  if (!c) return "";
+  if (c.offlineVoice) { _hcjOfflineSwitch(); var t = _hcjTimedCfg(); return t ? t.yt : ""; }
+  return c.yt;
+}
 function _hcjAdoptWarm(autoplay) {
   var cfg = _hcjTimedCfg(), key = _hcjTimedKey();
   if (!cfg || !cfg.timed || !cfg.yt) return false;
@@ -22775,6 +22807,7 @@ function _hcjAdoptWarm(autoplay) {
   return true;
 }
 function _hcjPlayTimed(idx) {
+  _hcjOfflineSwitch();
   var cfg = _hcjTimedCfg();
   var start = Math.max(0, +cfg.marks[idx] || 0);
   _hcjStopProgressLoop();
@@ -22807,8 +22840,9 @@ function _hcjPlayTimed(idx) {
       var _wd = _hcjAudio;
       setTimeout(function () {
         if (_hcjAudio === _wd && _wd._state !== 1 && _wd._state !== 2) {
-          toast("YouTube শুরু হয়নি — আবার ▶ চাপুন 🙏");
           _hcjStopAudio();
+          if (_hcjOfflineSwitch(true)) { _hcjPlayTimed(0); return; }
+          toast("YouTube শুরু হয়নি — আবার ▶ চাপুন 🙏");
         }
       }, 8000);
     }
@@ -23189,6 +23223,7 @@ function _hcjRenderPlayer(idx) {
   // is clearer than "next".
   var _voiceCfg = _AUDIO_STOTRAMS[_currentStotramId];
   var _voiceLabels = { default: "Original", ankit: "Ankit", shuvam: "Shuvam", harindu: "Harindu", alt: "Version 2" };
+  if (_voiceCfg && _voiceCfg.voiceLabels) _voiceLabels = Object.assign({}, _voiceLabels, _voiceCfg.voiceLabels);
   var _voiceOffsetHere = (_voiceCfg && _voiceCfg.labelOffset) || 0;
   var _voicesHereForBtn = _voiceCfg ? _hcjVoicesFor(_voiceCfg, idx + 1 - _voiceOffsetHere) : null;
   if (_voicesHereForBtn) {

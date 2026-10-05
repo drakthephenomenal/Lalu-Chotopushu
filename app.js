@@ -21130,7 +21130,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd"];
+const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl"];
 // Built-in translatable stotrams + live (repo-added) stotrams marked "paged".
 function _hasTranslationSt(id) {
   if (TRANSLATION_IDS.includes(id)) return true;
@@ -21661,7 +21661,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "gpa", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "gpa", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id); // user-added (and repo flat/audio) stotrams: one flat page
 
   // Split by blank lines into verses
@@ -21768,7 +21768,7 @@ function _redWordTap(ev, key) {
 // অনুবাদ: …                                          → green
 const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|अनुवाद)\s*:/;
 // Stotrams that use the green অনুবাদ:/अनुवाद: meaning lines (gg also has শব্দার্থ:).
-const _ANUVAD_IDS = ["gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd"];
+const _ANUVAD_IDS = ["gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl"];
 function _isAnuvadSt(id) {
   if (_ANUVAD_IDS.indexOf(id) !== -1) return true;
   const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
@@ -22537,6 +22537,8 @@ var _AUDIO_STOTRAMS = {
   kpa: { prefix: "kpa", timed: true, marks: [0], yt: "Gx3rJ2BK2-8", url: "" },
   // Gopal Ashtakam (attributed to Adi Shankaracharya) — flat single page, YouTube audio
   gpa: { prefix: "gpa", timed: true, marks: [0], yt: "QInN3GHGx60", url: "" },
+  // Ahe Nila Shaila (Bhakta Salabega, Odia) — flat single page with meaning, YouTube audio
+  anl: { prefix: "anl", timed: true, marks: [0], yt: "jFdymKB8NmM", url: "" },
   // Damodarashtakam (Padma Purana) — flat single page with word-by-word meaning, YouTube audio
   dmd: { prefix: "dmd", timed: true, marks: [0], yt: "sLmzDLUmzuw", url: "" },
   dkc: { prefix: "dkc" },

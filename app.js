@@ -14892,7 +14892,7 @@ const RV_POET_ICON = {
   ved4: "hh",
   hcj: "hh", rsn: "hh", yms: "hh", sfv: "hh",
   svb: "sv", hmg: "sv",
-  blv: "dh", nmb: "dh", dkc: "dh", shs: "dh",
+  blv: "dh", nmb: "dh", dkc: "dh", shs: "dh", pjj: "dh",
   hsr: "vv",
   // Other authors — portraits from the rashikan gallery
   ach: "sh", nsh: "sh", ans: "sh", bss: "sh",   // Adi Shankaracharya (p053)
@@ -20894,7 +20894,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs"];
+const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj"];
 // Built-in translatable stotrams + live (repo-added) stotrams marked "paged".
 function _hasTranslationSt(id) {
   if (TRANSLATION_IDS.includes(id)) return true;
@@ -21421,7 +21421,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id); // user-added (and repo flat/audio) stotrams: one flat page
 
   // Split by blank lines into verses
@@ -21492,7 +21492,7 @@ function showLyrics(id) {
 // অনুবাদ: …                                          → green
 const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|अनुवाद)\s*:/;
 // Stotrams that use the green অনুবাদ:/अनुवाद: meaning lines (gg also has শব্দার্থ:).
-const _ANUVAD_IDS = ["gg", "hsr", "gsk", "shs"];
+const _ANUVAD_IDS = ["gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj"];
 function _isAnuvadSt(id) {
   if (_ANUVAD_IDS.indexOf(id) !== -1) return true;
   const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
@@ -22221,6 +22221,10 @@ var _AUDIO_STOTRAMS = {
   emr: { prefix: "emr", timed: true, marks: [0.0, 83.0, 166.0, 279.0], yt: "9NmTZbbWqdI", url: "" },
   gsn: { prefix: "gsn", timed: true, marks: [0.0, 14.257, 23.518, 31.633, 40.515, 49.962, 57.997, 66.368, 74.513, 82.529, 90.779, 98.579, 106.694, 114.76, 122.66, 130.677, 138.826, 147.194, 154.524, 162.542, 170.292, 178.055, 185.842, 193.721, 201.538, 210.721, 218.674, 226.512, 234.244, 242.391, 249.838, 258.055, 266.371, 273.737, 281.591, 289.841, 297.823, 305.952, 313.938, 321.505, 329.682, 337.198, 345.079, 352.765, 360.955, 368.611, 375.822, 383.588, 390.978, 399.089, 406.586, 413.987, 421.917, 429.869, 437.534, 445.516, 452.999, 461.419, 468.88, 476.466, 484.13, 492.032, 499.68, 507.1, 514.696, 522.13, 529.647, 536.91, 544.247, 551.46, 559.354, 566.725, 574.11, 581.708, 589.056, 596.339, 603.839, 611.492, 618.905, 626.374, 633.554, 640.938, 648.721, 656.106, 663.277, 670.907, 678.406, 686.056, 694.176, 701.554, 708.889, 716.353, 723.602, 730.752, 738.132, 745.332, 752.847, 760.114, 767.495, 775.633, 783.345, 790.794, 798.077, 805.712, 812.328, 819.809, 826.158, 833.045, 840.025, 847.757, 855.956, 862.876, 870.289, 878.255, 885.306, 893.103, 900.921, 908.468, 916.02, 923.035, 930.653, 938.436, 946.284, 954.236, 961.899, 969.551, 976.833, 983.85, 991.867, 999.233, 1007.112, 1014.596, 1022.042, 1028.862, 1037.227, 1044.644, 1052.311, 1059.762, 1067.195, 1074.808, 1092.459, 1110.237, 1130.552, 1135.851], yt: "", url: "./audio/gsn_full.mp3" },
   nsh: { prefix: "nsh", timed: true, marks: [0.0, 39.0, 78.0, 117.0, 156.0, 195.0, 234.0], yt: "yq9WPkuLdbc", url: "" },
+  // Bhajans moved from stotram-live (flat single page, YouTube audio; kcr has no audio yet)
+  hkb: { prefix: "hkb", timed: true, marks: [0], yt: "US7I1OnKXxQ", url: "" },
+  bbv: { prefix: "bbv", timed: true, marks: [0], yt: "LBCQDWX0Bn0", url: "" },
+  pjj: { prefix: "pjj", timed: true, marks: [0], yt: "PqTZbfA7iG4", url: "" },
   rdc: { prefix: "rdc" },
   dkc: { prefix: "dkc" },
   // Sahaj Subhav Paryo Naval Kishori Ju Ko (Dhruvdas) — flat single page, two

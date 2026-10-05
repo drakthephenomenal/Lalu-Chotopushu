@@ -22322,8 +22322,9 @@ var _AUDIO_STOTRAMS = {
     // usual original — original and Ankit stay available via the voice
     // button like any other verse. Keyed by displayed verse number.
     defaultVoiceByVerse: { 52: "shuvam" },
-    // Pad 35 (Jhoolat Dou Naval Hindolein): the Shuvam version is a YouTube clip (online only;
-    // offline it falls back to the bundled hcj_shuvam_35 clip). Keyed by displayed verse number, then voice.
+    // Pad 35 (Jhoolat Dou Naval Hindolein): the Shuvam version plays ONLY from this YouTube clip, online
+    // only — the bundled hcj_shuvam_35.mp3 is never used (offline shows the "needs internet" message).
+    // Keyed by displayed verse number, then voice.
     ytByVerse: { 35: { shuvam: "DbF1LCl1neA" } }
   },
   bss: { prefix: "bss" },
@@ -22723,7 +22724,7 @@ function _hcjTimedIdx(cfg, t) {
 // sectioned Geet Govindam a YouTube song is wrapped as a one-mark timed clip.
 // Per-verse YouTube override (hcj pad 35, Shuvam voice): returns { vn, vid } or null.
 function _hcjVerseYt(cfg) {
-  if (!cfg || !cfg.ytByVerse || !window.navigator.onLine) return null;
+  if (!cfg || !cfg.ytByVerse) return null;
   var i = (window._hcjPlayIdx != null) ? window._hcjPlayIdx : _verseIdx;
   var vn = i + 1 - (cfg.labelOffset || 0);
   var e = cfg.ytByVerse[vn], vid = e && e[_hcjVoice];

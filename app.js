@@ -839,6 +839,7 @@ const App = {
     // never counts toward Screen Time.
     screenTimeHistory: {},
     stotramTimeHistory: {},
+    padTrace: { last: {}, time: {} },   // PAD-TRACE v1
     // ── Manual jap tracking (per-day, per jap type) ──
     // When jap is entered by hand via "Add/Deduct Jap Manually" or the
     // 28 Names cycle add (i.e. chanted at a real mala/off-screen and
@@ -1061,6 +1062,7 @@ const App = {
       lastLng: this.S.lastLng ?? null,
       screenTimeHistory: this.S.screenTimeHistory || {},
       stotramTimeHistory: this.S.stotramTimeHistory || {},
+      padTrace: this.S.padTrace || { last: {}, time: {} },
       manualJapCount: this.S.manualJapCount || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} },
       manualJapTime: this.S.manualJapTime || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} },
       lbDisplayName: this.S.lbDisplayName || "",
@@ -8541,6 +8543,7 @@ function _buildBackupPayload() {
     lbOptIn: App.S.lbOptIn || false,
     screenTimeHistory: App.S.screenTimeHistory || {},
     stotramTimeHistory: App.S.stotramTimeHistory || {},
+    padTrace: _ptGet(),
     activityLog: App.S.activityLog || [],
     manualJapCount: App.S.manualJapCount || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} },
     manualJapTime: App.S.manualJapTime || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} },
@@ -8762,6 +8765,10 @@ function importAllData(input) {
       App.S.lbOptIn = !!data.lbOptIn;
       App.S.screenTimeHistory = data.screenTimeHistory || {};
       App.S.stotramTimeHistory = data.stotramTimeHistory || {};
+      App.S.padTrace = (data.padTrace && typeof data.padTrace === 'object')
+        ? { last: data.padTrace.last || {}, time: data.padTrace.time || {} }
+        : { last: {}, time: {} };
+      _ptLoaded = true; _ptMirror();
       App.S.activityLog = Array.isArray(data.activityLog) ? data.activityLog : [];
        App.S.manualJapCount = data.manualJapCount || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} };
        App.S.manualJapTime = data.manualJapTime || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} };
@@ -12485,6 +12492,7 @@ async function fbPushFull() {
     // Efficiency look inverted (Actual Jap Time synced, Screen Time didn't).
     screenTimeHistory: App.S.screenTimeHistory || {},
     stotramTimeHistory: App.S.stotramTimeHistory || {},
+    padTrace: _ptGet(),
     manualJapCount: App.S.manualJapCount || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} },
     manualJapTime: App.S.manualJapTime || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} },
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
@@ -12935,6 +12943,7 @@ function fbApplyRemote(d) {
     }
     localKeySetter(merged);
   })(d.stotramTimeHistory, () => App.S.stotramTimeHistory, (v) => (App.S.stotramTimeHistory = v));
+  if (d.padTrace) { _ptGet(); _ptMerge(d.padTrace); _ptMirror(); }
   if (d.manualJapCount) {
     if (!App.S.manualJapCount) App.S.manualJapCount = { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} };
     for (const typeKey of Object.keys(d.manualJapCount)) {
@@ -15973,7 +15982,7 @@ function renderSt() {
   backRow.className = 'st-back-row';
   backRow.innerHTML =
     '<button class="st-back-btn">← ' + (secLang('sv') === 'hi' ? 'फ़ोल्डर सूची' : 'ফোল্ডার তালিকা') + '</button>' +
-    '<span class="st-back-title">' + escHtml((activeKey === 'rv' && window._stRvFavOpen) ? 'Favourite Stotra, Pads' : folderTitle(group)) + '</span>';
+    '<span class="st-back-title">' + escHtml((activeKey === 'rv' && window._stRvFavOpen) ? _favPadLabel() : folderTitle(group)) + '</span>';
   backRow.querySelector('.st-back-btn').addEventListener('click', () => {
     if (window._stRvFavOpen) { window._stRvFavOpen = false; renderSt(); return; }
     window._stActiveFolder = null;
@@ -16000,8 +16009,8 @@ function renderSt() {
       _favHeadDone = true;
       const fh = document.createElement('div');
       fh.className = 'st-section-head';
-      fh.style.cssText = 'margin:18px 4px 10px;padding:0 0 6px;font-size:13px;font-weight:700;letter-spacing:1.5px;color:var(--gold,#ffd700);border-bottom:1px solid rgba(255,215,0,0.25)';
-      fh.textContent = '❤ Favourite Stotra, Pads';
+      fh.style.cssText = 'margin:18px 4px 10px;padding:0 0 6px;font-size:13px;font-weight:700;letter-spacing:0;color:var(--gold,#ffd700);border-bottom:1px solid rgba(255,215,0,0.25)';
+      fh.textContent = _favPadLabel();
       list.appendChild(fh);
     }
     // Ashtayam Seva Paddhati: a folder-style card (no jap counter) that
@@ -16138,7 +16147,7 @@ function renderSt() {
     favTile.className = 'st-folder-tile';
     favTile.innerHTML =
       '<span class="st-folder-tile-icon">⭐</span>' +
-      '<span class="st-folder-tile-title">Favourite Stotra, Pads</span>' +
+      '<span class="st-folder-tile-title">' + escHtml(_favPadLabel()) + '</span>' +
       '<span class="st-folder-tile-count">' + _favN + '</span>' +
       '<span class="st-folder-tile-arrow">›</span>';
     favTile.addEventListener('click', () => { window._stRvFavOpen = true; renderSt(); });
@@ -18655,6 +18664,121 @@ function _stTrackPad(id, idx) {
     const hi = (typeof secLang === 'function') && secLang('sv') === 'hi';
     toast(hi ? '✅ आज के ' + need + ' पद पूरे हुए' : '✅ আজকের ' + _stNum(need, false) + 'টি পদ পূর্ণ হয়েছে');
   }
+}
+
+// ═══ PAD-TRACE v1 ═══════════════════════════════════════════════════════
+// Last-read pad (resume) + reading time for the compulsory stotrams.
+//   App.S.padTrace = {
+//     last: { hcj:{idx,sec,ts}, rsn:{idx,sec,ts}, svb:{idx,sec,ts} },   // sec = section (svb only)
+//     time: { hcj:{ "YYYY-MM-DD": seconds }, rsn:{...}, svb:{...} }
+//   }
+// Which pads were read each day is still tracked by _stTrackPad (App.S.stotrams).
+var PT_IDS = ['hcj', 'rsn', 'svb'];
+var _ptLoaded = false, _ptTimer = null, _ptDirty = false, _ptLastDeb = null;
+
+function _ptGet() {
+  if (!App.S.padTrace || typeof App.S.padTrace !== 'object') App.S.padTrace = { last: {}, time: {} };
+  const p = App.S.padTrace;
+  if (!p.last) p.last = {};
+  if (!p.time) p.time = {};
+  if (!_ptLoaded) {
+    _ptLoaded = true;
+    try {
+      const raw = localStorage.getItem('rjap_padTrace');
+      if (raw) _ptMerge(JSON.parse(raw));
+    } catch (_e) {}
+  }
+  return p;
+}
+// Merge another snapshot (cloud / local mirror) into App.S.padTrace:
+// newest "last" wins, per-day seconds take the max.
+function _ptMerge(r) {
+  if (!r || typeof r !== 'object') return;
+  if (!App.S.padTrace || typeof App.S.padTrace !== 'object') App.S.padTrace = { last: {}, time: {} };
+  const p = App.S.padTrace;
+  if (!p.last) p.last = {};
+  if (!p.time) p.time = {};
+  const rl = r.last || {}, rt = r.time || {};
+  PT_IDS.forEach(function (id) {
+    const a = rl[id], b = p.last[id];
+    if (a && typeof a === 'object' && (!b || (a.ts || 0) > (b.ts || 0))) {
+      p.last[id] = { idx: a.idx | 0, sec: (a.sec == null ? null : a.sec), ts: a.ts || 0 };
+    }
+    const rm = rt[id];
+    if (rm && typeof rm === 'object') {
+      const lm = p.time[id] || (p.time[id] = {});
+      for (const k in rm) lm[k] = Math.max(rm[k] || 0, lm[k] || 0);
+    }
+  });
+}
+function _ptMirror() {
+  try { localStorage.setItem('rjap_padTrace', JSON.stringify(App.S.padTrace || { last: {}, time: {} })); } catch (_e) {}
+}
+function _ptFlush() {
+  if (!_ptDirty) return;
+  _ptDirty = false;
+  _ptMirror();
+  try { App.save(); } catch (_e) {}
+  try { fbDebouncedPush(); } catch (_e) {}
+}
+// True only while a tracked stotram is actually on screen: app in foreground,
+// reader open and not minimized, and (Sevak Vani) a section is open, not the picker.
+function _ptActive() {
+  if (document.visibilityState === 'hidden') return false;
+  if (PT_IDS.indexOf(_currentStotramId) === -1) return false;
+  const lmo = document.getElementById('lmo');
+  if (!lmo || !lmo.classList.contains('show') || lmo.hasAttribute('data-minimized')) return false;
+  if (!_verses || !_verses.length) return false;
+  if (_currentStotramId === 'svb' && !(window.StotramSections && window.StotramSections.inSectionView())) return false;
+  return true;
+}
+var _ptTickN = 0;
+function _ptTick() {
+  if (!_ptActive()) return;
+  const id = _currentStotramId, p = _ptGet(), tk = App.S.tk;
+  if (!tk) return;
+  const m = p.time[id] || (p.time[id] = {});
+  m[tk] = (m[tk] || 0) + 1;
+  _ptDirty = true;
+  _ptTickN++;
+  if (_ptTickN % 5 === 0) _ptMirror();
+  if (_ptTickN % 60 === 0) _ptFlush();      // ~1 cloud push per minute of reading
+}
+// Called from _renderVerse for every pad shown: remember it as the last-read pad.
+function _ptNote(id, idx) {
+  if (PT_IDS.indexOf(id) === -1) return;
+  const p = _ptGet();
+  p.last[id] = { idx: idx | 0, sec: (id === 'svb' ? (window._stSecIdx == null ? null : window._stSecIdx) : null), ts: Date.now() };
+  _ptDirty = true;
+  _ptMirror();
+  clearTimeout(_ptLastDeb);
+  _ptLastDeb = setTimeout(_ptFlush, 4000);
+  if (!_ptTimer) _ptTimer = setInterval(_ptTick, 1000);
+}
+function _ptStop() {
+  if (_ptTimer) { clearInterval(_ptTimer); _ptTimer = null; }
+  clearTimeout(_ptLastDeb);
+  _ptFlush();
+}
+// Which pad to open on: the saved one (same section for svb), else the first.
+function _ptResumeIdx(id, total) {
+  if (PT_IDS.indexOf(id) === -1) return 0;
+  const l = _ptGet().last[id];
+  if (!l) return 0;
+  if (id === 'svb' && (l.sec == null || l.sec !== window._stSecIdx)) return 0;
+  const i = l.idx | 0;
+  return (i > 0 && i < total) ? i : 0;
+}
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'hidden') _ptFlush();
+});
+// ═══ /PAD-TRACE ═════════════════════════════════════════════════════════
+
+// ═══ PRIYO-LABEL v1 ═══ title of the fav:true group in the Radha Vallabh list
+function _favPadLabel() {
+  const hi = (typeof secLang === 'function') && secLang('sv') === 'hi';
+  return hi ? '🦚💙प्रिय स्तोत्र एवं पद समूह💛🦚'
+            : '🦚💙প্রিয় স্তোত্র ও পদ সমূহ💛🦚';
 }
 function adjSt(id, d) {
   if (!App.S.stotrams[id]) App.S.stotrams[id] = {};
@@ -21482,6 +21606,10 @@ function showLyrics(id) {
     var stsLmo = document.getElementById("lmo");
     if (stsLmo) stsLmo.setAttribute("data-bg", "radha");
     window.StotramSections.show(id);
+    try {
+      const _pl = (id === 'svb') ? _ptGet().last.svb : null;
+      if (_pl && _pl.sec != null && window.StotramSections.open) window.StotramSections.open(_pl.sec);
+    } catch (_e) {}
     return;
   }
 
@@ -21590,12 +21718,12 @@ function showLyrics(id) {
   document.getElementById("lmTitle").textContent = nm ? stName(nm) : id;
 
   { const _hb = document.getElementById("lyrBody"); if (_hb && _hb.dataset) delete _hb.dataset.hlFor; }
-  _renderVerse(0, null);
+  { const _ri = _ptResumeIdx(id, _verses.length); _verseIdx = _ri; _renderVerse(_ri, null); }
   document.getElementById("lmo").classList.add("show");
   _initSwipeHandler();
   // Autoplay on open (stotram audio): start verse 1 if this stotram has audio.
   try {
-    if (_AUDIO_STOTRAMS[id] && !_hcjEffYt(id) && _hcjHasAudioForIdx(_AUDIO_STOTRAMS[id], 0) && _hcjAudioPath(0)) _hcjPlayVerse(0);
+    if (_AUDIO_STOTRAMS[id] && !_hcjEffYt(id) && _hcjHasAudioForIdx(_AUDIO_STOTRAMS[id], _verseIdx) && _hcjAudioPath(_verseIdx)) _hcjPlayVerse(_verseIdx);
     else if (_AUDIO_STOTRAMS[id] && _hcjEffYt(id)) _hcjAdoptWarm(true);
   } catch (_e) {}
 }
@@ -21717,6 +21845,7 @@ function _renderVerse(idx, dir) {
 
   const verseText = _verses[idx] || "";
   try { _stTrackPad(_currentStotramId, idx); } catch (_e) {}
+  try { _ptNote(_currentStotramId, idx); } catch (_e) {}
   if (_currentStotramId === "bg" && window.setGitaVerseTitle) {
     window.setGitaVerseTitle(idx);
   }
@@ -22129,6 +22258,7 @@ function _initSwipeHandler() {
 }
 
 function closeLyrics() {
+  try { _ptStop(); } catch (_e) {}
   var lmo = document.getElementById("lmo");
   lmo.classList.remove("show");
   lmo.removeAttribute("data-bg");
@@ -25579,7 +25709,14 @@ function renderLeaderboard(docs, period) {
       d._screenTimeSec = periodKeys.reduce((s, k) => s + (tScr[k] || 0), 0);
     }
     const _todayEff = _lbTodayEff(d);
-    return { ...d, score, timeScore, _effTodaySec: _todayEff.japSec, _effTodayScrSec: _todayEff.scrSec };
+    let _padSec = 0;
+    const _pth = d.padTimeHistory || {};
+    ['hcj', 'rsn', 'svb'].forEach(function (pid) {
+      const pm = _pth[pid] || {};
+      if (!periodKeys) { for (const pk in pm) _padSec += pm[pk] || 0; }
+      else periodKeys.forEach(function (pk) { _padSec += pm[pk] || 0; });
+    });
+    return { ...d, score, timeScore, _padSec, _effTodaySec: _todayEff.japSec, _effTodayScrSec: _todayEff.scrSec };
   });
 
   // Sort descending. Lifetime keeps everyone (even devotees who haven't
@@ -25716,6 +25853,7 @@ function renderLeaderboard(docs, period) {
       totalStr += ' (' + tParts.join(', ') + ')';
     }
     if (d.timeScore > 0) totalStr += ' ⏱ ' + _histFmtSec(d.timeScore);
+    if (d._padSec > 0) totalStr += ' · 📖' + _histFmtSec(d._padSec);
     if (d.streak > 0) totalStr += ' 🔥' + d.streak + 'd';
     // Screen Time + Efficiency (E) — always TODAY's efficiency regardless of
     // which period tab is selected (Actual Jap Time ÷ Screen Time × 100,
@@ -25967,6 +26105,8 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     // Efficiency (E) on the leaderboard: Actual Jap Time ÷ Screen Time.
     screenTimeHistory: S.screenTimeHistory || {},
     screenTimeSeconds: Object.values(S.screenTimeHistory || {}).reduce((a,b)=>a+b,0),
+    // Pad reading time (hcj / rsn / svb) per day, for the 📖 figure on each row.
+    padTimeHistory: (S.padTrace && S.padTrace.time) || {},
     // Manual (off-screen, reported-after-the-fact) jap seconds per type/date —
     // pushed so the leaderboard's Efficiency figure can exclude them the same
     // way the Stats screen does, instead of crediting untracked screen usage.

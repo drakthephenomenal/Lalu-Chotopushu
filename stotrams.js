@@ -13765,6 +13765,7 @@ window.isGitaReady = function () { return _gitaReady; };
     reset:          reset,
     parse:          parseSections,
     parseGG:        parseGG,
-    inSectionView:  function () { return _inSectionView; }
+    inSectionView:  function () { return _inSectionView; },
+    open:           function (i) { openSection(i); }   // PAD-TRACE v1
   };
 })(window);

@@ -376,7 +376,9 @@
 // v294: added Rasik Namavali (Radha Vallabh Sampraday, above Bayalis Leela) with Bengali + Hindi lyrics and YouTube audio
 // v295: Rasik Namavali audio link changed
 // v296: added Bhakta Namavali (Rasik Dev Ju) below Rasik Namavali; tappable red names with notes
-const CACHE = 'radha-jap-v296';
+// v297: added Bhaje Vrajaikamandanam (Krishnashtakam) to the Krishna section
+// v298: added Kamalapati Ashtakam to the Krishna section
+const CACHE = 'radha-jap-v298';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

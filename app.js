@@ -21661,7 +21661,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id); // user-added (and repo flat/audio) stotrams: one flat page
 
   // Split by blank lines into verses
@@ -22531,6 +22531,10 @@ var _AUDIO_STOTRAMS = {
   rnm: { prefix: "rnm", timed: true, marks: [0], yt: "bI275kBoIv8", url: "" },
   // Bhakta Namavali (Shri Rasik Dev Ju) — flat single page, YouTube audio
   bnm: { prefix: "bnm", timed: true, marks: [0], yt: "KeSizBdOwO4", url: "" },
+  // Bhaje Vrajaikamandanam (Krishnashtakam) — flat single page, YouTube audio
+  bvk: { prefix: "bvk", timed: true, marks: [0], yt: "9okrXJUXAWk", url: "" },
+  // Kamalapati Ashtakam (Brahmananda) — flat single page, YouTube audio
+  kpa: { prefix: "kpa", timed: true, marks: [0], yt: "Gx3rJ2BK2-8", url: "" },
   dkc: { prefix: "dkc" },
   // Sahaj Subhav Paryo Naval Kishori Ju Ko (Dhruvdas) — flat single page, two
   // YouTube versions. ytVoices feeds the usual voice button (Original / Version 2).

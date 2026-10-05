@@ -13641,6 +13641,7 @@ window.isGitaReady = function () { return _gitaReady; };
   function openSection(idx) {
     var sec = _sections[idx];
     if (!sec) return;
+    window._stSecIdx = idx; // used by app.js's daily pad tracker (Sevak Vani)
 
     _inSectionView = true;
 

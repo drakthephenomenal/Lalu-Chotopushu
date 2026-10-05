@@ -16042,8 +16042,7 @@ function renderSt() {
       list.appendChild(tile);
       return;
     }
-    const tc = (App.S.stotrams[st.id] || {})[App.S.tk] || 0;
-    const tot = Object.values(App.S.stotrams[st.id] || {}).reduce((a,b)=>a+b, 0);
+    const tc = 0, tot = 0; // counters removed — see _stReadBtnHtml for the daily pad tracker
     const effLyrics = getEffectiveLyrics(st.id);
     const hasLyrics = !!(effLyrics && effLyrics.trim().length > 0) || !!st.live;
 
@@ -16089,7 +16088,7 @@ function renderSt() {
         headerRight +
       '</div>' +
       (_noCount
-        ? '<div class="st-row" style="justify-content:' + (_reqTxt ? 'space-between' : 'flex-end') + '">' + (_reqTxt ? _stReadBtnHtml(st.id, _stHi) : '') + (hasLyrics ? '<button class="st-open-btn" onclick="showLyrics(\'' + st.id + '\')">' + (_stHi ? 'खोलें' : 'খুলুন') + '</button>' : '') + '</div>'
+        ? '<div class="st-row" style="justify-content:' + (_reqTxt ? 'space-between' : 'flex-end') + '">' + (RV_PAD_REQ[st.id] ? _stReadBtnHtml(st.id, _stHi) : '') + (hasLyrics ? '<button class="st-open-btn" onclick="showLyrics(\'' + st.id + '\')">' + (_stHi ? 'खोलें' : 'খুলুন') + '</button>' : '') + '</div>'
         : (
       '<div class="st-row">' +
         '<div>' +
@@ -16639,6 +16638,8 @@ const RASHIKJAN_ITEMS = [
   { file: './rashikan/p020.jpg', hi: "श्री नारायण स्वामी जी", bn: "শ্রী নারায়ণ স্বামী জী", g: 'sant', nh: "ब्रज के भगवद्भक्त सन्त। इनका विस्तृत परिचय अभी संकलित नहीं हुआ है; आगे जोड़ा जाएगा।", nb: "ব্রজের ভগবদ্ভক্ত সন্ত। এঁর বিস্তারিত পরিচয় এখনও সংকলিত হয়নি; পরে যোগ করা হবে।" },
   { file: './rashikan/p023.jpg', hi: "बालभक्त ओमप्रकाश जी", bn: "বালভক্ত ওমপ্রকাশ জী", g: 'sant', nh: "एक बालभक्त। इनका विस्तृत परिचय अभी संकलित नहीं हुआ है; आगे जोड़ा जाएगा।", nb: "একজন বালভক্ত। এঁর বিস্তারিত পরিচয় এখনও সংকলিত হয়নি; পরে যোগ করা হবে।" },
   { file: './rashikan/p042.jpg', hi: "श्री हित स्वामिनी शरण जी", bn: "শ্রী হিত স্বামিনী শরণ জী", g: 'sant', nh: "राधावल्लभ परम्परा के आधुनिक रसिक सन्त। इनका विस्तृत परिचय अभी संकलित नहीं हुआ है; आगे जोड़ा जाएगा।", nb: "রাধাবল্লভ পরম্পরার আধুনিক রসিক সন্ত। এঁর বিস্তারিত পরিচয় এখনও সংকলিত হয়নি; পরে যোগ করা হবে।" },
+  { file: './rashikan/p085.jpg', hi: "श्री बिल्वमंगल ठाकुर जी (लीलाशुक)", bn: "শ্রী বিল্বমঙ্গল ঠাকুর জী (লীলাশুক)", g: 'sant', nh: "(लगभग 9वीं शताब्दी) विष्णुस्वामी सम्प्रदाय के सन्त, दीक्षा-नाम 'लीलाशुक'; 'श्रीकृष्णकर्णामृतम्' के रचयिता। नेत्रहीन होकर वृन्दावन में गोपाल-रूप श्रीकृष्ण के सखा बने।", nb: "(আনুমানিক ৯ম শতাব্দী) বিষ্ণুস্বামী সম্প্রদায়ের সন্ত, দীক্ষানাম 'লীলাশুক'; 'শ্রীকৃষ্ণকর্ণামৃতম্'-এর রচয়িতা। অন্ধ হয়ে বৃন্দাবনে গোপালরূপী শ্রীকৃষ্ণের সখা হন।", dh: "श्री बिल्वमंगल ठाकुर का जन्म दक्षिण भारत के एक पवित्र ब्राह्मण परिवार में लगभग 9वीं शताब्दी में माना जाता है; जन्म-तिथि ज्ञात नहीं। उन्होंने विष्णुस्वामी सम्प्रदाय में सोमगिरि जी से दीक्षा ली, जिन्होंने उन्हें 'लीलाशुक' नाम दिया।\n\nकथा है कि पिछले जन्म में वे श्रीकृष्ण-भक्त संन्यासी थे और भागवत-उत्सव कराकर प्रसाद बाँटते थे। धन की कमी होने पर उन्होंने एक राजकुमारी की चिता से गहने लेने चाहे; राजकुमारी की वाणी से उन्हें खजाना मिला, पर दूसरी बार हार ले लेने पर उसने शाप दिया कि एक जन्म और लेकर अनैतिक जीवन जीना होगा। अगले जन्म में वे धनी और विषयासक्त हुए और राजकुमारी चिन्तामणि नाम की गणिका बनी।\n\nएक बार तूफ़ानी रात में वे नदी तैरकर और साँप को रस्सी समझकर पकड़ते हुए चिन्तामणि के घर पहुँचे। चिन्तामणि ने कहा — 'जितना प्रेम तुम मुझसे करते हो, उतना श्रीकृष्ण से करते तो परम शान्ति मिल जाती।' ये शब्द उनके हृदय में उतर गए और वे तुरन्त वृन्दावन की ओर चल पड़े। मार्ग में एक स्त्री पर आकर्षित होने पर उन्होंने उस गृहस्थ दम्पति की सेवा-भावना देखकर स्वयं को धिक्कारा, स्त्री से हेयरपिन माँगकर अपनी आँखें फोड़ लीं और बोले — 'ये आँखें मेरी शत्रु थीं।'\n\nनेत्रहीन अवस्था में वे रोते-पश्चाताप करते वृन्दावन पहुँचे। भूखे देखकर श्रीकृष्ण स्वयं गोपाल नामक ब्रजवासी बालक बनकर आए, रोज़ दूध देते और उनके श्लोक-गान सुनते। एक दिन बाँसुरी सुनकर बिल्वमंगल ने उन्हें पहचान लिया और पकड़ना चाहा, पर कृष्ण हाथ छुड़ाकर भाग गए। तब उन्होंने गाया —\nहस्तमुत्क्षिप्य यातोऽसि बलात्कृष्ण किमद्भुतम् ।\nहृदयाद्यदि निर्यासि पौरुषं गणयामि ते ॥\n(हे कृष्ण! हाथ छुड़ाकर भाग गए, इसमें क्या अद्भुत? मैं तुम्हारा बल तब मानूँगा जब मेरे हृदय से निकल जाओ।) — श्रीकृष्णकर्णामृतम् (3.97)\n\nकहा जाता है कि वे वृन्दावन के ब्रह्मकुण्ड पर एक वृक्ष के नीचे लगभग 700 वर्ष योग-शक्ति से रहे। उनकी प्रसिद्ध रचना 'श्रीकृष्णकर्णामृतम्' वृन्दावन-माधुरी लीला में श्रीराधारानी की सर्वोच्च स्थिति प्रकट करने वाले प्रारम्भिक प्रामाणिक ग्रन्थों में गिनी जाती है; इसके अतिरिक्त उन्होंने 'गोविन्द दामोदर स्तोत्र' (71 श्लोक) रचा। उनके लीला-प्रवेश का वर्ष अज्ञात है; समाधि वृन्दावन के गोपीनाथ बाज़ार में है।", db: "শ্রী বিল্বমঙ্গল ঠাকুর দক্ষিণ ভারতের এক পবিত্র ব্রাহ্মণ পরিবারে আনুমানিক ৯ম শতাব্দীতে জন্মেছিলেন বলে মনে করা হয়; জন্মতিথি জানা যায় না। তিনি বিষ্ণুস্বামী সম্প্রদায়ে সোমগিরির কাছে দীক্ষা নেন, যিনি তাঁকে 'লীলাশুক' নাম দেন।\n\nকথিত আছে, পূর্বজন্মে তিনি শ্রীকৃষ্ণভক্ত সন্ন্যাসী ছিলেন এবং ভাগবত-উৎসব করে প্রসাদ বিতরণ করতেন। অর্থের অভাব হলে তিনি এক রাজকন্যার চিতা থেকে গয়না নিতে চান; রাজকন্যার বাণীতে তিনি ধনভাণ্ডার পান, কিন্তু দ্বিতীয়বার হার নিলে সে অভিশাপ দেয় — আরও এক জন্ম নিয়ে অনৈতিক জীবন কাটাতে হবে। পরের জন্মে তিনি ধনী ও বিষয়াসক্ত হন এবং সেই রাজকন্যা চিন্তামণি নামে এক গণিকা হয়ে জন্মায়।\n\nএক ঝড়ের রাতে তিনি নদী সাঁতরে এবং সাপকে দড়ি ভেবে ধরে চিন্তামণির বাড়ি পৌঁছান। চিন্তামণি বলল — 'আমার প্রতি তোমার যতটা ভালবাসা, শ্রীকৃষ্ণের প্রতি ততটা থাকলে পরম শান্তি পেতে।' এই কথা তাঁর হৃদয় নাড়িয়ে দিল এবং তিনি তখনই বৃন্দাবনের পথে রওনা দেন। পথে এক নারীর প্রতি আকৃষ্ট হলে সেই গৃহস্থ দম্পতির সেবাভাব দেখে নিজেকে ধিক্কার দেন, নারীর কাছ থেকে চুলের কাঁটা চেয়ে নিজের চোখ বিদ্ধ করেন এবং বলেন — 'এই চোখ আমার শত্রু ছিল।'\n\nঅন্ধ অবস্থায় কাঁদতে কাঁদতে অনুতাপ করতে করতে তিনি বৃন্দাবনে পৌঁছান। তাঁকে ক্ষুধার্ত দেখে শ্রীকৃষ্ণ নিজেই গোপাল নামে এক ব্রজবাসী বালক হয়ে আসেন, রোজ দুধ দিতেন এবং তাঁর শ্লোক-গান শুনতেন। একদিন বাঁশির সুরে বিল্বমঙ্গল তাঁকে চিনতে পারেন এবং ধরতে চান, কিন্তু কৃষ্ণ হাত ছাড়িয়ে পালিয়ে যান। তখন তিনি গাইলেন —\nহস্তমুৎক্ষিপ্য যাতোঽসি বলাৎকৃষ্ণ কিমদ্ভুতম্ ।\nহৃদয়াদ্যদি নির্যাসি পৌরুষং গণয়ামি তে ॥\n(হে কৃষ্ণ! হাত ছাড়িয়ে পালিয়েছ, এতে আশ্চর্য কী? আমার হৃদয় থেকে পালাতে পারলে তবেই তোমার বল মানব।) — শ্রীকৃষ্ণকর্ণামৃতম্ (৩.৯৭)\n\nকথিত আছে তিনি বৃন্দাবনের ব্রহ্মকুণ্ডে এক গাছের তলায় প্রায় ৭০০ বছর যোগশক্তিতে অবস্থান করেন। তাঁর বিখ্যাত রচনা 'শ্রীকৃষ্ণকর্ণামৃতম্' বৃন্দাবনের মাধুর্য লীলায় শ্রীরাধারানির সর্বোচ্চ স্থান প্রকাশকারী প্রাচীন প্রামাণিক গ্রন্থগুলির অন্যতম; এছাড়া তিনি 'গোবিন্দ দামোদর স্তোত্র' (৭১ শ্লোক) রচনা করেন। তাঁর লীলাসংবরণের সাল অজানা; সমাধি বৃন্দাবনের গোপীনাথ বাজারে।" },
+
   { file: './rashikan/p007.jpg', hi: "पूज्य श्री हित गौरांगी शरण जी महाराज (पूज्य महाराज जी के गुरुदेव)", bn: "পূজ্য শ্রী হিত গৌরাঙ্গী শরণ জী মহারাজ (পূজ্য মহারাজ জীর গুরুদেব)", g: 'guru', nh: "राधावल्लभीय रसिक सन्त, वृन्दावन में सहचरी-भाव और नित्य-विहार रस के उपासक। श्रीहित प्रेमानन्द गोविन्द शरण जी महाराज के सद्गुरुदेव।", nb: "রাধাবল্লভীয় রসিক সন্ত, বৃন্দাবনে সহচরী-ভাব ও নিত্য-বিহার রসের উপাসক। শ্রীহিত প্রেমানন্দ গোবিন্দ শরণজি মহারাজের সদ্গুরুদেব।", dh: "श्रीहित गौरांगी शरण जी महाराज वृन्दावन के प्रसिद्ध राधावल्लभीय रसिक सन्त हैं, जिन्हें भक्त स्नेह से 'बड़े गुरु जी' कहते हैं। वे सहचरी-भाव (सखी-भाव) और नित्य-विहार रस के प्रमुख उपासक के रूप में जाने जाते हैं, और मधुकरी के नियम से जीवन चलाते थे।\n\nश्रीहित प्रेमानन्द गोविन्द शरण जी महाराज ने उन्हीं से 'निज मन्त्र' और सहचरी-भाव की दीक्षा पाई और लगभग दस वर्ष तक उनकी सेवा की। इस प्रकार वे वर्तमान रसिक-परम्परा की एक महत्त्वपूर्ण कड़ी हैं।", db: "শ্রীহিত গৌরাঙ্গী শরণজি মহারাজ বৃন্দাবনের প্রসিদ্ধ রাধাবল্লভীয় রসিক সন্ত, যাঁকে ভক্তরা স্নেহে 'বড় গুরুজি' বলেন। তিনি সহচরী-ভাব (সখী-ভাব) ও নিত্য-বিহার রসের প্রধান উপাসক হিসেবে পরিচিত এবং মাধুকরীর নিয়মে জীবন কাটাতেন।\n\nশ্রীহিত প্রেমানন্দ গোবিন্দ শরণজি মহারাজ তাঁর কাছেই 'নিজ মন্ত্র' ও সহচরী-ভাবের দীক্ষা পান এবং প্রায় দশ বছর তাঁর সেবা করেন। এভাবে তিনি বর্তমান রসিক-পরম্পরার একটি গুরুত্বপূর্ণ সূত্র।" },
   { file: './rashikan/p041.jpg', hi: "पूज्य श्री हित प्रेमानंद गोविंद शरण जी महाराज", bn: "পূজ্য শ্রী হিত প্রেমানন্দ গোবিন্দ শরণ জী মহারাজ", g: 'guru', nh: "कानपुर के अखरी ग्राम में जन्म (नाम: अनिरुद्ध कुमार पाण्डेय); 13 वर्ष की आयु में गृह-त्याग। वृन्दावन में गौरांगी शरण जी से सहचरी-भाव की दीक्षा लेकर मधुकरी-वृत्ति से भजन किया; श्री हित राधा केलि कुंज के माध्यम से सत्संग करते हैं।", nb: "কানপুরের অখরি গ্রামে জন্ম (নাম: অনিরুদ্ধ কুমার পান্ডে); ১৩ বছর বয়সে গৃহত্যাগ। বৃন্দাবনে গৌরাঙ্গী শরণজির কাছে সহচরী-ভাবের দীক্ষা নিয়ে মাধুকরী বৃত্তিতে ভজন করেন; শ্রী হিত রাধা কেলি কুঞ্জের মাধ্যমে সৎসঙ্গ করেন।", dh: "श्रीहित प्रेमानन्द गोविन्द शरण जी महाराज का जन्म कानपुर के निकट अखरी गाँव में एक धर्मनिष्ठ ब्राह्मण परिवार में हुआ (पूर्व नाम अनिरुद्ध कुमार पाण्डेय)। दादा के प्रभाव से बचपन से ही अध्यात्म की ओर झुकाव था और 13 वर्ष की आयु में उन्होंने घर छोड़ दिया।\n\nवे काशी में रहे और नैष्ठिक ब्रह्मचर्य में दीक्षित हुए; फिर वृन्दावन आए। यहाँ श्रीराधावल्लभ जी के दर्शन और वृन्दावन-परिक्रमा के बीच गोस्वामी हित मोहित मराल जी की प्रेरणा से उन्होंने श्रीहरिवंश नाम और राधावल्लभ सम्प्रदाय की दीक्षा ली। फिर गुरुदेव हित गौरांगी शरण जी से सहचरी-भाव और नित्य-विहार का 'निज मन्त्र' पाया और मधुकरी से जीवन चलाया।\n\nवे वृन्दावन के वराह घाट के निकट श्रीहित राधा केलि कुंज में रहकर सत्संग और एकान्तिक वार्तालाप करते हैं। उनके उपदेश का सार है — नाम-जप, सरल जीवन, सदाचार और श्रीराधा-कृष्ण के प्रति अनन्य प्रेम।", db: "শ্রীহিত প্রেমানন্দ গোবিন্দ শরণজি মহারাজের জন্ম কানপুরের কাছে অখরি গ্রামে এক ধর্মনিষ্ঠ ব্রাহ্মণ পরিবারে (পূর্বনাম অনিরুদ্ধ কুমার পান্ডে)। দাদুর প্রভাবে শৈশব থেকেই অধ্যাত্মের দিকে ঝোঁক ছিল এবং ১৩ বছর বয়সে তিনি গৃহত্যাগ করেন।\n\nতিনি কাশীতে ছিলেন এবং নৈষ্ঠিক ব্রহ্মচর্যে দীক্ষিত হন; তারপর বৃন্দাবনে আসেন। এখানে শ্রীরাধাবল্লভজির দর্শন ও বৃন্দাবন-পরিক্রমার মাঝে গোস্বামী হিত মোহিত মরাল জির প্রেরণায় তিনি শ্রীহরিবংশ নাম ও রাধাবল্লভ সম্প্রদায়ের দীক্ষা নেন। পরে গুরুদেব হিত গৌরাঙ্গী শরণজির কাছে সহচরী-ভাব ও নিত্য-বিহারের 'নিজ মন্ত্র' পান এবং মাধুকরীতে জীবন কাটান।\n\nতিনি বৃন্দাবনের বরাহ ঘাটের কাছে শ্রীহিত রাধা কেলি কুঞ্জে থেকে সৎসঙ্গ ও একান্তিক বার্তালাপ করেন। তাঁর উপদেশের সার — নাম-জপ, সহজ জীবন, সদাচার এবং শ্রীরাধা-কৃষ্ণের প্রতি অনন্য প্রেম।" },
 ];
@@ -18597,31 +18598,63 @@ function getEffectiveLyrics(id) {
 }
 
 
-// ── Daily "read today" tick for compulsory (badged) stotrams — no counter, just ✅ / ⬜.
-// Stored as App.S.stotrams[id][dayKey] = 1 (same store the backup/cloud sync already carries).
-function _stIsRead(id) {
-  return !!((App.S.stotrams && App.S.stotrams[id] || {})[App.S.tk]);
+// ── Automatic daily pad tracking for the compulsory stotrams (no counter, nothing to tap).
+// Required pads per day: Hit Chaurasi 12, Radha Sudha Nidhi 5, Sevak Vani 5.
+// Every pad (verse page) opened in the reader is remembered for today; the list card shows
+// "not read yet" → "N more to go" → ✅. Stored in App.S.stotrams[id][dayKey] as "k1,k2,…".
+const RV_PAD_REQ = { hcj: 12, rsn: 5, svb: 5 };
+function _stPadKeys(id) {
+  const v = ((App.S.stotrams || {})[id] || {})[App.S.tk];
+  return (typeof v === 'string' && v) ? v.split(',') : [];
+}
+function _stNum(n, hi) {
+  return hi ? String(n) : String(n).replace(/\d/g, (d) => '০১২৩৪৫৬৭৮৯'[d]);
 }
 function _stReadBtnHtml(id, hi) {
-  const on = _stIsRead(id);
-  const lab = hi ? 'आज पढ़ लिया' : 'আজ পড়া হয়েছে';
-  return '<button type="button" id="strd' + id + '" class="st-read-btn' + (on ? ' on' : '') + '" onclick="stToggleRead(\'' + id + '\')" ' +
-    'style="display:flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:12px;cursor:pointer;font-family:\'Hind Siliguri\',sans-serif;font-size:14px;font-weight:700;' +
-    (on ? 'border:1px solid rgba(110,231,140,0.7);background:rgba(110,231,140,0.16);color:#8dff9f' : 'border:1px solid rgba(255,215,0,0.30);background:rgba(255,215,0,0.08);color:#ffd700') + '">' +
-    '<span style="font-size:18px">' + (on ? '✅' : '⬜') + '</span><span>' + lab + '</span></button>';
+  const need = RV_PAD_REQ[id];
+  if (!need) return '';
+  const n = _stPadKeys(id).length;
+  let icon, txt, col, bd, bg;
+  if (n >= need) {
+    icon = '✅'; col = '#8dff9f'; bd = 'rgba(110,231,140,0.7)'; bg = 'rgba(110,231,140,0.16)';
+    txt = hi ? 'आज के ' + need + ' पद पूरे' : 'আজকের ' + _stNum(need, false) + 'টি পদ পড়া সম্পূর্ণ';
+  } else if (n > 0) {
+    icon = '📖'; col = '#ffd700'; bd = 'rgba(255,215,0,0.45)'; bg = 'rgba(255,215,0,0.10)';
+    const rem = need - n;
+    txt = hi ? n + '/' + need + ' पढ़े — ' + rem + ' और बाकी'
+             : _stNum(n, false) + '/' + _stNum(need, false) + ' পড়া — আরও ' + _stNum(rem, false) + 'টি বাকি';
+  } else {
+    icon = '⬜'; col = 'rgba(255,215,0,0.75)'; bd = 'rgba(255,215,0,0.28)'; bg = 'rgba(255,215,0,0.06)';
+    txt = hi ? 'आज अभी नहीं पढ़ा' : 'আজ এখনো পড়া হয়নি';
+  }
+  return '<div id="strd' + id + '" class="st-read-status" style="display:flex;align-items:center;gap:8px;min-height:40px;padding:6px 12px;border-radius:12px;font-family:\'Hind Siliguri\',sans-serif;font-size:13px;font-weight:700;border:1px solid ' + bd + ';background:' + bg + ';color:' + col + '">' +
+    '<span style="font-size:17px">' + icon + '</span><span>' + txt + '</span></div>';
 }
-function stToggleRead(id) {
+function _stPadRefresh(id) {
+  const el = document.getElementById('strd' + id);
+  if (!el) return;
+  const hi = (typeof secLang === 'function') && secLang('sv') === 'hi';
+  el.outerHTML = _stReadBtnHtml(id, hi);
+}
+// Called from _renderVerse for every pad shown in the reader.
+function _stTrackPad(id, idx) {
+  const need = RV_PAD_REQ[id];
+  if (!need || !App || !App.S || !App.S.tk) return;
+  // Sevak Vani is sectioned: make the key section-specific so pad 1 of two sections isn't the same pad.
+  const key = (id === 'svb' ? 's' + (window._stSecIdx == null ? '' : window._stSecIdx) + '_' : '') + idx;
+  const keys = _stPadKeys(id);
+  if (keys.indexOf(key) !== -1) return;
+  keys.push(key);
   if (!App.S.stotrams) App.S.stotrams = {};
   if (!App.S.stotrams[id]) App.S.stotrams[id] = {};
-  App.S.stotrams[id][App.S.tk] = _stIsRead(id) ? 0 : 1;
+  App.S.stotrams[id][App.S.tk] = keys.join(',');
   App.save();
   fbDebouncedPush();
-  const b = document.getElementById('strd' + id);
-  if (b) {
+  _stPadRefresh(id);
+  if (keys.length === need) {
     const hi = (typeof secLang === 'function') && secLang('sv') === 'hi';
-    b.outerHTML = _stReadBtnHtml(id, hi);
+    toast(hi ? '✅ आज के ' + need + ' पद पूरे हुए' : '✅ আজকের ' + _stNum(need, false) + 'টি পদ পূর্ণ হয়েছে');
   }
-  App.vib([20]);
 }
 function adjSt(id, d) {
   if (!App.S.stotrams[id]) App.S.stotrams[id] = {};
@@ -21683,6 +21716,7 @@ function _renderVerse(idx, dir) {
   if (body && body.dataset) delete body.dataset.hlFor;
 
   const verseText = _verses[idx] || "";
+  try { _stTrackPad(_currentStotramId, idx); } catch (_e) {}
   if (_currentStotramId === "bg" && window.setGitaVerseTitle) {
     window.setGitaVerseTitle(idx);
   }
@@ -22287,7 +22321,10 @@ var _AUDIO_STOTRAMS = {
     // Verse 52 defaults to Shuvam Srivastav's recitation instead of the
     // usual original — original and Ankit stay available via the voice
     // button like any other verse. Keyed by displayed verse number.
-    defaultVoiceByVerse: { 52: "shuvam" }
+    defaultVoiceByVerse: { 52: "shuvam" },
+    // Pad 35 (Jhoolat Dou Naval Hindolein): the Shuvam version is a YouTube clip (online only;
+    // offline it falls back to the bundled hcj_shuvam_35 clip). Keyed by displayed verse number, then voice.
+    ytByVerse: { 35: { shuvam: "DbF1LCl1neA" } }
   },
   bss: { prefix: "bss" },
   ach: { prefix: "ach" },
@@ -22319,7 +22356,8 @@ var _AUDIO_STOTRAMS = {
   hkb: { prefix: "hkb", timed: true, marks: [0], yt: "US7I1OnKXxQ", url: "" },
   bbv: { prefix: "bbv", timed: true, marks: [0], yt: "LBCQDWX0Bn0", url: "" },
   pjj: { prefix: "pjj", timed: true, marks: [0], yt: "PqTZbfA7iG4", url: "" },
-  jdh: { prefix: "jdh", timed: true, marks: [0], yt: "DbF1LCl1neA", url: "" },
+  // jdh (Jhoolat Dou Naval Hindolein): its own song link was removed — that YouTube clip now plays as
+  // Hit Chaurasi pad 35, Shuvam version (see hcj.ytByVerse).
   // Kishori tere charanan ki raj: same audio.mp3 that plays on the Yugal Kishor deity page (deities/yugal-kishor/audio.mp3)
   kcr: { prefix: "kcr", timed: true, marks: [0], yt: "", get url() { return ddPath("yugal-kishor", "audio.mp3"); } },
   rdc: { prefix: "rdc" },
@@ -22683,8 +22721,22 @@ function _hcjTimedIdx(cfg, t) {
 }
 // Config for the "timed" (single clip, YouTube or mp3) engine. For the
 // sectioned Geet Govindam a YouTube song is wrapped as a one-mark timed clip.
+// Per-verse YouTube override (hcj pad 35, Shuvam voice): returns { vn, vid } or null.
+function _hcjVerseYt(cfg) {
+  if (!cfg || !cfg.ytByVerse || !window.navigator.onLine) return null;
+  var i = (window._hcjPlayIdx != null) ? window._hcjPlayIdx : _verseIdx;
+  var vn = i + 1 - (cfg.labelOffset || 0);
+  var e = cfg.ytByVerse[vn], vid = e && e[_hcjVoice];
+  return vid ? { vn: vn, vid: vid } : null;
+}
 function _hcjTimedCfg() {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  var _ov = _hcjVerseYt(cfg);
+  if (_ov) {
+    // One clip for this single pad: every mark is 0 so the highlight/verse stays on the pad.
+    var _mk = []; for (var _q = 0; _q < _ov.vn; _q++) _mk.push(0);
+    return { timed: true, marks: _mk, yt: _ov.vid, url: "" };
+  }
   if (cfg && cfg.sectioned) {
     var k = window._ggAudioKey, y = cfg.ytTracks && k && cfg.ytTracks[k];
     return y ? { timed: true, marks: [0], yt: y, url: "" } : null;
@@ -22697,6 +22749,8 @@ function _hcjTimedCfg() {
 }
 function _hcjTimedKey() {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
+  var _ov = _hcjVerseYt(cfg);
+  if (_ov) return _currentStotramId + ":" + _hcjVoice + ":v" + _ov.vn;
   if (cfg && cfg.ytVoices && _hcjVoice !== "default") return _currentStotramId + ":" + _hcjVoice;
   return (cfg && cfg.sectioned) ? _currentStotramId + ":" + (window._ggAudioKey || "") : _currentStotramId;
 }
@@ -22797,6 +22851,14 @@ function _hcjBindTimed() {
   _hcjAudio.ontimeupdate = _hcjTimedSync;
   _hcjAudio.onended = function () {
     _hcjStopProgressLoop();
+    var _c0 = _AUDIO_STOTRAMS[_currentStotramId];
+    if (_c0 && _c0.ytByVerse && _hcjMode === "continue" && _hcjAudioIdx >= 0 && _hcjAudioIdx + 1 < _verses.length) {
+      var _nx = _hcjAudioIdx + 1;
+      _verseIdx = _nx;
+      _renderVerse(_nx, 1);
+      _hcjPlayVerse(_nx);
+      return;
+    }
     _hcjPlaying = false;
     _hcjAudioIdx = -1;
     _hcjSyncUI();
@@ -22950,12 +23012,14 @@ function _hcjPlayTimed(idx) {
   });
 }
 function _hcjPlayVerse(idx) {
+  window._hcjPlayIdx = idx;
   var _tcfg = _hcjTimedCfg();
   if (_tcfg && _tcfg.timed) { _hcjPlayTimed(idx); return; }
   _hcjStopProgressLoop();
   if (_hcjAudio) {
     _hcjAudio.pause();
     _hcjAudio.onended = null;
+    if (_hcjAudio._yt) { _hcjAudio.ontimeupdate = null; if (_hcjAudio._destroy) _hcjAudio._destroy(); }
     _hcjAudio = null;
   }
   _hcjAudio = new Audio(_hcjAudioPath(idx));

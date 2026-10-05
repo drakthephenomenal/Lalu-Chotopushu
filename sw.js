@@ -366,9 +366,12 @@
 // v274: bumped cache to force-invalidate stale app.js — fixes YouTube-audio live stotrams not starting (play was gated on an mp3 path).
 // v285: bumped cache to force-invalidate stale app.js / stotrams.js — Hit Sfut Vani plays verse-by-verse from one recording (audio/sfv_1.mp3); Priya Ju & Laal Ju Namavali lyrics replaced, flat page with YouTube (default) + offline Maharaj Ji audio (audio/nmb_1.mp3).
 // v286: bumped cache to force-invalidate stale app.js / stotrams.js — Radha Vallabh folder re-ordered (Hit Chaurasi, Radha Sudha Nidhi, Sevak Vani with compulsory daily-12-pad badges, Sfut Vani, Yamunashtak, Mangal Gan, Namavali, Bayalis Leela, then Favourite Stotra, Pads); no pāṭh counter there; 'Ju Maharaj' after Hariram Vyas; Bilvamangal Thakur / Mahadev author credits + portraits.
+// v291: Removed Jhoolat Dou Naval Hindolein's own song link; that YouTube clip is now Hit Chaurasi pad 35, Shuvam version.
+// v290: Automatic daily pad tracking for Hit Chaurasi (12), Radha Sudha Nidhi (5), Sevak Vani (5): not read / N more to go / ✅.
+// v289: Rashikan carousel: added Shri Bilvamangal Thakur (Lilashuk) portrait p085.jpg with Hindi/Bangla biography.
 // v288: Stotram folders: counters removed everywhere; Favourite Stotra, Pads shown open in the list; daily ✅ 'read today' tick on compulsory stotrams.
 // v287: bumped cache to force-invalidate stale stotrams.js — compulsory badge for Radha Sudha Nidhi & Sevak Vani is now 5 pads daily (with meaning).
-const CACHE = 'radha-jap-v288';
+const CACHE = 'radha-jap-v291';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 
@@ -517,6 +520,7 @@ const LAZY_LOCAL_ASSETS = [
   './rashikan/p082.jpg',
   './rashikan/p083.jpg',
   './rashikan/p084.jpg',
+  './rashikan/p085.jpg',
 ];
 
 const EXTERNAL_ASSETS = [

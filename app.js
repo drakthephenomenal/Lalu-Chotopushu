@@ -15935,7 +15935,8 @@ function renderSt() {
   // its own sub-list opened from a tile at the bottom.
   if (activeKey === 'rv') {
     const _rvFavOn = !!window._stRvFavOpen;
-    group.items = group.items.filter((x) => !!x.fav === _rvFavOn);
+    // Favourite Stotra, Pads are shown open in the same list (not a collapsed folder).
+    window._stRvFavOpen = false;
   }
 
   // Favourite Videos is a different kind of folder (video subfolders,
@@ -15993,7 +15994,16 @@ function renderSt() {
   const glowColors = ['#ffd700','#ffaa00','#ff6bff','#00e5ff','#7dff6b','#ff6b6b','#b388ff','#00ffcc','#ffd700','#ff9d00'];
 
   let idx = 0;
+  let _favHeadDone = false;
   group.items.forEach((st) => {
+    if (activeKey === 'rv' && st.fav && !_favHeadDone) {
+      _favHeadDone = true;
+      const fh = document.createElement('div');
+      fh.className = 'st-section-head';
+      fh.style.cssText = 'margin:18px 4px 10px;padding:0 0 6px;font-size:13px;font-weight:700;letter-spacing:1.5px;color:var(--gold,#ffd700);border-bottom:1px solid rgba(255,215,0,0.25)';
+      fh.textContent = '❤ Favourite Stotra, Pads';
+      list.appendChild(fh);
+    }
     // Ashtayam Seva Paddhati: a folder-style card (no jap counter) that
     // opens the 9 section folders.
     if (st.vedFolder) {
@@ -16062,8 +16072,8 @@ function renderSt() {
     }
 
     const _stHi = secLang('sv') === 'hi';
-    // Radha Vallabh area: no pāṭh counter / +− buttons any more — just Open.
-    const _noCount = activeKey === 'rv';
+    // No pāṭh counter / +− buttons in any stotram folder — just Open (+ a daily ✅ on badged items).
+    const _noCount = true;
     const _reqTxt = _stHi ? st.reqHi : st.reqBn;
     const _reqBadge = _reqTxt
       ? '<div class="st-req" style="display:inline-block;margin-top:7px;padding:3px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.2px;font-family:\'Hind Siliguri\',sans-serif;background:linear-gradient(135deg,#ffe27a 0%,#ffc107 55%,#e69500 100%);color:#2a1a00;box-shadow:0 0 9px rgba(255,200,0,0.45)">' + escHtml(_reqTxt) + '</div>'
@@ -16079,7 +16089,7 @@ function renderSt() {
         headerRight +
       '</div>' +
       (_noCount
-        ? '<div class="st-row" style="justify-content:flex-end">' + (hasLyrics ? '<button class="st-open-btn" onclick="showLyrics(\'' + st.id + '\')">' + (_stHi ? 'खोलें' : 'খুলুন') + '</button>' : '') + '</div>'
+        ? '<div class="st-row" style="justify-content:' + (_reqTxt ? 'space-between' : 'flex-end') + '">' + (_reqTxt ? _stReadBtnHtml(st.id, _stHi) : '') + (hasLyrics ? '<button class="st-open-btn" onclick="showLyrics(\'' + st.id + '\')">' + (_stHi ? 'खोलें' : 'খুলুন') + '</button>' : '') + '</div>'
         : (
       '<div class="st-row">' +
         '<div>' +
@@ -16123,7 +16133,7 @@ function renderSt() {
   });
 
   // Radha Vallabh: "Favourite Stotra, Pads" folder tile below the 8 granths.
-  if (activeKey === 'rv' && !window._stRvFavOpen) {
+  if (false) {
     const _favN = STLIST.filter((x) => x.cat === 'rv' && x.fav).length;
     const favTile = document.createElement('div');
     favTile.className = 'st-folder-tile';
@@ -18587,6 +18597,32 @@ function getEffectiveLyrics(id) {
 }
 
 
+// ── Daily "read today" tick for compulsory (badged) stotrams — no counter, just ✅ / ⬜.
+// Stored as App.S.stotrams[id][dayKey] = 1 (same store the backup/cloud sync already carries).
+function _stIsRead(id) {
+  return !!((App.S.stotrams && App.S.stotrams[id] || {})[App.S.tk]);
+}
+function _stReadBtnHtml(id, hi) {
+  const on = _stIsRead(id);
+  const lab = hi ? 'आज पढ़ लिया' : 'আজ পড়া হয়েছে';
+  return '<button type="button" id="strd' + id + '" class="st-read-btn' + (on ? ' on' : '') + '" onclick="stToggleRead(\'' + id + '\')" ' +
+    'style="display:flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:12px;cursor:pointer;font-family:\'Hind Siliguri\',sans-serif;font-size:14px;font-weight:700;' +
+    (on ? 'border:1px solid rgba(110,231,140,0.7);background:rgba(110,231,140,0.16);color:#8dff9f' : 'border:1px solid rgba(255,215,0,0.30);background:rgba(255,215,0,0.08);color:#ffd700') + '">' +
+    '<span style="font-size:18px">' + (on ? '✅' : '⬜') + '</span><span>' + lab + '</span></button>';
+}
+function stToggleRead(id) {
+  if (!App.S.stotrams) App.S.stotrams = {};
+  if (!App.S.stotrams[id]) App.S.stotrams[id] = {};
+  App.S.stotrams[id][App.S.tk] = _stIsRead(id) ? 0 : 1;
+  App.save();
+  fbDebouncedPush();
+  const b = document.getElementById('strd' + id);
+  if (b) {
+    const hi = (typeof secLang === 'function') && secLang('sv') === 'hi';
+    b.outerHTML = _stReadBtnHtml(id, hi);
+  }
+  App.vib([20]);
+}
 function adjSt(id, d) {
   if (!App.S.stotrams[id]) App.S.stotrams[id] = {};
   if (!App.S.stotrams[id][App.S.tk]) App.S.stotrams[id][App.S.tk] = 0;

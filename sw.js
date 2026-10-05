@@ -365,7 +365,9 @@
 // v273: bumped cache to force-invalidate stale app.js — timed live stotrams can also play audio-only from a YouTube link (meta.json "youtube").
 // v274: bumped cache to force-invalidate stale app.js — fixes YouTube-audio live stotrams not starting (play was gated on an mp3 path).
 // v285: bumped cache to force-invalidate stale app.js / stotrams.js — Hit Sfut Vani plays verse-by-verse from one recording (audio/sfv_1.mp3); Priya Ju & Laal Ju Namavali lyrics replaced, flat page with YouTube (default) + offline Maharaj Ji audio (audio/nmb_1.mp3).
-const CACHE = 'radha-jap-v285';
+// v286: bumped cache to force-invalidate stale app.js / stotrams.js — Radha Vallabh folder re-ordered (Hit Chaurasi, Radha Sudha Nidhi, Sevak Vani with compulsory daily-12-pad badges, Sfut Vani, Yamunashtak, Mangal Gan, Namavali, Bayalis Leela, then Favourite Stotra, Pads); no pāṭh counter there; 'Ju Maharaj' after Hariram Vyas; Bilvamangal Thakur / Mahadev author credits + portraits.
+// v287: bumped cache to force-invalidate stale stotrams.js — compulsory badge for Radha Sudha Nidhi & Sevak Vani is now 5 pads daily (with meaning).
+const CACHE = 'radha-jap-v287';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

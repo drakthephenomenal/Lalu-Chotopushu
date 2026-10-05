@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker  v236
+// v300: Added Gopal Ashtakam (Bangla + Hindi lyrics, YouTube audio) to S&V → Shree Krishna.
 // v231: Rashikan carousel now opens with the Vrindavan Hari-Traya group photo; Bangla spelling fixed to হরিত্রয়.
 // v230: Android app reads Divine Darshan photos live from the site (deities/ no longer bundled in the APK).
 // v229: Divine Darshan opens on "All" by default; list preview falls back to the real photo if a thumbnail cannot be saved.
@@ -379,7 +380,7 @@
 // v297: added Bhaje Vrajaikamandanam (Krishnashtakam) to the Krishna section
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
-const CACHE = 'radha-jap-v299';
+const CACHE = 'radha-jap-v300';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

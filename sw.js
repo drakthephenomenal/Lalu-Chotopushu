@@ -378,7 +378,8 @@
 // v296: added Bhakta Namavali (Rasik Dev Ju) below Rasik Namavali; tappable red names with notes
 // v297: added Bhaje Vrajaikamandanam (Krishnashtakam) to the Krishna section
 // v298: added Kamalapati Ashtakam to the Krishna section
-const CACHE = 'radha-jap-v298';
+// v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
+const CACHE = 'radha-jap-v299';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

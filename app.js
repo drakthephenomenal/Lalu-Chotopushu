@@ -22222,6 +22222,11 @@ var _AUDIO_STOTRAMS = {
   gdm: { prefix: "gdm" },
   // Hamare Mayi Shyama Ju Ko Raj - flat single page, one clip: audio/hsr_1.mp3
   hsr: { prefix: "hsr" },
+  // Shri Hit Sfut Vani (Premanand Ji Maharaj pad-gayan): NOT a flat page — normal verse-by-verse
+  // reader like Hit Chaurasi. One full recording (audio/sfv_1.mp3), marks = start second of each
+  // verse (23 pads + 4 dohas = 27). Closing "jay jay" colophon is popped for audio stotrams,
+  // so the last mark (doha 4) simply keeps playing through the closing chant.
+  sfv: { prefix: "sfv", timed: true, marks: [0, 38, 76, 105, 149, 190, 217, 253, 296, 324, 382, 421, 476, 512, 576, 617, 674, 726, 795, 813, 874, 921, 1020, 1047, 1062, 1074, 1090], yt: "", url: "audio/sfv_1.mp3" },
   // Geet Govindam - Sakhi He Keshimathanam (Ashtapadi): flat single page, YouTube audio (no mp3 bundled)
   gsk: { prefix: "gsk", timed: true, marks: [0], yt: "sEz1bVnXWhM", url: "" },
   emr: { prefix: "emr", timed: true, marks: [0.0, 83.0, 166.0, 279.0], yt: "9NmTZbbWqdI", url: "" },

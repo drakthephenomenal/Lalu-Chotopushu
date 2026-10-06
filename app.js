@@ -21130,13 +21130,55 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka"];
+const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel"];
 // Built-in translatable stotrams + live (repo-added) stotrams marked "paged".
 function _hasTranslationSt(id) {
   if (TRANSLATION_IDS.includes(id)) return true;
   const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
   return !!(e && e.paged);
 }
+// ── Translation is DEVELOPER-ONLY for these stotrams (Kelimal, Hit Caturashi Ji).
+// Everyone else can still read the verses; if they try to switch the translation
+// on, a note appears and stays until they dismiss it (✕). Developers = isDeveloper().
+const TRANSLATION_DEV_ONLY_IDS = ["kel", "hcj"];
+function _translationDevBlocked(id) {
+  if (!TRANSLATION_DEV_ONLY_IDS.includes(id)) return false;
+  try { return !(typeof isDeveloper === "function" && isDeveloper()); } catch (_e) { return true; }
+}
+function _devNoteHide() {
+  var n = document.getElementById("dev-only-note");
+  if (n && n.parentNode) n.parentNode.removeChild(n);
+}
+function _devNoteShow() {
+  if (document.getElementById("dev-only-note")) return; // already showing — stays until dismissed
+  var lang = "bn";
+  try { lang = (typeof secLang === "function" && secLang("sv") === "hi") ? "hi" : "bn"; } catch (_e) {}
+  var local = lang === "hi"
+    ? "\u091c\u092c \u0924\u0915 \u0906\u092a\u0915\u0947 \u092d\u0940\u0924\u0930 \u0926\u0947\u0939-\u092a\u0939\u091a\u093e\u0928 \u0915\u093e \u092c\u094b\u0927 \u0928 \u0939\u094b \u2014 \u0915\u093f \u2018\u092e\u0948\u0902 \u092a\u0941\u0930\u0941\u0937 \u0939\u0942\u0901\u2019 \u092f\u093e \u2018\u092e\u0948\u0902 \u0938\u094d\u0924\u094d\u0930\u0940 \u0939\u0942\u0901\u2019 \u2014 \u0924\u092c \u0924\u0915 \u0915\u0947\u0932\u093f\u092e\u093e\u0932 \u0914\u0930 \u0939\u093f\u0924 \u091a\u0924\u0941\u0930\u093e\u0936\u0940 \u091c\u0940 \u0915\u093e \u0905\u0928\u0941\u0935\u093e\u0926 \u0928\u0939\u0940\u0902 \u092a\u0922\u093c\u0928\u093e \u091a\u093e\u0939\u093f\u090f\u0964"
+    : "\u09af\u09a4\u0995\u09cd\u09b7\u09a3 \u09a8\u09be \u0986\u09aa\u09a8\u09be\u09b0 \u09a8\u09bf\u099c\u09c7\u09b0 \u09ae\u09a7\u09cd\u09af\u09c7 \u09a6\u09c7\u09b9\u0997\u09a4 \u09aa\u09b0\u09bf\u099a\u09af\u09bc\u09c7\u09b0 \u09ac\u09cb\u09a7 \u099c\u09be\u0997\u09c7 \u2014 \u0985\u09b0\u09cd\u09a5\u09be\u09ce \u2018\u0986\u09ae\u09bf \u09aa\u09c1\u09b0\u09c1\u09b7\u2019 \u09ac\u09be \u2018\u0986\u09ae\u09bf \u09a8\u09be\u09b0\u09c0\u2019 \u2014 \u09a4\u09a4\u0995\u09cd\u09b7\u09a3 \u0995\u09c7\u09b2\u09bf\u09ae\u09be\u09b2 \u0993 \u09b9\u09bf\u09a4 \u099a\u09a4\u09c1\u09b0\u09be\u09b6\u09bf \u099c\u09c0\u09b0 \u0985\u09a8\u09c1\u09ac\u09be\u09a6 \u09aa\u09a1\u09bc\u09be \u0989\u099a\u09bf\u09a4 \u09a8\u09af\u09bc\u0964";
+  var box = document.createElement("div");
+  box.id = "dev-only-note";
+  box.setAttribute("role", "alert");
+  box.style.cssText =
+    "position:fixed;left:50%;bottom:90px;transform:translateX(-50%);width:min(92vw,420px);" +
+    "box-sizing:border-box;z-index:2147483000;padding:14px 40px 14px 16px;border-radius:14px;" +
+    "background:rgba(28,18,8,0.97);color:#fff3d6;border:1px solid rgba(255,215,0,0.55);" +
+    "box-shadow:0 8px 28px rgba(0,0,0,0.55);font-family:Inter,sans-serif;font-size:13px;line-height:1.55";
+  var en = document.createElement("div");
+  en.textContent = "Until you have a bodily identity within yourself \u2014 that \u201cI am a man\u201d or \u201cI am a woman\u201d \u2014 you should not read the translation of Kelimal and Hit Caturashi Ji.";
+  var loc = document.createElement("div");
+  loc.style.cssText = "margin-top:8px;color:rgba(255,243,214,0.85)";
+  loc.textContent = local;
+  var x = document.createElement("button");
+  x.type = "button";
+  x.setAttribute("aria-label", "Close");
+  x.textContent = "\u2715";
+  x.style.cssText = "position:absolute;top:6px;right:8px;width:30px;height:30px;border:none;background:transparent;color:#ffd700;font-size:16px;cursor:pointer";
+  x.onclick = _devNoteHide;
+  box.appendChild(en); box.appendChild(loc); box.appendChild(x);
+  document.body.appendChild(box);
+}
+
 // ── IDs where prose sections need vertical-scroll mode
 const PROSE_IDS = ["nkc"];
 
@@ -21598,6 +21640,11 @@ function showLyrics(id) {
     ? _globalTranslationPref
     : false;
   _translationLang = "bn";
+  // Developer-only translation (Kelimal, Hit Caturashi Ji): keep it off for everyone else.
+  if (_translationDevBlocked(id)) {
+    if (_translationVisible) _devNoteShow(); // global Translation ON counts as trying to open it
+    _translationVisible = false;
+  }
 
   // ── Sectioned stotrams (svb, blv, …): show section picker ──
   if (window.StotramSections && window.StotramSections.isSectioned(id)) {
@@ -21768,7 +21815,7 @@ function _redWordTap(ev, key) {
 // অনুবাদ: …                                          → green
 const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|अनुवाद)\s*:/;
 // Stotrams that use the green অনুবাদ:/अनुवाद: meaning lines (gg also has শব্দার্থ:).
-const _ANUVAD_IDS = ["svb", "gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka"];
+const _ANUVAD_IDS = ["svb", "gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel"];
 function _isAnuvadSt(id) {
   if (_ANUVAD_IDS.indexOf(id) !== -1) return true;
   const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
@@ -21871,6 +21918,7 @@ function _renderHlVerse(idx) {
 }
 
 function _renderVerse(idx, dir) {
+  if (_translationVisible && _translationDevBlocked(_currentStotramId)) _translationVisible = false; // dev-only translation
   const body = document.getElementById("lyrBody");
   const ctr = null;
   const prev = document.getElementById("lmPrev");
@@ -22086,6 +22134,7 @@ function _renderTranslationToggle(verseHasArtha, verseHasSecondLang) {
     sw.setAttribute("aria-checked", _translationVisible ? "true" : "false");
     sw.innerHTML = '<span class="lm-toggle-thumb"></span>';
     sw.onclick = function () {
+      if (!_translationVisible && _translationDevBlocked(_currentStotramId)) { _devNoteShow(); return; }
       _translationVisible = !_translationVisible;
       _renderVerse(_verseIdx, null);
     };
@@ -22304,6 +22353,7 @@ function _initSwipeHandler() {
 }
 
 function closeLyrics() {
+  try { _devNoteHide(); } catch (_e) {}
   try { _ptStop(); } catch (_e) {}
   var lmo = document.getElementById("lmo");
   lmo.classList.remove("show");

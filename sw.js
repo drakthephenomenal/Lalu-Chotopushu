@@ -1,5 +1,8 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker  v236
+// v308: Translation of Kelimal + Hit Caturashi Ji is developer-only (note shown to others until dismissed).
+// v307: Added Kelimal (Swami Haridas ji, 110 pads — Bangla + Hindi with meaning) under Radha Vallabh Sampraday.
+// v306: Radha Sudha Nidhi Bangla অর্থ for shlokas 1–40 re-based on the Hindi व्याख्या (নোট paragraphs kept as-is).
 // v305: Radha Sudha Nidhi (Bangla) — word-by-word শব্দার্থ lines added for shlokas 1–10 too.
 // v304: Radha Sudha Nidhi (Hindi) — word-by-word शब्दार्थ lines added for shlokas 1–10 (official व्याख्या untouched).
 // v303: Added Nandakumar Ashtakam (Bangla + Hindi lyrics, audio/nka_1.mp3) to S&V \u2192 Shree Krishna.
@@ -384,7 +387,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v305';
+const CACHE = 'radha-jap-v308';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

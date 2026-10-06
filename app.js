@@ -21689,7 +21689,7 @@ function showLyrics(id) {
     const linesOnly = v.split("\n").filter((l) => l.trim().length > 0);
     const allArtha =
       linesOnly.length > 0 &&
-      linesOnly.every((l) => /^অর্থ২?\s*:/.test(l.trim()));
+      linesOnly.every((l) => /^(?:অর্থ২?|শব্দার্থ)\s*:/.test(l.trim()));
     if (allArtha && mergedVerses.length > 0) {
       // Append to previous verse with a blank line separator
       mergedVerses[mergedVerses.length - 1] += "\n\n" + v;
@@ -21768,7 +21768,7 @@ function _redWordTap(ev, key) {
 // অনুবাদ: …                                          → green
 const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|अनुवाद)\s*:/;
 // Stotrams that use the green অনুবাদ:/अनुवाद: meaning lines (gg also has শব্দার্থ:).
-const _ANUVAD_IDS = ["gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl"];
+const _ANUVAD_IDS = ["svb", "gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl"];
 function _isAnuvadSt(id) {
   if (_ANUVAD_IDS.indexOf(id) !== -1) return true;
   const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;

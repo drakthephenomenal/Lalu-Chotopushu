@@ -21782,7 +21782,7 @@ function _ggMeaningLineHtml(line) {
   const ci = t.indexOf(":");
   const label = _ggEsc(t.slice(0, ci + 1));
   const rest = t.slice(ci + 1).trim();
-  if (/^শব্দার্থ/.test(t)) {
+  if (/^(?:শব্দার্থ|शब्दार्थ)/.test(t)) {
     const items = rest.split(" · ").map(function (it) {
       const ei = it.indexOf(" = ");
       if (ei === -1) return '<span class="lyr-sw-bn">' + _ggEsc(it) + "</span>";
@@ -21899,7 +21899,7 @@ function _renderVerse(idx, dir) {
     _currentStotramId === "rsn" && secLang('sv') === "hi";
   // Hindi RSN uses व्याख्या: for its inline Hindi meaning. The Bengali
   // source keeps its existing অর্থ:/অর্থ২: markers and behavior.
-  const verseHasHindiMeaning = isHindiRsn && /^(?:अर्थ|व्याख्या)\s*:/m.test(verseText);
+  const verseHasHindiMeaning = isHindiRsn && /^(?:अर्थ|व्याख्या|शब्दार्थ)\s*:/m.test(verseText);
   // Does this verse have any অর্থ: / অর্থ২: / Hindi meaning lines?
   const verseHasArtha =
     /^অর্থ২?\s*:/m.test(verseText) ||
@@ -21915,7 +21915,7 @@ function _renderVerse(idx, dir) {
       t.length > 0 &&
       !/^অর্থ২?\s*:/.test(t) &&
       !(_isAnuvadSt(_currentStotramId) && _GG_MEANING_RE.test(t)) &&
-      !(isHindiRsn && /^(?:अर्थ|व्याख्या)\s*:/.test(t))
+      !(isHindiRsn && /^(?:अर्थ|व्याख्या|शब्दार्थ)\s*:/.test(t))
     );
   });
 
@@ -21969,6 +21969,11 @@ function _renderVerse(idx, dir) {
           // (the default/original language) is selected.
           if (!hasTranslation || !_translationVisible || _translationLang !== "bn") return "";
           return '<span class="lyr-line lyr-artha' + extraClass + '">' + esc + "</span>";
+        }
+        if (isHindiRsn && /^शब्दार्थ\s*:/.test(content.trim())) {
+          // Word-by-word meaning (added alongside the official व्याख्या, never replacing it)
+          if (!hasTranslation || !_translationVisible) return "";
+          return _ggMeaningLineHtml(content);
         }
         if (isHindiRsn && /^(?:अर्थ|व्याख्या)\s*:/.test(content.trim())) {
           if (!hasTranslation || !_translationVisible) return "";

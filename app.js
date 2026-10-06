@@ -21914,6 +21914,7 @@ function _renderVerse(idx, dir) {
     return (
       t.length > 0 &&
       !/^অর্থ২?\s*:/.test(t) &&
+      !(_currentStotramId === "rsn" && /^শব্দার্থ\s*:/.test(t)) &&
       !(_isAnuvadSt(_currentStotramId) && _GG_MEANING_RE.test(t)) &&
       !(isHindiRsn && /^(?:अर्थ|व्याख्या|शब्दार्थ)\s*:/.test(t))
     );
@@ -21956,6 +21957,11 @@ function _renderVerse(idx, dir) {
         if (_isAnuvadSt(_currentStotramId) && _GG_MEANING_RE.test(content.trim())) {
           // Geet Govindam শব্দার্থ / অনুবাদ — only when Translation is ON.
           if (!_translationVisible) return "";
+          return _ggMeaningLineHtml(content);
+        }
+        if (_currentStotramId === "rsn" && /^শব্দার্থ\s*:/.test(content.trim())) {
+          // Radha Sudha Nidhi (Bangla): word-by-word meaning, shown with the Bengali অর্থ: only
+          if (!hasTranslation || !_translationVisible || _translationLang !== "bn") return "";
           return _ggMeaningLineHtml(content);
         }
         if (/^অর্থ২\s*:/.test(content.trim())) {

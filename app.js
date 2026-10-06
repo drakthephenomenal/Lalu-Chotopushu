@@ -21708,7 +21708,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "gpa", "nka", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "gpa", "nka", "mdh", "mmb", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id); // user-added (and repo flat/audio) stotrams: one flat page
 
   // Split by blank lines into verses
@@ -22600,6 +22600,10 @@ var _AUDIO_STOTRAMS = {
   gpa: { prefix: "gpa", timed: true, marks: [0], yt: "QInN3GHGx60", url: "" },
   // Nandakumar Ashtakam (Vallabhacharya) \u2014 flat single page, one full-recitation clip: audio/nka_1.mp3 (same convention as gdm_1.mp3)
   nka: { prefix: "nka" },
+  // Madhurashtakam (Vallabhacharya) — flat single page, one full-recitation clip: audio/Madhurastakam.mp3
+  mdh: { prefix: "mdh", timed: true, marks: [0], yt: "", url: "audio/Madhurastakam.mp3" },
+  // Mere Man Mein Baso Nandlaal (bhajan) — flat single page, one clip: audio/Mere_Man_Mein_Baso_Nandlaal.mp3
+  mmb: { prefix: "mmb", timed: true, marks: [0], yt: "", url: "audio/Mere_Man_Mein_Baso_Nandlaal.mp3" },
   // Ahe Nila Shaila (Bhakta Salabega, Odia) — flat single page with meaning, YouTube audio
   anl: { prefix: "anl", timed: true, marks: [0], yt: "jFdymKB8NmM", url: "" },
   // Damodarashtakam (Padma Purana) — flat single page with word-by-word meaning, YouTube audio

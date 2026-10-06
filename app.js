@@ -21130,7 +21130,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl"];
+const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka"];
 // Built-in translatable stotrams + live (repo-added) stotrams marked "paged".
 function _hasTranslationSt(id) {
   if (TRANSLATION_IDS.includes(id)) return true;
@@ -21768,7 +21768,7 @@ function _redWordTap(ev, key) {
 // অনুবাদ: …                                          → green
 const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|अनुवाद)\s*:/;
 // Stotrams that use the green অনুবাদ:/अनुवाद: meaning lines (gg also has শব্দার্থ:).
-const _ANUVAD_IDS = ["svb", "gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl"];
+const _ANUVAD_IDS = ["svb", "gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka"];
 function _isAnuvadSt(id) {
   if (_ANUVAD_IDS.indexOf(id) !== -1) return true;
   const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;

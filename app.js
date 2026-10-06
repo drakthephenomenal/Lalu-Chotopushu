@@ -14905,7 +14905,7 @@ const RV_POET_ICON = {
   ved4: "hh",
   hcj: "hh", rsn: "hh", yms: "hh", sfv: "hh",
   svb: "sv", hmg: "sv",
-  blv: "dh", nmb: "dh", bnm: "rd", dkc: "dh", shs: "dh", pjj: "dh",
+  blv: "dh", blp: "dh", nmb: "dh", bnm: "rd", dkc: "dh", shs: "dh", pjj: "dh",
   hsr: "vv",
   jdh: "sd",                                     // Saras Dev ji (rashikan p036)
   kcr: "hv", hkb: "hv",                          // Hariram Vyas (rashikan p034)

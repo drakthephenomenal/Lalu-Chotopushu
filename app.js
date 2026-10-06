@@ -204,24 +204,52 @@ function _lcTryWebViewGeolocation(options) {
   });
 }
 
+/*
+ * Reliable haptic/vibration layer
+ *
+ * IMPORTANT: do NOT collapse an Android vibration pattern into one total
+ * duration.  [200,80,200,80,300] means ON 200 / OFF 80 / ON 200 / OFF 80 /
+ * ON 300.  The old native bridge summed that to 780ms and sent one continuous
+ * vibration, which is not the intended mala-complete signal.
+ *
+ * PWA/browser: use navigator.vibrate(pattern) directly.
+ * Capacitor APK: preserve the same pattern by scheduling individual native
+ * Haptics.vibrate() pulses with the requested OFF gaps.
+ */
 function lcVibrate(pattern) {
-  if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics) {
+  const p = Array.isArray(pattern) ? pattern.map(Number).filter(n => Number.isFinite(n) && n >= 0) : [Number(pattern)];
+  if (!p.length) return false;
+
+  // Browser / PWA path — this is the preferred path on Android Chrome/PWA.
+  // navigator.vibrate() accepts both a single duration and an ON/OFF pattern.
+  if (!_lcIsNative() && navigator && typeof navigator.vibrate === "function") {
     try {
-      const { Haptics } = window.Capacitor.Plugins;
-      const total = Array.isArray(pattern)
-        ? pattern.reduce((a, b) => a + b, 0)
-        : pattern;
-      Haptics.vibrate({ duration: Math.min(total, 5000) });
-      return;
-    } catch (e) {
-      /* fall through to web vibrate below */
-    }
-  }
-  if (navigator.vibrate) {
-    try {
-      navigator.vibrate(pattern);
+      const ok = navigator.vibrate(p);
+      if (ok !== false) return true;
     } catch (e) {}
   }
+
+  // Capacitor Android native path. Haptics.vibrate() takes one duration, so
+  // reproduce an ON/OFF pattern instead of incorrectly summing the durations.
+  if (_lcIsNative() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics) {
+    try {
+      const { Haptics } = window.Capacitor.Plugins;
+      let t = 0;
+      for (let i = 0; i < p.length; i++) {
+        const ms = Math.min(Math.max(0, p[i]), 5000);
+        if (i % 2 === 0 && ms > 0) {
+          const delay = t;
+          setTimeout(() => {
+            try { Haptics.vibrate({ duration: ms }); } catch (e) {}
+          }, delay);
+        }
+        t += ms;
+      }
+      return true;
+    } catch (e) {}
+  }
+
+  return false;
 }
 
 /* === Daily reminder notification (Capacitor APK + best-effort PWA) ===

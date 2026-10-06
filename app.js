@@ -18589,7 +18589,32 @@ window.devExitGhostMode = async function () {
 // END GHOST MODE
 // ══════════════════════════════════════════════════════════════
 
+// ── Bangla-script (transcribed) text for the Radha Vallabh additions is generated from the Hindi text on first use,
+// instead of being stored a second time in stotrams.js (keeps the file small). Same letter-by-letter mapping everywhere.
+const _BN_FROM_HI_IDS = ["bgv", "gpg", "ist", "isv", "gvn", "acv", "kjk", "vnm", "rkn", "ipr", "ptr", "dhi", "svi", "vyh", "jhp", "jbp", "ljb", "sjb", "ljp", "sjp", "ljc", "sjc", "ljd", "sjd", "asd", "pdv", "pkp", "bkt", "rmm"];
+function _devToBn(t) {
+  t = t.replace(/^व्याख्या:/gm, "অর্থ২:");
+  const NUK = { 0x958: "\u0915\u093C", 0x959: "\u0916\u093C", 0x95A: "\u0917\u093C", 0x95B: "\u091C\u093C", 0x95C: "\u0921\u093C", 0x95D: "\u0922\u093C", 0x95E: "\u092B\u093C", 0x95F: "\u092F\u093C" };
+  const SP = { 0x950: "ওঁ", 0x911: "অ", 0x949: "ো", 0x945: "ে", 0x90D: "এ", 0x933: "ল\u09BC", 0x931: "র\u09BC", 0x929: "ন\u09BC", 0x934: "ল\u09BC", 0x935: "ব" };
+  const BD = "০১২৩৪৫৬৭৮৯";
+  let out = "";
+  for (let i = 0; i < t.length; i++) {
+    const seg = NUK[t.charCodeAt(i)] || t[i];
+    for (let j = 0; j < seg.length; j++) {
+      const cp = seg.charCodeAt(j);
+      if (SP[cp]) out += SP[cp];
+      else if (cp >= 0x900 && cp <= 0x97F && cp !== 0x964 && cp !== 0x965) out += String.fromCharCode(cp + 0x80);
+      else if (cp >= 48 && cp <= 57) out += BD[cp - 48];
+      else out += seg[j];
+    }
+  }
+  return out;
+}
+
 function getEffectiveLyrics(id) {
+  if (!LYRICS[id] && _BN_FROM_HI_IDS.indexOf(id) !== -1 && typeof LYRICS_HI !== "undefined" && LYRICS_HI[id]) {
+    LYRICS[id] = _devToBn(LYRICS_HI[id]);
+  }
   if (secLang('sv') === "hi" && typeof LYRICS_HI !== "undefined" && LYRICS_HI[id]) {
     return LYRICS_HI[id];
   }
@@ -21130,7 +21155,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel"];
+const TRANSLATION_IDS = ["bgv", "gpg", "nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel"];
 // Built-in translatable stotrams + live (repo-added) stotrams marked "paged".
 function _hasTranslationSt(id) {
   if (TRANSLATION_IDS.includes(id)) return true;
@@ -21181,6 +21206,8 @@ function _devNoteShow() {
 
 // ── IDs where prose sections need vertical-scroll mode
 const PROSE_IDS = ["nkc"];
+// Stotrams whose Hindi text carries "व्याख्या:" lines (meaning shown only when the translation toggle is on)
+const _HI_MEANING_IDS = ["rsn", "svb", "yms", "rks", "bgv", "gpg"];
 
 // ── Sectioned-stotram picker (svb, blv, …) lives in stotrams.js ─────────────
 
@@ -21708,7 +21735,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "gpa", "nka", "mdh", "mmb", "hvp", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "gpa", "nka", "mdh", "mmb", "hvp", "ist", "isv", "gvn", "acv", "kjk", "vnm", "rkn", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id); // user-added (and repo flat/audio) stotrams: one flat page
 
   // Split by blank lines into verses
@@ -21944,7 +21971,7 @@ function _renderVerse(idx, dir) {
   if (body) body.style.paddingTop = hasTranslation ? "48px" : "";
 
   const isHindiRsn =
-    _currentStotramId === "rsn" && secLang('sv') === "hi";
+    _HI_MEANING_IDS.indexOf(_currentStotramId) !== -1 && secLang('sv') === "hi";
   // Hindi RSN uses व्याख्या: for its inline Hindi meaning. The Bengali
   // source keeps its existing অর্থ:/অর্থ২: markers and behavior.
   const verseHasHindiMeaning = isHindiRsn && /^(?:अर्थ|व्याख्या|शब्दार्थ)\s*:/m.test(verseText);

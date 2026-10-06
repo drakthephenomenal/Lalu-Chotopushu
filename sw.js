@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker  v236
+// v310: Added Hey Virat Purush bhajan, full Hindi/Bangla Beyalish Leela (44 leelas), Padyavali, Leela Anukramanika, Rasik Namavali, Vani Prasansa and 25+ more Radha Vallabh texts; Hindi fills for Sevak Bani etc.
 // v309: bumped cache to force-invalidate stale stotrams.js — Radha Sudha Nidhi verse text re-checked against the ideal text for all 270 shlokas; শব্দার্থ corrected in shlokas 109, 134, 148, 178, 183, 230, 239.
 // v308: Translation of Kelimal + Hit Caturashi Ji is developer-only (note shown to others until dismissed).
 // v307: Added Kelimal (Swami Haridas ji, 110 pads — Bangla + Hindi with meaning) under Radha Vallabh Sampraday.
@@ -388,7 +389,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v309';
+const CACHE = 'radha-jap-v310';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

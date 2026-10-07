@@ -21236,7 +21236,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["bgv", "gpg", "nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel", "blv"];
+const TRANSLATION_IDS = ["hcj", "bgv", "gpg", "nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel", "blv"];
 // Built-in translatable stotrams + live (repo-added) stotrams marked "paged".
 function _hasTranslationSt(id) {
   if (TRANSLATION_IDS.includes(id)) return true;
@@ -21931,9 +21931,9 @@ function _redWordTap(ev, key) {
 // ── Geet Govindam word-wise meaning / total meaning lines ──────────────
 // শব্দার্থ: Sanskrit = বাংলা · Sanskrit = বাংলা …   → Sanskrit brown, Bangla blue
 // অনুবাদ: …                                          → green
-const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|अनुवाद)\s*:/;
+const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|নোট|शब्दार्थ|अनुवाद|नोट)\s*:/;
 // Stotrams that use the green অনুবাদ:/अनुवाद: meaning lines (gg also has শব্দার্থ:).
-const _ANUVAD_IDS = ["svb", "gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel"];
+const _ANUVAD_IDS = ["hcj", "svb", "gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel"];
 function _isAnuvadSt(id) {
   if (_ANUVAD_IDS.indexOf(id) !== -1) return true;
   const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
@@ -22053,7 +22053,7 @@ function _ppEnabled(id) {
   return true;
 }
 // blv (Bayalis Leela) stays ONE flat page per leela: its ☰ list scrolls to the tapped verse instead of changing page.
-const _PP_MEANING_RE = /^(?:অর্থ২?|শব্দার্থ|अर्थ|व्याख्या|शब्दार्थ|अनुवाद|অনুবাদ)\s*:/;
+const _PP_MEANING_RE = /^(?:অর্থ২?|শব্দার্থ|अर्थ|व्याख्या|शब्दार्थ|अनुवाद|অনুবাদ|নোট|नोट)\s*:/;
 // raag / tune-name lines such as "(রাগ বিভাস)", "(सारंग)" — skipped when picking the label line
 const _PP_RAAG_RE = /^\(?\s*(?:রাগ|राग)[^)]*\)?\s*$|^\([^)]{1,30}\)$/;
 
@@ -22258,7 +22258,7 @@ function _renderVerse(idx, dir) {
   const verseHasArtha =
     /^অর্থ২?\s*:/m.test(verseText) ||
     verseHasHindiMeaning ||
-    (_isAnuvadSt(_currentStotramId) && /^(?:শব্দার্থ|অনুবাদ|अनुवाद)\s*:/m.test(verseText));
+    (_isAnuvadSt(_currentStotramId) && /^(?:শব্দার্থ|অনুবাদ|নোট|शब्दार्थ|अनुवाद|नोट)\s*:/m.test(verseText));
   // Does this verse specifically have a second-language (অর্থ২:) line?
   const verseHasSecondLang = /^অর্থ২\s*:/m.test(verseText);
 

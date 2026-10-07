@@ -15873,7 +15873,6 @@ function renderSt() {
     { key: 'bmg',     title: 'ব্রাহ্ম মাধ্ব গৌড়ীয় সম্প্রদায়', titleHi: 'ब्रह्म माध्व गौड़ीय सम्प्रदाय', icon: '🕉️', img: ST_FOLDER_ICON_IMG.bmg },
     { key: 'sk',      title: 'শঙ্করাচার্য (অদ্বৈত / স্মার্ত) পরম্পরা', titleHi: 'शंकराचार्य (अद्वैत / स्मार्त) परम्परा', icon: '🕉️' },
     { key: 'krishna', title: 'শ্রীকৃষ্ণ', titleHi: 'श्रीकृष्ण', icon: '🦚' },
-    { key: 'gita',    title: 'শ্রীমদ্ভগবদ্গীতা', titleHi: 'श्रीमद्भगवद्गीता', icon: '📖' },
     { key: 'shiv',    title: 'ভগবান শিব', titleHi: 'भगवान शिव', icon: '🔱', img: ST_FOLDER_ICON_IMG.shiv },
     { key: 'rjbj', title: 'রসিক, বৈষ্ণব ও অন্যান্য ভক্ত এবং সন্তজন দর্শন ও পরিচিতি', titleHi: 'रसिक, वैष्णव एवं अन्य भक्त तथा संतजन दर्शन एवं परिचय', icon: '🙏' },
     { key: 'dd', title: 'দিব্য দর্শন — বৃন্দাবনের শ্রীবিগ্রহ', titleHi: 'दिव्य दर्शन — वृन्दावन के श्रीविग्रह', icon: '🛕' },
@@ -16014,7 +16013,21 @@ function renderSt() {
 
   let idx = 0;
   let _favHeadDone = false;
+  // Sub-group headings inside Radha Vallabh (st.grp): Rasik/Bhakt Namavali, and Acharya/Isht/Guru Vandana.
+  const _RV_GRP = {
+    nam: { bn: '\u09b0\u09b8\u09bf\u0995 \u0993 \u09ad\u0995\u09cd\u09a4 \u09a8\u09be\u09ae\u09be\u09ac\u09b2\u09c0', hi: '\u0930\u0938\u093f\u0915 \u090f\u0935\u0902 \u092d\u0915\u094d\u0924 \u0928\u093e\u092e\u093e\u0935\u0932\u0940' },
+    vnd: { bn: '\u0986\u099a\u09be\u09b0\u09cd\u09af \u00b7 \u0987\u09b7\u09cd\u099f \u00b7 \u0997\u09c1\u09b0\u09c1 \u09ac\u09a8\u09cd\u09a6\u09a8\u09be', hi: '\u0906\u091a\u093e\u0930\u094d\u092f \u00b7 \u0907\u0937\u094d\u091f \u00b7 \u0917\u0941\u0930\u0941 \u0935\u0928\u094d\u0926\u0928\u093e' },
+  };
+  let _lastGrp = null;
   group.items.forEach((st) => {
+    if (activeKey === 'rv' && st.grp && st.grp !== _lastGrp && _RV_GRP[st.grp]) {
+      const gh = document.createElement('div');
+      gh.className = 'st-section-head';
+      gh.style.cssText = 'margin:18px 4px 10px;padding:0 0 6px;font-size:13px;font-weight:700;letter-spacing:0;color:var(--gold,#ffd700);border-bottom:1px solid rgba(255,215,0,0.25)';
+      gh.textContent = (secLang('sv') === 'hi') ? _RV_GRP[st.grp].hi : _RV_GRP[st.grp].bn;
+      list.appendChild(gh);
+    }
+    _lastGrp = st.grp || null;
     if (activeKey === 'rv' && st.fav && !_favHeadDone) {
       _favHeadDone = true;
       const fh = document.createElement('div');
@@ -18601,7 +18614,7 @@ window.devExitGhostMode = async function () {
 
 // ── Bangla-script (transcribed) text for the Radha Vallabh additions is generated from the Hindi text on first use,
 // instead of being stored a second time in stotrams.js (keeps the file small). Same letter-by-letter mapping everywhere.
-const _BN_FROM_HI_IDS = ["bgv", "gpg", "ist", "isv", "gvn", "acv", "kjk", "vnm", "rkn", "ipr", "ptr", "dhi", "svi", "vyh", "jhp", "jbp", "ljb", "sjb", "ljp", "sjp", "ljc", "sjc", "ljd", "sjd", "asd", "pdv", "pkp", "bkt", "rmm"];
+const _BN_FROM_HI_IDS = ["bgv", "gpg", "ist", "isv", "gvn", "svk", "acv", "kjk", "vnm", "rkn", "ipr", "ptr", "dhi", "svi", "vyh", "jhp", "jbp", "ljb", "sjb", "ljp", "sjp", "ljc", "sjc", "ljd", "sjd", "asd", "pdv", "pkp", "bkt", "rmm"];
 function _devToBn(t) {
   t = t.replace(/^व्याख्या:/gm, "অর্থ২:");
   const NUK = { 0x958: "\u0915\u093C", 0x959: "\u0916\u093C", 0x95A: "\u0917\u093C", 0x95B: "\u091C\u093C", 0x95C: "\u0921\u093C", 0x95D: "\u0922\u093C", 0x95E: "\u092B\u093C", 0x95F: "\u092F\u093C" };
@@ -21811,7 +21824,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "gpa", "nka", "mdh", "mmb", "hvp", "ist", "isv", "gvn", "acv", "kjk", "vnm", "rkn", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "gpa", "nka", "mdh", "mmb", "hvp", "ist", "isv", "gvn", "svk", "acv", "kjk", "vnm", "rkn", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
   // Sevak Vani / Bayalis Leela: an opened section is shown as ONE flat page (set by StotramSections.open).
   const _isFlatSection = window._stFlatSection === id;
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id) || _isFlatSection; // user-added (and repo flat/audio) stotrams + flat sections: one flat page
@@ -22027,6 +22040,16 @@ function _renderHlVerse(idx) {
 // pad (verse page) of the stotram; tapping one jumps straight to it.
 // Enabled per stotram id — add an id here (e.g. 'kel') to give it the same picker.
 const PADPICK_IDS = ['hcj', 'rsn', 'svb', 'kel', 'blv', 'sfv'];
+// ☰ is now offered on EVERY stotram that shows more than one pad (single-page ones never show it: see the _verses.length check).
+// Excluded: the Gita (has its own chapter navigation) and user-added stotrams.
+const PADPICK_EXCLUDE = ['bg', 'ved4', 'asp'];
+function _ppEnabled(id) {
+  if (!id) return false;
+  if (PADPICK_IDS.indexOf(id) !== -1) return true;
+  if (PADPICK_EXCLUDE.indexOf(id) !== -1) return false;
+  if (typeof _isCustomStId === 'function' && _isCustomStId(id)) return false;
+  return true;
+}
 // blv (Bayalis Leela) stays ONE flat page per leela: its ☰ list scrolls to the tapped verse instead of changing page.
 const _PP_MEANING_RE = /^(?:অর্থ২?|শব্দার্থ|अर्थ|व्याख्या|शब्दार्थ|अनुवाद|অনুবাদ)\s*:/;
 // raag / tune-name lines such as "(রাগ বিভাস)", "(सारंग)" — skipped when picking the label line
@@ -22091,7 +22114,7 @@ function _ppClose() {
   if (ov) { ov.style.display = 'none'; void ov.offsetHeight; ov.remove(); }
 }
 function _ppOpen() {
-  if (PADPICK_IDS.indexOf(_currentStotramId) === -1 || !_verses) return;
+  if (!_ppEnabled(_currentStotramId) || !_verses) return;
   const _ppFlat = _currentStotramId === 'blv';
   // Flat page: build the list from the verse blocks of the one page, remembering each block's first line.
   let _ppItems;
@@ -22159,7 +22182,7 @@ function _ppOpen() {
 function _ppSyncBtn() {
   let old = document.getElementById('pp-open-btn');
   if (old) old.remove();
-  if (PADPICK_IDS.indexOf(_currentStotramId) === -1 || !_verses || (_verses.length < 2 && _currentStotramId !== 'blv')) return;
+  if (!_ppEnabled(_currentStotramId) || !_verses || (_verses.length < 2 && _currentStotramId !== 'blv')) return;
   // Sectioned stotrams show the ☰ list only inside an opened section (Sevak Vani pads / Bayalis Leela verses), not on the section picker.
   if (window.StotramSections && window.StotramSections.isSectioned(_currentStotramId) &&
       !((_currentStotramId === 'svb' || _currentStotramId === 'blv') && window.StotramSections.inSectionView())) return;

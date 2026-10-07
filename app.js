@@ -9845,7 +9845,8 @@ function _lcRefreshOpenLyrics() {
 // Hindi श्री हित चौरासी is kept in a small companion text file so the
 // existing Bangla stotram bundle does not become unnecessarily larger.
 // The source contains one blank-line-separated block per पद (all 84).
-let _hcjHindiLyrics = "";
+// Hindi text is bundled in stotrams.js (LYRICS_HI.hcj, 84 pads), so no separate .txt file is fetched any more.
+let _hcjHindiLyrics = (typeof LYRICS_HI !== "undefined" && LYRICS_HI.hcj) || "";
 let _hcjHindiLoadPromise = null;
 const HCJ_HINDI_DATA_URLS = [
   "./Hit_Caturashi_Ji_clean_lyrics.txt",
@@ -21991,7 +21992,8 @@ function _renderHlVerse(idx) {
 // "পদ নির্বাচন / पद चुनें": a ☰ button at the bottom-left of the reader opens a list of every
 // pad (verse page) of the stotram; tapping one jumps straight to it.
 // Enabled per stotram id — add an id here (e.g. 'kel') to give it the same picker.
-const PADPICK_IDS = ['hcj', 'rsn', 'svb'];
+const PADPICK_IDS = ['hcj', 'rsn', 'svb', 'kel', 'blv'];
+// blv (Bayalis Leela) stays ONE flat page per leela: its ☰ list scrolls to the tapped verse instead of changing page.
 const _PP_MEANING_RE = /^(?:অর্থ২?|শব্দার্থ|अर्थ|व्याख्या|शब्दार्थ|अनुवाद|অনুবাদ)\s*:/;
 // raag / tune-name lines such as "(রাগ বিভাস)", "(सारंग)" — skipped when picking the label line
 const _PP_RAAG_RE = /^\(?\s*(?:রাগ|राग)[^)]*\)?\s*$|^\([^)]{1,30}\)$/;
@@ -22012,8 +22014,13 @@ function _ppLabel(id, verse, idx) {
   // Radha Sudha Nidhi: "শ্লোক 12:" / "श्लोक 12" header line → number, text starts on the next line
   const hm = lines[0] && lines[0].match(/^(?:শ্লোক|श्लोक)\s*([0-9০-৯०-९]+)\s*:?\s*$/);
   if (hm) { num = hm[1]; startAt = 1; }
+  // Kelimal: "পদ ১" / "पद १" heading line → number, text starts on the next line (the राग line is skipped below)
+  if (!num) {
+    const pm = lines[0] && lines[0].match(/^(?:পদ|पद)\s*([0-9০-৯०-९]+)\s*$/);
+    if (pm) { num = pm[1]; startAt = 1; }
+  }
   // Hit Chaurasi: pad number sits at the end as ॥12॥ / ।।১২।।  (take the last one in the verse)
-  if (!num && (id === 'hcj' || id === 'svb')) {
+  if (!num && (id === 'hcj' || id === 'svb' || id === 'blv')) {
     const all = String(verse || '').match(/[॥।|]{1,2}\s*[0-9০-৯०-९]+\s*[॥।|]{1,2}/g);
     if (all) num = all[all.length - 1].replace(/[^0-9০-৯०-९]/g, '');
   }
@@ -22023,18 +22030,50 @@ function _ppLabel(id, verse, idx) {
   for (let i = startAt; i < lines.length; i++) {
     const l = lines[i];
     if (_PP_MEANING_RE.test(l) || _PP_RAAG_RE.test(l) || /^[\s💛💙🌸❧]+$/.test(l)) continue;
+    // Bayalis Leela: skip the metre heading (চৌপাঈ / দোহা / सोरठा …) that opens some verses
+    if (id === 'blv' && l.length <= 10 && !/[॥।|]/.test(l) && i < lines.length - 1) continue;
     text = l; break;
   }
   text = text.replace(/^[॥।|\s]+/, '').replace(/\s*[॥।|]{1,2}\s*[0-9০-৯०-९]*\s*[॥।|]{0,2}\s*$/, '');
   if (text.length > 34) text = text.slice(0, 33).replace(/[\s,;।॥|]+$/, '') + '…';
   return { num: num ? _ppDigits(num, hi) : '', text: text || '…' };
 }
+// Flat page (Bayalis Leela): scroll the reader so the verse starting at rendered line `lineIdx` is at the top.
+function _ppScrollToLine(lineIdx) {
+  const body = document.getElementById('lyrBody');
+  const inner = document.querySelector('.lm-card-inner');
+  if (!body || !inner) return;
+  const els = Array.prototype.filter.call(body.children, function (c) {
+    return c.classList && (c.classList.contains('lyr-line') || c.classList.contains('lyr-line-empty'));
+  });
+  const el = els[lineIdx];
+  if (!el) return;
+  const top = Math.max(0, inner.scrollTop + el.getBoundingClientRect().top - inner.getBoundingClientRect().top - 12);
+  try { inner.scrollTo({ top: top, behavior: 'smooth' }); } catch (_e) { inner.scrollTop = top; }
+}
 function _ppClose() {
   const ov = document.getElementById('pp-overlay');
   if (ov) { ov.style.display = 'none'; void ov.offsetHeight; ov.remove(); }
 }
 function _ppOpen() {
-  if (PADPICK_IDS.indexOf(_currentStotramId) === -1 || !_verses || _verses.length < 2) return;
+  if (PADPICK_IDS.indexOf(_currentStotramId) === -1 || !_verses) return;
+  const _ppFlat = _currentStotramId === 'blv';
+  // Flat page: build the list from the verse blocks of the one page, remembering each block's first line.
+  let _ppItems;
+  if (_ppFlat) {
+    _ppItems = [];
+    let cur = null;
+    String(_verses[0] || '').split('\n').forEach(function (l, li) {
+      if (l.trim() === '') { cur = null; return; }
+      if (!cur) { cur = { lines: [], lineIdx: li }; _ppItems.push(cur); }
+      cur.lines.push(l);
+    });
+    _ppItems = _ppItems.map(function (c) { return { v: c.lines.join('\n'), lineIdx: c.lineIdx }; });
+    if (_ppItems.length < 2) return;
+  } else {
+    if (_verses.length < 2) return;
+    _ppItems = _verses.map(function (v) { return { v: v, lineIdx: -1 }; });
+  }
   _ppClose();
   const hi = _ppIsHi();
   const lmo = document.getElementById('lmo');
@@ -22057,13 +22096,15 @@ function _ppOpen() {
   const list = document.createElement('div');
   list.className = 'pp-list';
   let curBtn = null;
-  _verses.forEach(function (v, i) {
+  _ppItems.forEach(function (it, i) {
+    const v = it.v;
     const lb = _ppLabel(_currentStotramId, v, i);
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'pp-item' + (i === _verseIdx ? ' pp-cur' : '');
+    b.className = 'pp-item' + (!_ppFlat && i === _verseIdx ? ' pp-cur' : '');
     b.textContent = (lb.num ? lb.num + '. ' : '') + lb.text;
     b.onclick = function () {
+      if (_ppFlat) { _ppClose(); _ppScrollToLine(it.lineIdx); return; }
       const old = _verseIdx;
       _ppClose();
       if (i === old) return;
@@ -22071,7 +22112,7 @@ function _ppOpen() {
       _verseNavLocked = false;
       _renderVerse(i, i > old ? 1 : -1);
     };
-    if (i === _verseIdx) curBtn = b;
+    if (!_ppFlat && i === _verseIdx) curBtn = b;
     list.appendChild(b);
   });
   sheet.appendChild(head); sheet.appendChild(list);
@@ -22083,10 +22124,10 @@ function _ppOpen() {
 function _ppSyncBtn() {
   let old = document.getElementById('pp-open-btn');
   if (old) old.remove();
-  if (PADPICK_IDS.indexOf(_currentStotramId) === -1 || !_verses || _verses.length < 2) return;
-  // Sectioned stotrams show the ☰ pad list only inside an opened section (Sevak Vani pads), not on the section picker.
+  if (PADPICK_IDS.indexOf(_currentStotramId) === -1 || !_verses || (_verses.length < 2 && _currentStotramId !== 'blv')) return;
+  // Sectioned stotrams show the ☰ list only inside an opened section (Sevak Vani pads / Bayalis Leela verses), not on the section picker.
   if (window.StotramSections && window.StotramSections.isSectioned(_currentStotramId) &&
-      !(_currentStotramId === 'svb' && window.StotramSections.inSectionView())) return;
+      !((_currentStotramId === 'svb' || _currentStotramId === 'blv') && window.StotramSections.inSectionView())) return;
   const hi = _ppIsHi();
   const b = document.createElement('button');
   b.id = 'pp-open-btn'; b.type = 'button';

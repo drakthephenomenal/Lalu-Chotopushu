@@ -18611,6 +18611,36 @@ function _devToBn(t) {
   return out;
 }
 
+// ── Radha Sudha Nidhi, Bengali reader: the bundled Bengali text only has shlokas 1–41. To give it all
+// 271 pads (0 = vandana, 1…270 = shlokas, same as Hindi) the missing shlokas come from the Hindi source
+// (Radha_Sudha_Nidhi_Hindi.txt) written in Bengali script with the same letter-by-letter mapping (_devToBn)
+// used for the other Radha Vallabh stotrams. Shlokas 1–41 keep their existing Bengali text and meanings.
+let _rsnBnFullCache = "", _rsnSkipLoadOnce = false;
+function _rsnBnFull() {
+  if (_rsnBnFullCache) return _rsnBnFullCache;
+  if (!_rsnHindiLyrics || !LYRICS.rsn) return "";
+  const split = (t) => t.replace(/\r/g, "").split(/\n{2,}/).map((x) => x.trim()).filter(Boolean);
+  const bn = split(LYRICS.rsn), hi = split(_rsnHindiLyrics);
+  const num = (b) => { const m = b.match(/^(?:শ্লোক|श्लोक)\s*([0-9০-৯०-९]+)/); return m ? parseInt(_ppDigits(m[1], true), 10) : 0; };
+  const bnShl = {}, hiShl = {};
+  let intro = "", colophon = "";
+  bn.forEach((b, i) => {
+    const n = num(b);
+    if (n) bnShl[n] = b;
+    else if (i > 0 && !intro) intro = b;
+    else if (i > 1) colophon = b;
+  });
+  hi.forEach((b) => { const n = num(b); if (n) hiShl[n] = b; });
+  const out = [intro || _devToBn(hi[0] || "")];
+  for (let k = 1; k <= 270; k++) {
+    const b = bnShl[k] || (hiShl[k] ? _devToBn(hiShl[k]) : "");
+    if (!b) return "";                       // incomplete source → don't use the merged text
+    out.push(b);
+  }
+  if (colophon) out[out.length - 1] += "\n" + colophon;   // closing lines stay with the last pad
+  return (_rsnBnFullCache = out.join("\n\n"));
+}
+
 function getEffectiveLyrics(id) {
   if (!LYRICS[id] && _BN_FROM_HI_IDS.indexOf(id) !== -1 && typeof LYRICS_HI !== "undefined" && LYRICS_HI[id]) {
     LYRICS[id] = _devToBn(LYRICS_HI[id]);
@@ -18623,6 +18653,10 @@ function getEffectiveLyrics(id) {
   }
   if (id === "rsn" && secLang('sv') === "hi" && _rsnHindiLyrics) {
     return _rsnHindiLyrics;
+  }
+  if (id === "rsn" && secLang('sv') !== "hi" && _rsnHindiLyrics) {
+    const full = _rsnBnFull();
+    if (full) return full;
   }
   return (
     LYRICS[id] ||
@@ -21630,6 +21664,16 @@ function showLyrics(id) {
       .catch(() => toast("हिंदी राधा सुधा निधि पाठ लोड नहीं हो पाया 🙏"));
     return;
   }
+  // Bengali reader also needs the full 271-pad source (the bundled Bengali has only 41 shlokas).
+  // If it can't be loaded, fall back to the bundled 41-shloka text instead of showing nothing.
+  if (id === "rsn" && secLang('sv') !== "hi" && !_rsnHindiLyrics && !_rsnSkipLoadOnce) {
+    toast("রাধা সুধা নিধি লোড হচ্ছে… 🙏");
+    loadRsnHindiLyrics()
+      .then(() => showLyrics(id))
+      .catch(() => { _rsnSkipLoadOnce = true; toast("সম্পূর্ণ পাঠ লোড করা যায়নি — ৪১টি শ্লোক দেখানো হচ্ছে 🙏"); showLyrics(id); });
+    return;
+  }
+  _rsnSkipLoadOnce = false;
   // The Gita is kept out of the initial bundle. Load and validate all
   // 700 Bengali shlokas the first time the reader is opened.
   if (id === "bg" && window.isGitaReady && !window.isGitaReady()) {
@@ -21976,7 +22020,8 @@ function _ppLabel(id, verse, idx) {
     const all = String(verse || '').match(/[॥।|]{1,2}\s*[0-9০-৯०-९]+\s*[॥।|]{1,2}/g);
     if (all) num = all[all.length - 1].replace(/[^0-9০-৯०-९]/g, '');
   }
-  if (!num && id !== 'rsn') num = String(idx + 1);
+  if (id === 'rsn') num = String(idx);            // Radha Sudha Nidhi: pad 0 (vandana), 1 … 270
+  else if (!num) num = String(idx + 1);
   let text = '';
   for (let i = startAt; i < lines.length; i++) {
     const l = lines[i];

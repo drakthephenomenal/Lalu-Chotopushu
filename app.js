@@ -22125,7 +22125,17 @@ function _ppOpen() {
   if (_ppFlat) {
     _ppItems = [];
     let cur = null;
-    String(_verses[0] || '').split('\n').forEach(function (l, li) {
+    // Rendered-line index: অর্থ: / অর্থ২: meaning lines are only drawn when the translation is ON, so they must not shift the scroll target.
+    let _ri = 0;
+    const _drawn = function (t) {
+      t = t.trim();
+      if (/^\u0985\u09b0\u09cd\u09a5\u09e8\s*:/.test(t)) return !!_translationVisible && _translationLang === 'hi';
+      if (/^\u0985\u09b0\u09cd\u09a5\s*:/.test(t)) return !!_translationVisible && _translationLang === 'bn';
+      return true;
+    };
+    String(_verses[0] || '').split('\n').forEach(function (l) {
+      const li = _ri;
+      if (_drawn(l)) _ri++;
       if (l.trim() === '') { cur = null; return; }
       if (!cur) { cur = { lines: [], lineIdx: li }; _ppItems.push(cur); }
       cur.lines.push(l);

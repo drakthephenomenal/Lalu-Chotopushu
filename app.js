@@ -22043,6 +22043,8 @@ const PADPICK_IDS = ['hcj', 'rsn', 'svb', 'kel', 'blv', 'sfv'];
 // ☰ is now offered on EVERY stotram that shows more than one pad (single-page ones never show it: see the _verses.length check).
 // Excluded: the Gita (has its own chapter navigation) and user-added stotrams.
 const PADPICK_EXCLUDE = ['bg', 'ved4', 'asp'];
+// Long runs of numbered pads (Prem ki Peer): shown as a compact number grid instead of a long list.
+const PADPICK_GRID_IDS = ['pkp'];
 function _ppEnabled(id) {
   if (!id) return false;
   if (PADPICK_IDS.indexOf(id) !== -1) return true;
@@ -22081,6 +22083,8 @@ function _ppLabel(id, verse, idx) {
     const all = String(verse || '').match(/[॥।|]{1,2}\s*[0-9০-৯०-९]+\s*[॥।|]{1,2}/g);
     if (all) num = all[all.length - 1].replace(/[^0-9০-৯०-९]/g, '');
   }
+  // Pads whose first line is just their own number ("5." / "\u0969.", e.g. Prem ki Peer): use it as the number, don't repeat it as the label text
+  if (!num && lines[0] && /^[0-9\u09e6-\u09ef\u0966-\u096f]+\s*\.?$/.test(lines[0])) { num = lines[0].replace(/[^0-9\u09e6-\u09ef\u0966-\u096f]/g, ''); startAt = 1; }
   if (id === 'rsn') num = String(idx);            // Radha Sudha Nidhi: pad 0 (vandana), 1 … 270
   else if (id === 'sfv') num = idx < 23 ? String(idx + 1) : (hi ? 'दोहा ' : 'দোহা ') + (idx - 22);   // Sfut Vani: 23 pads, then 4 dohas
   else if (!num) num = String(idx + 1);
@@ -22153,6 +22157,8 @@ function _ppOpen() {
   head.appendChild(title); head.appendChild(x);
   const list = document.createElement('div');
   list.className = 'pp-list';
+  const _ppGrid = PADPICK_GRID_IDS.indexOf(_currentStotramId) !== -1 && !_ppFlat;
+  if (_ppGrid) { list.style.display = 'grid'; list.style.gridTemplateColumns = 'repeat(auto-fill, minmax(52px, 1fr))'; list.style.gap = '8px'; }
   let curBtn = null;
   _ppItems.forEach(function (it, i) {
     const v = it.v;
@@ -22160,7 +22166,14 @@ function _ppOpen() {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'pp-item' + (!_ppFlat && i === _verseIdx ? ' pp-cur' : '');
-    b.textContent = (lb.num ? lb.num + '. ' : '') + lb.text;
+    if (_ppGrid) {
+      // grid: just the pad number; the opening vandana page (no number of its own) gets 🙏
+      const _hasOwnNum = /^[0-9\u09e6-\u09ef\u0966-\u096f]+\s*\.?$/.test(String(v).split('\n')[0].trim());
+      b.textContent = _hasOwnNum ? lb.num + '.' : '\U0001f64f';
+      b.style.cssText = 'width:auto;min-width:0;padding:10px 0;margin:0;text-align:center;';
+    } else {
+      b.textContent = (lb.num ? lb.num + '. ' : '') + lb.text;
+    }
     b.onclick = function () {
       if (_ppFlat) { _ppClose(); _ppScrollToLine(it.lineIdx); return; }
       const old = _verseIdx;

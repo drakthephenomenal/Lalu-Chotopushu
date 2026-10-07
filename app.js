@@ -15794,6 +15794,7 @@ function renderFavVideoLinksFolderView(list, folderId, subfolderKey) {
 
 function renderSt() {
   const list = document.getElementById("stList");
+  try { if (window.prefetchGita) window.prefetchGita(); } catch (_e) {}   // Gita text is downloaded on demand: start it as soon as S&V is shown
   // Pick up stotrams newly added to the repo (throttled; redraws only if changed).
   if (!window._liveStCacheLoaded) { window._liveStCacheLoaded = true; _liveStLoadCache(); }
   liveStRefresh(false);
@@ -21679,11 +21680,13 @@ function showLyrics(id) {
   // The Gita is kept out of the initial bundle. Load and validate all
   // 700 Bengali shlokas the first time the reader is opened.
   if (id === "bg" && window.isGitaReady && !window.isGitaReady()) {
+    if (window._gitaOpening) return;   // already loading: extra taps must not stack extra opens
     toast("গীতার ৭০০ শ্লোক লোড হচ্ছে… 🙏");
     if (window.loadGitaLyrics) {
+      window._gitaOpening = true;
       window.loadGitaLyrics()
-        .then(() => showLyrics(id))
-        .catch(() => toast("গীতার পাঠ লোড করা যায়নি। আবার চেষ্টা করুন 🙏"));
+        .then(() => { window._gitaOpening = false; showLyrics(id); })
+        .catch(() => { window._gitaOpening = false; toast("গীতার পাঠ লোড করা যায়নি। আবার চেষ্টা করুন 🙏"); });
     }
     return;
   }

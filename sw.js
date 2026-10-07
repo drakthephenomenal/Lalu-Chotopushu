@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker  v236
+// v320: Bhagavad Gita (700 shlokas) is now pre-loaded in the background once S&V is shown / app is online, so the first tap on Open opens it immediately (before, the first tap only started a download and it opened on the 2nd tap); repeated taps while loading no longer stack.
 // v319: Kelimal gets the ☰ pad list (bottom-left) to jump to any pad; Bayalis Leela gets a ☰ verse list inside each leela (scrolls to the chosen verse), like Sevak Vani.
 // v318: Hindi Hit Chaurasi text now bundled in stotrams.js (LYRICS_HI.hcj) — Hit_Caturashi_Ji_clean_lyrics.txt no longer needed; Hindi opens instantly.
 // v317: Hindi Radha Sudha Nidhi text now bundled in stotrams.js (LYRICS_HI.rsn) — Radha_Sudha_Nidhi_Hindi.txt is no longer needed and Hindi opens instantly.
@@ -395,7 +396,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v319';
+const CACHE = 'radha-jap-v320';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

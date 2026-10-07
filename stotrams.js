@@ -61518,6 +61518,20 @@ function loadGitaLyrics() {
 window.loadGitaLyrics = loadGitaLyrics;
 window.isGitaReady = function () { return _gitaReady; };
 
+// Quietly download the 700 shlokas in the background (once, throttled) so the
+// first tap on the Gita opens instantly instead of waiting on a download.
+var _gitaPrefetchAt = 0;
+window.prefetchGita = function () {
+  if (_gitaReady || _gitaLoadPromise) return;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+  if (Date.now() - _gitaPrefetchAt < 30000) return;
+  _gitaPrefetchAt = Date.now();
+  try { loadGitaLyrics().catch(function () {}); } catch (_) {}
+};
+// Start shortly after launch, and again whenever the connection comes back.
+setTimeout(function () { window.prefetchGita(); }, 3000);
+window.addEventListener('online', function () { window.prefetchGita(); });
+
 // ═══════════════════════════════════════════════════════
 // SECTIONED-STOTRAM PICKER (svb, blv, …)
 // All UI/logic for stotrams that have numbered sub-sections

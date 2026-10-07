@@ -15858,16 +15858,23 @@ function renderSt() {
     document.head.appendChild(styleEl);
   }
 
+  // S&V stotram folders, in display order. Sampraday folders sit just below Radha Vallabh;
+  // Krishna / Gita / Shiv follow as before. To re-sort, just re-order the lines below.
   const FOLDERS = [
     { key: 'videos',  title: 'Favourite Videos', titleHi: 'पसंदीदा वीडियो', icon: '🎬' },
     { key: 'rv',      title: 'রাধা বল্লভ সম্প্রদায়', titleHi: 'राधावल्लभ सम्प्रदाय', icon: '🪷', img: ST_FOLDER_ICON_IMG.rv },
-    { key: 'jayadeva', title: 'গীতগোবিন্দ ও জয়দেবের অন্যান্য রচনা', titleHi: 'गीतगोविन्द एवं जयदेव की अन्य रचनाएँ', icon: '🎶', img: JAYADEVA_ICON_IMG, imgRound: true },
+    { key: 'hd',      title: 'হরিদাসী সম্প্রদায়', titleHi: 'हरिदासी सम्प्रदाय', icon: '🪕', img: 'sampraday/tilaks/haridashi.png' },
     { key: 'najrul', title: 'Kazi Najrul Islam is a real modern-day Saint Poet', titleHi: 'Kazi Najrul Islam is a real modern-day Saint Poet', icon: '🌙', img: NAJRUL_ICON_IMG, imgRound: true },
+    { key: 'fav',     title: 'প্রিয় স্তোত্র ও পদসমূহ', titleHi: 'प्रिय स्तोत्र एवं पदसमूह', icon: '⭐' },
+    { key: 'nb',      title: 'নিম্বার্ক (কুমার / হংস) সম্প্রদায়', titleHi: 'निम्बार्क (कुमार / हंस) सम्प्रदाय', icon: '🎶', img: 'sampraday/tilaks/nimbark.png' },
+    { key: 'vl',      title: 'বল্লভ / রুদ্র সম্প্রদায় (পুষ্টিমার্গ)', titleHi: 'वल्लभ / रुद्र सम्प्रदाय (पुष्टिमार्ग)', icon: '🪈', img: 'sampraday/tilaks/vallabh.png' },
+    { key: 'rm',      title: 'শ্রী সম্প্রদায় (রামানন্দী পরম্পরা)', titleHi: 'श्री सम्प्रदाय (रामानन्दी परम्परा)', icon: '🚩', img: 'sampraday/tilaks/sri.png' },
+    { key: 'ru',      title: 'শ্রী সম্প্রদায় (রামানুজ পরম্পরা)', titleHi: 'श्री सम्प्रदाय (रामानुज परम्परा)', icon: '🪷', img: 'sampraday/tilaks/sri.png' },
     { key: 'bmg',     title: 'ব্রাহ্ম মাধ্ব গৌড়ীয় সম্প্রদায়', titleHi: 'ब्रह्म माध्व गौड़ीय सम्प्रदाय', icon: '🕉️', img: ST_FOLDER_ICON_IMG.bmg },
+    { key: 'sk',      title: 'শঙ্করাচার্য (অদ্বৈত / স্মার্ত) পরম্পরা', titleHi: 'शंकराचार्य (अद्वैत / स्मार्त) परम्परा', icon: '🕉️' },
     { key: 'krishna', title: 'শ্রীকৃষ্ণ', titleHi: 'श्रीकृष्ण', icon: '🦚' },
     { key: 'gita',    title: 'শ্রীমদ্ভগবদ্গীতা', titleHi: 'श्रीमद्भगवद्गीता', icon: '📖' },
     { key: 'shiv',    title: 'ভগবান শিব', titleHi: 'भगवान शिव', icon: '🔱', img: ST_FOLDER_ICON_IMG.shiv },
-    { key: 'hanuman', title: 'হনুমান জী মহারাজ', titleHi: 'हनुमान जी महाराज', icon: '🚩' },
     { key: 'rjbj', title: 'রসিক, বৈষ্ণব ও অন্যান্য ভক্ত এবং সন্তজন দর্শন ও পরিচিতি', titleHi: 'रसिक, वैष्णव एवं अन्य भक्त तथा संतजन दर्शन एवं परिचय', icon: '🙏' },
     { key: 'dd', title: 'দিব্য দর্শন — বৃন্দাবনের শ্রীবিগ্রহ', titleHi: 'दिव्य दर्शन — वृन्दावन के श्रीविग्रह', icon: '🛕' },
   ];
@@ -15879,7 +15886,7 @@ function renderSt() {
   const customItems = (App.S.customSt || []).map((x) => ({ ...x, custom: true }));
   const groups = FOLDERS.map((f) => ({
     ...f,
-    items: STLIST.filter((s) => s.cat === f.key && !s.parent),
+    items: _stFolderItems(f.key),
   }));
   if (customItems.length) {
     groups.push({ key: '__custom', title: 'আমার স্তোত্র', titleHi: 'मेरे स्तोत्र', icon: '📝', items: customItems });
@@ -15912,7 +15919,7 @@ function renderSt() {
       tile.innerHTML =
         iconHtml +
         '<span class="st-folder-tile-title">' + escHtml(folderTitle(group)) + '</span>' +
-        (group.key === 'videos' || group.key === 'rjbj' || group.key === 'dd' ? '' : '<span class="st-folder-tile-count">' + group.items.length + '</span>') +
+        (group.key === 'videos' || group.key === 'rjbj' || group.key === 'dd' || !group.items.length ? '' : '<span class="st-folder-tile-count">' + group.items.length + '</span>') +
         '<span class="st-folder-tile-arrow">›</span>';
       tile.addEventListener('click', () => {
         window._stActiveFolder = group.key;
@@ -18835,6 +18842,30 @@ document.addEventListener('visibilitychange', function () {
   if (document.visibilityState === 'hidden') _ptFlush();
 });
 // ═══ /PAD-TRACE ═════════════════════════════════════════════════════════
+
+// ── S&V FOLDER MAP ─────────────────────────────────────────────────────────
+// Stotrams keep their original `cat` in stotrams.js; these tables decide which S&V folder shows them.
+//   ST_CAT_MAP : a whole old folder now lives inside a sampraday folder (Jayadeva → Nimbark, Hanuman → Ramanandi)
+//   ST_ID_MOVE : single stotrams shifted to another folder
+//   ST_ALSO    : stotrams that stay where they are AND are also listed (copy) in another folder
+// The "Favourite / Priyo Stotra & Padsamuh" group (fav:true, formerly inside Radha Vallabh) is its own folder 'fav'.
+const ST_CAT_MAP = { jayadeva: 'nb', hanuman: 'rm' };
+const ST_ID_MOVE = { kel: 'hd', mdh: 'vl', nka: 'vl' };
+const ST_ALSO = {
+  hd: ['hsr', 'jdh', 'bbv'],                       // Haridasi-parampara poets from the Priyo Stotra & Padsamuh list
+  sk: ['ach', 'bvk', 'gpa', 'bgv', 'nsh'],         // Adi Shankaracharya writings (shown here for playing, not moved)
+};
+function _stEffCat(st) {
+  if (ST_ID_MOVE[st.id]) return ST_ID_MOVE[st.id];
+  if (st.cat === 'rv' && st.fav) return 'fav';
+  return ST_CAT_MAP[st.cat] || st.cat;
+}
+function _stFolderItems(key) {
+  const own = STLIST.filter((s) => !s.parent && _stEffCat(s) === key);
+  const ownIds = {}; own.forEach((s) => { ownIds[s.id] = 1; });
+  const also = (ST_ALSO[key] || []).map((id) => STLIST.find((s) => s.id === id)).filter((s) => s && !ownIds[s.id]);
+  return own.concat(also);
+}
 
 // ═══ PRIYO-LABEL v1 ═══ title of the fav:true group in the Radha Vallabh list
 function _favPadLabel() {
@@ -21995,7 +22026,7 @@ function _renderHlVerse(idx) {
 // "পদ নির্বাচন / पद चुनें": a ☰ button at the bottom-left of the reader opens a list of every
 // pad (verse page) of the stotram; tapping one jumps straight to it.
 // Enabled per stotram id — add an id here (e.g. 'kel') to give it the same picker.
-const PADPICK_IDS = ['hcj', 'rsn', 'svb', 'kel', 'blv'];
+const PADPICK_IDS = ['hcj', 'rsn', 'svb', 'kel', 'blv', 'sfv'];
 // blv (Bayalis Leela) stays ONE flat page per leela: its ☰ list scrolls to the tapped verse instead of changing page.
 const _PP_MEANING_RE = /^(?:অর্থ২?|শব্দার্থ|अर्थ|व्याख्या|शब्दार्थ|अनुवाद|অনুবাদ)\s*:/;
 // raag / tune-name lines such as "(রাগ বিভাস)", "(सारंग)" — skipped when picking the label line
@@ -22028,6 +22059,7 @@ function _ppLabel(id, verse, idx) {
     if (all) num = all[all.length - 1].replace(/[^0-9০-৯०-९]/g, '');
   }
   if (id === 'rsn') num = String(idx);            // Radha Sudha Nidhi: pad 0 (vandana), 1 … 270
+  else if (id === 'sfv') num = idx < 23 ? String(idx + 1) : (hi ? 'दोहा ' : 'দোহা ') + (idx - 22);   // Sfut Vani: 23 pads, then 4 dohas
   else if (!num) num = String(idx + 1);
   let text = '';
   for (let i = startAt; i < lines.length; i++) {
@@ -22035,7 +22067,7 @@ function _ppLabel(id, verse, idx) {
     if (_PP_MEANING_RE.test(l) || _PP_RAAG_RE.test(l) || /^[\s💛💙🌸❧]+$/.test(l)) continue;
     // Bayalis Leela: skip the metre heading (চৌপাঈ / দোহা / सोरठा …) that opens some verses
     if (id === 'blv' && l.length <= 10 && !/[॥।|]/.test(l) && i < lines.length - 1) continue;
-    text = l; break;
+    text = l.replace(/^⟦RED⟧\s*/, ''); break;
   }
   text = text.replace(/^[॥।|\s]+/, '').replace(/\s*[॥।|]{1,2}\s*[0-9০-৯०-९]*\s*[॥।|]{0,2}\s*$/, '');
   if (text.length > 34) text = text.slice(0, 33).replace(/[\s,;।॥|]+$/, '') + '…';
@@ -23363,7 +23395,7 @@ var _hcjWarm = {};
 function _hcjWarmForFolder(folderKey) {
   var wl = [];
   if (folderKey) STLIST.forEach(function (st) {
-    if (st.cat !== folderKey || st.parent) return;
+    if (_stEffCat(st) !== folderKey || st.parent) return;
     var c = _AUDIO_STOTRAMS[st.id];
     if (c && c.timed && c.yt) wl.push({ key: st.id, vid: c.yt, start: +c.marks[0] || 0 });
   });

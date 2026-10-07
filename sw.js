@@ -1,5 +1,7 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker  v236
+// v322: S&V re-organised by sampraday — new folders: Haridasi (Kelimal + Haridasi poets from Priyo Stotra), Priyo Stotra & Padsamuh (own folder, out of Radha Vallabh), Nimbark (all Jayadeva), Vallabh/Rudra (Pushtimarg: Madhurashtakam, Nandakumar Ashtakam), Ramanandi (Hanuman), Ramanuj (coming soon), Shankaracharya (copies for playing); Krishna/Shiv/Gita unchanged.
+// v321: Sfut Vani (sfv) gets the ☰ pad list (bottom-left) to jump to any pad — 23 pads then 4 dohas — like Hit Chaurasi / Sevak Vani.
 // v320: Bhagavad Gita (700 shlokas) is now pre-loaded in the background once S&V is shown / app is online, so the first tap on Open opens it immediately (before, the first tap only started a download and it opened on the 2nd tap); repeated taps while loading no longer stack.
 // v319: Kelimal gets the ☰ pad list (bottom-left) to jump to any pad; Bayalis Leela gets a ☰ verse list inside each leela (scrolls to the chosen verse), like Sevak Vani.
 // v318: Hindi Hit Chaurasi text now bundled in stotrams.js (LYRICS_HI.hcj) — Hit_Caturashi_Ji_clean_lyrics.txt no longer needed; Hindi opens instantly.
@@ -396,7 +398,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v320';
+const CACHE = 'radha-jap-v322';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

@@ -21236,7 +21236,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["bgv", "gpg", "nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel"];
+const TRANSLATION_IDS = ["bgv", "gpg", "nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel", "blv"];
 // Built-in translatable stotrams + live (repo-added) stotrams marked "paged".
 function _hasTranslationSt(id) {
   if (TRANSLATION_IDS.includes(id)) return true;

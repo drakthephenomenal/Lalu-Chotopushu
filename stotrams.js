@@ -58460,7 +58460,9 @@ window.isGitaReady = function () { return _gitaReady; };
   }
 
   // Stotrams whose opened section is shown as ONE flat, scrollable page (no pad-by-pad cards).
-  var FLAT_SECTION = { svb: true, blv: true };
+  // Sevak Vani (svb) is NOT here any more: each pad is its own card (swipe / arrows / ☰ pad list),
+  // with শব্দার্থ + অর্থ behind the Translation toggle — same as Radha Sudha Nidhi / Hit Chaurasi.
+  var FLAT_SECTION = { blv: true };
 
   var _sections = [];          // [{title, content}]
   var _activeId = null;        // current sectioned-stotram id

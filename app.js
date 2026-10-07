@@ -21994,7 +21994,7 @@ function _renderHlVerse(idx) {
 // "পদ নির্বাচন / पद चुनें": a ☰ button at the bottom-left of the reader opens a list of every
 // pad (verse page) of the stotram; tapping one jumps straight to it.
 // Enabled per stotram id — add an id here (e.g. 'kel') to give it the same picker.
-const PADPICK_IDS = ['hcj', 'rsn'];
+const PADPICK_IDS = ['hcj', 'rsn', 'svb'];
 const _PP_MEANING_RE = /^(?:অর্থ২?|শব্দার্থ|अर्थ|व्याख्या|शब्दार्थ|अनुवाद|অনুবাদ)\s*:/;
 // raag / tune-name lines such as "(রাগ বিভাস)", "(सारंग)" — skipped when picking the label line
 const _PP_RAAG_RE = /^\(?\s*(?:রাগ|राग)[^)]*\)?\s*$|^\([^)]{1,30}\)$/;
@@ -22016,7 +22016,7 @@ function _ppLabel(id, verse, idx) {
   const hm = lines[0] && lines[0].match(/^(?:শ্লোক|श्लोक)\s*([0-9০-৯०-९]+)\s*:?\s*$/);
   if (hm) { num = hm[1]; startAt = 1; }
   // Hit Chaurasi: pad number sits at the end as ॥12॥ / ।।১২।।  (take the last one in the verse)
-  if (!num && id === 'hcj') {
+  if (!num && (id === 'hcj' || id === 'svb')) {
     const all = String(verse || '').match(/[॥।|]{1,2}\s*[0-9০-৯०-९]+\s*[॥।|]{1,2}/g);
     if (all) num = all[all.length - 1].replace(/[^0-9০-৯०-९]/g, '');
   }
@@ -22087,7 +22087,9 @@ function _ppSyncBtn() {
   let old = document.getElementById('pp-open-btn');
   if (old) old.remove();
   if (PADPICK_IDS.indexOf(_currentStotramId) === -1 || !_verses || _verses.length < 2) return;
-  if (window.StotramSections && window.StotramSections.isSectioned(_currentStotramId)) return;
+  // Sectioned stotrams show the ☰ pad list only inside an opened section (Sevak Vani pads), not on the section picker.
+  if (window.StotramSections && window.StotramSections.isSectioned(_currentStotramId) &&
+      !(_currentStotramId === 'svb' && window.StotramSections.inSectionView())) return;
   const hi = _ppIsHi();
   const b = document.createElement('button');
   b.id = 'pp-open-btn'; b.type = 'button';

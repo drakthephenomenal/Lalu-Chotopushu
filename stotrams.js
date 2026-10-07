@@ -58459,6 +58459,9 @@ window.isGitaReady = function () { return _gitaReady; };
     return parseInt(out, 10);
   }
 
+  // Stotrams whose opened section is shown as ONE flat, scrollable page (no pad-by-pad cards).
+  var FLAT_SECTION = { svb: true, blv: true };
+
   var _sections = [];          // [{title, content}]
   var _activeId = null;        // current sectioned-stotram id
   var _inSectionView = false;
@@ -59062,6 +59065,8 @@ window.isGitaReady = function () { return _gitaReady; };
     var savedTitle      = SECTIONED[idToOpen];
     var savedGetLyrics  = window.getEffectiveLyrics;
     var sectionLyrics   = merged.join('\n\n');
+    var isFlat          = Object.prototype.hasOwnProperty.call(FLAT_SECTION, idToOpen);
+    if (isFlat) { sectionLyrics = sec.content.trim(); window._stFlatSection = idToOpen; }
 
     delete SECTIONED[idToOpen];
     window.getEffectiveLyrics = function (qid) {
@@ -59075,6 +59080,7 @@ window.isGitaReady = function () { return _gitaReady; };
     } finally {
       window.getEffectiveLyrics = savedGetLyrics;
       SECTIONED[idToOpen] = savedTitle;
+      window._stFlatSection = null;
     }
 
     // Re-apply section title (showLyrics overwrites lmTitle with stotram name)

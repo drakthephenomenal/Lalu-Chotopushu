@@ -21736,7 +21736,9 @@ function showLyrics(id) {
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
   const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "gpa", "nka", "mdh", "mmb", "hvp", "ist", "isv", "gvn", "acv", "kjk", "vnm", "rkn", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
-  const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id); // user-added (and repo flat/audio) stotrams: one flat page
+  // Sevak Vani / Bayalis Leela: an opened section is shown as ONE flat page (set by StotramSections.open).
+  const _isFlatSection = window._stFlatSection === id;
+  const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id) || _isFlatSection; // user-added (and repo flat/audio) stotrams + flat sections: one flat page
 
   // Split by blank lines into verses
   let allVerses = (SINGLE_VIEW_IDS.includes(id) || _isFlatCustom)
@@ -21944,6 +21946,117 @@ function _renderHlVerse(idx) {
   if (typeof window.fitLyrLines === "function") window.fitLyrLines();
 }
 
+// ═══ PAD-PICKER v1 ══════════════════════════════════════════════════════
+// "পদ নির্বাচন / पद चुनें": a ☰ button at the bottom-left of the reader opens a list of every
+// pad (verse page) of the stotram; tapping one jumps straight to it.
+// Enabled per stotram id — add an id here (e.g. 'kel') to give it the same picker.
+const PADPICK_IDS = ['hcj', 'rsn'];
+const _PP_MEANING_RE = /^(?:অর্থ২?|শব্দার্থ|अर्थ|व्याख्या|शब्दार्थ|अनुवाद|অনুবাদ)\s*:/;
+// raag / tune-name lines such as "(রাগ বিভাস)", "(सारंग)" — skipped when picking the label line
+const _PP_RAAG_RE = /^\(?\s*(?:রাগ|राग)[^)]*\)?\s*$|^\([^)]{1,30}\)$/;
+
+function _ppIsHi() { return (typeof secLang === 'function') && secLang('sv') === 'hi'; }
+function _ppDigits(s, hi) {
+  const BN = '০১২৩৪৫৬৭৮৯', DV = '०१२३४५६७८९';
+  return String(s).replace(/[0-9০-৯०-९]/g, function (ch) {
+    let n = BN.indexOf(ch); if (n < 0) n = DV.indexOf(ch); if (n < 0) n = +ch;
+    return hi ? String(n) : BN[n];
+  });
+}
+// Short list label for one pad: { num, text }
+function _ppLabel(id, verse, idx) {
+  const hi = _ppIsHi();
+  const lines = String(verse || '').split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+  let num = '', startAt = 0;
+  // Radha Sudha Nidhi: "শ্লোক 12:" / "श्लोक 12" header line → number, text starts on the next line
+  const hm = lines[0] && lines[0].match(/^(?:শ্লোক|श्लोक)\s*([0-9০-৯०-९]+)\s*:?\s*$/);
+  if (hm) { num = hm[1]; startAt = 1; }
+  // Hit Chaurasi: pad number sits at the end as ॥12॥ / ।।১২।।  (take the last one in the verse)
+  if (!num && id === 'hcj') {
+    const all = String(verse || '').match(/[॥।|]{1,2}\s*[0-9০-৯०-९]+\s*[॥।|]{1,2}/g);
+    if (all) num = all[all.length - 1].replace(/[^0-9০-৯०-९]/g, '');
+  }
+  if (!num && id !== 'rsn') num = String(idx + 1);
+  let text = '';
+  for (let i = startAt; i < lines.length; i++) {
+    const l = lines[i];
+    if (_PP_MEANING_RE.test(l) || _PP_RAAG_RE.test(l) || /^[\s💛💙🌸❧]+$/.test(l)) continue;
+    text = l; break;
+  }
+  text = text.replace(/^[॥।|\s]+/, '').replace(/\s*[॥।|]{1,2}\s*[0-9০-৯०-९]*\s*[॥।|]{0,2}\s*$/, '');
+  if (text.length > 34) text = text.slice(0, 33).replace(/[\s,;।॥|]+$/, '') + '…';
+  return { num: num ? _ppDigits(num, hi) : '', text: text || '…' };
+}
+function _ppClose() {
+  const ov = document.getElementById('pp-overlay');
+  if (ov) { ov.style.display = 'none'; void ov.offsetHeight; ov.remove(); }
+}
+function _ppOpen() {
+  if (PADPICK_IDS.indexOf(_currentStotramId) === -1 || !_verses || _verses.length < 2) return;
+  _ppClose();
+  const hi = _ppIsHi();
+  const lmo = document.getElementById('lmo');
+  if (!lmo) return;
+  const ov = document.createElement('div');
+  ov.id = 'pp-overlay';
+  ov.onclick = function (e) { if (e.target === ov) _ppClose(); };
+  const sheet = document.createElement('div');
+  sheet.className = 'pp-sheet';
+  const head = document.createElement('div');
+  head.className = 'pp-head';
+  const title = document.createElement('div');
+  title.className = 'pp-title';
+  title.textContent = hi ? 'पद चुनें' : 'পদ নির্বাচন করুন';
+  const x = document.createElement('button');
+  x.className = 'pp-close'; x.type = 'button'; x.textContent = '✕';
+  x.setAttribute('aria-label', hi ? 'बंद करें' : 'বন্ধ করুন');
+  x.onclick = _ppClose;
+  head.appendChild(title); head.appendChild(x);
+  const list = document.createElement('div');
+  list.className = 'pp-list';
+  let curBtn = null;
+  _verses.forEach(function (v, i) {
+    const lb = _ppLabel(_currentStotramId, v, i);
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pp-item' + (i === _verseIdx ? ' pp-cur' : '');
+    b.textContent = (lb.num ? lb.num + '. ' : '') + lb.text;
+    b.onclick = function () {
+      const old = _verseIdx;
+      _ppClose();
+      if (i === old) return;
+      _verseIdx = i;
+      _verseNavLocked = false;
+      _renderVerse(i, i > old ? 1 : -1);
+    };
+    if (i === _verseIdx) curBtn = b;
+    list.appendChild(b);
+  });
+  sheet.appendChild(head); sheet.appendChild(list);
+  ov.appendChild(sheet);
+  lmo.appendChild(ov);
+  if (curBtn) requestAnimationFrame(function () { list.scrollTop = Math.max(0, curBtn.offsetTop - list.clientHeight / 2 + curBtn.offsetHeight / 2); });
+}
+// (Re)place the ☰ button: bottom-left, just above the audio player when there is one, else in the nav bar.
+function _ppSyncBtn() {
+  let old = document.getElementById('pp-open-btn');
+  if (old) old.remove();
+  if (PADPICK_IDS.indexOf(_currentStotramId) === -1 || !_verses || _verses.length < 2) return;
+  if (window.StotramSections && window.StotramSections.isSectioned(_currentStotramId)) return;
+  const hi = _ppIsHi();
+  const b = document.createElement('button');
+  b.id = 'pp-open-btn'; b.type = 'button';
+  b.setAttribute('aria-label', hi ? 'पद चुनें' : 'পদ নির্বাচন');
+  b.title = hi ? 'पद चुनें' : 'পদ নির্বাচন';
+  b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="currentColor"><text x="0.5" y="6.2" font-size="5.2" font-family="sans-serif">1</text><text x="0.5" y="12.6" font-size="5.2" font-family="sans-serif">2</text><text x="0.5" y="19" font-size="5.2" font-family="sans-serif">3</text></g><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="5" x2="22" y2="5"/><line x1="8" y1="12" x2="22" y2="12"/><line x1="8" y1="19" x2="22" y2="19"/></g></svg>';
+  b.onclick = function (e) { e.stopPropagation(); _ppOpen(); };
+  const pw = document.getElementById('hcj-player-wrap');
+  const nav = document.getElementById('lmNav');
+  if (pw) { b.className = 'pp-open-btn pp-in-player'; pw.appendChild(b); }
+  else if (nav && nav.style.display !== 'none') { b.className = 'pp-open-btn pp-in-nav'; nav.appendChild(b); }
+}
+// ═══ /PAD-PICKER ════════════════════════════════════════════════════════
+
 function _renderVerse(idx, dir) {
   if (_translationVisible && _translationDevBlocked(_currentStotramId)) _translationVisible = false; // dev-only translation
   const body = document.getElementById("lyrBody");
@@ -22107,6 +22220,7 @@ function _renderVerse(idx, dir) {
   }
   _hcjApplyDefaultVoiceForVerse(idx);
   _hcjRenderPlayer(idx);
+  try { _ppSyncBtn(); } catch (_e) {}
   _hcjOnVerseChange(idx);
   // Re-apply the reader's chosen (or auto) text size to this verse's
   // freshly-rendered lines right away, rather than waiting on the
@@ -22381,6 +22495,7 @@ function _initSwipeHandler() {
 
 function closeLyrics() {
   try { _devNoteHide(); } catch (_e) {}
+  try { _ppClose(); var _ppb = document.getElementById('pp-open-btn'); if (_ppb) _ppb.remove(); } catch (_e) {}
   try { _ptStop(); } catch (_e) {}
   var lmo = document.getElementById("lmo");
   lmo.classList.remove("show");

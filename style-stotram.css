@@ -930,7 +930,7 @@
   animation:
     stsGlowPulse var(--pd, 3s) ease-in-out infinite,
     stsColorShift var(--cd, 9s) ease-in-out infinite,
-    stsFadeUp 0.4s ease both;
+    stsFadeUp 0.22s ease both;
   animation-delay: var(--ad, 0s), var(--od, 0s), var(--fd, 0s);
 }
 .sts-picker.sts-wide .sts-btn {

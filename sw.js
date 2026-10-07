@@ -1,5 +1,7 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker  v236
+// v317: Hindi Radha Sudha Nidhi text now bundled in stotrams.js (LYRICS_HI.rsn) — Radha_Sudha_Nidhi_Hindi.txt is no longer needed and Hindi opens instantly.
+// v316: Radha Sudha Nidhi (Bengali) opens instantly (no Hindi file download needed any more); Sevak Vani always opens on its section index first, with a faster picker fade-in.
 // v315: Radha Sudha Nidhi (Bengali) — shlokas 41–270 were stored as one merged block (all Bengali শব্দার্থ/অর্থ showed on page 41); now one pad per shloka.
 // v314: Sevak Vani sections now open pad-by-pad (one card per pad, swipe/arrows, Translation toggle with শব্দার্থ + অর্থ, ☰ pad list) like Radha Sudha Nidhi / Hit Chaurasi, instead of one flat page.
 // v310: Added Hey Virat Purush bhajan, full Hindi/Bangla Beyalish Leela (44 leelas), Padyavali, Leela Anukramanika, Rasik Namavali, Vani Prasansa and 25+ more Radha Vallabh texts; Hindi fills for Sevak Bani etc.
@@ -391,7 +393,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v315';
+const CACHE = 'radha-jap-v317';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

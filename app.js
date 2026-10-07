@@ -9910,7 +9910,8 @@ function loadHcjHindiLyrics() {
 // Hindi श्री राधा सुधा निधि is kept in its own companion file because it
 // includes the complete Devanagari text plus the Hindi व्याख्या for all
 // 270 shlokas. It is loaded only when the user selects Hindi and opens it.
-let _rsnHindiLyrics = "";
+// Hindi text is bundled in stotrams.js (LYRICS_HI.rsn, 271 blocks), so no separate .txt file is fetched any more.
+let _rsnHindiLyrics = (typeof LYRICS_HI !== "undefined" && LYRICS_HI.rsn) || "";
 let _rsnHindiLoadPromise = null;
 const RSN_HINDI_DATA_URLS = [
   "./Radha_Sudha_Nidhi_Hindi.txt",
@@ -18618,9 +18619,9 @@ function _devToBn(t) {
 let _rsnBnFullCache = "", _rsnSkipLoadOnce = false;
 function _rsnBnFull() {
   if (_rsnBnFullCache) return _rsnBnFullCache;
-  if (!_rsnHindiLyrics || !LYRICS.rsn) return "";
+  if (!LYRICS.rsn) return "";   // Bengali text now has all 270 shlokas bundled, so the Hindi file is optional (only a fallback for any missing shloka)
   const split = (t) => t.replace(/\r/g, "").split(/\n{2,}/).map((x) => x.trim()).filter(Boolean);
-  const bn = split(LYRICS.rsn), hi = split(_rsnHindiLyrics);
+  const bn = split(LYRICS.rsn), hi = split(_rsnHindiLyrics || "");
   const num = (b) => { const m = b.match(/^(?:শ্লোক|श्लोक)\s*([0-9০-৯०-९]+)/); return m ? parseInt(_ppDigits(m[1], true), 10) : 0; };
   const bnShl = {}, hiShl = {};
   let intro = "", colophon = "";
@@ -18654,7 +18655,7 @@ function getEffectiveLyrics(id) {
   if (id === "rsn" && secLang('sv') === "hi" && _rsnHindiLyrics) {
     return _rsnHindiLyrics;
   }
-  if (id === "rsn" && secLang('sv') !== "hi" && _rsnHindiLyrics) {
+  if (id === "rsn" && secLang('sv') !== "hi") {
     const full = _rsnBnFull();
     if (full) return full;
   }
@@ -21666,7 +21667,7 @@ function showLyrics(id) {
   }
   // Bengali reader also needs the full 271-pad source (the bundled Bengali has only 41 shlokas).
   // If it can't be loaded, fall back to the bundled 41-shloka text instead of showing nothing.
-  if (id === "rsn" && secLang('sv') !== "hi" && !_rsnHindiLyrics && !_rsnSkipLoadOnce) {
+  if (id === "rsn" && secLang('sv') !== "hi" && !_rsnHindiLyrics && !_rsnSkipLoadOnce && !_rsnBnFull()) {
     toast("রাধা সুধা নিধি লোড হচ্ছে… 🙏");
     loadRsnHindiLyrics()
       .then(() => showLyrics(id))
@@ -21723,11 +21724,7 @@ function showLyrics(id) {
     if (stsCard) stsCard.setAttribute("data-theme", "radha");
     var stsLmo = document.getElementById("lmo");
     if (stsLmo) stsLmo.setAttribute("data-bg", "radha");
-    window.StotramSections.show(id);
-    try {
-      const _pl = (id === 'svb') ? _ptGet().last.svb : null;
-      if (_pl && _pl.sec != null && window.StotramSections.open) window.StotramSections.open(_pl.sec);
-    } catch (_e) {}
+    window.StotramSections.show(id);   // Sevak Vani always opens on its section index (last-read pad is still resumed when a section is tapped)
     return;
   }
 

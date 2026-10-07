@@ -22988,7 +22988,7 @@ function _hcjAudioPath(i) {
   }
   // rsn's closing/colophon verse (the last block) isn't a numbered Shlok —
   // it uses a fixed "c" suffix instead of continuing the numeric sequence.
-  if (cfg && cfg.closingSuffix && i === _verses.length - 1) {
+  if (_hcjHasClosing(cfg) && i === _verses.length - 1) {
     return "audio/" + prefix + "_" + cfg.closingSuffix + ".mp3";
   }
   // slokaRange stotrams (e.g. nkc) number audio from 1 at the start of the
@@ -23019,13 +23019,21 @@ function _hcjRemoteAudioUrl(path) {
 // a labelOffset (see _AUDIO_STOTRAMS), and is a no-op (idx+1) otherwise.
 // Returns "" for a closing/colophon verse (closingSuffix) or any verse
 // outside a slokaRange (no real Shlok number to show there either).
+// True when the LAST verse is a separate closing/colophon block (cfg.closingSuffix). The full 271-pad
+// Radha Sudha Nidhi text (pads 0…270, closing lines kept inside pad 270) has no such block, so pad 270
+// is a normal numbered pad: the seek box shows 270 and the total reads /270.
+function _hcjHasClosing(cfg) {
+  if (!cfg || !cfg.closingSuffix) return false;
+  if (cfg === _AUDIO_STOTRAMS.rsn && _verses.length > 100) return false;
+  return true;
+}
 function _hcjSeekLabel(idx) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
   if (cfg && cfg.verseMap) {
     var _vm = cfg.verseMap[idx];
     return _vm ? _vm.label : "";
   }
-  if (cfg && cfg.closingSuffix && idx === _verses.length - 1) return "";
+  if (_hcjHasClosing(cfg) && idx === _verses.length - 1) return "";
   if (cfg && cfg.slokaRange) {
     if (!_hcjHasAudioForIdx(cfg, idx)) return "";
     return idx - cfg.slokaRange[0] + 1;
@@ -23570,7 +23578,7 @@ function _hcjGoToVerse(n) {
     // its own — don't let typing a number land on it. Reach it only via the
     // next arrow after the last numbered verse, same as the preamble is
     // only reached by going back to the very start.
-    if (cfg && cfg.closingSuffix && i === _verses.length - 1) return;
+    if (_hcjHasClosing(cfg) && i === _verses.length - 1) return;
   }
   _verseIdx = i;
   _renderVerse(i, 0);
@@ -23826,7 +23834,7 @@ function _hcjRenderPlayer(idx) {
     // If the last block is a closing/colophon verse with no Shlok number
     // (closingSuffix set), exclude it from the typeable/displayed max —
     // it's only reachable via the next arrow, not by typing a number.
-    var _seekClosingExcl = _voiceCfg && _voiceCfg.closingSuffix ? 1 : 0;
+    var _seekClosingExcl = _hcjHasClosing(_voiceCfg) ? 1 : 0;
     // slokaRange stotrams (e.g. nkc) number 1..N over just the sloka portion,
     // not the whole _verses array (which also includes narrative prose).
     // verseMap stotrams (e.g. hnc) have non-numeric labels ("40.c") — max

@@ -44580,7 +44580,7 @@ const LYRICS_HI = {
 ! जय जय श्रीहित इष्टाराधन प्रकरण की जय जय श्रीहित हरिवंश !`,
   ptr:`श्रीहित हरिवंश महाप्रभु द्वारा प्रेषित श्रीवीठलदास को पत्रद्वय
 
-(पहला पत्र )
+১. पहला पत्र
 
 श्री सकल गुण सम्पन्न रसरीति बढ़ावन चिरंजीव मेरे प्राननि के प्रान वीठलदास जोग्य लिखितं श्रीवृन्दावन रजोपसेवी श्रीहरिवंश जोरी सुमिरन बंचनौ ।
 
@@ -44608,7 +44608,7 @@ const LYRICS_HI = {
 
 गोविंददास सन्तदास की दण्डौत, गांगू मेदा कौ कृष्ण सुमिरन बाँचनौ, कृष्णदास मोहनदास कौ कृष्ण सुमिरन, रंगा कौ दण्डौत, बनमाली धर्मशाला कौ कृष्ण सुमिरन बाँचनौ।
 
-( दूसरा पत्र )
+২. दूसरा पत्र
 
 श्रीवृषभानुनन्दिनी जयति ।
 
@@ -67331,6 +67331,7 @@ window.addEventListener('online', function () { window.prefetchGita(); });
   var SECTIONED = {
     svb: 'শ্রী হিত সেবক বাণী',
     blv: 'বয়ালীস লীলা',
+    ptr: 'শ্রীহিত হরিবংশ মহাপ্রভু কে পত্র',
     rmm: 'রসিক অনন্য মাল',
     gg:  'গীতগোবিন্দম্',
     bg:  'শ্রীমদ্ভগবদ্গীতা'
@@ -67368,7 +67369,7 @@ window.addEventListener('online', function () { window.prefetchGita(); });
   // Stotrams whose opened section is shown as ONE flat, scrollable page (no pad-by-pad cards).
   // Sevak Vani (svb) is NOT here any more: each pad is its own card (swipe / arrows / ☰ pad list),
   // with শব্দার্থ + অর্থ behind the Translation toggle — same as Radha Sudha Nidhi / Hit Chaurasi.
-  var FLAT_SECTION = { blv: true };
+  var FLAT_SECTION = { blv: true, ptr: true };
 
   var _sections = [];          // [{title, content}]
   var _activeId = null;        // current sectioned-stotram id

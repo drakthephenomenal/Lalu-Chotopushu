@@ -21285,6 +21285,70 @@ function _devNoteShow() {
   document.body.appendChild(box);
 }
 
+// ── Geet Govindam: soft notice when it is opened (NOT a restriction) ─────────
+// Same message style as the Kelimal note, but the reader is never blocked:
+// "Continue anyway" opens it; ✕ just closes the notice. Shown only when the
+// reader is opened fresh (not when a geetam is picked inside it, or when the
+// open reader is refreshed for a language switch).
+const _GG_NOTICE_IDS = ["gg", "gsk"];
+let _ggNoticeOkId = "";
+function _ggNoticeHide() {
+  var n = document.getElementById("gg-notice-overlay");
+  if (n && n.parentNode) n.parentNode.removeChild(n);
+}
+function _ggNoticeNeeded(id) {
+  if (!_GG_NOTICE_IDS.includes(id)) return false;
+  if (_ggNoticeOkId === id) { _ggNoticeOkId = ""; return false; } // user chose "Continue anyway"
+  try {
+    var lmo = document.getElementById("lmo");
+    if (lmo && lmo.classList.contains("show") && _currentStotramId === id) return false; // already inside this reader
+  } catch (_e) {}
+  return true;
+}
+function _ggNoticeShow(id) {
+  _ggNoticeHide();
+  var lang = "bn";
+  try { lang = (typeof secLang === "function" && secLang("sv") === "hi") ? "hi" : "bn"; } catch (_e) {}
+  var local = lang === "hi"
+    ? "जब तक आपके भीतर देह-पहचान का बोध न हो — कि ‘मैं पुरुष हूँ’ या ‘मैं स्त्री हूँ’ — तब तक गीतगोविन्दम् नहीं पढ़ना चाहिए।"
+    : "যতক্ষণ না আপনার নিজের মধ্যে দেহগত পরিচয়ের বোধ জাগে — অর্থাৎ ‘আমি পুরুষ’ বা ‘আমি নারী’ — ততক্ষণ গীতগোবিন্দম্ পড়া উচিত নয়।";
+  var btnLocal = lang === "hi" ? "फिर भी जारी रखें" : "তবুও চালিয়ে যান";
+  var ov = document.createElement("div");
+  ov.id = "gg-notice-overlay";
+  ov.setAttribute("role", "alertdialog");
+  ov.style.cssText =
+    "position:fixed;left:0;top:0;right:0;bottom:0;z-index:2147483000;display:flex;align-items:center;" +
+    "justify-content:center;background:rgba(0,0,0,0.55);padding:16px;box-sizing:border-box";
+  var box = document.createElement("div");
+  box.style.cssText =
+    "position:relative;width:min(92vw,420px);box-sizing:border-box;padding:16px 40px 16px 16px;border-radius:14px;" +
+    "background:rgba(28,18,8,0.97);color:#fff3d6;border:1px solid rgba(255,215,0,0.55);" +
+    "box-shadow:0 8px 28px rgba(0,0,0,0.55);font-family:Inter,sans-serif;font-size:13px;line-height:1.55";
+  var en = document.createElement("div");
+  en.textContent = "Until you have a bodily identity within yourself \u2014 that \u201cI am a man\u201d or \u201cI am a woman\u201d \u2014 you should not read Geet Govindam.";
+  var loc = document.createElement("div");
+  loc.style.cssText = "margin-top:8px;color:rgba(255,243,214,0.85)";
+  loc.textContent = local;
+  var x = document.createElement("button");
+  x.type = "button";
+  x.setAttribute("aria-label", "Close");
+  x.textContent = "\u2715";
+  x.style.cssText = "position:absolute;top:6px;right:8px;width:30px;height:30px;border:none;background:transparent;color:#ffd700;font-size:16px;cursor:pointer";
+  x.onclick = _ggNoticeHide;
+  var go = document.createElement("button");
+  go.type = "button";
+  go.textContent = "Continue anyway \u00b7 " + btnLocal;
+  go.style.cssText = "display:block;width:100%;margin-top:14px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,215,0,0.6);background:rgba(255,215,0,0.14);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer";
+  go.onclick = function () {
+    _ggNoticeHide();
+    _ggNoticeOkId = id;
+    showLyrics(id);
+  };
+  box.appendChild(en); box.appendChild(loc); box.appendChild(x); box.appendChild(go);
+  ov.appendChild(box);
+  document.body.appendChild(ov);
+}
+
 // ── IDs where prose sections need vertical-scroll mode
 const PROSE_IDS = ["nkc"];
 // Stotrams whose Hindi text carries "व्याख्या:" lines (meaning shown only when the translation toggle is on)
@@ -21681,6 +21745,8 @@ function _lyrDriveShow(id) {
   body.insertBefore(w, body.firstChild);
 }
 function showLyrics(id) {
+  // Geet Govindam: show the soft notice first (Continue anyway opens it; nothing is blocked).
+  if (_ggNoticeNeeded(id)) { _ggNoticeShow(id); return; }
   // Live (repo-added) stotram: fetch its lyrics on first open, then continue.
   if (_isLiveStId(id) && (!LYRICS[id] || _liveStNeedsHi(id))) {
     toast("পাঠ লোড হচ্ছে… 🙏");

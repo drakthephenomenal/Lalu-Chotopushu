@@ -21285,33 +21285,25 @@ function _devNoteShow() {
   document.body.appendChild(box);
 }
 
-// ── Geet Govindam: soft notice when it is opened (NOT a restriction) ─────────
-// Same message style as the Kelimal note, but the reader is never blocked:
-// "Continue anyway" opens it; ✕ just closes the notice. Shown only when the
-// reader is opened fresh (not when a geetam is picked inside it, or when the
-// open reader is refreshed for a language switch).
+// ── Geet Govindam: soft notice for its TRANSLATION (NOT a restriction) ───────
+// Reading Geet Govindam is never warned about. Only when the translation is
+// switched on (reader toggle, or the global Translation switch) a note appears,
+// styled like the Kelimal one, with a "Continue anyway" button that turns the
+// translation on. ✕ just closes the note. Asked once per opened reader.
 const _GG_NOTICE_IDS = ["gg", "gsk"];
-let _ggNoticeOkId = "";
+let _ggTransOk = false;
+function _ggTransWarnNeeded(id) { return _GG_NOTICE_IDS.includes(id) && !_ggTransOk; }
 function _ggNoticeHide() {
   var n = document.getElementById("gg-notice-overlay");
   if (n && n.parentNode) n.parentNode.removeChild(n);
 }
-function _ggNoticeNeeded(id) {
-  if (!_GG_NOTICE_IDS.includes(id)) return false;
-  if (_ggNoticeOkId === id) { _ggNoticeOkId = ""; return false; } // user chose "Continue anyway"
-  try {
-    var lmo = document.getElementById("lmo");
-    if (lmo && lmo.classList.contains("show") && _currentStotramId === id) return false; // already inside this reader
-  } catch (_e) {}
-  return true;
-}
-function _ggNoticeShow(id) {
+function _ggNoticeShow() {
   _ggNoticeHide();
   var lang = "bn";
   try { lang = (typeof secLang === "function" && secLang("sv") === "hi") ? "hi" : "bn"; } catch (_e) {}
   var local = lang === "hi"
-    ? "जब तक आपके भीतर देह-पहचान का बोध न हो — कि ‘मैं पुरुष हूँ’ या ‘मैं स्त्री हूँ’ — तब तक गीतगोविन्दम् नहीं पढ़ना चाहिए।"
-    : "যতক্ষণ না আপনার নিজের মধ্যে দেহগত পরিচয়ের বোধ জাগে — অর্থাৎ ‘আমি পুরুষ’ বা ‘আমি নারী’ — ততক্ষণ গীতগোবিন্দম্ পড়া উচিত নয়।";
+    ? "जब तक आपके भीतर देह-पहचान का बोध न हो — कि ‘मैं पुरुष हूँ’ या ‘मैं स्त्री हूँ’ — तब तक गीतगोविन्दम् का अनुवाद नहीं पढ़ना चाहिए।"
+    : "যতক্ষণ না আপনার নিজের মধ্যে দেহগত পরিচয়ের বোধ জাগে — অর্থাৎ ‘আমি পুরুষ’ বা ‘আমি নারী’ — ততক্ষণ গীতগোবিন্দম্-এর অনুবাদ পড়া উচিত নয়।";
   var btnLocal = lang === "hi" ? "फिर भी जारी रखें" : "তবুও চালিয়ে যান";
   var ov = document.createElement("div");
   ov.id = "gg-notice-overlay";
@@ -21325,7 +21317,7 @@ function _ggNoticeShow(id) {
     "background:rgba(28,18,8,0.97);color:#fff3d6;border:1px solid rgba(255,215,0,0.55);" +
     "box-shadow:0 8px 28px rgba(0,0,0,0.55);font-family:Inter,sans-serif;font-size:13px;line-height:1.55";
   var en = document.createElement("div");
-  en.textContent = "Until you have a bodily identity within yourself \u2014 that \u201cI am a man\u201d or \u201cI am a woman\u201d \u2014 you should not read Geet Govindam.";
+  en.textContent = "Until you have a bodily identity within yourself \u2014 that \u201cI am a man\u201d or \u201cI am a woman\u201d \u2014 you should not read the translation of Geet Govindam.";
   var loc = document.createElement("div");
   loc.style.cssText = "margin-top:8px;color:rgba(255,243,214,0.85)";
   loc.textContent = local;
@@ -21341,8 +21333,9 @@ function _ggNoticeShow(id) {
   go.style.cssText = "display:block;width:100%;margin-top:14px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,215,0,0.6);background:rgba(255,215,0,0.14);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer";
   go.onclick = function () {
     _ggNoticeHide();
-    _ggNoticeOkId = id;
-    showLyrics(id);
+    _ggTransOk = true;
+    _translationVisible = true;
+    try { _renderVerse(_verseIdx, null); } catch (_e) {}
   };
   box.appendChild(en); box.appendChild(loc); box.appendChild(x); box.appendChild(go);
   ov.appendChild(box);
@@ -21745,8 +21738,6 @@ function _lyrDriveShow(id) {
   body.insertBefore(w, body.firstChild);
 }
 function showLyrics(id) {
-  // Geet Govindam: show the soft notice first (Continue anyway opens it; nothing is blocked).
-  if (_ggNoticeNeeded(id)) { _ggNoticeShow(id); return; }
   // Live (repo-added) stotram: fetch its lyrics on first open, then continue.
   if (_isLiveStId(id) && (!LYRICS[id] || _liveStNeedsHi(id))) {
     toast("পাঠ লোড হচ্ছে… 🙏");
@@ -21830,6 +21821,11 @@ function showLyrics(id) {
   if (_translationDevBlocked(id)) {
     if (_translationVisible) _devNoteShow(); // global Translation ON counts as trying to open it
     _translationVisible = false;
+  }
+  // Geet Govindam: global Translation ON -> soft note (not for the section picker, which shows no translation).
+  if (_translationVisible && _ggTransWarnNeeded(id) && !(window.StotramSections && window.StotramSections.isSectioned(id))) {
+    _translationVisible = false;
+    _ggNoticeShow();
   }
 
   // ── Sectioned stotrams (svb, blv, …): show section picker ──
@@ -22508,6 +22504,7 @@ function _renderTranslationToggle(verseHasArtha, verseHasSecondLang) {
     sw.innerHTML = '<span class="lm-toggle-thumb"></span>';
     sw.onclick = function () {
       if (!_translationVisible && _translationDevBlocked(_currentStotramId)) { _devNoteShow(); return; }
+      if (!_translationVisible && _ggTransWarnNeeded(_currentStotramId)) { _ggNoticeShow(); return; } // Geet Govindam: soft note, Continue anyway turns it on
       _translationVisible = !_translationVisible;
       _renderVerse(_verseIdx, null);
     };
@@ -22727,6 +22724,7 @@ function _initSwipeHandler() {
 
 function closeLyrics() {
   try { _devNoteHide(); } catch (_e) {}
+  try { _ggNoticeHide(); _ggTransOk = false; } catch (_e) {}
   try { _ppClose(); var _ppb = document.getElementById('pp-open-btn'); if (_ppb) _ppb.remove(); } catch (_e) {}
   try { _ptStop(); } catch (_e) {}
   var lmo = document.getElementById("lmo");

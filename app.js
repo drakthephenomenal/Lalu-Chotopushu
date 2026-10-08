@@ -21345,7 +21345,7 @@ function _ggNoticeShow() {
 // ── IDs where prose sections need vertical-scroll mode
 const PROSE_IDS = ["nkc"];
 // Stotrams whose Hindi text carries "व्याख्या:" lines (meaning shown only when the translation toggle is on)
-const _HI_MEANING_IDS = ["rsn", "svb", "yms", "rks", "bgv", "gpg"];
+const _HI_MEANING_IDS = ["rsn", "svb", "yms", "rks", "bgv", "gpg", "blv"];
 
 // ── Sectioned-stotram picker (svb, blv, …) lives in stotrams.js ─────────────
 

@@ -22001,6 +22001,13 @@ function _isAnuvadSt(id) {
   const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
   return !!(e && e.paged);
 }
+// Stotrams whose word-by-word meaning (শব্দার্থ:) and full translation (অর্থ:) lines
+// are shown ONLY when the Translation toggle is on, in colour:
+// blue = word-by-word meaning, red = full translation.
+const _COLOR_MEANING_IDS = ["yms"];
+const _CM_BLUE = "#1d4ed8";
+const _CM_RED = "#d32f2f";
+function _cmOn(id) { return _COLOR_MEANING_IDS.indexOf(id) !== -1; }
 function _ggEsc(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -22320,6 +22327,7 @@ function _renderVerse(idx, dir) {
   const verseHasArtha =
     /^অর্থ২?\s*:/m.test(verseText) ||
     verseHasHindiMeaning ||
+    (_cmOn(_currentStotramId) && /^(?:শব্দার্থ|शब्दार्थ)\s*:/m.test(verseText)) ||
     (_isAnuvadSt(_currentStotramId) && /^(?:শব্দার্থ|অনুবাদ|নোট|शब्दार्थ|अनुवाद|नोट)\s*:/m.test(verseText));
   // Does this verse specifically have a second-language (অর্থ২:) line?
   const verseHasSecondLang = /^অর্থ২\s*:/m.test(verseText);
@@ -22331,6 +22339,7 @@ function _renderVerse(idx, dir) {
       t.length > 0 &&
       !/^অর্থ২?\s*:/.test(t) &&
       !(_currentStotramId === "rsn" && /^শব্দার্থ\s*:/.test(t)) &&
+      !(_cmOn(_currentStotramId) && /^(?:শব্দার্থ|शब्दार्थ)\s*:/.test(t)) &&
       !(_isAnuvadSt(_currentStotramId) && _GG_MEANING_RE.test(t)) &&
       !(isHindiRsn && /^(?:अर्थ|व्याख्या|शब्दार्थ)\s*:/.test(t))
     );
@@ -22354,6 +22363,7 @@ function _renderVerse(idx, dir) {
           return !(l.trim() === "" && i > 0 && arr[i - 1].trim() === "");
         });
     }
+    const _cmRed = _cmOn(_currentStotramId) ? ' style="color:' + _CM_RED + '"' : "";
     linesHtml = rawLines
       .map((line) => {
         if (line.trim() === "") return '<span class="lyr-line-empty"></span>';
@@ -22375,6 +22385,11 @@ function _renderVerse(idx, dir) {
           if (!_translationVisible) return "";
           return _ggMeaningLineHtml(content);
         }
+        if (_cmOn(_currentStotramId) && /^(?:শব্দার্থ|शब्दार्थ)\s*:/.test(content.trim())) {
+          // Word-by-word meaning: only when Translation is ON, in blue.
+          if (!hasTranslation || !_translationVisible) return "";
+          return '<span class="lyr-line" style="color:' + _CM_BLUE + '">' + esc + "</span>";
+        }
         if (_currentStotramId === "rsn" && /^শব্দার্থ\s*:/.test(content.trim())) {
           // Radha Sudha Nidhi (Bangla): word-by-word meaning, shown with the Bengali অর্থ: only
           if (!hasTranslation || !_translationVisible || _translationLang !== "bn") return "";
@@ -22384,13 +22399,13 @@ function _renderVerse(idx, dir) {
           // Hindi (second) meaning — only when translation ON and this
           // language is the one currently selected.
           if (!hasTranslation || !_translationVisible || _translationLang !== "hi") return "";
-          return '<span class="lyr-line lyr-artha' + extraClass + '">' + esc + "</span>";
+          return '<span class="lyr-line lyr-artha' + extraClass + '"' + _cmRed + '>' + esc + "</span>";
         }
         if (/^অর্থ\s*:/.test(content.trim())) {
           // Only inject অর্থ: line when translation is ON and Bengali
           // (the default/original language) is selected.
           if (!hasTranslation || !_translationVisible || _translationLang !== "bn") return "";
-          return '<span class="lyr-line lyr-artha' + extraClass + '">' + esc + "</span>";
+          return '<span class="lyr-line lyr-artha' + extraClass + '"' + _cmRed + '>' + esc + "</span>";
         }
         if (isHindiRsn && /^शब्दार्थ\s*:/.test(content.trim())) {
           // Word-by-word meaning (added alongside the official व्याख्या, never replacing it)
@@ -22399,7 +22414,7 @@ function _renderVerse(idx, dir) {
         }
         if (isHindiRsn && /^(?:अर्थ|व्याख्या)\s*:/.test(content.trim())) {
           if (!hasTranslation || !_translationVisible) return "";
-          return '<span class="lyr-line lyr-artha' + extraClass + '">' + esc + "</span>";
+          return '<span class="lyr-line lyr-artha' + extraClass + '"' + _cmRed + '>' + esc + "</span>";
         }
         return '<span class="lyr-line' + extraClass + '">' + _redWords(esc) + "</span>";
       })

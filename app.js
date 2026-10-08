@@ -21995,7 +21995,7 @@ function _redWordTap(ev, key) {
 // অনুবাদ: …                                          → green
 const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|নোট|शब्दार्थ|अनुवाद|नोट)\s*:/;
 // Stotrams that use the green অনুবাদ:/अनुवाद: meaning lines (gg also has শব্দার্থ:).
-const _ANUVAD_IDS = ["hcj", "svb", "gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel"];
+const _ANUVAD_IDS = ["hcj", "svb", "gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel", "yms"];
 function _isAnuvadSt(id) {
   if (_ANUVAD_IDS.indexOf(id) !== -1) return true;
   const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
@@ -22004,7 +22004,7 @@ function _isAnuvadSt(id) {
 // Stotrams whose word-by-word meaning (শব্দার্থ:) and full translation (অর্থ:) lines
 // are shown ONLY when the Translation toggle is on, in colour:
 // blue = word-by-word meaning, red = full translation.
-const _COLOR_MEANING_IDS = ["yms"];
+const _COLOR_MEANING_IDS = [];
 const _CM_BLUE = "#1d4ed8";
 const _CM_RED = "#d32f2f";
 function _cmOn(id) { return _COLOR_MEANING_IDS.indexOf(id) !== -1; }

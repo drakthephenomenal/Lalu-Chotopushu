@@ -21236,7 +21236,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["hcj", "bgv", "gpg", "nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel", "blv", "kpa", "hmg", "bvp", "jbp", "bla", "ljp", "sjp", "sjc", "ljc", "ljd", "sjd", "ipr", "ptr", "jhp", "dhi", "svi"];
+const TRANSLATION_IDS = ["hcj", "bgv", "gpg", "nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel", "blv", "kpa", "hmg", "bvp", "jbp", "bla", "ljp", "sjp", "sjc", "ljc", "ljd", "sjd", "ipr", "ptr", "jhp", "dhi", "svi", "pdv"];
 // Built-in translatable stotrams + live (repo-added) stotrams marked "paged".
 function _hasTranslationSt(id) {
   if (TRANSLATION_IDS.includes(id)) return true;
@@ -21995,7 +21995,7 @@ function _redWordTap(ev, key) {
 // অনুবাদ: …                                          → green
 const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|পূর্ণ অনুবাদ|নোট|शब्दार्थ|अनुवाद|पूर्ण अनुवाद|नोट)\s*:/;
 // Stotrams that use the green অনুবাদ:/अनुवाद: meaning lines (gg also has শব্দার্থ:).
-const _ANUVAD_IDS = ["hcj", "svb", "gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel", "yms", "kpa", "hmg", "bvp", "jbp", "bla", "ljp", "sjp", "sjc", "ljc", "ljd", "sjd", "ipr", "ptr", "jhp", "dhi", "svi"];
+const _ANUVAD_IDS = ["hcj", "svb", "gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel", "yms", "kpa", "hmg", "bvp", "jbp", "bla", "ljp", "sjp", "sjc", "ljc", "ljd", "sjd", "ipr", "ptr", "jhp", "dhi", "svi", "pdv"];
 function _isAnuvadSt(id) {
   if (_ANUVAD_IDS.indexOf(id) !== -1) return true;
   const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
@@ -22292,6 +22292,45 @@ function _ppSyncBtn() {
 }
 // ═══ /PAD-PICKER ════════════════════════════════════════════════════════
 
+// ── Padavali (pdv): per-pad extras ─────────────────────────────────────
+// Pad 1 (Meri Maharani Shri Radharani) has a video; pads 2 / 3 / 4 are the same
+// pads that already exist as their own stotrams (with translation + music), so a
+// button opens that full version. Keyed by the displayed pad number.
+// Video file lives in the repo at videos/padavali/ (GitHub raw, like Favourite Videos).
+const PDV_PAD_EXTRAS = {
+  1: { video: "meri-maharani-shri-radharani.mp4", vtitle: "मेरी महारानी श्री राधारानी" },
+  2: { stotram: "hsr" },   // Hamare Mai Shyama Ju Ko Raj
+  3: { stotram: "shs" },   // Sahaj Subhav Paryo Naval Kishori Ju Ko
+  4: { stotram: "kcr" }    // Kishori Tere Charanan Ki Raj
+};
+function _pdvPadNum(verseText) {
+  var m = /^\s*([0-9\u09E6-\u09EF\u0966-\u096F]+)\s*\./.exec(verseText || "");
+  if (!m) return 0;
+  var s = m[1].replace(/[\u09E6-\u09EF]/g, function (c) { return c.charCodeAt(0) - 0x09E6; })
+              .replace(/[\u0966-\u096F]/g, function (c) { return c.charCodeAt(0) - 0x0966; });
+  return +s || 0;
+}
+function pdvPlayVideo(num) {
+  var x = PDV_PAD_EXTRAS[num]; if (!x || !x.video) return;
+  var url = "https://raw.githubusercontent.com/" + FAVVID_GH_OWNER + "/" + FAVVID_GH_REPO + "/" + FAVVID_GH_BRANCH +
+            "/videos/padavali/" + encodeURIComponent(x.video);
+  if (typeof openFavVideoPlayer === "function") openFavVideoPlayer(x.vtitle || "", "file", url);
+  else openExternalLink(url);
+}
+function pdvOpenFull(id) { try { _hcjStopAudio(); } catch (_e) {} showLyrics(id); }
+function _pdvInjectBar(body, verseText) {
+  var x = PDV_PAD_EXTRAS[_pdvPadNum(verseText)];
+  if (!x || !body) return;
+  var hi = false; try { hi = secLang("sv") === "hi"; } catch (_e) {}
+  var btn = "display:inline-block;margin:6px 4px;padding:9px 16px;border-radius:12px;border:1px solid rgba(180,120,0,0.55);background:rgba(255,215,0,0.16);color:#7a4a00;font-size:14px;font-weight:600;cursor:pointer";
+  var h = '<div class="pdv-bar" style="text-align:center;margin:14px 0 4px">';
+  if (x.video) h += '<button type="button" style="' + btn + '" onclick="event.stopPropagation();pdvPlayVideo(' + _pdvPadNum(verseText) + ')">▶ ' + (hi ? "वीडियो देखें" : "ভিডিও দেখুন") + '</button>';
+  if (x.stotram) h += '<button type="button" style="' + btn + '" onclick="event.stopPropagation();pdvOpenFull(\'' + x.stotram + '\')">🎵 ' + (hi ? "पूरा पद · अनुवाद व संगीत" : "সম্পূর্ণ পদ · অনুবাদ ও সংগীত") + '</button>';
+  h += '</div>';
+  var foot = body.querySelector(".lyr-footer");
+  if (foot) foot.insertAdjacentHTML("beforebegin", h); else body.insertAdjacentHTML("beforeend", h);
+}
+
 function _renderVerse(idx, dir) {
   if (_translationVisible && _translationDevBlocked(_currentStotramId)) _translationVisible = false; // dev-only translation
   const body = document.getElementById("lyrBody");
@@ -22430,6 +22469,7 @@ function _renderVerse(idx, dir) {
 
   const footerHtml = '<div class="lyr-footer">❧ &nbsp; 🌸 &nbsp; ❧</div>';
   body.innerHTML = (cardVisible ? linesHtml : "") + footerHtml;
+  if (_currentStotramId === "pdv") { try { _pdvInjectBar(body, verseText); } catch (_e) {} }
   // Drive embed is only a fallback now (shown if direct playback fails).
   if (typeof _DRIVE_AUDIO !== "undefined" && _DRIVE_AUDIO[_currentStotramId] && window._lyrDriveFallback === _currentStotramId) _lyrDriveShow(_currentStotramId);
 

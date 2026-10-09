@@ -21993,7 +21993,7 @@ function _redWordTap(ev, key) {
 // ── Geet Govindam word-wise meaning / total meaning lines ──────────────
 // শব্দার্থ: Sanskrit = বাংলা · Sanskrit = বাংলা …   → Sanskrit brown, Bangla blue
 // অনুবাদ: …                                          → green
-const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|নোট|शब्दार्थ|अनुवाद|नोट)\s*:/;
+const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|পূর্ণ অনুবাদ|নোট|शब्दार्थ|अनुवाद|पूर्ण अनुवाद|नोट)\s*:/;
 // Stotrams that use the green অনুবাদ:/अनुवाद: meaning lines (gg also has শব্দার্থ:).
 const _ANUVAD_IDS = ["hcj", "svb", "gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel", "yms", "kpa", "hmg", "bvp", "jbp", "bla", "ljp", "sjp", "sjc", "ljc", "ljd", "sjd", "ipr", "ptr", "jhp", "dhi", "svi"];
 function _isAnuvadSt(id) {

@@ -18667,6 +18667,7 @@ function _rsnBnFull() {
 function getEffectiveLyrics(id) {
   if (!LYRICS[id] && _BN_FROM_HI_IDS.indexOf(id) !== -1 && typeof LYRICS_HI !== "undefined" && LYRICS_HI[id]) {
     LYRICS[id] = _devToBn(LYRICS_HI[id]);
+    if (id === "pdv") LYRICS[id] = _pdvBnMeanings(LYRICS[id]);
   }
   if (secLang('sv') === "hi" && typeof LYRICS_HI !== "undefined" && LYRICS_HI[id]) {
     return LYRICS_HI[id];
@@ -21817,6 +21818,7 @@ function showLyrics(id) {
     ? _globalTranslationPref
     : false;
   _translationLang = "bn";
+  if (id === "pdv") _translationVisible = true;   // Padavali: translation stays ON when opened
   // Developer-only translation (Kelimal, Hit Caturashi Ji): keep it off for everyone else.
   if (_translationDevBlocked(id)) {
     if (_translationVisible) _devNoteShow(); // global Translation ON counts as trying to open it
@@ -22292,17 +22294,45 @@ function _ppSyncBtn() {
 }
 // ═══ /PAD-PICKER ════════════════════════════════════════════════════════
 
-// ── Padavali (pdv): per-pad extras ─────────────────────────────────────
-// Pad 1 (Meri Maharani Shri Radharani) has a video; pads 2 / 3 / 4 are the same
-// pads that already exist as their own stotrams (with translation + music), so a
-// button opens that full version. Keyed by the displayed pad number.
+// ── Padavali (pdv): per-pad media + Bengali meanings ───────────────────
+// Pad 1 (Meri Maharani Shri Radharani): video shown inline, plays automatically.
+// Pads 2 / 3 / 4: the same music that plays on their own stotram pages
+// (hsr / shs / kcr) starts automatically. Keyed by the displayed pad number.
 // Video file lives in the repo at videos/padavali/ (GitHub raw, like Favourite Videos).
 const PDV_PAD_EXTRAS = {
-  1: { video: "meri-maharani-shri-radharani.mp4", vtitle: "मेरी महारानी श्री राधारानी" },
-  2: { stotram: "hsr" },   // Hamare Mai Shyama Ju Ko Raj
-  3: { stotram: "shs" },   // Sahaj Subhav Paryo Naval Kishori Ju Ko
-  4: { stotram: "kcr" }    // Kishori Tere Charanan Ki Raj
+  1: { video: "meri-maharani-shri-radharani.mp4" },
+  2: { audio: function () { return { url: "audio/hsr_1.mp3" }; } },                                  // Hamare Mai Shyama Ju Ko Raj
+  3: { audio: function () { return { yt: "ZW2KQE-KlB8" }; } },                                       // Sahaj Subhav Paryo Naval Kishori Ju Ko
+  4: { audio: function () { return { url: ddPath("yugal-kishor", "audio.mp3") }; } }                 // Kishori Tere Charanan Ki Raj
 };
+// Real Bengali meanings (the Bengali reader otherwise only shows the Hindi meaning in Bengali script).
+// Replaces the শব্দার্থ:/অনুবাদ: lines of pads 1-4, in order.
+const PDV_BN_MEANINGS = [
+  "শব্দার্থ: মেরী = আমার নিজের · মহারানী = সর্বোপরি স্বামিনী · শ্রী রাধারানী = শ্রী রাধা জূ, ব্রজের রানী · জাকে বল = যাঁর বলে/ভরসায় · মৈঁ = আমি · সব সৌঁ = সবার সঙ্গে · তোরী = ছিন্ন করেছি (সম্পর্ক ত্যাগ করেছি) · লোক = জগতের লোকলজ্জা · বেদ = বেদ-শাস্ত্রের বিধি-মর্যাদা · কুল-কানী = কুলের মর্যাদা, লৌকিক সংকোচ [১]",
+  "অনুবাদ: আমার মহারানী তো শ্রী রাধারানীই। যাঁর বলে বলীয়ান হয়ে আমি লোকলজ্জা, বেদের বিধি আর কুলের মর্যাদা — সবকিছুর সঙ্গে সম্পর্ক ছিন্ন করেছি।",
+  "শব্দার্থ: লাল বিহারী কৌ = শ্রী লাল জূ (শ্রীকৃষ্ণ)-এর · প্রান = প্রাণ · জীবন = জীবন · ধন = ধন · বারি = জল · পিযত = পান করেন · নিত = নিত্য, প্রতিদিন · পানী = জল (চরণামৃত) · ভগবত রসিক = শ্রী ভগবত রসিক জী (পদের রচয়িতা) · সহাযক = সহায়িকা · সব দিন = সর্বদা · সর্বোপরি = সবার ঊর্ধ্বে · সুখদানী = সুখদায়িনী [২]",
+  "অনুবাদ: তিনি শ্রী লাল বিহারী জূ-র প্রাণ, জীবন ও ধন — (তাঁর চরণের) জল নিত্য পান করা হয়। শ্রী ভগবত রসিক বলেন — তিনিই সর্বদার সহায়িকা এবং সবার ঊর্ধ্বে সুখদায়িনী।",
+  "অনুবাদ: শ্রী বিঠ্ঠল বিপুল দেব বলছেন — আমাদের প্রেম-রসের দেশে একমাত্র শ্রী শ্যামা জূ (শ্রী রাধা)-রই একচ্ছত্র রাজত্ব; তাঁর প্রেমের অধীন স্বয়ং ব্রজের শিরোমণি শ্রীকৃষ্ণ।",
+  "অনুবাদ: এই প্রেমময়ী যুগল (বিহারী-বিহারিণী জূ) বৃন্দাবনের রস-মাধুরীতে সদা তদাকার হয়ে অবিচলভাবে নিত্য বিহার করেন। এই দিব্য যুগলের প্রতি আমরা এমন দৃঢ় অনন্য যে তাঁদের ছাড়া অন্য কারও সঙ্গে আমাদের কোনো সম্পর্ক নেই। যেমন মেঘের কাছে বিদ্যুৎ প্রফুল্ল হয়ে গর্জন করে, তেমনই আমরাও ঘোষণা করি — একমাত্র শ্রী রাধা মহারানীর বলেই আমরা নিত্য বিহার-রস লাভ করি।",
+  "অনুবাদ: নবল কিশোরী জূ-র স্বভাব সহজাতভাবেই এমন সরল ও মধুর — তিনি মৃদুতা, দয়া ও কৃপার রাশি।",
+  "অনুবাদ: হে সখী, ভুলেও তাঁর কখনও সামান্য রাগ হয় না; তিনি সর্বদা প্রসন্ন, তাঁর হৃদয়ে ও মুখে মৃদু হাসি লেগে থাকে।",
+  "অনুবাদ: এমন সুকুমারী, প্যারে লাল জূ-র প্রাণপ্রিয়া — ধন্য, ধন্য, ধন্য তাঁরা, যাঁরা এঁর উপাসনা করেন।",
+  "অনুবাদ: শ্রী হিত ধ্রুবদাস বলেন — এঁর উপাসনা ছাড়া যত সুখ দেখা বা শোনা যায়, সবই দুঃখের ফাঁস মাত্র।",
+  "অনুবাদ: হে কিশোরী (শ্রী রাধা)! আমাকে তোমার চরণকমলের রজ দাও, যাতে বৃন্দাবনের কোনো কুঞ্জের কোণে বসে দিব্য দম্পতি শ্রী শ্যাম-রাধিকার গুণগান করতে পারি।",
+  "অনুবাদ: যে দিব্য রজ স্বয়ং শিব ও সনকাদি মুনিরাও পেতে চান, সেই রজ আমি মস্তকে ধারণ করতে পারি। শ্রী হরিরাম ব্যাস জী স্বামিনী শ্রী রাধার রূপ-মাধুরীর ছবি দেখে তাঁর নির্মল যশ গান করেন।"
+];
+function _pdvBnMeanings(txt) {
+  var k = 0;
+  return txt.split("\n").map(function (ln) {
+    if (k >= PDV_BN_MEANINGS.length) return ln;
+    var m = /^(শব্দার্থ|অনুবাদ)\s*:/.exec(ln);
+    if (!m) return ln;
+    var want = PDV_BN_MEANINGS[k];
+    if (want.indexOf(m[1]) !== 0) return ln;   // label mismatch → leave as is
+    k++;
+    return want;
+  }).join("\n");
+}
 function _pdvPadNum(verseText) {
   var m = /^\s*([0-9\u09E6-\u09EF\u0966-\u096F]+)\s*\./.exec(verseText || "");
   if (!m) return 0;
@@ -22310,25 +22340,73 @@ function _pdvPadNum(verseText) {
               .replace(/[\u0966-\u096F]/g, function (c) { return c.charCodeAt(0) - 0x0966; });
   return +s || 0;
 }
-function pdvPlayVideo(num) {
-  var x = PDV_PAD_EXTRAS[num]; if (!x || !x.video) return;
-  var url = "https://raw.githubusercontent.com/" + FAVVID_GH_OWNER + "/" + FAVVID_GH_REPO + "/" + FAVVID_GH_BRANCH +
-            "/videos/padavali/" + encodeURIComponent(x.video);
-  if (typeof openFavVideoPlayer === "function") openFavVideoPlayer(x.vtitle || "", "file", url);
-  else openExternalLink(url);
+var _pdvVid = null, _pdvAud = null, _pdvWatch = 0;
+function _pdvStopMedia() {
+  if (_pdvVid) { try { _pdvVid.pause(); _pdvVid.removeAttribute("src"); _pdvVid.load(); } catch (_e) {} _pdvVid = null; }
+  if (_pdvAud) { try { _pdvAud.pause(); if (_pdvAud._destroy) _pdvAud._destroy(); } catch (_e) {} _pdvAud = null; }
+  if (_pdvWatch) { clearInterval(_pdvWatch); _pdvWatch = 0; }
 }
-function pdvOpenFull(id) { try { _hcjStopAudio(); } catch (_e) {} showLyrics(id); }
-function _pdvInjectBar(body, verseText) {
-  var x = PDV_PAD_EXTRAS[_pdvPadNum(verseText)];
-  if (!x || !body) return;
+function _pdvToggleAudio(btn) {
+  if (!_pdvAud) return;
   var hi = false; try { hi = secLang("sv") === "hi"; } catch (_e) {}
-  var btn = "display:inline-block;margin:6px 4px;padding:9px 16px;border-radius:12px;border:1px solid rgba(180,120,0,0.55);background:rgba(255,215,0,0.16);color:#7a4a00;font-size:14px;font-weight:600;cursor:pointer";
-  var h = '<div class="pdv-bar" style="text-align:center;margin:14px 0 4px">';
-  if (x.video) h += '<button type="button" style="' + btn + '" onclick="event.stopPropagation();pdvPlayVideo(' + _pdvPadNum(verseText) + ')">▶ ' + (hi ? "वीडियो देखें" : "ভিডিও দেখুন") + '</button>';
-  if (x.stotram) h += '<button type="button" style="' + btn + '" onclick="event.stopPropagation();pdvOpenFull(\'' + x.stotram + '\')">🎵 ' + (hi ? "पूरा पद · अनुवाद व संगीत" : "সম্পূর্ণ পদ · অনুবাদ ও সংগীত") + '</button>';
-  h += '</div>';
+  if (_pdvAud.paused) { try { var p = _pdvAud.play(); if (p && p.catch) p.catch(function () {}); } catch (_e) {} }
+  else { _pdvAud.pause(); }
+  setTimeout(function () { _pdvSyncAudioBtn(btn); }, 150);
+}
+function _pdvSyncAudioBtn(btn) {
+  if (!btn || !_pdvAud) return;
+  var hi = false; try { hi = secLang("sv") === "hi"; } catch (_e) {}
+  btn.textContent = (_pdvAud.paused ? "▶ " : "⏸ ") + (hi ? "संगीत" : "সংগীত");
+}
+function _pdvInjectBar(body, verseText) {
+  _pdvStopMedia();
+  var num = _pdvPadNum(verseText);
+  var x = PDV_PAD_EXTRAS[num];
+  if (!x || !body) return;
   var foot = body.querySelector(".lyr-footer");
-  if (foot) foot.insertAdjacentHTML("beforebegin", h); else body.insertAdjacentHTML("beforeend", h);
+  var wrap = document.createElement("div");
+  wrap.className = "pdv-bar";
+  wrap.style.cssText = "text-align:center;margin:14px 0 6px";
+  if (x.video) {
+    var v = document.createElement("video");
+    v.src = "https://raw.githubusercontent.com/" + FAVVID_GH_OWNER + "/" + FAVVID_GH_REPO + "/" + FAVVID_GH_BRANCH +
+            "/videos/padavali/" + encodeURIComponent(x.video);
+    v.controls = true; v.autoplay = true; v.playsInline = true; v.setAttribute("playsinline", "");
+    v.preload = "auto";
+    v.style.cssText = "width:100%;max-width:420px;max-height:62vh;border-radius:12px;background:#000";
+    wrap.appendChild(v);
+    _pdvVid = v;
+    var pp = v.play();
+    if (pp && pp.catch) pp.catch(function () {          // sound blocked → start muted, viewer can unmute
+      try { v.muted = true; var p2 = v.play(); if (p2 && p2.catch) p2.catch(function () {}); } catch (_e) {}
+    });
+  }
+  if (x.audio) {
+    var cfg = x.audio();
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.style.cssText = "display:inline-block;margin:6px 4px;padding:9px 18px;border-radius:12px;border:1px solid rgba(180,120,0,0.55);background:rgba(255,215,0,0.16);color:#7a4a00;font-size:14px;font-weight:600;cursor:pointer";
+    btn.onclick = function (ev) { ev.stopPropagation(); _pdvToggleAudio(btn); };
+    wrap.appendChild(btn);
+    var au = null;
+    try {
+      if (cfg.yt && typeof _hcjMakeYtAudio === "function") au = _hcjMakeYtAudio(cfg.yt, 0, false);
+      else if (cfg.url) { au = new Audio(cfg.url); au.loop = true; au.preload = "auto"; }
+    } catch (_e) { au = null; }
+    if (au) {
+      _pdvAud = au;
+      if (!cfg.yt) { var ap = au.play(); if (ap && ap.catch) ap.catch(function () { _pdvSyncAudioBtn(btn); }); }
+      if (au.addEventListener && !cfg.yt) { au.addEventListener("play", function () { _pdvSyncAudioBtn(btn); }); au.addEventListener("pause", function () { _pdvSyncAudioBtn(btn); }); }
+      _pdvSyncAudioBtn(btn);
+      if (cfg.yt) { au.loop = true; var t = setInterval(function () { if (!_pdvAud) { clearInterval(t); return; } _pdvSyncAudioBtn(btn); }, 800); }
+    } else btn.style.display = "none";
+  }
+  if (foot) foot.parentNode.insertBefore(wrap, foot); else body.appendChild(wrap);
+  // Stop everything as soon as the reader is closed or another stotram opens.
+  _pdvWatch = setInterval(function () {
+    var lmo = document.getElementById("lmo");
+    if (_currentStotramId !== "pdv" || !lmo || !lmo.classList.contains("show") || !document.body.contains(wrap)) _pdvStopMedia();
+  }, 700);
 }
 
 function _renderVerse(idx, dir) {

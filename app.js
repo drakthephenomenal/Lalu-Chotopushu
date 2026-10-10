@@ -2061,6 +2061,10 @@ const App = {
       showHKMalaComplete(line1, line2);
     } else if (isRammala) {
       showRamMalaComplete("जय श्री राम", "जय जय श्री सीताराम");
+    } else if (this.S.sampraday === "harivangshi" && this.S.japMode !== "ss") {
+      // Radha Vallabh Sampraday (Radha / Radha Vallabh / Krishnay Vasudevay / Kaam Vijay jap):
+      // 5-second glowing name display, jap taps locked meanwhile.
+      showRVSampradayMalaNames();
     } else {
       f.classList.add("show");
       setTimeout(() => f.classList.remove("show"), 2800);
@@ -2279,6 +2283,7 @@ const App = {
   // ── Main tap ──
   ht(e) {
     if (isGhostMode()) return; // ghost mode: read-only, no jap
+    if (window._rvNamesLock) { try { if (e) e.preventDefault(); } catch (_) {} return; } // 5s mala-complete name display: jap unresponsive
     if (window.japPhotoEditMode) return; // photo edit mode: dragging/resizing photos, not counting
     // First-ever tap on the counter: surface the tutorial hint (see
     // _firstTapHintWatch/_firstTapHintDismiss below). Purely a UI nudge —
@@ -3356,6 +3361,76 @@ function showRamMalaComplete(line1, line2) {
   mc.innerHTML = "<div>" + line1 + "</div><div>" + line2 + "</div>";
   mc.classList.add("hkmc-visible");
   // No auto-dismiss — stays until user taps
+}
+
+// ── Radha Vallabh Sampraday: mala-complete name display (5 seconds) ──
+// Shows the four holy names in a glowing overlay over the jap display while the
+// Panchajanya Shankha plays (sound + deity-image glow are triggered by malaOk()).
+// App.ht() ignores taps for the duration via window._rvNamesLock.
+const RV_MALA_NAMES_BN = ["রাধাবল্লভ", "শ্রী হরিবংশ", "শ্রী বৃন্দাবন", "শ্রী বনচন্দ"];
+const RV_MALA_NAMES_SA = ["राधावल्लभ", "श्री हरिवंश", "श्री वृन्दावन", "श्री वनचन्द"];
+const RV_MALA_NAMES_MS = 5000;
+let _rvNamesTimer = null;
+
+function showRVSampradayMalaNames() {
+  // Re-entrancy guard: restart cleanly if somehow triggered twice
+  clearTimeout(_rvNamesTimer);
+  const old = document.getElementById("rvMalaNames");
+  if (old) old.remove();
+
+  if (!document.getElementById("rvMalaNamesCSS")) {
+    const st = document.createElement("style");
+    st.id = "rvMalaNamesCSS";
+    st.textContent = `
+      #rvMalaNames{position:fixed;z-index:9999;display:flex;flex-direction:column;align-items:center;
+        justify-content:center;gap:2.2vh;background:rgba(10,4,0,.82);text-align:center;
+        opacity:0;transition:opacity .35s ease;pointer-events:auto;touch-action:none;
+        -webkit-user-select:none;user-select:none}
+      #rvMalaNames.rvmn-on{opacity:1}
+      #rvMalaNames div{font-weight:700;line-height:1.25;color:#ffd76a;
+        font-size:calc(clamp(24px,7vw,44px) * var(--jap-text-scale,1));
+        text-shadow:0 0 8px #ffb300,0 0 18px #ff9100,0 0 34px #ff6d00;
+        animation:rvmnGlow 1.25s ease-in-out infinite alternate}
+      #rvMalaNames div:nth-child(2){animation-delay:.15s}
+      #rvMalaNames div:nth-child(3){animation-delay:.3s}
+      #rvMalaNames div:nth-child(4){animation-delay:.45s}
+      @keyframes rvmnGlow{
+        from{text-shadow:0 0 6px #ffb300,0 0 14px #ff9100,0 0 24px #ff6d00;filter:brightness(1)}
+        to{text-shadow:0 0 14px #fff2b0,0 0 30px #ffc107,0 0 56px #ff6d00,0 0 80px #ff3d00;filter:brightness(1.25)}}
+      @media (prefers-reduced-motion:reduce){#rvMalaNames div{animation:none}}
+    `;
+    document.head.appendChild(st);
+  }
+
+  const names = (App.S && App.S.naamLang === "bn") ? RV_MALA_NAMES_BN : RV_MALA_NAMES_SA;
+  const el = document.createElement("div");
+  el.id = "rvMalaNames";
+  el.innerHTML = names.map((n) => "<div>" + n + "</div>").join("");
+  // Cover the jap tap area; fall back to the full screen
+  const tz = document.getElementById("tz");
+  const r = tz ? tz.getBoundingClientRect() : null;
+  if (r && r.width > 40 && r.height > 40) {
+    el.style.left = r.left + "px";
+    el.style.top = r.top + "px";
+    el.style.width = r.width + "px";
+    el.style.height = r.height + "px";
+  } else {
+    el.style.inset = "0";
+  }
+  // Swallow every pointer event so nothing underneath responds
+  ["touchstart", "touchend", "mousedown", "mouseup", "click"].forEach((t) =>
+    el.addEventListener(t, (ev) => { ev.preventDefault(); ev.stopPropagation(); }, { passive: false })
+  );
+  document.body.appendChild(el);
+  void el.offsetWidth;
+  el.classList.add("rvmn-on");
+
+  window._rvNamesLock = true;
+  _rvNamesTimer = setTimeout(() => {
+    window._rvNamesLock = false;
+    el.classList.remove("rvmn-on");
+    setTimeout(() => el.remove(), 380);
+  }, RV_MALA_NAMES_MS);
 }
 
 // Prevent double-tap zoom
@@ -21888,7 +21963,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "gpa", "nka", "mdh", "mmb", "hvp", "ist", "isv", "gvn", "svk", "acv", "kjk", "vnm", "rkn", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11"];
+  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "gpa", "nka", "mdh", "mmb", "hvp", "ist", "isv", "gvn", "svk", "acv", "kjk", "vnm", "rkn", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11", "rmm"];
   // Sevak Vani / Bayalis Leela: an opened section is shown as ONE flat page (set by StotramSections.open).
   const _isFlatSection = window._stFlatSection === id;
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id) || _isFlatSection; // user-added (and repo flat/audio) stotrams + flat sections: one flat page
@@ -22294,6 +22369,61 @@ function _ppSyncBtn() {
 }
 // ═══ /PAD-PICKER ════════════════════════════════════════════════════════
 
+// ── Rasik Ananyamal (rmm): one flat, scrollable prose page (no verse-by-verse paging) ──
+function _rmmEnsureStyle() {
+  if (document.getElementById("rmm-style")) return;
+  var s = document.createElement("style");
+  s.id = "rmm-style";
+  s.textContent =
+    ".rmm-title{display:block;text-align:center !important;font-weight:700;margin:4px 0 14px !important;color:#6b3a00 !important}" +
+    ".rmm-p{display:block;margin:0 0 .85em !important;text-align:left}" +
+    ".rmm-h{display:block;font-weight:700;color:#6b3a00 !important;margin:1.6em 0 .6em !important;padding-top:.6em;border-top:1px solid rgba(120,60,0,0.28);scroll-margin-top:6px}" +
+    ".rmm-toc{margin:0 0 14px;border:1px solid rgba(120,60,0,0.3);border-radius:10px;background:rgba(255,215,0,0.10);padding:2px 10px}" +
+    ".rmm-toc>summary{cursor:pointer;font-weight:700;color:#6b3a00;padding:9px 2px;font-size:clamp(14px,3.8vw,17px)}" +
+    ".rmm-toc .rmm-toc-i{padding:8px 4px;border-top:1px solid rgba(120,60,0,0.15);color:#1a0800;font-size:clamp(13px,3.5vw,16px);cursor:pointer;line-height:1.5}";
+  document.head.appendChild(s);
+}
+function rmmGo(n) {
+  var det = document.querySelector(".rmm-toc");
+  if (det) det.open = false;
+  setTimeout(function () {
+    var el = document.getElementById("rmm-h-" + n);
+    if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 60);
+}
+function _rmmFlatHtml(text) {
+  _rmmEnsureStyle();
+  var esc = function (t) { return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); };
+  var HEAD = /^([0-9\u09E6-\u09EF\u0966-\u096F]+)\.\s/;
+  var toNum = function (s) {
+    return +s.replace(/[\u09E6-\u09EF]/g, function (c) { return c.charCodeAt(0) - 0x09E6; })
+             .replace(/[\u0966-\u096F]/g, function (c) { return c.charCodeAt(0) - 0x0966; });
+  };
+  var blocks = text.split(/\n{2,}/).map(function (b) { return b.trim(); }).filter(Boolean);
+  var body = "", toc = "", first = true;
+  blocks.forEach(function (b) {
+    var lines = b.split("\n");
+    var hm = HEAD.exec(lines[0]);
+    if (first && !hm && lines.length === 1 && b.length < 60) {            // book title
+      body += '<span class="lyr-prose rmm-title">' + esc(b) + "</span>";
+      first = false; return;
+    }
+    first = false;
+    if (hm) {
+      var n = toNum(hm[1]);
+      body += '<span class="lyr-prose rmm-h" id="rmm-h-' + n + '">' + esc(lines[0]) + "</span>";
+      toc += '<div class="rmm-toc-i" onclick="rmmGo(' + n + ')">' + esc(lines[0]) + "</div>";
+      var rest = lines.slice(1).join("\n");
+      if (rest.trim()) body += '<span class="lyr-prose rmm-p">' + esc(rest) + "</span>";
+    } else {
+      body += '<span class="lyr-prose rmm-p">' + esc(b) + "</span>";
+    }
+  });
+  var hi = false; try { hi = secLang("sv") === "hi"; } catch (_e) {}
+  var tocHtml = toc ? '<details class="rmm-toc"><summary>' + (hi ? "विषय-सूची (भक्त-क्रम)" : "সূচি (ভক্তক্রম)") + "</summary>" + toc + "</details>" : "";
+  return tocHtml + body;
+}
+
 // ── Padavali (pdv): per-pad media + Bengali meanings ───────────────────
 // Pad 1 (Meri Maharani Shri Radharani): video shown inline, plays automatically.
 // Pads 2 / 3 / 4: the same music that plays on their own stotram pages
@@ -22568,7 +22698,9 @@ function _renderVerse(idx, dir) {
   });
 
   let linesHtml = "";
-  if (isProse) {
+  if (_currentStotramId === "rmm") {
+    linesHtml = _rmmFlatHtml(verseText);
+  } else if (isProse) {
     const escaped = verseText
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -25831,7 +25963,8 @@ function _fmtDateDMY(dateStr) {
       var s = lyrs.length ? autoFitStep(lyrs[0]) : null;
       if (s !== null) _autoStep = s;
       var target = _manualStep !== null ? _manualStep : _autoStep;
-      if (target !== null) applyStep(target, modal);
+      var _flatProse = !modal.querySelector(".lyr-line") && modal.querySelector(".lyr-prose");
+      if (target !== null && (_manualStep !== null || !_flatProse)) applyStep(target, modal);
       _pending = false;
     });
   }

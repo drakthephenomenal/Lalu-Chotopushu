@@ -16021,6 +16021,7 @@ function renderSt() {
         window._stActiveFolder = group.key;
         window._stActiveVideoFolder = null;
         window._stSevaOpen = false; window._stVedOpen = false; window._stRvFavOpen = false;
+        window._stRvSub = null;
         window._stSevaSection = null;
         window._ddSel = null;
         renderSt();
@@ -16088,9 +16089,10 @@ function renderSt() {
   backRow.className = 'st-back-row';
   backRow.innerHTML =
     '<button class="st-back-btn">← ' + (secLang('sv') === 'hi' ? 'फ़ोल्डर सूची' : 'ফোল্ডার তালিকা') + '</button>' +
-    '<span class="st-back-title">' + escHtml((activeKey === 'rv' && window._stRvFavOpen) ? _favPadLabel() : folderTitle(group)) + '</span>';
+    '<span class="st-back-title">' + escHtml((activeKey === 'rv' && window._stRvSub && window._stRvSubTitle) ? (secLang('sv') === 'hi' ? window._stRvSubTitle.hi : window._stRvSubTitle.bn) : (activeKey === 'rv' && window._stRvFavOpen) ? _favPadLabel() : folderTitle(group)) + '</span>';
   backRow.querySelector('.st-back-btn').addEventListener('click', () => {
     if (window._stRvFavOpen) { window._stRvFavOpen = false; renderSt(); return; }
+    if (activeKey === 'rv' && window._stRvSub) { window._stRvSub = null; renderSt(); return; }
     window._stActiveFolder = null;
     window._stSevaOpen = false; window._stVedOpen = false;
     window._stSevaSection = null;
@@ -16111,62 +16113,82 @@ function renderSt() {
   let idx = 0;
   let _favHeadDone = false;
   // ── Radha Vallabh folder layout ──
-  // Order + headings for the Radha Vallabh list. Each entry is either a heading
-  // ({h:1} = section heading, {h:2} = smaller sub-heading) or a list of stotram ids.
-  // Any rv stotram NOT named below is appended at the end under "Others", so nothing
-  // ever disappears from the folder. To re-arrange: just move ids / headings around.
+  // Top level: plain cards + sub-folder tiles. Each {folder:…} entry becomes a folder
+  // tile that opens its own list (with a back button). Inside a folder, {h:2} is a
+  // small sub-heading. Any rv stotram NOT named below is appended at the top level
+  // under an "Others" folder, so nothing ever disappears. Re-arrange by moving ids.
   const _RV_LAYOUT = [
-    ['ved4', 'asp'],
-    ['hcj', 'rsn'],
-    { h: 1, bn: 'সেবক বাণী', hi: 'सेवक वाणी' },
-    ['svi', 'svb'],
+    ['ved4', 'asp', 'hcj', 'rsn'],
+    { folder: 'sev', icon: '📖', bn: 'সেবক বাণী', hi: 'सेवक वाणी',
+      reqBn: '★ অবশ্য পাঠ্য — প্রতিদিন ৫টি পদ (অর্থ সহ)', reqHi: '★ अनिवार्य — प्रतिदिन ५ पद (अर्थ सहित)',
+      items: ['svi', 'svb', 'hmg'] },
     ['rmm', 'pdv'],
-    { h: 1, bn: 'শ্রী হিত হরিবংশ মহাপ্রভু অন্যান্য', hi: 'श्री हित हरिवंश महाप्रभु — अन्य रचनाएँ' },
-    ['sfv', 'yms', 'asd', 'ipr', 'ptr'],
-    { h: 1, bn: 'বয়ালীস লীলা ও ধ্রুবদাস জীর অন্যান্য', hi: 'बयालीस लीला एवं ध्रुवदास जी की अन्य रचनाएँ' },
-    ['dhi', 'bla', 'blv', 'bvp', 'nmb', 'bln', 'blp'],
-    { h: 1, bn: 'বন্দনা ও নামাবলী', hi: 'वन्दना एवं नामावली' },
-    ['rkn', 'hmg'],
-    { h: 2, bn: 'আচার্য · ইষ্ট · গুরু বন্দনা', hi: 'आचार्य · इष्ट · गुरु वन्दना' },
-    ['acv', 'ist', 'isv', 'gvn', 'svk'],
-    { h: 2, bn: 'রসিক ও ভক্ত নামাবলী', hi: 'रसिक एवं भक्त नामावली' },
-    ['rnm', 'bnm', 'bkt', 'vnm'],
-    { h: 1, bn: 'উৎসব ও বধাই', hi: 'उत्सव एवं बधाई' },
-    ['vyh', 'jhp', 'jbp', 'ljb', 'sjb', 'ljp', 'sjp', 'ljc', 'sjc', 'ljd', 'sjd'],
-    { h: 1, bn: 'কীর্তন ও জয়কারা', hi: 'कीर्तन एवं जयकारा' },
-    ['kjk'],
-    { h: 1, bn: 'প্রেম কী পীর', hi: 'प्रेम की पीर' },
-    ['pkp'],
+    { folder: 'hh', icon: '🪷', bn: 'শ্রী হিত হরিবংশ মহাপ্রভুর অন্যান্য', hi: 'श्री हित हरिवंश महाप्रभु की अन्य रचनाएँ',
+      items: ['sfv', 'yms', 'asd', 'ipr', 'ptr'] },
+    { folder: 'dhv', icon: '🌸', bn: 'বয়ালীস লীলা ও ধ্রুবদাস জীর অন্যান্য', hi: 'बयालीस लीला एवं ध्रुवदास जी की अन्य रचनाएँ',
+      items: ['dhi', 'bla', 'blv', 'bvp', 'nmb', 'bln', 'blp'] },
+    { folder: 'vnn', icon: '🙏', bn: 'বন্দনা ও নামাবলী', hi: 'वन्दना एवं नामावली',
+      items: ['rkn',
+        { h: 2, bn: 'আচার্য · ইষ্ট · গুরু বন্দনা', hi: 'आचार्य · इष्ट · गुरु वन्दना' },
+        'acv', 'ist', 'isv', 'gvn', 'svk',
+        { h: 2, bn: 'রসিক ও ভক্ত নামাবলী', hi: 'रसिक एवं भक्त नामावली' },
+        'rnm', 'bnm', 'bkt', 'vnm'] },
+    { folder: 'utv', icon: '🎊', bn: 'উৎসব ও বধাই', hi: 'उत्सव एवं बधाई',
+      items: ['vyh', 'jhp', 'jbp', 'ljb', 'sjb', 'ljp', 'sjp', 'ljc', 'sjc', 'ljd', 'sjd'] },
+    ['kjk', 'pkp'],
   ];
   let _listItems = group.items;
   if (activeKey === 'rv') {
     const byId = {}; group.items.forEach((x) => { byId[x.id] = x; });
     const used = {};
-    const out = [];
+    const take = (id) => { if (byId[id] && !used[id]) { used[id] = 1; return byId[id]; } return null; };
+    const folders = {};
+    const top = [];
     _RV_LAYOUT.forEach((e) => {
-      if (Array.isArray(e)) {
-        e.forEach((id) => { if (byId[id] && !used[id]) { used[id] = 1; out.push(byId[id]); } });
-      } else {
-        out.push({ __head: e });
-      }
+      if (Array.isArray(e)) { e.forEach((id) => { const x = take(id); if (x) top.push(x); }); return; }
+      const inner = [];
+      e.items.forEach((it) => {
+        if (typeof it === 'string') { const x = take(it); if (x) inner.push(x); }
+        else inner.push({ __head: it });
+      });
+      const n = inner.filter((x) => !x.__head).length;
+      if (!n) return;
+      folders[e.folder] = { def: e, inner };
+      top.push({ __folder: Object.assign({ count: n }, e) });
     });
     const rest = group.items.filter((x) => !used[x.id]);
     if (rest.length) {
-      out.push({ __head: { h: 1, bn: 'অন্যান্য', hi: 'अन्य' } });
-      rest.forEach((x) => out.push(x));
+      const def = { folder: 'oth', icon: '📚', bn: 'অন্যান্য', hi: 'अन्य' };
+      folders.oth = { def, inner: rest };
+      top.push({ __folder: Object.assign({ count: rest.length }, def) });
     }
-    // Drop headings that ended up with no stotram under them.
-    _listItems = out.filter((x, i) => {
-      if (!x.__head) return true;
-      for (let j = i + 1; j < out.length; j++) {
-        if (!out[j].__head) return true;
-        if (out[j].__head.h <= x.__head.h) return false;
-      }
-      return false;
-    });
+    const sub = window._stRvSub && folders[window._stRvSub];
+    if (window._stRvSub && !sub) window._stRvSub = null;
+    _listItems = sub ? sub.inner : top;
   }
   let _lastGrp = null;
   _listItems.forEach((st) => {
+    if (st.__folder) {
+      const fd = st.__folder;
+      const tile = document.createElement('div');
+      tile.className = 'st-folder-tile';
+      tile.innerHTML =
+        '<span class="st-folder-tile-icon">' + fd.icon + '</span>' +
+        '<span class="st-folder-tile-title">' + escHtml(secLang('sv') === 'hi' ? fd.hi : fd.bn) +
+          ((secLang('sv') === 'hi' ? fd.reqHi : fd.reqBn)
+            ? '<div class="st-req" style="display:inline-block;margin-top:7px;padding:3px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.2px;font-family:\'Hind Siliguri\',sans-serif;background:linear-gradient(135deg,#ffe27a 0%,#ffc107 55%,#e69500 100%);color:#2a1a00;box-shadow:0 0 9px rgba(255,200,0,0.45)">' + escHtml(secLang('sv') === 'hi' ? fd.reqHi : fd.reqBn) + '</div>'
+            : '') +
+        '</span>' +
+        '<span class="st-folder-tile-count">' + fd.count + '</span>' +
+        '<span class="st-folder-tile-arrow">›</span>';
+      tile.addEventListener('click', () => {
+        window._stRvSub = fd.folder;
+        window._stRvSubTitle = { bn: fd.bn, hi: fd.hi };
+        renderSt();
+      });
+      list.appendChild(tile);
+      return;
+    }
     if (st.__head) {
       const hd = st.__head;
       const gh = document.createElement('div');

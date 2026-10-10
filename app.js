@@ -16125,7 +16125,7 @@ function renderSt() {
       items: ['svi', 'svb', 'hmg'] },
     { folder: 'hh', poet: 'hh', subBn: 'স্ফুট বাণী, যমুনাষ্টক, অষ্টাদশ সিদ্ধান্ত, ইষ্টারাধন প্রকরণ ও পত্র', subHi: 'स्फुट वाणी, यमुनाष्टक, अष्टादश सिद्धान्त, इष्टाराधन प्रकरण एवं पत्र', bn: 'শ্রী হিত হরিবংশ মহাপ্রভুর অন্যান্য রচনা', hi: 'श्री हित हरिवंश महाप्रभु की अन्य रचनाएँ',
       items: ['sfv', 'yms', 'asd', 'ipr', 'ptr'] },
-    { folder: 'dhv', poet: 'dh', subBn: 'পরিচয়, লীলানুক্রমণিকা, বাণী প্রসংশা, নামাবলী ও পদ্যাবলী', subHi: 'परिचय, लीलानुक्रमणिका, वाणी प्रसंशा, नामावली एवं पद्यावली', bn: 'বয়ালীস লীলা ও ধ্রুবদাস জীর অন্যান্য', hi: 'बयालीस लीला एवं ध्रुवदास जी की अन्य रचनाएँ',
+    { folder: 'dhv', poet: 'dh', subBn: 'পরিচয়, লীলানুক্রমণিকা, বাণী প্রসংশা, নামাবলী ও পদ্যাবলী', subHi: 'परिचय, लीलानुक्रमणिका, वाणी प्रसंशा, नामावली एवं पद्यावली', bn: 'বয়ালীস লীলা ও ধ্রুবদাস জীর অন্যান্য রচনা', hi: 'बयालीस लीला एवं ध्रुवदास जी की अन्य रचनाएँ',
       items: ['dhi', 'bla', 'blv', 'bvp', 'nmb', 'bln', 'blp'] },
     ['rmm', 'pdv'],
     { folder: 'vnn', icon: '🙏', subBn: 'বন্দনা ও নামাবলীর সংগ্রহ', subHi: 'वन्दना एवं नामावली संग्रह', bn: 'বন্দনা ও নামাবলী', hi: 'वन्दना एवं नामावली',
@@ -16134,7 +16134,7 @@ function renderSt() {
         'acv', 'ist', 'isv', 'gvn', 'svk',
         { h: 2, bn: 'রসিক ও ভক্ত নামাবলী', hi: 'रसिक एवं भक्त नामावली' },
         'rnm', 'bnm', 'bkt', 'vnm'] },
-    { folder: 'utv', subBn: 'ব্যাহুলা, ঝুলন, বধাই, পালনা, ছঠী ও দসূঠন', subHi: 'व्याहुला, झूलन, बधाई, पालना, छठी एवं दसूठन', bn: 'উৎসব ও বধাই', hi: 'उत्सव एवं बधाई',
+    { folder: 'utv', subBn: 'ব্যাহুলা, ঝুলন, বাধাই, পালনা, ছঠী ও দসূঠন', subHi: 'व्याहुला, झूलन, बधाई, पालना, छठी एवं दसूठन', bn: 'উৎসব ও বাধাই', hi: 'उत्सव एवं बधाई',
       items: ['vyh', 'jhp', 'jbp', 'ljb', 'sjb', 'ljp', 'sjp', 'ljc', 'sjc', 'ljd', 'sjd'] },
     ['kjk', 'pkp'],
   ];
@@ -19780,13 +19780,13 @@ const RKK_OCCASIONS = {
   "2026-07-16": { hi: "रथयात्रा", bn: "রথযাত্রা" },
   "2026-07-25": { hi: "देवशयनी एकादशी", bn: "দেবশয়নী একাদশী" },
   "2026-07-29": { hi: "गुरु पूर्णिमा – सेवक-चरित्र पाठ प्रारम्भ", bn: "গুরু পূর্ণিমা – সেবক-চরিত্র পাঠ শুরু" },
-  "2026-08-09": { hi: "कामदा एकादशी – सेवकजी जन्म बधाई", bn: "কামদা একাদশী – সেবকজীর জন্ম বধাই" },
+  "2026-08-09": { hi: "कामदा एकादशी – सेवकजी जन्म बधाई", bn: "কামদা একাদশী – সেবকজীর জন্ম বাধাই" },
   "2026-08-12": { hi: "हरियाली अमावस्या", bn: "হরিয়ালী অমাবস্যা" },
   "2026-08-14": { hi: "मेंहदी श्रृंगार पद", bn: "মেহেদী শৃঙ্গার পদ" },
   "2026-08-15": { hi: "हरियाली तीज – झूलनोत्सव प्रारम्भ, सेवकजी जन्मोत्सव", bn: "হরিয়ালী তীজ – ঝুলনোৎসব শুরু, সেবকজীর জন্মোৎসব" },
   "2026-08-24": { hi: "पवित्रा एकादशी", bn: "পবিত্রা একাদশী" },
   "2026-08-28": { hi: "पूर्णिमा – रक्षाबन्धन", bn: "পূর্ণিমা – রক্ষাবন্ধন" },
-  "2026-09-04": { hi: "श्रीकृष्ण जन्माष्टमी – लालजी बधाई-गान", bn: "শ্রীকৃষ্ণ জন্মাষ্টমী – লালজীর বধাই-গান" },
+  "2026-09-04": { hi: "श्रीकृष्ण जन्माष्टमी – लालजी बधाई-गान", bn: "শ্রীকৃষ্ণ জন্মাষ্টমী – লালজীর বাধাই-গান" },
   "2026-09-05": { hi: "श्री नन्दोत्सव", bn: "শ্রী নন্দোৎসব" },
   "2026-09-07": { hi: "अजा एकादशी", bn: "অজা একাদশী" },
   "2026-09-09": { hi: "श्रीलालजी की छठी", bn: "শ্রীলালজীর ষষ্ঠী" },
@@ -21428,7 +21428,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["hcj", "bgv", "gpg", "nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel", "blv", "kpa", "hmg", "bvp", "jbp", "bla", "ljp", "sjp", "sjc", "ljc", "ljd", "sjd", "ipr", "ptr", "jhp", "pdv"];
+const TRANSLATION_IDS = ["gvn", "hcj", "bgv", "gpg", "nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel", "blv", "kpa", "hmg", "bvp", "jbp", "bla", "ljp", "sjp", "sjc", "ljc", "ljd", "sjd", "ipr", "ptr", "jhp", "pdv"];
 // Built-in translatable stotrams + live (repo-added) stotrams marked "paged".
 function _hasTranslationSt(id) {
   if (TRANSLATION_IDS.includes(id)) return true;
@@ -22188,7 +22188,7 @@ function _redWordTap(ev, key) {
 // অনুবাদ: …                                          → green
 const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|পূর্ণ অনুবাদ|নোট|शब्दार्थ|अनुवाद|पूर्ण अनुवाद|नोट)\s*:/;
 // Stotrams that use the green অনুবাদ:/अनुवाद: meaning lines (gg also has শব্দার্থ:).
-const _ANUVAD_IDS = ["hcj", "svb", "gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel", "yms", "kpa", "hmg", "bvp", "jbp", "bla", "ljp", "sjp", "sjc", "ljc", "ljd", "sjd", "ipr", "ptr", "jhp", "pdv"];
+const _ANUVAD_IDS = ["gvn", "hcj", "svb", "gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "anl", "nka", "kel", "yms", "kpa", "hmg", "bvp", "jbp", "bla", "ljp", "sjp", "sjc", "ljc", "ljd", "sjd", "ipr", "ptr", "jhp", "pdv"];
 function _isAnuvadSt(id) {
   if (_ANUVAD_IDS.indexOf(id) !== -1) return true;
   const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
@@ -22760,6 +22760,35 @@ function _pdvInjectBar(body, verseText) {
   }, 700);
 }
 
+// ── Guru Vandana (gvn): video shown above the first verse, plays automatically ──
+// Video file lives in the repo at videos/guru-vandana/ (GitHub raw, same as Padavali's video).
+const GVN_VIDEO = "guru-vandana.mp4";
+function _gvnInjectVideo(body) {
+  _pdvStopMedia();
+  if (!body) return;
+  var wrap = document.createElement("div");
+  wrap.className = "pdv-bar";
+  wrap.style.cssText = "text-align:center;margin:14px 0 6px";
+  var v = document.createElement("video");
+  v.src = "https://raw.githubusercontent.com/" + FAVVID_GH_OWNER + "/" + FAVVID_GH_REPO + "/" + FAVVID_GH_BRANCH +
+          "/videos/guru-vandana/" + encodeURIComponent(GVN_VIDEO);
+  v.controls = true; v.autoplay = true; v.playsInline = true; v.setAttribute("playsinline", "");
+  v.preload = "auto";
+  v.style.cssText = "height:26vh;max-height:260px;width:auto;max-width:100%;border-radius:12px;background:#000";
+  wrap.appendChild(v);
+  _pdvVid = v;
+  var pp = v.play();
+  if (pp && pp.catch) pp.catch(function () {          // sound blocked → start muted, viewer can unmute
+    try { v.muted = true; var p2 = v.play(); if (p2 && p2.catch) p2.catch(function () {}); } catch (_e) {}
+  });
+  body.insertBefore(wrap, body.firstChild);            // video sits above the lyrics
+  // Stop as soon as the reader is closed or another stotram opens.
+  _pdvWatch = setInterval(function () {
+    var lmo = document.getElementById("lmo");
+    if (_currentStotramId !== "gvn" || !lmo || !lmo.classList.contains("show") || !document.body.contains(wrap)) _pdvStopMedia();
+  }, 700);
+}
+
 function _renderVerse(idx, dir) {
   if (_translationVisible && _translationDevBlocked(_currentStotramId)) _translationVisible = false; // dev-only translation
   const body = document.getElementById("lyrBody");
@@ -22901,6 +22930,7 @@ function _renderVerse(idx, dir) {
   const footerHtml = '<div class="lyr-footer">❧ &nbsp; 🌸 &nbsp; ❧</div>';
   body.innerHTML = (cardVisible ? linesHtml : "") + footerHtml;
   if (_currentStotramId === "pdv") { try { _pdvInjectBar(body, verseText); } catch (_e) {} }
+  if (_currentStotramId === "gvn") { try { if (idx === 0) _gvnInjectVideo(body); else _pdvStopMedia(); } catch (_e) {} }
   // Drive embed is only a fallback now (shown if direct playback fails).
   if (typeof _DRIVE_AUDIO !== "undefined" && _DRIVE_AUDIO[_currentStotramId] && window._lyrDriveFallback === _currentStotramId) _lyrDriveShow(_currentStotramId);
 

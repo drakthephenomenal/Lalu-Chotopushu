@@ -16119,21 +16119,22 @@ function renderSt() {
   // under an "Others" folder, so nothing ever disappears. Re-arrange by moving ids.
   const _RV_LAYOUT = [
     ['ved4', 'asp', 'hcj', 'rsn'],
-    { folder: 'sev', icon: '📖', bn: 'সেবক বাণী', hi: 'सेवक वाणी',
+    { folder: 'sev', poet: 'sv', bn: 'সেবক বাণী', hi: 'सेवक वाणी',
+      subBn: 'সেবক জীর পরিচয়, সেবক বাণী ও হিত মঙ্গল গান', subHi: 'सेवक जी का परिचय, सेवक वाणी एवं हित मंगल गान',
       reqBn: '★ অবশ্য পাঠ্য — প্রতিদিন ৫টি পদ (অর্থ সহ)', reqHi: '★ अनिवार्य — प्रतिदिन ५ पद (अर्थ सहित)',
       items: ['svi', 'svb', 'hmg'] },
     ['rmm', 'pdv'],
-    { folder: 'hh', icon: '🪷', bn: 'শ্রী হিত হরিবংশ মহাপ্রভুর অন্যান্য', hi: 'श्री हित हरिवंश महाप्रभु की अन्य रचनाएँ',
+    { folder: 'hh', poet: 'hh', subBn: 'স্ফুট বাণী, যমুনাষ্টক, অষ্টাদশ সিদ্ধান্ত, ইষ্টারাধন প্রকরণ ও পত্র', subHi: 'स्फुट वाणी, यमुनाष्टक, अष्टादश सिद्धान्त, इष्टाराधन प्रकरण एवं पत्र', bn: 'শ্রী হিত হরিবংশ মহাপ্রভুর অন্যান্য', hi: 'श्री हित हरिवंश महाप्रभु की अन्य रचनाएँ',
       items: ['sfv', 'yms', 'asd', 'ipr', 'ptr'] },
-    { folder: 'dhv', icon: '🌸', bn: 'বয়ালীস লীলা ও ধ্রুবদাস জীর অন্যান্য', hi: 'बयालीस लीला एवं ध्रुवदास जी की अन्य रचनाएँ',
+    { folder: 'dhv', poet: 'dh', subBn: 'পরিচয়, লীলানুক্রমণিকা, বাণী প্রসংশা, নামাবলী ও পদ্যাবলী', subHi: 'परिचय, लीलानुक्रमणिका, वाणी प्रसंशा, नामावली एवं पद्यावली', bn: 'বয়ালীস লীলা ও ধ্রুবদাস জীর অন্যান্য', hi: 'बयालीस लीला एवं ध्रुवदास जी की अन्य रचनाएँ',
       items: ['dhi', 'bla', 'blv', 'bvp', 'nmb', 'bln', 'blp'] },
-    { folder: 'vnn', icon: '🙏', bn: 'বন্দনা ও নামাবলী', hi: 'वन्दना एवं नामावली',
+    { folder: 'vnn', icon: '🙏', subBn: 'বন্দনা ও নামাবলীর সংগ্রহ', subHi: 'वन्दना एवं नामावली संग्रह', bn: 'বন্দনা ও নামাবলী', hi: 'वन्दना एवं नामावली',
       items: ['rkn',
         { h: 2, bn: 'আচার্য · ইষ্ট · গুরু বন্দনা', hi: 'आचार्य · इष्ट · गुरु वन्दना' },
         'acv', 'ist', 'isv', 'gvn', 'svk',
         { h: 2, bn: 'রসিক ও ভক্ত নামাবলী', hi: 'रसिक एवं भक्त नामावली' },
         'rnm', 'bnm', 'bkt', 'vnm'] },
-    { folder: 'utv', icon: '🎊', bn: 'উৎসব ও বধাই', hi: 'उत्सव एवं बधाई',
+    { folder: 'utv', subBn: 'ব্যাহুলা, ঝুলন, বধাই, পালনা, ছঠী ও দসূঠন', subHi: 'व्याहुला, झूलन, बधाई, पालना, छठी एवं दसूठन', bn: 'উৎসব ও বধাই', hi: 'उत्सव एवं बधाई',
       items: ['vyh', 'jhp', 'jbp', 'ljb', 'sjb', 'ljp', 'sjp', 'ljc', 'sjc', 'ljd', 'sjd'] },
     ['kjk', 'pkp'],
   ];
@@ -16169,24 +16170,42 @@ function renderSt() {
   let _lastGrp = null;
   _listItems.forEach((st) => {
     if (st.__folder) {
+      // Folder shown as a full-size stotram-style card (optional round photo / emoji icon,
+      // name, sub-line, optional "must read" badge, and an Open button).
       const fd = st.__folder;
-      const tile = document.createElement('div');
-      tile.className = 'st-folder-tile';
-      tile.innerHTML =
-        '<span class="st-folder-tile-icon">' + fd.icon + '</span>' +
-        '<span class="st-folder-tile-title">' + escHtml(secLang('sv') === 'hi' ? fd.hi : fd.bn) +
-          ((secLang('sv') === 'hi' ? fd.reqHi : fd.reqBn)
-            ? '<div class="st-req" style="display:inline-block;margin-top:7px;padding:3px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.2px;font-family:\'Hind Siliguri\',sans-serif;background:linear-gradient(135deg,#ffe27a 0%,#ffc107 55%,#e69500 100%);color:#2a1a00;box-shadow:0 0 9px rgba(255,200,0,0.45)">' + escHtml(secLang('sv') === 'hi' ? fd.reqHi : fd.reqBn) + '</div>'
-            : '') +
-        '</span>' +
-        '<span class="st-folder-tile-count">' + fd.count + '</span>' +
-        '<span class="st-folder-tile-arrow">›</span>';
-      tile.addEventListener('click', () => {
+      const _hiF = secLang('sv') === 'hi';
+      const gcF = glowColors[idx % glowColors.length];
+      const fc = document.createElement('div');
+      fc.className = 'st-card';
+      fc.style.cssText = '--sgc:' + gcF + ';--spd:' + (2.8 + (idx % 5) * 0.45).toFixed(1) + 's;--scd:' + (9 + (idx % 4) * 1.5).toFixed(1) + 's;--sad:' + (idx * 0.055).toFixed(2) + 's;--sod:-' + (idx * 0.7).toFixed(1) + 's;--sfd:' + (idx * 0.055).toFixed(2) + 's;cursor:pointer;';
+      let iconF = '';
+      if (fd.poet && RV_POET_IMG[fd.poet]) {
+        iconF = '<img src="' + RV_POET_IMG[fd.poet] + '" alt="" draggable="false" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid rgba(255,215,0,0.55);box-shadow:0 0 8px rgba(255,215,0,0.25)">';
+      } else if (fd.icon) {
+        iconF = '<span style="width:42px;height:42px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:30px;line-height:1">' + fd.icon + '</span>';
+      }
+      const reqF = _hiF ? fd.reqHi : fd.reqBn;
+      const badgeF = reqF
+        ? '<div class="st-req" style="display:inline-block;margin-top:7px;padding:3px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.2px;font-family:\'Hind Siliguri\',sans-serif;background:linear-gradient(135deg,#ffe27a 0%,#ffc107 55%,#e69500 100%);color:#2a1a00;box-shadow:0 0 9px rgba(255,200,0,0.45)">' + escHtml(reqF) + '</div>'
+        : '';
+      const subF = _hiF ? fd.subHi : fd.subBn;
+      fc.innerHTML =
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">' +
+          iconF +
+          '<div style="flex:1;min-width:0">' +
+            '<div class="st-name">' + escHtml(_hiF ? fd.hi : fd.bn) + '</div>' +
+            (subF ? '<div class="st-sub">' + escHtml(subF) + '</div>' : '') +
+            badgeF +
+          '</div>' +
+        '</div>' +
+        '<div class="st-row" style="justify-content:flex-end"><button class="st-open-btn">' + (_hiF ? 'खोलें' : 'খুলুন') + '</button></div>';
+      fc.addEventListener('click', () => {
         window._stRvSub = fd.folder;
         window._stRvSubTitle = { bn: fd.bn, hi: fd.hi };
         renderSt();
       });
-      list.appendChild(tile);
+      list.appendChild(fc);
+      idx++;
       return;
     }
     if (st.__head) {

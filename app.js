@@ -3364,72 +3364,92 @@ function showRamMalaComplete(line1, line2) {
 }
 
 // ── Radha Vallabh Sampraday: mala-complete name display (5 seconds) ──
-// Shows the four holy names in a glowing overlay over the jap display while the
-// Panchajanya Shankha plays (sound + deity-image glow are triggered by malaOk()).
-// App.ht() ignores taps for the duration via window._rvNamesLock.
+// Reuses the app's existing glowing mala-complete flash (#mf, the one that used to
+// read "Radha Vallabh / Sri Harivansh" in English) and swaps its text for the four
+// holy names. Sound + deity-image glow come from malaOk(). App.ht() ignores taps
+// for the duration via window._rvNamesLock — no overlay/curtain is drawn.
 const RV_MALA_NAMES_BN = ["রাধাবল্লভ", "শ্রী হরিবংশ", "শ্রী বৃন্দাবন", "শ্রী বনচন্দ"];
 const RV_MALA_NAMES_SA = ["राधावल्लभ", "श्री हरिवंश", "श्री वृन्दावन", "श्री वनचन्द"];
 const RV_MALA_NAMES_MS = 5000;
 let _rvNamesTimer = null;
+let _rvNamesRestore = null;
 
 function showRVSampradayMalaNames() {
-  // Re-entrancy guard: restart cleanly if somehow triggered twice
+  // If a previous display is somehow still up, restore it first
   clearTimeout(_rvNamesTimer);
-  const old = document.getElementById("rvMalaNames");
-  if (old) old.remove();
+  if (_rvNamesRestore) { _rvNamesRestore(); _rvNamesRestore = null; }
 
+  // The app's .mf flash animation (keyframes "mc") is 3s/4s; add a 5s variant
   if (!document.getElementById("rvMalaNamesCSS")) {
     const st = document.createElement("style");
     st.id = "rvMalaNamesCSS";
-    st.textContent = `
-      #rvMalaNames{position:fixed;z-index:9999;display:flex;flex-direction:column;align-items:center;
-        justify-content:center;gap:2.2vh;background:rgba(10,4,0,.82);text-align:center;
-        opacity:0;transition:opacity .35s ease;pointer-events:auto;touch-action:none;
-        -webkit-user-select:none;user-select:none}
-      #rvMalaNames.rvmn-on{opacity:1}
-      #rvMalaNames div{font-weight:700;line-height:1.25;color:#ffd76a;
-        font-size:calc(clamp(24px,7vw,44px) * var(--jap-text-scale,1));
-        text-shadow:0 0 8px #ffb300,0 0 18px #ff9100,0 0 34px #ff6d00;
-        animation:rvmnGlow 1.25s ease-in-out infinite alternate}
-      #rvMalaNames div:nth-child(2){animation-delay:.15s}
-      #rvMalaNames div:nth-child(3){animation-delay:.3s}
-      #rvMalaNames div:nth-child(4){animation-delay:.45s}
-      @keyframes rvmnGlow{
-        from{text-shadow:0 0 6px #ffb300,0 0 14px #ff9100,0 0 24px #ff6d00;filter:brightness(1)}
-        to{text-shadow:0 0 14px #fff2b0,0 0 30px #ffc107,0 0 56px #ff6d00,0 0 80px #ff3d00;filter:brightness(1.25)}}
-      @media (prefers-reduced-motion:reduce){#rvMalaNames div{animation:none}}
-    `;
+    st.textContent = ".mf.show-rv{animation:mc " + (RV_MALA_NAMES_MS / 1000) + "s ease-in-out forwards;}";
     document.head.appendChild(st);
   }
 
-  const names = (App.S && App.S.naamLang === "bn") ? RV_MALA_NAMES_BN : RV_MALA_NAMES_SA;
-  const el = document.createElement("div");
-  el.id = "rvMalaNames";
-  el.innerHTML = names.map((n) => "<div>" + n + "</div>").join("");
-  // Cover the jap tap area; fall back to the full screen
-  const tz = document.getElementById("tz");
-  const r = tz ? tz.getBoundingClientRect() : null;
-  if (r && r.width > 40 && r.height > 40) {
-    el.style.left = r.left + "px";
-    el.style.top = r.top + "px";
-    el.style.width = r.width + "px";
-    el.style.height = r.height + "px";
-  } else {
-    el.style.inset = "0";
-  }
-  // Swallow every pointer event so nothing underneath responds
-  ["touchstart", "touchend", "mousedown", "mouseup", "click"].forEach((t) =>
-    el.addEventListener(t, (ev) => { ev.preventDefault(); ev.stopPropagation(); }, { passive: false })
-  );
-  document.body.appendChild(el);
-  void el.offsetWidth;
-  el.classList.add("rvmn-on");
-
   window._rvNamesLock = true;
+  const isBn = App.S && App.S.naamLang === "bn";
+  const names = isBn ? RV_MALA_NAMES_BN : RV_MALA_NAMES_SA;
+  const mf = document.getElementById("mf");
+
+  if (mf) {
+    const l1e = mf.querySelector(".mf-line1");
+    const l2e = mf.querySelector(".mf-line2");
+    const o1 = l1e ? l1e.textContent : "";
+    const o2 = l2e ? l2e.textContent : "";
+    const ff = isBn
+      ? "'Hind Siliguri','Tiro Devanagari Hindi',serif"
+      : "'Tiro Devanagari Hindi','Hind Siliguri',serif";
+    const goldGlow = "0 0 20px rgba(255,215,0,0.9),0 0 40px rgba(255,215,0,0.5)";
+    const styleName = (el) => {
+      el.style.fontFamily = ff;
+      el.style.color = "var(--gold)";
+      el.style.textShadow = goldGlow;
+      el.style.letterSpacing = "1px";
+      el.style.lineHeight = "1.35";
+      el.style.fontSize = "clamp(22px,6.4vw,34px)";
+    };
+    const extras = [];
+    if (l1e) {
+      l1e.textContent = names[0];
+      l1e.style.fontFamily = ff;
+      l1e.style.lineHeight = "1.35";
+    }
+    if (l2e) {
+      l2e.textContent = names[1];
+      styleName(l2e);
+      l2e.style.marginTop = "0";
+      let prev = l2e;
+      [names[2], names[3]].forEach((n) => {
+        const c = document.createElement("div");
+        c.className = "mf-line2";
+        c.textContent = n;
+        styleName(c);
+        c.style.marginTop = "0";
+        prev.parentNode.insertBefore(c, prev.nextSibling);
+        extras.push(c);
+        prev = c;
+      });
+    }
+    // Restart the CSS animation cleanly, then run the 5s variant
+    mf.classList.remove("show", "show-long", "show-rv");
+    void mf.offsetWidth;
+    mf.classList.add("show-rv");
+    _rvNamesRestore = function () {
+      mf.classList.remove("show-rv");
+      extras.forEach((c) => c.remove());
+      if (l1e) { l1e.textContent = o1; l1e.style.fontFamily = ""; l1e.style.lineHeight = ""; }
+      if (l2e) {
+        l2e.textContent = o2;
+        ["fontFamily","color","textShadow","letterSpacing","lineHeight","fontSize","marginTop"]
+          .forEach((k) => { l2e.style[k] = ""; });
+      }
+    };
+  }
+
   _rvNamesTimer = setTimeout(() => {
     window._rvNamesLock = false;
-    el.classList.remove("rvmn-on");
-    setTimeout(() => el.remove(), 380);
+    if (_rvNamesRestore) { _rvNamesRestore(); _rvNamesRestore = null; }
   }, RV_MALA_NAMES_MS);
 }
 

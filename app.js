@@ -16110,21 +16110,74 @@ function renderSt() {
 
   let idx = 0;
   let _favHeadDone = false;
-  // Sub-group headings inside Radha Vallabh (st.grp): Rasik/Bhakt Namavali, and Acharya/Isht/Guru Vandana.
-  const _RV_GRP = {
-    nam: { bn: '\u09b0\u09b8\u09bf\u0995 \u0993 \u09ad\u0995\u09cd\u09a4 \u09a8\u09be\u09ae\u09be\u09ac\u09b2\u09c0', hi: '\u0930\u0938\u093f\u0915 \u090f\u0935\u0902 \u092d\u0915\u094d\u0924 \u0928\u093e\u092e\u093e\u0935\u0932\u0940' },
-    vnd: { bn: '\u0986\u099a\u09be\u09b0\u09cd\u09af \u00b7 \u0987\u09b7\u09cd\u099f \u00b7 \u0997\u09c1\u09b0\u09c1 \u09ac\u09a8\u09cd\u09a6\u09a8\u09be', hi: '\u0906\u091a\u093e\u0930\u094d\u092f \u00b7 \u0907\u0937\u094d\u091f \u00b7 \u0917\u0941\u0930\u0941 \u0935\u0928\u094d\u0926\u0928\u093e' },
-  };
+  // ── Radha Vallabh folder layout ──
+  // Order + headings for the Radha Vallabh list. Each entry is either a heading
+  // ({h:1} = section heading, {h:2} = smaller sub-heading) or a list of stotram ids.
+  // Any rv stotram NOT named below is appended at the end under "Others", so nothing
+  // ever disappears from the folder. To re-arrange: just move ids / headings around.
+  const _RV_LAYOUT = [
+    ['ved4', 'asp'],
+    ['hcj', 'rsn'],
+    { h: 1, bn: 'সেবক বাণী', hi: 'सेवक वाणी' },
+    ['svi', 'svb'],
+    ['rmm', 'pdv'],
+    { h: 1, bn: 'শ্রী হিত হরিবংশ মহাপ্রভু অন্যান্য', hi: 'श्री हित हरिवंश महाप्रभु — अन्य रचनाएँ' },
+    ['sfv', 'yms', 'asd', 'ipr', 'ptr'],
+    { h: 1, bn: 'বয়ালীস লীলা ও ধ্রুবদাস জীর অন্যান্য', hi: 'बयालीस लीला एवं ध्रुवदास जी की अन्य रचनाएँ' },
+    ['dhi', 'bla', 'blv', 'bvp', 'nmb', 'bln', 'blp'],
+    { h: 1, bn: 'বন্দনা ও নামাবলী', hi: 'वन्दना एवं नामावली' },
+    ['rkn', 'hmg'],
+    { h: 2, bn: 'আচার্য · ইষ্ট · গুরু বন্দনা', hi: 'आचार्य · इष्ट · गुरु वन्दना' },
+    ['acv', 'ist', 'isv', 'gvn', 'svk'],
+    { h: 2, bn: 'রসিক ও ভক্ত নামাবলী', hi: 'रसिक एवं भक्त नामावली' },
+    ['rnm', 'bnm', 'bkt', 'vnm'],
+    { h: 1, bn: 'উৎসব ও বধাই', hi: 'उत्सव एवं बधाई' },
+    ['vyh', 'jhp', 'jbp', 'ljb', 'sjb', 'ljp', 'sjp', 'ljc', 'sjc', 'ljd', 'sjd'],
+    { h: 1, bn: 'কীর্তন ও জয়কারা', hi: 'कीर्तन एवं जयकारा' },
+    ['kjk'],
+    { h: 1, bn: 'প্রেম কী পীর', hi: 'प्रेम की पीर' },
+    ['pkp'],
+  ];
+  let _listItems = group.items;
+  if (activeKey === 'rv') {
+    const byId = {}; group.items.forEach((x) => { byId[x.id] = x; });
+    const used = {};
+    const out = [];
+    _RV_LAYOUT.forEach((e) => {
+      if (Array.isArray(e)) {
+        e.forEach((id) => { if (byId[id] && !used[id]) { used[id] = 1; out.push(byId[id]); } });
+      } else {
+        out.push({ __head: e });
+      }
+    });
+    const rest = group.items.filter((x) => !used[x.id]);
+    if (rest.length) {
+      out.push({ __head: { h: 1, bn: 'অন্যান্য', hi: 'अन्य' } });
+      rest.forEach((x) => out.push(x));
+    }
+    // Drop headings that ended up with no stotram under them.
+    _listItems = out.filter((x, i) => {
+      if (!x.__head) return true;
+      for (let j = i + 1; j < out.length; j++) {
+        if (!out[j].__head) return true;
+        if (out[j].__head.h <= x.__head.h) return false;
+      }
+      return false;
+    });
+  }
   let _lastGrp = null;
-  group.items.forEach((st) => {
-    if (activeKey === 'rv' && st.grp && st.grp !== _lastGrp && _RV_GRP[st.grp]) {
+  _listItems.forEach((st) => {
+    if (st.__head) {
+      const hd = st.__head;
       const gh = document.createElement('div');
       gh.className = 'st-section-head';
-      gh.style.cssText = 'margin:18px 4px 10px;padding:0 0 6px;font-size:13px;font-weight:700;letter-spacing:0;color:var(--gold,#ffd700);border-bottom:1px solid rgba(255,215,0,0.25)';
-      gh.textContent = (secLang('sv') === 'hi') ? _RV_GRP[st.grp].hi : _RV_GRP[st.grp].bn;
+      gh.style.cssText = hd.h === 1
+        ? 'margin:18px 4px 10px;padding:0 0 6px;font-size:13px;font-weight:700;letter-spacing:0;color:var(--gold,#ffd700);border-bottom:1px solid rgba(255,215,0,0.25)'
+        : 'margin:14px 4px 8px;padding:0 0 0 8px;font-size:12px;font-weight:600;letter-spacing:0;color:rgba(255,215,0,0.78);border-left:2px solid rgba(255,215,0,0.35)';
+      gh.textContent = (secLang('sv') === 'hi') ? hd.hi : hd.bn;
       list.appendChild(gh);
+      return;
     }
-    _lastGrp = st.grp || null;
     if (activeKey === 'rv' && st.fav && !_favHeadDone) {
       _favHeadDone = true;
       const fh = document.createElement('div');

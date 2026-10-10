@@ -23457,6 +23457,10 @@ var _AUDIO_STOTRAMS = {
          ytVoices: { default: "etSKEzZTRw8", maharaj: "" },
          offlineVoice: "maharaj",
          voiceLabels: { default: "Shree Record", maharaj: "Maharaj Ji" } },
+  // Shri Vrindavan Dham Namavali: FLAT single page (in SINGLE_VIEW_IDS), one full recording streamed from
+  // YouTube (Io4ed-yuSHo). Needs internet (shows the usual "needs internet" message offline). If you later
+  // add audio/vnm_1.mp3 to the repo, put it in `url` below so it also plays offline.
+  vnm: { prefix: "vnm", timed: true, marks: [0], yt: "Io4ed-yuSHo", url: "" },
   // Shri Hit Sfut Vani (Premanand Ji Maharaj pad-gayan): NOT a flat page — normal verse-by-verse
   // reader like Hit Chaurasi. One full recording (audio/sfv_1.mp3), marks = start second of each
   // verse (23 pads + 4 dohas = 27). Closing "jay jay" colophon is popped for audio stotrams,

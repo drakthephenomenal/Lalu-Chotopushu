@@ -3368,8 +3368,8 @@ function showRamMalaComplete(line1, line2) {
 // read "Radha Vallabh / Sri Harivansh" in English) and swaps its text for the four
 // holy names. Sound + deity-image glow come from malaOk(). App.ht() ignores taps
 // for the duration via window._rvNamesLock — no overlay/curtain is drawn.
-const RV_MALA_NAMES_BN = ["রাধাবল্লভ", "শ্রী হরিবংশ", "শ্রী বৃন্দাবন", "শ্রী বনচন্দ"];
-const RV_MALA_NAMES_SA = ["राधावल्लभ", "श्री हरिवंश", "श्री वृन्दावन", "श्री वनचन्द"];
+const RV_MALA_NAMES_BN = ["রাধাবল্লভ", "শ্রী হরিবংশ", "শ্রী বৃন্দাবন", "শ্রীবনচংদ"];
+const RV_MALA_NAMES_SA = ["राधावल्लभ", "श्री हरिवंश", "श्री वृन्दावन", "श्रीवनचंद"];
 const RV_MALA_NAMES_MS = 5000;
 let _rvNamesTimer = null;
 let _rvNamesRestore = null;
@@ -3407,13 +3407,15 @@ function showRVSampradayMalaNames() {
       el.style.textShadow = goldGlow;
       el.style.letterSpacing = "1px";
       el.style.lineHeight = "1.35";
-      el.style.fontSize = "clamp(22px,6.4vw,34px)";
+      el.style.fontSize = "clamp(30px,8.4vw,44px)"; // same size for all 4 lines
     };
     const extras = [];
     if (l1e) {
       l1e.textContent = names[0];
       l1e.style.fontFamily = ff;
       l1e.style.lineHeight = "1.35";
+      l1e.style.letterSpacing = "1px";
+      l1e.style.fontSize = "clamp(30px,8.4vw,44px)";
     }
     if (l2e) {
       l2e.textContent = names[1];
@@ -3438,7 +3440,7 @@ function showRVSampradayMalaNames() {
     _rvNamesRestore = function () {
       mf.classList.remove("show-rv");
       extras.forEach((c) => c.remove());
-      if (l1e) { l1e.textContent = o1; l1e.style.fontFamily = ""; l1e.style.lineHeight = ""; }
+      if (l1e) { l1e.textContent = o1; ["fontFamily","lineHeight","letterSpacing","fontSize"].forEach((k) => { l1e.style[k] = ""; }); }
       if (l2e) {
         l2e.textContent = o2;
         ["fontFamily","color","textShadow","letterSpacing","lineHeight","fontSize","marginTop"]

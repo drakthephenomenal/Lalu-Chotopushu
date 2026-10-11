@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker  v236
+// v323: FIX unstyled / broken-image first load on slow mobile networks. The fetch handler gave up after 2–2.5s and, when nothing was cached yet (first open, or right after a cache bump), returned a plain "Offline" 503 for style.css / app.js / images — so the page showed with no CSS. It now keeps waiting for the network when there is nothing cached to fall back on (cached copy is still used instantly when it exists). Also: Radha Vallabh folder re-organised into sub-folders; Guru Vandana video + translation; Vrindavan Dham Namavali YouTube audio.
 // v322: S&V re-organised by sampraday — new folders: Haridasi (Kelimal + Haridasi poets from Priyo Stotra), Priyo Stotra & Padsamuh (own folder, out of Radha Vallabh), Nimbark (all Jayadeva), Vallabh/Rudra (Pushtimarg: Madhurashtakam, Nandakumar Ashtakam), Ramanandi (Hanuman), Ramanuj (coming soon), Shankaracharya (copies for playing); Krishna/Shiv/Gita unchanged.
 // v321: Sfut Vani (sfv) gets the ☰ pad list (bottom-left) to jump to any pad — 23 pads then 4 dohas — like Hit Chaurasi / Sevak Vani.
 // v320: Bhagavad Gita (700 shlokas) is now pre-loaded in the background once S&V is shown / app is online, so the first tap on Open opens it immediately (before, the first tap only started a download and it opened on the 2nd tap); repeated taps while loading no longer stack.
@@ -398,7 +399,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v322';
+const CACHE = 'radha-jap-v323';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 
@@ -619,6 +620,34 @@ async function storeResponse(cacheKey, response) {
   } catch (_) {}
 }
 
+// Network-first with a soft timeout. After `ms` we serve the cached copy if there is one (and let the
+// request keep running in the background to refresh the cache). If there is NOTHING cached yet we keep
+// waiting for the network instead of failing — an aborted request here is what used to leave the page
+// without CSS/JS on slow connections.
+async function networkFirstSoft(event, request, cacheKey, ms) {
+  const netPromise = fetch(request, { cache: 'no-cache' }).then((res) => {
+    if (res && res.ok) storeResponse(cacheKey, res.clone()).catch(() => {});
+    return res;
+  });
+  netPromise.catch(() => {});                 // never an unhandled rejection
+  try { event.waitUntil(netPromise.catch(() => {})); } catch (_) {}
+  const TIMEOUT = Symbol('timeout');
+  try {
+    const first = await Promise.race([netPromise, new Promise((r) => setTimeout(() => r(TIMEOUT), ms))]);
+    if (first !== TIMEOUT) {
+      if (first && first.ok) return first;
+      const cached = await caches.match(cacheKey);
+      return cached || first;
+    }
+    const cached = await caches.match(cacheKey);
+    if (cached) return cached;                // slow network + have a copy → instant
+    return await netPromise;                  // slow network + nothing cached → wait, don't fail
+  } catch (_) {
+    const cached = await caches.match(cacheKey);
+    return cached || new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+  }
+}
+
 // ── INSTALL: block on CORE (incl. above-the-fold images); lazy + external in background ──
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -686,20 +715,7 @@ self.addEventListener('fetch', (event) => {
   // - If network responds within 2s, use it and update cache.
   // - If network is slow/offline, serve cached index.html.
   if (event.request.mode === 'navigate') {
-    event.respondWith((async () => {
-      try {
-        const response = await fetchWithTimeout(event.request, { cache: 'no-cache' }, 2000);
-        if (response && response.ok) {
-          storeResponse('./index.html', response.clone()).catch(() => {});
-          return response;
-        }
-        const cached = await caches.match('./index.html');
-        return cached || response;
-      } catch (_) {
-        const cached = await caches.match('./index.html');
-        return cached || new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
-      }
-    })());
+    event.respondWith(networkFirstSoft(event, event.request, './index.html', 2000));
     return;
   }
 
@@ -750,20 +766,7 @@ self.addEventListener('fetch', (event) => {
     // the very next time the app is opened. Falls back to whatever's
     // cached only if the network is slow/unavailable, so offline use is
     // unaffected.
-    event.respondWith((async () => {
-      try {
-        const response = await fetchWithTimeout(event.request, { cache: 'no-cache' }, 2500);
-        if (response && response.ok) {
-          storeResponse(localCacheKey, response.clone()).catch(() => {});
-          return response;
-        }
-        const cached = await caches.match(localCacheKey);
-        return cached || response;
-      } catch (_) {
-        const cached = await caches.match(localCacheKey);
-        return cached || new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
-      }
-    })());
+    event.respondWith(networkFirstSoft(event, event.request, localCacheKey, 2500));
     return;
   }
 

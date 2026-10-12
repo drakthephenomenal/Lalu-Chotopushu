@@ -15419,6 +15419,7 @@ function renderFavVideoFolder(list) {
     VIDEO_SUBFOLDERS.forEach((sub) => {
       const tile = document.createElement('div');
       tile.className = 'st-folder-tile';
+      tile.dataset.sub = sub.key;
       tile.innerHTML =
         '<span class="st-folder-tile-icon">' + sub.icon + '</span>' +
         '<span class="st-folder-tile-title">' + escHtml(sub.title) + '</span>' +
@@ -15430,6 +15431,10 @@ function renderFavVideoFolder(list) {
       });
       list.appendChild(tile);
     });
+    favvidNewCounts().then((c) => {
+      if (!list.isConnected) return;
+      list.querySelectorAll('.st-folder-tile[data-sub]').forEach((t) => favvidApplyFolderBadge(t, c.bySub[t.dataset.sub]));
+    }).catch(() => {});
     return;
   }
 
@@ -15463,6 +15468,57 @@ function renderFavVideoFolder(list) {
 
 function favvidNewBadgeHtml(key) {
   return favvidIsSeen(key) ? '' : '<span class="favvid-new-badge" style="background:#ff4d4d;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;margin-left:6px;letter-spacing:0.5px;flex-shrink:0">NEW</span>';
+}
+// Roll the per-item NEW state (unopened videos / links) up to folder tiles:
+// each Useful Videos+ Links subfolder (Motivation, Naam Jap Mahima, Law of Karma,
+// Random Links) and the top-level "Useful Videos+ Links" tile show NEW while any
+// item inside hasn't been opened yet. Opening the item clears it (favvidMarkSeen).
+let _favvidNewLinksMemo = null, _favvidNewLinksMemoAt = 0;
+async function favvidNewCounts() {
+  const out = { total: 0, bySub: {} };
+  VIDEO_SUBFOLDERS.forEach((s) => { out.bySub[s.key] = 0; });
+  try {
+    const manifest = await fetchFavVideoManifest();
+    VIDEO_SUBFOLDERS.forEach((s) => {
+      if (s.type !== 'github') return;
+      const slug = s.path.split('/').pop();
+      (manifest[slug] || []).forEach((name) => {
+        if (!favvidIsSeen('video:' + s.key + ':' + name)) out.bySub[s.key]++;
+      });
+    });
+  } catch (e) { /* offline - skip videos */ }
+  try {
+    let links = _favvidLinksCache;
+    if (!links) {
+      if (_favvidNewLinksMemo && (Date.now() - _favvidNewLinksMemoAt) < 60000) {
+        links = _favvidNewLinksMemo;
+      } else {
+        // Own read (does not touch _favvidLinksCache, so a failed early read can't blank the Links view).
+        const snap = await fbDb.collection('config').doc('favouriteVideoLinks').get();
+        const d = snap.exists ? snap.data() : {};
+        links = Array.isArray(d.items) ? d.items : [];
+        _favvidNewLinksMemo = links; _favvidNewLinksMemoAt = Date.now();
+      }
+    }
+    links.forEach((l) => {
+      const k = l.subfolder || 'links';
+      if (out.bySub[k] === undefined) return;
+      if (!favvidIsSeen('link:' + l.id)) out.bySub[k]++;
+    });
+  } catch (e) { /* not signed in / offline - skip links */ }
+  out.total = Object.keys(out.bySub).reduce((n, k) => n + out.bySub[k], 0);
+  return out;
+}
+function favvidFolderNewHtml() {
+  return '<span class="favvid-folder-new" style="background:#ff4d4d;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;margin-left:8px;letter-spacing:0.5px;flex-shrink:0;align-self:center;box-shadow:0 0 8px rgba(255,77,77,0.55)">NEW</span>';
+}
+function favvidApplyFolderBadge(tile, count) {
+  if (!tile) return;
+  const old = tile.querySelector('.favvid-folder-new');
+  if (old) old.remove();
+  if (!count) return;
+  const title = tile.querySelector('.st-folder-tile-title');
+  if (title) title.insertAdjacentHTML('afterend', favvidFolderNewHtml());
 }
 function favvidReorderButtonsHtml() {
   return (
@@ -15785,6 +15841,7 @@ function renderFavVideoLinksTop(list, subfolderKey) {
           tile.innerHTML =
             '<span class="st-folder-tile-icon">📁</span>' +
             '<span class="st-folder-tile-title">' + escHtml(f.name) + '</span>' +
+            (rawLinks.some((l) => l.folderId === f.id && !favvidIsSeen('link:' + l.id)) ? favvidFolderNewHtml() : '') +
             '<span class="st-folder-tile-count">' + count + '</span>' +
             (isDeveloper() ? '<button class="favvid-folder-edit" style="margin-left:8px;width:26px;height:26px;border-radius:8px;border:1px solid rgba(255,215,0,0.3);color:#ffd700;background:rgba(255,215,0,0.08);font-size:13px;cursor:pointer;flex-shrink:0">✎</button><button class="favvid-folder-del" style="margin-left:6px;width:26px;height:26px;border-radius:8px;border:1px solid rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08);font-size:13px;cursor:pointer;flex-shrink:0">✕</button>' : '') +
             '<span class="st-folder-tile-arrow">›</span>';
@@ -15939,7 +15996,7 @@ function renderSt() {
   // The "Add Your Stotram" box may have been moved under the Stotrams headline
   // (folder menu) — put it back above the list before clearing so it isn't destroyed.
   const _af = document.getElementById('stAddForm');
-  if (_af && _af.parentNode === list) list.parentNode.insertBefore(_af, list);
+  if (_af && _af.parentNode === list) list.parentNode.insertBefore(_af, list.nextSibling);
   list.innerHTML = "";
 
   // "Stotram Tracker" title + "Add Your Stotram" box don't apply inside
@@ -16063,11 +16120,14 @@ function renderSt() {
         renderSt();
       });
       list.appendChild(tile);
+      if (group.key === 'videos') {
+        favvidNewCounts().then((c) => { if (tile.isConnected) favvidApplyFolderBadge(tile, c.total); }).catch(() => {});
+      }
     };
     try { _hcjWarmSet([]); } catch (_e) {}
     topGroups.forEach(addTile);
     addHead(_svHi ? '🪔 स्तोत्र' : '🪔 স্তোত্র');
-    if (_af) list.appendChild(_af);   // "Add Your Stotram" lives under the Stotrams headline
+    // "Add Your Stotram" now lives at the very bottom of the S&V page (below #stList in index.html).
     stotramGroups.forEach(addTile);
     return;
   }

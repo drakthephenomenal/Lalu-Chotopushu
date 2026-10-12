@@ -675,6 +675,8 @@
     #vst .sv-head .vt{flex:1 1 auto;min-width:0;margin:0;text-align:left;font-size:15px;letter-spacing:.06em;line-height:1.25;}
     #vst .sv-head .sec-lang-bar{flex:0 0 auto;margin-left:auto !important;margin-top:0 !important;margin-bottom:0 !important;margin-right:0 !important;gap:5px;}
     #vst .sv-head .ms-toggle-btn{padding:5px 11px;font-size:12px;min-width:0;}
+    /* .view is a flex column: without flex-shrink:0 the overflow:hidden form gets squashed to its border once it sits after a long list. */
+    #vst #stAddForm{flex-shrink:0;margin-bottom:120px;}
   </style>
   <div class="sv-head">
   <div class="vt" id="stTrackerTitle">Stotram and Videos</div>
@@ -2876,7 +2878,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=142"></script>
-    <script src="./app.js?v=184"></script>
+    <script src="./app.js?v=186"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

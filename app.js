@@ -15031,7 +15031,8 @@ RV_POET_IMG.vpur = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAQDA
 Object.assign(RV_POET_ICON, {
   bg: "gita",                                   // Srimad Bhagavad Gita
   nkc: "bhg", gms: "bhg", gpg: "bhg",           // Narayan Kavach, Gajendra Moksha, Gopi Geet (Srimad Bhagavatam)
-  vs2: "vpur"                                   // Vishnu Shatanam (Vishnu Purana)
+  vs2: "vpur",                                  // Vishnu Shatanam (Vishnu Purana)
+  bvk: "sh", gpa: "sh", bgv: "sh"               // Adi Shankaracharya — Bhaje Vrajaikamandanam, Gopal Ashtakam, Bhaj Govindam
 });
 
 // Jayadeva folder-tile icon (cropped from rashikan/p045.jpg, embedded like the other folder icons).

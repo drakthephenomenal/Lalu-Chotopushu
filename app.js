@@ -16363,7 +16363,7 @@ function renderSt() {
     let headerRight = '';
     if (st.custom) {
       headerRight = '<div style="display:flex;gap:5px;flex-shrink:0">' +
-        '<button class="st-edit-btn" title="Upload audio" aria-label="Upload audio" onclick="stPickAudio(\'' + st.id + '\')">' + (window._stAudioUrls[st.id] ? '🎵✓' : '🎵') + '</button>' +
+        '<button class="st-edit-btn" title="Upload audio" aria-label="Upload audio" onclick="stPickAudio(\'' + st.id + '\')">' + ((window._stAudioUrls[st.id] || st.yt) ? '🎵✓' : '🎵') + '</button>' +
         (window._stAudioUrls[st.id] ? '<button class="st-edit-btn" title="Remove audio" aria-label="Remove audio" onclick="stRemoveAudio(\'' + st.id + '\')">🔇</button>' : '') +
         '<button class="st-edit-btn" onclick="toggleStEdit(\'' + st.id + '\')">✏</button>' +
         '<button class="st-edit-btn" style="border-color:rgba(255,80,80,0.35);color:#ff8888;background:rgba(255,80,80,0.08)" onclick="delSt(\'' + st.id + '\')">✕</button>' +
@@ -16413,6 +16413,8 @@ function renderSt() {
         '<div id="slePanel-' + st.id + '" style="display:none;margin-top:12px">' +
         '<div style="font-size:11px;color:rgba(74,144,226,0.8);margin-bottom:6px;letter-spacing:1px">✏ Edit Lyrics</div>' +
         '<textarea id="sle-' + st.id + '" rows="8" style="width:100%;background:rgba(0,0,0,0.40);border:1px solid rgba(74,144,226,0.25);border-radius:10px;padding:10px 12px;color:var(--tl);font-size:14px;font-family:Hind Siliguri,serif;resize:vertical;line-height:1.8;box-sizing:border-box" placeholder="Paste full lyrics here…"></textarea>' +
+        '<div style="font-size:11px;color:rgba(74,144,226,0.8);margin:12px 0 6px;letter-spacing:1px">\uD83C\uDFB5 YouTube link (plays as audio)</div>' +
+        '<input id="sye-' + st.id + '" type="text" inputmode="url" autocapitalize="off" autocorrect="off" placeholder="https://youtu.be/\u2026  (empty = remove)" style="width:100%;background:rgba(0,0,0,0.40);border:1px solid rgba(74,144,226,0.25);border-radius:10px;padding:10px 12px;color:var(--tl);font-size:14px;box-sizing:border-box">' +
         '<button onclick="editStLyrics(\'' + st.id + '\')" style="margin-top:8px;padding:9px 20px;border-radius:10px;border:none;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">💾 Save Lyrics</button>' +
         '</div>';
     }
@@ -19159,18 +19161,87 @@ function addSt() {
   }
   const sub = document.getElementById("ssIn").value.trim();
   const lyrics = (document.getElementById("slIn").value || "").trim();
+  // Optional music: a YouTube link and/or an uploaded audio/video file.
+  const ytRaw = ((document.getElementById("syIn") || {}).value || "").trim();
+  let yt = "";
+  if (ytRaw) {
+    yt = _stYtId(ytRaw);
+    if (!yt) { toast("That doesn't look like a YouTube video link"); return; }
+  }
+  const mfile = window._asfMusicFile || null;
+  if (mfile && (!_stIsMediaFile(mfile) || mfile.size > _ST_MEDIA_MAX)) { toast("Please choose an audio/video file under 300 MB"); return; }
   const id = "c_" + Date.now();
   if (!App.S.customSt) App.S.customSt = [];
-  App.S.customSt.push({ id, name, sub, lyrics });
+  const entry = { id, name, sub, lyrics };
+  if (yt) entry.yt = yt;
+  App.S.customSt.push(entry);
   if (!App.S.stotrams[id]) App.S.stotrams[id] = {};
   App.save();
   fbDebouncedPush();
   document.getElementById("snIn").value = "";
   document.getElementById("ssIn").value = "";
   document.getElementById("slIn").value = "";
+  asfMusicReset();
+  _stSyncAudioCfg(id);
   renderSt();
   toggleAsfForm(false); // auto-collapse after adding
-  toast("Stotram added" + (lyrics ? " with lyrics" : "") + "! 🙏");
+  toast("Stotram added" + (lyrics ? " with lyrics" : "") + ((yt || mfile) ? " + music" : "") + "! \uD83D\uDE4F");
+  if (mfile) _stSaveAudioFile(id, mfile);   // stored on this device; shows its own toast when done
+}
+
+// "Add music (optional)" section of the Add Your Stotram form.
+function toggleAsfMusic() {
+  const b = document.getElementById("asfMusicBody");
+  if (!b) return;
+  const open = b.style.display === "none";
+  b.style.display = open ? "block" : "none";
+  const ch = document.getElementById("asfMusicChev");
+  if (ch) ch.textContent = open ? "\u25B4" : "\u25BE";
+}
+function asfPickMusic() {
+  let inp = document.getElementById("asfMusicInput");
+  if (!inp) {
+    inp = document.createElement("input");
+    inp.type = "file";
+    inp.id = "asfMusicInput";
+    inp.style.display = "none";
+    document.body.appendChild(inp);
+  }
+  inp.accept = _ST_MEDIA_ACCEPT;
+  inp.value = "";
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    if (!_stIsMediaFile(f)) { toast("Please choose an audio or video file"); return; }
+    if (f.size > _ST_MEDIA_MAX) { toast("File is too large (max 300 MB)"); return; }
+    window._asfMusicFile = f;
+    const p = document.getElementById("asfMusicPicked");
+    if (p) {
+      p.style.display = "flex";
+      p.innerHTML = "";
+      const nm = document.createElement("span");
+      nm.textContent = "\uD83C\uDFB5 " + f.name;
+      const x = document.createElement("button");
+      x.type = "button"; x.className = "asf-music-x"; x.textContent = "\u2715";
+      x.onclick = asfMusicClearFile;
+      p.appendChild(nm); p.appendChild(x);
+    }
+  };
+  inp.click();
+}
+function asfMusicClearFile() {
+  window._asfMusicFile = null;
+  const p = document.getElementById("asfMusicPicked");
+  if (p) { p.style.display = "none"; p.innerHTML = ""; }
+}
+function asfMusicReset() {
+  asfMusicClearFile();
+  const y = document.getElementById("syIn");
+  if (y) y.value = "";
+  const b = document.getElementById("asfMusicBody");
+  if (b) b.style.display = "none";
+  const ch = document.getElementById("asfMusicChev");
+  if (ch) ch.textContent = "\u25BE";
 }
 
 // Edit lyrics for existing custom stotram
@@ -19180,6 +19251,18 @@ function editStLyrics(id) {
   const el = document.getElementById("sle-" + id);
   if (!el) return;
   st.lyrics = el.value.trim();
+  const ye = document.getElementById("sye-" + id);
+  if (ye) {
+    const raw = ye.value.trim();
+    if (raw) {
+      const y = _stYtId(raw);
+      if (!y) { toast("That doesn't look like a YouTube video link"); return; }
+      st.yt = y;
+    } else {
+      delete st.yt;
+    }
+    _stSyncAudioCfg(id);
+  }
   App.save();
   fbDebouncedPush();
   renderSt();
@@ -19195,6 +19278,8 @@ function toggleStEdit(id) {
     const st = (App.S.customSt || []).find((x) => x.id === id);
     const ta = document.getElementById("sle-" + id);
     if (st && ta) ta.value = st.lyrics || "";
+    const ye = document.getElementById("sye-" + id);
+    if (st && ye) ye.value = st.yt ? "https://youtu.be/" + st.yt : "";
   }
 }
 function delSt(id) {
@@ -21772,7 +21857,9 @@ let _stAudioLoaded = false;
 // Make _AUDIO_STOTRAMS reflect whether this custom stotram has an upload.
 function _stSyncAudioCfg(id) {
   if (!_isCustomStId(id)) return;
-  if (window._stAudioUrls[id]) _AUDIO_STOTRAMS[id] = { prefix: id, custom: true };
+  const _cs = (App.S.customSt || []).find((x) => x.id === id);
+  if (window._stAudioUrls[id]) _AUDIO_STOTRAMS[id] = { prefix: id, custom: true };            // uploaded file wins on this device
+  else if (_cs && _cs.yt) _AUDIO_STOTRAMS[id] = { prefix: id, timed: true, marks: [0], yt: _cs.yt, url: "" };   // YouTube link (syncs with the account)
   else delete _AUDIO_STOTRAMS[id];
 }
 async function stAudioLoadAll() {
@@ -21786,34 +21873,52 @@ async function stAudioLoadAll() {
   } catch (e) { /* IndexedDB unavailable: custom stotrams simply have no audio */ }
   _stAudioLoaded = true;
 }
+// ── Optional music for a custom stotram: a YouTube link (plays as audio) and/or an
+// uploaded audio OR video file (only its sound plays). Both reuse the custom-stotram audio engine.
+function _stYtId(raw) {
+  const t = (raw || "").trim();
+  if (/^[A-Za-z0-9_-]{11}$/.test(t)) return t;
+  const m = t.match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : "";
+}
+const _ST_MEDIA_EXT = /\.(mp3|m4a|aac|wav|ogg|oga|opus|flac|mp4|m4v|mov|webm|3gp|mkv)$/i;
+const _ST_MEDIA_ACCEPT = "audio/*,video/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac,.mp4,.m4v,.mov,.webm,.3gp";
+const _ST_MEDIA_MAX = 300 * 1024 * 1024;
+function _stIsMediaFile(f) {
+  return !!f && ((f.type && (f.type.indexOf("audio") === 0 || f.type.indexOf("video") === 0)) || _ST_MEDIA_EXT.test(f.name || ""));
+}
+// Stores the file on this device (IndexedDB) and wires it up as the stotram's audio.
+async function _stSaveAudioFile(id, f) {
+  if (!_stIsMediaFile(f)) { toast("Please choose an audio or video file"); return false; }
+  if (f.size > _ST_MEDIA_MAX) { toast("File is too large (max 300 MB)"); return false; }
+  try {
+    await StAudioDB.put(id, f);
+    if (window._stAudioUrls[id]) URL.revokeObjectURL(window._stAudioUrls[id]);
+    window._stAudioUrls[id] = URL.createObjectURL(f);
+    _stSyncAudioCfg(id);
+    renderSt();
+    toast("Audio added \uD83C\uDFB5");
+    return true;
+  } catch (e) {
+    toast("Could not save audio on this device");
+    return false;
+  }
+}
 function stPickAudio(id) {
   let inp = document.getElementById("stAudioInput");
   if (!inp) {
     inp = document.createElement("input");
     inp.type = "file";
-    inp.accept = "audio/*,.mp3,.m4a,.aac,.wav,.ogg";
     inp.id = "stAudioInput";
     inp.style.display = "none";
     document.body.appendChild(inp);
   }
+  inp.accept = _ST_MEDIA_ACCEPT;
   inp.value = "";
-  inp.onchange = async () => {
+  inp.onchange = () => {
     const f = inp.files && inp.files[0];
     if (!f) return;
-    if (f.type && f.type.indexOf("audio") !== 0 && !/\.(mp3|m4a|aac|wav|ogg)$/i.test(f.name)) {
-      toast("Please choose an audio file");
-      return;
-    }
-    try {
-      await StAudioDB.put(id, f);
-      if (window._stAudioUrls[id]) URL.revokeObjectURL(window._stAudioUrls[id]);
-      window._stAudioUrls[id] = URL.createObjectURL(f);
-      _stSyncAudioCfg(id);
-      renderSt();
-      toast("Audio added 🎵");
-    } catch (e) {
-      toast("Could not save audio on this device");
-    }
+    _stSaveAudioFile(id, f);
   };
   inp.click();
 }

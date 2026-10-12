@@ -677,6 +677,16 @@
     #vst .sv-head .ms-toggle-btn{padding:5px 11px;font-size:12px;min-width:0;}
     /* .view is a flex column: without flex-shrink:0 the overflow:hidden form gets squashed to its border once it sits after a long list. */
     #vst #stAddForm{flex-shrink:0;margin-bottom:120px;}
+    #vst .asf-body.open{max-height:1000px;}
+    #vst .asf-music{margin:2px 0 12px;}
+    #vst .asf-music-btn{width:100%;padding:11px 14px;border-radius:12px;border:1px dashed rgba(255,215,0,0.35);background:rgba(255,215,0,0.05);color:var(--gold,#ffd700);font-size:13px;font-weight:600;letter-spacing:.3px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;-webkit-tap-highlight-color:transparent;}
+    #vst .asf-music-btn small{opacity:.65;font-weight:400;}
+    #vst .asf-music-body{margin-top:10px;}
+    #vst .asf-music-or{text-align:center;font-size:11px;color:rgba(255,255,255,.4);margin:2px 0 8px;letter-spacing:1px;}
+    #vst .asf-music-file{width:100%;padding:11px 14px;border-radius:12px;border:1px solid rgba(74,144,226,0.35);background:rgba(74,144,226,0.08);color:#9cc4f5;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+    #vst .asf-music-picked{margin-top:8px;font-size:12px;color:#9be39b;align-items:center;justify-content:space-between;gap:8px;word-break:break-all;}
+    #vst .asf-music-x{border:1px solid rgba(255,80,80,0.35);background:rgba(255,80,80,0.08);color:#ff8888;border-radius:8px;padding:2px 8px;cursor:pointer;flex-shrink:0;}
+    #vst .asf-music-hint{font-size:11px;color:rgba(255,255,255,.45);margin-top:8px;line-height:1.5;}
   </style>
   <div class="sv-head">
   <div class="vt" id="stTrackerTitle">Stotram and Videos</div>
@@ -699,6 +709,16 @@
       <input type="text" class="sti" id="snIn" placeholder="Stotram name (required)" style="margin-top:4px">
       <input type="text" class="sti" id="ssIn" placeholder="Short description (optional)">
       <textarea class="sti" id="slIn" rows="6" placeholder="Paste or type full lyrics here (optional)&#10;Stored in your account — visible only to you" style="resize:vertical;min-height:110px;font-family:Hind Siliguri,serif;font-size:14px;line-height:1.8"></textarea>
+      <div class="asf-music">
+        <button type="button" class="asf-music-btn" onclick="toggleAsfMusic()"><span>🎵 Add music <small>(optional)</small></span><span id="asfMusicChev">▾</span></button>
+        <div class="asf-music-body" id="asfMusicBody" style="display:none">
+          <input type="text" class="sti" id="syIn" inputmode="url" autocapitalize="off" autocorrect="off" placeholder="YouTube link (plays as audio)">
+          <div class="asf-music-or">— or —</div>
+          <button type="button" class="asf-music-file" onclick="asfPickMusic()">📁 Upload audio / video file</button>
+          <div class="asf-music-picked" id="asfMusicPicked" style="display:none"></div>
+          <div class="asf-music-hint">Video files play as audio only. An uploaded file stays on this device; a YouTube link goes with your account.</div>
+        </div>
+      </div>
       <button class="asb" onclick="addSt()">Add Stotram</button>
     </div>
   </div>
@@ -2878,7 +2898,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=142"></script>
-    <script src="./app.js?v=186"></script>
+    <script src="./app.js?v=187"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

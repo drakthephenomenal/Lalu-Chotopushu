@@ -1,5 +1,7 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker  v236
+// v334: S&V folder card "Sevak Vani" renamed to "Sevak Vani o Sevak Ji'r anyanya rachana" (Bangla + Hindi).
+// v333: AUTOPLAY everywhere — Seva sections with YouTube pads start pad 1 on open; Geet Govindam songs and Gita chapters start their audio when opened; stotrams that resume on a verse with no clip start from the first clip; if the phone blocks autoplay, audio (stotram / deity bhajan / Ved / Padavali) starts on the next tap; Useful Videos mp4 starts muted if sound is blocked.
 // v324: S&V — "Priyo Stotra & Padsamuh" folder removed (Haridasi poets → Haridasi folder; Dhruvdas pads → Dhruvdas folder in Radha Vallabh; rest in Radha Vallabh main list); "Favourite Videos" renamed "Useful Videos+ Links" and moved to the bottom, just below Kazi Najrul.
 // v323: FIX unstyled / broken-image first load on slow mobile networks. The fetch handler gave up after 2–2.5s and, when nothing was cached yet (first open, or right after a cache bump), returned a plain "Offline" 503 for style.css / app.js / images — so the page showed with no CSS. It now keeps waiting for the network when there is nothing cached to fall back on (cached copy is still used instantly when it exists). Also: Radha Vallabh folder re-organised into sub-folders; Guru Vandana video + translation; Vrindavan Dham Namavali YouTube audio.
 // v322: S&V re-organised by sampraday — new folders: Haridasi (Kelimal + Haridasi poets from Priyo Stotra), Priyo Stotra & Padsamuh (own folder, out of Radha Vallabh), Nimbark (all Jayadeva), Vallabh/Rudra (Pushtimarg: Madhurashtakam, Nandakumar Ashtakam), Ramanandi (Hanuman), Ramanuj (coming soon), Shankaracharya (copies for playing); Krishna/Shiv/Gita unchanged.
@@ -400,7 +402,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v332';
+const CACHE = 'radha-jap-v334';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

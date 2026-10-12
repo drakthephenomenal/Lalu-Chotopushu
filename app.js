@@ -15374,6 +15374,15 @@ function openFavVideoPlayer(title, kind, urlOrId, originalUrl) {
     mediaHtml;
 
   document.body.appendChild(overlay);
+  var _fvEl = overlay.querySelector('video');
+  if (_fvEl) {
+    try {
+      var _fvp = _fvEl.play();
+      if (_fvp && _fvp.catch) _fvp.catch(function () {          // sound blocked -> start muted, viewer can unmute
+        try { _fvEl.muted = true; var _fvp2 = _fvEl.play(); if (_fvp2 && _fvp2.catch) _fvp2.catch(function () {}); } catch (_e) {}
+      });
+    } catch (_e) {}
+  }
   overlay.querySelector('#favVidCloseBtn').addEventListener('click', function () { overlay.remove(); });
   overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
 
@@ -16204,7 +16213,7 @@ function renderSt() {
   // under an "Others" folder, so nothing ever disappears. Re-arrange by moving ids.
   const _RV_LAYOUT = [
     ['ved4', 'asp', 'hcj', 'rsn'],
-    { folder: 'sev', poet: 'sv', bn: 'সেবক বাণী', hi: 'सेवक वाणी',
+    { folder: 'sev', poet: 'sv', bn: 'সেবক বাণী ও সেবক জীর অন্যান্য রচনা', hi: 'सेवक वाणी एवं सेवक जी की अन्य रचनाएँ',
       subBn: 'সেবক জীর পরিচয়, সেবক বাণী ও হিত মঙ্গল গান', subHi: 'सेवक जी का परिचय, सेवक वाणी एवं हित मंगल गान',
       reqBn: '★ অবশ্য পাঠ্য — প্রতিদিন ৫টি পদ (অর্থ সহ)', reqHi: '★ अनिवार्य — प्रतिदिन ५ पद (अर्थ सहित)',
       items: ['svi', 'svb', 'hmg'] },
@@ -16532,7 +16541,7 @@ function renderVed4(list) {
   audios.forEach((a) => a.addEventListener('play', () => audios.forEach((o) => { if (o !== a) o.pause(); })));
   // Autoplay: start pad 1 on open, then roll on to the next pad when one ends.
   audios.forEach((a, i) => a.addEventListener('ended', () => { const nx = audios[i + 1]; if (nx) { nx.currentTime = 0; nx.play().catch(() => {}); } }));
-  if (audios[0]) { const p = audios[0].play(); if (p && p.catch) p.catch(() => {}); }
+  if (audios[0]) { const p = audios[0].play(); if (p && p.catch) p.catch(() => { _apArmRetry(() => { if (body.isConnected && audios.every((o) => o.paused)) audios[0].play().catch(() => {}); }); }); }
   // Stop playback when the person leaves this page (a detached <audio> keeps playing otherwise).
   const t = setInterval(() => {
     if (!body.isConnected) { audios.forEach((a) => { try { a.pause(); } catch (_e) {} }); clearInterval(t); }
@@ -17747,7 +17756,7 @@ function ddAudioAttach(bar, slug, url) {
   _dda = a;
   ui.btn.onclick = a.toggle;
   a.paint();
-  el.play().catch(() => a.paint());                               // phone may block autoplay → user taps ▶
+  el.play().catch(() => { a.paint(); _apArmRetry(() => { if (_dda === a && el.paused) el.play().catch(() => {}); }); });   // phone may block autoplay → starts on the next tap
 }
 
 // ── Full-screen HD viewer (pinch / double-tap to zoom, drag to pan) ──
@@ -18414,6 +18423,8 @@ function initSevaInlinePlayers(body) {
   _sap.watchT = setInterval(() => {
     if (_sap && !_sap.root.isConnected) closeSevaAudioPlayer();
   }, 1000);
+  // Autoplay: start pad 1 as soon as the section opens (rolls on to the next pad by itself).
+  try { if (_sapOnline()) _sapPlay(0); } catch (_e) {}
 }
 
 // ─────────────────────────────────────────────────────────
@@ -22303,10 +22314,7 @@ function showLyrics(id) {
   document.getElementById("lmo").classList.add("show");
   _initSwipeHandler();
   // Autoplay on open (stotram audio): start verse 1 if this stotram has audio.
-  try {
-    if (_AUDIO_STOTRAMS[id] && !_hcjEffYt(id) && _hcjHasAudioForIdx(_AUDIO_STOTRAMS[id], _verseIdx) && _hcjAudioPath(_verseIdx)) _hcjPlayVerse(_verseIdx);
-    else if (_AUDIO_STOTRAMS[id] && _hcjEffYt(id)) _hcjAdoptWarm(true);
-  } catch (_e) {}
+  try { _rjAutoStart(id, false); } catch (_e) {}
 }
 
 
@@ -22906,7 +22914,7 @@ function _pdvInjectBar(body, verseText) {
     } catch (_e) { au = null; }
     if (au) {
       _pdvAud = au;
-      if (!cfg.yt) { var ap = au.play(); if (ap && ap.catch) ap.catch(function () { _pdvSyncAudioBtn(btn); }); }
+      if (!cfg.yt) { var ap = au.play(); if (ap && ap.catch) ap.catch(function () { _pdvSyncAudioBtn(btn); _apArmRetry(function () { if (_pdvAud === au && au.paused) { au.play().catch(function () {}); } }); }); }
       if (au.addEventListener && !cfg.yt) { au.addEventListener("play", function () { _pdvSyncAudioBtn(btn); }); au.addEventListener("pause", function () { _pdvSyncAudioBtn(btn); }); }
       _pdvSyncAudioBtn(btn);
       if (cfg.yt) { au.loop = true; var t = setInterval(function () { if (!_pdvAud) { clearInterval(t); return; } _pdvSyncAudioBtn(btn); }, 800); }
@@ -23777,6 +23785,82 @@ var _AUDIO_STOTRAMS = {
     ]);
     _AUDIO_STOTRAMS[k] = { prefix: k, timed: true, marks: [0], yt: "", url: local[0], alts: alts };
   });
+})();
+// ── AUTOPLAY HELPERS ───────────────────────────────────────────────────
+// A phone/WebView can refuse autoplay (no recent tap, e.g. after an async load).
+// _apArmRetry(fn): run fn once, right after the person's next tap anywhere, so
+// the audio/video the page tried to start on open starts as soon as it is allowed.
+var _apRetryFn = null, _apRetryArmed = false;
+function _apArmRetry(fn) {
+  _apRetryFn = fn;
+  if (_apRetryArmed) return;
+  _apRetryArmed = true;
+  var go = function () {
+    document.removeEventListener("click", go, false);
+    document.removeEventListener("touchend", go, false);
+    _apRetryArmed = false;
+    var f = _apRetryFn; _apRetryFn = null;
+    // wait a moment so a tap on a ▶ button does its own work first (no double start / toggle-off)
+    if (f) setTimeout(function () { try { f(); } catch (_e) {} }, 350);
+  };
+  document.addEventListener("click", go, false);
+  document.addEventListener("touchend", go, false);
+}
+// Start the audio of a just-opened stotram (every kind: mp3, YouTube, timed, live, custom, Kazi Najrul).
+function _rjAutoStart(id, isRetry) {
+  var cfg = _AUDIO_STOTRAMS[id];
+  if (!cfg) return;
+  // Sectioned (Geet Govindam) / chaptered (Gita) readers start when a geetam / chapter opens (see hooks below).
+  if (cfg.sectioned || cfg.chapterAudio) return;
+  if (_hcjEffYt(id)) {
+    _hcjAdoptWarm(true);
+  } else {
+    var i = _verseIdx;
+    if (!(_hcjHasAudioForIdx(cfg, i) && _hcjAudioPath(i))) {
+      // Resumed on a verse that has no clip (e.g. a story page) -> start from the first verse that has one.
+      var f = -1;
+      for (var k = 0; k < (_verses || []).length; k++) { if (_hcjHasAudioForIdx(cfg, k) && _hcjAudioPath(k)) { f = k; break; } }
+      if (f < 0) return;
+      i = f; _verseIdx = f; _renderVerse(f, null);
+    }
+    _hcjPlayVerse(i);
+  }
+  if (!isRetry) {
+    _apArmRetry(function () {
+      var lmo = document.getElementById("lmo");
+      if (_currentStotramId !== id || !lmo || !lmo.classList.contains("show") || _hcjPlaying) return;
+      _rjAutoStart(id, true);
+    });
+  }
+}
+// Geet Govindam (geetam) and Bhagavad Gita (chapter) open through stotrams.js, which sets these two values
+// when a song / chapter opens. Watch them so the audio of that song / chapter starts by itself too.
+(function () {
+  function _rjSubAuto() {
+    try {
+      var id = _currentStotramId, cfg = _AUDIO_STOTRAMS[id];
+      var lmo = document.getElementById("lmo");
+      if (!cfg || !(cfg.sectioned || cfg.chapterAudio) || !lmo || !lmo.classList.contains("show")) return;
+      var i = _verseIdx || 0;
+      if (!(_hcjHasAudioForIdx(cfg, i) && _hcjAudioPath(i))) return;
+      if (_hcjPlaying && _hcjAudio && _hcjAudioIdx === i && _hcjAudio._timedFor === _hcjTimedKey()) return;   // already started
+      _hcjPlayVerse(i);
+    } catch (_e) {}
+  }
+  function _rjWatch(name) {
+    try {
+      var d = Object.getOwnPropertyDescriptor(window, name);
+      if (d && d.configurable === false) return;
+      var val = d && "value" in d ? d.value : undefined;
+      Object.defineProperty(window, name, {
+        configurable: true, enumerable: true,
+        get: function () { return val; },
+        set: function (v) { var ch = v !== val; val = v; if (ch && v) setTimeout(_rjSubAuto, 500); }
+      });
+    } catch (_e) {}
+  }
+  _rjWatch("_ggAudioKey");
+  _rjWatch("_bgChapterNum");
 })();
 var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices
 // True once the user has manually picked a voice via the button this

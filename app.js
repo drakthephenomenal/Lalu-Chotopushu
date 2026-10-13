@@ -1590,12 +1590,17 @@ const App = {
         (this.S.nameJapDeductKaam || 0),
     );
     const _raT = Math.min(radhaTotal, Object.values(this.S.historyAudio || {}).reduce((a, b) => a + b, 0));
+    const _amS = (k) => Object.values((this.S.audioHistM || {})[k] || {}).reduce((a, b) => a + b, 0);
+    const _rvaT = Math.min(rvTotal, _amS("rv")), _kvaT = Math.min(kvTotal, _amS("kv")), _kaamaT = Math.min(kaamTotal, _amS("kaam"));
     return {
       radha: radhaTotal - _raT,
       ra: _raT,
-      rv: rvTotal,
-      kv: kvTotal,
-      kaam: kaamTotal,
+      rv: rvTotal - _rvaT,
+      rva: _rvaT,
+      kv: kvTotal - _kvaT,
+      kva: _kvaT,
+      kaam: kaamTotal - _kaamaT,
+      kaama: _kaamaT,
       total: radhaTotal + rvTotal + kvTotal + kaamTotal,
     };
   },
@@ -1613,6 +1618,9 @@ const App = {
       KV: perMala ? (b.kv / ms).toFixed(2).replace(/\.00$/, "") + "m" : fmtIN(b.kv),
       KM: perMala ? (b.kaam / ms).toFixed(2).replace(/\.00$/, "") + "m" : fmtIN(b.kaam),
       "R-A": perMala ? ((b.ra || 0) / ms).toFixed(2).replace(/\.00$/, "") + "m" : fmtIN(b.ra || 0),
+      "RV-A": perMala ? ((b.rva || 0) / ms).toFixed(2).replace(/\.00$/, "") + "m" : fmtIN(b.rva || 0),
+      "KV-A": perMala ? ((b.kva || 0) / ms).toFixed(2).replace(/\.00$/, "") + "m" : fmtIN(b.kva || 0),
+      "KM-A": perMala ? ((b.kaama || 0) / ms).toFixed(2).replace(/\.00$/, "") + "m" : fmtIN(b.kaama || 0),
     };
     let order = ["R", "RV", "KV"];
     if (this.S.japMode === "rv") order = ["RV", "R", "KV"];
@@ -1620,6 +1628,9 @@ const App = {
     else if (this.S.japMode === "kaam") order = ["KM", "R", "RV", "KV"];
     else order.push("KM");
     if ((b.ra || 0) > 0) order.splice(order.indexOf("R") + 1, 0, "R-A");
+    if ((b.rva || 0) > 0) order.splice(order.indexOf("RV") + 1, 0, "RV-A");
+    if ((b.kva || 0) > 0) order.splice(order.indexOf("KV") + 1, 0, "KV-A");
+    if ((b.kaama || 0) > 0) order.splice(order.indexOf("KM") + 1, 0, "KM-A");
     return order.map((k) => k + ":" + parts[k]).join("+");
   },
 
@@ -7405,18 +7416,26 @@ function uStats() {
   if (sRATot) sRATot.textContent = _raLt.toLocaleString("en-IN");
   const sRATotM = document.getElementById("sRATotM");
   if (sRATotM) sRATotM.textContent = Math.floor(_raLt / ms) + "m";
+  const _amH = App.S.audioHistM || {};
+  const _amSum = (k) => Object.values(_amH[k] || {}).reduce((a, b) => a + b, 0);
+  const _rvaLt = Math.min(rvLifetime, _amSum("rv")), _kvaLt = Math.min(kvLifetime, _amSum("kv")), _kaamaLt = Math.min(kaamLifetime, _amSum("kaam"));
+  const rvTouchLt = rvLifetime - _rvaLt, kvTouchLt = kvLifetime - _kvaLt, kaamTouchLt = kaamLifetime - _kaamaLt;
+  [["RV", _rvaLt], ["KV", _kvaLt], ["Kaam", _kaamaLt]].forEach(([P, v]) => {
+    const a = document.getElementById("s" + P + "ATot"); if (a) a.textContent = v.toLocaleString("en-IN");
+    const b = document.getElementById("s" + P + "ATotM"); if (b) b.textContent = Math.floor(v / ms) + "m";
+  });
   const sRV = document.getElementById("sRVTot");
-  if (sRV) sRV.textContent = rvLifetime.toLocaleString("en-IN");
+  if (sRV) sRV.textContent = rvTouchLt.toLocaleString("en-IN");
   const sRVM = document.getElementById("sRVTotM");
-  if (sRVM) sRVM.textContent = Math.floor(rvLifetime / ms) + " malas";
+  if (sRVM) sRVM.textContent = Math.floor(rvTouchLt / ms) + " malas";
   const sRVF = document.getElementById("sRVTotF");
-  if (sRVF) sRVF.textContent = fmtCount(rvLifetime) + " jap";
+  if (sRVF) sRVF.textContent = fmtCount(rvTouchLt) + " jap";
   const sKV = document.getElementById("sKVTot");
-  if (sKV) sKV.textContent = kvLifetime.toLocaleString("en-IN");
+  if (sKV) sKV.textContent = kvTouchLt.toLocaleString("en-IN");
   const sKVM = document.getElementById("sKVTotM");
-  if (sKVM) sKVM.textContent = Math.floor(kvLifetime / ms) + " malas";
+  if (sKVM) sKVM.textContent = Math.floor(kvTouchLt / ms) + " malas";
   const sKVF = document.getElementById("sKVTotF");
-  if (sKVF) sKVF.textContent = fmtCount(kvLifetime) + " jap";
+  if (sKVF) sKVF.textContent = fmtCount(kvTouchLt) + " jap";
   const sSS = document.getElementById("sSSTot");
   if (sSS) sSS.textContent = ssLifetime.toLocaleString("en-IN");
   const sSSM = document.getElementById("sSSTotM");
@@ -7430,11 +7449,11 @@ function uStats() {
   const sRamF = document.getElementById("sRamTotF");
   if (sRamF) sRamF.textContent = fmtCount(ramLifetime) + " jap";
   const sKaam = document.getElementById("sKaamTot");
-  if (sKaam) sKaam.textContent = kaamLifetime.toLocaleString("en-IN");
+  if (sKaam) sKaam.textContent = kaamTouchLt.toLocaleString("en-IN");
   const sKaamM = document.getElementById("sKaamTotM");
-  if (sKaamM) sKaamM.textContent = Math.floor(kaamLifetime / ms) + " malas";
+  if (sKaamM) sKaamM.textContent = Math.floor(kaamTouchLt / ms) + " malas";
   const sKaamF = document.getElementById("sKaamTotF");
-  if (sKaamF) sKaamF.textContent = fmtCount(kaamLifetime) + " jap";
+  if (sKaamF) sKaamF.textContent = fmtCount(kaamTouchLt) + " jap";
   // 28 Names: touch and Audio (28-A) are shown separately; combined totals below still use n28Lifetime (touch + audio)
   const _a28Lt = Math.min(n28Lifetime, Object.values(App.S.historyAudio28 || {}).reduce((a, b) => a + b, 0));
   const n28TouchLt = n28Lifetime - _a28Lt;
@@ -7623,18 +7642,29 @@ function uStats() {
   _sn("sRAMo", raPMo);
   _sm("sRAMoM", raPMo);
   try { if (window.AudioChant) window.AudioChant.fillStatsTimes(wk, mp); } catch (_e) {}
-  _sn("sRVPTod", rvPTod);
-  _sm("sRVPTodM", rvPTod);
-  _sn("sRVPWk", rvPWk);
-  _sm("sRVPWkM", rvPWk);
-  _sn("sRVPMo", rvPMo);
-  _sm("sRVPMoM", rvPMo);
-  _sn("sKVPTod", kvPTod);
-  _sm("sKVPTodM", kvPTod);
-  _sn("sKVPWk", kvPWk);
-  _sm("sKVPWkM", kvPWk);
-  _sn("sKVPMo", kvPMo);
-  _sm("sKVPMoM", kvPMo);
+  try { if (window.AudioChantM) window.AudioChantM.fillStatsTimes(wk, mp); } catch (_e) {}
+  const _amP = (k) => {
+    const H = (App.S.audioHistM || {})[k] || {};
+    return [H[App.S.tk] || 0, wk.reduce((s, d) => s + (H[d] || 0), 0), Object.entries(H).filter(([d]) => d.startsWith(mp)).reduce((s, [, v]) => s + v, 0)];
+  };
+  const [rvaPTod, rvaPWk, rvaPMo] = _amP("rv"), [kvaPTod, kvaPWk, kvaPMo] = _amP("kv"), [kaamaPTod, kaamaPWk, kaamaPMo] = _amP("kaam");
+  [["RV", rvaPTod, rvaPWk, rvaPMo], ["KV", kvaPTod, kvaPWk, kvaPMo], ["Kaam", kaamaPTod, kaamaPWk, kaamaPMo]].forEach(([P, t, w, m]) => {
+    _sn("s" + P + "ATod", t); _sm("s" + P + "ATodM", t);
+    _sn("s" + P + "AWk", w); _sm("s" + P + "AWkM", w);
+    _sn("s" + P + "AMo", m); _sm("s" + P + "AMoM", m);
+  });
+  _sn("sRVPTod", Math.max(0, rvPTod - rvaPTod));
+  _sm("sRVPTodM", Math.max(0, rvPTod - rvaPTod));
+  _sn("sRVPWk", Math.max(0, rvPWk - rvaPWk));
+  _sm("sRVPWkM", Math.max(0, rvPWk - rvaPWk));
+  _sn("sRVPMo", Math.max(0, rvPMo - rvaPMo));
+  _sm("sRVPMoM", Math.max(0, rvPMo - rvaPMo));
+  _sn("sKVPTod", Math.max(0, kvPTod - kvaPTod));
+  _sm("sKVPTodM", Math.max(0, kvPTod - kvaPTod));
+  _sn("sKVPWk", Math.max(0, kvPWk - kvaPWk));
+  _sm("sKVPWkM", Math.max(0, kvPWk - kvaPWk));
+  _sn("sKVPMo", Math.max(0, kvPMo - kvaPMo));
+  _sm("sKVPMoM", Math.max(0, kvPMo - kvaPMo));
   _sn("sSSPTod", ssPTod);
   _sm("sSSPTodM", ssPTod);
   _sn("sSSPWk", ssPWk);
@@ -7647,12 +7677,12 @@ function uStats() {
   _sm("sRamPWkM", ramPWk);
   _sn("sRamPMo", ramPMo);
   _sm("sRamPMoM", ramPMo);
-  _sn("sKaamPTod", kaamPTod);
-  _sm("sKaamPTodM", kaamPTod);
-  _sn("sKaamPWk", kaamPWk);
-  _sm("sKaamPWkM", kaamPWk);
-  _sn("sKaamPMo", kaamPMo);
-  _sm("sKaamPMoM", kaamPMo);
+  _sn("sKaamPTod", Math.max(0, kaamPTod - kaamaPTod));
+  _sm("sKaamPTodM", Math.max(0, kaamPTod - kaamaPTod));
+  _sn("sKaamPWk", Math.max(0, kaamPWk - kaamaPWk));
+  _sm("sKaamPWkM", Math.max(0, kaamPWk - kaamaPWk));
+  _sn("sKaamPMo", Math.max(0, kaamPMo - kaamaPMo));
+  _sm("sKaamPMoM", Math.max(0, kaamPMo - kaamaPMo));
   {
     // 28 Names: touch part here, Audio (28-A) part in its own card. Combined totals below keep using n28P* (touch + audio).
     const _h28A = App.S.historyAudio28 || {}, _t28A = App.S.timerAudio28 || {};
@@ -25590,22 +25620,27 @@ function showHistDay(tk, filterMode) {
   const _hkDayLabel = _hkDayLang === "bn" ? "হরে কৃষ্ণ মহামন্ত্র" : "हरे कृष्ण महामंत्र";
 
   // Map deityKey names to showHistSet set values
-  const deityToSet = { ra: 'ra', radha: 'radha', rv: 'rv', kv: 'kv', ss: 'ss', ram: 'ram', kaam: 'kaam', '28': '28', n28a: 'n28a', hk: 'hk' };
+  const deityToSet = { ra: 'ra', rva: 'rva', kva: 'kva', kaama: 'kaama', radha: 'radha', rv: 'rv', kv: 'kv', ss: 'ss', ram: 'ram', kaam: 'kaam', '28': '28', n28a: 'n28a', hk: 'hk' };
   const autoSet = filterMode ? deityToSet[filterMode] : null;
 
   // If we have a specific mode filter AND that mode has data, go straight to per-mala detail
   if (autoSet) {
     const ra = (App.S.historyAudio || {})[tk] || 0;
     const radha = Math.max(0, (App.S.history[tk] || 0) - ra);
-    const rv = (App.S.historyRV || {})[tk] || 0;
-    const kv = (App.S.historyKV || {})[tk] || 0;
+    const _aM = (k) => (((App.S.audioHistM || {})[k]) || {})[tk] || 0;
+    const rva = _aM("rv"), kva = _aM("kv"), kaama = _aM("kaam");
+    const rv = Math.max(0, ((App.S.historyRV || {})[tk] || 0) - rva);
+    const kv = Math.max(0, ((App.S.historyKV || {})[tk] || 0) - kva);
     const ss = (App.S.historySS || {})[tk] || 0;
     const hk = (App.S.historyHK || {})[tk] || 0;
     const ram = (App.S.historyRam || {})[tk] || 0;
-    const kaam = (App.S.historyKaam || {})[tk] || 0;
+    const kaam = Math.max(0, ((App.S.historyKaam || {})[tk] || 0) - kaama);
     const a28 = (App.S.historyAudio28 || {})[tk] || 0;
     const taps28 = Math.max(0, ((App.S.h28 || {})[tk] || 0) - a28);
     const hasData = autoSet === 'ra' ? ra > 0
+                  : autoSet === 'rva' ? rva > 0
+                  : autoSet === 'kva' ? kva > 0
+                  : autoSet === 'kaama' ? kaama > 0
                   : autoSet === 'n28a' ? a28 > 0
                   : autoSet === 'radha' ? radha > 0
                   : autoSet === 'rv'    ? rv > 0
@@ -25618,6 +25653,9 @@ function showHistDay(tk, filterMode) {
 
     // Build a minimal title showing date + mode
     const modeLabel = autoSet === 'ra' ? '🎧 Radha Audio (R-A)'
+                    : autoSet === 'rva' ? '🎧 Radha Vallabh Audio (RV-A)'
+                    : autoSet === 'kva' ? '🎧 Krishnay Vasudevay Audio (KV-A)'
+                    : autoSet === 'kaama' ? '🎧 Kaam Vijay Audio (Kaam-A)'
                     : autoSet === 'radha' ? '🌸 Radha Jap'
                     : autoSet === 'rv'    ? '🌼 Radha Vallabh'
                     : autoSet === 'kv'    ? '🪈 Krishnay Vasudevay'
@@ -25653,12 +25691,14 @@ function showHistDay(tk, filterMode) {
 
   const ra = (App.S.historyAudio || {})[tk] || 0;
   const radha = Math.max(0, (App.S.history[tk] || 0) - ra);
-  const rv = App.S.historyRV[tk] || 0;
-  const kv = (App.S.historyKV || {})[tk] || 0;
+  const _aMd = (k) => (((App.S.audioHistM || {})[k]) || {})[tk] || 0;
+  const rva = _aMd("rv"), kva = _aMd("kv"), kaama = _aMd("kaam");
+  const rv = Math.max(0, (App.S.historyRV[tk] || 0) - rva);
+  const kv = Math.max(0, ((App.S.historyKV || {})[tk] || 0) - kva);
   const ss = (App.S.historySS || {})[tk] || 0;
   const hk = App.S.historyHK[tk] || 0;
   const ram = (App.S.historyRam || {})[tk] || 0;
-  const kaam = (App.S.historyKaam || {})[tk] || 0;
+  const kaam = Math.max(0, ((App.S.historyKaam || {})[tk] || 0) - kaama);
   const a28 = (App.S.historyAudio28 || {})[tk] || 0;
   const taps28 = Math.max(0, (App.S.h28[tk] || 0) - a28);
   const tSecR = App.S.timerHistory[tk] || 0;
@@ -25712,9 +25752,12 @@ function showHistDay(tk, filterMode) {
     html += card("pt-radha", "radha", "Radha Jap", radhaM, radhaM === 1 ? "mala" : "malas", fmtN(radha) + " names", _histFmtSec(tSecR), radha > 0);
     if (ra > 0) html += card("pt-radha", "ra", "Radha Audio (R-A)", Math.floor(ra / ms), Math.floor(ra / ms) === 1 ? "mala" : "malas", fmtN(ra) + " names", _histFmtSec(window.AudioChant ? window.AudioChant.secsFor((k) => k === tk) : 0), true);
     html += card("pt-rv",    "rv",    "RV Jap",    rvM,    rvM === 1    ? "mala" : "malas", fmtN(rv)    + " names", _histFmtSec(tSecRV), rv > 0);
+    if (rva > 0) html += card("pt-rv", "rva", "Radha Vallabh Audio (RV-A)", Math.floor(rva / ms), Math.floor(rva / ms) === 1 ? "mala" : "malas", fmtN(rva) + " names", _histFmtSec(window.AudioChantM ? window.AudioChantM.secsFor("rv", (d) => d === tk) : 0), true);
     html += card("pt-ss",    "ss",    "Samba Sadashiv", ssM, ssM === 1  ? "mala" : "malas", fmtN(ss)    + " names", _histFmtSec(tSecSS), ss > 0);
     html += card("pt-kv",    "kv",    "KV Jap",    kvM,    kvM === 1    ? "mala" : "malas", fmtN(kv)    + " names", _histFmtSec(tSecKV), kv > 0);
+    if (kva > 0) html += card("pt-kv", "kva", "Krishnay Vasudevay Audio (KV-A)", Math.floor(kva / ms), Math.floor(kva / ms) === 1 ? "mala" : "malas", fmtN(kva) + " names", _histFmtSec(window.AudioChantM ? window.AudioChantM.secsFor("kv", (d) => d === tk) : 0), true);
     html += card("pt-kaam",  "kaam",  "Kaam Vijay", kaamM, kaamM === 1  ? "mala" : "malas", fmtN(kaam)  + " names", _histFmtSec(tSecKaam), kaam > 0);
+    if (kaama > 0) html += card("pt-kaam", "kaama", "Kaam Vijay Audio (Kaam-A)", Math.floor(kaama / ms), Math.floor(kaama / ms) === 1 ? "mala" : "malas", fmtN(kaama) + " names", _histFmtSec(window.AudioChantM ? window.AudioChantM.secsFor("kaam", (d) => d === tk) : 0), true);
     html += card("pt-ram",  "ram",   "Raam Vijay Mantra", ramM, ramM === 1 ? "mala" : "malas", fmtN(ram) + " names", _histFmtSec(tSecRam), ram > 0);
     html += card("pt-28",   "28",    "28 Names",  cyc28,  cyc28 === 1  ? "cycle" : "cycles", fmtN(taps28) + " taps", _histFmtSec(t28Sec), taps28 > 0);
     if (a28 > 0) html += card("pt-28", "n28a", "28 Names Audio (28-A)", Math.floor(a28 / 28), Math.floor(a28 / 28) === 1 ? "cycle" : "cycles", fmtN(a28) + " taps", _histFmtSec((App.S.timerAudio28 || {})[tk] || 0), true);
@@ -25818,7 +25861,7 @@ function renderHistory() {
     tot28taps = 0,
     totTimeSec = 0,
     totTimeSec28 = 0;
-  let totRA = 0, totA28 = 0;
+  let totRA = 0, totA28 = 0, totRVA = 0, totKVA = 0, totKaamA = 0;
   window._ptN28ASec = 0;
   window._ptRadhaSec = 0;
   window._ptRVSec = 0;
@@ -25833,12 +25876,14 @@ function renderHistory() {
   dates.forEach((tk) => {
     const raD = (App.S.historyAudio || {})[tk] || 0;
     const radha = Math.max(0, (hist[tk] || 0) - raD);
-    const rv = histRV[tk] || 0;
-    const kv = histKV[tk] || 0;
+    const _aMt = (k) => (((App.S.audioHistM || {})[k]) || {})[tk] || 0;
+    const rvaD = _aMt("rv"), kvaD = _aMt("kv"), kaamaD = _aMt("kaam");
+    const rv = Math.max(0, (histRV[tk] || 0) - rvaD);
+    const kv = Math.max(0, (histKV[tk] || 0) - kvaD);
     const ss = histSS[tk] || 0;
     const hk = histHK[tk] || 0;
     const ram = histRam[tk] || 0;
-    const kaam = histKaam[tk] || 0;
+    const kaam = Math.max(0, (histKaam[tk] || 0) - kaamaD);
     const a28D = (App.S.historyAudio28 || {})[tk] || 0;
     const taps28 = Math.max(0, (h28[tk] || 0) - a28D);
     const tSecR_row = tHist[tk] || 0;
@@ -25860,12 +25905,13 @@ function renderHistory() {
     } else if (isRamanandi) {
       if (ram === 0) return;
     } else {
-      if (radha === 0 && raD === 0 && rv === 0 && kv === 0 && kaam === 0 && taps28 === 0 && a28D === 0) return;
+      if (radha === 0 && raD === 0 && rv === 0 && kv === 0 && kaam === 0 && rvaD === 0 && kvaD === 0 && kaamaD === 0 && taps28 === 0 && a28D === 0) return;
     }
 
     activeDays++;
     totRadha += radha;
     totRA += raD;
+    totRVA += rvaD; totKVA += kvaD; totKaamA += kaamaD;
     totA28 += a28D;
     window._ptN28ASec += (App.S.timerAudio28 || {})[tk] || 0;
     totRV += rv;
@@ -26030,8 +26076,11 @@ function renderHistory() {
         ${statCard("pt-radha", "📿", "Radha Jap", totRadhaM, totRadhaM === 1 ? "mala" : "malas", fmtN(totRadha) + " names", _histFmtSec(window._ptRadhaSec || 0), "radha")}
         ${totRA > 0 ? statCard("pt-radha", "🎧", "Radha Audio (R-A)", Math.floor(totRA / ms), Math.floor(totRA / ms) === 1 ? "mala" : "malas", fmtN(totRA) + " names", _histFmtSec(window.AudioChant ? window.AudioChant.secsFor((k) => dates.indexOf(k) >= 0) : 0), "ra") : ""}
         ${statCard("pt-rv", "🕉️", "RV Jap", totRVM, totRVM === 1 ? "mala" : "malas", fmtN(totRV) + " names", _histFmtSec(window._ptRVSec || 0), "rv")}
+        ${totRVA > 0 ? statCard("pt-rv", "🎧", "Radha Vallabh Audio (RV-A)", Math.floor(totRVA / ms), Math.floor(totRVA / ms) === 1 ? "mala" : "malas", fmtN(totRVA) + " names", _histFmtSec(window.AudioChantM ? window.AudioChantM.secsFor("rv", (d) => dates.indexOf(d) >= 0) : 0), "rva") : ""}
         ${statCard("pt-kv", "🪈", "KV Jap", totKVM, totKVM === 1 ? "mala" : "malas", fmtN(totKV) + " names", _histFmtSec(window._ptKVSec || 0), "kv")}
+        ${totKVA > 0 ? statCard("pt-kv", "🎧", "Krishnay Vasudevay Audio (KV-A)", Math.floor(totKVA / ms), Math.floor(totKVA / ms) === 1 ? "mala" : "malas", fmtN(totKVA) + " names", _histFmtSec(window.AudioChantM ? window.AudioChantM.secsFor("kv", (d) => dates.indexOf(d) >= 0) : 0), "kva") : ""}
         ${statCard("pt-kaam", "🕉️", "Kaam Vijay", totKaamM, totKaamM === 1 ? "mala" : "malas", fmtN(totKaam) + " names", _histFmtSec(window._ptKaamSec || 0), "kaam")}
+        ${totKaamA > 0 ? statCard("pt-kaam", "🎧", "Kaam Vijay Audio (Kaam-A)", Math.floor(totKaamA / ms), Math.floor(totKaamA / ms) === 1 ? "mala" : "malas", fmtN(totKaamA) + " names", _histFmtSec(window.AudioChantM ? window.AudioChantM.secsFor("kaam", (d) => dates.indexOf(d) >= 0) : 0), "kaama") : ""}
         ${statCard("pt-28", "🪷", "28 Names", totCyc28, totCyc28 === 1 ? "cycle" : "cycles", fmtN(tot28taps) + " taps", _histFmtSec(totTimeSec28), "28")}
         ${totA28 > 0 ? statCard("pt-28", "🎧", "28 Names Audio (28-A)", Math.floor(totA28 / 28), Math.floor(totA28 / 28) === 1 ? "cycle" : "cycles", fmtN(totA28) + " taps", _histFmtSec(window._ptN28ASec || 0), "n28a") : ""}
       </div>
@@ -26069,6 +26118,9 @@ function showHistDeityDates(deityKey) {
   };
 
   cfg.ra = Object.assign({}, cfg.radha, { label: "Radha Audio (R-A)", color: "#6DB8FF", histKey: "historyAudio", icon: "🎧" });
+  cfg.rva = Object.assign({}, cfg.rv, { label: "Radha Vallabh Audio (RV-A)", color: "#6DB8FF", icon: "🎧" });
+  cfg.kva = Object.assign({}, cfg.kv, { label: "Krishnay Vasudevay Audio (KV-A)", color: "#6DB8FF", icon: "🎧" });
+  cfg.kaama = Object.assign({}, cfg.kaam, { label: "Kaam Vijay Audio (Kaam-A)", color: "#6DB8FF", icon: "🎧" });
   cfg.n28a = Object.assign({}, cfg["28"], { label: "28 Names Audio (28-A)", color: "#6DB8FF", histKey: "historyAudio28", timerKey: "timerAudio28", icon: "🎧" });
   const c = cfg[deityKey];
   if (!c) return;
@@ -26077,6 +26129,10 @@ function showHistDeityDates(deityKey) {
   let tHist = App.S[c.timerKey] || {};
   if (deityKey === "radha") { const _a = App.S.historyAudio || {}, h2 = {}; Object.keys(hist).forEach((k) => { h2[k] = Math.max(0, (hist[k] || 0) - (_a[k] || 0)); }); hist = h2; }
   if (deityKey === "ra") tHist = window.AudioChant ? window.AudioChant.secsMap() : {};
+  { const _amK = { rva: "rv", kva: "kv", kaama: "kaam" }[deityKey];
+    if (_amK) { hist = (App.S.audioHistM || {})[_amK] || {}; tHist = window.AudioChantM ? window.AudioChantM.secsMap(_amK) : {}; }
+    const _amT = { rv: "rv", kv: "kv", kaam: "kaam" }[deityKey];
+    if (_amT) { const _a = (App.S.audioHistM || {})[_amT] || {}, h2 = {}; Object.keys(hist).forEach((k) => { h2[k] = Math.max(0, (hist[k] || 0) - (_a[k] || 0)); }); hist = h2; } }
   if (deityKey === "28") { const _a = App.S.historyAudio28 || {}, h2 = {}; Object.keys(hist).forEach((k) => { h2[k] = Math.max(0, (hist[k] || 0) - (_a[k] || 0)); }); hist = h2; }
 
   // Build rows — only active days
@@ -26221,7 +26277,7 @@ function _renderHistSetInner(set, tk, isToday, log, slot) {
       inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-mala detail not available for this date<br><span style="font-size:10px">(activity log only keeps recent sessions)</span></div>`;
     }
   } else if (set === "rv") {
-    const rvEntries = log.filter((e) => e.t === "mala" && e.mode === "rv");
+    const rvEntries = log.filter((e) => e.t === "mala" && e.mode === "rv" && !e.a);
     inner += backBtn;
     if (rvEntries.length > 0) {
       inner += _histMalaTable("🔵 RV Jap — Per Mala", rvEntries, "var(--a2)");
@@ -26235,7 +26291,7 @@ function _renderHistSetInner(set, tk, isToday, log, slot) {
       inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-mala detail not available for this date</div>`;
     }
   } else if (set === "kv") {
-    const kvEntries = log.filter((e) => e.t === "mala" && e.mode === "kv");
+    const kvEntries = log.filter((e) => e.t === "mala" && e.mode === "kv" && !e.a);
     inner += backBtn;
     if (kvEntries.length > 0) {
       inner += _histMalaTable("🪈 KV Jap — Per Mala", kvEntries, "#6DB8FF");
@@ -26277,7 +26333,7 @@ function _renderHistSetInner(set, tk, isToday, log, slot) {
       inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-mala detail not available for this date</div>`;
     }
   } else if (set === "kaam") {
-    const kaamEntries = log.filter((e) => e.t === "mala" && e.mode === "kaam");
+    const kaamEntries = log.filter((e) => e.t === "mala" && e.mode === "kaam" && !e.a);
     inner += backBtn;
     if (kaamEntries.length > 0) {
       inner += _histMalaTable("🕉️ काम विजय — Per Mala", kaamEntries, "#FF6B9D");
@@ -26290,6 +26346,13 @@ function _renderHistSetInner(set, tk, isToday, log, slot) {
     } else {
       inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-mala detail not available for this date</div>`;
     }
+  } else if (set === "rva" || set === "kva" || set === "kaama") {
+    const _mk = { rva: "rv", kva: "kv", kaama: "kaam" }[set];
+    const _ml = { rva: "🎧 Radha Vallabh Audio (RV-A) — Per Mala", kva: "🎧 Krishnay Vasudevay Audio (KV-A) — Per Mala", kaama: "🎧 Kaam Vijay Audio (Kaam-A) — Per Mala" }[set];
+    const aEntries = log.filter((e) => e.t === "mala" && e.mode === _mk && e.a === 1);
+    inner += backBtn;
+    if (aEntries.length > 0) inner += _histMalaTable(_ml, aEntries, "#6DB8FF");
+    else inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-mala detail not available for this date</div>`;
   } else if (set === "28") {
     const cycleEntries = log.filter((e) => e.t === "28cycle" && e.mode !== "28a");
     inner += backBtn;
@@ -27222,6 +27285,9 @@ function renderLeaderboard(docs, period) {
       const skaam = Object.values(d.historyKaam || {}).reduce((a,b)=>a+b,0);
       const s28 = Object.values(d.history28 || {}).reduce((a,b)=>a+b,0);
       const sra = Object.values(d.historyRA || {}).reduce((a,b)=>a+b,0);
+      const srva = Object.values(d.historyRVA || {}).reduce((a,b)=>a+b,0);
+      const skva = Object.values(d.historyKVA || {}).reduce((a,b)=>a+b,0);
+      const skaama = Object.values(d.historyKaamA || {}).reduce((a,b)=>a+b,0);
       const s28a = Object.values(d.historyRA28 || {}).reduce((a,b)=>a+b,0);
       // Net each type against its own deduct counter (gifts/manual deducts) —
       // matches how totalJap itself was computed in pushLeaderboard(), so the
@@ -27230,12 +27296,15 @@ function renderLeaderboard(docs, period) {
       d._breakdown = {
         r:   Math.max(0, sr - sra - (d.nameJapDeduct   || 0)),
         ra:  sra,
-        rv:  Math.max(0, srv - (d.nameJapDeductRV || 0)),
-        kv:  Math.max(0, skv - (d.nameJapDeductKV || 0)),
+        rv:  Math.max(0, srv - srva - (d.nameJapDeductRV || 0)),
+        rva: srva,
+        kva: skva,
+        kaama: skaama,
+        kv:  Math.max(0, skv - skva - (d.nameJapDeductKV || 0)),
         ss:  Math.max(0, sss - (d.nameJapDeductSS || 0)),
         hk:  Math.max(0, shk - (d.nameJapDeductHK || 0)),
         ram: Math.max(0, sram - (d.nameJapDeductRam || 0)),
-        kaam: Math.max(0, skaam - (d.nameJapDeductKaam || 0)),
+        kaam: Math.max(0, skaam - skaama - (d.nameJapDeductKaam || 0)),
         n28: Math.max(0, s28 - s28a - (d.nameJapDeduct28 || 0)),
         n28a: s28a,
       };
@@ -27276,7 +27345,7 @@ function renderLeaderboard(docs, period) {
       const histRam = d.historyRam || {};
       const histKaam = d.historyKaam || {};
       const hist28 = d.history28 || {};
-      let sr = 0, srv = 0, skv = 0, sss = 0, shk = 0, sram = 0, skaam = 0, s28 = 0, sra = 0, s28a = 0;
+      let sr = 0, srv = 0, skv = 0, sss = 0, shk = 0, sram = 0, skaam = 0, s28 = 0, sra = 0, s28a = 0, srva = 0, skva = 0, skaama = 0;
       let tr = 0, trv = 0, tkv = 0, tss = 0, thk = 0, tram = 0, tkaam = 0, t28 = 0;
       const tHist = d.timerHistory || {};
       const tHistRV = d.timerHistoryRV || {};
@@ -27291,6 +27360,7 @@ function renderLeaderboard(docs, period) {
         const tbd = d.todayTimeBreakdown || {};
         sr = bd.r || 0;
         sra = bd.ra || 0;
+        srva = bd.rva || 0; skva = bd.kva || 0; skaama = bd.kaama || 0;
         srv = bd.rv || 0;
         skv = bd.kv || 0;
         sss = bd.ss || 0;
@@ -27311,6 +27381,7 @@ function renderLeaderboard(docs, period) {
         periodKeys.forEach(function(k) {
           sr += (hist[k] || 0);
           sra += ((d.historyRA || {})[k] || 0);
+          srva += ((d.historyRVA || {})[k] || 0); skva += ((d.historyKVA || {})[k] || 0); skaama += ((d.historyKaamA || {})[k] || 0);
           srv += (histRV[k] || 0);
           skv += (histKV[k] || 0);
           sss += (histSS[k] || 0);
@@ -27331,7 +27402,7 @@ function renderLeaderboard(docs, period) {
       }
       score += sr + srv + skv + sss + shk + sram + skaam + s28;
       timeScore += tr + trv + tkv + tss + thk + tram + tkaam + t28;
-      d._breakdown = { r: Math.max(0, sr - sra), ra: sra, rv: srv, kv: skv, ss: sss, hk: shk, ram: sram, kaam: skaam, n28: Math.max(0, s28 - s28a), n28a: s28a };
+      d._breakdown = { r: Math.max(0, sr - sra), ra: sra, rv: Math.max(0, srv - srva), rva: srva, kv: Math.max(0, skv - skva), kva: skva, kaam: Math.max(0, skaam - skaama), kaama: skaama, ss: sss, hk: shk, ram: sram, n28: Math.max(0, s28 - s28a), n28a: s28a };
       d._giftedBreakdown = { r: 0, rv: 0, kv: 0, ss: 0, hk: 0, ram: 0, kaam: 0, n28: 0 };
       d._timeBreakdown = { r: tr, rv: trv, kv: tkv, ss: tss, hk: thk, ram: tram, kaam: tkaam, n28: t28 };
       // Screen Time for this period — flat per-day map, sum across periodKeys
@@ -27433,11 +27504,19 @@ function renderLeaderboard(docs, period) {
       const raM = Math.floor(b.ra / ms);
       bdParts.push('R-A: ' + _lbFmtJap(b.ra) + (raM > 0 ? ' (' + raM + 'M)' : ''));
     }
+    if ((b.rva || 0) > 0) {
+      const x = Math.floor(b.rva / ms);
+      bdParts.push('RV-A: ' + _lbFmtJap(b.rva) + (x > 0 ? ' (' + x + 'M)' : ''));
+    }
     if (b.rv > 0 || g.rv > 0) {
       const rvM = Math.floor(b.rv / ms);
       const rvStr = _lbFmtJap(b.rv) + (rvM > 0 ? ' (' + rvM + 'M)' : '');
       const giftNote = g.rv > 0 ? ' · 🎁' + _lbFmtJap(g.rv) + ' gifted' : '';
       bdParts.push('RV: ' + rvStr + (tb.rv > 0 ? ' ⏱ ' + _histFmtSec(tb.rv) : '') + giftNote + _lbQ(tb.rv, b.rv));
+    }
+    if ((b.kva || 0) > 0) {
+      const x = Math.floor(b.kva / ms);
+      bdParts.push('KV-A: ' + _lbFmtJap(b.kva) + (x > 0 ? ' (' + x + 'M)' : ''));
     }
     if (b.kv > 0 || g.kv > 0) {
       const kvM = Math.floor(b.kv / ms);
@@ -27473,6 +27552,10 @@ function renderLeaderboard(docs, period) {
       const giftNote = g.ram > 0 ? ' · 🎁' + _lbFmtJap(g.ram) + ' gifted' : '';
       bdParts.push('RAM: ' + ramStr + (tb.ram > 0 ? ' ⏱ ' + _histFmtSec(tb.ram) : '') + giftNote + _lbQ(tb.ram, b.ram));
     }
+    if ((b.kaama || 0) > 0) {
+      const x = Math.floor(b.kaama / ms);
+      bdParts.push('KAM-A: ' + _lbFmtJap(b.kaama) + (x > 0 ? ' (' + x + 'M)' : ''));
+    }
     if (b.kaam > 0 || g.kaam > 0) {
       const kaamM = Math.floor(b.kaam / ms);
       const kaamStr = _lbFmtJap(b.kaam) + (kaamM > 0 ? ' (' + kaamM + 'M)' : '');
@@ -27480,7 +27563,7 @@ function renderLeaderboard(docs, period) {
       bdParts.push('KAM: ' + kaamStr + (tb.kaam > 0 ? ' ⏱ ' + _histFmtSec(tb.kaam) : '') + giftNote + _lbQ(tb.kaam, b.kaam));
     }
     // Total: only count R+RV+SS+HK+RAM+KAM malas (not 28N), 28N shown as cycles separately
-    const japOnly = (b.r || 0) + (b.ra || 0) + (b.rv || 0) + (b.ss || 0) + (b.hk || 0) + (b.ram || 0) + (b.kaam || 0);
+    const japOnly = (b.r || 0) + (b.ra || 0) + (b.rva || 0) + (b.kva || 0) + (b.kaama || 0) + (b.rv || 0) + (b.ss || 0) + (b.hk || 0) + (b.ram || 0) + (b.kaam || 0);
     const totalMalas = Math.floor(japOnly / ms);
     const total28Cyc = Math.floor(((b.n28 || 0) + (b.n28a || 0)) / 28);
     let totalStr = _lbFmtJap(d.score) + ' jap';
@@ -27667,6 +27750,9 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
   const todayBreakdown = {
     r: hist[liveTk] || 0,
     ra: (S.historyAudio || {})[liveTk] || 0,
+    rva: ((S.audioHistM || {}).rv || {})[liveTk] || 0,
+    kva: ((S.audioHistM || {}).kv || {})[liveTk] || 0,
+    kaama: ((S.audioHistM || {}).kaam || {})[liveTk] || 0,
     rv: histRV[liveTk] || 0,
     kv: histKV[liveTk] || 0,
     ss: histSS[liveTk] || 0,
@@ -27710,6 +27796,9 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     historyRam: histRam,
     historyKaam: histKaam,
     historyRA: S.historyAudio || {},
+    historyRVA: (S.audioHistM || {}).rv || {},
+    historyKVA: (S.audioHistM || {}).kv || {},
+    historyKaamA: (S.audioHistM || {}).kaam || {},
     historyRA28: S.historyAudio28 || {},
     history28: hist28,
     // Push each type's own deduct counter too, so the leaderboard breakdown
@@ -30662,10 +30751,11 @@ const AudioChantM = (function () {
     window._rjKATitle = "";
     setMediaSession(false);
     try { _rjKeepAlive(false); } catch (_e) {}
-    key = null;
+    const _k = key; key = null;
     try { App.ua(); } catch (_e) {}
     stopping = false;
     api.ui();
+    try { api.renderLog(_k); } catch (_e) {}
   };
 
   api.toggle = function () { if (playing) api.requestStop(""); else api.start(); };
@@ -30751,6 +30841,87 @@ const AudioChantM = (function () {
     api.ui();
   });
   window.addEventListener("pagehide", function () { if (sess) { sess.end = Date.now(); try { App.save(); } catch (_e) {} } });
+
+  // ── Stats / log helpers (per mode) ──
+  const PFX = { rv: "RV", kv: "KV", kaam: "Kaam" };
+  const TITLE = { rv: "Radha Vallabh", kv: "Krishnay Vasudevay", kaam: "Kaam Vijay" };
+  api.secsFor = function (k, match) {
+    let s = 0;
+    log(k).forEach(function (x) { if (match(x.tk)) s += ((x === sess ? Date.now() : x.end) - x.start) / 1000; });
+    return Math.floor(s);
+  };
+  api.secsMap = function (k) {
+    const o = {};
+    log(k).forEach(function (x) { o[x.tk] = (o[x.tk] || 0) + Math.floor(((x === sess ? Date.now() : x.end) - x.start) / 1000); });
+    return o;
+  };
+  api.histOf = function (k) { return hist(k); };
+  api.fillStatsTimes = function (wk, mp) {
+    const set = function (id, sec) { const e = document.getElementById(id); if (e) e.textContent = fmtDur(sec * 1000); };
+    Object.keys(CFG).forEach(function (k) {
+      const P = PFX[k];
+      set("t" + P + "ATod", api.secsFor(k, function (d) { return d === S().tk; }));
+      set("t" + P + "AWk", api.secsFor(k, function (d) { return wk.indexOf(d) >= 0; }));
+      set("t" + P + "AMo", api.secsFor(k, function (d) { return d.indexOf(mp) === 0; }));
+      set("t" + P + "ALt", api.secsFor(k, function () { return true; }));
+    });
+  };
+  function fmtDay(tk) {
+    try {
+      const p = tk.split("-"), d = new Date(+p[0], +p[1] - 1, +p[2]);
+      if (tk === S().tk) return "Today";
+      return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    } catch (_e) { return tk; }
+  }
+  const showAllM = {};
+  api.showAll = function (k) { showAllM[k] = true; api.renderLog(k); };
+  api.renderLog = function (k) {
+    if (!k) { Object.keys(CFG).forEach(function (x) { api.renderLog(x); }); return; }
+    const list = document.getElementById("acmLogList_" + k), tot = document.getElementById("acmLogTotals_" + k);
+    if (!list || !tot) return;
+    const L = log(k).slice().sort(function (a, b) { return b.start - a.start; });
+    const ms = S().ms || 108;
+    let life = 0, lifeMs = 0, today = 0;
+    L.forEach(function (x) { life += x.count; lifeMs += (x.end - x.start); if (x.tk === S().tk) today += x.count; });
+    tot.innerHTML = PFX[k] + "-A today: <b style=\"color:#6DB8FF\">" + today.toLocaleString() + "</b> (" + Math.floor(today / ms) + " malas) &nbsp;·&nbsp; Lifetime: <b style=\"color:#6DB8FF\">" +
+      life.toLocaleString() + "</b> (" + Math.floor(life / ms).toLocaleString() + " malas) &nbsp;·&nbsp; " + L.length + " sessions, " + fmtDur(lifeMs);
+    if (!L.length) { list.innerHTML = "<div style=\"font-size:11px;color:var(--td);padding:8px 4px\">No audio chant sessions yet. Tap “Audio Chant” on the " + TITLE[k] + " Jap screen.</div>"; return; }
+    const days = [], by = {};
+    L.forEach(function (x) { if (!by[x.tk]) { by[x.tk] = []; days.push(x.tk); } by[x.tk].push(x); });
+    const shown = showAllM[k] ? days : days.slice(0, 14);
+    let html = "";
+    shown.forEach(function (tk) {
+      const ss = by[tk]; let c = 0, t = 0; ss.forEach(function (x) { c += x.count; t += (x.end - x.start); });
+      html += "<div style=\"border:1px solid rgba(109,184,255,0.25);border-radius:12px;padding:8px 10px;background:rgba(109,184,255,0.05)\">" +
+        "<div style=\"display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#6DB8FF;margin-bottom:4px\"><span>" + fmtDay(tk) + "</span><span>" + c.toLocaleString() + " · " + Math.floor(c / ms) + " malas · " + fmtDur(t) + "</span></div>";
+      ss.forEach(function (x, i) {
+        const live = playing && sess && sess.id === x.id;
+        html += "<div style=\"display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--tl);padding:3px 0;border-top:1px dashed rgba(255,255,255,0.07)\">" +
+          "<span>#" + (ss.length - i) + " &nbsp;" + fmtClock(x.start) + " → " + (live ? "<i>playing…</i>" : fmtClock(x.end)) + "</span>" +
+          "<span>" + fmtDur(x.end - x.start) + " · <b>" + x.count.toLocaleString() + "</b></span></div>";
+      });
+      html += "</div>";
+    });
+    if (!showAllM[k] && days.length > shown.length) html += "<button class=\"pb\" style=\"padding:8px;font-size:11px\" onclick=\"AudioChantM.showAll('" + k + "')\">Show all " + days.length + " days</button>";
+    list.innerHTML = html;
+  };
+  function setDisp(id, v) { const e = document.getElementById(id); if (e && e.style.display !== v) e.style.display = v; }
+  api.applyMode = function () {
+    const on = !!(S() && S().audioMode);
+    Object.keys(CFG).forEach(function (k) {
+      const H = hist(k), has = Object.keys(H).some(function (d) { return H[d] > 0; });
+      setDisp("acmLogWrap_" + k, on ? "" : "none");
+      setDisp("stats" + PFX[k] + "Acard", (on || has) ? "" : "none");
+    });
+  };
+  setInterval(function () { try { api.applyMode(); } catch (_e) {} }, 3000);
+  setInterval(function () {
+    Object.keys(CFG).forEach(function (k) {
+      const b = document.getElementById("acmLogBody_" + k);
+      if (playing && key === k && b && b.classList.contains("open")) api.renderLog(k);
+    });
+  }, 5000);
+  window.addEventListener("load", function () { setTimeout(function () { try { api.applyMode(); api.renderLog(); } catch (_e) {} }, 900); });
   return api;
 })();
 window.AudioChantM = AudioChantM;

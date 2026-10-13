@@ -9192,12 +9192,26 @@ function _msConsiderDefaults() {
   // Radha + Radha Vallabh + Krishnay Vasudevay engine
   return { radha: true, rv: true, hk: false, kv: true, ss: false, ram: false, n28: true };
 }
+// Audio chips (ra, rva, kva, kma, n28a) are separate traits from their
+// touch counterparts (radha, rv, kv, km, n28). Until the user flips an
+// audio chip explicitly it simply mirrors its touch chip, so existing
+// users' Bhagvat Prapti totals don't change. km / kma (Kaam Vijay) start OFF.
+const _MS_AUDIO_PAIRS = { ra: "radha", rva: "rv", kva: "kv", kma: "km", n28a: "n28" };
 function getMsConsider() {
-  return { ..._msConsiderDefaults(), ...(App.S.msConsider || {}) };
+  const stored = App.S.msConsider || {};
+  const c = { km: false, ..._msConsiderDefaults(), ...stored };
+  Object.keys(_MS_AUDIO_PAIRS).forEach((a) => {
+    if (!(a in stored)) c[a] = !!c[_MS_AUDIO_PAIRS[a]];
+  });
+  return c;
 }
 function setMsConsider(type, on) {
   if (isGhostMode()) return; // ghost mode: read-only
-  if (!App.S.msConsider) App.S.msConsider = _msConsiderDefaults();
+  if (!App.S.msConsider) App.S.msConsider = {};
+  // Freeze the currently-resolved values first so toggling one chip never
+  // silently flips a mirrored audio chip.
+  App.S.msConsider = { ...getMsConsider(), ...App.S.msConsider };
+  Object.keys(_MS_AUDIO_PAIRS).forEach((a) => { if (!(a in App.S.msConsider)) App.S.msConsider[a] = getMsConsider()[a]; });
   App.S.msConsider[type] = !!on;
   App.save();
   App.ua && App.ua();
@@ -9229,61 +9243,35 @@ function _msAvailable28() {
 // deduct/gift counter before combining (never pool-then-subtract-one).
 function _msComputeTotal() {
   const consider = getMsConsider();
-  const hist = App.S.history || {};
-  const histRV = App.S.historyRV || {};
-  const histHK = App.S.historyHK || {};
-  const histKV = App.S.historyKV || {};
-  const histSS = App.S.historySS || {};
-  const histRam = App.S.historyRam || {};
-  const radhaTot = consider.radha
-    ? Math.max(
-        0,
-        Object.values(hist).reduce((a, b) => a + b, 0) -
-          (App.S.nameJapDeduct || 0),
-      )
-    : 0;
-  const rvTot = consider.rv
-    ? Math.max(
-        0,
-        Object.values(histRV).reduce((a, b) => a + b, 0) -
-          (App.S.nameJapDeductRV || 0),
-      )
-    : 0;
-  const hkTot = consider.hk
-    ? Math.max(
-        0,
-        Object.values(histHK).reduce((a, b) => a + b, 0) -
-          (App.S.nameJapDeductHK || 0),
-      )
-    : 0;
-  const kvTot = consider.kv
-    ? Math.max(
-        0,
-        Object.values(histKV).reduce((a, b) => a + b, 0) -
-          (App.S.nameJapDeductKV || 0),
-      )
-    : 0;
-  const ssTot = consider.ss
-    ? Math.max(
-        0,
-        Object.values(histSS).reduce((a, b) => a + b, 0) -
-          (App.S.nameJapDeductSS || 0),
-      )
-    : 0;
-  const n28Tot = consider.n28 ? _msAvailable28() : 0;
-  const ramTot = consider.ram
-    ? Math.max(
-        0,
-        Object.values(histRam).reduce((a, b) => a + b, 0) -
-          (App.S.nameJapDeductRam || 0),
-      )
-    : 0;
+  const sumOf = (h) => Object.values(h || {}).reduce((x, y) => x + y, 0);
+  const net = (hist, ded) => Math.max(0, sumOf(hist) - (ded || 0));
+  // Split a netted total into touch part + audio part (audio is a subset of
+  // the total, tracked separately — see audioHistM / historyAudio).
+  const split = (tot, audioHist) => {
+    const au = Math.min(tot, sumOf(audioHist));
+    return { touch: tot - au, audio: au };
+  };
+  const am = App.S.audioHistM || {};
+  const R = split(net(App.S.history, App.S.nameJapDeduct), App.S.historyAudio);
+  const RV = split(net(App.S.historyRV, App.S.nameJapDeductRV), am.rv);
+  const KV = split(net(App.S.historyKV, App.S.nameJapDeductKV), am.kv);
+  const KM = split(net(App.S.historyKaam, App.S.nameJapDeductKaam), am.kaam);
+  const N28 = split(_msAvailable28(), App.S.historyAudio28);
+  const hkTot = consider.hk ? net(App.S.historyHK, App.S.nameJapDeductHK) : 0;
+  const ssTot = consider.ss ? net(App.S.historySS, App.S.nameJapDeductSS) : 0;
+  const ramTot = consider.ram ? net(App.S.historyRam, App.S.nameJapDeductRam) : 0;
+  const radhaTot = (consider.radha ? R.touch : 0) + (consider.ra ? R.audio : 0);
+  const rvTot = (consider.rv ? RV.touch : 0) + (consider.rva ? RV.audio : 0);
+  const kvTot = (consider.kv ? KV.touch : 0) + (consider.kva ? KV.audio : 0);
+  const kmTot = (consider.km ? KM.touch : 0) + (consider.kma ? KM.audio : 0);
+  const n28Tot = (consider.n28 ? N28.touch : 0) + (consider.n28a ? N28.audio : 0);
   return {
-    total: radhaTot + rvTot + hkTot + kvTot + ssTot + ramTot + n28Tot,
+    total: radhaTot + rvTot + hkTot + kvTot + kmTot + ssTot + ramTot + n28Tot,
     radhaTot,
     rvTot,
     hkTot,
     kvTot,
+    kmTot,
     ssTot,
     ramTot,
     n28Tot,
@@ -9296,12 +9284,18 @@ function _msConsiderChipsHtml() {
   const c = getMsConsider();
   const types = [
     { key: "radha", label: "Radha", color: "245,200,66" },
+    { key: "ra", label: "🎧 Radha Audio", color: "245,200,66" },
     { key: "rv", label: "Radha Vallabh", color: "94,234,212" },
+    { key: "rva", label: "🎧 Radha Vallabh Audio", color: "94,234,212" },
     { key: "hk", label: "Hare Krishna", color: "201,167,255" },
     { key: "kv", label: "Krishnay Vasudevay", color: "109,184,255" },
+    { key: "kva", label: "🎧 Krishnay Vasudevay Audio", color: "109,184,255" },
+    { key: "km", label: "Kaam Vijay", color: "255,120,120" },
+    { key: "kma", label: "🎧 Kaam Vijay Audio", color: "255,120,120" },
     { key: "ss", label: "Samba Sadashiv", color: "255,184,108" },
     { key: "ram", label: "Raam Vijay Mantra", color: "255,153,51" },
     { key: "n28", label: "28 Names", color: "255,143,199" },
+    { key: "n28a", label: "🎧 28 Names Audio", color: "255,143,199" },
   ];
   let h =
     '<div class="ms-consider-wrap" style="margin-bottom:14px;">' +
@@ -9362,11 +9356,17 @@ function renderMilestonesTab() {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const k = _ldk(d);
+    const _pd = (h, ah, kt, ka) => {
+      const t = (h || {})[k] || 0, au = Math.min(t, (ah || {})[k] || 0);
+      return (consider[kt] ? t - au : 0) + (consider[ka] ? au : 0);
+    };
+    const _am = App.S.audioHistM || {};
     sum7 +=
-      (consider.radha ? hist[k] || 0 : 0) +
-      (consider.rv ? histRV[k] || 0 : 0) +
-      (consider.n28 ? hist28[k] || 0 : 0) +
-      (consider.kv ? histKV[k] || 0 : 0) +
+      _pd(hist, App.S.historyAudio, "radha", "ra") +
+      _pd(histRV, _am.rv, "rv", "rva") +
+      _pd(hist28, App.S.historyAudio28, "n28", "n28a") +
+      _pd(histKV, _am.kv, "kv", "kva") +
+      _pd(App.S.historyKaam, _am.kaam, "km", "kma") +
       (consider.ss ? histSS[k] || 0 : 0) +
       (consider.ram ? histRam[k] || 0 : 0) +
       (consider.hk ? histHK[k] || 0 : 0);

@@ -30377,6 +30377,7 @@ const AudioChant = (function () {
   };
   api.secondsToday = function () { return api.secsFor(function (k) { return k === App.S.tk; }); };
 
+  api.resync = function () { lmcATk = ""; };   // manual add/deduct changed today's audio count -> re-seed the audio mala counter on the next credit
   // ── Undo (↩): undoes an audio count when the last count was audio (or no touch counts remain)
   api.handleUndo = function (isMain) {
     const S = App.S;
@@ -30870,6 +30871,7 @@ const AudioChantM = (function () {
     return Math.floor(s);
   };
 
+  api.resync = function () { lmcATk = ""; };   // see AudioChant.resync
   // ── Undo (↩) ──
   api.handleUndo = function () {
     const s = S(), k = activeKey();
@@ -31186,3 +31188,247 @@ window.AudioChant28 = AudioChant28;
   }
   setInterval(function () { try { sync(); } catch (_e) {} }, 1500);
 })();
+
+/* ═════════════════════════════════════════════════════════════════════
+   AUDIO ADD / DEDUCT (Statistics)
+   Manual add / deduct for the audio modes of Harivansh Sampraday:
+     R-A (Radha), RV-A (Radha Vallabh Shri Harivansh), KV-A (Krishnay Vasudevay),
+     Kaam-A (Kaam Vijay)  -> one card in the main Statistics
+     28-A (28 Names audio) -> its own section inside the 28 Names stats panel
+   An audio count is always a PART of its mode's total, so every change is written to
+   both: the mode's total history and its audio history. Targets, lifetime, sync and
+   leaderboard therefore follow automatically, and touch counts stay untouched.
+   Time follows automatically: every audio loop has a fixed length, so time = count x loop length
+   (R 0.869s, RV 4.054s, KV 12.672s, Kaam 11.568s, 28 Names 48.888s per cycle).
+   ═════════════════════════════════════════════════════════════════════ */
+const AudioAdj = (function () {
+  const CFG = {
+    ra:    { label: "Radha Audio (R-A)",                  short: "Radha",          color: "#f5c842", unit: "jap",    mul: 1,  sec: 0.869,  lk: null,   total: function (S) { return S.history || (S.history = {}); },                        audio: function (S) { return S.historyAudio || (S.historyAudio = {}); },                          chant: "AudioChant" },
+    rva:   { label: "Radha Vallabh Audio (RV-A)",         short: "Radha Vallabh",  color: "#5eead4", unit: "jap",    mul: 1,  sec: 4.054,  lk: "rv",   total: function (S) { return S.historyRV || (S.historyRV = {}); },                    audio: function (S) { return audM(S, "rv"); },                                                    chant: "AudioChantM" },
+    kva:   { label: "Krishnay Vasudevay Audio (KV-A)",    short: "Krishnay Vasudevay", color: "#6DB8FF", unit: "jap", mul: 1,  sec: 12.672, lk: "kv",   total: function (S) { return S.historyKV || (S.historyKV = {}); },                    audio: function (S) { return audM(S, "kv"); },                                                    chant: "AudioChantM" },
+    kaama: { label: "Kaam Vijay Audio (Kaam-A)",          short: "Kaam Vijay",     color: "#B8C4F5", unit: "jap",    mul: 1,  sec: 11.568, lk: "kaam", total: function (S) { return S.historyKaam || (S.historyKaam = {}); },                audio: function (S) { return audM(S, "kaam"); },                                                  chant: "AudioChantM" },
+    n28a:  { label: "28 Names Audio (28-A)",              short: "28 Names",       color: "#6DB8FF", unit: "cycles", mul: 28, sec: 48.888 / 28, lk: null, total: function (S) { return S.h28 || (S.h28 = {}); },                                audio: function (S) { return S.historyAudio28 || (S.historyAudio28 = {}); },                      chant: "AudioChant28" },
+  };
+  const MAIN = ["ra", "rva", "kva", "kaama"];
+  const state = { main: "ra", mainSign: "add" };
+  const stSign28 = { sign: "add" };
+
+  function audM(S, k) {
+    if (!S.audioHistM || typeof S.audioHistM !== "object") S.audioHistM = {};
+    if (!S.audioHistM[k]) S.audioHistM[k] = {};
+    return S.audioHistM[k];
+  }
+  function sum(o) { return Object.values(o || {}).reduce(function (a, b) { return a + (b || 0); }, 0); }
+  function fmt(n) { return (n || 0).toLocaleString("en-IN"); }
+  function $(id) { return document.getElementById(id); }
+  function today() { return App.getTk(); }
+  function audioBusy() {
+    return !!((window.AudioChant && window.AudioChant.playing) || (window.AudioChantM && window.AudioChantM.playing) || (window.AudioChant28 && window.AudioChant28.playing));
+  }
+  function persist() {
+    try { App.ua(); } catch (_e) {}
+    try { if (isGhostMode()) ghostAwareSave(); else { App.save(); fbDebouncedPush(); } } catch (_e) { try { App.save(); } catch (_e2) {} }
+  }
+  function refreshAll() {
+    try { uStats(); } catch (_e) {}
+    try { u28(); } catch (_e) {}
+    try { render28StatsPanel(); } catch (_e) {}
+    try { renderSankalpas(); } catch (_e) {}
+    api.render();
+  }
+
+
+  // ── Audio time: every audio loop has a fixed length, so time = count x loop length ──
+  function logOf(key) {
+    const S = App.S, c = CFG[key];
+    if (!c.lk) {
+      if (key === "ra") { if (!Array.isArray(S.audioChantLog)) S.audioChantLog = []; return S.audioChantLog; }
+      return null;
+    }
+    if (!S.audioLogM || typeof S.audioLogM !== "object") S.audioLogM = {};
+    if (!Array.isArray(S.audioLogM[c.lk])) S.audioLogM[c.lk] = [];
+    return S.audioLogM[c.lk];
+  }
+  function secsOf(c, amt) { return Math.round(amt * c.sec); }
+  function dayTime(key, tk) {
+    const S = App.S;
+    if (key === "n28a") return (S.timerAudio28 || {})[tk] || 0;
+    const L = logOf(key) || [];
+    let t = 0;
+    L.forEach(function (x) { if (x.tk === tk) t += Math.max(0, (x.end - x.start) / 1000); });
+    return Math.floor(t);
+  }
+  function fmtT(sec) {
+    sec = Math.max(0, Math.round(sec));
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), x = sec % 60;
+    return h > 0 ? h + "h " + m + "m " + x + "s" : m > 0 ? m + "m " + x + "s" : x + "s";
+  }
+  function dayStartTs(tk) {
+    const p = String(tk).split("-");
+    return new Date(+p[0], (+p[1] || 1) - 1, +p[2] || 1, 12, 0, 0).getTime();
+  }
+  function addTime(key, tk, secs, amt) {
+    const S = App.S;
+    if (!(secs > 0)) return;
+    if (key === "n28a") {
+      if (!S.timerAudio28) S.timerAudio28 = {};
+      S.timerAudio28[tk] = (S.timerAudio28[tk] || 0) + secs;
+      if (!S.timer28History) S.timer28History = {};
+      S.timer28History[tk] = (S.timer28History[tk] || 0) + secs;   // 28 Names total time includes its audio time
+      return;
+    }
+    const L = logOf(key);
+    const end = tk === S.tk ? Date.now() : dayStartTs(tk) + secs * 1000;
+    L.push({ id: end, tk: tk, start: end - secs * 1000, end: end, count: amt, manual: true });
+  }
+  function cutTime(key, tk, secs, amt) {
+    const S = App.S;
+    if (!(secs > 0 || amt > 0)) return;
+    if (key === "n28a") {
+      const cut = Math.min(secs, (S.timerAudio28 || {})[tk] || 0);
+      if (S.timerAudio28) { S.timerAudio28[tk] = Math.max(0, (S.timerAudio28[tk] || 0) - cut); if (S.timerAudio28[tk] <= 0) delete S.timerAudio28[tk]; }
+      if (S.timer28History) S.timer28History[tk] = Math.max(0, (S.timer28History[tk] || 0) - cut);
+      return;
+    }
+    const L = logOf(key);
+    let remT = secs * 1000, remN = amt;
+    for (let i = L.length - 1; i >= 0 && (remT > 0 || remN > 0); i--) {
+      const x = L[i];
+      if (x.tk !== tk) continue;
+      const d = Math.max(0, x.end - x.start);
+      const takeT = Math.min(remT, d);
+      x.end -= takeT; remT -= takeT;
+      const takeN = Math.min(remN, x.count || 0);
+      x.count = (x.count || 0) - takeN; remN -= takeN;
+      if ((x.end - x.start) <= 500 && (x.count || 0) <= 0) L.splice(i, 1);
+    }
+  }
+
+  // Apply +n / -n (in the card's own unit) to one audio mode on one day.
+  function apply(key, sign, n, tk) {
+    const c = CFG[key], S = App.S;
+    if (!c) return false;
+    if (!(n > 0)) { toast("Please enter a number > 0"); return false; }
+    if (!tk) { toast("Please select a date"); return false; }
+    if (audioBusy()) { toast("Please turn off the audio chant first 🙏"); return false; }
+    const amt = n * c.mul, T = c.total(S), A = c.audio(S);
+    const curA = A[tk] || 0;
+    if (sign === "deduct" && amt > curA) {
+      toast("Cannot deduct more than that day's audio count (" + (c.mul === 28 ? Math.floor(curA / 28) + " cycles" : curA) + ")");
+      return false;
+    }
+    // 28 Names: freeze active wishes first so their progress follows the change (same as the other 28 Names add/deduct)
+    if (key === "n28a") {
+      (S.sankalpas || []).filter(function (s) { return !s.done && s.startCycles !== null; }).forEach(function (s) {
+        s._savedProgress = (s._savedProgress || 0) + Math.max(0, getTotalCycles28() - s.startCycles);
+        s.startCycles = getTotalCycles28();
+      });
+    }
+    const secs = secsOf(c, amt);
+    if (sign === "add") {
+      T[tk] = (T[tk] || 0) + amt;
+      A[tk] = curA + amt;
+      addTime(key, tk, secs, amt);
+    } else {
+      T[tk] = Math.max(0, (T[tk] || 0) - amt);
+      A[tk] = curA - amt;
+      if (A[tk] <= 0) delete A[tk];
+      cutTime(key, tk, secs, amt);
+    }
+    if (key === "n28a") { if (tk === S.tk) App.lm28 = Math.floor((S.h28[S.tk] || 0) / (S.ms || 108)); }
+    try { if (window[c.chant] && window[c.chant].resync) window[c.chant].resync(); } catch (_e) {}
+    persist();
+    refreshAll();
+    toast((sign === "add" ? "Added " : "Deducted ") + n + " " + (c.unit === "cycles" ? (n === 1 ? "cycle" : "cycles") : "jap") + " · " + c.short + " Audio · " + (sign === "add" ? "+" : "−") + fmtT(secs) + " 🙏");
+    return true;
+  }
+
+  // ── UI ──
+  function secStyle(color) { return "background:" + color + "10;border:1px solid " + color + "47"; }
+  function rowHTML(key, idp, sign) {
+    const c = CFG[key], col = c.color, isDed = sign === "deduct";
+    return '' +
+      '<div class="fr"><input type="date" class="fi" id="' + idp + 'Date" style="font-size:13px" oninput="AudioAdj.preview(\'' + key + '\',\'' + idp + '\')"></div>' +
+      '<div class="fr"><input type="number" class="fi" id="' + idp + 'In" placeholder="' + (c.unit === "cycles" ? "Number of cycles" : "Number of jap") + '" min="1" oninput="AudioAdj.preview(\'' + key + '\',\'' + idp + '\')"><span class="fu" style="color:' + col + '">' + c.unit + '</span></div>' +
+      '<div style="font-size:11px;color:var(--td);margin-bottom:4px">' + (c.mul === 28 ? "1 cycle = 28 names. " : "") + '<span id="' + idp + 'Cur">—</span></div>' +
+      '<div style="font-size:11px;color:var(--td);margin-bottom:8px">That day\'s audio will become: <span id="' + idp + 'Prev" style="color:' + col + '">—</span></div>' +
+      '<div style="display:flex;gap:8px">' +
+        '<button class="pb" style="flex:1;background:linear-gradient(135deg,' + col + ',#9b6ef0);color:#fff" onclick="AudioAdj.go(\'' + key + '\',\'' + idp + '\',\'add\')">➕ Add</button>' +
+        '<button class="pb deduct" style="flex:1" onclick="AudioAdj.go(\'' + key + '\',\'' + idp + '\',\'deduct\')">✂️ Deduct</button>' +
+      '</div>';
+  }
+
+  function syncDate(idp) {
+    const d = $(idp + "Date");
+    if (d && !d.value) d.value = today();
+  }
+
+  const api = {
+    cfg: CFG,
+    apply: apply,
+    go: function (key, idp, sign) {
+      const dEl = $(idp + "Date"), nEl = $(idp + "In");
+      const n = parseInt(nEl && nEl.value) || 0;
+      if (apply(key, sign, n, dEl && dEl.value)) { if (nEl) nEl.value = ""; api.preview(key, idp); }
+    },
+    preview: function (key, idp) {
+      const c = CFG[key], S = App.S;
+      const dEl = $(idp + "Date"), nEl = $(idp + "In");
+      const curEl = $(idp + "Cur"), pvEl = $(idp + "Prev");
+      if (!c || !curEl || !pvEl) return;
+      const tk = (dEl && dEl.value) || today();
+      const cur = c.audio(S)[tk] || 0, n = (parseInt(nEl && nEl.value) || 0) * c.mul;
+      const show = function (v) { return c.mul === 28 ? Math.floor(v / 28) + " cycles (" + fmt(v) + " names)" : fmt(v); };
+      curEl.textContent = "Audio count that day: " + show(cur) + " · time " + fmtT(dayTime(key, tk));
+      const tm = n > 0 ? "  ·  time ±" + fmtT(secsOf(c, n)) : "";
+      pvEl.textContent = n > 0 ? ("+ " + show(cur + n) + "  /  − " + (n > cur ? "not possible" : show(cur - n)) + tm) : "—";
+    },
+    pick: function (key) { state.main = key; api.render(); },
+    render: function () {
+      // Main Statistics card (R-A / RV-A / KV-A / Kaam-A)
+      const host = $("audioAdjMain");
+      if (host && !host.dataset.busy) {
+        const key = state.main, c = CFG[key], S = App.S;
+        const chips = MAIN.map(function (k) {
+          return '<button type="button" class="mlog-tab' + (k === key ? ' on' : '') + ' mlog-tab--ra" onclick="AudioAdj.pick(\'' + k + '\')" style="font-size:11px;padding:6px 8px">🎧 ' + CFG[k].label.replace(/^.*\(/, '').replace(')', '') + '</button>';
+        }).join("");
+        // keep what the person typed while we redraw
+        const old = { d: ($("aaMainDate") || {}).value, n: ($("aaMainIn") || {}).value };
+        host.innerHTML =
+          '<div class="mlog-tabs dc-tabs" style="margin-bottom:8px;flex-wrap:wrap">' + chips + '</div>' +
+          '<div style="font-size:12px;color:var(--tl);margin:2px 2px 8px"><b style="color:' + c.color + '">' + c.label + '</b> · lifetime audio: <b>' + fmt(sum(c.audio(S))) + '</b> jap · today: <b>' + fmt(c.audio(S)[today()] || 0) + '</b></div>' +
+          '<div class="cs-wrap" style="' + secStyle(c.color) + ';padding:10px 12px">' + rowHTML(key, "aaMain", "add") + '</div>';
+        syncDate("aaMain");
+        if (old.d && $("aaMainDate")) $("aaMainDate").value = old.d;
+        if (old.n && $("aaMainIn")) $("aaMainIn").value = old.n;
+        api.preview(key, "aaMain");
+      }
+      // 28 Names audio section (inside the 28 Names stats panel)
+      const h28 = $("audioAdj28");
+      if (h28) {
+        const c = CFG.n28a, S = App.S;
+        const old = { d: ($("aa28Date") || {}).value, n: ($("aa28In") || {}).value };
+        const lt = sum(c.audio(S));
+        h28.innerHTML =
+          '<div style="font-size:12px;color:var(--tl);margin:2px 2px 8px">28 Names audio · lifetime: <b>' + Math.floor(lt / 28) + '</b> cycles (' + fmt(lt) + ' names) · today: <b>' + Math.floor((c.audio(S)[today()] || 0) / 28) + '</b> cycles</div>' +
+          '<div class="cs-wrap" style="' + secStyle(c.color) + ';padding:10px 12px">' + rowHTML("n28a", "aa28", "add") + '</div>';
+        syncDate("aa28");
+        if (old.d && $("aa28Date")) $("aa28Date").value = old.d;
+        if (old.n && $("aa28In")) $("aa28In").value = old.n;
+        api.preview("n28a", "aa28");
+      }
+    },
+  };
+  // do not redraw while a field inside has focus (keeps the keyboard open on mobile)
+  setInterval(function () {
+    try {
+      const f = document.activeElement;
+      if (f && f.id && f.id.indexOf("aa") === 0) return;
+      const hostM = $("audioAdjMain"), host28 = $("audioAdj28");
+      if ((hostM && hostM.offsetParent !== null) || (host28 && host28.offsetParent !== null)) api.render();
+    } catch (_e) {}
+  }, 2500);
+  window.addEventListener("load", function () { setTimeout(function () { try { api.render(); } catch (_e) {} }, 900); });
+  return api;
+})();
+window.AudioAdj = AudioAdj;

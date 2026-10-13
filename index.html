@@ -579,6 +579,20 @@
         </div>
       </div>
 
+      <!-- c2) 28 Names Audio — Add / Deduct (own section) -->
+      <div class="n28sp-section">
+        <div class="cs-wrap" style="background:rgba(109,184,255,0.06);border:1px solid rgba(109,184,255,0.28)">
+          <div class="cs-header" onclick="toggleCs('audioAdj28Body','audioAdj28Chev');AudioAdj.render()">
+            <h3 style="color:#6DB8FF">🎧 28 Names Audio — ➕ Add ／ ✂️ Deduct</h3>
+            <span class="cs-chevron" id="audioAdj28Chev" style="color:#6DB8FF">▾</span>
+          </div>
+          <div class="cs-body" id="audioAdj28Body">
+            <p style="font-size:12px;color:var(--td);margin-bottom:10px">Adjust only the 28 Names <b>audio</b> count (28-A) for any day. It is also part of your 28 Names total, so the total and wishes follow. Time is added or deducted automatically (1 cycle = 48.9 s).</p>
+            <div id="audioAdj28"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- d) Reset Options -->
       <div class="n28sp-section n28sp-reset">
         <div class="n28sp-title" style="color:var(--gold)">↺ Reset Options</div>
@@ -1063,6 +1077,18 @@
     <div class="sg-body" id="acmLogBody_kaam">
       <div id="acmLogTotals_kaam" style="font-size:12px;color:var(--tl);line-height:1.6;margin:2px 4px 8px;"></div>
       <div id="acmLogList_kaam" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+  </div>
+
+  <!-- Audio Add / Deduct — Radha, Radha Vallabh, Krishnay Vasudevay, Kaam Vijay audio modes -->
+  <div class="sg-wrap" id="audioAdjWrap" style="background:rgba(109,184,255,0.05);border:1px solid rgba(109,184,255,0.22);">
+    <div class="sg-header" onclick="toggleCs('audioAdjBody','audioAdjChev');AudioAdj.render()">
+      <span>🎧 Audio Mode — Add ／ Deduct</span>
+      <span class="sg-chevron" id="audioAdjChev">▾</span>
+    </div>
+    <div class="sg-body" id="audioAdjBody">
+      <div style="font-size:11px;color:var(--td);line-height:1.5;margin:2px 4px 8px;">Add or deduct audio-mode jap for Radha, Radha Vallabh, Krishnay Vasudevay or Kaam Vijay on any day. The mode's total changes with it and the audio time is added or deducted automatically (each audio loop has a fixed length); touch counts stay as they are. (28 Names audio has its own section in the 28 Names stats.)</div>
+      <div id="audioAdjMain"></div>
     </div>
   </div>
 
@@ -3048,7 +3074,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=142"></script>
-    <script src="./app.js?v=190"></script>
+    <script src="./app.js?v=192"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

@@ -9063,6 +9063,16 @@ function importAllData(input) {
       App.S.syncBaselineTimer28 = JSON.parse(
         JSON.stringify(App.S.timer28History),
       );
+      // Restore must win over every other device's local data: stamp a new
+      // reset epoch (same mechanism as Reset) so other devices drop their
+      // stale local copy and take the restored cloud state. Ghost mode uses
+      // devForceRestoreAt instead, so skip it there.
+      try {
+        if (!(typeof isGhostMode === "function" && isGhostMode())) {
+          App.S.resetEpoch = Date.now();
+          App.S._seenResetEpoch = App.S.resetEpoch;
+        }
+      } catch (_e) {}
       App.save();
       switchJapMode(App.S.japMode || "radha");
       renderSt();

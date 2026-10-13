@@ -1106,6 +1106,11 @@ const App = {
     } catch (e) {}
     if (fbUser && !fbForcedSignout && !this._suspendCloudSync && App._cloudHydrated)
       fbDebouncedPush();
+    else if (fbUser && !App._cloudHydrated && typeof navigator !== "undefined" && navigator.onLine === false) {
+      // Opened offline and cloud never loaded: still mark this jap as unsynced
+      // so the next cloud pull keeps it and pushes it instead of overwriting it.
+      try { localStorage.setItem("rjap_sync_pending", String(Date.now())); } catch (_e) {}
+    }
   },
 
   async load() {
@@ -12932,7 +12937,7 @@ function fbApplyRemote(d) {
       // than what's already local — otherwise keep the fuller local log.
       const localSum = (App.S.malaLog || []).reduce((a, b) => a + b, 0);
       const remoteSum = remoteMalaLog.reduce((a, b) => a + b, 0);
-      if (remoteSum >= localSum) {
+      if (remoteSum >= localSum || App._initialCloudApply) {
         App.S.malaLog = JSON.parse(JSON.stringify(remoteMalaLog));
       }
       // else: keep local malaLog as-is (it's more complete)
@@ -13026,7 +13031,7 @@ function fbApplyRemote(d) {
     if (remoteMalaDate === App.S.tk) {
       const localSum = (App.S.malaLogRV || []).reduce((a, b) => a + b, 0);
       const remoteSum = remoteMalaLogRV.reduce((a, b) => a + b, 0);
-      if (remoteSum >= localSum) {
+      if (remoteSum >= localSum || App._initialCloudApply) {
         App.S.malaLogRV = JSON.parse(JSON.stringify(remoteMalaLogRV));
       }
     }
@@ -13089,7 +13094,7 @@ function fbApplyRemote(d) {
     if (remoteMalaDate2 === App.S.tk) {
       const localSum = (App.S.malaLogHK || []).reduce((a, b) => a + b, 0);
       const remoteSum = remoteMalaLogHK.reduce((a, b) => a + b, 0);
-      if (remoteSum >= localSum) {
+      if (remoteSum >= localSum || App._initialCloudApply) {
         App.S.malaLogHK = JSON.parse(JSON.stringify(remoteMalaLogHK));
       }
     }
@@ -13117,7 +13122,7 @@ function fbApplyRemote(d) {
     if (d.malaLogDate === App.S.tk) {
       const localSum = (App.S.malaLogKaam || []).reduce((a, b) => a + b, 0);
       const remoteSum = remoteMalaLogKaam.reduce((a, b) => a + b, 0);
-      if (remoteSum >= localSum) {
+      if (remoteSum >= localSum || App._initialCloudApply) {
         App.S.malaLogKaam = JSON.parse(JSON.stringify(remoteMalaLogKaam));
       }
     }
@@ -13130,7 +13135,7 @@ function fbApplyRemote(d) {
     if (remoteMalaDate3 === App.S.tk) {
       const localSum = (App.S.malaLogKV || []).reduce((a, b) => a + b, 0);
       const remoteSum = remoteMalaLogKV.reduce((a, b) => a + b, 0);
-      if (remoteSum >= localSum) {
+      if (remoteSum >= localSum || App._initialCloudApply) {
         App.S.malaLogKV = JSON.parse(JSON.stringify(remoteMalaLogKV));
       }
     }
@@ -13152,7 +13157,7 @@ function fbApplyRemote(d) {
     if (remoteMalaDate4 === App.S.tk) {
       const localSum = (App.S.malaLogSS || []).reduce((a, b) => a + b, 0);
       const remoteSum = remoteMalaLogSS.reduce((a, b) => a + b, 0);
-      if (remoteSum >= localSum) {
+      if (remoteSum >= localSum || App._initialCloudApply) {
         App.S.malaLogSS = JSON.parse(JSON.stringify(remoteMalaLogSS));
       }
     }
@@ -13174,7 +13179,7 @@ function fbApplyRemote(d) {
     if (remoteMalaDate5 === App.S.tk) {
       const localSum = (App.S.malaLogRam || []).reduce((a, b) => a + b, 0);
       const remoteSum = remoteMalaLogRam.reduce((a, b) => a + b, 0);
-      if (remoteSum >= localSum) {
+      if (remoteSum >= localSum || App._initialCloudApply) {
         App.S.malaLogRam = JSON.parse(JSON.stringify(remoteMalaLogRam));
       }
     }
@@ -13461,8 +13466,17 @@ async function fbMigrate() {
       // its local counts are stale and must NOT be merged back over the cloud.
       const _epochStale = ((snap.data() || {}).resetEpoch || 0) > (App.S._seenResetEpoch || 0);
 
+      // CLOUD-FIRST: on every open the cloud copy is the source of truth.
+      // This device's local data is only kept if it has changes that were
+      // never confirmed pushed (rjap_sync_pending is set when a push is
+      // scheduled and cleared when Firebase confirms it).
+      let _hasUnsynced = false;
+      try { _hasUnsynced = !!localStorage.getItem("rjap_sync_pending"); } catch (_e) {}
+
       // Cloud data exists — apply it (overrides local cache)
-      fbApplyRemote({ ...snap.data(), deviceId: null });
+      App._initialCloudApply = !_hasUnsynced;
+      try { fbApplyRemote({ ...snap.data(), deviceId: null }); }
+      finally { App._initialCloudApply = false; }
       App._cloudHydrated = true; // cloud copy applied, future saves may push
 
       // ghost mode fixes: own-state capture guard + force-restore signal — if a developer force-
@@ -13488,7 +13502,8 @@ async function fbMigrate() {
           }
         }
       }
-      if (!_skipOfflineMerge) {
+      const _cloudOnly = _skipOfflineMerge || !_hasUnsynced;
+      if (!_cloudOnly) {
         mergeMax(localHistory,        App.S.history);
         mergeMax(localH28,            App.S.h28);
         mergeMax(localTimerHistory,   App.S.timerHistory);

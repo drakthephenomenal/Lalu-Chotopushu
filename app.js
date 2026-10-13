@@ -23862,6 +23862,52 @@ function _rjAutoStart(id, isRetry) {
   _rjWatch("_ggAudioKey");
   _rjWatch("_bgChapterNum");
 })();
+// ── BACKGROUND / SCREEN-OFF PLAYBACK ───────────────────────────────────
+// 1) ONE long-lived <audio> element is reused for every verse clip. A brand-new Audio()
+//    started from the "ended" event while the screen is off is blocked by the phone
+//    (no user tap) — that is what stopped "play next verse". Re-using the same element
+//    (just swapping its source) keeps it allowed to play.
+// 2) Media Session: tells the phone this app is playing media (lock-screen / notification
+//    controls: play, pause, next, previous) and helps keep audio alive with the screen off.
+var _hcjSharedAudio = null;
+function _hcjSharedEl(path) {
+  if (!_hcjSharedAudio) { _hcjSharedAudio = new Audio(); _hcjSharedAudio.preload = "auto"; }
+  var a = _hcjSharedAudio;
+  try { a.pause(); } catch (_e) {}
+  a.onended = null; a.onerror = null; a.ontimeupdate = null;
+  a._triedRemoteFallback = false; a._timedFor = undefined; a._altI = 0;
+  a.src = path;
+  return a;
+}
+var _hcjMSInited = false;
+function _hcjMSStep(d) {
+  try {
+    var n = _verseIdx + d, cfg = _AUDIO_STOTRAMS[_currentStotramId];
+    if (!cfg || n < 0 || n >= _verses.length || !_hcjHasAudioForIdx(cfg, n)) return;
+    _verseIdx = n;
+    try { _renderVerse(n, d); } catch (_e) {}
+    _hcjPlayVerse(n);
+  } catch (_e) {}
+}
+function _hcjMSUpdate(playing) {
+  try {
+    if (!("mediaSession" in navigator)) return;
+    var ms = navigator.mediaSession;
+    if (!_hcjMSInited) {
+      _hcjMSInited = true;
+      var set = function (n, f) { try { ms.setActionHandler(n, f); } catch (_e) {} };
+      set("play", function () { if (!_hcjPlaying) _hcjTogglePlay(); });
+      set("pause", function () { if (_hcjPlaying) _hcjPauseAudio(); });
+      set("nexttrack", function () { _hcjMSStep(1); });
+      set("previoustrack", function () { _hcjMSStep(-1); });
+    }
+    if (playing && window.MediaMetadata) {
+      var t = document.getElementById("lmTitle");
+      ms.metadata = new MediaMetadata({ title: (t && t.textContent) || "Radha Naam Jap", artist: "Radha Naam Jap" });
+    }
+    ms.playbackState = playing ? "playing" : "paused";
+  } catch (_e) {}
+}
 var _hcjVoice = "default"; // currently selected voice key for stotrams that support voices
 // True once the user has manually picked a voice via the button this
 // session — once set, per-verse defaults (defaultVoiceByVerse) stop
@@ -24091,6 +24137,7 @@ function _hcjStopAudio() {
   }
   _hcjPlaying = false;
   _hcjAudioIdx = -1;
+  _hcjMSUpdate(false);
   _hcjSyncUI();
   _hcjUpdateProgress();
   _hcjRemoveMiniPlayer();
@@ -24103,6 +24150,7 @@ function _hcjPauseAudio() {
   _hcjStopProgressLoop();
   if (_hcjAudio) _hcjAudio.pause();
   _hcjPlaying = false;
+  _hcjMSUpdate(false);
   _hcjSyncUI();
   _hcjSyncMiniPlayer();
   if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(_hcjAudio, false);
@@ -24249,7 +24297,7 @@ function _hcjBindTimed() {
     if (_c0 && _c0.ytByVerse && _hcjMode === "continue" && _hcjAudioIdx >= 0 && _hcjAudioIdx + 1 < _verses.length) {
       var _nx = _hcjAudioIdx + 1;
       _verseIdx = _nx;
-      _renderVerse(_nx, 1);
+      try { _renderVerse(_nx, 1); } catch (_e) {}
       _hcjPlayVerse(_nx);
       return;
     }
@@ -24386,6 +24434,7 @@ function _hcjPlayTimed(idx) {
   }
   _hcjAudio.play().then(function () {
     _hcjPlaying = true;
+    _hcjMSUpdate(true);
     _hcjSyncUI();
     _hcjStartProgressLoop();
     if (window._lyrHcjAudioChanged) window._lyrHcjAudioChanged(_hcjAudio, true);
@@ -24416,14 +24465,14 @@ function _hcjPlayVerse(idx) {
     if (_hcjAudio._yt) { _hcjAudio.ontimeupdate = null; if (_hcjAudio._destroy) _hcjAudio._destroy(); }
     _hcjAudio = null;
   }
-  _hcjAudio = new Audio(_hcjAudioPath(idx));
+  _hcjAudio = _hcjSharedEl(_hcjAudioPath(idx));
   _hcjAudioIdx = idx;
   _hcjAudio.loop = _hcjMode === "loop";
   _hcjAudio.onended = function () {
     _hcjStopProgressLoop();
     if (_hcjMode === "continue" && idx + 1 < _verses.length) {
       _verseIdx = idx + 1;
-      _renderVerse(_verseIdx, 1);
+      try { _renderVerse(_verseIdx, 1); } catch (_e) {}   // page may not be drawn while the screen is off
       _hcjPlayVerse(_verseIdx);
     } else {
       _hcjPlaying = false;
@@ -24435,6 +24484,7 @@ function _hcjPlayVerse(idx) {
   };
   function _hcjOnPlayStarted() {
     _hcjPlaying = true;
+    _hcjMSUpdate(true);
     _hcjSyncUI();
     _hcjStartProgressLoop();
     if (window._lyrHcjAudioChanged)

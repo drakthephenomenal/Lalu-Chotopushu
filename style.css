@@ -4158,7 +4158,7 @@ details.dd-kt>summary::after{content:' ▾';}
   animation:rjapGoldPulse 1.8s ease-in-out infinite,rjapTextPulse 1.8s ease-in-out infinite;}
 
 /* AUDIO_CHANT_PATCH_V1 — Audio Mode styles */
-.achant-btn{position:absolute;bottom:6px;left:10px;align-items:center;gap:6px;background:none;border:none;padding:0;cursor:pointer;color:#FFD700;font-size:13px;letter-spacing:.3px;}
+.achant-btn{position:static;margin-top:6px;align-items:center;justify-content:space-between;gap:6px;background:none;border:none;padding:0;cursor:pointer;color:#FFD700;font-size:13px;letter-spacing:.3px;max-width:100%;}
 .achant-ico{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;background:rgba(255,215,0,0.14);border:1px solid rgba(255,215,0,0.35);}
 .mlog-tabs{display:flex;gap:6px;margin:0 0 8px;}
 .mlog-tab{flex:1;padding:7px 8px;border-radius:10px;font-size:12px;font-weight:600;letter-spacing:.3px;cursor:pointer;color:var(--td);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);}

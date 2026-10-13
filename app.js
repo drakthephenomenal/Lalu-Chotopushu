@@ -2309,7 +2309,8 @@ const App = {
   ht(e) {
     if (isGhostMode()) return; // ghost mode: read-only, no jap
     // Audio chant playing: counter is unresponsive to touch (audio counts on its own)
-    if (window.AudioChant && window.AudioChant.playing) { try { if (e) e.preventDefault(); } catch (_) {} window.AudioChant.tapBlocked(); return; }
+    // Audio Mode ON (Radha main jap): manual tap is disabled whether or not the chant is playing.
+    if (window.AudioChant && (window.AudioChant.playing || window.AudioChant.blocksTouch())) { try { if (e) e.preventDefault(); } catch (_) {} window.AudioChant.tapBlocked(); return; }
     window._rjLastCountKind = "touch";
     if (window._rvNamesLock) { try { if (e) e.preventDefault(); } catch (_) {} return; } // 5s mala-complete name display: jap unresponsive
     if (window.japPhotoEditMode) return; // photo edit mode: dragging/resizing photos, not counting
@@ -6704,7 +6705,7 @@ function renderDedications() {
           "')\">Cancel</button>" +
           '<button class="sk-btn grn" onclick="saveDedicationEdit(\'' +
           d.id +
-          "')\">💾 Save Changes</button>" +
+          "')\">Save Changes</button>" +
           "</div>" +
           "</div>"
         );
@@ -15768,7 +15769,7 @@ function favvidRenderLinkCard(v, items, bucketKey, container) {
       '<input class="favvid-edit-title" value="' + escHtml(v.title) + '" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
       '<input class="favvid-edit-url" value="' + escHtml(v.url) + '" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
       '<div style="display:flex;gap:8px">' +
-        '<button class="favvid-edit-save" style="padding:9px 18px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">💾 Save</button>' +
+        '<button class="favvid-edit-save" style="padding:9px 18px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">Save</button>' +
         '<button class="favvid-edit-cancel" style="padding:9px 18px;border-radius:10px;background:rgba(255,255,255,0.06);color:var(--tl);font-size:13px;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,255,255,0.15)">Cancel</button>' +
       '</div>';
     card.querySelector('.favvid-edit-cancel').addEventListener('click', () => renderSt());
@@ -15846,7 +15847,7 @@ function renderFavVideoLinksTop(list, subfolderKey) {
           '<input id="favVidNewTitle" placeholder="Title" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
           '<input id="favVidNewUrl" placeholder="YouTube / Instagram / Telegram / Google Drive / Facebook link" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
           '<select id="favVidNewFolder" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' + folderOptionsHtml + '</select>' +
-          '<button id="favVidAddBtn" style="padding:9px 20px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">💾 Save</button>' +
+          '<button id="favVidAddBtn" style="padding:9px 20px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">Save</button>' +
         '</div>';
       list.appendChild(form);
       form.querySelector('#favVidAddFormHeader').addEventListener('click', () => {
@@ -16034,7 +16035,7 @@ function renderFavVideoLinksFolderView(list, folderId, subfolderKey) {
         '<div style="font-size:11px;color:rgba(255,215,0,0.8);margin-bottom:6px;letter-spacing:1px">➕ Add Video Link to "' + escHtml(folder.name) + '"</div>' +
         '<input id="favVidNewTitle" placeholder="Title" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
         '<input id="favVidNewUrl" placeholder="YouTube / Instagram / Telegram / Google Drive / Facebook link" style="width:100%;margin-bottom:8px;background:rgba(0,0,0,0.40);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:14px;box-sizing:border-box;font-family:Inter,sans-serif">' +
-        '<button id="favVidAddBtn" style="padding:9px 20px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">💾 Save</button>';
+        '<button id="favVidAddBtn" style="padding:9px 20px;border-radius:10px;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">Save</button>';
       list.appendChild(form);
       form.querySelector('#favVidAddBtn').addEventListener('click', async () => {
         const title = form.querySelector('#favVidNewTitle').value.trim();
@@ -16496,7 +16497,7 @@ function renderSt() {
         '<textarea id="sle-' + st.id + '" rows="8" style="width:100%;background:rgba(0,0,0,0.40);border:1px solid rgba(74,144,226,0.25);border-radius:10px;padding:10px 12px;color:var(--tl);font-size:14px;font-family:Hind Siliguri,serif;resize:vertical;line-height:1.8;box-sizing:border-box" placeholder="Paste full lyrics here…"></textarea>' +
         '<div style="font-size:11px;color:rgba(74,144,226,0.8);margin:12px 0 6px;letter-spacing:1px">\uD83C\uDFB5 YouTube link (plays as audio)</div>' +
         '<input id="sye-' + st.id + '" type="text" inputmode="url" autocapitalize="off" autocorrect="off" placeholder="https://youtu.be/\u2026  (empty = remove)" style="width:100%;background:rgba(0,0,0,0.40);border:1px solid rgba(74,144,226,0.25);border-radius:10px;padding:10px 12px;color:var(--tl);font-size:14px;box-sizing:border-box">' +
-        '<button onclick="editStLyrics(\'' + st.id + '\')" style="margin-top:8px;padding:9px 20px;border-radius:10px;border:none;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">💾 Save Lyrics</button>' +
+        '<button onclick="editStLyrics(\'' + st.id + '\')" style="margin-top:8px;padding:9px 20px;border-radius:10px;border:none;background:rgba(255,215,0,0.12);color:#ffd700;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;border:1px solid rgba(255,215,0,0.30)">Save Lyrics</button>' +
         '</div>';
     }
 
@@ -29739,9 +29740,12 @@ const AudioChant = (function () {
     } catch (_e) {}
   }
 
+  // True whenever Audio Mode is switched on and the Radha (main) jap is showing — touch counting is off.
+  api.blocksTouch = function () { return !!App.S.audioMode && isMainMode(); };
+
   api.tapBlocked = function () {
     const n = Date.now();
-    if (n - lastBlockToast > 6000) { lastBlockToast = n; toast("Audio chant is playing — pause it to chant by touch"); }
+    if (n - lastBlockToast > 6000) { lastBlockToast = n; toast(playing ? "Audio chant is playing — touch is off in Audio Mode" : "Audio Mode is on — touch is off. Tap Audio Chant, or turn Audio Mode off in Settings to chant by touch"); }
   };
 
   // Each completed audio mala is written to the activity log as mode "ra" so History can list it.
@@ -30057,16 +30061,19 @@ const AudioChant = (function () {
     setDisp("audioModeOpts", on ? "block" : "none");
     setDisp("statsRAcard", (on || hasRA) ? "" : "none");
     { const t = on && isMainMode(); if (t !== lastTabsOn) { lastTabsOn = t; api.renderMalaLog(); } }
-    const pt = document.getElementById("dailyPcText"); if (pt) pt.style.paddingBottom = on ? "26px" : "";
+    /* Audio Chant now sits in its own row inside the Daily card - no reserved bottom padding needed */
     const a = document.getElementById("tgAudioMode"); if (a) a.classList.toggle("on", on);
     const b = document.getElementById("tgAudioStopDaily"); if (b) b.classList.toggle("on", !!(S && S.audioStopDaily));
-    const m = document.getElementById("audioStopMalas");
-    if (m && document.activeElement !== m) m.value = (S && S.audioStopMalas) ? S.audioStopMalas : "";
-    const secs = (S && +S.audioStopSecs) || 0;
-    [["audioStopH", Math.floor(secs / 3600)], ["audioStopM", Math.floor((secs % 3600) / 60)], ["audioStopS", secs % 60]].forEach(function (p) {
-      const e = document.getElementById(p[0]);
-      if (e && document.activeElement !== e) e.value = secs ? p[1] : "";
-    });
+    if (!optDirty) {   // never overwrite numbers the user has typed but not saved yet
+      const m = document.getElementById("audioStopMalas");
+      if (m && document.activeElement !== m) m.value = (S && S.audioStopMalas) ? S.audioStopMalas : "";
+      const secs = (S && +S.audioStopSecs) || 0;
+      [["audioStopH", Math.floor(secs / 3600)], ["audioStopM", Math.floor((secs % 3600) / 60)], ["audioStopS", secs % 60]].forEach(function (p) {
+        const e = document.getElementById(p[0]);
+        if (e && document.activeElement !== e) e.value = secs ? p[1] : "";
+      });
+      showOptHint((S && +S.audioStopMalas) || 0, (S && +S.audioStopSecs) || 0, "");
+    }
     if (!on && (playing || starting)) api.stop();
   };
   api.toggleMode = function () {
@@ -30074,6 +30081,51 @@ const AudioChant = (function () {
     App.S.audioMode = !App.S.audioMode;
     App._saveSoon(); api.applyMode();
     toast(App.S.audioMode ? "Audio Mode ON 🎧" : "Audio Mode OFF");
+  };
+  // ── Stop-limit inputs: type malas OR time, the other is worked out; Save button commits ──
+  let optDirty = false, optSrc = "";
+  function malaSecs() { return (App.S.ms || 108) * dur(); }
+  function fmtFull(sec) { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), x = Math.round(sec % 60); return (h ? h + "h " : "") + (m || h ? m + "m " : "") + x + "s"; }
+  function showOptHint(malas, secs, prefix) {
+    const el2 = document.getElementById("audioOptHint"); if (!el2) return;
+    if (!(malas > 0) && !(secs > 0)) { el2.textContent = "1 mala ≈ " + fmtFull(malaSecs()) + " (" + (App.S.ms || 108) + " jap). Enter malas or time — the other fills in automatically."; return; }
+    const jap = Math.round(malas * (App.S.ms || 108));
+    el2.textContent = (prefix || "") + "≈ " + jap.toLocaleString() + " jap · " + (Math.round(malas * 10) / 10) + " malas · " + fmtFull(secs);
+  }
+  api.loopSec = function () { return dur(); };
+  api.optEdit = function (src) {
+    optDirty = true; optSrc = src;
+    const btn = document.getElementById("audioOptSave"); if (btn) { btn.style.display = "block"; btn.textContent = "Save"; }
+    const mEl = document.getElementById("audioStopMalas");
+    const hE = document.getElementById("audioStopH"), mE = document.getElementById("audioStopM"), sE = document.getElementById("audioStopS");
+    const per = malaSecs(); let malas, secs;
+    if (src === "malas") {
+      malas = Math.max(0, Math.min(999, parseInt(mEl.value, 10) || 0));
+      secs = Math.round(malas * per);
+      hE.value = secs ? Math.floor(secs / 3600) : ""; mE.value = secs ? Math.floor((secs % 3600) / 60) : ""; sE.value = secs ? secs % 60 : "";
+    } else {
+      const g = function (e) { return Math.max(0, parseInt(e.value, 10) || 0); };
+      secs = Math.min(99 * 3600 + 3599, g(hE) * 3600 + g(mE) * 60 + g(sE));
+      malas = secs / per;
+      mEl.value = secs ? Math.max(1, Math.round(malas)) : "";
+    }
+    showOptHint(malas, secs, "");
+  };
+  api.optSave = function () {
+    if (!optDirty) return;
+    const mEl = document.getElementById("audioStopMalas");
+    const g = function (id) { const e = document.getElementById(id); return Math.max(0, parseInt(e && e.value, 10) || 0); };
+    if (optSrc === "malas") {            // limit by malas; time is just the estimate
+      App.S.audioStopMalas = Math.max(0, Math.min(999, parseInt(mEl.value, 10) || 0));
+      App.S.audioStopSecs = 0;
+    } else {                             // limit by time; malas is just the estimate
+      App.S.audioStopSecs = Math.min(99 * 3600 + 3599, g("audioStopH") * 3600 + g("audioStopM") * 60 + g("audioStopS"));
+      App.S.audioStopMalas = 0;
+    }
+    optDirty = false; optSrc = "";
+    const btn = document.getElementById("audioOptSave"); if (btn) btn.style.display = "none";
+    App._saveSoon(); api.applyMode();
+    toast("Saved ✓");
   };
   api.setStopMalas = function (v) {
     App.S.audioStopMalas = Math.max(0, Math.min(999, parseInt(v, 10) || 0));

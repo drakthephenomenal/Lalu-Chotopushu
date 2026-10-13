@@ -1,3 +1,6 @@
+// v341: Audio Mode stop limits - type malas OR time, the other (and jap count) is calculated; Save button.
+// v340: Audio Mode ON = manual touch on the Radha jap display is disabled (playing or not).
+// v339: Daily card - Audio Chant button moved to its own row; tap count + undo moved onto the malas line (no more overlap).
 // v338: Audio Chant (audio/radha_naam_chant.mp3) precached for offline.
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker  v236
@@ -405,7 +408,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v338';
+const CACHE = 'radha-jap-v341';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

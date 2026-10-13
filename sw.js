@@ -1,3 +1,4 @@
+// v347: Audio Mode now also works for Radha Vallabh Shri Harivansh, Krishnay Vasudevay and Kaam Vijay (audio/radha_vallabh_shri_harivansh.mp3, krishnay_vasudevay.mp3, kaam_vijay.mp3).
 // v346: Divine Darshan - added Radha Piyo Ju and Radha Mohan Ju (Radha Keli Kunj, Radha Vallabh Sampraday); new "Seva" line on deity pages.
 // v345: 28 Names Audio is counted separately (28-A) in Stats, History and the Leaderboard, like Radha Audio (R-A); Audio Mode chip wording updated.
 // v344: 28 Names audio - the name shown follows the clip being played (all modes), faster sync.
@@ -413,7 +414,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v346';
+const CACHE = 'radha-jap-v347';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 
@@ -479,6 +480,9 @@ const LAZY_LOCAL_ASSETS = [
   './Panchojanno%20Shankya.mp3',
   './audio/radha_naam_chant.mp3',
   './audio/28name_0.mp3',
+  './audio/radha_vallabh_shri_harivansh.mp3',
+  './audio/krishnay_vasudevay.mp3',
+  './audio/kaam_vijay.mp3',
   // Rasik Jan o Bhakta Jan carousel (79 portraits) — added v219.
   './rashikan/p000.jpg',
   './rashikan/p001.jpg',

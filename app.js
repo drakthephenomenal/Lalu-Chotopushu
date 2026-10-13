@@ -757,7 +757,7 @@ const App = {
     syncBaselineRV: {},
     syncBaselineTimerRV: {},
     activityLog: [],
-    audioChantLog: [], historyAudio: {}, historyAudio28: {}, timerAudio28: {}, audioMode: false, audioListenOnly: false, audioStopMalas: 0, audioStopSecs: 0, audioStopDaily: false,
+    audioHistM: {rv:{},kv:{},kaam:{}}, audioLogM: {rv:[],kv:[],kaam:[]}, audioChantLog: [], historyAudio: {}, historyAudio28: {}, timerAudio28: {}, audioMode: false, audioListenOnly: false, audioStopMalas: 0, audioStopSecs: 0, audioStopDaily: false,
     sadhanaStart: "",
     milestones: { reached: {}, lastChecked: 0 },
     // Which jap types count toward the Milestones (Bhagvat Prapti) total.
@@ -1007,6 +1007,8 @@ const App = {
       brahmacharya_start_date: this.S.brahmacharya_start_date,
       activityLog: this.S.activityLog || [],
       audioChantLog: this.S.audioChantLog || [],
+      audioHistM: this.S.audioHistM || {},
+      audioLogM: this.S.audioLogM || {},
       historyAudio: this.S.historyAudio || {},
       historyAudio28: this.S.historyAudio28 || {},
       timerAudio28: this.S.timerAudio28 || {},
@@ -1218,6 +1220,9 @@ const App = {
     if (!this.S.activityLog) this.S.activityLog = [];
     if (!this.S.audioChantLog) this.S.audioChantLog = [];
     if (!this.S.historyAudio) this.S.historyAudio = {};
+    if (!this.S.audioHistM || typeof this.S.audioHistM !== "object") this.S.audioHistM = {};
+    if (!this.S.audioLogM || typeof this.S.audioLogM !== "object") this.S.audioLogM = {};
+    ["rv", "kv", "kaam"].forEach((k) => { if (!this.S.audioHistM[k]) this.S.audioHistM[k] = {}; if (!Array.isArray(this.S.audioLogM[k])) this.S.audioLogM[k] = []; });
     if (!this.S.historyAudio28) this.S.historyAudio28 = {};
     if (!this.S.timerAudio28) this.S.timerAudio28 = {};
     if (this.S.audioMode === undefined) this.S.audioMode = false;
@@ -1361,7 +1366,8 @@ const App = {
   // Touch-only count (total minus audio) — drives the touch bead position / malas so audio never interferes.
   gTodTouch() {
     const t = this.gTod(), m = this.S.japMode;
-    if (m === "rv" || m === "hk" || m === "kv" || m === "kaam" || m === "ss" || m === "ram") return t;
+    if (m === "rv" || m === "kv" || m === "kaam") return Math.max(0, t - (((this.S.audioHistM || {})[m] || {})[this.S.tk] || 0));
+    if (m === "hk" || m === "ss" || m === "ram") return t;
     return Math.max(0, t - ((this.S.historyAudio || {})[this.S.tk] || 0));
   },
   gTod() {
@@ -1665,7 +1671,7 @@ const App = {
       // ticking in the background — otherwise it silently overlaps with the
       // 28 Names live delta and double-counts the same real seconds in
       // Today's Jap Time (see getTotalJapSecondsToday()).
-      if (this._currentMalaStartTs !== null && this._activeJapMode !== "n28" && !(window.AudioChant && window.AudioChant.playing)) this.currentMalaSeconds++;
+      if (this._currentMalaStartTs !== null && this._activeJapMode !== "n28" && !(window.AudioChant && window.AudioChant.playing) && !(window.AudioChantM && window.AudioChantM.playing)) this.currentMalaSeconds++;
       // Persist so per-mala duration survives app close / reopen
       try {
         localStorage.setItem("rjap_timerSeconds", String(this.timerSeconds));
@@ -1804,7 +1810,7 @@ const App = {
       const elapsed = Math.floor((Date.now() - this._n28TotalStart) / 1000);
       live28 = Math.max(0, elapsed - (this._n28SavedSecs || 0));
     }
-    return radhaSec + rvSec + hkSec + kvSec + ssSec + n28Sec + liveJap + live28 + (window.AudioChant ? window.AudioChant.secondsToday() : 0);
+    return radhaSec + rvSec + hkSec + kvSec + ssSec + n28Sec + liveJap + live28 + (window.AudioChant ? window.AudioChant.secondsToday() : 0) + (window.AudioChantM ? window.AudioChantM.secondsToday() : 0);
   },
 
   updateTimerToday() {
@@ -2454,6 +2460,7 @@ const App = {
               ? this.S.historyRam || {}
               : this.S.history;
     try { if (window.AudioChant && window.AudioChant.handleUndo(hist === this.S.history)) return; } catch (_e) {}
+    try { if (window.AudioChantM && window.AudioChantM.handleUndo()) return; } catch (_e) {}
     if ((hist[this.S.tk] || 0) > 0) {
       hist[this.S.tk]--;
       const lmcKey = isRV ? "lmcRV" : isHK ? "lmcHK" : isKV ? "lmcKV" : isKaam ? "lmcKaam" : isSS ? "lmcSS" : isRam ? "lmcRam" : "lmc";
@@ -4252,6 +4259,7 @@ function switchJapMode(mode) {
   } catch (_) {}
 
   App.S.japMode = mode;
+  try { if (window.AudioChantM) window.AudioChantM.onModeSwitch(); } catch (_e) {}
   let _stash = App._malaTimeStash[mode];
   if (!_stash) {
     // No in-memory stash (e.g. this is the first switch after a fresh app
@@ -4573,7 +4581,7 @@ function setSyncPill(state, text) {
 
 // ── View Switcher ──
 function sv(id, btn) {
-  if (id === "v28" && window.AudioChant && window.AudioChant.playing) { window.AudioChant.warnBusy(); return; }   // 28 Names is off while audio chant is on
+  if (id === "v28" && window.AudioChant && (window.AudioChant.playing || (window.AudioChantM && window.AudioChantM.playing))) { window.AudioChant.warnBusy(); return; }   // 28 Names is off while audio chant is on
   document
     .querySelectorAll(".view")
     .forEach((v) => v.classList.remove("active"));
@@ -8430,6 +8438,9 @@ function doReset() {
     App.S.malaLogRam = [];
     App.S.malaLogKaam = [];
     try { if (window.AudioChant) window.AudioChant.stop(); } catch (_e) {}
+    try { if (window.AudioChantM) window.AudioChantM.stop(); } catch (_e) {}
+    App.S.audioHistM = { rv: {}, kv: {}, kaam: {} };
+    App.S.audioLogM = { rv: [], kv: [], kaam: [] };
     App.S.activityLog = [];
     App.S.audioChantLog = [];
     App.S.historyAudio = {};
@@ -8764,6 +8775,8 @@ function _buildBackupPayload() {
     padTrace: _ptGet(),
     activityLog: App.S.activityLog || [],
     audioChantLog: App.S.audioChantLog || [],
+    audioHistM: App.S.audioHistM || {},
+    audioLogM: App.S.audioLogM || {},
     historyAudio: App.S.historyAudio || {},
     historyAudio28: App.S.historyAudio28 || {},
     timerAudio28: App.S.timerAudio28 || {},
@@ -8994,6 +9007,9 @@ function importAllData(input) {
       _ptLoaded = true; _ptMirror();
       App.S.activityLog = Array.isArray(data.activityLog) ? data.activityLog : [];
       App.S.audioChantLog = Array.isArray(data.audioChantLog) ? data.audioChantLog : [];
+      App.S.audioHistM = (data.audioHistM && typeof data.audioHistM === "object") ? data.audioHistM : { rv: {}, kv: {}, kaam: {} };
+      App.S.audioLogM = (data.audioLogM && typeof data.audioLogM === "object") ? data.audioLogM : { rv: [], kv: [], kaam: [] };
+      ["rv", "kv", "kaam"].forEach((k) => { if (!App.S.audioHistM[k]) App.S.audioHistM[k] = {}; if (!Array.isArray(App.S.audioLogM[k])) App.S.audioLogM[k] = []; });
       App.S.historyAudio = (data.historyAudio && typeof data.historyAudio === "object") ? data.historyAudio : {};
       App.S.historyAudio28 = (data.historyAudio28 && typeof data.historyAudio28 === "object") ? data.historyAudio28 : {};
       App.S.timerAudio28 = (data.timerAudio28 && typeof data.timerAudio28 === "object") ? data.timerAudio28 : {};
@@ -12473,7 +12489,7 @@ async function fbSignOut() {
     syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {},
     migrationV2Done: false, japMode: "radha",
     historyRV: {}, timerHistoryRV: {}, dtRV: 0, ltRV: 0, nameJapDeductRV: 0,
-    malaLogRV: [], activityLog: [], audioChantLog: [], historyAudio: {}, historyAudio28: {}, timerAudio28: {}, syncBaselineRV: {}, syncBaselineTimerRV: {},
+    malaLogRV: [], activityLog: [], audioHistM: {rv:{},kv:{},kaam:{}}, audioLogM: {rv:[],kv:[],kaam:[]}, audioChantLog: [], historyAudio: {}, historyAudio28: {}, timerAudio28: {}, syncBaselineRV: {}, syncBaselineTimerRV: {},
     historyHK: {}, timerHistoryHK: {}, dtHK: 0, malaLogHK: [],
     syncBaselineHK: {}, syncBaselineTimerHK: {}, nameJapDeductHK: 0,
     historyKV: {}, timerHistoryKV: {}, dtKV: 0, ltKV: 0, nameJapDeductKV: 0,
@@ -12554,6 +12570,8 @@ async function fbPushToUid(targetUid, fullReplace) {
     malaLogRV: App.S.malaLogRV || [],
     activityLog: App.S.activityLog || [],
     audioChantLog: (App.S.audioChantLog || []).slice(-1000),
+    audioHistM: App.S.audioHistM || {},
+    audioLogM: App.S.audioLogM || {},
     historyAudio: App.S.historyAudio || {},
     historyAudio28: App.S.historyAudio28 || {},
     timerAudio28: App.S.timerAudio28 || {},
@@ -12674,6 +12692,8 @@ async function fbPushFull() {
     brahmacharya_start_date: App.S.brahmacharya_start_date || "",
     activityLog: App.S.activityLog || [],
     audioChantLog: (App.S.audioChantLog || []).slice(-1000),
+    audioHistM: App.S.audioHistM || {},
+    audioLogM: App.S.audioLogM || {},
     historyAudio: App.S.historyAudio || {},
     historyAudio28: App.S.historyAudio28 || {},
     timerAudio28: App.S.timerAudio28 || {},
@@ -12935,6 +12955,8 @@ function fbApplyRemote(d) {
     App.S.audioChantLog = _mAC.slice(-1000);
   }
   if ("historyAudio" in d) App.S.historyAudio = JSON.parse(JSON.stringify(d.historyAudio || {}));
+  if ("audioHistM" in d) { App.S.audioHistM = JSON.parse(JSON.stringify(d.audioHistM || {})); ["rv", "kv", "kaam"].forEach((k) => { if (!App.S.audioHistM[k]) App.S.audioHistM[k] = {}; }); }
+  if ("audioLogM" in d) { App.S.audioLogM = JSON.parse(JSON.stringify(d.audioLogM || {})); ["rv", "kv", "kaam"].forEach((k) => { if (!Array.isArray(App.S.audioLogM[k])) App.S.audioLogM[k] = []; }); }
   if ("historyAudio28" in d) App.S.historyAudio28 = JSON.parse(JSON.stringify(d.historyAudio28 || {}));
   if ("timerAudio28" in d) App.S.timerAudio28 = JSON.parse(JSON.stringify(d.timerAudio28 || {}));
   // Only apply malaLogRV from Firebase if it belongs to today; never clear
@@ -29866,7 +29888,7 @@ const AudioChant = (function () {
   const api = { get playing() { return playing; } };
   let lsn = false, listenLoops = 0, lastWarn = 0;       // lsn = this session is "listening only" (nothing is counted)
   function listenOnly() { return !!App.S.audioListenOnly; }
-  api.busy = function () { return !!playing || !!(window.AudioChant28 && window.AudioChant28.playing); };   // any audio chant on -> manual taps / stotram audio are locked
+  api.busy = function () { return !!playing || !!(window.AudioChant28 && window.AudioChant28.playing) || !!(window.AudioChantM && window.AudioChantM.playing); };   // any audio chant on -> manual taps / stotram audio are locked
   api.warnBusy = function () {
     const n = Date.now();
     if (n - lastWarn > 2500) { lastWarn = n; toast("Please turn off audio chanting first 🙏"); }
@@ -29883,6 +29905,7 @@ const AudioChant = (function () {
   }
 
   function ui() {
+    if (window.AudioChantM && window.AudioChantM.active()) { window.AudioChantM.ui(); return; }
     const ico = document.getElementById("audioChantIco");
     const lbl = document.getElementById("audioChantLbl");
     if (ico) ico.textContent = playing ? "⏸" : "▶";
@@ -29892,10 +29915,12 @@ const AudioChant = (function () {
   // Bead position shown on the Jap screen: audio's own counter while the chant plays,
   // otherwise the TOUCH counter (total minus audio) — so they never share a position.
   api.beadCount = function (tod) {
+    if (window.AudioChantM && window.AudioChantM.active()) return window.AudioChantM.beadCount(tod);
     if (playing && isMainMode() && !lsn) return audioToday();
     return isMainMode() ? Math.max(0, tod - audioToday()) : tod;
   };
   api.paintBead = function () {
+    if (window.AudioChantM && window.AudioChantM.active()) { window.AudioChantM.paintBead(); return; }
     const j = document.getElementById("jms");
     if (j) j.style.color = (playing && isMainMode() && !lsn) ? "#6DB8FF" : "";
   };
@@ -29921,7 +29946,7 @@ const AudioChant = (function () {
   }
 
   // True whenever Audio Mode is switched on and the Radha (main) jap is showing — touch counting is off.
-  api.blocksTouch = function () { return !!App.S.audioMode && isMainMode(); };
+  api.blocksTouch = function () { return (!!App.S.audioMode && isMainMode()) || !!(window.AudioChantM && window.AudioChantM.blocksTouch()); };
 
   api.tapBlocked = function () {
     const n = Date.now();
@@ -30055,6 +30080,7 @@ const AudioChant = (function () {
       el.addEventListener("error", function () { if (playing || starting) { starting = false; api.stop(true); toast("Audio chant file could not be played"); } });
     }
     if (window.AudioChant28 && window.AudioChant28.playing) { toast("Please turn off the 28 Names audio first 🙏"); return; }
+    if (window.AudioChantM && window.AudioChantM.playing) { toast("Please turn off the other audio chant first 🙏"); return; }
     try { if (typeof _rjAnyMediaPlaying === "function" && _rjAnyMediaPlaying()) { toast("Stop the stotram / pad audio first"); return; } } catch (_e) {}
     starting = true;
     const p = el.play();
@@ -30100,7 +30126,10 @@ const AudioChant = (function () {
     ui(); api.renderLog();
   };
 
-  api.toggle = function () { if (playing) api.requestStop(""); else api.start(); };
+  api.toggle = function () {
+    if (window.AudioChantM && (window.AudioChantM.active() || window.AudioChantM.playing)) { window.AudioChantM.toggle(); return; }
+    if (playing) api.requestStop(""); else api.start();
+  };
 
   // time spent in audio chanting (for Today's Jap Time and the R-A stats rows)
   api.secsFor = function (match) {
@@ -30116,16 +30145,20 @@ const AudioChant = (function () {
   // ── Today's Mala Log: Radha | Radha Audio switch ──
   let malaView = "touch", lastTabsOn = null;
   api.renderMalaLog = function () { try { renderMalaLog(); } catch (_e) {} };
-  api.setMalaView = function (v) { malaView = v; api.renderMalaLog(); };
+  api.setMalaView = function (v) {
+    if (window.AudioChantM && window.AudioChantM.active()) { window.AudioChantM.setMalaView(v); return; }
+    malaView = v; api.renderMalaLog();
+  };
   // Called at the top of renderMalaLog(); returns true when it drew the audio view itself.
   api.malaLogHook = function () {
+    if (window.AudioChantM && window.AudioChantM.active()) return window.AudioChantM.malaLogHook();
     const on = !!App.S.audioMode && isMainMode();
     const tabs = document.getElementById("malaLogTabs");
     if (tabs) tabs.style.display = on ? "flex" : "none";
     const audioView = on && malaView === "audio";
     const ta = document.getElementById("mlogTabR"), tb = document.getElementById("mlogTabRA");
-    if (ta) ta.classList.toggle("on", !audioView);
-    if (tb) tb.classList.toggle("on", audioView);
+    if (ta) { ta.textContent = "Radha"; ta.classList.toggle("on", !audioView); }
+    if (tb) { tb.textContent = "🎧 Radha Audio"; tb.classList.toggle("on", audioView); }
     if (!audioView) return false;
     const listEl = document.getElementById("malaLogList"), countEl = document.getElementById("malaLogCount");
     const inlineEl = document.getElementById("malaLogInline"), avgEl = document.getElementById("malaLogAvg"), typeEl = document.getElementById("malaLogType");
@@ -30249,7 +30282,7 @@ const AudioChant = (function () {
     setDisp("statsRAcard", (on || hasRA) ? "" : "none");
     { const hasN28A = !!(S && S.historyAudio28 && Object.keys(S.historyAudio28).some(function (k) { return S.historyAudio28[k] > 0; }));
       setDisp("statsN28Acard", (on || hasN28A) ? "" : "none"); }
-    { const t = on && isMainMode(); if (t !== lastTabsOn) { lastTabsOn = t; api.renderMalaLog(); } }
+    { const t = on && (isMainMode() || !!(window.AudioChantM && window.AudioChantM.active())) ? (isMainMode() ? "main" : App.S.japMode) : false; if (t !== lastTabsOn) { lastTabsOn = t; api.renderMalaLog(); } }
     /* Audio Chant now sits in its own row inside the Daily card - no reserved bottom padding needed */
     const a = document.getElementById("tgAudioMode"); if (a) a.classList.toggle("on", on);
     { const lo = !!(S && S.audioListenOnly);
@@ -30274,15 +30307,18 @@ const AudioChant = (function () {
       showOptHint((S && +S.audioStopMalas) || 0, (S && +S.audioStopSecs) || 0, "");
     }
     if (!on && (playing || starting)) api.stop();
+    if (!on && window.AudioChantM && window.AudioChantM.playing) window.AudioChantM.stop();
   };
   api.setListenOnly = function (v) {
     if (playing) api.stop();
+    if (window.AudioChantM && window.AudioChantM.playing) window.AudioChantM.stop();
     App.S.audioListenOnly = !!v;
     App._saveSoon(); api.applyMode(); ui();
     toast(v ? "Audio Listening only — nothing will be counted 🎧" : "Audio Chanting — loops are counted");
   };
   api.toggleMode = function () {
     if (playing) api.stop();
+    if (window.AudioChantM && window.AudioChantM.playing) window.AudioChantM.stop();
     App.S.audioMode = !App.S.audioMode;
     App._saveSoon(); api.applyMode();
     toast(App.S.audioMode ? "Audio Mode ON 🎧" : "Audio Mode OFF");
@@ -30361,6 +30397,363 @@ const AudioChant = (function () {
   return api;
 })();
 window.AudioChant = AudioChant;
+
+// ═════════════════════════════════════════════════════════════════════
+// AUDIO CHANT for Radha Vallabh (rv), Krishnay Vasudevay (kv) and Kaam Vijay (kaam)
+// Same behaviour as the Radha Audio Chant above (Audio Mode in Settings): a loop of the
+// recording plays, every completed loop = +1 jap of THAT mode. The audio part is kept in
+// S.audioHistM[mode] (so touch bead / malas stay separate); the mode's own history
+// (historyRV / historyKV / historyKaam) stays the TOTAL, so targets, lifetime, sync and
+// leaderboard include audio automatically. Sessions are kept in S.audioLogM[mode].
+// Audio files (put in the app's audio/ folder):
+//   rv   -> audio/radha_vallabh_shri_harivansh.mp3
+//   kv   -> audio/krishnay_vasudevay.mp3
+//   kaam -> audio/kaam_vijay.mp3
+// ═════════════════════════════════════════════════════════════════════
+const AudioChantM = (function () {
+  const CFG = {
+    rv:   { hist: "historyRV",   lmc: "lmcRV",   src: "audio/radha_vallabh_shri_harivansh.mp3", name: "Radha Vallabh Shri Harivansh", tab: "RV",   defDur: 4.054 },
+    kv:   { hist: "historyKV",   lmc: "lmcKV",   src: "audio/krishnay_vasudevay.mp3",           name: "Krishnay Vasudevay",          tab: "KV",   defDur: 12.672 },
+    kaam: { hist: "historyKaam", lmc: "lmcKaam", src: "audio/kaam_vijay.mp3",                   name: "Kaam Vijay",                  tab: "Kaam", defDur: 11.568 },
+  };
+  const MAX_LOG = 1000;
+  const els = {};
+  let key = null, el = null, playing = false, starting = false, sess = null;
+  let lastT = 0, lastWall = 0, acc = 0, poller = 0, startedAt = 0;
+  let finishing = false, finishMsg = "", finishAt = 0, stopping = false;
+  let dailyArmed = false, autoStopping = false, lmcA = 0, lmcATk = "", lastBlockToast = 0, tog = false;
+  let lsn = false, listenLoops = 0, malaView = "touch";
+  const api = { get playing() { return playing; } };
+
+  function S() { return App.S; }
+  function activeKey() { const m = S().japMode; return CFG[m] ? m : null; }
+  function K() { return key || activeKey(); }
+  function ensure() {
+    const s = S();
+    if (!s.audioHistM || typeof s.audioHistM !== "object") s.audioHistM = {};
+    if (!s.audioLogM || typeof s.audioLogM !== "object") s.audioLogM = {};
+    Object.keys(CFG).forEach(function (k) {
+      if (!s.audioHistM[k]) s.audioHistM[k] = {};
+      if (!Array.isArray(s.audioLogM[k])) s.audioLogM[k] = [];
+    });
+  }
+  function hist(k) { ensure(); return S().audioHistM[k || K()]; }
+  function log(k) { ensure(); return S().audioLogM[k || K()]; }
+  function total(k) { const s = S(), h = CFG[k].hist; if (!s[h]) s[h] = {}; return s[h]; }
+  function audioToday(k) { return hist(k)[S().tk] || 0; }
+  function dur() { return (el && isFinite(el.duration) && el.duration > 0.3) ? el.duration : ((CFG[K()] || {}).defDur || 4); }
+  function listenOnly() { return !!S().audioListenOnly; }
+  function fmtHMS(s) {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+    return (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (x < 10 ? "0" : "") + x;
+  }
+  function fmtClock(ts) {
+    const d = new Date(ts); let h = d.getHours(); const m = d.getMinutes(), ap = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12; return h + ":" + (m < 10 ? "0" : "") + m + " " + ap;
+  }
+  function fmtDur(ms) {
+    let s = Math.max(0, Math.round(ms / 1000)); const h = Math.floor(s / 3600); s -= h * 3600;
+    const m = Math.floor(s / 60); s -= m * 60;
+    return h > 0 ? h + "h " + m + "m" : m > 0 ? m + "m " + s + "s" : s + "s";
+  }
+
+  api._el = function () { return el; };
+  api.active = function () { return !!(S().audioMode && activeKey()); };
+  api.blocksTouch = function () { return api.active(); };
+  api.tapBlocked = function () {
+    const n = Date.now();
+    if (n - lastBlockToast > 6000) { lastBlockToast = n; toast(playing ? "Audio chant is playing — touch is off in Audio Mode" : "Audio Mode is on — touch is off. Tap Audio Chant, or turn Audio Mode off in Settings to chant by touch"); }
+  };
+
+  api.ui = function () {
+    const ico = document.getElementById("audioChantIco"), lbl = document.getElementById("audioChantLbl");
+    if (ico) ico.textContent = playing ? "⏸" : "▶";
+    if (lbl) lbl.textContent = finishing ? "Finishing…" : (listenOnly() ? "Audio Listen" : "Audio Chant");
+  };
+
+  // Bead position: audio's own counter while the chant plays, otherwise the touch counter (total − audio).
+  api.beadCount = function (tod) {
+    const k = activeKey(); if (!k) return tod;
+    if (playing && key === k && !lsn) return audioToday(k);
+    return S().audioMode ? Math.max(0, tod - audioToday(k)) : tod;
+  };
+  api.touchOf = function (k, tod) { return Math.max(0, tod - audioToday(k)); };
+  api.paintBead = function () {
+    const j = document.getElementById("jms");
+    if (j) j.style.color = (playing && key === activeKey() && !lsn) ? "#6DB8FF" : "";
+  };
+
+  function spawnAuto() {
+    try {
+      if (document.hidden) return;
+      const zone = document.getElementById("tz"); if (!zone) return;
+      const r = zone.getBoundingClientRect(); if (!r.width) return;
+      if (key === "kv") spawnKV();
+      else if (key === "kaam") spawnKaam();
+      else {
+        const x = r.left + r.width * (0.3 + Math.random() * 0.4), y = r.top + r.height * (0.3 + Math.random() * 0.4);
+        spawnRV({ clientX: x, clientY: y }, zone);
+      }
+    } catch (_e) {}
+  }
+
+  function audioMalaDone(from, to) {
+    const ms = S().ms || 108, malaSec = Math.round(ms * dur()), now = Date.now();
+    for (let m = from; m <= to; m++) {
+      const end = now - (to - m) * malaSec * 1000;
+      try { logActivity({ t: "mala", ts: end, startTs: end - malaSec * 1000, mode: key, a: 1, n: m, sec: malaSec }); } catch (_e) {}
+    }
+    try { if (S().cfg && S().cfg.sound && typeof playMalaSound === "function") playMalaSound(); } catch (_e) {}
+    try { App.vib([200, 80, 200]); } catch (_e) {}
+    toast("🎧 Audio mala " + to + " ✓");
+    try { renderMalaLog(); } catch (_e) {}
+  }
+
+  function limitRemaining() {
+    const s = S(), ms = s.ms || 108; let rem = Infinity;
+    const nm = +s.audioStopMalas || 0;
+    if (nm > 0 && sess) rem = Math.min(rem, nm * ms - sess.count);
+    if (dailyArmed) { const dt = App.getCurDt() || 0; if (dt > 0) rem = Math.min(rem, dt - (total(key)[s.tk] || 0)); }
+    return rem;
+  }
+
+  function scheduleStop(msg) {
+    if (autoStopping) return;
+    autoStopping = true;
+    setTimeout(function () { api.stop(); autoStopping = false; toast("🙏 Audio chant stopped — " + msg); }, 0);
+  }
+
+  function credit(n) {
+    try { if (window._rjMidnightCheck) window._rjMidnightCheck(); } catch (_e) {}
+    const s = S(), ms = s.ms || 108;
+    let hitLimit = false;
+    { const rem = limitRemaining(); if (rem <= n) { n = Math.max(0, rem); hitLimit = true; } }
+    if (n > 0) {
+      const T = total(key); T[s.tk] = (T[s.tk] || 0) + n;     // total of this mode
+      const H = hist(key); H[s.tk] = (H[s.tk] || 0) + n;      // audio part
+      if (sess) sess.count += n;
+      window._rjLastCountKind = "audio";
+      if (lmcATk !== s.tk) { lmcATk = s.tk; lmcA = Math.floor((H[s.tk] - n) / ms); }
+      const nm = Math.floor(H[s.tk] / ms);
+      if (nm > lmcA) { const from = lmcA + 1; lmcA = nm; audioMalaDone(from, nm); }
+      App._activeJapMode = "main";
+      App._saveSoon();
+      App.tapTimer();
+      spawnAuto();
+    }
+    if (sess) sess.end = Date.now();
+    try { App.ua(); } catch (_e) {}
+    api.ui();
+    if (hitLimit) {
+      const dt = App.getCurDt() || 0;
+      const dtHit = dailyArmed && dt > 0 && (total(key)[s.tk] || 0) >= dt;
+      const nmz = +s.audioStopMalas || 0;
+      scheduleStop(dtHit ? "daily target reached" : nmz + (nmz === 1 ? " mala" : " malas") + " done");
+    }
+  }
+
+  function poll() {
+    if (!playing || !el) return;
+    const now = Date.now() / 1000, t = el.currentTime, D = dur();
+    let d = t - lastT;
+    if (d < 0) { if (-d < 0.05) d = 0; else d += D; }
+    const wall = now - lastWall;
+    let extra = 0;
+    if (!el.paused && wall - d > D * 0.75) extra = Math.min(Math.round((wall - d) / D), 4000);
+    acc += d + extra * D;
+    const n = Math.floor(acc / D + 1e-6);
+    acc -= n * D;
+    lastT = t; lastWall = now;
+    if (n > 0) { if (lsn) { listenLoops += n; spawnAuto(); } else credit(n); }
+    if (finishing) {
+      if (n > 0 || Date.now() - finishAt > 2500 + D * 1000) { const m = finishMsg; api.stop(); if (m) toast("🙏 Audio chant stopped — " + m); }
+      return;
+    }
+    const limS = +S().audioStopSecs || 0;
+    const t0 = sess ? sess.start : startedAt;
+    if (limS > 0 && t0 && (Date.now() - t0) / 1000 >= limS) api.requestStop("time limit " + fmtHMS(limS) + " reached");
+    if (lsn) { const nmL = +S().audioStopMalas || 0, msL = S().ms || 108; if (nmL > 0 && listenLoops >= nmL * msL) api.requestStop(nmL + (nmL === 1 ? " mala" : " malas") + " done"); }
+  }
+
+  api.requestStop = function (msg) {
+    if (!playing || finishing) return;
+    finishing = true; finishMsg = msg || ""; finishAt = Date.now();
+    api.ui();
+  };
+
+  function setMediaSession(on) {
+    try {
+      if (!("mediaSession" in navigator)) return;
+      const ms = navigator.mediaSession;
+      if (on) {
+        ms.metadata = new MediaMetadata({ title: (CFG[key] ? CFG[key].name : "Naam") + " · Audio Chant", artist: "Radha Naam Jap" });
+        ms.playbackState = "playing";
+        ms.setActionHandler("pause", function () { api.requestStop(""); });
+        ms.setActionHandler("stop", function () { api.requestStop(""); });
+        ms.setActionHandler("play", function () { api.start(); });
+      } else { ms.playbackState = "paused"; }
+    } catch (_e) {}
+  }
+
+  function endSession() {
+    if (sess) {
+      sess.end = Date.now();
+      if (sess.count <= 0) { const L = log(key), i = L.indexOf(sess); if (i >= 0) L.splice(i, 1); }
+      sess = null;
+    }
+    App._saveSoon();
+  }
+
+  api.start = function () {
+    if (playing || starting) return;
+    const s = S();
+    if (!s.audioMode) return;
+    const k = activeKey(); if (!k) return;
+    if (typeof isGhostMode === "function" && isGhostMode()) { toast("Ghost mode: read-only"); return; }
+    if (window.AudioChant && window.AudioChant.playing) { toast("Please turn off the Radha audio first 🙏"); return; }
+    if (window.AudioChant28 && window.AudioChant28.playing) { toast("Please turn off the 28 Names audio first 🙏"); return; }
+    try { if (typeof _rjAnyMediaPlaying === "function" && _rjAnyMediaPlaying()) { toast("Stop the stotram / pad audio first"); return; } } catch (_e) {}
+    key = k;
+    if (!els[k]) {
+      const a = new Audio(CFG[k].src); a.preload = "auto"; a.loop = true;
+      a.addEventListener("timeupdate", function () { if (el === a) poll(); });
+      a.addEventListener("pause", function () { if (el === a && playing) api.stop(true); });
+      a.addEventListener("error", function () { if (el === a && (playing || starting)) { starting = false; api.stop(true); toast("Audio chant file could not be played"); } });
+      els[k] = a;
+    }
+    el = els[k];
+    starting = true;
+    const p = el.play();
+    const go = function () {
+      starting = false;
+      playing = true; acc = 0; lastT = el.currentTime || 0; lastWall = Date.now() / 1000; startedAt = Date.now();
+      lsn = listenOnly(); listenLoops = 0;
+      const ms = s.ms || 108;
+      if (lsn) { sess = null; dailyArmed = false; }
+      else {
+        sess = { id: startedAt, tk: s.tk, start: startedAt, end: startedAt, count: 0 };
+        const dt = App.getCurDt() || 0;
+        dailyArmed = !!s.audioStopDaily && dt > 0 && (total(k)[s.tk] || 0) < dt;
+        if (s.audioStopDaily && !dailyArmed && dt > 0) toast("Daily target already reached — chanting until you pause");
+        lmcATk = s.tk; lmcA = Math.floor(audioToday(k) / ms);
+        const L = log(k); L.push(sess); if (L.length > MAX_LOG) L.splice(0, L.length - MAX_LOG);
+      }
+      window._rjKATitle = CFG[k].name + " · Audio Chant";
+      try { _rjKeepAlive(true); } catch (_e) {}
+      setMediaSession(true);
+      clearInterval(poller); poller = setInterval(poll, 60);
+      try { App.ua(); } catch (_e) {}
+      if (!lsn) { malaView = "audio"; try { renderMalaLog(); } catch (_e) {} }
+      api.ui();
+    };
+    if (p && p.then) p.then(go).catch(function () { starting = false; toast("Tap again to start audio chant"); });
+    else go();
+  };
+
+  api.stop = function () {
+    if (stopping || (!playing && !sess)) return;
+    stopping = true;
+    try { poll(); } catch (_e) {}
+    finishing = false; finishMsg = "";
+    playing = false;
+    clearInterval(poller); poller = 0;
+    try { if (el && !el.paused) el.pause(); } catch (_e) {}
+    endSession();
+    window._rjKATitle = "";
+    setMediaSession(false);
+    try { _rjKeepAlive(false); } catch (_e) {}
+    key = null;
+    try { App.ua(); } catch (_e) {}
+    stopping = false;
+    api.ui();
+  };
+
+  api.toggle = function () { if (playing) api.requestStop(""); else api.start(); };
+
+  // leaving this jap type (switching to another naam) ends the audio chant
+  api.onModeSwitch = function () { if ((playing || starting) && key !== activeKey()) api.stop(); };
+
+  // time spent in audio chanting (all three modes) — for Today's Jap Time
+  api.secondsToday = function () {
+    let s = 0;
+    Object.keys(CFG).forEach(function (k) {
+      log(k).forEach(function (x) { if (x.tk === S().tk) s += ((x === sess ? Date.now() : x.end) - x.start) / 1000; });
+    });
+    return Math.floor(s);
+  };
+
+  // ── Undo (↩) ──
+  api.handleUndo = function () {
+    const s = S(), k = activeKey();
+    if (!k || !s.audioMode) return false;
+    const aT = audioToday(k); if (aT <= 0) return false;
+    const T = total(k), touch = (T[s.tk] || 0) - aT;
+    if (!(window._rjLastCountKind === "audio" || touch <= 0)) return false;
+    T[s.tk] = Math.max(0, (T[s.tk] || 0) - 1);
+    hist(k)[s.tk] = aT - 1;
+    if (playing && sess && key === k) { if (sess.count > 0) sess.count--; }
+    else {
+      const L = log(k);
+      for (let i = L.length - 1; i >= 0; i--) {
+        if (L[i].tk === s.tk) { if (L[i].count > 0) L[i].count--; if (L[i].count <= 0) L.splice(i, 1); break; }
+      }
+    }
+    if (key === k) { lmcATk = s.tk; lmcA = Math.floor(hist(k)[s.tk] / (s.ms || 108)); }
+    App._saveSoon();
+    try { App.ua(); App.vib([10]); } catch (_e) {}
+    api.ui();
+    return true;
+  };
+
+  // ── Today's Mala Log: touch | audio switch ──
+  api.setMalaView = function (v) { malaView = v; try { renderMalaLog(); } catch (_e) {} };
+  api.malaLogHook = function () {
+    const k = activeKey();
+    const tabs = document.getElementById("malaLogTabs");
+    if (tabs) tabs.style.display = "flex";
+    const audioView = malaView === "audio";
+    const ta = document.getElementById("mlogTabR"), tb = document.getElementById("mlogTabRA");
+    if (ta) { ta.textContent = CFG[k].tab; ta.classList.toggle("on", !audioView); }
+    if (tb) { tb.textContent = "🎧 " + CFG[k].tab + " Audio"; tb.classList.toggle("on", audioView); }
+    if (!audioView) return false;
+    const listEl = document.getElementById("malaLogList"), countEl = document.getElementById("malaLogCount");
+    const inlineEl = document.getElementById("malaLogInline"), avgEl = document.getElementById("malaLogAvg"), typeEl = document.getElementById("malaLogType");
+    if (!listEl) return false;
+    const day = S().tk.slice(0, 10);
+    const E = (S().activityLog || []).filter(function (e) {
+      return e && e.t === "mala" && e.mode === k && e.a === 1 && (typeof _ldk === "function" ? _ldk(new Date(e.ts)) : "") === day;
+    });
+    if (typeEl) typeEl.textContent = "(" + CFG[k].tab + " Audio)";
+    if (countEl) countEl.textContent = E.length ? "(" + E.length + ")" : "";
+    if (!E.length) {
+      listEl.innerHTML = "<div style=\"font-size:11px;color:var(--td);text-align:center;padding:6px 0\">No audio malas completed yet today</div>";
+      if (avgEl) { avgEl.style.display = "none"; avgEl.textContent = ""; }
+      if (inlineEl) inlineEl.textContent = "";
+      return true;
+    }
+    const avg = Math.round(E.reduce(function (t, e) { return t + (e.sec || 0); }, 0) / E.length);
+    if (avgEl) {
+      avgEl.textContent = "Average per mala: " + fmtDur(avg * 1000);
+      avgEl.style.cssText = "font-size:11px;color:#6DB8FF;margin-bottom:6px;text-align:center;padding:5px 10px;background:rgba(109,184,255,0.08);border-radius:8px;border:1px solid rgba(109,184,255,0.18);display:block";
+    }
+    if (inlineEl) inlineEl.textContent = "· " + E.length + " malas · avg " + fmtDur(avg * 1000);
+    listEl.innerHTML = E.map(function (e, i) {
+      return "<div style=\"display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:rgba(109,184,255,0.07);border:1px solid rgba(109,184,255,0.18);border-radius:9px;\">" +
+        "<span style=\"font-size:11px;color:var(--td)\">Mala " + (i + 1) + " · " + fmtClock(e.ts) + "</span>" +
+        "<span style=\"font-family:'EB Garamond',serif;font-size:16px;color:#6DB8FF;letter-spacing:0.5px\">" + fmtDur((e.sec || 0) * 1000) + "</span></div>";
+    }).join("");
+    return true;
+  };
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState !== "visible") return;
+    if (playing && el && el.paused) api.stop(true); else { try { poll(); } catch (_e) {} }
+    api.ui();
+  });
+  window.addEventListener("pagehide", function () { if (sess) { sess.end = Date.now(); try { App.save(); } catch (_e) {} } });
+  return api;
+})();
+window.AudioChantM = AudioChantM;
 // While the audio chant is on, other media (stotram / pad / video audio) will not start.
 // The chant itself, the mala-completion chime and the coin sound are allowed.
 (function () {
@@ -30369,7 +30762,7 @@ window.AudioChant = AudioChant;
     HTMLMediaElement.prototype.play = function () {
       try {
         const AC = window.AudioChant;
-        if (AC && AC.busy() && this !== AC._el() && !(window.AudioChant28 && this === window.AudioChant28._el()) && !/Panchojanno|radha_naam_chant|radha-coin/i.test(this.currentSrc || this.src || "")) {
+        if (AC && AC.busy() && this !== AC._el() && !(window.AudioChantM && this === window.AudioChantM._el()) && !(window.AudioChant28 && this === window.AudioChant28._el()) && !/Panchojanno|radha_naam_chant|radha-coin/i.test(this.currentSrc || this.src || "")) {
           AC.warnBusy();
           return Promise.reject(new DOMException("Audio chant is on", "NotAllowedError"));
         }
@@ -30445,7 +30838,7 @@ const AudioChant28 = (function () {
 
   api.start = function () {
     if (playing || starting) return;
-    if (window.AudioChant && window.AudioChant.playing) { toast("Please turn off audio chanting first 🙏"); return; }
+    if ((window.AudioChant && window.AudioChant.playing) || (window.AudioChantM && window.AudioChantM.playing)) { toast("Please turn off audio chanting first 🙏"); return; }
     if (typeof isGhostMode === "function" && isGhostMode()) { toast("Ghost mode: read-only"); return; }
     try { if (typeof _rjAnyMediaPlaying === "function" && _rjAnyMediaPlaying()) { toast("Stop the stotram / pad audio first"); return; } } catch (_e) {}
     if (!el) {

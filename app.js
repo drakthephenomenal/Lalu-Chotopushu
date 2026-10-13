@@ -18190,6 +18190,7 @@ function _sapSync() {
   if (!p) return;
   const u = p.ui;
   const playing = _sap.state === 1 || _sap.state === 3;
+  try { _rjKeepAlive(playing); } catch (_e) {}
   u.play.textContent = playing ? '⏸' : '▶';
   u.el.classList.add('sap-active');
   u.seek.disabled = false;
@@ -23879,6 +23880,40 @@ function _hcjSharedEl(path) {
   a.src = path;
   return a;
 }
+// ── Native keep-alive (Android foreground service) — keeps audio going with the screen off ──
+var _rjKAOn = false, _rjKAWatch = 0, _rjKAStopT = 0;
+function _rjAnyMediaPlaying() {
+  try {
+    if (typeof _hcjPlaying !== "undefined" && _hcjPlaying) return true;
+    if (typeof _sap !== "undefined" && _sap && (_sap.state === 1 || _sap.state === 3)) return true;
+  } catch (_e) {}
+  return false;
+}
+function _rjKeepAlive(on) {
+  try {
+    var P = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.MediaKeepAlive;
+    if (!P) return;                                   // web / PWA: nothing to do
+    clearTimeout(_rjKAStopT);
+    if (on) {
+      if (!_rjKAOn) {
+        _rjKAOn = true;
+        var t = document.getElementById("lmTitle");
+        P.start({ title: (t && t.textContent) || "Radha Naam Jap" }).catch(function () { _rjKAOn = false; });
+      }
+      if (!_rjKAWatch) {
+        _rjKAWatch = setInterval(function () {        // stop by itself once nothing is playing any more
+          if (!_rjAnyMediaPlaying()) { _rjKeepAlive(false); }
+        }, 20000);
+      }
+    } else {
+      _rjKAStopT = setTimeout(function () {           // short delay: verse-to-verse gaps must not stop it
+        if (_rjAnyMediaPlaying()) return;
+        if (_rjKAOn) { _rjKAOn = false; try { P.stop().catch(function () {}); } catch (_e) {} }
+        if (_rjKAWatch) { clearInterval(_rjKAWatch); _rjKAWatch = 0; }
+      }, 12000);
+    }
+  } catch (_e) {}
+}
 var _hcjMSInited = false;
 function _hcjMSStep(d) {
   try {
@@ -23890,6 +23925,7 @@ function _hcjMSStep(d) {
   } catch (_e) {}
 }
 function _hcjMSUpdate(playing) {
+  try { _rjKeepAlive(!!playing); } catch (_e) {}
   try {
     if (!("mediaSession" in navigator)) return;
     var ms = navigator.mediaSession;

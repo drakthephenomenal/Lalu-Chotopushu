@@ -280,6 +280,26 @@ else:
     print("  added custom-scheme deep link intent-filter (app.vercel.radharadharadha.capacitor://oauthredirect)")
 PYEOF
 
+echo "── 7.8/9  Patch AndroidManifest.xml (background playback service) ──"
+python3 - << 'PYEOF2'
+path = "android/app/src/main/AndroidManifest.xml"
+c = open(path).read()
+if "MediaKeepAliveService" in c:
+    print("  already present")
+else:
+    perms = ""
+    for pm in ["FOREGROUND_SERVICE", "FOREGROUND_SERVICE_MEDIA_PLAYBACK", "WAKE_LOCK", "POST_NOTIFICATIONS"]:
+        if ("android.permission." + pm + '"') not in c:
+            perms += '    <uses-permission android:name="android.permission.' + pm + '" />\n'
+    if "<application" not in c or "</application>" not in c:
+        raise SystemExit("AndroidManifest.xml structure unexpected")
+    c = c.replace("<application", perms + "    <application", 1)
+    svc = '        <service android:name=".MediaKeepAliveService" android:exported="false" android:foregroundServiceType="mediaPlayback" />\n    '
+    c = c.replace("</application>", svc + "</application>", 1)
+    open(path, "w").write(c)
+    print("  added media-playback foreground service + permissions")
+PYEOF2
+
 echo "── 8/9  Patch MainActivity.java (text zoom fix + register PowerPermissions plugin) ──────────"
 MAIN_ACTIVITY=$(find android/app/src/main/java -name "MainActivity.java")
 MAIN_ACTIVITY_DIR=$(dirname "$MAIN_ACTIVITY")
@@ -292,11 +312,16 @@ PKG_LINE=$(head -1 "$MAIN_ACTIVITY")
 # here on every build, right next to the fresh MainActivity.java.
 cp "android-src/PowerPermissionsPlugin.java" "$MAIN_ACTIVITY_DIR/PowerPermissionsPlugin.java"
 echo "  installed PowerPermissionsPlugin.java"
+cp "android-src/MediaKeepAlivePlugin.java" "$MAIN_ACTIVITY_DIR/MediaKeepAlivePlugin.java"
+cp "android-src/MediaKeepAliveService.java" "$MAIN_ACTIVITY_DIR/MediaKeepAliveService.java"
+echo "  installed MediaKeepAlivePlugin.java + MediaKeepAliveService.java"
 
 cat > "$MAIN_ACTIVITY" << EOF
 $PKG_LINE
 
 import android.os.Bundle;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -304,8 +329,35 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         // Plugins must be registered before super.onCreate().
         registerPlugin(PowerPermissionsPlugin.class);
+        registerPlugin(MediaKeepAlivePlugin.class);
         super.onCreate(savedInstanceState);
-        this.bridge.getWebView().getSettings().setTextZoom(100);
+        WebSettings st = this.bridge.getWebView().getSettings();
+        st.setTextZoom(100);
+        // Audio / video / YouTube may start by themselves (autoplay) without a fresh tap.
+        st.setMediaPlaybackRequiresUserGesture(false);
+    }
+
+    // While audio is playing, do not let Android freeze the WebView when the screen turns off.
+    private void keepWebViewAlive() {
+        try {
+            if (MediaKeepAliveService.running && this.bridge != null && this.bridge.getWebView() != null) {
+                WebView w = this.bridge.getWebView();
+                w.onResume();
+                w.resumeTimers();
+            }
+        } catch (Exception e) { }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        keepWebViewAlive();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        keepWebViewAlive();
     }
 }
 EOF

@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker  v236
+// v336: NATIVE BACKGROUND PLAYBACK — Android foreground media service keeps stotram / pad audio playing with the screen off; WebView no longer needs a tap to autoplay.
 // v335: BACKGROUND PLAYBACK — verse clips now reuse ONE audio element so auto-next keeps playing with the screen off; auto-next no longer breaks if the page can't redraw; Media Session (lock-screen / notification play, pause, next, previous).
 // v334: S&V folder card "Sevak Vani" renamed to "Sevak Vani o Sevak Ji'r anyanya rachana" (Bangla + Hindi).
 // v333: AUTOPLAY everywhere — Seva sections with YouTube pads start pad 1 on open; Geet Govindam songs and Gita chapters start their audio when opened; stotrams that resume on a verse with no clip start from the first clip; if the phone blocks autoplay, audio (stotram / deity bhajan / Ved / Padavali) starts on the next tap; Useful Videos mp4 starts muted if sound is blocked.
@@ -403,7 +404,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v335';
+const CACHE = 'radha-jap-v336';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

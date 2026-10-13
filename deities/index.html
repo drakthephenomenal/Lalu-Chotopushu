@@ -1389,6 +1389,19 @@
     </div>
   </div>
 
+  <!-- AUDIO_CHANT_PATCH_V1: Today's Audio Mala Log (R-A) — only visible in Audio Mode -->
+  <div class="cs-wrap csg" id="audioMalaLogWrap" style="display:none">
+    <div class="cs-header" onclick="toggleCs('audioMalaLogBody','audioMalaLogChev')">
+      <h3 style="color:#6DB8FF">🎧 Today's Audio Mala Log <span style="opacity:0.6;font-weight:400;font-size:10px">(R-A)</span> <span id="audioMalaLogCount" style="opacity:0.6;font-weight:400;font-size:11px"></span></h3>
+      <span class="cs-chevron" id="audioMalaLogChev" style="color:#6DB8FF">▾</span>
+    </div>
+    <div class="cs-body open" id="audioMalaLogBody">
+      <div id="audioMalaLogList" style="display:flex;flex-direction:column;gap:5px;margin-top:2px">
+        <div style="font-size:11px;color:var(--td);text-align:center;padding:6px 0">No audio malas completed yet today</div>
+      </div>
+    </div>
+  </div>
+
   <!-- ADD / DEDUCT JAP MANUALLY — merged collapsible, gold theme -->
   <div class="cs-wrap csg">
     <div class="cs-header" onclick="toggleCs('addDeductBody','addDeductChev')">
@@ -2119,6 +2132,7 @@
         <div style="flex:1;">
           <div style="font-size:13px;font-weight:700;color:#FFD700;">🎧 Audio Mode</div>
           <div style="font-size:11px;color:var(--td);line-height:1.4;margin-top:2px;">Radha Naam audio chant — every loop counts 1 as Radha Audio (R-A), kept separate from touch chanting (R). Adds the Audio Chant button on the Jap screen and an Audio Chant Log in Stats.</div>
+          <div style="font-size:9px;color:var(--td);margin-top:3px;opacity:.7;">Audio build 6 · options: malas · time · daily target</div>
         </div>
         <div class="tg" id="tgAudioMode" onclick="AudioChant.toggleMode()"></div>
       </div>

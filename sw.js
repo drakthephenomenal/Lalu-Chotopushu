@@ -1,3 +1,4 @@
+// v337: Audio Chant (audio/radha_naam_chant.mp3) precached for offline.
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker  v236
 // v336: NATIVE BACKGROUND PLAYBACK — Android foreground media service keeps stotram / pad audio playing with the screen off; WebView no longer needs a tap to autoplay.
@@ -404,7 +405,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v336';
+const CACHE = 'radha-jap-v337';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 
@@ -468,6 +469,7 @@ const LAZY_LOCAL_ASSETS = [
   './panchangData.js',
   './gurudev/2.png',
   './Panchojanno%20Shankya.mp3',
+  './audio/radha_naam_chant.mp3',
   // Rasik Jan o Bhakta Jan carousel (79 portraits) — added v219.
   './rashikan/p000.jpg',
   './rashikan/p001.jpg',

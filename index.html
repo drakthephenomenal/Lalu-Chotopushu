@@ -1136,6 +1136,17 @@
             </div>
             <span id="s28TotF" style="display:none">0</span>
           </div>
+          <!-- 3b. 28 Names Audio (28-A) — shown only when Audio Mode is on or 28-names audio history exists -->
+          <div class="dc-wrap dc-28n non-gaudiya-stat" id="statsN28Acard" style="grid-column:1/-1;display:none">
+            <div class="dc-title"><span class="dc-dot dc-dot--28n" style="background:#6DB8FF;box-shadow:0 0 7px #6DB8FF99"></span>28 Names Audio (28-A)</div>
+            <div class="dc-table">
+              <div class="dc-thead"><div></div><div>Count</div><div>Cycles</div><div>Time</div></div>
+              <div class="dc-row"><div class="dc-period">Today</div><div id="s28ATod">0</div><div id="s28ATodM">0 cy</div><div id="t28ATod">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Week</div><div id="s28AWk">0</div><div id="s28AWkM">0 cy</div><div id="t28AWk">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Month</div><div id="s28AMo">0</div><div id="s28AMoM">0 cy</div><div id="t28AMo">0s</div></div>
+              <div class="dc-row dc-row--life"><div class="dc-period">Lifetime</div><div id="s28ATot">0</div><div id="s28ATotM">0 cy</div><div id="t28ALt">0s</div></div>
+            </div>
+          </div>
           <!-- Divider -->
           <div class="dc-divider non-gaudiya-stat" style="grid-column:1/-1">── COMBINED TOTALS ──</div>
           <!-- 4. Radha + RV combined -->
@@ -2135,8 +2146,8 @@
       </div>
       <div id="audioModeOpts" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,215,0,0.2);">
         <div style="display:flex;gap:8px;margin-bottom:6px;">
-          <button id="audioChipCount" type="button" onclick="AudioChant.setListenOnly(false)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid rgba(255,215,0,0.25);background:rgba(0,0,0,0.25);color:var(--tl);font-size:12px;cursor:pointer;line-height:1.3;">Audio Chanting<br><span style="font-size:10px;opacity:.75">counted</span></button>
-          <button id="audioChipListen" type="button" onclick="AudioChant.setListenOnly(true)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid rgba(255,215,0,0.25);background:rgba(0,0,0,0.25);color:var(--tl);font-size:12px;cursor:pointer;line-height:1.3;">Audio Listening only<br><span style="font-size:10px;opacity:.75">not counted</span></button>
+          <button id="audioChipCount" type="button" onclick="AudioChant.setListenOnly(false)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid rgba(255,215,0,0.25);background:rgba(0,0,0,0.25);color:var(--tl);font-size:12px;cursor:pointer;line-height:1.3;">Audio Chanting<br><span style="font-size:10px;opacity:.75">Consider counting</span></button>
+          <button id="audioChipListen" type="button" onclick="AudioChant.setListenOnly(true)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid rgba(255,215,0,0.25);background:rgba(0,0,0,0.25);color:var(--tl);font-size:12px;cursor:pointer;line-height:1.3;">Audio Listening only<br><span style="font-size:10px;opacity:.75">Won't be counted. Listen only</span></button>
         </div>
         <div id="audioModeNote" style="font-size:11px;color:var(--td);margin-bottom:10px;"></div>
         <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tl);margin-bottom:10px;">
@@ -2980,7 +2991,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=142"></script>
-    <script src="./app.js?v=188"></script>
+    <script src="./app.js?v=190"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

@@ -1,3 +1,5 @@
+// v346: Divine Darshan - added Radha Piyo Ju and Radha Mohan Ju (Radha Keli Kunj, Radha Vallabh Sampraday); new "Seva" line on deity pages.
+// v345: 28 Names Audio is counted separately (28-A) in Stats, History and the Leaderboard, like Radha Audio (R-A); Audio Mode chip wording updated.
 // v344: 28 Names audio - the name shown follows the clip being played (all modes), faster sync.
 // v343: 28 Names Audio Chant (audio/28name_0.mp3) - one clip finished = 1 name counted; precached for offline.
 // v342: Audio Mode - Chanting (counted) vs Listening only (not counted); 28 Names + stotram/pad audio locked while the chant plays ("turn off audio chanting first").
@@ -411,7 +413,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v344';
+const CACHE = 'radha-jap-v346';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

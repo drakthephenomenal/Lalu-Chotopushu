@@ -757,7 +757,7 @@ const App = {
     syncBaselineRV: {},
     syncBaselineTimerRV: {},
     activityLog: [],
-    audioChantLog: [], historyAudio: {}, audioMode: false, audioListenOnly: false, audioStopMalas: 0, audioStopSecs: 0, audioStopDaily: false,
+    audioChantLog: [], historyAudio: {}, historyAudio28: {}, timerAudio28: {}, audioMode: false, audioListenOnly: false, audioStopMalas: 0, audioStopSecs: 0, audioStopDaily: false,
     sadhanaStart: "",
     milestones: { reached: {}, lastChecked: 0 },
     // Which jap types count toward the Milestones (Bhagvat Prapti) total.
@@ -1008,6 +1008,8 @@ const App = {
       activityLog: this.S.activityLog || [],
       audioChantLog: this.S.audioChantLog || [],
       historyAudio: this.S.historyAudio || {},
+      historyAudio28: this.S.historyAudio28 || {},
+      timerAudio28: this.S.timerAudio28 || {},
       audioMode: !!this.S.audioMode,
       audioStopMalas: this.S.audioStopMalas || 0,
       audioStopSecs: this.S.audioStopSecs || 0,
@@ -1216,6 +1218,8 @@ const App = {
     if (!this.S.activityLog) this.S.activityLog = [];
     if (!this.S.audioChantLog) this.S.audioChantLog = [];
     if (!this.S.historyAudio) this.S.historyAudio = {};
+    if (!this.S.historyAudio28) this.S.historyAudio28 = {};
+    if (!this.S.timerAudio28) this.S.timerAudio28 = {};
     if (this.S.audioMode === undefined) this.S.audioMode = false;
     if (this.S.audioStopMalas === undefined) this.S.audioStopMalas = 0;
     if (this.S.audioStopSecs === undefined) this.S.audioStopSecs = 0;
@@ -2682,6 +2686,7 @@ const App = {
     if (!this.S.h28[this.S.tk]) this.S.h28[this.S.tk] = 0;
     const posBefore = get28Pos();
     this.S.h28[this.S.tk]++;
+    window._rjLastCount28 = "touch";
     // Defer persistence + cloud push off the gesture critical path
     this._saveSoon();
     this.vib([10]);
@@ -2705,12 +2710,16 @@ const App = {
     if (this._n28Paused) this.resume28();
     if (!this.S.h28[this.S.tk]) this.S.h28[this.S.tk] = 0;
     this.S.h28[this.S.tk]++;
+    // 28 Names AUDIO is tracked on its own (like Radha Audio / R-A): h28 stays the TOTAL, historyAudio28 is the audio part.
+    if (!this.S.historyAudio28) this.S.historyAudio28 = {};
+    this.S.historyAudio28[this.S.tk] = (this.S.historyAudio28[this.S.tk] || 0) + 1;
+    window._rjLastCount28 = "audio";
     this._saveSoon();
     this.start28Timers();
     this.tapTimer();
     this._n28LastTapTs = Date.now();
     this._arm28AutoPause();
-    if (this.S.h28[this.S.tk] % 28 === 0) cycleDone28();
+    if (this.S.h28[this.S.tk] % 28 === 0) { window._rjN28Cycle = "28a"; try { cycleDone28(); } finally { window._rjN28Cycle = ""; } }
     u28();
     return true;
   },
@@ -2728,6 +2737,12 @@ const App = {
           s.startCycles = getTotalCycles28();
         });
       this.S.h28[this.S.tk]--;
+      {
+        // keep the audio part consistent: undo removes an audio count when the last count was audio (or no touch counts remain)
+        const _A = (this.S.historyAudio28 = this.S.historyAudio28 || {});
+        const _a = _A[this.S.tk] || 0;
+        if (_a > 0 && (window._rjLastCount28 === "audio" || _a > this.S.h28[this.S.tk])) _A[this.S.tk] = _a - 1;
+      }
       // Rebase wishes to new lower total
       (this.S.sankalpas || [])
         .filter((s) => !s.done && s.startCycles !== null)
@@ -7412,12 +7427,21 @@ function uStats() {
   if (sKaamM) sKaamM.textContent = Math.floor(kaamLifetime / ms) + " malas";
   const sKaamF = document.getElementById("sKaamTotF");
   if (sKaamF) sKaamF.textContent = fmtCount(kaamLifetime) + " jap";
+  // 28 Names: touch and Audio (28-A) are shown separately; combined totals below still use n28Lifetime (touch + audio)
+  const _a28Lt = Math.min(n28Lifetime, Object.values(App.S.historyAudio28 || {}).reduce((a, b) => a + b, 0));
+  const n28TouchLt = n28Lifetime - _a28Lt;
   const s28 = document.getElementById("s28Tot");
-  if (s28) s28.textContent = n28Lifetime.toLocaleString("en-IN");
+  if (s28) s28.textContent = n28TouchLt.toLocaleString("en-IN");
   const s28M = document.getElementById("s28TotM");
-  if (s28M) s28M.textContent = Math.floor(n28Lifetime / 28) + " cycles";
+  if (s28M) s28M.textContent = Math.floor(n28TouchLt / 28) + " cycles";
   const s28F = document.getElementById("s28TotF");
-  if (s28F) s28F.textContent = fmtCount(n28Lifetime) + " names";
+  if (s28F) s28F.textContent = fmtCount(n28TouchLt) + " names";
+  const s28ATot = document.getElementById("s28ATot");
+  if (s28ATot) s28ATot.textContent = _a28Lt.toLocaleString("en-IN");
+  const s28ATotM = document.getElementById("s28ATotM");
+  if (s28ATotM) s28ATotM.textContent = Math.floor(_a28Lt / 28) + " cy";
+  const t28ALt = document.getElementById("t28ALt");
+  if (t28ALt) t28ALt.textContent = _fmtA28Time(Object.values(App.S.timerAudio28 || {}).reduce((a, b) => a + b, 0));
   // HK Lifetime
   const hkLifetime = Math.max(
     0,
@@ -7621,12 +7645,29 @@ function uStats() {
   _sm("sKaamPWkM", kaamPWk);
   _sn("sKaamPMo", kaamPMo);
   _sm("sKaamPMoM", kaamPMo);
-  _sn("s28PTod", n28PTod);
-  _sc("s28PTodM", n28PTod);
-  _sn("s28PWk", n28PWk);
-  _sc("s28PWkM", n28PWk);
-  _sn("s28PMo", n28PMo);
-  _sc("s28PMoM", n28PMo);
+  {
+    // 28 Names: touch part here, Audio (28-A) part in its own card. Combined totals below keep using n28P* (touch + audio).
+    const _h28A = App.S.historyAudio28 || {}, _t28A = App.S.timerAudio28 || {};
+    const a28Tod = _h28A[App.S.tk] || 0;
+    const a28Wk = wk.reduce((s, k) => s + (_h28A[k] || 0), 0);
+    const a28Mo = Object.entries(_h28A).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0);
+    _sn("s28PTod", Math.max(0, n28PTod - a28Tod));
+    _sc("s28PTodM", Math.max(0, n28PTod - a28Tod));
+    _sn("s28PWk", Math.max(0, n28PWk - a28Wk));
+    _sc("s28PWkM", Math.max(0, n28PWk - a28Wk));
+    _sn("s28PMo", Math.max(0, n28PMo - a28Mo));
+    _sc("s28PMoM", Math.max(0, n28PMo - a28Mo));
+    _sn("s28ATod", a28Tod);
+    _sc("s28ATodM", a28Tod);
+    _sn("s28AWk", a28Wk);
+    _sc("s28AWkM", a28Wk);
+    _sn("s28AMo", a28Mo);
+    _sc("s28AMoM", a28Mo);
+    const _setT = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = _fmtA28Time(v); };
+    _setT("t28ATod", _t28A[App.S.tk] || 0);
+    _setT("t28AWk", wk.reduce((s, k) => s + (_t28A[k] || 0), 0));
+    _setT("t28AMo", Object.entries(_t28A).filter(([k]) => k.startsWith(mp)).reduce((s, [, v]) => s + v, 0));
+  }
   // Combined Radha+RV+KV lifetime time
   const _eCombLt = document.getElementById("tCombLt");
   if (_eCombLt) {
@@ -8317,6 +8358,8 @@ function doReset() {
       });
     App.S.h28[tk] = 0;
     App.S.timer28History[tk] = 0;
+    if (App.S.historyAudio28) App.S.historyAudio28[tk] = 0;
+    if (App.S.timerAudio28) App.S.timerAudio28[tk] = 0;
     App.lm28 = 0;
     App.stopAll28Timers();
     (App.S.sankalpas || [])
@@ -8335,6 +8378,8 @@ function doReset() {
     App.S.h28[tk] = 0;
     App.S.timer28History[tk] = 0;
     App.S.nameJapDeduct28 = 0;
+    App.S.historyAudio28 = {};
+    App.S.timerAudio28 = {};
     App.S.sankalpas = [];
     App.S.syncBaseline28 = {};
     App.lm28 = 0;
@@ -8388,6 +8433,8 @@ function doReset() {
     App.S.activityLog = [];
     App.S.audioChantLog = [];
     App.S.historyAudio = {};
+    App.S.historyAudio28 = {};
+    App.S.timerAudio28 = {};
     App.S.syncBaseline = {};
     App.S.syncBaselineTimer = {};
     App.S.syncBaselineRV = {};
@@ -8718,6 +8765,8 @@ function _buildBackupPayload() {
     activityLog: App.S.activityLog || [],
     audioChantLog: App.S.audioChantLog || [],
     historyAudio: App.S.historyAudio || {},
+    historyAudio28: App.S.historyAudio28 || {},
+    timerAudio28: App.S.timerAudio28 || {},
     audioMode: !!App.S.audioMode, audioStopMalas: App.S.audioStopMalas || 0, audioStopSecs: App.S.audioStopSecs || 0, audioStopDaily: !!App.S.audioStopDaily, audioListenOnly: !!App.S.audioListenOnly,
     manualJapCount: App.S.manualJapCount || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} },
     manualJapTime: App.S.manualJapTime || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} },
@@ -8946,6 +8995,8 @@ function importAllData(input) {
       App.S.activityLog = Array.isArray(data.activityLog) ? data.activityLog : [];
       App.S.audioChantLog = Array.isArray(data.audioChantLog) ? data.audioChantLog : [];
       App.S.historyAudio = (data.historyAudio && typeof data.historyAudio === "object") ? data.historyAudio : {};
+      App.S.historyAudio28 = (data.historyAudio28 && typeof data.historyAudio28 === "object") ? data.historyAudio28 : {};
+      App.S.timerAudio28 = (data.timerAudio28 && typeof data.timerAudio28 === "object") ? data.timerAudio28 : {};
       App.S.audioMode = !!data.audioMode; App.S.audioStopMalas = data.audioStopMalas || 0; App.S.audioStopSecs = data.audioStopSecs || 0; App.S.audioStopDaily = !!data.audioStopDaily; App.S.audioListenOnly = !!data.audioListenOnly;
        App.S.manualJapCount = data.manualJapCount || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} };
        App.S.manualJapTime = data.manualJapTime || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} };
@@ -12422,7 +12473,7 @@ async function fbSignOut() {
     syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {},
     migrationV2Done: false, japMode: "radha",
     historyRV: {}, timerHistoryRV: {}, dtRV: 0, ltRV: 0, nameJapDeductRV: 0,
-    malaLogRV: [], activityLog: [], audioChantLog: [], historyAudio: {}, syncBaselineRV: {}, syncBaselineTimerRV: {},
+    malaLogRV: [], activityLog: [], audioChantLog: [], historyAudio: {}, historyAudio28: {}, timerAudio28: {}, syncBaselineRV: {}, syncBaselineTimerRV: {},
     historyHK: {}, timerHistoryHK: {}, dtHK: 0, malaLogHK: [],
     syncBaselineHK: {}, syncBaselineTimerHK: {}, nameJapDeductHK: 0,
     historyKV: {}, timerHistoryKV: {}, dtKV: 0, ltKV: 0, nameJapDeductKV: 0,
@@ -12504,6 +12555,8 @@ async function fbPushToUid(targetUid, fullReplace) {
     activityLog: App.S.activityLog || [],
     audioChantLog: (App.S.audioChantLog || []).slice(-1000),
     historyAudio: App.S.historyAudio || {},
+    historyAudio28: App.S.historyAudio28 || {},
+    timerAudio28: App.S.timerAudio28 || {},
     sadhanaStart: App.S.sadhanaStart || "",
     historyHK: App.S.historyHK || {},
     timerHistoryHK: App.S.timerHistoryHK || {},
@@ -12622,6 +12675,8 @@ async function fbPushFull() {
     activityLog: App.S.activityLog || [],
     audioChantLog: (App.S.audioChantLog || []).slice(-1000),
     historyAudio: App.S.historyAudio || {},
+    historyAudio28: App.S.historyAudio28 || {},
+    timerAudio28: App.S.timerAudio28 || {},
     sadhanaStart: App.S.sadhanaStart || "",
     historyHK: App.S.historyHK || {},
     timerHistoryHK: App.S.timerHistoryHK || {},
@@ -12880,6 +12935,8 @@ function fbApplyRemote(d) {
     App.S.audioChantLog = _mAC.slice(-1000);
   }
   if ("historyAudio" in d) App.S.historyAudio = JSON.parse(JSON.stringify(d.historyAudio || {}));
+  if ("historyAudio28" in d) App.S.historyAudio28 = JSON.parse(JSON.stringify(d.historyAudio28 || {}));
+  if ("timerAudio28" in d) App.S.timerAudio28 = JSON.parse(JSON.stringify(d.timerAudio28 || {}));
   // Only apply malaLogRV from Firebase if it belongs to today; never clear
   // local on a date mismatch (see malaLog fix above for why).
   if ("malaLogRV" in d) {
@@ -13305,6 +13362,8 @@ async function fbMigrate() {
       const localHistorySS    = JSON.parse(JSON.stringify(App.S.historySS    || {}));
       const localHistoryRam   = JSON.parse(JSON.stringify(App.S.historyRam   || {}));
       const localHistoryAudio = JSON.parse(JSON.stringify(App.S.historyAudio || {}));
+      const localHistoryAudio28 = JSON.parse(JSON.stringify(App.S.historyAudio28 || {}));
+      const localTimerAudio28 = JSON.parse(JSON.stringify(App.S.timerAudio28 || {}));
       const localTimerHistoryRV = JSON.parse(JSON.stringify(App.S.timerHistoryRV || {}));
       const localTimerHistoryHK = JSON.parse(JSON.stringify(App.S.timerHistoryHK || {}));
       const localTimerHistoryKV = JSON.parse(JSON.stringify(App.S.timerHistoryKV || {}));
@@ -13355,6 +13414,10 @@ async function fbMigrate() {
         mergeMax(localHistoryRam,     App.S.historyRam);
         if (!App.S.historyAudio) App.S.historyAudio = {};
         mergeMax(localHistoryAudio,   App.S.historyAudio);
+        if (!App.S.historyAudio28) App.S.historyAudio28 = {};
+        mergeMax(localHistoryAudio28, App.S.historyAudio28);
+        if (!App.S.timerAudio28) App.S.timerAudio28 = {};
+        mergeMax(localTimerAudio28,   App.S.timerAudio28);
         mergeMax(localTimerHistoryRV, App.S.timerHistoryRV);
         mergeMax(localTimerHistoryHK, App.S.timerHistoryHK);
         mergeMax(localTimerHistoryKV, App.S.timerHistoryKV);
@@ -13903,13 +13966,15 @@ function cycleDone28() {
   const cycleStartTs = App._n28CycleStart
     ? App._n28CycleStart
     : Date.now() - cycleTimeSec * 1000;
-  logActivity({
+  const _cycEntry = {
     t: "28cycle",
     ts: Date.now(),
     startTs: cycleStartTs,
     n: cycleNum,
     sec: cycleTimeSec,
-  });
+  };
+  if (window._rjN28Cycle === "28a") _cycEntry.mode = "28a";   // completed by the 28 Names audio chant
+  logActivity(_cycEntry);
   const fmtCyc = (s) => {
     s = Math.round(s);
     const h = Math.floor(s / 3600),
@@ -17144,6 +17209,54 @@ const DD_DEITIES = [
   "q": "Radhika Vallabh Ji Vrindavan"
  },
  {
+  "s": "radha-piyo ju",
+  "k": "rv",
+  "st": "vrn",
+  "n": {
+   "hi": "श्री राधा पिय जू",
+   "bn": "শ্রী রাধা পিয় জু"
+  },
+  "ac": {
+   "hi": "कोई प्रकटकर्ता आचार्य नहीं",
+   "bn": "কোনো প্রকটকর্তা আচার্য নেই"
+  },
+  "sv": {
+   "hi": "श्री हित प्रेमानंद गोविंद शरण जी महाराज स्वयं इनकी सेवा करते हैं।",
+   "bn": "শ্রী হিত প্রেমানন্দ গোবিন্দ শরণ জী মহারাজ স্বয়ং এঁর সেবা করেন।"
+  },
+  "fm": {
+   "hi": "श्री राधा पिय जू पूज्य महाराज जी के निज (व्यक्तिगत) ठाकुर जी हैं।",
+   "bn": "শ্রী রাধা পিয় জু পূজ্য মহারাজ জীর নিজস্ব (ব্যক্তিগত) ঠাকুর।"
+  },
+  "sth": {
+   "hi": "श्री राधा केलि कुंज, वृन्दावन",
+   "bn": "শ্রী রাধা কেলি কুঞ্জ, বৃন্দাবন"
+  },
+  "q": "Radha Keli Kunj Vrindavan"
+ },
+ {
+  "s": "radha-mohan ju",
+  "k": "rv",
+  "st": "vrn",
+  "n": {
+   "hi": "श्री राधा मोहन जू",
+   "bn": "শ্রী রাধা মোহন জু"
+  },
+  "ac": {
+   "hi": "कोई प्रकटकर्ता आचार्य नहीं",
+   "bn": "কোনো প্রকটকর্তা আচার্য নেই"
+  },
+  "sv": {
+   "hi": "श्री हित प्रेमानंद गोविंद शरण जी महाराज स्वयं इनकी सेवा करते हैं।",
+   "bn": "শ্রী হিত প্রেমানন্দ গোবিন্দ শরণ জী মহারাজ স্বয়ং এঁর সেবা করেন।"
+  },
+  "sth": {
+   "hi": "श्री राधा केलि कुंज, वृन्दावन",
+   "bn": "শ্রী রাধা কেলি কুঞ্জ, বৃন্দাবন"
+  },
+  "q": "Radha Keli Kunj Vrindavan"
+ },
+ {
   "s": "radha-navrangi-lal",
   "k": "rv",
   "st": "moved",
@@ -17618,7 +17731,7 @@ function ddL(hi, bn) { return ddHi() ? hi : bn; }
 // read live from the deployed site, so new photos need no APK rebuild. On the web they stay relative.
 function ddNative() { try { return typeof _isNativeApp === 'function' && _isNativeApp(); } catch (_e) { return false; } }
 function ddBase() { return ddNative() ? RJAP_PWA_URL.replace(/\/$/, '') + '/deities/' : './deities/'; }
-function ddPath(slug, file) { return ddBase() + slug + '/' + encodeURIComponent(file).replace(/%2F/g, '/'); }
+function ddPath(slug, file) { return ddBase() + encodeURIComponent(slug) + '/' + encodeURIComponent(file).replace(/%2F/g, '/'); }
 function ddBust(url) { return ddNative() ? url + '?r=' + Math.floor(Date.now() / 60000) : url; }   // fresh answer at most once a minute
 function ddFetchOpts(o) { if (!ddNative()) return o; const c = Object.assign({}, o); delete c.cache; return c; }
 // Fallback existence check that needs no CORS permission: try to load it as an <img>/<audio>.
@@ -18026,6 +18139,7 @@ function renderDeityPage(list, slug) {
     ? '<div class="dd-block ' + (cls || '') + '"><div class="dd-label">' + escHtml(label) + '</div><div class="dd-text">' + escHtml(text).replace(/\n/g, '<br>') + '</div></div>'
     : '');
   html += block(ddL('प्रकटकर्ता आचार्य', 'প্রকটকর্তা আচার্য'), ddT(d.ac));
+  html += block(ddL('सेवा', 'সেবা'), ddT(d.sv));
   html += (sp ? block(ddL('सम्प्रदाय एवं सेवा-विधि', 'সম্প্রদায় ও সেবা-বিধি'), ddT(sp.t) + (d.vd ? '\n' + ddT(d.vd) : '')) : '');
   html += d.kt
     ? '<details class="dd-block dd-kt" open><summary class="dd-label">' + escHtml(ddL('आविर्भाव कथा', 'আবির্ভাব কথা')) + '</summary><div class="dd-text">' +
@@ -25454,7 +25568,7 @@ function showHistDay(tk, filterMode) {
   const _hkDayLabel = _hkDayLang === "bn" ? "হরে কৃষ্ণ মহামন্ত্র" : "हरे कृष्ण महामंत्र";
 
   // Map deityKey names to showHistSet set values
-  const deityToSet = { ra: 'ra', radha: 'radha', rv: 'rv', kv: 'kv', ss: 'ss', ram: 'ram', kaam: 'kaam', '28': '28', hk: 'hk' };
+  const deityToSet = { ra: 'ra', radha: 'radha', rv: 'rv', kv: 'kv', ss: 'ss', ram: 'ram', kaam: 'kaam', '28': '28', n28a: 'n28a', hk: 'hk' };
   const autoSet = filterMode ? deityToSet[filterMode] : null;
 
   // If we have a specific mode filter AND that mode has data, go straight to per-mala detail
@@ -25467,8 +25581,10 @@ function showHistDay(tk, filterMode) {
     const hk = (App.S.historyHK || {})[tk] || 0;
     const ram = (App.S.historyRam || {})[tk] || 0;
     const kaam = (App.S.historyKaam || {})[tk] || 0;
-    const taps28 = (App.S.h28 || {})[tk] || 0;
+    const a28 = (App.S.historyAudio28 || {})[tk] || 0;
+    const taps28 = Math.max(0, ((App.S.h28 || {})[tk] || 0) - a28);
     const hasData = autoSet === 'ra' ? ra > 0
+                  : autoSet === 'n28a' ? a28 > 0
                   : autoSet === 'radha' ? radha > 0
                   : autoSet === 'rv'    ? rv > 0
                   : autoSet === 'kv'    ? kv > 0
@@ -25487,6 +25603,7 @@ function showHistDay(tk, filterMode) {
                     : autoSet === 'ram'   ? '🚩 Raam Vijay Mantra'
                     : autoSet === 'kaam'  ? '🕉️ Kaam Vijay'
                     : autoSet === '28'   ? '🪷 28 Names'
+                    : autoSet === 'n28a' ? '🎧 28 Names Audio (28-A)'
                     : _hkDayLabel;
     title.textContent = _histFmtDate(tk) + ' — ' + modeLabel;
     detail.style.display = "block";
@@ -25520,7 +25637,8 @@ function showHistDay(tk, filterMode) {
   const hk = App.S.historyHK[tk] || 0;
   const ram = (App.S.historyRam || {})[tk] || 0;
   const kaam = (App.S.historyKaam || {})[tk] || 0;
-  const taps28 = App.S.h28[tk] || 0;
+  const a28 = (App.S.historyAudio28 || {})[tk] || 0;
+  const taps28 = Math.max(0, (App.S.h28[tk] || 0) - a28);
   const tSecR = App.S.timerHistory[tk] || 0;
   const tSecRV = App.S.timerHistoryRV[tk] || 0;
   const tSecKV = (App.S.timerHistoryKV || {})[tk] || 0;
@@ -25577,6 +25695,7 @@ function showHistDay(tk, filterMode) {
     html += card("pt-kaam",  "kaam",  "Kaam Vijay", kaamM, kaamM === 1  ? "mala" : "malas", fmtN(kaam)  + " names", _histFmtSec(tSecKaam), kaam > 0);
     html += card("pt-ram",  "ram",   "Raam Vijay Mantra", ramM, ramM === 1 ? "mala" : "malas", fmtN(ram) + " names", _histFmtSec(tSecRam), ram > 0);
     html += card("pt-28",   "28",    "28 Names",  cyc28,  cyc28 === 1  ? "cycle" : "cycles", fmtN(taps28) + " taps", _histFmtSec(t28Sec), taps28 > 0);
+    if (a28 > 0) html += card("pt-28", "n28a", "28 Names Audio (28-A)", Math.floor(a28 / 28), Math.floor(a28 / 28) === 1 ? "cycle" : "cycles", fmtN(a28) + " taps", _histFmtSec((App.S.timerAudio28 || {})[tk] || 0), true);
     html += card("pt-hk",   "hk",    _hkDayLabel, hkM,    hkM === 1    ? "mala" : "malas", fmtN(hk)    + " names", _histFmtSec(tSecHK), hk > 0);
     html += `</div>`;
   }
@@ -25677,7 +25796,8 @@ function renderHistory() {
     tot28taps = 0,
     totTimeSec = 0,
     totTimeSec28 = 0;
-  let totRA = 0;
+  let totRA = 0, totA28 = 0;
+  window._ptN28ASec = 0;
   window._ptRadhaSec = 0;
   window._ptRVSec = 0;
   window._ptKVSec = 0;
@@ -25697,7 +25817,8 @@ function renderHistory() {
     const hk = histHK[tk] || 0;
     const ram = histRam[tk] || 0;
     const kaam = histKaam[tk] || 0;
-    const taps28 = h28[tk] || 0;
+    const a28D = (App.S.historyAudio28 || {})[tk] || 0;
+    const taps28 = Math.max(0, (h28[tk] || 0) - a28D);
     const tSecR_row = tHist[tk] || 0;
     const tSecRV_row = tHistRV[tk] || 0;
     const tSecKV_row = tHistKV[tk] || 0;
@@ -25717,12 +25838,14 @@ function renderHistory() {
     } else if (isRamanandi) {
       if (ram === 0) return;
     } else {
-      if (radha === 0 && raD === 0 && rv === 0 && kv === 0 && kaam === 0 && taps28 === 0) return;
+      if (radha === 0 && raD === 0 && rv === 0 && kv === 0 && kaam === 0 && taps28 === 0 && a28D === 0) return;
     }
 
     activeDays++;
     totRadha += radha;
     totRA += raD;
+    totA28 += a28D;
+    window._ptN28ASec += (App.S.timerAudio28 || {})[tk] || 0;
     totRV += rv;
     totKV += kv;
     totSS += ss;
@@ -25888,6 +26011,7 @@ function renderHistory() {
         ${statCard("pt-kv", "🪈", "KV Jap", totKVM, totKVM === 1 ? "mala" : "malas", fmtN(totKV) + " names", _histFmtSec(window._ptKVSec || 0), "kv")}
         ${statCard("pt-kaam", "🕉️", "Kaam Vijay", totKaamM, totKaamM === 1 ? "mala" : "malas", fmtN(totKaam) + " names", _histFmtSec(window._ptKaamSec || 0), "kaam")}
         ${statCard("pt-28", "🪷", "28 Names", totCyc28, totCyc28 === 1 ? "cycle" : "cycles", fmtN(tot28taps) + " taps", _histFmtSec(totTimeSec28), "28")}
+        ${totA28 > 0 ? statCard("pt-28", "🎧", "28 Names Audio (28-A)", Math.floor(totA28 / 28), Math.floor(totA28 / 28) === 1 ? "cycle" : "cycles", fmtN(totA28) + " taps", _histFmtSec(window._ptN28ASec || 0), "n28a") : ""}
       </div>
       <div class="pt-total"><span class="pt-total-label">Total Time</span><span class="pt-total-val">${_histFmtSec(grandTotal)}</span></div>
     `;
@@ -25923,6 +26047,7 @@ function showHistDeityDates(deityKey) {
   };
 
   cfg.ra = Object.assign({}, cfg.radha, { label: "Radha Audio (R-A)", color: "#6DB8FF", histKey: "historyAudio", icon: "🎧" });
+  cfg.n28a = Object.assign({}, cfg["28"], { label: "28 Names Audio (28-A)", color: "#6DB8FF", histKey: "historyAudio28", timerKey: "timerAudio28", icon: "🎧" });
   const c = cfg[deityKey];
   if (!c) return;
 
@@ -25930,6 +26055,7 @@ function showHistDeityDates(deityKey) {
   let tHist = App.S[c.timerKey] || {};
   if (deityKey === "radha") { const _a = App.S.historyAudio || {}, h2 = {}; Object.keys(hist).forEach((k) => { h2[k] = Math.max(0, (hist[k] || 0) - (_a[k] || 0)); }); hist = h2; }
   if (deityKey === "ra") tHist = window.AudioChant ? window.AudioChant.secsMap() : {};
+  if (deityKey === "28") { const _a = App.S.historyAudio28 || {}, h2 = {}; Object.keys(hist).forEach((k) => { h2[k] = Math.max(0, (hist[k] || 0) - (_a[k] || 0)); }); hist = h2; }
 
   // Build rows — only active days
   const rows = [];
@@ -26143,13 +26269,18 @@ function _renderHistSetInner(set, tk, isToday, log, slot) {
       inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-mala detail not available for this date</div>`;
     }
   } else if (set === "28") {
-    const cycleEntries = log.filter((e) => e.t === "28cycle");
+    const cycleEntries = log.filter((e) => e.t === "28cycle" && e.mode !== "28a");
     inner += backBtn;
     if (cycleEntries.length > 0) {
       inner += _hist28CycleTable(cycleEntries);
     } else {
       inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-cycle detail not available for this date</div>`;
     }
+  } else if (set === "n28a") {
+    const cycleEntriesA = log.filter((e) => e.t === "28cycle" && e.mode === "28a");
+    inner += backBtn;
+    if (cycleEntriesA.length > 0) inner += _hist28CycleTable(cycleEntriesA, "🎧 28 Names Audio (28-A) — Cycles", "#6DB8FF");
+    else inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-cycle detail not available for this date</div>`;
   } else if (set === "hk") {
     const hkEntries = log.filter((e) => e.t === "mala" && e.mode === "hk");
     const _hkSetLang = App.S.hkLang || "hi";
@@ -26208,9 +26339,9 @@ function _histMalaTable(label, entries, color) {
   return html;
 }
 
-function _hist28CycleTable(entries) {
+function _hist28CycleTable(entries, titleTxt, titleColor) {
   let html = `<div style="margin-bottom:10px">`;
-  html += `<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--green);margin-bottom:6px;font-weight:600">🌿 28 Names — Cycles</div>`;
+  html += `<div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:${titleColor || "var(--green)"};margin-bottom:6px;font-weight:600">${titleTxt || "🌿 28 Names — Cycles"}</div>`;
   html += `<div style="overflow-x:auto;border-radius:10px;border:1px solid rgba(255,255,255,0.08)">`;
   html += `<table style="width:100%;border-collapse:collapse;font-family:Inter,sans-serif;font-size:11px">`;
   html += `<thead><tr style="background:rgba(255,255,255,0.05);color:var(--td)">
@@ -27069,6 +27200,7 @@ function renderLeaderboard(docs, period) {
       const skaam = Object.values(d.historyKaam || {}).reduce((a,b)=>a+b,0);
       const s28 = Object.values(d.history28 || {}).reduce((a,b)=>a+b,0);
       const sra = Object.values(d.historyRA || {}).reduce((a,b)=>a+b,0);
+      const s28a = Object.values(d.historyRA28 || {}).reduce((a,b)=>a+b,0);
       // Net each type against its own deduct counter (gifts/manual deducts) —
       // matches how totalJap itself was computed in pushLeaderboard(), so the
 
@@ -27082,7 +27214,8 @@ function renderLeaderboard(docs, period) {
         hk:  Math.max(0, shk - (d.nameJapDeductHK || 0)),
         ram: Math.max(0, sram - (d.nameJapDeductRam || 0)),
         kaam: Math.max(0, skaam - (d.nameJapDeductKaam || 0)),
-        n28: Math.max(0, s28 - (d.nameJapDeduct28 || 0)),
+        n28: Math.max(0, s28 - s28a - (d.nameJapDeduct28 || 0)),
+        n28a: s28a,
       };
       // How much of each type was gifted/manually deducted — shown next to
       // the netted count so the numbers stay legible: the malas count is
@@ -27121,7 +27254,7 @@ function renderLeaderboard(docs, period) {
       const histRam = d.historyRam || {};
       const histKaam = d.historyKaam || {};
       const hist28 = d.history28 || {};
-      let sr = 0, srv = 0, skv = 0, sss = 0, shk = 0, sram = 0, skaam = 0, s28 = 0, sra = 0;
+      let sr = 0, srv = 0, skv = 0, sss = 0, shk = 0, sram = 0, skaam = 0, s28 = 0, sra = 0, s28a = 0;
       let tr = 0, trv = 0, tkv = 0, tss = 0, thk = 0, tram = 0, tkaam = 0, t28 = 0;
       const tHist = d.timerHistory || {};
       const tHistRV = d.timerHistoryRV || {};
@@ -27143,6 +27276,7 @@ function renderLeaderboard(docs, period) {
         sram = bd.ram || 0;
         skaam = bd.kaam || 0;
         s28 = bd.n28 || 0;
+        s28a = bd.n28a || 0;
         tr = tbd.r || 0;
         trv = tbd.rv || 0;
         tkv = tbd.kv || 0;
@@ -27162,6 +27296,7 @@ function renderLeaderboard(docs, period) {
           sram += (histRam[k] || 0);
           skaam += (histKaam[k] || 0);
           s28 += (hist28[k] || 0);
+          s28a += ((d.historyRA28 || {})[k] || 0);
           tr += (tHist[k] || 0);
           trv += (tHistRV[k] || 0);
           tkv += (tHistKV[k] || 0);
@@ -27174,7 +27309,7 @@ function renderLeaderboard(docs, period) {
       }
       score += sr + srv + skv + sss + shk + sram + skaam + s28;
       timeScore += tr + trv + tkv + tss + thk + tram + tkaam + t28;
-      d._breakdown = { r: Math.max(0, sr - sra), ra: sra, rv: srv, kv: skv, ss: sss, hk: shk, ram: sram, kaam: skaam, n28: s28 };
+      d._breakdown = { r: Math.max(0, sr - sra), ra: sra, rv: srv, kv: skv, ss: sss, hk: shk, ram: sram, kaam: skaam, n28: Math.max(0, s28 - s28a), n28a: s28a };
       d._giftedBreakdown = { r: 0, rv: 0, kv: 0, ss: 0, hk: 0, ram: 0, kaam: 0, n28: 0 };
       d._timeBreakdown = { r: tr, rv: trv, kv: tkv, ss: tss, hk: thk, ram: tram, kaam: tkaam, n28: t28 };
       // Screen Time for this period — flat per-day map, sum across periodKeys
@@ -27300,6 +27435,10 @@ function renderLeaderboard(docs, period) {
       const giftNote = g.n28 > 0 ? ' · 🎁' + _lbFmtJap(g.n28) + ' gifted' : '';
       bdParts.push('28N: ' + cyc28Str + (tb.n28 > 0 ? ' ⏱ ' + _histFmtSec(tb.n28) : '') + giftNote + _lbQ(tb.n28, b.n28));
     }
+    if ((b.n28a || 0) > 0) {
+      const cyc28a = Math.floor(b.n28a / 28);
+      bdParts.push('28N-A: ' + (cyc28a > 0 ? cyc28a + 'C ' : '') + '(' + _lbFmtJap(b.n28a) + ')');
+    }
     if (b.hk > 0 || g.hk > 0) {
       const hkM = Math.floor(b.hk / ms);
       const hkStr = _lbFmtJap(b.hk) + (hkM > 0 ? ' (' + hkM + 'M)' : '');
@@ -27321,7 +27460,7 @@ function renderLeaderboard(docs, period) {
     // Total: only count R+RV+SS+HK+RAM+KAM malas (not 28N), 28N shown as cycles separately
     const japOnly = (b.r || 0) + (b.ra || 0) + (b.rv || 0) + (b.ss || 0) + (b.hk || 0) + (b.ram || 0) + (b.kaam || 0);
     const totalMalas = Math.floor(japOnly / ms);
-    const total28Cyc = Math.floor((b.n28 || 0) / 28);
+    const total28Cyc = Math.floor(((b.n28 || 0) + (b.n28a || 0)) / 28);
     let totalStr = _lbFmtJap(d.score) + ' jap';
     if (totalMalas > 0 || total28Cyc > 0) {
       let tParts = [];
@@ -27513,6 +27652,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     ram: histRam[liveTk] || 0,
     kaam: histKaam[liveTk] || 0,
     n28: hist28[liveTk] || 0,
+    n28a: (S.historyAudio28 || {})[liveTk] || 0,
   };
   const todayTimeBreakdown = {
     r: (S.timerHistory || {})[liveTk] || 0,
@@ -27548,6 +27688,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     historyRam: histRam,
     historyKaam: histKaam,
     historyRA: S.historyAudio || {},
+    historyRA28: S.historyAudio28 || {},
     history28: hist28,
     // Push each type's own deduct counter too, so the leaderboard breakdown
     // (R/RV/KV/SS/HK/KAM/28N) can be netted the same way totalJap is — otherwise
@@ -29710,6 +29851,11 @@ async function checkAppUpdate() {
 // interferes with touch chanting (R). S.history stays the TOTAL (R + R-A), so daily
 // bar, lifetime, targets, sync and leaderboard totals all include audio automatically.
 // ═════════════════════════════════════════════════════════════════════
+function _fmtA28Time(s) {
+  s = Math.max(0, Math.floor(s || 0));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+  return (h > 0 ? h + "h " : "") + (m > 0 || h > 0 ? m + "m " : "") + x + "s";
+}
 const AudioChant = (function () {
   const SRC = "audio/radha_naam_chant.mp3";
   const MAX_LOG = 1000;
@@ -30101,6 +30247,8 @@ const AudioChant = (function () {
     setDisp("audioChantLogWrap", on ? "" : "none");
     setDisp("audioModeOpts", on ? "block" : "none");
     setDisp("statsRAcard", (on || hasRA) ? "" : "none");
+    { const hasN28A = !!(S && S.historyAudio28 && Object.keys(S.historyAudio28).some(function (k) { return S.historyAudio28[k] > 0; }));
+      setDisp("statsN28Acard", (on || hasN28A) ? "" : "none"); }
     { const t = on && isMainMode(); if (t !== lastTabsOn) { lastTabsOn = t; api.renderMalaLog(); } }
     /* Audio Chant now sits in its own row inside the Daily card - no reserved bottom padding needed */
     const a = document.getElementById("tgAudioMode"); if (a) a.classList.toggle("on", on);
@@ -30245,7 +30393,7 @@ const AudioChant28 = (function () {
   const ENDS = [1.086, 2.953, 4.408, 8.017, 10.083, 11.636, 14.373, 15.995, 17.045, 20.055, 21.638, 22.568, 23.632, 25.117, 27.768, 28.835, 30.43, 31.381, 32.649, 33.773, 35.129, 36.4, 37.808, 39.6, 40.69, 43.184, 45.097, 48.888];
   const D0 = ENDS[27];
   let el = null, playing = false, starting = false, poller = 0;
-  let lastT = 0, lastWall = 0, played = 0, startIdx = 0, nextK = 0, lsn = false, startedAt = 0;
+  let lastT = 0, lastWall = 0, played = 0, startIdx = 0, nextK = 0, lsn = false, startedAt = 0, secAcc = 0;
   const api = { get playing() { return playing; }, _el: function () { return el; } };
 
   function D() { return (el && isFinite(el.duration) && el.duration > 1) ? el.duration : D0; }
@@ -30267,6 +30415,11 @@ const AudioChant28 = (function () {
     if (!el.paused && wall - d > d0 * 0.75) extra = Math.min(Math.round((wall - d) / d0), 4000);   // screen-off / throttled catch-up
     played += d + extra * d0;
     lastT = t; lastWall = now;
+    if (!lsn) {   // time spent in counted 28 Names audio chanting (shown under 28 Names Audio in Stats / History)
+      secAcc += d + extra * d0;
+      const whole = Math.floor(secAcc);
+      if (whole > 0) { secAcc -= whole; const T = App.S.timerAudio28 || (App.S.timerAudio28 = {}); T[App.S.tk] = (T[App.S.tk] || 0) + whole; }
+    }
     const P = STARTS[startIdx] + played + 0.04;
     let n = 0;
     while (endOf(nextK) <= P && n < 5000) { nextK++; n++; }
@@ -30308,7 +30461,7 @@ const AudioChant28 = (function () {
     const p = el.play();
     const go = function () {
       starting = false; playing = true;
-      played = 0; nextK = startIdx; lastT = el.currentTime || STARTS[startIdx]; lastWall = Date.now() / 1000; startedAt = Date.now();
+      played = 0; secAcc = 0; nextK = startIdx; lastT = el.currentTime || STARTS[startIdx]; lastWall = Date.now() / 1000; startedAt = Date.now();
       window._rjKATitle = "28 Names · Audio Chant";
       try { _rjKeepAlive(true); } catch (_e) {}
       setMediaSession(true);

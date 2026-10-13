@@ -1064,6 +1064,8 @@ const App = {
       dt28Cycles: this.S.dt28Cycles || 0,
       milestones: this.S.milestones || { reached: {}, lastChecked: 0 },
       msConsider: this.S.msConsider || { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, n28: true },
+      resetEpoch: this.S.resetEpoch || 0,
+      _seenResetEpoch: this.S._seenResetEpoch || 0,
       hkLang: this.S.hkLang || "hi",
       naamLang: this.S.naamLang || "sa",
       stotramLang: this.S.stotramLang || "bn",
@@ -8536,6 +8538,10 @@ function doReset() {
   }
 
   // ── STEP 2: Save clean state locally ──
+  // Stamp a reset epoch: pushed to the cloud with the clean state so every
+  // other device discards its stale local data instead of merging it back.
+  App.S.resetEpoch = Date.now();
+  App.S._seenResetEpoch = App.S.resetEpoch;
   App._suspendCloudSync = false;
   App.save();
   App.ua();
@@ -12697,6 +12703,7 @@ async function fbPushFull() {
     history: App.S.history || {},
     h28: App.S.h28 || {},
     nameJapDeduct28: App.S.nameJapDeduct28 || 0,
+    resetEpoch: App.S.resetEpoch || 0,
     stotrams: App.S.stotrams || {},
     brahma: App.S.brahma || {},
     customSt: App.S.customSt || [],
@@ -12874,6 +12881,28 @@ function fbApplyRemote(d) {
   if (App._resetInProgress) return;
   // Ensure UID is set before saving (prevents saving to wrong UID key)
   if (fbUser && App._uid !== fbUser.uid) App._uid = fbUser.uid;
+  // ── RESET EPOCH ──
+  // A reset on any device stamps resetEpoch into the cloud doc. A device that
+  // hasn't seen that reset yet still holds pre-reset data; the merges below
+  // (activity/audio logs, mala logs, milestone flags) would union it back into
+  // the cloud. So on first sight of a newer epoch, drop the stale local copies
+  // and take the cloud state as-is.
+  const _cloudEpoch = d.resetEpoch || 0;
+  if (_cloudEpoch > (App.S._seenResetEpoch || 0)) {
+    App.S._seenResetEpoch = _cloudEpoch;
+    App.S.resetEpoch = _cloudEpoch;
+    App.S.activityLog = [];
+    App.S.audioChantLog = [];
+    App.S.audioLogM = { rv: [], kv: [], kaam: [] };
+    ["malaLog", "malaLogRV", "malaLogHK", "malaLogKV", "malaLogSS", "malaLogRam", "malaLogKaam"].forEach((k) => { App.S[k] = []; });
+    App.S.milestones = { reached: {}, lastChecked: 0 };
+    try { localStorage.removeItem("rjap_milestones"); } catch (_) {}
+    ["history", "historyRV", "historyHK", "historyKV", "historySS", "historyRam", "historyKaam",
+     "timerHistory", "timerHistoryRV", "timerHistoryHK", "timerHistoryKV", "timerHistorySS", "timerHistoryRam", "timerHistoryKaam",
+     "h28", "timer28History", "activityLogArchive", "malaLog"].forEach((st) => {
+      try { App.dbClearStore(st).catch(() => {}); } catch (_) {}
+    });
+  }
   if ("history" in d)
     App.S.history = JSON.parse(JSON.stringify(d.history || {}));
   if ("h28" in d) App.S.h28 = JSON.parse(JSON.stringify(d.h28 || {}));
@@ -13428,6 +13457,10 @@ async function fbMigrate() {
       const localDtSS = App.S.dtSS || 0;
       const localDtRam = App.S.dtRam || 0;
 
+      // A reset happened (on any device) that this device hasn't applied yet →
+      // its local counts are stale and must NOT be merged back over the cloud.
+      const _epochStale = ((snap.data() || {}).resetEpoch || 0) > (App.S._seenResetEpoch || 0);
+
       // Cloud data exists — apply it (overrides local cache)
       fbApplyRemote({ ...snap.data(), deviceId: null });
       App._cloudHydrated = true; // cloud copy applied, future saves may push
@@ -13440,7 +13473,7 @@ async function fbMigrate() {
       // resumes on every hydration after this one.
       const _forceRestoreAt = App.S.devForceRestoreAt || 0;
       const _alreadyAckedRestore = App.S._lastAckedRestoreAt || 0;
-      const _skipOfflineMerge = _forceRestoreAt > _alreadyAckedRestore;
+      const _skipOfflineMerge = _epochStale || _forceRestoreAt > _alreadyAckedRestore;
       if (_skipOfflineMerge) {
         App.S._lastAckedRestoreAt = _forceRestoreAt;
       }

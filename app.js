@@ -3043,7 +3043,7 @@ function spawnRV(e, zone) {
   }
   const el = document.createElement("div");
   el.className = "fn-rv";
-  const fs = (55 + Math.random() * 25) * getJapTextScale();
+  const fs = (e.fixed ? 68 : 55 + Math.random() * 25) * getJapTextScale();
   const _nt = naamText();
   el.innerHTML =
     '<span style="font-size:' +
@@ -30014,7 +30014,7 @@ const AudioChant = (function () {
     if (j) j.style.color = (playing && isMainMode() && !lsn) ? "#6DB8FF" : "";
   };
 
-  // floating "Radha" animation, same look as a touch tap but at a random spot
+  // floating "Radha" animation, same look as a touch tap but always from the centre of the display
   function spawnAuto() {
     try {
       if (document.hidden) return;
@@ -30023,8 +30023,8 @@ const AudioChant = (function () {
       const d = document.createElement("div"); d.className = "fn";
       d.textContent = (typeof naamText === "function") ? naamText().radha : "राधा";
       const sc = (typeof getJapTextScale === "function") ? getJapTextScale() : 1;
-      const fs = (110 + Math.random() * 60) * sc;
-      const x = r.width * (0.25 + Math.random() * 0.5), y = r.height * (0.3 + Math.random() * 0.4);
+      const fs = 140 * sc;
+      const x = r.width * 0.5, y = r.height * 0.5;
       d.style.left = (x - fs * 0.6) + "px"; d.style.top = (y - fs * 0.4) + "px"; d.style.fontSize = fs + "px";
       tog = !tog;
       d.style.color = tog ? "#FFD700" : "#6DB8FF";
@@ -30368,9 +30368,9 @@ const AudioChant = (function () {
     setDisp("audioChantBtn", on ? "flex" : "none");
     setDisp("audioChantLogWrap", on ? "" : "none");
     setDisp("audioModeOpts", on ? "block" : "none");
-    setDisp("statsRAcard", (on || hasRA) ? "" : "none");
+    setDisp("statsRAcard", "");
     { const hasN28A = !!(S && S.historyAudio28 && Object.keys(S.historyAudio28).some(function (k) { return S.historyAudio28[k] > 0; }));
-      setDisp("statsN28Acard", (on || hasN28A) ? "" : "none"); }
+      setDisp("statsN28Acard", ""); }
     { const t = on && (isMainMode() || !!(window.AudioChantM && window.AudioChantM.active())) ? (isMainMode() ? "main" : App.S.japMode) : false; if (t !== lastTabsOn) { lastTabsOn = t; api.renderMalaLog(); } }
     /* Audio Chant now sits in its own row inside the Daily card - no reserved bottom padding needed */
     const a = document.getElementById("tgAudioMode"); if (a) a.classList.toggle("on", on);
@@ -30580,8 +30580,8 @@ const AudioChantM = (function () {
       if (key === "kv") spawnKV();
       else if (key === "kaam") spawnKaam();
       else {
-        const x = r.left + r.width * (0.3 + Math.random() * 0.4), y = r.top + r.height * (0.3 + Math.random() * 0.4);
-        spawnRV({ clientX: x, clientY: y }, zone);
+        const x = r.left + r.width * 0.5, y = r.top + r.height * 0.5;
+        spawnRV({ clientX: x, clientY: y, fixed: true }, zone);
       }
     } catch (_e) {}
   }
@@ -30911,7 +30911,7 @@ const AudioChantM = (function () {
     Object.keys(CFG).forEach(function (k) {
       const H = hist(k), has = Object.keys(H).some(function (d) { return H[d] > 0; });
       setDisp("acmLogWrap_" + k, on ? "" : "none");
-      setDisp("stats" + PFX[k] + "Acard", (on || has) ? "" : "none");
+      setDisp("stats" + PFX[k] + "Acard", "");
     });
   };
   setInterval(function () { try { api.applyMode(); } catch (_e) {} }, 3000);

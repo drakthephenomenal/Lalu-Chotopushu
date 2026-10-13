@@ -31064,3 +31064,27 @@ const AudioChant28 = (function () {
   return api;
 })();
 window.AudioChant28 = AudioChant28;
+
+
+/* ── Stats cards: one card per jap type, with Normal / Audio option tabs ── */
+(function () {
+  var KEYS = ["RA", "RVA", "KVA", "KaamA", "N28A"];
+  var IDS = { RA: "statsRAcard", RVA: "statsRVAcard", KVA: "statsKVAcard", KaamA: "statsKaamAcard", N28A: "statsN28Acard" };
+  function $(id) { return document.getElementById(id); }
+  window.StatsPick = function (k, v) {
+    var n = $("stats" + k + "Npane"), a = $("stats" + k + "Apane"), bar = $(IDS[k]);
+    if (!n || !a) return;
+    n.style.display = v === "a" ? "none" : "";
+    a.style.display = v === "a" ? "" : "none";
+    if (bar) Array.prototype.forEach.call(bar.querySelectorAll(".mlog-tab"), function (b) { b.classList.toggle("on", b.getAttribute("data-v") === v); });
+  };
+  function sync() {
+    KEYS.forEach(function (k) {
+      var bar = $(IDS[k]), a = $("stats" + k + "Apane");
+      if (!bar || !a) return;
+      // tabs hidden (audio mode off and no audio history) -> always show the normal view
+      if (bar.style.display === "none" && a.style.display !== "none") window.StatsPick(k, "n");
+    });
+  }
+  setInterval(function () { try { sync(); } catch (_e) {} }, 1500);
+})();

@@ -1,3 +1,4 @@
+// v349: Jap-screen Lifetime box text now wraps inside the box; Stats show each jap type (Radha / RV / KV / Kaam / 28 Names) as ONE card with a Normal / Audio toggle.
 // v348: Radha Vallabh / Krishnay Vasudevay / Kaam Vijay audio now have their own History, Audio Chant Log, Stats cards and Leaderboard lines (RV-A, KV-A, Kaam-A).
 // v347: Audio Mode now also works for Radha Vallabh Shri Harivansh, Krishnay Vasudevay and Kaam Vijay (audio/radha_vallabh_shri_harivansh.mp3, krishnay_vasudevay.mp3, kaam_vijay.mp3).
 // v346: Divine Darshan - added Radha Piyo Ju and Radha Mohan Ju (Radha Keli Kunj, Radha Vallabh Sampraday); new "Seva" line on deity pages.
@@ -415,7 +416,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v348';
+const CACHE = 'radha-jap-v349';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

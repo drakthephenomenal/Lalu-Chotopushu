@@ -27269,6 +27269,40 @@ function renderLeaderboard(docs, period) {
     const scrSec = (d.screenTimeHistory || {})[_lbTodayKey] || 0;
     return { japSec: japSec, scrSec: scrSec };
   };
+  // Own row: this device always knows its own audio (R-A / RV-A / KV-A /
+  // KM-A / 28N-A) counts instantly, whereas the cloud entry can lag or be
+  // overwritten by another device/build. Merge per-day (larger wins) so the
+  // audio lines on "You" never flicker back to plain R.
+  const _lbMaxMap = function (a, b) {
+    const o = Object.assign({}, a || {});
+    for (const k in (b || {})) if ((b[k] || 0) > (o[k] || 0)) o[k] = b[k];
+    return o;
+  };
+  const _lbMyUid = fbUser && fbUser.uid;
+  docs = docs.map(function (d0) {
+    if (!_lbMyUid || d0._uid !== _lbMyUid) return d0;
+    try {
+      if (typeof isGhostMode === 'function' && isGhostMode()) return d0;
+      if (!App._cloudHydrated) return d0;
+      const S = App.S, d = Object.assign({}, d0);
+      d.historyRA = _lbMaxMap(d0.historyRA, S.historyAudio);
+      d.historyRVA = _lbMaxMap(d0.historyRVA, (S.audioHistM || {}).rv);
+      d.historyKVA = _lbMaxMap(d0.historyKVA, (S.audioHistM || {}).kv);
+      d.historyKaamA = _lbMaxMap(d0.historyKaamA, (S.audioHistM || {}).kaam);
+      d.historyRA28 = _lbMaxMap(d0.historyRA28, S.historyAudio28);
+      const tk = App.getTk();
+      if (d0.todayKey === tk) {
+        const bd = Object.assign({}, d0.todayBreakdown || {});
+        bd.ra = Math.max(bd.ra || 0, d.historyRA[tk] || 0);
+        bd.rva = Math.max(bd.rva || 0, d.historyRVA[tk] || 0);
+        bd.kva = Math.max(bd.kva || 0, d.historyKVA[tk] || 0);
+        bd.kaama = Math.max(bd.kaama || 0, d.historyKaamA[tk] || 0);
+        bd.n28a = Math.max(bd.n28a || 0, d.historyRA28[tk] || 0);
+        d.todayBreakdown = bd;
+      }
+      return d;
+    } catch (_e) { return d0; }
+  });
   const scored = docs.map(function(d) {
     let score = 0;
     let timeScore = 0;
@@ -27359,8 +27393,14 @@ function renderLeaderboard(docs, period) {
         const bd = d.todayBreakdown || {};
         const tbd = d.todayTimeBreakdown || {};
         sr = bd.r || 0;
-        sra = bd.ra || 0;
-        srva = bd.rva || 0; skva = bd.kva || 0; skaama = bd.kaama || 0;
+        // Audio parts: take the larger of todayBreakdown and the per-day audio
+        // history in the same doc, so R-A / RV-A / KV-A / KM-A never vanish
+        // just because one of the two sources was written without them.
+        const _tk0 = periodKeys[0];
+        sra = Math.max(bd.ra || 0, (d.historyRA || {})[_tk0] || 0);
+        srva = Math.max(bd.rva || 0, (d.historyRVA || {})[_tk0] || 0);
+        skva = Math.max(bd.kva || 0, (d.historyKVA || {})[_tk0] || 0);
+        skaama = Math.max(bd.kaama || 0, (d.historyKaamA || {})[_tk0] || 0);
         srv = bd.rv || 0;
         skv = bd.kv || 0;
         sss = bd.ss || 0;
@@ -27368,7 +27408,7 @@ function renderLeaderboard(docs, period) {
         sram = bd.ram || 0;
         skaam = bd.kaam || 0;
         s28 = bd.n28 || 0;
-        s28a = bd.n28a || 0;
+        s28a = Math.max(bd.n28a || 0, (d.historyRA28 || {})[_tk0] || 0);
         tr = tbd.r || 0;
         trv = tbd.rv || 0;
         tkv = tbd.kv || 0;

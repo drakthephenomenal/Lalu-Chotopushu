@@ -1,3 +1,6 @@
+// v344: 28 Names audio - the name shown follows the clip being played (all modes), faster sync.
+// v343: 28 Names Audio Chant (audio/28name_0.mp3) - one clip finished = 1 name counted; precached for offline.
+// v342: Audio Mode - Chanting (counted) vs Listening only (not counted); 28 Names + stotram/pad audio locked while the chant plays ("turn off audio chanting first").
 // v341: Audio Mode stop limits - type malas OR time, the other (and jap count) is calculated; Save button.
 // v340: Audio Mode ON = manual touch on the Radha jap display is disabled (playing or not).
 // v339: Daily card - Audio Chant button moved to its own row; tap count + undo moved onto the malas line (no more overlap).
@@ -408,7 +411,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v341';
+const CACHE = 'radha-jap-v344';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 
@@ -473,6 +476,7 @@ const LAZY_LOCAL_ASSETS = [
   './gurudev/2.png',
   './Panchojanno%20Shankya.mp3',
   './audio/radha_naam_chant.mp3',
+  './audio/28name_0.mp3',
   // Rasik Jan o Bhakta Jan carousel (79 portraits) — added v219.
   './rashikan/p000.jpg',
   './rashikan/p001.jpg',

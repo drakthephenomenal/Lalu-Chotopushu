@@ -391,6 +391,11 @@
       </button>
     </div>
   </div>
+  <div style="display:flex;justify-content:center;margin:2px 0 6px;">
+    <button id="n28AudioBtn" type="button" onclick="AudioChant28.toggle()" aria-label="28 Names Audio Chant" style="display:flex;align-items:center;gap:8px;padding:6px 16px;border-radius:18px;border:1px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.08);color:#FFD700;font-size:13px;letter-spacing:.3px;cursor:pointer;">
+      <span id="n28AudioLbl">Audio Chant</span><span id="n28AudioIco" class="achant-ico" style="width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;background:rgba(255,215,0,0.14);border:1px solid rgba(255,215,0,0.35);">▶</span>
+    </button>
+  </div>
   <div class="sk-panel" id="n28StatsCollapse">
     <div class="sk-panel-inner" style="padding:10px 14px 14px">
 
@@ -2129,6 +2134,11 @@
         <div class="tg" id="tgAudioMode" onclick="AudioChant.toggleMode()"></div>
       </div>
       <div id="audioModeOpts" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,215,0,0.2);">
+        <div style="display:flex;gap:8px;margin-bottom:6px;">
+          <button id="audioChipCount" type="button" onclick="AudioChant.setListenOnly(false)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid rgba(255,215,0,0.25);background:rgba(0,0,0,0.25);color:var(--tl);font-size:12px;cursor:pointer;line-height:1.3;">Audio Chanting<br><span style="font-size:10px;opacity:.75">counted</span></button>
+          <button id="audioChipListen" type="button" onclick="AudioChant.setListenOnly(true)" style="flex:1;padding:8px 6px;border-radius:10px;border:1px solid rgba(255,215,0,0.25);background:rgba(0,0,0,0.25);color:var(--tl);font-size:12px;cursor:pointer;line-height:1.3;">Audio Listening only<br><span style="font-size:10px;opacity:.75">not counted</span></button>
+        </div>
+        <div id="audioModeNote" style="font-size:11px;color:var(--td);margin-bottom:10px;"></div>
         <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tl);margin-bottom:10px;">
           <span style="flex:1;">Stop after</span>
           <input id="audioStopMalas" type="number" inputmode="numeric" min="0" max="999" placeholder="0" oninput="AudioChant.optEdit('malas')"

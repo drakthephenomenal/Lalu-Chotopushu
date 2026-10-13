@@ -757,7 +757,7 @@ const App = {
     syncBaselineRV: {},
     syncBaselineTimerRV: {},
     activityLog: [],
-    audioChantLog: [], historyAudio: {}, audioMode: false, audioStopMalas: 0, audioStopSecs: 0, audioStopDaily: false,
+    audioChantLog: [], historyAudio: {}, audioMode: false, audioListenOnly: false, audioStopMalas: 0, audioStopSecs: 0, audioStopDaily: false,
     sadhanaStart: "",
     milestones: { reached: {}, lastChecked: 0 },
     // Which jap types count toward the Milestones (Bhagvat Prapti) total.
@@ -1012,6 +1012,7 @@ const App = {
       audioStopMalas: this.S.audioStopMalas || 0,
       audioStopSecs: this.S.audioStopSecs || 0,
       audioStopDaily: !!this.S.audioStopDaily,
+      audioListenOnly: !!this.S.audioListenOnly,
       sadhanaStart: this.S.sadhanaStart || "",
       historyHK: this.S.historyHK || {},
       timerHistoryHK: this.S.timerHistoryHK || {},
@@ -1219,6 +1220,7 @@ const App = {
     if (this.S.audioStopMalas === undefined) this.S.audioStopMalas = 0;
     if (this.S.audioStopSecs === undefined) this.S.audioStopSecs = 0;
     if (this.S.audioStopDaily === undefined) this.S.audioStopDaily = false;
+    if (this.S.audioListenOnly === undefined) this.S.audioListenOnly = false;
     if (!this.S.sadhanaStart)
       this.S.sadhanaStart = localStorage.getItem("rjap_sadhana_start") || "";
     if (!this.S.historyHK) this.S.historyHK = {};
@@ -2310,7 +2312,7 @@ const App = {
     if (isGhostMode()) return; // ghost mode: read-only, no jap
     // Audio chant playing: counter is unresponsive to touch (audio counts on its own)
     // Audio Mode ON (Radha main jap): manual tap is disabled whether or not the chant is playing.
-    if (window.AudioChant && (window.AudioChant.playing || window.AudioChant.blocksTouch())) { try { if (e) e.preventDefault(); } catch (_) {} window.AudioChant.tapBlocked(); return; }
+    if (window.AudioChant && (window.AudioChant.busy() || window.AudioChant.blocksTouch())) { try { if (e) e.preventDefault(); } catch (_) {} window.AudioChant.tapBlocked(); return; }
     window._rjLastCountKind = "touch";
     if (window._rvNamesLock) { try { if (e) e.preventDefault(); } catch (_) {} return; } // 5s mala-complete name display: jap unresponsive
     if (window.japPhotoEditMode) return; // photo edit mode: dragging/resizing photos, not counting
@@ -2649,6 +2651,7 @@ const App = {
 
   // ── 28 Names tap ──
   h28(e) {
+    if (window.AudioChant && window.AudioChant.busy()) { try { if (e) e.preventDefault(); } catch (_) {} window.AudioChant.warnBusy(); return; }
     // v154: ghost mode is strictly read-only. Block the tap before ANY state
     // mutation so we never imprint the viewed user's session onto the dev's
     // own profile. Wish target cycle counts remain visible via renderSankalpas().
@@ -2692,6 +2695,24 @@ const App = {
     this._arm28AutoPause();
     if (this.S.h28[this.S.tk] % 28 === 0) cycleDone28();
     u28();
+  },
+
+  // Called by the 28 Names audio chant: one finished clip = one name counted (same effects as a tap, minus the gesture).
+  count28Auto() {
+    if (isGhostMode()) return false;
+    try { if (window._rjMidnightCheck) window._rjMidnightCheck(); } catch (_e) {}
+    this._activeJapMode = "n28";
+    if (this._n28Paused) this.resume28();
+    if (!this.S.h28[this.S.tk]) this.S.h28[this.S.tk] = 0;
+    this.S.h28[this.S.tk]++;
+    this._saveSoon();
+    this.start28Timers();
+    this.tapTimer();
+    this._n28LastTapTs = Date.now();
+    this._arm28AutoPause();
+    if (this.S.h28[this.S.tk] % 28 === 0) cycleDone28();
+    u28();
+    return true;
   },
 
   undo28() {
@@ -4537,6 +4558,7 @@ function setSyncPill(state, text) {
 
 // ── View Switcher ──
 function sv(id, btn) {
+  if (id === "v28" && window.AudioChant && window.AudioChant.playing) { window.AudioChant.warnBusy(); return; }   // 28 Names is off while audio chant is on
   document
     .querySelectorAll(".view")
     .forEach((v) => v.classList.remove("active"));
@@ -8696,7 +8718,7 @@ function _buildBackupPayload() {
     activityLog: App.S.activityLog || [],
     audioChantLog: App.S.audioChantLog || [],
     historyAudio: App.S.historyAudio || {},
-    audioMode: !!App.S.audioMode, audioStopMalas: App.S.audioStopMalas || 0, audioStopSecs: App.S.audioStopSecs || 0, audioStopDaily: !!App.S.audioStopDaily,
+    audioMode: !!App.S.audioMode, audioStopMalas: App.S.audioStopMalas || 0, audioStopSecs: App.S.audioStopSecs || 0, audioStopDaily: !!App.S.audioStopDaily, audioListenOnly: !!App.S.audioListenOnly,
     manualJapCount: App.S.manualJapCount || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} },
     manualJapTime: App.S.manualJapTime || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} },
   };
@@ -8924,7 +8946,7 @@ function importAllData(input) {
       App.S.activityLog = Array.isArray(data.activityLog) ? data.activityLog : [];
       App.S.audioChantLog = Array.isArray(data.audioChantLog) ? data.audioChantLog : [];
       App.S.historyAudio = (data.historyAudio && typeof data.historyAudio === "object") ? data.historyAudio : {};
-      App.S.audioMode = !!data.audioMode; App.S.audioStopMalas = data.audioStopMalas || 0; App.S.audioStopSecs = data.audioStopSecs || 0; App.S.audioStopDaily = !!data.audioStopDaily;
+      App.S.audioMode = !!data.audioMode; App.S.audioStopMalas = data.audioStopMalas || 0; App.S.audioStopSecs = data.audioStopSecs || 0; App.S.audioStopDaily = !!data.audioStopDaily; App.S.audioListenOnly = !!data.audioListenOnly;
        App.S.manualJapCount = data.manualJapCount || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} };
        App.S.manualJapTime = data.manualJapTime || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} };
       App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history));
@@ -13672,6 +13694,7 @@ function get28Name(entry) {
 }
 
 function get28Pos() {
+  if (typeof window._n28AudioPos === "number") return window._n28AudioPos;   // 28 Names audio: show the name being sung
   return (App.S.h28[App.S.tk] || 0) % 28;
 }
 
@@ -18310,7 +18333,7 @@ function _sapEnsureFrame() {
 
 // Start pad i from the beginning (audio-only; the video stays hidden).
 function _sapPlay(i, scroll) {
-  try { if (window.AudioChant && window.AudioChant.playing) window.AudioChant.stop(); } catch (_e) {}
+  if (window.AudioChant && window.AudioChant.busy()) { window.AudioChant.warnBusy(); return; }   // stotram audio is off while audio chant is on
   if (!_sap || !_sap.tracks[i]) return;
   if (!_sapOnline()) { _sapWarn(i); return; }
   _sapEnsureFrame();
@@ -23961,6 +23984,7 @@ function _rjAnyMediaPlaying() {
     if (typeof _hcjPlaying !== "undefined" && _hcjPlaying) return true;
     if (typeof _sap !== "undefined" && _sap && (_sap.state === 1 || _sap.state === 3)) return true;
     if (window.AudioChant && window.AudioChant.playing) return true;
+    if (window.AudioChant28 && window.AudioChant28.playing) return true;
   } catch (_e) {}
   return false;
 }
@@ -24495,6 +24519,7 @@ function _hcjAdoptWarm(autoplay) {
   return true;
 }
 function _hcjPlayTimed(idx) {
+  if (window.AudioChant && window.AudioChant.busy()) { window.AudioChant.warnBusy(); return; }
   _hcjOfflineSwitch();
   var cfg = _hcjTimedCfg();
   var start = Math.max(0, +cfg.marks[idx] || 0);
@@ -24566,7 +24591,7 @@ function _hcjPlayTimed(idx) {
   });
 }
 function _hcjPlayVerse(idx) {
-  try { if (window.AudioChant && window.AudioChant.playing) window.AudioChant.stop(); } catch (_e) {}
+  if (window.AudioChant && window.AudioChant.busy()) { window.AudioChant.warnBusy(); return; }   // stotram audio is off while audio chant is on
   window._hcjPlayIdx = idx;
   var _tcfg = _hcjTimedCfg();
   if (_tcfg && _tcfg.timed) { _hcjPlayTimed(idx); return; }
@@ -24625,6 +24650,7 @@ function _hcjPlayVerse(idx) {
   _hcjAudio.play().then(_hcjOnPlayStarted).catch(_hcjOnPlayFailed);
 }
 function _hcjTogglePlay() {
+  if (window.AudioChant && window.AudioChant.busy() && !_hcjPlaying) { window.AudioChant.warnBusy(); return; }
   if (_hcjPlaying) {
     /* True pause — keeps position so Resume works */
     _hcjPauseAudio();
@@ -29692,6 +29718,14 @@ const AudioChant = (function () {
   let finishing = false, finishMsg = "", finishAt = 0, stopping = false;
   let dailyArmed = false, autoStopping = false, lmcA = 0, lmcATk = "", lastBlockToast = 0, tog = false;
   const api = { get playing() { return playing; } };
+  let lsn = false, listenLoops = 0, lastWarn = 0;       // lsn = this session is "listening only" (nothing is counted)
+  function listenOnly() { return !!App.S.audioListenOnly; }
+  api.busy = function () { return !!playing || !!(window.AudioChant28 && window.AudioChant28.playing); };   // any audio chant on -> manual taps / stotram audio are locked
+  api.warnBusy = function () {
+    const n = Date.now();
+    if (n - lastWarn > 2500) { lastWarn = n; toast("Please turn off audio chanting first 🙏"); }
+  };
+  api._el = function () { return el; };
 
   function dur() { return (el && isFinite(el.duration) && el.duration > 0.3) ? el.duration : 0.869; }
   function log() { if (!App.S.audioChantLog) App.S.audioChantLog = []; return App.S.audioChantLog; }
@@ -29706,18 +29740,18 @@ const AudioChant = (function () {
     const ico = document.getElementById("audioChantIco");
     const lbl = document.getElementById("audioChantLbl");
     if (ico) ico.textContent = playing ? "⏸" : "▶";
-    if (lbl) lbl.textContent = finishing ? "Finishing…" : "Audio Chant";
+    if (lbl) lbl.textContent = finishing ? "Finishing…" : (listenOnly() ? "Audio Listen" : "Audio Chant");
   }
 
   // Bead position shown on the Jap screen: audio's own counter while the chant plays,
   // otherwise the TOUCH counter (total minus audio) — so they never share a position.
   api.beadCount = function (tod) {
-    if (playing && isMainMode()) return audioToday();
+    if (playing && isMainMode() && !lsn) return audioToday();
     return isMainMode() ? Math.max(0, tod - audioToday()) : tod;
   };
   api.paintBead = function () {
     const j = document.getElementById("jms");
-    if (j) j.style.color = (playing && isMainMode()) ? "#6DB8FF" : "";
+    if (j) j.style.color = (playing && isMainMode() && !lsn) ? "#6DB8FF" : "";
   };
 
   // floating "Radha" animation, same look as a touch tap but at a random spot
@@ -29821,14 +29855,16 @@ const AudioChant = (function () {
     const n = Math.floor(acc / D + 1e-6);
     acc -= n * D;
     lastT = t; lastWall = now;
-    if (n > 0) credit(n);
+    if (n > 0) { if (lsn) { listenLoops += n; spawnAuto(); } else credit(n); }   // listening only: animation, but nothing is counted
     if (finishing) {
       // a pending stop waits for the chant in progress to complete (n>0 = a loop just finished)
       if (n > 0 || Date.now() - finishAt > 2500) { const m = finishMsg; api.stop(); if (m) toast("🙏 Audio chant stopped — " + m); }
       return;
     }
     const limS = +App.S.audioStopSecs || 0;
-    if (limS > 0 && sess && (Date.now() - sess.start) / 1000 >= limS) api.requestStop("time limit " + fmtHMS(limS) + " reached");
+    const t0 = sess ? sess.start : startedAt;
+    if (limS > 0 && t0 && (Date.now() - t0) / 1000 >= limS) api.requestStop("time limit " + fmtHMS(limS) + " reached");
+    if (lsn) { const nmL = +App.S.audioStopMalas || 0, msL = App.S.ms || 108; if (nmL > 0 && listenLoops >= nmL * msL) api.requestStop(nmL + (nmL === 1 ? " mala" : " malas") + " done"); }
   }
 
   // Never stop in the middle of a chant: wait for the current loop to complete, then stop.
@@ -29872,24 +29908,29 @@ const AudioChant = (function () {
       el.addEventListener("pause", function () { if (playing) api.stop(true); });
       el.addEventListener("error", function () { if (playing || starting) { starting = false; api.stop(true); toast("Audio chant file could not be played"); } });
     }
+    if (window.AudioChant28 && window.AudioChant28.playing) { toast("Please turn off the 28 Names audio first 🙏"); return; }
     try { if (typeof _rjAnyMediaPlaying === "function" && _rjAnyMediaPlaying()) { toast("Stop the stotram / pad audio first"); return; } } catch (_e) {}
     starting = true;
     const p = el.play();
     const go = function () {
       starting = false;
       playing = true; acc = 0; lastT = el.currentTime || 0; lastWall = Date.now() / 1000; startedAt = Date.now();
-      sess = { id: startedAt, tk: App.S.tk, start: startedAt, end: startedAt, count: 0 };
+      lsn = listenOnly(); listenLoops = 0;
       const S = App.S, ms = S.ms || 108;
-      dailyArmed = !!S.audioStopDaily && (S.dt || 0) > 0 && (S.history[S.tk] || 0) < S.dt;
-      if (S.audioStopDaily && !dailyArmed && (S.dt || 0) > 0) toast("Daily target already reached — chanting until you pause");
-      lmcATk = S.tk; lmcA = Math.floor(audioToday() / ms);
-      const L = log(); L.push(sess); if (L.length > MAX_LOG) L.splice(0, L.length - MAX_LOG);
+      if (lsn) { sess = null; dailyArmed = false; }       // listening only: no session, no log, no counting
+      else {
+        sess = { id: startedAt, tk: App.S.tk, start: startedAt, end: startedAt, count: 0 };
+        dailyArmed = !!S.audioStopDaily && (S.dt || 0) > 0 && (S.history[S.tk] || 0) < S.dt;
+        if (S.audioStopDaily && !dailyArmed && (S.dt || 0) > 0) toast("Daily target already reached — chanting until you pause");
+        lmcATk = S.tk; lmcA = Math.floor(audioToday() / ms);
+        const L = log(); L.push(sess); if (L.length > MAX_LOG) L.splice(0, L.length - MAX_LOG);
+      }
       window._rjKATitle = "Radha Naam · Audio Chant";
       try { _rjKeepAlive(true); } catch (_e) {}
       setMediaSession(true);
       clearInterval(poller); poller = setInterval(poll, 60);
       try { App.ua(); } catch (_e) {}
-      malaView = "audio"; api.renderMalaLog();      // show the Radha Audio malas while chanting
+      if (!lsn) { malaView = "audio"; api.renderMalaLog(); }      // show the Radha Audio malas while chanting
       ui(); api.renderLog();
     };
     if (p && p.then) p.then(go).catch(function () { starting = false; toast("Tap again to start audio chant"); });
@@ -30063,6 +30104,16 @@ const AudioChant = (function () {
     { const t = on && isMainMode(); if (t !== lastTabsOn) { lastTabsOn = t; api.renderMalaLog(); } }
     /* Audio Chant now sits in its own row inside the Daily card - no reserved bottom padding needed */
     const a = document.getElementById("tgAudioMode"); if (a) a.classList.toggle("on", on);
+    { const lo = !!(S && S.audioListenOnly);
+      [["audioChipCount", !lo], ["audioChipListen", lo]].forEach(function (p) {
+        const e = document.getElementById(p[0]); if (!e) return;
+        e.style.background = p[1] ? "rgba(255,215,0,0.18)" : "rgba(0,0,0,0.25)";
+        e.style.borderColor = p[1] ? "rgba(255,215,0,0.7)" : "rgba(255,215,0,0.25)";
+        e.style.color = p[1] ? "#FFD700" : "var(--tl)";
+      });
+      const nt = document.getElementById("audioModeNote");
+      if (nt) nt.textContent = lo ? "Listening only: the chant plays, but nothing is counted or logged." : "Chanting: every loop is counted as Radha Audio (R-A).";
+      ui(); }
     const b = document.getElementById("tgAudioStopDaily"); if (b) b.classList.toggle("on", !!(S && S.audioStopDaily));
     if (!optDirty) {   // never overwrite numbers the user has typed but not saved yet
       const m = document.getElementById("audioStopMalas");
@@ -30075,6 +30126,12 @@ const AudioChant = (function () {
       showOptHint((S && +S.audioStopMalas) || 0, (S && +S.audioStopSecs) || 0, "");
     }
     if (!on && (playing || starting)) api.stop();
+  };
+  api.setListenOnly = function (v) {
+    if (playing) api.stop();
+    App.S.audioListenOnly = !!v;
+    App._saveSoon(); api.applyMode(); ui();
+    toast(v ? "Audio Listening only — nothing will be counted 🎧" : "Audio Chanting — loops are counted");
   };
   api.toggleMode = function () {
     if (playing) api.stop();
@@ -30156,3 +30213,137 @@ const AudioChant = (function () {
   return api;
 })();
 window.AudioChant = AudioChant;
+// While the audio chant is on, other media (stotram / pad / video audio) will not start.
+// The chant itself, the mala-completion chime and the coin sound are allowed.
+(function () {
+  try {
+    const _play = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () {
+      try {
+        const AC = window.AudioChant;
+        if (AC && AC.busy() && this !== AC._el() && !(window.AudioChant28 && this === window.AudioChant28._el()) && !/Panchojanno|radha_naam_chant|radha-coin/i.test(this.currentSrc || this.src || "")) {
+          AC.warnBusy();
+          return Promise.reject(new DOMException("Audio chant is on", "NotAllowedError"));
+        }
+      } catch (_e) {}
+      return _play.apply(this, arguments);
+    };
+  } catch (_e) {}
+})();
+
+
+// ═══════════════════════════════════════════════════════
+// ── 28 NAMES AUDIO CHANT ──
+// One recording (audio/28name_0.mp3) holds the 28 names back to back. Playback starts at the name that
+// is currently on screen; every time a name's clip finishes, 1 name is counted (28 = one cycle).
+// Pausing mid-name does not count that name — it resumes from the same name.
+// With Audio Mode ON + "Listening only", it just plays and counts nothing.
+// ═══════════════════════════════════════════════════════
+const AudioChant28 = (function () {
+  const SRC = "audio/28name_0.mp3";
+  const STARTS = [0.0, 1.086, 2.953, 4.408, 8.017, 10.083, 11.636, 14.373, 15.995, 17.045, 20.055, 21.638, 22.568, 23.632, 25.117, 27.768, 28.835, 30.43, 31.381, 32.649, 33.773, 35.129, 36.4, 37.808, 39.6, 40.69, 43.184, 45.097];
+  const ENDS = [1.086, 2.953, 4.408, 8.017, 10.083, 11.636, 14.373, 15.995, 17.045, 20.055, 21.638, 22.568, 23.632, 25.117, 27.768, 28.835, 30.43, 31.381, 32.649, 33.773, 35.129, 36.4, 37.808, 39.6, 40.69, 43.184, 45.097, 48.888];
+  const D0 = ENDS[27];
+  let el = null, playing = false, starting = false, poller = 0;
+  let lastT = 0, lastWall = 0, played = 0, startIdx = 0, nextK = 0, lsn = false, startedAt = 0;
+  const api = { get playing() { return playing; }, _el: function () { return el; } };
+
+  function D() { return (el && isFinite(el.duration) && el.duration > 1) ? el.duration : D0; }
+  function endOf(k) { return Math.floor(k / 28) * D() + ENDS[k % 28]; }
+
+  function ui() {
+    const ico = document.getElementById("n28AudioIco"), lbl = document.getElementById("n28AudioLbl");
+    if (ico) ico.textContent = playing ? "⏸" : "▶";
+    if (lbl) lbl.textContent = (App.S.audioMode && App.S.audioListenOnly) ? "Audio Listen" : "Audio Chant";
+  }
+
+  function poll() {
+    if (!playing || !el) return;
+    const now = Date.now() / 1000, t = el.currentTime, d0 = D();
+    let d = t - lastT;
+    if (d < 0) { if (-d < 0.05) d = 0; else d += d0; }
+    const wall = now - lastWall;
+    let extra = 0;
+    if (!el.paused && wall - d > d0 * 0.75) extra = Math.min(Math.round((wall - d) / d0), 4000);   // screen-off / throttled catch-up
+    played += d + extra * d0;
+    lastT = t; lastWall = now;
+    const P = STARTS[startIdx] + played + 0.04;
+    let n = 0;
+    while (endOf(nextK) <= P && n < 5000) { nextK++; n++; }
+    if (n > 0 && !lsn) { for (let i = 0; i < n; i++) { if (!App.count28Auto()) break; } }
+    // Show the name whose time portion is playing right now (works in listening-only mode too).
+    const cur = nextK % 28;
+    if (window._n28AudioPos !== cur) { window._n28AudioPos = cur; try { u28(); } catch (_e) {} }
+  }
+
+  function setMediaSession(on) {
+    try {
+      if (!("mediaSession" in navigator)) return;
+      const ms = navigator.mediaSession;
+      if (on) {
+        ms.metadata = new MediaMetadata({ title: "28 Names · Audio Chant", artist: "Radha Naam Jap" });
+        ms.playbackState = "playing";
+        ms.setActionHandler("pause", function () { api.stop(); });
+        ms.setActionHandler("stop", function () { api.stop(); });
+        ms.setActionHandler("play", function () { api.start(); });
+      } else { ms.playbackState = "paused"; }
+    } catch (_e) {}
+  }
+
+  api.start = function () {
+    if (playing || starting) return;
+    if (window.AudioChant && window.AudioChant.playing) { toast("Please turn off audio chanting first 🙏"); return; }
+    if (typeof isGhostMode === "function" && isGhostMode()) { toast("Ghost mode: read-only"); return; }
+    try { if (typeof _rjAnyMediaPlaying === "function" && _rjAnyMediaPlaying()) { toast("Stop the stotram / pad audio first"); return; } } catch (_e) {}
+    if (!el) {
+      el = new Audio(SRC); el.preload = "auto"; el.loop = true;
+      el.addEventListener("timeupdate", poll);
+      el.addEventListener("pause", function () { if (playing) api.stop(); });
+      el.addEventListener("error", function () { if (playing || starting) { starting = false; api.stop(); toast("28 Names audio could not be played"); } });
+    }
+    lsn = !!(App.S.audioMode && App.S.audioListenOnly);
+    startIdx = lsn ? 0 : (typeof get28Pos === "function" ? get28Pos() : 0);
+    try { el.currentTime = STARTS[startIdx]; } catch (_e) {}
+    starting = true;
+    const p = el.play();
+    const go = function () {
+      starting = false; playing = true;
+      played = 0; nextK = startIdx; lastT = el.currentTime || STARTS[startIdx]; lastWall = Date.now() / 1000; startedAt = Date.now();
+      window._rjKATitle = "28 Names · Audio Chant";
+      try { _rjKeepAlive(true); } catch (_e) {}
+      setMediaSession(true);
+      clearInterval(poller); poller = setInterval(poll, 40);
+      window._n28AudioPos = startIdx; try { u28(); } catch (_e) {}
+      try { App.ua(); } catch (_e) {}
+      ui();
+    };
+    if (p && p.then) p.then(go).catch(function () { starting = false; toast("Tap again to start the 28 Names audio"); });
+    else go();
+  };
+
+  api.stop = function () {
+    if (!playing && !starting) return;
+    try { poll(); } catch (_e) {}
+    playing = false; starting = false;
+    window._n28AudioPos = null;
+    clearInterval(poller); poller = 0;
+    try { if (el && !el.paused) el.pause(); } catch (_e) {}
+    window._rjKATitle = "";
+    setMediaSession(false);
+    try { _rjKeepAlive(false); } catch (_e) {}
+    try { App.save(); } catch (_e) {}
+    try { u28(); } catch (_e) {}
+    ui();
+  };
+
+  api.toggle = function () { if (playing) api.stop(); else api.start(); };
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState !== "visible") return;
+    if (playing && el && el.paused) api.stop(); else { try { poll(); } catch (_e) {} }
+    ui();
+  });
+  window.addEventListener("load", function () { setTimeout(ui, 800); });
+  setInterval(ui, 3000);
+  return api;
+})();
+window.AudioChant28 = AudioChant28;

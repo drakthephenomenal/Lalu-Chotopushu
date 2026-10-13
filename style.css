@@ -4176,3 +4176,9 @@ details.dd-kt>summary::after{content:' ▾';}
 /* ── Stats: normal + audio in ONE card with two options ── */
 .dc-tabs{margin:0 0 10px;}
 .dc-tabs .mlog-tab{padding:6px 6px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+
+/* ── Audio Add / Deduct: Today / Other Day / Lifetime sub-sections + chip note ── */
+.aa-sub{margin-bottom:8px;}
+.aa-sub .cs-body.open{padding:0 14px 14px;}
+.aa-hint{font-size:11.5px;color:var(--td);line-height:1.5;margin:0 0 10px;}
+.mj-audio-note{margin-top:8px;padding:8px 10px;border-radius:10px;font-size:11.5px;line-height:1.5;color:#6DB8FF;background:rgba(109,184,255,0.08);border:1px solid rgba(109,184,255,0.28);}

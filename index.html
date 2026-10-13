@@ -26,7 +26,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
-<link rel="stylesheet" href="./style.css?v=133">
+<link rel="stylesheet" href="./style.css?v=134">
   <link rel="stylesheet" href="./style-stotram.css?v=133">
   <link rel="stylesheet" href="./vedic-panchanga/panchanga.css?v=161">
 <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
@@ -1087,7 +1087,7 @@
       <span class="sg-chevron" id="audioAdjChev">▾</span>
     </div>
     <div class="sg-body" id="audioAdjBody">
-      <div style="font-size:11px;color:var(--td);line-height:1.5;margin:2px 4px 8px;">Add or deduct audio-mode jap for Radha, Radha Vallabh, Krishnay Vasudevay or Kaam Vijay on any day. The mode's total changes with it and the audio time is added or deducted automatically (each audio loop has a fixed length); touch counts stay as they are. (28 Names audio has its own section in the 28 Names stats.)</div>
+      <div style="font-size:11px;color:var(--td);line-height:1.5;margin:2px 4px 8px;">Add or deduct audio-mode jap for Radha, Radha Vallabh, Krishnay Vasudevay or Kaam Vijay on any day. The mode's total changes with it and the audio time is added or deducted automatically (each audio loop has a fixed length); touch counts stay as they are. Each has Today, Other Day and Before this app (Lifetime). The same audio options are also in the Add / Deduct Jap Manually chips above. (28 Names audio has its own section in the 28 Names stats.)</div>
       <div id="audioAdjMain"></div>
     </div>
   </div>
@@ -1505,7 +1505,8 @@
       <div style="margin-bottom:14px;padding:10px 12px;background:rgba(255,215,0,0.05);border:1px solid rgba(255,215,0,0.20);border-radius:12px">
         <div style="font-size:10px;color:var(--gold);letter-spacing:1px;font-weight:600;margin-bottom:6px">🕉️ WHICH JAP?</div>
         <div id="mjTypeChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-        <div style="font-size:11px;color:var(--td);margin-top:7px">Everything below (add, deduct, lifetime) changes only the jap you select here.</div>
+        <div style="font-size:11px;color:var(--td);margin-top:7px">Everything below (add, deduct, lifetime) changes only the jap you select here. 🎧 Audio chips are always available (Radha, Radha Vallabh, Krishnay Vasudevay, Kaam Vijay).</div>
+        <div id="mjAudioNote" class="mj-audio-note" style="display:none">🎧 Audio selected — audio time is added / deducted automatically (fixed loop length), so the Min / Sec boxes are ignored. Lifetime deduct takes only from "before this app" audio.</div>
       </div>
 
       <!-- ADD JAP sub-section -->

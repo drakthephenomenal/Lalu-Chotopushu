@@ -1,3 +1,4 @@
+// v354: Add / Deduct Jap Manually — 🎧 audio chips (Radha, Radha Vallabh, Krishnay Vasudevay, Kaam Vijay) always shown; every audio Add / Deduct card (Stats + 28 Names Audio) now has Today, Other Day and Before this app (Lifetime).
 // v353: Add / Deduct also adds / deducts the matching audio time (fixed loop length).
 // v352: Audio modes (R-A / RV-A / KV-A / KM-A / 28N-A) - Add / Deduct in Statistics; 28 Names audio has its own section in the 28 Names stats.
 // v351: Leaderboard - audio chanting always shows as R-A / RV-A / KV-A / KM-A / 28N-A (no more flipping back to plain R); your own row uses this device's live audio counts.
@@ -420,7 +421,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v353';
+const CACHE = 'radha-jap-v354';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

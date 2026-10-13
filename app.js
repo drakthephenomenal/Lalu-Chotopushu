@@ -29933,22 +29933,36 @@ async function checkAppUpdate() {
 // Radha, Radha Vallabh, Krishnay Vasudevay, Hare Krishna, Samba Sadashiv,
 // Raam Vijay Mantra, Kaam Vijay. Defaults to the jap open on the Jap tab.
 (function () {
-  const MJ_TYPES = ["radha", "rv", "kv", "hk", "ss", "ram", "kaam"];
+  const BASE_TYPES = ["radha", "rv", "kv", "hk", "ss", "ram", "kaam"];
+  // Audio variants — always shown, whether Audio Mode is on or off.
+  const AUDIO_TYPES = ["radha_a", "rv_a", "kv_a", "kaam_a"];
+  const MJ_TYPES = BASE_TYPES.concat(AUDIO_TYPES);
   const HIST = { radha: "history", rv: "historyRV", kv: "historyKV", hk: "historyHK", ss: "historySS", ram: "historyRam", kaam: "historyKaam" };
   const DED = { radha: "nameJapDeduct", rv: "nameJapDeductRV", kv: "nameJapDeductKV", hk: "nameJapDeductHK", ss: "nameJapDeductSS", ram: "nameJapDeductRam", kaam: "nameJapDeductKaam" };
   const INPUT_IDS = ["manualJapIn", "prevJapIn", "addJapOtherIn", "addJapOtherDate", "deductTodayIn", "deductOtherIn", "deductOtherDate", "nameJapDeductIn", "nameJapRestoreIn"];
   window._mjType = null; // null = follow the jap selected on the Jap tab
   let _lastMode = null;
 
+  function isAud(t) { return AUDIO_TYPES.indexOf(t) >= 0; }
+  function baseOf(t) { return isAud(t) ? t.slice(0, -2) : t; }
+  function hasAudio(b) { return b === "radha" || b === "rv" || b === "kv" || b === "kaam"; }
+  // The audio-only bucket for a base type (subset of that type's total history).
+  function audHist(b) {
+    if (b === "radha") { if (!App.S.historyAudio) App.S.historyAudio = {}; return App.S.historyAudio; }
+    if (!App.S.audioHistM) App.S.audioHistM = {};
+    if (!App.S.audioHistM[b]) App.S.audioHistM[b] = {};
+    return App.S.audioHistM[b];
+  }
   function curMode() {
     const m = (App.S && App.S.japMode) || "radha";
-    return MJ_TYPES.indexOf(m) >= 0 ? m : "radha";
+    return BASE_TYPES.indexOf(m) >= 0 ? m : "radha";
   }
   function selType() {
     return window._mjType && MJ_TYPES.indexOf(window._mjType) >= 0 ? window._mjType : curMode();
   }
-  function hist(t) { return (App.S && App.S[HIST[t]]) || {}; }
-  function ded(t) { return (App.S && App.S[DED[t]]) || 0; }
+  function totalHist(b) { return (App.S && App.S[HIST[b]]) || {}; }
+  function hist(t) { return isAud(t) ? audHist(baseOf(t)) : totalHist(t); }
+  function ded(t) { return isAud(t) ? 0 : ((App.S && App.S[DED[t]]) || 0); }
   function lifetime(t) {
     return Math.max(0, Object.values(hist(t)).reduce(function (a, b) { return a + b; }, 0) - ded(t));
   }
@@ -29961,12 +29975,13 @@ async function checkAppUpdate() {
     if (!box) return;
     const sel = selType();
     box.innerHTML = MJ_TYPES.map(function (t) {
-      const meta = (typeof _dedTypeMeta === "function") ? _dedTypeMeta(t) : { label: t, color: "#f5c842" };
+      const meta = (typeof _dedTypeMeta === "function") ? _dedTypeMeta(baseOf(t)) : { label: t, color: "#f5c842" };
+      const label = isAud(t) ? "🎧 " + meta.label + " Audio" : meta.label;
       const on = t === sel;
       return '<button type="button" onclick="mjPick(\'' + t + '\')" style="cursor:pointer;font-size:12px;font-weight:700;' +
         'border-radius:999px;padding:6px 11px;font-family:inherit;color:' + (on ? "#0b0b14" : meta.color) + ';' +
         'background:' + (on ? meta.color : "transparent") + ';border:1px solid ' + meta.color + (on ? "" : "88") + '">' +
-        meta.label + "</button>";
+        label + "</button>";
     }).join("");
   }
 
@@ -30003,22 +30018,59 @@ async function checkAppUpdate() {
     _lastMode = m;
     renderChips();
     previews();
+    audioNote();
   }
 
   window.mjPick = function (t) {
     window._mjType = t;
     renderChips();
     previews();
+    audioNote();
   };
 
+  const AKEY = { radha: "ra", rv: "rva", kv: "kva", kaam: "kaama" };
+
+  function audioNote() {
+    const n = $("mjAudioNote");
+    if (n) n.style.display = isAud(selType()) ? "block" : "none";
+  }
+
   // Run one of the existing add / deduct functions against the chosen jap.
+  // Audio chips go through AudioAdj (audio count + total + automatic audio time).
   window.mjAct = function (fnName) {
     const fn = window[fnName];
     if (typeof fn !== "function") return;
     const t = selType();
+    const b = baseOf(t);
+
+    if (isAud(t)) {
+      const AA = window.AudioAdj, key = AKEY[b];
+      if (!AA || !key) return;
+      let ok = false;
+      const clear = function (ids) { ids.forEach(function (id) { const e = $(id); if (e) e.value = ""; }); };
+      if (fnName === "addManualJap")        { ok = AA.apply(key, "add", num("manualJapIn"), App.getTk());                      if (ok) clear(["manualJapIn", "manualJapMin", "manualJapSec"]); }
+      else if (fnName === "deductTodayJap") { ok = AA.apply(key, "deduct", num("deductTodayIn"), App.getTk());                 if (ok) clear(["deductTodayIn", "deductTodayMin", "deductTodaySec"]); }
+      else if (fnName === "addOtherDayJap") { ok = AA.apply(key, "add", num("addJapOtherIn"), ($("addJapOtherDate") || {}).value);   if (ok) clear(["addJapOtherIn", "addJapOtherMin", "addJapOtherSec"]); }
+      else if (fnName === "deductOtherJap") { ok = AA.apply(key, "deduct", num("deductOtherIn"), ($("deductOtherDate") || {}).value); if (ok) clear(["deductOtherIn", "deductOtherMin", "deductOtherSec"]); }
+      else if (fnName === "addPrevJap")     { ok = AA.applyLife(key, "add", num("prevJapIn"));                                 if (ok) clear(["prevJapIn"]); }
+      else if (fnName === "addNameJapDeduct") { ok = AA.applyLife(key, "deduct", num("nameJapDeductIn"));                       if (ok) clear(["nameJapDeductIn"]); }
+      else { toast("Pick the non-audio chip for this one 🙏"); }
+      refresh();
+      return;
+    }
+
+    // Touch chips: deduct only from that day's touch part (total minus audio).
+    if (/^deduct(Today|Other)Jap$/.test(fnName) && hasAudio(b)) {
+      const today = fnName === "deductTodayJap";
+      const dk = today ? App.S.tk : (($("deductOtherDate") || {}).value || "").trim();
+      const n = num(today ? "deductTodayIn" : "deductOtherIn");
+      if (dk && n > 0) {
+        const touch = Math.max(0, (totalHist(b)[dk] || 0) - (audHist(b)[dk] || 0));
+        if (n > touch) { toast("Cannot deduct more than that day's touch count (" + touch + ")"); return; }
+      }
+    }
     const orig = App.S.japMode;
-    if (t === orig) { fn(); return; }
-    App.S.japMode = t;
+    App.S.japMode = b;
     try {
       fn();
     } finally {
@@ -31343,19 +31395,110 @@ const AudioAdj = (function () {
     return true;
   }
 
+
+  // ── Lifetime ("before this app") audio: stored under prev_<ts> keys in BOTH the total and the audio history ──
+  function lifeKeys(A) { return Object.keys(A).filter(function (k) { return k.indexOf("prev_") === 0; }); }
+  function lifeAudio(key) { const A = CFG[key].audio(App.S); return lifeKeys(A).reduce(function (t, k) { return t + (A[k] || 0); }, 0); }
+  function applyLife(key, sign, n) {
+    const c = CFG[key], S = App.S;
+    if (!c) return false;
+    if (!(n > 0)) { toast("Please enter a number > 0"); return false; }
+    if (audioBusy()) { toast("Please turn off the audio chant first 🙏"); return false; }
+    const amt = n * c.mul, T = c.total(S), A = c.audio(S);
+    if (sign === "deduct") {
+      const have = lifeAudio(key);
+      if (amt > have) { toast("Cannot deduct more than the before-this-app audio (" + (c.mul === 28 ? Math.floor(have / 28) + " cycles" : have) + ")"); return false; }
+    }
+    if (key === "n28a") {
+      (S.sankalpas || []).filter(function (s) { return !s.done && s.startCycles !== null; }).forEach(function (s) {
+        s._savedProgress = (s._savedProgress || 0) + Math.max(0, getTotalCycles28() - s.startCycles);
+        s.startCycles = getTotalCycles28();
+      });
+    }
+    if (sign === "add") {
+      const pk = "prev_" + Date.now();
+      T[pk] = (T[pk] || 0) + amt;
+      A[pk] = (A[pk] || 0) + amt;
+    } else {
+      let rem = amt;
+      lifeKeys(A).sort().reverse().forEach(function (k) {
+        if (rem <= 0) return;
+        const take = Math.min(rem, A[k] || 0);
+        A[k] = (A[k] || 0) - take; T[k] = Math.max(0, (T[k] || 0) - take); rem -= take;
+        if (A[k] <= 0) delete A[k];
+        if ((T[k] || 0) <= 0) delete T[k];
+      });
+    }
+    if (key === "n28a") { try { App.lm28 = Math.floor((S.h28[S.tk] || 0) / (S.ms || 108)); } catch (_e) {} }
+    try { if (window[c.chant] && window[c.chant].resync) window[c.chant].resync(); } catch (_e) {}
+    persist();
+    refreshAll();
+    toast((sign === "add" ? "Added " : "Deducted ") + n + " " + (c.unit === "cycles" ? (n === 1 ? "cycle" : "cycles") : "jap") + " " + (sign === "add" ? "to" : "from") + " lifetime · " + c.short + " Audio 🙏");
+    return true;
+  }
+
   // ── UI ──
   function secStyle(color) { return "background:" + color + "10;border:1px solid " + color + "47"; }
+
+  // "Other day" body: date + number + Add / Deduct (this was the whole card before).
   function rowHTML(key, idp, sign) {
-    const c = CFG[key], col = c.color, isDed = sign === "deduct";
+    const c = CFG[key], col = c.color;
+    const pv = "AudioAdj.pv(\'" + key + "\',\'" + idp + "\')";
     return '' +
-      '<div class="fr"><input type="date" class="fi" id="' + idp + 'Date" style="font-size:13px" oninput="AudioAdj.preview(\'' + key + '\',\'' + idp + '\')"></div>' +
-      '<div class="fr"><input type="number" class="fi" id="' + idp + 'In" placeholder="' + (c.unit === "cycles" ? "Number of cycles" : "Number of jap") + '" min="1" oninput="AudioAdj.preview(\'' + key + '\',\'' + idp + '\')"><span class="fu" style="color:' + col + '">' + c.unit + '</span></div>' +
+      '<div class="fr"><input type="date" class="fi" id="' + idp + 'Date" style="font-size:13px" oninput="' + pv + '"></div>' +
+      '<div class="fr"><input type="number" class="fi" id="' + idp + 'In" placeholder="' + (c.unit === "cycles" ? "Number of cycles" : "Number of jap") + '" min="1" oninput="' + pv + '"><span class="fu" style="color:' + col + '">' + c.unit + '</span></div>' +
       '<div style="font-size:11px;color:var(--td);margin-bottom:4px">' + (c.mul === 28 ? "1 cycle = 28 names. " : "") + '<span id="' + idp + 'Cur">—</span></div>' +
-      '<div style="font-size:11px;color:var(--td);margin-bottom:8px">That day\'s audio will become: <span id="' + idp + 'Prev" style="color:' + col + '">—</span></div>' +
-      '<div style="display:flex;gap:8px">' +
-        '<button class="pb" style="flex:1;background:linear-gradient(135deg,' + col + ',#9b6ef0);color:#fff" onclick="AudioAdj.go(\'' + key + '\',\'' + idp + '\',\'add\')">➕ Add</button>' +
-        '<button class="pb deduct" style="flex:1" onclick="AudioAdj.go(\'' + key + '\',\'' + idp + '\',\'deduct\')">✂️ Deduct</button>' +
+      '<div style="font-size:11px;color:var(--td);margin-bottom:8px">That day\'s audio will become: <span id="' + idp + 'Prev" style="color:' + col + '">—</span></div>' + btnRow(key, idp, "go");
+  }
+  function btnRow(key, idp, fn, addLbl, dedLbl) {
+    const col = CFG[key].color;
+    return '<div style="display:flex;gap:8px">' +
+      '<button class="pb" style="flex:1;background:linear-gradient(135deg,' + col + ',#9b6ef0);color:#fff" onclick="AudioAdj.' + fn + '(\'' + key + '\',\'' + idp + '\',\'add\')">' + (addLbl || "➕ Add") + '</button>' +
+      '<button class="pb deduct" style="flex:1" onclick="AudioAdj.' + fn + '(\'' + key + '\',\'' + idp + '\',\'deduct\')">' + (dedLbl || "✂️ Deduct") + '</button>' +
       '</div>';
+  }
+  function subBox(idp, id, title, inner, col) {
+    return '<div class="cs-wrap aa-sub" style="background:' + col + '0d;border:1px solid ' + col + '33;margin-bottom:8px">' +
+      '<div class="cs-header" onclick="toggleCs(\'' + idp + id + 'Body\',\'' + idp + id + 'Chev\')" style="padding:10px 14px">' +
+      '<h3 style="color:' + col + ';font-size:10px">' + title + '</h3>' +
+      '<span class="cs-chevron" id="' + idp + id + 'Chev" style="color:' + col + '">▾</span></div>' +
+      '<div class="cs-body" id="' + idp + id + 'Body">' + inner + '</div></div>';
+  }
+  // Today / Other Day / Before this app (Lifetime) — same structure as the normal Add / Deduct cards.
+  function sectionsHTML(key, idp) {
+    const c = CFG[key], col = c.color;
+    const pv = "AudioAdj.pv(\'" + key + "\',\'" + idp + "\')";
+    const ph = c.unit === "cycles" ? "Number of cycles" : "Number of jap";
+    const today =
+      '<div class="fr"><input type="number" class="fi" id="' + idp + 'TIn" placeholder="' + ph + '" min="1" oninput="' + pv + '"><span class="fu" style="color:' + col + '">' + c.unit + '</span></div>' +
+      '<div style="font-size:11px;color:var(--td);margin-bottom:4px">' + (c.mul === 28 ? "1 cycle = 28 names. " : "") + '<span id="' + idp + 'TCur">—</span></div>' +
+      '<div style="font-size:11px;color:var(--td);margin-bottom:8px">Today\'s audio will become: <span id="' + idp + 'TPrev" style="color:' + col + '">—</span></div>' +
+      btnRow(key, idp, "goT", "➕ Add to Today", "✂️ Deduct from Today");
+    const life =
+      '<p class="aa-hint">Audio chanted before using this app. It is added to your lifetime audio and total. Deduct here only removes from this "before this app" audio — use Today / Other Day for dated entries.</p>' +
+      '<div class="fr"><input type="number" class="fi" id="' + idp + 'LIn" placeholder="e.g. ' + (c.unit === "cycles" ? "500" : "50000") + '" min="1" oninput="' + pv + '"><span class="fu" style="color:' + col + '">' + c.unit + '</span></div>' +
+      '<div style="font-size:11px;color:var(--td);margin-bottom:4px">Before-this-app audio: <span id="' + idp + 'LCur">—</span></div>' +
+      '<div style="font-size:11px;color:var(--td);margin-bottom:8px">It will become: <span id="' + idp + 'LPrev" style="color:' + col + '">—</span></div>' +
+      btnRow(key, idp, "goL", "📜 Add to Lifetime", "✂️ Deduct from Lifetime");
+    return subBox(idp, "Today", "📅 TODAY", today, col) +
+           subBox(idp, "Other", "📆 OTHER DAY", rowHTML(key, idp, "add"), col) +
+           subBox(idp, "Life", "📜 BEFORE THIS APP (LIFETIME)", life, col);
+  }
+  // Keep typed values + which sub-sections are open across the periodic redraw.
+  function snap(host) {
+    const vals = {};
+    host.querySelectorAll("input").forEach(function (e) { if (e.id && e.value !== "") vals[e.id] = e.value; });
+    const open = [];
+    host.querySelectorAll(".cs-body.open").forEach(function (e) { if (e.id) open.push(e.id); });
+    return { vals: vals, open: open };
+  }
+  function unsnap(sn) {
+    Object.keys(sn.vals).forEach(function (id) { const e = $(id); if (e) e.value = sn.vals[id]; });
+    sn.open.forEach(function (id) {
+      const b = $(id); if (!b) return;
+      b.style.transition = "none"; b.classList.add("open"); void b.offsetHeight; b.style.transition = "";
+      const ch = $(id.replace(/Body$/, "Chev")); if (ch) ch.style.transform = "rotate(180deg)";
+    });
   }
 
   function syncDate(idp) {
@@ -31366,6 +31509,34 @@ const AudioAdj = (function () {
   const api = {
     cfg: CFG,
     apply: apply,
+    applyLife: applyLife,
+    lifeAudio: lifeAudio,
+    goT: function (key, idp, sign) {
+      const nEl = $(idp + "TIn");
+      if (apply(key, sign, parseInt(nEl && nEl.value) || 0, today())) { if (nEl) nEl.value = ""; api.pv(key, idp); }
+    },
+    goL: function (key, idp, sign) {
+      const nEl = $(idp + "LIn");
+      if (applyLife(key, sign, parseInt(nEl && nEl.value) || 0)) { if (nEl) nEl.value = ""; api.pv(key, idp); }
+    },
+    pv: function (key, idp) {
+      api.preview(key, idp);
+      const c = CFG[key], S = App.S;
+      if (!c) return;
+      const show = function (v) { return c.mul === 28 ? Math.floor(v / 28) + " cycles (" + fmt(v) + " names)" : fmt(v); };
+      const tCur = $(idp + "TCur"), tPv = $(idp + "TPrev"), tn = (parseInt(($(idp + "TIn") || {}).value) || 0) * c.mul;
+      if (tCur && tPv) {
+        const cur = c.audio(S)[today()] || 0;
+        tCur.textContent = "Today's audio: " + show(cur) + " · time " + fmtT(dayTime(key, today()));
+        tPv.textContent = tn > 0 ? ("+ " + show(cur + tn) + "  /  − " + (tn > cur ? "not possible" : show(cur - tn)) + "  ·  time ±" + fmtT(secsOf(c, tn))) : "—";
+      }
+      const lCur = $(idp + "LCur"), lPv = $(idp + "LPrev"), ln = (parseInt(($(idp + "LIn") || {}).value) || 0) * c.mul;
+      if (lCur && lPv) {
+        const lc = lifeAudio(key);
+        lCur.textContent = show(lc);
+        lPv.textContent = ln > 0 ? ("+ " + show(lc + ln) + "  /  − " + (ln > lc ? "not possible" : show(lc - ln))) : "—";
+      }
+    },
     go: function (key, idp, sign) {
       const dEl = $(idp + "Date"), nEl = $(idp + "In");
       const n = parseInt(nEl && nEl.value) || 0;
@@ -31394,28 +31565,32 @@ const AudioAdj = (function () {
         }).join("");
         // keep what the person typed while we redraw
         const old = { d: ($("aaMainDate") || {}).value, n: ($("aaMainIn") || {}).value };
+        const _sn = snap(host);
         host.innerHTML =
           '<div class="mlog-tabs dc-tabs" style="margin-bottom:8px;flex-wrap:wrap">' + chips + '</div>' +
           '<div style="font-size:12px;color:var(--tl);margin:2px 2px 8px"><b style="color:' + c.color + '">' + c.label + '</b> · lifetime audio: <b>' + fmt(sum(c.audio(S))) + '</b> jap · today: <b>' + fmt(c.audio(S)[today()] || 0) + '</b></div>' +
-          '<div class="cs-wrap" style="' + secStyle(c.color) + ';padding:10px 12px">' + rowHTML(key, "aaMain", "add") + '</div>';
+          '<div class="cs-wrap" style="' + secStyle(c.color) + ';padding:10px 12px">' + sectionsHTML(key, "aaMain") + '</div>';
         syncDate("aaMain");
         if (old.d && $("aaMainDate")) $("aaMainDate").value = old.d;
         if (old.n && $("aaMainIn")) $("aaMainIn").value = old.n;
-        api.preview(key, "aaMain");
+        unsnap(_sn);
+        api.pv(key, "aaMain");
       }
       // 28 Names audio section (inside the 28 Names stats panel)
       const h28 = $("audioAdj28");
       if (h28) {
         const c = CFG.n28a, S = App.S;
         const old = { d: ($("aa28Date") || {}).value, n: ($("aa28In") || {}).value };
+        const _sn28 = snap(h28);
         const lt = sum(c.audio(S));
         h28.innerHTML =
           '<div style="font-size:12px;color:var(--tl);margin:2px 2px 8px">28 Names audio · lifetime: <b>' + Math.floor(lt / 28) + '</b> cycles (' + fmt(lt) + ' names) · today: <b>' + Math.floor((c.audio(S)[today()] || 0) / 28) + '</b> cycles</div>' +
-          '<div class="cs-wrap" style="' + secStyle(c.color) + ';padding:10px 12px">' + rowHTML("n28a", "aa28", "add") + '</div>';
+          '<div class="cs-wrap" style="' + secStyle(c.color) + ';padding:10px 12px">' + sectionsHTML("n28a", "aa28") + '</div>';
         syncDate("aa28");
         if (old.d && $("aa28Date")) $("aa28Date").value = old.d;
         if (old.n && $("aa28In")) $("aa28In").value = old.n;
-        api.preview("n28a", "aa28");
+        unsnap(_sn28);
+        api.pv("n28a", "aa28");
       }
     },
   };

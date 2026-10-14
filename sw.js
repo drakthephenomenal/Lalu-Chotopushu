@@ -15,6 +15,7 @@
 // v340: Audio Mode ON = manual touch on the Radha jap display is disabled (playing or not).
 // v339: Daily card - Audio Chant button moved to its own row; tap count + undo moved onto the malas line (no more overlap).
 // v338: Audio Chant (audio/radha_naam_chant.mp3) precached for offline.
+// v355: Radha Naam Track 1 (audio/radha_naam_track_1.mp3) added as an Audio Mode option.
 // ═══════════════════════════════════════════════════════
 // Radha Naam Jap — Service Worker  v236
 // v336: NATIVE BACKGROUND PLAYBACK — Android foreground media service keeps stotram / pad audio playing with the screen off; WebView no longer needs a tap to autoplay.
@@ -421,7 +422,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v354';
+const CACHE = 'radha-jap-v355';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 
@@ -486,6 +487,7 @@ const LAZY_LOCAL_ASSETS = [
   './gurudev/2.png',
   './Panchojanno%20Shankya.mp3',
   './audio/radha_naam_chant.mp3',
+  './audio/radha_naam_track_1.mp3',
   './audio/28name_0.mp3',
   './audio/radha_vallabh_shri_harivansh.mp3',
   './audio/krishnay_vasudevay.mp3',

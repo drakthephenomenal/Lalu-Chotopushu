@@ -1690,7 +1690,7 @@
     <div class="lb-hero-trophy">🪷</div>
     <div class="lb-hero-title">Family</div>
     <div class="lb-hero-sub">Devotees together · Guru Kripahi Kevalam</div>
-    <!-- Ghost Leaderboard toggle — developer accounts only, no label -->
+    <!-- Admin Leaderboard toggle — developer accounts only, no label -->
     <div class="tg" id="tgLbGhost" onclick="lbToggleGhostView()" style="display:none;position:absolute;top:14px;right:14px;z-index:2;"></div>
   </div>
 
@@ -2869,14 +2869,14 @@
     <div style="margin-top:15px;border-top:1px solid rgba(255,170,0,0.18);padding-top:15px;">
       <div style="font-size:12px;color:#FFD700;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
         <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#FFD700;opacity:0.7;"></span>
-        Ghost Mode
+        Admin Mode
         <span id="ghostActivePill" style="display:none;background:rgba(255,80,80,0.18);border:1px solid rgba(255,80,80,0.45);border-radius:6px;padding:1px 7px;font-size:10px;color:#ff6060;letter-spacing:0.5px;margin-left:4px;">ACTIVE</span>
       </div>
       <button class="pb" onclick="openGhostUserList()" style="background:rgba(255,215,0,0.10);color:#FFD700;border:1px solid rgba(255,215,0,0.35);">
         👁 View as a User
       </button>
       <button id="ghostExitBtn" onclick="devExitGhostMode()" style="display:none;margin-top:7px;width:100%;padding:10px;background:rgba(255,80,80,0.10);border:1px solid rgba(255,80,80,0.4);border-radius:12px;color:#ff6060;font-size:14px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;">
-        ✕ Exit Ghost Mode
+        ✕ Exit Admin Mode
       </button>
     </div>
   </div>
@@ -2890,7 +2890,7 @@
         <button onclick="closeGhostModal()" style="background:rgba(255,215,0,0.1);color:#FFD700;border:1px solid rgba(255,215,0,0.35);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">✕ Close</button>
         <div style="flex:1;text-align:center;">
           <div style="font-size:20px;line-height:1;">👁</div>
-          <div style="color:#FFD700;font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:2px;">Ghost Mode — Select User</div>
+          <div style="color:#FFD700;font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:2px;">Admin Mode — Select User</div>
           <div style="font-size:11px;color:rgba(255,215,0,0.45);margin-top:2px;">Read-only view. No data is touched.</div>
         </div>
         <div style="width:70px;"></div>
@@ -2904,8 +2904,8 @@
       <!-- Backfill: creates a leaderboard doc (optIn:false) for any real user
            found in users/*/data who doesn't have one yet — e.g. accounts on
            an old app build, or an interrupted first login — so they show up
-           in Ghost Mode search AND on the Family Board once the developer-
-           only Ghost Leaderboard toggle is on. Never touches an existing doc. -->
+           in Admin Mode search AND on the Family Board once the developer-
+           only Admin Leaderboard toggle is on. Never touches an existing doc. -->
       <button onclick="devBackfillMissingLeaderboardDocs()"
         style="width:100%;box-sizing:border-box;padding:9px 14px;border-radius:12px;border:1px solid rgba(255,215,0,0.25);background:rgba(255,215,0,0.06);color:#FFD700;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:8px;">
         🔧 Backfill missing leaderboard entries

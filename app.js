@@ -266,7 +266,7 @@ async function _rjapDetectAppVersion() {
 async function _writePresenceHeartbeat(user) {
   if (!user || !fbDb) return;
   try {
-    // Google account name (for Ghost Mode, developer-only view). user.displayName
+    // Google account name (for Admin Mode, developer-only view). user.displayName
     // can be null even for Google sign-in, so also check the google.com provider
     // entry. Only written when non-empty so merge:true never wipes a good value.
     let googleName = "";
@@ -2349,7 +2349,7 @@ const App = {
 
   // ── Main tap ──
   ht(e) {
-    if (isGhostMode()) return; // ghost mode: read-only, no jap
+    if (isGhostMode()) return; // admin mode: read-only, no jap
     // Audio chant playing: counter is unresponsive to touch (audio counts on its own)
     // Audio Mode ON (Radha main jap): manual tap is disabled whether or not the chant is playing.
     if (window.AudioChant && (window.AudioChant.busy() || window.AudioChant.blocksTouch())) { try { if (e) e.preventDefault(); } catch (_) {} window.AudioChant.tapBlocked(); return; }
@@ -2469,7 +2469,7 @@ const App = {
   },
 
   undo1() {
-    if (isGhostMode()) return; // ghost mode: read-only
+    if (isGhostMode()) return; // admin mode: read-only
     const isRV = this.S.japMode === "rv";
     const isHK = this.S.japMode === "hk";
     const isKV = this.S.japMode === "kv";
@@ -2693,7 +2693,7 @@ const App = {
   // ── 28 Names tap ──
   h28(e) {
     if (window.AudioChant && window.AudioChant.busy()) { try { if (e) e.preventDefault(); } catch (_) {} window.AudioChant.warnBusy(); return; }
-    // v154: ghost mode is strictly read-only. Block the tap before ANY state
+    // v154: admin mode is strictly read-only. Block the tap before ANY state
     // mutation so we never imprint the viewed user's session onto the dev's
     // own profile. Wish target cycle counts remain visible via renderSankalpas().
     if (isGhostMode()) {
@@ -2762,7 +2762,7 @@ const App = {
   },
 
   undo28() {
-    if (isGhostMode()) return; // ghost mode: read-only, never mutate state
+    if (isGhostMode()) return; // admin mode: read-only, never mutate state
     if ((this.S.h28[this.S.tk] || 0) > 0) {
       // Freeze wish progress before changing h28 so bar reflects the undo
       (this.S.sankalpas || [])
@@ -2795,7 +2795,7 @@ const App = {
   // ── Silent Monk Auto Backup: triggered on every mala complete ──
   silentMonkBackup() {
     if (!fbUser) return;
-    if (isGhostMode()) return; // ghost mode: read-only
+    if (isGhostMode()) return; // admin mode: read-only
     // Delta push to Firebase (near-instant cross-device sync)
     clearTimeout(this.fbDebouncePush);
     fbPushDelta();
@@ -5781,7 +5781,7 @@ function toggleCs(bodyId, chevId) {
 
 // ── Manual Jap Entry ──
 function addManualJap() {
-  // Developers may manually correct jap counts while Ghost Mode-viewing
+  // Developers may manually correct jap counts while Admin Mode-viewing
   // another user's account (writes go to ghostAwareSave(), never live-tap
   // simulation). Regular users always edit only their own account.
   const n = parseInt(document.getElementById("manualJapIn").value) || 0;
@@ -6383,7 +6383,7 @@ function _updateDedSummary() {
 // ── Manual Stotram gift entry — user types a stotram name + count by hand;
 // tracked as its own list on the dedication, separate from jap totals.
 function addDedStotram() {
-  if (isGhostMode()) return; // ghost mode: read-only
+  if (isGhostMode()) return; // admin mode: read-only
   const nameEl = document.getElementById("dedStNameIn");
   const countEl = document.getElementById("dedStCountIn");
   const name = (nameEl.value || "").trim();
@@ -6405,7 +6405,7 @@ function addDedStotram() {
 }
 
 function removeDedStotram(idx) {
-  if (isGhostMode()) return; // ghost mode: read-only
+  if (isGhostMode()) return; // admin mode: read-only
   window._dedStotrams.splice(idx, 1);
   renderDedStotramList();
   _updateDedSummary();
@@ -6450,7 +6450,7 @@ function _dedEntryAmounts(d) {
 }
 
 function addDedication() {
-  if (isGhostMode()) return; // ghost mode: read-only
+  if (isGhostMode()) return; // admin mode: read-only
   const purposeEl = document.getElementById("dedPurposeIn");
   const dateEl = document.getElementById("dedDateIn");
   const noteEl = document.getElementById("dedNoteIn");
@@ -6525,7 +6525,7 @@ function addDedication() {
 }
 
 function deleteDedication(id) {
-  if (isGhostMode()) return; // ghost mode: read-only
+  if (isGhostMode()) return; // admin mode: read-only
   const list = App.S.dedications || [];
   const entry = list.find((d) => d.id === id);
   if (!entry) return;
@@ -6566,13 +6566,13 @@ function deleteDedication(id) {
 window._dedEditingId = null;
 
 function toggleEditDedication(id) {
-  if (isGhostMode()) return; // ghost mode: read-only
+  if (isGhostMode()) return; // admin mode: read-only
   window._dedEditingId = window._dedEditingId === id ? null : id;
   renderDedications();
 }
 
 function saveDedicationEdit(id) {
-  if (isGhostMode()) return; // ghost mode: read-only
+  if (isGhostMode()) return; // admin mode: read-only
   const list = App.S.dedications || [];
   const d = list.find((x) => x.id === id);
   if (!d) return;
@@ -9077,7 +9077,7 @@ function importAllData(input) {
       );
       // Restore must win over every other device's local data: stamp a new
       // reset epoch (same mechanism as Reset) so other devices drop their
-      // stale local copy and take the restored cloud state. Ghost mode uses
+      // stale local copy and take the restored cloud state. Admin mode uses
       // devForceRestoreAt instead, so skip it there.
       try {
         if (!(typeof isGhostMode === "function" && isGhostMode())) {
@@ -9119,7 +9119,7 @@ function importAllData(input) {
       // Push the restored data to Firestore immediately, REPLACING the live
       // cloud document entirely (not merging) — restoring a backup should
       // make the account exactly match the file, for whichever account is
-      // currently active. While a developer is Ghost Mode-viewing another
+      // currently active. While a developer is Admin Mode-viewing another
       // user, this correctly overwrites THAT user's Firestore doc instead
       // of the developer's own account.
       ghostAwareSave(true);
@@ -9239,7 +9239,7 @@ function getMsConsider() {
   return c;
 }
 function setMsConsider(type, on) {
-  if (isGhostMode()) return; // ghost mode: read-only
+  if (isGhostMode()) return; // admin mode: read-only
   if (!App.S.msConsider) App.S.msConsider = {};
   // Freeze the currently-resolved values first so toggling one chip never
   // silently flips a mirrored audio chip.
@@ -10500,7 +10500,7 @@ let _zohoAppUrlListenerAttached = false;
 // ── Single-device session enforcement ──
 async function fbClaimSession() {
   if (!fbUser || !fbDb) return;
-  if (isGhostMode()) return; // ghost mode: read-only
+  if (isGhostMode()) return; // admin mode: read-only
   const sessionRef = fbDb
     .collection("users")
     .doc(fbUser.uid)
@@ -10822,7 +10822,7 @@ function fbInit() {
     window._scheduleHydrationRetry = function () {
       if (App._cloudHydrated) return;
       if (!fbUser || fbForcedSignout) return;
-      if (typeof isGhostMode === "function" && isGhostMode()) return; // never fight ghost mode
+      if (typeof isGhostMode === "function" && isGhostMode()) return; // never fight admin mode
 
       if (!App._hydrationFailureNotified) {
         App._hydrationFailureNotified = true;
@@ -11108,7 +11108,7 @@ function fbInit() {
           // Wrapped so a failure here (offline mid-login, etc.) can never
           // prevent the presence/leaderboard doc creation below — those must
           // always get a chance to run once a user is signed in, or that
-          // user becomes permanently invisible to Ghost Mode (see Jhara
+          // user becomes permanently invisible to Admin Mode (see Jhara
           // Barman case: signed in, real data, but no presence/leaderboard
           // doc because an earlier step in this chain never completed).
           try { await fbSyncServerTime(); } catch (e) { console.warn('fbSyncServerTime failed (non-fatal):', e && e.message); }
@@ -11129,8 +11129,8 @@ function fbInit() {
           // ever tapped. pushLeaderboard() already writes optIn:false safely
           // and never deletes an existing doc; calling it here on every login
           // guarantees every real user has a permanent, discoverable footprint
-          // in both `presence` and `leaderboard`, so the Ghost Leaderboard
-          // toggle and Ghost Mode search always find them from day one.
+          // in both `presence` and `leaderboard`, so the Admin Leaderboard
+          // toggle and Admin Mode search always find them from day one.
           try { await pushLeaderboard(); } catch (e) { console.warn('pushLeaderboard (login) failed (non-fatal):', e && e.message); }
 
           // ── Refresh Rashi / personal-horoscope card after sign-in ──
@@ -12585,12 +12585,12 @@ async function fbSignOut() {
   fbAuth.signOut().then(() => toast("Signed out 🙏"));
 }
 async function fbPushDelta() {
-  if (isGhostMode()) return; // ghost mode: read-only
+  if (isGhostMode()) return; // admin mode: read-only
   return fbPushFull();
 }
 
 // ── Developer write-back: push current App.S to a SPECIFIC user's Firestore
-// doc. Used when a developer, while Ghost Mode-viewing another user's data,
+// doc. Used when a developer, while Admin Mode-viewing another user's data,
 // makes a manual jap correction or restores a backup — the change must land
 // on the VIEWED user's document, never the developer's own. Requires the
 // Firestore rule allowing isDeveloper() to write under /users/{userId}.
@@ -12676,7 +12676,7 @@ async function fbPushToUid(targetUid, fullReplace) {
     milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
     msConsider: App.S.msConsider || { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, n28: true },
     // Jap display name & Family Leaderboard opt-in — developer-editable via
-    // Settings while Ghost Mode-viewing (saveLbName()/toggleLbOptIn()
+    // Settings while Admin Mode-viewing (saveLbName()/toggleLbOptIn()
     // route here through ghostAwareSave() instead of the developer's own
     // account). Also separately mirrored to /leaderboard/{targetUid} by
     // pushLeaderboardForGhostedUser(), since that's a different document.
@@ -12685,7 +12685,7 @@ async function fbPushToUid(targetUid, fullReplace) {
     lastDevEdit: firebase.firestore.FieldValue.serverTimestamp(),
     lastDevEditBy: (fbUser && fbUser.email) || "developer",
   };
-  // ghost mode fixes: force-restore signal — on a full restore, stamp a
+  // admin mode fixes: force-restore signal — on a full restore, stamp a
   // timestamp the TARGET device's fbMigrate will recognize and use to
   // skip its own offline-preservation merge for one hydration, so the
   // restore actually takes effect instead of being silently overridden
@@ -12716,7 +12716,7 @@ async function fbPushToUid(targetUid, fullReplace) {
 
 async function fbPushFull() {
   if (!fbUser) return;
-  if (isGhostMode()) return; // ghost mode: never write to Firestore
+  if (isGhostMode()) return; // admin mode: never write to Firestore
   // SAFETY: never push local state to cloud until we have successfully
   // pulled the authoritative cloud copy at least once this session.
   // Prevents wiping cloud data after "Clear app data" + re-login.
@@ -13501,8 +13501,8 @@ async function fbMigrate() {
       finally { App._initialCloudApply = false; }
       App._cloudHydrated = true; // cloud copy applied, future saves may push
 
-      // ghost mode fixes: own-state capture guard + force-restore signal — if a developer force-
-      // restored this account (via Ghost Mode) more recently than this
+      // admin mode fixes: own-state capture guard + force-restore signal — if a developer force-
+      // restored this account (via Admin Mode) more recently than this
       // device has already acknowledged, skip the offline-preservation
       // merge below for this ONE hydration so the restore actually
       // takes effect. Self-expiring: normal protective merge behavior
@@ -13651,7 +13651,7 @@ function fbDebouncedPush() {
   // Max-wait guarantee: during a long burst of rapid taps (e.g. 108 taps in
   // under a minute), the short debounce above keeps getting reset and may
   // never fire. This separate timer ensures a push still happens at least
-  // every FB_MAX_WAIT_MS, so ghost mode / leaderboard never fall far behind
+  // every FB_MAX_WAIT_MS, so admin mode / leaderboard never fall far behind
   // a live, fast-tapping session.
   if (!_fbMaxWaitTimer) {
     _fbMaxWaitTimer = setTimeout(() => _fbDoPush(), FB_MAX_WAIT_MS);
@@ -13672,7 +13672,7 @@ function _fbDoPush() {
 // Force an immediate flush of any pending debounced push the moment the app
 // is backgrounded, tab-switched, or closed — otherwise a pending timer
 // can get silently dropped by the OS, leaving Firestore (and therefore
-// ghost mode + the leaderboard) stuck on stale data until the next tap.
+// admin mode + the leaderboard) stuck on stale data until the next tap.
 function _fbFlushPendingPush() {
   if (!_fbDeb && !_fbMaxWaitTimer) return;
   _fbDoPush();
@@ -13907,7 +13907,7 @@ function svt28() {
   // the realtime listener can fire back with a stale dt28Cycles value.
   // ghostAwareSave(true) does exactly that on the non-ghost path
   // (App.save() + fbPushFull()), and correctly redirects to the VIEWED
-  // user's doc via fbPushToUid() while a developer is Ghost Mode-viewing.
+  // user's doc via fbPushToUid() while a developer is Admin Mode-viewing.
   ghostAwareSave(true);
   App.ua();
   u28();
@@ -18789,8 +18789,8 @@ function isDeveloper() {
 //    via ghostAwareSave()/fbPushToUid(), never the developer's own account.
 // ══════════════════════════════════════════════════════════════
 
-let _ghostViewingUid  = null;   // UID currently being viewed; null = not in ghost mode
-let _ghostOwnState    = null;   // deep-copy of dev's own App.S before entering ghost mode
+let _ghostViewingUid  = null;   // UID currently being viewed; null = not in admin mode
+let _ghostOwnState    = null;   // deep-copy of dev's own App.S before entering admin mode
 let _ghostAllUsers    = [];     // cached list of {uid, name, email, phone, source}
 let _deleteUserAllUsers = [];   // cached list for the Delete User Account picker (same shape)
 
@@ -18926,7 +18926,7 @@ async function _fetchAllKnownUsers() {
     // we can see permission-denied vs failed-precondition (missing
     // index) vs something else, then remove this block.
     console.error('[GhostMode] collectionGroup(data) scan failed:', dataScanErr);
-    try { toast('Ghost list: data-scan failed — ' + (dataScanErr && dataScanErr.message ? dataScanErr.message : dataScanErr)); } catch (_) {}
+    try { toast('Admin list: data-scan failed — ' + (dataScanErr && dataScanErr.message ? dataScanErr.message : dataScanErr)); } catch (_) {}
   }
 
   // Sort: users with names first, then by name alpha
@@ -19009,7 +19009,7 @@ function _escHtmlG(s) {
 }
 
 // ── DELETE USER ACCOUNT (developer-only, irreversible) ────────
-// Reuses the same _fetchAllKnownUsers() picker as Ghost Mode, but ends in
+// Reuses the same _fetchAllKnownUsers() picker as Admin Mode, but ends in
 // a destructive callable instead of a shadow session. Two confirms:
 // tap the row, then retype the UID in a prompt() before anything fires,
 // since there is no undo once deleteUserAccount runs server-side.
@@ -19106,7 +19106,7 @@ window.devConfirmDeleteUser = async function (uid, displayLabel, email) {
   }
 };
 
-// ── Enter ghost mode for a given UID ─────────────────────────
+// ── Enter admin mode for a given UID ─────────────────────────
 window.devEnterGhostMode = async function (uid, displayLabel) {
   if (!isDeveloper()) return;
 
@@ -19114,7 +19114,7 @@ window.devEnterGhostMode = async function (uid, displayLabel) {
   closeGhostModal();
 
   // 2. Save the developer's own clean state — ONLY if not already
-  // ghosting someone else. ghost mode fixes: own-state capture guard +
+  // ghosting someone else. admin mode fixes: own-state capture guard +
   // force-restore signal — switching directly between two viewed users
   // without exiting in between used to overwrite this snapshot with
   // the FIRST viewed user's data instead of the developer's real data,
@@ -19123,7 +19123,7 @@ window.devEnterGhostMode = async function (uid, displayLabel) {
     _ghostOwnState = JSON.parse(JSON.stringify(App.S));
   }
 
-  // 3. Prevent ALL writes while in ghost mode
+  // 3. Prevent ALL writes while in admin mode
   _ghostViewingUid = uid;
 
   // 4. Kill the real-time listener so viewed user's live changes
@@ -19170,12 +19170,35 @@ window.devEnterGhostMode = async function (uid, displayLabel) {
   if (pill)   pill.style.display   = 'inline-block';
   if (exitBtn) exitBtn.style.display = '';
 
-  toast('👁 Ghost: ' + _escHtmlG(displayLabel || uid.slice(0,10) + '…'));
+  toast('👁 Admin: ' + _escHtmlG(displayLabel || uid.slice(0,10) + '…'));
+  _showAdminBanner(displayLabel || uid.slice(0,10) + '…');
 };
 
-// ── Exit ghost mode — restore dev's own state ─────────────────
+// Small fixed bar shown while viewing another user in Admin Mode.
+function _showAdminBanner(label) {
+  let bar = document.getElementById('adminModeBanner');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'adminModeBanner';
+    bar.style.cssText = 'position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom,0px));z-index:99998;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;background:rgba(120,20,20,0.94);color:#fff;font-size:12px;font-weight:700;';
+    const t = document.createElement('span'); t.id = 'adminModeBannerText'; t.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+    const b = document.createElement('button'); b.textContent = '✕ Exit Admin Mode';
+    b.style.cssText = 'flex-shrink:0;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;';
+    b.onclick = function () { devExitGhostMode(); };
+    bar.appendChild(t); bar.appendChild(b);
+    document.body.appendChild(bar);
+  }
+  document.getElementById('adminModeBannerText').textContent = '👁 Admin Mode — viewing: ' + label;
+}
+function _hideAdminBanner() {
+  const bar = document.getElementById('adminModeBanner');
+  if (bar) bar.remove();
+}
+
+// ── Exit admin mode — restore dev's own state ─────────────────
 window.devExitGhostMode = async function () {
   if (!isDeveloper()) return;
+  _hideAdminBanner();
 
   // 1. Clear ghost flag immediately so write guards lift
   _ghostViewingUid = null;
@@ -19186,7 +19209,7 @@ window.devExitGhostMode = async function () {
     _ghostOwnState = null;
   }
 
-  // 3. Re-hydrate from cloud to get any fresh changes since we entered ghost mode
+  // 3. Re-hydrate from cloud to get any fresh changes since we entered admin mode
   App._cloudHydrated = false;
   try {
     await fbAutoSync();   // pulls dev's own cloud doc and sets up real-time listener
@@ -27141,7 +27164,7 @@ function _fmtDateDMY(dateStr) {
 window._lbPeriod = 'today';
 window._lbUnsubscribe = null;
 
-// Developer-only "Ghost Leaderboard": mirrors Ghost Mode's dev-only
+// Developer-only "Admin Leaderboard": mirrors Admin Mode's dev-only
 // visibility. When on, the optIn filter is dropped so opted-out
 // devotees still show (faded) with a live presence dot. Enforcement is
 // server-side via the firestore.rules read rule on leaderboard/{userId}.
@@ -27154,6 +27177,26 @@ function lbToggleGhostView() {
   if (tg) tg.classList.toggle('on', window._lbGhostMode);
   loadLeaderboard(window._lbPeriod || 'today');
 }
+
+// Open a leaderboard user's profile in Admin Mode (developer-only).
+window.lbAdminOpenProfile = async function (uid) {
+  if (typeof isDeveloper !== 'function' || !isDeveloper() || !uid) return;
+  let label = '';
+  try {
+    const u = (_ghostAllUsers || []).find(x => x.uid === uid);
+    label = u ? (u.googleName || u.name || u.email || '') : '';
+    if (!label) {
+      const p = await fbDb.collection('presence').doc(uid).get();
+      if (p.exists) { const d = p.data(); label = d.googleName || d.name || d.email || ''; }
+    }
+  } catch (_) {}
+  await devEnterGhostMode(uid, label);
+  if (isGhostMode()) {
+    // Jump to Statistics so the viewed profile is on screen straight away.
+    const btn = document.querySelector(".nb[onclick*=\"'vst'\"]");
+    try { sv('vst', btn); } catch (_) {}
+  }
+};
 
 function _lbSyncGhostToggleVisibility() {
   const tg = document.getElementById('tgLbGhost');
@@ -27283,7 +27326,7 @@ async function loadLeaderboard(period) {
 
   try {
     // Real-time snapshot of leaderboard collection. Developer accounts
-    // with the Ghost Leaderboard toggle on drop the optIn filter, so
+    // with the Admin Leaderboard toggle on drop the optIn filter, so
     // devotees who opted out still appear (faded, see renderLeaderboard).
     const _lbUseGhost = window._lbGhostMode && typeof isDeveloper === 'function' && isDeveloper();
     let _lbQuery = fbDb.collection('leaderboard');
@@ -27537,7 +27580,7 @@ function renderLeaderboard(docs, period) {
 
   // Sort descending. Lifetime keeps everyone (even devotees who haven't
   // logged jap yet — the leaderboard is also a roster for that view), for
-  // BOTH normal and Ghost Leaderboard (developer-only) view. Today/Week/Month
+  // BOTH normal and Admin Leaderboard (developer-only) view. Today/Week/Month
   // drop anyone with zero jap in that window in both views too, so the list
   // only shows who's actually active for the period being viewed — Ghost
   // mode no longer bypasses this, it only changes which docs are queried.
@@ -27578,7 +27621,7 @@ function renderLeaderboard(docs, period) {
     const rank = idx + 1;
         const isMe = (d._uid === myUid);
     const isTop3 = rank <= 3;
-    const isOptedOut = d.optIn !== true; // only ever true in Ghost Leaderboard view
+    const isOptedOut = d.optIn !== true; // only ever true in Admin Leaderboard view
     const medal = rank <= 3 ? medals[rank-1] : null;
     const badgeClass = rank === 1 ? 'lb-badge-1' : rank === 2 ? 'lb-badge-2' : rank === 3 ? 'lb-badge-3' : 'lb-badge-n';
     const badgeContent = medal ? medal : rank;
@@ -27703,7 +27746,13 @@ function renderLeaderboard(docs, period) {
     }
     const breakdown = bdParts.length > 0 ? bdParts.join(' · ') : '';
     const meta = (breakdown ? breakdown + '<br>' : '') + 'Total: ' + totalStr;
-    return `<div class="${rowClass}">
+    // Admin Leaderboard view (developer-only toggle on): tap a row to open that
+    // user's profile in Admin Mode. Never offered on your own row.
+    const _adminTap = !!(window._lbGhostMode && typeof isDeveloper === 'function' && isDeveloper() && d._uid && !isMe);
+    const _adminAttrs = _adminTap
+      ? ` onclick="lbAdminOpenProfile('${String(d._uid).replace(/[^A-Za-z0-9_-]/g,'')}')" style="cursor:pointer" title="Open profile in Admin Mode"`
+      : '';
+    return `<div class="${rowClass}"${_adminAttrs}>
       <div class="lb-badge ${badgeClass}">${badgeContent}</div>
       <div class="lb-info">
         <div class="${nameClass}">${name}${meMark}</div>
@@ -27748,7 +27797,7 @@ function _waitForCloudHydration(maxWaitMs) {
 /** Push current user's data to the leaderboard collection */
 async function pushLeaderboard() {
   if (!fbUser || !fbDb) return;
-  if (isGhostMode()) return; // ghost mode: read-only
+  if (isGhostMode()) return; // admin mode: read-only
   // CRITICAL: never read/write the leaderboard from a half-loaded App.S.
   // Before the cloud pull (fbMigrate) finishes, App.S.lbOptIn/history/etc.
   // may still hold defaults (e.g. lbOptIn:false) or a partial local cache,
@@ -27779,7 +27828,7 @@ async function pushLeaderboard() {
 // design, since accidentally writing the viewed user's stats onto the
 // developer's own public row would be worse than not writing at all.
 // This is the explicit, deliberate counterpart: called only from the
-// Settings actions a developer takes while Ghost Mode-viewing someone
+// Settings actions a developer takes while Admin Mode-viewing someone
 // (saveLbName(), toggleLbOptIn()) — writes straight to
 // /leaderboard/{_ghostViewingUid} using the same payload builder, never
 // touching the developer's own doc.
@@ -27804,7 +27853,7 @@ async function pushLeaderboardForGhostedUser() {
 //              users/{uid}/data/main doc.
 //   userInfo — { displayName, email } fallback for the name field when
 //              S.lbDisplayName isn't set (pass fbUser for self-push, or
-//              whatever name/email Ghost Mode already knows for a backfill).
+//              whatever name/email Admin Mode already knows for a backfill).
 //   forceOptIn — when set, overrides S.lbOptIn (used by backfill so a
 //              never-before-seen doc always defaults to opted OUT, never
 //              silently opting someone into the public board on their behalf).
@@ -27970,7 +28019,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
 // no leaderboard doc because the old app build she's on never created one.
 // Always opts them out (optIn:false) by default — this never publishes
 // someone to the public Family view without their own action; it only
-// makes their entry exist so the developer-only Ghost Leaderboard toggle
+// makes their entry exist so the developer-only Admin Leaderboard toggle
 // can reveal it. Never overwrites an existing doc.
 window.devBackfillMissingLeaderboardDocs = async function () {
   if (!isDeveloper()) return;
@@ -30362,7 +30411,7 @@ const AudioChant = (function () {
   api.start = function () {
     if (playing || starting) return;
     if (!App.S.audioMode) return;
-    if (typeof isGhostMode === "function" && isGhostMode()) { toast("Ghost mode: read-only"); return; }
+    if (typeof isGhostMode === "function" && isGhostMode()) { toast("Admin mode: read-only"); return; }
     try { if (App.S.japMode && App.S.japMode !== "radha") { switchJapMode("radha"); toast("Switched to Radha Naam for audio chant"); } } catch (_e) {}
     if (el && elTrack !== trackKey()) { try { el.pause(); } catch (_e) {} el = null; }   // track changed in Settings -> rebuild the player
     if (!el) {
@@ -30919,7 +30968,7 @@ const AudioChantM = (function () {
     const s = S();
     if (!s.audioMode) return;
     const k = activeKey(); if (!k) return;
-    if (typeof isGhostMode === "function" && isGhostMode()) { toast("Ghost mode: read-only"); return; }
+    if (typeof isGhostMode === "function" && isGhostMode()) { toast("Admin mode: read-only"); return; }
     if (window.AudioChant && window.AudioChant.playing) { toast("Please turn off the Radha audio first 🙏"); return; }
     if (window.AudioChant28 && window.AudioChant28.playing) { toast("Please turn off the 28 Names audio first 🙏"); return; }
     try { if (typeof _rjAnyMediaPlaying === "function" && _rjAnyMediaPlaying()) { toast("Stop the stotram / pad audio first"); return; } } catch (_e) {}
@@ -31232,7 +31281,7 @@ const AudioChant28 = (function () {
   api.start = function () {
     if (playing || starting) return;
     if ((window.AudioChant && window.AudioChant.playing) || (window.AudioChantM && window.AudioChantM.playing)) { toast("Please turn off audio chanting first 🙏"); return; }
-    if (typeof isGhostMode === "function" && isGhostMode()) { toast("Ghost mode: read-only"); return; }
+    if (typeof isGhostMode === "function" && isGhostMode()) { toast("Admin mode: read-only"); return; }
     try { if (typeof _rjAnyMediaPlaying === "function" && _rjAnyMediaPlaying()) { toast("Stop the stotram / pad audio first"); return; } } catch (_e) {}
     if (!el) {
       el = new Audio(SRC); el.preload = "auto"; el.loop = true;

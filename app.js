@@ -266,14 +266,24 @@ async function _rjapDetectAppVersion() {
 async function _writePresenceHeartbeat(user) {
   if (!user || !fbDb) return;
   try {
-    await fbDb.collection("presence").doc(user.uid).set({
+    // Google account name (for Ghost Mode, developer-only view). user.displayName
+    // can be null even for Google sign-in, so also check the google.com provider
+    // entry. Only written when non-empty so merge:true never wipes a good value.
+    let googleName = "";
+    try {
+      const gp = (user.providerData || []).find(p => p && p.providerId === "google.com");
+      googleName = (gp && gp.displayName) || user.displayName || "";
+    } catch (_) {}
+    const presenceDoc = {
       uid: user.uid,
-      name: user.displayName || "",
+      name: user.displayName || googleName || "",
       email: user.email || "",
       phone: user.phoneNumber || "",
       appVersion: _rjapAppVersion,
       lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
+    };
+    if (googleName) presenceDoc.googleName = googleName;
+    await fbDb.collection("presence").doc(user.uid).set(presenceDoc, { merge: true });
   } catch (e) {
     console.warn("Presence heartbeat failed:", e && e.message ? e.message : e);
   }
@@ -18874,6 +18884,7 @@ async function _fetchAllKnownUsers() {
       const d = doc.data();
       add(doc.id, {
         name:  byUid[doc.id]?.name  || d.name  || '',
+        googleName: d.googleName || d.name || '',
         email: byUid[doc.id]?.email || d.email || '',
         phone: byUid[doc.id]?.phone || d.phone || '',
         appVersion: d.appVersion || '',
@@ -18935,6 +18946,7 @@ window.filterGhostList = function () {
     ? _ghostAllUsers.filter(u =>
         (u.uid   || '').toLowerCase().includes(q) ||
         (u.name  || '').toLowerCase().includes(q) ||
+        (u.googleName || '').toLowerCase().includes(q) ||
         (u.email || '').toLowerCase().includes(q) ||
         (u.phone || '').toLowerCase().includes(q)
       )
@@ -18956,8 +18968,9 @@ function _renderGhostList(users) {
   }
   el.innerHTML = '';
   users.forEach(u => {
-    const label   = u.name  || u.email || '(no name)';
-    const sublabel = u.email && u.name ? u.email : (u.phone || '');
+    const label   = u.googleName || u.name || u.email || '(no name)';
+    const _nick   = (u.name && u.name !== u.googleName && u.name !== 'Anonymous Devotee') ? u.name : '';
+    const sublabel = [_nick ? 'Nickname: ' + _nick : '', u.email, (!u.email ? u.phone : '')].filter(Boolean).join(' · ');
     const japStr  = u.jap ? ' · ' + _lbFmtJap(u.jap) + ' jap' : '';
     // per-user version + last-synced display — relative time so it stays
     // readable without needing a live clock ("2h ago" instead of a raw
@@ -19023,6 +19036,7 @@ window.filterDeleteUserList = function () {
     ? _deleteUserAllUsers.filter(u =>
         (u.uid   || '').toLowerCase().includes(q) ||
         (u.name  || '').toLowerCase().includes(q) ||
+        (u.googleName || '').toLowerCase().includes(q) ||
         (u.email || '').toLowerCase().includes(q) ||
         (u.phone || '').toLowerCase().includes(q)
       )
@@ -19044,8 +19058,9 @@ function _renderDeleteUserList(users) {
   }
   el.innerHTML = '';
   users.forEach(u => {
-    const label = u.name || u.email || '(no name)';
-    const sublabel = u.email && u.name ? u.email : (u.phone || '');
+    const label = u.googleName || u.name || u.email || '(no name)';
+    const _nick   = (u.name && u.name !== u.googleName && u.name !== 'Anonymous Devotee') ? u.name : '';
+    const sublabel = [_nick ? 'Nickname: ' + _nick : '', u.email, (!u.email ? u.phone : '')].filter(Boolean).join(' · ');
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;border:1px solid rgba(255,80,80,0.18);background:rgba(255,80,80,0.03);cursor:pointer;transition:background 0.15s;';
     row.onmouseenter = () => { row.style.background = 'rgba(255,80,80,0.09)'; };

@@ -9360,6 +9360,50 @@ function _msConsiderChipsHtml() {
   return h;
 }
 
+// ── N&M: three Lifetime cards (just below the Journey Start date) ──
+//  1) ALL      : every trait + gifted jap + 28 Names, nothing deducted
+//  2) CLEAN    : every trait, minus gifted jap, minus wish (sankalp) jap
+//  3) SELECTED : only the traits chosen in the chips below (same as Bhagvat Prapti total)
+function _msLtSum(h) { return Object.values(h || {}).reduce((x, y) => x + (+y || 0), 0); }
+function _msLifetimeAll() {
+  const S = App.S;
+  const h28 = Object.entries(S.h28 || {}).filter(([k]) => !k.startsWith("prev_")).reduce((a, [, v]) => a + (+v || 0), 0);
+  return _msLtSum(S.history) + _msLtSum(S.historyRV) + _msLtSum(S.historyKV) + _msLtSum(S.historyKaam) +
+    _msLtSum(S.historyHK) + _msLtSum(S.historySS) + _msLtSum(S.historyRam) + h28;
+}
+function _msLifetimeClean() {
+  const S = App.S;
+  const net = (h, d) => Math.max(0, _msLtSum(h) - (d || 0));
+  return net(S.history, S.nameJapDeduct) + net(S.historyRV, S.nameJapDeductRV) + net(S.historyKV, S.nameJapDeductKV) +
+    net(S.historyKaam, S.nameJapDeductKaam) + net(S.historyHK, S.nameJapDeductHK) + net(S.historySS, S.nameJapDeductSS) +
+    net(S.historyRam, S.nameJapDeductRam) + _msAvailable28();
+}
+function _msRenderLifetimeCards() {
+  const el = document.getElementById("msLifetimeCards");
+  if (!el) return;
+  const hi = secLang("nm") === "hi";
+  const ms = App.S.ms || 108;
+  const fmt = (n) => Math.max(0, Math.round(n)).toLocaleString("en-IN");
+  const mal = (n) => Math.floor(Math.max(0, n) / ms).toLocaleString("en-IN") + (hi ? " mala" : " মালা");
+  const short = { radha: "R", ra: "R-A", rv: "RV", rva: "RV-A", hk: "HK", kv: "KV", kva: "KV-A", km: "KM", kma: "KM-A", ss: "SS", ram: "Ram", n28: "28N", n28a: "28N-A" };
+  const c = getMsConsider();
+  const chosen = Object.keys(short).filter((k) => c[k]).map((k) => short[k]);
+  const cards = [
+    { cls: "c1", t: hi ? "Lifetime · Sab" : "লাইফটাইম · সব", n: _msLifetimeAll(),
+      s: hi ? "Sab traits + gift + 28 Naam" : "সব ট্রেইট + উপহার + ২৮ নাম" },
+    { cls: "c2", t: hi ? "Lifetime · Bina Wish/Gift" : "লাইফটাইম · উইশ/উপহার ছাড়া", n: _msLifetimeClean(),
+      s: hi ? "Sab jap, wish aur gift ke bina" : "সব জপ, উইশ ও উপহার বাদে" },
+    { cls: "c3", t: hi ? "Lifetime · Meri Pasand" : "লাইফটাইম · আমার বাছাই", n: _msComputeTotal().total,
+      s: chosen.length ? chosen.join(" · ") : (hi ? "Koi trait select nahi" : "কোনো ট্রেইট বাছাই নেই"), link: true },
+  ];
+  el.innerHTML = '<div class="ms-lt-grid">' + cards.map((k) =>
+    '<div class="ms-lt-card ' + k.cls + '"' + (k.link ? ' onclick="(document.getElementById(\'msContent\')||{}).scrollTop=0" title="' + (hi ? "Trait chayan upar" : "ট্রেইট বাছাই উপরে") + '"' : '') + '>' +
+    '<div class="ms-lt-ttl">' + k.t + '</div>' +
+    '<div class="ms-lt-num">' + fmt(k.n) + '</div>' +
+    '<div class="ms-lt-mala">' + mal(k.n) + '</div>' +
+    '<div class="ms-lt-sub">' + escHtml(k.s) + '</div></div>').join("") + '</div>';
+}
+
 function renderMilestonesTab() {
   const el = document.getElementById("msContent");
   if (!el) return;
@@ -9434,6 +9478,8 @@ function renderMilestonesTab() {
   } else if (sinceEl) {
     sinceEl.textContent = "Set your journey start date above ☝️";
   }
+
+  try { _msRenderLifetimeCards(); } catch (_e) {}
 
   // Build lakh milestones (1L to 130L)
   const lakhMs = [];
@@ -16274,6 +16320,189 @@ function renderFavVideoLinksFolderView(list, folderId, subfolderKey) {
 }
 
 
+// ─────────────────────────────────────────────────────────
+// S&V SEARCH — one search bar on every S&V page (index.html #svSearchWrap).
+// Type in English, Hindi or Bangla. Names are compared through a
+// script-neutral "sound skeleton" (consonants only), so "gajendra" finds
+// गजेन्द्र मोक्ष and গজেন্দ্র মোক্ষ, and Hindi <-> Bangla spellings find
+// each other too. Main page = searches everything; inside a folder = that
+// folder only (with a "Search all S&V" button).
+// ─────────────────────────────────────────────────────────
+window._svQuery = window._svQuery || '';
+window._svAll = false;
+const _SV_CMAP = (() => {
+  const m = {};
+  const put = (v, s) => { s.split('').forEach((c) => { m[c] = v; }); };
+  put('k', 'खकখক'); put('g', 'गघগঘ');
+  put('n', 'ङञणनঙঞণনंँংঁ');
+  put('c', 'चछচছ'); put('j', 'जझজঝ');
+  put('t', 'टठतथটঠতথৎ'); put('d', 'डढदधডঢদধ');
+  put('p', 'पफপফ'); put('b', 'बभवবভ');
+  put('m', 'मম'); put('y', 'यয');
+  put('r', 'रऋृরঋৃ'); put('l', 'लळল');
+  put('s', 'शषसশষস'); put('h', 'हহ');
+  return m;
+})();
+function _svKey(s) {
+  s = String(s == null ? '' : s).normalize('NFD').toLowerCase();
+  let out = '', prevL = '';
+  for (const ch of s) {
+    const cp = ch.codePointAt(0);
+    if (cp === 0x200c || cp === 0x200d || (cp >= 0x300 && cp <= 0x36f)) continue;
+    let v, isLat = false;
+    if (_SV_CMAP[ch] !== undefined) v = _SV_CMAP[ch];
+    else if (cp >= 0x0900 && cp <= 0x0DFF) v = '';          // vowel signs, virama, nukta, Indic digits
+    else if (ch >= 'a' && ch <= 'z') {
+      isLat = true;
+      if ('aeiou'.indexOf(ch) > -1) v = '';
+      else if (ch === 'h') v = (prevL && 'kgcjtdpbs'.indexOf(prevL) > -1) ? '' : 'h';
+      else if (ch === 'v' || ch === 'w') v = 'b';
+      else if (ch === 'f') v = 'p';
+      else if (ch === 'z') v = 'j';
+      else if (ch === 'q') v = 'k';
+      else if (ch === 'x') v = 'ks';
+      else v = ch;
+    } else if (ch >= '0' && ch <= '9') v = ch;
+    else v = ' ';
+    out += v;
+    prevL = isLat ? ch : '';
+  }
+  return out.replace(/\s+/g, ' ').replace(/([^ ])\1+/g, '$1').trim();
+}
+function _svParseQuery(q) {
+  return String(q || '').toLowerCase().split(/\s+/).filter(Boolean)
+    .map((w) => ({ raw: w, key: _svKey(w).replace(/ /g, '') }));
+}
+function _svHit(words, texts) {
+  const raw = texts.filter(Boolean).join(' ').toLowerCase();
+  const key = _svKey(raw);
+  return words.every((w) => raw.indexOf(w.raw) > -1 || (w.key && key.indexOf(w.key) > -1));
+}
+function svSearchInput(v) {
+  window._svQuery = String(v || '');
+  const x = document.getElementById('svSearchX');
+  if (x) x.style.display = window._svQuery ? '' : 'none';
+  if (!window._svQuery) window._svAll = false;
+  clearTimeout(window._svT);
+  window._svT = setTimeout(() => { try { renderSt(); } catch (_e) {} }, 140);
+}
+function _svResetQuery() {
+  window._svQuery = ''; window._svAll = false;
+  const i = document.getElementById('svSearchIn'); if (i) i.value = '';
+  const x = document.getElementById('svSearchX'); if (x) x.style.display = 'none';
+}
+function svSearchClear() {
+  _svResetQuery();
+  try { renderSt(); } catch (_e) {}
+  const i = document.getElementById('svSearchIn'); if (i) i.focus();
+}
+function _svSyncBar(hide) {
+  const w = document.getElementById('svSearchWrap'); if (!w) return;
+  w.style.display = hide ? 'none' : '';
+  const i = document.getElementById('svSearchIn');
+  if (i) i.placeholder = secLang('sv') === 'hi' ? '🔍 खोजें — हिंदी / বাংলা / English' : '🔍 খুঁজুন — বাংলা / हिंदी / English';
+}
+// Draws the result list instead of the normal page. Returns true when it drew.
+function _svRenderSearch(list, groups, activeKey, folderTitle) {
+  const q = window._svQuery;
+  const words = _svParseQuery(q);
+  if (!words.length) return false;
+  const hi = secLang('sv') === 'hi';
+  const L = (h, b) => (hi ? h : b);
+  const scoped = !!activeKey && !window._svAll;
+  const af = document.getElementById('stAddForm'); if (af) af.style.display = 'none';
+
+  const folderHits = [], hits = [], seen = {};
+  if (!scoped) {
+    groups.forEach((g) => {
+      if (_svHit(words, [g.title, g.titleHi])) folderHits.push({ k: 'folder', g });
+    });
+  }
+  groups.forEach((g) => {
+    if (g.key === 'videos' || g.key === 'rjbj' || g.key === 'dd') return;
+    if (scoped && g.key !== activeKey) return;
+    (g.items || []).forEach((st) => {
+      if (!st || st.__head || !st.id || seen[st.id]) return;
+      if (!_svHit(words, [st.name, st.nameHi, st.sub, st.subHi])) return;
+      seen[st.id] = 1;
+      hits.push({ k: 'st', st, g });
+    });
+  });
+  if ((!scoped || activeKey === 'dd') && typeof DD_DEITIES !== 'undefined') {
+    DD_DEITIES.forEach((d) => {
+      if (_svHit(words, [d.n && d.n.hi, d.n && d.n.bn])) hits.push({ k: 'dd', d });
+    });
+  }
+  if ((!scoped || activeKey === 'rjbj') && typeof RASHIKJAN_ITEMS !== 'undefined') {
+    RASHIKJAN_ITEMS.forEach((it, i) => {
+      if (_svHit(words, [it.hi, it.bn])) hits.push({ k: 'rj', it, i });
+    });
+  }
+  const all = folderHits.concat(hits);
+
+  const head = document.createElement('div');
+  head.className = 'sv-res-head';
+  const scopeGrp = scoped ? groups.find((g) => g.key === activeKey) : null;
+  head.innerHTML =
+    '<span>' + escHtml(all.length + ' ' + L('परिणाम', 'ফলাফল')) +
+    (scopeGrp ? ' · ' + escHtml(folderTitle(scopeGrp)) : '') + '</span>' +
+    (scoped ? '<button type="button" class="sv-res-all">' + escHtml(L('सभी S&V में खोजें', 'সব S&V-তে খুঁজুন')) + '</button>' : '');
+  const allBtn = head.querySelector('.sv-res-all');
+  if (allBtn) allBtn.addEventListener('click', () => { window._svAll = true; renderSt(); });
+  list.appendChild(head);
+
+  if (!all.length) {
+    const e = document.createElement('div');
+    e.className = 'st-folder-empty';
+    e.textContent = L('कुछ नहीं मिला 🙏', 'কিছু পাওয়া যায়নি 🙏');
+    list.appendChild(e);
+    return true;
+  }
+
+  const openFolder = (key) => {
+    _svResetQuery();
+    window._stActiveFolder = key;
+    window._stActiveVideoFolder = null;
+    window._stSevaOpen = false; window._stVedOpen = false; window._stRvFavOpen = false;
+    window._stRvSub = null; window._stSevaSection = null; window._ddSel = null;
+    renderSt();
+  };
+  all.forEach((h) => {
+    const c = document.createElement('div');
+    c.className = 'sv-res';
+    let icon = '🪔', name = '', sub = '', where = '', act = null, ok = true;
+    if (h.k === 'folder') {
+      icon = h.g.icon || '📂'; name = folderTitle(h.g); where = L('फ़ोल्डर', 'ফোল্ডার');
+      act = () => openFolder(h.g.key);
+    } else if (h.k === 'dd') {
+      icon = '🛕'; name = hi ? h.d.n.hi : h.d.n.bn; where = L('दिव्य दर्शन', 'দিব্য দর্শন');
+      act = () => { openFolder('dd'); };
+      act = () => { _svResetQuery(); window._stActiveFolder = 'dd'; window._ddSel = h.d.s; renderSt(); };
+    } else if (h.k === 'rj') {
+      icon = '🙏'; name = hi ? h.it.hi : h.it.bn; where = L('रसिक जन / भक्त जन', 'রসিক জন / ভক্ত জন');
+      act = () => { _svResetQuery(); window._stActiveFolder = 'rjbj'; window._rjIdx = h.i; renderSt(); };
+    } else {
+      const st = h.st;
+      name = stName(st); sub = stSub(st); where = folderTitle(h.g);
+      const ly = (typeof getEffectiveLyrics === 'function') ? getEffectiveLyrics(st.id) : '';
+      ok = !!(ly && String(ly).trim()) || !!st.live || !!st.vedFolder || !!st.sevaFolder;
+      act = () => {
+        if (st.vedFolder) { _svResetQuery(); window._stActiveFolder = 'rv'; window._stRvSub = null; window._stVedOpen = true; window._stSevaSection = null; renderSt(); }
+        else if (st.sevaFolder) { _svResetQuery(); window._stActiveFolder = 'rv'; window._stRvSub = null; window._stSevaOpen = true; window._stSevaSection = null; renderSt(); }
+        else showLyrics(st.id);
+      };
+    }
+    c.innerHTML =
+      '<span class="sv-res-ic">' + icon + '</span>' +
+      '<div class="sv-res-txt"><div class="sv-res-name">' + escHtml(name) + '</div>' +
+      '<div class="sv-res-sub">' + escHtml(where) + (sub ? ' · ' + escHtml(sub) : '') + '</div></div>' +
+      (ok ? '<button type="button" class="st-open-btn sv-res-open">' + escHtml(L('खोलें', 'খুলুন')) + '</button>' : '');
+    if (ok) c.addEventListener('click', act);
+    list.appendChild(c);
+  });
+  return true;
+}
+
 function renderSt() {
   const list = document.getElementById("stList");
   try { if (window.prefetchGita) window.prefetchGita(); } catch (_e) {}   // Gita text is downloaded on demand: start it as soon as S&V is shown
@@ -16302,6 +16531,7 @@ function renderSt() {
   const inVed = window._stActiveFolder === 'rv' && !!window._stVedOpen;
   if (trackerTitle) trackerTitle.style.display = (inVideos || inSeva || inVed) ? 'none' : '';
   if (addForm) addForm.style.display = (inVideos || inSeva || inVed) ? 'none' : '';
+  try { _svSyncBar(inVideos || inSeva || inVed); } catch (_e) {}
 
   // Inject premium glow animations once
   if (!document.getElementById('st-card-styles')) {
@@ -16373,6 +16603,9 @@ function renderSt() {
   }
 
   const activeKey = window._stActiveFolder || null;
+
+  // S&V search: replaces the page with matching results while the search box has text.
+  if (window._svQuery && activeKey !== 'videos' && !inSeva && !inVed && _svRenderSearch(list, groups, activeKey, folderTitle)) return;
 
   // ── Level 1: folder menu (no active folder selected) ──
   if (!activeKey) {

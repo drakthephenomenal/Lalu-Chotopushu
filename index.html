@@ -722,6 +722,10 @@
   </div>
   </div>
     <!-- Global Translation Toggle removed — moved to per-stotram reader (top-right) -->
+  <div class="sv-search" id="svSearchWrap">
+    <input type="text" id="svSearchIn" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" placeholder="🔍 খুঁজুন — বাংলা / हिंदी / English" oninput="svSearchInput(this.value)">
+    <button type="button" class="sv-search-x" id="svSearchX" style="display:none" onclick="svSearchClear()" aria-label="Clear">✕</button>
+  </div>
   <div id="stList"></div>
   <div class="asf" id="stAddForm">
     <!-- Header — always visible, tap to toggle -->
@@ -960,6 +964,7 @@
     <span id="msSadhanaStartDisp" style="font-size:13px;color:var(--gold);font-weight:600;margin-left:4px;"></span>
   </div>
   <div class="ms-sadhana-since" id="msSadhanaSince"></div>
+  <div id="msLifetimeCards"></div>
   <div id="msContent"></div>
   <!-- Detail bottom sheet -->
   <div class="ms-detail-overlay" id="msDetailOverlay" onclick="if(event.target===this)closeMsDetail()">

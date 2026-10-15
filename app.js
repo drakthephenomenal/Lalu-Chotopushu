@@ -1017,7 +1017,7 @@ const App = {
       audioStopSecs: this.S.audioStopSecs || 0,
       audioStopDaily: !!this.S.audioStopDaily,
       audioListenOnly: !!this.S.audioListenOnly,
-      audioTrack: this.S.audioTrack === "track1" ? "track1" : "maharaj",
+      audioTrack: ["track1", "track3"].indexOf(this.S.audioTrack) >= 0 ? this.S.audioTrack : "maharaj",
       sadhanaStart: this.S.sadhanaStart || "",
       historyHK: this.S.historyHK || {},
       timerHistoryHK: this.S.timerHistoryHK || {},
@@ -1234,7 +1234,7 @@ const App = {
     if (!this.S.historyAudio28) this.S.historyAudio28 = {};
     if (!this.S.timerAudio28) this.S.timerAudio28 = {};
     if (this.S.audioMode === undefined) this.S.audioMode = false;
-    if (this.S.audioTrack !== "track1") this.S.audioTrack = "maharaj";
+    if (["track1", "track3"].indexOf(this.S.audioTrack) < 0) this.S.audioTrack = "maharaj";
     if (this.S.audioStopMalas === undefined) this.S.audioStopMalas = 0;
     if (this.S.audioStopSecs === undefined) this.S.audioStopSecs = 0;
     if (this.S.audioStopDaily === undefined) this.S.audioStopDaily = false;
@@ -8823,7 +8823,7 @@ function _buildBackupPayload() {
     historyAudio: App.S.historyAudio || {},
     historyAudio28: App.S.historyAudio28 || {},
     timerAudio28: App.S.timerAudio28 || {},
-    audioMode: !!App.S.audioMode, audioStopMalas: App.S.audioStopMalas || 0, audioStopSecs: App.S.audioStopSecs || 0, audioStopDaily: !!App.S.audioStopDaily, audioListenOnly: !!App.S.audioListenOnly, audioTrack: App.S.audioTrack === "track1" ? "track1" : "maharaj",
+    audioMode: !!App.S.audioMode, audioStopMalas: App.S.audioStopMalas || 0, audioStopSecs: App.S.audioStopSecs || 0, audioStopDaily: !!App.S.audioStopDaily, audioListenOnly: !!App.S.audioListenOnly, audioTrack: ["track1", "track3"].indexOf(App.S.audioTrack) >= 0 ? App.S.audioTrack : "maharaj",
     manualJapCount: App.S.manualJapCount || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, n28: {} },
     manualJapTime: App.S.manualJapTime || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} },
   };
@@ -9056,7 +9056,7 @@ function importAllData(input) {
       App.S.historyAudio = (data.historyAudio && typeof data.historyAudio === "object") ? data.historyAudio : {};
       App.S.historyAudio28 = (data.historyAudio28 && typeof data.historyAudio28 === "object") ? data.historyAudio28 : {};
       App.S.timerAudio28 = (data.timerAudio28 && typeof data.timerAudio28 === "object") ? data.timerAudio28 : {};
-      App.S.audioMode = !!data.audioMode; App.S.audioStopMalas = data.audioStopMalas || 0; App.S.audioStopSecs = data.audioStopSecs || 0; App.S.audioStopDaily = !!data.audioStopDaily; App.S.audioListenOnly = !!data.audioListenOnly; App.S.audioTrack = data.audioTrack === "track1" ? "track1" : "maharaj";
+      App.S.audioMode = !!data.audioMode; App.S.audioStopMalas = data.audioStopMalas || 0; App.S.audioStopSecs = data.audioStopSecs || 0; App.S.audioStopDaily = !!data.audioStopDaily; App.S.audioListenOnly = !!data.audioListenOnly; App.S.audioTrack = ["track1", "track3"].indexOf(data.audioTrack) >= 0 ? data.audioTrack : "maharaj";
        App.S.manualJapCount = data.manualJapCount || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} };
        App.S.manualJapTime = data.manualJapTime || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} };
       App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history));
@@ -30123,12 +30123,14 @@ const AudioChant = (function () {
   const SRC = "audio/radha_naam_chant.mp3";
   // "Radha Naam Track 1": one 4:49 song = 106 laps (= 106 jap per play; the two shortest laps, 0.17s and 0.87s, were dropped). Each lap = 1 jap + one Radha animation,
   // counted when that lap ends. TRK_ENDS[i] = end second of lap i+1 (from the track's time-lap sheet).
-  const TRK_SRC = "audio/radha_naam_track_1.mp3";
-  const TRK_ENDS = [34.115, 35.531, 36.956, 38.607, 40.807, 43.679, 46.243, 47.719, 49.276, 50.819, 52.761, 55.406, 58.38, 59.639, 61.172, 62.686, 64.774, 67.42, 70.58, 71.734, 73.104, 74.59, 76.803, 79.306, 82.536, 86.548, 88.715, 90.209, 91.122, 94.086, 97.822, 100.663, 102.277, 103.206, 106.777, 109.572, 112.658, 114.182, 115.168, 118.713, 121.542, 124.654, 126.223, 127.248, 154.751, 156.397, 157.728, 159.299, 160.737, 162.214, 163.758, 165.235, 166.597, 168.235, 169.357, 171.102, 173.745, 178.986, 180.2, 181.749, 183.338, 184.748, 186.385, 187.891, 189.442, 190.703, 192.274, 193.376, 195.321, 197.519, 202.148, 203.448, 205.351, 206.612, 208.846, 211.131, 214.175, 215.605, 217.141, 218.627, 220.189, 223.114, 226.168, 229.549, 232.606, 234.27, 235.378, 238.299, 241.883, 244.724, 246.424, 247.493, 250.604, 253.528, 256.69, 258.315, 259.237, 262.772, 265.592, 268.678, 270.416, 275.169, 276.389, 277.431, 281.113, 288.926];
-  const TRK_N = TRK_ENDS.length, TRK_TOTAL = 288.9665;
-  function trackKey() { return App.S.audioTrack === "track1" ? "track1" : "maharaj"; }
-  function trk() { return trackKey() === "track1"; }
-  function lapIdx(t) { let n = 0; while (n < TRK_N && TRK_ENDS[n] <= t + 0.03) n++; return n; }   // laps completed at time t
+  const TRACKS = {
+    track1: { name: "Radha Naam Track 1", src: "audio/radha_naam_track_1.mp3", total: 288.9665, ends: [34.115, 35.531, 36.956, 38.607, 40.807, 43.679, 46.243, 47.719, 49.276, 50.819, 52.761, 55.406, 58.38, 59.639, 61.172, 62.686, 64.774, 67.42, 70.58, 71.734, 73.104, 74.59, 76.803, 79.306, 82.536, 86.548, 88.715, 90.209, 91.122, 94.086, 97.822, 100.663, 102.277, 103.206, 106.777, 109.572, 112.658, 114.182, 115.168, 118.713, 121.542, 124.654, 126.223, 127.248, 154.751, 156.397, 157.728, 159.299, 160.737, 162.214, 163.758, 165.235, 166.597, 168.235, 169.357, 171.102, 173.745, 178.986, 180.2, 181.749, 183.338, 184.748, 186.385, 187.891, 189.442, 190.703, 192.274, 193.376, 195.321, 197.519, 202.148, 203.448, 205.351, 206.612, 208.846, 211.131, 214.175, 215.605, 217.141, 218.627, 220.189, 223.114, 226.168, 229.549, 232.606, 234.27, 235.378, 238.299, 241.883, 244.724, 246.424, 247.493, 250.604, 253.528, 256.69, 258.315, 259.237, 262.772, 265.592, 268.678, 270.416, 275.169, 276.389, 277.431, 281.113, 288.926] },
+    track3: { name: "Radha Naam Track 3 · Sanatan Studio", src: "audio/radha_naam_track_3.mp3", total: 345.384, ends: [42.384, 44.132, 47.631, 49.883, 51.73, 53.746, 56.813, 58.614, 61.73, 62.139, 64.139, 64.382, 65.309, 65.48, 66.797, 67.422, 71.823, 72.045, 73.942, 74.028, 76.215, 77.642, 79.69, 79.861, 81.19, 81.295, 82.975, 83.046, 83.175, 84.911, 86.246, 86.328, 87.562, 87.695, 89.979, 90.196, 90.408, 91.328, 91.594, 92.974, 93.111, 93.54, 94.674, 94.804, 94.991, 96.957, 97.048, 97.241, 98.477, 98.609, 100.333, 100.423, 102.926, 103.007, 104.761, 104.875, 105.893, 107.377, 107.555, 109.365, 109.506, 111.526, 112.873, 114.724, 114.886, 116.691, 116.758, 119.442, 123.556, 130.272, 134.225, 136.888, 163.305, 164.954, 167.237, 168.604, 170.736, 172.236, 174.019, 175.753, 177.303, 178.568, 181.19, 182.473, 188.07, 191.498, 193.931, 195.655, 197.015, 199.385, 200.465, 202.531, 204.566, 206.064, 207.747, 210.848, 213.53, 216.314, 222.149, 225.014, 227.797, 254.379, 257.581, 261.194, 263.113, 266.027, 268.611, 270.327, 277.478, 280.079, 283.01, 285.314, 287.158, 290.81, 292.094, 293.379, 294.411, 295.659, 298.962, 301.708, 304.906, 306.824, 308.891, 310.423, 312.423, 313.956, 316.16, 317.723, 319.739, 321.31, 323.173, 324.923, 327.057, 341.106, 345.389] }
+  };
+  function trackKey() { const k = App.S.audioTrack; return TRACKS[k] ? k : "maharaj"; }
+  function trk() { return trackKey() !== "maharaj"; }
+  function TK() { return TRACKS[elTrack] || TRACKS[trackKey()] || TRACKS.track1; }          // lap table of the track in use
+  function lapIdx(t) { const E = TK().ends; let n = 0; while (n < E.length && E[n] <= t + 0.03) n++; return n; }   // laps completed at time t
   const MAX_LOG = 1000;
   let el = null, playing = false, starting = false, sess = null;
   let lastT = 0, lastWall = 0, acc = 0, poller = 0, startedAt = 0;
@@ -30146,8 +30148,8 @@ const AudioChant = (function () {
   api._el = function () { return el; };
 
   // seconds per jap: Maharaj ji clip = whole file; Track 1 = average lap (file length / 108)
-  function fileDur() { return (el && elTrack === trackKey() && isFinite(el.duration) && el.duration > 0.3) ? el.duration : (trk() ? TRK_TOTAL : 0.869); }
-  function dur() { return trk() ? fileDur() / TRK_N : fileDur(); }
+  function fileDur() { return (el && elTrack === trackKey() && isFinite(el.duration) && el.duration > 0.3) ? el.duration : (trk() ? TRACKS[trackKey()].total : 0.869); }
+  function dur() { return trk() ? fileDur() / TRACKS[trackKey()].ends.length : fileDur(); }
   function log() { if (!App.S.audioChantLog) App.S.audioChantLog = []; return App.S.audioChantLog; }
   function hist() { if (!App.S.historyAudio) App.S.historyAudio = {}; return App.S.historyAudio; }
   function audioToday() { return hist()[App.S.tk] || 0; }
@@ -30276,7 +30278,8 @@ const AudioChant = (function () {
     if (!playing || !el) return;
     const now = Date.now() / 1000, t = el.currentTime;
     let n;
-    if (elTrack === "track1") {
+    if (TRACKS[elTrack]) {
+      const TRK_N = TRACKS[elTrack].ends.length;
       // Track 1: count the laps whose end time was crossed since the last poll (handles the loop wrap-around)
       const D = fileDur();
       const d = t - lastT, laps = lapIdx(t), wall = now - lastWall;
@@ -30323,7 +30326,7 @@ const AudioChant = (function () {
       if (!("mediaSession" in navigator)) return;
       const ms = navigator.mediaSession;
       if (on) {
-        ms.metadata = new MediaMetadata({ title: trk() ? "Radha Naam · Track 1" : "Radha Naam · Audio Chant", artist: "Radha Naam Jap" });
+        ms.metadata = new MediaMetadata({ title: trk() ? TRACKS[trackKey()].name : "Radha Naam · Audio Chant", artist: "Radha Naam Jap" });
         ms.playbackState = "playing";
         ms.setActionHandler("pause", function () { api.requestStop(""); });
         ms.setActionHandler("stop", function () { api.requestStop(""); });
@@ -30349,7 +30352,7 @@ const AudioChant = (function () {
     if (el && elTrack !== trackKey()) { try { el.pause(); } catch (_e) {} el = null; }   // track changed in Settings -> rebuild the player
     if (!el) {
       elTrack = trackKey();
-      el = new Audio(elTrack === "track1" ? TRK_SRC : SRC); el.preload = "auto"; el.loop = true;
+      el = new Audio(TRACKS[elTrack] ? TRACKS[elTrack].src : SRC); el.preload = "auto"; el.loop = true;
       el.addEventListener("timeupdate", poll);
       el.addEventListener("pause", function () { if (playing) api.stop(true); });
       el.addEventListener("error", function () { if (playing || starting) { starting = false; api.stop(true); toast("Audio chant file could not be played"); } });
@@ -30361,7 +30364,7 @@ const AudioChant = (function () {
     const p = el.play();
     const go = function () {
       starting = false;
-      playing = true; acc = 0; lastT = el.currentTime || 0; lastLap = elTrack === "track1" ? lapIdx(lastT) : 0; lastWall = Date.now() / 1000; startedAt = Date.now();
+      playing = true; acc = 0; lastT = el.currentTime || 0; lastLap = TRACKS[elTrack] ? lapIdx(lastT) : 0; lastWall = Date.now() / 1000; startedAt = Date.now();
       lsn = listenOnly(); listenLoops = 0;
       const S = App.S, ms = S.ms || 108;
       if (lsn) { sess = null; dailyArmed = false; }       // listening only: no session, no log, no counting
@@ -30372,7 +30375,7 @@ const AudioChant = (function () {
         lmcATk = S.tk; lmcA = Math.floor(audioToday() / ms);
         const L = log(); L.push(sess); if (L.length > MAX_LOG) L.splice(0, L.length - MAX_LOG);
       }
-      window._rjKATitle = trk() ? "Radha Naam · Track 1" : "Radha Naam · Audio Chant";
+      window._rjKATitle = trk() ? TRACKS[trackKey()].name : "Radha Naam · Audio Chant";
       try { _rjKeepAlive(true); } catch (_e) {}
       setMediaSession(true);
       clearInterval(poller); poller = setInterval(poll, 60);
@@ -30572,7 +30575,7 @@ const AudioChant = (function () {
       if (nt) nt.textContent = lo ? "Listening only: the chant plays, but nothing is counted or logged." : "Chanting: every loop is counted as Radha Audio (R-A).";
       ui(); }
     { const tk = trackKey();
-      [["audioTrkMaharaj", tk === "maharaj"], ["audioTrkT1", tk === "track1"]].forEach(function (p) {
+      [["audioTrkMaharaj", tk === "maharaj"], ["audioTrkT1", tk === "track1"], ["audioTrkT3", tk === "track3"]].forEach(function (p) {
         const e = document.getElementById(p[0]); if (!e) return;
         e.style.background = p[1] ? "rgba(255,215,0,0.18)" : "rgba(0,0,0,0.25)";
         e.style.borderColor = p[1] ? "rgba(255,215,0,0.7)" : "rgba(255,215,0,0.25)";
@@ -30601,12 +30604,12 @@ const AudioChant = (function () {
   };
   // Settings > Audio Mode > Radha audio: "maharaj" (Maharaj ji's voice, default) or "track1" (Radha Naam Track 1)
   api.setTrack = function (k) {
-    k = k === "track1" ? "track1" : "maharaj";
+    k = TRACKS[k] ? k : "maharaj";
     if (trackKey() === k) { api.applyMode(); return; }
     if (playing || starting) api.stop();
     App.S.audioTrack = k;
     App._saveSoon(); api.applyMode();
-    toast(k === "track1" ? "Audio: Radha Naam Track 1 \uD83C\uDFB6 (106 laps per play)" : "Audio: Maharaj ji's voice \uD83C\uDFA7");
+    toast(TRACKS[k] ? "Audio: " + TRACKS[k].name + " \uD83C\uDFB6 (" + TRACKS[k].ends.length + " laps per play)" : "Audio: Maharaj ji's voice \uD83C\uDFA7");
   };
   api.toggleMode = function () {
     if (playing) api.stop();

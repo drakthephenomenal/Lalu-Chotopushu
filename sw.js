@@ -1,4 +1,5 @@
-// v358: S&V — search bar on every page (English / Hindi / Bangla, e.g. "gajendra" finds गजेन्द्र मोक्ष / গজেন্দ্র মোক্ষ). N&M — 3 Lifetime cards under the date (All · Without wish/gift · My selected traits).
+// v360: Gift Your Jap - editing a gift now shows how much more jap is still available (live).
+// v359: S&V search also finds Useful Videos+ Links (videos + saved links). v358: S&V — search bar on every page (English / Hindi / Bangla, e.g. "gajendra" finds गजेन्द्र मोक्ष / গজেন্দ্র মোক্ষ). N&M — 3 Lifetime cards under the date (All · Without wish/gift · My selected traits).
 // v357: Ghost Mode renamed to Admin Mode; Admin Leaderboard rows open that user's profile (developer-only); Admin list shows Google account name + nickname.
 // v354: Add / Deduct Jap Manually — 🎧 audio chips (Radha, Radha Vallabh, Krishnay Vasudevay, Kaam Vijay) always shown; every audio Add / Deduct card (Stats + 28 Names Audio) now has Today, Other Day and Before this app (Lifetime).
 // v353: Add / Deduct also adds / deducts the matching audio time (fixed loop length).
@@ -424,7 +425,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v358';
+const CACHE = 'radha-jap-v360';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

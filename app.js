@@ -6565,6 +6565,18 @@ function deleteDedication(id) {
 // Statistics section — separate from the 28 Names stats panel). ──
 window._dedEditingId = null;
 
+// Live "available" line while editing a gift: shows how much more can still be gifted.
+function _dedEditAvail(type, id, oldAmt, avail) {
+  const inEl = document.getElementById("dedEditAmt_" + type + "_" + id);
+  const out = document.getElementById("dedEditAv_" + type + "_" + id);
+  if (!inEl || !out) return;
+  const n = parseInt(inEl.value) || 0;
+  const left = avail - (n - oldAmt);
+  out.textContent = left >= 0
+    ? "Available: " + left.toLocaleString("en-IN") + " more · max " + (oldAmt + avail).toLocaleString("en-IN") + " jap"
+    : "⚠️ Exceeds by " + (-left).toLocaleString("en-IN") + " · max " + (oldAmt + avail).toLocaleString("en-IN") + " jap";
+  out.style.color = left >= 0 ? (left > 0 ? "#7ee7a0" : "var(--td)") : "#ff8888";
+}
 function toggleEditDedication(id) {
   if (isGhostMode()) return; // admin mode: read-only
   window._dedEditingId = window._dedEditingId === id ? null : id;
@@ -6739,8 +6751,11 @@ function renderDedications() {
         const amtFields = Object.keys(amounts)
           .map((t) => {
             const meta = _dedTypeMeta(t);
+            // Jap still free to gift for this type. The lifetime total already excludes this
+            // entry's own amount, so the most this entry can be raised to is amount + available.
+            const avail = _dedLifetimeFor(t);
             return (
-              '<div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">' +
+              '<div style="display:flex;align-items:center;gap:7px;margin-bottom:2px;">' +
               '<span style="font-size:11px;color:' +
               meta.color +
               ";flex:1;font-weight:600;\">" +
@@ -6750,12 +6765,17 @@ function renderDedications() {
               t +
               "_" +
               d.id +
-              '" type="number" min="0" value="' +
+              '" type="number" min="0" max="' +
+              (amounts[t] + avail) +
+              '" oninput="_dedEditAvail(\'' + t + "','" + d.id + "'," + amounts[t] + "," + avail + ')" value="' +
               amounts[t] +
               '" style="width:90px;background:rgba(0,0,0,0.35);border:1px solid ' +
               meta.color +
               '55;border-radius:7px;padding:5px 8px;color:var(--tl);font-size:13px;text-align:center;font-family:Inter,sans-serif">' +
               '<span style="font-size:10px;color:var(--td)">jap</span>' +
+              "</div>" +
+              '<div id="dedEditAv_' + t + "_" + d.id + '" style="font-size:10.5px;margin:0 0 8px;text-align:right;color:' + (avail > 0 ? "#7ee7a0" : "var(--td)") + ';">' +
+              "Available: " + avail.toLocaleString("en-IN") + " more · max " + (amounts[t] + avail).toLocaleString("en-IN") + " jap" +
               "</div>"
             );
           })
@@ -16403,6 +16423,22 @@ function _svSyncBar(hide) {
   if (i) i.placeholder = secLang('sv') === 'hi' ? '🔍 खोजें — हिंदी / বাংলা / English' : '🔍 খুঁজুন — বাংলা / हिंदी / English';
 }
 // Draws the result list instead of the normal page. Returns true when it drew.
+// Opens a Useful Videos+ Links link exactly like tapping its card does.
+function _svOpenLink(v) {
+  const platform = favvidDetectPlatform(v.url);
+  favvidMarkSeen('link:' + v.id);
+  if (platform === 'youtube') {
+    const id = favvidYoutubeId(v.url);
+    if (id) openFavVideoPlayer(v.title, 'youtube', id); else openExternalLink(v.url);
+  } else if (platform === 'telegram') {
+    const embed = favvidTelegramEmbed(v.url);
+    if (embed) openFavVideoPlayer(v.title, 'telegram', embed); else openExternalLink(v.url);
+  } else if (platform === 'instagram') {
+    openFavVideoPlayer(v.title, 'instagram', v.url);
+  } else {
+    openExternalLink(v.url);
+  }
+}
 function _svRenderSearch(list, groups, activeKey, folderTitle) {
   const q = window._svQuery;
   const words = _svParseQuery(q);
@@ -16451,7 +16487,8 @@ function _svRenderSearch(list, groups, activeKey, folderTitle) {
   if (allBtn) allBtn.addEventListener('click', () => { window._svAll = true; renderSt(); });
   list.appendChild(head);
 
-  if (!all.length) {
+  const wantVid = (!scoped || activeKey === 'videos');   // Useful Videos+ Links are searched too
+  if (!all.length && !wantVid) {
     const e = document.createElement('div');
     e.className = 'st-folder-empty';
     e.textContent = L('कुछ नहीं मिला 🙏', 'কিছু পাওয়া যায়নি 🙏');
@@ -16500,6 +16537,61 @@ function _svRenderSearch(list, groups, activeKey, folderTitle) {
     if (ok) c.addEventListener('click', act);
     list.appendChild(c);
   });
+
+  // Favourite videos (repo files) + saved links: loaded asynchronously, appended below.
+  if (wantVid) {
+    const tok = window._svTok = (window._svTok || 0) + 1;
+    const box = document.createElement('div');
+    list.appendChild(box);
+    const cntEl = head.querySelector('span');
+    const base = all.length;
+    const whereV = L('उपयोगी वीडियो + लिंक', 'Useful Videos+ Links');
+    const mk = (icon, title, where, act) => {
+      const c = document.createElement('div');
+      c.className = 'sv-res';
+      c.innerHTML =
+        '<span class="sv-res-ic">' + icon + '</span>' +
+        '<div class="sv-res-txt"><div class="sv-res-name">' + escHtml(title) + '</div><div class="sv-res-sub">' + escHtml(where) + '</div></div>' +
+        '<button type="button" class="st-open-btn sv-res-open">' + escHtml(L('खोलें', 'খুলুন')) + '</button>';
+      c.addEventListener('click', act);
+      box.appendChild(c);
+    };
+    (async () => {
+      let n = 0;
+      const stale = () => tok !== window._svTok || !box.isConnected;
+      try {
+        for (const sub of VIDEO_SUBFOLDERS) {
+          if (sub.type !== 'github') continue;
+          let files = [];
+          try { files = await getFavVideoFiles(sub); } catch (_e) {}
+          if (stale()) return;
+          (files || []).forEach((v) => {
+            if (!v || !_svHit(words, [v.title])) return;
+            n++;
+            mk('▶️', v.title, whereV + ' · ' + sub.title, () => { favvidMarkSeen('video:' + sub.key + ':' + v.key); openFavVideoPlayer(v.title, 'file', v.url); });
+          });
+        }
+        if (typeof fbUser !== 'undefined' && fbUser) {
+          const links = await loadFavVideoLinks();
+          if (stale()) return;
+          (links || []).forEach((v) => {
+            if (!v || !v.title || !_svHit(words, [v.title])) return;
+            n++;
+            const sub = VIDEO_SUBFOLDERS.find((s) => s.key === (v.subfolder || 'links'));
+            mk('🔗', v.title, whereV + (sub ? ' · ' + sub.title : ''), () => _svOpenLink(v));
+          });
+        }
+      } catch (_e) {}
+      if (stale()) return;
+      if (cntEl) cntEl.textContent = (base + n) + ' ' + L('परिणाम', 'ফলাফল') + (scopeGrp ? ' · ' + folderTitle(scopeGrp) : '');
+      if (!base && !n) {
+        const e = document.createElement('div');
+        e.className = 'st-folder-empty';
+        e.textContent = L('कुछ नहीं मिला 🙏', 'কিছু পাওয়া যায়নি 🙏');
+        box.appendChild(e);
+      }
+    })();
+  }
   return true;
 }
 
@@ -16531,7 +16623,7 @@ function renderSt() {
   const inVed = window._stActiveFolder === 'rv' && !!window._stVedOpen;
   if (trackerTitle) trackerTitle.style.display = (inVideos || inSeva || inVed) ? 'none' : '';
   if (addForm) addForm.style.display = (inVideos || inSeva || inVed) ? 'none' : '';
-  try { _svSyncBar(inVideos || inSeva || inVed); } catch (_e) {}
+  try { _svSyncBar(inSeva || inVed); } catch (_e) {}
 
   // Inject premium glow animations once
   if (!document.getElementById('st-card-styles')) {
@@ -16605,7 +16697,7 @@ function renderSt() {
   const activeKey = window._stActiveFolder || null;
 
   // S&V search: replaces the page with matching results while the search box has text.
-  if (window._svQuery && activeKey !== 'videos' && !inSeva && !inVed && _svRenderSearch(list, groups, activeKey, folderTitle)) return;
+  if (window._svQuery && !inSeva && !inVed && _svRenderSearch(list, groups, activeKey, folderTitle)) return;
 
   // ── Level 1: folder menu (no active folder selected) ──
   if (!activeKey) {

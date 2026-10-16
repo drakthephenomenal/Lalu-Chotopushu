@@ -1568,3 +1568,41 @@
 #gp-overlay .gp-loop.on { background: #ff9800; border-color: #b36b00; box-shadow: 0 0 0 2px #b36b00; }
 #gp-overlay .gp-loop.gp-hint { animation: gpShake 0.4s; }
 @keyframes gpShake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+
+/* ═══ PICKER THEME — deep navy + gold (pad picker #pp-overlay & group picker #gp-overlay) ═══ */
+#pp-overlay, #gp-overlay { background: rgba(3,6,20,0.72); }
+#pp-overlay .pp-sheet, #gp-overlay .pp-sheet {
+  background: linear-gradient(180deg, #1a1f3a 0%, #0b1030 100%);
+  border: 1.5px solid rgba(255,215,0,0.45);
+  box-shadow: 0 12px 44px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,215,0,0.08) inset;
+}
+#pp-overlay .pp-title, #gp-overlay .pp-title { color: #ffd700; text-shadow: 0 1px 6px rgba(255,215,0,0.25); }
+#pp-overlay .pp-close, #gp-overlay .pp-close { background: rgba(255,215,0,0.14); color: #ffd700; border: 1px solid rgba(255,215,0,0.4); }
+#pp-overlay .pp-close:active, #gp-overlay .pp-close:active { background: rgba(255,215,0,0.3); }
+#pp-overlay .pp-tabs { background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.25); margin: 0 14px 10px; }
+#pp-overlay .pp-tab { color: #e8d9a0; opacity: 1; }
+#pp-overlay .pp-tab.on { background: rgba(255,215,0,0.18); color: #ffd700; }
+#pp-overlay .pp-tab.on::after { background: #ffd700; }
+#pp-overlay .pp-empty { color: #e8d9a0; }
+#pp-overlay .pp-item, #gp-overlay .pp-item {
+  background: rgba(255,215,0,0.07);
+  border: 1px solid rgba(255,215,0,0.30);
+  color: #fff3c4;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+}
+#pp-overlay .pp-item:active, #gp-overlay .pp-item:active { background: rgba(255,215,0,0.22); }
+#pp-overlay .pp-item.pp-cur, #gp-overlay .pp-item.pp-cur {
+  background: linear-gradient(180deg, #ffe066, #ffd700);
+  color: #0b1030;
+  border-color: #ffd700;
+  box-shadow: 0 0 0 2px rgba(255,215,0,0.55), 0 2px 10px rgba(255,215,0,0.35);
+}
+#gp-overlay .gp-loop, #gp-overlay .gp-off {
+  background: rgba(255,215,0,0.07); border: 1px solid rgba(255,215,0,0.35); color: #fff3c4;
+}
+#gp-overlay .gp-loop.on {
+  background: linear-gradient(180deg, #ffe066, #ffd700); color: #0b1030;
+  border-color: #ffd700; box-shadow: 0 0 0 2px rgba(255,215,0,0.55);
+}
+#gp-overlay .gp-off:active { background: rgba(255,215,0,0.22); }
+#pp-overlay .pp-list, #gp-overlay .pp-list { scrollbar-color: rgba(255,215,0,0.4) transparent; }

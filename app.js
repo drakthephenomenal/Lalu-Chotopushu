@@ -23262,6 +23262,34 @@ const PADPICK_IDS = ['hcj', 'rsn', 'svb', 'kel', 'blv', 'sfv'];
 const PADPICK_EXCLUDE = ['bg', 'ved4', 'asp'];
 // Long runs of numbered pads (Prem ki Peer): shown as a compact number grid instead of a long list.
 const PADPICK_GRID_IDS = ['pkp'];
+// Tabs on the pad list (Hit Chaurasi): [পদ চুনে = all pads] [মঙ্গলার পদ] [রাসের পদ].
+// Numbers are the printed pad numbers (the "N." shown in the list).
+const PADPICK_TABS = {
+  hcj: {
+    mangala: [3, 4, 5, 6, 8, 13, 15, 17, 20, 21, 23, 31, 33, 34, 70, 77, 84],
+    ras: [12, 16, 19, 24, 26, 36, 61, 62, 63, 64, 65, 68, 69, 71, 78, 79],
+  },
+};
+let _ppLastTab = 'all';   // remembered while the app is open
+function _ppNumInt(s) {
+  const BN = '\u09e6\u09e7\u09e8\u09e9\u09ea\u09eb\u09ec\u09ed\u09ee\u09ef', DV = '\u0966\u0967\u0968\u0969\u096a\u096b\u096c\u096d\u096e\u096f';
+  const t = String(s || '').replace(/[0-9\u09e6-\u09ef\u0966-\u096f]/g, function (ch) {
+    let n = BN.indexOf(ch); if (n < 0) n = DV.indexOf(ch); if (n < 0) n = +ch; return String(n);
+  }).replace(/[^0-9]/g, '');
+  return t ? parseInt(t, 10) : NaN;
+}
+function _ppEnsureTabStyle() {
+  if (document.getElementById('pp-tabs-style')) return;
+  const st = document.createElement('style');
+  st.id = 'pp-tabs-style';
+  st.textContent =
+    '.pp-tabs{display:flex;flex:0 0 auto;margin:0 0 10px;border-radius:12px;background:rgba(120,80,0,.14);overflow:hidden}' +
+    '.pp-tab{flex:1 1 0;min-width:0;position:relative;padding:12px 4px;border:0;background:transparent;color:inherit;font-family:inherit;font-size:clamp(13px,3.6vw,16px);font-weight:600;line-height:1.3;opacity:.72;cursor:pointer;-webkit-tap-highlight-color:transparent}' +
+    '.pp-tab.on{opacity:1;font-weight:800;background:rgba(255,255,255,.18)}' +
+    '.pp-tab.on::after{content:"";position:absolute;left:16%;right:16%;bottom:0;height:3px;border-radius:3px 3px 0 0;background:currentColor}' +
+    '.pp-empty{padding:18px 8px;text-align:center;opacity:.7}';
+  document.head.appendChild(st);
+}
 function _ppEnabled(id) {
   if (!id) return false;
   if (PADPICK_IDS.indexOf(id) !== -1) return true;
@@ -23387,9 +23415,16 @@ function _ppOpen() {
   const _ppGrid = PADPICK_GRID_IDS.indexOf(_currentStotramId) !== -1 && !_ppFlat;
   if (_ppGrid) { list.style.display = 'grid'; list.style.gridTemplateColumns = 'repeat(auto-fill, minmax(52px, 1fr))'; list.style.gap = '8px'; }
   let curBtn = null;
+  const _ppTabDef = (!_ppFlat && !_ppGrid) ? PADPICK_TABS[_currentStotramId] : null;
+  const _ppFill = function (tabKey) {
+  list.textContent = '';
+  curBtn = null;
+  const _allow = (_ppTabDef && tabKey !== 'all') ? _ppTabDef[tabKey] : null;
+  let _shown = 0;
   _ppItems.forEach(function (it, i) {
     const v = it.v;
     const lb = _ppLabel(_currentStotramId, v, i);
+    if (_allow && _allow.indexOf(_ppNumInt(lb.num)) === -1) return;
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'pp-item' + (!_ppFlat && i === _verseIdx ? ' pp-cur' : '');
@@ -23411,15 +23446,55 @@ function _ppOpen() {
       _renderVerse(i, i > old ? 1 : -1);
     };
     if (!_ppFlat && i === _verseIdx) curBtn = b;
-    list.appendChild(b);
+    list.appendChild(b); _shown++;
   });
-  sheet.appendChild(head); sheet.appendChild(list);
+  if (!_shown) { const em = document.createElement('div'); em.className = 'pp-empty'; em.textContent = '\u2014'; list.appendChild(em); }
+  };
+  const _ppScrollCur = function () {
+    if (curBtn) requestAnimationFrame(function () { list.scrollTop = Math.max(0, curBtn.offsetTop - list.clientHeight / 2 + curBtn.offsetHeight / 2); });
+    else list.scrollTop = 0;
+  };
+  let tabsEl = null;
+  let _ppTab = 'all';
+  if (_ppTabDef) {
+    _ppEnsureTabStyle();
+    _ppTab = (_ppLastTab === 'mangala' || _ppLastTab === 'ras') ? _ppLastTab : 'all';
+    tabsEl = document.createElement('div');
+    tabsEl.className = 'pp-tabs';
+    tabsEl.setAttribute('role', 'tablist');
+    const _keys = ['all', 'mangala', 'ras'];
+    const _names = hi
+      ? ['\u092a\u0926 \u091a\u0941\u0928\u0947\u0902', '\u092e\u0902\u0917\u0932\u093e \u0915\u0947 \u092a\u0926', '\u0930\u093e\u0938 \u0915\u0947 \u092a\u0926']
+      : ['\u09aa\u09a6 \u099a\u09c1\u09a8\u09c7', '\u09ae\u0999\u09cd\u0997\u09b2\u09be\u09b0 \u09aa\u09a6', '\u09b0\u09be\u09b8\u09c7\u09b0 \u09aa\u09a6'];
+    const _tabBtns = [];
+    _keys.forEach(function (k, n) {
+      const t = document.createElement('button');
+      t.type = 'button';
+      t.className = 'pp-tab' + (k === _ppTab ? ' on' : '');
+      t.setAttribute('role', 'tab');
+      t.textContent = _names[n];
+      t.onclick = function (e) {
+        e.stopPropagation();
+        _ppTab = k; _ppLastTab = k;
+        _tabBtns.forEach(function (b) { b.classList.toggle('on', b === t); });
+        _ppFill(k);
+        _ppScrollCur();
+      };
+      _tabBtns.push(t);
+      tabsEl.appendChild(t);
+    });
+  }
+  _ppFill(_ppTab);
+  sheet.appendChild(head);
+  if (tabsEl) sheet.appendChild(tabsEl);
+  sheet.appendChild(list);
   ov.appendChild(sheet);
   lmo.appendChild(ov);
-  if (curBtn) requestAnimationFrame(function () { list.scrollTop = Math.max(0, curBtn.offsetTop - list.clientHeight / 2 + curBtn.offsetHeight / 2); });
+  _ppScrollCur();
 }
 // (Re)place the ☰ button: bottom-left, just above the audio player when there is one, else in the nav bar.
 function _ppSyncBtn() {
+  try { _gpSyncBtn(); } catch (_e) {}
   let old = document.getElementById('pp-open-btn');
   if (old) old.remove();
   if (!_ppEnabled(_currentStotramId) || !_verses || (_verses.length < 2 && _currentStotramId !== 'blv')) return;
@@ -23439,6 +23514,129 @@ function _ppSyncBtn() {
   else if (nav && nav.style.display !== 'none') { b.className = 'pp-open-btn pp-in-nav'; nav.appendChild(b); }
 }
 // ═══ /PAD-PICKER ════════════════════════════════════════════════════════
+
+// ═══ GROUP PLAY (right-side ☰) ═══════════════════════════════════════════
+// Right-side triple-bar button: pads are bundled into groups (Hit Chaurasi: 12 pads each, Radha Sudha Nidhi: 5 each).
+// Pick a group → its pads play one after another; "loop group" repeats the whole group.
+// Existing per-pad loop (🔁) and continuous (⏭) buttons are untouched: a pad loop still repeats that single pad.
+const GROUPPLAY_SIZE = { hcj: 12, rsn: 5 };
+function _gpGroups() {
+  const id = _currentStotramId, size = GROUPPLAY_SIZE[id];
+  if (!size || !_verses || _verses.length < 2) return null;
+  const cfg = _AUDIO_STOTRAMS[id];
+  if (!cfg) return null;
+  const off = cfg.labelOffset || 0;
+  let last = _verses.length - 1;
+  if (_hcjHasClosing(cfg)) last--;
+  const n = last - off + 1;                       // number of numbered pads
+  if (n < 1) return null;
+  const out = [];
+  for (let a = 1; a <= n; a += size) {
+    const b = Math.min(n, a + size - 1);
+    out.push({ from: a, to: b, s: a - 1 + off, e: b - 1 + off });
+  }
+  return out;
+}
+function _gpClose() {
+  const ov = document.getElementById('gp-overlay');
+  if (ov) { ov.style.display = 'none'; void ov.offsetHeight; ov.remove(); }
+}
+function _gpStart(g) {
+  const same = _hcjGroup && _hcjGroup.id === _currentStotramId && _hcjGroup.s === g.s;
+  _hcjGroup = { id: _currentStotramId, s: g.s, e: g.e, loop: same ? _hcjGroup.loop : false };
+  if (_hcjMode === 'loop') { _hcjMode = 'continue'; }   // single-pad loop would trap playback on one pad
+  _verseNavLocked = false;
+  const old = _verseIdx;
+  _verseIdx = g.s;
+  if (g.s !== old) { try { _renderVerse(g.s, g.s > old ? 1 : -1); } catch (_e) {} }
+  _hcjPlayVerse(g.s);
+  _hcjSyncUI();
+  _gpSyncBtn();
+}
+function _gpStop() { _hcjGroup = null; _gpSyncBtn(); }
+function _gpOpen() {
+  const groups = _gpGroups();
+  if (!groups) return;
+  _gpClose();
+  const hi = _ppIsHi();
+  const lmo = document.getElementById('lmo');
+  if (!lmo) return;
+  const ov = document.createElement('div');
+  ov.id = 'gp-overlay';
+  ov.onclick = function (e) { if (e.target === ov) _gpClose(); };
+  const sheet = document.createElement('div');
+  sheet.className = 'pp-sheet';
+  const head = document.createElement('div');
+  head.className = 'pp-head';
+  const title = document.createElement('div');
+  title.className = 'pp-title';
+  title.textContent = hi ? 'समूह चुनें' : 'গ্রুপ নির্বাচন করুন';
+  const x = document.createElement('button');
+  x.className = 'pp-close'; x.type = 'button'; x.textContent = '\u2715';
+  x.onclick = _gpClose;
+  head.appendChild(title); head.appendChild(x);
+  sheet.appendChild(head);
+
+  // loop-group switch
+  const act = !!(_hcjGroup && _hcjGroup.id === _currentStotramId);
+  const bar = document.createElement('div');
+  bar.className = 'gp-bar';
+  const lp = document.createElement('button');
+  lp.type = 'button';
+  lp.className = 'gp-loop' + (act && _hcjGroup.loop ? ' on' : '');
+  const lpTxt = function () { return '\uD83D\uDD01 ' + (hi ? 'समूह लूप' : 'গ্রুপ লুপ') + (_hcjGroup && _hcjGroup.loop ? ' : ON' : ' : OFF'); };
+  lp.textContent = lpTxt();
+  lp.onclick = function (e) {
+    e.stopPropagation();
+    if (!(_hcjGroup && _hcjGroup.id === _currentStotramId)) { lp.classList.add('gp-hint'); setTimeout(function () { lp.classList.remove('gp-hint'); }, 600); return; }
+    _hcjGroup.loop = !_hcjGroup.loop;
+    lp.classList.toggle('on', _hcjGroup.loop);
+    lp.textContent = lpTxt();
+    _gpSyncBtn();
+  };
+  const off = document.createElement('button');
+  off.type = 'button'; off.className = 'gp-off';
+  off.textContent = hi ? 'समूह बंद' : 'গ্রুপ বন্ধ';
+  off.onclick = function (e) { e.stopPropagation(); _gpStop(); _gpClose(); };
+  bar.appendChild(lp); bar.appendChild(off);
+  sheet.appendChild(bar);
+
+  const list = document.createElement('div');
+  list.className = 'pp-list';
+  const num = function (n) { return _ppDigits(String(n), hi); };
+  groups.forEach(function (g) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    const isCur = act && _hcjGroup.s === g.s;
+    b.className = 'pp-item' + (isCur ? ' pp-cur' : '');
+    b.textContent = (hi ? 'पद ' : 'পদ ') + num(g.from) + ' \u2013 ' + num(g.to) + (isCur && _hcjPlaying ? '  \u25B6' : '');
+    b.onclick = function () { _gpClose(); _gpStart(g); };
+    list.appendChild(b);
+  });
+  sheet.appendChild(list);
+  ov.appendChild(sheet);
+  lmo.appendChild(ov);
+}
+// (Re)place the right-side ☰: bottom-right, just above the audio player (mirrors the left pad picker).
+function _gpSyncBtn() {
+  let old = document.getElementById('gp-open-btn');
+  if (old) old.remove();
+  if (!_currentStotramId || !GROUPPLAY_SIZE[_currentStotramId] || !_gpGroups()) return;
+  const hi = _ppIsHi();
+  const act = !!(_hcjGroup && _hcjGroup.id === _currentStotramId);
+  const b = document.createElement('button');
+  b.id = 'gp-open-btn'; b.type = 'button';
+  b.setAttribute('aria-label', hi ? 'समूह चुनें' : 'গ্রুপ নির্বাচন');
+  b.title = hi ? 'समूह चुनें' : 'গ্রুপ নির্বাচন';
+  b.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></g></svg>' +
+    (act ? '<span class="gp-dot">' + (_hcjGroup.loop ? '\u221E' : '\u25CF') + '</span>' : '');
+  b.onclick = function (e) { e.stopPropagation(); _gpOpen(); };
+  const pw = document.getElementById('hcj-player-wrap');
+  const nav = document.getElementById('lmNav');
+  if (pw) { b.className = 'pp-open-btn gp-open-btn pp-in-player'; pw.appendChild(b); }
+  else if (nav && nav.style.display !== 'none') { b.className = 'pp-open-btn gp-open-btn pp-in-nav'; nav.appendChild(b); }
+}
+// ═══ /GROUP PLAY ════════════════════════════════════════════════════════
 
 // ── Rasik Ananyamal (rmm): one flat, scrollable prose page (no verse-by-verse paging) ──
 function _rmmEnsureStyle() {
@@ -24217,6 +24415,8 @@ function closeLyrics() {
   _hcjStopAudio();
   _lyrDriveRemove();
   try { _hcjWarmForFolder(window._stActiveFolder); } catch (_e) {}
+  _hcjGroup = null;
+  try { _gpClose(); var _gpb = document.getElementById('gp-open-btn'); if (_gpb) _gpb.remove(); } catch (_e) {}
   _verses = [];
   _verseIdx = 0;
   _verseNavLocked = false;
@@ -24241,6 +24441,7 @@ function closeLyrics() {
 // ═══════════════════════════════════════════════════════
 
 // HCJ AUDIO ENGINE
+var _hcjGroup = null; // { id, s, e, loop } — active group in the right-side group bar (null = off)
 var _hcjAudio = null,
   _hcjMode = "continue",
   _hcjPlaying = false,
@@ -25295,7 +25496,19 @@ function _hcjPlayVerse(idx) {
   _hcjAudio.loop = _hcjMode === "loop";
   _hcjAudio.onended = function () {
     _hcjStopProgressLoop();
-    if (_hcjMode === "continue" && idx + 1 < _verses.length) {
+    // Group play (right-side bar): walk the pads of the chosen group, optionally looping the whole group.
+    var _g = _hcjGroup;
+    if (_g && _g.id === _currentStotramId && idx >= _g.s && idx <= _g.e) {
+      var _nx = idx + 1;
+      if (_nx > _g.e) _nx = _g.loop ? _g.s : -1;
+      if (_nx >= 0) {
+        _verseIdx = _nx;
+        try { _renderVerse(_verseIdx, _nx > idx ? 1 : -1); } catch (_e) {}
+        _hcjPlayVerse(_verseIdx);
+        return;
+      }
+    }
+    if (_hcjMode === "continue" && !_g && idx + 1 < _verses.length) {
       _verseIdx = idx + 1;
       try { _renderVerse(_verseIdx, 1); } catch (_e) {}   // page may not be drawn while the screen is off
       _hcjPlayVerse(_verseIdx);
@@ -25373,6 +25586,7 @@ function _hcjOnVerseChange(idx) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
   if (!cfg) return;
   _hcjApplyDefaultVoiceForVerse(idx);
+  if (_hcjGroup && (_hcjGroup.id !== _currentStotramId || idx < _hcjGroup.s || idx > _hcjGroup.e)) { _hcjGroup = null; try { _gpSyncBtn(); } catch (_e) {} }
   if (_hcjPlaying && _hcjAudioIdx !== idx) {
     // Don't try to auto-continue playback into a verse with no audio at
     // all (e.g. swiping past the last sloka into nkc's closing narrative)

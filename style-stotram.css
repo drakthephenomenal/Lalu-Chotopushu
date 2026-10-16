@@ -1466,3 +1466,103 @@
   border: 1.5px solid #b36b00 !important;
   transform: scale(0.94) !important;
 }
+
+#gp-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(env(safe-area-inset-top), 14px) 12px max(env(safe-area-inset-bottom), 14px);
+  background: rgba(0,0,0,0.55);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  animation: gpFade 0.16s ease;
+}
+@keyframes gpFade { from { opacity: 0; } to { opacity: 1; } }
+#gp-overlay .pp-sheet {
+  width: min(560px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #ffee58;
+  border-radius: 26px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.45);
+  overflow: hidden;
+  font-family: 'Hind Siliguri', 'Noto Sans Devanagari', 'Noto Sans Bengali', sans-serif;
+}
+#gp-overlay .pp-head {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 18px 52px 10px;
+  text-align: center;
+}
+#gp-overlay .pp-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1100;
+}
+#gp-overlay .pp-close {
+  position: absolute;
+  top: 12px; right: 12px;
+  width: 34px; height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.10);
+  color: #1a1100;
+  font-size: 16px;
+  cursor: pointer;
+}
+#gp-overlay .pp-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 4px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+#gp-overlay .pp-item {
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 24px;
+  background: #ffe0b2;
+  color: #1a1100;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.18);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#gp-overlay .pp-item:active { transform: scale(0.98); background: #ffcc80; }
+#gp-overlay .pp-item.pp-cur {
+  background: #ffb74d;
+  border-color: #b36b00;
+  box-shadow: 0 0 0 2px #b36b00, 0 2px 4px rgba(0,0,0,0.18);
+}
+
+/* ═══ GROUP PLAY — right-side triple-bar button + group list (mirrors the left pad picker) ═══ */
+.pp-open-btn.gp-open-btn.pp-in-nav { left: auto; right: max(env(safe-area-inset-right), 14px); }
+.pp-open-btn.gp-open-btn.pp-in-player { left: auto; right: max(env(safe-area-inset-right), 12px); }
+.gp-open-btn { position: relative; }
+.gp-open-btn .gp-dot {
+  position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 3px;
+  border-radius: 9px; background: #e65100; color: #fff; font-size: 11px; line-height: 18px;
+  text-align: center; font-weight: 800; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+#hcj-player-wrap .pp-open-btn.gp-open-btn.pp-in-player { left: auto !important; right: max(env(safe-area-inset-right), 12px) !important; position: absolute !important; }
+#gp-overlay .gp-bar { flex: 0 0 auto; display: flex; gap: 8px; padding: 0 14px 10px; }
+#gp-overlay .gp-loop, #gp-overlay .gp-off {
+  flex: 1 1 0; min-height: 42px; padding: 8px 10px; border: 1px solid rgba(0,0,0,0.12); border-radius: 22px;
+  background: rgba(255,255,255,0.55); color: #1a1100; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+#gp-overlay .gp-loop.on { background: #ff9800; border-color: #b36b00; box-shadow: 0 0 0 2px #b36b00; }
+#gp-overlay .gp-loop.gp-hint { animation: gpShake 0.4s; }
+@keyframes gpShake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }

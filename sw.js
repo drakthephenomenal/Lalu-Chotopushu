@@ -1,3 +1,7 @@
+// v364: New users & guests start with default daily targets (Radha 108 malas, Radha Vallabh 11 malas, 28 Names 36 cycles, Krishnay Vasudevay 12 count, Kaam Vijay 1 mala); 🔥 streak now counts a day when the Radha OR Radha Vallabh target is fulfilled.
+// v363: Admin Mode - developer can change a viewed user's display name (saved to their account + durable name copy), even if they haven't joined the leaderboard.
+// v362: JSON backup keeps the display name - restoring it refreshes Settings and re-saves the cloud copy.
+// v361: Display name no longer gets erased after reinstall / re-login - saved in its own cloud doc, restored before any sync, and an empty cloud value can never blank it.
 // v360: Gift Your Jap - editing a gift now shows how much more jap is still available (live).
 // v359: S&V search also finds Useful Videos+ Links (videos + saved links). v358: S&V — search bar on every page (English / Hindi / Bangla, e.g. "gajendra" finds गजेन्द्र मोक्ष / গজেন্দ্র মোক্ষ). N&M — 3 Lifetime cards under the date (All · Without wish/gift · My selected traits).
 // v357: Ghost Mode renamed to Admin Mode; Admin Leaderboard rows open that user's profile (developer-only); Admin list shows Google account name + nickname.
@@ -425,7 +429,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v360';
+const CACHE = 'radha-jap-v364';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

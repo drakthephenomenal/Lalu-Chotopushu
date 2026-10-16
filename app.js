@@ -734,6 +734,38 @@ window.sendDevBroadcast = async function () {
 // ═══════════════════════════════════════════════════════
 // APP — Single unified state object
 // ═══════════════════════════════════════════════════════
+// ── Default daily targets for NEW users & guests (v364) ──
+// Radha 108 malas, Radha Vallabh 11 malas, Krishnay Vasudevay 12 count (NOT malas),
+// Kaam Vijay 1 mala, 28 Names 36 cycles. Values are in jap counts (mala = 108).
+// Applied ONLY to brand-new accounts / guests that have no targets and no history,
+// so existing users' saved targets (even 0) are never touched. Users can edit all of them.
+const NEW_USER_DEFAULT_TARGETS = {
+  dt: 108 * 108,
+  dtRV: 11 * 108,
+  dtKV: 12,
+  dtKaam: 1 * 108,
+  dt28Cycles: 36,
+};
+function applyNewUserDefaultTargets() {
+  const S = App.S;
+  if (!S) return false;
+  const hasAnyTarget =
+    (S.dt || 0) > 0 || (S.dtRV || 0) > 0 || (S.dtKV || 0) > 0 ||
+    (S.dtKaam || 0) > 0 || (S.dtSS || 0) > 0 || (S.dtHK || 0) > 0 ||
+    (S.dtRam || 0) > 0 || (S.dt28Cycles || 0) > 0;
+  if (hasAnyTarget) return false;
+  const histories = [
+    S.history, S.historyRV, S.historyKV, S.historyKaam, S.historySS,
+    S.historyHK, S.historyRam, S.h28,
+  ];
+  const hasHistory = histories.some(
+    (h) => h && Object.values(h).some((v) => (v || 0) > 0),
+  );
+  if (hasHistory) return false;
+  Object.assign(S, NEW_USER_DEFAULT_TARGETS);
+  return true;
+}
+
 const App = {
   // ── State ──
   S: {
@@ -1130,7 +1162,10 @@ const App = {
 
     // GUEST MODE: never load from IDB or localStorage — start clean every time.
     // Signed-in users load from IDB as an offline buffer; cloud pull immediately follows.
-    if (!this._uid) return;
+    if (!this._uid) {
+      applyNewUserDefaultTargets();
+      return;
+    }
 
     // Try IndexedDB first
     const main = await this.dbGet("state", this._stateKey());
@@ -7317,8 +7352,10 @@ function uStats() {
     ? _hkTarget > 0
     : _isRamanandi
       ? _ramTarget > 0
-      : _radhaTarget > 0 || _rvTarget > 0 || _kvTarget > 0 || _ssTarget > 0 || _kaamTarget > 0;
-  // Returns true only when EVERY configured target for this mode is individually met on day k
+      : _radhaTarget > 0 || _rvTarget > 0;
+  // Default mode: a day counts for the streak when the Radha target OR the
+  // Radha Vallabh (RV) target is fulfilled (either one is enough).
+  // Gaudiya / Ramanandi modes keep their own single-target check.
   function _dayHitsTarget(k) {
     if (_isGaudiya) {
       return _hkTarget > 0 && (App.S.historyHK[k] || 0) >= _hkTarget;
@@ -7326,15 +7363,13 @@ function uStats() {
     if (_isRamanandi) {
       return _ramTarget > 0 && ((App.S.historyRam || {})[k] || 0) >= _ramTarget;
     }
-    const radhaOk =
-      _radhaTarget <= 0 || (App.S.history[k] || 0) >= _radhaTarget;
-    const rvOk = _rvTarget <= 0 || (App.S.historyRV[k] || 0) >= _rvTarget;
-    const kvOk = _kvTarget <= 0 || ((App.S.historyKV || {})[k] || 0) >= _kvTarget;
-    const ssOk = _ssTarget <= 0 || ((App.S.historySS || {})[k] || 0) >= _ssTarget;
-    const kaamOk = _kaamTarget <= 0 || ((App.S.historyKaam || {})[k] || 0) >= _kaamTarget;
-    return (_radhaTarget > 0 || _rvTarget > 0 || _kvTarget > 0 || _ssTarget > 0 || _kaamTarget > 0) && radhaOk && rvOk && kvOk && ssOk && kaamOk;
+    const radhaHit =
+      _radhaTarget > 0 && ((App.S.history || {})[k] || 0) >= _radhaTarget;
+    const rvHit =
+      _rvTarget > 0 && ((App.S.historyRV || {})[k] || 0) >= _rvTarget;
+    return radhaHit || rvHit;
   }
-  // Active Streak: consecutive days where ALL configured targets were individually hit.
+  // Active Streak: consecutive days where the day's streak target was hit (default mode: Radha OR RV).
   // If today hasn't hit every target yet, start from yesterday so an
   // in-progress day doesn't break an otherwise-live streak.
   const d2 = new Date();
@@ -7348,7 +7383,7 @@ function uStats() {
       d2.setDate(d2.getDate() - 1);
     } else break;
   }
-  // Best Streak Ever: longest consecutive run where ALL configured targets were individually hit
+  // Best Streak Ever: longest consecutive run of streak-target days
   let bestStreakEver = 0;
   if (_hasTarget) {
     const _allHistKeys = new Set([
@@ -9070,7 +9105,7 @@ function importAllData(input) {
       App.S.milestones = data.milestones || { reached: {}, lastChecked: 0 };
        App.S.msConsider = data.msConsider || { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, n28: true };
       App.S.dt28Cycles = data.dt28Cycles || 0;
-      App.S.lbDisplayName = data.lbDisplayName || "";
+      App.S.lbDisplayName = data.lbDisplayName || App.S.lbDisplayName || "";
       App.S.lbOptIn = !!data.lbOptIn;
       App.S.screenTimeHistory = data.screenTimeHistory || {};
       App.S.stotramTimeHistory = data.stotramTimeHistory || {};
@@ -9143,6 +9178,9 @@ function importAllData(input) {
       // user, this correctly overwrites THAT user's Firestore doc instead
       // of the developer's own account.
       ghostAwareSave(true);
+      // Keep the display name from the JSON copy: refresh the Settings box and re-save its durable cloud copy.
+      try { const _ni = document.getElementById('lbNameIn'); if (_ni) _ni.value = App.S.lbDisplayName || ''; } catch (_e) {}
+      if (App.S.lbDisplayName) { if (isGhostMode()) { if (_ghostViewingUid) _lbSaveNameCloud(App.S.lbDisplayName, _ghostViewingUid); } else _lbSaveNameCloud(App.S.lbDisplayName); }
       // Restoring a backup can bring in a different Jap display name (or
       // opt-in status) than what's currently sitting in the cloud Family
       // Leaderboard doc — that's a SEPARATE document from the account's own
@@ -11319,6 +11357,8 @@ function fbInit() {
             lastLat: _prevLat2,
             lastLng: _prevLng2,
           };
+          // New-user defaults for the signed-out (guest) session
+          applyNewUserDefaultTargets();
           // GUEST MODE: intentionally do NOT load from IDB or localStorage.
           // Guest jap is ephemeral — never persisted, never merged into signed-in state.
           App.lmc = Math.floor(App.gTodTouch() / (App.S.ms || 108));
@@ -12633,6 +12673,8 @@ async function fbSignOut() {
     milestones: { reached: {}, lastChecked: 0 },
     lastLat: _prevLat, lastLng: _prevLng,
   };
+  // New-user defaults for the signed-out (guest) session
+  applyNewUserDefaultTargets();
    App.lmc = 0; App.lmcRV = 0; App.lmcHK = 0; App.lmcKV = 0; App.lmcKaam = 0; App.lmcSS = 0; App.lmcRam = 0; App.lm28 = 0;
   document.body.classList.remove("gaudiya-mode");
   document.body.classList.remove("trahimam-mode");
@@ -13133,7 +13175,7 @@ function fbApplyRemote(d) {
   if (d.dt28Cycles !== undefined) {
     // Only apply remote dt28Cycles if it's actually set (>0), or if local is also 0.
     // Prevents a stale Firebase doc (dt28Cycles:0) from wiping a freshly saved target.
-    if ((d.dt28Cycles || 0) > 0 || (App.S.dt28Cycles || 0) === 0) {
+    if (App._initialCloudApply || (d.dt28Cycles || 0) > 0 || (App.S.dt28Cycles || 0) === 0) {
       App.S.dt28Cycles = d.dt28Cycles;
     }
   }
@@ -13306,7 +13348,8 @@ function fbApplyRemote(d) {
   if (d.driveBackupDailyEnabled !== undefined) App.S.driveBackupDailyEnabled = d.driveBackupDailyEnabled;
   if (d.driveBackupHour !== undefined) App.S.driveBackupHour = d.driveBackupHour;
   if (d.driveBackupMinute !== undefined) App.S.driveBackupMinute = d.driveBackupMinute;
-  if (d.lbDisplayName !== undefined) App.S.lbDisplayName = d.lbDisplayName;
+  // Only take a NON-empty cloud name — an empty one must never erase a name we already have.
+  if (typeof d.lbDisplayName === "string" && d.lbDisplayName.trim()) App.S.lbDisplayName = d.lbDisplayName;
   if (d.bgRadhaVallabh !== undefined) App.S.bgRadhaVallabh = d.bgRadhaVallabh;
   if (d.bgHitju !== undefined) App.S.bgHitju = d.bgHitju;
   if (d.bgGurudev !== undefined) App.S.bgGurudev = d.bgGurudev;
@@ -13456,6 +13499,53 @@ function fbWithTimeout(promise, ms, label) {
   });
 }
 
+// ── Display name: its own small cloud doc (users/{uid}/data/profile) ──
+// The main sync doc is rewritten as a whole on every sync, so a device that happened to
+// hold a blank name could wipe it. This doc is only written when the person saves a name.
+async function _lbSaveNameCloud(name, targetUid) {
+  try {
+    if (!fbUser || !fbDb || !name) return;
+    // Own account normally; a developer in Admin Mode passes the viewed user's uid explicitly.
+    const uid = targetUid || ((typeof isGhostMode === "function" && isGhostMode()) ? null : fbUser.uid);
+    if (!uid) return;
+    await fbDb.collection("users").doc(uid).collection("data").doc("profile")
+      .set({ lbDisplayName: name, lbNameUpdatedAt: Date.now() }, { merge: true });
+  } catch (e) { console.warn("display name cloud save failed:", e && e.message); }
+}
+// Runs on login BEFORE any push: if this device has no name yet (fresh install), fetch it.
+async function _lbRestoreName(mainData) {
+  try {
+    if (!fbUser || !fbDb) return;
+    if (typeof isGhostMode === "function" && isGhostMode()) return;
+    const own = (App.S.lbDisplayName || "").trim();
+    let saved = "";
+    try {
+      const ps = await fbDb.collection("users").doc(fbUser.uid).collection("data").doc("profile").get({ source: "server" });
+      if (ps.exists) saved = String((ps.data() || {}).lbDisplayName || "").trim();
+    } catch (_e) {}
+    if (own) {
+      if (!saved) _lbSaveNameCloud(own);          // existing users: back the name up now
+      return;
+    }
+    let name = saved;
+    if (!name && mainData && typeof mainData.lbDisplayName === "string") name = mainData.lbDisplayName.trim();
+    if (!name) {
+      try {
+        const ls = await fbDb.collection("leaderboard").doc(fbUser.uid).get({ source: "server" });
+        const ln = ls.exists ? String((ls.data() || {}).displayName || "").trim() : "";
+        const g = (fbUser.displayName || "").trim();
+        if (ln && ln !== "Anonymous Devotee" && ln !== g) name = ln;   // a name the person chose, not the Google default
+      } catch (_e) {}
+    }
+    if (name) {
+      App.S.lbDisplayName = name.slice(0, 30);
+      try { await App.save(); } catch (_e) {}
+      try { populateLbSettingsUI(); } catch (_e) {}
+      if (!saved) _lbSaveNameCloud(App.S.lbDisplayName);
+    }
+  } catch (e) { console.warn("display name restore failed:", e && e.message); }
+}
+
 async function fbMigrate() {
   // Always pull fresh from Firebase on every login/refresh.
   // migrationV2Done only guards the one-time data-format migration,
@@ -13488,6 +13578,7 @@ async function fbMigrate() {
         return;
       }
     }
+    await _lbRestoreName(snap && snap.exists ? snap.data() : null);
     if (!snap.exists) {
       // Server confirmed no cloud doc exists yet.
       // SAFETY: only seed Firebase if local state actually has meaningful data.
@@ -13516,7 +13607,14 @@ async function fbMigrate() {
           fbApplyRemote({ ...snap2.data(), deviceId: null });
           App._cloudHydrated = true;
         } else {
-          // Confirmed truly new user — safe to seed
+          // Confirmed truly new user — give them the default daily targets, then seed
+          if (applyNewUserDefaultTargets()) {
+            try { App.save(); } catch (_e) {}
+            try { populateSettingsUI(); } catch (_e) {}
+            try { App.ua(); } catch (_e) {}
+            try { u28(); } catch (_e) {}
+            try { uStats(); } catch (_e) {}
+          }
           App._allowInitialPush = true;
           try { await fbPushFull(); } finally { App._allowInitialPush = false; }
           App._cloudHydrated = true;
@@ -13636,6 +13734,7 @@ async function fbMigrate() {
       }
     }
     setSyncPill("", "✅ Synced from cloud");
+    try { populateLbSettingsUI(); } catch (_e) {}
   } catch (e) {
     console.warn("Cloud pull failed:", e.message);
     setSyncPill("error", "Sync failed");
@@ -28225,11 +28324,16 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     });
     const today = new Date(tk+'T00:00:00');
     let d = new Date(today);
+    // Streak day = Radha target OR Radha Vallabh (RV) target fulfilled
+    const _lbDayHit = function(key) {
+      const rT = S.dt || 0, rvT = S.dtRV || 0;
+      return (rT > 0 && (hist[key]||0) >= rT) || (rvT > 0 && (histRV[key]||0) >= rvT);
+    };
+    // today still in progress -> don't break a live streak, start from yesterday
+    if (!_lbDayHit(App.tkFromDate(d))) d.setDate(d.getDate()-1);
     while(true) {
       const key = App.tkFromDate(d);
-      const dayJap = allHist[key] || 0;
-      const target = S.dt || S.dtRV || S.dtKV || S.dtHK || 0;
-      if (dayJap <= 0 || (target > 0 && dayJap < target)) break;
+      if (!_lbDayHit(key)) break;
       streak++;
       d.setDate(d.getDate()-1);
       if (streak > 3650) break;
@@ -28510,6 +28614,7 @@ async function saveLbName() {
   }
   App.S.lbDisplayName = name;
   ghostAwareSave();
+  if (isGhostMode()) { if (_ghostViewingUid) _lbSaveNameCloud(name, _ghostViewingUid); } else _lbSaveNameCloud(name);
   if (fb) {
     fb.textContent = '✓ Saved!';
     fb.style.color = 'var(--green)';
@@ -28532,7 +28637,7 @@ function populateLbSettingsUI() {
   const row = document.getElementById('lbNameRow');
   if (tg)  tg.classList.toggle('on', !!App.S.lbOptIn);
   if (inp && !inp.value) inp.value = App.S.lbDisplayName || '';
-  if (row) row.style.display = App.S.lbOptIn ? 'block' : 'none';
+  if (row) row.style.display = (App.S.lbOptIn || isGhostMode()) ? 'block' : 'none';   // developer can always edit a viewed user's name
   populateDriveBackupUI();
 }
 

@@ -23581,24 +23581,32 @@ function _gpOpen() {
   const act = !!(_hcjGroup && _hcjGroup.id === _currentStotramId);
   const bar = document.createElement('div');
   bar.className = 'gp-bar';
-  const lp = document.createElement('button');
-  lp.type = 'button';
-  lp.className = 'gp-loop' + (act && _hcjGroup.loop ? ' on' : '');
-  const lpTxt = function () { return '\uD83D\uDD01 ' + (hi ? 'समूह लूप' : 'গ্রুপ লুপ') + (_hcjGroup && _hcjGroup.loop ? ' : ON' : ' : OFF'); };
-  lp.textContent = lpTxt();
-  lp.onclick = function (e) {
-    e.stopPropagation();
-    if (!(_hcjGroup && _hcjGroup.id === _currentStotramId)) { lp.classList.add('gp-hint'); setTimeout(function () { lp.classList.remove('gp-hint'); }, 600); return; }
-    _hcjGroup.loop = !_hcjGroup.loop;
-    lp.classList.toggle('on', _hcjGroup.loop);
-    lp.textContent = lpTxt();
-    _gpSyncBtn();
+  const loopOn = !!(act && _hcjGroup.loop);
+  const mkLoop = function (want) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'gp-loop ' + (want ? 'gp-loop-on' : 'gp-loop-off') + (loopOn === want ? ' on' : '');
+    btn.setAttribute('aria-pressed', loopOn === want ? 'true' : 'false');
+    btn.textContent = (want ? '🔁 ' : '➡️ ') + (hi ? 'समूह लूप' : 'গ্রুপ লুপ') + (want ? ' : ON' : ' : OFF');
+    btn.onclick = function (e) {
+      e.stopPropagation();
+      if (!(_hcjGroup && _hcjGroup.id === _currentStotramId)) { btn.classList.add('gp-hint'); setTimeout(function () { btn.classList.remove('gp-hint'); }, 600); return; }
+      _hcjGroup.loop = want;
+      Array.prototype.forEach.call(bar.querySelectorAll('.gp-loop'), function (x) {
+        const on = x.classList.contains('gp-loop-on') === want;
+        x.classList.toggle('on', on);
+        x.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      _gpSyncBtn();
+    };
+    return btn;
   };
+  const lpOn = mkLoop(true), lpOff = mkLoop(false);
   const off = document.createElement('button');
   off.type = 'button'; off.className = 'gp-off';
   off.textContent = hi ? 'समूह बंद' : 'গ্রুপ বন্ধ';
   off.onclick = function (e) { e.stopPropagation(); _gpStop(); _gpClose(); };
-  bar.appendChild(lp); bar.appendChild(off);
+  bar.appendChild(lpOn); bar.appendChild(lpOff); bar.appendChild(off);
   sheet.appendChild(bar);
 
   const list = document.createElement('div');

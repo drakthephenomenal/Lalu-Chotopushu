@@ -1558,11 +1558,13 @@
   text-align: center; font-weight: 800; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
 #hcj-player-wrap .pp-open-btn.gp-open-btn.pp-in-player { left: auto !important; right: max(env(safe-area-inset-right), 12px) !important; position: absolute !important; }
-#gp-overlay .gp-bar { flex: 0 0 auto; display: flex; gap: 8px; padding: 0 14px 10px; }
+#gp-overlay .gp-bar { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 8px; padding: 0 14px 10px; }
+
 #gp-overlay .gp-loop, #gp-overlay .gp-off {
-  flex: 1 1 0; min-height: 42px; padding: 8px 10px; border: 1px solid rgba(0,0,0,0.12); border-radius: 22px;
+  flex: 1 1 calc(50% - 4px); min-height: 42px; padding: 8px 10px; border: 1px solid rgba(0,0,0,0.12); border-radius: 22px;
   background: rgba(255,255,255,0.55); color: #1a1100; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
 }
+#gp-overlay .gp-off { flex-basis: 100%; }
 #gp-overlay .gp-loop.on { background: #ff9800; border-color: #b36b00; box-shadow: 0 0 0 2px #b36b00; }
 #gp-overlay .gp-loop.gp-hint { animation: gpShake 0.4s; }
 @keyframes gpShake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }

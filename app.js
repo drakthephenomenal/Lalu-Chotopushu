@@ -32388,3 +32388,25 @@ const AudioAdj = (function () {
   return api;
 })();
 window.AudioAdj = AudioAdj;
+
+// ── HEAT FIX: freeze background animations while the lyrics reader is open
+//    (or the app is hidden). CSS side: body.lm-reading / body.app-hidden.
+(function () {
+  function sync() {
+    var lmo = document.getElementById("lmo");
+    var open = !!(lmo && lmo.classList.contains("show"));
+    document.body.classList.toggle("lm-reading", open);
+  }
+  function init() {
+    var lmo = document.getElementById("lmo");
+    if (lmo && window.MutationObserver) {
+      new MutationObserver(sync).observe(lmo, { attributes: true, attributeFilter: ["class"] });
+    }
+    sync();
+  }
+  document.addEventListener("visibilitychange", function () {
+    document.body.classList.toggle("app-hidden", document.visibilityState !== "visible");
+  });
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();

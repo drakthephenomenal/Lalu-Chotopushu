@@ -1606,3 +1606,38 @@
 }
 #gp-overlay .gp-off:active { background: rgba(255,215,0,0.22); }
 #pp-overlay .pp-list, #gp-overlay .pp-list { scrollbar-color: rgba(255,215,0,0.4) transparent; }
+
+/* ═══════════════════════════════════════════════════════════
+   HEAT FIX — no per-frame repaint animations on picker lists
+   (was: stsGlowPulse + stsColorShift infinite on every .sts-btn)
+   ═══════════════════════════════════════════════════════════ */
+.sts-btn {
+  animation: stsFadeUp 0.22s ease both !important;
+  animation-delay: var(--fd, 0s) !important;
+  border-color: rgba(255,215,0,0.55);
+  box-shadow: 0 0 10px 1px var(--gc, #ffd700);
+}
+.sts-picker-title { animation: none !important; }
+
+/* While the reader (#lmo) is open, freeze every animation on the page
+   behind it. JS in app.js toggles body.lm-reading. */
+body.lm-reading *,
+body.lm-reading *::before,
+body.lm-reading *::after {
+  animation-play-state: paused !important;
+}
+body.lm-reading #lmo,
+body.lm-reading #lmo *,
+body.lm-reading #lmo *::before,
+body.lm-reading #lmo *::after {
+  animation-play-state: running !important;
+}
+/* Also pause everything when the app is in the background */
+body.app-hidden *,
+body.app-hidden *::before,
+body.app-hidden *::after {
+  animation-play-state: paused !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-iteration-count: 1 !important; }
+}

@@ -27418,6 +27418,18 @@ function _fmtDateDMY(dateStr) {
   }
   var STEPS = buildSteps();
   var DEFAULT_STEP = 3; // index into STEPS (≈17px)
+  /* Device default text step (1-based "T n/N" label): tablet/iPad → 12, phone/Android → 7.
+     Used until the user picks a size with − / + (their choice is saved and wins). */
+  function isTabletDevice() {
+    var ua = navigator.userAgent || "";
+    if (/iPad|Tablet/i.test(ua)) return true;
+    if (/Macintosh/i.test(ua) && (navigator.maxTouchPoints || 0) > 1) return true; // iPadOS reports as Mac
+    if (/Android/i.test(ua) && !/Mobile/i.test(ua)) return true; // Android tablet
+    return false;
+  }
+  function deviceDefaultStep() {
+    return clampStep((isTabletDevice() ? 12 : 7) - 1);
+  }
   var STORAGE_KEY = "lyr_step"; // new key (integer step)
   var LEGACY_KEY = "lyr_manual_px"; // old key (px value)
 
@@ -27522,7 +27534,7 @@ function _fmtDateDMY(dateStr) {
       var lyrs = modal.querySelectorAll(".lyr");
       var s = lyrs.length ? autoFitStep(lyrs[0]) : null;
       if (s !== null) _autoStep = s;
-      var target = _manualStep !== null ? _manualStep : _autoStep;
+      var target = _manualStep !== null ? _manualStep : deviceDefaultStep();
       var _flatProse = !modal.querySelector(".lyr-line") && modal.querySelector(".lyr-prose");
       if (target !== null && (_manualStep !== null || !_flatProse)) applyStep(target, modal);
       _pending = false;
@@ -27568,9 +27580,7 @@ function _fmtDateDMY(dateStr) {
       var base =
         _manualStep !== null
           ? _manualStep
-          : _autoStep !== null
-            ? _autoStep
-            : DEFAULT_STEP;
+          : deviceDefaultStep();
       _manualStep = clampStep(base + delta);
       savePref();
       var m = document.querySelector(".lmo");

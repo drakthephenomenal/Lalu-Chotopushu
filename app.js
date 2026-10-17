@@ -16933,6 +16933,7 @@ function renderSt() {
       items: ['sfv', 'yms', 'asd', 'ipr', 'ptr'] },
     { folder: 'dhv', poet: 'dh', subBn: 'পরিচয়, লীলানুক্রমণিকা, বাণী প্রসংশা, নামাবলী ও পদ্যাবলী', subHi: 'परिचय, लीलानुक्रमणिका, वाणी प्रसंशा, नामावली एवं पद्यावली', bn: 'বয়ালীস লীলা ও ধ্রুবদাস জীর অন্যান্য রচনা', hi: 'बयालीस लीला एवं ध्रुवदास जी की अन्य रचनाएँ',
       items: ['dhi', 'bla', 'blv', 'bvp', 'nmb', 'bln', 'blp', 'dkc', 'shs', 'pjj'] },
+    ['pkp'],
     ['rmm', 'pdv'],
     { folder: 'vnn', icon: '🙏', subBn: 'বন্দনা ও নামাবলীর সংগ্রহ', subHi: 'वन्दना एवं नामावली संग्रह', bn: 'বন্দনা ও নামাবলী', hi: 'वन्दना एवं नामावली',
       items: ['rkn',
@@ -16942,7 +16943,7 @@ function renderSt() {
         'rnm', 'bnm', 'bkt', 'vnm'] },
     { folder: 'utv', subBn: 'ব্যাহুলা, ঝুলন, বাধাই, পালনা, ছঠী ও দসূঠন', subHi: 'व्याहुला, झूलन, बधाई, पालना, छठी एवं दसूठन', bn: 'উৎসব ও বাধাই', hi: 'उत्सव एवं बधाई',
       items: ['vyh', 'jhp', 'jbp', 'ljb', 'sjb', 'ljp', 'sjp', 'ljc', 'sjc', 'ljd', 'sjd'] },
-    ['kjk', 'pkp', 'rks', 'kcr', 'hkb', 'rdc'],
+    ['kjk', 'rks', 'kcr', 'hkb', 'rdc'],
   ];
   let _listItems = group.items;
   if (activeKey === 'rv') {

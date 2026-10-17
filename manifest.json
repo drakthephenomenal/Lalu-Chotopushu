@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Radha Naam Jap",
-  "short_name": "Radha Jap",
-  "description": "Radha Naam Jap Sadhana App — Daily naam jap counter and spiritual sadhana tracker",
+  "name": "Radha Naam SudhaRasam",
+  "short_name": "SudhaRasam",
+  "description": "Radha Naam SudhaRasam Sadhana App — Daily naam jap counter and spiritual sadhana tracker",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -46,7 +46,7 @@
     {
       "name": "Jap Counter",
       "short_name": "Jap",
-      "description": "Open the Radha Naam Jap counter",
+      "description": "Open the Radha Naam SudhaRasam counter",
       "url": "./#jap",
       "icons": [
         {

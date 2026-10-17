@@ -25,7 +25,7 @@
 // v338: Audio Chant (audio/radha_naam_chant.mp3) precached for offline.
 // v355: Radha Naam Track 1 (audio/radha_naam_track_1.mp3) added as an Audio Mode option.
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v236
+// Radha Naam SudhaRasam — Service Worker  v236
 // v336: NATIVE BACKGROUND PLAYBACK — Android foreground media service keeps stotram / pad audio playing with the screen off; WebView no longer needs a tap to autoplay.
 // v335: BACKGROUND PLAYBACK — verse clips now reuse ONE audio element so auto-next keeps playing with the screen off; auto-next no longer breaks if the page can't redraw; Media Session (lock-screen / notification play, pause, next, previous).
 // v334: S&V folder card "Sevak Vani" renamed to "Sevak Vani o Sevak Ji'r anyanya rachana" (Bangla + Hindi).
@@ -255,7 +255,7 @@
 // recently-active mode's timing persists to localStorage across a
 // restart). Worth revisiting if that edge case comes up in practice.
 // v193: bumped cache to force-invalidate stale app.js — Update App now
-// gives clear guidance (Settings → Apps → Radha Naam Jap → "Install
+// gives clear guidance (Settings → Apps → Radha Naam SudhaRasam → "Install
 // unknown apps" / MIUI's "Other permissions") when the download succeeds
 // but the installer can't be launched — this is almost always a missing
 // Android permission, not a bug, and some manufacturers (MIUI/Xiaomi)
@@ -430,7 +430,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v370';
+const CACHE = 'radha-jap-v371';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 
@@ -452,7 +452,7 @@ try {
   const messaging = firebase.messaging();
   messaging.onBackgroundMessage((payload) => {
     const n = payload.notification || {};
-    self.registration.showNotification(n.title || "Radha Naam Jap", {
+    self.registration.showNotification(n.title || "Radha Naam SudhaRasam", {
       body: n.body || "",
       icon: './icon-192.png',
       badge: './icon-192.png',

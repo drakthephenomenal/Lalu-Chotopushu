@@ -1,3 +1,4 @@
+// v379: New stotram — Shri Shri Shad-Goswamy-Ashtakam (Bangla + Hindi) with YouTube audio, in Bangla Gaudiya stotrams.
 // v364: New users & guests start with default daily targets (Radha 108 malas, Radha Vallabh 11 malas, 28 Names 36 cycles, Krishnay Vasudevay 12 count, Kaam Vijay 1 mala); 🔥 streak now counts a day when the Radha OR Radha Vallabh target is fulfilled.
 // v365: Hit Chaurasi pad picker now has 3 tabs: all pads / Mangala pads / Ras pads.
 // v363: Admin Mode - developer can change a viewed user's display name (saved to their account + durable name copy), even if they haven't joined the leaderboard.
@@ -430,7 +431,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v378';
+const CACHE = 'radha-jap-v379';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

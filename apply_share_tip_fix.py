@@ -19,7 +19,7 @@ old = '''    const file = new File([json], filename, { type: "application/json" 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
         files: [file],
-        title: "Radha Naam Jap Backup",
+        title: "RadhaNaam SudhaRasam Backup",
       });
     } else {
       // Browser can't share files — fall back to a normal download.
@@ -39,14 +39,14 @@ new = '''    // Android Chrome's canShare() refuses "application/json" files (iO
         let ok = false;
         try { ok = navigator.canShare({ files: [f] }); } catch (_e) { ok = false; }
         if (!ok) continue;
-        await navigator.share({ files: [f], title: "Radha Naam Jap Backup" });
+        await navigator.share({ files: [f], title: "RadhaNaam SudhaRasam Backup" });
         _shared = true;
         break;
       }
     }
     if (!_shared && navigator.share) {
       // Last resort before download: share the backup contents as text.
-      await navigator.share({ title: "Radha Naam Jap Backup (" + filename + ")", text: json });
+      await navigator.share({ title: "RadhaNaam SudhaRasam Backup (" + filename + ")", text: json });
       _shared = true;
     }
     if (!_shared) {

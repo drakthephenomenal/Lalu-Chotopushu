@@ -26,7 +26,7 @@ public class MediaKeepAliveService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String title = (intent != null && intent.getStringExtra("title") != null)
-                ? intent.getStringExtra("title") : "Radha Naam Jap";
+                ? intent.getStringExtra("title") : "RadhaNaam SudhaRasam";
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             if (nm != null && nm.getNotificationChannel(CHANNEL) == null) {

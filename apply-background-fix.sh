@@ -1,5 +1,5 @@
 #!/bin/bash
-# Radha Naam Jap — screen-off / background playback fix (native Android + web)
+# RadhaNaam SudhaRasam — screen-off / background playback fix (native Android + web)
 # Run from the REPO ROOT in your Codespace:   bash apply-background-fix.sh
 # Safe to run twice (it skips what is already applied).
 set -e
@@ -42,7 +42,7 @@ public class MediaKeepAliveService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String title = (intent != null && intent.getStringExtra("title") != null)
-                ? intent.getStringExtra("title") : "Radha Naam Jap";
+                ? intent.getStringExtra("title") : "RadhaNaam SudhaRasam";
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             if (nm != null && nm.getNotificationChannel(CHANNEL) == null) {
@@ -105,7 +105,7 @@ public class MediaKeepAlivePlugin extends Plugin {
     public void start(PluginCall call) {
         try {
             Intent i = new Intent(getContext(), MediaKeepAliveService.class);
-            i.putExtra("title", call.getString("title", "Radha Naam Jap"));
+            i.putExtra("title", call.getString("title", "RadhaNaam SudhaRasam"));
             if (Build.VERSION.SDK_INT >= 26) getContext().startForegroundService(i);
             else getContext().startService(i);
             call.resolve();
@@ -249,7 +249,7 @@ function _rjKeepAlive(on) {
       if (!_rjKAOn) {
         _rjKAOn = true;
         var t = document.getElementById("lmTitle");
-        P.start({ title: (t && t.textContent) || "Radha Naam Jap" }).catch(function () { _rjKAOn = false; });
+        P.start({ title: (t && t.textContent) || "RadhaNaam SudhaRasam" }).catch(function () { _rjKAOn = false; });
       }
       if (!_rjKAWatch) {
         _rjKAWatch = setInterval(function () {        // stop by itself once nothing is playing any more

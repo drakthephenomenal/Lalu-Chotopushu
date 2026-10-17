@@ -122,7 +122,7 @@ function _lcGpsErrorMessage(err) {
   // Web Geolocation API: code 1 = PERMISSION_DENIED
   // Capacitor Geolocation plugin: throws "Location permission denied" (see lcGetPosition)
   if (code === 1 || msgLower.includes("permission")) {
-    return "⚠️ Location permission not granted. Please allow location access for this app in your phone's Settings → Apps → Radha Naam SudhaRasam → Permissions.";
+    return "⚠️ Location permission not granted. Please allow location access for this app in your phone's Settings → Apps → RadhaNaam SudhaRasam → Permissions.";
   }
 
   // Web Geolocation API: code 2 = POSITION_UNAVAILABLE (often means GPS/Location
@@ -342,7 +342,7 @@ async function lcNotifyBackupSaved(body) {
     await LocalNotifications.schedule({
       notifications: [{
         id: RJAP_BACKUP_NOTIF_ID,
-        title: "📥 Radha Naam SudhaRasam Backup Saved",
+        title: "📥 RadhaNaam SudhaRasam Backup Saved",
         body,
         channelId: RJAP_BACKUP_NOTIF_CHANNEL_ID,
         smallIcon: "ic_stat_notify",
@@ -376,7 +376,7 @@ async function lcScheduleDailyReminder(hour, minute) {
     await LocalNotifications.schedule({
       notifications: [{
         id: RJAP_REMINDER_NOTIF_ID,
-        title: "🙏 Radha Naam SudhaRasam",
+        title: "🙏 RadhaNaam SudhaRasam",
         body: "Time for your daily sadhana — chant with a peaceful heart.",
         schedule: { on: { hour, minute }, allowWhileIdle: true },
         channelId: RJAP_NOTIF_CHANNEL_ID,
@@ -497,7 +497,7 @@ function _lcArmWebReminderTimer() {
       localStorage.setItem("rjap_reminder_lastFired", today);
       if ("Notification" in window && Notification.permission === "granted") {
         try {
-          new Notification("🙏 Radha Naam SudhaRasam", {
+          new Notification("🙏 RadhaNaam SudhaRasam", {
             body: "Time for your daily sadhana — chant with a peaceful heart.",
             icon: "./icon-192.png",
           });
@@ -713,7 +713,7 @@ async function lcUnregisterPush() {
 // Function (server-side checks the same developer email list).
 window.sendDevBroadcast = async function () {
   if (!isDeveloper()) return;
-  const title = prompt("Notification title:", "🙏 Radha Naam SudhaRasam");
+  const title = prompt("Notification title:", "🙏 RadhaNaam SudhaRasam");
   if (title === null || !title.trim()) return;
   const body = prompt("Notification message:");
   if (body === null || !body.trim()) return;
@@ -728,7 +728,7 @@ window.sendDevBroadcast = async function () {
 };
 
 // ═══════════════════════════════════════
-// Radha Naam SudhaRasam — app.js
+// RadhaNaam SudhaRasam — app.js
 // ═══════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════
@@ -3931,7 +3931,7 @@ async function saveManualApkLink() {
 function shareApk() {
   const shareText =
     "Radha Vallabh Sri Harivangsa \uD83D\uDE4F\n\n" +
-    "Install the Radha Naam SudhaRasam Android app directly (APK) —\n" +
+    "Install the RadhaNaam SudhaRasam Android app directly (APK) —\n" +
     "track Brahmacharya daily Jap & lots of statistics \u2728 \uD83E\uDEB7\n\n" +
     "\uD83D\uDC49 " +
     RJAP_APK_URL;
@@ -5334,7 +5334,7 @@ function tgs(k) {
       lcRequestNotifPermission().then((granted) => {
         if (!granted) {
           toast("⚠️ Notification permission denied");
-          if (statusEl) statusEl.textContent = "⚠️ Notifications blocked — enable in phone Settings → Apps → Radha Naam SudhaRasam → Notifications.";
+          if (statusEl) statusEl.textContent = "⚠️ Notifications blocked — enable in phone Settings → Apps → RadhaNaam SudhaRasam → Notifications.";
           return;
         }
         const val = (timeInput && timeInput.value) || "05:00";
@@ -5383,7 +5383,7 @@ function tgs(k) {
       try { localStorage.setItem("rjap_push_asked", "1"); } catch (_) {}
       lcUnregisterPush();
       if (tgPush) tgPush.classList.remove("on");
-      if (statusEl) statusEl.textContent = "— Tap to receive announcements from Radha Naam SudhaRasam 🔔 (requires sign-in)";
+      if (statusEl) statusEl.textContent = "— Tap to receive announcements from RadhaNaam SudhaRasam 🔔 (requires sign-in)";
       toast("🔕 Push notifications turned off");
     }
     return;
@@ -8715,8 +8715,8 @@ async function saveJsonFile(filename, jsonString) {
           });
           const { uri } = await FS2.getUri({ directory: "CACHE", path: filename });
           await Share.share({
-            title: "Radha Naam SudhaRasam Backup",
-            text: "My Radha Naam SudhaRasam backup file \ud83d\ude4f Jai Radhe!",
+            title: "RadhaNaam SudhaRasam Backup",
+            text: "My RadhaNaam SudhaRasam backup file \ud83d\ude4f Jai Radhe!",
             url: uri,
           });
           return true;
@@ -8965,8 +8965,8 @@ async function shareBackup() {
       });
       const { uri } = await Filesystem.getUri({ directory: "CACHE", path: filename });
       await Share.share({
-        title: "Radha Naam SudhaRasam Backup",
-        text: "My Radha Naam SudhaRasam backup file \uD83D\uDE4F Jai Radhe!",
+        title: "RadhaNaam SudhaRasam Backup",
+        text: "My RadhaNaam SudhaRasam backup file \uD83D\uDE4F Jai Radhe!",
         url: uri,
       });
       return;
@@ -8995,14 +8995,14 @@ async function shareBackup() {
         let ok = false;
         try { ok = navigator.canShare({ files: [f] }); } catch (_e) { ok = false; }
         if (!ok) continue;
-        await navigator.share({ files: [f], title: "Radha Naam SudhaRasam Backup" });
+        await navigator.share({ files: [f], title: "RadhaNaam SudhaRasam Backup" });
         _shared = true;
         break;
       }
     }
     if (!_shared && navigator.share) {
       // Last resort before download: share the backup contents as text.
-      await navigator.share({ title: "Radha Naam SudhaRasam Backup (" + filename + ")", text: json });
+      await navigator.share({ title: "RadhaNaam SudhaRasam Backup (" + filename + ")", text: json });
       _shared = true;
     }
     if (!_shared) {
@@ -21754,8 +21754,8 @@ function buildPwaManifest() {
       ctx.stroke();
       const url = c.toDataURL("image/png");
       const mf = {
-        name: "Radha Naam SudhaRasam",
-        short_name: "Radha Naam SudhaRasam",
+        name: "RadhaNaam SudhaRasam",
+        short_name: "RadhaNaam SudhaRasam",
         description: "Jai Shri Radha",
         start_url: "/",
         scope: "/",
@@ -22162,7 +22162,7 @@ function showInstallModal() {
       text-align:center;
     ">
       <img src="./icon-192.png" style="width:72px;height:72px;border-radius:18px;margin-bottom:14px;box-shadow:0 0 28px rgba(255,215,0,0.35);">
-      <div style="font-family:'Cinzel Decorative',serif;font-size:17px;color:#FFD700;letter-spacing:1px;margin-bottom:6px;">Radha Naam SudhaRasam</div>
+      <div style="font-family:'Cinzel Decorative',serif;font-size:17px;color:#FFD700;letter-spacing:1px;margin-bottom:6px;">RadhaNaam SudhaRasam</div>
       <div style="font-size:13px;color:rgba(255,255,255,0.65);line-height:1.6;margin-bottom:22px;font-family:Inter,sans-serif;">
         Press <b style="color:#FFD700">Install</b> to get an app icon on your Home Screen for quick, easy access — for offline use 🙏
       </div>
@@ -24894,7 +24894,7 @@ function _rjKeepAlive(on) {
       if (!_rjKAOn) {
         _rjKAOn = true;
         var t = document.getElementById("lmTitle");
-        P.start({ title: window._rjKATitle || (t && t.textContent) || "Radha Naam SudhaRasam" }).catch(function () { _rjKAOn = false; });
+        P.start({ title: window._rjKATitle || (t && t.textContent) || "RadhaNaam SudhaRasam" }).catch(function () { _rjKAOn = false; });
       }
       if (!_rjKAWatch) {
         _rjKAWatch = setInterval(function () {        // stop by itself once nothing is playing any more
@@ -24935,7 +24935,7 @@ function _hcjMSUpdate(playing) {
     }
     if (playing && window.MediaMetadata) {
       var t = document.getElementById("lmTitle");
-      ms.metadata = new MediaMetadata({ title: (t && t.textContent) || "Radha Naam SudhaRasam", artist: "Radha Naam SudhaRasam" });
+      ms.metadata = new MediaMetadata({ title: (t && t.textContent) || "RadhaNaam SudhaRasam", artist: "RadhaNaam SudhaRasam" });
     }
     ms.playbackState = playing ? "playing" : "paused";
   } catch (_e) {}
@@ -27243,7 +27243,7 @@ function copyHistoryText() {
   const tHistSS = App.S.timerHistorySS || {};
   const t28Hist = App.S.timer28History || {};
 
-  let lines = ["📿 Radha Naam SudhaRasam — History Report"];
+  let lines = ["📿 RadhaNaam SudhaRasam — History Report"];
   lines.push("Period: " + _histFmtDate(from) + " to " + _histFmtDate(to));
   lines.push("─".repeat(42));
 
@@ -31052,7 +31052,7 @@ const AudioChant = (function () {
       if (!("mediaSession" in navigator)) return;
       const ms = navigator.mediaSession;
       if (on) {
-        ms.metadata = new MediaMetadata({ title: trk() ? TRACKS[trackKey()].name : "Radha Naam · Audio Chant", artist: "Radha Naam SudhaRasam" });
+        ms.metadata = new MediaMetadata({ title: trk() ? TRACKS[trackKey()].name : "Radha Naam · Audio Chant", artist: "RadhaNaam SudhaRasam" });
         ms.playbackState = "playing";
         ms.setActionHandler("pause", function () { api.requestStop(""); });
         ms.setActionHandler("stop", function () { api.requestStop(""); });
@@ -31607,7 +31607,7 @@ const AudioChantM = (function () {
       if (!("mediaSession" in navigator)) return;
       const ms = navigator.mediaSession;
       if (on) {
-        ms.metadata = new MediaMetadata({ title: (CFG[key] ? CFG[key].name : "Naam") + " · Audio Chant", artist: "Radha Naam SudhaRasam" });
+        ms.metadata = new MediaMetadata({ title: (CFG[key] ? CFG[key].name : "Naam") + " · Audio Chant", artist: "RadhaNaam SudhaRasam" });
         ms.playbackState = "playing";
         ms.setActionHandler("pause", function () { api.requestStop(""); });
         ms.setActionHandler("stop", function () { api.requestStop(""); });
@@ -31931,7 +31931,7 @@ const AudioChant28 = (function () {
       if (!("mediaSession" in navigator)) return;
       const ms = navigator.mediaSession;
       if (on) {
-        ms.metadata = new MediaMetadata({ title: "28 Names · Audio Chant", artist: "Radha Naam SudhaRasam" });
+        ms.metadata = new MediaMetadata({ title: "28 Names · Audio Chant", artist: "RadhaNaam SudhaRasam" });
         ms.playbackState = "playing";
         ms.setActionHandler("pause", function () { api.stop(); });
         ms.setActionHandler("stop", function () { api.stop(); });

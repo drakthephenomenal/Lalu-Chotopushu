@@ -1,6 +1,6 @@
 // v338: Audio Chant (audio/radha_naam_chant.mp3) precached for offline.
 // ═══════════════════════════════════════════════════════
-// Radha Naam Jap — Service Worker  v236
+// RadhaNaam SudhaRasam — Service Worker  v236
 // v336: NATIVE BACKGROUND PLAYBACK — Android foreground media service keeps stotram / pad audio playing with the screen off; WebView no longer needs a tap to autoplay.
 // v335: BACKGROUND PLAYBACK — verse clips now reuse ONE audio element so auto-next keeps playing with the screen off; auto-next no longer breaks if the page can't redraw; Media Session (lock-screen / notification play, pause, next, previous).
 // v334: S&V folder card "Sevak Vani" renamed to "Sevak Vani o Sevak Ji'r anyanya rachana" (Bangla + Hindi).
@@ -230,7 +230,7 @@
 // recently-active mode's timing persists to localStorage across a
 // restart). Worth revisiting if that edge case comes up in practice.
 // v193: bumped cache to force-invalidate stale app.js — Update App now
-// gives clear guidance (Settings → Apps → Radha Naam Jap → "Install
+// gives clear guidance (Settings → Apps → RadhaNaam SudhaRasam → "Install
 // unknown apps" / MIUI's "Other permissions") when the download succeeds
 // but the installer can't be launched — this is almost always a missing
 // Android permission, not a bug, and some manufacturers (MIUI/Xiaomi)
@@ -427,7 +427,7 @@ try {
   const messaging = firebase.messaging();
   messaging.onBackgroundMessage((payload) => {
     const n = payload.notification || {};
-    self.registration.showNotification(n.title || "Radha Naam Jap", {
+    self.registration.showNotification(n.title || "RadhaNaam SudhaRasam", {
       body: n.body || "",
       icon: './icon-192.png',
       badge: './icon-192.png',

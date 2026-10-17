@@ -23,7 +23,7 @@ const messaging = firebase.messaging();
 // Handles push notifications that arrive while the app/tab is closed or
 // backgrounded (foreground messages are handled in app.js via onMessage()).
 messaging.onBackgroundMessage((payload) => {
-  const title = (payload.notification && payload.notification.title) || "Radha Naam Jap";
+  const title = (payload.notification && payload.notification.title) || "RadhaNaam SudhaRasam";
   const body = (payload.notification && payload.notification.body) || "";
   self.registration.showNotification(title, {
     body,

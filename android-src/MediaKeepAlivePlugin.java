@@ -15,7 +15,7 @@ public class MediaKeepAlivePlugin extends Plugin {
     public void start(PluginCall call) {
         try {
             Intent i = new Intent(getContext(), MediaKeepAliveService.class);
-            i.putExtra("title", call.getString("title", "Radha Naam Jap"));
+            i.putExtra("title", call.getString("title", "RadhaNaam SudhaRasam"));
             if (Build.VERSION.SDK_INT >= 26) getContext().startForegroundService(i);
             else getContext().startService(i);
             call.resolve();

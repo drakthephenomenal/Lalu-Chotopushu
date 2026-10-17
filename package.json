@@ -2,7 +2,7 @@
   "name": "radha-naam-jap",
   "version": "1.0.0",
   "private": true,
-  "description": "Radha Naam Jap - Panchanga / mala counter app (Capacitor Android wrapper)",
+  "description": "RadhaNaam SudhaRasam - Panchanga / mala counter app (Capacitor Android wrapper)",
   "scripts": {
     "www": "bash setup-www.sh",
     "sync": "bash setup-www.sh && npx cap sync android",

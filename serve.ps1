@@ -4,7 +4,7 @@ $listener.Prefixes.Add("http://localhost:$port/")
 $listener.Start()
 
 Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "  Radha Naam Jap App - Local Dev Server   " -ForegroundColor Yellow
+Write-Host "  RadhaNaam SudhaRasam App - Local Dev Server   " -ForegroundColor Yellow
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "Running at: http://localhost:$port/" -ForegroundColor Green
 Write-Host "Press Ctrl+C to stop the server." -ForegroundColor Gray

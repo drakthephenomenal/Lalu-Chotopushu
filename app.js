@@ -23044,7 +23044,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "gpa", "nka", "mdh", "mmb", "hvp", "ist", "isv", "gvn", "svk", "acv", "kjk", "vnm", "rkn", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11", "rmm", "svi", "dhi"];
+  const SINGLE_VIEW_IDS = ["yga", "gva", "ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "gpa", "nka", "mdh", "mmb", "hvp", "ist", "isv", "gvn", "svk", "acv", "kjk", "vnm", "rkn", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11", "rmm", "svi", "dhi"];
   // Sevak Vani / Bayalis Leela: an opened section is shown as ONE flat page (set by StotramSections.open).
   const _isFlatSection = window._stFlatSection === id;
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id) || _isFlatSection; // user-added (and repo flat/audio) stotrams + flat sections: one flat page
@@ -24846,6 +24846,9 @@ var _AUDIO_STOTRAMS = {
   anl: { prefix: "anl", timed: true, marks: [0], yt: "jFdymKB8NmM", url: "" },
   // Damodarashtakam (Padma Purana) — flat single page with word-by-word meaning, YouTube audio
   dmd: { prefix: "dmd", timed: true, marks: [0], yt: "sLmzDLUmzuw", url: "" },
+  // Yugalashtakam + Gurvashtakam (Brahma Madhva Gaudiya) — flat single page, YouTube audio
+  yga: { prefix: "yga", timed: true, marks: [0], yt: "XCBnfCpdTc8", url: "" },
+  gva: { prefix: "gva", timed: true, marks: [0], yt: "xfGxww2ImHE", url: "" },
   dkc: { prefix: "dkc" },
   // Sahaj Subhav Paryo Naval Kishori Ju Ko (Dhruvdas) — flat single page, two
   // YouTube versions. ytVoices feeds the usual voice button (Original / Version 2).

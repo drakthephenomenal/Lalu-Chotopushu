@@ -22373,7 +22373,7 @@ function _isProseBlock(verse) {
 }
 
 // ── IDs that support translation (অনুবাদ) button
-const TRANSLATION_IDS = ["gvn", "hcj", "bgv", "gpg", "nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "nrs", "anl", "nka", "kel", "blv", "kpa", "hmg", "bvp", "jbp", "bla", "ljp", "sjp", "sjc", "ljc", "ljd", "sjd", "ipr", "ptr", "jhp", "pdv"];
+const TRANSLATION_IDS = ["gvn", "hcj", "bgv", "gpg", "nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "nrs", "yga", "gva", "sga", "anl", "nka", "kel", "blv", "kpa", "hmg", "bvp", "jbp", "bla", "ljp", "sjp", "sjc", "ljc", "ljd", "sjd", "ipr", "ptr", "jhp", "pdv"];
 // Built-in translatable stotrams + live (repo-added) stotrams marked "paged".
 function _hasTranslationSt(id) {
   if (TRANSLATION_IDS.includes(id)) return true;
@@ -23150,7 +23150,7 @@ function _redWordTap(ev, key) {
 // অনুবাদ: …                                          → green
 const _GG_MEANING_RE = /^(?:শব্দার্থ|অনুবাদ|পূর্ণ অনুবাদ|নোট|शब्दार्थ|अनुवाद|पूर्ण अनुवाद|नोट)\s*:/;
 // Stotrams that use the green অনুবাদ:/अनुवाद: meaning lines (gg also has শব্দার্থ:).
-const _ANUVAD_IDS = ["gvn", "hcj", "svb", "gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "nrs", "anl", "nka", "kel", "yms", "kpa", "hmg", "bvp", "jbp", "bla", "ljp", "sjp", "sjc", "ljc", "ljd", "sjd", "ipr", "ptr", "jhp", "pdv"];
+const _ANUVAD_IDS = ["gvn", "hcj", "svb", "gg", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "nrs", "yga", "gva", "sga", "anl", "nka", "kel", "yms", "kpa", "hmg", "bvp", "jbp", "bla", "ljp", "sjp", "sjc", "ljc", "ljd", "sjd", "ipr", "ptr", "jhp", "pdv"];
 function _isAnuvadSt(id) {
   if (_ANUVAD_IDS.indexOf(id) !== -1) return true;
   const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
@@ -24847,7 +24847,10 @@ var _AUDIO_STOTRAMS = {
   // Damodarashtakam (Padma Purana) — flat single page with word-by-word meaning, YouTube audio
   dmd: { prefix: "dmd", timed: true, marks: [0], yt: "sLmzDLUmzuw", url: "" },
   // Yugalashtakam + Gurvashtakam (Brahma Madhva Gaudiya) — flat single page, YouTube audio
-  yga: { prefix: "yga", timed: true, marks: [0], yt: "XCBnfCpdTc8", url: "" },
+  // Yugalashtakam: two YouTube versions (voice button: Original / Version 2)
+  yga: { prefix: "yga", timed: true, marks: [0], yt: "XCBnfCpdTc8", url: "",
+         voices: { default: "yga", alt: "yga_alt" },
+         ytVoices: { default: "XCBnfCpdTc8", alt: "2Y1w5qHaVwU" } },
   gva: { prefix: "gva", timed: true, marks: [0], yt: "xfGxww2ImHE", url: "" },
   // Shri Shri Shad-Goswamy-Ashtakam (Srinivasacharya) — flat single page, YouTube audio
   sga: { prefix: "sga", timed: true, marks: [0], yt: "cGfZuvckaJs", url: "" },

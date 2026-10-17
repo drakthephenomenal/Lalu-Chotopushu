@@ -1,3 +1,5 @@
+// v382: Yugalashtakam author = Shri Jiva Goswami; word-by-word meaning + translation (Bangla + Hindi) added to Yugalashtakam, Gurvashtakam and Shad-Goswamy-Ashtakam.
+// v381: Yugalashtakam now has a second YouTube version (voice button: Original / Version 2).
 // v380: New stotram — Jay Nrisimha Shri Nrisimha (Bangla + anuvad) with YouTube audio.
 // v379: New stotram — Shri Shri Shad-Goswamy-Ashtakam (Bangla + Hindi) with YouTube audio, in Bangla Gaudiya stotrams.
 // v364: New users & guests start with default daily targets (Radha 108 malas, Radha Vallabh 11 malas, 28 Names 36 cycles, Krishnay Vasudevay 12 count, Kaam Vijay 1 mala); 🔥 streak now counts a day when the Radha OR Radha Vallabh target is fulfilled.
@@ -432,7 +434,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v380';
+const CACHE = 'radha-jap-v382';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

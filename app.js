@@ -21755,7 +21755,7 @@ function buildPwaManifest() {
       const url = c.toDataURL("image/png");
       const mf = {
         name: "Radha Naam SudhaRasam",
-        short_name: "SudhaRasam",
+        short_name: "Radha Naam SudhaRasam",
         description: "Jai Shri Radha",
         start_url: "/",
         scope: "/",

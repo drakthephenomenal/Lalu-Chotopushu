@@ -1670,3 +1670,19 @@ body.app-hidden *::after {
   font-family: inherit; font-size: 16px; font-weight: 800; cursor: pointer;
 }
 #gp-overlay .gp-play[disabled] { opacity: 0.4; cursor: default; }
+
+/* ═══ STOTRAM LIST — calm, no glow (saves heat & battery) ═══
+   Cards keep only their one-time fade-in; the pulsing glow, colour cycling
+   and the shimmering names are switched off. */
+.st-card {
+  animation: stFadeUp 0.45s ease both !important;
+  animation-delay: var(--sfd, 0s) !important;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.5) !important;
+  border-color: rgba(255,215,0,0.38) !important;
+}
+.st-name {
+  animation: none !important;
+  background: none !important;
+  -webkit-text-fill-color: #fff1b8 !important;
+  color: #fff1b8 !important;
+}

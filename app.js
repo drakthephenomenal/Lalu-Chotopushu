@@ -16724,7 +16724,9 @@ function renderSt() {
   const inSeva = window._stActiveFolder === 'rv' && !!window._stSevaOpen;
   const inVed = window._stActiveFolder === 'rv' && !!window._stVedOpen;
   if (trackerTitle) trackerTitle.style.display = (inVideos || inSeva || inVed) ? 'none' : '';
-  if (addForm) addForm.style.display = (inVideos || inSeva || inVed) ? 'none' : '';
+  // Rasik / Bhakta photo gallery (folder 'rjbj'): no Add-Your-Stotram box there.
+  const inRjbj = window._stActiveFolder === 'rjbj';
+  if (addForm) addForm.style.display = (inVideos || inSeva || inVed || inRjbj) ? 'none' : '';
   try { _svSyncBar(inSeva || inVed); } catch (_e) {}
 
   // Inject premium glow animations once
@@ -23546,7 +23548,7 @@ function _gpClose() {
   if (ov) { ov.style.display = 'none'; void ov.offsetHeight; ov.remove(); }
 }
 function _gpStart(g) {
-  const same = _hcjGroup && _hcjGroup.id === _currentStotramId && _hcjGroup.s === g.s;
+  const same = _hcjGroup && _hcjGroup.id === _currentStotramId && !_hcjGroup.sel && _hcjGroup.s === g.s;
   _hcjGroup = { id: _currentStotramId, s: g.s, e: g.e, loop: same ? _hcjGroup.loop : false };
   if (_hcjMode === 'loop') { _hcjMode = 'continue'; }   // single-pad loop would trap playback on one pad
   _verseNavLocked = false;
@@ -23616,10 +23618,17 @@ function _gpOpen() {
   const list = document.createElement('div');
   list.className = 'pp-list';
   const num = function (n) { return _ppDigits(String(n), hi); };
+  const _selN = (act && _hcjGroup.sel) ? _hcjGroup.sel.length : 0;
+  const selBtn = document.createElement('button');
+  selBtn.type = 'button';
+  selBtn.className = 'pp-item gp-selbtn' + (_selN ? ' pp-cur' : '');
+  selBtn.textContent = (hi ? '\u2611 अपने पद चुनें' : '\u2611 নিজের পদ বেছে নিন') + (_selN ? ' (' + num(_selN) + ')' : '');
+  selBtn.onclick = function () { _gpOpenSel(); };
+  list.appendChild(selBtn);
   groups.forEach(function (g) {
     const b = document.createElement('button');
     b.type = 'button';
-    const isCur = act && _hcjGroup.s === g.s;
+    const isCur = act && !_hcjGroup.sel && _hcjGroup.s === g.s;
     b.className = 'pp-item' + (isCur ? ' pp-cur' : '');
     b.textContent = (hi ? 'पद ' : 'পদ ') + num(g.from) + ' \u2013 ' + num(g.to) + (isCur && _hcjPlaying ? '  \u25B6' : '');
     b.onclick = function () { _gpClose(); _gpStart(g); };
@@ -23628,6 +23637,172 @@ function _gpOpen() {
   sheet.appendChild(list);
   ov.appendChild(sheet);
   lmo.appendChild(ov);
+}
+// ── GROUP PLAY: pick your own pads (any pads, played in order; optional loop) ──────────────
+// Fixed groups above are untouched. A custom selection is the same _hcjGroup object plus `sel` (sorted verse indexes).
+function _gpNextIdx(g, idx) {
+  if (g.sel) {
+    var p = g.sel.indexOf(idx);
+    if (p >= 0 && p + 1 < g.sel.length) return g.sel[p + 1];
+    return g.loop ? g.sel[0] : -1;
+  }
+  var nx = idx + 1;
+  if (nx > g.e) nx = g.loop ? g.s : -1;
+  return nx;
+}
+function _gpPadList() {   // numbered pads of the current stotram → [{ idx, num, text, ok }]
+  const id = _currentStotramId, cfg = _AUDIO_STOTRAMS[id], gs = _gpGroups();
+  if (!gs || !cfg) return [];
+  const out = [];
+  for (let i = gs[0].s; i <= gs[gs.length - 1].e; i++) {
+    const lb = _ppLabel(id, _verses[i], i);
+    out.push({ idx: i, num: lb.num, text: lb.text, ok: !!_hcjHasAudioForIdx(cfg, i) });
+  }
+  return out;
+}
+function _gpStartSel(sel, loop) {
+  sel = sel.slice().sort(function (a, b) { return a - b; });
+  if (!sel.length) return;
+  _hcjGroup = { id: _currentStotramId, s: sel[0], e: sel[sel.length - 1], sel: sel, loop: !!loop };
+  if (_hcjMode === 'loop') { _hcjMode = 'continue'; }   // single-pad loop would trap playback on one pad
+  _verseNavLocked = false;
+  const old = _verseIdx;
+  _verseIdx = sel[0];
+  if (sel[0] !== old) { try { _renderVerse(sel[0], sel[0] > old ? 1 : -1); } catch (_e) {} }
+  _hcjPlayVerse(sel[0]);
+  _hcjSyncUI();
+  _gpSyncBtn();
+}
+function _gpOpenSel() {
+  const pads = _gpPadList();
+  if (!pads.length) return;
+  _gpClose();
+  const hi = _ppIsHi();
+  const lmo = document.getElementById('lmo');
+  if (!lmo) return;
+  const id = _currentStotramId;
+  const actSel = !!(_hcjGroup && _hcjGroup.id === id && _hcjGroup.sel);
+  const chosen = {};
+  const memSel = (window._gpSelMem && window._gpSelMem.id === id) ? window._gpSelMem.sel : [];
+  (actSel ? _hcjGroup.sel : memSel).forEach(function (i) { chosen[i] = true; });
+  let loop = !!(_hcjGroup && _hcjGroup.id === id && _hcjGroup.loop);
+  const num = function (n) { return _ppDigits(String(n), hi); };
+  const count = function () { return pads.filter(function (p) { return chosen[p.idx]; }).length; };
+
+  const ov = document.createElement('div');
+  ov.id = 'gp-overlay';
+  ov.onclick = function (e) { if (e.target === ov) _gpClose(); };
+  const sheet = document.createElement('div');
+  sheet.className = 'pp-sheet';
+  const head = document.createElement('div');
+  head.className = 'pp-head';
+  const back = document.createElement('button');
+  back.className = 'gp-back'; back.type = 'button'; back.textContent = '\u2190';
+  back.onclick = function () { _gpOpen(); };
+  const title = document.createElement('div');
+  title.className = 'pp-title';
+  title.textContent = hi ? 'पद चुनें' : 'পদ নির্বাচন';
+  const x = document.createElement('button');
+  x.className = 'pp-close'; x.type = 'button'; x.textContent = '\u2715';
+  x.onclick = _gpClose;
+  head.appendChild(back); head.appendChild(title); head.appendChild(x);
+  sheet.appendChild(head);
+
+  // loop ON / OFF (applies to the whole selection)
+  const bar = document.createElement('div');
+  bar.className = 'gp-bar';
+  const mkLoop = function (want) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'gp-loop ' + (want ? 'gp-loop-on' : 'gp-loop-off') + (loop === want ? ' on' : '');
+    b.textContent = (want ? '🔁 ' : '➡️ ') + (hi ? 'चयन लूप' : 'নির্বাচিত লুপ') + (want ? ' : ON' : ' : OFF');
+    b.onclick = function (e) {
+      e.stopPropagation();
+      loop = want;
+      Array.prototype.forEach.call(bar.querySelectorAll('.gp-loop'), function (el) {
+        el.classList.toggle('on', el.classList.contains('gp-loop-on') === want);
+      });
+      if (_hcjGroup && _hcjGroup.id === id && _hcjGroup.sel) { _hcjGroup.loop = want; _gpSyncBtn(); }   // live change while playing
+    };
+    return b;
+  };
+  bar.appendChild(mkLoop(true)); bar.appendChild(mkLoop(false));
+  sheet.appendChild(bar);
+
+  // quick-select chips
+  const chips = document.createElement('div');
+  chips.className = 'gp-chips';
+  const rows = [];
+  let playBtn;
+  const refresh = function () {
+    rows.forEach(function (r) {
+      const on = !!chosen[r.p.idx];
+      r.el.classList.toggle('on', on);
+      r.ck.textContent = on ? '\u2611' : '\u2610';
+      r.el.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    const n = count();
+    playBtn.disabled = !n;
+    playBtn.textContent = (hi ? '▶ चलाएँ' : '▶ চালান') + (n ? ' (' + num(n) + ')' : '');
+  };
+  const chip = function (label, fn) {
+    const c = document.createElement('button');
+    c.type = 'button'; c.className = 'gp-chip'; c.textContent = label;
+    c.onclick = function (e) { e.stopPropagation(); fn(); refresh(); };
+    chips.appendChild(c);
+  };
+  chip(hi ? 'सभी' : 'সব', function () { pads.forEach(function (p) { if (p.ok) chosen[p.idx] = true; }); });
+  chip(hi ? 'साफ़' : 'মুছুন', function () { Object.keys(chosen).forEach(function (k) { delete chosen[k]; }); });
+  const tabs = (typeof PADPICK_TABS !== 'undefined') ? PADPICK_TABS[id] : null;
+  if (tabs) {
+    const byTab = function (key) {
+      return function () {
+        Object.keys(chosen).forEach(function (k) { delete chosen[k]; });
+        pads.forEach(function (p) { if (p.ok && tabs[key].indexOf(_ppNumInt(p.num)) !== -1) chosen[p.idx] = true; });
+      };
+    };
+    if (tabs.mangala) chip(hi ? 'मंगला के पद' : 'মঙ্গলার পদ', byTab('mangala'));
+    if (tabs.ras) chip(hi ? 'रास के पद' : 'রাসের পদ', byTab('ras'));
+  }
+  sheet.appendChild(chips);
+
+  // pad checklist
+  const list = document.createElement('div');
+  list.className = 'pp-list';
+  pads.forEach(function (p) {
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'pp-item gp-sel-row';
+    el.disabled = !p.ok;
+    const ck = document.createElement('span'); ck.className = 'gp-ck';
+    const nm = document.createElement('span'); nm.className = 'gp-num'; nm.textContent = p.num ? p.num + '.' : '';
+    const tx = document.createElement('span'); tx.className = 'gp-tx'; tx.textContent = p.text;
+    el.appendChild(ck); el.appendChild(nm); el.appendChild(tx);
+    el.onclick = function () { if (chosen[p.idx]) delete chosen[p.idx]; else chosen[p.idx] = true; refresh(); };
+    list.appendChild(el);
+    rows.push({ p: p, el: el, ck: ck });
+  });
+  sheet.appendChild(list);
+
+  // play button (selection plays in pad order, one after another)
+  const foot = document.createElement('div');
+  foot.className = 'gp-foot';
+  playBtn = document.createElement('button');
+  playBtn.type = 'button'; playBtn.className = 'gp-play';
+  playBtn.onclick = function () {
+    const sel = pads.filter(function (p) { return chosen[p.idx]; }).map(function (p) { return p.idx; });
+    if (!sel.length) return;
+    window._gpSelMem = { id: id, sel: sel };
+    _gpClose();
+    _gpStartSel(sel, loop);
+  };
+  foot.appendChild(playBtn);
+  sheet.appendChild(foot);
+  refresh();
+  ov.appendChild(sheet);
+  lmo.appendChild(ov);
+  // bring the first chosen pad into view
+  try { const f = list.querySelector('.gp-sel-row.on'); if (f) f.scrollIntoView({ block: 'center' }); } catch (_e) {}
 }
 // (Re)place the right-side ☰: bottom-right, just above the audio player (mirrors the left pad picker).
 function _gpSyncBtn() {
@@ -25510,9 +25685,8 @@ function _hcjPlayVerse(idx) {
     _hcjStopProgressLoop();
     // Group play (right-side bar): walk the pads of the chosen group, optionally looping the whole group.
     var _g = _hcjGroup;
-    if (_g && _g.id === _currentStotramId && idx >= _g.s && idx <= _g.e) {
-      var _nx = idx + 1;
-      if (_nx > _g.e) _nx = _g.loop ? _g.s : -1;
+    if (_g && _g.id === _currentStotramId && idx >= _g.s && idx <= _g.e && (!_g.sel || _g.sel.indexOf(idx) >= 0)) {
+      var _nx = _gpNextIdx(_g, idx);
       if (_nx >= 0) {
         _verseIdx = _nx;
         try { _renderVerse(_verseIdx, _nx > idx ? 1 : -1); } catch (_e) {}
@@ -25598,7 +25772,7 @@ function _hcjOnVerseChange(idx) {
   var cfg = _AUDIO_STOTRAMS[_currentStotramId];
   if (!cfg) return;
   _hcjApplyDefaultVoiceForVerse(idx);
-  if (_hcjGroup && (_hcjGroup.id !== _currentStotramId || idx < _hcjGroup.s || idx > _hcjGroup.e)) { _hcjGroup = null; try { _gpSyncBtn(); } catch (_e) {} }
+  if (_hcjGroup && (_hcjGroup.id !== _currentStotramId || idx < _hcjGroup.s || idx > _hcjGroup.e || (_hcjGroup.sel && _hcjGroup.sel.indexOf(idx) < 0))) { _hcjGroup = null; try { _gpSyncBtn(); } catch (_e) {} }
   if (_hcjPlaying && _hcjAudioIdx !== idx) {
     // Don't try to auto-continue playback into a verse with no audio at
     // all (e.g. swiping past the last sloka into nkc's closing narrative)

@@ -12570,6 +12570,7 @@ async function forceManualSyncNow() {
     }
   } catch (e) {
     console.warn("forceManualSyncNow failed:", e && e.message);
+    _rjLogSyncErr("manual-sync", e);
     setSyncPill("error", "Sync failed");
     toast("❌ Sync failed: " + (e && e.message ? e.message : e));
     if (btn) btn.textContent = "❌ Sync failed — tap to retry";
@@ -12846,6 +12847,7 @@ async function fbPushFull() {
   // Prevents wiping cloud data after "Clear app data" + re-login.
   if (!App._cloudHydrated && !App._allowInitialPush) {
     console.warn("fbPushFull blocked: cloud not yet hydrated");
+    _rjLogSyncErr("save-blocked", "cloud copy not loaded yet this session");
     if (typeof window._scheduleHydrationRetry === "function") window._scheduleHydrationRetry();
     return;
   }
@@ -12945,13 +12947,25 @@ async function fbPushFull() {
     deviceId: fbDeviceId,
     deviceLayouts: App.S.deviceLayouts || {},
   };
+  let _payloadKB = 0;
   try {
-    await fbDb
-      .collection("users")
-      .doc(fbUser.uid)
-      .collection("data")
-      .doc("main")
-      .set(payload);
+    // Firestore rejects undefined values and hangs forever with no timeout on a
+    // bad connection; clean the payload (JSON drops undefined/NaN) and bound the wait,
+    // so a failure shows its real reason instead of an endless "syncing".
+    const _ls = payload.lastSync; delete payload.lastSync;
+    const _json = JSON.stringify(payload);
+    _payloadKB = Math.round(_json.length / 1024);
+    const _doc = JSON.parse(_json); _doc.lastSync = _ls;
+    await fbWithTimeout(
+      fbDb
+        .collection("users")
+        .doc(fbUser.uid)
+        .collection("data")
+        .doc("main")
+        .set(_doc),
+      45000,
+      "Cloud save",
+    );
     // Write CONFIRMED by Firestore — safe to clear both the foreground-only
     // marker and the one shared with the Background Runner, so neither
     // retries something that already landed.
@@ -13022,7 +13036,11 @@ async function fbPushFull() {
     // request. The pending markers below (already set elsewhere in this
     // function's surrounding scope) mean the existing Background Runner /
     // _rjapMaybeRetryPendingSync retry system will keep trying regardless.
-    setSyncPill("error", "☁️ Still syncing in background…");
+    const _why = String((e && (e.code || e.message)) || "unknown error").slice(0, 70);
+    App._lastSyncError = _why + (_payloadKB ? " (" + _payloadKB + " KB)" : "");
+    _rjLogSyncErr("save", e, _payloadKB);
+    setSyncPill("error", "☁️ Not synced: " + App._lastSyncError);
+    try { toast("⚠️ Sync problem: " + App._lastSyncError); } catch (_e2) {}
   }
 }
 
@@ -13503,6 +13521,49 @@ function _rjapMaybeRetryPendingSync() {
 // JSON restore can't reach Firebase. This forces a bounded wait so a
 // hang always surfaces as a normal failure and triggers the existing
 // retry/backoff (_scheduleHydrationRetry) instead of hanging forever.
+// ── Sync problem memory ──
+// Remembers the last sync problems on this phone (reason, time, network type, data size),
+// so a failure that only happens now and then can still be read later — shown under the
+// sync status in the Cloud Sync box (tap it for the history).
+function _rjLogSyncErr(where, e, kb) {
+  try {
+    const why = String((e && (e.code || e.message)) || e || "unknown").slice(0, 90);
+    const list = JSON.parse(localStorage.getItem("rjap_sync_errlog") || "[]");
+    const last = list[list.length - 1];
+    if (!(last && last.w === where && last.m === why && Date.now() - last.t < 60000)) {
+      list.push({
+        t: Date.now(), w: where, m: why, kb: kb || 0,
+        on: navigator.onLine,
+        ct: (navigator.connection && navigator.connection.effectiveType) || "",
+      });
+      while (list.length > 15) list.shift();
+      localStorage.setItem("rjap_sync_errlog", JSON.stringify(list));
+    }
+  } catch (_e) {}
+  try { _rjRenderSyncErrLog(); } catch (_e) {}
+}
+function _rjSyncErrLines() {
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem("rjap_sync_errlog") || "[]"); } catch (_e) {}
+  return list.map((x) =>
+    new Date(x.t).toLocaleString() + " | " + x.w + " | " + x.m +
+    (x.kb ? " | " + x.kb + " KB" : "") + " | online=" + x.on + (x.ct ? " " + x.ct : ""));
+}
+function _rjRenderSyncErrLog() {
+  const el = document.getElementById("syncErrLog");
+  if (!el) return;
+  const lines = _rjSyncErrLines();
+  if (!lines.length) { el.style.display = "none"; return; }
+  el.style.display = "block";
+  el.textContent = "Last sync problem: " + lines[lines.length - 1] + "  (tap for history)";
+}
+function _rjShowSyncErrLog() {
+  const txt = _rjSyncErrLines().join("\n");
+  try { if (navigator.clipboard) navigator.clipboard.writeText(txt); } catch (_e) {}
+  alert("Sync problem history (copied if allowed):\n\n" + (txt || "none"));
+}
+setTimeout(() => { try { _rjRenderSyncErrLog(); } catch (_e) {} }, 2000);
+
 function fbWithTimeout(promise, ms, label) {
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => {
@@ -13579,18 +13640,19 @@ async function fbMigrate() {
     // the user's real cloud data. Force a server fetch on the initial pull.
     let snap;
     try {
-      snap = await docRef.get({ source: "server" });
+      snap = await fbWithTimeout(docRef.get({ source: "server" }), 20000, "Cloud pull");
     } catch (eServer) {
       // Offline or server unreachable — fall back to cache, but DO NOT
       // treat a cache miss as proof there's no cloud doc.
       console.warn("Server pull failed, falling back to cache:", eServer.message);
+      _rjLogSyncErr("pull-server", eServer);
       snap = await docRef.get({ source: "cache" }).catch(() => null);
       if (!snap || !snap.exists) {
         // Could not confirm cloud state — refuse to push so we never
         // overwrite real cloud data with empty local state.
         // _cloudHydrated stays false — the "online" listener will retry fbAutoSync() automatically.
         App._cloudHydrated = false;
-        setSyncPill("error", "Offline — will sync when online");
+        setSyncPill("error", "Cloud unreachable: " + String((eServer && (eServer.code || eServer.message)) || "").slice(0, 60));
         return;
       }
     }
@@ -13753,7 +13815,8 @@ async function fbMigrate() {
     try { populateLbSettingsUI(); } catch (_e) {}
   } catch (e) {
     console.warn("Cloud pull failed:", e.message);
-    setSyncPill("error", "Sync failed");
+    _rjLogSyncErr("pull", e);
+    setSyncPill("error", "Sync failed: " + String((e && (e.code || e.message)) || "").slice(0, 60));
   }
 }
 

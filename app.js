@@ -10884,7 +10884,7 @@ function fbShowAuthChecking() {
     loggedOutEl.style.display = "none";
     loggedInEl.style.display = "block";
     const _fbCardRefreshBtnEarly = document.getElementById("fbCardRefreshBtn");
-    if (_fbCardRefreshBtnEarly) _fbCardRefreshBtnEarly.style.display = _lcIsNative() ? "block" : "none";
+    if (_fbCardRefreshBtnEarly) _fbCardRefreshBtnEarly.style.display = (window._RJ_SHOW_CARD_REFRESH && _lcIsNative()) ? "block" : "none";
     const emailEl = document.getElementById("fbUserEmail");
     if (emailEl) emailEl.textContent = cachedLabel;
     setSyncPill("syncing", "Loading from cloud…");
@@ -11238,7 +11238,7 @@ function fbInit() {
         // PWA already re-syncs on every page load/reload, so it would be
         // redundant there). See refreshAppFromBackupArea() below.
         const _fbCardRefreshBtn = document.getElementById("fbCardRefreshBtn");
-        if (_fbCardRefreshBtn) _fbCardRefreshBtn.style.display = _lcIsNative() ? "block" : "none";
+        if (_fbCardRefreshBtn) _fbCardRefreshBtn.style.display = (window._RJ_SHOW_CARD_REFRESH && _lcIsNative()) ? "block" : "none";
         const _authLabel =
           user.phoneNumber || user.email || user.displayName || "Devotee";
         document.getElementById("fbUserEmail").textContent = _authLabel;
@@ -13650,6 +13650,9 @@ function _rjSyncErrLines() {
     new Date(x.t).toLocaleString() + " | " + x.w + " | " + x.m +
     (x.kb ? " | " + x.kb + " KB" : "") + " | online=" + x.on + (x.ct ? " " + x.ct : ""));
 }
+// Cloud Sync card "Refresh Now" is hidden (the "Sync failed? Press here" button covers it).
+// Set to true to bring it back on the native app.
+window._RJ_SHOW_CARD_REFRESH = false;
 // A problem counts as "going on" until the next successful sync is recorded.
 function _rjSyncProblemActive() {
   try {

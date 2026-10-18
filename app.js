@@ -15466,7 +15466,7 @@ const RV_POET_IMG = {
 };
 const RV_POET_ICON = {
   ved4: "hh",
-  hcj: "hh", rsn: "hh", yms: "hh", sfv: "hh",
+  hcj: "hh", hcp: "hh", rsn: "hh", yms: "hh", sfv: "hh",
   svb: "sv", hmg: "sv",
   blv: "dh", blp: "dh", nmb: "dh", bnm: "rd", dkc: "dh", shs: "dh", pjj: "dh",
   hsr: "vv",
@@ -16940,7 +16940,12 @@ function renderSt() {
   // small sub-heading. Any rv stotram NOT named below is appended at the top level
   // under an "Others" folder, so nothing ever disappears. Re-arrange by moving ids.
   const _RV_LAYOUT = [
-    ['ved4', 'asp', 'hcj', 'rsn'],
+    ['ved4', 'asp'],
+    { folder: 'hc', poet: 'hh', bn: 'শ্রী হিত চৌরাশি জী ও ফলস্তুতি', hi: 'श्री हित चौरासी जी एवं फलस्तुति',
+      subBn: 'শ্রী হিত চৌরাশি জী ও পাঠের ফলস্তুতি', subHi: 'श्री हित चौरासी जी एवं पाठ की फलस्तुति',
+      reqBn: '★ অবশ্য পাঠ্য — প্রতিদিন ১২টি পদ (অর্থ ছাড়া)', reqHi: '★ अनिवार्य — प्रतिदिन १२ पद (बिना अर्थ)',
+      items: ['hcj', 'hcp'] },
+    ['rsn'],
     { folder: 'sev', poet: 'sv', bn: 'সেবক বাণী ও সেবক জীর অন্যান্য রচনা', hi: 'सेवक वाणी एवं सेवक जी की अन्य रचनाएँ',
       subBn: 'সেবক জীর পরিচয়, সেবক বাণী ও হিত মঙ্গল গান', subHi: 'सेवक जी का परिचय, सेवक वाणी एवं हित मंगल गान',
       reqBn: '★ অবশ্য পাঠ্য — প্রতিদিন ৫টি পদ (অর্থ সহ)', reqHi: '★ अनिवार्य — प्रतिदिन ५ पद (अर्थ सहित)',
@@ -23060,7 +23065,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["yga", "gva", "sga", "nrs", "ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "gpa", "nka", "mdh", "mmb", "hvp", "ist", "isv", "gvn", "svk", "acv", "kjk", "vnm", "rkn", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11", "rmm", "svi", "dhi"];
+  const SINGLE_VIEW_IDS = ["yga", "gva", "sga", "nrs", "ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "hcp", "gpa", "nka", "mdh", "mmb", "hvp", "ist", "isv", "gvn", "svk", "acv", "kjk", "vnm", "rkn", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11", "rmm", "svi", "dhi"];
   // Sevak Vani / Bayalis Leela: an opened section is shown as ONE flat page (set by StotramSections.open).
   const _isFlatSection = window._stFlatSection === id;
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id) || _isFlatSection; // user-added (and repo flat/audio) stotrams + flat sections: one flat page

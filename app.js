@@ -13099,6 +13099,7 @@ async function fbPushFull() {
     App._suspendCloudSync = true;
     await App.save();
     App._suspendCloudSync = false;
+    App._slowRetryN = 0;
     setSyncPill("", "☁️ Synced " + new Date().toLocaleTimeString() + (_skippedFields.length ? " (skipped: " + _skippedFields.join(", ") + ")" : ""));
   } catch (e) {
     App._suspendCloudSync = false;
@@ -13112,6 +13113,21 @@ async function fbPushFull() {
     // request. The pending markers below (already set elsewhere in this
     // function's surrounding scope) mean the existing Background Runner /
     // _rjapMaybeRetryPendingSync retry system will keep trying regardless.
+    // A stalled (not rejected) save is a slow connection, not a data problem: the write
+    // is still queued by Firestore and lands when the link recovers. Show a calm message,
+    // keep the pending markers, and nudge one extra retry instead of a red alarm + toast.
+    if (e && /timed out/i.test(String(e.message || ""))) {
+      _rjLogSyncErr("save-slow", e, _payloadKB);
+      setSyncPill("error", "☁️ Slow connection — still saving in background…");
+      App._slowRetryN = (App._slowRetryN || 0) + 1;
+      if (App._slowRetryN <= 5 && !window._rjSlowRetryTimer) {
+        window._rjSlowRetryTimer = setTimeout(() => {
+          window._rjSlowRetryTimer = null;
+          try { if (navigator.onLine && fbUser) fbPushFull(); } catch (_e4) {}
+        }, 20000);
+      }
+      return;
+    }
     const _why = String((e && (e.code || e.message)) || "unknown error").slice(0, 70);
     App._lastSyncError = _why + (_payloadKB ? " (" + _payloadKB + " KB)" : "");
     _rjLogSyncErr("save", e, _payloadKB);

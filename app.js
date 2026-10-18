@@ -12948,6 +12948,7 @@ async function fbPushFull() {
     deviceLayouts: App.S.deviceLayouts || {},
   };
   let _payloadKB = 0;
+  let _skippedFields = [];
   try {
     // Firestore rejects undefined values and hangs forever with no timeout on a
     // bad connection; clean the payload (JSON drops undefined/NaN) and bound the wait,
@@ -12956,16 +12957,28 @@ async function fbPushFull() {
     const _json = JSON.stringify(payload);
     _payloadKB = Math.round(_json.length / 1024);
     const _doc = JSON.parse(_json); _doc.lastSync = _ls;
-    await fbWithTimeout(
-      fbDb
-        .collection("users")
-        .doc(fbUser.uid)
-        .collection("data")
-        .doc("main")
-        .set(_doc),
-      45000,
-      "Cloud save",
-    );
+    const _docRef = fbDb.collection("users").doc(fbUser.uid).collection("data").doc("main");
+    try {
+      await fbWithTimeout(_docRef.set(_doc), 45000, "Cloud save");
+    } catch (_setErr) {
+      if (!_setErr || _setErr.code !== "invalid-argument") throw _setErr;
+      // Firestore refused some value inside the data. Save field by field so the
+      // good fields still reach the cloud, and record exactly which field(s) it rejected.
+      const _keys = Object.keys(_doc).filter((k) => k !== "lastSync");
+      const _res = await Promise.allSettled(
+        _keys.map((k) => _docRef.set({ [k]: _doc[k] }, { merge: true })),
+      );
+      const _bad = [];
+      _res.forEach((r, i) => { if (r.status === "rejected") _bad.push(_keys[i]); });
+      try { await _docRef.set({ lastSync: _ls }, { merge: true }); } catch (_e3) {}
+      _skippedFields = _bad;
+      _rjLogSyncErr(
+        "save-partial",
+        "rejected field(s): " + (_bad.join(", ") || "none, retry ok") + " | " + String(_setErr.message || "").slice(0, 200),
+        _payloadKB,
+      );
+      if (_bad.length === _keys.length) throw _setErr;
+    }
     // Write CONFIRMED by Firestore — safe to clear both the foreground-only
     // marker and the one shared with the Background Runner, so neither
     // retries something that already landed.
@@ -13023,7 +13036,7 @@ async function fbPushFull() {
     App._suspendCloudSync = true;
     await App.save();
     App._suspendCloudSync = false;
-    setSyncPill("", "☁️ Synced " + new Date().toLocaleTimeString());
+    setSyncPill("", "☁️ Synced " + new Date().toLocaleTimeString() + (_skippedFields.length ? " (skipped: " + _skippedFields.join(", ") + ")" : ""));
   } catch (e) {
     App._suspendCloudSync = false;
     console.warn("Full sync failed:", e.message);
@@ -13527,7 +13540,7 @@ function _rjapMaybeRetryPendingSync() {
 // sync status in the Cloud Sync box (tap it for the history).
 function _rjLogSyncErr(where, e, kb) {
   try {
-    const why = String((e && (e.code || e.message)) || e || "unknown").slice(0, 90);
+    const why = (e && e.code ? e.code + ": " + String(e.message || "").replace(/^.*?:\s*/, "") : String((e && e.message) || e || "unknown")).slice(0, 260);
     const list = JSON.parse(localStorage.getItem("rjap_sync_errlog") || "[]");
     const last = list[list.length - 1];
     if (!(last && last.w === where && last.m === why && Date.now() - last.t < 60000)) {

@@ -4269,6 +4269,13 @@ function toggleNaamSel() {
   const btn = document.getElementById("naamSelBtn");
   dd.classList.toggle("show");
   btn.classList.toggle("open");
+  // Always show the jap-type names in the currently selected script (Bangla / Hindi) —
+  // the labels were only refreshed on a language change, so they could be left in Hindi
+  // while the title was already Bangla (e.g. state arriving after start-up).
+  if (dd.classList.contains("show")) {
+    try { applyNaamLangLabels((App.S && App.S.naamLang) || "sa"); } catch (_e) {}
+    try { applyHKLangLabels((App.S && App.S.hkLang) || "hi"); } catch (_e) {}
+  }
   // Close on outside click
   if (dd.classList.contains("show")) {
     setTimeout(() => {
@@ -4321,7 +4328,7 @@ function applyNaamLangLabels(lang) {
 
 function setNaamLangDirect(lang) {
   if (!App || !App.S) return;
-  if (App.S.naamLang === lang) return; // already selected
+  if (App.S.naamLang === lang) { try { applyNaamLangLabels(lang); } catch (_e) {} return; } // already selected — still make sure the labels match
   App.S.naamLang = lang;
   App.S.japLangChosen = true;  // user picked a jap text language themselves
   applyNaamLangLabels(lang);

@@ -1412,18 +1412,24 @@ const App = {
   // S.history[tk], S.audioHistM[mode][tk], S.manualJapCount[mode][tk], ...).
   // Firestore rejects empty field names, so one stray "" blocks all cloud sync.
   _purgeEmptyKeys(S) {
+    const found = [];
     try {
       if (!S || typeof S !== "object") return;
       for (const k1 of Object.keys(S)) {
         const v1 = S[k1];
         if (!v1 || typeof v1 !== "object" || Array.isArray(v1)) continue;
-        if (Object.prototype.hasOwnProperty.call(v1, "")) delete v1[""];
+        if (Object.prototype.hasOwnProperty.call(v1, "")) { delete v1[""]; found.push(k1); }
         for (const k2 of Object.keys(v1)) {
           const v2 = v1[k2];
-          if (v2 && typeof v2 === "object" && !Array.isArray(v2) && Object.prototype.hasOwnProperty.call(v2, "")) delete v2[""];
+          if (v2 && typeof v2 === "object" && !Array.isArray(v2) && Object.prototype.hasOwnProperty.call(v2, "")) { delete v2[""]; found.push(k1 + "." + k2); }
         }
       }
     } catch (_e) {}
+    // Silent fixes hide bugs — record which field(s) had the corrupt key so the
+    // real cause can be found. Shows in Settings > "Last sync problem" history.
+    if (found.length) {
+      try { _rjLogSyncErr("auto-fixed", "removed empty key in: " + found.join(", "), 0); } catch (_e) {}
+    }
   },
 
   getTk() {
@@ -12994,19 +13000,23 @@ async function fbPushFull() {
     const _ls = payload.lastSync; delete payload.lastSync;
     // Firestore forbids empty-string field names anywhere in the document;
     // strip them (recursively) so one bad key can't block the whole sync.
-    const _stripEmptyKeys = (o) => {
-      if (Array.isArray(o)) return o.map(_stripEmptyKeys);
+    const _strippedPaths = [];
+    const _stripEmptyKeys = (o, path) => {
+      if (Array.isArray(o)) return o.map((x) => _stripEmptyKeys(x, path));
       if (o && typeof o === "object") {
         const out = {};
         for (const k of Object.keys(o)) {
-          if (k === "") continue;
-          out[k] = _stripEmptyKeys(o[k]);
+          if (k === "") { _strippedPaths.push(path || "(root)"); continue; }
+          out[k] = _stripEmptyKeys(o[k], path ? path + "." + k : k);
         }
         return out;
       }
       return o;
     };
-    const _json = JSON.stringify(_stripEmptyKeys(JSON.parse(JSON.stringify(payload))));
+    const _json = JSON.stringify(_stripEmptyKeys(JSON.parse(JSON.stringify(payload)), ""));
+    if (_strippedPaths.length) {
+      _rjLogSyncErr("auto-fixed", "stripped empty key in: " + [...new Set(_strippedPaths)].slice(0, 5).join(", "), 0);
+    }
     _payloadKB = Math.round(_json.length / 1024);
     const _doc = JSON.parse(_json); _doc.lastSync = _ls;
     const _docRef = fbDb.collection("users").doc(fbUser.uid).collection("data").doc("main");

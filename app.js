@@ -10121,6 +10121,18 @@ function lcApplyJapLangDefaults(pick) {
   App.save();
 }
 
+// Pressing Hindi / Bangla (Settings pills or the language popup) also switches the jap types
+// (Radha, Radha Vallabh, Krishnay Vasudevay, Kaam Vijay, Ram, Samba Sadashiv, Hare Krishna) -- dropdown
+// names and jap text -- unless the user has picked a separate jap text language themselves.
+function lcFollowJapLang(lang) {
+  if (!App || !App.S || App.S.japLangChosen) return;
+  const bn = lang === "bn";
+  try { setHKLangDirect(bn ? "bn" : "hi"); } catch (_e) {}
+  try { setNaamLangDirect(bn ? "bn" : "sa"); } catch (_e) {}
+  App.S.japLangChosen = false;   // automatic, not the user's own jap choice
+  App.save();
+}
+
 async function lcOnbEnableGps() {
   try {
     const pos = await lcGetPosition({ timeout: 15000, maximumAge: 0 });
@@ -10212,6 +10224,7 @@ function setStotramLang(lang) {
   try { if (typeof renderRkkOccList === "function") renderRkkOccList(); } catch (_e) {}
   try { if (typeof renderCal === "function") renderCal(); } catch (_e) {}
   _lcRefreshOpenLyrics();
+  try { lcFollowJapLang(lang); } catch (_e) {}   // jap type names/text follow the app language
 }
 // If the lyrics-reader modal is currently open, refresh it for the S&V language.
 function _lcRefreshOpenLyrics() {
@@ -31471,6 +31484,7 @@ const AudioChant = (function () {
     const S = App.S, on = !!(S && S.audioMode);
     const hasRA = !!(S && S.historyAudio && Object.keys(S.historyAudio).length);
     setDisp("audioChantBtn", on ? "flex" : "none");
+    setDisp("n28AudioWrap", on ? "flex" : "none");   // 28 Names Audio Chant button: only in Audio Mode, like the others
     setDisp("audioChantLogWrap", on ? "" : "none");
     setDisp("audioModeOpts", on ? "block" : "none");
     setDisp("statsRAcard", "");
@@ -31509,6 +31523,7 @@ const AudioChant = (function () {
     }
     if (!on && (playing || starting)) api.stop();
     if (!on && window.AudioChantM && window.AudioChantM.playing) window.AudioChantM.stop();
+    if (!on && window.AudioChant28 && window.AudioChant28.playing && window.AudioChant28.stop) window.AudioChant28.stop();
   };
   api.setListenOnly = function (v) {
     if (playing) api.stop();

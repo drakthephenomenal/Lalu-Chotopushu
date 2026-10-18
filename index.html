@@ -37,6 +37,10 @@
 
 <!-- LOADING -->
 <div class="ls" id="ls">
+  <script>
+  // Splash follows the saved app language (Settings / first-login choice) -- no flash of the wrong script
+  (function(){ var l = ''; try { l = localStorage.getItem('rjap_lang_pref') || ''; } catch (e) {} window._LS_LANG = (l === 'bn' || l === 'hi') ? l : ''; })();
+  </script>
   <div class="ls-rings">
 
     <div class="glow1"></div>
@@ -44,12 +48,13 @@
     <canvas id="ringCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;background:transparent;"></canvas>
     <script>
     (function() {
-      var RADHA = 'राधा';
+      var BN = (window._LS_LANG === 'bn');
+      var RADHA = BN ? 'রাধা' : 'राधा';
       var raf, rot1 = 0, rot2 = 0, fontReady = false;
 
       function drawTextOnRing(ctx, cx, cy, radius, rotOffset, color, fs) {
         ctx.save();
-        ctx.font = '700 ' + fs + 'px "Noto Sans Devanagari", sans-serif';
+        ctx.font = '700 ' + fs + 'px ' + (BN ? '"Hind Siliguri", "Noto Sans Bengali", sans-serif' : '"Noto Sans Devanagari", sans-serif');
         ctx.fillStyle = color;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -110,7 +115,7 @@
 
       function tryDraw() {
         if (document.fonts && document.fonts.load) {
-          document.fonts.load('700 14px "Noto Sans Devanagari"', 'राधा')
+          document.fonts.load(BN ? '700 14px "Hind Siliguri"' : '700 14px "Noto Sans Devanagari"', RADHA)
             .then(startAnim).catch(startAnim);
         } else {
           setTimeout(startAnim, 800);
@@ -127,8 +132,17 @@
     <img class="ls-img" id="guruImg" src="./guru.jpg" alt="Shri Radha Rani" style="position:relative;z-index:10;">
     <img id="appIconImg" style="display:none" src="./icon-192.png" alt="App Icon"/>
   </div>
-  <div class="ls-title">जय जय श्री हरिवंश</div>
-  <div class="ls-sub">জয় জয় শ্রী হরিবংশ</div>
+  <div class="ls-title" id="lsTitle">जय जय श्री हरिवंश</div>
+  <div class="ls-sub" id="lsSub">জয় জয় শ্রী হরিবংশ</div>
+  <script>
+  (function(){
+    if (window._LS_LANG !== 'bn') return;   // Hindi (or first launch): original layout
+    var t = document.getElementById('lsTitle'), s = document.getElementById('lsSub');
+    if (!t || !s) return;
+    t.textContent = 'জয় জয় শ্রী হরিবংশ'; t.style.fontFamily = "'Hind Siliguri','Noto Sans Bengali',serif";
+    s.textContent = 'जय जय श्री हरिवंश'; s.style.fontFamily = "'Tiro Devanagari Hindi','Noto Sans Devanagari',serif";
+  })();
+  </script>
 </div>
 
 <!-- Falling Peacock Feathers -->
@@ -391,7 +405,7 @@
       </button>
     </div>
   </div>
-  <div style="display:flex;justify-content:center;margin:2px 0 6px;">
+  <div id="n28AudioWrap" style="display:none;justify-content:center;margin:2px 0 6px;">
     <button id="n28AudioBtn" type="button" onclick="AudioChant28.toggle()" aria-label="28 Names Audio Chant" style="display:flex;align-items:center;gap:8px;padding:6px 16px;border-radius:18px;border:1px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.08);color:#FFD700;font-size:13px;letter-spacing:.3px;cursor:pointer;">
       <span id="n28AudioLbl">Audio Chant</span><span id="n28AudioIco" class="achant-ico" style="width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;background:rgba(255,215,0,0.14);border:1px solid rgba(255,215,0,0.35);">▶</span>
     </button>

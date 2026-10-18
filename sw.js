@@ -1,3 +1,6 @@
+// v385: Switching app language (Hindi/Bangla) now also switches the jap types in the Jap dropdown + jap text (unless a jap language was chosen separately).
+// v384: Splash/loading screen now follows the saved language (Bangla/Hindi) — ring text + title.
+// v383: 28 Names Audio Chant button is now hidden unless Audio Mode is on (like the other audio buttons).
 // v382: Yugalashtakam author = Shri Jiva Goswami; word-by-word meaning + translation (Bangla + Hindi) added to Yugalashtakam, Gurvashtakam and Shad-Goswamy-Ashtakam.
 // v381: Yugalashtakam now has a second YouTube version (voice button: Original / Version 2).
 // v380: New stotram — Jay Nrisimha Shri Nrisimha (Bangla + anuvad) with YouTube audio.
@@ -434,7 +437,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v382';
+const CACHE = 'radha-jap-v385';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

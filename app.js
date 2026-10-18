@@ -1714,12 +1714,13 @@ const App = {
     let order = ["R", "RV", "KV"];
     if (this.S.japMode === "rv") order = ["RV", "R", "KV"];
     else if (this.S.japMode === "kv") order = ["KV", "R", "RV"];
-    else if (this.S.japMode === "kaam") order = ["KM", "R", "RV", "KV"];
-    else order.push("KM");
-    if ((b.ra || 0) > 0) order.splice(order.indexOf("R") + 1, 0, "R-A");
-    if ((b.rva || 0) > 0) order.splice(order.indexOf("RV") + 1, 0, "RV-A");
-    if ((b.kva || 0) > 0) order.splice(order.indexOf("KV") + 1, 0, "KV-A");
-    if ((b.kaama || 0) > 0) order.splice(order.indexOf("KM") + 1, 0, "KM-A");
+    // Kaam Vijay is shown only while chanting Kaam Vijay (and then it is the only one);
+    // while chanting Radha / Radha Vallabh / Krishnay Vasudevay it is left out.
+    else if (this.S.japMode === "kaam") order = ["KM"];
+    if ((b.ra || 0) > 0 && order.includes("R")) order.splice(order.indexOf("R") + 1, 0, "R-A");
+    if ((b.rva || 0) > 0 && order.includes("RV")) order.splice(order.indexOf("RV") + 1, 0, "RV-A");
+    if ((b.kva || 0) > 0 && order.includes("KV")) order.splice(order.indexOf("KV") + 1, 0, "KV-A");
+    if ((b.kaama || 0) > 0 && order.includes("KM")) order.splice(order.indexOf("KM") + 1, 0, "KM-A");
     return order.map((k) => k + ":" + parts[k]).join("+");
   },
 

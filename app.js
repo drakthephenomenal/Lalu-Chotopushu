@@ -10041,19 +10041,21 @@ function _lcIsExistingInstall() {
   return false;
 }
 async function lcLangGate() {
-  if (_lcIsExistingInstall()) return;
+  // Asked once per device, BEFORE the app opens (new install, cleared data, new phone) --
+  // whether or not the account already has data. Choosing or skipping is remembered.
+  try { if (localStorage.getItem("rjap_lang_asked") === "1" || localStorage.getItem("rjap_lang_pref")) return; } catch (_e) {}
   const pick = await new Promise((resolve) => {
     const ov = document.createElement("div");
     ov.id = "lcLangGate";
     ov.style.cssText = "position:fixed;inset:0;z-index:100001;background:linear-gradient(160deg,#0d1535,#050818);display:flex;align-items:center;justify-content:center;padding:26px;";
-    ov.innerHTML = '<div style="max-width:380px;width:100%;text-align:center;">' +
-      '<div style="font-size:42px;line-height:1;margin-bottom:12px;">🙏</div>' +
-      '<div style="font-size:19px;font-weight:700;color:#FFD700;margin-bottom:6px;">भाषा चुनें</div>' +
-      '<div style="font-size:19px;font-weight:700;color:#FFD700;margin-bottom:14px;">ভাষা নির্বাচন করুন</div>' +
-      '<div style="font-size:12px;color:rgba(255,255,255,.65);line-height:1.5;margin-bottom:22px;">Choose your language to continue.<br>You can change it later in Settings.</div>' +
-      '<div style="display:flex;flex-direction:column;gap:12px;">' +
-      '<button type="button" data-l="hi" style="padding:15px;border-radius:14px;border:1px solid rgba(255,215,0,.6);background:linear-gradient(135deg,#FFD700,#E5A800);color:#201400;font-size:17px;font-weight:700;cursor:pointer;">हिंदी</button>' +
-      '<button type="button" data-l="bn" style="padding:15px;border-radius:14px;border:1px solid rgba(255,215,0,.6);background:linear-gradient(135deg,#FFD700,#E5A800);color:#201400;font-size:17px;font-weight:700;cursor:pointer;">বাংলা</button>' +
+    ov.innerHTML = '<div style="max-width:380px;width:100%;text-align:center;background:linear-gradient(160deg,#0d1535,#080c23);border:1px solid rgba(255,215,0,.35);border-radius:20px;padding:26px 22px;box-shadow:0 10px 40px rgba(0,0,0,.6);">' +
+      '<div style="font-size:42px;line-height:1;margin-bottom:12px;">\uD83C\uDF10</div>' +
+      '<div style="font-size:18px;font-weight:700;color:#FFD700;margin-bottom:12px;">\u092D\u093E\u0937\u093E \u091A\u0941\u0928\u0947\u0902 \u00B7 \u09AD\u09BE\u09B7\u09BE \u09A8\u09BF\u09B0\u09CD\u09AC\u09BE\u099A\u09A8 \u0995\u09B0\u09C1\u09A8</div>' +
+      '<div style="font-size:13px;color:rgba(255,255,255,.8);line-height:1.55;margin-bottom:20px;">Choose your app language. You can change it any time in Settings, or separately for S&amp;V, B&amp;C and N&amp;M.</div>' +
+      '<div style="display:flex;flex-direction:column;gap:11px;">' +
+      '<button type="button" data-l="hi" style="padding:15px;border-radius:14px;border:1px solid rgba(255,215,0,.6);background:linear-gradient(135deg,#FFD700,#E5A800);color:#201400;font-size:17px;font-weight:700;cursor:pointer;">\u0939\u093F\u0902\u0926\u0940</button>' +
+      '<button type="button" data-l="bn" style="padding:15px;border-radius:14px;border:1px solid rgba(255,215,0,.6);background:linear-gradient(135deg,#FFD700,#E5A800);color:#201400;font-size:17px;font-weight:700;cursor:pointer;">\u09AC\u09BE\u0982\u09B2\u09BE</button>' +
+      '<button type="button" data-l="" style="padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:rgba(255,255,255,.8);font-size:14px;font-weight:600;cursor:pointer;">Skip</button>' +
       '</div></div>';
     ov.querySelectorAll("button[data-l]").forEach((b) => {
       b.onclick = () => { ov.remove(); resolve(b.getAttribute("data-l")); };
@@ -10062,6 +10064,7 @@ async function lcLangGate() {
   });
   // Set state directly (the UI has not been initialised yet); init picks it up.
   try { localStorage.setItem("rjap_lang_asked", "1"); } catch (_e) {}
+  if (pick !== "hi" && pick !== "bn") return;   // Skip: keep current/default language
   App.S.stotramLang = pick;
   App.S.langOnboarded = true;
   // Hindi = Sanskrit script for jap text; Bangla = Bangla, until the user

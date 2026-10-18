@@ -438,7 +438,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v392';
+const CACHE = 'radha-jap-v393';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

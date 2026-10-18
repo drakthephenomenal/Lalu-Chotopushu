@@ -13006,7 +13006,8 @@ async function fbPushFull() {
       if (o && typeof o === "object") {
         const out = {};
         for (const k of Object.keys(o)) {
-          if (k === "") { _strippedPaths.push(path || "(root)"); continue; }
+          // Firestore also forbids reserved "__name__" keys and names over ~1500 bytes
+          if (k === "" || /^__.*__$/.test(k) || k.length > 700) { _strippedPaths.push((path || "(root)") + (k ? " [" + k.slice(0, 20) + "]" : "")); continue; }
           out[k] = _stripEmptyKeys(o[k], path ? path + "." + k : k);
         }
         return out;

@@ -2114,7 +2114,15 @@
       <div style="text-align:center;margin-bottom:12px">
         <span class="sync-pill" id="syncPill"><span class="sync-dot"></span><span id="syncPillText">Ready</span></span>
       </div>
-      <div id="syncErrLog" onclick="_rjShowSyncErrLog()" style="display:none;margin:-4px 4px 12px;padding:6px 10px;border-radius:8px;background:rgba(255,120,120,0.08);border:1px solid rgba(255,120,120,0.25);color:rgba(255,170,170,0.9);font-size:10.5px;line-height:1.4;text-align:center;word-break:break-word;cursor:pointer"></div>
+      <div id="syncErrLog" onclick="_rjToggleSyncHist()" style="display:none;margin:-4px 4px 12px;padding:6px 10px;border-radius:8px;background:rgba(255,120,120,0.08);border:1px solid rgba(255,120,120,0.25);color:rgba(255,170,170,0.9);font-size:10.5px;line-height:1.4;text-align:center;word-break:break-word;cursor:pointer"></div>
+      <div id="syncHistBtn" onclick="_rjToggleSyncHist()" style="display:none;margin:-4px 4px 12px;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.55);font-size:11px;text-align:center;cursor:pointer"></div>
+      <div id="syncHistList" data-open="0" style="display:none;margin:-6px 4px 12px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1)">
+        <div id="syncHistText" style="white-space:pre-wrap;word-break:break-word;color:rgba(255,255,255,0.7);font-size:10.5px;line-height:1.45;text-align:left"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;justify-content:center">
+          <button type="button" onclick="event.stopPropagation();_rjCopySyncHist()" style="padding:4px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.7);font-size:11px">Copy</button>
+          <button type="button" onclick="event.stopPropagation();_rjClearSyncHist()" style="padding:4px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.7);font-size:11px">Clear</button>
+        </div>
+      </div>
       <!-- Shown only while signed in — sync has nothing to do without an
            account. Manual "Sync Now" for when a sync gets stacked/stuck
            (dropped listener, a backoff timer still counting down from an

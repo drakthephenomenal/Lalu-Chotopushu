@@ -4656,6 +4656,10 @@ function setSyncPill(state, text) {
     "sync-pill" +
     (state === "syncing" ? " syncing" : state === "error" ? " error" : "");
   tx.textContent = text;
+  // Remember the last successful sync so the problem box hides once things recover.
+  if (state === "" && /Synced/.test(String(text))) {
+    try { localStorage.setItem("rjap_sync_ok", String(Date.now())); _rjRenderSyncErrLog(); } catch (_e) {}
+  }
 
   if (_syncPillWatchdogTimer) {
     clearTimeout(_syncPillWatchdogTimer);
@@ -13646,18 +13650,51 @@ function _rjSyncErrLines() {
     new Date(x.t).toLocaleString() + " | " + x.w + " | " + x.m +
     (x.kb ? " | " + x.kb + " KB" : "") + " | online=" + x.on + (x.ct ? " " + x.ct : ""));
 }
-function _rjRenderSyncErrLog() {
-  const el = document.getElementById("syncErrLog");
-  if (!el) return;
-  const lines = _rjSyncErrLines();
-  if (!lines.length) { el.style.display = "none"; return; }
-  el.style.display = "block";
-  el.textContent = "Last sync problem: " + lines[lines.length - 1] + "  (tap for history)";
+// A problem counts as "going on" until the next successful sync is recorded.
+function _rjSyncProblemActive() {
+  try {
+    const list = JSON.parse(localStorage.getItem("rjap_sync_errlog") || "[]");
+    if (!list.length) return false;
+    const ok = parseInt(localStorage.getItem("rjap_sync_ok") || "0", 10);
+    return list[list.length - 1].t > ok;
+  } catch (_e) { return false; }
 }
-function _rjShowSyncErrLog() {
+function _rjRenderSyncErrLog() {
+  const box = document.getElementById("syncErrLog");
+  const btn = document.getElementById("syncHistBtn");
+  const listEl = document.getElementById("syncHistList");
+  const txtEl = document.getElementById("syncHistText");
+  if (!box || !btn || !listEl || !txtEl) return;
+  const lines = _rjSyncErrLines();
+  if (!lines.length) {
+    box.style.display = "none"; btn.style.display = "none"; listEl.style.display = "none";
+    return;
+  }
+  const active = _rjSyncProblemActive();
+  const open = listEl.dataset.open === "1";
+  box.style.display = active ? "block" : "none";
+  if (active) box.textContent = "Sync problem right now: " + lines[lines.length - 1] + "  (tap for history)";
+  btn.style.display = active ? "none" : "block";
+  btn.textContent = "🕘 Sync problem history (" + lines.length + ") " + (open ? "▴" : "▾");
+  listEl.style.display = open ? "block" : "none";
+  if (open) txtEl.textContent = lines.slice().reverse().join("\n\n");
+}
+function _rjToggleSyncHist() {
+  const listEl = document.getElementById("syncHistList");
+  if (!listEl) return;
+  listEl.dataset.open = listEl.dataset.open === "1" ? "0" : "1";
+  _rjRenderSyncErrLog();
+}
+function _rjShowSyncErrLog() { _rjToggleSyncHist(); }
+function _rjCopySyncHist() {
   const txt = _rjSyncErrLines().join("\n");
-  try { if (navigator.clipboard) navigator.clipboard.writeText(txt); } catch (_e) {}
-  alert("Sync problem history (copied if allowed):\n\n" + (txt || "none"));
+  try { if (navigator.clipboard) navigator.clipboard.writeText(txt); toast("History copied"); } catch (_e) {}
+}
+function _rjClearSyncHist() {
+  try { localStorage.removeItem("rjap_sync_errlog"); } catch (_e) {}
+  const listEl = document.getElementById("syncHistList");
+  if (listEl) listEl.dataset.open = "0";
+  _rjRenderSyncErrLog();
 }
 setTimeout(() => { try { _rjRenderSyncErrLog(); } catch (_e) {} }, 2000);
 

@@ -769,7 +769,12 @@ function applyNewUserDefaultTargets() {
 const App = {
   // ── State ──
   S: {
-    tk: "",
+    // Start with today's local date (not "") so any date-keyed write that
+    // runs before load() can never create an empty "" key (Firestore rejects it).
+    tk: (function () {
+      const d = new Date();
+      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    })(),
     ms: 108,
     dt: 0,
     lt: 0,
@@ -1013,6 +1018,7 @@ const App = {
     // GUEST MODE: never persist to IDB or localStorage — guest jap is intentionally ephemeral.
     // Only signed-in users get local persistence (as an offline buffer for cloud sync).
     if (!this._uid) return;
+    this._purgeEmptyKeys(this.S);
     // Save full state snapshot to IDB so all dates and edits persist locally
     await this.dbPut("state", this._stateKey(), {
       ms: this.S.ms,
@@ -1233,20 +1239,25 @@ const App = {
       if (stRaw) {
         const st = JSON.parse(stRaw);
         for (const k in st) {
+          if (!k) continue; // skip corrupt empty key
           if ((st[k] || 0) > (this.S.screenTimeHistory[k] || 0))
             this.S.screenTimeHistory[k] = st[k];
         }
       }
+      delete this.S.screenTimeHistory[""]; // purge corrupt empty key already saved on-device
       const sttRaw = localStorage.getItem("rjap_stotramTimeHistory");
       if (sttRaw) {
         const stt = JSON.parse(sttRaw);
         for (const k in stt) {
+          if (!k) continue; // skip corrupt empty key
           if ((stt[k] || 0) > (this.S.stotramTimeHistory[k] || 0))
             this.S.stotramTimeHistory[k] = stt[k];
         }
       }
+      delete this.S.stotramTimeHistory[""];
     } catch (e) {}
 
+    this._purgeEmptyKeys(this.S); // clean any corrupt "" keys already saved on-device
     if (!this.S.history[this.S.tk]) this.S.history[this.S.tk] = 0;
     if (!this.S.h28[this.S.tk]) this.S.h28[this.S.tk] = 0;
     if (!this.S.stotrams) this.S.stotrams = {};
@@ -1395,6 +1406,24 @@ const App = {
     STLIST.forEach((x) => {
       if (!this.S.stotrams[x.id]) this.S.stotrams[x.id] = {};
     });
+  },
+
+  // Removes corrupt "" keys from every date-keyed map in state (2 levels deep:
+  // S.history[tk], S.audioHistM[mode][tk], S.manualJapCount[mode][tk], ...).
+  // Firestore rejects empty field names, so one stray "" blocks all cloud sync.
+  _purgeEmptyKeys(S) {
+    try {
+      if (!S || typeof S !== "object") return;
+      for (const k1 of Object.keys(S)) {
+        const v1 = S[k1];
+        if (!v1 || typeof v1 !== "object" || Array.isArray(v1)) continue;
+        if (Object.prototype.hasOwnProperty.call(v1, "")) delete v1[""];
+        for (const k2 of Object.keys(v1)) {
+          const v2 = v1[k2];
+          if (v2 && typeof v2 === "object" && !Array.isArray(v2) && Object.prototype.hasOwnProperty.call(v2, "")) delete v2[""];
+        }
+      }
+    } catch (_e) {}
   },
 
   getTk() {
@@ -1915,7 +1944,12 @@ const App = {
     this._screenTimeRunning = true;
     this._screenTimeInterval = setInterval(() => {
       if (!this.S.screenTimeHistory) this.S.screenTimeHistory = {};
-      const tk = this.S.tk;
+      // Never write under an empty key — Firestore rejects empty field names
+      // ("Document fields must not be empty"), which broke every cloud sync.
+      const tk = this.S.tk || this.getTk();
+      if (!tk) return;
+      if (!this.S.tk) this.S.tk = tk;
+      delete this.S.screenTimeHistory[""];
       this.S.screenTimeHistory[tk] = (this.S.screenTimeHistory[tk] || 0) + 1;
       try {
         localStorage.setItem("rjap_screenTimeHistory", JSON.stringify(this.S.screenTimeHistory));
@@ -1948,7 +1982,10 @@ const App = {
     this._stotramTimeRunning = true;
     this._stotramTimeInterval = setInterval(() => {
       if (!this.S.stotramTimeHistory) this.S.stotramTimeHistory = {};
-      const tk = this.S.tk;
+      const tk = this.S.tk || this.getTk();
+      if (!tk) return;
+      if (!this.S.tk) this.S.tk = tk;
+      delete this.S.stotramTimeHistory[""];
       this.S.stotramTimeHistory[tk] = (this.S.stotramTimeHistory[tk] || 0) + 1;
       try {
         localStorage.setItem("rjap_stotramTimeHistory", JSON.stringify(this.S.stotramTimeHistory));
@@ -9124,6 +9161,7 @@ function importAllData(input) {
       App.S.audioMode = !!data.audioMode; App.S.audioStopMalas = data.audioStopMalas || 0; App.S.audioStopSecs = data.audioStopSecs || 0; App.S.audioStopDaily = !!data.audioStopDaily; App.S.audioListenOnly = !!data.audioListenOnly; App.S.audioTrack = ["track1", "track3"].indexOf(data.audioTrack) >= 0 ? data.audioTrack : "maharaj";
        App.S.manualJapCount = data.manualJapCount || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} };
        App.S.manualJapTime = data.manualJapTime || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, n28: {} };
+      App._purgeEmptyKeys(App.S); // drop corrupt "" keys from an imported backup
       App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history));
       App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28));
       App.S.syncBaselineTimer = JSON.parse(JSON.stringify(App.S.timerHistory));
@@ -12954,7 +12992,21 @@ async function fbPushFull() {
     // bad connection; clean the payload (JSON drops undefined/NaN) and bound the wait,
     // so a failure shows its real reason instead of an endless "syncing".
     const _ls = payload.lastSync; delete payload.lastSync;
-    const _json = JSON.stringify(payload);
+    // Firestore forbids empty-string field names anywhere in the document;
+    // strip them (recursively) so one bad key can't block the whole sync.
+    const _stripEmptyKeys = (o) => {
+      if (Array.isArray(o)) return o.map(_stripEmptyKeys);
+      if (o && typeof o === "object") {
+        const out = {};
+        for (const k of Object.keys(o)) {
+          if (k === "") continue;
+          out[k] = _stripEmptyKeys(o[k]);
+        }
+        return out;
+      }
+      return o;
+    };
+    const _json = JSON.stringify(_stripEmptyKeys(JSON.parse(JSON.stringify(payload))));
     _payloadKB = Math.round(_json.length / 1024);
     const _doc = JSON.parse(_json); _doc.lastSync = _ls;
     const _docRef = fbDb.collection("users").doc(fbUser.uid).collection("data").doc("main");
@@ -13426,6 +13478,7 @@ function fbApplyRemote(d) {
   if (!App.S.h28[App.S.tk]) App.S.h28[App.S.tk] = 0;
   if (!App.S.timerHistory[App.S.tk]) App.S.timerHistory[App.S.tk] = 0;
   if (!App.S.timer28History[App.S.tk]) App.S.timer28History[App.S.tk] = 0;
+  App._purgeEmptyKeys(App.S); // drop corrupt "" keys before they can block sync
   App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history || {}));
   App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28 || {}));
   App.S.syncBaselineTimer = JSON.parse(
@@ -13442,8 +13495,10 @@ function fbApplyRemote(d) {
     const local = localKeyGetter() || {};
     const merged = { ...local };
     for (const k in remote) {
+      if (!k) continue;
       merged[k] = Math.max(remote[k] || 0, merged[k] || 0);
     }
+    delete merged[""];
     localKeySetter(merged);
   })(d.screenTimeHistory, () => App.S.screenTimeHistory, (v) => (App.S.screenTimeHistory = v));
   (function _mergeMaxByDate(remoteObj, localKeyGetter, localKeySetter) {
@@ -13451,8 +13506,10 @@ function fbApplyRemote(d) {
     const local = localKeyGetter() || {};
     const merged = { ...local };
     for (const k in remote) {
+      if (!k) continue;
       merged[k] = Math.max(remote[k] || 0, merged[k] || 0);
     }
+    delete merged[""];
     localKeySetter(merged);
   })(d.stotramTimeHistory, () => App.S.stotramTimeHistory, (v) => (App.S.stotramTimeHistory = v));
   if (d.padTrace) { _ptGet(); _ptMerge(d.padTrace); _ptMirror(); }

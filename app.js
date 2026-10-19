@@ -11000,8 +11000,31 @@ function fbInit() {
       if (!fbUser || fbForcedSignout) return;
       if (typeof isGhostMode === "function" && isGhostMode()) return; // never fight admin mode
 
-      if (!App._hydrationFailureNotified) {
-        App._hydrationFailureNotified = true;
+      // Bounded automatic retry (5 tries per session, widening gaps) — the cloud copy not
+      // loading is usually a slow/briefly dropped connection. Saves stay blocked meanwhile
+      // (that guard protects your cloud data); the manual button still works at any time.
+      const delays = [10000, 30000, 75000, 150000, 300000];
+      const n = App._hydrationRetryAttempts || 0;
+      if (n < delays.length) {
+        if (!App._hydrationFailureNotified) {
+          App._hydrationFailureNotified = true;
+          setSyncPill("error", "Could not load from cloud — retrying…");
+        }
+        if (!App._hydrationRetryTimer) {
+          App._hydrationRetryTimer = setTimeout(async () => {
+            App._hydrationRetryTimer = null;
+            if (App._cloudHydrated || !fbUser || fbForcedSignout) return;
+            if (App._pullBusy || _fbManualSyncInFlight) { window._scheduleHydrationRetry(); return; }
+            App._hydrationRetryAttempts = n + 1;
+            try { await fbAutoSync(); } catch (e) { console.warn("Auto retry failed:", e && e.message); }
+            try { window._markHydrationRecovered(); } catch (_e) {}
+            if (!App._cloudHydrated) window._scheduleHydrationRetry();
+          }, delays[n]);
+        }
+        return;
+      }
+      if (!App._hydrationGaveUp) {
+        App._hydrationGaveUp = true;
         setSyncPill("error", "Sync failed — tap Sync Now to retry");
         toast("⚠️ Could not sync with cloud — tap \"Sync failed? Press here to manually Sync\" to retry");
       }
@@ -11014,6 +11037,7 @@ function fbInit() {
         App._hydrationRetryTimer = null;
       }
       App._hydrationRetryAttempts = 0;
+      App._hydrationGaveUp = false;
       if (App._hydrationFailureNotified) {
         App._hydrationFailureNotified = false;
         toast("✅ Synced with cloud");
@@ -12590,11 +12614,22 @@ async function forceManualSyncNow() {
     // actually needed. The user tapping this button IS the informed
     // consent to push current local state regardless; same override
     // pattern the "reset" flow already uses elsewhere in this file.
-    const _prevAllowInitialPush = App._allowInitialPush;
-    App._allowInitialPush = true;
-    try { await fbPushFull(); }
-    catch (e) { console.warn("Pre-rebuild push failed (continuing):", e && e.message); }
-    finally { App._allowInitialPush = _prevAllowInitialPush; }
+    // …but not when this device has no jap data at all and the cloud copy never loaded: that
+    // would push empty zeros over real cloud data. Then skip the push and pull first.
+    const _hasLocalJap =
+      Object.values(App.S.history || {}).some((v) => v > 0) ||
+      Object.values(App.S.historyRV || {}).some((v) => v > 0) ||
+      Object.values(App.S.historyHK || {}).some((v) => v > 0) ||
+      Object.values(App.S.historyKV || {}).some((v) => v > 0) ||
+      Object.values(App.S.historySS || {}).some((v) => v > 0) ||
+      (App.S.dt || 0) > 0 || (App.S.dtRV || 0) > 0 || (App.S.dtHK || 0) > 0 || (App.S.dtKV || 0) > 0 || (App.S.dtSS || 0) > 0;
+    if (App._cloudHydrated || _hasLocalJap) {
+      const _prevAllowInitialPush = App._allowInitialPush;
+      App._allowInitialPush = true;
+      try { await fbPushFull(); }
+      catch (e) { console.warn("Pre-rebuild push failed (continuing):", e && e.message); }
+      finally { App._allowInitialPush = _prevAllowInitialPush; }
+    }
 
     // Step 2 — now safe to wipe + rebuild Firestore's own local cache (the
     // "reinstall" part). Local jap data already reached the cloud in step 1
@@ -13769,6 +13804,10 @@ async function _lbRestoreName(mainData) {
 }
 
 async function fbMigrate() {
+  App._pullBusy = true;
+  try { return await _fbMigrateInner(); } finally { App._pullBusy = false; }
+}
+async function _fbMigrateInner() {
   // Always pull fresh from Firebase on every login/refresh.
   // migrationV2Done only guards the one-time data-format migration,
   // but we ALWAYS fetch the latest cloud state so the device is up to date.
@@ -13785,7 +13824,7 @@ async function fbMigrate() {
     // the user's real cloud data. Force a server fetch on the initial pull.
     let snap;
     try {
-      snap = await fbWithTimeout(docRef.get({ source: "server" }), 20000, "Cloud pull");
+      snap = await fbWithTimeout(docRef.get({ source: "server" }), 45000, "Cloud pull");
     } catch (eServer) {
       // Offline or server unreachable — fall back to cache, but DO NOT
       // treat a cache miss as proof there's no cloud doc.
@@ -13824,7 +13863,7 @@ async function fbMigrate() {
         // Do a second server fetch after a short delay to confirm truly no doc.
         await new Promise(r => setTimeout(r, 2000));
         let snap2 = null;
-        try { snap2 = await fbWithTimeout(docRef.get({ source: "server" }), 15000, "Cloud pull retry"); } catch (_) {}
+        try { snap2 = await fbWithTimeout(docRef.get({ source: "server" }), 30000, "Cloud pull retry"); } catch (_) {}
         if (snap2 && snap2.exists) {
           // Doc appeared on retry — browser reset scenario. Apply cloud data.
           fbApplyRemote({ ...snap2.data(), deviceId: null });

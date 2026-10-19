@@ -16765,6 +16765,120 @@ function _svOpenLink(v) {
     openExternalLink(v.url);
   }
 }
+// ── S&V verse search: look inside every stotram's verses / pads ──
+// The index is built lazily in small chunks (lyric lines only — meanings are skipped),
+// per reading language, and is searched with the same script-neutral "sound skeleton" as
+// the names, so Hindi / Bangla / English spellings all find each other.
+window._svVI = window._svVI || null;
+const _SV_MEANING_LINE = /^\s*(শব্দার্থ|অর্থ২?|অনুবাদ|নোট|টীকা|ভাবার্থ|ব্যাখ্যা|शब्दार्थ|अर्थ२?|अनुवाद|नोट|टीका|भावार्थ|व्याख्या|meaning|note)\s*:/i;
+function _svIndexOne(vi, id) {
+  const ly = String(getEffectiveLyrics(id) || '');
+  if (!ly.trim()) return;
+  ly.split(/\n{2,}/).forEach((b, bi) => {
+    const lines = b.split('\n').map((l) => l.trim()).filter((l) => l && !_SV_MEANING_LINE.test(l));
+    if (!lines.length) return;
+    const t = lines.join('\n').toLowerCase();
+    if (t.length < 4) return;
+    if (bi === 0 && t.length < 60 && !/[।॥]/.test(t)) return;   // title block
+    vi.items.push({ id: id, t: t, k: _svKey(t) });
+  });
+}
+function _svVIEnsure() {
+  const lang = (typeof secLang === 'function') ? secLang('sv') : 'bn';
+  let vi = window._svVI;
+  if (vi && vi.lang === lang) return vi;
+  const seenId = {};
+  const ids = [];
+  try {
+    [].concat(typeof STLIST !== 'undefined' ? STLIST : [], (App.S && App.S.customSt) || []).forEach((st) => {
+      if (st && st.id && !st.__head && !seenId[st.id]) { seenId[st.id] = 1; ids.push(st.id); }
+    });
+  } catch (_e) {}
+  vi = window._svVI = { lang: lang, items: [], ids: ids, pos: 0, done: false };
+  const step = () => {
+    if (window._svVI !== vi) return;
+    const end = Math.min(vi.pos + 5, vi.ids.length);
+    for (; vi.pos < end; vi.pos++) { try { _svIndexOne(vi, vi.ids[vi.pos]); } catch (_e) {} }
+    if (vi.pos < vi.ids.length) setTimeout(step, 8);
+    else { vi.done = true; if (window._svQuery) { try { renderSt(); } catch (_e) {} } }
+  };
+  setTimeout(step, 30);
+  return vi;
+}
+function _svVerseSearch(words, groups, scoped, activeKey) {
+  const res = { hits: [], building: false };
+  let need = 0;
+  words.forEach((w) => { need += w.raw.length; });
+  if (need < 3) return res;               // too short to search inside verses
+  const vi = _svVIEnsure();
+  res.building = !vi.done;
+  const gOf = {};
+  groups.forEach((g) => {
+    if (g.key === 'videos' || g.key === 'rjbj' || g.key === 'dd') return;
+    if (scoped && g.key !== activeKey) return;
+    (g.items || []).forEach((st) => { if (st && !st.__head && st.id && !gOf[st.id]) gOf[st.id] = { st: st, g: g }; });
+  });
+  // A Hindi query is also tried in Bangla letters (and the other way round), so the
+  // exact spelling matches whichever script the verses are shown in.
+  words.forEach((w) => {
+    w.alt = '';
+    if (vi.lang === 'bn' && /[\u0900-\u097F]/.test(w.raw)) { try { w.alt = _devToBn(w.raw); } catch (_e) {} }
+    else if (vi.lang !== 'bn' && /[\u0980-\u09FF]/.test(w.raw)) w.alt = w.raw.replace(/[\u0980-\u09FF]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x80));
+  });
+  // Whole-phrase sound skeleton (word boundaries kept) for multi-word phrases.
+  const qk = words.length > 1 ? words.map((w) => _svKey(w.raw)).join(' ') : '';
+  const qkLen = qk.replace(/ /g, '').length;
+  const exact = [], fuzzy = [];
+  for (let n = 0; n < vi.items.length && exact.length < 60; n++) {
+    const it = vi.items[n];
+    const o = gOf[it.id];
+    if (!o) continue;
+    let ex = true, ok = true;
+    for (let j = 0; j < words.length; j++) {
+      const w = words[j];
+      if (it.t.indexOf(w.raw) > -1 || (w.alt && it.t.indexOf(w.alt) > -1)) continue;
+      ex = false;
+      if (w.key && w.key.length >= 3 && it.k.indexOf(w.key) > -1) continue;
+      ok = false; break;
+    }
+    if (!ok && qkLen >= 4 && it.k.indexOf(qk) > -1) { ok = true; ex = false; }
+    if (ok) (ex ? exact : fuzzy).push({ it: it, st: o.st, g: o.g });
+  }
+  res.hits = exact.concat(fuzzy).slice(0, 60);
+  return res;
+}
+function _svVerseView(h, words) {
+  const lines = h.it.t.split('\n');
+  const w0 = words[0];
+  let line = lines[0];
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (l.indexOf(w0.raw) > -1 || (w0.alt && l.indexOf(w0.alt) > -1) || (w0.key && w0.key.length >= 3 && _svKey(l).indexOf(w0.key) > -1)) { line = l; break; }
+  }
+  line = line.replace(/\s*[॥।|]{1,2}\s*[0-9০-৯०-९]*\s*[॥।|]{0,2}\s*$/, '').trim();
+  if (line.length > 90) line = line.slice(0, 90) + '…';
+  let num = '';
+  const m = h.it.t.match(/[॥।|]{1,2}\s*[0-9০-৯०-९]+\s*[॥।|]{1,2}/g);
+  if (m && m.length) { const d = m[m.length - 1].match(/[0-9০-৯०-९]+/); if (d) num = d[0]; }
+  return { line: line, num: num };
+}
+// Opens the stotram and moves the reader to the verse that was found.
+function _svJumpVerse(id, needle, tries) {
+  setTimeout(() => {
+    try {
+      if (typeof _currentStotramId !== 'undefined' && _currentStotramId === id && _verses && _verses.length) {
+        for (let i = 0; i < _verses.length; i++) {
+          if (String(_verses[i]).toLowerCase().indexOf(needle) > -1) {
+            if (i !== _verseIdx) { _verseIdx = i; _renderVerse(i, null); }
+            return;
+          }
+        }
+        return;
+      }
+    } catch (_e) {}
+    if (tries < 12) _svJumpVerse(id, needle, tries + 1);
+  }, tries ? 200 : 120);
+}
 function _svRenderSearch(list, groups, activeKey, folderTitle) {
   const q = window._svQuery;
   const words = _svParseQuery(q);
@@ -16814,7 +16928,8 @@ function _svRenderSearch(list, groups, activeKey, folderTitle) {
   list.appendChild(head);
 
   const wantVid = (!scoped || activeKey === 'videos');   // Useful Videos+ Links are searched too
-  if (!all.length && !wantVid) {
+  const vres = _svVerseSearch(words, groups, scoped, activeKey);
+  if (!all.length && !vres.hits.length && !vres.building && !wantVid) {
     const e = document.createElement('div');
     e.className = 'st-folder-empty';
     e.textContent = L('कुछ नहीं मिला 🙏', 'কিছু পাওয়া যায়নি 🙏');
@@ -16864,13 +16979,43 @@ function _svRenderSearch(list, groups, activeKey, folderTitle) {
     list.appendChild(c);
   });
 
+  // Verses / pads found inside stotrams.
+  vres.hits.forEach((h) => {
+    const v = _svVerseView(h, words);
+    const c = document.createElement('div');
+    c.className = 'sv-res';
+    const where = stName(h.st) + (v.num ? ' · ' + L('पद', 'পদ') + ' ' + v.num : '');
+    c.innerHTML =
+      '<span class="sv-res-ic">📜</span>' +
+      '<div class="sv-res-txt"><div class="sv-res-name">' + escHtml(v.line) + '</div>' +
+      '<div class="sv-res-sub">' + escHtml(where) + ' · ' + escHtml(folderTitle(h.g)) + '</div></div>' +
+      '<button type="button" class="st-open-btn sv-res-open">' + escHtml(L('खोलें', 'খুলুন')) + '</button>';
+    c.addEventListener('click', () => {
+      const needle = h.it.t.split('\n')[0].slice(0, 48);
+      _svResetQuery();
+      showLyrics(h.st.id);
+      _svJumpVerse(h.st.id, needle, 0);
+    });
+    list.appendChild(c);
+  });
+  if (vres.building) {
+    const e = document.createElement('div');
+    e.className = 'st-folder-empty';
+    e.textContent = L('पद खोजने की तैयारी… 🙏', 'পদ খোঁজার প্রস্তুতি চলছে… 🙏');
+    list.appendChild(e);
+  }
+  if (vres.hits.length) {
+    const cs = head.querySelector('span');
+    if (cs) cs.textContent = (all.length + vres.hits.length) + ' ' + L('परिणाम', 'ফলাফল') + (scopeGrp ? ' · ' + folderTitle(scopeGrp) : '');
+  }
+
   // Favourite videos (repo files) + saved links: loaded asynchronously, appended below.
   if (wantVid) {
     const tok = window._svTok = (window._svTok || 0) + 1;
     const box = document.createElement('div');
     list.appendChild(box);
     const cntEl = head.querySelector('span');
-    const base = all.length;
+    const base = all.length + vres.hits.length;
     const whereV = L('उपयोगी वीडियो + लिंक', 'Useful Videos+ Links');
     const mk = (icon, title, where, act) => {
       const c = document.createElement('div');

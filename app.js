@@ -25219,7 +25219,12 @@ function _hcjEnsureMinimizeButton() {
 var _AUDIO_STOTRAMS = {
   hcj: {
     prefix: "hcj",
-    voices: { default: "hcj", ankit: "hcj_ankit", shuvam: "hcj_shuvam" },
+    voices: { default: "hcj", ankit: "hcj_ankit", shuvam: "hcj_shuvam", maharaj: "hcj" },
+    // Maharaj Ji version: audio/Hit caturashi ji/SHCJ<n>.mp3 (same folder + file names as supplied; n = pad number).
+    voiceLabels: { maharaj: "Maharaj Ji" },
+    voicePaths: {
+      maharaj: function (n) { return "audio/Hit caturashi ji/SHCJ" + n + ".mp3"; }
+    },
     // Verse 52 defaults to Shuvam Srivastav's recitation instead of the
     // usual original — original and Ankit stay available via the voice
     // button like any other verse. Keyed by displayed verse number.
@@ -25320,12 +25325,18 @@ var _AUDIO_STOTRAMS = {
     // convention as gms/hnc/gg_5_2 above). Expected files, uploaded
     // alongside the existing rsn_*.mp3 set: rsn_alt_0.mp3 (preamble),
     // rsn_alt_1.mp3 ... rsn_alt_150.mp3, rsn_alt_c.mp3 (closing).
-    voices: { default: "rsn", alt: "rsn_alt" },
+    voices: { default: "rsn", alt: "rsn_alt", maharaj: "rsn" },
+    // Maharaj Ji version: audio/SMRSNJ/SMRSNJ_<n>.mp3 (n = 0 preamble, 1..270 shloks). It has no closing
+    // clip, so the closing verse falls through to the normal rsn_c.mp3.
+    voiceLabels: { maharaj: "Maharaj Ji" },
+    voicePaths: {
+      maharaj: function (n, isClosing) { return isClosing ? "" : "audio/SMRSNJ/SMRSNJ_" + n + ".mp3"; }
+    },
     // Shlok 150 only — Harindu's variation, available alongside the usual
     // rsn_150.mp3 and the new rsn_alt_150.mp3. Every other verse has no
     // per-verse entry, so it falls back to the stotram-wide `voices`
     // above and the voice button just offers default/alt there.
-    voicesByVerse: { 150: { default: "rsn", harindu: "rsn_harindu", alt: "rsn_alt" } }
+    voicesByVerse: { 150: { default: "rsn", harindu: "rsn_harindu", alt: "rsn_alt", maharaj: "rsn" } }
   },
   yms: { prefix: "yms" },
   hmg: { prefix: "hmg" },
@@ -25642,6 +25653,13 @@ function _hcjAudioPath(i) {
     var _voicesHereVM = _hcjVoicesFor(cfg, _vm.track);
     var _prefixVM = (_voicesHereVM && _voicesHereVM[_hcjVoice]) || prefix;
     return "audio/" + _prefixVM + "_" + _vm.track + ".mp3";
+  }
+  // Voices with their own folder/file naming (e.g. Maharaj Ji) — return "" to fall through to the default clip.
+  if (cfg && cfg.voicePaths && cfg.voicePaths[_hcjVoice]) {
+    var _vpOff = cfg.labelOffset || 0;
+    var _vpClosing = _hcjHasClosing(cfg) && i === _verses.length - 1;
+    var _vp = cfg.voicePaths[_hcjVoice](i + 1 - _vpOff, _vpClosing);
+    if (_vp) return _vp;
   }
   if (cfg) {
     var _voiceOffset = cfg.labelOffset || 0;

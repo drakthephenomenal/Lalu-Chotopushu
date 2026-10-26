@@ -1155,9 +1155,11 @@ const App = {
     } catch (e) {}
     if (fbUser && !fbForcedSignout && !this._suspendCloudSync && App._cloudHydrated)
       fbDebouncedPush();
-    else if (fbUser && !App._cloudHydrated && typeof navigator !== "undefined" && navigator.onLine === false) {
-      // Opened offline and cloud never loaded: still mark this jap as unsynced
-      // so the next cloud pull keeps it and pushes it instead of overwriting it.
+    else if (fbUser && !App._cloudHydrated && !isGhostMode()) {
+      // Cloud copy never loaded this session (offline OR a hung/slow pull while "online"):
+      // this save can't be pushed, so mark it unsynced. The next cloud pull then keeps
+      // the higher local counts and pushes them instead of overwriting them with the
+      // older cloud copy.
       try { localStorage.setItem("rjap_sync_pending", String(Date.now())); } catch (_e) {}
     }
   },
@@ -10683,11 +10685,14 @@ async function fbClaimSession() {
     .collection("session")
     .doc("active");
   try {
-    await sessionRef.set({
+    // Firestore set() only resolves once the SERVER acknowledges the write, so on a
+    // slow/flaky network it can hang forever — and the cloud pull (fbAutoSync) is
+    // chained after this. Bound the wait; the write still completes in the background.
+    await fbWithTimeout(sessionRef.set({
       deviceId: fbDeviceId,
       signedInAt: firebase.firestore.FieldValue.serverTimestamp(),
       userAgent: navigator.userAgent.slice(0, 120),
-    });
+    }), 8000, "Session claim");
     console.log("Session claimed by device:", fbDeviceId);
   } catch (e) {
     console.warn("Failed to claim session:", e.message);
@@ -10758,8 +10763,11 @@ async function fbSyncServerTime() {
     const localBefore = Date.now();
     // Write a server timestamp and immediately read it back to measure offset
     const tempRef = fbDb.collection("_timesync").doc("probe");
-    await tempRef.set({ t: firebase.firestore.FieldValue.serverTimestamp() });
-    const snap = await tempRef.get();
+    // Bounded: an unacknowledged write must never hold up the cloud pull.
+    const snap = await fbWithTimeout((async () => {
+      await tempRef.set({ t: firebase.firestore.FieldValue.serverTimestamp() });
+      return await tempRef.get();
+    })(), 8000, "Server time probe");
     const localAfter = Date.now();
     if (snap.exists && snap.data().t) {
       const serverMs = snap.data().t.toMillis();
@@ -10969,7 +10977,7 @@ function fbInit() {
     window._fbRecoverPersistence = async function () {
       try {
         if (fbListener) { fbListener(); fbListener = null; }
-        await fbDb.terminate();
+        await fbWithTimeout(fbDb.terminate(), 8000, "Firestore terminate");
         await fbDb.clearPersistence().catch(() => {});
       } catch (e) {
         console.warn("fbRecoverPersistence terminate/clear failed:", e && e.message);
@@ -11005,6 +11013,26 @@ function fbInit() {
       // (that guard protects your cloud data); the manual button still works at any time.
       const delays = [10000, 30000, 75000, 150000, 300000];
       const n = App._hydrationRetryAttempts || 0;
+      // After the fast retries are used up, keep trying quietly every 5 minutes
+      // instead of leaving saves blocked until the user finds the manual button.
+      if (n >= delays.length && !App._hydrationGaveUp) {
+        App._hydrationGaveUp = true;
+        setSyncPill("error", "Sync failed — tap Sync Now to retry");
+        toast("⚠️ Could not sync with cloud — tap \"Sync failed? Press here to manually Sync\" to retry");
+      }
+      if (n >= delays.length) {
+        if (!App._hydrationRetryTimer) {
+          App._hydrationRetryTimer = setTimeout(async () => {
+            App._hydrationRetryTimer = null;
+            if (App._cloudHydrated || !fbUser || fbForcedSignout) return;
+            if (App._pullBusy || _fbManualSyncInFlight) { window._scheduleHydrationRetry(); return; }
+            try { await fbAutoSync(); } catch (e) { console.warn("Slow retry failed:", e && e.message); }
+            try { window._markHydrationRecovered(); } catch (_e) {}
+            if (!App._cloudHydrated) window._scheduleHydrationRetry();
+          }, 300000);
+        }
+        return;
+      }
       if (n < delays.length) {
         if (!App._hydrationFailureNotified) {
           App._hydrationFailureNotified = true;
@@ -12938,6 +12966,8 @@ async function fbPushFull() {
   // Prevents wiping cloud data after "Clear app data" + re-login.
   if (!App._cloudHydrated && !App._allowInitialPush) {
     console.warn("fbPushFull blocked: cloud not yet hydrated");
+    // Whatever was just saved locally could not be pushed — keep it from being overwritten later.
+    try { localStorage.setItem("rjap_sync_pending", String(Date.now())); } catch (_e) {}
     _rjLogSyncErr("save-blocked", "cloud copy not loaded yet this session");
     if (typeof window._scheduleHydrationRetry === "function") window._scheduleHydrationRetry();
     return;
@@ -13777,7 +13807,7 @@ async function _lbRestoreName(mainData) {
     const own = (App.S.lbDisplayName || "").trim();
     let saved = "";
     try {
-      const ps = await fbDb.collection("users").doc(fbUser.uid).collection("data").doc("profile").get({ source: "server" });
+      const ps = await fbWithTimeout(fbDb.collection("users").doc(fbUser.uid).collection("data").doc("profile").get({ source: "server" }), 8000, "Profile name fetch");
       if (ps.exists) saved = String((ps.data() || {}).lbDisplayName || "").trim();
     } catch (_e) {}
     if (own) {
@@ -13788,7 +13818,7 @@ async function _lbRestoreName(mainData) {
     if (!name && mainData && typeof mainData.lbDisplayName === "string") name = mainData.lbDisplayName.trim();
     if (!name) {
       try {
-        const ls = await fbDb.collection("leaderboard").doc(fbUser.uid).get({ source: "server" });
+        const ls = await fbWithTimeout(fbDb.collection("leaderboard").doc(fbUser.uid).get({ source: "server" }), 8000, "Leaderboard name fetch");
         const ln = ls.exists ? String((ls.data() || {}).displayName || "").trim() : "";
         const g = (fbUser.displayName || "").trim();
         if (ln && ln !== "Anonymous Devotee" && ln !== g) name = ln;   // a name the person chose, not the Google default
@@ -13840,7 +13870,8 @@ async function _fbMigrateInner() {
         return;
       }
     }
-    await _lbRestoreName(snap && snap.exists ? snap.data() : null);
+    try { await fbWithTimeout(_lbRestoreName(snap && snap.exists ? snap.data() : null), 20000, "Name restore"); }
+    catch (_eName) { console.warn("name restore skipped:", _eName && _eName.message); }
     if (!snap.exists) {
       // Server confirmed no cloud doc exists yet.
       // SAFETY: only seed Firebase if local state actually has meaningful data.

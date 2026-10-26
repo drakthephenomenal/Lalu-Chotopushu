@@ -1,3 +1,4 @@
+// v401: Wish text can now be edited on the current and queued wishes (was fulfilled only); Gift Your Jap entries can now edit date and stotram name/count, and a stotram can be edited before adding. Cloud sync fixes: no more hanging 'Loading from cloud…' / save-blocked, unsynced jap is kept on reopen. New 'Maharaj Ji' voice for Hit Caturashi Ji and Sri Radha Sudha Nidhi.
 // v387: Language popup (Hindi / Bangla / Skip) shows BEFORE the app opens (not after sign-in) whenever this device has no saved language.
 // v385: Switching app language (Hindi/Bangla) now also switches the jap types in the Jap dropdown + jap text (unless a jap language was chosen separately).
 // v384: Splash/loading screen now follows the saved language (Bangla/Hindi) — ring text + title.
@@ -438,7 +439,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v400';
+const CACHE = 'radha-jap-v401';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

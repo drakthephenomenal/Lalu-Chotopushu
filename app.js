@@ -6496,6 +6496,20 @@ function addDedStotram() {
   _updateDedSummary();
 }
 
+function editDedStotram(idx) {
+  if (isGhostMode()) return; // admin mode: read-only
+  const s = (window._dedStotrams || [])[idx];
+  if (!s) return;
+  const nameEl = document.getElementById("dedStNameIn");
+  const countEl = document.getElementById("dedStCountIn");
+  if (nameEl) nameEl.value = s.name;
+  if (countEl) countEl.value = s.count;
+  window._dedStotrams.splice(idx, 1);
+  renderDedStotramList();
+  _updateDedSummary();
+  if (nameEl) nameEl.focus();
+}
+
 function removeDedStotram(idx) {
   if (isGhostMode()) return; // admin mode: read-only
   window._dedStotrams.splice(idx, 1);
@@ -6520,9 +6534,10 @@ function renderDedStotramList() {
         ': <b style="color:#FF8FC7">' +
         s.count.toLocaleString("en-IN") +
         "</b></span>" +
-        '<span onclick="removeDedStotram(' +
-        i +
-        ')" style="cursor:pointer;color:var(--td);font-size:12px;padding:2px 4px;">✕</span>' +
+        '<span style="display:flex;gap:6px;">' +
+        '<span onclick="editDedStotram(' + i + ')" style="cursor:pointer;color:var(--td);font-size:12px;padding:2px 4px;">✏️</span>' +
+        '<span onclick="removeDedStotram(' + i + ')" style="cursor:pointer;color:var(--td);font-size:12px;padding:2px 4px;">✕</span>' +
+        "</span>" +
         "</div>",
     )
     .join("");
@@ -6698,6 +6713,21 @@ function saveDedicationEdit(id) {
     if (n > 0) newAmounts[type] = n;
   }
 
+  const _dateEl = document.getElementById("dedEditDate_" + id);
+  const newDate = (_dateEl && _dateEl.value) || d.date;
+  const newStotrams = [];
+  (d.stotrams || []).forEach((st, i) => {
+    const nEl = document.getElementById("dedEditStName_" + id + "_" + i);
+    const cEl = document.getElementById("dedEditStCnt_" + id + "_" + i);
+    const nm = ((nEl && nEl.value) || st.name || "").trim();
+    const ct = cEl ? parseInt(cEl.value) || 0 : st.count || 0;
+    if (nm && ct > 0) newStotrams.push({ name: nm, count: ct });
+  });
+  if (!Object.keys(newAmounts).length && !newStotrams.length) {
+    toast("Keep at least one jap amount or stotram — or delete this gift");
+    return;
+  }
+
   // Validate: each type's increase can't exceed what's currently available
   // (its lifetime total already excludes this entry's OLD amount, so the
   // room available for the NEW amount is old-lifetime + old-amount).
@@ -6720,6 +6750,8 @@ function saveDedicationEdit(id) {
 
   d.purpose = newPurpose;
   d.note = newNote;
+  d.date = newDate;
+  d.stotrams = newStotrams;
   d.amounts = newAmounts;
   d.types = Object.keys(newAmounts);
   d._editedTs = Date.now();
@@ -6746,6 +6778,28 @@ function _fmtDedDate(ds) {
   } catch (e) {
     return ds || "";
   }
+}
+
+// Extra edit fields for a gift: date + each gifted stotram's name and count.
+function _dedEditExtraHtml(d) {
+  const inp = "background:rgba(0,0,0,0.35);border:1px solid rgba(255,143,199,0.3);border-radius:8px;padding:6px 8px;color:var(--tl);font-size:13px;font-family:Inter,sans-serif;";
+  let h =
+    '<div style="display:flex;align-items:center;gap:7px;margin:8px 0 4px;">' +
+    '<span style="font-size:11px;color:var(--td);flex:1">📅 Date</span>' +
+    '<input id="dedEditDate_' + d.id + '" type="date" value="' + escHtml(d.date || "") + '" style="' + inp + 'width:150px;">' +
+    "</div>";
+  const sts = d.stotrams || [];
+  if (sts.length) {
+    h += '<div style="font-size:11px;color:var(--td);margin:8px 0 4px;">🌸 Stotram gifts <span style="opacity:0.7">(set count to 0 to remove)</span></div>';
+    sts.forEach((st, i) => {
+      h +=
+        '<div style="display:flex;gap:8px;margin-bottom:6px;">' +
+        '<input id="dedEditStName_' + d.id + "_" + i + '" type="text" value="' + escHtml(st.name) + '" placeholder="Stotram name" style="' + inp + 'flex:2;min-width:0;">' +
+        '<input id="dedEditStCnt_' + d.id + "_" + i + '" type="number" min="0" value="' + (st.count || 0) + '" style="' + inp + 'flex:1;min-width:0;text-align:center;">' +
+        "</div>";
+    });
+  }
+  return h;
 }
 
 function renderDedications() {
@@ -6886,6 +6940,7 @@ function renderDedications() {
           escHtml(d.note || "") +
           "</textarea>" +
           (amtFields || "") +
+          _dedEditExtraHtml(d) +
           '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">' +
           '<button class="sk-btn" style="color:var(--td);border-color:rgba(255,255,255,0.2)" onclick="toggleEditDedication(\'' +
           d.id +
@@ -14931,6 +14986,21 @@ function adjustSankalpCycles(id, sign) {
   }
 }
 
+// Edit-wish-text block (textarea + Save Text) shown on current and queued wishes.
+function _skWishEditBlock(sk) {
+  return (
+    '<div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;padding:7px 9px;background:rgba(255,255,255,0.04);border-radius:8px">' +
+    '<span style="font-size:11px;color:var(--td);flex:1">✏ Edit wish text:</span>' +
+    "</div>" +
+    '<textarea id="sk-wish-edit-' + sk.id + '" class="sk-ta" style="min-height:44px;margin-bottom:6px">' +
+    escHtml(sk.wish) +
+    "</textarea>" +
+    '<div style="display:flex;justify-content:flex-end;margin-bottom:10px">' +
+    "<button class=\"sk-btn grn\" onclick=\"editSankalpWish('" + sk.id + "')\">Save Text</button>" +
+    "</div>"
+  );
+}
+
 function renderSankalpas() {
   const el = document.getElementById("skList");
   if (!el) return;
@@ -14973,6 +15043,7 @@ function renderSankalpas() {
         " cycles (" +
         pct +
         "%)</div>" +
+        _skWishEditBlock(sk) +
         // Edit target row
         '<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;padding:7px 9px;background:rgba(255,255,255,0.04);border-radius:8px">' +
         '<span style="font-size:11px;color:var(--td);flex:1">✏ Change target:</span>' +
@@ -15033,6 +15104,7 @@ function renderSankalpas() {
             qPct +
             "%) — paused</div>"
           : "") +
+        _skWishEditBlock(sk) +
         // Edit target row for queued
         '<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;padding:7px 9px;background:rgba(255,255,255,0.03);border-radius:8px">' +
         '<span style="font-size:11px;color:var(--td);flex:1">✏ Change target:</span>' +
@@ -15122,7 +15194,15 @@ function renderSankalpas() {
         "</div>";
     });
   }
+  const _typedWish = {};
+  el.querySelectorAll('textarea[id^="sk-wish-edit-"]').forEach((t) => {
+    if (t.value !== t.defaultValue) _typedWish[t.id] = t.value;
+  });
   el.innerHTML = html;
+  Object.keys(_typedWish).forEach((tid) => {
+    const t = document.getElementById(tid);
+    if (t) t.value = _typedWish[tid];
+  });
 }
 
 function fulfillSankalp(id) {

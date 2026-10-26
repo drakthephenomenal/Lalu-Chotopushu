@@ -24143,13 +24143,37 @@ function _gpOpen() {
   const list = document.createElement('div');
   list.className = 'pp-list';
   const num = function (n) { return _ppDigits(String(n), hi); };
-  const _selN = (act && _hcjGroup.sel) ? _hcjGroup.sel.length : 0;
+  const _selN = (act && _hcjGroup.sel && !_hcjGroup.tab) ? _hcjGroup.sel.length : 0;
   const selBtn = document.createElement('button');
   selBtn.type = 'button';
   selBtn.className = 'pp-item gp-selbtn' + (_selN ? ' pp-cur' : '');
   selBtn.textContent = (hi ? '\u2611 अपने पद चुनें' : '\u2611 নিজের পদ বেছে নিন') + (_selN ? ' (' + num(_selN) + ')' : '');
   selBtn.onclick = function () { _gpOpenSel(); };
   list.appendChild(selBtn);
+
+  // ── Mangala / Ras pads as ready-made groups (Hit Chaurasi) ──
+  const _tabs = (typeof PADPICK_TABS !== 'undefined') ? PADPICK_TABS[_currentStotramId] : null;
+  if (_tabs) {
+    [['mangala', 'मंगला के पद', 'মঙ্গলার পদ'], ['ras', 'रास के पद', 'রাসের পদ']].forEach(function (t) {
+      if (!_tabs[t[0]]) return;
+      const sel = _gpPadList().filter(function (p) {
+        return p.ok && _tabs[t[0]].indexOf(_ppNumInt(p.num)) !== -1;
+      }).map(function (p) { return p.idx; });
+      if (!sel.length) return;
+      const isTab = act && _hcjGroup.tab === t[0];
+      const tb = document.createElement('button');
+      tb.type = 'button';
+      tb.className = 'pp-item gp-tabbtn' + (isTab ? ' pp-cur' : '');
+      tb.textContent = (hi ? t[1] : t[2]) + ' (' + num(sel.length) + ')' + (isTab && _hcjPlaying ? '  \u25B6' : '');
+      tb.onclick = function () {
+        const keepLoop = !!(act && _hcjGroup.loop);
+        _gpClose();
+        _gpStartSel(sel, keepLoop);
+        if (_hcjGroup) _hcjGroup.tab = t[0];
+      };
+      list.appendChild(tb);
+    });
+  }
   groups.forEach(function (g) {
     const b = document.createElement('button');
     b.type = 'button';

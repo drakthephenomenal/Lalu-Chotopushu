@@ -1645,6 +1645,7 @@ body.app-hidden *::after {
 
 /* ═══ GROUP PLAY — pick your own pads (checklist sheet) ═══ */
 #gp-overlay .gp-selbtn { border-style: dashed; }
+#gp-overlay .gp-tabbtn { border-style: dashed; }
 #gp-overlay .gp-back {
   position: absolute; top: 12px; left: 12px; width: 34px; height: 34px; border-radius: 50%;
   background: rgba(255,215,0,0.14); color: #ffd700; border: 1px solid rgba(255,215,0,0.4);

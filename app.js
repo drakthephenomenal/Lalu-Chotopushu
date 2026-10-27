@@ -868,6 +868,7 @@ const App = {
     driveBackupHour: 3,    // 0-23, device-local time — default 3 AM
     driveBackupMinute: 0,  // 0-59
     driveSrvOK: false,     // Drive upload permission saved on the server (synced across devices)
+    driveGranted: false,   // Drive was allowed at least once on any device/browser (synced) -> never show first-login card again
     favPads: {},           // ★ favourite pads: { stotramId: [verse indexes] }
     bgRadhaVallabh: 1,
     bgHitju: 1,
@@ -11849,6 +11850,7 @@ function _webDriveRequest(resolve, reject, done) {
         if (r && r.access_token) {
           _webDriveTok = { token: r.access_token, exp: Date.now() + (Number(r.expires_in) || 3000) * 1000 };
           _saveDriveTok();
+          try { _setDriveAllowed(); } catch (_e) {}
           resolve(r.access_token);
         } else reject(new Error((r && (r.error_description || r.error)) || "Drive access was not granted"));
       },
@@ -11922,6 +11924,7 @@ async function _webDriveEnsure() {
   if (st === "1") return { mode: "server" };
   if (st.indexOf("fail") === 0) return { mode: "token", token: await _webDriveToken() };
   const code = await _webGate(_webCodeRequest);
+  try { _setDriveAllowed(); } catch (_e) {} // user consented in Google's popup -> remember (even if Google sends no refresh token again)
   const ex = await fbEnableDriveBackup(code, "postmessage");
   if (ex && ex.stored) { _markSrvOK(); return { mode: "server" }; }
   const msg = (ex && ex.threw) ? ("Drive server step failed: " + (ex.message || ex.code || "unknown")) : _driveReasonMsg(ex);
@@ -12019,8 +12022,21 @@ function _driveReasonMsg(ex) {
 const _DRIVE_BTN_OFF = "☁️ Allow Google Drive to Upload Your Backup JSON File";
 const _DRIVE_BTN_ON = "✅ Google Drive Allowed for Backup JSON Upload";
 function _driveAllowedKey() { return "driveAllowed_" + ((typeof fbUser !== "undefined" && fbUser && fbUser.uid) || "x"); }
-function _driveAllowed() { if (App.S && App.S.driveSrvOK) return true; try { return localStorage.getItem(_driveAllowedKey()) === "1"; } catch (_e) { return false; } }
-function _setDriveAllowed() { try { localStorage.setItem(_driveAllowedKey(), "1"); } catch (_e) {} _refreshDriveBtn(); }
+function _driveAllowed() { if (App.S && (App.S.driveSrvOK || App.S.driveGranted)) return true; try { return localStorage.getItem(_driveAllowedKey()) === "1"; } catch (_e) { return false; } }
+let _grantPushT = null;
+function _setDriveAllowed() {
+  try { localStorage.setItem(_driveAllowedKey(), "1"); } catch (_e) {}
+  // Remember in the synced (Firebase) state too, so other browsers/devices never ask at login again.
+  try {
+    if (App.S && !App.S.driveGranted && App._cloudHydrated) {
+      App.S.driveGranted = true;
+      try { App.save(); } catch (_e) {}
+      clearTimeout(_grantPushT);
+      _grantPushT = setTimeout(function () { try { if (typeof fbPushFull === "function") fbPushFull().catch(function () {}); } catch (_e) {} }, 1000);
+    }
+  } catch (_e) {}
+  _refreshDriveBtn();
+}
 function _refreshDriveBtn() {
   const b = document.getElementById("driveConnectBtn");
   if (b && !b.disabled) b.textContent = _driveAllowed() ? _DRIVE_BTN_ON : _DRIVE_BTN_OFF;
@@ -13505,6 +13521,7 @@ async function fbPushFull() {
     driveBackupMinute: App.S.driveBackupMinute ?? 0,
     favPads: App.S.favPads || {},
     driveSrvOK: !!App.S.driveSrvOK,
+    driveGranted: !!(App.S.driveGranted || App.S.driveSrvOK),
     lbDisplayName: App.S.lbDisplayName || "",
     bgRadhaVallabh: App.S.bgRadhaVallabh ?? 1,
     bgHitju: App.S.bgHitju ?? 1,
@@ -14009,6 +14026,7 @@ function fbApplyRemote(d) {
   if (d.driveBackupMinute !== undefined) App.S.driveBackupMinute = d.driveBackupMinute;
   if (d.favPads && typeof d.favPads === "object") App.S.favPads = d.favPads;
   if (d.driveSrvOK === true) App.S.driveSrvOK = true;
+  if (d.driveGranted === true || d.driveSrvOK === true) App.S.driveGranted = true;
   // Only take a NON-empty cloud name — an empty one must never erase a name we already have.
   if (typeof d.lbDisplayName === "string" && d.lbDisplayName.trim()) App.S.lbDisplayName = d.lbDisplayName;
   if (d.bgRadhaVallabh !== undefined) App.S.bgRadhaVallabh = d.bgRadhaVallabh;

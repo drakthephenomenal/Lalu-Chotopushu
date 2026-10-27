@@ -11776,6 +11776,19 @@ async function fbWebDriveConnect() {
   return fbEnableDriveBackup(code, "postmessage");
 }
 
+// Turns the server's token-exchange failure into a message that says what to fix.
+function _driveReasonMsg(ex) {
+  const r = (ex && ex.reason) || "no_refresh_token";
+  const d = (ex && ex.detail) ? " – " + ex.detail : "";
+  if (r === "redirect_uri_mismatch" || r === "invalid_grant")
+    return "Drive server step failed (" + r + d + "). The backend function driveTokenExchange must be deployed with the latest functions/index.js.";
+  if (r === "invalid_client" || r === "unauthorized_client")
+    return "Drive server step failed (" + r + d + "). DRIVE_CLIENT_ID/SECRET must be the Web client used by the app.";
+  if (r === "no_refresh_token")
+    return "Google gave no Drive token (" + r + "). Remove 'Radha Naam' at myaccount.google.com > Security > Third-party access, then try again.";
+  return "Drive connect failed (" + r + d + ")";
+}
+
 // Settings button: lets anyone who missed the Drive permission at first login
 // grant it any time (Android app = native Google; browser/iPad = Google popup).
 async function connectDriveAccess() {
@@ -11801,7 +11814,7 @@ async function connectDriveAccess() {
     }
     if (ex && ex.threw) throw new Error(ex.message || ex.code || "connect failed");
     if (ex && ex.stored === false) {
-      throw new Error("Google did not issue Drive access. Remove 'Radha Naam' from myaccount.google.com > Security > Third-party access, then try again.");
+      throw new Error(_driveReasonMsg(ex));
     }
     toast("✅ Google Drive connected — now tap Download Backup in Drive");
   } catch (e) {
@@ -11897,13 +11910,14 @@ async function driveBackupNow() {
         const ex = await fbEnableDriveBackup(serverAuthCode);
         if (ex && ex.threw) throw new Error("Drive connect failed: " + (ex.message || ex.code || "unknown"));
         if (ex && ex.stored === false) {
-          throw new Error("Google did not issue Drive access (" + (ex.reason || "no_refresh_token") + "). Remove 'Radha Naam' from myaccount.google.com > Security > Third-party access, then try again.");
+          throw new Error(_driveReasonMsg(ex));
         }
         res = await fn({ backupJson, filename });
       } else {
         // Web / iPad / PWA: no native plugin — use Google Identity Services.
         await _loadGis();
         const ex = await fbWebDriveConnect();
+        if (ex && ex.stored === false) throw new Error(_driveReasonMsg(ex));
         if (ex && (ex.stored || !ex.threw)) {
           res = await fn({ backupJson, filename });
         } else {

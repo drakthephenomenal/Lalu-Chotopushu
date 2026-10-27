@@ -867,6 +867,7 @@ const App = {
     driveBackupDailyEnabled: false,  // opt-in daily auto-backup to Google Drive
     driveBackupHour: 3,    // 0-23, device-local time — default 3 AM
     driveBackupMinute: 0,  // 0-59
+    driveSrvOK: false,     // Drive upload permission saved on the server (synced across devices)
     favPads: {},           // ★ favourite pads: { stotramId: [verse indexes] }
     bgRadhaVallabh: 1,
     bgHitju: 1,
@@ -8927,6 +8928,7 @@ function _buildBackupPayload() {
     stotrams: App.S.stotrams || {},
     brahma: App.S.brahma || {},
     favPads: App.S.favPads || {},
+    driveSrvOK: !!App.S.driveSrvOK,
     customSt: App.S.customSt || [],
     sankalpas: App.S.sankalpas || [],
     occasions: App.S.occasions || {},
@@ -9166,6 +9168,7 @@ function importAllData(input) {
       App.S.occasions = data.occasions || {};
       App.S.ms = data.ms || 108;
       if (data.favPads && typeof data.favPads === "object") App.S.favPads = data.favPads;
+      if (data.driveSrvOK === true) App.S.driveSrvOK = true;
       App.S.dt = data.dt || 0;
       App.S.lt = data.lt || 0;
       App.S.nameJapDeduct = data.nameJapDeduct || 0;
@@ -11810,9 +11813,9 @@ function _webDriveRequest(resolve, reject, done) {
 
 // Runs `start(resolve, reject, done)` straight from the tap when Google's script is ready and
 // Drive was allowed before; otherwise shows our own one-tap card first.
-function _webGate(start) {
+function _webGate(start, force) {
   const ready = !!(window.google && google.accounts && google.accounts.oauth2);
-  if (ready && _driveAllowed()) return new Promise((resolve, reject) => start(resolve, reject, () => {}));
+  if (ready && _driveAllowed() && !force) return new Promise((resolve, reject) => start(resolve, reject, () => {}));
   return _loadGis().then(() => new Promise((resolve, reject) => {
     const again = _driveAllowed();
     const ov = document.createElement("div");
@@ -11843,7 +11846,15 @@ function _webDriveToken() {
 
 // ── Permanent mode: one-time permission code → server keeps a refresh token → no more popups ──
 function _srvKey() { return "driveSrv_" + ((typeof fbUser !== "undefined" && fbUser && fbUser.uid) || "x"); }
-function _srvGet() { try { return localStorage.getItem(_srvKey()) || ""; } catch (_e) { return ""; } }
+function _srvGet() { if (App.S && App.S.driveSrvOK) return "1"; try { return localStorage.getItem(_srvKey()) || ""; } catch (_e) { return ""; } }
+let _srvPushT = null;
+function _markSrvOK() {
+  App.S.driveSrvOK = true; _srvSet("1"); _setDriveAllowed();
+  try { App.save(); } catch (_e) {}
+  clearTimeout(_srvPushT);
+  _srvPushT = setTimeout(function () { try { if (typeof fbPushFull === "function") fbPushFull().catch(function () {}); } catch (_e) {} }, 1000);
+}
+function _clearSrvOK() { App.S.driveSrvOK = false; _srvSet(""); try { App.save(); } catch (_e) {} }
 function _srvSet(v) { try { if (v) localStorage.setItem(_srvKey(), v); else localStorage.removeItem(_srvKey()); } catch (_e) {} }
 function _webCodeRequest(resolve, reject, done) {
   try {
@@ -11865,7 +11876,7 @@ async function _webDriveEnsure() {
   if (st.indexOf("fail") === 0) return { mode: "token", token: await _webDriveToken() };
   const code = await _webGate(_webCodeRequest);
   const ex = await fbEnableDriveBackup(code, "postmessage");
-  if (ex && ex.stored) { _srvSet("1"); _setDriveAllowed(); return { mode: "server" }; }
+  if (ex && ex.stored) { _markSrvOK(); return { mode: "server" }; }
   const msg = (ex && ex.threw) ? ("Drive server step failed: " + (ex.message || ex.code || "unknown")) : _driveReasonMsg(ex);
   _srvSet("fail");
   console.warn("Drive permanent mode unavailable:", msg);
@@ -11881,15 +11892,33 @@ async function fbWebDriveConnect() {
 }
 
 async function _webDriveUploadBackup(backupJson, filename) {
-  const m = await _webDriveEnsure();
-  if (m.mode === "server") {
+  if (_srvGet().indexOf("fail") !== 0) {
+    // Permanent mode: the server already holds this account's Drive permission (any device) → no popup at all.
     const fnUp = firebase.app().functions().httpsCallable("driveBackupUpload");
-    const r = await fnUp({ backupJson, filename });
-    if (r && r.data && r.data.success) return { id: "server" };
-    if (r && r.data && r.data.reason === "not_authorized") { _srvSet(""); throw new Error("Drive permission was reset — tap again to allow."); }
-    throw new Error((r && r.data && r.data.reason) || "Drive upload failed");
+    const callUp = async function () {
+      try { return await fnUp({ backupJson, filename }); }
+      catch (e) { return { data: { reason: "call_failed: " + (e && e.message ? e.message : e) } }; }
+    };
+    let r = await callUp();
+    if (r.data && r.data.success) { _markSrvOK(); return { id: "server" }; }
+    if (!r.data || r.data.reason !== "not_authorized") {
+      if (_srvGet() === "1") throw new Error((r.data && r.data.reason) || "Drive upload failed");
+    }
+    _clearSrvOK();
+    // Not allowed on the server yet → ask once (our card first, then Google).
+    const code = await _webGate(_webCodeRequest, true);
+    const ex = await fbEnableDriveBackup(code, "postmessage");
+    if (ex && ex.stored) {
+      _markSrvOK();
+      r = await callUp();
+      if (r.data && r.data.success) return { id: "server" };
+      throw new Error((r.data && r.data.reason) || "Drive upload failed");
+    }
+    const msg = (ex && ex.threw) ? ("Drive server step failed: " + (ex.message || ex.code || "unknown")) : _driveReasonMsg(ex);
+    _srvSet("fail");
+    throw new Error(msg + "  — Tap again to use temporary (1-hour) mode.");
   }
-  const tok = m.token;
+  const tok = await _webDriveToken();
   const auth = { Authorization: "Bearer " + tok };
   // Folder "Radha Naam Jap Backups" (found or created); falls back to My Drive root.
   let parent = null;
@@ -11943,7 +11972,7 @@ function _driveReasonMsg(ex) {
 const _DRIVE_BTN_OFF = "☁️ Allow Google Drive to Upload Your Backup JSON File";
 const _DRIVE_BTN_ON = "✅ Google Drive Allowed for Backup JSON Upload";
 function _driveAllowedKey() { return "driveAllowed_" + ((typeof fbUser !== "undefined" && fbUser && fbUser.uid) || "x"); }
-function _driveAllowed() { try { return localStorage.getItem(_driveAllowedKey()) === "1"; } catch (_e) { return false; } }
+function _driveAllowed() { if (App.S && App.S.driveSrvOK) return true; try { return localStorage.getItem(_driveAllowedKey()) === "1"; } catch (_e) { return false; } }
 function _setDriveAllowed() { try { localStorage.setItem(_driveAllowedKey(), "1"); } catch (_e) {} _refreshDriveBtn(); }
 function _refreshDriveBtn() {
   const b = document.getElementById("driveConnectBtn");
@@ -13428,6 +13457,7 @@ async function fbPushFull() {
     driveBackupHour: App.S.driveBackupHour ?? 3,
     driveBackupMinute: App.S.driveBackupMinute ?? 0,
     favPads: App.S.favPads || {},
+    driveSrvOK: !!App.S.driveSrvOK,
     lbDisplayName: App.S.lbDisplayName || "",
     bgRadhaVallabh: App.S.bgRadhaVallabh ?? 1,
     bgHitju: App.S.bgHitju ?? 1,
@@ -13931,6 +13961,7 @@ function fbApplyRemote(d) {
   if (d.driveBackupHour !== undefined) App.S.driveBackupHour = d.driveBackupHour;
   if (d.driveBackupMinute !== undefined) App.S.driveBackupMinute = d.driveBackupMinute;
   if (d.favPads && typeof d.favPads === "object") App.S.favPads = d.favPads;
+  if (d.driveSrvOK === true) App.S.driveSrvOK = true;
   // Only take a NON-empty cloud name — an empty one must never erase a name we already have.
   if (typeof d.lbDisplayName === "string" && d.lbDisplayName.trim()) App.S.lbDisplayName = d.lbDisplayName;
   if (d.bgRadhaVallabh !== undefined) App.S.bgRadhaVallabh = d.bgRadhaVallabh;

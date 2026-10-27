@@ -1,3 +1,5 @@
+// v416: Backup/Export JSON now also carries the Drive-allowed flag (with favourites).
+// v415: Drive permission is remembered on the server + synced to the account, so every device uploads in one tap (no popups) once allowed anywhere.
 // v414: Drive on web: permission once → server keeps it (no more popups). Falls back to 1-hour mode if the server step fails, and shows why.
 // v413: Drive token kept across reopens (~1h) and account hint passed, so Google's account screen no longer reappears on every upload.
 // v412: Drive backup is one tap again once allowed (no extra 'Continue Upload' card).
@@ -452,7 +454,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v414';
+const CACHE = 'radha-jap-v416';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

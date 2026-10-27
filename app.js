@@ -11199,6 +11199,7 @@ function fbInit() {
       if (user && typeof checkDailyDriveBackupCatchUp === "function") {
         checkDailyDriveBackupCatchUp();
       }
+      if (user && _isNativeApp()) _syncDriveStatusFromServer(user.uid).catch(() => {});
       // Stage auth info for the native Background Runner (hourly sync while
       // the app is fully closed). CapacitorKV is a separate, tiny key-value
       // store accessible from both the WebView and the isolated background
@@ -11600,13 +11601,27 @@ function _waitForCloudHydration(uid, maxMs) {
     setTimeout(tick, 1500);
   });
 }
+
+// Asks the server whether this account already granted Drive access (survives reinstall /
+// new device) and records it in the synced state so no permission card is shown again.
+async function _syncDriveStatusFromServer(uid) {
+  try {
+    if (_driveAllowed()) return true;
+    if (!(await _waitForCloudHydration(uid, 60000))) return false;
+    if (_driveAllowed()) return true;
+    const r = await firebase.app().functions().httpsCallable("driveStatus")();
+    if (r && r.data && r.data.authorized) { _markSrvOK(); return true; }
+  } catch (e) { console.warn("driveStatus failed:", e && e.message); }
+  return false;
+}
 async function _offerDriveAfterCloudPull(uid) {
   try {
     const k = "driveConnectAsked_" + uid;
     if (localStorage.getItem(k)) return;             // already asked once on this device
     const hydrated = await _waitForCloudHydration(uid, 60000);
     if (!hydrated) return;                           // couldn't confirm cloud state → don't nag
-    if (_driveAllowed()) {                           // cloud says already allowed → no popup
+    await _syncDriveStatusFromServer(uid);           // also check the server's stored permission
+    if (_driveAllowed()) {                           // cloud/server says already allowed → no popup
       try { _setDriveAllowed(); } catch (_e) {}
       return;
     }
@@ -11736,6 +11751,7 @@ async function fbEnableDriveBackup(serverAuthCode, redirectUri) {
     const res = await fn(redirectUri ? { serverAuthCode, redirectUri } : { serverAuthCode });
     if (res && res.data && res.data.stored) {
       console.log("Drive daily backup enabled.");
+      try { _markSrvOK(); } catch (_e) {}
     } else {
       console.log("Drive backup: nothing new to store (already enabled or no offline access).", res && res.data);
     }

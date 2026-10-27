@@ -11638,6 +11638,19 @@ async function fbSignInGoogle() {
     .then((result) => {
       const credential = result.credential;
       toast("Signed in with Google! ☁️ Sync active 🙏");
+      // First login in a browser/PWA (iPad, Android Chrome): offer Drive access once.
+      try {
+        const _u = result && result.user;
+        const _k = "driveConnectAsked_" + (_u ? _u.uid : "x");
+        if (_u && !localStorage.getItem(_k)) {
+          localStorage.setItem(_k, "1");
+          _loadGis().then(() => setTimeout(() => {
+            fbWebDriveConnect().then((r) => {
+              if (r && r.stored) toast("✅ Google Drive connected");
+            }).catch(() => {});
+          }, 1200)).catch(() => {});
+        }
+      } catch (_e) {}
     })
     .catch((e) => {
       // Popup blocked or storage partitioned (e.g. Facebook in-app browser)
@@ -11679,11 +11692,11 @@ async function fbSignInGoogle() {
 // only) for a Drive refresh token, stored server-side. Safe to call more
 // than once — driveTokenExchange just no-ops if Google doesn't return a
 // fresh refresh_token (e.g. consent already granted before).
-async function fbEnableDriveBackup(serverAuthCode) {
+async function fbEnableDriveBackup(serverAuthCode, redirectUri) {
   if (!fbInit() || !firebase.app().functions) return { skipped: "fbInit or functions unavailable" };
   try {
     const fn = firebase.app().functions().httpsCallable("driveTokenExchange");
-    const res = await fn({ serverAuthCode });
+    const res = await fn(redirectUri ? { serverAuthCode, redirectUri } : { serverAuthCode });
     if (res && res.data && res.data.stored) {
       console.log("Drive daily backup enabled.");
     } else {
@@ -11694,6 +11707,73 @@ async function fbEnableDriveBackup(serverAuthCode) {
     console.warn("driveTokenExchange call failed:", e);
     return { threw: true, message: e && e.message, code: e && e.code, details: e && e.details };
   }
+}
+
+// ── Web / iPad / PWA: Google Drive consent via Google Identity Services ──
+// The native Android flow gets a serverAuthCode at sign-in. Browsers don't,
+// so on web we ask for drive.file access separately (code flow, popup) and
+// send the code to driveTokenExchange with redirectUri "postmessage".
+// NOTE: this origin must be listed under "Authorized JavaScript origins" of
+// the Web client below in Google Cloud Console (APIs & Services > Credentials).
+const DRIVE_WEB_CLIENT_ID = "368485403238-i3jeru8uq0clb2dcgiu5jlrlb9lphe1j.apps.googleusercontent.com";
+
+function _loadGis() {
+  return new Promise((resolve, reject) => {
+    if (window.google && google.accounts && google.accounts.oauth2) return resolve();
+    const s = document.createElement("script");
+    s.src = "https://accounts.google.com/gsi/client";
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("Could not load Google script (check internet)"));
+    document.head.appendChild(s);
+  });
+}
+
+// Shows a one-tap button so the Google popup opens straight from a user tap
+// (iPad Safari blocks popups that are not opened directly by a tap).
+function _webDriveConsentPrompt() {
+  return new Promise((resolve, reject) => {
+    const ov = document.createElement("div");
+    ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;";
+    const box = document.createElement("div");
+    box.style.cssText = "background:#1b1f3b;color:#fff;border:1px solid #c9a227;border-radius:16px;padding:20px;max-width:340px;width:100%;text-align:center;font:500 16px system-ui;";
+    box.innerHTML = '<div style="margin-bottom:14px;">☁️ Google Drive access is needed to upload your JSON backup.</div>';
+    const go = document.createElement("button");
+    go.type = "button";
+    go.textContent = "Connect Google Drive";
+    go.style.cssText = "background:#ffd700;color:#000;border:0;border-radius:12px;padding:12px 18px;font:700 16px system-ui;margin:4px;";
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.textContent = "Cancel";
+    cancel.style.cssText = "background:transparent;color:#fff;border:1px solid #888;border-radius:12px;padding:12px 18px;font:500 16px system-ui;margin:4px;";
+    box.appendChild(go); box.appendChild(cancel); ov.appendChild(box); document.body.appendChild(ov);
+    const done = () => { try { ov.remove(); } catch (_e) {} };
+    cancel.onclick = () => { done(); reject(new Error("Drive access cancelled")); };
+    go.onclick = () => {
+      // requestCode() must run synchronously inside this tap handler.
+      try {
+        const client = google.accounts.oauth2.initCodeClient({
+          client_id: DRIVE_WEB_CLIENT_ID,
+          scope: "https://www.googleapis.com/auth/drive.file",
+          ux_mode: "popup",
+          prompt: "consent",
+          login_hint: (typeof fbUser !== "undefined" && fbUser && fbUser.email) || undefined,
+          callback: (r) => {
+            done();
+            if (r && r.code) resolve(r.code);
+            else reject(new Error((r && r.error) || "Drive access was not granted"));
+          },
+          error_callback: (e) => { done(); reject(new Error((e && e.type) || "Google popup closed or blocked")); },
+        });
+        client.requestCode();
+      } catch (e) { done(); reject(e); }
+    };
+  });
+}
+
+async function fbWebDriveConnect() {
+  const code = await _webDriveConsentPrompt();
+  return fbEnableDriveBackup(code, "postmessage");
 }
 
 // Builds a filename like "radha-naam-jap-backup-2026-07-16_2030.json" using
@@ -11759,6 +11839,7 @@ async function driveBackupNow() {
   const btn = document.getElementById("driveBackupNowBtn");
   if (btn) { btn.disabled = true; btn.textContent = "⏳ Backing up…"; }
   try {
+    if (!_isNativeApp()) { _loadGis().catch(() => {}); }
     const fn = firebase.app().functions().httpsCallable("driveBackupUpload");
     const backupJson = JSON.stringify(_buildBackupPayload());
     const filename = _driveBackupFilename();
@@ -11771,13 +11852,26 @@ async function driveBackupNow() {
       toast("Connecting Google Drive — approve access if asked…");
       if (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
         const { FirebaseAuthentication } = window.Capacitor.Plugins;
+        try { await FirebaseAuthentication.signOut(); } catch (_e) {}
         const signInResult = await FirebaseAuthentication.signInWithGoogle({
           scopes: ["https://www.googleapis.com/auth/drive.file"],
         });
         const serverAuthCode = signInResult && signInResult.credential && signInResult.credential.serverAuthCode;
-        if (serverAuthCode) {
-          await fbEnableDriveBackup(serverAuthCode);
+        if (!serverAuthCode) throw new Error("Google did not return Drive permission. Please try again.");
+        const ex = await fbEnableDriveBackup(serverAuthCode);
+        if (ex && ex.threw) throw new Error("Drive connect failed: " + (ex.message || ex.code || "unknown"));
+        if (ex && ex.stored === false) {
+          throw new Error("Google did not issue Drive access (" + (ex.reason || "no_refresh_token") + "). Remove 'Radha Naam' from myaccount.google.com > Security > Third-party access, then try again.");
+        }
+        res = await fn({ backupJson, filename });
+      } else {
+        // Web / iPad / PWA: no native plugin — use Google Identity Services.
+        await _loadGis();
+        const ex = await fbWebDriveConnect();
+        if (ex && (ex.stored || !ex.threw)) {
           res = await fn({ backupJson, filename });
+        } else {
+          throw new Error("Drive connect failed" + (ex && ex.message ? ": " + ex.message : ""));
         }
       }
     }

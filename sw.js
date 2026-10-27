@@ -1,3 +1,5 @@
+// v405: Drive connect offered once at first Google login in browsers (Android Chrome/iPad); Android app re-asks Drive consent properly and shows a clear error if Google issues no token.
+// v404: Drive JSON backup now works on iPad/web: asks for Google Drive access with a one-tap 'Connect Google Drive' popup (Google Identity Services).
 // v403: Google sign-in now always shows the account chooser (web: prompt=select_account; Android: native Google session cleared on sign-out and before sign-in).
 // v402: Hit Chaurasi group screen now has Mangala pads / Ras pads buttons that play each type as a group (loop ON/OFF works).
 // v401: Wish text can now be edited on the current and queued wishes (was fulfilled only); Gift Your Jap entries can now edit date and stotram name/count, and a stotram can be edited before adding. Cloud sync fixes: no more hanging 'Loading from cloud…' / save-blocked, unsynced jap is kept on reopen. New 'Maharaj Ji' voice for Hit Caturashi Ji and Sri Radha Sudha Nidhi.
@@ -441,7 +443,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v403';
+const CACHE = 'radha-jap-v405';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

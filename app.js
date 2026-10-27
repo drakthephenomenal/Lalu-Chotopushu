@@ -11583,6 +11583,43 @@ function fbInit() {
   }
 }
 
+
+// Waits (up to ~60s) for the cloud pull to finish, then shows the Drive permission card
+// only when the cloud/local state says Drive was never allowed. If the pull never completes
+// (offline / server error) we stay silent — the Settings button is still there.
+function _waitForCloudHydration(uid, maxMs) {
+  return new Promise((resolve) => {
+    const t0 = Date.now();
+    const tick = () => {
+      if (typeof fbUser === "undefined" || !fbUser || fbUser.uid !== uid) return resolve(false); // signed out / switched
+      if (App._uid === uid && App._cloudHydrated === true) return resolve(true);
+      if (Date.now() - t0 > maxMs) return resolve(false);
+      setTimeout(tick, 500);
+    };
+    // small head start so onAuthStateChanged can reset _cloudHydrated=false first
+    setTimeout(tick, 1500);
+  });
+}
+async function _offerDriveAfterCloudPull(uid) {
+  try {
+    const k = "driveConnectAsked_" + uid;
+    if (localStorage.getItem(k)) return;             // already asked once on this device
+    const hydrated = await _waitForCloudHydration(uid, 60000);
+    if (!hydrated) return;                           // couldn't confirm cloud state → don't nag
+    if (_driveAllowed()) {                           // cloud says already allowed → no popup
+      try { _setDriveAllowed(); } catch (_e) {}
+      return;
+    }
+    localStorage.setItem(k, "1");                    // ask only once per device
+    await _loadGis();
+    setTimeout(() => {
+      fbWebDriveConnect().then((r) => {
+        if (r && r.stored) { _setDriveAllowed(); toast("✅ Google Drive allowed"); }
+      }).catch(() => {});
+    }, 500);
+  } catch (_e) {}
+}
+
 // ── Single "Sign in with Google" button ──
 async function fbSignInGoogle() {
   if (!fbInit()) {
@@ -11644,18 +11681,12 @@ async function fbSignInGoogle() {
     .then((result) => {
       const credential = result.credential;
       toast("Signed in with Google! ☁️ Sync active 🙏");
-      // First login in a browser/PWA (iPad, Android Chrome): offer Drive access once.
+      // First login in a browser/PWA (iPad, Android Chrome): offer Drive access ONLY if the
+      // cloud copy (App.S.driveSrvOK, synced via Firestore) doesn't already say it was allowed.
+      // We wait for the cloud pull to finish first, so users who already granted it never see the popup.
       try {
         const _u = result && result.user;
-        const _k = "driveConnectAsked_" + (_u ? _u.uid : "x");
-        if (_u && !localStorage.getItem(_k)) {
-          localStorage.setItem(_k, "1");
-          _loadGis().then(() => setTimeout(() => {
-            fbWebDriveConnect().then((r) => {
-              if (r && r.stored) { _setDriveAllowed(); toast("✅ Google Drive allowed"); }
-            }).catch(() => {});
-          }, 1200)).catch(() => {});
-        }
+        if (_u) _offerDriveAfterCloudPull(_u.uid);
       } catch (_e) {}
     })
     .catch((e) => {

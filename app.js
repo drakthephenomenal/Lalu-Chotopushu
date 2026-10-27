@@ -11646,7 +11646,7 @@ async function fbSignInGoogle() {
           localStorage.setItem(_k, "1");
           _loadGis().then(() => setTimeout(() => {
             fbWebDriveConnect().then((r) => {
-              if (r && r.stored) toast("✅ Google Drive connected");
+              if (r && r.stored) { _setDriveAllowed(); toast("✅ Google Drive allowed"); }
             }).catch(() => {});
           }, 1200)).catch(() => {});
         }
@@ -11737,10 +11737,10 @@ function _webDriveConsentPrompt() {
     ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;";
     const box = document.createElement("div");
     box.style.cssText = "background:#1b1f3b;color:#fff;border:1px solid #c9a227;border-radius:16px;padding:20px;max-width:340px;width:100%;text-align:center;font:500 16px system-ui;";
-    box.innerHTML = '<div style="margin-bottom:14px;">☁️ Google Drive access is needed to upload your JSON backup.</div>';
+    box.innerHTML = '<div style="margin-bottom:14px;">☁️ Allow Google Drive to upload your backup JSON file. Only your own backup file is saved in your Drive.</div>';
     const go = document.createElement("button");
     go.type = "button";
-    go.textContent = "Connect Google Drive";
+    go.textContent = "Allow Upload to My Drive";
     go.style.cssText = "background:#ffd700;color:#000;border:0;border-radius:12px;padding:12px 18px;font:700 16px system-ui;margin:4px;";
     const cancel = document.createElement("button");
     cancel.type = "button";
@@ -11782,9 +11782,12 @@ function _webDriveToken() {
     ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;";
     const box = document.createElement("div");
     box.style.cssText = "background:#1b1f3b;color:#fff;border:1px solid #c9a227;border-radius:16px;padding:20px;max-width:340px;width:100%;text-align:center;font:500 16px system-ui;";
-    box.innerHTML = '<div style="margin-bottom:14px;">☁️ Tap to allow Google Drive access (only for your backup files).</div>';
+    const _again = _driveAllowed();
+    box.innerHTML = '<div style="margin-bottom:14px;">' + (_again
+      ? "☁️ Tap to continue uploading your backup JSON file to Google Drive."
+      : "☁️ First, allow Google Drive to upload your backup JSON file. Only your own backup file is saved in your Drive.") + '</div>';
     const go = document.createElement("button");
-    go.type = "button"; go.textContent = "Allow Google Drive";
+    go.type = "button"; go.textContent = _again ? "Continue Upload" : "Allow Upload to My Drive";
     go.style.cssText = "background:#ffd700;color:#000;border:0;border-radius:12px;padding:12px 18px;font:700 16px system-ui;margin:4px;";
     const cancel = document.createElement("button");
     cancel.type = "button"; cancel.textContent = "Cancel";
@@ -11869,14 +11872,26 @@ function _driveReasonMsg(ex) {
   return "Drive connect failed (" + r + d + ")";
 }
 
+// Remembers (per account, on this device) that Drive upload was allowed.
+const _DRIVE_BTN_OFF = "☁️ Allow Google Drive to Upload Your Backup JSON File";
+const _DRIVE_BTN_ON = "✅ Google Drive Allowed for Backup JSON Upload";
+function _driveAllowedKey() { return "driveAllowed_" + ((typeof fbUser !== "undefined" && fbUser && fbUser.uid) || "x"); }
+function _driveAllowed() { try { return localStorage.getItem(_driveAllowedKey()) === "1"; } catch (_e) { return false; } }
+function _setDriveAllowed() { try { localStorage.setItem(_driveAllowedKey(), "1"); } catch (_e) {} _refreshDriveBtn(); }
+function _refreshDriveBtn() {
+  const b = document.getElementById("driveConnectBtn");
+  if (b && !b.disabled) b.textContent = _driveAllowed() ? _DRIVE_BTN_ON : _DRIVE_BTN_OFF;
+}
+
+setInterval(function () { try { _refreshDriveBtn(); } catch (_e) {} }, 3000); // keeps the ✅ state right after sign-in
+
 // Settings button: lets anyone who missed the Drive permission at first login
 // grant it any time (Android app = native Google; browser/iPad = Google popup).
 async function connectDriveAccess() {
   if (typeof fbUser === "undefined" || !fbUser) { toast("Sign in with Google first 🙏"); return; }
   const btn = document.getElementById("driveConnectBtn");
   const setBtn = (t, dis) => { if (btn) { btn.textContent = t; btn.disabled = !!dis; } };
-  const label = "☁️ Give Google Drive access";
-  try {
+    try {
     setBtn("Connecting…", true);
     let ex;
     if (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
@@ -11896,12 +11911,13 @@ async function connectDriveAccess() {
     if (ex && ex.stored === false) {
       throw new Error(_driveReasonMsg(ex));
     }
-    toast("✅ Google Drive connected — now tap Download Backup in Drive");
+    _setDriveAllowed();
+    toast("✅ Allowed — now tap Download Backup in Drive");
   } catch (e) {
     console.error("connectDriveAccess failed:", e);
     toast("❌ " + (e && e.message ? e.message : e));
   } finally {
-    setBtn(label, false);
+    setBtn(_driveAllowed() ? _DRIVE_BTN_ON : _DRIVE_BTN_OFF, false);
   }
 }
 
@@ -11973,6 +11989,7 @@ async function driveBackupNow() {
     if (!_isNativeApp()) {
       // Web / iPad / Android Chrome: upload straight to the person's Drive.
       await _webDriveUploadBackup(backupJson, filename);
+      _setDriveAllowed();
       toast("✅ Backed up to Google Drive: " + filename);
       return;
     }
@@ -12012,6 +12029,7 @@ async function driveBackupNow() {
     }
 
     if (res && res.data && res.data.success) {
+      _setDriveAllowed();
       toast("✅ Backed up to Google Drive: " + filename);
     } else {
       toast("❌ Drive backup failed: " + ((res && res.data && res.data.reason) || "unknown error"));
@@ -29867,6 +29885,7 @@ function populateLbSettingsUI() {
 }
 
 function populateDriveBackupUI() {
+  try { _refreshDriveBtn(); } catch (_e) {}
   const tg = document.getElementById('tgDriveBackupDaily');
   if (tg) tg.classList.toggle('on', !!App.S.driveBackupDailyEnabled);
   const timeIn = document.getElementById('driveBackupTimeIn');

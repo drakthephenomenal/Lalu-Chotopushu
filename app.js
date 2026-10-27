@@ -11597,6 +11597,9 @@ async function fbSignInGoogle() {
       // app") the first time. serverAuthCode is only returned when a scope
       // is requested — it's what lets the backend set up daily Drive
       // backups without ever holding a live browser session.
+      // Forget the last-used Google account so Android shows the full account
+      // chooser (all saved accounts + "Add another account") instead of auto-picking.
+      try { await FirebaseAuthentication.signOut(); } catch (_e) {}
       const result = await FirebaseAuthentication.signInWithGoogle({
         scopes: ["https://www.googleapis.com/auth/drive.file"],
       });
@@ -11628,6 +11631,7 @@ async function fbSignInGoogle() {
   }
 
   const provider = new firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
   // Try popup first; if it fails (in-app browsers, storage-partitioned envs), fall back to redirect
   fbAuth
     .signInWithPopup(provider)
@@ -12881,6 +12885,11 @@ async function fbSignOut() {
   try { renderMalaLog(); } catch (_e) {}
   try { populateSettingsUI(); } catch (_e) {}
 
+  try {
+    if (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+      window.Capacitor.Plugins.FirebaseAuthentication.signOut().catch(() => {});
+    }
+  } catch (_e) {}
   fbAuth.signOut().then(() => toast("Signed out 🙏"));
 }
 async function fbPushDelta() {

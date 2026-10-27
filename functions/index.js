@@ -163,7 +163,7 @@ exports.driveTokenExchange = functions
     // FIRST consent for this scope+account+client combo. If the user
     // already granted this before, there may be nothing new to store,
     // and any previously stored refresh token is still valid and unaffected.
-    return { stored: false, reason: tokenData.error || "no_refresh_token" };
+    return { stored: false, reason: tokenData.error || "no_refresh_token", detail: tokenData.error_description || "" };
   }
 
   await admin.firestore().collection("driveBackupTokens").doc(context.auth.uid).set(

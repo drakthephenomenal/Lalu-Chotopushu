@@ -1,3 +1,4 @@
+// v406: Settings now has a 'Give Google Drive access' button (for anyone who missed Drive permission at first login).
 // v405: Drive connect offered once at first Google login in browsers (Android Chrome/iPad); Android app re-asks Drive consent properly and shows a clear error if Google issues no token.
 // v404: Drive JSON backup now works on iPad/web: asks for Google Drive access with a one-tap 'Connect Google Drive' popup (Google Identity Services).
 // v403: Google sign-in now always shows the account chooser (web: prompt=select_account; Android: native Google session cleared on sign-out and before sign-in).
@@ -443,7 +444,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v405';
+const CACHE = 'radha-jap-v406';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

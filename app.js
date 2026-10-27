@@ -11776,6 +11776,42 @@ async function fbWebDriveConnect() {
   return fbEnableDriveBackup(code, "postmessage");
 }
 
+// Settings button: lets anyone who missed the Drive permission at first login
+// grant it any time (Android app = native Google; browser/iPad = Google popup).
+async function connectDriveAccess() {
+  if (typeof fbUser === "undefined" || !fbUser) { toast("Sign in with Google first 🙏"); return; }
+  const btn = document.getElementById("driveConnectBtn");
+  const setBtn = (t, dis) => { if (btn) { btn.textContent = t; btn.disabled = !!dis; } };
+  const label = "☁️ Give Google Drive access";
+  try {
+    setBtn("Connecting…", true);
+    let ex;
+    if (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
+      const { FirebaseAuthentication } = window.Capacitor.Plugins;
+      try { await FirebaseAuthentication.signOut(); } catch (_e) {}
+      const r = await FirebaseAuthentication.signInWithGoogle({
+        scopes: ["https://www.googleapis.com/auth/drive.file"],
+      });
+      const code = r && r.credential && r.credential.serverAuthCode;
+      if (!code) throw new Error("Google did not return Drive permission. Please try again.");
+      ex = await fbEnableDriveBackup(code);
+    } else {
+      await _loadGis();
+      ex = await fbWebDriveConnect();
+    }
+    if (ex && ex.threw) throw new Error(ex.message || ex.code || "connect failed");
+    if (ex && ex.stored === false) {
+      throw new Error("Google did not issue Drive access. Remove 'Radha Naam' from myaccount.google.com > Security > Third-party access, then try again.");
+    }
+    toast("✅ Google Drive connected — now tap Download Backup in Drive");
+  } catch (e) {
+    console.error("connectDriveAccess failed:", e);
+    toast("❌ " + (e && e.message ? e.message : e));
+  } finally {
+    setBtn(label, false);
+  }
+}
+
 // Builds a filename like "radha-naam-jap-backup-2026-07-16_2030.json" using
 // the DEVICE's local time (not UTC), so it matches what the person actually
 // sees on their clock when they open Drive later.

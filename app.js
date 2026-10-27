@@ -867,6 +867,7 @@ const App = {
     driveBackupDailyEnabled: false,  // opt-in daily auto-backup to Google Drive
     driveBackupHour: 3,    // 0-23, device-local time — default 3 AM
     driveBackupMinute: 0,  // 0-59
+    favPads: {},           // ★ favourite pads: { stotramId: [verse indexes] }
     bgRadhaVallabh: 1,
     bgHitju: 1,
     bgGurudev: 1,
@@ -8925,6 +8926,7 @@ function _buildBackupPayload() {
     timer28History: App.S.timer28History || {},
     stotrams: App.S.stotrams || {},
     brahma: App.S.brahma || {},
+    favPads: App.S.favPads || {},
     customSt: App.S.customSt || [],
     sankalpas: App.S.sankalpas || [],
     occasions: App.S.occasions || {},
@@ -9163,6 +9165,7 @@ function importAllData(input) {
       App.S.sankalpas = data.sankalpas || [];
       App.S.occasions = data.occasions || {};
       App.S.ms = data.ms || 108;
+      if (data.favPads && typeof data.favPads === "object") App.S.favPads = data.favPads;
       App.S.dt = data.dt || 0;
       App.S.lt = data.lt || 0;
       App.S.nameJapDeduct = data.nameJapDeduct || 0;
@@ -11775,19 +11778,47 @@ function _webDriveConsentPrompt() {
 // short-lived Drive token (about 1 hour) and the backup file is uploaded
 // straight from the browser to the person's own Drive.
 let _webDriveTok = null; // { token, exp }
+
+// Opens Google's Drive permission popup. MUST be called straight from a tap
+// (no await before it) or iPad Safari blocks the popup.
+function _webDriveRequest(resolve, reject, done) {
+  try {
+    const tc = google.accounts.oauth2.initTokenClient({
+      client_id: DRIVE_WEB_CLIENT_ID,
+      scope: "https://www.googleapis.com/auth/drive.file",
+      login_hint: (typeof fbUser !== "undefined" && fbUser && fbUser.email) || undefined,
+      callback: (r) => {
+        done();
+        if (r && r.access_token) {
+          _webDriveTok = { token: r.access_token, exp: Date.now() + (Number(r.expires_in) || 3000) * 1000 };
+          resolve(r.access_token);
+        } else reject(new Error((r && (r.error_description || r.error)) || "Drive access was not granted"));
+      },
+      error_callback: (e) => { done(); reject(new Error((e && (e.message || e.type)) || "Google popup closed or blocked")); },
+    });
+    tc.requestAccessToken();
+  } catch (e) { done(); reject(e); }
+}
+
 function _webDriveToken() {
   if (_webDriveTok && _webDriveTok.exp > Date.now() + 60000) return Promise.resolve(_webDriveTok.token);
+  const ready = !!(window.google && google.accounts && google.accounts.oauth2);
+  // Already allowed before + Google script ready: one tap → straight to Google (no extra screen).
+  if (ready && _driveAllowed()) {
+    return new Promise((resolve, reject) => _webDriveRequest(resolve, reject, () => {}));
+  }
+  // First time (or script not ready yet): show our own one-tap "allow" card first.
   return _loadGis().then(() => new Promise((resolve, reject) => {
+    const again = _driveAllowed();
     const ov = document.createElement("div");
     ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;";
     const box = document.createElement("div");
     box.style.cssText = "background:#1b1f3b;color:#fff;border:1px solid #c9a227;border-radius:16px;padding:20px;max-width:340px;width:100%;text-align:center;font:500 16px system-ui;";
-    const _again = _driveAllowed();
-    box.innerHTML = '<div style="margin-bottom:14px;">' + (_again
+    box.innerHTML = '<div style="margin-bottom:14px;">' + (again
       ? "☁️ Tap to continue uploading your backup JSON file to Google Drive."
       : "☁️ First, allow Google Drive to upload your backup JSON file. Only your own backup file is saved in your Drive.") + '</div>';
     const go = document.createElement("button");
-    go.type = "button"; go.textContent = _again ? "Continue Upload" : "Allow Upload to My Drive";
+    go.type = "button"; go.textContent = again ? "Continue Upload" : "Allow Upload to My Drive";
     go.style.cssText = "background:#ffd700;color:#000;border:0;border-radius:12px;padding:12px 18px;font:700 16px system-ui;margin:4px;";
     const cancel = document.createElement("button");
     cancel.type = "button"; cancel.textContent = "Cancel";
@@ -11795,26 +11826,12 @@ function _webDriveToken() {
     box.appendChild(go); box.appendChild(cancel); ov.appendChild(box); document.body.appendChild(ov);
     const done = () => { try { ov.remove(); } catch (_e) {} };
     cancel.onclick = () => { done(); reject(new Error("Drive access cancelled")); };
-    go.onclick = () => {
-      try {
-        const tc = google.accounts.oauth2.initTokenClient({
-          client_id: DRIVE_WEB_CLIENT_ID,
-          scope: "https://www.googleapis.com/auth/drive.file",
-          login_hint: (typeof fbUser !== "undefined" && fbUser && fbUser.email) || undefined,
-          callback: (r) => {
-            done();
-            if (r && r.access_token) {
-              _webDriveTok = { token: r.access_token, exp: Date.now() + (Number(r.expires_in) || 3000) * 1000 };
-              resolve(r.access_token);
-            } else reject(new Error((r && (r.error_description || r.error)) || "Drive access was not granted"));
-          },
-          error_callback: (e) => { done(); reject(new Error((e && (e.message || e.type)) || "Google popup closed or blocked")); },
-        });
-        tc.requestAccessToken();
-      } catch (e) { done(); reject(e); }
-    };
+    go.onclick = () => _webDriveRequest(resolve, reject, done);
   }));
 }
+
+// Preload Google's script early so the next tap can go straight to Google.
+setTimeout(function () { try { if (!_isNativeApp()) _loadGis().catch(function () {}); } catch (_e) {} }, 2500);
 
 async function fbWebDriveConnect() {
   await _webDriveToken();
@@ -13360,6 +13377,7 @@ async function fbPushFull() {
     driveBackupDailyEnabled: App.S.driveBackupDailyEnabled || false,
     driveBackupHour: App.S.driveBackupHour ?? 3,
     driveBackupMinute: App.S.driveBackupMinute ?? 0,
+    favPads: App.S.favPads || {},
     lbDisplayName: App.S.lbDisplayName || "",
     bgRadhaVallabh: App.S.bgRadhaVallabh ?? 1,
     bgHitju: App.S.bgHitju ?? 1,
@@ -13862,6 +13880,7 @@ function fbApplyRemote(d) {
   if (d.driveBackupDailyEnabled !== undefined) App.S.driveBackupDailyEnabled = d.driveBackupDailyEnabled;
   if (d.driveBackupHour !== undefined) App.S.driveBackupHour = d.driveBackupHour;
   if (d.driveBackupMinute !== undefined) App.S.driveBackupMinute = d.driveBackupMinute;
+  if (d.favPads && typeof d.favPads === "object") App.S.favPads = d.favPads;
   // Only take a NON-empty cloud name — an empty one must never erase a name we already have.
   if (typeof d.lbDisplayName === "string" && d.lbDisplayName.trim()) App.S.lbDisplayName = d.lbDisplayName;
   if (d.bgRadhaVallabh !== undefined) App.S.bgRadhaVallabh = d.bgRadhaVallabh;
@@ -24057,6 +24076,17 @@ const PADPICK_TABS = {
     ras: [12, 16, 19, 24, 26, 36, 61, 62, 63, 64, 65, 68, 69, 71, 78, 79],
   },
 };
+function _favList(id) { const f = App.S.favPads || (App.S.favPads = {}); return Array.isArray(f[id]) ? f[id] : (f[id] = []); }
+function _favHas(id, i) { return _favList(id).indexOf(i) !== -1; }
+let _favPushT = null;
+function _favToggle(id, i) {
+  const l = _favList(id), p = l.indexOf(i);
+  if (p === -1) { l.push(i); l.sort(function (a, b) { return a - b; }); } else l.splice(p, 1);
+  try { App.save(); } catch (_e) {}
+  clearTimeout(_favPushT);
+  _favPushT = setTimeout(function () { try { if (typeof fbPushFull === 'function') fbPushFull().catch(function () {}); } catch (_e) {} }, 1500);
+  return p === -1;
+}
 let _ppLastTab = 'all';   // remembered while the app is open
 function _ppNumInt(s) {
   const BN = '\u09e6\u09e7\u09e8\u09e9\u09ea\u09eb\u09ec\u09ed\u09ee\u09ef', DV = '\u0966\u0967\u0968\u0969\u096a\u096b\u096c\u096d\u096e\u096f';
@@ -24203,14 +24233,17 @@ function _ppOpen() {
   if (_ppGrid) { list.style.display = 'grid'; list.style.gridTemplateColumns = 'repeat(auto-fill, minmax(52px, 1fr))'; list.style.gap = '8px'; }
   let curBtn = null;
   const _ppTabDef = (!_ppFlat && !_ppGrid) ? PADPICK_TABS[_currentStotramId] : null;
+  let _ppCurTab = 'all';
   const _ppFill = function (tabKey) {
+  _ppCurTab = tabKey;
   list.textContent = '';
   curBtn = null;
-  const _allow = (_ppTabDef && tabKey !== 'all') ? _ppTabDef[tabKey] : null;
+  const _allow = (_ppTabDef && tabKey !== 'all' && tabKey !== 'fav') ? _ppTabDef[tabKey] : null;
   let _shown = 0;
   _ppItems.forEach(function (it, i) {
     const v = it.v;
     const lb = _ppLabel(_currentStotramId, v, i);
+    if (tabKey === 'fav' && !_favHas(_currentStotramId, i)) return;
     if (_allow && _allow.indexOf(_ppNumInt(lb.num)) === -1) return;
     const b = document.createElement('button');
     b.type = 'button';
@@ -24222,6 +24255,21 @@ function _ppOpen() {
       b.style.cssText = 'width:auto;min-width:0;padding:10px 0;margin:0;text-align:center;';
     } else {
       b.textContent = (lb.num ? lb.num + '. ' : '') + lb.text;
+    }
+    if (!_ppFlat && !_ppGrid) {
+      b.style.position = 'relative'; b.style.paddingLeft = '46px'; b.style.paddingRight = '46px';
+      const star = document.createElement('span');
+      star.setAttribute('role', 'button');
+      star.setAttribute('aria-label', hi ? 'पसंदीदा' : 'প্রিয়');
+      const _paint = function () { star.textContent = _favHas(_currentStotramId, i) ? '\u2605' : '\u2606'; };
+      _paint();
+      star.style.cssText = 'position:absolute;right:0;top:0;bottom:0;width:46px;display:flex;align-items:center;justify-content:center;font-size:24px;line-height:1;color:#b36b00;';
+      star.onclick = function (e) {
+        e.stopPropagation(); e.preventDefault();
+        _favToggle(_currentStotramId, i);
+        if (_ppCurTab === 'fav') { _ppFill('fav'); } else { _paint(); }
+      };
+      b.appendChild(star);
     }
     b.onclick = function () {
       if (_ppFlat) { _ppClose(); _ppScrollToLine(it.lineIdx); return; }
@@ -24235,7 +24283,7 @@ function _ppOpen() {
     if (!_ppFlat && i === _verseIdx) curBtn = b;
     list.appendChild(b); _shown++;
   });
-  if (!_shown) { const em = document.createElement('div'); em.className = 'pp-empty'; em.textContent = '\u2014'; list.appendChild(em); }
+  if (!_shown) { const em = document.createElement('div'); em.className = 'pp-empty'; em.textContent = (tabKey === 'fav') ? (hi ? '\u2606 \u092a\u0926 \u0915\u0947 \u092c\u0917\u0932 \u0915\u0947 \u0924\u093e\u0930\u0947 \u092a\u0930 \u091f\u0948\u092a \u0915\u0930\u0947\u0902' : '\u2606 \u09aa\u09a6\u09c7\u09b0 \u09a4\u09be\u09b0\u09be \u099a\u09bf\u09b9\u09cd\u09a8\u09c7 \u099a\u09be\u09aa \u09a6\u09bf\u09a8') : '\u2014'; list.appendChild(em); }
   };
   const _ppScrollCur = function () {
     if (curBtn) requestAnimationFrame(function () { list.scrollTop = Math.max(0, curBtn.offsetTop - list.clientHeight / 2 + curBtn.offsetHeight / 2); });
@@ -24243,16 +24291,17 @@ function _ppOpen() {
   };
   let tabsEl = null;
   let _ppTab = 'all';
-  if (_ppTabDef) {
+  if (!_ppFlat && !_ppGrid) {
     _ppEnsureTabStyle();
-    _ppTab = (_ppLastTab === 'mangala' || _ppLastTab === 'ras') ? _ppLastTab : 'all';
+    const _keys = _ppTabDef ? ['all', 'mangala', 'ras', 'fav'] : ['all', 'fav'];
+    _ppTab = _keys.indexOf(_ppLastTab) !== -1 ? _ppLastTab : 'all';
     tabsEl = document.createElement('div');
     tabsEl.className = 'pp-tabs';
     tabsEl.setAttribute('role', 'tablist');
-    const _keys = ['all', 'mangala', 'ras'];
-    const _names = hi
-      ? ['\u092a\u0926 \u091a\u0941\u0928\u0947\u0902', '\u092e\u0902\u0917\u0932\u093e \u0915\u0947 \u092a\u0926', '\u0930\u093e\u0938 \u0915\u0947 \u092a\u0926']
-      : ['\u09aa\u09a6 \u099a\u09c1\u09a8\u09c7', '\u09ae\u0999\u09cd\u0997\u09b2\u09be\u09b0 \u09aa\u09a6', '\u09b0\u09be\u09b8\u09c7\u09b0 \u09aa\u09a6'];
+    const _nm = hi
+      ? { all: 'पद चुनें', mangala: 'मंगला के पद', ras: 'रास के पद', fav: '★ पसंदीदा' }
+      : { all: 'পদ চুনে', mangala: 'মঙ্গলার পদ', ras: 'রাসের পদ', fav: '★ প্রিয়' };
+    const _names = _keys.map(function (k) { return _nm[k]; });
     const _tabBtns = [];
     _keys.forEach(function (k, n) {
       const t = document.createElement('button');

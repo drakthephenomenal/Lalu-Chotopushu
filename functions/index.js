@@ -147,7 +147,7 @@ exports.driveTokenExchange = functions
     client_id: DRIVE_CLIENT_ID.value(),
     client_secret: DRIVE_CLIENT_SECRET.value(),
     code: serverAuthCode,
-    redirect_uri: "", // empty — matches the native offline-access code flow
+    redirect_uri: (data && data.redirectUri === "postmessage") ? "postmessage" : "", // "" = native flow; "postmessage" = web (Google Identity Services popup) flow
   });
 
   const tokenResp = await fetch("https://oauth2.googleapis.com/token", {

@@ -8,7 +8,8 @@ service cloud.firestore {
         'drakthephenomenal@proton.me',
         'anupkumarpaulshuvo@gmail.com',
         'radhanamejapcounter@gmail.com',
-        'drakthephenomenal@icloud.com'
+        'drakthephenomenal@icloud.com',
+        'radhanaamsudharasam108@gmail.com'
       ];
     }
     match /users/{userId}/{document=**} {

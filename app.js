@@ -11771,9 +11771,89 @@ function _webDriveConsentPrompt() {
   });
 }
 
+// Web / iPad / Android-Chrome: NO server step. Google gives this browser a
+// short-lived Drive token (about 1 hour) and the backup file is uploaded
+// straight from the browser to the person's own Drive.
+let _webDriveTok = null; // { token, exp }
+function _webDriveToken() {
+  if (_webDriveTok && _webDriveTok.exp > Date.now() + 60000) return Promise.resolve(_webDriveTok.token);
+  return _loadGis().then(() => new Promise((resolve, reject) => {
+    const ov = document.createElement("div");
+    ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;";
+    const box = document.createElement("div");
+    box.style.cssText = "background:#1b1f3b;color:#fff;border:1px solid #c9a227;border-radius:16px;padding:20px;max-width:340px;width:100%;text-align:center;font:500 16px system-ui;";
+    box.innerHTML = '<div style="margin-bottom:14px;">☁️ Tap to allow Google Drive access (only for your backup files).</div>';
+    const go = document.createElement("button");
+    go.type = "button"; go.textContent = "Allow Google Drive";
+    go.style.cssText = "background:#ffd700;color:#000;border:0;border-radius:12px;padding:12px 18px;font:700 16px system-ui;margin:4px;";
+    const cancel = document.createElement("button");
+    cancel.type = "button"; cancel.textContent = "Cancel";
+    cancel.style.cssText = "background:transparent;color:#fff;border:1px solid #888;border-radius:12px;padding:12px 18px;font:500 16px system-ui;margin:4px;";
+    box.appendChild(go); box.appendChild(cancel); ov.appendChild(box); document.body.appendChild(ov);
+    const done = () => { try { ov.remove(); } catch (_e) {} };
+    cancel.onclick = () => { done(); reject(new Error("Drive access cancelled")); };
+    go.onclick = () => {
+      try {
+        const tc = google.accounts.oauth2.initTokenClient({
+          client_id: DRIVE_WEB_CLIENT_ID,
+          scope: "https://www.googleapis.com/auth/drive.file",
+          login_hint: (typeof fbUser !== "undefined" && fbUser && fbUser.email) || undefined,
+          callback: (r) => {
+            done();
+            if (r && r.access_token) {
+              _webDriveTok = { token: r.access_token, exp: Date.now() + (Number(r.expires_in) || 3000) * 1000 };
+              resolve(r.access_token);
+            } else reject(new Error((r && (r.error_description || r.error)) || "Drive access was not granted"));
+          },
+          error_callback: (e) => { done(); reject(new Error((e && (e.message || e.type)) || "Google popup closed or blocked")); },
+        });
+        tc.requestAccessToken();
+      } catch (e) { done(); reject(e); }
+    };
+  }));
+}
+
 async function fbWebDriveConnect() {
-  const code = await _webDriveConsentPrompt();
-  return fbEnableDriveBackup(code, "postmessage");
+  await _webDriveToken();
+  return { stored: true };
+}
+
+async function _webDriveUploadBackup(backupJson, filename) {
+  const tok = await _webDriveToken();
+  const auth = { Authorization: "Bearer " + tok };
+  // Folder "Radha Naam Jap Backups" (found or created); falls back to My Drive root.
+  let parent = null;
+  try {
+    const q = encodeURIComponent("name='Radha Naam Jap Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false");
+    const lr = await fetch("https://www.googleapis.com/drive/v3/files?q=" + q + "&fields=files(id)", { headers: auth });
+    const lj = await lr.json();
+    if (lj && lj.files && lj.files.length) parent = lj.files[0].id;
+    else {
+      const cr = await fetch("https://www.googleapis.com/drive/v3/files?fields=id", {
+        method: "POST",
+        headers: Object.assign({ "Content-Type": "application/json" }, auth),
+        body: JSON.stringify({ name: "Radha Naam Jap Backups", mimeType: "application/vnd.google-apps.folder" }),
+      });
+      const cj = await cr.json();
+      if (cj && cj.id) parent = cj.id;
+    }
+  } catch (_e) {}
+  const meta = { name: filename, mimeType: "application/json" };
+  if (parent) meta.parents = [parent];
+  const b = "rjapbnd" + Date.now();
+  const body = "--" + b + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + JSON.stringify(meta) +
+    "\r\n--" + b + "\r\nContent-Type: application/json\r\n\r\n" + backupJson + "\r\n--" + b + "--";
+  const ur = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name", {
+    method: "POST",
+    headers: Object.assign({ "Content-Type": "multipart/related; boundary=" + b }, auth),
+    body,
+  });
+  const uj = await ur.json().catch(() => ({}));
+  if (!ur.ok || !uj.id) {
+    if (ur.status === 401) _webDriveTok = null;
+    throw new Error((uj && uj.error && uj.error.message) || ("Drive upload failed (" + ur.status + ")"));
+  }
+  return uj;
 }
 
 // Turns the server's token-exchange failure into a message that says what to fix.
@@ -11888,10 +11968,15 @@ async function driveBackupNow() {
   const btn = document.getElementById("driveBackupNowBtn");
   if (btn) { btn.disabled = true; btn.textContent = "⏳ Backing up…"; }
   try {
-    if (!_isNativeApp()) { _loadGis().catch(() => {}); }
-    const fn = firebase.app().functions().httpsCallable("driveBackupUpload");
     const backupJson = JSON.stringify(_buildBackupPayload());
     const filename = _driveBackupFilename();
+    if (!_isNativeApp()) {
+      // Web / iPad / Android Chrome: upload straight to the person's Drive.
+      await _webDriveUploadBackup(backupJson, filename);
+      toast("✅ Backed up to Google Drive: " + filename);
+      return;
+    }
+    const fn = firebase.app().functions().httpsCallable("driveBackupUpload");
     let res = await fn({ backupJson, filename });
 
     if (res && res.data && res.data.reason === "not_authorized") {

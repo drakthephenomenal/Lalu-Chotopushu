@@ -1,3 +1,4 @@
+// v408: Drive backup on iPad/web/Android-Chrome now uploads straight from the browser (no server token step), into folder 'Radha Naam Jap Backups'.
 // v407: Drive connect errors now show the real reason from Google/server.
 // v406: Settings now has a 'Give Google Drive access' button (for anyone who missed Drive permission at first login).
 // v405: Drive connect offered once at first Google login in browsers (Android Chrome/iPad); Android app re-asks Drive consent properly and shows a clear error if Google issues no token.
@@ -445,7 +446,7 @@
 // v298: added Kamalapati Ashtakam to the Krishna section
 // v299: added Damodarashtakam (word-by-word) to Brahma Madhva Gaudiya Sampraday
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
-const CACHE = 'radha-jap-v407';
+const CACHE = 'radha-jap-v408';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

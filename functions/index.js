@@ -176,6 +176,17 @@ exports.driveTokenExchange = functions
   return { stored: true };
 });
 
+
+// Lets the app ask "has this account already granted Drive access?" — answers from the
+// stored refresh token, so a fresh install / new device never has to ask again.
+exports.driveStatus = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Must be signed in.");
+  }
+  const doc = await admin.firestore().collection("driveBackupTokens").doc(context.auth.uid).get();
+  return { authorized: !!(doc.exists && doc.data() && doc.data().refreshToken) };
+});
+
 // Called by app.js (manual "Backup Now" button) or by background/runner.js
 // (daily auto-backup, if the user opted in) with the backup JSON already
 // built. Refreshes a Drive-scoped access token from the stored refresh

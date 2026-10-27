@@ -11778,6 +11778,12 @@ function _webDriveConsentPrompt() {
 // short-lived Drive token (about 1 hour) and the backup file is uploaded
 // straight from the browser to the person's own Drive.
 let _webDriveTok = null; // { token, exp }
+// Keep the Drive token (valid ~1 hour) across app reopens so no Google screen appears again until it expires.
+function _driveTokKey() { return "driveTok_" + ((typeof fbUser !== "undefined" && fbUser && fbUser.uid) || "x"); }
+function _saveDriveTok() { try { localStorage.setItem(_driveTokKey(), JSON.stringify(_webDriveTok)); } catch (_e) {} }
+function _loadDriveTok() {
+  try { const t = JSON.parse(localStorage.getItem(_driveTokKey()) || "null"); if (t && t.token && t.exp) _webDriveTok = t; } catch (_e) {}
+}
 
 // Opens Google's Drive permission popup. MUST be called straight from a tap
 // (no await before it) or iPad Safari blocks the popup.
@@ -11786,11 +11792,13 @@ function _webDriveRequest(resolve, reject, done) {
     const tc = google.accounts.oauth2.initTokenClient({
       client_id: DRIVE_WEB_CLIENT_ID,
       scope: "https://www.googleapis.com/auth/drive.file",
-      login_hint: (typeof fbUser !== "undefined" && fbUser && fbUser.email) || undefined,
+      hint: (typeof fbUser !== "undefined" && fbUser && fbUser.email) || undefined,  // skips the "Choose an account" screen
+      prompt: "",
       callback: (r) => {
         done();
         if (r && r.access_token) {
           _webDriveTok = { token: r.access_token, exp: Date.now() + (Number(r.expires_in) || 3000) * 1000 };
+          _saveDriveTok();
           resolve(r.access_token);
         } else reject(new Error((r && (r.error_description || r.error)) || "Drive access was not granted"));
       },
@@ -11800,14 +11808,11 @@ function _webDriveRequest(resolve, reject, done) {
   } catch (e) { done(); reject(e); }
 }
 
-function _webDriveToken() {
-  if (_webDriveTok && _webDriveTok.exp > Date.now() + 60000) return Promise.resolve(_webDriveTok.token);
+// Runs `start(resolve, reject, done)` straight from the tap when Google's script is ready and
+// Drive was allowed before; otherwise shows our own one-tap card first.
+function _webGate(start) {
   const ready = !!(window.google && google.accounts && google.accounts.oauth2);
-  // Already allowed before + Google script ready: one tap → straight to Google (no extra screen).
-  if (ready && _driveAllowed()) {
-    return new Promise((resolve, reject) => _webDriveRequest(resolve, reject, () => {}));
-  }
-  // First time (or script not ready yet): show our own one-tap "allow" card first.
+  if (ready && _driveAllowed()) return new Promise((resolve, reject) => start(resolve, reject, () => {}));
   return _loadGis().then(() => new Promise((resolve, reject) => {
     const again = _driveAllowed();
     const ov = document.createElement("div");
@@ -11826,20 +11831,65 @@ function _webDriveToken() {
     box.appendChild(go); box.appendChild(cancel); ov.appendChild(box); document.body.appendChild(ov);
     const done = () => { try { ov.remove(); } catch (_e) {} };
     cancel.onclick = () => { done(); reject(new Error("Drive access cancelled")); };
-    go.onclick = () => _webDriveRequest(resolve, reject, done);
+    go.onclick = () => start(resolve, reject, done);
   }));
+}
+
+function _webDriveToken() {
+  if (!_webDriveTok) _loadDriveTok();
+  if (_webDriveTok && _webDriveTok.exp > Date.now() + 60000) return Promise.resolve(_webDriveTok.token);
+  return _webGate(_webDriveRequest);
+}
+
+// ── Permanent mode: one-time permission code → server keeps a refresh token → no more popups ──
+function _srvKey() { return "driveSrv_" + ((typeof fbUser !== "undefined" && fbUser && fbUser.uid) || "x"); }
+function _srvGet() { try { return localStorage.getItem(_srvKey()) || ""; } catch (_e) { return ""; } }
+function _srvSet(v) { try { if (v) localStorage.setItem(_srvKey(), v); else localStorage.removeItem(_srvKey()); } catch (_e) {} }
+function _webCodeRequest(resolve, reject, done) {
+  try {
+    const cc = google.accounts.oauth2.initCodeClient({
+      client_id: DRIVE_WEB_CLIENT_ID,
+      scope: "https://www.googleapis.com/auth/drive.file",
+      ux_mode: "popup",
+      login_hint: (typeof fbUser !== "undefined" && fbUser && fbUser.email) || undefined,
+      callback: (r) => { done(); if (r && r.code) resolve(r.code); else reject(new Error((r && (r.error_description || r.error)) || "Drive access was not granted")); },
+      error_callback: (e) => { done(); reject(new Error((e && (e.message || e.type)) || "Google popup closed or blocked")); },
+    });
+    cc.requestCode();
+  } catch (e) { done(); reject(e); }
+}
+// Returns {mode:"server"} (permanent) or {mode:"token", token} (fallback, ~1 hour).
+async function _webDriveEnsure() {
+  const st = _srvGet();
+  if (st === "1") return { mode: "server" };
+  if (st.indexOf("fail") === 0) return { mode: "token", token: await _webDriveToken() };
+  const code = await _webGate(_webCodeRequest);
+  const ex = await fbEnableDriveBackup(code, "postmessage");
+  if (ex && ex.stored) { _srvSet("1"); _setDriveAllowed(); return { mode: "server" }; }
+  const msg = (ex && ex.threw) ? ("Drive server step failed: " + (ex.message || ex.code || "unknown")) : _driveReasonMsg(ex);
+  _srvSet("fail");
+  console.warn("Drive permanent mode unavailable:", msg);
+  throw new Error(msg + "  — Tap again to use temporary (1-hour) mode.");
 }
 
 // Preload Google's script early so the next tap can go straight to Google.
 setTimeout(function () { try { if (!_isNativeApp()) _loadGis().catch(function () {}); } catch (_e) {} }, 2500);
 
 async function fbWebDriveConnect() {
-  await _webDriveToken();
+  await _webDriveEnsure();
   return { stored: true };
 }
 
 async function _webDriveUploadBackup(backupJson, filename) {
-  const tok = await _webDriveToken();
+  const m = await _webDriveEnsure();
+  if (m.mode === "server") {
+    const fnUp = firebase.app().functions().httpsCallable("driveBackupUpload");
+    const r = await fnUp({ backupJson, filename });
+    if (r && r.data && r.data.success) return { id: "server" };
+    if (r && r.data && r.data.reason === "not_authorized") { _srvSet(""); throw new Error("Drive permission was reset — tap again to allow."); }
+    throw new Error((r && r.data && r.data.reason) || "Drive upload failed");
+  }
+  const tok = m.token;
   const auth = { Authorization: "Bearer " + tok };
   // Folder "Radha Naam Jap Backups" (found or created); falls back to My Drive root.
   let parent = null;
@@ -11870,7 +11920,7 @@ async function _webDriveUploadBackup(backupJson, filename) {
   });
   const uj = await ur.json().catch(() => ({}));
   if (!ur.ok || !uj.id) {
-    if (ur.status === 401) _webDriveTok = null;
+    if (ur.status === 401) { _webDriveTok = null; try { localStorage.removeItem(_driveTokKey()); } catch (_e) {} }
     throw new Error((uj && uj.error && uj.error.message) || ("Drive upload failed (" + ur.status + ")"));
   }
   return uj;

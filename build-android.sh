@@ -241,6 +241,17 @@ else
   echo "  already present"
 fi
 
+# Remove background location: a plugin merges ACCESS_BACKGROUND_LOCATION into the
+# manifest, but the app only uses location while open. Removing it avoids Play's
+# background-location declaration (video + review) and keeps the permission list honest.
+if ! grep -q "ACCESS_BACKGROUND_LOCATION" "$MANIFEST"; then
+  grep -q 'xmlns:tools' "$MANIFEST" || sed -i 's|<manifest |<manifest xmlns:tools="http://schemas.android.com/tools" |' "$MANIFEST"
+  sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" tools:node="remove" />|' "$MANIFEST"
+  echo "  removed ACCESS_BACKGROUND_LOCATION"
+else
+  echo "  ACCESS_BACKGROUND_LOCATION removal already present"
+fi
+
 echo "── 7.5/9  Patch AndroidManifest.xml (OAuth redirect deep link) ──"
 python3 - << 'PYEOF'
 path = "android/app/src/main/AndroidManifest.xml"

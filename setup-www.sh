@@ -86,6 +86,13 @@ EXCLUDES=(
   # Play Store listing assets - not part of the running app
   --exclude='screenshot-narrow-*.png'
 
+  # Leftover backups, source dumps and working notes (not part of the running app)
+  --exclude='*.bak[0-9]*'
+  --exclude='*.zip'
+  --exclude='gg_batch_*.txt'
+  --exclude='text.txt'
+  --exclude='Radha_Sudha_Nidhi_Hindi_clean_lyrics.txt'
+
   # Dev-only test page
   --exclude='testlink.html'
   --exclude='*.apk'

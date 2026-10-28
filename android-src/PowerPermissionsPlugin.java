@@ -49,8 +49,10 @@ public class PowerPermissionsPlugin extends Plugin {
                 return;
             }
             try {
-                Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
-                intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+                // Play policy: ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS needs the restricted
+                // REQUEST_IGNORE_BATTERY_OPTIMIZATIONS permission. Open the battery-optimization
+                // list instead; the user picks this app there. No special permission required.
+                Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
                 activity.startActivity(intent);
             } catch (Exception e) {
                 // Some OEM builds (MIUI/ColorOS/etc.) don't expose this dialog.
@@ -87,37 +89,6 @@ public class PowerPermissionsPlugin extends Plugin {
                 activity.startActivity(intent);
             } catch (Exception e) {
                 call.reject("Exact alarm settings not available on this device", e);
-                return;
-            }
-        }
-        call.resolve();
-    }
-
-    @PluginMethod
-    public void canRequestPackageInstalls(PluginCall call) {
-        boolean can = true;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            can = getContext().getPackageManager().canRequestPackageInstalls();
-        }
-        JSObject ret = new JSObject();
-        ret.put("value", can);
-        call.resolve(ret);
-    }
-
-    @PluginMethod
-    public void requestInstallPackagesPermission(PluginCall call) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Activity activity = getActivity();
-            if (activity == null) {
-                call.reject("No activity available");
-                return;
-            }
-            try {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
-                intent.setData(Uri.parse("package:" + getContext().getPackageName()));
-                activity.startActivity(intent);
-            } catch (Exception e) {
-                call.reject("Install-permission settings not available on this device", e);
                 return;
             }
         }

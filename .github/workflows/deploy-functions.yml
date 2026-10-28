@@ -12,14 +12,14 @@ jobs:
           node-version: 20
       - name: Install function dependencies
         run: cd functions && npm install
-      - name: Placeholder params (only used by this one function; it does not use Zoho)
+      - name: Placeholder params (only used by these functions; they do not use Zoho)
         run: |
           printf 'ZOHO_CLIENT_ID=unused\nZOHO_REDIRECT_URI=unused\n' > functions/.env
       - name: Write service-account key
         env:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
-      - name: Deploy deleteMyAccount only
+      - name: Deploy deleteMyAccount and driveStatus
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
-        run: npx firebase-tools deploy --only functions:deleteMyAccount --project guru-kripahi-kevalam-108 --non-interactive --force
+        run: npx firebase-tools deploy --only functions:deleteMyAccount,functions:driveStatus --project guru-kripahi-kevalam-108 --non-interactive --force

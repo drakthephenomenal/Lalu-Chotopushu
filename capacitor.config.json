@@ -24,6 +24,9 @@
       "repeat": true,
       "interval": 15,
       "autoStart": true
+    },
+    "SystemBars": {
+      "insetsHandling": "disable"
     }
   }
 }

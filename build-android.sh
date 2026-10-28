@@ -40,7 +40,7 @@ if [ ! -d "$ANDROID_SDK_ROOT/cmdline-tools/latest" ]; then
 fi
 export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
 yes | sdkmanager --licenses > /dev/null 2>&1 || true
-sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0" "build-tools;36.0.0" > /dev/null
 
 echo "── 3/9  (Re)generate native android/ project ───────────────────"
 if [ "$KEEP_ANDROID" = true ] && [ -d "android" ]; then
@@ -62,7 +62,17 @@ echo "$NEXT_VERSION_CODE" > "$VERSION_FILE"
 NEXT_VERSION_NAME="1.0.$NEXT_VERSION_CODE"
 sed -i -E "s/versionCode [0-9]+/versionCode $NEXT_VERSION_CODE/" android/app/build.gradle
 sed -i -E "s/versionName \"[^\"]*\"/versionName \"$NEXT_VERSION_NAME\"/" android/app/build.gradle
+grep -q "versionCode $NEXT_VERSION_CODE" android/app/build.gradle || { echo "  ✗ could not set versionCode in android/app/build.gradle (template changed?)"; exit 1; }
 echo "  bumped to versionCode $NEXT_VERSION_CODE / versionName $NEXT_VERSION_NAME"
+
+# Google Play requires targetSdkVersion 36 (Android 16). Capacitor 8 generates that; Capacitor 6/7 do not.
+TSDK=$(grep -E "targetSdkVersion" android/variables.gradle | grep -oE "[0-9]+" | head -1)
+echo "  generated targetSdkVersion = ${TSDK:-unknown}"
+if [ "${TSDK:-0}" -lt 36 ]; then
+  echo "  ✗ targetSdkVersion is below 36 — Google Play will reject this build."
+  echo "    Check package.json uses @capacitor/android ^8 and run npm install again."
+  exit 1
+fi
 
 echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
@@ -307,9 +317,14 @@ echo "  installed MediaKeepAlivePlugin.java + MediaKeepAliveService.java"
 cat > "$MAIN_ACTIVITY" << EOF
 $PKG_LINE
 
+import android.graphics.Color;
 import android.os.Bundle;
+import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -323,6 +338,18 @@ public class MainActivity extends BridgeActivity {
         st.setTextZoom(100);
         // Audio / video / YouTube may start by themselves (autoplay) without a fresh tap.
         st.setMediaPlaybackRequiresUserGesture(false);
+
+        // Android 15/16 draw apps edge-to-edge (under the status + navigation bars) and the old
+        // opt-out is gone. Keep the previous look: pad the whole screen by the system bars, and by the
+        // keyboard height while the keyboard is open, so nothing sits under the bars.
+        final View root = findViewById(android.R.id.content);
+        root.setBackgroundColor(Color.parseColor("#070B1A"));
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
+            v.setPadding(bars.left, bars.top, bars.right, Math.max(bars.bottom, ime.bottom));
+            return WindowInsetsCompat.CONSUMED;
+        });
     }
 
     // While audio is playing, do not let Android freeze the WebView when the screen turns off.
@@ -366,7 +393,7 @@ fi
 # compileSdkVersion from the root project — hardcode it to match variables.gradle.
 BR_GRADLE="node_modules/@capacitor/background-runner/android/build.gradle"
 if [ -f "$BR_GRADLE" ]; then
-  sed -i "s|compileSdk project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 35|compileSdk 34|" "$BR_GRADLE"
+  sed -i -E "s|^([[:space:]]*)compileSdk(Version)?[[:space:]]*=?[[:space:]]*.*$|\\1compileSdk = 36|" "$BR_GRADLE"
   echo "  patched background-runner compileSdk"
 
   # background-runner ships its JS-engine .aar inside its own package, but
@@ -468,6 +495,7 @@ cd ..
 echo ""
 echo "✅ Done. APK (testing only): android/app/build/outputs/apk/release/app-release.apk"
 echo "   Play Store upload (AAB):     android/app/build/outputs/bundle/release/app-release.aab"
+ls -lh android/app/build/outputs/bundle/release/app-release.aab 2>/dev/null | awk '{print "   AAB size: " $5}'
 echo "   To download it: cd android/app/build/outputs/apk/release && python3 -m http.server 8080"
 echo ""
 echo "   ⚠ First install after this fix: UNINSTALL any previously debug-signed"

@@ -35,8 +35,7 @@ service cloud.firestore {
     match /_timesync/{doc} {
       allow read, write: if request.auth != null;
     }
-    // Shared app-wide config (e.g. the developer-provided manual APK link).
-    // Any signed-in user can read it; only the developer can write it.
+    // Shared app-wide config. Any signed-in user can read it; only the developer can write it.
     match /config/{docId} {
       allow read: if request.auth != null;
       allow write: if isDeveloper();
@@ -49,10 +48,11 @@ service cloud.firestore {
       // user could fetch an opted-out doc directly by uid.
       allow read:  if request.auth != null &&
                       (resource.data.optIn == true || isDeveloper() || request.auth.uid == userId);
-      // Create/update only — deletion is intentionally never allowed, not
-      // even for the owner or a developer, so a devotee's leaderboard
-      // history is permanent once written (opting out just flips optIn to
-      // false via pushLeaderboard(); it does not remove the entry).
+      // Create/update only — client-side deletion is intentionally never allowed, not
+      // even for the owner or a developer, so history can't be wiped by accident.
+      // Opting out just flips optIn to false via pushLeaderboard().
+      // Account deletion (Google Play requirement) is done server-side by the
+      // deleteMyAccount Cloud Function using the admin SDK, which bypasses these rules.
       allow create, update: if request.auth != null && (request.auth.uid == userId || isDeveloper());
     }
     match /presence/{userId} {

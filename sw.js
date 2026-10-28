@@ -456,8 +456,8 @@
 // v301: added Ahe Nila Shaila (Bhakta Salabega, Odia; Bangla + Hindi lyrics with meaning, YouTube audio) at the top of S&V → Shree Krishna.
 // v417: bumped cache to force-invalidate stale app.js — Drive permission is remembered in Firebase (driveGranted) so new browsers/devices don't ask again.
 // v418: bumped cache to force-invalidate stale app.js / index.html — Play-Store build: APK download/updater removed, Delete My Account added.
-// v419: bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
-const CACHE = 'radha-jap-v419';
+// v420 (Play build + dev email): bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
+const CACHE = 'radha-jap-v420';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

@@ -20189,7 +20189,7 @@ function initSevaInlinePlayers(body) {
 
 // ─────────────────────────────────────────────────────────
 // DEVELOPER STOTRAM MANAGEMENT
-// Developer IDs: drakthephenomenal@gmail.com, drakthephenomenal@proton.me, akthephenomenal@zohomail.com, anupkumarpaulshuvo@gmail.com, radhanamejapcounter@gmail.com, drakthephenomenal@icloud.com
+// Developer IDs: drakthephenomenal@gmail.com, drakthephenomenal@proton.me, akthephenomenal@zohomail.com, anupkumarpaulshuvo@gmail.com, radhanamejapcounter@gmail.com, drakthephenomenal@icloud.com, radhanaamsudharasam108@gmail.com
 // ─────────────────────────────────────────────────────────
 const DEV_IDS = [
   "drakthephenomenal@gmail.com",
@@ -20198,6 +20198,7 @@ const DEV_IDS = [
   "anupkumarpaulshuvo@gmail.com",
   "radhanamejapcounter@gmail.com",
   "drakthephenomenal@icloud.com",
+  "radhanaamsudharasam108@gmail.com",
 ];
 
 function isDeveloper() {

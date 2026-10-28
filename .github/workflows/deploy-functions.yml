@@ -1,0 +1,25 @@
+name: Deploy delete-account function
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install function dependencies
+        run: cd functions && npm install
+      - name: Placeholder params (only used by this one function; it does not use Zoho)
+        run: |
+          printf 'ZOHO_CLIENT_ID=unused\nZOHO_REDIRECT_URI=unused\n' > functions/.env
+      - name: Write service-account key
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
+      - name: Deploy deleteMyAccount only
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx firebase-tools deploy --only functions:deleteMyAccount --project guru-kripahi-kevalam-108 --non-interactive --force

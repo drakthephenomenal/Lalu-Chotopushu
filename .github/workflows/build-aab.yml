@@ -1,0 +1,46 @@
+name: Build AAB (Google Play)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm install
+      - name: Build signed release (APK for testing + AAB for Play)
+        run: bash build-android.sh
+      - name: Show AAB size
+        run: |
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          SIZE=$(stat -c%s "$AAB")
+          MB=$((SIZE / 1024 / 1024))
+          echo "AAB size: ${MB} MB"
+          echo "### AAB size: ${MB} MB" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$MB" -gt 180 ]; then
+            echo "::warning::AAB is ${MB} MB. Play's base-module download limit is about 200 MB — move big audio/photos out of the app (download after install or use Play Asset Delivery)."
+          fi
+      - name: Upload AAB (download it from the run page, then upload to Play Console)
+        uses: actions/upload-artifact@v4
+        with:
+          name: RadhaNaam-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 14
+      - name: Save bumped version counter
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .app-version
+          git commit -m "Bump app version" || true
+          git push || true

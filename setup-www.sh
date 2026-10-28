@@ -25,6 +25,8 @@ EXCLUDES=(
   # Divine Darshan photos/audio: NOT bundled in the APK. The app reads them live from the
   # deployed site (see ddPath in app.js), so new photos need no rebuild.
   --exclude='deities'
+  # Big stotram/chant audio (~1 GB): streamed from the website in the installed app (see app.js, RJAP_PWA_URL).
+  --exclude='/audio'
   --exclude='stotram-live'
 
   # SECRETS: never allow these to ship in the app bundle, no matter what
@@ -86,20 +88,13 @@ EXCLUDES=(
   # Play Store listing assets - not part of the running app
   --exclude='screenshot-narrow-*.png'
 
-  # Leftover backups, source dumps and working notes (not part of the running app)
-  --exclude='*.bak[0-9]*'
-  --exclude='*.zip'
-  --exclude='gg_batch_*.txt'
-  --exclude='text.txt'
-  --exclude='Radha_Sudha_Nidhi_Hindi_clean_lyrics.txt'
-
   # Dev-only test page
   --exclude='testlink.html'
   --exclude='*.apk'
 )
 
 rsync -a --delete "${EXCLUDES[@]}" ./ www/
-rm -rf www/deities   # rsync --delete leaves excluded folders from older builds in place
+rm -rf www/deities www/audio   # rsync --delete leaves excluded folders from older builds in place
 
 echo "Done. www/ now contains a copy of your web app."
 echo "Next: npx cap sync android"

@@ -3740,6 +3740,34 @@ setInterval(window._rjMidnightCheck, 60000);
 // link. Always use these fixed URLs instead, in both native and web
 // contexts, so Share always produces something the recipient can open.
 const RJAP_PWA_URL = "https://radharadharadha.vercel.app/";
+
+// Play Store build: the big audio/ folder is NOT packed into the app (keeps the download small).
+// In the installed app, every relative "audio/..." URL given to an <audio>/new Audio() is silently
+// pointed at the website instead. The website/PWA still plays them from its own ./audio/ folder.
+(function () {
+  try {
+    var _nat = false;
+    try { _nat = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (_e) {}
+    if (!_nat) return;
+    var base = RJAP_PWA_URL.replace(/\/$/, "");
+    var fix = function (u) {
+      if (typeof u !== "string") return u;
+      var m = u.match(/^(?:\.\/)?(audio\/.*)$/);
+      return m ? base + "/" + m[1] : u;
+    };
+    var d = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "src");
+    if (d && d.set) {
+      Object.defineProperty(HTMLMediaElement.prototype, "src", {
+        configurable: true, enumerable: d.enumerable, get: d.get,
+        set: function (v) { d.set.call(this, fix(v)); }
+      });
+    }
+    var OrigAudio = window.Audio;
+    var NewAudio = function (u) { var a = new OrigAudio(); if (u !== undefined) a.src = fix(u); return a; };
+    NewAudio.prototype = OrigAudio.prototype;
+    window.Audio = NewAudio;
+  } catch (_e) {}
+})();
 // Direct download link for the installable Android APK — a Google Drive
 // folder that gets manually updated with the latest built app-*.apk each
 // time a new version is released. Update this constant if the Drive folder

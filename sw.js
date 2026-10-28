@@ -457,7 +457,8 @@
 // v417: bumped cache to force-invalidate stale app.js — Drive permission is remembered in Firebase (driveGranted) so new browsers/devices don't ask again.
 // v418: bumped cache to force-invalidate stale app.js / index.html — Play-Store build: APK download/updater removed, Delete My Account added.
 // v420 (Play build + dev email): bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
-const CACHE = 'radha-jap-v420';
+// v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
+const CACHE = 'radha-jap-v421';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

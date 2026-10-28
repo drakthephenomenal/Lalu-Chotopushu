@@ -484,15 +484,25 @@ exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
 // developer-only deleteUserAccount above, the uid always comes from the
 // verified auth token — never from client input.
 // ============================================================
-exports.deleteMyAccount = functions.https.onCall(async (data, context) => {
+exports.deleteMyAccount = functions
+  .runWith({ timeoutSeconds: 120, memory: "512MB" })
+  .https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError("unauthenticated", "Please sign in.");
   }
   const uid = context.auth.uid;
   const db = admin.firestore();
+  const failed = []; // names of steps that failed (all steps are attempted, so a retry is safe)
+  const step = async (name, fn) => {
+    try { await fn(); }
+    catch (e) {
+      console.error("deleteMyAccount step failed:", name, uid, e && (e.stack || e.message || e));
+      failed.push(name + ": " + ((e && (e.code || e.message)) || "error"));
+    }
+  };
 
   // Best-effort: revoke the stored Google Drive refresh token so access is really removed.
-  try {
+  await step("revoke-drive-token", async () => {
     const tdoc = await db.collection("driveBackupTokens").doc(uid).get();
     const rt = tdoc.exists && tdoc.data() && tdoc.data().refreshToken;
     if (rt) {
@@ -502,20 +512,49 @@ exports.deleteMyAccount = functions.https.onCall(async (data, context) => {
         body: "token=" + encodeURIComponent(rt),
       });
     }
-  } catch (e) { console.warn("token revoke failed:", e && e.message); }
+  });
+  failed.length = 0; // a failed token revoke must never block deletion
 
   // Firestore data (admin SDK bypasses the client rules that forbid leaderboard deletes).
-  await db.recursiveDelete(db.collection("users").doc(uid));
+  await step("users", async () => {
+    // Delete subcollections explicitly, then the user doc — works on any admin SDK version.
+    const userRef = db.collection("users").doc(uid);
+    const subs = await userRef.listCollections();
+    for (const sub of subs) {
+      const snap = await sub.get();
+      for (let i = 0; i < snap.docs.length; i += 400) {
+        const batch = db.batch();
+        snap.docs.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
+    await userRef.delete();
+  });
   for (const col of ["leaderboard", "presence", "driveBackupTokens"]) {
-    await db.collection(col).doc(uid).delete();
+    await step(col, () => db.collection(col).doc(uid).delete());
   }
-  await db.recursiveDelete(db.collection("feedbacks").doc(uid)); // doc + messages subcollection
+  await step("feedbacks", async () => {
+    const fRef = db.collection("feedbacks").doc(uid);
+    const msgs = await fRef.collection("messages").get();
+    for (let i = 0; i < msgs.docs.length; i += 400) {
+      const batch = db.batch();
+      msgs.docs.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+    await fRef.delete();
+  });
 
-  // Auth account last, so a failure above can be retried by the same user.
+  // Auth account last. If any data step failed, report it (user can retry safely).
+  if (failed.length) {
+    throw new functions.https.HttpsError("internal", "Could not remove: " + failed.join("; "));
+  }
   try {
     await admin.auth().deleteUser(uid);
   } catch (e) {
-    if (e.code !== "auth/user-not-found") throw new functions.https.HttpsError("internal", "Auth delete failed.");
+    if (!(e && e.code === "auth/user-not-found")) {
+      console.error("deleteMyAccount auth delete failed:", uid, e && (e.stack || e.message || e));
+      throw new functions.https.HttpsError("internal", "Auth delete failed: " + ((e && (e.code || e.message)) || "error"));
+    }
   }
   return { deleted: true };
 });

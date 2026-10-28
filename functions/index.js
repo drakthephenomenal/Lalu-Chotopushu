@@ -342,6 +342,7 @@ const DEV_EMAILS = [
   "anupkumarpaulshuvo@gmail.com",
   "radhanamejapcounter@gmail.com",
   "drakthephenomenal@icloud.com",
+  "radhanaamsudharasam108@gmail.com",
 ];
 
 // Called by app.js (window.sendDevBroadcast, in the Developer Settings
@@ -474,6 +475,49 @@ exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
   }
 
   return results;
+});
+
+
+// ============================================================
+// Self-service account deletion (required by Google Play).
+// Any signed-in user can delete THEIR OWN account + data. Unlike the
+// developer-only deleteUserAccount above, the uid always comes from the
+// verified auth token — never from client input.
+// ============================================================
+exports.deleteMyAccount = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError("unauthenticated", "Please sign in.");
+  }
+  const uid = context.auth.uid;
+  const db = admin.firestore();
+
+  // Best-effort: revoke the stored Google Drive refresh token so access is really removed.
+  try {
+    const tdoc = await db.collection("driveBackupTokens").doc(uid).get();
+    const rt = tdoc.exists && tdoc.data() && tdoc.data().refreshToken;
+    if (rt) {
+      await fetch("https://oauth2.googleapis.com/revoke", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "token=" + encodeURIComponent(rt),
+      });
+    }
+  } catch (e) { console.warn("token revoke failed:", e && e.message); }
+
+  // Firestore data (admin SDK bypasses the client rules that forbid leaderboard deletes).
+  await db.recursiveDelete(db.collection("users").doc(uid));
+  for (const col of ["leaderboard", "presence", "driveBackupTokens"]) {
+    await db.collection(col).doc(uid).delete();
+  }
+  await db.recursiveDelete(db.collection("feedbacks").doc(uid)); // doc + messages subcollection
+
+  // Auth account last, so a failure above can be retried by the same user.
+  try {
+    await admin.auth().deleteUser(uid);
+  } catch (e) {
+    if (e.code !== "auth/user-not-found") throw new functions.https.HttpsError("internal", "Auth delete failed.");
+  }
+  return { deleted: true };
 });
 
 // ============================================================

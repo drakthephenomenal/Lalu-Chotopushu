@@ -2158,6 +2158,10 @@
           <input type="file" accept=".json,.txt,application/json,text/plain" style="display:none" onchange="importAllData(this)">
         </label>
       </div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08);text-align:center">
+        <button id="deleteAccountBtn" type="button" onclick="startDeleteAccount()" style="background:none;border:1px solid rgba(255,107,107,0.35);color:#ff8a8a;border-radius:9px;padding:9px 14px;font-size:12px;cursor:pointer;width:100%">🗑️ Delete My Account &amp; Data</button>
+        <div style="font-size:10.5px;color:rgba(255,255,255,0.4);margin-top:6px;line-height:1.5">Permanently removes your account, jap history and backups from our servers.</div>
+      </div>
     </div>
   </div>
 
@@ -2184,32 +2188,6 @@
         <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;">Tap to watch on YouTube</div>
       </div>
       <div style="color:rgba(255,107,107,0.5);font-size:16px;">›</div>
-    </div>
-  </div>
-
-  <!-- Manual APK link — developer-provided fallback download, stored in
-       Firestore (config/manualApkLink) so a new link reaches every user
-       instantly with no code deploy needed. Regular users see a plain
-       tap-to-download row (or an honest "not shared yet" state); the
-       developer sees an editable field + Save button instead. -->
-  <div class="sc" id="manualApkCard" style="background:rgba(8,12,35,0.82);border:1px solid rgba(126,200,255,0.25);padding:14px 15px;">
-    <div id="manualApkRow" style="display:flex;align-items:center;gap:12px;cursor:pointer;">
-      <div style="font-size:20px;line-height:1;">📥</div>
-      <div style="flex:1;min-width:0;">
-        <div id="manualApkTitle" style="font-size:13px;font-weight:700;color:#7ec8ff;line-height:1.2;">Download APK file</div>
-        <div id="manualApkStatus" style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;">Checking…</div>
-      </div>
-      <!-- Developer-only edit affordance — toggles the edit panel below
-           without triggering the row's own download tap. Everyone else
-           sees the exact same collapsed row as a plain download link. -->
-      <div id="manualApkEditIcon" style="display:none;align-items:center;justify-content:center;color:rgba(126,200,255,0.7);font-size:15px;cursor:pointer;padding:4px;flex-shrink:0;" onclick="event.stopPropagation(); toggleManualApkEdit();">✏️</div>
-      <div style="color:rgba(126,200,255,0.5);font-size:16px;">›</div>
-    </div>
-    <!-- Size / benefit heads-up, shown to everyone (text set in _renderManualApkCard, follows app language) -->
-    <div id="manualApkNote" style="margin-top:9px;padding:8px 10px;border-radius:9px;background:rgba(126,200,255,0.07);border:1px solid rgba(126,200,255,0.18);font-size:11px;line-height:1.5;color:rgba(255,255,255,0.7);"></div>
-    <div id="manualApkEditWrap" style="display:none;margin-top:10px;">
-      <input id="manualApkInput" type="url" placeholder="Paste Google Drive direct-download link…" style="width:100%;box-sizing:border-box;padding:9px 11px;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid rgba(126,200,255,0.3);color:#fff;font-size:12px;margin-bottom:8px;">
-      <button type="button" onclick="saveManualApkLink()" style="width:100%;padding:9px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(126,200,255,0.3),rgba(126,200,255,0.18));color:#7ec8ff;border:1px solid rgba(126,200,255,0.45);font-size:12px;font-weight:700;cursor:pointer;">Save (updates for all users)</button>
     </div>
   </div>
 
@@ -2805,7 +2783,6 @@
     <p style="font-size:12px;color:var(--td);margin-bottom:10px">Spread the divine name! Share RadhaNaam SudhaRasam with friends and family 🙏</p>
     <div id="appLinkDisplay" style="font-size:11px;color:var(--a2);background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:8px;padding:8px 11px;margin-bottom:10px;word-break:break-all;font-family:monospace;cursor:pointer" onclick="shareApp()" title="Tap to copy"></div>
     <button class="pb" onclick="shareApp()" style="background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,180,0,0.25));color:var(--gold);border:1px solid rgba(255,215,0,0.4)">🌸 Share App Link (Web)</button>
-    <button class="pb" onclick="shareApk()" style="margin-top:8px;background:linear-gradient(135deg,rgba(74,144,226,0.3),rgba(74,144,226,0.18));color:var(--a2);border:1px solid rgba(74,144,226,0.4)">📲 Share the Google Drive folder link to download APK</button>
   </div>
 
   <!-- FEEDBACK FORM -->
@@ -3110,7 +3087,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=144"></script>
-    <script src="./app.js?v=417"></script>
+    <script src="./app.js?v=419"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

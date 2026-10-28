@@ -13216,14 +13216,64 @@ function _confirmSignOutProceed() {
   fbSignOut();
 }
 
-async function fbSignOut() {
+
+// ═══════════ Delete my account & data (required by Google Play) ═══════════
+function startDeleteAccount() {
+  if (!fbUser) { toast("Please sign in first"); return; }
+  if (document.getElementById("rjDelAcctModal")) return;
+  const m = document.createElement("div");
+  m.id = "rjDelAcctModal";
+  m.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.78);display:flex;align-items:center;justify-content:center;padding:18px";
+  m.innerHTML =
+    '<div style="max-width:380px;width:100%;background:#12162f;border:1px solid rgba(255,107,107,0.5);border-radius:16px;padding:18px;color:#fff;font-size:13px;line-height:1.55">' +
+    '<div style="font-size:16px;font-weight:700;color:#ff8a8a;margin-bottom:8px">🗑️ Delete account?</div>' +
+    '<div>This permanently deletes your account, jap history, settings, leaderboard entry, messages and Drive-backup permission from our servers. <b>It cannot be undone.</b></div>' +
+    '<div style="margin-top:8px;color:rgba(255,255,255,0.65)">Tip: tap <b>Download Backup</b> first if you want to keep a copy. A backup file already saved in your own Google Drive is not removed — delete it from Drive yourself.</div>' +
+    '<div style="margin-top:10px">Type <b>DELETE</b> to confirm:</div>' +
+    '<input id="rjDelAcctInput" type="text" autocomplete="off" autocapitalize="characters" style="width:100%;box-sizing:border-box;margin-top:6px;padding:10px;border-radius:9px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.35);color:#fff;font-size:14px">' +
+    '<div id="rjDelAcctMsg" style="min-height:16px;margin-top:6px;font-size:12px;color:#ff8a8a"></div>' +
+    '<div style="display:flex;gap:10px;margin-top:10px">' +
+    '<button type="button" onclick="document.getElementById(\'rjDelAcctModal\').remove()" style="flex:1;padding:11px;border-radius:9px;border:1px solid rgba(255,255,255,0.3);background:none;color:#fff;font-size:13px">Cancel</button>' +
+    '<button type="button" id="rjDelAcctGo" onclick="confirmDeleteAccount()" style="flex:1;padding:11px;border-radius:9px;border:none;background:#c0392b;color:#fff;font-weight:700;font-size:13px">Delete forever</button>' +
+    '</div></div>';
+  document.body.appendChild(m);
+}
+async function confirmDeleteAccount() {
+  const inp = document.getElementById("rjDelAcctInput");
+  const msg = document.getElementById("rjDelAcctMsg");
+  const go = document.getElementById("rjDelAcctGo");
+  if (!inp || !msg || !go) return;
+  if (inp.value.trim().toUpperCase() !== "DELETE") { msg.textContent = 'Please type DELETE to confirm.'; return; }
+  if (!navigator.onLine) { msg.textContent = "You're offline — connect to the internet and try again."; return; }
+  go.disabled = true; go.textContent = "Deleting…"; msg.textContent = "";
+  // Freeze all sync first so nothing is written back to the cloud while we delete.
+  App._cloudHydrated = false; App._allowInitialPush = false; App._suspendCloudSync = true;
+  try { if (fbSessionListener) { fbSessionListener(); fbSessionListener = null; } } catch (_e) {}
+  try { if (fbListener) { fbListener(); fbListener = null; } } catch (_e) {}
+  try {
+    await firebase.app().functions().httpsCallable("deleteMyAccount")();
+  } catch (e) {
+    App._suspendCloudSync = false;
+    go.disabled = false; go.textContent = "Delete forever";
+    msg.textContent = "Could not delete: " + ((e && e.message) || "server error") + ". Please try again.";
+    // Sync was frozen; reload restores normal operation on the next open.
+    setTimeout(() => { try { location.reload(); } catch (_e) {} }, 4000);
+    return;
+  }
+  const mod = document.getElementById("rjDelAcctModal"); if (mod) mod.remove();
+  try { localStorage.removeItem("driveConnectAsked_" + (fbUser && fbUser.uid)); } catch (_e) {}
+  await fbSignOut({ skipPush: true });
+}
+
+async function fbSignOut(opts) {
   if (!fbAuth) return;
+  const _skipPush = !!(opts && opts.skipPush); // account deletion: never write data back to the cloud
   const outgoingUid = (fbUser && fbUser.uid) || App._uid || null;
   // ── STEP 1: Push current state to Firebase BEFORE signing out so the
   //    user's "last state" is preserved as the next-login baseline.
   //    Firestore offline persistence will queue the write while offline;
   //    we still attempt it so reconnection can replay it.
-  if (fbUser && App._cloudHydrated) {
+  if (fbUser && App._cloudHydrated && !_skipPush) {
     try {
       setSyncPill("syncing", "Saving before sign-out…");
       if (!navigator.onLine) {
@@ -13296,7 +13346,7 @@ async function fbSignOut() {
       window.Capacitor.Plugins.FirebaseAuthentication.signOut().catch(() => {});
     }
   } catch (_e) {}
-  fbAuth.signOut().then(() => toast("Signed out 🙏"));
+  fbAuth.signOut().then(() => toast(_skipPush ? "Account deleted 🙏" : "Signed out 🙏")).catch(() => {});
 }
 async function fbPushDelta() {
   if (isGhostMode()) return; // admin mode: read-only
@@ -20139,7 +20189,7 @@ function initSevaInlinePlayers(body) {
 
 // ─────────────────────────────────────────────────────────
 // DEVELOPER STOTRAM MANAGEMENT
-// Developer IDs: drakthephenomenal@gmail.com, drakthephenomenal@proton.me, akthephenomenal@zohomail.com, anupkumarpaulshuvo@gmail.com, radhanamejapcounter@gmail.com, drakthephenomenal@icloud.com, radhanaamsudharasam108@gmail.com
+// Developer IDs: drakthephenomenal@gmail.com, drakthephenomenal@proton.me, akthephenomenal@zohomail.com, anupkumarpaulshuvo@gmail.com, radhanamejapcounter@gmail.com, drakthephenomenal@icloud.com
 // ─────────────────────────────────────────────────────────
 const DEV_IDS = [
   "drakthephenomenal@gmail.com",
@@ -20148,7 +20198,6 @@ const DEV_IDS = [
   "anupkumarpaulshuvo@gmail.com",
   "radhanamejapcounter@gmail.com",
   "drakthephenomenal@icloud.com",
-  "radhanaamsudharasam108@gmail.com",
 ];
 
 function isDeveloper() {
@@ -31454,6 +31503,9 @@ function _showUserReplyPopup(text) {
 // TODO: replace <your-username>/<your-repo> below with your actual GitHub
 // path. This "latest" URL never needs to change again afterward — every
 // future Release just needs an asset with this exact filename attached.
+// Google Play build: Play forbids apps from downloading/installing APKs themselves, so the
+// in-app APK updater, APK download card and "share APK" link are OFF. Updates come from Play.
+const RJ_PLAY_BUILD = true;
 const APP_UPDATE_APK_URL =
   "https://github.com/drakthephenomenal/Lalu-Chotopushu/releases/latest/download/RadhaNaamJap.apk";
 
@@ -31549,6 +31601,11 @@ async function checkForUpdateAvailable() {
     return;
   }
 
+  if (RJ_PLAY_BUILD) {
+    statusEl.textContent = "Updates are delivered through Google Play 🙏";
+    if (cardEl) cardEl.classList.remove("update-available");
+    return;
+  }
   if (!Http || !localVersion) return;
 
   // Cache the result for 30 min — GitHub's unauthenticated API is capped
@@ -31626,6 +31683,7 @@ async function checkForUpdateAvailable() {
 // Settings. Saves hunting through manufacturer-specific menus (stock
 // Android vs MIUI's "Other permissions" screen use different paths).
 async function openInstallPermissionSettings() {
+  if (typeof RJ_PLAY_BUILD !== "undefined" && RJ_PLAY_BUILD) return; // Play build: no install-permission screen
   if (!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PowerPermissions)) {
     toast("Only available inside the installed app.");
     return;
@@ -31748,6 +31806,10 @@ async function checkAppUpdate() {
   // method here. (file-transfer's native Android module needs a newer
   // Gradle/AGP toolchain than this project has and fails to build —
   // that's why we're using this instead.)
+  if (RJ_PLAY_BUILD) {
+    if (statusEl) statusEl.textContent = "Please update from the Google Play Store 🙏";
+    return;
+  }
   const Filesystem = Cap.Plugins && Cap.Plugins.Filesystem;
   const FileOpener = Cap.Plugins && Cap.Plugins.FileOpener;
   if (!Filesystem || !FileOpener) {

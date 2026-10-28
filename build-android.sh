@@ -69,12 +69,9 @@ echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 # -- Patch AndroidManifest.xml: install-permission + FileProvider --
 MANIFEST_FILE="android/app/src/main/AndroidManifest.xml"
 if [ -f "$MANIFEST_FILE" ]; then
-  if ! grep -q "REQUEST_INSTALL_PACKAGES" "$MANIFEST_FILE"; then
-    sed -i "s|</manifest>|    <uses-permission android:name=\"android.permission.REQUEST_INSTALL_PACKAGES\" />\n</manifest>|" "$MANIFEST_FILE"
-    echo "  added REQUEST_INSTALL_PACKAGES permission"
-  else
-    echo "  REQUEST_INSTALL_PACKAGES already present"
-  fi
+  # Google Play forbids REQUEST_INSTALL_PACKAGES for this app type -> make sure it is NOT in the manifest.
+  sed -i '/REQUEST_INSTALL_PACKAGES/d' "$MANIFEST_FILE"
+  echo "  removed REQUEST_INSTALL_PACKAGES (Play policy)"
 
   if ! grep -q "fileprovider" "$MANIFEST_FILE"; then
     sed -i "s|</application>|    <provider\n        android:name=\"androidx.core.content.FileProvider\"\n        android:authorities=\"\${applicationId}.fileprovider\"\n        android:exported=\"false\"\n        android:grantUriPermissions=\"true\">\n        <meta-data android:name=\"android.support.FILE_PROVIDER_PATHS\" android:resource=\"@xml/file_paths\" />\n    </provider>\n</application>|" "$MANIFEST_FILE"
@@ -98,12 +95,9 @@ fi
 # -- Patch AndroidManifest.xml: install-permission + FileProvider --
 MANIFEST_FILE="android/app/src/main/AndroidManifest.xml"
 if [ -f "$MANIFEST_FILE" ]; then
-  if ! grep -q "REQUEST_INSTALL_PACKAGES" "$MANIFEST_FILE"; then
-    sed -i "s|</manifest>|    <uses-permission android:name=\"android.permission.REQUEST_INSTALL_PACKAGES\" />\n</manifest>|" "$MANIFEST_FILE"
-    echo "  added REQUEST_INSTALL_PACKAGES permission"
-  else
-    echo "  REQUEST_INSTALL_PACKAGES already present"
-  fi
+  # Google Play forbids REQUEST_INSTALL_PACKAGES for this app type -> make sure it is NOT in the manifest.
+  sed -i '/REQUEST_INSTALL_PACKAGES/d' "$MANIFEST_FILE"
+  echo "  removed REQUEST_INSTALL_PACKAGES (Play policy)"
 
   if ! grep -q "fileprovider" "$MANIFEST_FILE"; then
     sed -i "s|</application>|    <provider\n        android:name=\"androidx.core.content.FileProvider\"\n        android:authorities=\"\${applicationId}.fileprovider\"\n        android:exported=\"false\"\n        android:grantUriPermissions=\"true\">\n        <meta-data android:name=\"android.support.FILE_PROVIDER_PATHS\" android:resource=\"@xml/file_paths\" />\n    </provider>\n</application>|" "$MANIFEST_FILE"
@@ -127,12 +121,9 @@ fi
 # -- Patch AndroidManifest.xml: install-permission + FileProvider --
 MANIFEST_FILE="android/app/src/main/AndroidManifest.xml"
 if [ -f "$MANIFEST_FILE" ]; then
-  if ! grep -q "REQUEST_INSTALL_PACKAGES" "$MANIFEST_FILE"; then
-    sed -i "s|</manifest>|    <uses-permission android:name=\"android.permission.REQUEST_INSTALL_PACKAGES\" />\n</manifest>|" "$MANIFEST_FILE"
-    echo "  added REQUEST_INSTALL_PACKAGES permission"
-  else
-    echo "  REQUEST_INSTALL_PACKAGES already present"
-  fi
+  # Google Play forbids REQUEST_INSTALL_PACKAGES for this app type -> make sure it is NOT in the manifest.
+  sed -i '/REQUEST_INSTALL_PACKAGES/d' "$MANIFEST_FILE"
+  echo "  removed REQUEST_INSTALL_PACKAGES (Play policy)"
 
   if ! grep -q "fileprovider" "$MANIFEST_FILE"; then
     sed -i "s|</application>|    <provider\n        android:name=\"androidx.core.content.FileProvider\"\n        android:authorities=\"\${applicationId}.fileprovider\"\n        android:exported=\"false\"\n        android:grantUriPermissions=\"true\">\n        <meta-data android:name=\"android.support.FILE_PROVIDER_PATHS\" android:resource=\"@xml/file_paths\" />\n    </provider>\n</application>|" "$MANIFEST_FILE"
@@ -156,12 +147,9 @@ fi
 # -- Patch AndroidManifest.xml: install-permission + FileProvider --
 MANIFEST_FILE="android/app/src/main/AndroidManifest.xml"
 if [ -f "$MANIFEST_FILE" ]; then
-  if ! grep -q "REQUEST_INSTALL_PACKAGES" "$MANIFEST_FILE"; then
-    sed -i "s|</manifest>|    <uses-permission android:name=\"android.permission.REQUEST_INSTALL_PACKAGES\" />\n</manifest>|" "$MANIFEST_FILE"
-    echo "  added REQUEST_INSTALL_PACKAGES permission"
-  else
-    echo "  REQUEST_INSTALL_PACKAGES already present"
-  fi
+  # Google Play forbids REQUEST_INSTALL_PACKAGES for this app type -> make sure it is NOT in the manifest.
+  sed -i '/REQUEST_INSTALL_PACKAGES/d' "$MANIFEST_FILE"
+  echo "  removed REQUEST_INSTALL_PACKAGES (Play policy)"
 
   if ! grep -q "fileprovider" "$MANIFEST_FILE"; then
     sed -i "s|</application>|    <provider\n        android:name=\"androidx.core.content.FileProvider\"\n        android:authorities=\"\${applicationId}.fileprovider\"\n        android:exported=\"false\"\n        android:grantUriPermissions=\"true\">\n        <meta-data android:name=\"android.support.FILE_PROVIDER_PATHS\" android:resource=\"@xml/file_paths\" />\n    </provider>\n</application>|" "$MANIFEST_FILE"
@@ -474,11 +462,12 @@ fi
 echo ""
 echo "── Building APK (release, persistently signed) ──────────────────"
 cd android
-./gradlew assembleRelease --no-daemon
+./gradlew assembleRelease bundleRelease --no-daemon
 cd ..
 
 echo ""
-echo "✅ Done. APK at: android/app/build/outputs/apk/release/app-release.apk"
+echo "✅ Done. APK (testing only): android/app/build/outputs/apk/release/app-release.apk"
+echo "   Play Store upload (AAB):     android/app/build/outputs/bundle/release/app-release.aab"
 echo "   To download it: cd android/app/build/outputs/apk/release && python3 -m http.server 8080"
 echo ""
 echo "   ⚠ First install after this fix: UNINSTALL any previously debug-signed"

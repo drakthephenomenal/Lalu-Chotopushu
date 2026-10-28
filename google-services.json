@@ -54,6 +54,14 @@
           }
         },
         {
+          "client_id": "368485403238-oidfme483mpdcctp90ql5j5n95j97o53.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.vercel.radharadharadha.capacitor",
+            "certificate_hash": "a880693eec0882f1c1aba94626b6a2fff1ddc635"
+          }
+        },
+        {
           "client_id": "368485403238-rrrm8pv4bfc14a5opdh7bn52tp7vqerp.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

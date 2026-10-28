@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Privacy Policy — Guru Kripahi Kevalam</title>
+<title>Privacy Policy — RadhaNaam SudhaRasam</title>
 <style>
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -34,45 +34,71 @@
 </head>
 <body>
   <h1>Privacy Policy</h1>
-  <p class="updated">Last updated: July 15, 2026</p>
+  <p class="updated">Last updated: October 27, 2026</p>
 
-  <p>This Privacy Policy describes how the app <strong>Guru Kripahi Kevalam</strong>
-  (also known as "Lalu-Chotopushu", "the App") collects, uses, and protects your
+  <p>This Privacy Policy describes how the app <strong>RadhaNaam SudhaRasam</strong>
+  (also known as "Guru Kripahi Kevalam" or "Lalu-Chotopushu"; "the App") collects, uses, and protects your
   information. The App is a naam-jap / prayer-counting application.</p>
 
   <h2>Information We Collect</h2>
   <ul>
-    <li><strong>Account information</strong> — if you sign in with Google or Zoho,
-      we receive your name, email address, and profile picture from that provider.</li>
-    <li><strong>Usage data</strong> — jap counts, targets, and streak history you
-      create within the App, stored so your progress can sync across devices.</li>
-    <li><strong>Device permissions</strong> — the App may request notification and
-      battery-optimization permissions to deliver reminders; it does not access your
-      contacts, camera, or location unless a specific feature you enable requires it.</li>
+    <li><strong>Account information</strong> — when you sign in with Google (or Zoho), we receive your name,
+      email address, and profile picture from that provider.</li>
+    <li><strong>Jap and usage data</strong> — jap counts, targets, streaks, history, reading and listening time,
+      settings and dedications you create in the App, stored so your progress can sync across devices.</li>
+    <li><strong>Approximate/precise location (optional)</strong> — only if you turn on the "GPS Location" toggle.
+      We use your coordinates to calculate sunrise, sunset and related prayer times, and save them with your
+      settings. You can turn this off at any time; the App never reads location in the background.</li>
+    <li><strong>Notifications</strong> — if you enable reminders, the App uses notification permission and a
+      device push token (Firebase Cloud Messaging) to deliver them.</li>
+    <li><strong>Leaderboard (optional)</strong> — if you opt in, your display name and jap totals are visible
+      to other signed-in users. You can opt out in Settings.</li>
+    <li><strong>Feedback you send</strong> — messages, and the name/phone/email you choose to include.</li>
+    <li><strong>Google Drive backups (optional)</strong> — see below.</li>
   </ul>
+
+  <h2>Google Drive access</h2>
+  <p>If you tap "Allow Google Drive", the App requests the <code>drive.file</code> permission, which lets it
+  create and update <em>only the backup file the App itself creates</em> in your Drive. It cannot see or open any
+  other file in your Drive. To make daily backups work, a Google refresh token is stored securely on our server
+  (Firebase). We revoke this token when you delete your account, and you can also remove access any time at
+  <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</p>
+  <p>The App's use and transfer of information received from Google APIs adheres to the
+  <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>,
+  including the Limited Use requirements.</p>
 
   <h2>How We Use Your Information</h2>
   <ul>
     <li>To sync and back up your jap counts and settings across devices.</li>
-    <li>To send you optional reminder notifications.</li>
-    <li>To operate account sign-in and export features you request.</li>
+    <li>To show sun-based times when you enable GPS Location.</li>
+    <li>To send optional reminder notifications.</li>
+    <li>To operate sign-in, leaderboard (if you opt in), and backup/export features you request.</li>
   </ul>
-  <p>We do not sell your personal information to third parties.</p>
+  <p>We do not sell your personal information, and we do not use it for advertising.</p>
 
-  <h2>Data Storage</h2>
-  <p>Your data is stored using Firebase (Google Cloud) services. You may export
-  or delete your data at any time from within the App's settings.</p>
+  <h2>Data Storage and Security</h2>
+  <p>Your data is stored using Firebase (Google Cloud) services and is encrypted in transit.
+  Only you (and the app developer for support and maintenance) can access your account data.</p>
 
   <h2>Third-Party Services</h2>
-  <p>The App uses Google Sign-In and, optionally, Zoho Sign-In for authentication.
-  These providers have their own privacy policies governing the data they process.</p>
+  <p>The App uses Google Sign-In, Firebase (authentication, database, cloud functions, push messaging),
+  Google Drive (only if you enable it) and, optionally, Zoho Sign-In. These providers have their own
+  privacy policies.</p>
 
-  <h2>Your Choices</h2>
+  <h2>Your Choices and Deleting Your Data</h2>
   <ul>
-    <li>You can use the App without signing in ("ghost mode" limitations may apply).</li>
-    <li>You can export your data at any time.</li>
-    <li>You can request deletion of your account and associated data by contacting us.</li>
+    <li>You can use the App without signing in with limited features.</li>
+    <li>You can export your data any time with "Download Backup" in Settings.</li>
+    <li><strong>Delete your account and data:</strong> in the App open <em>Settings → Cloud Sync &amp; Backup →
+      Delete My Account &amp; Data</em>. This permanently removes your account, jap history, settings,
+      leaderboard entry, feedback messages and stored Drive token from our servers.</li>
+    <li>If you cannot open the App, request deletion at
+      <a href="delete-account.html">delete-account.html</a> or email us (below). We complete requests within 30 days.</li>
+    <li>A backup file already saved in your own Google Drive stays in your Drive; you can delete it there.</li>
   </ul>
+
+  <h2>Children</h2>
+  <p>The App is not directed to children under 13 and we do not knowingly collect their personal information.</p>
 
   <h2>Contact</h2>
   <p>Questions about this policy can be sent to

@@ -11664,6 +11664,32 @@ async function _offerDriveAfterCloudPull(uid) {
   } catch (_e) {}
 }
 
+// ── Native Google sign-in wrapper (handles devices without Credential Manager) ──
+// Newer @capacitor-firebase/authentication versions sign in through Android's
+// Credential Manager, which some phones (old Play services / OEM builds) lack.
+function _isCredMgrUnsupported(e) {
+  const m = String((e && (e.message || e.code)) || e || "").toLowerCase();
+  return m.includes("credential manager") || m.includes("credentialmanager") ||
+         m.includes("no provider dependencies") || m.includes("getcredentialunsupported");
+}
+async function _nativeGoogleSignIn(plugin, opts) {
+  try {
+    return await plugin.signInWithGoogle(opts);
+  } catch (e) {
+    if (!_isCredMgrUnsupported(e)) throw e;
+    console.warn("Credential Manager unavailable, retrying with legacy Google Sign-In:", e);
+    try {
+      // Ignored by plugin versions that don't have this option.
+      return await plugin.signInWithGoogle(Object.assign({}, opts, { useCredentialManager: false }));
+    } catch (e2) {
+      const err = new Error("Google sign-in isn't supported on this device yet. Please update Google Play services and the Play Store, or use Email sign-in below.");
+      err.credMgr = true;
+      err.original = e2;
+      throw err;
+    }
+  }
+}
+
 // ── Single "Sign in with Google" button ──
 async function fbSignInGoogle() {
   if (!fbInit()) {
@@ -11687,7 +11713,7 @@ async function fbSignInGoogle() {
       // Forget the last-used Google account so Android shows the full account
       // chooser (all saved accounts + "Add another account") instead of auto-picking.
       try { await FirebaseAuthentication.signOut(); } catch (_e) {}
-      const result = await FirebaseAuthentication.signInWithGoogle({
+      const result = await _nativeGoogleSignIn(FirebaseAuthentication, {
         scopes: ["https://www.googleapis.com/auth/drive.file"],
       });
       const idToken = result && result.credential && result.credential.idToken;
@@ -11710,8 +11736,12 @@ async function fbSignInGoogle() {
       console.error("Native Google sign-in failed:", e);
       const el = document.getElementById("fbErr");
       if (el) {
-        el.textContent = "Google sign-in failed: " + (e && e.message ? e.message : e);
-        setTimeout(() => (el.textContent = ""), 8000);
+        el.textContent = (e && e.credMgr) ? e.message : "Google sign-in failed: " + (e && e.message ? e.message : e);
+        setTimeout(() => (el.textContent = ""), e && e.credMgr ? 15000 : 8000);
+      }
+      if (e && e.credMgr) {
+        const sec = document.querySelector(".fb-email-section");
+        if (sec) sec.open = true;   // show the email option right away
       }
     }
     return;
@@ -12084,7 +12114,7 @@ async function connectDriveAccess() {
     if (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
       const { FirebaseAuthentication } = window.Capacitor.Plugins;
       try { await FirebaseAuthentication.signOut(); } catch (_e) {}
-      const r = await FirebaseAuthentication.signInWithGoogle({
+      const r = await _nativeGoogleSignIn(FirebaseAuthentication, {
         scopes: ["https://www.googleapis.com/auth/drive.file"],
       });
       const code = r && r.credential && r.credential.serverAuthCode;
@@ -12191,7 +12221,7 @@ async function driveBackupNow() {
       if (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
         const { FirebaseAuthentication } = window.Capacitor.Plugins;
         try { await FirebaseAuthentication.signOut(); } catch (_e) {}
-        const signInResult = await FirebaseAuthentication.signInWithGoogle({
+        const signInResult = await _nativeGoogleSignIn(FirebaseAuthentication, {
           scopes: ["https://www.googleapis.com/auth/drive.file"],
         });
         const serverAuthCode = signInResult && signInResult.credential && signInResult.credential.serverAuthCode;

@@ -31691,8 +31691,13 @@ async function checkForUpdateAvailable() {
   }
 
   if (RJ_PLAY_BUILD) {
-    statusEl.textContent = "Updates are delivered through Google Play 🙏";
-    if (cardEl) cardEl.classList.remove("update-available");
+    // Ask Google Play (In-App Updates API) whether a newer version is live.
+    // Needs the @capawesome/capacitor-app-update plugin in the build; without it
+    // we fall back to the old static message.
+    if (!(await _rjPlayUpdateCheck(true))) {
+      statusEl.textContent = "Updates are delivered through Google Play 🙏";
+      if (cardEl) cardEl.classList.remove("update-available");
+    }
     return;
   }
   if (!Http || !localVersion) return;
@@ -31765,6 +31770,172 @@ async function checkForUpdateAvailable() {
     if (cached) applyResult(cached.remoteTag); // stale-but-useful beats nothing
   }
 }
+
+// ═══════════════════════════════════════════════════════
+// GOOGLE PLAY IN-APP UPDATES (Play build only)
+// Uses the @capawesome/capacitor-app-update plugin (Play Core In-App Updates API).
+// - On app open / return to app: asks Play if a newer version is live.
+// - If yes: the Update card glows and a FLEXIBLE update starts automatically
+//   (Google shows its own small "Update" prompt; the download then runs in the
+//   background while the app keeps working). Auto-prompt is limited to once per
+//   12 hours so it never nags; tapping the card always works.
+// - When the download finishes: the card says "Tap to restart & install".
+// Only works for installs that came from Google Play.
+// ═══════════════════════════════════════════════════════
+const _RJ_UPD = { UNKNOWN: 0, NOT_AVAILABLE: 1, AVAILABLE: 2, IN_PROGRESS: 3, DOWNLOADED: 11 };
+const _RJ_UPD_PROMPT_KEY = "rjPlayUpdateLastPrompt";
+const _RJ_UPD_PROMPT_MS = 12 * 60 * 60 * 1000;
+window._rjPlayUpd = window._rjPlayUpd || { downloaded: false, available: false, listener: false, lastCheck: 0 };
+
+function _rjPlayPlugin() {
+  const Cap = window.Capacitor;
+  return Cap && Cap.Plugins && Cap.Plugins.AppUpdate ? Cap.Plugins.AppUpdate : null;
+}
+
+function _rjPlayUpdateUI(state, text) {
+  const statusEl = document.getElementById("appUpdateStatus");
+  const iconEl = document.getElementById("appUpdateIcon");
+  const cardEl = document.getElementById("appUpdateCard");
+  const progWrap = document.getElementById("appUpdateProgWrap");
+  if (statusEl && text) statusEl.textContent = text;
+  if (state === "glow") {
+    if (iconEl) iconEl.textContent = "⬆️";
+    if (cardEl) cardEl.classList.add("update-available");
+  } else if (state === "downloading") {
+    if (iconEl) iconEl.textContent = "⏳";
+    if (cardEl) cardEl.classList.add("update-available");
+  } else {
+    if (iconEl) iconEl.textContent = "🔄";
+    if (cardEl) cardEl.classList.remove("update-available");
+    if (progWrap) progWrap.style.display = "none";
+  }
+}
+
+function _rjPlayAttachListener(P) {
+  if (window._rjPlayUpd.listener || !P || typeof P.addListener !== "function") return;
+  window._rjPlayUpd.listener = true;
+  try {
+    P.addListener("onFlexibleUpdateStateChange", (st) => {
+      const progWrap = document.getElementById("appUpdateProgWrap");
+      const progBar = document.getElementById("appUpdateProgBar");
+      const status = st && st.installStatus;
+      if (status === _RJ_UPD.DOWNLOADED) {
+        window._rjPlayUpd.downloaded = true;
+        if (progWrap) progWrap.style.display = "none";
+        _rjPlayUpdateUI("glow", "Update downloaded — tap here to restart & install 🙏");
+        if (typeof toast === "function") toast("Update ready — open Settings and tap Update App to install");
+      } else if (status === 2) {
+        // DOWNLOADING
+        const tot = st.totalBytesToDownload || 0;
+        const got = st.bytesDownloaded || 0;
+        if (progWrap) progWrap.style.display = "block";
+        if (progBar && tot > 0) progBar.style.width = Math.min(100, Math.round((got / tot) * 100)) + "%";
+        _rjPlayUpdateUI("downloading", "Downloading update… 🙏");
+      } else if (status === 5 || status === 6) {
+        // FAILED / CANCELED — back to a plain "update available" state
+        if (progWrap) progWrap.style.display = "none";
+        _rjPlayUpdateUI("glow", "Update available — tap to update 🙏");
+      }
+    });
+  } catch (e) { console.warn("AppUpdate listener failed:", e); }
+}
+
+// Returns true if the Play check ran (so the caller skips the static fallback text).
+async function _rjPlayUpdateCheck(auto) {
+  const P = _rjPlayPlugin();
+  if (!P || typeof P.getAppUpdateInfo !== "function") return false;
+  _rjPlayAttachListener(P);
+  let info;
+  try {
+    info = await P.getAppUpdateInfo();
+  } catch (e) {
+    // Not installed from Play (sideloaded/debug) or Play unavailable — stay quiet.
+    console.warn("Play update check failed (non-fatal):", e);
+    return false;
+  }
+  window._rjPlayUpd.lastCheck = Date.now();
+  const avail = info && info.updateAvailability;
+
+  if (info && info.installStatus === _RJ_UPD.DOWNLOADED) {
+    window._rjPlayUpd.downloaded = true;
+    _rjPlayUpdateUI("glow", "Update downloaded — tap here to restart & install 🙏");
+    return true;
+  }
+  if (avail === _RJ_UPD.AVAILABLE || avail === _RJ_UPD.IN_PROGRESS) {
+    window._rjPlayUpd.available = true;
+    const v = info.availableVersionCode ? " (build " + info.availableVersionCode + ")" : "";
+    _rjPlayUpdateUI("glow", "Update available" + v + " — tap to update 🙏");
+    if (auto && avail === _RJ_UPD.AVAILABLE && info.flexibleUpdateAllowed) {
+      let last = 0;
+      try { last = parseInt(localStorage.getItem(_RJ_UPD_PROMPT_KEY) || "0", 10) || 0; } catch (_) {}
+      if (Date.now() - last > _RJ_UPD_PROMPT_MS) {
+        try { localStorage.setItem(_RJ_UPD_PROMPT_KEY, String(Date.now())); } catch (_) {}
+        try { await P.startFlexibleUpdate(); } catch (e) { console.warn("startFlexibleUpdate:", e); }
+      }
+    }
+    return true;
+  }
+  window._rjPlayUpd.available = false;
+  _rjPlayUpdateUI("none", "You're up to date 🙏");
+  return true;
+}
+
+// Card tap in the Play build.
+async function _rjPlayUpdateTap() {
+  const statusEl = document.getElementById("appUpdateStatus");
+  const P = _rjPlayPlugin();
+  if (!P || typeof P.getAppUpdateInfo !== "function") {
+    // Plugin not in this build — send the user to the Play Store listing instead.
+    try { window.open("https://play.google.com/store/apps/details?id=app.vercel.radharadharadha.capacitor", "_blank"); } catch (_) {}
+    if (statusEl) statusEl.textContent = "Please update from the Google Play Store 🙏";
+    return;
+  }
+  _rjPlayAttachListener(P);
+  if (window._rjPlayUpd.downloaded) {
+    try { await P.completeFlexibleUpdate(); } catch (e) { console.warn("completeFlexibleUpdate:", e); }
+    return;
+  }
+  let info;
+  try {
+    info = await P.getAppUpdateInfo();
+  } catch (e) {
+    if (statusEl) statusEl.textContent = "Couldn't reach Google Play. Open the Play Store app to update 🙏";
+    return;
+  }
+  if (info.installStatus === _RJ_UPD.DOWNLOADED) {
+    window._rjPlayUpd.downloaded = true;
+    try { await P.completeFlexibleUpdate(); } catch (e) { console.warn("completeFlexibleUpdate:", e); }
+    return;
+  }
+  if (info.updateAvailability === _RJ_UPD.AVAILABLE || info.updateAvailability === _RJ_UPD.IN_PROGRESS) {
+    try {
+      if (info.flexibleUpdateAllowed) {
+        _rjPlayUpdateUI("downloading", "Starting update… 🙏");
+        await P.startFlexibleUpdate();
+      } else if (info.immediateUpdateAllowed) {
+        await P.performImmediateUpdate();
+      } else if (typeof P.openAppStore === "function") {
+        await P.openAppStore();
+      }
+    } catch (e) {
+      console.warn("Play update start failed:", e);
+      _rjPlayUpdateUI("glow", "Update available — tap to try again 🙏");
+    }
+    return;
+  }
+  _rjPlayUpdateUI("none", "You're up to date 🙏");
+}
+
+// Re-check when the app comes back to the foreground (at most every 30 min,
+// or immediately if a downloaded update is waiting to be installed).
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden || typeof RJ_PLAY_BUILD === "undefined" || !RJ_PLAY_BUILD) return;
+  const u = window._rjPlayUpd;
+  if (!u) return;
+  if (u.downloaded || Date.now() - (u.lastCheck || 0) > 30 * 60 * 1000) {
+    _rjPlayUpdateCheck(true);
+  }
+});
 
 // Jumps straight to Android's "install unknown apps" permission screen for
 // this app, via the same custom PowerPermissions native plugin already
@@ -31896,7 +32067,7 @@ async function checkAppUpdate() {
   // Gradle/AGP toolchain than this project has and fails to build —
   // that's why we're using this instead.)
   if (RJ_PLAY_BUILD) {
-    if (statusEl) statusEl.textContent = "Please update from the Google Play Store 🙏";
+    await _rjPlayUpdateTap();
     return;
   }
   const Filesystem = Cap.Plugins && Cap.Plugins.Filesystem;

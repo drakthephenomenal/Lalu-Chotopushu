@@ -376,6 +376,7 @@
       <img class="cm-wm" id="bgCM" src="./iskcon_chaitanya/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async">
       <img class="iskcon-acharya-wm" id="bgIskconAcharya" src="./iskcon_acharya/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async">
       <img class="iskcon-gurudev-wm" id="bgIskconGurudev" src="./iskcon_gurudev/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async">
+      <img class="gopeshwar-wm" id="bgGopeshwar" src="./gopeshwar_mahadev/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <div class="mf" id="mf">
         <div class="mf-line1">Radha Ballabh</div>
         <div class="mf-line2">Sri Harivansh</div>
@@ -2502,7 +2503,7 @@
 
     <!-- RadhaNaam SudhaRasam Daily Target -->
     <div class="non-gaudiya-setting target-row-card" style="border-color:rgba(255,215,0,0.38);background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));">
-      <div class="target-row-title" style="color:rgba(255,215,0,0.9);">📿 RadhaNaam SudhaRasam Daily Target</div>
+      <div class="target-row-title" style="color:rgba(255,215,0,0.9);">📿 Radha Naam Daily Target</div>
       <div class="target-row-inputs">
         <div class="target-input-group"><input type="number" class="fi" id="dtIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dt')"><span class="fu">jap</span></div>
         <div class="target-input-group"><input type="number" class="fi" id="dtMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dt')"><span class="fu" style="color:var(--gold);">malas</span></div>
@@ -2630,6 +2631,26 @@
         </label>
         <button class="photo-reset-btn" onclick="resetPhoto('gurudev')">↩ Default</button>
         <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('gurudev', 0)">Blank</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Jap Display Photo: Gopeshwar Mahadev mode — shown only while Gopeshwar Mahadev mode is on -->
+  <div class="sc photo-settings-card kv-only-setting" style="flex-direction:column;">
+    <div class="photo-settings-title">🕉️ Gopeshwar Mahadev Jap Display Photo</div>
+    <div style="font-size:10px;color:rgba(255,255,255,0.4);line-height:1.4;margin-bottom:14px;">
+      Choose the photo that appears at the top of the Jap screen in Gopeshwar Mahadev mode. Pick from the repository collection or upload your own.
+    </div>
+    <div class="photo-row">
+      <div class="photo-row-label">🕉️ Gopeshwar Mahadev</div>
+      <div class="photo-thumb-strip" id="photoStripGopeshwar"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('gopeshwar', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('gopeshwar')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('gopeshwar', 0)">Blank</button>
       </div>
     </div>
   </div>

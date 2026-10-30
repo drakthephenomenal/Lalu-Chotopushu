@@ -736,7 +736,7 @@ window.sendDevBroadcast = async function () {
 // ═══════════════════════════════════════════════════════
 // ── Default daily targets for NEW users & guests (v364) ──
 // Radha 108 malas, Radha Vallabh 11 malas, Krishnay Vasudevay 12 count (NOT malas),
-// Kaam Vijay 1 mala, 28 Names 36 cycles. Values are in jap counts (mala = 108).
+// Kaam Vijay 1 mala, 28 Names 36 cycles, Lifetime target 13 crore. Values are in jap counts (mala = 108).
 // Applied ONLY to brand-new accounts / guests that have no targets and no history,
 // so existing users' saved targets (even 0) are never touched. Users can edit all of them.
 const NEW_USER_DEFAULT_TARGETS = {
@@ -745,6 +745,7 @@ const NEW_USER_DEFAULT_TARGETS = {
   dtKV: 12,
   dtKaam: 1 * 108,
   dt28Cycles: 36,
+  lt: 13 * 10000000, // Lifetime target: 13 crore
 };
 function applyNewUserDefaultTargets() {
   const S = App.S;
@@ -876,6 +877,7 @@ const App = {
     bgCM: 1,
     bgIskconAcharya: 1,
     bgIskconGurudev: 1,
+    bgGopeshwar: 1,
     // ── Per-device Jap display layout (text size + per-photo position/size) ──
     // Keyed by platform ("android" | "ios-web" | "android-web" | "web"),
     // NOT by a random per-install id, so the same physical iPad/phone gets
@@ -1343,6 +1345,7 @@ const App = {
     if (this.S.bgIskconAcharya === undefined) this.S.bgIskconAcharya = 1;
     if (this.S.bgIskconGurudev === undefined) this.S.bgIskconGurudev = 1;
     if (this.S.bgCM === undefined) this.S.bgCM = 1;
+    if (this.S.bgGopeshwar === undefined) this.S.bgGopeshwar = 1;
     if (!this.S.historyHK[this.S.tk]) this.S.historyHK[this.S.tk] = 0;
     if (!this.S.timerHistoryHK[this.S.tk]) this.S.timerHistoryHK[this.S.tk] = 0;
     // Load malaLogHK — only keep if today has HK jap
@@ -13637,6 +13640,7 @@ async function fbPushFull() {
     bgIskconAcharya: App.S.bgIskconAcharya ?? 1,
     bgIskconGurudev: App.S.bgIskconGurudev ?? 1,
     bgCM: App.S.bgCM ?? 1,
+    bgGopeshwar: App.S.bgGopeshwar ?? 1,
     // Screen Time was previously never pushed here — it survived on-device
     // (IndexedDB) but reset to 0 on a fresh install / other device, making
     // Efficiency look inverted (Actual Jap Time synced, Screen Time didn't).
@@ -14143,6 +14147,7 @@ function fbApplyRemote(d) {
   if (d.bgIskconAcharya !== undefined) App.S.bgIskconAcharya = d.bgIskconAcharya;
   if (d.bgIskconGurudev !== undefined) App.S.bgIskconGurudev = d.bgIskconGurudev;
   if (d.bgCM !== undefined) App.S.bgCM = d.bgCM;
+  if (d.bgGopeshwar !== undefined) App.S.bgGopeshwar = d.bgGopeshwar;
 
   // Old saves wrote both startDate AND endDate to occasions. Remove the endDate entry
 
@@ -30338,12 +30343,18 @@ const PHOTO_CONFIG = {
   // (see applyBgPhotos below). Built-in choices live in /iskcon_acharya/1.jpg,
   // /iskcon_gurudev/1.jpg, etc. — drop numbered images there to add more.
   iskconAcharya: { id: 'bgIskconAcharya', stateKey: 'bgIskconAcharya', folder: 'iskcon_acharya', maxNum: 9, fallback: 'iskcon-acharya.png' },
-  iskconGurudev: { id: 'bgIskconGurudev', stateKey: 'bgIskconGurudev', folder: 'iskcon_gurudev', maxNum: 9, fallback: 'iskcon-gurudev.png' }
+  iskconGurudev: { id: 'bgIskconGurudev', stateKey: 'bgIskconGurudev', folder: 'iskcon_gurudev', maxNum: 9, fallback: 'iskcon-gurudev.png' },
+  // Gopeshwar Mahadev (Trahimam) mode hero photo — top-center on the Jap screen,
+  // same slot Radha Vallabh occupies in default mode. Only shown while Gopeshwar
+  // Mahadev mode is on (see applyBgPhotos). Built-in choices live in
+  // /gopeshwar_mahadev/1.jpg, 2.jpg, etc. — drop numbered images there to add more.
+  gopeshwar: { id: 'bgGopeshwar', stateKey: 'bgGopeshwar', folder: 'gopeshwar_mahadev', maxNum: 9, fallback: 'gopeshwar_mahadev/1.png' }
 };
 
 const PHOTO_STRIP_IDS = {
   rv: 'photoStripRV', hitju: 'photoStripHitju', gurudev: 'photoStripGurudev', bank: 'photoStripBank',
-  cm: 'photoStripCM', iskconAcharya: 'photoStripIskconAcharya', iskconGurudev: 'photoStripIskconGurudev'
+  cm: 'photoStripCM', iskconAcharya: 'photoStripIskconAcharya', iskconGurudev: 'photoStripIskconGurudev',
+  gopeshwar: 'photoStripGopeshwar'
 };
 
 window.renderPhotoPickers = async function() {
@@ -30503,6 +30514,12 @@ window.applyBgPhotos = async function() {
       continue;
     }
 
+    // Gopeshwar Mahadev hero photo only exists while that mode is on — fully hidden otherwise.
+    if (key === 'gopeshwar' && !(App.S && App.S.trahimamMode)) {
+      el.style.display = 'none';
+      continue;
+    }
+
     let val = App.S[conf.stateKey];
     if (val === undefined) val = 1;
     
@@ -30555,7 +30572,7 @@ window.applyBgPhotos = async function() {
 // the top-right corner of the Jap tap area (#tz): tap once to enter edit
 // mode, tap again to save the layout and exit.
 // ==========================================
-const JAP_PHOTO_KEYS = ['rv', 'hitju', 'gurudev', 'cm', 'iskconAcharya', 'iskconGurudev'];
+const JAP_PHOTO_KEYS = ['rv', 'hitju', 'gurudev', 'cm', 'iskconAcharya', 'iskconGurudev', 'gopeshwar'];
 const JAP_PHOTO_TRANSFORM_STORE_KEY = 'japPhotoTransforms';
 
 function loadPhotoTransforms() {
@@ -30579,7 +30596,7 @@ window.applyPhotoTransform = function(key) {
   const el = document.getElementById(conf.id);
   if (!el) return;
   const t = Object.assign({ x: 0, y: 0, scale: 1 }, window._japPhotoTransforms[key]);
-  const base = (key === 'rv' || key === 'cm') ? 'translateX(-50%) ' : '';
+  const base = (key === 'rv' || key === 'cm' || key === 'gopeshwar') ? 'translateX(-50%) ' : '';
   el.style.transform = `${base}translate(${t.x}px, ${t.y}px) scale(${t.scale})`;
 };
 window.applyAllPhotoTransforms = function() {
@@ -30714,7 +30731,7 @@ window.togglePhotoEditMode = function(e) {
 
 // ✨ MALA GLOW FLASH — all deity images briefly show fully with huge glow, synced
 window.triggerMalaGlowFlash = function() {
-  const ids = ['bgRadhaVallabh', 'bgHitju', 'bgGurudev', 'bgCM', 'bgIskconAcharya', 'bgIskconGurudev'];
+  const ids = ['bgRadhaVallabh', 'bgHitju', 'bgGurudev', 'bgCM', 'bgIskconAcharya', 'bgIskconGurudev', 'bgGopeshwar'];
   const els = ids.map(id => document.getElementById(id)).filter(el => el && el.style.display !== 'none');
   if (!els.length) return;
 

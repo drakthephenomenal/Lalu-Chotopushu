@@ -3248,6 +3248,22 @@ body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !import
   animation: divineBreathGlowStrong 10s ease-in-out infinite;
 }
 
+/* Gopeshwar Mahadev — Jap hero for Gopeshwar Mahadev (Trahimam) mode, top-center,
+   same slot as Radha Vallabh in default mode. Visibility is controlled from JS
+   (applyBgPhotos) so it respects the per-photo Blank option. */
+.tz .gopeshwar-wm{
+  position:absolute; top:var(--rv-top); left:50%; transform:translateX(-50%);
+  width:var(--rv-w); height:auto; max-height:78%;
+  object-fit:contain;
+  opacity:.6;
+  filter:drop-shadow(0 0 22px rgba(245,209,122,.45));
+  pointer-events:none; user-select:none; z-index:1;
+  display:none;
+  animation: divineBreathGlowStrong 10s ease-in-out infinite;
+}
+/* In Gopeshwar Mahadev mode the top slot belongs to the Gopeshwar photo, not Radha Vallabh */
+body.trahimam-mode .tz .rv-wm{display:none !important;animation:none !important;}
+
 /* Gaudiya/ISKCON Acharya — bottom-left, same plane as Hitju in default mode.
    Visibility is controlled from JS (applyBgPhotos), not CSS, since it must
    also respect the per-photo Blank option — so no display:none!important here. */

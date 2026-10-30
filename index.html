@@ -377,6 +377,8 @@
       <img class="iskcon-acharya-wm" id="bgIskconAcharya" src="./iskcon_acharya/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async">
       <img class="iskcon-gurudev-wm" id="bgIskconGurudev" src="./iskcon_gurudev/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async">
       <img class="gopeshwar-wm" id="bgGopeshwar" src="./gopeshwar_mahadev/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img class="gopeshwar-guru-wm" id="bgGopeshwarGuru" src="./gopeshwar_guru/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img class="gopeshwar-acharya-wm" id="bgGopeshwarAcharya" src="./gopeshwar_acharya/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <div class="mf" id="mf">
         <div class="mf-line1">Radha Ballabh</div>
         <div class="mf-line2">Sri Harivansh</div>
@@ -2637,9 +2639,9 @@
 
   <!-- Jap Display Photo: Gopeshwar Mahadev mode — shown only while Gopeshwar Mahadev mode is on -->
   <div class="sc photo-settings-card kv-only-setting" style="flex-direction:column;">
-    <div class="photo-settings-title">🕉️ Gopeshwar Mahadev Jap Display Photo</div>
+    <div class="photo-settings-title">🕉️ Gopeshwar Mahadev Jap Display Photos</div>
     <div style="font-size:10px;color:rgba(255,255,255,0.4);line-height:1.4;margin-bottom:14px;">
-      Choose the photo that appears at the top of the Jap screen in Gopeshwar Mahadev mode. Pick from the repository collection or upload your own.
+      Choose the photos that appear on the Jap screen in Gopeshwar Mahadev mode (top: Mahadev, bottom: Guru and Acharya). Pick from the repository collection or upload your own.
     </div>
     <div class="photo-row">
       <div class="photo-row-label">🕉️ Gopeshwar Mahadev</div>
@@ -2651,6 +2653,32 @@
         </label>
         <button class="photo-reset-btn" onclick="resetPhoto('gopeshwar')">↩ Default</button>
         <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('gopeshwar', 0)">Blank</button>
+      </div>
+    </div>
+    <div class="photo-row" style="margin-top:14px;">
+      <div class="photo-row-label">🙏 Guru (left)</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.35);margin:-4px 0 8px;">Appears bottom-left on the Jap screen while Gopeshwar Mahadev mode is on.</div>
+      <div class="photo-thumb-strip" id="photoStripGopeshwarGuru"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('gopeshwarGuru', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('gopeshwarGuru')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('gopeshwarGuru', 0)">Blank</button>
+      </div>
+    </div>
+    <div class="photo-row" style="margin-top:14px;">
+      <div class="photo-row-label">🙏 Acharya (right)</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.35);margin:-4px 0 8px;">Appears bottom-right on the Jap screen while Gopeshwar Mahadev mode is on.</div>
+      <div class="photo-thumb-strip" id="photoStripGopeshwarAcharya"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('gopeshwarAcharya', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('gopeshwarAcharya')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('gopeshwarAcharya', 0)">Blank</button>
       </div>
     </div>
   </div>

@@ -878,6 +878,8 @@ const App = {
     bgIskconAcharya: 1,
     bgIskconGurudev: 1,
     bgGopeshwar: 1,
+    bgGopeshwarGuru: 1,
+    bgGopeshwarAcharya: 1,
     // ── Per-device Jap display layout (text size + per-photo position/size) ──
     // Keyed by platform ("android" | "ios-web" | "android-web" | "web"),
     // NOT by a random per-install id, so the same physical iPad/phone gets
@@ -1346,6 +1348,8 @@ const App = {
     if (this.S.bgIskconGurudev === undefined) this.S.bgIskconGurudev = 1;
     if (this.S.bgCM === undefined) this.S.bgCM = 1;
     if (this.S.bgGopeshwar === undefined) this.S.bgGopeshwar = 1;
+    if (this.S.bgGopeshwarGuru === undefined) this.S.bgGopeshwarGuru = 1;
+    if (this.S.bgGopeshwarAcharya === undefined) this.S.bgGopeshwarAcharya = 1;
     if (!this.S.historyHK[this.S.tk]) this.S.historyHK[this.S.tk] = 0;
     if (!this.S.timerHistoryHK[this.S.tk]) this.S.timerHistoryHK[this.S.tk] = 0;
     // Load malaLogHK — only keep if today has HK jap
@@ -13641,6 +13645,8 @@ async function fbPushFull() {
     bgIskconGurudev: App.S.bgIskconGurudev ?? 1,
     bgCM: App.S.bgCM ?? 1,
     bgGopeshwar: App.S.bgGopeshwar ?? 1,
+    bgGopeshwarGuru: App.S.bgGopeshwarGuru ?? 1,
+    bgGopeshwarAcharya: App.S.bgGopeshwarAcharya ?? 1,
     // Screen Time was previously never pushed here — it survived on-device
     // (IndexedDB) but reset to 0 on a fresh install / other device, making
     // Efficiency look inverted (Actual Jap Time synced, Screen Time didn't).
@@ -14148,6 +14154,8 @@ function fbApplyRemote(d) {
   if (d.bgIskconGurudev !== undefined) App.S.bgIskconGurudev = d.bgIskconGurudev;
   if (d.bgCM !== undefined) App.S.bgCM = d.bgCM;
   if (d.bgGopeshwar !== undefined) App.S.bgGopeshwar = d.bgGopeshwar;
+  if (d.bgGopeshwarGuru !== undefined) App.S.bgGopeshwarGuru = d.bgGopeshwarGuru;
+  if (d.bgGopeshwarAcharya !== undefined) App.S.bgGopeshwarAcharya = d.bgGopeshwarAcharya;
 
   // Old saves wrote both startDate AND endDate to occasions. Remove the endDate entry
 
@@ -30348,13 +30356,18 @@ const PHOTO_CONFIG = {
   // same slot Radha Vallabh occupies in default mode. Only shown while Gopeshwar
   // Mahadev mode is on (see applyBgPhotos). Built-in choices live in
   // /gopeshwar_mahadev/1.jpg, 2.jpg, etc. — drop numbered images there to add more.
-  gopeshwar: { id: 'bgGopeshwar', stateKey: 'bgGopeshwar', folder: 'gopeshwar_mahadev', maxNum: 9, fallback: 'gopeshwar_mahadev/1.png' }
+  gopeshwar: { id: 'bgGopeshwar', stateKey: 'bgGopeshwar', folder: 'gopeshwar_mahadev', maxNum: 9, fallback: 'gopeshwar_mahadev/1.png' },
+  // Gopeshwar Mahadev mode Guru (bottom-left) & Acharya (bottom-right) — separate
+  // from the normal-mode Hitju/Gurudev photos. Built-in choices live in
+  // /gopeshwar_guru/1.jpg and /gopeshwar_acharya/1.jpg, etc.
+  gopeshwarGuru:    { id: 'bgGopeshwarGuru',    stateKey: 'bgGopeshwarGuru',    folder: 'gopeshwar_guru',    maxNum: 9, fallback: 'gopeshwar_guru/1.png' },
+  gopeshwarAcharya: { id: 'bgGopeshwarAcharya', stateKey: 'bgGopeshwarAcharya', folder: 'gopeshwar_acharya', maxNum: 9, fallback: 'gopeshwar_acharya/1.png' }
 };
 
 const PHOTO_STRIP_IDS = {
   rv: 'photoStripRV', hitju: 'photoStripHitju', gurudev: 'photoStripGurudev', bank: 'photoStripBank',
   cm: 'photoStripCM', iskconAcharya: 'photoStripIskconAcharya', iskconGurudev: 'photoStripIskconGurudev',
-  gopeshwar: 'photoStripGopeshwar'
+  gopeshwar: 'photoStripGopeshwar', gopeshwarGuru: 'photoStripGopeshwarGuru', gopeshwarAcharya: 'photoStripGopeshwarAcharya'
 };
 
 window.renderPhotoPickers = async function() {
@@ -30515,7 +30528,7 @@ window.applyBgPhotos = async function() {
     }
 
     // Gopeshwar Mahadev hero photo only exists while that mode is on — fully hidden otherwise.
-    if (key === 'gopeshwar' && !(App.S && App.S.trahimamMode)) {
+    if ((key === 'gopeshwar' || key === 'gopeshwarGuru' || key === 'gopeshwarAcharya') && !(App.S && App.S.trahimamMode)) {
       el.style.display = 'none';
       continue;
     }
@@ -30572,7 +30585,7 @@ window.applyBgPhotos = async function() {
 // the top-right corner of the Jap tap area (#tz): tap once to enter edit
 // mode, tap again to save the layout and exit.
 // ==========================================
-const JAP_PHOTO_KEYS = ['rv', 'hitju', 'gurudev', 'cm', 'iskconAcharya', 'iskconGurudev', 'gopeshwar'];
+const JAP_PHOTO_KEYS = ['rv', 'hitju', 'gurudev', 'cm', 'iskconAcharya', 'iskconGurudev', 'gopeshwar', 'gopeshwarGuru', 'gopeshwarAcharya'];
 const JAP_PHOTO_TRANSFORM_STORE_KEY = 'japPhotoTransforms';
 
 function loadPhotoTransforms() {
@@ -30731,7 +30744,7 @@ window.togglePhotoEditMode = function(e) {
 
 // ✨ MALA GLOW FLASH — all deity images briefly show fully with huge glow, synced
 window.triggerMalaGlowFlash = function() {
-  const ids = ['bgRadhaVallabh', 'bgHitju', 'bgGurudev', 'bgCM', 'bgIskconAcharya', 'bgIskconGurudev', 'bgGopeshwar'];
+  const ids = ['bgRadhaVallabh', 'bgHitju', 'bgGurudev', 'bgCM', 'bgIskconAcharya', 'bgIskconGurudev', 'bgGopeshwar', 'bgGopeshwarGuru', 'bgGopeshwarAcharya'];
   const els = ids.map(id => document.getElementById(id)).filter(el => el && el.style.display !== 'none');
   if (!els.length) return;
 

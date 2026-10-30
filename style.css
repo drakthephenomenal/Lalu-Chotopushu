@@ -3261,6 +3261,24 @@ body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !import
   display:none;
   animation: divineBreathGlowStrong 10s ease-in-out infinite;
 }
+/* Gopeshwar Mahadev mode Guru (bottom-left) & Acharya (bottom-right) — same plane as
+   Hitju/Gurudev in default mode. Visibility controlled from JS (applyBgPhotos). */
+.tz .gopeshwar-guru-wm,
+.tz .gopeshwar-acharya-wm{
+  position:absolute;
+  top: min(var(--rv-bottom), calc(100% - var(--side-w) * var(--rv-aspect)));
+  width:var(--side-w); height:auto;
+  opacity:.45;
+  filter:none;
+  pointer-events:none; user-select:none; z-index:1;
+  display:none;
+  animation: divineBreathGlow 10s ease-in-out infinite;
+}
+.tz .gopeshwar-guru-wm{left:8px;}
+.tz .gopeshwar-acharya-wm{right:8px;}
+/* Mahadev mode has its own Guru/Acharya, so hide the normal-mode Hitju/Gurudev */
+body.trahimam-mode .tz .hitju-wm,
+body.trahimam-mode .tz .gurudev-wm{display:none !important;animation:none !important;}
 /* In Gopeshwar Mahadev mode the top slot belongs to the Gopeshwar photo, not Radha Vallabh */
 body.trahimam-mode .tz .rv-wm{display:none !important;animation:none !important;}
 

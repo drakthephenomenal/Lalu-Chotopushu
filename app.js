@@ -24111,7 +24111,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["yga", "gva", "sga", "nrs", "ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "hcp", "gpa", "nka", "mdh", "mmb", "hvp", "ist", "isv", "gvn", "svk", "acv", "kjk", "vnm", "rkn", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11", "rmm", "svi", "dhi"];
+  const SINGLE_VIEW_IDS = ["yga", "gva", "sga", "nrs", "vth", "ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "hcp", "gpa", "nka", "mdh", "mmb", "hvp", "ist", "isv", "gvn", "svk", "acv", "kjk", "vnm", "rkn", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11", "rmm", "svi", "dhi"];
   // Sevak Vani / Bayalis Leela: an opened section is shown as ONE flat page (set by StotramSections.open).
   const _isFlatSection = window._stFlatSection === id;
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id) || _isFlatSection; // user-added (and repo flat/audio) stotrams + flat sections: one flat page
@@ -25982,6 +25982,8 @@ var _AUDIO_STOTRAMS = {
   sga: { prefix: "sga", timed: true, marks: [0], yt: "cGfZuvckaJs", url: "" },
   // Jay Nrisimha Shri Nrisimha (Bangla, with anuvad) — flat single page, YouTube audio
   nrs: { prefix: "nrs", timed: true, marks: [0], yt: "aw83W-y-0_A", url: "" },
+  // Ohe Vaishnava Thakura (Bhaktivinoda Thakura, Bangla) — flat single page, YouTube audio
+  vth: { prefix: "vth", timed: true, marks: [0], yt: "ufox0gJd2xM", url: "" },
   dkc: { prefix: "dkc" },
   // Sahaj Subhav Paryo Naval Kishori Ju Ko (Dhruvdas) — flat single page, two
   // YouTube versions. ytVoices feeds the usual voice button (Original / Version 2).

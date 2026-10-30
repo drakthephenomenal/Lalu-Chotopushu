@@ -1,4 +1,4 @@
-{
+{{
   "name": "radha-naam-jap",
   "version": "1.0.0",
   "private": true,
@@ -24,7 +24,8 @@
     "@capacitor/geolocation": "^8.0.0",
     "@capacitor/haptics": "^8.0.0",
     "@capacitor/local-notifications": "^8.0.0",
-    "@capacitor/share": "^8.0.0"
+    "@capacitor/share": "^8.0.0",
+    "@capawesome/capacitor-app-update": "^8.0.0"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",

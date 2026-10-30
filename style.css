@@ -3104,13 +3104,12 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
   filter:none;
   pointer-events:none; user-select:none; z-index:1;
 }
-/* Watery edge-fading & blending for custom photos */
+/* Custom (uploaded) photos now look exactly like repository photos: no oval
+   edge-fade mask, no screen blend, and no forced opacity/glow — each photo
+   slot's own class rule (opacity, glow) decides how it looks. */
 .tz img.custom-bg {
-  -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 75%);
-  mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 75%);
-  mix-blend-mode: screen;
-  opacity: 0.8 !important;
-  filter: drop-shadow(0 0 22px rgba(245,209,122,0.4)) !important;
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 
 /* ✨ MALA GLOW FLASH — all images surge to full brightness on mala completion */
@@ -3268,11 +3267,13 @@ body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !import
   position:absolute;
   top: min(var(--rv-bottom), calc(100% - var(--side-w) * var(--rv-aspect)));
   width:var(--side-w); height:auto;
-  opacity:.45;
-  filter:none;
+  object-fit:contain;
+  /* Same look as the Gopeshwar Mahadev hero photo above */
+  opacity:.6;
+  filter:drop-shadow(0 0 22px rgba(245,209,122,.45));
   pointer-events:none; user-select:none; z-index:1;
   display:none;
-  animation: divineBreathGlow 10s ease-in-out infinite;
+  animation: divineBreathGlowStrong 10s ease-in-out infinite;
 }
 .tz .gopeshwar-guru-wm{left:8px;}
 .tz .gopeshwar-acharya-wm{right:8px;}

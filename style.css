@@ -4342,3 +4342,48 @@ details.dd-kt>summary::after{content:' ▾';}
 .ms-lt-num{font-size:14px;font-weight:700;color:#fff;margin-top:3px;font-variant-numeric:tabular-nums;word-break:break-all;}
 .ms-lt-mala{font-size:9.5px;color:var(--td);margin-top:1px;}
 .ms-lt-sub{font-size:8.5px;opacity:.6;margin-top:3px;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+
+/* ═══ Haridashi Sampraday — own Deity (top) / Guru (bottom-left) / Acharya (bottom-right) ═══
+   Visibility is driven from JS (applyBgPhotos) so each slot still respects its Blank option. */
+.tz .hd-wm{
+  position:absolute; top:var(--rv-top); left:50%; transform:translateX(-50%);
+  width:var(--rv-w); height:auto; max-height:78%; object-fit:contain;
+  opacity:.6; filter:drop-shadow(0 0 22px rgba(245,209,122,.45));
+  pointer-events:none; user-select:none; z-index:1; display:none;
+  animation: divineBreathGlowStrong 10s ease-in-out infinite;
+}
+.tz .hd-guru-wm,
+.tz .hd-acharya-wm{
+  position:absolute;
+  top: min(var(--rv-bottom), calc(100% - var(--side-w) * var(--rv-aspect)));
+  width:var(--side-w); height:auto; object-fit:contain;
+  opacity:.6; filter:drop-shadow(0 0 22px rgba(245,209,122,.45));
+  pointer-events:none; user-select:none; z-index:1; display:none;
+  animation: divineBreathGlow 10s ease-in-out infinite;
+}
+.tz .hd-guru-wm{left:8px;}
+.tz .hd-acharya-wm{right:8px;}
+/* Haridashi has its own three photos, so hide the Radha Vallabh set */
+body.haridashi-mode .tz .rv-wm,
+body.haridashi-mode .tz .hitju-wm,
+body.haridashi-mode .tz .gurudev-wm{display:none !important;animation:none !important;}
+.tz.photo-edit-mode .hd-wm,
+.tz.photo-edit-mode .hd-guru-wm,
+.tz.photo-edit-mode .hd-acharya-wm{
+  pointer-events:auto !important; cursor:move; touch-action:none;
+  outline:1.5px dashed rgba(255,215,0,0.75); outline-offset:3px;
+  animation:none !important; opacity:.9 !important; filter:none !important;
+}
+/* Settings: Haridashi photo card only in Haridashi; the Radha Vallabh photo card hides there */
+.hd-only-setting{display:none;}
+body.haridashi-mode .hd-only-setting{display:flex !important;}
+body.haridashi-mode .rv-default-photo-card{display:none !important;}
+/* Haridashi has only two jap (Radha + Kunj Vihari/Sri Haridas); other types' data is kept, just hidden */
+body.haridashi-mode #naamOptKV,
+body.haridashi-mode #naamOptKaam,
+body.haridashi-mode .ded-type-pill[data-type="kv"],
+body.haridashi-mode .ded-type-pill[data-type="kaam"],
+body.haridashi-mode .dc-wrap.dc-kv,
+body.haridashi-mode .dc-wrap.dc-kaam{display:none !important;}
+body.haridashi-mode #audioModeBox{display:none !important;}
+.hd-hide{display:none !important;}

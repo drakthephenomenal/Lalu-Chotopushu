@@ -892,6 +892,9 @@ const App = {
     bgNimbark: 1,
     bgNimbarkGuru: 1,
     bgNimbarkAcharya: 1,
+    bgHdDeity: 1,
+    bgHdGuru: 1,
+    bgHdAcharya: 1,
     // ── Per-device Jap display layout (text size + per-photo position/size) ──
     // Keyed by platform ("android" | "ios-web" | "android-web" | "web"),
     // NOT by a random per-install id, so the same physical iPad/phone gets
@@ -1044,6 +1047,7 @@ const App = {
       ms: this.S.ms,
       dt: this.S.dt,
       lt: this.S.lt,
+      ltHD: this.S.ltHD || 0,
       nameJapDeduct: this.S.nameJapDeduct || 0,
       malaLog: this.S.malaLog || [],
       malaLogDate: this.S.tk,
@@ -1390,6 +1394,9 @@ const App = {
     if (this.S.bgNimbark === undefined) this.S.bgNimbark = 1;
     if (this.S.bgNimbarkGuru === undefined) this.S.bgNimbarkGuru = 1;
     if (this.S.bgNimbarkAcharya === undefined) this.S.bgNimbarkAcharya = 1;
+    if (this.S.bgHdDeity === undefined) this.S.bgHdDeity = 1;
+    if (this.S.bgHdGuru === undefined) this.S.bgHdGuru = 1;
+    if (this.S.bgHdAcharya === undefined) this.S.bgHdAcharya = 1;
     if (!this.S.historyHK[this.S.tk]) this.S.historyHK[this.S.tk] = 0;
     if (!this.S.timerHistoryHK[this.S.tk]) this.S.timerHistoryHK[this.S.tk] = 0;
     // Load malaLogHK — only keep if today has HK jap
@@ -1719,7 +1726,7 @@ const App = {
     return this.S.dt;
   },
   getCurLt() {
-    return this.S.lt;
+    return isHaridashiActive() ? (this.S.ltHD || 0) : this.S.lt;
   },
   // Combined Lifetime Target total: Radha + Radha Vallabh + Krishnay Vasudevay,
   // always summed together regardless of which mode is currently active (so
@@ -1765,7 +1772,7 @@ const App = {
       kva: _kvaT,
       kaam: kaamTotal - _kaamaT,
       kaama: _kaamaT,
-      total: radhaTotal + rvTotal + kvTotal + kaamTotal,
+      total: isHaridashiActive() ? radhaTotal + rvTotal : radhaTotal + rvTotal + kvTotal + kaamTotal,
     };
   },
 
@@ -1796,7 +1803,9 @@ const App = {
     if ((b.rva || 0) > 0 && order.includes("RV")) order.splice(order.indexOf("RV") + 1, 0, "RV-A");
     if ((b.kva || 0) > 0 && order.includes("KV")) order.splice(order.indexOf("KV") + 1, 0, "KV-A");
     if ((b.kaama || 0) > 0 && order.includes("KM")) order.splice(order.indexOf("KM") + 1, 0, "KM-A");
-    return order.map((k) => k + ":" + parts[k]).join("+");
+    const _hd = isHaridashiActive();
+    if (_hd) order = order.filter((k) => /^(R|RV)(-A)?$/.test(k));
+    return order.map((k) => (_hd ? (k === "RV" ? "KH" : k === "RV-A" ? "KH-A" : k) : k) + ":" + parts[k]).join("+");
   },
 
   // ── Haptic Heartbeat ──
@@ -2298,7 +2307,7 @@ const App = {
       } else {
         showYgMalaComplete("जय श्री राधे कृष्ण", "जय जय श्री राधे श्याम");
       }
-    } else if (this.S.sampraday === "harivangshi" && this.S.japMode !== "ss") {
+    } else if ((this.S.sampraday === "harivangshi" || isHaridashiActive()) && this.S.japMode !== "ss") {
       // Radha Vallabh Sampraday (Radha / Radha Vallabh / Krishnay Vasudevay / Kaam Vijay jap):
       // 5-second glowing name display, jap taps locked meanwhile.
       showRVSampradayMalaNames();
@@ -3755,7 +3764,7 @@ function showRVSampradayMalaNames() {
 
   window._rvNamesLock = true;
   const isBn = App.S && App.S.naamLang === "bn";
-  const names = isBn ? RV_MALA_NAMES_BN : RV_MALA_NAMES_SA;
+  const names = isHaridashiActive() ? (isBn ? HD_MALA_NAMES_BN : HD_MALA_NAMES_SA) : (isBn ? RV_MALA_NAMES_BN : RV_MALA_NAMES_SA);
   const mf = document.getElementById("mf");
 
   if (mf) {
@@ -4051,7 +4060,7 @@ function _firstTapHintDismiss() {
 function shareApp() {
   const url = _getAppUrl();
   const shareText =
-    "Radha Vallabh Sri Harivangsa \uD83D\uDE4F\n\n" +
+    (isHaridashiActive() ? "Kunj Vihari Sri Haridas" : "Radha Vallabh Sri Harivangsa") + " \uD83D\uDE4F\n\n" +
     "Boost your Naam Jap experience with this little app —\n" +
     "track Brahmacharya daily Jap & lots of statistics \u2728 \uD83E\uDEB7\n\n" +
     "\uD83D\uDC49 " +
@@ -4187,7 +4196,7 @@ async function saveManualApkLink() {
 // ── Share App (APK direct download) ──
 function shareApk() {
   const shareText =
-    "Radha Vallabh Sri Harivangsa \uD83D\uDE4F\n\n" +
+    (isHaridashiActive() ? "Kunj Vihari Sri Haridas" : "Radha Vallabh Sri Harivangsa") + " \uD83D\uDE4F\n\n" +
     "Install the RadhaNaam SudhaRasam Android app directly (APK) —\n" +
     "track Brahmacharya daily Jap & lots of statistics \u2728 \uD83E\uDEB7\n\n" +
     "\uD83D\uDC49 " +
@@ -4250,7 +4259,7 @@ function svtRV(type) {
   }
   ghostAwareSave();
   App.ua();
-  toast("RV Daily Target saved! 🎯");
+  toast(isHaridashiActive() ? "Kunj Vihari Daily Target saved! 🎯" : "RV Daily Target saved! 🎯");
 }
 
 // ── KV Target Save ──
@@ -4535,9 +4544,109 @@ const NAAM_TEXT = {
   sa: { radha: "राधा", rv1: "राधावल्लभ", rv2: "श्री हरिवंश", kv1: "कृष्णाय वासुदेवाय\nहरये परमात्मने", kv2: "प्रणतः क्लेशनाशाय\nगोविन्दाय नमो नमः", kvShort: "कृष्णाय वासुदेवाय", ss1: "साम्ब", ss2: "सदाशिव", ramTitle: "राम विजय मंत्र", ram1: "श्री राम, जय राम,", ram2: "जय जय राम।", ygTitle: "युगल मंत्र", yg1: "राधे कृष्ण राधे कृष्ण\nकृष्ण कृष्ण राधे राधे", yg2: "राधे श्याम राधे श्याम\nश्याम श्याम राधे राधे", kaamTitle: "काम विजय", kaamToast: "काम विजय" },
   bn: { radha: "রাধা", rv1: "রাধাবল্লভ", rv2: "শ্রী হরিবংশ", kv1: "কৃষ্ণায় বাসুদেবায়\nহরয়ে পরমাত্মনে", kv2: "প্রণতঃ ক্লেশনাশায়\nগোবিন্দায় নমো নমঃ", kvShort: "কৃষ্ণায় বাসুদেবায়", ss1: "সাম্ব", ss2: "সদাশিব", ramTitle: "রাম বিজয় মন্ত্র", ram1: "শ্রী রাম, জয় রাম,", ram2: "জয় জয় রাম।", ygTitle: "যুগল মন্ত্র", yg1: "রাধে কৃষ্ণ রাধে কৃষ্ণ\nকৃষ্ণ কৃষ্ণ রাধে রাধে", yg2: "রাধে শ্যাম রাধে শ্যাম\nশ্যাম শ্যাম রাধে রাধে", kaamTitle: "কাম বিজয়", kaamToast: "কাম বিজয়" },
 };
+// ── Haridashi Sampraday ──
+// Jap = Radha  +  "Kunj Vihari / Sri Haridas". Reuses the Radha-Vallabh ("rv") counting slot, so
+// counts, malas, history, targets, audio, sync and backups all work with no data migration.
+const HD_NAAM_TEXT = {
+  sa: { rv1: "कुंज बिहारी", rv2: "श्री हरिदास" },
+  bn: { rv1: "কুঞ্জ বিহারী", rv2: "শ্রী হরিদাস" },
+};
+const HD_NAAM_VIEW = {
+  sa: Object.assign({}, NAAM_TEXT.sa, HD_NAAM_TEXT.sa),
+  bn: Object.assign({}, NAAM_TEXT.bn, HD_NAAM_TEXT.bn),
+};
+const HD_MALA_NAMES_SA = ["कुंज बिहारी", "श्री हरिदास", "श्री बांके बिहारी", "श्री वृन्दावन"];
+const HD_MALA_NAMES_BN = ["কুঞ্জ বিহারী", "শ্রী হরিদাস", "শ্রী বাঁকেবিহারী", "শ্রী বৃন্দাবন"];
+// Reversible text relabel for Stats / N&M / Settings / Lifetime popup: "Radha Vallabh" -> "Kunj Vihari" etc.
+const HD_TEXT_ROOTS = ["vs", "vms", "vset", "cdmo"];
+const HD_TEXT_MAP = [
+  [/Radha \+ Radha Vallabh \+ Krishnay Vasudevay/g, "Radha + Kunj Vihari"],
+  [/Radha Vallabh (?:Shri|Sri) Hari(?:vansh|vangsa)/g, "Kunj Vihari Sri Haridas"],
+  [/Radha Vallabh/g, "Kunj Vihari"],
+  [/\bRV Jap\b/g, "Kunj Vihari Jap"],
+  [/(\+|or) RV\b/g, "$1 Kunj Vihari"],
+  [/\bRV(-A)?\b/g, (m, a) => "KH" + (a || "")],
+];
+const _hdOrig = new WeakMap();
+let _hdObs = [], _hdTimer = null;
+function _hdInTap(n) { const e = n.nodeType === 1 ? n : n.parentNode; return !!(e && e.closest && e.closest("#tz,script,style,textarea")); }
+function _hdWalk(root, on) {
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  for (let n; (n = w.nextNode());) nodes.push(n);
+  nodes.forEach((n) => {
+    if (_hdInTap(n)) return;
+    const cur = n.nodeValue, rec = _hdOrig.get(n);
+    if (on) {
+      if (rec && rec.out === cur) return;
+      let out = cur;
+      HD_TEXT_MAP.forEach(([re, to]) => { out = out.replace(re, to); });
+      if (out !== cur) { _hdOrig.set(n, { orig: cur, out }); n.nodeValue = out; }
+    } else if (rec) {
+      if (cur === rec.out) n.nodeValue = rec.orig;
+      _hdOrig.delete(n);
+    }
+  });
+}
+function _hdVisible(el) { return !!(el && el.getClientRects().length); }
+function _hdRun(on, all) {
+  HD_TEXT_ROOTS.forEach((id) => {
+    const r = document.getElementById(id);
+    if (r && (all || _hdVisible(r))) _hdWalk(r, on);
+  });
+}
+function _hdSyncTexts(on) {
+  _hdObs.forEach((o) => o.disconnect());
+  _hdObs = [];
+  _hdRun(on, true);
+  if (!on) return;
+  const kick = () => { clearTimeout(_hdTimer); _hdTimer = setTimeout(() => _hdRun(true, false), 300); };
+  HD_TEXT_ROOTS.forEach((id) => {
+    const r = document.getElementById(id);
+    if (!r) return;
+    const o1 = new MutationObserver((muts) => { if (!muts.every((m) => _hdInTap(m.target))) kick(); });
+    o1.observe(r, { childList: true, subtree: true });
+    const o2 = new MutationObserver(kick);   // a view becoming visible (class/style change on the view itself)
+    o2.observe(r, { attributes: true, attributeFilter: ["class", "style"] });
+    _hdObs.push(o1, o2);
+  });
+}
+function isHaridashiActive() {
+  const S = (typeof App !== "undefined" && App && App.S) || null;
+  return !!(S && S.sampraday === "haridashi" && !S.gaudiyaMode && !S.trahimamMode && !S.ramanandiMode);
+}
 function naamText() {
   const lang = (App.S && App.S.naamLang === "bn") ? "bn" : "sa";
-  return NAAM_TEXT[lang];
+  return (isHaridashiActive() ? HD_NAAM_VIEW : NAAM_TEXT)[lang];
+}
+// Cheap UI sync (no jap-mode switch, no side effects): body class, dropdown label, header title, English labels.
+function refreshHaridashiUI() {
+  const hd = isHaridashiActive();
+  document.body.classList.toggle("haridashi-mode", hd);
+  const nt = naamText();
+  const lab = document.getElementById("naamOptRVLabel");
+  if (lab) lab.textContent = nt.rv1 + " " + nt.rv2;
+  const title = document.getElementById("rnTitle");
+  if (title && App.S && App.S.japMode === "rv") {
+    title.innerHTML = '<span style="font-size:clamp(18px,5vw,28px);line-height:1.1">' + nt.rv1 +
+      '</span><br><span style="font-size:clamp(16px,4.5vw,24px);line-height:1.1">' + nt.rv2 + '</span>';
+  }
+  // Only two jap in Haridashi: hide Krishnay Vasudevay / Kaam Vijay daily-target cards (CSS hides the rest)
+  ["dtKVIn", "dtKaamIn"].forEach((id) => {
+    const c = document.getElementById(id);
+    const card = c && c.closest(".target-row-card");
+    if (card) card.classList.toggle("hd-hide", hd);
+  });
+  if (hd && App.S && (App.S.japMode === "kv" || App.S.japMode === "kaam") && !window._hdSwitching) {
+    window._hdSwitching = true;
+    try { switchJapMode("radha"); } finally { window._hdSwitching = false; }
+  }
+  // Haridashi has no audio chant: make sure Audio Mode is off (otherwise it would block touch counting)
+  if (hd && App.S && App.S.audioMode && typeof AudioChant !== "undefined" && AudioChant.toggleMode && !window._hdAudioOff) {
+    window._hdAudioOff = true;
+    try { AudioChant.toggleMode(); } finally { window._hdAudioOff = false; }
+  }
+  _hdSyncTexts(hd);
 }
 
 // Apply naamLang-sensitive labels: settings picker UI + live title/toast refresh
@@ -4547,7 +4656,7 @@ function applyNaamLangLabels(lang) {
   const lbl = document.getElementById("naamLangLabel");
   if (lbl) lbl.textContent = isBn ? "Bangla" : "Sanskrit";
   // Keep the naam dropdown option text in sync with the selected script
-  const _nt = NAAM_TEXT[isBn ? "bn" : "sa"];
+  const _nt = (isHaridashiActive() ? HD_NAAM_VIEW : NAAM_TEXT)[isBn ? "bn" : "sa"];
   const optRadhaLbl = document.getElementById("naamOptRadhaLabel");
   if (optRadhaLbl) optRadhaLbl.textContent = _nt.radha;
   const optRVLbl = document.getElementById("naamOptRVLabel");
@@ -5066,17 +5175,18 @@ function populateSettingsUI() {
   if (dtMalaInEl) dtMalaInEl.value = App.S.dt > 0 ? Math.round(App.S.dt / ms) : "";
   const dtMalaDisp = document.getElementById("dtMala");
   if (dtMalaDisp) dtMalaDisp.textContent = App.S.dt > 0 ? Math.ceil(App.S.dt / ms) : "0";
+  const _lt = isHaridashiActive() ? (App.S.ltHD || 0) : App.S.lt;   // Haridashi has its own lifetime target
   // Radha Lifetime
   const ltIn = document.getElementById("ltIn");
-  if (ltIn) ltIn.value = App.S.lt > 0 ? App.S.lt : "";
+  if (ltIn) ltIn.value = _lt > 0 ? _lt : "";
   const ltMalaInEl = document.getElementById("ltMalaIn");
-  if (ltMalaInEl) ltMalaInEl.value = App.S.lt > 0 ? Math.round(App.S.lt / ms) : "";
+  if (ltMalaInEl) ltMalaInEl.value = _lt > 0 ? Math.round(_lt / ms) : "";
   const ltCroreInEl = document.getElementById("ltCroreIn");
-  if (ltCroreInEl) ltCroreInEl.value = App.S.lt > 0 ? +(App.S.lt / 10000000).toFixed(4) : "";
+  if (ltCroreInEl) ltCroreInEl.value = _lt > 0 ? +(_lt / 10000000).toFixed(4) : "";
   const ltCroreDispEl = document.getElementById("ltCroreDisp");
-  if (ltCroreDispEl) ltCroreDispEl.textContent = App.S.lt > 0 ? (App.S.lt / 10000000).toFixed(2) : "0";
+  if (ltCroreDispEl) ltCroreDispEl.textContent = _lt > 0 ? (_lt / 10000000).toFixed(2) : "0";
   const ltMalaDispEl = document.getElementById("ltMala");
-  if (ltMalaDispEl) ltMalaDispEl.textContent = App.S.lt > 0 ? Math.ceil(App.S.lt / ms).toLocaleString() : "0";
+  if (ltMalaDispEl) ltMalaDispEl.textContent = _lt > 0 ? Math.ceil(_lt / ms).toLocaleString() : "0";
   // Mala size
   const msIn = document.getElementById("msIn");
   if (msIn) msIn.value = ms;
@@ -5198,6 +5308,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function svt(tp) {
   if (tp === "d")
     App.S.dt = parseInt(document.getElementById("dtIn").value) || 0;
+  else if (isHaridashiActive()) App.S.ltHD = parseInt(document.getElementById("ltIn").value) || 0;
   else App.S.lt = parseInt(document.getElementById("ltIn").value) || 0;
   ghostAwareSave();
   App.ua();
@@ -5212,6 +5323,7 @@ function svm() {
 // Sync the "Select Your Sampraday" card UI (Rashik + Vaishnav sections) with current App.S state.
 // Safe to call anytime — no-ops if the markup isn't on the current screen.
 function renderSampradaySelector() {
+  try { refreshHaridashiUI(); } catch (_e) {}
   const ids = ["Harivangshi", "Haridashi", "Sri", "Gaudiya", "Nimbark", "Vallabh"];
   ids.forEach((id) => {
     const card = document.getElementById("samp" + id);
@@ -5489,9 +5601,28 @@ function tgs(k) {
     return;
   }
 
-  // --- Haridashi: not yet implemented ---
+  // --- Haridashi Sampraday: Radha + Kunj Vihari / Sri Haridas (same counting engine as Harivangshi) ---
   if (k === "haridashiMode") {
-    toast("Not available. Coming soon.");
+    if (App.S.gaudiyaMode) { App.S.gaudiyaMode = false; document.body.classList.remove("gaudiya-mode"); const tgG = document.getElementById("tgGaudiya"); if (tgG) tgG.classList.remove("on"); if (App.S.japMode === "hk") switchJapMode("radha"); }
+    if (App.S.trahimamMode) { App.S.trahimamMode = false; document.body.classList.remove("trahimam-mode"); const tgT = document.getElementById("tgTrahimam"); if (tgT) tgT.classList.remove("on"); if (App.S.japMode === "ss") switchJapMode("radha"); }
+    if (App.S.ramanandiMode) { App.S.ramanandiMode = false; document.body.classList.remove("ramanandi-mode"); const tgR = document.getElementById("tgRamanandi"); if (tgR) tgR.classList.remove("on"); if (App.S.japMode === "ram") switchJapMode("radha"); }
+    App.S.sampraday = "haridashi";
+    if (!App.S.ltHD) App.S.ltHD = App.S.lt || 0;   // first time: start from your current lifetime target, independent afterwards
+    if (App.S.japMode === "kv" || App.S.japMode === "kaam") switchJapMode("radha");
+    window._dedTypes = new Set();
+    window._dedAmounts = {};
+    if (typeof renderDedTypePanels === "function") renderDedTypePanels();
+    App.save();
+    fbDebouncedPush();
+    uStats();
+    renderHistory && typeof renderHistory === "function" && renderHistory();
+    if (typeof renderCal === "function") renderCal();
+    if (typeof applyBgPhotos === "function") applyBgPhotos();
+    if (typeof renderPhotoPickers === "function") renderPhotoPickers();
+    if (typeof renderSampradaySelector === "function") renderSampradaySelector();
+    if (typeof applyNaamLangLabels === "function") applyNaamLangLabels(App.S.naamLang === "bn" ? "bn" : "sa");
+    toast("🪕 Haridashi Sampraday selected");
+    scrollToJapSetup();
     return;
   }
 
@@ -5515,6 +5646,7 @@ function tgs(k) {
     if (typeof applyBgPhotos === "function") applyBgPhotos();
     if (typeof renderPhotoPickers === "function") renderPhotoPickers();
     if (typeof renderSampradaySelector === "function") renderSampradaySelector();
+    if (typeof applyNaamLangLabels === "function") applyNaamLangLabels(App.S.naamLang === "bn" ? "bn" : "sa");
     toast("🪷 Harivangshi Sampraday selected");
     scrollToJapSetup();
     return;
@@ -6570,7 +6702,7 @@ window._dedAmounts = {}; // type -> jap amount currently entered (unsaved, in-pr
 window._dedStotrams = window._dedStotrams || []; // [{name, count}] manually entered stotram gifts (unsaved, in-progress)
 
 function _dedTypeMeta(type) {
-  if (type === "rv") return { label: "Radha Vallabh", color: "#5eead4" };
+  if (type === "rv") return { label: isHaridashiActive() ? "Kunj Vihari Sri Haridas" : "Radha Vallabh", color: "#5eead4" };
   if (type === "kv") return { label: "Krishnay Vasudevay", color: "#6DB8FF" };
   if (type === "hk") return { label: "Hare Krishna", color: "#c9a7ff" };
   if (type === "ss") return { label: "Samba Sadashiv", color: "#ffb86c" };
@@ -9387,6 +9519,7 @@ function _buildBackupPayload() {
     ms: App.S.ms || 108,
     dt: App.S.dt || 0,
     lt: App.S.lt || 0,
+    ltHD: App.S.ltHD || 0,
     nameJapDeduct: App.S.nameJapDeduct || 0,
     cfg: App.S.cfg || {},
     malaLog: App.S.malaLog || [],
@@ -9630,6 +9763,7 @@ function importAllData(input) {
       if (data.driveSrvOK === true) App.S.driveSrvOK = true;
       App.S.dt = data.dt || 0;
       App.S.lt = data.lt || 0;
+      App.S.ltHD = data.ltHD || 0;
       App.S.nameJapDeduct = data.nameJapDeduct || 0;
       App.S.cfg = data.cfg || {};
       App.S.historyRV = data.historyRV || {};
@@ -9970,8 +10104,8 @@ function _msConsiderChipsHtml() {
   const types = [
     { key: "radha", label: "Radha", color: "245,200,66" },
     { key: "ra", label: "🎧 Radha Audio", color: "245,200,66" },
-    { key: "rv", label: "Radha Vallabh", color: "94,234,212" },
-    { key: "rva", label: "🎧 Radha Vallabh Audio", color: "94,234,212" },
+    { key: "rv", label: isHaridashiActive() ? "Kunj Vihari Sri Haridas" : "Radha Vallabh", color: "94,234,212" },
+    { key: "rva", label: isHaridashiActive() ? "🎧 Kunj Vihari Sri Haridas Audio" : "🎧 Radha Vallabh Audio", color: "94,234,212" },
     { key: "hk", label: "Hare Krishna", color: "201,167,255" },
     { key: "kv", label: "Krishnay Vasudevay", color: "109,184,255" },
     { key: "kva", label: "🎧 Krishnay Vasudevay Audio", color: "109,184,255" },
@@ -11748,6 +11882,7 @@ function fbInit() {
             ms: 108,
             dt: 0,
             lt: 0,
+            ltHD: 0,
             cfg: { vib: true, sound: true, soundType: "shankya" },
             history: {},
             h28: {},
@@ -11970,6 +12105,7 @@ function fbInit() {
             ms: 108,
             dt: 0,
             lt: 0,
+            ltHD: 0,
             cfg: { vib: true, sound: true, soundType: "shankya" },
             history: {},
             h28: {},
@@ -13899,6 +14035,7 @@ async function fbPushToUid(targetUid, fullReplace) {
     ms: App.S.ms || 108,
     dt: App.S.dt || 0,
     lt: App.S.lt || 0,
+    ltHD: App.S.ltHD || 0,
     nameJapDeduct: App.S.nameJapDeduct || 0,
     cfg: App.S.cfg || {},
     malaLog: App.S.malaLog || [],
@@ -14031,6 +14168,7 @@ async function fbPushFull() {
     ms: App.S.ms || 108,
     dt: App.S.dt || 0,
     lt: App.S.lt || 0,
+    ltHD: App.S.ltHD || 0,
     nameJapDeduct: App.S.nameJapDeduct || 0,
     cfg: App.S.cfg || {},
     malaLog: App.S.malaLog || [],
@@ -14115,6 +14253,9 @@ async function fbPushFull() {
     bgNimbark: App.S.bgNimbark ?? 1,
     bgNimbarkGuru: App.S.bgNimbarkGuru ?? 1,
     bgNimbarkAcharya: App.S.bgNimbarkAcharya ?? 1,
+    bgHdDeity: App.S.bgHdDeity ?? 1,
+    bgHdGuru: App.S.bgHdGuru ?? 1,
+    bgHdAcharya: App.S.bgHdAcharya ?? 1,
     // Screen Time was previously never pushed here — it survived on-device
     // (IndexedDB) but reset to 0 on a fresh install / other device, making
     // Efficiency look inverted (Actual Jap Time synced, Screen Time didn't).
@@ -14347,6 +14488,7 @@ function fbApplyRemote(d) {
   if (d.ms) App.S.ms = d.ms;
   if (d.dt !== undefined) App.S.dt = d.dt;
   if (d.lt !== undefined) App.S.lt = d.lt;
+  if (d.ltHD !== undefined) App.S.ltHD = d.ltHD;
   if (d.nameJapDeduct !== undefined) App.S.nameJapDeduct = d.nameJapDeduct;
   if (d.cfg) App.S.cfg = JSON.parse(JSON.stringify(d.cfg || {}));
   if (d.deviceLayouts) {
@@ -14651,6 +14793,9 @@ function fbApplyRemote(d) {
   if (d.bgNimbark !== undefined) App.S.bgNimbark = d.bgNimbark;
   if (d.bgNimbarkGuru !== undefined) App.S.bgNimbarkGuru = d.bgNimbarkGuru;
   if (d.bgNimbarkAcharya !== undefined) App.S.bgNimbarkAcharya = d.bgNimbarkAcharya;
+  if (d.bgHdDeity !== undefined) App.S.bgHdDeity = d.bgHdDeity;
+  if (d.bgHdGuru !== undefined) App.S.bgHdGuru = d.bgHdGuru;
+  if (d.bgHdAcharya !== undefined) App.S.bgHdAcharya = d.bgHdAcharya;
 
   // Old saves wrote both startDate AND endDate to occasions. Remove the endDate entry
 
@@ -15904,8 +16049,10 @@ function editSankalpTarget(id) {
     sk.done = false;
     sk.doneDate = null;
     sk._savedProgress = prog;
-    const activeWish = getActiveSankalp();
-    sk.startCycles = activeWish ? null : getTotalCycles28();
+    // Look for ANOTHER open wish — sk itself was just set done=false, so
+    // getActiveSankalp() would find sk and wrongly leave it paused.
+    const otherActive = (App.S.sankalpas || []).find((x) => !x.done && x.id !== sk.id);
+    sk.startCycles = otherActive ? null : getTotalCycles28();
     reopened = true;
   }
   App.save();
@@ -15943,8 +16090,8 @@ function reopenSankalp(id) {
   if (!sk || !sk.done) return;
   sk.done = false;
   sk.doneDate = null;
-  const activeWish = getActiveSankalp();
-  sk.startCycles = activeWish ? null : getTotalCycles28();
+  const otherActive = (App.S.sankalpas || []).find((x) => !x.done && x.id !== sk.id);
+  sk.startCycles = otherActive ? null : getTotalCycles28();
   App.save();
   fbDebouncedPush();
   renderSankalpas();
@@ -16052,6 +16199,8 @@ function _skWishEditBlock(sk) {
 function renderSankalpas() {
   const el = document.getElementById("skList");
   if (!el) return;
+  // Safety net: the current (first open) wish must never be paused.
+  try { activateNextSankalp(); } catch (e) {}
   const all = App.S.sankalpas || [];
   if (!all.length) {
     el.innerHTML = '<div class="sk-empty">No sankalpa yet 🌸</div>';
@@ -29179,7 +29328,7 @@ function copyHistoryText() {
       );
     if (rv > 0)
       parts.push(
-        "RV: " + Math.floor(rv / ms) + "m (" + rv + ") " + _histFmtSec(tRV),
+        (isHaridashiActive() ? "Kunj Vihari: " : "RV: ") + Math.floor(rv / ms) + "m (" + rv + ") " + _histFmtSec(tRV),
       );
     if (ss > 0)
       parts.push(
@@ -29211,7 +29360,7 @@ function copyHistoryText() {
       Math.floor(totR / ms) +
       " malas (" +
       totR +
-      ") | RV: " +
+      ") | " + (isHaridashiActive() ? "Kunj Vihari" : "RV") + ": " +
       Math.floor(totRV / ms) +
       " malas (" +
       totRV +
@@ -29237,7 +29386,7 @@ function copyHistoryText() {
       " | Grand Total: " +
       _histFmtSec(totT + totT28),
   );
-  lines.push("🙏 Radha Vallabh Sri Harivangsa 🙏");
+  lines.push(isHaridashiActive() ? "🙏 Kunj Vihari Sri Haridas 🙏" : "🙏 Radha Vallabh Sri Harivangsa 🙏");
 
   navigator.clipboard
     .writeText(lines.join("\n"))
@@ -30225,13 +30374,13 @@ function renderLeaderboard(docs, period) {
     }
     if ((b.rva || 0) > 0) {
       const x = Math.floor(b.rva / ms);
-      bdParts.push('RV-A: ' + _lbFmtJap(b.rva) + (x > 0 ? ' (' + x + 'M)' : ''));
+      bdParts.push((isHaridashiActive() ? 'Kunj Vihari Sri Haridas Audio: ' : 'RV-A: ') + _lbFmtJap(b.rva) + (x > 0 ? ' (' + x + 'M)' : ''));
     }
     if (b.rv > 0 || g.rv > 0) {
       const rvM = Math.floor(b.rv / ms);
       const rvStr = _lbFmtJap(b.rv) + (rvM > 0 ? ' (' + rvM + 'M)' : '');
       const giftNote = g.rv > 0 ? ' · 🎁' + _lbFmtJap(g.rv) + ' gifted' : '';
-      bdParts.push('RV: ' + rvStr + (tb.rv > 0 ? ' ⏱ ' + _histFmtSec(tb.rv) : '') + giftNote + _lbQ(tb.rv, b.rv));
+      bdParts.push((isHaridashiActive() ? 'Kunj Vihari Sri Haridas: ' : 'RV: ') + rvStr + (tb.rv > 0 ? ' ⏱ ' + _histFmtSec(tb.rv) : '') + giftNote + _lbQ(tb.rv, b.rv));
     }
     if ((b.kva || 0) > 0) {
       const x = Math.floor(b.kva / ms);
@@ -30953,6 +31102,11 @@ const PHOTO_CONFIG = {
   // /gopeshwar_guru/1.jpg and /gopeshwar_acharya/1.jpg, etc.
   gopeshwarGuru:    { id: 'bgGopeshwarGuru',    stateKey: 'bgGopeshwarGuru',    folder: 'gopeshwar_guru',    maxNum: 9, fallback: 'gopeshwar_guru/1.png' },
   gopeshwarAcharya: { id: 'bgGopeshwarAcharya', stateKey: 'bgGopeshwarAcharya', folder: 'gopeshwar_acharya', maxNum: 9, fallback: 'gopeshwar_acharya/1.png' },
+  // Haridashi Sampraday: Deity (top), Guru (bottom-left), Acharya (bottom-right) — own photos AND own
+  // saved positions (keys hdDeity/hdGuru/hdAcharya), separate from Radha Vallabh's rv/hitju/gurudev.
+  hdDeity:   { id: 'bgHdDeity',   stateKey: 'bgHdDeity',   folder: 'haridashi_deity',   maxNum: 9, fallback: 'haridashi_deity/1.jpg' },
+  hdGuru:    { id: 'bgHdGuru',    stateKey: 'bgHdGuru',    folder: 'haridashi_guru',    maxNum: 9, fallback: 'haridashi_guru/1.png' },
+  hdAcharya: { id: 'bgHdAcharya', stateKey: 'bgHdAcharya', folder: 'haridashi_acharya', maxNum: 9, fallback: 'haridashi_acharya/1.jpg' },
   // Nimbark Sampraday (Yugal Mantra mode) — top Deity, bottom-left Guru, bottom-right
   // Acharya. Only shown while Nimbark mode is on (see applyBgPhotos). Built-in
   // choices live in /nimbark_deity/1.jpg, /nimbark_guru/1.jpg, /nimbark_acharya/1.jpg,
@@ -30966,6 +31120,7 @@ const PHOTO_STRIP_IDS = {
   rv: 'photoStripRV', hitju: 'photoStripHitju', gurudev: 'photoStripGurudev', bank: 'photoStripBank',
   cm: 'photoStripCM', iskconAcharya: 'photoStripIskconAcharya', iskconGurudev: 'photoStripIskconGurudev',
   gopeshwar: 'photoStripGopeshwar', gopeshwarGuru: 'photoStripGopeshwarGuru', gopeshwarAcharya: 'photoStripGopeshwarAcharya',
+  hdDeity: 'photoStripHdDeity', hdGuru: 'photoStripHdGuru', hdAcharya: 'photoStripHdAcharya',
   nimbark: 'photoStripNimbark', nimbarkGuru: 'photoStripNimbarkGuru', nimbarkAcharya: 'photoStripNimbarkAcharya'
 };
 
@@ -31103,6 +31258,7 @@ window.resetPhoto = async function(key) {
 };
 
 window.applyBgPhotos = async function() {
+  try { refreshHaridashiUI(); } catch (_e) {}
   for (const [key, conf] of Object.entries(PHOTO_CONFIG)) {
     const el = document.getElementById(conf.id);
     if (!el) continue;
@@ -31122,6 +31278,12 @@ window.applyBgPhotos = async function() {
     // only exist while Gaudiya/ISKCON mode is on — fully hidden otherwise
     // (unlike Bank, there's no "default" image to fall back to when off).
     if ((key === 'cm' || key === 'iskconAcharya' || key === 'iskconGurudev') && !(App.S && App.S.gaudiyaMode)) {
+      el.style.display = 'none';
+      continue;
+    }
+
+    // Haridashi Deity/Guru/Acharya only exist while the Haridashi Sampraday is active.
+    if ((key === 'hdDeity' || key === 'hdGuru' || key === 'hdAcharya') && !isHaridashiActive()) {
       el.style.display = 'none';
       continue;
     }
@@ -31190,7 +31352,7 @@ window.applyBgPhotos = async function() {
 // the top-right corner of the Jap tap area (#tz): tap once to enter edit
 // mode, tap again to save the layout and exit.
 // ==========================================
-const JAP_PHOTO_KEYS = ['rv', 'hitju', 'gurudev', 'cm', 'iskconAcharya', 'iskconGurudev', 'gopeshwar', 'gopeshwarGuru', 'gopeshwarAcharya', 'nimbark', 'nimbarkGuru', 'nimbarkAcharya'];
+const JAP_PHOTO_KEYS = ['rv', 'hitju', 'gurudev', 'cm', 'iskconAcharya', 'iskconGurudev', 'gopeshwar', 'gopeshwarGuru', 'gopeshwarAcharya', 'hdDeity', 'hdGuru', 'hdAcharya', 'nimbark', 'nimbarkGuru', 'nimbarkAcharya'];
 const JAP_PHOTO_TRANSFORM_STORE_KEY = 'japPhotoTransforms';
 
 function loadPhotoTransforms() {
@@ -31214,7 +31376,7 @@ window.applyPhotoTransform = function(key) {
   const el = document.getElementById(conf.id);
   if (!el) return;
   const t = Object.assign({ x: 0, y: 0, scale: 1 }, window._japPhotoTransforms[key]);
-  const base = (key === 'rv' || key === 'cm' || key === 'gopeshwar' || key === 'nimbark') ? 'translateX(-50%) ' : '';
+  const base = (key === 'rv' || key === 'cm' || key === 'gopeshwar' || key === 'hdDeity' || key === 'nimbark') ? 'translateX(-50%) ' : '';
   el.style.transform = `${base}translate(${t.x}px, ${t.y}px) scale(${t.scale})`;
 };
 window.applyAllPhotoTransforms = function() {
@@ -31349,7 +31511,7 @@ window.togglePhotoEditMode = function(e) {
 
 // ✨ MALA GLOW FLASH — all deity images briefly show fully with huge glow, synced
 window.triggerMalaGlowFlash = function() {
-  const ids = ['bgRadhaVallabh', 'bgHitju', 'bgGurudev', 'bgCM', 'bgIskconAcharya', 'bgIskconGurudev', 'bgGopeshwar', 'bgGopeshwarGuru', 'bgGopeshwarAcharya', 'bgNimbark', 'bgNimbarkGuru', 'bgNimbarkAcharya'];
+  const ids = ['bgRadhaVallabh', 'bgHitju', 'bgGurudev', 'bgCM', 'bgIskconAcharya', 'bgIskconGurudev', 'bgGopeshwar', 'bgGopeshwarGuru', 'bgGopeshwarAcharya', 'bgHdDeity', 'bgHdGuru', 'bgHdAcharya', 'bgNimbark', 'bgNimbarkGuru', 'bgNimbarkAcharya'];
   const els = ids.map(id => document.getElementById(id)).filter(el => el && el.style.display !== 'none');
   if (!els.length) return;
 

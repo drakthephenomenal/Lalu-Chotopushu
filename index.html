@@ -26,7 +26,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
-<link rel="stylesheet" href="./style.css?v=136">
+<link rel="stylesheet" href="./style.css?v=137">
   <link rel="stylesheet" href="./style-stotram.css?v=140">
   <link rel="stylesheet" href="./vedic-panchanga/panchanga.css?v=161">
 <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
@@ -381,6 +381,9 @@
       <img class="iskcon-gurudev-wm" id="bgIskconGurudev" src="./iskcon_gurudev/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async">
       <img class="gopeshwar-wm" id="bgGopeshwar" src="./gopeshwar_mahadev/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="gopeshwar-guru-wm" id="bgGopeshwarGuru" src="./gopeshwar_guru/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img class="hd-wm" id="bgHdDeity" src="./haridashi_deity/1.jpg" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img class="hd-guru-wm" id="bgHdGuru" src="./haridashi_guru/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img class="hd-acharya-wm" id="bgHdAcharya" src="./haridashi_acharya/1.jpg" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="gopeshwar-acharya-wm" id="bgGopeshwarAcharya" src="./gopeshwar_acharya/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="nimbark-wm" id="bgNimbark" src="./nimbark_deity/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="nimbark-guru-wm" id="bgNimbarkGuru" src="./nimbark_guru/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
@@ -2636,7 +2639,7 @@
   </div>
 
   <!-- PHOTO CUSTOMIZATION SETTINGS -->
-  <div class="sc photo-settings-card non-gaudiya-setting">
+  <div class="sc photo-settings-card non-gaudiya-setting rv-default-photo-card">
     <div class="photo-settings-title">🖼️ Jap Display Photos</div>
     <div style="font-size:10px;color:rgba(255,255,255,0.4);line-height:1.4;margin-bottom:14px;">
       Choose which photos appear on the Jap screen. Pick from the repository collection or upload your own.
@@ -2681,6 +2684,50 @@
         </label>
         <button class="photo-reset-btn" onclick="resetPhoto('gurudev')">↩ Default</button>
         <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('gurudev', 0)">Blank</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Jap Display Photos: Haridashi Sampraday — shown only while Haridashi is selected -->
+  <div class="sc photo-settings-card hd-only-setting" style="flex-direction:column;">
+    <div class="photo-settings-title">🪕 Haridashi Jap Display Photos</div>
+    <div style="font-size:10px;color:rgba(255,255,255,0.4);line-height:1.4;margin-bottom:14px;">
+      Photos on the Jap screen in Haridashi Sampraday (top: Deity, bottom: Guru and Acharya). Each has its own saved size/position — drag them with the gear icon on the Jap screen.
+    </div>
+    <div class="photo-row">
+      <div class="photo-row-label">🙏 Deity (Banke Bihari ji)</div>
+      <div class="photo-thumb-strip" id="photoStripHdDeity"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('hdDeity', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('hdDeity')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('hdDeity', 0)">Blank</button>
+      </div>
+    </div>
+    <div class="photo-row">
+      <div class="photo-row-label">🙏 Guru</div>
+      <div class="photo-thumb-strip" id="photoStripHdGuru"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('hdGuru', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('hdGuru')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('hdGuru', 0)">Blank</button>
+      </div>
+    </div>
+    <div class="photo-row">
+      <div class="photo-row-label">🙏 Acharya (Swami Haridas ji)</div>
+      <div class="photo-thumb-strip" id="photoStripHdAcharya"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('hdAcharya', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('hdAcharya')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('hdAcharya', 0)">Blank</button>
       </div>
     </div>
   </div>
@@ -3230,7 +3277,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=144"></script>
-    <script src="./app.js?v=423"></script>
+    <script src="./app.js?v=424"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

@@ -14567,6 +14567,7 @@ async function fbPushFull() {
     trahimamMode: App.S.trahimamMode || false,
     ramanandiMode: App.S.ramanandiMode || false,
     nimbarkMode: App.S.nimbarkMode || false,
+    lbKH: isHaridashiActive(),   // Kunj Vihari Sri Haridas uses the RV slot; flag lets the leaderboard show it separately
     dt28Cycles: App.S.dt28Cycles || 0,
     milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
     msConsider: App.S.msConsider || { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, sr: true, rm: true, n28: true },
@@ -30793,6 +30794,12 @@ function renderLeaderboard(docs, period) {
       const tScr = d.screenTimeHistory || {};
       d._screenTimeSec = periodKeys.reduce((s, k) => s + (tScr[k] || 0), 0);
     }
+    // Kunj Vihari Sri Haridas counts live in the RV slot; show them as their own KH entry for users in Haridashi mode.
+    if (d.lbKH === true) {
+      if (d._breakdown) { d._breakdown.kh = d._breakdown.rv || 0; d._breakdown.rv = 0; }
+      if (d._timeBreakdown) { d._timeBreakdown.kh = d._timeBreakdown.rv || 0; d._timeBreakdown.rv = 0; }
+      if (d._giftedBreakdown) { d._giftedBreakdown.kh = d._giftedBreakdown.rv || 0; d._giftedBreakdown.rv = 0; }
+    }
     const _todayEff = _lbTodayEff(d);
     let _padSec = 0;
     const _pth = d.padTimeHistory || {};
@@ -30896,7 +30903,13 @@ function renderLeaderboard(docs, period) {
       const rvM = Math.floor(b.rv / ms);
       const rvStr = _lbFmtJap(b.rv) + (rvM > 0 ? ' (' + rvM + 'M)' : '');
       const giftNote = g.rv > 0 ? ' · 🎁' + _lbFmtJap(g.rv) + ' gifted' : '';
-      bdParts.push((isHaridashiActive() ? 'Kunj Vihari Sri Haridas: ' : 'RV: ') + rvStr + (tb.rv > 0 ? ' ⏱ ' + _histFmtSec(tb.rv) : '') + giftNote + _lbQ(tb.rv, b.rv));
+      bdParts.push('RV: ' + rvStr + (tb.rv > 0 ? ' ⏱ ' + _histFmtSec(tb.rv) : '') + giftNote + _lbQ(tb.rv, b.rv));
+    }
+    if ((b.kh || 0) > 0 || (g.kh || 0) > 0) {
+      const khM = Math.floor((b.kh || 0) / ms);
+      const khStr = _lbFmtJap(b.kh || 0) + (khM > 0 ? ' (' + khM + 'M)' : '');
+      const giftNote = (g.kh || 0) > 0 ? ' · 🎁' + _lbFmtJap(g.kh) + ' gifted' : '';
+      bdParts.push('Kunj Vihari Sri Haridas: ' + khStr + ((tb.kh || 0) > 0 ? ' ⏱ ' + _histFmtSec(tb.kh) : '') + giftNote + _lbQ(tb.kh || 0, b.kh || 0));
     }
     if ((b.kva || 0) > 0) {
       const x = Math.floor(b.kva / ms);
@@ -30965,7 +30978,7 @@ function renderLeaderboard(docs, period) {
       bdParts.push('KAM: ' + kaamStr + (tb.kaam > 0 ? ' ⏱ ' + _histFmtSec(tb.kaam) : '') + giftNote + _lbQ(tb.kaam, b.kaam));
     }
     // Total: only count R+RV+SS+HK+RAM+KAM malas (not 28N), 28N shown as cycles separately
-    const japOnly = (b.r || 0) + (b.ra || 0) + (b.rva || 0) + (b.kva || 0) + (b.kaama || 0) + (b.rv || 0) + (b.ss || 0) + (b.hk || 0) + (b.ram || 0) + (b.sr || 0) + (b.rm || 0) + (b.yg || 0) + (b.kaam || 0);
+    const japOnly = (b.r || 0) + (b.ra || 0) + (b.rva || 0) + (b.kva || 0) + (b.kaama || 0) + (b.rv || 0) + (b.kh || 0) + (b.ss || 0) + (b.hk || 0) + (b.ram || 0) + (b.sr || 0) + (b.rm || 0) + (b.yg || 0) + (b.kaam || 0);
     const totalMalas = Math.floor(japOnly / ms);
     const total28Cyc = Math.floor(((b.n28 || 0) + (b.n28a || 0)) / 28);
     let totalStr = _lbFmtJap(d.score) + ' jap';
@@ -31223,6 +31236,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     historyRM: histRM,
     historyYg: histYg,
     historyKaam: histKaam,
+    lbKH: (window.App && S === App.S) ? isHaridashiActive() : (S.lbKH === true),
     historyRA: S.historyAudio || {},
     historyRVA: (S.audioHistM || {}).rv || {},
     historyKVA: (S.audioHistM || {}).kv || {},

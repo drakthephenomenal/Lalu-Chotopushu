@@ -3326,7 +3326,7 @@ body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !import
   display:none;
   animation: divineBreathGlowStrong 10s ease-in-out infinite;
 }
-/* Gopeshwar Mahadev mode Guru (bottom-left) & Acharya (bottom-right) — same plane as
+/* Gopeshwar Mahadev mode Acharya (bottom-left) & Guru (bottom-right) — same plane as
    Hitju/Gurudev in default mode. Visibility controlled from JS (applyBgPhotos). */
 .tz .gopeshwar-guru-wm,
 .tz .gopeshwar-acharya-wm{
@@ -3341,15 +3341,15 @@ body.gaudiya-mode .tz .gurudev-wm{display:none !important;animation:none !import
   display:none;
   animation: divineBreathGlowStrong 10s ease-in-out infinite;
 }
-.tz .gopeshwar-guru-wm{left:8px;}
-.tz .gopeshwar-acharya-wm{right:8px;}
+.tz .gopeshwar-guru-wm{right:8px;}
+.tz .gopeshwar-acharya-wm{left:8px;}
 /* Mahadev mode has its own Guru/Acharya, so hide the normal-mode Hitju/Gurudev */
 body.trahimam-mode .tz .hitju-wm,
 body.trahimam-mode .tz .gurudev-wm{display:none !important;animation:none !important;}
 /* In Gopeshwar Mahadev mode the top slot belongs to the Gopeshwar photo, not Radha Vallabh */
 body.trahimam-mode .tz .rv-wm{display:none !important;animation:none !important;}
 
-/* Nimbark Sampraday — Deity (top-center), Guru (bottom-left) & Acharya (bottom-right),
+/* Nimbark Sampraday — Deity (top-center), Acharya (bottom-left) & Guru (bottom-right),
    same slots/look as Gopeshwar Mahadev mode. Visibility is controlled from JS
    (applyBgPhotos) so it respects the per-photo Blank option. */
 .tz .nimbark-wm{
@@ -3374,8 +3374,8 @@ body.trahimam-mode .tz .rv-wm{display:none !important;animation:none !important;
   display:none;
   animation: divineBreathGlow 10s ease-in-out infinite;
 }
-.tz .nimbark-guru-wm{left:8px;}
-.tz .nimbark-acharya-wm{right:8px;}
+.tz .nimbark-guru-wm{right:8px;}
+.tz .nimbark-acharya-wm{left:8px;}
 /* Nimbark mode has its own Deity/Guru/Acharya, so hide the normal-mode RV/Hitju/Gurudev */
 body.nimbark-mode .tz .rv-wm,
 body.nimbark-mode .tz .hitju-wm,
@@ -4361,8 +4361,8 @@ details.dd-kt>summary::after{content:' ▾';}
   pointer-events:none; user-select:none; z-index:1; display:none;
   animation: divineBreathGlow 10s ease-in-out infinite;
 }
-.tz .hd-guru-wm{left:8px;}
-.tz .hd-acharya-wm{right:8px;}
+.tz .hd-guru-wm{right:8px;}
+.tz .hd-acharya-wm{left:8px;}
 /* Haridashi has its own three photos, so hide the Radha Vallabh set */
 body.haridashi-mode .tz .rv-wm,
 body.haridashi-mode .tz .hitju-wm,
@@ -4427,8 +4427,8 @@ body:not(.ramanandi-mode) #naamOptRM { display: none !important; }
   pointer-events:none; user-select:none; z-index:1; display:none;
   animation: divineBreathGlowStrong 10s ease-in-out infinite;
 }
-.tz .ramanandi-guru-wm{left:8px;}
-.tz .ramanandi-acharya-wm{right:8px;}
+.tz .ramanandi-guru-wm{right:8px;}
+.tz .ramanandi-acharya-wm{left:8px;}
 /* Ramanandi mode has its own deity/guru/acharya, so hide the normal-mode Radha Vallabh / Hitju / Gurudev */
 body.ramanandi-mode .tz .rv-wm,
 body.ramanandi-mode .tz .hitju-wm,

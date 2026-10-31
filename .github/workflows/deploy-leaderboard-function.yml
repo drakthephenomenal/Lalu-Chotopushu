@@ -1,0 +1,35 @@
+name: Deploy leaderboard function
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install function dependencies
+        run: cd functions && npm install
+
+      # The committed functions/.env.guru-kripahi-kevalam-108 normally supplies these.
+      # Placeholders are written only if that file is missing (this function does not use them).
+      - name: Placeholder params if env file is missing
+        run: |
+          if [ ! -f functions/.env.guru-kripahi-kevalam-108 ]; then
+            printf 'ZOHO_CLIENT_ID=unused\nZOHO_REDIRECT_URI=unused\nDRIVE_CLIENT_ID=unused\n' > functions/.env
+          fi
+
+      - name: Write service-account key
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
+
+      - name: Deploy syncLeaderboardOnMainDataWrite
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx firebase-tools deploy --only functions:syncLeaderboardOnMainDataWrite --project guru-kripahi-kevalam-108 --non-interactive --force

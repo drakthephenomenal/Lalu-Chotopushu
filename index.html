@@ -26,7 +26,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
-<link rel="stylesheet" href="./style.css?v=134">
+<link rel="stylesheet" href="./style.css?v=136">
   <link rel="stylesheet" href="./style-stotram.css?v=140">
   <link rel="stylesheet" href="./vedic-panchanga/panchanga.css?v=161">
 <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
@@ -255,6 +255,9 @@
           <div class="naam-sel-opt" id="naamOptRam" onclick="switchJapMode('ram')">
             <span class="ns-check"></span> <span id="naamOptRamLabel">राम विजय मंत्र</span>
           </div>
+          <div class="naam-sel-opt" id="naamOptYg" onclick="switchJapMode('yg')">
+            <span class="ns-check"></span> <span id="naamOptYgLabel">युगल मंत्र</span>
+          </div>
         </div>
       </div>
       <div class="rn" id="rnTitle">राधा</div>
@@ -379,6 +382,9 @@
       <img class="gopeshwar-wm" id="bgGopeshwar" src="./gopeshwar_mahadev/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="gopeshwar-guru-wm" id="bgGopeshwarGuru" src="./gopeshwar_guru/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="gopeshwar-acharya-wm" id="bgGopeshwarAcharya" src="./gopeshwar_acharya/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img class="nimbark-wm" id="bgNimbark" src="./nimbark_deity/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img class="nimbark-guru-wm" id="bgNimbarkGuru" src="./nimbark_guru/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img class="nimbark-acharya-wm" id="bgNimbarkAcharya" src="./nimbark_acharya/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <div class="mf" id="mf">
         <div class="mf-line1">Radha Ballabh</div>
         <div class="mf-line2">Sri Harivansh</div>
@@ -387,8 +393,10 @@
       <div id="kvPersist"></div>
       <div id="kaamPersist"></div>
       <div id="ramPersist"></div>
+      <div id="ygPersist"></div>
       <div id="hkMalaComplete"></div>
       <div id="ramMalaComplete"></div>
+      <div id="ygMalaComplete"></div>
     </div>
   </div>
 
@@ -912,11 +920,13 @@
       <div class="cdmo-stat-row kv-only-stat">🕉️ Samba Sadashiv Jap <span class="cdmo-stat-val" id="cdmoSsJap">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">🪈 Krishnay Vasudevay Jap <span class="cdmo-stat-val" id="cdmoKvJap">—</span></div>
       <div class="cdmo-stat-row ram-only-stat">🚩 राम विजय मंत्र Jap <span class="cdmo-stat-val" style="color:#FF9933" id="cdmoRamJap">—</span></div>
+      <div class="cdmo-stat-row yg-only-stat">🎶 युगल मंत्र Jap <span class="cdmo-stat-val" style="color:#FFD700" id="cdmoYgJap">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ Radha Jap Time <span class="cdmo-stat-val" id="cdmoRadhaTime">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ Radha Vallabh Sri Harivangsa Jap Time <span class="cdmo-stat-val" id="cdmoRvTime">—</span></div>
       <div class="cdmo-stat-row kv-only-stat">⏱ Samba Sadashiv Jap Time <span class="cdmo-stat-val" id="cdmoSsTime">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ Krishnay Vasudevay Jap Time <span class="cdmo-stat-val" id="cdmoKvTime">—</span></div>
       <div class="cdmo-stat-row ram-only-stat">⏱ राम विजय मंत्र Jap Time <span class="cdmo-stat-val" style="color:#FF9933" id="cdmoRamTime">—</span></div>
+      <div class="cdmo-stat-row yg-only-stat">⏱ युगल मंत्र Jap Time <span class="cdmo-stat-val" style="color:#FFD700" id="cdmoYgTime">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">✨ 28 Names <span class="cdmo-stat-val" id="cdmo28Names">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ 28 Names Time <span class="cdmo-stat-val" style="color:var(--a2)" id="cdmoTime28">—</span></div>
       <div class="cdmo-stat-row hk-only-stat">🪷 Hare Krishna Mahamantra <span class="cdmo-stat-val" style="color:#6DB8FF" id="cdmoHkJap">—</span></div>
@@ -1023,6 +1033,9 @@
           </div>
           <div class="ded-type-pill" data-type="ram" onclick="toggleDedicationType('ram', this)" style="border-color:rgba(255,153,51,0.45);background:rgba(255,153,51,0.06);">
             <div style="font-size:11px;font-weight:700;color:#FF9933;">Ram</div>
+          </div>
+          <div class="ded-type-pill" data-type="yg" onclick="toggleDedicationType('yg', this)" style="border-color:rgba(255,215,0,0.45);background:rgba(255,215,0,0.06);">
+            <div style="font-size:11px;font-weight:700;color:#FFD700;">Yugal</div>
           </div>
           <div class="ded-type-pill" data-type="kaam" onclick="toggleDedicationType('kaam', this)" style="border-color:rgba(124,143,224,0.45);background:rgba(124,143,224,0.06);">
             <div style="font-size:11px;font-weight:700;color:#B8C4F5;">Kaam</div>
@@ -1231,6 +1244,18 @@
             </div>
             <span id="sRamTotF" style="display:none">0</span>
           </div>
+          <!-- 2c. Nimbark (Yugal Mantra) -->
+          <div class="dc-wrap dc-yg yg-only-stat" style="grid-column:1/-1">
+            <div class="dc-title"><span class="dc-dot dc-dot--yg"></span>Yugal Mantra</div>
+            <div class="dc-table">
+              <div class="dc-thead"><div></div><div>Count</div><div>Malas</div><div>Time</div></div>
+              <div class="dc-row"><div class="dc-period">Today</div><div id="sYgPTod">0</div><div id="sYgPTodM">0m</div><div id="tYgTod">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Week</div><div id="sYgPWk">0</div><div id="sYgPWkM">0m</div><div id="tYgWk">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Month</div><div id="sYgPMo">0</div><div id="sYgPMoM">0m</div><div id="tYgMo">0s</div></div>
+              <div class="dc-row dc-row--life dc-row--yg"><div class="dc-period">Lifetime</div><div id="sYgTot">0</div><div id="sYgTotM">0m</div><div id="tYgLt">0s</div></div>
+            </div>
+            <span id="sYgTotF" style="display:none">0</span>
+          </div>
           <!-- 3. 28 Names -->
           <div class="dc-wrap dc-28n non-gaudiya-stat" style="grid-column:1/-1">
             <div class="dc-title"><span class="dc-dot dc-dot--28n"></span>28 Names</div>
@@ -1360,6 +1385,17 @@
               <div class="dc-row dc-row--life" style="grid-template-columns:72px 1fr"><div class="dc-period">Lifetime</div><div id="qRamLt">—</div></div>
             </div>
           </div>
+          <div class="dc-wrap dc-yg yg-only-stat" style="grid-column:1/-1">
+            <div class="dc-title"><span class="dc-dot dc-dot--yg"></span>Yugal Mantra — Q</div>
+            <div style="font-size:9px;color:var(--td);margin:-8px 0 6px;">Seconds per name chanted (lower = faster pace). Manual entries excluded.</div>
+            <div class="dc-table">
+              <div class="dc-thead" style="grid-template-columns:72px 1fr"><div></div><div>Sec / Name</div></div>
+              <div class="dc-row" style="grid-template-columns:72px 1fr"><div class="dc-period">Today</div><div id="qYgTod">—</div></div>
+              <div class="dc-row" style="grid-template-columns:72px 1fr"><div class="dc-period">Week</div><div id="qYgWk">—</div></div>
+              <div class="dc-row" style="grid-template-columns:72px 1fr"><div class="dc-period">Month</div><div id="qYgMo">—</div></div>
+              <div class="dc-row dc-row--life" style="grid-template-columns:72px 1fr"><div class="dc-period">Lifetime</div><div id="qYgLt">—</div></div>
+            </div>
+          </div>
           <div class="dc-wrap dc-28n non-gaudiya-stat" style="grid-column:1/-1">
             <div class="dc-title"><span class="dc-dot dc-dot--28n"></span>28 Names — Q</div>
             <div style="font-size:9px;color:var(--td);margin:-8px 0 6px;">Seconds per name chanted (lower = faster pace). Manual entries excluded.</div>
@@ -1476,6 +1512,7 @@
                 <th class="hist-th hist-hk-col" id="histHKColHeader" style="display:none;color:#6DB8FF">हरे कृष्ण महामंत्र</th>
                 <th class="hist-th hist-kv-col" id="histKVColHeader" style="display:none;color:#ffb86c">साम्ब सदाशिव</th>
                 <th class="hist-th hist-ram-col" id="histRamColHeader" style="display:none;color:#FF9933">राम विजय मंत्र</th>
+                <th class="hist-th hist-yg-col" id="histYgColHeader" style="display:none;color:#FFD700">युगल मंत्र</th>
                 <th class="hist-th">Total Time</th>
                 <th class="hist-th hist-th-chev" aria-hidden="true"></th>
               </tr>
@@ -2569,6 +2606,17 @@
       </div>
     </div>
 
+    <!-- Yugal Mantra Daily Target -->
+    <div class="yg-only-setting target-row-card" style="border-color:rgba(255,215,0,0.38);background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));">
+      <div class="target-row-title" style="color:rgba(255,215,0,0.9);">🎶 Yugal Mantra Daily Target</div>
+      <div class="target-row-inputs">
+        <div class="target-input-group"><input type="number" class="fi" id="dtYgIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtYg')"><span class="fu">jap</span></div>
+        <div class="target-input-group"><input type="number" class="fi" id="dtYgMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtYg')"><span class="fu" style="color:#FFD700;">malas</span></div>
+        <div class="target-row-sum">= <span id="dtYgMala">0</span> malas/day</div>
+        <button class="pb target-row-btn" onclick="svtYg('d')">Save Daily</button>
+      </div>
+    </div>
+
     <div style="margin-top:10px;" id="target28SlotDefault"></div>
 
     <!-- Lifetime Target: Radha + Radha Vallabh + Krishnay Vasudevay combined (always last) -->
@@ -2679,6 +2727,52 @@
         </label>
         <button class="photo-reset-btn" onclick="resetPhoto('gopeshwarAcharya')">↩ Default</button>
         <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('gopeshwarAcharya', 0)">Blank</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Jap Display Photos: Nimbark Sampraday — shown only while Nimbark mode is on -->
+  <div class="sc photo-settings-card yg-only-setting" style="flex-direction:column;">
+    <div class="photo-settings-title">🎶 Nimbark Jap Display Photos</div>
+    <div style="font-size:10px;color:rgba(255,255,255,0.4);line-height:1.4;margin-bottom:14px;">
+      Choose the photos that appear on the Jap screen in Nimbark mode (top: Deity, bottom: Guru and Acharya). Pick from the repository collection or upload your own.
+    </div>
+    <div class="photo-row">
+      <div class="photo-row-label">🎶 Nimbark Deity (top)</div>
+      <div class="photo-thumb-strip" id="photoStripNimbark"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('nimbark', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('nimbark')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('nimbark', 0)">Blank</button>
+      </div>
+    </div>
+    <div class="photo-row" style="margin-top:14px;">
+      <div class="photo-row-label">🎶 Nimbark Guru (left)</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.35);margin:-4px 0 8px;">Appears bottom-left on the Jap screen while Nimbark mode is on.</div>
+      <div class="photo-thumb-strip" id="photoStripNimbarkGuru"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('nimbarkGuru', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('nimbarkGuru')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('nimbarkGuru', 0)">Blank</button>
+      </div>
+    </div>
+    <div class="photo-row" style="margin-top:14px;">
+      <div class="photo-row-label">🎶 Nimbark Acharya (right)</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.35);margin:-4px 0 8px;">Appears bottom-right on the Jap screen while Nimbark mode is on.</div>
+      <div class="photo-thumb-strip" id="photoStripNimbarkAcharya"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('nimbarkAcharya', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('nimbarkAcharya')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('nimbarkAcharya', 0)">Blank</button>
       </div>
     </div>
   </div>
@@ -3136,7 +3230,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=144"></script>
-    <script src="./app.js?v=421"></script>
+    <script src="./app.js?v=423"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

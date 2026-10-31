@@ -255,6 +255,12 @@
           <div class="naam-sel-opt" id="naamOptRam" onclick="switchJapMode('ram')">
             <span class="ns-check"></span> <span id="naamOptRamLabel">राम विजय मंत्र</span>
           </div>
+          <div class="naam-sel-opt" id="naamOptSR" onclick="switchJapMode('sr')">
+            <span class="ns-check"></span> <span id="naamOptSRLabel">सीताराम</span>
+          </div>
+          <div class="naam-sel-opt" id="naamOptRM" onclick="switchJapMode('rm')">
+            <span class="ns-check"></span> <span id="naamOptRMLabel">राम</span>
+          </div>
           <div class="naam-sel-opt" id="naamOptYg" onclick="switchJapMode('yg')">
             <span class="ns-check"></span> <span id="naamOptYgLabel">युगल मंत्र</span>
           </div>
@@ -384,6 +390,9 @@
       <img class="hd-wm" id="bgHdDeity" src="./haridashi_deity/1.jpg" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="hd-guru-wm" id="bgHdGuru" src="./haridashi_guru/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="hd-acharya-wm" id="bgHdAcharya" src="./haridashi_acharya/1.jpg" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img class="ramanandi-wm" id="bgRamanandi" src="./ramanandi_deity/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img class="ramanandi-guru-wm" id="bgRamanandiGuru" src="./ramanandi_guru/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img class="ramanandi-acharya-wm" id="bgRamanandiAcharya" src="./ramanandi_acharya/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="gopeshwar-acharya-wm" id="bgGopeshwarAcharya" src="./gopeshwar_acharya/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="nimbark-wm" id="bgNimbark" src="./nimbark_deity/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="nimbark-guru-wm" id="bgNimbarkGuru" src="./nimbark_guru/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
@@ -923,12 +932,16 @@
       <div class="cdmo-stat-row kv-only-stat">🕉️ Samba Sadashiv Jap <span class="cdmo-stat-val" id="cdmoSsJap">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">🪈 Krishnay Vasudevay Jap <span class="cdmo-stat-val" id="cdmoKvJap">—</span></div>
       <div class="cdmo-stat-row ram-only-stat">🚩 राम विजय मंत्र Jap <span class="cdmo-stat-val" style="color:#FF9933" id="cdmoRamJap">—</span></div>
+      <div class="cdmo-stat-row ram-only-stat">🏹 सीताराम Jap <span class="cdmo-stat-val" style="color:#FF8FA3" id="cdmoSRJap">—</span></div>
+      <div class="cdmo-stat-row ram-only-stat">🚩 राम Jap <span class="cdmo-stat-val" style="color:#FFC857" id="cdmoRMJap">—</span></div>
       <div class="cdmo-stat-row yg-only-stat">🎶 युगल मंत्र Jap <span class="cdmo-stat-val" style="color:#FFD700" id="cdmoYgJap">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ Radha Jap Time <span class="cdmo-stat-val" id="cdmoRadhaTime">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ Radha Vallabh Sri Harivangsa Jap Time <span class="cdmo-stat-val" id="cdmoRvTime">—</span></div>
       <div class="cdmo-stat-row kv-only-stat">⏱ Samba Sadashiv Jap Time <span class="cdmo-stat-val" id="cdmoSsTime">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ Krishnay Vasudevay Jap Time <span class="cdmo-stat-val" id="cdmoKvTime">—</span></div>
       <div class="cdmo-stat-row ram-only-stat">⏱ राम विजय मंत्र Jap Time <span class="cdmo-stat-val" style="color:#FF9933" id="cdmoRamTime">—</span></div>
+      <div class="cdmo-stat-row ram-only-stat">⏱ सीताराम Jap Time <span class="cdmo-stat-val" style="color:#FF8FA3" id="cdmoSRTime">—</span></div>
+      <div class="cdmo-stat-row ram-only-stat">⏱ राम Jap Time <span class="cdmo-stat-val" style="color:#FFC857" id="cdmoRMTime">—</span></div>
       <div class="cdmo-stat-row yg-only-stat">⏱ युगल मंत्र Jap Time <span class="cdmo-stat-val" style="color:#FFD700" id="cdmoYgTime">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">✨ 28 Names <span class="cdmo-stat-val" id="cdmo28Names">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ 28 Names Time <span class="cdmo-stat-val" style="color:var(--a2)" id="cdmoTime28">—</span></div>
@@ -1036,6 +1049,12 @@
           </div>
           <div class="ded-type-pill" data-type="ram" onclick="toggleDedicationType('ram', this)" style="border-color:rgba(255,153,51,0.45);background:rgba(255,153,51,0.06);">
             <div style="font-size:11px;font-weight:700;color:#FF9933;">Ram</div>
+          </div>
+          <div class="ded-type-pill" data-type="sr" onclick="toggleDedicationType('sr', this)" style="border-color:rgba(255,143,163,0.45);background:rgba(255,143,163,0.06);">
+            <div style="font-size:11px;font-weight:700;color:#FF8FA3;">SR</div>
+          </div>
+          <div class="ded-type-pill" data-type="rm" onclick="toggleDedicationType('rm', this)" style="border-color:rgba(255,200,87,0.45);background:rgba(255,200,87,0.06);">
+            <div style="font-size:11px;font-weight:700;color:#FFC857;">RM</div>
           </div>
           <div class="ded-type-pill" data-type="yg" onclick="toggleDedicationType('yg', this)" style="border-color:rgba(255,215,0,0.45);background:rgba(255,215,0,0.06);">
             <div style="font-size:11px;font-weight:700;color:#FFD700;">Yugal</div>
@@ -1247,6 +1266,28 @@
             </div>
             <span id="sRamTotF" style="display:none">0</span>
           </div>
+          <div class="dc-wrap dc-ram dc-sr ram-only-stat" style="grid-column:1/-1">
+            <div class="dc-title"><span class="dc-dot dc-dot--sr"></span>SitaRaam</div>
+            <div class="dc-table">
+              <div class="dc-thead"><div></div><div>Count</div><div>Malas</div><div>Time</div></div>
+              <div class="dc-row"><div class="dc-period">Today</div><div id="sSRPTod">0</div><div id="sSRPTodM">0m</div><div id="tSRTod">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Week</div><div id="sSRPWk">0</div><div id="sSRPWkM">0m</div><div id="tSRWk">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Month</div><div id="sSRPMo">0</div><div id="sSRPMoM">0m</div><div id="tSRMo">0s</div></div>
+              <div class="dc-row dc-row--life dc-row--sr"><div class="dc-period">Lifetime</div><div id="sSRTot">0</div><div id="sSRTotM">0m</div><div id="tSRLt">0s</div></div>
+            </div>
+            <span id="sSRTotF" style="display:none">0</span>
+          </div>
+          <div class="dc-wrap dc-ram dc-rm ram-only-stat" style="grid-column:1/-1">
+            <div class="dc-title"><span class="dc-dot dc-dot--rm"></span>Raam</div>
+            <div class="dc-table">
+              <div class="dc-thead"><div></div><div>Count</div><div>Malas</div><div>Time</div></div>
+              <div class="dc-row"><div class="dc-period">Today</div><div id="sRMPTod">0</div><div id="sRMPTodM">0m</div><div id="tRMTod">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Week</div><div id="sRMPWk">0</div><div id="sRMPWkM">0m</div><div id="tRMWk">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Month</div><div id="sRMPMo">0</div><div id="sRMPMoM">0m</div><div id="tRMMo">0s</div></div>
+              <div class="dc-row dc-row--life dc-row--rm"><div class="dc-period">Lifetime</div><div id="sRMTot">0</div><div id="sRMTotM">0m</div><div id="tRMLt">0s</div></div>
+            </div>
+            <span id="sRMTotF" style="display:none">0</span>
+          </div>
           <!-- 2c. Nimbark (Yugal Mantra) -->
           <div class="dc-wrap dc-yg yg-only-stat" style="grid-column:1/-1">
             <div class="dc-title"><span class="dc-dot dc-dot--yg"></span>Yugal Mantra</div>
@@ -1388,6 +1429,28 @@
               <div class="dc-row dc-row--life" style="grid-template-columns:72px 1fr"><div class="dc-period">Lifetime</div><div id="qRamLt">—</div></div>
             </div>
           </div>
+          <div class="dc-wrap dc-ram dc-sr ram-only-stat" style="grid-column:1/-1">
+            <div class="dc-title"><span class="dc-dot dc-dot--sr"></span>SitaRaam — Q</div>
+            <div style="font-size:9px;color:var(--td);margin:-8px 0 6px;">Seconds per name chanted (lower = faster pace). Manual entries excluded.</div>
+            <div class="dc-table">
+              <div class="dc-thead" style="grid-template-columns:72px 1fr"><div></div><div>Sec / Name</div></div>
+              <div class="dc-row" style="grid-template-columns:72px 1fr"><div class="dc-period">Today</div><div id="qSRTod">—</div></div>
+              <div class="dc-row" style="grid-template-columns:72px 1fr"><div class="dc-period">Week</div><div id="qSRWk">—</div></div>
+              <div class="dc-row" style="grid-template-columns:72px 1fr"><div class="dc-period">Month</div><div id="qSRMo">—</div></div>
+              <div class="dc-row dc-row--life" style="grid-template-columns:72px 1fr"><div class="dc-period">Lifetime</div><div id="qSRLt">—</div></div>
+            </div>
+          </div>
+          <div class="dc-wrap dc-ram dc-rm ram-only-stat" style="grid-column:1/-1">
+            <div class="dc-title"><span class="dc-dot dc-dot--rm"></span>Raam — Q</div>
+            <div style="font-size:9px;color:var(--td);margin:-8px 0 6px;">Seconds per name chanted (lower = faster pace). Manual entries excluded.</div>
+            <div class="dc-table">
+              <div class="dc-thead" style="grid-template-columns:72px 1fr"><div></div><div>Sec / Name</div></div>
+              <div class="dc-row" style="grid-template-columns:72px 1fr"><div class="dc-period">Today</div><div id="qRMTod">—</div></div>
+              <div class="dc-row" style="grid-template-columns:72px 1fr"><div class="dc-period">Week</div><div id="qRMWk">—</div></div>
+              <div class="dc-row" style="grid-template-columns:72px 1fr"><div class="dc-period">Month</div><div id="qRMMo">—</div></div>
+              <div class="dc-row dc-row--life" style="grid-template-columns:72px 1fr"><div class="dc-period">Lifetime</div><div id="qRMLt">—</div></div>
+            </div>
+          </div>
           <div class="dc-wrap dc-yg yg-only-stat" style="grid-column:1/-1">
             <div class="dc-title"><span class="dc-dot dc-dot--yg"></span>Yugal Mantra — Q</div>
             <div style="font-size:9px;color:var(--td);margin:-8px 0 6px;">Seconds per name chanted (lower = faster pace). Manual entries excluded.</div>
@@ -1515,6 +1578,8 @@
                 <th class="hist-th hist-hk-col" id="histHKColHeader" style="display:none;color:#6DB8FF">हरे कृष्ण महामंत्र</th>
                 <th class="hist-th hist-kv-col" id="histKVColHeader" style="display:none;color:#ffb86c">साम्ब सदाशिव</th>
                 <th class="hist-th hist-ram-col" id="histRamColHeader" style="display:none;color:#FF9933">राम विजय मंत्र</th>
+                <th class="hist-th hist-ram-col" id="histSRColHeader" style="display:none;color:#FF8FA3">सीताराम</th>
+                <th class="hist-th hist-ram-col" id="histRMColHeader" style="display:none;color:#FFC857">राम</th>
                 <th class="hist-th hist-yg-col" id="histYgColHeader" style="display:none;color:#FFD700">युगल मंत्र</th>
                 <th class="hist-th">Total Time</th>
                 <th class="hist-th hist-th-chev" aria-hidden="true"></th>
@@ -2608,6 +2673,26 @@
         <button class="pb target-row-btn" onclick="svtRam('d')">Save Daily</button>
       </div>
     </div>
+    <!-- SitaRaam Daily Target -->
+    <div class="ram-only-setting target-row-card" style="border-color:rgba(255,143,163,0.38);background:linear-gradient(160deg,rgba(255,143,163,0.09),rgba(10,8,25,0.85));">
+      <div class="target-row-title" style="color:rgba(255,143,163,0.9);">🏹 SitaRaam Daily Target</div>
+      <div class="target-row-inputs">
+        <div class="target-input-group"><input type="number" class="fi" id="dtSRIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtSR')"><span class="fu">jap</span></div>
+        <div class="target-input-group"><input type="number" class="fi" id="dtSRMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtSR')"><span class="fu" style="color:#FF8FA3;">malas</span></div>
+        <div class="target-row-sum">= <span id="dtSRMala">0</span> malas/day</div>
+        <button class="pb target-row-btn" onclick="svtSR('d')">Save Daily</button>
+      </div>
+    </div>
+    <!-- Raam Daily Target -->
+    <div class="ram-only-setting target-row-card" style="border-color:rgba(255,200,87,0.38);background:linear-gradient(160deg,rgba(255,200,87,0.09),rgba(10,8,25,0.85));">
+      <div class="target-row-title" style="color:rgba(255,200,87,0.9);">🚩 Raam Daily Target</div>
+      <div class="target-row-inputs">
+        <div class="target-input-group"><input type="number" class="fi" id="dtRMIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtRM')"><span class="fu">jap</span></div>
+        <div class="target-input-group"><input type="number" class="fi" id="dtRMMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtRM')"><span class="fu" style="color:#FFC857;">malas</span></div>
+        <div class="target-row-sum">= <span id="dtRMMala">0</span> malas/day</div>
+        <button class="pb target-row-btn" onclick="svtRM('d')">Save Daily</button>
+      </div>
+    </div>
 
     <!-- Yugal Mantra Daily Target -->
     <div class="yg-only-setting target-row-card" style="border-color:rgba(255,215,0,0.38);background:linear-gradient(160deg,rgba(255,215,0,0.09),rgba(10,8,25,0.85));">
@@ -2820,6 +2905,52 @@
         </label>
         <button class="photo-reset-btn" onclick="resetPhoto('nimbarkAcharya')">↩ Default</button>
         <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('nimbarkAcharya', 0)">Blank</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Jap Display Photos: Ramanandi mode (Deity top, Guru bottom-left, Acharya bottom-right) — shown only in Ramanandi mode -->
+  <div class="sc photo-settings-card ram-only-setting" style="flex-direction:column;">
+    <div class="photo-settings-title">🚩 Ramanandi Jap Display Photos</div>
+    <div style="font-size:10px;color:rgba(255,255,255,0.4);line-height:1.4;margin-bottom:14px;">
+      Choose the photos that appear on the Jap screen in Ramanandi mode (top: Deity, bottom: Guru and Acharya). Pick from the repository collection or upload your own.
+    </div>
+    <div class="photo-row">
+      <div class="photo-row-label">🚩 Deity (top)</div>
+      <div class="photo-thumb-strip" id="photoStripRamanandi"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('ramanandi', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('ramanandi')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('ramanandi', 0)">Blank</button>
+      </div>
+    </div>
+    <div class="photo-row" style="margin-top:14px;">
+      <div class="photo-row-label">🙏 Guru (left)</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.35);margin:-4px 0 8px;">Appears bottom-left on the Jap screen while Ramanandi mode is on.</div>
+      <div class="photo-thumb-strip" id="photoStripRamanandiGuru"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('ramanandiGuru', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('ramanandiGuru')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('ramanandiGuru', 0)">Blank</button>
+      </div>
+    </div>
+    <div class="photo-row" style="margin-top:14px;">
+      <div class="photo-row-label">🙏 Acharya (right)</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.35);margin:-4px 0 8px;">Appears bottom-right on the Jap screen while Ramanandi mode is on.</div>
+      <div class="photo-thumb-strip" id="photoStripRamanandiAcharya"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('ramanandiAcharya', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('ramanandiAcharya')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('ramanandiAcharya', 0)">Blank</button>
       </div>
     </div>
   </div>

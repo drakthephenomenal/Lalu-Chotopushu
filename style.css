@@ -4387,3 +4387,56 @@ body.haridashi-mode .dc-wrap.dc-kv,
 body.haridashi-mode .dc-wrap.dc-kaam{display:none !important;}
 body.haridashi-mode #audioModeBox{display:none !important;}
 .hd-hide{display:none !important;}
+
+
+/* ===== RAMFAM_PATCH_V1 : SitaRaam + Raam (Ramanandi mode) ===== */
+body:not(.ramanandi-mode) #naamOptSR,
+body:not(.ramanandi-mode) #naamOptRM { display: none !important; }
+.dc-sr .dc-title { color:#FF8FA3; }
+.dc-rm .dc-title { color:#FFC857; }
+.dc-dot--sr { background:#FF8FA3; box-shadow:0 0 7px #FF8FA399; }
+.dc-dot--rm { background:#FFC857; box-shadow:0 0 7px #FFC85799; }
+.dc-sr .dc-row--life > div, .dc-row--sr > div { color:#FF8FA3; }
+.dc-rm .dc-row--life > div, .dc-row--rm > div { color:#FFC857; }
+.hist-c-sr{color:#FF8FA3;}
+.hist-c-rm{color:#FFC857;}
+.pt-sr .pt-num{color:#FF8FA3;text-shadow:0 0 14px rgba(255,143,163,0.45);}
+.pt-sr{border-color:rgba(255,143,163,0.28);}
+.pt-sr .pt-card-icon{background:linear-gradient(160deg,rgba(255,143,163,0.20),rgba(255,143,163,0.04));border-color:rgba(255,143,163,0.45);box-shadow:0 0 16px rgba(255,143,163,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}
+.pt-rm .pt-num{color:#FFC857;text-shadow:0 0 14px rgba(255,200,87,0.45);}
+.pt-rm{border-color:rgba(255,200,87,0.28);}
+.pt-rm .pt-card-icon{background:linear-gradient(160deg,rgba(255,200,87,0.20),rgba(255,200,87,0.04));border-color:rgba(255,200,87,0.45);box-shadow:0 0 16px rgba(255,200,87,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}
+
+/* Ramanandi mode — own Deity (top-centre), Guru (bottom-left) and Acharya (bottom-right) on the Jap screen.
+   Visibility is controlled from JS (applyBgPhotos) so the per-photo "Blank" option is respected. */
+.tz .ramanandi-wm{
+  position:absolute; top:var(--rv-top); left:50%; transform:translateX(-50%);
+  width:var(--rv-w); height:auto; max-height:78%;
+  object-fit:contain; opacity:.6;
+  filter:drop-shadow(0 0 22px rgba(255,153,51,.45));
+  pointer-events:none; user-select:none; z-index:1; display:none;
+  animation: divineBreathGlowStrong 10s ease-in-out infinite;
+}
+.tz .ramanandi-guru-wm,
+.tz .ramanandi-acharya-wm{
+  position:absolute;
+  top: min(var(--rv-bottom), calc(100% - var(--side-w) * var(--rv-aspect)));
+  width:var(--side-w); height:auto;
+  object-fit:contain; opacity:.6;
+  filter:drop-shadow(0 0 22px rgba(255,153,51,.45));
+  pointer-events:none; user-select:none; z-index:1; display:none;
+  animation: divineBreathGlowStrong 10s ease-in-out infinite;
+}
+.tz .ramanandi-guru-wm{left:8px;}
+.tz .ramanandi-acharya-wm{right:8px;}
+/* Ramanandi mode has its own deity/guru/acharya, so hide the normal-mode Radha Vallabh / Hitju / Gurudev */
+body.ramanandi-mode .tz .rv-wm,
+body.ramanandi-mode .tz .hitju-wm,
+body.ramanandi-mode .tz .gurudev-wm{display:none !important;animation:none !important;}
+.tz.photo-edit-mode .ramanandi-wm,
+.tz.photo-edit-mode .ramanandi-guru-wm,
+.tz.photo-edit-mode .ramanandi-acharya-wm{
+  pointer-events:auto !important; cursor:move; touch-action:none;
+  outline:1.5px dashed rgba(255,215,0,0.75); outline-offset:3px;
+  animation:none !important; opacity:.9 !important; filter:none !important;
+}

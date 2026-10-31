@@ -1,3 +1,4 @@
+// v423: Ramanandi mode - SitaRaam + Raam chants (stats, N&M, leaderboard) and own Deity/Guru/Acharya jap display.
 // v416: Backup/Export JSON now also carries the Drive-allowed flag (with favourites).
 // v415: Drive permission is remembered on the server + synced to the account, so every device uploads in one tap (no popups) once allowed anywhere.
 // v414: Drive on web: permission once → server keeps it (no more popups). Falls back to 1-hour mode if the server step fails, and shows why.
@@ -459,7 +460,7 @@
 // v420 (Play build + dev email): bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
 // v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
 // v422: bumped cache to force-invalidate stale app.js / style.css / index.html — Haridashi Sampraday (Radha + Kunj Vihari / Sri Haridas, own Deity/Guru/Acharya photos, own lifetime target); Nimbark Deity/Guru/Acharya jap-display photos + Yugal mantra animation now matches Hare Krishna; reopened wishes no longer stay paused.
-const CACHE = 'radha-jap-v422';
+const CACHE = 'radha-jap-v423';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

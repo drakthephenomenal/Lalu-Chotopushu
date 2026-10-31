@@ -1871,6 +1871,7 @@ body.ramanandi-mode #naamOptRadha,
 body.ramanandi-mode #naamOptRV,
 body.ramanandi-mode #naamOptSS,
 body.ramanandi-mode #naamOptKV,
+body.ramanandi-mode #naamOptKaam,
 body.ramanandi-mode #naamOptHK { display: none !important; }
 /* Also hide Ram from the dropdown while Gaudiya/Trahimam are active */
 body.gaudiya-mode #naamOptRam,

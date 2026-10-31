@@ -3721,7 +3721,10 @@ function spawnRam() {
   if (!el) return;
   const _nt = naamText();
   const _rmode = isRamFam(App.S.japMode) ? App.S.japMode : "ram";
-  const text = _nt[_rmode + "1"] + "\n" + _nt[_rmode + "2"];
+  // SitaRaam and Raam repeat the same word on both lines, so show it once.
+  const text = (_rmode === "sr" || _rmode === "rm")
+    ? _nt[_rmode + "1"]
+    : _nt[_rmode + "1"] + "\n" + _nt[_rmode + "2"];
   // CURRENT color → float rises up and disappears (the "old" text leaving)
   const currentColor = HK_COLORS[_ramColorIdx % 7];
   const currentShadow = HK_SHADOWS_MAP[_ramColorIdx % 7];

@@ -619,7 +619,11 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
     const histRam = data.historyRam || {};
     const histSR = data.historySR || {};
     const histRM = data.historyRM || {};
+    const histYg = data.historyYg || {};
+    const histKaam = data.historyKaam || {};
     const hist28 = data.h28 || {};
+    // Kunj Vihari Sri Haridas reuses the RV counting slot; lbKH tells the leaderboard to show it separately.
+    const lbKH = data.lbKH === true;
 
     const totalRadha = _lbSumHistory(hist);
     const totalRV = _lbSumHistory(histRV);
@@ -629,11 +633,13 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
     const totalRam = _lbSumHistory(histRam);
     const totalSR = _lbSumHistory(histSR);
     const totalRM = _lbSumHistory(histRM);
+    const totalYg = _lbSumHistory(histYg);
+    const totalKaam = _lbSumHistory(histKaam);
     const total28 = _lbSumHistory(hist28);
 
     const totalJap = Math.max(
       0,
-      totalRadha + totalRV + totalKV + totalSS + totalHK + totalRam + totalSR + totalRM + total28 -
+      totalRadha + totalRV + totalKV + totalSS + totalHK + totalRam + totalSR + totalRM + totalYg + totalKaam + total28 -
         (data.nameJapDeduct || 0) -
         (data.nameJapDeductRV || 0) -
         (data.nameJapDeductKV || 0) -
@@ -642,6 +648,8 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
         (data.nameJapDeductRam || 0) -
         (data.nameJapDeductSR || 0) -
         (data.nameJapDeductRM || 0) -
+        (data.nameJapDeductYg || 0) -
+        (data.nameJapDeductKaam || 0) -
         (data.nameJapDeduct28 || 0)
     );
 
@@ -674,11 +682,13 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
         ...Object.keys(histRam),
         ...Object.keys(histSR),
         ...Object.keys(histRM),
+        ...Object.keys(histYg),
+        ...Object.keys(histKaam),
       ]);
       allKeys.forEach((k) => {
         allHist[k] =
           (hist[k] || 0) + (histRV[k] || 0) + (histKV[k] || 0) +
-          (histSS[k] || 0) + (histHK[k] || 0) + (histRam[k] || 0) + (histSR[k] || 0) + (histRM[k] || 0);
+          (histSS[k] || 0) + (histHK[k] || 0) + (histRam[k] || 0) + (histSR[k] || 0) + (histRM[k] || 0) + (histYg[k] || 0) + (histKaam[k] || 0);
       });
       const target = data.dt || data.dtRV || data.dtKV || data.dtHK || 0;
       let key = liveTk;
@@ -701,6 +711,8 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       ram: histRam[liveTk] || 0,
       sr: histSR[liveTk] || 0,
       rm: histRM[liveTk] || 0,
+      yg: histYg[liveTk] || 0,
+      kaam: histKaam[liveTk] || 0,
       n28: hist28[liveTk] || 0,
     };
     const timerHist = data.timerHistory || {};
@@ -711,6 +723,8 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
     const timerHistRam = data.timerHistoryRam || {};
     const timerHistSR = data.timerHistorySR || {};
     const timerHistRM = data.timerHistoryRM || {};
+    const timerHistYg = data.timerHistoryYg || {};
+    const timerHistKaam = data.timerHistoryKaam || {};
     const timer28Hist = data.timer28History || {};
     const todayTimeBreakdown = {
       r: timerHist[liveTk] || 0,
@@ -721,14 +735,16 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       ram: timerHistRam[liveTk] || 0,
       sr: timerHistSR[liveTk] || 0,
       rm: timerHistRM[liveTk] || 0,
+      yg: timerHistYg[liveTk] || 0,
+      kaam: timerHistKaam[liveTk] || 0,
       n28: timer28Hist[liveTk] || 0,
     };
     const todayJap =
       todayBreakdown.r + todayBreakdown.rv + todayBreakdown.kv +
-      todayBreakdown.ss + todayBreakdown.hk + todayBreakdown.ram + todayBreakdown.sr + todayBreakdown.rm + todayBreakdown.n28;
+      todayBreakdown.ss + todayBreakdown.hk + todayBreakdown.ram + todayBreakdown.sr + todayBreakdown.rm + todayBreakdown.yg + todayBreakdown.kaam + todayBreakdown.n28;
     const todayTimerSeconds =
       todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kv +
-      todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.ram + todayTimeBreakdown.sr + todayTimeBreakdown.rm + todayTimeBreakdown.n28;
+      todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.ram + todayTimeBreakdown.sr + todayTimeBreakdown.rm + todayTimeBreakdown.yg + todayTimeBreakdown.kaam + todayTimeBreakdown.n28;
 
     const payload = {
       displayName,
@@ -750,7 +766,10 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       historyRam: histRam,
       historySR: histSR,
       historyRM: histRM,
+      historyYg: histYg,
+      historyKaam: histKaam,
       history28: hist28,
+      lbKH,
       nameJapDeduct: data.nameJapDeduct || 0,
       nameJapDeductRV: data.nameJapDeductRV || 0,
       nameJapDeductKV: data.nameJapDeductKV || 0,
@@ -759,12 +778,15 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       nameJapDeductRam: data.nameJapDeductRam || 0,
       nameJapDeductSR: data.nameJapDeductSR || 0,
       nameJapDeductRM: data.nameJapDeductRM || 0,
+      nameJapDeductYg: data.nameJapDeductYg || 0,
+      nameJapDeductKaam: data.nameJapDeductKaam || 0,
       nameJapDeduct28: data.nameJapDeduct28 || 0,
       timerSeconds:
         _lbSumHistory(timerHist) + _lbSumHistory(timerHistRV) +
         _lbSumHistory(timerHistKV) + _lbSumHistory(timerHistSS) +
         _lbSumHistory(timerHistHK) + _lbSumHistory(timerHistRam) +
         _lbSumHistory(timerHistSR) + _lbSumHistory(timerHistRM) +
+        _lbSumHistory(timerHistYg) + _lbSumHistory(timerHistKaam) +
         _lbSumHistory(timer28Hist),
       timerHistory: timerHist,
       timerHistoryRV: timerHistRV,
@@ -774,6 +796,8 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       timerHistoryRam: timerHistRam,
       timerHistorySR: timerHistSR,
       timerHistoryRM: timerHistRM,
+      timerHistoryYg: timerHistYg,
+      timerHistoryKaam: timerHistKaam,
       timer28History: timer28Hist,
     };
 

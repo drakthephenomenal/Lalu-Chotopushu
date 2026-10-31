@@ -2,7 +2,7 @@
   "name": "functions",
   "description": "Zoho auth-code -> Firebase custom token exchange for the native app",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "dependencies": {

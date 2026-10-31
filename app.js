@@ -1145,6 +1145,7 @@ const App = {
       activityLog: this.S.activityLog || [],
       audioChantLog: this.S.audioChantLog || [],
       audioHistM: this.S.audioHistM || {},
+      khDays: this.S.khDays || {},
       audioLogM: this.S.audioLogM || {},
       historyAudio: this.S.historyAudio || {},
       historyAudio28: this.S.historyAudio28 || {},
@@ -1401,6 +1402,7 @@ const App = {
     if (!this.S.audioChantLog) this.S.audioChantLog = [];
     if (!this.S.historyAudio) this.S.historyAudio = {};
     if (!this.S.audioHistM || typeof this.S.audioHistM !== "object") this.S.audioHistM = {};
+    if (!this.S.khDays || typeof this.S.khDays !== "object") this.S.khDays = {};
     if (!this.S.audioLogM || typeof this.S.audioLogM !== "object") this.S.audioLogM = {};
     ["rv", "kv", "kaam"].forEach((k) => { if (!this.S.audioHistM[k]) this.S.audioHistM[k] = {}; if (!Array.isArray(this.S.audioLogM[k])) this.S.audioLogM[k] = []; });
     if (!this.S.historyAudio28) this.S.historyAudio28 = {};
@@ -4760,6 +4762,29 @@ function _hdSyncTexts(on) {
     o2.observe(r, { attributes: true, attributeFilter: ["class", "style"] });
     _hdObs.push(o1, o2);
   });
+}
+// Kunj Vihari Sri Haridas (KH) counts are stored in the RV slot. To show KH as
+// KH on the leaderboard (and keep earlier RV days as RV), remember per DAY
+// whether that day's RV-slot jap was chanted in Haridashi mode.
+// khDays._init marks that the one-time catch-up below has run.
+function _khMarkToday() {
+  try {
+    const S = (typeof App !== "undefined" && App && App.S) || null;
+    if (!S) return;
+    if (!S.khDays || typeof S.khDays !== "object") S.khDays = {};
+    const hd = isHaridashiActive();
+    const rv = S.historyRV || {};
+    if (!S.khDays._init) {
+      S.khDays._init = true;
+      // First run: if this account is in Haridashi mode now, its existing
+      // RV-slot days were KH days.
+      if (hd) Object.keys(rv).forEach((k) => { if ((rv[k] || 0) > 0) S.khDays[k] = true; });
+    }
+    if (hd) {
+      const tk = App.getTk();
+      if ((rv[tk] || 0) > 0) S.khDays[tk] = true;
+    }
+  } catch (_e) {}
 }
 function isHaridashiActive() {
   const S = (typeof App !== "undefined" && App && App.S) || null;
@@ -9875,6 +9900,7 @@ function _buildBackupPayload() {
     activityLog: App.S.activityLog || [],
     audioChantLog: App.S.audioChantLog || [],
     audioHistM: App.S.audioHistM || {},
+    khDays: App.S.khDays || {},
     audioLogM: App.S.audioLogM || {},
     historyAudio: App.S.historyAudio || {},
     historyAudio28: App.S.historyAudio28 || {},
@@ -10129,6 +10155,7 @@ function importAllData(input) {
       App.S.activityLog = Array.isArray(data.activityLog) ? data.activityLog : [];
       App.S.audioChantLog = Array.isArray(data.audioChantLog) ? data.audioChantLog : [];
       App.S.audioHistM = (data.audioHistM && typeof data.audioHistM === "object") ? data.audioHistM : { rv: {}, kv: {}, kaam: {} };
+      App.S.khDays = (data.khDays && typeof data.khDays === "object") ? data.khDays : (App.S.khDays || {});
       App.S.audioLogM = (data.audioLogM && typeof data.audioLogM === "object") ? data.audioLogM : { rv: [], kv: [], kaam: [] };
       ["rv", "kv", "kaam"].forEach((k) => { if (!App.S.audioHistM[k]) App.S.audioHistM[k] = {}; if (!Array.isArray(App.S.audioLogM[k])) App.S.audioLogM[k] = []; });
       App.S.historyAudio = (data.historyAudio && typeof data.historyAudio === "object") ? data.historyAudio : {};
@@ -14368,6 +14395,7 @@ async function fbPushToUid(targetUid, fullReplace) {
     activityLog: App.S.activityLog || [],
     audioChantLog: (App.S.audioChantLog || []).slice(-1000),
     audioHistM: App.S.audioHistM || {},
+    khDays: App.S.khDays || {},
     audioLogM: App.S.audioLogM || {},
     historyAudio: App.S.historyAudio || {},
     historyAudio28: App.S.historyAudio28 || {},
@@ -14481,6 +14509,7 @@ async function fbPushFull() {
     if (typeof window._scheduleHydrationRetry === "function") window._scheduleHydrationRetry();
     return;
   }
+  _khMarkToday();
   setSyncPill("syncing", "Syncing…");
   const payload = {
     history: App.S.history || {},
@@ -14514,6 +14543,7 @@ async function fbPushFull() {
     activityLog: App.S.activityLog || [],
     audioChantLog: (App.S.audioChantLog || []).slice(-1000),
     audioHistM: App.S.audioHistM || {},
+    khDays: App.S.khDays || {},
     audioLogM: App.S.audioLogM || {},
     historyAudio: App.S.historyAudio || {},
     historyAudio28: App.S.historyAudio28 || {},
@@ -14899,6 +14929,7 @@ function fbApplyRemote(d) {
   }
   if ("historyAudio" in d) App.S.historyAudio = JSON.parse(JSON.stringify(d.historyAudio || {}));
   if ("audioHistM" in d) { App.S.audioHistM = JSON.parse(JSON.stringify(d.audioHistM || {})); ["rv", "kv", "kaam"].forEach((k) => { if (!App.S.audioHistM[k]) App.S.audioHistM[k] = {}; }); }
+  if (d.khDays && typeof d.khDays === "object") { App.S.khDays = Object.assign({}, d.khDays, App.S.khDays || {}); }
   if ("audioLogM" in d) { App.S.audioLogM = JSON.parse(JSON.stringify(d.audioLogM || {})); ["rv", "kv", "kaam"].forEach((k) => { if (!Array.isArray(App.S.audioLogM[k])) App.S.audioLogM[k] = []; }); }
   if ("historyAudio28" in d) App.S.historyAudio28 = JSON.parse(JSON.stringify(d.historyAudio28 || {}));
   if ("timerAudio28" in d) App.S.timerAudio28 = JSON.parse(JSON.stringify(d.timerAudio28 || {}));
@@ -30798,8 +30829,34 @@ function renderLeaderboard(docs, period) {
       const tScr = d.screenTimeHistory || {};
       d._screenTimeSec = periodKeys.reduce((s, k) => s + (tScr[k] || 0), 0);
     }
-    // Kunj Vihari Sri Haridas counts live in the RV slot; show them as their own KH entry for users in Haridashi mode.
-    if (d.lbKH === true) {
+    // Kunj Vihari Sri Haridas counts live in the RV slot. Per-day record (khDays) says which
+    // days were chanted as KH; those days show as KH, all other RV days stay RV.
+    // Older entries without khDays fall back to the old whole-account lbKH flag.
+    if (d.khDays && typeof d.khDays === 'object' && d.khDays._init === true) {
+      const _kd = d.khDays, _rvH = d.historyRV || {}, _rvT = d.timerHistoryRV || {};
+      let khC = 0, khT = 0, rawRv = 0;
+      if (!periodKeys) {
+        for (const k in _rvH) { rawRv += _rvH[k] || 0; if (_kd[k] === true) khC += _rvH[k] || 0; }
+        for (const k in _rvT) { if (_kd[k] === true) khT += _rvT[k] || 0; }
+      } else {
+        periodKeys.forEach(function (k) { rawRv += _rvH[k] || 0; if (_kd[k] === true) { khC += _rvH[k] || 0; khT += _rvT[k] || 0; } });
+      }
+      if (d._breakdown) {
+        const rvNet = d._breakdown.rv || 0;
+        const kh = Math.min(khC, rvNet);
+        d._breakdown.kh = kh; d._breakdown.rv = rvNet - kh;
+      }
+      if (d._timeBreakdown) {
+        const rvT2 = d._timeBreakdown.rv || 0;
+        const kt = Math.min(khT, rvT2);
+        d._timeBreakdown.kh = kt; d._timeBreakdown.rv = rvT2 - kt;
+      }
+      if (d._giftedBreakdown) {
+        const gRv = d._giftedBreakdown.rv || 0;
+        const gKh = rawRv > 0 ? Math.round(gRv * Math.min(khC, rawRv) / rawRv) : 0;
+        d._giftedBreakdown.kh = gKh; d._giftedBreakdown.rv = gRv - gKh;
+      }
+    } else if (d.lbKH === true) {
       if (d._breakdown) { d._breakdown.kh = d._breakdown.rv || 0; d._breakdown.rv = 0; }
       if (d._timeBreakdown) { d._timeBreakdown.kh = d._timeBreakdown.rv || 0; d._timeBreakdown.rv = 0; }
       if (d._giftedBreakdown) { d._giftedBreakdown.kh = d._giftedBreakdown.rv || 0; d._giftedBreakdown.rv = 0; }
@@ -31124,6 +31181,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
   // (device left open across midnight, or a snapshot read cold) shouldn't
   // be trusted as "today".
   const liveTk = (window.App && typeof App.getTk === 'function') ? App.getTk() : (S.tk || '');
+  if (window.App && S === App.S) _khMarkToday();
 
   // Compute lifetime totals
   const hist   = S.history   || {};
@@ -31241,6 +31299,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     historyYg: histYg,
     historyKaam: histKaam,
     lbKH: (window.App && S === App.S) ? isHaridashiActive() : (S.lbKH === true),
+    khDays: (window.App && S === App.S) ? (App.S.khDays || {}) : (S.khDays || {}),
     historyRA: S.historyAudio || {},
     historyRVA: (S.audioHistM || {}).rv || {},
     historyKVA: (S.audioHistM || {}).kv || {},

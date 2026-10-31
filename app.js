@@ -5762,6 +5762,7 @@ function tgs(k) {
     if (App.S.gaudiyaMode) { App.S.gaudiyaMode = false; document.body.classList.remove("gaudiya-mode"); const tgG = document.getElementById("tgGaudiya"); if (tgG) tgG.classList.remove("on"); if (App.S.japMode === "hk") switchJapMode("radha"); }
     if (App.S.trahimamMode) { App.S.trahimamMode = false; document.body.classList.remove("trahimam-mode"); const tgT = document.getElementById("tgTrahimam"); if (tgT) tgT.classList.remove("on"); if (App.S.japMode === "ss") switchJapMode("radha"); }
     if (App.S.ramanandiMode) { App.S.ramanandiMode = false; document.body.classList.remove("ramanandi-mode"); const tgR = document.getElementById("tgRamanandi"); if (tgR) tgR.classList.remove("on"); if (isRamFam(App.S.japMode)) switchJapMode("radha"); }
+    if (App.S.nimbarkMode) { App.S.nimbarkMode = false; document.body.classList.remove("nimbark-mode"); if (App.S.japMode === "yg") switchJapMode("radha"); }
     App.S.sampraday = "haridashi";
     if (!App.S.ltHD) App.S.ltHD = App.S.lt || 0;   // first time: start from your current lifetime target, independent afterwards
     if (App.S.japMode === "kv" || App.S.japMode === "kaam") switchJapMode("radha");
@@ -31655,24 +31656,24 @@ const PHOTO_CONFIG = {
   // Mahadev mode is on (see applyBgPhotos). Built-in choices live in
   // /gopeshwar_mahadev/1.jpg, 2.jpg, etc. — drop numbered images there to add more.
   gopeshwar: { id: 'bgGopeshwar', stateKey: 'bgGopeshwar', folder: 'gopeshwar_mahadev', maxNum: 9, fallback: 'gopeshwar_mahadev/1.png' },
-  // Gopeshwar Mahadev mode Guru (bottom-left) & Acharya (bottom-right) — separate
+  // Gopeshwar Mahadev mode Acharya (bottom-left) & Guru (bottom-right) — separate
   // from the normal-mode Hitju/Gurudev photos. Built-in choices live in
   // /gopeshwar_guru/1.jpg and /gopeshwar_acharya/1.jpg, etc.
   gopeshwarGuru:    { id: 'bgGopeshwarGuru',    stateKey: 'bgGopeshwarGuru',    folder: 'gopeshwar_guru',    maxNum: 9, fallback: 'gopeshwar_guru/1.png' },
   gopeshwarAcharya: { id: 'bgGopeshwarAcharya', stateKey: 'bgGopeshwarAcharya', folder: 'gopeshwar_acharya', maxNum: 9, fallback: 'gopeshwar_acharya/1.png' },
-  // Haridashi Sampraday: Deity (top), Guru (bottom-left), Acharya (bottom-right) — own photos AND own
+  // Haridashi Sampraday: Deity (top), Acharya (bottom-left), Guru (bottom-right) — own photos AND own
   // saved positions (keys hdDeity/hdGuru/hdAcharya), separate from Radha Vallabh's rv/hitju/gurudev.
   hdDeity:   { id: 'bgHdDeity',   stateKey: 'bgHdDeity',   folder: 'haridashi_deity',   maxNum: 9, fallback: 'haridashi_deity/1.jpg' },
   hdGuru:    { id: 'bgHdGuru',    stateKey: 'bgHdGuru',    folder: 'haridashi_guru',    maxNum: 9, fallback: 'haridashi_guru/1.png' },
   hdAcharya: { id: 'bgHdAcharya', stateKey: 'bgHdAcharya', folder: 'haridashi_acharya', maxNum: 9, fallback: 'haridashi_acharya/1.jpg' },
-  // Nimbark Sampraday (Yugal Mantra mode) — top Deity, bottom-left Guru, bottom-right
-  // Acharya. Only shown while Nimbark mode is on (see applyBgPhotos). Built-in
+  // Nimbark Sampraday (Yugal Mantra mode) — top Deity, bottom-left Acharya, bottom-right Guru.
+  // Only shown while Nimbark mode is on (see applyBgPhotos). Built-in
   // choices live in /nimbark_deity/1.jpg, /nimbark_guru/1.jpg, /nimbark_acharya/1.jpg,
   // etc. — drop numbered images there to add more.
   nimbark:         { id: 'bgNimbark',         stateKey: 'bgNimbark',         folder: 'nimbark_deity',   maxNum: 9, fallback: 'nimbark_deity/1.png' },
   nimbarkGuru:     { id: 'bgNimbarkGuru',     stateKey: 'bgNimbarkGuru',     folder: 'nimbark_guru',    maxNum: 9, fallback: 'nimbark_guru/1.png' },
   nimbarkAcharya:  { id: 'bgNimbarkAcharya',  stateKey: 'bgNimbarkAcharya',  folder: 'nimbark_acharya', maxNum: 9, fallback: 'nimbark_acharya/1.png' },
-  // Ramanandi Sampraday: Deity (top-centre), Guru (bottom-left), Acharya (bottom-right) — own photos and own saved positions.
+  // Ramanandi Sampraday: Deity (top-centre), Acharya (bottom-left), Guru (bottom-right) — own photos and own saved positions.
   // Built-in choices live in /ramanandi_deity, /ramanandi_guru, /ramanandi_acharya (1.jpg, 2.jpg, ...).
   ramanandi:        { id: 'bgRamanandi',        stateKey: 'bgRamanandi',        folder: 'ramanandi_deity',   maxNum: 9, fallback: 'ramanandi_deity/1.png' },
   ramanandiGuru:    { id: 'bgRamanandiGuru',    stateKey: 'bgRamanandiGuru',    folder: 'ramanandi_guru',    maxNum: 9, fallback: 'ramanandi_guru/1.png' },

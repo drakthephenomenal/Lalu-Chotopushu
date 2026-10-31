@@ -4721,7 +4721,7 @@ const HD_TEXT_MAP = [
 ];
 const _hdOrig = new WeakMap();
 let _hdObs = [], _hdTimer = null;
-function _hdInTap(n) { const e = n.nodeType === 1 ? n : n.parentNode; return !!(e && e.closest && e.closest("#tz,script,style,textarea")); }
+function _hdInTap(n) { const e = n.nodeType === 1 ? n : n.parentNode; return !!(e && e.closest && e.closest("#tz,script,style,textarea,.ms-consider-wrap,.ms-lt-sub,#mjTypeChips")); }
 function _hdWalk(root, on) {
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const nodes = [];
@@ -10335,7 +10335,7 @@ function _msConsiderDefaults() {
 // touch counterparts (radha, rv, kv, km, n28). Until the user flips an
 // audio chip explicitly it simply mirrors its touch chip, so existing
 // users' Bhagvat Prapti totals don't change. km / kma (Kaam Vijay) start OFF.
-const _MS_AUDIO_PAIRS = { ra: "radha", rva: "rv", kva: "kv", kma: "km", n28a: "n28" };
+const _MS_AUDIO_PAIRS = { ra: "radha", rva: "rv", kva: "kv", kma: "km", n28a: "n28", kh: "rv" }; // kh (Kunj Vihari Sri Haridas) mirrors rv until toggled
 function getMsConsider() {
   const stored = App.S.msConsider || {};
   const c = { km: false, ..._msConsiderDefaults(), ...stored };
@@ -10380,6 +10380,13 @@ function _msAvailable28() {
 // the milestone detail modal so the two always agree. Respects the
 // user's msConsider choices; each type is netted against its own
 // deduct/gift counter before combining (never pool-then-subtract-one).
+// Kunj Vihari Sri Haridas (KH) is counted in the RV slot; khDays marks the days chanted as KH.
+function _msKhSum() {
+  const kd = App.S.khDays || {}, h = App.S.historyRV || {};
+  let s = 0;
+  for (const k in h) if (kd[k] === true) s += h[k] || 0;
+  return s;
+}
 function _msComputeTotal() {
   const consider = getMsConsider();
   const sumOf = (h) => Object.values(h || {}).reduce((x, y) => x + y, 0);
@@ -10403,14 +10410,17 @@ function _msComputeTotal() {
   const rmTot = consider.rm ? net(App.S.historyRM, App.S.nameJapDeductRM) : 0;
   const ygTot = consider.yg ? net(App.S.historyYg, App.S.nameJapDeductYg) : 0;
   const radhaTot = (consider.radha ? R.touch : 0) + (consider.ra ? R.audio : 0);
-  const rvTot = (consider.rv ? RV.touch : 0) + (consider.rva ? RV.audio : 0);
+  const _khTouch = Math.min(_msKhSum(), RV.touch);
+  const rvTot = (consider.rv ? RV.touch - _khTouch : 0) + (consider.rva ? RV.audio : 0);
+  const khTot = consider.kh ? _khTouch : 0;
   const kvTot = (consider.kv ? KV.touch : 0) + (consider.kva ? KV.audio : 0);
   const kmTot = (consider.km ? KM.touch : 0) + (consider.kma ? KM.audio : 0);
   const n28Tot = (consider.n28 ? N28.touch : 0) + (consider.n28a ? N28.audio : 0);
   return {
-    total: radhaTot + rvTot + hkTot + kvTot + kmTot + ssTot + ramTot + srTot + rmTot + ygTot + n28Tot,
+    total: radhaTot + rvTot + khTot + hkTot + kvTot + kmTot + ssTot + ramTot + srTot + rmTot + ygTot + n28Tot,
     radhaTot,
     rvTot,
+    khTot,
     hkTot,
     kvTot,
     kmTot,
@@ -10430,8 +10440,9 @@ function _msConsiderChipsHtml() {
   const types = [
     { key: "radha", label: "Radha", color: "245,200,66" },
     { key: "ra", label: "🎧 Radha Audio", color: "245,200,66" },
-    { key: "rv", label: isHaridashiActive() ? "Kunj Vihari Sri Haridas" : "Radha Vallabh", color: "94,234,212" },
-    { key: "rva", label: isHaridashiActive() ? "🎧 Kunj Vihari Sri Haridas Audio" : "🎧 Radha Vallabh Audio", color: "94,234,212" },
+    { key: "rv", label: "Radha Vallabh", color: "94,234,212" },
+    { key: "rva", label: "🎧 Radha Vallabh Audio", color: "94,234,212" },
+    { key: "kh", label: "Kunj Vihari Sri Haridas", color: "94,234,212" },
     { key: "hk", label: "Hare Krishna", color: "201,167,255" },
     { key: "kv", label: "Krishnay Vasudevay", color: "109,184,255" },
     { key: "kva", label: "🎧 Krishnay Vasudevay Audio", color: "109,184,255" },
@@ -10500,7 +10511,7 @@ function _msRenderLifetimeCards() {
   const ms = App.S.ms || 108;
   const fmt = (n) => Math.max(0, Math.round(n)).toLocaleString("en-IN");
   const mal = (n) => Math.floor(Math.max(0, n) / ms).toLocaleString("en-IN") + (hi ? " mala" : " মালা");
-  const short = { radha: "R", ra: "R-A", rv: "RV", rva: "RV-A", hk: "HK", kv: "KV", kva: "KV-A", km: "KM", kma: "KM-A", ss: "SS", ram: "Ram", sr: "SR", rm: "RM", n28: "28N", n28a: "28N-A" };
+  const short = { radha: "R", ra: "R-A", rv: "RV", rva: "RV-A", kh: "KH", hk: "HK", kv: "KV", kva: "KV-A", km: "KM", kma: "KM-A", ss: "SS", ram: "Ram", sr: "SR", rm: "RM", n28: "28N", n28a: "28N-A" };
   const c = getMsConsider();
   const chosen = Object.keys(short).filter((k) => c[k]).map((k) => short[k]);
   const cards = [
@@ -10558,7 +10569,7 @@ function renderMilestonesTab() {
     const _am = App.S.audioHistM || {};
     sum7 +=
       _pd(hist, App.S.historyAudio, "radha", "ra") +
-      _pd(histRV, _am.rv, "rv", "rva") +
+      (((App.S.khDays || {})[k] === true) ? _pd(histRV, _am.rv, "kh", "rva") : _pd(histRV, _am.rv, "rv", "rva")) +
       _pd(hist28, App.S.historyAudio28, "n28", "n28a") +
       _pd(histKV, _am.kv, "kv", "kva") +
       _pd(App.S.historyKaam, _am.kaam, "km", "kma") +
@@ -25237,7 +25248,7 @@ function showLyrics(id) {
   // Single-view stotrams: shown as one continuous page, no verse-by-verse
   // split/swipe (still just one card, so the existing audio-index logic
   // naturally looks for a single "<prefix>_1.mp3" track).
-  const SINGLE_VIEW_IDS = ["yga", "gva", "sga", "nrs", "ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "hcp", "gpa", "nka", "mdh", "mmb", "hvp", "ist", "isv", "gvn", "svk", "acv", "kjk", "vnm", "rkn", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11", "rmm", "svi", "dhi"];
+  const SINGLE_VIEW_IDS = ["yga", "gva", "sga", "nrs", "ach", "rds", "ans", "hnc", "rdc", "gdm", "hsr", "gsk", "shs", "dkc", "kcr", "hkb", "vth", "bbv", "pjj", "jdh", "nmb", "rnm", "bnm", "bvk", "kpa", "hcp", "gpa", "nka", "mdh", "mmb", "hvp", "ist", "isv", "gvn", "svk", "acv", "kjk", "vnm", "rkn", "anl", "dmd", "nz1", "nz2", "nz3", "nz4", "nz5", "nz6", "nz7", "nz8", "nz9", "nz10", "nz11", "rmm", "svi", "dhi"];
   // Sevak Vani / Bayalis Leela: an opened section is shown as ONE flat page (set by StotramSections.open).
   const _isFlatSection = window._stFlatSection === id;
   const _isFlatCustom = _isCustomStId(id) || _liveStIsFlat(id) || _isFlatSection; // user-added (and repo flat/audio) stotrams + flat sections: one flat page
@@ -27069,6 +27080,8 @@ var _AUDIO_STOTRAMS = {
   nsh: { prefix: "nsh", timed: true, marks: [0.0, 39.0, 78.0, 117.0, 156.0, 195.0, 234.0], yt: "yq9WPkuLdbc", url: "" },
   // Bhajans moved from stotram-live (flat single page; YouTube audio, kcr uses the Yugal Kishor deity audio)
   hkb: { prefix: "hkb", timed: true, marks: [0], yt: "US7I1OnKXxQ", url: "" },
+  // Vaishnav Vandana (Bhaktivinoda Thakur) - flat single page, YouTube audio
+  vth: { prefix: "vth", timed: true, marks: [0], yt: "ufox0gJd2xM", url: "" },
   bbv: { prefix: "bbv", timed: true, marks: [0], yt: "LBCQDWX0Bn0", url: "" },
   pjj: { prefix: "pjj", timed: true, marks: [0], yt: "PqTZbfA7iG4", url: "" },
   // jdh (Jhoolat Dou Naval Hindolein): its own song link was removed — that YouTube clip now plays as
@@ -33590,12 +33603,12 @@ async function checkAppUpdate() {
 // Radha, Radha Vallabh, Krishnay Vasudevay, Hare Krishna, Samba Sadashiv,
 // Raam Vijay Mantra, Kaam Vijay. Defaults to the jap open on the Jap tab.
 (function () {
-  const BASE_TYPES = ["radha", "rv", "kv", "hk", "ss", "ram", "yg", "kaam"];
+  const BASE_TYPES = ["radha", "rv", "kv", "hk", "ss", "ram", "sr", "rm", "yg", "kaam"];
   // Audio variants — always shown, whether Audio Mode is on or off.
   const AUDIO_TYPES = ["radha_a", "rv_a", "kv_a", "kaam_a"];
   const MJ_TYPES = BASE_TYPES.concat(AUDIO_TYPES);
-  const HIST = { radha: "history", rv: "historyRV", kv: "historyKV", hk: "historyHK", ss: "historySS", ram: "historyRam", yg: "historyYg", kaam: "historyKaam" };
-  const DED = { radha: "nameJapDeduct", rv: "nameJapDeductRV", kv: "nameJapDeductKV", hk: "nameJapDeductHK", ss: "nameJapDeductSS", ram: "nameJapDeductRam", yg: "nameJapDeductYg", kaam: "nameJapDeductKaam" };
+  const HIST = { radha: "history", rv: "historyRV", kv: "historyKV", hk: "historyHK", ss: "historySS", ram: "historyRam", sr: "historySR", rm: "historyRM", yg: "historyYg", kaam: "historyKaam" };
+  const DED = { radha: "nameJapDeduct", rv: "nameJapDeductRV", kv: "nameJapDeductKV", hk: "nameJapDeductHK", ss: "nameJapDeductSS", ram: "nameJapDeductRam", sr: "nameJapDeductSR", rm: "nameJapDeductRM", yg: "nameJapDeductYg", kaam: "nameJapDeductKaam" };
   const INPUT_IDS = ["manualJapIn", "prevJapIn", "addJapOtherIn", "addJapOtherDate", "deductTodayIn", "deductOtherIn", "deductOtherDate", "nameJapDeductIn", "nameJapRestoreIn"];
   window._mjType = null; // null = follow the jap selected on the Jap tab
   let _lastMode = null;
@@ -33633,7 +33646,8 @@ async function checkAppUpdate() {
     const sel = selType();
     box.innerHTML = MJ_TYPES.map(function (t) {
       const meta = (typeof _dedTypeMeta === "function") ? _dedTypeMeta(baseOf(t)) : { label: t, color: "#f5c842" };
-      const label = isAud(t) ? "🎧 " + meta.label + " Audio" : meta.label;
+      // Haridashi has no audio chant, so the RV-slot audio chip is always "Radha Vallabh Audio" (never "KH Audio")
+      const label = isAud(t) ? "🎧 " + (baseOf(t) === "rv" ? "Radha Vallabh" : meta.label) + " Audio" : meta.label;
       const on = t === sel;
       return '<button type="button" onclick="mjPick(\'' + t + '\')" style="cursor:pointer;font-size:12px;font-weight:700;' +
         'border-radius:999px;padding:6px 11px;font-family:inherit;color:' + (on ? "#0b0b14" : meta.color) + ';' +

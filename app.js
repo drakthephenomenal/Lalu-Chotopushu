@@ -5165,6 +5165,11 @@ function hdSyncSlot() {
   } catch (_e) { console.warn("hdSyncSlot failed", _e); }
 }
 // Leaderboard keeps its legacy shape: historyRV = RV + KH per day (khDays labels KH days).
+// Exact single-slot read for the leaderboard: slot is "rv" (Harivangshi) or "kh" (Haridashi).
+function _lbSlotOnly(S, f, slot) {
+  if (typeof App !== "undefined" && S === App.S) return hdSlotGet(slot)[f];
+  return slot === "kh" ? S[_khKey(f)] : S[f];
+}
 function _lbSumSlots(S, f) {
   let a, b;
   if (typeof App !== "undefined" && S === App.S) { a = hdSlotGet("rv")[f]; b = hdSlotGet("kh")[f]; }
@@ -31682,7 +31687,7 @@ function renderLeaderboard(docs, period) {
       tHistHK = d.timerHistoryHK || {}, tHistRam = d.timerHistoryRam || {},
       tHistSR = d.timerHistorySR || {}, tHistRM = d.timerHistoryRM || {}, tHistNR = d.timerHistoryNR || {}, tHistYg = d.timerHistoryYg || {}, tHistVl = d.timerHistoryVl || {},
       tHistKaam = d.timerHistoryKaam || {}, tHist28 = d.timer28History || {};
-    const rawSec = (tHist[_lbTodayKey]||0) + (tHistRV[_lbTodayKey]||0) + (tHistKV[_lbTodayKey]||0)
+    const rawSec = (tHist[_lbTodayKey]||0) + (tHistRV[_lbTodayKey]||0) + (d.khSlots === 3 ? ((d.timerHistoryKH || {})[_lbTodayKey]||0) : 0) + (tHistKV[_lbTodayKey]||0)
       + (tHistSS[_lbTodayKey]||0) + (tHistHK[_lbTodayKey]||0) + (tHistRam[_lbTodayKey]||0) + (tHistSR[_lbTodayKey]||0) + (tHistRM[_lbTodayKey]||0) + (tHistNR[_lbTodayKey]||0) + (tHistYg[_lbTodayKey]||0) + (tHistVl[_lbTodayKey]||0) + (tHistKaam[_lbTodayKey]||0) + (tHist28[_lbTodayKey]||0);
     // Manual (off-screen, reported-after-the-fact) jap doesn't belong in
     // Efficiency's numerator — same exclusion rule as the Stats screen.
@@ -31719,10 +31724,11 @@ function renderLeaderboard(docs, period) {
       d.historyRA28 = _lbMaxMap(d0.historyRA28, S.historyAudio28);
       // RV and KH are separate sampradays. This device knows both exactly, so your own row never
       // depends on how an older build (another device / old app) wrote them to the cloud entry.
-      d.khSlots = 2;
-      d.historyRV = _lbSumSlots(S, "historyRV");
-      d.timerHistoryRV = _lbSumSlots(S, "timerHistoryRV");
-      d.nameJapDeductRV = _lbSumSlots(S, "nameJapDeductRV");
+      d.khSlots = 3;
+      d.historyRV = hdSlotGet("rv").historyRV;
+      d.timerHistoryRV = hdSlotGet("rv").timerHistoryRV;
+      d.nameJapDeductRV = hdSlotGet("rv").nameJapDeductRV || 0;
+      d.nameJapDeductKH = hdSlotGet("kh").nameJapDeductRV || 0;
       d.historyKH = hdSlotGet("kh").historyRV;
       d.timerHistoryKH = hdSlotGet("kh").timerHistoryRV;
       const tk = App.getTk();
@@ -31734,9 +31740,11 @@ function renderLeaderboard(docs, period) {
         bd.kaama = Math.max(bd.kaama || 0, d.historyKaamA[tk] || 0);
         bd.n28a = Math.max(bd.n28a || 0, d.historyRA28[tk] || 0);
         bd.rv = d.historyRV[tk] || 0;
+        bd.kh = d.historyKH[tk] || 0;
         d.todayBreakdown = bd;
         const tbd2 = Object.assign({}, d0.todayTimeBreakdown || {});
         tbd2.rv = d.timerHistoryRV[tk] || 0;
+        tbd2.kh = d.timerHistoryKH[tk] || 0;
         d.todayTimeBreakdown = tbd2;
       }
       return d;
@@ -31751,6 +31759,7 @@ function renderLeaderboard(docs, period) {
       timeScore = (d.timerSeconds || 0);
       const sr = Object.values(d.history || {}).reduce((a,b)=>a+b,0);
       const srv = Object.values(d.historyRV || {}).reduce((a,b)=>a+b,0);
+      const skh = d.khSlots === 3 ? Object.values(d.historyKH || {}).reduce((a,b)=>a+b,0) : 0;
       const skv = Object.values(d.historyKV || {}).reduce((a,b)=>a+b,0);
       const sss = Object.values(d.historySS || {}).reduce((a,b)=>a+b,0);
       const shk = Object.values(d.historyHK || {}).reduce((a,b)=>a+b,0);
@@ -31775,6 +31784,7 @@ function renderLeaderboard(docs, period) {
         r:   Math.max(0, sr - sra - (d.nameJapDeduct   || 0)),
         ra:  sra,
         rv:  Math.max(0, srv - srva - (d.nameJapDeductRV || 0)),
+        kh:  Math.max(0, skh - (d.nameJapDeductKH || 0)),
         rva: srva,
         kva: skva,
         kaama: skaama,
@@ -31799,6 +31809,7 @@ function renderLeaderboard(docs, period) {
       d._giftedBreakdown = {
         r:   Math.min(sr,  d.nameJapDeduct   || 0),
         rv:  Math.min(srv, d.nameJapDeductRV || 0),
+        kh:  Math.min(skh, d.nameJapDeductKH || 0),
         kv:  Math.min(skv, d.nameJapDeductKV || 0),
         ss:  Math.min(sss, d.nameJapDeductSS || 0),
         hk:  Math.min(shk, d.nameJapDeductHK || 0),
@@ -31813,6 +31824,7 @@ function renderLeaderboard(docs, period) {
       };
       const tr2 = Object.values(d.timerHistory || {}).reduce((a,b)=>a+b,0);
       const trv2 = Object.values(d.timerHistoryRV || {}).reduce((a,b)=>a+b,0);
+      const tkh2 = d.khSlots === 3 ? Object.values(d.timerHistoryKH || {}).reduce((a,b)=>a+b,0) : 0;
       const tkv2 = Object.values(d.timerHistoryKV || {}).reduce((a,b)=>a+b,0);
       const tss2 = Object.values(d.timerHistorySS || {}).reduce((a,b)=>a+b,0);
       const thk2 = Object.values(d.timerHistoryHK || {}).reduce((a,b)=>a+b,0);
@@ -31824,7 +31836,7 @@ function renderLeaderboard(docs, period) {
       const tvl2 = Object.values(d.timerHistoryVl || {}).reduce((a,b)=>a+b,0);
       const tkaam2 = Object.values(d.timerHistoryKaam || {}).reduce((a,b)=>a+b,0);
       const t282 = Object.values(d.timer28History || {}).reduce((a,b)=>a+b,0);
-      d._timeBreakdown = { r: tr2, rv: trv2, kv: tkv2, ss: tss2, hk: thk2, ram: tram2, sr: tSR2, rm: tRM2, nr: tNR2, yg: tyg2,
+      d._timeBreakdown = { r: tr2, rv: trv2, kh: tkh2, kv: tkv2, ss: tss2, hk: thk2, ram: tram2, sr: tSR2, rm: tRM2, nr: tNR2, yg: tyg2,
       vl: tvl2, kaam: tkaam2, n28: t282 };
       // Screen Time (alltime) — stored total, or summed from the per-day history
       d._screenTimeSec = Number(d.screenTimeSeconds || 0) ||
@@ -31833,6 +31845,7 @@ function renderLeaderboard(docs, period) {
       // Sum history for this period
       const hist   = d.history || {};
       const histRV = d.historyRV || {};
+      const histKH = d.khSlots === 3 ? (d.historyKH || {}) : {};
       const histKV = d.historyKV || {};
       const histSS = d.historySS || {};
       const histHK = d.historyHK || {};
@@ -31844,10 +31857,12 @@ function renderLeaderboard(docs, period) {
       const histVl = d.historyVl || {};
       const histKaam = d.historyKaam || {};
       const hist28 = d.history28 || {};
+      let skh = 0, tkh = 0;
       let sr = 0, srv = 0, skv = 0, sss = 0, shk = 0, sram = 0, sSRv = 0, sRMv = 0, sNRv = 0, syg = 0, svl = 0, skaam = 0, s28 = 0, sra = 0, s28a = 0, srva = 0, skva = 0, skaama = 0;
       let tr = 0, trv = 0, tkv = 0, tss = 0, thk = 0, tram = 0, tSRv = 0, tRMv = 0, tNRv = 0, tyg = 0, tvl = 0, tkaam = 0, t28 = 0;
       const tHist = d.timerHistory || {};
       const tHistRV = d.timerHistoryRV || {};
+      const tHistKH = d.khSlots === 3 ? (d.timerHistoryKH || {}) : {};
       const tHistKV = d.timerHistoryKV || {};
       const tHistSS = d.timerHistorySS || {};
       const tHistHK = d.timerHistoryHK || {};
@@ -31872,6 +31887,7 @@ function renderLeaderboard(docs, period) {
         skva = Math.max(bd.kva || 0, (d.historyKVA || {})[_tk0] || 0);
         skaama = Math.max(bd.kaama || 0, (d.historyKaamA || {})[_tk0] || 0);
         srv = bd.rv || 0;
+        skh = d.khSlots === 3 ? (bd.kh || 0) : 0;
         skv = bd.kv || 0;
         sss = bd.ss || 0;
         shk = bd.hk || 0;
@@ -31886,6 +31902,7 @@ function renderLeaderboard(docs, period) {
         s28a = Math.max(bd.n28a || 0, (d.historyRA28 || {})[_tk0] || 0);
         tr = tbd.r || 0;
         trv = tbd.rv || 0;
+        tkh = d.khSlots === 3 ? (tbd.kh || 0) : 0;
         tkv = tbd.kv || 0;
         tss = tbd.ss || 0;
         thk = tbd.hk || 0;
@@ -31903,6 +31920,7 @@ function renderLeaderboard(docs, period) {
           sra += ((d.historyRA || {})[k] || 0);
           srva += ((d.historyRVA || {})[k] || 0); skva += ((d.historyKVA || {})[k] || 0); skaama += ((d.historyKaamA || {})[k] || 0);
           srv += (histRV[k] || 0);
+          skh += (histKH[k] || 0);
           skv += (histKV[k] || 0);
           sss += (histSS[k] || 0);
           shk += (histHK[k] || 0);
@@ -31917,6 +31935,7 @@ function renderLeaderboard(docs, period) {
           s28a += ((d.historyRA28 || {})[k] || 0);
           tr += (tHist[k] || 0);
           trv += (tHistRV[k] || 0);
+          tkh += (tHistKH[k] || 0);
           tkv += (tHistKV[k] || 0);
           tss += (tHistSS[k] || 0);
           thk += (tHistHK[k] || 0);
@@ -31930,13 +31949,13 @@ function renderLeaderboard(docs, period) {
           t28 += (tHist28[k] || 0);
         });
       }
-      score += sr + srv + skv + sss + shk + sram + sSRv + sRMv + sNRv + syg + svl + skaam + s28;
-      timeScore += tr + trv + tkv + tss + thk + tram + tSRv + tRMv + tNRv + tyg + tvl + tkaam + t28;
-      d._breakdown = { r: Math.max(0, sr - sra), ra: sra, rv: Math.max(0, srv - srva), rva: srva, kv: Math.max(0, skv - skva), kva: skva, kaam: Math.max(0, skaam - skaama), kaama: skaama, ss: sss, hk: shk, ram: sram, sr: sSRv, rm: sRMv, nr: sNRv, yg: syg,
+      score += sr + srv + skh + skv + sss + shk + sram + sSRv + sRMv + sNRv + syg + svl + skaam + s28;
+      timeScore += tr + trv + tkh + tkv + tss + thk + tram + tSRv + tRMv + tNRv + tyg + tvl + tkaam + t28;
+      d._breakdown = { r: Math.max(0, sr - sra), ra: sra, rv: Math.max(0, srv - srva), kh: skh, rva: srva, kv: Math.max(0, skv - skva), kva: skva, kaam: Math.max(0, skaam - skaama), kaama: skaama, ss: sss, hk: shk, ram: sram, sr: sSRv, rm: sRMv, nr: sNRv, yg: syg,
       vl: svl, n28: Math.max(0, s28 - s28a), n28a: s28a };
-      d._giftedBreakdown = { r: 0, rv: 0, kv: 0, ss: 0, hk: 0, ram: 0, sr: 0, rm: 0, nr: 0, yg: 0,
+      d._giftedBreakdown = { r: 0, rv: 0, kh: 0, kv: 0, ss: 0, hk: 0, ram: 0, sr: 0, rm: 0, nr: 0, yg: 0,
       vl: 0, kaam: 0, n28: 0 };
-      d._timeBreakdown = { r: tr, rv: trv, kv: tkv, ss: tss, hk: thk, ram: tram, sr: tSRv, rm: tRMv, nr: tNRv, yg: tyg,
+      d._timeBreakdown = { r: tr, rv: trv, kh: tkh, kv: tkv, ss: tss, hk: thk, ram: tram, sr: tSRv, rm: tRMv, nr: tNRv, yg: tyg,
       vl: tvl, kaam: tkaam, n28: t28 };
       // Screen Time for this period — flat per-day map, sum across periodKeys
       const tScr = d.screenTimeHistory || {};
@@ -31945,7 +31964,9 @@ function renderLeaderboard(docs, period) {
     // Kunj Vihari Sri Haridas counts live in the RV slot. Per-day record (khDays) says which
     // days were chanted as KH; those days show as KH, all other RV days stay RV.
     // Older entries without khDays fall back to the old whole-account lbKH flag.
-    if (d.khSlots === 2 || (d.khDays && typeof d.khDays === 'object' && d.khDays._init === true)) {
+    if (d.khSlots === 3) {
+      // Fully separate: historyRV is RV only, historyKH is KH only — nothing to split.
+    } else if (d.khSlots === 2 || (d.khDays && typeof d.khDays === 'object' && d.khDays._init === true)) {
       const _ex = d.khSlots === 2, _kd = d.khDays || {}, _khH = d.historyKH || {}, _khT = d.timerHistoryKH || {};
       const _rvH = d.historyRV || {}, _rvT = d.timerHistoryRV || {};
       const _khCnt = function (k) { return _ex ? (_khH[k] || 0) : (_kd[k] === true ? (_rvH[k] || 0) : 0); };
@@ -32313,7 +32334,8 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
 
   // Compute lifetime totals
   const hist   = S.history   || {};
-  const histRV = _lbSumSlots(S, "historyRV");
+  const histRV = _lbSlotOnly(S, "historyRV", "rv") || {};   // RV (Harivangshi) ONLY
+  const histKH = _lbSlotOnly(S, "historyRV", "kh") || {};   // KH (Haridashi) ONLY — separate sampraday
   const histKV = S.historyKV || {};
   const histSS = S.historySS || {};
   const histHK = S.historyHK || {};
@@ -32327,6 +32349,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
   const hist28 = S.h28 || {};
   const totalRadha = Object.values(hist).reduce((a,b)=>a+b,0);
   const totalRV    = Object.values(histRV).reduce((a,b)=>a+b,0);
+  const totalKH    = Object.values(histKH).reduce((a,b)=>a+b,0);
   const totalKV    = Object.values(histKV).reduce((a,b)=>a+b,0);
   const totalSS    = Object.values(histSS).reduce((a,b)=>a+b,0);
   const totalHK    = Object.values(histHK).reduce((a,b)=>a+b,0);
@@ -32338,7 +32361,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
   const totalVl    = Object.values(histVl).reduce((a,b)=>a+b,0);
   const totalKaam  = Object.values(histKaam).reduce((a,b)=>a+b,0);
   const total28    = Object.values(hist28).reduce((a,b)=>a+b,0);
-  const totalJap   = Math.max(0, totalRadha + totalRV + totalKV + totalSS + totalHK + totalRam + totalSR + totalRM + totalNR + totalYg + totalVl + totalKaam + total28 - (S.nameJapDeduct||0) - (S.nameJapDeductRV||0) - (S.nameJapDeductKV||0) - (S.nameJapDeductSS||0) - (S.nameJapDeductHK||0) - (S.nameJapDeductRam||0) - (S.nameJapDeductSR||0) - (S.nameJapDeductRM||0) - (S.nameJapDeductNR||0) - (S.nameJapDeductYg||0) - (S.nameJapDeductVl||0) - (S.nameJapDeductKaam||0) - (S.nameJapDeduct28||0));
+  const totalJap   = Math.max(0, totalRadha + totalRV + totalKH + totalKV + totalSS + totalHK + totalRam + totalSR + totalRM + totalNR + totalYg + totalVl + totalKaam + total28 - (S.nameJapDeduct||0) - (_lbSlotOnly(S, "nameJapDeductRV", "rv")||0) - (_lbSlotOnly(S, "nameJapDeductRV", "kh")||0) - (S.nameJapDeductKV||0) - (S.nameJapDeductSS||0) - (S.nameJapDeductHK||0) - (S.nameJapDeductRam||0) - (S.nameJapDeductSR||0) - (S.nameJapDeductRM||0) - (S.nameJapDeductNR||0) - (S.nameJapDeductYg||0) - (S.nameJapDeductVl||0) - (S.nameJapDeductKaam||0) - (S.nameJapDeduct28||0));
 
   // Build display name
   let displayName = (S.lbDisplayName || '').trim();
@@ -32352,8 +32375,8 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
   try {
     const tk = liveTk || S.tk;
     const allHist = {};
-    Object.keys({...hist,...histRV,...histKV,...histSS,...histHK,...histRam,...histSR,...histRM,...histNR,...histYg, ...histVl,...histKaam}).forEach(function(k) {
-      allHist[k] = (hist[k]||0)+(histRV[k]||0)+(histKV[k]||0)+(histSS[k]||0)+(histHK[k]||0)+(histRam[k]||0)+(histSR[k]||0)+(histRM[k]||0)+(histNR[k]||0)+(histYg[k]||0) + (histVl[k]||0)+(histKaam[k]||0);
+    Object.keys({...hist,...histRV,...histKH,...histKV,...histSS,...histHK,...histRam,...histSR,...histRM,...histNR,...histYg, ...histVl,...histKaam}).forEach(function(k) {
+      allHist[k] = (hist[k]||0)+(histRV[k]||0)+(histKH[k]||0)+(histKV[k]||0)+(histSS[k]||0)+(histHK[k]||0)+(histRam[k]||0)+(histSR[k]||0)+(histRM[k]||0)+(histNR[k]||0)+(histYg[k]||0) + (histVl[k]||0)+(histKaam[k]||0);
     });
     const today = new Date(tk+'T00:00:00');
     let d = new Date(today);
@@ -32390,6 +32413,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     kva: ((S.audioHistM || {}).kv || {})[liveTk] || 0,
     kaama: ((S.audioHistM || {}).kaam || {})[liveTk] || 0,
     rv: histRV[liveTk] || 0,
+    kh: histKH[liveTk] || 0,
     kv: histKV[liveTk] || 0,
     ss: histSS[liveTk] || 0,
     hk: histHK[liveTk] || 0,
@@ -32405,7 +32429,8 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
   };
   const todayTimeBreakdown = {
     r: (S.timerHistory || {})[liveTk] || 0,
-    rv: (_lbSumSlots(S, "timerHistoryRV"))[liveTk] || 0,
+    rv: (_lbSlotOnly(S, "timerHistoryRV", "rv") || {})[liveTk] || 0,
+    kh: (_lbSlotOnly(S, "timerHistoryRV", "kh") || {})[liveTk] || 0,
     kv: (S.timerHistoryKV || {})[liveTk] || 0,
     ss: (S.timerHistorySS || {})[liveTk] || 0,
     hk: (S.timerHistoryHK || {})[liveTk] || 0,
@@ -32418,8 +32443,8 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     kaam: (S.timerHistoryKaam || {})[liveTk] || 0,
     n28: (S.timer28History || {})[liveTk] || 0,
   };
-  const todayJap = todayBreakdown.r + todayBreakdown.rv + todayBreakdown.kv + todayBreakdown.ss + todayBreakdown.hk + todayBreakdown.ram + todayBreakdown.sr + todayBreakdown.rm + todayBreakdown.nr + todayBreakdown.yg + todayBreakdown.vl + todayBreakdown.kaam + todayBreakdown.n28;
-  const todayTimerSeconds = todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kv + todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.ram + todayTimeBreakdown.sr + todayTimeBreakdown.rm + todayTimeBreakdown.nr + todayTimeBreakdown.yg + todayTimeBreakdown.vl + todayTimeBreakdown.kaam + todayTimeBreakdown.n28;
+  const todayJap = todayBreakdown.r + todayBreakdown.rv + todayBreakdown.kh + todayBreakdown.kv + todayBreakdown.ss + todayBreakdown.hk + todayBreakdown.ram + todayBreakdown.sr + todayBreakdown.rm + todayBreakdown.nr + todayBreakdown.yg + todayBreakdown.vl + todayBreakdown.kaam + todayBreakdown.n28;
+  const todayTimerSeconds = todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kh + todayTimeBreakdown.kv + todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.ram + todayTimeBreakdown.sr + todayTimeBreakdown.rm + todayTimeBreakdown.nr + todayTimeBreakdown.yg + todayTimeBreakdown.vl + todayTimeBreakdown.kaam + todayTimeBreakdown.n28;
 
   return {
     displayName,
@@ -32448,9 +32473,10 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     historyKaam: histKaam,
     // historyRV above = RV + KH per day (legacy shape). These two are the KH slot alone, so the board can
     // split RV and KH exactly (khSlots:2 = this entry carries the exact split).
-    khSlots: ((window.App && S === App.S) || S.historyKH !== undefined) ? 2 : 0,
-    historyKH: (window.App && S === App.S) ? hdSlotGet("kh").historyRV : (S.historyKH || {}),
-    timerHistoryKH: (window.App && S === App.S) ? hdSlotGet("kh").timerHistoryRV : (S.timerHistoryKH || {}),
+    // khSlots:3 = RV and KH are stored fully separately (historyRV = RV only, historyKH = KH only).
+    khSlots: 3,
+    historyKH: histKH,
+    timerHistoryKH: _lbSlotOnly(S, "timerHistoryRV", "kh") || {},
     lbKH: (window.App && S === App.S) ? isHaridashiActive() : (S.lbKH === true),
     khDays: (window.App && S === App.S) ? (App.S.khDays || {}) : (S.khDays || {}),
     historyRA: S.historyAudio || {},
@@ -32465,7 +32491,8 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     // remaining amount, which can make Total look smaller than one of its
     // own listed parts.
     nameJapDeduct:   S.nameJapDeduct   || 0,
-    nameJapDeductRV: _lbSumSlots(S, "nameJapDeductRV"),
+    nameJapDeductRV: _lbSlotOnly(S, "nameJapDeductRV", "rv") || 0,
+    nameJapDeductKH: _lbSlotOnly(S, "nameJapDeductRV", "kh") || 0,
     nameJapDeductKV: S.nameJapDeductKV || 0,
     nameJapDeductSS: S.nameJapDeductSS || 0,
     nameJapDeductHK: S.nameJapDeductHK || 0,
@@ -32491,7 +32518,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
                   Object.values(S.timerHistoryKaam || {}).reduce((a,b)=>a+b,0) +
                   Object.values(S.timer28History || {}).reduce((a,b)=>a+b,0),
     timerHistory:   S.timerHistory || {},
-    timerHistoryRV: _lbSumSlots(S, "timerHistoryRV"),
+    timerHistoryRV: _lbSlotOnly(S, "timerHistoryRV", "rv") || {},
     timerHistoryKV: S.timerHistoryKV || {},
     timerHistorySS: S.timerHistorySS || {},
     timerHistoryHK: S.timerHistoryHK || {},

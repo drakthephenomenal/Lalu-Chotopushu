@@ -5159,6 +5159,9 @@ function hdSyncSlot() {
     });
     S.rvSlot = want;
     App.lmcRV = Math.floor(((S.historyRV || {})[S.tk] || 0) / (S.ms || 108));
+    // The swap changes which numbers belong on the Jap screen: redraw now (otherwise the old
+    // sampraday's count stays on screen until the next tap).
+    try { if (typeof App.ua === "function" && document.getElementById("jms")) App.ua(); } catch (_e2) {}
   } catch (_e) { console.warn("hdSyncSlot failed", _e); }
 }
 // Leaderboard keeps its legacy shape: historyRV = RV + KH per day (khDays labels KH days).
@@ -24093,8 +24096,14 @@ function _calDayTarget(key) {
   if (S.ramanandiMode) return { count: g(S.historyRam) + g(S.historySR) + g(S.historyRM) + g(S.historyNR), target: t(S.dtRam) + t(S.dtSR) + t(S.dtRM) + t(S.dtNR) };
   if (S.nimbarkMode) return { count: g(S.historyYg), target: t(S.dtYg) };
   if (S.vallabhMode) return { count: g(S.historyVl), target: t(S.dtVl) };
-  return { count: g(S.history) + _rvAt("historyRV", key) + g(S.historyKV) + g(S.historyKaam),
-           target: t(S.dt) + t(_lbSumSlots(S, "dtRV")) + t(S.dtKV) + t(S.dtKaam) };
+  // Haridashi and Harivangshi are separate sampradays: each uses only its own slot and target.
+  if (isHaridashiActive()) {
+    const kh = hdSlotGet("kh");
+    return { count: g(S.history) + (kh.historyRV[key] || 0), target: t(S.dt) + t(kh.dtRV) };
+  }
+  const rv = hdSlotGet("rv");
+  return { count: g(S.history) + (rv.historyRV[key] || 0) + g(S.historyKV) + g(S.historyKaam),
+           target: t(S.dt) + t(rv.dtRV) + t(S.dtKV) + t(S.dtKaam) };
 }
 
 // ── Calendar ──
@@ -31924,14 +31933,17 @@ function renderLeaderboard(docs, period) {
     // Kunj Vihari Sri Haridas counts live in the RV slot. Per-day record (khDays) says which
     // days were chanted as KH; those days show as KH, all other RV days stay RV.
     // Older entries without khDays fall back to the old whole-account lbKH flag.
-    if (d.khDays && typeof d.khDays === 'object' && d.khDays._init === true) {
-      const _kd = d.khDays, _rvH = d.historyRV || {}, _rvT = d.timerHistoryRV || {};
+    if (d.khSlots === 2 || (d.khDays && typeof d.khDays === 'object' && d.khDays._init === true)) {
+      const _ex = d.khSlots === 2, _kd = d.khDays || {}, _khH = d.historyKH || {}, _khT = d.timerHistoryKH || {};
+      const _rvH = d.historyRV || {}, _rvT = d.timerHistoryRV || {};
+      const _khCnt = function (k) { return _ex ? (_khH[k] || 0) : (_kd[k] === true ? (_rvH[k] || 0) : 0); };
+      const _khTim = function (k) { return _ex ? (_khT[k] || 0) : (_kd[k] === true ? (_rvT[k] || 0) : 0); };
       let khC = 0, khT = 0, rawRv = 0;
       if (!periodKeys) {
-        for (const k in _rvH) { rawRv += _rvH[k] || 0; if (_kd[k] === true) khC += _rvH[k] || 0; }
-        for (const k in _rvT) { if (_kd[k] === true) khT += _rvT[k] || 0; }
+        for (const k in _rvH) { rawRv += _rvH[k] || 0; khC += _khCnt(k); }
+        for (const k in _rvT) { khT += _khTim(k); }
       } else {
-        periodKeys.forEach(function (k) { rawRv += _rvH[k] || 0; if (_kd[k] === true) { khC += _rvH[k] || 0; khT += _rvT[k] || 0; } });
+        periodKeys.forEach(function (k) { rawRv += _rvH[k] || 0; khC += _khCnt(k); khT += _khTim(k); });
       }
       if (d._breakdown) {
         const rvNet = d._breakdown.rv || 0;
@@ -32053,7 +32065,7 @@ function renderLeaderboard(docs, period) {
     }
     if ((b.rva || 0) > 0) {
       const x = Math.floor(b.rva / ms);
-      bdParts.push((isHaridashiActive() ? 'Kunj Vihari Sri Haridas Audio: ' : 'RV-A: ') + _lbFmtJap(b.rva) + (x > 0 ? ' (' + x + 'M)' : ''));
+      bdParts.push('RV-A: ' + _lbFmtJap(b.rva) + (x > 0 ? ' (' + x + 'M)' : ''));
     }
     if (b.rv > 0 || g.rv > 0) {
       const rvM = Math.floor(b.rv / ms);
@@ -32065,7 +32077,7 @@ function renderLeaderboard(docs, period) {
       const khM = Math.floor((b.kh || 0) / ms);
       const khStr = _lbFmtJap(b.kh || 0) + (khM > 0 ? ' (' + khM + 'M)' : '');
       const giftNote = (g.kh || 0) > 0 ? ' · 🎁' + _lbFmtJap(g.kh) + ' gifted' : '';
-      bdParts.push('Kunj Vihari Sri Haridas: ' + khStr + ((tb.kh || 0) > 0 ? ' ⏱ ' + _histFmtSec(tb.kh) : '') + giftNote + _lbQ(tb.kh || 0, b.kh || 0));
+      bdParts.push('KH: ' + khStr + ((tb.kh || 0) > 0 ? ' ⏱ ' + _histFmtSec(tb.kh) : '') + giftNote + _lbQ(tb.kh || 0, b.kh || 0));
     }
     if ((b.kva || 0) > 0) {
       const x = Math.floor(b.kva / ms);
@@ -32340,8 +32352,13 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
       if (S.ramanandiMode) return _ge(histRam, S.dtRam) || _ge(histSR, S.dtSR) || _ge(histRM, S.dtRM) || _ge(histNR, S.dtNR);
       if (S.nimbarkMode) return _ge(histYg, S.dtYg);
       if (S.vallabhMode) return _ge(histVl, S.dtVl);
-      const rT = S.dt || 0, rvT = S.dtRV || 0;
-      return (rT > 0 && (hist[key]||0) >= rT) || (rvT > 0 && (histRV[key]||0) >= rvT);
+      // Harivangshi and Haridashi are separate sampradays: use only the one in use (RV slot or KH slot).
+      const _live = !!(window.App && S === App.S);
+      const _hd = _live ? isHaridashiActive() : (S.sampraday === 'haridashi' && !S.trahimamMode);
+      const _sl = _live ? hdSlotGet(_hd ? 'kh' : 'rv') : null;
+      const _aH = _sl ? _sl.historyRV : (_hd ? (S.historyKH || {}) : (S.historyRV || {}));
+      const rT = S.dt || 0, rvT = (_sl ? _sl.dtRV : (_hd ? S.dtKH : S.dtRV)) || 0;
+      return (rT > 0 && (hist[key]||0) >= rT) || (rvT > 0 && (_aH[key]||0) >= rvT);
     };
     // today still in progress -> don't break a live streak, start from yesterday
     if (!_lbDayHit(App.tkFromDate(d))) d.setDate(d.getDate()-1);
@@ -32417,6 +32434,11 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     historyYg: histYg,
     historyVl: histVl,
     historyKaam: histKaam,
+    // historyRV above = RV + KH per day (legacy shape). These two are the KH slot alone, so the board can
+    // split RV and KH exactly (khSlots:2 = this entry carries the exact split).
+    khSlots: ((window.App && S === App.S) || S.historyKH !== undefined) ? 2 : 0,
+    historyKH: (window.App && S === App.S) ? hdSlotGet("kh").historyRV : (S.historyKH || {}),
+    timerHistoryKH: (window.App && S === App.S) ? hdSlotGet("kh").timerHistoryRV : (S.timerHistoryKH || {}),
     lbKH: (window.App && S === App.S) ? isHaridashiActive() : (S.lbKH === true),
     khDays: (window.App && S === App.S) ? (App.S.khDays || {}) : (S.khDays || {}),
     historyRA: S.historyAudio || {},

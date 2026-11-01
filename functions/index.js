@@ -612,7 +612,16 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
     const optIn = data.lbOptIn !== false;
 
     const hist = data.history || {};
-    const histRV = data.historyRV || {};
+    // RV (Harivangshi) and KH (Haridashi) are separate sampradays with separate slots in main data.
+    // Leaderboard keeps the legacy shape (historyRV = RV + KH per day) and ADDS the exact KH slot
+    // (historyKH / timerHistoryKH / khSlots:2) so viewers can split them instead of merging.
+    const _lbMergeMaps = (a, b) => {
+      const out = Object.assign({}, a || {});
+      Object.keys(b || {}).forEach((k) => { out[k] = (out[k] || 0) + (b[k] || 0); });
+      return out;
+    };
+    const histKH = data.historyKH || {};
+    const histRV = _lbMergeMaps(data.historyRV, histKH);
     const histKV = data.historyKV || {};
     const histSS = data.historySS || {};
     const histHK = data.historyHK || {};
@@ -642,6 +651,7 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       totalRadha + totalRV + totalKV + totalSS + totalHK + totalRam + totalSR + totalRM + totalYg + totalKaam + total28 -
         (data.nameJapDeduct || 0) -
         (data.nameJapDeductRV || 0) -
+        (data.nameJapDeductKH || 0) -
         (data.nameJapDeductKV || 0) -
         (data.nameJapDeductSS || 0) -
         (data.nameJapDeductHK || 0) -
@@ -716,7 +726,8 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       n28: hist28[liveTk] || 0,
     };
     const timerHist = data.timerHistory || {};
-    const timerHistRV = data.timerHistoryRV || {};
+    const timerHistKH = data.timerHistoryKH || {};
+    const timerHistRV = _lbMergeMaps(data.timerHistoryRV, timerHistKH);
     const timerHistKV = data.timerHistoryKV || {};
     const timerHistSS = data.timerHistorySS || {};
     const timerHistHK = data.timerHistoryHK || {};
@@ -770,8 +781,12 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       historyKaam: histKaam,
       history28: hist28,
       lbKH,
+      khSlots: 2,
+      historyKH: histKH,
+      timerHistoryKH: timerHistKH,
+      khDays: data.khDays || {},
       nameJapDeduct: data.nameJapDeduct || 0,
-      nameJapDeductRV: data.nameJapDeductRV || 0,
+      nameJapDeductRV: (data.nameJapDeductRV || 0) + (data.nameJapDeductKH || 0),
       nameJapDeductKV: data.nameJapDeductKV || 0,
       nameJapDeductSS: data.nameJapDeductSS || 0,
       nameJapDeductHK: data.nameJapDeductHK || 0,

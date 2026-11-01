@@ -1,3 +1,4 @@
+// v427: Shree Sampraday - Ramanuj branch (Narayan naam jap): stats, N&M, leaderboard, own deity/guru/acharya display.
 // v426: N&M lists every trait (RV, RV Audio, KH) in all sampradays; no KH Audio; SitaRaam/Raam in manual add-deduct.
 // v425: Vaishnav Vandana (Stotram) now has YouTube audio.
 // v423: Ramanandi mode - SitaRaam + Raam chants (stats, N&M, leaderboard) and own Deity/Guru/Acharya jap display.
@@ -462,7 +463,7 @@
 // v420 (Play build + dev email): bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
 // v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
 // v422: bumped cache to force-invalidate stale app.js / style.css / index.html — Haridashi Sampraday (Radha + Kunj Vihari / Sri Haridas, own Deity/Guru/Acharya photos, own lifetime target); Nimbark Deity/Guru/Acharya jap-display photos + Yugal mantra animation now matches Hare Krishna; reopened wishes no longer stay paused.
-const CACHE = 'radha-jap-v426';
+const CACHE = 'radha-jap-v427';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

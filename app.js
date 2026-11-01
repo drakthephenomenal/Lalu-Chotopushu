@@ -753,11 +753,11 @@ function applyNewUserDefaultTargets() {
   const hasAnyTarget =
     (S.dt || 0) > 0 || (S.dtRV || 0) > 0 || (S.dtKV || 0) > 0 ||
     (S.dtKaam || 0) > 0 || (S.dtSS || 0) > 0 || (S.dtHK || 0) > 0 ||
-    (S.dtRam || 0) > 0 || (S.dtSR || 0) > 0 || (S.dtRM || 0) > 0 || (S.dtYg || 0) > 0 || (S.dt28Cycles || 0) > 0;
+    (S.dtRam || 0) > 0 || (S.dtSR || 0) > 0 || (S.dtRM || 0) > 0 || (S.dtNR || 0) > 0 || (S.dtYg || 0) > 0 || (S.dt28Cycles || 0) > 0;
   if (hasAnyTarget) return false;
   const histories = [
     S.history, S.historyRV, S.historyKV, S.historyKaam, S.historySS,
-    S.historyHK, S.historyRam, S.historySR, S.historyRM, S.historyYg, S.h28,
+    S.historyHK, S.historyRam, S.historySR, S.historyRM, S.historyNR, S.historyYg, S.h28,
   ];
   const hasHistory = histories.some(
     (h) => h && Object.values(h).some((v) => (v || 0) > 0),
@@ -771,40 +771,47 @@ function applyNewUserDefaultTargets() {
 // RAMFAM_PATCH_V1. Every field family below is stored per type so each chant keeps
 // its own count, time, mala log, daily target and lifetime total (counting starts
 // from the day this version is installed).
-const RAM_MODES = ["ram", "sr", "rm"];
+const RAM_MODES = ["ram", "sr", "rm", "nr"];   // all members; ramActiveModes() = the ones of the chosen Shree branch
 const RAM_KEYS = {
   ram: { h: "historyRam", t: "timerHistoryRam", dt: "dtRam", lt: "ltRam", ml: "malaLogRam", sb: "syncBaselineRam", sbt: "syncBaselineTimerRam", nd: "nameJapDeductRam", lmc: "lmcRam" },
   sr:  { h: "historySR",  t: "timerHistorySR",  dt: "dtSR",  lt: "ltSR",  ml: "malaLogSR",  sb: "syncBaselineSR",  sbt: "syncBaselineTimerSR",  nd: "nameJapDeductSR",  lmc: "lmcSR" },
   rm:  { h: "historyRM",  t: "timerHistoryRM",  dt: "dtRM",  lt: "ltRM",  ml: "malaLogRM",  sb: "syncBaselineRM",  sbt: "syncBaselineTimerRM",  nd: "nameJapDeductRM",  lmc: "lmcRM" },
+  nr:  { h: "historyNR",  t: "timerHistoryNR",  dt: "dtNR",  lt: "ltNR",  ml: "malaLogNR",  sb: "syncBaselineNR",  sbt: "syncBaselineTimerNR",  nd: "nameJapDeductNR",  lmc: "lmcNR" },
 };
 const RAM_META = {
   ram: { label: "Raam Vijay Mantra", short: "Ram", color: "#FF9933", rgb: "255,153,51", icon: "🚩", hi: "राम विजय मंत्र" },
   sr:  { label: "SitaRaam",          short: "SR",  color: "#FF8FA3", rgb: "255,143,163", icon: "🏹", hi: "सीताराम" },
   rm:  { label: "Raam",              short: "RM",  color: "#FFC857", rgb: "255,200,87",  icon: "🚩", hi: "राम" },
+  nr:  { label: "Narayan",           short: "NR",  color: "#7EC8FF", rgb: "126,200,255", icon: "🪷", hi: "नारायण" },
 };
 const RAM_MALA_MSG = {
   ram: ["जय श्री राम", "जय जय श्री सीताराम"],
   sr:  ["जय सियाराम", "जय जय श्री सीताराम"],
   rm:  ["जय श्री राम", "जय जय श्री राम"],
+  nr:  ["जय श्रीमन्नारायण", "जय जय श्री लक्ष्मीनारायण"],
 };
-function isRamFam(m) { return m === "ram" || m === "sr" || m === "rm"; }
+function isRamFam(m) { return m === "ram" || m === "sr" || m === "rm" || m === "nr"; }
+// Shree Sampraday has two branches: Ramananda (Raam Vijay Mantra / SitaRaam / Raam) and Ramanuj (Narayan).
+function isRamanuj() { return !!(App.S && App.S.ramanandiMode && App.S.ramanujMode); }
+function ramActiveModes() { return isRamanuj() ? ["nr"] : ["ram", "sr", "rm"]; }
+function _syncRamanujClass() { try { document.body.classList.toggle("ramanuj-branch", isRamanuj()); } catch (_e) {} }
 // Field-name table for the Ramanandi type `m` (defaults to the type currently selected).
 function ramK(m) { return RAM_KEYS[m || (App.S && App.S.japMode)] || RAM_KEYS.ram; }
 // Today's / lifetime / per-day totals across ALL Ramanandi types (used in Ramanandi mode).
 function ramFamToday() {
   const S = App.S, tk = S.tk;
-  return RAM_MODES.reduce((a, m) => a + (((S[RAM_KEYS[m].h] || {})[tk]) || 0), 0);
+  return ramActiveModes().reduce((a, m) => a + (((S[RAM_KEYS[m].h] || {})[tk]) || 0), 0);
 }
 function ramFamLifetime() {
   const S = App.S;
-  return RAM_MODES.reduce((a, m) => {
+  return ramActiveModes().reduce((a, m) => {
     const k = RAM_KEYS[m];
     return a + Math.max(0, Object.values(S[k.h] || {}).reduce((x, y) => x + y, 0) - (S[k.nd] || 0));
   }, 0);
 }
 function ramFamMerged(kind) { // kind: "h" (counts) or "t" (seconds) -> {day: total}
   const S = App.S, out = {};
-  RAM_MODES.forEach((m) => {
+  ramActiveModes().forEach((m) => {
     const o = S[RAM_KEYS[m][kind]] || {};
     Object.keys(o).forEach((d) => { out[d] = (out[d] || 0) + (o[d] || 0); });
   });
@@ -855,7 +862,7 @@ const App = {
     // Which jap types count toward the Milestones (Bhagvat Prapti) total.
     // Defaults to all types so existing users see no change until they
     // customize it themselves in the Milestones tab.
-     msConsider: { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, sr: true, rm: true, n28: true },
+     msConsider: { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true },
     historyHK: {},
     timerHistoryHK: {},
     dtHK: 0,
@@ -866,34 +873,42 @@ const App = {
     historyRam: {},
     historySR: {},
     historyRM: {},
+    historyNR: {},
     historyYg: {},
     timerHistoryRam: {},
     timerHistorySR: {},
     timerHistoryRM: {},
+    timerHistoryNR: {},
     timerHistoryYg: {},
     dtRam: 0,
     dtSR: 0,
     dtRM: 0,
+    dtNR: 0,
     dtYg: 0,
     ltRam: 0,
     ltSR: 0,
     ltRM: 0,
+    ltNR: 0,
     ltYg: 0,
     malaLogRam: [],
     malaLogSR: [],
     malaLogRM: [],
+    malaLogNR: [],
     malaLogYg: [],
     syncBaselineRam: {},
     syncBaselineSR: {},
     syncBaselineRM: {},
+    syncBaselineNR: {},
     syncBaselineYg: {},
     syncBaselineTimerRam: {},
     syncBaselineTimerSR: {},
     syncBaselineTimerRM: {},
+    syncBaselineTimerNR: {},
     syncBaselineTimerYg: {},
     nameJapDeductRam: 0,
     nameJapDeductSR: 0,
     nameJapDeductRM: 0,
+    nameJapDeductNR: 0,
     nameJapDeductYg: 0,
     historyKV: {},
     timerHistoryKV: {},
@@ -923,6 +938,7 @@ const App = {
     gaudiyaMode: false,  // single mode for all — Gaudiya/ISKCON
     trahimamMode: false,  // single mode for all — Trahimam Trahimam (KV jap only)
     ramanandiMode: false,  // single mode for all — Ramanandi (Raam Vijay Mantra jap only)
+    ramanujMode: false,
     nimbarkMode: false,    // single mode for all — Nimbark (Yugal Mantra jap only)
     sampraday: "harivangshi",  // display/branding selection — "harivangshi" | "haridashi" | "sri" | "gaudiya" | "nimbark" | "vallabh"
     sriBranch: "ramananda",  // when sampraday === "sri" — "ramanuj" | "ramananda"
@@ -952,6 +968,9 @@ const App = {
     bgRamanandi: 1,
     bgRamanandiGuru: 1,
     bgRamanandiAcharya: 1,
+    bgRamanuj: 1,
+    bgRamanujGuru: 1,
+    bgRamanujAcharya: 1,
     bgNimbark: 1,
     bgNimbarkGuru: 1,
     bgNimbarkAcharya: 1,
@@ -983,8 +1002,8 @@ const App = {
     // the portion of each day's name-jap count / timer seconds that came
     // from manual entry, per type key (radha/rv/kv/ss/hk/n28), so the
     // Efficiency and Quality calculations can subtract it back out.
-     manualJapCount: { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, n28: {} },
-     manualJapTime:  { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, n28: {} },
+     manualJapCount: { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, nr: {}, n28: {} },
+     manualJapTime:  { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, nr: {}, n28: {} },
   },
   lmcRV: 0,
   lmcHK: 0,
@@ -994,6 +1013,7 @@ const App = {
   lmcRam: 0,
   lmcSR: 0,
   lmcRM: 0,
+  lmcNR: 0,
   lmcYg: 0,
   lmc: 0,
   lm28: 0,
@@ -1191,43 +1211,52 @@ const App = {
       historyRam: this.S.historyRam || {},
       historySR: this.S.historySR || {},
       historyRM: this.S.historyRM || {},
+      historyNR: this.S.historyNR || {},
       historyYg: this.S.historyYg || {},
       timerHistoryRam: this.S.timerHistoryRam || {},
       timerHistorySR: this.S.timerHistorySR || {},
       timerHistoryRM: this.S.timerHistoryRM || {},
+      timerHistoryNR: this.S.timerHistoryNR || {},
       timerHistoryYg: this.S.timerHistoryYg || {},
       dtRam: this.S.dtRam || 0,
       dtSR: this.S.dtSR || 0,
       dtRM: this.S.dtRM || 0,
+      dtNR: this.S.dtNR || 0,
       dtYg: this.S.dtYg || 0,
       ltRam: this.S.ltRam || 0,
       ltSR: this.S.ltSR || 0,
       ltRM: this.S.ltRM || 0,
+      ltNR: this.S.ltNR || 0,
       ltYg: this.S.ltYg || 0,
       malaLogRam: this.S.malaLogRam || [],
       malaLogSR: this.S.malaLogSR || [],
       malaLogRM: this.S.malaLogRM || [],
+      malaLogNR: this.S.malaLogNR || [],
       malaLogYg: this.S.malaLogYg || [],
       syncBaselineRam: this.S.syncBaselineRam || {},
       syncBaselineSR: this.S.syncBaselineSR || {},
       syncBaselineRM: this.S.syncBaselineRM || {},
+      syncBaselineNR: this.S.syncBaselineNR || {},
       syncBaselineYg: this.S.syncBaselineYg || {},
       syncBaselineTimerRam: this.S.syncBaselineTimerRam || {},
       syncBaselineTimerSR: this.S.syncBaselineTimerSR || {},
       syncBaselineTimerRM: this.S.syncBaselineTimerRM || {},
+      syncBaselineTimerNR: this.S.syncBaselineTimerNR || {},
       syncBaselineTimerYg: this.S.syncBaselineTimerYg || {},
       nameJapDeductRam: this.S.nameJapDeductRam || 0,
       nameJapDeductSR: this.S.nameJapDeductSR || 0,
       nameJapDeductRM: this.S.nameJapDeductRM || 0,
+      nameJapDeductNR: this.S.nameJapDeductNR || 0,
       nameJapDeductYg: this.S.nameJapDeductYg || 0,
       dedications: this.S.dedications || [],
       gaudiyaMode: this.S.gaudiyaMode || false,
       trahimamMode: this.S.trahimamMode || false,
       ramanandiMode: this.S.ramanandiMode || false,
+      ramanujMode: this.S.ramanujMode || false,
       nimbarkMode: this.S.nimbarkMode || false,
       dt28Cycles: this.S.dt28Cycles || 0,
       milestones: this.S.milestones || { reached: {}, lastChecked: 0 },
-      msConsider: this.S.msConsider || { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, sr: true, rm: true, n28: true },
+      msConsider: this.S.msConsider || { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true },
       resetEpoch: this.S.resetEpoch || 0,
       _seenResetEpoch: this.S._seenResetEpoch || 0,
       hkLang: this.S.hkLang || "hi",
@@ -1241,8 +1270,8 @@ const App = {
       screenTimeHistory: this.S.screenTimeHistory || {},
       stotramTimeHistory: this.S.stotramTimeHistory || {},
       padTrace: this.S.padTrace || { last: {}, time: {} },
-      manualJapCount: this.S.manualJapCount || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, n28: {} },
-      manualJapTime: this.S.manualJapTime || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, n28: {} },
+      manualJapCount: this.S.manualJapCount || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, nr: {}, n28: {} },
+      manualJapTime: this.S.manualJapTime || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, nr: {}, n28: {} },
       lbDisplayName: this.S.lbDisplayName || "",
     });
     // Keep per-day stores updated for compatibility with existing offline data
@@ -1425,48 +1454,59 @@ const App = {
     if (this.S.gaudiyaMode === undefined) this.S.gaudiyaMode = false;
     if (this.S.trahimamMode === undefined) this.S.trahimamMode = false;
     if (this.S.ramanandiMode === undefined) this.S.ramanandiMode = false;
+    if (this.S.ramanujMode === undefined) this.S.ramanujMode = false;
     if (this.S.nimbarkMode === undefined) this.S.nimbarkMode = false;
     if (!this.S.sampraday) this.S.sampraday = "harivangshi";
     if (!this.S.sriBranch) this.S.sriBranch = "ramananda";
     if (!this.S.historyRam) this.S.historyRam = {};
     if (!this.S.historySR) this.S.historySR = {};
     if (!this.S.historyRM) this.S.historyRM = {};
+    if (!this.S.historyNR) this.S.historyNR = {};
     if (!this.S.historyYg) this.S.historyYg = {};
     if (!this.S.timerHistoryRam) this.S.timerHistoryRam = {};
     if (!this.S.timerHistorySR) this.S.timerHistorySR = {};
     if (!this.S.timerHistoryRM) this.S.timerHistoryRM = {};
+    if (!this.S.timerHistoryNR) this.S.timerHistoryNR = {};
     if (!this.S.timerHistoryYg) this.S.timerHistoryYg = {};
     if (this.S.dtRam === undefined) this.S.dtRam = 0;
     if (this.S.dtSR === undefined) this.S.dtSR = 0;
     if (this.S.dtRM === undefined) this.S.dtRM = 0;
+    if (this.S.dtNR === undefined) this.S.dtNR = 0;
     if (this.S.dtYg === undefined) this.S.dtYg = 0;
     if (this.S.ltRam === undefined) this.S.ltRam = 0;
     if (this.S.ltSR === undefined) this.S.ltSR = 0;
     if (this.S.ltRM === undefined) this.S.ltRM = 0;
+    if (this.S.ltNR === undefined) this.S.ltNR = 0;
     if (this.S.ltYg === undefined) this.S.ltYg = 0;
     if (!this.S.malaLogRam) this.S.malaLogRam = [];
     if (!this.S.malaLogSR) this.S.malaLogSR = [];
     if (!this.S.malaLogRM) this.S.malaLogRM = [];
+    if (!this.S.malaLogNR) this.S.malaLogNR = [];
     if (!this.S.malaLogYg) this.S.malaLogYg = [];
     if (!this.S.syncBaselineRam) this.S.syncBaselineRam = {};
     if (!this.S.syncBaselineSR) this.S.syncBaselineSR = {};
     if (!this.S.syncBaselineRM) this.S.syncBaselineRM = {};
+    if (!this.S.syncBaselineNR) this.S.syncBaselineNR = {};
     if (!this.S.syncBaselineYg) this.S.syncBaselineYg = {};
     if (!this.S.syncBaselineTimerRam) this.S.syncBaselineTimerRam = {};
     if (!this.S.syncBaselineTimerSR) this.S.syncBaselineTimerSR = {};
     if (!this.S.syncBaselineTimerRM) this.S.syncBaselineTimerRM = {};
+    if (!this.S.syncBaselineTimerNR) this.S.syncBaselineTimerNR = {};
     if (!this.S.syncBaselineTimerYg) this.S.syncBaselineTimerYg = {};
     if (this.S.nameJapDeductRam === undefined) this.S.nameJapDeductRam = 0;
     if (this.S.nameJapDeductSR === undefined) this.S.nameJapDeductSR = 0;
     if (this.S.nameJapDeductRM === undefined) this.S.nameJapDeductRM = 0;
+    if (this.S.nameJapDeductNR === undefined) this.S.nameJapDeductNR = 0;
     if (this.S.nameJapDeductYg === undefined) this.S.nameJapDeductYg = 0;
     if (!this.S.historyRam[this.S.tk]) this.S.historyRam[this.S.tk] = 0;
     if (!this.S.historySR[this.S.tk]) this.S.historySR[this.S.tk] = 0;
     if (!this.S.historyRM[this.S.tk]) this.S.historyRM[this.S.tk] = 0;
+    if (!this.S.historyNR[this.S.tk]) this.S.historyNR[this.S.tk] = 0;
     if (!this.S.historyYg[this.S.tk]) this.S.historyYg[this.S.tk] = 0;
     if (!this.S.timerHistoryRam[this.S.tk]) this.S.timerHistoryRam[this.S.tk] = 0;
     if (!this.S.timerHistorySR[this.S.tk]) this.S.timerHistorySR[this.S.tk] = 0;
     if (!this.S.timerHistoryRM[this.S.tk]) this.S.timerHistoryRM[this.S.tk] = 0;
+    if (!this.S.timerHistoryNR[this.S.tk]) this.S.timerHistoryNR[this.S.tk] = 0;
     if (!this.S.timerHistoryYg[this.S.tk]) this.S.timerHistoryYg[this.S.tk] = 0;
     // Load malaLogRam — only keep if from today AND today has Ramanandi jap
     const todayRamJap = this.S.historyRam[this.S.tk] || 0;
@@ -1475,6 +1515,7 @@ const App = {
     }
     if (((this.S.historySR || {})[this.S.tk] || 0) <= 0) this.S.malaLogSR = [];
     if (((this.S.historyRM || {})[this.S.tk] || 0) <= 0) this.S.malaLogRM = [];
+    if (((this.S.historyNR || {})[this.S.tk] || 0) <= 0) this.S.malaLogNR = [];
     const todayYgJap = this.S.historyYg[this.S.tk] || 0;
     if (todayYgJap <= 0) {
       this.S.malaLogYg = [];
@@ -1499,6 +1540,9 @@ const App = {
     if (this.S.bgRamanandi === undefined) this.S.bgRamanandi = 1;
     if (this.S.bgRamanandiGuru === undefined) this.S.bgRamanandiGuru = 1;
     if (this.S.bgRamanandiAcharya === undefined) this.S.bgRamanandiAcharya = 1;
+    if (this.S.bgRamanuj === undefined) this.S.bgRamanuj = 1;
+    if (this.S.bgRamanujGuru === undefined) this.S.bgRamanujGuru = 1;
+    if (this.S.bgRamanujAcharya === undefined) this.S.bgRamanujAcharya = 1;
     if (this.S.bgNimbark === undefined) this.S.bgNimbark = 1;
     if (this.S.bgNimbarkGuru === undefined) this.S.bgNimbarkGuru = 1;
     if (this.S.bgNimbarkAcharya === undefined) this.S.bgNimbarkAcharya = 1;
@@ -1541,7 +1585,7 @@ const App = {
     if (!this.S.dedications) this.S.dedications = [];
     if (!this.S.screenTimeHistory) this.S.screenTimeHistory = {};
     if (!this.S.stotramTimeHistory) this.S.stotramTimeHistory = {};
-    if (!this.S.msConsider) this.S.msConsider = { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, sr: true, rm: true, n28: true };
+    if (!this.S.msConsider) this.S.msConsider = { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true };
     if (!this.S.syncBaselineKV) this.S.syncBaselineKV = {};
     if (!this.S.syncBaselineTimerKV) this.S.syncBaselineTimerKV = {};
     if (!this.S.historyKV[this.S.tk]) this.S.historyKV[this.S.tk] = 0;
@@ -2226,6 +2270,7 @@ const App = {
     const ramSum = (this.S.malaLogRam || []).reduce((a, b) => a + b, 0);
     const srSum = (this.S.malaLogSR || []).reduce((a, b) => a + b, 0);
     const rmSum = (this.S.malaLogRM || []).reduce((a, b) => a + b, 0);
+    const nrSum = (this.S.malaLogNR || []).reduce((a, b) => a + b, 0);
     const ygSum = (this.S.malaLogYg || []).reduce((a, b) => a + b, 0);
     if (!this.S.timerHistory) this.S.timerHistory = {};
     if (!this.S.timerHistoryRV) this.S.timerHistoryRV = {};
@@ -2236,6 +2281,7 @@ const App = {
     if (!this.S.timerHistoryRam) this.S.timerHistoryRam = {};
     if (!this.S.timerHistorySR) this.S.timerHistorySR = {};
     if (!this.S.timerHistoryRM) this.S.timerHistoryRM = {};
+    if (!this.S.timerHistoryNR) this.S.timerHistoryNR = {};
     if (!this.S.timerHistoryYg) this.S.timerHistoryYg = {};
     if (radhaSum > 0 || (this.S.malaLog || []).length > 0)
       this.S.timerHistory[this.S.tk] = radhaSum;
@@ -2255,6 +2301,8 @@ const App = {
       this.S.timerHistorySR[this.S.tk] = srSum;
     if (rmSum > 0 || (this.S.malaLogRM || []).length > 0)
       this.S.timerHistoryRM[this.S.tk] = rmSum;
+    if (nrSum > 0 || (this.S.malaLogNR || []).length > 0)
+      this.S.timerHistoryNR[this.S.tk] = nrSum;
     if (ygSum > 0 || (this.S.malaLogYg || []).length > 0)
       this.S.timerHistoryYg[this.S.tk] = ygSum;
     // Re-anchor timerSavedSeconds so live delta is measured from current position
@@ -3724,7 +3772,7 @@ function spawnRam() {
   const _nt = naamText();
   const _rmode = isRamFam(App.S.japMode) ? App.S.japMode : "ram";
   // SitaRaam and Raam repeat the same word on both lines, so show it once.
-  const text = (_rmode === "sr" || _rmode === "rm")
+  const text = (_rmode === "sr" || _rmode === "rm" || _rmode === "nr")
     ? _nt[_rmode + "1"]
     : _nt[_rmode + "1"] + "\n" + _nt[_rmode + "2"];
   // CURRENT color → float rises up and disappears (the "old" text leaving)
@@ -3994,6 +4042,7 @@ window._rjMidnightCheck = () => {
     App.S.malaLogRam = [];
     App.S.malaLogSR = [];
     App.S.malaLogRM = [];
+    App.S.malaLogNR = [];
     App.S.malaLogYg = [];
     // ── Fix: discard any incomplete in-progress mala at midnight ──
     // Partial beads (< full mala) must not bleed into the new day or
@@ -4433,6 +4482,16 @@ function svtRM(type) {
   App.ua();
   toast("Raam Daily Target saved! 🎯");
 }
+// ── NR Target Save ──
+function svtNR(type) {
+  if (type === "d") {
+    const v = parseInt(document.getElementById("dtNRIn").value) || 0;
+    App.S.dtNR = v;
+  }
+  ghostAwareSave();
+  App.ua();
+  toast("Narayan Daily Target saved! 🎯");
+}
 
 // ── Yugal Mantra Target Save ──
 function svtYg(type) {
@@ -4556,7 +4615,7 @@ function initJapModeUI() {
   } else if (App.S.trahimamMode) {
     initMode = "ss";
   } else if (App.S.ramanandiMode) {
-    initMode = isRamFam(initMode) ? initMode : "ram";
+    initMode = isRamanuj() ? "nr" : (isRamFam(initMode) && initMode !== "nr" ? initMode : "ram");
   } else if (App.S.nimbarkMode) {
     initMode = "yg";
   } else if (initMode === "hk" || initMode === "ss" || isRamFam(initMode) || initMode === "yg") {
@@ -4611,6 +4670,13 @@ function initJapModeUI() {
   if (dtRMMalaInEl) dtRMMalaInEl.value = (App.S.dtRM || 0) > 0 ? Math.round((App.S.dtRM || 0) / ms) : "";
   const dtRMM = document.getElementById("dtRMMala");
   if (dtRMM) dtRMM.textContent = Math.floor((App.S.dtRM || 0) / ms);
+  // Populate NR target inputs
+  const dtNRIn = document.getElementById("dtNRIn");
+  if (dtNRIn && App.S.dtNR) dtNRIn.value = App.S.dtNR;
+  const dtNRMalaInEl = document.getElementById("dtNRMalaIn");
+  if (dtNRMalaInEl) dtNRMalaInEl.value = (App.S.dtNR || 0) > 0 ? Math.round((App.S.dtNR || 0) / ms) : "";
+  const dtNRM = document.getElementById("dtNRMala");
+  if (dtNRM) dtNRM.textContent = Math.floor((App.S.dtNR || 0) / ms);
   // Populate Yugal Mantra target inputs
   const dtYgIn = document.getElementById("dtYgIn");
   if (dtYgIn && App.S.dtYg) dtYgIn.value = App.S.dtYg;
@@ -4693,8 +4759,8 @@ function closeNaamSelOutside(e) {
 }
 // ── Radha / Radha Vallabh jap-text script lookup (Sanskrit/Devanagari vs Bangla) ──
 const NAAM_TEXT = {
-  sa: { radha: "राधा", rv1: "राधावल्लभ", rv2: "श्री हरिवंश", kv1: "कृष्णाय वासुदेवाय\nहरये परमात्मने", kv2: "प्रणतः क्लेशनाशाय\nगोविन्दाय नमो नमः", kvShort: "कृष्णाय वासुदेवाय", ss1: "साम्ब", ss2: "सदाशिव", ramTitle: "राम विजय मंत्र", ram1: "श्री राम, जय राम,", ram2: "जय जय राम।", srTitle: "सीताराम", sr1: "सीताराम", sr2: "सीताराम", rmTitle: "राम", rm1: "राम", rm2: "राम", ygTitle: "युगल मंत्र", yg1: "राधे कृष्ण राधे कृष्ण\nकृष्ण कृष्ण राधे राधे", yg2: "राधे श्याम राधे श्याम\nश्याम श्याम राधे राधे", kaamTitle: "काम विजय", kaamToast: "काम विजय" },
-  bn: { radha: "রাধা", rv1: "রাধাবল্লভ", rv2: "শ্রী হরিবংশ", kv1: "কৃষ্ণায় বাসুদেবায়\nহরয়ে পরমাত্মনে", kv2: "প্রণতঃ ক্লেশনাশায়\nগোবিন্দায় নমো নমঃ", kvShort: "কৃষ্ণায় বাসুদেবায়", ss1: "সাম্ব", ss2: "সদাশিব", ramTitle: "রাম বিজয় মন্ত্র", ram1: "শ্রী রাম, জয় রাম,", ram2: "জয় জয় রাম।", srTitle: "সীতারাম", sr1: "সীতারাম", sr2: "সীতারাম", rmTitle: "রাম", rm1: "রাম", rm2: "রাম", ygTitle: "যুগল মন্ত্র", yg1: "রাধে কৃষ্ণ রাধে কৃষ্ণ\nকৃষ্ণ কৃষ্ণ রাধে রাধে", yg2: "রাধে শ্যাম রাধে শ্যাম\nশ্যাম শ্যাম রাধে রাধে", kaamTitle: "কাম বিজয়", kaamToast: "কাম বিজয়" },
+  sa: { radha: "राधा", rv1: "राधावल्लभ", rv2: "श्री हरिवंश", kv1: "कृष्णाय वासुदेवाय\nहरये परमात्मने", kv2: "प्रणतः क्लेशनाशाय\nगोविन्दाय नमो नमः", kvShort: "कृष्णाय वासुदेवाय", ss1: "साम्ब", ss2: "सदाशिव", ramTitle: "राम विजय मंत्र", ram1: "श्री राम, जय राम,", ram2: "जय जय राम।", srTitle: "सीताराम", sr1: "सीताराम", sr2: "सीताराम", rmTitle: "राम", rm1: "राम", rm2: "राम", nrTitle: "नारायण", nr1: "नारायण", nr2: "नारायण", ygTitle: "युगल मंत्र", yg1: "राधे कृष्ण राधे कृष्ण\nकृष्ण कृष्ण राधे राधे", yg2: "राधे श्याम राधे श्याम\nश्याम श्याम राधे राधे", kaamTitle: "काम विजय", kaamToast: "काम विजय" },
+  bn: { radha: "রাধা", rv1: "রাধাবল্লভ", rv2: "শ্রী হরিবংশ", kv1: "কৃষ্ণায় বাসুদেবায়\nহরয়ে পরমাত্মনে", kv2: "প্রণতঃ ক্লেশনাশায়\nগোবিন্দায় নমো নমঃ", kvShort: "কৃষ্ণায় বাসুদেবায়", ss1: "সাম্ব", ss2: "সদাশিব", ramTitle: "রাম বিজয় মন্ত্র", ram1: "শ্রী রাম, জয় রাম,", ram2: "জয় জয় রাম।", srTitle: "সীতারাম", sr1: "সীতারাম", sr2: "সীতারাম", rmTitle: "রাম", rm1: "রাম", rm2: "রাম", nrTitle: "নারায়ণ", nr1: "নারায়ণ", nr2: "নারায়ণ", ygTitle: "যুগল মন্ত্র", yg1: "রাধে কৃষ্ণ রাধে কৃষ্ণ\nকৃষ্ণ কৃষ্ণ রাধে রাধে", yg2: "রাধে শ্যাম রাধে শ্যাম\nশ্যাম শ্যাম রাধে রাধে", kaamTitle: "কাম বিজয়", kaamToast: "কাম বিজয়" },
 };
 // ── Haridashi Sampraday ──
 // Jap = Radha  +  "Kunj Vihari / Sri Haridas". Reuses the Radha-Vallabh ("rv") counting slot, so
@@ -4846,6 +4912,8 @@ function applyNaamLangLabels(lang) {
   if (optSRLbl) optSRLbl.textContent = _nt.srTitle;
   const optRMLbl = document.getElementById("naamOptRMLabel");
   if (optRMLbl) optRMLbl.textContent = _nt.rmTitle;
+  const optNRLbl = document.getElementById("naamOptNRLabel");
+  if (optNRLbl) optNRLbl.textContent = _nt.nrTitle;
   const optYgLbl = document.getElementById("naamOptYgLabel");
   if (optYgLbl) optYgLbl.textContent = _nt.ygTitle;
   const optKaamLbl = document.getElementById("naamOptKaamLabel");
@@ -4877,6 +4945,7 @@ function setNaamLangDirect(lang) {
 }
 
 function switchJapMode(mode) {
+  _syncRamanujClass();
   // ── Per-mode mala-timing stash/restore ──
   // malaWallStart / _currentMalaStartTs / currentMalaSeconds are shared,
   // single (not per-type) fields. Without this, switching away mid-mala
@@ -4948,6 +5017,7 @@ function switchJapMode(mode) {
   const optRam = document.getElementById("naamOptRam");
   const optSR = document.getElementById("naamOptSR");
   const optRM = document.getElementById("naamOptRM");
+  const optNR = document.getElementById("naamOptNR");
   const optYg = document.getElementById("naamOptYg");
   const titleEl = document.getElementById("rnTitle");
   const hkEl = document.getElementById("hkPersist");
@@ -4976,7 +5046,7 @@ function switchJapMode(mode) {
     });
   }
   // Clear all active states first
-  [optR, optRV, optHK, optKV, optKaam, optSS, optRam, optSR, optRM, optYg].forEach((o) => {
+  [optR, optRV, optHK, optKV, optKaam, optSS, optRam, optSR, optRM, optNR, optYg].forEach((o) => {
     if (o) {
       o.classList.remove("active");
       o.querySelector(".ns-check").textContent = "";
@@ -5056,7 +5126,7 @@ function switchJapMode(mode) {
     if (_mcClr) _mcClr.classList.remove("hkmc-visible");
     const _mcClrRam = document.getElementById("ramMalaComplete");
     if (_mcClrRam) _mcClrRam.classList.remove("hkmc-visible");
-    const _optX = mode === "sr" ? optSR : mode === "rm" ? optRM : optRam;
+    const _optX = mode === "sr" ? optSR : mode === "rm" ? optRM : mode === "nr" ? optNR : optRam;
     if (_optX) {
       _optX.classList.add("active");
       _optX.querySelector(".ns-check").textContent = "✓";
@@ -5160,6 +5230,7 @@ function switchJapMode(mode) {
     ram: _nt.ram1 + " " + _nt.ram2 + " 🚩",
     sr: _nt.sr1 + " " + _nt.sr2 + " 🏹",
     rm: _nt.rm1 + " " + _nt.rm2 + " 🚩",
+    nr: _nt.nr1 + " " + _nt.nr2 + " 🪷",
     yg: _nt.ygTitle + " 🙏",
     radha: _nt.radha + " 🙏",
   };
@@ -5549,7 +5620,7 @@ function renderSampradaySelector() {
   if (subRj) subRj.classList.remove("on");
   if (subRd) subRd.classList.remove("on");
   if (activeId === "Sri") {
-    const sub = App.S.sriBranch === "ramanuj" ? subRj : subRd;
+    const sub = isRamanuj() ? subRj : subRd;
     if (sub) sub.classList.add("on");
     const sriCard = document.getElementById("sampSri");
     if (sriCard) sriCard.classList.add("expanded");
@@ -5729,7 +5800,9 @@ function tgs(k) {
   }
 
   if (k === "ramanandiMode") {
-    App.S.ramanandiMode = !App.S.ramanandiMode;
+    const _wasRj = !!(App.S.ramanandiMode && App.S.ramanujMode);
+    App.S.ramanujMode = false;            // Ramananda branch
+    App.S.ramanandiMode = _wasRj ? true : !App.S.ramanandiMode;   // coming from Ramanuj: stay in Shree, just switch branch
     // Mutually exclusive with Gaudiya/ISKCON mode and Trahimam Trahimam mode
     if (App.S.ramanandiMode && App.S.gaudiyaMode) {
       App.S.gaudiyaMode = false;
@@ -5758,7 +5831,7 @@ function tgs(k) {
     _placeTarget28Card();
     // Auto-switch jap mode so only valid options are visible at the top toggle
     if (App.S.ramanandiMode) {
-      if (!isRamFam(App.S.japMode)) switchJapMode("ram");
+      if (!isRamFam(App.S.japMode) || App.S.japMode === "nr") switchJapMode("ram");
       window._dedTypes = new Set();
     } else {
       if (isRamFam(App.S.japMode)) switchJapMode("radha");
@@ -5896,11 +5969,66 @@ function tgs(k) {
     return;
   }
 
-  // --- Sri Sampraday: Ramanuj sub-branch: not yet implemented (Ramananda sub-branch reuses the existing ramanandiMode toggle above) ---
+  // --- Shree Sampraday: Ramanuj branch (Narayan naam jap) ---
   if (k === "sriRamanuj") {
-    toast("Not available. Coming soon.");
+    const _wasRj = !!(App.S.ramanandiMode && App.S.ramanujMode);
+    App.S.ramanujMode = !_wasRj;          // Ramanuj ON  (also switches over from Ramananda)
+    App.S.ramanandiMode = App.S.ramanujMode;
+    // Mutually exclusive with Gaudiya/ISKCON mode and Trahimam Trahimam mode
+    if (App.S.ramanandiMode && App.S.gaudiyaMode) {
+      App.S.gaudiyaMode = false;
+      document.body.classList.remove("gaudiya-mode");
+      const tgG = document.getElementById("tgGaudiya");
+      if (tgG) tgG.classList.remove("on");
+    }
+    if (App.S.ramanandiMode && App.S.trahimamMode) {
+      App.S.trahimamMode = false;
+      document.body.classList.remove("trahimam-mode");
+      const tgT = document.getElementById("tgTrahimam");
+      if (tgT) tgT.classList.remove("on");
+    }
+    if (App.S.ramanandiMode && App.S.nimbarkMode) {
+      App.S.nimbarkMode = false;
+      document.body.classList.remove("nimbark-mode");
+      if (App.S.sampraday === "nimbark") App.S.sampraday = "harivangshi";
+      if (App.S.japMode === "yg") switchJapMode("radha");
+    }
+    const tgR = document.getElementById("tgRamanandi");
+    if (tgR)
+      App.S.ramanandiMode ? tgR.classList.add("on") : tgR.classList.remove("on");
+    App.S.ramanandiMode
+      ? document.body.classList.add("ramanandi-mode")
+      : document.body.classList.remove("ramanandi-mode");
+    _placeTarget28Card();
+    // Auto-switch jap mode so only valid options are visible at the top toggle
+    if (App.S.ramanandiMode) {
+      if (App.S.japMode !== "nr") switchJapMode("nr");
+      window._dedTypes = new Set();
+    } else {
+      if (isRamFam(App.S.japMode)) switchJapMode("radha");
+      window._dedTypes = new Set();
+    }
+    window._dedAmounts = {};
+    if (typeof renderDedTypePanels === "function") renderDedTypePanels();
+    App.save();
+    fbDebouncedPush();
+    uStats();
+    renderHistory && typeof renderHistory === "function" && renderHistory();
+    if (typeof renderCal === "function") renderCal();
+    if (typeof applyBgPhotos === "function") applyBgPhotos();
+    if (typeof renderPhotoPickers === "function") renderPhotoPickers();
+    if (App.S.ramanandiMode) {
+      App.S.sampraday = "sri";
+      App.S.sriBranch = "ramanuj";
+    } else if (App.S.sampraday === "sri" && App.S.sriBranch === "ramanuj") {
+      App.S.sampraday = "harivangshi";
+    }
+    if (typeof renderSampradaySelector === "function") renderSampradaySelector();
+    toast(App.S.ramanandiMode ? "🪷 Ramanuj Mode ON" : "🪷 Ramanuj Mode OFF");
+    if (App.S.ramanandiMode) scrollToJapSetup();
     return;
   }
+
 
   if (k === "exactAlarm") {
     // User-initiated only — this is never called automatically on app launch.
@@ -6892,7 +7020,7 @@ function _dedTypeMeta(type) {
   if (type === "hk") return { label: "Hare Krishna", color: "#c9a7ff" };
   if (type === "ss") return { label: "Samba Sadashiv", color: "#ffb86c" };
   if (type === "ram") return { label: "Raam Vijay Mantra", color: "#FF9933" };
-  if (type === "sr" || type === "rm") return { label: RAM_META[type].label, color: RAM_META[type].color };
+  if (type === "sr" || type === "rm" || type === "nr") return { label: RAM_META[type].label, color: RAM_META[type].color };
   if (type === "yg") return { label: "Yugal Mantra", color: "#FFD700" };
   if (type === "kaam") return { label: "Kaam Vijay", color: "#B8C4F5" };
   return { label: "Radha", color: "#f5c842" };
@@ -6936,7 +7064,7 @@ function _dedLifetimeFor(type) {
         (App.S.nameJapDeductRam || 0),
     );
   }
-  if (type === "sr" || type === "rm") {
+  if (type === "sr" || type === "rm" || type === "nr") {
     const _k = RAM_KEYS[type];
     return Math.max(0, Object.values(App.S[_k.h] || {}).reduce((a, b) => a + b, 0) - (App.S[_k.nd] || 0));
   }
@@ -6972,7 +7100,7 @@ function _dedAdjustCounter(type, delta) {
     App.S.nameJapDeductSS = Math.max(0, (App.S.nameJapDeductSS || 0) + delta);
   } else if (type === "ram") {
     App.S.nameJapDeductRam = Math.max(0, (App.S.nameJapDeductRam || 0) + delta);
-  } else if (type === "sr" || type === "rm") {
+  } else if (type === "sr" || type === "rm" || type === "nr") {
     const _k = RAM_KEYS[type];
     App.S[_k.nd] = Math.max(0, (App.S[_k.nd] || 0) + delta);
     App.S.nameJapDeductYg = Math.max(0, (App.S.nameJapDeductYg || 0) + delta);
@@ -7002,7 +7130,7 @@ function renderDedTypePanels() {
   const wrap = document.getElementById("dedTypePanels");
   if (!wrap) return;
   const ms = App.S.ms || 108;
-  const order = ["radha", "rv", "kv", "hk", "ss", "ram", "sr", "rm", "yg"].filter((t) => window._dedTypes.has(t));
+  const order = ["radha", "rv", "kv", "hk", "ss", "ram", "sr", "rm", "nr", "yg"].filter((t) => window._dedTypes.has(t));
 
   wrap.innerHTML = order
     .map((type) => {
@@ -7116,7 +7244,7 @@ function _updateDedSummary() {
   const ms = App.S.ms || 108;
   const parts = [];
   let japTotal = 0;
-  ["radha", "rv", "kv", "hk", "ss", "ram", "sr", "rm", "yg"].forEach((type) => {
+  ["radha", "rv", "kv", "hk", "ss", "ram", "sr", "rm", "nr", "yg"].forEach((type) => {
     const amt = window._dedAmounts[type] || 0;
     if (amt > 0 && window._dedTypes.has(type)) {
       japTotal += amt;
@@ -8140,6 +8268,7 @@ function deductJapTimeOther() {
 
 // ── Stats ──
 function uStats() {
+  _syncRamanujClass();
   const ms = App.S.ms || 108,
     tot = App.gTot(),
     now = new Date();
@@ -8173,13 +8302,14 @@ function uStats() {
   const _ramTarget = App.S.dtRam || 0;
   const _srTarget = App.S.dtSR || 0;
   const _rmTarget = App.S.dtRM || 0;
+  const _nrTarget = App.S.dtNR || 0;
   const _ygTarget = App.S.dtYg || 0;
   const _kaamTarget = App.S.dtKaam || 0;
   // A target is "active" if at least one target is configured for the current mode
   const _hasTarget = _isGaudiya
     ? _hkTarget > 0
     : _isRamanandi
-      ? _ramTarget > 0 || _srTarget > 0 || _rmTarget > 0
+      ? _ramTarget > 0 || _srTarget > 0 || _rmTarget > 0 || _nrTarget > 0
       : _isNimbark
         ? _ygTarget > 0
         : _radhaTarget > 0 || _rvTarget > 0;
@@ -8194,7 +8324,8 @@ function uStats() {
       return (
         (_ramTarget > 0 && ((App.S.historyRam || {})[k] || 0) >= _ramTarget) ||
         (_srTarget > 0 && ((App.S.historySR || {})[k] || 0) >= _srTarget) ||
-        (_rmTarget > 0 && ((App.S.historyRM || {})[k] || 0) >= _rmTarget)
+        (_rmTarget > 0 && ((App.S.historyRM || {})[k] || 0) >= _rmTarget) ||
+        (_nrTarget > 0 && ((App.S.historyNR || {})[k] || 0) >= _nrTarget)
       );
     }
     if (_isNimbark) {
@@ -8233,6 +8364,7 @@ function uStats() {
       ...Object.keys(App.S.historyRam || {}),
       ...Object.keys(App.S.historySR || {}),
       ...Object.keys(App.S.historyRM || {}),
+      ...Object.keys(App.S.historyNR || {}),
     ]);
     const tgtDays = Array.from(_allHistKeys)
       .filter((k) => !k.startsWith("prev_") && _dayHitsTarget(k))
@@ -8304,6 +8436,11 @@ function uStats() {
     0,
     Object.values(App.S.historyRM || {}).reduce((a, b) => a + b, 0) -
       (App.S.nameJapDeductRM || 0),
+  );
+  const nrLifetime = Math.max(
+    0,
+    Object.values(App.S.historyNR || {}).reduce((a, b) => a + b, 0) -
+      (App.S.nameJapDeductNR || 0),
   );
   const ygLifetime = Math.max(
     0,
@@ -8389,6 +8526,12 @@ function uStats() {
   if (sRMM) sRMM.textContent = Math.floor(rmLifetime / ms) + " malas";
   const sRMF = document.getElementById("sRMTotF");
   if (sRMF) sRMF.textContent = fmtCount(rmLifetime) + " jap";
+  const sNR = document.getElementById("sNRTot");
+  if (sNR) sNR.textContent = nrLifetime.toLocaleString("en-IN");
+  const sNRM = document.getElementById("sNRTotM");
+  if (sNRM) sNRM.textContent = Math.floor(nrLifetime / ms) + " malas";
+  const sNRF = document.getElementById("sNRTotF");
+  if (sNRF) sNRF.textContent = fmtCount(nrLifetime) + " jap";
   const sYg = document.getElementById("sYgTot");
   if (sYg) sYg.textContent = ygLifetime.toLocaleString("en-IN");
   const sYgM = document.getElementById("sYgTotM");
@@ -8433,7 +8576,7 @@ function uStats() {
   const ltJapAll = App.S.trahimamMode
     ? ssLifetime + n28Lifetime
     : App.S.ramanandiMode
-      ? ramLifetime + srLifetime + rmLifetime + n28Lifetime
+      ? ramLifetime + srLifetime + rmLifetime + nrLifetime + n28Lifetime
       : App.S.nimbarkMode
         ? ygLifetime + n28Lifetime
         : radhaLifetime + rvLifetime + kvLifetime + n28Lifetime;
@@ -8567,6 +8710,11 @@ function uStats() {
   const rmPMo = Object.entries(App.S.historyRM || {})
     .filter(([k]) => k.startsWith(mp))
     .reduce((s, [, v]) => s + v, 0);
+  const nrPTod = (App.S.historyNR || {})[App.S.tk] || 0;
+  const nrPWk = wk.reduce((s, k) => s + ((App.S.historyNR || {})[k] || 0), 0);
+  const nrPMo = Object.entries(App.S.historyNR || {})
+    .filter(([k]) => k.startsWith(mp))
+    .reduce((s, [, v]) => s + v, 0);
   const ygPTod = (App.S.historyYg || {})[App.S.tk] || 0;
   const ygPWk = wk.reduce((s, k) => s + ((App.S.historyYg || {})[k] || 0), 0);
   const ygPMo = Object.entries(App.S.historyYg || {})
@@ -8658,6 +8806,12 @@ function uStats() {
   _sm("sRMPWkM", rmPWk);
   _sn("sRMPMo", rmPMo);
   _sm("sRMPMoM", rmPMo);
+  _sn("sNRPTod", nrPTod);
+  _sm("sNRPTodM", nrPTod);
+  _sn("sNRPWk", nrPWk);
+  _sm("sNRPWkM", nrPWk);
+  _sn("sNRPMo", nrPMo);
+  _sm("sNRPMoM", nrPMo);
   _sn("sYgPTod", ygPTod);
   _sm("sYgPTodM", ygPTod);
   _sn("sYgPWk", ygPWk);
@@ -8799,6 +8953,7 @@ function uStats() {
       { key: "ram",   th: App.S.timerHistoryRam || {},cnt: App.S.historyRam || {},tod: "qRamTod",   wk: "qRamWk",   mo: "qRamMo",   lt: "qRamLt" },
       { key: "sr",   th: App.S.timerHistorySR || {},cnt: App.S.historySR || {},tod: "qSRTod",   wk: "qSRWk",   mo: "qSRMo",   lt: "qSRLt" },
       { key: "rm",   th: App.S.timerHistoryRM || {},cnt: App.S.historyRM || {},tod: "qRMTod",   wk: "qRMWk",   mo: "qRMMo",   lt: "qRMLt" },
+      { key: "nr",   th: App.S.timerHistoryNR || {},cnt: App.S.historyNR || {},tod: "qNRTod",   wk: "qNRWk",   mo: "qNRMo",   lt: "qNRLt" },
       { key: "yg",    th: App.S.timerHistoryYg || {}, cnt: App.S.historyYg || {}, tod: "qYgTod",    wk: "qYgWk",    mo: "qYgMo",    lt: "qYgLt" },
       { key: "n28",   th: _n28TH,                     cnt: App.S.h28 || {},       tod: "q28Tod",    wk: "q28Wk",    mo: "q28Mo",    lt: "q28Lt" },
     ];
@@ -8872,6 +9027,7 @@ function uStats() {
   const ramTH = App.S.timerHistoryRam || {};
   const srTH = App.S.timerHistorySR || {};
   const rmTH = App.S.timerHistoryRM || {};
+  const nrTH = App.S.timerHistoryNR || {};
   const ygTH = App.S.timerHistoryYg || {};
   const kaamTH = App.S.timerHistoryKaam || {};
   const liveExtra = App.currentMalaSeconds || 0;
@@ -8881,9 +9037,10 @@ function uStats() {
   const isRamMode = App.S.japMode === "ram";
   const isSRMode = App.S.japMode === "sr";
   const isRMMode = App.S.japMode === "rm";
+  const isNRMode = App.S.japMode === "nr";
   const isYgMode = App.S.japMode === "yg";
   const isKaamMode = App.S.japMode === "kaam";
-  const isRadhaMode = !isRVMode && !isKVMode && !isSSMode && !isRamMode && !isSRMode && !isRMMode && !isYgMode && !isKaamMode && App.S.japMode !== "hk";
+  const isRadhaMode = !isRVMode && !isKVMode && !isSSMode && !isRamMode && !isSRMode && !isRMMode && !isNRMode && !isYgMode && !isKaamMode && App.S.japMode !== "hk";
   const rTod = (radhaTH[App.S.tk] || 0) + (isRadhaMode ? liveExtra : 0);
   const rWk =
     wk.reduce((s, k) => s + (radhaTH[k] || 0), 0) + (isRadhaMode ? liveExtra : 0);
@@ -8933,6 +9090,13 @@ function uStats() {
     Object.entries(rmTH)
       .filter(([k]) => k.startsWith(mp))
       .reduce((s, [, v]) => s + v, 0) + (isRMMode ? liveExtra : 0);
+  const nrTod = (nrTH[App.S.tk] || 0) + (isNRMode ? liveExtra : 0);
+  const nrWk =
+    wk.reduce((s, k) => s + (nrTH[k] || 0), 0) + (isNRMode ? liveExtra : 0);
+  const nrMo =
+    Object.entries(nrTH)
+      .filter(([k]) => k.startsWith(mp))
+      .reduce((s, [, v]) => s + v, 0) + (isNRMode ? liveExtra : 0);
   const ygTod = (ygTH[App.S.tk] || 0) + (isYgMode ? liveExtra : 0);
   const ygWk =
     wk.reduce((s, k) => s + (ygTH[k] || 0), 0) + (isYgMode ? liveExtra : 0);
@@ -8966,6 +9130,8 @@ function uStats() {
     Object.values(srTH).reduce((s, v) => s + v, 0) + (isSRMode ? liveExtra : 0);
   const rmLt =
     Object.values(rmTH).reduce((s, v) => s + v, 0) + (isRMMode ? liveExtra : 0);
+  const nrLt =
+    Object.values(nrTH).reduce((s, v) => s + v, 0) + (isNRMode ? liveExtra : 0);
   const ygLt =
     Object.values(ygTH).reduce((s, v) => s + v, 0) + (isYgMode ? liveExtra : 0);
   const kaamLt =
@@ -8998,6 +9164,10 @@ function uStats() {
   _set("tRMWk", rmWk);
   _set("tRMMo", rmMo);
   _set("tRMLt", rmLt);
+  _set("tNRTod", nrTod);
+  _set("tNRWk", nrWk);
+  _set("tNRMo", nrMo);
+  _set("tNRLt", nrLt);
   _set("tYgTod", ygTod);
   _set("tYgWk", ygWk);
   _set("tYgMo", ygMo);
@@ -9481,6 +9651,7 @@ function doReset() {
     App.S.historyRam = {};
     App.S.historySR = {};
     App.S.historyRM = {};
+    App.S.historyNR = {};
     App.S.historyYg = {};
     App.S.historyKaam = {};
     // Daily/lifetime jap TARGETS (dt/lt and per-mantra siblings) are
@@ -9497,6 +9668,7 @@ function doReset() {
     App.S.nameJapDeductRam = 0;
     App.S.nameJapDeductSR = 0;
     App.S.nameJapDeductRM = 0;
+    App.S.nameJapDeductNR = 0;
     App.S.nameJapDeductYg = 0;
     App.S.nameJapDeductKaam = 0;
     App.S.dedications = [];
@@ -9508,6 +9680,7 @@ function doReset() {
     App.S.timerHistoryRam = {};
     App.S.timerHistorySR = {};
     App.S.timerHistoryRM = {};
+    App.S.timerHistoryNR = {};
     App.S.timerHistoryYg = {};
     App.S.timerHistoryKaam = {};
     App.S.malaLog = [];
@@ -9518,6 +9691,7 @@ function doReset() {
     App.S.malaLogRam = [];
     App.S.malaLogSR = [];
     App.S.malaLogRM = [];
+    App.S.malaLogNR = [];
     App.S.malaLogYg = [];
     App.S.malaLogKaam = [];
     try { if (window.AudioChant) window.AudioChant.stop(); } catch (_e) {}
@@ -9542,10 +9716,12 @@ function doReset() {
     App.S.syncBaselineRam = {};
     App.S.syncBaselineSR = {};
     App.S.syncBaselineRM = {};
+    App.S.syncBaselineNR = {};
     App.S.syncBaselineYg = {};
     App.S.syncBaselineTimerRam = {};
     App.S.syncBaselineTimerSR = {};
     App.S.syncBaselineTimerRM = {};
+    App.S.syncBaselineTimerNR = {};
     App.S.syncBaselineTimerYg = {};
     App.S.syncBaselineKaam = {};
     App.S.syncBaselineTimerKaam = {};
@@ -9557,6 +9733,7 @@ function doReset() {
     App.lmcRam = 0;
     App.lmcSR = 0;
     App.lmcRM = 0;
+    App.lmcNR = 0;
     App.lmcYg = 0;
     App.lmcKaam = 0;
     App.dbClearStore("history");
@@ -9567,6 +9744,7 @@ function doReset() {
     App.dbClearStore("historyRam").catch(() => {});
     App.dbClearStore("historySR").catch(() => {});
     App.dbClearStore("historyRM").catch(() => {});
+    App.dbClearStore("historyNR").catch(() => {});
     App.dbClearStore("historyYg").catch(() => {});
     App.dbClearStore("historyKaam").catch(() => {});
     App.dbClearStore("timerHistory");
@@ -9577,6 +9755,7 @@ function doReset() {
     App.dbClearStore("timerHistoryRam").catch(() => {});
     App.dbClearStore("timerHistorySR").catch(() => {});
     App.dbClearStore("timerHistoryRM").catch(() => {});
+    App.dbClearStore("timerHistoryNR").catch(() => {});
     App.dbClearStore("timerHistoryYg").catch(() => {});
     App.dbClearStore("timerHistoryKaam").catch(() => {});
     App.dbClearStore("activityLogArchive");
@@ -9763,8 +9942,8 @@ async function saveJsonFile(filename, jsonString) {
 // Quality can exclude it later. typeKey is one of radha/rv/kv/ss/hk/n28.
 // count = name-jap count added; seconds = time-taken added (0 if none given).
 function _recordManualJap(typeKey, dateKey, count, seconds) {
-  if (!App.S.manualJapCount) App.S.manualJapCount = { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, n28: {} };
-  if (!App.S.manualJapTime)  App.S.manualJapTime  = { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, n28: {} };
+  if (!App.S.manualJapCount) App.S.manualJapCount = { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, nr: {}, n28: {} };
+  if (!App.S.manualJapTime)  App.S.manualJapTime  = { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, nr: {}, n28: {} };
   if (!App.S.manualJapCount[typeKey]) App.S.manualJapCount[typeKey] = {};
   if (!App.S.manualJapTime[typeKey])  App.S.manualJapTime[typeKey]  = {};
   App.S.manualJapCount[typeKey][dateKey] = (App.S.manualJapCount[typeKey][dateKey] || 0) + (count || 0);
@@ -9794,7 +9973,7 @@ function _manualCountFor(typeKey, dateKeys, monthPrefix) {
   if (dateKeys) return dateKeys.reduce((s, k) => s + (obj[k] || 0), 0);
   return Object.values(obj).reduce((a, b) => a + b, 0);
 }
-const _MANUAL_TYPE_KEYS = ["radha", "rv", "kv", "kaam", "ss", "hk", "ram", "sr", "rm", "yg", "n28"];
+const _MANUAL_TYPE_KEYS = ["radha", "rv", "kv", "kaam", "ss", "hk", "ram", "sr", "rm", "nr", "yg", "n28"];
 
 function _buildBackupPayload() {
   return {
@@ -9854,31 +10033,38 @@ function _buildBackupPayload() {
     historyRam: App.S.historyRam || {},
     historySR: App.S.historySR || {},
     historyRM: App.S.historyRM || {},
+    historyNR: App.S.historyNR || {},
     historyYg: App.S.historyYg || {},
     timerHistoryRam: App.S.timerHistoryRam || {},
     timerHistorySR: App.S.timerHistorySR || {},
     timerHistoryRM: App.S.timerHistoryRM || {},
+    timerHistoryNR: App.S.timerHistoryNR || {},
     timerHistoryYg: App.S.timerHistoryYg || {},
     dtRam: App.S.dtRam || 0,
     dtSR: App.S.dtSR || 0,
     dtRM: App.S.dtRM || 0,
+    dtNR: App.S.dtNR || 0,
     dtYg: App.S.dtYg || 0,
     ltRam: App.S.ltRam || 0,
     ltSR: App.S.ltSR || 0,
     ltRM: App.S.ltRM || 0,
+    ltNR: App.S.ltNR || 0,
     ltYg: App.S.ltYg || 0,
     nameJapDeductRam: App.S.nameJapDeductRam || 0,
     nameJapDeductSR: App.S.nameJapDeductSR || 0,
     nameJapDeductRM: App.S.nameJapDeductRM || 0,
+    nameJapDeductNR: App.S.nameJapDeductNR || 0,
     nameJapDeductYg: App.S.nameJapDeductYg || 0,
     malaLogRam: App.S.malaLogRam || [],
     malaLogSR: App.S.malaLogSR || [],
     malaLogRM: App.S.malaLogRM || [],
+    malaLogNR: App.S.malaLogNR || [],
     malaLogYg: App.S.malaLogYg || [],
     dedications: App.S.dedications || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
     trahimamMode: App.S.trahimamMode || false,
     ramanandiMode: App.S.ramanandiMode || false,
+    ramanujMode: App.S.ramanujMode || false,
     nimbarkMode: App.S.nimbarkMode || false,
     // Language settings (global + per-section overrides + jap text language)
     stotramLang: App.S.stotramLang || "bn",
@@ -9906,8 +10092,8 @@ function _buildBackupPayload() {
     historyAudio28: App.S.historyAudio28 || {},
     timerAudio28: App.S.timerAudio28 || {},
     audioMode: !!App.S.audioMode, audioStopMalas: App.S.audioStopMalas || 0, audioStopSecs: App.S.audioStopSecs || 0, audioStopDaily: !!App.S.audioStopDaily, audioListenOnly: !!App.S.audioListenOnly, audioTrack: ["track1", "track3"].indexOf(App.S.audioTrack) >= 0 ? App.S.audioTrack : "maharaj",
-    manualJapCount: App.S.manualJapCount || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, n28: {} },
-    manualJapTime: App.S.manualJapTime || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, n28: {} },
+    manualJapCount: App.S.manualJapCount || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, nr: {}, n28: {} },
+    manualJapTime: App.S.manualJapTime || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, nr: {}, n28: {} },
   };
 }
 
@@ -10090,6 +10276,7 @@ function importAllData(input) {
       App.S.gaudiyaMode = data.gaudiyaMode || false;
       App.S.trahimamMode = data.trahimamMode || false;
       App.S.ramanandiMode = data.ramanandiMode || false;
+    App.S.ramanujMode = data.ramanujMode || false;
       App.S.nimbarkMode = data.nimbarkMode || false;
       if (data.stotramLang === "hi" || data.stotramLang === "bn") App.S.stotramLang = data.stotramLang;
       if (data.secLang && typeof data.secLang === "object") App.S.secLang = data.secLang;
@@ -10119,30 +10306,36 @@ function importAllData(input) {
       App.S.historyRam = data.historyRam || {};
       App.S.historySR = data.historySR || {};
       App.S.historyRM = data.historyRM || {};
+      App.S.historyNR = data.historyNR || {};
       App.S.historyYg = data.historyYg || {};
       App.S.timerHistoryRam = data.timerHistoryRam || {};
       App.S.timerHistorySR = data.timerHistorySR || {};
       App.S.timerHistoryRM = data.timerHistoryRM || {};
+      App.S.timerHistoryNR = data.timerHistoryNR || {};
       App.S.timerHistoryYg = data.timerHistoryYg || {};
       App.S.dtRam = data.dtRam || 0;
       App.S.dtSR = data.dtSR || 0;
       App.S.dtRM = data.dtRM || 0;
+      App.S.dtNR = data.dtNR || 0;
       App.S.dtYg = data.dtYg || 0;
       App.S.ltRam = data.ltRam || 0;
       App.S.ltSR = data.ltSR || 0;
       App.S.ltRM = data.ltRM || 0;
+      App.S.ltNR = data.ltNR || 0;
       App.S.ltYg = data.ltYg || 0;
       App.S.nameJapDeductRam = data.nameJapDeductRam || 0;
       App.S.nameJapDeductSR = data.nameJapDeductSR || 0;
       App.S.nameJapDeductRM = data.nameJapDeductRM || 0;
+      App.S.nameJapDeductNR = data.nameJapDeductNR || 0;
       App.S.nameJapDeductYg = data.nameJapDeductYg || 0;
       App.S.malaLogRam = data.malaLogRam || [];
       App.S.malaLogSR = data.malaLogSR || [];
       App.S.malaLogRM = data.malaLogRM || [];
+      App.S.malaLogNR = data.malaLogNR || [];
       App.S.malaLogYg = data.malaLogYg || [];
       App.S.dedications = Array.isArray(data.dedications) ? data.dedications : [];
       App.S.milestones = data.milestones || { reached: {}, lastChecked: 0 };
-       App.S.msConsider = data.msConsider || { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, sr: true, rm: true, n28: true };
+       App.S.msConsider = data.msConsider || { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true };
       App.S.dt28Cycles = data.dt28Cycles || 0;
       App.S.lbDisplayName = data.lbDisplayName || App.S.lbDisplayName || "";
       App.S.lbOptIn = !!data.lbOptIn;
@@ -10162,8 +10355,8 @@ function importAllData(input) {
       App.S.historyAudio28 = (data.historyAudio28 && typeof data.historyAudio28 === "object") ? data.historyAudio28 : {};
       App.S.timerAudio28 = (data.timerAudio28 && typeof data.timerAudio28 === "object") ? data.timerAudio28 : {};
       App.S.audioMode = !!data.audioMode; App.S.audioStopMalas = data.audioStopMalas || 0; App.S.audioStopSecs = data.audioStopSecs || 0; App.S.audioStopDaily = !!data.audioStopDaily; App.S.audioListenOnly = !!data.audioListenOnly; App.S.audioTrack = ["track1", "track3"].indexOf(data.audioTrack) >= 0 ? data.audioTrack : "maharaj";
-       App.S.manualJapCount = data.manualJapCount || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, n28: {} };
-       App.S.manualJapTime = data.manualJapTime || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, n28: {} };
+       App.S.manualJapCount = data.manualJapCount || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, nr: {}, n28: {} };
+       App.S.manualJapTime = data.manualJapTime || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, nr: {}, n28: {} };
       App._purgeEmptyKeys(App.S); // drop corrupt "" keys from an imported backup
       App.S.syncBaseline = JSON.parse(JSON.stringify(App.S.history));
       App.S.syncBaseline28 = JSON.parse(JSON.stringify(App.S.h28));
@@ -10313,23 +10506,27 @@ function renderVelocityTracker() {
 function _msConsiderDefaults() {
   if (App.S.gaudiyaMode) {
     // Gaudiya/ISKCON: Hare Krishna only
-    return { radha: false, rv: false, hk: true, kv: false, ss: false, ram: false, sr: false, rm: false, yg: false, n28: true };
+    return { radha: false, rv: false, hk: true, kv: false, ss: false, ram: false, sr: false, rm: false, nr: false, yg: false, n28: true };
   }
   if (App.S.trahimamMode) {
     // Gopeshwar Mahadev: Samba Sadashiv only
-    return { radha: false, rv: false, hk: false, kv: false, ss: true, ram: false, sr: false, rm: false, yg: false, n28: true };
+    return { radha: false, rv: false, hk: false, kv: false, ss: true, ram: false, sr: false, rm: false, nr: false, yg: false, n28: true };
+  }
+  if (App.S.ramanandiMode && App.S.ramanujMode) {
+    // Ramanuj (Shree): Narayan only
+    return { radha: false, rv: false, hk: false, kv: false, ss: false, ram: false, sr: false, rm: false, nr: true, yg: false, n28: true };
   }
   if (App.S.ramanandiMode) {
-    // Ramanandi: Raam Vijay Mantra only
-    return { radha: false, rv: false, hk: false, kv: false, ss: false, ram: true, sr: true, rm: true, yg: false, n28: true };
+    // Ramananda (Shree): Raam Vijay Mantra / SitaRaam / Raam
+    return { radha: false, rv: false, hk: false, kv: false, ss: false, ram: true, sr: true, rm: true, nr: false, yg: false, n28: true };
   }
   if (App.S.nimbarkMode) {
     // Nimbark: Yugal Mantra only
-    return { radha: false, rv: false, hk: false, kv: false, ss: false, ram: false, sr: false, rm: false, yg: true, n28: true };
+    return { radha: false, rv: false, hk: false, kv: false, ss: false, ram: false, sr: false, rm: false, nr: false, yg: true, n28: true };
   }
   // Default (Rashik/Harivangshi/Haridashi/Sri-Ramanuj etc.): the combined
   // Radha + Radha Vallabh + Krishnay Vasudevay engine
-  return { radha: true, rv: true, hk: false, kv: true, ss: false, ram: false, sr: false, rm: false, yg: false, n28: true };
+  return { radha: true, rv: true, hk: false, kv: true, ss: false, ram: false, sr: false, rm: false, nr: false, yg: false, n28: true };
 }
 // Audio chips (ra, rva, kva, kma, n28a) are separate traits from their
 // touch counterparts (radha, rv, kv, km, n28). Until the user flips an
@@ -10408,6 +10605,7 @@ function _msComputeTotal() {
   const ramTot = consider.ram ? net(App.S.historyRam, App.S.nameJapDeductRam) : 0;
   const srTot = consider.sr ? net(App.S.historySR, App.S.nameJapDeductSR) : 0;
   const rmTot = consider.rm ? net(App.S.historyRM, App.S.nameJapDeductRM) : 0;
+  const nrTot = consider.nr ? net(App.S.historyNR, App.S.nameJapDeductNR) : 0;
   const ygTot = consider.yg ? net(App.S.historyYg, App.S.nameJapDeductYg) : 0;
   const radhaTot = (consider.radha ? R.touch : 0) + (consider.ra ? R.audio : 0);
   const _khTouch = Math.min(_msKhSum(), RV.touch);
@@ -10417,7 +10615,7 @@ function _msComputeTotal() {
   const kmTot = (consider.km ? KM.touch : 0) + (consider.kma ? KM.audio : 0);
   const n28Tot = (consider.n28 ? N28.touch : 0) + (consider.n28a ? N28.audio : 0);
   return {
-    total: radhaTot + rvTot + khTot + hkTot + kvTot + kmTot + ssTot + ramTot + srTot + rmTot + ygTot + n28Tot,
+    total: radhaTot + rvTot + khTot + hkTot + kvTot + kmTot + ssTot + ramTot + srTot + rmTot + nrTot + ygTot + n28Tot,
     radhaTot,
     rvTot,
     khTot,
@@ -10428,6 +10626,7 @@ function _msComputeTotal() {
     ramTot,
     srTot,
     rmTot,
+    nrTot,
     ygTot,
     n28Tot,
   };
@@ -10452,6 +10651,7 @@ function _msConsiderChipsHtml() {
     { key: "ram", label: "Raam Vijay Mantra", color: "255,153,51" },
     { key: "sr", label: "SitaRaam", color: "255,143,163" },
     { key: "rm", label: "Raam", color: "255,200,87" },
+    { key: "nr", label: "Narayan", color: "126,200,255" },
     { key: "yg", label: "Yugal Mantra", color: "255,215,0" },
     { key: "n28", label: "28 Names", color: "255,143,199" },
     { key: "n28a", label: "🎧 28 Names Audio", color: "255,143,199" },
@@ -10495,14 +10695,14 @@ function _msLifetimeAll() {
   const S = App.S;
   const h28 = Object.entries(S.h28 || {}).filter(([k]) => !k.startsWith("prev_")).reduce((a, [, v]) => a + (+v || 0), 0);
   return _msLtSum(S.history) + _msLtSum(S.historyRV) + _msLtSum(S.historyKV) + _msLtSum(S.historyKaam) +
-    _msLtSum(S.historyHK) + _msLtSum(S.historySS) + _msLtSum(S.historyRam) + _msLtSum(S.historySR) + _msLtSum(S.historyRM) + _msLtSum(S.historyYg) + h28;
+    _msLtSum(S.historyHK) + _msLtSum(S.historySS) + _msLtSum(S.historyRam) + _msLtSum(S.historySR) + _msLtSum(S.historyRM) + _msLtSum(S.historyNR) + _msLtSum(S.historyYg) + h28;
 }
 function _msLifetimeClean() {
   const S = App.S;
   const net = (h, d) => Math.max(0, _msLtSum(h) - (d || 0));
   return net(S.history, S.nameJapDeduct) + net(S.historyRV, S.nameJapDeductRV) + net(S.historyKV, S.nameJapDeductKV) +
     net(S.historyKaam, S.nameJapDeductKaam) + net(S.historyHK, S.nameJapDeductHK) + net(S.historySS, S.nameJapDeductSS) +
-    net(S.historyRam, S.nameJapDeductRam) + net(S.historySR, S.nameJapDeductSR) + net(S.historyRM, S.nameJapDeductRM) + net(S.historyYg, S.nameJapDeductYg) + _msAvailable28();
+    net(S.historyRam, S.nameJapDeductRam) + net(S.historySR, S.nameJapDeductSR) + net(S.historyRM, S.nameJapDeductRM) + net(S.historyNR, S.nameJapDeductNR) + net(S.historyYg, S.nameJapDeductYg) + _msAvailable28();
 }
 function _msRenderLifetimeCards() {
   const el = document.getElementById("msLifetimeCards");
@@ -10511,7 +10711,7 @@ function _msRenderLifetimeCards() {
   const ms = App.S.ms || 108;
   const fmt = (n) => Math.max(0, Math.round(n)).toLocaleString("en-IN");
   const mal = (n) => Math.floor(Math.max(0, n) / ms).toLocaleString("en-IN") + (hi ? " mala" : " মালা");
-  const short = { radha: "R", ra: "R-A", rv: "RV", rva: "RV-A", kh: "KH", hk: "HK", kv: "KV", kva: "KV-A", km: "KM", kma: "KM-A", ss: "SS", ram: "Ram", sr: "SR", rm: "RM", n28: "28N", n28a: "28N-A" };
+  const short = { radha: "R", ra: "R-A", rv: "RV", rva: "RV-A", kh: "KH", hk: "HK", kv: "KV", kva: "KV-A", km: "KM", kma: "KM-A", ss: "SS", ram: "Ram", sr: "SR", rm: "RM", nr: "NR", n28: "28N", n28a: "28N-A" };
   const c = getMsConsider();
   const chosen = Object.keys(short).filter((k) => c[k]).map((k) => short[k]);
   const cards = [
@@ -10542,6 +10742,7 @@ function renderMilestonesTab() {
   const histRam = App.S.historyRam || {};
   const histSR = App.S.historySR || {};
   const histRM = App.S.historyRM || {};
+  const histNR = App.S.historyNR || {};
   const histYg = App.S.historyYg || {};
   const hist28 = App.S.h28 || {};
   // Milestones reflect only the jap types the user has chosen to "consider"
@@ -10577,6 +10778,7 @@ function renderMilestonesTab() {
       (consider.ram ? histRam[k] || 0 : 0) +
       (consider.sr ? histSR[k] || 0 : 0) +
       (consider.rm ? histRM[k] || 0 : 0) +
+      (consider.nr ? histNR[k] || 0 : 0) +
       (consider.yg ? histYg[k] || 0 : 0) +
       (consider.hk ? histHK[k] || 0 : 0);
   }
@@ -11496,6 +11698,7 @@ function openMsDetail(type, count, pct, achieved) {
   const histRam = App.S.historyRam || {};
   const histSR = App.S.historySR || {};
   const histRM = App.S.historyRM || {};
+  const histNR = App.S.historyNR || {};
   const histYg = App.S.historyYg || {};
   // Use the same shared, consideration-aware total as the main Milestones
   // tab (_msComputeTotal) — respects the user's chosen jap types and nets
@@ -11557,6 +11760,9 @@ function openMsDetail(type, count, pct, achieved) {
   });
   Object.keys(histRM).forEach((k) => {
     allHist[k] = (allHist[k] || 0) + (histRM[k] || 0);
+  });
+  Object.keys(histNR).forEach((k) => {
+    allHist[k] = (allHist[k] || 0) + (histNR[k] || 0);
   });
   Object.keys(histYg).forEach((k) => {
     allHist[k] = (allHist[k] || 0) + (histYg[k] || 0);
@@ -14321,18 +14527,20 @@ async function fbSignOut(opts) {
     historyRam: {}, timerHistoryRam: {}, dtRam: 0, ltRam: 0, nameJapDeductRam: 0,
     historySR: {}, timerHistorySR: {}, dtSR: 0, ltSR: 0, nameJapDeductSR: 0,
     historyRM: {}, timerHistoryRM: {}, dtRM: 0, ltRM: 0, nameJapDeductRM: 0,
+    historyNR: {}, timerHistoryNR: {}, dtNR: 0, ltNR: 0, nameJapDeductNR: 0,
     historyYg: {}, timerHistoryYg: {}, dtYg: 0, ltYg: 0, nameJapDeductYg: 0,
     malaLogRam: [], syncBaselineRam: {}, syncBaselineTimerRam: {},
     malaLogSR: [], syncBaselineSR: {}, syncBaselineTimerSR: {},
     malaLogRM: [], syncBaselineRM: {}, syncBaselineTimerRM: {},
+    malaLogNR: [], syncBaselineNR: {}, syncBaselineTimerNR: {},
     malaLogYg: [], syncBaselineYg: {}, syncBaselineTimerYg: {},
-    gaudiyaMode: false, trahimamMode: false, ramanandiMode: false, dt28Cycles: 0,
+    gaudiyaMode: false, trahimamMode: false, ramanandiMode: false, ramanujMode: false, dt28Cycles: 0,
     milestones: { reached: {}, lastChecked: 0 },
     lastLat: _prevLat, lastLng: _prevLng,
   };
   // New-user defaults for the signed-out (guest) session
   applyNewUserDefaultTargets();
-   App.lmc = 0; App.lmcRV = 0; App.lmcHK = 0; App.lmcKV = 0; App.lmcKaam = 0; App.lmcSS = 0; App.lmcRam = 0; App.lmcSR = 0; App.lmcRM = 0; App.lmcYg = 0; App.lm28 = 0;
+   App.lmc = 0; App.lmcRV = 0; App.lmcHK = 0; App.lmcKV = 0; App.lmcKaam = 0; App.lmcSS = 0; App.lmcRam = 0; App.lmcSR = 0; App.lmcRM = 0; App.lmcNR = 0; App.lmcYg = 0; App.lm28 = 0;
   document.body.classList.remove("gaudiya-mode");
   document.body.classList.remove("trahimam-mode");
   document.body.classList.remove("ramanandi-mode");
@@ -14438,35 +14646,42 @@ async function fbPushToUid(targetUid, fullReplace) {
     historyRam: App.S.historyRam || {},
     historySR: App.S.historySR || {},
     historyRM: App.S.historyRM || {},
+    historyNR: App.S.historyNR || {},
     historyYg: App.S.historyYg || {},
     timerHistoryRam: App.S.timerHistoryRam || {},
     timerHistorySR: App.S.timerHistorySR || {},
     timerHistoryRM: App.S.timerHistoryRM || {},
+    timerHistoryNR: App.S.timerHistoryNR || {},
     timerHistoryYg: App.S.timerHistoryYg || {},
     dtRam: App.S.dtRam || 0,
     dtSR: App.S.dtSR || 0,
     dtRM: App.S.dtRM || 0,
+    dtNR: App.S.dtNR || 0,
     dtYg: App.S.dtYg || 0,
     ltRam: App.S.ltRam || 0,
     ltSR: App.S.ltSR || 0,
     ltRM: App.S.ltRM || 0,
+    ltNR: App.S.ltNR || 0,
     ltYg: App.S.ltYg || 0,
     nameJapDeductRam: App.S.nameJapDeductRam || 0,
     nameJapDeductSR: App.S.nameJapDeductSR || 0,
     nameJapDeductRM: App.S.nameJapDeductRM || 0,
+    nameJapDeductNR: App.S.nameJapDeductNR || 0,
     nameJapDeductYg: App.S.nameJapDeductYg || 0,
     malaLogRam: App.S.malaLogRam || [],
     malaLogSR: App.S.malaLogSR || [],
     malaLogRM: App.S.malaLogRM || [],
+    malaLogNR: App.S.malaLogNR || [],
     malaLogYg: App.S.malaLogYg || [],
     dedications: App.S.dedications || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
     trahimamMode: App.S.trahimamMode || false,
     ramanandiMode: App.S.ramanandiMode || false,
+    ramanujMode: App.S.ramanujMode || false,
     nimbarkMode: App.S.nimbarkMode || false,
     dt28Cycles: App.S.dt28Cycles || 0,
     milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
-    msConsider: App.S.msConsider || { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, sr: true, rm: true, n28: true },
+    msConsider: App.S.msConsider || { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true },
     // Jap display name & Family Leaderboard opt-in — developer-editable via
     // Settings while Admin Mode-viewing (saveLbName()/toggleLbOptIn()
     // route here through ghostAwareSave() instead of the developer's own
@@ -14586,36 +14801,43 @@ async function fbPushFull() {
     historyRam: App.S.historyRam || {},
     historySR: App.S.historySR || {},
     historyRM: App.S.historyRM || {},
+    historyNR: App.S.historyNR || {},
     historyYg: App.S.historyYg || {},
     timerHistoryRam: App.S.timerHistoryRam || {},
     timerHistorySR: App.S.timerHistorySR || {},
     timerHistoryRM: App.S.timerHistoryRM || {},
+    timerHistoryNR: App.S.timerHistoryNR || {},
     timerHistoryYg: App.S.timerHistoryYg || {},
     dtRam: App.S.dtRam || 0,
     dtSR: App.S.dtSR || 0,
     dtRM: App.S.dtRM || 0,
+    dtNR: App.S.dtNR || 0,
     dtYg: App.S.dtYg || 0,
     ltRam: App.S.ltRam || 0,
     ltSR: App.S.ltSR || 0,
     ltRM: App.S.ltRM || 0,
+    ltNR: App.S.ltNR || 0,
     ltYg: App.S.ltYg || 0,
     nameJapDeductRam: App.S.nameJapDeductRam || 0,
     nameJapDeductSR: App.S.nameJapDeductSR || 0,
     nameJapDeductRM: App.S.nameJapDeductRM || 0,
+    nameJapDeductNR: App.S.nameJapDeductNR || 0,
     nameJapDeductYg: App.S.nameJapDeductYg || 0,
     malaLogRam: App.S.malaLogRam || [],
     malaLogSR: App.S.malaLogSR || [],
     malaLogRM: App.S.malaLogRM || [],
+    malaLogNR: App.S.malaLogNR || [],
     malaLogYg: App.S.malaLogYg || [],
     dedications: App.S.dedications || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
     trahimamMode: App.S.trahimamMode || false,
     ramanandiMode: App.S.ramanandiMode || false,
+    ramanujMode: App.S.ramanujMode || false,
     nimbarkMode: App.S.nimbarkMode || false,
     lbKH: isHaridashiActive(),   // Kunj Vihari Sri Haridas uses the RV slot; flag lets the leaderboard show it separately
     dt28Cycles: App.S.dt28Cycles || 0,
     milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
-    msConsider: App.S.msConsider || { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, sr: true, rm: true, n28: true },
+    msConsider: App.S.msConsider || { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true },
     lbOptIn: App.S.lbOptIn || false,
     driveBackupDailyEnabled: App.S.driveBackupDailyEnabled || false,
     driveBackupHour: App.S.driveBackupHour ?? 3,
@@ -14636,6 +14858,9 @@ async function fbPushFull() {
     bgRamanandi: App.S.bgRamanandi ?? 1,
     bgRamanandiGuru: App.S.bgRamanandiGuru ?? 1,
     bgRamanandiAcharya: App.S.bgRamanandiAcharya ?? 1,
+    bgRamanuj: App.S.bgRamanuj ?? 1,
+    bgRamanujGuru: App.S.bgRamanujGuru ?? 1,
+    bgRamanujAcharya: App.S.bgRamanujAcharya ?? 1,
     bgNimbark: App.S.bgNimbark ?? 1,
     bgNimbarkGuru: App.S.bgNimbarkGuru ?? 1,
     bgNimbarkAcharya: App.S.bgNimbarkAcharya ?? 1,
@@ -14648,8 +14873,8 @@ async function fbPushFull() {
     screenTimeHistory: App.S.screenTimeHistory || {},
     stotramTimeHistory: App.S.stotramTimeHistory || {},
     padTrace: _ptGet(),
-    manualJapCount: App.S.manualJapCount || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, n28: {} },
-    manualJapTime: App.S.manualJapTime || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, n28: {} },
+    manualJapCount: App.S.manualJapCount || { radha: {}, rv: {}, kv: {}, kaam: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, nr: {}, n28: {} },
+    manualJapTime: App.S.manualJapTime || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, nr: {}, n28: {} },
     lastSync: firebase.firestore.FieldValue.serverTimestamp(),
     deviceId: fbDeviceId,
     deviceLayouts: App.S.deviceLayouts || {},
@@ -14818,11 +15043,11 @@ function fbApplyRemote(d) {
     App.S.activityLog = [];
     App.S.audioChantLog = [];
     App.S.audioLogM = { rv: [], kv: [], kaam: [] };
-    ["malaLog", "malaLogRV", "malaLogHK", "malaLogKV", "malaLogSS", "malaLogRam", "malaLogSR", "malaLogRM", "malaLogYg", "malaLogKaam"].forEach((k) => { App.S[k] = []; });
+    ["malaLog", "malaLogRV", "malaLogHK", "malaLogKV", "malaLogSS", "malaLogRam", "malaLogSR", "malaLogRM", "malaLogNR", "malaLogYg", "malaLogKaam"].forEach((k) => { App.S[k] = []; });
     App.S.milestones = { reached: {}, lastChecked: 0 };
     try { localStorage.removeItem("rjap_milestones"); } catch (_) {}
-    ["history", "historyRV", "historyHK", "historyKV", "historySS", "historyRam", "historySR", "historyRM", "historyYg", "historyKaam",
-     "timerHistory", "timerHistoryRV", "timerHistoryHK", "timerHistoryKV", "timerHistorySS", "timerHistoryRam", "timerHistorySR", "timerHistoryRM", "timerHistoryYg", "timerHistoryKaam",
+    ["history", "historyRV", "historyHK", "historyKV", "historySS", "historyRam", "historySR", "historyRM", "historyNR", "historyYg", "historyKaam",
+     "timerHistory", "timerHistoryRV", "timerHistoryHK", "timerHistoryKV", "timerHistorySS", "timerHistoryRam", "timerHistorySR", "timerHistoryRM", "timerHistoryNR", "timerHistoryYg", "timerHistoryKaam",
      "h28", "timer28History", "activityLogArchive", "malaLog"].forEach((st) => {
       try { App.dbClearStore(st).catch(() => {}); } catch (_) {}
     });
@@ -15007,6 +15232,7 @@ function fbApplyRemote(d) {
       ? document.body.classList.add("ramanandi-mode")
       : document.body.classList.remove("ramanandi-mode");
   }
+  if (d.ramanujMode !== undefined) App.S.ramanujMode = d.ramanujMode;
   if (d.nimbarkMode !== undefined) {
     App.S.nimbarkMode = d.nimbarkMode;
     App.S.nimbarkMode
@@ -15161,6 +15387,28 @@ function fbApplyRemote(d) {
       }
     }
   }
+  // NR fields
+  if ("historyNR" in d)
+    App.S.historyNR = JSON.parse(JSON.stringify(d.historyNR || {}));
+  if ("timerHistoryNR" in d)
+    App.S.timerHistoryNR = JSON.parse(JSON.stringify(d.timerHistoryNR || {}));
+  if (d.dtNR !== undefined) App.S.dtNR = d.dtNR;
+  if (d.ltNR !== undefined) App.S.ltNR = d.ltNR;
+  if (d.nameJapDeductNR !== undefined)
+    App.S.nameJapDeductNR = d.nameJapDeductNR;
+  // Only apply malaLogNR from Firebase if it belongs to today; never clear
+  // local on a date mismatch (see malaLog fix above for why).
+  if ("malaLogNR" in d) {
+    const remoteMalaLogNR = d.malaLogNR || [];
+    const remoteMalaDate5 = d.malaLogDate || null;
+    if (remoteMalaDate5 === App.S.tk) {
+      const localSum = (App.S.malaLogNR || []).reduce((a, b) => a + b, 0);
+      const remoteSum = remoteMalaLogNR.reduce((a, b) => a + b, 0);
+      if (remoteSum >= localSum || App._initialCloudApply) {
+        App.S.malaLogNR = JSON.parse(JSON.stringify(remoteMalaLogNR));
+      }
+    }
+  }
   // Same rule for the Yugal Mantra mala log (Nimbark).
   if ("malaLogYg" in d) {
     const remoteMalaLogYg = d.malaLogYg || [];
@@ -15224,6 +15472,9 @@ function fbApplyRemote(d) {
   if (d.bgRamanandi !== undefined) App.S.bgRamanandi = d.bgRamanandi;
   if (d.bgRamanandiGuru !== undefined) App.S.bgRamanandiGuru = d.bgRamanandiGuru;
   if (d.bgRamanandiAcharya !== undefined) App.S.bgRamanandiAcharya = d.bgRamanandiAcharya;
+  if (d.bgRamanuj !== undefined) App.S.bgRamanuj = d.bgRamanuj;
+  if (d.bgRamanujGuru !== undefined) App.S.bgRamanujGuru = d.bgRamanujGuru;
+  if (d.bgRamanujAcharya !== undefined) App.S.bgRamanujAcharya = d.bgRamanujAcharya;
   if (d.bgNimbark !== undefined) App.S.bgNimbark = d.bgNimbark;
   if (d.bgNimbarkGuru !== undefined) App.S.bgNimbarkGuru = d.bgNimbarkGuru;
   if (d.bgNimbarkAcharya !== undefined) App.S.bgNimbarkAcharya = d.bgNimbarkAcharya;
@@ -15248,15 +15499,19 @@ function fbApplyRemote(d) {
   if (!App.S.historyRam) App.S.historyRam = {};
   if (!App.S.historySR) App.S.historySR = {};
   if (!App.S.historyRM) App.S.historyRM = {};
+  if (!App.S.historyNR) App.S.historyNR = {};
   if (!App.S.timerHistoryRam) App.S.timerHistoryRam = {};
   if (!App.S.timerHistorySR) App.S.timerHistorySR = {};
   if (!App.S.timerHistoryRM) App.S.timerHistoryRM = {};
+  if (!App.S.timerHistoryNR) App.S.timerHistoryNR = {};
   if (!App.S.historyRam[App.S.tk]) App.S.historyRam[App.S.tk] = 0;
   if (!App.S.historySR[App.S.tk]) App.S.historySR[App.S.tk] = 0;
   if (!App.S.historyRM[App.S.tk]) App.S.historyRM[App.S.tk] = 0;
+  if (!App.S.historyNR[App.S.tk]) App.S.historyNR[App.S.tk] = 0;
   if (!App.S.timerHistoryRam[App.S.tk]) App.S.timerHistoryRam[App.S.tk] = 0;
   if (!App.S.timerHistorySR[App.S.tk]) App.S.timerHistorySR[App.S.tk] = 0;
   if (!App.S.timerHistoryRM[App.S.tk]) App.S.timerHistoryRM[App.S.tk] = 0;
+  if (!App.S.timerHistoryNR[App.S.tk]) App.S.timerHistoryNR[App.S.tk] = 0;
   if (!App.S.historyYg) App.S.historyYg = {};
   if (!App.S.timerHistoryYg) App.S.timerHistoryYg = {};
   if (!App.S.historyYg[App.S.tk]) App.S.historyYg[App.S.tk] = 0;
@@ -15301,7 +15556,7 @@ function fbApplyRemote(d) {
   })(d.stotramTimeHistory, () => App.S.stotramTimeHistory, (v) => (App.S.stotramTimeHistory = v));
   if (d.padTrace) { _ptGet(); _ptMerge(d.padTrace); _ptMirror(); }
   if (d.manualJapCount) {
-    if (!App.S.manualJapCount) App.S.manualJapCount = { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, n28: {} };
+    if (!App.S.manualJapCount) App.S.manualJapCount = { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, nr: {}, n28: {} };
     for (const typeKey of Object.keys(d.manualJapCount)) {
       const remote = d.manualJapCount[typeKey] || {};
       const local = App.S.manualJapCount[typeKey] || {};
@@ -15311,7 +15566,7 @@ function fbApplyRemote(d) {
     }
   }
   if (d.manualJapTime) {
-    if (!App.S.manualJapTime) App.S.manualJapTime = { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, n28: {} };
+    if (!App.S.manualJapTime) App.S.manualJapTime = { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, nr: {}, n28: {} };
     for (const typeKey of Object.keys(d.manualJapTime)) {
       const remote = d.manualJapTime[typeKey] || {};
       const local = App.S.manualJapTime[typeKey] || {};
@@ -15612,6 +15867,7 @@ async function _fbMigrateInner() {
       const localHistoryRam   = JSON.parse(JSON.stringify(App.S.historyRam   || {}));
       const localHistorySR   = JSON.parse(JSON.stringify(App.S.historySR   || {}));
       const localHistoryRM   = JSON.parse(JSON.stringify(App.S.historyRM   || {}));
+      const localHistoryNR   = JSON.parse(JSON.stringify(App.S.historyNR   || {}));
       const localHistoryYg   = JSON.parse(JSON.stringify(App.S.historyYg   || {}));
       const localHistoryAudio = JSON.parse(JSON.stringify(App.S.historyAudio || {}));
       const localHistoryAudio28 = JSON.parse(JSON.stringify(App.S.historyAudio28 || {}));
@@ -15623,6 +15879,7 @@ async function _fbMigrateInner() {
       const localTimerHistoryRam = JSON.parse(JSON.stringify(App.S.timerHistoryRam || {}));
       const localTimerHistorySR = JSON.parse(JSON.stringify(App.S.timerHistorySR || {}));
       const localTimerHistoryRM = JSON.parse(JSON.stringify(App.S.timerHistoryRM || {}));
+      const localTimerHistoryNR = JSON.parse(JSON.stringify(App.S.timerHistoryNR || {}));
       const localTimerHistoryYg = JSON.parse(JSON.stringify(App.S.timerHistoryYg || {}));
       const localDt   = App.S.dt   || 0;
       const localDtRV = App.S.dtRV || 0;
@@ -15632,6 +15889,7 @@ async function _fbMigrateInner() {
       const localDtRam = App.S.dtRam || 0;
       const localDtSR = App.S.dtSR || 0;
       const localDtRM = App.S.dtRM || 0;
+      const localDtNR = App.S.dtNR || 0;
       const localDtYg = App.S.dtYg || 0;
 
       // A reset happened (on any device) that this device hasn't applied yet →
@@ -15686,6 +15944,7 @@ async function _fbMigrateInner() {
         mergeMax(localHistoryRam,     App.S.historyRam);
         mergeMax(localHistorySR,     App.S.historySR);
         mergeMax(localHistoryRM,     App.S.historyRM);
+        mergeMax(localHistoryNR,     App.S.historyNR);
         mergeMax(localHistoryYg,     App.S.historyYg);
         if (!App.S.historyAudio) App.S.historyAudio = {};
         mergeMax(localHistoryAudio,   App.S.historyAudio);
@@ -15700,6 +15959,7 @@ async function _fbMigrateInner() {
         mergeMax(localTimerHistoryRam, App.S.timerHistoryRam);
         mergeMax(localTimerHistorySR, App.S.timerHistorySR);
         mergeMax(localTimerHistoryRM, App.S.timerHistoryRM);
+        mergeMax(localTimerHistoryNR, App.S.timerHistoryNR);
         mergeMax(localTimerHistoryYg, App.S.timerHistoryYg);
         // Also preserve higher dt (lifetime jap seconds) if local is ahead
         if (localDt   > App.S.dt)   { App.S.dt   = localDt;   offlineWorkFound = true; }
@@ -15710,6 +15970,7 @@ async function _fbMigrateInner() {
         if (localDtRam > App.S.dtRam) { App.S.dtRam = localDtRam; offlineWorkFound = true; }
         if (localDtSR > App.S.dtSR) { App.S.dtSR = localDtSR; offlineWorkFound = true; }
         if (localDtRM > App.S.dtRM) { App.S.dtRM = localDtRM; offlineWorkFound = true; }
+        if (localDtNR > App.S.dtNR) { App.S.dtNR = localDtNR; offlineWorkFound = true; }
         if (localDtYg > App.S.dtYg) { App.S.dtYg = localDtYg; offlineWorkFound = true; }
       }
 
@@ -23176,10 +23437,10 @@ function renderCal() {
     const _isG = App.S.gaudiyaMode || false;
     const cnt = _isG
         ? (App.S.historyHK[key] || 0) + (App.S.h28[key] || 0)
-        : (App.S.history[key] || 0) + (App.S.historyRV[key] || 0) + ((App.S.historyKV || {})[key] || 0) + ((App.S.historySS || {})[key] || 0) + ((App.S.historyRam || {})[key] || 0) + ((App.S.historySR || {})[key] || 0) + ((App.S.historyRM || {})[key] || 0) + ((App.S.historyYg || {})[key] || 0) + (App.S.h28[key] || 0),
+        : (App.S.history[key] || 0) + (App.S.historyRV[key] || 0) + ((App.S.historyKV || {})[key] || 0) + ((App.S.historySS || {})[key] || 0) + ((App.S.historyRam || {})[key] || 0) + ((App.S.historySR || {})[key] || 0) + ((App.S.historyRM || {})[key] || 0) + ((App.S.historyNR || {})[key] || 0) + ((App.S.historyYg || {})[key] || 0) + (App.S.h28[key] || 0),
       timeSec = _isG
         ? App.S.timerHistoryHK[key] || 0
-        : (App.S.timerHistory[key] || 0) + (App.S.timerHistoryRV[key] || 0) + ((App.S.timerHistoryKV || {})[key] || 0) + ((App.S.timerHistorySS || {})[key] || 0) + ((App.S.timerHistoryRam || {})[key] || 0) + ((App.S.timerHistorySR || {})[key] || 0) + ((App.S.timerHistoryRM || {})[key] || 0) + ((App.S.timerHistoryYg || {})[key] || 0),
+        : (App.S.timerHistory[key] || 0) + (App.S.timerHistoryRV[key] || 0) + ((App.S.timerHistoryKV || {})[key] || 0) + ((App.S.timerHistorySS || {})[key] || 0) + ((App.S.timerHistoryRam || {})[key] || 0) + ((App.S.timerHistorySR || {})[key] || 0) + ((App.S.timerHistoryRM || {})[key] || 0) + ((App.S.timerHistoryNR || {})[key] || 0) + ((App.S.timerHistoryYg || {})[key] || 0),
       time28Sec = App.S.timer28History[key] || 0;
     const occ = (App.S.occasions && App.S.occasions[key]) || rkkOccName(key);
     const c = document.createElement("div");
@@ -23382,6 +23643,7 @@ function showDay(key, cnt, timeSec, time28Sec) {
   const ramCount = (App.S.historyRam || {})[key] || 0;
   const srCount = (App.S.historySR || {})[key] || 0;
   const rmCount = (App.S.historyRM || {})[key] || 0;
+  const nrCount = (App.S.historyNR || {})[key] || 0;
   const ygCount = (App.S.historyYg || {})[key] || 0;
   const radhaTime = App.S.timerHistory[key] || 0;
   const rvTime = App.S.timerHistoryRV[key] || 0;
@@ -23390,6 +23652,7 @@ function showDay(key, cnt, timeSec, time28Sec) {
   const ramTime = (App.S.timerHistoryRam || {})[key] || 0;
   const srTime = (App.S.timerHistorySR || {})[key] || 0;
   const rmTime = (App.S.timerHistoryRM || {})[key] || 0;
+  const nrTime = (App.S.timerHistoryNR || {})[key] || 0;
   const ygTime = (App.S.timerHistoryYg || {})[key] || 0;
   const n28Count = App.S.h28[key] || 0;
   const n28TimeSec = App.S.timer28History[key] || 0;
@@ -23401,6 +23664,7 @@ function showDay(key, cnt, timeSec, time28Sec) {
   const ramMalas = Math.floor(ramCount / ms);
   const srMalas = Math.floor(srCount / ms);
   const rmMalas = Math.floor(rmCount / ms);
+  const nrMalas = Math.floor(nrCount / ms);
   const ygMalas = Math.floor(ygCount / ms);
   const totalCount = radhaCount + rvCount + kvCount + ssCount + n28Count;
   const totalMalas = Math.floor((radhaCount + rvCount + kvCount + ssCount) / ms);
@@ -23453,6 +23717,12 @@ function showDay(key, cnt, timeSec, time28Sec) {
       rmCount > 0 ? rmCount + " jap · " + rmMalas + " malas" : "—";
   const rmTimeEl = document.getElementById("cdmoRMTime");
   if (rmTimeEl) rmTimeEl.textContent = rmTime > 0 ? App.fmtTime(rmTime) : "—";
+  const nrJapEl = document.getElementById("cdmoNRJap");
+  if (nrJapEl)
+    nrJapEl.textContent =
+      nrCount > 0 ? nrCount + " jap · " + nrMalas + " malas" : "—";
+  const nrTimeEl = document.getElementById("cdmoNRTime");
+  if (nrTimeEl) nrTimeEl.textContent = nrTime > 0 ? App.fmtTime(nrTime) : "—";
   const ygJapEl = document.getElementById("cdmoYgJap");
   if (ygJapEl)
     ygJapEl.textContent =
@@ -28831,7 +29101,7 @@ function showHistDay(tk, filterMode) {
   const _hkDayLabel = _hkDayLang === "bn" ? "হরে কৃষ্ণ মহামন্ত্র" : "हरे कृष्ण महामंत्र";
 
   // Map deityKey names to showHistSet set values
-  const deityToSet = { ra: 'ra', rva: 'rva', kva: 'kva', kaama: 'kaama', radha: 'radha', rv: 'rv', kv: 'kv', ss: 'ss', ram: 'ram', sr: 'sr', rm: 'rm', yg: 'yg', kaam: 'kaam', '28': '28', n28a: 'n28a', hk: 'hk' };
+  const deityToSet = { ra: 'ra', rva: 'rva', kva: 'kva', kaama: 'kaama', radha: 'radha', rv: 'rv', kv: 'kv', ss: 'ss', ram: 'ram', sr: 'sr', rm: 'rm', nr: 'nr', yg: 'yg', kaam: 'kaam', '28': '28', n28a: 'n28a', hk: 'hk' };
   const autoSet = filterMode ? deityToSet[filterMode] : null;
 
   // If we have a specific mode filter AND that mode has data, go straight to per-mala detail
@@ -28847,6 +29117,7 @@ function showHistDay(tk, filterMode) {
     const ram = (App.S.historyRam || {})[tk] || 0;
     const srJ = (App.S.historySR || {})[tk] || 0;
     const rmJ = (App.S.historyRM || {})[tk] || 0;
+    const nrJ = (App.S.historyNR || {})[tk] || 0;
     const yg = (App.S.historyYg || {})[tk] || 0;
     const kaam = Math.max(0, ((App.S.historyKaam || {})[tk] || 0) - kaama);
     const a28 = (App.S.historyAudio28 || {})[tk] || 0;
@@ -28863,6 +29134,7 @@ function showHistDay(tk, filterMode) {
                   : autoSet === 'ram'   ? ram > 0
                   : autoSet === 'sr'    ? srJ > 0
                   : autoSet === 'rm'    ? rmJ > 0
+                  : autoSet === 'nr'    ? nrJ > 0
                   : autoSet === 'yg'    ? yg > 0
                   : autoSet === 'kaam'  ? kaam > 0
                   : autoSet === 'hk'    ? hk > 0
@@ -28880,6 +29152,7 @@ function showHistDay(tk, filterMode) {
                     : autoSet === 'ram'   ? '🚩 Raam Vijay Mantra'
                     : autoSet === 'sr'    ? '🏹 SitaRaam'
                     : autoSet === 'rm'    ? '🚩 Raam'
+                    : autoSet === 'nr'    ? '🪷 Narayan'
                     : autoSet === 'yg'    ? '🎶 Yugal Mantra'
                     : autoSet === 'kaam'  ? '🕉️ Kaam Vijay'
                     : autoSet === '28'   ? '🪷 28 Names'
@@ -28920,6 +29193,7 @@ function showHistDay(tk, filterMode) {
   const ram = (App.S.historyRam || {})[tk] || 0;
   const srJ = (App.S.historySR || {})[tk] || 0;
   const rmJ = (App.S.historyRM || {})[tk] || 0;
+  const nrJ = (App.S.historyNR || {})[tk] || 0;
   const yg = (App.S.historyYg || {})[tk] || 0;
   const kaam = Math.max(0, ((App.S.historyKaam || {})[tk] || 0) - kaama);
   const a28 = (App.S.historyAudio28 || {})[tk] || 0;
@@ -28932,6 +29206,7 @@ function showHistDay(tk, filterMode) {
   const tSecRam = (App.S.timerHistoryRam || {})[tk] || 0;
   const tSecSR = (App.S.timerHistorySR || {})[tk] || 0;
   const tSecRM = (App.S.timerHistoryRM || {})[tk] || 0;
+  const tSecNR = (App.S.timerHistoryNR || {})[tk] || 0;
   const tSecYg = (App.S.timerHistoryYg || {})[tk] || 0;
   const tSecKaam = (App.S.timerHistoryKaam || {})[tk] || 0;
   const t28Sec = App.S.timer28History[tk] || 0;
@@ -28944,10 +29219,11 @@ function showHistDay(tk, filterMode) {
   const ramM = Math.floor(ram / ms);
   const srM = Math.floor(srJ / ms);
   const rmM = Math.floor(rmJ / ms);
+  const nrM = Math.floor(nrJ / ms);
   const ygM = Math.floor(yg / ms);
   const kaamM = Math.floor(kaam / ms);
   const cyc28 = Math.floor(taps28 / 28);
-  const grand = isGaudiya ? tSecHK : tSecR + tSecRV + tSecKV + tSecSS + tSecRam + tSecSR + tSecRM + tSecYg + tSecKaam + t28Sec;
+  const grand = isGaudiya ? tSecHK : tSecR + tSecRV + tSecKV + tSecSS + tSecRam + tSecSR + tSecRM + tSecNR + tSecYg + tSecKaam + t28Sec;
   const fmtN = (n) => n.toLocaleString();
 
   // Stash data for the per-set drill-down
@@ -28990,6 +29266,7 @@ function showHistDay(tk, filterMode) {
     html += card("pt-ram",  "ram",   "Raam Vijay Mantra", ramM, ramM === 1 ? "mala" : "malas", fmtN(ram) + " names", _histFmtSec(tSecRam), ram > 0);
     html += card("pt-sr",   "sr",    "SitaRaam", srM, srM === 1 ? "mala" : "malas", fmtN(srJ) + " names", _histFmtSec(tSecSR), srJ > 0);
     html += card("pt-rm",   "rm",    "Raam", rmM, rmM === 1 ? "mala" : "malas", fmtN(rmJ) + " names", _histFmtSec(tSecRM), rmJ > 0);
+    html += card("pt-nr",   "nr",    "Narayan", nrM, nrM === 1 ? "mala" : "malas", fmtN(nrJ) + " names", _histFmtSec(tSecNR), nrJ > 0);
     html += card("pt-yg",   "yg",    "Yugal Mantra", ygM, ygM === 1 ? "mala" : "malas", fmtN(yg) + " names", _histFmtSec(tSecYg), yg > 0);
     html += card("pt-28",   "28",    "28 Names",  cyc28,  cyc28 === 1  ? "cycle" : "cycles", fmtN(taps28) + " taps", _histFmtSec(t28Sec), taps28 > 0);
     if (a28 > 0) html += card("pt-28", "n28a", "28 Names Audio (28-A)", Math.floor(a28 / 28), Math.floor(a28 / 28) === 1 ? "cycle" : "cycles", fmtN(a28) + " taps", _histFmtSec((App.S.timerAudio28 || {})[tk] || 0), true);
@@ -29075,6 +29352,7 @@ function renderHistory() {
   const histRam = App.S.historyRam || {};
   const histSR = App.S.historySR || {};
   const histRM = App.S.historyRM || {};
+  const histNR = App.S.historyNR || {};
   const histYg = App.S.historyYg || {};
   const histKaam = App.S.historyKaam || {};
   const h28 = App.S.h28 || {};
@@ -29086,6 +29364,7 @@ function renderHistory() {
   const tHistRam = App.S.timerHistoryRam || {};
   const tHistSR = App.S.timerHistorySR || {};
   const tHistRM = App.S.timerHistoryRM || {};
+  const tHistNR = App.S.timerHistoryNR || {};
   const tHistYg = App.S.timerHistoryYg || {};
   const tHistKaam = App.S.timerHistoryKaam || {};
   const t28Hist = App.S.timer28History || {};
@@ -29098,6 +29377,7 @@ function renderHistory() {
     totRam = 0,
     totSR = 0,
     totRM = 0,
+    totNR = 0,
     totYg = 0,
     totKaam = 0,
     tot28taps = 0,
@@ -29113,6 +29393,7 @@ function renderHistory() {
   window._ptRamSec = 0;
   window._ptSRSec = 0;
   window._ptRMSec = 0;
+  window._ptNRSec = 0;
   window._ptYgSec = 0;
   window._ptKaamSec = 0; // reset per-mode time accumulators
   let activeDays = 0;
@@ -29130,6 +29411,7 @@ function renderHistory() {
     const ram = histRam[tk] || 0;
     const srJ = histSR[tk] || 0;
     const rmJ = histRM[tk] || 0;
+    const nrJ = histNR[tk] || 0;
     const yg = histYg[tk] || 0;
     const kaam = Math.max(0, (histKaam[tk] || 0) - kaamaD);
     const a28D = (App.S.historyAudio28 || {})[tk] || 0;
@@ -29142,9 +29424,10 @@ function renderHistory() {
     const tSecRam_row = tHistRam[tk] || 0;
     const tSecSR_row = tHistSR[tk] || 0;
     const tSecRM_row = tHistRM[tk] || 0;
+    const tSecNR_row = tHistNR[tk] || 0;
     const tSecYg_row = tHistYg[tk] || 0;
     const tSecKaam_row = tHistKaam[tk] || 0;
-    const tSec = isGaudiya ? tSecHK_row : isTrahimam ? tSecSS_row : isRamanandi ? tSecRam_row + tSecSR_row + tSecRM_row : isNimbark ? tSecYg_row : tSecR_row + tSecRV_row + tSecKV_row + tSecKaam_row;
+    const tSec = isGaudiya ? tSecHK_row : isTrahimam ? tSecSS_row : isRamanandi ? tSecRam_row + tSecSR_row + tSecRM_row + tSecNR_row : isNimbark ? tSecYg_row : tSecR_row + tSecRV_row + tSecKV_row + tSecKaam_row;
     const t28Sec = (isGaudiya || isTrahimam || isRamanandi || isNimbark) ? 0 : t28Hist[tk] || 0;
     const totalSec = tSec + t28Sec;
 
@@ -29154,7 +29437,7 @@ function renderHistory() {
     } else if (isTrahimam) {
       if (ss === 0) return;
     } else if (isRamanandi) {
-      if (ram === 0 && srJ === 0 && rmJ === 0) return;
+      if (ram === 0 && srJ === 0 && rmJ === 0 && nrJ === 0) return;
     } else if (isNimbark) {
       if (yg === 0) return;
     } else {
@@ -29174,6 +29457,7 @@ function renderHistory() {
     totRam += ram;
     totSR += srJ;
     totRM += rmJ;
+    totNR += nrJ;
     totYg += yg;
     totKaam += kaam;
     tot28taps += taps28;
@@ -29187,6 +29471,7 @@ function renderHistory() {
     window._ptRamSec += tSecRam_row;
     window._ptSRSec += tSecSR_row;
     window._ptRMSec += tSecRM_row;
+    window._ptNRSec += tSecNR_row;
     window._ptYgSec += tSecYg_row;
     window._ptKaamSec += tSecKaam_row;
 
@@ -29198,6 +29483,7 @@ function renderHistory() {
     const ramM = Math.floor(ram / ms);
     const srM = Math.floor(srJ / ms);
     const rmM = Math.floor(rmJ / ms);
+    const nrM = Math.floor(nrJ / ms);
     const ygM = Math.floor(yg / ms);
     const kaamM = Math.floor(kaam / ms);
     const cyc28 = Math.floor(taps28 / 28);
@@ -29223,6 +29509,7 @@ function renderHistory() {
     const ramStr = cell(ramM, ramM === 1 ? "mala" : "malas");
     const srStr = cell(srM, srM === 1 ? "mala" : "malas");
     const rmStr = cell(rmM, rmM === 1 ? "mala" : "malas");
+    const nrStr = cell(nrM, nrM === 1 ? "mala" : "malas");
     const ygStr = cell(ygM, ygM === 1 ? "mala" : "malas");
     const kaamStr = cell(kaamM, kaamM === 1 ? "mala" : "malas");
     const n28Str = cell(cyc28, cyc28 === 1 ? "cycle" : "cycles");
@@ -29250,6 +29537,7 @@ function renderHistory() {
         <td class="hist-ram-col hist-val hist-c-ram">${ramStr}</td>
         <td class="hist-ram-col hist-val hist-c-sr">${srStr}</td>
         <td class="hist-ram-col hist-val hist-c-rm">${rmStr}</td>
+        <td class="hist-ram-col hist-val hist-c-nr">${nrStr}</td>
         <td class="hist-val hist-c-time">${_histFmtSec(totalSec)}</td>
         ${chevCell}
       `;
@@ -29301,6 +29589,7 @@ function renderHistory() {
   const totRamM = Math.floor(totRam / ms);
   const totSRM = Math.floor(totSR / ms);
   const totRMM = Math.floor(totRM / ms);
+  const totNRM = Math.floor(totNR / ms);
   const totYgM = Math.floor(totYg / ms);
   const totKaamM = Math.floor(totKaam / ms);
   const totCyc28 = Math.floor(tot28taps / 28);
@@ -29345,6 +29634,7 @@ function renderHistory() {
         ${statCard("pt-ram", "🚩", "Raam Vijay Mantra", totRamM, totRamM === 1 ? "mala" : "malas", fmtN(totRam) + " names", _histFmtSec(window._ptRamSec || 0), "ram")}
         ${statCard("pt-sr", "🏹", "SitaRaam", totSRM, totSRM === 1 ? "mala" : "malas", fmtN(totSR) + " names", _histFmtSec(window._ptSRSec || 0), "sr")}
         ${statCard("pt-rm", "🚩", "Raam", totRMM, totRMM === 1 ? "mala" : "malas", fmtN(totRM) + " names", _histFmtSec(window._ptRMSec || 0), "rm")}
+        ${statCard("pt-nr", "🪷", "Narayan", totNRM, totNRM === 1 ? "mala" : "malas", fmtN(totNR) + " names", _histFmtSec(window._ptNRSec || 0), "nr")}
       </div>
       <div class="pt-total"><span class="pt-total-label">Total Time</span><span class="pt-total-val">${_histFmtSec(grandTotal)}</span></div>
     `;
@@ -29401,6 +29691,7 @@ function showHistDeityDates(deityKey) {
     ram:   { label: "Raam Vijay Mantra", cls: "pt-ram", icon: "🚩", color: "#FF9933",     histKey: "historyRam", timerKey: "timerHistoryRam", unit: (m) => m === 1 ? "mala" : "malas",  toMain: (v) => Math.floor(v / ms), toSub: (v) => fmtN(v) + " names" },
     sr:   { label: "SitaRaam", cls: "pt-sr", icon: "🏹", color: "#FF8FA3",     histKey: "historySR", timerKey: "timerHistorySR", unit: (m) => m === 1 ? "mala" : "malas",  toMain: (v) => Math.floor(v / ms), toSub: (v) => fmtN(v) + " names" },
     rm:   { label: "Raam", cls: "pt-rm", icon: "🚩", color: "#FFC857",     histKey: "historyRM", timerKey: "timerHistoryRM", unit: (m) => m === 1 ? "mala" : "malas",  toMain: (v) => Math.floor(v / ms), toSub: (v) => fmtN(v) + " names" },
+    nr:   { label: "Narayan", cls: "pt-nr", icon: "🪷", color: "#7EC8FF",     histKey: "historyNR", timerKey: "timerHistoryNR", unit: (m) => m === 1 ? "mala" : "malas",  toMain: (v) => Math.floor(v / ms), toSub: (v) => fmtN(v) + " names" },
     yg:    { label: "Yugal Mantra", cls: "pt-yg", icon: "🎶", color: "#FFD700",     histKey: "historyYg", timerKey: "timerHistoryYg", unit: (m) => m === 1 ? "mala" : "malas",  toMain: (v) => Math.floor(v / ms), toSub: (v) => fmtN(v) + " names" },
     kaam:  { label: "Kaam Vijay",   cls: "pt-kaam",  icon: "🕉️",  color: "#FF6B9D",      histKey: "historyKaam", timerKey: "timerHistoryKaam", unit: (m) => m === 1 ? "mala" : "malas",  toMain: (v) => Math.floor(v / ms), toSub: (v) => fmtN(v) + " names" },
     "28":  { label: "28 Names",     cls: "pt-28",    icon: "🪷",  color: "var(--green)", histKey: "h28",       timerKey: "timer28History", unit: (c) => c === 1 ? "cycle" : "cycles", toMain: (v) => Math.floor(v / 28), toSub: (v) => fmtN(v) + " taps"  },
@@ -29548,7 +29839,7 @@ function _renderHistSetInner(set, tk, isToday, log, slot) {
     else inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-mala detail not available for this date</div>`;
   } else if (set === "radha") {
     const radhaEntries = log.filter(
-      (e) => e.t === "mala" && e.mode !== "ra" && e.mode !== "rv" && e.mode !== "hk" && e.mode !== "kv" && e.mode !== "ss" && e.mode !== "ram" && e.mode !== "sr" && e.mode !== "rm" && e.mode !== "yg" && e.mode !== "kaam",
+      (e) => e.t === "mala" && e.mode !== "ra" && e.mode !== "rv" && e.mode !== "hk" && e.mode !== "kv" && e.mode !== "ss" && e.mode !== "ram" && e.mode !== "sr" && e.mode !== "rm" && e.mode !== "nr" && e.mode !== "yg" && e.mode !== "kaam",
     );
     inner += backBtn;
     if (radhaEntries.length > 0) {
@@ -29646,6 +29937,20 @@ function _renderHistSetInner(set, tk, isToday, log, slot) {
         "🚩 राम — Today's Malas",
         App.S.malaLogRM,
         "#FFC857",
+      );
+    } else {
+      inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-mala detail not available for this date</div>`;
+    }
+  } else if (set === "nr") {
+    const nrEntries = log.filter((e) => e.t === "mala" && e.mode === "nr");
+    inner += backBtn;
+    if (nrEntries.length > 0) {
+      inner += _histMalaTable("🪷 नारायण — Per Mala", nrEntries, "#7EC8FF");
+    } else if (isToday && (App.S.malaLogNR || []).length > 0) {
+      inner += _histTodayMalaLogTable(
+        "🪷 नारायण — Today's Malas",
+        App.S.malaLogNR,
+        "#7EC8FF",
       );
     } else {
       inner += `<div style="font-size:11px;color:var(--td);text-align:center;padding:10px 0">Per-mala detail not available for this date</div>`;
@@ -30616,15 +30921,15 @@ function renderLeaderboard(docs, period) {
     const tHist = d.timerHistory || {}, tHistRV = d.timerHistoryRV || {},
       tHistKV = d.timerHistoryKV || {}, tHistSS = d.timerHistorySS || {},
       tHistHK = d.timerHistoryHK || {}, tHistRam = d.timerHistoryRam || {},
-      tHistSR = d.timerHistorySR || {}, tHistRM = d.timerHistoryRM || {}, tHistYg = d.timerHistoryYg || {},
+      tHistSR = d.timerHistorySR || {}, tHistRM = d.timerHistoryRM || {}, tHistNR = d.timerHistoryNR || {}, tHistYg = d.timerHistoryYg || {},
       tHistKaam = d.timerHistoryKaam || {}, tHist28 = d.timer28History || {};
     const rawSec = (tHist[_lbTodayKey]||0) + (tHistRV[_lbTodayKey]||0) + (tHistKV[_lbTodayKey]||0)
-      + (tHistSS[_lbTodayKey]||0) + (tHistHK[_lbTodayKey]||0) + (tHistRam[_lbTodayKey]||0) + (tHistSR[_lbTodayKey]||0) + (tHistRM[_lbTodayKey]||0) + (tHistYg[_lbTodayKey]||0) + (tHistKaam[_lbTodayKey]||0) + (tHist28[_lbTodayKey]||0);
+      + (tHistSS[_lbTodayKey]||0) + (tHistHK[_lbTodayKey]||0) + (tHistRam[_lbTodayKey]||0) + (tHistSR[_lbTodayKey]||0) + (tHistRM[_lbTodayKey]||0) + (tHistNR[_lbTodayKey]||0) + (tHistYg[_lbTodayKey]||0) + (tHistKaam[_lbTodayKey]||0) + (tHist28[_lbTodayKey]||0);
     // Manual (off-screen, reported-after-the-fact) jap doesn't belong in
     // Efficiency's numerator — same exclusion rule as the Stats screen.
     // Ram (Ramanandi/Ram Vijay Mantra) is now part of rawSec above, so its
     // manual seconds must be subtracted here too, same as every other type.
-    const manualSec = ["radha","rv","kv","ss","hk","ram","sr","rm","yg","kaam","n28"].reduce(function (s, t) {
+    const manualSec = ["radha","rv","kv","ss","hk","ram","sr","rm","nr","yg","kaam","n28"].reduce(function (s, t) {
       const m = d.manualJapTime && d.manualJapTime[t];
       return s + (m ? (m[_lbTodayKey] || 0) : 0);
     }, 0);
@@ -30681,6 +30986,7 @@ function renderLeaderboard(docs, period) {
       const sram = Object.values(d.historyRam || {}).reduce((a,b)=>a+b,0);
       const sSRv = Object.values(d.historySR || {}).reduce((a,b)=>a+b,0);
       const sRMv = Object.values(d.historyRM || {}).reduce((a,b)=>a+b,0);
+      const sNRv = Object.values(d.historyNR || {}).reduce((a,b)=>a+b,0);
       const syg = Object.values(d.historyYg || {}).reduce((a,b)=>a+b,0);
       const skaam = Object.values(d.historyKaam || {}).reduce((a,b)=>a+b,0);
       const s28 = Object.values(d.history28 || {}).reduce((a,b)=>a+b,0);
@@ -30706,6 +31012,7 @@ function renderLeaderboard(docs, period) {
         ram: Math.max(0, sram - (d.nameJapDeductRam || 0)),
         sr:  Math.max(0, sSRv - (d.nameJapDeductSR || 0)),
         rm:  Math.max(0, sRMv - (d.nameJapDeductRM || 0)),
+        nr:  Math.max(0, sNRv - (d.nameJapDeductNR || 0)),
         yg: Math.max(0, syg - (d.nameJapDeductYg || 0)),
         kaam: Math.max(0, skaam - skaama - (d.nameJapDeductKaam || 0)),
         n28: Math.max(0, s28 - s28a - (d.nameJapDeduct28 || 0)),
@@ -30725,6 +31032,7 @@ function renderLeaderboard(docs, period) {
         ram: Math.min(sram, d.nameJapDeductRam || 0),
         sr:  Math.min(sSRv, d.nameJapDeductSR || 0),
         rm:  Math.min(sRMv, d.nameJapDeductRM || 0),
+        nr:  Math.min(sNRv, d.nameJapDeductNR || 0),
         yg: Math.min(syg, d.nameJapDeductYg || 0),
         kaam: Math.min(skaam, d.nameJapDeductKaam || 0),
         n28: Math.min(s28, d.nameJapDeduct28 || 0),
@@ -30737,10 +31045,11 @@ function renderLeaderboard(docs, period) {
       const tram2 = Object.values(d.timerHistoryRam || {}).reduce((a,b)=>a+b,0);
       const tSR2 = Object.values(d.timerHistorySR || {}).reduce((a,b)=>a+b,0);
       const tRM2 = Object.values(d.timerHistoryRM || {}).reduce((a,b)=>a+b,0);
+      const tNR2 = Object.values(d.timerHistoryNR || {}).reduce((a,b)=>a+b,0);
       const tyg2 = Object.values(d.timerHistoryYg || {}).reduce((a,b)=>a+b,0);
       const tkaam2 = Object.values(d.timerHistoryKaam || {}).reduce((a,b)=>a+b,0);
       const t282 = Object.values(d.timer28History || {}).reduce((a,b)=>a+b,0);
-      d._timeBreakdown = { r: tr2, rv: trv2, kv: tkv2, ss: tss2, hk: thk2, ram: tram2, sr: tSR2, rm: tRM2, yg: tyg2, kaam: tkaam2, n28: t282 };
+      d._timeBreakdown = { r: tr2, rv: trv2, kv: tkv2, ss: tss2, hk: thk2, ram: tram2, sr: tSR2, rm: tRM2, nr: tNR2, yg: tyg2, kaam: tkaam2, n28: t282 };
       // Screen Time (alltime) — stored total, or summed from the per-day history
       d._screenTimeSec = Number(d.screenTimeSeconds || 0) ||
         Object.values(d.screenTimeHistory || {}).reduce((a,b)=>a+b,0);
@@ -30754,11 +31063,12 @@ function renderLeaderboard(docs, period) {
       const histRam = d.historyRam || {};
       const histSR = d.historySR || {};
       const histRM = d.historyRM || {};
+      const histNR = d.historyNR || {};
       const histYg = d.historyYg || {};
       const histKaam = d.historyKaam || {};
       const hist28 = d.history28 || {};
-      let sr = 0, srv = 0, skv = 0, sss = 0, shk = 0, sram = 0, sSRv = 0, sRMv = 0, syg = 0, skaam = 0, s28 = 0, sra = 0, s28a = 0, srva = 0, skva = 0, skaama = 0;
-      let tr = 0, trv = 0, tkv = 0, tss = 0, thk = 0, tram = 0, tSRv = 0, tRMv = 0, tyg = 0, tkaam = 0, t28 = 0;
+      let sr = 0, srv = 0, skv = 0, sss = 0, shk = 0, sram = 0, sSRv = 0, sRMv = 0, sNRv = 0, syg = 0, skaam = 0, s28 = 0, sra = 0, s28a = 0, srva = 0, skva = 0, skaama = 0;
+      let tr = 0, trv = 0, tkv = 0, tss = 0, thk = 0, tram = 0, tSRv = 0, tRMv = 0, tNRv = 0, tyg = 0, tkaam = 0, t28 = 0;
       const tHist = d.timerHistory || {};
       const tHistRV = d.timerHistoryRV || {};
       const tHistKV = d.timerHistoryKV || {};
@@ -30767,6 +31077,7 @@ function renderLeaderboard(docs, period) {
       const tHistRam = d.timerHistoryRam || {};
       const tHistSR = d.timerHistorySR || {};
       const tHistRM = d.timerHistoryRM || {};
+      const tHistNR = d.timerHistoryNR || {};
       const tHistYg = d.timerHistoryYg || {};
       const tHistKaam = d.timerHistoryKaam || {};
       const tHist28 = d.timer28History || {};
@@ -30789,6 +31100,7 @@ function renderLeaderboard(docs, period) {
         sram = bd.ram || 0;
         sSRv = bd.sr || 0;
         sRMv = bd.rm || 0;
+        sNRv = bd.nr || 0;
         syg = bd.yg || 0;
         skaam = bd.kaam || 0;
         s28 = bd.n28 || 0;
@@ -30801,6 +31113,7 @@ function renderLeaderboard(docs, period) {
         tram = tbd.ram || 0;
         tSRv = tbd.sr || 0;
         tRMv = tbd.rm || 0;
+        tNRv = tbd.nr || 0;
         tyg = tbd.yg || 0;
         tkaam = tbd.kaam || 0;
         t28 = tbd.n28 || 0;
@@ -30816,6 +31129,7 @@ function renderLeaderboard(docs, period) {
           sram += (histRam[k] || 0);
           sSRv += (histSR[k] || 0);
           sRMv += (histRM[k] || 0);
+          sNRv += (histNR[k] || 0);
           syg += (histYg[k] || 0);
           skaam += (histKaam[k] || 0);
           s28 += (hist28[k] || 0);
@@ -30828,16 +31142,17 @@ function renderLeaderboard(docs, period) {
           tram += (tHistRam[k] || 0);
           tSRv += (tHistSR[k] || 0);
           tRMv += (tHistRM[k] || 0);
+          tNRv += (tHistNR[k] || 0);
           tyg += (tHistYg[k] || 0);
           tkaam += (tHistKaam[k] || 0);
           t28 += (tHist28[k] || 0);
         });
       }
-      score += sr + srv + skv + sss + shk + sram + sSRv + sRMv + syg + skaam + s28;
-      timeScore += tr + trv + tkv + tss + thk + tram + tSRv + tRMv + tyg + tkaam + t28;
-      d._breakdown = { r: Math.max(0, sr - sra), ra: sra, rv: Math.max(0, srv - srva), rva: srva, kv: Math.max(0, skv - skva), kva: skva, kaam: Math.max(0, skaam - skaama), kaama: skaama, ss: sss, hk: shk, ram: sram, sr: sSRv, rm: sRMv, yg: syg, n28: Math.max(0, s28 - s28a), n28a: s28a };
-      d._giftedBreakdown = { r: 0, rv: 0, kv: 0, ss: 0, hk: 0, ram: 0, sr: 0, rm: 0, yg: 0, kaam: 0, n28: 0 };
-      d._timeBreakdown = { r: tr, rv: trv, kv: tkv, ss: tss, hk: thk, ram: tram, sr: tSRv, rm: tRMv, yg: tyg, kaam: tkaam, n28: t28 };
+      score += sr + srv + skv + sss + shk + sram + sSRv + sRMv + sNRv + syg + skaam + s28;
+      timeScore += tr + trv + tkv + tss + thk + tram + tSRv + tRMv + tNRv + tyg + tkaam + t28;
+      d._breakdown = { r: Math.max(0, sr - sra), ra: sra, rv: Math.max(0, srv - srva), rva: srva, kv: Math.max(0, skv - skva), kva: skva, kaam: Math.max(0, skaam - skaama), kaama: skaama, ss: sss, hk: shk, ram: sram, sr: sSRv, rm: sRMv, nr: sNRv, yg: syg, n28: Math.max(0, s28 - s28a), n28a: s28a };
+      d._giftedBreakdown = { r: 0, rv: 0, kv: 0, ss: 0, hk: 0, ram: 0, sr: 0, rm: 0, nr: 0, yg: 0, kaam: 0, n28: 0 };
+      d._timeBreakdown = { r: tr, rv: trv, kv: tkv, ss: tss, hk: thk, ram: tram, sr: tSRv, rm: tRMv, nr: tNRv, yg: tyg, kaam: tkaam, n28: t28 };
       // Screen Time for this period — flat per-day map, sum across periodKeys
       const tScr = d.screenTimeHistory || {};
       d._screenTimeSec = periodKeys.reduce((s, k) => s + (tScr[k] || 0), 0);
@@ -30945,9 +31260,9 @@ function renderLeaderboard(docs, period) {
     const name = (d.displayName || 'Anonymous Devotee').replace(/</g,'&lt;').replace(/>/g,'&gt;') + onlineDot;
     const ms = App.S.ms || 108;
     
-    let b = d._breakdown || { r:0, rv:0, kv:0, ss:0, hk:0, ram:0, sr:0, rm:0, yg:0, kaam:0, n28:0 };
-    let g = d._giftedBreakdown || { r:0, rv:0, kv:0, ss:0, hk:0, ram:0, sr:0, rm:0, yg:0, kaam:0, n28:0 };
-    let tb = d._timeBreakdown || { r:0, rv:0, kv:0, ss:0, hk:0, ram:0, sr:0, rm:0, yg:0, kaam:0, n28:0 };
+    let b = d._breakdown || { r:0, rv:0, kv:0, ss:0, hk:0, ram:0, sr:0, rm:0, nr:0, yg:0, kaam:0, n28:0 };
+    let g = d._giftedBreakdown || { r:0, rv:0, kv:0, ss:0, hk:0, ram:0, sr:0, rm:0, nr:0, yg:0, kaam:0, n28:0 };
+    let tb = d._timeBreakdown || { r:0, rv:0, kv:0, ss:0, hk:0, ram:0, sr:0, rm:0, nr:0, yg:0, kaam:0, n28:0 };
 
     // Quality of Jap (Q) — raw average seconds-per-jap for this type, no
     // comparison against any target: slower (bigger number) = more nectar.
@@ -31035,6 +31350,12 @@ function renderLeaderboard(docs, period) {
       const giftNote = g.rm > 0 ? ' · 🎁' + _lbFmtJap(g.rm) + ' gifted' : '';
       bdParts.push('RM: ' + rmStr + (tb.rm > 0 ? ' ⏱ ' + _histFmtSec(tb.rm) : '') + giftNote + _lbQ(tb.rm, b.rm));
     }
+    if (b.nr > 0 || g.nr > 0) {
+      const nrM = Math.floor(b.nr / ms);
+      const nrStr = _lbFmtJap(b.nr) + (nrM > 0 ? ' (' + nrM + 'M)' : '');
+      const giftNote = g.nr > 0 ? ' · 🎁' + _lbFmtJap(g.nr) + ' gifted' : '';
+      bdParts.push('NR: ' + nrStr + (tb.nr > 0 ? ' ⏱ ' + _histFmtSec(tb.nr) : '') + giftNote + _lbQ(tb.nr, b.nr));
+    }
     if ((b.yg || 0) > 0 || (g.yg || 0) > 0) {
       const ygM = Math.floor((b.yg || 0) / ms);
       const ygStr = _lbFmtJap(b.yg || 0) + (ygM > 0 ? ' (' + ygM + 'M)' : '');
@@ -31052,7 +31373,7 @@ function renderLeaderboard(docs, period) {
       bdParts.push('KAM: ' + kaamStr + (tb.kaam > 0 ? ' ⏱ ' + _histFmtSec(tb.kaam) : '') + giftNote + _lbQ(tb.kaam, b.kaam));
     }
     // Total: only count R+RV+SS+HK+RAM+KAM malas (not 28N), 28N shown as cycles separately
-    const japOnly = (b.r || 0) + (b.ra || 0) + (b.rva || 0) + (b.kva || 0) + (b.kaama || 0) + (b.rv || 0) + (b.kh || 0) + (b.ss || 0) + (b.hk || 0) + (b.ram || 0) + (b.sr || 0) + (b.rm || 0) + (b.yg || 0) + (b.kaam || 0);
+    const japOnly = (b.r || 0) + (b.ra || 0) + (b.rva || 0) + (b.kva || 0) + (b.kaama || 0) + (b.rv || 0) + (b.kh || 0) + (b.ss || 0) + (b.hk || 0) + (b.ram || 0) + (b.sr || 0) + (b.rm || 0) + (b.nr || 0) + (b.yg || 0) + (b.kaam || 0);
     const totalMalas = Math.floor(japOnly / ms);
     const total28Cyc = Math.floor(((b.n28 || 0) + (b.n28a || 0)) / 28);
     let totalStr = _lbFmtJap(d.score) + ' jap';
@@ -31205,6 +31526,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
   const histRam = S.historyRam || {};
   const histSR = S.historySR || {};
   const histRM = S.historyRM || {};
+  const histNR = S.historyNR || {};
   const histYg = S.historyYg || {};
   const histKaam = S.historyKaam || {};
   const hist28 = S.h28 || {};
@@ -31216,10 +31538,11 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
   const totalRam   = Object.values(histRam).reduce((a,b)=>a+b,0);
   const totalSR    = Object.values(histSR).reduce((a,b)=>a+b,0);
   const totalRM    = Object.values(histRM).reduce((a,b)=>a+b,0);
+  const totalNR    = Object.values(histNR).reduce((a,b)=>a+b,0);
   const totalYg    = Object.values(histYg).reduce((a,b)=>a+b,0);
   const totalKaam  = Object.values(histKaam).reduce((a,b)=>a+b,0);
   const total28    = Object.values(hist28).reduce((a,b)=>a+b,0);
-  const totalJap   = Math.max(0, totalRadha + totalRV + totalKV + totalSS + totalHK + totalRam + totalSR + totalRM + totalYg + totalKaam + total28 - (S.nameJapDeduct||0) - (S.nameJapDeductRV||0) - (S.nameJapDeductKV||0) - (S.nameJapDeductSS||0) - (S.nameJapDeductHK||0) - (S.nameJapDeductRam||0) - (S.nameJapDeductSR||0) - (S.nameJapDeductRM||0) - (S.nameJapDeductYg||0) - (S.nameJapDeductKaam||0) - (S.nameJapDeduct28||0));
+  const totalJap   = Math.max(0, totalRadha + totalRV + totalKV + totalSS + totalHK + totalRam + totalSR + totalRM + totalNR + totalYg + totalKaam + total28 - (S.nameJapDeduct||0) - (S.nameJapDeductRV||0) - (S.nameJapDeductKV||0) - (S.nameJapDeductSS||0) - (S.nameJapDeductHK||0) - (S.nameJapDeductRam||0) - (S.nameJapDeductSR||0) - (S.nameJapDeductRM||0) - (S.nameJapDeductNR||0) - (S.nameJapDeductYg||0) - (S.nameJapDeductKaam||0) - (S.nameJapDeduct28||0));
 
   // Build display name
   let displayName = (S.lbDisplayName || '').trim();
@@ -31233,8 +31556,8 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
   try {
     const tk = liveTk || S.tk;
     const allHist = {};
-    Object.keys({...hist,...histRV,...histKV,...histSS,...histHK,...histRam,...histSR,...histRM,...histYg,...histKaam}).forEach(function(k) {
-      allHist[k] = (hist[k]||0)+(histRV[k]||0)+(histKV[k]||0)+(histSS[k]||0)+(histHK[k]||0)+(histRam[k]||0)+(histSR[k]||0)+(histRM[k]||0)+(histYg[k]||0)+(histKaam[k]||0);
+    Object.keys({...hist,...histRV,...histKV,...histSS,...histHK,...histRam,...histSR,...histRM,...histNR,...histYg,...histKaam}).forEach(function(k) {
+      allHist[k] = (hist[k]||0)+(histRV[k]||0)+(histKV[k]||0)+(histSS[k]||0)+(histHK[k]||0)+(histRam[k]||0)+(histSR[k]||0)+(histRM[k]||0)+(histNR[k]||0)+(histYg[k]||0)+(histKaam[k]||0);
     });
     const today = new Date(tk+'T00:00:00');
     let d = new Date(today);
@@ -31267,6 +31590,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     ram: histRam[liveTk] || 0,
     sr: histSR[liveTk] || 0,
     rm: histRM[liveTk] || 0,
+    nr: histNR[liveTk] || 0,
     yg: histYg[liveTk] || 0,
     kaam: histKaam[liveTk] || 0,
     n28: hist28[liveTk] || 0,
@@ -31281,12 +31605,13 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     ram: (S.timerHistoryRam || {})[liveTk] || 0,
     sr: (S.timerHistorySR || {})[liveTk] || 0,
     rm: (S.timerHistoryRM || {})[liveTk] || 0,
+    nr: (S.timerHistoryNR || {})[liveTk] || 0,
     yg: (S.timerHistoryYg || {})[liveTk] || 0,
     kaam: (S.timerHistoryKaam || {})[liveTk] || 0,
     n28: (S.timer28History || {})[liveTk] || 0,
   };
-  const todayJap = todayBreakdown.r + todayBreakdown.rv + todayBreakdown.kv + todayBreakdown.ss + todayBreakdown.hk + todayBreakdown.ram + todayBreakdown.sr + todayBreakdown.rm + todayBreakdown.yg + todayBreakdown.kaam + todayBreakdown.n28;
-  const todayTimerSeconds = todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kv + todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.ram + todayTimeBreakdown.sr + todayTimeBreakdown.rm + todayTimeBreakdown.yg + todayTimeBreakdown.kaam + todayTimeBreakdown.n28;
+  const todayJap = todayBreakdown.r + todayBreakdown.rv + todayBreakdown.kv + todayBreakdown.ss + todayBreakdown.hk + todayBreakdown.ram + todayBreakdown.sr + todayBreakdown.rm + todayBreakdown.nr + todayBreakdown.yg + todayBreakdown.kaam + todayBreakdown.n28;
+  const todayTimerSeconds = todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kv + todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.ram + todayTimeBreakdown.sr + todayTimeBreakdown.rm + todayTimeBreakdown.nr + todayTimeBreakdown.yg + todayTimeBreakdown.kaam + todayTimeBreakdown.n28;
 
   return {
     displayName,
@@ -31309,6 +31634,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     historyRam: histRam,
     historySR: histSR,
     historyRM: histRM,
+    historyNR: histNR,
     historyYg: histYg,
     historyKaam: histKaam,
     lbKH: (window.App && S === App.S) ? isHaridashiActive() : (S.lbKH === true),
@@ -31332,6 +31658,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     nameJapDeductRam: S.nameJapDeductRam || 0,
     nameJapDeductSR: S.nameJapDeductSR || 0,
     nameJapDeductRM: S.nameJapDeductRM || 0,
+    nameJapDeductNR: S.nameJapDeductNR || 0,
     nameJapDeductYg: S.nameJapDeductYg || 0,
     nameJapDeductKaam: S.nameJapDeductKaam || 0,
     nameJapDeduct28: S.nameJapDeduct28 || 0,
@@ -31344,6 +31671,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
                   Object.values(S.timerHistoryRam || {}).reduce((a,b)=>a+b,0) +
                   Object.values(S.timerHistorySR || {}).reduce((a,b)=>a+b,0) +
                   Object.values(S.timerHistoryRM || {}).reduce((a,b)=>a+b,0) +
+                  Object.values(S.timerHistoryNR || {}).reduce((a,b)=>a+b,0) +
                   Object.values(S.timerHistoryYg || {}).reduce((a,b)=>a+b,0) +
                   Object.values(S.timerHistoryKaam || {}).reduce((a,b)=>a+b,0) +
                   Object.values(S.timer28History || {}).reduce((a,b)=>a+b,0),
@@ -31355,6 +31683,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     timerHistoryRam: S.timerHistoryRam || {},
     timerHistorySR: S.timerHistorySR || {},
     timerHistoryRM: S.timerHistoryRM || {},
+    timerHistoryNR: S.timerHistoryNR || {},
     timerHistoryYg: S.timerHistoryYg || {},
     timerHistoryKaam: S.timerHistoryKaam || {},
     timer28History: S.timer28History || {},
@@ -31368,7 +31697,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     // Manual (off-screen, reported-after-the-fact) jap seconds per type/date —
     // pushed so the leaderboard's Efficiency figure can exclude them the same
     // way the Stats screen does, instead of crediting untracked screen usage.
-    manualJapTime: S.manualJapTime || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, yg: {}, kaam: {}, n28: {} },
+    manualJapTime: S.manualJapTime || { radha: {}, rv: {}, kv: {}, ss: {}, hk: {}, ram: {}, sr: {}, rm: {}, nr: {}, yg: {}, kaam: {}, n28: {} },
     // Marks this doc as machine-generated from a raw data snapshot rather
     // than pushed live by the owner's own device — lets the UI/support flag
     // it distinctly from a normal opt-in if that's ever useful later.
@@ -31752,7 +32081,11 @@ const PHOTO_CONFIG = {
   // Built-in choices live in /ramanandi_deity, /ramanandi_guru, /ramanandi_acharya (1.jpg, 2.jpg, ...).
   ramanandi:        { id: 'bgRamanandi',        stateKey: 'bgRamanandi',        folder: 'ramanandi_deity',   maxNum: 9, fallback: 'ramanandi_deity/1.png' },
   ramanandiGuru:    { id: 'bgRamanandiGuru',    stateKey: 'bgRamanandiGuru',    folder: 'ramanandi_guru',    maxNum: 9, fallback: 'ramanandi_guru/1.png' },
-  ramanandiAcharya: { id: 'bgRamanandiAcharya', stateKey: 'bgRamanandiAcharya', folder: 'ramanandi_acharya', maxNum: 9, fallback: 'ramanandi_acharya/1.png' }
+  ramanandiAcharya: { id: 'bgRamanandiAcharya', stateKey: 'bgRamanandiAcharya', folder: 'ramanandi_acharya', maxNum: 9, fallback: 'ramanandi_acharya/1.png' },
+  // Ramanuj branch of Shree Sampraday: own Deity / Guru / Acharya (folders ramanuj_deity, ramanuj_guru, ramanuj_acharya)
+  ramanuj:        { id: 'bgRamanuj',        stateKey: 'bgRamanuj',        folder: 'ramanuj_deity',   maxNum: 9, fallback: 'ramanuj_deity/1.png' },
+  ramanujGuru:    { id: 'bgRamanujGuru',    stateKey: 'bgRamanujGuru',    folder: 'ramanuj_guru',    maxNum: 9, fallback: 'ramanuj_guru/1.png' },
+  ramanujAcharya: { id: 'bgRamanujAcharya', stateKey: 'bgRamanujAcharya', folder: 'ramanuj_acharya', maxNum: 9, fallback: 'ramanuj_acharya/1.png' }
 };
 
 const PHOTO_STRIP_IDS = {
@@ -31761,7 +32094,8 @@ const PHOTO_STRIP_IDS = {
   gopeshwar: 'photoStripGopeshwar', gopeshwarGuru: 'photoStripGopeshwarGuru', gopeshwarAcharya: 'photoStripGopeshwarAcharya',
   hdDeity: 'photoStripHdDeity', hdGuru: 'photoStripHdGuru', hdAcharya: 'photoStripHdAcharya',
   nimbark: 'photoStripNimbark', nimbarkGuru: 'photoStripNimbarkGuru', nimbarkAcharya: 'photoStripNimbarkAcharya',
-  ramanandi: 'photoStripRamanandi', ramanandiGuru: 'photoStripRamanandiGuru', ramanandiAcharya: 'photoStripRamanandiAcharya'
+  ramanandi: 'photoStripRamanandi', ramanandiGuru: 'photoStripRamanandiGuru', ramanandiAcharya: 'photoStripRamanandiAcharya',
+  ramanuj: 'photoStripRamanuj', ramanujGuru: 'photoStripRamanujGuru', ramanujAcharya: 'photoStripRamanujAcharya'
 };
 
 window.renderPhotoPickers = async function() {
@@ -31898,6 +32232,7 @@ window.resetPhoto = async function(key) {
 };
 
 window.applyBgPhotos = async function() {
+  _syncRamanujClass();
   try { refreshHaridashiUI(); } catch (_e) {}
   for (const [key, conf] of Object.entries(PHOTO_CONFIG)) {
     const el = document.getElementById(conf.id);
@@ -31934,7 +32269,12 @@ window.applyBgPhotos = async function() {
       continue;
     }
     // Ramanandi deity / guru / acharya only exist while Ramanandi mode is on.
-    if ((key === 'ramanandi' || key === 'ramanandiGuru' || key === 'ramanandiAcharya') && !(App.S && App.S.ramanandiMode)) {
+    if ((key === 'ramanandi' || key === 'ramanandiGuru' || key === 'ramanandiAcharya') && !(App.S && App.S.ramanandiMode && !App.S.ramanujMode)) {
+      el.style.display = 'none';
+      continue;
+    }
+    // Ramanuj branch of Shree: its own deity / guru / acharya
+    if ((key === 'ramanuj' || key === 'ramanujGuru' || key === 'ramanujAcharya') && !(App.S && App.S.ramanandiMode && App.S.ramanujMode)) {
       el.style.display = 'none';
       continue;
     }
@@ -31997,7 +32337,7 @@ window.applyBgPhotos = async function() {
 // the top-right corner of the Jap tap area (#tz): tap once to enter edit
 // mode, tap again to save the layout and exit.
 // ==========================================
-const JAP_PHOTO_KEYS = ['rv', 'hitju', 'gurudev', 'cm', 'iskconAcharya', 'iskconGurudev', 'gopeshwar', 'gopeshwarGuru', 'gopeshwarAcharya', 'hdDeity', 'hdGuru', 'hdAcharya', 'nimbark', 'nimbarkGuru', 'nimbarkAcharya', 'ramanandi', 'ramanandiGuru', 'ramanandiAcharya'];
+const JAP_PHOTO_KEYS = ['rv', 'hitju', 'gurudev', 'cm', 'iskconAcharya', 'iskconGurudev', 'gopeshwar', 'gopeshwarGuru', 'gopeshwarAcharya', 'hdDeity', 'hdGuru', 'hdAcharya', 'nimbark', 'nimbarkGuru', 'nimbarkAcharya', 'ramanandi', 'ramanandiGuru', 'ramanandiAcharya', 'ramanuj', 'ramanujGuru', 'ramanujAcharya'];
 const JAP_PHOTO_TRANSFORM_STORE_KEY = 'japPhotoTransforms';
 
 function loadPhotoTransforms() {
@@ -32021,7 +32361,7 @@ window.applyPhotoTransform = function(key) {
   const el = document.getElementById(conf.id);
   if (!el) return;
   const t = Object.assign({ x: 0, y: 0, scale: 1 }, window._japPhotoTransforms[key]);
-  const base = (key === 'rv' || key === 'cm' || key === 'gopeshwar' || key === 'hdDeity' || key === 'nimbark' || key === 'ramanandi') ? 'translateX(-50%) ' : '';
+  const base = (key === 'rv' || key === 'cm' || key === 'gopeshwar' || key === 'hdDeity' || key === 'nimbark' || key === 'ramanandi' || key === 'ramanuj') ? 'translateX(-50%) ' : '';
   el.style.transform = `${base}translate(${t.x}px, ${t.y}px) scale(${t.scale})`;
 };
 window.applyAllPhotoTransforms = function() {
@@ -32156,7 +32496,7 @@ window.togglePhotoEditMode = function(e) {
 
 // ✨ MALA GLOW FLASH — all deity images briefly show fully with huge glow, synced
 window.triggerMalaGlowFlash = function() {
-  const ids = ['bgRadhaVallabh', 'bgHitju', 'bgGurudev', 'bgCM', 'bgIskconAcharya', 'bgIskconGurudev', 'bgGopeshwar', 'bgGopeshwarGuru', 'bgGopeshwarAcharya', 'bgHdDeity', 'bgHdGuru', 'bgHdAcharya', 'bgNimbark', 'bgNimbarkGuru', 'bgNimbarkAcharya', 'bgRamanandi', 'bgRamanandiGuru', 'bgRamanandiAcharya'];
+  const ids = ['bgRadhaVallabh', 'bgHitju', 'bgGurudev', 'bgCM', 'bgIskconAcharya', 'bgIskconGurudev', 'bgGopeshwar', 'bgGopeshwarGuru', 'bgGopeshwarAcharya', 'bgHdDeity', 'bgHdGuru', 'bgHdAcharya', 'bgNimbark', 'bgNimbarkGuru', 'bgNimbarkAcharya', 'bgRamanandi', 'bgRamanandiGuru', 'bgRamanandiAcharya', 'bgRamanuj', 'bgRamanujGuru', 'bgRamanujAcharya'];
   const els = ids.map(id => document.getElementById(id)).filter(el => el && el.style.display !== 'none');
   if (!els.length) return;
 
@@ -33603,12 +33943,12 @@ async function checkAppUpdate() {
 // Radha, Radha Vallabh, Krishnay Vasudevay, Hare Krishna, Samba Sadashiv,
 // Raam Vijay Mantra, Kaam Vijay. Defaults to the jap open on the Jap tab.
 (function () {
-  const BASE_TYPES = ["radha", "rv", "kv", "hk", "ss", "ram", "sr", "rm", "yg", "kaam"];
+  const BASE_TYPES = ["radha", "rv", "kv", "hk", "ss", "ram", "sr", "rm", "nr", "yg", "kaam"];
   // Audio variants — always shown, whether Audio Mode is on or off.
   const AUDIO_TYPES = ["radha_a", "rv_a", "kv_a", "kaam_a"];
   const MJ_TYPES = BASE_TYPES.concat(AUDIO_TYPES);
-  const HIST = { radha: "history", rv: "historyRV", kv: "historyKV", hk: "historyHK", ss: "historySS", ram: "historyRam", sr: "historySR", rm: "historyRM", yg: "historyYg", kaam: "historyKaam" };
-  const DED = { radha: "nameJapDeduct", rv: "nameJapDeductRV", kv: "nameJapDeductKV", hk: "nameJapDeductHK", ss: "nameJapDeductSS", ram: "nameJapDeductRam", sr: "nameJapDeductSR", rm: "nameJapDeductRM", yg: "nameJapDeductYg", kaam: "nameJapDeductKaam" };
+  const HIST = { radha: "history", rv: "historyRV", kv: "historyKV", hk: "historyHK", ss: "historySS", ram: "historyRam", sr: "historySR", rm: "historyRM", nr: "historyNR", yg: "historyYg", kaam: "historyKaam" };
+  const DED = { radha: "nameJapDeduct", rv: "nameJapDeductRV", kv: "nameJapDeductKV", hk: "nameJapDeductHK", ss: "nameJapDeductSS", ram: "nameJapDeductRam", sr: "nameJapDeductSR", rm: "nameJapDeductRM", nr: "nameJapDeductNR", yg: "nameJapDeductYg", kaam: "nameJapDeductKaam" };
   const INPUT_IDS = ["manualJapIn", "prevJapIn", "addJapOtherIn", "addJapOtherDate", "deductTodayIn", "deductOtherIn", "deductOtherDate", "nameJapDeductIn", "nameJapRestoreIn"];
   window._mjType = null; // null = follow the jap selected on the Jap tab
   let _lastMode = null;

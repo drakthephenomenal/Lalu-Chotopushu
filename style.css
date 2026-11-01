@@ -4392,21 +4392,29 @@ body.haridashi-mode #audioModeBox{display:none !important;}
 
 /* ===== RAMFAM_PATCH_V1 : SitaRaam + Raam (Ramanandi mode) ===== */
 body:not(.ramanandi-mode) #naamOptSR,
+body:not(.ramanandi-mode) #naamOptNR,
 body:not(.ramanandi-mode) #naamOptRM { display: none !important; }
 .dc-sr .dc-title { color:#FF8FA3; }
 .dc-rm .dc-title { color:#FFC857; }
+.dc-nr .dc-title { color:#7EC8FF; }
 .dc-dot--sr { background:#FF8FA3; box-shadow:0 0 7px #FF8FA399; }
 .dc-dot--rm { background:#FFC857; box-shadow:0 0 7px #FFC85799; }
+.dc-dot--nr { background:#7EC8FF; box-shadow:0 0 7px #7EC8FF99; }
 .dc-sr .dc-row--life > div, .dc-row--sr > div { color:#FF8FA3; }
 .dc-rm .dc-row--life > div, .dc-row--rm > div { color:#FFC857; }
+.dc-nr .dc-row--life > div, .dc-row--nr > div { color:#7EC8FF; }
 .hist-c-sr{color:#FF8FA3;}
 .hist-c-rm{color:#FFC857;}
+.hist-c-nr{color:#7EC8FF;}
 .pt-sr .pt-num{color:#FF8FA3;text-shadow:0 0 14px rgba(255,143,163,0.45);}
 .pt-sr{border-color:rgba(255,143,163,0.28);}
 .pt-sr .pt-card-icon{background:linear-gradient(160deg,rgba(255,143,163,0.20),rgba(255,143,163,0.04));border-color:rgba(255,143,163,0.45);box-shadow:0 0 16px rgba(255,143,163,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}
 .pt-rm .pt-num{color:#FFC857;text-shadow:0 0 14px rgba(255,200,87,0.45);}
 .pt-rm{border-color:rgba(255,200,87,0.28);}
 .pt-rm .pt-card-icon{background:linear-gradient(160deg,rgba(255,200,87,0.20),rgba(255,200,87,0.04));border-color:rgba(255,200,87,0.45);box-shadow:0 0 16px rgba(255,200,87,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}
+.pt-nr .pt-num{color:#7EC8FF;text-shadow:0 0 14px rgba(126,200,255,0.45);}
+.pt-nr{border-color:rgba(126,200,255,0.28);}
+.pt-nr .pt-card-icon{background:linear-gradient(160deg,rgba(126,200,255,0.20),rgba(126,200,255,0.04));border-color:rgba(126,200,255,0.45);box-shadow:0 0 16px rgba(126,200,255,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}
 
 /* Ramanandi mode — own Deity (top-centre), Guru (bottom-left) and Acharya (bottom-right) on the Jap screen.
    Visibility is controlled from JS (applyBgPhotos) so the per-photo "Blank" option is respected. */
@@ -4441,3 +4449,57 @@ body.ramanandi-mode .tz .gurudev-wm{display:none !important;animation:none !impo
   outline:1.5px dashed rgba(255,215,0,0.75); outline-offset:3px;
   animation:none !important; opacity:.9 !important; filter:none !important;
 }
+
+/* Ramanuj mode — own Deity (top-centre), Guru (bottom-left) and Acharya (bottom-right) on the Jap screen.
+   Visibility is controlled from JS (applyBgPhotos) so the per-photo "Blank" option is respected. */
+.tz .ramanuj-wm{
+  position:absolute; top:var(--rv-top); left:50%; transform:translateX(-50%);
+  width:var(--rv-w); height:auto; max-height:78%;
+  object-fit:contain; opacity:.6;
+  filter:drop-shadow(0 0 22px rgba(126,200,255,.45));
+  pointer-events:none; user-select:none; z-index:1; display:none;
+  animation: divineBreathGlowStrong 10s ease-in-out infinite;
+}
+.tz .ramanuj-guru-wm,
+.tz .ramanuj-acharya-wm{
+  position:absolute;
+  top: min(var(--rv-bottom), calc(100% - var(--side-w) * var(--rv-aspect)));
+  width:var(--side-w); height:auto;
+  object-fit:contain; opacity:.6;
+  filter:drop-shadow(0 0 22px rgba(126,200,255,.45));
+  pointer-events:none; user-select:none; z-index:1; display:none;
+  animation: divineBreathGlowStrong 10s ease-in-out infinite;
+}
+.tz .ramanuj-guru-wm{right:8px;}
+.tz .ramanuj-acharya-wm{left:8px;}
+
+.tz.photo-edit-mode .ramanuj-wm,
+.tz.photo-edit-mode .ramanuj-guru-wm,
+.tz.photo-edit-mode .ramanuj-acharya-wm{
+  pointer-events:auto !important; cursor:move; touch-action:none;
+  outline:1.5px dashed rgba(255,215,0,0.75); outline-offset:3px;
+  animation:none !important; opacity:.9 !important; filter:none !important;
+}
+
+
+/* ===== Ramanuj branch (Narayan) vs Ramananda branch — who sees what ===== */
+body.ramanuj-branch #naamOptRam, body.ramanuj-branch #naamOptSR, body.ramanuj-branch #naamOptRM { display:none !important; }
+body:not(.ramanuj-branch) #naamOptNR { display:none !important; }
+html body.ramanuj-branch .dc-wrap.dc-ram:not(.dc-nr) { display:none !important; }
+html body:not(.ramanuj-branch) .dc-wrap.dc-nr { display:none !important; }
+html body.ramanuj-branch .cdmo-stat-row:has(#cdmoRamJap), html body.ramanuj-branch .cdmo-stat-row:has(#cdmoRamTime),
+html body.ramanuj-branch .cdmo-stat-row:has(#cdmoSRJap),  html body.ramanuj-branch .cdmo-stat-row:has(#cdmoSRTime),
+html body.ramanuj-branch .cdmo-stat-row:has(#cdmoRMJap),  html body.ramanuj-branch .cdmo-stat-row:has(#cdmoRMTime),
+html body:not(.ramanuj-branch) .cdmo-stat-row:has(#cdmoNRJap), html body:not(.ramanuj-branch) .cdmo-stat-row:has(#cdmoNRTime) { display:none !important; }
+html body.ramanuj-branch .target-row-card:has(#dtRamIn), html body.ramanuj-branch .target-row-card:has(#dtSRIn), html body.ramanuj-branch .target-row-card:has(#dtRMIn),
+html body:not(.ramanuj-branch) .target-row-card:has(#dtNRIn) { display:none !important; }
+html body.ramanuj-branch .ded-type-pill[data-type="ram"], html body.ramanuj-branch .ded-type-pill[data-type="sr"], html body.ramanuj-branch .ded-type-pill[data-type="rm"],
+html body:not(.ramanuj-branch) .ded-type-pill[data-type="nr"] { display:none !important; }
+html body.ramanuj-branch #histRamColHeader, html body.ramanuj-branch #histSRColHeader, html body.ramanuj-branch #histRMColHeader,
+html body.ramanuj-branch td.hist-c-ram, html body.ramanuj-branch td.hist-c-sr, html body.ramanuj-branch td.hist-c-rm,
+html body:not(.ramanuj-branch) #histNRColHeader, html body:not(.ramanuj-branch) td.hist-c-nr { display:none !important; }
+html body.ramanuj-branch .pt-ram, html body.ramanuj-branch .pt-sr, html body.ramanuj-branch .pt-rm,
+html body:not(.ramanuj-branch) .pt-nr { display:none !important; }
+/* Deity/Guru/Acharya photo cards: each branch sees only its own */
+html body.ramanuj-branch .photo-settings-card:has(#photoStripRamanandi),
+html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { display:none !important; }

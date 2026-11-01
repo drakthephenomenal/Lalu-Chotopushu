@@ -26,7 +26,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
-<link rel="stylesheet" href="./style.css?v=137">
+<link rel="stylesheet" href="./style.css?v=138">
   <link rel="stylesheet" href="./style-stotram.css?v=140">
   <link rel="stylesheet" href="./vedic-panchanga/panchanga.css?v=161">
 <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
@@ -267,6 +267,9 @@
           <div class="naam-sel-opt" id="naamOptYg" onclick="switchJapMode('yg')">
             <span class="ns-check"></span> <span id="naamOptYgLabel">युगल मंत्र</span>
           </div>
+          <div class="naam-sel-opt" id="naamOptVl" onclick="switchJapMode('vl')">
+            <span class="ns-check"></span> <span id="naamOptVlLabel">श्री कृष्णः शरणं मम</span>
+          </div>
         </div>
       </div>
       <div class="rn" id="rnTitle">राधा</div>
@@ -401,8 +404,11 @@
       <img class="ramanuj-acharya-wm" id="bgRamanujAcharya" src="./ramanuj_acharya/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="gopeshwar-acharya-wm" id="bgGopeshwarAcharya" src="./gopeshwar_acharya/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="nimbark-wm" id="bgNimbark" src="./nimbark_deity/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img class="vallabh-wm" id="bgVallabh" src="./vallabh_deity/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="nimbark-guru-wm" id="bgNimbarkGuru" src="./nimbark_guru/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img class="vallabh-guru-wm" id="bgVallabhGuru" src="./vallabh_guru/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <img class="nimbark-acharya-wm" id="bgNimbarkAcharya" src="./nimbark_acharya/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
+      <img class="vallabh-acharya-wm" id="bgVallabhAcharya" src="./vallabh_acharya/1.png" alt="" aria-hidden="true" draggable="false" loading="lazy" decoding="async" onerror="this.style.display='none'">
       <div class="mf" id="mf">
         <div class="mf-line1">Radha Ballabh</div>
         <div class="mf-line2">Sri Harivansh</div>
@@ -412,9 +418,11 @@
       <div id="kaamPersist"></div>
       <div id="ramPersist"></div>
       <div id="ygPersist"></div>
+      <div id="vlPersist"></div>
       <div id="hkMalaComplete"></div>
       <div id="ramMalaComplete"></div>
       <div id="ygMalaComplete"></div>
+      <div id="vlMalaComplete"></div>
     </div>
   </div>
 
@@ -942,6 +950,7 @@
       <div class="cdmo-stat-row ram-only-stat">🪷 नारायण Jap <span class="cdmo-stat-val" style="color:#7EC8FF" id="cdmoNRJap">—</span></div>
       <div class="cdmo-stat-row ram-only-stat">🚩 राम Jap <span class="cdmo-stat-val" style="color:#FFC857" id="cdmoRMJap">—</span></div>
       <div class="cdmo-stat-row yg-only-stat">🎶 युगल मंत्र Jap <span class="cdmo-stat-val" style="color:#FFD700" id="cdmoYgJap">—</span></div>
+      <div class="cdmo-stat-row vl-only-stat">🪈 श्री कृष्णः शरणं मम Jap <span class="cdmo-stat-val" style="color:#4FC3F7" id="cdmoVlJap">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ Radha Jap Time <span class="cdmo-stat-val" id="cdmoRadhaTime">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ Radha Vallabh Sri Harivangsa Jap Time <span class="cdmo-stat-val" id="cdmoRvTime">—</span></div>
       <div class="cdmo-stat-row kv-only-stat">⏱ Samba Sadashiv Jap Time <span class="cdmo-stat-val" id="cdmoSsTime">—</span></div>
@@ -951,6 +960,7 @@
       <div class="cdmo-stat-row ram-only-stat">⏱ नारायण Jap Time <span class="cdmo-stat-val" style="color:#7EC8FF" id="cdmoNRTime">—</span></div>
       <div class="cdmo-stat-row ram-only-stat">⏱ राम Jap Time <span class="cdmo-stat-val" style="color:#FFC857" id="cdmoRMTime">—</span></div>
       <div class="cdmo-stat-row yg-only-stat">⏱ युगल मंत्र Jap Time <span class="cdmo-stat-val" style="color:#FFD700" id="cdmoYgTime">—</span></div>
+      <div class="cdmo-stat-row vl-only-stat">⏱ श्री कृष्णः शरणं मम Jap Time <span class="cdmo-stat-val" style="color:#4FC3F7" id="cdmoVlTime">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">✨ 28 Names <span class="cdmo-stat-val" id="cdmo28Names">—</span></div>
       <div class="cdmo-stat-row non-gaudiya-stat">⏱ 28 Names Time <span class="cdmo-stat-val" style="color:var(--a2)" id="cdmoTime28">—</span></div>
       <div class="cdmo-stat-row hk-only-stat">🪷 Hare Krishna Mahamantra <span class="cdmo-stat-val" style="color:#6DB8FF" id="cdmoHkJap">—</span></div>
@@ -1069,6 +1079,9 @@
           </div>
           <div class="ded-type-pill" data-type="yg" onclick="toggleDedicationType('yg', this)" style="border-color:rgba(255,215,0,0.45);background:rgba(255,215,0,0.06);">
             <div style="font-size:11px;font-weight:700;color:#FFD700;">Yugal</div>
+          </div>
+          <div class="ded-type-pill" data-type="vl" onclick="toggleDedicationType('vl', this)" style="border-color:rgba(79,195,247,0.45);background:rgba(79,195,247,0.06);">
+            <div style="font-size:11px;font-weight:700;color:#4FC3F7;">Vallabh</div>
           </div>
           <div class="ded-type-pill" data-type="kaam" onclick="toggleDedicationType('kaam', this)" style="border-color:rgba(124,143,224,0.45);background:rgba(124,143,224,0.06);">
             <div style="font-size:11px;font-weight:700;color:#B8C4F5;">Kaam</div>
@@ -1322,6 +1335,18 @@
             </div>
             <span id="sYgTotF" style="display:none">0</span>
           </div>
+          <!-- 2c. Vallabh (Shree Krishna Sharanam Mama) -->
+          <div class="dc-wrap dc-vl vl-only-stat" style="grid-column:1/-1">
+            <div class="dc-title"><span class="dc-dot dc-dot--vl"></span>Shree Krishna Sharanam Mama</div>
+            <div class="dc-table">
+              <div class="dc-thead"><div></div><div>Count</div><div>Malas</div><div>Time</div></div>
+              <div class="dc-row"><div class="dc-period">Today</div><div id="sVlPTod">0</div><div id="sVlPTodM">0m</div><div id="tVlTod">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Week</div><div id="sVlPWk">0</div><div id="sVlPWkM">0m</div><div id="tVlWk">0s</div></div>
+              <div class="dc-row"><div class="dc-period">Month</div><div id="sVlPMo">0</div><div id="sVlPMoM">0m</div><div id="tVlMo">0s</div></div>
+              <div class="dc-row dc-row--life dc-row--vl"><div class="dc-period">Lifetime</div><div id="sVlTot">0</div><div id="sVlTotM">0m</div><div id="tVlLt">0s</div></div>
+            </div>
+            <span id="sVlTotF" style="display:none">0</span>
+          </div>
           <!-- 3. 28 Names -->
           <div class="dc-wrap dc-28n non-gaudiya-stat" style="grid-column:1/-1">
             <div class="dc-title"><span class="dc-dot dc-dot--28n"></span>28 Names</div>
@@ -1495,6 +1520,17 @@
               <div class="dc-row dc-row--life" style="grid-template-columns:72px 1fr"><div class="dc-period">Lifetime</div><div id="qYgLt">—</div></div>
             </div>
           </div>
+          <div class="dc-wrap dc-vl vl-only-stat" style="grid-column:1/-1">
+            <div class="dc-title"><span class="dc-dot dc-dot--vl"></span>Shree Krishna Sharanam Mama — Q</div>
+            <div style="font-size:9px;color:var(--td);margin:-8px 0 6px;">Seconds per name chanted (lower = faster pace). Manual entries excluded.</div>
+            <div class="dc-table">
+              <div class="dc-thead" style="grid-template-columns:72px 1fr"><div></div><div>Sec / Name</div></div>
+              <div class="dc-row" style="grid-template-columns:72px 1fr"><div class="dc-period">Today</div><div id="qVlTod">—</div></div>
+              <div class="dc-row" style="grid-template-columns:72px 1fr"><div class="dc-period">Week</div><div id="qVlWk">—</div></div>
+              <div class="dc-row" style="grid-template-columns:72px 1fr"><div class="dc-period">Month</div><div id="qVlMo">—</div></div>
+              <div class="dc-row dc-row--life" style="grid-template-columns:72px 1fr"><div class="dc-period">Lifetime</div><div id="qVlLt">—</div></div>
+            </div>
+          </div>
           <div class="dc-wrap dc-28n non-gaudiya-stat" style="grid-column:1/-1">
             <div class="dc-title"><span class="dc-dot dc-dot--28n"></span>28 Names — Q</div>
             <div style="font-size:9px;color:var(--td);margin:-8px 0 6px;">Seconds per name chanted (lower = faster pace). Manual entries excluded.</div>
@@ -1615,6 +1651,7 @@
                 <th class="hist-th hist-ram-col" id="histNRColHeader" style="display:none;color:#7EC8FF">नारायण</th>
                 <th class="hist-th hist-ram-col" id="histRMColHeader" style="display:none;color:#FFC857">राम</th>
                 <th class="hist-th hist-yg-col" id="histYgColHeader" style="display:none;color:#FFD700">युगल मंत्र</th>
+                <th class="hist-th hist-vl-col" id="histVlColHeader" style="display:none;color:#4FC3F7">श्री कृष्णः शरणं मम</th>
                 <th class="hist-th">Total Time</th>
                 <th class="hist-th hist-th-chev" aria-hidden="true"></th>
               </tr>
@@ -2748,6 +2785,16 @@
         <button class="pb target-row-btn" onclick="svtYg('d')">Save Daily</button>
       </div>
     </div>
+    <!-- Shree Krishna Sharanam Mama Daily Target -->
+    <div class="vl-only-setting target-row-card" style="border-color:rgba(79,195,247,0.38);background:linear-gradient(160deg,rgba(79,195,247,0.09),rgba(10,8,25,0.85));">
+      <div class="target-row-title" style="color:rgba(79,195,247,0.9);">🪈 Shree Krishna Sharanam Mama Daily Target</div>
+      <div class="target-row-inputs">
+        <div class="target-input-group"><input type="number" class="fi" id="dtVlIn" placeholder="Jap/day" oninput="syncTargetJapToMala('dtVl')"><span class="fu">jap</span></div>
+        <div class="target-input-group"><input type="number" class="fi" id="dtVlMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtVl')"><span class="fu" style="color:#4FC3F7;">malas</span></div>
+        <div class="target-row-sum">= <span id="dtVlMala">0</span> malas/day</div>
+        <button class="pb target-row-btn" onclick="svtVl('d')">Save Daily</button>
+      </div>
+    </div>
 
     <div style="margin-top:10px;" id="target28SlotDefault"></div>
 
@@ -2949,6 +2996,51 @@
         </label>
         <button class="photo-reset-btn" onclick="resetPhoto('nimbarkAcharya')">↩ Default</button>
         <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('nimbarkAcharya', 0)">Blank</button>
+      </div>
+    </div>
+  </div>
+  <!-- Jap Display Photos: Vallabh Sampraday — shown only while Vallabh mode is on -->
+  <div class="sc photo-settings-card vl-only-setting" style="flex-direction:column;">
+    <div class="photo-settings-title">🪈 Vallabh Jap Display Photos</div>
+    <div style="font-size:10px;color:rgba(255,255,255,0.4);line-height:1.4;margin-bottom:14px;">
+      Choose the photos that appear on the Jap screen in Vallabh mode (top: Deity, bottom: Guru and Acharya). Pick from the repository collection or upload your own.
+    </div>
+    <div class="photo-row">
+      <div class="photo-row-label">🪈 Vallabh Deity (top)</div>
+      <div class="photo-thumb-strip" id="photoStripVallabh"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('vallabh', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('vallabh')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('vallabh', 0)">Blank</button>
+      </div>
+    </div>
+    <div class="photo-row" style="margin-top:14px;">
+      <div class="photo-row-label">🪈 Vallabh Guru (right)</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.35);margin:-4px 0 8px;">Appears bottom-left on the Jap screen while Vallabh mode is on.</div>
+      <div class="photo-thumb-strip" id="photoStripVallabhGuru"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('vallabhGuru', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('vallabhGuru')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('vallabhGuru', 0)">Blank</button>
+      </div>
+    </div>
+    <div class="photo-row" style="margin-top:14px;">
+      <div class="photo-row-label">🪈 Vallabh Acharya (left)</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.35);margin:-4px 0 8px;">Appears bottom-right on the Jap screen while Vallabh mode is on.</div>
+      <div class="photo-thumb-strip" id="photoStripVallabhAcharya"></div>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <label class="photo-upload-btn">
+          📷 Upload Custom
+          <input type="file" accept="image/*" style="display:none" onchange="uploadCustomPhoto('vallabhAcharya', this)">
+        </label>
+        <button class="photo-reset-btn" onclick="resetPhoto('vallabhAcharya')">↩ Default</button>
+        <button class="photo-reset-btn" style="flex:0.7" onclick="selectRepoPhoto('vallabhAcharya', 0)">Blank</button>
       </div>
     </div>
   </div>
@@ -3498,7 +3590,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=144"></script>
-    <script src="./app.js?v=424"></script>
+    <script src="./app.js?v=425"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

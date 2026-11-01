@@ -1606,9 +1606,21 @@ button.n28-gold-btn-danger,
   opacity:0;
   transition:opacity 0.22s ease;
 }
+#vlPersist{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  pointer-events:none;z-index:10;
+  font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif;
+  font-size:calc(clamp(26px,7.5vw,44px) * var(--jap-text-scale,1));font-weight:700;line-height:1.6;text-align:center;
+  padding:16px;letter-spacing:1.5px;
+  opacity:0;
+  transition:opacity 0.22s ease;
+}
 #ygPersist.hk-visible{opacity:1;}
+#vlPersist.hk-visible{opacity:1;}
 #ygPersist > div{display:block;width:100%;}
+#vlPersist > div{display:block;width:100%;}
 #ygPersist.yg-pulse{animation:kaamRiseIn 2.6s cubic-bezier(0.22,1,0.36,1);}
+#vlPersist.vl-pulse{animation:kaamRiseIn 2.6s cubic-bezier(0.22,1,0.36,1);}
 
 /* ── Krishnay Vasudevay persistent tap display (mirrors #hkPersist) ── */
 #kvPersist{
@@ -1676,10 +1688,21 @@ button.n28-gold-btn-danger,
   opacity:0;transition:opacity 0.4s ease;
   color:#FFD700;text-shadow:0 0 30px rgba(255,215,0,0.9);
 }
+#vlMalaComplete{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  pointer-events:none;z-index:12;
+  font-family:'Tiro Devanagari Hindi','Hind Siliguri',serif;
+  font-size:clamp(16px,4.5vw,26px);line-height:1.6;text-align:center;
+  padding:16px;letter-spacing:0.5px;
+  opacity:0;transition:opacity 0.4s ease;
+  color:#4FC3F7;text-shadow:0 0 30px rgba(79,195,247,0.9);
+}
 #hkMalaComplete.hkmc-visible,
 #ygMalaComplete.hkmc-visible{opacity:1;}
+#vlMalaComplete.hkmc-visible{opacity:1;}
 #hkMalaComplete > div,
 #ygMalaComplete > div{display:block;width:100%;}
+#vlMalaComplete > div{display:block;width:100%;}
 
 @keyframes hkRise{
   0%{opacity:0.95;transform:translateX(-50%) translateY(0) scale(1);}
@@ -1879,28 +1902,47 @@ body.trahimam-mode #naamOptRam { display: none !important; }
 
 /* ── Nimbark Mode: only Yugal Mantra jap; hide non-Yugal stat rows/settings, show Yugal-only ── */
 body.nimbark-mode .non-gaudiya-stat{display:none!important;}
+body.vallabh-mode .non-gaudiya-stat{display:none!important;}
 body.nimbark-mode .non-gaudiya-setting{display:none!important;}
+body.vallabh-mode .non-gaudiya-setting{display:none!important;}
 .yg-only-stat{display:none!important;}
+.vl-only-stat{display:none!important;}
 body.nimbark-mode .yg-only-stat{display:flex!important;}
+body.vallabh-mode .vl-only-stat{display:flex!important;}
 body.nimbark-mode .dc-wrap.yg-only-stat{display:block!important;}
+body.vallabh-mode .dc-wrap.vl-only-stat{display:block!important;}
 .yg-only-setting{display:none!important;}
+.vl-only-setting{display:none!important;}
 body.nimbark-mode .yg-only-setting{display:flex!important;}
+body.vallabh-mode .vl-only-setting{display:flex!important;}
 body.nimbark-mode .lifetime-bar-block{display:none!important;}
+body.vallabh-mode .lifetime-bar-block{display:none!important;}
 body.nimbark-mode #target28Card{display:none!important;}
+body.vallabh-mode #target28Card{display:none!important;}
 
 /* Nimbark-mode history table column visibility */
 .hist-yg-col{display:none;}
+.hist-vl-col{display:none;}
 body.nimbark-mode .hist-yg-col{display:table-cell!important;}
+body.vallabh-mode .hist-vl-col{display:table-cell!important;}
 body.nimbark-mode .hist-radha-col{display:none!important;}
+body.vallabh-mode .hist-radha-col{display:none!important;}
 body.nimbark-mode .hist-kv-col{display:none!important;}
+body.vallabh-mode .hist-kv-col{display:none!important;}
 body.nimbark-mode .hist-hk-col{display:none!important;}
+body.vallabh-mode .hist-hk-col{display:none!important;}
 body.nimbark-mode .hist-ram-col{display:none!important;}
+body.vallabh-mode .hist-ram-col{display:none!important;}
 body.gaudiya-mode .hist-yg-col,
 body.trahimam-mode .hist-yg-col,
 body.ramanandi-mode .hist-yg-col{display:none!important;}
+body.gaudiya-mode .hist-vl-col,
+body.trahimam-mode .hist-vl-col,
+body.ramanandi-mode .hist-vl-col{display:none!important;}
 
 /* Nimbark-mode dropdown filtering: only Yugal Mantra when ON; hide it when OFF */
 body:not(.nimbark-mode) #naamOptYg { display: none !important; }
+body:not(.vallabh-mode) #naamOptVl{ display: none !important; }
 body.nimbark-mode #naamOptRadha,
 body.nimbark-mode #naamOptRV,
 body.nimbark-mode #naamOptSS,
@@ -1908,9 +1950,19 @@ body.nimbark-mode #naamOptKV,
 body.nimbark-mode #naamOptKaam,
 body.nimbark-mode #naamOptRam,
 body.nimbark-mode #naamOptHK { display: none !important; }
+body.vallabh-mode #naamOptRadha,
+body.vallabh-mode #naamOptRV,
+body.vallabh-mode #naamOptSS,
+body.vallabh-mode #naamOptKV,
+body.vallabh-mode #naamOptKaam,
+body.vallabh-mode #naamOptRam,
+body.vallabh-mode #naamOptHK{ display: none !important; }
 body.gaudiya-mode #naamOptYg,
 body.trahimam-mode #naamOptYg,
 body.ramanandi-mode #naamOptYg { display: none !important; }
+body.gaudiya-mode #naamOptVl,
+body.trahimam-mode #naamOptVl,
+body.ramanandi-mode #naamOptVl{ display: none !important; }
 
 /* ── Mahamantra Language picker buttons ── */
 #hkLangBtnHi, #hkLangBtnBn{transition:all 0.3s ease;}
@@ -2476,6 +2528,15 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
     0 0 28px rgba(200,155,48,0.22),
     0 8px 32px rgba(0,0,0,0.70);
 }
+.dc-vl{
+  border: 3px solid #c89b30;
+  box-shadow:
+    0 0 0 1px #f5d06055,
+    inset 0 1px 0 rgba(255,220,80,0.30),
+    inset 0 -2px 0 rgba(0,0,0,0.55),
+    0 0 28px rgba(200,155,48,0.22),
+    0 8px 32px rgba(0,0,0,0.70);
+}
 /* Golden shimmer line at top of every card */
 .dc-radha::before,
 .dc-rv::before,
@@ -2485,6 +2546,16 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 .dc-28n::before,
 .dc-combo::before,
 .dc-all::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:2px;
+  background: linear-gradient(90deg,
+    transparent 5%,
+    #c89b3066 25%,
+    #f5d060cc 50%,
+    #c89b3066 75%,
+    transparent 95%);
+}
+.dc-vl::before{
   content:'';
   position:absolute; top:0; left:0; right:0; height:2px;
   background: linear-gradient(90deg,
@@ -2506,6 +2577,7 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 .dc-ss    .dc-title { color:#ffb86c; }
 .dc-ram   .dc-title { color:#FF9933; }
 .dc-yg    .dc-title { color:#FFD700; }
+.dc-vl    .dc-title{ color:#4FC3F7; }
 .dc-28n   .dc-title { color:#a78bfa; }
 .dc-title--combo    { color:#f5c842 !important; }
 .dc-title--all      { color:#f5d060 !important; }
@@ -2518,6 +2590,7 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 .dc-dot--ss    { background:#ffb86c; box-shadow:0 0 7px #ffb86c99; }
 .dc-dot--ram   { background:#FF9933; box-shadow:0 0 7px #FF993399; }
 .dc-dot--yg    { background:#FFD700; box-shadow:0 0 7px #FFD70099; }
+.dc-dot--vl{ background:#4FC3F7; box-shadow:0 0 7px #4FC3F799; }
 .dc-dot--28n   { background:#a78bfa; box-shadow:0 0 7px #a78bfa99; }
 .dc-table { width:100%; border-collapse:collapse; }
 .dc-thead {
@@ -2547,12 +2620,14 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 .dc-ss     .dc-row--life > div { color:#ffb86c; }
 .dc-ram    .dc-row--life > div { color:#FF9933; }
 .dc-yg     .dc-row--life > div { color:#FFD700; }
+.dc-vl     .dc-row--life > div{ color:#4FC3F7; }
 .dc-28n    .dc-row--life > div { color:#a78bfa; }
 .dc-row--rv    > div { color:#5eead4; }
 .dc-row--kv    > div { color:#6DB8FF; }
 .dc-row--ss    > div { color:#ffb86c; }
 .dc-row--ram   > div { color:#FF9933; }
 .dc-row--yg    > div { color:#FFD700; }
+.dc-row--vl    > div{ color:#4FC3F7; }
 .dc-row--28n   > div { color:#a78bfa; }
 .dc-row--combo > div { color:#f5c842; }
 .dc-row--all   > div { color:#f5d060; }
@@ -2611,6 +2686,7 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 .hist-c-ss{color:#ffb86c;}
 .hist-c-ram{color:#FF9933;}
 .hist-c-yg{color:#FFD700;}
+.hist-c-vl{color:#4FC3F7;}
 .hist-c-green{color:var(--green);}
 .hist-c-hk{color:#6DB8FF;}
 .hist-c-time{color:var(--td);font-size:11.5px;}
@@ -2707,8 +2783,11 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 .pt-ram{border-color:rgba(255,153,51,0.28);}
 .pt-ram .pt-card-icon{background:linear-gradient(160deg,rgba(255,153,51,0.20),rgba(255,153,51,0.04));border-color:rgba(255,153,51,0.45);box-shadow:0 0 16px rgba(255,153,51,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}
 .pt-yg .pt-num{color:#FFD700;text-shadow:0 0 14px rgba(255,215,0,0.45);}
+.pt-vl .pt-num{color:#4FC3F7;text-shadow:0 0 14px rgba(79,195,247,0.45);}
 .pt-yg{border-color:rgba(255,215,0,0.28);}
+.pt-vl{border-color:rgba(79,195,247,0.28);}
 .pt-yg .pt-card-icon{background:linear-gradient(160deg,rgba(255,215,0,0.20),rgba(255,215,0,0.04));border-color:rgba(255,215,0,0.45);box-shadow:0 0 16px rgba(255,215,0,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}
+.pt-vl .pt-card-icon{background:linear-gradient(160deg,rgba(79,195,247,0.20),rgba(79,195,247,0.04));border-color:rgba(79,195,247,0.45);box-shadow:0 0 16px rgba(79,195,247,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}
 .pt-28 .pt-num{color:var(--green);text-shadow:0 0 14px rgba(57,201,151,0.45);}
 .pt-28{border-color:rgba(57,201,151,0.28);}
 .pt-28 .pt-card-icon{background:linear-gradient(160deg,rgba(57,201,151,0.20),rgba(57,201,151,0.04));border-color:rgba(57,201,151,0.50);box-shadow:0 0 16px rgba(57,201,151,0.30), inset 0 1px 0 rgba(255,255,255,0.10);}
@@ -3118,6 +3197,13 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
   outline:1.5px dashed rgba(255,215,0,0.75); outline-offset:3px;
   animation:none !important; opacity:.9 !important; filter:none !important;
 }
+.tz.photo-edit-mode .vallabh-wm,
+.tz.photo-edit-mode .vallabh-guru-wm,
+.tz.photo-edit-mode .vallabh-acharya-wm{
+  pointer-events:auto !important; cursor:move; touch-action:none;
+  outline:1.5px dashed rgba(79,195,247,0.75); outline-offset:3px;
+  animation:none !important; opacity:.9 !important; filter:none !important;
+}
 
 .photo-edit-handle{
   position:absolute; width:16px; height:16px; z-index:41;
@@ -3363,6 +3449,16 @@ body.trahimam-mode .tz .rv-wm{display:none !important;animation:none !important;
   display:none;
   animation: divineBreathGlowStrong 10s ease-in-out infinite;
 }
+.tz .vallabh-wm{
+  position:absolute; top:var(--rv-top); left:50%; transform:translateX(-50%);
+  width:var(--rv-w); height:auto; max-height:78%;
+  object-fit:contain;
+  opacity:.6;
+  filter:drop-shadow(0 0 22px rgba(245,209,122,.45));
+  pointer-events:none; user-select:none; z-index:1;
+  display:none;
+  animation: divineBreathGlowStrong 10s ease-in-out infinite;
+}
 .tz .nimbark-guru-wm,
 .tz .nimbark-acharya-wm{
   position:absolute;
@@ -3375,12 +3471,29 @@ body.trahimam-mode .tz .rv-wm{display:none !important;animation:none !important;
   display:none;
   animation: divineBreathGlow 10s ease-in-out infinite;
 }
+.tz .vallabh-guru-wm,
+.tz .vallabh-acharya-wm{
+  position:absolute;
+  top: min(var(--rv-bottom), calc(100% - var(--side-w) * var(--rv-aspect)));
+  width:var(--side-w); height:auto;
+  object-fit:contain;
+  opacity:.6;
+  filter:drop-shadow(0 0 22px rgba(245,209,122,.45));
+  pointer-events:none; user-select:none; z-index:1;
+  display:none;
+  animation: divineBreathGlow 10s ease-in-out infinite;
+}
 .tz .nimbark-guru-wm{right:8px;}
+.tz .vallabh-guru-wm{right:8px;}
 .tz .nimbark-acharya-wm{left:8px;}
+.tz .vallabh-acharya-wm{left:8px;}
 /* Nimbark mode has its own Deity/Guru/Acharya, so hide the normal-mode RV/Hitju/Gurudev */
 body.nimbark-mode .tz .rv-wm,
 body.nimbark-mode .tz .hitju-wm,
 body.nimbark-mode .tz .gurudev-wm{display:none !important;animation:none !important;}
+body.vallabh-mode .tz .rv-wm,
+body.vallabh-mode .tz .hitju-wm,
+body.vallabh-mode .tz .gurudev-wm{display:none !important;animation:none !important;}
 
 /* Gaudiya/ISKCON Acharya — bottom-left, same plane as Hitju in default mode.
    Visibility is controlled from JS (applyBgPhotos), not CSS, since it must

@@ -1166,14 +1166,7 @@ const App = {
       syncBaselineTimer28: this.S.syncBaselineTimer28,
       migrationV2Done: this.S.migrationV2Done,
       japMode: this.S.japMode,
-      historyRV: this.S.historyRV,
-      timerHistoryRV: this.S.timerHistoryRV,
-      dtRV: this.S.dtRV,
-      ltRV: this.S.ltRV,
-      nameJapDeductRV: this.S.nameJapDeductRV,
-      malaLogRV: this.S.malaLogRV,
-      syncBaselineRV: this.S.syncBaselineRV,
-      syncBaselineTimerRV: this.S.syncBaselineTimerRV,
+      ...hdPersist(true),
       brahmacharya_start_date: this.S.brahmacharya_start_date,
       activityLog: this.S.activityLog || [],
       audioChantLog: this.S.audioChantLog || [],
@@ -1480,6 +1473,7 @@ const App = {
     if (this.S.nimbarkMode === undefined) this.S.nimbarkMode = false;
     if (this.S.vallabhMode === undefined) this.S.vallabhMode = false;
     if (!this.S.sampraday) this.S.sampraday = "harivangshi";
+    hdAfterLoad();
     if (!this.S.sriBranch) this.S.sriBranch = "ramananda";
     if (!this.S.historyRam) this.S.historyRam = {};
     if (!this.S.historySR) this.S.historySR = {};
@@ -5031,20 +5025,153 @@ function _khMarkToday() {
     const S = (typeof App !== "undefined" && App && App.S) || null;
     if (!S) return;
     if (!S.khDays || typeof S.khDays !== "object") S.khDays = {};
-    const hd = isHaridashiActive();
-    const rv = S.historyRV || {};
-    if (!S.khDays._init) {
-      S.khDays._init = true;
-      // First run: if this account is in Haridashi mode now, its existing
-      // RV-slot days were KH days.
-      if (hd) Object.keys(rv).forEach((k) => { if ((rv[k] || 0) > 0) S.khDays[k] = true; });
-    }
-    if (hd) {
-      const tk = App.getTk();
-      if ((rv[tk] || 0) > 0) S.khDays[tk] = true;
-    }
+    S.khDays._init = true;
+    const kh = hdSlotGet("kh").historyRV || {}, rv = hdSlotGet("rv").historyRV || {};
+    const tk = App.getTk();
+    // A day is a KH day when KH jap dominates it (historyRV sent to the leaderboard = RV + KH).
+    if ((kh[tk] || 0) > 0 && (kh[tk] || 0) >= (rv[tk] || 0)) S.khDays[tk] = true;
+    else delete S.khDays[tk];
+    Object.keys(kh).forEach((k) => { if ((kh[k] || 0) > 0 && (kh[k] || 0) >= (rv[k] || 0)) S.khDays[k] = true; });
   } catch (_e) {}
 }
+
+// ── Haridashi (KH) gets its OWN counting slot ───────────────────────────────
+// Working fields S.historyRV / timerHistoryRV / dtRV / ltRV / nameJapDeductRV /
+// malaLogRV / syncBaselineRV / syncBaselineTimerRV always hold the data of the
+// ACTIVE sampraday (Harivangshi -> RV data, Haridashi -> KH data), so all the
+// existing counting/UI code keeps working untouched. The other sampraday's data
+// is parked in S._slotPark. Persistence/sync always writes BOTH slots under
+// separate keys (…RV for Harivangshi, …KH for Haridashi).
+const KH_FIELDS = ["historyRV", "timerHistoryRV", "dtRV", "ltRV", "nameJapDeductRV", "malaLogRV", "syncBaselineRV", "syncBaselineTimerRV"];
+function _khKey(f) { return f.replace(/RV$/, "KH"); }
+function _khDefault(f) { return /^(history|timerHistory|syncBaseline)/.test(f) ? {} : (f === "malaLogRV" ? [] : 0); }
+function hdSlotGet(slot) {
+  const S = App.S, cur = S.rvSlot || "rv", park = S._slotPark || {}, out = {};
+  KH_FIELDS.forEach((f) => {
+    let v = cur === slot ? S[f] : park[f];
+    if (v === undefined || v === null) v = _khDefault(f);
+    out[f] = v;
+  });
+  return out;
+}
+function hdSlotSet(slot, obj) {
+  const S = App.S, cur = S.rvSlot || "rv";
+  if (!S._slotPark) S._slotPark = {};
+  KH_FIELDS.forEach((f) => {
+    if (obj[f] === undefined) return;
+    if (cur === slot) S[f] = obj[f]; else S._slotPark[f] = obj[f];
+  });
+}
+// Everything to persist/push: RV keys from the RV slot, KH keys from the KH slot.
+function hdPersist(withBaselines) {
+  const rv = hdSlotGet("rv"), kh = hdSlotGet("kh"), o = {};
+  KH_FIELDS.forEach((f) => {
+    if (!withBaselines && /^syncBaseline/.test(f)) return;
+    o[f] = rv[f];
+    o[_khKey(f)] = kh[f];
+  });
+  return o;
+}
+// Apply remote/cloud/backup data (RV keys -> RV slot, KH keys -> KH slot).
+function hdApplyRemote(d, forceAll) {
+  [["rv", "RV"], ["kh", "KH"]].forEach(([slot, sfx]) => {
+    const set = {};
+    ["history", "timerHistory"].forEach((p) => {
+      const k = p + sfx;
+      if (forceAll || (k in d)) set[p + "RV"] = JSON.parse(JSON.stringify(d[k] || {}));
+    });
+    ["dt", "lt", "nameJapDeduct"].forEach((p) => {
+      const k = p + sfx;
+      if (forceAll) set[p + "RV"] = d[k] || 0;
+      else if (d[k] !== undefined) set[p + "RV"] = d[k];
+    });
+    hdSlotSet(slot, set);
+  });
+}
+function hdApplyRemoteMalaLog(d) {
+  [["rv", "RV"], ["kh", "KH"]].forEach(([slot, sfx]) => {
+    const key = "malaLog" + sfx;
+    if (!(key in d)) return;
+    if ((d.malaLogDate || null) !== App.S.tk) return;
+    const remote = d[key] || [];
+    const cur = hdSlotGet(slot).malaLogRV || [];
+    const ls = cur.reduce((a, b) => a + b, 0), rs = remote.reduce((a, b) => a + b, 0);
+    if (rs >= ls || App._initialCloudApply) hdSlotSet(slot, { malaLogRV: JSON.parse(JSON.stringify(remote)) });
+  });
+}
+function hdRestoreFrom(data) {
+  hdApplyRemote(data, true);
+  hdApplyRemoteMalaLog_force(data);
+  hdMigrateLegacy();
+}
+function hdApplyRemoteMalaLog_force(data) {
+  hdSlotSet("rv", { malaLogRV: data.malaLogRV || [] });
+  hdSlotSet("kh", { malaLogRV: data.malaLogKH || [] });
+}
+// Earlier versions stored Haridashi counts in the RV slot and flagged those
+// days in khDays. Move every flagged PAST day into the KH slot (once; no-op
+// when the KH slot already has data).
+function hdMigrateLegacy() {
+  try {
+    const S = App.S;
+    if (!S || !S.khDays || typeof S.khDays !== "object") return;
+    const tk = (App.getTk && App.getTk()) || S.tk || "";
+    const rv = hdSlotGet("rv"), kh = hdSlotGet("kh");
+    if (Object.keys(kh.historyRV).length || Object.keys(kh.timerHistoryRV).length) return;
+    const days = Object.keys(S.khDays).filter((k) => k !== "_init" && S.khDays[k] === true && k < tk && (rv.historyRV[k] || 0) > 0);
+    if (!days.length) return;
+    days.forEach((k) => {
+      kh.historyRV[k] = rv.historyRV[k]; delete rv.historyRV[k];
+      if (rv.timerHistoryRV[k] !== undefined) { kh.timerHistoryRV[k] = rv.timerHistoryRV[k]; delete rv.timerHistoryRV[k]; }
+    });
+    hdSlotSet("kh", { historyRV: kh.historyRV, timerHistoryRV: kh.timerHistoryRV });
+    hdSlotSet("rv", { historyRV: rv.historyRV, timerHistoryRV: rv.timerHistoryRV });
+    if (!kh.dtRV) hdSlotSet("kh", { dtRV: rv.dtRV || 0 });
+  } catch (_e) {}
+}
+function hdAfterLoad() {
+  const S = App.S;
+  S.rvSlot = "rv";                 // freshly loaded working fields hold RV data
+  S._slotPark = {};
+  KH_FIELDS.forEach((f) => {       // KH keys loaded from storage -> parked slot
+    const k = _khKey(f);
+    if (S[k] !== undefined) { S._slotPark[f] = S[k]; delete S[k]; }
+  });
+  const khToday = ((S._slotPark.historyRV || {})[S.tk]) || 0;
+  if (khToday <= 0) S._slotPark.malaLogRV = [];
+  hdMigrateLegacy();
+  hdSyncSlot();
+}
+// Swap working fields so they hold the data of the currently active sampraday.
+function hdSyncSlot() {
+  try {
+    const S = (typeof App !== "undefined" && App && App.S) || null;
+    if (!S) return;
+    const want = isHaridashiActive() ? "kh" : "rv";
+    if ((S.rvSlot || "rv") === want) return;
+    if (!S._slotPark) S._slotPark = {};
+    KH_FIELDS.forEach((f) => {
+      const working = S[f];
+      let parked = S._slotPark[f];
+      if (parked === undefined || parked === null) parked = _khDefault(f);
+      S[f] = parked;
+      S._slotPark[f] = working;
+    });
+    S.rvSlot = want;
+    App.lmcRV = Math.floor(((S.historyRV || {})[S.tk] || 0) / (S.ms || 108));
+  } catch (_e) { console.warn("hdSyncSlot failed", _e); }
+}
+// Leaderboard keeps its legacy shape: historyRV = RV + KH per day (khDays labels KH days).
+function _lbSumSlots(S, f) {
+  let a, b;
+  if (typeof App !== "undefined" && S === App.S) { a = hdSlotGet("rv")[f]; b = hdSlotGet("kh")[f]; }
+  else { a = S[f]; b = S[_khKey(f)]; }
+  if (typeof a === "number" || typeof b === "number") return (a || 0) + (b || 0);
+  const out = Object.assign({}, a || {});
+  Object.keys(b || {}).forEach((k) => { out[k] = (out[k] || 0) + (b[k] || 0); });
+  return out;
+}
+
 function isHaridashiActive() {
   const S = (typeof App !== "undefined" && App && App.S) || null;
   return !!(S && S.sampraday === "haridashi" && !S.gaudiyaMode && !S.trahimamMode && !S.ramanandiMode);
@@ -5054,7 +5181,7 @@ function naamText() {
   return (isHaridashiActive() ? HD_NAAM_VIEW : NAAM_TEXT)[lang];
 }
 // Cheap UI sync (no jap-mode switch, no side effects): body class, dropdown label, header title, English labels.
-function refreshHaridashiUI() {
+function refreshHaridashiUI() { try { hdSyncSlot(); } catch (_e) {}
   const hd = isHaridashiActive();
   document.body.classList.toggle("haridashi-mode", hd);
   const nt = naamText();
@@ -5799,7 +5926,7 @@ function svm() {
 }
 // Sync the "Select Your Sampraday" card UI (Rashik + Vaishnav sections) with current App.S state.
 // Safe to call anytime — no-ops if the markup isn't on the current screen.
-function renderSampradaySelector() {
+function renderSampradaySelector() { try { hdSyncSlot(); } catch (_e) {}
   try { refreshHaridashiUI(); } catch (_e) {}
   const ids = ["Harivangshi", "Haridashi", "Sri", "Gaudiya", "Nimbark", "Vallabh"];
   ids.forEach((id) => {
@@ -6106,6 +6233,7 @@ function tgs(k) {
     if (App.S.nimbarkMode) { App.S.nimbarkMode = false; document.body.classList.remove("nimbark-mode"); if (App.S.japMode === "yg") switchJapMode("radha"); }
     if (App.S.vallabhMode) { App.S.vallabhMode = false; document.body.classList.remove("vallabh-mode"); if (App.S.japMode === "vl") switchJapMode("radha"); }
     App.S.sampraday = "haridashi";
+    hdSyncSlot();
     if (!App.S.ltHD) App.S.ltHD = App.S.lt || 0;   // first time: start from your current lifetime target, independent afterwards
     if (App.S.japMode === "kv" || App.S.japMode === "kaam") switchJapMode("radha");
     window._dedTypes = new Set();
@@ -6135,6 +6263,7 @@ function tgs(k) {
     if (App.S.nimbarkMode) { App.S.nimbarkMode = false; document.body.classList.remove("nimbark-mode"); if (App.S.japMode === "yg") switchJapMode("radha"); }
     if (App.S.vallabhMode) { App.S.vallabhMode = false; document.body.classList.remove("vallabh-mode"); if (App.S.japMode === "vl") switchJapMode("radha"); }
     App.S.sampraday = which;
+    hdSyncSlot();
     window._dedTypes = new Set();
     window._dedAmounts = {};
     if (typeof renderDedTypePanels === "function") renderDedTypePanels();
@@ -8620,7 +8749,7 @@ function deductJapTimeOther() {
 }
 
 // ── Stats ──
-function uStats() {
+function uStats() { try { hdSyncSlot(); } catch (_e) {}
   _syncRamanujClass();
   const ms = App.S.ms || 108,
     tot = App.gTot(),
@@ -10415,12 +10544,7 @@ function _buildBackupPayload() {
     malaLogDate: App.S.tk,
     brahmacharya_start_date: getBrahmaStart(),
     japMode: App.S.japMode || "radha",
-    historyRV: App.S.historyRV || {},
-    timerHistoryRV: App.S.timerHistoryRV || {},
-    dtRV: App.S.dtRV || 0,
-    ltRV: App.S.ltRV || 0,
-    nameJapDeductRV: App.S.nameJapDeductRV || 0,
-    malaLogRV: App.S.malaLogRV || [],
+    ...hdPersist(false),
     historyHK: App.S.historyHK || {},
     timerHistoryHK: App.S.timerHistoryHK || {},
     dtHK: App.S.dtHK || 0,
@@ -10682,13 +10806,8 @@ function importAllData(input) {
       App.S.ltHD = data.ltHD || 0;
       App.S.nameJapDeduct = data.nameJapDeduct || 0;
       App.S.cfg = data.cfg || {};
-      App.S.historyRV = data.historyRV || {};
-      App.S.timerHistoryRV = data.timerHistoryRV || {};
+      hdRestoreFrom(data);
       App.S.japMode = data.japMode || "radha";
-      App.S.dtRV = data.dtRV || 0;
-      App.S.ltRV = data.ltRV || 0;
-      App.S.nameJapDeductRV = data.nameJapDeductRV || 0;
-      App.S.malaLogRV = data.malaLogRV || [];
       App.S.historyHK = data.historyHK || {};
       App.S.timerHistoryHK = data.timerHistoryHK || {};
       App.S.dtHK = data.dtHK || 0;
@@ -15063,12 +15182,7 @@ async function fbPushToUid(targetUid, fullReplace) {
     malaLogDate: App.S.tk,
     brahmacharya_start_date: App.S.brahmacharya_start_date || "",
     japMode: App.S.japMode || "radha",
-    historyRV: App.S.historyRV || {},
-    timerHistoryRV: App.S.timerHistoryRV || {},
-    dtRV: App.S.dtRV || 0,
-    ltRV: App.S.ltRV || 0,
-    nameJapDeductRV: App.S.nameJapDeductRV || 0,
-    malaLogRV: App.S.malaLogRV || [],
+    ...hdPersist(false),
     activityLog: App.S.activityLog || [],
     audioChantLog: (App.S.audioChantLog || []).slice(-1000),
     audioHistM: App.S.audioHistM || {},
@@ -15224,12 +15338,7 @@ async function fbPushFull() {
     malaLogDate: App.S.tk,
     brahmacharya_start_date: App.S.brahmacharya_start_date || "",
     japMode: App.S.japMode || "radha",
-    historyRV: App.S.historyRV || {},
-    timerHistoryRV: App.S.timerHistoryRV || {},
-    dtRV: App.S.dtRV || 0,
-    ltRV: App.S.ltRV || 0,
-    nameJapDeductRV: App.S.nameJapDeductRV || 0,
-    malaLogRV: App.S.malaLogRV || [],
+    ...hdPersist(false),
     brahmacharya_start_date: App.S.brahmacharya_start_date || "",
     activityLog: App.S.activityLog || [],
     audioChantLog: (App.S.audioChantLog || []).slice(-1000),
@@ -15518,6 +15627,7 @@ function fbApplyRemote(d) {
     App.S.activityLog = [];
     App.S.audioChantLog = [];
     App.S.audioLogM = { rv: [], kv: [], kaam: [] };
+    App.S._slotPark = {};
     ["malaLog", "malaLogRV", "malaLogHK", "malaLogKV", "malaLogSS", "malaLogRam", "malaLogSR", "malaLogRM", "malaLogNR", "malaLogYg", "malaLogVl", "malaLogKaam"].forEach((k) => { App.S[k] = []; });
     App.S.milestones = { reached: {}, lastChecked: 0 };
     try { localStorage.removeItem("rjap_milestones"); } catch (_) {}
@@ -15605,15 +15715,8 @@ function fbApplyRemote(d) {
       }
     }
   }
-  if ("historyRV" in d)
-    App.S.historyRV = JSON.parse(JSON.stringify(d.historyRV || {}));
-  if ("timerHistoryRV" in d)
-    App.S.timerHistoryRV = JSON.parse(JSON.stringify(d.timerHistoryRV || {}));
+  hdApplyRemote(d);
   if (d.japMode) App.S.japMode = d.japMode;
-  if (d.dtRV !== undefined) App.S.dtRV = d.dtRV;
-  if (d.ltRV !== undefined) App.S.ltRV = d.ltRV;
-  if (d.nameJapDeductRV !== undefined)
-    App.S.nameJapDeductRV = d.nameJapDeductRV;
   if (d.brahmacharya_start_date)
     App.S.brahmacharya_start_date = d.brahmacharya_start_date;
   if ("activityLog" in d) {
@@ -15646,17 +15749,8 @@ function fbApplyRemote(d) {
   if ("timerAudio28" in d) App.S.timerAudio28 = JSON.parse(JSON.stringify(d.timerAudio28 || {}));
   // Only apply malaLogRV from Firebase if it belongs to today; never clear
   // local on a date mismatch (see malaLog fix above for why).
-  if ("malaLogRV" in d) {
-    const remoteMalaLogRV = d.malaLogRV || [];
-    const remoteMalaDate = d.malaLogDate || null;
-    if (remoteMalaDate === App.S.tk) {
-      const localSum = (App.S.malaLogRV || []).reduce((a, b) => a + b, 0);
-      const remoteSum = remoteMalaLogRV.reduce((a, b) => a + b, 0);
-      if (remoteSum >= localSum || App._initialCloudApply) {
-        App.S.malaLogRV = JSON.parse(JSON.stringify(remoteMalaLogRV));
-      }
-    }
-  }
+  hdApplyRemoteMalaLog(d);
+  hdMigrateLegacy();
   // HK fields
   if ("historyHK" in d)
     App.S.historyHK = JSON.parse(JSON.stringify(d.historyHK || {}));
@@ -32165,7 +32259,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
 
   // Compute lifetime totals
   const hist   = S.history   || {};
-  const histRV = S.historyRV || {};
+  const histRV = _lbSumSlots(S, "historyRV");
   const histKV = S.historyKV || {};
   const histSS = S.historySS || {};
   const histHK = S.historyHK || {};
@@ -32302,7 +32396,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     // remaining amount, which can make Total look smaller than one of its
     // own listed parts.
     nameJapDeduct:   S.nameJapDeduct   || 0,
-    nameJapDeductRV: S.nameJapDeductRV || 0,
+    nameJapDeductRV: _lbSumSlots(S, "nameJapDeductRV"),
     nameJapDeductKV: S.nameJapDeductKV || 0,
     nameJapDeductSS: S.nameJapDeductSS || 0,
     nameJapDeductHK: S.nameJapDeductHK || 0,
@@ -32328,7 +32422,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
                   Object.values(S.timerHistoryKaam || {}).reduce((a,b)=>a+b,0) +
                   Object.values(S.timer28History || {}).reduce((a,b)=>a+b,0),
     timerHistory:   S.timerHistory || {},
-    timerHistoryRV: S.timerHistoryRV || {},
+    timerHistoryRV: _lbSumSlots(S, "timerHistoryRV"),
     timerHistoryKV: S.timerHistoryKV || {},
     timerHistorySS: S.timerHistorySS || {},
     timerHistoryHK: S.timerHistoryHK || {},

@@ -5172,6 +5172,18 @@ function _lbSumSlots(S, f) {
   return out;
 }
 
+
+// Day value of an RV-family field summed over BOTH slots (Harivangshi RV + Haridashi KH).
+function _rvAt(f, key) { return (hdSlotGet("rv")[f][key] || 0) + (hdSlotGet("kh")[f][key] || 0); }
+// True if this device holds ANY jap in ANY sampraday (decides whether it is safe to seed/push the cloud).
+function _hasAnyLocalJap() {
+  const S = App.S, has = (h) => Object.values(h || {}).some((v) => v > 0);
+  if (has(_lbSumSlots(S, "historyRV"))) return true;
+  if (["history", "historyHK", "historyKV", "historyKaam", "historySS", "historyRam", "historySR", "historyRM", "historyNR", "historyYg", "historyVl", "h28"].some((k) => has(S[k]))) return true;
+  if (_lbSumSlots(S, "dtRV") > 0) return true;
+  return ["dt", "dtHK", "dtKV", "dtKaam", "dtSS", "dtRam", "dtSR", "dtRM", "dtNR", "dtYg", "dtVl"].some((k) => (S[k] || 0) > 0);
+}
+
 function isHaridashiActive() {
   const S = (typeof App !== "undefined" && App && App.S) || null;
   return !!(S && S.sampraday === "haridashi" && !S.gaudiyaMode && !S.trahimamMode && !S.ramanandiMode);
@@ -8845,7 +8857,7 @@ function uStats() { try { hdSyncSlot(); } catch (_e) {}
   if (_hasTarget) {
     const _allHistKeys = new Set([
       ...Object.keys(App.S.history || {}),
-      ...Object.keys(App.S.historyRV || {}),
+      ...Object.keys(_lbSumSlots(App.S, "historyRV")),
       ...Object.keys(App.S.historyHK || {}),
       ...Object.keys(App.S.historyKV || {}),
       ...Object.keys(App.S.historySS || {}),
@@ -11154,7 +11166,7 @@ function _msComputeTotal() {
   };
   const am = App.S.audioHistM || {};
   const R = split(net(App.S.history, App.S.nameJapDeduct), App.S.historyAudio);
-  const RV = split(net(App.S.historyRV, App.S.nameJapDeductRV), am.rv);
+  const RV = split(net(hdSlotGet("rv").historyRV, hdSlotGet("rv").nameJapDeductRV), am.rv);
   const KV = split(net(App.S.historyKV, App.S.nameJapDeductKV), am.kv);
   const KM = split(net(App.S.historyKaam, App.S.nameJapDeductKaam), am.kaam);
   const N28 = split(_msAvailable28(), App.S.historyAudio28);
@@ -11167,8 +11179,8 @@ function _msComputeTotal() {
   const ygTot = consider.yg ? net(App.S.historyYg, App.S.nameJapDeductYg) : 0;
   const vlTot = consider.vl ? net(App.S.historyVl, App.S.nameJapDeductVl) : 0;
   const radhaTot = (consider.radha ? R.touch : 0) + (consider.ra ? R.audio : 0);
-  const _khTouch = Math.min(_msKhSum(), RV.touch);
-  const rvTot = (consider.rv ? RV.touch - _khTouch : 0) + (consider.rva ? RV.audio : 0);
+  const _khTouch = net(hdSlotGet("kh").historyRV, hdSlotGet("kh").nameJapDeductRV);
+  const rvTot = (consider.rv ? RV.touch : 0) + (consider.rva ? RV.audio : 0);
   const khTot = consider.kh ? _khTouch : 0;
   const kvTot = (consider.kv ? KV.touch : 0) + (consider.kva ? KV.audio : 0);
   const kmTot = (consider.km ? KM.touch : 0) + (consider.kma ? KM.audio : 0);
@@ -11254,13 +11266,13 @@ function _msLtSum(h) { return Object.values(h || {}).reduce((x, y) => x + (+y ||
 function _msLifetimeAll() {
   const S = App.S;
   const h28 = Object.entries(S.h28 || {}).filter(([k]) => !k.startsWith("prev_")).reduce((a, [, v]) => a + (+v || 0), 0);
-  return _msLtSum(S.history) + _msLtSum(S.historyRV) + _msLtSum(S.historyKV) + _msLtSum(S.historyKaam) +
+  return _msLtSum(S.history) + _msLtSum(_lbSumSlots(S, "historyRV")) + _msLtSum(S.historyKV) + _msLtSum(S.historyKaam) +
     _msLtSum(S.historyHK) + _msLtSum(S.historySS) + _msLtSum(S.historyRam) + _msLtSum(S.historySR) + _msLtSum(S.historyRM) + _msLtSum(S.historyNR) + _msLtSum(S.historyYg) + _msLtSum(S.historyVl) + h28;
 }
 function _msLifetimeClean() {
   const S = App.S;
   const net = (h, d) => Math.max(0, _msLtSum(h) - (d || 0));
-  return net(S.history, S.nameJapDeduct) + net(S.historyRV, S.nameJapDeductRV) + net(S.historyKV, S.nameJapDeductKV) +
+  return net(S.history, S.nameJapDeduct) + net(_lbSumSlots(S, "historyRV"), _lbSumSlots(S, "nameJapDeductRV")) + net(S.historyKV, S.nameJapDeductKV) +
     net(S.historyKaam, S.nameJapDeductKaam) + net(S.historyHK, S.nameJapDeductHK) + net(S.historySS, S.nameJapDeductSS) +
     net(S.historyRam, S.nameJapDeductRam) + net(S.historySR, S.nameJapDeductSR) + net(S.historyRM, S.nameJapDeductRM) + net(S.historyNR, S.nameJapDeductNR) + net(S.historyYg, S.nameJapDeductYg) + net(S.historyVl, S.nameJapDeductVl) + _msAvailable28();
 }
@@ -14882,13 +14894,7 @@ async function forceManualSyncNow() {
     // pattern the "reset" flow already uses elsewhere in this file.
     // …but not when this device has no jap data at all and the cloud copy never loaded: that
     // would push empty zeros over real cloud data. Then skip the push and pull first.
-    const _hasLocalJap =
-      Object.values(App.S.history || {}).some((v) => v > 0) ||
-      Object.values(App.S.historyRV || {}).some((v) => v > 0) ||
-      Object.values(App.S.historyHK || {}).some((v) => v > 0) ||
-      Object.values(App.S.historyKV || {}).some((v) => v > 0) ||
-      Object.values(App.S.historySS || {}).some((v) => v > 0) ||
-      (App.S.dt || 0) > 0 || (App.S.dtRV || 0) > 0 || (App.S.dtHK || 0) > 0 || (App.S.dtKV || 0) > 0 || (App.S.dtSS || 0) > 0;
+    const _hasLocalJap = _hasAnyLocalJap();
     if (App._cloudHydrated || _hasLocalJap) {
       const _prevAllowInitialPush = App._allowInitialPush;
       App._allowInitialPush = true;
@@ -16416,13 +16422,7 @@ async function _fbMigrateInner() {
       // SAFETY: only seed Firebase if local state actually has meaningful data.
       // After a browser "Delete & reset", local is zeros AND cloud may incorrectly
       // appear empty due to cache wipe — never overwrite cloud with zeros.
-      const hasLocalData =
-        Object.values(App.S.history || {}).some(v => v > 0) ||
-        Object.values(App.S.historyRV || {}).some(v => v > 0) ||
-        Object.values(App.S.historyHK || {}).some(v => v > 0) ||
-        Object.values(App.S.historyKV || {}).some(v => v > 0) ||
-        Object.values(App.S.historySS || {}).some(v => v > 0) ||
-        (App.S.dt || 0) > 0 || (App.S.dtRV || 0) > 0 || (App.S.dtHK || 0) > 0 || (App.S.dtKV || 0) > 0 || (App.S.dtSS || 0) > 0;
+      const hasLocalData = _hasAnyLocalJap();
       if (hasLocalData) {
         // Genuine first-time user with local data — seed Firebase
         App._allowInitialPush = true;
@@ -24095,10 +24095,10 @@ function renderCal() {
     const _isG = App.S.gaudiyaMode || false;
     const cnt = _isG
         ? (App.S.historyHK[key] || 0) + (App.S.h28[key] || 0)
-        : (App.S.history[key] || 0) + (App.S.historyRV[key] || 0) + ((App.S.historyKV || {})[key] || 0) + ((App.S.historySS || {})[key] || 0) + ((App.S.historyRam || {})[key] || 0) + ((App.S.historySR || {})[key] || 0) + ((App.S.historyRM || {})[key] || 0) + ((App.S.historyNR || {})[key] || 0) + ((App.S.historyYg || {})[key] || 0) + ((App.S.historyVl || {})[key] || 0) + (App.S.h28[key] || 0),
+        : (App.S.history[key] || 0) + _rvAt("historyRV", key) + ((App.S.historyKV || {})[key] || 0) + ((App.S.historySS || {})[key] || 0) + ((App.S.historyRam || {})[key] || 0) + ((App.S.historySR || {})[key] || 0) + ((App.S.historyRM || {})[key] || 0) + ((App.S.historyNR || {})[key] || 0) + ((App.S.historyYg || {})[key] || 0) + ((App.S.historyVl || {})[key] || 0) + (App.S.h28[key] || 0),
       timeSec = _isG
         ? App.S.timerHistoryHK[key] || 0
-        : (App.S.timerHistory[key] || 0) + (App.S.timerHistoryRV[key] || 0) + ((App.S.timerHistoryKV || {})[key] || 0) + ((App.S.timerHistorySS || {})[key] || 0) + ((App.S.timerHistoryRam || {})[key] || 0) + ((App.S.timerHistorySR || {})[key] || 0) + ((App.S.timerHistoryRM || {})[key] || 0) + ((App.S.timerHistoryNR || {})[key] || 0) + ((App.S.timerHistoryYg || {})[key] || 0) + ((App.S.timerHistoryVl || {})[key] || 0),
+        : (App.S.timerHistory[key] || 0) + _rvAt("timerHistoryRV", key) + ((App.S.timerHistoryKV || {})[key] || 0) + ((App.S.timerHistorySS || {})[key] || 0) + ((App.S.timerHistoryRam || {})[key] || 0) + ((App.S.timerHistorySR || {})[key] || 0) + ((App.S.timerHistoryRM || {})[key] || 0) + ((App.S.timerHistoryNR || {})[key] || 0) + ((App.S.timerHistoryYg || {})[key] || 0) + ((App.S.timerHistoryVl || {})[key] || 0),
       time28Sec = App.S.timer28History[key] || 0;
     const occ = (App.S.occasions && App.S.occasions[key]) || rkkOccName(key);
     const c = document.createElement("div");
@@ -24589,9 +24589,9 @@ function sheetMarkBc(action) {
   const _isG2 = App.S.gaudiyaMode || false;
   const cnt2 = _isG2
     ? App.S.historyHK[key] || 0
-    : (App.S.history[key] || 0) + (App.S.historyRV[key] || 0) + ((App.S.historyKV || {})[key] || 0) + ((App.S.historySS || {})[key] || 0);
+    : (App.S.history[key] || 0) + _rvAt("historyRV", key) + ((App.S.historyKV || {})[key] || 0) + ((App.S.historySS || {})[key] || 0) + ((App.S.historyRam || {})[key] || 0) + ((App.S.historySR || {})[key] || 0) + ((App.S.historyRM || {})[key] || 0) + ((App.S.historyNR || {})[key] || 0) + ((App.S.historyYg || {})[key] || 0) + ((App.S.historyVl || {})[key] || 0) + (App.S.h28[key] || 0);
   const timeSec2 =
-    (App.S.timerHistory[key] || 0) + (App.S.timerHistoryRV[key] || 0) + ((App.S.timerHistoryKV || {})[key] || 0) + ((App.S.timerHistorySS || {})[key] || 0);
+    (App.S.timerHistory[key] || 0) + _rvAt("timerHistoryRV", key) + ((App.S.timerHistoryKV || {})[key] || 0) + ((App.S.timerHistorySS || {})[key] || 0) + ((App.S.timerHistoryRam || {})[key] || 0) + ((App.S.timerHistorySR || {})[key] || 0) + ((App.S.timerHistoryRM || {})[key] || 0) + ((App.S.timerHistoryNR || {})[key] || 0) + ((App.S.timerHistoryYg || {})[key] || 0) + ((App.S.timerHistoryVl || {})[key] || 0);
   const time28Sec2 = App.S.timer28History[key] || 0;
   showDay(key, cnt2, timeSec2, time28Sec2);
 }
@@ -32341,7 +32341,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
   };
   const todayTimeBreakdown = {
     r: (S.timerHistory || {})[liveTk] || 0,
-    rv: (S.timerHistoryRV || {})[liveTk] || 0,
+    rv: (_lbSumSlots(S, "timerHistoryRV"))[liveTk] || 0,
     kv: (S.timerHistoryKV || {})[liveTk] || 0,
     ss: (S.timerHistorySS || {})[liveTk] || 0,
     hk: (S.timerHistoryHK || {})[liveTk] || 0,
@@ -32410,7 +32410,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     nameJapDeduct28: S.nameJapDeduct28 || 0,
     // Push total timer seconds for leaderboard display
     timerSeconds: Object.values(S.timerHistory || {}).reduce((a,b)=>a+b,0) +
-                  Object.values(S.timerHistoryRV || {}).reduce((a,b)=>a+b,0) +
+                  Object.values(_lbSumSlots(S, "timerHistoryRV")).reduce((a,b)=>a+b,0) +
                   Object.values(S.timerHistoryKV || {}).reduce((a,b)=>a+b,0) +
                   Object.values(S.timerHistorySS || {}).reduce((a,b)=>a+b,0) +
                   Object.values(S.timerHistoryHK || {}).reduce((a,b)=>a+b,0) +

@@ -862,7 +862,7 @@ const App = {
     // Which jap types count toward the Milestones (Bhagvat Prapti) total.
     // Defaults to all types so existing users see no change until they
     // customize it themselves in the Milestones tab.
-     msConsider: { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true },
+     msConsider: { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true },
     historyHK: {},
     timerHistoryHK: {},
     dtHK: 0,
@@ -1271,7 +1271,7 @@ const App = {
       vallabhMode: this.S.vallabhMode || false,
       dt28Cycles: this.S.dt28Cycles || 0,
       milestones: this.S.milestones || { reached: {}, lastChecked: 0 },
-      msConsider: this.S.msConsider || { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true },
+      msConsider: this.S.msConsider || { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true },
       resetEpoch: this.S.resetEpoch || 0,
       _seenResetEpoch: this.S._seenResetEpoch || 0,
       hkLang: this.S.hkLang || "hi",
@@ -8866,6 +8866,8 @@ function uStats() { try { hdSyncSlot(); } catch (_e) {}
       ...Object.keys(App.S.historySR || {}),
       ...Object.keys(App.S.historyRM || {}),
       ...Object.keys(App.S.historyNR || {}),
+      ...Object.keys(App.S.historyYg || {}),
+      ...Object.keys(App.S.historyVl || {}),
     ]);
     const tgtDays = Array.from(_allHistKeys)
       .filter((k) => !k.startsWith("prev_") && _dayHitsTarget(k))
@@ -10894,7 +10896,7 @@ function importAllData(input) {
       App.S.malaLogVl = data.malaLogVl || [];
       App.S.dedications = Array.isArray(data.dedications) ? data.dedications : [];
       App.S.milestones = data.milestones || { reached: {}, lastChecked: 0 };
-       App.S.msConsider = data.msConsider || { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true };
+       App.S.msConsider = data.msConsider || { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true };
       App.S.dt28Cycles = data.dt28Cycles || 0;
       App.S.lbDisplayName = data.lbDisplayName || App.S.lbDisplayName || "";
       App.S.lbOptIn = !!data.lbOptIn;
@@ -15266,7 +15268,7 @@ async function fbPushToUid(targetUid, fullReplace) {
     vallabhMode: App.S.vallabhMode || false,
     dt28Cycles: App.S.dt28Cycles || 0,
     milestones: App.S.milestones || { reached: {}, lastChecked: 0 },
-    msConsider: App.S.msConsider || { radha: true, rv: true, hk: true, kv: true, kaam: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true },
+    msConsider: App.S.msConsider || { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true },
     // Jap display name & Family Leaderboard opt-in — developer-editable via
     // Settings while Admin Mode-viewing (saveLbName()/toggleLbOptIn()
     // route here through ghostAwareSave() instead of the developer's own
@@ -24073,6 +24075,28 @@ function uBStats() {
   document.getElementById("bmp").textContent = pct + "%";
 }
 
+// Per-day totals shared by the calendar grid and the day-sheet refresh:
+// every sampraday (incl. Kaam) and BOTH Harivangshi + Haridashi slots; Gaudiya mode = HK + 28 Names.
+function _calDayTotals(key) {
+  const S = App.S, g = (h) => (h || {})[key] || 0;
+  if (S.gaudiyaMode) return { cnt: g(S.historyHK) + g(S.h28), timeSec: g(S.timerHistoryHK), time28Sec: g(S.timer28History) };
+  const H = ["history", "historyKV", "historyKaam", "historySS", "historyRam", "historySR", "historyRM", "historyNR", "historyYg", "historyVl"];
+  const cnt = H.reduce((a, h) => a + g(S[h]), 0) + _rvAt("historyRV", key) + g(S.h28);
+  const timeSec = H.reduce((a, h) => a + g(S[h.replace(/^history/, "timerHistory")]), 0) + _rvAt("timerHistoryRV", key);
+  return { cnt, timeSec, time28Sec: g(S.timer28History) };
+}
+// Target check for one day, specific to the sampraday the user is in: { count, target }.
+function _calDayTarget(key) {
+  const S = App.S, g = (h) => (h || {})[key] || 0, t = (v) => v || 0;
+  if (S.gaudiyaMode) return { count: g(S.historyHK), target: t(S.dtHK) };
+  if (S.trahimamMode) return { count: g(S.historySS), target: t(S.dtSS) };
+  if (S.ramanandiMode) return { count: g(S.historyRam) + g(S.historySR) + g(S.historyRM) + g(S.historyNR), target: t(S.dtRam) + t(S.dtSR) + t(S.dtRM) + t(S.dtNR) };
+  if (S.nimbarkMode) return { count: g(S.historyYg), target: t(S.dtYg) };
+  if (S.vallabhMode) return { count: g(S.historyVl), target: t(S.dtVl) };
+  return { count: g(S.history) + _rvAt("historyRV", key) + g(S.historyKV) + g(S.historyKaam),
+           target: t(S.dt) + t(_lbSumSlots(S, "dtRV")) + t(S.dtKV) + t(S.dtKaam) };
+}
+
 // ── Calendar ──
 let cald = new Date();
 function renderCal() {
@@ -24092,14 +24116,7 @@ function renderCal() {
       String(mo + 1).padStart(2, "0") +
       "-" +
       String(d).padStart(2, "0");
-    const _isG = App.S.gaudiyaMode || false;
-    const cnt = _isG
-        ? (App.S.historyHK[key] || 0) + (App.S.h28[key] || 0)
-        : (App.S.history[key] || 0) + _rvAt("historyRV", key) + ((App.S.historyKV || {})[key] || 0) + ((App.S.historySS || {})[key] || 0) + ((App.S.historyRam || {})[key] || 0) + ((App.S.historySR || {})[key] || 0) + ((App.S.historyRM || {})[key] || 0) + ((App.S.historyNR || {})[key] || 0) + ((App.S.historyYg || {})[key] || 0) + ((App.S.historyVl || {})[key] || 0) + (App.S.h28[key] || 0),
-      timeSec = _isG
-        ? App.S.timerHistoryHK[key] || 0
-        : (App.S.timerHistory[key] || 0) + _rvAt("timerHistoryRV", key) + ((App.S.timerHistoryKV || {})[key] || 0) + ((App.S.timerHistorySS || {})[key] || 0) + ((App.S.timerHistoryRam || {})[key] || 0) + ((App.S.timerHistorySR || {})[key] || 0) + ((App.S.timerHistoryRM || {})[key] || 0) + ((App.S.timerHistoryNR || {})[key] || 0) + ((App.S.timerHistoryYg || {})[key] || 0) + ((App.S.timerHistoryVl || {})[key] || 0),
-      time28Sec = App.S.timer28History[key] || 0;
+    const { cnt, timeSec, time28Sec } = _calDayTotals(key);
     const occ = (App.S.occasions && App.S.occasions[key]) || rkkOccName(key);
     const c = document.createElement("div");
     c.className = "cc";
@@ -24111,10 +24128,10 @@ function renderCal() {
     if (isBcActive) {
       c.classList.add(isBcBroken ? "bc-b" : "bc-m");
     }
-    const combinedDt = (App.S.dt || 0) + (App.S.dtRV || 0) + (App.S.dtKV || 0) + (App.S.dtSS || 0);
+    const _tg = _calDayTarget(key);
     if (cnt > 0) {
       c.classList.add("hd");
-      if (combinedDt > 0 && cnt >= combinedDt) c.classList.add("tm");
+      if (_tg.target > 0 && _tg.count >= _tg.target) c.classList.add("tm");
     }
     if (occ) c.classList.add("occ");
     let inner = "<span>" + d + "</span>";
@@ -24295,7 +24312,8 @@ function showDay(key, cnt, timeSec, time28Sec) {
 
   // Stats — detailed breakdown
   const radhaCount = App.S.history[key] || 0;
-  const rvCount = App.S.historyRV[key] || 0;
+  const rvCount = (hdSlotGet("rv").historyRV || {})[key] || 0;
+  const khCount = (hdSlotGet("kh").historyRV || {})[key] || 0;
   const kvCount = (App.S.historyKV || {})[key] || 0;
   const ssCount = (App.S.historySS || {})[key] || 0;
   const ramCount = (App.S.historyRam || {})[key] || 0;
@@ -24304,8 +24322,10 @@ function showDay(key, cnt, timeSec, time28Sec) {
   const nrCount = (App.S.historyNR || {})[key] || 0;
   const ygCount = (App.S.historyYg || {})[key] || 0;
   const vlCount = (App.S.historyVl || {})[key] || 0;
+  const kaamCount = (App.S.historyKaam || {})[key] || 0;
   const radhaTime = App.S.timerHistory[key] || 0;
-  const rvTime = App.S.timerHistoryRV[key] || 0;
+  const rvTime = (hdSlotGet("rv").timerHistoryRV || {})[key] || 0;
+  const khTime = (hdSlotGet("kh").timerHistoryRV || {})[key] || 0;
   const kvTime = (App.S.timerHistoryKV || {})[key] || 0;
   const ssTime = (App.S.timerHistorySS || {})[key] || 0;
   const ramTime = (App.S.timerHistoryRam || {})[key] || 0;
@@ -24314,6 +24334,7 @@ function showDay(key, cnt, timeSec, time28Sec) {
   const nrTime = (App.S.timerHistoryNR || {})[key] || 0;
   const ygTime = (App.S.timerHistoryYg || {})[key] || 0;
   const vlTime = (App.S.timerHistoryVl || {})[key] || 0;
+  const kaamTime = (App.S.timerHistoryKaam || {})[key] || 0;
   const n28Count = App.S.h28[key] || 0;
   const n28TimeSec = App.S.timer28History[key] || 0;
   const n28Cycles = Math.floor(n28Count / 28);
@@ -24327,8 +24348,11 @@ function showDay(key, cnt, timeSec, time28Sec) {
   const nrMalas = Math.floor(nrCount / ms);
   const ygMalas = Math.floor(ygCount / ms);
   const vlMalas = Math.floor(vlCount / ms);
-  const totalCount = radhaCount + rvCount + kvCount + ssCount + n28Count;
-  const totalMalas = Math.floor((radhaCount + rvCount + kvCount + ssCount) / ms);
+  const kaamMalas = Math.floor(kaamCount / ms);
+  const khMalas = Math.floor(khCount / ms);
+  const _allJap = radhaCount + rvCount + khCount + kvCount + kaamCount + ssCount + ramCount + srCount + rmCount + nrCount + ygCount + vlCount;
+  const totalCount = _allJap + n28Count;
+  const totalMalas = Math.floor(_allJap / ms);
   // HK / Mahamantra counts for Gaudiya mode
   const hkCount = App.S.historyHK[key] || 0;
   const hkTime = App.S.timerHistoryHK[key] || 0;
@@ -24396,6 +24420,18 @@ function showDay(key, cnt, timeSec, time28Sec) {
   const vlTimeEl = document.getElementById("cdmoVlTime");
   if (ygTimeEl) ygTimeEl.textContent = ygTime > 0 ? App.fmtTime(ygTime) : "—";
   if (vlTimeEl) vlTimeEl.textContent = vlTime > 0 ? App.fmtTime(vlTime) : "—";
+  const khJapEl = document.getElementById("cdmoKhJap");
+  if (khJapEl)
+    khJapEl.textContent =
+      khCount > 0 ? khCount + " jap · " + khMalas + " malas" : "—";
+  const khTimeEl = document.getElementById("cdmoKhTime");
+  if (khTimeEl) khTimeEl.textContent = khTime > 0 ? App.fmtTime(khTime) : "—";
+  const kaamJapEl = document.getElementById("cdmoKaamJap");
+  if (kaamJapEl)
+    kaamJapEl.textContent =
+      kaamCount > 0 ? kaamCount + " jap · " + kaamMalas + " malas" : "—";
+  const kaamTimeEl = document.getElementById("cdmoKaamTime");
+  if (kaamTimeEl) kaamTimeEl.textContent = kaamTime > 0 ? App.fmtTime(kaamTime) : "—";
   document.getElementById("cdmo28Names").textContent =
     n28Count > 0 ? n28Count + " jap · " + n28Cycles + " cycles" : "—";
   const el28 = document.getElementById("cdmoTime28");
@@ -24408,11 +24444,11 @@ function showDay(key, cnt, timeSec, time28Sec) {
   }
   document.getElementById("cdmoTotalCount").textContent =
     totalCount > 0 ? totalCount + " jap (" + totalMalas + " malas)" : "—";
-  const totalTimeSec = radhaTime + rvTime + kvTime + ssTime + n28TimeSec;
+  const totalTimeSec = radhaTime + rvTime + khTime + kvTime + kaamTime + ssTime + ramTime + srTime + rmTime + nrTime + ygTime + vlTime + n28TimeSec;
   document.getElementById("cdmoTotalTime").textContent =
     totalTimeSec > 0 ? App.fmtTime(totalTimeSec) : "—";
-  const combinedDt = (App.S.dt || 0) + (App.S.dtRV || 0) + (App.S.dtKV || 0) + (App.S.dtSS || 0);
-  const pct = combinedDt > 0 ? Math.round((cnt / combinedDt) * 100) + "%" : "—";
+  const _tg = _calDayTarget(key);
+  const pct = _tg.target > 0 ? Math.round((_tg.count / _tg.target) * 100) + "%" : "—";
   document.getElementById("cdmoPct").textContent = pct;
 
   // Occasion
@@ -24586,14 +24622,8 @@ function sheetMarkBc(action) {
   fbDebouncedPush();
   renderCal();
   // Refresh the sheet to show updated status
-  const _isG2 = App.S.gaudiyaMode || false;
-  const cnt2 = _isG2
-    ? App.S.historyHK[key] || 0
-    : (App.S.history[key] || 0) + _rvAt("historyRV", key) + ((App.S.historyKV || {})[key] || 0) + ((App.S.historySS || {})[key] || 0) + ((App.S.historyRam || {})[key] || 0) + ((App.S.historySR || {})[key] || 0) + ((App.S.historyRM || {})[key] || 0) + ((App.S.historyNR || {})[key] || 0) + ((App.S.historyYg || {})[key] || 0) + ((App.S.historyVl || {})[key] || 0) + (App.S.h28[key] || 0);
-  const timeSec2 =
-    (App.S.timerHistory[key] || 0) + _rvAt("timerHistoryRV", key) + ((App.S.timerHistoryKV || {})[key] || 0) + ((App.S.timerHistorySS || {})[key] || 0) + ((App.S.timerHistoryRam || {})[key] || 0) + ((App.S.timerHistorySR || {})[key] || 0) + ((App.S.timerHistoryRM || {})[key] || 0) + ((App.S.timerHistoryNR || {})[key] || 0) + ((App.S.timerHistoryYg || {})[key] || 0) + ((App.S.timerHistoryVl || {})[key] || 0);
-  const time28Sec2 = App.S.timer28History[key] || 0;
-  showDay(key, cnt2, timeSec2, time28Sec2);
+  const _t2 = _calDayTotals(key);
+  showDay(key, _t2.cnt, _t2.timeSec, _t2.time28Sec);
 }
 
 // ── Render dynamic time input rows in brahmacharya broken section ──
@@ -32305,6 +32335,11 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     let d = new Date(today);
     // Streak day = Radha target OR Radha Vallabh (RV) target fulfilled
     const _lbDayHit = function(key) {
+      const _ge = function(h, t) { return (t || 0) > 0 && ((h || {})[key] || 0) >= t; };
+      if (S.gaudiyaMode) return _ge(histHK, S.dtHK);
+      if (S.ramanandiMode) return _ge(histRam, S.dtRam) || _ge(histSR, S.dtSR) || _ge(histRM, S.dtRM) || _ge(histNR, S.dtNR);
+      if (S.nimbarkMode) return _ge(histYg, S.dtYg);
+      if (S.vallabhMode) return _ge(histVl, S.dtVl);
       const rT = S.dt || 0, rvT = S.dtRV || 0;
       return (rT > 0 && (hist[key]||0) >= rT) || (rvT > 0 && (histRV[key]||0) >= rvT);
     };

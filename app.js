@@ -31717,6 +31717,14 @@ function renderLeaderboard(docs, period) {
       d.historyKVA = _lbMaxMap(d0.historyKVA, (S.audioHistM || {}).kv);
       d.historyKaamA = _lbMaxMap(d0.historyKaamA, (S.audioHistM || {}).kaam);
       d.historyRA28 = _lbMaxMap(d0.historyRA28, S.historyAudio28);
+      // RV and KH are separate sampradays. This device knows both exactly, so your own row never
+      // depends on how an older build (another device / old app) wrote them to the cloud entry.
+      d.khSlots = 2;
+      d.historyRV = _lbSumSlots(S, "historyRV");
+      d.timerHistoryRV = _lbSumSlots(S, "timerHistoryRV");
+      d.nameJapDeductRV = _lbSumSlots(S, "nameJapDeductRV");
+      d.historyKH = hdSlotGet("kh").historyRV;
+      d.timerHistoryKH = hdSlotGet("kh").timerHistoryRV;
       const tk = App.getTk();
       if (d0.todayKey === tk) {
         const bd = Object.assign({}, d0.todayBreakdown || {});
@@ -31725,7 +31733,11 @@ function renderLeaderboard(docs, period) {
         bd.kva = Math.max(bd.kva || 0, d.historyKVA[tk] || 0);
         bd.kaama = Math.max(bd.kaama || 0, d.historyKaamA[tk] || 0);
         bd.n28a = Math.max(bd.n28a || 0, d.historyRA28[tk] || 0);
+        bd.rv = d.historyRV[tk] || 0;
         d.todayBreakdown = bd;
+        const tbd2 = Object.assign({}, d0.todayTimeBreakdown || {});
+        tbd2.rv = d.timerHistoryRV[tk] || 0;
+        d.todayTimeBreakdown = tbd2;
       }
       return d;
     } catch (_e) { return d0; }

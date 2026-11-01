@@ -1,3 +1,4 @@
+// v432: Leaderboard: your own row uses this device's exact RV and KH counts (no more KH/RV label flipping when an older build wrote the cloud entry).
 // v431: Harivangshi and Haridashi treated as separate sampradays for the calendar target colour and the leaderboard streak (each uses only its own count and target).
 // v430: Leaderboard shows R, RV and KH separately (exact split, short 'KH' label); Jap screen counters redraw immediately when switching Harivangshi/Haridashi.
 // v429: Sampraday fixes — calendar and day popup now count every sampraday (incl. Kaam) and show Radha / RV / KH as separate rows; sampraday-specific target colour, best streak and leaderboard streak; calendar refresh matches the grid.
@@ -466,7 +467,7 @@
 // v420 (Play build + dev email): bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
 // v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
 // v422: bumped cache to force-invalidate stale app.js / style.css / index.html — Haridashi Sampraday (Radha + Kunj Vihari / Sri Haridas, own Deity/Guru/Acharya photos, own lifetime target); Nimbark Deity/Guru/Acharya jap-display photos + Yugal mantra animation now matches Hare Krishna; reopened wishes no longer stay paused.
-const CACHE = 'radha-jap-v431';
+const CACHE = 'radha-jap-v432';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

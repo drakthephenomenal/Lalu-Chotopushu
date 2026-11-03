@@ -4676,3 +4676,6 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
   margin-left:5px;vertical-align:-2px;flex-shrink:0;cursor:pointer;
   box-shadow:0 0 6px rgba(24,119,242,0.55);
 }
+
+/* Admin Mode: photo the person chose to hide from the board */
+.lb-av.lb-av-hidden{opacity:.6;border-style:dashed;}

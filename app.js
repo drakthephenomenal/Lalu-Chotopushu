@@ -31654,7 +31654,13 @@ async function loadLeaderboard(period) {
           docs.push(d);
         });
         window._lbLastDocs = docs;
+        window._lbAdminView = !!_lbUseGhost;
         renderLeaderboard(docs, window._lbPeriod);
+        if (_lbUseGhost) {
+          _loadAdminPhotoMap().then(function(changed) {
+            if (changed && window._lbLastDocs) renderLeaderboard(window._lbLastDocs, window._lbPeriod);
+          });
+        }
       }, function(err) {
         console.warn('Leaderboard snapshot error:', err.message);
         if (list) list.innerHTML = '<div class="lb-empty"><div style="font-size:40px;margin-bottom:12px">⚠️</div><div style="font-size:13px;color:var(--rl)">Could not load leaderboard</div></div>';
@@ -36755,9 +36761,33 @@ function _lbVerifiedBadge(d) {
 }
 function _lbAvatarHtml(d) {
   // No photo -> no avatar at all (row looks like before: position number + name)
-  const ph = _lbSafePhoto(d && d.photo);
+  let ph = _lbSafePhoto(d && d.photo);
+  let adminOnly = false;
+  // Admin Mode: also show photos people chose to hide from the board
+  if (!ph && window._lbAdminView && d && d._uid && window._adminPhotoMap) {
+    ph = window._adminPhotoMap[d._uid] || '';
+    adminOnly = !!ph;
+  }
   if (!ph) return '';
-  return '<div class="lb-av"><img src="' + ph + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></div>';
+  return '<div class="lb-av' + (adminOnly ? ' lb-av-hidden' : '') + '"' + (adminOnly ? ' title="Hidden from other devotees — visible to admin only"' : '') + '><img src="' + ph + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></div>';
+}
+window._adminPhotoMap = window._adminPhotoMap || {};
+async function _loadAdminPhotoMap() {
+  if (!fbDb || typeof isDeveloper !== 'function' || !isDeveloper()) return false;
+  const now = Date.now();
+  if (window._adminPhotoMapAt && now - window._adminPhotoMapAt < 60000) return false;   // at most 1 read-burst per minute
+  window._adminPhotoMapAt = now;
+  try {
+    const snap = await fbDb.collection('profiles').limit(500).get();
+    const m = {};
+    snap.forEach(doc => {
+      const p = doc.data() || {};
+      const ph = _lbSafePhoto(p.photoSmall || p.photo || '');
+      if (ph) m[doc.id] = ph;
+    });
+    window._adminPhotoMap = m;
+    return true;
+  } catch (e) { console.warn('admin photo map failed:', e && e.message); return false; }
 }
 
 function _computePublicProfile(p, forOther) {
@@ -36905,6 +36935,7 @@ window.openProfileEditor = async function () {
           '<label style="padding:8px 14px;border-radius:10px;border:1px solid rgba(255,215,0,0.45);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer;">📷 Choose Photo<input type="file" accept="image/*" onchange="pfPickPhoto(this)" style="display:none"></label>' +
           (fbUser.photoURL ? '<button onclick="pfUseGooglePhoto()" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(74,144,226,0.45);background:transparent;color:var(--a2);font-size:12px;font-weight:700;cursor:pointer;">Use Google Photo</button>' : '') +
         '</div>' +
+        '<label style="display:flex;align-items:center;gap:8px;color:var(--tl);font-size:13px;margin-top:2px;"><input id="pfShow" type="checkbox" style="width:18px;height:18px;"> Show my photo on the Family Board</label>' +
         '<div style="font-size:10.5px;color:var(--td);text-align:center;">Your photo is automatically cropped to a square and shown as a circle.</div>' +
       '</div>' +
       '<div style="' + lb + '">Name</div><input id="pfName" maxlength="60" autocomplete="name" style="' + fi + '">' +
@@ -36912,7 +36943,6 @@ window.openProfileEditor = async function () {
       '<div style="' + lb + '">Mobile Number</div><input id="pfMobile" type="tel" maxlength="20" autocomplete="tel" placeholder="+91 …" style="' + fi + '">' +
       '<div style="' + lb + '">Email Address</div><input id="pfEmail" type="email" maxlength="100" autocomplete="email" ' + (lockEmail ? 'readonly' : '') + ' style="' + fi + (lockEmail ? 'opacity:0.7;' : '') + '">' +
       '<div style="' + lb + '">Date of Birth</div><input id="pfDob" type="date" style="' + fi + '">' +
-      '<label style="display:flex;align-items:center;gap:10px;margin-top:16px;color:var(--tl);font-size:13px;"><input id="pfShow" type="checkbox" style="width:18px;height:18px;"> Show my photo on the Family Board</label>' +
       '<div style="font-size:11px;color:var(--td);line-height:1.5;margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(74,144,226,0.07);border:1px solid rgba(74,144,226,0.2);">🔒 Your address, mobile number, email and date of birth are <b>never</b> shown to other devotees. They are visible only to you and the app admin. Only your photo (if shown) and the ✔ badge appear on the Family Board.</div>' +
       '<div style="font-size:11px;color:var(--td);margin-top:10px;">Fill all six details (photo, name, address, mobile, email, date of birth) to get the blue ✔ badge.</div>' +
       '<div id="pfStatus" style="min-height:18px;font-size:12px;margin-top:10px;"></div>' +

@@ -32063,7 +32063,7 @@ function renderLeaderboard(docs, period) {
     const medal = rank <= 3 ? medals[rank-1] : null;
     const badgeClass = rank === 1 ? 'lb-badge-1' : rank === 2 ? 'lb-badge-2' : rank === 3 ? 'lb-badge-3' : 'lb-badge-n';
     const badgeContent = medal ? medal : rank;
-    const rowClass = 'lb-row' + (isMe ? ' lb-row-me' : '') + (isTop3 ? ' lb-row-top3' : '') + (isOptedOut ? ' lb-row-ghost' : '');
+    const rowClass = 'lb-row' + (isMe ? ' lb-row-me' : '') + (isTop3 ? ' lb-row-top3' : '') + (isOptedOut ? ' lb-row-ghost' : '') + (d.verified ? ' lb-row-verified' : '');
     const nameClass = 'lb-name' + (isMe ? ' lb-name-me' : '');
     const meMark = isMe ? ' ✦ You' : '';
     
@@ -32073,7 +32073,8 @@ function renderLeaderboard(docs, period) {
     else if (d.updatedAt) isOnline = (nowMs - d.updatedAt.toDate().getTime()) < 5 * 60 * 1000;
     const onlineDot = isOnline ? '<span style="display:inline-block;width:8px;height:8px;background:#4ade80;border-radius:50%;margin-left:6px;box-shadow:0 0 6px rgba(74,222,128,0.6)" title="Online"></span>' : '';
     
-    const name = (d.displayName || 'Anonymous Devotee').replace(/</g,'&lt;').replace(/>/g,'&gt;') + _lbVerifiedBadge(d) + onlineDot;
+    const name = (d.displayName || 'Anonymous Devotee').replace(/</g,'&lt;').replace(/>/g,'&gt;') + onlineDot;
+    const vBig = d.verified ? '<span class="lb-vbig" role="img" aria-label="Verified" title="Verified — profile complete" onclick="event.stopPropagation();toast(\'✔ Verified — profile complete\')"></span>' : '';
     const ms = App.S.ms || 108;
     
     let b = d._breakdown || { r:0, rv:0, kv:0, ss:0, hk:0, ram:0, sr:0, rm:0, nr:0, yg:0,
@@ -32233,6 +32234,7 @@ function renderLeaderboard(docs, period) {
         <div class="${nameClass}">${name}${meMark}</div>
         <div class="lb-meta">${meta}</div>
       </div>
+      ${vBig}
       <div class="lb-count">
         <div class="lb-count-num">${_lbFmtJap(d.score)}</div>
         <div class="lb-count-lbl">jap</div>

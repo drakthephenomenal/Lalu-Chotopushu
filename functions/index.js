@@ -672,7 +672,7 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
           userRecord.displayName ||
           (userRecord.email || "").split("@")[0] ||
           "Anonymous Devotee"
-        ).slice(0, 30);
+        ).slice(0, 60);
       } catch (_e) {
         displayName = "Anonymous Devotee";
       }
@@ -821,6 +821,30 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       timer28History: timer28Hist,
     };
 
-    await admin.firestore().collection("leaderboard").doc(uid).set(payload);
+    // This function does not own the profile-derived fields (photo + ✔ badge).
+    // A plain set() used to wipe them every time user data synced, so they are
+    // re-derived from the private /profiles doc (source of truth) on every
+    // write, and merge:true keeps any other client-written fields intact.
+    const lbRef = admin.firestore().collection("leaderboard").doc(uid);
+    let lbPhoto = "";
+    let lbVerified = false;
+    try {
+      const [prevSnap, profSnap] = await Promise.all([
+        lbRef.get(),
+        admin.firestore().collection("profiles").doc(uid).get(),
+      ]);
+      const prev = prevSnap.exists ? (prevSnap.data() || {}) : {};
+      if (profSnap.exists) {
+        const p = profSnap.data() || {};
+        lbPhoto = p.showPhoto === false ? "" : (p.photoSmall || p.photo || prev.photo || "");
+        lbVerified = !!(p.complete && !p.revoked);
+      } else {
+        lbPhoto = prev.photo || "";
+        lbVerified = !!prev.verified;
+      }
+    } catch (_e) { /* non-fatal: fall through with empty values */ }
+    payload.photo = lbPhoto;
+    payload.verified = lbVerified;
+    await lbRef.set(payload, { merge: true });
     return null;
   });

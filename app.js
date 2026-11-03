@@ -36757,7 +36757,7 @@ function _lbSafePhoto(u) {
 const _PF_SIL = '<svg class="pf-sil" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.3" r="4.1"/><path d="M3.8 21.5c0-4.6 3.7-7.2 8.2-7.2s8.2 2.6 8.2 7.2z"/></svg>';
 function _lbVerifiedBadge(d) {
   if (!d || !d.verified) return '';
-  return '<span class="vbadge" title="Verified — profile complete" onclick="event.stopPropagation();toast(\'✔ Verified — profile complete\')"><svg viewBox="0 0 24 24" width="9" height="9"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+  return '<span class="vbadge" role="img" aria-label="Verified" title="Verified — profile complete" onclick="event.stopPropagation();toast(\'✔ Verified — profile complete\')"></span>';
 }
 function _lbAvatarHtml(d) {
   // No photo -> no avatar at all (row looks like before: position number + name)

@@ -12944,6 +12944,7 @@ function fbInit() {
       }
       const prevUid = App._uid;
       fbUser = user;
+      try { if (typeof _profileAuthChanged === 'function') _profileAuthChanged(user); } catch (_pe) {}
       // Milestone video buttons differ for signed-in vs signed-out users
       // (real platform logos vs a locked "sign in" logo), so re-render the
       // N&M tab and drop the cached links whenever auth state flips.
@@ -32453,7 +32454,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
   const todayJap = todayBreakdown.r + todayBreakdown.rv + todayBreakdown.kh + todayBreakdown.kv + todayBreakdown.ss + todayBreakdown.hk + todayBreakdown.ram + todayBreakdown.sr + todayBreakdown.rm + todayBreakdown.nr + todayBreakdown.yg + todayBreakdown.vl + todayBreakdown.kaam + todayBreakdown.n28;
   const todayTimerSeconds = todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kh + todayTimeBreakdown.kv + todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.ram + todayTimeBreakdown.sr + todayTimeBreakdown.rm + todayTimeBreakdown.nr + todayTimeBreakdown.yg + todayTimeBreakdown.vl + todayTimeBreakdown.kaam + todayTimeBreakdown.n28;
 
-  const _pub = (window.App && S === App.S && !(typeof isGhostMode === 'function' && isGhostMode())) ? (window._myPublicProfile || {}) : {};
+  const _pub = (typeof App !== 'undefined' && S === App.S && !(typeof isGhostMode === 'function' && isGhostMode())) ? (window._myPublicProfile || {}) : {};
   return {
     displayName,
     photo: _pub.photo || '',
@@ -36739,7 +36740,7 @@ window.AudioAdj = AudioAdj;
 // Set your WhatsApp number here (digits only, with country code, e.g.
 // '919876543210'). With a number the card opens a chat directly; without
 // one it shows the username below with a Copy button.
-window.WHATSAPP_SUPPORT = { number: '', username: 'dr_phenomenal' };
+window.WHATSAPP_SUPPORT = { number: '8801771838401', username: 'dr_phenomenal' };
 
 function _lbSafePhoto(u) {
   if (typeof u !== 'string' || !u) return '';
@@ -36747,17 +36748,16 @@ function _lbSafePhoto(u) {
   if (/^https:\/\/[a-z0-9.-]+\.googleusercontent\.com\/[^"'<>\s]*$/i.test(u)) return u;
   return '';
 }
+const _PF_SIL = '<svg class="pf-sil" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.3" r="4.1"/><path d="M3.8 21.5c0-4.6 3.7-7.2 8.2-7.2s8.2 2.6 8.2 7.2z"/></svg>';
 function _lbVerifiedBadge(d) {
   if (!d || !d.verified) return '';
   return '<span class="vbadge" title="Verified — profile complete" onclick="event.stopPropagation();toast(\'✔ Verified — profile complete\')"><svg viewBox="0 0 24 24" width="9" height="9"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
 }
 function _lbAvatarHtml(d) {
   const ph = _lbSafePhoto(d && d.photo);
-  const raw = String((d && d.displayName) || '?').trim();
-  const ini = escHtml(Array.from(raw)[0] || '?').toUpperCase();
   return '<div class="lb-av">' + (ph
     ? '<img src="' + ph + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">'
-    : '') + '<span>' + ini + '</span></div>';
+    : '') + _PF_SIL + '</div>';
 }
 
 function _computePublicProfile(p, forOther) {
@@ -36794,8 +36794,11 @@ window.refreshProfileCard = async function () {
   const adminBtn = document.getElementById('adminProfilesBtn');
   if (adminBtn) adminBtn.style.display = (typeof isDeveloper === 'function' && isDeveloper()) ? 'block' : 'none';
   if (!fbUser) {
+    const _av0 = document.getElementById('profileCardAv');
+    if (_av0) _av0.innerHTML = _PF_SIL;
     document.getElementById('profileCardName').textContent = 'My Profile';
     document.getElementById('profileCardSub').textContent = 'Sign in to create your profile';
+    if (adminBtn) adminBtn.style.display = 'none';
     return;
   }
   await _ensureMyProfileLoaded();
@@ -36803,9 +36806,13 @@ window.refreshProfileCard = async function () {
   const nm = p.name || fbUser.displayName || 'My Profile';
   const av = document.getElementById('profileCardAv');
   const ph = _lbSafePhoto(p.photoSmall || p.photo || '') || _lbSafePhoto(fbUser.photoURL || '');
-  av.innerHTML = (ph ? '<img src="' + ph + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + '<span>' + escHtml(Array.from(nm)[0] || '?').toUpperCase() + '</span>';
+  av.innerHTML = (ph ? '<img src="' + ph + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + _PF_SIL;
   const nameEl = document.getElementById('profileCardName');
   nameEl.innerHTML = escHtml(nm) + (p.complete && !p.revoked ? _lbVerifiedBadge({ verified: true }) : '');
+  if (window._pfPushedUid !== fbUser.uid && typeof App !== 'undefined' && App._cloudHydrated && !(typeof isGhostMode === 'function' && isGhostMode())) {
+    window._pfPushedUid = fbUser.uid;
+    try { pushLeaderboard(); } catch (_e) {}
+  }
   document.getElementById('profileCardSub').textContent = (p.complete && !p.revoked)
     ? 'Verified — profile complete'
     : (_pfCount(p) + ' of 6 details added · fill all to get the ✔ badge');
@@ -36912,6 +36919,7 @@ window.openProfileEditor = async function () {
       '<button onclick="saveProfileEditor()" style="width:100%;margin-top:6px;padding:13px;border-radius:12px;border:1px solid rgba(255,215,0,0.55);background:linear-gradient(135deg,rgba(255,215,0,0.22),rgba(255,180,0,0.1));color:#FFD700;font-size:14px;font-weight:700;cursor:pointer;">💾 Save Profile</button>' +
     '</div>';
   document.body.appendChild(m);
+  const _pv = document.getElementById('pfPhotoPrev'); if (_pv) _pv.innerHTML = _PF_SIL;
   const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
   set('pfName', p.name || fbUser.displayName || '');
   set('pfAddress', p.address); set('pfMobile', p.mobile);
@@ -36958,6 +36966,18 @@ window.saveProfileEditor = async function () {
   toast(complete && !window._myProfile.revoked ? 'Profile saved — you got the ✔ badge 🙏' : 'Profile saved 🙏');
 };
 
+// Sign-in / sign-out: forget the previous person's profile immediately.
+function _profileAuthChanged(user) {
+  const uid = user ? user.uid : null;
+  if (!user || (window._myProfileUid && window._myProfileUid !== uid)) {
+    window._myProfile = null; window._myPublicProfile = null;
+    window._myProfileLoaded = false; window._myProfileUid = null;
+    window._pfPhoto = null; window._adminProfiles = [];
+  }
+  if (!user) { window._pfPushedUid = null; closeProfileEditor(); closeAdminProfiles(); }
+  refreshProfileCard();
+}
+
 // ── Admin: view every profile ──
 window.closeAdminProfiles = function () { const m = document.getElementById('adminProfilesModal'); if (m) m.remove(); };
 function _admRender() {
@@ -36974,7 +36994,7 @@ function _admRender() {
     const upd = p.updatedAt && p.updatedAt.toDate ? p.updatedAt.toDate().toLocaleString() : '';
     return '<div style="border:1px solid rgba(255,215,0,0.2);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:rgba(255,255,255,0.03);">' +
       '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'" style="display:flex;align-items:center;gap:10px;cursor:pointer;">' +
-        '<div class="lb-av">' + (ph ? '<img src="' + ph + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + '<span>' + escHtml(Array.from(p.name || p.googleName || '?')[0] || '?').toUpperCase() + '</span></div>' +
+        '<div class="lb-av">' + (ph ? '<img src="' + ph + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + _PF_SIL + '</div>' +
         '<div style="flex:1;min-width:0;"><div style="color:var(--tl);font-weight:600;font-size:14px;">' + escHtml(p.name || p.googleName || '(no name)') + (ok ? _lbVerifiedBadge({ verified: true }) : '') + '</div>' +
         '<div style="font-size:11px;color:var(--td);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(p.email || '') + '</div></div>' +
         '<div style="font-size:11px;color:var(--td);">' + _pfCount(p) + '/6</div></div>' +

@@ -4668,6 +4668,8 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 .pf-av{width:46px;height:46px;font-size:18px;}
 .pf-av.pf-av-lg{width:96px;height:96px;font-size:34px;}
 .lb-av img,.pf-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#0b1030;}
+.pf-sil{width:62%;height:62%;fill:rgba(255,215,0,0.7);}
+.lb-av img,.pf-av img{z-index:1;}
 .vbadge{
   display:inline-flex;align-items:center;justify-content:center;
   width:15px;height:15px;border-radius:50%;background:#1877F2;

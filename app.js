@@ -33217,13 +33217,14 @@ window.applyPhotoTransform = function(key) {
   const t = Object.assign({ x: 0, y: 0, scale: 1 }, window._japPhotoTransforms[key]);
   const base = (key === 'rv' || key === 'cm' || key === 'gopeshwar' || key === 'hdDeity' || key === 'nimbark' || key === 'vallabh' || key === 'ramanandi' || key === 'ramanuj') ? 'translateX(-50%) ' : '';
   el.style.transform = `${base}translate(${t.x}px, ${t.y}px) scale(${t.scale})`;
+  if (window.japPhotoEditMode && window._repositionPhotoCtl) window._repositionPhotoCtl(key);
 };
 window.applyAllPhotoTransforms = function() {
   JAP_PHOTO_KEYS.forEach(applyPhotoTransform);
 };
 
 window.clearPhotoEditHandles = function() {
-  document.querySelectorAll('.photo-edit-handle, .photo-edit-reset').forEach(h => h.remove());
+  document.querySelectorAll('.photo-edit-handle, .photo-edit-reset, .photo-ctl, .photo-hand, .photo-arrow').forEach(h => h.remove());
 };
 
 function _attachPhotoMoveHandlers(el, key) {
@@ -33279,54 +33280,154 @@ function _attachPhotoResizeHandlers(handleEl, key) {
   };
 }
 
-// Draws 4 corner resize handles + a small reset icon around every currently
-// visible Jap photo. Positions are recomputed each call so they stay glued
-// to the image after every drag/resize.
+// Edit-mode controls for every visible Jap photo:
+//   ✋  hand pad in the middle of the photo — drag it to move the photo
+//   ▲ ▼ arrow buttons under the photo — tap (or press & hold) to make it
+//        larger / smaller;  ↺ resets that photo
+// Positions are recomputed on every change so they stay glued to the image.
+const PHOTO_SCALE_MIN = 0.3, PHOTO_SCALE_MAX = 3;
+function _photoScaleBy(key, factor) {
+  const t = Object.assign({ x: 0, y: 0, scale: 1 }, window._japPhotoTransforms[key]);
+  const scale = Math.max(PHOTO_SCALE_MIN, Math.min(PHOTO_SCALE_MAX, t.scale * factor));
+  window._japPhotoTransforms[key] = Object.assign({}, t, { scale });
+  applyPhotoTransform(key);
+}
+
+window._repositionPhotoCtl = function(key) {
+  const tz = document.getElementById('tz');
+  const conf = PHOTO_CONFIG[key];
+  const el = conf && document.getElementById(conf.id);
+  const ctl = tz && tz.querySelector(`.photo-ctl[data-key="${key}"]`);
+  const hand = tz && tz.querySelector(`.photo-hand[data-key="${key}"]`);
+  if (!el || (!ctl && !hand)) return;
+  const tzRect = tz.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  if (hand) {
+    hand.style.left = `${(r.left + r.right) / 2 - tzRect.left - 22}px`;
+    hand.style.top  = `${(r.top + r.bottom) / 2 - tzRect.top - 22}px`;
+  }
+  const pts = {
+    nw: [r.left, r.top], n: [(r.left + r.right) / 2, r.top], ne: [r.right, r.top],
+    w:  [r.left, (r.top + r.bottom) / 2],                    e:  [r.right, (r.top + r.bottom) / 2],
+    sw: [r.left, r.bottom], s: [(r.left + r.right) / 2, r.bottom], se: [r.right, r.bottom]
+  };
+  tz.querySelectorAll(`.photo-arrow[data-key="${key}"]`).forEach(a => {
+    const pt = pts[a.dataset.pos];
+    if (!pt) return;
+    const x = Math.max(14, Math.min(tzRect.width - 14, pt[0] - tzRect.left));
+    const y = Math.max(14, Math.min(tzRect.height - 14, pt[1] - tzRect.top));
+    a.style.left = `${x - 14}px`;
+    a.style.top = `${y - 14}px`;
+  });
+  if (ctl) {
+    const w = ctl.offsetWidth || 34, h = ctl.offsetHeight || 34;
+    let left = (r.left + r.right) / 2 - tzRect.left - w / 2;
+    let top  = r.bottom - tzRect.top + 6;
+    left = Math.max(4, Math.min(tzRect.width - w - 4, left));
+    top  = Math.max(4, Math.min(tzRect.height - h - 4, top));
+    ctl.style.left = `${left}px`;
+    ctl.style.top = `${top}px`;
+  }
+};
+
+function _makeCtlBtn(label, title, cls) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'photo-ctl-btn ' + (cls || '');
+  b.textContent = label;
+  b.title = title;
+  b.setAttribute('aria-label', title);
+  ['pointerdown', 'touchstart', 'mousedown', 'click'].forEach(ev =>
+    b.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+  return b;
+}
+
+// Tap = one step, press & hold = keeps going.
+function _bindHoldRepeat(btn, step) {
+  let timer = null, delay = null;
+  const stop = () => { clearTimeout(delay); clearInterval(timer); delay = timer = null; };
+  btn.addEventListener('pointerdown', e => {
+    e.preventDefault(); e.stopPropagation();
+    step();
+    delay = setTimeout(() => { timer = setInterval(step, 70); }, 350);
+    try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  ['pointerup', 'pointercancel', 'pointerleave', 'lostpointercapture'].forEach(ev => btn.addEventListener(ev, stop));
+}
+
+function _attachHandDrag(hand, key) {
+  let dragging = false, sx = 0, sy = 0, st = null;
+  hand.addEventListener('pointerdown', e => {
+    e.preventDefault(); e.stopPropagation();
+    dragging = true; sx = e.clientX; sy = e.clientY;
+    st = Object.assign({ x: 0, y: 0, scale: 1 }, window._japPhotoTransforms[key]);
+    hand.classList.add('dragging');
+    try { hand.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  hand.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    window._japPhotoTransforms[key] = Object.assign({}, st, { x: st.x + e.clientX - sx, y: st.y + e.clientY - sy });
+    applyPhotoTransform(key);
+  });
+  const end = () => { dragging = false; hand.classList.remove('dragging'); };
+  hand.addEventListener('pointerup', end);
+  hand.addEventListener('pointercancel', end);
+  ['touchstart', 'mousedown'].forEach(ev => hand.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+}
+
 window.renderPhotoEditHandles = function() {
   clearPhotoEditHandles();
   const tz = document.getElementById('tz');
   if (!tz) return;
-  const tzRect = tz.getBoundingClientRect();
   JAP_PHOTO_KEYS.forEach(key => {
     const conf = PHOTO_CONFIG[key];
     const el = document.getElementById(conf.id);
     if (!el || getComputedStyle(el).display === 'none') return;
-    _attachPhotoMoveHandlers(el, key);
     const r = el.getBoundingClientRect();
     if (!r.width || !r.height) return;
-    const corners = [
-      { cls: 'nw', x: r.left - tzRect.left, y: r.top - tzRect.top },
-      { cls: 'ne', x: r.right - tzRect.left, y: r.top - tzRect.top },
-      { cls: 'sw', x: r.left - tzRect.left, y: r.bottom - tzRect.top },
-      { cls: 'se', x: r.right - tzRect.left, y: r.bottom - tzRect.top }
-    ];
-    corners.forEach(c => {
-      const h = document.createElement('div');
-      h.className = `photo-edit-handle handle-${c.cls}`;
-      h.style.left = `${c.x - 8}px`;
-      h.style.top = `${c.y - 8}px`;
-      _attachPhotoResizeHandlers(h, key);
-      tz.appendChild(h);
+    _attachPhotoMoveHandlers(el, key);   // dragging the photo itself still works too
+
+    // ✋ hand pad (move)
+    const hand = document.createElement('div');
+    hand.className = 'photo-hand';
+    hand.dataset.key = key;
+    hand.textContent = '✋';
+    hand.title = 'Drag to move this photo';
+    _attachHandDrag(hand, key);
+    tz.appendChild(hand);
+
+    // 8 resize arrows: 4 corners + middle of each side (drag out = larger, drag in = smaller)
+    const ARROWS = { nw: '↖', n: '↑', ne: '↗', w: '←', e: '→', sw: '↙', s: '↓', se: '↘' };
+    Object.keys(ARROWS).forEach(pos => {
+      const ar = document.createElement('div');
+      ar.className = 'photo-arrow';
+      ar.dataset.key = key;
+      ar.dataset.pos = pos;
+      ar.textContent = ARROWS[pos];
+      ar.title = 'Drag to make the photo larger or smaller';
+      ['touchstart', 'mousedown'].forEach(ev => ar.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+      _attachPhotoResizeHandlers(ar, key);
+      tz.appendChild(ar);
     });
-    const reset = document.createElement('div');
-    reset.className = 'photo-edit-reset';
-    reset.textContent = '↺';
-    reset.title = 'Reset this photo';
-    reset.style.left = `${(r.left + r.right) / 2 - tzRect.left - 12}px`;
-    reset.style.top = `${Math.min(r.bottom - tzRect.top + 6, tzRect.height - 26)}px`;
-    reset.onpointerdown = (e) => e.stopPropagation();
-    reset.onclick = (e) => {
+
+    // ↺ reset button
+    const ctl = document.createElement('div');
+    ctl.className = 'photo-ctl';
+    ctl.dataset.key = key;
+    const reset = _makeCtlBtn('↺', 'Reset this photo', 'reset');
+    reset.addEventListener('click', e => {
       e.stopPropagation();
       window._japPhotoTransforms[key] = { x: 0, y: 0, scale: 1 };
       applyPhotoTransform(key);
-      renderPhotoEditHandles();
-    };
-    tz.appendChild(reset);
+    });
+    ctl.append(reset);
+    tz.appendChild(ctl);
+    window._repositionPhotoCtl(key);
   });
 };
 
-// Tap the gear icon: first tap enters edit mode (drag to move, corner-drag
-// to resize, ↺ to reset one photo); second tap saves the layout and exits.
+// Tap the gear icon: first tap enters edit mode (✋ to move, edge/corner arrows to resize,
+// ↺ to reset one photo); second tap saves the layout and exits.
 window.togglePhotoEditMode = function(e) {
   if (e) e.stopPropagation();
   const tz = document.getElementById('tz');
@@ -33337,7 +33438,7 @@ window.togglePhotoEditMode = function(e) {
     tz.classList.add('photo-edit-mode');
     if (btn) btn.classList.add('active');
     renderPhotoEditHandles();
-    if (typeof toast === 'function') toast('Drag a photo to move it, drag a corner to resize 🖼️');
+    if (typeof toast === 'function') toast('Use ✋ to move the photo, drag any arrow to resize it 🖼️');
   } else {
     window.japPhotoEditMode = false;
     tz.classList.remove('photo-edit-mode');

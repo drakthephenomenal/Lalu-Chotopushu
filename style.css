@@ -4679,12 +4679,15 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 }
 /* Leaderboard: medium Verified badge sitting right after the display name */
 .lb-vbig{
-  display:inline-block;width:20px;height:29px;margin:-5px 0 -5px 5px;vertical-align:middle;cursor:pointer;
-  position:relative;top:-3px;
+  display:block;width:28px;height:41px;margin:0 auto 2px;cursor:pointer;flex-shrink:0;
   background:var(--vbadge-img) center/contain no-repeat;
   filter:drop-shadow(0 0 4px rgba(255,200,40,0.45));
   -webkit-tap-highlight-color:transparent;
 }
+/* Left column: Verified badge on top, plain rank number below (no circle) */
+.lb-rankcol{display:flex;flex-direction:column;align-items:center;justify-content:center;width:34px;flex-shrink:0;}
+.lb-rankcol .lb-badge{width:auto;height:auto;border-radius:0;background:none !important;border:none !important;box-shadow:none !important;color:var(--td);font-size:15px;line-height:1.1;}
+.lb-rankcol .lb-badge-1,.lb-rankcol .lb-badge-2,.lb-rankcol .lb-badge-3{font-size:20px;}
 
 /* Admin Mode: photo the person chose to hide from the board */
 .lb-av.lb-av-hidden{opacity:.6;border-style:dashed;}

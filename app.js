@@ -32228,10 +32228,10 @@ function renderLeaderboard(docs, period) {
       ? ` onclick="lbAdminOpenProfile('${String(d._uid).replace(/[^A-Za-z0-9_-]/g,'')}')" style="cursor:pointer" title="Open profile in Admin Mode"`
       : '';
     return `<div class="${rowClass}"${_adminAttrs}>
-      <div class="lb-badge ${badgeClass}">${badgeContent}</div>
+      <div class="lb-rankcol">${vBig}<div class="lb-badge ${badgeClass}">${badgeContent}</div></div>
       ${_lbAvatarHtml(d)}
       <div class="lb-info">
-        <div class="${nameClass}">${name}${meMark}${vBig}</div>
+        <div class="${nameClass}">${name}${meMark}</div>
         <div class="lb-meta">${meta}</div>
       </div>
       <div class="lb-count">

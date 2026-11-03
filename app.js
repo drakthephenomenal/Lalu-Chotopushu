@@ -16380,7 +16380,7 @@ async function _lbRestoreName(mainData) {
       } catch (_e) {}
     }
     if (name) {
-      App.S.lbDisplayName = name.slice(0, 30);
+      App.S.lbDisplayName = name.slice(0, 60);
       try { await App.save(); } catch (_e) {}
       try { populateLbSettingsUI(); } catch (_e) {}
       if (!saved) _lbSaveNameCloud(App.S.lbDisplayName);
@@ -32066,7 +32066,7 @@ function renderLeaderboard(docs, period) {
     else if (d.updatedAt) isOnline = (nowMs - d.updatedAt.toDate().getTime()) < 5 * 60 * 1000;
     const onlineDot = isOnline ? '<span style="display:inline-block;width:8px;height:8px;background:#4ade80;border-radius:50%;margin-left:6px;box-shadow:0 0 6px rgba(74,222,128,0.6)" title="Online"></span>' : '';
     
-    const name = (d.displayName || 'Anonymous Devotee').replace(/</g,'&lt;').replace(/>/g,'&gt;') + onlineDot;
+    const name = (d.displayName || 'Anonymous Devotee').replace(/</g,'&lt;').replace(/>/g,'&gt;') + _lbVerifiedBadge(d) + onlineDot;
     const ms = App.S.ms || 108;
     
     let b = d._breakdown || { r:0, rv:0, kv:0, ss:0, hk:0, ram:0, sr:0, rm:0, nr:0, yg:0,
@@ -32175,7 +32175,7 @@ function renderLeaderboard(docs, period) {
       const vlStr = _lbFmtJap(b.vl || 0) + (vlM > 0 ? ' (' + vlM + 'M)' : '');
       const giftNote = (g.yg || 0) > 0 ? ' · 🎁' + _lbFmtJap(g.yg) + ' gifted' : (g.vl || 0) > 0 ? ' · 🎁' + _lbFmtJap(g.vl) + ' gifted' : '';
       bdParts.push('YUGAL: ' + ygStr + ((tb.yg || 0) > 0 ? ' ⏱ ' + _histFmtSec(tb.yg) : '') + giftNote + _lbQ(tb.yg || 0, b.yg || 0));
-      bdParts.push('KRISHNA SHARANAM: ' + vlStr + ((tb.vl || 0) > 0 ? ' ⏱ ' + _histFmtSec(tb.vl) : '') + giftNote + _lbQ(tb.vl || 0, b.vl || 0));
+      bdParts.push('SKSM: ' + vlStr + ((tb.vl || 0) > 0 ? ' ⏱ ' + _histFmtSec(tb.vl) : '') + giftNote + _lbQ(tb.vl || 0, b.vl || 0));
     }
     if ((b.kaama || 0) > 0) {
       const x = Math.floor(b.kaama / ms);
@@ -32221,6 +32221,7 @@ function renderLeaderboard(docs, period) {
       : '';
     return `<div class="${rowClass}"${_adminAttrs}>
       <div class="lb-badge ${badgeClass}">${badgeContent}</div>
+      ${_lbAvatarHtml(d)}
       <div class="lb-info">
         <div class="${nameClass}">${name}${meMark}</div>
         <div class="lb-meta">${meta}</div>
@@ -32281,6 +32282,7 @@ async function pushLeaderboard() {
   // Leaderboard toggle. firestore.rules restricts reads of optIn:false
   // docs to the owner/developers.
 
+  try { await _ensureMyProfileLoaded(); } catch (_e) {}
   const payload = _buildLeaderboardPayload(App.S, fbUser);
   try {
     await fbDb.collection('leaderboard').doc(fbUser.uid).set(payload);
@@ -32303,6 +32305,11 @@ async function pushLeaderboardForGhostedUser() {
   if (!isGhostMode() || !_ghostViewingUid || !fbDb) return;
   try {
     const payload = _buildLeaderboardPayload(App.S, { displayName: App.S.lbDisplayName || '', email: '' });
+    try {
+      const ps = await fbDb.collection('profiles').doc(_ghostViewingUid).get();
+      const pp = _computePublicProfile(ps.exists ? ps.data() : null, true);
+      payload.photo = pp.photo; payload.verified = pp.verified;
+    } catch (_e) {}
     await fbDb.collection('leaderboard').doc(_ghostViewingUid).set(payload);
   } catch (e) {
     console.warn('pushLeaderboardForGhostedUser error:', e && e.message ? e.message : e);
@@ -32366,7 +32373,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
   // Build display name
   let displayName = (S.lbDisplayName || '').trim();
   if (!displayName && userInfo) {
-    displayName = (userInfo.displayName || (userInfo.email || '').split('@')[0] || 'Anonymous Devotee').slice(0,30);
+    displayName = (userInfo.displayName || (userInfo.email || '').split('@')[0] || 'Anonymous Devotee').slice(0,60);
   }
   if (!displayName) displayName = 'Anonymous Devotee';
 
@@ -32446,8 +32453,11 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
   const todayJap = todayBreakdown.r + todayBreakdown.rv + todayBreakdown.kh + todayBreakdown.kv + todayBreakdown.ss + todayBreakdown.hk + todayBreakdown.ram + todayBreakdown.sr + todayBreakdown.rm + todayBreakdown.nr + todayBreakdown.yg + todayBreakdown.vl + todayBreakdown.kaam + todayBreakdown.n28;
   const todayTimerSeconds = todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kh + todayTimeBreakdown.kv + todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.ram + todayTimeBreakdown.sr + todayTimeBreakdown.rm + todayTimeBreakdown.nr + todayTimeBreakdown.yg + todayTimeBreakdown.vl + todayTimeBreakdown.kaam + todayTimeBreakdown.n28;
 
+  const _pub = (window.App && S === App.S && !(typeof isGhostMode === 'function' && isGhostMode())) ? (window._myPublicProfile || {}) : {};
   return {
     displayName,
+    photo: _pub.photo || '',
+    verified: !!_pub.verified,
     totalJap,
     totalMalas: Math.floor(totalJap / (S.ms || 108)),
     streak,
@@ -32714,7 +32724,7 @@ async function saveLbName() {
   const inp = document.getElementById('lbNameIn');
   const fb  = document.getElementById('lbNameFeedback');
   if (!inp) return;
-  const name = inp.value.trim().slice(0, 30);
+  const name = inp.value.trim().slice(0, 60);
   if (!name) {
     if (fb) { fb.textContent = 'Please enter a name'; fb.style.color = 'var(--rl)'; }
     return;
@@ -33217,6 +33227,10 @@ window.applyPhotoTransform = function(key) {
   const t = Object.assign({ x: 0, y: 0, scale: 1 }, window._japPhotoTransforms[key]);
   const base = (key === 'rv' || key === 'cm' || key === 'gopeshwar' || key === 'hdDeity' || key === 'nimbark' || key === 'vallabh' || key === 'ramanandi' || key === 'ramanuj') ? 'translateX(-50%) ' : '';
   el.style.transform = `${base}translate(${t.x}px, ${t.y}px) scale(${t.scale})`;
+  const cr = t.crop;
+  el.style.clipPath = (cr && (cr.t || cr.r || cr.b || cr.l))
+    ? `inset(${(cr.t || 0) * 100}% ${(cr.r || 0) * 100}% ${(cr.b || 0) * 100}% ${(cr.l || 0) * 100}%)`
+    : '';
   if (window.japPhotoEditMode && window._repositionPhotoCtl) window._repositionPhotoCtl(key);
 };
 window.applyAllPhotoTransforms = function() {
@@ -33286,6 +33300,48 @@ function _attachPhotoResizeHandlers(handleEl, key) {
 //        larger / smaller;  ↺ resets that photo
 // Positions are recomputed on every change so they stay glued to the image.
 const PHOTO_SCALE_MIN = 0.3, PHOTO_SCALE_MAX = 3;
+window._photoCropKeys = window._photoCropKeys || {};
+const PHOTO_CROP_MIN_LEFT = 0.1; // always keep at least 10% of the photo visible
+function _photoCrop(key) {
+  const c = (window._japPhotoTransforms[key] || {}).crop || {};
+  return { t: c.t || 0, r: c.r || 0, b: c.b || 0, l: c.l || 0 };
+}
+// Visible (cropped) rectangle of a photo in screen px
+function _photoVisibleRect(el, key) {
+  const r = el.getBoundingClientRect();
+  const c = _photoCrop(key);
+  return {
+    left: r.left + r.width * c.l, right: r.right - r.width * c.r,
+    top: r.top + r.height * c.t, bottom: r.bottom - r.height * c.b,
+    fullW: r.width, fullH: r.height
+  };
+}
+function _attachPhotoCropHandlers(handleEl, key, pos) {
+  handleEl.onpointerdown = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const conf = PHOTO_CONFIG[key];
+    const el = document.getElementById(conf.id);
+    if (!el) return;
+    const fr = el.getBoundingClientRect();
+    const sx = e.clientX, sy = e.clientY;
+    const c0 = _photoCrop(key);
+    try { handleEl.setPointerCapture(e.pointerId); } catch (err) {}
+    handleEl.onpointermove = (ev) => {
+      const dx = (ev.clientX - sx) / (fr.width || 1);
+      const dy = (ev.clientY - sy) / (fr.height || 1);
+      const c = Object.assign({}, c0);
+      if (pos.includes('w')) c.l = Math.max(0, Math.min(1 - c0.r - PHOTO_CROP_MIN_LEFT, c0.l + dx));
+      if (pos.includes('e')) c.r = Math.max(0, Math.min(1 - c0.l - PHOTO_CROP_MIN_LEFT, c0.r - dx));
+      if (pos.includes('n')) c.t = Math.max(0, Math.min(1 - c0.b - PHOTO_CROP_MIN_LEFT, c0.t + dy));
+      if (pos.includes('s')) c.b = Math.max(0, Math.min(1 - c0.t - PHOTO_CROP_MIN_LEFT, c0.b - dy));
+      const t = Object.assign({ x: 0, y: 0, scale: 1 }, window._japPhotoTransforms[key]);
+      window._japPhotoTransforms[key] = Object.assign({}, t, { crop: c });
+      applyPhotoTransform(key);
+    };
+    handleEl.onpointerup = handleEl.onpointercancel = () => { handleEl.onpointermove = null; };
+  };
+}
+
 function _photoScaleBy(key, factor) {
   const t = Object.assign({ x: 0, y: 0, scale: 1 }, window._japPhotoTransforms[key]);
   const scale = Math.max(PHOTO_SCALE_MIN, Math.min(PHOTO_SCALE_MAX, t.scale * factor));
@@ -33301,7 +33357,7 @@ window._repositionPhotoCtl = function(key) {
   const hand = tz && tz.querySelector(`.photo-hand[data-key="${key}"]`);
   if (!el || (!ctl && !hand)) return;
   const tzRect = tz.getBoundingClientRect();
-  const r = el.getBoundingClientRect();
+  const r = _photoVisibleRect(el, key);
   if (hand) {
     hand.style.left = `${(r.left + r.right) / 2 - tzRect.left - 22}px`;
     hand.style.top  = `${(r.top + r.bottom) / 2 - tzRect.top - 22}px`;
@@ -33398,15 +33454,23 @@ window.renderPhotoEditHandles = function() {
 
     // 8 resize arrows: 4 corners + middle of each side (drag out = larger, drag in = smaller)
     const ARROWS = { nw: '↖', n: '↑', ne: '↗', w: '←', e: '→', sw: '↙', s: '↓', se: '↘' };
+    const CROP_ARROWS = { nw: '↘', n: '↓', ne: '↙', w: '→', e: '←', sw: '↗', s: '↑', se: '↖' };
     Object.keys(ARROWS).forEach(pos => {
       const ar = document.createElement('div');
       ar.className = 'photo-arrow';
       ar.dataset.key = key;
       ar.dataset.pos = pos;
       ar.textContent = ARROWS[pos];
-      ar.title = 'Drag to make the photo larger or smaller';
       ['touchstart', 'mousedown'].forEach(ev => ar.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
-      _attachPhotoResizeHandlers(ar, key);
+      if (window._photoCropKeys[key]) {
+        ar.classList.add('crop');
+        ar.textContent = CROP_ARROWS[pos];
+        ar.title = 'Drag inward to crop this side';
+        _attachPhotoCropHandlers(ar, key, pos);
+      } else {
+        ar.title = 'Drag to make the photo larger or smaller';
+        _attachPhotoResizeHandlers(ar, key);
+      }
       tz.appendChild(ar);
     });
 
@@ -33414,13 +33478,23 @@ window.renderPhotoEditHandles = function() {
     const ctl = document.createElement('div');
     ctl.className = 'photo-ctl';
     ctl.dataset.key = key;
-    const reset = _makeCtlBtn('↺', 'Reset this photo', 'reset');
+    const cropBtn = _makeCtlBtn('✂️', window._photoCropKeys[key] ? 'Done cropping' : 'Crop this photo', 'cropbtn');
+    if (window._photoCropKeys[key]) cropBtn.classList.add('on');
+    cropBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      window._photoCropKeys[key] = !window._photoCropKeys[key];
+      renderPhotoEditHandles();
+      if (window._photoCropKeys[key] && typeof toast === 'function') toast('Drag an arrow inward to crop that side ✂️');
+    });
+    const reset = _makeCtlBtn('↺', 'Reset size, position and crop', 'reset');
     reset.addEventListener('click', e => {
       e.stopPropagation();
       window._japPhotoTransforms[key] = { x: 0, y: 0, scale: 1 };
+      window._photoCropKeys[key] = false;
       applyPhotoTransform(key);
+      renderPhotoEditHandles();
     });
-    ctl.append(reset);
+    ctl.append(cropBtn, reset);
     tz.appendChild(ctl);
     window._repositionPhotoCtl(key);
   });
@@ -33441,6 +33515,7 @@ window.togglePhotoEditMode = function(e) {
     if (typeof toast === 'function') toast('Use ✋ to move the photo, drag any arrow to resize it 🖼️');
   } else {
     window.japPhotoEditMode = false;
+    window._photoCropKeys = {};
     tz.classList.remove('photo-edit-mode');
     if (btn) btn.classList.remove('active');
     clearPhotoEditHandles();
@@ -36652,3 +36727,327 @@ window.AudioAdj = AudioAdj;
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();
+
+
+// ══════════════════════════════════════════════════════════════
+// PROFILE (Settings) · photo on Family Board · ✔ badge · admin view ·
+// WhatsApp support card
+// Private details live in /profiles/{uid} (owner + admin only). Only the
+// photo and the ✔ flag are copied to the public /leaderboard/{uid} row.
+// ══════════════════════════════════════════════════════════════
+
+// Set your WhatsApp number here (digits only, with country code, e.g.
+// '919876543210'). With a number the card opens a chat directly; without
+// one it shows the username below with a Copy button.
+window.WHATSAPP_SUPPORT = { number: '', username: 'dr_phenomenal' };
+
+function _lbSafePhoto(u) {
+  if (typeof u !== 'string' || !u) return '';
+  if (u.length < 60000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(u)) return u;
+  if (/^https:\/\/[a-z0-9.-]+\.googleusercontent\.com\/[^"'<>\s]*$/i.test(u)) return u;
+  return '';
+}
+function _lbVerifiedBadge(d) {
+  if (!d || !d.verified) return '';
+  return '<span class="vbadge" title="Verified — profile complete" onclick="event.stopPropagation();toast(\'✔ Verified — profile complete\')"><svg viewBox="0 0 24 24" width="9" height="9"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+}
+function _lbAvatarHtml(d) {
+  const ph = _lbSafePhoto(d && d.photo);
+  const raw = String((d && d.displayName) || '?').trim();
+  const ini = escHtml(Array.from(raw)[0] || '?').toUpperCase();
+  return '<div class="lb-av">' + (ph
+    ? '<img src="' + ph + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">'
+    : '') + '<span>' + ini + '</span></div>';
+}
+
+function _computePublicProfile(p, forOther) {
+  const show = !p || p.showPhoto !== false;
+  let photo = '';
+  if (show) photo = _lbSafePhoto((p && (p.photoSmall || p.photo)) || '') || (!forOther && fbUser ? _lbSafePhoto(fbUser.photoURL || '') : '');
+  return { photo, verified: !!(p && p.complete && !p.revoked) };
+}
+
+async function _ensureMyProfileLoaded(force) {
+  if (!fbUser || !fbDb) return window._myPublicProfile || { photo: '', verified: false };
+  if (!force && window._myProfileLoaded && window._myProfileUid === fbUser.uid) return window._myPublicProfile;
+  let p = null, ok = false;
+  try {
+    const snap = await fbDb.collection('profiles').doc(fbUser.uid).get();
+    p = snap.exists ? snap.data() : null; ok = true;
+  } catch (e) { console.warn('profile load failed:', e && e.message); }
+  if (!ok && window._myProfileUid === fbUser.uid && window._myPublicProfile) return window._myPublicProfile;
+  window._myProfile = p;
+  window._myPublicProfile = _computePublicProfile(p);
+  window._myProfileUid = fbUser.uid;
+  window._myProfileLoaded = ok;
+  return window._myPublicProfile;
+}
+
+function _pfCount(p) {
+  p = p || {};
+  return [p.name, p.address, p.mobile, p.email, p.dob, p.photo].filter(Boolean).length;
+}
+
+window.refreshProfileCard = async function () {
+  const card = document.getElementById('profileCard');
+  if (!card) return;
+  const adminBtn = document.getElementById('adminProfilesBtn');
+  if (adminBtn) adminBtn.style.display = (typeof isDeveloper === 'function' && isDeveloper()) ? 'block' : 'none';
+  if (!fbUser) {
+    document.getElementById('profileCardName').textContent = 'My Profile';
+    document.getElementById('profileCardSub').textContent = 'Sign in to create your profile';
+    return;
+  }
+  await _ensureMyProfileLoaded();
+  const p = window._myProfile || {};
+  const nm = p.name || fbUser.displayName || 'My Profile';
+  const av = document.getElementById('profileCardAv');
+  const ph = _lbSafePhoto(p.photoSmall || p.photo || '') || _lbSafePhoto(fbUser.photoURL || '');
+  av.innerHTML = (ph ? '<img src="' + ph + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + '<span>' + escHtml(Array.from(nm)[0] || '?').toUpperCase() + '</span>';
+  const nameEl = document.getElementById('profileCardName');
+  nameEl.innerHTML = escHtml(nm) + (p.complete && !p.revoked ? _lbVerifiedBadge({ verified: true }) : '');
+  document.getElementById('profileCardSub').textContent = (p.complete && !p.revoked)
+    ? 'Verified — profile complete'
+    : (_pfCount(p) + ' of 6 details added · fill all to get the ✔ badge');
+};
+
+// ── photo helpers ──
+function _pfLoadImg(src, cors) {
+  return new Promise((res, rej) => {
+    const im = new Image();
+    if (cors) im.crossOrigin = 'anonymous';
+    im.onload = () => res(im);
+    im.onerror = () => rej(new Error('image load failed'));
+    im.src = src;
+  });
+}
+// Automatic crop: centered square (biased a little upward so faces stay in).
+function _pfSquare(img, size, q) {
+  const w = img.naturalWidth, h = img.naturalHeight, s = Math.min(w, h);
+  const sx = (w - s) / 2, sy = (h - s) * 0.3;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
+  ctx.drawImage(img, sx, sy, s, s, 0, 0, size, size);
+  return c.toDataURL('image/jpeg', q);
+}
+function _pfSetPhoto(photo, small, source) {
+  window._pfPhoto = { photo, photoSmall: small, source };
+  const box = document.getElementById('pfPhotoPrev');
+  if (box) box.innerHTML = '<img src="' + _lbSafePhoto(small || photo) + '" alt="" referrerpolicy="no-referrer">';
+}
+window.pfPickPhoto = function (input) {
+  const f = input && input.files && input.files[0];
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = async () => {
+    try {
+      const im = await _pfLoadImg(rd.result, false);
+      _pfSetPhoto(_pfSquare(im, 256, 0.82), _pfSquare(im, 96, 0.8), 'upload');
+    } catch (e) { toast('Could not read that photo'); }
+  };
+  rd.readAsDataURL(f);
+};
+window.pfUseGooglePhoto = async function () {
+  const url = fbUser && fbUser.photoURL;
+  if (!url) { toast('No Google photo found on this account'); return; }
+  const big = url.replace(/=s\d+(-c)?$/, '=s256-c');
+  try {
+    const im = await _pfLoadImg(big, true);
+    _pfSetPhoto(_pfSquare(im, 256, 0.82), _pfSquare(im, 96, 0.8), 'google');
+  } catch (e) {
+    // Canvas blocked (cross-origin) — keep the Google link itself.
+    const safe = _lbSafePhoto(url);
+    if (safe) _pfSetPhoto(safe, safe, 'google-url'); else toast('Could not use the Google photo');
+  }
+};
+
+function _pfStatus(msg, bad) {
+  const el = document.getElementById('pfStatus');
+  if (el) { el.textContent = msg; el.style.color = bad ? '#ff8a8a' : 'var(--green)'; }
+}
+
+window.closeProfileEditor = function () {
+  const m = document.getElementById('profileModal');
+  if (m) m.remove();
+};
+
+window.openProfileEditor = async function () {
+  if (!fbUser || !fbDb) { toast('Please sign in first'); return; }
+  if (typeof isGhostMode === 'function' && isGhostMode()) { toast('Not available in Admin Mode'); return; }
+  closeProfileEditor();
+  await _ensureMyProfileLoaded();
+  const p = window._myProfile || {};
+  window._pfPhoto = { photo: p.photo || '', photoSmall: p.photoSmall || '', source: p.photoSource || '' };
+  const lockEmail = !!fbUser.email;
+  const fi = 'width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:10px 12px;color:var(--tl);font-size:14px;font-family:inherit;';
+  const lb = 'font-size:11px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;font-weight:600;margin:12px 0 5px;';
+  const m = document.createElement('div');
+  m.id = 'profileModal';
+  m.style.cssText = 'position:fixed;inset:0;z-index:99997;background:rgba(6,13,31,0.97);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(14px + env(safe-area-inset-top)) 14px calc(30px + env(safe-area-inset-bottom));';
+  m.innerHTML =
+    '<div style="max-width:520px;margin:0 auto;">' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">' +
+        '<button onclick="closeProfileEditor()" style="background:rgba(255,215,0,0.1);color:var(--gold);border:1px solid rgba(255,215,0,0.35);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">✕ Close</button>' +
+        '<div style="flex:1;text-align:center;color:var(--gold);font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:14px;margin-right:60px;">My Profile</div>' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin:14px 0 4px;">' +
+        '<div id="pfPhotoPrev" class="pf-av pf-av-lg"></div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">' +
+          '<label style="padding:8px 14px;border-radius:10px;border:1px solid rgba(255,215,0,0.45);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer;">📷 Choose Photo<input type="file" accept="image/*" onchange="pfPickPhoto(this)" style="display:none"></label>' +
+          (fbUser.photoURL ? '<button onclick="pfUseGooglePhoto()" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(74,144,226,0.45);background:transparent;color:var(--a2);font-size:12px;font-weight:700;cursor:pointer;">Use Google Photo</button>' : '') +
+        '</div>' +
+        '<div style="font-size:10.5px;color:var(--td);text-align:center;">Your photo is automatically cropped to a square and shown as a circle.</div>' +
+      '</div>' +
+      '<div style="' + lb + '">Name</div><input id="pfName" maxlength="60" autocomplete="name" style="' + fi + '">' +
+      '<div style="' + lb + '">Address</div><textarea id="pfAddress" maxlength="250" rows="3" autocomplete="street-address" style="' + fi + 'resize:vertical;"></textarea>' +
+      '<div style="' + lb + '">Mobile Number</div><input id="pfMobile" type="tel" maxlength="20" autocomplete="tel" placeholder="+91 …" style="' + fi + '">' +
+      '<div style="' + lb + '">Email Address</div><input id="pfEmail" type="email" maxlength="100" autocomplete="email" ' + (lockEmail ? 'readonly' : '') + ' style="' + fi + (lockEmail ? 'opacity:0.7;' : '') + '">' +
+      '<div style="' + lb + '">Date of Birth</div><input id="pfDob" type="date" style="' + fi + '">' +
+      '<label style="display:flex;align-items:center;gap:10px;margin-top:16px;color:var(--tl);font-size:13px;"><input id="pfShow" type="checkbox" style="width:18px;height:18px;"> Show my photo on the Family Board</label>' +
+      '<div style="font-size:11px;color:var(--td);line-height:1.5;margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(74,144,226,0.07);border:1px solid rgba(74,144,226,0.2);">🔒 Your address, mobile number, email and date of birth are <b>never</b> shown to other devotees. They are visible only to you and the app admin. Only your photo (if shown) and the ✔ badge appear on the Family Board.</div>' +
+      '<div style="font-size:11px;color:var(--td);margin-top:10px;">Fill all six details (photo, name, address, mobile, email, date of birth) to get the blue ✔ badge.</div>' +
+      '<div id="pfStatus" style="min-height:18px;font-size:12px;margin-top:10px;"></div>' +
+      '<button onclick="saveProfileEditor()" style="width:100%;margin-top:6px;padding:13px;border-radius:12px;border:1px solid rgba(255,215,0,0.55);background:linear-gradient(135deg,rgba(255,215,0,0.22),rgba(255,180,0,0.1));color:#FFD700;font-size:14px;font-weight:700;cursor:pointer;">💾 Save Profile</button>' +
+    '</div>';
+  document.body.appendChild(m);
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
+  set('pfName', p.name || fbUser.displayName || '');
+  set('pfAddress', p.address); set('pfMobile', p.mobile);
+  set('pfEmail', p.email || fbUser.email || ''); set('pfDob', p.dob);
+  document.getElementById('pfShow').checked = p.showPhoto !== false;   // photo shown by default
+  const initPh = p.photoSmall || p.photo;
+  if (initPh) _pfSetPhoto(p.photo, p.photoSmall, p.photoSource || '');
+  else if (fbUser.photoURL) pfUseGooglePhoto();                          // pre-fill from login
+};
+
+window.saveProfileEditor = async function () {
+  if (!fbUser || !fbDb) { toast('Please sign in first'); return; }
+  const g = (id) => ((document.getElementById(id) || {}).value || '').trim();
+  const name = g('pfName').slice(0, 60), address = g('pfAddress').slice(0, 250);
+  const mobile = g('pfMobile').slice(0, 20), email = g('pfEmail').slice(0, 100), dob = g('pfDob');
+  const showPhoto = !!document.getElementById('pfShow').checked;
+  if (mobile && mobile.replace(/\D/g, '').length < 7) { _pfStatus('Please enter a valid mobile number', true); return; }
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { _pfStatus('Please enter a valid email address', true); return; }
+  if (dob) {
+    const d = new Date(dob + 'T00:00:00');
+    if (isNaN(d) || d > new Date() || d.getFullYear() < 1900) { _pfStatus('Please enter a valid date of birth', true); return; }
+  }
+  const ph = window._pfPhoto || {};
+  const complete = !!(name && address && mobile && email && dob && ph.photo);
+  const obj = {
+    uid: fbUser.uid, name, address, mobile, email, dob, showPhoto,
+    photo: ph.photo || '', photoSmall: ph.photoSmall || '', photoSource: ph.source || '',
+    complete, googleName: fbUser.displayName || '',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  _pfStatus('Saving…', false);
+  try {
+    await fbDb.collection('profiles').doc(fbUser.uid).set(obj, { merge: true });
+  } catch (e) {
+    _pfStatus('Could not save: ' + ((e && e.message) || 'network error'), true);
+    return;
+  }
+  window._myProfile = Object.assign({}, window._myProfile || {}, obj, { updatedAt: null });
+  window._myPublicProfile = _computePublicProfile(window._myProfile);
+  window._myProfileUid = fbUser.uid; window._myProfileLoaded = true;
+  try { await pushLeaderboard(); } catch (_e) {}
+  closeProfileEditor();
+  refreshProfileCard();
+  toast(complete && !window._myProfile.revoked ? 'Profile saved — you got the ✔ badge 🙏' : 'Profile saved 🙏');
+};
+
+// ── Admin: view every profile ──
+window.closeAdminProfiles = function () { const m = document.getElementById('adminProfilesModal'); if (m) m.remove(); };
+function _admRender() {
+  const box = document.getElementById('admList');
+  if (!box) return;
+  const q = ((document.getElementById('admSearch') || {}).value || '').toLowerCase().trim();
+  const list = (window._adminProfiles || []).filter(p =>
+    !q || [p.name, p.email, p.mobile, p.address, p.googleName].some(v => String(v || '').toLowerCase().includes(q)));
+  document.getElementById('admCount').textContent = list.length + ' profile' + (list.length === 1 ? '' : 's');
+  box.innerHTML = list.map(p => {
+    const ok = p.complete && !p.revoked;
+    const ph = _lbSafePhoto(p.photoSmall || p.photo || '');
+    const row = (k, v) => '<div style="display:flex;gap:8px;font-size:12px;margin-top:5px;"><span style="color:var(--td);min-width:78px;">' + k + '</span><span style="color:var(--tl);word-break:break-word;flex:1;">' + (v ? escHtml(v) : '<i style="opacity:.5">—</i>') + '</span></div>';
+    const upd = p.updatedAt && p.updatedAt.toDate ? p.updatedAt.toDate().toLocaleString() : '';
+    return '<div style="border:1px solid rgba(255,215,0,0.2);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:rgba(255,255,255,0.03);">' +
+      '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'" style="display:flex;align-items:center;gap:10px;cursor:pointer;">' +
+        '<div class="lb-av">' + (ph ? '<img src="' + ph + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + '<span>' + escHtml(Array.from(p.name || p.googleName || '?')[0] || '?').toUpperCase() + '</span></div>' +
+        '<div style="flex:1;min-width:0;"><div style="color:var(--tl);font-weight:600;font-size:14px;">' + escHtml(p.name || p.googleName || '(no name)') + (ok ? _lbVerifiedBadge({ verified: true }) : '') + '</div>' +
+        '<div style="font-size:11px;color:var(--td);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(p.email || '') + '</div></div>' +
+        '<div style="font-size:11px;color:var(--td);">' + _pfCount(p) + '/6</div></div>' +
+      '<div style="display:none;margin-top:8px;border-top:1px solid rgba(255,215,0,0.12);padding-top:6px;">' +
+        row('Name', p.name) + row('Address', p.address) + row('Mobile', p.mobile) + row('Email', p.email) + row('Date of birth', p.dob) +
+        row('Google name', p.googleName) + row('Photo on board', p.showPhoto === false ? 'Hidden by user' : 'Shown') +
+        row('Badge', ok ? 'Verified' : (p.revoked ? 'Removed by admin' : 'Not complete')) + row('Updated', upd) + row('UID', p._id) +
+        '<button onclick="adminSetBadge(\'' + String(p._id).replace(/[^A-Za-z0-9_-]/g, '') + '\',' + (p.revoked ? 'false' : 'true') + ')" style="margin-top:10px;padding:8px 14px;border-radius:10px;border:1px solid rgba(255,138,138,0.5);background:transparent;color:#ff8a8a;font-size:12px;font-weight:700;cursor:pointer;">' + (p.revoked ? 'Restore ✔ badge' : 'Remove ✔ badge') + '</button>' +
+      '</div></div>';
+  }).join('') || '<div style="text-align:center;color:var(--td);margin-top:30px;">No profiles yet</div>';
+}
+window.adminSetBadge = async function (uid, revoke) {
+  if (!isDeveloper()) return;
+  const p = (window._adminProfiles || []).find(x => x._id === uid);
+  if (!p) return;
+  try {
+    await fbDb.collection('profiles').doc(uid).update({ revoked: !!revoke });
+    try { await fbDb.collection('leaderboard').doc(uid).update({ verified: !revoke && !!p.complete }); } catch (_e) {}
+    p.revoked = !!revoke;
+    _admRender();
+    toast(revoke ? '✔ badge removed' : '✔ badge restored');
+  } catch (e) { toast('Failed: ' + ((e && e.message) || 'error')); }
+};
+window.openAdminProfiles = async function () {
+  if (typeof isDeveloper !== 'function' || !isDeveloper() || !fbDb) return;
+  closeAdminProfiles();
+  const m = document.createElement('div');
+  m.id = 'adminProfilesModal';
+  m.style.cssText = 'position:fixed;inset:0;z-index:99997;background:rgba(6,13,31,0.98);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(14px + env(safe-area-inset-top)) 14px calc(30px + env(safe-area-inset-bottom));';
+  m.innerHTML = '<div style="max-width:560px;margin:0 auto;">' +
+    '<div style="display:flex;align-items:center;gap:10px;"><button onclick="closeAdminProfiles()" style="background:rgba(255,215,0,0.1);color:var(--gold);border:1px solid rgba(255,215,0,0.35);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">✕ Close</button>' +
+    '<div style="flex:1;text-align:center;color:var(--gold);font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:14px;margin-right:60px;">All Profiles</div></div>' +
+    '<input id="admSearch" oninput="_admRender()" placeholder="Search name, email, mobile, address…" style="width:100%;box-sizing:border-box;margin:14px 0 6px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:10px 12px;color:var(--tl);font-size:14px;">' +
+    '<div id="admCount" style="font-size:11px;color:var(--td);margin-bottom:10px;">Loading…</div><div id="admList"></div></div>';
+  document.body.appendChild(m);
+  try {
+    const snap = await fbDb.collection('profiles').limit(500).get();
+    window._adminProfiles = snap.docs.map(d => Object.assign({ _id: d.id }, d.data()));
+    _admRender();
+  } catch (e) {
+    document.getElementById('admCount').textContent = 'Could not load profiles: ' + ((e && e.message) || 'error') + ' (deploy the updated firestore.rules)';
+  }
+};
+window._admRender = _admRender;
+
+// ── WhatsApp support card (replaces Chat with Developer) ──
+window.renderWhatsappCard = function () {
+  const box = document.getElementById('waSupportBody');
+  if (!box) return;
+  const c = window.WHATSAPP_SUPPORT || {};
+  const num = String(c.number || '').replace(/\D/g, '');
+  if (num) {
+    box.innerHTML = '<button class="pb" onclick="openExternalLink(\'https://wa.me/' + num + '?text=\' + encodeURIComponent(\'Hello, I need help with the Radha Naam Jap app.\'))" style="background:rgba(37,211,102,0.15);color:#25D366;border:1px solid rgba(37,211,102,0.45);">💬 Open WhatsApp</button>';
+  } else {
+    box.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid rgba(37,211,102,0.4);background:rgba(37,211,102,0.08);">' +
+      '<div style="flex:1;min-width:0;"><div style="font-size:10.5px;color:var(--td);letter-spacing:1px;text-transform:uppercase;">WhatsApp username</div>' +
+      '<div style="font-size:16px;color:#25D366;font-weight:700;word-break:break-all;">' + escHtml(c.username || '') + '</div></div>' +
+      '<button onclick="copyWhatsappUsername()" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(37,211,102,0.5);background:transparent;color:#25D366;font-size:12px;font-weight:700;cursor:pointer;">Copy</button></div>' +
+      '<div style="font-size:11px;color:var(--td);margin-top:8px;">Copy the username, then search for it in WhatsApp to start a chat.</div>';
+  }
+};
+window.copyWhatsappUsername = async function () {
+  const t = (window.WHATSAPP_SUPPORT || {}).username || '';
+  try { await navigator.clipboard.writeText(t); }
+  catch (_e) {
+    const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (_e2) {} ta.remove();
+  }
+  toast('Username copied 📋');
+};
+try { renderWhatsappCard(); } catch (_e) {}
+try {
+  const _vset = document.getElementById('vset');
+  if (_vset) new MutationObserver(() => { if (_vset.classList.contains('active')) refreshProfileCard(); })
+    .observe(_vset, { attributes: true, attributeFilter: ['class'] });
+} catch (_e) {}

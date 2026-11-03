@@ -26,7 +26,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
-<link rel="stylesheet" href="./style.css?v=140">
+<link rel="stylesheet" href="./style.css?v=142">
   <link rel="stylesheet" href="./style-stotram.css?v=140">
   <link rel="stylesheet" href="./vedic-panchanga/panchanga.css?v=161">
 <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
@@ -1908,7 +1908,7 @@
     <div id="lbNameRow" style="display:none;margin-top:6px;padding-top:4px;">
       <div style="font-size:11px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;font-weight:600;margin-bottom:7px">Display Name</div>
       <div style="display:flex;gap:8px;align-items:center">
-        <input type="text" id="lbNameIn" autocomplete="off" spellcheck="false" maxlength="30" placeholder="Keep original name or type custom name…" style="flex:1;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:13px;font-family:'Inter',sans-serif;outline:none">
+        <input type="text" id="lbNameIn" autocomplete="off" spellcheck="false" maxlength="60" placeholder="Keep original name or type custom name…" style="flex:1;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:9px 12px;color:var(--tl);font-size:13px;font-family:'Inter',sans-serif;outline:none">
         <button onclick="saveLbName()" style="padding:9px 16px;border-radius:10px;border:1px solid rgba(255,215,0,0.5);background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,180,0,0.05));color:#FFD700;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;box-shadow:0 4px 12px rgba(255,215,0,0.2),inset 0 1px 0 rgba(255,255,255,0.1);transition:all 0.3s ease;text-shadow:0 0 8px rgba(255,215,0,0.4);">✨ Save</button>
       </div>
       <div id="lbNameFeedback" style="font-size:11px;margin-top:5px;color:var(--green);min-height:16px"></div>
@@ -2042,7 +2042,20 @@
     <button class="ms-toggle-btn active" id="setLangBn" onclick="setStotramLang('bn')">বাংলা</button>
     <button type="button" id="settingsBellBtn" class="settings-bell-btn" onclick="rjapOpenNotifHistory()" aria-label="Notifications">🔔<span id="notifBellBadge" class="rjap-badge" style="display:none;"></span></button>
   </div>
-  <div class="sc" id="appUpdateCard" style="background:rgba(8,12,35,0.82);border:1px solid rgba(255,215,0,0.25);padding:14px 15px;cursor:pointer;transition:background .4s,border-color .4s;" onclick="checkAppUpdate()">
+     <!-- MY PROFILE -->
+   <div class="sc" id="profileCard" style="background:rgba(255,215,0,0.04);border-color:rgba(255,215,0,0.28);padding:14px 15px;">
+     <div style="display:flex;align-items:center;gap:12px;">
+       <div id="profileCardAv" class="pf-av"><span>?</span></div>
+       <div style="flex:1;min-width:0;">
+         <div id="profileCardName" style="font-size:15px;font-weight:700;color:var(--tl);">My Profile</div>
+         <div id="profileCardSub" style="font-size:11px;color:var(--td);margin-top:2px;">Add your details to get the ✔ badge</div>
+       </div>
+       <button type="button" onclick="openProfileEditor()" style="padding:9px 16px;border-radius:10px;border:1px solid rgba(255,215,0,0.5);background:rgba(255,215,0,0.12);color:#FFD700;font-size:12px;font-weight:700;cursor:pointer;">Edit</button>
+     </div>
+     <button type="button" id="adminProfilesBtn" onclick="openAdminProfiles()" style="display:none;width:100%;margin-top:12px;padding:10px;border-radius:10px;border:1px solid rgba(74,144,226,0.45);background:rgba(74,144,226,0.1);color:var(--a2);font-size:12px;font-weight:700;cursor:pointer;">🛡️ Admin: View All Profiles</button>
+   </div>
+
+<div class="sc" id="appUpdateCard" style="background:rgba(8,12,35,0.82);border:1px solid rgba(255,215,0,0.25);padding:14px 15px;cursor:pointer;transition:background .4s,border-color .4s;" onclick="checkAppUpdate()">
     <div style="display:flex;align-items:center;gap:12px;">
       <div style="font-size:20px;line-height:1;" id="appUpdateIcon">🔄</div>
       <div style="flex:1;min-width:0;">
@@ -3292,14 +3305,11 @@
     <button class="pb" onclick="shareApp()" style="background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,180,0,0.25));color:var(--gold);border:1px solid rgba(255,215,0,0.4)">🌸 Share App Link (Web)</button>
   </div>
 
-  <!-- FEEDBACK FORM -->
-  <div class="sc" style="background:rgba(74,144,226,0.03);border-color:rgba(74,144,226,0.18)">
-    <h3 style="color:var(--a2)">💬 Chat with Developer</h3>
-    <p style="font-size:12px;color:var(--td);margin-bottom:12px">Send feedback, report bugs, or ask questions. The developer will reply here.</p>
-    <button class="pb" onclick="window.openUserChat()" style="background:rgba(74,144,226,0.15);color:var(--a2);border:1px solid rgba(74,144,226,0.3);position:relative;">
-      💬 Open Chat
-      <span id="userChatBadge" style="display:none;position:absolute;top:-8px;right:-8px;min-width:18px;height:18px;padding:0 4px;background:#FF3B30;border-radius:9px;border:2px solid #060D1F;color:#fff;font-size:10px;font-weight:700;line-height:14px;text-align:center;"></span>
-    </button>
+  <!-- WHATSAPP SUPPORT -->
+  <div class="sc" id="waSupportCard" style="background:rgba(37,211,102,0.04);border-color:rgba(37,211,102,0.28)">
+    <h3 style="color:#25D366">💬 WhatsApp Support</h3>
+    <p style="font-size:12px;color:var(--td);margin-bottom:12px">This is our <b>24/7 support account</b>. Message us anytime for help, feedback or to report a problem.</p>
+    <div id="waSupportBody"></div>
   </div>
 
   <!-- CONNECT WITH US -->
@@ -3594,7 +3604,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=144"></script>
-    <script src="./app.js?v=427"></script>
+    <script src="./app.js?v=429"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

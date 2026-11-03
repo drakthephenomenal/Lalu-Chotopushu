@@ -4684,10 +4684,12 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
   filter:drop-shadow(0 0 4px rgba(255,200,40,0.45));
   -webkit-tap-highlight-color:transparent;
 }
-/* Left column: Verified badge on top, plain rank number below (no circle) */
-.lb-rankcol{display:flex;flex-direction:column;align-items:center;justify-content:center;width:34px;flex-shrink:0;}
-.lb-rankcol .lb-badge{width:auto;height:auto;border-radius:0;background:none !important;border:none !important;box-shadow:none !important;color:var(--td);font-size:15px;line-height:1.1;}
-.lb-rankcol .lb-badge-1,.lb-rankcol .lb-badge-2,.lb-rankcol .lb-badge-3{font-size:20px;}
+/* Left column: Verified badge (fixed width so avatars stay aligned on unverified rows) */
+.lb-rankcol{display:flex;flex-direction:column;align-items:center;justify-content:center;width:30px;flex-shrink:0;}
+.lb-rankcol .lb-vbig{margin:0;}
+/* Rank number: plain, just below the jap total, no circle */
+.lb-count .lb-badge{width:auto;height:auto;border-radius:0;background:none !important;border:none !important;box-shadow:none !important;color:var(--td);font-size:13px;line-height:1.2;margin-top:3px;justify-content:flex-end;}
+.lb-count .lb-badge-1,.lb-count .lb-badge-2,.lb-count .lb-badge-3{font-size:16px;}
 
 /* Admin Mode: photo the person chose to hide from the board */
 .lb-av.lb-av-hidden{opacity:.6;border-style:dashed;}

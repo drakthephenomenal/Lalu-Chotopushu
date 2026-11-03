@@ -1,5 +1,5 @@
 // v435: Verified badge swapped to the transparent gold-lotus icon (no blue cloud/text); sized for the taller shape.
-// v446: Leaderboard: Verified badge moved to the first (left) spot of the row with the plain rank number below it, no circle.
+// v448: Settings: removed dev 'Read Feedback' button; 'WhatsApp Support' card renamed 'Support & Feedback' with the WhatsApp icon.
 // v434: Leaderboard: verified users get a large Verified badge filling the space between the name and the jap count (taller row; smaller on phones). Small inline badge kept for profile/admin.
 // v433: Verified badge now uses the new gold-lotus 'Verified' icon (embedded in style.css as one background image, sized with the text and vertically centred on the name).
 // v432: Leaderboard: your own row uses this device's exact RV and KH counts (no more KH/RV label flipping when an older build wrote the cloud entry).
@@ -471,7 +471,7 @@
 // v420 (Play build + dev email): bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
 // v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
 // v422: bumped cache to force-invalidate stale app.js / style.css / index.html — Haridashi Sampraday (Radha + Kunj Vihari / Sri Haridas, own Deity/Guru/Acharya photos, own lifetime target); Nimbark Deity/Guru/Acharya jap-display photos + Yugal mantra animation now matches Hare Krishna; reopened wishes no longer stay paused.
-const CACHE = 'radha-jap-v446';
+const CACHE = 'radha-jap-v448';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

@@ -32228,7 +32228,7 @@ function renderLeaderboard(docs, period) {
       ? ` onclick="lbAdminOpenProfile('${String(d._uid).replace(/[^A-Za-z0-9_-]/g,'')}')" style="cursor:pointer" title="Open profile in Admin Mode"`
       : '';
     return `<div class="${rowClass}"${_adminAttrs}>
-      <div class="lb-rankcol">${vBig}<div class="lb-badge ${badgeClass}">${badgeContent}</div></div>
+      <div class="lb-rankcol">${vBig}</div>
       ${_lbAvatarHtml(d)}
       <div class="lb-info">
         <div class="${nameClass}">${name}${meMark}</div>
@@ -32237,6 +32237,7 @@ function renderLeaderboard(docs, period) {
       <div class="lb-count">
         <div class="lb-count-num">${_lbFmtJap(d.score)}</div>
         <div class="lb-count-lbl">jap</div>
+        <div class="lb-badge ${badgeClass}">${badgeContent}</div>
       </div>
     </div>`;
   }).join('');
@@ -37078,7 +37079,7 @@ window.renderWhatsappCard = function () {
   const c = window.WHATSAPP_SUPPORT || {};
   const num = String(c.number || '').replace(/\D/g, '');
   if (num) {
-    box.innerHTML = '<button class="pb" onclick="openExternalLink(\'https://wa.me/' + num + '?text=\' + encodeURIComponent(\'Hello, I need help with the Radha Naam Jap app.\'))" style="background:rgba(37,211,102,0.15);color:#25D366;border:1px solid rgba(37,211,102,0.45);">💬 Open WhatsApp</button>';
+    box.innerHTML = '<button class="pb" onclick="openExternalLink(\'https://wa.me/' + num + '?text=\' + encodeURIComponent(\'Hello, I need help with the Radha Naam Jap app.\'))" style="background:rgba(37,211,102,0.15);color:#25D366;border:1px solid rgba(37,211,102,0.45);"><svg width="20" height="20" style="vertical-align:-5px;margin-right:8px" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="12" fill="#25D366"/><path d="M12 5.5a6.4 6.4 0 00-5.5 9.66L5.5 18.5l3.44-.97A6.4 6.4 0 1012 5.5zm0 1.2a5.2 5.2 0 11-2.66 9.66l-.2-.12-2.06.58.58-2-.13-.22A5.2 5.2 0 0112 6.7z" fill="#fff"/><path d="M9.9 8.9c-.14-.31-.28-.32-.41-.32h-.35c-.12 0-.32.05-.49.24-.17.19-.64.63-.64 1.53s.66 1.78.75 1.9c.09.12 1.28 2.04 3.16 2.78 1.56.61 1.88.49 2.22.46.34-.03 1.09-.44 1.24-.87.15-.43.15-.79.1-.87-.05-.08-.17-.13-.35-.22-.19-.1-1.09-.54-1.26-.6-.17-.06-.29-.09-.42.1-.12.18-.48.6-.58.72-.11.12-.21.14-.4.05-.19-.1-.79-.29-1.5-.93-.56-.5-.93-1.11-1.04-1.3-.11-.19-.01-.29.08-.39.08-.08.19-.21.28-.31.09-.1.12-.18.19-.3.06-.12.03-.23-.01-.32-.05-.1-.42-1.05-.6-1.44z" fill="#25D366"/></svg>Chat on WhatsApp</button>';
   } else {
     box.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid rgba(37,211,102,0.4);background:rgba(37,211,102,0.08);">' +
       '<div style="flex:1;min-width:0;"><div style="font-size:10.5px;color:var(--td);letter-spacing:1px;text-transform:uppercase;">WhatsApp username</div>' +

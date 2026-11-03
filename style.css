@@ -4677,19 +4677,13 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
   background:var(--vbadge-img) center/contain no-repeat;
   filter:drop-shadow(0 0 3px rgba(255,200,40,0.5));
 }
-/* Leaderboard: medium Verified badge on the display-name line, pushed toward the jap count (not hugging the name) */
+/* Leaderboard: medium Verified badge sitting right after the display name */
 .lb-vbig{
-  flex:0 0 auto;width:30px;height:44px;margin:-2px 4px 0 auto;align-self:flex-start;cursor:pointer;
+  display:inline-block;width:20px;height:29px;margin:-5px 0 -5px 5px;vertical-align:middle;cursor:pointer;
+  position:relative;top:-3px;
   background:var(--vbadge-img) center/contain no-repeat;
   filter:drop-shadow(0 0 4px rgba(255,200,40,0.45));
   -webkit-tap-highlight-color:transparent;
-}
-.lb-row-verified .lb-info{flex:1 1 0;}
-@media (max-width:600px){
-  .lb-vbig{width:26px;height:38px;margin-left:0;}
-}
-@media (max-width:380px){
-  .lb-vbig{width:22px;height:32px;}
 }
 
 /* Admin Mode: photo the person chose to hide from the board */

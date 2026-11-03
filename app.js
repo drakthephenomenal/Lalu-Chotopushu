@@ -32231,10 +32231,9 @@ function renderLeaderboard(docs, period) {
       <div class="lb-badge ${badgeClass}">${badgeContent}</div>
       ${_lbAvatarHtml(d)}
       <div class="lb-info">
-        <div class="${nameClass}">${name}${meMark}</div>
+        <div class="${nameClass}">${name}${meMark}${vBig}</div>
         <div class="lb-meta">${meta}</div>
       </div>
-      ${vBig}
       <div class="lb-count">
         <div class="lb-count-num">${_lbFmtJap(d.score)}</div>
         <div class="lb-count-lbl">jap</div>

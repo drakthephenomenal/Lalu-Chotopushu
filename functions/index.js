@@ -365,37 +365,76 @@ exports.sendBroadcastNotification = functions.https.onCall(async (data, context)
 
   // users/{uid}/data/main — collectionGroup query across every user's
   // "data" subcollection, filtered down to just the "main" doc.
-  const snap = await admin.firestore().collectionGroup("data").get();
-  const tokens = [];
-  const docRefs = [];
+  // .select() downloads ONLY the token fields (each main doc also holds the
+  // person's whole jap history, which made this slow and memory-hungry).
+  const snap = await admin.firestore().collectionGroup("data").select("fcmToken", "fcmTokens", "pushTopic").get();
+  const owners = new Map();   // token -> [docRef, ...] (so dead tokens can be removed)
   snap.forEach((doc) => {
     if (doc.id !== "main") return;
-    const t = doc.get("fcmToken");
-    if (t) { tokens.push(t); docRefs.push(doc.ref); }
+    // Phones that joined the "all" topic are reached by the topic send below.
+    if (doc.get("pushTopic") === "all") return;
+    const list = [];
+    const one = doc.get("fcmToken");
+    const many = doc.get("fcmTokens");
+    if (one) list.push(one);
+    if (Array.isArray(many)) many.forEach((t) => { if (t) list.push(t); });
+    list.forEach((t) => {
+      if (!owners.has(t)) owners.set(t, []);
+      owners.get(t).push(doc.ref);
+    });
   });
+  const tokens = Array.from(owners.keys());
 
-  if (tokens.length === 0) {
-    return { sent: 0, failed: 0 };
+  // 1) EVERY phone with the installed app that joined the "all" topic —
+  //    signed in or not, no 500-device limit, no token bookkeeping.
+  let topicOk = false;
+  try {
+    await admin.messaging().send({
+      topic: "all",
+      notification: { title, body },
+      android: { priority: "high" },
+    });
+    topicOk = true;
+  } catch (e) {
+    console.error("topic send failed:", e);
   }
 
-  const res = await admin.messaging().sendEachForMulticast({
-    tokens,
-    notification: { title, body },
-  });
+  // 2) Older app versions / browser users that only have a saved token.
+  if (tokens.length === 0) {
+    return { sent: 0, failed: 0, topic: topicOk };
+  }
 
-  // Prune tokens FCM says are dead so they don't accumulate forever.
+  // FCM accepts at most 500 tokens per call — send in batches.
+  let sent = 0, failed = 0;
   const cleanup = [];
-  res.responses.forEach((r, i) => {
-    if (!r.success && r.error && (
-      r.error.code === "messaging/registration-token-not-registered" ||
-      r.error.code === "messaging/invalid-registration-token"
-    )) {
-      cleanup.push(docRefs[i].set({ fcmToken: admin.firestore.FieldValue.delete() }, { merge: true }));
-    }
-  });
+  for (let start = 0; start < tokens.length; start += 500) {
+    const batch = tokens.slice(start, start + 500);
+    const res = await admin.messaging().sendEachForMulticast({
+      tokens: batch,
+      notification: { title, body },
+      android: { priority: "high" },
+    });
+    sent += res.successCount;
+    failed += res.failureCount;
+    // Prune tokens FCM says are dead so they don't accumulate forever.
+    res.responses.forEach((r, i) => {
+      if (!r.success && r.error && (
+        r.error.code === "messaging/registration-token-not-registered" ||
+        r.error.code === "messaging/invalid-registration-token"
+      )) {
+        const dead = batch[i];
+        (owners.get(dead) || []).forEach((ref) => {
+          cleanup.push(ref.set({
+            fcmToken: admin.firestore.FieldValue.delete(),
+            fcmTokens: admin.firestore.FieldValue.arrayRemove(dead),
+          }, { merge: true }));
+        });
+      }
+    });
+  }
   if (cleanup.length) await Promise.all(cleanup);
 
-  return { sent: res.successCount, failed: res.failureCount };
+  return { sent, failed, topic: topicOk };
 });
 
 // ============================================================
@@ -672,7 +711,7 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
           userRecord.displayName ||
           (userRecord.email || "").split("@")[0] ||
           "Anonymous Devotee"
-        ).slice(0, 60);
+        ).slice(0, 30);
       } catch (_e) {
         displayName = "Anonymous Devotee";
       }
@@ -821,30 +860,6 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       timer28History: timer28Hist,
     };
 
-    // This function does not own the profile-derived fields (photo + ✔ badge).
-    // A plain set() used to wipe them every time user data synced, so they are
-    // re-derived from the private /profiles doc (source of truth) on every
-    // write, and merge:true keeps any other client-written fields intact.
-    const lbRef = admin.firestore().collection("leaderboard").doc(uid);
-    let lbPhoto = "";
-    let lbVerified = false;
-    try {
-      const [prevSnap, profSnap] = await Promise.all([
-        lbRef.get(),
-        admin.firestore().collection("profiles").doc(uid).get(),
-      ]);
-      const prev = prevSnap.exists ? (prevSnap.data() || {}) : {};
-      if (profSnap.exists) {
-        const p = profSnap.data() || {};
-        lbPhoto = p.showPhoto === false ? "" : (p.photoSmall || p.photo || prev.photo || "");
-        lbVerified = !!(p.complete && !p.revoked);
-      } else {
-        lbPhoto = prev.photo || "";
-        lbVerified = !!prev.verified;
-      }
-    } catch (_e) { /* non-fatal: fall through with empty values */ }
-    payload.photo = lbPhoto;
-    payload.verified = lbVerified;
-    await lbRef.set(payload, { merge: true });
+    await admin.firestore().collection("leaderboard").doc(uid).set(payload);
     return null;
   });

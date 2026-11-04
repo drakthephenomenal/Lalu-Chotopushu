@@ -639,58 +639,143 @@ document.addEventListener("DOMContentLoaded", () => {
   _rjapUpdateNotifBadges();
 });
 
+// Current notification permission WITHOUT showing any prompt:
+// "granted" | "denied" | "prompt".
+async function lcPushPermState() {
+  try {
+    if (_lcIsNative() && window.Capacitor.Plugins) {
+      const P = window.Capacitor.Plugins;
+      if (P.FirebaseMessaging && P.FirebaseMessaging.checkPermissions) {
+        const r = await P.FirebaseMessaging.checkPermissions();
+        const v = r && r.receive;
+        if (v === "granted") return "granted";
+        if (v === "denied") return "denied";
+        return "prompt";
+      }
+      if (P.LocalNotifications) {
+        const r = await P.LocalNotifications.checkPermissions();
+        return r.display === "granted" ? "granted" : r.display === "denied" ? "denied" : "prompt";
+      }
+    }
+    if ("Notification" in window) {
+      return Notification.permission === "granted" ? "granted" : Notification.permission === "denied" ? "denied" : "prompt";
+    }
+  } catch (_e) {}
+  return "prompt";
+}
+
+function _lcPushSaveToken(token) {
+  const ref = fbDb.collection("users").doc(fbUser.uid).collection("data").doc("main");
+  return ref.set(
+    {
+      fcmToken: token,                                              // newest device (kept for older server code)
+      fcmTokens: firebase.firestore.FieldValue.arrayUnion(token),   // every device the person uses
+      fcmTokenPlatform: _lcIsNative() ? "android" : "web",
+      fcmTokenUpdatedAt: Date.now(),
+      // Devices subscribed to the "all" topic get broadcasts through it, so the server skips their token (no double delivery).
+      pushTopic: window._lcTopicOk ? PUSH_TOPIC_ALL : firebase.firestore.FieldValue.delete(),
+    },
+    { merge: true },
+  );
+}
+
+const PUSH_TOPIC_ALL = "all";
+window._lcTopicOk = false;
+// Installed app: subscribe this phone to the "all" topic. Works with or without sign-in, and the
+// server then reaches EVERY phone that has the app with one send.
+async function lcPushTopicSubscribe() {
+  try {
+    const FM = _lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseMessaging;
+    if (!FM || typeof FM.subscribeToTopic !== "function") return false;
+    await FM.subscribeToTopic({ topic: PUSH_TOPIC_ALL });
+    window._lcTopicOk = true;
+    try { localStorage.setItem("rjap_push_topic", "1"); } catch (_) {}
+    if (!window._lcPushListeners) {
+      window._lcPushListeners = true;
+      FM.addListener("notificationReceived", (event) => {
+        const n = event && event.notification;
+        if (n) { toast("🔔 " + (n.title || "Notification")); _rjapAddNotifHistory(n.title, n.body); }
+      });
+    }
+    return true;
+  } catch (e) {
+    console.warn("topic subscribe failed:", e);
+    if (window._lcPushDiag) window._lcPushDiag.error = String((e && e.message) || e);
+    return false;
+  }
+}
+
 async function lcRegisterPush() {
-  if (!fbUser || !fbDb) return false; // tokens are stored per signed-in user
+  window._lcPushDiag = { stage: "start", error: "", token: "" };
+  if (!fbUser || !fbDb) { window._lcPushDiag.stage = "not signed in"; return false; } // tokens are stored per signed-in user
   const granted = await lcRequestNotifPermission();
-  if (!granted) return false;
+  if (!granted) { window._lcPushDiag.stage = "permission not granted"; return false; }
 
   let token = null;
   try {
     if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseMessaging) {
       const { FirebaseMessaging } = window.Capacitor.Plugins;
+      window._lcPushDiag.stage = "native: requesting permission";
       await FirebaseMessaging.requestPermissions();
+      window._lcPushDiag.stage = "native: getting token";
       const res = await FirebaseMessaging.getToken();
       token = res && res.token;
-      FirebaseMessaging.addListener("notificationReceived", (event) => {
-        const n = event && event.notification;
-        if (n) {
-          toast("🔔 " + (n.title || "Notification"));
-          _rjapAddNotifHistory(n.title, n.body);
-        }
-      });
+      if (!window._lcPushListeners) {
+        window._lcPushListeners = true;
+        FirebaseMessaging.addListener("notificationReceived", (event) => {
+          const n = event && event.notification;
+          if (n) {
+            toast("🔔 " + (n.title || "Notification"));
+            _rjapAddNotifHistory(n.title, n.body);
+          }
+        });
+        // FCM can rotate a device's token at any time — save the new one right away.
+        try {
+          FirebaseMessaging.addListener("tokenReceived", (ev) => {
+            const t = ev && ev.token;
+            if (t && fbUser && fbDb) { window._lcMyToken = t; _lcPushSaveToken(t).catch(() => {}); }
+          });
+        } catch (_e) {}
+      }
     } else if (typeof firebase !== "undefined" && firebase.messaging && FCM_VAPID_KEY) {
+      window._lcPushDiag.stage = "web: getting token";
       const messaging = firebase.messaging();
       const reg = await navigator.serviceWorker.ready;
       token = await messaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: reg });
-      messaging.onMessage((payload) => {
-        const n = payload && payload.notification;
-        if (n) {
-          toast("🔔 " + (n.title || "Notification"));
-          _rjapAddNotifHistory(n.title, n.body);
-        }
-      });
+      if (!window._lcPushListeners) {
+        window._lcPushListeners = true;
+        messaging.onMessage((payload) => {
+          const n = payload && payload.notification;
+          if (n) {
+            toast("🔔 " + (n.title || "Notification"));
+            _rjapAddNotifHistory(n.title, n.body);
+          }
+        });
+      }
+    } else {
+      window._lcPushDiag.stage = "no push plugin in this build";
     }
   } catch (e) {
     console.error("Push registration failed:", e);
+    window._lcPushDiag.error = String((e && e.message) || e);
   }
 
   // A token alone isn't "enabled" — it only counts once it's actually
   // saved server-side, since that's the only copy the broadcast function
-  // ever reads. Previously this returned true (and the UI showed
-  // "✅ Push notifications enabled") as soon as a token was obtained,
-  // even if the Firestore save below silently failed — so the toggle
-  // could show ON while the server had 0 registered devices.
+  // ever reads.
   let saved = false;
   if (token) {
+    window._lcMyToken = token;
+    window._lcPushDiag.token = token.slice(0, 12) + "…";
     try {
-      await fbDb.collection("users").doc(fbUser.uid).collection("data").doc("main").set(
-        { fcmToken: token, fcmTokenPlatform: _lcIsNative() ? "android" : "web", fcmTokenUpdatedAt: Date.now() },
-        { merge: true },
-      );
+      await _lcPushSaveToken(token);
       saved = true;
+      window._lcPushDiag.stage = "saved";
       localStorage.setItem("rjap_push_enabled", "1");
     } catch (e) {
       console.error("Saving FCM token failed — device will NOT receive broadcasts until this succeeds:", e);
+      window._lcPushDiag.stage = "could not save token";
+      window._lcPushDiag.error = String((e && e.message) || e);
       try { localStorage.removeItem("rjap_push_enabled"); } catch (_) {}
     }
   }
@@ -699,14 +784,99 @@ async function lcRegisterPush() {
 
 async function lcUnregisterPush() {
   try { localStorage.removeItem("rjap_push_enabled"); } catch (e) {}
-  if (!fbUser || !fbDb) return;
+  if (!fbUser || !fbDb) {
+    try { const FM = _lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseMessaging; if (FM && FM.unsubscribeFromTopic) await FM.unsubscribeFromTopic({ topic: PUSH_TOPIC_ALL }); window._lcTopicOk = false; } catch (_e) {}
+    return;
+  }
   try {
-    await fbDb.collection("users").doc(fbUser.uid).collection("data").doc("main").set(
-      { fcmToken: firebase.firestore.FieldValue.delete() },
-      { merge: true },
-    );
+    try {
+      const FM = _lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseMessaging;
+      if (FM && FM.unsubscribeFromTopic) await FM.unsubscribeFromTopic({ topic: PUSH_TOPIC_ALL });
+      window._lcTopicOk = false;
+      try { localStorage.removeItem("rjap_push_topic"); } catch (_) {}
+    } catch (_e) {}
+    const upd = { fcmToken: firebase.firestore.FieldValue.delete(), pushTopic: firebase.firestore.FieldValue.delete() };
+    if (window._lcMyToken) upd.fcmTokens = firebase.firestore.FieldValue.arrayRemove(window._lcMyToken);
+    await fbDb.collection("users").doc(fbUser.uid).collection("data").doc("main").set(upd, { merge: true });
   } catch (e) {}
 }
+
+// Everyone who signs in gets registered for push:
+//  • permission already allowed  -> register silently on every launch (keeps the token fresh)
+//  • not asked / dismissed       -> ask again, at most once every 3 days
+//  • blocked in phone settings   -> a gentle hint, at most once a week (the system won't show its prompt again)
+//  • person switched push OFF in Settings -> never auto-enabled again
+function _lcPushSetUI(on) {
+  const tg = document.getElementById("tgPushNotifications");
+  const st = document.getElementById("pushNotificationsStatus");
+  if (tg) tg.classList.toggle("on", !!on);
+  if (st) st.textContent = on ? "✅ Push notifications enabled" : "— Tap toggle to enable push notifications 🔔";
+}
+async function rjapAutoPush() {
+  if (window._lcAutoPushBusy) return window._lcAutoPushBusy;
+  window._lcAutoPushBusy = (async () => {
+    try {
+      let optOut = false;
+      try { optOut = localStorage.getItem("rjap_push_optout") === "1"; } catch (_) {}
+      if (optOut) return false;
+      const native = _lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseMessaging;
+      let state = await lcPushPermState();
+      // Android shows its own "Allow notifications" box. Ask on every app open until the person
+      // answers (it only ever appears while it is still allowed to).
+      if (state === "prompt" && (native || fbUser)) {
+        try {
+          if (native) await window.Capacitor.Plugins.FirebaseMessaging.requestPermissions();
+          else await lcRequestNotifPermission();
+        } catch (_e) {}
+        state = await lcPushPermState();
+      }
+      if (state !== "granted") {
+        _lcPushSetUI(false);
+        const now = Date.now();
+        let last = 0; try { last = parseInt(localStorage.getItem("rjap_push_hint_at") || "0", 10) || 0; } catch (_) {}
+        if (state === "denied" && now - last > 7 * 24 * 3600 * 1000) {
+          try { localStorage.setItem("rjap_push_hint_at", String(now)); } catch (_) {}
+          toast("🔔 Allow notifications in phone Settings → Apps → RadhaNaam SudhaRasam to get announcements");
+        }
+        return false;
+      }
+      // Installed app: every phone joins the "all" topic (no sign-in needed).
+      let ok = false;
+      if (native) ok = await lcPushTopicSubscribe();
+      // Signed-in people also save their device token (browser version, older servers, and "devices saved" count).
+      if (fbUser && fbDb) ok = (await lcRegisterPush()) || ok;
+      _lcPushSetUI(ok);
+      return ok;
+    } catch (e) { console.warn("auto push failed:", e); return false; }
+    finally { setTimeout(() => { window._lcAutoPushBusy = null; }, 1500); }
+  })();
+  return window._lcAutoPushBusy;
+}
+
+// Developer-only: shows exactly where push registration stands on THIS phone.
+window.rjapPushCheck = async function () {
+  const L = [];
+  L.push("Signed in: " + (fbUser ? "yes" : "NO"));
+  L.push("App: " + (_lcIsNative() ? "installed app" : "browser"));
+  const P = (window.Capacitor && window.Capacitor.Plugins) || {};
+  if (_lcIsNative()) L.push("Push plugin in build: " + (P.FirebaseMessaging ? "yes" : "NO — push cannot work in this build"));
+  L.push("Permission: " + (await lcPushPermState()));
+  try { L.push("Switched off by user: " + (localStorage.getItem("rjap_push_optout") === "1" ? "yes" : "no")); } catch (_) {}
+  if (fbUser && fbDb) {
+    const ok = await lcRegisterPush();
+    const d = window._lcPushDiag || {};
+    L.push("Joined everyone-topic: " + (window._lcTopicOk ? "yes" : "no"));
+    L.push("Registering now: " + (ok ? "OK" : "FAILED") + " (" + d.stage + ")");
+    if (d.error) L.push("Error: " + d.error);
+    try {
+      const s = await fbDb.collection("users").doc(fbUser.uid).collection("data").doc("main").get();
+      const v = s.exists ? s.data() : {};
+      L.push("Devices saved for you: " + ((v.fcmTokens && v.fcmTokens.length) || (v.fcmToken ? 1 : 0)));
+    } catch (e) { L.push("Could not read saved devices: " + (e && e.message)); }
+    if (ok) _lcPushSetUI(true);
+  }
+  alert("Push check\n\n" + L.join("\n"));
+};
 
 // Developer-only: prompt for a title/body and push it to every user who has
 // Push Notifications enabled, via the sendBroadcastNotification Cloud
@@ -720,7 +890,8 @@ window.sendDevBroadcast = async function () {
   try {
     const callable = firebase.app().functions().httpsCallable("sendBroadcastNotification");
     const res = await callable({ title: title.trim(), body: body.trim() });
-    toast("📣 Sent to " + ((res.data && res.data.sent) || 0) + " device(s)");
+    const _d = (res && res.data) || {};
+    toast(_d.topic ? "📣 Sent to everyone with the app" + (_d.sent ? " (+" + _d.sent + " older device(s))" : "") : "📣 Sent to " + (_d.sent || 0) + " device(s)");
   } catch (e) {
     console.error("Broadcast failed:", e);
     toast("⚠️ Broadcast failed — check console");
@@ -6655,7 +6826,7 @@ function tgs(k) {
         toast("⚠️ Sign in first to enable push notifications");
         return;
       }
-      try { localStorage.setItem("rjap_push_asked", "1"); } catch (_) {}
+      try { localStorage.setItem("rjap_push_asked", "1"); localStorage.removeItem("rjap_push_optout"); } catch (_) {}
       lcRegisterPush().then((ok) => {
         if (ok) {
           if (tgPush) tgPush.classList.add("on");
@@ -6667,7 +6838,7 @@ function tgs(k) {
         }
       });
     } else {
-      try { localStorage.setItem("rjap_push_asked", "1"); } catch (_) {}
+      try { localStorage.setItem("rjap_push_asked", "1"); localStorage.setItem("rjap_push_optout", "1"); } catch (_) {}
       lcUnregisterPush();
       if (tgPush) tgPush.classList.remove("on");
       if (statusEl) statusEl.textContent = "— Tap to receive announcements from RadhaNaam SudhaRasam 🔔 (requires sign-in)";
@@ -12986,31 +13157,7 @@ function fbInit() {
       // toggle's own UI (#tgPushNotifications / #pushNotificationsStatus)
       // is kept in sync either way.
       if (user) {
-        let pushOn = false;
-        let pushAsked = false;
-        try { pushOn = localStorage.getItem("rjap_push_enabled") === "1"; } catch (_) {}
-        try { pushAsked = localStorage.getItem("rjap_push_asked") === "1"; } catch (_) {}
-        const tgPushEl = document.getElementById("tgPushNotifications");
-        const pushStatusEl = document.getElementById("pushNotificationsStatus");
-        if (pushOn) {
-          lcRegisterPush().then((ok) => {
-            if (ok) {
-              if (tgPushEl) tgPushEl.classList.add("on");
-              if (pushStatusEl) pushStatusEl.textContent = "✅ Push notifications enabled";
-            }
-          });
-        } else if (!pushAsked) {
-          try { localStorage.setItem("rjap_push_asked", "1"); } catch (_) {}
-          window._lcPushAskPromise = lcRegisterPush().then((ok) => {
-            if (ok) {
-              if (tgPushEl) tgPushEl.classList.add("on");
-              if (pushStatusEl) pushStatusEl.textContent = "✅ Push notifications enabled";
-            } else {
-              if (tgPushEl) tgPushEl.classList.remove("on");
-              if (pushStatusEl) pushStatusEl.textContent = "— Tap toggle to enable push notifications 🔔";
-            }
-          }).catch(() => {});
-        }
+        window._lcPushAskPromise = rjapAutoPush().catch(() => {});
         // First-login onboarding, in order: notification → GPS → language.
         lcOnboardingRun(user);
       }
@@ -25053,6 +25200,7 @@ window.addEventListener("load", async () => {
   await App.load();
   try { await lcLangGate(); } catch (e) { console.error("lang gate failed:", e); }
   if (typeof checkForUpdateAvailable === "function") checkForUpdateAvailable();
+  try { rjapAutoPush(); } catch (_e) {}   // every installed phone joins push, signed in or not
   if (typeof _loadManualApkLink === "function") _loadManualApkLink();
   App.lmc = Math.floor(App.gTodTouch() / (App.S.ms || 108));
   App.lm28 = Math.floor((App.S.h28[App.S.tk] || 0) / (App.S.ms || 108));

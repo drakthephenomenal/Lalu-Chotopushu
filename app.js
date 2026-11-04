@@ -36795,7 +36795,7 @@ async function _loadAdminPhotoMap() {
 function _computePublicProfile(p, forOther) {
   const show = !p || p.showPhoto !== false;
   let photo = '';
-  if (show) photo = _lbSafePhoto((p && (p.photoSmall || p.photo)) || '') || (!forOther && fbUser ? _lbSafePhoto(fbUser.photoURL || '') : '');
+  if (show) photo = _lbSafePhoto((p && (p.photoSmall || p.photo)) || '') || (!forOther && fbUser && !_pfGoogleIsDefault() ? _lbSafePhoto(fbUser.photoURL || '') : '');
   return { photo, verified: !!(p && p.complete && !p.revoked) };
 }
 
@@ -36830,17 +36830,21 @@ window.refreshProfileCard = async function () {
     if (_av0) _av0.innerHTML = _PF_SIL;
     document.getElementById('profileCardName').textContent = 'My Profile';
     document.getElementById('profileCardSub').textContent = 'Sign in to create your profile';
+    const _vSlot0 = document.getElementById('profileCardBadge'); if (_vSlot0) _vSlot0.innerHTML = '';
     if (adminBtn) adminBtn.style.display = 'none';
     return;
   }
   await _ensureMyProfileLoaded();
+  try { _pfCleanDefaultAvatar(); } catch (_e) {}
   const p = window._myProfile || {};
   const nm = p.name || fbUser.displayName || 'My Profile';
   const av = document.getElementById('profileCardAv');
-  const ph = _lbSafePhoto(p.photoSmall || p.photo || '') || _lbSafePhoto(fbUser.photoURL || '');
+  const ph = _lbSafePhoto(p.photoSmall || p.photo || '') || (_pfGoogleIsDefault() ? '' : _lbSafePhoto(fbUser.photoURL || ''));
   av.innerHTML = (ph ? '<img src="' + ph + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + _PF_SIL;
   const nameEl = document.getElementById('profileCardName');
-  nameEl.innerHTML = escHtml(nm) + (p.complete && !p.revoked ? _lbVerifiedBadge({ verified: true }) : '');
+  nameEl.textContent = nm;
+  const _vSlot = document.getElementById('profileCardBadge');
+  if (_vSlot) _vSlot.innerHTML = (p.complete && !p.revoked) ? _lbVerifiedBadge({ verified: true }) : '';
   if (window._pfPushedUid !== fbUser.uid && typeof App !== 'undefined' && App._cloudHydrated && !(typeof isGhostMode === 'function' && isGhostMode())) {
     window._pfPushedUid = fbUser.uid;
     try { pushLeaderboard(); } catch (_e) {}
@@ -36888,12 +36892,17 @@ window.pfPickPhoto = function (input) {
   };
   rd.readAsDataURL(f);
 };
-window.pfUseGooglePhoto = async function () {
+window.pfUseGooglePhoto = async function (silent) {
   const url = fbUser && fbUser.photoURL;
-  if (!url) { toast('No Google photo found on this account'); return; }
+  if (!url || _pfGoogleIsDefault()) { if (silent !== true) toast('No Google photo found on this account'); return; }
   const big = url.replace(/=s\d+(-c)?$/, '=s256-c');
   try {
     const im = await _pfLoadImg(big, true);
+    if (_pfLooksLikeLetterAvatar(im) === true) {
+      window._pfGoogleDefault = { uid: fbUser.uid, val: true };
+      if (silent !== true) toast('Your Google account has no profile photo — please choose one');
+      return;
+    }
     _pfSetPhoto(_pfSquare(im, 256, 0.82), _pfSquare(im, 96, 0.8), 'google');
   } catch (e) {
     // Canvas blocked (cross-origin) — keep the Google link itself.
@@ -36901,6 +36910,66 @@ window.pfUseGooglePhoto = async function () {
     if (safe) _pfSetPhoto(safe, safe, 'google-url'); else toast('Could not use the Google photo');
   }
 };
+
+// Google gives accounts without a profile picture an auto-made coloured circle with a white
+// letter. That is not a real photo, so we treat it as "no photo".
+function _pfLooksLikeLetterAvatar(im) {
+  try {
+    const S = 40, c = document.createElement('canvas');
+    c.width = c.height = S;
+    const x = c.getContext('2d', { willReadFrequently: true });
+    x.drawImage(im, 0, 0, S, S);
+    const d = x.getImageData(0, 0, S, S).data;
+    const bk = {}; let white = 0, top = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
+      if (a < 20 || (r > 215 && g > 215 && b > 215)) { white++; continue; }
+      const k = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+      const n = (bk[k] = (bk[k] || 0) + 1);
+      if (n > top) top = n;
+    }
+    const tot = S * S;
+    return top / tot >= 0.55 && (top + white) / tot >= 0.88;
+  } catch (_e) { return null; }   // null = could not tell (cross-origin)
+}
+async function _pfIsDefaultAvatar(src) {
+  if (!src) return false;
+  try { return _pfLooksLikeLetterAvatar(await _pfLoadImg(src, /^https?:/.test(src))); }
+  catch (_e) { return null; }
+}
+function _pfGoogleIsDefault() {
+  const u = fbUser && fbUser.photoURL;
+  if (!u) return true;
+  if (/\/a\/default-user/.test(u)) return true;
+  const g = window._pfGoogleDefault;
+  return !!(g && g.uid === fbUser.uid && g.val === true);
+}
+async function _pfCleanDefaultAvatar() {
+  if (!fbUser || !fbDb) return;
+  const uid = fbUser.uid;
+  if (window._pfCleanedUid === uid) return;
+  window._pfCleanedUid = uid;
+  let gDef = false;
+  const url = fbUser.photoURL;
+  if (url) gDef = /\/a\/default-user/.test(url) || (await _pfIsDefaultAvatar(url.replace(/=s\d+(-c)?$/, '=s96-c'))) === true;
+  window._pfGoogleDefault = { uid, val: gDef };
+  await _ensureMyProfileLoaded();
+  if (!fbUser || fbUser.uid !== uid) return;
+  const p = window._myProfile || {};
+  let cleared = false;
+  if (p.photo && /^google/.test(p.photoSource || '') && (await _pfIsDefaultAvatar(p.photoSmall || p.photo)) === true) {
+    try {
+      await fbDb.collection('profiles').doc(uid).set({ uid, photo: '', photoSmall: '', photoSource: '', complete: false, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      window._myProfile = Object.assign({}, p, { photo: '', photoSmall: '', photoSource: '', complete: false });
+      cleared = true;
+    } catch (_e) {}
+  }
+  if (gDef || cleared) {
+    window._myPublicProfile = _computePublicProfile(window._myProfile);
+    try { await pushLeaderboard(); } catch (_e) {}
+    refreshProfileCard();
+  }
+}
 
 function _pfStatus(msg, bad) {
   const el = document.getElementById('pfStatus');
@@ -36937,7 +37006,7 @@ window.openProfileEditor = async function () {
           '<label style="padding:8px 14px;border-radius:10px;border:1px solid rgba(255,215,0,0.45);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer;">📷 Choose Photo<input type="file" accept="image/*" onchange="pfPickPhoto(this)" style="display:none"></label>' +
           (fbUser.photoURL ? '<button onclick="pfUseGooglePhoto()" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(74,144,226,0.45);background:transparent;color:var(--a2);font-size:12px;font-weight:700;cursor:pointer;">Use Google Photo</button>' : '') +
         '</div>' +
-        '<label style="display:flex;align-items:center;gap:8px;color:var(--tl);font-size:13px;margin-top:2px;"><input id="pfShow" type="checkbox" style="width:18px;height:18px;"> Show my photo on the Family Board</label>' +
+        '<label style="display:flex;align-items:center;gap:8px;color:var(--tl);font-size:13px;margin-top:2px;"><input id="pfShow" type="checkbox" onchange="pfToggleShow(this)" style="width:18px;height:18px;"> Show my photo on the Family Board</label>' +
         '<div style="font-size:10.5px;color:var(--td);text-align:center;">Your photo is automatically cropped to a square and shown as a circle.</div>' +
       '</div>' +
       '<div style="' + lb + '">Name</div><input id="pfName" maxlength="60" autocomplete="name" style="' + fi + '">' +
@@ -36945,10 +37014,10 @@ window.openProfileEditor = async function () {
       '<div style="' + lb + '">Mobile Number</div><input id="pfMobile" type="tel" maxlength="20" autocomplete="tel" placeholder="+91 …" style="' + fi + '">' +
       '<div style="' + lb + '">Email Address</div><input id="pfEmail" type="email" maxlength="100" autocomplete="email" ' + (lockEmail ? 'readonly' : '') + ' style="' + fi + (lockEmail ? 'opacity:0.7;' : '') + '">' +
       '<div style="' + lb + '">Date of Birth</div><input id="pfDob" type="date" style="' + fi + '">' +
+      '<button type="button" id="pfSaveBtn" onclick="saveProfileEditor()" style="display:block;width:100%;max-width:300px;margin:20px auto 0;padding:14px 24px;border-radius:999px;border:1px solid rgba(255,236,150,0.9);background:linear-gradient(180deg,#FFE680 0%,#FFC61A 55%,#F5A800 100%);color:#3a2600;font-size:15px;font-weight:800;letter-spacing:0.6px;cursor:pointer;box-shadow:0 0 18px rgba(255,200,40,0.6),0 0 38px rgba(255,190,20,0.3),inset 0 1px 0 rgba(255,255,255,0.65);-webkit-tap-highlight-color:transparent;">Save Profile</button>' +
+      '<div id="pfStatus" style="min-height:18px;font-size:12px;margin-top:10px;text-align:center;"></div>' +
       '<div style="font-size:11px;color:var(--td);line-height:1.5;margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(74,144,226,0.07);border:1px solid rgba(74,144,226,0.2);">🔒 Your address, mobile number, email and date of birth are <b>never</b> shown to other devotees. They are visible only to you and the app admin. Only your photo (if shown) and the ✔ badge appear on the Family Board.</div>' +
       '<div style="font-size:11px;color:var(--td);margin-top:10px;">Fill all six details (photo, name, address, mobile, email, date of birth) to get the blue ✔ badge.</div>' +
-      '<div id="pfStatus" style="min-height:18px;font-size:12px;margin-top:10px;"></div>' +
-      '<button onclick="saveProfileEditor()" style="width:100%;margin-top:6px;padding:13px;border-radius:12px;border:1px solid rgba(255,215,0,0.55);background:linear-gradient(135deg,rgba(255,215,0,0.22),rgba(255,180,0,0.1));color:#FFD700;font-size:14px;font-weight:700;cursor:pointer;">💾 Save Profile</button>' +
     '</div>';
   document.body.appendChild(m);
   const _pv = document.getElementById('pfPhotoPrev'); if (_pv) _pv.innerHTML = _PF_SIL;
@@ -36959,7 +37028,24 @@ window.openProfileEditor = async function () {
   document.getElementById('pfShow').checked = p.showPhoto !== false;   // photo shown by default
   const initPh = p.photoSmall || p.photo;
   if (initPh) _pfSetPhoto(p.photo, p.photoSmall, p.photoSource || '');
-  else if (fbUser.photoURL) pfUseGooglePhoto();                          // pre-fill from login
+  else if (fbUser.photoURL) pfUseGooglePhoto(true);                      // pre-fill from login (skips Google's auto letter avatar)
+};
+
+// Tick / untick "Show my photo on the Family Board" -> saved silently, no Save button needed.
+window.pfToggleShow = async function (cb) {
+  if (!fbUser || !fbDb || !cb) return;
+  const val = !!cb.checked;
+  try {
+    await fbDb.collection('profiles').doc(fbUser.uid).set({ uid: fbUser.uid, showPhoto: val, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  } catch (e) {
+    cb.checked = !val;
+    _pfStatus('Could not update — check your connection', true);
+    return;
+  }
+  window._myProfile = Object.assign({}, window._myProfile || {}, { showPhoto: val });
+  window._myPublicProfile = _computePublicProfile(window._myProfile);
+  window._myProfileUid = fbUser.uid;
+  try { await pushLeaderboard(); } catch (_e) {}
 };
 
 window.saveProfileEditor = async function () {
@@ -37008,6 +37094,7 @@ function _profileAuthChanged(user) {
   }
   if (!user) { window._pfPushedUid = null; closeProfileEditor(); closeAdminProfiles(); }
   refreshProfileCard();
+  if (user) { try { _pfCleanDefaultAvatar(); } catch (_e) {} }
 }
 
 // ── Admin: view every profile ──
@@ -37027,8 +37114,9 @@ function _admRender() {
     return '<div style="border:1px solid rgba(255,215,0,0.2);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:rgba(255,255,255,0.03);">' +
       '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'" style="display:flex;align-items:center;gap:10px;cursor:pointer;">' +
         '<div class="lb-av">' + (ph ? '<img src="' + ph + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + _PF_SIL + '</div>' +
-        '<div style="flex:1;min-width:0;"><div style="color:var(--tl);font-weight:600;font-size:14px;">' + escHtml(p.name || p.googleName || '(no name)') + (ok ? _lbVerifiedBadge({ verified: true }) : '') + '</div>' +
+        '<div style="flex:1;min-width:0;"><div style="color:var(--tl);font-weight:600;font-size:14px;">' + escHtml(p.name || p.googleName || '(no name)') + '</div>' +
         '<div style="font-size:11px;color:var(--td);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(p.email || '') + '</div></div>' +
+        '<div class="pf-vslot">' + (ok ? _lbVerifiedBadge({ verified: true }) : '') + '</div>' +
         '<div style="font-size:11px;color:var(--td);">' + _pfCount(p) + '/6</div></div>' +
       '<div style="display:none;margin-top:8px;border-top:1px solid rgba(255,215,0,0.12);padding-top:6px;">' +
         row('Name', p.name) + row('Address', p.address) + row('Mobile', p.mobile) + row('Email', p.email) + row('Date of birth', p.dob) +

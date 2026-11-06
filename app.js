@@ -346,6 +346,7 @@ async function lcNotifyBackupSaved(body) {
         body,
         channelId: RJAP_BACKUP_NOTIF_CHANNEL_ID,
         smallIcon: "ic_stat_notify",
+        largeIcon: "ic_large_notify",
         iconColor: "#E56B1F",
       }],
     });
@@ -381,6 +382,7 @@ async function lcScheduleDailyReminder(hour, minute) {
         schedule: { on: { hour, minute }, allowWhileIdle: true },
         channelId: RJAP_NOTIF_CHANNEL_ID,
         smallIcon: "ic_stat_notify",
+        largeIcon: "ic_large_notify",
         iconColor: "#E56B1F",
       }],
     });
@@ -434,6 +436,7 @@ async function _lcScheduleOneShot(id, targetDate, title, body) {
         schedule: { at: targetDate, allowWhileIdle: true },
         channelId: RJAP_NOTIF_CHANNEL_ID,
         smallIcon: "ic_stat_notify",
+        largeIcon: "ic_large_notify",
         iconColor: "#E56B1F",
       }],
     });
@@ -499,7 +502,7 @@ function _lcArmWebReminderTimer() {
         try {
           new Notification("🙏 RadhaNaam SudhaRasam", {
             body: "Time for your daily sadhana — chant with a peaceful heart.",
-            icon: "./icon-192.png",
+            icon: "./notif-icon.png",
           });
         } catch (e) {}
       }
@@ -609,11 +612,14 @@ function rjapOpenNotifHistory() {
     for (const n of history) {
       const row = document.createElement("div");
       row.className = "notif-hist-row" + (n.read ? "" : " notif-hist-unread");
+      row.style.cssText = "display:flex;align-items:flex-start;gap:10px;";
       row.innerHTML =
+        '<img src="./notif-icon.png" alt="" style="width:38px;height:38px;flex:none;object-fit:contain;margin-top:2px;">' +
+        '<div style="flex:1;min-width:0;">' +
         '<div class="notif-hist-title">' + (n.read ? "" : '<span class="notif-hist-dot"></span>') +
         _rjapEscapeHtml(n.title) + "</div>" +
         (n.body ? '<div class="notif-hist-body">' + _rjapEscapeHtml(n.body) + "</div>" : "") +
-        '<div class="notif-hist-time">' + _rjapFormatNotifTime(n.ts) + "</div>";
+        '<div class="notif-hist-time">' + _rjapFormatNotifTime(n.ts) + "</div></div>";
       listEl.appendChild(row);
     }
   }
@@ -681,10 +687,30 @@ function _lcPushSaveToken(token) {
 
 const PUSH_TOPIC_ALL = "all";
 window._lcTopicOk = false;
+// Announcement / "Good Morning" pushes from the developer panel get their own channel with the
+// push_tone sound. (Android fixes a channel's sound when it is first created, hence a new id.)
+const RJAP_PUSH_CHANNEL_ID = "rjap_push_v1";
+async function lcSetupPushChannel() {
+  if (!(_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications)) return;
+  try {
+    await window.Capacitor.Plugins.LocalNotifications.createChannel({
+      id: RJAP_PUSH_CHANNEL_ID,
+      name: "Announcements & Good Morning",
+      description: "Messages from RadhaNaam SudhaRasam",
+      importance: 5,
+      visibility: 1,
+      vibration: true,
+      sound: "push_tone",
+    });
+  } catch (e) {}
+}
+setTimeout(() => { try { lcSetupPushChannel(); } catch (_e) {} }, 3000);
+
 // Installed app: subscribe this phone to the "all" topic. Works with or without sign-in, and the
 // server then reaches EVERY phone that has the app with one send.
 async function lcPushTopicSubscribe() {
   try {
+    await lcSetupPushChannel();
     const FM = _lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseMessaging;
     if (!FM || typeof FM.subscribeToTopic !== "function") return false;
     await FM.subscribeToTopic({ topic: PUSH_TOPIC_ALL });
@@ -37106,83 +37132,180 @@ function _pfSetPhoto(photo, small, source, large) {
 window._pfOrig = null;
 function _pfOpenCropper(im, onDone) {
   const old = document.getElementById('pfCropModal'); if (old) old.remove();
-  const W = im.naturalWidth, H = im.naturalHeight;
-  const S = Math.max(220, Math.min(320, Math.floor(Math.min(window.innerWidth, 520) - 56)));
-  const base = S / Math.min(W, H);           // scale at which the image just covers the square
-  let zoom = 1, tx = 0, ty = 0;              // tx/ty = image-centre offset from stage centre (px)
+  // Working copy, capped at 2400px so rotate / zoom stay smooth on phones.
+  const nw = im.naturalWidth || im.width, nh = im.naturalHeight || im.height;
+  const cap = Math.min(1, 2400 / Math.max(nw, nh));
+  const base = document.createElement('canvas');
+  base.width = Math.max(1, Math.round(nw * cap)); base.height = Math.max(1, Math.round(nh * cap));
+  base.getContext('2d').drawImage(im, 0, 0, base.width, base.height);
+  let rot = 0, flip = false, cv = base, W = base.width, H = base.height;
+  const SW = Math.max(220, Math.min(window.innerWidth - 28, window.innerHeight - 440, 440)), SH = SW;
+  const MINBOX = 80;
+  let bs = Math.round(SW * 0.8), bx = (SW - bs) / 2, by = (SH - bs) / 2;   // crop box (always square)
+  let sc = 1, cx = SW / 2, cy = SH / 2, minSc = 0.1, maxSc = 10;            // image scale + centre (stage px)
+
   const m = document.createElement('div');
   m.id = 'pfCropModal';
-  m.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(3,8,20,0.96);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));';
+  m.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(3,8,20,0.97);overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;gap:10px;padding:calc(12px + env(safe-area-inset-top)) 12px calc(14px + env(safe-area-inset-bottom));';
+  const btn = 'padding:8px 13px;border-radius:10px;border:1px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.07);color:var(--gold);font-size:14px;font-weight:700;cursor:pointer;touch-action:manipulation;';
+  const hs = 'position:absolute;box-sizing:border-box;touch-action:none;pointer-events:auto;';
+  const corner = (h, pos, bd, cur) => '<div data-h="' + h + '" style="' + hs + 'width:34px;height:34px;' + pos + bd + 'border-color:#FFC61A;border-style:solid;border-width:0;cursor:' + cur + ';"></div>';
+  const bar = (h, pos, w, ht, pad, cur) => '<div data-h="' + h + '" style="' + hs + 'width:' + w + 'px;height:' + ht + 'px;padding:' + pad + ';background:#FFC61A;background-clip:content-box;' + pos + 'cursor:' + cur + ';"></div>';
   m.innerHTML =
-    '<div style="color:var(--gold);font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:14px;">Adjust Photo</div>' +
-    '<div id="pfCropStage" style="position:relative;width:' + S + 'px;height:' + S + 'px;overflow:hidden;border-radius:14px;background:#000;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;">' +
-      '<img id="pfCropImg" alt="" draggable="false" style="position:absolute;max-width:none;pointer-events:none;-webkit-user-drag:none;">' +
-      '<div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 50%, transparent 0, transparent calc(50% - 1px), rgba(0,0,0,0.62) 50%);"></div>' +
-      '<div style="position:absolute;inset:0;pointer-events:none;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(255,215,0,0.85);"></div>' +
+    '<div style="color:var(--gold);font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:14px;margin-top:2px;">Adjust Photo</div>' +
+    '<div id="pfCropStage" style="position:relative;flex:none;width:' + SW + 'px;height:' + SH + 'px;overflow:hidden;border-radius:12px;background:#fff;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;">' +
+      '<div id="pfCropHold" style="position:absolute;inset:0;pointer-events:none;"></div>' +
+      '<div id="pfCropBox" style="position:absolute;box-sizing:border-box;box-shadow:0 0 0 2000px rgba(0,0,0,0.62);border:1.5px solid rgba(255,215,0,0.9);pointer-events:none;">' +
+        '<div style="position:absolute;inset:0;pointer-events:none;border-radius:50%;border:1.5px dashed rgba(255,215,0,0.85);background:radial-gradient(circle closest-side, transparent calc(100% - 1px), rgba(0,0,0,0.42) 100%);"></div>' +
+        corner('nw', 'left:-4px;top:-4px;', 'border-top-width:4px;border-left-width:4px;', 'nwse-resize') +
+        corner('ne', 'right:-4px;top:-4px;', 'border-top-width:4px;border-right-width:4px;', 'nesw-resize') +
+        corner('sw', 'left:-4px;bottom:-4px;', 'border-bottom-width:4px;border-left-width:4px;', 'nesw-resize') +
+        corner('se', 'right:-4px;bottom:-4px;', 'border-bottom-width:4px;border-right-width:4px;', 'nwse-resize') +
+        bar('n', 'left:50%;top:-12px;margin-left:-22px;', 44, 24, '10px 0', 'ns-resize') +
+        bar('s', 'left:50%;bottom:-12px;margin-left:-22px;', 44, 24, '10px 0', 'ns-resize') +
+        bar('w', 'top:50%;left:-12px;margin-top:-22px;', 24, 44, '0 10px', 'ew-resize') +
+        bar('e', 'top:50%;right:-12px;margin-top:-22px;', 24, 44, '0 10px', 'ew-resize') +
+      '</div>' +
     '</div>' +
-    '<div style="display:flex;align-items:center;gap:10px;width:' + S + 'px;">' +
-      '<span style="color:var(--gold);font-size:16px;">−</span>' +
-      '<input id="pfCropZoom" type="range" min="1" max="4" step="0.01" value="1" style="flex:1;accent-color:#FFC61A;">' +
-      '<span style="color:var(--gold);font-size:20px;">+</span>' +
+    '<div style="display:flex;align-items:center;gap:8px;width:' + SW + 'px;">' +
+      '<button type="button" id="pfZOut" style="' + btn + 'padding:6px 12px;">−</button>' +
+      '<input id="pfCropZoom" type="range" min="0" max="1000" step="1" value="0" style="flex:1;accent-color:#FFC61A;">' +
+      '<button type="button" id="pfZIn" style="' + btn + 'padding:6px 12px;">+</button>' +
     '</div>' +
-    '<div style="font-size:11.5px;color:var(--td);text-align:center;">Drag to move · pinch or slide to zoom<br>The circle is what everyone will see.</div>' +
-    '<div style="display:flex;gap:12px;">' +
-      '<button type="button" id="pfCropCancel" style="padding:11px 22px;border-radius:999px;border:1px solid rgba(255,215,0,0.4);background:transparent;color:var(--gold);font-size:14px;font-weight:700;cursor:pointer;">Cancel</button>' +
+    '<div style="display:flex;align-items:center;gap:8px;width:' + SW + 'px;">' +
+      '<span style="color:var(--td);font-size:11px;min-width:58px;">Crop size</span>' +
+      '<input id="pfCropSize" type="range" min="' + MINBOX + '" max="' + SW + '" step="1" value="' + bs + '" style="flex:1;accent-color:#FFC61A;">' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:' + Math.max(SW, 300) + 'px;">' +
+      '<button type="button" id="pfRotL" style="' + btn + '" aria-label="Rotate left">⟲</button>' +
+      '<button type="button" id="pfRotR" style="' + btn + '" aria-label="Rotate right">⟳</button>' +
+      '<button type="button" id="pfFlip" style="' + btn + '" aria-label="Flip">⇋</button>' +
+      '<button type="button" id="pfReset" style="' + btn + 'font-size:12px;">Reset</button>' +
+      '<span style="width:6px;"></span>' +
+      '<button type="button" data-nudge="-1,0" style="' + btn + '" aria-label="Move left">←</button>' +
+      '<button type="button" data-nudge="0,-1" style="' + btn + '" aria-label="Move up">↑</button>' +
+      '<button type="button" data-nudge="0,1" style="' + btn + '" aria-label="Move down">↓</button>' +
+      '<button type="button" data-nudge="1,0" style="' + btn + '" aria-label="Move right">→</button>' +
+    '</div>' +
+    '<div style="font-size:11px;color:var(--td);text-align:center;line-height:1.5;">Drag the photo to move · pinch or slide to zoom<br>Drag the gold corners / sides to resize the crop · the circle is what everyone sees</div>' +
+    '<div style="display:flex;gap:12px;margin-top:2px;">' +
+      '<button type="button" id="pfCropCancel" style="' + btn + 'padding:11px 22px;border-radius:999px;">Cancel</button>' +
       '<button type="button" id="pfCropOk" style="padding:11px 28px;border-radius:999px;border:1px solid rgba(255,236,150,0.9);background:linear-gradient(180deg,#FFE680 0%,#FFC61A 55%,#F5A800 100%);color:#3a2600;font-size:14px;font-weight:800;cursor:pointer;">Use Photo</button>' +
     '</div>';
   document.body.appendChild(m);
-  const stage = m.querySelector('#pfCropStage'), img = m.querySelector('#pfCropImg'), zs = m.querySelector('#pfCropZoom');
-  img.src = im.src;
-  function clamp() {
-    const sc = base * zoom, mx = Math.max(0, (W * sc - S) / 2), my = Math.max(0, (H * sc - S) / 2);
-    tx = Math.min(mx, Math.max(-mx, tx)); ty = Math.min(my, Math.max(-my, ty));
+  const $ = (id) => m.querySelector(id);
+  const stage = $('#pfCropStage'), hold = $('#pfCropHold'), box = $('#pfCropBox');
+  const zs = $('#pfCropZoom'), ss = $('#pfCropSize');
+
+  function orient() {
+    const r = rot % 2 === 1;
+    const c = document.createElement('canvas');
+    c.width = r ? base.height : base.width; c.height = r ? base.width : base.height;
+    const x = c.getContext('2d');
+    x.translate(c.width / 2, c.height / 2);
+    if (flip) x.scale(-1, 1);
+    x.rotate(rot * Math.PI / 2);
+    x.drawImage(base, -base.width / 2, -base.height / 2);
+    cv = c; W = c.width; H = c.height;
+    cv.style.cssText = 'position:absolute;max-width:none;pointer-events:none;';
+    hold.innerHTML = ''; hold.appendChild(cv);
+  }
+  function fit() {                       // image covers the crop box, centred on it
+    const sc0 = bs / Math.min(W, H);
+    sc = sc0; cx = bx + bs / 2; cy = by + bs / 2;
+    minSc = Math.min(SW / Math.max(W, H), sc0) * 0.5;   // can zoom out until the whole photo is small
+    maxSc = sc0 * 10;                                     // up to 10x closer
   }
   function paint() {
-    clamp();
-    const sc = base * zoom;
-    img.style.width = (W * sc) + 'px'; img.style.height = (H * sc) + 'px';
-    img.style.left = (S / 2 + tx - W * sc / 2) + 'px'; img.style.top = (S / 2 + ty - H * sc / 2) + 'px';
-    zs.value = zoom;
+    sc = Math.min(maxSc, Math.max(minSc, sc));
+    const w = W * sc, h = H * sc, mg = 24;                // keep at least a sliver under the crop box
+    cx = Math.min(bx + bs - mg + w / 2, Math.max(bx + mg - w / 2, cx));
+    cy = Math.min(by + bs - mg + h / 2, Math.max(by + mg - h / 2, cy));
+    cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    cv.style.left = (cx - w / 2) + 'px'; cv.style.top = (cy - h / 2) + 'px';
+    box.style.left = bx + 'px'; box.style.top = by + 'px'; box.style.width = bs + 'px'; box.style.height = bs + 'px';
+    zs.value = Math.round(1000 * Math.log(sc / minSc) / Math.log(maxSc / minSc));
+    ss.value = Math.round(bs);
   }
-  function setZoom(z) {                       // zoom about the stage centre, keeping the framing steady
-    z = Math.min(4, Math.max(1, z));
-    const k = z / zoom; tx *= k; ty *= k; zoom = z; paint();
+  function zoomAbout(ns, ox, oy) {
+    ns = Math.min(maxSc, Math.max(minSc, ns));
+    const k = ns / sc; cx = ox + (cx - ox) * k; cy = oy + (cy - oy) * k; sc = ns; paint();
   }
-  paint();
-  // pointer handling: 1 finger = move, 2 fingers = pinch
-  const pts = new Map(); let lastD = 0;
+  function setBox(nx, ny, ns) {          // clamp the crop box inside the stage
+    ns = Math.max(MINBOX, Math.min(ns, Math.min(SW, SH)));
+    bx = Math.max(0, Math.min(SW - ns, nx)); by = Math.max(0, Math.min(SH - ns, ny)); bs = ns;
+  }
+  orient(); fit(); paint();
+
+  // ── pointers: 1 finger on photo = move · 1 on a gold handle = resize · 2 fingers = pinch ──
+  const pts = new Map(); let lastD = 0, mode = 'pan', hnd = '';
+  const local = (e) => { const r = stage.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   stage.addEventListener('pointerdown', (e) => {
     try { stage.setPointerCapture(e.pointerId); } catch (_e) {}
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pts.size === 2) { const a = [...pts.values()]; lastD = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); }
-    stage.style.cursor = 'grabbing';
+    if (pts.size === 1) { const h = e.target && e.target.dataset && e.target.dataset.h; mode = h ? 'resize' : 'pan'; hnd = h || ''; }
+    if (pts.size === 2) { mode = 'pinch'; const a = [...pts.values()]; lastD = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); }
   });
   stage.addEventListener('pointermove', (e) => {
     const pt = pts.get(e.pointerId); if (!pt) return;
-    if (pts.size === 1) {
-      tx += e.clientX - pt.x; ty += e.clientY - pt.y;
-      pt.x = e.clientX; pt.y = e.clientY; paint();
-    } else if (pts.size === 2) {
+    if (mode === 'pinch' && pts.size === 2) {
       pt.x = e.clientX; pt.y = e.clientY;
       const a = [...pts.values()], d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y);
-      if (lastD > 0) setZoom(zoom * d / lastD);
-      lastD = d;
+      const r = stage.getBoundingClientRect();
+      if (lastD > 0) zoomAbout(sc * d / lastD, (a[0].x + a[1].x) / 2 - r.left, (a[0].y + a[1].y) / 2 - r.top);
+      lastD = d; return;
     }
+    if (pts.size !== 1) return;
+    if (mode === 'resize') {
+      const p = local(e), L = bx, T = by, R = bx + bs, B = by + bs, mx = bx + bs / 2, my = by + bs / 2;
+      let nx = bx, ny = by, ns = bs;
+      if (hnd.length === 2) {                                   // corner: opposite corner stays put
+        const ax = hnd.indexOf('w') >= 0 ? R : L, ay = hnd.indexOf('n') >= 0 ? B : T;
+        const dx = hnd.indexOf('w') >= 0 ? -1 : 1, dy = hnd.indexOf('n') >= 0 ? -1 : 1;
+        ns = Math.max(Math.abs(p.x - ax), Math.abs(p.y - ay));
+        ns = Math.min(ns, dx < 0 ? ax : SW - ax, dy < 0 ? ay : SH - ay);
+        ns = Math.max(MINBOX, ns);
+        nx = dx < 0 ? ax - ns : ax; ny = dy < 0 ? ay - ns : ay;
+      } else if (hnd === 'e') { ns = Math.max(MINBOX, Math.min(p.x - L, SW - L)); nx = L; ny = my - ns / 2; }
+      else if (hnd === 'w') { ns = Math.max(MINBOX, Math.min(R - p.x, R)); nx = R - ns; ny = my - ns / 2; }
+      else if (hnd === 's') { ns = Math.max(MINBOX, Math.min(p.y - T, SH - T)); ny = T; nx = mx - ns / 2; }
+      else if (hnd === 'n') { ns = Math.max(MINBOX, Math.min(B - p.y, B)); ny = B - ns; nx = mx - ns / 2; }
+      setBox(nx, ny, ns); paint();
+      pt.x = e.clientX; pt.y = e.clientY; return;
+    }
+    cx += e.clientX - pt.x; cy += e.clientY - pt.y;
+    pt.x = e.clientX; pt.y = e.clientY; paint();
   });
-  const up = (e) => { pts.delete(e.pointerId); lastD = 0; if (!pts.size) stage.style.cursor = 'grab'; };
+  const up = (e) => { pts.delete(e.pointerId); lastD = 0; if (pts.size === 1) { mode = 'pan'; const q = [...pts.values()][0]; } };
   stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
-  stage.addEventListener('wheel', (e) => { e.preventDefault(); setZoom(zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08)); }, { passive: false });
-  zs.addEventListener('input', () => setZoom(parseFloat(zs.value) || 1));
-  m.querySelector('#pfCropCancel').onclick = () => m.remove();
-  m.querySelector('#pfCropOk').onclick = () => {
-    const sc = base * zoom, size = S / sc;
-    let sx = (W * sc / 2 - tx - S / 2) / sc, sy = (H * sc / 2 - ty - S / 2) / sc;
-    sx = Math.max(0, Math.min(W - size, sx)); sy = Math.max(0, Math.min(H - size, sy));
+  stage.addEventListener('wheel', (e) => { e.preventDefault(); const p = local(e); zoomAbout(sc * (e.deltaY < 0 ? 1.1 : 1 / 1.1), p.x, p.y); }, { passive: false });
+
+  // ── controls ──
+  zs.addEventListener('input', () => { const v = (parseFloat(zs.value) || 0) / 1000; zoomAbout(minSc * Math.pow(maxSc / minSc, v), bx + bs / 2, by + bs / 2); });
+  $('#pfZIn').onclick = () => zoomAbout(sc * 1.2, bx + bs / 2, by + bs / 2);
+  $('#pfZOut').onclick = () => zoomAbout(sc / 1.2, bx + bs / 2, by + bs / 2);
+  ss.addEventListener('input', () => { const ns = parseFloat(ss.value) || bs; setBox(bx + bs / 2 - ns / 2, by + bs / 2 - ns / 2, ns); paint(); });
+  const reorient = () => { orient(); bs = Math.round(SW * 0.8); bx = by = (SW - bs) / 2; fit(); paint(); };
+  $('#pfRotL').onclick = () => { rot = (rot + 3) % 4; reorient(); };
+  $('#pfRotR').onclick = () => { rot = (rot + 1) % 4; reorient(); };
+  $('#pfFlip').onclick = () => { flip = !flip; reorient(); };
+  $('#pfReset').onclick = () => { rot = 0; flip = false; reorient(); };
+  m.querySelectorAll('[data-nudge]').forEach((b) => {            // arrows: tap or hold to move the photo
+    const [dx, dy] = b.getAttribute('data-nudge').split(',').map(Number);
+    let t = null; const step = () => { cx += dx * 6; cy += dy * 6; paint(); };
+    const stop = () => { if (t) { clearInterval(t); t = null; } };
+    b.addEventListener('pointerdown', (e) => { e.preventDefault(); step(); stop(); t = setInterval(step, 55); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, stop));
+  });
+  $('#pfCropCancel').onclick = () => m.remove();
+  $('#pfCropOk').onclick = () => {
+    const w = W * sc, h = H * sc, left = cx - w / 2 - bx, top = cy - h / 2 - by;   // photo position inside the crop box
     const out = (px, q) => {
       const c = document.createElement('canvas'); c.width = c.height = px;
       const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, px, px);
       x.imageSmoothingQuality = 'high';
-      x.drawImage(im, sx, sy, size, size, 0, 0, px, px);
+      const k = px / bs;
+      x.drawImage(cv, left * k, top * k, w * k, h * k);
       return c.toDataURL('image/jpeg', q);
     };
     try { onDone(out(256, 0.82), out(96, 0.8), out(512, 0.85)); } catch (e) { toast('Could not use that photo'); }
@@ -37190,7 +37313,7 @@ function _pfOpenCropper(im, onDone) {
   };
 }
 function _pfApplyCrop(im, source) {
-  _pfOpenCropper(im, (photo, small, large) => { _pfSetPhoto(photo, small, source, large); _pfDraftSoon(); });
+  _pfOpenCropper(im, (photo, small, large) => { window._pfOrig = im; _pfSetPhoto(photo, small, source, large); _pfDraftSoon(); });
 }
 window.pfPickPhoto = function (input) {
   const f = input && input.files && input.files[0];
@@ -37199,7 +37322,6 @@ window.pfPickPhoto = function (input) {
   rd.onload = async () => {
     try {
       const im = await _pfLoadImg(rd.result, false);
-      window._pfOrig = im;
       _pfApplyCrop(im, 'upload');
     } catch (e) { toast('Could not read that photo'); }
     try { input.value = ''; } catch (_e) {}   // lets the same file be chosen again
@@ -37229,7 +37351,9 @@ window.pfUseGooglePhoto = async function (silent) {
       if (silent !== true) toast('Your Google account has no profile photo — please choose one');
       return;
     }
+    window._pfOrig = im;
     _pfSetPhoto(_pfSquare(im, 256, 0.82), _pfSquare(im, 96, 0.8), 'google', _pfSquare(im, 512, 0.85));
+    if (silent !== true) _pfApplyCrop(im, 'google');
   } catch (e) {
     // Canvas blocked (cross-origin) — keep the Google link itself.
     const safe = _lbSafePhoto(url);
@@ -37336,7 +37460,7 @@ window.openProfileEditor = async function () {
           (fbUser.photoURL ? '<button onclick="pfUseGooglePhoto()" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(74,144,226,0.45);background:transparent;color:var(--a2);font-size:12px;font-weight:700;cursor:pointer;">Use Google Photo</button>' : '') +
         '</div>' +
         '<label style="display:flex;align-items:center;gap:8px;color:var(--tl);font-size:13px;margin-top:2px;"><input id="pfShow" type="checkbox" onchange="pfToggleShow(this)" style="width:18px;height:18px;"> Show my photo on the Family Board</label>' +
-        '<div style="font-size:10.5px;color:var(--td);text-align:center;">Choose a photo, then drag and zoom to pick the part you want shown in the circle.</div>' +
+        '<div style="font-size:10.5px;color:var(--td);text-align:center;">Choose a photo or use your Google one, then crop, zoom and rotate it to pick the part shown in the circle.</div>' +
       '</div>' +
       '<div style="' + lb + '">Name</div><input id="pfName" maxlength="60" autocomplete="name" style="' + fi + '">' +
       '<div style="' + lb + '">Address</div><textarea id="pfAddress" maxlength="250" rows="3" autocomplete="street-address" style="' + fi + 'resize:vertical;"></textarea>' +

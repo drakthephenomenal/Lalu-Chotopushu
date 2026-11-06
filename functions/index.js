@@ -392,7 +392,7 @@ exports.sendBroadcastNotification = functions.https.onCall(async (data, context)
     await admin.messaging().send({
       topic: "all",
       notification: { title, body },
-      android: { priority: "high" },
+      android: { priority: "high", notification: { icon: "ic_stat_notify", color: "#E56B1F", channelId: "rjap_push_v1", sound: "push_tone" } },
     });
     topicOk = true;
   } catch (e) {
@@ -412,7 +412,7 @@ exports.sendBroadcastNotification = functions.https.onCall(async (data, context)
     const res = await admin.messaging().sendEachForMulticast({
       tokens: batch,
       notification: { title, body },
-      android: { priority: "high" },
+      android: { priority: "high", notification: { icon: "ic_stat_notify", color: "#E56B1F", channelId: "rjap_push_v1", sound: "push_tone" } },
     });
     sent += res.successCount;
     failed += res.failureCount;

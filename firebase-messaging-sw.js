@@ -27,6 +27,7 @@ messaging.onBackgroundMessage((payload) => {
   const body = (payload.notification && payload.notification.body) || "";
   self.registration.showNotification(title, {
     body,
-    icon: "/icon-192.png",
+    icon: "/notif-icon.png",
+    badge: "/notif-icon.png",
   });
 });

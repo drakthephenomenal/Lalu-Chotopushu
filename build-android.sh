@@ -221,6 +221,10 @@ if [ -f "ic_notification.png" ]; then
   mkdir -p android/app/src/main/res/drawable
   cp ic_notification.png android/app/src/main/res/drawable/ic_stat_notify.png
   echo "  installed ic_stat_notify.png (notification small icon)"
+  if [ -f "notif-icon.png" ]; then
+    cp notif-icon.png android/app/src/main/res/drawable/ic_large_notify.png
+    echo "  installed ic_large_notify.png (notification large colour icon)"
+  fi
 else
   echo "  ⚠ ic_notification.png not found at repo root — notification icon will fall back to system default."
 fi
@@ -228,6 +232,7 @@ if [ -f "reminder_tone.mp3" ]; then
   mkdir -p android/app/src/main/res/raw
   cp reminder_tone.mp3 android/app/src/main/res/raw/reminder_tone.mp3
   echo "  installed reminder_tone.mp3 (notification sound)"
+  [ -f "push_tone.mp3" ] && cp push_tone.mp3 android/app/src/main/res/raw/push_tone.mp3 && echo "  installed push_tone.mp3 (announcement / Good Morning push sound)"
 else
   echo "  ⚠ reminder_tone.mp3 not found at repo root — notifications will fall back to the default system sound."
 fi
@@ -288,6 +293,25 @@ else:
         f.write(content)
     print("  added custom-scheme deep link intent-filter (app.vercel.radharadharadha.capacitor://oauthredirect)")
 PYEOF
+
+echo "── 7.7/9  Patch AndroidManifest.xml (push notification icon + colour) ──"
+python3 - << 'PYEOF3'
+path = "android/app/src/main/AndroidManifest.xml"
+c = open(path).read()
+if "default_notification_icon" in c:
+    print("  already present")
+else:
+    meta = (
+        '        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_notify" />\n'
+        '        <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:value="#E56B1F" />\n'
+    )
+    i = c.find("</application>")
+    if i == -1:
+        raise SystemExit("Could not find </application> in AndroidManifest.xml")
+    c = c[:i] + meta + "    " + c[i:]
+    open(path, "w").write(c)
+    print("  added FCM default notification icon + colour")
+PYEOF3
 
 echo "── 7.8/9  Patch AndroidManifest.xml (background playback service) ──"
 python3 - << 'PYEOF2'

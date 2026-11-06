@@ -471,7 +471,7 @@
 // v420 (Play build + dev email): bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
 // v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
 // v422: bumped cache to force-invalidate stale app.js / style.css / index.html — Haridashi Sampraday (Radha + Kunj Vihari / Sri Haridas, own Deity/Guru/Acharya photos, own lifetime target); Nimbark Deity/Guru/Acharya jap-display photos + Yugal mantra animation now matches Hare Krishna; reopened wishes no longer stay paused.
-const CACHE = 'radha-jap-v456';
+const CACHE = 'radha-jap-v457';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 
@@ -495,8 +495,8 @@ try {
     const n = payload.notification || {};
     self.registration.showNotification(n.title || "RadhaNaam SudhaRasam", {
       body: n.body || "",
-      icon: './icon-192.png',
-      badge: './icon-192.png',
+      icon: './notif-icon.png',
+      badge: './notif-icon.png',
     });
   });
 } catch (e) {
@@ -514,6 +514,7 @@ const CORE_ASSETS = [
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
+  './notif-icon.png',
   // Promoted in v154 — these are visible on first paint:
   './guru.jpg',
   './radha-coin.png',

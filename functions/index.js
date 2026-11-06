@@ -667,7 +667,9 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
     const histRam = data.historyRam || {};
     const histSR = data.historySR || {};
     const histRM = data.historyRM || {};
+    const histNR = data.historyNR || {};
     const histYg = data.historyYg || {};
+    const histVl = data.historyVl || {};   // Sri Krishna Sharanam Mama (SKSM)
     const histKaam = data.historyKaam || {};
     const hist28 = data.h28 || {};
     // Kunj Vihari Sri Haridas reuses the RV counting slot; lbKH tells the leaderboard to show it separately.
@@ -682,13 +684,15 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
     const totalRam = _lbSumHistory(histRam);
     const totalSR = _lbSumHistory(histSR);
     const totalRM = _lbSumHistory(histRM);
+    const totalNR = _lbSumHistory(histNR);
     const totalYg = _lbSumHistory(histYg);
+    const totalVl = _lbSumHistory(histVl);
     const totalKaam = _lbSumHistory(histKaam);
     const total28 = _lbSumHistory(hist28);
 
     const totalJap = Math.max(
       0,
-      totalRadha + totalRV + totalKH + totalKV + totalSS + totalHK + totalRam + totalSR + totalRM + totalYg + totalKaam + total28 -
+      totalRadha + totalRV + totalKH + totalKV + totalSS + totalHK + totalRam + totalSR + totalRM + totalNR + totalYg + totalVl + totalKaam + total28 -
         (data.nameJapDeduct || 0) -
         (data.nameJapDeductRV || 0) -
         (data.nameJapDeductKH || 0) -
@@ -698,7 +702,9 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
         (data.nameJapDeductRam || 0) -
         (data.nameJapDeductSR || 0) -
         (data.nameJapDeductRM || 0) -
+        (data.nameJapDeductNR || 0) -
         (data.nameJapDeductYg || 0) -
+        (data.nameJapDeductVl || 0) -
         (data.nameJapDeductKaam || 0) -
         (data.nameJapDeduct28 || 0)
     );
@@ -711,7 +717,7 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
           userRecord.displayName ||
           (userRecord.email || "").split("@")[0] ||
           "Anonymous Devotee"
-        ).slice(0, 30);
+        ).slice(0, 60);
       } catch (_e) {
         displayName = "Anonymous Devotee";
       }
@@ -733,13 +739,15 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
         ...Object.keys(histRam),
         ...Object.keys(histSR),
         ...Object.keys(histRM),
+        ...Object.keys(histNR),
         ...Object.keys(histYg),
+        ...Object.keys(histVl),
         ...Object.keys(histKaam),
       ]);
       allKeys.forEach((k) => {
         allHist[k] =
           (hist[k] || 0) + (histRV[k] || 0) + (histKH[k] || 0) + (histKV[k] || 0) +
-          (histSS[k] || 0) + (histHK[k] || 0) + (histRam[k] || 0) + (histSR[k] || 0) + (histRM[k] || 0) + (histYg[k] || 0) + (histKaam[k] || 0);
+          (histSS[k] || 0) + (histHK[k] || 0) + (histRam[k] || 0) + (histSR[k] || 0) + (histRM[k] || 0) + (histNR[k] || 0) + (histYg[k] || 0) + (histVl[k] || 0) + (histKaam[k] || 0);
       });
       const target = data.dt || data.dtRV || data.dtKV || data.dtHK || 0;
       let key = liveTk;
@@ -763,9 +771,16 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       ram: histRam[liveTk] || 0,
       sr: histSR[liveTk] || 0,
       rm: histRM[liveTk] || 0,
+      nr: histNR[liveTk] || 0,
       yg: histYg[liveTk] || 0,
+      vl: histVl[liveTk] || 0,
       kaam: histKaam[liveTk] || 0,
       n28: hist28[liveTk] || 0,
+      ra: (data.historyAudio || {})[liveTk] || 0,
+      rva: ((data.audioHistM || {}).rv || {})[liveTk] || 0,
+      kva: ((data.audioHistM || {}).kv || {})[liveTk] || 0,
+      kaama: ((data.audioHistM || {}).kaam || {})[liveTk] || 0,
+      n28a: (data.historyAudio28 || {})[liveTk] || 0,
     };
     const timerHist = data.timerHistory || {};
     const timerHistKH = data.timerHistoryKH || {};
@@ -776,7 +791,9 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
     const timerHistRam = data.timerHistoryRam || {};
     const timerHistSR = data.timerHistorySR || {};
     const timerHistRM = data.timerHistoryRM || {};
+    const timerHistNR = data.timerHistoryNR || {};
     const timerHistYg = data.timerHistoryYg || {};
+    const timerHistVl = data.timerHistoryVl || {};
     const timerHistKaam = data.timerHistoryKaam || {};
     const timer28Hist = data.timer28History || {};
     const todayTimeBreakdown = {
@@ -789,16 +806,18 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       ram: timerHistRam[liveTk] || 0,
       sr: timerHistSR[liveTk] || 0,
       rm: timerHistRM[liveTk] || 0,
+      nr: timerHistNR[liveTk] || 0,
       yg: timerHistYg[liveTk] || 0,
+      vl: timerHistVl[liveTk] || 0,
       kaam: timerHistKaam[liveTk] || 0,
       n28: timer28Hist[liveTk] || 0,
     };
     const todayJap =
       todayBreakdown.r + todayBreakdown.rv + todayBreakdown.kh + todayBreakdown.kv +
-      todayBreakdown.ss + todayBreakdown.hk + todayBreakdown.ram + todayBreakdown.sr + todayBreakdown.rm + todayBreakdown.yg + todayBreakdown.kaam + todayBreakdown.n28;
+      todayBreakdown.ss + todayBreakdown.hk + todayBreakdown.ram + todayBreakdown.sr + todayBreakdown.rm + todayBreakdown.nr + todayBreakdown.yg + todayBreakdown.vl + todayBreakdown.kaam + todayBreakdown.n28;
     const todayTimerSeconds =
       todayTimeBreakdown.r + todayTimeBreakdown.rv + todayTimeBreakdown.kh + todayTimeBreakdown.kv +
-      todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.ram + todayTimeBreakdown.sr + todayTimeBreakdown.rm + todayTimeBreakdown.yg + todayTimeBreakdown.kaam + todayTimeBreakdown.n28;
+      todayTimeBreakdown.ss + todayTimeBreakdown.hk + todayTimeBreakdown.ram + todayTimeBreakdown.sr + todayTimeBreakdown.rm + todayTimeBreakdown.nr + todayTimeBreakdown.yg + todayTimeBreakdown.vl + todayTimeBreakdown.kaam + todayTimeBreakdown.n28;
 
     const payload = {
       displayName,
@@ -820,7 +839,9 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       historyRam: histRam,
       historySR: histSR,
       historyRM: histRM,
+      historyNR: histNR,
       historyYg: histYg,
+      historyVl: histVl,
       historyKaam: histKaam,
       history28: hist28,
       lbKH,
@@ -837,7 +858,9 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       nameJapDeductRam: data.nameJapDeductRam || 0,
       nameJapDeductSR: data.nameJapDeductSR || 0,
       nameJapDeductRM: data.nameJapDeductRM || 0,
+      nameJapDeductNR: data.nameJapDeductNR || 0,
       nameJapDeductYg: data.nameJapDeductYg || 0,
+      nameJapDeductVl: data.nameJapDeductVl || 0,
       nameJapDeductKaam: data.nameJapDeductKaam || 0,
       nameJapDeduct28: data.nameJapDeduct28 || 0,
       timerSeconds:
@@ -845,7 +868,7 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
         _lbSumHistory(timerHistKV) + _lbSumHistory(timerHistSS) +
         _lbSumHistory(timerHistHK) + _lbSumHistory(timerHistRam) +
         _lbSumHistory(timerHistSR) + _lbSumHistory(timerHistRM) +
-        _lbSumHistory(timerHistYg) + _lbSumHistory(timerHistKaam) +
+        _lbSumHistory(timerHistNR) + _lbSumHistory(timerHistYg) + _lbSumHistory(timerHistVl) + _lbSumHistory(timerHistKaam) +
         _lbSumHistory(timer28Hist),
       timerHistory: timerHist,
       timerHistoryRV: timerHistRV,
@@ -855,11 +878,37 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       timerHistoryRam: timerHistRam,
       timerHistorySR: timerHistSR,
       timerHistoryRM: timerHistRM,
+      timerHistoryNR: timerHistNR,
       timerHistoryYg: timerHistYg,
+      timerHistoryVl: timerHistVl,
       timerHistoryKaam: timerHistKaam,
       timer28History: timer28Hist,
     };
 
-    await admin.firestore().collection("leaderboard").doc(uid).set(payload);
+    // This function does not own the profile-derived fields (photo + ✔ badge).
+    // A plain set() used to wipe them every time user data synced, so they are
+    // re-derived from the private /profiles doc (source of truth) on every
+    // write, and merge:true keeps any other client-written fields intact.
+    const lbRef = admin.firestore().collection("leaderboard").doc(uid);
+    let lbPhoto = "";
+    let lbVerified = false;
+    try {
+      const [prevSnap, profSnap] = await Promise.all([
+        lbRef.get(),
+        admin.firestore().collection("profiles").doc(uid).get(),
+      ]);
+      const prev = prevSnap.exists ? (prevSnap.data() || {}) : {};
+      if (profSnap.exists) {
+        const p = profSnap.data() || {};
+        lbPhoto = p.showPhoto === false ? "" : (p.photoSmall || p.photo || prev.photo || "");
+        lbVerified = !!(p.complete && !p.revoked);
+      } else {
+        lbPhoto = prev.photo || "";
+        lbVerified = !!prev.verified;
+      }
+    } catch (_e) { /* non-fatal: fall through with empty values */ }
+    payload.photo = lbPhoto;
+    payload.verified = lbVerified;
+    await lbRef.set(payload, { merge: true });
     return null;
   });

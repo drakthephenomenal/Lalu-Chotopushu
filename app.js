@@ -15464,7 +15464,63 @@ async function fbPushToUid(targetUid, fullReplace) {
   }
 }
 
-async function fbPushFull() {
+// ── Single-flight cloud save with whole-document upload (slow-network safe) ──
+// Every save still sends the WHOLE user document (unchanged behaviour). What changed:
+//  • the time limit grows with the document size instead of a fixed 45 s
+//  • a new save is never started while an earlier one is still unacknowledged
+//    (the old code stacked a full copy per save when the network was slow, so the
+//    backlog never drained)
+//  • saves requested meanwhile are merged into one follow-up save
+function _rjSaveTimeoutMs(bytes) { return Math.min(300000, 45000 + Math.ceil(bytes / 1024) * 1500); }
+
+async function _fbPushWhole(docRef, doc, ls) {
+  const _rest = Object.assign({}, doc); delete _rest.lastSync;   // lastSync is a server-timestamp marker, not data
+  const ms = _rjSaveTimeoutMs(JSON.stringify(_rest).length);
+  // Never stack writes: wait for any earlier write that has not been acknowledged yet.
+  if (window._rjWriteP) {
+    await fbWithTimeout(window._rjWriteP.then(() => {}, () => {}), ms, "Cloud save (finishing earlier upload)");
+  }
+  const wp = docRef.set(Object.assign({}, doc, { lastSync: ls }));
+  window._rjWriteP = wp;
+  const clr = () => { if (window._rjWriteP === wp) window._rjWriteP = null; };
+  wp.then(clr, clr);
+  await fbWithTimeout(wp, ms, "Cloud save");
+}
+
+var _rjPushRunning = null, _rjPushQueued = null;
+function _rjRunPush() {
+  const p = _fbPushFullInner();
+  _rjPushRunning = p;
+  const clr = () => { if (_rjPushRunning === p) _rjPushRunning = null; };
+  p.then(clr, clr);
+  return p;
+}
+function fbPushFull() {
+  if (_rjPushRunning) {
+    if (!_rjPushQueued) {
+      _rjPushQueued = _rjPushRunning.catch(() => {}).then(() => { _rjPushQueued = null; return _rjRunPush(); });
+    }
+    return _rjPushQueued;
+  }
+  return _rjRunPush();
+}
+
+// ── Cloud pull that survives slow networks ──
+// The download used to restart from zero on every retry with a fixed 45 s limit.
+// Now a retry joins the download already in progress, and the limit grows with each retry.
+function _rjPullTimeoutMs() { return Math.min(240000, 45000 + ((typeof App !== "undefined" && App._hydrationRetryAttempts) || 0) * 45000); }
+function _rjPullShared(docRef, uid) {
+  const now = Date.now();
+  if (!window._rjPullP || window._rjPullKey !== uid || now - (window._rjPullAt || 0) > 300000) {
+    const p = docRef.get({ source: "server" });
+    window._rjPullP = p; window._rjPullKey = uid; window._rjPullAt = now;
+    const clr = () => { if (window._rjPullP === p) window._rjPullP = null; };
+    p.then(clr, clr);
+  }
+  return window._rjPullP;
+}
+
+async function _fbPushFullInner() {
   if (!fbUser) return;
   if (isGhostMode()) return; // admin mode: never write to Firestore
   // SAFETY: never push local state to cloud until we have successfully
@@ -15658,7 +15714,7 @@ async function fbPushFull() {
     const _doc = JSON.parse(_json); _doc.lastSync = _ls;
     const _docRef = fbDb.collection("users").doc(fbUser.uid).collection("data").doc("main");
     try {
-      await fbWithTimeout(_docRef.set(_doc), 45000, "Cloud save");
+      await _fbPushWhole(_docRef, _doc, _ls);
     } catch (_setErr) {
       if (!_setErr || _setErr.code !== "invalid-argument") throw _setErr;
       // Firestore refused some value inside the data. Save field by field so the
@@ -16557,7 +16613,7 @@ async function _fbMigrateInner() {
     // the user's real cloud data. Force a server fetch on the initial pull.
     let snap;
     try {
-      snap = await fbWithTimeout(docRef.get({ source: "server" }), 45000, "Cloud pull");
+      snap = await fbWithTimeout(_rjPullShared(docRef, fbUser.uid), _rjPullTimeoutMs(), "Cloud pull");
     } catch (eServer) {
       // Offline or server unreachable — fall back to cache, but DO NOT
       // treat a cache miss as proof there's no cloud doc.

@@ -836,7 +836,7 @@ function _lcPushSetUI(on) {
   const tg = document.getElementById("tgPushNotifications");
   const st = document.getElementById("pushNotificationsStatus");
   if (tg) tg.classList.toggle("on", !!on);
-  if (st) st.textContent = on ? "✅ Push notifications enabled" : "— Tap toggle to enable push notifications 🔔";
+  if (st) st.textContent = on ? "✅ Notifications enabled" : "— Tap toggle to get notifications 🔔";
 }
 async function rjapAutoPush() {
   if (window._lcAutoPushBusy) return window._lcAutoPushBusy;
@@ -6849,18 +6849,18 @@ function tgs(k) {
     const statusEl = document.getElementById("pushNotificationsStatus");
     if (!isOn) {
       if (!fbUser) {
-        toast("⚠️ Sign in first to enable push notifications");
+        toast("⚠️ Sign in first to get notifications");
         return;
       }
       try { localStorage.setItem("rjap_push_asked", "1"); localStorage.removeItem("rjap_push_optout"); } catch (_) {}
       lcRegisterPush().then((ok) => {
         if (ok) {
           if (tgPush) tgPush.classList.add("on");
-          if (statusEl) statusEl.textContent = "✅ Push notifications enabled";
-          toast("🔔 Push notifications enabled");
+          if (statusEl) statusEl.textContent = "✅ Notifications enabled";
+          toast("🔔 Notifications enabled");
         } else {
           if (statusEl) statusEl.textContent = "⚠️ Could not enable — check notification permission.";
-          toast("⚠️ Could not enable push notifications");
+          toast("⚠️ Could not enable notifications");
         }
       });
     } else {
@@ -6868,7 +6868,7 @@ function tgs(k) {
       lcUnregisterPush();
       if (tgPush) tgPush.classList.remove("on");
       if (statusEl) statusEl.textContent = "— Tap to receive announcements from RadhaNaam SudhaRasam 🔔 (requires sign-in)";
-      toast("🔕 Push notifications turned off");
+      toast("🔕 Notifications turned off");
     }
     return;
   }

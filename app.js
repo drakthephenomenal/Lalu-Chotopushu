@@ -15480,7 +15480,14 @@ async function _fbPushWhole(docRef, doc, ls) {
   if (window._rjWriteP) {
     await fbWithTimeout(window._rjWriteP.then(() => {}, () => {}), ms, "Cloud save (finishing earlier upload)");
   }
-  const wp = docRef.set(Object.assign({}, doc, { lastSync: ls }));
+  const full = Object.assign({}, doc, { lastSync: ls });
+  const _keys = Object.keys(full);
+  // Every app field is still replaced in full (same as a whole-document save), but fields the app does
+  // not own are left alone — notably the push-notification token fields stored on this same document.
+  // (A plain set() used to erase them on every sync, so only devices that had just opened the app
+  // could receive a broadcast.)
+  const _opts = _keys.some((k) => /[.~*\/\[\]`]/.test(k)) ? null : { mergeFields: _keys };
+  const wp = _opts ? docRef.set(full, _opts) : docRef.set(full);
   window._rjWriteP = wp;
   const clr = () => { if (window._rjWriteP === wp) window._rjWriteP = null; };
   wp.then(clr, clr);
@@ -36975,7 +36982,7 @@ function _lbAvatarHtml(d) {
     adminOnly = !!ph;
   }
   if (!ph) return '';
-  return '<div class="lb-av' + (adminOnly ? ' lb-av-hidden' : '') + '"' + (adminOnly ? ' title="Hidden from other devotees — visible to admin only"' : '') + '><img src="' + ph + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></div>';
+  return '<div class="lb-av' + (adminOnly ? ' lb-av-hidden' : '') + '"' + (adminOnly ? ' title="Hidden from other devotees — visible to admin only"' : '') + (d && d._uid ? ' onclick="lbOpenPhoto(event,\'' + String(d._uid).replace(/[^A-Za-z0-9_-]/g, '') + '\')" style="cursor:pointer"' : '') + '><img src="' + ph + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></div>';
 }
 window._adminPhotoMap = window._adminPhotoMap || {};
 async function _loadAdminPhotoMap() {
@@ -36996,16 +37003,23 @@ async function _loadAdminPhotoMap() {
   } catch (e) { console.warn('admin photo map failed:', e && e.message); return false; }
 }
 
+// Admin override wins; otherwise the badge follows "profile complete".
+function _effVerified(p) {
+  if (!p) return false;
+  if (p.adminVerified === true) return true;
+  if (p.adminVerified === false || p.revoked) return false;
+  return !!p.complete;
+}
 function _computePublicProfile(p, forOther) {
   const show = !p || p.showPhoto !== false;
   let photo = '';
   if (show) photo = _lbSafePhoto((p && (p.photoSmall || p.photo)) || '') || (!forOther && fbUser && !_pfGoogleIsDefault() ? _lbSafePhoto(fbUser.photoURL || '') : '');
-  return { photo, verified: !!(p && p.complete && !p.revoked) };
+  return { photo, verified: _effVerified(p) };
 }
 
 async function _ensureMyProfileLoaded(force) {
   if (!fbUser || !fbDb) return window._myPublicProfile || { photo: '', verified: false };
-  if (!force && window._myProfileLoaded && window._myProfileUid === fbUser.uid) return window._myPublicProfile;
+  if (!force && window._myProfileLoaded && window._myProfileUid === fbUser.uid && Date.now() - (window._myProfileAt || 0) < 600000) return window._myPublicProfile;
   let p = null, ok = false;
   try {
     const snap = await fbDb.collection('profiles').doc(fbUser.uid).get();
@@ -37016,6 +37030,8 @@ async function _ensureMyProfileLoaded(force) {
   window._myPublicProfile = _computePublicProfile(p);
   window._myProfileUid = fbUser.uid;
   window._myProfileLoaded = ok;
+  if (ok) window._myProfileAt = Date.now();
+  if (ok && p) { try { _syncPublicPhoto(p); } catch (_e) {} }
   return window._myPublicProfile;
 }
 
@@ -37028,7 +37044,7 @@ window.refreshProfileCard = async function () {
   const card = document.getElementById('profileCard');
   if (!card) return;
   const adminBtn = document.getElementById('adminProfilesBtn');
-  if (adminBtn) adminBtn.style.display = (typeof isDeveloper === 'function' && isDeveloper()) ? 'block' : 'none';
+  if (adminBtn) adminBtn.style.display = (typeof isDeveloper === 'function' && isDeveloper()) ? '' : 'none';
   if (!fbUser) {
     const _av0 = document.getElementById('profileCardAv');
     if (_av0) _av0.innerHTML = _PF_SIL;
@@ -37048,13 +37064,13 @@ window.refreshProfileCard = async function () {
   const nameEl = document.getElementById('profileCardName');
   nameEl.textContent = nm;
   const _vSlot = document.getElementById('profileCardBadge');
-  if (_vSlot) _vSlot.innerHTML = (p.complete && !p.revoked) ? _lbVerifiedBadge({ verified: true }) : '';
+  if (_vSlot) _vSlot.innerHTML = _effVerified(p) ? _lbVerifiedBadge({ verified: true }) : '';
   if (window._pfPushedUid !== fbUser.uid && typeof App !== 'undefined' && App._cloudHydrated && !(typeof isGhostMode === 'function' && isGhostMode())) {
     window._pfPushedUid = fbUser.uid;
     try { pushLeaderboard(); } catch (_e) {}
   }
-  document.getElementById('profileCardSub').textContent = (p.complete && !p.revoked)
-    ? 'Verified — profile complete'
+  document.getElementById('profileCardSub').textContent = _effVerified(p)
+    ? (p.adminVerified === true ? 'Verified by admin' : 'Verified — profile complete')
     : (_pfCount(p) + ' of 6 details added · fill all to get the ✔ badge');
 };
 
@@ -37079,8 +37095,8 @@ function _pfSquare(img, size, q) {
   ctx.drawImage(img, sx, sy, s, s, 0, 0, size, size);
   return c.toDataURL('image/jpeg', q);
 }
-function _pfSetPhoto(photo, small, source) {
-  window._pfPhoto = { photo, photoSmall: small, source };
+function _pfSetPhoto(photo, small, source, large) {
+  window._pfPhoto = { photo, photoSmall: small, photoLarge: large || '', source };
   const box = document.getElementById('pfPhotoPrev');
   if (box) box.innerHTML = '<img src="' + _lbSafePhoto(small || photo) + '" alt="" referrerpolicy="no-referrer">';
 }
@@ -37091,7 +37107,7 @@ window.pfPickPhoto = function (input) {
   rd.onload = async () => {
     try {
       const im = await _pfLoadImg(rd.result, false);
-      _pfSetPhoto(_pfSquare(im, 256, 0.82), _pfSquare(im, 96, 0.8), 'upload');
+      _pfSetPhoto(_pfSquare(im, 256, 0.82), _pfSquare(im, 96, 0.8), 'upload', _pfSquare(im, 512, 0.85));
     } catch (e) { toast('Could not read that photo'); }
   };
   rd.readAsDataURL(f);
@@ -37107,11 +37123,11 @@ window.pfUseGooglePhoto = async function (silent) {
       if (silent !== true) toast('Your Google account has no profile photo — please choose one');
       return;
     }
-    _pfSetPhoto(_pfSquare(im, 256, 0.82), _pfSquare(im, 96, 0.8), 'google');
+    _pfSetPhoto(_pfSquare(im, 256, 0.82), _pfSquare(im, 96, 0.8), 'google', _pfSquare(im, 512, 0.85));
   } catch (e) {
     // Canvas blocked (cross-origin) — keep the Google link itself.
     const safe = _lbSafePhoto(url);
-    if (safe) _pfSetPhoto(safe, safe, 'google-url'); else toast('Could not use the Google photo');
+    if (safe) _pfSetPhoto(safe, safe, 'google-url', safe.replace(/=s\d+(-c)?$/, '=s512-c')); else toast('Could not use the Google photo');
   }
 };
 
@@ -37281,11 +37297,12 @@ window.saveProfileEditor = async function () {
   }
   window._myProfile = Object.assign({}, window._myProfile || {}, obj, { updatedAt: null });
   window._myPublicProfile = _computePublicProfile(window._myProfile);
-  window._myProfileUid = fbUser.uid; window._myProfileLoaded = true;
+  window._myProfileUid = fbUser.uid; window._myProfileLoaded = true; window._myProfileAt = Date.now();
+  try { _syncPublicPhoto(window._myProfile, ph.photoLarge); } catch (_e) {}
   try { await pushLeaderboard(); } catch (_e) {}
   closeProfileEditor();
   refreshProfileCard();
-  toast(complete && !window._myProfile.revoked ? 'Profile saved — you got the ✔ badge 🙏' : 'Profile saved 🙏');
+  toast(_effVerified(window._myProfile) ? 'Profile saved — you got the ✔ badge 🙏' : 'Profile saved 🙏');
 };
 
 // Sign-in / sign-out: forget the previous person's profile immediately.
@@ -37308,38 +37325,55 @@ function _admRender() {
   if (!box) return;
   const q = ((document.getElementById('admSearch') || {}).value || '').toLowerCase().trim();
   const list = (window._adminProfiles || []).filter(p =>
-    !q || [p.name, p.email, p.mobile, p.address, p.googleName].some(v => String(v || '').toLowerCase().includes(q)));
-  document.getElementById('admCount').textContent = list.length + ' profile' + (list.length === 1 ? '' : 's');
+    !q || [p.name, p.email, p.mobile, p.address, p.googleName, p.displayName].some(v => String(v || '').toLowerCase().includes(q)));
+  document.getElementById('admCount').textContent = list.length + ' devotee' + (list.length === 1 ? '' : 's');
   box.innerHTML = list.map(p => {
-    const ok = p.complete && !p.revoked;
+    const ok = _effVerified(p);
     const ph = _lbSafePhoto(p.photoSmall || p.photo || '');
     const row = (k, v) => '<div style="display:flex;gap:8px;font-size:12px;margin-top:5px;"><span style="color:var(--td);min-width:78px;">' + k + '</span><span style="color:var(--tl);word-break:break-word;flex:1;">' + (v ? escHtml(v) : '<i style="opacity:.5">—</i>') + '</span></div>';
     const upd = p.updatedAt && p.updatedAt.toDate ? p.updatedAt.toDate().toLocaleString() : '';
+    const uidSafe = String(p._id).replace(/[^A-Za-z0-9_-]/g, '');
+    const mode = p.adminVerified === true ? 'yes' : (p.adminVerified === false || p.revoked ? 'no' : 'auto');
     return '<div style="border:1px solid rgba(255,215,0,0.2);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:rgba(255,255,255,0.03);">' +
       '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'" style="display:flex;align-items:center;gap:10px;cursor:pointer;">' +
         '<div class="lb-av">' + (ph ? '<img src="' + ph + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + _PF_SIL + '</div>' +
-        '<div style="flex:1;min-width:0;"><div style="color:var(--tl);font-weight:600;font-size:14px;">' + escHtml(p.name || p.googleName || '(no name)') + '</div>' +
+        '<div style="flex:1;min-width:0;"><div style="color:var(--tl);font-weight:600;font-size:14px;">' + escHtml(p.name || p.googleName || p.displayName || '(no name)') + (p._stub ? ' <span style="font-size:10px;color:var(--td);">(no profile yet)</span>' : '') + '</div>' +
         '<div style="font-size:11px;color:var(--td);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(p.email || '') + '</div></div>' +
         '<div class="pf-vslot">' + (ok ? _lbVerifiedBadge({ verified: true }) : '') + '</div>' +
         '<div style="font-size:11px;color:var(--td);">' + _pfCount(p) + '/6</div></div>' +
       '<div style="display:none;margin-top:8px;border-top:1px solid rgba(255,215,0,0.12);padding-top:6px;">' +
         row('Name', p.name) + row('Address', p.address) + row('Mobile', p.mobile) + row('Email', p.email) + row('Date of birth', p.dob) +
         row('Google name', p.googleName) + row('Photo on board', p.showPhoto === false ? 'Hidden by user' : 'Shown') +
-        row('Badge', ok ? 'Verified' : (p.revoked ? 'Removed by admin' : 'Not complete')) + row('Updated', upd) + row('UID', p._id) +
-        '<button onclick="adminSetBadge(\'' + String(p._id).replace(/[^A-Za-z0-9_-]/g, '') + '\',' + (p.revoked ? 'false' : 'true') + ')" style="margin-top:10px;padding:8px 14px;border-radius:10px;border:1px solid rgba(255,138,138,0.5);background:transparent;color:#ff8a8a;font-size:12px;font-weight:700;cursor:pointer;">' + (p.revoked ? 'Restore ✔ badge' : 'Remove ✔ badge') + '</button>' +
+        row('Badge now', ok ? (p.adminVerified === true ? 'Verified by admin' : 'Verified (profile complete)') : (p.adminVerified === false || p.revoked ? 'Not verified (set by admin)' : 'Not verified')) + row('Updated', upd) + row('UID', p._id) +
+        (p._stub ? '<div style="font-size:11px;color:var(--td);margin-top:6px;">This devotee has not created a profile yet. You can still give them the ✔ badge.</div>' : '') +
+        '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+          '<select id="admSel_' + uidSafe + '" style="flex:1;min-width:150px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:9px 10px;color:var(--tl);font-size:13px;">' +
+            '<option value="auto"' + (mode === 'auto' ? ' selected' : '') + '>Automatic (profile complete)</option>' +
+            '<option value="yes"' + (mode === 'yes' ? ' selected' : '') + '>✔ Verified</option>' +
+            '<option value="no"' + (mode === 'no' ? ' selected' : '') + '>Not verified</option></select>' +
+          '<button onclick="adminSaveBadge(\'' + uidSafe + '\')" style="padding:9px 16px;border-radius:10px;border:1px solid rgba(46,204,113,0.5);background:rgba(46,204,113,0.12);color:#2ecc71;font-size:12px;font-weight:700;cursor:pointer;">💾 Save</button></div>' +
       '</div></div>';
   }).join('') || '<div style="text-align:center;color:var(--td);margin-top:30px;">No profiles yet</div>';
 }
-window.adminSetBadge = async function (uid, revoke) {
-  if (!isDeveloper()) return;
+window.adminSaveBadge = async function (uid) {
+  if (typeof isDeveloper !== 'function' || !isDeveloper()) return;
+  uid = String(uid || '').replace(/[^A-Za-z0-9_-]/g, '');
   const p = (window._adminProfiles || []).find(x => x._id === uid);
   if (!p) return;
+  const sel = document.getElementById('admSel_' + uid);
+  const mode = sel ? sel.value : 'auto';
+  const FV = firebase.firestore.FieldValue;
   try {
-    await fbDb.collection('profiles').doc(uid).update({ revoked: !!revoke });
-    try { await fbDb.collection('leaderboard').doc(uid).update({ verified: !revoke && !!p.complete }); } catch (_e) {}
-    p.revoked = !!revoke;
+    if (!(p._stub && mode === 'auto')) {
+      const upd = { uid: uid, updatedByAdmin: FV.serverTimestamp(), revoked: FV.delete() };
+      upd.adminVerified = mode === 'yes' ? true : (mode === 'no' ? false : FV.delete());
+      await fbDb.collection('profiles').doc(uid).set(upd, { merge: true });
+    }
+    if (mode === 'yes') p.adminVerified = true; else if (mode === 'no') p.adminVerified = false; else delete p.adminVerified;
+    delete p.revoked;
+    try { await fbDb.collection('leaderboard').doc(uid).update({ verified: _effVerified(p) }); } catch (_e) {}
     _admRender();
-    toast(revoke ? '✔ badge removed' : '✔ badge restored');
+    toast(mode === 'yes' ? '✔ badge given and saved' : (mode === 'no' ? 'Badge removed and saved' : 'Saved — badge now follows profile'));
   } catch (e) { toast('Failed: ' + ((e && e.message) || 'error')); }
 };
 window.openAdminProfiles = async function () {
@@ -37357,6 +37391,16 @@ window.openAdminProfiles = async function () {
   try {
     const snap = await fbDb.collection('profiles').limit(500).get();
     window._adminProfiles = snap.docs.map(d => Object.assign({ _id: d.id }, d.data()));
+    try {
+      const have = {};
+      window._adminProfiles.forEach(p => { have[p._id] = true; });
+      const lbSnap = await fbDb.collection('leaderboard').limit(500).get();
+      lbSnap.forEach(doc => {
+        if (have[doc.id]) return;
+        const d = doc.data() || {};
+        window._adminProfiles.push({ _id: doc.id, _stub: true, displayName: d.displayName || '', complete: false });
+      });
+    } catch (_e) { /* people without a profile just won't be listed */ }
     _admRender();
   } catch (e) {
     document.getElementById('admCount').textContent = 'Could not load profiles: ' + ((e && e.message) || 'error') + ' (deploy the updated firestore.rules)';
@@ -37395,3 +37439,70 @@ try {
   if (_vset) new MutationObserver(() => { if (_vset.classList.contains('active')) refreshProfileCard(); })
     .observe(_vset, { attributes: true, attributeFilter: ['class'] });
 } catch (_e) {}
+
+
+// ══════════════════════════════════════════════════════════════
+// Tap a photo on the Family Board -> enlarged view (everyone can do this)
+// The board only carries a tiny 96 px thumbnail. The larger picture lives in
+// /profilePhotos/{uid} (written only while the person has "Show my photo" on,
+// removed when they switch it off). Admin Mode can also open hidden photos.
+// ══════════════════════════════════════════════════════════════
+window._lbBigPhotoCache = window._lbBigPhotoCache || {};
+function _lbClosePhoto() { const o = document.getElementById('lbPhotoOverlay'); if (o) o.remove(); window._lbPhotoUid = null; }
+function _lbShowPhoto(src, name, verified) {
+  _lbClosePhoto();
+  const o = document.createElement('div');
+  o.id = 'lbPhotoOverlay';
+  o.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;';
+  o.onclick = _lbClosePhoto;
+  o.innerHTML =
+    '<img id="lbPhotoBig" src="' + src + '" alt="" referrerpolicy="no-referrer" style="max-width:92vw;max-height:70vh;border-radius:18px;border:2px solid rgba(255,215,0,0.5);box-shadow:0 10px 40px rgba(0,0,0,0.7);background:#0b1030;object-fit:contain;">' +
+    '<div style="color:#fff;font-size:17px;font-weight:700;text-align:center;">' + escHtml(name || '') + (verified ? _lbVerifiedBadge({ verified: true }) : '') + '</div>' +
+    '<div style="color:rgba(255,255,255,0.5);font-size:11px;">Tap anywhere to close</div>';
+  document.body.appendChild(o);
+}
+window.lbOpenPhoto = async function (ev, uid) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  uid = String(uid || '').replace(/[^A-Za-z0-9_-]/g, '');
+  const d = (window._lbLastDocs || []).find(x => x._uid === uid) || {};
+  let small = _lbSafePhoto(d.photo), hidden = false;
+  if (!small && window._lbAdminView && window._adminPhotoMap) { small = window._adminPhotoMap[uid] || ''; hidden = !!small; }
+  if (!small) return;
+  window._lbPhotoUid = uid;
+  _lbShowPhoto(window._lbBigPhotoCache[uid] || small, d.displayName, d.verified);
+  if (window._lbBigPhotoCache[uid]) return;
+  let big = '';
+  try {
+    if (hidden && typeof isDeveloper === 'function' && isDeveloper()) {
+      const sn = await fbDb.collection('profiles').doc(uid).get();
+      const p = sn.exists ? sn.data() : {};
+      big = _lbSafePhoto(p.photo || '');
+    } else {
+      const sn = await fbDb.collection('profilePhotos').doc(uid).get();
+      big = sn.exists ? _lbSafePhoto((sn.data() || {}).photo || '') : '';
+    }
+  } catch (e) { console.warn('big photo load failed:', e && e.message); }
+  if (!big && /googleusercontent\.com/i.test(small)) big = small.replace(/=s\d+(-c)?$/, '=s512-c');
+  if (big) {
+    window._lbBigPhotoCache[uid] = big;
+    const im = document.getElementById('lbPhotoBig');
+    if (im && window._lbPhotoUid === uid) im.src = big;
+  }
+};
+
+// Keeps the public enlarged photo in step with the person's profile (one small write, only when it changes).
+async function _syncPublicPhoto(p, largeOverride) {
+  if (!fbUser || !fbDb || !p) return;
+  const uid = fbUser.uid;
+  const show = p.showPhoto !== false;
+  const base = show ? _lbSafePhoto(p.photo || '') : '';
+  const sig = uid + ':' + (base ? base.length + ':' + base.slice(-24) : (show ? 'none' : 'hidden'));
+  try { if (localStorage.getItem('rj_pubphoto_sig') === sig) return; } catch (_e) {}
+  try {
+    const ref = fbDb.collection('profilePhotos').doc(uid);
+    const big = show ? (_lbSafePhoto(largeOverride || '') || base) : '';
+    if (big) await ref.set({ photo: big, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    else await ref.delete();
+    try { localStorage.setItem('rj_pubphoto_sig', sig); } catch (_e) {}
+  } catch (e) { console.warn('public photo sync failed:', e && e.message); }
+}

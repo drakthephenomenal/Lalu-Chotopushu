@@ -901,7 +901,7 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       if (profSnap.exists) {
         const p = profSnap.data() || {};
         lbPhoto = p.showPhoto === false ? "" : (p.photoSmall || p.photo || prev.photo || "");
-        lbVerified = !!(p.complete && !p.revoked);
+        lbVerified = p.adminVerified === true ? true : ((p.adminVerified === false || p.revoked) ? false : !!p.complete);   // admin override wins
       } else {
         lbPhoto = prev.photo || "";
         lbVerified = !!prev.verified;

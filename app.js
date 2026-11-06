@@ -37099,6 +37099,98 @@ function _pfSetPhoto(photo, small, source, large) {
   window._pfPhoto = { photo, photoSmall: small, photoLarge: large || '', source };
   const box = document.getElementById('pfPhotoPrev');
   if (box) box.innerHTML = '<img src="' + _lbSafePhoto(small || photo) + '" alt="" referrerpolicy="no-referrer">';
+  const adj = document.getElementById('pfAdjustBtn');
+  if (adj) adj.style.display = (window._pfOrig || (photo && String(photo).indexOf('data:') === 0)) ? '' : 'none';
+}
+// ── Facebook-style photo adjuster: drag to position, pinch / slider / wheel to zoom ──
+window._pfOrig = null;
+function _pfOpenCropper(im, onDone) {
+  const old = document.getElementById('pfCropModal'); if (old) old.remove();
+  const W = im.naturalWidth, H = im.naturalHeight;
+  const S = Math.max(220, Math.min(320, Math.floor(Math.min(window.innerWidth, 520) - 56)));
+  const base = S / Math.min(W, H);           // scale at which the image just covers the square
+  let zoom = 1, tx = 0, ty = 0;              // tx/ty = image-centre offset from stage centre (px)
+  const m = document.createElement('div');
+  m.id = 'pfCropModal';
+  m.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(3,8,20,0.96);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));';
+  m.innerHTML =
+    '<div style="color:var(--gold);font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:14px;">Adjust Photo</div>' +
+    '<div id="pfCropStage" style="position:relative;width:' + S + 'px;height:' + S + 'px;overflow:hidden;border-radius:14px;background:#000;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;">' +
+      '<img id="pfCropImg" alt="" draggable="false" style="position:absolute;max-width:none;pointer-events:none;-webkit-user-drag:none;">' +
+      '<div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 50%, transparent 0, transparent calc(50% - 1px), rgba(0,0,0,0.62) 50%);"></div>' +
+      '<div style="position:absolute;inset:0;pointer-events:none;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(255,215,0,0.85);"></div>' +
+    '</div>' +
+    '<div style="display:flex;align-items:center;gap:10px;width:' + S + 'px;">' +
+      '<span style="color:var(--gold);font-size:16px;">−</span>' +
+      '<input id="pfCropZoom" type="range" min="1" max="4" step="0.01" value="1" style="flex:1;accent-color:#FFC61A;">' +
+      '<span style="color:var(--gold);font-size:20px;">+</span>' +
+    '</div>' +
+    '<div style="font-size:11.5px;color:var(--td);text-align:center;">Drag to move · pinch or slide to zoom<br>The circle is what everyone will see.</div>' +
+    '<div style="display:flex;gap:12px;">' +
+      '<button type="button" id="pfCropCancel" style="padding:11px 22px;border-radius:999px;border:1px solid rgba(255,215,0,0.4);background:transparent;color:var(--gold);font-size:14px;font-weight:700;cursor:pointer;">Cancel</button>' +
+      '<button type="button" id="pfCropOk" style="padding:11px 28px;border-radius:999px;border:1px solid rgba(255,236,150,0.9);background:linear-gradient(180deg,#FFE680 0%,#FFC61A 55%,#F5A800 100%);color:#3a2600;font-size:14px;font-weight:800;cursor:pointer;">Use Photo</button>' +
+    '</div>';
+  document.body.appendChild(m);
+  const stage = m.querySelector('#pfCropStage'), img = m.querySelector('#pfCropImg'), zs = m.querySelector('#pfCropZoom');
+  img.src = im.src;
+  function clamp() {
+    const sc = base * zoom, mx = Math.max(0, (W * sc - S) / 2), my = Math.max(0, (H * sc - S) / 2);
+    tx = Math.min(mx, Math.max(-mx, tx)); ty = Math.min(my, Math.max(-my, ty));
+  }
+  function paint() {
+    clamp();
+    const sc = base * zoom;
+    img.style.width = (W * sc) + 'px'; img.style.height = (H * sc) + 'px';
+    img.style.left = (S / 2 + tx - W * sc / 2) + 'px'; img.style.top = (S / 2 + ty - H * sc / 2) + 'px';
+    zs.value = zoom;
+  }
+  function setZoom(z) {                       // zoom about the stage centre, keeping the framing steady
+    z = Math.min(4, Math.max(1, z));
+    const k = z / zoom; tx *= k; ty *= k; zoom = z; paint();
+  }
+  paint();
+  // pointer handling: 1 finger = move, 2 fingers = pinch
+  const pts = new Map(); let lastD = 0;
+  stage.addEventListener('pointerdown', (e) => {
+    try { stage.setPointerCapture(e.pointerId); } catch (_e) {}
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 2) { const a = [...pts.values()]; lastD = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); }
+    stage.style.cursor = 'grabbing';
+  });
+  stage.addEventListener('pointermove', (e) => {
+    const pt = pts.get(e.pointerId); if (!pt) return;
+    if (pts.size === 1) {
+      tx += e.clientX - pt.x; ty += e.clientY - pt.y;
+      pt.x = e.clientX; pt.y = e.clientY; paint();
+    } else if (pts.size === 2) {
+      pt.x = e.clientX; pt.y = e.clientY;
+      const a = [...pts.values()], d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y);
+      if (lastD > 0) setZoom(zoom * d / lastD);
+      lastD = d;
+    }
+  });
+  const up = (e) => { pts.delete(e.pointerId); lastD = 0; if (!pts.size) stage.style.cursor = 'grab'; };
+  stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+  stage.addEventListener('wheel', (e) => { e.preventDefault(); setZoom(zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08)); }, { passive: false });
+  zs.addEventListener('input', () => setZoom(parseFloat(zs.value) || 1));
+  m.querySelector('#pfCropCancel').onclick = () => m.remove();
+  m.querySelector('#pfCropOk').onclick = () => {
+    const sc = base * zoom, size = S / sc;
+    let sx = (W * sc / 2 - tx - S / 2) / sc, sy = (H * sc / 2 - ty - S / 2) / sc;
+    sx = Math.max(0, Math.min(W - size, sx)); sy = Math.max(0, Math.min(H - size, sy));
+    const out = (px, q) => {
+      const c = document.createElement('canvas'); c.width = c.height = px;
+      const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, px, px);
+      x.imageSmoothingQuality = 'high';
+      x.drawImage(im, sx, sy, size, size, 0, 0, px, px);
+      return c.toDataURL('image/jpeg', q);
+    };
+    try { onDone(out(256, 0.82), out(96, 0.8), out(512, 0.85)); } catch (e) { toast('Could not use that photo'); }
+    m.remove();
+  };
+}
+function _pfApplyCrop(im, source) {
+  _pfOpenCropper(im, (photo, small, large) => { _pfSetPhoto(photo, small, source, large); _pfDraftSoon(); });
 }
 window.pfPickPhoto = function (input) {
   const f = input && input.files && input.files[0];
@@ -37107,10 +37199,24 @@ window.pfPickPhoto = function (input) {
   rd.onload = async () => {
     try {
       const im = await _pfLoadImg(rd.result, false);
-      _pfSetPhoto(_pfSquare(im, 256, 0.82), _pfSquare(im, 96, 0.8), 'upload', _pfSquare(im, 512, 0.85));
+      window._pfOrig = im;
+      _pfApplyCrop(im, 'upload');
     } catch (e) { toast('Could not read that photo'); }
+    try { input.value = ''; } catch (_e) {}   // lets the same file be chosen again
   };
   rd.readAsDataURL(f);
+};
+// "Adjust" re-opens the cropper on the original photo (or the saved one if the original isn't in memory).
+window.pfAdjustPhoto = async function () {
+  try {
+    let im = window._pfOrig;
+    if (!im) {
+      const cur = window._pfPhoto && window._pfPhoto.photo;
+      if (!cur || cur.indexOf('data:') !== 0) { toast('Choose a photo first'); return; }
+      im = await _pfLoadImg(cur, false);
+    }
+    _pfApplyCrop(im, (window._pfPhoto && window._pfPhoto.source) || 'upload');
+  } catch (e) { toast('Could not open the photo'); }
 };
 window.pfUseGooglePhoto = async function (silent) {
   const url = fbUser && fbUser.photoURL;
@@ -37197,6 +37303,7 @@ function _pfStatus(msg, bad) {
 }
 
 window.closeProfileEditor = function () {
+  try { _pfSaveDraft(); } catch (_e) {}
   const m = document.getElementById('profileModal');
   if (m) m.remove();
 };
@@ -37207,6 +37314,7 @@ window.openProfileEditor = async function () {
   closeProfileEditor();
   await _ensureMyProfileLoaded();
   const p = window._myProfile || {};
+  window._pfOrig = null;
   window._pfPhoto = { photo: p.photo || '', photoSmall: p.photoSmall || '', source: p.photoSource || '' };
   const lockEmail = !!fbUser.email;
   const fi = 'width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:10px 12px;color:var(--tl);font-size:14px;font-family:inherit;';
@@ -37224,10 +37332,11 @@ window.openProfileEditor = async function () {
         '<div id="pfPhotoPrev" class="pf-av pf-av-lg"></div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">' +
           '<label style="padding:8px 14px;border-radius:10px;border:1px solid rgba(255,215,0,0.45);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer;">📷 Choose Photo<input type="file" accept="image/*" onchange="pfPickPhoto(this)" style="display:none"></label>' +
+          '<button type="button" id="pfAdjustBtn" onclick="pfAdjustPhoto()" style="display:none;padding:8px 14px;border-radius:10px;border:1px solid rgba(255,215,0,0.45);background:transparent;color:var(--gold);font-size:12px;font-weight:700;cursor:pointer;">✂️ Adjust</button>' +
           (fbUser.photoURL ? '<button onclick="pfUseGooglePhoto()" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(74,144,226,0.45);background:transparent;color:var(--a2);font-size:12px;font-weight:700;cursor:pointer;">Use Google Photo</button>' : '') +
         '</div>' +
         '<label style="display:flex;align-items:center;gap:8px;color:var(--tl);font-size:13px;margin-top:2px;"><input id="pfShow" type="checkbox" onchange="pfToggleShow(this)" style="width:18px;height:18px;"> Show my photo on the Family Board</label>' +
-        '<div style="font-size:10.5px;color:var(--td);text-align:center;">Your photo is automatically cropped to a square and shown as a circle.</div>' +
+        '<div style="font-size:10.5px;color:var(--td);text-align:center;">Choose a photo, then drag and zoom to pick the part you want shown in the circle.</div>' +
       '</div>' +
       '<div style="' + lb + '">Name</div><input id="pfName" maxlength="60" autocomplete="name" style="' + fi + '">' +
       '<div style="' + lb + '">Address</div><textarea id="pfAddress" maxlength="250" rows="3" autocomplete="street-address" style="' + fi + 'resize:vertical;"></textarea>' +
@@ -37246,10 +37355,46 @@ window.openProfileEditor = async function () {
   set('pfAddress', p.address); set('pfMobile', p.mobile);
   set('pfEmail', p.email || fbUser.email || ''); set('pfDob', p.dob);
   document.getElementById('pfShow').checked = p.showPhoto !== false;   // photo shown by default
+  _pfWireDraft(); window._pfDirty = false;
   const initPh = p.photoSmall || p.photo;
   if (initPh) _pfSetPhoto(p.photo, p.photoSmall, p.photoSource || '');
   else if (fbUser.photoURL) pfUseGooglePhoto(true);                      // pre-fill from login (skips Google's auto letter avatar)
 };
+
+// ── Auto-save of a DRAFT while the user types (so the admin can see partial details).
+// Stored under profiles/{uid}.draft only — it never touches the real fields, so the
+// ✔ badge / "complete" status still needs the user's final Save.
+function _pfDraftSoon() {
+  window._pfDirty = true;
+  clearTimeout(window._pfDraftT);
+  window._pfDraftT = setTimeout(() => { _pfSaveDraft(); }, 1500);
+}
+async function _pfSaveDraft() {
+  clearTimeout(window._pfDraftT);
+  if (!window._pfDirty || !fbUser || !fbDb) return;
+  const g = (id) => ((document.getElementById(id) || {}).value || '').trim();
+  if (!document.getElementById('pfName')) return;
+  const ph = window._pfPhoto || {};
+  const draft = {
+    name: g('pfName').slice(0, 60), address: g('pfAddress').slice(0, 250),
+    mobile: g('pfMobile').slice(0, 20), email: g('pfEmail').slice(0, 100), dob: g('pfDob').slice(0, 10),
+    hasPhoto: !!ph.photo,
+    savedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  window._pfDirty = false;
+  try {
+    await fbDb.collection('profiles').doc(fbUser.uid).set({ uid: fbUser.uid, draft }, { merge: true });
+  } catch (e) { window._pfDirty = true; }   // retry on the next edit / close
+}
+function _pfWireDraft() {
+  ['pfName', 'pfAddress', 'pfMobile', 'pfEmail', 'pfDob'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) { el.addEventListener('input', _pfDraftSoon); el.addEventListener('change', _pfDraftSoon); }
+  });
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && document.getElementById('profileModal')) _pfSaveDraft();
+});
 
 // Tick / untick "Show my photo on the Family Board" -> saved silently, no Save button needed.
 window.pfToggleShow = async function (cb) {
@@ -37289,8 +37434,9 @@ window.saveProfileEditor = async function () {
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   _pfStatus('Saving…', false);
+  window._pfDirty = false; clearTimeout(window._pfDraftT);
   try {
-    await fbDb.collection('profiles').doc(fbUser.uid).set(obj, { merge: true });
+    await fbDb.collection('profiles').doc(fbUser.uid).set(Object.assign({}, obj, { draft: firebase.firestore.FieldValue.delete() }), { merge: true });
   } catch (e) {
     _pfStatus('Could not save: ' + ((e && e.message) || 'network error'), true);
     return;
@@ -37325,12 +37471,18 @@ function _admRender() {
   if (!box) return;
   const q = ((document.getElementById('admSearch') || {}).value || '').toLowerCase().trim();
   const list = (window._adminProfiles || []).filter(p =>
-    !q || [p.name, p.email, p.mobile, p.address, p.googleName, p.displayName].some(v => String(v || '').toLowerCase().includes(q)));
+    !q || [p.name, p.email, p.mobile, p.address, p.googleName, p.displayName, (p.draft || {}).name, (p.draft || {}).email, (p.draft || {}).mobile].some(v => String(v || '').toLowerCase().includes(q)));
   document.getElementById('admCount').textContent = list.length + ' devotee' + (list.length === 1 ? '' : 's');
   box.innerHTML = list.map(p => {
     const ok = _effVerified(p);
+    const dr = p.draft || {};
+    const eff = { name: p.name || dr.name, address: p.address || dr.address, mobile: p.mobile || dr.mobile, email: p.email || dr.email, dob: p.dob || dr.dob, photo: p.photo || dr.hasPhoto };
+    const effCount = [eff.name, eff.address, eff.mobile, eff.email, eff.dob, eff.photo].filter(Boolean).length;
+    const missing = [['Photo', eff.photo], ['Name', eff.name], ['Address', eff.address], ['Mobile', eff.mobile], ['Email', eff.email], ['Date of birth', eff.dob]].filter(x => !x[1]).map(x => x[0]);
+    const draftAt = dr.savedAt && dr.savedAt.toDate ? dr.savedAt.toDate().toLocaleString() : '';
     const ph = _lbSafePhoto(p.photoSmall || p.photo || '');
     const row = (k, v) => '<div style="display:flex;gap:8px;font-size:12px;margin-top:5px;"><span style="color:var(--td);min-width:78px;">' + k + '</span><span style="color:var(--tl);word-break:break-word;flex:1;">' + (v ? escHtml(v) : '<i style="opacity:.5">—</i>') + '</span></div>';
+    const drow = (k, v, dv) => v ? row(k, v) : (dv ? row(k, dv + '   ⏳ draft — not saved by user') : row(k, ''));
     const upd = p.updatedAt && p.updatedAt.toDate ? p.updatedAt.toDate().toLocaleString() : '';
     const uidSafe = String(p._id).replace(/[^A-Za-z0-9_-]/g, '');
     const mode = p.adminVerified === true ? 'yes' : (p.adminVerified === false || p.revoked ? 'no' : 'auto');
@@ -37340,9 +37492,10 @@ function _admRender() {
         '<div style="flex:1;min-width:0;"><div style="color:var(--tl);font-weight:600;font-size:14px;">' + escHtml(p.name || p.googleName || p.displayName || '(no name)') + (p._stub ? ' <span style="font-size:10px;color:var(--td);">(no profile yet)</span>' : '') + '</div>' +
         '<div style="font-size:11px;color:var(--td);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(p.email || '') + '</div></div>' +
         '<div class="pf-vslot">' + (ok ? _lbVerifiedBadge({ verified: true }) : '') + '</div>' +
-        '<div style="font-size:11px;color:var(--td);">' + _pfCount(p) + '/6</div></div>' +
+        '<div style="font-size:11px;color:var(--td);">' + effCount + '/6' + (effCount > _pfCount(p) ? '*' : '') + '</div></div>' +
       '<div style="display:none;margin-top:8px;border-top:1px solid rgba(255,215,0,0.12);padding-top:6px;">' +
-        row('Name', p.name) + row('Address', p.address) + row('Mobile', p.mobile) + row('Email', p.email) + row('Date of birth', p.dob) +
+        drow('Name', p.name, dr.name) + drow('Address', p.address, dr.address) + drow('Mobile', p.mobile, dr.mobile) + drow('Email', p.email, dr.email) + drow('Date of birth', p.dob, dr.dob) + (dr.hasPhoto && !p.photo ? row('Photo', 'Chosen, not saved yet') : '') +
+        ((p.draft && !p._stub) ? row('Draft saved', draftAt + ' (typed but not finally saved)') : '') + row('Still missing', missing.length ? missing.join(', ') : 'Nothing — all 6 present') +
         row('Google name', p.googleName) + row('Photo on board', p.showPhoto === false ? 'Hidden by user' : 'Shown') +
         row('Badge now', ok ? (p.adminVerified === true ? 'Verified by admin' : 'Verified (profile complete)') : (p.adminVerified === false || p.revoked ? 'Not verified (set by admin)' : 'Not verified')) + row('Updated', upd) + row('UID', p._id) +
         (p._stub ? '<div style="font-size:11px;color:var(--td);margin-top:6px;">This devotee has not created a profile yet. You can still give them the ✔ badge.</div>' : '') +

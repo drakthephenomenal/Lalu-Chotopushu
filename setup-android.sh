@@ -103,6 +103,7 @@ if [ -f "ic_notification.png" ]; then
   mkdir -p android/app/src/main/res/drawable
   cp ic_notification.png android/app/src/main/res/drawable/ic_stat_notify.png
   echo "  Installed ic_stat_notify.png (notification small icon)."
+  [ -f "ic_notify_color.png" ] && cp ic_notify_color.png android/app/src/main/res/drawable/ic_notify_color.png && echo "  installed ic_notify_color.png (colour notification icon)"
   [ -f "notif-icon.png" ] && cp notif-icon.png android/app/src/main/res/drawable/ic_large_notify.png && echo "  Installed ic_large_notify.png (large colour icon)."
 else
   echo "  WARNING: ic_notification.png not found at repo root — notification icon will use the system default."

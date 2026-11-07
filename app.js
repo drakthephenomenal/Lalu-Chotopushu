@@ -888,7 +888,7 @@ async function _rjapPostBarNotif(entry) {
       title: entry.title || "Notification",
       body: entry.body || "",
       channelId: RJAP_PUSH_FG_CHANNEL_ID,
-      smallIcon: "ic_stat_notify", largeIcon: "ic_large_notify", iconColor: "#E56B1F",
+      smallIcon: "ic_notify_color", largeIcon: "ic_large_notify",
       extra: { rjapKey: entry.k || "", rjapHid: entry.id },
     }] });
   } catch (_e) {}

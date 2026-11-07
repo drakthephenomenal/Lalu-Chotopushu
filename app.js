@@ -873,6 +873,16 @@ async function _rjapPostBarNotif(entry) {
   try {
     const LN = _rjapLN(); if (!LN || !entry) return;
     try { const p = await LN.checkPermissions(); if (p.display !== "granted") return; } catch (_e) {}
+    // Some phones/plugin versions already show the push in the bar while the app is open → don't add a second one.
+    try {
+      const FM = (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseMessaging) || null;
+      if (FM && typeof FM.getDeliveredNotifications === "function") {
+        await new Promise((r) => setTimeout(r, 1000));
+        const r = await FM.getDeliveredNotifications();
+        const dup = ((r && r.notifications) || []).some((x) => (x.title || "") === (entry.title || "") && (x.body || "") === (entry.body || ""));
+        if (dup) return;
+      }
+    } catch (_e) {}
     await LN.schedule({ notifications: [{
       id: 100000 + (_rjapHash(entry.k || entry.id) % 1000000000),
       title: entry.title || "Notification",
@@ -1083,12 +1093,19 @@ async function _rjapSyncDelivered() {
     if (_lcIsNative() && P.FirebaseMessaging && typeof P.FirebaseMessaging.getDeliveredNotifications === "function") {
       try {
         const r = await P.FirebaseMessaging.getDeliveredNotifications();
+        const _seenSig = {}, _dups = [];
         for (const n of (r && r.notifications) || []) {
           const d = n.data || {};
-          const isFcm = (n.tag && String(n.tag).indexOf("FCM-Notification") === 0) || d["google.message_id"] || d["gcm.message_id"];
+          const isFcm = (n.tag && String(n.tag).indexOf("FCM-Notification") === 0) || d["google.message_id"] || d["gcm.message_id"] || d.pid;
           if (!isFcm || !(n.title || n.body)) continue;      // only real pushes, never other app notifications
+          const _sig = (n.title || "") + "|" + (n.body || "");
+          if (_seenSig[_sig]) { _dups.push(n); continue; }   // same push delivered twice → keep one in the bar
+          _seenSig[_sig] = 1;
           const entry = _rjapAddNotifHistory(n.title, n.body, { key: _rjapTrayKey(n) });
           if (entry) fresh.push(entry);
+        }
+        if (_dups.length && typeof P.FirebaseMessaging.removeDeliveredNotifications === "function") {
+          try { await P.FirebaseMessaging.removeDeliveredNotifications({ notifications: _dups }); } catch (_e) {}
         }
       } catch (_e) {}
     }

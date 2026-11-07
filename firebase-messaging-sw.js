@@ -25,9 +25,26 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   const title = (payload.notification && payload.notification.title) || "RadhaNaam SudhaRasam";
   const body = (payload.notification && payload.notification.body) || "";
-  self.registration.showNotification(title, {
+  const opts = {
     body,
     icon: "/notif-icon.png",
     badge: "/notif-icon.png",
-  });
+  };
+  const mid = payload.fcmMessageId || (payload.data && payload.data["google.message_id"]);
+  if (mid) opts.tag = "p:" + mid;   // unique id → the app can list it in 🔔 without duplicates
+  self.registration.showNotification(title, opts);
+});
+
+// Tapping a push: bring the app forward and tell it the message was opened (→ marked read in 🔔)
+self.addEventListener("notificationclick", (event) => {
+  const n = event.notification;
+  n.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      const msg = { type: "rjap-notif-click", title: n.title, body: n.body, tag: n.tag || "", timestamp: n.timestamp || Date.now() };
+      for (const c of list) { try { c.postMessage(msg); } catch (_e) {} }
+      for (const c of list) { if ("focus" in c) return c.focus(); }
+      return self.clients.openWindow ? self.clients.openWindow("/") : null;
+    })
+  );
 });

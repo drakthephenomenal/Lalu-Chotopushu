@@ -371,6 +371,7 @@ async function lcRequestNotifPermission() {
 }
 
 async function lcScheduleDailyReminder(hour, minute) {
+  if (window._rjapFgPending && window._rjapFgPending[RJAP_REMINDER_NOTIF_ID]) return;   // being handled in-app right now
   if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
     const { LocalNotifications } = window.Capacitor.Plugins;
     try { await LocalNotifications.cancel({ notifications: [{ id: RJAP_REMINDER_NOTIF_ID }] }); } catch (e) {}
@@ -386,6 +387,10 @@ async function lcScheduleDailyReminder(hour, minute) {
         iconColor: "#E56B1F",
       }],
     });
+    try {
+      _rjapRegPut({ id: RJAP_REMINDER_NOTIF_ID, kind: "on", h: hour, m: minute,
+        title: "🙏 RadhaNaam SudhaRasam", body: "Time for your daily sadhana — chant with a peaceful heart." });
+    } catch (_e) {}
     return;
   }
   localStorage.setItem("rjap_reminder_time", hour + ":" + minute);
@@ -397,6 +402,7 @@ function lcCancelDailyReminder() {
     try {
       window.Capacitor.Plugins.LocalNotifications.cancel({ notifications: [{ id: RJAP_REMINDER_NOTIF_ID }] });
     } catch (e) {}
+    try { _rjapRegDel(RJAP_REMINDER_NOTIF_ID); } catch (_e) {}
   }
   localStorage.removeItem("rjap_reminder_time");
   localStorage.removeItem("rjap_reminder_lastFired");
@@ -425,6 +431,7 @@ function _lcNextOccurrence(hour, minute) {
 }
 
 async function _lcScheduleOneShot(id, targetDate, title, body) {
+  if (window._rjapFgPending && window._rjapFgPending[id]) return;   // being handled in-app right now
   if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
     const { LocalNotifications } = window.Capacitor.Plugins;
     try { await LocalNotifications.cancel({ notifications: [{ id }] }); } catch (e) {}
@@ -440,12 +447,14 @@ async function _lcScheduleOneShot(id, targetDate, title, body) {
         iconColor: "#E56B1F",
       }],
     });
+    try { _rjapRegPut({ id, kind: "at", at: new Date(targetDate).getTime(), title, body }); } catch (_e) {}
   }
 }
 
 function _lcCancelOneShot(id) {
   if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
     try { window.Capacitor.Plugins.LocalNotifications.cancel({ notifications: [{ id }] }); } catch (e) {}
+    try { _rjapRegDel(id); } catch (_e) {}
   }
 }
 
@@ -498,13 +507,18 @@ function _lcArmWebReminderTimer() {
     const today = now.toDateString();
     if (now.getHours() === h && now.getMinutes() === m && localStorage.getItem("rjap_reminder_lastFired") !== today) {
       localStorage.setItem("rjap_reminder_lastFired", today);
-      if ("Notification" in window && Notification.permission === "granted") {
-        try {
-          new Notification("🙏 RadhaNaam SudhaRasam", {
-            body: "Time for your daily sadhana — chant with a peaceful heart.",
-            icon: "./notif-icon.png",
-          });
-        } catch (e) {}
+      const _wTitle = "🙏 RadhaNaam SudhaRasam";
+      const _wBody = "Time for your daily sadhana — chant with a peaceful heart.";
+      if (document.visibilityState === "visible" && typeof _rjapNotifIncoming === "function") {
+        // App is open: in-app popup + soft chime (no system banner / system tone)
+        _rjapNotifIncoming({ title: _wTitle, body: _wBody, key: "W:daily:" + today, tab: "vj" });
+      } else {
+        try { _rjapAddNotifHistory(_wTitle, _wBody, { key: "W:daily:" + today, tab: "vj" }); } catch (_e) {}
+        if ("Notification" in window && Notification.permission === "granted") {
+          try {
+            new Notification(_wTitle, { body: _wBody, icon: "./notif-icon.png" });
+          } catch (e) {}
+        }
       }
     }
   }, 30000);
@@ -546,17 +560,36 @@ function _rjapSaveNotifHistory(list) {
   } catch (e) {}
 }
 
-function _rjapAddNotifHistory(title, body) {
+// opts (all optional): key = de-duplication key (same key is never stored twice),
+// ts = when it really arrived, read = store as already read, tab = screen the
+// notification belongs to (e.g. "vj" for jap reminders). Returns the stored
+// entry, or null when an entry with the same key already exists.
+function _rjapAddNotifHistory(title, body, opts) {
+  opts = opts || {};
   const list = _rjapGetNotifHistory();
-  list.unshift({
+  if (opts.key && list.some((n) => n.k === opts.key)) return null;
+  const entry = {
     id: Date.now() + "_" + Math.random().toString(36).slice(2, 8),
     title: title || "Notification",
     body: body || "",
-    ts: Date.now(),
-    read: false,
-  });
+    ts: opts.ts || Date.now(),
+    read: !!opts.read,
+    k: opts.key || "",
+    tab: opts.tab || "",
+  };
+  list.unshift(entry);
+  list.sort((a, b) => (b.ts || 0) - (a.ts || 0));
   _rjapSaveNotifHistory(list);
   _rjapUpdateNotifBadges();
+  return entry;
+}
+
+function _rjapMarkNotifReadById(id) {
+  const list = _rjapGetNotifHistory();
+  const n = list.find((x) => x.id === id);
+  if (n && !n.read) { n.read = true; _rjapSaveNotifHistory(list); }
+  _rjapUpdateNotifBadges();
+  return n || null;
 }
 
 function _rjapUnreadNotifCount() {
@@ -600,7 +633,9 @@ function _rjapFormatNotifTime(ts) {
   return d.toLocaleDateString([], { day: "numeric", month: "short" }) + ", " + time;
 }
 
-function rjapOpenNotifHistory() {
+function rjapOpenNotifHistory(highlightId) {
+  if (typeof highlightId !== "string") highlightId = "";   // the bell passes a click event, not an id
+  try { _rjapPopupDismissAll(); } catch (_e) {}            // the popups are now in the list
   const modal = document.getElementById("notifHistoryModal");
   const listEl = document.getElementById("notifHistoryList");
   if (!modal || !listEl) return;
@@ -611,7 +646,8 @@ function rjapOpenNotifHistory() {
   } else {
     for (const n of history) {
       const row = document.createElement("div");
-      row.className = "notif-hist-row" + (n.read ? "" : " notif-hist-unread");
+      row.className = "notif-hist-row" + (n.read ? "" : " notif-hist-unread") + (n.id === highlightId ? " notif-hist-hl" : "");
+      row.setAttribute("data-nid", n.id);
       row.style.cssText = "display:flex;align-items:flex-start;gap:10px;";
       row.innerHTML =
         '<img src="./notif-icon.png" alt="" style="width:38px;height:38px;flex:none;object-fit:contain;margin-top:2px;">' +
@@ -624,6 +660,9 @@ function rjapOpenNotifHistory() {
     }
   }
   modal.classList.add("show");
+  if (highlightId) {
+    try { const hl = listEl.querySelector('[data-nid="' + highlightId + '"]'); if (hl) hl.scrollIntoView({ block: "center" }); } catch (_e) {}
+  }
   _rjapMarkAllNotifRead(); // opening the inbox counts as reading it
 }
 
@@ -644,6 +683,410 @@ function _rjapEscapeHtml(s) {
 document.addEventListener("DOMContentLoaded", () => {
   _rjapUpdateNotifBadges();
 });
+
+/* ════════════════════════════════════════════════════════════════════
+   Notifications — in-app popup · soft chime · reminders while the app is
+   open · tray → bell sync
+   • Every notification lands in the 🔔 inbox as well as the Android bar.
+   • App open: a popup stays on screen until "Read later" (stays unread in
+     the 🔔) or "Open" (marks it read). Where it appears: Jap screen → over
+     the times row, 28 Names → at the top of the Bhagavadik Bank, any other
+     screen → top of the screen.
+   • App open: jap reminders do NOT play the reminder tone — Android is told
+     not to show them a few seconds early, and the app plays a soft chime +
+     popup instead. If the app is closed/hidden, Android delivers them as before.
+   ════════════════════════════════════════════════════════════════════ */
+
+// Stable key of a push so the same message is never stored twice
+function _rjapPushKey(n) {
+  try {
+    const d = (n && n.data) || {};
+    const id = d["google.message_id"] || d["gcm.message_id"] || (n && n.id);
+    return id ? "p:" + id : "";
+  } catch (_e) { return ""; }
+}
+function _rjapTrayKey(n) {
+  const k = _rjapPushKey(n);
+  if (k) return k;
+  if (n && n.tag) return "p:" + n.tag;
+  return "p:" + ((n && n.title) || "") + "|" + ((n && n.body) || "") + "|" + new Date().toDateString();
+}
+function _rjapMarkReadByKey(key) {
+  const list = _rjapGetNotifHistory();
+  const n = list.find((x) => x.k === key);
+  if (n && !n.read) { n.read = true; _rjapSaveNotifHistory(list); }
+  _rjapUpdateNotifBadges();
+  return n || null;
+}
+
+/* ── Soft in-app chime (generated, no audio file) — used instead of the reminder tone while the app is open ── */
+let _rjapAC = null;
+function _rjapSoftChime() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!_rjapAC) _rjapAC = new AC();
+    if (_rjapAC.state === "suspended") _rjapAC.resume();
+    const ctx = _rjapAC, t0 = ctx.currentTime + 0.02;
+    const bell = (freq, start, vol) => {
+      [[1, 1], [2.76, 0.35], [5.4, 0.12]].forEach(([m, g]) => {
+        const o = ctx.createOscillator(), a = ctx.createGain();
+        o.type = "sine"; o.frequency.value = freq * m;
+        a.gain.setValueAtTime(0.0001, t0 + start);
+        a.gain.exponentialRampToValueAtTime(vol * g, t0 + start + 0.015);
+        a.gain.exponentialRampToValueAtTime(0.0001, t0 + start + 1.6 / Math.pow(m, 0.3));
+        o.connect(a); a.connect(ctx.destination);
+        o.start(t0 + start); o.stop(t0 + start + 1.8);
+      });
+    };
+    bell(784, 0, 0.16);       // soft two-note temple-bell "ting … ting"
+    bell(1175, 0.28, 0.13);
+    try { if (navigator.vibrate) navigator.vibrate(40); } catch (_e) {}
+  } catch (_e) {}
+}
+
+/* ── Popup UI ── */
+function _rjapPopupStyle() {
+  if (document.getElementById("rjapNPStyle")) return;
+  const st = document.createElement("style");
+  st.id = "rjapNPStyle";
+  st.textContent =
+    "#rjapNPHost{position:fixed;left:10px;right:10px;max-width:560px;margin:0 auto;z-index:100002;display:flex;flex-direction:column;gap:8px;pointer-events:none;}" +
+    ".rjnp-card{pointer-events:auto;background:linear-gradient(135deg,rgba(16,24,54,.97),rgba(34,24,66,.97));border:1px solid rgba(255,215,0,.55);border-radius:16px;padding:11px 12px 10px;box-shadow:0 10px 30px rgba(0,0,0,.6),0 0 18px rgba(255,215,0,.12);color:#f3f4ff;animation:rjnpIn .28s ease-out;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);}" +
+    "@keyframes rjnpIn{from{opacity:0;transform:translateY(-14px) scale(.97)}to{opacity:1;transform:none}}" +
+    ".rjnp-top{display:flex;gap:10px;align-items:flex-start;}" +
+    ".rjnp-ic{width:36px;height:36px;flex:none;object-fit:contain;margin-top:1px;}" +
+    ".rjnp-txt{flex:1;min-width:0;cursor:pointer;}" +
+    ".rjnp-title{font-size:14.5px;font-weight:700;color:#FFD700;line-height:1.3;}" +
+    ".rjnp-body{font-size:13px;color:#dfe3ff;line-height:1.4;margin-top:3px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}" +
+    ".rjnp-card.rjnp-exp .rjnp-body{-webkit-line-clamp:unset;display:block;}" +
+    ".rjnp-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:9px;}" +
+    ".rjnp-btns button{font-size:12.5px;font-weight:700;border-radius:14px;padding:6px 14px;cursor:pointer;font-family:inherit;}" +
+    ".rjnp-later{background:transparent;color:#b9c0ee;border:1px solid rgba(185,192,238,.4);}" +
+    ".rjnp-open{background:rgba(255,215,0,.18);color:#FFD700;border:1px solid rgba(255,215,0,.6);}" +
+    ".notif-hist-hl{background:#fff6d6 !important;box-shadow:inset 3px 0 0 #e5a900;}";
+  document.head.appendChild(st);
+}
+function _rjapPopupHost() {
+  _rjapPopupStyle();
+  let host = document.getElementById("rjapNPHost");
+  if (host) return host;
+  host = document.createElement("div");
+  host.id = "rjapNPHost";
+  ["touchstart", "touchend", "mousedown", "pointerdown"].forEach((evn) =>
+    host.addEventListener(evn, (e) => e.stopPropagation(), { passive: true }));
+  host.addEventListener("click", (ev) => {
+    const card = ev.target.closest && ev.target.closest(".rjnp-card");
+    if (!card) return;
+    ev.stopPropagation();
+    const id = card.getAttribute("data-nid");
+    const btn = ev.target.closest("[data-act]");
+    const act = btn && btn.getAttribute("data-act");
+    if (act === "later") _rjapPopupRemove(id);                 // stays unread in 🔔
+    else if (act === "open") _rjapPopupOpen(id);               // marks it read
+    else if (ev.target.closest(".rjnp-txt")) card.classList.toggle("rjnp-exp");
+  });
+  document.body.appendChild(host);
+  return host;
+}
+// Where the popup sits: Jap screen → over the times row (Session / Today Actual Jap / Screen Time);
+// 28 Names → top of the Bhagavadik Bank; every other screen → top of the screen.
+function _rjapPopupPlace() {
+  const host = document.getElementById("rjapNPHost");
+  if (!host) return;
+  const act = document.querySelector(".view.active");
+  const vid = act ? act.id : "";
+  let anchor = null;
+  if (vid === "vj") anchor = document.querySelector("#vj .timer-row");
+  else if (vid === "v28") anchor = document.querySelector("#v28 .n28wrap");
+  let top = null;
+  if (anchor) {
+    const r = anchor.getBoundingClientRect();
+    if (r.height > 0 && r.top >= 0 && r.top < window.innerHeight * 0.6) top = Math.round(r.top);
+  }
+  host.style.top = top != null ? top + "px" : "calc(env(safe-area-inset-top, 0px) + 10px)";
+  if (top != null) {
+    const h = host.offsetHeight, maxTop = window.innerHeight - 70 - h;
+    if (top > maxTop) host.style.top = Math.max(8, maxTop) + "px";   // keep fully on screen
+  }
+}
+function _rjapPopupRemove(id) {
+  const host = document.getElementById("rjapNPHost");
+  const c = host && host.querySelector('[data-nid="' + id + '"]');
+  if (c) c.remove();
+}
+function _rjapPopupDismissAll() {
+  const host = document.getElementById("rjapNPHost");
+  if (host) host.innerHTML = "";
+}
+function _rjapPopupOpen(id) {
+  const n = _rjapMarkNotifReadById(id);
+  _rjapPopupRemove(id);
+  if (n && n.tab) {
+    // jap reminder → go straight to the Jap screen
+    try { sv(n.tab, document.querySelector('.nb[onclick^="sv(\'' + n.tab + '\'"]')); } catch (_e) {}
+  } else {
+    rjapOpenNotifHistory(id);   // the message itself, highlighted, in the 🔔 list
+  }
+}
+function _rjapShowNotifPopup(entry) {
+  if (!entry) return;
+  const host = _rjapPopupHost();
+  if (host.querySelector('[data-nid="' + entry.id + '"]')) return;
+  const card = document.createElement("div");
+  card.className = "rjnp-card";
+  card.setAttribute("data-nid", entry.id);
+  card.innerHTML =
+    '<div class="rjnp-top"><img class="rjnp-ic" src="./notif-icon.png" alt="">' +
+    '<div class="rjnp-txt"><div class="rjnp-title">' + _rjapEscapeHtml(entry.title || "Notification") + "</div>" +
+    (entry.body ? '<div class="rjnp-body">' + _rjapEscapeHtml(entry.body) + "</div>" : "") + "</div></div>" +
+    '<div class="rjnp-btns"><button type="button" class="rjnp-later" data-act="later">Read later</button>' +
+    '<button type="button" class="rjnp-open" data-act="open">' + (entry.tab ? "Start Jap 🙏" : "Open") + "</button></div>";
+  host.insertBefore(card, host.firstChild);
+  while (host.children.length > 3) host.removeChild(host.lastChild);   // older ones are still in 🔔
+  _rjapPopupPlace();
+}
+
+/* ── A notification arrived while the app is open: 🔔 list + popup + soft chime ── */
+const _rjapIncomingSeen = {};
+function _rjapNotifIncoming(o) {
+  o = o || {};
+  const sig = o.key || "m:" + (o.title || "") + "|" + (o.body || "");
+  const now = Date.now();
+  if (_rjapIncomingSeen[sig] && now - _rjapIncomingSeen[sig] < 60000) return null;
+  _rjapIncomingSeen[sig] = now;
+  const entry = _rjapAddNotifHistory(o.title, o.body, { key: o.key || "", ts: o.ts, tab: o.tab });
+  if (!entry) return null;
+  _rjapSoftChime();
+  _rjapShowNotifPopup(entry);
+  return entry;
+}
+
+/* ── Registry of scheduled jap reminders (native). Lets the app (a) log a reminder to 🔔 even when it
+      fired while the app was closed, and (b) handle it itself while the app is open. ── */
+const RJAP_LOCAL_REG_KEY = "rjap_local_reg";
+window._rjapFgPending = window._rjapFgPending || {};
+function _rjapRegGet() {
+  try { const r = JSON.parse(localStorage.getItem(RJAP_LOCAL_REG_KEY) || "{}"); return r && typeof r === "object" ? r : {}; } catch (_e) { return {}; }
+}
+function _rjapRegSet(r) { try { localStorage.setItem(RJAP_LOCAL_REG_KEY, JSON.stringify(r)); } catch (_e) {} }
+function _rjapRegPut(e) {
+  try { _rjapLogElapsedLocal(false); } catch (_e) {}   // log what already fired before this entry is replaced
+  const reg = _rjapRegGet(), old = reg[e.id];
+  if (old && old.kind === "on" && e.kind === "on" && old.h === e.h && old.m === e.m) { e.created = old.created; e.logged = old.logged; }
+  else e.created = Date.now();
+  e.ch = RJAP_NOTIF_CHANNEL_ID;
+  reg[e.id] = e;
+  _rjapRegSet(reg);
+  try { _rjapFgPlan(); } catch (_e) {}
+}
+function _rjapRegDel(id) {
+  const reg = _rjapRegGet();
+  if (reg[id]) { delete reg[id]; _rjapRegSet(reg); }
+  const p = window._rjapFgPending[id]; if (p) delete window._rjapFgPending[id];
+}
+// Reminders whose time has passed while the app was closed → into 🔔 (unread). Returns the recent ones for popups.
+function _rjapLogElapsedLocal(wantRecent) {
+  const reg = _rjapRegGet(), now = Date.now(), recent = [];
+  let changed = false;
+  for (const id of Object.keys(reg)) {
+    const e = reg[id];
+    if (window._rjapFgPending[id]) continue;
+    let fire = null;
+    if (e.kind === "at") {
+      if (e.at <= now && !e.logged) fire = e.at;
+    } else {
+      const d = new Date(now); d.setHours(e.h, e.m, 0, 0);
+      if (d.getTime() > now) d.setDate(d.getDate() - 1);
+      const t = d.getTime();
+      if (t > (e.logged || 0) && t > (e.created || 0)) fire = t;
+    }
+    if (fire == null) continue;
+    e.logged = fire; changed = true;
+    const entry = _rjapAddNotifHistory(e.title, e.body, { key: "L:" + id + ":" + fire, ts: fire, tab: "vj" });
+    if (entry && wantRecent && now - fire < 2 * 3600 * 1000) recent.push(entry);
+  }
+  if (changed) _rjapRegSet(reg);
+  return recent;
+}
+
+/* ── App open: take reminders away from Android a few seconds early and handle them in-app ── */
+const RJAP_FG_LEAD_MS = 4000;
+let _rjapFgTimer = null;
+function _rjapLN() {
+  return (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) || null;
+}
+function _rjapRegNextFire(e, now) {
+  if (e.kind === "at") return !e.logged && e.at > now - 1500 ? e.at : null;
+  const base = Math.max(now - 1500, e.logged || 0);
+  const d = new Date(base); d.setHours(e.h, e.m, 0, 0);
+  if (d.getTime() <= base) d.setDate(d.getDate() + 1);
+  return d.getTime();
+}
+async function _rjapNativeSchedule(e, mode) {
+  const LN = _rjapLN(); if (!LN) return;
+  const n = { id: Number(e.id), title: e.title, body: e.body, channelId: e.ch || RJAP_NOTIF_CHANNEL_ID,
+    smallIcon: "ic_stat_notify", largeIcon: "ic_large_notify", iconColor: "#E56B1F" };
+  if (mode !== "now") n.schedule = e.kind === "at" ? { at: new Date(e.at), allowWhileIdle: true } : { on: { hour: e.h, minute: e.m }, allowWhileIdle: true };
+  await LN.schedule({ notifications: [n] });
+}
+function _rjapFgPlan() {
+  if (_rjapFgTimer) { clearTimeout(_rjapFgTimer); _rjapFgTimer = null; }
+  if (!_rjapLN() || document.visibilityState !== "visible") return;
+  const now = Date.now(), reg = _rjapRegGet();
+  let soonest = Infinity;
+  for (const id of Object.keys(reg)) {
+    if (window._rjapFgPending[id]) continue;
+    const t = _rjapRegNextFire(reg[id], now);
+    if (t != null) soonest = Math.min(soonest, t - RJAP_FG_LEAD_MS);
+  }
+  if (soonest === Infinity) return;
+  _rjapFgTimer = setTimeout(_rjapFgIntercept, Math.min(Math.max(soonest - now, 0), 30000));
+}
+async function _rjapFgIntercept() {
+  _rjapFgTimer = null;
+  const LN = _rjapLN();
+  if (!LN || document.visibilityState !== "visible") return;
+  const now = Date.now(), reg = _rjapRegGet();
+  for (const id of Object.keys(reg)) {
+    if (window._rjapFgPending[id]) continue;
+    const t = _rjapRegNextFire(reg[id], now);
+    if (t == null || t - now > RJAP_FG_LEAD_MS + 600) continue;
+    window._rjapFgPending[id] = { fireAt: t };
+    try { await LN.cancel({ notifications: [{ id: Number(id) }] }); } catch (_e) {}   // Android must not play its tone
+    setTimeout(() => { _rjapFgFire(id); }, Math.max(0, t - Date.now()));
+  }
+  _rjapFgPlan();
+}
+async function _rjapFgFire(id) {
+  const p = window._rjapFgPending[id];
+  if (!p) return;
+  if (document.visibilityState !== "visible") { await _rjapFgRestore(id); return; }
+  delete window._rjapFgPending[id];
+  const reg = _rjapRegGet(), e = reg[id];
+  if (e) {
+    e.logged = p.fireAt; reg[id] = e; _rjapRegSet(reg);
+    _rjapNotifIncoming({ title: e.title, body: e.body, key: "L:" + id + ":" + p.fireAt, ts: p.fireAt, tab: "vj" });
+    if (e.kind === "on") { try { await _rjapNativeSchedule(e); } catch (_e) {} }   // daily reminder: arm tomorrow
+  }
+  _rjapFgPlan();
+}
+// App was hidden before the reminder time: give it back to Android so it is delivered normally.
+async function _rjapFgRestore(id) {
+  const p = window._rjapFgPending[id];
+  if (!p) return;
+  delete window._rjapFgPending[id];
+  const reg = _rjapRegGet(), e = reg[id];
+  if (!e) return;
+  try {
+    if (p.fireAt - Date.now() > 1500) {
+      await _rjapNativeSchedule(e);
+    } else {
+      e.logged = p.fireAt; reg[id] = e; _rjapRegSet(reg);
+      _rjapAddNotifHistory(e.title, e.body, { key: "L:" + id + ":" + p.fireAt, ts: p.fireAt, tab: "vj" });
+      await _rjapNativeSchedule(e, "now");
+      if (e.kind === "on") await _rjapNativeSchedule(e);
+    }
+  } catch (_e) {}
+}
+
+/* ── Opening the app: pull in what arrived while it was closed (tray → 🔔) and show it as popups ── */
+let _rjapSyncBusy = false;
+async function _rjapSyncDelivered() {
+  if (_rjapSyncBusy) return;
+  _rjapSyncBusy = true;
+  try {
+    const fresh = _rjapLogElapsedLocal(true).slice();   // jap reminders that fired while the app was closed
+    const P = (window.Capacitor && window.Capacitor.Plugins) || {};
+    if (_lcIsNative() && P.FirebaseMessaging && typeof P.FirebaseMessaging.getDeliveredNotifications === "function") {
+      try {
+        const r = await P.FirebaseMessaging.getDeliveredNotifications();
+        for (const n of (r && r.notifications) || []) {
+          const d = n.data || {};
+          const isFcm = (n.tag && String(n.tag).indexOf("FCM-Notification") === 0) || d["google.message_id"] || d["gcm.message_id"];
+          if (!isFcm || !(n.title || n.body)) continue;      // only real pushes, never other app notifications
+          const entry = _rjapAddNotifHistory(n.title, n.body, { key: _rjapTrayKey(n) });
+          if (entry) fresh.push(entry);
+        }
+      } catch (_e) {}
+    }
+    if (!_lcIsNative() && "serviceWorker" in navigator) {
+      try {
+        for (const reg of await navigator.serviceWorker.getRegistrations()) {
+          if (!reg.getNotifications) continue;
+          for (const n of await reg.getNotifications()) {
+            const entry = _rjapAddNotifHistory(n.title, n.body, { key: "w:" + (n.tag || n.title + "|" + n.body + "|" + (n.timestamp || "")), ts: n.timestamp || Date.now() });
+            if (entry) fresh.push(entry);
+          }
+        }
+      } catch (_e) {}
+    }
+    if (fresh.length) {
+      _rjapSoftChime();
+      fresh.slice(0, 3).forEach(_rjapShowNotifPopup);
+    }
+  } finally { _rjapSyncBusy = false; }
+}
+
+function _rjapNotifInit() {
+  if (window._rjapNotifInited) return;
+  window._rjapNotifInited = true;
+  // move the popup when the screen changes
+  if (typeof window.sv === "function" && !window.sv._rjnp) {
+    const o = window.sv;
+    const w = function () { const r = o.apply(this, arguments); try { setTimeout(_rjapPopupPlace, 30); } catch (_e) {} return r; };
+    w._rjnp = true;
+    window.sv = w;
+  }
+  window.addEventListener("resize", () => { try { _rjapPopupPlace(); } catch (_e) {} });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      _rjapFgPlan();
+      _rjapSyncDelivered();
+    } else {
+      if (_rjapFgTimer) { clearTimeout(_rjapFgTimer); _rjapFgTimer = null; }
+      Object.keys(window._rjapFgPending).forEach((id) => { _rjapFgRestore(id); });
+    }
+  });
+  // Tapping a notification in the Android bar = opened → mark it read
+  try {
+    const P = (window.Capacitor && window.Capacitor.Plugins) || {};
+    if (_lcIsNative() && P.LocalNotifications && P.LocalNotifications.addListener) {
+      P.LocalNotifications.addListener("localNotificationActionPerformed", (ev) => {
+        const n = ev && ev.notification; if (!n) return;
+        try { _rjapLogElapsedLocal(false); } catch (_e) {}
+        const hit = _rjapGetNotifHistory().find((x) => x.k && x.k.indexOf("L:" + n.id + ":") === 0 && !x.read);
+        if (hit) { _rjapMarkNotifReadById(hit.id); _rjapPopupRemove(hit.id); }
+        try { sv("vj", document.querySelector('.nb[onclick^="sv(\'vj\'"]')); } catch (_e) {}
+      });
+    }
+    if (_lcIsNative() && P.FirebaseMessaging && P.FirebaseMessaging.addListener) {
+      P.FirebaseMessaging.addListener("notificationActionPerformed", (ev) => {
+        const n = ev && ev.notification; if (!n || !(n.title || n.body)) return;
+        const key = _rjapTrayKey(n);
+        const added = _rjapAddNotifHistory(n.title, n.body, { key, read: true });
+        const ent = added || _rjapMarkReadByKey(key);
+        if (ent) _rjapPopupRemove(ent.id);
+      });
+    }
+  } catch (_e) {}
+  // Web: a click on a background notification is reported by the service worker
+  try {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener("message", (ev) => {
+        const d = ev && ev.data;
+        if (!d || d.type !== "rjap-notif-click") return;
+        const key = "w:" + (d.tag || d.title + "|" + d.body + "|" + (d.timestamp || ""));
+        const added = _rjapAddNotifHistory(d.title, d.body, { key, read: true, ts: d.timestamp || Date.now() });
+        const ent = added || _rjapMarkReadByKey(key);
+        if (ent) _rjapPopupRemove(ent.id);
+      });
+    }
+  } catch (_e) {}
+  setTimeout(() => { try { _rjapSyncDelivered(); _rjapFgPlan(); } catch (_e) {} }, 900);
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", _rjapNotifInit);
+else _rjapNotifInit();
 
 // Current notification permission WITHOUT showing any prompt:
 // "granted" | "denied" | "prompt".
@@ -720,7 +1163,7 @@ async function lcPushTopicSubscribe() {
       window._lcPushListeners = true;
       FM.addListener("notificationReceived", (event) => {
         const n = event && event.notification;
-        if (n) { toast("🔔 " + (n.title || "Notification")); _rjapAddNotifHistory(n.title, n.body); }
+        if (n) _rjapNotifIncoming({ title: n.title, body: n.body, key: _rjapPushKey(n) });
       });
     }
     return true;
@@ -750,10 +1193,7 @@ async function lcRegisterPush() {
         window._lcPushListeners = true;
         FirebaseMessaging.addListener("notificationReceived", (event) => {
           const n = event && event.notification;
-          if (n) {
-            toast("🔔 " + (n.title || "Notification"));
-            _rjapAddNotifHistory(n.title, n.body);
-          }
+          if (n) _rjapNotifIncoming({ title: n.title, body: n.body, key: _rjapPushKey(n) });
         });
         // FCM can rotate a device's token at any time — save the new one right away.
         try {
@@ -772,10 +1212,7 @@ async function lcRegisterPush() {
         window._lcPushListeners = true;
         messaging.onMessage((payload) => {
           const n = payload && payload.notification;
-          if (n) {
-            toast("🔔 " + (n.title || "Notification"));
-            _rjapAddNotifHistory(n.title, n.body);
-          }
+          if (n) _rjapNotifIncoming({ title: n.title, body: n.body, key: payload.fcmMessageId ? "p:" + payload.fcmMessageId : "" });
         });
       }
     } else {
@@ -13391,6 +13828,16 @@ function fbInit() {
         if (_fbCardRefreshBtnOff) _fbCardRefreshBtnOff.style.display = "none";
         _fbStopVerifyCountdownTimer();
         _fbHideVerifyBlock();
+        // Signed out: Admin Tools (developer-only) must disappear. It was only ever hidden
+        // for a *different* signed-in non-developer, never on sign-out itself.
+        try {
+          const _devPanelOff = document.getElementById("devOptionsPanel");
+          if (_devPanelOff) _devPanelOff.style.display = "none";
+          const _devDetOff = document.getElementById("adminToolsDetails");
+          if (_devDetOff) _devDetOff.open = false;
+          window._lbGhostMode = false;
+          if (typeof _lbSyncGhostToggleVisibility === "function") _lbSyncGhostToggleVisibility();
+        } catch (_e) {}
         _loadManualApkLink(); // signed out — falls back to local cache instead of Firestore
         // Clean up session listener on sign out
         if (fbSessionListener) {
@@ -37066,8 +37513,27 @@ function _lbAvatarHtml(d) {
     adminOnly = !!ph;
   }
   if (!ph) return '';
-  return '<div class="lb-av' + (adminOnly ? ' lb-av-hidden' : '') + '"' + (adminOnly ? ' title="Hidden from other devotees — visible to admin only"' : '') + (d && d._uid ? ' onclick="lbOpenPhoto(event,\'' + String(d._uid).replace(/[^A-Za-z0-9_-]/g, '') + '\')" style="cursor:pointer"' : '') + '><img src="' + ph + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></div>';
+  return '<div class="lb-av' + (adminOnly ? ' lb-av-hidden' : '') + '"' + (adminOnly ? ' title="Hidden from other devotees — visible to admin only"' : '') + (d && d._uid ? ' onclick="lbOpenPhoto(event,\'' + String(d._uid).replace(/[^A-Za-z0-9_-]/g, '') + '\')" style="cursor:pointer"' : '') + '><img src="' + ph + '" alt="" decoding="async" referrerpolicy="no-referrer" onerror="lbAvFail(this)"></div>';
 }
+// A Google-hosted profile photo (https link, not an embedded image) can fail to load inside the
+// Android app's WebView even though it loads in a normal browser/PWA. Instead of silently deleting
+// the avatar (it used to vanish, leaving no trace), retry once at another size, then show the
+// silhouette placeholder so the row still has a round avatar.
+window.lbAvFail = function (img) {
+  try {
+    const src = img.getAttribute('src') || '';
+    if (!img.dataset.retry && /^https:\/\/[a-z0-9.-]+\.googleusercontent\.com\//i.test(src)) {
+      img.dataset.retry = '1';
+      const alt = /=s\d+(-c)?$/.test(src) ? src.replace(/=s\d+(-c)?$/, '=s128-c') : src + '=s128-c';
+      img.removeAttribute('referrerpolicy');   // some WebViews reject the no-referrer request for Google images
+      img.src = alt;
+      return;
+    }
+    const box = img.parentNode;
+    img.remove();
+    if (box && !box.querySelector('.pf-sil')) box.insertAdjacentHTML('beforeend', _PF_SIL);
+  } catch (_e) {}
+};
 window._adminPhotoMap = window._adminPhotoMap || {};
 async function _loadAdminPhotoMap() {
   if (!fbDb || typeof isDeveloper !== 'function' || !isDeveloper()) return false;

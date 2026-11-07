@@ -1,3 +1,4 @@
+// v460: Notifications: in-app popup (Read later / Open), soft chime instead of the reminder tone while the app is open, every notification also kept in the bell inbox.
 // v435: Verified badge swapped to the transparent gold-lotus icon (no blue cloud/text); sized for the taller shape.
 // v452: Push: every installed phone joins the 'all' topic (signed in or not) and is asked for permission on every open until answered; broadcast function sends to the topic.
 // v434: Leaderboard: verified users get a large Verified badge filling the space between the name and the jap count (taller row; smaller on phones). Small inline badge kept for profile/admin.
@@ -471,7 +472,7 @@
 // v420 (Play build + dev email): bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
 // v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
 // v422: bumped cache to force-invalidate stale app.js / style.css / index.html — Haridashi Sampraday (Radha + Kunj Vihari / Sri Haridas, own Deity/Guru/Acharya photos, own lifetime target); Nimbark Deity/Guru/Acharya jap-display photos + Yugal mantra animation now matches Hare Krishna; reopened wishes no longer stay paused.
-const CACHE = 'radha-jap-v459';
+const CACHE = 'radha-jap-v460';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 
@@ -493,11 +494,27 @@ try {
   const messaging = firebase.messaging();
   messaging.onBackgroundMessage((payload) => {
     const n = payload.notification || {};
-    self.registration.showNotification(n.title || "RadhaNaam SudhaRasam", {
+    const opts = {
       body: n.body || "",
       icon: './notif-icon.png',
       badge: './notif-icon.png',
-    });
+    };
+    const mid = payload.fcmMessageId || (payload.data && payload.data["google.message_id"]);
+    if (mid) opts.tag = "p:" + mid;   // unique id → the app can list it in 🔔 without duplicates
+    self.registration.showNotification(n.title || "RadhaNaam SudhaRasam", opts);
+  });
+  // Tapping a push: bring the app forward and tell it the message was opened (→ marked read in 🔔)
+  self.addEventListener('notificationclick', (event) => {
+    const n = event.notification;
+    n.close();
+    event.waitUntil(
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+        const msg = { type: 'rjap-notif-click', title: n.title, body: n.body, tag: n.tag || '', timestamp: n.timestamp || Date.now() };
+        for (const c of list) { try { c.postMessage(msg); } catch (_e) {} }
+        for (const c of list) { if ('focus' in c) return c.focus(); }
+        return self.clients.openWindow ? self.clients.openWindow('./') : null;
+      })
+    );
   });
 } catch (e) {
   console.warn('FCM background messaging not available in this SW context:', e);

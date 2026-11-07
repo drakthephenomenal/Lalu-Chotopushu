@@ -974,3 +974,52 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
     await lbRef.set(payload, { merge: true });
     return null;
   });
+
+
+// ============================================================
+// Admin-only alert: a brand-new user signed in for the first time.
+// Fires when users/{uid}/data/main is CREATED (first sign-in of an account).
+// Goes ONLY to the developer accounts in DEV_EMAILS: kept in each admin's
+// users/{adminUid}/pushInbox (shows in 🔔) and pushed to their saved devices.
+// ============================================================
+exports.notifyAdminsNewUser = functions.firestore
+  .document("users/{uid}/data/main")
+  .onCreate(async (snap, context) => {
+    const uid = context.params.uid;
+    const db = admin.firestore();
+    let rec = {};
+    try { rec = await admin.auth().getUser(uid); } catch (e) { /* deleted / ghost row */ }
+    const email = (rec.email || "").toLowerCase();
+    const devs = DEV_EMAILS.map((e) => e.toLowerCase());
+    if (devs.includes(email)) return null;                       // admins' own accounts: no alert
+    const gp = (rec.providerData || []).map((p) => p && p.displayName).find(Boolean);
+    const name = rec.displayName || gp || "";
+    const label = [name, email || rec.phoneNumber || ""].filter(Boolean).join(" · ") || uid;
+    const title = "🆕 New user joined";
+    const body = label;
+
+    for (const devEmail of devs) {
+      let dev;
+      try { dev = await admin.auth().getUserByEmail(devEmail); } catch (e) { continue; }
+      try {
+        const inboxRef = db.collection("users").doc(dev.uid).collection("pushInbox").doc();
+        await inboxRef.set({ title, body, ts: Date.now(), createdAt: admin.firestore.FieldValue.serverTimestamp(), kind: "newuser", about: uid });
+        const ds = await db.collection("users").doc(dev.uid).collection("data").doc("main").get();
+        const tokens = new Set();
+        const one = ds.exists && ds.get("fcmToken");
+        const many = ds.exists && ds.get("fcmTokens");
+        if (one) tokens.add(one);
+        if (Array.isArray(many)) many.forEach((t) => { if (t) tokens.add(t); });
+        if (!tokens.size) continue;
+        await admin.messaging().sendEachForMulticast({
+          tokens: Array.from(tokens),
+          notification: { title, body },
+          android: { priority: "high", notification: { icon: "ic_notify_color", channelId: "rjap_reminders_v2", sound: "reminder_tone", tag: inboxRef.id } },
+          data: { pid: inboxRef.id, kind: "newuser" },
+        });
+      } catch (e) {
+        console.error("notifyAdminsNewUser failed for", devEmail, e && e.message);
+      }
+    }
+    return null;
+  });

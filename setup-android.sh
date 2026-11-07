@@ -111,6 +111,7 @@ if [ -f "reminder_tone.mp3" ]; then
   mkdir -p android/app/src/main/res/raw
   cp reminder_tone.mp3 android/app/src/main/res/raw/reminder_tone.mp3
   echo "  Installed reminder_tone.mp3 (notification sound)."
+  [ -f "silent_tone.wav" ] && cp silent_tone.wav android/app/src/main/res/raw/silent_tone.wav && echo "  installed silent_tone.wav (silent banner channel while the app is open)"
   [ -f "push_tone.mp3" ] && cp push_tone.mp3 android/app/src/main/res/raw/push_tone.mp3 && echo "  Installed push_tone.mp3 (push sound)."
 else
   echo "  WARNING: reminder_tone.mp3 not found at repo root — notifications will use the default system sound."

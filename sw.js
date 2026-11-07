@@ -1,3 +1,4 @@
+// v461: Pushes: server keeps every push (pushLog / pushInbox) and the app pulls missed ones into the bell + popup; app open = popup AND silent Android-bar banner; app closed = reminder tone (rjap_push_v2).
 // v460: Notifications: in-app popup (Read later / Open), soft chime instead of the reminder tone while the app is open, every notification also kept in the bell inbox.
 // v435: Verified badge swapped to the transparent gold-lotus icon (no blue cloud/text); sized for the taller shape.
 // v452: Push: every installed phone joins the 'all' topic (signed in or not) and is asked for permission on every open until answered; broadcast function sends to the topic.
@@ -472,7 +473,7 @@
 // v420 (Play build + dev email): bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
 // v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
 // v422: bumped cache to force-invalidate stale app.js / style.css / index.html — Haridashi Sampraday (Radha + Kunj Vihari / Sri Haridas, own Deity/Guru/Acharya photos, own lifetime target); Nimbark Deity/Guru/Acharya jap-display photos + Yugal mantra animation now matches Hare Krishna; reopened wishes no longer stay paused.
-const CACHE = 'radha-jap-v460';
+const CACHE = 'radha-jap-v461';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 
@@ -500,7 +501,8 @@ try {
       badge: './notif-icon.png',
     };
     const mid = payload.fcmMessageId || (payload.data && payload.data["google.message_id"]);
-    if (mid) opts.tag = "p:" + mid;   // unique id → the app can list it in 🔔 without duplicates
+    if (payload.data && payload.data.pid) opts.tag = "s:" + payload.data.pid;   // id the server kept this push under
+    else if (mid) opts.tag = "p:" + mid;   // unique id → the app can list it in 🔔 without duplicates
     self.registration.showNotification(n.title || "RadhaNaam SudhaRasam", opts);
   });
   // Tapping a push: bring the app forward and tell it the message was opened (→ marked read in 🔔)

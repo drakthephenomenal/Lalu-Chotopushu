@@ -31,7 +31,8 @@ messaging.onBackgroundMessage((payload) => {
     badge: "/notif-icon.png",
   };
   const mid = payload.fcmMessageId || (payload.data && payload.data["google.message_id"]);
-  if (mid) opts.tag = "p:" + mid;   // unique id → the app can list it in 🔔 without duplicates
+  if (payload.data && payload.data.pid) opts.tag = "s:" + payload.data.pid;   // id the server kept this push under
+  else if (mid) opts.tag = "p:" + mid;   // unique id → the app can list it in 🔔 without duplicates
   self.registration.showNotification(title, opts);
 });
 

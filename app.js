@@ -701,6 +701,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function _rjapPushKey(n) {
   try {
     const d = (n && n.data) || {};
+    if (d.pid) return "s:" + d.pid;            // id the server stored this push under (pushLog / pushInbox)
     const id = d["google.message_id"] || d["gcm.message_id"] || (n && n.id);
     return id ? "p:" + id : "";
   } catch (_e) { return ""; }
@@ -862,6 +863,87 @@ function _rjapNotifIncoming(o) {
   return entry;
 }
 
+/* ── App open: a server push goes to the 🔔 list + popup + soft chime AND into the Android bar (silent banner) ── */
+function _rjapHash(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+async function _rjapPostBarNotif(entry) {
+  try {
+    const LN = _rjapLN(); if (!LN || !entry) return;
+    try { const p = await LN.checkPermissions(); if (p.display !== "granted") return; } catch (_e) {}
+    await LN.schedule({ notifications: [{
+      id: 100000 + (_rjapHash(entry.k || entry.id) % 1000000000),
+      title: entry.title || "Notification",
+      body: entry.body || "",
+      channelId: RJAP_PUSH_FG_CHANNEL_ID,
+      smallIcon: "ic_stat_notify", largeIcon: "ic_large_notify", iconColor: "#E56B1F",
+      extra: { rjapKey: entry.k || "", rjapHid: entry.id },
+    }] });
+  } catch (_e) {}
+}
+// Web/PWA: same idea — also put it in the system notification list while the tab is open.
+async function _rjapPostWebBar(title, body, tag) {
+  try {
+    if (!("Notification" in window) || Notification.permission !== "granted" || !("serviceWorker" in navigator)) return;
+    const reg = await navigator.serviceWorker.ready;
+    const o = { body: body || "", icon: "./notif-icon.png", badge: "./notif-icon.png", silent: true };
+    if (tag) o.tag = tag;
+    await reg.showNotification(title || "Notification", o);
+  } catch (_e) {}
+}
+function _rjapWebKey(tag, title, body, ts) {
+  if (tag && (String(tag).indexOf("s:") === 0 || String(tag).indexOf("p:") === 0)) return String(tag);
+  return "w:" + (tag || (title + "|" + body + "|" + (ts || "")));
+}
+function _rjapPushForeground(n) {
+  if (!n) return;
+  const entry = _rjapNotifIncoming({ title: n.title, body: n.body, key: _rjapPushKey(n) });
+  if (entry) _rjapPostBarNotif(entry);
+}
+
+/* ── The server keeps every push (pushLog = broadcasts, users/{uid}/pushInbox = one-person pushes).
+      On open / resume we fetch what we have not seen yet, so a push that was swiped away while the app was
+      closed (or that never reached the phone) still lands in 🔔 and shows as a popup. ── */
+const RJAP_SRV_PUSH_LAST = "rjap_srv_push_last";
+let _rjapSrvPushBusy = false;
+async function _rjapSyncServerPushes() {
+  const out = [];
+  if (_rjapSrvPushBusy) return out;
+  if (typeof fbDb === "undefined" || !fbDb) return out;
+  _rjapSrvPushBusy = true;
+  try {
+    const now = Date.now();
+    const sources = [{ k: RJAP_SRV_PUSH_LAST, col: () => fbDb.collection("pushLog") }];
+    if (typeof fbUser !== "undefined" && fbUser && fbUser.uid) {
+      sources.push({ k: RJAP_SRV_PUSH_LAST + "_" + fbUser.uid, col: () => fbDb.collection("users").doc(fbUser.uid).collection("pushInbox") });
+    }
+    for (const src of sources) {
+      let last = 0;
+      try { last = parseInt(localStorage.getItem(src.k) || "0", 10) || 0; } catch (_e) {}
+      if (!last) last = now - 3 * 24 * 3600 * 1000;       // first run: only the last 3 days
+      let snap;
+      try { snap = await src.col().where("ts", ">", last).orderBy("ts", "asc").limit(50).get(); }
+      catch (_e) { continue; }                             // offline / rules not deployed yet → try next time
+      let maxTs = last;
+      const docs = [];
+      snap.forEach((d) => { const v = d.data() || {}; docs.push({ id: d.id, title: v.title, body: v.body, ts: Number(v.ts) || 0 }); });
+      docs.sort((x, y) => x.ts - y.ts);
+      for (const d of docs) {
+        if (d.ts > maxTs) maxTs = d.ts;
+        if (!(d.title || d.body)) continue;
+        const old = now - d.ts > 24 * 3600 * 1000;         // older than a day → list only, no popup, not "unread"
+        const entry = _rjapAddNotifHistory(d.title, d.body, { key: "s:" + d.id, ts: d.ts, read: old });
+        if (entry && !old) out.push(entry);
+      }
+      if (maxTs > last) { try { localStorage.setItem(src.k, String(maxTs)); } catch (_e) {} }
+    }
+  } catch (_e) {}
+  finally { _rjapSrvPushBusy = false; }
+  return out;
+}
+
 /* ── Registry of scheduled jap reminders (native). Lets the app (a) log a reminder to 🔔 even when it
       fired while the app was closed, and (b) handle it itself while the app is open. ── */
 const RJAP_LOCAL_REG_KEY = "rjap_local_reg";
@@ -1015,12 +1097,13 @@ async function _rjapSyncDelivered() {
         for (const reg of await navigator.serviceWorker.getRegistrations()) {
           if (!reg.getNotifications) continue;
           for (const n of await reg.getNotifications()) {
-            const entry = _rjapAddNotifHistory(n.title, n.body, { key: "w:" + (n.tag || n.title + "|" + n.body + "|" + (n.timestamp || "")), ts: n.timestamp || Date.now() });
+            const entry = _rjapAddNotifHistory(n.title, n.body, { key: _rjapWebKey(n.tag, n.title, n.body, n.timestamp), ts: n.timestamp || Date.now() });
             if (entry) fresh.push(entry);
           }
         }
       } catch (_e) {}
     }
+    try { (await _rjapSyncServerPushes()).forEach((e) => fresh.push(e)); } catch (_e) {}   // pushes the server kept
     if (fresh.length) {
       _rjapSoftChime();
       fresh.slice(0, 3).forEach(_rjapShowNotifPopup);
@@ -1054,6 +1137,11 @@ function _rjapNotifInit() {
     if (_lcIsNative() && P.LocalNotifications && P.LocalNotifications.addListener) {
       P.LocalNotifications.addListener("localNotificationActionPerformed", (ev) => {
         const n = ev && ev.notification; if (!n) return;
+        if (n.extra && n.extra.rjapKey) {                       // banner of a server push shown while the app was open
+          const ent = _rjapMarkReadByKey(n.extra.rjapKey);
+          if (ent) _rjapPopupRemove(ent.id);
+          return;
+        }
         try { _rjapLogElapsedLocal(false); } catch (_e) {}
         const hit = _rjapGetNotifHistory().find((x) => x.k && x.k.indexOf("L:" + n.id + ":") === 0 && !x.read);
         if (hit) { _rjapMarkNotifReadById(hit.id); _rjapPopupRemove(hit.id); }
@@ -1076,7 +1164,7 @@ function _rjapNotifInit() {
       navigator.serviceWorker.addEventListener("message", (ev) => {
         const d = ev && ev.data;
         if (!d || d.type !== "rjap-notif-click") return;
-        const key = "w:" + (d.tag || d.title + "|" + d.body + "|" + (d.timestamp || ""));
+        const key = _rjapWebKey(d.tag, d.title, d.body, d.timestamp);
         const added = _rjapAddNotifHistory(d.title, d.body, { key, read: true, ts: d.timestamp || Date.now() });
         const ent = added || _rjapMarkReadByKey(key);
         if (ent) _rjapPopupRemove(ent.id);
@@ -1084,6 +1172,8 @@ function _rjapNotifInit() {
     }
   } catch (_e) {}
   setTimeout(() => { try { _rjapSyncDelivered(); _rjapFgPlan(); } catch (_e) {} }, 900);
+  setTimeout(() => { try { _rjapSyncDelivered(); } catch (_e) {} }, 6000);     // Firebase / sign-in may not have been ready yet
+  setTimeout(() => { try { _rjapSyncDelivered(); } catch (_e) {} }, 20000);
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", _rjapNotifInit);
 else _rjapNotifInit();
@@ -1132,11 +1222,17 @@ const PUSH_TOPIC_ALL = "all";
 window._lcTopicOk = false;
 // Announcement / "Good Morning" pushes from the developer panel get their own channel with the
 // push_tone sound. (Android fixes a channel's sound when it is first created, hence a new id.)
-const RJAP_PUSH_CHANNEL_ID = "rjap_push_v1";
+const RJAP_PUSH_CHANNEL_ID = "rjap_push_v1";          // old channel (push_tone) — kept so nothing breaks
+// v2: server pushes that arrive while the app is CLOSED/hidden play the reminder tone.
+// Must match channelId in functions/index.js (Android locks a channel's sound at creation → new id).
+const RJAP_PUSH_CHANNEL_ID2 = "rjap_push_v2";
+// App OPEN: the same push is also posted to the Android bar as a SILENT banner (the popup's soft chime is the only sound).
+const RJAP_PUSH_FG_CHANNEL_ID = "rjap_push_fg_v1";
 async function lcSetupPushChannel() {
   if (!(_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications)) return;
+  const LN = window.Capacitor.Plugins.LocalNotifications;
   try {
-    await window.Capacitor.Plugins.LocalNotifications.createChannel({
+    await LN.createChannel({
       id: RJAP_PUSH_CHANNEL_ID,
       name: "Announcements & Good Morning",
       description: "Messages from RadhaNaam SudhaRasam",
@@ -1144,6 +1240,28 @@ async function lcSetupPushChannel() {
       visibility: 1,
       vibration: true,
       sound: "push_tone",
+    });
+  } catch (e) {}
+  try {
+    await LN.createChannel({
+      id: RJAP_PUSH_CHANNEL_ID2,
+      name: "Announcements (reminder tone)",
+      description: "Messages from RadhaNaam SudhaRasam — plays the reminder tone when the app is closed",
+      importance: 5,
+      visibility: 1,
+      vibration: true,
+      sound: "reminder_tone",
+    });
+  } catch (e) {}
+  try {
+    await LN.createChannel({
+      id: RJAP_PUSH_FG_CHANNEL_ID,
+      name: "Announcements while app is open",
+      description: "Silent banner shown in the Android bar while the app is open (the app plays its own soft chime)",
+      importance: 4,
+      visibility: 1,
+      vibration: false,
+      sound: "silent_tone",
     });
   } catch (e) {}
 }
@@ -1163,7 +1281,7 @@ async function lcPushTopicSubscribe() {
       window._lcPushListeners = true;
       FM.addListener("notificationReceived", (event) => {
         const n = event && event.notification;
-        if (n) _rjapNotifIncoming({ title: n.title, body: n.body, key: _rjapPushKey(n) });
+        if (n) _rjapPushForeground(n);
       });
     }
     return true;
@@ -1193,7 +1311,7 @@ async function lcRegisterPush() {
         window._lcPushListeners = true;
         FirebaseMessaging.addListener("notificationReceived", (event) => {
           const n = event && event.notification;
-          if (n) _rjapNotifIncoming({ title: n.title, body: n.body, key: _rjapPushKey(n) });
+          if (n) _rjapPushForeground(n);
         });
         // FCM can rotate a device's token at any time — save the new one right away.
         try {
@@ -1212,7 +1330,11 @@ async function lcRegisterPush() {
         window._lcPushListeners = true;
         messaging.onMessage((payload) => {
           const n = payload && payload.notification;
-          if (n) _rjapNotifIncoming({ title: n.title, body: n.body, key: payload.fcmMessageId ? "p:" + payload.fcmMessageId : "" });
+          if (!n) return;
+          const pid = payload.data && payload.data.pid;
+          const key = pid ? "s:" + pid : (payload.fcmMessageId ? "p:" + payload.fcmMessageId : "");
+          const entry = _rjapNotifIncoming({ title: n.title, body: n.body, key: key });
+          if (entry) _rjapPostWebBar(n.title, n.body, key);   // popup + system notification list
         });
       }
     } else {
@@ -13572,6 +13694,7 @@ function fbInit() {
     }
 
     fbAuth.onAuthStateChanged(async (user) => {
+      try { setTimeout(() => { if (typeof _rjapSyncDelivered === "function") _rjapSyncDelivered(); }, 2500); } catch (_e) {}
       if (fbForcedSignout) {
         lockSignedOutScreen();
         return;

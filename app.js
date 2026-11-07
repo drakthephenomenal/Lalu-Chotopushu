@@ -1235,6 +1235,17 @@ function _lcPushSaveToken(token) {
   );
 }
 
+// Writes this phone's push state into presence/{uid} so the admin can see who has NOT turned notifications on.
+async function _rjapReportPushState(perm, on, optOut) {
+  try {
+    if (!fbUser || !fbDb) return;
+    await fbDb.collection("presence").doc(fbUser.uid).set({
+      pushPerm: perm || "", pushOn: !!on, pushOptOut: !!optOut, pushAt: Date.now(),
+      pushPlatform: _lcIsNative() ? "android" : "web",
+    }, { merge: true });
+  } catch (_e) {}
+}
+
 const PUSH_TOPIC_ALL = "all";
 window._lcTopicOk = false;
 // Announcement / "Good Morning" pushes from the developer panel get their own channel with the
@@ -1423,7 +1434,7 @@ async function rjapAutoPush() {
     try {
       let optOut = false;
       try { optOut = localStorage.getItem("rjap_push_optout") === "1"; } catch (_) {}
-      if (optOut) return false;
+      if (optOut) { _rjapReportPushState("", false, true); return false; }
       const native = _lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseMessaging;
       let state = await lcPushPermState();
       // Android shows its own "Allow notifications" box. Ask on every app open until the person
@@ -1436,6 +1447,7 @@ async function rjapAutoPush() {
         state = await lcPushPermState();
       }
       if (state !== "granted") {
+        _rjapReportPushState(state, false, false);
         _lcPushSetUI(false);
         const now = Date.now();
         let last = 0; try { last = parseInt(localStorage.getItem("rjap_push_hint_at") || "0", 10) || 0; } catch (_) {}
@@ -1451,6 +1463,7 @@ async function rjapAutoPush() {
       // Signed-in people also save their device token (browser version, older servers, and "devices saved" count).
       if (fbUser && fbDb) ok = (await lcRegisterPush()) || ok;
       _lcPushSetUI(ok);
+      _rjapReportPushState(state, ok, false);
       return ok;
     } catch (e) { console.warn("auto push failed:", e); return false; }
     finally { setTimeout(() => { window._lcAutoPushBusy = null; }, 1500); }
@@ -23369,6 +23382,84 @@ function _renderGhostList(users) {
 
 function _escHtmlG(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── ADMIN: users who have NOT turned on push notifications ─────
+// Reads presence/{uid} (pushPerm / pushOn written by each phone, see _rjapReportPushState) and
+// profiles/{uid}.mobile (for the WhatsApp button). Admin cannot switch notifications on for them
+// (only their own phone can allow it) — this list is for reaching out.
+let _pushStatusRows = [];
+window.openPushStatusList = async function () {
+  if (!isDeveloper()) return;
+  const modal = document.getElementById('pushStatusModal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  const el = document.getElementById('pushStatusList');
+  if (el) el.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.45);padding:30px 0;font-size:13px;">Loading users…</div>';
+  const rows = {};
+  try {
+    const ps = await fbDb.collection('presence').get();
+    ps.forEach((d) => { const v = d.data() || {}; rows[d.id] = Object.assign({ uid: d.id }, v); });
+  } catch (e) {
+    if (el) el.innerHTML = '<div style="text-align:center;color:#ff6060;padding:30px 0;font-size:13px;">Could not load: ' + _escHtmlG(e && e.message) + '</div>';
+    return;
+  }
+  try {
+    const pr = await fbDb.collection('profiles').get();
+    pr.forEach((d) => { const v = d.data() || {}; if (rows[d.id]) { if (v.mobile) rows[d.id].mobile = v.mobile; if (!rows[d.id].name && v.name) rows[d.id].name = v.name; } });
+  } catch (_) {}
+  _pushStatusRows = Object.values(rows).filter((u) => u.pushOn !== true);
+  _pushStatusRows.sort((x, y) => {
+    const tx = x.lastSeen && x.lastSeen.toMillis ? x.lastSeen.toMillis() : 0;
+    const ty = y.lastSeen && y.lastSeen.toMillis ? y.lastSeen.toMillis() : 0;
+    return ty - tx;
+  });
+  window._pushStatusTotal = Object.keys(rows).length;
+  _renderPushStatusList();
+};
+window.closePushStatusModal = function () {
+  const m = document.getElementById('pushStatusModal'); if (m) m.style.display = 'none';
+};
+function _pushStatusKind(u) {
+  if (u.pushOptOut) return { k: 'off', t: '🔕 Switched off in the app' };
+  if (u.pushPerm === 'denied') return { k: 'denied', t: '🚫 Blocked in phone settings' };
+  if (u.pushPerm === 'prompt') return { k: 'ask', t: '❔ Never answered the permission box' };
+  if (u.pushPerm === 'granted') return { k: 'ask', t: '⚠️ Allowed but not registered yet' };
+  return { k: 'old', t: '⌛ No data yet (old app version / not opened since update)' };
+}
+window._pushStatusWaMsg = function (u) {
+  const name = (u.name || u.googleName || '').trim();
+  return (name ? 'Jai Radhe ' + name + ' 🙏\n' : 'Jai Radhe 🙏\n') +
+    'Please turn on notifications for the RadhaNaam SudhaRasam app so you do not miss reminders and announcements:\n' +
+    '1) Open phone Settings → Apps → RadhaNaam SudhaRasam → Notifications → turn ON.\n' +
+    '2) Open the app once and, if it asks "Allow notifications?", tap Allow.\n' +
+    'Radhe Radhe 🌸';
+};
+function _renderPushStatusList() {
+  const el = document.getElementById('pushStatusList'); if (!el) return;
+  const head = document.getElementById('pushStatusSummary');
+  const total = window._pushStatusTotal || 0;
+  if (head) head.textContent = _pushStatusRows.length + ' of ' + total + ' users have not turned on notifications';
+  if (!_pushStatusRows.length) { el.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.45);padding:30px 0;font-size:13px;">Everyone has notifications on 🙏</div>'; return; }
+  el.innerHTML = '';
+  _pushStatusRows.forEach((u) => {
+    const st = _pushStatusKind(u);
+    const label = u.googleName || u.name || u.email || '(no name)';
+    const sub = [u.email, u.mobile || u.phone].filter(Boolean).join(' · ');
+    const seen = u.lastSeen && u.lastSeen.toDate ? u.lastSeen.toDate().toLocaleDateString() : '';
+    const digits = String(u.mobile || u.phone || '').replace(/\D/g, '');
+    const row = document.createElement('div');
+    row.style.cssText = 'padding:11px 14px;border-radius:12px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.03);';
+    row.innerHTML =
+      '<div style="font-size:13px;font-weight:700;color:#FFD700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + _escHtmlG(label) + '</div>' +
+      (sub ? '<div style="font-size:11px;color:rgba(255,255,255,0.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + _escHtmlG(sub) + '</div>' : '') +
+      '<div style="font-size:12px;color:#ffb74d;margin-top:3px;">' + st.t + '</div>' +
+      '<div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:2px;">' + [u.pushPlatform || '', u.appVersion || '', seen ? 'last seen ' + seen : ''].filter(Boolean).join(' · ') + '</div>' +
+      (digits ? '<button type="button" style="margin-top:8px;padding:6px 12px;border-radius:10px;border:1px solid rgba(46,204,113,0.5);background:rgba(46,204,113,0.12);color:#2ecc71;font-size:12px;font-weight:700;cursor:pointer;">📲 WhatsApp them</button>' : '');
+    const btn = row.querySelector('button');
+    if (btn) btn.onclick = () => window.open('https://wa.me/' + digits + '?text=' + encodeURIComponent(window._pushStatusWaMsg(u)), '_blank');
+    el.appendChild(row);
+  });
 }
 
 // ── DELETE USER ACCOUNT (developer-only, irreversible) ────────

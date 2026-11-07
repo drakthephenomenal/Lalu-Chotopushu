@@ -1248,6 +1248,9 @@ const RJAP_PUSH_FG_CHANNEL_ID = "rjap_push_fg_v1";
 async function lcSetupPushChannel() {
   if (!(_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications)) return;
   const LN = window.Capacitor.Plugins.LocalNotifications;
+  // Server pushes (app closed) use the SAME channel as the jap reminders → exactly the same reminder tone.
+  // Make sure it exists on every phone as soon as the app opens (see channelId in functions/index.js).
+  try { await lcSetupNotifChannel(); } catch (e) {}
   try {
     await LN.createChannel({
       id: RJAP_PUSH_CHANNEL_ID,

@@ -438,6 +438,54 @@ exports.sendBroadcastNotification = functions.https.onCall(async (data, context)
 });
 
 // ============================================================
+// Developer-only: push a notification to ONE user (all of that user's
+// saved devices). Called from the Family Board admin menu.
+// ============================================================
+exports.sendUserNotification = functions.https.onCall(async (data, context) => {
+  const email = (context.auth && context.auth.token && context.auth.token.email || "").toLowerCase();
+  if (!context.auth || !DEV_EMAILS.map((e) => e.toLowerCase()).includes(email)) {
+    throw new functions.https.HttpsError("permission-denied", "Developer access only.");
+  }
+  const uid = (data && data.uid || "").trim();
+  const title = (data && data.title || "").trim();
+  const body = (data && data.body || "").trim();
+  if (!uid || !title || !body) {
+    throw new functions.https.HttpsError("invalid-argument", "uid, title and body are required.");
+  }
+
+  const ref = admin.firestore().collection("users").doc(uid).collection("data").doc("main");
+  const doc = await ref.get();
+  if (!doc.exists) return { sent: 0, failed: 0 };
+  const tokens = new Set();
+  const one = doc.get("fcmToken");
+  const many = doc.get("fcmTokens");
+  if (one) tokens.add(one);
+  if (Array.isArray(many)) many.forEach((t) => { if (t) tokens.add(t); });
+  const list = Array.from(tokens);
+  if (!list.length) return { sent: 0, failed: 0 };
+
+  const res = await admin.messaging().sendEachForMulticast({
+    tokens: list,
+    notification: { title, body },
+    android: { priority: "high", notification: { icon: "ic_stat_notify", color: "#E56B1F", channelId: "rjap_push_v1", sound: "push_tone" } },
+  });
+  // Drop tokens FCM says are dead.
+  const cleanup = [];
+  res.responses.forEach((r, i) => {
+    if (!r.success && r.error && (
+      r.error.code === "messaging/registration-token-not-registered" ||
+      r.error.code === "messaging/invalid-registration-token"
+    )) {
+      cleanup.push(ref.set({
+        fcmTokens: admin.firestore.FieldValue.arrayRemove(list[i]),
+      }, { merge: true }));
+    }
+  });
+  if (cleanup.length) await Promise.all(cleanup);
+  return { sent: res.successCount, failed: res.failureCount };
+});
+
+// ============================================================
 // Developer-only: permanently delete a user account.
 // Called by app.js (window.devDeleteUser, in the Developer Settings
 // panel's "Delete User Account" flow). Removes the user from every

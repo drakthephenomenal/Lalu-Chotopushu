@@ -31749,6 +31749,64 @@ window.lbAdminOpenProfile = async function (uid) {
   }
 };
 
+// ── Family Board → Admin Mode → tap a devotee → action sheet ──────────────
+// Developer-only. 4 actions on the tapped user: View as User, View Profile
+// (verification info + badge), Delete user, Send notification to THIS user only.
+window.closeLbAdminMenu = function () { const o = document.getElementById('lbAdminMenu'); if (o) o.remove(); };
+function _lbAdminLabel(uid) {
+  const d = (window._lbLastDocs || []).find(x => x._uid === uid) || {};
+  return d.displayName || '';
+}
+window.lbAdminRowMenu = function (uid) {
+  if (typeof isDeveloper !== 'function' || !isDeveloper()) return;
+  uid = String(uid || '').replace(/[^A-Za-z0-9_-]/g, '');
+  if (!uid) return;
+  closeLbAdminMenu();
+  const label = _lbAdminLabel(uid) || (uid.slice(0, 10) + '…');
+  const o = document.createElement('div');
+  o.id = 'lbAdminMenu';
+  o.style.cssText = 'position:fixed;inset:0;z-index:99996;background:rgba(0,0,0,0.62);display:flex;align-items:flex-end;justify-content:center;';
+  o.onclick = function (e) { if (e.target === o) closeLbAdminMenu(); };
+  const btn = function (icon, text, fn, color, bg, bd) {
+    return '<button type="button" onclick="' + fn + '" style="width:100%;display:flex;align-items:center;gap:12px;padding:13px 14px;margin-top:8px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;text-align:left;color:' + color + ';background:' + bg + ';border:1px solid ' + bd + ';"><span style="font-size:18px;">' + icon + '</span>' + text + '</button>';
+  };
+  o.innerHTML = '<div style="width:100%;max-width:480px;box-sizing:border-box;background:#0b1530;border:1px solid rgba(255,215,0,0.3);border-radius:18px 18px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom,0px));">' +
+    '<div style="text-align:center;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,215,0,0.6);">Admin</div>' +
+    '<div style="text-align:center;font-size:16px;font-weight:700;color:#fff;margin:2px 0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(label) + '</div>' +
+    btn('👁', 'View as User', "lbAdminDo('view','" + uid + "')", '#FFD700', 'rgba(255,215,0,0.10)', 'rgba(255,215,0,0.35)') +
+    btn('👤', 'View Profile (verification)', "lbAdminDo('profile','" + uid + "')", 'var(--a2)', 'rgba(74,144,226,0.10)', 'rgba(74,144,226,0.4)') +
+    btn('📣', 'Send Notification to this user', "lbAdminDo('notify','" + uid + "')", 'var(--green)', 'rgba(46,204,113,0.12)', 'rgba(46,204,113,0.35)') +
+    btn('🗑️', 'Delete User', "lbAdminDo('delete','" + uid + "')", '#ff6060', 'rgba(255,80,80,0.10)', 'rgba(255,80,80,0.35)') +
+    '<button type="button" onclick="closeLbAdminMenu()" style="width:100%;margin-top:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,0.07);color:#fff;border:1px solid rgba(255,255,255,0.2);font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>' +
+    '</div>';
+  document.body.appendChild(o);
+};
+window.lbAdminDo = async function (action, uid) {
+  if (typeof isDeveloper !== 'function' || !isDeveloper()) return;
+  uid = String(uid || '').replace(/[^A-Za-z0-9_-]/g, '');
+  if (!uid) return;
+  const label = _lbAdminLabel(uid);
+  closeLbAdminMenu();
+  if (action === 'view') return lbAdminOpenProfile(uid);
+  if (action === 'profile') return openAdminProfiles(uid);
+  if (action === 'delete') return devConfirmDeleteUser(uid, label || uid, '');
+  if (action === 'notify') {
+    const title = prompt('Notification title (to ' + (label || 'this user') + ' only):', '🙏 RadhaNaam SudhaRasam');
+    if (title === null || !title.trim()) return;
+    const body = prompt('Notification message:');
+    if (body === null || !body.trim()) return;
+    try {
+      const callable = firebase.app().functions().httpsCallable('sendUserNotification');
+      const res = await callable({ uid: uid, title: title.trim(), body: body.trim() });
+      const n = (res && res.data && res.data.sent) || 0;
+      toast(n ? '📣 Sent to ' + (label || 'user') + ' (' + n + ' device' + (n === 1 ? '' : 's') + ')' : '⚠️ This user has no device registered for notifications');
+    } catch (e) {
+      console.error('User notification failed:', e);
+      toast('⚠️ Send failed — ' + ((e && e.message) || 'check console'));
+    }
+  }
+};
+
 function _lbSyncGhostToggleVisibility() {
   const tg = document.getElementById('tgLbGhost');
   if (!tg) return;
@@ -32462,7 +32520,7 @@ function renderLeaderboard(docs, period) {
     // user's profile in Admin Mode. Never offered on your own row.
     const _adminTap = !!(window._lbGhostMode && typeof isDeveloper === 'function' && isDeveloper() && d._uid && !isMe);
     const _adminAttrs = _adminTap
-      ? ` onclick="lbAdminOpenProfile('${String(d._uid).replace(/[^A-Za-z0-9_-]/g,'')}')" style="cursor:pointer" title="Open profile in Admin Mode"`
+      ? ` onclick="lbAdminRowMenu('${String(d._uid).replace(/[^A-Za-z0-9_-]/g,'')}')" style="cursor:pointer" title="Admin options"`
       : '';
     return `<div class="${rowClass}"${_adminAttrs}>
       <div class="lb-rankcol">${vBig}</div>
@@ -37653,8 +37711,9 @@ window.adminSaveBadge = async function (uid) {
     toast(mode === 'yes' ? '✔ badge given and saved' : (mode === 'no' ? 'Badge removed and saved' : 'Saved — badge now follows profile'));
   } catch (e) { toast('Failed: ' + ((e && e.message) || 'error')); }
 };
-window.openAdminProfiles = async function () {
+window.openAdminProfiles = async function (onlyUid) {
   if (typeof isDeveloper !== 'function' || !isDeveloper() || !fbDb) return;
+  onlyUid = (typeof onlyUid === 'string') ? onlyUid.replace(/[^A-Za-z0-9_-]/g, '') : '';
   closeAdminProfiles();
   const m = document.createElement('div');
   m.id = 'adminProfilesModal';
@@ -37665,6 +37724,27 @@ window.openAdminProfiles = async function () {
     '<input id="admSearch" oninput="_admRender()" placeholder="Search name, email, mobile, address…" style="width:100%;box-sizing:border-box;margin:14px 0 6px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:10px 12px;color:var(--tl);font-size:14px;">' +
     '<div id="admCount" style="font-size:11px;color:var(--td);margin-bottom:10px;">Loading…</div><div id="admList"></div></div>';
   document.body.appendChild(m);
+  if (onlyUid) {
+    // Single-user mode (opened from the Family Board admin menu).
+    try {
+      const t = m.querySelector('div[style*="text-transform:uppercase"]'); if (t) t.textContent = 'Profile';
+      const si = document.getElementById('admSearch'); if (si) si.style.display = 'none';
+      const sn = await fbDb.collection('profiles').doc(onlyUid).get();
+      if (sn.exists) {
+        window._adminProfiles = [Object.assign({ _id: sn.id }, sn.data())];
+      } else {
+        let dn = '';
+        try { const l = await fbDb.collection('leaderboard').doc(onlyUid).get(); if (l.exists) dn = (l.data() || {}).displayName || ''; } catch (_e) {}
+        window._adminProfiles = [{ _id: onlyUid, _stub: true, displayName: dn, complete: false }];
+      }
+      _admRender();
+      const det = document.querySelector('#admList > div > div:nth-child(2)');
+      if (det) det.style.display = 'block';
+    } catch (e) {
+      document.getElementById('admCount').textContent = 'Could not load profile: ' + ((e && e.message) || 'error');
+    }
+    return;
+  }
   try {
     const snap = await fbDb.collection('profiles').limit(500).get();
     window._adminProfiles = snap.docs.map(d => Object.assign({ _id: d.id }, d.data()));

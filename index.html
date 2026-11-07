@@ -26,7 +26,14 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
-<link rel="stylesheet" href="./style.css?v=152">
+<link rel="stylesheet" href="./style.css?v=153">
+<style id="adminToolsCollapseCss">
+.admin-tools-details>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;color:var(--green);font-size:17px;font-weight:700;padding:2px 0;-webkit-tap-highlight-color:transparent;}
+.admin-tools-details>summary::-webkit-details-marker{display:none;}
+.admin-tools-chev{font-size:22px;line-height:1;transition:transform .2s;}
+.admin-tools-details[open]>.admin-tools-summary .admin-tools-chev{transform:rotate(90deg);}
+</style>
+
   <link rel="stylesheet" href="./style-stotram.css?v=140">
   <link rel="stylesheet" href="./vedic-panchanga/panchanga.css?v=161">
 <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
@@ -2044,7 +2051,11 @@
   </div>
     <!-- ADMIN TOOLS (developers only) — every admin function in one place -->
   <div id="devOptionsPanel" class="sc" style="display:none;background:rgba(46,204,113,0.05);border-color:rgba(46,204,113,0.25)">
-    <h3 style="color:var(--green)">🛡️ Admin Tools</h3>
+    <details id="adminToolsDetails" class="admin-tools-details">
+    <summary class="admin-tools-summary">
+      <span>🛡️ Admin Tools</span>
+      <span class="admin-tools-chev">›</span>
+    </summary>
 
     <!-- ── PROFILES & VERIFICATION ── -->
     <div style="margin-top:15px;border-top:1px solid rgba(74,144,226,0.2);padding-top:15px;">
@@ -2085,6 +2096,7 @@
       </button>
     </div>
 
+    </details>
   </div>
 
    <!-- MY PROFILE -->
@@ -3605,7 +3617,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=144"></script>
-    <script src="./app.js?v=446"></script>
+    <script src="./app.js?v=447"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

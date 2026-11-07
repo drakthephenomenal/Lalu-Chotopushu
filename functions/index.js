@@ -398,7 +398,7 @@ exports.sendBroadcastNotification = functions.https.onCall(async (data, context)
     await admin.messaging().send({
       topic: "all",
       notification: { title, body },
-      android: { priority: "high", notification: { icon: "ic_stat_notify", color: "#E56B1F", channelId: "rjap_push_v2", sound: "reminder_tone" } },
+      android: { priority: "high", notification: { icon: "ic_stat_notify", color: "#E56B1F", channelId: "rjap_push_v2", sound: "reminder_tone", tag: pid } },
       data: { pid, kind: "push" },
     });
     topicOk = true;
@@ -419,7 +419,7 @@ exports.sendBroadcastNotification = functions.https.onCall(async (data, context)
     const res = await admin.messaging().sendEachForMulticast({
       tokens: batch,
       notification: { title, body },
-      android: { priority: "high", notification: { icon: "ic_stat_notify", color: "#E56B1F", channelId: "rjap_push_v2", sound: "reminder_tone" } },
+      android: { priority: "high", notification: { icon: "ic_stat_notify", color: "#E56B1F", channelId: "rjap_push_v2", sound: "reminder_tone", tag: pid } },
       data: { pid, kind: "push" },
     });
     sent += res.successCount;
@@ -480,7 +480,7 @@ exports.sendUserNotification = functions.https.onCall(async (data, context) => {
   const res = await admin.messaging().sendEachForMulticast({
     tokens: list,
     notification: { title, body },
-    android: { priority: "high", notification: { icon: "ic_stat_notify", color: "#E56B1F", channelId: "rjap_push_v2", sound: "reminder_tone" } },
+    android: { priority: "high", notification: { icon: "ic_stat_notify", color: "#E56B1F", channelId: "rjap_push_v2", sound: "reminder_tone", tag: pid } },
       data: { pid, kind: "push" },
   });
   // Drop tokens FCM says are dead.

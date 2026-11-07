@@ -363,6 +363,12 @@ exports.sendBroadcastNotification = functions.https.onCall(async (data, context)
     throw new functions.https.HttpsError("invalid-argument", "title and body are required.");
   }
 
+  // The server KEEPS every push: written first, so even a phone that was offline / swiped the
+  // notification away can still pick it up in the app's 🔔 list (pushLog, read by app.js on open).
+  const logRef = admin.firestore().collection("pushLog").doc();
+  const pid = logRef.id;
+  await logRef.set({ title, body, ts: Date.now(), createdAt: admin.firestore.FieldValue.serverTimestamp(), kind: "broadcast", by: email });
+
   // users/{uid}/data/main — collectionGroup query across every user's
   // "data" subcollection, filtered down to just the "main" doc.
   // .select() downloads ONLY the token fields (each main doc also holds the
@@ -392,7 +398,8 @@ exports.sendBroadcastNotification = functions.https.onCall(async (data, context)
     await admin.messaging().send({
       topic: "all",
       notification: { title, body },
-      android: { priority: "high", notification: { icon: "ic_stat_notify", color: "#E56B1F", channelId: "rjap_push_v1", sound: "push_tone" } },
+      android: { priority: "high", notification: { icon: "ic_stat_notify", color: "#E56B1F", channelId: "rjap_push_v2", sound: "reminder_tone" } },
+      data: { pid, kind: "push" },
     });
     topicOk = true;
   } catch (e) {
@@ -401,7 +408,7 @@ exports.sendBroadcastNotification = functions.https.onCall(async (data, context)
 
   // 2) Older app versions / browser users that only have a saved token.
   if (tokens.length === 0) {
-    return { sent: 0, failed: 0, topic: topicOk };
+    return { sent: 0, failed: 0, topic: topicOk, kept: true };
   }
 
   // FCM accepts at most 500 tokens per call — send in batches.
@@ -412,7 +419,8 @@ exports.sendBroadcastNotification = functions.https.onCall(async (data, context)
     const res = await admin.messaging().sendEachForMulticast({
       tokens: batch,
       notification: { title, body },
-      android: { priority: "high", notification: { icon: "ic_stat_notify", color: "#E56B1F", channelId: "rjap_push_v1", sound: "push_tone" } },
+      android: { priority: "high", notification: { icon: "ic_stat_notify", color: "#E56B1F", channelId: "rjap_push_v2", sound: "reminder_tone" } },
+      data: { pid, kind: "push" },
     });
     sent += res.successCount;
     failed += res.failureCount;
@@ -434,7 +442,7 @@ exports.sendBroadcastNotification = functions.https.onCall(async (data, context)
   }
   if (cleanup.length) await Promise.all(cleanup);
 
-  return { sent, failed, topic: topicOk };
+  return { sent, failed, topic: topicOk, kept: true };
 });
 
 // ============================================================
@@ -453,21 +461,27 @@ exports.sendUserNotification = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("invalid-argument", "uid, title and body are required.");
   }
 
+  // Kept on the server for this person (users/{uid}/pushInbox) — the app lists it in 🔔 even if the push was missed.
+  const inboxRef = admin.firestore().collection("users").doc(uid).collection("pushInbox").doc();
+  const pid = inboxRef.id;
+  await inboxRef.set({ title, body, ts: Date.now(), createdAt: admin.firestore.FieldValue.serverTimestamp(), kind: "user", by: email });
+
   const ref = admin.firestore().collection("users").doc(uid).collection("data").doc("main");
   const doc = await ref.get();
-  if (!doc.exists) return { sent: 0, failed: 0 };
+  if (!doc.exists) return { sent: 0, failed: 0, kept: true };
   const tokens = new Set();
   const one = doc.get("fcmToken");
   const many = doc.get("fcmTokens");
   if (one) tokens.add(one);
   if (Array.isArray(many)) many.forEach((t) => { if (t) tokens.add(t); });
   const list = Array.from(tokens);
-  if (!list.length) return { sent: 0, failed: 0 };
+  if (!list.length) return { sent: 0, failed: 0, kept: true };
 
   const res = await admin.messaging().sendEachForMulticast({
     tokens: list,
     notification: { title, body },
-    android: { priority: "high", notification: { icon: "ic_stat_notify", color: "#E56B1F", channelId: "rjap_push_v1", sound: "push_tone" } },
+    android: { priority: "high", notification: { icon: "ic_stat_notify", color: "#E56B1F", channelId: "rjap_push_v2", sound: "reminder_tone" } },
+      data: { pid, kind: "push" },
   });
   // Drop tokens FCM says are dead.
   const cleanup = [];
@@ -482,7 +496,7 @@ exports.sendUserNotification = functions.https.onCall(async (data, context) => {
     }
   });
   if (cleanup.length) await Promise.all(cleanup);
-  return { sent: res.successCount, failed: res.failureCount };
+  return { sent: res.successCount, failed: res.failureCount, kept: true };
 });
 
 // ============================================================

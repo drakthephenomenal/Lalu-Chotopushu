@@ -5057,9 +5057,17 @@ const RJAP_PWA_URL = "https://radharadharadha.vercel.app/";
     try { _nat = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (_e) {}
     if (!_nat) return;
     var base = RJAP_PWA_URL.replace(/\/$/, "");
+    // Clips packed into the AAB as the Play Asset Delivery "audio_pack" (install-time) are served
+    // locally by the app, so they must NOT be pointed at the website. Same pattern as AUDIO_RE in
+    // add-audio-pack.sh: Hit Caturashi normal voice (hcj_<n>) + Radha Sudha Nidhi all voices
+    // (rsn_<n>, rsn_alt_<n>, rsn_harindu_<n>, closing "c"). Maharaj Ji files (SHCJ*, SMRSNJ/*) and the
+    // Ankit/Shuvam hcj voices do not match, so they keep streaming. If a local clip is missing (e.g. a
+    // test APK built without the pack), _hcjPlayVerse's onerror retries from the website.
+    var _packed = /^audio\/(?:hcj_\d+|rsn(?:_[A-Za-z]+)?_(?:\d+|c))\.mp3$/;
     var fix = function (u) {
       if (typeof u !== "string") return u;
       var m = u.match(/^(?:\.\/)?(audio\/.*)$/);
+      if (m && _packed.test(m[1])) return u;
       return m ? base + "/" + m[1] : u;
     };
     var d = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "src");
@@ -22242,7 +22250,19 @@ function ddL(hi, bn) { return ddHi() ? hi : bn; }
 // read live from the deployed site, so new photos need no APK rebuild. On the web they stay relative.
 function ddNative() { try { return typeof _isNativeApp === 'function' && _isNativeApp(); } catch (_e) { return false; } }
 function ddBase() { return ddNative() ? RJAP_PWA_URL.replace(/\/$/, '') + '/deities/' : './deities/'; }
-function ddPath(slug, file) { return ddBase() + encodeURIComponent(slug) + '/' + encodeURIComponent(file).replace(/%2F/g, '/'); }
+// Always the live site (native) / relative path (web) - used when asking "does this file exist online?".
+function ddNetPath(slug, file) { return ddBase() + encodeURIComponent(slug) + '/' + encodeURIComponent(file).replace(/%2F/g, '/'); }
+// Where to LOAD a file from. In the Android app the FIRST photo of each deity is bundled
+// (www/deities-first/, listed in window._DD_FIRST by deities-first/manifest.js) so it shows instantly and
+// offline; every other photo, list.txt and audio.mp3 still come from the website.
+function ddPath(slug, file) {
+  try {
+    if (ddNative() && window._DD_FIRST && window._DD_FIRST[slug] === file) {
+      return './deities-first/' + encodeURIComponent(slug) + '/' + encodeURIComponent(file).replace(/%2F/g, '/');
+    }
+  } catch (_e) {}
+  return ddNetPath(slug, file);
+}
 function ddBust(url) { return ddNative() ? url + '?r=' + Math.floor(Date.now() / 60000) : url; }   // fresh answer at most once a minute
 function ddFetchOpts(o) { if (!ddNative()) return o; const c = Object.assign({}, o); delete c.cache; return c; }
 // Fallback existence check that needs no CORS permission: try to load it as an <img>/<audio>.
@@ -22270,7 +22290,13 @@ function ddInfoAll() {
   return window._ddInfo;
 }
 function ddInfoSave() { try { localStorage.setItem(DD_INFO_KEY, JSON.stringify(window._ddInfo || {})); } catch (_e) {} }
-function ddMan(slug) { const i = ddInfoAll()[slug]; return { photos: (i && i.p) || [], audio: (i && i.a) || null }; }
+function ddMan(slug) {
+  const i = ddInfoAll()[slug];
+  let photos = (i && i.p) || [];
+  // Nothing known yet (first launch while offline): fall back to the photo bundled in the app.
+  if (!photos.length && ddNative() && window._DD_FIRST && window._DD_FIRST[slug]) photos = [window._DD_FIRST[slug]];
+  return { photos: photos, audio: (i && i.a) || null };
+}
 
 // true = file exists, false = not there, null = could not tell (offline / network error)
 async function ddExists(url, kind) {
@@ -22299,7 +22325,7 @@ async function ddDiscover(slug, full) {
 
   // 1) optional list.txt — any file names, one per line
   try {
-    const r = await fetch(ddBust(ddPath(slug, 'list.txt')), ddFetchOpts({ cache: 'no-cache' }));
+    const r = await fetch(ddBust(ddNetPath(slug, 'list.txt')), ddFetchOpts({ cache: 'no-cache' }));
     if (r.ok && (r.headers.get('content-type') || '').toLowerCase().indexOf('text/html') < 0) {
       const names = (await r.text()).split(/\r?\n/).map((x) => x.trim())
         .filter((x) => x && x[0] !== '#' && !/[\\/]/.test(x)).slice(0, DD_MAX_PHOTOS);
@@ -22315,11 +22341,11 @@ async function ddDiscover(slug, full) {
     for (let n = 1; n <= DD_MAX_PHOTOS; n += 1) {
       const order = pref ? [pref].concat(DD_EXTS.filter((e) => e !== pref)) : DD_EXTS.slice();
       let hit = null, unknown = false;
-      const first = await ddExists(ddPath(slug, n + '.' + order[0]), 'image');
+      const first = await ddExists(ddNetPath(slug, n + '.' + order[0]), 'image');
       if (first === null) unknown = true;
       else if (first) hit = order[0];
       else {
-        const rest = await Promise.all(order.slice(1).map((e) => ddExists(ddPath(slug, n + '.' + e), 'image')));
+        const rest = await Promise.all(order.slice(1).map((e) => ddExists(ddNetPath(slug, n + '.' + e), 'image')));
         const i = rest.indexOf(true);
         if (i >= 0) hit = order[i + 1];
         else if (rest.indexOf(null) >= 0) unknown = true;
@@ -22335,7 +22361,7 @@ async function ddDiscover(slug, full) {
   // 3) audio.mp3 (only checked when a deity page is opened)
   let audio = prev.a || null;
   if (full) {
-    const ax = await ddExists(ddPath(slug, 'audio.mp3'), 'audio');
+    const ax = await ddExists(ddNetPath(slug, 'audio.mp3'), 'audio');
     if (ax !== null) audio = ax ? 'audio.mp3' : null;
   }
   const changed = JSON.stringify(prev.p) !== JSON.stringify(photos) || (prev.a || null) !== audio;

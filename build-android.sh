@@ -182,6 +182,10 @@ fi
 
 echo "── 4/9  Copy web assets + sync plugins ──────────────────────────"
 bash setup-www.sh
+# Opt-in (DEITY_FIRST=1, set by the Build AAB workflow): bundle only the FIRST photo of each deity.
+if [ "${DEITY_FIRST:-0}" = "1" ]; then
+  python3 add-deity-first-photos.py
+fi
 npx cap sync android
 
 echo "── 5/9  Restore google-services.json ────────────────────────────"
@@ -521,6 +525,16 @@ if ! grep -q "org.gradle.jvmargs" android/gradle.properties 2>/dev/null; then
   echo "  added increased Gradle heap size (3GB) to gradle.properties"
 else
   echo "  gradle.properties already has jvmargs set - leaving as-is"
+fi
+
+echo ""
+echo "── 9.7/9  Play Asset Delivery: audio_pack (AAB only, opt-in) ─────"
+# Set AUDIO_PACK=1 (the Build AAB workflow does) to add the install-time asset pack
+# with Hit Caturashi + Radha Sudha Nidhi audio. Without it nothing changes.
+if [ "${AUDIO_PACK:-0}" = "1" ]; then
+  bash add-audio-pack.sh
+else
+  echo "  AUDIO_PACK not set - skipping (audio keeps streaming from the website)."
 fi
 
 echo ""

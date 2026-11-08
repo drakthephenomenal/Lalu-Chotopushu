@@ -20,16 +20,36 @@ jobs:
           java-version: 21
       - run: npm install
       - name: Build signed release (APK for testing + AAB for Play)
+        env:
+          # Adds the Play Asset Delivery "audio_pack": Hit Caturashi (normal voice) +
+          # Radha Sudha Nidhi (all voices). Maharaj Ji versions are NOT included.
+          AUDIO_PACK: "1"
+          # Bundles only the FIRST photo of each deity (deities/<name>/1.jpg or first in list.txt);
+          # all other deity photos load from the website.
+          DEITY_FIRST: "1"
         run: bash build-android.sh
-      - name: Show AAB size
+      - name: Show AAB size (base module vs audio pack)
         run: |
           AAB=android/app/build/outputs/bundle/release/app-release.aab
-          SIZE=$(stat -c%s "$AAB")
-          MB=$((SIZE / 1024 / 1024))
-          echo "AAB size: ${MB} MB"
-          echo "### AAB size: ${MB} MB" >> "$GITHUB_STEP_SUMMARY"
-          if [ "$MB" -gt 180 ]; then
-            echo "::warning::AAB is ${MB} MB. Play's base-module download limit is about 200 MB — move big audio/photos out of the app (download after install or use Play Asset Delivery)."
+          TOTAL=$(( $(stat -c%s "$AAB") / 1024 / 1024 ))
+          # Compressed size of each module inside the AAB (it is a zip).
+          BASE=$(unzip -v "$AAB" | awk '$NF ~ /^base\// {s+=$3} END {print int(s/1024/1024)}')
+          PACK=$(unzip -v "$AAB" | awk '$NF ~ /^audio_pack\// {s+=$3} END {print int(s/1024/1024)}')
+          echo "AAB total: ${TOTAL} MB | base module: ~${BASE} MB | audio_pack: ~${PACK} MB"
+          {
+            echo "### AAB total: ${TOTAL} MB"
+            echo "- base module: ~${BASE} MB (Play limit about 200 MB)"
+            echo "- audio_pack (install-time asset pack): ~${PACK} MB (limit about 1 GB)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$PACK" -eq 0 ]; then
+            echo "::error::audio_pack is missing from the AAB - the audio was not packed."
+            exit 1
+          fi
+          if [ "$BASE" -gt 180 ]; then
+            echo "::warning::Base module is ~${BASE} MB. Play's base-module limit is about 200 MB - move more big files out of the app."
+          fi
+          if [ "$PACK" -gt 1000 ]; then
+            echo "::warning::audio_pack is ~${PACK} MB, near Play's 1 GB per-pack limit."
           fi
       - name: Upload AAB (download it from the run page, then upload to Play Console)
         uses: actions/upload-artifact@v4

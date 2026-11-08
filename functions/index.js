@@ -1023,3 +1023,31 @@ exports.notifyAdminsNewUser = functions.firestore
     }
     return null;
   });
+
+
+// ============================================================
+// Mobile number verification (SMS OTP).
+// The phone sends the SMS code through Firebase Auth and links the number to the account;
+// THIS function reads the number from the verified token and writes it to the profile.
+// Firestore rules stop the app from writing profiles/{uid}.mobile itself, so a number
+// can only get into a profile after the owner proved they receive SMS on it.
+// ============================================================
+exports.verifyMyPhone = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Please sign in first.");
+  const uid = context.auth.uid;
+  let phone = (context.auth.token && context.auth.token.phone_number) || "";
+  if (data && data.idToken) {                       // Android app: token of the natively linked user
+    let dec;
+    try { dec = await admin.auth().verifyIdToken(String(data.idToken), true); }
+    catch (e) { throw new functions.https.HttpsError("unauthenticated", "Please sign in again."); }
+    if (dec.uid !== uid) throw new functions.https.HttpsError("permission-denied", "Account mismatch.");
+    phone = dec.phone_number || phone;
+  }
+  if (!/^\+\d{8,15}$/.test(phone)) throw new functions.https.HttpsError("failed-precondition", "Phone number is not verified yet.");
+  await admin.firestore().collection("profiles").doc(uid).set({
+    uid, mobile: phone, mobileVerified: true,
+    mobileVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+  return { phone };
+});

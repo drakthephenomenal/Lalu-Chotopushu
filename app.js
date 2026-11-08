@@ -37828,6 +37828,7 @@ async function _ensureMyProfileLoaded(force) {
   window._myPublicProfile = _computePublicProfile(p);
   window._myProfileUid = fbUser.uid;
   window._myProfileLoaded = ok;
+  if (ok && p && (p.photo || p.photoSmall)) { try { _syncPublicPhoto(p); } catch (_e) {} }   // fills the enlarged-photo copy for older profiles
   if (ok) window._myProfileAt = Date.now();
   if (ok && p) { try { _syncPublicPhoto(p); } catch (_e) {} }
   return window._myPublicProfile;
@@ -38080,7 +38081,7 @@ function _pfOpenCropper(im, onDone) {
       x.drawImage(cv, left * k, top * k, w * k, h * k);
       return c.toDataURL('image/jpeg', q);
     };
-    try { onDone(out(256, 0.82), out(96, 0.8), out(512, 0.85)); } catch (e) { toast('Could not use that photo'); }
+    try { onDone(out(256, 0.82), out(96, 0.8), out(800, 0.88)); } catch (e) { toast('Could not use that photo'); }
     m.remove();
   };
 }
@@ -38124,12 +38125,12 @@ window.pfUseGooglePhoto = async function (silent) {
       return;
     }
     window._pfOrig = im;
-    _pfSetPhoto(_pfSquare(im, 256, 0.82), _pfSquare(im, 96, 0.8), 'google', _pfSquare(im, 512, 0.85));
+    _pfSetPhoto(_pfSquare(im, 256, 0.82), _pfSquare(im, 96, 0.8), 'google', _pfSquare(im, 800, 0.88));
     if (silent !== true) _pfApplyCrop(im, 'google');
   } catch (e) {
     // Canvas blocked (cross-origin) — keep the Google link itself.
     const safe = _lbSafePhoto(url);
-    if (safe) _pfSetPhoto(safe, safe, 'google-url', safe.replace(/=s\d+(-c)?$/, '=s512-c')); else toast('Could not use the Google photo');
+    if (safe) _pfSetPhoto(safe, safe, 'google-url', safe.replace(/=s\d+(-c)?$/, '=s800-c')); else toast('Could not use the Google photo');
   }
 };
 
@@ -38736,10 +38737,10 @@ function _lbShowPhoto(src, name, verified) {
   _lbClosePhoto();
   const o = document.createElement('div');
   o.id = 'lbPhotoOverlay';
-  o.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;';
+  o.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:12px;';
   o.onclick = _lbClosePhoto;
   o.innerHTML =
-    '<img id="lbPhotoBig" src="' + src + '" alt="" referrerpolicy="no-referrer" style="max-width:92vw;max-height:70vh;border-radius:18px;border:2px solid rgba(255,215,0,0.5);box-shadow:0 10px 40px rgba(0,0,0,0.7);background:#0b1030;object-fit:contain;">' +
+    '<img id="lbPhotoBig" src="' + src + '" alt="" referrerpolicy="no-referrer" style="width:min(94vw,78vh);height:auto;max-width:94vw;max-height:78vh;border-radius:14px;border:2px solid rgba(255,215,0,0.5);box-shadow:0 10px 40px rgba(0,0,0,0.7);background:#0b1030;object-fit:contain;">' +
     '<div style="color:#fff;font-size:17px;font-weight:700;text-align:center;">' + escHtml(name || '') + (verified ? _lbVerifiedBadge({ verified: true }) : '') + '</div>' +
     '<div style="color:rgba(255,255,255,0.5);font-size:11px;">Tap anywhere to close</div>';
   document.body.appendChild(o);
@@ -38765,7 +38766,7 @@ window.lbOpenPhoto = async function (ev, uid) {
       big = sn.exists ? _lbSafePhoto((sn.data() || {}).photo || '') : '';
     }
   } catch (e) { console.warn('big photo load failed:', e && e.message); }
-  if (!big && /googleusercontent\.com/i.test(small)) big = small.replace(/=s\d+(-c)?$/, '=s512-c');
+  if (!big && /googleusercontent\.com/i.test(small)) big = small.replace(/=s\d+(-c)?$/, '=s800-c');
   if (big) {
     window._lbBigPhotoCache[uid] = big;
     const im = document.getElementById('lbPhotoBig');

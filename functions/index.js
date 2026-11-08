@@ -963,7 +963,7 @@ exports.syncLeaderboardOnMainDataWrite = functions.firestore
       if (profSnap.exists) {
         const p = profSnap.data() || {};
         lbPhoto = p.showPhoto === false ? "" : (p.photoSmall || p.photo || prev.photo || "");
-        lbVerified = p.adminVerified === true ? true : ((p.adminVerified === false || p.revoked) ? false : !!p.complete);   // admin override wins
+        lbVerified = p.adminVerified === true ? true : ((p.adminVerified === false || p.revoked) ? false : (!!p.complete && p.mobileVerified === true));   // admin override wins; automatic ✔ needs an SMS-OTP-verified mobile
       } else {
         lbPhoto = prev.photo || "";
         lbVerified = !!prev.verified;

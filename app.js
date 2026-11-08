@@ -13891,8 +13891,11 @@ function fbInit() {
         // redundant there). See refreshAppFromBackupArea() below.
         const _fbCardRefreshBtn = document.getElementById("fbCardRefreshBtn");
         if (_fbCardRefreshBtn) _fbCardRefreshBtn.style.display = (window._RJ_SHOW_CARD_REFRESH && _lcIsNative()) ? "block" : "none";
+        // Show the Google / email address first. A phone number that was only LINKED for mobile
+        // verification must not replace it; phone-only accounts (synthetic email) still show the number.
+        const _realEmail = (user.email && !_fbIsSyntheticPhoneEmail(user.email)) ? user.email : "";
         const _authLabel =
-          user.phoneNumber || user.email || user.displayName || "Devotee";
+          _realEmail || user.phoneNumber || user.displayName || "Devotee";
         document.getElementById("fbUserEmail").textContent = _authLabel;
         try { localStorage.setItem("rjap_lastAuthLabel", _authLabel); } catch (_) {}
         const _pwBtn = document.getElementById("fbChangePassBtn");
@@ -37803,7 +37806,7 @@ function _effVerified(p) {
   if (!p) return false;
   if (p.adminVerified === true) return true;
   if (p.adminVerified === false || p.revoked) return false;
-  return !!p.complete;
+  return !!p.complete && p.mobileVerified === true;   // automatic ✔ needs a mobile number verified by SMS OTP; only the admin can override
 }
 function _computePublicProfile(p, forOther) {
   const show = !p || p.showPhoto !== false;
@@ -37832,7 +37835,7 @@ async function _ensureMyProfileLoaded(force) {
 
 function _pfCount(p) {
   p = p || {};
-  return [p.name, p.address, p.mobile, p.email, p.dob, p.photo].filter(Boolean).length;
+  return [p.name, p.address, (p.mobile && p.mobileVerified === true) ? p.mobile : '', p.email, p.dob, p.photo].filter(Boolean).length;   // mobile counts only once verified by SMS OTP
 }
 
 window.refreshProfileCard = async function () {
@@ -38446,7 +38449,7 @@ window.openProfileEditor = async function () {
       '<button type="button" id="pfSaveBtn" onclick="saveProfileEditor()" style="display:block;width:100%;max-width:300px;margin:20px auto 0;padding:14px 24px;border-radius:999px;border:1px solid rgba(255,236,150,0.9);background:linear-gradient(180deg,#FFE680 0%,#FFC61A 55%,#F5A800 100%);color:#3a2600;font-size:15px;font-weight:800;letter-spacing:0.6px;cursor:pointer;box-shadow:0 0 18px rgba(255,200,40,0.6),0 0 38px rgba(255,190,20,0.3),inset 0 1px 0 rgba(255,255,255,0.65);-webkit-tap-highlight-color:transparent;">Save Profile</button>' +
       '<div id="pfStatus" style="min-height:18px;font-size:12px;margin-top:10px;text-align:center;"></div>' +
       '<div style="font-size:11px;color:var(--td);line-height:1.5;margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(74,144,226,0.07);border:1px solid rgba(74,144,226,0.2);">🔒 Your address, mobile number, email and date of birth are <b>never</b> shown to other devotees. They are visible only to you and the app admin. Only your photo (if shown) and the ✔ badge appear on the Family Board.</div>' +
-      '<div style="font-size:11px;color:var(--td);margin-top:10px;">Fill all six details (photo, name, address, mobile, email, date of birth) to get the blue ✔ badge.</div>' +
+      '<div style="font-size:11px;color:var(--td);margin-top:10px;">Fill all six details (photo, name, address, mobile, email, date of birth) to get the blue ✔ badge. The mobile number must be verified by SMS OTP.</div>' +
     '</div>';
   document.body.appendChild(m);
   const _pv = document.getElementById('pfPhotoPrev'); if (_pv) _pv.innerHTML = _PF_SIL;
@@ -38602,11 +38605,11 @@ function _admRender() {
         drow('Name', p.name, dr.name) + drow('Address', p.address, dr.address) + drow('Mobile', p.mobile ? (p.mobile + (p.mobileVerified ? '   ✔ OTP verified' : '   ⚠ not OTP-verified')) : '', dr.mobile) + _admContactRow(p) + drow('Email', p.email, dr.email) + drow('Date of birth', p.dob, dr.dob) + (dr.hasPhoto && !p.photo ? row('Photo', 'Chosen, not saved yet') : '') +
         ((p.draft && !p._stub) ? row('Draft saved', draftAt + ' (typed but not finally saved)') : '') + row('Still missing', missing.length ? missing.join(', ') : 'Nothing — all 6 present') +
         row('Google name', p.googleName) + row('Photo on board', p.showPhoto === false ? 'Hidden by user' : 'Shown') +
-        row('Badge now', ok ? (p.adminVerified === true ? 'Verified by admin' : 'Verified (profile complete)') : (p.adminVerified === false || p.revoked ? 'Not verified (set by admin)' : 'Not verified')) + row('Updated', upd) + row('UID', p._id) +
+        row('Badge now', ok ? (p.adminVerified === true ? 'Verified by admin' : 'Verified (complete + mobile OTP-verified)') : (p.adminVerified === false || p.revoked ? 'Not verified (set by admin)' : 'Not verified')) + row('Updated', upd) + row('UID', p._id) +
         (p._stub ? '<div style="font-size:11px;color:var(--td);margin-top:6px;">This devotee has not created a profile yet. You can still give them the ✔ badge.</div>' : '') +
         '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
           '<select id="admSel_' + uidSafe + '" style="flex:1;min-width:150px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:9px 10px;color:var(--tl);font-size:13px;">' +
-            '<option value="auto"' + (mode === 'auto' ? ' selected' : '') + '>Automatic (profile complete)</option>' +
+            '<option value="auto"' + (mode === 'auto' ? ' selected' : '') + '>Automatic (complete + mobile OTP-verified)</option>' +
             '<option value="yes"' + (mode === 'yes' ? ' selected' : '') + '>✔ Verified</option>' +
             '<option value="no"' + (mode === 'no' ? ' selected' : '') + '>Not verified</option></select>' +
           '<button onclick="adminSaveBadge(\'' + uidSafe + '\')" style="padding:9px 16px;border-radius:10px;border:1px solid rgba(46,204,113,0.5);background:rgba(46,204,113,0.12);color:#2ecc71;font-size:12px;font-weight:700;cursor:pointer;">💾 Save</button></div>' +

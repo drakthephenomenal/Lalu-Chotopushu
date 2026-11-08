@@ -38378,8 +38378,22 @@ window.pfVerifyOtp = async function () {
   try {
     const FA = _pfFA();
     if (_pfSess.native && FA) {
-      await FA.linkWithPhoneNumber({ verificationId: _pfSess.verificationId, verificationCode: code });
-      await _pfFinalize(true);
+      // The SMS session was started by the Android SDK; finish it with the web SDK, which is the
+      // one this app is signed in with, so the number is linked to the SAME account (no plugin round-trip).
+      let done = false;
+      try {
+        const cred = firebase.auth.PhoneAuthProvider.credential(_pfSess.verificationId, code);
+        await fbUser.linkWithCredential(cred);
+        await _pfFinalize(false);
+        done = true;
+      } catch (e1) {
+        const c1 = String((e1 && (e1.code || e1.message)) || '');
+        if (!/verification-id|session|invalid-credential|argument/i.test(c1)) throw e1;   // wrong code / number in use etc. → show it
+      }
+      if (!done) {                                                                          // fallback: let the plugin finish it
+        await FA.confirmVerificationCode({ verificationId: _pfSess.verificationId, verificationCode: code });
+        await _pfFinalize(true);
+      }
     } else {
       await _pfSess.conf.confirm(code);
       await _pfFinalize(false);

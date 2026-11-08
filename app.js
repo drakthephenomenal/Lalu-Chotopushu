@@ -38809,9 +38809,9 @@ window.lbOpenPhoto = async function (ev, uid) {
   uid = String(uid || '').replace(/[^A-Za-z0-9_-]/g, '');
   const c = _lbPhotoCtx(uid), d = c.d, small = c.small;
   if (!small) return;
-  window._lbPhotoUid = uid;
   const cached = window._lbBigPhotoCache[uid];
-  _lbShowPhoto(cached || small, d.displayName, d.verified, !cached);
+  _lbShowPhoto(cached || small, d.displayName, d.verified, !cached);   // (this closes any open viewer and clears the marker…)
+  window._lbPhotoUid = uid;                                           // …so set it AFTER, or the HD swap below would never happen
   if (cached) return;
   const big = await _lbFetchBig(uid, small, c.hidden);
   if (window._lbPhotoUid !== uid) return;

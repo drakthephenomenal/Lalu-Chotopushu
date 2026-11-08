@@ -38747,45 +38747,78 @@ try {
 // ══════════════════════════════════════════════════════════════
 window._lbBigPhotoCache = window._lbBigPhotoCache || {};
 function _lbClosePhoto() { const o = document.getElementById('lbPhotoOverlay'); if (o) o.remove(); window._lbPhotoUid = null; }
-function _lbShowPhoto(src, name, verified) {
+function _lbShowPhoto(src, name, verified, loading) {
   _lbClosePhoto();
   const o = document.createElement('div');
   o.id = 'lbPhotoOverlay';
   o.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:12px;';
   o.onclick = _lbClosePhoto;
   o.innerHTML =
-    '<img id="lbPhotoBig" src="' + src + '" alt="" referrerpolicy="no-referrer" style="width:min(94vw,78vh);height:auto;max-width:94vw;max-height:78vh;border-radius:14px;border:2px solid rgba(255,215,0,0.5);box-shadow:0 10px 40px rgba(0,0,0,0.7);background:#0b1030;object-fit:contain;">' +
+    '<img id="lbPhotoBig" src="' + src + '" alt="" referrerpolicy="no-referrer" style="width:min(94vw,78vh);height:auto;max-width:94vw;max-height:78vh;border-radius:14px;border:2px solid rgba(255,215,0,0.5);box-shadow:0 10px 40px rgba(0,0,0,0.7);background:#0b1030;object-fit:contain;transition:filter .3s;' + (loading ? 'filter:blur(7px);' : '') + '">' +
     '<div style="color:#fff;font-size:17px;font-weight:700;text-align:center;">' + escHtml(name || '') + (verified ? _lbVerifiedBadge({ verified: true }) : '') + '</div>' +
+    (loading ? '<div id="lbPhotoSpin" style="color:rgba(255,215,0,0.8);font-size:12px;">Loading HD photo…</div>' : '') +
     '<div style="color:rgba(255,255,255,0.5);font-size:11px;">Tap anywhere to close</div>';
   document.body.appendChild(o);
 }
-window.lbOpenPhoto = async function (ev, uid) {
-  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
-  uid = String(uid || '').replace(/[^A-Za-z0-9_-]/g, '');
+// One shared fetch per person: started on finger-down (before the tap even completes) and reused by the viewer.
+window._lbBigPromise = window._lbBigPromise || {};
+function _lbFetchBig(uid, small, hidden) {
+  if (window._lbBigPhotoCache[uid]) return Promise.resolve(window._lbBigPhotoCache[uid]);
+  if (window._lbBigPromise[uid]) return window._lbBigPromise[uid];
+  const pr = (async function () {
+    let big = '';
+    try {
+      if (hidden && typeof isDeveloper === 'function' && isDeveloper()) {
+        const sn = await fbDb.collection('profiles').doc(uid).get();
+        const p = sn.exists ? sn.data() : {};
+        big = _lbSafePhoto(p.photo || '');
+      } else {
+        const sn = await fbDb.collection('profilePhotos').doc(uid).get();
+        big = sn.exists ? _lbSafePhoto((sn.data() || {}).photo || '') : '';
+      }
+    } catch (e) { console.warn('big photo load failed:', e && e.message); }
+    if (!big && /googleusercontent\.com/i.test(small || '')) big = small.replace(/=s\d+(-c)?$/, '=s800-c');
+    if (big) {
+      await new Promise(function (res) { const im = new Image(); im.onload = im.onerror = res; im.src = big; });   // decode first → no flash of the small one
+      window._lbBigPhotoCache[uid] = big;
+    }
+    return big;
+  })();
+  window._lbBigPromise[uid] = pr;
+  pr.then(function (b) { if (!b) delete window._lbBigPromise[uid]; });
+  return pr;
+}
+function _lbPhotoCtx(uid) {
   const d = (window._lbLastDocs || []).find(x => x._uid === uid) || {};
   let small = _lbSafePhoto(d.photo), hidden = false;
   if (!small && window._lbAdminView && window._adminPhotoMap) { small = window._adminPhotoMap[uid] || ''; hidden = !!small; }
+  return { d: d, small: small, hidden: hidden };
+}
+document.addEventListener('pointerdown', function (e) {
+  try {
+    const t = e.target && e.target.closest ? e.target.closest('.lb-av[onclick*="lbOpenPhoto"]') : null;
+    if (!t) return;
+    const m = /lbOpenPhoto\(event,\s*'([A-Za-z0-9_-]+)'/.exec(t.getAttribute('onclick') || '');
+    if (!m) return;
+    const c = _lbPhotoCtx(m[1]);
+    if (c.small) _lbFetchBig(m[1], c.small, c.hidden);
+  } catch (_e) {}
+}, true);
+window.lbOpenPhoto = async function (ev, uid) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  uid = String(uid || '').replace(/[^A-Za-z0-9_-]/g, '');
+  const c = _lbPhotoCtx(uid), d = c.d, small = c.small;
   if (!small) return;
   window._lbPhotoUid = uid;
-  _lbShowPhoto(window._lbBigPhotoCache[uid] || small, d.displayName, d.verified);
-  if (window._lbBigPhotoCache[uid]) return;
-  let big = '';
-  try {
-    if (hidden && typeof isDeveloper === 'function' && isDeveloper()) {
-      const sn = await fbDb.collection('profiles').doc(uid).get();
-      const p = sn.exists ? sn.data() : {};
-      big = _lbSafePhoto(p.photo || '');
-    } else {
-      const sn = await fbDb.collection('profilePhotos').doc(uid).get();
-      big = sn.exists ? _lbSafePhoto((sn.data() || {}).photo || '') : '';
-    }
-  } catch (e) { console.warn('big photo load failed:', e && e.message); }
-  if (!big && /googleusercontent\.com/i.test(small)) big = small.replace(/=s\d+(-c)?$/, '=s800-c');
-  if (big) {
-    window._lbBigPhotoCache[uid] = big;
-    const im = document.getElementById('lbPhotoBig');
-    if (im && window._lbPhotoUid === uid) im.src = big;
-  }
+  const cached = window._lbBigPhotoCache[uid];
+  _lbShowPhoto(cached || small, d.displayName, d.verified, !cached);
+  if (cached) return;
+  const big = await _lbFetchBig(uid, small, c.hidden);
+  if (window._lbPhotoUid !== uid) return;
+  const im = document.getElementById('lbPhotoBig'), sp = document.getElementById('lbPhotoSpin');
+  if (big && im) { im.src = big; im.style.filter = 'none'; }
+  else if (im) im.style.filter = 'none';          // no bigger copy exists: show the small one, un-blurred
+  if (sp) sp.remove();
 };
 
 // Keeps the public enlarged photo in step with the person's profile (one small write, only when it changes).

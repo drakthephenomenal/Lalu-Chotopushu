@@ -72,10 +72,15 @@ service cloud.firestore {
       allow create: if isDeveloper()
                     || (request.auth != null && request.auth.uid == userId
                         && !('revoked' in request.resource.data)
-                        && !('adminVerified' in request.resource.data));
+                        && !('adminVerified' in request.resource.data)
+                        // mobile / mobileVerified are written ONLY by the verifyMyPhone function (SMS OTP)
+                        && request.resource.data.get('mobile', '') == ''
+                        && !('mobileVerified' in request.resource.data));
       allow update: if isDeveloper()
                     || (request.auth != null && request.auth.uid == userId
-                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['revoked', 'adminVerified']));
+                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['revoked', 'adminVerified', 'mobileVerified', 'mobileVerifiedAt'])
+                        // the number itself can only be changed by the verifyMyPhone function
+                        && request.resource.data.get('mobile', '') == resource.data.get('mobile', ''));
       allow delete: if isDeveloper();
     }
     // Enlarged photo shown when someone taps a photo on the Family Board.

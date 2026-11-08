@@ -15835,6 +15835,17 @@ async function fbSignOut(opts) {
   if (!fbAuth) return;
   const _skipPush = !!(opts && opts.skipPush); // account deletion: never write data back to the cloud
   const outgoingUid = (fbUser && fbUser.uid) || App._uid || null;
+  // Detach THIS phone from the account that is signing out, so pushes meant for that account
+  // (admin alerts, one-person messages) stop arriving here while someone else is signed in.
+  // Broadcasts (topic "all") still reach this phone.
+  if (fbUser && fbDb && !_skipPush && window._lcMyToken) {
+    try {
+      const mref = fbDb.collection("users").doc(fbUser.uid).collection("data").doc("main");
+      const upd = { fcmTokens: firebase.firestore.FieldValue.arrayRemove(window._lcMyToken) };
+      try { const cur = await mref.get(); if (cur.exists && cur.get("fcmToken") === window._lcMyToken) upd.fcmToken = firebase.firestore.FieldValue.delete(); } catch (_e) {}
+      await Promise.race([mref.set(upd, { merge: true }), new Promise((r) => setTimeout(r, 4000))]);
+    } catch (_e) {}
+  }
   // ── STEP 1: Push current state to Firebase BEFORE signing out so the
   //    user's "last state" is preserved as the next-login baseline.
   //    Firestore offline persistence will queue the write while offline;
@@ -38190,6 +38201,199 @@ window.closeProfileEditor = function () {
   if (m) m.remove();
 };
 
+// ═══════════ Mobile number: country code + SMS OTP verification ═══════════
+const _PF_CC = [
+  ['+880', '🇧🇩 +880'], ['+91', '🇮🇳 +91'], ['+977', '🇳🇵 +977'], ['+94', '🇱🇰 +94'], ['+92', '🇵🇰 +92'],
+  ['+1', '🇺🇸 +1'], ['+44', '🇬🇧 +44'], ['+971', '🇦🇪 +971'], ['+966', '🇸🇦 +966'], ['+974', '🇶🇦 +974'],
+  ['+965', '🇰🇼 +965'], ['+968', '🇴🇲 +968'], ['+60', '🇲🇾 +60'], ['+65', '🇸🇬 +65'], ['+61', '🇦🇺 +61'],
+  ['+81', '🇯🇵 +81'], ['+39', '🇮🇹 +39'], ['+49', '🇩🇪 +49'], ['+33', '🇫🇷 +33'], ['+7', '🇷🇺 +7']
+];
+function _pfDefaultCC() {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    if (/Kolkata|Calcutta/.test(tz)) return '+91';
+    if (/Kathmandu/.test(tz)) return '+977';
+    if (/Colombo/.test(tz)) return '+94';
+    if (/Karachi/.test(tz)) return '+92';
+  } catch (_e) {}
+  return '+880';                                   // Bangladesh by default
+}
+function _pfSplitPhone(m) {
+  m = String(m || '').replace(/[\s-]/g, '');
+  if (m.charAt(0) === '+') {
+    const list = _PF_CC.map(function (x) { return x[0]; }).sort(function (x, y) { return y.length - x.length; });
+    for (let i = 0; i < list.length; i++) if (m.indexOf(list[i]) === 0) return { cc: list[i], nat: m.slice(list[i].length) };
+    return { cc: _pfDefaultCC(), nat: m.replace(/\D/g, '') };
+  }
+  const d = m.replace(/\D/g, '');
+  if (/^0?1\d{9}$/.test(d)) return { cc: '+880', nat: d.replace(/^0/, '') };   // old Bangladeshi 01XXXXXXXXX
+  return { cc: _pfDefaultCC(), nat: d.replace(/^0+/, '') };
+}
+function _pfFullPhone() {
+  const cc = (document.getElementById('pfCC') || {}).value || '';
+  const nat = String((document.getElementById('pfMobile') || {}).value || '').replace(/\D/g, '').replace(/^0+/, '');
+  return nat ? cc + nat : '';
+}
+let _pfSess = null, _pfNatH = [], _pfCoolT = null;
+function _pfFA() { return (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) || null; }
+async function _pfClearNat() { for (const h of _pfNatH) { try { await h.remove(); } catch (_e) {} } _pfNatH = []; }
+function _pfPhoneUI() {
+  const st = document.getElementById('pfMobState'), btn = document.getElementById('pfSendOtp'), otp = document.getElementById('pfOtpRow');
+  if (!st || !btn) return;
+  const p = window._myProfile || {};
+  const full = _pfFullPhone();
+  const verified = !!(p.mobileVerified === true && p.mobile && p.mobile === full);
+  if (!full) { st.innerHTML = ''; btn.style.display = 'none'; if (otp) otp.style.display = 'none'; return; }
+  if (verified) {
+    st.innerHTML = '<span style="color:var(--green);">✔ Verified by SMS OTP</span>';
+    btn.style.display = 'none'; if (otp) otp.style.display = 'none';
+  } else {
+    st.innerHTML = '<span style="color:#ffb74d;">⚠️ Not verified yet. Tap “Send OTP”, then type the code we SMS to ' + escHtml(full) + '.</span>';
+    if (!_pfCoolT) btn.style.display = 'inline-block';
+  }
+}
+function _pfInitPhone(p) {
+  const cc = document.getElementById('pfCC'), mob = document.getElementById('pfMobile');
+  if (!cc || !mob) return;
+  _pfSess = null; _pfCoolT = null; _pfClearNat();
+  const sp = p.mobile ? _pfSplitPhone(p.mobile) : { cc: _pfDefaultCC(), nat: '' };
+  cc.value = sp.cc; if (cc.value !== sp.cc) cc.value = '+880';
+  mob.value = sp.nat;
+  const wa = document.getElementById('pfWa'), tg = document.getElementById('pfTg');
+  if (wa) wa.checked = !!p.usesWhatsapp;
+  if (tg) tg.checked = !!p.usesTelegram;
+  const on = function () {
+    if (_pfSess && _pfSess.phone !== _pfFullPhone()) { _pfSess = null; const o = document.getElementById('pfOtpRow'); if (o) o.style.display = 'none'; }
+    _pfPhoneUI();
+  };
+  ['input', 'change'].forEach(function (ev) { cc.addEventListener(ev, on); mob.addEventListener(ev, on); });
+  _pfPhoneUI();
+}
+function _pfErr(e) {
+  const c = String((e && (e.code || e.message)) || e || '');
+  if (/invalid-phone|invalid phone|INVALID_PHONE/i.test(c)) return 'That mobile number looks invalid. Check the country code and digits.';
+  if (/too-many|TOO_MANY|quota/i.test(c)) return 'Too many attempts. Please wait a while and try again.';
+  if (/already-in-use|already in use|account-exists|ALREADY_EXISTS|already-exists/i.test(c)) return 'This number is already verified on another account.';
+  if (/invalid-verification|invalid-code|INVALID_CODE|invalid verification/i.test(c)) return 'That code is not correct. Please check the SMS and try again.';
+  if (/expired|SESSION_EXPIRED/i.test(c)) return 'The code expired. Tap Send OTP again and use the new SMS.';
+  if (/no.*(current)?.*user|NO_USER|not.*signed/i.test(c)) return 'Please sign out and sign in again, then verify your number.';
+  if (/network/i.test(c)) return 'No connection. Please try again.';
+  return 'Could not verify: ' + ((e && e.message) || c);
+}
+// A number that is already linked to this account must be unlinked before another one can be linked.
+async function _pfUnlinkOldPhone() {
+  try { if (fbUser && (fbUser.providerData || []).some(function (x) { return x && x.providerId === 'phone'; })) await fbUser.unlink('phone'); } catch (_e) {}
+  const FA = _pfFA();
+  if (FA) { try { await FA.unlink({ providerId: 'phone' }); } catch (_e) {} }
+}
+async function _pfFinalize(native) {
+  let idToken = '';
+  const FA = _pfFA();
+  if (native && FA) { const r = await FA.getIdToken({ forceRefresh: true }); idToken = (r && r.token) || ''; }
+  else { await fbUser.getIdToken(true); }
+  const res = await firebase.app().functions().httpsCallable('verifyMyPhone')(idToken ? { idToken: idToken } : {});
+  const phone = res && res.data && res.data.phone;
+  if (!phone) throw new Error('Verification did not complete');
+  window._myProfile = Object.assign({}, window._myProfile || {}, { mobile: phone, mobileVerified: true });
+  try { window._myPublicProfile = _computePublicProfile(window._myProfile); } catch (_e) {}
+  _pfSess = null; await _pfClearNat();
+  return phone;
+}
+function _pfCooldown(sec) {
+  const btn = document.getElementById('pfSendOtp'); if (!btn) return;
+  btn.disabled = true; btn.style.display = 'inline-block';
+  let left = sec;
+  const tick = function () {
+    const b = document.getElementById('pfSendOtp'); if (!b) { _pfCoolT = null; return; }
+    if (left <= 0) { b.disabled = false; b.textContent = '🔁 Resend OTP'; _pfCoolT = null; _pfPhoneUI(); return; }
+    b.textContent = 'Resend in ' + left + 's'; left--; _pfCoolT = setTimeout(tick, 1000);
+  };
+  tick();
+}
+window.pfSendOtp = async function () {
+  if (!fbUser) { toast('Please sign in first'); return; }
+  const phone = _pfFullPhone();
+  if (!/^\+\d{8,15}$/.test(phone)) { _pfStatus('Please enter a valid mobile number', true); return; }
+  const btn = document.getElementById('pfSendOtp');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending SMS…'; }
+  _pfStatus('', false);
+  try {
+    await _pfUnlinkOldPhone();
+    const FA = _pfFA();
+    let auto = false;
+    if (FA) {
+      await _pfClearNat();
+      const vid = await new Promise(function (resolve, reject) {
+        const to = setTimeout(function () { reject(new Error('The SMS request timed out. Please try again.')); }, 70000);
+        const add = async function (ev, fn) { try { _pfNatH.push(await FA.addListener(ev, fn)); } catch (_e) {} };
+        (async function () {
+          await add('phoneCodeSent', function (e) { clearTimeout(to); resolve((e && e.verificationId) || ''); });
+          await add('phoneVerificationFailed', function (e) { clearTimeout(to); reject(new Error((e && e.message) || 'SMS could not be sent')); });
+          await add('phoneVerificationCompleted', function (e) {       // phone read the SMS itself (instant verification)
+            clearTimeout(to); auto = true;
+            if (e && e.verificationCode) { const o = document.getElementById('pfOtp'); if (o) o.value = e.verificationCode; }
+            resolve((e && e.verificationId) || '');
+          });
+          try { Promise.resolve(FA.linkWithPhoneNumber({ phoneNumber: phone })).catch(function (err) { clearTimeout(to); reject(err); }); }
+          catch (err) { clearTimeout(to); reject(err); }
+        })();
+      });
+      _pfSess = { phone: phone, verificationId: vid, native: true };
+      if (auto) {
+        try { await _pfFinalize(true); _pfPhoneUI(); _pfStatus('Mobile number verified ✔', false); return; } catch (_e) { /* fall back to typing the code */ }
+        _pfSess = { phone: phone, verificationId: vid, native: true };
+      }
+    } else {
+      try { if (window._pfRecaptcha) window._pfRecaptcha.clear(); } catch (_e) {}
+      window._pfRecaptcha = new firebase.auth.RecaptchaVerifier('pfRecaptcha', { size: 'invisible' });
+      const conf = await fbUser.linkWithPhoneNumber(phone, window._pfRecaptcha);
+      _pfSess = { phone: phone, conf: conf, web: true };
+    }
+    const row = document.getElementById('pfOtpRow'); if (row) row.style.display = 'flex';
+    const o = document.getElementById('pfOtp'); if (o && !o.value) o.focus();
+    _pfStatus('SMS sent to ' + phone + '. Type the 6-digit code.', false);
+    _pfCooldown(30);
+  } catch (e) {
+    _pfStatus(_pfErr(e), true);
+    const b = document.getElementById('pfSendOtp'); if (b) { b.disabled = false; b.textContent = '📩 Send OTP by SMS'; }
+  }
+};
+window.pfVerifyOtp = async function () {
+  const code = String((document.getElementById('pfOtp') || {}).value || '').replace(/\D/g, '');
+  if (!_pfSess) { _pfStatus('Tap “Send OTP” first.', true); return; }
+  if (code.length < 6) { _pfStatus('Please type the 6-digit code from the SMS.', true); return; }
+  const btn = document.getElementById('pfOtpBtn'); if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
+  try {
+    const FA = _pfFA();
+    if (_pfSess.native && FA) {
+      await FA.linkWithPhoneNumber({ verificationId: _pfSess.verificationId, verificationCode: code });
+      await _pfFinalize(true);
+    } else {
+      await _pfSess.conf.confirm(code);
+      await _pfFinalize(false);
+    }
+    const row = document.getElementById('pfOtpRow'); if (row) row.style.display = 'none';
+    const o = document.getElementById('pfOtp'); if (o) o.value = '';
+    _pfPhoneUI();
+    _pfStatus('Mobile number verified ✔ — now tap Save', false);
+    try { refreshProfileCard(); } catch (_e) {}
+  } catch (e) {
+    _pfStatus(_pfErr(e), true);
+  } finally {
+    const b = document.getElementById('pfOtpBtn'); if (b) { b.disabled = false; b.textContent = 'Verify'; }
+  }
+};
+
+function _admContactRow(p) {
+  const dg = String((p && p.mobile) || '').replace(/\D/g, '');
+  if (!dg) return '';
+  const lk = 'color:#2ecc71;text-decoration:none;margin-right:12px;';
+  return '<div style="display:flex;gap:8px;font-size:12px;margin-top:5px;"><span style="color:var(--td);min-width:78px;">Contact</span><span style="flex:1;">' +
+    (p.usesWhatsapp ? '<a href="https://wa.me/' + dg + '" target="_blank" rel="noopener" style="' + lk + '">💬 WhatsApp</a>' : '') +
+    (p.usesTelegram ? '<a href="https://t.me/+' + dg + '" target="_blank" rel="noopener" style="' + lk + '">✈️ Telegram</a>' : '') +
+    (!p.usesWhatsapp && !p.usesTelegram ? '<i style="opacity:.5">user has not ticked WhatsApp / Telegram</i>' : '') + '</span></div>';
+}
+
 window.openProfileEditor = async function () {
   if (!fbUser || !fbDb) { toast('Please sign in first'); return; }
   if (typeof isGhostMode === 'function' && isGhostMode()) { toast('Not available in Admin Mode'); return; }
@@ -38221,8 +38425,14 @@ window.openProfileEditor = async function () {
         '<div style="font-size:10.5px;color:var(--td);text-align:center;">Choose a photo or use your Google one, then crop, zoom and rotate it to pick the part shown in the circle.</div>' +
       '</div>' +
       '<div style="' + lb + '">Name</div><input id="pfName" maxlength="60" autocomplete="name" style="' + fi + '">' +
-      '<div style="' + lb + '">Address</div><textarea id="pfAddress" maxlength="250" rows="3" autocomplete="street-address" style="' + fi + 'resize:vertical;"></textarea>' +
-      '<div style="' + lb + '">Mobile Number</div><input id="pfMobile" type="tel" maxlength="20" autocomplete="tel" placeholder="+91 …" style="' + fi + '">' +
+      '<div style="' + lb + '">Present Address <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--td);">(admin may send gifts 🎁)</span></div><textarea id="pfAddress" maxlength="250" rows="3" autocomplete="street-address" style="' + fi + 'resize:vertical;"></textarea>' +
+      '<div style="' + lb + '">Mobile Number <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--td);">(verified by SMS OTP)</span></div>' +
+      '<div style="display:flex;gap:8px;"><select id="pfCC" style="' + fi + 'width:auto;max-width:44%;flex-shrink:0;">' + _PF_CC.map(function (x) { return '<option value="' + x[0] + '">' + x[1] + '</option>'; }).join('') + '</select><input id="pfMobile" type="tel" inputmode="numeric" maxlength="16" autocomplete="tel-national" placeholder="1XXXXXXXXX" style="' + fi + '"></div>' +
+      '<div id="pfMobState" style="font-size:12px;margin-top:6px;line-height:1.4;"></div>' +
+      '<button type="button" id="pfSendOtp" onclick="pfSendOtp()" style="display:none;margin-top:8px;padding:9px 16px;border-radius:10px;border:1px solid rgba(46,204,113,0.5);background:rgba(46,204,113,0.12);color:#2ecc71;font-size:13px;font-weight:700;cursor:pointer;">📩 Send OTP by SMS</button>' +
+      '<div id="pfOtpRow" style="display:none;margin-top:8px;gap:8px;align-items:center;"><input id="pfOtp" type="tel" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6-digit code" style="' + fi + 'letter-spacing:4px;text-align:center;"><button type="button" id="pfOtpBtn" onclick="pfVerifyOtp()" style="flex-shrink:0;padding:10px 16px;border-radius:10px;border:1px solid rgba(255,215,0,0.6);background:rgba(255,215,0,0.14);color:var(--gold);font-size:13px;font-weight:700;cursor:pointer;">Verify</button></div>' +
+      '<div id="pfRecaptcha"></div>' +
+      '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--tl);"><label style="display:flex;align-items:center;gap:6px;"><input id="pfWa" type="checkbox" style="width:17px;height:17px;"> I use WhatsApp on this number</label><label style="display:flex;align-items:center;gap:6px;"><input id="pfTg" type="checkbox" style="width:17px;height:17px;"> I use Telegram on this number</label></div>' +
       '<div style="' + lb + '">Email Address</div><input id="pfEmail" type="email" maxlength="100" autocomplete="email" ' + (lockEmail ? 'readonly' : '') + ' style="' + fi + (lockEmail ? 'opacity:0.7;' : '') + '">' +
       '<div style="' + lb + '">Date of Birth</div><input id="pfDob" type="date" style="' + fi + '">' +
       '<button type="button" id="pfSaveBtn" onclick="saveProfileEditor()" style="display:block;width:100%;max-width:300px;margin:20px auto 0;padding:14px 24px;border-radius:999px;border:1px solid rgba(255,236,150,0.9);background:linear-gradient(180deg,#FFE680 0%,#FFC61A 55%,#F5A800 100%);color:#3a2600;font-size:15px;font-weight:800;letter-spacing:0.6px;cursor:pointer;box-shadow:0 0 18px rgba(255,200,40,0.6),0 0 38px rgba(255,190,20,0.3),inset 0 1px 0 rgba(255,255,255,0.65);-webkit-tap-highlight-color:transparent;">Save Profile</button>' +
@@ -38234,7 +38444,7 @@ window.openProfileEditor = async function () {
   const _pv = document.getElementById('pfPhotoPrev'); if (_pv) _pv.innerHTML = _PF_SIL;
   const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
   set('pfName', p.name || fbUser.displayName || '');
-  set('pfAddress', p.address); set('pfMobile', p.mobile);
+  set('pfAddress', p.address); _pfInitPhone(p);
   set('pfEmail', p.email || fbUser.email || ''); set('pfDob', p.dob);
   document.getElementById('pfShow').checked = p.showPhoto !== false;   // photo shown by default
   _pfWireDraft(); window._pfDirty = false;
@@ -38259,7 +38469,7 @@ async function _pfSaveDraft() {
   const ph = window._pfPhoto || {};
   const draft = {
     name: g('pfName').slice(0, 60), address: g('pfAddress').slice(0, 250),
-    mobile: g('pfMobile').slice(0, 20), email: g('pfEmail').slice(0, 100), dob: g('pfDob').slice(0, 10),
+    mobile: _pfFullPhone().slice(0, 20), email: g('pfEmail').slice(0, 100), dob: g('pfDob').slice(0, 10),
     hasPhoto: !!ph.photo,
     savedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
@@ -38269,7 +38479,7 @@ async function _pfSaveDraft() {
   } catch (e) { window._pfDirty = true; }   // retry on the next edit / close
 }
 function _pfWireDraft() {
-  ['pfName', 'pfAddress', 'pfMobile', 'pfEmail', 'pfDob'].forEach((id) => {
+  ['pfName', 'pfAddress', 'pfMobile', 'pfCC', 'pfEmail', 'pfDob'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) { el.addEventListener('input', _pfDraftSoon); el.addEventListener('change', _pfDraftSoon); }
   });
@@ -38299,18 +38509,23 @@ window.saveProfileEditor = async function () {
   if (!fbUser || !fbDb) { toast('Please sign in first'); return; }
   const g = (id) => ((document.getElementById(id) || {}).value || '').trim();
   const name = g('pfName').slice(0, 60), address = g('pfAddress').slice(0, 250);
-  const mobile = g('pfMobile').slice(0, 20), email = g('pfEmail').slice(0, 100), dob = g('pfDob');
+  const email = g('pfEmail').slice(0, 100), dob = g('pfDob');
   const showPhoto = !!document.getElementById('pfShow').checked;
-  if (mobile && mobile.replace(/\D/g, '').length < 7) { _pfStatus('Please enter a valid mobile number', true); return; }
+  // The mobile number is never saved from here — only the SMS-OTP check (verifyMyPhone) can set it.
+  const _mp = window._myProfile || {};
+  const mobileOk = !!(_mp.mobile && _mp.mobileVerified === true);
+  const _typed = _pfFullPhone();
+  const mobileNote = (_typed && !(mobileOk && _typed === _mp.mobile)) ? ' — mobile number NOT saved until you verify it with the SMS code' : '';
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { _pfStatus('Please enter a valid email address', true); return; }
   if (dob) {
     const d = new Date(dob + 'T00:00:00');
     if (isNaN(d) || d > new Date() || d.getFullYear() < 1900) { _pfStatus('Please enter a valid date of birth', true); return; }
   }
   const ph = window._pfPhoto || {};
-  const complete = !!(name && address && mobile && email && dob && ph.photo);
+  const complete = !!(name && address && mobileOk && email && dob && ph.photo);
   const obj = {
-    uid: fbUser.uid, name, address, mobile, email, dob, showPhoto,
+    uid: fbUser.uid, name, address, email, dob, showPhoto,
+    usesWhatsapp: !!(document.getElementById('pfWa') || {}).checked, usesTelegram: !!(document.getElementById('pfTg') || {}).checked,
     photo: ph.photo || '', photoSmall: ph.photoSmall || '', photoSource: ph.source || '',
     complete, googleName: fbUser.displayName || '',
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -38330,7 +38545,7 @@ window.saveProfileEditor = async function () {
   try { await pushLeaderboard(); } catch (_e) {}
   closeProfileEditor();
   refreshProfileCard();
-  toast(_effVerified(window._myProfile) ? 'Profile saved — you got the ✔ badge 🙏' : 'Profile saved 🙏');
+  toast(_effVerified(window._myProfile) ? 'Profile saved — you got the ✔ badge 🙏' : 'Profile saved 🙏' + mobileNote);
 };
 
 // Sign-in / sign-out: forget the previous person's profile immediately.
@@ -38376,7 +38591,7 @@ function _admRender() {
         '<div class="pf-vslot">' + (ok ? _lbVerifiedBadge({ verified: true }) : '') + '</div>' +
         '<div style="font-size:11px;color:var(--td);">' + effCount + '/6' + (effCount > _pfCount(p) ? '*' : '') + '</div></div>' +
       '<div style="display:none;margin-top:8px;border-top:1px solid rgba(255,215,0,0.12);padding-top:6px;">' +
-        drow('Name', p.name, dr.name) + drow('Address', p.address, dr.address) + drow('Mobile', p.mobile, dr.mobile) + drow('Email', p.email, dr.email) + drow('Date of birth', p.dob, dr.dob) + (dr.hasPhoto && !p.photo ? row('Photo', 'Chosen, not saved yet') : '') +
+        drow('Name', p.name, dr.name) + drow('Address', p.address, dr.address) + drow('Mobile', p.mobile ? (p.mobile + (p.mobileVerified ? '   ✔ OTP verified' : '   ⚠ not OTP-verified')) : '', dr.mobile) + _admContactRow(p) + drow('Email', p.email, dr.email) + drow('Date of birth', p.dob, dr.dob) + (dr.hasPhoto && !p.photo ? row('Photo', 'Chosen, not saved yet') : '') +
         ((p.draft && !p._stub) ? row('Draft saved', draftAt + ' (typed but not finally saved)') : '') + row('Still missing', missing.length ? missing.join(', ') : 'Nothing — all 6 present') +
         row('Google name', p.googleName) + row('Photo on board', p.showPhoto === false ? 'Hidden by user' : 'Shown') +
         row('Badge now', ok ? (p.adminVerified === true ? 'Verified by admin' : 'Verified (profile complete)') : (p.adminVerified === false || p.revoked ? 'Not verified (set by admin)' : 'Not verified')) + row('Updated', upd) + row('UID', p._id) +

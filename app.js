@@ -38278,6 +38278,7 @@ function _pfErr(e) {
   if (/expired|SESSION_EXPIRED/i.test(c)) return 'The code expired. Tap Send OTP again and use the new SMS.';
   if (/no.*(current)?.*user|NO_USER|not.*signed/i.test(c)) return 'Please sign out and sign in again, then verify your number.';
   if (/network/i.test(c)) return 'No connection. Please try again.';
+  if (/^internal$|functions\/internal/i.test(c)) return 'The code was accepted, but the final server check failed. Tap Send OTP again in a minute (no new SMS is sent if your number is already confirmed). If it keeps failing, the admin must redeploy the functions.';
   return 'Could not verify: ' + ((e && e.message) || c);
 }
 // A number that is already linked to this account must be unlinked before another one can be linked.
@@ -38318,6 +38319,13 @@ window.pfSendOtp = async function () {
   if (btn) { btn.disabled = true; btn.textContent = 'Sending SMS…'; }
   _pfStatus('', false);
   try {
+    if (!_pfFA() && fbUser.phoneNumber && fbUser.phoneNumber === phone) {   // already confirmed by SMS earlier → only the server step is missing
+      await _pfFinalize(false);
+      const row0 = document.getElementById('pfOtpRow'); if (row0) row0.style.display = 'none';
+      _pfPhoneUI(); _pfStatus('Mobile number verified ✔ — now tap Save', false);
+      try { refreshProfileCard(); } catch (_e) {}
+      return;
+    }
     await _pfUnlinkOldPhone();
     const FA = _pfFA();
     let auto = false;

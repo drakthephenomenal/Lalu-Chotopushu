@@ -38970,7 +38970,11 @@ async function _syncPublicPhoto(p, largeOverride) {
     const v = document.getElementById('vlb');
     if (v) {
       let h = document.getElementById('tnBannerFam');
-      if (!h) { h = document.createElement('div'); h.id = 'tnBannerFam'; h.style.cssText = 'margin:12px 14px 0;'; v.insertBefore(h, v.firstChild); }
+      if (!h) { h = document.createElement('div'); h.id = 'tnBannerFam'; h.style.cssText = 'margin:0 16px 8px;'; }
+      // sits right below the "Join Family Board" card
+      const card = document.getElementById('lbSettingCard');
+      if (card && card.parentNode) { if (h.previousSibling !== card) card.parentNode.insertBefore(h, card.nextSibling); }
+      else if (!h.parentNode) v.insertBefore(h, v.firstChild);
       const html = bannerHtml(); h.innerHTML = html; h.style.display = html ? 'block' : 'none';
     }
     let pill = document.getElementById('tnPill');
@@ -39100,20 +39104,38 @@ async function _syncPublicPhoto(p, largeOverride) {
       '<div style="text-align:center;margin-top:12px;"><button onclick="tnLoadBoard()" style="padding:8px 18px;border-radius:12px;border:1px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.08);color:' + GOLD + ';font-size:12.5px;font-weight:700;cursor:pointer;">↻ Refresh</button></div></div>';
     o.innerHTML = h;
   }
-  // One row, built exactly like a row of the real Leaderboard page (lb-row / medal badge / avatar / name / meta / big count).
+  // One row, built exactly like a row of the Family leaderboard (verified badge, avatar, online dot, R / RV lines with
+  // malas, time and Q, a Total line, big count + medal on the right).
   function tnRowHtml(r, i, me) {
     const rank = i + 1, mine = r.uid === me, top3 = rank <= 3, medals = ['🥇', '🥈', '🥉'];
-    const rowClass = 'lb-row' + (mine ? ' lb-row-me' : '') + (top3 ? ' lb-row-top3' : '') + (r.disq ? ' lb-row-ghost' : '');
+    const ms = (window.App && App.S && App.S.ms) || 108;
+    const F = (typeof _lbFmtJap === 'function') ? _lbFmtJap : fmt;
+    const T = (typeof _histFmtSec === 'function') ? _histFmtSec : (x) => hms(x);
+    const rowClass = 'lb-row' + (mine ? ' lb-row-me' : '') + (top3 ? ' lb-row-top3' : '') + (r.disq ? ' lb-row-ghost' : '') + ' lb-row-verified';
     const badgeClass = rank === 1 ? 'lb-badge-1' : rank === 2 ? 'lb-badge-2' : rank === 3 ? 'lb-badge-3' : 'lb-badge-n';
     let ph = ''; try { ph = (typeof _lbSafePhoto === 'function') ? _lbSafePhoto(r.photo) : ''; } catch (_e) {}
     const av = ph ? '<div class="lb-av"><img src="' + ph + '" alt="" decoding="async" referrerpolicy="no-referrer" onerror="lbAvFail(this)"></div>' : '';
-    const prz = top3 && TN.t && (TN.t.prizes || [])[i] ? ' · 🏆 Prize ' + esc(((TN.t.currency || '') + ' ' + TN.t.prizes[i].amount).trim()) : '';
-    const meta = 'RV ' + fmt(r.rv) + ' · RV days ' + (r.rvDays || 0) + prz + '<br>Q · RV ' + qHtml(r.secRV, r.rv, 'rv') + ' · RN ' + qHtml(r.secRN, r.rn, 'rn');
+    const online = r.updatedAt && (Date.now() - r.updatedAt) < 5 * 60 * 1000;
+    const dot = online ? '<span style="display:inline-block;width:8px;height:8px;background:#4ade80;border-radius:50%;margin-left:6px;box-shadow:0 0 6px rgba(74,222,128,0.6)" title="Online"></span>' : '';
+    const vBig = '<span class="lb-vbig" role="img" aria-label="Verified" title="Verified — profile complete"></span>';
+    const rn = r.rn || 0, rv = r.rv || 0, sRN = r.secRN || 0, sRV = r.secRV || 0;
+    const part = (lbl, n, sec, k) => {
+      if (!(n > 0)) return '';
+      const m = Math.floor(n / ms);
+      return lbl + ': ' + F(n) + (m > 0 ? ' (' + m + 'M)' : '') + (sec > 0 ? ' ⏱ ' + T(sec) : '') + (sec > 0 ? ' · Q:' + qHtml(sec, n, k) : '');
+    };
+    const bd = [part('R', rn, sRN, 'rn'), part('RV', rv, sRV, 'rv')].filter(Boolean).join(' · ');
+    const tot = rn + rv, totM = Math.floor(tot / ms);
+    let totalStr = F(tot) + ' jap' + (totM > 0 ? ' (' + totM + 'M)' : '');
+    if (sRN + sRV > 0) totalStr += ' ⏱ ' + T(sRN + sRV);
+    totalStr += ' · RV days ' + (r.rvDays || 0);
+    if (top3 && TN.t && (TN.t.prizes || [])[i]) totalStr += ' · 🏆 Prize ' + esc(((TN.t.currency || '') + ' ' + TN.t.prizes[i].amount).trim());
+    const meta = (bd ? bd + '<br>' : '') + 'Total: ' + totalStr;
     return '<div class="' + rowClass + '">' +
-      '<div class="lb-rankcol"></div>' + av +
-      '<div class="lb-info"><div class="lb-name' + (mine ? ' lb-name-me' : '') + '">' + esc(r.name) + (mine ? ' ✦ You' : '') + (r.disq ? ' · removed' : '') + '</div>' +
+      '<div class="lb-rankcol">' + vBig + '</div>' + av +
+      '<div class="lb-info"><div class="lb-name' + (mine ? ' lb-name-me' : '') + '">' + esc(r.name) + dot + (mine ? ' ✦ You' : '') + (r.disq ? ' · removed' : '') + '</div>' +
       '<div class="lb-meta">' + meta + '</div></div>' +
-      '<div class="lb-count"><div class="lb-count-num">' + fmt(r.rn) + '</div><div class="lb-count-lbl">Radha Naam</div>' +
+      '<div class="lb-count"><div class="lb-count-num">' + F(rn) + '</div><div class="lb-count-lbl">Radha Naam</div>' +
       '<div class="lb-badge ' + badgeClass + '">' + (top3 ? medals[i] : rank) + '</div></div></div>';
   }
   async function loadBoard() {
@@ -39228,7 +39250,6 @@ async function _syncPublicPhoto(p, largeOverride) {
         '<button onclick="tnStopJap()" style="background:rgba(255,215,0,0.1);color:' + GOLD + ';border:1px solid rgba(255,215,0,0.4);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">✕ Done</button>' +
         '<div style="flex:1;text-align:center;min-width:0;"><div style="font-size:13px;font-weight:800;color:' + GOLD + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🏆 ' + esc(TN.t.name) + '</div>' +
         '<div id="tnjLeft" style="font-size:11.5px;color:rgba(255,255,255,0.6);"></div></div><div style="width:76px;"></div></div>' +
-      '<div style="display:flex;gap:8px;margin-top:6px;"><div id="tnjTabRv" class="tnj-tab" onclick="tnSwitch(\'rv\')"></div><div id="tnjTabRn" class="tnj-tab" onclick="tnSwitch(\'rn\')"></div></div>' +
       '<div id="tnjNote" style="min-height:15px;font-size:12px;color:#ffcc80;text-align:center;margin-top:3px;"></div>';
     vj.insertBefore(bar, vj.firstChild);
     // Quality box next to the Session / Today / Screen Time boxes
@@ -39259,12 +39280,13 @@ async function _syncPublicPhoto(p, largeOverride) {
     body.tn-jap #vj{padding-bottom:calc(8px + env(safe-area-inset-bottom)) !important;}
     body.tn-jap #vj .rh > .rh-card{display:none !important;}
     body.tn-jap #vj .rh{justify-content:center;}
-    body.tn-jap #vj .naam-sel-wrap{display:none !important;}
+    body.tn-jap #vj .naam-sel-opt:not(#naamOptRadha):not(#naamOptRV){display:none !important;}
+    body.tn-jap #vj #naamOptRadha.tn-locked{opacity:.5;}
+    body.tn-jap #vj #naamOptRadha.tn-locked::after{content:' 🔒';}
+    body.tn-jap #vj .lifetime-bar-block #lPct,body.tn-jap #vj .lifetime-bar-block .lbar-wrap,body.tn-jap #vj .lifetime-bar-block #lbarTarget{display:none !important;}
+    body.tn-jap.tn-jap-notarget #vj .daily-bar-block #dPct,body.tn-jap.tn-jap-notarget #vj .daily-bar-block .lbar-wrap,body.tn-jap.tn-jap-notarget #vj .daily-bar-block #dbarTarget{display:none !important;}
     body.tn-jap #firstTapTutorialHint{display:none !important;}
     body.tn-jap #vj .daily-count-undo button{display:none !important;}
-    #tnJap .tnj-tab{flex:1;text-align:center;padding:6px 6px;border-radius:12px;cursor:pointer;}
-    #tnJap .tnj-tab .t1{font-size:12px;font-weight:800;}
-    #tnJap .tnj-tab .t2{font-size:11px;color:rgba(255,255,255,0.6);}
   `;
   function readCount() {
     try { const S = App.S; return TN.mode === 'rv' ? ((S.historyRV || {})[S.tk] || 0) : ((S.history || {})[S.tk] || 0); } catch (_e) { return 0; }
@@ -39294,7 +39316,7 @@ async function _syncPublicPhoto(p, largeOverride) {
       const c = counts();
       if (TN.mode === 'rv' && c.rv === RV_DAILY) {
         closeBatch(); flush();
-        TN.note = '🔓 11 malas of RV done — Radha Naam is unlocked!';
+        TN.note = '🔓 11 malas of RV done — Radha Naam is unlocked. Choose it from the ▼ menu.';
         toast('🔓 Radha Naam unlocked');
       }
       if (TN.cur && TN.cur.n >= 25) { closeBatch(); flush(); }
@@ -39302,25 +39324,70 @@ async function _syncPublicPhoto(p, largeOverride) {
     } else if (window._rvNamesLock) { TN.note = '📿 Mala complete — one moment…'; refreshJap(); }
     else if (window.AudioChant && window.AudioChant.blocksTouch && window.AudioChant.blocksTouch()) { TN.note = 'Turn off Audio Mode — only your own taps count in the tournament.'; refreshJap(); }
   }
-  window.tnSwitch = function (m) {
-    const c = counts();
-    if (m === 'rn' && c.rv < RV_DAILY) { toast('🔒 Finish 11 malas of RV first to unlock Radha Naam'); return; }
-    if (m === TN.mode) return;
-    closeBatch(); flush();
-    TN.mode = m;
-    try { switchJapMode(m === 'rv' ? 'rv' : 'radha'); } catch (_e) {}
-    TN.note = '';
-    refreshJap();
+  // The normal ▼ naam selector is used. Inside a tournament only Radha and Radha Vallabh are allowed,
+  // and Radha stays locked until 11 malas of RV are done today.
+  const _sjm = window.switchJapMode;
+  window.switchJapMode = function (mode) {
+    if (document.body.classList.contains('tn-jap')) {
+      const dd = document.getElementById('naamSelDd'), btn = document.getElementById('naamSelBtn');
+      const closeDd = () => { try { if (dd) dd.classList.remove('show'); if (btn) btn.classList.remove('open'); } catch (_e) {} };
+      if (mode !== 'rv' && mode !== 'radha') { closeDd(); toast('🏆 Only Radha and Radha Vallabh jap count in the tournament'); return; }
+      if (mode === 'radha' && counts().rv < RV_DAILY) { closeDd(); toast('🔒 Finish 11 malas of RV first to unlock Radha Naam'); return; }
+      const nm = mode === 'rv' ? 'rv' : 'rn';
+      if (nm !== TN.mode) { closeBatch(); flush(); TN.mode = nm; TN.note = ''; }
+    }
+    const r = _sjm.apply(this, arguments);
+    if (document.body.classList.contains('tn-jap')) setTimeout(refreshJap, 0);
+    return r;
   };
+  window.tnSwitch = function (m) { window.switchJapMode(m === 'rv' ? 'rv' : 'radha'); };
+
+  // tournament totals = server entry + taps not yet sent
+  function totals() {
+    const e = TN.entry || {};
+    const o = { rn: e.rn || 0, rv: e.rv || 0, srn: e.secRN || 0, srv: e.secRV || 0 };
+    const add = (it) => { if (it.k === 'rv') { o.rv += it.n; o.srv += it.sec; } else { o.rn += it.n; o.srn += it.sec; } };
+    TN.q.forEach(add); if (TN.cur) add(TN.cur);
+    return o;
+  }
+  // Daily box: target only for RV (no target for Radha Naam). Lifetime box becomes "Tournament Total".
+  function paintBoxes() {
+    const vj = document.getElementById('vj'); if (!vj || !document.body.classList.contains('tn-jap')) return;
+    const ms = (App.S && App.S.ms) || 108, F = (typeof fmtIN === 'function') ? fmtIN : fmt;
+    const c = counts(), tt = totals(), isRv = TN.mode === 'rv';
+    const $ = (id) => document.getElementById(id);
+    document.body.classList.toggle('tn-jap-notarget', !isRv);
+    const done = isRv ? c.rv : c.rn;
+    if ($('dbarDone')) $('dbarDone').textContent = F(done);
+    if ($('dDet')) $('dDet').textContent = Math.floor(done / ms) + ' malas done';
+    if (isRv) {
+      const p = Math.round(done / RV_DAILY * 100);
+      if ($('dbarTarget')) $('dbarTarget').textContent = '/ ' + F(RV_DAILY);
+      if ($('dPct')) { $('dPct').textContent = p + '%'; $('dPct').style.color = p >= 100 ? GOLD : ''; }
+      if ($('dbarFill')) $('dbarFill').style.width = Math.min(100, p) + '%';
+    } else if ($('dbarTarget')) $('dbarTarget').textContent = '';
+    const pl = vj.querySelector('.lifetime-bar-block .pl');
+    if (pl) { if (!pl.dataset.orig) pl.dataset.orig = pl.textContent; pl.textContent = 'Tournament Total'; }
+    const tot = tt.rn + tt.rv;
+    if ($('lbarDone')) $('lbarDone').textContent = F(tot);
+    if ($('lbarTarget')) $('lbarTarget').textContent = '';
+    if ($('lBreakdownTotal')) $('lBreakdownTotal').textContent = 'R: ' + F(tt.rn) + ' · RV: ' + F(tt.rv);
+    if ($('lDet')) $('lDet').textContent = Math.floor(tot / ms) + ' malas Done';
+    if ($('lBreakdownDetail')) $('lBreakdownDetail').textContent = 'R: ' + hms(tt.srn) + ' · RV: ' + hms(tt.srv);
+  }
+  // the real screen repaints its boxes on every tap — repaint ours right after
+  try {
+    if (window.App && typeof App.ua === 'function' && !App._tnUaWrapped) {
+      const _ua = App.ua; App._tnUaWrapped = true;
+      App.ua = function () { const r = _ua.apply(this, arguments); try { paintBoxes(); } catch (_e) {} return r; };
+    }
+  } catch (_e) {}
   function refreshJap() {
     const o = document.getElementById('tnJap'); if (!o) return;
     const c = counts(), t = TN.t;
     const left = document.getElementById('tnjLeft'); if (left) left.textContent = phase(t) === 'live' ? 'Ends in ' + dur(t.endAt - Date.now()) : 'Ended';
     const rvDone = c.rv >= RV_DAILY;
-    const tabStyle = (on, locked) => 'border:1.5px solid ' + (on ? GOLD : 'rgba(255,255,255,0.18)') + ';background:' + (on ? 'rgba(255,215,0,0.14)' : 'rgba(255,255,255,0.03)') + ';' + (locked ? 'opacity:.55;' : '');
-    const trv = document.getElementById('tnjTabRv'), trn = document.getElementById('tnjTabRn');
-    if (trv) { trv.style.cssText = tabStyle(TN.mode === 'rv', false); trv.innerHTML = '<div class="t1" style="color:' + (TN.mode === 'rv' ? GOLD : '#fff') + ';">Radha Vallabh (RV)</div><div class="t2">' + fmt(Math.min(c.rv, RV_DAILY)) + ' / ' + fmt(RV_DAILY) + ' · ' + Math.floor(Math.min(c.rv, RV_DAILY) / 108) + ' / 11 malas' + (rvDone ? ' ✔' : '') + '</div>'; }
-    if (trn) { trn.style.cssText = tabStyle(TN.mode === 'rn', !rvDone); trn.innerHTML = '<div class="t1" style="color:' + (TN.mode === 'rn' ? GOLD : '#fff') + ';">' + (rvDone ? '' : '🔒 ') + 'Radha Naam</div><div class="t2">' + (rvDone ? fmt(c.rn) + ' today' : 'locked') + '</div>'; }
+    const opt = document.getElementById('naamOptRadha'); if (opt) opt.classList.toggle('tn-locked', !rvDone);
     const note = document.getElementById('tnjNote'); if (note) note.textContent = TN.note || '';
     const sec = TN.mode === 'rv' ? c.srv : c.srn, n = TN.mode === 'rv' ? c.rv : c.rn;
     const q = document.getElementById('tnjQ');
@@ -39335,6 +39402,7 @@ async function _syncPublicPhoto(p, largeOverride) {
       if (ql) ql.style.color = low ? Q_RED : '';
       if (qh) { qh.textContent = (low ? 'too fast · ' : '') + 'keep ≥ ' + Q_MIN[km] + 's'; qh.style.color = low ? Q_RED : 'rgba(255,255,255,0.45)'; }
     }
+    paintBoxes();
   }
   window.tnStopJap = async function () {
     closeBatch();
@@ -39350,8 +39418,11 @@ async function _syncPublicPhoto(p, largeOverride) {
     try { await Promise.race([flush(), new Promise((r) => setTimeout(r, 3500))]); } catch (_e) {}
     const o = document.getElementById('tnJap'); if (o) o.remove();
     const qb = document.getElementById('tnjQBox'); if (qb) qb.remove();
-    document.body.classList.remove('tn-jap');
+    document.body.classList.remove('tn-jap'); document.body.classList.remove('tn-jap-notarget');
     const st = document.getElementById('tnjStyle'); if (st) st.remove();
+    try { const pl = document.querySelector('#vj .lifetime-bar-block .pl'); if (pl && pl.dataset.orig) { pl.textContent = pl.dataset.orig; delete pl.dataset.orig; } } catch (_e) {}
+    try { const od = document.getElementById('naamOptRadha'); if (od) od.classList.remove('tn-locked'); } catch (_e) {}
+    try { App.ua(); } catch (_e) {}
     try { if (TN.prevMode) switchJapMode(TN.prevMode); } catch (_e) {}
     try {
       const pv = TN.prevView;

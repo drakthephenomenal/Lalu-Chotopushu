@@ -1,3 +1,4 @@
+// v476: Tournament jap screen: no Diwali text/pill, floating Done button only, full height like the main Jap screen.
 // v475: Tournaments: leaderboard rows now like the Family board (R + RV with malas, time, Q, Total, verified badge, online dot); jap screen uses the normal ▼ Radha / Radha Vallabh selector (no top boxes; Radha locked until 11 RV malas); Daily target only for RV; Lifetime box becomes Tournament Total; tournament banner sits right below Join Family Board.
 // v474: Tournament jap now uses the real Jap screen (both gear icons, bead ring, iPad layout, no Brahma Muhurta/Sandhya Kal); leaderboard uses the real Leaderboard look.
 // v473: Tournament jap screen: mala bead ring (108 beads + Sumeru), animated gear (deity / Hitju-Gurudev / count size), mala-complete glow.
@@ -480,7 +481,7 @@
 // v420 (Play build + dev email): bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
 // v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
 // v422: bumped cache to force-invalidate stale app.js / style.css / index.html — Haridashi Sampraday (Radha + Kunj Vihari / Sri Haridas, own Deity/Guru/Acharya photos, own lifetime target); Nimbark Deity/Guru/Acharya jap-display photos + Yugal mantra animation now matches Hare Krishna; reopened wishes no longer stay paused.
-const CACHE = 'radha-jap-v475';
+const CACHE = 'radha-jap-v476';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

@@ -38977,18 +38977,7 @@ async function _syncPublicPhoto(p, largeOverride) {
       else if (!h.parentNode) v.insertBefore(h, v.firstChild);
       const html = bannerHtml(); h.innerHTML = html; h.style.display = html ? 'block' : 'none';
     }
-    let pill = document.getElementById('tnPill');
-    const vj = document.getElementById('vj');
-    const live = TN.t && phase(TN.t) === 'live';
-    const show = live && vj && vj.classList.contains('active') && !document.getElementById('tnJap');
-    if (!pill) {
-      pill = document.createElement('div'); pill.id = 'tnPill';
-      pill.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 78px);z-index:900;padding:8px 16px;border-radius:999px;border:1px solid rgba(255,215,0,0.6);background:rgba(20,16,40,0.92);color:' + GOLD + ';font-size:12.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,0.5);display:none;';
-      pill.onclick = () => window.tnOpen();
-      document.body.appendChild(pill);
-    }
-    pill.textContent = '🏆 ' + (TN.t ? TN.t.name : '') + ' · tap';
-    pill.style.display = show ? 'block' : 'none';
+    const oldPill = document.getElementById('tnPill'); if (oldPill) oldPill.remove();   // the floating "Diwali · tap" pill is gone
   }
   setInterval(() => { try { if (fbUser) renderBanners(); } catch (_e) {} }, 2500);
   setTimeout(() => { try { load(true); } catch (_e) {} }, 4000);
@@ -39244,13 +39233,10 @@ async function _syncPublicPhoto(p, largeOverride) {
     // slim tournament bar on top of the Jap screen
     const bar = document.createElement('div');
     bar.id = 'tnJap';
-    bar.style.cssText = 'flex-shrink:0;width:100%;box-sizing:border-box;padding:6px 12px 2px;';
+    bar.style.cssText = 'position:absolute;left:0;right:0;top:0;z-index:6;pointer-events:none;';
     bar.innerHTML =
-      '<div style="display:flex;align-items:center;gap:10px;">' +
-        '<button onclick="tnStopJap()" style="background:rgba(255,215,0,0.1);color:' + GOLD + ';border:1px solid rgba(255,215,0,0.4);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">✕ Done</button>' +
-        '<div style="flex:1;text-align:center;min-width:0;"><div style="font-size:13px;font-weight:800;color:' + GOLD + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🏆 ' + esc(TN.t.name) + '</div>' +
-        '<div id="tnjLeft" style="font-size:11.5px;color:rgba(255,255,255,0.6);"></div></div><div style="width:76px;"></div></div>' +
-      '<div id="tnjNote" style="min-height:15px;font-size:12px;color:#ffcc80;text-align:center;margin-top:3px;"></div>';
+      '<button onclick="tnStopJap()" style="pointer-events:auto;position:absolute;left:8px;top:calc(env(safe-area-inset-top,0px) + 6px);background:rgba(255,215,0,0.1);color:' + GOLD + ';border:1px solid rgba(255,215,0,0.4);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">✕ Done</button>' +
+      '<div id="tnjNote" style="position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);text-align:center;font-size:12px;color:#ffcc80;text-shadow:0 1px 4px #000;"></div>';
     vj.insertBefore(bar, vj.firstChild);
     // Quality box next to the Session / Today / Screen Time boxes
     const tr = vj.querySelector('.timer-row');
@@ -39277,7 +39263,8 @@ async function _syncPublicPhoto(p, largeOverride) {
   };
   const TNJ_CSS = `
     body.tn-jap .bnav{display:none !important;}
-    body.tn-jap #vj{padding-bottom:calc(8px + env(safe-area-inset-bottom)) !important;}
+    body.tn-jap #vj.active{top:0 !important;bottom:0 !important;height:auto !important;max-height:none !important;padding-bottom:env(safe-area-inset-bottom,0px) !important;}
+    body.tn-jap #vj .tzr{margin-bottom:8px !important;}
     body.tn-jap #vj .rh > .rh-card{display:none !important;}
     body.tn-jap #vj .rh{justify-content:center;}
     body.tn-jap #vj .naam-sel-opt:not(#naamOptRadha):not(#naamOptRV){display:none !important;}

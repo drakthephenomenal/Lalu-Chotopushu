@@ -39057,10 +39057,11 @@ async function _syncPublicPhoto(p, largeOverride) {
       o.innerHTML = h; return;
     }
     const chip = ph === 'live' ? ['LIVE', '#2ecc71'] : ph === 'upcoming' ? ['UPCOMING', '#ffb74d'] : ph === 'final' ? ['RESULTS', GOLD] : ['ENDED', '#ff8a80'];
-    h += '<div style="text-align:center;margin-top:10px;"><div style="font-size:42px;">🏆</div>' +
-      '<div style="color:' + GOLD + ';font-size:21px;font-weight:800;line-height:1.25;">' + esc(t.name) + '</div>' +
-      '<span style="display:inline-block;margin-top:6px;padding:3px 12px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:1px;color:#000;background:' + chip[1] + ';">' + chip[0] + '</span>' +
-      '<div id="tnCount" style="color:rgba(255,255,255,0.7);font-size:13px;margin-top:8px;">' +
+    h += '<div class="lb-hero" style="margin-top:10px;border-radius:16px;border:1px solid rgba(255,215,0,0.15);">' +
+      '<div class="lb-hero-glow"></div><div class="lb-hero-trophy">🏆</div>' +
+      '<div class="lb-hero-title" style="font-size:19px;line-height:1.3;">' + esc(t.name) + '</div>' +
+      '<span style="display:inline-block;margin-top:8px;padding:3px 12px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:1px;color:#000;background:' + chip[1] + ';position:relative;z-index:1;">' + chip[0] + '</span>' +
+      '<div class="lb-hero-sub" id="tnCount" style="text-transform:none;letter-spacing:.4px;font-size:12.5px;color:rgba(255,255,255,0.75);">' +
       (ph === 'live' ? 'Ends in ' + dur(t.endAt - Date.now()) + ' · ' + whenStr(t.endAt) : ph === 'upcoming' ? 'Starts ' + whenStr(t.startAt) + ' (in ' + dur(t.startAt - Date.now()) + ')' : 'Ended ' + whenStr(t.endAt)) + '</div></div>';
     // prizes
     if ((t.prizes || []).length) {
@@ -39093,9 +39094,27 @@ async function _syncPublicPhoto(p, largeOverride) {
       h += '<div style="margin-top:16px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,215,0,0.5);background:rgba(255,215,0,0.07);"><div style="font-size:11px;letter-spacing:1.5px;color:' + GOLD + ';font-weight:800;margin-bottom:6px;">🎉 WINNERS</div>' +
         t.winners.map((w) => '<div style="display:flex;justify-content:space-between;font-size:14px;padding:4px 0;"><span>' + (w.rank === 1 ? '🥇' : w.rank === 2 ? '🥈' : w.rank === 3 ? '🥉' : '🎖️') + ' ' + esc(w.name) + (w.uid === (fbUser && fbUser.uid) ? ' <b style="color:#2ecc71">(You!)</b>' : '') + '</span><b>' + fmt(w.rn) + '</b></div>').join('') + '</div>';
     }
-    h += '<div style="margin-top:18px;font-size:11px;letter-spacing:1.5px;color:rgba(255,255,255,0.55);font-weight:800;">LEADERBOARD · ALL PARTICIPANTS <span id="tnBoardCount"></span></div><div id="tnBoard" style="margin-top:8px;display:flex;flex-direction:column;gap:7px;"><div style="text-align:center;color:rgba(255,255,255,0.4);padding:16px;font-size:13px;">Loading…</div></div>' +
+    h += '<div style="margin-top:18px;font-size:11px;letter-spacing:1.5px;color:rgba(255,255,255,0.55);font-weight:800;">LEADERBOARD · ALL PARTICIPANTS <span id="tnBoardCount"></span></div>' +
+      '<div class="lb-my-rank" id="tnMyRank" style="display:none;margin:8px 0;"><div class="lb-my-rank-label">Your Position</div><div class="lb-my-rank-num" id="tnMyRankNum">#—</div><div class="lb-my-rank-jap" id="tnMyRankJap"></div></div>' +
+      '<div class="lb-list-wrap" style="padding:4px 0 0;"><div class="lb-list" id="tnBoard"><div style="text-align:center;color:rgba(255,255,255,0.4);padding:16px;font-size:13px;">Loading…</div></div></div>' +
       '<div style="text-align:center;margin-top:12px;"><button onclick="tnLoadBoard()" style="padding:8px 18px;border-radius:12px;border:1px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.08);color:' + GOLD + ';font-size:12.5px;font-weight:700;cursor:pointer;">↻ Refresh</button></div></div>';
     o.innerHTML = h;
+  }
+  // One row, built exactly like a row of the real Leaderboard page (lb-row / medal badge / avatar / name / meta / big count).
+  function tnRowHtml(r, i, me) {
+    const rank = i + 1, mine = r.uid === me, top3 = rank <= 3, medals = ['🥇', '🥈', '🥉'];
+    const rowClass = 'lb-row' + (mine ? ' lb-row-me' : '') + (top3 ? ' lb-row-top3' : '') + (r.disq ? ' lb-row-ghost' : '');
+    const badgeClass = rank === 1 ? 'lb-badge-1' : rank === 2 ? 'lb-badge-2' : rank === 3 ? 'lb-badge-3' : 'lb-badge-n';
+    let ph = ''; try { ph = (typeof _lbSafePhoto === 'function') ? _lbSafePhoto(r.photo) : ''; } catch (_e) {}
+    const av = ph ? '<div class="lb-av"><img src="' + ph + '" alt="" decoding="async" referrerpolicy="no-referrer" onerror="lbAvFail(this)"></div>' : '';
+    const prz = top3 && TN.t && (TN.t.prizes || [])[i] ? ' · 🏆 Prize ' + esc(((TN.t.currency || '') + ' ' + TN.t.prizes[i].amount).trim()) : '';
+    const meta = 'RV ' + fmt(r.rv) + ' · RV days ' + (r.rvDays || 0) + prz + '<br>Q · RV ' + qHtml(r.secRV, r.rv, 'rv') + ' · RN ' + qHtml(r.secRN, r.rn, 'rn');
+    return '<div class="' + rowClass + '">' +
+      '<div class="lb-rankcol"></div>' + av +
+      '<div class="lb-info"><div class="lb-name' + (mine ? ' lb-name-me' : '') + '">' + esc(r.name) + (mine ? ' ✦ You' : '') + (r.disq ? ' · removed' : '') + '</div>' +
+      '<div class="lb-meta">' + meta + '</div></div>' +
+      '<div class="lb-count"><div class="lb-count-num">' + fmt(r.rn) + '</div><div class="lb-count-lbl">Radha Naam</div>' +
+      '<div class="lb-badge ' + badgeClass + '">' + (top3 ? medals[i] : rank) + '</div></div></div>';
   }
   async function loadBoard() {
     const box = document.getElementById('tnBoard'); if (!box || !TN.t || !fbDb) return;
@@ -39107,18 +39126,16 @@ async function _syncPublicPhoto(p, largeOverride) {
       const cnt = document.getElementById('tnBoardCount'); if (cnt) cnt.textContent = '(' + rows.length + ')';
       if (!rows.length) { box.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.4);padding:16px;font-size:13px;">Nobody has joined yet. Be the first! 🙏</div>'; return; }
       const me = fbUser && fbUser.uid;
-      box.innerHTML = rows.map((r, i) => {
-        const mine = r.uid === me;
-        const av = r.photo ? '<img src="' + esc(r.photo) + '" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(255,215,0,0.5);flex-shrink:0;">' : '<div style="width:38px;height:38px;border-radius:50%;background:rgba(255,215,0,0.14);display:flex;align-items:center;justify-content:center;color:' + GOLD + ';font-weight:800;flex-shrink:0;">' + esc((r.name || '?').trim().charAt(0).toUpperCase()) + '</div>';
-        return '<div style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:13px;border:1px solid ' + (mine ? 'rgba(46,204,113,0.7)' : 'rgba(255,255,255,0.12)') + ';background:' + (mine ? 'rgba(46,204,113,0.09)' : 'rgba(255,255,255,0.03)') + ';' + (r.disq ? 'opacity:.45;' : '') + '">' +
-          '<div style="width:30px;text-align:center;font-weight:800;color:' + (i < 3 ? GOLD : 'rgba(255,255,255,0.55)') + ';font-size:' + (i < 3 ? '18px' : '14px') + ';">' + (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1)) + '</div>' + av +
-          '<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(r.name) + (mine ? ' <span style="color:#2ecc71;font-size:11px;">· You</span>' : '') + (r.disq ? ' <span style="color:#ff8a80;font-size:11px;">· removed</span>' : '') + '</div>' +
-          '<div style="font-size:11px;color:rgba(255,255,255,0.5);">RV days ' + (r.rvDays || 0) + '</div>' +
-          '<div style="font-size:11px;color:rgba(255,255,255,0.5);">Q · RV ' + qHtml(r.secRV, r.rv, 'rv') + ' · RN ' + qHtml(r.secRN, r.rn, 'rn') + '</div></div>' +
-          '<div style="text-align:right;white-space:nowrap;">' +
-            '<div style="font-size:16px;font-weight:800;color:' + GOLD + ';line-height:1.15;">' + fmt(r.rn) + ' <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.4);">Radha Naam</span></div>' +
-            '<div style="font-size:13px;font-weight:700;color:#ffcc80;line-height:1.25;">' + fmt(r.rv) + ' <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.4);">Radha Vallabh</span></div></div></div>';
-      }).join('');
+      box.innerHTML = rows.map((r, i) => tnRowHtml(r, i, me)).join('');
+      const mi = rows.findIndex((r) => r.uid === me), mc = document.getElementById('tnMyRank');
+      if (mc) {
+        if (mi >= 0) {
+          mc.style.display = 'flex';
+          const n1 = document.getElementById('tnMyRankNum'), n2 = document.getElementById('tnMyRankJap');
+          if (n1) n1.textContent = '#' + (mi + 1);
+          if (n2) n2.textContent = fmt(rows[mi].rn) + ' Radha Naam · ' + fmt(rows[mi].rv) + ' RV';
+        } else mc.style.display = 'none';
+      }
     } catch (e) { box.innerHTML = '<div style="text-align:center;color:#ff8a80;padding:16px;font-size:13px;">Could not load: ' + esc(e && e.message) + '</div>'; }
   }
   window.tnLoadBoard = loadBoard;
@@ -39188,229 +39205,89 @@ async function _syncPublicPhoto(p, largeOverride) {
     await load(true);
     const ro = document.getElementById('tnScreen'); if (ro) ro.remove();
     clearInterval(TN.boardT);
+    const vj = document.getElementById('vj');
+    if (!vj) { toast('Jap screen not found'); return; }
     TN.prevMode = App.S.japMode;
-    TN.sessSec = 0; TN.sessN = 0; TN.lastTap = 0; TN.cur = null; TN.note = '';
+    const av = document.querySelector('.view.active'); TN.prevView = av ? av.id : 'vj';
+    TN.sessSec = 0; TN.sessN = 0; TN.lastTap = 0; TN.cur = null; TN.note = ''; TN.pre = null;
     TN.sm = { rv: { s: 0, n: 0, last: 0 }, rn: { s: 0, n: 0, last: 0 } };
     const c = counts();
     TN.mode = c.rv >= RV_DAILY ? 'rn' : 'rv';
     try { switchJapMode(TN.mode === 'rv' ? 'rv' : 'radha'); } catch (_e) {}
-    const o = shell('tnJap', 99995);
-    o.style.overflow = 'hidden'; o.style.padding = 'calc(env(safe-area-inset-top,0px) + 10px) 14px calc(env(safe-area-inset-bottom,0px) + 14px)';
-    o.innerHTML =
-      '<div style="height:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;align-items:center;">' +
-      '<style>' + TNZ_CSS + '</style>' +
-      '<div style="width:100%;display:flex;align-items:center;gap:10px;">' +
+    // The tournament uses the REAL Jap screen (same bead ring, Daily/Lifetime, timers, deity pictures, both gear icons,
+    // iPad layout ...). Only the Brahma Muhurta / Sandhya Kal cards, naam picker, Undo and bottom bar are hidden.
+    try { sv('vj', document.querySelector('.bnav .nb')); } catch (_e) { vj.classList.add('active'); }
+    if (!document.getElementById('tnjStyle')) { const st = document.createElement('style'); st.id = 'tnjStyle'; st.textContent = TNJ_CSS; document.head.appendChild(st); }
+    document.body.classList.add('tn-jap');
+    // slim tournament bar on top of the Jap screen
+    const bar = document.createElement('div');
+    bar.id = 'tnJap';
+    bar.style.cssText = 'flex-shrink:0;width:100%;box-sizing:border-box;padding:6px 12px 2px;';
+    bar.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px;">' +
         '<button onclick="tnStopJap()" style="background:rgba(255,215,0,0.1);color:' + GOLD + ';border:1px solid rgba(255,215,0,0.4);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">✕ Done</button>' +
-        '<div style="flex:1;text-align:center;min-width:0;"><div style="font-size:13px;font-weight:800;color:' + GOLD + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🏆 ' + esc(TN.t.name) + '</div><div id="tnjLeft" style="font-size:11px;color:rgba(255,255,255,0.55);"></div></div><div style="width:70px;"></div></div>' +
-      '<div style="width:100%;display:flex;gap:8px;margin-top:12px;">' +
-        '<div id="tnjTabRv" onclick="tnSwitch(\'rv\')" style="flex:1;text-align:center;padding:9px 6px;border-radius:12px;cursor:pointer;"></div>' +
-        '<div id="tnjTabRn" onclick="tnSwitch(\'rn\')" style="flex:1;text-align:center;padding:9px 6px;border-radius:12px;cursor:pointer;"></div></div>' +
-      '<div class="bead-frame-wrap" id="tnjRingWrap" style="width:100%;box-sizing:border-box;margin:8px 0 0;">' +
-        '<svg class="bead-frame" id="tnjRing" aria-hidden="true"></svg>' +
-        '<div style="position:relative;z-index:1;text-align:center;padding:7px 6px 5px;"><div id="tnjBarTxt" style="font-size:11.5px;color:rgba(255,255,255,0.7);"></div>' +
-        '<div id="tnjMala" style="font-size:15px;font-weight:800;color:' + GOLD + ';margin-top:3px;"></div></div></div>' +
-      '<div id="tnjTap" class="tnz">' +
-        '<button id="tnjGear" class="tnz-gear" type="button" aria-label="Adjust photo and count size" title="Adjust photo and count size" onclick="tnGearToggle(event)" ontouchstart="event.stopPropagation()" onmousedown="event.stopPropagation()"><span class="gi">⚙️</span></button>' +
-        '<div id="tnjPanel" class="tnz-panel" onclick="event.stopPropagation()" ontouchstart="event.stopPropagation()" onmousedown="event.stopPropagation()">' +
-          '<div class="tp-title">Jap Display</div>' +
-          tnPrefRow('Deity size', 'rv', 'tnjPvRv') + tnPrefRow('Hitju · Gurudev', 'side', 'tnjPvSide') + tnPrefRow('Count size', 'cnt', 'tnjPvCnt') +
-          '<button type="button" class="tp-reset" onclick="tnPrefReset(event)">Reset to Default</button></div>' +
-        '<img id="tnjRv" class="rv-wm" alt="" draggable="false" onerror="this.style.display=\'none\'">' +
-        '<img id="tnjHj" class="hitju-wm" alt="" draggable="false" onerror="this.style.display=\'none\'">' +
-        '<img id="tnjGd" class="gurudev-wm" alt="" draggable="false" onerror="this.style.display=\'none\'">' +
-        '<div class="tnz-count"><div id="tnjCount">0</div><div id="tnjName"></div></div></div>' +
-      '<div id="tnjNote" style="min-height:18px;font-size:12.5px;color:#ffb74d;text-align:center;"></div>' +
-      '<div style="width:100%;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px;">' +
-        '<div style="text-align:center;padding:9px 4px;border-radius:12px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.03);"><div style="font-size:10px;letter-spacing:1px;color:rgba(255,255,255,0.5);">SESSION</div><div id="tnjSess" style="font-size:17px;font-weight:800;">0:00</div></div>' +
-        '<div id="tnjQBox" style="text-align:center;padding:9px 4px;border-radius:12px;border:1px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.06);transition:background .2s,border-color .2s;"><div id="tnjQLbl" style="font-size:10px;letter-spacing:1px;color:rgba(255,215,0,0.8);">QUALITY</div><div id="tnjQ" style="font-size:17px;font-weight:800;color:' + GOLD + ';">—</div><div id="tnjQHint" style="font-size:9.5px;color:rgba(255,255,255,0.45);"></div></div>' +
-        '<div style="text-align:center;padding:9px 4px;border-radius:12px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.03);"><div style="font-size:10px;letter-spacing:1px;color:rgba(255,255,255,0.5);">TODAY TIME</div><div id="tnjDay" style="font-size:17px;font-weight:800;">0:00</div></div></div>' +
-      '</div>';
-    try {
-      const setI = (id, src, fb) => { const el = document.getElementById(id); if (el) el.src = japImg(src, fb); };
-      setI('tnjRv', 'bgRadhaVallabh', './radha-vallabh.png');
-      setI('tnjHj', 'bgHitju', './hitju-maharaj.png');
-      setI('tnjGd', 'bgGurudev', './gurudev.png');
-      TN.ring = null;
-      const lay = () => { tnLayout(); tnRing(); };
-      lay(); setTimeout(lay, 60); setTimeout(lay, 400);
-    } catch (_e) {}
-    const tz = document.getElementById('tnjTap');
-    const h = (e) => tap(e);
-    tz.addEventListener('touchstart', h, { passive: false });
-    tz.addEventListener('mousedown', h);
+        '<div style="flex:1;text-align:center;min-width:0;"><div style="font-size:13px;font-weight:800;color:' + GOLD + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🏆 ' + esc(TN.t.name) + '</div>' +
+        '<div id="tnjLeft" style="font-size:11.5px;color:rgba(255,255,255,0.6);"></div></div><div style="width:76px;"></div></div>' +
+      '<div style="display:flex;gap:8px;margin-top:6px;"><div id="tnjTabRv" class="tnj-tab" onclick="tnSwitch(\'rv\')"></div><div id="tnjTabRn" class="tnj-tab" onclick="tnSwitch(\'rn\')"></div></div>' +
+      '<div id="tnjNote" style="min-height:15px;font-size:12px;color:#ffcc80;text-align:center;margin-top:3px;"></div>';
+    vj.insertBefore(bar, vj.firstChild);
+    // Quality box next to the Session / Today / Screen Time boxes
+    const tr = vj.querySelector('.timer-row');
+    if (tr && !document.getElementById('tnjQBox')) {
+      tr.insertAdjacentHTML('beforeend',
+        '<div class="timer-box" id="tnjQBox"><div class="timer-box-lbl" id="tnjQLbl">Quality</div>' +
+        '<div class="timer-box-main timer-box-main--solo"><div class="timer-display timer-display--today" id="tnjQ">—</div></div>' +
+        '<div id="tnjQHint" style="font-size:8.5px;color:rgba(255,255,255,0.45);line-height:1.1;margin-bottom:1px;"></div></div>');
+    }
+    // taps: the real tap zone does the counting (App.ht); we only gate (locked / ended) and record for the server
+    const tzr = vj.querySelector('.tzr'), tz = document.getElementById('tz');
+    if (tzr && tz) {
+      tzr.addEventListener('touchstart', japGate, { capture: true, passive: false });
+      tzr.addEventListener('mousedown', japGate, true);
+      tz.addEventListener('touchstart', japPost, { passive: true });
+      tz.addEventListener('mousedown', japPost);
+      TN.hooks = { tzr: tzr, tz: tz };
+    }
     clearInterval(TN.tick); TN.tick = setInterval(refreshJap, 1000);
     clearInterval(TN.flushT); TN.flushT = setInterval(() => { closeBatchIfIdle(); flush(); }, 9000);
     refreshJap(); renderBanners();
+    requestAnimationFrame(() => { try { renderBeadFrame(); } catch (_e) {} });
+    setTimeout(() => { try { renderBeadFrame(); } catch (_e) {} }, 300);
   };
-  // Tap zone = the same look as the main Jap screen: Radha Vallabh deity top-centre, Hit Ju Maharaj bottom-left,
-  // Gurudev bottom-right (faded, softly glowing). Own class (.tnz) so the main screen's Gaudiya / Ramanandi /
-  // Nimbark ... modes never hide these three - the tournament is always Radha Vallabh Sampraday.
-  const TNZ_CSS = `
-    .tnz{position:relative;flex:1;min-height:0;width:100%;margin-top:8px;overflow:hidden;border-radius:18px;cursor:pointer;
-      background:radial-gradient(ellipse at center,rgba(34,85,204,0.22) 0%,rgba(6,13,31,0.6) 100%);
-      border:1px solid rgba(74,144,226,0.2);user-select:none;-webkit-user-select:none;touch-action:manipulation;-webkit-touch-callout:none;
-      -webkit-tap-highlight-color:transparent;transition:box-shadow .08s;
-      --rv-w:240px;--rv-top:10px;--rv-aspect:1.15;--rv-bottom:calc(var(--rv-top) + var(--rv-w) * var(--rv-aspect));--side-w:80px;--cnt:44px;}
-    .tnz.tnz-hit{box-shadow:inset 0 0 38px rgba(255,215,0,0.28);}
-    .tnz .rv-wm{position:absolute;top:var(--rv-top);left:50%;transform:translateX(-50%);width:var(--rv-w);height:auto;max-height:78%;
-      object-fit:contain;opacity:.5;pointer-events:none;user-select:none;z-index:1;animation:divineBreathGlowStrong 10s ease-in-out infinite;}
-    .tnz .hitju-wm{position:absolute;top:min(var(--rv-bottom),calc(100% - var(--side-w) * var(--rv-aspect)));left:8px;width:var(--side-w);height:auto;
-      opacity:.45;pointer-events:none;user-select:none;z-index:1;animation:divineBreathGlow 10s ease-in-out infinite;}
-    .tnz .gurudev-wm{position:absolute;top:min(var(--rv-bottom),calc(100% - var(--side-w) * var(--rv-aspect)));right:8px;width:var(--side-w);height:auto;
-      opacity:.45;pointer-events:none;user-select:none;z-index:1;animation:divineBreathGlow 10s ease-in-out infinite;}
-    .tnz img.tnz-flash{animation:malaGlowPulse 2.4s ease-in-out forwards !important;mix-blend-mode:screen !important;z-index:3 !important;}
-    .tnz .tnz-gear{position:absolute;top:8px;right:8px;z-index:40;width:28px;height:28px;border-radius:50%;background:rgba(6,13,31,0.55);
-      border:1px solid rgba(255,215,0,0.4);color:#FFD700;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;
-      cursor:pointer;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 8px rgba(0,0,0,0.35);animation:tnzGearGlow 3.2s ease-in-out infinite;}
-    .tnz .tnz-gear .gi{display:inline-block;}
-    .tnz .tnz-gear.spin .gi{animation:tnzGearSpin .65s cubic-bezier(.4,0,.2,1);}
-    .tnz .tnz-gear.active{background:rgba(255,215,0,0.28);border-color:#FFD700;}
-    .tnz .tnz-gear.active .gi{animation:tnzGearSpin 6s linear infinite;}
-    @keyframes tnzGearGlow{0%,100%{box-shadow:0 2px 8px rgba(0,0,0,0.35),0 0 0 rgba(255,215,0,0);}50%{box-shadow:0 2px 8px rgba(0,0,0,0.35),0 0 12px rgba(255,215,0,0.55);}}
-    @keyframes tnzGearSpin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
-    @keyframes tnzPanelIn{from{opacity:0;transform:translateY(-6px) scale(.96);}to{opacity:1;transform:none;}}
-    .tnz .tnz-panel{position:absolute;top:42px;right:8px;z-index:42;width:200px;padding:10px 12px 12px;background:rgba(6,13,31,0.94);
-      border:1px solid rgba(255,215,0,0.35);border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.5);display:none;flex-direction:column;gap:8px;cursor:default;}
-    .tnz .tnz-panel.open{display:flex;animation:tnzPanelIn .18s ease-out;}
-    .tnz .tp-title{font-size:11px;letter-spacing:1px;color:#FFD700;font-weight:700;text-transform:uppercase;opacity:.85;}
-    .tnz .tp-row{display:flex;align-items:center;justify-content:space-between;gap:6px;}
-    .tnz .tp-lbl{font-size:12px;color:rgba(255,255,255,0.85);}
-    .tnz .tp-ctrl{display:flex;align-items:center;gap:5px;}
-    .tnz .tp-ctrl button{width:24px;height:24px;border-radius:50%;border:1px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.08);color:#FFD700;font-size:15px;line-height:1;padding:0;cursor:pointer;}
-    .tnz .tp-val{min-width:38px;text-align:center;font-size:12px;color:#fff;font-weight:700;}
-    .tnz .tp-reset{border:1px solid rgba(255,215,0,0.35);background:transparent;color:#FFD700;border-radius:8px;font-size:11px;padding:6px;cursor:pointer;}
-    .tnz .tnz-count{position:absolute;left:0;right:0;bottom:6px;z-index:5;text-align:center;pointer-events:none;}
-    #tnjCount{font-size:var(--cnt);font-weight:800;color:#fff;line-height:1;text-shadow:0 2px 14px rgba(0,0,0,.95),0 0 22px rgba(255,215,0,.45);}
-    #tnjName{font-size:13px;color:#FFD700;margin-top:3px;font-weight:700;text-shadow:0 1px 8px rgba(0,0,0,.95);}
+  const TNJ_CSS = `
+    body.tn-jap .bnav{display:none !important;}
+    body.tn-jap #vj{padding-bottom:calc(8px + env(safe-area-inset-bottom)) !important;}
+    body.tn-jap #vj .rh > .rh-card{display:none !important;}
+    body.tn-jap #vj .rh{justify-content:center;}
+    body.tn-jap #vj .naam-sel-wrap{display:none !important;}
+    body.tn-jap #firstTapTutorialHint{display:none !important;}
+    body.tn-jap #vj .daily-count-undo button{display:none !important;}
+    #tnJap .tnj-tab{flex:1;text-align:center;padding:6px 6px;border-radius:12px;cursor:pointer;}
+    #tnJap .tnj-tab .t1{font-size:12px;font-weight:800;}
+    #tnJap .tnj-tab .t2{font-size:11px;color:rgba(255,255,255,0.6);}
   `;
-  // ⚙️ gear in front of the zone: adjust deity size, Hitju/Gurudev size and the count size (saved on this device).
-  const TN_PREF_KEY = 'tnj_view_prefs_v1';
-  function tnLoadPrefs() {
-    try {
-      const p = JSON.parse(localStorage.getItem(TN_PREF_KEY) || '{}'), f = (v) => (typeof v === 'number' && v >= 0.6 && v <= 1.6) ? v : 1;
-      return { rv: f(p.rv), side: f(p.side), cnt: f(p.cnt) };
-    } catch (_e) { return { rv: 1, side: 1, cnt: 1 }; }
-  }
-  let TN_PREF = tnLoadPrefs();
-  function tnSavePrefs() { try { localStorage.setItem(TN_PREF_KEY, JSON.stringify(TN_PREF)); } catch (_e) {} }
-  function tnPrefRow(label, key, valId) {
-    return '<div class="tp-row"><span class="tp-lbl">' + label + '</span><div class="tp-ctrl">' +
-      '<button type="button" onclick="tnPref(\'' + key + '\',-1,event)">−</button><span class="tp-val" id="' + valId + '">100%</span>' +
-      '<button type="button" onclick="tnPref(\'' + key + '\',1,event)">+</button></div></div>';
-  }
-  function tnPrefUi() {
-    [['tnjPvRv', 'rv'], ['tnjPvSide', 'side'], ['tnjPvCnt', 'cnt']].forEach((x) => {
-      const el = document.getElementById(x[0]); if (el) el.textContent = Math.round(TN_PREF[x[1]] * 100) + '%';
-    });
-  }
-  window.tnGearToggle = function (e) {
-    if (e) e.stopPropagation();
-    const g = document.getElementById('tnjGear'), pn = document.getElementById('tnjPanel'); if (!g || !pn) return;
-    const open = !pn.classList.contains('open');
-    pn.classList.toggle('open', open); g.classList.toggle('active', open);
-    g.classList.remove('spin'); void g.offsetWidth; g.classList.add('spin');
-    setTimeout(() => { try { g.classList.remove('spin'); } catch (_e) {} }, 700);
-    tnPrefUi();
-  };
-  window.tnPref = function (k, dir, e) {
-    if (e) e.stopPropagation();
-    TN_PREF[k] = Math.max(0.6, Math.min(1.6, Math.round((TN_PREF[k] + dir * 0.1) * 100) / 100));
-    tnSavePrefs(); tnPrefUi(); tnLayout();
-  };
-  window.tnPrefReset = function (e) {
-    if (e) e.stopPropagation();
-    TN_PREF = { rv: 1, side: 1, cnt: 1 }; tnSavePrefs(); tnPrefUi(); tnLayout();
-  };
-  document.addEventListener('click', (e) => {        // tapping outside the panel closes it
-    const pn = document.getElementById('tnjPanel');
-    if (pn && pn.classList.contains('open') && !(e.target && e.target.closest && e.target.closest('#tnjPanel,#tnjGear'))) {
-      pn.classList.remove('open'); const g = document.getElementById('tnjGear'); if (g) g.classList.remove('active');
-    }
-  });
-  // Picture the user chose on the main Jap screen (incl. custom photos); default image if none.
-  function japImg(srcId, fallback) {
-    try { const el = document.getElementById(srcId); if (el && el.getAttribute('src')) return el.src; } catch (_e) {}
-    return fallback;
-  }
-  // Same proportions as the main screen, but measured from THIS zone (it is shorter than the main one).
-  function tnLayout() {
-    const z = document.getElementById('tnjTap'); if (!z) return;
-    const w = z.clientWidth, h = z.clientHeight; if (!w || !h) return;
-    const rv = Math.max(100, Math.min(Math.min(w * 0.62, 480, h * 0.62) * TN_PREF.rv, w * 0.92));
-    const side = Math.max(44, Math.min(Math.min(w * 0.2, 140, h * 0.2) * TN_PREF.side, w * 0.34));
-    z.style.setProperty('--rv-w', Math.round(rv) + 'px');
-    z.style.setProperty('--side-w', Math.round(side) + 'px');
-    z.style.setProperty('--cnt', Math.round(Math.max(22, Math.min(Math.max(30, Math.min(w * 0.13, h * 0.17, 66)) * TN_PREF.cnt, 100))) + 'px');
-  }
-  // ── Mala bead ring: same as the main Jap screen - 108 beads on a rectangle, Sumeru bead on top, 100 blue + 8 gold,
-  // the direction flips every mala. It follows today's count of the tab you are chanting (Radha Vallabh or Radha Naam).
-  const SVGNS = 'http://www.w3.org/2000/svg';
-  function perimXY(d, x0, y0, x1, y1) {
-    const w = x1 - x0, h = y1 - y0, perim = 2 * (w + h);
-    d = ((d % perim) + perim) % perim;
-    if (d < w) return { x: x0 + d, y: y0 };
-    if (d < w + h) return { x: x1, y: y0 + (d - w) };
-    if (d < 2 * w + h) return { x: x1 - (d - w - h), y: y1 };
-    return { x: x0, y: y1 - (d - 2 * w - h) };
-  }
-  function tnRing() {
-    const wrap = document.getElementById('tnjRingWrap'), svg = document.getElementById('tnjRing');
-    if (!wrap || !svg) return;
-    if (svg.childElementCount !== 109) {
-      svg.innerHTML = '';
-      for (let i = 0; i < 108; i++) {
-        const c = document.createElementNS(SVGNS, 'circle');
-        c.setAttribute('r', '2.2'); c.setAttribute('class', i < 100 ? 'bead bead-blue' : 'bead bead-gold'); svg.appendChild(c);
-      }
-      const s = document.createElementNS(SVGNS, 'circle');
-      s.setAttribute('r', '4.5'); s.setAttribute('class', 'bead bead-sumeru'); svg.appendChild(s);
-      TN.ring = null;
-    }
-    const rect = wrap.getBoundingClientRect(), W = rect.width, H = rect.height;
-    if (!W || !H) return;
-    const c = counts(), n = TN.mode === 'rv' ? c.rv : c.rn;
-    const N = 108, inMala = n % N, malaIdx = Math.floor(n / N), done = inMala === 0 && n > 0;
-    const cw = (done ? malaIdx - 1 : malaIdx) % 2 === 0, filled = done ? N : inMala;
-    const beads = svg.children;
-    if (!TN.ring || TN.ring.W !== W || TN.ring.H !== H || TN.ring.cw !== cw) {
-      svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-      const x0 = 4, y0 = 4, x1 = W - 4, y1 = H - 4, step = 2 * ((x1 - x0) + (y1 - y0)) / 109, sumD = W / 2 - x0;
-      beads[108].setAttribute('cx', W / 2); beads[108].setAttribute('cy', y0);
-      for (let i = 0; i < N; i++) {
-        const p = perimXY(cw ? sumD + step + i * step : sumD - step - i * step, x0, y0, x1, y1);
-        beads[i].setAttribute('cx', p.x); beads[i].setAttribute('cy', p.y);
-      }
-      TN.ring = { W: W, H: H, cw: cw, filled: -1 };
-    }
-    const prev = TN.ring.filled;
-    if (prev !== filled) {
-      for (let i = 0; i < N; i++) beads[i].setAttribute('class', (i >= 100 ? 'bead bead-gold' : 'bead bead-blue') + (i < filled ? ' filled' : ''));
-      if (prev !== -1 && filled > prev && filled > 0 && filled <= N) {
-        const pb = beads[filled - 1]; pb.classList.add('bead-pulse'); setTimeout(() => { try { pb.classList.remove('bead-pulse'); } catch (_e) {} }, 500);
-      }
-      TN.ring.filled = filled;
-    }
-    const ml = document.getElementById('tnjMala');
-    if (ml) ml.textContent = 'Mala ' + (done ? malaIdx : malaIdx + 1) + ' · ' + (done ? N : inMala) + ' / ' + N;
-  }
-  function tnFlash() {                  // pictures surge to full glow when a mala is completed (like the main screen)
-    const imgs = document.querySelectorAll('#tnjTap img');
-    imgs.forEach((im) => { im.classList.remove('tnz-flash'); void im.offsetWidth; im.classList.add('tnz-flash'); });
-    setTimeout(() => imgs.forEach((im) => { try { im.classList.remove('tnz-flash'); } catch (_e) {} }), 2500);
-  }
-  window.addEventListener('resize', () => { try { tnLayout(); tnRing(); } catch (_e) {} });
   function readCount() {
     try { const S = App.S; return TN.mode === 'rv' ? ((S.historyRV || {})[S.tk] || 0) : ((S.history || {})[S.tk] || 0); } catch (_e) { return 0; }
   }
-  function tap(e) {
-    const c0 = counts();
-    if (TN.mode === 'rn' && c0.rv < RV_DAILY) { try { e.preventDefault(); } catch (_e) {} return; }   // locked
-    if (phase(TN.t) !== 'live') { TN.note = 'The tournament has ended.'; refreshJap(); return; }
-    const before = readCount();
-    try { App.ht(e); } catch (err) { console.warn('tap:', err); }
+  // runs BEFORE the real tap zone sees the touch: blocks it when locked / ended, else remembers the count
+  function japGate(e) {
+    try {
+      if (e.target && e.target.closest && e.target.closest('.jap-photo-settings-btn,.jap-text-settings-btn,.jap-text-settings-panel')) { TN.pre = null; return; }   // gear icons: not a jap
+      const locked = TN.mode === 'rn' && counts().rv < RV_DAILY;
+      if (locked || phase(TN.t) !== 'live') {
+        e.stopPropagation(); try { e.preventDefault(); } catch (_e) {}
+        TN.pre = null;
+        if (!locked) { TN.note = 'The tournament has ended.'; refreshJap(); }
+        return;
+      }
+      TN.pre = readCount();
+    } catch (_e) { TN.pre = null; }
+  }
+  // runs AFTER the real tap zone counted: if the real count went up, record that tap for the tournament
+  function japPost(e) {
+    if (TN.pre == null) return;
+    const before = TN.pre; TN.pre = null;
     const after = readCount();
-    const zone = document.getElementById('tnjTap');
-    if (zone) { zone.classList.add('tnz-hit'); setTimeout(() => { if (zone) zone.classList.remove('tnz-hit'); }, 80); }
     if (after > before) {
       TN.note = '';
       record(TN.mode);
@@ -39420,9 +39297,8 @@ async function _syncPublicPhoto(p, largeOverride) {
         TN.note = '🔓 11 malas of RV done — Radha Naam is unlocked!';
         toast('🔓 Radha Naam unlocked');
       }
-      { const nn = TN.mode === 'rv' ? c.rv : c.rn; if (nn > 0 && nn % 108 === 0) tnFlash(); }
       if (TN.cur && TN.cur.n >= 25) { closeBatch(); flush(); }
-      refreshJap(true);
+      refreshJap();
     } else if (window._rvNamesLock) { TN.note = '📿 Mala complete — one moment…'; refreshJap(); }
     else if (window.AudioChant && window.AudioChant.blocksTouch && window.AudioChant.blocksTouch()) { TN.note = 'Turn off Audio Mode — only your own taps count in the tournament.'; refreshJap(); }
   }
@@ -39443,18 +39319,9 @@ async function _syncPublicPhoto(p, largeOverride) {
     const rvDone = c.rv >= RV_DAILY;
     const tabStyle = (on, locked) => 'border:1.5px solid ' + (on ? GOLD : 'rgba(255,255,255,0.18)') + ';background:' + (on ? 'rgba(255,215,0,0.14)' : 'rgba(255,255,255,0.03)') + ';' + (locked ? 'opacity:.55;' : '');
     const trv = document.getElementById('tnjTabRv'), trn = document.getElementById('tnjTabRn');
-    if (trv) { trv.style.cssText = 'flex:1;text-align:center;padding:9px 6px;border-radius:12px;cursor:pointer;' + tabStyle(TN.mode === 'rv', false); trv.innerHTML = '<div style="font-size:12px;font-weight:800;color:' + (TN.mode === 'rv' ? GOLD : '#fff') + ';">Radha Vallabh (RV)</div><div style="font-size:11px;color:rgba(255,255,255,0.6);">' + fmt(Math.min(c.rv, RV_DAILY)) + ' / ' + fmt(RV_DAILY) + (rvDone ? ' ✔' : '') + '</div>'; }
-    if (trn) { trn.style.cssText = 'flex:1;text-align:center;padding:9px 6px;border-radius:12px;cursor:pointer;' + tabStyle(TN.mode === 'rn', !rvDone); trn.innerHTML = '<div style="font-size:12px;font-weight:800;color:' + (TN.mode === 'rn' ? GOLD : '#fff') + ';">' + (rvDone ? '' : '🔒 ') + 'Radha Naam</div><div style="font-size:11px;color:rgba(255,255,255,0.6);">' + (rvDone ? fmt(c.rn) + ' today' : 'locked') + '</div>'; }
-    const bar = document.getElementById('tnjBar'), bt = document.getElementById('tnjBarTxt');
-    if (bar) bar.style.width = Math.min(100, (c.rv / RV_DAILY) * 100) + '%';
-    if (bt) bt.textContent = rvDone ? '✔ 11 malas of RV done today · ' + Math.floor(c.rv / 108) + ' malas' : 'RV today: ' + Math.floor(c.rv / 108) + ' / 11 malas  (' + fmt(c.rv) + ' / ' + fmt(RV_DAILY) + ')';
-    const cnt = document.getElementById('tnjCount'), nm = document.getElementById('tnjName');
-    if (cnt) cnt.textContent = fmt(TN.mode === 'rv' ? c.rv : c.rn);
-    if (nm) nm.textContent = TN.mode === 'rv' ? 'Radha Vallabh · today' : 'Radha Naam · today';
+    if (trv) { trv.style.cssText = tabStyle(TN.mode === 'rv', false); trv.innerHTML = '<div class="t1" style="color:' + (TN.mode === 'rv' ? GOLD : '#fff') + ';">Radha Vallabh (RV)</div><div class="t2">' + fmt(Math.min(c.rv, RV_DAILY)) + ' / ' + fmt(RV_DAILY) + ' · ' + Math.floor(Math.min(c.rv, RV_DAILY) / 108) + ' / 11 malas' + (rvDone ? ' ✔' : '') + '</div>'; }
+    if (trn) { trn.style.cssText = tabStyle(TN.mode === 'rn', !rvDone); trn.innerHTML = '<div class="t1" style="color:' + (TN.mode === 'rn' ? GOLD : '#fff') + ';">' + (rvDone ? '' : '🔒 ') + 'Radha Naam</div><div class="t2">' + (rvDone ? fmt(c.rn) + ' today' : 'locked') + '</div>'; }
     const note = document.getElementById('tnjNote'); if (note) note.textContent = TN.note || '';
-    const idle = TN.lastTap ? Math.min((Date.now() - TN.lastTap) / 1000, 10) : 0;
-    const sess = TN.sessSec + (TN.lastTap && idle < 10 ? idle : 0);
-    const se = document.getElementById('tnjSess'); if (se) se.textContent = hms(sess);
     const sec = TN.mode === 'rv' ? c.srv : c.srn, n = TN.mode === 'rv' ? c.rv : c.rn;
     const q = document.getElementById('tnjQ');
     if (q) {
@@ -39462,25 +39329,39 @@ async function _syncPublicPhoto(p, largeOverride) {
       let qv = qNum(sm.s, sm.n); if (qv == null) qv = qNum(sec, n);      // this session first, else today's average
       const low = qIsLow(qv, km);
       q.textContent = qv == null ? '—' : qv.toFixed(2) + 's';
-      q.style.color = low ? Q_RED : GOLD;
+      q.style.color = low ? Q_RED : '';
       const qb = document.getElementById('tnjQBox'), ql = document.getElementById('tnjQLbl'), qh = document.getElementById('tnjQHint');
-      if (qb) { qb.style.borderColor = low ? 'rgba(255,82,82,0.85)' : 'rgba(255,215,0,0.4)'; qb.style.background = low ? 'rgba(255,82,82,0.14)' : 'rgba(255,215,0,0.06)'; }
-      if (ql) ql.style.color = low ? Q_RED : 'rgba(255,215,0,0.8)';
+      if (qb) { qb.style.borderColor = low ? 'rgba(255,82,82,0.85)' : ''; qb.style.background = low ? 'rgba(255,82,82,0.14)' : ''; }
+      if (ql) ql.style.color = low ? Q_RED : '';
       if (qh) { qh.textContent = (low ? 'too fast · ' : '') + 'keep ≥ ' + Q_MIN[km] + 's'; qh.style.color = low ? Q_RED : 'rgba(255,255,255,0.45)'; }
     }
-    const dy = document.getElementById('tnjDay'); if (dy) dy.textContent = hms(c.srv + c.srn);
-    try { tnRing(); } catch (_e) {}
   }
   window.tnStopJap = async function () {
     closeBatch();
     clearInterval(TN.tick); clearInterval(TN.flushT);
-    const o = document.getElementById('tnJap');
+    try {
+      const h = TN.hooks;
+      if (h) {
+        h.tzr.removeEventListener('touchstart', japGate, true); h.tzr.removeEventListener('mousedown', japGate, true);
+        h.tz.removeEventListener('touchstart', japPost); h.tz.removeEventListener('mousedown', japPost);
+      }
+    } catch (_e) {}
+    TN.hooks = null; TN.pre = null;
     try { await Promise.race([flush(), new Promise((r) => setTimeout(r, 3500))]); } catch (_e) {}
-    if (o) o.remove();
+    const o = document.getElementById('tnJap'); if (o) o.remove();
+    const qb = document.getElementById('tnjQBox'); if (qb) qb.remove();
+    document.body.classList.remove('tn-jap');
+    const st = document.getElementById('tnjStyle'); if (st) st.remove();
     try { if (TN.prevMode) switchJapMode(TN.prevMode); } catch (_e) {}
+    try {
+      const pv = TN.prevView;
+      if (pv && pv !== 'vj') sv(pv, document.querySelector('.bnav .nb[onclick*="sv(\'' + pv + '\'"]'));
+    } catch (_e) {}
+    try { renderBeadFrame(); } catch (_e) {}
     renderBanners();
     window.tnOpen();
   };
+  
   // anything left over from an earlier session (offline) is sent on the next load
   setTimeout(() => { try { if (TN.q.length) flush(); } catch (_e) {} }, 8000);
 

@@ -520,12 +520,12 @@ echo "── 9.6/9  Gradle heap space fix ────────────�
 # same pattern as the signing config and permission plugin registration
 # above - a one-off manual edit to gradle.properties would otherwise
 # silently disappear on the next build.
-if ! grep -q "org.gradle.jvmargs" android/gradle.properties 2>/dev/null; then
-  echo "org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=1024m" >> android/gradle.properties
-  echo "  added increased Gradle heap size (3GB) to gradle.properties"
-else
-  echo "  gradle.properties already has jvmargs set - leaving as-is"
-fi
+# NOTE: Capacitor's template already contains "org.gradle.jvmargs=-Xmx1536m", so we must
+# REPLACE that line (a plain "add if missing" check silently keeps the 1.5 GB default).
+# 6 GB is safe on GitHub runners (16 GB RAM) and is needed to sign the ~1 GB AAB.
+sed -i '/^org\.gradle\.jvmargs=/d' android/gradle.properties
+echo "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError" >> android/gradle.properties
+echo "  set Gradle heap to 6 GB in gradle.properties"
 
 echo ""
 echo "── 9.7/9  Play Asset Delivery: audio_pack (AAB only, opt-in) ─────"
@@ -540,7 +540,7 @@ fi
 echo ""
 echo "── Building APK (release, persistently signed) ──────────────────"
 cd android
-./gradlew assembleRelease bundleRelease --no-daemon
+./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
 cd ..
 
 echo ""

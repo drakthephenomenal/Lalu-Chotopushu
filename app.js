@@ -38875,7 +38875,7 @@ async function _syncPublicPhoto(p, largeOverride) {
 ;(function () {
   const RV_DAILY = 11 * 108;
   const TN = { t: null, entry: null, loadedAt: 0, mode: 'rv', prevMode: null, cur: null, q: [], today: null,
-               sessSec: 0, sessN: 0, lastTap: 0, boardT: null, tick: null, flushT: null, busy: false, note: '' };
+               sessSec: 0, sessN: 0, lastTap: 0, sm: { rv: { s: 0, n: 0, last: 0 }, rn: { s: 0, n: 0, last: 0 } }, boardT: null, tick: null, flushT: null, busy: false, note: '' };
   window._TN = TN;
 
   const fmt = (n) => Number(n || 0).toLocaleString('en-US');
@@ -38905,8 +38905,19 @@ async function _syncPublicPhoto(p, largeOverride) {
   }
   function whenStr(ms) { try { return new Date(ms).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); } catch (_e) { return ''; } }
   function qOf(sec, n) { return (n > 0 && sec > 0) ? (sec / n).toFixed(2) + 's' : '—'; }
+  // Quality = seconds per jap. Chanting faster than the limit turns the Q red.
+  // Radha Naam: below 0.5s is red. Radha Vallabh: its own limit - below 1.5s is red.
+  const Q_MIN = { rn: 0.5, rv: 1.5 };
+  const Q_RED = '#ff5252';
+  function qNum(sec, n) { return (n > 0 && sec > 0) ? sec / n : null; }
+  function qIsLow(v, k) { return v != null && v < Q_MIN[k]; }
+  function qHtml(sec, n, k) {            // coloured Q text for the leaderboard / stats lines
+    const v = qNum(sec, n), low = qIsLow(v, k);
+    return '<span style="' + (low ? 'color:' + Q_RED + ';font-weight:800;' : '') + '">' + qOf(sec, n) + '</span>';
+  }
   function rankSort(a, b) {
     return ((b.rn || 0) - (a.rn || 0)) || ((b.rvDays || 0) - (a.rvDays || 0)) ||
+      (((a.rn || 0) === 0 && (b.rn || 0) === 0) ? ((b.rv || 0) - (a.rv || 0)) : 0) ||   // nobody on Radha Naam yet: more RV ranks higher
       (((a.secRN || 0) / Math.max(1, a.rn || 0)) - ((b.secRN || 0) / Math.max(1, b.rn || 0))) || ((a.updatedAt || 0) - (b.updatedAt || 0));
   }
   const LS = () => 'tn_q_' + (TN.t ? TN.t.id : '') + '_' + (fbUser ? fbUser.uid : '');
@@ -39061,7 +39072,7 @@ async function _syncPublicPhoto(p, largeOverride) {
     h += '<div style="margin-top:12px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.03);">' +
       '<div style="font-size:11px;letter-spacing:1.5px;color:rgba(255,255,255,0.55);font-weight:800;margin-bottom:6px;">RULES</div>' +
       '<div style="font-size:13px;line-height:1.55;white-space:pre-wrap;color:rgba(255,255,255,0.88);">' + esc(t.rules || '') + '</div>' +
-      '<div style="font-size:12px;line-height:1.5;color:rgba(255,215,0,0.85);margin-top:8px;">📿 Every day: finish <b>11 malas of RV (' + fmt(RV_DAILY) + ' jap)</b> first — then Radha Naam unlocks. Your tournament score is your <b>Radha Naam</b> count. Jap done here is also added to your normal total. Only taps count (no manual add / deduct).</div></div>';
+      '<div style="font-size:12px;line-height:1.5;color:rgba(255,215,0,0.85);margin-top:8px;">📿 Every day: finish <b>11 malas of RV (' + fmt(RV_DAILY) + ' jap)</b> first — then Radha Naam unlocks. Your tournament score is your <b>Radha Naam</b> count. Jap done here is also added to your normal total. Only taps count (no manual add / deduct).<br>⏱ Quality is seconds per jap — chant steadily: it turns <b style="color:#ff5252;">red</b> below <b>0.5s</b> for Radha Naam and below <b>1.5s</b> for Radha Vallabh.</div></div>';
     // join / start area
     h += '<div id="tnAction" style="margin-top:14px;text-align:center;">';
     if (e && e.disq) {
@@ -39069,7 +39080,7 @@ async function _syncPublicPhoto(p, largeOverride) {
     } else if (e) {
       if (ph === 'live') h += '<button onclick="tnStartJap()" style="width:100%;padding:15px;border-radius:16px;border:none;font-size:16px;font-weight:800;color:#000;background:linear-gradient(135deg,#FFD700,#FFA000);box-shadow:0 0 22px rgba(255,215,0,0.35);cursor:pointer;">📿 Start Tournament Jap</button>';
       else if (ph === 'upcoming') h += '<div style="color:#2ecc71;font-size:14px;font-weight:700;">✔ You have joined. Jap opens when it starts.</div>';
-      h += '<div style="margin-top:10px;font-size:13px;color:rgba(255,255,255,0.75);">Your Radha Naam: <b style="color:' + GOLD + ';">' + fmt(e.rn) + '</b> · RV days done: <b>' + (e.rvDays || 0) + '</b> · Quality: <b>' + qOf(e.secRN, e.rn) + '</b></div>';
+      h += '<div style="margin-top:10px;font-size:13px;color:rgba(255,255,255,0.75);">Your Radha Naam: <b style="color:' + GOLD + ';">' + fmt(e.rn) + '</b> · Your Radha Vallabh: <b style="color:#ffcc80;">' + fmt(e.rv) + '</b> · RV days done: <b>' + (e.rvDays || 0) + '</b><br>Quality · RV: <b>' + qHtml(e.secRV, e.rv, 'rv') + '</b> · RN: <b>' + qHtml(e.secRN, e.rn, 'rn') + '</b></div>';
     } else if (ph === 'live' || ph === 'upcoming') {
       if (eligible()) h += '<button onclick="tnJoin()" id="tnJoinBtn" style="width:100%;padding:15px;border-radius:16px;border:none;font-size:16px;font-weight:800;color:#000;background:linear-gradient(135deg,#2ecc71,#1fa85a);cursor:pointer;">✋ Join Tournament</button>';
       else h += '<div style="padding:12px 14px;border-radius:14px;border:1px solid rgba(255,183,77,0.5);background:rgba(255,183,77,0.08);color:#ffb74d;font-size:13px;line-height:1.5;">Only <b>verified</b> users can join. Fill your profile and verify your mobile number by SMS OTP to get the ✔ badge.<br><button onclick="tnClose();openProfileEditor()" style="margin-top:8px;padding:8px 16px;border-radius:10px;border:1px solid rgba(255,183,77,0.6);background:rgba(255,183,77,0.15);color:#ffb74d;font-weight:700;cursor:pointer;">Open My Profile</button></div>';
@@ -39102,8 +39113,11 @@ async function _syncPublicPhoto(p, largeOverride) {
         return '<div style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:13px;border:1px solid ' + (mine ? 'rgba(46,204,113,0.7)' : 'rgba(255,255,255,0.12)') + ';background:' + (mine ? 'rgba(46,204,113,0.09)' : 'rgba(255,255,255,0.03)') + ';' + (r.disq ? 'opacity:.45;' : '') + '">' +
           '<div style="width:30px;text-align:center;font-weight:800;color:' + (i < 3 ? GOLD : 'rgba(255,255,255,0.55)') + ';font-size:' + (i < 3 ? '18px' : '14px') + ';">' + (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1)) + '</div>' + av +
           '<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(r.name) + (mine ? ' <span style="color:#2ecc71;font-size:11px;">· You</span>' : '') + (r.disq ? ' <span style="color:#ff8a80;font-size:11px;">· removed</span>' : '') + '</div>' +
-          '<div style="font-size:11px;color:rgba(255,255,255,0.5);">RV days ' + (r.rvDays || 0) + ' · Q ' + qOf(r.secRN, r.rn) + '</div></div>' +
-          '<div style="text-align:right;"><div style="font-size:16px;font-weight:800;color:' + GOLD + ';">' + fmt(r.rn) + '</div><div style="font-size:10px;color:rgba(255,255,255,0.4);">Radha Naam</div></div></div>';
+          '<div style="font-size:11px;color:rgba(255,255,255,0.5);">RV days ' + (r.rvDays || 0) + '</div>' +
+          '<div style="font-size:11px;color:rgba(255,255,255,0.5);">Q · RV ' + qHtml(r.secRV, r.rv, 'rv') + ' · RN ' + qHtml(r.secRN, r.rn, 'rn') + '</div></div>' +
+          '<div style="text-align:right;white-space:nowrap;">' +
+            '<div style="font-size:16px;font-weight:800;color:' + GOLD + ';line-height:1.15;">' + fmt(r.rn) + ' <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.4);">Radha Naam</span></div>' +
+            '<div style="font-size:13px;font-weight:700;color:#ffcc80;line-height:1.25;">' + fmt(r.rv) + ' <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.4);">Radha Vallabh</span></div></div></div>';
       }).join('');
     } catch (e) { box.innerHTML = '<div style="text-align:center;color:#ff8a80;padding:16px;font-size:13px;">Could not load: ' + esc(e && e.message) + '</div>'; }
   }
@@ -39147,6 +39161,7 @@ async function _syncPublicPhoto(p, largeOverride) {
     else { b.sec += Math.min(now - b.lastTap, 10000) / 1000; }
     if (TN.lastTap) TN.sessSec += Math.min(now - TN.lastTap, 10000) / 1000;
     b.n++; b.t1 = now; b.lastTap = now; TN.lastTap = now; TN.sessN++;
+    const sm = TN.sm[k]; if (sm.last) sm.s += Math.min(now - sm.last, 10000) / 1000; sm.last = now; sm.n++;
   }
   async function flush() {
     if (TN.busy || !TN.t || !fbUser) return;
@@ -39175,6 +39190,7 @@ async function _syncPublicPhoto(p, largeOverride) {
     clearInterval(TN.boardT);
     TN.prevMode = App.S.japMode;
     TN.sessSec = 0; TN.sessN = 0; TN.lastTap = 0; TN.cur = null; TN.note = '';
+    TN.sm = { rv: { s: 0, n: 0, last: 0 }, rn: { s: 0, n: 0, last: 0 } };
     const c = counts();
     TN.mode = c.rv >= RV_DAILY ? 'rn' : 'rv';
     try { switchJapMode(TN.mode === 'rv' ? 'rv' : 'radha'); } catch (_e) {}
@@ -39182,6 +39198,7 @@ async function _syncPublicPhoto(p, largeOverride) {
     o.style.overflow = 'hidden'; o.style.padding = 'calc(env(safe-area-inset-top,0px) + 10px) 14px calc(env(safe-area-inset-bottom,0px) + 14px)';
     o.innerHTML =
       '<div style="height:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;align-items:center;">' +
+      '<style>' + TNZ_CSS + '</style>' +
       '<div style="width:100%;display:flex;align-items:center;gap:10px;">' +
         '<button onclick="tnStopJap()" style="background:rgba(255,215,0,0.1);color:' + GOLD + ';border:1px solid rgba(255,215,0,0.4);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">✕ Done</button>' +
         '<div style="flex:1;text-align:center;min-width:0;"><div style="font-size:13px;font-weight:800;color:' + GOLD + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🏆 ' + esc(TN.t.name) + '</div><div id="tnjLeft" style="font-size:11px;color:rgba(255,255,255,0.55);"></div></div><div style="width:70px;"></div></div>' +
@@ -39189,15 +39206,24 @@ async function _syncPublicPhoto(p, largeOverride) {
         '<div id="tnjTabRv" onclick="tnSwitch(\'rv\')" style="flex:1;text-align:center;padding:9px 6px;border-radius:12px;cursor:pointer;"></div>' +
         '<div id="tnjTabRn" onclick="tnSwitch(\'rn\')" style="flex:1;text-align:center;padding:9px 6px;border-radius:12px;cursor:pointer;"></div></div>' +
       '<div style="width:100%;margin-top:10px;"><div style="height:10px;border-radius:6px;background:rgba(255,255,255,0.1);overflow:hidden;"><div id="tnjBar" style="height:100%;width:0%;background:linear-gradient(90deg,#2ecc71,#FFD700);transition:width .25s;"></div></div><div id="tnjBarTxt" style="font-size:11.5px;color:rgba(255,255,255,0.65);text-align:center;margin-top:4px;"></div></div>' +
-      '<div id="tnjTap" style="flex:1;width:100%;display:flex;align-items:center;justify-content:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;">' +
-        '<div id="tnjCircle" style="width:min(74vw,46vh);height:min(74vw,46vh);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;border:3px solid rgba(255,215,0,0.7);background:radial-gradient(circle at 35% 30%,rgba(255,215,0,0.22),rgba(255,140,0,0.07) 60%,rgba(0,0,0,0));box-shadow:0 0 40px rgba(255,215,0,0.25);transition:transform .06s;">' +
-          '<div id="tnjCount" style="font-size:min(20vw,11vh);font-weight:800;color:#fff;line-height:1;">0</div><div id="tnjName" style="font-size:14px;color:' + GOLD + ';margin-top:6px;font-weight:700;"></div></div></div>' +
+      '<div id="tnjTap" class="tnz">' +
+        '<img id="tnjRv" class="rv-wm" alt="" draggable="false" onerror="this.style.display=\'none\'">' +
+        '<img id="tnjHj" class="hitju-wm" alt="" draggable="false" onerror="this.style.display=\'none\'">' +
+        '<img id="tnjGd" class="gurudev-wm" alt="" draggable="false" onerror="this.style.display=\'none\'">' +
+        '<div class="tnz-count"><div id="tnjCount">0</div><div id="tnjName"></div></div></div>' +
       '<div id="tnjNote" style="min-height:18px;font-size:12.5px;color:#ffb74d;text-align:center;"></div>' +
       '<div style="width:100%;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px;">' +
         '<div style="text-align:center;padding:9px 4px;border-radius:12px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.03);"><div style="font-size:10px;letter-spacing:1px;color:rgba(255,255,255,0.5);">SESSION</div><div id="tnjSess" style="font-size:17px;font-weight:800;">0:00</div></div>' +
-        '<div style="text-align:center;padding:9px 4px;border-radius:12px;border:1px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.06);"><div style="font-size:10px;letter-spacing:1px;color:rgba(255,215,0,0.8);">QUALITY</div><div id="tnjQ" style="font-size:17px;font-weight:800;color:' + GOLD + ';">—</div></div>' +
+        '<div id="tnjQBox" style="text-align:center;padding:9px 4px;border-radius:12px;border:1px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.06);transition:background .2s,border-color .2s;"><div id="tnjQLbl" style="font-size:10px;letter-spacing:1px;color:rgba(255,215,0,0.8);">QUALITY</div><div id="tnjQ" style="font-size:17px;font-weight:800;color:' + GOLD + ';">—</div><div id="tnjQHint" style="font-size:9.5px;color:rgba(255,255,255,0.45);"></div></div>' +
         '<div style="text-align:center;padding:9px 4px;border-radius:12px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.03);"><div style="font-size:10px;letter-spacing:1px;color:rgba(255,255,255,0.5);">TODAY TIME</div><div id="tnjDay" style="font-size:17px;font-weight:800;">0:00</div></div></div>' +
       '</div>';
+    try {
+      const setI = (id, src, fb) => { const el = document.getElementById(id); if (el) el.src = japImg(src, fb); };
+      setI('tnjRv', 'bgRadhaVallabh', './radha-vallabh.png');
+      setI('tnjHj', 'bgHitju', './hitju-maharaj.png');
+      setI('tnjGd', 'bgGurudev', './gurudev.png');
+      tnLayout(); setTimeout(tnLayout, 60); setTimeout(tnLayout, 400);
+    } catch (_e) {}
     const tz = document.getElementById('tnjTap');
     const h = (e) => tap(e);
     tz.addEventListener('touchstart', h, { passive: false });
@@ -39206,6 +39232,42 @@ async function _syncPublicPhoto(p, largeOverride) {
     clearInterval(TN.flushT); TN.flushT = setInterval(() => { closeBatchIfIdle(); flush(); }, 9000);
     refreshJap(); renderBanners();
   };
+  // Tap zone = the same look as the main Jap screen: Radha Vallabh deity top-centre, Hit Ju Maharaj bottom-left,
+  // Gurudev bottom-right (faded, softly glowing). Own class (.tnz) so the main screen's Gaudiya / Ramanandi /
+  // Nimbark ... modes never hide these three - the tournament is always Radha Vallabh Sampraday.
+  const TNZ_CSS = `
+    .tnz{position:relative;flex:1;min-height:0;width:100%;margin-top:8px;overflow:hidden;border-radius:18px;cursor:pointer;
+      background:radial-gradient(ellipse at center,rgba(34,85,204,0.22) 0%,rgba(6,13,31,0.6) 100%);
+      border:1px solid rgba(74,144,226,0.2);user-select:none;-webkit-user-select:none;touch-action:manipulation;-webkit-touch-callout:none;
+      -webkit-tap-highlight-color:transparent;transition:box-shadow .08s;
+      --rv-w:240px;--rv-top:10px;--rv-aspect:1.15;--rv-bottom:calc(var(--rv-top) + var(--rv-w) * var(--rv-aspect));--side-w:80px;--cnt:44px;}
+    .tnz.tnz-hit{box-shadow:inset 0 0 38px rgba(255,215,0,0.28);}
+    .tnz .rv-wm{position:absolute;top:var(--rv-top);left:50%;transform:translateX(-50%);width:var(--rv-w);height:auto;max-height:78%;
+      object-fit:contain;opacity:.5;pointer-events:none;user-select:none;z-index:1;animation:divineBreathGlowStrong 10s ease-in-out infinite;}
+    .tnz .hitju-wm{position:absolute;top:min(var(--rv-bottom),calc(100% - var(--side-w) * var(--rv-aspect)));left:8px;width:var(--side-w);height:auto;
+      opacity:.45;pointer-events:none;user-select:none;z-index:1;animation:divineBreathGlow 10s ease-in-out infinite;}
+    .tnz .gurudev-wm{position:absolute;top:min(var(--rv-bottom),calc(100% - var(--side-w) * var(--rv-aspect)));right:8px;width:var(--side-w);height:auto;
+      opacity:.45;pointer-events:none;user-select:none;z-index:1;animation:divineBreathGlow 10s ease-in-out infinite;}
+    .tnz .tnz-count{position:absolute;left:0;right:0;bottom:6px;z-index:5;text-align:center;pointer-events:none;}
+    #tnjCount{font-size:var(--cnt);font-weight:800;color:#fff;line-height:1;text-shadow:0 2px 14px rgba(0,0,0,.95),0 0 22px rgba(255,215,0,.45);}
+    #tnjName{font-size:13px;color:#FFD700;margin-top:3px;font-weight:700;text-shadow:0 1px 8px rgba(0,0,0,.95);}
+  `;
+  // Picture the user chose on the main Jap screen (incl. custom photos); default image if none.
+  function japImg(srcId, fallback) {
+    try { const el = document.getElementById(srcId); if (el && el.getAttribute('src')) return el.src; } catch (_e) {}
+    return fallback;
+  }
+  // Same proportions as the main screen, but measured from THIS zone (it is shorter than the main one).
+  function tnLayout() {
+    const z = document.getElementById('tnjTap'); if (!z) return;
+    const w = z.clientWidth, h = z.clientHeight; if (!w || !h) return;
+    const rv = Math.max(120, Math.min(w * 0.62, 480, h * 0.62));
+    const side = Math.max(54, Math.min(w * 0.2, 140, h * 0.2));
+    z.style.setProperty('--rv-w', Math.round(rv) + 'px');
+    z.style.setProperty('--side-w', Math.round(side) + 'px');
+    z.style.setProperty('--cnt', Math.round(Math.max(30, Math.min(w * 0.13, h * 0.17, 66))) + 'px');
+  }
+  window.addEventListener('resize', () => { try { tnLayout(); } catch (_e) {} });
   function readCount() {
     try { const S = App.S; return TN.mode === 'rv' ? ((S.historyRV || {})[S.tk] || 0) : ((S.history || {})[S.tk] || 0); } catch (_e) { return 0; }
   }
@@ -39216,8 +39278,8 @@ async function _syncPublicPhoto(p, largeOverride) {
     const before = readCount();
     try { App.ht(e); } catch (err) { console.warn('tap:', err); }
     const after = readCount();
-    const circle = document.getElementById('tnjCircle');
-    if (circle) { circle.style.transform = 'scale(0.965)'; setTimeout(() => { if (circle) circle.style.transform = ''; }, 70); }
+    const zone = document.getElementById('tnjTap');
+    if (zone) { zone.classList.add('tnz-hit'); setTimeout(() => { if (zone) zone.classList.remove('tnz-hit'); }, 80); }
     if (after > before) {
       TN.note = '';
       record(TN.mode);
@@ -39262,7 +39324,18 @@ async function _syncPublicPhoto(p, largeOverride) {
     const sess = TN.sessSec + (TN.lastTap && idle < 10 ? idle : 0);
     const se = document.getElementById('tnjSess'); if (se) se.textContent = hms(sess);
     const sec = TN.mode === 'rv' ? c.srv : c.srn, n = TN.mode === 'rv' ? c.rv : c.rn;
-    const q = document.getElementById('tnjQ'); if (q) q.textContent = qOf(TN.sessSec, TN.sessN) !== '—' ? qOf(TN.sessSec, TN.sessN) : qOf(sec, n);
+    const q = document.getElementById('tnjQ');
+    if (q) {
+      const km = TN.mode === 'rv' ? 'rv' : 'rn', sm = TN.sm[km];
+      let qv = qNum(sm.s, sm.n); if (qv == null) qv = qNum(sec, n);      // this session first, else today's average
+      const low = qIsLow(qv, km);
+      q.textContent = qv == null ? '—' : qv.toFixed(2) + 's';
+      q.style.color = low ? Q_RED : GOLD;
+      const qb = document.getElementById('tnjQBox'), ql = document.getElementById('tnjQLbl'), qh = document.getElementById('tnjQHint');
+      if (qb) { qb.style.borderColor = low ? 'rgba(255,82,82,0.85)' : 'rgba(255,215,0,0.4)'; qb.style.background = low ? 'rgba(255,82,82,0.14)' : 'rgba(255,215,0,0.06)'; }
+      if (ql) ql.style.color = low ? Q_RED : 'rgba(255,215,0,0.8)';
+      if (qh) { qh.textContent = (low ? 'too fast · ' : '') + 'keep ≥ ' + Q_MIN[km] + 's'; qh.style.color = low ? Q_RED : 'rgba(255,255,255,0.45)'; }
+    }
     const dy = document.getElementById('tnjDay'); if (dy) dy.textContent = hms(c.srv + c.srn);
   }
   window.tnStopJap = async function () {

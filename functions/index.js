@@ -1051,3 +1051,132 @@ exports.verifyMyPhone = functions.https.onCall(async (data, context) => {
   }, { merge: true });
   return { phone };
 });
+
+
+// ============================================================
+// 🏆 TOURNAMENTS
+//   joinTournament          – only ✔ verified users (complete profile + SMS-verified mobile, or admin-verified)
+//   submitTournamentTaps    – the ONLY way a score changes. Checks speed, time order, the per-day cap and the
+//                             daily rule: Radha Naam is accepted only after 11 RV malas (1,188 jap) that day.
+//   finalizeTournament      – admin only; ranks everyone and fixes the winners.
+// tournaments/{tid} is written by the admin app; tournaments/{tid}/entries/{uid} only by these functions.
+// ============================================================
+const TN_RV_DAILY = 11 * 108;
+function _tnDayKey(ms, offMin) {
+  return new Date(ms + (Number.isFinite(offMin) ? offMin : 360) * 60000).toISOString().slice(0, 10);
+}
+function _tnVerified(p) {
+  if (!p) return false;
+  if (p.adminVerified === true) return true;
+  if (p.adminVerified === false || p.revoked) return false;
+  return !!p.complete && p.mobileVerified === true;
+}
+function _tnId(v) { return String(v || "").replace(/[^A-Za-z0-9_-]/g, ""); }
+
+exports.joinTournament = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Please sign in first.");
+  const uid = context.auth.uid;
+  const tid = _tnId(data && data.tid);
+  if (!tid) throw new functions.https.HttpsError("invalid-argument", "Missing tournament.");
+  const db = admin.firestore();
+  const tRef = db.collection("tournaments").doc(tid);
+  const [tSnap, pSnap, lbSnap] = await Promise.all([tRef.get(), db.collection("profiles").doc(uid).get(), db.collection("leaderboard").doc(uid).get()]);
+  if (!tSnap.exists) throw new functions.https.HttpsError("not-found", "Tournament not found.");
+  const t = tSnap.data();
+  if (t.status !== "published") throw new functions.https.HttpsError("failed-precondition", "This tournament is not open for joining.");
+  if (Date.now() > t.endAt) throw new functions.https.HttpsError("failed-precondition", "This tournament has ended.");
+  const prof = pSnap.exists ? pSnap.data() : null;
+  if (!_tnVerified(prof)) throw new functions.https.HttpsError("permission-denied", "Only verified users can join. Complete your profile and verify your mobile number.");
+  const eRef = tRef.collection("entries").doc(uid);
+  const eSnap = await eRef.get();
+  if (eSnap.exists) return { joined: true, already: true };
+  const name = (lbSnap.exists && lbSnap.get("displayName")) || prof.name || "Devotee";
+  const photo = prof.showPhoto === false ? "" : (prof.photoSmall || "");
+  await eRef.set({
+    uid, name: String(name).slice(0, 60), photo,
+    joinedAt: Date.now(), updatedAt: Date.now(),
+    rn: 0, rv: 0, secRN: 0, secRV: 0, rvDays: 0, days: {}, lastT: 0, flags: 0, disq: false,
+  });
+  return { joined: true };
+});
+
+exports.submitTournamentTaps = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Please sign in first.");
+  const uid = context.auth.uid;
+  const tid = _tnId(data && data.tid);
+  const items = Array.isArray(data && data.items) ? data.items.slice(0, 20) : [];
+  if (!tid || !items.length) return { ok: true };
+  const db = admin.firestore();
+  const tRef = db.collection("tournaments").doc(tid);
+  const eRef = tRef.collection("entries").doc(uid);
+  return db.runTransaction(async (tx) => {
+    const [tSnap, eSnap] = await Promise.all([tx.get(tRef), tx.get(eRef)]);
+    if (!tSnap.exists || !eSnap.exists) throw new functions.https.HttpsError("failed-precondition", "Join the tournament first.");
+    const t = tSnap.data(), e = eSnap.data();
+    if (e.disq) throw new functions.https.HttpsError("permission-denied", "You were removed from this tournament.");
+    const now = Date.now();
+    const GRACE = 10 * 60 * 1000;                                   // taps made offline before the end may arrive a little late
+    if (t.status === "finalized" || now > t.endAt + GRACE) throw new functions.https.HttpsError("failed-precondition", "This tournament has ended.");
+    const off = Number.isFinite(t.tzOffsetMin) ? t.tzOffsetMin : 360;
+    const minSec = Math.max(0.1, Number(t.minSecPerJap) || 0.2);
+    let rn = e.rn || 0, rv = e.rv || 0, secRN = e.secRN || 0, secRV = e.secRV || 0, rvDays = e.rvDays || 0, flags = e.flags || 0, lastT = e.lastT || 0;
+    const days = Object.assign({}, e.days || {});
+    for (const it of items) {
+      const k = it && it.k === "rv" ? "rv" : (it && it.k === "rn" ? "rn" : null);
+      let n = Math.floor(Number(it && it.n)), sec = Number(it && it.sec);
+      const t0 = Number(it && it.t0), t1 = Number(it && it.t1);
+      if (!k || !(n > 0) || !(sec >= 0) || !isFinite(t0) || !isFinite(t1) || t1 < t0) continue;
+      if (t1 > now + 15000) { flags++; continue; }                  // claims to be from the future
+      if (t0 < lastT - 2000) { flags++; continue; }                 // overlaps / replays an earlier batch (two devices, resend)
+      if (t1 < t.startAt || t0 > t.endAt + 2000) continue;          // outside the tournament window
+      if (n > 600) n = 600;
+      const span = (t1 - t0) / 1000 + 2;
+      if (sec > span) sec = span;                                   // can't have been tapping longer than the batch lasted
+      const maxN = Math.floor(sec / minSec) + 3;                    // fastest believable jap rate
+      if (n > maxN) { n = maxN; flags++; }
+      if (n <= 0) continue;
+      const dk = _tnDayKey(Math.min(t1, t.endAt), off);
+      const d = Object.assign({ rv: 0, rn: 0, srv: 0, srn: 0, done: false }, days[dk] || {});
+      if ((d.srv + d.srn + sec) > 14 * 3600) { flags++; continue; } // nobody chants more than 14 h of active time a day
+      if (k === "rn") {
+        if (d.rv < TN_RV_DAILY) { flags++; continue; }              // Radha Naam stays locked until 11 RV malas are done today
+        d.rn += n; d.srn += sec; rn += n; secRN += sec;
+      } else {
+        d.rv += n; d.srv += sec; rv += n; secRV += sec;
+        if (d.rv >= TN_RV_DAILY && !d.done) { d.done = true; rvDays++; }
+      }
+      days[dk] = d; lastT = Math.max(lastT, t1);
+    }
+    secRN = Math.round(secRN * 100) / 100; secRV = Math.round(secRV * 100) / 100;
+    tx.update(eRef, { rn, rv, secRN, secRV, rvDays, flags, lastT, days, updatedAt: now });
+    const todayKey = _tnDayKey(now, off);
+    return { rn, rv, secRN, secRV, rvDays, flags, todayKey, today: days[todayKey] || { rv: 0, rn: 0, srv: 0, srn: 0 } };
+  });
+});
+
+exports.finalizeTournament = functions.https.onCall(async (data, context) => {
+  const email = ((context.auth && context.auth.token && context.auth.token.email) || "").toLowerCase();
+  if (!context.auth || !DEV_EMAILS.map((x) => x.toLowerCase()).includes(email)) {
+    throw new functions.https.HttpsError("permission-denied", "Admins only.");
+  }
+  const tid = _tnId(data && data.tid);
+  if (!tid) throw new functions.https.HttpsError("invalid-argument", "Missing tournament.");
+  const tRef = admin.firestore().collection("tournaments").doc(tid);
+  const tSnap = await tRef.get();
+  if (!tSnap.exists) throw new functions.https.HttpsError("not-found", "Tournament not found.");
+  const t = tSnap.data();
+  const es = await tRef.collection("entries").get();
+  const rows = [];
+  es.forEach((d) => { const x = d.data(); if (!x.disq) rows.push(x); });
+  rows.sort((a, b) =>
+    ((b.rn || 0) - (a.rn || 0)) || ((b.rvDays || 0) - (a.rvDays || 0)) ||
+    (((a.secRN || 0) / Math.max(1, a.rn || 0)) - ((b.secRN || 0) / Math.max(1, b.rn || 0))) || ((a.updatedAt || 0) - (b.updatedAt || 0)));
+  const prizes = Array.isArray(t.prizes) ? t.prizes : [];
+  const winners = [];
+  prizes.forEach((pz, i) => {
+    const r = rows[i];
+    if (r && (r.rn || 0) > 0) winners.push({ rank: i + 1, uid: r.uid, name: r.name, rn: r.rn || 0, amount: pz.amount || "", paid: false });
+  });
+  await tRef.update({ status: "finalized", winners, finalizedAt: Date.now() });
+  return { winners };
+});

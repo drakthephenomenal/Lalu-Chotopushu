@@ -38863,3 +38863,533 @@ async function _syncPublicPhoto(p, largeOverride) {
     try { localStorage.setItem('rj_pubphoto_sig', sig); } catch (_e) {}
   } catch (e) { console.warn('public photo sync failed:', e && e.message); }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🏆 TOURNAMENTS
+// Admin creates a tournament; only ✔ verified users can join; scoring happens on the SERVER
+// (submitTournamentTaps) so the app can never write its own score. Radha Naam is locked each
+// day until 11 RV malas (1,188 jap) are done. Every tournament jap also goes through the normal
+// App.ht() tap, so it lands in the user's real totals, time and Quality.
+// Data: tournaments/{tid} (admin) · tournaments/{tid}/entries/{uid} (server only)
+// ═══════════════════════════════════════════════════════════════════════════
+;(function () {
+  const RV_DAILY = 11 * 108;
+  const TN = { t: null, entry: null, loadedAt: 0, mode: 'rv', prevMode: null, cur: null, q: [], today: null,
+               sessSec: 0, sessN: 0, lastTap: 0, boardT: null, tick: null, flushT: null, busy: false, note: '' };
+  window._TN = TN;
+
+  const fmt = (n) => Number(n || 0).toLocaleString('en-US');
+  const esc = (s) => escHtml(String(s == null ? '' : s));
+  const GOLD = '#FFD700';
+  function dur(ms) {
+    if (ms <= 0) return '0m';
+    const s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+    return d ? d + 'd ' + h + 'h' : h ? h + 'h ' + m + 'm' : m + 'm';
+  }
+  function hms(sec) {
+    sec = Math.max(0, Math.floor(sec));
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    return (h ? h + ':' : '') + String(m).padStart(h ? 2 : 1, '0') + ':' + String(s).padStart(2, '0');
+  }
+  function dayKey(ms, t) {
+    const off = (t && Number.isFinite(t.tzOffsetMin)) ? t.tzOffsetMin : 360;
+    return new Date(ms + off * 60000).toISOString().slice(0, 10);
+  }
+  function phase(t) {
+    if (!t) return 'none';
+    if (t.status === 'finalized') return 'final';
+    const now = Date.now();
+    if (now < t.startAt) return 'upcoming';
+    if (now <= t.endAt) return 'live';
+    return 'ended';
+  }
+  function whenStr(ms) { try { return new Date(ms).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); } catch (_e) { return ''; } }
+  function qOf(sec, n) { return (n > 0 && sec > 0) ? (sec / n).toFixed(2) + 's' : '—'; }
+  function rankSort(a, b) {
+    return ((b.rn || 0) - (a.rn || 0)) || ((b.rvDays || 0) - (a.rvDays || 0)) ||
+      (((a.secRN || 0) / Math.max(1, a.rn || 0)) - ((b.secRN || 0) / Math.max(1, b.rn || 0))) || ((a.updatedAt || 0) - (b.updatedAt || 0));
+  }
+  const LS = () => 'tn_q_' + (TN.t ? TN.t.id : '') + '_' + (fbUser ? fbUser.uid : '');
+  function qSave() { try { localStorage.setItem(LS(), JSON.stringify(TN.q.slice(-200))); } catch (_e) {} }
+  function qLoad() { try { TN.q = JSON.parse(localStorage.getItem(LS()) || '[]') || []; } catch (_e) { TN.q = []; } }
+
+  // ───────────── load state ─────────────
+  async function load(force) {
+    if (!fbUser || !fbDb) return TN.t;
+    if (!force && Date.now() - TN.loadedAt < 45000) return TN.t;
+    TN.loadedAt = Date.now();
+    try {
+      const snap = await fbDb.collection('tournaments').where('status', 'in', ['published', 'finalized']).get();
+      const now = Date.now(); let best = null, bestP = 9;
+      snap.forEach((d) => {
+        const t = Object.assign({ id: d.id }, d.data());
+        const ph = phase(t);
+        let p = ph === 'live' ? 0 : ph === 'upcoming' ? 1 : ph === 'ended' ? 2 : (ph === 'final' && now - (t.finalizedAt || t.endAt) < 14 * 86400000 ? 3 : 9);
+        if (p >= 9) return;
+        if (!best || p < bestP || (p === bestP && p === 1 && t.startAt < best.startAt) || (p === bestP && p >= 2 && (t.endAt || 0) > (best.endAt || 0))) { best = t; bestP = p; }
+      });
+      const changed = (best && TN.t && best.id !== TN.t.id);
+      TN.t = best;
+      TN.entry = null;
+      if (best) {
+        if (changed) { TN.q = []; }
+        try { const e = await fbDb.collection('tournaments').doc(best.id).collection('entries').doc(fbUser.uid).get(); TN.entry = e.exists ? e.data() : null; } catch (_e) {}
+        qLoad();
+      }
+    } catch (e) { console.warn('tournament load failed:', e && e.message); }
+    renderBanners();
+    return TN.t;
+  }
+  window.tnLoad = load;
+
+  // ───────────── banners (Family tab + floating pill on the Jap tab) ─────────────
+  function bannerHtml() {
+    const t = TN.t; if (!t) return '';
+    const ph = phase(t);
+    let line = '';
+    if (ph === 'live') line = 'Live now · ends in ' + dur(t.endAt - Date.now());
+    else if (ph === 'upcoming') line = 'Starts ' + whenStr(t.startAt);
+    else if (ph === 'ended') line = 'Ended · results coming soon';
+    else line = 'Results are out 🎉';
+    return '<div onclick="tnOpen()" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:14px;border:1px solid rgba(255,215,0,0.55);background:linear-gradient(135deg,rgba(255,215,0,0.16),rgba(255,140,0,0.08));box-shadow:0 0 18px rgba(255,215,0,0.12);">' +
+      '<div style="font-size:24px;">🏆</div><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:800;color:' + GOLD + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(t.name) + '</div>' +
+      '<div style="font-size:11.5px;color:rgba(255,255,255,0.65);">' + esc(line) + '</div></div><div style="font-size:12px;font-weight:700;color:' + GOLD + ';">Open ›</div></div>';
+  }
+  function renderBanners() {
+    const v = document.getElementById('vlb');
+    if (v) {
+      let h = document.getElementById('tnBannerFam');
+      if (!h) { h = document.createElement('div'); h.id = 'tnBannerFam'; h.style.cssText = 'margin:12px 14px 0;'; v.insertBefore(h, v.firstChild); }
+      const html = bannerHtml(); h.innerHTML = html; h.style.display = html ? 'block' : 'none';
+    }
+    let pill = document.getElementById('tnPill');
+    const vj = document.getElementById('vj');
+    const live = TN.t && phase(TN.t) === 'live';
+    const show = live && vj && vj.classList.contains('active') && !document.getElementById('tnJap');
+    if (!pill) {
+      pill = document.createElement('div'); pill.id = 'tnPill';
+      pill.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 78px);z-index:900;padding:8px 16px;border-radius:999px;border:1px solid rgba(255,215,0,0.6);background:rgba(20,16,40,0.92);color:' + GOLD + ';font-size:12.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,0.5);display:none;';
+      pill.onclick = () => window.tnOpen();
+      document.body.appendChild(pill);
+    }
+    pill.textContent = '🏆 ' + (TN.t ? TN.t.name : '') + ' · tap';
+    pill.style.display = show ? 'block' : 'none';
+  }
+  setInterval(() => { try { if (fbUser) renderBanners(); } catch (_e) {} }, 2500);
+  setTimeout(() => { try { load(true); } catch (_e) {} }, 4000);
+  setTimeout(() => { try { load(true); } catch (_e) {} }, 16000);
+  document.addEventListener('visibilitychange', () => {
+    try {
+      if (document.visibilityState === 'visible') load(true);
+      else if (document.getElementById('tnJap')) { closeBatch(); flush(); }
+    } catch (_e) {}
+  });
+  window.addEventListener('online', () => { try { flush(); } catch (_e) {} });
+
+  // ───────────── manual Add / Deduct lock while a joined tournament is live ─────────────
+  function manualBlocked() {
+    try {
+      const t = TN.t, e = TN.entry;
+      if (!t || !e || e.disq || t.status !== 'published') return false;
+      const now = Date.now();
+      return now >= t.startAt && now <= t.endAt + 600000;
+    } catch (_e) { return false; }
+  }
+  window._tnManualBlocked = manualBlocked;
+  ['addManualJap', 'addPrevJap', 'addNameJapDeduct', 'removeNameJapDeduct', 'addOtherDayJap', 'addJapTimeToday', 'addJapTimeOther',
+   'deductTodayJap', 'deductOtherJap', 'deductJapTimeToday', 'deductJapTimeOther', 'addOtherDayJap28', 'addPrevJap28',
+   'addNameJapDeduct28', 'removeNameJapDeduct28', 'deduct28CyclesToday', 'deductOtherJap28'].forEach((n) => {
+    try {
+      const f = window[n]; if (typeof f !== 'function') return;
+      window[n] = function () {
+        if (manualBlocked()) { toast('🏆 Tournament live — manual Add / Deduct is switched off until it ends'); return; }
+        return f.apply(this, arguments);
+      };
+    } catch (_e) {}
+  });
+
+  // ───────────── overlay shell ─────────────
+  function shell(id, z) {
+    const old = document.getElementById(id); if (old) old.remove();
+    const o = document.createElement('div');
+    o.id = id;
+    o.style.cssText = 'position:fixed;inset:0;z-index:' + z + ';background:#060d1f;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top,0px) + 14px) 14px calc(env(safe-area-inset-bottom,0px) + 30px);box-sizing:border-box;color:#fff;';
+    document.body.appendChild(o);
+    return o;
+  }
+  window.tnClose = function () {
+    clearInterval(TN.boardT); TN.boardT = null;
+    const o = document.getElementById('tnScreen'); if (o) o.remove();
+    renderBanners();
+  };
+
+  // ───────────── tournament screen ─────────────
+  window.tnOpen = async function () {
+    if (!fbUser) { toast('Please sign in first'); return; }
+    const o = shell('tnScreen', 99990);
+    o.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.5);padding:60px 0;">Loading tournament…</div>';
+    try { await Promise.all([load(true), (typeof _ensureMyProfileLoaded === 'function' ? _ensureMyProfileLoaded().catch(() => {}) : null)]); } catch (_e) {}
+    renderScreen();
+    loadBoard();
+    clearInterval(TN.boardT); TN.boardT = setInterval(() => { if (document.getElementById('tnScreen')) loadBoard(); else { clearInterval(TN.boardT); } }, 30000);
+  };
+  function eligible() {
+    try { return (typeof _effVerified === 'function') ? !!_effVerified(window._myProfile || {}) : false; } catch (_e) { return false; }
+  }
+  function renderScreen() {
+    const o = document.getElementById('tnScreen'); if (!o) return;
+    const t = TN.t, ph = phase(t), e = TN.entry;
+    let h = '<div style="max-width:560px;margin:0 auto;">' +
+      '<button onclick="tnClose()" style="background:rgba(255,215,0,0.1);color:' + GOLD + ';border:1px solid rgba(255,215,0,0.4);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">✕ Close</button>';
+    if (!t) {
+      h += '<div style="text-align:center;padding:70px 10px;"><div style="font-size:46px;">🏆</div><div style="color:' + GOLD + ';font-size:18px;font-weight:800;margin-top:8px;">No tournament right now</div><div style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:6px;">Special-occasion tournaments will appear here. Radhe Radhe 🙏</div></div></div>';
+      o.innerHTML = h; return;
+    }
+    const chip = ph === 'live' ? ['LIVE', '#2ecc71'] : ph === 'upcoming' ? ['UPCOMING', '#ffb74d'] : ph === 'final' ? ['RESULTS', GOLD] : ['ENDED', '#ff8a80'];
+    h += '<div style="text-align:center;margin-top:10px;"><div style="font-size:42px;">🏆</div>' +
+      '<div style="color:' + GOLD + ';font-size:21px;font-weight:800;line-height:1.25;">' + esc(t.name) + '</div>' +
+      '<span style="display:inline-block;margin-top:6px;padding:3px 12px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:1px;color:#000;background:' + chip[1] + ';">' + chip[0] + '</span>' +
+      '<div id="tnCount" style="color:rgba(255,255,255,0.7);font-size:13px;margin-top:8px;">' +
+      (ph === 'live' ? 'Ends in ' + dur(t.endAt - Date.now()) + ' · ' + whenStr(t.endAt) : ph === 'upcoming' ? 'Starts ' + whenStr(t.startAt) + ' (in ' + dur(t.startAt - Date.now()) + ')' : 'Ended ' + whenStr(t.endAt)) + '</div></div>';
+    // prizes
+    if ((t.prizes || []).length) {
+      const medals = ['🥇', '🥈', '🥉', '🎖️', '🎖️'];
+      h += '<div style="margin-top:16px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,215,0,0.3);background:rgba(255,215,0,0.05);"><div style="font-size:11px;letter-spacing:1.5px;color:' + GOLD + ';font-weight:800;margin-bottom:6px;">PRIZES</div>' +
+        t.prizes.map((p, i) => '<div style="display:flex;justify-content:space-between;font-size:14px;padding:3px 0;"><span>' + medals[i] + ' ' + (p.rank || i + 1) + (i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th') + '</span><b style="color:' + GOLD + ';">' + esc((t.currency || '') + ' ' + p.amount) + '</b></div>').join('') + '</div>';
+    }
+    // rules
+    h += '<div style="margin-top:12px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.03);">' +
+      '<div style="font-size:11px;letter-spacing:1.5px;color:rgba(255,255,255,0.55);font-weight:800;margin-bottom:6px;">RULES</div>' +
+      '<div style="font-size:13px;line-height:1.55;white-space:pre-wrap;color:rgba(255,255,255,0.88);">' + esc(t.rules || '') + '</div>' +
+      '<div style="font-size:12px;line-height:1.5;color:rgba(255,215,0,0.85);margin-top:8px;">📿 Every day: finish <b>11 malas of RV (' + fmt(RV_DAILY) + ' jap)</b> first — then Radha Naam unlocks. Your tournament score is your <b>Radha Naam</b> count. Jap done here is also added to your normal total. Only taps count (no manual add / deduct).</div></div>';
+    // join / start area
+    h += '<div id="tnAction" style="margin-top:14px;text-align:center;">';
+    if (e && e.disq) {
+      h += '<div style="color:#ff8a80;font-size:14px;font-weight:700;">You were removed from this tournament by the admin.</div>';
+    } else if (e) {
+      if (ph === 'live') h += '<button onclick="tnStartJap()" style="width:100%;padding:15px;border-radius:16px;border:none;font-size:16px;font-weight:800;color:#000;background:linear-gradient(135deg,#FFD700,#FFA000);box-shadow:0 0 22px rgba(255,215,0,0.35);cursor:pointer;">📿 Start Tournament Jap</button>';
+      else if (ph === 'upcoming') h += '<div style="color:#2ecc71;font-size:14px;font-weight:700;">✔ You have joined. Jap opens when it starts.</div>';
+      h += '<div style="margin-top:10px;font-size:13px;color:rgba(255,255,255,0.75);">Your Radha Naam: <b style="color:' + GOLD + ';">' + fmt(e.rn) + '</b> · RV days done: <b>' + (e.rvDays || 0) + '</b> · Quality: <b>' + qOf(e.secRN, e.rn) + '</b></div>';
+    } else if (ph === 'live' || ph === 'upcoming') {
+      if (eligible()) h += '<button onclick="tnJoin()" id="tnJoinBtn" style="width:100%;padding:15px;border-radius:16px;border:none;font-size:16px;font-weight:800;color:#000;background:linear-gradient(135deg,#2ecc71,#1fa85a);cursor:pointer;">✋ Join Tournament</button>';
+      else h += '<div style="padding:12px 14px;border-radius:14px;border:1px solid rgba(255,183,77,0.5);background:rgba(255,183,77,0.08);color:#ffb74d;font-size:13px;line-height:1.5;">Only <b>verified</b> users can join. Fill your profile and verify your mobile number by SMS OTP to get the ✔ badge.<br><button onclick="tnClose();openProfileEditor()" style="margin-top:8px;padding:8px 16px;border-radius:10px;border:1px solid rgba(255,183,77,0.6);background:rgba(255,183,77,0.15);color:#ffb74d;font-weight:700;cursor:pointer;">Open My Profile</button></div>';
+    } else {
+      h += '<div style="color:rgba(255,255,255,0.5);font-size:13px;">Joining is closed.</div>';
+    }
+    h += '</div><div id="tnMsg" style="text-align:center;font-size:12.5px;margin-top:8px;min-height:16px;"></div>';
+    // winners
+    if (ph === 'final' && (t.winners || []).length) {
+      h += '<div style="margin-top:16px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,215,0,0.5);background:rgba(255,215,0,0.07);"><div style="font-size:11px;letter-spacing:1.5px;color:' + GOLD + ';font-weight:800;margin-bottom:6px;">🎉 WINNERS</div>' +
+        t.winners.map((w) => '<div style="display:flex;justify-content:space-between;font-size:14px;padding:4px 0;"><span>' + (w.rank === 1 ? '🥇' : w.rank === 2 ? '🥈' : w.rank === 3 ? '🥉' : '🎖️') + ' ' + esc(w.name) + (w.uid === (fbUser && fbUser.uid) ? ' <b style="color:#2ecc71">(You!)</b>' : '') + '</span><b>' + fmt(w.rn) + '</b></div>').join('') + '</div>';
+    }
+    h += '<div style="margin-top:18px;font-size:11px;letter-spacing:1.5px;color:rgba(255,255,255,0.55);font-weight:800;">LEADERBOARD · ALL PARTICIPANTS <span id="tnBoardCount"></span></div><div id="tnBoard" style="margin-top:8px;display:flex;flex-direction:column;gap:7px;"><div style="text-align:center;color:rgba(255,255,255,0.4);padding:16px;font-size:13px;">Loading…</div></div>' +
+      '<div style="text-align:center;margin-top:12px;"><button onclick="tnLoadBoard()" style="padding:8px 18px;border-radius:12px;border:1px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.08);color:' + GOLD + ';font-size:12.5px;font-weight:700;cursor:pointer;">↻ Refresh</button></div></div>';
+    o.innerHTML = h;
+  }
+  async function loadBoard() {
+    const box = document.getElementById('tnBoard'); if (!box || !TN.t || !fbDb) return;
+    try {
+      const snap = await fbDb.collection('tournaments').doc(TN.t.id).collection('entries').get();
+      let rows = []; snap.forEach((d) => rows.push(d.data()));
+      const admin = (typeof isDeveloper === 'function' && isDeveloper());
+      rows = rows.filter((r) => admin || !r.disq).sort(rankSort);
+      const cnt = document.getElementById('tnBoardCount'); if (cnt) cnt.textContent = '(' + rows.length + ')';
+      if (!rows.length) { box.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.4);padding:16px;font-size:13px;">Nobody has joined yet. Be the first! 🙏</div>'; return; }
+      const me = fbUser && fbUser.uid;
+      box.innerHTML = rows.map((r, i) => {
+        const mine = r.uid === me;
+        const av = r.photo ? '<img src="' + esc(r.photo) + '" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(255,215,0,0.5);flex-shrink:0;">' : '<div style="width:38px;height:38px;border-radius:50%;background:rgba(255,215,0,0.14);display:flex;align-items:center;justify-content:center;color:' + GOLD + ';font-weight:800;flex-shrink:0;">' + esc((r.name || '?').trim().charAt(0).toUpperCase()) + '</div>';
+        return '<div style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:13px;border:1px solid ' + (mine ? 'rgba(46,204,113,0.7)' : 'rgba(255,255,255,0.12)') + ';background:' + (mine ? 'rgba(46,204,113,0.09)' : 'rgba(255,255,255,0.03)') + ';' + (r.disq ? 'opacity:.45;' : '') + '">' +
+          '<div style="width:30px;text-align:center;font-weight:800;color:' + (i < 3 ? GOLD : 'rgba(255,255,255,0.55)') + ';font-size:' + (i < 3 ? '18px' : '14px') + ';">' + (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1)) + '</div>' + av +
+          '<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(r.name) + (mine ? ' <span style="color:#2ecc71;font-size:11px;">· You</span>' : '') + (r.disq ? ' <span style="color:#ff8a80;font-size:11px;">· removed</span>' : '') + '</div>' +
+          '<div style="font-size:11px;color:rgba(255,255,255,0.5);">RV days ' + (r.rvDays || 0) + ' · Q ' + qOf(r.secRN, r.rn) + '</div></div>' +
+          '<div style="text-align:right;"><div style="font-size:16px;font-weight:800;color:' + GOLD + ';">' + fmt(r.rn) + '</div><div style="font-size:10px;color:rgba(255,255,255,0.4);">Radha Naam</div></div></div>';
+      }).join('');
+    } catch (e) { box.innerHTML = '<div style="text-align:center;color:#ff8a80;padding:16px;font-size:13px;">Could not load: ' + esc(e && e.message) + '</div>'; }
+  }
+  window.tnLoadBoard = loadBoard;
+  window.tnJoin = async function () {
+    const btn = document.getElementById('tnJoinBtn'); if (btn) { btn.disabled = true; btn.textContent = 'Joining…'; }
+    try {
+      await firebase.app().functions().httpsCallable('joinTournament')({ tid: TN.t.id });
+      await load(true); renderScreen(); loadBoard(); toast('You joined the tournament 🏆');
+    } catch (e) {
+      const m = document.getElementById('tnMsg'); if (m) { m.style.color = '#ff8a80'; m.textContent = (e && e.message) || 'Could not join'; }
+      if (btn) { btn.disabled = false; btn.textContent = '✋ Join Tournament'; }
+    }
+  };
+
+  // ───────────── tournament jap display ─────────────
+  function todayRec() {
+    const t = TN.t, k = dayKey(Date.now(), t);
+    const d = (TN.entry && TN.entry.days && TN.entry.days[k]) || null;
+    if (TN.today && TN.today.key === k) return TN.today;
+    return { key: k, rv: d ? (d.rv || 0) : 0, rn: d ? (d.rn || 0) : 0, srv: d ? (d.srv || 0) : 0, srn: d ? (d.srn || 0) : 0 };
+  }
+  function pend(k) {
+    let n = 0, s = 0;
+    TN.q.forEach((it) => { if (it.k === k && dayKey(it.t1, TN.t) === dayKey(Date.now(), TN.t)) { n += it.n; s += it.sec; } });
+    if (TN.cur && TN.cur.k === k) { n += TN.cur.n; s += TN.cur.sec; }
+    return { n, s };
+  }
+  function counts() {
+    const d = todayRec(), pr = pend('rv'), pn = pend('rn');
+    return { rv: d.rv + pr.n, rn: d.rn + pn.n, srv: d.srv + pr.s, srn: d.srn + pn.s };
+  }
+  function closeBatch() {
+    const b = TN.cur; TN.cur = null;
+    if (b && b.n > 0) { TN.q.push({ k: b.k, n: b.n, sec: Math.round(b.sec * 100) / 100, t0: b.t0, t1: b.t1 }); qSave(); }
+  }
+  function record(k) {
+    const now = Date.now(); let b = TN.cur;
+    if (b && (b.k !== k || now - b.lastTap > 15000 || b.n >= 300)) { closeBatch(); b = null; }
+    if (!b) b = TN.cur = { k, n: 0, t0: now, t1: now, sec: 0, lastTap: now };
+    else { b.sec += Math.min(now - b.lastTap, 10000) / 1000; }
+    if (TN.lastTap) TN.sessSec += Math.min(now - TN.lastTap, 10000) / 1000;
+    b.n++; b.t1 = now; b.lastTap = now; TN.lastTap = now; TN.sessN++;
+  }
+  async function flush() {
+    if (TN.busy || !TN.t || !fbUser) return;
+    closeBatchIfIdle();
+    if (!TN.q.length) return;
+    TN.busy = true;
+    const items = TN.q.slice(0, 20);
+    try {
+      const r = await firebase.app().functions().httpsCallable('submitTournamentTaps')({ tid: TN.t.id, items });
+      TN.q = TN.q.slice(items.length); qSave();
+      const x = r && r.data;
+      if (x) {
+        TN.entry = Object.assign({}, TN.entry || {}, { rn: x.rn, rv: x.rv, secRN: x.secRN, secRV: x.secRV, rvDays: x.rvDays, flags: x.flags, days: Object.assign({}, (TN.entry && TN.entry.days) || {}) });
+        if (x.today) { TN.today = Object.assign({ key: x.todayKey }, x.today); TN.entry.days[x.todayKey] = x.today; }
+      }
+    } catch (e) {
+      const c = String((e && e.code) || '');
+      if (/failed-precondition|permission-denied/.test(c)) { TN.q = []; qSave(); TN.note = (e && e.message) || ''; }
+    } finally { TN.busy = false; refreshJap(); }
+  }
+  function closeBatchIfIdle() { if (TN.cur && Date.now() - TN.cur.lastTap > 4000) closeBatch(); }
+  window.tnStartJap = async function () {
+    if (!TN.t || phase(TN.t) !== 'live' || !TN.entry || TN.entry.disq) { toast('Tournament jap is not open right now'); return; }
+    await load(true);
+    const ro = document.getElementById('tnScreen'); if (ro) ro.remove();
+    clearInterval(TN.boardT);
+    TN.prevMode = App.S.japMode;
+    TN.sessSec = 0; TN.sessN = 0; TN.lastTap = 0; TN.cur = null; TN.note = '';
+    const c = counts();
+    TN.mode = c.rv >= RV_DAILY ? 'rn' : 'rv';
+    try { switchJapMode(TN.mode === 'rv' ? 'rv' : 'radha'); } catch (_e) {}
+    const o = shell('tnJap', 99995);
+    o.style.overflow = 'hidden'; o.style.padding = 'calc(env(safe-area-inset-top,0px) + 10px) 14px calc(env(safe-area-inset-bottom,0px) + 14px)';
+    o.innerHTML =
+      '<div style="height:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;align-items:center;">' +
+      '<div style="width:100%;display:flex;align-items:center;gap:10px;">' +
+        '<button onclick="tnStopJap()" style="background:rgba(255,215,0,0.1);color:' + GOLD + ';border:1px solid rgba(255,215,0,0.4);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">✕ Done</button>' +
+        '<div style="flex:1;text-align:center;min-width:0;"><div style="font-size:13px;font-weight:800;color:' + GOLD + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🏆 ' + esc(TN.t.name) + '</div><div id="tnjLeft" style="font-size:11px;color:rgba(255,255,255,0.55);"></div></div><div style="width:70px;"></div></div>' +
+      '<div style="width:100%;display:flex;gap:8px;margin-top:12px;">' +
+        '<div id="tnjTabRv" onclick="tnSwitch(\'rv\')" style="flex:1;text-align:center;padding:9px 6px;border-radius:12px;cursor:pointer;"></div>' +
+        '<div id="tnjTabRn" onclick="tnSwitch(\'rn\')" style="flex:1;text-align:center;padding:9px 6px;border-radius:12px;cursor:pointer;"></div></div>' +
+      '<div style="width:100%;margin-top:10px;"><div style="height:10px;border-radius:6px;background:rgba(255,255,255,0.1);overflow:hidden;"><div id="tnjBar" style="height:100%;width:0%;background:linear-gradient(90deg,#2ecc71,#FFD700);transition:width .25s;"></div></div><div id="tnjBarTxt" style="font-size:11.5px;color:rgba(255,255,255,0.65);text-align:center;margin-top:4px;"></div></div>' +
+      '<div id="tnjTap" style="flex:1;width:100%;display:flex;align-items:center;justify-content:center;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;">' +
+        '<div id="tnjCircle" style="width:min(74vw,46vh);height:min(74vw,46vh);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;border:3px solid rgba(255,215,0,0.7);background:radial-gradient(circle at 35% 30%,rgba(255,215,0,0.22),rgba(255,140,0,0.07) 60%,rgba(0,0,0,0));box-shadow:0 0 40px rgba(255,215,0,0.25);transition:transform .06s;">' +
+          '<div id="tnjCount" style="font-size:min(20vw,11vh);font-weight:800;color:#fff;line-height:1;">0</div><div id="tnjName" style="font-size:14px;color:' + GOLD + ';margin-top:6px;font-weight:700;"></div></div></div>' +
+      '<div id="tnjNote" style="min-height:18px;font-size:12.5px;color:#ffb74d;text-align:center;"></div>' +
+      '<div style="width:100%;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px;">' +
+        '<div style="text-align:center;padding:9px 4px;border-radius:12px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.03);"><div style="font-size:10px;letter-spacing:1px;color:rgba(255,255,255,0.5);">SESSION</div><div id="tnjSess" style="font-size:17px;font-weight:800;">0:00</div></div>' +
+        '<div style="text-align:center;padding:9px 4px;border-radius:12px;border:1px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.06);"><div style="font-size:10px;letter-spacing:1px;color:rgba(255,215,0,0.8);">QUALITY</div><div id="tnjQ" style="font-size:17px;font-weight:800;color:' + GOLD + ';">—</div></div>' +
+        '<div style="text-align:center;padding:9px 4px;border-radius:12px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.03);"><div style="font-size:10px;letter-spacing:1px;color:rgba(255,255,255,0.5);">TODAY TIME</div><div id="tnjDay" style="font-size:17px;font-weight:800;">0:00</div></div></div>' +
+      '</div>';
+    const tz = document.getElementById('tnjTap');
+    const h = (e) => tap(e);
+    tz.addEventListener('touchstart', h, { passive: false });
+    tz.addEventListener('mousedown', h);
+    clearInterval(TN.tick); TN.tick = setInterval(refreshJap, 1000);
+    clearInterval(TN.flushT); TN.flushT = setInterval(() => { closeBatchIfIdle(); flush(); }, 9000);
+    refreshJap(); renderBanners();
+  };
+  function readCount() {
+    try { const S = App.S; return TN.mode === 'rv' ? ((S.historyRV || {})[S.tk] || 0) : ((S.history || {})[S.tk] || 0); } catch (_e) { return 0; }
+  }
+  function tap(e) {
+    const c0 = counts();
+    if (TN.mode === 'rn' && c0.rv < RV_DAILY) { try { e.preventDefault(); } catch (_e) {} return; }   // locked
+    if (phase(TN.t) !== 'live') { TN.note = 'The tournament has ended.'; refreshJap(); return; }
+    const before = readCount();
+    try { App.ht(e); } catch (err) { console.warn('tap:', err); }
+    const after = readCount();
+    const circle = document.getElementById('tnjCircle');
+    if (circle) { circle.style.transform = 'scale(0.965)'; setTimeout(() => { if (circle) circle.style.transform = ''; }, 70); }
+    if (after > before) {
+      TN.note = '';
+      record(TN.mode);
+      const c = counts();
+      if (TN.mode === 'rv' && c.rv === RV_DAILY) {
+        closeBatch(); flush();
+        TN.note = '🔓 11 malas of RV done — Radha Naam is unlocked!';
+        toast('🔓 Radha Naam unlocked');
+      }
+      if (TN.cur && TN.cur.n >= 25) { closeBatch(); flush(); }
+      refreshJap(true);
+    } else if (window._rvNamesLock) { TN.note = '📿 Mala complete — one moment…'; refreshJap(); }
+    else if (window.AudioChant && window.AudioChant.blocksTouch && window.AudioChant.blocksTouch()) { TN.note = 'Turn off Audio Mode — only your own taps count in the tournament.'; refreshJap(); }
+  }
+  window.tnSwitch = function (m) {
+    const c = counts();
+    if (m === 'rn' && c.rv < RV_DAILY) { toast('🔒 Finish 11 malas of RV first to unlock Radha Naam'); return; }
+    if (m === TN.mode) return;
+    closeBatch(); flush();
+    TN.mode = m;
+    try { switchJapMode(m === 'rv' ? 'rv' : 'radha'); } catch (_e) {}
+    TN.note = '';
+    refreshJap();
+  };
+  function refreshJap() {
+    const o = document.getElementById('tnJap'); if (!o) return;
+    const c = counts(), t = TN.t;
+    const left = document.getElementById('tnjLeft'); if (left) left.textContent = phase(t) === 'live' ? 'Ends in ' + dur(t.endAt - Date.now()) : 'Ended';
+    const rvDone = c.rv >= RV_DAILY;
+    const tabStyle = (on, locked) => 'border:1.5px solid ' + (on ? GOLD : 'rgba(255,255,255,0.18)') + ';background:' + (on ? 'rgba(255,215,0,0.14)' : 'rgba(255,255,255,0.03)') + ';' + (locked ? 'opacity:.55;' : '');
+    const trv = document.getElementById('tnjTabRv'), trn = document.getElementById('tnjTabRn');
+    if (trv) { trv.style.cssText = 'flex:1;text-align:center;padding:9px 6px;border-radius:12px;cursor:pointer;' + tabStyle(TN.mode === 'rv', false); trv.innerHTML = '<div style="font-size:12px;font-weight:800;color:' + (TN.mode === 'rv' ? GOLD : '#fff') + ';">Radha Vallabh (RV)</div><div style="font-size:11px;color:rgba(255,255,255,0.6);">' + fmt(Math.min(c.rv, RV_DAILY)) + ' / ' + fmt(RV_DAILY) + (rvDone ? ' ✔' : '') + '</div>'; }
+    if (trn) { trn.style.cssText = 'flex:1;text-align:center;padding:9px 6px;border-radius:12px;cursor:pointer;' + tabStyle(TN.mode === 'rn', !rvDone); trn.innerHTML = '<div style="font-size:12px;font-weight:800;color:' + (TN.mode === 'rn' ? GOLD : '#fff') + ';">' + (rvDone ? '' : '🔒 ') + 'Radha Naam</div><div style="font-size:11px;color:rgba(255,255,255,0.6);">' + (rvDone ? fmt(c.rn) + ' today' : 'locked') + '</div>'; }
+    const bar = document.getElementById('tnjBar'), bt = document.getElementById('tnjBarTxt');
+    if (bar) bar.style.width = Math.min(100, (c.rv / RV_DAILY) * 100) + '%';
+    if (bt) bt.textContent = rvDone ? '✔ 11 malas of RV done today · ' + Math.floor(c.rv / 108) + ' malas' : 'RV today: ' + Math.floor(c.rv / 108) + ' / 11 malas  (' + fmt(c.rv) + ' / ' + fmt(RV_DAILY) + ')';
+    const cnt = document.getElementById('tnjCount'), nm = document.getElementById('tnjName');
+    if (cnt) cnt.textContent = fmt(TN.mode === 'rv' ? c.rv : c.rn);
+    if (nm) nm.textContent = TN.mode === 'rv' ? 'Radha Vallabh · today' : 'Radha Naam · today';
+    const note = document.getElementById('tnjNote'); if (note) note.textContent = TN.note || '';
+    const idle = TN.lastTap ? Math.min((Date.now() - TN.lastTap) / 1000, 10) : 0;
+    const sess = TN.sessSec + (TN.lastTap && idle < 10 ? idle : 0);
+    const se = document.getElementById('tnjSess'); if (se) se.textContent = hms(sess);
+    const sec = TN.mode === 'rv' ? c.srv : c.srn, n = TN.mode === 'rv' ? c.rv : c.rn;
+    const q = document.getElementById('tnjQ'); if (q) q.textContent = qOf(TN.sessSec, TN.sessN) !== '—' ? qOf(TN.sessSec, TN.sessN) : qOf(sec, n);
+    const dy = document.getElementById('tnjDay'); if (dy) dy.textContent = hms(c.srv + c.srn);
+  }
+  window.tnStopJap = async function () {
+    closeBatch();
+    clearInterval(TN.tick); clearInterval(TN.flushT);
+    const o = document.getElementById('tnJap');
+    try { await Promise.race([flush(), new Promise((r) => setTimeout(r, 3500))]); } catch (_e) {}
+    if (o) o.remove();
+    try { if (TN.prevMode) switchJapMode(TN.prevMode); } catch (_e) {}
+    renderBanners();
+    window.tnOpen();
+  };
+  // anything left over from an earlier session (offline) is sent on the next load
+  setTimeout(() => { try { if (TN.q.length) flush(); } catch (_e) {} }, 8000);
+
+  // ───────────── ADMIN ─────────────
+  function adm(id, z) { return shell(id, z || 99991); }
+  const inp = 'width:100%;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,215,0,0.35);background:rgba(255,255,255,0.05);color:#fff;font-size:14px;';
+  const lab = 'font-size:11px;letter-spacing:1px;color:rgba(255,215,0,0.8);font-weight:700;margin:12px 0 4px;text-transform:uppercase;';
+  window.tnAdminClose = function () { const o = document.getElementById('tnAdmin'); if (o) o.remove(); };
+  window.tnAdminOpen = async function () {
+    if (!isDeveloper()) return;
+    const o = adm('tnAdmin');
+    o.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.5);padding:50px;">Loading…</div>';
+    let list = [];
+    try { const s = await fbDb.collection('tournaments').get(); s.forEach((d) => list.push(Object.assign({ id: d.id }, d.data()))); } catch (e) { o.innerHTML = '<div style="color:#ff8a80;padding:30px;">' + esc(e.message) + '</div>'; return; }
+    list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    o.innerHTML = '<div style="max-width:560px;margin:0 auto;"><button onclick="tnAdminClose()" style="background:rgba(255,215,0,0.1);color:' + GOLD + ';border:1px solid rgba(255,215,0,0.4);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">✕ Close</button>' +
+      '<div style="text-align:center;color:' + GOLD + ';font-size:18px;font-weight:800;margin:12px 0;">🏆 Tournaments</div>' +
+      '<button onclick="tnAdminForm()" style="width:100%;padding:13px;border-radius:14px;border:none;font-size:15px;font-weight:800;color:#000;background:linear-gradient(135deg,#FFD700,#FFA000);cursor:pointer;">＋ New Tournament</button>' +
+      '<div style="margin-top:14px;display:flex;flex-direction:column;gap:9px;">' + (list.length ? list.map((t) => {
+        const ph = phase(t), st = t.status === 'draft' ? 'DRAFT' : ph.toUpperCase();
+        return '<div style="padding:11px 13px;border-radius:13px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.03);"><div style="font-weight:800;color:' + GOLD + ';">' + esc(t.name) + ' <span style="font-size:10px;color:#000;background:' + (t.status === 'draft' ? '#9aa' : '#2ecc71') + ';padding:2px 8px;border-radius:99px;margin-left:6px;">' + st + '</span></div>' +
+          '<div style="font-size:12px;color:rgba(255,255,255,0.55);margin:3px 0 8px;">' + esc(whenStr(t.startAt)) + ' → ' + esc(whenStr(t.endAt)) + '</div>' +
+          '<div style="display:flex;gap:7px;flex-wrap:wrap;">' +
+          '<button onclick="tnAdminForm(\'' + t.id + '\')" style="' + btn('#ffb74d') + '">✏️ Edit</button>' +
+          '<button onclick="tnAdminMonitor(\'' + t.id + '\')" style="' + btn('#64b5f6') + '">📊 Monitor</button>' +
+          (t.status === 'draft' ? '<button onclick="tnAdminSetStatus(\'' + t.id + '\',\'published\')" style="' + btn('#2ecc71') + '">🚀 Publish</button><button onclick="tnAdminDelete(\'' + t.id + '\')" style="' + btn('#ff8a80') + '">🗑 Delete</button>' : '') +
+          (t.status === 'published' ? '<button onclick="tnAdminSetStatus(\'' + t.id + '\',\'draft\')" style="' + btn('#9aa') + '">⏸ Unpublish</button><button onclick="tnAdminFinalize(\'' + t.id + '\')" style="' + btn(GOLD) + '">🏁 Finalize</button>' : '') +
+          '</div></div>';
+      }).join('') : '<div style="text-align:center;color:rgba(255,255,255,0.4);padding:20px;">No tournaments yet.</div>') + '</div></div>';
+  };
+  function btn(c) { return 'padding:6px 11px;border-radius:9px;border:1px solid ' + c + ';background:transparent;color:' + c + ';font-size:12px;font-weight:700;cursor:pointer;'; }
+  function localInput(ms) { const d = new Date(ms - new Date(ms).getTimezoneOffset() * 60000); return d.toISOString().slice(0, 16); }
+  window.tnAdminForm = async function (id) {
+    let t = {};
+    if (id) { try { const s = await fbDb.collection('tournaments').doc(id).get(); t = Object.assign({ id }, s.data() || {}); } catch (_e) {} }
+    const o = adm('tnAdminForm', 99992);
+    const pr = t.prizes || [];
+    const now = Date.now();
+    o.innerHTML = '<div style="max-width:560px;margin:0 auto;"><button onclick="document.getElementById(\'tnAdminForm\').remove()" style="background:rgba(255,215,0,0.1);color:' + GOLD + ';border:1px solid rgba(255,215,0,0.4);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">✕ Cancel</button>' +
+      '<div style="text-align:center;color:' + GOLD + ';font-size:18px;font-weight:800;margin:10px 0;">' + (id ? 'Edit' : 'New') + ' Tournament</div>' +
+      '<div style="' + lab + '">Tournament name</div><input id="tnaName" maxlength="80" style="' + inp + '" value="' + esc(t.name || '') + '">' +
+      '<div style="' + lab + '">Start</div><input id="tnaStart" type="datetime-local" style="' + inp + '" value="' + localInput(t.startAt || now + 3600000) + '">' +
+      '<div style="' + lab + '">End</div><input id="tnaEnd" type="datetime-local" style="' + inp + '" value="' + localInput(t.endAt || now + 7 * 86400000) + '">' +
+      '<div style="' + lab + '">Prize currency / label</div><input id="tnaCur" maxlength="12" style="' + inp + '" value="' + esc(t.currency || '৳') + '">' +
+      '<div style="' + lab + '">Prize amounts (leave blank if not used)</div>' +
+      '<div style="display:flex;gap:8px;"><input id="tnaP1" placeholder="1st" style="' + inp + '" value="' + esc((pr[0] || {}).amount || '') + '"><input id="tnaP2" placeholder="2nd" style="' + inp + '" value="' + esc((pr[1] || {}).amount || '') + '"><input id="tnaP3" placeholder="3rd" style="' + inp + '" value="' + esc((pr[2] || {}).amount || '') + '"></div>' +
+      '<div style="' + lab + '">Rules (users see this)</div><textarea id="tnaRules" rows="6" maxlength="3000" style="' + inp + '">' + esc(t.rules || '') + '</textarea>' +
+      '<div style="' + lab + '">Fastest allowed jap (seconds per jap)</div><input id="tnaMin" type="number" step="0.05" min="0.1" max="2" style="' + inp + '" value="' + (t.minSecPerJap || 0.2) + '"><div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:3px;">Taps faster than this are rejected as impossible. Your fastest honest users show about Q 0.2s, so 0.2 is a safe default.</div>' +
+      '<div style="' + lab + '">Day changes at (time zone)</div><select id="tnaTz" style="' + inp + '">' + [['360', 'Bangladesh (UTC+6)'], ['330', 'India (UTC+5:30)'], ['345', 'Nepal (UTC+5:45)'], ['0', 'UTC'], ['240', 'UAE (UTC+4)'], ['-300', 'US East (UTC-5)']].map((z) => '<option value="' + z[0] + '"' + (String(t.tzOffsetMin == null ? 360 : t.tzOffsetMin) === z[0] ? ' selected' : '') + '>' + z[1] + '</option>').join('') + '</select>' +
+      '<div style="display:flex;gap:10px;margin-top:18px;"><button onclick="tnAdminSave(\'' + (id || '') + '\',false)" style="flex:1;padding:13px;border-radius:13px;border:1px solid #9aa;background:transparent;color:#cfd8dc;font-weight:800;cursor:pointer;">💾 Save draft</button><button onclick="tnAdminSave(\'' + (id || '') + '\',true)" style="flex:1;padding:13px;border-radius:13px;border:none;background:linear-gradient(135deg,#2ecc71,#1fa85a);color:#000;font-weight:800;cursor:pointer;">🚀 Save & Publish</button></div><div id="tnaMsg" style="text-align:center;font-size:12.5px;margin-top:8px;color:#ff8a80;"></div></div>';
+  };
+  window.tnAdminSave = async function (id, publish) {
+    const g = (i) => (document.getElementById(i) || {}).value || '';
+    const msg = (m) => { const e = document.getElementById('tnaMsg'); if (e) e.textContent = m; };
+    const name = g('tnaName').trim(), rules = g('tnaRules').trim();
+    const startAt = new Date(g('tnaStart')).getTime(), endAt = new Date(g('tnaEnd')).getTime();
+    if (!name) return msg('Please enter a tournament name');
+    if (!(startAt > 0) || !(endAt > startAt)) return msg('End must be after start');
+    const prizes = [g('tnaP1'), g('tnaP2'), g('tnaP3')].map((a, i) => ({ rank: i + 1, amount: a.trim() })).filter((p) => p.amount);
+    const data = { name: name.slice(0, 80), rules: rules.slice(0, 3000), startAt, endAt, prizes, currency: g('tnaCur').trim().slice(0, 12),
+      minSecPerJap: Math.min(2, Math.max(0.1, parseFloat(g('tnaMin')) || 0.2)), tzOffsetMin: parseInt(g('tnaTz'), 10), updatedAt: Date.now() };
+    try {
+      if (id) { if (publish) data.status = 'published'; await fbDb.collection('tournaments').doc(id).update(data); }
+      else { data.status = publish ? 'published' : 'draft'; data.createdAt = Date.now(); await fbDb.collection('tournaments').add(data); }
+      const f = document.getElementById('tnAdminForm'); if (f) f.remove();
+      toast(publish ? '🚀 Published — announce it with a broadcast!' : 'Saved');
+      TN.loadedAt = 0; load(true); tnAdminOpen();
+    } catch (e) { msg('Could not save: ' + (e && e.message)); }
+  };
+  window.tnAdminSetStatus = async function (id, st) {
+    if (!confirm(st === 'published' ? 'Publish this tournament now? Users will see it.' : 'Unpublish (back to draft)?')) return;
+    try { await fbDb.collection('tournaments').doc(id).update({ status: st, updatedAt: Date.now() }); TN.loadedAt = 0; load(true); tnAdminOpen(); } catch (e) { toast('Failed: ' + e.message); }
+  };
+  window.tnAdminDelete = async function (id) {
+    if (!confirm('Delete this draft?')) return;
+    try { await fbDb.collection('tournaments').doc(id).delete(); tnAdminOpen(); } catch (e) { toast('Failed: ' + e.message); }
+  };
+  window.tnAdminFinalize = async function (id) {
+    if (!confirm('Finalize now? This ranks everyone (removed users excluded), fixes the winners and ends the tournament.')) return;
+    try { const r = await firebase.app().functions().httpsCallable('finalizeTournament')({ tid: id }); toast('Finalized 🏆'); TN.loadedAt = 0; load(true); tnAdminMonitor(id); } catch (e) { toast('Failed: ' + ((e && e.message) || e)); }
+  };
+  window.tnAdminMonitor = async function (id) {
+    const o = adm('tnAdminMon', 99993);
+    o.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.5);padding:50px;">Loading…</div>';
+    try {
+      const ts = await fbDb.collection('tournaments').doc(id).get(); const t = Object.assign({ id }, ts.data() || {});
+      const es = await fbDb.collection('tournaments').doc(id).collection('entries').get();
+      let rows = []; es.forEach((d) => rows.push(d.data())); rows.sort(rankSort);
+      let h = '<div style="max-width:600px;margin:0 auto;"><button onclick="document.getElementById(\'tnAdminMon\').remove()" style="background:rgba(255,215,0,0.1);color:' + GOLD + ';border:1px solid rgba(255,215,0,0.4);padding:7px 14px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">✕ Close</button>' +
+        '<div style="text-align:center;color:' + GOLD + ';font-size:17px;font-weight:800;margin:10px 0 2px;">📊 ' + esc(t.name) + '</div><div style="text-align:center;font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:10px;">' + rows.length + ' participants · ' + esc(phase(t)) + '</div>';
+      if (t.status === 'finalized' && (t.winners || []).length) {
+        h += '<div style="padding:11px 13px;border-radius:13px;border:1px solid rgba(255,215,0,0.5);background:rgba(255,215,0,0.07);margin-bottom:12px;"><div style="font-size:11px;letter-spacing:1.5px;color:' + GOLD + ';font-weight:800;margin-bottom:6px;">WINNERS · PAYOUT</div>' +
+          t.winners.map((w, i) => '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;"><span style="flex:1;">' + (i + 1) + '. <b>' + esc(w.name) + '</b> — ' + fmt(w.rn) + ' · ' + esc((t.currency || '') + ' ' + (w.amount || '')) + '</span><button onclick="tnAdminPaid(\'' + id + '\',' + i + ')" style="' + btn(w.paid ? '#2ecc71' : '#ffb74d') + '">' + (w.paid ? '✔ Paid' : 'Mark paid') + '</button><button onclick="tnAdminContact(\'' + w.uid + '\')" style="' + btn('#64b5f6') + '">Contact</button></div>').join('') + '</div>';
+      }
+      h += '<div style="display:flex;flex-direction:column;gap:7px;">' + rows.map((r, i) => '<div style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:12px;border:1px solid ' + ((r.flags || 0) > 0 ? 'rgba(255,183,77,0.6)' : 'rgba(255,255,255,0.12)') + ';' + (r.disq ? 'opacity:.5;' : '') + '"><div style="width:26px;text-align:center;font-weight:800;color:rgba(255,255,255,0.55);">' + (i + 1) + '</div><div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(r.name) + '</div><div style="font-size:11px;color:rgba(255,255,255,0.5);">RN ' + fmt(r.rn) + ' · RV ' + fmt(r.rv) + ' · days ' + (r.rvDays || 0) + ' · Q ' + qOf(r.secRN, r.rn) + (r.flags ? ' · <span style="color:#ffb74d;">⚑ ' + r.flags + ' flags</span>' : '') + '</div></div><button onclick="tnAdminDisq(\'' + id + '\',\'' + r.uid + '\',' + (r.disq ? 'false' : 'true') + ')" style="' + btn(r.disq ? '#2ecc71' : '#ff8a80') + '">' + (r.disq ? 'Restore' : 'Remove') + '</button></div>').join('') + '</div></div>';
+      o.innerHTML = h;
+    } catch (e) { o.innerHTML = '<div style="color:#ff8a80;padding:30px;">' + esc(e.message) + '</div>'; }
+  };
+  window.tnAdminDisq = async function (tid, uid, on) {
+    if (on && !confirm('Remove this user from the tournament?')) return;
+    try { await fbDb.collection('tournaments').doc(tid).collection('entries').doc(uid).update({ disq: !!on }); tnAdminMonitor(tid); } catch (e) { toast('Failed: ' + e.message); }
+  };
+  window.tnAdminPaid = async function (tid, idx) {
+    try {
+      const ref = fbDb.collection('tournaments').doc(tid); const s = await ref.get(); const w = (s.data().winners || []).slice();
+      if (!w[idx]) return; w[idx] = Object.assign({}, w[idx], { paid: !w[idx].paid });
+      await ref.update({ winners: w }); tnAdminMonitor(tid);
+    } catch (e) { toast('Failed: ' + e.message); }
+  };
+  window.tnAdminContact = async function (uid) {
+    try {
+      const s = await fbDb.collection('profiles').doc(uid).get(); const p = s.data() || {};
+      const dg = String(p.mobile || '').replace(/\D/g, '');
+      alert((p.name || '') + '\n' + (p.mobile || 'no mobile') + (p.mobileVerified ? ' ✔' : '') + '\n' + (p.address || 'no address') + '\n' + (p.usesWhatsapp ? 'WhatsApp ✔ ' : '') + (p.usesTelegram ? 'Telegram ✔' : ''));
+      if (dg && p.usesWhatsapp && confirm('Open WhatsApp chat?')) window.open('https://wa.me/' + dg, '_blank');
+    } catch (e) { toast('Failed: ' + e.message); }
+  };
+})();

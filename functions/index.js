@@ -1132,7 +1132,8 @@ exports.submitTournamentTaps = functions.https.onCall(async (data, context) => {
       if (n > 600) n = 600;
       const span = (t1 - t0) / 1000 + 2;
       if (sec > span) sec = span;                                   // can't have been tapping longer than the batch lasted
-      const maxN = Math.floor(sec / minSec) + 3;                    // fastest believable jap rate
+      const qMinK = Number(k === "rv" ? t.minQRv : t.minQRn) || 0;         // admin's minimum Q for this naam (0 = none)
+      const maxN = Math.floor(sec / Math.max(minSec, qMinK * 0.9)) + 3;                    // fastest believable jap rate
       if (n > maxN) { n = maxN; flags++; }
       if (n <= 0) continue;
       const dk = _tnDayKey(Math.min(t1, t.endAt), off);

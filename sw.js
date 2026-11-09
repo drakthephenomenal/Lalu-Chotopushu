@@ -1,3 +1,4 @@
+// v473: Tournament jap screen: mala bead ring (108 beads + Sumeru), animated gear (deity / Hitju-Gurudev / count size), mala-complete glow.
 // v472: Tournaments: leaderboard shows RV too; Q turns red (RN < 0.5s, RV < 1.5s); jap screen looks like the main one (Radha Vallabh deity + Hit Ju Maharaj + Gurudev).
 // v471: Tournaments (admin create/manage, verified-only join, server-checked scoring, RV-first daily rule, tournament jap display, all-participants board).
 // v463: Profile: SMS-OTP verified mobile number (country code), present address wording, WhatsApp/Telegram ticks.
@@ -477,7 +478,7 @@
 // v420 (Play build + dev email): bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
 // v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
 // v422: bumped cache to force-invalidate stale app.js / style.css / index.html — Haridashi Sampraday (Radha + Kunj Vihari / Sri Haridas, own Deity/Guru/Acharya photos, own lifetime target); Nimbark Deity/Guru/Acharya jap-display photos + Yugal mantra animation now matches Hare Krishna; reopened wishes no longer stay paused.
-const CACHE = 'radha-jap-v472';
+const CACHE = 'radha-jap-v473';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

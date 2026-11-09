@@ -39205,8 +39205,16 @@ async function _syncPublicPhoto(p, largeOverride) {
       '<div style="width:100%;display:flex;gap:8px;margin-top:12px;">' +
         '<div id="tnjTabRv" onclick="tnSwitch(\'rv\')" style="flex:1;text-align:center;padding:9px 6px;border-radius:12px;cursor:pointer;"></div>' +
         '<div id="tnjTabRn" onclick="tnSwitch(\'rn\')" style="flex:1;text-align:center;padding:9px 6px;border-radius:12px;cursor:pointer;"></div></div>' +
-      '<div style="width:100%;margin-top:10px;"><div style="height:10px;border-radius:6px;background:rgba(255,255,255,0.1);overflow:hidden;"><div id="tnjBar" style="height:100%;width:0%;background:linear-gradient(90deg,#2ecc71,#FFD700);transition:width .25s;"></div></div><div id="tnjBarTxt" style="font-size:11.5px;color:rgba(255,255,255,0.65);text-align:center;margin-top:4px;"></div></div>' +
+      '<div class="bead-frame-wrap" id="tnjRingWrap" style="width:100%;box-sizing:border-box;margin:8px 0 0;">' +
+        '<svg class="bead-frame" id="tnjRing" aria-hidden="true"></svg>' +
+        '<div style="position:relative;z-index:1;text-align:center;padding:7px 6px 5px;"><div id="tnjBarTxt" style="font-size:11.5px;color:rgba(255,255,255,0.7);"></div>' +
+        '<div id="tnjMala" style="font-size:15px;font-weight:800;color:' + GOLD + ';margin-top:3px;"></div></div></div>' +
       '<div id="tnjTap" class="tnz">' +
+        '<button id="tnjGear" class="tnz-gear" type="button" aria-label="Adjust photo and count size" title="Adjust photo and count size" onclick="tnGearToggle(event)" ontouchstart="event.stopPropagation()" onmousedown="event.stopPropagation()"><span class="gi">⚙️</span></button>' +
+        '<div id="tnjPanel" class="tnz-panel" onclick="event.stopPropagation()" ontouchstart="event.stopPropagation()" onmousedown="event.stopPropagation()">' +
+          '<div class="tp-title">Jap Display</div>' +
+          tnPrefRow('Deity size', 'rv', 'tnjPvRv') + tnPrefRow('Hitju · Gurudev', 'side', 'tnjPvSide') + tnPrefRow('Count size', 'cnt', 'tnjPvCnt') +
+          '<button type="button" class="tp-reset" onclick="tnPrefReset(event)">Reset to Default</button></div>' +
         '<img id="tnjRv" class="rv-wm" alt="" draggable="false" onerror="this.style.display=\'none\'">' +
         '<img id="tnjHj" class="hitju-wm" alt="" draggable="false" onerror="this.style.display=\'none\'">' +
         '<img id="tnjGd" class="gurudev-wm" alt="" draggable="false" onerror="this.style.display=\'none\'">' +
@@ -39222,7 +39230,9 @@ async function _syncPublicPhoto(p, largeOverride) {
       setI('tnjRv', 'bgRadhaVallabh', './radha-vallabh.png');
       setI('tnjHj', 'bgHitju', './hitju-maharaj.png');
       setI('tnjGd', 'bgGurudev', './gurudev.png');
-      tnLayout(); setTimeout(tnLayout, 60); setTimeout(tnLayout, 400);
+      TN.ring = null;
+      const lay = () => { tnLayout(); tnRing(); };
+      lay(); setTimeout(lay, 60); setTimeout(lay, 400);
     } catch (_e) {}
     const tz = document.getElementById('tnjTap');
     const h = (e) => tap(e);
@@ -39248,10 +39258,75 @@ async function _syncPublicPhoto(p, largeOverride) {
       opacity:.45;pointer-events:none;user-select:none;z-index:1;animation:divineBreathGlow 10s ease-in-out infinite;}
     .tnz .gurudev-wm{position:absolute;top:min(var(--rv-bottom),calc(100% - var(--side-w) * var(--rv-aspect)));right:8px;width:var(--side-w);height:auto;
       opacity:.45;pointer-events:none;user-select:none;z-index:1;animation:divineBreathGlow 10s ease-in-out infinite;}
+    .tnz img.tnz-flash{animation:malaGlowPulse 2.4s ease-in-out forwards !important;mix-blend-mode:screen !important;z-index:3 !important;}
+    .tnz .tnz-gear{position:absolute;top:8px;right:8px;z-index:40;width:28px;height:28px;border-radius:50%;background:rgba(6,13,31,0.55);
+      border:1px solid rgba(255,215,0,0.4);color:#FFD700;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;
+      cursor:pointer;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 8px rgba(0,0,0,0.35);animation:tnzGearGlow 3.2s ease-in-out infinite;}
+    .tnz .tnz-gear .gi{display:inline-block;}
+    .tnz .tnz-gear.spin .gi{animation:tnzGearSpin .65s cubic-bezier(.4,0,.2,1);}
+    .tnz .tnz-gear.active{background:rgba(255,215,0,0.28);border-color:#FFD700;}
+    .tnz .tnz-gear.active .gi{animation:tnzGearSpin 6s linear infinite;}
+    @keyframes tnzGearGlow{0%,100%{box-shadow:0 2px 8px rgba(0,0,0,0.35),0 0 0 rgba(255,215,0,0);}50%{box-shadow:0 2px 8px rgba(0,0,0,0.35),0 0 12px rgba(255,215,0,0.55);}}
+    @keyframes tnzGearSpin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+    @keyframes tnzPanelIn{from{opacity:0;transform:translateY(-6px) scale(.96);}to{opacity:1;transform:none;}}
+    .tnz .tnz-panel{position:absolute;top:42px;right:8px;z-index:42;width:200px;padding:10px 12px 12px;background:rgba(6,13,31,0.94);
+      border:1px solid rgba(255,215,0,0.35);border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.5);display:none;flex-direction:column;gap:8px;cursor:default;}
+    .tnz .tnz-panel.open{display:flex;animation:tnzPanelIn .18s ease-out;}
+    .tnz .tp-title{font-size:11px;letter-spacing:1px;color:#FFD700;font-weight:700;text-transform:uppercase;opacity:.85;}
+    .tnz .tp-row{display:flex;align-items:center;justify-content:space-between;gap:6px;}
+    .tnz .tp-lbl{font-size:12px;color:rgba(255,255,255,0.85);}
+    .tnz .tp-ctrl{display:flex;align-items:center;gap:5px;}
+    .tnz .tp-ctrl button{width:24px;height:24px;border-radius:50%;border:1px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.08);color:#FFD700;font-size:15px;line-height:1;padding:0;cursor:pointer;}
+    .tnz .tp-val{min-width:38px;text-align:center;font-size:12px;color:#fff;font-weight:700;}
+    .tnz .tp-reset{border:1px solid rgba(255,215,0,0.35);background:transparent;color:#FFD700;border-radius:8px;font-size:11px;padding:6px;cursor:pointer;}
     .tnz .tnz-count{position:absolute;left:0;right:0;bottom:6px;z-index:5;text-align:center;pointer-events:none;}
     #tnjCount{font-size:var(--cnt);font-weight:800;color:#fff;line-height:1;text-shadow:0 2px 14px rgba(0,0,0,.95),0 0 22px rgba(255,215,0,.45);}
     #tnjName{font-size:13px;color:#FFD700;margin-top:3px;font-weight:700;text-shadow:0 1px 8px rgba(0,0,0,.95);}
   `;
+  // ⚙️ gear in front of the zone: adjust deity size, Hitju/Gurudev size and the count size (saved on this device).
+  const TN_PREF_KEY = 'tnj_view_prefs_v1';
+  function tnLoadPrefs() {
+    try {
+      const p = JSON.parse(localStorage.getItem(TN_PREF_KEY) || '{}'), f = (v) => (typeof v === 'number' && v >= 0.6 && v <= 1.6) ? v : 1;
+      return { rv: f(p.rv), side: f(p.side), cnt: f(p.cnt) };
+    } catch (_e) { return { rv: 1, side: 1, cnt: 1 }; }
+  }
+  let TN_PREF = tnLoadPrefs();
+  function tnSavePrefs() { try { localStorage.setItem(TN_PREF_KEY, JSON.stringify(TN_PREF)); } catch (_e) {} }
+  function tnPrefRow(label, key, valId) {
+    return '<div class="tp-row"><span class="tp-lbl">' + label + '</span><div class="tp-ctrl">' +
+      '<button type="button" onclick="tnPref(\'' + key + '\',-1,event)">−</button><span class="tp-val" id="' + valId + '">100%</span>' +
+      '<button type="button" onclick="tnPref(\'' + key + '\',1,event)">+</button></div></div>';
+  }
+  function tnPrefUi() {
+    [['tnjPvRv', 'rv'], ['tnjPvSide', 'side'], ['tnjPvCnt', 'cnt']].forEach((x) => {
+      const el = document.getElementById(x[0]); if (el) el.textContent = Math.round(TN_PREF[x[1]] * 100) + '%';
+    });
+  }
+  window.tnGearToggle = function (e) {
+    if (e) e.stopPropagation();
+    const g = document.getElementById('tnjGear'), pn = document.getElementById('tnjPanel'); if (!g || !pn) return;
+    const open = !pn.classList.contains('open');
+    pn.classList.toggle('open', open); g.classList.toggle('active', open);
+    g.classList.remove('spin'); void g.offsetWidth; g.classList.add('spin');
+    setTimeout(() => { try { g.classList.remove('spin'); } catch (_e) {} }, 700);
+    tnPrefUi();
+  };
+  window.tnPref = function (k, dir, e) {
+    if (e) e.stopPropagation();
+    TN_PREF[k] = Math.max(0.6, Math.min(1.6, Math.round((TN_PREF[k] + dir * 0.1) * 100) / 100));
+    tnSavePrefs(); tnPrefUi(); tnLayout();
+  };
+  window.tnPrefReset = function (e) {
+    if (e) e.stopPropagation();
+    TN_PREF = { rv: 1, side: 1, cnt: 1 }; tnSavePrefs(); tnPrefUi(); tnLayout();
+  };
+  document.addEventListener('click', (e) => {        // tapping outside the panel closes it
+    const pn = document.getElementById('tnjPanel');
+    if (pn && pn.classList.contains('open') && !(e.target && e.target.closest && e.target.closest('#tnjPanel,#tnjGear'))) {
+      pn.classList.remove('open'); const g = document.getElementById('tnjGear'); if (g) g.classList.remove('active');
+    }
+  });
   // Picture the user chose on the main Jap screen (incl. custom photos); default image if none.
   function japImg(srcId, fallback) {
     try { const el = document.getElementById(srcId); if (el && el.getAttribute('src')) return el.src; } catch (_e) {}
@@ -39261,13 +39336,69 @@ async function _syncPublicPhoto(p, largeOverride) {
   function tnLayout() {
     const z = document.getElementById('tnjTap'); if (!z) return;
     const w = z.clientWidth, h = z.clientHeight; if (!w || !h) return;
-    const rv = Math.max(120, Math.min(w * 0.62, 480, h * 0.62));
-    const side = Math.max(54, Math.min(w * 0.2, 140, h * 0.2));
+    const rv = Math.max(100, Math.min(Math.min(w * 0.62, 480, h * 0.62) * TN_PREF.rv, w * 0.92));
+    const side = Math.max(44, Math.min(Math.min(w * 0.2, 140, h * 0.2) * TN_PREF.side, w * 0.34));
     z.style.setProperty('--rv-w', Math.round(rv) + 'px');
     z.style.setProperty('--side-w', Math.round(side) + 'px');
-    z.style.setProperty('--cnt', Math.round(Math.max(30, Math.min(w * 0.13, h * 0.17, 66))) + 'px');
+    z.style.setProperty('--cnt', Math.round(Math.max(22, Math.min(Math.max(30, Math.min(w * 0.13, h * 0.17, 66)) * TN_PREF.cnt, 100))) + 'px');
   }
-  window.addEventListener('resize', () => { try { tnLayout(); } catch (_e) {} });
+  // ── Mala bead ring: same as the main Jap screen - 108 beads on a rectangle, Sumeru bead on top, 100 blue + 8 gold,
+  // the direction flips every mala. It follows today's count of the tab you are chanting (Radha Vallabh or Radha Naam).
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  function perimXY(d, x0, y0, x1, y1) {
+    const w = x1 - x0, h = y1 - y0, perim = 2 * (w + h);
+    d = ((d % perim) + perim) % perim;
+    if (d < w) return { x: x0 + d, y: y0 };
+    if (d < w + h) return { x: x1, y: y0 + (d - w) };
+    if (d < 2 * w + h) return { x: x1 - (d - w - h), y: y1 };
+    return { x: x0, y: y1 - (d - 2 * w - h) };
+  }
+  function tnRing() {
+    const wrap = document.getElementById('tnjRingWrap'), svg = document.getElementById('tnjRing');
+    if (!wrap || !svg) return;
+    if (svg.childElementCount !== 109) {
+      svg.innerHTML = '';
+      for (let i = 0; i < 108; i++) {
+        const c = document.createElementNS(SVGNS, 'circle');
+        c.setAttribute('r', '2.2'); c.setAttribute('class', i < 100 ? 'bead bead-blue' : 'bead bead-gold'); svg.appendChild(c);
+      }
+      const s = document.createElementNS(SVGNS, 'circle');
+      s.setAttribute('r', '4.5'); s.setAttribute('class', 'bead bead-sumeru'); svg.appendChild(s);
+      TN.ring = null;
+    }
+    const rect = wrap.getBoundingClientRect(), W = rect.width, H = rect.height;
+    if (!W || !H) return;
+    const c = counts(), n = TN.mode === 'rv' ? c.rv : c.rn;
+    const N = 108, inMala = n % N, malaIdx = Math.floor(n / N), done = inMala === 0 && n > 0;
+    const cw = (done ? malaIdx - 1 : malaIdx) % 2 === 0, filled = done ? N : inMala;
+    const beads = svg.children;
+    if (!TN.ring || TN.ring.W !== W || TN.ring.H !== H || TN.ring.cw !== cw) {
+      svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+      const x0 = 4, y0 = 4, x1 = W - 4, y1 = H - 4, step = 2 * ((x1 - x0) + (y1 - y0)) / 109, sumD = W / 2 - x0;
+      beads[108].setAttribute('cx', W / 2); beads[108].setAttribute('cy', y0);
+      for (let i = 0; i < N; i++) {
+        const p = perimXY(cw ? sumD + step + i * step : sumD - step - i * step, x0, y0, x1, y1);
+        beads[i].setAttribute('cx', p.x); beads[i].setAttribute('cy', p.y);
+      }
+      TN.ring = { W: W, H: H, cw: cw, filled: -1 };
+    }
+    const prev = TN.ring.filled;
+    if (prev !== filled) {
+      for (let i = 0; i < N; i++) beads[i].setAttribute('class', (i >= 100 ? 'bead bead-gold' : 'bead bead-blue') + (i < filled ? ' filled' : ''));
+      if (prev !== -1 && filled > prev && filled > 0 && filled <= N) {
+        const pb = beads[filled - 1]; pb.classList.add('bead-pulse'); setTimeout(() => { try { pb.classList.remove('bead-pulse'); } catch (_e) {} }, 500);
+      }
+      TN.ring.filled = filled;
+    }
+    const ml = document.getElementById('tnjMala');
+    if (ml) ml.textContent = 'Mala ' + (done ? malaIdx : malaIdx + 1) + ' · ' + (done ? N : inMala) + ' / ' + N;
+  }
+  function tnFlash() {                  // pictures surge to full glow when a mala is completed (like the main screen)
+    const imgs = document.querySelectorAll('#tnjTap img');
+    imgs.forEach((im) => { im.classList.remove('tnz-flash'); void im.offsetWidth; im.classList.add('tnz-flash'); });
+    setTimeout(() => imgs.forEach((im) => { try { im.classList.remove('tnz-flash'); } catch (_e) {} }), 2500);
+  }
+  window.addEventListener('resize', () => { try { tnLayout(); tnRing(); } catch (_e) {} });
   function readCount() {
     try { const S = App.S; return TN.mode === 'rv' ? ((S.historyRV || {})[S.tk] || 0) : ((S.history || {})[S.tk] || 0); } catch (_e) { return 0; }
   }
@@ -39289,6 +39420,7 @@ async function _syncPublicPhoto(p, largeOverride) {
         TN.note = '🔓 11 malas of RV done — Radha Naam is unlocked!';
         toast('🔓 Radha Naam unlocked');
       }
+      { const nn = TN.mode === 'rv' ? c.rv : c.rn; if (nn > 0 && nn % 108 === 0) tnFlash(); }
       if (TN.cur && TN.cur.n >= 25) { closeBatch(); flush(); }
       refreshJap(true);
     } else if (window._rvNamesLock) { TN.note = '📿 Mala complete — one moment…'; refreshJap(); }
@@ -39337,6 +39469,7 @@ async function _syncPublicPhoto(p, largeOverride) {
       if (qh) { qh.textContent = (low ? 'too fast · ' : '') + 'keep ≥ ' + Q_MIN[km] + 's'; qh.style.color = low ? Q_RED : 'rgba(255,255,255,0.45)'; }
     }
     const dy = document.getElementById('tnjDay'); if (dy) dy.textContent = hms(c.srv + c.srn);
+    try { tnRing(); } catch (_e) {}
   }
   window.tnStopJap = async function () {
     closeBatch();

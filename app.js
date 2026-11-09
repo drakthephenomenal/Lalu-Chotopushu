@@ -38875,7 +38875,7 @@ async function _syncPublicPhoto(p, largeOverride) {
 ;(function () {
   const RV_DAILY = 11 * 108;
   const TN = { t: null, entry: null, loadedAt: 0, mode: 'rv', prevMode: null, cur: null, q: [], today: null,
-               sessSec: 0, sessN: 0, lastTap: 0, sm: { rv: { s: 0, n: 0, last: 0 }, rn: { s: 0, n: 0, last: 0 } }, boardT: null, tick: null, flushT: null, busy: false, note: '' };
+               sessSec: 0, sessN: 0, lastTap: 0, lastOk: { rv: 0, rn: 0 }, preT: 0, sm: { rv: { s: 0, n: 0, last: 0 }, rn: { s: 0, n: 0, last: 0 } }, boardT: null, tick: null, flushT: null, busy: false, note: '' };
   window._TN = TN;
 
   const fmt = (n) => Number(n || 0).toLocaleString('en-US');
@@ -38907,7 +38907,9 @@ async function _syncPublicPhoto(p, largeOverride) {
   function qOf(sec, n) { return (n > 0 && sec > 0) ? (sec / n).toFixed(2) + 's' : '—'; }
   // Quality = seconds per jap. Chanting faster than the limit turns the Q red.
   // Radha Naam: below 0.5s is red. Radha Vallabh: its own limit - below 1.5s is red.
-  const Q_MIN = { rn: 0.5, rv: 1.5 };
+  // Minimum Q (seconds per jap) comes from the tournament settings (admin); defaults 0.5s Radha Naam / 1.5s Radha Vallabh. 0 = off.
+  const _qm = (v, d) => { const n = Number(v); return (v != null && isFinite(n) && n >= 0) ? n : d; };
+  const Q_MIN = { get rn() { return _qm(TN.t && TN.t.minQRn, 0.5); }, get rv() { return _qm(TN.t && TN.t.minQRv, 1.5); } };
   const Q_RED = '#ff5252';
   function qNum(sec, n) { return (n > 0 && sec > 0) ? sec / n : null; }
   function qIsLow(v, k) { return v != null && v < Q_MIN[k]; }
@@ -38963,7 +38965,7 @@ async function _syncPublicPhoto(p, largeOverride) {
     else if (ph === 'ended') line = 'Ended · results coming soon';
     else line = 'Results are out 🎉';
     return '<div onclick="tnOpen()" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:14px;border:1px solid rgba(255,215,0,0.55);background:linear-gradient(135deg,rgba(255,215,0,0.16),rgba(255,140,0,0.08));box-shadow:0 0 18px rgba(255,215,0,0.12);">' +
-      '<div style="font-size:24px;">🏆</div><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:800;color:' + GOLD + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(t.name) + '</div>' +
+      '<div style="font-size:24px;" class="' + (ph === 'live' ? 'tn-trophy-anim' : '') + '">🏆</div><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:800;color:' + GOLD + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(t.name) + '</div>' +
       '<div style="font-size:11.5px;color:rgba(255,255,255,0.65);">' + esc(line) + '</div></div><div style="font-size:12px;font-weight:700;color:' + GOLD + ';">Open ›</div></div>';
   }
   function renderBanners() {
@@ -38978,8 +38980,35 @@ async function _syncPublicPhoto(p, largeOverride) {
       const html = bannerHtml(); h.innerHTML = html; h.style.display = html ? 'block' : 'none';
     }
     const oldPill = document.getElementById('tnPill'); if (oldPill) oldPill.remove();   // the floating "Diwali · tap" pill is gone
+    // moving 🏆 on the Family tab of the bottom bar while a tournament is live
+    try {
+      if (!document.getElementById('tnAnimStyle')) {
+        const st = document.createElement('style'); st.id = 'tnAnimStyle';
+        st.textContent = '@keyframes tnTrophy{0%,100%{transform:translateY(0) rotate(-12deg) scale(1);}25%{transform:translateY(-4px) rotate(10deg) scale(1.2);}50%{transform:translateY(0) rotate(-8deg) scale(1);}75%{transform:translateY(-2px) rotate(12deg) scale(1.1);}}' +
+          '.tn-trophy-anim{display:inline-block;animation:tnTrophy 1.4s ease-in-out infinite;transform-origin:50% 80%;filter:drop-shadow(0 0 6px rgba(255,215,0,0.7));}' +
+          '#tnNavTrophy{position:absolute;top:0;left:50%;margin-left:6px;font-size:13px;line-height:1;pointer-events:none;z-index:2;}';
+        document.head.appendChild(st);
+      }
+      const nav = document.getElementById('navLb');
+      if (nav) {
+        let tr = document.getElementById('tnNavTrophy');
+        const liveNow = TN.t && phase(TN.t) === 'live';
+        if (liveNow && !tr) { tr = document.createElement('span'); tr.id = 'tnNavTrophy'; tr.className = 'tn-trophy-anim'; tr.textContent = '🏆'; nav.appendChild(tr); }
+        else if (!liveNow && tr) tr.remove();
+      }
+    } catch (_e) {}
   }
   setInterval(() => { try { if (fbUser) renderBanners(); } catch (_e) {} }, 2500);
+  // when a tournament goes from upcoming to live while its screen is open, refresh it so "Start Tournament Jap" appears
+  setInterval(() => {
+    try {
+      const ph = phase(TN.t), o = document.getElementById('tnScreen');
+      if (o && TN._lastPh && TN._lastPh !== ph) { renderScreen(); loadBoard(); }
+      TN._lastPh = ph;
+      const c = document.getElementById('tnCount');
+      if (c && TN.t && ph === 'upcoming') c.textContent = 'Starts ' + whenStr(TN.t.startAt) + ' (in ' + dur(TN.t.startAt - Date.now()) + ')';
+    } catch (_e) {}
+  }, 1000);
   setTimeout(() => { try { load(true); } catch (_e) {} }, 4000);
   setTimeout(() => { try { load(true); } catch (_e) {} }, 16000);
   document.addEventListener('visibilitychange', () => {
@@ -38991,27 +39020,10 @@ async function _syncPublicPhoto(p, largeOverride) {
   window.addEventListener('online', () => { try { flush(); } catch (_e) {} });
 
   // ───────────── manual Add / Deduct lock while a joined tournament is live ─────────────
-  function manualBlocked() {
-    try {
-      const t = TN.t, e = TN.entry;
-      if (!t || !e || e.disq || t.status !== 'published') return false;
-      const now = Date.now();
-      return now >= t.startAt && now <= t.endAt + 600000;
-    } catch (_e) { return false; }
-  }
+  // Manual Add / Deduct is allowed again. It only changes the normal totals — the tournament score comes from real taps
+  // counted on the server, so manual changes never affect it.
+  function manualBlocked() { return false; }
   window._tnManualBlocked = manualBlocked;
-  ['addManualJap', 'addPrevJap', 'addNameJapDeduct', 'removeNameJapDeduct', 'addOtherDayJap', 'addJapTimeToday', 'addJapTimeOther',
-   'deductTodayJap', 'deductOtherJap', 'deductJapTimeToday', 'deductJapTimeOther', 'addOtherDayJap28', 'addPrevJap28',
-   'addNameJapDeduct28', 'removeNameJapDeduct28', 'deduct28CyclesToday', 'deductOtherJap28'].forEach((n) => {
-    try {
-      const f = window[n]; if (typeof f !== 'function') return;
-      window[n] = function () {
-        if (manualBlocked()) { toast('🏆 Tournament live — manual Add / Deduct is switched off until it ends'); return; }
-        return f.apply(this, arguments);
-      };
-    } catch (_e) {}
-  });
-
   // ───────────── overlay shell ─────────────
   function shell(id, z) {
     const old = document.getElementById(id); if (old) old.remove();
@@ -39066,17 +39078,17 @@ async function _syncPublicPhoto(p, largeOverride) {
     h += '<div style="margin-top:12px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.03);">' +
       '<div style="font-size:11px;letter-spacing:1.5px;color:rgba(255,255,255,0.55);font-weight:800;margin-bottom:6px;">RULES</div>' +
       '<div style="font-size:13px;line-height:1.55;white-space:pre-wrap;color:rgba(255,255,255,0.88);">' + esc(t.rules || '') + '</div>' +
-      '<div style="font-size:12px;line-height:1.5;color:rgba(255,215,0,0.85);margin-top:8px;">📿 Every day: finish <b>11 malas of RV (' + fmt(RV_DAILY) + ' jap)</b> first — then Radha Naam unlocks. Your tournament score is your <b>Radha Naam</b> count. Jap done here is also added to your normal total. Only taps count (no manual add / deduct).<br>⏱ Quality is seconds per jap — chant steadily: it turns <b style="color:#ff5252;">red</b> below <b>0.5s</b> for Radha Naam and below <b>1.5s</b> for Radha Vallabh.</div></div>';
+      '<div style="font-size:12px;line-height:1.5;color:rgba(255,215,0,0.85);margin-top:8px;">📿 Every day: finish <b>11 malas of RV (' + fmt(RV_DAILY) + ' jap)</b> first — then Radha Naam unlocks. Your tournament score is your <b>Radha Naam</b> count. Jap done here is also added to your normal total. Only real taps count in the tournament; manual add / deduct still works but does not affect it.<br>⏱ Quality is seconds per jap — chant steadily: taps faster than <b>' + Q_MIN.rn + 's</b> (Radha Naam) / <b>' + Q_MIN.rv + 's</b> (Radha Vallabh) are ignored, so the screen waits for you.</div></div>';
     // join / start area
     h += '<div id="tnAction" style="margin-top:14px;text-align:center;">';
     if (e && e.disq) {
       h += '<div style="color:#ff8a80;font-size:14px;font-weight:700;">You were removed from this tournament by the admin.</div>';
     } else if (e) {
       if (ph === 'live') h += '<button onclick="tnStartJap()" style="width:100%;padding:15px;border-radius:16px;border:none;font-size:16px;font-weight:800;color:#000;background:linear-gradient(135deg,#FFD700,#FFA000);box-shadow:0 0 22px rgba(255,215,0,0.35);cursor:pointer;">📿 Start Tournament Jap</button>';
-      else if (ph === 'upcoming') h += '<div style="color:#2ecc71;font-size:14px;font-weight:700;">✔ You have joined. Jap opens when it starts.</div>';
+      else if (ph === 'upcoming') h += '<div style="color:#2ecc71;font-size:14px;font-weight:700;">✔ You have joined (pre-join). Jap opens when it starts, in ' + dur(t.startAt - Date.now()) + '.</div>';
       h += '<div style="margin-top:10px;font-size:13px;color:rgba(255,255,255,0.75);">Your Radha Naam: <b style="color:' + GOLD + ';">' + fmt(e.rn) + '</b> · Your Radha Vallabh: <b style="color:#ffcc80;">' + fmt(e.rv) + '</b> · RV days done: <b>' + (e.rvDays || 0) + '</b><br>Quality · RV: <b>' + qHtml(e.secRV, e.rv, 'rv') + '</b> · RN: <b>' + qHtml(e.secRN, e.rn, 'rn') + '</b></div>';
     } else if (ph === 'live' || ph === 'upcoming') {
-      if (eligible()) h += '<button onclick="tnJoin()" id="tnJoinBtn" style="width:100%;padding:15px;border-radius:16px;border:none;font-size:16px;font-weight:800;color:#000;background:linear-gradient(135deg,#2ecc71,#1fa85a);cursor:pointer;">✋ Join Tournament</button>';
+      if (eligible()) h += '<button onclick="tnJoin()" id="tnJoinBtn" style="width:100%;padding:15px;border-radius:16px;border:none;font-size:16px;font-weight:800;color:#000;background:linear-gradient(135deg,#2ecc71,#1fa85a);cursor:pointer;">✋ ' + (ph === 'upcoming' ? 'Pre-join Tournament' : 'Join Tournament') + '</button>';
       else h += '<div style="padding:12px 14px;border-radius:14px;border:1px solid rgba(255,183,77,0.5);background:rgba(255,183,77,0.08);color:#ffb74d;font-size:13px;line-height:1.5;">Only <b>verified</b> users can join. Fill your profile and verify your mobile number by SMS OTP to get the ✔ badge.<br><button onclick="tnClose();openProfileEditor()" style="margin-top:8px;padding:8px 16px;border-radius:10px;border:1px solid rgba(255,183,77,0.6);background:rgba(255,183,77,0.15);color:#ffb74d;font-weight:700;cursor:pointer;">Open My Profile</button></div>';
     } else {
       h += '<div style="color:rgba(255,255,255,0.5);font-size:13px;">Joining is closed.</div>';
@@ -39289,6 +39301,15 @@ async function _syncPublicPhoto(p, largeOverride) {
         if (!locked) { TN.note = 'The tournament has ended.'; refreshJap(); }
         return;
       }
+      // Quality gate: a tap that comes sooner than the minimum Q after the last counted tap is ignored (screen stays unresponsive)
+      const nowT = Date.now(), mq = Q_MIN[TN.mode] * 1000, since = nowT - (TN.lastOk[TN.mode] || 0);
+      if (mq > 0 && since < mq) {
+        e.stopPropagation(); try { e.preventDefault(); } catch (_e) {}
+        TN.pre = null;
+        if (since > 800 || e.type === 'touchstart') { TN.note = '⏱ Too fast — wait ' + Q_MIN[TN.mode] + 's between jap'; refreshJap(); }
+        return;
+      }
+      TN.preT = nowT;
       TN.pre = readCount();
     } catch (_e) { TN.pre = null; }
   }
@@ -39298,6 +39319,7 @@ async function _syncPublicPhoto(p, largeOverride) {
     const before = TN.pre; TN.pre = null;
     const after = readCount();
     if (after > before) {
+      TN.lastOk[TN.mode] = TN.preT || Date.now();
       TN.note = '';
       record(TN.mode);
       const c = counts();
@@ -39468,6 +39490,7 @@ async function _syncPublicPhoto(p, largeOverride) {
       '<div style="display:flex;gap:8px;"><input id="tnaP1" placeholder="1st" style="' + inp + '" value="' + esc((pr[0] || {}).amount || '') + '"><input id="tnaP2" placeholder="2nd" style="' + inp + '" value="' + esc((pr[1] || {}).amount || '') + '"><input id="tnaP3" placeholder="3rd" style="' + inp + '" value="' + esc((pr[2] || {}).amount || '') + '"></div>' +
       '<div style="' + lab + '">Rules (users see this)</div><textarea id="tnaRules" rows="6" maxlength="3000" style="' + inp + '">' + esc(t.rules || '') + '</textarea>' +
       '<div style="' + lab + '">Fastest allowed jap (seconds per jap)</div><input id="tnaMin" type="number" step="0.05" min="0.1" max="2" style="' + inp + '" value="' + (t.minSecPerJap || 0.2) + '"><div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:3px;">Taps faster than this are rejected as impossible. Your fastest honest users show about Q 0.2s, so 0.2 is a safe default.</div>' +
+      '<div style="' + lab + '">Minimum Q — seconds per jap (taps faster than this are ignored)</div><div style="display:flex;gap:8px;"><input id="tnaQRn" type="number" step="0.05" min="0" max="5" placeholder="Radha Naam" style="' + inp + '" value="' + _qm(t.minQRn, 0.5) + '"><input id="tnaQRv" type="number" step="0.05" min="0" max="5" placeholder="Radha Vallabh" style="' + inp + '" value="' + _qm(t.minQRv, 1.5) + '"></div><div style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:3px;">Left box = Radha Naam, right box = Radha Vallabh. The jap screen does not respond until this much time has passed since the last counted tap. 0 = no limit.</div>' +
       '<div style="' + lab + '">Day changes at (time zone)</div><select id="tnaTz" style="' + inp + '">' + [['360', 'Bangladesh (UTC+6)'], ['330', 'India (UTC+5:30)'], ['345', 'Nepal (UTC+5:45)'], ['0', 'UTC'], ['240', 'UAE (UTC+4)'], ['-300', 'US East (UTC-5)']].map((z) => '<option value="' + z[0] + '"' + (String(t.tzOffsetMin == null ? 360 : t.tzOffsetMin) === z[0] ? ' selected' : '') + '>' + z[1] + '</option>').join('') + '</select>' +
       '<div style="display:flex;gap:10px;margin-top:18px;"><button onclick="tnAdminSave(\'' + (id || '') + '\',false)" style="flex:1;padding:13px;border-radius:13px;border:1px solid #9aa;background:transparent;color:#cfd8dc;font-weight:800;cursor:pointer;">💾 Save draft</button><button onclick="tnAdminSave(\'' + (id || '') + '\',true)" style="flex:1;padding:13px;border-radius:13px;border:none;background:linear-gradient(135deg,#2ecc71,#1fa85a);color:#000;font-weight:800;cursor:pointer;">🚀 Save & Publish</button></div><div id="tnaMsg" style="text-align:center;font-size:12.5px;margin-top:8px;color:#ff8a80;"></div></div>';
   };
@@ -39480,7 +39503,8 @@ async function _syncPublicPhoto(p, largeOverride) {
     if (!(startAt > 0) || !(endAt > startAt)) return msg('End must be after start');
     const prizes = [g('tnaP1'), g('tnaP2'), g('tnaP3')].map((a, i) => ({ rank: i + 1, amount: a.trim() })).filter((p) => p.amount);
     const data = { name: name.slice(0, 80), rules: rules.slice(0, 3000), startAt, endAt, prizes, currency: g('tnaCur').trim().slice(0, 12),
-      minSecPerJap: Math.min(2, Math.max(0.1, parseFloat(g('tnaMin')) || 0.2)), tzOffsetMin: parseInt(g('tnaTz'), 10), updatedAt: Date.now() };
+      minSecPerJap: Math.min(2, Math.max(0.1, parseFloat(g('tnaMin')) || 0.2)),
+      minQRn: Math.min(5, Math.max(0, isFinite(parseFloat(g('tnaQRn'))) ? parseFloat(g('tnaQRn')) : 0.5)), minQRv: Math.min(5, Math.max(0, isFinite(parseFloat(g('tnaQRv'))) ? parseFloat(g('tnaQRv')) : 1.5)), tzOffsetMin: parseInt(g('tnaTz'), 10), updatedAt: Date.now() };
     try {
       if (id) { if (publish) data.status = 'published'; await fbDb.collection('tournaments').doc(id).update(data); }
       else { data.status = publish ? 'published' : 'draft'; data.createdAt = Date.now(); await fbDb.collection('tournaments').add(data); }

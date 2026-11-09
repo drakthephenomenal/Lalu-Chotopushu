@@ -1,3 +1,4 @@
+// v481: Tournament settings: removed the 'Fastest allowed jap' box (minimum Q per naam replaces it).
 // v480: Tournament minimum Q: jap screen ignores taps sooner than the admin's minimum Q (set per naam in tournament settings).
 // v479: Manual Add / Deduct jap works during a tournament (does not affect the tournament score).
 // v478: Tournament pre-join before the start (button says Pre-join, countdown, screen refreshes when it goes live); jap only after start.
@@ -485,7 +486,7 @@
 // v420 (Play build + dev email): bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
 // v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
 // v422: bumped cache to force-invalidate stale app.js / style.css / index.html — Haridashi Sampraday (Radha + Kunj Vihari / Sri Haridas, own Deity/Guru/Acharya photos, own lifetime target); Nimbark Deity/Guru/Acharya jap-display photos + Yugal mantra animation now matches Hare Krishna; reopened wishes no longer stay paused.
-const CACHE = 'radha-jap-v480';
+const CACHE = 'radha-jap-v481';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

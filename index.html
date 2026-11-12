@@ -1044,24 +1044,8 @@
       <span class="cs-chevron" id="nskChev" style="color:var(--gold)">▾</span>
     </div>
     <div class="cs-body open" id="nskBody">
-      <div class="nsk-pills">
-        <div class="nsk-pill active" id="nskPillS" onclick="nskSetKind('sankalp')">✍️ <span data-hi="Sankalp (apna likhein)" data-bn="সংকল্প (নিজে লিখুন)">Sankalp</span></div>
-        <div class="nsk-pill" id="nskPillP" onclick="nskSetKind('purash')">📿 <span data-hi="Purashcharan (auto hisaab)" data-bn="পুরশ্চরণ (অটো হিসাব)">Purashcharan</span></div>
-      </div>
-
-      <!-- Sankalp (free input) -->
-      <div id="nskSankalpBox">
-        <div class="fr"><textarea class="fi" id="nskText2" rows="2" maxlength="200" data-hi-ph="Mera sankalp… (jaise: 40 din roz 11 mala)" data-bn-ph="আমার সংকল্প… (যেমন: ৪০ দিন রোজ ১১ মালা)" placeholder="" style="resize:vertical;font-family:inherit;"></textarea></div>
-        <div class="fr"><input type="text" class="fi" id="nskMantra2" maxlength="80" data-hi-ph="Mantra / Naam (optional)" data-bn-ph="মন্ত্র / নাম (ঐচ্ছিক)" placeholder=""></div>
-        <div class="nsk-two">
-          <input type="number" inputmode="numeric" min="1" class="fi" id="nskTarget" data-hi-ph="Target jap (optional)" data-bn-ph="লক্ষ্য জপ (ঐচ্ছিক)" placeholder="">
-          <input type="date" class="fi" id="nskEnd" title="End date (optional)">
-        </div>
-        <div class="fr"><input type="number" inputmode="numeric" min="1" class="fi" id="nskDaily2" oninput="nskPreview()" data-hi-ph="Roz ka target jap (samay/tareekh anumaan ke liye)" data-bn-ph="রোজের লক্ষ্য জপ (সময়/তারিখের হিসাবের জন্য)" placeholder=""></div>
-      </div>
-
       <!-- Purashcharan (auto calculation) -->
-      <div id="nskPurashBox" style="display:none">
+      <div id="nskPurashBox">
         <div class="nsk-hint" style="margin:0 0 4px" data-hi="Apne jap type me se chunein — mantra, akshara aur target apne aap bhar jaayenge:" data-bn="নিজের জপের ধরন থেকে বাছুন — মন্ত্র, অক্ষর ও লক্ষ্য নিজে থেকেই ভরে যাবে:"></div>
         <div class="fr"><select class="fi" id="nskSrc" onchange="nskSrcChange()"></select></div>
         <div class="fr"><input type="text" class="fi" id="nskText" maxlength="80" data-hi-ph="Naam / uddeshya (optional)" data-bn-ph="নাম / উদ্দেশ্য (ঐচ্ছিক)" placeholder=""></div>

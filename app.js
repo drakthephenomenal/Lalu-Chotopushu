@@ -12123,7 +12123,7 @@ function _msRenderLifetimeCards() {
 //          target, jType, start, end, note, manual, done, doneDate,
 //          steps:{havan,tarpan,marjan,bhojan}, ts, _editedTs, _deleted}
 // ═══════════════════════════════════════════════════════════════════════
-window._nskKind = window._nskKind || "sankalp";
+window._nskKind = "purash"; // only Purashcharan is offered in the form
 const NSK_TYPES = ["radha", "rv", "kv", "hk", "ss", "ram", "sr", "rm", "nr", "yg", "vl", "kaam", "n28"];
 
 function _nskHi() { try { return secLang("nm") === "hi"; } catch (e) { return false; } }

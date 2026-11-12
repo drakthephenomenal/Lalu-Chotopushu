@@ -26,7 +26,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
-<link rel="stylesheet" href="./style.css?v=153">
+<link rel="stylesheet" href="./style.css?v=155">
 <style id="adminToolsCollapseCss">
 .admin-tools-details>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;color:var(--green);font-size:17px;font-weight:700;padding:2px 0;-webkit-tap-highlight-color:transparent;}
 .admin-tools-details>summary::-webkit-details-marker{display:none;}
@@ -1037,6 +1037,60 @@
   </div>
   <div class="ms-sadhana-since" id="msSadhanaSince"></div>
   <div id="msLifetimeCards"></div>
+  <!-- SANKALP / PURASHCHARAN — input-based vows + automatic mantra purashcharan calculator -->
+  <div class="cs-wrap csg" id="nmSkWrap" style="margin:10px 14px 12px;">
+    <div class="cs-header" onclick="toggleCs('nskBody','nskChev');renderNmSankalp()">
+      <h3 style="color:var(--gold)">🕉️ <span data-hi="Sankalp" data-bn="সংকল্প">Sankalp</span> <span style="opacity:.6;font-weight:400;font-size:11px">/ <span data-hi="Purashcharan" data-bn="পুরশ্চরণ">Purashcharan</span></span></h3>
+      <span class="cs-chevron" id="nskChev" style="color:var(--gold)">▾</span>
+    </div>
+    <div class="cs-body open" id="nskBody">
+      <div class="nsk-pills">
+        <div class="nsk-pill active" id="nskPillS" onclick="nskSetKind('sankalp')">✍️ <span data-hi="Sankalp (apna likhein)" data-bn="সংকল্প (নিজে লিখুন)">Sankalp</span></div>
+        <div class="nsk-pill" id="nskPillP" onclick="nskSetKind('purash')">📿 <span data-hi="Purashcharan (auto hisaab)" data-bn="পুরশ্চরণ (অটো হিসাব)">Purashcharan</span></div>
+      </div>
+
+      <!-- Sankalp (free input) -->
+      <div id="nskSankalpBox">
+        <div class="fr"><textarea class="fi" id="nskText2" rows="2" maxlength="200" data-hi-ph="Mera sankalp… (jaise: 40 din roz 11 mala)" data-bn-ph="আমার সংকল্প… (যেমন: ৪০ দিন রোজ ১১ মালা)" placeholder="" style="resize:vertical;font-family:inherit;"></textarea></div>
+        <div class="fr"><input type="text" class="fi" id="nskMantra2" maxlength="80" data-hi-ph="Mantra / Naam (optional)" data-bn-ph="মন্ত্র / নাম (ঐচ্ছিক)" placeholder=""></div>
+        <div class="nsk-two">
+          <input type="number" inputmode="numeric" min="1" class="fi" id="nskTarget" data-hi-ph="Target jap (optional)" data-bn-ph="লক্ষ্য জপ (ঐচ্ছিক)" placeholder="">
+          <input type="date" class="fi" id="nskEnd" title="End date (optional)">
+        </div>
+        <div class="fr"><input type="number" inputmode="numeric" min="1" class="fi" id="nskDaily2" oninput="nskPreview()" data-hi-ph="Roz ka target jap (samay/tareekh anumaan ke liye)" data-bn-ph="রোজের লক্ষ্য জপ (সময়/তারিখের হিসাবের জন্য)" placeholder=""></div>
+      </div>
+
+      <!-- Purashcharan (auto calculation) -->
+      <div id="nskPurashBox" style="display:none">
+        <div class="nsk-hint" style="margin:0 0 4px" data-hi="Apne jap type me se chunein — mantra, akshara aur target apne aap bhar jaayenge:" data-bn="নিজের জপের ধরন থেকে বাছুন — মন্ত্র, অক্ষর ও লক্ষ্য নিজে থেকেই ভরে যাবে:"></div>
+        <div class="fr"><select class="fi" id="nskSrc" onchange="nskSrcChange()"></select></div>
+        <div class="fr"><input type="text" class="fi" id="nskText" maxlength="80" data-hi-ph="Naam / uddeshya (optional)" data-bn-ph="নাম / উদ্দেশ্য (ঐচ্ছিক)" placeholder=""></div>
+        <div class="fr"><textarea class="fi" id="nskMantra" rows="2" maxlength="200" oninput="nskMantraInput()" data-hi-ph="Mantra likhein (Devanagari / বাংলা / Roman) — jaise: ॐ नमः शिवाय" data-bn-ph="মন্ত্র লিখুন (দেবনাগরী / বাংলা / Roman) — যেমন: ওঁ নমঃ শিবায়" placeholder="" style="resize:vertical;font-family:inherit;"></textarea></div>
+        <div class="nsk-two">
+          <select class="fi" id="nskRule" onchange="nskPreview()">
+            <option value="1" data-hi="1 lakh / akshara (standard)" data-bn="১ লক্ষ / অক্ষর (সাধারণ)">1 lakh / akshara</option>
+            <option value="4" data-hi="4 lakh / akshara (Kaliyug)" data-bn="৪ লক্ষ / অক্ষর (কলিযুগ)">4 lakh / akshara</option>
+            <option value="c" data-hi="Custom" data-bn="কাস্টম">Custom</option>
+          </select>
+          <input type="number" inputmode="numeric" min="1" class="fi" id="nskAkOverride" oninput="nskPreview()" data-hi-ph="Akshara badlein (optional)" data-bn-ph="অক্ষর বদলান (ঐচ্ছিক)" placeholder="">
+        </div>
+        <div class="fr"><input type="number" inputmode="numeric" min="1" class="fi" id="nskCustomPer" oninput="nskPreview()" style="display:none" data-hi-ph="Jap per akshara (jaise 125000)" data-bn-ph="প্রতি অক্ষরে জপ (যেমন ১২৫০০০)" placeholder=""></div>
+        <div class="fr"><input type="number" inputmode="numeric" min="1" class="fi" id="nskDaily" oninput="nskPreview()" data-hi-ph="Roz ka target jap (samay/tareekh anumaan ke liye)" data-bn-ph="রোজের লক্ষ্য জপ (সময়/তারিখের হিসাবের জন্য)" placeholder=""></div>
+        <div id="nskCalc"></div>
+        <div class="nsk-hint" data-hi="Parampara: har akshara ke liye 1 lakh jap, phir dashamsh havan, tarpan, marjan, bhojan. Apne Gurudev ke nirdesh anusar karein." data-bn="পরম্পরা: প্রতি অক্ষরে ১ লক্ষ জপ, তারপর দশাংশ হোম, তর্পণ, মার্জন, ভোজন। নিজের গুরুদেবের নির্দেশ অনুসারে করুন।"></div>
+      </div>
+
+      <div class="nsk-hint" style="margin-bottom:4px" data-hi="📿 Jap type aur shuru ki tareekh — us din se aapka roz ka jap apne aap judta rahega:" data-bn="📿 জপের ধরন ও শুরুর তারিখ — সেই দিন থেকে আপনার রোজের জপ নিজে থেকেই যোগ হবে:"></div>
+      <div class="nsk-two" style="margin-top:0">
+        <select class="fi" id="nskType" title="Count jap from"></select>
+        <input type="date" class="fi" id="nskStart" title="Start date">
+      </div>
+      <div class="fr"><input type="text" class="fi" id="nskNote" maxlength="140" data-hi-ph="Chhota note (optional)" data-bn-ph="ছোট নোট (ঐচ্ছিক)" placeholder=""></div>
+      <button class="pb deduct" style="background:linear-gradient(135deg,rgba(245,209,122,0.35),rgba(124,143,224,0.28));" onclick="addNmSankalp()">🙏 <span data-hi="Sankalp rakhein" data-bn="সংকল্প রাখুন">Keep Sankalp</span></button>
+      <div class="nsk-hint" data-hi="“Jap kahan se ginein” me koi jap chunein to us din se tracked jap apne aap judta jaayega; warna ➕/✂️ se khud jodein." data-bn="“জপ কোথা থেকে গণনা” এ কোনো জপ বাছলে সেই তারিখ থেকে ট্র্যাক করা জপ নিজে থেকেই যোগ হবে; নইলে ➕/✂️ দিয়ে নিজে যোগ করুন।"></div>
+      <div id="nskList" class="nsk-list"></div>
+    </div>
+  </div>
   <div id="msContent"></div>
   <!-- Detail bottom sheet -->
   <div class="ms-detail-overlay" id="msDetailOverlay" onclick="if(event.target===this)closeMsDetail()">
@@ -1047,6 +1101,185 @@
 <!-- STATS VIEW — includes jap entry tools -->
 <div class="view" id="vs">
   <div class="vt">Jap Summary</div>
+
+  <!-- ADD / DEDUCT JAP MANUALLY — merged collapsible, gold theme -->
+  <div class="cs-wrap csg">
+    <div class="cs-header" onclick="toggleCs('addDeductBody','addDeductChev')">
+      <h3 style="color:var(--gold)">➕ Add ／ ✂️ Deduct Jap Manually</h3>
+      <span class="cs-chevron" id="addDeductChev" style="color:var(--gold)">▾</span>
+    </div>
+    <div class="cs-body" id="addDeductBody">
+
+      <!-- WHICH JAP? — applies to every Add / Deduct box below -->
+      <div style="margin-bottom:14px;padding:10px 12px;background:rgba(255,215,0,0.05);border:1px solid rgba(255,215,0,0.20);border-radius:12px">
+        <div style="font-size:10px;color:var(--gold);letter-spacing:1px;font-weight:600;margin-bottom:6px">🕉️ WHICH JAP?</div>
+        <div id="mjTypeChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        <div style="font-size:11px;color:var(--td);margin-top:7px">Everything below (add, deduct, lifetime) changes only the jap you select here. 🎧 Audio chips are always available (Radha, Radha Vallabh, Krishnay Vasudevay, Kaam Vijay).</div>
+        <div id="mjAudioNote" class="mj-audio-note" style="display:none">🎧 Audio selected — audio time is added / deducted automatically (fixed loop length), so the Min / Sec boxes are ignored. Lifetime deduct takes only from "before this app" audio.</div>
+      </div>
+
+      <!-- ADD JAP sub-section -->
+      <div class="cs-wrap" style="background:rgba(196,120,46,0.06);border:1px solid rgba(196,120,46,0.28);margin-bottom:10px">
+        <div class="cs-header" onclick="toggleCs('addJapManuallyBody','addJapManuallyChev')">
+          <h3 style="color:#C87534">➕ Add Jap</h3>
+          <span class="cs-chevron" id="addJapManuallyChev" style="color:#C87534">▾</span>
+        </div>
+        <div class="cs-body" id="addJapManuallyBody">
+          <p style="font-size:12px;color:var(--td);margin-bottom:12px">Jap done on Mala made of Sacred Tulsi Wood / Mala / Finger counts or other digital counter?</p>
+
+          <!-- Inner: Today -->
+          <div class="cs-wrap" style="background:rgba(196,120,46,0.05);border:1px solid rgba(196,120,46,0.20);margin-bottom:8px">
+            <div class="cs-header" onclick="toggleCs('addJapTodayBody','addJapTodayChev')" style="padding:10px 14px">
+              <h3 style="color:#C87534;font-size:10px">📅 TODAY</h3>
+              <span class="cs-chevron" id="addJapTodayChev" style="color:#C87534">▾</span>
+            </div>
+            <div class="cs-body" id="addJapTodayBody">
+              <div class="fr"><input type="number" class="fi" id="manualJapIn" placeholder="Number of jap" min="1"><span class="fu">jap</span></div>
+              <div style="font-size:11px;color:var(--td);margin-bottom:8px">= <span id="manualMalaPreview">0</span> malas · Today will become: <span id="manualTodayPreview" style="color:var(--a2)">—</span></div>
+              <div style="margin-top:6px;padding:8px 10px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.18);border-radius:9px">
+                <div style="font-size:10px;color:var(--gold);margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TAKEN (optional)</div>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <input type="number" class="fi" id="manualJapMin" placeholder="Min" min="0" style="width:70px;font-size:13px">
+                  <span style="color:var(--td);font-size:11px">m</span>
+                  <input type="number" class="fi" id="manualJapSec" placeholder="Sec" min="0" max="59" style="width:70px;font-size:13px">
+                  <span style="color:var(--td);font-size:11px">s</span>
+                </div>
+              </div>
+              <button class="pb add" onclick="mjAct('addManualJap')">➕ Add to Today</button>
+            </div>
+          </div>
+
+          <!-- Inner: Other Day -->
+          <div class="cs-wrap" style="background:rgba(196,120,46,0.04);border:1px solid rgba(196,120,46,0.16);margin-bottom:8px">
+            <div class="cs-header" onclick="toggleCs('addJapOtherBody','addJapOtherChev')" style="padding:10px 14px">
+              <h3 style="color:#C87534;font-size:10px">📆 OTHER DAY</h3>
+              <span class="cs-chevron" id="addJapOtherChev" style="color:#C87534">▾</span>
+            </div>
+            <div class="cs-body" id="addJapOtherBody">
+              <div class="fr"><input type="date" class="fi" id="addJapOtherDate" style="font-size:13px"></div>
+              <div class="fr"><input type="number" class="fi" id="addJapOtherIn" placeholder="Number of jap" min="1"><span class="fu">jap</span></div>
+              <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="addJapOtherPreview" style="color:#C87534">—</span></div>
+              <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.18);border-radius:9px">
+                <div style="font-size:10px;color:var(--gold);margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TAKEN (optional)</div>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <input type="number" class="fi" id="addJapOtherMin" placeholder="Min" min="0" style="width:70px;font-size:13px">
+                  <span style="color:var(--td);font-size:11px">m</span>
+                  <input type="number" class="fi" id="addJapOtherSec" placeholder="Sec" min="0" max="59" style="width:70px;font-size:13px">
+                  <span style="color:var(--td);font-size:11px">s</span>
+                </div>
+              </div>
+              <button class="pb add" onclick="mjAct('addOtherDayJap')">➕ Add to Selected Day</button>
+            </div>
+          </div>
+
+          <!-- Inner: Before This App (Lifetime) -->
+          <div class="cs-wrap" style="background:rgba(196,120,46,0.04);border:1px solid rgba(196,120,46,0.18)">
+            <div class="cs-header" onclick="toggleCs('prevJapBody','prevJapChev')" style="padding:10px 14px">
+              <h3 style="color:#C87534;font-size:10px">📜 BEFORE THIS APP (LIFETIME)</h3>
+              <span class="cs-chevron" id="prevJapChev" style="color:#C87534">▾</span>
+            </div>
+            <div class="cs-body" id="prevJapBody">
+              <p style="font-size:12px;color:var(--td);margin-bottom:10px">Jap done before using this app? Add to lifetime total.</p>
+              <div class="fr"><input type="number" class="fi" id="prevJapIn" placeholder="e.g. 50000" min="1"><span class="fu">jap</span></div>
+              <div style="font-size:11px;color:var(--td);margin-bottom:8px">= <span id="prevMalaPreview">0</span> malas · Lifetime: <span id="prevLifetimePreview" style="color:var(--gold)">—</span></div>
+              <button class="pb deep" onclick="mjAct('addPrevJap')">📿 Add to Lifetime</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- DEDUCT JAP sub-section -->
+      <div class="cs-wrap" style="background:rgba(196,120,46,0.06);border:1px solid rgba(196,120,46,0.28)">
+        <div class="cs-header" onclick="toggleCs('deductJapMainBody','deductJapMainChev')">
+          <h3 style="color:#C87534">✂️ Deduct Jap</h3>
+          <span class="cs-chevron" id="deductJapMainChev" style="color:#C87534">▾</span>
+        </div>
+        <div class="cs-body" id="deductJapMainBody">
+          <p style="font-size:12px;color:var(--td);margin-bottom:12px">Jap you want to deduct — for dedicating to someone, wrong entry, or system bug showing false results.</p>
+
+          <div class="cs-wrap" style="background:rgba(196,120,46,0.05);border:1px solid rgba(196,120,46,0.20);margin-bottom:8px">
+            <div class="cs-header" onclick="toggleCs('deductTodayBody','deductTodayChev')" style="padding:10px 14px">
+              <h3 style="color:#C87534;font-size:10px">📅 TODAY</h3>
+              <span class="cs-chevron" id="deductTodayChev" style="color:#C87534">▾</span>
+            </div>
+            <div class="cs-body" id="deductTodayBody">
+              <div class="fr"><input type="number" class="fi" id="deductTodayIn" placeholder="Number to deduct" min="1"><span class="fu">jap</span></div>
+              <div style="font-size:11px;color:var(--td);margin-bottom:8px">Today will become: <span id="deductTodayPreview" style="color:#C87534">—</span></div>
+              <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(196,120,46,0.06);border:1px solid rgba(196,120,46,0.22);border-radius:9px">
+                <div style="font-size:10px;color:#C87534;margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TO DEDUCT (optional)</div>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <input type="number" class="fi" id="deductTodayMin" placeholder="Min" min="0" style="width:70px;font-size:13px">
+                  <span style="color:var(--td);font-size:11px">m</span>
+                  <input type="number" class="fi" id="deductTodaySec" placeholder="Sec" min="0" max="59" style="width:70px;font-size:13px">
+                  <span style="color:var(--td);font-size:11px">s</span>
+                </div>
+              </div>
+              <button class="pb deduct" onclick="mjAct('deductTodayJap')">✂️ Deduct from Today</button>
+            </div>
+          </div>
+
+          <div class="cs-wrap" style="background:rgba(196,120,46,0.04);border:1px solid rgba(196,120,46,0.16);margin-bottom:8px">
+            <div class="cs-header" onclick="toggleCs('deductOtherBody','deductOtherChev')" style="padding:10px 14px">
+              <h3 style="color:#C87534;font-size:10px">📆 OTHER DAY</h3>
+              <span class="cs-chevron" id="deductOtherChev" style="color:#C87534">▾</span>
+            </div>
+            <div class="cs-body" id="deductOtherBody">
+              <div class="fr"><input type="date" class="fi" id="deductOtherDate" style="font-size:13px"></div>
+              <div class="fr"><input type="number" class="fi" id="deductOtherIn" placeholder="Number to deduct" min="1"><span class="fu">jap</span></div>
+              <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="deductOtherPreview" style="color:#C87534">—</span></div>
+              <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(196,120,46,0.06);border:1px solid rgba(196,120,46,0.22);border-radius:9px">
+                <div style="font-size:10px;color:#C87534;margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TO DEDUCT (optional)</div>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <input type="number" class="fi" id="deductOtherMin" placeholder="Min" min="0" style="width:70px;font-size:13px">
+                  <span style="color:var(--td);font-size:11px">m</span>
+                  <input type="number" class="fi" id="deductOtherSec" placeholder="Sec" min="0" max="59" style="width:70px;font-size:13px">
+                  <span style="color:var(--td);font-size:11px">s</span>
+                </div>
+              </div>
+              <button class="pb deduct" onclick="mjAct('deductOtherJap')">✂️ Deduct from Selected Day</button>
+            </div>
+          </div>
+
+          <div class="cs-wrap" style="background:rgba(196,120,46,0.04);border:1px solid rgba(196,120,46,0.16)">
+            <div class="cs-header" onclick="toggleCs('nameJapDeductBody','nameJapDeductChev')" style="padding:10px 14px">
+              <h3 style="color:#C87534;font-size:10px">📿 NAME JAP — LIFETIME</h3>
+              <span class="cs-chevron" id="nameJapDeductChev" style="color:#C87534">▾</span>
+            </div>
+            <div class="cs-body" id="nameJapDeductBody">
+              <div style="font-size:11px;color:var(--td);margin-bottom:8px">Currently deducted: <span id="nameJapDeductCur" style="color:#C87534;font-weight:600">0</span> jap (<span id="nameJapDeductMalas" style="color:#C87534">0</span> malas)</div>
+              <div style="background:rgba(196,120,46,0.06);border:1px solid rgba(196,120,46,0.20);border-radius:12px;padding:11px;margin-bottom:10px">
+                <div style="font-size:10px;color:#C87534;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">➕ Add to Deduction</div>
+                <div class="fr"><input type="number" class="fi" id="nameJapDeductIn" placeholder="e.g. 5000" min="1" style="border-color:rgba(196,120,46,0.40)"><span class="fu" style="color:#C87534">jap</span></div>
+                <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapDeductPreview" style="color:#C87534">—</span></div>
+                <button class="pb deduct" onclick="mjAct('addNameJapDeduct')">✂️ Apply Deduction</button>
+              </div>
+              <div style="background:rgba(196,120,46,0.03);border:1px solid rgba(196,120,46,0.14);border-radius:12px;padding:11px">
+                <div style="font-size:10px;color:#C87534;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">↩ Remove Deduction</div>
+                <div class="fr"><input type="number" class="fi" id="nameJapRestoreIn" placeholder="Amount to restore" min="1" style="border-color:rgba(196,120,46,0.35)"><span class="fu" style="color:#C87534">jap</span></div>
+                <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapRestorePreview" style="color:var(--a2)">—</span></div>
+                <button class="pb add" onclick="mjAct('removeNameJapDeduct')">↩ Restore to Lifetime</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Audio Add / Deduct — Radha, Radha Vallabh, Krishnay Vasudevay, Kaam Vijay audio modes -->
+  <div class="sg-wrap" id="audioAdjWrap" style="background:rgba(109,184,255,0.05);border:1px solid rgba(109,184,255,0.22);">
+    <div class="sg-header" onclick="toggleCs('audioAdjBody','audioAdjChev');AudioAdj.render()">
+      <span>🎧 Audio Mode — Add ／ Deduct</span>
+      <span class="sg-chevron" id="audioAdjChev">▾</span>
+    </div>
+    <div class="sg-body" id="audioAdjBody">
+      <div style="font-size:11px;color:var(--td);line-height:1.5;margin:2px 4px 8px;">Add or deduct audio-mode jap for Radha, Radha Vallabh, Krishnay Vasudevay or Kaam Vijay on any day. The mode's total changes with it and the audio time is added or deducted automatically (each audio loop has a fixed length); touch counts stay as they are. Each has Today, Other Day and Before this app (Lifetime). The same audio options are also in the Add / Deduct Jap Manually chips above. (28 Names audio has its own section in the 28 Names stats.)</div>
+      <div id="audioAdjMain"></div>
+    </div>
+  </div>
 
   <!-- Dedications — offer a portion of lifetime jap to a purpose/person -->
   <div class="sg-wrap" style="background:rgba(245,209,122,0.05);border:1px solid rgba(245,209,122,0.18);">
@@ -1126,6 +1359,95 @@
     </div>
   </div>
 
+  <!-- HISTORY SECTION — moved up, auto-loads today's view on open -->
+  <div class="cs-wrap" style="background:rgba(255,215,0,0.04);border:1px solid rgba(255,215,0,0.2);margin-top:4px">
+    <div class="cs-header" onclick="toggleCs('historyBody','historyChev'); setTimeout(autoLoadHistory, 50)">
+      <h3 style="color:var(--gold)">📜 History</h3>
+      <span class="cs-chevron" id="historyChev" style="color:var(--gold)">▾</span>
+    </div>
+    <div class="cs-body" id="historyBody">
+      <!-- Date range picker -->
+      <div style="margin-bottom:10px">
+        <div style="font-size:10px;color:var(--td);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Date Range</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input type="date" class="di" id="histFrom" style="border-color:rgba(255,215,0,0.25)" onchange="histRangeChanged()">
+          <input type="date" class="di" id="histTo" style="border-color:rgba(255,215,0,0.25)" onchange="histRangeChanged()">
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:4px;flex-wrap:wrap" id="histPresetRow">
+          <button class="hpb" data-preset="1"     data-label="Today"      onclick="histPreset(1, this)">Today</button>
+          <button class="hpb" data-preset="7"     data-label="Last 7d"    onclick="histPreset(7, this)">Last 7d</button>
+          <button class="hpb" data-preset="30"    data-label="Last 30d"   onclick="histPreset(30, this)">Last 30d</button>
+          <button class="hpb" data-preset="90"    data-label="Last 90d"   onclick="histPreset(90, this)">Last 90d</button>
+          <button class="hpb" data-preset="month" data-label="This Month" onclick="histPresetMonth(this)">This Month</button>
+        </div>
+      </div>
+
+      <!-- Period Totals — moved here, directly under the date-range buttons -->
+      <div id="histTotals" class="hist-totals-card" style="display:none"></div>
+
+      <!-- Deity date-wise drill-down — shown when a Period Total card is tapped -->
+      <div id="histDeityDrill" style="display:none;margin-top:0"></div>
+
+      <div id="histSummaryLine" style="font-size:11px;color:var(--td);text-align:center;margin-bottom:8px;min-height:16px"></div>
+
+      <div id="histTableWrap" style="display:none">
+        <div class="hist-table-shell">
+          <table id="histTable" class="hist-table">
+            <thead>
+              <tr>
+                <th class="hist-th hist-th-date">Date</th>
+                <th class="hist-th hist-radha-col">Radha</th>
+                <th class="hist-th hist-radha-col">RV</th>
+                <th class="hist-th hist-radha-col">KV</th>
+                <th class="hist-th hist-radha-col">Kaam</th>
+                <th class="hist-th hist-radha-col">28 Names</th>
+                <th class="hist-th hist-hk-col" id="histHKColHeader" style="display:none;color:#6DB8FF">हरे कृष्ण महामंत्र</th>
+                <th class="hist-th hist-kv-col" id="histKVColHeader" style="display:none;color:#ffb86c">साम्ब सदाशिव</th>
+                <th class="hist-th hist-ram-col" id="histRamColHeader" style="display:none;color:#FF9933">राम विजय मंत्र</th>
+                <th class="hist-th hist-ram-col" id="histSRColHeader" style="display:none;color:#FF8FA3">सीताराम</th>
+                <th class="hist-th hist-ram-col" id="histNRColHeader" style="display:none;color:#7EC8FF">नारायण</th>
+                <th class="hist-th hist-ram-col" id="histRMColHeader" style="display:none;color:#FFC857">राम</th>
+                <th class="hist-th hist-yg-col" id="histYgColHeader" style="display:none;color:#FFD700">युगल मंत्र</th>
+                <th class="hist-th hist-vl-col" id="histVlColHeader" style="display:none;color:#4FC3F7">श्री कृष्णः शरणं मम</th>
+                <th class="hist-th">Total Time</th>
+                <th class="hist-th hist-th-chev" aria-hidden="true"></th>
+              </tr>
+            </thead>
+            <tbody id="histTableBody"></tbody>
+          </table>
+        </div>
+        <button onclick="copyHistoryText()" class="hist-copy-btn">📋 Copy as Text</button>
+      </div>
+
+      <div id="histDayDetail" style="display:none;margin-top:8px;background:rgba(6,13,31,0.8);border:1px solid rgba(109,184,255,0.25);border-radius:14px;padding:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div id="histDayTitle" style="font-size:13px;font-weight:700;color:var(--a2)"></div>
+          <button onclick="document.getElementById('histDayDetail').style.display='none'" style="background:none;border:none;color:var(--td);font-size:18px;cursor:pointer;padding:0 4px">✕</button>
+        </div>
+        <div id="histDayContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TODAY'S MALA SESSION LOG — collapsible -->
+  <div class="cs-wrap csg">
+    <div class="cs-header" onclick="toggleCs('malaLogBody','malaLogChev')">
+      <h3 style="color:var(--gold)">📿 Today's Mala Log <span id="malaLogType" style="opacity:0.6;font-weight:400;font-size:10px;color:var(--gold)"></span> <span id="malaLogCount" style="opacity:0.6;font-weight:400;font-size:11px"></span> <span id="malaLogInline" style="opacity:0.7;font-weight:400;font-size:10px;color:var(--gold);margin-left:4px"></span></h3>
+      <span class="cs-chevron" id="malaLogChev" style="color:var(--gold)">▾</span>
+    </div>
+    <div class="cs-body open" id="malaLogBody">
+      <!-- AUDIO_CHANT_PATCH_V1: Radha / Radha Audio switch (Audio Mode only) -->
+      <div id="malaLogTabs" class="mlog-tabs" style="display:none">
+        <button type="button" id="mlogTabR" class="mlog-tab on" onclick="AudioChant.setMalaView('touch')">Radha</button>
+        <button type="button" id="mlogTabRA" class="mlog-tab mlog-tab--ra" onclick="AudioChant.setMalaView('audio')">🎧 Radha Audio</button>
+      </div>
+      <div id="malaLogAvg" style="font-size:11px;color:var(--td);margin-bottom:6px;text-align:center;display:none"></div>
+      <div id="malaLogList" style="display:flex;flex-direction:column;gap:5px;margin-top:2px">
+        <div style="font-size:11px;color:var(--td);text-align:center;padding:6px 0">No malas completed yet today</div>
+      </div>
+    </div>
+  </div>
+
   <!-- Audio Chant Log — collapsible, session-wise -->
   <div class="sg-wrap" id="audioChantLogWrap" style="display:none">
     <div class="sg-header" onclick="toggleCs('audioChantLogBody','audioChantLogChev');AudioChant.renderLog()">
@@ -1169,18 +1491,6 @@
     <div class="sg-body" id="acmLogBody_kaam">
       <div id="acmLogTotals_kaam" style="font-size:12px;color:var(--tl);line-height:1.6;margin:2px 4px 8px;"></div>
       <div id="acmLogList_kaam" style="display:flex;flex-direction:column;gap:6px;"></div>
-    </div>
-  </div>
-
-  <!-- Audio Add / Deduct — Radha, Radha Vallabh, Krishnay Vasudevay, Kaam Vijay audio modes -->
-  <div class="sg-wrap" id="audioAdjWrap" style="background:rgba(109,184,255,0.05);border:1px solid rgba(109,184,255,0.22);">
-    <div class="sg-header" onclick="toggleCs('audioAdjBody','audioAdjChev');AudioAdj.render()">
-      <span>🎧 Audio Mode — Add ／ Deduct</span>
-      <span class="sg-chevron" id="audioAdjChev">▾</span>
-    </div>
-    <div class="sg-body" id="audioAdjBody">
-      <div style="font-size:11px;color:var(--td);line-height:1.5;margin:2px 4px 8px;">Add or deduct audio-mode jap for Radha, Radha Vallabh, Krishnay Vasudevay or Kaam Vijay on any day. The mode's total changes with it and the audio time is added or deducted automatically (each audio loop has a fixed length); touch counts stay as they are. Each has Today, Other Day and Before this app (Lifetime). The same audio options are also in the Add / Deduct Jap Manually chips above. (28 Names audio has its own section in the 28 Names stats.)</div>
-      <div id="audioAdjMain"></div>
     </div>
   </div>
 
@@ -1613,261 +1923,6 @@
     </div>
   </div>
 
-  <!-- HISTORY SECTION — moved up, auto-loads today's view on open -->
-  <div class="cs-wrap" style="background:rgba(255,215,0,0.04);border:1px solid rgba(255,215,0,0.2);margin-top:4px">
-    <div class="cs-header" onclick="toggleCs('historyBody','historyChev'); setTimeout(autoLoadHistory, 50)">
-      <h3 style="color:var(--gold)">📜 History</h3>
-      <span class="cs-chevron" id="historyChev" style="color:var(--gold)">▾</span>
-    </div>
-    <div class="cs-body" id="historyBody">
-      <!-- Date range picker -->
-      <div style="margin-bottom:10px">
-        <div style="font-size:10px;color:var(--td);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Date Range</div>
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-          <input type="date" class="di" id="histFrom" style="border-color:rgba(255,215,0,0.25)" onchange="histRangeChanged()">
-          <input type="date" class="di" id="histTo" style="border-color:rgba(255,215,0,0.25)" onchange="histRangeChanged()">
-        </div>
-        <div style="display:flex;gap:6px;margin-bottom:4px;flex-wrap:wrap" id="histPresetRow">
-          <button class="hpb" data-preset="1"     data-label="Today"      onclick="histPreset(1, this)">Today</button>
-          <button class="hpb" data-preset="7"     data-label="Last 7d"    onclick="histPreset(7, this)">Last 7d</button>
-          <button class="hpb" data-preset="30"    data-label="Last 30d"   onclick="histPreset(30, this)">Last 30d</button>
-          <button class="hpb" data-preset="90"    data-label="Last 90d"   onclick="histPreset(90, this)">Last 90d</button>
-          <button class="hpb" data-preset="month" data-label="This Month" onclick="histPresetMonth(this)">This Month</button>
-        </div>
-      </div>
-
-      <!-- Period Totals — moved here, directly under the date-range buttons -->
-      <div id="histTotals" class="hist-totals-card" style="display:none"></div>
-
-      <!-- Deity date-wise drill-down — shown when a Period Total card is tapped -->
-      <div id="histDeityDrill" style="display:none;margin-top:0"></div>
-
-      <div id="histSummaryLine" style="font-size:11px;color:var(--td);text-align:center;margin-bottom:8px;min-height:16px"></div>
-
-      <div id="histTableWrap" style="display:none">
-        <div class="hist-table-shell">
-          <table id="histTable" class="hist-table">
-            <thead>
-              <tr>
-                <th class="hist-th hist-th-date">Date</th>
-                <th class="hist-th hist-radha-col">Radha</th>
-                <th class="hist-th hist-radha-col">RV</th>
-                <th class="hist-th hist-radha-col">KV</th>
-                <th class="hist-th hist-radha-col">Kaam</th>
-                <th class="hist-th hist-radha-col">28 Names</th>
-                <th class="hist-th hist-hk-col" id="histHKColHeader" style="display:none;color:#6DB8FF">हरे कृष्ण महामंत्र</th>
-                <th class="hist-th hist-kv-col" id="histKVColHeader" style="display:none;color:#ffb86c">साम्ब सदाशिव</th>
-                <th class="hist-th hist-ram-col" id="histRamColHeader" style="display:none;color:#FF9933">राम विजय मंत्र</th>
-                <th class="hist-th hist-ram-col" id="histSRColHeader" style="display:none;color:#FF8FA3">सीताराम</th>
-                <th class="hist-th hist-ram-col" id="histNRColHeader" style="display:none;color:#7EC8FF">नारायण</th>
-                <th class="hist-th hist-ram-col" id="histRMColHeader" style="display:none;color:#FFC857">राम</th>
-                <th class="hist-th hist-yg-col" id="histYgColHeader" style="display:none;color:#FFD700">युगल मंत्र</th>
-                <th class="hist-th hist-vl-col" id="histVlColHeader" style="display:none;color:#4FC3F7">श्री कृष्णः शरणं मम</th>
-                <th class="hist-th">Total Time</th>
-                <th class="hist-th hist-th-chev" aria-hidden="true"></th>
-              </tr>
-            </thead>
-            <tbody id="histTableBody"></tbody>
-          </table>
-        </div>
-        <button onclick="copyHistoryText()" class="hist-copy-btn">📋 Copy as Text</button>
-      </div>
-
-      <div id="histDayDetail" style="display:none;margin-top:8px;background:rgba(6,13,31,0.8);border:1px solid rgba(109,184,255,0.25);border-radius:14px;padding:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div id="histDayTitle" style="font-size:13px;font-weight:700;color:var(--a2)"></div>
-          <button onclick="document.getElementById('histDayDetail').style.display='none'" style="background:none;border:none;color:var(--td);font-size:18px;cursor:pointer;padding:0 4px">✕</button>
-        </div>
-        <div id="histDayContent"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TODAY'S MALA SESSION LOG — collapsible -->
-  <div class="cs-wrap csg">
-    <div class="cs-header" onclick="toggleCs('malaLogBody','malaLogChev')">
-      <h3 style="color:var(--gold)">📿 Today's Mala Log <span id="malaLogType" style="opacity:0.6;font-weight:400;font-size:10px;color:var(--gold)"></span> <span id="malaLogCount" style="opacity:0.6;font-weight:400;font-size:11px"></span> <span id="malaLogInline" style="opacity:0.7;font-weight:400;font-size:10px;color:var(--gold);margin-left:4px"></span></h3>
-      <span class="cs-chevron" id="malaLogChev" style="color:var(--gold)">▾</span>
-    </div>
-    <div class="cs-body open" id="malaLogBody">
-      <!-- AUDIO_CHANT_PATCH_V1: Radha / Radha Audio switch (Audio Mode only) -->
-      <div id="malaLogTabs" class="mlog-tabs" style="display:none">
-        <button type="button" id="mlogTabR" class="mlog-tab on" onclick="AudioChant.setMalaView('touch')">Radha</button>
-        <button type="button" id="mlogTabRA" class="mlog-tab mlog-tab--ra" onclick="AudioChant.setMalaView('audio')">🎧 Radha Audio</button>
-      </div>
-      <div id="malaLogAvg" style="font-size:11px;color:var(--td);margin-bottom:6px;text-align:center;display:none"></div>
-      <div id="malaLogList" style="display:flex;flex-direction:column;gap:5px;margin-top:2px">
-        <div style="font-size:11px;color:var(--td);text-align:center;padding:6px 0">No malas completed yet today</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ADD / DEDUCT JAP MANUALLY — merged collapsible, gold theme -->
-  <div class="cs-wrap csg">
-    <div class="cs-header" onclick="toggleCs('addDeductBody','addDeductChev')">
-      <h3 style="color:var(--gold)">➕ Add ／ ✂️ Deduct Jap Manually</h3>
-      <span class="cs-chevron" id="addDeductChev" style="color:var(--gold)">▾</span>
-    </div>
-    <div class="cs-body" id="addDeductBody">
-
-      <!-- WHICH JAP? — applies to every Add / Deduct box below -->
-      <div style="margin-bottom:14px;padding:10px 12px;background:rgba(255,215,0,0.05);border:1px solid rgba(255,215,0,0.20);border-radius:12px">
-        <div style="font-size:10px;color:var(--gold);letter-spacing:1px;font-weight:600;margin-bottom:6px">🕉️ WHICH JAP?</div>
-        <div id="mjTypeChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-        <div style="font-size:11px;color:var(--td);margin-top:7px">Everything below (add, deduct, lifetime) changes only the jap you select here. 🎧 Audio chips are always available (Radha, Radha Vallabh, Krishnay Vasudevay, Kaam Vijay).</div>
-        <div id="mjAudioNote" class="mj-audio-note" style="display:none">🎧 Audio selected — audio time is added / deducted automatically (fixed loop length), so the Min / Sec boxes are ignored. Lifetime deduct takes only from "before this app" audio.</div>
-      </div>
-
-      <!-- ADD JAP sub-section -->
-      <div class="cs-wrap" style="background:rgba(196,120,46,0.06);border:1px solid rgba(196,120,46,0.28);margin-bottom:10px">
-        <div class="cs-header" onclick="toggleCs('addJapManuallyBody','addJapManuallyChev')">
-          <h3 style="color:#C87534">➕ Add Jap</h3>
-          <span class="cs-chevron" id="addJapManuallyChev" style="color:#C87534">▾</span>
-        </div>
-        <div class="cs-body" id="addJapManuallyBody">
-          <p style="font-size:12px;color:var(--td);margin-bottom:12px">Jap done on Mala made of Sacred Tulsi Wood / Mala / Finger counts or other digital counter?</p>
-
-          <!-- Inner: Today -->
-          <div class="cs-wrap" style="background:rgba(196,120,46,0.05);border:1px solid rgba(196,120,46,0.20);margin-bottom:8px">
-            <div class="cs-header" onclick="toggleCs('addJapTodayBody','addJapTodayChev')" style="padding:10px 14px">
-              <h3 style="color:#C87534;font-size:10px">📅 TODAY</h3>
-              <span class="cs-chevron" id="addJapTodayChev" style="color:#C87534">▾</span>
-            </div>
-            <div class="cs-body" id="addJapTodayBody">
-              <div class="fr"><input type="number" class="fi" id="manualJapIn" placeholder="Number of jap" min="1"><span class="fu">jap</span></div>
-              <div style="font-size:11px;color:var(--td);margin-bottom:8px">= <span id="manualMalaPreview">0</span> malas · Today will become: <span id="manualTodayPreview" style="color:var(--a2)">—</span></div>
-              <div style="margin-top:6px;padding:8px 10px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.18);border-radius:9px">
-                <div style="font-size:10px;color:var(--gold);margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TAKEN (optional)</div>
-                <div style="display:flex;gap:6px;align-items:center">
-                  <input type="number" class="fi" id="manualJapMin" placeholder="Min" min="0" style="width:70px;font-size:13px">
-                  <span style="color:var(--td);font-size:11px">m</span>
-                  <input type="number" class="fi" id="manualJapSec" placeholder="Sec" min="0" max="59" style="width:70px;font-size:13px">
-                  <span style="color:var(--td);font-size:11px">s</span>
-                </div>
-              </div>
-              <button class="pb add" onclick="mjAct('addManualJap')">➕ Add to Today</button>
-            </div>
-          </div>
-
-          <!-- Inner: Other Day -->
-          <div class="cs-wrap" style="background:rgba(196,120,46,0.04);border:1px solid rgba(196,120,46,0.16);margin-bottom:8px">
-            <div class="cs-header" onclick="toggleCs('addJapOtherBody','addJapOtherChev')" style="padding:10px 14px">
-              <h3 style="color:#C87534;font-size:10px">📆 OTHER DAY</h3>
-              <span class="cs-chevron" id="addJapOtherChev" style="color:#C87534">▾</span>
-            </div>
-            <div class="cs-body" id="addJapOtherBody">
-              <div class="fr"><input type="date" class="fi" id="addJapOtherDate" style="font-size:13px"></div>
-              <div class="fr"><input type="number" class="fi" id="addJapOtherIn" placeholder="Number of jap" min="1"><span class="fu">jap</span></div>
-              <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="addJapOtherPreview" style="color:#C87534">—</span></div>
-              <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.18);border-radius:9px">
-                <div style="font-size:10px;color:var(--gold);margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TAKEN (optional)</div>
-                <div style="display:flex;gap:6px;align-items:center">
-                  <input type="number" class="fi" id="addJapOtherMin" placeholder="Min" min="0" style="width:70px;font-size:13px">
-                  <span style="color:var(--td);font-size:11px">m</span>
-                  <input type="number" class="fi" id="addJapOtherSec" placeholder="Sec" min="0" max="59" style="width:70px;font-size:13px">
-                  <span style="color:var(--td);font-size:11px">s</span>
-                </div>
-              </div>
-              <button class="pb add" onclick="mjAct('addOtherDayJap')">➕ Add to Selected Day</button>
-            </div>
-          </div>
-
-          <!-- Inner: Before This App (Lifetime) -->
-          <div class="cs-wrap" style="background:rgba(196,120,46,0.04);border:1px solid rgba(196,120,46,0.18)">
-            <div class="cs-header" onclick="toggleCs('prevJapBody','prevJapChev')" style="padding:10px 14px">
-              <h3 style="color:#C87534;font-size:10px">📜 BEFORE THIS APP (LIFETIME)</h3>
-              <span class="cs-chevron" id="prevJapChev" style="color:#C87534">▾</span>
-            </div>
-            <div class="cs-body" id="prevJapBody">
-              <p style="font-size:12px;color:var(--td);margin-bottom:10px">Jap done before using this app? Add to lifetime total.</p>
-              <div class="fr"><input type="number" class="fi" id="prevJapIn" placeholder="e.g. 50000" min="1"><span class="fu">jap</span></div>
-              <div style="font-size:11px;color:var(--td);margin-bottom:8px">= <span id="prevMalaPreview">0</span> malas · Lifetime: <span id="prevLifetimePreview" style="color:var(--gold)">—</span></div>
-              <button class="pb deep" onclick="mjAct('addPrevJap')">📿 Add to Lifetime</button>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- DEDUCT JAP sub-section -->
-      <div class="cs-wrap" style="background:rgba(196,120,46,0.06);border:1px solid rgba(196,120,46,0.28)">
-        <div class="cs-header" onclick="toggleCs('deductJapMainBody','deductJapMainChev')">
-          <h3 style="color:#C87534">✂️ Deduct Jap</h3>
-          <span class="cs-chevron" id="deductJapMainChev" style="color:#C87534">▾</span>
-        </div>
-        <div class="cs-body" id="deductJapMainBody">
-          <p style="font-size:12px;color:var(--td);margin-bottom:12px">Jap you want to deduct — for dedicating to someone, wrong entry, or system bug showing false results.</p>
-
-          <div class="cs-wrap" style="background:rgba(196,120,46,0.05);border:1px solid rgba(196,120,46,0.20);margin-bottom:8px">
-            <div class="cs-header" onclick="toggleCs('deductTodayBody','deductTodayChev')" style="padding:10px 14px">
-              <h3 style="color:#C87534;font-size:10px">📅 TODAY</h3>
-              <span class="cs-chevron" id="deductTodayChev" style="color:#C87534">▾</span>
-            </div>
-            <div class="cs-body" id="deductTodayBody">
-              <div class="fr"><input type="number" class="fi" id="deductTodayIn" placeholder="Number to deduct" min="1"><span class="fu">jap</span></div>
-              <div style="font-size:11px;color:var(--td);margin-bottom:8px">Today will become: <span id="deductTodayPreview" style="color:#C87534">—</span></div>
-              <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(196,120,46,0.06);border:1px solid rgba(196,120,46,0.22);border-radius:9px">
-                <div style="font-size:10px;color:#C87534;margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TO DEDUCT (optional)</div>
-                <div style="display:flex;gap:6px;align-items:center">
-                  <input type="number" class="fi" id="deductTodayMin" placeholder="Min" min="0" style="width:70px;font-size:13px">
-                  <span style="color:var(--td);font-size:11px">m</span>
-                  <input type="number" class="fi" id="deductTodaySec" placeholder="Sec" min="0" max="59" style="width:70px;font-size:13px">
-                  <span style="color:var(--td);font-size:11px">s</span>
-                </div>
-              </div>
-              <button class="pb deduct" onclick="mjAct('deductTodayJap')">✂️ Deduct from Today</button>
-            </div>
-          </div>
-
-          <div class="cs-wrap" style="background:rgba(196,120,46,0.04);border:1px solid rgba(196,120,46,0.16);margin-bottom:8px">
-            <div class="cs-header" onclick="toggleCs('deductOtherBody','deductOtherChev')" style="padding:10px 14px">
-              <h3 style="color:#C87534;font-size:10px">📆 OTHER DAY</h3>
-              <span class="cs-chevron" id="deductOtherChev" style="color:#C87534">▾</span>
-            </div>
-            <div class="cs-body" id="deductOtherBody">
-              <div class="fr"><input type="date" class="fi" id="deductOtherDate" style="font-size:13px"></div>
-              <div class="fr"><input type="number" class="fi" id="deductOtherIn" placeholder="Number to deduct" min="1"><span class="fu">jap</span></div>
-              <div style="font-size:11px;color:var(--td);margin-bottom:8px">That day will become: <span id="deductOtherPreview" style="color:#C87534">—</span></div>
-              <div style="margin-top:6px;margin-bottom:8px;padding:8px 10px;background:rgba(196,120,46,0.06);border:1px solid rgba(196,120,46,0.22);border-radius:9px">
-                <div style="font-size:10px;color:#C87534;margin-bottom:4px;letter-spacing:1px;font-weight:600">⏱️ TIME TO DEDUCT (optional)</div>
-                <div style="display:flex;gap:6px;align-items:center">
-                  <input type="number" class="fi" id="deductOtherMin" placeholder="Min" min="0" style="width:70px;font-size:13px">
-                  <span style="color:var(--td);font-size:11px">m</span>
-                  <input type="number" class="fi" id="deductOtherSec" placeholder="Sec" min="0" max="59" style="width:70px;font-size:13px">
-                  <span style="color:var(--td);font-size:11px">s</span>
-                </div>
-              </div>
-              <button class="pb deduct" onclick="mjAct('deductOtherJap')">✂️ Deduct from Selected Day</button>
-            </div>
-          </div>
-
-          <div class="cs-wrap" style="background:rgba(196,120,46,0.04);border:1px solid rgba(196,120,46,0.16)">
-            <div class="cs-header" onclick="toggleCs('nameJapDeductBody','nameJapDeductChev')" style="padding:10px 14px">
-              <h3 style="color:#C87534;font-size:10px">📿 NAME JAP — LIFETIME</h3>
-              <span class="cs-chevron" id="nameJapDeductChev" style="color:#C87534">▾</span>
-            </div>
-            <div class="cs-body" id="nameJapDeductBody">
-              <div style="font-size:11px;color:var(--td);margin-bottom:8px">Currently deducted: <span id="nameJapDeductCur" style="color:#C87534;font-weight:600">0</span> jap (<span id="nameJapDeductMalas" style="color:#C87534">0</span> malas)</div>
-              <div style="background:rgba(196,120,46,0.06);border:1px solid rgba(196,120,46,0.20);border-radius:12px;padding:11px;margin-bottom:10px">
-                <div style="font-size:10px;color:#C87534;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">➕ Add to Deduction</div>
-                <div class="fr"><input type="number" class="fi" id="nameJapDeductIn" placeholder="e.g. 5000" min="1" style="border-color:rgba(196,120,46,0.40)"><span class="fu" style="color:#C87534">jap</span></div>
-                <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapDeductPreview" style="color:#C87534">—</span></div>
-                <button class="pb deduct" onclick="mjAct('addNameJapDeduct')">✂️ Apply Deduction</button>
-              </div>
-              <div style="background:rgba(196,120,46,0.03);border:1px solid rgba(196,120,46,0.14);border-radius:12px;padding:11px">
-                <div style="font-size:10px;color:#C87534;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;font-weight:600">↩ Remove Deduction</div>
-                <div class="fr"><input type="number" class="fi" id="nameJapRestoreIn" placeholder="Amount to restore" min="1" style="border-color:rgba(196,120,46,0.35)"><span class="fu" style="color:#C87534">jap</span></div>
-                <div style="font-size:11px;color:var(--td);margin-bottom:8px">New lifetime total will become: <span id="nameJapRestorePreview" style="color:var(--a2)">—</span></div>
-                <button class="pb add" onclick="mjAct('removeNameJapDeduct')">↩ Restore to Lifetime</button>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-    </div>
-  </div>
 
   <!-- Hidden legacy Jap Time inputs (section removed; nodes kept so JS handlers don't crash) -->
   <div style="display:none">
@@ -3650,7 +3705,7 @@
     <!-- Gives tithi boundary accuracy matching ISKCON/Drik Panchang exactly -->
     <script src="./panchangData.js?v=117"></script>
     <script src="./stotrams.js?v=144"></script>
-    <script src="./app.js?v=447"></script>
+    <script src="./app.js?v=451"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

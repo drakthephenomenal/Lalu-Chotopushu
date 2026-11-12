@@ -1732,6 +1732,7 @@ const App = {
     syncBaselineSS: {},
     syncBaselineTimerSS: {},
     dedications: [], // {id, type:'radha'|'rv'|'kv'|'ss', amount, purpose, note, date, ts}
+    nmSankalps: [], // Sankalp / Purashcharan entries (N&M page)
     gaudiyaMode: false,  // single mode for all — Gaudiya/ISKCON
     trahimamMode: false,  // single mode for all — Trahimam Trahimam (KV jap only)
     ramanandiMode: false,  // single mode for all — Ramanandi (Raam Vijay Mantra jap only)
@@ -2052,6 +2053,7 @@ const App = {
       nameJapDeductYg: this.S.nameJapDeductYg || 0,
       nameJapDeductVl: this.S.nameJapDeductVl || 0,
       dedications: this.S.dedications || [],
+      nmSankalps: this.S.nmSankalps || [],
       gaudiyaMode: this.S.gaudiyaMode || false,
       trahimamMode: this.S.trahimamMode || false,
       ramanandiMode: this.S.ramanandiMode || false,
@@ -2406,6 +2408,7 @@ const App = {
       this.S.malaLogSS = [];
     }
     if (!this.S.dedications) this.S.dedications = [];
+    if (!Array.isArray(this.S.nmSankalps)) this.S.nmSankalps = [];
     if (!this.S.screenTimeHistory) this.S.screenTimeHistory = {};
     if (!this.S.stotramTimeHistory) this.S.stotramTimeHistory = {};
     if (!this.S.msConsider) this.S.msConsider = { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true };
@@ -11027,6 +11030,7 @@ function doReset() {
     App.S.nameJapDeductVl = 0;
     App.S.nameJapDeductKaam = 0;
     App.S.dedications = [];
+    App.S.nmSankalps = [];
     App.S.timerHistory = {};
     App.S.timerHistoryRV = {};
     App.S.timerHistoryHK = {};
@@ -11424,6 +11428,7 @@ function _buildBackupPayload() {
     malaLogYg: App.S.malaLogYg || [],
     malaLogVl: App.S.malaLogVl || [],
     dedications: App.S.dedications || [],
+    nmSankalps: App.S.nmSankalps || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
     trahimamMode: App.S.trahimamMode || false,
     ramanandiMode: App.S.ramanandiMode || false,
@@ -11700,6 +11705,7 @@ function importAllData(input) {
       App.S.malaLogYg = data.malaLogYg || [];
       App.S.malaLogVl = data.malaLogVl || [];
       App.S.dedications = Array.isArray(data.dedications) ? data.dedications : [];
+      App.S.nmSankalps = Array.isArray(data.nmSankalps) ? data.nmSankalps : [];
       App.S.milestones = data.milestones || { reached: {}, lastChecked: 0 };
        App.S.msConsider = data.msConsider || { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true };
       App.S.dt28Cycles = data.dt28Cycles || 0;
@@ -12109,7 +12115,455 @@ function _msRenderLifetimeCards() {
     '<div class="ms-lt-sub">' + escHtml(k.s) + '</div></div>').join("") + '</div>';
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+//  SANKALP / PURASHCHARAN  (Naam Jap Mahima & Milestones page)
+//  Input-based vows ("sankalp") and mantra purashcharan with automatic
+//  calculation. Stored in App.S.nmSankalps and synced like dedications.
+//  entry: {id, kind:'sankalp'|'purash', text, mantra, aksharas, perAkshara,
+//          target, jType, start, end, note, manual, done, doneDate,
+//          steps:{havan,tarpan,marjan,bhojan}, ts, _editedTs, _deleted}
+// ═══════════════════════════════════════════════════════════════════════
+window._nskKind = window._nskKind || "sankalp";
+const NSK_TYPES = ["radha", "rv", "kv", "hk", "ss", "ram", "sr", "rm", "nr", "yg", "vl", "kaam", "n28"];
+
+function _nskHi() { try { return secLang("nm") === "hi"; } catch (e) { return false; } }
+function _nskT(hi, bn) { return _nskHi() ? hi : bn; }
+function _nskFmt(n) { return Math.max(0, Math.round(+n || 0)).toLocaleString("en-IN"); }
+function _nskTypeLabel(t) {
+  if (!t || t === "none") return _nskT("Sirf manual (auto-count nahi)", "শুধু ম্যানুয়াল (অটো-গণনা নয়)");
+  if (t === "n28") return "28 Names";
+  try { return _dedTypeMeta(t).label; } catch (e) { return t; }
+}
+function _nskTypeColor(t) {
+  if (t === "n28") return "#BD93F9";
+  try { return _dedTypeMeta(t).color; } catch (e) { return "#f5c842"; }
+}
+
+// ── Akshara (syllable) counter: Devanagari, Bengali and Latin transliteration ──
+function nskCountAksharas(str) {
+  const s = String(str || "").normalize("NFC");
+  const LV = "aeiouāīūṛṝḷḹāáàâäéèêëíìîïóòôöúùûüæ";
+  let n = 0, afterVirama = false, prevLatinV = false, wordStart = 0;
+  const endWord = () => {
+    // trailing consonant+virama (e.g. "त्" at word end) belongs to the previous syllable
+    if (afterVirama && n - wordStart >= 2) n--;
+    afterVirama = false; prevLatinV = false; wordStart = n;
+  };
+  for (const ch of s) {
+    const c = ch.codePointAt(0);
+    let base = 0;
+    if (c >= 0x0900 && c <= 0x097f) base = 0x0900;
+    else if (c >= 0x0980 && c <= 0x09ff) base = 0x0980;
+    if (base) {
+      const o = c - base;
+      prevLatinV = false;
+      if (o === 0x50) { n++; afterVirama = false; }                                   // ॐ
+      else if ((o >= 0x04 && o <= 0x14) || o === 0x60 || o === 0x61) { n++; afterVirama = false; } // independent vowel
+      else if ((o >= 0x15 && o <= 0x39) || (o >= 0x58 && o <= 0x5f)) {                // consonant
+        if (!afterVirama) n++;
+        afterVirama = false;
+      }
+      else if (o === 0x4d) { afterVirama = true; }                                    // virama / hasanta
+      else if (o <= 0x03 || o === 0x3c || (o >= 0x3e && o <= 0x4c) || o === 0x62 || o === 0x63 || o === 0x4e) { afterVirama = false; } // signs, nukta, matras, khanda-ta
+      else if (o >= 0x66 && o <= 0x6f) { /* digits */ }
+      else { endWord(); }
+      continue;
+    }
+    if (/\p{L}/u.test(ch)) {                                                          // Latin / other letters
+      const isV = LV.indexOf(ch.toLowerCase()) >= 0;
+      if (isV && !prevLatinV) n++;
+      prevLatinV = isV;
+      afterVirama = false;
+    } else {
+      endWord();
+    }
+  }
+  endWord();
+  return n;
+}
+
+// ── Purashcharan maths (traditional: 1 lakh jap per akshara, then dashamsh) ──
+function nskPurashCalc(aksharas, perAkshara) {
+  const a = Math.max(0, Math.floor(+aksharas || 0));
+  const per = Math.max(0, Math.floor(+perAkshara || 0));
+  const jap = a * per;
+  const havan = Math.ceil(jap / 10);
+  const tarpan = Math.ceil(havan / 10);
+  const marjan = Math.ceil(tarpan / 10);
+  const bhojan = Math.ceil(marjan / 10);
+  return { aksharas: a, per, jap, havan, tarpan, marjan, bhojan };
+}
+
+// ── Progress counted automatically from tracked jap since start date ──
+function _nskHistoryFor(t) {
+  const S = App.S;
+  if (t === "radha") return S.history || {};
+  if (t === "rv") return S.historyRV || {};
+  if (t === "kv") return S.historyKV || {};
+  if (t === "hk") return S.historyHK || {};
+  if (t === "ss") return S.historySS || {};
+  if (t === "ram") return S.historyRam || {};
+  if (t === "sr" || t === "rm" || t === "nr") { try { return S[RAM_KEYS[t].h] || {}; } catch (e) { return {}; } }
+  if (t === "yg") return S.historyYg || {};
+  if (t === "vl") return S.historyVl || {};
+  if (t === "kaam") return S.historyKaam || {};
+  if (t === "n28") return S.h28 || {};
+  return null;
+}
+function nskAutoCount(sk) {
+  const h = _nskHistoryFor(sk.jType);
+  if (!h) return 0;
+  let sum = 0;
+  Object.keys(h).forEach((k) => {
+    if ((!sk.start || k >= sk.start) && (!sk.end || k <= sk.end)) sum += +h[k] || 0;
+  });
+  return sum;
+}
+function nskProgress(sk) {
+  return Math.max(0, nskAutoCount(sk) + (+sk.manual || 0));
+}
+
+// ── Pace + completion prediction ──
+function _nskAddDays(n) {
+  const d = new Date(); d.setDate(d.getDate() + n);
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+function nskPace(sk) {
+  const h = _nskHistoryFor(sk.jType);
+  if (!h) return null;
+  const today = _ldk(new Date());
+  const start = sk.start || today;
+  if (start > today) return null;
+  const days = Math.max(1, Math.round((new Date(today + "T00:00:00") - new Date(start + "T00:00:00")) / 86400000) + 1);
+  let s7 = 0, n7 = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const k = _ldk(d);
+    if (k < start) break;
+    s7 += +h[k] || 0; n7++;
+  }
+  return { overall: nskAutoCount(sk) / days, days, recent: n7 ? s7 / n7 : 0, n7 };
+}
+// returns "N din · date" text for finishing `remaining` at `perDay`
+function _nskEtaTxt(remaining, perDay) {
+  if (remaining <= 0) return _nskT("Poora ho chuka", "পূর্ণ হয়ে গেছে");
+  if (!(perDay > 0)) return "—";
+  const d = Math.ceil(remaining / perDay);
+  return _nskFmt(d) + " " + _nskT("din", "দিন") + " · " + _nskAddDays(d);
+}
+function nskSankalpEst() {
+  const g = (id) => parseInt((document.getElementById(id) || {}).value, 10) || 0;
+  const target = g("nskTarget"), daily = g("nskDaily2");
+  if (target < 1 || daily < 1) return "";
+  const sd = (document.getElementById("nskStart") || {}).value;
+  let txt = _nskFmt(Math.ceil(target / daily)) + " " + _nskT("din", "দিন");
+  try {
+    const d = sd ? new Date(sd + "T00:00:00") : new Date();
+    d.setDate(d.getDate() + Math.ceil(target / daily) - 1);
+    txt += " · " + d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  } catch (e) {}
+  return '<div class="nsk-calc"><div class="nsk-calc-row"><span>' + _nskT("Anumaanit samay", "আনুমানিক সময়") + "</span><b>" + escHtml(txt) + "</b></div></div>";
+}
+function nskSetDaily(id) {
+  if (isGhostMode()) return;
+  const sk = (App.S.nmSankalps || []).find((x) => x.id === id);
+  const el = document.getElementById("nsk-daily-" + id);
+  if (!sk || !el) return;
+  sk.daily = Math.max(0, parseInt(el.value, 10) || 0);
+  _nskTouch(sk);
+  _nskSave();
+}
+
+// ── Mantra presets taken from the app's own jap types ──
+const NSK_PRESET_TYPES = ["radha", "rv", "kv", "hk", "ss", "ram", "sr", "rm", "nr", "yg", "vl", "kaam"];
+function nskPresetMantra(t) {
+  const N = (typeof NAAM_TEXT !== "undefined" && NAAM_TEXT.sa) || {};
+  const one = (s) => String(s || "").replace(/\s*\n\s*/g, " ").trim();
+  switch (t) {
+    case "radha": return one(N.radha) || "राधा";
+    case "rv":
+      try { if (isHaridashiActive()) return "श्री " + one(HD_NAAM_TEXT.sa.rv1 + " " + HD_NAAM_TEXT.sa.rv2); } catch (e) {}
+      return "श्री " + one((N.rv1 || "राधावल्लभ") + " " + (N.rv2 || "श्री हरिवंश"));
+    case "kv": return one((N.kv1 || "कृष्णाय वासुदेवाय हरये परमात्मने") + " " + (N.kv2 || "प्रणतः क्लेशनाशाय गोविन्दाय नमो नमः"));
+    case "hk": return "हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे हरे राम हरे राम राम राम हरे हरे";
+    case "ss": return one((N.ss1 || "साम्ब") + " " + (N.ss2 || "सदाशिव"));
+    case "ram": return one((N.ram1 || "श्री राम, जय राम,") + " " + (N.ram2 || "जय जय राम।")).replace(/[,।]/g, "");
+    case "sr": return one(N.sr1) || "सीताराम";
+    case "rm": return one(N.rm1) || "राम";
+    case "nr": return one(N.nr1) || "नारायण";
+    case "yg": return one(N.yg1) || "राधे कृष्ण राधे कृष्ण कृष्ण कृष्ण राधे राधे";
+    case "vl": return one(N.vlTitle) || "श्री कृष्णः शरणं मम";
+    case "kaam": return one(N.kaamTitle) || "काम विजय";
+  }
+  return "";
+}
+function _nskFillSrcSelect() {
+  const sel = document.getElementById("nskSrc");
+  if (!sel) return;
+  const cur = sel.value || "custom";
+  sel.innerHTML = '<option value="custom">' + escHtml(_nskT("✍️ Apna mantra likhein", "✍️ নিজের মন্ত্র লিখুন")) + "</option>" +
+    NSK_PRESET_TYPES.map((t) => '<option value="' + t + '">' + escHtml(_nskTypeLabel(t)) + "</option>").join("");
+  sel.value = cur;
+}
+function nskSrcChange() {
+  const v = (document.getElementById("nskSrc") || {}).value || "custom";
+  if (v === "custom") return;
+  const m = nskPresetMantra(v);
+  if (!m) return;
+  const el = document.getElementById("nskMantra"); if (el) el.value = m;
+  const ak = document.getElementById("nskAkOverride"); if (ak) ak.value = "";
+  const t = document.getElementById("nskType"); if (t) t.value = v; // auto-count progress from this same jap
+  nskPreview();
+}
+
+// ── Form handling ──
+function nskApplyLang() {
+  const hi = _nskHi();
+  document.querySelectorAll("#nmSkWrap [data-hi]").forEach((el) => {
+    el.textContent = hi ? el.getAttribute("data-hi") : el.getAttribute("data-bn");
+  });
+  document.querySelectorAll("#nmSkWrap [data-hi-ph]").forEach((el) => {
+    el.placeholder = hi ? el.getAttribute("data-hi-ph") : el.getAttribute("data-bn-ph");
+  });
+}
+function nskSetKind(k) {
+  window._nskKind = k === "purash" ? "purash" : "sankalp";
+  const pu = window._nskKind === "purash";
+  const a = document.getElementById("nskPillS"), b = document.getElementById("nskPillP");
+  if (a) a.classList.toggle("active", !pu);
+  if (b) b.classList.toggle("active", pu);
+  const ps = document.getElementById("nskPurashBox"), ss = document.getElementById("nskSankalpBox");
+  if (ps) ps.style.display = pu ? "" : "none";
+  if (ss) ss.style.display = pu ? "none" : "";
+  nskPreview();
+}
+function _nskFillTypeSelect() {
+  const sel = document.getElementById("nskType");
+  if (!sel) return;
+  const cur = sel.value || "radha";
+  sel.innerHTML = ["none"].concat(NSK_TYPES)
+    .map((t) => '<option value="' + t + '">' + escHtml(_nskTypeLabel(t)) + "</option>").join("");
+  sel.value = cur;
+}
+function _nskPer() {
+  const r = (document.getElementById("nskRule") || {}).value || "1";
+  const cust = document.getElementById("nskCustomPer");
+  if (cust) cust.style.display = r === "c" ? "" : "none";
+  if (r === "4") return 400000;
+  if (r === "c") return Math.max(0, parseInt((cust || {}).value, 10) || 0);
+  return 100000;
+}
+function nskMantraInput() {
+  const el = document.getElementById("nskMantra"), ak = document.getElementById("nskAkOverride");
+  if (ak) ak.value = ""; // typing a new mantra resets the manual override
+  const src = document.getElementById("nskSrc"); if (src) src.value = "custom";
+  nskPreview();
+}
+function nskPreview() {
+  const box = document.getElementById("nskCalc");
+  if (!box) return;
+  if (window._nskKind !== "purash") { box.innerHTML = nskSankalpEst(); return; }
+  const mantra = ((document.getElementById("nskMantra") || {}).value || "").trim();
+  const auto = nskCountAksharas(mantra);
+  const ov = parseInt((document.getElementById("nskAkOverride") || {}).value, 10);
+  const aks = ov > 0 ? ov : auto;
+  const per = _nskPer();
+  const c = nskPurashCalc(aks, per);
+  const ms = App.S.ms || 108;
+  const daily = parseInt((document.getElementById("nskDaily") || {}).value, 10) || 0;
+  const startEl = document.getElementById("nskStart");
+  let est = "";
+  if (daily > 0 && c.jap > 0) {
+    const days = Math.ceil(c.jap / daily);
+    let endTxt = "";
+    try {
+      const sd = (startEl && startEl.value) ? new Date(startEl.value + "T00:00:00") : new Date();
+      sd.setDate(sd.getDate() + days - 1);
+      endTxt = " · " + sd.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    } catch (e) {}
+    est = '<div class="nsk-calc-row"><span>' + _nskT("Anumaanit samay", "আনুমানিক সময়") + "</span><b>" + _nskFmt(days) + " " + _nskT("din", "দিন") + escHtml(endTxt) + "</b></div>";
+  }
+  const row = (l, v, extra) => '<div class="nsk-calc-row"><span>' + l + "</span><b>" + v + (extra ? ' <i>' + extra + "</i>" : "") + "</b></div>";
+  box.innerHTML =
+    '<div class="nsk-calc">' +
+    row(_nskT("Akshara (auto)", "অক্ষর (অটো)"), _nskFmt(auto) + (ov > 0 ? " → " + _nskFmt(ov) : "")) +
+    row(_nskT("Kul Jap", "মোট জপ"), '<span style="color:var(--gold)">' + _nskFmt(c.jap) + "</span>", _nskFmt(Math.floor(c.jap / ms)) + " " + _nskT("mala", "মালা")) +
+    row(_nskT("Havan (dashamsh)", "হোম (দশাংশ)"), _nskFmt(c.havan)) +
+    row(_nskT("Tarpan (havan ka 1/10)", "তর্পণ (হোমের ১/১০)"), _nskFmt(c.tarpan)) +
+    row(_nskT("Marjan (tarpan ka 1/10)", "মার্জন (তর্পণের ১/১০)"), _nskFmt(c.marjan)) +
+    row(_nskT("Bhojan (marjan ka 1/10)", "ভোজন (মার্জনের ১/১০)"), _nskFmt(c.bhojan)) +
+    est + "</div>";
+}
+
+function _nskSave(msg) {
+  App.save(); App.ua(); fbDebouncedPush();
+  renderNmSankalp();
+  if (msg) toast(msg);
+}
+function _nskTouch(sk) { sk._editedTs = Date.now(); }
+
+function addNmSankalp() {
+  if (isGhostMode()) return;
+  const pu = window._nskKind === "purash";
+  const g = (id) => ((document.getElementById(id) || {}).value || "").trim();
+  const start = g("nskStart") || _ldk(new Date());
+  const jType = g("nskType") || "none";
+  const daily = parseInt(g(pu ? "nskDaily" : "nskDaily2"), 10) || 0;
+  const note = g("nskNote");
+  let sk;
+  if (pu) {
+    const mantra = g("nskMantra");
+    if (!mantra) { toast(_nskT("Mantra likhein 🙏", "মন্ত্র লিখুন 🙏")); return; }
+    const ov = parseInt(g("nskAkOverride"), 10);
+    const aks = ov > 0 ? ov : nskCountAksharas(mantra);
+    const per = _nskPer();
+    if (aks < 1 || per < 1) { toast(_nskT("Akshara / jap per akshara sahi daalein", "অক্ষর / প্রতি অক্ষরে জপ ঠিক দিন")); return; }
+    const c = nskPurashCalc(aks, per);
+    sk = {
+      kind: "purash", text: g("nskText") || mantra, mantra, aksharas: aks, perAkshara: per,
+      target: c.jap, steps: { havan: false, tarpan: false, marjan: false, bhojan: false },
+    };
+  } else {
+    const text = g("nskText2");
+    if (!text) { toast(_nskT("Sankalp likhein 🙏", "সংকল্প লিখুন 🙏")); return; }
+    const target = parseInt(g("nskTarget"), 10) || 0;
+    sk = { kind: "sankalp", text, mantra: g("nskMantra2"), target };
+  }
+  const end = g("nskEnd");
+  Object.assign(sk, {
+    id: "nsk_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+    jType, start, end: pu ? "" : end, note, daily, manual: 0, done: false, doneDate: null, ts: Date.now(), _editedTs: Date.now(),
+  });
+  if (!Array.isArray(App.S.nmSankalps)) App.S.nmSankalps = [];
+  App.S.nmSankalps.unshift(sk);
+  ["nskText", "nskText2", "nskMantra", "nskMantra2", "nskAkOverride", "nskTarget", "nskEnd", "nskNote", "nskDaily", "nskDaily2"].forEach((id) => {
+    const el = document.getElementById(id); if (el) el.value = "";
+  });
+  nskPreview();
+  _nskSave(_nskT("Sankalp rakh liya gaya 🙏 Jai Radhe!", "সংকল্প রাখা হলো 🙏 জয় রাধে!"));
+}
+function nskAdjust(id, sign) {
+  if (isGhostMode()) return;
+  const sk = (App.S.nmSankalps || []).find((x) => x.id === id);
+  const el = document.getElementById("nsk-adj-" + id);
+  if (!sk || !el) return;
+  const n = parseInt(el.value, 10) || 0;
+  if (n < 1) { toast(_nskT("Sahi sankhya daalein", "সঠিক সংখ্যা দিন")); return; }
+  sk.manual = (+sk.manual || 0) + sign * n;
+  _nskTouch(sk);
+  _nskSave((sign > 0 ? "➕ " : "✂️ ") + _nskFmt(n));
+}
+function nskToggleDone(id) {
+  if (isGhostMode()) return;
+  const sk = (App.S.nmSankalps || []).find((x) => x.id === id);
+  if (!sk) return;
+  sk.done = !sk.done;
+  sk.doneDate = sk.done ? _ldk(new Date()) : null;
+  _nskTouch(sk);
+  _nskSave(sk.done ? _nskT("🌟 Sankalp poora! Jai Radhe!", "🌟 সংকল্প পূর্ণ! জয় রাধে!") : "↺");
+}
+function nskToggleStep(id, step) {
+  if (isGhostMode()) return;
+  const sk = (App.S.nmSankalps || []).find((x) => x.id === id);
+  if (!sk) return;
+  sk.steps = sk.steps || {};
+  sk.steps[step] = !sk.steps[step];
+  _nskTouch(sk);
+  _nskSave();
+}
+function nskDelete(id) {
+  if (isGhostMode()) return;
+  const sk = (App.S.nmSankalps || []).find((x) => x.id === id);
+  if (!sk) return;
+  if (!confirm(_nskT("Is sankalp ko hata dein?", "এই সংকল্প মুছে ফেলবেন?"))) return;
+  sk._deleted = true; // tombstone so cloud sync does not resurrect it
+  _nskTouch(sk);
+  _nskSave(_nskT("Hata diya 🙏", "মুছে ফেলা হয়েছে 🙏"));
+}
+
+function renderNmSankalp() {
+  const wrap = document.getElementById("nmSkWrap");
+  if (!wrap) return;
+  nskApplyLang();
+  _nskFillTypeSelect();
+  _nskFillSrcSelect();
+  const st = document.getElementById("nskStart");
+  if (st && !st.value) st.value = _ldk(new Date());
+  nskPreview();
+
+  const list = document.getElementById("nskList");
+  if (!list) return;
+  const items = (App.S.nmSankalps || []).filter((x) => x && !x._deleted).sort((p, q) => (q.ts || 0) - (p.ts || 0));
+  const ms = App.S.ms || 108;
+  if (!items.length) {
+    list.innerHTML = '<div class="nsk-empty">' + _nskT("Abhi koi sankalp nahi 🌸", "এখনো কোনো সংকল্প নেই 🌸") + "</div>";
+    return;
+  }
+  list.innerHTML = items.map((sk) => {
+    const prog = nskProgress(sk);
+    const target = +sk.target || 0;
+    const pct = target > 0 ? Math.min(100, Math.floor((prog / target) * 100)) : 0;
+    const reached = target > 0 && prog >= target;
+    const complete = sk.done || reached;
+    const isP = sk.kind === "purash";
+    const col = _nskTypeColor(sk.jType);
+    let h = '<div class="nsk-card' + (complete ? " done" : "") + '">';
+    h += '<div class="nsk-card-top"><div class="nsk-title">' + (isP ? "📿 " : "🙏 ") + escHtml(sk.text || sk.mantra || "") + "</div>";
+    h += '<button class="nsk-x" onclick="nskDelete(\'' + sk.id + '\')" aria-label="Delete">🗑️</button></div>';
+    h += '<div class="nsk-badges">';
+    h += '<span class="nsk-badge">' + (isP ? _nskT("Purashcharan", "পুরশ্চরণ") : _nskT("Sankalp", "সংকল্প")) + "</span>";
+    if (sk.jType && sk.jType !== "none") h += '<span class="nsk-badge" style="color:' + col + ";border-color:" + col + '66">' + escHtml(_nskTypeLabel(sk.jType)) + "</span>";
+    if (complete) h += '<span class="nsk-badge ok">✅ ' + _nskT("Poora", "পূর্ণ") + (sk.doneDate ? " · " + escHtml(sk.doneDate) : "") + "</span>";
+    h += "</div>";
+    if (isP && sk.mantra) h += '<div class="nsk-mantra">' + escHtml(sk.mantra) + "</div>";
+    if (isP) h += '<div class="nsk-sub">' + _nskFmt(sk.aksharas) + " " + _nskT("akshara", "অক্ষর") + " × " + _nskFmt(sk.perAkshara) + " = <b>" + _nskFmt(sk.target) + "</b> (" + _nskFmt(Math.floor(sk.target / ms)) + " " + _nskT("mala", "মালা") + ")</div>";
+    if (sk.note) h += '<div class="nsk-sub">📝 ' + escHtml(sk.note) + "</div>";
+    h += '<div class="nsk-sub">📅 ' + escHtml(sk.start || "") + (sk.end ? " → " + escHtml(sk.end) : "") + "</div>";
+    if (target > 0) {
+      h += '<div class="nsk-bar"><div class="nsk-bar-fill" style="width:' + pct + '%"></div></div>';
+      h += '<div class="nsk-prog"><span>' + _nskFmt(prog) + " / " + _nskFmt(target) + '</span><b>' + pct + "%</b></div>";
+    } else {
+      h += '<div class="nsk-prog"><span>' + _nskT("Ab tak jap", "এ পর্যন্ত জপ") + "</span><b>" + _nskFmt(prog) + "</b></div>";
+    }
+    if (sk.jType && sk.jType !== "none") {
+      h += '<div class="nsk-sub">⚙️ ' + _nskT("Auto", "অটো") + " " + _nskFmt(nskAutoCount(sk)) + " + " + _nskT("manual", "ম্যানুয়াল") + " " + _nskFmt(sk.manual || 0) + "</div>";
+    }
+    if (target > 0 && !complete) {
+      const remaining = target - prog;
+      const pc = nskPace(sk);
+      h += '<div class="nsk-eta">';
+      h += '<div class="nsk-eta-t">' + _nskT("Baaki", "বাকি") + ": <b>" + _nskFmt(remaining) + "</b></div>";
+      if (pc) {
+        h += '<div class="nsk-eta-r">📈 ' + _nskT("Aapki gati (shuru se)", "আপনার গতি (শুরু থেকে)") + ": <b>" + _nskFmt(pc.overall) + "</b>/" + _nskT("din", "দিন") + " → <b>" + escHtml(_nskEtaTxt(remaining, pc.overall)) + "</b></div>";
+        if (pc.n7 > 1) h += '<div class="nsk-eta-r">🔥 ' + _nskT("Pichhle", "গত") + " " + pc.n7 + " " + _nskT("din", "দিন") + ": <b>" + _nskFmt(pc.recent) + "</b>/" + _nskT("din", "দিন") + " → <b>" + escHtml(_nskEtaTxt(remaining, pc.recent)) + "</b></div>";
+      } else if (!sk.jType || sk.jType === "none") {
+        h += '<div class="nsk-eta-r" style="opacity:.7">' + _nskT("Gati dekhne ke liye jap type chunein", "গতি দেখতে জপের ধরন বাছুন") + "</div>";
+      }
+      h += '<div class="nsk-eta-plan">🎯 <input type="number" inputmode="numeric" min="1" class="fi nsk-adj" id="nsk-daily-' + sk.id + '" value="' + (sk.daily || "") + '" placeholder="' + _nskT("Roz ka target jap", "রোজের লক্ষ্য জপ") + '" onchange="nskSetDaily(\'' + sk.id + '\')">';
+      if (sk.daily > 0) h += '<span>→ <b>' + escHtml(_nskEtaTxt(remaining, sk.daily)) + "</b></span>";
+      h += "</div></div>";
+    }
+    if (isP) {
+      const c = nskPurashCalc(sk.aksharas, sk.perAkshara);
+      const steps = sk.steps || {};
+      const step = (k, lbl, v) => '<label class="nsk-step' + (steps[k] ? " on" : "") + '"><input type="checkbox" ' + (steps[k] ? "checked " : "") +
+        'onchange="nskToggleStep(\'' + sk.id + "','" + k + '\')"><span>' + lbl + ": <b>" + _nskFmt(v) + "</b></span></label>";
+      h += '<div class="nsk-steps">' +
+        step("havan", _nskT("Havan", "হোম"), c.havan) + step("tarpan", _nskT("Tarpan", "তর্পণ"), c.tarpan) +
+        step("marjan", _nskT("Marjan", "মার্জন"), c.marjan) + step("bhojan", _nskT("Bhojan", "ভোজন"), c.bhojan) + "</div>";
+    }
+    h += '<div class="nsk-actions">' +
+      '<input type="number" inputmode="numeric" min="1" class="fi nsk-adj" id="nsk-adj-' + sk.id + '" placeholder="' + _nskT("jap", "জপ") + '">' +
+      '<button class="nsk-btn" onclick="nskAdjust(\'' + sk.id + '\',1)">➕</button>' +
+      '<button class="nsk-btn" onclick="nskAdjust(\'' + sk.id + '\',-1)">✂️</button>' +
+      '<button class="nsk-btn wide" onclick="nskToggleDone(\'' + sk.id + '\')">' + (sk.done ? "↺ " + _nskT("Kholein", "খুলুন") : "✓ " + _nskT("Poora kiya", "পূর্ণ করুন")) + "</button></div>";
+    h += "</div>";
+    return h;
+  }).join("");
+}
+
 function renderMilestonesTab() {
+  try { renderNmSankalp(); } catch (_e) { console.warn("sankalp render", _e); }
   const el = document.getElementById("msContent");
   if (!el) return;
   const _isG = App.S.gaudiyaMode || false;
@@ -13812,6 +14266,7 @@ function fbInit() {
             timer28History: {},
             sankalpas: [],
             dedications: [],
+            nmSankalps: [],
             occasions: {},
             syncBaseline: {},
             syncBaseline28: {},
@@ -14049,6 +14504,7 @@ function fbInit() {
             timer28History: {},
             sankalpas: [],
             dedications: [],
+            nmSankalps: [],
             occasions: {},
             syncBaseline: {},
             syncBaseline28: {},
@@ -15893,7 +16349,7 @@ async function fbSignOut(opts) {
     tk: App.getTk(), ms: 108, dt: 0, lt: 0,
     cfg: { vib: true, sound: true, soundType: "shankya" },
     history: {}, h28: {}, stotrams: {}, brahma: {}, customSt: [],
-    timerHistory: {}, timer28History: {}, sankalpas: [], dedications: [], occasions: {},
+    timerHistory: {}, timer28History: {}, sankalpas: [], dedications: [], nmSankalps: [], occasions: {},
     syncBaseline: {}, syncBaseline28: {}, syncBaselineTimer: {}, syncBaselineTimer28: {},
     migrationV2Done: false, japMode: "radha",
     historyRV: {}, timerHistoryRV: {}, dtRV: 0, ltRV: 0, nameJapDeductRV: 0,
@@ -16067,6 +16523,7 @@ async function fbPushToUid(targetUid, fullReplace) {
     malaLogYg: App.S.malaLogYg || [],
     malaLogVl: App.S.malaLogVl || [],
     dedications: App.S.dedications || [],
+    nmSankalps: App.S.nmSankalps || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
     trahimamMode: App.S.trahimamMode || false,
     ramanandiMode: App.S.ramanandiMode || false,
@@ -16287,6 +16744,7 @@ async function _fbPushFullInner() {
     malaLogYg: App.S.malaLogYg || [],
     malaLogVl: App.S.malaLogVl || [],
     dedications: App.S.dedications || [],
+    nmSankalps: App.S.nmSankalps || [],
     gaudiyaMode: App.S.gaudiyaMode || false,
     trahimamMode: App.S.trahimamMode || false,
     ramanandiMode: App.S.ramanandiMode || false,
@@ -16913,6 +17371,19 @@ function fbApplyRemote(d) {
       }
     });
     App.S.dedications = JSON.parse(JSON.stringify(Array.from(byId.values())));
+  }
+  if ("nmSankalps" in d && Array.isArray(d.nmSankalps)) {
+    // Union-merge by id; newest _editedTs wins. Deletions are tombstones
+    // (_deleted) so they propagate instead of being resurrected.
+    const _nl = Array.isArray(App.S.nmSankalps) ? App.S.nmSankalps : [];
+    const _nm = new Map(_nl.map((x) => [x.id, x]));
+    d.nmSankalps.forEach((r) => {
+      if (!r || !r.id) return;
+      const l = _nm.get(r.id);
+      if (!l || (r._editedTs || r.ts || 0) > (l._editedTs || l.ts || 0)) _nm.set(r.id, r);
+    });
+    App.S.nmSankalps = JSON.parse(JSON.stringify(Array.from(_nm.values())));
+    try { renderNmSankalp(); } catch (_e) {}
   }
   if (d.sadhanaStart) {
     App.S.sadhanaStart = d.sadhanaStart;

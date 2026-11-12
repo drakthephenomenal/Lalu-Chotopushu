@@ -4737,3 +4737,5 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 .nsk-eta-plan{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:11.5px;color:var(--tl);}
 .nsk-eta-plan .nsk-adj{flex:0 0 46%;}
 .nsk-eta-plan b{color:var(--gold);}
+.nsk-two > *{min-width:0;max-width:100%;}
+.nsk-two input[type=date]{width:100%;box-sizing:border-box;-webkit-appearance:none;appearance:none;}

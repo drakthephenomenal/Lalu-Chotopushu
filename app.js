@@ -12316,6 +12316,15 @@ function nskSrcChange() {
   nskPreview();
 }
 
+function nskTypeChange() {
+  if (window._nskKind !== "purash") return;
+  const t = (document.getElementById("nskType") || {}).value;
+  const m = (document.getElementById("nskMantra") || {}).value || "";
+  const src = document.getElementById("nskSrc");
+  if (NSK_PRESET_TYPES.indexOf(t) < 0 || !src) return;
+  if (!m.trim() || src.value !== "custom") { src.value = t; nskSrcChange(); }
+}
+
 // ── Form handling ──
 function nskApplyLang() {
   const hi = _nskHi();
@@ -12335,6 +12344,13 @@ function nskSetKind(k) {
   const ps = document.getElementById("nskPurashBox"), ss = document.getElementById("nskSankalpBox");
   if (ps) ps.style.display = pu ? "" : "none";
   if (ss) ss.style.display = pu ? "none" : "";
+  if (pu) {
+    _nskFillSrcSelect();
+    const m = ((document.getElementById("nskMantra") || {}).value || "").trim();
+    const src = document.getElementById("nskSrc");
+    let jm = ""; try { jm = App.S.japMode || ""; } catch (e) {}
+    if (!m && src && src.value === "custom" && NSK_PRESET_TYPES.indexOf(jm) >= 0) { src.value = jm; nskSrcChange(); return; }
+  }
   nskPreview();
 }
 function _nskFillTypeSelect() {

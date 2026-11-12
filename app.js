@@ -12108,7 +12108,7 @@ function _msRenderLifetimeCards() {
       s: chosen.length ? chosen.join(" · ") : (hi ? "Koi trait select nahi" : "কোনো ট্রেইট বাছাই নেই"), link: true },
   ];
   el.innerHTML = '<div class="ms-lt-grid">' + cards.map((k) =>
-    '<div class="ms-lt-card ' + k.cls + '"' + (k.link ? ' onclick="(document.getElementById(\'msContent\')||{}).scrollTop=0" title="' + (hi ? "Trait chayan upar" : "ট্রেইট বাছাই উপরে") + '"' : '') + '>' +
+    '<div class="ms-lt-card ' + k.cls + '"' + (k.link ? ' onclick="var c=document.getElementById(\'msContent\');if(c)c.scrollIntoView({behavior:\'smooth\',block:\'start\'})" title="' + (hi ? "Trait chayan upar" : "ট্রেইট বাছাই উপরে") + '"' : '') + '>' +
     '<div class="ms-lt-ttl">' + k.t + '</div>' +
     '<div class="ms-lt-num">' + fmt(k.n) + '</div>' +
     '<div class="ms-lt-mala">' + mal(k.n) + '</div>' +

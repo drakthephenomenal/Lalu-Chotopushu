@@ -4739,3 +4739,8 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 .nsk-eta-plan b{color:var(--gold);}
 .nsk-two > *{min-width:0;max-width:100%;}
 .nsk-two input[type=date]{width:100%;box-sizing:border-box;-webkit-appearance:none;appearance:none;}
+
+/* N&M page: the Purashcharan card is taller than the screen, so the whole page must scroll
+   (previously only #msContent scrolled and #vms was overflow:hidden, which clipped everything below the card) */
+#vms{overflow-y:auto;-webkit-overflow-scrolling:touch;}
+#vms #msContent{flex:none;min-height:auto;overflow:visible;}

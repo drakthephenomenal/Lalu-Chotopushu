@@ -12643,10 +12643,6 @@ function renderNmSankalp() {
         step("marjan", _nskT("मार्जन", "মার্জন"), c.marjan) + step("bhojan", _nskT("भोजन", "ভোজন"), c.bhojan) + "</div>";
     }
     h += '<div class="nsk-actions">' +
-      '<input type="number" inputmode="numeric" min="1" class="fi nsk-adj" id="nsk-adj-' + sk.id + '" placeholder="' + _nskT("जप", "জপ") + '">' +
-      _nskUnitSel("nsk-adjU-" + sk.id, "jap") +
-      '<button class="nsk-btn" onclick="nskAdjust(\'' + sk.id + '\',1)">➕</button>' +
-      '<button class="nsk-btn" onclick="nskAdjust(\'' + sk.id + '\',-1)">✂️</button>' +
       '<button class="nsk-btn wide" onclick="nskToggleDone(\'' + sk.id + '\')">' + (sk.done ? "↺ " + _nskT("खोलें", "খুলুন") : "✓ " + _nskT("पूरा किया", "পূর্ণ করুন")) + "</button></div>";
     h += "</div>";
     return h;

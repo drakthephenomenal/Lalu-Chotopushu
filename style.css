@@ -4751,3 +4751,5 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 
 .nsk-eta-plan{flex-wrap:nowrap;}
 .nsk-eta-plan .nsk-adj{flex:1 1 auto !important;min-width:0;}
+
+.nsk-actions .nsk-btn.wide{flex:1;padding:10px 12px;font-size:13px;}

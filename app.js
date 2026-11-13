@@ -12307,6 +12307,7 @@ function _nskFillSrcSelect() {
 }
 function nskSrcChange() {
   const v = (document.getElementById("nskSrc") || {}).value || "custom";
+  nskToggleMantra();
   if (v === "custom") return;
   const m = nskPresetMantra(v);
   if (!m) return;
@@ -12373,7 +12374,35 @@ function nskMantraInput() {
   const el = document.getElementById("nskMantra"), ak = document.getElementById("nskAkOverride");
   if (ak) ak.value = ""; // typing a new mantra resets the manual override
   const src = document.getElementById("nskSrc"); if (src) src.value = "custom";
+  nskToggleMantra();
   nskPreview();
+}
+function nskSetRule(v) {
+  v = v === "4" ? "4" : "1";
+  const r = document.getElementById("nskRule"); if (r) r.value = v;
+  const a = document.getElementById("nskRule1"), b = document.getElementById("nskRule4");
+  if (a) a.classList.toggle("active", v === "1");
+  if (b) b.classList.toggle("active", v === "4");
+  nskPreview();
+}
+function nskSetDailyUnit(u) {
+  u = u === "mala" ? "mala" : "jap";
+  const el = document.getElementById("nskDailyUnit"); if (el) el.value = u;
+  const a = document.getElementById("nskDU_jap"), b = document.getElementById("nskDU_mala");
+  if (a) a.classList.toggle("active", u === "jap");
+  if (b) b.classList.toggle("active", u === "mala");
+  nskPreview();
+}
+// Daily target in jap, whether the person typed jap or mala
+function nskDailyJap() {
+  const n = parseInt((document.getElementById("nskDaily") || {}).value, 10) || 0;
+  const u = (document.getElementById("nskDailyUnit") || {}).value;
+  return u === "mala" ? n * (App.S.ms || 108) : n;
+}
+// Mantra box only needed for a custom mantra; presets are already chosen in the dropdown above
+function nskToggleMantra() {
+  const w = document.getElementById("nskMantraWrap"), s = document.getElementById("nskSrc");
+  if (w && s) w.style.display = s.value === "custom" ? "" : "none";
 }
 function nskPreview() {
   const box = document.getElementById("nskCalc");
@@ -12386,7 +12415,7 @@ function nskPreview() {
   const per = _nskPer();
   const c = nskPurashCalc(aks, per);
   const ms = App.S.ms || 108;
-  const daily = parseInt((document.getElementById("nskDaily") || {}).value, 10) || 0;
+  const daily = nskDailyJap();
   const startEl = document.getElementById("nskStart");
   let est = "";
   if (daily > 0 && c.jap > 0) {
@@ -12425,7 +12454,7 @@ function addNmSankalp() {
   const start = g("nskStart") || _ldk(new Date());
   const _src = g("nskSrc");
   const jType = NSK_PRESET_TYPES.indexOf(_src) >= 0 ? _src : "none"; // auto-count from the chosen jap
-  const daily = parseInt(g(pu ? "nskDaily" : "nskDaily2"), 10) || 0;
+  const daily = nskDailyJap();
   const note = g("nskNote");
   let sk;
   if (pu) {
@@ -12456,6 +12485,7 @@ function addNmSankalp() {
   ["nskText", "nskText2", "nskMantra", "nskMantra2", "nskAkOverride", "nskTarget", "nskEnd", "nskNote", "nskDaily", "nskDaily2"].forEach((id) => {
     const el = document.getElementById(id); if (el) el.value = "";
   });
+  nskSrcChange(); // refill the mantra for the chosen preset
   nskPreview();
   _nskSave(_nskT("Sankalp rakh liya gaya 🙏 Jai Radhe!", "সংকল্প রাখা হলো 🙏 জয় রাধে!"));
 }
@@ -12505,6 +12535,7 @@ function renderNmSankalp() {
   _nskFillTypeSelect();
   _nskFillSrcSelect();
   if (!window._nskInit) { window._nskInit = 1; nskSetKind("purash"); } // pick default jap + mantra once
+  nskToggleMantra();
   const st = document.getElementById("nskStart");
   if (st && !st.value) st.value = _ldk(new Date());
   nskPreview();

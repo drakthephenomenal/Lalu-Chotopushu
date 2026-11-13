@@ -12429,6 +12429,17 @@ function nskPreview() {
     est = '<div class="nsk-calc-row"><span>' + _nskT("Anumaanit samay", "আনুমানিক সময়") + "</span><b>" + _nskFmt(days) + " " + _nskT("din", "দিন") + escHtml(endTxt) + "</b></div>";
   }
   const row = (l, v, extra) => '<div class="nsk-calc-row"><span>' + l + "</span><b>" + v + (extra ? ' <i>' + extra + "</i>" : "") + "</b></div>";
+  let paceRow = "";
+  try {
+    const _s = (document.getElementById("nskSrc") || {}).value;
+    const _hh = NSK_PRESET_TYPES.indexOf(_s) >= 0 ? _nskHistoryFor(_s) : null;
+    if (_hh && c.jap > 0) {
+      let _sum = 0;
+      for (let i = 0; i < 7; i++) { const d = new Date(); d.setDate(d.getDate() - i); _sum += +_hh[_ldk(d)] || 0; }
+      const _avg = _sum / 7;
+      if (_avg > 0) paceRow = row(_nskT("Aapki gati (pichhle 7 din)", "আপনার গতি (গত ৭ দিন)"), _nskFmt(Math.round(_avg)) + "/" + _nskT("din", "দিন"), _nskEtaTxt(c.jap, _avg));
+    }
+  } catch (e) {}
   box.innerHTML =
     '<div class="nsk-calc">' +
     row(_nskT("Akshara (auto)", "অক্ষর (অটো)"), _nskFmt(auto) + (ov > 0 ? " → " + _nskFmt(ov) : "")) +
@@ -12437,7 +12448,7 @@ function nskPreview() {
     row(_nskT("Tarpan (havan ka 1/10)", "তর্পণ (হোমের ১/১০)"), _nskFmt(c.tarpan)) +
     row(_nskT("Marjan (tarpan ka 1/10)", "মার্জন (তর্পণের ১/১০)"), _nskFmt(c.marjan)) +
     row(_nskT("Bhojan (marjan ka 1/10)", "ভোজন (মার্জনের ১/১০)"), _nskFmt(c.bhojan)) +
-    est + "</div>";
+    est + paceRow + "</div>";
 }
 
 function _nskSave(msg) {
@@ -12558,7 +12569,7 @@ function renderNmSankalp() {
     const col = _nskTypeColor(sk.jType);
     let h = '<div class="nsk-card' + (complete ? " done" : "") + '">';
     h += '<div class="nsk-card-top"><div class="nsk-title">' + (isP ? "📿 " : "🙏 ") + escHtml(sk.text || sk.mantra || "") + "</div>";
-    h += '<button class="nsk-x" onclick="nskDelete(\'' + sk.id + '\')" aria-label="Delete">🗑️</button></div>';
+    h += '<button class="nsk-x" onclick="nskDelete(\'' + sk.id + '\')" aria-label="Delete">🗑 ' + _nskT("Hatayein", "মুছুন") + '</button></div>';
     h += '<div class="nsk-badges">';
     h += '<span class="nsk-badge">' + (isP ? _nskT("Purashcharan", "পুরশ্চরণ") : _nskT("Sankalp", "সংকল্প")) + "</span>";
     if (sk.jType && sk.jType !== "none") h += '<span class="nsk-badge" style="color:' + col + ";border-color:" + col + '66">' + escHtml(_nskTypeLabel(sk.jType)) + "</span>";
@@ -12570,7 +12581,7 @@ function renderNmSankalp() {
     h += '<div class="nsk-sub">📅 ' + escHtml(sk.start || "") + (sk.end ? " → " + escHtml(sk.end) : "") + "</div>";
     if (target > 0) {
       h += '<div class="nsk-bar"><div class="nsk-bar-fill" style="width:' + pct + '%"></div></div>';
-      h += '<div class="nsk-prog"><span>' + _nskFmt(prog) + " / " + _nskFmt(target) + '</span><b>' + pct + "%</b></div>";
+      h += '<div class="nsk-prog"><span>' + _nskFmt(prog) + " / " + _nskFmt(target) + ' <i style="opacity:.65;font-style:normal">(' + _nskFmt(Math.floor(prog / ms)) + " / " + _nskFmt(Math.floor(target / ms)) + " " + _nskT("mala", "মালা") + ')</i></span><b>' + pct + "%</b></div>";
     } else {
       h += '<div class="nsk-prog"><span>' + _nskT("Ab tak jap", "এ পর্যন্ত জপ") + "</span><b>" + _nskFmt(prog) + "</b></div>";
     }
@@ -12588,7 +12599,7 @@ function renderNmSankalp() {
       } else if (!sk.jType || sk.jType === "none") {
         h += '<div class="nsk-eta-r" style="opacity:.7">' + _nskT("Gati dekhne ke liye jap type chunein", "গতি দেখতে জপের ধরন বাছুন") + "</div>";
       }
-      h += '<div class="nsk-eta-plan">🎯 <input type="number" inputmode="numeric" min="1" class="fi nsk-adj" id="nsk-daily-' + sk.id + '" value="' + (sk.daily || "") + '" placeholder="' + _nskT("Roz ka target jap", "রোজের লক্ষ্য জপ") + '" onchange="nskSetDaily(\'' + sk.id + '\')">';
+      h += '<div class="nsk-eta-plan">🎯 <input type="number" inputmode="numeric" min="1" class="fi nsk-adj" id="nsk-daily-' + sk.id + '" value="' + (sk.daily || "") + '" placeholder="' + _nskT("Pratidin ka lakshya (jap)", "প্রতিদিনের লক্ষ্য জপ") + '" onchange="nskSetDaily(\'' + sk.id + '\')">';
       if (sk.daily > 0) h += '<span>→ <b>' + escHtml(_nskEtaTxt(remaining, sk.daily)) + "</b></span>";
       h += "</div></div>";
     }

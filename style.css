@@ -4744,3 +4744,7 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
    (previously only #msContent scrolled and #vms was overflow:hidden, which clipped everything below the card) */
 #vms{overflow-y:auto;-webkit-overflow-scrolling:touch;}
 #vms #msContent{flex:none;min-height:auto;overflow:visible;}
+
+/* Sankalp cards: visible delete button + clearer progress bar */
+.nsk-x{color:#ff8a80 !important;border:1px solid rgba(255,138,128,.45) !important;border-radius:8px;padding:3px 9px !important;font-size:12px !important;font-weight:700;white-space:nowrap;background:rgba(255,138,128,.08) !important;}
+.nsk-bar{height:10px !important;background:rgba(255,255,255,.14) !important;border:1px solid rgba(245,209,122,.25);}

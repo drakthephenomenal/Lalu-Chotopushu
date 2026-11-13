@@ -1026,7 +1026,7 @@
 <div class="view" id="vms">
   <div class="vt">🪷 Naam Jap Mahima and Milestones</div>
   <div class="ms-toggle-wrap sec-lang-bar" data-sec="nm">
-    <button class="ms-toggle-btn" id="msLangHi" onclick="setMsLang('hi')">हिंग्लिश</button>
+    <button class="ms-toggle-btn" id="msLangHi" onclick="setMsLang('hi')">हिन्दी</button>
     <button class="ms-toggle-btn active" id="msLangBn" onclick="setMsLang('bn')">বাংলা</button>
     <button type="button" class="ms-toggle-btn" data-l="" onclick="setSecLang('nm',null)" title="Follow Settings language" aria-label="Follow Settings language" style="display:none">↺</button>
   </div>
@@ -1040,37 +1040,37 @@
   <!-- SANKALP / PURASHCHARAN — input-based vows + automatic mantra purashcharan calculator -->
   <div class="cs-wrap csg" id="nmSkWrap" style="margin:10px 14px 12px;">
     <div class="cs-header" onclick="toggleCs('nskBody','nskChev');renderNmSankalp()">
-      <h3 style="color:var(--gold)">🕉️ <span data-hi="Sankalp" data-bn="সংকল্প">Sankalp</span> <span style="opacity:.6;font-weight:400;font-size:11px">/ <span data-hi="Purashcharan" data-bn="পুরশ্চরণ">Purashcharan</span></span></h3>
+      <h3 style="color:var(--gold)">🕉️ <span data-hi="संकल्प" data-bn="সংকল্প">Sankalp</span> <span style="opacity:.6;font-weight:400;font-size:11px">/ <span data-hi="पुरश्चरण" data-bn="পুরশ্চরণ">Purashcharan</span></span></h3>
       <span class="cs-chevron" id="nskChev" style="color:var(--gold)">▾</span>
     </div>
     <div class="cs-body open" id="nskBody">
       <!-- Purashcharan (auto calculation) -->
       <div id="nskPurashBox">
-        <div class="nsk-hint" style="margin:0 0 4px" data-hi="Apne jap type me se chunein — mantra, akshara aur target apne aap bhar jaayenge:" data-bn="নিজের জপের ধরন থেকে বাছুন — মন্ত্র, অক্ষর ও লক্ষ্য নিজে থেকেই ভরে যাবে:"></div>
+        <div class="nsk-hint" style="margin:0 0 4px" data-hi="अपने जप के प्रकार में से चुनें — मंत्र, अक्षर और लक्ष्य अपने आप भर जाएँगे:" data-bn="নিজের জপের ধরন থেকে বাছুন — মন্ত্র, অক্ষর ও লক্ষ্য নিজে থেকেই ভরে যাবে:"></div>
         <div class="fr"><select class="fi" id="nskSrc" onchange="nskSrcChange()"></select></div>
-        <div class="fr"><input type="text" class="fi" id="nskText" maxlength="80" data-hi-ph="Naam / uddeshya (optional)" data-bn-ph="নাম / উদ্দেশ্য (ঐচ্ছিক)" placeholder=""></div>
-        <div class="fr" id="nskMantraWrap"><textarea class="fi" id="nskMantra" rows="2" maxlength="200" oninput="nskMantraInput()" data-hi-ph="Mantra likhein (Devanagari / বাংলা / Roman) — jaise: ॐ नमः शिवाय" data-bn-ph="মন্ত্র লিখুন (দেবনাগরী / বাংলা / Roman) — যেমন: ওঁ নমঃ শিবায়" placeholder="" style="resize:vertical;font-family:inherit;"></textarea></div>
+        <div class="fr"><input type="text" class="fi" id="nskText" maxlength="80" data-hi-ph="नाम / उद्देश्य (वैकल्पिक)" data-bn-ph="নাম / উদ্দেশ্য (ঐচ্ছিক)" placeholder=""></div>
+        <div class="fr" id="nskMantraWrap"><textarea class="fi" id="nskMantra" rows="2" maxlength="200" oninput="nskMantraInput()" data-hi-ph="मंत्र लिखें — जैसे: ॐ नमः शिवाय" data-bn-ph="মন্ত্র লিখুন (দেবনাগরী / বাংলা / Roman) — যেমন: ওঁ নমঃ শিবায়" placeholder="" style="resize:vertical;font-family:inherit;"></textarea></div>
         <input type="hidden" id="nskRule" value="1">
         <div class="nsk-pills" style="margin:2px 0 8px;">
-          <div class="nsk-pill active" id="nskRule1" onclick="nskSetRule('1')"><span data-hi="1 lakh / akshara" data-bn="১ লক্ষ / অক্ষর">1 lakh / akshara</span></div>
-          <div class="nsk-pill" id="nskRule4" onclick="nskSetRule('4')"><span data-hi="4 lakh / akshara (Kaliyug)" data-bn="৪ লক্ষ / অক্ষর (কলিযুগ)">4 lakh / akshara</span></div>
+          <div class="nsk-pill active" id="nskRule1" onclick="nskSetRule('1')"><span data-hi="1 लाख / अक्षर" data-bn="১ লক্ষ / অক্ষর">1 lakh / akshara</span></div>
+          <div class="nsk-pill" id="nskRule4" onclick="nskSetRule('4')"><span data-hi="4 लाख / अक्षर (कलियुग)" data-bn="৪ লক্ষ / অক্ষর (কলিযুগ)">4 lakh / akshara</span></div>
         </div>
         <input type="hidden" id="nskDailyUnit" value="jap">
         <div class="nsk-two" style="grid-template-columns:1fr auto;align-items:stretch;">
-          <input type="number" inputmode="numeric" min="1" class="fi" id="nskDaily" oninput="nskPreview()" data-hi-ph="Pratidin ka lakshya (jap ya mala) — samay/tareekh anumaan ke liye" data-bn-ph="প্রতিদিনের লক্ষ্য (জপ বা মালা) — সময়/তারিখের হিসাবের জন্য" placeholder="">
+          <input type="number" inputmode="numeric" min="1" class="fi" id="nskDaily" oninput="nskPreview()" data-hi-ph="प्रतिदिन का लक्ष्य (जप या माला) — समय/तारीख के अनुमान के लिए" data-bn-ph="প্রতিদিনের লক্ষ্য (জপ বা মালা) — সময়/তারিখের হিসাবের জন্য" placeholder="">
           <div class="nsk-pills" style="margin:0;gap:6px;">
-            <div class="nsk-pill active" id="nskDU_jap" style="min-width:64px;display:flex;align-items:center;justify-content:center;" onclick="nskSetDailyUnit('jap')"><span data-hi="Jap" data-bn="জপ">Jap</span></div>
-            <div class="nsk-pill" id="nskDU_mala" style="min-width:64px;display:flex;align-items:center;justify-content:center;" onclick="nskSetDailyUnit('mala')"><span data-hi="Mala" data-bn="মালা">Mala</span></div>
+            <div class="nsk-pill active" id="nskDU_jap" style="min-width:64px;display:flex;align-items:center;justify-content:center;" onclick="nskSetDailyUnit('jap')"><span data-hi="जप" data-bn="জপ">Jap</span></div>
+            <div class="nsk-pill" id="nskDU_mala" style="min-width:64px;display:flex;align-items:center;justify-content:center;" onclick="nskSetDailyUnit('mala')"><span data-hi="माला" data-bn="মালা">Mala</span></div>
           </div>
         </div>
         <div id="nskCalc"></div>
-        <div class="nsk-hint" data-hi="Parampara: har akshara ke liye 1 lakh jap, phir dashamsh havan, tarpan, marjan, bhojan. Apne Gurudev ke nirdesh anusar karein." data-bn="পরম্পরা: প্রতি অক্ষরে ১ লক্ষ জপ, তারপর দশাংশ হোম, তর্পণ, মার্জন, ভোজন। নিজের গুরুদেবের নির্দেশ অনুসারে করুন।"></div>
+        <div class="nsk-hint" data-hi="परंपरा: प्रत्येक अक्षर के लिए 1 लाख जप, फिर दशांश हवन, तर्पण, मार्जन, भोजन। अपने गुरुदेव के निर्देशानुसार करें।" data-bn="পরম্পরা: প্রতি অক্ষরে ১ লক্ষ জপ, তারপর দশাংশ হোম, তর্পণ, মার্জন, ভোজন। নিজের গুরুদেবের নির্দেশ অনুসারে করুন।"></div>
       </div>
 
-      <div class="nsk-hint" style="margin-bottom:4px" data-hi="📿 Shuru ki tareekh — us din se aapka roz ka jap apne aap judta rahega:" data-bn="📿 শুরুর তারিখ — সেই দিন থেকে আপনার রোজের জপ নিজে থেকেই যোগ হবে:"></div>
+      <div class="nsk-hint" style="margin-bottom:4px" data-hi="📿 शुरू की तारीख — उस दिन से आपका प्रतिदिन का जप अपने आप जुड़ता रहेगा:" data-bn="📿 শুরুর তারিখ — সেই দিন থেকে আপনার রোজের জপ নিজে থেকেই যোগ হবে:"></div>
       <div class="fr"><input type="date" class="fi" id="nskStart" title="Start date"></div>
-      <button class="pb deduct" style="background:linear-gradient(135deg,rgba(245,209,122,0.35),rgba(124,143,224,0.28));" onclick="addNmSankalp()">🙏 <span data-hi="Sankalp rakhein" data-bn="সংকল্প রাখুন">Keep Sankalp</span></button>
-      <div class="nsk-hint" data-hi="Upar chuni hui jap se, shuru ki tareekh se tracked jap apne aap judta jaayega; warna ➕/✂️ se khud jodein." data-bn="উপরে বাছা জপ থেকে শুরুর তারিখ থেকে ট্র্যাক করা জপ নিজে থেকেই যোগ হবে; নইলে ➕/✂️ দিয়ে নিজে যোগ করুন।"></div>
+      <button class="pb deduct" style="background:linear-gradient(135deg,rgba(245,209,122,0.35),rgba(124,143,224,0.28));" onclick="addNmSankalp()">🙏 <span data-hi="संकल्प रखें" data-bn="সংকল্প রাখুন">Keep Sankalp</span></button>
+      <div class="nsk-hint" data-hi="ऊपर चुने हुए जप से, शुरू की तारीख से ट्रैक किया गया जप अपने आप जुड़ जाएगा; वरना ➕/✂️ से खुद जोड़ें।" data-bn="উপরে বাছা জপ থেকে শুরুর তারিখ থেকে ট্র্যাক করা জপ নিজে থেকেই যোগ হবে; নইলে ➕/✂️ দিয়ে নিজে যোগ করুন।"></div>
       <div id="nskList" class="nsk-list"></div>
     </div>
   </div>

@@ -12130,7 +12130,7 @@ function _nskHi() { try { return secLang("nm") === "hi"; } catch (e) { return fa
 function _nskT(hi, bn) { return _nskHi() ? hi : bn; }
 function _nskFmt(n) { return Math.max(0, Math.round(+n || 0)).toLocaleString("en-IN"); }
 function _nskTypeLabel(t) {
-  if (!t || t === "none") return _nskT("Sirf manual (auto-count nahi)", "শুধু ম্যানুয়াল (অটো-গণনা নয়)");
+  if (!t || t === "none") return _nskT("केवल मैन्युअल (ऑटो-गणना नहीं)", "শুধু ম্যানুয়াল (অটো-গণনা নয়)");
   if (t === "n28") return "28 Names";
   try { return _dedTypeMeta(t).label; } catch (e) { return t; }
 }
@@ -12246,62 +12246,83 @@ function nskPace(sk) {
 }
 // returns "N din · date" text for finishing `remaining` at `perDay`
 function _nskEtaTxt(remaining, perDay) {
-  if (remaining <= 0) return _nskT("Poora ho chuka", "পূর্ণ হয়ে গেছে");
+  if (remaining <= 0) return _nskT("पूरा हो चुका", "পূর্ণ হয়ে গেছে");
   if (!(perDay > 0)) return "—";
   const d = Math.ceil(remaining / perDay);
-  return _nskFmt(d) + " " + _nskT("din", "দিন") + " · " + _nskAddDays(d);
+  return _nskFmt(d) + " " + _nskT("दिन", "দিন") + " · " + _nskAddDays(d);
 }
 function nskSankalpEst() {
   const g = (id) => parseInt((document.getElementById(id) || {}).value, 10) || 0;
   const target = g("nskTarget"), daily = g("nskDaily2");
   if (target < 1 || daily < 1) return "";
   const sd = (document.getElementById("nskStart") || {}).value;
-  let txt = _nskFmt(Math.ceil(target / daily)) + " " + _nskT("din", "দিন");
+  let txt = _nskFmt(Math.ceil(target / daily)) + " " + _nskT("दिन", "দিন");
   try {
     const d = sd ? new Date(sd + "T00:00:00") : new Date();
     d.setDate(d.getDate() + Math.ceil(target / daily) - 1);
     txt += " · " + d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
   } catch (e) {}
-  return '<div class="nsk-calc"><div class="nsk-calc-row"><span>' + _nskT("Anumaanit samay", "আনুমানিক সময়") + "</span><b>" + escHtml(txt) + "</b></div></div>";
+  return '<div class="nsk-calc"><div class="nsk-calc-row"><span>' + _nskT("अनुमानित समय", "আনুমানিক সময়") + "</span><b>" + escHtml(txt) + "</b></div></div>";
+}
+function _nskUnitSel(id, unit, onchange) {
+  return '<select class="fi" id="' + id + '" style="flex:0 0 auto;width:auto;min-width:74px;padding-left:8px;padding-right:8px;"' + (onchange ? ' onchange="' + onchange + '"' : "") + '>' +
+    '<option value="jap"' + (unit !== "mala" ? " selected" : "") + ">" + _nskT("जप", "জপ") + "</option>" +
+    '<option value="mala"' + (unit === "mala" ? " selected" : "") + ">" + _nskT("माला", "মালা") + "</option></select>";
 }
 function nskSetDaily(id) {
   if (isGhostMode()) return;
   const sk = (App.S.nmSankalps || []).find((x) => x.id === id);
   const el = document.getElementById("nsk-daily-" + id);
   if (!sk || !el) return;
-  sk.daily = Math.max(0, parseInt(el.value, 10) || 0);
+  const u = (document.getElementById("nsk-dailyu-" + id) || {}).value === "mala" ? "mala" : "jap";
+  const n = Math.max(0, parseInt(el.value, 10) || 0);
+  sk.dailyUnit = u;
+  sk.daily = u === "mala" ? n * (App.S.ms || 108) : n; // always stored in jap
   _nskTouch(sk);
   _nskSave();
 }
 
 // ── Mantra presets taken from the app's own jap types ──
 const NSK_PRESET_TYPES = ["radha", "rv", "kv", "hk", "ss", "ram", "sr", "rm", "nr", "yg", "vl", "kaam"];
-function nskPresetMantra(t) {
-  const N = (typeof NAAM_TEXT !== "undefined" && NAAM_TEXT.sa) || {};
+function nskPresetMantra(t, script) {
+  // Mantra in the script of the current language: Hinglish/Hindi -> Devanagari, Bangla -> Bengali (never mixed)
+  const sc = script || (_nskHi() ? "sa" : "bn");
+  const sa = sc === "sa";
+  const N = (typeof NAAM_TEXT !== "undefined" && NAAM_TEXT[sc]) || {};
   const one = (s) => String(s || "").replace(/\s*\n\s*/g, " ").trim();
+  const sri = sa ? "श्री" : "শ্রী";
   switch (t) {
-    case "radha": return one(N.radha) || "राधा";
+    case "radha": return one(N.radha) || (sa ? "राधा" : "রাধা");
     case "rv":
-      try { if (isHaridashiActive()) return "श्री " + one(HD_NAAM_TEXT.sa.rv1 + " " + HD_NAAM_TEXT.sa.rv2); } catch (e) {}
-      return "श्री " + one((N.rv1 || "राधावल्लभ") + " " + (N.rv2 || "श्री हरिवंश"));
-    case "kv": return one((N.kv1 || "कृष्णाय वासुदेवाय हरये परमात्मने") + " " + (N.kv2 || "प्रणतः क्लेशनाशाय गोविन्दाय नमो नमः"));
-    case "hk": return "हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे हरे राम हरे राम राम राम हरे हरे";
-    case "ss": return one((N.ss1 || "साम्ब") + " " + (N.ss2 || "सदाशिव"));
-    case "ram": return one((N.ram1 || "श्री राम, जय राम,") + " " + (N.ram2 || "जय जय राम।")).replace(/[,।]/g, "");
-    case "sr": return one(N.sr1) || "सीताराम";
-    case "rm": return one(N.rm1) || "राम";
-    case "nr": return one(N.nr1) || "नारायण";
-    case "yg": return one(N.yg1) || "राधे कृष्ण राधे कृष्ण कृष्ण कृष्ण राधे राधे";
-    case "vl": return one(N.vlTitle) || "श्री कृष्णः शरणं मम";
-    case "kaam": return one(N.kaamTitle) || "काम विजय";
+      try { if (isHaridashiActive()) return sri + " " + one(HD_NAAM_TEXT[sc].rv1 + " " + HD_NAAM_TEXT[sc].rv2); } catch (e) {}
+      return sri + " " + one((N.rv1 || (sa ? "राधावल्लभ" : "রাধাবল্লভ")) + " " + (N.rv2 || (sa ? "श्री हरिवंश" : "শ্রী হরিবংশ")));
+    case "kv": return one(N.kv1 + " " + N.kv2);
+    case "hk": return sa ? "हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे हरे राम हरे राम राम राम हरे हरे" : "হরে কৃষ্ণ হরে কৃষ্ণ কৃষ্ণ কৃষ্ণ হরে হরে হরে রাম হরে রাম রাম রাম হরে হরে";
+    case "ss": return one(N.ss1 + " " + N.ss2);
+    case "ram": return one(N.ram1 + " " + N.ram2).replace(/[,।]/g, "");
+    case "sr": return one(N.sr1);
+    case "rm": return one(N.rm1);
+    case "nr": return one(N.nr1);
+    case "yg": return one(N.yg1);
+    case "vl": return one(N.vlTitle);
+    case "kaam": return one(N.kaamTitle);
   }
   return "";
 }
+// A saved Purashcharan keeps the script of the language it was made in; show it in the current language
+function _nskLocMantra(sk) {
+  const m = sk.mantra || "";
+  try {
+    if (sk.jType && NSK_PRESET_TYPES.indexOf(sk.jType) >= 0 && (m === nskPresetMantra(sk.jType, "sa") || m === nskPresetMantra(sk.jType, "bn"))) return nskPresetMantra(sk.jType);
+  } catch (e) {}
+  return m;
+}
+
 function _nskFillSrcSelect() {
   const sel = document.getElementById("nskSrc");
   if (!sel) return;
   const cur = sel.value || "custom";
-  sel.innerHTML = '<option value="custom">' + escHtml(_nskT("✍️ Apna mantra likhein", "✍️ নিজের মন্ত্র লিখুন")) + "</option>" +
+  sel.innerHTML = '<option value="custom">' + escHtml(_nskT("✍️ अपना मंत्र लिखें", "✍️ নিজের মন্ত্র লিখুন")) + "</option>" +
     NSK_PRESET_TYPES.map((t) => '<option value="' + t + '">' + escHtml(_nskTypeLabel(t)) + "</option>").join("");
   sel.value = cur;
 }
@@ -12312,6 +12333,7 @@ function nskSrcChange() {
   const m = nskPresetMantra(v);
   if (!m) return;
   const el = document.getElementById("nskMantra"); if (el) el.value = m;
+  window._nskAutoMantra = m;
   const ak = document.getElementById("nskAkOverride"); if (ak) ak.value = "";
   const t = document.getElementById("nskType"); if (t) t.value = v; // auto-count progress from this same jap
   nskPreview();
@@ -12426,7 +12448,7 @@ function nskPreview() {
       sd.setDate(sd.getDate() + days - 1);
       endTxt = " · " + sd.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
     } catch (e) {}
-    est = '<div class="nsk-calc-row"><span>' + _nskT("Anumaanit samay", "আনুমানিক সময়") + "</span><b>" + _nskFmt(days) + " " + _nskT("din", "দিন") + escHtml(endTxt) + "</b></div>";
+    est = '<div class="nsk-calc-row"><span>' + _nskT("अनुमानित समय", "আনুমানিক সময়") + "</span><b>" + _nskFmt(days) + " " + _nskT("दिन", "দিন") + escHtml(endTxt) + "</b></div>";
   }
   const row = (l, v, extra) => '<div class="nsk-calc-row"><span>' + l + "</span><b>" + v + (extra ? ' <i>' + extra + "</i>" : "") + "</b></div>";
   let paceRow = "";
@@ -12437,17 +12459,17 @@ function nskPreview() {
       let _sum = 0;
       for (let i = 0; i < 7; i++) { const d = new Date(); d.setDate(d.getDate() - i); _sum += +_hh[_ldk(d)] || 0; }
       const _avg = _sum / 7;
-      if (_avg > 0) paceRow = row(_nskT("Aapki gati (pichhle 7 din)", "আপনার গতি (গত ৭ দিন)"), _nskFmt(Math.round(_avg)) + "/" + _nskT("din", "দিন"), _nskEtaTxt(c.jap, _avg));
+      if (_avg > 0) paceRow = row(_nskT("आपकी गति (पिछले 7 दिन)", "আপনার গতি (গত ৭ দিন)"), _nskFmt(Math.round(_avg)) + "/" + _nskT("दिन", "দিন"), _nskEtaTxt(c.jap, _avg));
     }
   } catch (e) {}
   box.innerHTML =
     '<div class="nsk-calc">' +
-    row(_nskT("Akshara (auto)", "অক্ষর (অটো)"), _nskFmt(auto) + (ov > 0 ? " → " + _nskFmt(ov) : "")) +
-    row(_nskT("Kul Jap", "মোট জপ"), '<span style="color:var(--gold)">' + _nskFmt(c.jap) + "</span>", _nskFmt(Math.floor(c.jap / ms)) + " " + _nskT("mala", "মালা")) +
-    row(_nskT("Havan (dashamsh)", "হোম (দশাংশ)"), _nskFmt(c.havan)) +
-    row(_nskT("Tarpan (havan ka 1/10)", "তর্পণ (হোমের ১/১০)"), _nskFmt(c.tarpan)) +
-    row(_nskT("Marjan (tarpan ka 1/10)", "মার্জন (তর্পণের ১/১০)"), _nskFmt(c.marjan)) +
-    row(_nskT("Bhojan (marjan ka 1/10)", "ভোজন (মার্জনের ১/১০)"), _nskFmt(c.bhojan)) +
+    row(_nskT("अक्षर (ऑटो)", "অক্ষর (অটো)"), _nskFmt(auto) + (ov > 0 ? " → " + _nskFmt(ov) : "")) +
+    row(_nskT("कुल जप", "মোট জপ"), '<span style="color:var(--gold)">' + _nskFmt(c.jap) + "</span>", _nskFmt(Math.floor(c.jap / ms)) + " " + _nskT("माला", "মালা")) +
+    row(_nskT("हवन (दशांश)", "হোম (দশাংশ)"), _nskFmt(c.havan)) +
+    row(_nskT("तर्पण (हवन का 1/10)", "তর্পণ (হোমের ১/১০)"), _nskFmt(c.tarpan)) +
+    row(_nskT("मार्जन (तर्पण का 1/10)", "মার্জন (তর্পণের ১/১০)"), _nskFmt(c.marjan)) +
+    row(_nskT("भोजन (मार्जन का 1/10)", "ভোজন (মার্জনের ১/১০)"), _nskFmt(c.bhojan)) +
     est + paceRow + "</div>";
 }
 
@@ -12470,11 +12492,11 @@ function addNmSankalp() {
   let sk;
   if (pu) {
     const mantra = g("nskMantra");
-    if (!mantra) { toast(_nskT("Mantra likhein 🙏", "মন্ত্র লিখুন 🙏")); return; }
+    if (!mantra) { toast(_nskT("मंत्र लिखें 🙏", "মন্ত্র লিখুন 🙏")); return; }
     const ov = parseInt(g("nskAkOverride"), 10);
     const aks = ov > 0 ? ov : nskCountAksharas(mantra);
     const per = _nskPer();
-    if (aks < 1 || per < 1) { toast(_nskT("Akshara / jap per akshara sahi daalein", "অক্ষর / প্রতি অক্ষরে জপ ঠিক দিন")); return; }
+    if (aks < 1 || per < 1) { toast(_nskT("अक्षर / प्रति अक्षर जप सही डालें", "অক্ষর / প্রতি অক্ষরে জপ ঠিক দিন")); return; }
     const c = nskPurashCalc(aks, per);
     sk = {
       kind: "purash", text: g("nskText") || mantra, mantra, aksharas: aks, perAkshara: per,
@@ -12482,7 +12504,7 @@ function addNmSankalp() {
     };
   } else {
     const text = g("nskText2");
-    if (!text) { toast(_nskT("Sankalp likhein 🙏", "সংকল্প লিখুন 🙏")); return; }
+    if (!text) { toast(_nskT("संकल्प लिखें 🙏", "সংকল্প লিখুন 🙏")); return; }
     const target = parseInt(g("nskTarget"), 10) || 0;
     sk = { kind: "sankalp", text, mantra: g("nskMantra2"), target };
   }
@@ -12498,15 +12520,16 @@ function addNmSankalp() {
   });
   nskSrcChange(); // refill the mantra for the chosen preset
   nskPreview();
-  _nskSave(_nskT("Sankalp rakh liya gaya 🙏 Jai Radhe!", "সংকল্প রাখা হলো 🙏 জয় রাধে!"));
+  _nskSave(_nskT("संकल्प रख लिया गया 🙏 जय राधे!", "সংকল্প রাখা হলো 🙏 জয় রাধে!"));
 }
 function nskAdjust(id, sign) {
   if (isGhostMode()) return;
   const sk = (App.S.nmSankalps || []).find((x) => x.id === id);
   const el = document.getElementById("nsk-adj-" + id);
   if (!sk || !el) return;
-  const n = parseInt(el.value, 10) || 0;
-  if (n < 1) { toast(_nskT("Sahi sankhya daalein", "সঠিক সংখ্যা দিন")); return; }
+  const n0 = parseInt(el.value, 10) || 0;
+  if (n0 < 1) { toast(_nskT("सही संख्या डालें", "সঠিক সংখ্যা দিন")); return; }
+  const n = ((document.getElementById("nsk-adjU-" + id) || {}).value === "mala") ? n0 * (App.S.ms || 108) : n0; // jap
   sk.manual = (+sk.manual || 0) + sign * n;
   _nskTouch(sk);
   _nskSave((sign > 0 ? "➕ " : "✂️ ") + _nskFmt(n));
@@ -12518,7 +12541,7 @@ function nskToggleDone(id) {
   sk.done = !sk.done;
   sk.doneDate = sk.done ? _ldk(new Date()) : null;
   _nskTouch(sk);
-  _nskSave(sk.done ? _nskT("🌟 Sankalp poora! Jai Radhe!", "🌟 সংকল্প পূর্ণ! জয় রাধে!") : "↺");
+  _nskSave(sk.done ? _nskT("🌟 संकल्प पूरा! जय राधे!", "🌟 সংকল্প পূর্ণ! জয় রাধে!") : "↺");
 }
 function nskToggleStep(id, step) {
   if (isGhostMode()) return;
@@ -12533,10 +12556,10 @@ function nskDelete(id) {
   if (isGhostMode()) return;
   const sk = (App.S.nmSankalps || []).find((x) => x.id === id);
   if (!sk) return;
-  if (!confirm(_nskT("Is sankalp ko hata dein?", "এই সংকল্প মুছে ফেলবেন?"))) return;
+  if (!confirm(_nskT("इस संकल्प को हटा दें?", "এই সংকল্প মুছে ফেলবেন?"))) return;
   sk._deleted = true; // tombstone so cloud sync does not resurrect it
   _nskTouch(sk);
-  _nskSave(_nskT("Hata diya 🙏", "মুছে ফেলা হয়েছে 🙏"));
+  _nskSave(_nskT("हटा दिया 🙏", "মুছে ফেলা হয়েছে 🙏"));
 }
 
 function renderNmSankalp() {
@@ -12546,6 +12569,10 @@ function renderNmSankalp() {
   _nskFillTypeSelect();
   _nskFillSrcSelect();
   if (!window._nskInit) { window._nskInit = 1; nskSetKind("purash"); } // pick default jap + mantra once
+  { // language switched: re-fill an auto-filled preset mantra in the new script
+    const _s = (document.getElementById("nskSrc") || {}).value, _mm = document.getElementById("nskMantra");
+    if (_s && _s !== "custom" && _mm && (!_mm.value.trim() || _mm.value === window._nskAutoMantra)) nskSrcChange();
+  }
   nskToggleMantra();
   const st = document.getElementById("nskStart");
   if (st && !st.value) st.value = _ldk(new Date());
@@ -12556,7 +12583,7 @@ function renderNmSankalp() {
   const items = (App.S.nmSankalps || []).filter((x) => x && !x._deleted).sort((p, q) => (q.ts || 0) - (p.ts || 0));
   const ms = App.S.ms || 108;
   if (!items.length) {
-    list.innerHTML = '<div class="nsk-empty">' + _nskT("Abhi koi sankalp nahi 🌸", "এখনো কোনো সংকল্প নেই 🌸") + "</div>";
+    list.innerHTML = '<div class="nsk-empty">' + _nskT("अभी कोई संकल्प नहीं 🌸", "এখনো কোনো সংকল্প নেই 🌸") + "</div>";
     return;
   }
   list.innerHTML = items.map((sk) => {
@@ -12568,38 +12595,41 @@ function renderNmSankalp() {
     const isP = sk.kind === "purash";
     const col = _nskTypeColor(sk.jType);
     let h = '<div class="nsk-card' + (complete ? " done" : "") + '">';
-    h += '<div class="nsk-card-top"><div class="nsk-title">' + (isP ? "📿 " : "🙏 ") + escHtml(sk.text || sk.mantra || "") + "</div>";
-    h += '<button class="nsk-x" onclick="nskDelete(\'' + sk.id + '\')" aria-label="Delete">🗑 ' + _nskT("Hatayein", "মুছুন") + '</button></div>';
+    h += '<div class="nsk-card-top"><div class="nsk-title">' + (isP ? "📿 " : "🙏 ") + escHtml((sk.text && sk.text !== sk.mantra) ? sk.text : _nskLocMantra(sk) || sk.text || "") + "</div>";
+    h += '<button class="nsk-x" onclick="nskDelete(\'' + sk.id + '\')" aria-label="Delete">🗑 ' + _nskT("हटाएँ", "মুছুন") + '</button></div>';
     h += '<div class="nsk-badges">';
-    h += '<span class="nsk-badge">' + (isP ? _nskT("Purashcharan", "পুরশ্চরণ") : _nskT("Sankalp", "সংকল্প")) + "</span>";
+    h += '<span class="nsk-badge">' + (isP ? _nskT("पुरश्चरण", "পুরশ্চরণ") : _nskT("संकल्प", "সংকল্প")) + "</span>";
     if (sk.jType && sk.jType !== "none") h += '<span class="nsk-badge" style="color:' + col + ";border-color:" + col + '66">' + escHtml(_nskTypeLabel(sk.jType)) + "</span>";
-    if (complete) h += '<span class="nsk-badge ok">✅ ' + _nskT("Poora", "পূর্ণ") + (sk.doneDate ? " · " + escHtml(sk.doneDate) : "") + "</span>";
+    if (complete) h += '<span class="nsk-badge ok">✅ ' + _nskT("पूरा", "পূর্ণ") + (sk.doneDate ? " · " + escHtml(sk.doneDate) : "") + "</span>";
     h += "</div>";
-    if (isP && sk.mantra) h += '<div class="nsk-mantra">' + escHtml(sk.mantra) + "</div>";
-    if (isP) h += '<div class="nsk-sub">' + _nskFmt(sk.aksharas) + " " + _nskT("akshara", "অক্ষর") + " × " + _nskFmt(sk.perAkshara) + " = <b>" + _nskFmt(sk.target) + "</b> (" + _nskFmt(Math.floor(sk.target / ms)) + " " + _nskT("mala", "মালা") + ")</div>";
+    if (isP && sk.mantra) h += '<div class="nsk-mantra">' + escHtml(_nskLocMantra(sk)) + "</div>";
+    if (isP) h += '<div class="nsk-sub">' + _nskFmt(sk.aksharas) + " " + _nskT("अक्षर", "অক্ষর") + " × " + _nskFmt(sk.perAkshara) + " = <b>" + _nskFmt(sk.target) + "</b> (" + _nskFmt(Math.floor(sk.target / ms)) + " " + _nskT("माला", "মালা") + ")</div>";
     if (sk.note) h += '<div class="nsk-sub">📝 ' + escHtml(sk.note) + "</div>";
     h += '<div class="nsk-sub">📅 ' + escHtml(sk.start || "") + (sk.end ? " → " + escHtml(sk.end) : "") + "</div>";
     if (target > 0) {
       h += '<div class="nsk-bar"><div class="nsk-bar-fill" style="width:' + pct + '%"></div></div>';
-      h += '<div class="nsk-prog"><span>' + _nskFmt(prog) + " / " + _nskFmt(target) + ' <i style="opacity:.65;font-style:normal">(' + _nskFmt(Math.floor(prog / ms)) + " / " + _nskFmt(Math.floor(target / ms)) + " " + _nskT("mala", "মালা") + ')</i></span><b>' + pct + "%</b></div>";
+      h += '<div class="nsk-prog"><span>' + _nskFmt(prog) + " / " + _nskFmt(target) + ' <i style="opacity:.65;font-style:normal">(' + _nskFmt(Math.floor(prog / ms)) + " / " + _nskFmt(Math.floor(target / ms)) + " " + _nskT("माला", "মালা") + ')</i></span><b>' + pct + "%</b></div>";
     } else {
-      h += '<div class="nsk-prog"><span>' + _nskT("Ab tak jap", "এ পর্যন্ত জপ") + "</span><b>" + _nskFmt(prog) + "</b></div>";
+      h += '<div class="nsk-prog"><span>' + _nskT("अब तक जप", "এ পর্যন্ত জপ") + "</span><b>" + _nskFmt(prog) + "</b></div>";
     }
     if (sk.jType && sk.jType !== "none") {
-      h += '<div class="nsk-sub">⚙️ ' + _nskT("Auto", "অটো") + " " + _nskFmt(nskAutoCount(sk)) + " + " + _nskT("manual", "ম্যানুয়াল") + " " + _nskFmt(sk.manual || 0) + "</div>";
+      h += '<div class="nsk-sub">⚙️ ' + _nskT("ऑटो", "অটো") + " " + _nskFmt(nskAutoCount(sk)) + " + " + _nskT("मैन्युअल", "ম্যানুয়াল") + " " + _nskFmt(sk.manual || 0) + "</div>";
     }
     if (target > 0 && !complete) {
       const remaining = target - prog;
       const pc = nskPace(sk);
       h += '<div class="nsk-eta">';
-      h += '<div class="nsk-eta-t">' + _nskT("Baaki", "বাকি") + ": <b>" + _nskFmt(remaining) + "</b></div>";
+      h += '<div class="nsk-eta-t">' + _nskT("बाकी", "বাকি") + ": <b>" + _nskFmt(remaining) + "</b></div>";
       if (pc) {
-        h += '<div class="nsk-eta-r">📈 ' + _nskT("Aapki gati (shuru se)", "আপনার গতি (শুরু থেকে)") + ": <b>" + _nskFmt(pc.overall) + "</b>/" + _nskT("din", "দিন") + " → <b>" + escHtml(_nskEtaTxt(remaining, pc.overall)) + "</b></div>";
-        if (pc.n7 > 1) h += '<div class="nsk-eta-r">🔥 ' + _nskT("Pichhle", "গত") + " " + pc.n7 + " " + _nskT("din", "দিন") + ": <b>" + _nskFmt(pc.recent) + "</b>/" + _nskT("din", "দিন") + " → <b>" + escHtml(_nskEtaTxt(remaining, pc.recent)) + "</b></div>";
+        h += '<div class="nsk-eta-r">📈 ' + _nskT("आपकी गति (शुरू से)", "আপনার গতি (শুরু থেকে)") + ": <b>" + _nskFmt(pc.overall) + "</b>/" + _nskT("दिन", "দিন") + " → <b>" + escHtml(_nskEtaTxt(remaining, pc.overall)) + "</b></div>";
+        if (pc.n7 > 1) h += '<div class="nsk-eta-r">🔥 ' + _nskT("पिछले", "গত") + " " + pc.n7 + " " + _nskT("दिन", "দিন") + ": <b>" + _nskFmt(pc.recent) + "</b>/" + _nskT("दिन", "দিন") + " → <b>" + escHtml(_nskEtaTxt(remaining, pc.recent)) + "</b></div>";
       } else if (!sk.jType || sk.jType === "none") {
-        h += '<div class="nsk-eta-r" style="opacity:.7">' + _nskT("Gati dekhne ke liye jap type chunein", "গতি দেখতে জপের ধরন বাছুন") + "</div>";
+        h += '<div class="nsk-eta-r" style="opacity:.7">' + _nskT("गति देखने के लिए जप का प्रकार चुनें", "গতি দেখতে জপের ধরন বাছুন") + "</div>";
       }
-      h += '<div class="nsk-eta-plan">🎯 <input type="number" inputmode="numeric" min="1" class="fi nsk-adj" id="nsk-daily-' + sk.id + '" value="' + (sk.daily || "") + '" placeholder="' + _nskT("Pratidin ka lakshya (jap)", "প্রতিদিনের লক্ষ্য জপ") + '" onchange="nskSetDaily(\'' + sk.id + '\')">';
+      const _du = sk.dailyUnit === "mala" ? "mala" : "jap";
+      const _dv = sk.daily > 0 ? (_du === "mala" ? Math.round(sk.daily / ms) : sk.daily) : "";
+      h += '<div class="nsk-eta-plan">🎯 <input type="number" inputmode="numeric" min="1" class="fi nsk-adj" id="nsk-daily-' + sk.id + '" value="' + _dv + '" placeholder="' + _nskT("प्रतिदिन का लक्ष्य", "প্রতিদিনের লক্ষ্য") + '" onchange="nskSetDaily(\'' + sk.id + '\')">' +
+        _nskUnitSel("nsk-dailyu-" + sk.id, _du, "nskSetDaily(\'" + sk.id + "\')");
       if (sk.daily > 0) h += '<span>→ <b>' + escHtml(_nskEtaTxt(remaining, sk.daily)) + "</b></span>";
       h += "</div></div>";
     }
@@ -12609,14 +12639,15 @@ function renderNmSankalp() {
       const step = (k, lbl, v) => '<label class="nsk-step' + (steps[k] ? " on" : "") + '"><input type="checkbox" ' + (steps[k] ? "checked " : "") +
         'onchange="nskToggleStep(\'' + sk.id + "','" + k + '\')"><span>' + lbl + ": <b>" + _nskFmt(v) + "</b></span></label>";
       h += '<div class="nsk-steps">' +
-        step("havan", _nskT("Havan", "হোম"), c.havan) + step("tarpan", _nskT("Tarpan", "তর্পণ"), c.tarpan) +
-        step("marjan", _nskT("Marjan", "মার্জন"), c.marjan) + step("bhojan", _nskT("Bhojan", "ভোজন"), c.bhojan) + "</div>";
+        step("havan", _nskT("हवन", "হোম"), c.havan) + step("tarpan", _nskT("तर्पण", "তর্পণ"), c.tarpan) +
+        step("marjan", _nskT("मार्जन", "মার্জন"), c.marjan) + step("bhojan", _nskT("भोजन", "ভোজন"), c.bhojan) + "</div>";
     }
     h += '<div class="nsk-actions">' +
-      '<input type="number" inputmode="numeric" min="1" class="fi nsk-adj" id="nsk-adj-' + sk.id + '" placeholder="' + _nskT("jap", "জপ") + '">' +
+      '<input type="number" inputmode="numeric" min="1" class="fi nsk-adj" id="nsk-adj-' + sk.id + '" placeholder="' + _nskT("जप", "জপ") + '">' +
+      _nskUnitSel("nsk-adjU-" + sk.id, "jap") +
       '<button class="nsk-btn" onclick="nskAdjust(\'' + sk.id + '\',1)">➕</button>' +
       '<button class="nsk-btn" onclick="nskAdjust(\'' + sk.id + '\',-1)">✂️</button>' +
-      '<button class="nsk-btn wide" onclick="nskToggleDone(\'' + sk.id + '\')">' + (sk.done ? "↺ " + _nskT("Kholein", "খুলুন") : "✓ " + _nskT("Poora kiya", "পূর্ণ করুন")) + "</button></div>";
+      '<button class="nsk-btn wide" onclick="nskToggleDone(\'' + sk.id + '\')">' + (sk.done ? "↺ " + _nskT("खोलें", "খুলুন") : "✓ " + _nskT("पूरा किया", "পূর্ণ করুন")) + "</button></div>";
     h += "</div>";
     return h;
   }).join("");
@@ -13054,19 +13085,19 @@ function msVideoBtnsHtml(key) {
 
 // ─── CRORE DESCRIPTIONS ───
 const CRORE_DESCS_HI = {
-  1: "Tanu Shuddhi: Sharir puri tarah nishpaap aur pavitra ho jata hai. Rajogun aur Tamogun ka nash hota hai, aur har samay Shuddh Satogun bana rehta hai. Har samay Bhagwan ka bhajan hota he. Bimariyon ke 'paap beej' (root causes) khatam ho jate hain. Agar koi rog hai bhi, toh use sehne ki taqat mil jati hai. Swapne mein devta, rishi-muni aur sant-bhakt aakar baatein karte hain.",
-  2: "Dhan (Wealth): Dhan ka abhaav (lack of money) khatam ho jata hai. Sabse badi baat ye hai ki insan ke andar se ameer banne ki chah (desire) hi mit jati hai. Bhagwan do tarah se madad karte hain—ya toh desire hata dete hain, ya fir bina maange itna dhan dete hain ki chah khatam ho jaye. Jaise nadiyaan apne aap samundar mein milti hain, saara vaibhav sadhak ko gher leta hai. Return to home from abroad.",
-  3: "Mental Purity: Antahkaran param pavitra hota hai. Jo buri aadatein (kaam, krodh) pehle 'asadhy' (impossible) lagti thi, wo aasaan ho jati hain. Pura sansaar sadhak ko sage bhai ki tarah pyar karne lagta hai.",
-  4: "Sukha Sthan: Hriday mein Bhagvadanand (Divine Bliss) prakat hota hai. Stability: Maan-apmaan ya dukh-sukh ka hriday par koi asar nahi padta. Self-Realization: Bina shastra padhe hi 'Nityatva Bodh' ho jata hai ki 'Main nitya hoon, ye sharir anitya hai'.",
-  5: "Divine Knowledge: Vidya ka prakaash hota hai. Sadhak ki vaani se shastra nikalne lagte hain. Material Success: Agar koi worldly cheez chahiye (putra, lambi aayu, ya dushman par vijay), toh wo turant mil jati hai.",
-  6: "Victory over Enemies: Kaam, krodh, lobh, moh, mad, aur matsarya par puri vijay. Healing: 'Dushadhya' (incurable) rog bhi sankalp se samool vinash ho jate hain.",
-  7: "Purity from Lust: Duniya ki koi bhi apsara ya kaamini use mohit nahi kar sakti. Direct Interaction: Narad Ji aur Sanakadi jaise mahabhagwat prakat mein milkar baatein karte hain.",
-  8: "No Fear of Death: Mritiyu ka bhay khatam. Sadhak hamesha 'Atma-Singhasan' par viraajman rehta hai.",
-  9: "Sagun Sakshatkar: Jiska naam japa (Ram, Radha, Shiv), unka sakhshat darshan hota hai. Satyavakta: Sadhak jo bolega wahi hoga. Uska kalyan ho jayega.",
-  10: "Karma Burn: Saare sanchit aur prarabdha karma bhasm ho jate hain. No Rebirth: Ab dubara janm nahi lena padega. Hriday mein itna anand hota hai ki uska varnan nahi ho sakta.",
-  11: "11 Crore: Gyan, bhakti aur yog ki saari bhumikaayein aur siddhiyaan haazir ho jati hain. Gokul, Ayodhya, Kashi ki leelaon mein pravesh milta hai.",
-  12: "12 Crore: Bhagwan bhakt ke adheen ho jate hain aur uske piche-piche dolte hain.",
-  13: "13 Crore: Sadhak kisi bhi paapi insan ko 'Moksha' dila sakta hai.",
+  1: "तनु शुद्धि: शरीर पूरी तरह निष्पाप और पवित्र हो जाता है। रजोगुण और तमोगुण का नाश होता है, और हर समय शुद्ध सतोगुण बना रहता है। हर समय भगवान का भजन होता रहता है। बीमारियों के 'पाप बीज' (मूल कारण) समाप्त हो जाते हैं। यदि कोई रोग है भी, तो उसे सहने की शक्ति मिल जाती है। स्वप्न में देवता, ऋषि-मुनि और संत-भक्त आकर बातें करते हैं।",
+  2: "धन: धन का अभाव खत्म हो जाता है। सबसे बड़ी बात यह है कि इंसान के भीतर से अमीर बनने की चाह ही मिट जाती है। भगवान दो तरह से मदद करते हैं—या तो चाह हटा देते हैं, या फिर बिना माँगे इतना धन देते हैं कि चाह खत्म हो जाए। जैसे नदियाँ अपने आप समुद्र में मिलती हैं, सारा वैभव साधक को घेर लेता है। विदेश से घर वापसी होती है।",
+  3: "मानसिक पवित्रता: अंतःकरण परम पवित्र होता है। जो बुरी आदतें (काम, क्रोध) पहले 'असाध्य' लगती थीं, वे आसान हो जाती हैं। पूरा संसार साधक को सगे भाई की तरह प्यार करने लगता है।",
+  4: "सुख स्थान: हृदय में भगवदानंद (दिव्य आनंद) प्रकट होता है। स्थिरता: मान-अपमान या दुख-सुख का हृदय पर कोई असर नहीं पड़ता। आत्म-साक्षात्कार: बिना शास्त्र पढ़े ही 'नित्यत्व बोध' हो जाता है कि 'मैं नित्य हूँ, यह शरीर अनित्य है'।",
+  5: "दिव्य ज्ञान: विद्या का प्रकाश होता है। साधक की वाणी से शास्त्र निकलने लगते हैं। भौतिक सफलता: यदि कोई सांसारिक चीज़ चाहिए (पुत्र, लंबी आयु, या शत्रु पर विजय), तो वह तुरंत मिल जाती है।",
+  6: "शत्रुओं पर विजय: काम, क्रोध, लोभ, मोह, मद और मत्सर पर पूरी विजय। उपचार: 'दुःसाध्य' (असाध्य) रोग भी संकल्प से समूल नष्ट हो जाते हैं।",
+  7: "कामना से मुक्ति: दुनिया की कोई भी अप्सरा या कामिनी उसे मोहित नहीं कर सकती। प्रत्यक्ष संवाद: नारद जी और सनकादि जैसे महाभागवत प्रकट में मिलकर बातें करते हैं।",
+  8: "मृत्यु का भय नहीं: मृत्यु का भय खत्म। साधक हमेशा 'आत्म-सिंहासन' पर विराजमान रहता है।",
+  9: "सगुण साक्षात्कार: जिसका नाम जपा (राम, राधा, शिव), उनका साक्षात दर्शन होता है। सत्यवक्ता: साधक जो बोलेगा वही होगा। उसका कल्याण हो जाएगा।",
+  10: "कर्म भस्म: सारे संचित और प्रारब्ध कर्म भस्म हो जाते हैं। पुनर्जन्म नहीं: अब दोबारा जन्म नहीं लेना पड़ेगा। हृदय में इतना आनंद होता है कि उसका वर्णन नहीं हो सकता।",
+  11: "11 करोड़: ज्ञान, भक्ति और योग की सारी भूमिकाएँ और सिद्धियाँ हाज़िर हो जाती हैं। गोकुल, अयोध्या, काशी की लीलाओं में प्रवेश मिलता है।",
+  12: "12 करोड़: भगवान भक्त के अधीन हो जाते हैं और उसके पीछे-पीछे डोलते हैं।",
+  13: "13 करोड़: साधक किसी भी पापी इंसान को 'मोक्ष' दिला सकता है।",
 };
 
 const CRORE_DESCS_BN = {
@@ -30903,7 +30934,7 @@ const SPIRITUAL_MILESTONES = [
     tag: "Tanu Sthan",
     eng: "Body Purification",
     phase: "shuddhikaran",
-    desc: "Sharir nishpaap hone lagta hai. Rajogun aur Tamogun khatam hokar Shuddha Sattva aata hai. Rogon ke beej nasht hote hain aur sapne mein Devi-Devtaon ke darshan hone lagte hain.",
+    desc: "शरीर निष्पाप होने लगता है। रजोगुण और तमोगुण खत्म होकर शुद्ध सत्त्व आता है। रोगों के बीज नष्ट होते हैं और सपने में देवी-देवताओं के दर्शन होने लगते हैं।",
   },
   {
     count: 2 * CRORE,
@@ -30912,7 +30943,7 @@ const SPIRITUAL_MILESTONES = [
     tag: "Dhan Sthan",
     eng: "Wealth Purification",
     phase: "shuddhikaran",
-    desc: "Garibi aur daridrata ka dukh hamesha ke liye khatam ho jata hai. Bhagwan ya toh itna dhan de dete hain ki chah khatam ho jaye, ya fir man se paise ki bhookh hi mita dete hain.",
+    desc: "गरीबी और दरिद्रता का दुख हमेशा के लिए खत्म हो जाता है। भगवान या तो इतना धन दे देते हैं कि चाह खत्म हो जाए, या फिर मन से पैसे की भूख ही मिटा देते हैं।",
   },
   {
     count: 3 * CRORE,
@@ -30921,7 +30952,7 @@ const SPIRITUAL_MILESTONES = [
     tag: "Parakram Sthan",
     eng: "Inner Strength",
     phase: "shuddhikaran",
-    desc: "Jo kaam pehle Asadhya lagte the (jaise gussa ya moh chhodna), wo Sadhya ho jate hain. Pura sansar aapko prem ki nazar se dekhne lagta hai.",
+    desc: "जो काम पहले असाध्य लगते थे (जैसे गुस्सा या मोह छोड़ना), वे साध्य हो जाते हैं। पूरा संसार आपको प्रेम की नज़र से देखने लगता है।",
   },
   {
     count: 4 * CRORE,
@@ -30930,7 +30961,7 @@ const SPIRITUAL_MILESTONES = [
     tag: "Sukh Sthan",
     eng: "Heart Purification",
     phase: "shuddhikaran",
-    desc: "Nityatva Bodh hota hai — aapko feel hone lagta hai ki aap ye marne wala sharir nahi, balki ek nitya Atma ho. Man aur buddhi par kisi bhi worldly dukh ka asar nahi padta.",
+    desc: "नित्यत्व बोध होता है — आपको महसूस होने लगता है कि आप यह मरने वाला शरीर नहीं, बल्कि एक नित्य आत्मा हैं। मन और बुद्धि पर किसी भी सांसारिक दुख का असर नहीं पड़ता।",
   },
   {
     count: 5 * CRORE,
@@ -30939,7 +30970,7 @@ const SPIRITUAL_MILESTONES = [
     tag: "Vidya Sthan",
     eng: "Knowledge Awakening",
     phase: "shakti",
-    desc: "Shastron ka gyan apne aap andar se nikalne lagta hai. Agar koi worldly wish ho (jaise santan ya lambi umar), toh wo bina maange puri hone lagti hai.",
+    desc: "शास्त्रों का ज्ञान अपने आप भीतर से निकलने लगता है। यदि कोई सांसारिक इच्छा हो (जैसे संतान या लंबी उम्र), तो वह बिना माँगे पूरी होने लगती है।",
   },
   {
     count: 6 * CRORE,
@@ -30948,7 +30979,7 @@ const SPIRITUAL_MILESTONES = [
     tag: "Ripu Sthan",
     eng: "Victory Over Enemies",
     phase: "shakti",
-    desc: "Bahar ke dushman hi nahi, balki andar ke 6 dushman (Kaam, Krodh, Lobh, Moh, Mad, Matsar) haar jate hain. Koi bhi incurable disease sankalp matra se thik ho sakta hai.",
+    desc: "बाहर के शत्रु ही नहीं, बल्कि भीतर के 6 शत्रु (काम, क्रोध, लोभ, मोह, मद, मत्सर) हार जाते हैं। कोई भी असाध्य रोग संकल्प मात्र से ठीक हो सकता है।",
   },
   {
     count: 7 * CRORE,
@@ -30957,7 +30988,7 @@ const SPIRITUAL_MILESTONES = [
     tag: "Jaya Sthan",
     eng: "Desire Mastery",
     phase: "shakti",
-    desc: "Duniya ki koi bhi attraction aise sadhak ko bhatka nahi sakti. Is stage par Narad Ji jaise maha-purushon se Pratyaksh milan aur baatchit shuru ho jati hai.",
+    desc: "दुनिया का कोई भी आकर्षण ऐसे साधक को भटका नहीं सकता। इस अवस्था में नारद जी जैसे महापुरुषों से प्रत्यक्ष मिलन और बातचीत शुरू हो जाती है।",
   },
   {
     count: 8 * CRORE,
@@ -30966,7 +30997,7 @@ const SPIRITUAL_MILESTONES = [
     tag: "Mrityu Sthan",
     eng: "Death Fear Removed",
     phase: "shakti",
-    desc: "Maut ka darr hamesha ke liye chala jata hai. Sadhak Atma-Raj ke sinhasan par baith jata hai, yani wo apne swaroop mein sthit ho jata hai.",
+    desc: "मृत्यु का डर हमेशा के लिए चला जाता है। साधक आत्म-राज के सिंहासन पर बैठ जाता है, यानी वह अपने स्वरूप में स्थित हो जाता है।",
   },
   {
     count: 9 * CRORE,
@@ -30975,7 +31006,7 @@ const SPIRITUAL_MILESTONES = [
     tag: "Dharam Sthan",
     eng: "Direct Divine Vision",
     phase: "bhagwat",
-    desc: "Aap jiska naam jap rahe hain (Ram, Krishna, Shiva, ya Radha), unka Saakshaatkaar (Direct Vision) hota hai. Sadhak ki vani Satya ho jati hai — jo bologe wo ho jayega.",
+    desc: "आप जिसका नाम जप रहे हैं (राम, कृष्ण, शिव या राधा), उनका साक्षात्कार (प्रत्यक्ष दर्शन) होता है। साधक की वाणी सत्य हो जाती है — जो बोलेंगे वह हो जाएगा।",
   },
   {
     count: 10 * CRORE,
@@ -30984,7 +31015,7 @@ const SPIRITUAL_MILESTONES = [
     tag: "Karm Sthan",
     eng: "Karma Liberation",
     phase: "bhagwat",
-    desc: "Saare purane karmo ka stock (Sanchit) aur current karmo ka phal bhasm ho jata hai. Ab janm-maran ka chakra hamesha ke liye khatam.",
+    desc: "सारे पुराने कर्मों का भंडार (संचित) और वर्तमान कर्मों का फल भस्म हो जाता है। अब जन्म-मरण का चक्र हमेशा के लिए खत्म।",
   },
   {
     count: 11 * CRORE,
@@ -30993,7 +31024,7 @@ const SPIRITUAL_MILESTONES = [
     tag: "Siddhi Sthan",
     eng: "All Siddhis Attained",
     phase: "bhagwat",
-    desc: "Saari Siddhiyan aur Riddhiyan haath jodkar khadi rehti hain. Sadhak Bhagwan ki nitya leelaon (Vrindavan, Saket etc.) mein pravesh kar jata hai.",
+    desc: "सारी सिद्धियाँ और ऋद्धियाँ हाथ जोड़कर खड़ी रहती हैं। साधक भगवान की नित्य लीलाओं (वृंदावन, साकेत आदि) में प्रवेश कर जाता है।",
   },
   {
     count: 12 * CRORE,
@@ -31002,7 +31033,7 @@ const SPIRITUAL_MILESTONES = [
     tag: "Bhakti Sthan",
     eng: "God Follows Devotee",
     phase: "bhagwat",
-    desc: "Sadhak itna powerful ho jata hai ki Bhagwan uske piche-piche dolte hain (Bhagwan bhakt ke adheen ho jate hain).",
+    desc: "साधक इतना शक्तिशाली हो जाता है कि भगवान उसके पीछे-पीछे डोलते हैं (भगवान भक्त के अधीन हो जाते हैं)।",
   },
   {
     count: 13 * CRORE,
@@ -31011,7 +31042,7 @@ const SPIRITUAL_MILESTONES = [
     tag: "Moksh Sthan",
     eng: "Power to Grant Liberation",
     phase: "bhagwat",
-    desc: "Ye limit hai. Jo 13 crore naam jap leta hai, wo itna samarth ho jata hai ki wo kisi bhi Paapi insan ko bhi Moksha (liberation) dila sakta hai.",
+    desc: "यह सीमा है। जो 13 करोड़ नाम जप लेता है, वह इतना समर्थ हो जाता है कि किसी भी पापी इंसान को भी मोक्ष दिला सकता है।",
   },
 ];
 

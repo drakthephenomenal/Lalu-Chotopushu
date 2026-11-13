@@ -1050,28 +1050,21 @@
         <div class="fr"><select class="fi" id="nskSrc" onchange="nskSrcChange()"></select></div>
         <div class="fr"><input type="text" class="fi" id="nskText" maxlength="80" data-hi-ph="Naam / uddeshya (optional)" data-bn-ph="নাম / উদ্দেশ্য (ঐচ্ছিক)" placeholder=""></div>
         <div class="fr"><textarea class="fi" id="nskMantra" rows="2" maxlength="200" oninput="nskMantraInput()" data-hi-ph="Mantra likhein (Devanagari / বাংলা / Roman) — jaise: ॐ नमः शिवाय" data-bn-ph="মন্ত্র লিখুন (দেবনাগরী / বাংলা / Roman) — যেমন: ওঁ নমঃ শিবায়" placeholder="" style="resize:vertical;font-family:inherit;"></textarea></div>
-        <div class="nsk-two">
-          <select class="fi" id="nskRule" onchange="nskPreview()">
+        <div class="fr"><select class="fi" id="nskRule" onchange="nskPreview()">
             <option value="1" data-hi="1 lakh / akshara (standard)" data-bn="১ লক্ষ / অক্ষর (সাধারণ)">1 lakh / akshara</option>
             <option value="4" data-hi="4 lakh / akshara (Kaliyug)" data-bn="৪ লক্ষ / অক্ষর (কলিযুগ)">4 lakh / akshara</option>
             <option value="c" data-hi="Custom" data-bn="কাস্টম">Custom</option>
-          </select>
-          <input type="number" inputmode="numeric" min="1" class="fi" id="nskAkOverride" oninput="nskPreview()" data-hi-ph="Akshara badlein (optional)" data-bn-ph="অক্ষর বদলান (ঐচ্ছিক)" placeholder="">
-        </div>
+          </select></div>
         <div class="fr"><input type="number" inputmode="numeric" min="1" class="fi" id="nskCustomPer" oninput="nskPreview()" style="display:none" data-hi-ph="Jap per akshara (jaise 125000)" data-bn-ph="প্রতি অক্ষরে জপ (যেমন ১২৫০০০)" placeholder=""></div>
         <div class="fr"><input type="number" inputmode="numeric" min="1" class="fi" id="nskDaily" oninput="nskPreview()" data-hi-ph="Roz ka target jap (samay/tareekh anumaan ke liye)" data-bn-ph="রোজের লক্ষ্য জপ (সময়/তারিখের হিসাবের জন্য)" placeholder=""></div>
         <div id="nskCalc"></div>
         <div class="nsk-hint" data-hi="Parampara: har akshara ke liye 1 lakh jap, phir dashamsh havan, tarpan, marjan, bhojan. Apne Gurudev ke nirdesh anusar karein." data-bn="পরম্পরা: প্রতি অক্ষরে ১ লক্ষ জপ, তারপর দশাংশ হোম, তর্পণ, মার্জন, ভোজন। নিজের গুরুদেবের নির্দেশ অনুসারে করুন।"></div>
       </div>
 
-      <div class="nsk-hint" style="margin-bottom:4px" data-hi="📿 Jap type aur shuru ki tareekh — us din se aapka roz ka jap apne aap judta rahega:" data-bn="📿 জপের ধরন ও শুরুর তারিখ — সেই দিন থেকে আপনার রোজের জপ নিজে থেকেই যোগ হবে:"></div>
-      <div class="nsk-two" style="margin-top:0">
-        <select class="fi" id="nskType" title="Count jap from" onchange="nskTypeChange()"></select>
-        <input type="date" class="fi" id="nskStart" title="Start date">
-      </div>
-      <div class="fr"><input type="text" class="fi" id="nskNote" maxlength="140" data-hi-ph="Chhota note (optional)" data-bn-ph="ছোট নোট (ঐচ্ছিক)" placeholder=""></div>
+      <div class="nsk-hint" style="margin-bottom:4px" data-hi="📿 Shuru ki tareekh — us din se aapka roz ka jap apne aap judta rahega:" data-bn="📿 শুরুর তারিখ — সেই দিন থেকে আপনার রোজের জপ নিজে থেকেই যোগ হবে:"></div>
+      <div class="fr"><input type="date" class="fi" id="nskStart" title="Start date"></div>
       <button class="pb deduct" style="background:linear-gradient(135deg,rgba(245,209,122,0.35),rgba(124,143,224,0.28));" onclick="addNmSankalp()">🙏 <span data-hi="Sankalp rakhein" data-bn="সংকল্প রাখুন">Keep Sankalp</span></button>
-      <div class="nsk-hint" data-hi="“Jap kahan se ginein” me koi jap chunein to us din se tracked jap apne aap judta jaayega; warna ➕/✂️ se khud jodein." data-bn="“জপ কোথা থেকে গণনা” এ কোনো জপ বাছলে সেই তারিখ থেকে ট্র্যাক করা জপ নিজে থেকেই যোগ হবে; নইলে ➕/✂️ দিয়ে নিজে যোগ করুন।"></div>
+      <div class="nsk-hint" data-hi="Upar chuni hui jap se, shuru ki tareekh se tracked jap apne aap judta jaayega; warna ➕/✂️ se khud jodein." data-bn="উপরে বাছা জপ থেকে শুরুর তারিখ থেকে ট্র্যাক করা জপ নিজে থেকেই যোগ হবে; নইলে ➕/✂️ দিয়ে নিজে যোগ করুন।"></div>
       <div id="nskList" class="nsk-list"></div>
     </div>
   </div>

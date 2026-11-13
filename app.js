@@ -12423,7 +12423,8 @@ function addNmSankalp() {
   const pu = window._nskKind === "purash";
   const g = (id) => ((document.getElementById(id) || {}).value || "").trim();
   const start = g("nskStart") || _ldk(new Date());
-  const jType = g("nskType") || "none";
+  const _src = g("nskSrc");
+  const jType = NSK_PRESET_TYPES.indexOf(_src) >= 0 ? _src : "none"; // auto-count from the chosen jap
   const daily = parseInt(g(pu ? "nskDaily" : "nskDaily2"), 10) || 0;
   const note = g("nskNote");
   let sk;
@@ -12503,6 +12504,7 @@ function renderNmSankalp() {
   nskApplyLang();
   _nskFillTypeSelect();
   _nskFillSrcSelect();
+  if (!window._nskInit) { window._nskInit = 1; nskSetKind("purash"); } // pick default jap + mantra once
   const st = document.getElementById("nskStart");
   if (st && !st.value) st.value = _ldk(new Date());
   nskPreview();

@@ -3604,7 +3604,7 @@ const App = {
     // ── Minimum tap delay (Settings › Jap Targets): taps sooner than this after the last counted tap are ignored ──
     // Per jap type. Skipped inside a live tournament, which has its own minimum-Q gate (japGate).
     try {
-      const _mk = this.S.japMode, _md = Number((this.S.minTapDelay || {})[_mk]) || 0;
+      const _mk = this.S.japMode, _md = window.getMinTapDelay ? window.getMinTapDelay(_mk) : 0.2;
       if (_md > 0 && !document.body.classList.contains("tn-jap")) {
         const _nowT = Date.now(), _last = (this._mtdLast && this._mtdLast[_mk]) || 0;
         if (_nowT - _last < _md * 1000) return;
@@ -5432,20 +5432,43 @@ function svtRV(type) {
 }
 
 // ── Minimum tap delay per jap type — controlled from the Jap screen's left ⚙️ panel (applies to the jap type selected now) ──
+const MTD_DEFAULT = 0.2;   // default minimum seconds between counted taps (0 = explicitly off)
+window.getMinTapDelay = function (k) {
+  const o = (App.S && App.S.minTapDelay) || {};
+  const v = o[k];
+  return (v === undefined || v === null || !isFinite(Number(v))) ? MTD_DEFAULT : Math.max(0, Number(v));
+};
 const MTD_NAMES = { radha: "Radha Naam", rv: "Radha Vallabh", ss: "Samba Sadashiv", kv: "Krishnay Vasudevay", kaam: "Kaam Vijay", ram: "Raam Vijay Mantra", sr: "SitaRaam", nr: "Narayan", rm: "Raam", yg: "Yugal Mantra", vl: "Shree Krishna Sharanam Mama", hk: "Hare Krishna Mahamantra" };
 window.syncMinTapDelayUI = function () {
   const k = (App.S && App.S.japMode) || "radha";
-  const v = Number(((App.S && App.S.minTapDelay) || {})[k]) || 0;
+  const v = window.getMinTapDelay(k);
   const val = document.getElementById("jtspDelayVal"), nm = document.getElementById("jtspDelayMode");
   if (val) val.textContent = v > 0 ? v.toFixed(1).replace(/\.0$/, "") + "s" : "Off";
   if (nm) nm.textContent = MTD_NAMES[k] || k;
+  try { window.mtdPopulate && window.mtdPopulate(); } catch (_e) {}
+};
+window.setMinTapDelay = function (mode, val) {
+  let v = parseFloat(val);
+  if (!isFinite(v) || v < 0) v = 0;
+  v = Math.min(5, Math.round(v * 100) / 100);
+  if (!App.S.minTapDelay || typeof App.S.minTapDelay !== "object") App.S.minTapDelay = {};
+  if (String(val).trim() === "") delete App.S.minTapDelay[mode]; else App.S.minTapDelay[mode] = v;   // empty = back to default 0.2s; 0 = off
+  window.syncMinTapDelayUI();
+  try { ghostAwareSave(); } catch (_e) { try { App.save(); } catch (_e2) {} }
+  try { toast(String(val).trim() === "" ? "⏱ Min tap delay: default 0.2s" : (v > 0 ? "⏱ Min tap delay " + v + "s saved" : "⏱ Min tap delay off")); } catch (_e) {}
+};
+window.mtdPopulate = function () {
+  const o = (App.S && App.S.minTapDelay) || {};
+  document.querySelectorAll("input[data-mtd]").forEach(function (el) {
+    el.value = window.getMinTapDelay(el.getAttribute("data-mtd"));
+  });
 };
 window.adjustMinTapDelay = function (dir) {
   const k = App.S.japMode || "radha";
   if (!App.S.minTapDelay || typeof App.S.minTapDelay !== "object") App.S.minTapDelay = {};
-  let v = Number(App.S.minTapDelay[k]) || 0;
+  let v = window.getMinTapDelay(k);
   v = Math.max(0, Math.min(5, Math.round((v + dir * 0.1) * 10) / 10));
-  if (v > 0) App.S.minTapDelay[k] = v; else delete App.S.minTapDelay[k];
+  App.S.minTapDelay[k] = v;   // 0 is stored: it means "off" (unset = default 0.2s)
   window.syncMinTapDelayUI();
   try { ghostAwareSave(); } catch (_e) { try { App.save(); } catch (_e2) {} }
 };
@@ -5657,6 +5680,7 @@ function initJapModeUI() {
   switchJapMode(initMode);
 
   const ms = App.S.ms || 108;
+  try { window.mtdPopulate(); } catch (_e) {}
   // Populate RV target inputs
   const dtRVIn = document.getElementById("dtRVIn");
   if (dtRVIn && App.S.dtRV) dtRVIn.value = App.S.dtRV;

@@ -389,7 +389,7 @@
             <button type="button" onclick="adjustJapTextPref('scale',1)">+</button>
           </div>
         </div>
-        <div class="jtsp-row">
+        <div class="jtsp-row jtsp-row-lang">
           <span class="jtsp-lbl">Language</span>
           <div class="jtsp-ctrl jtsp-lang">
             <button type="button" id="jtspLangHi" onclick="setJapTextLang('hi')">हिन्दी</button>
@@ -2705,6 +2705,7 @@
         <div style="display:flex;align-items:center;gap:4px;"><input type="number" class="fi" style="font-size:12px;padding:7px 8px;" id="dtHKMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtHK')"><span class="fu" style="color:#6DB8FF;font-size:10px;min-width:26px;">malas</span></div>
         <div style="font-size:10px;color:var(--td);text-align:center;">= <span id="dtHKMala">0</span> malas/day</div>
         <button class="pb" style="padding:10px 8px;font-size:12px;background:linear-gradient(135deg,rgba(109,184,255,0.4),rgba(74,144,226,0.3));color:#6DB8FF;box-shadow:0 0 16px rgba(109,184,255,0.2);" onclick="svtHK('d')">Save Daily</button>
+        <div class="mtd-row"><span class="mtd-lbl">⏱ Min tap delay</span><input type="number" class="fi mtd-in" id="mtd_hk" data-mtd="hk" min="0" max="5" step="0.1" inputmode="decimal" placeholder="0.2" onchange="setMinTapDelay('hk',this.value)"><span class="fu">sec</span></div>
       </div>
       <!-- Mahamantra Language selector -->
       <div style="background:linear-gradient(160deg,rgba(109,184,255,0.08),rgba(10,8,25,0.85));border:1.5px solid rgba(109,184,255,0.28);border-radius:16px;padding:12px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:0 4px 18px rgba(109,184,255,0.10),inset 0 1px 0 rgba(255,255,255,0.06);box-sizing:border-box;">
@@ -2833,6 +2834,7 @@
         <div class="target-input-group"><input type="number" class="fi" id="dtMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dt')"><span class="fu" style="color:var(--gold);">malas</span></div>
         <div class="target-row-sum">= <span id="dtMala">0</span> malas/day</div>
         <button class="pb target-row-btn" onclick="svt('d')">Save Daily</button>
+        <div class="mtd-row"><span class="mtd-lbl">⏱ Min tap delay</span><input type="number" class="fi mtd-in" id="mtd_radha" data-mtd="radha" min="0" max="5" step="0.1" inputmode="decimal" placeholder="0.2" onchange="setMinTapDelay('radha',this.value)"><span class="fu">sec</span></div>
       </div>
     </div>
 
@@ -2844,6 +2846,7 @@
         <div class="target-input-group"><input type="number" class="fi" id="dtRVMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtRV')"><span class="fu" style="color:var(--gold);">malas</span></div>
         <div class="target-row-sum">= <span id="dtRVMala">0</span> malas/day</div>
         <button class="pb target-row-btn" onclick="svtRV('d')">Save Daily</button>
+        <div class="mtd-row"><span class="mtd-lbl">⏱ Min tap delay</span><input type="number" class="fi mtd-in" id="mtd_rv" data-mtd="rv" min="0" max="5" step="0.1" inputmode="decimal" placeholder="0.2" onchange="setMinTapDelay('rv',this.value)"><span class="fu">sec</span></div>
       </div>
     </div>
 
@@ -2855,6 +2858,7 @@
         <div class="target-input-group"><input type="number" class="fi" id="dtSSMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtSS')"><span class="fu" style="color:#ffb86c;">malas</span></div>
         <div class="target-row-sum">= <span id="dtSSMala">0</span> malas/day</div>
         <button class="pb target-row-btn" onclick="svtSS('d')">Save Daily</button>
+        <div class="mtd-row"><span class="mtd-lbl">⏱ Min tap delay</span><input type="number" class="fi mtd-in" id="mtd_ss" data-mtd="ss" min="0" max="5" step="0.1" inputmode="decimal" placeholder="0.2" onchange="setMinTapDelay('ss',this.value)"><span class="fu">sec</span></div>
       </div>
     </div>
 
@@ -2866,6 +2870,7 @@
         <div class="target-input-group"><input type="number" class="fi" id="dtKVMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtKV')"><span class="fu" style="color:var(--gold);">malas</span></div>
         <div class="target-row-sum">= <span id="dtKVMala">0</span> malas/day</div>
         <button class="pb target-row-btn" onclick="svtKV('d')">Save Daily</button>
+        <div class="mtd-row"><span class="mtd-lbl">⏱ Min tap delay</span><input type="number" class="fi mtd-in" id="mtd_kv" data-mtd="kv" min="0" max="5" step="0.1" inputmode="decimal" placeholder="0.2" onchange="setMinTapDelay('kv',this.value)"><span class="fu">sec</span></div>
       </div>
     </div>
 
@@ -2877,6 +2882,7 @@
         <div class="target-input-group"><input type="number" class="fi" id="dtKaamMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtKaam')"><span class="fu" style="color:#FF6B9D;">malas</span></div>
         <div class="target-row-sum">= <span id="dtKaamMala">0</span> malas/day</div>
         <button class="pb target-row-btn" onclick="svtKaam('d')">Save Daily</button>
+        <div class="mtd-row"><span class="mtd-lbl">⏱ Min tap delay</span><input type="number" class="fi mtd-in" id="mtd_kaam" data-mtd="kaam" min="0" max="5" step="0.1" inputmode="decimal" placeholder="0.2" onchange="setMinTapDelay('kaam',this.value)"><span class="fu">sec</span></div>
       </div>
     </div>
 
@@ -2888,6 +2894,7 @@
         <div class="target-input-group"><input type="number" class="fi" id="dtRamMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtRam')"><span class="fu" style="color:#FF9933;">malas</span></div>
         <div class="target-row-sum">= <span id="dtRamMala">0</span> malas/day</div>
         <button class="pb target-row-btn" onclick="svtRam('d')">Save Daily</button>
+        <div class="mtd-row"><span class="mtd-lbl">⏱ Min tap delay</span><input type="number" class="fi mtd-in" id="mtd_ram" data-mtd="ram" min="0" max="5" step="0.1" inputmode="decimal" placeholder="0.2" onchange="setMinTapDelay('ram',this.value)"><span class="fu">sec</span></div>
       </div>
     </div>
     <!-- SitaRaam Daily Target -->
@@ -2898,6 +2905,7 @@
         <div class="target-input-group"><input type="number" class="fi" id="dtSRMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtSR')"><span class="fu" style="color:#FF8FA3;">malas</span></div>
         <div class="target-row-sum">= <span id="dtSRMala">0</span> malas/day</div>
         <button class="pb target-row-btn" onclick="svtSR('d')">Save Daily</button>
+        <div class="mtd-row"><span class="mtd-lbl">⏱ Min tap delay</span><input type="number" class="fi mtd-in" id="mtd_sr" data-mtd="sr" min="0" max="5" step="0.1" inputmode="decimal" placeholder="0.2" onchange="setMinTapDelay('sr',this.value)"><span class="fu">sec</span></div>
       </div>
     </div>
     <!-- Narayan Daily Target -->
@@ -2908,6 +2916,7 @@
         <div class="target-input-group"><input type="number" class="fi" id="dtNRMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtNR')"><span class="fu" style="color:#7EC8FF;">malas</span></div>
         <div class="target-row-sum">= <span id="dtNRMala">0</span> malas/day</div>
         <button class="pb target-row-btn" onclick="svtNR('d')">Save Daily</button>
+        <div class="mtd-row"><span class="mtd-lbl">⏱ Min tap delay</span><input type="number" class="fi mtd-in" id="mtd_nr" data-mtd="nr" min="0" max="5" step="0.1" inputmode="decimal" placeholder="0.2" onchange="setMinTapDelay('nr',this.value)"><span class="fu">sec</span></div>
       </div>
     </div>
     <!-- Raam Daily Target -->
@@ -2918,6 +2927,7 @@
         <div class="target-input-group"><input type="number" class="fi" id="dtRMMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtRM')"><span class="fu" style="color:#FFC857;">malas</span></div>
         <div class="target-row-sum">= <span id="dtRMMala">0</span> malas/day</div>
         <button class="pb target-row-btn" onclick="svtRM('d')">Save Daily</button>
+        <div class="mtd-row"><span class="mtd-lbl">⏱ Min tap delay</span><input type="number" class="fi mtd-in" id="mtd_rm" data-mtd="rm" min="0" max="5" step="0.1" inputmode="decimal" placeholder="0.2" onchange="setMinTapDelay('rm',this.value)"><span class="fu">sec</span></div>
       </div>
     </div>
 
@@ -2929,6 +2939,7 @@
         <div class="target-input-group"><input type="number" class="fi" id="dtYgMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtYg')"><span class="fu" style="color:#FFD700;">malas</span></div>
         <div class="target-row-sum">= <span id="dtYgMala">0</span> malas/day</div>
         <button class="pb target-row-btn" onclick="svtYg('d')">Save Daily</button>
+        <div class="mtd-row"><span class="mtd-lbl">⏱ Min tap delay</span><input type="number" class="fi mtd-in" id="mtd_yg" data-mtd="yg" min="0" max="5" step="0.1" inputmode="decimal" placeholder="0.2" onchange="setMinTapDelay('yg',this.value)"><span class="fu">sec</span></div>
       </div>
     </div>
     <!-- Shree Krishna Sharanam Mama Daily Target -->
@@ -2939,6 +2950,7 @@
         <div class="target-input-group"><input type="number" class="fi" id="dtVlMalaIn" placeholder="Malas/day" oninput="syncTargetMalaToJap('dtVl')"><span class="fu" style="color:#4FC3F7;">malas</span></div>
         <div class="target-row-sum">= <span id="dtVlMala">0</span> malas/day</div>
         <button class="pb target-row-btn" onclick="svtVl('d')">Save Daily</button>
+        <div class="mtd-row"><span class="mtd-lbl">⏱ Min tap delay</span><input type="number" class="fi mtd-in" id="mtd_vl" data-mtd="vl" min="0" max="5" step="0.1" inputmode="decimal" placeholder="0.2" onchange="setMinTapDelay('vl',this.value)"><span class="fu">sec</span></div>
       </div>
     </div>
 

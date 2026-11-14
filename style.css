@@ -3121,7 +3121,7 @@ body.naam-bn #naamLangBtnSa{opacity:0.55;}
 }
 .jap-text-settings-panel{
   position:absolute; top:40px; left:8px; z-index:42;
-  width:170px; padding:10px 12px 12px;
+  width:236px; max-width:calc(100vw - 24px); box-sizing:border-box; padding:10px 12px 12px;
   background:rgba(6,13,31,0.92); border:1px solid rgba(255,215,0,0.35);
   border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,0.5);
   display:none; flex-direction:column; gap:8px;
@@ -4766,3 +4766,9 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 .mtd-row{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.12);flex-wrap:wrap}
 .mtd-lbl{font-size:11px;color:rgba(255,255,255,0.65);letter-spacing:.5px;flex:1 1 auto;min-width:110px}
 .mtd-in{width:84px !important;flex:0 0 84px;font-size:13px;padding:7px 8px;text-align:center}
+
+/* Jap ⚙️ panel: keep everything inside the box (Bangla / Hindi buttons were overflowing) */
+.jap-text-settings-panel .jtsp-lbl{white-space:nowrap}
+.jap-text-settings-panel .jtsp-row.jtsp-row-lang{flex-wrap:wrap}
+.jap-text-settings-panel .jtsp-row-lang .jtsp-ctrl.jtsp-lang{width:100%;gap:8px}
+.jap-text-settings-panel .jtsp-row-lang .jtsp-ctrl.jtsp-lang button{flex:1 1 0;min-width:0;padding:6px 4px}

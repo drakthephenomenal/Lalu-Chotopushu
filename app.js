@@ -1743,7 +1743,7 @@ const App = {
     sriBranch: "ramananda",  // when sampraday === "sri" — "ramanuj" | "ramananda"
     hkLang: "hi",
     naamLang: "sa",  // Radha / Radha Vallabh / Samba Sadashiv jap text script: "sa" (Sanskrit/Devanagari) or "bn" (Bangla)
-    tapDelay: {},  // min ms between jap taps: { <sampraday>: { <japMode>: ms } } (0/absent = no limit)
+    minTapDelay: {},  // per-jap-mode minimum seconds between counted taps; 0/absent = off
     secLang: {},  // per-section language overrides: {sv,bc,nm} = "hi"|"bn" (absent = follow Settings language)
     langOnboarded: false,
     japLangChosen: false,  // true once the user picks a jap text language themselves
@@ -2070,7 +2070,7 @@ const App = {
       naamLang: this.S.naamLang || "sa",
       stotramLang: this.S.stotramLang || "bn",
       secLang: this.S.secLang || {},
-      tapDelay: this.S.tapDelay || {},
+      minTapDelay: this.S.minTapDelay || {},
       langOnboarded: this.S.langOnboarded || false,
       japLangChosen: this.S.japLangChosen || false,
       lastLat: this.S.lastLat ?? null,
@@ -2266,7 +2266,6 @@ const App = {
     if (this.S.nimbarkMode === undefined) this.S.nimbarkMode = false;
     if (this.S.vallabhMode === undefined) this.S.vallabhMode = false;
     if (!this.S.sampraday) this.S.sampraday = "harivangshi";
-    if (!this.S.tapDelay || typeof this.S.tapDelay !== "object") this.S.tapDelay = {};
     hdAfterLoad();
     if (!this.S.sriBranch) this.S.sriBranch = "ramananda";
     if (!this.S.historyRam) this.S.historyRam = {};
@@ -2352,6 +2351,7 @@ const App = {
       let _lp = ""; try { _lp = localStorage.getItem("rjap_lang_pref") || ""; } catch (_e) {}
       this.S.stotramLang = (_lp === "hi" || _lp === "bn") ? _lp : "bn";
     }
+    if (!this.S.minTapDelay || typeof this.S.minTapDelay !== "object") this.S.minTapDelay = {};
     if (!this.S.secLang || typeof this.S.secLang !== "object") {
       let _sl = {}; try { _sl = JSON.parse(localStorage.getItem("rjap_sec_lang") || "{}") || {}; } catch (_e) {}
       this.S.secLang = _sl;
@@ -3601,15 +3601,16 @@ const App = {
         return;
       }
     }
-    // Minimum tap delay (Settings): ignore a tap that comes sooner than the limit set for this jap type + Sampraday
-    {
-      const _tdMin = _tapMinDelay();
-      if (_tdMin > 0) {
-        const _tdNow = Date.now();
-        if (this._tdLastTap && _tdNow - this._tdLastTap < _tdMin) return;
-        this._tdLastTap = _tdNow;
+    // ── Minimum tap delay (Settings › Jap Targets): taps sooner than this after the last counted tap are ignored ──
+    // Per jap type. Skipped inside a live tournament, which has its own minimum-Q gate (japGate).
+    try {
+      const _mk = this.S.japMode, _md = Number((this.S.minTapDelay || {})[_mk]) || 0;
+      if (_md > 0 && !document.body.classList.contains("tn-jap")) {
+        const _nowT = Date.now(), _last = (this._mtdLast && this._mtdLast[_mk]) || 0;
+        if (_nowT - _last < _md * 1000) return;
+        (this._mtdLast || (this._mtdLast = {}))[_mk] = _nowT;
       }
-    }
+    } catch (_e) {}
     const ms = this.S.ms || 108;
     const isRV = this.S.japMode === "rv";
     const isHK = this.S.japMode === "hk";
@@ -4271,7 +4272,7 @@ window.toggleJapTextSettingsPanel = function(e) {
     demo.classList.toggle('show', opening);
     if (opening) demo.innerHTML = window.buildJapTextDemo();
   }
-  if (opening) { window.applyJapTextPrefs(); window.syncJapTextLangBtns(); }
+  if (opening) { window.applyJapTextPrefs(); window.syncJapTextLangBtns(); window.syncMinTapDelayUI(); }
 };
 
 window.adjustJapTextPref = function(kind, dir) {
@@ -5136,70 +5137,6 @@ const RJAP_APK_FALLBACK_URL = "https://drive.google.com/file/d/1FfS0LR_a9NiKErFt
 
 const RJAP_PLAY_URL = "https://play.google.com/store/apps/details?id=app.vercel.radharadharadha.capacitor";
 
-// ── Minimum tap delay (per jap type, per Sampraday) ──
-const TD_SAMPS = ["harivangshi", "haridashi", "ramanuj", "ramanandi", "nimbark", "gaudiya", "vallabh", "trahimam"];
-const TD_TYPES = [
-  ["radha", "Radha"], ["rv", "Radha Vallabh"], ["ss", "Samba Sadashiv"], ["kv", "Krishnay Vasudevay"],
-  ["kaam", "Kaam Vijay"], ["hk", "Hare Krishna"], ["ram", "Raam Vijay Mantra"], ["sr", "SitaRaam"],
-  ["nr", "Narayan"], ["rm", "Raam"], ["yg", "Yugal Mantra"], ["vl", "Sri Krishnah Sharanam Mama"],
-];
-function _tdSampKey() {
-  const S = (App && App.S) || {};
-  if (S.gaudiyaMode) return "gaudiya";
-  if (S.trahimamMode) return "trahimam";
-  if (S.ramanandiMode) return "ramanandi";
-  if (S.ramanujMode) return "ramanuj";
-  if (S.nimbarkMode) return "nimbark";
-  if (S.vallabhMode) return "vallabh";
-  if (S.sampraday === "haridashi") return "haridashi";
-  return "harivangshi";
-}
-function _tapMinDelay() {
-  try {
-    const t = App.S.tapDelay;
-    if (!t) return 0;
-    const v = (t[_tdSampKey()] || {})[App.S.japMode || "radha"];
-    return v > 0 ? +v : 0;
-  } catch (_e) { return 0; }
-}
-function tdRender() {
-  const list = document.getElementById("tdList"), sel = document.getElementById("tdSamp");
-  if (!list || !sel) return;
-  const cur = _tdSampKey(), vals = (App.S.tapDelay && App.S.tapDelay[sel.value]) || {};
-  const nowMode = App.S.japMode || "radha";
-  list.innerHTML = TD_TYPES.map(([m, name]) => {
-    const v = vals[m] > 0 ? vals[m] : "";
-    const here = sel.value === cur && m === nowMode;
-    return '<div class="sr" style="margin-top:6px"><div><label>' + name + '</label>' +
-      (here ? '<div class="sub">Currently selected on Jap screen</div>' : "") + '</div>' +
-      '<div style="display:flex;align-items:center;gap:6px"><input type="number" inputmode="numeric" min="0" max="5000" step="50" placeholder="0" value="' + v + '" ' +
-      'oninput="tdSet(\'' + m + '\', this.value)" style="width:78px;padding:7px 8px;border-radius:10px;border:1px solid rgba(74,144,226,0.35);background:rgba(74,144,226,0.10);color:var(--a2);font-size:13px;text-align:right;font-family:Inter,sans-serif">' +
-      '<span style="font-size:11px;color:var(--td)">ms</span></div></div>';
-  }).join("");
-}
-function tdSampChanged() { window._tdTouched = true; tdRender(); }
-function tdSet(mode, val) {
-  const sel = document.getElementById("tdSamp"); if (!sel) return;
-  const n = Math.max(0, Math.min(5000, parseInt(val, 10) || 0));
-  if (!App.S.tapDelay || typeof App.S.tapDelay !== "object") App.S.tapDelay = {};
-  const o = App.S.tapDelay[sel.value] || (App.S.tapDelay[sel.value] = {});
-  if (n > 0) o[mode] = n; else delete o[mode];
-  try { App.save(); } catch (_e) {}
-  try { if (typeof fbDebouncedPush === "function") fbDebouncedPush(); } catch (_e) {}
-}
-function tdResetSamp() {
-  const sel = document.getElementById("tdSamp"); if (!sel) return;
-  if (App.S.tapDelay) delete App.S.tapDelay[sel.value];
-  tdRender();
-  try { App.save(); } catch (_e) {}
-  try { if (typeof fbDebouncedPush === "function") fbDebouncedPush(); } catch (_e) {}
-}
-function tdInit() {
-  const sel = document.getElementById("tdSamp"); if (!sel) return;
-  if (!window._tdTouched) sel.value = _tdSampKey();
-  tdRender();
-}
-
 function _getAppUrl() {
   return RJAP_PWA_URL;
 }
@@ -5493,6 +5430,25 @@ function svtRV(type) {
   App.ua();
   toast(isHaridashiActive() ? "Kunj Vihari Daily Target saved! 🎯" : "RV Daily Target saved! 🎯");
 }
+
+// ── Minimum tap delay per jap type — controlled from the Jap screen's left ⚙️ panel (applies to the jap type selected now) ──
+const MTD_NAMES = { radha: "Radha Naam", rv: "Radha Vallabh", ss: "Samba Sadashiv", kv: "Krishnay Vasudevay", kaam: "Kaam Vijay", ram: "Raam Vijay Mantra", sr: "SitaRaam", nr: "Narayan", rm: "Raam", yg: "Yugal Mantra", vl: "Shree Krishna Sharanam Mama", hk: "Hare Krishna Mahamantra" };
+window.syncMinTapDelayUI = function () {
+  const k = (App.S && App.S.japMode) || "radha";
+  const v = Number(((App.S && App.S.minTapDelay) || {})[k]) || 0;
+  const val = document.getElementById("jtspDelayVal"), nm = document.getElementById("jtspDelayMode");
+  if (val) val.textContent = v > 0 ? v.toFixed(1).replace(/\.0$/, "") + "s" : "Off";
+  if (nm) nm.textContent = MTD_NAMES[k] || k;
+};
+window.adjustMinTapDelay = function (dir) {
+  const k = App.S.japMode || "radha";
+  if (!App.S.minTapDelay || typeof App.S.minTapDelay !== "object") App.S.minTapDelay = {};
+  let v = Number(App.S.minTapDelay[k]) || 0;
+  v = Math.max(0, Math.min(5, Math.round((v + dir * 0.1) * 10) / 10));
+  if (v > 0) App.S.minTapDelay[k] = v; else delete App.S.minTapDelay[k];
+  window.syncMinTapDelayUI();
+  try { ghostAwareSave(); } catch (_e) { try { App.save(); } catch (_e2) {} }
+};
 
 // ── KV Target Save ──
 function svtKV(type) {
@@ -6190,6 +6146,7 @@ function setNaamLangDirect(lang) {
 }
 
 function switchJapMode(mode) {
+  setTimeout(function () { try { window.syncMinTapDelayUI(); } catch (_e) {} }, 0);
   _syncRamanujClass();
   // ── Per-mode mala-timing stash/restore ──
   // malaWallStart / _currentMalaStartTs / currentMalaSeconds are shared,
@@ -6770,7 +6727,6 @@ function populateSettingsUI() {
   try {
     const linkEl = document.getElementById("appLinkDisplay");
     if (linkEl && typeof _getAppUrl === "function") linkEl.textContent = _getAppUrl();
-    try { tdInit(); } catch (_e) {}
     const playEl = document.getElementById("appPlayLinkDisplay");
     if (playEl && typeof _getPlayUrl === "function") playEl.textContent = _getPlayUrl();
   } catch (_e) {}
@@ -11544,7 +11500,7 @@ function _buildBackupPayload() {
     // Language settings (global + per-section overrides + jap text language)
     stotramLang: App.S.stotramLang || "bn",
     secLang: App.S.secLang || {},
-    tapDelay: App.S.tapDelay || {},
+    minTapDelay: App.S.minTapDelay || {},
     langOnboarded: App.S.langOnboarded || false,
     japLangChosen: App.S.japLangChosen || false,
     hkLang: App.S.hkLang || "hi",
@@ -11752,7 +11708,7 @@ function importAllData(input) {
       App.S.vallabhMode = data.vallabhMode || false;
       if (data.stotramLang === "hi" || data.stotramLang === "bn") App.S.stotramLang = data.stotramLang;
       if (data.secLang && typeof data.secLang === "object") App.S.secLang = data.secLang;
-      if (data.tapDelay && typeof data.tapDelay === "object") App.S.tapDelay = data.tapDelay;
+      if (data.minTapDelay && typeof data.minTapDelay === "object") App.S.minTapDelay = data.minTapDelay;
       if (data.langOnboarded) App.S.langOnboarded = true;
       if (data.japLangChosen) App.S.japLangChosen = true;
       if (data.hkLang) App.S.hkLang = data.hkLang;

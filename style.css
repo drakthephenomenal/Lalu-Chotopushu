@@ -4762,9 +4762,7 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 .jtsp-ctrl.jtsp-lang button{width:auto;height:auto;min-width:48px;border-radius:12px;padding:5px 10px;font-size:12px;line-height:1.2;color:var(--tl);}
 .jtsp-ctrl.jtsp-lang button.active{background:rgba(255,215,0,0.3);border-color:rgba(255,215,0,0.85);color:#FFD700;font-weight:700;}
 
-/* Jap text panel: wider so nothing spills out; Language row stacks (label above, two equal buttons) */
-.jap-text-settings-panel{width:214px;box-sizing:border-box;}
-.jtsp-lbl{white-space:nowrap;}
-.jtsp-row.jtsp-langrow{flex-direction:column;align-items:stretch;gap:6px;}
-.jtsp-ctrl.jtsp-lang{display:flex;gap:8px;width:100%;}
-.jtsp-ctrl.jtsp-lang button{flex:1 1 0;min-width:0;justify-content:center;}
+/* Minimum tap delay row inside each jap target card */
+.mtd-row{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.12);flex-wrap:wrap}
+.mtd-lbl{font-size:11px;color:rgba(255,255,255,0.65);letter-spacing:.5px;flex:1 1 auto;min-width:110px}
+.mtd-in{width:84px !important;flex:0 0 84px;font-size:13px;padding:7px 8px;text-align:center}

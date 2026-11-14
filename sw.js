@@ -1,3 +1,4 @@
+// v501: Min tap delay (seconds) per jap type now lives in the Jap screen's left ⚙️ panel (applies to the selected jap type; taps faster than it are ignored; synced to cloud).
 // v481: Tournament settings: removed the 'Fastest allowed jap' box (minimum Q per naam replaces it).
 // v480: Tournament minimum Q: jap screen ignores taps sooner than the admin's minimum Q (set per naam in tournament settings).
 // v479: Manual Add / Deduct jap works during a tournament (does not affect the tournament score).

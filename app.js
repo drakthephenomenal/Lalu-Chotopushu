@@ -12520,6 +12520,7 @@ function addNmSankalp() {
   });
   nskSrcChange(); // refill the mantra for the chosen preset
   nskPreview();
+  nskToggleAdd(false); // saved: collapse the form, the new one shows at the top of the list
   _nskSave(_nskT("संकल्प रख लिया गया 🙏 जय राधे!", "সংকল্প রাখা হলো 🙏 জয় রাধে!"));
 }
 function nskAdjust(id, sign) {
@@ -12562,6 +12563,14 @@ function nskDelete(id) {
   _nskSave(_nskT("हटा दिया 🙏", "মুছে ফেলা হয়েছে 🙏"));
 }
 
+function nskToggleAdd(force) {
+  const f = document.getElementById("nskAddForm"), b = document.getElementById("nskAddBtn");
+  if (!f) return;
+  const open = typeof force === "boolean" ? force : f.style.display === "none";
+  f.style.display = open ? "" : "none";
+  if (b) b.classList.toggle("open", open);
+  window._nskAddTouched = true;
+}
 function renderNmSankalp() {
   const wrap = document.getElementById("nmSkWrap");
   if (!wrap) return;
@@ -12577,6 +12586,12 @@ function renderNmSankalp() {
   const st = document.getElementById("nskStart");
   if (st && !st.value) st.value = _ldk(new Date());
   nskPreview();
+  if (!window._nskAddTouched) { // no Purashcharan yet -> show the add form; otherwise show the list first
+    const _n = (App.S.nmSankalps || []).filter((x) => x && !x._deleted).length;
+    const _f = document.getElementById("nskAddForm"), _b = document.getElementById("nskAddBtn");
+    if (_f) _f.style.display = _n ? "none" : "";
+    if (_b) _b.classList.toggle("open", !_n);
+  }
 
   const list = document.getElementById("nskList");
   if (!list) return;

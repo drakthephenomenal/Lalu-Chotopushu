@@ -1045,6 +1045,9 @@
     </div>
     <div class="cs-body open" id="nskBody">
       <!-- Purashcharan (auto calculation) -->
+      <div id="nskList" class="nsk-list"></div>
+      <button type="button" class="nsk-addbtn" id="nskAddBtn" onclick="nskToggleAdd()"><span data-hi="➕ पुरश्चरण संकल्प जोड़ें" data-bn="➕ পুরশ্চরণ সংকল্প যোগ করুন">➕ Add Purashcharan Sankalp</span><span class="nsk-addchev">▾</span></button>
+      <div id="nskAddForm" style="display:none">
       <div id="nskPurashBox">
         <div class="nsk-hint" style="margin:0 0 4px" data-hi="अपने जप के प्रकार में से चुनें — मंत्र, अक्षर और लक्ष्य अपने आप भर जाएँगे:" data-bn="নিজের জপের ধরন থেকে বাছুন — মন্ত্র, অক্ষর ও লক্ষ্য নিজে থেকেই ভরে যাবে:"></div>
         <div class="fr"><select class="fi" id="nskSrc" onchange="nskSrcChange()"></select></div>
@@ -1071,7 +1074,7 @@
       <div class="fr"><input type="date" class="fi" id="nskStart" title="Start date"></div>
       <button class="pb deduct" style="background:linear-gradient(135deg,rgba(245,209,122,0.35),rgba(124,143,224,0.28));" onclick="addNmSankalp()">🙏 <span data-hi="संकल्प रखें" data-bn="সংকল্প রাখুন">Keep Sankalp</span></button>
       <div class="nsk-hint" data-hi="ऊपर चुने हुए जप से, शुरू की तारीख से ट्रैक किया गया जप अपने आप जुड़ जाएगा।" data-bn="উপরে বাছা জপ থেকে শুরুর তারিখ থেকে ট্র্যাক করা জপ নিজে থেকেই যোগ হবে।"></div>
-      <div id="nskList" class="nsk-list"></div>
+      </div>
     </div>
   </div>
   <div id="msContent"></div>

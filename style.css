@@ -4753,3 +4753,7 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 .nsk-eta-plan .nsk-adj{flex:1 1 auto !important;min-width:0;}
 
 .nsk-actions .nsk-btn.wide{flex:1;padding:10px 12px;font-size:13px;}
+
+.nsk-addbtn{display:flex;align-items:center;justify-content:space-between;width:100%;margin:14px 0 10px;padding:12px 14px;background:rgba(245,209,122,.08);border:1px dashed rgba(245,209,122,.5);border-radius:12px;color:var(--gold);font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;}
+.nsk-addbtn .nsk-addchev{transition:transform .2s;}
+.nsk-addbtn.open .nsk-addchev{transform:rotate(180deg);}

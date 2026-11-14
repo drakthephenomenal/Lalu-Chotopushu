@@ -389,7 +389,7 @@
             <button type="button" onclick="adjustJapTextPref('scale',1)">+</button>
           </div>
         </div>
-        <div class="jtsp-row">
+        <div class="jtsp-row jtsp-langrow">
           <span class="jtsp-lbl">Language</span>
           <div class="jtsp-ctrl jtsp-lang">
             <button type="button" id="jtspLangHi" onclick="setJapTextLang('hi')">हिन्दी</button>
@@ -3416,6 +3416,27 @@
         <div class="tg" id="tgBatteryOptim" onclick="tgs('batteryOptim')"></div>
       </div>
     </div>
+  </div>
+
+  <!-- MINIMUM TAP DELAY (per jap type, per Sampraday) -->
+  <div class="sc" id="tapDelayCard">
+    <h3>⏱️ Minimum Tap Delay</h3>
+    <p style="font-size:12px;color:var(--td);margin:0 0 10px;line-height:1.5">Shortest time allowed between two jap taps. A tap that comes sooner is ignored, which prevents accidental double-counts and counting too fast. Set it separately for each jap type in each Sampraday. <b>0 = no limit.</b></p>
+    <div class="sr" style="margin-bottom:8px">
+      <div><label>Sampraday</label></div>
+      <select id="tdSamp" onchange="tdSampChanged()" style="padding:7px 10px;border-radius:10px;border:1px solid rgba(74,144,226,0.35);background:rgba(74,144,226,0.10);color:var(--a2);font-size:12px;font-family:Inter,sans-serif;cursor:pointer;max-width:60%">
+        <option value="harivangshi">Harivangshi</option>
+        <option value="haridashi">Haridashi</option>
+        <option value="ramanuj">Sri — Ramanuj</option>
+        <option value="ramanandi">Sri — Ramanandi</option>
+        <option value="nimbark">Nimbark</option>
+        <option value="gaudiya">Gaudiya / ISKCON</option>
+        <option value="vallabh">Vallabh</option>
+        <option value="trahimam">Trahimam Trahimam</option>
+      </select>
+    </div>
+    <div id="tdList"></div>
+    <button type="button" onclick="tdResetSamp()" style="margin-top:10px;padding:7px 14px;border-radius:20px;border:1px solid rgba(232,51,109,0.35);background:rgba(232,51,109,0.10);color:var(--rl);font-size:12px;font-family:Inter,sans-serif;cursor:pointer">Reset this Sampraday</button>
   </div>
 
   <!-- SHARE APP -->

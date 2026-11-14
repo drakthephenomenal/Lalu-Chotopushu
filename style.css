@@ -4761,3 +4761,10 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 /* Jap text panel: language pills */
 .jtsp-ctrl.jtsp-lang button{width:auto;height:auto;min-width:48px;border-radius:12px;padding:5px 10px;font-size:12px;line-height:1.2;color:var(--tl);}
 .jtsp-ctrl.jtsp-lang button.active{background:rgba(255,215,0,0.3);border-color:rgba(255,215,0,0.85);color:#FFD700;font-weight:700;}
+
+/* Jap text panel: wider so nothing spills out; Language row stacks (label above, two equal buttons) */
+.jap-text-settings-panel{width:214px;box-sizing:border-box;}
+.jtsp-lbl{white-space:nowrap;}
+.jtsp-row.jtsp-langrow{flex-direction:column;align-items:stretch;gap:6px;}
+.jtsp-ctrl.jtsp-lang{display:flex;gap:8px;width:100%;}
+.jtsp-ctrl.jtsp-lang button{flex:1 1 0;min-width:0;justify-content:center;}

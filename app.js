@@ -1743,6 +1743,7 @@ const App = {
     sriBranch: "ramananda",  // when sampraday === "sri" — "ramanuj" | "ramananda"
     hkLang: "hi",
     naamLang: "sa",  // Radha / Radha Vallabh / Samba Sadashiv jap text script: "sa" (Sanskrit/Devanagari) or "bn" (Bangla)
+    tapDelay: {},  // min ms between jap taps: { <sampraday>: { <japMode>: ms } } (0/absent = no limit)
     secLang: {},  // per-section language overrides: {sv,bc,nm} = "hi"|"bn" (absent = follow Settings language)
     langOnboarded: false,
     japLangChosen: false,  // true once the user picks a jap text language themselves
@@ -2069,6 +2070,7 @@ const App = {
       naamLang: this.S.naamLang || "sa",
       stotramLang: this.S.stotramLang || "bn",
       secLang: this.S.secLang || {},
+      tapDelay: this.S.tapDelay || {},
       langOnboarded: this.S.langOnboarded || false,
       japLangChosen: this.S.japLangChosen || false,
       lastLat: this.S.lastLat ?? null,
@@ -2264,6 +2266,7 @@ const App = {
     if (this.S.nimbarkMode === undefined) this.S.nimbarkMode = false;
     if (this.S.vallabhMode === undefined) this.S.vallabhMode = false;
     if (!this.S.sampraday) this.S.sampraday = "harivangshi";
+    if (!this.S.tapDelay || typeof this.S.tapDelay !== "object") this.S.tapDelay = {};
     hdAfterLoad();
     if (!this.S.sriBranch) this.S.sriBranch = "ramananda";
     if (!this.S.historyRam) this.S.historyRam = {};
@@ -3596,6 +3599,15 @@ const App = {
         now - this._lastTouchTs < 700
       ) {
         return;
+      }
+    }
+    // Minimum tap delay (Settings): ignore a tap that comes sooner than the limit set for this jap type + Sampraday
+    {
+      const _tdMin = _tapMinDelay();
+      if (_tdMin > 0) {
+        const _tdNow = Date.now();
+        if (this._tdLastTap && _tdNow - this._tdLastTap < _tdMin) return;
+        this._tdLastTap = _tdNow;
       }
     }
     const ms = this.S.ms || 108;
@@ -5123,6 +5135,70 @@ const RJAP_APK_URL = "https://drive.google.com/drive/folders/1f5LsU7nL0KycW1_KkT
 const RJAP_APK_FALLBACK_URL = "https://drive.google.com/file/d/1FfS0LR_a9NiKErFtwuYJlbpkgTSc2D63/view?usp=drivesdk";
 
 const RJAP_PLAY_URL = "https://play.google.com/store/apps/details?id=app.vercel.radharadharadha.capacitor";
+
+// ── Minimum tap delay (per jap type, per Sampraday) ──
+const TD_SAMPS = ["harivangshi", "haridashi", "ramanuj", "ramanandi", "nimbark", "gaudiya", "vallabh", "trahimam"];
+const TD_TYPES = [
+  ["radha", "Radha"], ["rv", "Radha Vallabh"], ["ss", "Samba Sadashiv"], ["kv", "Krishnay Vasudevay"],
+  ["kaam", "Kaam Vijay"], ["hk", "Hare Krishna"], ["ram", "Raam Vijay Mantra"], ["sr", "SitaRaam"],
+  ["nr", "Narayan"], ["rm", "Raam"], ["yg", "Yugal Mantra"], ["vl", "Sri Krishnah Sharanam Mama"],
+];
+function _tdSampKey() {
+  const S = (App && App.S) || {};
+  if (S.gaudiyaMode) return "gaudiya";
+  if (S.trahimamMode) return "trahimam";
+  if (S.ramanandiMode) return "ramanandi";
+  if (S.ramanujMode) return "ramanuj";
+  if (S.nimbarkMode) return "nimbark";
+  if (S.vallabhMode) return "vallabh";
+  if (S.sampraday === "haridashi") return "haridashi";
+  return "harivangshi";
+}
+function _tapMinDelay() {
+  try {
+    const t = App.S.tapDelay;
+    if (!t) return 0;
+    const v = (t[_tdSampKey()] || {})[App.S.japMode || "radha"];
+    return v > 0 ? +v : 0;
+  } catch (_e) { return 0; }
+}
+function tdRender() {
+  const list = document.getElementById("tdList"), sel = document.getElementById("tdSamp");
+  if (!list || !sel) return;
+  const cur = _tdSampKey(), vals = (App.S.tapDelay && App.S.tapDelay[sel.value]) || {};
+  const nowMode = App.S.japMode || "radha";
+  list.innerHTML = TD_TYPES.map(([m, name]) => {
+    const v = vals[m] > 0 ? vals[m] : "";
+    const here = sel.value === cur && m === nowMode;
+    return '<div class="sr" style="margin-top:6px"><div><label>' + name + '</label>' +
+      (here ? '<div class="sub">Currently selected on Jap screen</div>' : "") + '</div>' +
+      '<div style="display:flex;align-items:center;gap:6px"><input type="number" inputmode="numeric" min="0" max="5000" step="50" placeholder="0" value="' + v + '" ' +
+      'oninput="tdSet(\'' + m + '\', this.value)" style="width:78px;padding:7px 8px;border-radius:10px;border:1px solid rgba(74,144,226,0.35);background:rgba(74,144,226,0.10);color:var(--a2);font-size:13px;text-align:right;font-family:Inter,sans-serif">' +
+      '<span style="font-size:11px;color:var(--td)">ms</span></div></div>';
+  }).join("");
+}
+function tdSampChanged() { window._tdTouched = true; tdRender(); }
+function tdSet(mode, val) {
+  const sel = document.getElementById("tdSamp"); if (!sel) return;
+  const n = Math.max(0, Math.min(5000, parseInt(val, 10) || 0));
+  if (!App.S.tapDelay || typeof App.S.tapDelay !== "object") App.S.tapDelay = {};
+  const o = App.S.tapDelay[sel.value] || (App.S.tapDelay[sel.value] = {});
+  if (n > 0) o[mode] = n; else delete o[mode];
+  try { App.save(); } catch (_e) {}
+  try { if (typeof fbDebouncedPush === "function") fbDebouncedPush(); } catch (_e) {}
+}
+function tdResetSamp() {
+  const sel = document.getElementById("tdSamp"); if (!sel) return;
+  if (App.S.tapDelay) delete App.S.tapDelay[sel.value];
+  tdRender();
+  try { App.save(); } catch (_e) {}
+  try { if (typeof fbDebouncedPush === "function") fbDebouncedPush(); } catch (_e) {}
+}
+function tdInit() {
+  const sel = document.getElementById("tdSamp"); if (!sel) return;
+  if (!window._tdTouched) sel.value = _tdSampKey();
+  tdRender();
+}
 
 function _getAppUrl() {
   return RJAP_PWA_URL;
@@ -6694,6 +6770,7 @@ function populateSettingsUI() {
   try {
     const linkEl = document.getElementById("appLinkDisplay");
     if (linkEl && typeof _getAppUrl === "function") linkEl.textContent = _getAppUrl();
+    try { tdInit(); } catch (_e) {}
     const playEl = document.getElementById("appPlayLinkDisplay");
     if (playEl && typeof _getPlayUrl === "function") playEl.textContent = _getPlayUrl();
   } catch (_e) {}
@@ -11467,6 +11544,7 @@ function _buildBackupPayload() {
     // Language settings (global + per-section overrides + jap text language)
     stotramLang: App.S.stotramLang || "bn",
     secLang: App.S.secLang || {},
+    tapDelay: App.S.tapDelay || {},
     langOnboarded: App.S.langOnboarded || false,
     japLangChosen: App.S.japLangChosen || false,
     hkLang: App.S.hkLang || "hi",
@@ -11674,6 +11752,7 @@ function importAllData(input) {
       App.S.vallabhMode = data.vallabhMode || false;
       if (data.stotramLang === "hi" || data.stotramLang === "bn") App.S.stotramLang = data.stotramLang;
       if (data.secLang && typeof data.secLang === "object") App.S.secLang = data.secLang;
+      if (data.tapDelay && typeof data.tapDelay === "object") App.S.tapDelay = data.tapDelay;
       if (data.langOnboarded) App.S.langOnboarded = true;
       if (data.japLangChosen) App.S.japLangChosen = true;
       if (data.hkLang) App.S.hkLang = data.hkLang;

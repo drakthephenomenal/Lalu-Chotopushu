@@ -4757,3 +4757,7 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 .nsk-addbtn{display:flex;align-items:center;justify-content:space-between;width:100%;margin:14px 0 10px;padding:12px 14px;background:rgba(245,209,122,.08);border:1px dashed rgba(245,209,122,.5);border-radius:12px;color:var(--gold);font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;}
 .nsk-addbtn .nsk-addchev{transition:transform .2s;}
 .nsk-addbtn.open .nsk-addchev{transform:rotate(180deg);}
+
+/* Jap text panel: language pills */
+.jtsp-ctrl.jtsp-lang button{width:auto;height:auto;min-width:48px;border-radius:12px;padding:5px 10px;font-size:12px;line-height:1.2;color:var(--tl);}
+.jtsp-ctrl.jtsp-lang button.active{background:rgba(255,215,0,0.3);border-color:rgba(255,215,0,0.85);color:#FFD700;font-weight:700;}

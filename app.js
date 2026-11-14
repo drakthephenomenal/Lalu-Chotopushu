@@ -4225,6 +4225,27 @@ window.buildJapTextDemo = function() {
   return '<div class="jtd-radha">' + (_nt ? _nt.radha : 'राधा') + '</div>';
 };
 
+// ── Jap text language (under the jap display gear) ──
+// "hi" = Hindi / Devanagari, "bn" = Bangla. One tap sets every jap text at once:
+// App.S.naamLang (Radha, Radha Vallabh, KV, SS, Ram family, Kaam...) and App.S.hkLang (Hare Krishna).
+window.syncJapTextLangBtns = function() {
+  const cur = (App.S && App.S.naamLang === 'bn') ? 'bn' : 'hi';
+  const a = document.getElementById('jtspLangHi'), b = document.getElementById('jtspLangBn');
+  if (a) a.classList.toggle('active', cur === 'hi');
+  if (b) b.classList.toggle('active', cur === 'bn');
+};
+window.setJapTextLang = function(lang) {
+  if (!App || !App.S) return;
+  lang = lang === 'bn' ? 'bn' : 'hi';
+  try { setNaamLangDirect(lang === 'bn' ? 'bn' : 'sa'); } catch (_e) {}
+  if ((App.S.hkLang === 'bn' ? 'bn' : 'hi') !== lang) { try { tgs('hkLang'); } catch (_e) {} }
+  App.S.japLangChosen = true;
+  const demo = document.getElementById('japTextDemo');
+  if (demo && demo.classList.contains('show')) demo.innerHTML = window.buildJapTextDemo();
+  window.syncJapTextLangBtns();
+  try { App.save(); } catch (_e) {}
+};
+
 window.toggleJapTextSettingsPanel = function(e) {
   if (e) e.stopPropagation();
   const panel = document.getElementById('japTextSettingsPanel');
@@ -4238,7 +4259,7 @@ window.toggleJapTextSettingsPanel = function(e) {
     demo.classList.toggle('show', opening);
     if (opening) demo.innerHTML = window.buildJapTextDemo();
   }
-  if (opening) window.applyJapTextPrefs();
+  if (opening) { window.applyJapTextPrefs(); window.syncJapTextLangBtns(); }
 };
 
 window.adjustJapTextPref = function(kind, dir) {
@@ -5101,8 +5122,13 @@ const RJAP_APK_URL = "https://drive.google.com/drive/folders/1f5LsU7nL0KycW1_KkT
 // takes over as soon as it's loaded (i.e. once the user signs in).
 const RJAP_APK_FALLBACK_URL = "https://drive.google.com/file/d/1FfS0LR_a9NiKErFtwuYJlbpkgTSc2D63/view?usp=drivesdk";
 
+const RJAP_PLAY_URL = "https://play.google.com/store/apps/details?id=app.vercel.radharadharadha.capacitor";
+
 function _getAppUrl() {
   return RJAP_PWA_URL;
+}
+function _getPlayUrl() {
+  return RJAP_PLAY_URL;
 }
 
 // Native Android (Capacitor WebView) does not implement the Web Share API —
@@ -5186,13 +5212,14 @@ function _firstTapHintDismiss() {
   _markFirstTapHintSeen();
 }
 
-function shareApp() {
-  const url = _getAppUrl();
+function shareApp(kind) {
+  const isAndroid = kind === "android";
+  const url = isAndroid ? _getPlayUrl() : _getAppUrl();
   const shareText =
     (isHaridashiActive() ? "Kunj Vihari Sri Haridas" : "Radha Vallabh Sri Harivangsa") + " \uD83D\uDE4F\n\n" +
-    "Boost your Naam Jap experience with this little app —\n" +
+    "Boost your Naam Jap experience with this little app \u2014\n" +
     "track Brahmacharya daily Jap & lots of statistics \u2728 \uD83E\uDEB7\n\n" +
-    "\uD83D\uDC49 " +
+    (isAndroid ? "\uD83D\uDCF2 Get it on Google Play (Android):\n" : "\uD83C\uDF10 Open in browser \u2014 iPhone, iPad, Mac & Windows:\n") +
     url;
   _lcShareText(shareText);
 }
@@ -6667,6 +6694,8 @@ function populateSettingsUI() {
   try {
     const linkEl = document.getElementById("appLinkDisplay");
     if (linkEl && typeof _getAppUrl === "function") linkEl.textContent = _getAppUrl();
+    const playEl = document.getElementById("appPlayLinkDisplay");
+    if (playEl && typeof _getPlayUrl === "function") playEl.textContent = _getPlayUrl();
   } catch (_e) {}
   // Leaderboard settings
   try { populateLbSettingsUI(); } catch (_e) {}

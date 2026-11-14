@@ -389,6 +389,13 @@
             <button type="button" onclick="adjustJapTextPref('scale',1)">+</button>
           </div>
         </div>
+        <div class="jtsp-row">
+          <span class="jtsp-lbl">Language</span>
+          <div class="jtsp-ctrl jtsp-lang">
+            <button type="button" id="jtspLangHi" onclick="setJapTextLang('hi')">हिन्दी</button>
+            <button type="button" id="jtspLangBn" onclick="setJapTextLang('bn')">বাংলা</button>
+          </div>
+        </div>
         <button type="button" class="jtsp-reset" onclick="resetJapTextPrefs()">Reset to Default</button>
       </div>
       <div class="jap-text-demo" id="japTextDemo"></div>
@@ -3414,9 +3421,21 @@
   <!-- SHARE APP -->
   <div class="sc" style="background:rgba(255,215,0,0.03);border-color:rgba(255,215,0,0.18)">
     <h3>🌸 Share This App</h3>
-    <p style="font-size:12px;color:var(--td);margin-bottom:10px">Spread the divine name! Share RadhaNaam SudhaRasam with friends and family 🙏</p>
-    <div id="appLinkDisplay" style="font-size:11px;color:var(--a2);background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:8px;padding:8px 11px;margin-bottom:10px;word-break:break-all;font-family:monospace;cursor:pointer" onclick="shareApp()" title="Tap to copy"></div>
-    <button class="pb" onclick="shareApp()" style="background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,180,0,0.25));color:var(--gold);border:1px solid rgba(255,215,0,0.4)">🌸 Share App Link (Web)</button>
+    <p style="font-size:12px;color:var(--td);margin-bottom:12px">Spread the divine name! Share RadhaNaam SudhaRasam with friends and family 🙏 Choose the link that suits their device:</p>
+
+    <div style="background:rgba(61,220,132,0.05);border:1px solid rgba(61,220,132,0.28);border-radius:12px;padding:12px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#3DDC84;margin-bottom:4px"><svg width="22" height="22" viewBox="0 0 24 24" style="flex-shrink:0" aria-hidden="true"><path fill="#3DDC84" d="M6.5 9.6h11v8.1a1 1 0 0 1-1 1h-1V21a1.25 1.25 0 0 1-2.5 0v-2.3h-2V21a1.25 1.25 0 0 1-2.5 0v-2.3h-1a1 1 0 0 1-1-1z"/><path fill="#3DDC84" d="M5 8.6a7 7 0 0 1 14 0z"/><rect fill="#3DDC84" x="2.3" y="9.8" width="2.2" height="6.4" rx="1.1"/><rect fill="#3DDC84" x="19.5" y="9.8" width="2.2" height="6.4" rx="1.1"/><circle fill="#0b1020" cx="9.4" cy="5.7" r=".75"/><circle fill="#0b1020" cx="14.6" cy="5.7" r=".75"/><path stroke="#3DDC84" stroke-width=".9" stroke-linecap="round" d="M8 2.6l1.2 1.9M16 2.6l-1.2 1.9"/></svg><span>For Android users</span></div>
+      <p style="font-size:11.5px;color:var(--td);margin:0 0 8px;line-height:1.5">Android phones &amp; tablets — install the app directly from Google Play.</p>
+      <div id="appPlayLinkDisplay" style="font-size:11px;color:#3DDC84;background:rgba(61,220,132,0.08);border:1px solid rgba(61,220,132,0.22);border-radius:8px;padding:8px 11px;margin-bottom:10px;word-break:break-all;font-family:monospace;cursor:pointer" onclick="shareApp('android')" title="Tap to share"></div>
+      <button class="pb" onclick="shareApp('android')" style="background:linear-gradient(135deg,rgba(61,220,132,0.28),rgba(61,220,132,0.14));color:#3DDC84;border:1px solid rgba(61,220,132,0.45);display:flex;align-items:center;justify-content:center;gap:8px"><svg width="22" height="22" viewBox="0 0 24 24" style="flex-shrink:0" aria-hidden="true"><path fill="#3DDC84" d="M6.5 9.6h11v8.1a1 1 0 0 1-1 1h-1V21a1.25 1.25 0 0 1-2.5 0v-2.3h-2V21a1.25 1.25 0 0 1-2.5 0v-2.3h-1a1 1 0 0 1-1-1z"/><path fill="#3DDC84" d="M5 8.6a7 7 0 0 1 14 0z"/><rect fill="#3DDC84" x="2.3" y="9.8" width="2.2" height="6.4" rx="1.1"/><rect fill="#3DDC84" x="19.5" y="9.8" width="2.2" height="6.4" rx="1.1"/><circle fill="#0b1020" cx="9.4" cy="5.7" r=".75"/><circle fill="#0b1020" cx="14.6" cy="5.7" r=".75"/><path stroke="#3DDC84" stroke-width=".9" stroke-linecap="round" d="M8 2.6l1.2 1.9M16 2.6l-1.2 1.9"/></svg><span>Share Google Play Link</span></button>
+    </div>
+
+    <div style="background:rgba(232,232,240,0.04);border:1px solid rgba(232,232,240,0.22);border-radius:12px;padding:12px">
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#E8E8F0;margin-bottom:4px"><svg width="20" height="20" viewBox="0 0 24 24" style="flex-shrink:0" aria-hidden="true"><path fill="#E8E8F0" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg><span>For iPhone, iPad, Mac &amp; Windows</span></div>
+      <p style="font-size:11.5px;color:var(--td);margin:0 0 8px;line-height:1.5">Opens in the browser (Safari / Chrome / Edge). On iPhone &amp; iPad, tap Share → <b>Add to Home Screen</b> to install it like an app.</p>
+      <div id="appLinkDisplay" style="font-size:11px;color:var(--a2);background:rgba(74,144,226,0.08);border:1px solid rgba(74,144,226,0.2);border-radius:8px;padding:8px 11px;margin-bottom:10px;word-break:break-all;font-family:monospace;cursor:pointer" onclick="shareApp()" title="Tap to share"></div>
+      <button class="pb" onclick="shareApp()" style="background:linear-gradient(135deg,rgba(255,215,0,0.35),rgba(255,180,0,0.25));color:var(--gold);border:1px solid rgba(255,215,0,0.4);display:flex;align-items:center;justify-content:center;gap:8px"><svg width="20" height="20" viewBox="0 0 24 24" style="flex-shrink:0" aria-hidden="true"><path fill="#F5D17A" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg><span>Share Web App Link</span></button>
+    </div>
   </div>
 
   <!-- WHATSAPP SUPPORT -->

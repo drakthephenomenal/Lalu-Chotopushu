@@ -1,3 +1,4 @@
+// v504: Harivangshi Lifetime box — KV shows only KV total (no target text, no R/RV); R/RV show only R+RV (no KV). % bar kept.
 // v503: Min tap delay default is now 0.2s for every jap type (0 = off); Jap ⚙️ panel widened so Hindi / Bangla buttons stay inside the box.
 // v502: Min tap delay per jap type is in BOTH places — Settings › Jap Targets cards and the Jap screen's left ⚙️ panel (kept in sync).
 // v501: Min tap delay (seconds) per jap type now lives in the Jap screen's left ⚙️ panel (applies to the selected jap type; taps faster than it are ignored; synced to cloud).
@@ -489,7 +490,7 @@
 // v420 (Play build + dev email): bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
 // v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
 // v422: bumped cache to force-invalidate stale app.js / style.css / index.html — Haridashi Sampraday (Radha + Kunj Vihari / Sri Haridas, own Deity/Guru/Acharya photos, own lifetime target); Nimbark Deity/Guru/Acharya jap-display photos + Yugal mantra animation now matches Hare Krishna; reopened wishes no longer stay paused.
-const CACHE = 'radha-jap-v503';
+const CACHE = 'radha-jap-v504';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

@@ -2796,6 +2796,10 @@ const App = {
     let order = ["R", "RV", "KV"];
     if (this.S.japMode === "rv") order = ["RV", "R", "KV"];
     else if (this.S.japMode === "kv") order = ["KV", "R", "RV"];
+    // Harivangshi: KV shows only KV; R / RV show only R and RV (no KV)
+    if (!isHaridashiActive() && this.isMainLiveInCombinedGroup() && this.S.japMode !== "kaam") {
+      order = this.S.japMode === "kv" ? ["KV"] : this.S.japMode === "rv" ? ["RV", "R"] : ["R", "RV"];
+    }
     // Kaam Vijay is shown only while chanting Kaam Vijay (and then it is the only one);
     // while chanting Radha / Radha Vallabh / Krishnay Vasudevay it is left out.
     else if (this.S.japMode === "kaam") order = ["KM"];
@@ -3198,7 +3202,20 @@ const App = {
   ua() {
     const tod = this.gTod(),
       ms = this.S.ms || 108;
-    const tot = this.getLifetimeTargetTotal(); // COMBINED Radha+RV+KV lifetime total
+    let tot = this.getLifetimeTargetTotal(); // COMBINED Radha+RV+KV lifetime total
+    // Harivangshi sampraday only: the Lifetime box is specific to the selected jap.
+    //  - KV  → KV's own lifetime total (no lifetime target text, no R / RV)
+    //  - R / RV → R + RV total against the lifetime target (no KV)
+    //  Kaam Vijay and every other sampraday are left exactly as before.
+    let _hideLtTarget = false;
+    try {
+      const _jm = this.S.japMode;
+      if (!isHaridashiActive() && this.isMainLiveInCombinedGroup() && _jm !== "kaam") {
+        const _b = this.getLifetimeTargetBreakdown();
+        if (_jm === "kv") { tot = (_b.kv || 0) + (_b.kva || 0); _hideLtTarget = true; }
+        else { tot = (_b.radha || 0) + (_b.ra || 0) + (_b.rv || 0) + (_b.rva || 0); }
+      }
+    } catch (_e) {}
     const curDt = this.getCurDt(),
       curLt = this.getCurLt(); // shared lifetime target
     const md = Math.floor(tod / ms);
@@ -3261,7 +3278,7 @@ const App = {
     }
     document.getElementById("lbarDone").textContent = fmtIN(tot);
     document.getElementById("lbarTarget").textContent =
-      "/ " + (curLt ? fmtIN(curLt) : "—");
+      _hideLtTarget ? "" : "/ " + (curLt ? fmtIN(curLt) : "—");
     const lBreakdownTotalEl = document.getElementById("lBreakdownTotal");
     if (lBreakdownTotalEl) lBreakdownTotalEl.textContent = this.formatLifetimeBreakdown(false).replace(/\+/g, " · ");
     document.getElementById("lDet").textContent = Math.floor(tot / ms) + " malas Done";

@@ -2892,7 +2892,6 @@ const App = {
         this.timerSeconds,
       );
       this.updateTimerToday();
-      this.updateSessQ();
     }, 1000);
   },
 
@@ -2925,25 +2924,7 @@ const App = {
     this.updateTimerToday();
   },
 
-  // Session Q = actual jap time in this session ÷ japs in this session (seconds per jap).
-  // Red while Q is BELOW the Min Tap Delay set for the current jap type (too fast; 0 / Off = never red).
-  updateSessQ() {
-    const el = document.getElementById("sessQ");
-    if (!el) return;
-    const n = this._sessJaps || 0, sec = this.timerSeconds || 0;
-    if (n < 2 || sec <= 0) { el.textContent = "Q —"; el.classList.remove("over"); return; }
-    const q = sec / n;
-    el.textContent = "Q " + q.toFixed(1) + "s";
-    let lim = 0;
-    try { lim = window.getMinTapDelay ? window.getMinTapDelay(this.S.japMode) : 0; } catch (_e) {}
-    // Red only when chanting is FASTER than the minimum (Q below the Min Tap Delay). Needs 10+ japs so the
-    // whole-second session timer cannot cause a false red on the first few taps.
-    el.classList.toggle("over", lim > 0 && n >= 10 && q < lim);
-  },
-
   tapTimer() {
-    this._sessJaps = (this._sessJaps || 0) + 1;   // japs tapped this session (for Session Q)
-    try { this.updateSessQ(); } catch (_e) {}
     this.startTimer();
     clearTimeout(this.autoStopTimeout);
     // Snapshot BOTH the session counter and the per-mala counter at the moment
@@ -3002,7 +2983,6 @@ const App = {
     this.timerInterval = null;
     this.timerRunning = false;
     this.timerSeconds = 0;
-    this._sessJaps = 0;
     this.timerSavedSeconds = 0;
     this._malaTimerStart = 0;
     this.currentMalaSeconds = 0;

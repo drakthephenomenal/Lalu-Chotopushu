@@ -4772,8 +4772,3 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 .jap-text-settings-panel .jtsp-row.jtsp-row-lang{flex-wrap:wrap}
 .jap-text-settings-panel .jtsp-row-lang .jtsp-ctrl.jtsp-lang{width:100%;gap:8px}
 .jap-text-settings-panel .jtsp-row-lang .jtsp-ctrl.jtsp-lang button{flex:1 1 0;min-width:0;padding:6px 4px}
-
-/* Session Q (actual jap time ÷ japs in session) — tiny, inside the Session box */
-.timer-box{position:relative;}
-.sess-q{position:absolute;top:3px;right:6px;font-size:8px;line-height:1;font-weight:700;letter-spacing:.3px;color:rgba(255,215,0,0.75);font-variant-numeric:tabular-nums;pointer-events:none;}
-.sess-q.over{color:#ff4d4d;}

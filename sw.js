@@ -1,5 +1,3 @@
-// v511: Session Q turns red only when Q is BELOW the Min Tap Delay (faster than allowed), after 10+ japs.
-// v510: Session Q (actual jap time ÷ japs in session) shown tiny in the Session box; red when above the jap type's Min Tap Delay.
 // v509: Jap-screen sign-in popup now starts Google sign-in directly (button: Sign in with Google) instead of opening Settings.
 // v508: KV mode shows lifetime target again; Jap nudges are now square-cornered, transparent and sit on the tap area; Settings refreshes sampraday cards on open.
 // v507: KV japs count toward the lifetime target again (% bar + R/RV total include KV); KV mode shows its own total without target text.
@@ -497,7 +495,7 @@
 // v420 (Play build + dev email): bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
 // v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
 // v422: bumped cache to force-invalidate stale app.js / style.css / index.html — Haridashi Sampraday (Radha + Kunj Vihari / Sri Haridas, own Deity/Guru/Acharya photos, own lifetime target); Nimbark Deity/Guru/Acharya jap-display photos + Yugal mantra animation now matches Hare Krishna; reopened wishes no longer stay paused.
-const CACHE = 'radha-jap-v511';
+const CACHE = 'radha-jap-v509';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

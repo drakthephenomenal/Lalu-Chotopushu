@@ -1,3 +1,4 @@
+// v508: KV mode shows lifetime target again; Jap nudges are now square-cornered, transparent and sit on the tap area; Settings refreshes sampraday cards on open.
 // v507: KV japs count toward the lifetime target again (% bar + R/RV total include KV); KV mode shows its own total without target text.
 // v506: Jap-screen nudges — first open (preserve data / sign in), later opens: sign-in reminder if signed out, GPS reminder if GPS off. Translucent, ✕ dismissible, auto-fades.
 // v505: Jap screen now auto-corrects when the selected jap type doesn't belong to the active sampraday (e.g. Vallabh jap shown while Harivangshi is ON).
@@ -493,7 +494,7 @@
 // v420 (Play build + dev email): bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
 // v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
 // v422: bumped cache to force-invalidate stale app.js / style.css / index.html — Haridashi Sampraday (Radha + Kunj Vihari / Sri Haridas, own Deity/Guru/Acharya photos, own lifetime target); Nimbark Deity/Guru/Acharya jap-display photos + Yugal mantra animation now matches Hare Krishna; reopened wishes no longer stay paused.
-const CACHE = 'radha-jap-v507';
+const CACHE = 'radha-jap-v508';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

@@ -3237,7 +3237,7 @@ const App = {
         const _b = this.getLifetimeTargetBreakdown();
         // KV japs ALWAYS count toward the lifetime target (`tot` / % bar stay combined R+RV+KV).
         // Only what is DISPLAYED changes: KV mode shows KV's own total without the target text.
-        if (_jm === "kv") { _shownTot = (_b.kv || 0) + (_b.kva || 0); _hideLtTarget = true; }
+        if (_jm === "kv") { _shownTot = (_b.kv || 0) + (_b.kva || 0); }   // KV-only total, lifetime target still shown
       }
     } catch (_e) {}
     const curDt = this.getCurDt(),
@@ -6625,6 +6625,7 @@ function setSyncPill(state, text) {
 
 // ── View Switcher ──
 function sv(id, btn) {
+  if (id === "vset") { try { renderSampradaySelector(); } catch (_e) {} }
   if (id === "v28" && window.AudioChant && (window.AudioChant.playing || (window.AudioChantM && window.AudioChantM.playing))) { window.AudioChant.warnBusy(); return; }   // 28 Names is off while audio chant is on
   document
     .querySelectorAll(".view")
@@ -40297,21 +40298,25 @@ async function _syncPublicPhoto(p, largeOverride) {
     hide();
     var el = document.createElement("div");
     el.id = "japNudge";
-    el.style.cssText = "position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 74px);z-index:90;" +
-      "display:flex;align-items:center;gap:10px;padding:10px 10px 10px 12px;border-radius:14px;" +
-      "background:rgba(10,18,48,0.62);border:1px solid rgba(255,215,0,0.38);" +
-      "-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 6px 22px rgba(0,0,0,0.4);" +
+    // Sits ON the tap area (#tz): square corners, mostly transparent, stacked like a small square card.
+    var tz = document.getElementById("tz"), r = tz ? tz.getBoundingClientRect() : null;
+    var w = r ? Math.min(300, Math.max(220, r.width * 0.78)) : 280;
+    var left = r ? r.left + (r.width - w) / 2 : (window.innerWidth - w) / 2;
+    var top = r ? r.top + Math.max(10, r.height * 0.30) : 160;
+    el.style.cssText = "position:fixed;left:" + Math.round(left) + "px;top:" + Math.round(top) + "px;width:" + Math.round(w) + "px;z-index:90;box-sizing:border-box;" +
+      "display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 14px 14px;border-radius:0;text-align:center;" +
+      "background:rgba(8,14,40,0.28);border:1px solid rgba(255,215,0,0.45);" +
       "opacity:0;transition:opacity .4s;color:#fff;font-family:Inter,sans-serif;";
-    var ic = document.createElement("span"); ic.textContent = icon; ic.style.cssText = "font-size:20px;flex-shrink:0;";
-    var tx = document.createElement("span"); tx.textContent = msg; tx.style.cssText = "flex:1;font-size:12.5px;line-height:1.4;color:rgba(255,255,255,.92);";
+    var ic = document.createElement("span"); ic.textContent = icon; ic.style.cssText = "font-size:26px;line-height:1;";
+    var tx = document.createElement("span"); tx.textContent = msg; tx.style.cssText = "font-size:13px;line-height:1.45;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.85);";
     var go = document.createElement("button"); go.type = "button"; go.textContent = btnLabel;
-    go.style.cssText = "flex-shrink:0;padding:7px 12px;border-radius:10px;border:1px solid rgba(255,215,0,.7);background:rgba(255,215,0,.2);color:#FFD700;font-size:12px;font-weight:700;";
+    go.style.cssText = "padding:8px 18px;border-radius:0;border:1px solid rgba(255,215,0,.8);background:rgba(255,215,0,.14);color:#FFD700;font-size:12.5px;font-weight:700;";
     go.onclick = function (e) { e.stopPropagation(); hide(); try { onAction(); } catch (_e) {} };
     var x = document.createElement("button"); x.type = "button"; x.textContent = "✕"; x.setAttribute("aria-label", "Dismiss");
-    x.style.cssText = "flex-shrink:0;width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:13px;";
+    x.style.cssText = "position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:0;border:none;background:transparent;color:rgba(255,255,255,.85);font-size:14px;";
     x.onclick = function (e) { e.stopPropagation(); hide(); };
     [ "touchstart", "mousedown", "click" ].forEach(function (t) { el.addEventListener(t, function (e) { e.stopPropagation(); }, { passive: true }); });
-    el.appendChild(ic); el.appendChild(tx); el.appendChild(go); el.appendChild(x);
+    el.appendChild(x); el.appendChild(ic); el.appendChild(tx); el.appendChild(go);
     document.body.appendChild(el);
     requestAnimationFrame(function () { el.style.opacity = "1"; });
     setTimeout(hide, 16000);   // fades away by itself if ignored

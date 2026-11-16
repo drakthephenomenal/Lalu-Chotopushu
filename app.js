@@ -2892,6 +2892,7 @@ const App = {
         this.timerSeconds,
       );
       this.updateTimerToday();
+      this.updateSessQ();
     }, 1000);
   },
 
@@ -2924,7 +2925,23 @@ const App = {
     this.updateTimerToday();
   },
 
+  // Session Q = actual jap time in this session ÷ japs in this session (seconds per jap).
+  // Red while Q is ABOVE the Min Tap Delay set for the current jap type (0 / Off = never red).
+  updateSessQ() {
+    const el = document.getElementById("sessQ");
+    if (!el) return;
+    const n = this._sessJaps || 0, sec = this.timerSeconds || 0;
+    if (n < 2 || sec <= 0) { el.textContent = "Q —"; el.classList.remove("over"); return; }
+    const q = sec / n;
+    el.textContent = "Q " + q.toFixed(1) + "s";
+    let lim = 0;
+    try { lim = window.getMinTapDelay ? window.getMinTapDelay(this.S.japMode) : 0; } catch (_e) {}
+    el.classList.toggle("over", lim > 0 && q > lim);
+  },
+
   tapTimer() {
+    this._sessJaps = (this._sessJaps || 0) + 1;   // japs tapped this session (for Session Q)
+    try { this.updateSessQ(); } catch (_e) {}
     this.startTimer();
     clearTimeout(this.autoStopTimeout);
     // Snapshot BOTH the session counter and the per-mala counter at the moment
@@ -2983,6 +3000,7 @@ const App = {
     this.timerInterval = null;
     this.timerRunning = false;
     this.timerSeconds = 0;
+    this._sessJaps = 0;
     this.timerSavedSeconds = 0;
     this._malaTimerStart = 0;
     this.currentMalaSeconds = 0;
@@ -40322,9 +40340,13 @@ async function _syncPublicPhoto(p, largeOverride) {
     setTimeout(hide, 16000);   // fades away by itself if ignored
   }
   function goSignIn() {
+    // Start Google sign-in right here — no trip to Settings. Falls back to Settings only if it can't start.
     try {
-      var btns = document.querySelectorAll(".nb");
-      var setBtn = null; btns.forEach(function (b) { if ((b.getAttribute("onclick") || "").indexOf("'vset'") > -1) setBtn = b; });
+      if (typeof fbSignInGoogle === "function") { fbSignInGoogle(); return; }
+    } catch (_e) {}
+    try {
+      var setBtn = null;
+      document.querySelectorAll(".nb").forEach(function (b) { if ((b.getAttribute("onclick") || "").indexOf("'vset'") > -1) setBtn = b; });
       sv("vset", setBtn);
       setTimeout(function () { var c = document.getElementById("fbCard"); if (c && c.scrollIntoView) c.scrollIntoView({ behavior: "smooth", block: "start" }); }, 250);
     } catch (_e) {}
@@ -40333,10 +40355,10 @@ async function _syncPublicPhoto(p, largeOverride) {
     var first = lsGet(KEY_FIRST) !== "1";
     if (first) {
       lsSet(KEY_FIRST, "1");
-      if (!signedIn()) show("🔒", "To keep your Jap data preserved, sign in with Google.", "Sign in", goSignIn);
+      if (!signedIn()) show("🔒", "To keep your Jap data preserved, sign in with Google.", "🔐 Sign in with Google", goSignIn);
       return;
     }
-    if (!signedIn()) { show("🔒", "You're not signed in. Sign in to keep your Jap data preserved.", "Sign in", goSignIn); return; }
+    if (!signedIn()) { show("🔒", "You're not signed in. Sign in to keep your Jap data preserved.", "🔐 Sign in with Google", goSignIn); return; }
     if (!gpsOn()) { show("📍", "GPS is off. Turn it on for accurate Brahma Muhurta & sunrise times.", "Turn on", function () { if (typeof lcOnbEnableGps === "function") lcOnbEnableGps(); }); }
   }
   function start() {

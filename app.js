@@ -1419,8 +1419,9 @@ async function lcUnregisterPush() {
 
 // Everyone who signs in gets registered for push:
 //  • permission already allowed  -> register silently on every launch (keeps the token fresh)
-//  • not asked / dismissed       -> ask again, at most once every 3 days
-//  • blocked in phone settings   -> a gentle hint, at most once a week (the system won't show its prompt again)
+//  • not allowed yet             -> ask on EVERY app open (once per open) until allowed; at sign-in it is
+//                                   asked again as the last step (after Drive and GPS)
+//  • blocked in phone settings   -> a hint on every app open (the system won't show its box again)
 //  • person switched push OFF in Settings -> never auto-enabled again
 function _lcPushSetUI(on) {
   const tg = document.getElementById("tgPushNotifications");
@@ -1428,8 +1429,14 @@ function _lcPushSetUI(on) {
   if (tg) tg.classList.toggle("on", !!on);
   if (st) st.textContent = on ? "✅ Notifications enabled" : "— Tap toggle to get notifications 🔔";
 }
-async function rjapAutoPush() {
-  if (window._lcAutoPushBusy) return window._lcAutoPushBusy;
+// opts.deferPrompt : only register if already allowed; never show the Allow box (used at sign-in start)
+// opts.force       : sign-in sequence step -- ask even if already asked earlier in this app open
+async function rjapAutoPush(opts) {
+  opts = opts || {};
+  if (window._lcAutoPushBusy) {
+    if (!opts.force) return window._lcAutoPushBusy;
+    try { await window._lcAutoPushBusy; } catch (_e) {}
+  }
   window._lcAutoPushBusy = (async () => {
     try {
       let optOut = false;
@@ -1439,7 +1446,9 @@ async function rjapAutoPush() {
       let state = await lcPushPermState();
       // Android shows its own "Allow notifications" box. Ask on every app open until the person
       // answers (it only ever appears while it is still allowed to).
-      if (state === "prompt" && (native || fbUser)) {
+      const canAsk = !opts.deferPrompt && (opts.force || !window._rjapNotifAskedThisOpen);
+      if (state === "prompt" && (native || fbUser) && canAsk) {
+        window._rjapNotifAskedThisOpen = true;
         try {
           if (native) await window.Capacitor.Plugins.FirebaseMessaging.requestPermissions();
           else await lcRequestNotifPermission();
@@ -1447,12 +1456,11 @@ async function rjapAutoPush() {
         state = await lcPushPermState();
       }
       if (state !== "granted") {
+        if (opts.deferPrompt) return false;   // the Allow box comes later in the sign-in sequence
         _rjapReportPushState(state, false, false);
         _lcPushSetUI(false);
-        const now = Date.now();
-        let last = 0; try { last = parseInt(localStorage.getItem("rjap_push_hint_at") || "0", 10) || 0; } catch (_) {}
-        if (state === "denied" && now - last > 7 * 24 * 3600 * 1000) {
-          try { localStorage.setItem("rjap_push_hint_at", String(now)); } catch (_) {}
+        if (state === "denied" && !window._rjapNotifHintThisOpen) {
+          window._rjapNotifHintThisOpen = true;   // once per app open
           toast("🔔 Allow notifications in phone Settings → Apps → RadhaNaam SudhaRasam to get announcements");
         }
         return false;
@@ -7456,6 +7464,7 @@ function tgs(k) {
           // WITHOUT re-prompting for geolocation permission on load.
           try {
             localStorage.setItem("rjap_gps_enabled", "1");
+            localStorage.removeItem("rjap_gps_optout");
             localStorage.setItem("rjap_lastLat", String(lat));
             localStorage.setItem("rjap_lastLng", String(lng));
           } catch(e) {}
@@ -7477,6 +7486,7 @@ function tgs(k) {
       if (App.S) { delete App.S.lastLat; delete App.S.lastLng; App.save(); }
       try {
         localStorage.removeItem("rjap_gps_enabled");
+        localStorage.setItem("rjap_gps_optout", "1");   // switched off on purpose -> sign-in sequence stops asking
         localStorage.removeItem("rjap_lastLat");
         localStorage.removeItem("rjap_lastLng");
       } catch(e) {}
@@ -13488,6 +13498,7 @@ async function lcOnbEnableGps() {
     if (App.S) { App.S.lastLat = lat; App.S.lastLng = lng; App.save(); }
     try {
       localStorage.setItem("rjap_gps_enabled", "1");
+      localStorage.removeItem("rjap_gps_optout");
       localStorage.setItem("rjap_lastLat", String(lat));
       localStorage.setItem("rjap_lastLng", String(lng));
     } catch (_e) {}
@@ -13505,24 +13516,52 @@ async function lcOnbEnableGps() {
   }
 }
 
+// Drive step of the sign-in sequence. Skipped once the account has allowed Drive (any device);
+// until then it is asked again on every app open.
+async function lcOnbDriveStep(user) {
+  const uid = user.uid;
+  if (window._rjapDriveAskedThisOpen) return;                  // at most once per app open
+  if (!(await _waitForCloudHydration(uid, 30000))) return;   // can't confirm cloud state -> don't nag
+  await _syncDriveStatusFromServer(uid);                       // also asks the server
+  if (_driveAllowed()) { try { _setDriveAllowed(); } catch (_e) {} return; }
+  window._rjapDriveAskedThisOpen = true;
+  const go = await _lcOnbModal({
+    icon: "☁️",
+    title: "Allow Google Drive",
+    body: "Allow Google Drive so your Jap backup file can be saved safely in your own Drive. You can change this any time in Settings.",
+    buttons: [
+      { label: "☁️ Allow Google Drive", primary: true, value: true },
+      { label: "Not now", value: false },
+    ],
+  });
+  if (go) await connectDriveAccess();
+}
+
 let _lcOnbRunning = false;
 async function lcOnboardingRun(user) {
   if (_lcOnbRunning) return;
   _lcOnbRunning = true;
+  // Was this run started by a sign-in the person just did (Jap screen or Settings)?
+  const fresh = !!window._rjapFreshSignIn && (Date.now() - window._rjapFreshSignIn < 120000);
+  window._rjapFreshSignIn = 0;
   try {
-    // 1) Notification — the system prompt was already triggered by the
-    //    sign-in handler; wait for it to be answered before the next step.
+    // Order after sign-in: Google popup → Drive → GPS → language (silent) → notification.
     if (window._lcPushAskPromise) { try { await window._lcPushAskPromise; } catch (_e) {} window._lcPushAskPromise = null; }
     // Let cloud data for this user finish loading so saved choices are known.
     await new Promise((r) => setTimeout(r, 1800));
     if (!user || (App._uid && App._uid !== user.uid)) return;
 
-    // 2) GPS location
-    let gpsOn = false, gpsAsked = false;
+    // 1) Google Drive access
+    try { await lcOnbDriveStep(user); } catch (e) { console.warn("drive step failed:", e); }
+    if (!user || (App._uid && App._uid !== user.uid)) return;
+
+    // 2) GPS location -- asked again on every app open until it is on (a synced lastLat from another
+    //    device does not count). Not asked if the person switched GPS off in Settings on purpose.
+    let gpsOn = false, gpsOptOut = false;
     try { gpsOn = localStorage.getItem("rjap_gps_enabled") === "1"; } catch (_e) {}
-    try { gpsAsked = localStorage.getItem("rjap_gps_asked") === "1"; } catch (_e) {}
-    if (!gpsOn && !gpsAsked && !(App.S && App.S.lastLat != null)) {
-      try { localStorage.setItem("rjap_gps_asked", "1"); } catch (_e) {}
+    try { gpsOptOut = localStorage.getItem("rjap_gps_optout") === "1"; } catch (_e) {}
+    if (!gpsOn && !gpsOptOut && !window._rjapGpsAskedThisOpen) {
+      window._rjapGpsAskedThisOpen = true;
       const go = await _lcOnbModal({
         icon: "📍",
         title: "Turn on GPS location",
@@ -13544,6 +13583,11 @@ async function lcOnboardingRun(user) {
       if (App.S.stotramLang !== pref) setStotramLang(pref); else { App.save(); secLangOnGlobalChange(); }
       lcApplyJapLangDefaults(pref);
     }
+
+    // 4) Notification -- last, after GPS. Right after a sign-in it is asked even if the box was already
+    //    shown earlier in this app open; on a normal reopen the once-per-open rule applies.
+    //    (Not allowed yet = asked again on every app open, see rjapAutoPush.)
+    try { await rjapAutoPush(fresh ? { force: true } : {}); } catch (_e) {}
   } catch (e) {
     console.error("onboarding failed:", e);
   } finally {
@@ -14473,8 +14517,9 @@ function fbInit() {
       // toggle's own UI (#tgPushNotifications / #pushNotificationsStatus)
       // is kept in sync either way.
       if (user) {
-        window._lcPushAskPromise = rjapAutoPush().catch(() => {});
-        // First-login onboarding, in order: notification → GPS → language.
+        // Already allowed -> registers silently right now. The "Allow notifications" box is NOT shown
+        // here any more: it comes last in the sign-in sequence (Drive → GPS → language → notification).
+        window._lcPushAskPromise = rjapAutoPush({ deferPrompt: true }).catch(() => {});
         lcOnboardingRun(user);
       }
       if (user) {
@@ -14921,6 +14966,7 @@ let _fbSignInBusy = false;
 async function fbSignInGoogle() {
   if (_fbSignInBusy) return;
   _fbSignInBusy = true;
+  window._rjapFreshSignIn = Date.now();   // tells the sign-in sequence this is a real, just-now sign-in
   setTimeout(() => { _fbSignInBusy = false; }, 4000);   // never stays stuck
   if (!fbInit()) {
     toast("Firebase not ready. Check your connection.");
@@ -14987,10 +15033,8 @@ async function fbSignInGoogle() {
       // First login in a browser/PWA (iPad, Android Chrome): offer Drive access ONLY if the
       // cloud copy (App.S.driveSrvOK, synced via Firestore) doesn't already say it was allowed.
       // We wait for the cloud pull to finish first, so users who already granted it never see the popup.
-      try {
-        const _u = result && result.user;
-        if (_u) _offerDriveAfterCloudPull(_u.uid);
-      } catch (_e) {}
+      // (The Drive offer now lives in the shared sign-in sequence, lcOnboardingRun → lcOnbDriveStep,
+      //  so it appears in the same order for Settings and Jap-screen sign-in.)
     })
     .catch((e) => {
       // Popup blocked or storage partitioned (e.g. Facebook in-app browser)

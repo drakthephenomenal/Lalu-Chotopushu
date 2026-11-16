@@ -14906,8 +14906,22 @@ async function _nativeGoogleSignIn(plugin, opts) {
   }
 }
 
+// Shows a sign-in error in Settings (#fbErr) AND as a toast, so it is
+// visible when sign-in was started from the Jap screen.
+function _fbSignInShowErr(msg, ms) {
+  try {
+    const el = document.getElementById("fbErr");
+    if (el) { el.textContent = msg; setTimeout(() => (el.textContent = ""), ms || 8000); }
+  } catch (_e) {}
+  try { toast("⚠️ " + msg); } catch (_e) {}
+}
+let _fbSignInBusy = false;
+
 // ── Single "Sign in with Google" button ──
 async function fbSignInGoogle() {
+  if (_fbSignInBusy) return;
+  _fbSignInBusy = true;
+  setTimeout(() => { _fbSignInBusy = false; }, 4000);   // never stays stuck
   if (!fbInit()) {
     toast("Firebase not ready. Check your connection.");
     return;
@@ -14950,11 +14964,10 @@ async function fbSignInGoogle() {
       }
     } catch (e) {
       console.error("Native Google sign-in failed:", e);
-      const el = document.getElementById("fbErr");
-      if (el) {
-        el.textContent = (e && e.credMgr) ? e.message : "Google sign-in failed: " + (e && e.message ? e.message : e);
-        setTimeout(() => (el.textContent = ""), e && e.credMgr ? 15000 : 8000);
-      }
+      _fbSignInShowErr(
+        (e && e.credMgr) ? e.message : "Google sign-in failed: " + (e && e.message ? e.message : e),
+        (e && e.credMgr) ? 15000 : 8000
+      );
       if (e && e.credMgr) {
         const sec = document.querySelector(".fb-email-section");
         if (sec) sec.open = true;   // show the email option right away
@@ -15006,11 +15019,7 @@ async function fbSignInGoogle() {
           }
         }, 1000);
       } else {
-        const el = document.getElementById("fbErr");
-        if (el) {
-          el.textContent = e.message;
-          setTimeout(() => (el.textContent = ""), 5000);
-        }
+        _fbSignInShowErr(e.message, 5000);
       }
     });
 }
@@ -40322,16 +40331,13 @@ async function _syncPublicPhoto(p, largeOverride) {
     setTimeout(hide, 16000);   // fades away by itself if ignored
   }
   function goSignIn() {
-    // Start Google sign-in right here — no trip to Settings. Falls back to Settings only if it can't start.
+    // Same path as Settings: account popup -> "Signed in" toast ->
+    // (onAuthStateChanged) notification -> GPS -> language -> Drive offer.
+    // Nothing is duplicated here, so the two entry points cannot drift apart.
     try {
       if (typeof fbSignInGoogle === "function") { fbSignInGoogle(); return; }
     } catch (_e) {}
-    try {
-      var setBtn = null;
-      document.querySelectorAll(".nb").forEach(function (b) { if ((b.getAttribute("onclick") || "").indexOf("'vset'") > -1) setBtn = b; });
-      sv("vset", setBtn);
-      setTimeout(function () { var c = document.getElementById("fbCard"); if (c && c.scrollIntoView) c.scrollIntoView({ behavior: "smooth", block: "start" }); }, 250);
-    } catch (_e) {}
+    toast("Sign-in isn't ready yet. Please try again in a moment 🙏");
   }
   function pick() {
     var first = lsGet(KEY_FIRST) !== "1";

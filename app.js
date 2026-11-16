@@ -2725,6 +2725,28 @@ const App = {
     if (this.S.japMode === "vl") return this.S.dtVl || 0;
     return this.S.dt;
   },
+  // Safety net: the selected jap type must belong to the ACTIVE sampraday. If it doesn't
+  // (e.g. Harivangshi is ON but japMode is still "vl" / "hk" / "ss" / "yg" / a Raam jap,
+  // left over from another sampraday or restored from cloud), fall back to Radha.
+  // Returns true when it had to correct the mode.
+  fixJapModeMismatch() {
+    try {
+      const S = this.S, m = S.japMode;
+      if (!m || this._fixingJapMode) return false;
+      let bad = false;
+      if (m === "hk" && !S.gaudiyaMode) bad = true;
+      else if (m === "ss" && !S.trahimamMode) bad = true;
+      else if (isRamFam(m) && !S.ramanandiMode) bad = true;
+      else if (m === "yg" && !S.nimbarkMode) bad = true;
+      else if (m === "vl" && !S.vallabhMode) bad = true;
+      else if ((m === "kv" || m === "kaam") && isHaridashiActive()) bad = true;
+      if (!bad) return false;
+      this._fixingJapMode = true;
+      try { switchJapMode("radha"); } finally { this._fixingJapMode = false; }
+      try { this.save(); } catch (_e) {}
+      return true;
+    } catch (_e) { return false; }
+  },
   getCurLt() {
     return isHaridashiActive() ? (this.S.ltHD || 0) : this.S.lt;
   },
@@ -3200,6 +3222,7 @@ const App = {
     return log.reduce((a, b) => a + b, 0);
   },
   ua() {
+    if (this.fixJapModeMismatch()) return;
     const tod = this.gTod(),
       ms = this.S.ms || 108;
     let tot = this.getLifetimeTargetTotal(); // COMBINED Radha+RV+KV lifetime total
@@ -3207,13 +3230,14 @@ const App = {
     //  - KV  → KV's own lifetime total (no lifetime target text, no R / RV)
     //  - R / RV → R + RV total against the lifetime target (no KV)
     //  Kaam Vijay and every other sampraday are left exactly as before.
-    let _hideLtTarget = false;
+    let _hideLtTarget = false, _shownTot = null;
     try {
       const _jm = this.S.japMode;
       if (!isHaridashiActive() && this.isMainLiveInCombinedGroup() && _jm !== "kaam") {
         const _b = this.getLifetimeTargetBreakdown();
-        if (_jm === "kv") { tot = (_b.kv || 0) + (_b.kva || 0); _hideLtTarget = true; }
-        else { tot = (_b.radha || 0) + (_b.ra || 0) + (_b.rv || 0) + (_b.rva || 0); }
+        // KV japs ALWAYS count toward the lifetime target (`tot` / % bar stay combined R+RV+KV).
+        // Only what is DISPLAYED changes: KV mode shows KV's own total without the target text.
+        if (_jm === "kv") { _shownTot = (_b.kv || 0) + (_b.kva || 0); _hideLtTarget = true; }
       }
     } catch (_e) {}
     const curDt = this.getCurDt(),
@@ -3276,12 +3300,13 @@ const App = {
       lFill.style.backgroundSize = "";
       lFill.style.animation = "none";
     }
-    document.getElementById("lbarDone").textContent = fmtIN(tot);
+    const _lShow = _shownTot === null ? tot : _shownTot;
+    document.getElementById("lbarDone").textContent = fmtIN(_lShow);
     document.getElementById("lbarTarget").textContent =
       _hideLtTarget ? "" : "/ " + (curLt ? fmtIN(curLt) : "—");
     const lBreakdownTotalEl = document.getElementById("lBreakdownTotal");
     if (lBreakdownTotalEl) lBreakdownTotalEl.textContent = this.formatLifetimeBreakdown(false).replace(/\+/g, " · ");
-    document.getElementById("lDet").textContent = Math.floor(tot / ms) + " malas Done";
+    document.getElementById("lDet").textContent = Math.floor(_lShow / ms) + " malas Done";
     const lBreakdownDetailEl = document.getElementById("lBreakdownDetail");
     if (lBreakdownDetailEl) lBreakdownDetailEl.textContent = this.formatLifetimeBreakdown(true).replace(/\+/g, " · ");
     this.updateTimerToday();
@@ -3598,6 +3623,7 @@ const App = {
     window._rjLastCountKind = "touch";
     if (window._rvNamesLock) { try { if (e) e.preventDefault(); } catch (_) {} return; } // 5s mala-complete name display: jap unresponsive
     if (window.japPhotoEditMode) return; // photo edit mode: dragging/resizing photos, not counting
+    if (this.fixJapModeMismatch()) return; // wrong jap type for this sampraday → switched to Radha; ignore this tap
     // First-ever tap on the counter: surface the tutorial hint (see
     // _firstTapHintWatch/_firstTapHintDismiss below). Purely a UI nudge —
     // never blocks or delays the tap itself.
@@ -14396,6 +14422,7 @@ function fbInit() {
     }
 
     fbAuth.onAuthStateChanged(async (user) => {
+      window._rjapAuthResolved = true;
       try { setTimeout(() => { if (typeof _rjapSyncDelivered === "function") _rjapSyncDelivered(); }, 2500); } catch (_e) {}
       if (fbForcedSignout) {
         lockSignedOutScreen();
@@ -40237,4 +40264,88 @@ async function _syncPublicPhoto(p, largeOverride) {
       if (dg && p.usesWhatsapp && confirm('Open WhatsApp chat?')) window.open('https://wa.me/' + dg, '_blank');
     } catch (e) { toast('Failed: ' + e.message); }
   };
+})();
+
+/* ═══════════ Jap-screen nudges (translucent, ignorable) ═══════════
+   1) First ever open  → "To keep your Jap data preserved, sign in" (sign-in not done yet)
+   2) Later opens, not signed in → same sign-in reminder
+   3) Later opens, signed in but GPS off → GPS reminder
+   One banner per app open, never blocks counting, ✕ to dismiss, fades by itself. */
+(function () {
+  var KEY_FIRST = "rjap_nudge_first_done";
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (_e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (_e) {} }
+  function signedIn() { try { return !!(typeof fbUser !== "undefined" && fbUser); } catch (_e) { return false; } }
+  function gpsOn() {
+    try { if (lsGet("rjap_gps_enabled") === "1") return true; } catch (_e) {}
+    try { return !!(window.App && App.S && App.S.lastLat != null && App.S.lastLng != null); } catch (_e) { return false; }
+  }
+  function blockingModalOpen() {
+    return !!document.querySelector('body > div[style*="z-index:100000"]');
+  }
+  function onJapScreen() {
+    var v = document.getElementById("vj");
+    return !!(v && v.classList.contains("active"));
+  }
+  function hide() {
+    var el = document.getElementById("japNudge");
+    if (!el) return;
+    el.style.opacity = "0";
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 400);
+  }
+  function show(icon, msg, btnLabel, onAction) {
+    hide();
+    var el = document.createElement("div");
+    el.id = "japNudge";
+    el.style.cssText = "position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 74px);z-index:90;" +
+      "display:flex;align-items:center;gap:10px;padding:10px 10px 10px 12px;border-radius:14px;" +
+      "background:rgba(10,18,48,0.62);border:1px solid rgba(255,215,0,0.38);" +
+      "-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 6px 22px rgba(0,0,0,0.4);" +
+      "opacity:0;transition:opacity .4s;color:#fff;font-family:Inter,sans-serif;";
+    var ic = document.createElement("span"); ic.textContent = icon; ic.style.cssText = "font-size:20px;flex-shrink:0;";
+    var tx = document.createElement("span"); tx.textContent = msg; tx.style.cssText = "flex:1;font-size:12.5px;line-height:1.4;color:rgba(255,255,255,.92);";
+    var go = document.createElement("button"); go.type = "button"; go.textContent = btnLabel;
+    go.style.cssText = "flex-shrink:0;padding:7px 12px;border-radius:10px;border:1px solid rgba(255,215,0,.7);background:rgba(255,215,0,.2);color:#FFD700;font-size:12px;font-weight:700;";
+    go.onclick = function (e) { e.stopPropagation(); hide(); try { onAction(); } catch (_e) {} };
+    var x = document.createElement("button"); x.type = "button"; x.textContent = "✕"; x.setAttribute("aria-label", "Dismiss");
+    x.style.cssText = "flex-shrink:0;width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:13px;";
+    x.onclick = function (e) { e.stopPropagation(); hide(); };
+    [ "touchstart", "mousedown", "click" ].forEach(function (t) { el.addEventListener(t, function (e) { e.stopPropagation(); }, { passive: true }); });
+    el.appendChild(ic); el.appendChild(tx); el.appendChild(go); el.appendChild(x);
+    document.body.appendChild(el);
+    requestAnimationFrame(function () { el.style.opacity = "1"; });
+    setTimeout(hide, 16000);   // fades away by itself if ignored
+  }
+  function goSignIn() {
+    try {
+      var btns = document.querySelectorAll(".nb");
+      var setBtn = null; btns.forEach(function (b) { if ((b.getAttribute("onclick") || "").indexOf("'vset'") > -1) setBtn = b; });
+      sv("vset", setBtn);
+      setTimeout(function () { var c = document.getElementById("fbCard"); if (c && c.scrollIntoView) c.scrollIntoView({ behavior: "smooth", block: "start" }); }, 250);
+    } catch (_e) {}
+  }
+  function pick() {
+    var first = lsGet(KEY_FIRST) !== "1";
+    if (first) {
+      lsSet(KEY_FIRST, "1");
+      if (!signedIn()) show("🔒", "To keep your Jap data preserved, sign in with Google.", "Sign in", goSignIn);
+      return;
+    }
+    if (!signedIn()) { show("🔒", "You're not signed in. Sign in to keep your Jap data preserved.", "Sign in", goSignIn); return; }
+    if (!gpsOn()) { show("📍", "GPS is off. Turn it on for accurate Brahma Muhurta & sunrise times.", "Turn on", function () { if (typeof lcOnbEnableGps === "function") lcOnbEnableGps(); }); }
+  }
+  function start() {
+    var tries = 0;
+    (function wait() {
+      tries++;
+      if (tries > 30) return;                                        // give up after ~45 s
+      var authReady = window._rjapAuthResolved === true || tries > 8;   // wait for Firebase, but not forever
+      if (!authReady || blockingModalOpen() || !onJapScreen() || (typeof fbForcedSignout !== "undefined" && fbForcedSignout)) {
+        return setTimeout(wait, 1500);
+      }
+      pick();
+    })();
+  }
+  if (document.readyState === "complete") setTimeout(start, 2500);
+  else window.addEventListener("load", function () { setTimeout(start, 2500); });
 })();

@@ -2926,7 +2926,7 @@ const App = {
   },
 
   // Session Q = actual jap time in this session ÷ japs in this session (seconds per jap).
-  // Red while Q is ABOVE the Min Tap Delay set for the current jap type (0 / Off = never red).
+  // Red while Q is BELOW the Min Tap Delay set for the current jap type (too fast; 0 / Off = never red).
   updateSessQ() {
     const el = document.getElementById("sessQ");
     if (!el) return;
@@ -2936,7 +2936,9 @@ const App = {
     el.textContent = "Q " + q.toFixed(1) + "s";
     let lim = 0;
     try { lim = window.getMinTapDelay ? window.getMinTapDelay(this.S.japMode) : 0; } catch (_e) {}
-    el.classList.toggle("over", lim > 0 && q > lim);
+    // Red only when chanting is FASTER than the minimum (Q below the Min Tap Delay). Needs 10+ japs so the
+    // whole-second session timer cannot cause a false red on the first few taps.
+    el.classList.toggle("over", lim > 0 && n >= 10 && q < lim);
   },
 
   tapTimer() {

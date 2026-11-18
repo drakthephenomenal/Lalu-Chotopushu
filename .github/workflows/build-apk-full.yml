@@ -1,0 +1,45 @@
+name: Build APK (Full offline)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm install
+      - name: Build full offline APK (all audio, videos, deities bundled)
+        run: bash build-apk-full-offline.sh
+      - name: Show APK size
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          MB=$(( $(stat -c%s "$APK") / 1024 / 1024 ))
+          echo "Full APK: ${MB} MB"
+          echo "### Full offline APK: ${MB} MB" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$MB" -gt 2000 ]; then
+            echo "::error::APK is over 2 GB - GitHub releases cannot hold it."
+            exit 1
+          fi
+      - name: Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VER=$(cat .app-version | tr -d '\r\n ')
+          cp android/app/build/outputs/apk/release/app-release.apk RadhaNaamJap-Full.apk
+          gh release create "full-v1.0.${VER}" RadhaNaamJap-Full.apk --draft --title "RadhaNaamJap FULL v1.0.${VER}" --notes ""
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .app-version
+          git commit -m "Bump app version" || true
+          git push || true

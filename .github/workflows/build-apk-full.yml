@@ -1,4 +1,4 @@
-name: Build APK (Full offline)
+name: Build APK (Full offline - all audio and video bundled)
 on:
   workflow_dispatch:
 
@@ -10,6 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
+      - name: Free up disk space (full build needs several GB)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android/sdk/ndk /opt/ghc /usr/local/share/boost
+          df -h /
+
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -19,8 +24,10 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm install
-      - name: Build full offline APK (all audio, videos, deities bundled)
-        run: bash build-apk-full-offline.sh
+
+      - name: Build full offline APK
+        run: bash build-apk-full.sh
+
       - name: Show APK size
         run: |
           APK=android/app/build/outputs/apk/release/app-release.apk
@@ -31,6 +38,7 @@ jobs:
             echo "::error::APK is over 2 GB - GitHub releases cannot hold it."
             exit 1
           fi
+
       - name: Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

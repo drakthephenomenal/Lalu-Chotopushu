@@ -1,0 +1,387 @@
+── 1/9  npm install ────────────────────────────────────────────
+
+up to date, audited 429 packages in 5s
+
+54 packages are looking for funding
+  run `npm fund` for details
+
+14 vulnerabilities (4 moderate, 8 high, 2 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+── 2/9  Ensure JDK 21.0.5-tem is active ─────────────────────────
+  ⚠ sdkman not found — make sure 'java -version' shows 21.x before continuing.
+openjdk version "21.0.5" 2024-10-15 LTS
+OpenJDK Runtime Environment Temurin-21.0.5+11 (build 21.0.5+11-LTS)
+OpenJDK 64-Bit Server VM Temurin-21.0.5+11 (build 21.0.5+11-LTS, mixed mode, sharing)
+── Ensure Android SDK is installed ─────────────────────────────
+── 3/9  (Re)generate native android/ project ───────────────────
+✔ Adding native android project in android in 87.75ms
+✔ add in 88.62ms
+[warn] sync could not run--missing www directory.
+[success] android platform added!
+Follow the Developer Workflow guide to get building:
+https://capacitorjs.com/docs/basics/workflow
+  bumped to versionCode 153 / versionName 1.0.153
+  generated targetSdkVersion = 36
+  removed REQUEST_INSTALL_PACKAGES (Play policy)
+  FileProvider already present
+  removed REQUEST_INSTALL_PACKAGES (Play policy)
+  FileProvider already present
+  removed REQUEST_INSTALL_PACKAGES (Play policy)
+  FileProvider already present
+  removed REQUEST_INSTALL_PACKAGES (Play policy)
+  FileProvider already present
+── 4/9  Copy web assets + sync plugins ──────────────────────────
+Creating www/ with a clean copy of your web files...
+Done. www/ now contains a copy of your web app.
+Next: npx cap sync android
+LITE: online-image shim added for 33 folders
+20M	www
+✔ Copying web assets from www to android/app/src/main/assets/public in 117.14ms
+✔ Creating capacitor.config.json in android/app/src/main/assets in 3.29ms
+✔ copy android in 152.65ms
+✔ Updating Android plugins in 4.37ms
+[info] Found 11 Capacitor plugins for android:
+       @capacitor-firebase/authentication@8.6.0
+       @capacitor-firebase/messaging@8.6.0
+       @capacitor/app@8.1.2
+       @capacitor/background-runner@2.3.1
+       @capacitor/browser@8.0.5
+       @capacitor/filesystem@8.1.5
+       @capacitor/geolocation@8.2.4
+       @capacitor/haptics@8.0.2
+       @capacitor/local-notifications@8.3.1
+       @capacitor/share@8.0.3
+       @capawesome/capacitor-app-update@8.1.1
+✔ update android in 231.84ms
+[info] Sync finished in 0.482s
+── 5/9  Restore google-services.json ────────────────────────────
+── 6/9  Generate app icon + splash from resources/icon.png ─────
+[log] xml(load) at /workspaces/Lalu-Chotopushu/android/app/src/main/AndroidManifest.xml
+[log] xml(load) Found root namespaces in XML file: http://schemas.android.com/apk/res/android
+Generating assets for android
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-ldpi/ic_launcher_foreground.png (18.42 KB)
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png (31.91 KB)
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png (69.85 KB)
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png (121.97 KB)
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png (266.61 KB)
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png (465.12 KB)
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-ldpi/ic_launcher_background.png (277 B)
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-mdpi/ic_launcher_background.png (350 B)
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-hdpi/ic_launcher_background.png (531 B)
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-xhdpi/ic_launcher_background.png (697 B)
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_background.png (1.02 KB)
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.png (1.69 KB)
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+CREATE android adaptive-icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+CREATE android icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-ldpi/ic_launcher.png (1.52 KB)
+CREATE android icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-mdpi/ic_launcher.png (3.54 KB)
+CREATE android icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-hdpi/ic_launcher.png (10.32 KB)
+CREATE android icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png (20.58 KB)
+CREATE android icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png (50.64 KB)
+CREATE android icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png (93.58 KB)
+CREATE android icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-ldpi/ic_launcher_round.png (3.83 KB)
+CREATE android icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png (6.5 KB)
+CREATE android icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png (13.94 KB)
+CREATE android icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png (24.15 KB)
+CREATE android icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png (52.05 KB)
+CREATE android icon /workspaces/Lalu-Chotopushu/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png (90.19 KB)
+CREATE android splash /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable/splash.png (15.69 KB)
+CREATE android splash /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-land-ldpi/splash.png (14.7 KB)
+CREATE android splash /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-land-mdpi/splash.png (31.54 KB)
+CREATE android splash /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-land-hdpi/splash.png (83.6 KB)
+CREATE android splash /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-land-xhdpi/splash.png (203.63 KB)
+CREATE android splash /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-land-xxhdpi/splash.png (314.12 KB)
+CREATE android splash /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-land-xxxhdpi/splash.png (445.4 KB)
+CREATE android splash /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-port-ldpi/splash.png (9.21 KB)
+CREATE android splash /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-port-mdpi/splash.png (15.69 KB)
+CREATE android splash /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-port-hdpi/splash.png (34.34 KB)
+CREATE android splash /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-port-xhdpi/splash.png (72.72 KB)
+CREATE android splash /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-port-xxhdpi/splash.png (124.57 KB)
+CREATE android splash /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-port-xxxhdpi/splash.png (212.27 KB)
+CREATE android splash-dark /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-night/splash.png (15.66 KB)
+CREATE android splash-dark /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-land-night-ldpi/splash.png (15.66 KB)
+CREATE android splash-dark /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-land-night-mdpi/splash.png (34.13 KB)
+CREATE android splash-dark /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-land-night-hdpi/splash.png (89.94 KB)
+CREATE android splash-dark /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-land-night-xhdpi/splash.png (217.46 KB)
+CREATE android splash-dark /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-land-night-xxhdpi/splash.png (337.13 KB)
+CREATE android splash-dark /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-land-night-xxxhdpi/splash.png (481.74 KB)
+CREATE android splash-dark /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-port-night-ldpi/splash.png (10.37 KB)
+CREATE android splash-dark /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-port-night-mdpi/splash.png (17.91 KB)
+CREATE android splash-dark /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-port-night-hdpi/splash.png (41.08 KB)
+CREATE android splash-dark /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-port-night-xhdpi/splash.png (88.12 KB)
+CREATE android splash-dark /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-port-night-xxhdpi/splash.png (147.93 KB)
+CREATE android splash-dark /workspaces/Lalu-Chotopushu/android/app/src/main/res/drawable-port-night-xxxhdpi/splash.png (249.5 KB)
+
+
+Totals:
+android: 74 generated, 4.56 MB total
+── 6.5/9  Install notification icon + reminder tone ─────────────
+  installed ic_stat_notify.png (notification small icon)
+  installed reminder_tone.mp3 (notification sound)
+── 7/9  Patch AndroidManifest.xml (location permissions) ───────
+  added ACCESS_COARSE_LOCATION / ACCESS_FINE_LOCATION
+  removed ACCESS_BACKGROUND_LOCATION
+── 7.5/9  Patch AndroidManifest.xml (OAuth redirect deep link) ──
+  added custom-scheme deep link intent-filter (app.vercel.radharadharadha.capacitor://oauthredirect)
+── 7.8/9  Patch AndroidManifest.xml (background playback service) ──
+  added media-playback foreground service + permissions
+── 8/9  Patch MainActivity.java (text zoom fix + register PowerPermissions plugin) ──────────
+  installed PowerPermissionsPlugin.java
+  installed MediaKeepAlivePlugin.java + MediaKeepAliveService.java
+  MainActivity.java rewritten with setTextZoom(100) fix + PowerPermissions plugin registered
+── 9/9  Patch native dependency fixes ───────────────────────────
+  added play-services-auth to app/build.gradle
+  patched background-runner compileSdk
+  copied android-js-engine-release.aar
+── 9.5/9  Install persistent release signing ────────────────────
+  added signingConfigs + wired buildTypes.release to it
+
+── 9.6/9  Gradle heap space fix ──────────────────────────────────
+  gradle.properties already has jvmargs set - leaving as-is
+
+── Building APK (release, persistently signed) ──────────────────
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Configure project :capacitor-background-runner
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Configure project :capacitor-cordova-android-plugins
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:mergeReleaseJniLibFolders
+> Task :capacitor-android:preBuild UP-TO-DATE
+> Task :capacitor-android:preReleaseBuild UP-TO-DATE
+> Task :capacitor-android:mergeReleaseJniLibFolders
+> Task :capacitor-android:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-android:copyReleaseJniLibsProjectOnly
+> Task :capacitor-app:preBuild UP-TO-DATE
+> Task :capacitor-app:preReleaseBuild UP-TO-DATE
+> Task :capacitor-app:mergeReleaseJniLibFolders
+> Task :capacitor-app:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-app:copyReleaseJniLibsProjectOnly
+> Task :capacitor-background-runner:preBuild UP-TO-DATE
+> Task :capacitor-background-runner:preReleaseBuild UP-TO-DATE
+> Task :capacitor-background-runner:mergeReleaseJniLibFolders
+> Task :capacitor-background-runner:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-background-runner:copyReleaseJniLibsProjectOnly
+> Task :capacitor-browser:preBuild UP-TO-DATE
+> Task :capacitor-browser:preReleaseBuild UP-TO-DATE
+> Task :capacitor-browser:mergeReleaseJniLibFolders
+> Task :capacitor-browser:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-browser:copyReleaseJniLibsProjectOnly
+> Task :capacitor-cordova-android-plugins:preBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:preReleaseBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeReleaseJniLibFolders
+> Task :capacitor-cordova-android-plugins:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-cordova-android-plugins:copyReleaseJniLibsProjectOnly
+> Task :capacitor-filesystem:preBuild UP-TO-DATE
+> Task :capacitor-filesystem:preReleaseBuild UP-TO-DATE
+> Task :capacitor-filesystem:mergeReleaseJniLibFolders
+> Task :capacitor-filesystem:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-filesystem:copyReleaseJniLibsProjectOnly
+> Task :capacitor-firebase-authentication:preBuild UP-TO-DATE
+> Task :capacitor-firebase-authentication:preReleaseBuild UP-TO-DATE
+> Task :capacitor-firebase-authentication:mergeReleaseJniLibFolders
+> Task :capacitor-firebase-authentication:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-firebase-authentication:copyReleaseJniLibsProjectOnly
+> Task :capacitor-firebase-messaging:preBuild UP-TO-DATE
+> Task :capacitor-firebase-messaging:preReleaseBuild UP-TO-DATE
+> Task :capacitor-firebase-messaging:mergeReleaseJniLibFolders
+> Task :capacitor-firebase-messaging:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-firebase-messaging:copyReleaseJniLibsProjectOnly
+> Task :capacitor-geolocation:preBuild UP-TO-DATE
+> Task :capacitor-geolocation:preReleaseBuild UP-TO-DATE
+> Task :capacitor-geolocation:mergeReleaseJniLibFolders
+> Task :capacitor-geolocation:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-geolocation:copyReleaseJniLibsProjectOnly
+> Task :capacitor-haptics:preBuild UP-TO-DATE
+> Task :capacitor-haptics:preReleaseBuild UP-TO-DATE
+> Task :capacitor-haptics:mergeReleaseJniLibFolders
+> Task :capacitor-haptics:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-haptics:copyReleaseJniLibsProjectOnly
+> Task :capacitor-local-notifications:preBuild UP-TO-DATE
+> Task :capacitor-local-notifications:preReleaseBuild UP-TO-DATE
+> Task :capacitor-local-notifications:mergeReleaseJniLibFolders
+> Task :capacitor-local-notifications:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-local-notifications:copyReleaseJniLibsProjectOnly
+> Task :capacitor-share:preBuild UP-TO-DATE
+> Task :capacitor-share:preReleaseBuild UP-TO-DATE
+> Task :capacitor-share:mergeReleaseJniLibFolders
+> Task :capacitor-share:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-share:copyReleaseJniLibsProjectOnly
+> Task :capawesome-capacitor-app-update:preBuild UP-TO-DATE
+> Task :capawesome-capacitor-app-update:preReleaseBuild UP-TO-DATE
+> Task :capawesome-capacitor-app-update:mergeReleaseJniLibFolders
+> Task :capawesome-capacitor-app-update:mergeReleaseNativeLibs NO-SOURCE
+> Task :capawesome-capacitor-app-update:copyReleaseJniLibsProjectOnly
+> Task :app:mergeReleaseNativeLibs
+
+> Task :app:stripReleaseDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libJSEngine.so, libandroid_js_engine.so, libdatastore_shared_counter.so. Run with --info option to learn more.
+
+> Task :app:extractReleaseNativeSymbolTables
+> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+> Task :capacitor-android:generateReleaseResValues
+> Task :capacitor-android:generateReleaseResources
+> Task :capacitor-android:packageReleaseResources
+> Task :capacitor-android:processReleaseNavigationResources
+> Task :capacitor-android:parseReleaseLocalResources
+> Task :capacitor-android:generateReleaseRFile
+> Task :capacitor-android:javaPreCompileRelease
+
+> Task :capacitor-android:compileReleaseJavaWithJavac
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :capacitor-android:bundleLibCompileToJarRelease
+> Task :capacitor-firebase-authentication:generateReleaseResValues
+> Task :capacitor-firebase-authentication:generateReleaseResources
+> Task :capacitor-firebase-authentication:packageReleaseResources
+> Task :capacitor-firebase-authentication:processReleaseNavigationResources
+> Task :capacitor-firebase-authentication:parseReleaseLocalResources
+> Task :capacitor-firebase-authentication:generateReleaseRFile
+> Task :capacitor-firebase-authentication:javaPreCompileRelease
+
+> Task :capacitor-firebase-authentication:compileReleaseJavaWithJavac
+Note: /workspaces/Lalu-Chotopushu/node_modules/@capacitor-firebase/authentication/android/src/main/java/io/capawesome/capacitorjs/plugins/firebase/authentication/FirebaseAuthentication.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /workspaces/Lalu-Chotopushu/node_modules/@capacitor-firebase/authentication/android/src/main/java/io/capawesome/capacitorjs/plugins/firebase/authentication/FirebaseAuthentication.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :capacitor-firebase-authentication:bundleLibRuntimeToDirRelease
+> Task :capacitor-firebase-messaging:generateReleaseResValues
+> Task :capacitor-firebase-messaging:generateReleaseResources
+> Task :capacitor-firebase-messaging:packageReleaseResources
+> Task :capacitor-firebase-messaging:processReleaseNavigationResources
+> Task :capacitor-firebase-messaging:parseReleaseLocalResources
+> Task :capacitor-firebase-messaging:generateReleaseRFile
+> Task :capacitor-firebase-messaging:javaPreCompileRelease
+
+> Task :capacitor-firebase-messaging:compileReleaseJavaWithJavac
+Note: /workspaces/Lalu-Chotopushu/node_modules/@capacitor-firebase/messaging/android/src/main/java/io/capawesome/capacitorjs/plugins/firebase/messaging/FirebaseMessagingHelper.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :capacitor-firebase-messaging:bundleLibRuntimeToDirRelease
+> Task :capacitor-app:generateReleaseResValues
+> Task :capacitor-app:generateReleaseResources
+> Task :capacitor-app:packageReleaseResources
+> Task :capacitor-app:processReleaseNavigationResources
+> Task :capacitor-app:parseReleaseLocalResources
+> Task :capacitor-app:generateReleaseRFile
+> Task :capacitor-app:javaPreCompileRelease
+> Task :capacitor-app:compileReleaseJavaWithJavac
+> Task :capacitor-app:bundleLibRuntimeToDirRelease
+> Task :capacitor-background-runner:checkKotlinGradlePluginConfigurationErrors
+> Task :capacitor-background-runner:generateReleaseResValues
+> Task :capacitor-background-runner:generateReleaseResources
+> Task :capacitor-background-runner:packageReleaseResources
+> Task :capacitor-background-runner:processReleaseNavigationResources
+> Task :capacitor-background-runner:parseReleaseLocalResources
+> Task :capacitor-background-runner:generateReleaseRFile
+
+> Task :capacitor-background-runner:compileReleaseKotlin
+w: file:///workspaces/Lalu-Chotopushu/node_modules/@capacitor/background-runner/android/src/main/java/io/ionic/backgroundrunner/plugin/api/Device.kt:86:47 'getter for activeNetworkInfo: NetworkInfo?' is deprecated. Deprecated in Java
+w: file:///workspaces/Lalu-Chotopushu/node_modules/@capacitor/background-runner/android/src/main/java/io/ionic/backgroundrunner/plugin/api/Device.kt:88:51 'getter for isConnected: Boolean' is deprecated. Deprecated in Java
+w: file:///workspaces/Lalu-Chotopushu/node_modules/@capacitor/background-runner/android/src/main/java/io/ionic/backgroundrunner/plugin/api/Device.kt:89:40 'getter for typeName: String!' is deprecated. Deprecated in Java
+w: file:///workspaces/Lalu-Chotopushu/node_modules/@capacitor/background-runner/android/src/main/java/io/ionic/backgroundrunner/plugin/api/Notification.kt:38:61 Type mismatch: inferred type is Nothing? but String was expected
+w: file:///workspaces/Lalu-Chotopushu/node_modules/@capacitor/background-runner/android/src/main/java/io/ionic/backgroundrunner/plugin/api/Notifications.kt:176:50 'getString(String!): String!' is deprecated. Deprecated in Java
+w: file:///workspaces/Lalu-Chotopushu/node_modules/@capacitor/background-runner/android/src/main/java/io/ionic/backgroundrunner/plugin/api/Notifications.kt:191:46 'getString(String!): String!' is deprecated. Deprecated in Java
+w: file:///workspaces/Lalu-Chotopushu/node_modules/@capacitor/background-runner/android/src/main/java/io/ionic/backgroundrunner/plugin/api/TimedNotificationPublisher.kt:38:23 'getParcelableExtra(String!): T?' is deprecated. Deprecated in Java
+
+> Task :capacitor-background-runner:javaPreCompileRelease
+> Task :capacitor-background-runner:compileReleaseJavaWithJavac NO-SOURCE
+> Task :capacitor-background-runner:bundleLibRuntimeToDirRelease
+> Task :capacitor-browser:generateReleaseResValues
+> Task :capacitor-browser:generateReleaseResources
+> Task :capacitor-browser:packageReleaseResources
+> Task :capacitor-browser:processReleaseNavigationResources
+> Task :capacitor-browser:parseReleaseLocalResources
+> Task :capacitor-browser:generateReleaseRFile
+> Task :capacitor-browser:javaPreCompileRelease
+> Task :capacitor-browser:compileReleaseJavaWithJavac
+> Task :capacitor-browser:bundleLibRuntimeToDirRelease
+> Task :capacitor-filesystem:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :capacitor-filesystem:generateReleaseResValues
+> Task :capacitor-filesystem:generateReleaseResources
+> Task :capacitor-filesystem:packageReleaseResources
+> Task :capacitor-filesystem:processReleaseNavigationResources
+> Task :capacitor-filesystem:parseReleaseLocalResources
+> Task :capacitor-filesystem:generateReleaseRFile
+> Task :capacitor-filesystem:compileReleaseKotlin
+> Task :capacitor-filesystem:javaPreCompileRelease
+> Task :capacitor-filesystem:compileReleaseJavaWithJavac NO-SOURCE
+> Task :capacitor-filesystem:bundleLibRuntimeToDirRelease
+The message received from the daemon indicates that the daemon has disappeared.
+Build request sent: Build{id=95b631e7-cf8b-4668-842d-55a8034ed1c7, currentDir=/workspaces/Lalu-Chotopushu/android}
+Attempting to read last messages from the daemon log...
+Daemon pid: 43407
+  log file: /home/codespace/.gradle/daemon/8.14.3/daemon-43407.out.log
+----- Last 20 lines from daemon log file - daemon-43407.out.log -----
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+Unable to strip the following libraries, packaging them as they are: libJSEngine.so, libandroid_js_engine.so, libdatastore_shared_counter.so. Run with --info option to learn more.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+Note: /workspaces/Lalu-Chotopushu/node_modules/@capacitor-firebase/authentication/android/src/main/java/io/capawesome/capacitorjs/plugins/firebase/authentication/FirebaseAuthentication.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /workspaces/Lalu-Chotopushu/node_modules/@capacitor-firebase/authentication/android/src/main/java/io/capawesome/capacitorjs/plugins/firebase/authentication/FirebaseAuthentication.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+Note: /workspaces/Lalu-Chotopushu/node_modules/@capacitor-firebase/messaging/android/src/main/java/io/capawesome/capacitorjs/plugins/firebase/messaging/FirebaseMessagingHelper.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+w: file:///workspaces/Lalu-Chotopushu/node_modules/@capacitor/background-runner/android/src/main/java/io/ionic/backgroundrunner/plugin/api/Device.kt:86:47 'getter for activeNetworkInfo: NetworkInfo?' is deprecated. Deprecated in Java
+w: file:///workspaces/Lalu-Chotopushu/node_modules/@capacitor/background-runner/android/src/main/java/io/ionic/backgroundrunner/plugin/api/Device.kt:88:51 'getter for isConnected: Boolean' is deprecated. Deprecated in Java
+w: file:///workspaces/Lalu-Chotopushu/node_modules/@capacitor/background-runner/android/src/main/java/io/ionic/backgroundrunner/plugin/api/Device.kt:89:40 'getter for typeName: String!' is deprecated. Deprecated in Java
+w: file:///workspaces/Lalu-Chotopushu/node_modules/@capacitor/background-runner/android/src/main/java/io/ionic/backgroundrunner/plugin/api/Notification.kt:38:61 Type mismatch: inferred type is Nothing? but String was expected
+w: file:///workspaces/Lalu-Chotopushu/node_modules/@capacitor/background-runner/android/src/main/java/io/ionic/backgroundrunner/plugin/api/Notifications.kt:176:50 'getString(String!): String!' is deprecated. Deprecated in Java
+w: file:///workspaces/Lalu-Chotopushu/node_modules/@capacitor/background-runner/android/src/main/java/io/ionic/backgroundrunner/plugin/api/Notifications.kt:191:46 'getString(String!): String!' is deprecated. Deprecated in Java
+w: file:///workspaces/Lalu-Chotopushu/node_modules/@capacitor/background-runner/android/src/main/java/io/ionic/backgroundrunner/plugin/api/TimedNotificationPublisher.kt:38:23 'getParcelableExtra(String!): T?' is deprecated. Deprecated in Java
+Daemon vm is shutting down... The daemon has exited normally or was terminated in response to a user interrupt.----- End of the daemon log -----
+
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+Restored original files

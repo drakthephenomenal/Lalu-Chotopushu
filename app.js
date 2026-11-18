@@ -5205,8 +5205,12 @@ const RJAP_PWA_URL = "https://radharadharadha.vercel.app/";
     var fix = function (u) {
       if (typeof u !== "string") return u;
       var m = u.match(/^(?:\.\/)?(audio\/.*)$/);
+<<<<<<< Updated upstream
       if (m && _packed.test(m[1])) return u;
       return m ? base + "/" + m[1] : u;
+=======
+      return (m && !/^audio\/(?:hcj_\d+|hcj_ankit_\d+|hcj_shuvam_52|rsn_\d+|rsn_c)\.mp3(?:\?.*)?$/.test(m[1])) ? base + "/" + m[1] : u; // bundled offline audio stays local
+>>>>>>> Stashed changes
     };
     var d = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "src");
     if (d && d.set) {

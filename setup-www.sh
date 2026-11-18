@@ -4,6 +4,7 @@
 set -e
 
 echo "Creating www/ with a clean copy of your web files..."
+rm -rf www      # always start from a clean copy
 mkdir -p www
 
 EXCLUDES=(
@@ -26,7 +27,36 @@ EXCLUDES=(
   # deployed site (see ddPath in app.js), so new photos need no rebuild.
   --exclude='deities'
   # Big stotram/chant audio (~1 GB): streamed from the website in the installed app (see app.js, RJAP_PWA_URL).
-  --exclude='/audio'
+  # >>> AAB-LEAN (managed by build-aab-lean.sh)
+  # Offline audio kept INSIDE the app: Hit Chaurasi (original + Ankit + pad 52 Shuvam) and Radha Sudha Nidhi (original)
+  --include='/audio/'
+  --include='/audio/hcj_[0-9]*.mp3'
+  --include='/audio/hcj_ankit_[0-9]*.mp3'
+  --include='/audio/hcj_shuvam_52.mp3'
+  --include='/audio/rsn_[0-9]*.mp3'
+  --include='/audio/rsn_c.mp3'
+  --exclude='/audio/*'
+  # Photos NOT packed: the app loads them live from the website (see native-online-media.js)
+  --exclude='/sampraday'
+  --exclude='/gurudev'
+  --exclude='/hitju_maharaj'
+  --exclude='/radha_vallabh'
+  --exclude='/rashikan'
+  --exclude='/iskcon_*'
+  --exclude='/ramanuj_*'
+  --exclude='/vallabh_*'
+  --exclude='/nimbark_*'
+  --exclude='/ramanandi_*'
+  --exclude='/haridashi_*'
+  --exclude='/gopeshwar_*'
+  --exclude='/bhagavadik-bank.png'
+  # Never loaded by the app
+  --exclude='*.zip'
+  --exclude='gg_batch_*.txt'
+  --exclude='rasik_serial_70.json'
+  --exclude='Radha_Sudha_Nidhi_Hindi_clean_lyrics.txt'
+  --exclude='/resources'
+  # <<< AAB-LEAN
   --exclude='stotram-live'
 
   # SECRETS: never allow these to ship in the app bundle, no matter what
@@ -94,7 +124,7 @@ EXCLUDES=(
 )
 
 rsync -a --delete "${EXCLUDES[@]}" ./ www/
-rm -rf www/deities www/audio   # rsync --delete leaves excluded folders from older builds in place
+rm -rf www/deities   # rsync --delete leaves excluded folders from older builds in place
 
 echo "Done. www/ now contains a copy of your web app."
 echo "Next: npx cap sync android"

@@ -5205,12 +5205,8 @@ const RJAP_PWA_URL = "https://radharadharadha.vercel.app/";
     var fix = function (u) {
       if (typeof u !== "string") return u;
       var m = u.match(/^(?:\.\/)?(audio\/.*)$/);
-<<<<<<< Updated upstream
       if (m && _packed.test(m[1])) return u;
       return m ? base + "/" + m[1] : u;
-=======
-      return (m && !/^audio\/(?:hcj_\d+|hcj_ankit_\d+|hcj_shuvam_52|rsn_\d+|rsn_c)\.mp3(?:\?.*)?$/.test(m[1])) ? base + "/" + m[1] : u; // bundled offline audio stays local
->>>>>>> Stashed changes
     };
     var d = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "src");
     if (d && d.set) {
@@ -38588,6 +38584,12 @@ window.AudioAdj = AudioAdj;
 // one it shows the username below with a Copy button.
 window.WHATSAPP_SUPPORT = { number: '8801771838401', username: 'dr_phenomenal' };
 
+// HD (enlarged) photos are far bigger than the 60,000-char limit used for tiny avatars, so they get their own check.
+function _lbSafeBig(u) {
+  if (typeof u !== 'string' || !u) return '';
+  if (u.length < 950000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(u)) return u;
+  return _lbSafePhoto(u);
+}
 function _lbSafePhoto(u) {
   if (typeof u !== 'string' || !u) return '';
   if (u.length < 60000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(u)) return u;
@@ -38609,7 +38611,7 @@ function _lbAvatarHtml(d) {
     adminOnly = !!ph;
   }
   if (!ph) return '';
-  return '<div class="lb-av' + (adminOnly ? ' lb-av-hidden' : '') + '"' + (adminOnly ? ' title="Hidden from other devotees — visible to admin only"' : '') + (d && d._uid ? ' onclick="lbOpenPhoto(event,\'' + String(d._uid).replace(/[^A-Za-z0-9_-]/g, '') + '\')" style="cursor:pointer"' : '') + '><img src="' + ph + '" alt="" decoding="async" referrerpolicy="no-referrer" onerror="lbAvFail(this)"></div>';
+  return '<div class="lb-av' + (adminOnly ? ' lb-av-hidden' : '') + '"' + (adminOnly ? ' title="Hidden from other devotees — visible to admin only"' : '') + (d && d._uid ? ' onclick="lbOpenPhoto(event,\'' + String(d._uid).replace(/[^A-Za-z0-9_-]/g, '') + '\')" style="cursor:pointer"' : '') + '><img src="' + ph.replace(/=s\d+(-c)?$/, '=s192-c') + '" alt="" decoding="async" referrerpolicy="no-referrer" onerror="lbAvFail(this)"></div>';
 }
 // A Google-hosted profile photo (https link, not an embedded image) can fail to load inside the
 // Android app's WebView even though it loads in a normal browser/PWA. Instead of silently deleting
@@ -38763,7 +38765,7 @@ function _pfSquare(img, size, q) {
 function _pfSetPhoto(photo, small, source, large) {
   window._pfPhoto = { photo, photoSmall: small, photoLarge: large || '', source };
   const box = document.getElementById('pfPhotoPrev');
-  if (box) box.innerHTML = '<img src="' + _lbSafePhoto(small || photo) + '" alt="" referrerpolicy="no-referrer">';
+  if (box) box.innerHTML = '<img src="' + _lbSafePhoto(photo || small) + '" alt="" referrerpolicy="no-referrer">';
   const adj = document.getElementById('pfAdjustBtn');
   if (adj) adj.style.display = (window._pfOrig || (photo && String(photo).indexOf('data:') === 0)) ? '' : 'none';
 }
@@ -38947,7 +38949,7 @@ function _pfOpenCropper(im, onDone) {
       x.drawImage(cv, left * k, top * k, w * k, h * k);
       return c.toDataURL('image/jpeg', q);
     };
-    try { onDone(out(256, 0.82), out(96, 0.8), out(800, 0.88)); } catch (e) { toast('Could not use that photo'); }
+    try { let _bq = 0.92, _bg = out(1200, _bq); while (_bg.length > 900000 && _bq > 0.5) { _bq -= 0.08; _bg = out(1200, _bq); } onDone(out(384, 0.88), out(160, 0.86), _bg); } catch (e) { toast('Could not use that photo'); }
     m.remove();
   };
 }
@@ -38982,7 +38984,7 @@ window.pfAdjustPhoto = async function () {
 window.pfUseGooglePhoto = async function (silent) {
   const url = fbUser && fbUser.photoURL;
   if (!url || _pfGoogleIsDefault()) { if (silent !== true) toast('No Google photo found on this account'); return; }
-  const big = url.replace(/=s\d+(-c)?$/, '=s256-c');
+  const big = url.replace(/=s\d+(-c)?$/, '=s1024-c');
   try {
     const im = await _pfLoadImg(big, true);
     if (_pfLooksLikeLetterAvatar(im) === true) {
@@ -38991,12 +38993,12 @@ window.pfUseGooglePhoto = async function (silent) {
       return;
     }
     window._pfOrig = im;
-    _pfSetPhoto(_pfSquare(im, 256, 0.82), _pfSquare(im, 96, 0.8), 'google', _pfSquare(im, 800, 0.88));
+    _pfSetPhoto(_pfSquare(im, 384, 0.88), _pfSquare(im, 160, 0.86), 'google', _pfSquare(im, 1200, 0.92));
     if (silent !== true) _pfApplyCrop(im, 'google');
   } catch (e) {
     // Canvas blocked (cross-origin) — keep the Google link itself.
     const safe = _lbSafePhoto(url);
-    if (safe) _pfSetPhoto(safe, safe, 'google-url', safe.replace(/=s\d+(-c)?$/, '=s800-c')); else toast('Could not use the Google photo');
+    if (safe) _pfSetPhoto(safe, safe, 'google-url', safe.replace(/=s\d+(-c)?$/, '=s1200-c')); else toast('Could not use the Google photo');
   }
 };
 
@@ -39637,13 +39639,13 @@ function _lbFetchBig(uid, small, hidden) {
       if (hidden && typeof isDeveloper === 'function' && isDeveloper()) {
         const sn = await fbDb.collection('profiles').doc(uid).get();
         const p = sn.exists ? sn.data() : {};
-        big = _lbSafePhoto(p.photo || '');
+        big = _lbSafeBig(p.photo || '');
       } else {
         const sn = await fbDb.collection('profilePhotos').doc(uid).get();
-        big = sn.exists ? _lbSafePhoto((sn.data() || {}).photo || '') : '';
+        big = sn.exists ? _lbSafeBig((sn.data() || {}).photo || '') : '';
       }
     } catch (e) { console.warn('big photo load failed:', e && e.message); }
-    if (!big && /googleusercontent\.com/i.test(small || '')) big = small.replace(/=s\d+(-c)?$/, '=s800-c');
+    if (!big && /googleusercontent\.com/i.test(small || '')) big = small.replace(/=s\d+(-c)?$/, '=s1200-c');
     if (big) {
       await new Promise(function (res) { const im = new Image(); im.onload = im.onerror = res; im.src = big; });   // decode first → no flash of the small one
       window._lbBigPhotoCache[uid] = big;
@@ -39697,7 +39699,7 @@ async function _syncPublicPhoto(p, largeOverride) {
   try { if (localStorage.getItem('rj_pubphoto_sig') === sig) return; } catch (_e) {}
   try {
     const ref = fbDb.collection('profilePhotos').doc(uid);
-    const big = show ? (_lbSafePhoto(largeOverride || '') || base) : '';
+    const big = show ? (_lbSafeBig(largeOverride || '') || base) : '';
     if (big) await ref.set({ photo: big, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
     else await ref.delete();
     try { localStorage.setItem('rj_pubphoto_sig', sig); } catch (_e) {}

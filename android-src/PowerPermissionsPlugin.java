@@ -28,6 +28,17 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 @CapacitorPlugin(name = "PowerPermissions")
 public class PowerPermissionsPlugin extends Plugin {
 
+    private boolean hasManifestPermission(String perm) {
+        try {
+            android.content.pm.PackageInfo pi = getContext().getPackageManager()
+                .getPackageInfo(getContext().getPackageName(), android.content.pm.PackageManager.GET_PERMISSIONS);
+            if (pi.requestedPermissions != null) {
+                for (String p : pi.requestedPermissions) if (perm.equals(p)) return true;
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
     @PluginMethod
     public void isBatteryOptimizationIgnored(PluginCall call) {
         boolean ignored = true;
@@ -49,10 +60,16 @@ public class PowerPermissionsPlugin extends Plugin {
                 return;
             }
             try {
-                // Play policy: ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS needs the restricted
-                // REQUEST_IGNORE_BATTERY_OPTIMIZATIONS permission. Open the battery-optimization
-                // list instead; the user picks this app there. No special permission required.
-                Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                // Direct "Allow app to always run in the background?" box (one tap, no hunting through
+                // lists) — only possible when the manifest declares REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+                // (added by build-android.sh). Without it, fall back to the battery-optimization list.
+                Intent intent;
+                if (hasManifestPermission("android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS")) {
+                    intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                    intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+                } else {
+                    intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                }
                 activity.startActivity(intent);
             } catch (Exception e) {
                 // Some OEM builds (MIUI/ColorOS/etc.) don't expose this dialog.
@@ -89,6 +106,30 @@ public class PowerPermissionsPlugin extends Plugin {
                 activity.startActivity(intent);
             } catch (Exception e) {
                 call.reject("Exact alarm settings not available on this device", e);
+                return;
+            }
+        }
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void openNotificationSettings(PluginCall call) {
+        Activity activity = getActivity();
+        if (activity == null) {
+            call.reject("No activity available");
+            return;
+        }
+        try {
+            Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+            intent.putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());
+            activity.startActivity(intent);
+        } catch (Exception e) {
+            try {
+                Intent fallback = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                fallback.setData(Uri.parse("package:" + getContext().getPackageName()));
+                activity.startActivity(fallback);
+            } catch (Exception e2) {
+                call.reject("Notification settings not available on this device", e2);
                 return;
             }
         }

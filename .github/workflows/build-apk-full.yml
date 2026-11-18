@@ -39,20 +39,24 @@ jobs:
             exit 1
           fi
 
-      - name: Upload AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: RadhaNaam-full-aab
-          path: android/app/build/outputs/bundle/release/app-release.aab
-          retention-days: 14
-
-      - name: Release
+      - name: Release APK
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VER=$(cat .app-version | tr -d '\r\n ')
           cp android/app/build/outputs/apk/release/app-release.apk RadhaNaamJap-Full.apk
           gh release create "full-v1.0.${VER}" RadhaNaamJap-Full.apk --draft --title "RadhaNaamJap FULL v1.0.${VER}" --notes ""
+
+      - name: Upload AAB (for reference only - too big for Google Play)
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: RadhaNaam-full-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 14
+
+      - name: Save bumped version counter
+        run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add .app-version

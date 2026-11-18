@@ -1459,9 +1459,10 @@ async function rjapAutoPush(opts) {
         if (opts.deferPrompt) return false;   // the Allow box comes later in the sign-in sequence
         _rjapReportPushState(state, false, false);
         _lcPushSetUI(false);
-        if (state === "denied" && !window._rjapNotifHintThisOpen) {
-          window._rjapNotifHintThisOpen = true;   // once per app open
-          toast("🔔 Allow notifications in phone Settings → Apps → RadhaNaam SudhaRasam to get announcements");
+        if (!window._rjapNotifHintThisOpen) {
+          window._rjapNotifHintThisOpen = true;   // once per app open — but EVERY app open until allowed
+          if (native) _rjapShowNotifAllowDialog();
+          else toast("🔔 Allow notifications in your browser's site settings to get announcements");
         }
         return false;
       }
@@ -1478,6 +1479,55 @@ async function rjapAutoPush(opts) {
   })();
   return window._lcAutoPushBusy;
 }
+
+
+// Shown on every app open while notifications are still not allowed. Android stops showing its own
+// "Allow" box after the person says "Don't allow" twice, so this in-app card sends them straight to
+// the app's notification settings (needs the PowerPermissions.openNotificationSettings native method;
+// older APKs without it fall back to written steps).
+function _rjapShowNotifAllowDialog() {
+  try {
+    if (document.getElementById("rjapNotifAllowOverlay")) return;
+    const o = document.createElement("div");
+    o.id = "rjapNotifAllowOverlay";
+    o.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;padding:20px;";
+    o.innerHTML =
+      '<div style="max-width:340px;width:100%;background:#0b1030;border:1px solid rgba(255,215,0,0.45);border-radius:18px;padding:20px;text-align:center;color:#fff;box-shadow:0 10px 40px rgba(0,0,0,0.7);">' +
+      '<div style="font-size:34px;margin-bottom:6px;">🔔</div>' +
+      '<div style="font-size:17px;font-weight:800;color:#ffd700;margin-bottom:8px;">Allow notifications</div>' +
+      '<div style="font-size:13px;line-height:1.5;color:rgba(255,255,255,0.8);margin-bottom:16px;">Turn on notifications to receive jap reminders and announcements.</div>' +
+      '<button id="rjapNotifAllowGo" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#ffd700,#e56b1f);color:#1a1200;font-weight:800;font-size:14px;cursor:pointer;margin-bottom:8px;">Open Settings &amp; Allow</button>' +
+      '<button id="rjapNotifAllowLater" style="width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.7);font-size:13px;cursor:pointer;">Not now</button>' +
+      '</div>';
+    document.body.appendChild(o);
+    const close = () => { try { o.remove(); } catch (_e) {} };
+    document.getElementById("rjapNotifAllowLater").onclick = close;
+    document.getElementById("rjapNotifAllowGo").onclick = async () => {
+      close();
+      try {
+        const PP = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PowerPermissions;
+        if (PP && PP.openNotificationSettings) {
+          window._rjapNotifSettingsOpened = true;
+          await PP.openNotificationSettings();
+          return;
+        }
+      } catch (_e) {}
+      toast("🔔 Phone Settings → Apps → RadhaNaam SudhaRasam → Notifications → Allow");
+    };
+  } catch (_e) {}
+}
+// Coming back from Settings: if notifications are now allowed, finish registering right away.
+(function () {
+  try {
+    const A = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+    if (!A || !A.addListener) return;
+    A.addListener("resume", async () => {
+      if (!window._rjapNotifSettingsOpened) return;
+      window._rjapNotifSettingsOpened = false;
+      try { if ((await lcPushPermState()) === "granted") { toast("🔔 Notifications enabled"); rjapAutoPush({ force: true }); } } catch (_e) {}
+    });
+  } catch (_e) {}
+})();
 
 // Developer-only: shows exactly where push registration stands on THIS phone.
 window.rjapPushCheck = async function () {
@@ -7602,8 +7652,17 @@ function tgs(k) {
           if (statusEl) statusEl.textContent = "✅ Notifications enabled";
           toast("🔔 Notifications enabled");
         } else {
-          if (statusEl) statusEl.textContent = "⚠️ Could not enable — check notification permission.";
-          toast("⚠️ Could not enable notifications");
+          // Permission refused (Android no longer shows its own box after "Don't allow" twice):
+          // open the app's notification permission screen directly; coming back finishes the job.
+          const PP = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PowerPermissions;
+          if (_lcIsNative() && PP && PP.openNotificationSettings) {
+            if (statusEl) statusEl.textContent = "🔔 Turn on “Allow notifications” in the screen that opened";
+            window._rjapNotifSettingsOpened = true;
+            PP.openNotificationSettings().catch(() => {});
+          } else {
+            if (statusEl) statusEl.textContent = "⚠️ Could not enable — allow notifications in phone Settings → Apps → RadhaNaam SudhaRasam.";
+            toast("⚠️ Allow notifications in phone Settings → Apps → RadhaNaam SudhaRasam");
+          }
         }
       });
     } else {
@@ -38563,10 +38622,28 @@ window.lbAvFail = function (img) {
       return;
     }
     const box = img.parentNode;
+    // Last resort before the silhouette: the person's embedded (data:) photo from /profilePhotos, which
+    // never depends on Google's servers and is the same copy the tap-to-enlarge viewer already uses.
+    let uid = '';
+    try { const m = /lbOpenPhoto\(event,\s*'([A-Za-z0-9_-]+)'/.exec((box && box.getAttribute('onclick')) || ''); uid = m ? m[1] : ''; } catch (_e) {}
+    if (uid && !img.dataset.big && typeof fbDb !== 'undefined' && fbDb) {
+      img.dataset.big = '1';
+      _lbFetchBig(uid, '', false).then(function (big) {
+        if (big && img.isConnected && big !== img.getAttribute('src')) { img.removeAttribute('referrerpolicy'); img.src = big; return; }
+        _lbAvSilhouette(img);
+      }).catch(function () { _lbAvSilhouette(img); });
+      return;
+    }
+    _lbAvSilhouette(img);
+  } catch (_e) {}
+};
+function _lbAvSilhouette(img) {
+  try {
+    const box = img.parentNode;
     img.remove();
     if (box && !box.querySelector('.pf-sil')) box.insertAdjacentHTML('beforeend', _PF_SIL);
   } catch (_e) {}
-};
+}
 window._adminPhotoMap = window._adminPhotoMap || {};
 async function _loadAdminPhotoMap() {
   if (!fbDb || typeof isDeveloper !== 'function' || !isDeveloper()) return false;

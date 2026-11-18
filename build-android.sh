@@ -252,6 +252,13 @@ else
   echo "  already present"
 fi
 
+# One-tap "Unrestricted battery" box (see PowerPermissionsPlugin.requestIgnoreBatteryOptimizations).
+# NOTE: Google Play restricts this permission — declare it in Play Console or delete this block.
+if ! grep -q "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" "$MANIFEST"; then
+  sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />|' "$MANIFEST"
+  echo "  added REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
+fi
+
 # Remove background location: a plugin merges ACCESS_BACKGROUND_LOCATION into the
 # manifest, but the app only uses location while open. Removing it avoids Play's
 # background-location declaration (video + review) and keeps the permission list honest.

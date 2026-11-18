@@ -6,7 +6,7 @@ W = 'www'
 SITE = 'https://radharadharadha.vercel.app'
 KEEP = ['hitju_maharaj', 'gurudev', 'radha_vallabh']          # main jap display (bundled)
 KEEP_SAMPRADAY = ['tilaks', 'harivangshi']
-REMOTE_PREFIX = ('iskcon_', 'gopeshwar_', 'haridashi_', 'nimbark_', 'ramanandi_', 'ramanuj_', 'vallabh_')
+REMOTE_PREFIX = ()                                        # 100 MB budget: all image folders stay bundled
 REMOTE_EXACT = []                                          # rashikan gallery stays bundled (50 MB budget)
 DROP_FILES = ['lite-postprocess.py', 'build-apk-lite.sh', 'All source text.zip', 'og-image.png', 'bhagavadik-bank.png']
 REMOTE_ROOT = ['bhagavadik-bank.png']
@@ -27,7 +27,7 @@ for name in sorted(os.listdir(W)):
     if os.path.isdir(p) and (name.startswith(REMOTE_PREFIX) or name in REMOTE_EXACT):
         removed.append(name); shutil.rmtree(p)
 sp = os.path.join(W, 'sampraday')
-if os.path.isdir(sp):
+if os.path.isdir(sp) and False:                              # (all sampraday folders kept)
     for name in sorted(os.listdir(sp)):
         if name not in KEEP_SAMPRADAY:
             removed.append('sampraday/' + name); shutil.rmtree(os.path.join(sp, name), ignore_errors=True)
@@ -38,6 +38,8 @@ for d in DROP_DIRS:
 print('removed from bundle:', ', '.join(removed))
 
 # 2. (no image shrinking - 50 MB budget, originals kept at full quality)
+
+KEEP = [d for d in os.listdir(W) if os.path.isdir(os.path.join(W, d))]   # every bundled folder loads locally
 
 # 3. app.js: non-bundled image folders load from the website
 p = os.path.join(W, 'app.js'); s = open(p, encoding='utf-8').read()

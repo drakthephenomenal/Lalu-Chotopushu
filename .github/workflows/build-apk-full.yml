@@ -39,6 +39,13 @@ jobs:
             exit 1
           fi
 
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: RadhaNaam-full-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 14
+
       - name: Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

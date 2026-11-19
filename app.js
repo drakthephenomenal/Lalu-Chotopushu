@@ -38592,7 +38592,7 @@ function _lbSafeBig(u) {
 }
 function _lbSafePhoto(u) {
   if (typeof u !== 'string' || !u) return '';
-  if (u.length < 60000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(u)) return u;
+  if (u.length < 160000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(u)) return u;
   if (/^https:\/\/[a-z0-9.-]+\.googleusercontent\.com\/[^"'<>\s]*$/i.test(u)) return u;
   return '';
 }
@@ -38949,7 +38949,7 @@ function _pfOpenCropper(im, onDone) {
       x.drawImage(cv, left * k, top * k, w * k, h * k);
       return c.toDataURL('image/jpeg', q);
     };
-    try { let _bq = 0.92, _bg = out(1200, _bq); while (_bg.length > 900000 && _bq > 0.5) { _bq -= 0.08; _bg = out(1200, _bq); } onDone(out(384, 0.88), out(224, 0.9), _bg); } catch (e) { toast('Could not use that photo'); }
+    try { let _bq = 0.92, _bg = out(1200, _bq); while (_bg.length > 900000 && _bq > 0.5) { _bq -= 0.08; _bg = out(1200, _bq); } let _sq = 0.9, _sm = out(224, _sq); while (_sm.length > 45000 && _sq > 0.5) { _sq -= 0.08; _sm = out(224, _sq); } onDone(out(384, 0.88), _sm, _bg); } catch (e) { toast('Could not use that photo'); }
     m.remove();
   };
 }
@@ -39695,7 +39695,7 @@ async function _syncPublicPhoto(p, largeOverride) {
   const uid = fbUser.uid;
   const show = p.showPhoto !== false;
   const base = show ? _lbSafePhoto(p.photo || '') : '';
-  const sig = uid + ':' + (base ? base.length + ':' + base.slice(-24) : (show ? 'none' : 'hidden'));
+  const sig = 'hd2:' + uid + ':' + (base ? base.length + ':' + base.slice(-24) : (show ? 'none' : 'hidden'));
   try { if (localStorage.getItem('rj_pubphoto_sig') === sig) return; } catch (_e) {}
   try {
     const ref = fbDb.collection('profilePhotos').doc(uid);

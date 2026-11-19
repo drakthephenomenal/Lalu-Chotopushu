@@ -38611,7 +38611,7 @@ function _lbAvatarHtml(d) {
     adminOnly = !!ph;
   }
   if (!ph) return '';
-  return '<div class="lb-av' + (adminOnly ? ' lb-av-hidden' : '') + '"' + (adminOnly ? ' title="Hidden from other devotees — visible to admin only"' : '') + (d && d._uid ? ' onclick="lbOpenPhoto(event,\'' + String(d._uid).replace(/[^A-Za-z0-9_-]/g, '') + '\')" style="cursor:pointer"' : '') + '><img src="' + ph.replace(/=s\d+(-c)?$/, '=s192-c') + '" alt="" decoding="async" referrerpolicy="no-referrer" onerror="lbAvFail(this)"></div>';
+  return '<div class="lb-av' + (adminOnly ? ' lb-av-hidden' : '') + '"' + (adminOnly ? ' title="Hidden from other devotees — visible to admin only"' : '') + (d && d._uid ? ' onclick="lbOpenPhoto(event,\'' + String(d._uid).replace(/[^A-Za-z0-9_-]/g, '') + '\')" style="cursor:pointer"' : '') + '><img src="' + ph.replace(/=s\d+(-c)?$/, '=s256-c') + '" alt="" decoding="async" referrerpolicy="no-referrer" onerror="lbAvFail(this)"></div>';
 }
 // A Google-hosted profile photo (https link, not an embedded image) can fail to load inside the
 // Android app's WebView even though it loads in a normal browser/PWA. Instead of silently deleting
@@ -38949,7 +38949,7 @@ function _pfOpenCropper(im, onDone) {
       x.drawImage(cv, left * k, top * k, w * k, h * k);
       return c.toDataURL('image/jpeg', q);
     };
-    try { let _bq = 0.92, _bg = out(1200, _bq); while (_bg.length > 900000 && _bq > 0.5) { _bq -= 0.08; _bg = out(1200, _bq); } onDone(out(384, 0.88), out(160, 0.86), _bg); } catch (e) { toast('Could not use that photo'); }
+    try { let _bq = 0.92, _bg = out(1200, _bq); while (_bg.length > 900000 && _bq > 0.5) { _bq -= 0.08; _bg = out(1200, _bq); } onDone(out(384, 0.88), out(224, 0.9), _bg); } catch (e) { toast('Could not use that photo'); }
     m.remove();
   };
 }
@@ -38993,7 +38993,7 @@ window.pfUseGooglePhoto = async function (silent) {
       return;
     }
     window._pfOrig = im;
-    _pfSetPhoto(_pfSquare(im, 384, 0.88), _pfSquare(im, 160, 0.86), 'google', _pfSquare(im, 1200, 0.92));
+    _pfSetPhoto(_pfSquare(im, 384, 0.88), _pfSquare(im, 224, 0.9), 'google', _pfSquare(im, 1200, 0.92));
     if (silent !== true) _pfApplyCrop(im, 'google');
   } catch (e) {
     // Canvas blocked (cross-origin) — keep the Google link itself.
@@ -39619,10 +39619,10 @@ function _lbShowPhoto(src, name, verified, loading) {
   _lbClosePhoto();
   const o = document.createElement('div');
   o.id = 'lbPhotoOverlay';
-  o.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:12px;';
+  o.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:0;';
   o.onclick = _lbClosePhoto;
   o.innerHTML =
-    '<img id="lbPhotoBig" src="' + src + '" alt="" referrerpolicy="no-referrer" style="width:min(94vw,78vh);height:auto;max-width:94vw;max-height:78vh;border-radius:14px;border:2px solid rgba(255,215,0,0.5);box-shadow:0 10px 40px rgba(0,0,0,0.7);background:#0b1030;object-fit:contain;transition:filter .3s;' + (loading ? 'filter:blur(7px);' : '') + '">' +
+    '<img id="lbPhotoBig" src="' + src + '" alt="" referrerpolicy="no-referrer" style="width:min(100vw,calc(100vh - 120px));height:auto;max-width:100vw;max-height:calc(100vh - 120px);border-radius:0;border:0;box-shadow:none;image-rendering:auto;background:#0b1030;object-fit:contain;transition:filter .3s;' + (loading ? 'filter:blur(7px);' : '') + '">' +
     '<div style="color:#fff;font-size:17px;font-weight:700;text-align:center;">' + escHtml(name || '') + (verified ? _lbVerifiedBadge({ verified: true }) : '') + '</div>' +
     (loading ? '<div id="lbPhotoSpin" style="color:rgba(255,215,0,0.8);font-size:12px;">Loading HD photo…</div>' : '') +
     '<div style="color:rgba(255,255,255,0.5);font-size:11px;">Tap anywhere to close</div>';

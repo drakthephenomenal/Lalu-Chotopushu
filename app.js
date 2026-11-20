@@ -6643,7 +6643,92 @@ function _rjSyncPillLoading() {
   if (typeof navigator !== "undefined" && navigator.onLine === false) setSyncPill("", "Offline \u2014 using saved data");
   else setSyncPill("syncing", "Loading from cloud\u2026");
 }
+// ── Startup load gate ──
+// Signed-in users see a full-screen "Loading from cloud…" screen on app open, so no jap can be
+// counted before the cloud copy is really loaded.
+//  • Phone offline  -> gate skipped / released at once (jap works offline, merged on reconnect).
+//  • Online but cloud not loaded after 12 s (or the pull failed) -> the app stays CLOSED and the gate
+//    explains the problem ("network is poor…") with a Retry button. It opens by itself the moment the
+//    cloud copy loads, or the phone goes offline. A small "Continue offline" escape is the only other way in.
+// Shown only once per app launch.
+var _rjGateDone = false, _rjGateTimer = null, _rjGateBusy = false;
+function _rjGateEl() { return document.getElementById("rjLoadGate"); }
+function _rjGateRender(poor, detail) {
+  const g = _rjGateEl();
+  if (!g) return;
+  if (!poor) {
+    g.innerHTML = '<div class="rjg-spin"></div><div>Loading from cloud\u2026</div>';
+    return;
+  }
+  g.innerHTML = '<div style="font-size:42px">\ud83d\udce1</div>' +
+    '<div style="text-align:center;padding:0 28px;line-height:1.4">Network is poor \u2014 could not load your data from the cloud yet.</div>' +
+    '<div style="font:400 14px system-ui,sans-serif;opacity:.75;text-align:center;padding:0 28px;line-height:1.5">' + (detail || "Check your internet or Wi\u2011Fi, then tap Retry. Your jap is safe.") + '</div>' +
+    '<button id="rjGateRetry" style="padding:12px 34px;border-radius:12px;border:0;background:#f5c518;color:#111;font:700 16px system-ui,sans-serif">Retry</button>' +
+    '<button id="rjGateOff" style="padding:6px 14px;border:0;background:none;color:#9fb0ff;font:400 13px system-ui,sans-serif;text-decoration:underline">Continue offline</button>';
+  const r = document.getElementById("rjGateRetry");
+  if (r) r.onclick = _rjGateRetry;
+  const o = document.getElementById("rjGateOff");
+  if (o) o.onclick = _rjGateHide;
+}
+function _rjGateShow() {
+  if (_rjGateDone || _rjGateEl()) return;
+  if (typeof navigator !== "undefined" && navigator.onLine === false) { _rjGateDone = true; return; }
+  try {
+    if (!document.getElementById("rjLoadGateCss")) {
+      const st = document.createElement("style");
+      st.id = "rjLoadGateCss";
+      st.textContent = "@keyframes rjGateSpin{to{transform:rotate(360deg)}}" +
+        "#rjLoadGate{position:fixed;inset:0;z-index:2147483000;background:#0a0f1e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#e8ecff;font:600 18px system-ui,sans-serif;touch-action:none}" +
+        "#rjLoadGate .rjg-spin{width:46px;height:46px;border:4px solid rgba(255,255,255,.18);border-top-color:#f5c518;border-radius:50%;animation:rjGateSpin .9s linear infinite}";
+      document.head.appendChild(st);
+    }
+    const g = document.createElement("div");
+    g.id = "rjLoadGate";
+    document.body.appendChild(g);
+    _rjGateRender(false);
+    _rjGateTimer = setTimeout(() => { _rjGateTimer = null; _rjGatePoor(); }, 12000);
+    window.addEventListener("offline", _rjGateHide, { once: true });
+  } catch (_e) { _rjGateDone = true; }
+}
+function _rjGatePoor(detail) {
+  if (!_rjGateEl() || _rjGateDone) return;
+  if (typeof App !== "undefined" && App._cloudHydrated) { _rjGateHide(); return; }
+  if (typeof navigator !== "undefined" && navigator.onLine === false) { _rjGateHide(); return; }
+  _rjGateBusy = false;
+  _rjGateRender(true, detail);
+  // keep trying quietly in the background; the gate opens by itself as soon as the cloud copy loads
+  try { if (typeof window._scheduleHydrationRetry === "function") window._scheduleHydrationRetry(); } catch (_e) {}
+}
+function _rjGateHide() {
+  _rjGateDone = true;
+  if (_rjGateTimer) { clearTimeout(_rjGateTimer); _rjGateTimer = null; }
+  const g = _rjGateEl();
+  if (g && g.parentNode) g.parentNode.removeChild(g);
+}
+// Called when a cloud pull has just finished (successfully or not).
+function _rjGateAfterPull() {
+  if (!_rjGateEl()) return;
+  if ((typeof App !== "undefined" && App._cloudHydrated) ||
+      (typeof navigator !== "undefined" && navigator.onLine === false) ||
+      (typeof isGhostMode === "function" && isGhostMode())) { _rjGateHide(); return; }
+  if (_rjGateTimer) { clearTimeout(_rjGateTimer); _rjGateTimer = null; }
+  _rjGatePoor();
+}
+async function _rjGateRetry() {
+  if (_rjGateBusy) return;
+  _rjGateBusy = true;
+  _rjGateRender(false);
+  try { await fbAutoSync(); } catch (_e) {}
+  _rjGateBusy = false;
+  _rjGateAfterPull();
+}
 function setSyncPill(state, text) {
+  // Offline: never show "Syncing…" or a sync error — nothing can sync without internet.
+  // Whatever caller asks, show the calm offline state; the "online" event resumes syncing.
+  if (state !== "" && typeof navigator !== "undefined" && navigator.onLine === false) {
+    state = "";
+    text = "Offline \u2014 using saved data";
+  }
   const p = document.getElementById("syncPill");
   const tx = document.getElementById("syncPillText");
   if (!p || !tx) return;
@@ -14536,6 +14621,7 @@ function fbInit() {
 
     window._markHydrationRecovered = function () {
       if (!App._cloudHydrated) return;
+      try { _rjGateHide(); } catch (_e) {}
       if (App._hydrationRetryTimer) {
         clearTimeout(App._hydrationRetryTimer);
         App._hydrationRetryTimer = null;
@@ -14565,6 +14651,20 @@ function fbInit() {
     //    own queued writes, but this ensures the latest in-memory state
     //    (including counters incremented since the last debounced push)
     //    reaches the cloud immediately on reconnect.
+    if (!fbInit._offlineHooked) {
+      fbInit._offlineHooked = true;
+      // Connection lost (e.g. power cut / Wi-Fi off): show it at once and stop every pending sync
+      // timer. Jap stays saved on the phone and is marked pending; nothing retries until "online".
+      window.addEventListener("offline", () => {
+        try { if (_fbDeb) { clearTimeout(_fbDeb); _fbDeb = null; } } catch (_e) {}
+        try { if (_fbMaxWaitTimer) { clearTimeout(_fbMaxWaitTimer); _fbMaxWaitTimer = null; } } catch (_e) {}
+        try { if (window._rjSlowRetryTimer) { clearTimeout(window._rjSlowRetryTimer); window._rjSlowRetryTimer = null; } } catch (_e) {}
+        try { if (App._hydrationRetryTimer) { clearTimeout(App._hydrationRetryTimer); App._hydrationRetryTimer = null; } } catch (_e) {}
+        try { if (fbUser) localStorage.setItem("rjap_sync_pending", String(Date.now())); } catch (_e) {}
+        setSyncPill("", "Offline \u2014 using saved data");
+        try { const b = document.getElementById("fbManualSyncBtn"); if (b && typeof _fbManualSyncInFlight !== "undefined" && _fbManualSyncInFlight) { _fbManualSyncInFlight = false; b.disabled = false; b.textContent = FB_MANUAL_SYNC_LABEL; } } catch (_e) {}
+      });
+    }
     if (!fbInit._onlineHooked) {
       fbInit._onlineHooked = true;
       window.addEventListener("online", () => {
@@ -14792,6 +14892,7 @@ function fbInit() {
           _fbHideVerifyBlock();
         }
         _rjSyncPillLoading();
+        _rjGateShow();
         // ── ALWAYS pull from Firebase first on every login/refresh ──
         // fbMigrate() does a direct .get() (not just onSnapshot) so it is
         // guaranteed to fetch the latest cloud data before anything is rendered.
@@ -14809,6 +14910,7 @@ function fbInit() {
           // Direct cloud pull — overwrites local cache with authoritative Firebase data.
           // Also wrapped for the same reason as above.
           try { await fbAutoSync(); } catch (e) { console.warn('fbAutoSync failed (non-fatal):', e && e.message); }
+          _rjGateAfterPull();
           // presence heartbeat rebuild + version stamp — fires on every
           // login/refresh, independent of Family Board opt-in, so the
           // developer can see who's active (and on what version) in Ghost
@@ -17348,6 +17450,13 @@ async function _fbPushFullInner() {
     setSyncPill("", "☁️ Synced " + new Date().toLocaleTimeString() + (_skippedFields.length ? " (skipped: " + _skippedFields.join(", ") + ")" : ""));
   } catch (e) {
     App._suspendCloudSync = false;
+    // The connection dropped while this upload was running: not an error. Keep the change marked
+    // pending (Firestore also keeps the write queued); the "online" event pushes again.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      try { localStorage.setItem("rjap_sync_pending", String(Date.now())); } catch (_e) {}
+      setSyncPill("", "Offline \u2014 using saved data");
+      return;
+    }
     console.warn("Full sync failed:", e.message);
     // Both pending markers are deliberately left set here — the next
     // successful cloud hydration (_rjapMaybeRetryPendingSync, see
@@ -39136,12 +39245,27 @@ function _pfOpenCropper(im, onDone) {
       x.drawImage(cv, left * k, top * k, w * k, h * k);
       return c.toDataURL('image/jpeg', q);
     };
-    try { let _bq = 0.92, _bg = out(1200, _bq); while (_bg.length > 900000 && _bq > 0.5) { _bq -= 0.08; _bg = out(1200, _bq); } let _sq = 0.9, _sm = out(224, _sq); while (_sm.length > 45000 && _sq > 0.5) { _sq -= 0.08; _sm = out(224, _sq); } onDone(out(384, 0.88), _sm, _bg); } catch (e) { toast('Could not use that photo'); }
+    // HD copy for the enlarged view = the WHOLE uploaded photo (not the square crop), same shape as uploaded,
+    // up to Full HD (long side 1920 px, never enlarged). Quality/size is lowered only if needed to fit Firestore's 1 MB document limit.
+    const full = (maxSide, q) => {
+      const k = Math.min(1, maxSide / Math.max(W, H));
+      const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(W * k)); c.height = Math.max(1, Math.round(H * k));
+      const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+      x.imageSmoothingQuality = 'high'; x.drawImage(cv, 0, 0, c.width, c.height);
+      return c.toDataURL('image/jpeg', q);
+    };
+    try { let _side = 1920, _bq = 0.9, _bg = full(_side, _bq); while (_bg.length > 900000 && (_bq > 0.55 || _side > 800)) { if (_bq > 0.55) _bq -= 0.07; else _side = Math.round(_side * 0.88); _bg = full(_side, _bq); } let _sq = 0.9, _sm = out(224, _sq); while (_sm.length > 45000 && _sq > 0.5) { _sq -= 0.08; _sm = out(224, _sq); } onDone(out(384, 0.88), _sm, _bg, (rot % 4 !== 0 || flip)); } catch (e) { toast('Could not use that photo'); }
     m.remove();
   };
 }
 function _pfApplyCrop(im, source) {
-  _pfOpenCropper(im, (photo, small, large) => { window._pfOrig = im; _pfSetPhoto(photo, small, source, large); _pfDraftSoon(); });
+  _pfOpenCropper(im, (photo, small, large, transformed) => {
+    window._pfOrig = im; _pfSetPhoto(photo, small, source, large);
+    // Original file goes to HD storage only if it is the very file just picked and was not rotated/flipped in the adjuster.
+    const f = window._pfLastFile;
+    window._pfPhoto.hdFile = (!transformed && f && window._pfLastFileIm === im && /^image\/(jpeg|png|webp)$/.test(f.type) && f.size <= 8 * 1024 * 1024) ? f : null;
+    _pfDraftSoon();
+  });
 }
 window.pfPickPhoto = function (input) {
   const f = input && input.files && input.files[0];
@@ -39150,6 +39274,7 @@ window.pfPickPhoto = function (input) {
   rd.onload = async () => {
     try {
       const im = await _pfLoadImg(rd.result, false);
+      window._pfLastFile = f; window._pfLastFileIm = im;   // the untouched original, uploaded as-is for the HD view
       _pfApplyCrop(im, 'upload');
     } catch (e) { toast('Could not read that photo'); }
     try { input.value = ''; } catch (_e) {}   // lets the same file be chosen again
@@ -39180,7 +39305,17 @@ window.pfUseGooglePhoto = async function (silent) {
       return;
     }
     window._pfOrig = im;
-    _pfSetPhoto(_pfSquare(im, 384, 0.88), _pfSquare(im, 224, 0.9), 'google', _pfSquare(im, 1200, 0.92));
+    let _gl = _pfSquare(im, 1200, 0.92);
+    try {   // HD copy: the full Google photo (not square-cropped), up to Full HD
+      const im2 = await _pfLoadImg(url.replace(/=s\d+(-c)?$/, '=s1920'), true);
+      const k = Math.min(1, 1920 / Math.max(im2.naturalWidth, im2.naturalHeight));
+      const c2 = document.createElement('canvas'); c2.width = Math.round(im2.naturalWidth * k); c2.height = Math.round(im2.naturalHeight * k);
+      c2.getContext('2d').drawImage(im2, 0, 0, c2.width, c2.height);
+      let q2 = 0.9, d2 = c2.toDataURL('image/jpeg', q2);
+      while (d2.length > 900000 && q2 > 0.5) { q2 -= 0.08; d2 = c2.toDataURL('image/jpeg', q2); }
+      if (d2.length <= 900000) _gl = d2;
+    } catch (_e2) {}
+    _pfSetPhoto(_pfSquare(im, 384, 0.88), _pfSquare(im, 224, 0.9), 'google', _gl);
     if (silent !== true) _pfApplyCrop(im, 'google');
   } catch (e) {
     // Canvas blocked (cross-origin) — keep the Google link itself.
@@ -39622,7 +39757,7 @@ window.saveProfileEditor = async function () {
   window._myProfile = Object.assign({}, window._myProfile || {}, obj, { updatedAt: null });
   window._myPublicProfile = _computePublicProfile(window._myProfile);
   window._myProfileUid = fbUser.uid; window._myProfileLoaded = true; window._myProfileAt = Date.now();
-  try { _syncPublicPhoto(window._myProfile, ph.photoLarge); } catch (_e) {}
+  try { _syncPublicPhoto(window._myProfile, ph.photoLarge, ph.hdFile); } catch (_e) {}
   try { await pushLeaderboard(); } catch (_e) {}
   closeProfileEditor();
   refreshProfileCard();
@@ -39809,7 +39944,7 @@ function _lbShowPhoto(src, name, verified, loading) {
   o.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:0;';
   o.onclick = _lbClosePhoto;
   o.innerHTML =
-    '<img id="lbPhotoBig" src="' + src + '" alt="" referrerpolicy="no-referrer" style="width:min(100vw,calc(100vh - 120px));height:auto;max-width:100vw;max-height:calc(100vh - 120px);border-radius:0;border:0;box-shadow:none;image-rendering:auto;background:#0b1030;object-fit:contain;transition:filter .3s;' + (loading ? 'filter:blur(7px);' : '') + '">' +
+    '<img id="lbPhotoBig" src="' + src + '" alt="" referrerpolicy="no-referrer" style="' + (loading ? 'width:min(100vw,calc(100vh - 120px));height:auto;' : 'width:100vw;height:calc(100vh - 120px);') + 'max-width:100vw;max-height:calc(100vh - 120px);border-radius:0;border:0;box-shadow:none;image-rendering:auto;background:transparent;object-fit:contain;transition:filter .3s;' + (loading ? 'filter:blur(7px);' : '') + '">' +
     '<div style="color:#fff;font-size:17px;font-weight:700;text-align:center;">' + escHtml(name || '') + (verified ? _lbVerifiedBadge({ verified: true }) : '') + '</div>' +
     (loading ? '<div id="lbPhotoSpin" style="color:rgba(255,215,0,0.8);font-size:12px;">Loading HD photo…</div>' : '') +
     '<div style="color:rgba(255,255,255,0.5);font-size:11px;">Tap anywhere to close</div>';
@@ -39829,7 +39964,17 @@ function _lbFetchBig(uid, small, hidden) {
         big = _lbSafeBig(p.photo || '');
       } else {
         const sn = await fbDb.collection('profilePhotos').doc(uid).get();
-        big = sn.exists ? _lbSafeBig((sn.data() || {}).photo || '') : '';
+        const pd = sn.exists ? (sn.data() || {}) : {};
+        big = _lbSafeBig(pd.photo || '');
+        if (pd.hdV && pd.hdN) {   // original-resolution file (joined from its parts); if anything fails, the embedded copy above is used
+          try {
+            const hd = await _rjReadHdParts(uid, pd.hdV, pd.hdN);
+            if (hd) {
+              const ok = await new Promise(function (res) { const t = new Image(); t.onload = function () { res(true); }; t.onerror = function () { res(false); }; t.src = hd; });
+              if (ok) big = hd;
+            }
+          } catch (_e) { console.warn('HD photo read failed:', _e && _e.message); }
+        }
       }
     } catch (e) { console.warn('big photo load failed:', e && e.message); }
     if (!big && /googleusercontent\.com/i.test(small || '')) big = small.replace(/=s\d+(-c)?$/, '=s1200-c');
@@ -39871,24 +40016,81 @@ window.lbOpenPhoto = async function (ev, uid) {
   const big = await _lbFetchBig(uid, small, c.hidden);
   if (window._lbPhotoUid !== uid) return;
   const im = document.getElementById('lbPhotoBig'), sp = document.getElementById('lbPhotoSpin');
-  if (big && im) { im.src = big; im.style.filter = 'none'; }
+  if (big && im) { im.src = big; im.style.filter = 'none'; im.style.width = '100vw'; im.style.height = 'calc(100vh - 120px)'; }   // HD copy: full photo, original shape
   else if (im) im.style.filter = 'none';          // no bigger copy exists: show the small one, un-blurred
   if (sp) sp.remove();
 };
 
+// ── Original-resolution photo (stored in Firestore, split into parts) ──
+// The enlarged view shows the photo EXACTLY as uploaded (same file, same resolution). Firestore allows ~1 MB per
+// document, so the original file is cut into ~700 KB parts saved at /profilePhotos/{uid}/parts/{version}_{n};
+// the main /profilePhotos/{uid} doc records hdV (version) and hdN (number of parts). If anything is missing the
+// viewer falls back to the embedded (up to Full HD) copy, so nothing breaks.
+var _RJ_HD_PART = 700000;
+function _rjReadAsDataUrl(file) {
+  return new Promise(function (res, rej) { const r = new FileReader(); r.onload = function () { res(String(r.result || '')); }; r.onerror = function () { rej(new Error('read failed')); }; r.readAsDataURL(file); });
+}
+async function _rjDeleteHdParts(ref, v, n) {
+  if (!v || !n) return;
+  try {
+    for (let i = 0; i < n; i += 400) {
+      const b = fbDb.batch();
+      for (let j = i; j < Math.min(n, i + 400); j++) b.delete(ref.collection('parts').doc(v + '_' + j));
+      await b.commit();
+    }
+  } catch (_e) {}
+}
+async function _rjWriteHdParts(ref, file) {
+  const data = await _rjReadAsDataUrl(file);
+  if (!/^data:image\/(jpeg|png|webp);base64,/.test(data) || data.length > 11500000) return null;
+  const v = Date.now(), n = Math.ceil(data.length / _RJ_HD_PART);
+  for (let i = 0; i < n; i += 4) {   // a few parts per request (keeps each request well under Firestore's 10 MB limit)
+    const b = fbDb.batch();
+    for (let j = i; j < Math.min(n, i + 4); j++) b.set(ref.collection('parts').doc(v + '_' + j), { v: v, i: j, d: data.slice(j * _RJ_HD_PART, (j + 1) * _RJ_HD_PART) });
+    await b.commit();
+  }
+  return { v: v, n: n };
+}
+async function _rjReadHdParts(uid, v, n) {
+  if (!v || !n || n > 20) return '';
+  const ref = fbDb.collection('profilePhotos').doc(uid).collection('parts');
+  const snaps = await Promise.all(Array.from({ length: n }, function (_, j) { return ref.doc(v + '_' + j).get(); }));
+  let out = '';
+  for (const sn of snaps) { if (!sn.exists) return ''; out += String((sn.data() || {}).d || ''); }
+  return /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(out) ? out : '';
+}
+
 // Keeps the public enlarged photo in step with the person's profile (one small write, only when it changes).
-async function _syncPublicPhoto(p, largeOverride) {
+async function _syncPublicPhoto(p, largeOverride, hdFile) {
   if (!fbUser || !fbDb || !p) return;
   const uid = fbUser.uid;
   const show = p.showPhoto !== false;
   const base = show ? _lbSafePhoto(p.photo || '') : '';
-  const sig = 'hd2:' + uid + ':' + (base ? base.length + ':' + base.slice(-24) : (show ? 'none' : 'hidden'));
-  try { if (localStorage.getItem('rj_pubphoto_sig') === sig) return; } catch (_e) {}
+  const sig = 'hd4:' + uid + ':' + (base ? base.length + ':' + base.slice(-24) : (show ? 'none' : 'hidden'));
+  if (!hdFile) { try { if (localStorage.getItem('rj_pubphoto_sig') === sig) return; } catch (_e) {} }
   try {
     const ref = fbDb.collection('profilePhotos').doc(uid);
+    let old = {};
+    try { const ex = await ref.get(); old = ex.exists ? (ex.data() || {}) : {}; } catch (_e) { return; }
+    // Older-profile top-up (no new picture in hand): never replace a better copy already stored with this small one.
+    if (!largeOverride && !hdFile && show && base) {
+      if (old.hdN || (typeof old.photo === 'string' && old.photo.length > base.length)) { try { localStorage.setItem('rj_pubphoto_sig', sig); } catch (_e) {} return; }
+    }
     const big = show ? (_lbSafeBig(largeOverride || '') || base) : '';
-    if (big) await ref.set({ photo: big, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-    else await ref.delete();
+    if (!big) {   // photo hidden / removed: delete the public copy and every part
+      await _rjDeleteHdParts(ref, old.hdV, old.hdN);
+      await ref.delete();
+    } else {
+      let hd = null;
+      if (hdFile) {   // original-resolution copy; if it fails the embedded copy is still saved below
+        try { hd = await _rjWriteHdParts(ref, hdFile); } catch (e) { console.warn('HD photo parts failed (embedded copy is used instead):', e && e.message); }
+      }
+      const doc = { photo: big, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+      if (hd) { doc.hdV = hd.v; doc.hdN = hd.n; }
+      await ref.set(doc);
+      // the old original belongs to the old picture: remove its parts once the new doc is saved
+      if (old.hdV && old.hdN && (hd ? old.hdV !== hd.v : !!(hdFile || largeOverride))) await _rjDeleteHdParts(ref, old.hdV, old.hdN);
+    }
     try { localStorage.setItem('rj_pubphoto_sig', sig); } catch (_e) {}
   } catch (e) { console.warn('public photo sync failed:', e && e.message); }
 }

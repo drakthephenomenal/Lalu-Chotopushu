@@ -33858,7 +33858,7 @@ function renderLeaderboard(docs, period) {
   const filtered = scored
     .filter(function(d) { return d.score > 0 || (_lbIsLifetime && _lbAdminOn); })
     .sort(function(a, b) { return b.score - a.score; })
-    .slice(0, 50);
+    .slice(0, (_lbIsLifetime && _lbAdminOn) ? 200 : 50);   // admin lifetime roster: show everyone (zero-jap users sort last, past rank 50)
 
   if (!filtered.length) {
     list.innerHTML = '';

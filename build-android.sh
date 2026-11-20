@@ -536,12 +536,16 @@ MEM_MB=$(awk '/^MemTotal:/ {print int($2/1024)}' /proc/meminfo 2>/dev/null || ec
 HEAP_MB=$(( MEM_MB * 55 / 100 ))
 [ "$HEAP_MB" -gt 6144 ] && HEAP_MB=6144
 [ "$HEAP_MB" -lt 2560 ] && HEAP_MB=2560
-sed -i '/^org\.gradle\.jvmargs=/d;/^kotlin\.daemon\.jvmargs=/d;/^org\.gradle\.workers\.max=/d;/^org\.gradle\.parallel=/d' android/gradle.properties
+sed -i '/^org\.gradle\.jvmargs=/d;/^kotlin\.daemon\.jvmargs=/d;/^org\.gradle\.workers\.max=/d;/^org\.gradle\.parallel=/d;/^systemProp\.org\.gradle\.internal\.http\./d' android/gradle.properties
 {
   echo "org.gradle.jvmargs=-Xmx${HEAP_MB}m -XX:MaxMetaspaceSize=768m -XX:+HeapDumpOnOutOfMemoryError"
   echo "kotlin.daemon.jvmargs=-Xmx1g"
   echo "org.gradle.workers.max=2"
   echo "org.gradle.parallel=false"
+  echo "systemProp.org.gradle.internal.http.connectionTimeout=180000"
+  echo "systemProp.org.gradle.internal.http.socketTimeout=180000"
+  echo "systemProp.org.gradle.internal.repository.max.retries=6"
+  echo "systemProp.org.gradle.internal.repository.initial.backoff=1000"
 } >> android/gradle.properties
 echo "  machine RAM ${MEM_MB} MB -> Gradle heap ${HEAP_MB} MB (Kotlin daemon 1 GB, 2 workers)"
 
@@ -558,7 +562,15 @@ fi
 echo ""
 echo "── Building APK (release, persistently signed) ──────────────────"
 cd android
-./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
+./gradlew assembleRelease bundleRelease --no-daemon --stacktrace || {
+  # Most one-off failures are a flaky dependency download from Maven/Google -> retry (the build resumes).
+  ok=0
+  for attempt in 2 3; do
+    echo "⚠ Gradle failed (often a flaky dependency download) - retry $attempt of 3 in 20s"; sleep 20
+    if ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace; then ok=1; break; fi
+  done
+  [ "$ok" = 1 ] || exit 1
+}
 cd ..
 
 echo ""

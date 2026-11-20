@@ -99,6 +99,11 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create, update, delete: if request.auth != null && (request.auth.uid == userId || isDeveloper());
     }
+    // Original-resolution photo, stored in parts (each part < 1 MB). Only the owner (or developer) writes.
+    match /profilePhotos/{userId}/parts/{partId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && (request.auth.uid == userId || isDeveloper());
+    }
     match /presence/{userId} {
       allow read:  if request.auth != null;
       // isDeveloper() added so devBackfillMissingPresenceDocs() can create

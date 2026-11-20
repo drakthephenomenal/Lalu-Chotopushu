@@ -14056,6 +14056,7 @@ let fbListener = null;
 let fbDeviceId = (function () {
   let id = localStorage.getItem("rjap_device_id");
   if (!id) {
+    window._rjapDevIdFresh = true;   // phone/WebView storage was empty: id is brand new
     id =
       "dev_" +
       Math.random().toString(36).slice(2, 10) +
@@ -14064,6 +14065,29 @@ let fbDeviceId = (function () {
   }
   return id;
 })();
+
+// The device id lives in WebView storage, which some phones (Funtouch/Vivo, low storage, "phone cleaner")
+// wipe. A new id makes the SAME phone look like "another device" and the old session lock signs it out.
+// Mirror the id in native storage (CapacitorKV) and restore it after a wipe.
+let _rjapDevIdPromise = null;
+function _rjapSyncDeviceId() {
+  if (_rjapDevIdPromise) return _rjapDevIdPromise;
+  _rjapDevIdPromise = (async () => {
+    try {
+      const KV = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorKV;
+      if (!KV) return;
+      let saved = "";
+      try { const r = await KV.get({ key: "rjap_device_id" }); saved = (r && r.value) || ""; } catch (_e) {}
+      if (saved && saved !== fbDeviceId && window._rjapDevIdFresh) {
+        fbDeviceId = saved;                                   // storage was wiped -> keep the ORIGINAL id
+        try { localStorage.setItem("rjap_device_id", saved); } catch (_e) {}
+      } else if (saved !== fbDeviceId) {
+        await KV.set({ key: "rjap_device_id", value: fbDeviceId });
+      }
+    } catch (_e) {}
+  })();
+  return _rjapDevIdPromise;
+}
 
 let fbSessionListener = null;
 
@@ -14100,6 +14124,7 @@ let _zohoAppUrlListenerAttached = false;
 async function fbClaimSession() {
   if (!fbUser || !fbDb) return;
   if (isGhostMode()) return; // admin mode: read-only
+  try { await _rjapSyncDeviceId(); } catch (_e) {}
   const sessionRef = fbDb
     .collection("users")
     .doc(fbUser.uid)
@@ -14122,7 +14147,17 @@ async function fbClaimSession() {
 
 let fbForcedSignout = false;
 
-function lockSignedOutScreen() {
+function _rjapDeviceLabel(ua) {
+  ua = String(ua || "");
+  const m = ua.match(/Android [\d.]+; ([^;)]+)/);
+  if (m) return m[1].trim() + " (Android)";
+  if (/iPhone|iPad/.test(ua)) return "an iPhone/iPad";
+  if (/Windows/.test(ua)) return "a Windows computer";
+  if (/Macintosh/.test(ua)) return "a Mac";
+  return ua ? ua.slice(0, 40) : "";
+}
+function lockSignedOutScreen(info) {
+  try { localStorage.setItem("rjap_last_lock", JSON.stringify({ t: Date.now(), other: info && info.deviceId || "", ua: info && info.userAgent || "" })); } catch (_e) {}
   fbForcedSignout = true;
   if (fbSessionListener) {
     fbSessionListener();
@@ -14140,6 +14175,7 @@ function lockSignedOutScreen() {
   overlay.innerHTML =
     '<div style="font-size:48px;margin-bottom:24px;">⚠️</div>' +
     '<div style="margin-bottom:12px;">Another device has signed in.</div>' +
+    (info && info.userAgent && _rjapDeviceLabel(info.userAgent) ? '<div style="font-size:14px;color:#caa;margin-bottom:10px;">Signed in on: ' + _rjapDeviceLabel(info.userAgent).replace(/[<>&]/g, "") + '</div>' : '') +
     '<div style="font-size:14px;color:#888;">This session has been permanently signed out.<br>Please close this tab or refresh to sign in again.</div>';
   document.body.appendChild(overlay);
   fbAuth.signOut().catch(() => {});
@@ -14159,14 +14195,21 @@ function fbWatchSession() {
   fbSessionListener = sessionRef.onSnapshot(
     (snap) => {
       if (!snap.exists) return;
+      // Ignore stale/offline cache and our own pending write: only the server's answer counts.
+      if (snap.metadata && (snap.metadata.fromCache || snap.metadata.hasPendingWrites)) return;
       const data = snap.data();
       if (data.deviceId && data.deviceId !== fbDeviceId) {
-        console.log(
-          "Another device signed in (" +
-            data.deviceId +
-            "). Locking this device.",
-        );
-        lockSignedOutScreen();
+        if (window._rjapLockChecking) return;
+        window._rjapLockChecking = true;
+        // Double-check straight from the server before signing anyone out.
+        sessionRef.get({ source: "server" }).then((s2) => {
+          const d2 = s2 && s2.exists ? s2.data() : null;
+          if (d2 && d2.deviceId && d2.deviceId !== fbDeviceId) {
+            console.log("Another device signed in (" + d2.deviceId + "). Locking this device.");
+            lockSignedOutScreen(d2);
+          }
+        }).catch(() => { /* can't verify -> never lock on a guess */ })
+          .then(() => { window._rjapLockChecking = false; });
       }
     },
     (err) => console.warn("Session listener error:", err.message),
@@ -14546,6 +14589,7 @@ function fbInit() {
       }
       const prevUid = App._uid;
       fbUser = user;
+      if (user) window._rjapManualSignOut = false;   // signed in again: a later unexpected sign-out should be explained
       try { if (typeof _profileAuthChanged === 'function') _profileAuthChanged(user); } catch (_pe) {}
       // Milestone video buttons differ for signed-in vs signed-out users
       // (real platform logos vs a locked "sign in" logo), so re-render the
@@ -14796,6 +14840,18 @@ function fbInit() {
       } else {
         fbHideAuthChecking();
         try { localStorage.removeItem("rjap_lastAuthLabel"); } catch (_) {}
+        // Signed out although the user never tapped Sign out -> the phone wiped the app's saved login.
+        (async () => {
+          try {
+            const KV = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorKV;
+            if (!KV || window._rjapManualSignOut || fbForcedSignout) return;
+            const r = await KV.get({ key: "bgsync_uid" });
+            if (r && r.value) {
+              toast("\uD83D\uDD12 Your phone cleared the app's saved login. Please sign in again \u2014 your jap is safe in the cloud. (Tip: turn off battery saver / auto-clean for this app.)");
+              try { await KV.set({ key: "bgsync_uid", value: "" }); } catch (_e) {}
+            }
+          } catch (_e) {}
+        })();
         document.getElementById("fbLoggedOut").style.display = "block";
         document.getElementById("fbLoggedIn").style.display = "none";
         const _fbCardRefreshBtnOff = document.getElementById("fbCardRefreshBtn");
@@ -16764,6 +16820,8 @@ async function fbSignOut(opts) {
   try { renderMalaLog(); } catch (_e) {}
   try { populateSettingsUI(); } catch (_e) {}
 
+  window._rjapManualSignOut = true;   // the user chose to sign out (don't show the "phone cleared login" note)
+  try { window.Capacitor.Plugins.CapacitorKV.set({ key: "bgsync_uid", value: "" }); } catch (_e) {}
   try {
     if (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) {
       window.Capacitor.Plugins.FirebaseAuthentication.signOut().catch(() => {});
@@ -24475,8 +24533,20 @@ window.devEnterGhostMode = async function (uid, displayLabel) {
 
   // 6. Stamp viewed data into App.S without touching IDB / cloud
   App._cloudHydrated = false;          // block any accidental push trigger
+  // Never carry the DEVELOPER'S own leaderboard name / opt-in into the viewed user:
+  // fbApplyRemote only overwrites lbDisplayName when the viewed doc has a non-empty one.
+  App.S.lbDisplayName = "";
+  App.S.lbOptIn = false;
   fbApplyRemote(snap.data());
   App._cloudHydrated = false;          // keep blocked
+  // The durable name copy (users/{uid}/data/profile) is only written by an explicit name save,
+  // so it is authoritative and also heals a name that an earlier toggle pushed into main.
+  try {
+    const _pn = await fbDb.collection('users').doc(uid).collection('data').doc('profile').get();
+    const _nm = _pn.exists ? String((_pn.data() || {}).lbDisplayName || '').trim() : '';
+    if (_nm) App.S.lbDisplayName = _nm.slice(0, 60);
+  } catch (_e) {}
+  try { const _ni = document.getElementById('lbNameIn'); if (_ni) _ni.value = App.S.lbDisplayName || ''; } catch (_e) {}
 
   // 7. Re-render everything
   if (typeof switchJapMode === 'function') switchJapMode(App.S.japMode || 'radha');
@@ -24532,6 +24602,7 @@ window.devExitGhostMode = async function () {
   if (_ghostOwnState) {
     App.S = JSON.parse(JSON.stringify(_ghostOwnState));
     _ghostOwnState = null;
+    try { const _ni = document.getElementById('lbNameIn'); if (_ni) _ni.value = App.S.lbDisplayName || ''; } catch (_e) {}
   }
 
   // 3. Re-hydrate from cloud to get any fresh changes since we entered admin mode
@@ -26868,6 +26939,7 @@ function _rjapPayloadHasJap(d) {
 
 // ── INIT ──
 window.addEventListener("load", async () => {
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (_e) {}
 
 
   await App.load();
@@ -27098,8 +27170,9 @@ window.addEventListener("load", async () => {
   })();
 
   // Hide loading — only once the REAL data is loaded (local cache when offline, cloud when online).
-  // The animation keeps playing until then. Minimum 5s (as before); safety cap 60s so a dead
-  // network can never trap the user on the splash (backup/export stay blocked until data is ready).
+  // The animation keeps playing (full-screen, nothing underneath can be tapped) until then.
+  // Minimum 5s (as before). Last-resort cap 3 min only so a dead network can never lock the app
+  // forever; backup/export stay blocked until the data is really loaded even after that.
   (function () {
     const t0 = Date.now();
     function hideSplash() {
@@ -27123,9 +27196,9 @@ window.addEventListener("load", async () => {
       const el = Date.now() - t0;
       let ready = false;
       try { ready = _rjapDataReady(); } catch (_e) { ready = true; }
-      // offline cold start where sign-in state never resolves: don't wait the full minute
-      const _offlineStuck = (typeof navigator !== "undefined" && navigator.onLine === false && el >= 15000);
-      if (el >= 5000 && (ready || _offlineStuck || el >= 60000)) { hideSplash(); return; }
+      // offline cold start where sign-in state never resolves
+      const _offlineStuck = (typeof navigator !== "undefined" && navigator.onLine === false && el >= 20000);
+      if (el >= 5000 && (ready || _offlineStuck || el >= 180000)) { hideSplash(); return; }
       if (el >= 5000) showWaitMsg();
       setTimeout(tick, 250);
     })();
@@ -34219,6 +34292,14 @@ async function pushLeaderboardForGhostedUser() {
       const pp = _computePublicProfile(ps.exists ? ps.data() : null, true);
       payload.photo = pp.photo; payload.verified = pp.verified;
     } catch (_e) {}
+    if (!(App.S.lbDisplayName || '').trim()) {
+      // viewed user has no name in state: keep whatever name their row already has
+      try {
+        const _ex = await fbDb.collection('leaderboard').doc(_ghostViewingUid).get();
+        const _en = _ex.exists ? String((_ex.data() || {}).displayName || '').trim() : '';
+        if (_en) payload.displayName = _en;
+      } catch (_e) {}
+    }
     await fbDb.collection('leaderboard').doc(_ghostViewingUid).set(payload);
   } catch (e) {
     console.warn('pushLeaderboardForGhostedUser error:', e && e.message ? e.message : e);

@@ -530,9 +530,20 @@ echo "── 9.6/9  Gradle heap space fix ────────────�
 # NOTE: Capacitor's template already contains "org.gradle.jvmargs=-Xmx1536m", so we must
 # REPLACE that line (a plain "add if missing" check silently keeps the 1.5 GB default).
 # 6 GB is safe on GitHub runners (16 GB RAM) and is needed to sign the ~1 GB AAB.
-sed -i '/^org\.gradle\.jvmargs=/d' android/gradle.properties
-echo "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError" >> android/gradle.properties
-echo "  set Gradle heap to 6 GB in gradle.properties"
+# The heap is sized from the machine's real RAM (+swap): a fixed 6 GB heap on a 7 GB runner makes the
+# OS kill Gradle ("Gradle build daemon disappeared unexpectedly") a few minutes into the build.
+MEM_MB=$(awk '/^MemTotal:/ {print int($2/1024)}' /proc/meminfo 2>/dev/null || echo 7000)
+HEAP_MB=$(( MEM_MB * 55 / 100 ))
+[ "$HEAP_MB" -gt 6144 ] && HEAP_MB=6144
+[ "$HEAP_MB" -lt 2560 ] && HEAP_MB=2560
+sed -i '/^org\.gradle\.jvmargs=/d;/^kotlin\.daemon\.jvmargs=/d;/^org\.gradle\.workers\.max=/d;/^org\.gradle\.parallel=/d' android/gradle.properties
+{
+  echo "org.gradle.jvmargs=-Xmx${HEAP_MB}m -XX:MaxMetaspaceSize=768m -XX:+HeapDumpOnOutOfMemoryError"
+  echo "kotlin.daemon.jvmargs=-Xmx1g"
+  echo "org.gradle.workers.max=2"
+  echo "org.gradle.parallel=false"
+} >> android/gradle.properties
+echo "  machine RAM ${MEM_MB} MB -> Gradle heap ${HEAP_MB} MB (Kotlin daemon 1 GB, 2 workers)"
 
 echo ""
 echo "── 9.7/9  Play Asset Delivery: audio_pack (AAB only, opt-in) ─────"

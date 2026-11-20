@@ -6656,6 +6656,7 @@ function _rjGateEl() { return document.getElementById("rjLoadGate"); }
 function _rjGateRender(poor, detail) {
   const g = _rjGateEl();
   if (!g) return;
+  g.className = poor ? "" : "rjg-loading";
   if (!poor) {
     g.innerHTML = '<div class="rjg-spin"></div><div>Loading from cloud\u2026</div>';
     return;
@@ -6679,7 +6680,13 @@ function _rjGateShow() {
       st.id = "rjLoadGateCss";
       st.textContent = "@keyframes rjGateSpin{to{transform:rotate(360deg)}}" +
         "#rjLoadGate{position:fixed;inset:0;z-index:2147483000;background:#0a0f1e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#e8ecff;font:600 18px system-ui,sans-serif;touch-action:none}" +
-        "#rjLoadGate .rjg-spin{width:46px;height:46px;border:4px solid rgba(255,255,255,.18);border-top-color:#f5c518;border-radius:50%;animation:rjGateSpin .9s linear infinite}";
+        "#rjLoadGate .rjg-spin{width:46px;height:46px;border:4px solid rgba(255,255,255,.18);border-top-color:#f5c518;border-radius:50%;animation:rjGateSpin .9s linear infinite}" +
+        // While the opening animation (#ls) is on screen it already covers the app and waits for the cloud
+        // data itself, so the gate's own plain loading screen must NOT paint over it -- let the animation
+        // play. (Taps are blocked by the splash itself.) Once the splash is gone, or when the "network is
+        // poor / Retry" screen is shown, the gate is fully visible as before.
+        "#ls ~ #rjLoadGate.rjg-loading{background:transparent;pointer-events:none}" +
+        "#ls ~ #rjLoadGate.rjg-loading > *{visibility:hidden}";
       document.head.appendChild(st);
     }
     const g = document.createElement("div");

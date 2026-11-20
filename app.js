@@ -18025,6 +18025,8 @@ function _rjapMaybeRetryPendingSync() {
 // so a failure that only happens now and then can still be read later — shown under the
 // sync status in the Cloud Sync box (tap it for the history).
 function _rjLogSyncErr(where, e, kb) {
+  // Being offline is not a sync problem — don't record it (it would show a red "Sync problem" box).
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return;
   try {
     const why = (e && e.code ? e.code + ": " + String(e.message || "").replace(/^.*?:\s*/, "") : String((e && e.message) || e || "unknown")).slice(0, 260);
     const list = JSON.parse(localStorage.getItem("rjap_sync_errlog") || "[]");

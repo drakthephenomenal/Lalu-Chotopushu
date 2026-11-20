@@ -14476,6 +14476,11 @@ function fbInit() {
       if (App._cloudHydrated) return;
       if (!fbUser || fbForcedSignout) return;
       if (typeof isGhostMode === "function" && isGhostMode()) return; // never fight admin mode
+      // Offline: no timers, no retries — the "online" listener restarts the sync on reconnect.
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        setSyncPill("", "Offline \u2014 using saved data");
+        return;
+      }
 
       // Bounded automatic retry (5 tries per session, widening gaps) — the cloud copy not
       // loading is usually a slow/briefly dropped connection. Saves stay blocked meanwhile
@@ -14494,6 +14499,7 @@ function fbInit() {
           App._hydrationRetryTimer = setTimeout(async () => {
             App._hydrationRetryTimer = null;
             if (App._cloudHydrated || !fbUser || fbForcedSignout) return;
+            if (typeof navigator !== "undefined" && navigator.onLine === false) return;   // offline: wait for the "online" event
             if (App._pullBusy || _fbManualSyncInFlight) { window._scheduleHydrationRetry(); return; }
             try { await fbAutoSync(); } catch (e) { console.warn("Slow retry failed:", e && e.message); }
             try { window._markHydrationRecovered(); } catch (_e) {}
@@ -14511,6 +14517,7 @@ function fbInit() {
           App._hydrationRetryTimer = setTimeout(async () => {
             App._hydrationRetryTimer = null;
             if (App._cloudHydrated || !fbUser || fbForcedSignout) return;
+            if (typeof navigator !== "undefined" && navigator.onLine === false) return;   // offline: wait for the "online" event
             if (App._pullBusy || _fbManualSyncInFlight) { window._scheduleHydrationRetry(); return; }
             App._hydrationRetryAttempts = n + 1;
             try { await fbAutoSync(); } catch (e) { console.warn("Auto retry failed:", e && e.message); }
@@ -17061,6 +17068,13 @@ function _rjPullShared(docRef, uid) {
 async function _fbPushFullInner() {
   if (!fbUser) return;
   if (isGhostMode()) return; // admin mode: never write to Firestore
+  // Offline: don't attempt an upload (it would just hang on "Syncing…"). Keep the change marked
+  // pending; the "online" listener pushes it automatically when the connection returns.
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    try { localStorage.setItem("rjap_sync_pending", String(Date.now())); } catch (_e) {}
+    setSyncPill("", "Offline \u2014 using saved data");
+    return;
+  }
   // SAFETY: never push local state to cloud until we have successfully
   // pulled the authoritative cloud copy at least once this session.
   // Prevents wiping cloud data after "Clear app data" + re-login.
@@ -18172,6 +18186,9 @@ async function _fbMigrateInner() {
       console.warn("Server pull failed, falling back to cache:", eServer.message);
       _rjLogSyncErr("pull-server", eServer);
       snap = await docRef.get({ source: "cache" }).catch(() => null);
+      // A cache read is NOT a cloud sync: the phone copy is already loaded locally, so stop here
+      // (saves stay local + pending) until a real server pull succeeds. The "online" listener retries.
+      if (snap && snap.exists) snap = null;
       if (!snap || !snap.exists) {
         // Could not confirm cloud state — refuse to push so we never
         // overwrite real cloud data with empty local state.

@@ -11667,7 +11667,10 @@ function _buildBackupPayload() {
 }
 
 async function exportAllData() {
+  if (!_rjapGuardReady()) return;
   const backup = _buildBackupPayload();
+  if (!_rjapPayloadHasJap(backup) &&
+      !window.confirm("\u26A0\uFE0F There is NO jap data in the app right now, so this backup file would be EMPTY.\n\nIf the app only just opened, wait a moment and try again.\n\nSave an empty file anyway?")) return;
   try {
     const json = JSON.stringify(backup, null, 2);
     const filename = "radha-naam-jap-backup-" + App.getTk() + ".json";
@@ -11698,7 +11701,10 @@ async function exportAllData() {
 // `files`) where supported; otherwise falls back to a normal download,
 // since most desktop browsers can't "share" a file at all.
 async function shareBackup() {
+  if (!_rjapGuardReady()) return;
   const backup = _buildBackupPayload();
+  if (!_rjapPayloadHasJap(backup) &&
+      !window.confirm("\u26A0\uFE0F There is NO jap data in the app right now, so this backup file would be EMPTY.\n\nIf the app only just opened, wait a moment and try again.\n\nShare an empty file anyway?")) return;
   let json, filename;
   try {
     json = JSON.stringify(backup, null, 2);
@@ -11807,6 +11813,12 @@ function importAllData(input) {
   reader.onload = function (e) {
     try {
       const data = JSON.parse(e.target.result);
+      // SAFETY: an empty backup (no jap anywhere) would wipe the account — this is exactly how a
+      // blank file exported before the app finished loading once erased a user's data.
+      if (!_rjapPayloadHasJap(data)) {
+        const _okEmpty = window.confirm("\uD83D\uDED1 This backup file is EMPTY \u2014 it contains no jap data at all.\n\nRestoring it will ERASE everything on this account (and the cloud copy).\n\nPress Cancel unless you are absolutely sure.\n\nRestore the empty file anyway?");
+        if (!_okEmpty) { input.value = ""; if (st) st.textContent = "Cancelled \u2014 the file had no jap data."; return; }
+      }
       // ── FULL TAKEOVER: every field is set directly from the backup file,
       // defaulting to empty/zero when the backup doesn't have it. Nothing
       // from the account's current state is preserved or merged in — the
@@ -14656,6 +14668,7 @@ function fbInit() {
           // Guest-mode jap is intentionally NOT carried over here (guest IDB is never written).
           App._cloudHydrated = false; // block any push until cloud pull completes
           await App.load();
+          window._rjapLocalUid = user.uid;   // local cache for THIS user is now in memory (used by _rjapDataReady)
           App.lmc = Math.floor(App.gTodTouch() / (App.S.ms || 108));
           App.lmcRV = Math.floor(
             (App.S.historyRV[App.S.tk] || 0) / (App.S.ms || 108),
@@ -26821,6 +26834,38 @@ function logActivity(entry) {
   // App.save() is already called by the caller (malaOk, pauseTimer etc)
 }
 
+// ── DATA-READY GATE ─────────────────────────────────────────────────────────────
+// The opening animation used to be a fixed 5-second timer, so the app could show (and let the user
+// export a backup from) a still-EMPTY state. "Ready" now means the real data is in memory:
+//   • signed out / guest ........ nothing to load
+//   • signed in + offline ....... local cache (IndexedDB) loaded
+//   • signed in + online ........ local cache loaded AND the cloud copy confirmed (or cloud gave up)
+function _rjapDataReady() {
+  if (!window._rjapAuthResolved) return false;                    // still finding out who is signed in
+  if (typeof fbUser === "undefined" || !fbUser) return true;       // not signed in
+  if (window._rjapLocalUid !== fbUser.uid) return false;           // this user's local cache not loaded yet
+  if (App._cloudHydrated === true) return true;                    // cloud copy confirmed / applied
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return true;   // offline: cache is the source
+  if (App._hydrationGaveUp) return true;                           // cloud unreachable after retries: use cache
+  return false;
+}
+window._rjapDataReady = _rjapDataReady;
+function _rjapGuardReady() {
+  if (_rjapDataReady()) return true;
+  try { toast("\u23F3 Your data is still loading \u2014 please wait a moment, then try again."); } catch (_e) {}
+  return false;
+}
+// true if a backup payload holds any jap at all (every history map + 28 Names)
+function _rjapPayloadHasJap(d) {
+  if (!d || typeof d !== "object") return false;
+  for (const k of Object.keys(d)) {
+    if (k !== "h28" && k.indexOf("history") !== 0) continue;
+    const m = d[k];
+    if (m && typeof m === "object") for (const dk of Object.keys(m)) { if ((+m[dk] || 0) > 0) return true; }
+  }
+  return false;
+}
+
 // ── INIT ──
 window.addEventListener("load", async () => {
 
@@ -27052,16 +27097,39 @@ window.addEventListener("load", async () => {
     }
   })();
 
-  // Hide loading — guaranteed cleanup
-  setTimeout(() => {
-    const ls = document.getElementById("ls");
-    if (ls) {
-      ls.classList.add("hide");
-      setTimeout(() => {
-        if (ls.parentNode) ls.parentNode.removeChild(ls);
-      }, 900);
+  // Hide loading — only once the REAL data is loaded (local cache when offline, cloud when online).
+  // The animation keeps playing until then. Minimum 5s (as before); safety cap 60s so a dead
+  // network can never trap the user on the splash (backup/export stay blocked until data is ready).
+  (function () {
+    const t0 = Date.now();
+    function hideSplash() {
+      const ls = document.getElementById("ls");
+      if (ls) {
+        ls.classList.add("hide");
+        setTimeout(() => { if (ls.parentNode) ls.parentNode.removeChild(ls); }, 900);
+      }
     }
-  }, 5000);
+    function showWaitMsg() {
+      const ls = document.getElementById("ls");
+      if (!ls || document.getElementById("lsWaitMsg")) return;
+      const m = document.createElement("div");
+      m.id = "lsWaitMsg";
+      m.style.cssText = "position:absolute;left:0;right:0;bottom:12%;text-align:center;font-size:13px;letter-spacing:.5px;color:rgba(255,215,0,.85);z-index:10;pointer-events:none;";
+      m.textContent = (typeof navigator !== "undefined" && navigator.onLine === false)
+        ? "Loading your saved data\u2026" : "Loading your data from the cloud\u2026";
+      ls.appendChild(m);
+    }
+    (function tick() {
+      const el = Date.now() - t0;
+      let ready = false;
+      try { ready = _rjapDataReady(); } catch (_e) { ready = true; }
+      // offline cold start where sign-in state never resolves: don't wait the full minute
+      const _offlineStuck = (typeof navigator !== "undefined" && navigator.onLine === false && el >= 15000);
+      if (el >= 5000 && (ready || _offlineStuck || el >= 60000)) { hideSplash(); return; }
+      if (el >= 5000) showWaitMsg();
+      setTimeout(tick, 250);
+    })();
+  })();
 });
 
 // ── Screen Time / Stotram Time: pause on backgrounding/tab-away, resume
@@ -35421,6 +35489,7 @@ async function checkAutoBackup() {
   }
   
   // Also only run if we have App.S initialized to prevent empty backups
+  if (!_rjapDataReady()) return;   // data still loading -> never write a half-empty automatic backup
   if (lastBackup < mostRecentThreshold.getTime() && window.App && App.S) {
     let backupData = {};
     for (let i = 0; i < localStorage.length; i++) {

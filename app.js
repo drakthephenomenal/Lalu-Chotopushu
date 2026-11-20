@@ -6638,6 +6638,11 @@ function fmtIN(n) {
 // or a fresh "syncing" call) clears and restarts this timer.
 let _syncPillWatchdogTimer = null;
 const SYNC_PILL_WATCHDOG_MS = 120000;
+// Offline must never say "Loading from cloud…" — nothing is being loaded from the cloud.
+function _rjSyncPillLoading() {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) setSyncPill("", "Offline \u2014 using saved data");
+  else setSyncPill("syncing", "Loading from cloud\u2026");
+}
 function setSyncPill(state, text) {
   const p = document.getElementById("syncPill");
   const tx = document.getElementById("syncPillText");
@@ -14367,7 +14372,7 @@ function fbShowAuthChecking() {
     if (_fbCardRefreshBtnEarly) _fbCardRefreshBtnEarly.style.display = (window._RJ_SHOW_CARD_REFRESH && _lcIsNative()) ? "block" : "none";
     const emailEl = document.getElementById("fbUserEmail");
     if (emailEl) emailEl.textContent = cachedLabel;
-    setSyncPill("syncing", "Loading from cloud…");
+    _rjSyncPillLoading();
   } else {
     loggedOutEl.style.display = "none";
     const checkingEl = document.createElement("div");
@@ -14779,7 +14784,7 @@ function fbInit() {
           _fbStopVerifyCountdownTimer();
           _fbHideVerifyBlock();
         }
-        setSyncPill("syncing", "Loading from cloud…");
+        _rjSyncPillLoading();
         // ── ALWAYS pull from Firebase first on every login/refresh ──
         // fbMigrate() does a direct .get() (not just onSnapshot) so it is
         // guaranteed to fetch the latest cloud data before anything is rendered.
@@ -18153,7 +18158,7 @@ async function _fbMigrateInner() {
       .doc(fbUser.uid)
       .collection("data")
       .doc("main");
-    setSyncPill("syncing", "Loading from cloud…");
+    _rjSyncPillLoading();
     // CRITICAL: a brand-new device has an empty offline cache. The default
     // get() can resolve from that empty cache and incorrectly report
     // "no cloud doc exists", which would then push local zeroes and wipe
@@ -18172,7 +18177,8 @@ async function _fbMigrateInner() {
         // overwrite real cloud data with empty local state.
         // _cloudHydrated stays false — the "online" listener will retry fbAutoSync() automatically.
         App._cloudHydrated = false;
-        setSyncPill("error", "Cloud unreachable: " + String((eServer && (eServer.code || eServer.message)) || "").slice(0, 60));
+        if (typeof navigator !== "undefined" && navigator.onLine === false) setSyncPill("", "Offline \u2014 using saved data");
+        else setSyncPill("error", "Cloud unreachable: " + String((eServer && (eServer.code || eServer.message)) || "").slice(0, 60));
         return;
       }
     }
@@ -27169,10 +27175,12 @@ window.addEventListener("load", async () => {
     }
   })();
 
-  // Hide loading — only once the REAL data is loaded (local cache when offline, cloud when online).
-  // The animation keeps playing (full-screen, nothing underneath can be tapped) until then.
-  // Minimum 5s (as before). Last-resort cap 3 min only so a dead network can never lock the app
-  // forever; backup/export stay blocked until the data is really loaded even after that.
+  // Hide loading — ONLY once the REAL data is loaded: offline = this user's saved (local) data is
+  // in memory, online = the cloud copy is confirmed. The animation keeps playing (full-screen,
+  // nothing underneath can be tapped) until then. Minimum 5s. There is NO automatic bypass any
+  // more (the old offline-20s / 3-minute cut-offs opened the app on half-loaded data). The only
+  // way in earlier is a deliberate tap on "Open with saved data" after 45s on a dead connection;
+  // pushes to the cloud and backup/export stay blocked until the data is really loaded.
   (function () {
     const t0 = Date.now();
     function hideSplash() {
@@ -27182,24 +27190,36 @@ window.addEventListener("load", async () => {
         setTimeout(() => { if (ls.parentNode) ls.parentNode.removeChild(ls); }, 900);
       }
     }
+    function _isOffline() { return typeof navigator !== "undefined" && navigator.onLine === false; }
     function showWaitMsg() {
       const ls = document.getElementById("ls");
-      if (!ls || document.getElementById("lsWaitMsg")) return;
-      const m = document.createElement("div");
-      m.id = "lsWaitMsg";
-      m.style.cssText = "position:absolute;left:0;right:0;bottom:12%;text-align:center;font-size:13px;letter-spacing:.5px;color:rgba(255,215,0,.85);z-index:10;pointer-events:none;";
-      m.textContent = (typeof navigator !== "undefined" && navigator.onLine === false)
-        ? "Loading your saved data\u2026" : "Loading your data from the cloud\u2026";
-      ls.appendChild(m);
+      if (!ls) return;
+      let m = document.getElementById("lsWaitMsg");
+      if (!m) {
+        m = document.createElement("div");
+        m.id = "lsWaitMsg";
+        m.style.cssText = "position:absolute;left:0;right:0;bottom:12%;text-align:center;font-size:13px;letter-spacing:.5px;color:rgba(255,215,0,.85);z-index:10;pointer-events:none;";
+        ls.appendChild(m);
+      }
+      m.textContent = _isOffline() ? "Loading your saved data\u2026" : "Loading your data from the cloud\u2026";
+    }
+    function showOpenAnywayBtn() {
+      const ls = document.getElementById("ls");
+      if (!ls || document.getElementById("lsOpenAnyway")) return;
+      const b = document.createElement("button");
+      b.id = "lsOpenAnyway";
+      b.textContent = "Open with saved data";
+      b.style.cssText = "position:absolute;left:50%;transform:translateX(-50%);bottom:5%;z-index:11;background:rgba(255,215,0,.12);color:rgba(255,215,0,.95);border:1px solid rgba(255,215,0,.5);border-radius:10px;padding:9px 16px;font-size:13px;";
+      b.onclick = function () { window._rjapOpenAnyway = true; };
+      ls.appendChild(b);
     }
     (function tick() {
       const el = Date.now() - t0;
       let ready = false;
-      try { ready = _rjapDataReady(); } catch (_e) { ready = true; }
-      // offline cold start where sign-in state never resolves
-      const _offlineStuck = (typeof navigator !== "undefined" && navigator.onLine === false && el >= 20000);
-      if (el >= 5000 && (ready || _offlineStuck || el >= 180000)) { hideSplash(); return; }
+      try { ready = _rjapDataReady(); } catch (_e) { ready = false; }
+      if (el >= 5000 && (ready || window._rjapOpenAnyway === true)) { hideSplash(); return; }
       if (el >= 5000) showWaitMsg();
+      if (el >= 45000) showOpenAnywayBtn();
       setTimeout(tick, 250);
     })();
   })();

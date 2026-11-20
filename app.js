@@ -33850,15 +33850,13 @@ function renderLeaderboard(docs, period) {
     return { ...d, score, timeScore, _padSec, _effTodaySec: _todayEff.japSec, _effTodayScrSec: _todayEff.scrSec };
   });
 
-  // Sort descending. Lifetime keeps everyone (even devotees who haven't
-  // logged jap yet — the leaderboard is also a roster for that view), for
-  // BOTH normal and Admin Leaderboard (developer-only) view. Today/Week/Month
-  // drop anyone with zero jap in that window in both views too, so the list
-  // only shows who's actually active for the period being viewed — Ghost
-  // mode no longer bypasses this, it only changes which docs are queried.
+  // Sort descending. Anyone with zero jap in the viewed window is hidden — Today/Week/Month AND
+  // Lifetime — EXCEPT in Admin Leaderboard view (developer-only toggle), where Lifetime also lists
+  // devotees with zero lifetime jap so the admin can see the full roster.
   const _lbIsLifetime = !periodKeys; // null periodKeys = alltime
+  const _lbAdminOn = !!(window._lbAdminView || (window._lbGhostMode && typeof isDeveloper === 'function' && isDeveloper()));
   const filtered = scored
-    .filter(function(d) { return _lbIsLifetime || d.score > 0; })
+    .filter(function(d) { return d.score > 0 || (_lbIsLifetime && _lbAdminOn); })
     .sort(function(a, b) { return b.score - a.score; })
     .slice(0, 50);
 

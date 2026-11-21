@@ -6,9 +6,14 @@ W = 'www'
 SITE = 'https://radharadharadha.vercel.app'
 KEEP = ['hitju_maharaj', 'gurudev', 'radha_vallabh']          # main jap display (bundled)
 KEEP_SAMPRADAY = ['tilaks', 'harivangshi']
-REMOTE_PREFIX = ('ramanuj_', 'vallabh_', 'nimbark_', 'ramanandi_', 'haridashi_', 'gopeshwar_')
-REMOTE_EXACT = ['rashikan']
+# LITE = everything is packed (full offline) EXCEPT: audio/, videos/, rashikan/, deities/ and screenshots.
+# deities/ is already kept out by setup-www.sh; audio/ + videos/ are dropped below.
+# To also push the sampraday *_deity photo folders online (about -11 MB), add '_deity' to ONLINE_SUFFIX.
+ONLINE_EXACT = ['rashikan']
+ONLINE_SUFFIX = ()
 DROP_FILES = ['lite-postprocess.py', 'build-apk-lite.sh', 'All source text.zip', 'og-image.png']
+for g in glob.glob(os.path.join(W, 'screenshot-*')):          # store-listing screenshots never ship
+    os.remove(g)
 REMOTE_ROOT = []
 DROP_DIRS = ['resources', 'audio', 'videos']
 
@@ -24,7 +29,7 @@ before = size(W)
 removed = []
 for name in sorted(os.listdir(W)):
     p = os.path.join(W, name)
-    if os.path.isdir(p) and (name.startswith(REMOTE_PREFIX) or name in REMOTE_EXACT):
+    if os.path.isdir(p) and (name in ONLINE_EXACT or (ONLINE_SUFFIX and name.endswith(ONLINE_SUFFIX))):
         removed.append(name); shutil.rmtree(p)
 sp = os.path.join(W, 'sampraday')
 if os.path.isdir(sp) and False:                              # (all sampraday folders kept)
@@ -62,7 +67,7 @@ open(p, 'w', encoding='utf-8').write(s)
 p = os.path.join(W, 'sw.js'); s = open(p, encoding='utf-8').read()
 old = "url.pathname.indexOf('/deities/') >= 0 && !url.search"
 if old not in s: sys.exit('PATTERN NOT FOUND: sw.js remote photo rule (sw.js changed?)')
-s = s.replace(old, "/^\\/(deities|rashikan|iskcon_|gopeshwar_|haridashi_|nimbark_|ramanandi_|ramanuj_|vallabh_)/.test(url.pathname) && !url.search", 1)
+s = s.replace(old, "/^\\/(deities|rashikan)\\//.test(url.pathname) && !url.search", 1)
 open(p, 'w', encoding='utf-8').write(s)
 
 after = size(W)
@@ -78,18 +83,22 @@ print('app.js: all audio streams from the website')
 src = 'native-online-media.js'
 if os.path.exists(src):
     t = open(src, encoding='utf-8').read()
-    new_re = "var RE = /^(?:[.][/])?((?:rashikan|(?:ramanuj|vallabh|nimbark|ramanandi|haridashi|gopeshwar)_[a-z_]+)[/].+)$/i;"
+    new_re = "var RE = /^(?:[.][/])?(rashikan[/].+)$/i;"
     t, n = re.subn(r"var RE = .*", lambda m: new_re, t, count=1)
     if n != 1: sys.exit('PATTERN NOT FOUND: var RE (native-online-media.js changed?)')
     open(os.path.join(W, 'native-online-media.js'), 'w', encoding='utf-8').write(t)
-    print('native-online-media.js: only rashikan + the other sampraday folders load online')
+    print('native-online-media.js: only rashikan loads online (deities are handled by app.js ddBase)')
 
 # 5. safety check: everything Lite promises must really be inside www/
 need = ['Panchojanno Shankya.mp3', 'bhagavadik-bank.png', 'sampraday/tilaks/gaudiya.png', 'sampraday/harivangshi/1.jpg',
         'radha_vallabh', 'hitju_maharaj', 'gurudev', 'iskcon_chaitanya', 'iskcon_acharya', 'iskcon_gurudev',
-        'iskcon_gaudiya_bank', 'vendor/firebase-app-compat.js']
+        'iskcon_gaudiya_bank', 'vendor/firebase-app-compat.js',
+        'ramanuj_guru', 'ramanuj_deity', 'vallabh_acharya', 'nimbark_guru', 'ramanandi_deity', 'haridashi_acharya', 'gopeshwar_mahadev']
 miss = [x for x in need if not os.path.exists(os.path.join(W, x))]
 miss += [t for t in ('reminder_tone.mp3', 'push_tone.mp3', 'silent_tone.wav') if not os.path.exists(t)]
 if miss:
     sys.exit('LITE check FAILED - missing: ' + ', '.join(miss))
-print('LITE check OK: jap-display photos, bank photos, sampraday photos and icons, mala sound, notification tones, offline Firebase are all packed')
+leak = [x for x in ('audio', 'videos', 'rashikan', 'deities') if os.path.exists(os.path.join(W, x))]
+if leak:
+    sys.exit('LITE check FAILED - these must NOT be packed: ' + ', '.join(leak))
+print('LITE check OK: everything is packed offline except audio, videos, rashikan, deities, screenshots')

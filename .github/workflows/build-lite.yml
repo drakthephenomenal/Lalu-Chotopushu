@@ -1,11 +1,7 @@
-name: Build Lite (APK + AAB)
+name: 1 - Build LITE (AAB + APK, under 100 MB)
+
 on:
   workflow_dispatch:
-    inputs:
-      release:
-        description: "Also create a draft GitHub release with the APK"
-        type: boolean
-        default: true
 
 permissions:
   contents: write
@@ -23,51 +19,59 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+
       - name: Add swap (stops Gradle being killed for low memory)
         run: |
           sudo swapoff -a || true
           sudo fallocate -l 8G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile || true
           free -m
-      - run: npm install
-      - name: Build lite release (APK for testing + AAB for Play)
-        run: bash build-apk-lite.sh
-      - name: Show sizes
+
+      - name: Check version counter and conflict markers
         run: |
-          APK=android/app/build/outputs/apk/release/app-release.apk
+          grep -qE '^[0-9]+$' .app-version || { echo "::error::.app-version is not a plain number"; cat .app-version; exit 1; }
+          if grep -rIlE '^(<<<<<<<|>>>>>>>) ' --include=*.js --include=*.html --include=*.json --include=*.sh --include=*.yml . 2>/dev/null | grep -v node_modules; then
+            echo "::error::Git conflict markers left in the files above"; exit 1
+          fi
+
+      - run: npm install
+
+      - name: Build LITE (signed AAB + APK)
+        run: bash build-apk-lite.sh
+
+      - name: Sizes and biggest files
+        run: |
           AAB=android/app/build/outputs/bundle/release/app-release.aab
-          APK_MB=$(( $(stat -c%s "$APK") / 1024 / 1024 ))
+          APK=android/app/build/outputs/apk/release/app-release.apk
           AAB_MB=$(( $(stat -c%s "$AAB") / 1024 / 1024 ))
-          BASE=$(unzip -v "$AAB" | awk '$NF ~ /^base\// {s+=$3} END {print int(s/1024/1024)}')
-          echo "Lite APK: ${APK_MB} MB | Lite AAB: ${AAB_MB} MB (base module ~${BASE} MB)"
+          APK_MB=$(( $(stat -c%s "$APK") / 1024 / 1024 ))
           {
-            echo "### Lite APK: ${APK_MB} MB"
-            echo "### Lite AAB: ${AAB_MB} MB"
-            echo "- base module: ~${BASE} MB (Play limit about 200 MB)"
-          } >> "$GITHUB_STEP_SUMMARY"
-          [ "$APK_MB" -gt 100 ] && echo "::warning::Lite APK is ${APK_MB} MB - over the 100 MB target."
-          [ "$BASE" -gt 180 ] && echo "::warning::Base module is ~${BASE} MB. Play's limit is about 200 MB."
+            echo "### LITE  AAB: ${AAB_MB} MB   APK: ${APK_MB} MB"
+            echo "Biggest files inside the AAB:"
+            echo '```'
+            unzip -v "$AAB" | sort -k3 -n -r | head -15 | awk '{printf "%7.1f MB  %s\n", $3/1048576, $NF}'
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          [ "$APK_MB" -gt 100 ] && echo "::warning::Lite APK is ${APK_MB} MB (target 100 MB)"
           true
-      - name: Upload AAB
+
+      - name: Upload AAB (for Google Play Console)
         uses: actions/upload-artifact@v4
         with:
-          name: RadhaNaam-lite-aab
+          name: RadhaNaam-LITE-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 14
-      - name: Upload lite APK (for testing on a phone)
+          if-no-files-found: error
+
+      - name: Upload APK (install on phone)
         uses: actions/upload-artifact@v4
         with:
-          name: RadhaNaam-lite-apk
+          name: RadhaNaam-LITE-apk
           path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 14
-      - name: Draft GitHub release (APK)
-        if: ${{ inputs.release }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VER=$(cat .app-version | tr -d '\r\n ')
-          cp android/app/build/outputs/apk/release/app-release.apk RadhaNaamJap-Lite.apk
-          gh release create "lite-v1.0.${VER}" RadhaNaamJap-Lite.apk --draft --title "RadhaNaamJap LITE v1.0.${VER}" --notes ""
+          if-no-files-found: error
+
       - name: Save bumped version counter
+        if: success()
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com

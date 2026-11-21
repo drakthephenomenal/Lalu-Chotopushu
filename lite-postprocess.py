@@ -10,7 +10,7 @@ REMOTE_PREFIX = ()                                        # 100 MB budget: all i
 REMOTE_EXACT = []                                          # rashikan gallery stays bundled (50 MB budget)
 DROP_FILES = ['lite-postprocess.py', 'build-apk-lite.sh', 'All source text.zip', 'og-image.png', 'bhagavadik-bank.png']
 REMOTE_ROOT = ['bhagavadik-bank.png']
-DROP_DIRS = ['resources']
+DROP_DIRS = ['resources', 'audio', 'videos']
 
 def size(p):
     t = 0
@@ -67,3 +67,9 @@ open(p, 'w', encoding='utf-8').write(s)
 
 after = size(W)
 print('www/: %.1f MB -> %.1f MB' % (before / 1048576, after / 1048576))
+
+s = open('www/app.js', encoding='utf-8').read()
+s2, n = re.subn(r"var _packed = /[^\n]*;", "var _packed = /(?!)/;   /* LITE: nothing packed */", s, count=1)
+if n != 1: sys.exit('PATTERN NOT FOUND: var _packed (app.js changed?)')
+open('www/app.js', 'w', encoding='utf-8').write(s2)
+print('app.js: all audio streams from the website')

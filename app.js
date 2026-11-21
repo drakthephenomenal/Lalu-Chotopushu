@@ -1988,6 +1988,7 @@ const App = {
     // GUEST MODE: never persist to IDB or localStorage — guest jap is intentionally ephemeral.
     // Only signed-in users get local persistence (as an offline buffer for cloud sync).
     if (!this._uid) return;
+    _rjapBootSnap(this._uid);
     this._purgeEmptyKeys(this.S);
     // Save full state snapshot to IDB so all dates and edits persist locally
     await this.dbPut("state", this._stateKey(), {
@@ -6179,6 +6180,22 @@ function _hasAnyLocalJap() {
   return ["dt", "dtHK", "dtKV", "dtKaam", "dtSS", "dtRam", "dtSR", "dtRM", "dtNR", "dtYg", "dtVl"].some((k) => (S[k] || 0) > 0);
 }
 
+// Remember which sampraday/mode body classes are active, so index.html can apply them before first paint.
+function _rjapBootSnap(uid) {
+  try {
+    const S = (typeof App !== "undefined" && App && App.S) || null;
+    if (!S || !uid) return;
+    const c = [];
+    if (S.gaudiyaMode) c.push("gaudiya-mode");
+    if (S.trahimamMode) c.push("trahimam-mode");
+    if (S.ramanandiMode) c.push("ramanandi-mode");
+    if (S.nimbarkMode) c.push("nimbark-mode");
+    if (S.vallabhMode) c.push("vallabh-mode");
+    if (isHaridashiActive()) c.push("haridashi-mode");
+    if (typeof isRamanuj === "function" && isRamanuj()) c.push("ramanuj-branch");
+    localStorage.setItem("rjap_bootClasses", JSON.stringify(c));
+  } catch (_e) {}
+}
 function isHaridashiActive() {
   const S = (typeof App !== "undefined" && App && App.S) || null;
   return !!(S && S.sampraday === "haridashi" && !S.gaudiyaMode && !S.trahimamMode && !S.ramanandiMode);
@@ -27109,6 +27126,9 @@ window.addEventListener("load", async () => {
   App.lmcSS = Math.floor(
     ((App.S.historySS || {})[App.S.tk] || 0) / (App.S.ms || 108),
   );
+  // drop any boot-time classes that do not match the loaded account, then re-add the real ones below
+  ["gaudiya-mode", "trahimam-mode", "ramanandi-mode", "nimbark-mode", "vallabh-mode"].forEach((c) => document.body.classList.remove(c));
+  _rjapBootSnap(App._uid);
   if (App.S.gaudiyaMode) document.body.classList.add("gaudiya-mode");
   if (App.S.trahimamMode) document.body.classList.add("trahimam-mode");
   if (App.S.ramanandiMode) document.body.classList.add("ramanandi-mode");

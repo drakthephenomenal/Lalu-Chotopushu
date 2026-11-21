@@ -1,7 +1,7 @@
 #!/bin/bash
 # build-full.sh - FULL build: one run -> two files
-#   dist/RadhaNaamJap-full.aab  Play AAB: audio, videos, deities in install-time asset packs
-#   dist/RadhaNaamJap-full.apk  APK for phones: everything inside
+#   dist/RadhaNaamJap-full.aab  Play AAB: audio + videos in asset packs, deities = first photo only
+#   dist/RadhaNaamJap-full.apk  APK for phones: audio + videos + all photos, deities = first photo only
 set -e
 [ -f setup-www.sh ] && [ -f build-android.sh ] || { echo "❌ Run from repo root."; exit 1; }
 [ -d audio ] || { echo "❌ audio/ folder missing - nothing to bundle."; exit 1; }
@@ -23,8 +23,7 @@ for l in open('setup-www.sh', encoding='utf-8').read().split('\n'):
         if mode == 'aab' and not done_audio:
             out.append("  --exclude='/audio'"); done_audio = True
         continue
-    if mode == 'apk' and t in ("--exclude='videos'", "--exclude='deities'"): continue
-    if mode == 'apk' and t.startswith('rm -rf www/deities'): continue
+    if mode == 'apk' and t == "--exclude='videos'": continue
     out.append(l)
 s = '\n'.join(out)
 s += '\npython3 "$TMPD/post.py" || { echo "❌ full post-process failed"; exit 1; }\n'
@@ -44,7 +43,6 @@ def rep(old, new, label, regex=False, need=1):
 rep(r"const FAVVID_MANIFEST_URL = [^;]*;", "const FAVVID_MANIFEST_URL = './videos/manifest.json';", 'video manifest local', True)
 rep("'https://raw.githubusercontent.com/' + FAVVID_GH_OWNER + '/' + FAVVID_GH_REPO + '/' + FAVVID_GH_BRANCH + '/' + sub.path", "'./' + sub.path", 'favourite videos local')
 rep(r'"https://raw\.githubusercontent\.com/" \+ FAVVID_GH_OWNER \+ "/" \+ FAVVID_GH_REPO \+ "/" \+ FAVVID_GH_BRANCH \+\s*"/videos/', '"./videos/', 'padavali + guru-vandana videos local', True, 2)
-rep("ddNative() ? RJAP_PWA_URL.replace(/\\/$/, '') + '/deities/' : './deities/'", "'./deities/'", 'deities local')
 rep("if (!_nat) return;\n    var base = RJAP_PWA_URL", "return; /* FULL build: audio is bundled */\n    var base = RJAP_PWA_URL", 'audio redirect off')
 open(p, 'w', encoding='utf-8').write(s)
 q = 'www/native-online-media.js'
@@ -64,7 +62,7 @@ import os, sys, re
 MAXPACK = 1300 * 1024 * 1024
 MAXTOTAL = 3600 * 1024 * 1024
 files = []
-for d in ('audio', 'videos', 'deities'):
+for d in ('audio', 'videos'):
     for r, ds, fs in os.walk(d):
         ds[:] = [x for x in ds if not x.startswith('.') and x != '__MACOSX']
         for f in fs:
@@ -110,6 +108,7 @@ cp setup-www.sh "$B1"; cp build-android.sh "$B2"
 restore() { mv -f "$B1" setup-www.sh; mv -f "$B2" build-android.sh; rm -rf "$TMPD"; echo "↩ restored setup-www.sh and build-android.sh"; }
 trap restore EXIT
 export TMPD
+export DEITY_FIRST=1   # only the FIRST photo of each deity is packed, the rest load online
 
 run_pass() {   # $1 = apk | aab
   local MODE="$1" TASK

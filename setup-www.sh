@@ -36,20 +36,7 @@ EXCLUDES=(
   --include='/audio/rsn_[0-9]*.mp3'
   --include='/audio/rsn_c.mp3'
   --exclude='/audio/*'
-  # Photos NOT packed: the app loads them live from the website (see native-online-media.js)
-  --exclude='/sampraday'
-  --exclude='/gurudev'
-  --exclude='/hitju_maharaj'
-  --exclude='/radha_vallabh'
-  --exclude='/rashikan'
-  --exclude='/iskcon_*'
-  --exclude='/ramanuj_*'
-  --exclude='/vallabh_*'
-  --exclude='/nimbark_*'
-  --exclude='/ramanandi_*'
-  --exclude='/haridashi_*'
-  --exclude='/gopeshwar_*'
-  --exclude='/bhagavadik-bank.png'
+  # Photos (sampraday, gurudev, iskcon, bank, rashikan ...) ARE packed into the app.
   # Never loaded by the app
   --exclude='*.zip'
   --exclude='gg_batch_*.txt'
@@ -125,6 +112,8 @@ EXCLUDES=(
 
 rsync -a --delete "${EXCLUDES[@]}" ./ www/
 rm -rf www/deities   # rsync --delete leaves excluded folders from older builds in place
+# Photos are packed in the app, so switch off the load-from-website redirect
+echo '/* photos are packed in the app */' > www/native-online-media.js
 
 echo "Done. www/ now contains a copy of your web app."
 echo "Next: npx cap sync android"

@@ -6,10 +6,10 @@ W = 'www'
 SITE = 'https://radharadharadha.vercel.app'
 KEEP = ['hitju_maharaj', 'gurudev', 'radha_vallabh']          # main jap display (bundled)
 KEEP_SAMPRADAY = ['tilaks', 'harivangshi']
-REMOTE_PREFIX = ()                                        # 100 MB budget: all image folders stay bundled
-REMOTE_EXACT = []                                          # rashikan gallery stays bundled (50 MB budget)
-DROP_FILES = ['lite-postprocess.py', 'build-apk-lite.sh', 'All source text.zip', 'og-image.png', 'bhagavadik-bank.png']
-REMOTE_ROOT = ['bhagavadik-bank.png']
+REMOTE_PREFIX = ('ramanuj_', 'vallabh_', 'nimbark_', 'ramanandi_', 'haridashi_', 'gopeshwar_')
+REMOTE_EXACT = ['rashikan']
+DROP_FILES = ['lite-postprocess.py', 'build-apk-lite.sh', 'All source text.zip', 'og-image.png']
+REMOTE_ROOT = []
 DROP_DIRS = ['resources', 'audio', 'videos']
 
 def size(p):
@@ -62,7 +62,7 @@ open(p, 'w', encoding='utf-8').write(s)
 p = os.path.join(W, 'sw.js'); s = open(p, encoding='utf-8').read()
 old = "url.pathname.indexOf('/deities/') >= 0 && !url.search"
 if old not in s: sys.exit('PATTERN NOT FOUND: sw.js remote photo rule (sw.js changed?)')
-s = s.replace(old, "/^\\/(deities|iskcon_|gopeshwar_|haridashi_|nimbark_|ramanandi_|ramanuj_|vallabh_)/.test(url.pathname) && !url.search", 1)
+s = s.replace(old, "/^\\/(deities|rashikan|iskcon_|gopeshwar_|haridashi_|nimbark_|ramanandi_|ramanuj_|vallabh_)/.test(url.pathname) && !url.search", 1)
 open(p, 'w', encoding='utf-8').write(s)
 
 after = size(W)
@@ -73,3 +73,23 @@ s2, n = re.subn(r"var _packed = /[^\n]*;", "var _packed = /(?!)/;   /* LITE: not
 if n != 1: sys.exit('PATTERN NOT FOUND: var _packed (app.js changed?)')
 open('www/app.js', 'w', encoding='utf-8').write(s2)
 print('app.js: all audio streams from the website')
+
+# 4b. native-online-media.js: redirect ONLY the folders that are not packed in Lite
+src = 'native-online-media.js'
+if os.path.exists(src):
+    t = open(src, encoding='utf-8').read()
+    new_re = "var RE = /^(?:[.][/])?((?:rashikan|(?:ramanuj|vallabh|nimbark|ramanandi|haridashi|gopeshwar)_[a-z_]+)[/].+)$/i;"
+    t, n = re.subn(r"var RE = .*", lambda m: new_re, t, count=1)
+    if n != 1: sys.exit('PATTERN NOT FOUND: var RE (native-online-media.js changed?)')
+    open(os.path.join(W, 'native-online-media.js'), 'w', encoding='utf-8').write(t)
+    print('native-online-media.js: only rashikan + the other sampraday folders load online')
+
+# 5. safety check: everything Lite promises must really be inside www/
+need = ['Panchojanno Shankya.mp3', 'bhagavadik-bank.png', 'sampraday/tilaks/gaudiya.png', 'sampraday/harivangshi/1.jpg',
+        'radha_vallabh', 'hitju_maharaj', 'gurudev', 'iskcon_chaitanya', 'iskcon_acharya', 'iskcon_gurudev',
+        'iskcon_gaudiya_bank', 'vendor/firebase-app-compat.js']
+miss = [x for x in need if not os.path.exists(os.path.join(W, x))]
+miss += [t for t in ('reminder_tone.mp3', 'push_tone.mp3', 'silent_tone.wav') if not os.path.exists(t)]
+if miss:
+    sys.exit('LITE check FAILED - missing: ' + ', '.join(miss))
+print('LITE check OK: jap-display photos, bank photos, sampraday photos and icons, mala sound, notification tones, offline Firebase are all packed')

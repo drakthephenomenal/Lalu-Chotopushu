@@ -3,7 +3,7 @@
 # build-apk-lite.sh  -  LITE build, target: APK under 100 MB
 #
 # Bundled in the APK : all stotram text, app code and ALL image folders at full quality
-# Loaded online      : audio, videos, deity photos, bhagavadik-bank.png (saved on the phone
+# Loaded online      : audio, videos, deity photos (saved on the phone
 #                      after the first view)
 # Also               : 64-bit + 32-bit ARM phones (no x86). Images are NOT shrunk.
 #

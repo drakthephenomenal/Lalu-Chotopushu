@@ -18,6 +18,11 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+      - name: Add swap (stops Gradle being killed for low memory)
+        run: |
+          sudo swapoff -a || true
+          sudo fallocate -l 8G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile || true
+          free -m
       - run: npm install
       - name: Build lite release (APK for testing + AAB for Play)
         run: bash build-apk-lite.sh

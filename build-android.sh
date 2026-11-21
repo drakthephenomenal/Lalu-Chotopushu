@@ -57,7 +57,8 @@ fi
 # keeps counting up across every build, without needing a manual sed first.
 VERSION_FILE=".app-version"
 if [ ! -f "$VERSION_FILE" ]; then echo 7 > "$VERSION_FILE"; fi
-NEXT_VERSION_CODE=$(( $(cat "$VERSION_FILE") + 1 ))
+CUR_VER=$(grep -E '^[0-9]+$' "$VERSION_FILE" | sort -n | tail -1); CUR_VER=${CUR_VER:-7}
+NEXT_VERSION_CODE=$(( CUR_VER + 1 ))
 echo "$NEXT_VERSION_CODE" > "$VERSION_FILE"
 NEXT_VERSION_NAME="1.0.$NEXT_VERSION_CODE"
 sed -i -E "s/versionCode [0-9]+/versionCode $NEXT_VERSION_CODE/" android/app/build.gradle
@@ -534,7 +535,8 @@ echo "── 9.6/9  Gradle heap space fix ────────────�
 # OS kill Gradle ("Gradle build daemon disappeared unexpectedly") a few minutes into the build.
 MEM_MB=$(awk '/^MemTotal:/ {print int($2/1024)}' /proc/meminfo 2>/dev/null || echo 7000)
 HEAP_MB=$(( MEM_MB * 55 / 100 ))
-[ "$HEAP_MB" -gt 6144 ] && HEAP_MB=6144
+HMAX=${GRADLE_HEAP_MAX_MB:-6144}
+[ "$HEAP_MB" -gt "$HMAX" ] && HEAP_MB=$HMAX
 [ "$HEAP_MB" -lt 2560 ] && HEAP_MB=2560
 sed -i '/^org\.gradle\.jvmargs=/d;/^kotlin\.daemon\.jvmargs=/d;/^org\.gradle\.workers\.max=/d;/^org\.gradle\.parallel=/d;/^systemProp\.org\.gradle\.internal\.http\./d' android/gradle.properties
 {

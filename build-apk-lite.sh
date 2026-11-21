@@ -11,6 +11,7 @@
 # Usage (repo root):  bash build-apk-lite.sh [--keep]
 # ============================================================================
 set -e
+export GRADLE_HEAP_MAX_MB=${GRADLE_HEAP_MAX_MB:-3072}
 [ -f setup-www.sh ] && [ -f build-android.sh ] && [ -f lite-postprocess.py ] || { echo "❌ Run from repo root (setup-www.sh, build-android.sh, lite-postprocess.py needed)."; exit 1; }
 
 B1="setup-www.sh.bak-$$"; B2="build-android.sh.bak-$$"

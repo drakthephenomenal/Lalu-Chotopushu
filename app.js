@@ -14019,11 +14019,51 @@ function _hcjLangPickerHtml() {
     HCJ_LANGS.map((x) => '<option value="' + x.c + '"' + (x.c === cur ? ' selected' : '') + '>' + x.n + '</option>').join('') +
     '</select>';
 }
+// ── Radha Sudha Nidhi Ji: own reading language. Bangla + Hindi as before; English, Gujarati, Odia, Punjabi = shlokas only (rsn-langs.js -> window.RSN_EXTRA) ──
+const RSN_LANGS = [
+  { c: 'bn', n: 'বাংলা' }, { c: 'hi', n: 'हिन्दी' }, { c: 'en', n: 'English' },
+  { c: 'gu', n: 'ગુજરાતી' }, { c: 'or', n: 'ଓଡ଼ିଆ' }, { c: 'pa', n: 'ਪੰਜਾਬੀ' },
+];
+const RSN_UI = {
+  en: Object.assign({}, HCJ_UI.en, { name: 'Sri Radha Sudha Nidhi', req: '★ Must read — 5 pads daily',
+        done: 'Today\'s 5 pads complete', part: (n, r) => n + '/5 read — ' + r + ' to go' }),
+  gu: Object.assign({}, HCJ_UI.gu, { name: 'શ્રી રાધા સુધા નિધિ', req: '★ અનિવાર્ય — દરરોજ ૫ પદ',
+        done: 'આજના ૫ પદ પૂર્ણ', part: (n, r) => n + '/૫ વાંચ્યા — હજી ' + r + ' બાકી' }),
+  or: Object.assign({}, HCJ_UI.or, { name: 'ଶ୍ରୀ ରାଧା ସୁଧା ନିଧି', req: '★ ଅନିବାର୍ଯ୍ୟ — ପ୍ରତିଦିନ ୫ ପଦ',
+        done: 'ଆଜିର ୫ ପଦ ସମ୍ପୂର୍ଣ୍ଣ', part: (n, r) => n + '/୫ ପଢ଼ା — ଆଉ ' + r + ' ବାକି' }),
+  pa: Object.assign({}, HCJ_UI.pa, { name: 'ਸ਼੍ਰੀ ਰਾਧਾ ਸੁਧਾ ਨਿਧਿ', req: '★ ਲਾਜ਼ਮੀ — ਹਰ ਰੋਜ਼ ੫ ਪਦ',
+        done: 'ਅੱਜ ਦੇ ੫ ਪਦ ਪੂਰੇ', part: (n, r) => n + '/੫ ਪੜ੍ਹੇ — ਹੋਰ ' + r + ' ਬਾਕੀ' }),
+};
+function rsnLang() {
+  const o = App && App.S && App.S.secLang && App.S.secLang.rsn;
+  if (RSN_LANGS.some((x) => x.c === o)) return o;
+  return secLang('sv');
+}
+function setRsnLang(c) {
+  if (!RSN_LANGS.some((x) => x.c === c) || !App || !App.S) return;
+  if (!App.S.secLang || typeof App.S.secLang !== 'object') App.S.secLang = {};
+  App.S.secLang.rsn = c;
+  try { App.save(); } catch (_e) {}
+  try { secLangPersistLocal(); } catch (_e) {}
+  window._svVI = null;   // verse-search index is rebuilt in the new script
+  try { renderSt(); } catch (_e) {}
+  try { if (typeof _lcRefreshOpenLyrics === 'function') _lcRefreshOpenLyrics(); } catch (_e) {}
+}
+function _rsnLangPickerHtml() {
+  const cur = rsnLang();
+  return '<select class="hcj-lang-sel" aria-label="Language" onclick="event.stopPropagation()" onchange="setRsnLang(this.value)" ' +
+    'style="flex-shrink:0;max-width:118px;min-height:38px;padding:6px 8px;border-radius:10px;border:1px solid rgba(255,215,0,0.55);' +
+    'background:rgba(255,215,0,0.10);color:#ffd700;font-size:13px;font-weight:700;font-family:\'Hind Siliguri\',sans-serif;color-scheme:dark">' +
+    RSN_LANGS.map((x) => '<option value="' + x.c + '"' + (x.c === cur ? ' selected' : '') + '>' + x.n + '</option>').join('') +
+    '</select>';
+}
 function stName(st) {
+  if (st && st.id === 'rsn') { const l = rsnLang(); if (RSN_UI[l]) return RSN_UI[l].name; return (l === "hi" && st.nameHi) ? st.nameHi : st.name; }
   if (st && st.id === 'hcj') { const l = hcjLang(); if (HCJ_UI[l]) return HCJ_UI[l].name; return (l === "hi" && st.nameHi) ? st.nameHi : st.name; }
   return (secLang('sv') === "hi" && st.nameHi) ? st.nameHi : st.name;
 }
 function stSub(st) {
+  if (st && st.id === 'rsn') { const l = rsnLang(); if (RSN_UI[l]) return RSN_UI[l].sub; return (l === "hi" && st.subHi) ? st.subHi : (st.sub || ""); }
   if (st && st.id === 'hcj') { const l = hcjLang(); if (HCJ_UI[l]) return HCJ_UI[l].sub; return (l === "hi" && st.subHi) ? st.subHi : (st.sub || ""); }
   return (secLang('sv') === "hi" && st.subHi) ? st.subHi : (st.sub || "");
 }
@@ -22114,12 +22154,14 @@ function renderSt() {
         '</div>';
     }
 
-    const _hcjL = (st.id === 'hcj') ? hcjLang() : null;
+    const _hcjL = (st.id === 'hcj') ? hcjLang() : (st.id === 'rsn') ? rsnLang() : null;
+    const _stUiMap = (st.id === 'rsn') ? RSN_UI : HCJ_UI;
     const _stHi = _hcjL ? _hcjL === 'hi' : secLang('sv') === 'hi';
     if (st.id === 'hcj') headerRight = _hcjLangPickerHtml();
+    else if (st.id === 'rsn') headerRight = _rsnLangPickerHtml();
     // No pāṭh counter / +− buttons in any stotram folder — just Open (+ a daily ✅ on badged items).
     const _noCount = true;
-    const _reqTxt = (_hcjL && HCJ_UI[_hcjL]) ? HCJ_UI[_hcjL].req : (_stHi ? st.reqHi : st.reqBn);
+    const _reqTxt = (_hcjL && _stUiMap[_hcjL]) ? _stUiMap[_hcjL].req : (_stHi ? st.reqHi : st.reqBn);
     const _reqBadge = _reqTxt
       ? '<div class="st-req" style="display:inline-block;margin-top:7px;padding:3px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.2px;font-family:\'Hind Siliguri\',sans-serif;background:linear-gradient(135deg,#ffe27a 0%,#ffc107 55%,#e69500 100%);color:#2a1a00;box-shadow:0 0 9px rgba(255,200,0,0.45)">' + escHtml(_reqTxt) + '</div>'
       : '';
@@ -22134,7 +22176,7 @@ function renderSt() {
         headerRight +
       '</div>' +
       (_noCount
-        ? '<div class="st-row" style="justify-content:' + (_reqTxt ? 'space-between' : 'flex-end') + '">' + (RV_PAD_REQ[st.id] ? _stReadBtnHtml(st.id, _stHi) : '') + (hasLyrics ? '<button class="st-open-btn" onclick="showLyrics(\'' + st.id + '\')">' + ((_hcjL && HCJ_UI[_hcjL]) ? HCJ_UI[_hcjL].open : (_stHi ? 'खोलें' : 'খুলুন')) + '</button>' : '') + '</div>'
+        ? '<div class="st-row" style="justify-content:' + (_reqTxt ? 'space-between' : 'flex-end') + '">' + (RV_PAD_REQ[st.id] ? _stReadBtnHtml(st.id, _stHi) : '') + (hasLyrics ? '<button class="st-open-btn" onclick="showLyrics(\'' + st.id + '\')">' + ((_hcjL && _stUiMap[_hcjL]) ? _stUiMap[_hcjL].open : (_stHi ? 'खोलें' : 'খুলুন')) + '</button>' : '') + '</div>'
         : (
       '<div class="st-row">' +
         '<div>' +
@@ -24912,6 +24954,12 @@ function _rsnBnFull() {
 }
 
 function getEffectiveLyrics(id) {
+  if (id === 'rsn') {   // Radha Sudha Nidhi follows its own language picker
+    const _rl = rsnLang();
+    if (RSN_UI[_rl] && typeof RSN_EXTRA !== 'undefined' && RSN_EXTRA[_rl]) return RSN_EXTRA[_rl];
+    if (_rl === 'hi') { if (typeof LYRICS_HI !== 'undefined' && LYRICS_HI.rsn) return LYRICS_HI.rsn; if (_rsnHindiLyrics) return _rsnHindiLyrics; }
+    else if (_rl === 'bn') { const _full = _rsnBnFull(); if (_full) return _full; if (LYRICS.rsn) return LYRICS.rsn; }
+  }
   if (id === 'hcj') {   // Hit Chaurasi Ji follows its own language picker
     const _hl = hcjLang();
     if (HCJ_UI[_hl] && typeof HCJ_EXTRA !== 'undefined' && HCJ_EXTRA[_hl]) return HCJ_EXTRA[_hl];
@@ -24959,7 +25007,8 @@ function _stReadBtnHtml(id, hi) {
   const need = RV_PAD_REQ[id];
   if (!need) return '';
   const n = _stPadKeys(id).length;
-  const _u = (id === 'hcj') ? HCJ_UI[hcjLang()] : null;
+  const _u = (id === 'hcj') ? HCJ_UI[hcjLang()] : (id === 'rsn') ? RSN_UI[rsnLang()] : null;
+  const _lg = (id === 'rsn') ? rsnLang() : hcjLang();
   let icon, txt, col, bd, bg;
   if (n >= need) {
     icon = '✅'; col = '#8dff9f'; bd = 'rgba(110,231,140,0.7)'; bg = 'rgba(110,231,140,0.16)';
@@ -24973,14 +25022,14 @@ function _stReadBtnHtml(id, hi) {
     icon = '⬜'; col = 'rgba(255,215,0,0.75)'; bd = 'rgba(255,215,0,0.28)'; bg = 'rgba(255,215,0,0.06)';
     txt = hi ? 'आज अभी नहीं पढ़ा' : 'আজ এখনো পড়া হয়নি';
   }
-  if (_u) { txt = n >= need ? _u.done : (n > 0 ? _u.part(_hcjNum(n, hcjLang()), _hcjNum(need - n, hcjLang())) : _u.none); }
+  if (_u) { txt = n >= need ? _u.done : (n > 0 ? _u.part(_hcjNum(n, _lg), _hcjNum(need - n, _lg)) : _u.none); }
   return '<div id="strd' + id + '" class="st-read-status" style="display:flex;align-items:center;gap:8px;min-height:40px;padding:6px 12px;border-radius:12px;font-family:\'Hind Siliguri\',sans-serif;font-size:13px;font-weight:700;border:1px solid ' + bd + ';background:' + bg + ';color:' + col + '">' +
     '<span style="font-size:17px">' + icon + '</span><span>' + txt + '</span></div>';
 }
 function _stPadRefresh(id) {
   const el = document.getElementById('strd' + id);
   if (!el) return;
-  const hi = (id === 'hcj') ? hcjLang() === 'hi' : ((typeof secLang === 'function') && secLang('sv') === 'hi');
+  const hi = (id === 'hcj') ? hcjLang() === 'hi' : (id === 'rsn') ? rsnLang() === 'hi' : ((typeof secLang === 'function') && secLang('sv') === 'hi');
   el.outerHTML = _stReadBtnHtml(id, hi);
 }
 // Called from _renderVerse for every pad shown in the reader.
@@ -27726,7 +27775,8 @@ function _isProseBlock(verse) {
 const TRANSLATION_IDS = ["gvn", "hcj", "bgv", "gpg", "nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "nrs", "yga", "gva", "sga", "anl", "nka", "kel", "blv", "kpa", "hmg", "bvp", "jbp", "bla", "ljp", "sjp", "sjc", "ljc", "ljd", "sjd", "ipr", "ptr", "jhp", "pdv"];
 // Built-in translatable stotrams + live (repo-added) stotrams marked "paged".
 function _hasTranslationSt(id) {
-  if (id === 'hcj' && HCJ_UI[hcjLang()]) return false;   // new languages: verses only, no translation
+  if (id === 'hcj' && HCJ_UI[hcjLang()]) return false;
+  if (id === 'rsn' && RSN_UI[rsnLang()]) return false;   // new languages: shlokas only, no meaning   // new languages: verses only, no translation
   if (TRANSLATION_IDS.includes(id)) return true;
   const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
   return !!(e && e.paged);
@@ -28269,7 +28319,7 @@ function showLyrics(id) {
   }
   // Hindi श्री राधा सुधा निधि is also loaded on demand so the main bundle
   // continues to serve the existing Bengali reader quickly.
-  if (id === "rsn" && secLang('sv') === "hi" && !_rsnHindiLyrics) {
+  if (id === "rsn" && rsnLang() === "hi" && !_rsnHindiLyrics) {
     toast("हिंदी राधा सुधा निधि पाठ लोड हो रहा है… 🙏");
     loadRsnHindiLyrics()
       .then(() => showLyrics(id))
@@ -28278,7 +28328,7 @@ function showLyrics(id) {
   }
   // Bengali reader also needs the full 271-pad source (the bundled Bengali has only 41 shlokas).
   // If it can't be loaded, fall back to the bundled 41-shloka text instead of showing nothing.
-  if (id === "rsn" && secLang('sv') !== "hi" && !_rsnHindiLyrics && !_rsnSkipLoadOnce && !_rsnBnFull()) {
+  if (id === "rsn" && rsnLang() === "bn" && !_rsnHindiLyrics && !_rsnSkipLoadOnce && !_rsnBnFull()) {
     toast("রাধা সুধা নিধি লোড হচ্ছে… 🙏");
     loadRsnHindiLyrics()
       .then(() => showLyrics(id))
@@ -28685,7 +28735,7 @@ function _ppLabel(id, verse, idx) {
   const lines = String(verse || '').split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
   let num = '', startAt = 0;
   // Radha Sudha Nidhi: "শ্লোক 12:" / "श्लोक 12" header line → number, text starts on the next line
-  const hm = lines[0] && lines[0].match(/^(?:শ্লোক|श्लोक)\s*([0-9০-৯०-९]+)\s*:?\s*$/);
+  const hm = lines[0] && lines[0].match(/^(?:শ্লোক|श्लोक|Shloka|શ્લોક|ଶ୍ଲୋକ|ਸ਼ਲੋਕ)\s*([0-9০-৯०-९]+)\s*:?\s*$/);
   if (hm) { num = hm[1]; startAt = 1; }
   // Kelimal: "পদ ১" / "पद १" heading line → number, text starts on the next line (the राग line is skipped below)
   if (!num) {
@@ -29562,7 +29612,7 @@ function _renderVerse(idx, dir) {
   if (body) body.style.paddingTop = hasTranslation ? "48px" : "";
 
   const isHindiRsn =
-    _HI_MEANING_IDS.indexOf(_currentStotramId) !== -1 && secLang('sv') === "hi";
+    _HI_MEANING_IDS.indexOf(_currentStotramId) !== -1 && (_currentStotramId === 'rsn' ? rsnLang() : secLang('sv')) === "hi";
   // Hindi RSN uses व्याख्या: for its inline Hindi meaning. The Bengali
   // source keeps its existing অর্থ:/অর্থ২: markers and behavior.
   const verseHasHindiMeaning = isHindiRsn && /^(?:अर्थ|व्याख्या|शब्दार्थ)\s*:/m.test(verseText);

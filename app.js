@@ -2119,6 +2119,7 @@ const App = {
       ramanujMode: this.S.ramanujMode || false,
       nimbarkMode: this.S.nimbarkMode || false,
       vallabhMode: this.S.vallabhMode || false,
+      sampraday: this.S.sampraday || "harivangshi",   // Haridashi has no mode flag - without this it reset to Harivangshi on every reopen
       dt28Cycles: this.S.dt28Cycles || 0,
       milestones: this.S.milestones || { reached: {}, lastChecked: 0 },
       msConsider: this.S.msConsider || { radha: true, rv: true, hk: true, kv: true, ss: true, ram: true, sr: true, rm: true, nr: true, n28: true },
@@ -2224,6 +2225,8 @@ const App = {
         localStorage.getItem(this._lsKey()) || localStorage.getItem("rjap5");
       if (ls) {
         const d = JSON.parse(ls);
+        // Older saves (before sampraday was kept in the main state record) only have it in localStorage
+        if (!(main && main.sampraday) && d.sampraday) this.S.sampraday = d.sampraday;
         if (d.history) {
           for (const k in d.history)
             if (!this.S.history[k]) this.S.history[k] = d.history[k];

@@ -14863,6 +14863,12 @@ function fbInit() {
           uStats();
           renderSankalpas();
           renderMalaLog();
+          // Offline / before the cloud copy arrives, nothing else repaints the sampraday screen
+          // (Haridashi look, photos, selector, naam labels), so repaint it from the restored local state.
+          try { populateSettingsUI(); } catch (_e) {}
+          try { if (typeof renderSampradaySelector === "function") renderSampradaySelector(); } catch (_e) {}
+          try { if (typeof renderPhotoPickers === "function") renderPhotoPickers(); } catch (_e) {}
+          try { if (typeof applyNaamLangLabels === "function") applyNaamLangLabels(App.S.naamLang === "bn" ? "bn" : "sa"); } catch (_e) {}
         }
         fbHideAuthChecking();
         document.getElementById("fbLoggedOut").style.display = "none";

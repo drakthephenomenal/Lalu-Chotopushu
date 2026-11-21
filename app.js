@@ -35324,15 +35324,30 @@ window.applyBgPhotos = async function() {
       const jpgSrc = `./${conf.folder}/${val}.jpg`;
       const pngSrc = `./${conf.folder}/${val}.png`;
       const fallbackSrc = `./${conf.fallback || (conf.folder + '/1.png')}`;
-      const temp = new Image();
-      temp.onload = () => { el.src = jpgSrc; };
-      temp.onerror = () => {
-        const temp2 = new Image();
-        temp2.onload = () => { el.src = pngSrc; };
-        temp2.onerror = () => { el.src = fallbackSrc; }; // Final fallback to root file
-        temp2.src = pngSrc;
+      // Remember which extension worked, so the next open (esp. offline, where a
+      // missing .jpg probe is slow to fail) loads the right file straight away.
+      const extKey = 'rjImgExt:' + conf.folder + '/' + val;
+      let knownExt = null;
+      try { knownExt = localStorage.getItem(extKey); } catch (e) {}
+      const probe = () => {
+        const temp = new Image();
+        temp.onload = () => { el.src = jpgSrc; try { localStorage.setItem(extKey, 'jpg'); } catch (e) {} };
+        temp.onerror = () => {
+          const temp2 = new Image();
+          temp2.onload = () => { el.src = pngSrc; try { localStorage.setItem(extKey, 'png'); } catch (e) {} };
+          temp2.onerror = () => { el.src = fallbackSrc; }; // Final fallback to root file
+          temp2.src = pngSrc;
+        };
+        temp.src = jpgSrc;
       };
-      temp.src = jpgSrc;
+      if (knownExt === 'jpg' || knownExt === 'png') {
+        const direct = new Image();
+        direct.onload = () => { el.src = knownExt === 'jpg' ? jpgSrc : pngSrc; };
+        direct.onerror = () => { try { localStorage.removeItem(extKey); } catch (e) {} probe(); };
+        direct.src = knownExt === 'jpg' ? jpgSrc : pngSrc;
+      } else {
+        probe();
+      }
     }
   }
   if (typeof applyAllPhotoTransforms === 'function') applyAllPhotoTransforms();

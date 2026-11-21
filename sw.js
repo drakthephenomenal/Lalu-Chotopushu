@@ -1,3 +1,4 @@
+// v526: Offline: jap-display photos loaded online now open instantly offline (remembers which file type worked; uncached photos fail fast instead of hanging).
 // v509: Jap-screen sign-in popup now starts Google sign-in directly (button: Sign in with Google) instead of opening Settings.
 // v508: KV mode shows lifetime target again; Jap nudges are now square-cornered, transparent and sit on the tap area; Settings refreshes sampraday cards on open.
 // v507: KV japs count toward the lifetime target again (% bar + R/RV total include KV); KV mode shows its own total without target text.
@@ -495,7 +496,7 @@
 // v420 (Play build + dev email): bumped cache to force-invalidate stale app.js — Play build cleanup (install-permission helper disabled).
 // v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
 // v422: bumped cache to force-invalidate stale app.js / style.css / index.html — Haridashi Sampraday (Radha + Kunj Vihari / Sri Haridas, own Deity/Guru/Acharya photos, own lifetime target); Nimbark Deity/Guru/Acharya jap-display photos + Yugal mantra animation now matches Hare Krishna; reopened wishes no longer stay paused.
-const CACHE = 'radha-jap-v525';
+const CACHE = 'radha-jap-v526';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 
@@ -853,9 +854,12 @@ self.addEventListener('fetch', (event) => {
         return res;
       }).catch(() => null);
       if (cached) { event.waitUntil(net); return cached; }
-      const res = await net;
-      if (res) return res;
-      try { return await fetch(event.request); } catch (_e) {}
+      // v526: nothing cached yet -> do not hang on a dead connection (a missing .jpg probe
+      // used to wait on the network twice before the app could try the .png).
+      const slow = Symbol('slow');
+      const res = await Promise.race([net, new Promise((r) => setTimeout(() => r(slow), 4000))]);
+      if (res && res !== slow) return res;
+      if (res !== slow) { try { return await fetchWithTimeout(event.request, {}, 4000); } catch (_e) {} }
       return new Response('Offline', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
     })());
     return;

@@ -13969,10 +13969,62 @@ function loadRsnHindiLyrics() {
 // Small helper: pick the language-appropriate name/sub for a STLIST/customSt
 // entry, falling back to the Bangla (default) fields when a Hindi one isn't
 // present yet.
+// ── Hit Chaurasi Ji: its own reading language (Bangla, Hindi + English, Gujarati, Odia, Punjabi, Telugu without translation) ──
+// Text for the 5 extra languages lives in hcj-langs.js (window.HCJ_EXTRA). Choice is kept in App.S.secLang.hcj.
+const HCJ_LANGS = [
+  { c: 'bn', n: 'বাংলা' }, { c: 'hi', n: 'हिन्दी' }, { c: 'en', n: 'English' },
+  { c: 'gu', n: 'ગુજરાતી' }, { c: 'or', n: 'ଓଡ଼ିଆ' }, { c: 'pa', n: 'ਪੰਜਾਬੀ' }, { c: 'te', n: 'తెలుగు' },
+];
+const HCJ_UI = {
+  en: { dig: '0123456789', name: 'Sri Hit Chaurasi Ji', sub: 'Composed by Sri Hit Harivansh Chandra Ju Mahaprabhu',
+        req: '★ Must read — 12 pads daily (without meaning)', open: 'Open', none: 'Not read yet today',
+        done: 'Today\'s 12 pads complete', part: (n, r) => n + '/12 read — ' + r + ' to go' },
+  gu: { dig: '૦૧૨૩૪૫૬૭૮૯', name: 'શ્રી હિત ચૌરાસી જૂ', sub: 'શ્રી હિત હરિવંશ ચંદ્ર જૂ મહાપ્રભુ રચિત',
+        req: '★ અનિવાર્ય — દરરોજ ૧૨ પદ (અર્થ વગર)', open: 'ખોલો', none: 'આજે હજી વાંચ્યું નથી',
+        done: 'આજના ૧૨ પદ પૂર્ણ', part: (n, r) => n + '/૧૨ વાંચ્યા — હજી ' + r + ' બાકી' },
+  or: { dig: '୦୧୨୩୪୫୬୭୮୯', name: 'ଶ୍ରୀ ହିତ ଚୌରାସୀ ଜୂ', sub: 'ଶ୍ରୀ ହିତ ହରିବଂଶ ଚନ୍ଦ୍ର ଜୂ ମହାପ୍ରଭୁ ରଚିତ',
+        req: '★ ଅନିବାର୍ଯ୍ୟ — ପ୍ରତିଦିନ ୧୨ ପଦ (ଅର୍ଥ ବିନା)', open: 'ଖୋଲନ୍ତୁ', none: 'ଆଜି ଏପର୍ଯ୍ୟନ୍ତ ପଢ଼ାଯାଇନାହିଁ',
+        done: 'ଆଜିର ୧୨ ପଦ ସମ୍ପୂର୍ଣ୍ଣ', part: (n, r) => n + '/୧୨ ପଢ଼ା — ଆଉ ' + r + ' ବାକି' },
+  pa: { dig: '੦੧੨੩੪੫੬੭੮੯', name: 'ਸ਼੍ਰੀ ਹਿਤ ਚੌਰਾਸੀ ਜੂ', sub: 'ਸ਼੍ਰੀ ਹਿਤ ਹਰਿਵੰਸ਼ ਚੰਦ੍ਰ ਜੂ ਮਹਾਪ੍ਰਭੂ ਰਚਿਤ',
+        req: '★ ਲਾਜ਼ਮੀ — ਹਰ ਰੋਜ਼ ੧੨ ਪਦ (ਅਰਥ ਤੋਂ ਬਿਨਾਂ)', open: 'ਖੋਲ੍ਹੋ', none: 'ਅੱਜ ਹਾਲੇ ਨਹੀਂ ਪੜ੍ਹਿਆ',
+        done: 'ਅੱਜ ਦੇ ੧੨ ਪਦ ਪੂਰੇ', part: (n, r) => n + '/੧੨ ਪੜ੍ਹੇ — ਹੋਰ ' + r + ' ਬਾਕੀ' },
+  te: { dig: '౦౧౨౩౪౫౬౭౮౯', name: 'శ్రీ హిత చౌరాసీ జూ', sub: 'శ్రీ హిత హరివంశ చంద్ర జూ మహాప్రభు రచన',
+        req: '★ తప్పనిసరి — రోజుకు ౧౨ పదాలు (అర్థం లేకుండా)', open: 'తెరవండి', none: 'ఈ రోజు ఇంకా చదవలేదు',
+        done: 'ఈ రోజు ౧౨ పదాలు పూర్తి', part: (n, r) => n + '/౧౨ చదివారు — ఇంకా ' + r + ' మిగిలాయి' },
+};
+function hcjLang() {
+  const o = App && App.S && App.S.secLang && App.S.secLang.hcj;
+  if (HCJ_LANGS.some((x) => x.c === o)) return o;
+  return secLang('sv');
+}
+function _hcjNum(n, l) {
+  const d = (HCJ_UI[l] || {}).dig;
+  return d ? String(n).replace(/\d/g, (x) => d[x]) : String(n);
+}
+function setHcjLang(c) {
+  if (!HCJ_LANGS.some((x) => x.c === c) || !App || !App.S) return;
+  if (!App.S.secLang || typeof App.S.secLang !== 'object') App.S.secLang = {};
+  App.S.secLang.hcj = c;
+  try { App.save(); } catch (_e) {}
+  try { secLangPersistLocal(); } catch (_e) {}
+  window._svVI = null;   // verse-search index is rebuilt in the new script
+  try { renderSt(); } catch (_e) {}
+  try { if (typeof _lcRefreshOpenLyrics === 'function') _lcRefreshOpenLyrics(); } catch (_e) {}
+}
+function _hcjLangPickerHtml() {
+  const cur = hcjLang();
+  return '<select class="hcj-lang-sel" aria-label="Language" onclick="event.stopPropagation()" onchange="setHcjLang(this.value)" ' +
+    'style="flex-shrink:0;max-width:118px;min-height:38px;padding:6px 8px;border-radius:10px;border:1px solid rgba(255,215,0,0.55);' +
+    'background:rgba(255,215,0,0.10);color:#ffd700;font-size:13px;font-weight:700;font-family:\'Hind Siliguri\',sans-serif;color-scheme:dark">' +
+    HCJ_LANGS.map((x) => '<option value="' + x.c + '"' + (x.c === cur ? ' selected' : '') + '>' + x.n + '</option>').join('') +
+    '</select>';
+}
 function stName(st) {
+  if (st && st.id === 'hcj') { const l = hcjLang(); if (HCJ_UI[l]) return HCJ_UI[l].name; return (l === "hi" && st.nameHi) ? st.nameHi : st.name; }
   return (secLang('sv') === "hi" && st.nameHi) ? st.nameHi : st.name;
 }
 function stSub(st) {
+  if (st && st.id === 'hcj') { const l = hcjLang(); if (HCJ_UI[l]) return HCJ_UI[l].sub; return (l === "hi" && st.subHi) ? st.subHi : (st.sub || ""); }
   return (secLang('sv') === "hi" && st.subHi) ? st.subHi : (st.sub || "");
 }
 
@@ -22062,10 +22114,12 @@ function renderSt() {
         '</div>';
     }
 
-    const _stHi = secLang('sv') === 'hi';
+    const _hcjL = (st.id === 'hcj') ? hcjLang() : null;
+    const _stHi = _hcjL ? _hcjL === 'hi' : secLang('sv') === 'hi';
+    if (st.id === 'hcj') headerRight = _hcjLangPickerHtml();
     // No pāṭh counter / +− buttons in any stotram folder — just Open (+ a daily ✅ on badged items).
     const _noCount = true;
-    const _reqTxt = _stHi ? st.reqHi : st.reqBn;
+    const _reqTxt = (_hcjL && HCJ_UI[_hcjL]) ? HCJ_UI[_hcjL].req : (_stHi ? st.reqHi : st.reqBn);
     const _reqBadge = _reqTxt
       ? '<div class="st-req" style="display:inline-block;margin-top:7px;padding:3px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.2px;font-family:\'Hind Siliguri\',sans-serif;background:linear-gradient(135deg,#ffe27a 0%,#ffc107 55%,#e69500 100%);color:#2a1a00;box-shadow:0 0 9px rgba(255,200,0,0.45)">' + escHtml(_reqTxt) + '</div>'
       : '';
@@ -22080,7 +22134,7 @@ function renderSt() {
         headerRight +
       '</div>' +
       (_noCount
-        ? '<div class="st-row" style="justify-content:' + (_reqTxt ? 'space-between' : 'flex-end') + '">' + (RV_PAD_REQ[st.id] ? _stReadBtnHtml(st.id, _stHi) : '') + (hasLyrics ? '<button class="st-open-btn" onclick="showLyrics(\'' + st.id + '\')">' + (_stHi ? 'खोलें' : 'খুলুন') + '</button>' : '') + '</div>'
+        ? '<div class="st-row" style="justify-content:' + (_reqTxt ? 'space-between' : 'flex-end') + '">' + (RV_PAD_REQ[st.id] ? _stReadBtnHtml(st.id, _stHi) : '') + (hasLyrics ? '<button class="st-open-btn" onclick="showLyrics(\'' + st.id + '\')">' + ((_hcjL && HCJ_UI[_hcjL]) ? HCJ_UI[_hcjL].open : (_stHi ? 'खोलें' : 'খুলুন')) + '</button>' : '') + '</div>'
         : (
       '<div class="st-row">' +
         '<div>' +
@@ -24858,6 +24912,12 @@ function _rsnBnFull() {
 }
 
 function getEffectiveLyrics(id) {
+  if (id === 'hcj') {   // Hit Chaurasi Ji follows its own language picker
+    const _hl = hcjLang();
+    if (HCJ_UI[_hl] && typeof HCJ_EXTRA !== 'undefined' && HCJ_EXTRA[_hl]) return HCJ_EXTRA[_hl];
+    if (_hl === 'hi' && typeof LYRICS_HI !== 'undefined' && LYRICS_HI.hcj) return LYRICS_HI.hcj;
+    if (_hl === 'bn' && LYRICS.hcj) return LYRICS.hcj;
+  }
   if (!LYRICS[id] && _BN_FROM_HI_IDS.indexOf(id) !== -1 && typeof LYRICS_HI !== "undefined" && LYRICS_HI[id]) {
     LYRICS[id] = _devToBn(LYRICS_HI[id]);
     if (id === "pdv") LYRICS[id] = _pdvBnMeanings(LYRICS[id]);
@@ -24899,6 +24959,7 @@ function _stReadBtnHtml(id, hi) {
   const need = RV_PAD_REQ[id];
   if (!need) return '';
   const n = _stPadKeys(id).length;
+  const _u = (id === 'hcj') ? HCJ_UI[hcjLang()] : null;
   let icon, txt, col, bd, bg;
   if (n >= need) {
     icon = '✅'; col = '#8dff9f'; bd = 'rgba(110,231,140,0.7)'; bg = 'rgba(110,231,140,0.16)';
@@ -24912,13 +24973,14 @@ function _stReadBtnHtml(id, hi) {
     icon = '⬜'; col = 'rgba(255,215,0,0.75)'; bd = 'rgba(255,215,0,0.28)'; bg = 'rgba(255,215,0,0.06)';
     txt = hi ? 'आज अभी नहीं पढ़ा' : 'আজ এখনো পড়া হয়নি';
   }
+  if (_u) { txt = n >= need ? _u.done : (n > 0 ? _u.part(_hcjNum(n, hcjLang()), _hcjNum(need - n, hcjLang())) : _u.none); }
   return '<div id="strd' + id + '" class="st-read-status" style="display:flex;align-items:center;gap:8px;min-height:40px;padding:6px 12px;border-radius:12px;font-family:\'Hind Siliguri\',sans-serif;font-size:13px;font-weight:700;border:1px solid ' + bd + ';background:' + bg + ';color:' + col + '">' +
     '<span style="font-size:17px">' + icon + '</span><span>' + txt + '</span></div>';
 }
 function _stPadRefresh(id) {
   const el = document.getElementById('strd' + id);
   if (!el) return;
-  const hi = (typeof secLang === 'function') && secLang('sv') === 'hi';
+  const hi = (id === 'hcj') ? hcjLang() === 'hi' : ((typeof secLang === 'function') && secLang('sv') === 'hi');
   el.outerHTML = _stReadBtnHtml(id, hi);
 }
 // Called from _renderVerse for every pad shown in the reader.
@@ -27664,6 +27726,7 @@ function _isProseBlock(verse) {
 const TRANSLATION_IDS = ["gvn", "hcj", "bgv", "gpg", "nkc", "gms", "rsn", "svb", "dkc", "yms", "bg", "rks", "gg", "hsr", "gsk", "shs", "kcr", "hkb", "bbv", "pjj", "jdh", "sfv", "dmd", "nrs", "yga", "gva", "sga", "anl", "nka", "kel", "blv", "kpa", "hmg", "bvp", "jbp", "bla", "ljp", "sjp", "sjc", "ljc", "ljd", "sjd", "ipr", "ptr", "jhp", "pdv"];
 // Built-in translatable stotrams + live (repo-added) stotrams marked "paged".
 function _hasTranslationSt(id) {
+  if (id === 'hcj' && HCJ_UI[hcjLang()]) return false;   // new languages: verses only, no translation
   if (TRANSLATION_IDS.includes(id)) return true;
   const e = (typeof _liveStEntry === "function") ? _liveStEntry(id) : null;
   return !!(e && e.paged);

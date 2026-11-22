@@ -14011,13 +14011,19 @@ function setHcjLang(c) {
   try { renderSt(); } catch (_e) {}
   try { if (typeof _lcRefreshOpenLyrics === 'function') _lcRefreshOpenLyrics(); } catch (_e) {}
 }
+// Small universal caption above the language picker (English, so it reads the same in every language)
+function _langPickWrap(selectHtml) {
+  return '<div class="lang-pick-wrap" onclick="event.stopPropagation()" style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:3px">' +
+    '<span style="font-size:10px;font-weight:600;letter-spacing:0.3px;line-height:1;color:rgba(255,215,0,0.72);font-family:system-ui,-apple-system,\'Segoe UI\',Roboto,sans-serif">Select language</span>' +
+    selectHtml + '</div>';
+}
 function _hcjLangPickerHtml() {
   const cur = hcjLang();
-  return '<select class="hcj-lang-sel" aria-label="Language" onclick="event.stopPropagation()" onchange="setHcjLang(this.value)" ' +
+  return _langPickWrap('<select class="hcj-lang-sel" aria-label="Language" onclick="event.stopPropagation()" onchange="setHcjLang(this.value)" ' +
     'style="flex-shrink:0;max-width:118px;min-height:38px;padding:6px 8px;border-radius:10px;border:1px solid rgba(255,215,0,0.55);' +
     'background:rgba(255,215,0,0.10);color:#ffd700;font-size:13px;font-weight:700;font-family:\'Hind Siliguri\',sans-serif;color-scheme:dark">' +
     HCJ_LANGS.map((x) => '<option value="' + x.c + '"' + (x.c === cur ? ' selected' : '') + '>' + x.n + '</option>').join('') +
-    '</select>';
+    '</select>');
 }
 // ── Radha Sudha Nidhi Ji: own reading language. Bangla + Hindi as before; English, Gujarati, Odia, Punjabi = shlokas only (rsn-langs.js -> window.RSN_EXTRA) ──
 const RSN_LANGS = [
@@ -14051,11 +14057,11 @@ function setRsnLang(c) {
 }
 function _rsnLangPickerHtml() {
   const cur = rsnLang();
-  return '<select class="hcj-lang-sel" aria-label="Language" onclick="event.stopPropagation()" onchange="setRsnLang(this.value)" ' +
+  return _langPickWrap('<select class="hcj-lang-sel" aria-label="Language" onclick="event.stopPropagation()" onchange="setRsnLang(this.value)" ' +
     'style="flex-shrink:0;max-width:118px;min-height:38px;padding:6px 8px;border-radius:10px;border:1px solid rgba(255,215,0,0.55);' +
     'background:rgba(255,215,0,0.10);color:#ffd700;font-size:13px;font-weight:700;font-family:\'Hind Siliguri\',sans-serif;color-scheme:dark">' +
     RSN_LANGS.map((x) => '<option value="' + x.c + '"' + (x.c === cur ? ' selected' : '') + '>' + x.n + '</option>').join('') +
-    '</select>';
+    '</select>');
 }
 // ── Hit Chaurasi folder card + Phalastuti card: follow the same language picker as Hit Chaurasi Ji (HCP text: hcp-langs.js -> window.HCP_EXTRA) ──
 const HC_FOLDER_UI = {

@@ -54,28 +54,29 @@
 
     <div class="glow1"></div>
     <div class="glow2"></div>
-    <canvas id="ringCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;background:transparent;"></canvas>
+    <!-- Two ring canvases are DRAWN ONCE and then spun by CSS (compositor), so the animation keeps running smoothly
+         even while the cloud data is being parsed and the main thread is busy (the old per-frame canvas loop froze). -->
+    <canvas id="ringCanvasA" class="ls-ringc ls-ringc-a"></canvas>
+    <canvas id="ringCanvasB" class="ls-ringc ls-ringc-b"></canvas>
     <script>
     (function() {
       var BN = (window._LS_LANG === 'bn');
       var RADHA = BN ? 'রাধা' : 'राधा';
-      var raf, rot1 = 0, rot2 = 0, fontReady = false;
+      var drawn = false;
 
-      function drawTextOnRing(ctx, cx, cy, radius, rotOffset, color, fs) {
+      function drawTextOnRing(ctx, cx, cy, radius, color, fs) {
         ctx.save();
         ctx.font = '700 ' + fs + 'px ' + (BN ? '"Hind Siliguri", "Noto Sans Bengali", sans-serif' : '"Noto Sans Devanagari", sans-serif');
         ctx.fillStyle = color;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         var wordW = ctx.measureText(RADHA).width;
-        // Pad each word with a gap (acts as the separator) so straight
-        // tangent segments don't overlap their neighbours on the curve.
         var slotW = wordW * 1.9;
         var circ  = 2 * Math.PI * radius;
         var reps  = Math.max(1, Math.floor(circ / slotW));
         var anglePerUnit = (2 * Math.PI) / reps;
         for (var i = 0; i < reps; i++) {
-          var midAngle = rotOffset + i * anglePerUnit;
+          var midAngle = i * anglePerUnit;
           ctx.save();
           ctx.translate(cx + radius * Math.cos(midAngle), cy + radius * Math.sin(midAngle));
           ctx.rotate(midAngle + Math.PI / 2);
@@ -85,49 +86,37 @@
         ctx.restore();
       }
 
-      function frame() {
-        var canvas = document.getElementById('ringCanvas');
-        var ls = document.getElementById('ls');
-        if (!canvas || !ls || ls.classList.contains('hide')) return;
-
+      function drawRing(id, radiusFactor, color) {
+        var canvas = document.getElementById(id);
+        if (!canvas || !canvas.parentElement) return;
         var rect = canvas.parentElement.getBoundingClientRect();
         var size = rect.width || 320;
         var dpr  = window.devicePixelRatio || 1;
-        if (canvas.width !== size * dpr) {
-          canvas.width  = size * dpr;
-          canvas.height = size * dpr;
-        }
+        canvas.width  = Math.round(size * dpr);
+        canvas.height = Math.round(size * dpr);
         var ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.save();
         ctx.scale(dpr, dpr);
-
-        var cx = size / 2, cy = size / 2;
-        var r1 = size * 0.46;  // yellow outer ring
-        var r2 = size * 0.40;  // blue inner ring
-        var fs = Math.max(11, Math.round(size * 0.052));
-
-        drawTextOnRing(ctx, cx, cy, r1,  rot1, '#FFD700', fs);
-        drawTextOnRing(ctx, cx, cy, r2, -rot2, '#4A90E2', fs);
-
+        drawTextOnRing(ctx, size / 2, size / 2, size * radiusFactor, color, Math.max(11, Math.round(size * 0.052)));
         ctx.restore();
-
-        rot1 += 0.003;  // yellow spins forward
-        rot2 += 0.0024; // blue spins backward (negated above)
-        raf = requestAnimationFrame(frame);
       }
 
-      function startAnim() {
-        cancelAnimationFrame(raf);
-        raf = requestAnimationFrame(frame);
+      function drawAll() {
+        drawRing('ringCanvasA', 0.46, '#FFD700');   // yellow outer ring
+        drawRing('ringCanvasB', 0.40, '#4A90E2');   // blue inner ring
       }
 
       function tryDraw() {
+        var done = false;
+        function go() { if (done) return; done = true; drawAll(); }
         if (document.fonts && document.fonts.load) {
           document.fonts.load(BN ? '700 14px "Hind Siliguri"' : '700 14px "Noto Sans Devanagari"', RADHA)
-            .then(startAnim).catch(startAnim);
+            .then(go).catch(go);
+          // slow font download: show the rings anyway after 1.2 s, and redraw once the font arrives
+          setTimeout(function () { if (!done) { go(); document.fonts.ready.then(drawAll).catch(function(){}); } }, 1200);
         } else {
-          setTimeout(startAnim, 800);
+          setTimeout(go, 400);
         }
       }
 
@@ -152,6 +141,11 @@
     s.textContent = 'जय जय श्री हरिवंश'; s.style.fontFamily = "'Tiro Devanagari Hindi','Noto Sans Devanagari',serif";
   })();
   </script>
+  <!-- Loading progress: real steps (signed-in check → your saved data → cloud copy). Bar + shine are CSS-animated. -->
+  <div class="ls-prog" id="lsProg" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+    <div class="ls-prog-fill" id="lsProgFill"><i class="ls-prog-shine"></i></div>
+  </div>
+  <div class="ls-prog-row"><span id="lsProgLabel">Starting…</span><span id="lsProgPct">0%</span></div>
 </div>
 
 <!-- Falling Peacock Feathers -->

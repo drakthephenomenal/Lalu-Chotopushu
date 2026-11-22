@@ -12049,7 +12049,7 @@ async function shareBackup() {
   let json, filename;
   try {
     json = JSON.stringify(backup, null, 2);
-    filename = "radha-naam-jap-backup-" + App.getTk() + ".json";
+    filename = _driveBackupFilename();
   } catch (e) {
     console.error("shareBackup build failed:", e);
     toast("❌ Backup failed: " + (e && e.message ? e.message : e));
@@ -15126,6 +15126,7 @@ function fbInit() {
         // ── CRITICAL: if UID changed, reload data scoped to new user ──
         if (prevUid !== user.uid) {
           App._uid = user.uid;
+          try { const _ni = document.getElementById('lbNameIn'); if (_ni) _ni.value = ''; const _nf = document.getElementById('lbNameFeedback'); if (_nf) _nf.textContent = ''; } catch (_e) {}   // previous account's display name must not leak
           // Preserve GPS coords across user switch
           const _prevLat = App.S.lastLat ?? null;
           const _prevLng = App.S.lastLng ?? null;
@@ -16028,16 +16029,15 @@ async function connectDriveAccess() {
   }
 }
 
-// Builds a filename like "radha-naam-jap-backup-2026-07-16_2030.json" using
-// the DEVICE's local time (not UTC), so it matches what the person actually
-// sees on their clock when they open Drive later.
+// Backup file name, short and easy to read: "Jap_16Jan2026,5.20am.json"
+// (DEVICE local time, 12-hour clock, so it matches what the person sees on their own clock).
 function _driveBackupFilename() {
   const d = new Date();
-  const pad = (n) => String(n).padStart(2, "0");
-  const stamp =
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-    `_${pad(d.getHours())}${pad(d.getMinutes())}`;
-  return `radha-naam-jap-backup-${stamp}.json`;
+  const mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getMonth()];
+  const h24 = d.getHours();
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `Jap_${d.getDate()}${mon}${d.getFullYear()},${h12}.${mm}${h24 >= 12 ? "pm" : "am"}.json`;
 }
 
 // Foreground catch-up for the daily Google Drive backup — runs once each
@@ -17208,6 +17208,7 @@ async function confirmDeleteAccount() {
 }
 
 async function fbSignOut(opts) {
+  try { const _ni = document.getElementById('lbNameIn'); if (_ni) _ni.value = ''; } catch (_e) {}   // don't leave this account's name for the next sign-in
   if (!fbAuth) return;
   const _skipPush = !!(opts && opts.skipPush); // account deletion: never write data back to the cloud
   const outgoingUid = (fbUser && fbUser.uid) || App._uid || null;
@@ -27745,7 +27746,7 @@ window.addEventListener("load", async () => {
         m.style.cssText = "position:absolute;left:0;right:0;bottom:12%;text-align:center;font-size:13px;letter-spacing:.5px;color:rgba(255,215,0,.85);z-index:10;pointer-events:none;";
         ls.appendChild(m);
       }
-      m.textContent = _isOffline() ? "Loading your saved data\u2026" : "Loading your data from the cloud\u2026";
+      m.textContent = _isOffline() ? "Still loading your saved data\u2026" : "Still loading from the cloud \u2014 slow connection\u2026";
     }
     function showOpenAnywayBtn() {
       const ls = document.getElementById("ls");
@@ -27757,11 +27758,44 @@ window.addEventListener("load", async () => {
       b.onclick = function () { window._rjapOpenAnyway = true; };
       ls.appendChild(b);
     }
+    // ── Progress bar: moves with REAL loading steps, eases between them so it never looks stuck ──
+    //   10% opened → 35% signed-in check done → 65% this user's saved data loaded → 100% cloud copy confirmed.
+    let shown = 4;
+    function setProgress(pct, label) {
+      pct = Math.max(0, Math.min(100, pct));
+      const fill = document.getElementById("lsProgFill"), pctEl = document.getElementById("lsProgPct"),
+            lab = document.getElementById("lsProgLabel"), bar = document.getElementById("lsProg");
+      if (fill) fill.style.transform = "scaleX(" + (pct / 100).toFixed(3) + ")";
+      if (pctEl) pctEl.textContent = Math.round(pct) + "%";
+      if (lab && label) lab.textContent = label;
+      if (bar) bar.setAttribute("aria-valuenow", String(Math.round(pct)));
+    }
+    function progressTarget(ready) {
+      let floor = 10, label = "Starting\u2026";
+      if (window._rjapAuthResolved) { floor = 35; label = "Checking your account\u2026"; }
+      try {
+        const signed = typeof fbUser !== "undefined" && fbUser;
+        if (window._rjapAuthResolved && signed && window._rjapLocalUid === fbUser.uid) { floor = 65; label = _isOffline() ? "Loading your saved data\u2026" : "Loading your data from the cloud\u2026"; }
+      } catch (_e) {}
+      const next = floor === 10 ? 35 : floor === 35 ? 65 : 96;
+      return { cap: ready ? 100 : Math.max(floor, next - 4), label };
+    }
+    setProgress(shown, "Starting\u2026");
     (function tick() {
       const el = Date.now() - t0;
       let ready = false;
       try { ready = _rjapDataReady(); } catch (_e) { ready = false; }
-      if (el >= 5000 && (ready || window._rjapOpenAnyway === true)) { hideSplash(); return; }
+      const pt = progressTarget(ready);
+      // never show 100% before the 5 s minimum has passed
+      const target = ready ? (el >= 5000 ? 100 : 96) : pt.cap;
+      shown = shown + (target - shown) * 0.22;
+      if (target - shown < 0.5) shown = target;
+      setProgress(shown, ready ? (el >= 5000 ? "Ready \uD83D\uDE4F" : "Almost ready\u2026") : pt.label);
+      if (el >= 5000 && (ready || window._rjapOpenAnyway === true)) {
+        setProgress(100, "Ready \uD83D\uDE4F");
+        setTimeout(hideSplash, 500);            // let the bar visibly reach 100%
+        return;
+      }
       if (el >= 5000) showWaitMsg();
       if (el >= 45000) showOpenAnywayBtn();
       setTimeout(tick, 250);
@@ -35323,7 +35357,7 @@ function populateLbSettingsUI() {
   const inp = document.getElementById('lbNameIn');
   const row = document.getElementById('lbNameRow');
   if (tg)  tg.classList.toggle('on', !!App.S.lbOptIn);
-  if (inp && !inp.value) inp.value = App.S.lbDisplayName || '';
+  if (inp && document.activeElement !== inp) inp.value = App.S.lbDisplayName || '';   // always THIS account's name, never a leftover from a previous sign-in
   if (row) row.style.display = (App.S.lbOptIn || isGhostMode()) ? 'block' : 'none';   // developer can always edit a viewed user's name
   populateDriveBackupUI();
 }
@@ -36173,9 +36207,7 @@ async function checkAutoBackup() {
       backupData[key] = localStorage.getItem(key);
     }
     
-    const dStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-    const timeStr = now.getHours() >= 12 ? '12PM' : '12AM';
-    const filename = `RadhaNaamJap_Backup_${dStr}_${timeStr}.json`;
+    const filename = _driveBackupFilename();
 
     await saveJsonFile(filename, JSON.stringify(backupData, null, 2));
     localStorage.setItem('rjap_lastAutoBackup', Date.now().toString());

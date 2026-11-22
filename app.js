@@ -37255,7 +37255,7 @@ async function _performNativeCacheRefresh() {
 function confirmWebCacheRefresh(mode) {
   // mode "update" (from the Update App button) -> "Update Anyway"; otherwise "Refresh Anyway".
   const pb = document.getElementById("webCacheProceedBtn");
-  if (pb) pb.textContent = mode === "update" ? "Update Anyway" : "Refresh Anyway";
+  if (pb) pb.textContent = "Refresh Now";
   const modal = document.getElementById("webCacheWarningModal");
   if (modal) {
     modal.style.display = "flex";
@@ -37276,6 +37276,24 @@ function _confirmWebCacheRefreshProceed() {
   _dismissWebCacheWarning();
   _forceRefreshWebApp();
 }
+
+// Web/PWA: label the Refresh button "Refresh and Update (v###)", where ### is this
+// app.js build's version (read from the <script src="./app.js?v=###"> tag in index.html,
+// so it stays in sync whenever that number is bumped).
+function _rjStampRefreshLabel() {
+  try {
+    const lbl = document.getElementById("appRefreshBtnLabel");
+    if (!lbl) return;
+    let ver = "";
+    const s = document.querySelector('script[src*="app.js"]');
+    if (s) { const m = (s.getAttribute("src") || "").match(/[?&]v=([^&#]+)/); if (m) ver = m[1]; }
+    const _cap = window.Capacitor;
+    if (_cap && _cap.isNativePlatform && _cap.isNativePlatform()) { lbl.textContent = "Refresh Now"; return; }
+    lbl.textContent = "Refresh and Update" + (ver ? " (v" + ver + ")" : "");
+  } catch (_) {}
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", _rjStampRefreshLabel);
+else _rjStampRefreshLabel();
 
 // Separate "Refresh" button: clears cached files / local cache and reloads (never installs an update).
 function rjRefreshApp() {

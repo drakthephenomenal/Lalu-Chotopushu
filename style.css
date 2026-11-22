@@ -4298,23 +4298,64 @@ body.vallabh-mode .tz .gurudev-wm{display:none !important;animation:none !import
    needing to read the status text. Nothing changes when no update is
    available or the check hasn't run yet — no glow, no extra attention. */
 #appUpdateCard.update-available {
-  background: linear-gradient(135deg, rgba(28, 92, 224, 0.4), rgba(10, 40, 120, 0.6)) !important;
-  border: 1px solid rgba(90, 170, 255, 0.9) !important;
+  background: linear-gradient(135deg, rgba(255, 190, 40, 0.16), rgba(40, 24, 0, 0.55)) !important;
+  border: 1px solid rgba(255, 200, 60, 0.85) !important;
   animation: appUpdateGlow 1.8s ease-in-out infinite;
 }
 #appUpdateCard.update-available #appUpdateTitle {
-  color: #bfe0ff !important;
+  color: #ffe27a !important;
 }
 #appUpdateCard.update-available #appUpdateStatus {
-  color: #dcecff !important;
+  color: #fff1c2 !important;
   font-weight: 600;
 }
 #appUpdateCard.update-available #appUpdateChev {
-  color: rgba(180, 215, 255, 0.9) !important;
+  color: rgba(255, 225, 140, 0.9) !important;
 }
 @keyframes appUpdateGlow {
-  0%, 100% { box-shadow: 0 0 8px 0 rgba(70, 150, 255, 0.35); }
-  50% { box-shadow: 0 0 22px 5px rgba(70, 150, 255, 0.8); }
+  0%, 100% { box-shadow: 0 0 8px 0 rgba(255, 190, 40, 0.30); }
+  50% { box-shadow: 0 0 22px 5px rgba(255, 190, 40, 0.70); }
+}
+
+/* ── Settings (Android app): Update App and Refresh Now as two separate boxes side by side ── */
+#rjUpdRefreshRow { margin-bottom: 12px; }
+#rjUpdRefreshRow > .sc { margin-bottom: 12px; }
+#rjUpdRefreshRow.rj-two-up { display: flex; gap: 10px; align-items: stretch; }
+#rjUpdRefreshRow.rj-two-up > .sc { margin-bottom: 0; }
+#rjUpdRefreshRow.rj-two-up > #appUpdateCard { flex: 1.7 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+#rjUpdRefreshRow.rj-two-up > #appRefreshCard { flex: 1 1 0; min-width: 0; padding: 10px !important; display: flex; align-items: center; }
+#rjUpdRefreshRow.rj-two-up > #appRefreshCard > div { width: 100%; }
+#rjUpdRefreshRow.rj-two-up > #appRefreshCard > div > div { display: none; }   /* hide "Refresh" title + subtext */
+#rjUpdRefreshRow.rj-two-up > #appRefreshCard #appRefreshBtn { width: 100%; min-height: 40px; padding: 6px 8px !important; font-size: 13px !important; }
+
+/* Idle: warm steady gold glow on the icon. */
+.rj-upd-ic {
+  flex-shrink: 0;
+  color: #ffc21a;
+  filter: drop-shadow(0 0 3px rgba(255, 190, 30, 0.9)) drop-shadow(0 0 7px rgba(255, 140, 0, 0.55));
+}
+/* Update available: hot golden icon + pulsing button. */
+#appUpdateCard.update-available .rj-upd-gold {
+  color: #fff0a0;
+  background: linear-gradient(135deg, rgba(255, 210, 60, 0.45), rgba(255, 150, 0, 0.30));
+  border-color: rgba(255, 220, 90, 0.95);
+  animation: rjUpdBtnPulse 1.4s ease-in-out infinite;
+}
+#appUpdateCard.update-available .rj-upd-ic {
+  color: #ffd21a;
+  animation: rjUpdIconPulse 1.4s ease-in-out infinite;
+}
+@keyframes rjUpdIconPulse {
+  0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 4px rgba(255, 200, 30, 0.95)) drop-shadow(0 0 8px rgba(255, 140, 0, 0.6)); }
+  50%      { transform: scale(1.22); filter: drop-shadow(0 0 8px rgba(255, 225, 60, 1)) drop-shadow(0 0 18px rgba(255, 150, 0, 0.95)); }
+}
+@keyframes rjUpdBtnPulse {
+  0%, 100% { box-shadow: 0 0 6px 0 rgba(255, 190, 40, 0.35); }
+  50%      { box-shadow: 0 0 16px 3px rgba(255, 190, 40, 0.8); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #appUpdateCard.update-available .rj-upd-ic,
+  #appUpdateCard.update-available .rj-upd-gold { animation: none; }
 }
 
 /* ── Milestone video link buttons (N&M) ── */

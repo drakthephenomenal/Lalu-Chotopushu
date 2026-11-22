@@ -41405,3 +41405,17 @@ async function _syncPublicPhoto(p, largeOverride, hdFile) {
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", setup); else setup();
 })();
+
+// ── Show "Sign in with Zoho" on the PWA only (native app keeps it hidden) ──
+(function () {
+  function showZohoForPwa() {
+    try {
+      if (!_isNativeApp()) {
+        var w = document.getElementById("zohoSignInWrap");
+        if (w) w.style.display = "";
+      }
+    } catch (e) {}
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", showZohoForPwa);
+  else showZohoForPwa();
+})();

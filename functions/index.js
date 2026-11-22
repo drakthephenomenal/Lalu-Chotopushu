@@ -1002,8 +1002,16 @@ exports.notifyAdminsNewUser = functions.firestore
       let dev;
       try { dev = await admin.auth().getUserByEmail(devEmail); } catch (e) { continue; }
       try {
-        const inboxRef = db.collection("users").doc(dev.uid).collection("pushInbox").doc();
-        await inboxRef.set({ title, body, ts: Date.now(), createdAt: admin.firestore.FieldValue.serverTimestamp(), kind: "newuser", about: uid });
+        // One fixed id per (new user, admin): if Firebase delivers this trigger twice, or the account's
+        // first doc is created twice, the second run finds the same doc and stops, so the admin gets exactly
+        // one 🔔 entry and one push per new user (a random .doc() id used to make a second copy each time).
+        const inboxRef = db.collection("users").doc(dev.uid).collection("pushInbox").doc("newuser_" + uid);
+        try {
+          await inboxRef.create({ title, body, ts: Date.now(), createdAt: admin.firestore.FieldValue.serverTimestamp(), kind: "newuser", about: uid });
+        } catch (e) {
+          if (e && (e.code === 6 || /already exists/i.test(String(e.message || "")))) continue;   // already alerted
+          throw e;
+        }
         const ds = await db.collection("users").doc(dev.uid).collection("data").doc("main").get();
         const tokens = new Set();
         const one = ds.exists && ds.get("fcmToken");
@@ -1011,11 +1019,14 @@ exports.notifyAdminsNewUser = functions.firestore
         if (one) tokens.add(one);
         if (Array.isArray(many)) many.forEach((t) => { if (t) tokens.add(t); });
         if (!tokens.size) continue;
+        // Android gets a DATA-ONLY message (no "notification" block) so the app's own service
+        // (RjapMessagingService) builds the notification itself, with the colour logo, exactly like
+        // "Backup Saved". Web/PWA devices still get a normal notification through "webpush".
         await admin.messaging().sendEachForMulticast({
           tokens: Array.from(tokens),
-          notification: { title, body },
-          android: { priority: "high", notification: { icon: "ic_notify_color", channelId: "rjap_reminders_v2", sound: "reminder_tone", tag: inboxRef.id } },
-          data: { pid: inboxRef.id, kind: "newuser" },
+          data: { pid: inboxRef.id, kind: "newuser", rjapShow: "1", title, body },
+          android: { priority: "high" },
+          webpush: { notification: { title, body, icon: "/notif-icon.png", tag: "s:" + inboxRef.id } },
         });
       } catch (e) {
         console.error("notifyAdminsNewUser failed for", devEmail, e && e.message);

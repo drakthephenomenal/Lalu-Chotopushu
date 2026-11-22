@@ -363,6 +363,18 @@ cp "android-src/MediaKeepAlivePlugin.java" "$MAIN_ACTIVITY_DIR/MediaKeepAlivePlu
 cp "android-src/MediaKeepAliveService.java" "$MAIN_ACTIVITY_DIR/MediaKeepAliveService.java"
 echo "  installed MediaKeepAlivePlugin.java + MediaKeepAliveService.java"
 
+# Colour-logo server alerts (data-only push): RjapMessagingService extends the Capacitor Firebase Messaging
+# service, so only install it when that plugin class is really there.
+if grep -rqs "class MessagingService" node_modules/@capacitor-firebase/messaging/android/src; then
+  cp "android-src/RjapMessagingService.java" "$MAIN_ACTIVITY_DIR/RjapMessagingService.java"
+  if ! grep -q "RjapMessagingService" android/app/src/main/AndroidManifest.xml; then
+    sed -i 's#</application>#    <service android:name=".RjapMessagingService" android:exported="false">\n            <intent-filter android:priority="100">\n                <action android:name="com.google.firebase.MESSAGING_EVENT" />\n            </intent-filter>\n        </service>\n    </application>#' android/app/src/main/AndroidManifest.xml
+  fi
+  echo "  installed RjapMessagingService.java + registered it in AndroidManifest.xml"
+else
+  echo "  ⚠ Capacitor Firebase Messaging service class not found — RjapMessagingService NOT installed (server alerts keep the plain icon)"
+fi
+
 cat > "$MAIN_ACTIVITY" << EOF
 $PKG_LINE
 

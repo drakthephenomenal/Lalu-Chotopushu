@@ -568,6 +568,12 @@ function _rjapAddNotifHistory(title, body, opts) {
   opts = opts || {};
   const list = _rjapGetNotifHistory();
   if (opts.key && list.some((n) => n.k === opts.key)) return null;
+  // The server can store the same alert twice under two different ids (the "New user joined" alert was
+  // doubled this way). Same title + text within 2 minutes, both from the server → treat as one.
+  if (opts.key && String(opts.key).indexOf("s:") === 0) {
+    const _t = title || "Notification", _b = body || "", _ts = opts.ts || Date.now();
+    if (list.some((n) => n.k && String(n.k).indexOf("s:") === 0 && n.title === _t && n.body === _b && Math.abs((n.ts || 0) - _ts) < 120000)) return null;
+  }
   const entry = {
     id: Date.now() + "_" + Math.random().toString(36).slice(2, 8),
     title: title || "Notification",
@@ -584,10 +590,67 @@ function _rjapAddNotifHistory(title, body, opts) {
   return entry;
 }
 
+// ── Read state that survives uninstall/reinstall ──
+// Server pushes (key "s:<id>") also get their "read" mark saved in the signed-in account
+// (users/{uid}/pushRead/{id}), so after a reinstall / new phone they come back as already read.
+// Marks made while signed out / offline wait in a small queue and are sent on the next sync.
+const RJAP_PUSHREAD_Q = "rjap_pushread_q";
+function _rjapPushReadQ() { try { const q = JSON.parse(localStorage.getItem(RJAP_PUSHREAD_Q) || "[]"); return Array.isArray(q) ? q : []; } catch (_e) { return []; } }
+function _rjapPushReadMark(keys) {
+  try {
+    const ids = (keys || []).filter((k) => typeof k === "string" && k.indexOf("s:") === 0).map((k) => k.slice(2)).filter((i) => /^[A-Za-z0-9_-]{1,150}$/.test(i));
+    if (!ids.length) return;
+    const q = _rjapPushReadQ();
+    for (const i of ids) if (q.indexOf(i) < 0) q.push(i);
+    localStorage.setItem(RJAP_PUSHREAD_Q, JSON.stringify(q.slice(-500)));
+    _rjapPushReadFlush();
+  } catch (_e) {}
+}
+async function _rjapPushReadFlush() {
+  try {
+    if (typeof fbDb === "undefined" || !fbDb || typeof fbUser === "undefined" || !fbUser || !fbUser.uid) return;
+    const q = _rjapPushReadQ();
+    if (!q.length) return;
+    const take = q.slice(0, 400);
+    const batch = fbDb.batch();
+    const col = fbDb.collection("users").doc(fbUser.uid).collection("pushRead");
+    for (const id of take) batch.set(col.doc(id), { t: Date.now() });
+    await batch.commit();
+    const left = _rjapPushReadQ().filter((i) => take.indexOf(i) < 0);
+    localStorage.setItem(RJAP_PUSHREAD_Q, JSON.stringify(left));
+  } catch (_e) {}   // offline / not signed in yet → stays queued
+}
+async function _rjapPushReadFetch() {
+  const set = new Set();
+  try {
+    if (typeof fbDb === "undefined" || !fbDb || typeof fbUser === "undefined" || !fbUser || !fbUser.uid) return set;
+    const snap = await fbDb.collection("users").doc(fbUser.uid).collection("pushRead").limit(1000).get();
+    snap.forEach((d) => set.add(d.id));
+  } catch (_e) {}
+  return set;
+}
+
+// Remove doubles that are already stored in 🔔 (same server alert twice within 2 minutes).
+// If either copy was read, the one that stays is marked read.
+function _rjapDedupeServerNotifs() {
+  try {
+    const list = _rjapGetNotifHistory();   // newest first
+    const out = [];
+    let changed = false;
+    for (const n of list) {
+      const isSrv = typeof n.k === "string" && n.k.indexOf("s:") === 0;
+      const dup = isSrv ? out.find((m) => typeof m.k === "string" && m.k.indexOf("s:") === 0 && m.title === n.title && m.body === n.body && Math.abs((m.ts || 0) - (n.ts || 0)) < 120000) : null;
+      if (dup) { if (n.read) dup.read = true; changed = true; continue; }
+      out.push(n);
+    }
+    if (changed) { _rjapSaveNotifHistory(out); _rjapUpdateNotifBadges(); }
+  } catch (_e) {}
+}
+
 function _rjapMarkNotifReadById(id) {
   const list = _rjapGetNotifHistory();
   const n = list.find((x) => x.id === id);
-  if (n && !n.read) { n.read = true; _rjapSaveNotifHistory(list); }
+  if (n && !n.read) { n.read = true; _rjapSaveNotifHistory(list); _rjapPushReadMark([n.k]); }
   _rjapUpdateNotifBadges();
   return n || null;
 }
@@ -599,13 +662,15 @@ function _rjapUnreadNotifCount() {
 function _rjapMarkAllNotifRead() {
   const list = _rjapGetNotifHistory();
   let changed = false;
+  const _newlyRead = [];
   for (const n of list) {
     if (!n.read) {
       n.read = true;
       changed = true;
+      _newlyRead.push(n.k);
     }
   }
-  if (changed) _rjapSaveNotifHistory(list);
+  if (changed) { _rjapSaveNotifHistory(list); _rjapPushReadMark(_newlyRead); }
   _rjapUpdateNotifBadges();
 }
 
@@ -709,13 +774,13 @@ function _rjapPushKey(n) {
 function _rjapTrayKey(n) {
   const k = _rjapPushKey(n);
   if (k) return k;
-  if (n && n.tag) return "p:" + n.tag;
+  if (n && n.tag) return String(n.tag).indexOf("s:") === 0 ? String(n.tag) : "p:" + n.tag;   // "s:<id>" tags come from RjapMessagingService
   return "p:" + ((n && n.title) || "") + "|" + ((n && n.body) || "") + "|" + new Date().toDateString();
 }
 function _rjapMarkReadByKey(key) {
   const list = _rjapGetNotifHistory();
   const n = list.find((x) => x.k === key);
-  if (n && !n.read) { n.read = true; _rjapSaveNotifHistory(list); }
+  if (n && !n.read) { n.read = true; _rjapSaveNotifHistory(list); _rjapPushReadMark([n.k]); }
   _rjapUpdateNotifBadges();
   return n || null;
 }
@@ -909,7 +974,11 @@ function _rjapWebKey(tag, title, body, ts) {
 }
 function _rjapPushForeground(n) {
   if (!n) return;
-  const entry = _rjapNotifIncoming({ title: n.title, body: n.body, key: _rjapPushKey(n) });
+  // Data-only server alerts (RjapMessagingService) carry their text in n.data instead of n.title/n.body.
+  const _d = n.data || {};
+  const _title = n.title || _d.title, _body = n.body || _d.body;
+  if (!(_title || _body)) return;
+  const entry = _rjapNotifIncoming({ title: _title, body: _body, key: _rjapPushKey(n) });
   if (entry) _rjapPostBarNotif(entry);
 }
 
@@ -925,6 +994,9 @@ async function _rjapSyncServerPushes() {
   _rjapSrvPushBusy = true;
   try {
     const now = Date.now();
+    _rjapDedupeServerNotifs();                           // tidy doubles already in the list
+    await _rjapPushReadFlush();                          // send any "read" marks that were waiting
+    const _srvRead = await _rjapPushReadFetch();         // ids this account already read (survives reinstall)
     const sources = [{ k: RJAP_SRV_PUSH_LAST, col: () => fbDb.collection("pushLog") }];
     if (typeof fbUser !== "undefined" && fbUser && fbUser.uid) {
       sources.push({ k: RJAP_SRV_PUSH_LAST + "_" + fbUser.uid, col: () => fbDb.collection("users").doc(fbUser.uid).collection("pushInbox") });
@@ -944,8 +1016,9 @@ async function _rjapSyncServerPushes() {
         if (d.ts > maxTs) maxTs = d.ts;
         if (!(d.title || d.body)) continue;
         const old = now - d.ts > 24 * 3600 * 1000;         // older than a day → list only, no popup, not "unread"
-        const entry = _rjapAddNotifHistory(d.title, d.body, { key: "s:" + d.id, ts: d.ts, read: old });
-        if (entry && !old) out.push(entry);
+        const _was = _srvRead.has(d.id);                   // already read on another/earlier install
+        const entry = _rjapAddNotifHistory(d.title, d.body, { key: "s:" + d.id, ts: d.ts, read: old || _was });
+        if (entry && !old && !_was) out.push(entry);
       }
       if (maxTs > last) { try { localStorage.setItem(src.k, String(maxTs)); } catch (_e) {} }
     }

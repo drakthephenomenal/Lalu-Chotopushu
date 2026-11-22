@@ -37009,14 +37009,59 @@ async function _rjPlayAutoInstall() {
   try { if (typeof toast === "function") toast("⬆️ Installing update — app will restart 🙏"); } catch (_) {}
   try { App.save(); } catch (_) {}
   try { if (typeof fbDebouncedPush === "function") fbDebouncedPush(); } catch (_) {}
-  await new Promise((r) => setTimeout(r, 2500));   // let the save/sync flush
-  for (let i = 0; i < 90 && Date.now() - (window._rjLastTouch || 0) < 4000; i++) await new Promise((r) => setTimeout(r, 1000));   // wait for a 4 s pause in tapping (max 90 s)
+  await new Promise((r) => setTimeout(r, u.userInitiated ? 1200 : 2500));   // let the save/sync flush
+  if (!u.userInitiated) { for (let i = 0; i < 90 && Date.now() - (window._rjLastTouch || 0) < 4000; i++) await new Promise((r) => setTimeout(r, 1000)); }   // background download: wait for a 4 s pause in tapping (max 90 s). Person tapped Update themselves: install right away.
   try { await P.completeFlexibleUpdate(); }
   catch (e) {
     console.warn("completeFlexibleUpdate:", e);
     u.installing = false;
     _rjPlayUpdateUI("glow", "Update downloaded — tap here to restart & install 🙏");
   }
+}
+
+// Live download progress inside the Update box: bar + "Downloading… 34% · 29.2 of 85.95 MB".
+function _rjPlayShowProgress(got, tot) {
+  const progWrap = document.getElementById("appUpdateProgWrap");
+  const progBar = document.getElementById("appUpdateProgBar");
+  const statusEl = document.getElementById("appUpdateStatus");
+  if (progWrap) progWrap.style.display = "block";
+  window._rjPlayUpd.lastProgress = Date.now();
+  if (tot > 0) {
+    const pct = Math.max(1, Math.min(100, Math.round((got / tot) * 100)));
+    if (progBar) { progBar.classList.remove("rj-indet"); progBar.style.width = pct + "%"; }
+    const mb = (n) => (n / 1048576).toFixed(n >= 104857600 ? 0 : 1);
+    if (statusEl) statusEl.textContent = "Downloading… " + pct + "% · " + mb(got) + " of " + mb(tot) + " MB";
+  } else {
+    if (progBar) progBar.classList.add("rj-indet");   // size not known yet: animated bar
+    if (statusEl) statusEl.textContent = "Downloading update… 🙏";
+  }
+}
+// While a download runs, also poll Google Play every 2.5 s as a safety net (catches a missed
+// "downloaded" event, and shows an animated bar if Play isn't sending byte counts).
+function _rjPlayStartWatch() {
+  const u = window._rjPlayUpd;
+  if (u.watch) return;
+  u.watch = setInterval(async () => {
+    const P = _rjPlayPlugin();
+    if (!P || typeof P.getAppUpdateInfo !== "function") return;
+    try {
+      const info = await P.getAppUpdateInfo();
+      if (info && info.installStatus === _RJ_UPD.DOWNLOADED) {
+        _rjPlayStopWatch();
+        u.downloaded = true;
+        _rjPlayAutoInstall();
+      } else if (info && (info.installStatus === 2 || info.updateAvailability === _RJ_UPD.IN_PROGRESS)) {
+        if (Date.now() - (u.lastProgress || 0) > 4000) _rjPlayShowProgress(0, 0);
+      } else if (info && (info.installStatus === 5 || info.installStatus === 6)) {
+        _rjPlayStopWatch();
+        _rjPlayUpdateUI("glow", "Update available — tap to update 🙏");
+      }
+    } catch (_) {}
+  }, 2500);
+}
+function _rjPlayStopWatch() {
+  const u = window._rjPlayUpd;
+  if (u.watch) { clearInterval(u.watch); u.watch = null; }
 }
 
 function _rjPlayUpdateUI(state, text) {
@@ -37033,6 +37078,7 @@ function _rjPlayUpdateUI(state, text) {
     if (cardEl) cardEl.classList.add("update-available");
   } else {
     if (iconEl) iconEl.textContent = "🔄";
+    try { _rjPlayStopWatch(); } catch (_) {}
     if (cardEl) cardEl.classList.remove("update-available");
     if (progWrap) progWrap.style.display = "none";
   }
@@ -37047,19 +37093,22 @@ function _rjPlayAttachListener(P) {
       const progBar = document.getElementById("appUpdateProgBar");
       const status = st && st.installStatus;
       if (status === _RJ_UPD.DOWNLOADED) {
+        _rjPlayStopWatch();
         window._rjPlayUpd.downloaded = true;
-        if (progWrap) progWrap.style.display = "none";
+        if (progBar) { progBar.classList.remove("rj-indet"); progBar.style.width = "100%"; }
         _rjNotifyUpdate("dl-" + (window._rjPlayUpd.version || "x"), "Update downloaded — installing now 🙏");
         _rjPlayAutoInstall();
-      } else if (status === 2) {
-        // DOWNLOADING
-        const tot = st.totalBytesToDownload || 0;
-        const got = st.bytesDownloaded || 0;
-        if (progWrap) progWrap.style.display = "block";
-        if (progBar && tot > 0) progBar.style.width = Math.min(100, Math.round((got / tot) * 100)) + "%";
-        _rjPlayUpdateUI("downloading", "Downloading update… 🙏");
+      } else if (status === 1 || status === 2) {
+        // PENDING / DOWNLOADING
+        _rjPlayUpdateUI("downloading", null);
+        _rjPlayShowProgress(st.bytesDownloaded || 0, st.totalBytesToDownload || 0);
+        _rjPlayStartWatch();
+      } else if (status === 3) {
+        // INSTALLING
+        _rjPlayUpdateUI("downloading", "Installing update… the app will restart 🙏");
       } else if (status === 5 || status === 6) {
         // FAILED / CANCELED — back to a plain "update available" state
+        _rjPlayStopWatch();
         if (progWrap) progWrap.style.display = "none";
         _rjPlayUpdateUI("glow", "Update available — tap to update 🙏");
       }
@@ -37090,18 +37139,26 @@ async function _rjPlayUpdateCheck(auto) {
     _rjPlayAutoInstall();
     return true;
   }
-  if (avail === _RJ_UPD.AVAILABLE || avail === _RJ_UPD.IN_PROGRESS) {
+  if (avail === _RJ_UPD.IN_PROGRESS) {
+    // A download is already running (e.g. the auto-download that started when the app opened).
+    window._rjPlayUpd.available = true;
+    _rjPlayUpdateUI("downloading", null);
+    _rjPlayShowProgress(0, 0);
+    _rjPlayStartWatch();
+    return true;
+  }
+  if (avail === _RJ_UPD.AVAILABLE) {
     window._rjPlayUpd.available = true;
     const v = info.availableVersionCode ? " (build " + info.availableVersionCode + ")" : "";
     _rjPlayUpdateUI("glow", "Update available" + v + " — tap to update 🙏");
     _rjNotifyUpdate("av-" + (info.availableVersionCode || "x"), "A new update is available" + v + " 🙏 Tap Update App in Settings (or accept the Google prompt).");
-    if (auto && avail === _RJ_UPD.AVAILABLE && info.flexibleUpdateAllowed) {
+    if (auto && info.flexibleUpdateAllowed) {
       // Auto-download once per new build (and again after 12 h if it never finished).
       let last = 0, lastV = "";
       try { last = parseInt(localStorage.getItem(_RJ_UPD_PROMPT_KEY) || "0", 10) || 0; lastV = localStorage.getItem(_RJ_UPD_PROMPT_KEY + "V") || ""; } catch (_) {}
       if (lastV !== String(info.availableVersionCode) || Date.now() - last > _RJ_UPD_PROMPT_MS) {
         try { localStorage.setItem(_RJ_UPD_PROMPT_KEY, String(Date.now())); localStorage.setItem(_RJ_UPD_PROMPT_KEY + "V", String(info.availableVersionCode)); } catch (_) {}
-        try { await P.startFlexibleUpdate(); } catch (e) { console.warn("startFlexibleUpdate:", e); }
+        try { await P.startFlexibleUpdate(); _rjPlayStartWatch(); } catch (e) { console.warn("startFlexibleUpdate:", e); }
       }
     }
     return true;
@@ -37122,6 +37179,7 @@ async function _rjPlayUpdateTap() {
     return;
   }
   _rjPlayAttachListener(P);
+  window._rjPlayUpd.userInitiated = true;   // one tap: download -> install -> restart, no further taps
   if (window._rjPlayUpd.downloaded) { _rjPlayAutoInstall(); return; }
   let info;
   try {
@@ -37135,19 +37193,31 @@ async function _rjPlayUpdateTap() {
     _rjPlayAutoInstall();
     return;
   }
-  if (info.updateAvailability === _RJ_UPD.AVAILABLE || info.updateAvailability === _RJ_UPD.IN_PROGRESS) {
+  if (info.updateAvailability === _RJ_UPD.IN_PROGRESS || info.installStatus === 2 || info.installStatus === 1) {
+    // Already downloading — just show its progress; it installs by itself when done.
+    _rjPlayUpdateUI("downloading", null);
+    _rjPlayShowProgress(0, 0);
+    _rjPlayStartWatch();
+    return;
+  }
+  if (info.updateAvailability === _RJ_UPD.AVAILABLE) {
     try {
       if (info.flexibleUpdateAllowed) {
         _rjPlayUpdateUI("downloading", "Starting update… 🙏");
-        await P.startFlexibleUpdate();
+        _rjPlayShowProgress(0, 0);
+        _rjPlayStartWatch();
+        await P.startFlexibleUpdate();     // Google's one-time "Update?" prompt, then downloads in the background
       } else if (info.immediateUpdateAllowed) {
-        await P.performImmediateUpdate();
+        await P.performImmediateUpdate();  // Google's own full-screen progress, installs + restarts by itself
       } else if (typeof P.openAppStore === "function") {
         await P.openAppStore();
       }
     } catch (e) {
       console.warn("Play update start failed:", e);
-      _rjPlayUpdateUI("glow", "Update available — tap to try again 🙏");
+      _rjPlayStopWatch();
+      window._rjPlayUpd.userInitiated = false;
+      const pw = document.getElementById("appUpdateProgWrap"); if (pw) pw.style.display = "none";
+      _rjPlayUpdateUI("glow", "Update available — tap to update 🙏");
     }
     return;
   }

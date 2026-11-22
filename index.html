@@ -27,7 +27,7 @@
 <script src="./vendor/firebase-firestore-compat.js"></script>
 <script src="./vendor/firebase-messaging-compat.js"></script>
 <script src="./vendor/firebase-functions-compat.js"></script>
-<link rel="stylesheet" href="./style.css?v=157">
+<link rel="stylesheet" href="./style.css?v=158">
 <style id="adminToolsCollapseCss">
 .admin-tools-details>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;color:var(--green);font-size:17px;font-weight:700;padding:2px 0;-webkit-tap-highlight-color:transparent;}
 .admin-tools-details>summary::-webkit-details-marker{display:none;}
@@ -2109,7 +2109,7 @@
   </div>
   <!-- UPDATE / REFRESH — sits above Profile (and above Admin Tools for admins) -->
   <div id="rjUpdRefreshRow">
-  <div class="sc" id="appUpdateCard" style="background:rgba(8,12,35,0.82);border:1px solid rgba(255,215,0,0.25);padding:12px 13px;cursor:pointer;transition:background .4s,border-color .4s;" onclick="checkAppUpdate()">
+  <div class="sc" id="appUpdateCard" style="background:rgba(8,12,35,0.82);border:1px solid rgba(255,215,0,0.25);padding:12px 13px;cursor:pointer;transition:background .4s,border-color .4s;" onclick="checkAppUpdate()" role="button" tabindex="0">
     <div style="display:flex;align-items:center;gap:12px;">
       <svg class="rj-upd-ic" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
       <div style="display:none" id="appUpdateIcon">🔄</div>
@@ -2122,7 +2122,7 @@
       <div id="appUpdateChev" style="display:none"></div>
     </div>
     <div id="appUpdateProgWrap" style="display:none;margin-top:10px;">
-      <div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.08);overflow:hidden;">
+      <div style="height:8px;border-radius:4px;background:rgba(255,255,255,0.10);overflow:hidden;">
         <div id="appUpdateProgBar" style="height:100%;width:0%;background:linear-gradient(90deg,#FFD700,#ffb432);transition:width .2s;"></div>
       </div>
     </div>
@@ -3741,7 +3741,7 @@
     <script src="./hcj-langs.js?v=1"></script>
     <script src="./hcp-langs.js?v=1"></script>
     <script src="./rsn-langs.js?v=1"></script>
-    <script src="./app.js?v=467"></script>
+    <script src="./app.js?v=468"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

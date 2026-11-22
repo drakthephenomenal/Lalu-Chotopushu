@@ -4823,3 +4823,14 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
     .view{padding-top:calc(max(env(safe-area-inset-top,0px), 24px) + 12px);}
   }
 }
+
+/* Update box: tap feedback + animated download bar */
+#appUpdateCard { -webkit-tap-highlight-color: transparent; user-select: none; transition: transform .12s ease, background .4s, border-color .4s; }
+#appUpdateCard:active { transform: scale(0.975); }
+#appRefreshBtn:active { transform: scale(0.96); }
+#appUpdateProgBar.rj-indet {
+  width: 40% !important;
+  background: linear-gradient(90deg, rgba(255,215,0,0), #FFD700, rgba(255,215,0,0)) !important;
+  animation: rjUpdIndet 1.1s ease-in-out infinite;
+}
+@keyframes rjUpdIndet { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }

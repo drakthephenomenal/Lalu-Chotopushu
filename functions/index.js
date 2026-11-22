@@ -61,29 +61,48 @@ exports.zohoTokenExchange = functions
       return res.status(400).json({ error: "Zoho token exchange failed", details: tokenData });
     }
 
-    // 2. Fetch the Zoho user's profile (stable ID + email)
-    const userInfoResp = await fetch("https://accounts.zoho.com/oauth/user/info", {
-      headers: { Authorization: "Zoho-oauthtoken " + tokenData.access_token },
-    });
-    const userInfo = await userInfoResp.json();
-
-    if (!userInfo || !userInfo.Email) {
-      console.error("Zoho user info fetch failed:", userInfo);
-      return res.status(400).json({ error: "Could not fetch Zoho user profile", details: userInfo });
+    // 2. Work out who the Zoho user is: prefer the id_token claims, fall back to the userinfo endpoint
+    let info = null;
+    if (tokenData.id_token) {
+      try {
+        const claims = JSON.parse(Buffer.from(tokenData.id_token.split(".")[1], "base64").toString("utf8"));
+        if (claims && claims.email) {
+          info = {
+            Email: claims.email,
+            ZUID: claims.zuid || claims.sub,
+            First_Name: claims.first_name || claims.given_name,
+            Last_Name: claims.last_name || claims.family_name,
+          };
+        }
+      } catch (_jwtErr) {}
+    }
+    if (!info) {
+      const userInfoResp = await fetch("https://accounts.zoho.com/oauth/user/info", {
+        headers: { Authorization: "Zoho-oauthtoken " + tokenData.access_token },
+      });
+      const userInfo = await userInfoResp.json();
+      if (userInfo && userInfo.Email) info = userInfo;
+      else {
+        console.error("Zoho user info fetch failed:", userInfo, "token keys:", Object.keys(tokenData));
+        return res.status(400).json({ error: "Could not fetch Zoho user profile", details: userInfo || tokenData });
+      }
     }
 
-    const uid = "zoho:" + (userInfo.ZUID || userInfo.Email);
-
-    // 3. Ensure a matching Firebase Auth user exists
+    // 3. Reuse the Firebase user that already has this email (e.g. the PWA's Zoho user), else create one
+    let uid;
     try {
-      await admin.auth().getUser(uid);
-    } catch (_notFound) {
-      await admin.auth().createUser({
-        uid,
-        email: userInfo.Email,
-        displayName:
-          [userInfo.First_Name, userInfo.Last_Name].filter(Boolean).join(" ") || undefined,
-      });
+      uid = (await admin.auth().getUserByEmail(info.Email)).uid;
+    } catch (_noEmailUser) {
+      uid = "zoho:" + (info.ZUID || info.Email);
+      try {
+        await admin.auth().getUser(uid);
+      } catch (_notFound) {
+        await admin.auth().createUser({
+          uid,
+          email: info.Email,
+          displayName: [info.First_Name, info.Last_Name].filter(Boolean).join(" ") || undefined,
+        });
+      }
     }
 
     // 4. Mint the custom token the app will sign in with

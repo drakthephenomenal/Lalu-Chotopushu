@@ -11630,13 +11630,12 @@ async function saveJsonFile(filename, jsonString) {
         // Already exists (or plugin doesn't need it) — fall through and
         // let writeFile itself surface any real problem below.
       }
-      const writeResult = await Filesystem.writeFile({
-        path: subPath,
-        data: jsonString,
-        directory: "DOCUMENTS",
-        encoding: "utf8",
-        recursive: true, // create the "Radha Jap Backup" folder if missing
-      });
+      let writeResult;
+      try {
+        writeResult = await Filesystem.writeFile({ path: subPath, data: jsonString, directory: "DOCUMENTS", encoding: "utf8", recursive: true });
+      } catch (_subErr) {
+        writeResult = await Filesystem.writeFile({ path: filename, data: jsonString, directory: "DOCUMENTS", encoding: "utf8" });
+      }
       toast("\ud83d\udce5 Saved to Documents/Radha Jap Backup \ud83d\ude4f Jai Radhe!");
       return true;
     } catch (e) {
@@ -11650,6 +11649,7 @@ async function saveJsonFile(filename, jsonString) {
       // restrictions apply there) and hand it to the native Share sheet so
       // the user can still save it wherever they like via the OS picker.
       console.warn("Direct Documents write failed, falling back to share sheet:", e && e.message ? e.message : e);
+      toast("Could not save to Documents: " + (e && e.message ? e.message : e));
       try {
         const { Filesystem: FS2, Share } = window.Capacitor.Plugins;
         if (FS2 && Share) {
@@ -11881,7 +11881,7 @@ async function exportAllData() {
       !window.confirm("\u26A0\uFE0F There is NO jap data in the app right now, so this backup file would be EMPTY.\n\nIf the app only just opened, wait a moment and try again.\n\nSave an empty file anyway?")) return;
   try {
     const json = JSON.stringify(backup, null, 2);
-    const filename = "radha-naam-jap-backup-" + App.getTk() + ".json";
+    const filename = _driveBackupFilename();
     const ok = await saveJsonFile(filename, json);
     if (ok) {
       // The confirmation notification only shows if permission is already
@@ -14438,7 +14438,7 @@ function _isNativeApp() {
 const ZOHO_NATIVE_CONFIG = {
   clientId: "1000.SI61HY6OEFKXFN1Z9H2KIUL69ZO2KO",
   redirectUri: "https://radharadharadha.vercel.app/oauthredirect.html",
-  scope: "openid email profile",
+  scope: "openid email profile AaaServer.profile.READ",
   // Cloud Function that exchanges Zoho's authorization `code` for a Firebase
   // custom token (see /functions/index.js). Your Zoho app is a
   // "Server-based Application" (Code flow), so a client secret is required
@@ -16074,7 +16074,7 @@ async function _zohoNativeSignIn() {
             );
             const data = await resp.json();
             if (!resp.ok || !data.customToken) {
-              throw new Error((data && data.error) || "Zoho token exchange failed");
+              throw new Error(((data && data.error) ? data.error + (data.details ? " - " + JSON.stringify(data.details).slice(0, 160) : "") : "Zoho token exchange failed"));
             }
             await fbAuth.signInWithCustomToken(data.customToken);
             return resolve();

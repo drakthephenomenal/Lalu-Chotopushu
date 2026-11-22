@@ -36820,6 +36820,7 @@ async function checkForUpdateAvailable() {
       if (remotePseudoVersion && String(remotePseudoVersion) !== String(localPseudoVersion)) {
         iconEl.textContent = "⬆️";
         statusEl.textContent = "New version available (" + remotePseudoVersion + ") — tap to refresh";
+        _rjNotifyUpdate("web-" + remotePseudoVersion, "New version " + remotePseudoVersion + " is available — open Settings and tap Refresh 🙏");
         if (cardEl) cardEl.classList.add("update-available");
       } else {
         statusEl.textContent = "You're on the latest loaded version 🙏";
@@ -36887,6 +36888,7 @@ async function checkForUpdateAvailable() {
     if (_isNewerVersion(remoteTag, localVersion)) {
       iconEl.textContent = "⬆️";
       statusEl.textContent = "Update available — " + remoteTag + " (you have v" + localVersion + ")";
+      _rjNotifyUpdate("apk-" + remoteTag, "Update " + remoteTag + " is available 🙏");
       if (cardEl) cardEl.classList.add("update-available");
     } else {
       statusEl.textContent = "You're up to date 🙏";
@@ -36945,6 +36947,38 @@ async function checkForUpdateAvailable() {
 // - When the download finishes: the card says "Tap to restart & install".
 // Only works for installs that came from Google Play.
 // ═══════════════════════════════════════════════════════
+// ── "New update" notification — fires ONCE per new version (native: system notification; otherwise a toast) ──
+const _RJ_UPD_NOTIF_CHANNEL = "rjap_updates_v1";
+const _RJ_UPD_NOTIF_ID = 9020;
+async function _rjNotifyUpdate(versionKey, body) {
+  try {
+    const key = "rjUpdateNotified";
+    if (!versionKey || localStorage.getItem(key) === String(versionKey)) return;
+    localStorage.setItem(key, String(versionKey));
+  } catch (_) {}
+  const text = body || "A new version of RadhaNaam SudhaRasam is available 🙏";
+  let sent = false;
+  try {
+    if (typeof _lcIsNative === "function" && _lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
+      const { LocalNotifications } = window.Capacitor.Plugins;
+      let perm = await LocalNotifications.checkPermissions();
+      if (perm.display !== "granted") perm = await LocalNotifications.requestPermissions();
+      if (perm.display === "granted") {
+        try { await LocalNotifications.createChannel({ id: _RJ_UPD_NOTIF_CHANNEL, name: "App Updates", description: "Tells you when a new app version is available", importance: 4, visibility: 1 }); } catch (_) {}
+        await LocalNotifications.schedule({ notifications: [{
+          id: _RJ_UPD_NOTIF_ID, title: "⬆️ RadhaNaam SudhaRasam Update", body: text,
+          channelId: _RJ_UPD_NOTIF_CHANNEL, smallIcon: "ic_stat_notify", largeIcon: "ic_large_notify", iconColor: "#E56B1F",
+        }] });
+        sent = true;
+      }
+    } else if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      new Notification("⬆️ RadhaNaam SudhaRasam Update", { body: text, icon: "./icon-192.png" });
+      sent = true;
+    }
+  } catch (e) { console.warn("update notification failed:", e && e.message); }
+  if (!sent && typeof toast === "function") toast("⬆️ " + text);
+}
+
 const _RJ_UPD = { UNKNOWN: 0, NOT_AVAILABLE: 1, AVAILABLE: 2, IN_PROGRESS: 3, DOWNLOADED: 11 };
 const _RJ_UPD_PROMPT_KEY = "rjPlayUpdateLastPrompt";
 const _RJ_UPD_PROMPT_MS = 12 * 60 * 60 * 1000;
@@ -36953,6 +36987,27 @@ window._rjPlayUpd = window._rjPlayUpd || { downloaded: false, available: false, 
 function _rjPlayPlugin() {
   const Cap = window.Capacitor;
   return Cap && Cap.Plugins && Cap.Plugins.AppUpdate ? Cap.Plugins.AppUpdate : null;
+}
+
+// One-tap update: as soon as Google Play finishes downloading, install it right away
+// (the app restarts into the new version). Data is saved first.
+async function _rjPlayAutoInstall() {
+  const u = window._rjPlayUpd;
+  if (u.installing) return;
+  u.installing = true;
+  const P = _rjPlayPlugin();
+  if (!P) { u.installing = false; return; }
+  _rjPlayUpdateUI("downloading", "Installing update… the app will restart 🙏");
+  try { if (typeof toast === "function") toast("⬆️ Installing update — app will restart 🙏"); } catch (_) {}
+  try { App.save(); } catch (_) {}
+  try { if (typeof fbDebouncedPush === "function") fbDebouncedPush(); } catch (_) {}
+  await new Promise((r) => setTimeout(r, 2500));   // let the save/sync flush
+  try { await P.completeFlexibleUpdate(); }
+  catch (e) {
+    console.warn("completeFlexibleUpdate:", e);
+    u.installing = false;
+    _rjPlayUpdateUI("glow", "Update downloaded — tap here to restart & install 🙏");
+  }
 }
 
 function _rjPlayUpdateUI(state, text) {
@@ -36985,8 +37040,8 @@ function _rjPlayAttachListener(P) {
       if (status === _RJ_UPD.DOWNLOADED) {
         window._rjPlayUpd.downloaded = true;
         if (progWrap) progWrap.style.display = "none";
-        _rjPlayUpdateUI("glow", "Update downloaded — tap here to restart & install 🙏");
-        if (typeof toast === "function") toast("Update ready — open Settings and tap Update App to install");
+        _rjNotifyUpdate("dl-" + (window._rjPlayUpd.version || "x"), "Update downloaded — installing now 🙏");
+        _rjPlayAutoInstall();
       } else if (status === 2) {
         // DOWNLOADING
         const tot = st.totalBytesToDownload || 0;
@@ -37019,20 +37074,24 @@ async function _rjPlayUpdateCheck(auto) {
   window._rjPlayUpd.lastCheck = Date.now();
   const avail = info && info.updateAvailability;
 
+  window._rjPlayUpd.version = info && info.availableVersionCode;
   if (info && info.installStatus === _RJ_UPD.DOWNLOADED) {
     window._rjPlayUpd.downloaded = true;
-    _rjPlayUpdateUI("glow", "Update downloaded — tap here to restart & install 🙏");
+    _rjPlayUpdateUI("glow", "Update downloaded — installing… 🙏");
+    _rjPlayAutoInstall();
     return true;
   }
   if (avail === _RJ_UPD.AVAILABLE || avail === _RJ_UPD.IN_PROGRESS) {
     window._rjPlayUpd.available = true;
     const v = info.availableVersionCode ? " (build " + info.availableVersionCode + ")" : "";
     _rjPlayUpdateUI("glow", "Update available" + v + " — tap to update 🙏");
+    _rjNotifyUpdate("av-" + (info.availableVersionCode || "x"), "A new update is available" + v + " — downloading it now 🙏");
     if (auto && avail === _RJ_UPD.AVAILABLE && info.flexibleUpdateAllowed) {
-      let last = 0;
-      try { last = parseInt(localStorage.getItem(_RJ_UPD_PROMPT_KEY) || "0", 10) || 0; } catch (_) {}
-      if (Date.now() - last > _RJ_UPD_PROMPT_MS) {
-        try { localStorage.setItem(_RJ_UPD_PROMPT_KEY, String(Date.now())); } catch (_) {}
+      // Auto-download once per new build (and again after 12 h if it never finished).
+      let last = 0, lastV = "";
+      try { last = parseInt(localStorage.getItem(_RJ_UPD_PROMPT_KEY) || "0", 10) || 0; lastV = localStorage.getItem(_RJ_UPD_PROMPT_KEY + "V") || ""; } catch (_) {}
+      if (lastV !== String(info.availableVersionCode) || Date.now() - last > _RJ_UPD_PROMPT_MS) {
+        try { localStorage.setItem(_RJ_UPD_PROMPT_KEY, String(Date.now())); localStorage.setItem(_RJ_UPD_PROMPT_KEY + "V", String(info.availableVersionCode)); } catch (_) {}
         try { await P.startFlexibleUpdate(); } catch (e) { console.warn("startFlexibleUpdate:", e); }
       }
     }
@@ -37054,10 +37113,7 @@ async function _rjPlayUpdateTap() {
     return;
   }
   _rjPlayAttachListener(P);
-  if (window._rjPlayUpd.downloaded) {
-    try { await P.completeFlexibleUpdate(); } catch (e) { console.warn("completeFlexibleUpdate:", e); }
-    return;
-  }
+  if (window._rjPlayUpd.downloaded) { _rjPlayAutoInstall(); return; }
   let info;
   try {
     info = await P.getAppUpdateInfo();
@@ -37067,7 +37123,7 @@ async function _rjPlayUpdateTap() {
   }
   if (info.installStatus === _RJ_UPD.DOWNLOADED) {
     window._rjPlayUpd.downloaded = true;
-    try { await P.completeFlexibleUpdate(); } catch (e) { console.warn("completeFlexibleUpdate:", e); }
+    _rjPlayAutoInstall();
     return;
   }
   if (info.updateAvailability === _RJ_UPD.AVAILABLE || info.updateAvailability === _RJ_UPD.IN_PROGRESS) {

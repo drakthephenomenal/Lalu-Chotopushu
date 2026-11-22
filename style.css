@@ -4836,7 +4836,7 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
    (their notch inset is already larger than this). */
 @supports (-webkit-touch-callout: none) {
   @media (min-width: 700px) {
-    .view{padding-top:calc(max(env(safe-area-inset-top,0px), 24px) + 12px);}
+    .view{padding-top:calc(max(env(safe-area-inset-top,0px), 40px) + 14px);}   /* ≈54px: clears the taller iPad status area (time / date / app name / Wi-Fi / battery) */
   }
 }
 

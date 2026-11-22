@@ -2117,23 +2117,18 @@
         <div id="appUpdateSettingsLink" style="display:none;font-size:11px;font-weight:700;color:#7ec8ff;margin-top:6px;text-decoration:underline;" onclick="event.stopPropagation(); openInstallPermissionSettings();">Open permission settings →</div>
         <div style="font-size:9.5px;color:rgba(255,255,255,0.3);margin-top:2px;" id="appInstalledVersion"></div>
       </div>
-      <div style="color:rgba(255,215,0,0.5);font-size:16px;" id="appUpdateChev">›</div>
+      <div id="appUpdateChev" style="display:none"></div>
     </div>
     <div id="appUpdateProgWrap" style="display:none;margin-top:10px;">
       <div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.08);overflow:hidden;">
         <div id="appUpdateProgBar" style="height:100%;width:0%;background:linear-gradient(90deg,#FFD700,#ffb432);transition:width .2s;"></div>
       </div>
     </div>
-    <!-- Only shown for PWA/TWA (web) — a clearly-labeled button in addition
-         to the whole-card tap, so the refresh action isn't easy to miss. -->
-    <button id="appUpdateWebRefreshBtn" type="button" style="display:none;margin-top:10px;width:100%;padding:9px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:12px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation(); checkAppUpdate();"><svg class="rj-reload-ic" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>Refresh Now</button>
-    <!-- Native (Capacitor) only — shown via the same checkForUpdateAvailable()
-         JS that already toggled this id visible; the element itself was
-         missing until now. Separate from the whole-card tap (which checks
-         GitHub for a new APK release) — this clears/rebuilds Firestore's
-         local offline cache instead, behind the same "Save your data
-         first" warning (nativeCacheWarningModal) the web version uses. -->
-    <button id="appUpdateNativeRefreshBtn" type="button" style="display:none;margin-top:10px;width:100%;padding:9px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:12px;font-weight:700;cursor:pointer;" onclick="event.stopPropagation(); confirmNativeCacheRefresh();"><svg class="rj-reload-ic" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>Refresh Now</button>
+    <!-- Two SEPARATE buttons: Update Now (get the newest version) and Refresh (clear cache & reload). -->
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <button id="appUpdateNowBtn" type="button" style="display:flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;height:58px;padding:6px 10px;line-height:1.15;text-align:center;border-radius:9px;color:#FFD700;font-size:12.5px;font-weight:700;cursor:pointer;flex:2.4;font-size:15px;background:linear-gradient(135deg,rgba(255,215,0,0.30),rgba(255,180,0,0.18));border:1px solid rgba(255,215,0,0.5);" onclick="event.stopPropagation(); checkAppUpdate();"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>Update App</button>
+      <button id="appRefreshBtn" type="button" style="display:flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;height:58px;padding:6px 10px;line-height:1.15;text-align:center;border-radius:9px;color:#FFD700;font-size:12.5px;font-weight:700;cursor:pointer;flex:1;flex-direction:column;gap:3px;background:rgba(126,200,255,0.12);color:#7ec8ff;border:1px solid rgba(126,200,255,0.4);" onclick="event.stopPropagation(); rjRefreshApp();"><svg class="rj-reload-ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>Refresh Now</button>
+    </div>
   </div>
 
     <!-- ADMIN TOOLS (developers only) — every admin function in one place -->

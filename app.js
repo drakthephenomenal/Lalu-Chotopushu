@@ -37265,6 +37265,13 @@ function _confirmWebCacheRefreshProceed() {
   _forceRefreshWebApp();
 }
 
+// Separate "Refresh" button: clears cached files / local cache and reloads (never installs an update).
+function rjRefreshApp() {
+  const Cap = window.Capacitor;
+  if (Cap && Cap.isNativePlatform && Cap.isNativePlatform()) return confirmNativeCacheRefresh();
+  return confirmWebCacheRefresh();
+}
+
 async function checkAppUpdate() {
   const iconEl = document.getElementById("appUpdateIcon");
   const statusEl = document.getElementById("appUpdateStatus");
@@ -37273,7 +37280,14 @@ async function checkAppUpdate() {
 
   const Cap = window.Capacitor;
   if (!Cap || !Cap.isNativePlatform || !Cap.isNativePlatform()) {
-    return confirmWebCacheRefresh();
+    // Web/iPad "Update Now": look for a newer build first; load it only if there is one
+    // (or if versions can't be compared). The separate Refresh button always reloads.
+    if (statusEl) statusEl.textContent = "Checking for updates… 🔄";
+    try { await checkForUpdateAvailable(); } catch (_) {}
+    const card = document.getElementById("appUpdateCard");
+    const st = statusEl ? statusEl.textContent : "";
+    if ((card && card.classList.contains("update-available")) || /force-refresh|refresh and fetch/i.test(st)) return confirmWebCacheRefresh();
+    return;
   }
 
   // Uses @capacitor/filesystem's own downloadFile() — bundled with the

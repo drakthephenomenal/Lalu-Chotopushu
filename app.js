@@ -25118,7 +25118,8 @@ function _stTrackPad(id, idx) {
 //     time: { hcj:{ "YYYY-MM-DD": seconds }, rsn:{...}, svb:{...} }
 //   }
 // Which pads were read each day is still tracked by _stTrackPad (App.S.stotrams).
-var PT_IDS = ['hcj', 'rsn', 'svb'];
+var PT_IDS = ['hcj', 'rsn', 'svb'];   // only these get "last-read pad" resume; reading TIME is tracked for EVERY stotram (any code name)
+function _ptIdOk(id) { return typeof id === 'string' && id.length > 0 && id.length <= 40 && id !== '__proto__' && id !== 'constructor' && id !== 'prototype'; }
 var _ptLoaded = false, _ptTimer = null, _ptDirty = false, _ptLastDeb = null;
 
 function _ptGet() {
@@ -25149,6 +25150,9 @@ function _ptMerge(r) {
     if (a && typeof a === 'object' && (!b || (a.ts || 0) > (b.ts || 0))) {
       p.last[id] = { idx: a.idx | 0, sec: (a.sec == null ? null : a.sec), ts: a.ts || 0 };
     }
+  });
+  Object.keys(rt).forEach(function (id) {
+    if (!_ptIdOk(id)) return;
     const rm = rt[id];
     if (rm && typeof rm === 'object') {
       const lm = p.time[id] || (p.time[id] = {});
@@ -25170,7 +25174,7 @@ function _ptFlush() {
 // reader open and not minimized, and (Sevak Vani) a section is open, not the picker.
 function _ptActive() {
   if (document.visibilityState === 'hidden') return false;
-  if (PT_IDS.indexOf(_currentStotramId) === -1) return false;
+  if (!_ptIdOk(_currentStotramId)) return false;
   const lmo = document.getElementById('lmo');
   if (!lmo || !lmo.classList.contains('show') || lmo.hasAttribute('data-minimized')) return false;
   if (!_verses || !_verses.length) return false;
@@ -25191,13 +25195,15 @@ function _ptTick() {
 }
 // Called from _renderVerse for every pad shown: remember it as the last-read pad.
 function _ptNote(id, idx) {
-  if (PT_IDS.indexOf(id) === -1) return;
+  if (!_ptIdOk(id)) return;
   const p = _ptGet();
-  p.last[id] = { idx: idx | 0, sec: (id === 'svb' ? (window._stSecIdx == null ? null : window._stSecIdx) : null), ts: Date.now() };
-  _ptDirty = true;
-  _ptMirror();
-  clearTimeout(_ptLastDeb);
-  _ptLastDeb = setTimeout(_ptFlush, 4000);
+  if (PT_IDS.indexOf(id) !== -1) {
+    p.last[id] = { idx: idx | 0, sec: (id === 'svb' ? (window._stSecIdx == null ? null : window._stSecIdx) : null), ts: Date.now() };
+    _ptDirty = true;
+    _ptMirror();
+    clearTimeout(_ptLastDeb);
+    _ptLastDeb = setTimeout(_ptFlush, 4000);
+  }
   if (!_ptTimer) _ptTimer = setInterval(_ptTick, 1000);
 }
 function _ptStop() {
@@ -29649,7 +29655,7 @@ function _renderVerse(idx, dir) {
   const ctr = null;
   const prev = document.getElementById("lmPrev");
   const next = document.getElementById("lmNext");
-  if (_hlMode(_currentStotramId)) { _renderHlVerse(idx); return; }
+  if (_hlMode(_currentStotramId)) { try { _ptNote(_currentStotramId, idx); } catch (_e) {} _renderHlVerse(idx); return; }
   if (body && body.dataset) delete body.dataset.hlFor;
 
   const verseText = _verses[idx] || "";
@@ -34338,12 +34344,16 @@ function renderLeaderboard(docs, period) {
     const _todayEff = _lbTodayEff(d);
     let _padSec = 0;
     const _pth = d.padTimeHistory || {};
-    ['hcj', 'rsn', 'svb'].forEach(function (pid) {
-      const pm = _pth[pid] || {};
-      if (!periodKeys) { for (const pk in pm) _padSec += pm[pk] || 0; }
-      else periodKeys.forEach(function (pk) { _padSec += pm[pk] || 0; });
+    const _padBy = {};   // per code-name reading seconds in the viewed period
+    Object.keys(_pth).forEach(function (pid) {
+      const pm = _pth[pid];
+      if (!pm || typeof pm !== 'object') return;
+      let t = 0;
+      if (!periodKeys) { for (const pk in pm) t += pm[pk] || 0; }
+      else periodKeys.forEach(function (pk) { t += pm[pk] || 0; });
+      if (t > 0) { _padBy[pid] = t; _padSec += t; }
     });
-    return { ...d, score, timeScore, _padSec, _effTodaySec: _todayEff.japSec, _effTodayScrSec: _todayEff.scrSec };
+    return { ...d, score, timeScore, _padSec, _padBy, _effTodaySec: _todayEff.japSec, _effTodayScrSec: _todayEff.scrSec };
   });
 
   // Sort descending. Anyone with zero jap in the viewed window is hidden — Today/Week/Month AND
@@ -34522,6 +34532,16 @@ function renderLeaderboard(docs, period) {
       const kaamStr = _lbFmtJap(b.kaam) + (kaamM > 0 ? ' (' + kaamM + 'M)' : '');
       const giftNote = g.kaam > 0 ? ' · 🎁' + _lbFmtJap(g.kaam) + ' gifted' : '';
       bdParts.push('KAM: ' + kaamStr + (tb.kaam > 0 ? ' ⏱ ' + _histFmtSec(tb.kaam) : '') + giftNote + _lbQ(tb.kaam, b.kaam));
+    }
+    // Stotram reading time per code name (every stotram, not just hcj/rsn/svb)
+    if (d._padBy) {
+      const _pbk = Object.keys(d._padBy).sort(function (x, y) { return d._padBy[y] - d._padBy[x]; });
+      if (_pbk.length) {
+        bdParts.push('📖 ' + _pbk.map(function (pid) {
+          const nm = /^c_\d/.test(pid) ? 'CUSTOM' : String(pid).toUpperCase();
+          return nm + ' ' + _histFmtSec(d._padBy[pid]);
+        }).join(' · '));
+      }
     }
     // Total: only count R+RV+SS+HK+RAM+KAM malas (not 28N), 28N shown as cycles separately
     const japOnly = (b.r || 0) + (b.ra || 0) + (b.rva || 0) + (b.kva || 0) + (b.kaama || 0) + (b.rv || 0) + (b.kh || 0) + (b.ss || 0) + (b.hk || 0) + (b.ram || 0) + (b.sr || 0) + (b.rm || 0) + (b.nr || 0) + (b.yg || 0) + (b.vl || 0) + (b.kaam || 0);
@@ -34890,7 +34910,7 @@ function _buildLeaderboardPayload(S, userInfo, forceOptIn) {
     // Efficiency (E) on the leaderboard: Actual Jap Time ÷ Screen Time.
     screenTimeHistory: S.screenTimeHistory || {},
     screenTimeSeconds: Object.values(S.screenTimeHistory || {}).reduce((a,b)=>a+b,0),
-    // Pad reading time (hcj / rsn / svb) per day, for the 📖 figure on each row.
+    // Stotram reading time (every stotram, keyed by its code name) per day, for the 📖 figures on each row.
     padTimeHistory: (S.padTrace && S.padTrace.time) || {},
     // Manual (off-screen, reported-after-the-fact) jap seconds per type/date —
     // pushed so the leaderboard's Efficiency figure can exclude them the same

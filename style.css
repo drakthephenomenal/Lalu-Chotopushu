@@ -4772,3 +4772,13 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 .jap-text-settings-panel .jtsp-row.jtsp-row-lang{flex-wrap:wrap}
 .jap-text-settings-panel .jtsp-row-lang .jtsp-ctrl.jtsp-lang{width:100%;gap:8px}
 .jap-text-settings-panel .jtsp-row-lang .jtsp-ctrl.jtsp-lang button{flex:1 1 0;min-width:0;padding:6px 4px}
+
+/* iPad: keep every screen's header clearly BELOW the status bar (time / date / Wi-Fi / battery %).
+   iPadOS reports a 0 (or tiny) safe-area inset in home-screen/windowed mode, so the header rows
+   slid up under the status bar. Guarantee a minimum clearance + a small gap. iPhones are untouched
+   (their notch inset is already larger than this). */
+@supports (-webkit-touch-callout: none) {
+  @media (min-width: 700px) {
+    .view{padding-top:calc(max(env(safe-area-inset-top,0px), 24px) + 12px);}
+  }
+}

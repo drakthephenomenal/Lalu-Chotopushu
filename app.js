@@ -14057,12 +14057,34 @@ function _rsnLangPickerHtml() {
     RSN_LANGS.map((x) => '<option value="' + x.c + '"' + (x.c === cur ? ' selected' : '') + '>' + x.n + '</option>').join('') +
     '</select>';
 }
+// ── Hit Chaurasi folder card + Phalastuti card: follow the same language picker as Hit Chaurasi Ji (HCP text: hcp-langs.js -> window.HCP_EXTRA) ──
+const HC_FOLDER_UI = {
+  en: { name: 'Sri Hit Chaurasi Ji and Phalstuti', sub: 'Sri Hit Chaurasi Ji and the fruits of its recitation' },
+  gu: { name: 'શ્રી હિત ચૌરાસી જૂ અને ફલસ્તુતિ', sub: 'શ્રી હિત ચૌરાસી જૂ અને પાઠની ફલસ્તુતિ' },
+  or: { name: 'ଶ୍ରୀ ହିତ ଚୌରାସୀ ଜୂ ଓ ଫଳସ୍ତୁତି', sub: 'ଶ୍ରୀ ହିତ ଚୌରାସୀ ଜୂ ଓ ପାଠର ଫଳସ୍ତୁତି' },
+  pa: { name: 'ਸ਼੍ਰੀ ਹਿਤ ਚੌਰਾਸੀ ਜੂ ਅਤੇ ਫਲਸਤੁਤਿ', sub: 'ਸ਼੍ਰੀ ਹਿਤ ਚੌਰਾਸੀ ਜੂ ਅਤੇ ਪਾਠ ਦੀ ਫਲਸਤੁਤਿ' },
+  te: { name: 'శ్రీ హిత చౌరాసీ జూ మరియు ఫలస్తుతి', sub: 'శ్రీ హిత చౌరాసీ జూ మరియు పాఠ ఫలస్తుతి' },
+};
+const HCP_UI = {
+  en: { name: 'Sri Hit Chaurasi Ji – Phalstuti', sub: 'Fruits of reciting, and the raag count' },
+  gu: { name: 'શ્રી હિત ચૌરાસી જૂ – ફલસ્તુતિ', sub: 'પાઠનું ફળ અને રાગ સંખ્યા' },
+  or: { name: 'ଶ୍ରୀ ହିତ ଚୌରାସୀ ଜୂ – ଫଳସ୍ତୁତି', sub: 'ପାଠର ଫଳ ଓ ରାଗ ସଂଖ୍ୟା' },
+  pa: { name: 'ਸ਼੍ਰੀ ਹਿਤ ਚੌਰਾਸੀ ਜੂ – ਫਲਸਤੁਤਿ', sub: 'ਪਾਠ ਦਾ ਫਲ ਅਤੇ ਰਾਗ ਸੰਖਿਆ' },
+  te: { name: 'శ్రీ హిత చౌరాసీ జూ – ఫలస్తుతి', sub: 'పాఠ ఫలం మరియు రాగ సంఖ్య' },
+};
+function _hcFolderName(t) {
+  const l = hcjLang();
+  if (HC_FOLDER_UI[l]) return HC_FOLDER_UI[l].name;
+  return l === 'hi' ? t.hi : t.bn;
+}
 function stName(st) {
+  if (st && st.id === 'hcp') { const l = hcjLang(); if (HCP_UI[l]) return HCP_UI[l].name; return (l === "hi" && st.nameHi) ? st.nameHi : st.name; }
   if (st && st.id === 'rsn') { const l = rsnLang(); if (RSN_UI[l]) return RSN_UI[l].name; return (l === "hi" && st.nameHi) ? st.nameHi : st.name; }
   if (st && st.id === 'hcj') { const l = hcjLang(); if (HCJ_UI[l]) return HCJ_UI[l].name; return (l === "hi" && st.nameHi) ? st.nameHi : st.name; }
   return (secLang('sv') === "hi" && st.nameHi) ? st.nameHi : st.name;
 }
 function stSub(st) {
+  if (st && st.id === 'hcp') { const l = hcjLang(); if (HCP_UI[l]) return HCP_UI[l].sub; return (l === "hi" && st.subHi) ? st.subHi : (st.sub || ""); }
   if (st && st.id === 'rsn') { const l = rsnLang(); if (RSN_UI[l]) return RSN_UI[l].sub; return (l === "hi" && st.subHi) ? st.subHi : (st.sub || ""); }
   if (st && st.id === 'hcj') { const l = hcjLang(); if (HCJ_UI[l]) return HCJ_UI[l].sub; return (l === "hi" && st.subHi) ? st.subHi : (st.sub || ""); }
   return (secLang('sv') === "hi" && st.subHi) ? st.subHi : (st.sub || "");
@@ -21954,7 +21976,7 @@ function renderSt() {
   backRow.className = 'st-back-row';
   backRow.innerHTML =
     '<button class="st-back-btn">← ' + (secLang('sv') === 'hi' ? 'फ़ोल्डर सूची' : 'ফোল্ডার তালিকা') + '</button>' +
-    '<span class="st-back-title">' + escHtml((activeKey === 'rv' && window._stRvSub && window._stRvSubTitle) ? (secLang('sv') === 'hi' ? window._stRvSubTitle.hi : window._stRvSubTitle.bn) : folderTitle(group)) + '</span>';
+    '<span class="st-back-title">' + escHtml((activeKey === 'rv' && window._stRvSub && window._stRvSubTitle) ? (window._stRvSub === 'hc' ? _hcFolderName(window._stRvSubTitle) : (secLang('sv') === 'hi' ? window._stRvSubTitle.hi : window._stRvSubTitle.bn)) : folderTitle(group)) + '</span>';
   backRow.querySelector('.st-back-btn').addEventListener('click', () => {
     if (activeKey === 'rv' && window._stRvSub) { window._stRvSub = null; renderSt(); return; }
     window._stActiveFolder = null;
@@ -22042,7 +22064,9 @@ function renderSt() {
       // Folder shown as a full-size stotram-style card (optional round photo / emoji icon,
       // name, sub-line, optional "must read" badge, and an Open button).
       const fd = st.__folder;
-      const _hiF = secLang('sv') === 'hi';
+      const _hcF = (fd.folder === 'hc') ? hcjLang() : null;
+      const _fUi = _hcF ? HC_FOLDER_UI[_hcF] : null;
+      const _hiF = _hcF ? _hcF === 'hi' : secLang('sv') === 'hi';
       const gcF = glowColors[idx % glowColors.length];
       const fc = document.createElement('div');
       fc.className = 'st-card';
@@ -22053,21 +22077,22 @@ function renderSt() {
       } else if (fd.icon) {
         iconF = '<span style="width:42px;height:42px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:30px;line-height:1">' + fd.icon + '</span>';
       }
-      const reqF = _hiF ? fd.reqHi : fd.reqBn;
+      const reqF = _fUi ? HCJ_UI[_hcF].req : (_hiF ? fd.reqHi : fd.reqBn);
       const badgeF = reqF
         ? '<div class="st-req" style="display:inline-block;margin-top:7px;padding:3px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.2px;font-family:\'Hind Siliguri\',sans-serif;background:linear-gradient(135deg,#ffe27a 0%,#ffc107 55%,#e69500 100%);color:#2a1a00;box-shadow:0 0 9px rgba(255,200,0,0.45)">' + escHtml(reqF) + '</div>'
         : '';
-      const subF = _hiF ? fd.subHi : fd.subBn;
+      const subF = _fUi ? _fUi.sub : (_hiF ? fd.subHi : fd.subBn);
       fc.innerHTML =
         '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">' +
           iconF +
           '<div style="flex:1;min-width:0">' +
-            '<div class="st-name">' + escHtml(_hiF ? fd.hi : fd.bn) + '</div>' +
+            '<div class="st-name">' + escHtml(_fUi ? _fUi.name : (_hiF ? fd.hi : fd.bn)) + '</div>' +
             (subF ? '<div class="st-sub">' + escHtml(subF) + '</div>' : '') +
             badgeF +
           '</div>' +
+          (_hcF ? _hcjLangPickerHtml() : '') +
         '</div>' +
-        '<div class="st-row" style="justify-content:flex-end"><button class="st-open-btn">' + (_hiF ? 'खोलें' : 'খুলুন') + '</button></div>';
+        '<div class="st-row" style="justify-content:flex-end"><button class="st-open-btn">' + (_fUi ? HCJ_UI[_hcF].open : (_hiF ? 'खोलें' : 'খুলুন')) + '</button></div>';
       fc.addEventListener('click', () => {
         window._stRvSub = fd.folder;
         window._stRvSubTitle = { bn: fd.bn, hi: fd.hi };
@@ -22154,14 +22179,14 @@ function renderSt() {
         '</div>';
     }
 
-    const _hcjL = (st.id === 'hcj') ? hcjLang() : (st.id === 'rsn') ? rsnLang() : null;
+    const _hcjL = (st.id === 'hcj' || st.id === 'hcp') ? hcjLang() : (st.id === 'rsn') ? rsnLang() : null;
     const _stUiMap = (st.id === 'rsn') ? RSN_UI : HCJ_UI;
     const _stHi = _hcjL ? _hcjL === 'hi' : secLang('sv') === 'hi';
-    if (st.id === 'hcj') headerRight = _hcjLangPickerHtml();
+    if (st.id === 'hcj' || st.id === 'hcp') headerRight = _hcjLangPickerHtml();
     else if (st.id === 'rsn') headerRight = _rsnLangPickerHtml();
     // No pāṭh counter / +− buttons in any stotram folder — just Open (+ a daily ✅ on badged items).
     const _noCount = true;
-    const _reqTxt = (_hcjL && _stUiMap[_hcjL]) ? _stUiMap[_hcjL].req : (_stHi ? st.reqHi : st.reqBn);
+    const _reqTxt = (_hcjL && _stUiMap[_hcjL] && st.id !== 'hcp') ? _stUiMap[_hcjL].req : (_stHi ? st.reqHi : st.reqBn);
     const _reqBadge = _reqTxt
       ? '<div class="st-req" style="display:inline-block;margin-top:7px;padding:3px 11px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.2px;font-family:\'Hind Siliguri\',sans-serif;background:linear-gradient(135deg,#ffe27a 0%,#ffc107 55%,#e69500 100%);color:#2a1a00;box-shadow:0 0 9px rgba(255,200,0,0.45)">' + escHtml(_reqTxt) + '</div>'
       : '';
@@ -24959,6 +24984,12 @@ function getEffectiveLyrics(id) {
     if (RSN_UI[_rl] && typeof RSN_EXTRA !== 'undefined' && RSN_EXTRA[_rl]) return RSN_EXTRA[_rl];
     if (_rl === 'hi') { if (typeof LYRICS_HI !== 'undefined' && LYRICS_HI.rsn) return LYRICS_HI.rsn; if (_rsnHindiLyrics) return _rsnHindiLyrics; }
     else if (_rl === 'bn') { const _full = _rsnBnFull(); if (_full) return _full; if (LYRICS.rsn) return LYRICS.rsn; }
+  }
+  if (id === 'hcp') {   // Phalastuti follows the Hit Chaurasi language picker
+    const _pl = hcjLang();
+    if (HCJ_UI[_pl] && typeof HCP_EXTRA !== 'undefined' && HCP_EXTRA[_pl]) return HCP_EXTRA[_pl];
+    if (_pl === 'hi' && typeof LYRICS_HI !== 'undefined' && LYRICS_HI.hcp) return LYRICS_HI.hcp;
+    if (_pl === 'bn' && LYRICS.hcp) return LYRICS.hcp;
   }
   if (id === 'hcj') {   // Hit Chaurasi Ji follows its own language picker
     const _hl = hcjLang();

@@ -1575,7 +1575,7 @@ async function rjapAutoPush(opts) {
       if (fbUser && fbDb) ok = (await lcRegisterPush()) || ok;
       _lcPushSetUI(ok);
       _rjapReportPushState(state, ok, false);
-      if (!opts.deferPrompt) rjapAskExactAlarm();   // next permission step: Alarms & reminders
+      if (!opts.deferPrompt) rjapPermRun("alarm");   // next steps: ⏰ Alarms & reminders → 🔋 Battery
       return ok;
     } catch (e) { console.warn("auto push failed:", e); return false; }
     finally { setTimeout(() => { window._lcAutoPushBusy = null; }, 1500); }
@@ -1604,7 +1604,7 @@ function _rjapShowNotifAllowDialog() {
       '</div>';
     document.body.appendChild(o);
     const close = () => { try { o.remove(); } catch (_e) {} };
-    document.getElementById("rjapNotifAllowLater").onclick = () => { close(); rjapAskExactAlarm(); };
+    document.getElementById("rjapNotifAllowLater").onclick = () => { close(); rjapPermRun("alarm"); };
     document.getElementById("rjapNotifAllowGo").onclick = async () => {
       close();
       try {
@@ -1619,91 +1619,106 @@ function _rjapShowNotifAllowDialog() {
     };
   } catch (_e) {}
 }
-// ── "Alarms & reminders" (exact alarm) permission: asked right AFTER the notification step, on EVERY app
-// open (once per open) until the person allows it. Android has no pop-up box for this one, so an in-app
-// card sends them to the system "Alarms and reminders" screen. Only in the installed Android app, only
-// on Android 12+ (canScheduleExactAlarms is always true below that), and only while it is still off.
-async function rjapAskExactAlarm() {
-  try {
-    if (window._rjapAlarmAskedThisOpen) return;
-    const PP = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PowerPermissions;
-    if (!(_lcIsNative() && PP && PP.canScheduleExactAlarms && PP.requestExactAlarmPermission)) return;
-    if (document.getElementById("rjapNotifAllowOverlay")) return;   // never stack on the notification card
-    const r = await PP.canScheduleExactAlarms();
-    if (r && r.value) { rjapAskBatteryOptim(); return; }            // already allowed -> next step: battery
-    window._rjapAlarmAskedThisOpen = true;
-    _rjapShowAlarmAllowDialog();
-  } catch (_e) {}
+// ═══ Permission sequence (installed Android app), one card at a time, every app open until each is allowed:
+//   language → notifications (system box) → "Sign in with Google" offer → (signed in: Drive → 📍 GPS → notification)
+//   → ⏰ Alarms & reminders → 🔋 Battery.
+// The ⏰ and 🔋 cards WAIT until: no other pop-up is open, the sign-in offer has been shown and is gone
+// (signed in, ✕, or faded), a sign-in / onboarding is not running, and the Jap screen is showing.
+// After the person taps Allow on ⏰ and comes back from Android's settings, 🔋 follows automatically.
+function _rjapPP() {
+  const PP = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PowerPermissions;
+  return (_lcIsNative() && PP) ? PP : null;
 }
-function _rjapShowAlarmAllowDialog() {
+function _rjapPermGateOpen() {
+  if (document.querySelector('body > div[style*="z-index:100000"]')) return false;   // any open pop-up
+  if (document.getElementById("japNudge")) return false;                              // sign-in / GPS offer on screen
+  if (window._rjapNudgeDecided !== true) return false;                                // offer not shown yet
+  if (typeof _lcOnbRunning !== "undefined" && _lcOnbRunning) return false;           // Drive → GPS → language → notification running
+  if (window._rjapAuthResolved !== true) return false;                                // still finding out who is signed in
+  try { if (typeof fbUser !== "undefined" && fbUser && !window._rjapOnbDoneThisOpen) return false; } catch (_e) {}  // signed in: onboarding (Drive, GPS…) must finish first
+  if (Date.now() < (window._rjapPermHoldUntil || 0)) return false;                    // Google sign-in in progress
+  if (document.visibilityState === "hidden") return false;
+  const v = document.getElementById("vj");
+  return !!(v && v.classList.contains("active"));
+}
+async function _rjapPermWaitGate() {
+  for (let i = 0; i < 80; i++) {            // ~2 minutes at most, then try again at the next app open
+    if (_rjapPermGateOpen()) return true;
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  return false;
+}
+function _rjapPermCard(o) {
+  return new Promise((resolve) => {
+    try {
+      if (document.getElementById(o.id)) return resolve("skip");
+      const el = document.createElement("div");
+      el.id = o.id;
+      el.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;padding:20px;";
+      el.innerHTML =
+        '<div style="max-width:340px;width:100%;background:#0b1030;border:1px solid rgba(255,215,0,0.45);border-radius:18px;padding:20px;text-align:center;color:#fff;box-shadow:0 10px 40px rgba(0,0,0,0.6);">' +
+        '<div style="font-size:34px;margin-bottom:6px;">' + o.icon + '</div>' +
+        '<div style="font-size:17px;font-weight:800;color:#ffd700;margin-bottom:8px;">' + o.title + '</div>' +
+        '<div style="font-size:13px;line-height:1.5;color:rgba(255,255,255,0.8);margin-bottom:16px;">' + o.text + '</div>' +
+        '<button data-go style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#ffd700,#e56b1f);color:#1a1200;font-weight:800;font-size:15px;margin-bottom:8px;">Allow</button>' +
+        '<button data-later style="width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.7);font-size:13px;">Not now</button>' +
+        '</div>';
+      document.body.appendChild(el);
+      const close = () => { try { el.remove(); } catch (_e) {} };
+      el.querySelector("[data-later]").onclick = () => { close(); resolve("skip"); };
+      el.querySelector("[data-go]").onclick = () => { close(); resolve("go"); };
+    } catch (_e) { resolve("skip"); }
+  });
+}
+async function rjapPermRun(startAt) {
+  if (window._rjapPermRunning) return;
+  window._rjapPermRunning = true;
   try {
-    if (document.getElementById("rjapAlarmAllowOverlay")) return;
-    const o = document.createElement("div");
-    o.id = "rjapAlarmAllowOverlay";
-    o.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;padding:20px;";
-    o.innerHTML =
-      '<div style="max-width:340px;width:100%;background:#0b1030;border:1px solid rgba(255,215,0,0.45);border-radius:18px;padding:20px;text-align:center;color:#fff;box-shadow:0 10px 40px rgba(0,0,0,0.6);">' +
-      '<div style="font-size:34px;margin-bottom:6px;">⏰</div>' +
-      '<div style="font-size:17px;font-weight:800;color:#ffd700;margin-bottom:8px;">Allow alarms &amp; reminders</div>' +
-      '<div style="font-size:13px;line-height:1.5;color:rgba(255,255,255,0.8);margin-bottom:16px;">So your jap reminders ring at the exact minute, tap <b>Allow</b>, then turn on <b>Allow setting alarms and reminders</b> on the next screen.</div>' +
-      '<button id="rjapAlarmAllowGo" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#ffd700,#e56b1f);color:#1a1200;font-weight:800;font-size:15px;margin-bottom:8px;">Allow</button>' +
-      '<button id="rjapAlarmAllowLater" style="width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.7);font-size:13px;">Not now</button>' +
-      '</div>';
-    document.body.appendChild(o);
-    const close = () => { try { o.remove(); } catch (_e) {} };
-    document.getElementById("rjapAlarmAllowLater").onclick = () => { close(); rjapAskBatteryOptim(); };
-    document.getElementById("rjapAlarmAllowGo").onclick = async () => {
-      close();
-      try {
-        await window.Capacitor.Plugins.PowerPermissions.requestExactAlarmPermission();
-      } catch (_e) {
-        toast("⏰ Phone Settings → Apps → RadhaNaam SudhaRasam → Alarms & reminders → Allow");
+    const PP = _rjapPP();
+    if (!PP) return;
+    if (!(await _rjapPermWaitGate())) return;
+    // ── ⏰ Alarms & reminders ──
+    if (startAt !== "battery" && !window._rjapAlarmAskedThisOpen && PP.canScheduleExactAlarms && PP.requestExactAlarmPermission) {
+      let on = true;
+      try { const r = await PP.canScheduleExactAlarms(); on = !!(r && r.value); } catch (_e) {}
+      if (!on) {
+        window._rjapAlarmAskedThisOpen = true;
+        const ans = await _rjapPermCard({ id: "rjapAlarmAllowOverlay", icon: "⏰", title: "Allow alarms &amp; reminders",
+          text: "So your jap reminders ring at the exact minute, tap <b>Allow</b>, then turn on <b>Allow setting alarms and reminders</b> on the next screen." });
+        if (ans === "go") {
+          window._rjapPermResume = "battery";          // continue with 🔋 when the person comes back
+          try { await PP.requestExactAlarmPermission(); }
+          catch (_e) { window._rjapPermResume = ""; toast("⏰ Phone Settings → Apps → RadhaNaam SudhaRasam → Alarms & reminders → Allow"); }
+          return;                                      // paused until the app is visible again
+        }
+        if (!(await _rjapPermWaitGate())) return;
       }
-    };
-  } catch (_e) {}
-}
-// ── "Battery: No restrictions" permission: the LAST step, asked after notifications and alarms, on EVERY
-// app open (once per open) until the person allows it. Opens Android's own "Allow app to always run in the
-// background?" box when the build declares REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, else the battery list.
-async function rjapAskBatteryOptim() {
-  try {
-    if (window._rjapBattAskedThisOpen) return;
-    const PP = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PowerPermissions;
-    if (!(_lcIsNative() && PP && PP.isBatteryOptimizationIgnored && PP.requestIgnoreBatteryOptimizations)) return;
-    if (document.getElementById("rjapNotifAllowOverlay") || document.getElementById("rjapAlarmAllowOverlay")) return;
-    const r = await PP.isBatteryOptimizationIgnored();
-    if (r && r.value) return;                                       // already unrestricted -> never ask
-    window._rjapBattAskedThisOpen = true;
-    _rjapShowBattAllowDialog();
-  } catch (_e) {}
-}
-function _rjapShowBattAllowDialog() {
-  try {
-    if (document.getElementById("rjapBattAllowOverlay")) return;
-    const o = document.createElement("div");
-    o.id = "rjapBattAllowOverlay";
-    o.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;padding:20px;";
-    o.innerHTML =
-      '<div style="max-width:340px;width:100%;background:#0b1030;border:1px solid rgba(255,215,0,0.45);border-radius:18px;padding:20px;text-align:center;color:#fff;box-shadow:0 10px 40px rgba(0,0,0,0.6);">' +
-      '<div style="font-size:34px;margin-bottom:6px;">🔋</div>' +
-      '<div style="font-size:17px;font-weight:800;color:#ffd700;margin-bottom:8px;">Allow background running</div>' +
-      '<div style="font-size:13px;line-height:1.5;color:rgba(255,255,255,0.8);margin-bottom:16px;">So your jap reminders are not delayed or stopped by battery saving, tap <b>Allow</b>, then choose <b>Allow</b> / <b>No restrictions</b> on the next screen.</div>' +
-      '<button id="rjapBattAllowGo" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#ffd700,#e56b1f);color:#1a1200;font-weight:800;font-size:15px;margin-bottom:8px;">Allow</button>' +
-      '<button id="rjapBattAllowLater" style="width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.7);font-size:13px;">Not now</button>' +
-      '</div>';
-    document.body.appendChild(o);
-    const close = () => { try { o.remove(); } catch (_e) {} };
-    document.getElementById("rjapBattAllowLater").onclick = close;
-    document.getElementById("rjapBattAllowGo").onclick = async () => {
-      close();
-      try {
-        await window.Capacitor.Plugins.PowerPermissions.requestIgnoreBatteryOptimizations();
-      } catch (_e) {
-        toast("🔋 Phone Settings → Apps → RadhaNaam SudhaRasam → Battery → No restrictions");
+    }
+    // ── 🔋 Battery: No restrictions ──
+    if (!window._rjapBattAskedThisOpen && PP.isBatteryOptimizationIgnored && PP.requestIgnoreBatteryOptimizations) {
+      let ok = true;
+      try { const r = await PP.isBatteryOptimizationIgnored(); ok = !!(r && r.value); } catch (_e) {}
+      if (!ok) {
+        window._rjapBattAskedThisOpen = true;
+        const ans = await _rjapPermCard({ id: "rjapBattAllowOverlay", icon: "🔋", title: "Allow background running",
+          text: "So your jap reminders are not delayed or stopped by battery saving, tap <b>Allow</b>, then choose <b>Allow</b> / <b>No restrictions</b> on the next screen." });
+        if (ans === "go") {
+          try { await PP.requestIgnoreBatteryOptimizations(); }
+          catch (_e) { toast("🔋 Phone Settings → Apps → RadhaNaam SudhaRasam → Battery → No restrictions"); }
+        }
       }
-    };
-  } catch (_e) {}
+    }
+  } catch (_e) {
+  } finally { window._rjapPermRunning = false; }
 }
+// Back from Android's "Alarms and reminders" screen → carry on with the next card.
+document.addEventListener("visibilitychange", () => {
+  try {
+    if (document.visibilityState !== "visible" || !window._rjapPermResume) return;
+    const nxt = window._rjapPermResume; window._rjapPermResume = "";
+    setTimeout(() => { rjapPermRun(nxt); }, 900);
+  } catch (_e) {}
+});
 // Coming back from Settings: if notifications are now allowed, finish registering right away.
 (function () {
   try {
@@ -13989,6 +14004,8 @@ async function lcOnboardingRun(user) {
     console.error("onboarding failed:", e);
   } finally {
     _lcOnbRunning = false;
+    window._rjapOnbDoneThisOpen = true;   // Drive / GPS / language / notification steps are finished for this app open
+    window._rjapPermHoldUntil = 0;
   }
 }
 
@@ -41396,7 +41413,7 @@ async function _syncPublicPhoto(p, largeOverride, hdFile) {
    1) First ever open  → "To keep your Jap data preserved, sign in" (sign-in not done yet)
    2) Later opens, not signed in → same sign-in reminder
    3) Later opens, signed in but GPS off → GPS reminder
-   One banner per app open, never blocks counting, ✕ to dismiss, fades by itself. */
+   One banner per app open, never blocks counting, stays until ✕ (or its button) is tapped. */
 (function () {
   var KEY_FIRST = "rjap_nudge_first_done";
   function lsGet(k) { try { return localStorage.getItem(k); } catch (_e) { return null; } }
@@ -41439,18 +41456,22 @@ async function _syncPublicPhoto(p, largeOverride, hdFile) {
     go.onclick = function (e) { e.stopPropagation(); hide(); try { onAction(); } catch (_e) {} };
     var x = document.createElement("button"); x.type = "button"; x.textContent = "✕"; x.setAttribute("aria-label", "Dismiss");
     x.style.cssText = "position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:0;border:none;background:transparent;color:rgba(255,255,255,.85);font-size:14px;";
-    x.onclick = function (e) { e.stopPropagation(); hide(); };
+    x.onclick = function (e) {
+      e.stopPropagation(); hide();
+      // the offer was cancelled -> the ⏰ / 🔋 permission cards may follow
+      setTimeout(function () { try { if (typeof rjapPermRun === "function") rjapPermRun("alarm"); } catch (_e) {} }, 700);
+    };
     [ "touchstart", "mousedown", "click" ].forEach(function (t) { el.addEventListener(t, function (e) { e.stopPropagation(); }, { passive: true }); });
     el.appendChild(x); el.appendChild(ic); el.appendChild(tx); el.appendChild(go);
     document.body.appendChild(el);
     requestAnimationFrame(function () { el.style.opacity = "1"; });
-    setTimeout(hide, 16000);   // fades away by itself if ignored
   }
   function goSignIn() {
     // Same path as Settings: account popup -> "Signed in" toast ->
     // (onAuthStateChanged) notification -> GPS -> language -> Drive offer.
     // Nothing is duplicated here, so the two entry points cannot drift apart.
     try {
+      window._rjapPermHoldUntil = Date.now() + 120000;   // keep ⏰ / 🔋 cards away while signing in
       if (typeof fbSignInGoogle === "function") { fbSignInGoogle(); return; }
     } catch (_e) {}
     toast("Sign-in isn't ready yet. Please try again in a moment 🙏");
@@ -41469,12 +41490,13 @@ async function _syncPublicPhoto(p, largeOverride, hdFile) {
     var tries = 0;
     (function wait() {
       tries++;
-      if (tries > 30) return;                                        // give up after ~45 s
+      if (tries > 30) { window._rjapNudgeDecided = true; return; }   // give up after ~45 s
       var authReady = window._rjapAuthResolved === true || tries > 8;   // wait for Firebase, but not forever
       if (!authReady || blockingModalOpen() || !onJapScreen() || (typeof fbForcedSignout !== "undefined" && fbForcedSignout)) {
         return setTimeout(wait, 1500);
       }
       pick();
+      window._rjapNudgeDecided = true;   // sign-in / GPS offer handled → ⏰ and 🔋 cards may follow
     })();
   }
   if (document.readyState === "complete") setTimeout(start, 2500);

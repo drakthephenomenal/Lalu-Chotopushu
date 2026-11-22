@@ -332,6 +332,17 @@ async function lcSetupBackupNotifChannel() {
 // Best-effort only: if notification permission was never granted this
 // silently does nothing rather than nagging the user with a permission
 // prompt in the middle of an export — the toast already confirms success.
+// True when exact alarms are allowed (or the question doesn't apply: iOS / web / Android < 12).
+// Timed reminders use this so they are scheduled exact when allowed, and quietly inexact when not,
+// instead of making the plugin open the "Alarms and reminders" settings screen by itself.
+async function _rjapExactOk() {
+  try {
+    const PP = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PowerPermissions;
+    if (!(_lcIsNative() && PP && PP.canScheduleExactAlarms)) return true;
+    const r = await PP.canScheduleExactAlarms();
+    return !(r && r.value === false);
+  } catch (_e) { return true; }
+}
 async function lcNotifyBackupSaved(body) {
   if (!(_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications)) return;
   try {
@@ -344,6 +355,7 @@ async function lcNotifyBackupSaved(body) {
         id: RJAP_BACKUP_NOTIF_ID,
         title: "📥 RadhaNaam SudhaRasam Backup Saved",
         body,
+        isExactNotification: false,   // immediate notice: never needs the exact-alarm permission
         channelId: RJAP_BACKUP_NOTIF_CHANNEL_ID,
         smallIcon: "ic_notify_color",
         largeIcon: "ic_large_notify",
@@ -374,11 +386,13 @@ async function lcScheduleDailyReminder(hour, minute) {
   if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
     const { LocalNotifications } = window.Capacitor.Plugins;
     try { await LocalNotifications.cancel({ notifications: [{ id: RJAP_REMINDER_NOTIF_ID }] }); } catch (e) {}
+    const _exOk1 = await _rjapExactOk();
     await LocalNotifications.schedule({
       notifications: [{
         id: RJAP_REMINDER_NOTIF_ID,
         title: "🙏 RadhaNaam SudhaRasam",
         body: "Time for your daily sadhana — chant with a peaceful heart.",
+        isExactNotification: _exOk1,
         schedule: { on: { hour, minute }, allowWhileIdle: true },
         channelId: RJAP_NOTIF_CHANNEL_ID,
         smallIcon: "ic_notify_color",
@@ -433,11 +447,13 @@ async function _lcScheduleOneShot(id, targetDate, title, body) {
   if (_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
     const { LocalNotifications } = window.Capacitor.Plugins;
     try { await LocalNotifications.cancel({ notifications: [{ id }] }); } catch (e) {}
+    const _exOk2 = await _rjapExactOk();
     await LocalNotifications.schedule({
       notifications: [{
         id,
         title,
         body,
+        isExactNotification: _exOk2,
         schedule: { at: targetDate, allowWhileIdle: true },
         channelId: RJAP_NOTIF_CHANNEL_ID,
         smallIcon: "ic_notify_color",
@@ -782,9 +798,23 @@ function _rjapMarkReadByKey(key) {
   return n || null;
 }
 
-/* ── Soft in-app chime (generated, no audio file) — used instead of the reminder tone while the app is open ── */
-let _rjapAC = null;
+/* ── In-app sound while the app is open: plays reminder_tone.mp3 (the SAME tone the phone plays when the app is
+   closed) for admin "new user joined" alerts, admin broadcasts and reminders. If the file can't play for any
+   reason, it falls back to the old generated chime so a notification is never silent. ── */
+let _rjapToneEl = null;
 function _rjapSoftChime() {
+  try {
+    if (!_rjapToneEl) { _rjapToneEl = new Audio("reminder_tone.mp3"); _rjapToneEl.preload = "auto"; }
+    try { _rjapToneEl.pause(); _rjapToneEl.currentTime = 0; } catch (_e) {}
+    const pr = _rjapToneEl.play();
+    if (pr && typeof pr.catch === "function") pr.catch(() => { _rjapGeneratedChime(); });
+    try { if (navigator.vibrate) navigator.vibrate(40); } catch (_e) {}
+    return;
+  } catch (_e) {}
+  _rjapGeneratedChime();
+}
+let _rjapAC = null;
+function _rjapGeneratedChime() {
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
@@ -947,6 +977,7 @@ async function _rjapPostBarNotif(entry) {
     } catch (_e) {}
     await LN.schedule({ notifications: [{
       id: 100000 + (_rjapHash(entry.k || entry.id) % 1000000000),
+      isExactNotification: false,
       title: entry.title || "Notification",
       body: entry.body || "",
       channelId: RJAP_PUSH_FG_CHANNEL_ID,
@@ -1089,6 +1120,7 @@ async function _rjapNativeSchedule(e, mode) {
   const LN = _rjapLN(); if (!LN) return;
   const n = { id: Number(e.id), title: e.title, body: e.body, channelId: e.ch || RJAP_NOTIF_CHANNEL_ID,
     smallIcon: "ic_notify_color", largeIcon: "ic_large_notify" };
+  if (mode === "now" || !(await _rjapExactOk())) n.isExactNotification = false;
   if (mode !== "now") n.schedule = e.kind === "at" ? { at: new Date(e.at), allowWhileIdle: true } : { on: { hour: e.h, minute: e.m }, allowWhileIdle: true };
   await LN.schedule({ notifications: [n] });
 }
@@ -1543,6 +1575,7 @@ async function rjapAutoPush(opts) {
       if (fbUser && fbDb) ok = (await lcRegisterPush()) || ok;
       _lcPushSetUI(ok);
       _rjapReportPushState(state, ok, false);
+      if (!opts.deferPrompt) rjapAskExactAlarm();   // next permission step: Alarms & reminders
       return ok;
     } catch (e) { console.warn("auto push failed:", e); return false; }
     finally { setTimeout(() => { window._lcAutoPushBusy = null; }, 1500); }
@@ -1571,7 +1604,7 @@ function _rjapShowNotifAllowDialog() {
       '</div>';
     document.body.appendChild(o);
     const close = () => { try { o.remove(); } catch (_e) {} };
-    document.getElementById("rjapNotifAllowLater").onclick = close;
+    document.getElementById("rjapNotifAllowLater").onclick = () => { close(); rjapAskExactAlarm(); };
     document.getElementById("rjapNotifAllowGo").onclick = async () => {
       close();
       try {
@@ -1583,6 +1616,91 @@ function _rjapShowNotifAllowDialog() {
         }
       } catch (_e) {}
       toast("🔔 Phone Settings → Apps → RadhaNaam SudhaRasam → Notifications → Allow");
+    };
+  } catch (_e) {}
+}
+// ── "Alarms & reminders" (exact alarm) permission: asked right AFTER the notification step, on EVERY app
+// open (once per open) until the person allows it. Android has no pop-up box for this one, so an in-app
+// card sends them to the system "Alarms and reminders" screen. Only in the installed Android app, only
+// on Android 12+ (canScheduleExactAlarms is always true below that), and only while it is still off.
+async function rjapAskExactAlarm() {
+  try {
+    if (window._rjapAlarmAskedThisOpen) return;
+    const PP = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PowerPermissions;
+    if (!(_lcIsNative() && PP && PP.canScheduleExactAlarms && PP.requestExactAlarmPermission)) return;
+    if (document.getElementById("rjapNotifAllowOverlay")) return;   // never stack on the notification card
+    const r = await PP.canScheduleExactAlarms();
+    if (r && r.value) { rjapAskBatteryOptim(); return; }            // already allowed -> next step: battery
+    window._rjapAlarmAskedThisOpen = true;
+    _rjapShowAlarmAllowDialog();
+  } catch (_e) {}
+}
+function _rjapShowAlarmAllowDialog() {
+  try {
+    if (document.getElementById("rjapAlarmAllowOverlay")) return;
+    const o = document.createElement("div");
+    o.id = "rjapAlarmAllowOverlay";
+    o.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;padding:20px;";
+    o.innerHTML =
+      '<div style="max-width:340px;width:100%;background:#0b1030;border:1px solid rgba(255,215,0,0.45);border-radius:18px;padding:20px;text-align:center;color:#fff;box-shadow:0 10px 40px rgba(0,0,0,0.6);">' +
+      '<div style="font-size:34px;margin-bottom:6px;">⏰</div>' +
+      '<div style="font-size:17px;font-weight:800;color:#ffd700;margin-bottom:8px;">Allow alarms &amp; reminders</div>' +
+      '<div style="font-size:13px;line-height:1.5;color:rgba(255,255,255,0.8);margin-bottom:16px;">So your jap reminders ring at the exact minute, tap <b>Allow</b>, then turn on <b>Allow setting alarms and reminders</b> on the next screen.</div>' +
+      '<button id="rjapAlarmAllowGo" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#ffd700,#e56b1f);color:#1a1200;font-weight:800;font-size:15px;margin-bottom:8px;">Allow</button>' +
+      '<button id="rjapAlarmAllowLater" style="width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.7);font-size:13px;">Not now</button>' +
+      '</div>';
+    document.body.appendChild(o);
+    const close = () => { try { o.remove(); } catch (_e) {} };
+    document.getElementById("rjapAlarmAllowLater").onclick = () => { close(); rjapAskBatteryOptim(); };
+    document.getElementById("rjapAlarmAllowGo").onclick = async () => {
+      close();
+      try {
+        await window.Capacitor.Plugins.PowerPermissions.requestExactAlarmPermission();
+      } catch (_e) {
+        toast("⏰ Phone Settings → Apps → RadhaNaam SudhaRasam → Alarms & reminders → Allow");
+      }
+    };
+  } catch (_e) {}
+}
+// ── "Battery: No restrictions" permission: the LAST step, asked after notifications and alarms, on EVERY
+// app open (once per open) until the person allows it. Opens Android's own "Allow app to always run in the
+// background?" box when the build declares REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, else the battery list.
+async function rjapAskBatteryOptim() {
+  try {
+    if (window._rjapBattAskedThisOpen) return;
+    const PP = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PowerPermissions;
+    if (!(_lcIsNative() && PP && PP.isBatteryOptimizationIgnored && PP.requestIgnoreBatteryOptimizations)) return;
+    if (document.getElementById("rjapNotifAllowOverlay") || document.getElementById("rjapAlarmAllowOverlay")) return;
+    const r = await PP.isBatteryOptimizationIgnored();
+    if (r && r.value) return;                                       // already unrestricted -> never ask
+    window._rjapBattAskedThisOpen = true;
+    _rjapShowBattAllowDialog();
+  } catch (_e) {}
+}
+function _rjapShowBattAllowDialog() {
+  try {
+    if (document.getElementById("rjapBattAllowOverlay")) return;
+    const o = document.createElement("div");
+    o.id = "rjapBattAllowOverlay";
+    o.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;padding:20px;";
+    o.innerHTML =
+      '<div style="max-width:340px;width:100%;background:#0b1030;border:1px solid rgba(255,215,0,0.45);border-radius:18px;padding:20px;text-align:center;color:#fff;box-shadow:0 10px 40px rgba(0,0,0,0.6);">' +
+      '<div style="font-size:34px;margin-bottom:6px;">🔋</div>' +
+      '<div style="font-size:17px;font-weight:800;color:#ffd700;margin-bottom:8px;">Allow background running</div>' +
+      '<div style="font-size:13px;line-height:1.5;color:rgba(255,255,255,0.8);margin-bottom:16px;">So your jap reminders are not delayed or stopped by battery saving, tap <b>Allow</b>, then choose <b>Allow</b> / <b>No restrictions</b> on the next screen.</div>' +
+      '<button id="rjapBattAllowGo" style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#ffd700,#e56b1f);color:#1a1200;font-weight:800;font-size:15px;margin-bottom:8px;">Allow</button>' +
+      '<button id="rjapBattAllowLater" style="width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.7);font-size:13px;">Not now</button>' +
+      '</div>';
+    document.body.appendChild(o);
+    const close = () => { try { o.remove(); } catch (_e) {} };
+    document.getElementById("rjapBattAllowLater").onclick = close;
+    document.getElementById("rjapBattAllowGo").onclick = async () => {
+      close();
+      try {
+        await window.Capacitor.Plugins.PowerPermissions.requestIgnoreBatteryOptimizations();
+      } catch (_e) {
+        toast("🔋 Phone Settings → Apps → RadhaNaam SudhaRasam → Battery → No restrictions");
+      }
     };
   } catch (_e) {}
 }
@@ -37037,7 +37155,7 @@ async function _rjNotifyUpdate(versionKey, body) {
       if (perm.display === "granted") {
         try { await LocalNotifications.createChannel({ id: _RJ_UPD_NOTIF_CHANNEL, name: "App Updates", description: "Tells you when a new app version is available", importance: 4, visibility: 1 }); } catch (_) {}
         await LocalNotifications.schedule({ notifications: [{
-          id: _RJ_UPD_NOTIF_ID, title: "⬆️ RadhaNaam SudhaRasam Update", body: text,
+          id: _RJ_UPD_NOTIF_ID, title: "⬆️ RadhaNaam SudhaRasam Update", body: text, isExactNotification: false,
           channelId: _RJ_UPD_NOTIF_CHANNEL, smallIcon: "ic_notify_color", largeIcon: "ic_large_notify",
         }] });
         sent = true;

@@ -37243,7 +37243,10 @@ async function _performNativeCacheRefresh() {
 // ── PWA/TWA refresh warning gate ──
 // Mirrors the native cache-refresh and sign-out warnings above, for
 // consistency across all three destructive-ish actions in Settings.
-function confirmWebCacheRefresh() {
+function confirmWebCacheRefresh(mode) {
+  // mode "update" (from the Update App button) -> "Update Anyway"; otherwise "Refresh Anyway".
+  const pb = document.getElementById("webCacheProceedBtn");
+  if (pb) pb.textContent = mode === "update" ? "Update Anyway" : "Refresh Anyway";
   const modal = document.getElementById("webCacheWarningModal");
   if (modal) {
     modal.style.display = "flex";
@@ -37269,7 +37272,7 @@ function _confirmWebCacheRefreshProceed() {
 function rjRefreshApp() {
   const Cap = window.Capacitor;
   if (Cap && Cap.isNativePlatform && Cap.isNativePlatform()) return confirmNativeCacheRefresh();
-  return confirmWebCacheRefresh();
+  return confirmWebCacheRefresh("refresh");
 }
 
 async function checkAppUpdate() {
@@ -37286,7 +37289,7 @@ async function checkAppUpdate() {
     try { await checkForUpdateAvailable(); } catch (_) {}
     const card = document.getElementById("appUpdateCard");
     const st = statusEl ? statusEl.textContent : "";
-    if ((card && card.classList.contains("update-available")) || /force-refresh|refresh and fetch/i.test(st)) return confirmWebCacheRefresh();
+    if ((card && card.classList.contains("update-available")) || /force-refresh|refresh and fetch/i.test(st)) return confirmWebCacheRefresh("update");
     return;
   }
 

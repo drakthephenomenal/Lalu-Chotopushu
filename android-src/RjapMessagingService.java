@@ -93,13 +93,12 @@ public class RjapMessagingService extends MessagingService {
 
         Resources r = ctx.getResources();
         String pkg = ctx.getPackageName();
-        int small = r.getIdentifier("ic_stat_notify", "drawable", pkg);
+        int small = r.getIdentifier("ic_notify_color", "drawable", pkg);
         if (small == 0) small = ctx.getApplicationInfo().icon;
         int large = r.getIdentifier("ic_large_notify", "drawable", pkg);
 
         NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, CHANNEL_ID)
                 .setSmallIcon(small)
-                .setColor(0xFFE56B1F)
                 .setContentTitle(title)
                 .setContentText(body)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(body))

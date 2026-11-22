@@ -345,9 +345,8 @@ async function lcNotifyBackupSaved(body) {
         title: "📥 RadhaNaam SudhaRasam Backup Saved",
         body,
         channelId: RJAP_BACKUP_NOTIF_CHANNEL_ID,
-        smallIcon: "ic_stat_notify",
+        smallIcon: "ic_notify_color",
         largeIcon: "ic_large_notify",
-        iconColor: "#E56B1F",
       }],
     });
   } catch (e) {}
@@ -382,9 +381,8 @@ async function lcScheduleDailyReminder(hour, minute) {
         body: "Time for your daily sadhana — chant with a peaceful heart.",
         schedule: { on: { hour, minute }, allowWhileIdle: true },
         channelId: RJAP_NOTIF_CHANNEL_ID,
-        smallIcon: "ic_stat_notify",
+        smallIcon: "ic_notify_color",
         largeIcon: "ic_large_notify",
-        iconColor: "#E56B1F",
       }],
     });
     try {
@@ -442,9 +440,8 @@ async function _lcScheduleOneShot(id, targetDate, title, body) {
         body,
         schedule: { at: targetDate, allowWhileIdle: true },
         channelId: RJAP_NOTIF_CHANNEL_ID,
-        smallIcon: "ic_stat_notify",
+        smallIcon: "ic_notify_color",
         largeIcon: "ic_large_notify",
-        iconColor: "#E56B1F",
       }],
     });
     try { _rjapRegPut({ id, kind: "at", at: new Date(targetDate).getTime(), title, body }); } catch (_e) {}
@@ -1091,7 +1088,7 @@ function _rjapRegNextFire(e, now) {
 async function _rjapNativeSchedule(e, mode) {
   const LN = _rjapLN(); if (!LN) return;
   const n = { id: Number(e.id), title: e.title, body: e.body, channelId: e.ch || RJAP_NOTIF_CHANNEL_ID,
-    smallIcon: "ic_stat_notify", largeIcon: "ic_large_notify", iconColor: "#E56B1F" };
+    smallIcon: "ic_notify_color", largeIcon: "ic_large_notify" };
   if (mode !== "now") n.schedule = e.kind === "at" ? { at: new Date(e.at), allowWhileIdle: true } : { on: { hour: e.h, minute: e.m }, allowWhileIdle: true };
   await LN.schedule({ notifications: [n] });
 }
@@ -37041,7 +37038,7 @@ async function _rjNotifyUpdate(versionKey, body) {
         try { await LocalNotifications.createChannel({ id: _RJ_UPD_NOTIF_CHANNEL, name: "App Updates", description: "Tells you when a new app version is available", importance: 4, visibility: 1 }); } catch (_) {}
         await LocalNotifications.schedule({ notifications: [{
           id: _RJ_UPD_NOTIF_ID, title: "⬆️ RadhaNaam SudhaRasam Update", body: text,
-          channelId: _RJ_UPD_NOTIF_CHANNEL, smallIcon: "ic_stat_notify", largeIcon: "ic_large_notify", iconColor: "#E56B1F",
+          channelId: _RJ_UPD_NOTIF_CHANNEL, smallIcon: "ic_notify_color", largeIcon: "ic_large_notify",
         }] });
         sent = true;
       }

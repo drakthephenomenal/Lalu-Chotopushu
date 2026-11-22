@@ -40,7 +40,7 @@ public class MediaKeepAliveService extends Service {
         int piFlags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0);
         PendingIntent pi = PendingIntent.getActivity(this, 0, open, piFlags);
         Notification.Builder b = (Build.VERSION.SDK_INT >= 26) ? new Notification.Builder(this, CHANNEL) : new Notification.Builder(this);
-        int icon = getResources().getIdentifier("ic_stat_notify", "drawable", getPackageName());
+        int icon = getResources().getIdentifier("ic_notify_color", "drawable", getPackageName());
         if (icon == 0) icon = android.R.drawable.ic_media_play;
         b.setSmallIcon(icon).setContentTitle(title).setContentText("Playing in the background")
          .setContentIntent(pi).setOngoing(true).setCategory(Notification.CATEGORY_TRANSPORT);

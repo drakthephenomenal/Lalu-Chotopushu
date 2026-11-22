@@ -316,8 +316,7 @@ if "default_notification_icon" in c:
     print("  already present")
 else:
     meta = (
-        '        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_notify" />\n'
-        '        <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:value="#E56B1F" />\n'
+        '        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_notify_color" />\n'
     )
     i = c.find("</application>")
     if i == -1:

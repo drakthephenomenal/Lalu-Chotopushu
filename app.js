@@ -36819,7 +36819,7 @@ async function checkForUpdateAvailable() {
       const remotePseudoVersion = data && data.version;
       if (remotePseudoVersion && String(remotePseudoVersion) !== String(localPseudoVersion)) {
         iconEl.textContent = "⬆️";
-        statusEl.textContent = "New version available (" + remotePseudoVersion + ") — tap to refresh";
+        statusEl.textContent = "New version available (" + remotePseudoVersion + ") — tap to refresh"; try { const _rs = document.getElementById("appRefreshSub"); if (_rs) _rs.textContent = "New version available (" + remotePseudoVersion + ") — refresh now to update and clear caches \ud83d\ude4f"; } catch (_) {}
         _rjNotifyUpdate("web-" + remotePseudoVersion, "New version " + remotePseudoVersion + " is available — open Settings and tap Refresh 🙏");
         if (cardEl) cardEl.classList.add("update-available");
       } else {
@@ -36951,11 +36951,12 @@ async function checkForUpdateAvailable() {
 const _RJ_UPD_NOTIF_CHANNEL = "rjap_updates_v1";
 const _RJ_UPD_NOTIF_ID = 9020;
 async function _rjNotifyUpdate(versionKey, body) {
-  try {
-    const key = "rjUpdateNotified";
-    if (!versionKey || localStorage.getItem(key) === String(versionKey)) return;
-    localStorage.setItem(key, String(versionKey));
-  } catch (_) {}
+  const _LK = "rjUpdateNotifiedList";
+  let _seen = [];
+  try { _seen = JSON.parse(localStorage.getItem(_LK) || "[]"); if (!Array.isArray(_seen)) _seen = []; } catch (_) { _seen = []; }
+  window._rjNotifyBusy = window._rjNotifyBusy || {};
+  if (!versionKey || _seen.indexOf(String(versionKey)) >= 0 || window._rjNotifyBusy[versionKey]) return;
+  window._rjNotifyBusy[versionKey] = true;
   const text = body || "A new version of RadhaNaam SudhaRasam is available 🙏";
   let sent = false;
   try {
@@ -36976,13 +36977,20 @@ async function _rjNotifyUpdate(versionKey, body) {
       sent = true;
     }
   } catch (e) { console.warn("update notification failed:", e && e.message); }
-  if (!sent && typeof toast === "function") toast("⬆️ " + text);
+  if (!sent && typeof toast === "function") { toast("⬆️ " + text); sent = true; }
+  if (sent) { try { let _cur = JSON.parse(localStorage.getItem(_LK) || "[]"); if (!Array.isArray(_cur)) _cur = []; _cur.push(String(versionKey)); localStorage.setItem(_LK, JSON.stringify(_cur.slice(-30))); } catch (_) {} }
+  delete window._rjNotifyBusy[versionKey];
 }
 
 const _RJ_UPD = { UNKNOWN: 0, NOT_AVAILABLE: 1, AVAILABLE: 2, IN_PROGRESS: 3, DOWNLOADED: 11 };
 const _RJ_UPD_PROMPT_KEY = "rjPlayUpdateLastPrompt";
 const _RJ_UPD_PROMPT_MS = 12 * 60 * 60 * 1000;
 window._rjPlayUpd = window._rjPlayUpd || { downloaded: false, available: false, listener: false, lastCheck: 0 };
+// last time the person touched the screen (used so the auto-install never restarts the app mid-tap)
+window._rjLastTouch = Date.now();
+["touchstart", "pointerdown", "keydown"].forEach(function (ev) {
+  try { document.addEventListener(ev, function () { window._rjLastTouch = Date.now(); }, { passive: true, capture: true }); } catch (_e) {}
+});
 
 function _rjPlayPlugin() {
   const Cap = window.Capacitor;
@@ -37002,6 +37010,7 @@ async function _rjPlayAutoInstall() {
   try { App.save(); } catch (_) {}
   try { if (typeof fbDebouncedPush === "function") fbDebouncedPush(); } catch (_) {}
   await new Promise((r) => setTimeout(r, 2500));   // let the save/sync flush
+  for (let i = 0; i < 90 && Date.now() - (window._rjLastTouch || 0) < 4000; i++) await new Promise((r) => setTimeout(r, 1000));   // wait for a 4 s pause in tapping (max 90 s)
   try { await P.completeFlexibleUpdate(); }
   catch (e) {
     console.warn("completeFlexibleUpdate:", e);
@@ -37085,7 +37094,7 @@ async function _rjPlayUpdateCheck(auto) {
     window._rjPlayUpd.available = true;
     const v = info.availableVersionCode ? " (build " + info.availableVersionCode + ")" : "";
     _rjPlayUpdateUI("glow", "Update available" + v + " — tap to update 🙏");
-    _rjNotifyUpdate("av-" + (info.availableVersionCode || "x"), "A new update is available" + v + " — downloading it now 🙏");
+    _rjNotifyUpdate("av-" + (info.availableVersionCode || "x"), "A new update is available" + v + " 🙏 Tap Update App in Settings (or accept the Google prompt).");
     if (auto && avail === _RJ_UPD.AVAILABLE && info.flexibleUpdateAllowed) {
       // Auto-download once per new build (and again after 12 h if it never finished).
       let last = 0, lastV = "";

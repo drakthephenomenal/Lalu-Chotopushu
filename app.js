@@ -16092,7 +16092,7 @@ async function _zohoNativeSignIn() {
     };
 
     App.addListener("appUrlOpen", (data) => {
-      if (data && data.url && data.url.indexOf(ZOHO_NATIVE_CONFIG.redirectUri.split("//")[1]) !== -1) {
+      if (data && data.url && data.url.indexOf("oauthredirect") !== -1) {
         finish(data.url);
       }
     });

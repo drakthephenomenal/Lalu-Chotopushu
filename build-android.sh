@@ -450,6 +450,12 @@ else
   echo "  play-services-auth already present"
 fi
 
+# RjapMessagingService needs firebase-messaging on the APP classpath
+if ! grep -q "firebase-messaging" "$APP_GRADLE"; then
+  sed -i '/dependencies {/a\    implementation "com.google.firebase:firebase-messaging:24.1.2"' "$APP_GRADLE"
+  echo "  added firebase-messaging to app/build.gradle"
+fi
+
 # @capacitor/background-runner's own build.gradle fails to resolve
 # compileSdkVersion from the root project — hardcode it to match variables.gradle.
 BR_GRADLE="node_modules/@capacitor/background-runner/android/build.gradle"

@@ -4834,3 +4834,4 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
   animation: rjUpdIndet 1.1s ease-in-out infinite;
 }
 @keyframes rjUpdIndet { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+.zoho-btn img.zoho-logo{height:22px;width:auto;flex-shrink:0;display:block;}

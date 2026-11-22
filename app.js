@@ -11893,7 +11893,7 @@ async function exportAllData() {
       // gets requested) would never see this notification at all.
       // lcRequestNotifPermission() is already idempotent/safe to call
       // repeatedly: no prompt if already decided either way.
-      await lcRequestNotifPermission();
+      // no notification-permission prompt on Download
       lcNotifyBackupSaved("Saved as " + filename + " in Documents/Radha Jap Backup 🙏");
     }
   } catch (e) {

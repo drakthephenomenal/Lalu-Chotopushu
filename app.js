@@ -950,12 +950,12 @@ function _rjapNotifIncoming(o) {
   _rjapIncomingSeen[sig] = now;
   const entry = _rjapAddNotifHistory(o.title, o.body, { key: o.key || "", ts: o.ts, tab: o.tab });
   if (!entry) return null;
-  _rjapSoftChime();
+  // No in-app sound: while the app is open the PHONE'S OWN notification sound plays (bar notification below).
   _rjapShowNotifPopup(entry);
   return entry;
 }
 
-/* ── App open: a server push goes to the 🔔 list + popup + soft chime AND into the Android bar (silent banner) ── */
+/* ── App open: a server push goes to the 🔔 list + popup AND into the Android bar (phone's own notification sound) ── */
 function _rjapHash(str) {
   let h = 5381;
   for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
@@ -1224,7 +1224,6 @@ async function _rjapSyncDelivered() {
     }
     try { (await _rjapSyncServerPushes()).forEach((e) => fresh.push(e)); } catch (_e) {}   // pushes the server kept
     if (fresh.length) {
-      _rjapSoftChime();
       fresh.slice(0, 3).forEach(_rjapShowNotifPopup);
     }
   } finally { _rjapSyncBusy = false; }
@@ -1356,8 +1355,9 @@ const RJAP_PUSH_CHANNEL_ID = "rjap_push_v1";          // old channel (push_tone)
 // v2: server pushes that arrive while the app is CLOSED/hidden play the reminder tone.
 // Must match channelId in functions/index.js (Android locks a channel's sound at creation → new id).
 const RJAP_PUSH_CHANNEL_ID2 = "rjap_push_v2";
-// App OPEN: the same push is also posted to the Android bar as a SILENT banner (the popup's soft chime is the only sound).
-const RJAP_PUSH_FG_CHANNEL_ID = "rjap_push_fg_v1";
+// App OPEN: the same push is also posted to the Android bar with the PHONE'S OWN default notification sound
+// (the closed-app channels above keep the reminder tone). New id because Android locks a channel's sound at creation.
+const RJAP_PUSH_FG_CHANNEL_ID = "rjap_push_fg_v2";
 async function lcSetupPushChannel() {
   if (!(_lcIsNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications)) return;
   const LN = window.Capacitor.Plugins.LocalNotifications;
@@ -1386,15 +1386,16 @@ async function lcSetupPushChannel() {
       sound: "reminder_tone",
     });
   } catch (e) {}
+  try { await LN.deleteChannel({ id: "rjap_push_fg_v1" }); } catch (e) {}   // old silent channel
   try {
     await LN.createChannel({
       id: RJAP_PUSH_FG_CHANNEL_ID,
       name: "Announcements while app is open",
-      description: "Silent banner shown in the Android bar while the app is open (the app plays its own soft chime)",
+      description: "Shown in the Android bar while the app is open, with your phone's own notification sound",
       importance: 4,
       visibility: 1,
-      vibration: false,
-      sound: "silent_tone",
+      vibration: true,
+      // no "sound" on purpose → Android uses the phone's default notification sound
     });
   } catch (e) {}
 }

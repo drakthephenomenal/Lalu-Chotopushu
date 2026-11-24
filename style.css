@@ -4857,3 +4857,13 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 }
 @keyframes rjUpdIndet { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
 .zoho-btn img.zoho-logo{height:22px;width:auto;flex-shrink:0;display:block;}
+
+/* Purashcharan edit panel */
+.nsk-edit{margin-top:8px;}
+.nske-h{font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px;}
+.nske-l{font-size:11px;color:var(--td);margin:8px 2px 3px;}
+.nsk-edit .fi{width:100%;box-sizing:border-box;min-width:0;}
+.nsk-edit .nsk-two{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.nsk-actions{flex-wrap:wrap;}
+.nsk-actions .nsk-btn.wide{min-width:30%;}
+.nsk-btn.nske-save{background:linear-gradient(135deg,#f5d27a,#e0a93a);color:#4a2f06;border-color:rgba(255,224,130,.95);}

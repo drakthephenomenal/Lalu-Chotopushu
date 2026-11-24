@@ -12882,7 +12882,7 @@ function nskPace(sk) {
     if (k < start) break;
     s7 += +h[k] || 0; n7++;
   }
-  return { overall: nskAutoCount(sk) / days, days, recent: n7 ? s7 / n7 : 0, n7 };
+  return { overall: nskProgress(sk) / days, days, recent: n7 ? s7 / n7 : 0, n7 };
 }
 // returns "N din · date" text for finishing `remaining` at `perDay`
 function _nskEtaTxt(remaining, perDay) {
@@ -13203,6 +13203,148 @@ function nskDelete(id) {
   _nskSave(_nskT("हटा दिया 🙏", "মুছে ফেলা হয়েছে 🙏"));
 }
 
+// ── EDIT / RESTART of a saved Purashcharan ──
+function _nskeV(id) { return (document.getElementById(id) || {}).value || ""; }
+function nskEditOpen(id) { if (isGhostMode()) return; window._nskEdit = id; renderNmSankalp(); }
+function nskEditCancel() { window._nskEdit = null; renderNmSankalp(); }
+function _nskeRuleVal(per) { return per === 100000 ? "1" : per === 400000 ? "4" : "c"; }
+function _nskePer(id) {
+  const r = _nskeV("nske-rule-" + id);
+  const cust = document.getElementById("nske-cper-" + id);
+  if (cust) cust.style.display = r === "c" ? "" : "none";
+  if (r === "4") return 400000;
+  if (r === "c") return Math.max(0, parseInt((cust || {}).value, 10) || 0);
+  return 100000;
+}
+function nskeMantraInput(id) {
+  const src = document.getElementById("nske-src-" + id); if (src) src.value = "custom";
+  const ak = document.getElementById("nske-ak-" + id);
+  if (ak) ak.value = nskCountAksharas(_nskeV("nske-mantra-" + id)) || "";
+  nskeCalc(id);
+}
+function nskeSrcChange(id) {
+  const v = _nskeV("nske-src-" + id);
+  if (v === "custom") return;
+  const m = nskPresetMantra(v); if (!m) return;
+  const el = document.getElementById("nske-mantra-" + id); if (el) el.value = m;
+  const ak = document.getElementById("nske-ak-" + id); if (ak) ak.value = nskCountAksharas(m) || "";
+  const t = document.getElementById("nske-type-" + id); if (t) t.value = v;
+  nskeCalc(id);
+}
+function nskeCalc(id) {
+  const box = document.getElementById("nske-calc-" + id); if (!box) return;
+  const ms = App.S.ms || 108;
+  const aks = parseInt(_nskeV("nske-ak-" + id), 10) || 0;
+  const per = _nskePer(id);
+  const c = nskPurashCalc(aks, per);
+  const auto = nskCountAksharas(_nskeV("nske-mantra-" + id));
+  const row = (l, v) => '<div class="nsk-calc-row"><span>' + l + "</span><b>" + v + "</b></div>";
+  box.innerHTML = '<div class="nsk-calc">' +
+    row(_nskT("अक्षर (ऑटो)", "অক্ষর (অটো)"), _nskFmt(auto)) +
+    row(_nskT("कुल जप", "মোট জপ"), '<span style="color:var(--gold)">' + _nskFmt(c.jap) + "</span> <i>" + _nskFmt(Math.floor(c.jap / ms)) + " " + _nskT("माला", "মালা") + "</i>") +
+    row(_nskT("हवन", "হোম"), _nskFmt(c.havan)) + row(_nskT("तर्पण", "তর্পণ"), _nskFmt(c.tarpan)) +
+    row(_nskT("मार्जन", "মার্জন"), _nskFmt(c.marjan)) + row(_nskT("भोजन", "ভোজন"), _nskFmt(c.bhojan)) + "</div>";
+}
+function nskEditSave(id) {
+  if (isGhostMode()) return;
+  const sk = (App.S.nmSankalps || []).find((x) => x.id === id);
+  if (!sk) return;
+  const ms = App.S.ms || 108;
+  const isP = sk.kind === "purash";
+  if (isP) {
+    const mantra = _nskeV("nske-mantra-" + id).trim();
+    if (!mantra) { toast(_nskT("मंत्र लिखें 🙏", "মন্ত্র লিখুন 🙏")); return; }
+    const aks = parseInt(_nskeV("nske-ak-" + id), 10) || nskCountAksharas(mantra);
+    const per = _nskePer(id);
+    if (aks < 1 || per < 1) { toast(_nskT("अक्षर / प्रति अक्षर जप सही डालें", "অক্ষর / প্রতি অক্ষরে জপ ঠিক দিন")); return; }
+    const title = _nskeV("nske-title-" + id).trim();
+    sk.mantra = mantra; sk.aksharas = aks; sk.perAkshara = per;
+    sk.text = title || mantra;
+    sk.target = nskPurashCalc(aks, per).jap;
+  } else {
+    const title = _nskeV("nske-title-" + id).trim();
+    if (title) sk.text = title;
+    sk.target = parseInt(_nskeV("nske-target-" + id), 10) || 0;
+  }
+  sk.jType = _nskeV("nske-type-" + id) || "none";
+  const st = _nskeV("nske-start-" + id) || _ldk(new Date());
+  if (st !== sk.start) sk.startTs = null; // time of day no longer meaningful once the date is changed by hand
+  sk.start = st;
+  sk.note = _nskeV("nske-note-" + id).trim();
+  const dn = parseInt(_nskeV("nske-daily-" + id), 10) || 0;
+  const du = _nskeV("nske-dailyu-" + id) === "mala" ? "mala" : "jap";
+  sk.dailyUnit = du; sk.daily = du === "mala" ? dn * ms : dn;
+  const mv = parseInt(_nskeV("nske-manual-" + id), 10);
+  sk.manual = isNaN(mv) ? 0 : mv;
+  const done = !!(document.getElementById("nske-done-" + id) || {}).checked;
+  const dd = _nskeV("nske-donedate-" + id);
+  sk.done = done;
+  sk.doneDate = done ? (dd || sk.doneDate || _ldk(new Date())) : null;
+  sk.steps = sk.steps || {};
+  ["havan", "tarpan", "marjan", "bhojan"].forEach((k) => { sk.steps[k] = !!(document.getElementById("nske-st-" + k + "-" + id) || {}).checked; });
+  window._nskEdit = null;
+  _nskTouch(sk);
+  _nskSave(_nskT("बदलाव सुरक्षित 🙏", "পরিবর্তন সংরক্ষিত 🙏"));
+}
+// Restart: start = now, count back to zero (also wipes what was already done earlier today), ticks + Done cleared
+function nskRestart(id) {
+  if (isGhostMode()) return;
+  const sk = (App.S.nmSankalps || []).find((x) => x.id === id);
+  if (!sk) return;
+  if (!confirm(_nskT("इसे अभी से दोबारा शुरू करें? गिनती 0 हो जाएगी।", "এখন থেকে আবার শুরু করবেন? গণনা ০ হয়ে যাবে।"))) return;
+  sk.start = _ldk(new Date());
+  sk.startTs = Date.now();
+  sk.manual = 0;
+  sk.manual = -nskAutoCount(sk); // today's earlier jap no longer counts
+  sk.steps = { havan: false, tarpan: false, marjan: false, bhojan: false };
+  sk.done = false; sk.doneDate = null;
+  _nskTouch(sk);
+  _nskSave("🔄 " + _nskT("नया आरंभ — गिनती 0", "নতুন শুরু — গণনা ০"));
+}
+function _nskEditPanel(sk) {
+  const id = sk.id, isP = sk.kind === "purash", ms = App.S.ms || 108;
+  const esc = escHtml;
+  let curSrc = "custom";
+  if (isP) NSK_PRESET_TYPES.forEach((t) => { try { if (sk.mantra === nskPresetMantra(t, "sa") || sk.mantra === nskPresetMantra(t, "bn")) curSrc = t; } catch (e) {} });
+  const du = sk.dailyUnit === "mala" ? "mala" : "jap";
+  const dv = sk.daily > 0 ? (du === "mala" ? Math.round(sk.daily / ms) : sk.daily) : "";
+  const lab = (t) => '<div class="nske-l">' + t + "</div>";
+  const rule = _nskeRuleVal(+sk.perAkshara);
+  let h = '<div class="nsk-edit">';
+  h += '<div class="nske-h">✏️ ' + _nskT("संपादन", "সম্পাদনা") + "</div>";
+  h += lab(_nskT("नाम / शीर्षक", "নাম / শিরোনাম")) + '<input class="fi" id="nske-title-' + id + '" value="' + esc((sk.text && sk.text !== sk.mantra) ? sk.text : "") + '" placeholder="' + _nskT("वैकल्पिक", "ঐচ্ছিক") + '">';
+  if (isP) {
+    h += lab(_nskT("मंत्र", "মন্ত্র")) + '<select class="fi" id="nske-src-' + id + '" onchange="nskeSrcChange(\'' + id + '\')"><option value="custom"' + (curSrc === "custom" ? " selected" : "") + ">" + _nskT("✍️ अपना मंत्र", "✍️ নিজের মন্ত্র") + "</option>" +
+      NSK_PRESET_TYPES.map((t) => '<option value="' + t + '"' + (curSrc === t ? " selected" : "") + ">" + esc(_nskTypeLabel(t)) + "</option>").join("") + "</select>";
+    h += '<textarea class="fi" rows="2" id="nske-mantra-' + id + '" oninput="nskeMantraInput(\'' + id + '\')" style="margin-top:6px;resize:vertical;">' + esc(sk.mantra || "") + "</textarea>";
+    h += '<div class="nsk-two" style="margin-top:8px"><div>' + lab(_nskT("अक्षर संख्या", "অক্ষর সংখ্যা")) + '<input class="fi" type="number" inputmode="numeric" min="1" id="nske-ak-' + id + '" value="' + (+sk.aksharas || "") + '" oninput="nskeCalc(\'' + id + '\')"></div>' +
+      "<div>" + lab(_nskT("प्रति अक्षर जप", "প্রতি অক্ষরে জপ")) + '<select class="fi" id="nske-rule-' + id + '" onchange="nskeCalc(\'' + id + '\')"><option value="1"' + (rule === "1" ? " selected" : "") + ">" + _nskT("1 लाख", "১ লক্ষ") + '</option><option value="4"' + (rule === "4" ? " selected" : "") + ">" + _nskT("4 लाख (चतुर्लक्ष)", "৪ লক্ষ (চতুর্লক্ষ)") + '</option><option value="c"' + (rule === "c" ? " selected" : "") + ">" + _nskT("अपना", "নিজের") + "</option></select></div></div>";
+    h += '<input class="fi" type="number" inputmode="numeric" min="1" id="nske-cper-' + id + '" value="' + (rule === "c" ? (+sk.perAkshara || "") : "") + '" placeholder="' + _nskT("प्रति अक्षर जप संख्या", "প্রতি অক্ষরে জপ সংখ্যা") + '" style="' + (rule === "c" ? "" : "display:none;") + 'margin-bottom:6px" oninput="nskeCalc(\'' + id + '\')">';
+    h += '<div id="nske-calc-' + id + '"></div>';
+  } else {
+    h += lab(_nskT("लक्ष्य (जप)", "লক্ষ্য (জপ)")) + '<input class="fi" type="number" inputmode="numeric" min="0" id="nske-target-' + id + '" value="' + (+sk.target || "") + '">';
+  }
+  h += lab(_nskT("जप का प्रकार (ऑटो-गिनती)", "জপের ধরন (অটো-গণনা)")) + '<select class="fi" id="nske-type-' + id + '">' +
+    ["none"].concat(NSK_TYPES).map((t) => '<option value="' + t + '"' + ((sk.jType || "none") === t ? " selected" : "") + ">" + esc(_nskTypeLabel(t)) + "</option>").join("") + "</select>";
+  h += lab(_nskT("आरंभ तिथि", "শুরুর তারিখ")) + '<input class="fi" type="date" id="nske-start-' + id + '" value="' + esc(sk.start || "") + '" style="width:100%;box-sizing:border-box;">';
+  if (sk.startTs) h += '<div class="nsk-sub">🔄 ' + esc(new Date(sk.startTs).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })) + "</div>";
+  h += lab(_nskT("प्रतिदिन का लक्ष्य", "প্রতিদিনের লক্ষ্য")) + '<div style="display:flex;gap:6px"><input class="fi" type="number" inputmode="numeric" min="0" id="nske-daily-' + id + '" value="' + dv + '" style="flex:1;min-width:0">' + _nskUnitSel("nske-dailyu-" + id, du) + "</div>";
+  h += lab(_nskT("मैन्युअल जप (जप में; ऋण भी हो सकता है)", "ম্যানুয়াল জপ (জপে; ঋণাত্মকও হতে পারে)")) + '<input class="fi" type="number" inputmode="numeric" id="nske-manual-' + id + '" value="' + (+sk.manual || 0) + '">';
+  h += '<div class="nsk-sub">⚙️ ' + _nskT("ऑटो", "অটো") + " " + _nskFmt(nskAutoCount(sk)) + "</div>";
+  h += lab(_nskT("टिप्पणी", "নোট")) + '<input class="fi" id="nske-note-' + id + '" value="' + esc(sk.note || "") + '">';
+  h += '<div class="nsk-steps" style="margin-top:10px">';
+  const steps = sk.steps || {};
+  [["havan", "हवन", "হোম"], ["tarpan", "तर्पण", "তর্পণ"], ["marjan", "मार्जन", "মার্জন"], ["bhojan", "भोजन", "ভোজন"]].forEach((a) => {
+    h += '<label class="nsk-step' + (steps[a[0]] ? " on" : "") + '"><input type="checkbox" id="nske-st-' + a[0] + "-" + id + '"' + (steps[a[0]] ? " checked" : "") + "><span>" + _nskT(a[1], a[2]) + "</span></label>";
+  });
+  h += "</div>";
+  h += '<label class="nsk-step' + (sk.done ? " on" : "") + '" style="margin-top:8px"><input type="checkbox" id="nske-done-' + id + '"' + (sk.done ? " checked" : "") + "><span>✅ " + _nskT("पूरा हुआ", "পূর্ণ হয়েছে") + "</span></label>";
+  h += '<input class="fi" type="date" id="nske-donedate-' + id + '" value="' + esc(sk.doneDate || "") + '" style="width:100%;box-sizing:border-box;margin-top:6px;">';
+  h += '<div class="nsk-actions"><button class="nsk-btn wide" onclick="nskEditCancel()">✖ ' + _nskT("रद्द", "বাতিল") + '</button><button class="nsk-btn wide nske-save" onclick="nskEditSave(\'' + id + '\')">💾 ' + _nskT("सुरक्षित करें", "সংরক্ষণ করুন") + "</button></div>";
+  h += "</div>";
+  return h;
+}
+
 function nskToggleAdd(force) {
   const f = document.getElementById("nskAddForm"), b = document.getElementById("nskAddBtn");
   if (!f) return;
@@ -13250,6 +13392,7 @@ function renderNmSankalp() {
     const isP = sk.kind === "purash";
     const col = _nskTypeColor(sk.jType);
     let h = '<div class="nsk-card' + (complete ? " done" : "") + '">';
+    if (window._nskEdit === sk.id) { setTimeout(() => { try { nskeCalc(sk.id); } catch (e) {} }, 0); return h + _nskEditPanel(sk) + "</div>"; }
     h += '<div class="nsk-card-top"><div class="nsk-title">' + (isP ? "📿 " : "🙏 ") + escHtml((sk.text && sk.text !== sk.mantra) ? sk.text : _nskLocMantra(sk) || sk.text || "") + "</div>";
     h += '<button class="nsk-x" onclick="nskDelete(\'' + sk.id + '\')" aria-label="Delete">🗑 ' + _nskT("हटाएँ", "মুছুন") + '</button></div>';
     h += '<div class="nsk-badges">';
@@ -13260,7 +13403,7 @@ function renderNmSankalp() {
     if (isP && sk.mantra) h += '<div class="nsk-mantra">' + escHtml(_nskLocMantra(sk)) + "</div>";
     if (isP) h += '<div class="nsk-sub">' + _nskFmt(sk.aksharas) + " " + _nskT("अक्षर", "অক্ষর") + " × " + _nskFmt(sk.perAkshara) + " = <b>" + _nskFmt(sk.target) + "</b> (" + _nskFmt(Math.floor(sk.target / ms)) + " " + _nskT("माला", "মালা") + ")</div>";
     if (sk.note) h += '<div class="nsk-sub">📝 ' + escHtml(sk.note) + "</div>";
-    h += '<div class="nsk-sub">📅 ' + escHtml(sk.start || "") + (sk.end ? " → " + escHtml(sk.end) : "") + "</div>";
+    h += '<div class="nsk-sub">📅 ' + escHtml(sk.start || "") + (sk.startTs ? " · " + escHtml(new Date(sk.startTs).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })) : "") + (sk.end ? " → " + escHtml(sk.end) : "") + "</div>";
     if (target > 0) {
       h += '<div class="nsk-bar"><div class="nsk-bar-fill" style="width:' + pct + '%"></div></div>';
       h += '<div class="nsk-prog"><span>' + _nskFmt(prog) + " / " + _nskFmt(target) + ' <i style="opacity:.65;font-style:normal">(' + _nskFmt(Math.floor(prog / ms)) + " / " + _nskFmt(Math.floor(target / ms)) + " " + _nskT("माला", "মালা") + ')</i></span><b>' + pct + "%</b></div>";
@@ -13298,6 +13441,8 @@ function renderNmSankalp() {
         step("marjan", _nskT("मार्जन", "মার্জন"), c.marjan) + step("bhojan", _nskT("भोजन", "ভোজন"), c.bhojan) + "</div>";
     }
     h += '<div class="nsk-actions">' +
+      '<button class="nsk-btn wide" onclick="nskEditOpen(\'' + sk.id + '\')">✏️ ' + _nskT("संपादन", "সম্পাদনা") + "</button>" +
+      '<button class="nsk-btn wide" onclick="nskRestart(\'' + sk.id + '\')">🔄 ' + _nskT("दोबारा शुरू", "আবার শুরু") + "</button>" +
       '<button class="nsk-btn wide" onclick="nskToggleDone(\'' + sk.id + '\')">' + (sk.done ? "↺ " + _nskT("खोलें", "খুলুন") : "✓ " + _nskT("पूरा किया", "পূর্ণ করুন")) + "</button></div>";
     h += "</div>";
     return h;
@@ -39739,6 +39884,29 @@ function _pfCount(p) {
   return [p.name, p.address, (p.mobile && p.mobileVerified === true) ? p.mobile : '', p.email, p.dob, p.photo].filter(Boolean).length;   // mobile counts only once verified by SMS OTP
 }
 
+// Tap on my own photo (My Profile card) -> enlarged viewer, same one as the Family Board photos
+window.pfOpenMyPhoto = async function (ev) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  if (!fbUser) return;
+  const p = window._myProfile || {};
+  const small = _lbSafePhoto(p.photoSmall || p.photo || '') || (_pfGoogleIsDefault() ? '' : _lbSafePhoto(fbUser.photoURL || ''));
+  if (!small) { toast('No photo yet — tap Edit to add one'); return; }
+  const uid = fbUser.uid, name = p.name || fbUser.displayName || '';
+  const verified = _effVerified(p);
+  const cached = window._lbBigPhotoCache[uid];
+  let local = ''; try { local = _lbSafeBig(p.photo || ''); } catch (_e) {}
+  const first = cached || local || small;
+  _lbShowPhoto(first, name, verified, !(cached || local));
+  window._lbPhotoUid = uid;   // set after _lbShowPhoto (it clears the marker)
+  if (cached) return;
+  const big = await _lbFetchBig(uid, small, false);
+  if (window._lbPhotoUid !== uid) return;
+  const im = document.getElementById('lbPhotoBig'), sp = document.getElementById('lbPhotoSpin');
+  if (big && im) { im.src = big; im.style.filter = 'none'; im.style.width = '100vw'; im.style.height = 'calc(100vh - 120px)'; }
+  else if (im) { im.style.filter = 'none'; if (local) { im.style.width = '100vw'; im.style.height = 'calc(100vh - 120px)'; } }
+  if (sp) sp.remove();
+};
+
 window.refreshProfileCard = async function () {
   const card = document.getElementById('profileCard');
   if (!card) return;
@@ -39746,7 +39914,7 @@ window.refreshProfileCard = async function () {
   if (adminBtn) adminBtn.style.display = (typeof isDeveloper === 'function' && isDeveloper()) ? '' : 'none';
   if (!fbUser) {
     const _av0 = document.getElementById('profileCardAv');
-    if (_av0) _av0.innerHTML = _PF_SIL;
+    if (_av0) { _av0.innerHTML = _PF_SIL; _av0.onclick = null; _av0.style.cursor = ''; }
     document.getElementById('profileCardName').textContent = 'My Profile';
     document.getElementById('profileCardSub').textContent = 'Sign in to create your profile';
     const _vSlot0 = document.getElementById('profileCardBadge'); if (_vSlot0) _vSlot0.innerHTML = '';
@@ -39760,6 +39928,8 @@ window.refreshProfileCard = async function () {
   const av = document.getElementById('profileCardAv');
   const ph = _lbSafePhoto(p.photoSmall || p.photo || '') || (_pfGoogleIsDefault() ? '' : _lbSafePhoto(fbUser.photoURL || ''));
   av.innerHTML = (ph ? '<img src="' + ph + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + _PF_SIL;
+  av.style.cursor = 'pointer'; av.setAttribute('role', 'button'); av.setAttribute('aria-label', 'View photo');
+  av.onclick = window.pfOpenMyPhoto;   // tap the photo -> enlarged viewer (same one the Family Board uses)
   const nameEl = document.getElementById('profileCardName');
   nameEl.textContent = nm;
   const _vSlot = document.getElementById('profileCardBadge');
@@ -40748,8 +40918,9 @@ function _lbEnableZoom(o, im) {
   o.addEventListener('pointercancel', (e) => endPtr(e, true));
   o.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(e.clientX, e.clientY, s * (e.deltaY < 0 ? 1.18 : 1 / 1.18)); }, { passive: false });
   const x = document.createElement('button');
-  x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', 'Close');
-  x.style.cssText = 'position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.55);color:#fff;font-size:18px;line-height:1;z-index:3;';
+  x.type = 'button'; x.textContent = '✕ Close'; x.setAttribute('aria-label', 'Close photo');
+  // top offset clears the phone / iPad status area (iPad PWA reports no safe-area inset, so a 44px floor is used)
+  x.style.cssText = 'position:absolute;top:calc(max(env(safe-area-inset-top,0px), 44px) + 10px);right:14px;height:42px;padding:0 18px;border-radius:21px;border:1px solid rgba(255,215,0,.6);background:rgba(0,0,0,.7);color:#FFD700;font-size:15px;font-weight:700;line-height:1;z-index:3;cursor:pointer;';
   x.addEventListener('pointerdown', (ev) => ev.stopPropagation());
   x.addEventListener('pointerup', (ev) => ev.stopPropagation());
   x.addEventListener('click', (ev) => { ev.stopPropagation(); _lbClosePhoto(); });

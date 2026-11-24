@@ -3587,6 +3587,9 @@ body.vallabh-mode .tz .gurudev-wm{display:none !important;animation:none !import
   padding-bottom:calc(80px + env(safe-area-inset-bottom));
   overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
+/* .view is a fixed-height flex column. The hero has overflow:hidden, so with a long leaderboard the browser
+   squeezed it (220px -> ~70px) and clipped the lotus. Children keep their natural height; the view scrolls instead. */
+#vlb > *{flex-shrink:0;}
 
 /* Hero banner */
 .lb-hero{

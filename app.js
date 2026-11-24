@@ -3267,6 +3267,22 @@ const App = {
   // ── UNIFIED: total Jap seconds today across ALL modes ──
   // = committed Radha + Radha Vallabh + Hare Krishna + 28 Names history for today
   //   + live in-progress deltas from whichever timer is currently running.
+  // Names chanted today across every jap type, manual (off-screen) entries excluded — same rule as the Q panel in Stats.
+  getTotalJapCountToday() {
+    const tk = this.S.tk, S = this.S;
+    const t = [
+      ["radha", S.history], ["rv", S.historyRV], ["kv", S.historyKV], ["ss", S.historySS], ["hk", S.historyHK],
+      ["ram", S.historyRam], ["sr", S.historySR], ["rm", S.historyRM], ["nr", S.historyNR], ["yg", S.historyYg],
+      ["vl", S.historyVl], ["n28", S.h28],
+    ];
+    let n = 0;
+    for (const [key, h] of t) {
+      let c = ((h || {})[tk] || 0);
+      try { c -= _manualCountFor(key, [tk]); } catch (_e) {}
+      if (c > 0) n += c;
+    }
+    return n;
+  },
   getTotalJapSecondsToday() {
     const tk = this.S.tk;
     const radhaSec = (this.S.timerHistory   || {})[tk] || 0;
@@ -3295,11 +3311,55 @@ const App = {
   updateTimerToday() {
     // ── UNIFIED: Today's Jap Time shared by Radha/RV/HK page AND 28 Names tab ──
     const combinedSec = this.getTotalJapSecondsToday();
+    // Session actual jap = the real chanting seconds added since the app was opened. Only small forward steps
+    // (≤10 s between two updates) count, so a cloud load / day change / account switch can never inflate it.
+    if (this._actPrevTotal !== null) {
+      const d = combinedSec - this._actPrevTotal;
+      if (d > 0 && d <= 10) this._actSessionSec = (this._actSessionSec || 0) + d;
+    }
+    this._actPrevTotal = combinedSec;
+    // Session names (for Session Q): same idea — only small forward steps count (≤30 names between two updates).
+    let namesNow = 0;
+    try { namesNow = this.getTotalJapCountToday(); } catch (_e) {}
+    if (this._actNamesPrev !== null) {
+      const dn = namesNow - this._actNamesPrev;
+      if (dn > 0 && dn <= 30) this._sessNames = (this._sessNames || 0) + dn;
+    }
+    this._actNamesPrev = namesNow;
+    const actMode = this._actMode === "session" ? "session" : "today";
+    const actShow = actMode === "session" ? (this._actSessionSec || 0) : combinedSec;
     const tt = document.getElementById("timerToday2") || document.getElementById("timerToday");
-    if (tt) tt.textContent = this.fmtTime(combinedSec);
-    // Mirror the SAME total on the 28 Names tab
+    if (tt) tt.textContent = this.fmtTime(actShow);
+    // Mirror the SAME value on the 28 Names tab
     const te28 = document.getElementById("n28TotalTimer");
-    if (te28) te28.textContent = this.fmtTime(combinedSec);
+    if (te28) te28.textContent = this.fmtTime(actShow);
+    [tt, te28].forEach((e) => {
+      const box = e && e.closest ? e.closest(".timer-box") : null;
+      if (!box) return;
+      if (box.getAttribute("data-scr-mode") !== actMode) box.setAttribute("data-scr-mode", actMode);
+      const lbl = box.querySelector(".timer-box-lbl");
+      const want = actMode === "session" ? "Actual · Session" : "Today Actual Jap";
+      if (lbl && lbl.textContent !== want) lbl.textContent = want;
+    });
+    // Session box: session time  <->  Session Q (seconds per name chanted this session; "—" until a name is chanted)
+    const sMode = this._sessMode === "q" ? "q" : "timer";
+    const sSec = this._actSessionSec || 0, sN = this._sessNames || 0;
+    const qTxt = sN > 0 && sSec > 0 ? (sSec / sN).toFixed(2) + "s" : "—";
+    [["timerDisplay", "timerSessQ"], ["n28SessionDisplay", "n28SessQ"]].forEach(([tid, qid]) => {
+      const te = document.getElementById(tid), qe = document.getElementById(qid);
+      if (!te || !qe) return;
+      if (qe.textContent !== qTxt) qe.textContent = qTxt;
+      const showQ = sMode === "q";
+      te.style.display = showQ ? "none" : "";
+      qe.style.display = showQ ? "" : "none";
+      const box = te.closest ? te.closest(".timer-box") : null;
+      if (!box) return;
+      const attr = showQ ? "session" : "today";
+      if (box.getAttribute("data-scr-mode") !== attr) box.setAttribute("data-scr-mode", attr);
+      const lbl = box.querySelector(".timer-box-lbl");
+      const want = showQ ? "Session Q" : "Session";
+      if (lbl && lbl.textContent !== want) lbl.textContent = want;
+    });
     // Mirror the SESSION timer (identical to main jap Session display) on 28 Names tab
     const se28 = document.getElementById("n28SessionDisplay");
     if (se28) {
@@ -3325,6 +3385,12 @@ const App = {
   _screenTimeInterval: null,
   _scrSessionSec: 0,      // screen time since the app was opened (not saved - a new app start is a new session)
   _scrMode: "today",      // what the Screen Time box shows: "today" (total) or "session"
+  _actSessionSec: 0,      // ACTUAL jap time since the app was opened (not saved - a new app start is a new session)
+  _actPrevTotal: null,    // last "today actual jap" total seen, used to add up only real chanting seconds
+  _actMode: "today",      // what the "Today Actual Jap" box shows: "today" (total) or "session"
+  _actNamesPrev: null,    // last "names chanted today" total seen (manual entries excluded)
+  _sessNames: 0,          // names chanted since the app was opened (for Session Q)
+  _sessMode: "timer",     // what the Session box shows: "timer" (session time) or "q" (Session Q = sec per name)
   startScreenTime() {
     if (this._screenTimeRunning) return;
     if (document.visibilityState === "hidden") return; // never start while backgrounded
@@ -3376,6 +3442,25 @@ const App = {
       if (box) { box.classList.add("scr-flip"); setTimeout(() => box.classList.remove("scr-flip"), 170); }
     });
     this.updateScreenTimeDisplay();
+  },
+
+  // Tap / swipe on the Session box: session time <-> Session Q
+  toggleSessionMode() {
+    this._sessMode = this._sessMode === "q" ? "timer" : "q";
+    ["timerDisplay", "n28SessionDisplay"].forEach((id) => {
+      const e = document.getElementById(id), box = e && e.closest ? e.closest(".timer-box") : null;
+      if (box) { box.classList.add("scr-flip"); setTimeout(() => box.classList.remove("scr-flip"), 170); }
+    });
+    this.updateTimerToday();
+  },
+  // Tap / swipe on the "Today Actual Jap" box: today's total <-> actual jap of this session
+  toggleActualJapMode() {
+    this._actMode = this._actMode === "session" ? "today" : "session";
+    ["timerToday2", "n28TotalTimer"].forEach((id) => {
+      const e = document.getElementById(id), box = e && e.closest ? e.closest(".timer-box") : null;
+      if (box) { box.classList.add("scr-flip"); setTimeout(() => box.classList.remove("scr-flip"), 170); }
+    });
+    this.updateTimerToday();
   },
 
   // ── Stotram Time — separate from Screen Time. Only ticks while the
@@ -15127,6 +15212,7 @@ function fbInit() {
         // ── CRITICAL: if UID changed, reload data scoped to new user ──
         if (prevUid !== user.uid) {
           App._uid = user.uid;
+          App._actSessionSec = 0; App._actPrevTotal = null; App._sessNames = 0; App._actNamesPrev = null;   // a different account starts a fresh session count
           try { const _ni = document.getElementById('lbNameIn'); if (_ni) _ni.value = ''; const _nf = document.getElementById('lbNameFeedback'); if (_nf) _nf.textContent = ''; } catch (_e) {}   // previous account's display name must not leak
           // Preserve GPS coords across user switch
           const _prevLat = App.S.lastLat ?? null;
@@ -40586,27 +40672,111 @@ try {
 // removed when they switch it off). Admin Mode can also open hidden photos.
 // ══════════════════════════════════════════════════════════════
 window._lbBigPhotoCache = window._lbBigPhotoCache || {};
+window._lbBigMeta = window._lbBigMeta || {};   // uid -> { sig: thumbnail signature, ver: stored-photo version, t: last checked }
+function _lbSig(small) { small = String(small || ''); return small ? small.length + ':' + small.slice(-24) : ''; }
+function _lbForgetBig(uid) { try { delete window._lbBigPhotoCache[uid]; delete window._lbBigPromise[uid]; delete window._lbBigMeta[uid]; } catch (_e) {} }
 function _lbClosePhoto() { const o = document.getElementById('lbPhotoOverlay'); if (o) o.remove(); window._lbPhotoUid = null; }
+// Pinch / double-tap / wheel zoom + drag-to-pan for the enlarged photo. Tap (when not zoomed) or ✕ closes it.
+function _lbEnableZoom(o, im) {
+  if (!o || !im) return;
+  let s = 1, tx = 0, ty = 0, moved = false, downT = 0, lastTap = 0, closeTimer = 0, lastMid = null, pinchD = 0, panBase = null;
+  const pts = new Map();
+  o.style.touchAction = 'none';
+  im.style.transformOrigin = '50% 50%'; im.style.willChange = 'transform'; im.draggable = false;
+  let ax = 0, ay = 0, as = 1;   // the transform that is really applied right now (what getBoundingClientRect reflects)
+  const apply = () => { ax = tx; ay = ty; as = s; im.style.transform = (s === 1 && !tx && !ty) ? '' : 'translate(' + tx + 'px,' + ty + 'px) scale(' + s + ')'; };
+  function geom() {
+    const r = im.getBoundingClientRect();
+    return { cx: r.left + r.width / 2 - ax, cy: r.top + r.height / 2 - ay, w1: r.width / as, h1: r.height / as };
+  }
+  function clamp() {
+    if (s <= 1) { s = 1; tx = 0; ty = 0; return; }
+    const g = geom(), nw = im.naturalWidth || g.w1, nh = im.naturalHeight || g.h1;
+    const fit = Math.min(g.w1 / nw, g.h1 / nh), dw = nw * fit * s, dh = nh * fit * s;
+    const vw = window.innerWidth, vh = window.innerHeight, ox = g.cx - vw / 2, oy = g.cy - vh / 2;
+    if (dw <= vw) tx = 0; else { const m = (dw - vw) / 2; tx = Math.max(-ox - m, Math.min(-ox + m, tx)); }
+    if (dh <= vh) ty = 0; else { const m = (dh - vh) / 2; ty = Math.max(-oy - m, Math.min(-oy + m, ty)); }
+  }
+  function zoomAt(px, py, ns) {
+    ns = Math.max(1, Math.min(6, ns));
+    const g = geom(), k = ns / s;
+    tx = (px - g.cx) - k * ((px - g.cx) - tx);
+    ty = (py - g.cy) - k * ((py - g.cy) - ty);
+    s = ns; clamp(); apply();
+  }
+  const dist = () => { const a = [...pts.values()]; return Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); };
+  const mid = () => { const a = [...pts.values()]; return { x: (a[0].x + a[1].x) / 2, y: (a[0].y + a[1].y) / 2 }; };
+  const onImg = (x, y) => { const r = im.getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; };
+  o.addEventListener('pointerdown', (e) => {
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try { o.setPointerCapture(e.pointerId); } catch (_e) {}
+    if (pts.size === 1) { moved = false; downT = Date.now(); panBase = { x: e.clientX, y: e.clientY, tx: tx, ty: ty }; }
+    else if (pts.size === 2) { moved = true; pinchD = dist(); lastMid = mid(); clearTimeout(closeTimer); }
+  });
+  o.addEventListener('pointermove', (e) => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size >= 2) {
+      const d = dist(), m = mid();
+      if (pinchD > 0) zoomAt(m.x, m.y, s * (d / pinchD));
+      if (lastMid) { tx += m.x - lastMid.x; ty += m.y - lastMid.y; clamp(); apply(); }
+      pinchD = d; lastMid = m;
+    } else if (panBase) {
+      const dx = e.clientX - panBase.x, dy = e.clientY - panBase.y;
+      if (Math.abs(dx) + Math.abs(dy) > 8) moved = true;
+      if (s > 1 && moved) { tx = panBase.tx + dx; ty = panBase.ty + dy; clamp(); apply(); }
+    }
+  });
+  function endPtr(e, cancelled) {
+    if (!pts.has(e.pointerId)) return;
+    const wasSingle = pts.size === 1;
+    pts.delete(e.pointerId);
+    if (pts.size === 1) { const r = [...pts.values()][0]; panBase = { x: r.x, y: r.y, tx: tx, ty: ty }; moved = true; return; }
+    if (pts.size > 0) return;
+    if (cancelled || !wasSingle || moved || Date.now() - downT > 350) return;
+    if (!onImg(e.clientX, e.clientY)) { _lbClosePhoto(); return; }          // tap on the dark area / name -> close
+    const now = Date.now();
+    if (now - lastTap < 300) {                                              // double-tap: zoom in / back out
+      clearTimeout(closeTimer); lastTap = 0;
+      if (s > 1) { s = 1; tx = 0; ty = 0; apply(); } else zoomAt(e.clientX, e.clientY, 2.5);
+    } else {                                                                // single tap: close, but only when not zoomed
+      lastTap = now; clearTimeout(closeTimer);
+      if (s === 1) closeTimer = setTimeout(_lbClosePhoto, 300);
+    }
+  }
+  o.addEventListener('pointerup', (e) => endPtr(e, false));
+  o.addEventListener('pointercancel', (e) => endPtr(e, true));
+  o.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(e.clientX, e.clientY, s * (e.deltaY < 0 ? 1.18 : 1 / 1.18)); }, { passive: false });
+  const x = document.createElement('button');
+  x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', 'Close');
+  x.style.cssText = 'position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.55);color:#fff;font-size:18px;line-height:1;z-index:3;';
+  x.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+  x.addEventListener('pointerup', (ev) => ev.stopPropagation());
+  x.addEventListener('click', (ev) => { ev.stopPropagation(); _lbClosePhoto(); });
+  o.appendChild(x);
+}
 function _lbShowPhoto(src, name, verified, loading) {
   _lbClosePhoto();
   const o = document.createElement('div');
   o.id = 'lbPhotoOverlay';
   o.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:0;';
-  o.onclick = _lbClosePhoto;
   o.innerHTML =
-    '<img id="lbPhotoBig" src="' + src + '" alt="" referrerpolicy="no-referrer" style="' + (loading ? 'width:min(100vw,calc(100vh - 120px));height:auto;' : 'width:100vw;height:calc(100vh - 120px);') + 'max-width:100vw;max-height:calc(100vh - 120px);border-radius:0;border:0;box-shadow:none;image-rendering:auto;background:transparent;object-fit:contain;transition:filter .3s;' + (loading ? 'filter:blur(7px);' : '') + '">' +
+    '<img id="lbPhotoBig" src="' + src + '" alt="" referrerpolicy="no-referrer" style="' + (loading ? 'width:min(100vw,calc(100vh - 120px));height:auto;' : 'width:100vw;height:calc(100vh - 120px);') + 'max-width:100vw;max-height:calc(100vh - 120px);border-radius:0;border:0;box-shadow:none;image-rendering:auto;background:transparent;object-fit:contain;transition:filter .3s;touch-action:none;-webkit-user-drag:none;user-select:none;' + (loading ? 'filter:blur(7px);' : '') + '">' +
     '<div style="color:#fff;font-size:17px;font-weight:700;text-align:center;">' + escHtml(name || '') + (verified ? _lbVerifiedBadge({ verified: true }) : '') + '</div>' +
     (loading ? '<div id="lbPhotoSpin" style="color:rgba(255,215,0,0.8);font-size:12px;">Loading HD photo…</div>' : '') +
-    '<div style="color:rgba(255,255,255,0.5);font-size:11px;">Tap anywhere to close</div>';
+    '<div style="color:rgba(255,255,255,0.5);font-size:11px;">Pinch or double-tap to zoom · tap to close</div>';
   document.body.appendChild(o);
+  _lbEnableZoom(o, document.getElementById('lbPhotoBig'));
 }
 // One shared fetch per person: started on finger-down (before the tap even completes) and reused by the viewer.
 window._lbBigPromise = window._lbBigPromise || {};
 function _lbFetchBig(uid, small, hidden) {
+  const _sig = _lbSig(small), _m = window._lbBigMeta[uid];
+  if (_m && _m.sig !== _sig) _lbForgetBig(uid);          // the thumbnail changed -> this person has a NEW photo: forget the old HD copy
   if (window._lbBigPhotoCache[uid]) return Promise.resolve(window._lbBigPhotoCache[uid]);
   if (window._lbBigPromise[uid]) return window._lbBigPromise[uid];
   const pr = (async function () {
-    let big = '';
+    let big = '', ver = '';
     try {
       if (hidden && typeof isDeveloper === 'function' && isDeveloper()) {
         const sn = await fbDb.collection('profiles').doc(uid).get();
@@ -40615,6 +40785,7 @@ function _lbFetchBig(uid, small, hidden) {
       } else {
         const sn = await fbDb.collection('profilePhotos').doc(uid).get();
         const pd = sn.exists ? (sn.data() || {}) : {};
+        ver = String(pd.hdV || '') + ':' + (typeof pd.photo === 'string' ? pd.photo.length + ':' + pd.photo.slice(-24) : '');
         big = _lbSafeBig(pd.photo || '');
         if (pd.hdV && pd.hdN) {   // original-resolution file (joined from its parts); if anything fails, the embedded copy above is used
           try {
@@ -40631,12 +40802,29 @@ function _lbFetchBig(uid, small, hidden) {
     if (big) {
       await new Promise(function (res) { const im = new Image(); im.onload = im.onerror = res; im.src = big; });   // decode first → no flash of the small one
       window._lbBigPhotoCache[uid] = big;
+      window._lbBigMeta[uid] = { sig: _sig, ver: ver, t: Date.now() };
     }
     return big;
   })();
   window._lbBigPromise[uid] = pr;
   pr.then(function (b) { if (!b) delete window._lbBigPromise[uid]; });
   return pr;
+}
+// Cached copy is shown instantly; if it is older than 30 s, one cheap check (the small public doc) tells whether the person
+// changed their photo since - only then are the big parts downloaded again and swapped in.
+async function _lbRevalidateBig(uid, small, hidden) {
+  try {
+    const m = window._lbBigMeta[uid];
+    if (!m || hidden || Date.now() - m.t < 30000) return;
+    m.t = Date.now();
+    const sn = await fbDb.collection('profilePhotos').doc(uid).get();
+    const pd = sn.exists ? (sn.data() || {}) : {};
+    const ver = String(pd.hdV || '') + ':' + (typeof pd.photo === 'string' ? pd.photo.length + ':' + pd.photo.slice(-24) : '');
+    if (ver === m.ver) return;
+    _lbForgetBig(uid);
+    const big = await _lbFetchBig(uid, small, hidden);
+    if (big && window._lbPhotoUid === uid) { const im = document.getElementById('lbPhotoBig'); if (im) im.src = big; }
+  } catch (_e) {}
 }
 function _lbPhotoCtx(uid) {
   const d = (window._lbLastDocs || []).find(x => x._uid === uid) || {};
@@ -40659,10 +40847,11 @@ window.lbOpenPhoto = async function (ev, uid) {
   uid = String(uid || '').replace(/[^A-Za-z0-9_-]/g, '');
   const c = _lbPhotoCtx(uid), d = c.d, small = c.small;
   if (!small) return;
+  { const _m = window._lbBigMeta[uid]; if (_m && _m.sig !== _lbSig(small)) _lbForgetBig(uid); }   // new photo since last time -> no stale copy
   const cached = window._lbBigPhotoCache[uid];
   _lbShowPhoto(cached || small, d.displayName, d.verified, !cached);   // (this closes any open viewer and clears the marker…)
   window._lbPhotoUid = uid;                                           // …so set it AFTER, or the HD swap below would never happen
-  if (cached) return;
+  if (cached) { _lbRevalidateBig(uid, small, c.hidden); return; }
   const big = await _lbFetchBig(uid, small, c.hidden);
   if (window._lbPhotoUid !== uid) return;
   const im = document.getElementById('lbPhotoBig'), sp = document.getElementById('lbPhotoSpin');
@@ -40742,6 +40931,7 @@ async function _syncPublicPhoto(p, largeOverride, hdFile) {
       if (old.hdV && old.hdN && (hd ? old.hdV !== hd.v : !!(hdFile || largeOverride))) await _rjDeleteHdParts(ref, old.hdV, old.hdN);
     }
     try { localStorage.setItem('rj_pubphoto_sig', sig); } catch (_e) {}
+    _lbForgetBig(uid);   // my own enlarged photo just changed: never show the old copy
   } catch (e) { console.warn('public photo sync failed:', e && e.message); }
 }
 
@@ -41536,42 +41726,65 @@ async function _syncPublicPhoto(p, largeOverride, hdFile) {
   else window.addEventListener("load", function () { setTimeout(start, 2500); });
 })();
 
-// ── Screen Time box: swipe left/right to switch between today's total and this session ──
+// ── Session, Today Actual Jap and Screen Time boxes: TAP, or swipe left / right / up / down, to flip between two views ──
+//    Session → time  <->  Session Q     |   Today Actual Jap → today  <->  this session   |   Screen Time → today <-> this session
 (function () {
   function css() {
     if (document.getElementById("scrSwipeCss")) return;
     const st = document.createElement("style");
     st.id = "scrSwipeCss";
     st.textContent =
-      ".timer-box.scr-swipe{position:relative;touch-action:pan-y;-webkit-user-select:none;user-select:none}" +
+      ".timer-box.scr-swipe{position:relative;touch-action:none;cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;transition:transform .12s}" +
+      ".timer-box.scr-swipe:active{transform:scale(.97)}" +
       ".scr-dots{position:absolute;top:4px;right:5px;display:flex;gap:3px;pointer-events:none}" +
       ".scr-dots i{display:block;width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.28)}" +
       ".timer-box[data-scr-mode=today] .scr-dots i:nth-child(1),.timer-box[data-scr-mode=session] .scr-dots i:nth-child(2){background:#f5d17a}" +
       ".timer-box.scr-swipe .timer-display{transition:opacity .17s}.timer-box.scr-flip .timer-display{opacity:.12}";
     document.head.appendChild(st);
   }
-  function attach(id) {
+  function attach(id, getMode, toggle, tip) {
     const e = document.getElementById(id), box = e && e.closest ? e.closest(".timer-box") : null;
     if (!box || box.__scrSwipe) return;
     box.__scrSwipe = true;
     box.classList.add("scr-swipe");
-    box.setAttribute("data-scr-mode", App._scrMode === "session" ? "session" : "today");
+    box.setAttribute("data-scr-mode", getMode());
     const dots = document.createElement("span");
     dots.className = "scr-dots"; dots.setAttribute("aria-hidden", "true"); dots.innerHTML = "<i></i><i></i>";
     box.appendChild(dots);
-    box.title = "Swipe: today / this session";
+    box.title = tip;
     let x0 = 0, y0 = 0, t0 = 0, on = false;
     box.addEventListener("pointerdown", (ev) => { x0 = ev.clientX; y0 = ev.clientY; t0 = Date.now(); on = true; });
     box.addEventListener("pointercancel", () => { on = false; });
     box.addEventListener("pointerup", (ev) => {
       if (!on) return; on = false;
-      const dx = ev.clientX - x0, dy = ev.clientY - y0;
-      if (Math.abs(dx) >= 28 && Math.abs(dx) > Math.abs(dy) * 1.4 && Date.now() - t0 < 900) App.toggleScreenTimeMode();
+      const ax = Math.abs(ev.clientX - x0), ay = Math.abs(ev.clientY - y0), dt = Date.now() - t0;
+      if (ax <= 10 && ay <= 10 && dt < 700) { toggle(); return; }       // tap
+      if (Math.max(ax, ay) >= 28 && dt < 900) toggle();                  // swipe: left, right, up or down
     });
+  }
+  // Session box: add a second readout (Session Q) beside the session timer; updateTimerToday() fills it and hides the timer in Q mode.
+  function addQReadout(timerId, qId) {
+    const te = document.getElementById(timerId);
+    if (!te || document.getElementById(qId)) return;
+    const q = document.createElement("div");
+    q.className = "timer-display timer-display--today"; q.id = qId; q.textContent = "—"; q.style.display = "none";
+    te.parentNode.insertBefore(q, te.nextSibling);
   }
   function setup() {
     if (typeof App === "undefined" || !App || !document.getElementById("screenTimeDisplay")) return setTimeout(setup, 150);
-    css(); attach("screenTimeDisplay"); attach("n28ScreenTimeDisplay"); App.updateScreenTimeDisplay();
+    css();
+    const m = (v, a, b) => () => (App[v] === b ? "session" : "today");
+    const scrMode = m("_scrMode", 0, "session"), scrToggle = () => App.toggleScreenTimeMode();
+    const actMode = m("_actMode", 0, "session"), actToggle = () => App.toggleActualJapMode();
+    const sesMode = m("_sessMode", 0, "q"),      sesToggle = () => App.toggleSessionMode();
+    addQReadout("timerDisplay", "timerSessQ"); addQReadout("n28SessionDisplay", "n28SessQ");
+    attach("screenTimeDisplay", scrMode, scrToggle, "Tap or swipe: today / this session");
+    attach("n28ScreenTimeDisplay", scrMode, scrToggle, "Tap or swipe: today / this session");
+    attach("timerToday2", actMode, actToggle, "Tap or swipe: today / this session");
+    attach("n28TotalTimer", actMode, actToggle, "Tap or swipe: today / this session");
+    attach("timerDisplay", sesMode, sesToggle, "Tap or swipe: session time / Session Q");
+    attach("n28SessionDisplay", sesMode, sesToggle, "Tap or swipe: session time / Session Q");
+    App.updateScreenTimeDisplay(); App.updateTimerToday();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", setup); else setup();
 })();

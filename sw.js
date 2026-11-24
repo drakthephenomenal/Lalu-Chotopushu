@@ -497,7 +497,7 @@
 // v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
 // v422: bumped cache to force-invalidate stale app.js / style.css / index.html — Haridashi Sampraday (Radha + Kunj Vihari / Sri Haridas, own Deity/Guru/Acharya photos, own lifetime target); Nimbark Deity/Guru/Acharya jap-display photos + Yugal mantra animation now matches Hare Krishna; reopened wishes no longer stay paused.
 // v532: Update box shows live download % + MB, one-tap install. v531: Settings Update/Refresh buttons reworked (side-by-side, golden pulsing update icon; PWA "Refresh and Update (vN)" + "Refresh Now" modal button).
-const CACHE = 'radha-jap-v541';
+const CACHE = 'radha-jap-v545';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 

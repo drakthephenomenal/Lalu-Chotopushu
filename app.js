@@ -6988,7 +6988,10 @@ function _rjGateRender(poor, detail) {
   if (!g) return;
   g.className = poor ? "" : "rjg-loading";
   if (!poor) {
-    g.innerHTML = '<div class="rjg-spin"></div><div>Loading from cloud\u2026</div>';
+    g.innerHTML = '<img class="rjg-img" src="./guru.jpg" alt="" onerror="this.style.display=\'none\'">' +
+      '<div class="ls-prog" id="rjgProg" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="4"><div class="ls-prog-fill" id="rjgFill" style="transform:scaleX(.04)"><i class="ls-prog-shine"></i></div></div>' +
+      '<div class="ls-prog-row" style="margin-top:0"><span id="rjgLabel">Starting\u2026</span><span id="rjgPct">4%</span></div>';
+    _rjGateTickStart();
     return;
   }
   g.innerHTML = '<div style="font-size:42px">\ud83d\udce1</div>' +
@@ -7001,7 +7004,35 @@ function _rjGateRender(poor, detail) {
   const o = document.getElementById("rjGateOff");
   if (o) o.onclick = _rjGateHide;
 }
+// ── Percentage progress on the loading screen (same look as the app-opening splash) ──
+// 10% starting -> 35% account checked -> 65% loading data from cloud -> up to ~96% while waiting -> 100% when the cloud copy is confirmed.
+var _rjGateTickT = null, _rjGateShown = 4, _rjGateT0 = 0;
+function _rjGateSetProg(pct, label) {
+  pct = Math.max(0, Math.min(100, pct));
+  const f = document.getElementById("rjgFill"), pe = document.getElementById("rjgPct"),
+        le = document.getElementById("rjgLabel"), b = document.getElementById("rjgProg");
+  if (f) f.style.transform = "scaleX(" + (pct / 100).toFixed(3) + ")";
+  if (pe) pe.textContent = Math.round(pct) + "%";
+  if (le && label) le.textContent = label;
+  if (b) b.setAttribute("aria-valuenow", String(Math.round(pct)));
+}
+function _rjGateTickStart() {
+  if (_rjGateTickT) clearInterval(_rjGateTickT);
+  if (!_rjGateT0) _rjGateT0 = Date.now();
+  _rjGateTickT = setInterval(() => {
+    const g = _rjGateEl();
+    if (!g || g.dataset.closing || !document.getElementById("rjgFill")) { clearInterval(_rjGateTickT); _rjGateTickT = null; return; }
+    const st = window._rjGateStage || 1;
+    const label = st >= 3 ? "Loading your data from the cloud\u2026" : st === 2 ? "Checking your account\u2026" : "Starting\u2026";
+    let target = st >= 3 ? 92 : st === 2 ? 61 : 31;
+    if (st >= 3) target += Math.min(4, (Date.now() - _rjGateT0) / 20000);   // slow creep so it never looks stuck
+    _rjGateShown = _rjGateShown + (target - _rjGateShown) * 0.22;
+    if (target - _rjGateShown < 0.5) _rjGateShown = target;
+    _rjGateSetProg(_rjGateShown, label);
+  }, 250);
+}
 function _rjGateShow() {
+  { const _old = _rjGateEl(); if (_old && _old.dataset.closing) _old.remove(); }
   if (_rjGateDone || _rjGateEl()) return;
   if (typeof navigator !== "undefined" && navigator.onLine === false) { _rjGateDone = true; return; }
   try {
@@ -7016,12 +7047,14 @@ function _rjGateShow() {
         // play. (Taps are blocked by the splash itself.) Once the splash is gone, or when the "network is
         // poor / Retry" screen is shown, the gate is fully visible as before.
         "#ls ~ #rjLoadGate.rjg-loading{background:transparent;pointer-events:none}" +
-        "#ls ~ #rjLoadGate.rjg-loading > *{visibility:hidden}";
+        "#ls ~ #rjLoadGate.rjg-loading > *{visibility:hidden}" +
+        "#rjLoadGate .rjg-img{width:112px;height:112px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,215,0,.6);box-shadow:0 0 28px rgba(255,215,0,.25);margin-bottom:6px}";
       document.head.appendChild(st);
     }
     const g = document.createElement("div");
     g.id = "rjLoadGate";
     document.body.appendChild(g);
+    window._rjGateStage = 1; _rjGateShown = 4; _rjGateT0 = Date.now();
     _rjGateRender(false);
     _rjGateTimer = setTimeout(() => { _rjGateTimer = null; _rjGatePoor(); }, 12000);
     window.addEventListener("offline", _rjGateHide, { once: true });
@@ -7040,7 +7073,14 @@ function _rjGateHide() {
   _rjGateDone = true;
   if (_rjGateTimer) { clearTimeout(_rjGateTimer); _rjGateTimer = null; }
   const g = _rjGateEl();
-  if (g && g.parentNode) g.parentNode.removeChild(g);
+  if (!g) return;
+  if (g.classList.contains("rjg-loading") && typeof App !== "undefined" && App._cloudHydrated && document.getElementById("rjgFill") && !g.dataset.closing) {
+    g.dataset.closing = "1";
+    _rjGateSetProg(100, "Ready \uD83D\uDE4F");
+    setTimeout(() => { try { if (g.parentNode) g.parentNode.removeChild(g); } catch (_e) {} }, 450);   // let the bar visibly reach 100%
+    return;
+  }
+  if (g.parentNode) g.parentNode.removeChild(g);
 }
 // Called when a cloud pull has just finished (successfully or not).
 function _rjGateAfterPull() {
@@ -15512,6 +15552,7 @@ function fbInit() {
         // guaranteed to fetch the latest cloud data before anything is rendered.
         fbClaimSession().then(async () => {
           fbWatchSession();
+          window._rjGateStage = 2;
           // ── Sync device clock with Firebase server time ──
           // Corrects getTk() if local clock is wrong or in different timezone.
           // Wrapped so a failure here (offline mid-login, etc.) can never
@@ -15523,6 +15564,7 @@ function fbInit() {
           try { await fbSyncServerTime(); } catch (e) { console.warn('fbSyncServerTime failed (non-fatal):', e && e.message); }
           // Direct cloud pull — overwrites local cache with authoritative Firebase data.
           // Also wrapped for the same reason as above.
+          window._rjGateStage = 3;
           try { await fbAutoSync(); } catch (e) { console.warn('fbAutoSync failed (non-fatal):', e && e.message); }
           _rjGateAfterPull();
           // presence heartbeat rebuild + version stamp — fires on every

@@ -15504,6 +15504,8 @@ function fbInit() {
           _fbHideVerifyBlock();
         }
         _rjSyncPillLoading();
+        // Sign-in without closing the app: the gate is "once per launch", so re-arm it whenever the cloud copy is not loaded yet.
+        if (!App._cloudHydrated) { _rjGateDone = false; _rjGateBusy = false; }
         _rjGateShow();
         // ── ALWAYS pull from Firebase first on every login/refresh ──
         // fbMigrate() does a direct .get() (not just onSnapshot) so it is
@@ -17477,6 +17479,7 @@ async function fbSignOut(opts) {
   App._cloudHydrated = false;
   App._allowInitialPush = false;
   App._suspendCloudSync = true;
+  try { _rjGateDone = false; _rjGateBusy = false; } catch (_e) {}   // next sign-in must show the loading screen again
   // ── STEP 2: Wipe local data so re-login always reflects Firebase, and
   //    so the signed-out (guest) display starts at zero-zero.
   await clearLocalUserData(outgoingUid);

@@ -41952,7 +41952,7 @@ async function _syncPublicPhoto(p, largeOverride, hdFile) {
     st.textContent =
       ".timer-box.scr-swipe{position:relative;touch-action:none;cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;transition:transform .12s}" +
       ".timer-box.scr-swipe:active{transform:scale(.97)}" +
-      ".scr-dots{position:absolute;top:4px;right:5px;display:flex;gap:3px;pointer-events:none}" +
+      ".scr-dots{position:absolute;bottom:4px;right:5px;display:flex;gap:3px;pointer-events:none}" +
       ".scr-dots i{display:block;width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.28)}" +
       ".timer-box[data-scr-mode=today] .scr-dots i:nth-child(1),.timer-box[data-scr-mode=session] .scr-dots i:nth-child(2){background:#f5d17a}" +
       ".timer-box.scr-swipe .timer-display{transition:opacity .17s}.timer-box.scr-flip .timer-display{opacity:.12}";

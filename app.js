@@ -16758,7 +16758,7 @@ const _RJ_AUTH_MSGS = {
   "auth/missing-verification-code": "Enter the 6-digit code from your SMS.",
   "auth/code-expired": "That code has expired. Tap Resend to get a new one.",
   "auth/invalid-phone-number": "That phone number does not look right. Include the country code.",
-  "auth/too-many-requests": "Too many attempts. Please wait a few minutes and try again.",
+  "auth/too-many-requests": "Google has temporarily blocked SMS for this number or device. It can last from a few minutes up to several hours. Use email sign-in now, or try again later.",
   "auth/quota-exceeded": "SMS limit reached for now. Try the email code, or try again later.",
   "auth/network-request-failed": "No connection. Check your internet and try again.",
   "auth/invalid-credential": "Wrong email or password.",
@@ -17366,10 +17366,10 @@ function fbSendPhoneOtp(isResend) {
     let _log = [];
     try { _log = JSON.parse(localStorage.getItem(_k) || "[]").filter(function (t) { return _now - t < 86400000; }); } catch (_) {}
     if (_log.length >= 5) { _fbPhoneErr("Daily limit reached: 5 codes per number per day. Try again tomorrow or use email sign-in."); return; }
-    const _last = _log.length ? _log[_log.length - 1] : 0;
+    let _last = 0;
+    try { _last = parseInt(localStorage.getItem(_k + "_last") || "0", 10) || 0; } catch (_) {}
     if (_now - _last < 30000) { _fbPhoneErr("Please wait " + Math.ceil((30000 - (_now - _last)) / 1000) + " seconds before requesting another code."); return; }
-    _log.push(_now);
-    try { localStorage.setItem(_k, JSON.stringify(_log)); } catch (_) {}
+    try { localStorage.setItem(_k + "_last", String(_now)); } catch (_) {}
   } catch (_) {}
   const _FA = (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) || null;
   if (!_FA) _fbClearRecaptcha();
@@ -17405,6 +17405,14 @@ function fbSendPhoneOtp(isResend) {
       _otpSettled = true;
       clearTimeout(_otpTimeout);
       _fbConfirmation = confirmation;
+      try {   // count only codes that were really sent toward the 5-per-day limit
+        const _k2 = "rj_otp_log_" + phone.replace(/\D/g, "");
+        const _n2 = Date.now();
+        let _l2 = [];
+        try { _l2 = JSON.parse(localStorage.getItem(_k2) || "[]").filter(function (t) { return _n2 - t < 86400000; }); } catch (_) {}
+        _l2.push(_n2);
+        localStorage.setItem(_k2, JSON.stringify(_l2));
+      } catch (_) {}
       _fbPhoneErr(""); // clear any prior error now that a send succeeded
       const otpRow = document.getElementById("fbOtpRow");
       if (otpRow) otpRow.style.display = "block";

@@ -16795,10 +16795,14 @@ function _fbRefreshPassBtn(user) {
   if (ch) ch.style.display = hasPw ? "" : "none";
   const hint = document.getElementById("fbPwHint"), so = document.getElementById("fbPwSecOpt"), fg = document.getElementById("fbPwForgotBtn");
   const realEmail = user.email && !_fbIsSyntheticPhoneEmail(user.email) ? user.email : "";
-  const who = realEmail || user.phoneNumber || "this account";
+  const both = !!(realEmail && user.phoneNumber);
+  const who = both ? (realEmail + " and " + user.phoneNumber) : (realEmail || user.phoneNumber || "this account");
   if (so) so.style.display = "";
   if (fg) fg.style.display = (hasPw && realEmail) ? "" : "none";
-  if (hint) hint.textContent = hasPw
+  if (hint && both) hint.textContent = hasPw
+    ? "One password for both: it is set for " + who + ". Sign in with either one + this password - no OTP or code needed, even if your Gmail is removed from this device."
+    : "Optional: create one password for " + who + ". It will work with both, so you can skip OTP and email codes - even if your Gmail is removed from this device.";
+  else if (hint) hint.textContent = hasPw
     ? "A password is set for " + who + ". You can always sign in with " + (realEmail ? "this email" : "this phone number") + " + password, even if your " + (realEmail && /@gmail\.com$/i.test(realEmail) ? "Gmail" : "email") + " is removed from this device."
     : "Optional: create a password for " + who + " so you can still sign in with " + (realEmail ? "email" : "phone number") + " + password (no OTP or code) even if your " + (realEmail && /@gmail\.com$/i.test(realEmail) ? "Gmail" : "email") + " is removed from this device.";
   _fbApplyPwSection();
@@ -17167,11 +17171,17 @@ function fbSignInEmail() {
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
   const { email, pass } = _fbReadEmailPass();
   if (!email || !pass) { _fbEmailErr("Enter email and password"); return; }
-  fbAuth.signInWithEmailAndPassword(email, pass)
-    .then((cred) => {
-      toast("Signed in! ☁️ Sync active 🙏"); _fbEmailErr("");
-    })
+  const direct = () => fbAuth.signInWithEmailAndPassword(email, pass)
+    .then(() => { toast("Signed in! ☁️ Sync active 🙏"); _fbEmailErr(""); })
     .catch((e) => _fbEmailErr(e.message || "Sign-in failed"));
+  // One password for the whole account: works with the email or the phone number it is linked to.
+  _rjOtpCall({ action: "pwsignin", email: email, password: pass })
+    .then((j) => _rjOtpFinish(j.token).then(() => _fbEmailErr("")))
+    .catch((e) => {
+      const c = (e && e.code) || "";
+      if (c === "bad-password" || c === "locked" || c === "bad-email") { _fbEmailErr((e && e.message) || "Sign-in failed"); return; }
+      direct(); // server unreachable / not updated yet: normal Firebase sign-in
+    });
 }
 // ── Persistent info modal for auth flows. Stays open until the user
 //    explicitly closes it (no auto-dismiss timer). Used for verification
@@ -17451,6 +17461,9 @@ function _fbSetOrChangePassword(newPassword, currentPassword) {
   if (!user) return Promise.reject(new Error("Please sign in first"));
   const identifierEmail = user.email || _fbPhoneSyntheticEmail(user.phoneNumber);
   if (!identifierEmail) return Promise.reject(new Error("Could not determine account identifier"));
+  if (_fbHasPasswordProvider(user) && !currentPassword) {
+    return user.updatePassword(newPassword); // just verified by OTP / code: recent sign-in, no old password needed
+  }
   if (_fbHasPasswordProvider(user)) {
     const reauthCred = firebase.auth.EmailAuthProvider.credential(identifierEmail, currentPassword || "");
     return user.reauthenticateWithCredential(reauthCred).then(function () {
@@ -17494,22 +17507,14 @@ function fbSignInPhonePassword() {
   const passEl = document.getElementById("fbPhonePassIn");
   const password = (passEl && passEl.value) || "";
   if (!password) { _fbPhoneErr("Enter your password"); return; }
-  const identifierEmail = _fbPhoneSyntheticEmail(phone);
   const btn = document.getElementById("fbPhonePassSendBtn");
+  const reset = () => { if (btn) { btn.disabled = false; btn.textContent = "Sign in with Password"; } };
   if (btn) { btn.disabled = true; btn.textContent = "Signing in…"; }
-  fbAuth.signInWithEmailAndPassword(identifierEmail, password)
-    .then(function () {
-      if (btn) { btn.disabled = false; btn.textContent = "Sign in with Password"; }
-      toast("Signed in! ☁️ Sync active 🙏");
-    })
-    .catch(function (e) {
-      if (btn) { btn.disabled = false; btn.textContent = "Sign in with Password"; }
-      if (e && (e.code === "auth/user-not-found" || e.code === "auth/wrong-password" || e.code === "auth/invalid-credential")) {
-        _fbPhoneErr("No password set for this number yet, or it's incorrect. Use OTP to sign in, then set a password from Settings.", e.code);
-      } else {
-        _fbPhoneErr((e && e.message) || "Could not sign in", e && e.code);
-      }
-    });
+  // One password for the whole account: the server finds it whether it was saved under the phone number or the email.
+  _rjOtpCall({ action: "pwsignin", phone: phone, password: password })
+    .then((j) => _rjOtpFinish(j.token))
+    .then(reset)
+    .catch((e) => { reset(); _fbPhoneErr((e && e.message) || "Could not sign in", e && e.code); });
 }
 
 // "Forgot password" for a phone account: since the placeholder address

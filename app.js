@@ -17365,10 +17365,9 @@ function fbSendPhoneOtp(isResend) {
     const _now = Date.now();
     let _log = [];
     try { _log = JSON.parse(localStorage.getItem(_k) || "[]").filter(function (t) { return _now - t < 86400000; }); } catch (_) {}
-    if (_log.length >= 5) { _fbPhoneErr("Daily limit reached: 5 codes per number per day. Try again tomorrow or use email sign-in."); return; }
     let _last = 0;
     try { _last = parseInt(localStorage.getItem(_k + "_last") || "0", 10) || 0; } catch (_) {}
-    if (_now - _last < 30000) { _fbPhoneErr("Please wait " + Math.ceil((30000 - (_now - _last)) / 1000) + " seconds before requesting another code."); return; }
+    if (_now - _last < 5000) { _fbPhoneErr("Please wait " + Math.ceil((5000 - (_now - _last)) / 1000) + " seconds before requesting another code."); return; }
     try { localStorage.setItem(_k + "_last", String(_now)); } catch (_) {}
   } catch (_) {}
   const _FA = (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) || null;

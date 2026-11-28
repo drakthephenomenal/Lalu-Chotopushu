@@ -16713,6 +16713,37 @@ document.addEventListener("visibilitychange", async () => {
   } catch (_) {}
 });
 
+// ── Verified on another device? Re-check with Firebase so the "please verify" banner/block goes away by itself. ──
+// The signed-in user object is cached, so user.emailVerified stays false until it is reloaded from the server.
+let _fbRecheckBusy = false;
+function _fbVerifyPending() {
+  const b = document.getElementById("fbVerifyBanner");
+  return !!((b && b.style.display === "block") || document.getElementById("fbVerifyBlockOverlay"));
+}
+async function fbRecheckVerified(manual) {
+  const u = (typeof fbAuth !== "undefined" && fbAuth) ? fbAuth.currentUser : null;
+  if (!u) return;
+  if (u.emailVerified) { _fbStopVerifyCountdownTimer(); _fbHideVerifyBlock(); if (manual) toast("✅ Your email is already verified 🙏"); return; }
+  if (_fbRecheckBusy) return; _fbRecheckBusy = true;
+  try {
+    await u.reload();
+    const cu = fbAuth.currentUser;
+    if (cu && cu.emailVerified) {
+      try { await cu.getIdToken(true); } catch (_) {}
+      _fbStopVerifyCountdownTimer(); _fbHideVerifyBlock();
+      toast("✅ Email verified — thank you! 🙏");
+    } else if (manual) {
+      toast("Not verified yet. Open the link in your email, then tap here again.");
+    }
+  } catch (_) { if (manual) toast("Could not check right now. Check your internet and try again."); }
+  finally { _fbRecheckBusy = false; }
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && _fbVerifyPending()) fbRecheckVerified(false); });
+window.addEventListener("focus", () => { if (_fbVerifyPending()) fbRecheckVerified(false); });
+window.addEventListener("pageshow", () => { if (_fbVerifyPending()) fbRecheckVerified(false); });
+setInterval(() => { if (document.visibilityState === "visible" && _fbVerifyPending()) fbRecheckVerified(false); }, 15000);
+setTimeout(() => { if (_fbVerifyPending()) fbRecheckVerified(false); }, 3000);
+
 function _fbEmailErr(msg) {
   ["fbErr", "fbErrSheet"].forEach((id) => {
     const el = document.getElementById(id);
@@ -16733,8 +16764,16 @@ function fbOpenAuthSheet(which) {
   if (t) t.textContent = pane === "phone" ? "Sign in with phone number" : "Sign in with email";
   _fbEmailErr("");
   try { fbPwClose(); } catch (_e) {}
+  try { _emWatchSent(); } catch (_e) {}
   sh.style.display = "flex";
   requestAnimationFrame(() => requestAnimationFrame(() => sh.classList.add("open")));
+}
+// Layout helper only: when the code row appears, mark the pane so "Resend code" can sit at the bottom.
+function _emWatchSent() {
+  const row = document.getElementById("fbLinkCodeRow"), pane = row && row.closest(".sgn-pane-email");
+  if (!row || !pane || row._emW) return; row._emW = 1;
+  const f = () => pane.classList.toggle("em-sent", row.style.display === "block");
+  new MutationObserver(f).observe(row, { attributes: true, attributeFilter: ["style"] }); f();
 }
 // ── Email + password: guided steps (choose -> email & password). Does not touch the email-code flow. ──
 const _PW_TITLES = { choose: "Sign in with email", new: "Create your account", old: "Welcome back" };

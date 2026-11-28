@@ -27,7 +27,7 @@
 <script src="./vendor/firebase-firestore-compat.js"></script>
 <script src="./vendor/firebase-messaging-compat.js"></script>
 <script src="./vendor/firebase-functions-compat.js"></script>
-<link rel="stylesheet" href="./style.css?v=162">
+<link rel="stylesheet" href="./style.css?v=165">
 <style id="adminToolsCollapseCss">
 .admin-tools-details>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;color:var(--green);font-size:17px;font-weight:700;padding:2px 0;-webkit-tap-highlight-color:transparent;}
 .admin-tools-details>summary::-webkit-details-marker{display:none;}
@@ -2413,19 +2413,20 @@
               <div class="sgn-list">
                 <button type="button" class="sgn-btn em-opt" onclick="fbPwStep('pw','new')">
                   <span class="sgn-ic sgn-ic-green"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span>
-                  <span class="sgn-t">I'm new here<span class="em-sub">Create an account with a password</span></span><svg class="sgn-ch" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+                  <span class="sgn-t">I'm new here<span class="em-sub">Create an account with an app password</span></span><svg class="sgn-ch" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
                 </button>
                 <button type="button" class="sgn-btn em-opt" onclick="fbPwStep('pw','old')">
                   <span class="sgn-ic sgn-ic-mail"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></svg></span>
-                  <span class="sgn-t">I already have an account<span class="em-sub">Sign in with email and password</span></span><svg class="sgn-ch" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+                  <span class="sgn-t">I already have an account<span class="em-sub">Sign in with your app password</span></span><svg class="sgn-ch" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
                 </button>
               </div>
+              <div class="sgn-note" style="margin:14px 0 0">🔑 <b>App password</b> means a password for <b>this app only</b> — <b>not</b> your email's password. Choose any password you like (min 6 characters) and remember it.</div>
             </div>
             <div class="em-step em-pw">
-              <p class="em-p em-for-new">Enter your email and choose a password (min 6 characters). It does <b>not</b> need to be your real email password. We'll send a verification link to your inbox.</p>
-              <p class="em-p em-for-old">Enter your email and password to sign in.</p>
+              <p class="em-p em-for-new">Enter your email and <b>create a new password for this app</b> (min 6 characters). Do <b>not</b> use your email's password — this one is only for this app. We'll send a verification link to your inbox.</p>
+              <p class="em-p em-for-old">Enter your email and the <b>app password</b> you created here (not your email's password). Forgot it? Tap <b>Forgot password?</b></p>
               <input type="email" id="fbEmailIn" class="fb-email-input" placeholder="Email address" autocomplete="email" inputmode="email">
-              <input type="password" id="fbPassIn" class="fb-email-input" placeholder="Password" autocomplete="current-password">
+              <input type="password" id="fbPassIn" class="fb-email-input" placeholder="App password (min 6 characters)" autocomplete="current-password">
               <button type="button" class="premium-btn green em-for-new" style="width:100%" onclick="fbSignUpEmail()">Create account</button>
               <button type="button" class="premium-btn em-for-old" style="width:100%" onclick="fbSignInEmail()">Sign in</button>
               <button type="button" class="em-link em-for-old" onclick="fbResetEmail()">Forgot password?</button>
@@ -2447,6 +2448,7 @@
         📧 Please verify your email — check your inbox (and Spam/Promotions folder).
         <div id="fbVerifyBannerCountdown" style="margin-top:4px;font-size:10.5px;opacity:.85;font-weight:600"></div>
         <button onclick="fbResendVerificationEmail()" style="display:block;margin:8px auto 0;padding:6px 14px;border-radius:8px;border:1px solid rgba(255,215,0,0.35);background:rgba(255,215,0,0.12);color:#ffd97a;font-size:11px;cursor:pointer;font-family:Inter,sans-serif">Resend verification email</button>
+        <button id="fbVerifiedCheckBtn" onclick="fbRecheckVerified(true)" style="display:block;margin:8px auto 0;padding:6px 14px;border-radius:8px;border:1px solid rgba(90,200,120,0.4);background:rgba(90,200,120,0.12);color:#8ff0b5;font-size:11px;cursor:pointer;font-family:Inter,sans-serif">I've already verified — refresh</button>
       </div>
       <div style="text-align:center;margin-bottom:12px">
         <span class="sync-pill" id="syncPill"><span class="sync-dot"></span><span id="syncPillText">Ready</span></span>
@@ -3745,7 +3747,7 @@
     <script src="./hcj-langs.js?v=1"></script>
     <script src="./hcp-langs.js?v=1"></script>
     <script src="./rsn-langs.js?v=1"></script>
-    <script src="./app.js?v=483"></script>
+    <script src="./app.js?v=485"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

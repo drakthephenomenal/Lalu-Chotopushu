@@ -4943,3 +4943,10 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 .em-link{display:block;width:100%;margin-top:10px;padding:8px;border:0;background:transparent;color:var(--a2,#8fb4ff);font:500 13px Inter,sans-serif;text-align:center;cursor:pointer}
 .em-link:hover{text-decoration:underline}
 .em-pw-open{margin-top:16px;border-top:1px solid rgba(255,255,255,.09);padding-top:14px;text-decoration:underline}
+
+/* Email code screen: once the code was sent, "Resend code" sits at the bottom (layout only; no logic changed) */
+.sgn-sheet[data-pane="email"] .sgn-pane-email.em-sent{display:flex;flex-direction:column}
+.sgn-pane-email.em-sent #fbLinkCodeRow{order:1}
+.sgn-pane-email.em-sent #fbLinkSendBtn{order:2;margin-top:16px;padding-top:11px;padding-bottom:11px;background:transparent;box-shadow:none;border:1px solid rgba(255,255,255,.18);color:var(--a2,#8fb4ff);font-size:14px;font-weight:600}
+.sgn-pane-email.em-sent #emPwOpenBtn{order:3}
+.sgn-pane-email.em-sent #emPwPane{order:4}

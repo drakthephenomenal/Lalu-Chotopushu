@@ -56,7 +56,7 @@
   call({ action: "peek", email: email, token: token }).then(function (j) {
     card.textContent = "";
     card.appendChild(el("h1", "", "\uD83D\uDD10 Your sign-in code"));
-    card.appendChild(el("p", "", "Type this code in the app where you are signing in:"));
+    card.appendChild(el("p", "", "Enter this code in the app where you are signing in:"));
     card.appendChild(el("div", "code", j.code));
     var copy = el("button", "ghost", "\uD83D\uDCCB Copy code");
     copy.onclick = function () {
@@ -75,17 +75,7 @@
     card.appendChild(el("p", "small", "Valid for 10 minutes. Only use it if you just asked to sign in."));
 
     card.appendChild(el("div", "sep"));
-    card.appendChild(el("p", "small", "Or let the app sign in by itself (tap only if you just tried to sign in):"));
-    var auto = el("button", "gold", "Sign in my app automatically");
-    auto.onclick = function () {
-      auto.disabled = true; auto.textContent = "Please wait…";
-      call({ action: "approve", email: email, token: token }).then(function () {
-        auto.textContent = "\u2705 Approved \u2013 go back to the app and refresh";
-        var note = el("p", "small", "Open the app again and refresh it (pull down, or close and reopen). It will sign in within a few seconds. If it does not, type the code above.");
-        auto.parentNode.insertBefore(note, auto.nextSibling);
-      }).catch(function (e) { auto.disabled = false; auto.textContent = "Sign in my app automatically"; alert(e.message || "Could not approve."); });
-    };
-    card.appendChild(auto);
+    card.appendChild(el("p", "small", "Only use the code if you just asked to sign in. Never share it with anyone."));
     var here = el("a", "btn ghost", "Sign in on this browser instead");
     here.href = appLink("&rjhere=1");
     card.appendChild(here);

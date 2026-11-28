@@ -15864,7 +15864,7 @@ async function fbSignInGoogle() {
   if (_fbSignInBusy) return;
   _fbSignInBusy = true;
   window._rjapFreshSignIn = Date.now();   // tells the sign-in sequence this is a real, just-now sign-in
-  setTimeout(() => { _fbSignInBusy = false; }, 4000);   // never stays stuck
+  setTimeout(() => { _fbSignInBusy = false; }, 30000);   // safety net only; normally reset as soon as the attempt ends
   if (!fbInit()) {
     toast("Firebase not ready. Check your connection.");
     return;
@@ -15896,6 +15896,7 @@ async function fbSignInGoogle() {
       if (!idToken) throw new Error("No ID token returned from native Google Sign-In");
       const credential = firebase.auth.GoogleAuthProvider.credential(idToken, accessToken);
       await fbAuth.signInWithCredential(credential);
+      _fbSignInBusy = false;
       toast("Signed in with Google! ☁️ Sync active 🙏");
 
       // Fire-and-forget: sets up Drive backup auth in the background without
@@ -15906,6 +15907,7 @@ async function fbSignInGoogle() {
         });
       }
     } catch (e) {
+      _fbSignInBusy = false;
       console.error("Native Google sign-in failed:", e);
       _fbSignInShowErr(
         (e && e.credMgr) ? e.message : "Google sign-in failed: " + (e && e.message ? e.message : e),
@@ -15924,6 +15926,7 @@ async function fbSignInGoogle() {
   fbAuth
     .signInWithPopup(provider)
     .then((result) => {
+      _fbSignInBusy = false;
       const credential = result.credential;
       toast("Signed in with Google! ☁️ Sync active 🙏");
       // First login in a browser/PWA (iPad, Android Chrome): offer Drive access ONLY if the
@@ -15933,14 +15936,16 @@ async function fbSignInGoogle() {
       //  so it appears in the same order for Settings and Jap-screen sign-in.)
     })
     .catch((e) => {
+      _fbSignInBusy = false;
+      const _em = (e && e.message) || "";
+      // The person closed the popup on purpose: do nothing (no surprise redirect).
+      if (e && (e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request")) return;
       // Popup blocked or storage partitioned (e.g. Facebook in-app browser)
       if (
-        e.code === "auth/popup-blocked" ||
-        e.code === "auth/popup-closed-by-user" ||
-        e.code === "auth/cancelled-popup-request" ||
-        e.message.includes("sessionStorage") ||
-        e.message.includes("initial state") ||
-        e.message.includes("storage-partitioned")
+        (e && e.code === "auth/popup-blocked") ||
+        _em.includes("sessionStorage") ||
+        _em.includes("initial state") ||
+        _em.includes("storage-partitioned")
       ) {
         // Inform user and open in external browser instead
         toast("Opening in your browser for sign-in…");
@@ -16544,11 +16549,8 @@ async function fbSignInZoho() {
       toast("Signed in with Zoho! ☁️ Cloud sync active 🙏");
     })
     .catch((e) => {
-      if (
-        e.code === "auth/popup-blocked" ||
-        e.code === "auth/popup-closed-by-user" ||
-        e.code === "auth/cancelled-popup-request"
-      ) {
+      if (e && (e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request")) return;
+      if (e && e.code === "auth/popup-blocked") {
         toast("Opening in your browser for Zoho sign-in…");
         setTimeout(() => {
           try {
@@ -16750,6 +16752,30 @@ function _fbEmailErr(msg) {
     }
   });
 }
+// Plain-language messages for the most common sign-in errors (the raw Firebase text is only logged to the console).
+const _RJ_AUTH_MSGS = {
+  "auth/invalid-verification-code": "That code is not correct. Check the SMS and try again.",
+  "auth/missing-verification-code": "Enter the 6-digit code from your SMS.",
+  "auth/code-expired": "That code has expired. Tap Resend to get a new one.",
+  "auth/invalid-phone-number": "That phone number does not look right. Include the country code.",
+  "auth/too-many-requests": "Too many attempts. Please wait a few minutes and try again.",
+  "auth/quota-exceeded": "SMS limit reached for now. Try the email code, or try again later.",
+  "auth/network-request-failed": "No connection. Check your internet and try again.",
+  "auth/invalid-credential": "Wrong email or password.",
+  "auth/wrong-password": "Wrong email or password.",
+  "auth/user-not-found": "Wrong email or password.",
+  "auth/user-disabled": "This account has been disabled.",
+  "auth/requires-recent-login": "For safety, please sign in again and then retry.",
+  "auth/weak-password": "Please choose a stronger password (at least 8 characters).",
+  "auth/captcha-check-failed": "Verification failed. Please reload and try again.",
+  "client/recaptcha-timeout": "Verification timed out. Check your connection and try again."
+};
+function _rjFriendlyAuthError(e, fallback) {
+  const code = e && e.code;
+  try { console.warn("Auth error:", code, e && e.message); } catch (_) {}
+  if (code && _RJ_AUTH_MSGS[code]) return _RJ_AUTH_MSGS[code];
+  return (e && e.message) || fallback || "Something went wrong. Please try again.";
+}
 // ── Sign-in sheet (Phone / Email panels open in a slide-up sheet) ──
 function fbOpenAuthSheet(which) {
   const sh = document.getElementById("fbAuthSheet");
@@ -16818,6 +16844,22 @@ function fbPwEmailReset() {
       + '<p style="margin:0;font-size:12.5px;opacity:.85">Open it, choose a new password, then use it to sign in. Check Spam / Promotions if you do not see it.</p>');
   }).catch(function (e) { toast((e && e.message) || "Could not send reset email"); });
 }
+// The single "create a password" prompt (used after email code, phone OTP and the delayed offer).
+function _fbOfferPassword(u, reset) {
+  if (!u) return;
+  const who = (u.phoneNumber && !u.email) ? "phone number" : "email";
+  _fbShowPasswordModal(reset ? {
+    title: "🔑 Set a new password for this app",
+    subtitle: "Your phone number is verified — choose a new password for signing in.",
+    requireCurrent: false, submitLabel: "Save new password", skippable: true,
+    onSubmit: function (np) { return _fbSetOrChangePassword(np, null); }
+  } : {
+    title: "🔑 Create a password for this app",
+    subtitle: "Optional. Next time sign in with your " + who + " + this password - no OTP or code. It is only for this app, not your email's password.",
+    requireCurrent: false, submitLabel: "Create password", skippable: true,
+    onSubmit: function (np) { return _fbSetOrChangePassword(np, null); }
+  });
+}
 // One friendly, skippable offer per account per device: create a password so later logins need no OTP / code.
 function _fbMaybeOfferPassword(user) {
   try {
@@ -16830,12 +16872,7 @@ function _fbMaybeOfferPassword(user) {
         if (!u || u.uid !== user.uid || _fbHasPasswordProvider(u) || document.getElementById("fbPassModal")) return;
         if (localStorage.getItem(key) === "1") return;
         localStorage.setItem(key, "1");
-        _fbShowPasswordModal({
-          title: "🔑 Create a password for this app",
-          subtitle: "Optional. Next time sign in with your " + (u.phoneNumber && !u.email ? "phone number" : "email") + " + this password - no OTP or code. It is only for this app.",
-          requireCurrent: false, submitLabel: "Create password", skippable: true,
-          onSubmit: function (np) { return _fbSetOrChangePassword(np, null); }
-        });
+        _fbOfferPassword(u);
       } catch (_) {}
     }, 2500);
   } catch (_) {}
@@ -16922,9 +16959,9 @@ function fbPwCheck() {
   const reset = () => { if (btn) { btn.disabled = false; btn.textContent = "Continue"; } };
   if (btn) { btn.disabled = true; btn.textContent = "Checking…"; }
   _fbEmailErr("");
-  _rjOtpCall({ action: "status", email: email }).then((j) => {
+  _rjHasPassword(email).then((has) => {
     reset();
-    if (j && j.hasPassword) {
+    if (has) {
       const pe = document.getElementById("fbEmailIn"); if (pe) pe.value = email;
       window._rjPwEmail = email;
       const w = document.getElementById("fbPwChkWrap"), c = document.getElementById("fbPwChoice");
@@ -16970,7 +17007,7 @@ document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { try { 
 // the next attempt, instead of clearing after 6s, so it can actually be read.
 function _fbPhoneErr(msg, code) {
   const el = document.getElementById("fbPhoneErr");
-  const full = code ? (msg + "  [" + code + "]") : (msg || "");
+  const full = (code && _RJ_AUTH_MSGS[code]) ? _RJ_AUTH_MSGS[code] : (code ? (msg + "  [" + code + "]") : (msg || ""));
   console.warn("Phone OTP error:", code, msg);
   if (el) {
     el.textContent = full;
@@ -17008,20 +17045,7 @@ function _rjNewDeviceId() {
 // every few seconds whether the sign-in was approved, and signs itself in when it was.
 let _rjPollTimer = null;
 function _rjStopPoll() { if (_rjPollTimer) { clearInterval(_rjPollTimer); _rjPollTimer = null; } }
-function _rjStartPoll(email, device, startedAt) {
-  _rjStopPoll();
-  let busy = false;
-  _rjPollTimer = setInterval(() => {
-    if (busy) return;
-    if (Date.now() - startedAt > 10.5 * 60 * 1000) { _rjStopPoll(); return; }
-    if (typeof fbAuth !== "undefined" && fbAuth && fbAuth.currentUser) { _rjStopPoll(); return; }
-    busy = true;
-    _rjOtpCall({ action: "check", email: email, device: device })
-      .then((j) => { if (j && j.token) { _rjStopPoll(); return _rjOtpFinish(j.token); } })
-      .catch((e) => { if (e && (e.code === "expired" || e.code === "bad-device")) _rjStopPoll(); })
-      .then(() => { busy = false; }, () => { busy = false; });
-  }, 3000);
-}
+function _rjStartPoll() { /* retired: the cross-device "approve" flow was removed for security; users type the emailed code instead */ _rjStopPoll(); }
 // On app start: if a sign-in was waiting (the app was closed or reloaded while the email button was opened), keep waiting.
 function _rjResumePoll() {
   let pend = null; try { pend = JSON.parse(localStorage.getItem(_RJ_OTP_KEY) || "null"); } catch (_) {}
@@ -17048,6 +17072,7 @@ function fbEmailEdited() {
   const ch = document.getElementById("fbEmailChoiceRow"), b = document.getElementById("fbLinkSendBtn");
   if (ch) ch.style.display = "none"; if (b) b.style.display = "";
 }
+function _rjHasPassword(email) { return _rjOtpCall({ action: "status", email: email }).then((j) => !!(j && j.hasPassword)); }
 function fbEmailContinue() {
   const row = document.getElementById("fbLinkCodeRow");
   if (row && row.style.display === "block") { fbSendEmailLink(); return; } // already sent: this is "Resend code"
@@ -17059,9 +17084,9 @@ function fbEmailContinue() {
   const reset = () => { if (btn) { btn.disabled = false; btn.textContent = "Continue"; } };
   if (btn) { btn.disabled = true; btn.textContent = "Checking…"; }
   _fbEmailErr("");
-  _rjOtpCall({ action: "status", email: email }).then((j) => {
+  _rjHasPassword(email).then((has) => {
     reset();
-    if (j && j.hasPassword) {
+    if (has) {
       const pe = document.getElementById("fbEmailIn"); if (pe) pe.value = email;
       const ch = document.getElementById("fbEmailChoiceRow");
       if (btn) btn.style.display = "none"; if (ch) ch.style.display = "block";
@@ -17116,12 +17141,7 @@ function _rjOtpFinish(customToken) {
       if (u && u.email && !_fbHasPasswordProvider(u) && (window._rjOfferPw || !asked)) {
         window._rjOfferPw = false;
         try { localStorage.setItem(key, "1"); } catch (_) {}
-        setTimeout(() => _fbShowPasswordModal({
-          title: "🔑 Create a password for this app",
-          subtitle: "Optional. Next time you can sign in with your email + this password. It is only for this app, not your email's password.",
-          requireCurrent: false, submitLabel: "Set password", skippable: true,
-          onSubmit: function (np) { return _fbSetOrChangePassword(np, null); }
-        }), 700);
+        setTimeout(() => _fbOfferPassword(fbAuth.currentUser), 700);
       }
     } catch (_) {}
   });
@@ -17152,20 +17172,14 @@ function fbCompleteEmailLinkSignIn(linkUrl) {
   if (sameDevice) { toast("Signing you in…"); signInHere(); return; }
   window._rjLinkSignInHere = signInHere;
   const btnCss = "width:100%;padding:11px;border-radius:10px;cursor:pointer;font-weight:600;margin-top:8px;";
-  window._rjLinkApprove = () => {
-    _rjOtpCall({ action: "approve", email: email, token: token })
-      .then((j) => _fbInfoModal("\u2705 Approved",
-        '<p style="margin:0 0 8px">Go back to the RadhaNaam SudhaRasam app. It will sign in by itself in a few seconds.</p>'
-        + '<p style="margin:10px 0 4px;font-size:12px;opacity:.85">If it does not, type this code in the app:</p>'
-        + '<div style="font-size:34px;letter-spacing:8px;font-weight:700;text-align:center;color:#ffd97a;margin:6px 0">' + j.code + "</div>"
-        + '<p style="margin:0 0 4px;font-size:12px;opacity:.85">Valid for 10 minutes.</p>'))
-      .catch((e) => _fbInfoModal("Sign-in problem", '<p style="margin:0">' + ((e && e.message) || "This link is no longer valid.") + "</p>"));
-  };
-  _fbInfoModal("\uD83D\uDD10 Confirm sign-in",
-    '<p style="margin:0 0 8px">Did you just try to sign in to RadhaNaam SudhaRasam on your app or another device?</p>'
-    + '<button onclick="window._rjLinkApprove&&window._rjLinkApprove()" style="' + btnCss + 'border:1px solid rgba(255,215,0,.5);background:rgba(255,215,0,.16);color:#ffd97a">Yes, sign in my app</button>'
-    + '<button onclick="window._rjLinkSignInHere&&window._rjLinkSignInHere()" style="' + btnCss + 'border:1px solid rgba(255,255,255,.25);background:transparent;color:#cfe2ff">Sign in on this browser instead</button>'
-    + '<p style="margin:10px 0 0;font-size:11.5px;opacity:.8">If you did not ask for this, close this page.</p>');
+  _rjOtpCall({ action: "peek", email: email, token: token }).then((j) => {
+    _fbInfoModal("\uD83D\uDD10 Your sign-in code",
+      '<p style="margin:0 0 8px">Enter this code in the app where you are signing in:</p>'
+      + '<div style="font-size:34px;letter-spacing:8px;font-weight:700;text-align:center;color:#ffd97a;margin:6px 0">' + j.code + '</div>'
+      + '<button onclick="try{navigator.clipboard.writeText(\'' + j.code + '\');this.textContent=\'\u2705 Copied\'}catch(e){}" style="' + btnCss + 'border:1px solid rgba(255,215,0,.5);background:rgba(255,215,0,.16);color:#ffd97a">\uD83D\uDCCB Copy code</button>'
+      + '<button onclick="window._rjLinkSignInHere&&window._rjLinkSignInHere()" style="' + btnCss + 'border:1px solid rgba(255,255,255,.25);background:transparent;color:#cfe2ff">Sign in on this browser instead</button>'
+      + '<p style="margin:10px 0 0;font-size:11.5px;opacity:.8">Valid for 10 minutes. If you did not ask for this, close this page and never share the code.</p>');
+  }).catch((e) => _fbInfoModal("Sign-in problem", '<p style="margin:0">' + ((e && e.message) || "This link is no longer valid.") + "</p>"));
 }
 function fbSignInEmail() {
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
@@ -17173,7 +17187,7 @@ function fbSignInEmail() {
   if (!email || !pass) { _fbEmailErr("Enter email and password"); return; }
   const direct = () => fbAuth.signInWithEmailAndPassword(email, pass)
     .then(() => { toast("Signed in! ☁️ Sync active 🙏"); _fbEmailErr(""); })
-    .catch((e) => _fbEmailErr(((e && e.code === "auth/invalid-credential") || (e && e.code === "auth/wrong-password") ? "Wrong email or password." : ((e && e.message) || "Sign-in failed")) + (e && e.code ? "  [" + e.code + "]" : "")));
+    .catch((e) => _fbEmailErr(_rjFriendlyAuthError(e, "Sign-in failed")));
   // One password for the whole account: works with the email or the phone number it is linked to.
   _rjOtpCall({ action: "pwsignin", email: email, password: pass })
     .then((j) => _rjOtpFinish(j.token).then(() => _fbEmailErr("")))
@@ -17378,7 +17392,7 @@ function fbVerifyPhoneOtp() {
   if (!_fbConfirmation) { _fbEmailErr("Please request an OTP first"); return; }
   const otpEl = document.getElementById("fbOtpIn");
   const code = (otpEl && otpEl.value || "").trim();
-  if (!/^\d{4,8}$/.test(code)) { _fbPhoneErr("Enter the 6-digit OTP from your SMS"); return; }
+  if (!/^\d{6}$/.test(code)) { _fbPhoneErr("Enter the 6-digit OTP from your SMS"); return; }
   _fbPhoneErr("");
   _fbConfirmation.confirm(code)
     .then(function () {
@@ -17396,25 +17410,8 @@ function fbVerifyPhoneOtp() {
       _fbPhonePasswordResetPending = false;
       const _u = fbAuth.currentUser;
       try { if (_u) localStorage.setItem("rj_pw_offered_" + _u.uid, "1"); } catch (_) {}
-      if (_wasResetFlow) {
-        _fbShowPasswordModal({
-          title: "🔑 Set a new password for this app",
-          subtitle: "Your phone number is verified — choose a new password for signing in.",
-          requireCurrent: false,
-          submitLabel: "Save new password",
-          skippable: true,
-          onSubmit: function (np) { return _fbSetOrChangePassword(np, null); }
-        });
-      } else if (_u && !_fbHasPasswordProvider(_u)) {
-        _fbShowPasswordModal({
-          title: "🔑 Set a password for this app (optional)",
-          subtitle: "Skip OTP next time — sign in with your phone number + this password instead.",
-          requireCurrent: false,
-          submitLabel: "Set password",
-          skippable: true,
-          onSubmit: function (np) { return _fbSetOrChangePassword(np, null); }
-        });
-      }
+      if (_wasResetFlow) _fbOfferPassword(_u, true);
+      else if (_u && !_fbHasPasswordProvider(_u)) _fbOfferPassword(_u);
     })
     .catch(function (e) {
       _fbPhoneErr((e && e.message) || "Invalid or expired OTP", e && e.code);
@@ -17516,7 +17513,14 @@ function fbSignInPhonePassword() {
   _rjOtpCall({ action: "pwsignin", phone: phone, password: password })
     .then((j) => _rjOtpFinish(j.token))
     .then(reset)
-    .catch((e) => { reset(); _fbPhoneErr((e && e.message) || "Could not sign in", e && e.code); });
+    .catch((e) => {
+      const c = (e && e.code) || "";
+      if (c === "locked" || c === "bad-phone") { reset(); _fbPhoneErr((e && e.message) || "Could not sign in", c); return; }
+      // Server check unavailable or said no: a phone-only account keeps its password under a placeholder address, so let Firebase check that directly.
+      return fbAuth.signInWithEmailAndPassword(_fbPhoneSyntheticEmail(phone), password)
+        .then(() => { reset(); _fbPhoneErr(""); toast("Signed in! ☁️ Sync active 🙏"); })
+        .catch(() => { reset(); _fbPhoneErr((e && e.message) || "Could not sign in", e && e.code); });
+    });
 }
 
 // "Forgot password" for a phone account: since the placeholder address
@@ -17553,7 +17557,7 @@ function _fbShowPasswordModal(opts) {
     +   '<div style="font-size:16px;font-weight:700;color:#ffd97a;margin-bottom:8px;text-align:center">' + opts.title + '</div>'
     +   (opts.subtitle ? '<div style="font-size:12.5px;color:#c7cce0;margin-bottom:14px;text-align:center;line-height:1.5">' + opts.subtitle + '</div>' : '')
     +   currentField
-    +   '<input type="password" id="fbPassModalNew" class="fb-email-input" placeholder="New password (min 6 chars)" autocomplete="new-password">'
+    +   '<input type="password" id="fbPassModalNew" class="fb-email-input" placeholder="New password (min 8 chars)" autocomplete="new-password">'
     +   '<input type="password" id="fbPassModalConfirm" class="fb-email-input" placeholder="Confirm new password" autocomplete="new-password" style="margin-bottom:4px">'
     +   '<div id="fbPassModalErr" style="font-size:11.5px;color:var(--red);min-height:16px;margin-bottom:6px;text-align:center"></div>'
     +   '<button id="fbPassModalSubmit" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(90,200,120,0.4);background:rgba(90,200,120,0.16);color:#9be6ac;font-size:14px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">' + (opts.submitLabel || "Save") + '</button>'
@@ -17569,7 +17573,7 @@ function _fbShowPasswordModal(opts) {
     const cp = ov.querySelector("#fbPassModalConfirm").value;
     const curr = opts.requireCurrent ? ov.querySelector("#fbPassModalCurrent").value : null;
     if (opts.requireCurrent && !curr) { errEl.textContent = "Enter your current password"; return; }
-    if (!np || np.length < 6) { errEl.textContent = "New password must be at least 6 characters"; return; }
+    if (!np || np.length < 8) { errEl.textContent = "New password must be at least 8 characters"; return; }
     if (np !== cp) { errEl.textContent = "Passwords do not match"; return; }
     const btn = ov.querySelector("#fbPassModalSubmit");
     btn.disabled = true; btn.textContent = "Saving…";
@@ -17600,44 +17604,6 @@ function fbChangePasswordFromSettings() {
     submitLabel: already ? "Change password" : "Create password",
     onSubmit: function (np, cp) { return _fbSetOrChangePassword(np, cp); }
   });
-}
-
-function fbSignUpEmail() {
-
-  if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
-  const { email, pass } = _fbReadEmailPass();
-  if (!email || !pass) { _fbEmailErr("Enter email and password"); return; }
-  if (pass.length < 6) { _fbEmailErr("Password must be at least 6 characters"); return; }
-  fbAuth.createUserWithEmailAndPassword(email, pass)
-    .then((cred) => {
-      _fbEmailErr("");
-      toast("Account created! ☁️ Sync active 🙏");
-      // Actually send the verification email. This call was missing before —
-      // the account was created and signed in, but no email ever went out,
-      // even though the sign-up instructions told the user to check their
-      // inbox for one. Sending it does not block sign-in/sync; it just
-      // gives the user a real link to confirm the address is theirs.
-      cred.user.sendEmailVerification()
-        .then(function () {
-          _fbInfoModal("📧 Verify your email",
-            '<p style="margin:0 0 10px">A verification link has been sent to:<br><span style="color:#ffd97a;word-break:break-all">' + email + '</span></p>'
-            + '<ol style="margin:8px 0 10px 18px;padding:0">'
-            +   '<li>Open your inbox and tap the verification link.</li>'
-            +   '<li><b>Can\'t find it?</b> Check your <b>Spam</b>, <b>Promotions</b>, or <b>Junk</b> folder.</li>'
-            +   '<li>You are already signed in and synced — this step just confirms the address is really yours.</li>'
-            + '</ol>'
-          );
-        })
-        .catch(function (e) {
-          // Do not block the newly-created account on this — the user can
-          // always resend from the "Sign in" screen's verify banner. But
-          // don't swallow the error silently either; surface it so failures
-          // are visible instead of looking like "nothing happened".
-          console.warn("sendEmailVerification failed:", e && e.code, e && e.message);
-          _fbEmailErr("Account created, but verification email failed to send: " + ((e && e.code) || (e && e.message) || "unknown error"));
-        });
-    })
-    .catch((e) => _fbEmailErr(e.message || "Sign-up failed"));
 }
 
 // Resend the verification email for the currently signed-in user.

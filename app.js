@@ -17114,7 +17114,7 @@ function fbSendEmailLink() {
       const row = document.getElementById("fbLinkCodeRow"); if (row) row.style.display = "block";
       const ci = document.getElementById("fbLinkCodeIn"); if (ci) { ci.value = ""; try { ci.focus(); } catch (_) {} }
       _fbEmailErr("");
-      toast("Email sent to " + email + " ✉️ Also check your Spam folder 📬");
+      toast("Code sent ✉️");
     })
     .catch((e) => { if (btn) { btn.disabled = false; btn.style.display = ""; btn.textContent = "Continue"; } _rjOtpErr(e); });
 }

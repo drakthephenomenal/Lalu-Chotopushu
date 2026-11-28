@@ -2271,7 +2271,6 @@
         </div>
 
         <div class="sgn-pane sgn-pane-phone">
-          <div class="sgn-note">We'll text a 6-digit code to your number. Pick your country code, enter the number, and tap <b>Continue</b>. If you saved a password before, you can use it instead of the code.</div>
           <div style="display:flex;gap:6px;margin-bottom:8px">
           <select id="fbPhoneCountry" class="fb-email-input" style="flex:0 0 80px;padding:10px 6px;margin-bottom:0">
             <option value="+1">🇺🇸/🇨🇦 +1</option>
@@ -2380,7 +2379,7 @@
         </div>
         <div id="fbPhoneErr" style="font-size:11.5px;color:var(--red);margin-top:6px;text-align:center;word-break:break-word"></div>
         <div id="fbOtpRow" style="display:none;margin-top:10px">
-          <div class="sgn-note" style="margin-bottom:10px"><svg viewBox="0 0 24 24" width="20" height="20" style="vertical-align:-4px;margin-right:4px" aria-hidden="true"><path d="M5 2h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H9l-5 4v-4.2A3 3 0 0 1 2 15V5a3 3 0 0 1 3-3z" fill="#1a73e8"/><path d="M7 8.5h10M7 12h6.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg> Check your SMS for a text from <b>Cloud OTP</b>. Can't find it? Search your <b>Spam</b> and <b>Blocked messages</b> folders.</div>
+          <div class="sgn-note" style="margin-bottom:10px"><svg viewBox="0 0 24 24" width="20" height="20" style="vertical-align:-4px;margin-right:4px" aria-hidden="true"><path d="M5 2h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H9l-5 4v-4.2A3 3 0 0 1 2 15V5a3 3 0 0 1 3-3z" fill="#1a73e8"/><path d="M7 8.5h10M7 12h6.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg> Code sent by SMS. Not there? Check Spam / Blocked messages.</div>
           <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="fbOtpIn" class="fb-email-input" placeholder="Enter 6-digit OTP" autocomplete="one-time-code">
           <div style="display:flex;gap:8px">
             <button onclick="fbVerifyPhoneOtp()" class="premium-btn green">Verify & Sign In</button>
@@ -2396,7 +2395,6 @@
         </div>
 
         <div class="sgn-pane sgn-pane-email">
-          <div class="sgn-note">✉️ Enter your email and tap <b>Continue</b>. If you saved a password before, you can use it. Otherwise we'll email you a <b>Sign in</b> button and a code.</div>
           <input type="email" id="fbLinkEmailIn" oninput="fbEmailEdited()" class="fb-email-input" placeholder="Email address" autocomplete="email">
           <button id="fbLinkSendBtn" onclick="fbEmailContinue()" class="premium-btn" style="width:100%">Continue</button>
           <div id="fbEmailChoiceRow" style="display:none;margin-top:8px">
@@ -2405,8 +2403,7 @@
             <button type="button" class="premium-btn green" style="width:100%;margin-top:8px" onclick="fbSendEmailLink()">✉️ Sign in with email code</button>
           </div>
           <div id="fbLinkCodeRow" style="display:none;margin-top:12px">
-            <div style="font-size:12.5px;line-height:1.55;color:var(--gold);background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 11px;margin-bottom:10px">📬 <b>Email sent!</b> Open it and tap <b>Sign in</b>. <b>Please also check your Spam / Junk folder</b> — the first email can land there. If it is there, tap "Not spam" so the next ones arrive normally.</div>
-            <div style="font-size:11.5px;opacity:.85;margin-bottom:6px">Signed in on a different device, or the app didn't continue? Type the code shown after you tap the button:</div>
+            <div style="font-size:12.5px;line-height:1.5;color:var(--gold);margin-bottom:10px">📬 Code sent. Check Spam / Junk too.</div>
             <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="fbLinkCodeIn" class="fb-email-input" placeholder="Enter 6-digit code" autocomplete="one-time-code">
             <div style="display:flex;gap:8px">
               <button onclick="fbVerifyEmailCode()" class="premium-btn green">Verify &amp; Sign In</button>
@@ -2417,7 +2414,6 @@
           <div id="emPwPane" data-step="choose" data-mode="new" style="display:none">
             <button type="button" class="em-back" onclick="fbPwBack()" aria-label="Back"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg> Back</button>
             <div class="em-step em-choose">
-              <p class="em-p">Enter your email. We'll check if you already set a password for this app.</p>
               <div id="fbPwChkWrap">
               <input type="email" id="fbPwChkEmail" class="fb-email-input" placeholder="Email address" autocomplete="email" inputmode="email">
               <button type="button" id="fbPwChkBtn" class="premium-btn" style="width:100%" onclick="fbPwCheck()">Continue</button>
@@ -2427,10 +2423,8 @@
                 <button type="button" class="premium-btn" style="width:100%" onclick="fbPwStep('pw','old')">🔑 Sign in with password</button>
                 <button type="button" class="premium-btn green" style="width:100%;margin-top:8px" onclick="fbPwUseCode()">✉️ Sign in with email code</button>
               </div>
-              <div class="sgn-note" style="margin:14px 0 0">🔑 No password yet (or you always used Google)? No problem — we'll email you a code to confirm it's you, then you can <b>create a password for this app</b>.</div>
             </div>
             <div class="em-step em-pw">
-              <p class="em-p em-for-old">Enter your email and the <b>password you set for this app</b> (not your email's password). Forgot it? Tap <b>Forgot password?</b></p>
               <input type="email" id="fbEmailIn" class="fb-email-input" placeholder="Email address" autocomplete="email" inputmode="email">
               <input type="password" id="fbPassIn" class="fb-email-input" placeholder="Set a password for this app (min 6 characters)" autocomplete="current-password">
               <button type="button" class="premium-btn em-for-old" style="width:100%" onclick="fbSignInEmail()">Sign in</button>

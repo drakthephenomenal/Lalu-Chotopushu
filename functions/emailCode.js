@@ -40,8 +40,12 @@ async function verifyPasswordRest(email, password) {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: email, password: password, returnSecureToken: false }),
     });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      console.warn("verifyPasswordRest failed:", r.status, j && j.error && j.error.message);
+    }
     return r.ok;
-  } catch (_) { return false; }
+  } catch (e) { console.warn("verifyPasswordRest error:", e && e.message); return false; }
 }
 
 async function uidForEmail(email) {

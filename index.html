@@ -2242,7 +2242,7 @@
       <!-- PHONE / OTP SIGN-IN — hidden for now per request. To re-enable,
            remove the two wrapper lines around this block (or change
            display:none to display:block). -->
-      <div id="phoneSignInWrap" style="display:none">
+      <div id="phoneSignInWrap">
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08)">
         <div style="font-size:11px;color:var(--td);text-align:center;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">or use Phone number</div>
         <div style="font-size:11px;color:var(--gold);text-align:left;margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.18);line-height:1.55">
@@ -2413,6 +2413,19 @@
               </div>
             </div>
           </details>
+          <div style="font-size:11.5px;color:var(--gold);text-align:left;margin-bottom:8px;padding:8px 10px;border-radius:8px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.18);line-height:1.55">
+            ✉️ <b>No password needed.</b> Enter your email — we'll send a <b>Sign in</b> button and a <b>6-digit code</b>. On this same device, tap the button to sign in. Opened it on another device? Type the code here instead.
+          </div>
+          <input type="email" id="fbLinkEmailIn" class="fb-email-input" placeholder="Email address" autocomplete="email">
+          <button id="fbLinkSendBtn" onclick="fbSendEmailLink()" class="premium-btn" style="width:100%">Continue with email</button>
+          <div id="fbLinkCodeRow" style="display:none;margin-top:10px">
+            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="fbLinkCodeIn" class="fb-email-input" placeholder="Enter 6-digit code" autocomplete="one-time-code">
+            <div style="display:flex;gap:8px">
+              <button onclick="fbVerifyEmailCode()" class="premium-btn green">Verify &amp; Sign In</button>
+              <button onclick="fbResetEmailCode()" style="padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:var(--td);font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif">Change email</button>
+            </div>
+          </div>
+          <div style="font-size:10.5px;color:var(--td);text-align:center;margin:12px 0 8px;letter-spacing:1px;text-transform:uppercase">or with password</div>
           <input type="email" id="fbEmailIn" class="fb-email-input" placeholder="Email address" autocomplete="email">
           <input type="password" id="fbPassIn" class="fb-email-input" placeholder="Password (min 6 chars)" autocomplete="current-password" style="margin-bottom:10px">
           <div style="display:flex;gap:8px">

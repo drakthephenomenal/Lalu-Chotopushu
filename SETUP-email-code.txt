@@ -1,0 +1,33 @@
+EMAIL CODE + SIGN-IN BUTTON  -  ONE-TIME SETUP  (do this once, about 10 minutes)
+
+The new file api/email-code.js runs on Vercel and needs 5 settings.
+
+1) FIREBASE SERVICE ACCOUNT KEY
+   Firebase Console -> Project settings (gear) -> Service accounts -> "Generate new private key".
+   A .json file downloads. Open it and copy ALL of its text.
+   (Keep this file secret. Never upload it to GitHub.)
+
+2) BREVO (free, sends the emails)
+   - Sign up at brevo.com (free plan: 300 emails/day).
+   - Senders & IP -> Senders -> Add a sender: use an email you own (e.g. your zohomail address)
+     and verify it from the email Brevo sends.
+   - SMTP & API -> API keys -> Generate a new API key. Copy it.
+
+3) VERCEL SETTINGS
+   Vercel -> your project -> Settings -> Environment Variables. Add (all environments):
+     FIREBASE_SERVICE_ACCOUNT = (paste the whole JSON text from step 1)
+     OTP_SECRET               = (any long random text, e.g. 40 random letters and numbers)
+     BREVO_API_KEY            = (key from step 2)
+     MAIL_FROM                = (the verified sender email from step 2)
+     MAIL_FROM_NAME           = RadhaNaam SudhaRasam      (optional)
+
+4) UPLOAD the files to the repo root (the api folder goes to the root too), then
+   Vercel -> Deployments -> Redeploy (so the new settings are picked up).
+
+5) TEST: Settings -> Sign in -> "or use Email" -> enter email -> Continue with email.
+   You should get an email with a 6-digit code and a Sign in button.
+
+Notes
+- Codes and the button work for 10 minutes, one use only. 5 wrong codes lock that code.
+- Emails sent to an address that already has an account (password or Google) sign into the SAME account and data.
+- Firestore collection "emailOtps" is created automatically (only the server can read it).

@@ -15150,6 +15150,7 @@ function fbInit() {
         console.warn("getRedirectResult:", e.message);
       });
 
+    try { fbCompleteEmailLinkSignIn(); } catch (_e) {}
     // ── Cloud hydration self-heal ──────────────────────────────────────
     // The 'online' browser event only fires on a true offline→online
     // transition. A device that stays technically "online" per the OS but
@@ -16739,6 +16740,84 @@ function _fbReadEmailPass() {
   const e = (document.getElementById("fbEmailIn") || {}).value || "";
   const p = (document.getElementById("fbPassIn") || {}).value || "";
   return { email: e.trim(), pass: p };
+}
+// ── Passwordless email sign-in: 6-digit code + "Sign in" button in the email (like Claude) ──
+// Needs the /api/email-code serverless function (see SETUP-email-code.txt). Same device: tap the button -> signed in.
+// Other device: the button shows the code, which you type on the device where you started.
+const _RJ_OTP_KEY = "rj_otp_pending";
+function _rjApiBase() { return _isNativeApp() ? "https://radharadharadha.vercel.app" : location.origin; }
+async function _rjOtpCall(body) {
+  let r;
+  try { r = await fetch(_rjApiBase() + "/api/email-code", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); }
+  catch (_) { const e = new Error("No connection. Check your internet and try again."); e.code = "network"; throw e; }
+  let j = {}; try { j = await r.json(); } catch (_) {}
+  if (!r.ok) { const e = new Error(j.error || ("Server error " + r.status)); e.code = j.code || ("http/" + r.status); throw e; }
+  return j;
+}
+function _rjOtpErr(e) { _fbEmailErr(((e && e.message) || "Something went wrong") + ((e && e.code && e.code !== "network") ? "  [" + e.code + "]" : "")); }
+function fbSendEmailLink() {
+  if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
+  const el = document.getElementById("fbLinkEmailIn");
+  const email = ((el && el.value) || "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { _fbEmailErr("Enter a valid email address"); return; }
+  const btn = document.getElementById("fbLinkSendBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "Sending…"; }
+  _rjOtpCall({ action: "send", email: email })
+    .then(() => {
+      try { localStorage.setItem(_RJ_OTP_KEY, JSON.stringify({ email: email, ts: Date.now() })); } catch (_) {}
+      if (btn) { btn.disabled = false; btn.textContent = "Resend code"; }
+      const row = document.getElementById("fbLinkCodeRow"); if (row) row.style.display = "block";
+      const ci = document.getElementById("fbLinkCodeIn"); if (ci) { ci.value = ""; try { ci.focus(); } catch (_) {} }
+      _fbEmailErr("");
+      toast("Code sent to " + email + " ✉️");
+    })
+    .catch((e) => { if (btn) { btn.disabled = false; btn.textContent = "Continue with email"; } _rjOtpErr(e); });
+}
+function fbResetEmailCode() {
+  const row = document.getElementById("fbLinkCodeRow"); if (row) row.style.display = "none";
+  const btn = document.getElementById("fbLinkSendBtn"); if (btn) { btn.disabled = false; btn.textContent = "Continue with email"; }
+  try { localStorage.removeItem(_RJ_OTP_KEY); } catch (_) {}
+  _fbEmailErr("");
+}
+function _rjOtpFinish(customToken) {
+  return fbAuth.signInWithCustomToken(customToken).then(() => {
+    try { localStorage.removeItem(_RJ_OTP_KEY); } catch (_) {}
+    const row = document.getElementById("fbLinkCodeRow"); if (row) row.style.display = "none";
+    try { const m = document.getElementById("fbAuthInfoModal"); if (m) m.remove(); } catch (_) {}
+    toast("Signed in! ☁️ Sync active 🙏");
+  });
+}
+function fbVerifyEmailCode() {
+  if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
+  const email = (((document.getElementById("fbLinkEmailIn") || {}).value) || "").trim().toLowerCase();
+  const code = (((document.getElementById("fbLinkCodeIn") || {}).value) || "").trim();
+  if (!/^\d{6}$/.test(code)) { _fbEmailErr("Enter the 6-digit code from your email"); return; }
+  _rjOtpCall({ action: "verify", email: email, code: code })
+    .then((j) => _rjOtpFinish(j.token))
+    .catch((e) => _rjOtpErr(e));
+}
+// Runs on every start: if the page was opened from the email's "Sign in" button, handle it.
+function fbCompleteEmailLinkSignIn() {
+  if (window._rjLinkTried) return;
+  let token = "", email = "";
+  try { const q = new URLSearchParams(location.search); token = q.get("rjlink") || ""; email = (q.get("rje") || "").trim().toLowerCase(); } catch (_) { return; }
+  if (!token || !email) return;
+  window._rjLinkTried = true;
+  try { history.replaceState(null, "", location.origin + location.pathname + location.hash); } catch (_) {}
+  let pend = null; try { pend = JSON.parse(localStorage.getItem(_RJ_OTP_KEY) || "null"); } catch (_) {}
+  const sameDevice = !!(pend && pend.email === email && Date.now() - (pend.ts || 0) < 15 * 60 * 1000);
+  const signInHere = () => _rjOtpCall({ action: "verify", email: email, token: token })
+    .then((j) => _rjOtpFinish(j.token))
+    .catch((e) => _fbInfoModal("Sign-in problem", '<p style="margin:0">' + ((e && e.message) || "Could not sign in.") + "</p>"));
+  if (sameDevice) { toast("Signing you in…"); signInHere(); return; }
+  window._rjLinkSignInHere = signInHere;
+  _rjOtpCall({ action: "peek", email: email, token: token })
+    .then((j) => _fbInfoModal("🔐 Your sign-in code",
+      '<p style="margin:0 0 8px">Enter this code on the device where you are signing in:</p>'
+      + '<div style="font-size:34px;letter-spacing:8px;font-weight:700;text-align:center;color:#ffd97a;margin:10px 0">' + j.code + "</div>"
+      + '<p style="margin:0 0 10px;font-size:12px;opacity:.85">Valid for 10 minutes.</p>'
+      + '<button onclick="window._rjLinkSignInHere&&window._rjLinkSignInHere()" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,215,0,.4);background:rgba(255,215,0,.12);color:#ffd97a;font-weight:600;cursor:pointer">Sign in on this device instead</button>'))
+    .catch((e) => _fbInfoModal("Sign-in problem", '<p style="margin:0">' + ((e && e.message) || "This link is no longer valid.") + "</p>"));
 }
 function fbSignInEmail() {
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }

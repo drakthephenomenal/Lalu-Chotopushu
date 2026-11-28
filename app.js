@@ -16767,6 +16767,9 @@ const _RJ_AUTH_MSGS = {
   "auth/user-disabled": "This account has been disabled.",
   "auth/requires-recent-login": "For safety, please sign in again and then retry.",
   "auth/weak-password": "Please choose a stronger password (at least 8 characters).",
+  "auth/invalid-app-credential": "Phone verification could not be completed on this device. Please update the app / Google Play services and try again, or use email sign-in.",
+  "auth/missing-client-identifier": "App verification failed. Please update the app and try again.",
+  "auth/error-code:-39": "The SMS could not be sent to this number right now. Try again later or use email sign-in.",
   "auth/captcha-check-failed": "Verification failed. Please reload and try again.",
   "client/recaptcha-timeout": "Verification timed out. Check your connection and try again."
 };
@@ -17308,6 +17311,46 @@ function _fbReadPhone() {
   return code + v;
 }
 
+// ── Native (Android SDK) phone sign-in ──────────────────────────────
+// The web reCAPTCHA cannot be verified inside the Capacitor WebView (its origin is
+// not an authorised domain) -> "invalid-app-credential" / "too many attempts".
+// On the APK we let the Android Firebase SDK (Play Integrity) send the SMS, then
+// finish sign-in with the web SDK so the web session is the signed-in one.
+let _fbNatH = [];
+async function _fbClearNat() {
+  const h = _fbNatH; _fbNatH = [];
+  for (const x of h) { try { await x.remove(); } catch (_) {} }
+}
+function _fbNativeSendOtp(FA, phone) {
+  return (async function () {
+    await _fbClearNat();
+    const vid = await new Promise(function (resolve, reject) {
+      const to = setTimeout(function () { reject(Object.assign(new Error("The SMS request timed out. Please try again."), { code: "client/recaptcha-timeout" })); }, 70000);
+      const add = async function (ev, fn) { try { _fbNatH.push(await FA.addListener(ev, fn)); } catch (_) {} };
+      (async function () {
+        await add("phoneCodeSent", function (e) { clearTimeout(to); resolve((e && e.verificationId) || ""); });
+        await add("phoneVerificationFailed", function (e) {
+          clearTimeout(to);
+          reject(Object.assign(new Error((e && e.message) || "SMS could not be sent"), { code: (e && e.code) || "" }));
+        });
+        await add("phoneVerificationCompleted", function (e) {
+          clearTimeout(to);
+          if (e && e.verificationCode) { const o = document.getElementById("fbOtpIn"); if (o) o.value = e.verificationCode; }
+          resolve((e && e.verificationId) || "");
+        });
+        try { Promise.resolve(FA.signInWithPhoneNumber({ phoneNumber: phone })).catch(function (err) { clearTimeout(to); reject(err); }); }
+        catch (err) { clearTimeout(to); reject(err); }
+      })();
+    });
+    if (!vid) throw new Error("Could not start SMS verification. Please try again.");
+    return {
+      confirm: function (code) {
+        return fbAuth.signInWithCredential(firebase.auth.PhoneAuthProvider.credential(vid, code));
+      }
+    };
+  })();
+}
+
 function fbSendPhoneOtp(isResend) {
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
   const phone = _fbReadPhone();
@@ -17315,8 +17358,9 @@ function fbSendPhoneOtp(isResend) {
     _fbPhoneErr("Enter phone number (e.g. 9876543210)");
     return;
   }
-  const verifier = _fbEnsureRecaptcha();
-  if (!verifier) { _fbPhoneErr("Could not initialize verification. Please reload."); return; }
+  const _FA = (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) || null;
+  const verifier = _FA ? null : _fbEnsureRecaptcha();
+  if (!_FA && !verifier) { _fbPhoneErr("Could not initialize verification. Please reload."); return; }
 
   const btn = document.getElementById("fbPhoneSendBtn");
   const _rbtn = document.getElementById("fbOtpResendBtn");
@@ -17339,9 +17383,9 @@ function fbSendPhoneOtp(isResend) {
     _rb(false);
     _fbClearRecaptcha();
     _fbPhoneErr("Verification timed out. Please check your connection and try again.", "client/recaptcha-timeout");
-  }, 20000);
+  }, _FA ? 75000 : 20000);
 
-  fbAuth.signInWithPhoneNumber(phone, verifier)
+  (_FA ? _fbNativeSendOtp(_FA, phone) : fbAuth.signInWithPhoneNumber(phone, verifier))
     .then(function (confirmation) {
       if (_otpSettled) return; // timeout already fired — ignore late resolve
       _otpSettled = true;

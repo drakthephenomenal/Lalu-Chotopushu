@@ -58,6 +58,20 @@
     card.appendChild(el("h1", "", "\uD83D\uDD10 Your sign-in code"));
     card.appendChild(el("p", "", "Type this code in the app where you are signing in:"));
     card.appendChild(el("div", "code", j.code));
+    var copy = el("button", "ghost", "\uD83D\uDCCB Copy code");
+    copy.onclick = function () {
+      var done = function () { copy.textContent = "\u2705 Copied"; setTimeout(function () { copy.textContent = "\uD83D\uDCCB Copy code"; }, 2000); };
+      var fallback = function () {
+        try {
+          var t = document.createElement("textarea"); t.value = j.code; t.setAttribute("readonly", "");
+          t.style.cssText = "position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(t); t.select();
+          var ok = document.execCommand("copy"); document.body.removeChild(t);
+          if (ok) done(); else copy.textContent = "Press and hold the code to copy";
+        } catch (_) { copy.textContent = "Press and hold the code to copy"; }
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(j.code).then(done, fallback); else fallback();
+    };
+    card.appendChild(copy);
     card.appendChild(el("p", "small", "Valid for 10 minutes. Only use it if you just asked to sign in."));
 
     card.appendChild(el("div", "sep"));

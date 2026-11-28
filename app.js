@@ -16746,7 +16746,7 @@ function _fbEmailErr(msg) {
     const el = document.getElementById(id);
     if (el) {
       el.textContent = msg || "";
-      if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ""; }, 6000);
+      if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ""; }, 15000);
     }
   });
 }
@@ -16772,14 +16772,14 @@ function fbOpenAuthSheet(which) {
 function _fbApplyPwSection() {
   const body = document.getElementById("fbPwSecBody"), chev = document.getElementById("fbPwSecChev"), head = document.getElementById("fbPwSecHead");
   if (!body) return;
-  const col = !!(App.S && App.S.cfg && App.S.cfg.pwSecCollapsed);
+  const col = !(App.S && App.S.cfg && App.S.cfg.pwSecCollapsed === false); // collapsed by default
   body.style.display = col ? "none" : "";
   if (chev) chev.style.transform = col ? "rotate(-90deg)" : "";
   if (head) head.setAttribute("aria-expanded", col ? "false" : "true");
 }
 function fbTogglePwSection() {
   if (!App.S.cfg) App.S.cfg = {};
-  App.S.cfg.pwSecCollapsed = !App.S.cfg.pwSecCollapsed;
+  App.S.cfg.pwSecCollapsed = (App.S.cfg.pwSecCollapsed === false); // false = user expanded it
   _fbApplyPwSection();
   try { App.save(); } catch (_e) {}
   try { fbDebouncedPush(); } catch (_e) {}
@@ -17173,14 +17173,16 @@ function fbSignInEmail() {
   if (!email || !pass) { _fbEmailErr("Enter email and password"); return; }
   const direct = () => fbAuth.signInWithEmailAndPassword(email, pass)
     .then(() => { toast("Signed in! ☁️ Sync active 🙏"); _fbEmailErr(""); })
-    .catch((e) => _fbEmailErr(e.message || "Sign-in failed"));
+    .catch((e) => _fbEmailErr(((e && e.code === "auth/invalid-credential") || (e && e.code === "auth/wrong-password") ? "Wrong email or password." : ((e && e.message) || "Sign-in failed")) + (e && e.code ? "  [" + e.code + "]" : "")));
   // One password for the whole account: works with the email or the phone number it is linked to.
   _rjOtpCall({ action: "pwsignin", email: email, password: pass })
     .then((j) => _rjOtpFinish(j.token).then(() => _fbEmailErr("")))
     .catch((e) => {
       const c = (e && e.code) || "";
-      if (c === "bad-password" || c === "locked" || c === "bad-email") { _fbEmailErr((e && e.message) || "Sign-in failed"); return; }
-      direct(); // server unreachable / not updated yet: normal Firebase sign-in
+      if (c === "locked" || c === "bad-email") { _fbEmailErr((e && e.message) || "Sign-in failed"); return; }
+      // bad-password included: the server check can fail for reasons unrelated to the password
+      // (API key restrictions, server not updated...), so let Firebase Auth itself be the final judge.
+      direct();
     });
 }
 // ── Persistent info modal for auth flows. Stays open until the user

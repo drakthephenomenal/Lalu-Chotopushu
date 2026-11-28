@@ -4867,3 +4867,51 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 .nsk-actions{flex-wrap:wrap;}
 .nsk-actions .nsk-btn.wide{min-width:30%;}
 .nsk-btn.nske-save{background:linear-gradient(135deg,#f5d27a,#e0a93a);color:#4a2f06;border-color:rgba(255,224,130,.95);}
+
+/* ===== Modern sign-in (Cloud Sync & Backup) ===== */
+.sgn-head{text-align:left;margin:2px 0 14px}
+.sgn-title{font-size:20px;font-weight:700;color:var(--tl);letter-spacing:.2px}
+.sgn-sub{font-size:12.5px;color:var(--td);margin-top:3px;line-height:1.45}
+.sgn-list{display:flex;flex-direction:column;gap:10px}
+.sgn-btn{display:flex;align-items:center;gap:14px;width:100%;box-sizing:border-box;padding:11px 14px 11px 11px;border-radius:18px;border:1px solid rgba(255,255,255,.13);background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.025));color:#eef1ff;font:600 15.5px/1.2 Inter,sans-serif;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .12s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease}
+.sgn-btn:hover{border-color:rgba(245,209,122,.55);box-shadow:0 6px 22px rgba(0,0,0,.35),0 0 0 1px rgba(245,209,122,.12) inset}
+.sgn-btn:active{transform:scale(.985)}
+.sgn-t{flex:1;min-width:0}
+.sgn-ch{opacity:.45;flex:0 0 auto}
+.sgn-ic{flex:0 0 42px;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,.35)}
+.sgn-ic svg{display:block}
+.sgn-ic-white{background:#fff}
+.sgn-ic-white img,.sgn-ic-white .zoho-logo{width:26px;height:auto;max-height:26px;object-fit:contain;display:block}
+.sgn-ic-phone{background:linear-gradient(135deg,#34d399,#059669)}
+.sgn-ic-mail{background:linear-gradient(135deg,#60a5fa,#2563eb)}
+.sgn-ic-sm{flex-basis:34px;width:34px;height:34px;border-radius:11px}
+.sgn-zoho{border-color:rgba(247,168,27,.35)}
+#zohoSignInWrap{margin:0}
+
+/* sheet */
+.sgn-sheet{position:fixed;inset:0;z-index:10050;display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity .2s ease}
+.sgn-sheet.open{opacity:1}
+.sgn-back{position:absolute;inset:0;background:rgba(3,6,20,.66);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.sgn-card{position:relative;width:100%;max-width:540px;max-height:90vh;max-height:90dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding:10px 18px calc(22px + env(safe-area-inset-bottom,0px));border-radius:26px 26px 0 0;background:linear-gradient(180deg,#171e42 0%,#0d1227 100%);border:1px solid rgba(255,255,255,.12);border-bottom:0;box-shadow:0 -18px 50px rgba(0,0,0,.55);transform:translateY(24px);transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.sgn-sheet.open .sgn-card{transform:none}
+@media (min-width:700px){.sgn-sheet{align-items:center}.sgn-card{border-radius:26px;border-bottom:1px solid rgba(255,255,255,.12);max-height:86vh}}
+.sgn-grab{width:42px;height:4px;border-radius:4px;background:rgba(255,255,255,.22);margin:2px auto 12px}
+.sgn-card-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.sgn-card-title{flex:1;font-size:18px;font-weight:700;color:var(--tl)}
+.sgn-x{width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#dfe4ff;font-size:14px;cursor:pointer}
+.sgn-pane{display:none}
+.sgn-sheet[data-pane="phone"] .sgn-pane-phone,.sgn-sheet[data-pane="email"] .sgn-pane-email{display:block}
+.sgn-sheet[data-pane="phone"] .sgn-only-email,.sgn-sheet[data-pane="email"] .sgn-only-phone{display:none}
+.sgn-note{font-size:12.5px;line-height:1.55;color:#f1dba0;background:rgba(245,209,122,.08);border:1px solid rgba(245,209,122,.2);border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.sgn-err{font-size:12px;color:var(--red);text-align:center;margin-top:8px;word-break:break-word;min-height:0}
+.sgn-ghost{padding:11px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:transparent;color:var(--td);font:500 13px Inter,sans-serif;cursor:pointer}
+.sgn-pw{margin-top:16px;border-top:1px solid rgba(255,255,255,.09);padding-top:12px}
+.sgn-pw summary{cursor:pointer;list-style:none;text-align:center;font-size:12.5px;color:var(--a2,#8fb4ff);text-decoration:underline}
+.sgn-pw summary::-webkit-details-marker{display:none}
+.sgn-pw-body{margin-top:12px}
+/* fields + buttons inside the sheet */
+.sgn-card .fb-email-input{padding:13px 14px;border-radius:14px;font-size:15.5px;margin-bottom:10px;background:rgba(255,255,255,.06) !important;border:1px solid rgba(255,255,255,.16)}
+.sgn-card .fb-email-input:focus{border-color:rgba(245,209,122,.7);box-shadow:0 0 0 3px rgba(245,209,122,.12)}
+.sgn-card #fbPhoneCountry{flex:0 0 112px !important;padding:13px 6px !important}
+.sgn-card .premium-btn{padding:13px 14px;border-radius:14px;font-size:15px;font-weight:700}
+.sgn-card #fbPhoneSendRow{margin-top:2px}

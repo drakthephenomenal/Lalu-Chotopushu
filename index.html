@@ -2224,35 +2224,66 @@
          PWA/TWA never shows this button here. -->
     <button id="fbCardRefreshBtn" type="button" onclick="refreshAppFromBackupArea()" style="display:none;width:100%;margin-bottom:14px;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:12px;font-weight:700;cursor:pointer;"><svg class="rj-reload-ic" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>Refresh Now</button>
     <div id="fbLoggedOut">
-      <p style="font-size:12px;color:var(--td);margin-bottom:14px">One sign-in handles real-time sync across all your devices.</p>
-      <button class="google-btn" onclick="fbSignInGoogle()">
-        <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-        Sign in with Google
-      </button>
-      <!-- Zoho sign-in — hidden for now per request. To re-enable, remove
-           the two wrapper lines around this button (or change display:none
-           to display:block). -->
-      <div id="zohoSignInWrap">
-      <button class="zoho-btn" onclick="fbSignInZoho()">
-        <img class="zoho-logo" src="data:image/png;base64,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" alt="Zoho">
-        Sign in with Zoho
-      </button>
+      <div class="sgn-head">
+        <div class="sgn-title">Sign in</div>
+        <div class="sgn-sub">One sign-in keeps your jap in sync across all your devices.</div>
       </div>
-
-      <!-- PHONE / OTP SIGN-IN — hidden for now per request. To re-enable,
-           remove the two wrapper lines around this block (or change
-           display:none to display:block). -->
-      <div id="phoneSignInWrap">
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08)">
-        <div style="font-size:11px;color:var(--td);text-align:center;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">or use Phone number</div>
-        <div style="font-size:11px;color:var(--gold);text-align:left;margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.18);line-height:1.55">
-          Enter your number with country code (e.g. <b>+919876543210</b>). OTP comes by SMS; on Android it may also appear above your keyboard—tap that code or check your Messages/SMS inbox.
+      <div class="sgn-list">
+        <button type="button" class="sgn-btn sgn-google" onclick="fbSignInGoogle()">
+          <span class="sgn-ic sgn-ic-white"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg></span><span class="sgn-t">Continue with Google</span><svg class="sgn-ch" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <div id="zohoSignInWrap">
+          <button type="button" class="sgn-btn sgn-zoho" onclick="fbSignInZoho()">
+            <span class="sgn-ic sgn-ic-white"><img class="zoho-logo" src="data:image/png;base64,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" alt="Zoho"></span><span class="sgn-t">Continue with Zoho</span><svg class="sgn-ch" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+          </button>
         </div>
-        <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button type="button" class="sgn-btn sgn-phone" onclick="fbOpenAuthSheet('phone')">
+          <span class="sgn-ic sgn-ic-phone"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span><span class="sgn-t">Continue with Phone number</span><svg class="sgn-ch" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <button type="button" class="sgn-btn sgn-mail" onclick="fbOpenAuthSheet('email')">
+          <span class="sgn-ic sgn-ic-mail"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m22 7-9.2 6.2a1.6 1.6 0 0 1-1.6 0L2 7"/></svg></span><span class="sgn-t">Continue with Email</span><svg class="sgn-ch" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+      </div>
+      <div id="fbErr" style="font-size:12px;color:var(--red);margin-top:8px;text-align:center"></div>
+    </div>
+    <!-- EMAIL / PASSWORD SIGN-IN -->
+      <style>
+        .fb-email-input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:#1a1f3a !important;color:#fff !important;font-size:13px;font-family:Inter,sans-serif;margin-bottom:8px;box-sizing:border-box;color-scheme:dark;-webkit-text-fill-color:#fff;outline:none;height:auto;backdrop-filter:none}
+        .fb-email-input::placeholder{color:rgba(255,255,255,0.45)}
+        .fb-email-input:focus{border-color:rgba(74,144,226,0.6)}
+        .fb-email-input:-webkit-autofill,.fb-email-input:-webkit-autofill:hover,.fb-email-input:-webkit-autofill:focus{-webkit-text-fill-color:#fff !important;-webkit-box-shadow:0 0 0 1000px #1a1f3a inset !important;box-shadow:0 0 0 1000px #1a1f3a inset !important;caret-color:#fff;transition:background-color 9999s ease-in-out 0s}
+      </style>
+      <style>
+        .fb-email-section{margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08);background:transparent}
+        .fb-email-section summary{cursor:pointer;list-style:none;text-align:center;font-size:11px;color:var(--td);letter-spacing:1px;text-transform:uppercase}
+        .fb-email-section summary::-webkit-details-marker{display:none}
+        .fb-email-section summary::after{content:"▾";margin-left:6px;opacity:.7}
+        .fb-email-section[open] summary::after{content:"▴"}
+        .fb-email-tips{margin:10px 0;border-radius:10px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.18);overflow:hidden}
+        .fb-email-tips summary{cursor:pointer;list-style:none;padding:9px 12px;font-size:11.5px;font-weight:600;color:#ffd97a;text-align:center}
+        .fb-email-tips summary::-webkit-details-marker{display:none}
+        .fb-email-tips summary::after{content:"▾";float:right;opacity:.7}
+        .fb-email-tips[open] summary::after{content:"▴"}
+      </style>
+      
+    <div id="fbAuthSheet" class="sgn-sheet" role="dialog" aria-modal="true" aria-labelledby="sgnSheetTitle" style="display:none">
+      <div class="sgn-back" onclick="fbCloseAuthSheet()"></div>
+      <div class="sgn-card">
+        <div class="sgn-grab"></div>
+        <div class="sgn-card-head">
+          <span class="sgn-ic sgn-ic-phone sgn-ic-sm sgn-only-phone"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
+          <span class="sgn-ic sgn-ic-mail sgn-ic-sm sgn-only-email"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m22 7-9.2 6.2a1.6 1.6 0 0 1-1.6 0L2 7"/></svg></span>
+          <div id="sgnSheetTitle" class="sgn-card-title">Sign in</div>
+          <button type="button" class="sgn-x" onclick="fbCloseAuthSheet()" aria-label="Close">✕</button>
+        </div>
+
+        <div class="sgn-pane sgn-pane-phone">
+          <div class="sgn-note">We'll text a 6-digit code to your number. Pick your country code, enter the number, and tap <b>Send OTP</b>.</div>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
           <select id="fbPhoneCountry" class="fb-email-input" style="flex:0 0 80px;padding:10px 6px;margin-bottom:0">
             <option value="+1">🇺🇸/🇨🇦 +1</option>
             <option value="+44">🇬🇧 +44</option>
-            <option value="+91">🇮🇳 +91</option>
+            <option value="+91" selected>🇮🇳 +91</option>
             <option value="+61">🇦🇺 +61</option>
             <option value="+971">🇦🇪 +971</option>
             <option value="+880">🇧🇩 +880</option>
@@ -2366,34 +2397,23 @@
         <style>#fbRecaptchaContainer{position:absolute!important;left:-9999px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important}.grecaptcha-badge{visibility:hidden!important;pointer-events:none!important}
 </style>
         <div id="fbRecaptchaContainer" aria-hidden="true"></div>
-      </div>
-      </div>
+        </div>
 
-
-
-      <!-- EMAIL / PASSWORD SIGN-IN -->
-      <style>
-        .fb-email-input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:#1a1f3a !important;color:#fff !important;font-size:13px;font-family:Inter,sans-serif;margin-bottom:8px;box-sizing:border-box;color-scheme:dark;-webkit-text-fill-color:#fff;outline:none;height:auto;backdrop-filter:none}
-        .fb-email-input::placeholder{color:rgba(255,255,255,0.45)}
-        .fb-email-input:focus{border-color:rgba(74,144,226,0.6)}
-        .fb-email-input:-webkit-autofill,.fb-email-input:-webkit-autofill:hover,.fb-email-input:-webkit-autofill:focus{-webkit-text-fill-color:#fff !important;-webkit-box-shadow:0 0 0 1000px #1a1f3a inset !important;box-shadow:0 0 0 1000px #1a1f3a inset !important;caret-color:#fff;transition:background-color 9999s ease-in-out 0s}
-      </style>
-      <style>
-        .fb-email-section{margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08);background:transparent}
-        .fb-email-section summary{cursor:pointer;list-style:none;text-align:center;font-size:11px;color:var(--td);letter-spacing:1px;text-transform:uppercase}
-        .fb-email-section summary::-webkit-details-marker{display:none}
-        .fb-email-section summary::after{content:"▾";margin-left:6px;opacity:.7}
-        .fb-email-section[open] summary::after{content:"▴"}
-        .fb-email-tips{margin:10px 0;border-radius:10px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.18);overflow:hidden}
-        .fb-email-tips summary{cursor:pointer;list-style:none;padding:9px 12px;font-size:11.5px;font-weight:600;color:#ffd97a;text-align:center}
-        .fb-email-tips summary::-webkit-details-marker{display:none}
-        .fb-email-tips summary::after{content:"▾";float:right;opacity:.7}
-        .fb-email-tips[open] summary::after{content:"▴"}
-      </style>
-      <details class="fb-email-section">
-        <summary>or use Email</summary>
-        <div style="margin-top:10px">
-          <details class="fb-email-tips">
+        <div class="sgn-pane sgn-pane-email">
+          <div class="sgn-note">✉️ <b>No password needed.</b> We'll email you a <b>Sign in</b> button and a <b>6-digit code</b>. On this device, tap the button. Opened it elsewhere? Type the code here.</div>
+          <input type="email" id="fbLinkEmailIn" class="fb-email-input" placeholder="Email address" autocomplete="email">
+          <button id="fbLinkSendBtn" onclick="fbSendEmailLink()" class="premium-btn" style="width:100%">Continue with email</button>
+          <div id="fbLinkCodeRow" style="display:none;margin-top:12px">
+            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="fbLinkCodeIn" class="fb-email-input" placeholder="Enter 6-digit code" autocomplete="one-time-code">
+            <div style="display:flex;gap:8px">
+              <button onclick="fbVerifyEmailCode()" class="premium-btn green">Verify &amp; Sign In</button>
+              <button onclick="fbResetEmailCode()" class="sgn-ghost">Change email</button>
+            </div>
+          </div>
+          <details class="sgn-pw">
+            <summary>Use a password instead</summary>
+            <div class="sgn-pw-body">
+              <details class="fb-email-tips">
             <summary>💡 Tips: using any email provider</summary>
             <div style="padding:0 12px 10px;font-size:11.5px;color:var(--gold);text-align:left;line-height:1.6">
               <div style="font-size:10.5px;color:var(--tl);opacity:.9;margin-bottom:8px;text-align:center">
@@ -2413,30 +2433,18 @@
               </div>
             </div>
           </details>
-          <div style="font-size:11.5px;color:var(--gold);text-align:left;margin-bottom:8px;padding:8px 10px;border-radius:8px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.18);line-height:1.55">
-            ✉️ <b>No password needed.</b> Enter your email — we'll send a <b>Sign in</b> button and a <b>6-digit code</b>. On this same device, tap the button to sign in. Opened it on another device? Type the code here instead.
-          </div>
-          <input type="email" id="fbLinkEmailIn" class="fb-email-input" placeholder="Email address" autocomplete="email">
-          <button id="fbLinkSendBtn" onclick="fbSendEmailLink()" class="premium-btn" style="width:100%">Continue with email</button>
-          <div id="fbLinkCodeRow" style="display:none;margin-top:10px">
-            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="fbLinkCodeIn" class="fb-email-input" placeholder="Enter 6-digit code" autocomplete="one-time-code">
-            <div style="display:flex;gap:8px">
-              <button onclick="fbVerifyEmailCode()" class="premium-btn green">Verify &amp; Sign In</button>
-              <button onclick="fbResetEmailCode()" style="padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:var(--td);font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif">Change email</button>
-            </div>
-          </div>
-          <div style="font-size:10.5px;color:var(--td);text-align:center;margin:12px 0 8px;letter-spacing:1px;text-transform:uppercase">or with password</div>
-          <input type="email" id="fbEmailIn" class="fb-email-input" placeholder="Email address" autocomplete="email">
+              <input type="email" id="fbEmailIn" class="fb-email-input" placeholder="Email address" autocomplete="email">
           <input type="password" id="fbPassIn" class="fb-email-input" placeholder="Password (min 6 chars)" autocomplete="current-password" style="margin-bottom:10px">
           <div style="display:flex;gap:8px">
             <button onclick="fbSignInEmail()" class="premium-btn">Sign In</button>
             <button onclick="fbSignUpEmail()" class="premium-btn green">Create Account</button>
           </div>
           <button onclick="fbResetEmail()" style="width:100%;margin-top:8px;padding:6px;border-radius:8px;border:none;background:transparent;color:var(--td);font-size:11px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">Forgot password?</button>
+            </div>
+          </details>
         </div>
-      </details>
-
-      <div id="fbErr" style="font-size:12px;color:var(--red);margin-top:6px;text-align:center"></div>
+        <div id="fbErrSheet" class="sgn-err"></div>
+      </div>
     </div>
     <div id="fbLoggedIn" style="display:none">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">

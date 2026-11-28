@@ -15509,6 +15509,7 @@ function fbInit() {
         }
         fbHideAuthChecking();
         document.getElementById("fbLoggedOut").style.display = "none";
+        try { fbCloseAuthSheet(); } catch (_e) {}
         document.getElementById("fbLoggedIn").style.display = "block";
         // Manual "Refresh Now" button — Capacitor/native apk only (the web
         // PWA already re-syncs on every page load/reload, so it would be
@@ -15914,8 +15915,7 @@ async function fbSignInGoogle() {
         (e && e.credMgr) ? 15000 : 8000
       );
       if (e && e.credMgr) {
-        const sec = document.querySelector(".fb-email-section");
-        if (sec) sec.open = true;   // show the email option right away
+        try { fbOpenAuthSheet("email"); } catch (_e) {}   // show the email option right away
       }
     }
     return;
@@ -16714,12 +16714,34 @@ document.addEventListener("visibilitychange", async () => {
 });
 
 function _fbEmailErr(msg) {
-  const el = document.getElementById("fbErr");
-  if (el) {
-    el.textContent = msg || "";
-    if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ""; }, 6000);
-  }
+  ["fbErr", "fbErrSheet"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = msg || "";
+      if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ""; }, 6000);
+    }
+  });
 }
+// ── Sign-in sheet (Phone / Email panels open in a slide-up sheet) ──
+function fbOpenAuthSheet(which) {
+  const sh = document.getElementById("fbAuthSheet");
+  if (!sh) return;
+  if (sh.parentNode !== document.body) document.body.appendChild(sh);   // escape any transformed parent so position:fixed works
+  const pane = which === "phone" ? "phone" : "email";
+  sh.setAttribute("data-pane", pane);
+  const t = document.getElementById("sgnSheetTitle");
+  if (t) t.textContent = pane === "phone" ? "Sign in with phone number" : "Sign in with email";
+  _fbEmailErr("");
+  sh.style.display = "flex";
+  requestAnimationFrame(() => requestAnimationFrame(() => sh.classList.add("open")));
+}
+function fbCloseAuthSheet() {
+  const sh = document.getElementById("fbAuthSheet");
+  if (!sh || sh.style.display === "none") return;
+  sh.classList.remove("open");
+  setTimeout(() => { if (!sh.classList.contains("open")) sh.style.display = "none"; }, 220);
+}
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { try { fbCloseAuthSheet(); } catch (_e) {} } });
 // Phone-specific error display: shown directly under the Send OTP button
 // (not the shared #fbErr div, which sits below the whole email section and
 // was invisible without scrolling). Includes the raw Firebase error code so

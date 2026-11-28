@@ -70,8 +70,30 @@ exports.emailCode = functions.https.onRequest(async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only", code: "bad-method" });
   const fail = (st, msg, code) => res.status(st).json({ error: msg, code: code || "error" });
   try {
-    if (!process.env.MAIL_USER || !mailPass()) return fail(500, "Email sending is not configured.", "server/no-mail");
     const b = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
+
+    // "status": does this email / phone number already have an app password? (answers only true/false,
+    // so a missing account and an account without a password look the same - nothing else is revealed)
+    if (b.action === "status") {
+      let u = null;
+      try {
+        if (b.phone) {
+          const ph = String(b.phone).trim();
+          if (!/^\+[1-9]\d{6,14}$/.test(ph)) return fail(400, "Enter a valid phone number.", "bad-phone");
+          u = await admin.auth().getUserByPhoneNumber(ph);
+        } else {
+          const em = String(b.email || "").trim().toLowerCase();
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em) || em.length > 200) return fail(400, "Enter a valid email address.", "bad-email");
+          u = await admin.auth().getUserByEmail(em);
+        }
+      } catch (e) {
+        if (!(e && e.code === "auth/user-not-found")) throw e;
+      }
+      const hasPassword = !!(u && (u.providerData || []).some((p) => p && p.providerId === "password"));
+      return res.status(200).json({ hasPassword: hasPassword });
+    }
+
+    if (!process.env.MAIL_USER || !mailPass()) return fail(500, "Email sending is not configured.", "server/no-mail");
     const email = String(b.email || "").trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) return fail(400, "Enter a valid email address.", "bad-email");
     const ref = admin.firestore().collection(COLLECTION).doc(sha256(email));

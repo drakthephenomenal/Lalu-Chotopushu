@@ -66,7 +66,9 @@
     auto.onclick = function () {
       auto.disabled = true; auto.textContent = "Please wait…";
       call({ action: "approve", email: email, token: token }).then(function () {
-        auto.textContent = "\u2705 Approved \u2013 go back to the app";
+        auto.textContent = "\u2705 Approved \u2013 go back to the app and refresh";
+        var note = el("p", "small", "Open the app again and refresh it (pull down, or close and reopen). It will sign in within a few seconds. If it does not, type the code above.");
+        auto.parentNode.insertBefore(note, auto.nextSibling);
       }).catch(function (e) { auto.disabled = false; auto.textContent = "Sign in my app automatically"; alert(e.message || "Could not approve."); });
     };
     card.appendChild(auto);

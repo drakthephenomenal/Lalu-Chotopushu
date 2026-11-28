@@ -1211,3 +1211,6 @@ exports.finalizeTournament = functions.https.onCall(async (data, context) => {
   await tRef.update({ status: "finalized", winners, finalizedAt: Date.now() });
   return { winners };
 });
+
+// Passwordless email sign-in (6-digit code + button), sent from Gmail. See emailCode.js
+exports.emailCode = require("./emailCode").emailCode;

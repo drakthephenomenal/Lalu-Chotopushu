@@ -635,6 +635,14 @@ exports.deleteMyAccount = functions
   });
   failed.length = 0; // a failed token revoke must never block deletion
 
+  // Sign-in bookkeeping tied to this person (hashed email code record, password-attempt counter).
+  try {
+    const _h = (x) => require("crypto").createHash("sha256").update(String(x)).digest("hex");
+    const _rec = await admin.auth().getUser(uid);
+    if (_rec && _rec.email) await db.collection("emailOtps").doc(_h(_rec.email.toLowerCase())).delete();
+    await db.collection("pwAttempts").doc(_h(uid)).delete();
+  } catch (_e) { console.warn("deleteMyAccount auth-records:", _e && _e.message); }
+
   // Firestore data (admin SDK bypasses the client rules that forbid leaderboard deletes).
   await step("users", async () => {
     // Delete subcollections explicitly, then the user doc — works on any admin SDK version.

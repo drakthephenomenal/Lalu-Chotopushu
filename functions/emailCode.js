@@ -1,6 +1,8 @@
 // Cloud Function: passwordless email sign-in (6-digit code + "Sign in" button), sent from your Gmail.
-//   POST { action: "send",   email }
-//   POST { action: "peek",   email, token }  -> { code }   (button opened on ANOTHER device: show the code)
+//   POST { action: "send",   email, device }
+//   POST { action: "approve",email, token }  -> { code }   (button opened on ANOTHER device/browser: approves the waiting app, returns the code as a fallback)
+//   POST { action: "check",  email, device } -> { token } or { pending:true }   (the waiting app polls this)
+//   POST { action: "peek",   email, token }  -> { code }   (older: just show the code)
 //   POST { action: "verify", email, code }   -> { token }  (typed code)
 //   POST { action: "verify", email, token }  -> { token }  (button opened on the SAME device)
 // "token" returned by verify is a Firebase custom token -> app calls signInWithCustomToken(token).
@@ -42,20 +44,19 @@ async function uidForEmail(email) {
   }
 }
 
-async function sendMail(to, code, link) {
+async function sendMail(to, link) {
   const user = process.env.MAIL_USER;
   const transporter = nodemailer.createTransport({ service: "gmail", auth: { user: user, pass: mailPass() } });
   const html = '<div style="font-family:Arial,sans-serif;max-width:440px;margin:auto;padding:24px;color:#222">'
     + '<h2 style="margin:0 0 6px">Sign in to RadhaNaam SudhaRasam \uD83D\uDE4F</h2>'
-    + '<p style="color:#555;margin:0 0 18px">Tap the button on the same device, or type this code in the app:</p>'
-    + '<div style="font-size:34px;letter-spacing:8px;font-weight:700;text-align:center;padding:14px;background:#f4f1e8;border-radius:10px">' + code + "</div>"
+    + '<p style="color:#555;margin:0 0 18px">Tap the button below to sign in.</p>'
     + '<p style="text-align:center;margin:22px 0"><a href="' + link + '" style="background:#d9a62b;color:#2b1b00;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;display:inline-block">Sign in</a></p>'
-    + '<p style="color:#888;font-size:12px">This code and button work for 10 minutes. If you did not ask for this, ignore this email.</p></div>';
+    + '<p style="color:#888;font-size:12px">This button works for 10 minutes. If you did not ask for this, ignore this email.</p></div>';
   await transporter.sendMail({
     from: '"' + FROM_NAME + '" <' + user + ">",
     to: to,
-    subject: "Your sign-in code: " + code,
-    text: "Your sign-in code is " + code + "\nOr open this link on the same device: " + link + "\nValid for 10 minutes.",
+    subject: "Sign in to RadhaNaam SudhaRasam",
+    text: "Sign in to RadhaNaam SudhaRasam: " + link + "\nThis link works for 10 minutes. If you did not ask for this, ignore this email.",
     html: html,
   });
 }
@@ -82,9 +83,10 @@ exports.emailCode = functions.https.onRequest(async (req, res) => {
       if (old && now - (old.createdAt || 0) < RESEND_GAP_MS) return fail(429, "Please wait a few seconds before requesting another code.", "too-soon");
       const token = crypto.randomBytes(24).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
       const code = codeFromToken(token);
-      await ref.set({ tokenHash: sha256(token), codeHash: codeHash(code), exp: now + CODE_TTL_MS, attempts: 0, used: false, createdAt: now });
+      const dev = String(b.device || "");
+      await ref.set({ tokenHash: sha256(token), codeHash: codeHash(code), exp: now + CODE_TTL_MS, attempts: 0, used: false, approved: false, deviceHash: /^[A-Za-z0-9_-]{16,80}$/.test(dev) ? sha256(dev) : "", createdAt: now });
       try {
-        await sendMail(email, code, APP_URL + "/?rjlink=" + token + "&rje=" + encodeURIComponent(email));
+        await sendMail(email, APP_URL + "/?rjlink=" + token + "&rje=" + encodeURIComponent(email));
       } catch (e) {
         console.error("Gmail send failed:", e && e.message);
         return fail(500, "Could not send the email. Check the Gmail address and App password.", "server/mail-failed");
@@ -95,6 +97,22 @@ exports.emailCode = functions.https.onRequest(async (req, res) => {
     const snap = await ref.get();
     const d = snap.exists ? snap.data() : null;
     if (!d || d.used || now > d.exp) return fail(400, "This code has expired or was already used. Request a new one.", "expired");
+
+    if (b.action === "approve") {
+      if (!b.token || !safeEq(sha256(b.token), d.tokenHash)) return fail(400, "Invalid link.", "bad-link");
+      await ref.update({ approved: true });
+      return res.status(200).json({ ok: true, code: codeFromToken(String(b.token)) });
+    }
+
+    if (b.action === "check") {
+      const dev = String(b.device || "");
+      if (!d.deviceHash || !dev || !safeEq(sha256(dev), d.deviceHash)) return fail(400, "Invalid request.", "bad-device");
+      if (!d.approved) return res.status(200).json({ pending: true });
+      await ref.update({ used: true });
+      const uid = await uidForEmail(email);
+      const token = await admin.auth().createCustomToken(uid);
+      return res.status(200).json({ token: token });
+    }
 
     if (b.action === "peek") {
       if (!b.token || !safeEq(sha256(b.token), d.tokenHash)) return fail(400, "Invalid link.", "bad-link");

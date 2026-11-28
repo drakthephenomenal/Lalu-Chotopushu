@@ -17358,7 +17358,21 @@ function fbSendPhoneOtp(isResend) {
     _fbPhoneErr("Enter phone number (e.g. 9876543210)");
     return;
   }
+  // Same approach as profile verification: 30 s gap between sends, max 5 codes per number per day,
+  // and a brand-new reCAPTCHA verifier for every send (never reuse an old one).
+  try {
+    const _k = "rj_otp_log_" + phone.replace(/\D/g, "");
+    const _now = Date.now();
+    let _log = [];
+    try { _log = JSON.parse(localStorage.getItem(_k) || "[]").filter(function (t) { return _now - t < 86400000; }); } catch (_) {}
+    if (_log.length >= 5) { _fbPhoneErr("Daily limit reached: 5 codes per number per day. Try again tomorrow or use email sign-in."); return; }
+    const _last = _log.length ? _log[_log.length - 1] : 0;
+    if (_now - _last < 30000) { _fbPhoneErr("Please wait " + Math.ceil((30000 - (_now - _last)) / 1000) + " seconds before requesting another code."); return; }
+    _log.push(_now);
+    try { localStorage.setItem(_k, JSON.stringify(_log)); } catch (_) {}
+  } catch (_) {}
   const _FA = (_isNativeApp() && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication) || null;
+  if (!_FA) _fbClearRecaptcha();
   const verifier = _FA ? null : _fbEnsureRecaptcha();
   if (!_FA && !verifier) { _fbPhoneErr("Could not initialize verification. Please reload."); return; }
 

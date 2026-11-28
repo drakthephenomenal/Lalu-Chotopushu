@@ -32,6 +32,18 @@ const safeEq = (a, b) => {
 const codeFromToken = (t) => String(parseInt(hmac("c|" + t).slice(0, 8), 16) % 1000000).padStart(6, "0");
 const codeHash = (c) => hmac("h|" + c);
 
+// Public Firebase Web API key (same one the app already ships with) - used only to CHECK a password server-side.
+const FB_WEB_API_KEY = "AIzaSyCvvXEdsJjXpTbITE2HuyYFnPZfZIkxVWA";
+async function verifyPasswordRest(email, password) {
+  try {
+    const r = await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + FB_WEB_API_KEY, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, password: password, returnSecureToken: false }),
+    });
+    return r.ok;
+  } catch (_) { return false; }
+}
+
 async function uidForEmail(email) {
   try {
     const u = await admin.auth().getUserByEmail(email);
@@ -91,6 +103,45 @@ exports.emailCode = functions.https.onRequest(async (req, res) => {
       }
       const hasPassword = !!(u && (u.providerData || []).some((p) => p && p.providerId === "password"));
       return res.status(200).json({ hasPassword: hasPassword });
+    }
+
+    // "pwsignin": ONE app password for the whole account. Works with the email OR the phone number,
+    // whichever one the password was originally saved under (both belong to the same account).
+    if (b.action === "pwsignin") {
+      const pw = String(b.password || "");
+      if (!pw || pw.length > 200) return fail(400, "Enter your password.", "bad-input");
+      let u = null;
+      try {
+        if (b.phone) {
+          const ph = String(b.phone).trim();
+          if (!/^\+[1-9]\d{6,14}$/.test(ph)) return fail(400, "Enter a valid phone number.", "bad-phone");
+          u = await admin.auth().getUserByPhoneNumber(ph);
+        } else {
+          const em = String(b.email || "").trim().toLowerCase();
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em) || em.length > 200) return fail(400, "Enter a valid email address.", "bad-email");
+          u = await admin.auth().getUserByEmail(em);
+        }
+      } catch (e) {
+        if (!(e && e.code === "auth/user-not-found")) throw e;
+      }
+      const wrong = () => fail(400, "Wrong password, or no password has been set yet. You can use OTP / the email code instead.", "bad-password");
+      if (!u) return wrong();
+      const t0 = Date.now();
+      const rl = admin.firestore().collection("pwAttempts").doc(sha256(u.uid));
+      const rs = await rl.get(); const rd = rs.exists ? rs.data() : { n: 0, t: 0 };
+      const fresh = t0 - (rd.t || 0) < 15 * 60 * 1000;
+      if (fresh && (rd.n || 0) >= 8) return fail(429, "Too many wrong attempts. Try again in a few minutes, or use OTP / the email code.", "locked");
+      const ids = new Set();
+      const pwProv = (u.providerData || []).filter((p) => p && p.providerId === "password");
+      if (!pwProv.length) { await rl.set({ n: (fresh ? rd.n || 0 : 0) + 1, t: fresh ? rd.t : t0 }); return wrong(); }
+      if (u.email) ids.add(u.email.toLowerCase());
+      pwProv.forEach((p) => { if (p.email) ids.add(String(p.email).toLowerCase()); });
+      let ok = false;
+      for (const id of ids) { ok = await verifyPasswordRest(id, pw); if (ok) break; }
+      if (!ok) { await rl.set({ n: (fresh ? rd.n || 0 : 0) + 1, t: fresh ? rd.t : t0 }); return wrong(); }
+      try { await rl.delete(); } catch (_) {}
+      const token = await admin.auth().createCustomToken(u.uid);
+      return res.status(200).json({ token: token });
     }
 
     if (!process.env.MAIL_USER || !mailPass()) return fail(500, "Email sending is not configured.", "server/no-mail");

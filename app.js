@@ -16779,6 +16779,35 @@ async function _rjOtpCall(body) {
   return j;
 }
 function _rjOtpErr(e) { _fbEmailErr(((e && e.message) || "Something went wrong") + ((e && e.code && e.code !== "network") ? "  [" + e.code + "]" : "")); }
+function _rjNewDeviceId() {
+  try { const a = new Uint8Array(24); crypto.getRandomValues(a); return Array.from(a, (x) => x.toString(16).padStart(2, "0")).join(""); }
+  catch (_) { return (Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + Date.now().toString(36)).padEnd(24, "0"); }
+}
+// While the person taps "Sign in" in the email (often in a browser, not in this app), this app asks the server
+// every few seconds whether the sign-in was approved, and signs itself in when it was.
+let _rjPollTimer = null;
+function _rjStopPoll() { if (_rjPollTimer) { clearInterval(_rjPollTimer); _rjPollTimer = null; } }
+function _rjStartPoll(email, device, startedAt) {
+  _rjStopPoll();
+  let busy = false;
+  _rjPollTimer = setInterval(() => {
+    if (busy) return;
+    if (Date.now() - startedAt > 10.5 * 60 * 1000) { _rjStopPoll(); return; }
+    if (typeof fbAuth !== "undefined" && fbAuth && fbAuth.currentUser) { _rjStopPoll(); return; }
+    busy = true;
+    _rjOtpCall({ action: "check", email: email, device: device })
+      .then((j) => { if (j && j.token) { _rjStopPoll(); return _rjOtpFinish(j.token); } })
+      .catch((e) => { if (e && (e.code === "expired" || e.code === "bad-device")) _rjStopPoll(); })
+      .then(() => { busy = false; }, () => { busy = false; });
+  }, 3000);
+}
+// On app start: if a sign-in was waiting (the app was closed or reloaded while the email button was opened), keep waiting.
+function _rjResumePoll() {
+  let pend = null; try { pend = JSON.parse(localStorage.getItem(_RJ_OTP_KEY) || "null"); } catch (_) {}
+  if (!pend || !pend.device || !pend.email || Date.now() - (pend.ts || 0) > 10 * 60 * 1000) return;
+  if (typeof fbAuth !== "undefined" && fbAuth && fbAuth.currentUser) return;
+  _rjStartPoll(pend.email, pend.device, pend.ts || Date.now());
+}
 function fbSendEmailLink() {
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
   const el = document.getElementById("fbLinkEmailIn");
@@ -16786,24 +16815,28 @@ function fbSendEmailLink() {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { _fbEmailErr("Enter a valid email address"); return; }
   const btn = document.getElementById("fbLinkSendBtn");
   if (btn) { btn.disabled = true; btn.textContent = "Sending…"; }
-  _rjOtpCall({ action: "send", email: email })
+  const device = _rjNewDeviceId();
+  _rjOtpCall({ action: "send", email: email, device: device })
     .then(() => {
-      try { localStorage.setItem(_RJ_OTP_KEY, JSON.stringify({ email: email, ts: Date.now() })); } catch (_) {}
+      try { localStorage.setItem(_RJ_OTP_KEY, JSON.stringify({ email: email, ts: Date.now(), device: device })); } catch (_) {}
+      _rjStartPoll(email, device, Date.now());
       if (btn) { btn.disabled = false; btn.textContent = "Resend code"; }
       const row = document.getElementById("fbLinkCodeRow"); if (row) row.style.display = "block";
       const ci = document.getElementById("fbLinkCodeIn"); if (ci) { ci.value = ""; try { ci.focus(); } catch (_) {} }
       _fbEmailErr("");
-      toast("Code sent to " + email + " ✉️");
+      toast("Email sent to " + email + " ✉️ Also check your Spam folder 📬");
     })
     .catch((e) => { if (btn) { btn.disabled = false; btn.textContent = "Continue with email"; } _rjOtpErr(e); });
 }
 function fbResetEmailCode() {
+  _rjStopPoll();
   const row = document.getElementById("fbLinkCodeRow"); if (row) row.style.display = "none";
   const btn = document.getElementById("fbLinkSendBtn"); if (btn) { btn.disabled = false; btn.textContent = "Continue with email"; }
   try { localStorage.removeItem(_RJ_OTP_KEY); } catch (_) {}
   _fbEmailErr("");
 }
 function _rjOtpFinish(customToken) {
+  _rjStopPoll();
   return fbAuth.signInWithCustomToken(customToken).then(() => {
     try { localStorage.removeItem(_RJ_OTP_KEY); } catch (_) {}
     const row = document.getElementById("fbLinkCodeRow"); if (row) row.style.display = "none";
@@ -16825,7 +16858,7 @@ function fbCompleteEmailLinkSignIn() {
   if (window._rjLinkTried) return;
   let token = "", email = "";
   try { const q = new URLSearchParams(location.search); token = q.get("rjlink") || ""; email = (q.get("rje") || "").trim().toLowerCase(); } catch (_) { return; }
-  if (!token || !email) return;
+  if (!token || !email) { _rjResumePoll(); return; }
   window._rjLinkTried = true;
   try { history.replaceState(null, "", location.origin + location.pathname + location.hash); } catch (_) {}
   let pend = null; try { pend = JSON.parse(localStorage.getItem(_RJ_OTP_KEY) || "null"); } catch (_) {}
@@ -16835,13 +16868,21 @@ function fbCompleteEmailLinkSignIn() {
     .catch((e) => _fbInfoModal("Sign-in problem", '<p style="margin:0">' + ((e && e.message) || "Could not sign in.") + "</p>"));
   if (sameDevice) { toast("Signing you in…"); signInHere(); return; }
   window._rjLinkSignInHere = signInHere;
-  _rjOtpCall({ action: "peek", email: email, token: token })
-    .then((j) => _fbInfoModal("🔐 Your sign-in code",
-      '<p style="margin:0 0 8px">Enter this code on the device where you are signing in:</p>'
-      + '<div style="font-size:34px;letter-spacing:8px;font-weight:700;text-align:center;color:#ffd97a;margin:10px 0">' + j.code + "</div>"
-      + '<p style="margin:0 0 10px;font-size:12px;opacity:.85">Valid for 10 minutes.</p>'
-      + '<button onclick="window._rjLinkSignInHere&&window._rjLinkSignInHere()" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,215,0,.4);background:rgba(255,215,0,.12);color:#ffd97a;font-weight:600;cursor:pointer">Sign in on this device instead</button>'))
-    .catch((e) => _fbInfoModal("Sign-in problem", '<p style="margin:0">' + ((e && e.message) || "This link is no longer valid.") + "</p>"));
+  const btnCss = "width:100%;padding:11px;border-radius:10px;cursor:pointer;font-weight:600;margin-top:8px;";
+  window._rjLinkApprove = () => {
+    _rjOtpCall({ action: "approve", email: email, token: token })
+      .then((j) => _fbInfoModal("\u2705 Approved",
+        '<p style="margin:0 0 8px">Go back to the RadhaNaam SudhaRasam app. It will sign in by itself in a few seconds.</p>'
+        + '<p style="margin:10px 0 4px;font-size:12px;opacity:.85">If it does not, type this code in the app:</p>'
+        + '<div style="font-size:34px;letter-spacing:8px;font-weight:700;text-align:center;color:#ffd97a;margin:6px 0">' + j.code + "</div>"
+        + '<p style="margin:0 0 4px;font-size:12px;opacity:.85">Valid for 10 minutes.</p>'))
+      .catch((e) => _fbInfoModal("Sign-in problem", '<p style="margin:0">' + ((e && e.message) || "This link is no longer valid.") + "</p>"));
+  };
+  _fbInfoModal("\uD83D\uDD10 Confirm sign-in",
+    '<p style="margin:0 0 8px">Did you just try to sign in to RadhaNaam SudhaRasam on your app or another device?</p>'
+    + '<button onclick="window._rjLinkApprove&&window._rjLinkApprove()" style="' + btnCss + 'border:1px solid rgba(255,215,0,.5);background:rgba(255,215,0,.16);color:#ffd97a">Yes, sign in my app</button>'
+    + '<button onclick="window._rjLinkSignInHere&&window._rjLinkSignInHere()" style="' + btnCss + 'border:1px solid rgba(255,255,255,.25);background:transparent;color:#cfe2ff">Sign in on this browser instead</button>'
+    + '<p style="margin:10px 0 0;font-size:11.5px;opacity:.8">If you did not ask for this, close this page.</p>');
 }
 function fbSignInEmail() {
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }

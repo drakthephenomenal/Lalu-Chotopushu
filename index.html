@@ -2400,10 +2400,12 @@
         </div>
 
         <div class="sgn-pane sgn-pane-email">
-          <div class="sgn-note">✉️ <b>No password needed.</b> We'll email you a <b>Sign in</b> button and a <b>6-digit code</b>. On this device, tap the button. Opened it elsewhere? Type the code here.</div>
+          <div class="sgn-note">✉️ <b>No password needed.</b> We'll email you a <b>Sign in</b> button. Tap it, then come back to this app and you'll be signed in.</div>
           <input type="email" id="fbLinkEmailIn" class="fb-email-input" placeholder="Email address" autocomplete="email">
           <button id="fbLinkSendBtn" onclick="fbSendEmailLink()" class="premium-btn" style="width:100%">Continue with email</button>
           <div id="fbLinkCodeRow" style="display:none;margin-top:12px">
+            <div style="font-size:12.5px;line-height:1.55;color:var(--gold);background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 11px;margin-bottom:10px">📬 <b>Email sent!</b> Open it and tap <b>Sign in</b>. <b>Please also check your Spam / Junk folder</b> — the first email can land there. If it is there, tap "Not spam" so the next ones arrive normally.</div>
+            <div style="font-size:11.5px;opacity:.85;margin-bottom:6px">Signed in on a different device, or the app didn't continue? Type the code shown after you tap the button:</div>
             <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="fbLinkCodeIn" class="fb-email-input" placeholder="Enter 6-digit code" autocomplete="one-time-code">
             <div style="display:flex;gap:8px">
               <button onclick="fbVerifyEmailCode()" class="premium-btn green">Verify &amp; Sign In</button>

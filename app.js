@@ -16848,6 +16848,29 @@ function fbPwStep(step, mode) {
   _fbEmailErr("");
   if (step === "pw") setTimeout(() => { try { const e = document.getElementById("fbEmailIn"); document.getElementById(e && e.value ? "fbPassIn" : "fbEmailIn").focus(); } catch (_) {} }, 120);
 }
+// Email: check first. Has a password -> ask for it. No password (new, or Google-only) -> email code, then offer to create one.
+function fbPwCheck() {
+  const el = document.getElementById("fbPwChkEmail");
+  const email = ((el && el.value) || "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { _fbEmailErr("Enter a valid email address"); return; }
+  const btn = document.getElementById("fbPwChkBtn");
+  const reset = () => { if (btn) { btn.disabled = false; btn.textContent = "Continue"; } };
+  if (btn) { btn.disabled = true; btn.textContent = "Checking…"; }
+  _fbEmailErr("");
+  _rjOtpCall({ action: "status", email: email }).then((j) => {
+    reset();
+    if (j && j.hasPassword) {
+      const pe = document.getElementById("fbEmailIn"); if (pe) pe.value = email;
+      fbPwStep("pw", "old");
+    } else {
+      fbPwClose();
+      const le = document.getElementById("fbLinkEmailIn"); if (le) le.value = email;
+      window._rjOfferPw = true;
+      toast("No password yet - we'll email you a code to confirm it's you. Then you can create a password.");
+      fbSendEmailLink();
+    }
+  }).catch((e) => { reset(); _rjOtpErr(e); });
+}
 function fbPwBack() {
   const p = document.getElementById("emPwPane");
   if (p && p.getAttribute("data-step") === "pw") return fbPwStep("choose");
@@ -16980,6 +17003,22 @@ function _rjOtpFinish(customToken) {
     const row = document.getElementById("fbLinkCodeRow"); if (row) row.style.display = "none";
     try { const m = document.getElementById("fbAuthInfoModal"); if (m) m.remove(); } catch (_) {}
     toast("Signed in! ☁️ Sync active 🙏");
+    // Signed in without a password (email code, or an old Google account)? Offer to create one - skippable.
+    try {
+      const u = fbAuth.currentUser;
+      const key = "rj_pw_offered_" + (u && u.uid);
+      const asked = localStorage.getItem(key) === "1";
+      if (u && u.email && !_fbHasPasswordProvider(u) && (window._rjOfferPw || !asked)) {
+        window._rjOfferPw = false;
+        try { localStorage.setItem(key, "1"); } catch (_) {}
+        setTimeout(() => _fbShowPasswordModal({
+          title: "🔑 Create a password for this app",
+          subtitle: "Optional. Next time you can sign in with your email + this password. It is only for this app, not your email's password.",
+          requireCurrent: false, submitLabel: "Set password", skippable: true,
+          onSubmit: function (np) { return _fbSetOrChangePassword(np, null); }
+        }), 700);
+      }
+    } catch (_) {}
   });
 }
 function fbVerifyEmailCode() {
@@ -17154,7 +17193,7 @@ function fbSendPhoneOtp(isResend) {
   const _otpTimeout = setTimeout(function () {
     if (_otpSettled) return;
     _otpSettled = true;
-    if (btn) { btn.disabled = false; btn.textContent = "Send OTP"; }
+    if (btn) { btn.disabled = false; btn.textContent = "Continue"; }
     _fbClearRecaptcha();
     _fbPhoneErr("Verification timed out. Please check your connection and try again.", "client/recaptcha-timeout");
   }, 20000);
@@ -17186,12 +17225,33 @@ function fbSendPhoneOtp(isResend) {
       if (_otpSettled) return;
       _otpSettled = true;
       clearTimeout(_otpTimeout);
-      if (btn) { btn.disabled = false; btn.textContent = "Send OTP"; }
+      if (btn) { btn.disabled = false; btn.textContent = "Continue"; }
       _fbClearRecaptcha();
       _fbPhoneErr((e && e.message) || "Could not send OTP", e && e.code);
     });
 }
 
+// Phone: first find out whether this number already has a password, then ask for it - or text a code.
+function fbPhoneContinue() {
+  if (_fbConfirmation) { fbSendPhoneOtp(true); return; }
+  if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
+  const phone = _fbReadPhone();
+  if (!phone || !/^\+[1-9]\d{6,14}$/.test(phone)) { _fbPhoneErr("Enter phone number (e.g. 9876543210)"); return; }
+  const btn = document.getElementById("fbPhoneSendBtn");
+  const reset = () => { if (btn) { btn.disabled = false; btn.textContent = "Continue"; } };
+  if (btn) { btn.disabled = true; btn.textContent = "Checking…"; }
+  _fbPhoneErr("");
+  _rjOtpCall({ action: "status", phone: phone }).then((j) => {
+    reset();
+    if (j && j.hasPassword) {
+      fbTogglePhonePasswordMode(true);
+      try { document.getElementById("fbPhonePassIn").focus(); } catch (_) {}
+    } else {
+      toast("No password yet - we'll text you a code. You can create a password after signing in.");
+      fbSendPhoneOtp();
+    }
+  }).catch(() => { reset(); fbSendPhoneOtp(); }); // check failed (offline/server): the code always works
+}
 function fbVerifyPhoneOtp() {
   if (!_fbConfirmation) { _fbEmailErr("Please request an OTP first"); return; }
   const otpEl = document.getElementById("fbOtpIn");
@@ -17245,7 +17305,7 @@ function fbResetPhoneOtp() {
   const otpRow = document.getElementById("fbOtpRow");
   if (otpRow) otpRow.style.display = "none";
   const btn = document.getElementById("fbPhoneSendBtn");
-  if (btn) { btn.disabled = false; btn.textContent = "Send OTP"; }
+  if (btn) { btn.disabled = false; btn.textContent = "Continue"; }
   _fbEmailErr("");
 }
 

@@ -17451,6 +17451,7 @@ function fbSendPhoneOtp(isResend) {
       const _srv = _rjSrvMsg(e);
       console.warn("Phone OTP server reason:", _srv, e);
       if (_srv && (!e.code || /error-code|internal|unknown/i.test(e.code))) { _fbPhoneErr("SMS not sent. Reason from Firebase: " + _srv); }
+      else if (_srv) { _fbPhoneErr("SMS not sent [" + (e && e.code || "") + "]. Reason from Firebase: " + _srv); }
       else _fbPhoneErr((e && e.message) || "Could not send OTP", e && e.code);
     });
 }
@@ -40945,7 +40946,7 @@ function _pfInitPhone(p) {
 function _pfErr(e) {
   const c = String((e && (e.code || e.message)) || e || '');
   if (/invalid-phone|invalid phone|INVALID_PHONE/i.test(c)) return 'That mobile number looks invalid. Check the country code and digits.';
-  if (/too-many|TOO_MANY|quota/i.test(c)) return 'Too many attempts. Please wait a while and try again.';
+  if (/too-many|TOO_MANY|quota/i.test(c)) return 'Too many attempts. Please wait a while and try again.' + (_rjSrvMsg(e) ? '  [Firebase: ' + _rjSrvMsg(e) + ']' : '  [' + c.slice(0, 80) + ']');
   if (/already-in-use|already in use|account-exists|ALREADY_EXISTS|already-exists/i.test(c)) return 'This number is already verified on another account.';
   if (/invalid-verification|invalid-code|INVALID_CODE|invalid verification/i.test(c)) return 'That code is not correct. Please check the SMS and try again.';
   if (/expired|SESSION_EXPIRED/i.test(c)) return 'The code expired. Tap Send OTP again and use the new SMS.';

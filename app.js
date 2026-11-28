@@ -12309,6 +12309,7 @@ function importAllData(input) {
       App.S.ltHD = data.ltHD || 0;
       App.S.nameJapDeduct = data.nameJapDeduct || 0;
       App.S.cfg = data.cfg || {};
+      try { _fbApplyPwSection(); } catch (_e) {}
       hdRestoreFrom(data);
       App.S.japMode = data.japMode || "radha";
       App.S.historyHK = data.historyHK || {};
@@ -16765,16 +16766,57 @@ function fbOpenAuthSheet(which) {
   sh.style.display = "flex";
   requestAnimationFrame(() => requestAnimationFrame(() => sh.classList.add("open")));
 }
-// Settings button: only for people who signed in with phone / email (code or password) - never for Google sign-in.
+// Settings section (every sign-in type): "Create password" (+ "Optional") only while there is no password,
+// "Change password" only once one is set. The section can be collapsed; that state lives in App.S.cfg.pwSecCollapsed,
+// so it is saved to Firebase and included in the downloaded JSON backup.
+function _fbApplyPwSection() {
+  const body = document.getElementById("fbPwSecBody"), chev = document.getElementById("fbPwSecChev"), head = document.getElementById("fbPwSecHead");
+  if (!body) return;
+  const col = !!(App.S && App.S.cfg && App.S.cfg.pwSecCollapsed);
+  body.style.display = col ? "none" : "";
+  if (chev) chev.style.transform = col ? "rotate(-90deg)" : "";
+  if (head) head.setAttribute("aria-expanded", col ? "false" : "true");
+}
+function fbTogglePwSection() {
+  if (!App.S.cfg) App.S.cfg = {};
+  App.S.cfg.pwSecCollapsed = !App.S.cfg.pwSecCollapsed;
+  _fbApplyPwSection();
+  try { App.save(); } catch (_e) {}
+  try { fbDebouncedPush(); } catch (_e) {}
+}
 function _fbRefreshPassBtn(user) {
-  const b = document.getElementById("fbChangePassBtn"); if (!b || !user) return;
+  const sec = document.getElementById("fbPwSection"); if (!sec || !user) return;
   const hasPw = _fbHasPasswordProvider(user);
-  b.textContent = hasPw ? "🔑 Change Password" : "🔑 Set a password for this app";
-  b.style.display = "none";
-  user.getIdTokenResult().then((r) => {
-    const sp = (r && r.signInProvider) || "";
-    b.style.display = (sp === "password" || sp === "phone" || sp === "custom") ? "" : "none";
-  }).catch(() => { b.style.display = hasPw ? "" : "none"; });
+  const show = !!(user.email || user.phoneNumber);
+  sec.style.display = show ? "" : "none";
+  const cr = document.getElementById("fbCreatePassBtn"), op = document.getElementById("fbCreatePassOpt"), ch = document.getElementById("fbChangePassBtn");
+  if (cr) cr.style.display = hasPw ? "none" : "";
+  if (op) op.style.display = hasPw ? "none" : "";
+  if (ch) ch.style.display = hasPw ? "" : "none";
+  _fbApplyPwSection();
+  _fbMaybeOfferPassword(user);
+}
+// One friendly, skippable offer per account per device: create a password so later logins need no OTP / code.
+function _fbMaybeOfferPassword(user) {
+  try {
+    if (!user || _fbHasPasswordProvider(user) || !(user.email || user.phoneNumber)) return;
+    const key = "rj_pw_offered_" + user.uid;
+    if (localStorage.getItem(key) === "1") return;
+    setTimeout(() => {
+      try {
+        const u = fbAuth && fbAuth.currentUser;
+        if (!u || u.uid !== user.uid || _fbHasPasswordProvider(u) || document.getElementById("fbPassModal")) return;
+        if (localStorage.getItem(key) === "1") return;
+        localStorage.setItem(key, "1");
+        _fbShowPasswordModal({
+          title: "🔑 Create a password for this app",
+          subtitle: "Optional. Next time sign in with your " + (u.phoneNumber && !u.email ? "phone number" : "email") + " + this password - no OTP or code. It is only for this app.",
+          requireCurrent: false, submitLabel: "Create password", skippable: true,
+          onSubmit: function (np) { return _fbSetOrChangePassword(np, null); }
+        });
+      } catch (_) {}
+    }, 2500);
+  } catch (_) {}
 }
 // Show / hide button on every password box (also those created later, like the change-password pop-up).
 const _EYE_ON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -16842,6 +16884,7 @@ function fbPwStep(step, mode) {
   const p = document.getElementById("emPwPane"); if (!p) return;
   if (mode) p.setAttribute("data-mode", mode);
   p.setAttribute("data-step", step);
+  if (step === "choose") { const w = document.getElementById("fbPwChkWrap"), c = document.getElementById("fbPwChoice"); if (w) w.style.display = ""; if (c) c.style.display = "none"; }
   const _pi = document.getElementById("fbPassIn");
   if (_pi) { const nw = p.getAttribute("data-mode") === "new"; _pi.placeholder = nw ? "Set a password for this app (min 6 characters)" : "Your password for this app"; _pi.setAttribute("autocomplete", nw ? "new-password" : "current-password"); }
   _pwTitle(step === "choose" ? _PW_TITLES.choose : _PW_TITLES[p.getAttribute("data-mode")] || _PW_TITLES.choose);
@@ -16861,7 +16904,9 @@ function fbPwCheck() {
     reset();
     if (j && j.hasPassword) {
       const pe = document.getElementById("fbEmailIn"); if (pe) pe.value = email;
-      fbPwStep("pw", "old");
+      window._rjPwEmail = email;
+      const w = document.getElementById("fbPwChkWrap"), c = document.getElementById("fbPwChoice");
+      if (w) w.style.display = "none"; if (c) c.style.display = "block";
     } else {
       fbPwClose();
       const le = document.getElementById("fbLinkEmailIn"); if (le) le.value = email;
@@ -16870,6 +16915,12 @@ function fbPwCheck() {
       fbSendEmailLink();
     }
   }).catch((e) => { reset(); _rjOtpErr(e); });
+}
+function fbPwUseCode() {
+  const email = window._rjPwEmail || "";
+  fbPwClose();
+  const le = document.getElementById("fbLinkEmailIn"); if (le) le.value = email;
+  fbSendEmailLink();
 }
 function fbPwBack() {
   const p = document.getElementById("emPwPane");
@@ -17180,6 +17231,9 @@ function fbSendPhoneOtp(isResend) {
   if (!verifier) { _fbPhoneErr("Could not initialize verification. Please reload."); return; }
 
   const btn = document.getElementById("fbPhoneSendBtn");
+  const _rbtn = document.getElementById("fbOtpResendBtn");
+  const _rb = (busy) => { if (_rbtn) { _rbtn.disabled = !!busy; _rbtn.textContent = busy ? "Resending…" : "Resend OTP"; } };
+  if (isResend) _rb(true);
   if (btn) { btn.disabled = true; btn.textContent = isResend ? "Resending…" : "Sending…"; }
   _fbEmailErr("");
 
@@ -17194,6 +17248,7 @@ function fbSendPhoneOtp(isResend) {
     if (_otpSettled) return;
     _otpSettled = true;
     if (btn) { btn.disabled = false; btn.textContent = "Continue"; }
+    _rb(false);
     _fbClearRecaptcha();
     _fbPhoneErr("Verification timed out. Please check your connection and try again.", "client/recaptcha-timeout");
   }, 20000);
@@ -17209,7 +17264,9 @@ function fbSendPhoneOtp(isResend) {
       if (otpRow) otpRow.style.display = "block";
       const otpIn = document.getElementById("fbOtpIn");
       if (otpIn) { otpIn.value = ""; try { otpIn.focus(); } catch (_) {} }
-      if (btn) { btn.disabled = false; btn.textContent = "Resend"; }
+      if (btn) { btn.disabled = false; btn.textContent = "Continue"; }
+      _rb(false);
+      ["fbPhoneSendRow", "fbPhoneChoiceRow", "fbPhonePassRow"].forEach((id) => { const e = document.getElementById(id); if (e) e.style.display = "none"; });
       _fbInfoModal("📱 OTP sent",
         '<p style="margin:0 0 10px">A 6-digit code has just been texted to:<br><span style="color:#ffd97a">' + phone + '</span></p>'
         + '<ol style="margin:8px 0 10px 18px;padding:0">'
@@ -17226,12 +17283,14 @@ function fbSendPhoneOtp(isResend) {
       _otpSettled = true;
       clearTimeout(_otpTimeout);
       if (btn) { btn.disabled = false; btn.textContent = "Continue"; }
+      _rb(false);
       _fbClearRecaptcha();
       _fbPhoneErr((e && e.message) || "Could not send OTP", e && e.code);
     });
 }
 
 // Phone: first find out whether this number already has a password, then ask for it - or text a code.
+function fbPhoneEdited() { if (!_fbConfirmation) fbTogglePhonePasswordMode(false); }
 function fbPhoneContinue() {
   if (_fbConfirmation) { fbSendPhoneOtp(true); return; }
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
@@ -17244,8 +17303,9 @@ function fbPhoneContinue() {
   _rjOtpCall({ action: "status", phone: phone }).then((j) => {
     reset();
     if (j && j.hasPassword) {
-      fbTogglePhonePasswordMode(true);
-      try { document.getElementById("fbPhonePassIn").focus(); } catch (_) {}
+      const sr = document.getElementById("fbPhoneSendRow"), cr = document.getElementById("fbPhoneChoiceRow");
+      if (sr) sr.style.display = "none";
+      if (cr) cr.style.display = "block";
     } else {
       toast("No password yet - we'll text you a code. You can create a password after signing in.");
       fbSendPhoneOtp();
@@ -17273,6 +17333,7 @@ function fbVerifyPhoneOtp() {
       const _wasResetFlow = _fbPhonePasswordResetPending;
       _fbPhonePasswordResetPending = false;
       const _u = fbAuth.currentUser;
+      try { if (_u) localStorage.setItem("rj_pw_offered_" + _u.uid, "1"); } catch (_) {}
       if (_wasResetFlow) {
         _fbShowPasswordModal({
           title: "🔑 Set a new password for this app",
@@ -17306,6 +17367,7 @@ function fbResetPhoneOtp() {
   if (otpRow) otpRow.style.display = "none";
   const btn = document.getElementById("fbPhoneSendBtn");
   if (btn) { btn.disabled = false; btn.textContent = "Continue"; }
+  fbTogglePhonePasswordMode(false);
   _fbEmailErr("");
 }
 
@@ -17346,7 +17408,10 @@ function _fbSetOrChangePassword(newPassword, currentPassword) {
     });
   }
   const linkCred = firebase.auth.EmailAuthProvider.credential(identifierEmail, newPassword);
-  return user.linkWithCredential(linkCred);
+  return user.linkWithCredential(linkCred).then(function (r) {
+    try { _fbRefreshPassBtn(fbAuth.currentUser); } catch (_) {}
+    return r;
+  });
 }
 
 // Toggles the phone sign-in UI between "Send OTP" mode and "Sign in with
@@ -17355,10 +17420,13 @@ function fbTogglePhonePasswordMode(showPassword) {
   const sendRow = document.getElementById("fbPhoneSendRow");
   const otpRow = document.getElementById("fbOtpRow");
   const passRow = document.getElementById("fbPhonePassRow");
+  const choiceRow = document.getElementById("fbPhoneChoiceRow");
+  if (choiceRow) choiceRow.style.display = "none";
   if (showPassword) {
     if (sendRow) sendRow.style.display = "none";
     if (otpRow) otpRow.style.display = "none";
     if (passRow) passRow.style.display = "block";
+    try { document.getElementById("fbPhonePassIn").focus(); } catch (_) {}
   } else {
     if (sendRow) sendRow.style.display = "flex";
     if (passRow) passRow.style.display = "none";
@@ -17465,14 +17533,14 @@ function fbChangePasswordFromSettings() {
   const user = fbAuth.currentUser;
   const already = _fbHasPasswordProvider(user);
   _fbShowPasswordModal({
-    title: already ? "🔑 Change password" : "🔑 Set a password for this app",
+    title: already ? "🔑 Change password" : "🔑 Create password",
     subtitle: already
       ? "Enter your current password, then choose a new one."
-      : (user.phoneNumber
-          ? "Set a password for this app so you can sign in with your phone number + password (skip OTP)."
-          : "Set a password for this app."),
+      : (user.phoneNumber && !user.email
+          ? "Create a password for this app so you can sign in with your phone number + password (no OTP)."
+          : "Create a password for this app so you can sign in with your email + password (no code, no Google)."),
     requireCurrent: already,
-    submitLabel: already ? "Change password" : "Set password",
+    submitLabel: already ? "Change password" : "Create password",
     onSubmit: function (np, cp) { return _fbSetOrChangePassword(np, cp); }
   });
 }
@@ -18572,6 +18640,7 @@ function fbApplyRemote(d) {
   if (d.ltHD !== undefined) App.S.ltHD = d.ltHD;
   if (d.nameJapDeduct !== undefined) App.S.nameJapDeduct = d.nameJapDeduct;
   if (d.cfg) App.S.cfg = JSON.parse(JSON.stringify(d.cfg || {}));
+  try { _fbApplyPwSection(); } catch (_e) {}
   if (d.deviceLayouts) {
     // Merge: cloud is authoritative for every OTHER device's entry, but
     // never let a pull stomp THIS device's own entry if it already has one

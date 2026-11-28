@@ -17240,9 +17240,20 @@ function _fbClearRecaptcha() {
   // attempt (this was the actual cause of OTP never sending: every retry
   // hit this error and never got as far as contacting Firebase at all).
   // Forcibly emptying the container guarantees a clean slate.
+  _fbFreshRecaptchaContainer();
+}
+
+// Replace the reCAPTCHA host element with a brand-new empty one (same id, so the
+// existing hidden-badge CSS still applies). A new element can never trigger
+// "reCAPTCHA has already been rendered in this element".
+function _fbFreshRecaptchaContainer() {
   try {
-    var c = document.getElementById("fbRecaptchaContainer");
-    if (c) c.innerHTML = "";
+    var old = document.getElementById("fbRecaptchaContainer");
+    if (!old || !old.parentNode) return;
+    var fresh = document.createElement("div");
+    fresh.id = "fbRecaptchaContainer";
+    fresh.setAttribute("aria-hidden", "true");
+    old.parentNode.replaceChild(fresh, old);
   } catch (_) {}
 }
 
@@ -17251,6 +17262,7 @@ function _fbEnsureRecaptcha() {
   if (_fbRecaptcha) return _fbRecaptcha;
   try {
     _fbHideRecaptchaBadge();
+    _fbFreshRecaptchaContainer();
     _fbRecaptcha = new firebase.auth.RecaptchaVerifier("fbRecaptchaContainer", {
       size: "invisible",
       callback: function () { _fbHideRecaptchaBadge(); },

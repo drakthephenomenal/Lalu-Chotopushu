@@ -86,7 +86,7 @@ exports.emailCode = functions.https.onRequest(async (req, res) => {
       const dev = String(b.device || "");
       await ref.set({ tokenHash: sha256(token), codeHash: codeHash(code), exp: now + CODE_TTL_MS, attempts: 0, used: false, approved: false, deviceHash: /^[A-Za-z0-9_-]{16,80}$/.test(dev) ? sha256(dev) : "", createdAt: now });
       try {
-        await sendMail(email, APP_URL + "/?rjlink=" + token + "&rje=" + encodeURIComponent(email));
+        await sendMail(email, APP_URL + "/email-signin.html?rjlink=" + token + "&rje=" + encodeURIComponent(email));
       } catch (e) {
         console.error("Gmail send failed:", e && e.message);
         return fail(500, "Could not send the email. Check the Gmail address and App password.", "server/mail-failed");

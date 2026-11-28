@@ -17008,6 +17008,16 @@ document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { try { 
 // was invisible without scrolling). Includes the raw Firebase error code so
 // failures can be diagnosed without opening DevTools. Stays up 20s / until
 // the next attempt, instead of clearing after 6s, so it can actually be read.
+// Pulls the real reason out of a Firebase error (the backend's own message), so
+// "auth/error-code:-39" turns into something like "SMS_REGION..." / "CAPTCHA_CHECK_FAILED".
+function _rjSrvMsg(e) {
+  try {
+    const r = e && e.customData && e.customData._serverResponse;
+    const o = typeof r === "string" ? JSON.parse(r) : r;
+    const m = o && o.error && (o.error.message || o.error.status);
+    return m ? String(m) : "";
+  } catch (_) { return ""; }
+}
 function _fbPhoneErr(msg, code) {
   const el = document.getElementById("fbPhoneErr");
   const full = (code && _RJ_AUTH_MSGS[code]) ? _RJ_AUTH_MSGS[code] : (code ? (msg + "  [" + code + "]") : (msg || ""));
@@ -17438,7 +17448,10 @@ function fbSendPhoneOtp(isResend) {
       if (btn) { btn.disabled = false; btn.textContent = "Continue"; }
       _rb(false);
       _fbClearRecaptcha();
-      _fbPhoneErr((e && e.message) || "Could not send OTP", e && e.code);
+      const _srv = _rjSrvMsg(e);
+      console.warn("Phone OTP server reason:", _srv, e);
+      if (_srv && (!e.code || /error-code|internal|unknown/i.test(e.code))) { _fbPhoneErr("SMS not sent. Reason from Firebase: " + _srv); }
+      else _fbPhoneErr((e && e.message) || "Could not send OTP", e && e.code);
     });
 }
 
@@ -40939,7 +40952,8 @@ function _pfErr(e) {
   if (/no.*(current)?.*user|NO_USER|not.*signed/i.test(c)) return 'Please sign out and sign in again, then verify your number.';
   if (/network/i.test(c)) return 'No connection. Please try again.';
   if (/^internal$|functions\/internal/i.test(c)) return 'The code was accepted, but the final server check failed. Tap Send OTP again in a minute (no new SMS is sent if your number is already confirmed). If it keeps failing, the admin must redeploy the functions.';
-  return 'Could not verify: ' + ((e && e.message) || c);
+  const _sv = _rjSrvMsg(e);
+  return 'Could not verify: ' + (_sv ? 'Firebase says ' + _sv : ((e && e.message) || c));
 }
 // A number that is already linked to this account must be unlinked before another one can be linked.
 async function _pfUnlinkOldPhone() {

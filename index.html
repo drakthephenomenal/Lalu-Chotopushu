@@ -27,7 +27,7 @@
 <script src="./vendor/firebase-firestore-compat.js"></script>
 <script src="./vendor/firebase-messaging-compat.js"></script>
 <script src="./vendor/firebase-functions-compat.js"></script>
-<link rel="stylesheet" href="./style.css?v=165">
+<link rel="stylesheet" href="./style.css?v=167">
 <style id="adminToolsCollapseCss">
 .admin-tools-details>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;color:var(--green);font-size:17px;font-weight:700;padding:2px 0;-webkit-tap-highlight-color:transparent;}
 .admin-tools-details>summary::-webkit-details-marker{display:none;}
@@ -2365,11 +2365,13 @@
         <div id="fbPhoneSendRow" style="display:flex;gap:8px">
           <button id="fbPhoneSendBtn" onclick="fbSendPhoneOtp()" class="premium-btn">Send OTP</button>
         </div>
-        <div style="text-align:center;margin-top:6px">
-          <button onclick="fbTogglePhonePasswordMode(true)" style="padding:4px;border:none;background:transparent;color:var(--a2);font-size:11px;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">Have a password? Sign in with it instead</button>
+<div id="fbPhonePwOpt">
+        <div class="em-or"><span>or</span></div>
+        <button type="button" class="sgn-ghost em-wide" onclick="fbTogglePhonePasswordMode(true)">🔑 Use my app password instead</button>
+        <div class="em-hint">Only if you already set a password in Settings. Otherwise tap <b>Send OTP</b> — it always works.</div>
         </div>
         <div id="fbPhonePassRow" style="display:none;margin-top:8px">
-          <input type="password" id="fbPhonePassIn" class="fb-email-input" placeholder="Password" autocomplete="current-password">
+          <input type="password" id="fbPhonePassIn" class="fb-email-input" placeholder="App password (not the SMS code)" autocomplete="current-password">
           <div style="display:flex;gap:8px">
             <button id="fbPhonePassSendBtn" onclick="fbSignInPhonePassword()" class="premium-btn">Sign in with Password</button>
             <button onclick="fbTogglePhonePasswordMode(false)" style="padding:9px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:var(--td);font-size:12px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif">Use OTP</button>
@@ -2378,6 +2380,7 @@
         </div>
         <div id="fbPhoneErr" style="font-size:11.5px;color:var(--red);margin-top:6px;text-align:center;word-break:break-word"></div>
         <div id="fbOtpRow" style="display:none;margin-top:10px">
+          <div class="sgn-note" style="margin-bottom:10px"><svg viewBox="0 0 24 24" width="20" height="20" style="vertical-align:-4px;margin-right:4px" aria-hidden="true"><path d="M5 2h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H9l-5 4v-4.2A3 3 0 0 1 2 15V5a3 3 0 0 1 3-3z" fill="#1a73e8"/><path d="M7 8.5h10M7 12h6.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg> Check your SMS for a text from <b>Cloud OTP</b>. Can't find it? Search your <b>Spam</b> and <b>Blocked messages</b> folders.</div>
           <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="fbOtpIn" class="fb-email-input" placeholder="Enter 6-digit OTP" autocomplete="one-time-code">
           <div style="display:flex;gap:8px">
             <button onclick="fbVerifyPhoneOtp()" class="premium-btn green">Verify & Sign In</button>
@@ -2395,7 +2398,7 @@
         <div class="sgn-pane sgn-pane-email">
           <div class="sgn-note">✉️ <b>No password needed.</b> We'll email you a <b>Sign in</b> button. Tap it, then come back to this app and you'll be signed in.</div>
           <input type="email" id="fbLinkEmailIn" class="fb-email-input" placeholder="Email address" autocomplete="email">
-          <button id="fbLinkSendBtn" onclick="fbSendEmailLink()" class="premium-btn" style="width:100%">Continue with email</button>
+          <button id="fbLinkSendBtn" onclick="fbSendEmailLink()" class="premium-btn" style="width:100%">Send OTP &amp; Sign-in Button</button>
           <div id="fbLinkCodeRow" style="display:none;margin-top:12px">
             <div style="font-size:12.5px;line-height:1.55;color:var(--gold);background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 11px;margin-bottom:10px">📬 <b>Email sent!</b> Open it and tap <b>Sign in</b>. <b>Please also check your Spam / Junk folder</b> — the first email can land there. If it is there, tap "Not spam" so the next ones arrive normally.</div>
             <div style="font-size:11.5px;opacity:.85;margin-bottom:6px">Signed in on a different device, or the app didn't continue? Type the code shown after you tap the button:</div>
@@ -3747,7 +3750,7 @@
     <script src="./hcj-langs.js?v=1"></script>
     <script src="./hcp-langs.js?v=1"></script>
     <script src="./rsn-langs.js?v=1"></script>
-    <script src="./app.js?v=485"></script>
+    <script src="./app.js?v=488"></script>
   
 <script>
 // ═══ B&C Sub-tab switcher ════════════════════════════════════

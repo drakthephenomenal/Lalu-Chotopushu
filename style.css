@@ -4950,3 +4950,10 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 .sgn-pane-email.em-sent #fbLinkSendBtn{order:2;margin-top:16px;padding-top:11px;padding-bottom:11px;background:transparent;box-shadow:none;border:1px solid rgba(255,255,255,.18);color:var(--a2,#8fb4ff);font-size:14px;font-weight:600}
 .sgn-pane-email.em-sent #emPwOpenBtn{order:3}
 .sgn-pane-email.em-sent #emPwPane{order:4}
+
+/* Phone sign-in: clearer optional "use password" button (OTP stays the default) */
+.em-or{display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--td);font-size:12px}
+.em-or::before,.em-or::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.1)}
+.em-wide{width:100%;padding:13px 14px;font-size:15px;font-weight:600}
+.em-hint{font-size:11.5px;line-height:1.5;color:var(--td);text-align:center;margin-top:8px}
+.em-hint b{color:#f1dba0;font-weight:600}

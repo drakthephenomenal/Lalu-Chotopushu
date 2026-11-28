@@ -16765,14 +16765,31 @@ function fbOpenAuthSheet(which) {
   _fbEmailErr("");
   try { fbPwClose(); } catch (_e) {}
   try { _emWatchSent(); } catch (_e) {}
+  try { _phoneWatchPw(); } catch (_e) {}
   sh.style.display = "flex";
   requestAnimationFrame(() => requestAnimationFrame(() => sh.classList.add("open")));
+}
+// Layout helper only: hide the "use password" option while the password row is open (OTP logic untouched).
+function _phoneWatchPw() {
+  const pr = document.getElementById("fbPhonePassRow"), opt = document.getElementById("fbPhonePwOpt");
+  if (!pr || !opt) return;
+  const f = () => { opt.style.display = (pr.style.display === "block") ? "none" : ""; };
+  if (!pr._pwW) { pr._pwW = 1; new MutationObserver(f).observe(pr, { attributes: true, attributeFilter: ["style"] }); }
+  f();
 }
 // Layout helper only: when the code row appears, mark the pane so "Resend code" can sit at the bottom.
 function _emWatchSent() {
   const row = document.getElementById("fbLinkCodeRow"), pane = row && row.closest(".sgn-pane-email");
+  if (row && row._emF) { row._emF(); return; }
   if (!row || !pane || row._emW) return; row._emW = 1;
-  const f = () => pane.classList.toggle("em-sent", row.style.display === "block");
+  const f = () => {
+    const sent = row.style.display === "block";
+    pane.classList.toggle("em-sent", sent);
+    // first time (no code sent yet) the button must not say "Resend code"
+    const b = document.getElementById("fbLinkSendBtn");
+    if (!sent && b && !b.disabled && b.textContent.trim() === "Resend code") b.textContent = "Send OTP & Sign-in Button";
+  };
+  row._emF = f;
   new MutationObserver(f).observe(row, { attributes: true, attributeFilter: ["style"] }); f();
 }
 // ── Email + password: guided steps (choose -> email & password). Does not touch the email-code flow. ──
@@ -16898,12 +16915,12 @@ function fbSendEmailLink() {
       _fbEmailErr("");
       toast("Email sent to " + email + " ✉️ Also check your Spam folder 📬");
     })
-    .catch((e) => { if (btn) { btn.disabled = false; btn.textContent = "Continue with email"; } _rjOtpErr(e); });
+    .catch((e) => { if (btn) { btn.disabled = false; btn.textContent = "Send OTP & Sign-in Button"; } _rjOtpErr(e); });
 }
 function fbResetEmailCode() {
   _rjStopPoll();
   const row = document.getElementById("fbLinkCodeRow"); if (row) row.style.display = "none";
-  const btn = document.getElementById("fbLinkSendBtn"); if (btn) { btn.disabled = false; btn.textContent = "Continue with email"; }
+  const btn = document.getElementById("fbLinkSendBtn"); if (btn) { btn.disabled = false; btn.textContent = "Send OTP & Sign-in Button"; }
   try { localStorage.removeItem(_RJ_OTP_KEY); } catch (_) {}
   _fbEmailErr("");
 }
@@ -17107,7 +17124,8 @@ function fbSendPhoneOtp(isResend) {
       _fbInfoModal("📱 OTP sent",
         '<p style="margin:0 0 10px">A 6-digit code has just been texted to:<br><span style="color:#ffd97a">' + phone + '</span></p>'
         + '<ol style="margin:8px 0 10px 18px;padding:0">'
-        +   '<li>Check your Messages/SMS inbox. On Android, the code may also appear in the keyboard suggestion/clipboard bar.</li>'
+        +   '<li>Check your Messages/SMS inbox for a text from <b>Cloud OTP</b>. On Android, the code may also appear in the keyboard suggestion/clipboard bar.</li>'
+        +   '<li><b>Can\'t find it?</b> Search your <b>Spam</b> and <b>Blocked messages</b> (SMS filter) folders — the text from <b>Cloud OTP</b> can land there.</li>'
         +   '<li>Tap that suggested code or type it into the <b>OTP</b> field, then tap <b>Verify &amp; Sign In</b>.</li>'
         +   '<li>Didn\'t get it within a minute? Tap <b>Resend OTP</b>.</li>'
         + '</ol>'

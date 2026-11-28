@@ -498,7 +498,7 @@
 // v421: audio/ folder no longer bundled in the Android app; installed app streams it from the website.
 // v422: bumped cache to force-invalidate stale app.js / style.css / index.html — Haridashi Sampraday (Radha + Kunj Vihari / Sri Haridas, own Deity/Guru/Acharya photos, own lifetime target); Nimbark Deity/Guru/Acharya jap-display photos + Yugal mantra animation now matches Hare Krishna; reopened wishes no longer stay paused.
 // v532: Update box shows live download % + MB, one-tap install. v531: Settings Update/Refresh buttons reworked (side-by-side, golden pulsing update icon; PWA "Refresh and Update (vN)" + "Refresh Now" modal button).
-const CACHE = 'radha-jap-v560';
+const CACHE = 'radha-jap-v561';
 // Deity photos live in their own cache so they survive every app update (viewed once = offline forever).
 const DEITY_CACHE = 'radha-jap-deities-v1';
 
@@ -507,8 +507,8 @@ const DEITY_CACHE = 'radha-jap-deities-v1';
 // because importScripts throws on browsers with no network at SW-install
 // time; background push just won't be available there, nothing else breaks. ──
 try {
-  importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
-  importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
+  importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js');
+  importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-compat.js');
   firebase.initializeApp({
     apiKey: "AIzaSyCvvXEdsJjXpTbITE2HuyYFnPZfZIkxVWA",
     authDomain: "guru-kripahi-kevalam-108.firebaseapp.com",
@@ -680,9 +680,9 @@ const LAZY_LOCAL_ASSETS = [
 ];
 
 const EXTERNAL_ASSETS = [
-  'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
-  'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js',
-  'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js',
+  'https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore-compat.js',
   'https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=Hind+Siliguri:wght@400;600;700&family=Cinzel+Decorative:wght@400;700&family=EB+Garamond:wght@400;600&family=Inter:wght@300;400;500;600&family=Noto+Sans+Devanagari:wght@400;700&family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap',
   'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js',
 ];

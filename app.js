@@ -16732,8 +16732,41 @@ function fbOpenAuthSheet(which) {
   const t = document.getElementById("sgnSheetTitle");
   if (t) t.textContent = pane === "phone" ? "Sign in with phone number" : "Sign in with email";
   _fbEmailErr("");
+  try { fbPwClose(); } catch (_e) {}
   sh.style.display = "flex";
   requestAnimationFrame(() => requestAnimationFrame(() => sh.classList.add("open")));
+}
+// ── Email + password: guided steps (choose -> email & password). Does not touch the email-code flow. ──
+const _PW_TITLES = { choose: "Sign in with email", new: "Create your account", old: "Welcome back" };
+function _pwTitle(txt) { const t = document.getElementById("sgnSheetTitle"); if (t) t.textContent = txt; }
+function fbPwOpen() {
+  const otp = ["fbLinkEmailIn"].map((i) => document.getElementById(i))[0];
+  const seed = ((otp && otp.value) || "").trim();
+  document.querySelectorAll("#fbAuthSheet .sgn-pane-email > :not(#emPwPane):not(.em-back)").forEach((n) => { n.setAttribute("data-em-hid", n.style.display || "_"); n.style.display = "none"; });
+  document.getElementById("emPwPane").style.display = "block";
+  const pe = document.getElementById("fbEmailIn"); if (pe && seed && !pe.value) pe.value = seed;
+  fbPwStep("choose");
+}
+function fbPwStep(step, mode) {
+  const p = document.getElementById("emPwPane"); if (!p) return;
+  if (mode) p.setAttribute("data-mode", mode);
+  p.setAttribute("data-step", step);
+  _pwTitle(step === "choose" ? _PW_TITLES.choose : _PW_TITLES[p.getAttribute("data-mode")] || _PW_TITLES.choose);
+  _fbEmailErr("");
+  if (step === "pw") setTimeout(() => { try { const e = document.getElementById("fbEmailIn"); document.getElementById(e && e.value ? "fbPassIn" : "fbEmailIn").focus(); } catch (_) {} }, 120);
+}
+function fbPwBack() {
+  const p = document.getElementById("emPwPane");
+  if (p && p.getAttribute("data-step") === "pw") return fbPwStep("choose");
+  fbPwClose();
+}
+function fbPwClose() {
+  const p = document.getElementById("emPwPane"); if (!p) return;
+  p.style.display = "none"; p.setAttribute("data-step", "choose");
+  document.querySelectorAll("#fbAuthSheet [data-em-hid]").forEach((n) => { const v = n.getAttribute("data-em-hid"); n.style.display = v === "_" ? "" : v; n.removeAttribute("data-em-hid"); });
+  const t = document.getElementById("sgnSheetTitle"), sh = document.getElementById("fbAuthSheet");
+  if (t && sh && sh.getAttribute("data-pane") === "email") t.textContent = "Sign in with email";
+  _fbEmailErr("");
 }
 function fbCloseAuthSheet() {
   const sh = document.getElementById("fbAuthSheet");

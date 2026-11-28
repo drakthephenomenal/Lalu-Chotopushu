@@ -16796,10 +16796,10 @@ function _fbRefreshPassBtn(user) {
   const hint = document.getElementById("fbPwHint"), so = document.getElementById("fbPwSecOpt"), fg = document.getElementById("fbPwForgotBtn");
   const realEmail = user.email && !_fbIsSyntheticPhoneEmail(user.email) ? user.email : "";
   const who = realEmail || user.phoneNumber || "this account";
-  if (so) so.style.display = hasPw ? "none" : "";
+  if (so) so.style.display = "";
   if (fg) fg.style.display = (hasPw && realEmail) ? "" : "none";
   if (hint) hint.textContent = hasPw
-    ? "A password is set for " + who + ". You can always sign in with " + (realEmail ? "this email" : "this phone number") + " + password, even if your " + (realEmail && /@gmail\.com$/i.test(realEmail) ? "Gmail" : "email") + " is removed from this device. For safety the password itself can't be shown."
+    ? "A password is set for " + who + ". You can always sign in with " + (realEmail ? "this email" : "this phone number") + " + password, even if your " + (realEmail && /@gmail\.com$/i.test(realEmail) ? "Gmail" : "email") + " is removed from this device."
     : "Optional: create a password for " + who + " so you can still sign in with " + (realEmail ? "email" : "phone number") + " + password (no OTP or code) even if your " + (realEmail && /@gmail\.com$/i.test(realEmail) ? "Gmail" : "email") + " is removed from this device.";
   _fbApplyPwSection();
   _fbMaybeOfferPassword(user);

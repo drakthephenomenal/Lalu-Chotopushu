@@ -16767,10 +16767,12 @@ function _fbReadEmailPass() {
 // Needs the /api/email-code serverless function (see SETUP-email-code.txt). Same device: tap the button -> signed in.
 // Other device: the button shows the code, which you type on the device where you started.
 const _RJ_OTP_KEY = "rj_otp_pending";
+// Email code is sent by the Firebase Cloud Function "emailCode" (functions/emailCode.js, Gmail sender).
+const RJ_EMAIL_CODE_URL = "https://us-central1-guru-kripahi-kevalam-108.cloudfunctions.net/emailCode";
 function _rjApiBase() { return _isNativeApp() ? "https://radharadharadha.vercel.app" : location.origin; }
 async function _rjOtpCall(body) {
   let r;
-  try { r = await fetch(_rjApiBase() + "/api/email-code", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); }
+  try { r = await fetch(RJ_EMAIL_CODE_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); }
   catch (_) { const e = new Error("No connection. Check your internet and try again."); e.code = "network"; throw e; }
   let j = {}; try { j = await r.json(); } catch (_) {}
   if (!r.ok) { const e = new Error(j.error || ("Server error " + r.status)); e.code = j.code || ("http/" + r.status); throw e; }

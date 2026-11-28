@@ -19,7 +19,9 @@
       "namespace": "android_app",
       "package_name": "app.vercel.radharadharadha.capacitor",
       "sha256_cert_fingerprints": [
-        "96:A0:0A:18:9D:E3:D6:EF:8D:31:87:BA:1B:05:D9:58:6E:18:F9:64:15:44:0B:D4:6F:31:16:17:0E:09:96:A8"
+        "96:A0:0A:18:9D:E3:D6:EF:8D:31:87:BA:1B:05:D9:58:6E:18:F9:64:15:44:0B:D4:6F:31:16:17:0E:09:96:A8",
+        "20:81:46:4E:5B:44:20:EC:68:BF:78:3B:D2:53:09:B3:E4:34:3B:8C:0B:63:67:BF:E6:D5:AF:5F:0F:DA:94:8F",
+        "CD:D0:E6:A8:16:CB:B2:59:57:EE:40:D2:97:01:D2:08:88:9A:60:45:D5:80:D0:29:70:9F:80:35:5C:BA:4E:20"
       ]
     }
   }

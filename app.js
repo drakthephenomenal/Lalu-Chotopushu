@@ -16793,8 +16793,26 @@ function _fbRefreshPassBtn(user) {
   if (cr) cr.style.display = hasPw ? "none" : "";
   if (op) op.style.display = hasPw ? "none" : "";
   if (ch) ch.style.display = hasPw ? "" : "none";
+  const hint = document.getElementById("fbPwHint"), so = document.getElementById("fbPwSecOpt"), fg = document.getElementById("fbPwForgotBtn");
+  const realEmail = user.email && !_fbIsSyntheticPhoneEmail(user.email) ? user.email : "";
+  const who = realEmail || user.phoneNumber || "this account";
+  if (so) so.style.display = hasPw ? "none" : "";
+  if (fg) fg.style.display = (hasPw && realEmail) ? "" : "none";
+  if (hint) hint.textContent = hasPw
+    ? "A password is set for " + who + ". You can always sign in with " + (realEmail ? "this email" : "this phone number") + " + password, even if your " + (realEmail && /@gmail\.com$/i.test(realEmail) ? "Gmail" : "email") + " is removed from this device. For safety the password itself can't be shown."
+    : "Optional: create a password for " + who + " so you can still sign in with " + (realEmail ? "email" : "phone number") + " + password (no OTP or code) even if your " + (realEmail && /@gmail\.com$/i.test(realEmail) ? "Gmail" : "email") + " is removed from this device.";
   _fbApplyPwSection();
   _fbMaybeOfferPassword(user);
+}
+// "Forgot current password?" - the reset link goes to the account's own email (not possible for phone-only accounts).
+function fbPwEmailReset() {
+  const u = fbAuth && fbAuth.currentUser;
+  if (!u || !u.email || _fbIsSyntheticPhoneEmail(u.email)) { toast("No email on this account"); return; }
+  fbAuth.sendPasswordResetEmail(u.email).then(function () {
+    _fbInfoModal("🔑 Reset link sent",
+      '<p style="margin:0 0 10px">A password-reset link has been sent to:<br><span style="color:#ffd97a;word-break:break-all">' + u.email + '</span></p>'
+      + '<p style="margin:0;font-size:12.5px;opacity:.85">Open it, choose a new password, then use it to sign in. Check Spam / Promotions if you do not see it.</p>');
+  }).catch(function (e) { toast((e && e.message) || "Could not send reset email"); });
 }
 // One friendly, skippable offer per account per device: create a password so later logins need no OTP / code.
 function _fbMaybeOfferPassword(user) {
@@ -16864,7 +16882,7 @@ function _emWatchSent() {
     pane.classList.toggle("em-sent", sent);
     // first time (no code sent yet) the button must not say "Resend code"
     const b = document.getElementById("fbLinkSendBtn");
-    if (!sent && b && !b.disabled && b.textContent.trim() === "Resend code") b.textContent = "Send OTP & Sign-in Button";
+    if (!sent && b && !b.disabled && b.textContent.trim() === "Resend code") b.textContent = "Continue";
   };
   row._emF = f;
   new MutationObserver(f).observe(row, { attributes: true, attributeFilter: ["style"] }); f();
@@ -16924,7 +16942,6 @@ function fbPwUseCode() {
 }
 function fbPwBack() {
   const p = document.getElementById("emPwPane");
-  if (p && p.getAttribute("data-step") === "pw") return fbPwStep("choose");
   fbPwClose();
 }
 function fbPwClose() {
@@ -17020,6 +17037,37 @@ function _rjBindEmailAppLink() {
   try { A.addListener("appUrlOpen", (d) => handle(d && d.url)); } catch (_) {}
   try { A.getLaunchUrl && A.getLaunchUrl().then((r) => handle(r && r.url)).catch(() => {}); } catch (_) {}
 }
+// Email: Continue checks the address first. Saved password -> choose password or code. No password -> code is emailed.
+function fbEmailEdited() {
+  const row = document.getElementById("fbLinkCodeRow");
+  if (row && row.style.display === "block") return;
+  const ch = document.getElementById("fbEmailChoiceRow"), b = document.getElementById("fbLinkSendBtn");
+  if (ch) ch.style.display = "none"; if (b) b.style.display = "";
+}
+function fbEmailContinue() {
+  const row = document.getElementById("fbLinkCodeRow");
+  if (row && row.style.display === "block") { fbSendEmailLink(); return; } // already sent: this is "Resend code"
+  if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
+  const el = document.getElementById("fbLinkEmailIn");
+  const email = ((el && el.value) || "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { _fbEmailErr("Enter a valid email address"); return; }
+  const btn = document.getElementById("fbLinkSendBtn");
+  const reset = () => { if (btn) { btn.disabled = false; btn.textContent = "Continue"; } };
+  if (btn) { btn.disabled = true; btn.textContent = "Checking…"; }
+  _fbEmailErr("");
+  _rjOtpCall({ action: "status", email: email }).then((j) => {
+    reset();
+    if (j && j.hasPassword) {
+      const pe = document.getElementById("fbEmailIn"); if (pe) pe.value = email;
+      const ch = document.getElementById("fbEmailChoiceRow");
+      if (btn) btn.style.display = "none"; if (ch) ch.style.display = "block";
+    } else {
+      window._rjOfferPw = true;
+      toast("No password yet - we'll email you a code. After signing in you can create a password.");
+      fbSendEmailLink();
+    }
+  }).catch(() => { reset(); fbSendEmailLink(); }); // check failed: the code always works
+}
 function fbSendEmailLink() {
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
   const el = document.getElementById("fbLinkEmailIn");
@@ -17032,18 +17080,20 @@ function fbSendEmailLink() {
     .then(() => {
       try { localStorage.setItem(_RJ_OTP_KEY, JSON.stringify({ email: email, ts: Date.now(), device: device })); } catch (_) {}
       _rjStartPoll(email, device, Date.now());
-      if (btn) { btn.disabled = false; btn.textContent = "Resend code"; }
+      if (btn) { btn.disabled = false; btn.style.display = ""; btn.textContent = "Resend code"; }
+      const _ch = document.getElementById("fbEmailChoiceRow"); if (_ch) _ch.style.display = "none";
       const row = document.getElementById("fbLinkCodeRow"); if (row) row.style.display = "block";
       const ci = document.getElementById("fbLinkCodeIn"); if (ci) { ci.value = ""; try { ci.focus(); } catch (_) {} }
       _fbEmailErr("");
       toast("Email sent to " + email + " ✉️ Also check your Spam folder 📬");
     })
-    .catch((e) => { if (btn) { btn.disabled = false; btn.textContent = "Send OTP & Sign-in Button"; } _rjOtpErr(e); });
+    .catch((e) => { if (btn) { btn.disabled = false; btn.style.display = ""; btn.textContent = "Continue"; } _rjOtpErr(e); });
 }
 function fbResetEmailCode() {
   _rjStopPoll();
   const row = document.getElementById("fbLinkCodeRow"); if (row) row.style.display = "none";
-  const btn = document.getElementById("fbLinkSendBtn"); if (btn) { btn.disabled = false; btn.textContent = "Send OTP & Sign-in Button"; }
+  const btn = document.getElementById("fbLinkSendBtn"); if (btn) { btn.disabled = false; btn.style.display = ""; btn.textContent = "Continue"; }
+  const _ch2 = document.getElementById("fbEmailChoiceRow"); if (_ch2) _ch2.style.display = "none";
   try { localStorage.removeItem(_RJ_OTP_KEY); } catch (_) {}
   _fbEmailErr("");
 }

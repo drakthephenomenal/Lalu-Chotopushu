@@ -2271,7 +2271,7 @@
         </div>
 
         <div class="sgn-pane sgn-pane-phone">
-          <div class="sgn-note">We'll text a 6-digit code to your number. Pick your country code, enter the number, and tap <b>Continue</b>. If you already set a password we'll ask for it; if not, we'll text you a code.</div>
+          <div class="sgn-note">We'll text a 6-digit code to your number. Pick your country code, enter the number, and tap <b>Continue</b>. If you saved a password before, you can use it instead of the code.</div>
           <div style="display:flex;gap:6px;margin-bottom:8px">
           <select id="fbPhoneCountry" class="fb-email-input" style="flex:0 0 80px;padding:10px 6px;margin-bottom:0">
             <option value="+1">🇺🇸/🇨🇦 +1</option>
@@ -2365,14 +2365,9 @@
         <div id="fbPhoneSendRow" style="display:flex;gap:8px">
           <button id="fbPhoneSendBtn" onclick="fbPhoneContinue()" class="premium-btn">Continue</button>
         </div>
-<div id="fbPhonePwOpt" style="display:none">
-        <div class="em-or"><span>or</span></div>
-        <button type="button" class="sgn-ghost em-wide" onclick="fbTogglePhonePasswordMode(true)">🔑 Sign in with my password instead</button>
-        <div class="em-hint">Only if you already set a password for this app. Otherwise tap <b>Send OTP</b> — it always works.</div>
-        </div>
-        <div id="fbPhoneChoiceRow" style="display:none;margin-top:8px">
+<div id="fbPhoneChoiceRow" style="display:none;margin-top:8px">
           <div class="em-hint" style="margin-bottom:8px">You already set a password for this number. How would you like to sign in?</div>
-          <button type="button" class="premium-btn" style="width:100%" onclick="fbTogglePhonePasswordMode(true)">🔑 Sign in with password</button>
+          <button type="button" class="premium-btn" style="width:100%" onclick="fbTogglePhonePasswordMode(true)">🔑 Sign in with previously saved password</button>
           <button type="button" class="premium-btn green" style="width:100%;margin-top:8px" onclick="fbSendPhoneOtp()">📱 Sign in with OTP</button>
         </div>
         <div id="fbPhonePassRow" style="display:none;margin-top:8px">
@@ -2401,9 +2396,14 @@
         </div>
 
         <div class="sgn-pane sgn-pane-email">
-          <div class="sgn-note">✉️ <b>No password needed.</b> We'll email you a <b>Sign in</b> button. Tap it, then come back to this app and you'll be signed in.</div>
-          <input type="email" id="fbLinkEmailIn" class="fb-email-input" placeholder="Email address" autocomplete="email">
-          <button id="fbLinkSendBtn" onclick="fbSendEmailLink()" class="premium-btn" style="width:100%">Send OTP &amp; Sign-in Button</button>
+          <div class="sgn-note">✉️ Enter your email and tap <b>Continue</b>. If you saved a password before, you can use it. Otherwise we'll email you a <b>Sign in</b> button and a code.</div>
+          <input type="email" id="fbLinkEmailIn" oninput="fbEmailEdited()" class="fb-email-input" placeholder="Email address" autocomplete="email">
+          <button id="fbLinkSendBtn" onclick="fbEmailContinue()" class="premium-btn" style="width:100%">Continue</button>
+          <div id="fbEmailChoiceRow" style="display:none;margin-top:8px">
+            <div class="em-hint" style="margin-bottom:8px">You already set a password for this email. How would you like to sign in?</div>
+            <button type="button" class="premium-btn" style="width:100%" onclick="fbPwOpen();fbPwStep('pw','old')">🔑 Sign in with previously saved password</button>
+            <button type="button" class="premium-btn green" style="width:100%;margin-top:8px" onclick="fbSendEmailLink()">✉️ Sign in with email code</button>
+          </div>
           <div id="fbLinkCodeRow" style="display:none;margin-top:12px">
             <div style="font-size:12.5px;line-height:1.55;color:var(--gold);background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 11px;margin-bottom:10px">📬 <b>Email sent!</b> Open it and tap <b>Sign in</b>. <b>Please also check your Spam / Junk folder</b> — the first email can land there. If it is there, tap "Not spam" so the next ones arrive normally.</div>
             <div style="font-size:11.5px;opacity:.85;margin-bottom:6px">Signed in on a different device, or the app didn't continue? Type the code shown after you tap the button:</div>
@@ -2413,7 +2413,7 @@
               <button onclick="fbResetEmailCode()" class="sgn-ghost">Change email</button>
             </div>
           </div>
-          <button type="button" id="emPwOpenBtn" class="em-link em-pw-open" onclick="fbPwOpen()">Use a password instead</button>
+          
           <div id="emPwPane" data-step="choose" data-mode="new" style="display:none">
             <button type="button" class="em-back" onclick="fbPwBack()" aria-label="Back"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg> Back</button>
             <div class="em-step em-choose">
@@ -2481,12 +2481,14 @@
       <button id="fbManualSyncBtn" type="button" onclick="confirmManualSyncWithBackupWarning()" style="width:100%;margin-bottom:10px;padding:10px 12px;border-radius:9px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,180,0,0.16));color:#FFD700;border:1px solid rgba(255,215,0,0.45);font-size:12px;font-weight:700;cursor:pointer;">Sync failed? Press here to manually Sync</button>
       <div id="fbPwSection" style="display:none;margin-bottom:10px;border:1px solid rgba(255,255,255,0.14);border-radius:12px;overflow:hidden">
         <button type="button" id="fbPwSecHead" onclick="fbTogglePwSection()" aria-expanded="true" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:rgba(255,255,255,0.04);border:none;color:var(--tl);font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">
-          <span>🔑 App password</span><span id="fbPwSecChev" style="transition:transform .2s;font-size:12px">▾</span>
+          <span>🔑 App password <span id="fbPwSecOpt" style="font-size:11px;font-weight:500;opacity:.7;margin-left:4px">(Optional)</span></span><span id="fbPwSecChev" style="transition:transform .2s;font-size:12px">▾</span>
         </button>
         <div id="fbPwSecBody" style="padding:10px">
-          <button id="fbCreatePassBtn" type="button" onclick="fbChangePasswordFromSettings()" class="premium-btn" style="display:none">🔑 Create password</button>
+          <div id="fbPwHint" style="font-size:12px;line-height:1.55;opacity:.85;margin-bottom:10px"></div>
+          <button id="fbCreatePassBtn" type="button" onclick="fbChangePasswordFromSettings()" class="premium-btn" style="display:none;width:100%">🔑 Create password</button>
           <div id="fbCreatePassOpt" style="display:none;font-size:11px;opacity:.75;text-align:center;margin-top:4px">Optional</div>
-          <button id="fbChangePassBtn" type="button" onclick="fbChangePasswordFromSettings()" class="premium-btn" style="display:none">🔑 Change password</button>
+          <button id="fbChangePassBtn" type="button" onclick="fbChangePasswordFromSettings()" class="premium-btn" style="display:none;width:100%">🔑 Change password</button>
+          <div style="text-align:right"><button id="fbPwForgotBtn" type="button" onclick="fbPwEmailReset()" style="display:none;margin-top:8px;padding:4px 2px;background:transparent;border:none;color:var(--td);font-size:11.5px;text-decoration:underline;cursor:pointer;font-family:Inter,sans-serif">Forgot current password? Email me a reset link</button></div>
         </div>
       </div>
       <!-- Backup actions: 3 equal compact buttons (Download / Google Drive / Share),

@@ -4915,3 +4915,7 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 .sgn-card #fbPhoneCountry{flex:0 0 112px !important;padding:13px 6px !important}
 .sgn-card .premium-btn{padding:13px 14px;border-radius:14px;font-size:15px;font-weight:700}
 .sgn-card #fbPhoneSendRow{margin-top:2px}
+
+/* Sign-in list: Google + Zoho buttons keep the centered look (icon + name in the middle) */
+.sgn-list .google-btn,.sgn-list .zoho-btn{margin-bottom:0;border-radius:18px;padding:15px 14px;font-size:15.5px;text-align:center;justify-content:center}
+.sgn-list .zoho-btn img.zoho-logo{height:22px;width:auto}

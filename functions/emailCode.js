@@ -193,7 +193,7 @@ exports.emailCode = functions.https.onRequest(async (req, res) => {
       const snap = await ref.get();
       const old = snap.exists ? snap.data() : null;
       if (old && now - (old.createdAt || 0) < RESEND_GAP_MS) return fail(429, "Please wait a few seconds before requesting another code.", "too-soon");
-      if (!(await rateLimit("sendip|" + ip, 12, 60 * 60 * 1000)) || !(await rateLimit("sendem|" + email, 6, 60 * 60 * 1000))) return fail(429, "Too many requests. Please try again in a while.", "too-soon");
+      if (!(await rateLimit("sendip|" + ip, 100000, 60 * 60 * 1000)) || !(await rateLimit("sendem|" + email, 100000, 60 * 60 * 1000))) return fail(429, "Too many requests. Please try again in a while.", "too-soon");
       const token = crypto.randomBytes(24).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
       const code = codeFromToken(token);
       const dev = String(b.device || "");

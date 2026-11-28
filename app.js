@@ -16857,12 +16857,12 @@ function fbVerifyEmailCode() {
 function fbCompleteEmailLinkSignIn() {
   if (window._rjLinkTried) return;
   let token = "", email = "";
-  try { const q = new URLSearchParams(location.search); token = q.get("rjlink") || ""; email = (q.get("rje") || "").trim().toLowerCase(); } catch (_) { return; }
+  try { const q = new URLSearchParams(location.search); token = q.get("rjlink") || ""; email = (q.get("rje") || "").trim().toLowerCase(); window._rjLinkHere = q.get("rjhere") === "1"; } catch (_) { return; }
   if (!token || !email) { _rjResumePoll(); return; }
   window._rjLinkTried = true;
   try { history.replaceState(null, "", location.origin + location.pathname + location.hash); } catch (_) {}
   let pend = null; try { pend = JSON.parse(localStorage.getItem(_RJ_OTP_KEY) || "null"); } catch (_) {}
-  const sameDevice = !!(pend && pend.email === email && Date.now() - (pend.ts || 0) < 15 * 60 * 1000);
+  const sameDevice = !!window._rjLinkHere || !!(pend && pend.email === email && Date.now() - (pend.ts || 0) < 15 * 60 * 1000);
   const signInHere = () => _rjOtpCall({ action: "verify", email: email, token: token })
     .then((j) => _rjOtpFinish(j.token))
     .catch((e) => _fbInfoModal("Sign-in problem", '<p style="margin:0">' + ((e && e.message) || "Could not sign in.") + "</p>"));

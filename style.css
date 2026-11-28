@@ -4919,3 +4919,9 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 /* Sign-in list: Google + Zoho buttons keep the centered look (icon + name in the middle) */
 .sgn-list .google-btn,.sgn-list .zoho-btn{margin-bottom:0;border-radius:18px;padding:15px 14px;font-size:15.5px;text-align:center;justify-content:center}
 .sgn-list .zoho-btn img.zoho-logo{height:22px;width:auto}
+/* Phone + Email buttons: name centered (icon + name in the middle, no arrow) */
+.sgn-phone,.sgn-mail{justify-content:center;gap:12px;padding:12px 14px;text-align:center}
+.sgn-phone .sgn-t,.sgn-mail .sgn-t{flex:0 0 auto}
+.sgn-phone .sgn-ch,.sgn-mail .sgn-ch{display:none}
+.sgn-phone .sgn-ic,.sgn-mail .sgn-ic{flex-basis:32px;width:32px;height:32px;border-radius:10px}
+.sgn-choose{font-size:13.5px;font-weight:600;color:#f5d17a;margin-top:8px;letter-spacing:.2px}

@@ -296,6 +296,12 @@ else:
         '            <category android:name="android.intent.category.BROWSABLE" />\n'
         '            <data android:scheme="app.vercel.radharadharadha.capacitor" android:host="oauthredirect" />\n'
         '        </intent-filter>\n'
+        '        <intent-filter android:autoVerify="true">\n'
+        '            <action android:name="android.intent.action.VIEW" />\n'
+        '            <category android:name="android.intent.category.DEFAULT" />\n'
+        '            <category android:name="android.intent.category.BROWSABLE" />\n'
+        '            <data android:scheme="https" android:host="radharadharadha.vercel.app" android:pathPrefix="/email-signin.html" />\n'
+        '        </intent-filter>\n'
     )
     marker = "</intent-filter>"
     idx = content.find(marker)

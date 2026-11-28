@@ -15151,6 +15151,7 @@ function fbInit() {
       });
 
     try { fbCompleteEmailLinkSignIn(); } catch (_e) {}
+    try { _rjBindEmailAppLink(); } catch (_e) {}
     // ── Cloud hydration self-heal ──────────────────────────────────────
     // The 'online' browser event only fires on a true offline→online
     // transition. A device that stays technically "online" per the OS but
@@ -15523,12 +15524,7 @@ function fbInit() {
           _realEmail || user.phoneNumber || user.displayName || "Devotee";
         document.getElementById("fbUserEmail").textContent = _authLabel;
         try { localStorage.setItem("rjap_lastAuthLabel", _authLabel); } catch (_) {}
-        const _pwBtn = document.getElementById("fbChangePassBtn");
-        if (_pwBtn) {
-          const _hasPw = _fbHasPasswordProvider(user);
-          _pwBtn.style.display = _hasPw ? "" : "none";
-          if (_hasPw) _pwBtn.textContent = "🔑 Change Password";
-        }
+        try { _fbRefreshPassBtn(user); } catch (_) {}
         // Nudge (days 0-5) then hard-block (after 5 days) email/password users
         // who haven't verified yet. Google/Zoho sign-ins arrive pre-verified
         // so user.emailVerified is already true for them — this only ever
@@ -16769,6 +16765,45 @@ function fbOpenAuthSheet(which) {
   sh.style.display = "flex";
   requestAnimationFrame(() => requestAnimationFrame(() => sh.classList.add("open")));
 }
+// Settings button: only for people who signed in with phone / email (code or password) - never for Google sign-in.
+function _fbRefreshPassBtn(user) {
+  const b = document.getElementById("fbChangePassBtn"); if (!b || !user) return;
+  const hasPw = _fbHasPasswordProvider(user);
+  b.textContent = hasPw ? "🔑 Change Password" : "🔑 Set a password for this app";
+  b.style.display = "none";
+  user.getIdTokenResult().then((r) => {
+    const sp = (r && r.signInProvider) || "";
+    b.style.display = (sp === "password" || sp === "phone" || sp === "custom") ? "" : "none";
+  }).catch(() => { b.style.display = hasPw ? "" : "none"; });
+}
+// Show / hide button on every password box (also those created later, like the change-password pop-up).
+const _EYE_ON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const _EYE_OFF = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.9 10.9 0 0 1 12 19c-6.4 0-10-7-10-7a18.7 18.7 0 0 1 4.1-5.1M9.9 5.2A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a18.8 18.8 0 0 1-2.2 3.2M1 1l22 22"/><path d="M14.1 14.1a3 3 0 1 1-4.2-4.2"/></svg>';
+function _rjAttachEyes(root) {
+  const list = (root.matches && root.matches('input[type="password"]')) ? [root] : Array.from(root.querySelectorAll ? root.querySelectorAll('input[type="password"]') : []);
+  list.forEach((inp) => {
+    if (inp.getAttribute("data-eye") || !inp.parentNode) return;
+    inp.setAttribute("data-eye", "1");
+    const wrap = document.createElement("span"); wrap.className = "pw-wrap";
+    const mb = getComputedStyle(inp).marginBottom; wrap.style.marginBottom = mb; inp.style.marginBottom = "0";
+    inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp);
+    inp.style.paddingRight = "46px";
+    const btn = document.createElement("button"); btn.type = "button"; btn.className = "pw-eye"; btn.setAttribute("aria-label", "Show password"); btn.innerHTML = _EYE_ON;
+    btn.addEventListener("pointerdown", (e) => e.preventDefault());
+    btn.addEventListener("click", () => {
+      const show = inp.type === "password";
+      inp.type = show ? "text" : "password";
+      btn.innerHTML = show ? _EYE_OFF : _EYE_ON;
+      btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+      try { inp.focus(); } catch (_) {}
+    });
+    wrap.appendChild(btn);
+  });
+}
+try {
+  _rjAttachEyes(document.body);
+  new MutationObserver((muts) => { muts.forEach((m) => m.addedNodes.forEach((n) => { if (n.nodeType === 1) _rjAttachEyes(n); })); }).observe(document.body, { childList: true, subtree: true });
+} catch (_) {}
 // Layout helper only: hide the "use password" option while the password row is open (OTP logic untouched).
 function _phoneWatchPw() {
   const pr = document.getElementById("fbPhonePassRow"), opt = document.getElementById("fbPhonePwOpt");
@@ -16807,6 +16842,8 @@ function fbPwStep(step, mode) {
   const p = document.getElementById("emPwPane"); if (!p) return;
   if (mode) p.setAttribute("data-mode", mode);
   p.setAttribute("data-step", step);
+  const _pi = document.getElementById("fbPassIn");
+  if (_pi) { const nw = p.getAttribute("data-mode") === "new"; _pi.placeholder = nw ? "Set a password for this app (min 6 characters)" : "Your password for this app"; _pi.setAttribute("autocomplete", nw ? "new-password" : "current-password"); }
   _pwTitle(step === "choose" ? _PW_TITLES.choose : _PW_TITLES[p.getAttribute("data-mode")] || _PW_TITLES.choose);
   _fbEmailErr("");
   if (step === "pw") setTimeout(() => { try { const e = document.getElementById("fbEmailIn"); document.getElementById(e && e.value ? "fbPassIn" : "fbEmailIn").focus(); } catch (_) {} }, 120);
@@ -16897,6 +16934,18 @@ function _rjResumePoll() {
   if (typeof fbAuth !== "undefined" && fbAuth && fbAuth.currentUser) return;
   _rjStartPoll(pend.email, pend.device, pend.ts || Date.now());
 }
+// Android App Link: tapping "Sign in" in the email opens this app (instead of the browser page).
+function _rjBindEmailAppLink() {
+  if (window._rjAppLinkBound) return;
+  const A = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+  if (!A) return;
+  window._rjAppLinkBound = true;
+  const handle = (url) => {
+    try { if (url && /email-signin/.test(url) && /[?&]rjlink=/.test(url)) fbCompleteEmailLinkSignIn(url); } catch (_) {}
+  };
+  try { A.addListener("appUrlOpen", (d) => handle(d && d.url)); } catch (_) {}
+  try { A.getLaunchUrl && A.getLaunchUrl().then((r) => handle(r && r.url)).catch(() => {}); } catch (_) {}
+}
 function fbSendEmailLink() {
   if (!fbInit()) { toast("Firebase not ready. Check your connection."); return; }
   const el = document.getElementById("fbLinkEmailIn");
@@ -16943,13 +16992,14 @@ function fbVerifyEmailCode() {
     .catch((e) => _rjOtpErr(e));
 }
 // Runs on every start: if the page was opened from the email's "Sign in" button, handle it.
-function fbCompleteEmailLinkSignIn() {
+function fbCompleteEmailLinkSignIn(linkUrl) {
+  if (linkUrl) window._rjLinkTried = false;
   if (window._rjLinkTried) return;
   let token = "", email = "";
-  try { const q = new URLSearchParams(location.search); token = q.get("rjlink") || ""; email = (q.get("rje") || "").trim().toLowerCase(); window._rjLinkHere = q.get("rjhere") === "1"; } catch (_) { return; }
+  try { const q = new URLSearchParams(linkUrl ? new URL(linkUrl).search : location.search); token = q.get("rjlink") || ""; email = (q.get("rje") || "").trim().toLowerCase(); window._rjLinkHere = q.get("rjhere") === "1"; } catch (_) { return; }
   if (!token || !email) { _rjResumePoll(); return; }
   window._rjLinkTried = true;
-  try { history.replaceState(null, "", location.origin + location.pathname + location.hash); } catch (_) {}
+  if (!linkUrl) { try { history.replaceState(null, "", location.origin + location.pathname + location.hash); } catch (_) {} }
   let pend = null; try { pend = JSON.parse(localStorage.getItem(_RJ_OTP_KEY) || "null"); } catch (_) {}
   const sameDevice = !!window._rjLinkHere || !!(pend && pend.email === email && Date.now() - (pend.ts || 0) < 15 * 60 * 1000);
   const signInHere = () => _rjOtpCall({ action: "verify", email: email, token: token })
@@ -17165,7 +17215,7 @@ function fbVerifyPhoneOtp() {
       const _u = fbAuth.currentUser;
       if (_wasResetFlow) {
         _fbShowPasswordModal({
-          title: "🔑 Set a new password",
+          title: "🔑 Set a new password for this app",
           subtitle: "Your phone number is verified — choose a new password for signing in.",
           requireCurrent: false,
           submitLabel: "Save new password",
@@ -17174,8 +17224,8 @@ function fbVerifyPhoneOtp() {
         });
       } else if (_u && !_fbHasPasswordProvider(_u)) {
         _fbShowPasswordModal({
-          title: "🔑 Set a password? (optional)",
-          subtitle: "Skip OTP next time — sign in with your phone number + a password instead.",
+          title: "🔑 Set a password for this app (optional)",
+          subtitle: "Skip OTP next time — sign in with your phone number + this password instead.",
           requireCurrent: false,
           submitLabel: "Set password",
           skippable: true,
@@ -17313,7 +17363,8 @@ function _fbShowPasswordModal(opts) {
     ? '<input type="password" id="fbPassModalCurrent" class="fb-email-input" placeholder="Current password" autocomplete="current-password">'
     : '';
   ov.innerHTML = ''
-    + '<div role="dialog" aria-modal="true" style="max-width:400px;width:100%;background:linear-gradient(180deg,#1a2244,#0f1530);border:1px solid rgba(74,144,226,0.35);border-radius:18px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,0.55)">'
+    + '<div role="dialog" aria-modal="true" style="position:relative;max-width:400px;width:100%;background:linear-gradient(180deg,#1a2244,#0f1530);border:1px solid rgba(74,144,226,0.35);border-radius:18px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,0.55)">'
+    +   '<button type="button" id="fbPassModalClose" aria-label="Close" style="position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#dfe4ff;font-size:14px;cursor:pointer">✕</button>'
     +   '<div style="font-size:16px;font-weight:700;color:#ffd97a;margin-bottom:8px;text-align:center">' + opts.title + '</div>'
     +   (opts.subtitle ? '<div style="font-size:12.5px;color:#c7cce0;margin-bottom:14px;text-align:center;line-height:1.5">' + opts.subtitle + '</div>' : '')
     +   currentField
@@ -17326,6 +17377,7 @@ function _fbShowPasswordModal(opts) {
   document.body.appendChild(ov);
   const errEl = ov.querySelector("#fbPassModalErr");
   const close = function () { try { ov.remove(); } catch (_) {} };
+  ov.querySelector("#fbPassModalClose").addEventListener("click", close);
   if (opts.skippable) ov.querySelector("#fbPassModalSkip").addEventListener("click", close);
   ov.querySelector("#fbPassModalSubmit").addEventListener("click", function () {
     const np = ov.querySelector("#fbPassModalNew").value;
@@ -17353,12 +17405,12 @@ function fbChangePasswordFromSettings() {
   const user = fbAuth.currentUser;
   const already = _fbHasPasswordProvider(user);
   _fbShowPasswordModal({
-    title: already ? "🔑 Change password" : "🔑 Set a password",
+    title: already ? "🔑 Change password" : "🔑 Set a password for this app",
     subtitle: already
       ? "Enter your current password, then choose a new one."
       : (user.phoneNumber
-          ? "Set a password so you can sign in with your phone number + password (skip OTP)."
-          : "Set a password for this account."),
+          ? "Set a password for this app so you can sign in with your phone number + password (skip OTP)."
+          : "Set a password for this app."),
     requireCurrent: already,
     submitLabel: already ? "Change password" : "Set password",
     onSubmit: function (np, cp) { return _fbSetOrChangePassword(np, cp); }

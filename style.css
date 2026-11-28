@@ -4957,3 +4957,9 @@ html body:not(.ramanuj-branch) .photo-settings-card:has(#photoStripRamanuj) { di
 .em-wide{width:100%;padding:13px 14px;font-size:15px;font-weight:600}
 .em-hint{font-size:11.5px;line-height:1.5;color:var(--td);text-align:center;margin-top:8px}
 .em-hint b{color:#f1dba0;font-weight:600}
+
+/* Show / hide password button */
+.pw-wrap{position:relative;display:block;width:100%}
+.pw-wrap > input{width:100%;box-sizing:border-box}
+.pw-eye{position:absolute;right:6px;top:0;bottom:0;width:40px;border:0;background:transparent;color:var(--td,#9aa4cf);display:grid;place-items:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.pw-eye:active{color:var(--tl,#fff)}
